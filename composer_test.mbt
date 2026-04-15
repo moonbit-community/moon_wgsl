@@ -74,6 +74,17 @@ fn register_relative_file_import_test_shaders() -> Unit {
 }
 
 ///|
+fn register_cycle_test_shaders() -> Unit {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source(
+    "shaders/cycle/a.wgsl", "#define_import_path demo::a\n#import demo::b::b_value\nfn a_value() -> f32 {\n  return b_value();\n}\n",
+  )
+  @moon_wgsl.register_wgsl_source(
+    "shaders/cycle/b.wgsl", "#define_import_path demo::b\n#import demo::a::a_value\nfn b_value() -> f32 {\n  return a_value();\n}\n",
+  )
+}
+
+///|
 test "naga_oil: composer preprocess supports multiline grouped imports" {
   register_grouped_import_test_shaders()
   let value_defines = @moon_wgsl.default_wgsl_value_defines()
@@ -253,5 +264,31 @@ test "naga_oil: composer preprocess resolves relative quoted file imports" {
   debug_inspect(preprocessed.contains("fn build_color"), content="true")
   debug_inspect(preprocessed.contains("fn shade"), content="true")
   debug_inspect(preprocessed.contains("#import"), content="false")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: composer reports import cycles explicitly" {
+  register_cycle_test_shaders()
+  let value_defines = @moon_wgsl.default_wgsl_value_defines()
+  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
+  let mut message : String? = None
+  ignore(
+    @moon_wgsl.Composer::default().load_wgsl_preprocessed(
+      "",
+      "shaders/cycle/a.wgsl",
+      empty_bool_defines(),
+      value_defines,
+      visited,
+      modules,
+    ),
+  ) catch {
+    err => message = Some(err.message())
+  }
+  debug_inspect(
+    message,
+    content="Some(\"shader import cycle detected: shaders/cycle/a.wgsl -> shaders/cycle/b.wgsl -> shaders/cycle/a.wgsl\")",
+  )
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }

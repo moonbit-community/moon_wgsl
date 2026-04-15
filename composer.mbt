@@ -26,6 +26,7 @@ pub fn Composer::default() -> Composer {
 pub(all) suberror ComposerError {
   EmptyAssetsBase(String)
   FailedToResolveImport(String)
+  ImportCycle(String)
   MissingRegisteredSource(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
@@ -37,6 +38,7 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     EmptyAssetsBase(rel) => "assets_base is empty; cannot load shader: \{rel}"
     FailedToResolveImport(import_path) =>
       "failed to resolve shader import: \{import_path}"
+    ImportCycle(cycle) => "shader import cycle detected: \{cycle}"
     MissingRegisteredSource(rel) => "missing registered WGSL source: \{rel}"
     MissingStartupRegisteredSource(rel) =>
       "shader source was not startup-registered: \{rel}"
@@ -375,6 +377,35 @@ fn wgsl_visit_has_rel_prefix(
     }
   }
   false
+}
+
+///|
+fn wgsl_path_stack_contains(paths : Array[String], rel_path : String) -> Bool {
+  for existing_path in paths {
+    if existing_path == rel_path {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_import_cycle_string(
+  active_rel_paths : Array[String],
+  repeated_rel_path : String,
+) -> String {
+  let cycle_paths : Array[String] = []
+  let mut found_cycle_start = false
+  for rel_path in active_rel_paths {
+    if rel_path == repeated_rel_path {
+      found_cycle_start = true
+    }
+    if found_cycle_start {
+      cycle_paths.push(rel_path)
+    }
+  }
+  cycle_paths.push(repeated_rel_path)
+  cycle_paths.join(" -> ")
 }
 
 ///|
@@ -1069,6 +1100,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
   visited : @hashmap.HashMap[String, Bool],
+  active_rel_paths : Array[String],
   modules : @hashmap.HashMap[String, String],
 ) -> String raise ComposerError {
   let mut merged = ""
@@ -1293,6 +1325,11 @@ fn Composer::preprocess_wgsl_source_with_path(
         }
       }
       for request in requests {
+        if wgsl_path_stack_contains(active_rel_paths, request.rel_path) {
+          raise ComposerError::ImportCycle(
+            wgsl_import_cycle_string(active_rel_paths, request.rel_path),
+          )
+        }
         if request.import_full_module {
           if wgsl_visit_has_rel_prefix(visited, request.rel_path) {
             continue
@@ -1313,6 +1350,7 @@ fn Composer::preprocess_wgsl_source_with_path(
           assets_base,
           request.rel_path,
         )
+        active_rel_paths.push(request.rel_path)
         let module_source = if request.import_full_module {
           self.preprocess_wgsl_source_with_path(
             assets_base,
@@ -1321,6 +1359,7 @@ fn Composer::preprocess_wgsl_source_with_path(
             defines,
             value_defines,
             visited,
+            active_rel_paths,
             modules,
           )
         } else {
@@ -1339,9 +1378,11 @@ fn Composer::preprocess_wgsl_source_with_path(
             defines,
             value_defines,
             visited,
+            active_rel_paths,
             modules,
           )
         }
+        active_rel_paths.pop() |> ignore
         if module_source != "" {
           merged = "\{merged}\{module_source}"
           let merged_len = merged.length()
@@ -1376,7 +1417,14 @@ pub fn Composer::preprocess_wgsl_source(
   modules : @hashmap.HashMap[String, String],
 ) -> String raise ComposerError {
   self.preprocess_wgsl_source_with_path(
-    assets_base, "", source, defines, value_defines, visited, modules,
+    assets_base,
+    "",
+    source,
+    defines,
+    value_defines,
+    visited,
+    [],
+    modules,
   )
 }
 
@@ -1399,8 +1447,10 @@ pub fn Composer::load_wgsl_preprocessed(
   }
   visited.set(normalized_rel, true)
   let source = self.load_wgsl_source_required_raw(assets_base, normalized_rel)
+  let active_rel_paths = [normalized_rel]
   self.preprocess_wgsl_source_with_path(
-    assets_base, normalized_rel, source, defines, value_defines, visited, modules,
+    assets_base, normalized_rel, source, defines, value_defines, visited, active_rel_paths,
+    modules,
   )
 }
 
