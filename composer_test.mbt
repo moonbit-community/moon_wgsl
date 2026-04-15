@@ -363,6 +363,58 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
 }
 
 ///|
+test "naga_oil: composer can register a WGSL source tree from moonbitlang/x/fs" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  composer.register_wgsl_source_tree(
+    "testdata/wgsl_scan",
+    @moon_wgsl.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected WGSL source tree registration success")
+  }
+  let preprocessed = composer.compose_wgsl("effects/main.wgsl", {
+    assets_base: "",
+    defines: empty_bool_defines(),
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects: [],
+  }) catch {
+    err =>
+      abort("expected source-tree-backed preprocess success: \{err.message()}")
+  }
+  debug_inspect(
+    composer.registered_wgsl_source("effects/main.wgsl") is Some(_),
+    content="true",
+  )
+  debug_inspect(preprocessed.contains("struct SharedValue"), content="true")
+  debug_inspect(preprocessed.contains("fn build_color"), content="true")
+  debug_inspect(preprocessed.contains("fn shade"), content="true")
+}
+
+///|
+test "naga_oil: checked source-tree registration preserves existing registry conflicts" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  composer.register_wgsl_source(
+    "shared/common.wgsl", "#define_import_path demo::shared\nfn shared_value() -> f32 {\n  return 1.0;\n}\n",
+  )
+  let diagnostics = composer.register_wgsl_source_tree_checked(
+    "testdata/wgsl_scan_conflict",
+    @moon_wgsl.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected checked WGSL source tree registration success")
+  }
+  debug_inspect(diagnostics.length(), content="1")
+  debug_inspect(diagnostics[0].severity, content="Error")
+  debug_inspect(diagnostics[0].rel_path, content="Some(\"shared/common.wgsl\")")
+  debug_inspect(
+    composer.registered_wgsl_source("shared/common.wgsl"),
+    content="Some(\"#define_import_path demo::shared\\nfn shared_value() -> f32 {\\n  return 1.0;\\n}\\n\")",
+  )
+}
+
+///|
 test "naga_oil: source-level symbol redirects rewrite references but keep declarations" {
   let rewritten = @moon_wgsl.rewrite_wgsl_symbol_redirects(
     "fn shade() -> f32 {\n  return build_shadow();\n}\nfn build_shadow() -> f32 {\n  return 1.0;\n}\n",

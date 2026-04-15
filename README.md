@@ -35,6 +35,7 @@ composition in MoonBit without introducing a separate CLI step.
 - Supports quoted file-path imports such as
   `#import "../shared/common.wgsl" SharedVertex, build_color`.
 - Supports bulk source registration with `register_wgsl_source_files`.
+- Supports source-tree scanning and registration through `moonbitlang/x/fs`.
 - Supports preflight registry diagnostics with
   `analyze_wgsl_source_files_for_registry` and
   `register_wgsl_source_files_checked`.
@@ -171,7 +172,7 @@ composer.register_wgsl_source_files([
 ])
 
 inspect(
-  composer.registered_wgsl_source("shaders/effects/main.wgsl").is_some(),
+  composer.registered_wgsl_source("shaders/effects/main.wgsl") is Some(_),
 )
 let composed = composer.compose_wgsl("shaders/effects/main.wgsl", {
   assets_base: "",
@@ -206,7 +207,55 @@ let checked_diagnostics = @moon_wgsl.register_wgsl_source_files_checked(files)
 inspect(checked_diagnostics.length())
 ```
 
-### 5. Exporting a Single WGSL File
+### 5. Scanning a WGSL Source Tree
+
+If your shaders already live on disk, use `scan_wgsl_source_files` or the
+Composer convenience helpers built on top of `moonbitlang/x/fs`.
+
+Scanned `rel_path` values are relative to the scan root, so scanning
+`assets/shaders` yields registry keys such as `effects/main.wgsl`.
+
+```moonbit
+import "Milky2018/moon_wgsl"
+import "moonbitlang/core/hashmap"
+
+let composer = @moon_wgsl.Composer::default()
+composer.clear_registered_wgsl_source_registry()
+composer.register_wgsl_source_tree("assets/shaders", {
+  recursive: true,
+  extensions: [".wgsl"],
+  exclude_prefixes: ["generated", "tmp"],
+}) catch {
+  _ => abort("failed to scan WGSL shader tree")
+}
+
+let composed = composer.compose_wgsl("effects/main.wgsl", {
+  assets_base: "",
+  defines: @hashmap.HashMap::new(),
+  value_defines: @moon_wgsl.default_wgsl_value_defines(),
+  redirects: [],
+}) catch {
+  err => abort(err.message())
+}
+
+inspect(composed.contains("fn shade"))
+```
+
+If you want to preflight a tree before registration, use the checked scan path:
+
+```moonbit
+let (files, diagnostics) = @moon_wgsl.scan_wgsl_source_files_checked(
+  "assets/shaders",
+  @moon_wgsl.WgslSourceScanOptions::default(),
+) catch {
+  _ => abort("failed to scan WGSL shader tree")
+}
+
+inspect(files.length())
+inspect(diagnostics.length())
+```
+
+### 6. Exporting a Single WGSL File
 
 Use `Composer::export_wgsl_with_options` to produce a fully expanded
 single-file WGSL output. The export path also supports declaration-level
@@ -265,7 +314,7 @@ inspect(catalog.length())
 The top-level `build_registered_wgsl_source_catalog` helper is still available
 when you intentionally want to inspect the global compatibility registry.
 
-### 6. Applying Source-Level Redirects
+### 7. Applying Source-Level Redirects
 
 Use the redirect-aware APIs when you want to remap one imported symbol to
 another during composition/export without depending on Naga IR.

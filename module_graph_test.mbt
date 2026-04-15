@@ -144,3 +144,37 @@ test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" 
   )
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
+
+///|
+test "naga_oil: scan_wgsl_source_files reads a WGSL tree via moonbitlang/x/fs" {
+  let files = @moon_wgsl.scan_wgsl_source_files("testdata/wgsl_scan", {
+    recursive: true,
+    extensions: [".wgsl"],
+    exclude_prefixes: ["ignored"],
+  }) catch {
+    _ => abort("expected WGSL source scan success")
+  }
+  let rel_paths : Array[String] = []
+  for file in files {
+    rel_paths.push(file.rel_path)
+  }
+  rel_paths.sort()
+  debug_inspect(
+    rel_paths.join(","),
+    content="\"effects/main.wgsl,shared/common.wgsl\"",
+  )
+}
+
+///|
+test "naga_oil: scan_wgsl_source_files_checked reports duplicate module paths" {
+  let (files, diagnostics) = @moon_wgsl.scan_wgsl_source_files_checked(
+    "testdata/wgsl_scan_dups",
+    @moon_wgsl.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected checked WGSL source scan success")
+  }
+  debug_inspect(files.length(), content="2")
+  debug_inspect(diagnostics.length(), content="1")
+  debug_inspect(diagnostics[0].severity, content="Error")
+  debug_inspect(diagnostics[0].symbol_name, content="Some(\"demo::dup\")")
+}

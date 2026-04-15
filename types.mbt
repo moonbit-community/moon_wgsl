@@ -129,6 +129,22 @@ pub fn WgslSourceFile::default() -> WgslSourceFile {
 }
 
 ///|
+pub(all) struct WgslSourceScanOptions {
+  recursive : Bool
+  extensions : Array[String]
+  exclude_prefixes : Array[String]
+} derive(Eq, Debug)
+
+///|
+pub fn WgslSourceScanOptions::default() -> WgslSourceScanOptions {
+  WgslSourceScanOptions::{
+    recursive: true,
+    extensions: [".wgsl"],
+    exclude_prefixes: [],
+  }
+}
+
+///|
 pub(all) enum WgslDiagnosticSeverity {
   Info
   Warn

@@ -228,6 +228,24 @@ pub fn Composer::register_wgsl_source_files_checked(
 }
 
 ///|
+pub fn Composer::register_wgsl_source_tree(
+  self : Composer,
+  root : String,
+  options : WgslSourceScanOptions,
+) -> Unit raise @fs.IOError {
+  self.register_wgsl_source_files(scan_wgsl_source_files(root, options))
+}
+
+///|
+pub fn Composer::register_wgsl_source_tree_checked(
+  self : Composer,
+  root : String,
+  options : WgslSourceScanOptions,
+) -> Array[WgslDiagnostic] raise @fs.IOError {
+  self.register_wgsl_source_files_checked(scan_wgsl_source_files(root, options))
+}
+
+///|
 pub fn Composer::registered_wgsl_source(
   self : Composer,
   rel_path : String,
