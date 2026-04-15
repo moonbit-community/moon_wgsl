@@ -290,9 +290,10 @@ fn build_wgsl_symbol_redirect_map(
 }
 
 ///|
-fn rewrite_wgsl_declaration_text_with_redirects(
+fn rewrite_wgsl_declaration_text_with_map(
   source : String,
   redirect_map : @hashmap.HashMap[String, String],
+  rewrite_declaration_names : Bool,
 ) -> String {
   let mut output = ""
   let mut i = 0
@@ -390,7 +391,14 @@ fn rewrite_wgsl_declaration_text_with_redirects(
       }
       let ident = source[start:i].to_string()
       if pending_declaration_name && pending_template_depth == 0 {
-        output = output + ident
+        if rewrite_declaration_names {
+          match redirect_map.get(ident) {
+            Some(rewritten_ident) => output = output + rewritten_ident
+            None => output = output + ident
+          }
+        } else {
+          output = output + ident
+        }
         pending_declaration_name = false
       } else if in_substitution_position {
         match redirect_map.get(ident) {
@@ -424,6 +432,22 @@ fn rewrite_wgsl_declaration_text_with_redirects(
   }
 
   output
+}
+
+///|
+fn rewrite_wgsl_declaration_text_with_redirects(
+  source : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  rewrite_wgsl_declaration_text_with_map(source, redirect_map, false)
+}
+
+///|
+fn rewrite_wgsl_declaration_text_with_renamed_declarations(
+  source : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  rewrite_wgsl_declaration_text_with_map(source, redirect_map, true)
 }
 
 ///|

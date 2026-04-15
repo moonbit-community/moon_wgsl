@@ -344,6 +344,7 @@ priv struct WgslImportRequest {
   rel_path : String
   mut import_full_module : Bool
   requested_items : Array[String]
+  alias_name : String
 }
 
 ///|
@@ -390,6 +391,39 @@ fn wgsl_identifier_char(code : Int) -> Bool {
 }
 
 ///|
+fn unresolved_wgsl_namespace_reference(source : String) -> String? {
+  let cleaned = replace_comments(source)
+  let mut i = 0
+  while i + 1 < cleaned.length() {
+    if cleaned.code_unit_at(i).to_int() == 58 &&
+      cleaned.code_unit_at(i + 1).to_int() == 58 {
+      let mut start = i
+      while start > 0 {
+        let cu = cleaned.code_unit_at(start - 1).to_int()
+        if !wgsl_identifier_char(cu) && cu != 58 {
+          break
+        }
+        start = start - 1
+      }
+      let mut end = i + 2
+      while end < cleaned.length() {
+        let cu = cleaned.code_unit_at(end).to_int()
+        if !wgsl_identifier_char(cu) && cu != 58 {
+          break
+        }
+        end = end + 1
+      }
+      let path = cleaned[start:end].to_string().trim().to_string()
+      if path != "" && path != "::" {
+        return Some(path)
+      }
+    }
+    i = i + 1
+  }
+  None
+}
+
+///|
 fn text_contains_code_unit(text : String, code : Int) -> Bool {
   for i in 0..<text.length() {
     if text.code_unit_at(i).to_int() == code {
@@ -409,6 +443,24 @@ fn wgsl_import_default_alias(module_path : String) -> String {
     }
   }
   alias_name
+}
+
+///|
+fn wgsl_import_alias_prefix(alias_name : String) -> String {
+  let mut prefix = ""
+  for i in 0..<alias_name.length() {
+    let code = alias_name.code_unit_at(i).to_int()
+    if wgsl_identifier_char(code) {
+      prefix = prefix + alias_name[i:i + 1].to_string()
+    } else if !prefix.has_suffix("_") {
+      prefix = prefix + "_"
+    }
+  }
+  if prefix == "" {
+    "import"
+  } else {
+    prefix
+  }
 }
 
 ///|
@@ -461,6 +513,38 @@ fn collect_wgsl_alias_requested_items(
     } else {
       search_from = start
     }
+  }
+}
+
+///|
+fn build_wgsl_import_rename_map(
+  source : String,
+  alias_name : String,
+) -> @hashmap.HashMap[String, String] {
+  let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let alias_prefix = wgsl_import_alias_prefix(alias_name)
+  let graph = build_wgsl_declaration_graph(source)
+  for block in graph.declaration_blocks {
+    if block.name == "" {
+      continue
+    }
+    rename_map.set(block.name, "\{alias_prefix}__\{block.name}")
+  }
+  rename_map
+}
+
+///|
+fn collect_wgsl_import_alias_redirects(
+  alias_name : String,
+  rename_map : @hashmap.HashMap[String, String],
+  redirects : Array[WgslSymbolRedirect],
+) -> Unit {
+  for entry in rename_map.iter() {
+    let (from_name, to_name) = entry
+    redirects.push(WgslSymbolRedirect::{
+      from_name: "\{alias_name}::\{from_name}",
+      to_name,
+    })
   }
 }
 
@@ -526,10 +610,13 @@ fn find_wgsl_import_request_index(
   requests : Array[WgslImportRequest],
   module_path : String,
   rel_path : String,
+  alias_name : String,
 ) -> Int? {
   for i in 0..<requests.length() {
     let request = requests[i]
-    if request.module_path == module_path && request.rel_path == rel_path {
+    if request.module_path == module_path &&
+      request.rel_path == rel_path &&
+      request.alias_name == alias_name {
       return Some(i)
     }
   }
@@ -537,8 +624,11 @@ fn find_wgsl_import_request_index(
 }
 
 ///|
-fn wgsl_import_request_visit_key(request : WgslImportRequest) -> String {
-  let mut key = request.rel_path
+fn wgsl_import_request_visit_key(
+  importer_rel_path : String,
+  request : WgslImportRequest,
+) -> String {
+  let mut key = "\{importer_rel_path}=>\{request.rel_path}|\{request.alias_name}"
   if request.import_full_module {
     key = "\{key}|*"
   } else {
@@ -990,6 +1080,12 @@ fn wgsl_if_expr_value(
   if text == "" {
     return 0
   }
+  if text == "true" {
+    return 1
+  }
+  if text == "false" {
+    return 0
+  }
   if parse_wgsl_uint_literal(text) is Some(value) {
     return value
   }
@@ -1200,24 +1296,6 @@ fn apply_wgsl_ifdefs(
 }
 
 ///|
-fn replace_substring_all(source : String, from : String, to : String) -> String {
-  if from == "" {
-    return source
-  }
-  let mut out = ""
-  let mut first = true
-  for piece in source.split(from) {
-    if first {
-      first = false
-    } else {
-      out = out + to
-    }
-    out = out + piece.to_string()
-  }
-  out
-}
-
-///|
 pub fn Composer::contains_module(self : Composer, module_name : String) -> Bool {
   self.module_sets.contains(module_name)
 }
@@ -1346,7 +1424,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     session.value_defines,
   )
   let active_scan_source = strip_wgsl_import_declarations(active_source)
-  let aliases : Array[String] = []
+  let alias_redirects : Array[WgslSymbolRedirect] = []
   let lines : Array[String] = []
   let import_active_stack : Array[Bool] = [true]
   let import_branch_taken_stack : Array[Bool] = []
@@ -1501,19 +1579,15 @@ fn Composer::preprocess_wgsl_source_with_path(
           !active_scan_source.contains("\{module_alias}::") {
           continue
         }
-        if module_alias != "" {
-          aliases.push(module_alias)
-        }
         let requested_items : Array[String] = []
         let mut import_full_module = module_path == target.raw_path
-        if target.alias_name != "" {
-          import_full_module = false
+        if module_alias != "" {
           collect_wgsl_alias_requested_items(
-            active_scan_source,
-            target.alias_name,
-            requested_items,
+            active_scan_source, module_alias, requested_items,
           )
-          if requested_items.length() == 0 {
+          if requested_items.length() > 0 {
+            import_full_module = false
+          } else if target.alias_name != "" {
             continue
           }
         } else if module_path != target.raw_path {
@@ -1549,6 +1623,7 @@ fn Composer::preprocess_wgsl_source_with_path(
             requests,
             module_path,
             resolved_module.rel_path,
+            module_alias,
           )
           is Some(request_index) {
           let request = requests[request_index]
@@ -1567,6 +1642,7 @@ fn Composer::preprocess_wgsl_source_with_path(
             rel_path: resolved_module.rel_path,
             import_full_module,
             requested_items,
+            alias_name: module_alias,
           })
         }
       }
@@ -1587,7 +1663,7 @@ fn Composer::preprocess_wgsl_source_with_path(
             continue
           }
         }
-        let visit_key = wgsl_import_request_visit_key(request)
+        let visit_key = wgsl_import_request_visit_key(current_rel_path, request)
         if session.visited.contains(visit_key) {
           continue
         }
@@ -1625,7 +1701,23 @@ fn Composer::preprocess_wgsl_source_with_path(
         }
         session.active_rel_paths.pop() |> ignore
         if module_source != "" {
-          merged = "\{merged}\{module_source}"
+          let final_module_source = if request.alias_name != "" {
+            let rename_map = build_wgsl_import_rename_map(
+              module_source,
+              request.alias_name,
+            )
+            collect_wgsl_import_alias_redirects(
+              request.alias_name,
+              rename_map,
+              alias_redirects,
+            )
+            rewrite_wgsl_declaration_text_with_renamed_declarations(
+              module_source, rename_map,
+            )
+          } else {
+            module_source
+          }
+          merged = "\{merged}\{final_module_source}"
           let merged_len = merged.length()
           if merged_len == 0 ||
             merged.code_unit_at(merged_len - 1).to_int() != 10 {
@@ -1645,8 +1737,13 @@ fn Composer::preprocess_wgsl_source_with_path(
     session.value_defines,
   )
   out = apply_wgsl_template_consts(out, session.value_defines)
-  for module_alias in aliases {
-    out = replace_substring_all(out, "\{module_alias}::", "")
+  out = rewrite_wgsl_declaration_text_with_map(
+    out,
+    build_wgsl_symbol_redirect_map(alias_redirects),
+    false,
+  )
+  if unresolved_wgsl_namespace_reference(out) is Some(path) {
+    raise ComposerError::FailedToResolveImport(path)
   }
   out
 }

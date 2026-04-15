@@ -138,7 +138,7 @@ test "naga_oil: composer preprocess strips module aliases" {
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
   }
-  debug_inspect(preprocessed.contains("return PI_2;"), content="true")
+  debug_inspect(preprocessed.contains("return maths__PI_2;"), content="true")
   debug_inspect(preprocessed.contains("maths::PI_2"), content="false")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
@@ -249,8 +249,14 @@ test "naga_oil: composer registered sources satisfy strict mesh2d preprocessing"
     err =>
       abort("expected registered-source preprocess success: \{err.message()}")
   }
-  debug_inspect(preprocessed.contains("const PI_2"), content="true")
-  debug_inspect(preprocessed.contains("return twice_pi();"), content="true")
+  debug_inspect(
+    preprocessed.contains("const mesh_functions__PI_2"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("return mesh_functions__twice_pi();"),
+    content="true",
+  )
   debug_inspect(preprocessed.contains("mesh_functions::"), content="false")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
