@@ -336,6 +336,33 @@ fn wgsl_import_request_visit_key(request : WgslImportRequest) -> String {
 }
 
 ///|
+fn resolve_wgsl_import_request_module(
+  importer_rel_path : String,
+  import_path : String,
+  modules : @hashmap.HashMap[String, String],
+) -> WgslResolvedImportModule? {
+  if resolve_wgsl_import_file_path(importer_rel_path, import_path)
+    is Some(rel_path) {
+    let module_path = match registered_wgsl_source(rel_path) {
+      Some(source) =>
+        match get_preprocessor_metadata(source).name {
+          Some(name) if name.trim() != "" => name.trim().to_string()
+          _ => import_path
+        }
+      None => import_path
+    }
+    return Some(WgslResolvedImportModule::{ module_path, rel_path })
+  }
+  if split_last_identifier(import_path) is Some((module_path, _)) {
+    if resolve_wgsl_import_file_path(importer_rel_path, module_path)
+      is Some(rel_path) {
+      return Some(WgslResolvedImportModule::{ module_path, rel_path })
+    }
+  }
+  resolve_wgsl_import_module("", import_path, modules)
+}
+
+///|
 fn wgsl_visit_has_rel_prefix(
   visited : @hashmap.HashMap[String, Bool],
   rel_path : String,
@@ -466,22 +493,32 @@ fn collect_wgsl_declaration_dependencies(
   declaration_names : @hashmap.HashMap[String, Bool],
   dependencies : Array[String],
 ) -> Unit {
-  let mut i = 0
-  while i < declaration_text.length() {
-    while i < declaration_text.length() &&
-          !wgsl_identifier_char(declaration_text.code_unit_at(i).to_int()) {
-      i = i + 1
-    }
-    let start = i
-    while i < declaration_text.length() &&
-          wgsl_identifier_char(declaration_text.code_unit_at(i).to_int()) {
-      i = i + 1
-    }
-    if i > start {
-      let name = declaration_text[start:i].to_string()
-      if name != self_name && declaration_names.contains(name) {
-        wgsl_string_list_push_unique(dependencies, name)
+  for token in tokenize(declaration_text, false) {
+    match token {
+      Token::Identifier(ident, _) => {
+        if ident.contains("\"") {
+          continue
+        }
+        let segments : Array[String] = []
+        for raw_segment in ident.split("::") {
+          let segment = raw_segment.to_string().trim().to_string()
+          if segment != "" {
+            segments.push(segment)
+          }
+        }
+        if segments.length() == 0 {
+          if ident != self_name && declaration_names.contains(ident) {
+            wgsl_string_list_push_unique(dependencies, ident)
+          }
+          continue
+        }
+        let dependency_name = segments[segments.length() - 1]
+        if dependency_name != self_name &&
+          declaration_names.contains(dependency_name) {
+          wgsl_string_list_push_unique(dependencies, dependency_name)
+        }
       }
+      _ => ()
     }
   }
 }
@@ -1024,9 +1061,10 @@ pub fn Composer::load_wgsl_source_required_raw(
 }
 
 ///|
-pub fn Composer::preprocess_wgsl_source(
+fn Composer::preprocess_wgsl_source_with_path(
   self : Composer,
   assets_base : String,
+  current_rel_path : String,
   source : String,
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
@@ -1165,7 +1203,11 @@ pub fn Composer::preprocess_wgsl_source(
       let requests : Array[WgslImportRequest] = []
       collect_wgsl_import_targets(spec, "", targets)
       for target in targets {
-        guard resolve_wgsl_import_module(assets_base, target.raw_path, modules)
+        guard resolve_wgsl_import_request_module(
+            current_rel_path,
+            target.raw_path,
+            modules,
+          )
           is Some(resolved_module) else {
           raise ComposerError::FailedToResolveImport(target.raw_path)
         }
@@ -1272,8 +1314,14 @@ pub fn Composer::preprocess_wgsl_source(
           request.rel_path,
         )
         let module_source = if request.import_full_module {
-          self.preprocess_wgsl_source(
-            assets_base, raw_source, defines, value_defines, visited, modules,
+          self.preprocess_wgsl_source_with_path(
+            assets_base,
+            request.rel_path,
+            raw_source,
+            defines,
+            value_defines,
+            visited,
+            modules,
           )
         } else {
           let prepared_source = apply_wgsl_template_consts(
@@ -1284,8 +1332,14 @@ pub fn Composer::preprocess_wgsl_source(
             prepared_source,
             request.requested_items,
           )
-          self.preprocess_wgsl_source(
-            assets_base, filtered_source, defines, value_defines, visited, modules,
+          self.preprocess_wgsl_source_with_path(
+            assets_base,
+            request.rel_path,
+            filtered_source,
+            defines,
+            value_defines,
+            visited,
+            modules,
           )
         }
         if module_source != "" {
@@ -1312,6 +1366,21 @@ pub fn Composer::preprocess_wgsl_source(
 }
 
 ///|
+pub fn Composer::preprocess_wgsl_source(
+  self : Composer,
+  assets_base : String,
+  source : String,
+  defines : @hashmap.HashMap[String, Bool],
+  value_defines : @hashmap.HashMap[String, Int],
+  visited : @hashmap.HashMap[String, Bool],
+  modules : @hashmap.HashMap[String, String],
+) -> String raise ComposerError {
+  self.preprocess_wgsl_source_with_path(
+    assets_base, "", source, defines, value_defines, visited, modules,
+  )
+}
+
+///|
 pub fn Composer::load_wgsl_preprocessed(
   self : Composer,
   assets_base : String,
@@ -1330,8 +1399,8 @@ pub fn Composer::load_wgsl_preprocessed(
   }
   visited.set(normalized_rel, true)
   let source = self.load_wgsl_source_required_raw(assets_base, normalized_rel)
-  self.preprocess_wgsl_source(
-    assets_base, source, defines, value_defines, visited, modules,
+  self.preprocess_wgsl_source_with_path(
+    assets_base, normalized_rel, source, defines, value_defines, visited, modules,
   )
 }
 

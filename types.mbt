@@ -116,3 +116,87 @@ pub struct PreprocessorMetaData {
   wgsl_directives : WgslDirectives
   cleaned_source : String
 }
+
+///|
+pub(all) struct WgslSourceFile {
+  rel_path : String
+  source : String
+} derive(Eq, Debug)
+
+///|
+pub fn WgslSourceFile::default() -> WgslSourceFile {
+  WgslSourceFile::{ rel_path: "", source: "" }
+}
+
+///|
+pub(all) enum WgslDiagnosticSeverity {
+  Info
+  Warn
+  Error
+} derive(Eq, Debug)
+
+///|
+pub struct WgslDiagnostic {
+  severity : WgslDiagnosticSeverity
+  message : String
+  rel_path : String?
+  symbol_name : String?
+  generated_start : Int?
+  source_start : Int?
+} derive(Eq, Debug)
+
+///|
+pub fn WgslDiagnostic::default() -> WgslDiagnostic {
+  WgslDiagnostic::{
+    severity: WgslDiagnosticSeverity::Info,
+    message: "",
+    rel_path: None,
+    symbol_name: None,
+    generated_start: None,
+    source_start: None,
+  }
+}
+
+///|
+pub struct WgslSourceMapEntry {
+  generated_start : Int
+  generated_end : Int
+  rel_path : String
+  source_start : Int
+  source_end : Int
+  symbol_name : String?
+} derive(Eq, Debug)
+
+///|
+pub fn WgslSourceMapEntry::default() -> WgslSourceMapEntry {
+  WgslSourceMapEntry::{
+    generated_start: 0,
+    generated_end: 0,
+    rel_path: "",
+    source_start: 0,
+    source_end: 0,
+    symbol_name: None,
+  }
+}
+
+///|
+pub(all) struct WgslExportOptions {
+  root_items : Array[String]
+} derive(Eq, Debug)
+
+///|
+pub fn WgslExportOptions::default() -> WgslExportOptions {
+  WgslExportOptions::{ root_items: [] }
+}
+
+///|
+pub struct WgslExportOutput {
+  source : String
+  source_map : Array[WgslSourceMapEntry]
+  diagnostics : Array[WgslDiagnostic]
+} derive(Eq, Debug)
+
+///|
+pub fn WgslExportOutput::default() -> WgslExportOutput {
+  WgslExportOutput::{ source: "", source_map: [], diagnostics: [] }
+}

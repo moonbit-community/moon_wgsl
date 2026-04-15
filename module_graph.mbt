@@ -40,9 +40,19 @@ fn join_wgsl_import_prefix(prefix : String, path : String) -> String {
 ///|
 fn find_top_level_wgsl_group_separator(text : String) -> Int {
   let mut depth = 0
+  let mut in_quote = false
   let mut i = 0
   while i + 2 < text.length() {
     let ch = text.code_unit_at(i).to_int()
+    if ch == 34 { // '"'
+      in_quote = !in_quote
+      i = i + 1
+      continue
+    }
+    if in_quote {
+      i = i + 1
+      continue
+    }
     if ch == 123 { // '{'
       depth = depth + 1
       i = i + 1
@@ -69,8 +79,16 @@ fn split_top_level_wgsl_import_items(text : String) -> Array[String] {
   let items : Array[String] = []
   let mut start = 0
   let mut depth = 0
+  let mut in_quote = false
   for i in 0..<text.length() {
     let ch = text.code_unit_at(i).to_int()
+    if ch == 34 { // '"'
+      in_quote = !in_quote
+      continue
+    }
+    if in_quote {
+      continue
+    }
     if ch == 123 { // '{'
       depth = depth + 1
       continue
@@ -98,8 +116,16 @@ fn split_top_level_wgsl_import_items(text : String) -> Array[String] {
 fn extract_wgsl_group_body(text : String, open_brace_index : Int) -> String {
   let mut depth = 0
   let mut body_start = open_brace_index + 1
+  let mut in_quote = false
   for i in open_brace_index..<text.length() {
     let ch = text.code_unit_at(i).to_int()
+    if ch == 34 { // '"'
+      in_quote = !in_quote
+      continue
+    }
+    if in_quote {
+      continue
+    }
     if ch == 123 { // '{'
       depth = depth + 1
       if depth == 1 {
@@ -115,6 +141,95 @@ fn extract_wgsl_group_body(text : String, open_brace_index : Int) -> String {
     }
   }
   ""
+}
+
+///|
+fn find_top_level_wgsl_alias_separator(text : String) -> Int {
+  let mut depth = 0
+  let mut in_quote = false
+  let mut i = 0
+  while i + 3 < text.length() {
+    let ch = text.code_unit_at(i).to_int()
+    if ch == 34 { // '"'
+      in_quote = !in_quote
+      i = i + 1
+      continue
+    }
+    if in_quote {
+      i = i + 1
+      continue
+    }
+    if ch == 123 { // '{'
+      depth = depth + 1
+      i = i + 1
+      continue
+    }
+    if ch == 125 { // '}'
+      depth = depth - 1
+      i = i + 1
+      continue
+    }
+    if depth == 0 &&
+      ch == 32 &&
+      text.code_unit_at(i + 1).to_int() == 97 &&
+      text.code_unit_at(i + 2).to_int() == 115 &&
+      text.code_unit_at(i + 3).to_int() == 32 {
+      return i
+    }
+    i = i + 1
+  }
+  -1
+}
+
+///|
+fn find_top_level_wgsl_itemlist_separator(text : String) -> Int {
+  let mut depth = 0
+  let mut in_quote = false
+  let mut i = 0
+  while i < text.length() {
+    let ch = text.code_unit_at(i).to_int()
+    if ch == 34 { // '"'
+      in_quote = !in_quote
+      i = i + 1
+      continue
+    }
+    if in_quote {
+      i = i + 1
+      continue
+    }
+    if ch == 123 { // '{'
+      depth = depth + 1
+      i = i + 1
+      continue
+    }
+    if ch == 125 { // '}'
+      depth = depth - 1
+      i = i + 1
+      continue
+    }
+    let is_whitespace = ch == 32 || ch == 9 || ch == 10 || ch == 13
+    if depth == 0 && is_whitespace {
+      let lhs = text[:i].to_string().trim().to_string()
+      let mut j = i + 1
+      while j < text.length() {
+        let code = text.code_unit_at(j).to_int()
+        let more_whitespace = code == 32 ||
+          code == 9 ||
+          code == 10 ||
+          code == 13
+        if !more_whitespace {
+          break
+        }
+        j = j + 1
+      }
+      let rhs = text[j:text.length()].to_string().trim().to_string()
+      if lhs != "" && rhs != "" && !starts_with_text(rhs, "as ") {
+        return i
+      }
+    }
+    i = i + 1
+  }
+  -1
 }
 
 ///|
@@ -139,15 +254,26 @@ pub fn collect_wgsl_import_targets(
   }
   let mut raw_path = text
   let mut alias_name = ""
-  let mut saw_first = false
-  for part in text.split(" as ") {
-    if !saw_first {
-      raw_path = part.to_string().trim().to_string()
-      saw_first = true
-      continue
+  let alias_separator = find_top_level_wgsl_alias_separator(text)
+  if alias_separator >= 0 {
+    raw_path = text[:alias_separator].to_string().trim().to_string()
+    alias_name = trim_trailing_semicolons(
+      text[alias_separator + 4:text.length()].to_string().trim().to_string(),
+    )
+  } else {
+    let itemlist_separator = find_top_level_wgsl_itemlist_separator(text)
+    if itemlist_separator >= 0 {
+      let list_prefix = text[:itemlist_separator].to_string().trim().to_string()
+      let body = text[itemlist_separator:text.length()]
+        .to_string()
+        .trim()
+        .to_string()
+      let next_prefix = join_wgsl_import_prefix(prefix, list_prefix)
+      for item in split_top_level_wgsl_import_items(body) {
+        collect_wgsl_import_targets(item, next_prefix, targets)
+      }
+      return
     }
-    alias_name = trim_trailing_semicolons(part.to_string().trim().to_string())
-    break
   }
   raw_path = trim_trailing_semicolons(raw_path.trim().to_string())
   if raw_path == "" {
@@ -176,7 +302,97 @@ pub fn normalize_shader_rel_path(rel : String) -> String {
   if text.length() >= 7 && text[:7].to_string() == "assets/" {
     text = text[7:text.length()].to_string()
   }
-  text
+  let normalized_segments : Array[String] = []
+  for raw_segment in text.split("/") {
+    let segment = raw_segment.to_string().trim().to_string()
+    if segment == "" || segment == "." {
+      continue
+    }
+    if segment == ".." {
+      if normalized_segments.length() > 0 {
+        normalized_segments.pop() |> ignore
+      }
+      continue
+    }
+    normalized_segments.push(segment)
+  }
+  normalized_segments.join("/")
+}
+
+///|
+fn shader_parent_rel_path(rel_path : String) -> String {
+  let normalized = normalize_shader_rel_path(rel_path)
+  if normalized == "" {
+    return ""
+  }
+  let segments : Array[String] = []
+  for raw_segment in normalized.split("/") {
+    let segment = raw_segment.to_string()
+    if segment != "" {
+      segments.push(segment)
+    }
+  }
+  if segments.length() == 0 {
+    return ""
+  }
+  segments.pop() |> ignore
+  segments.join("/")
+}
+
+///|
+fn unquote_wgsl_import_path(import_path : String) -> String? {
+  let trimmed = import_path.trim().to_string()
+  if trimmed.length() >= 2 &&
+    trimmed.code_unit_at(0).to_int() == 34 &&
+    trimmed.code_unit_at(trimmed.length() - 1).to_int() == 34 {
+    return Some(trimmed[1:trimmed.length() - 1].to_string())
+  }
+  None
+}
+
+///|
+fn wgsl_import_looks_like_file_path(import_path : String) -> Bool {
+  if unquote_wgsl_import_path(import_path) is Some(_) {
+    return true
+  }
+  let trimmed = import_path.trim().to_string()
+  if trimmed == "" {
+    return false
+  }
+  trimmed.contains("/") ||
+  trimmed.has_suffix(".wgsl") ||
+  starts_with_text(trimmed, "./") ||
+  starts_with_text(trimmed, "../")
+}
+
+///|
+pub fn resolve_wgsl_import_file_path(
+  importer_rel_path : String,
+  import_path : String,
+) -> String? {
+  guard wgsl_import_looks_like_file_path(import_path) else { return None }
+  let raw_path = match unquote_wgsl_import_path(import_path) {
+    Some(path) => path
+    None => import_path.trim().to_string()
+  }
+  let normalized = if starts_with_text(raw_path, "./") ||
+    starts_with_text(raw_path, "../") {
+    let parent = shader_parent_rel_path(importer_rel_path)
+    if parent == "" {
+      normalize_shader_rel_path(raw_path)
+    } else {
+      normalize_shader_rel_path("\{parent}/\{raw_path}")
+    }
+  } else {
+    normalize_shader_rel_path(raw_path)
+  }
+  if normalized == "" {
+    return None
+  }
+  if registered_wgsl_sources_ref.val.contains(normalized) {
+    return Some(normalized)
+  }
+  None
 }
 
 ///|
@@ -224,12 +440,29 @@ pub fn register_wgsl_source(rel_path : String, source : String) -> Unit {
 }
 
 ///|
+pub fn register_wgsl_source_files(files : Array[WgslSourceFile]) -> Unit {
+  for file in files {
+    register_wgsl_source(file.rel_path, file.source)
+  }
+}
+
+///|
 pub fn registered_wgsl_source(rel_path : String) -> String? {
   let normalized_rel = normalize_shader_rel_path(rel_path)
   if normalized_rel == "" {
     return None
   }
   registered_wgsl_sources_ref.val.get(normalized_rel)
+}
+
+///|
+pub fn copy_registered_wgsl_source_files() -> Array[WgslSourceFile] {
+  let files : Array[WgslSourceFile] = []
+  for entry in registered_wgsl_sources_ref.val.iter() {
+    let (rel_path, source) = entry
+    files.push(WgslSourceFile::{ rel_path, source })
+  }
+  files
 }
 
 ///|

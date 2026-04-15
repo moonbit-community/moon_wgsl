@@ -59,6 +59,21 @@ fn register_mesh_preprocess_branch_test_shaders() -> Unit {
 }
 
 ///|
+fn register_relative_file_import_test_shaders() -> Unit {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source_files([
+    {
+      rel_path: "shaders/shared/common.wgsl",
+      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/main.wgsl",
+      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
+    },
+  ])
+}
+
+///|
 test "naga_oil: composer preprocess supports multiline grouped imports" {
   register_grouped_import_test_shaders()
   let value_defines = @moon_wgsl.default_wgsl_value_defines()
@@ -211,5 +226,32 @@ test "naga_oil: composer registered sources satisfy strict mesh2d preprocessing"
   debug_inspect(preprocessed.contains("const PI_2"), content="true")
   debug_inspect(preprocessed.contains("return twice_pi();"), content="true")
   debug_inspect(preprocessed.contains("mesh_functions::"), content="false")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: composer preprocess resolves relative quoted file imports" {
+  register_relative_file_import_test_shaders()
+  let value_defines = @moon_wgsl.default_wgsl_value_defines()
+  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
+  let preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed(
+    "",
+    "shaders/effects/main.wgsl",
+    empty_bool_defines(),
+    value_defines,
+    visited,
+    modules,
+  ) catch {
+    err =>
+      abort(
+        "expected relative file import preprocess success: \{err.message()}",
+      )
+  }
+  debug_inspect(preprocessed.contains("struct SharedParams"), content="true")
+  debug_inspect(preprocessed.contains("struct SharedVertex"), content="true")
+  debug_inspect(preprocessed.contains("fn build_color"), content="true")
+  debug_inspect(preprocessed.contains("fn shade"), content="true")
+  debug_inspect(preprocessed.contains("#import"), content="false")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }

@@ -63,3 +63,31 @@ test "naga_oil: resolve import module prefers registered map entries" {
   )
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
+
+///|
+test "naga_oil: bulk source registration resolves relative quoted file paths" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source_files([
+    {
+      rel_path: "shaders/shared/common.wgsl",
+      source: "#define_import_path demo::shared\nstruct SharedValue {\n  tint: vec4<f32>,\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/main.wgsl",
+      source: "#import \"../shared/common.wgsl\" SharedValue\nfn shade(value: SharedValue) -> vec4<f32> {\n  return value.tint;\n}\n",
+    },
+  ])
+  debug_inspect(
+    @moon_wgsl.resolve_wgsl_import_file_path(
+      "shaders/effects/main.wgsl", "\"../shared/common.wgsl\"",
+    ),
+    content="Some(\"shaders/shared/common.wgsl\")",
+  )
+  debug_inspect(
+    @moon_wgsl.resolve_wgsl_import_file_path(
+      "shaders/effects/main.wgsl", "../shared/common.wgsl",
+    ),
+    content="Some(\"shaders/shared/common.wgsl\")",
+  )
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
