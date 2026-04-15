@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-struct WgslGraphBlock {
+priv struct WgslGraphBlock {
   name : String
   text : String
   start : Int
@@ -21,7 +21,7 @@ struct WgslGraphBlock {
 }
 
 ///|
-struct WgslDeclarationGraph {
+priv struct WgslDeclarationGraph {
   import_blocks : Array[WgslGraphBlock]
   declaration_blocks : Array[WgslGraphBlock]
 }

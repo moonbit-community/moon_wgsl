@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-struct WgslImportRequest {
+priv struct WgslImportRequest {
   module_path : String
   rel_path : String
   mut import_full_module : Bool
