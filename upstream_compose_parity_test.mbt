@@ -363,6 +363,31 @@ test "naga_oil upstream: duplicate module imports are renamed per alias scope" {
 }
 
 ///|
+test "naga_oil upstream: namespace-style module refs synthesize source-level imports" {
+  let output = upstream_parity_export_case(
+    "rusty_imports",
+    "top.wgsl",
+    ["entry_point"],
+    upstream_parity_empty_defines(),
+  )
+  debug_inspect(output.source.contains("fn a_x__square"), content="true")
+  debug_inspect(
+    output.source.contains("fn partial_path_c__triple"),
+    content="true",
+  )
+  debug_inspect(output.source.contains("const full_path__C"), content="true")
+  debug_inspect(
+    output.source.contains(
+      "return a_x__square(partial_path_c__triple(full_path__C));",
+    ),
+    content="true",
+  )
+  debug_inspect(output.source.contains("a::x::"), content="false")
+  debug_inspect(output.source.contains("partial_path::"), content="false")
+  debug_inspect(output.source.contains("full_path::"), content="false")
+}
+
+///|
 test "naga_oil upstream: entrypoint imports are renamed instead of shadowing locals" {
   let output = upstream_parity_export_case(
     "call_entrypoint",

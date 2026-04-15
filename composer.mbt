@@ -476,10 +476,10 @@ fn wgsl_import_requested_item_name(
 }
 
 ///|
-fn collect_wgsl_alias_requested_items(
+fn collect_wgsl_alias_requested_paths(
   source : String,
   alias_name : String,
-  requested_items : Array[String],
+  requested_paths : Array[String],
 ) -> Unit {
   let pattern = "\{alias_name}::"
   let mut search_from = 0
@@ -503,15 +503,112 @@ fn collect_wgsl_alias_requested_items(
     let start = match_index + pattern.length()
     let mut end = start
     while end < source.length() &&
-          wgsl_identifier_char(source.code_unit_at(end).to_int()) {
+          (
+            wgsl_identifier_char(source.code_unit_at(end).to_int()) ||
+            (
+              source.code_unit_at(end).to_int() == 58 &&
+              end + 1 < source.length() &&
+              source.code_unit_at(end + 1).to_int() == 58
+            )
+          ) {
+      if source.code_unit_at(end).to_int() == 58 {
+        end = end + 2
+        continue
+      }
       end = end + 1
     }
     if end > start {
-      let item_name = source[start:end].to_string()
-      wgsl_string_list_push_unique(requested_items, item_name)
+      let item_path = source[start:end].to_string()
+      wgsl_string_list_push_unique(requested_paths, item_path)
       search_from = end
     } else {
       search_from = start
+    }
+  }
+}
+
+///|
+fn wgsl_path_separator_count(path : String) -> Int {
+  let mut count = 0
+  let mut i = 0
+  while i + 1 < path.length() {
+    if path.code_unit_at(i).to_int() == 58 &&
+      path.code_unit_at(i + 1).to_int() == 58 {
+      count = count + 1
+      i = i + 2
+      continue
+    }
+    i = i + 1
+  }
+  count
+}
+
+///|
+fn split_last_wgsl_path(path : String) -> (String, String)? {
+  let mut i = path.length() - 1
+  while i > 0 {
+    if path.code_unit_at(i - 1).to_int() == 58 &&
+      path.code_unit_at(i).to_int() == 58 {
+      let prefix = path[:i - 1].to_string().trim().to_string()
+      let suffix = path[i + 1:path.length()].to_string().trim().to_string()
+      if prefix != "" && suffix != "" {
+        return Some((prefix, suffix))
+      }
+      return None
+    }
+    i = i - 1
+  }
+  None
+}
+
+///|
+fn wgsl_import_targets_push_unique(
+  targets : Array[WgslImportTarget],
+  target : WgslImportTarget,
+) -> Unit {
+  for existing in targets {
+    if existing.raw_path == target.raw_path &&
+      existing.alias_name == target.alias_name {
+      return
+    }
+  }
+  targets.push(target)
+}
+
+///|
+fn collect_wgsl_qualified_module_targets(
+  source : String,
+  current_rel_path : String,
+  source_registry : @hashmap.HashMap[String, String],
+  modules : @hashmap.HashMap[String, String],
+  targets : Array[WgslImportTarget],
+) -> Unit {
+  let cleaned = replace_comments(source)
+  for token in tokenize(cleaned, false) {
+    match token {
+      Token::Identifier(ident, _) => {
+        if wgsl_path_separator_count(ident) < 2 {
+          continue
+        }
+        guard resolve_wgsl_import_request_module(
+            current_rel_path, ident, source_registry, modules,
+          )
+          is Some(resolved_module) else {
+          continue
+        }
+        let requested_item = wgsl_import_requested_item_name(
+          ident,
+          resolved_module.module_path,
+        )
+        if requested_item == "" {
+          continue
+        }
+        wgsl_import_targets_push_unique(targets, WgslImportTarget::{
+          raw_path: resolved_module.module_path,
+          alias_name: resolved_module.module_path,
+        })
+      }
+      _ => ()
     }
   }
 }
@@ -1426,6 +1523,17 @@ fn Composer::preprocess_wgsl_source_with_path(
   let active_scan_source = strip_wgsl_import_declarations(active_source)
   let alias_redirects : Array[WgslSymbolRedirect] = []
   let lines : Array[String] = []
+  let qualified_targets : Array[WgslImportTarget] = []
+  collect_wgsl_qualified_module_targets(
+    active_scan_source,
+    current_rel_path,
+    self.registered_wgsl_sources,
+    session.modules,
+    qualified_targets,
+  )
+  for target in qualified_targets {
+    lines.push("#import \{target.raw_path} as \{target.alias_name}")
+  }
   let import_active_stack : Array[Bool] = [true]
   let import_branch_taken_stack : Array[Bool] = []
   for line_item in redirected_source.split("\n") {
@@ -1557,7 +1665,36 @@ fn Composer::preprocess_wgsl_source_with_path(
       let targets : Array[WgslImportTarget] = []
       let requests : Array[WgslImportRequest] = []
       collect_wgsl_import_targets(spec, "", targets)
-      for target in targets {
+      let mut target_index = 0
+      while target_index < targets.length() {
+        let target = targets[target_index]
+        target_index = target_index + 1
+        let requested_items : Array[String] = []
+        let mut request_module_prefix = target.raw_path
+        if target.alias_name != "" {
+          if !active_scan_source.contains("\{target.alias_name}::") {
+            continue
+          }
+          let requested_paths : Array[String] = []
+          collect_wgsl_alias_requested_paths(
+            active_scan_source,
+            target.alias_name,
+            requested_paths,
+          )
+          for requested_path in requested_paths {
+            if split_last_wgsl_path(requested_path) is Some((nested_prefix, _)) {
+              wgsl_import_targets_push_unique(targets, WgslImportTarget::{
+                raw_path: "\{target.raw_path}::\{nested_prefix}",
+                alias_name: "\{target.alias_name}::\{nested_prefix}",
+              })
+              continue
+            }
+            wgsl_string_list_push_unique(requested_items, requested_path)
+          }
+          if requested_items.length() == 0 {
+            continue
+          }
+        }
         guard resolve_wgsl_import_request_module(
             current_rel_path,
             target.raw_path,
@@ -1568,6 +1705,9 @@ fn Composer::preprocess_wgsl_source_with_path(
           raise ComposerError::FailedToResolveImport(target.raw_path)
         }
         let module_path = resolved_module.module_path
+        if target.alias_name == "" {
+          request_module_prefix = module_path
+        }
         let module_alias = if target.alias_name != "" {
           target.alias_name
         } else if module_path == target.raw_path {
@@ -1575,19 +1715,28 @@ fn Composer::preprocess_wgsl_source_with_path(
         } else {
           ""
         }
-        if module_alias != "" &&
-          !active_scan_source.contains("\{module_alias}::") {
-          continue
-        }
-        let requested_items : Array[String] = []
         let mut import_full_module = module_path == target.raw_path
-        if module_alias != "" {
-          collect_wgsl_alias_requested_items(
-            active_scan_source, module_alias, requested_items,
+        if target.alias_name == "" && module_alias != "" {
+          if !active_scan_source.contains("\{module_alias}::") {
+            continue
+          }
+          let requested_paths : Array[String] = []
+          collect_wgsl_alias_requested_paths(
+            active_scan_source, module_alias, requested_paths,
           )
+          for requested_path in requested_paths {
+            if split_last_wgsl_path(requested_path) is Some((nested_prefix, _)) {
+              wgsl_import_targets_push_unique(targets, WgslImportTarget::{
+                raw_path: "\{request_module_prefix}::\{nested_prefix}",
+                alias_name: "\{module_alias}::\{nested_prefix}",
+              })
+              continue
+            }
+            wgsl_string_list_push_unique(requested_items, requested_path)
+          }
           if requested_items.length() > 0 {
             import_full_module = false
-          } else if target.alias_name != "" {
+          } else {
             continue
           }
         } else if module_path != target.raw_path {
