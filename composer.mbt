@@ -15,8 +15,7 @@
 ///|
 pub struct Composer {
   module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
-  registered_wgsl_sources : @hashmap.HashMap[String, String]
-  registered_wgsl_import_modules : @hashmap.HashMap[String, String]
+  registry : WgslSourceRegistry
   composable_module_registry_paths : @hashmap.HashMap[String, String]
 }
 
@@ -24,8 +23,7 @@ pub struct Composer {
 pub fn Composer::default() -> Composer {
   Composer::{
     module_sets: @hashmap.HashMap::new(),
-    registered_wgsl_sources: @hashmap.HashMap::new(),
-    registered_wgsl_import_modules: @hashmap.HashMap::new(),
+    registry: WgslSourceRegistry::default(),
     composable_module_registry_paths: @hashmap.HashMap::new(),
   }
 }
@@ -34,12 +32,7 @@ pub fn Composer::default() -> Composer {
 pub fn Composer::from_registered_wgsl_source_registry() -> Composer {
   Composer::{
     module_sets: @hashmap.HashMap::new(),
-    registered_wgsl_sources: copy_wgsl_source_registry_map(
-      registered_wgsl_sources_ref.val,
-    ),
-    registered_wgsl_import_modules: copy_wgsl_import_module_map(
-      registered_wgsl_import_modules_ref.val,
-    ),
+    registry: registered_wgsl_source_registry_singleton.snapshot(),
     composable_module_registry_paths: @hashmap.HashMap::new(),
   }
 }
@@ -172,10 +165,7 @@ fn composable_module_registry_rel_path(
 
 ///|
 pub fn Composer::clear_registered_wgsl_source_registry(self : Composer) -> Unit {
-  clear_wgsl_source_registry(
-    self.registered_wgsl_sources,
-    self.registered_wgsl_import_modules,
-  )
+  self.registry.clear()
 }
 
 ///|
@@ -184,15 +174,7 @@ pub fn Composer::register_wgsl_source(
   rel_path : String,
   source : String,
 ) -> Unit {
-  ignore(
-    register_wgsl_source_into(
-      self.registered_wgsl_sources,
-      self.registered_wgsl_import_modules,
-      rel_path,
-      source,
-      None,
-    ),
-  )
+  ignore(self.registry.register_source(rel_path, source, None))
 }
 
 ///|
@@ -200,11 +182,7 @@ pub fn Composer::register_wgsl_source_files(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Unit {
-  register_wgsl_source_files_into(
-    self.registered_wgsl_sources,
-    self.registered_wgsl_import_modules,
-    files,
-  )
+  self.registry.register_source_files(files)
 }
 
 ///|
@@ -212,14 +190,7 @@ pub fn Composer::analyze_wgsl_source_files_for_registry(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
-  let diagnostics : Array[WgslDiagnostic] = []
-  analyze_wgsl_source_files_for_registry_against(
-    copy_wgsl_source_registry_map(self.registered_wgsl_sources),
-    copy_wgsl_import_module_map(self.registered_wgsl_import_modules),
-    files,
-    diagnostics,
-  )
-  diagnostics
+  self.registry.analyze_source_files(files)
 }
 
 ///|
@@ -228,12 +199,7 @@ pub fn Composer::register_wgsl_source_files_checked(
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
   let diagnostics : Array[WgslDiagnostic] = []
-  register_wgsl_source_files_checked_into(
-    self.registered_wgsl_sources,
-    self.registered_wgsl_import_modules,
-    files,
-    diagnostics,
-  )
+  self.registry.register_source_files_checked(files, diagnostics)
   diagnostics
 }
 
@@ -260,21 +226,21 @@ pub fn Composer::registered_wgsl_source(
   self : Composer,
   rel_path : String,
 ) -> String? {
-  registered_wgsl_source_from_registry(self.registered_wgsl_sources, rel_path)
+  self.registry.registered_source(rel_path)
 }
 
 ///|
 pub fn Composer::copy_registered_wgsl_source_files(
   self : Composer,
 ) -> Array[WgslSourceFile] {
-  copy_wgsl_source_files_from_registry(self.registered_wgsl_sources)
+  self.registry.copy_source_files()
 }
 
 ///|
 pub fn Composer::copy_registered_wgsl_import_module_paths(
   self : Composer,
 ) -> @hashmap.HashMap[String, String] {
-  copy_wgsl_import_module_map(self.registered_wgsl_import_modules)
+  self.registry.copy_import_module_paths()
 }
 
 ///|
@@ -286,7 +252,7 @@ fn Composer::new_wgsl_compose_session(
     assets_base: options.assets_base.trim().to_string(),
     defines: copy_bool_defs(options.defines),
     value_defines: copy_int_defs(options.value_defines),
-    modules: self.copy_registered_wgsl_import_module_paths(),
+    modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
     visited: @hashmap.HashMap::new(),
     active_rel_paths: [],
@@ -305,8 +271,7 @@ fn composer_remove_composable_module_recursive(
   if composer.composable_module_registry_paths.get(module_name)
     is Some(rel_path) {
     ignore(composer.composable_module_registry_paths.remove(module_name))
-    ignore(composer.registered_wgsl_import_modules.remove(module_name))
-    ignore(composer.registered_wgsl_sources.remove(rel_path))
+    composer.registry.remove_source_and_module(rel_path, module_name)
   }
   ignore(composer.module_sets.remove(module_name))
   let dependent_modules : Array[String] = []
@@ -322,27 +287,6 @@ fn composer_remove_composable_module_recursive(
 }
 
 ///|
-priv struct WgslImportRequest {
-  module_path : String
-  rel_path : String
-  mut import_full_module : Bool
-  requested_items : Array[String]
-  alias_name : String
-}
-
-///|
-priv struct WgslDeclarationBlock {
-  name : String
-  text : String
-}
-
-///|
-fn ends_with_text(text : String, suffix : String) -> Bool {
-  text.length() >= suffix.length() &&
-  text[text.length() - suffix.length():text.length()].to_string() == suffix
-}
-
-///|
 fn strip_wgsl_line_comment(text : String) -> String {
   let mut i = 0
   while i + 1 < text.length() {
@@ -353,739 +297,6 @@ fn strip_wgsl_line_comment(text : String) -> String {
     i = i + 1
   }
   text
-}
-
-///|
-fn wgsl_string_list_push_unique(items : Array[String], item : String) -> Unit {
-  for existing in items {
-    if existing == item {
-      return
-    }
-  }
-  items.push(item)
-}
-
-///|
-fn wgsl_identifier_char(code : Int) -> Bool {
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122) ||
-  (code >= 48 && code <= 57) ||
-  code == 95
-}
-
-///|
-fn unresolved_wgsl_namespace_reference(source : String) -> String? {
-  let cleaned = replace_comments(source)
-  let mut i = 0
-  while i + 1 < cleaned.length() {
-    if cleaned.code_unit_at(i).to_int() == 58 &&
-      cleaned.code_unit_at(i + 1).to_int() == 58 {
-      let mut start = i
-      while start > 0 {
-        let cu = cleaned.code_unit_at(start - 1).to_int()
-        if !wgsl_identifier_char(cu) && cu != 58 {
-          break
-        }
-        start = start - 1
-      }
-      let mut end = i + 2
-      while end < cleaned.length() {
-        let cu = cleaned.code_unit_at(end).to_int()
-        if !wgsl_identifier_char(cu) && cu != 58 {
-          break
-        }
-        end = end + 1
-      }
-      let path = cleaned[start:end].to_string().trim().to_string()
-      if path != "" && path != "::" {
-        return Some(path)
-      }
-    }
-    i = i + 1
-  }
-  None
-}
-
-///|
-fn text_contains_code_unit(text : String, code : Int) -> Bool {
-  for i in 0..<text.length() {
-    if text.code_unit_at(i).to_int() == code {
-      return true
-    }
-  }
-  false
-}
-
-///|
-fn wgsl_import_default_alias(module_path : String) -> String {
-  let mut alias_name = ""
-  for seg in module_path.split("::") {
-    let text = seg.to_string().trim().to_string()
-    if text != "" {
-      alias_name = text
-    }
-  }
-  alias_name
-}
-
-///|
-fn wgsl_import_alias_prefix(alias_name : String) -> String {
-  let mut prefix = ""
-  for i in 0..<alias_name.length() {
-    let code = alias_name.code_unit_at(i).to_int()
-    if wgsl_identifier_char(code) {
-      prefix = prefix + alias_name[i:i + 1].to_string()
-    } else if !prefix.has_suffix("_") {
-      prefix = prefix + "_"
-    }
-  }
-  if prefix == "" {
-    "import"
-  } else {
-    prefix
-  }
-}
-
-///|
-fn wgsl_import_requested_item_name(
-  raw_path : String,
-  module_path : String,
-) -> String {
-  let prefix = "\{module_path}::"
-  if !starts_with_text(raw_path, prefix) {
-    return ""
-  }
-  raw_path[prefix.length():raw_path.length()].to_string().trim().to_string()
-}
-
-///|
-fn collect_wgsl_alias_requested_paths(
-  source : String,
-  alias_name : String,
-  requested_paths : Array[String],
-) -> Unit {
-  let pattern = "\{alias_name}::"
-  let mut search_from = 0
-  while search_from + pattern.length() <= source.length() {
-    let window = source[search_from:source.length()].to_string()
-    let guard_pattern = window.contains(pattern)
-    if !guard_pattern {
-      break
-    }
-    let mut match_index = -1
-    let limit = source.length() - pattern.length()
-    for i in search_from..<=limit {
-      if source[i:i + pattern.length()].to_string() == pattern {
-        match_index = i
-        break
-      }
-    }
-    if match_index < 0 {
-      break
-    }
-    let start = match_index + pattern.length()
-    let mut end = start
-    while end < source.length() &&
-          (
-            wgsl_identifier_char(source.code_unit_at(end).to_int()) ||
-            (
-              source.code_unit_at(end).to_int() == 58 &&
-              end + 1 < source.length() &&
-              source.code_unit_at(end + 1).to_int() == 58
-            )
-          ) {
-      if source.code_unit_at(end).to_int() == 58 {
-        end = end + 2
-        continue
-      }
-      end = end + 1
-    }
-    if end > start {
-      let item_path = source[start:end].to_string()
-      wgsl_string_list_push_unique(requested_paths, item_path)
-      search_from = end
-    } else {
-      search_from = start
-    }
-  }
-}
-
-///|
-fn wgsl_path_separator_count(path : String) -> Int {
-  let mut count = 0
-  let mut i = 0
-  while i + 1 < path.length() {
-    if path.code_unit_at(i).to_int() == 58 &&
-      path.code_unit_at(i + 1).to_int() == 58 {
-      count = count + 1
-      i = i + 2
-      continue
-    }
-    i = i + 1
-  }
-  count
-}
-
-///|
-fn split_last_wgsl_path(path : String) -> (String, String)? {
-  let mut i = path.length() - 1
-  while i > 0 {
-    if path.code_unit_at(i - 1).to_int() == 58 &&
-      path.code_unit_at(i).to_int() == 58 {
-      let prefix = path[:i - 1].to_string().trim().to_string()
-      let suffix = path[i + 1:path.length()].to_string().trim().to_string()
-      if prefix != "" && suffix != "" {
-        return Some((prefix, suffix))
-      }
-      return None
-    }
-    i = i - 1
-  }
-  None
-}
-
-///|
-fn wgsl_import_targets_push_unique(
-  targets : Array[WgslImportTarget],
-  target : WgslImportTarget,
-) -> Unit {
-  for existing in targets {
-    if existing.raw_path == target.raw_path &&
-      existing.alias_name == target.alias_name {
-      return
-    }
-  }
-  targets.push(target)
-}
-
-///|
-fn collect_wgsl_qualified_module_targets(
-  source : String,
-  current_rel_path : String,
-  source_registry : @hashmap.HashMap[String, String],
-  modules : @hashmap.HashMap[String, String],
-  targets : Array[WgslImportTarget],
-) -> Unit {
-  let cleaned = replace_comments(source)
-  for token in tokenize(cleaned, false) {
-    match token {
-      Token::Identifier(ident, _) => {
-        if wgsl_path_separator_count(ident) < 2 {
-          continue
-        }
-        guard resolve_wgsl_import_request_module(
-            current_rel_path, ident, source_registry, modules,
-          )
-          is Some(resolved_module) else {
-          continue
-        }
-        let requested_item = wgsl_import_requested_item_name(
-          ident,
-          resolved_module.module_path,
-        )
-        if requested_item == "" {
-          continue
-        }
-        wgsl_import_targets_push_unique(targets, WgslImportTarget::{
-          raw_path: resolved_module.module_path,
-          alias_name: resolved_module.module_path,
-        })
-      }
-      _ => ()
-    }
-  }
-}
-
-///|
-fn build_wgsl_import_rename_map(
-  source : String,
-  alias_name : String,
-) -> @hashmap.HashMap[String, String] {
-  let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let alias_prefix = wgsl_import_alias_prefix(alias_name)
-  let graph = build_wgsl_declaration_graph(source)
-  for block in graph.declaration_blocks {
-    if block.name == "" {
-      continue
-    }
-    rename_map.set(block.name, "\{alias_prefix}__\{block.name}")
-  }
-  rename_map
-}
-
-///|
-fn collect_wgsl_import_alias_redirects(
-  alias_name : String,
-  rename_map : @hashmap.HashMap[String, String],
-  redirects : Array[WgslSymbolRedirect],
-) -> Unit {
-  for entry in rename_map.iter() {
-    let (from_name, to_name) = entry
-    redirects.push(WgslSymbolRedirect::{
-      from_name: "\{alias_name}::\{from_name}",
-      to_name,
-    })
-  }
-}
-
-///|
-fn strip_wgsl_import_declarations(source : String) -> String {
-  let lines : Array[String] = []
-  for line_item in source.split("\n") {
-    lines.push(line_item.to_string())
-  }
-  let mut out = ""
-  let mut index = 0
-  while index < lines.length() {
-    let line = lines[index]
-    let trimmed = line.trim().to_string()
-    if starts_with_text(trimmed, "#define_import_path") {
-      index = index + 1
-      continue
-    }
-    if starts_with_text(trimmed, "#import ") {
-      let mut brace_balance = import_brace_balance(
-        trimmed[8:trimmed.length()].to_string(),
-      )
-      while brace_balance > 0 && index + 1 < lines.length() {
-        index = index + 1
-        brace_balance = brace_balance + import_brace_balance(lines[index])
-      }
-      index = index + 1
-      continue
-    }
-    out = "\{out}\{line}\n"
-    index = index + 1
-  }
-  out
-}
-
-///|
-fn wgsl_source_contains_identifier(
-  source : String,
-  identifier : String,
-) -> Bool {
-  if identifier == "" || identifier.length() > source.length() {
-    return false
-  }
-  let limit = source.length() - identifier.length()
-  for i in 0..<=limit {
-    if source[i:i + identifier.length()].to_string() != identifier {
-      continue
-    }
-    let left_ok = i == 0 ||
-      !wgsl_identifier_char(source.code_unit_at(i - 1).to_int())
-    let right_index = i + identifier.length()
-    let right_ok = right_index >= source.length() ||
-      !wgsl_identifier_char(source.code_unit_at(right_index).to_int())
-    if left_ok && right_ok {
-      return true
-    }
-  }
-  false
-}
-
-///|
-fn find_wgsl_import_request_index(
-  requests : Array[WgslImportRequest],
-  module_path : String,
-  rel_path : String,
-  alias_name : String,
-) -> Int? {
-  for i in 0..<requests.length() {
-    let request = requests[i]
-    if request.module_path == module_path &&
-      request.rel_path == rel_path &&
-      request.alias_name == alias_name {
-      return Some(i)
-    }
-  }
-  None
-}
-
-///|
-fn wgsl_import_request_visit_key(
-  importer_rel_path : String,
-  request : WgslImportRequest,
-) -> String {
-  let mut key = "\{importer_rel_path}=>\{request.rel_path}|\{request.alias_name}"
-  if request.import_full_module {
-    key = "\{key}|*"
-  } else {
-    let sorted_items : Array[String] = []
-    for item in request.requested_items {
-      sorted_items.push(item)
-    }
-    sorted_items.sort()
-    for item in sorted_items {
-      key = "\{key}|\{item}"
-    }
-  }
-  key
-}
-
-///|
-fn resolve_wgsl_import_request_module(
-  importer_rel_path : String,
-  import_path : String,
-  source_registry : @hashmap.HashMap[String, String],
-  modules : @hashmap.HashMap[String, String],
-) -> WgslResolvedImportModule? {
-  if resolve_wgsl_import_file_path_from_registry(
-      source_registry, importer_rel_path, import_path,
-    )
-    is Some(rel_path) {
-    let module_path = match
-      registered_wgsl_source_from_registry(source_registry, rel_path) {
-      Some(source) =>
-        match get_preprocessor_metadata(source).name {
-          Some(name) if name.trim() != "" => name.trim().to_string()
-          _ => import_path
-        }
-      None => import_path
-    }
-    return Some(WgslResolvedImportModule::{ module_path, rel_path })
-  }
-  if split_last_identifier(import_path) is Some((module_path, _)) {
-    if resolve_wgsl_import_file_path_from_registry(
-        source_registry, importer_rel_path, module_path,
-      )
-      is Some(rel_path) {
-      return Some(WgslResolvedImportModule::{ module_path, rel_path })
-    }
-  }
-  resolve_wgsl_import_module("", import_path, modules)
-}
-
-///|
-fn wgsl_visit_has_rel_prefix(
-  visited : @hashmap.HashMap[String, Bool],
-  rel_path : String,
-) -> Bool {
-  let prefix = "\{rel_path}|"
-  for entry in visited.iter() {
-    let (key, _) = entry
-    if starts_with_text(key, prefix) {
-      return true
-    }
-  }
-  false
-}
-
-///|
-fn wgsl_path_stack_contains(paths : Array[String], rel_path : String) -> Bool {
-  for existing_path in paths {
-    if existing_path == rel_path {
-      return true
-    }
-  }
-  false
-}
-
-///|
-fn wgsl_import_cycle_string(
-  active_rel_paths : Array[String],
-  repeated_rel_path : String,
-) -> String {
-  let cycle_paths : Array[String] = []
-  let mut found_cycle_start = false
-  for rel_path in active_rel_paths {
-    if rel_path == repeated_rel_path {
-      found_cycle_start = true
-    }
-    if found_cycle_start {
-      cycle_paths.push(rel_path)
-    }
-  }
-  cycle_paths.push(repeated_rel_path)
-  cycle_paths.join(" -> ")
-}
-
-///|
-fn wgsl_declaration_name(line : String) -> String {
-  let trimmed = line.trim().to_string()
-  if trimmed == "" {
-    return ""
-  }
-  if starts_with_text(trimmed, "@") {
-    let mut i = 0
-    while i + 3 < trimmed.length() {
-      if trimmed.code_unit_at(i).to_int() == 32 &&
-        trimmed.code_unit_at(i + 1).to_int() == 118 &&
-        trimmed.code_unit_at(i + 2).to_int() == 97 &&
-        trimmed.code_unit_at(i + 3).to_int() == 114 {
-        return wgsl_declaration_name(
-          trimmed[i + 1:trimmed.length()].to_string(),
-        )
-      }
-      i = i + 1
-    }
-    return ""
-  }
-  if starts_with_text(trimmed, "struct ") {
-    let rest = trimmed[7:trimmed.length()].to_string()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_string() }
-  }
-  if starts_with_text(trimmed, "fn ") {
-    let rest = trimmed[3:trimmed.length()].to_string()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_string() }
-  }
-  if starts_with_text(trimmed, "const ") {
-    let rest = trimmed[6:trimmed.length()].to_string()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_string() }
-  }
-  if starts_with_text(trimmed, "override ") {
-    let rest = trimmed[9:trimmed.length()].to_string()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_string() }
-  }
-  if starts_with_text(trimmed, "alias ") {
-    let rest = trimmed[6:trimmed.length()].to_string()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_string() }
-  }
-  if starts_with_text(trimmed, "type ") {
-    let rest = trimmed[5:trimmed.length()].to_string()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_string() }
-  }
-  if starts_with_text(trimmed, "var") {
-    let mut i = 3
-    while i < trimmed.length() &&
-          (
-            trimmed.code_unit_at(i).to_int() == 32 ||
-            trimmed.code_unit_at(i).to_int() == 9
-          ) {
-      i = i + 1
-    }
-    if i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 60 {
-      while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 62 {
-        i = i + 1
-      }
-      if i < trimmed.length() {
-        i = i + 1
-      }
-    }
-    while i < trimmed.length() &&
-          (
-            trimmed.code_unit_at(i).to_int() == 32 ||
-            trimmed.code_unit_at(i).to_int() == 9
-          ) {
-      i = i + 1
-    }
-    let start = i
-    while i < trimmed.length() &&
-          wgsl_identifier_char(trimmed.code_unit_at(i).to_int()) {
-      i = i + 1
-    }
-    return if i == start { "" } else { trimmed[start:i].to_string() }
-  }
-  ""
-}
-
-///|
-fn collect_wgsl_declaration_dependencies(
-  declaration_text : String,
-  self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
-  dependencies : Array[String],
-) -> Unit {
-  for token in tokenize(declaration_text, false) {
-    match token {
-      Token::Identifier(ident, _) => {
-        if ident.contains("\"") {
-          continue
-        }
-        let segments : Array[String] = []
-        for raw_segment in ident.split("::") {
-          let segment = raw_segment.to_string().trim().to_string()
-          if segment != "" {
-            segments.push(segment)
-          }
-        }
-        if segments.length() == 0 {
-          if ident != self_name && declaration_names.contains(ident) {
-            wgsl_string_list_push_unique(dependencies, ident)
-          }
-          continue
-        }
-        let dependency_name = segments[segments.length() - 1]
-        if dependency_name != self_name &&
-          declaration_names.contains(dependency_name) {
-          wgsl_string_list_push_unique(dependencies, dependency_name)
-        }
-      }
-      _ => ()
-    }
-  }
-}
-
-///|
-fn extract_wgsl_module_items(
-  source : String,
-  requested_items : Array[String],
-) -> String {
-  if requested_items.length() == 0 {
-    return source
-  }
-  let lines : Array[String] = []
-  for line_item in source.split("\n") {
-    lines.push(line_item.to_string())
-  }
-  let pending_prefix : Array[String] = []
-  let import_blocks : Array[String] = []
-  let declaration_blocks : Array[WgslDeclarationBlock] = []
-  let mut i = 0
-  while i < lines.length() {
-    let line = lines[i]
-    let trimmed = line.trim().to_string()
-    let decl_name_hint = wgsl_declaration_name(trimmed)
-    if trimmed == "" ||
-      starts_with_text(trimmed, "//") ||
-      (starts_with_text(trimmed, "@") && decl_name_hint == "") {
-      pending_prefix.push(line)
-      i = i + 1
-      continue
-    }
-    if starts_with_text(trimmed, "#define_import_path") {
-      i = i + 1
-      continue
-    }
-    if starts_with_text(trimmed, "#import ") {
-      let mut import_block = line
-      let mut balance = import_brace_balance(
-        trimmed[8:trimmed.length()].to_string(),
-      )
-      while balance > 0 && i + 1 < lines.length() {
-        i = i + 1
-        let next_line = lines[i]
-        import_block = "\{import_block}\n\{next_line}"
-        balance = balance + import_brace_balance(next_line)
-      }
-      import_blocks.push("\{import_block}\n")
-      pending_prefix.clear()
-      i = i + 1
-      continue
-    }
-    let block_lines : Array[String] = []
-    for prefix_line in pending_prefix {
-      block_lines.push(prefix_line)
-    }
-    pending_prefix.clear()
-    let decl_name = decl_name_hint
-    let mut saw_brace = false
-    let mut brace_depth = 0
-    let mut done = false
-    while !done {
-      let block_line = lines[i]
-      block_lines.push(block_line)
-      if text_contains_code_unit(block_line, 123) {
-        saw_brace = true
-      }
-      brace_depth = brace_depth + import_brace_balance(block_line)
-      let block_trimmed = block_line.trim().to_string()
-      if saw_brace {
-        done = brace_depth == 0
-      } else {
-        done = ends_with_text(block_trimmed, ";")
-      }
-      if !done {
-        i = i + 1
-        if i >= lines.length() {
-          done = true
-        }
-      }
-    }
-    let mut block_text = ""
-    for block_line in block_lines {
-      block_text = "\{block_text}\{block_line}\n"
-    }
-    declaration_blocks.push(WgslDeclarationBlock::{
-      name: decl_name,
-      text: block_text,
-    })
-    i = i + 1
-  }
-  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
-  for i in 0..<declaration_blocks.length() {
-    let block = declaration_blocks[i]
-    if block.name != "" {
-      declaration_names.set(block.name, true)
-      declaration_indexes.set(block.name, i)
-    }
-  }
-  let included_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let worklist : Array[String] = []
-  let mut matched_requested = 0
-  for item in requested_items {
-    if declaration_names.contains(item) {
-      worklist.push(item)
-      matched_requested = matched_requested + 1
-    }
-  }
-  if matched_requested == 0 {
-    source
-  } else {
-    while worklist.length() > 0 {
-      let name = worklist.pop().unwrap()
-      if included_names.contains(name) {
-        continue
-      }
-      included_names.set(name, true)
-      guard declaration_indexes.get(name) is Some(index) else { continue }
-      let block = declaration_blocks[index]
-      let dependencies : Array[String] = []
-      collect_wgsl_declaration_dependencies(
-        block.text,
-        name,
-        declaration_names,
-        dependencies,
-      )
-      for dependency in dependencies {
-        if !included_names.contains(dependency) {
-          worklist.push(dependency)
-        }
-      }
-    }
-    let mut out = ""
-    for import_block in import_blocks {
-      out = out + import_block
-    }
-    for block in declaration_blocks {
-      if block.name == "" || included_names.contains(block.name) {
-        out = out + block.text
-      }
-    }
-    out
-  }
 }
 
 ///|
@@ -1413,8 +624,8 @@ pub fn Composer::add_composable_module(
     guard resolve_wgsl_import_request_module(
         registry_rel_path,
         import_name,
-        self.registered_wgsl_sources,
-        self.registered_wgsl_import_modules,
+        self.registry,
+        self.registry.copy_import_module_paths(),
       )
       is Some(resolved_module) else {
       raise ComposerError::FailedToResolveImport(import_name)
@@ -1450,9 +661,7 @@ pub fn Composer::add_composable_module(
 
   composer_remove_composable_module_recursive(self, module_name)
   ignore(
-    register_wgsl_source_into(
-      self.registered_wgsl_sources,
-      self.registered_wgsl_import_modules,
+    self.registry.register_source(
       registry_rel_path,
       desc.source,
       Some(module_name),
@@ -1494,11 +703,7 @@ pub fn Composer::load_wgsl_source_required_raw(
   if normalized_rel == "" {
     return ""
   }
-  match
-    registered_wgsl_source_from_registry(
-      self.registered_wgsl_sources,
-      normalized_rel,
-    ) {
+  match self.registry.registered_source(normalized_rel) {
     Some(source) => source
     None => raise ComposerError::MissingStartupRegisteredSource(normalized_rel)
   }
@@ -1541,7 +746,7 @@ fn Composer::seed_wgsl_compose_lines(
   collect_wgsl_qualified_module_targets(
     prepared.active_scan_source,
     current_rel_path,
-    self.registered_wgsl_sources,
+    self.registry,
     session.modules,
     qualified_targets,
   )
@@ -1598,7 +803,7 @@ fn Composer::build_wgsl_import_requests(
     guard resolve_wgsl_import_request_module(
         current_rel_path,
         target.raw_path,
-        self.registered_wgsl_sources,
+        self.registry,
         session.modules,
       )
       is Some(resolved_module) else {

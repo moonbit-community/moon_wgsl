@@ -371,15 +371,13 @@ pub fn resolve_wgsl_import_file_path(
   import_path : String,
 ) -> String? {
   resolve_wgsl_import_file_path_from_registry(
-    registered_wgsl_sources_ref.val,
-    importer_rel_path,
-    import_path,
+    registered_wgsl_source_registry_singleton, importer_rel_path, import_path,
   )
 }
 
 ///|
 fn resolve_wgsl_import_file_path_from_registry(
-  source_registry : @hashmap.HashMap[String, String],
+  registry : WgslSourceRegistry,
   importer_rel_path : String,
   import_path : String,
 ) -> String? {
@@ -402,7 +400,7 @@ fn resolve_wgsl_import_file_path_from_registry(
   if normalized == "" {
     return None
   }
-  if source_registry.contains(normalized) {
+  if registry.registered_source(normalized) is Some(_) {
     return Some(normalized)
   }
   None
@@ -417,7 +415,8 @@ pub fn resolve_wgsl_source_file_path(
   if normalized_rel == "" {
     return None
   }
-  if registered_wgsl_sources_ref.val.contains(normalized_rel) {
+  if registered_wgsl_source_registry_singleton.registered_source(normalized_rel)
+    is Some(_) {
     return Some(normalized_rel)
   }
   None
@@ -583,14 +582,7 @@ pub fn scan_wgsl_source_files_checked(
 }
 
 ///|
-let registered_wgsl_sources_ref : Ref[@hashmap.HashMap[String, String]] = Ref::new(
-  @hashmap.HashMap::new(),
-)
-
-///|
-let registered_wgsl_import_modules_ref : Ref[@hashmap.HashMap[String, String]] = Ref::new(
-  @hashmap.HashMap::new(),
-)
+let registered_wgsl_source_registry_singleton : WgslSourceRegistry = WgslSourceRegistry::default()
 
 ///|
 fn copy_wgsl_source_registry_map(
@@ -651,18 +643,13 @@ fn register_wgsl_source_into(
 
 ///|
 pub fn clear_registered_wgsl_source_registry() -> Unit {
-  clear_wgsl_source_registry(
-    registered_wgsl_sources_ref.val,
-    registered_wgsl_import_modules_ref.val,
-  )
+  registered_wgsl_source_registry_singleton.clear()
 }
 
 ///|
 pub fn register_wgsl_source(rel_path : String, source : String) -> Unit {
   ignore(
-    register_wgsl_source_into(
-      registered_wgsl_sources_ref.val,
-      registered_wgsl_import_modules_ref.val,
+    registered_wgsl_source_registry_singleton.register_source(
       rel_path,
       source,
       None,
@@ -702,17 +689,7 @@ fn wgsl_diagnostics_has_error(diagnostics : Array[WgslDiagnostic]) -> Bool {
 pub fn analyze_wgsl_source_files_for_registry(
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
-  let diagnostics : Array[WgslDiagnostic] = []
-  let existing_rel_to_source = copy_wgsl_source_registry_map(
-    registered_wgsl_sources_ref.val,
-  )
-  let existing_modules = copy_wgsl_import_module_map(
-    registered_wgsl_import_modules_ref.val,
-  )
-  analyze_wgsl_source_files_for_registry_against(
-    existing_rel_to_source, existing_modules, files, diagnostics,
-  )
-  diagnostics
+  registered_wgsl_source_registry_singleton.analyze_source_files(files)
 }
 
 ///|
@@ -797,11 +774,8 @@ pub fn register_wgsl_source_files_checked(
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
   let diagnostics : Array[WgslDiagnostic] = []
-  register_wgsl_source_files_checked_into(
-    registered_wgsl_sources_ref.val,
-    registered_wgsl_import_modules_ref.val,
-    files,
-    diagnostics,
+  registered_wgsl_source_registry_singleton.register_source_files_checked(
+    files, diagnostics,
   )
   diagnostics
 }
@@ -826,11 +800,7 @@ fn register_wgsl_source_files_checked_into(
 
 ///|
 pub fn register_wgsl_source_files(files : Array[WgslSourceFile]) -> Unit {
-  register_wgsl_source_files_into(
-    registered_wgsl_sources_ref.val,
-    registered_wgsl_import_modules_ref.val,
-    files,
-  )
+  registered_wgsl_source_registry_singleton.register_source_files(files)
 }
 
 ///|
@@ -854,10 +824,7 @@ fn register_wgsl_source_files_into(
 
 ///|
 pub fn registered_wgsl_source(rel_path : String) -> String? {
-  registered_wgsl_source_from_registry(
-    registered_wgsl_sources_ref.val,
-    rel_path,
-  )
+  registered_wgsl_source_registry_singleton.registered_source(rel_path)
 }
 
 ///|
@@ -874,7 +841,7 @@ fn registered_wgsl_source_from_registry(
 
 ///|
 pub fn copy_registered_wgsl_source_files() -> Array[WgslSourceFile] {
-  copy_wgsl_source_files_from_registry(registered_wgsl_sources_ref.val)
+  registered_wgsl_source_registry_singleton.copy_source_files()
 }
 
 ///|
@@ -894,7 +861,7 @@ pub fn copy_registered_wgsl_import_module_paths() -> @hashmap.HashMap[
   String,
   String,
 ] {
-  copy_wgsl_import_module_map(registered_wgsl_import_modules_ref.val)
+  registered_wgsl_source_registry_singleton.copy_import_module_paths()
 }
 
 ///|
@@ -948,8 +915,8 @@ pub fn build_wgsl_import_module_paths(
 }
 
 ///|
-pub fn resolve_wgsl_import_module(
-  _assets_base : String,
+fn resolve_wgsl_import_module_in_registry(
+  registry : WgslSourceRegistry,
   import_path : String,
   modules : @hashmap.HashMap[String, String],
 ) -> WgslResolvedImportModule? {
@@ -969,7 +936,7 @@ pub fn resolve_wgsl_import_module(
       return Some(WgslResolvedImportModule::{ module_path, rel_path })
     }
     let default_rel = wgsl_module_path_to_rel_path(module_path)
-    if registered_wgsl_source(default_rel) is Some(_) {
+    if registry.registered_source(default_rel) is Some(_) {
       return Some(WgslResolvedImportModule::{
         module_path,
         rel_path: default_rel,
@@ -978,7 +945,7 @@ pub fn resolve_wgsl_import_module(
     let namespace_rel = wgsl_module_path_to_rel_path_namespace(module_path)
     if namespace_rel != "" &&
       namespace_rel != default_rel &&
-      registered_wgsl_source(namespace_rel) is Some(_) {
+      registry.registered_source(namespace_rel) is Some(_) {
       return Some(WgslResolvedImportModule::{
         module_path,
         rel_path: namespace_rel,
@@ -987,4 +954,15 @@ pub fn resolve_wgsl_import_module(
     segments.pop() |> ignore
   }
   None
+}
+
+///|
+pub fn resolve_wgsl_import_module(
+  _assets_base : String,
+  import_path : String,
+  modules : @hashmap.HashMap[String, String],
+) -> WgslResolvedImportModule? {
+  resolve_wgsl_import_module_in_registry(
+    registered_wgsl_source_registry_singleton, import_path, modules,
+  )
 }

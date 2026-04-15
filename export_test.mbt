@@ -85,6 +85,21 @@ fn register_redirect_export_test_shaders() -> Unit {
 }
 
 ///|
+fn register_analysis_alignment_export_test_shaders() -> Unit {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source_files([
+    {
+      rel_path: "shaders/shared/aligned.wgsl",
+      source: "struct SharedParams {\n  value: f32,\n}\n@group(0) @binding(0) var<uniform> shared_params: SharedParams;\nfn read_shared() -> f32 {\n  return shared_params.value;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/aligned.wgsl",
+      source: "#import \"../shared/aligned.wgsl\" read_shared\nfn shade() -> f32 {\n  return read_shared();\n}\n",
+    },
+  ])
+}
+
+///|
 test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map" {
   register_export_test_shaders()
   let output = export_test_global_registry_composer().export_wgsl_with_options(
@@ -113,6 +128,38 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
     mapped_paths.join(","),
     content="\"shaders/effects/main.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl\"",
   )
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: compose item extraction and export tree-shaking share dependency analysis" {
+  register_analysis_alignment_export_test_shaders()
+  let composer = export_test_global_registry_composer()
+  let composed = composer.compose_wgsl(
+    "shaders/effects/aligned.wgsl",
+    export_test_compose_options(export_test_empty_defines(), []),
+  ) catch {
+    err => abort("expected aligned compose success: \{err.message()}")
+  }
+  let output = composer.export_wgsl_with_options(
+    "shaders/effects/aligned.wgsl",
+    export_test_compose_options(export_test_empty_defines(), []),
+    { root_items: ["shade"] },
+  ) catch {
+    err => abort("expected aligned export success: \{err.message()}")
+  }
+  debug_inspect(composed.contains("struct SharedParams"), content="true")
+  debug_inspect(composed.contains("var<uniform> shared_params"), content="true")
+  debug_inspect(composed.contains("fn read_shared"), content="true")
+  debug_inspect(composed.contains("unused_helper"), content="false")
+  debug_inspect(output.source.contains("struct SharedParams"), content="true")
+  debug_inspect(
+    output.source.contains("var<uniform> shared_params"),
+    content="true",
+  )
+  debug_inspect(output.source.contains("fn read_shared"), content="true")
+  debug_inspect(output.source.contains("unused_helper"), content="false")
+  debug_inspect(output.diagnostics.length(), content="0")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
 

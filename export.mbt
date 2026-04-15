@@ -13,20 +13,6 @@
 // limitations under the License.
 
 ///|
-priv struct WgslGraphBlock {
-  name : String
-  text : String
-  start : Int
-  end : Int
-}
-
-///|
-priv struct WgslDeclarationGraph {
-  import_blocks : Array[WgslGraphBlock]
-  declaration_blocks : Array[WgslGraphBlock]
-}
-
-///|
 fn push_wgsl_diagnostic(
   diagnostics : Array[WgslDiagnostic],
   severity : WgslDiagnosticSeverity,
@@ -44,202 +30,6 @@ fn push_wgsl_diagnostic(
     generated_start,
     source_start,
   })
-}
-
-///|
-fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
-  let lines : Array[String] = []
-  let line_starts : Array[Int] = []
-  let mut offset = 0
-  for line_item in source.split("\n") {
-    let line = line_item.to_string()
-    lines.push(line)
-    line_starts.push(offset)
-    offset = offset + line.length() + 1
-  }
-
-  let pending_prefix : Array[String] = []
-  let import_blocks : Array[WgslGraphBlock] = []
-  let declaration_blocks : Array[WgslGraphBlock] = []
-  let mut pending_prefix_start = 0
-  let mut i = 0
-  while i < lines.length() {
-    let line = lines[i]
-    let trimmed = line.trim().to_string()
-    let decl_name_hint = wgsl_declaration_name(trimmed)
-    if trimmed == "" ||
-      starts_with_text(trimmed, "//") ||
-      (starts_with_text(trimmed, "@") && decl_name_hint == "") {
-      if pending_prefix.length() == 0 {
-        pending_prefix_start = line_starts[i]
-      }
-      pending_prefix.push(line)
-      i = i + 1
-      continue
-    }
-    if starts_with_text(trimmed, "#define_import_path") {
-      i = i + 1
-      continue
-    }
-    if starts_with_text(trimmed, "#import ") {
-      let block_start = line_starts[i]
-      let mut import_block = line
-      let mut balance = import_brace_balance(
-        trimmed[8:trimmed.length()].to_string(),
-      )
-      while balance > 0 && i + 1 < lines.length() {
-        i = i + 1
-        let next_line = lines[i]
-        import_block = "\{import_block}\n\{next_line}"
-        balance = balance + import_brace_balance(next_line)
-      }
-      import_block = "\{import_block}\n"
-      import_blocks.push(WgslGraphBlock::{
-        name: "",
-        text: import_block,
-        start: block_start,
-        end: block_start + import_block.length(),
-      })
-      pending_prefix.clear()
-      i = i + 1
-      continue
-    }
-    let block_lines : Array[String] = []
-    let block_start = if pending_prefix.length() > 0 {
-      pending_prefix_start
-    } else {
-      line_starts[i]
-    }
-    for prefix_line in pending_prefix {
-      block_lines.push(prefix_line)
-    }
-    pending_prefix.clear()
-    let decl_name = decl_name_hint
-    let mut saw_brace = false
-    let mut brace_depth = 0
-    let mut done = false
-    while !done {
-      let block_line = lines[i]
-      block_lines.push(block_line)
-      if text_contains_code_unit(block_line, 123) {
-        saw_brace = true
-      }
-      brace_depth = brace_depth + import_brace_balance(block_line)
-      let block_trimmed = block_line.trim().to_string()
-      if saw_brace {
-        done = brace_depth == 0
-      } else {
-        done = ends_with_text(block_trimmed, ";")
-      }
-      if !done {
-        i = i + 1
-        if i >= lines.length() {
-          done = true
-        }
-      }
-    }
-    let mut block_text = ""
-    for block_line in block_lines {
-      block_text = "\{block_text}\{block_line}\n"
-    }
-    declaration_blocks.push(WgslGraphBlock::{
-      name: decl_name,
-      text: block_text,
-      start: block_start,
-      end: block_start + block_text.length(),
-    })
-    i = i + 1
-  }
-
-  WgslDeclarationGraph::{ import_blocks, declaration_blocks }
-}
-
-///|
-fn build_wgsl_declaration_indexes(
-  declaration_blocks : Array[WgslGraphBlock],
-) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
-  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
-  for i in 0..<declaration_blocks.length() {
-    let block = declaration_blocks[i]
-    if block.name != "" {
-      declaration_names.set(block.name, true)
-      declaration_indexes.set(block.name, i)
-    }
-  }
-  (declaration_names, declaration_indexes)
-}
-
-///|
-fn collect_wgsl_reachable_declarations(
-  declaration_blocks : Array[WgslGraphBlock],
-  root_items : Array[String],
-  diagnostics : Array[WgslDiagnostic],
-) -> @hashmap.HashMap[String, Bool] {
-  let included_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  if root_items.length() == 0 {
-    for block in declaration_blocks {
-      if block.name != "" {
-        included_names.set(block.name, true)
-      }
-    }
-    return included_names
-  }
-
-  let (declaration_names, declaration_indexes) = build_wgsl_declaration_indexes(
-    declaration_blocks,
-  )
-  let worklist : Array[String] = []
-  let missing_root_items : Array[String] = []
-  for root_item in root_items {
-    if declaration_names.contains(root_item) {
-      worklist.push(root_item)
-    } else {
-      missing_root_items.push(root_item)
-    }
-  }
-  for missing_root in missing_root_items {
-    push_wgsl_diagnostic(
-      diagnostics,
-      WgslDiagnosticSeverity::Warn,
-      "tree-shake root item was not found in the composed WGSL",
-      None,
-      Some(missing_root),
-      None,
-      None,
-    )
-  }
-  if worklist.length() == 0 {
-    for block in declaration_blocks {
-      if block.name != "" {
-        included_names.set(block.name, true)
-      }
-    }
-    return included_names
-  }
-
-  while worklist.length() > 0 {
-    let name = worklist.pop().unwrap()
-    if included_names.contains(name) {
-      continue
-    }
-    included_names.set(name, true)
-    guard declaration_indexes.get(name) is Some(index) else { continue }
-    let block = declaration_blocks[index]
-    let dependencies : Array[String] = []
-    collect_wgsl_declaration_dependencies(
-      block.text,
-      name,
-      declaration_names,
-      dependencies,
-    )
-    for dependency in dependencies {
-      if !included_names.contains(dependency) {
-        worklist.push(dependency)
-      }
-    }
-  }
-  included_names
 }
 
 ///|
@@ -596,11 +386,21 @@ fn serialize_wgsl_export_output(
   value_defines : @hashmap.HashMap[String, Int],
 ) -> WgslExportOutput {
   let diagnostics : Array[WgslDiagnostic] = []
-  let included_names = collect_wgsl_reachable_declarations(
+  let (included_names, missing_root_items) = collect_wgsl_reachable_declaration_names(
     graph.declaration_blocks,
     options.root_items,
-    diagnostics,
   )
+  for missing_root in missing_root_items {
+    push_wgsl_diagnostic(
+      diagnostics,
+      WgslDiagnosticSeverity::Warn,
+      "tree-shake root item was not found in the composed WGSL",
+      None,
+      Some(missing_root),
+      None,
+      None,
+    )
+  }
   let source_catalog = build_wgsl_source_catalog_from_files(
     source_files, defines, value_defines,
   )

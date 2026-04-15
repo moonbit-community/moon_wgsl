@@ -285,6 +285,36 @@ test "naga_oil: composer default is isolated from the global registry" {
 }
 
 ///|
+test "naga_oil: composer global-registry snapshots stay isolated from later global mutations" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source(
+    "shaders/demo/snap_a.wgsl", "#define_import_path demo::snap_a\nfn snap_a() -> f32 {\n  return 1.0;\n}\n",
+  )
+  let composer = global_registry_composer()
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source(
+    "shaders/demo/snap_b.wgsl", "#define_import_path demo::snap_b\nfn snap_b() -> f32 {\n  return 2.0;\n}\n",
+  )
+  debug_inspect(
+    composer.registered_wgsl_source("shaders/demo/snap_a.wgsl") is Some(_),
+    content="true",
+  )
+  debug_inspect(
+    composer.registered_wgsl_source("shaders/demo/snap_b.wgsl"),
+    content="None",
+  )
+  let preprocessed = composer.compose_wgsl(
+    "shaders/demo/snap_a.wgsl",
+    composer_test_compose_options("", empty_bool_defines(), []),
+  ) catch {
+    err => abort("expected snapshot-backed compose success: \{err.message()}")
+  }
+  debug_inspect(preprocessed.contains("fn snap_a"), content="true")
+  debug_inspect(preprocessed.contains("fn snap_b"), content="false")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
 test "naga_oil: composer local registry can compose without global registry state" {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   let composer = @moon_wgsl.Composer::default()
