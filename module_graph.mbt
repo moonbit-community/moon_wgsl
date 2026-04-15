@@ -370,6 +370,19 @@ pub fn resolve_wgsl_import_file_path(
   importer_rel_path : String,
   import_path : String,
 ) -> String? {
+  resolve_wgsl_import_file_path_from_registry(
+    registered_wgsl_sources_ref.val,
+    importer_rel_path,
+    import_path,
+  )
+}
+
+///|
+fn resolve_wgsl_import_file_path_from_registry(
+  source_registry : @hashmap.HashMap[String, String],
+  importer_rel_path : String,
+  import_path : String,
+) -> String? {
   guard wgsl_import_looks_like_file_path(import_path) else { return None }
   let raw_path = match unquote_wgsl_import_path(import_path) {
     Some(path) => path
@@ -389,7 +402,7 @@ pub fn resolve_wgsl_import_file_path(
   if normalized == "" {
     return None
   }
-  if registered_wgsl_sources_ref.val.contains(normalized) {
+  if source_registry.contains(normalized) {
     return Some(normalized)
   }
   None
@@ -421,22 +434,81 @@ let registered_wgsl_import_modules_ref : Ref[@hashmap.HashMap[String, String]] =
 )
 
 ///|
+fn copy_wgsl_source_registry_map(
+  source_registry : @hashmap.HashMap[String, String],
+) -> @hashmap.HashMap[String, String] {
+  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for entry in source_registry.iter() {
+    let (rel_path, source) = entry
+    copied.set(rel_path, source)
+  }
+  copied
+}
+
+///|
+fn copy_wgsl_import_module_map(
+  module_paths : @hashmap.HashMap[String, String],
+) -> @hashmap.HashMap[String, String] {
+  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for entry in module_paths.iter() {
+    let (module_path, rel_path) = entry
+    copied.set(module_path, rel_path)
+  }
+  copied
+}
+
+///|
+fn clear_wgsl_source_registry(
+  source_registry : @hashmap.HashMap[String, String],
+  module_paths : @hashmap.HashMap[String, String],
+) -> Unit {
+  source_registry.clear()
+  module_paths.clear()
+}
+
+///|
+fn register_wgsl_source_into(
+  source_registry : @hashmap.HashMap[String, String],
+  module_paths : @hashmap.HashMap[String, String],
+  rel_path : String,
+  source : String,
+  explicit_module_path : String?,
+) -> String? {
+  let normalized_rel = normalize_shader_rel_path(rel_path)
+  if normalized_rel == "" {
+    return None
+  }
+  source_registry.set(normalized_rel, source)
+  let mut module_path : String? = explicit_module_path
+  if module_path is None {
+    let (detected_import_path, _, _) = get_preprocessor_data(source)
+    module_path = detected_import_path
+  }
+  if module_path is Some(path) && path != "" {
+    module_paths.set(path, normalized_rel)
+  }
+  Some(normalized_rel)
+}
+
+///|
 pub fn clear_registered_wgsl_source_registry() -> Unit {
-  registered_wgsl_sources_ref.val = @hashmap.HashMap::new()
-  registered_wgsl_import_modules_ref.val = @hashmap.HashMap::new()
+  clear_wgsl_source_registry(
+    registered_wgsl_sources_ref.val,
+    registered_wgsl_import_modules_ref.val,
+  )
 }
 
 ///|
 pub fn register_wgsl_source(rel_path : String, source : String) -> Unit {
-  let normalized_rel = normalize_shader_rel_path(rel_path)
-  if normalized_rel == "" {
-    return
-  }
-  registered_wgsl_sources_ref.val.set(normalized_rel, source)
-  let (import_path, _, _) = get_preprocessor_data(source)
-  if import_path is Some(path) && path != "" {
-    registered_wgsl_import_modules_ref.val.set(path, normalized_rel)
-  }
+  ignore(
+    register_wgsl_source_into(
+      registered_wgsl_sources_ref.val,
+      registered_wgsl_import_modules_ref.val,
+      rel_path,
+      source,
+      None,
+    ),
+  )
 }
 
 ///|
@@ -472,15 +544,25 @@ pub fn analyze_wgsl_source_files_for_registry(
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
   let diagnostics : Array[WgslDiagnostic] = []
-  let existing_sources = copy_registered_wgsl_source_files()
-  let existing_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for source_file in existing_sources {
-    existing_rel_to_source.set(
-      normalize_shader_rel_path(source_file.rel_path),
-      source_file.source,
-    )
-  }
-  let existing_modules = copy_registered_wgsl_import_module_paths()
+  let existing_rel_to_source = copy_wgsl_source_registry_map(
+    registered_wgsl_sources_ref.val,
+  )
+  let existing_modules = copy_wgsl_import_module_map(
+    registered_wgsl_import_modules_ref.val,
+  )
+  analyze_wgsl_source_files_for_registry_against(
+    existing_rel_to_source, existing_modules, files, diagnostics,
+  )
+  diagnostics
+}
+
+///|
+fn analyze_wgsl_source_files_for_registry_against(
+  existing_rel_to_source : @hashmap.HashMap[String, String],
+  existing_modules : @hashmap.HashMap[String, String],
+  files : Array[WgslSourceFile],
+  diagnostics : Array[WgslDiagnostic],
+) -> Unit {
   let batch_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let batch_module_to_rel : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
 
@@ -549,42 +631,99 @@ pub fn analyze_wgsl_source_files_for_registry(
     }
     batch_module_to_rel.set(module_path, normalized_rel)
   }
-
-  diagnostics
 }
 
 ///|
 pub fn register_wgsl_source_files_checked(
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
-  let diagnostics = analyze_wgsl_source_files_for_registry(files)
-  if wgsl_diagnostics_has_error(diagnostics) {
-    return diagnostics
-  }
-  register_wgsl_source_files(files)
+  let diagnostics : Array[WgslDiagnostic] = []
+  register_wgsl_source_files_checked_into(
+    registered_wgsl_sources_ref.val,
+    registered_wgsl_import_modules_ref.val,
+    files,
+    diagnostics,
+  )
   diagnostics
 }
 
 ///|
+fn register_wgsl_source_files_checked_into(
+  source_registry : @hashmap.HashMap[String, String],
+  module_paths : @hashmap.HashMap[String, String],
+  files : Array[WgslSourceFile],
+  diagnostics : Array[WgslDiagnostic],
+) -> Unit {
+  let existing_rel_to_source = copy_wgsl_source_registry_map(source_registry)
+  let existing_modules = copy_wgsl_import_module_map(module_paths)
+  analyze_wgsl_source_files_for_registry_against(
+    existing_rel_to_source, existing_modules, files, diagnostics,
+  )
+  if wgsl_diagnostics_has_error(diagnostics) {
+    return
+  }
+  register_wgsl_source_files_into(source_registry, module_paths, files)
+}
+
+///|
 pub fn register_wgsl_source_files(files : Array[WgslSourceFile]) -> Unit {
+  register_wgsl_source_files_into(
+    registered_wgsl_sources_ref.val,
+    registered_wgsl_import_modules_ref.val,
+    files,
+  )
+}
+
+///|
+fn register_wgsl_source_files_into(
+  source_registry : @hashmap.HashMap[String, String],
+  module_paths : @hashmap.HashMap[String, String],
+  files : Array[WgslSourceFile],
+) -> Unit {
   for file in files {
-    register_wgsl_source(file.rel_path, file.source)
+    ignore(
+      register_wgsl_source_into(
+        source_registry,
+        module_paths,
+        file.rel_path,
+        file.source,
+        None,
+      ),
+    )
   }
 }
 
 ///|
 pub fn registered_wgsl_source(rel_path : String) -> String? {
+  registered_wgsl_source_from_registry(
+    registered_wgsl_sources_ref.val,
+    rel_path,
+  )
+}
+
+///|
+fn registered_wgsl_source_from_registry(
+  source_registry : @hashmap.HashMap[String, String],
+  rel_path : String,
+) -> String? {
   let normalized_rel = normalize_shader_rel_path(rel_path)
   if normalized_rel == "" {
     return None
   }
-  registered_wgsl_sources_ref.val.get(normalized_rel)
+  source_registry.get(normalized_rel)
 }
 
 ///|
 pub fn copy_registered_wgsl_source_files() -> Array[WgslSourceFile] {
+  copy_wgsl_source_files_from_registry(registered_wgsl_sources_ref.val)
+}
+
+///|
+fn copy_wgsl_source_files_from_registry(
+  source_registry : @hashmap.HashMap[String, String],
+) -> Array[WgslSourceFile] {
   let files : Array[WgslSourceFile] = []
-  for entry in registered_wgsl_sources_ref.val.iter() {
+  for entry in source_registry.iter() {
     let (rel_path, source) = entry
     files.push(WgslSourceFile::{ rel_path, source })
   }
@@ -596,12 +735,7 @@ pub fn copy_registered_wgsl_import_module_paths() -> @hashmap.HashMap[
   String,
   String,
 ] {
-  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for entry in registered_wgsl_import_modules_ref.val.iter() {
-    let (module_path, rel_path) = entry
-    copied.set(module_path, rel_path)
-  }
-  copied
+  copy_wgsl_import_module_map(registered_wgsl_import_modules_ref.val)
 }
 
 ///|
@@ -640,6 +774,11 @@ fn wgsl_module_path_to_rel_path_namespace(module_path : String) -> String {
     rel = "\{rel}/\{segments[i]}"
   }
   "\{rel}.wgsl"
+}
+
+///|
+fn default_shader_rel_path_for_module_path(module_path : String) -> String {
+  wgsl_module_path_to_rel_path_namespace(module_path)
 }
 
 ///|

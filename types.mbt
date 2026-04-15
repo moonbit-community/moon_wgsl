@@ -189,6 +189,24 @@ pub fn WgslSymbolRedirect::default() -> WgslSymbolRedirect {
 }
 
 ///|
+pub(all) struct WgslComposeOptions {
+  assets_base : String
+  defines : @hashmap.HashMap[String, Bool]
+  value_defines : @hashmap.HashMap[String, Int]
+  redirects : Array[WgslSymbolRedirect]
+} derive(Eq, Debug)
+
+///|
+pub fn WgslComposeOptions::default() -> WgslComposeOptions {
+  WgslComposeOptions::{
+    assets_base: "",
+    defines: @hashmap.HashMap::new(),
+    value_defines: default_wgsl_value_defines(),
+    redirects: [],
+  }
+}
+
+///|
 pub struct WgslSourceMapEntry {
   generated_start : Int
   generated_end : Int

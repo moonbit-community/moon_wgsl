@@ -104,6 +104,43 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
 }
 
 ///|
+test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  composer.register_wgsl_source_files([
+    {
+      rel_path: "shaders/shared/common.wgsl",
+      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/main.wgsl",
+      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
+    },
+  ])
+  let output = composer.export_wgsl_with_options(
+    "shaders/effects/main.wgsl",
+    {
+      assets_base: "",
+      defines: export_test_empty_defines(),
+      value_defines: @moon_wgsl.default_wgsl_value_defines(),
+      redirects: [],
+    },
+    { root_items: ["shade"] },
+  ) catch {
+    err => abort("expected config-based export success: \{err.message()}")
+  }
+  debug_inspect(output.source.contains("fn shade"), content="true")
+  debug_inspect(output.source.contains("fn build_color"), content="true")
+  debug_inspect(output.source_map.length(), content="4")
+  debug_inspect(output.diagnostics.length(), content="0")
+  debug_inspect(
+    @moon_wgsl.registered_wgsl_source("shaders/effects/main.wgsl"),
+    content="None",
+  )
+}
+
+///|
 test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
   register_export_test_shaders()
   let value_defines = @moon_wgsl.default_wgsl_value_defines()
@@ -130,7 +167,7 @@ test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
 }
 
 ///|
-test "naga_oil: source catalog exposes ambiguous source-map candidates" {
+test "naga_oil: export source catalog is scoped to the current dependency closure" {
   register_ambiguous_export_test_shaders()
   let value_defines = @moon_wgsl.default_wgsl_value_defines()
   let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
@@ -149,17 +186,9 @@ test "naga_oil: source catalog exposes ambiguous source-map candidates" {
     err => abort("expected export success: \{err.message()}")
   }
   debug_inspect(catalog.length(), content="3")
-  debug_inspect(output.source_catalog.length(), content="3")
-  debug_inspect(output.source_map.length(), content="1")
-  debug_inspect(output.diagnostics.length(), content="1")
-  debug_inspect(
-    output.diagnostics[0].message,
-    content="\"source map entry is ambiguous for declaration\"",
-  )
-  debug_inspect(
-    output.diagnostics[0].symbol_name,
-    content="Some(\"identical_helper\")",
-  )
+  debug_inspect(output.source_catalog.length(), content="2")
+  debug_inspect(output.source_map.length(), content="2")
+  debug_inspect(output.diagnostics.length(), content="0")
 
   let helper_paths : Array[String] = []
   for entry in output.source_catalog {
@@ -168,10 +197,7 @@ test "naga_oil: source catalog exposes ambiguous source-map candidates" {
     }
   }
   helper_paths.sort()
-  debug_inspect(
-    helper_paths.join(","),
-    content="\"shaders/shared/a.wgsl,shaders/shared/b.wgsl\"",
-  )
+  debug_inspect(helper_paths.join(","), content="\"shaders/shared/a.wgsl\"")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
 

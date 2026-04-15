@@ -448,11 +448,11 @@ pub fn rewrite_wgsl_symbol_redirects(
 }
 
 ///|
-pub fn build_registered_wgsl_source_catalog(
+fn build_wgsl_source_catalog_from_files(
+  source_files : Array[WgslSourceFile],
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
 ) -> Array[WgslSourceCatalogEntry] {
-  let source_files = copy_registered_wgsl_source_files()
   source_files.sort_by((lhs, rhs) => String::compare(lhs.rel_path, rhs.rel_path))
 
   let catalog_entries : Array[WgslSourceCatalogEntry] = []
@@ -477,6 +477,30 @@ pub fn build_registered_wgsl_source_catalog(
   }
   catalog_entries.sort_by(compare_wgsl_source_catalog_entries)
   catalog_entries
+}
+
+///|
+pub fn build_registered_wgsl_source_catalog(
+  defines : @hashmap.HashMap[String, Bool],
+  value_defines : @hashmap.HashMap[String, Int],
+) -> Array[WgslSourceCatalogEntry] {
+  build_wgsl_source_catalog_from_files(
+    copy_registered_wgsl_source_files(),
+    defines,
+    value_defines,
+  )
+}
+
+///|
+pub fn Composer::build_wgsl_source_catalog(
+  self : Composer,
+  options : WgslComposeOptions,
+) -> Array[WgslSourceCatalogEntry] {
+  build_wgsl_source_catalog_from_files(
+    self.copy_registered_wgsl_source_files(),
+    options.defines,
+    options.value_defines,
+  )
 }
 
 ///|
@@ -542,6 +566,7 @@ fn match_wgsl_source_catalog_entry(
 ///|
 fn serialize_wgsl_export_output(
   graph : WgslDeclarationGraph,
+  source_files : Array[WgslSourceFile],
   options : WgslExportOptions,
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
@@ -552,8 +577,8 @@ fn serialize_wgsl_export_output(
     options.root_items,
     diagnostics,
   )
-  let source_catalog = build_registered_wgsl_source_catalog(
-    defines, value_defines,
+  let source_catalog = build_wgsl_source_catalog_from_files(
+    source_files, defines, value_defines,
   )
   let catalog = build_wgsl_source_catalog_index(source_catalog)
   let source_map : Array[WgslSourceMapEntry] = []
@@ -590,22 +615,21 @@ fn serialize_wgsl_export_output(
 }
 
 ///|
-fn Composer::export_wgsl_internal(
+fn Composer::export_wgsl_from_session(
   self : Composer,
-  assets_base : String,
   rel : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-  modules : @hashmap.HashMap[String, String],
+  session : WgslComposeSession,
   options : WgslExportOptions,
-  redirects : Array[WgslSymbolRedirect],
 ) -> WgslExportOutput raise ComposerError {
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let source = self.load_wgsl_preprocessed_with_redirects(
-    assets_base, rel, defines, value_defines, visited, modules, redirects,
-  )
+  let source = self.load_wgsl_preprocessed_into_session(rel, session)
   let graph = build_wgsl_declaration_graph(source)
-  serialize_wgsl_export_output(graph, options, defines, value_defines)
+  serialize_wgsl_export_output(
+    graph,
+    copy_wgsl_source_files_from_registry(session.resolved_source_files),
+    options,
+    session.defines,
+    session.value_defines,
+  )
 }
 
 ///|
@@ -618,15 +642,15 @@ pub fn Composer::export_wgsl(
   modules : @hashmap.HashMap[String, String],
   options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
-  self.export_wgsl_internal(
+  let session = self.new_wgsl_legacy_session(
     assets_base,
-    rel,
     defines,
     value_defines,
+    @hashmap.HashMap::new(),
     modules,
-    options,
     [],
   )
+  self.export_wgsl_from_session(rel, session, options)
 }
 
 ///|
@@ -640,9 +664,26 @@ pub fn Composer::export_wgsl_with_redirects(
   options : WgslExportOptions,
   redirects : Array[WgslSymbolRedirect],
 ) -> WgslExportOutput raise ComposerError {
-  self.export_wgsl_internal(
-    assets_base, rel, defines, value_defines, modules, options, redirects,
+  let session = self.new_wgsl_legacy_session(
+    assets_base,
+    defines,
+    value_defines,
+    @hashmap.HashMap::new(),
+    modules,
+    redirects,
   )
+  self.export_wgsl_from_session(rel, session, options)
+}
+
+///|
+pub fn Composer::export_wgsl_with_options(
+  self : Composer,
+  rel : String,
+  compose_options : WgslComposeOptions,
+  export_options : WgslExportOptions,
+) -> WgslExportOutput raise ComposerError {
+  let session = self.new_wgsl_compose_session(compose_options)
+  self.export_wgsl_from_session(rel, session, export_options)
 }
 
 ///|
@@ -672,12 +713,15 @@ pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(
   if base == "" {
     raise ComposerError::EmptyAssetsBase(rel)
   }
-  let normalized_rel = normalize_shader_rel_path(rel)
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let value_defines = default_wgsl_value_defines()
-  let modules = build_wgsl_import_module_paths(base)
-  self.export_wgsl_internal(
-    base, normalized_rel, defines, value_defines, modules, options, redirects,
+  self.export_wgsl_with_options(
+    rel,
+    WgslComposeOptions::{
+      assets_base: base,
+      defines: @hashmap.HashMap::new(),
+      value_defines: default_wgsl_value_defines(),
+      redirects,
+    },
+    options,
   )
 }
 
@@ -692,18 +736,8 @@ pub fn Composer::load_wgsl_preprocessed_with_redirects(
   modules : @hashmap.HashMap[String, String],
   redirects : Array[WgslSymbolRedirect],
 ) -> String raise ComposerError {
-  let normalized_rel = normalize_shader_rel_path(rel)
-  if normalized_rel == "" {
-    return ""
-  }
-  if visited.contains(normalized_rel) {
-    return ""
-  }
-  visited.set(normalized_rel, true)
-  let source = self.load_wgsl_source_required_raw(assets_base, normalized_rel)
-  let active_rel_paths = [normalized_rel]
-  self.preprocess_wgsl_source_with_path(
-    assets_base, normalized_rel, source, defines, value_defines, visited, active_rel_paths,
-    modules, redirects,
+  let session = self.new_wgsl_legacy_session(
+    assets_base, defines, value_defines, visited, modules, redirects,
   )
+  self.load_wgsl_preprocessed_into_session(rel, session)
 }

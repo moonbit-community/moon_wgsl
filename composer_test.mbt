@@ -283,6 +283,86 @@ test "naga_oil: composer preprocess resolves relative quoted file imports" {
 }
 
 ///|
+test "naga_oil: composer local registry can compose without global registry state" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  composer.register_wgsl_source_files([
+    {
+      rel_path: "shaders/shared/common.wgsl",
+      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/main.wgsl",
+      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
+    },
+  ])
+  let preprocessed = composer.compose_wgsl("shaders/effects/main.wgsl", {
+    assets_base: "",
+    defines: empty_bool_defines(),
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects: [],
+  }) catch {
+    err =>
+      abort(
+        "expected composer-local registry preprocess success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    @moon_wgsl.registered_wgsl_source("shaders/effects/main.wgsl"),
+    content="None",
+  )
+  debug_inspect(preprocessed.contains("struct SharedVertex"), content="true")
+  debug_inspect(preprocessed.contains("fn build_color"), content="true")
+  debug_inspect(preprocessed.contains("fn shade"), content="true")
+}
+
+///|
+test "naga_oil: add_composable_module feeds the composer compose path" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path demo::maths\nconst PI_2: f32 = 6.28318;\n",
+      file_path: "shaders/demo/maths.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err => abort("expected maths module registration success: \{err.message()}")
+  }
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path demo::main\n#import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
+      file_path: "shaders/demo/main.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err => abort("expected main module registration success: \{err.message()}")
+  }
+  let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
+    assets_base: "",
+    defines: empty_bool_defines(),
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects: [],
+  }) catch {
+    err =>
+      abort(
+        "expected composable-module-backed preprocess success: \{err.message()}",
+      )
+  }
+  debug_inspect(preprocessed.contains("const PI_2"), content="true")
+  debug_inspect(preprocessed.contains("fn demo"), content="true")
+  debug_inspect(preprocessed.contains("return PI_2;"), content="true")
+}
+
+///|
 test "naga_oil: source-level symbol redirects rewrite references but keep declarations" {
   let rewritten = @moon_wgsl.rewrite_wgsl_symbol_redirects(
     "fn shade() -> f32 {\n  return build_shadow();\n}\nfn build_shadow() -> f32 {\n  return 1.0;\n}\n",

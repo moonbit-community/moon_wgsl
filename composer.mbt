@@ -15,11 +15,23 @@
 ///|
 pub struct Composer {
   module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
+  registered_wgsl_sources : @hashmap.HashMap[String, String]
+  registered_wgsl_import_modules : @hashmap.HashMap[String, String]
+  composable_module_registry_paths : @hashmap.HashMap[String, String]
 }
 
 ///|
 pub fn Composer::default() -> Composer {
-  Composer::{ module_sets: @hashmap.HashMap::new() }
+  Composer::{
+    module_sets: @hashmap.HashMap::new(),
+    registered_wgsl_sources: copy_wgsl_source_registry_map(
+      registered_wgsl_sources_ref.val,
+    ),
+    registered_wgsl_import_modules: copy_wgsl_import_module_map(
+      registered_wgsl_import_modules_ref.val,
+    ),
+    composable_module_registry_paths: @hashmap.HashMap::new(),
+  }
 }
 
 ///|
@@ -71,6 +83,30 @@ fn copy_import_definitions(
 }
 
 ///|
+fn copy_bool_defs(
+  defs : @hashmap.HashMap[String, Bool],
+) -> @hashmap.HashMap[String, Bool] {
+  let copied : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  for entry in defs.iter() {
+    let (name, value) = entry
+    copied.set(name, value)
+  }
+  copied
+}
+
+///|
+fn copy_int_defs(
+  defs : @hashmap.HashMap[String, Int],
+) -> @hashmap.HashMap[String, Int] {
+  let copied : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
+  for entry in defs.iter() {
+    let (name, value) = entry
+    copied.set(name, value)
+  }
+  copied
+}
+
+///|
 fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] {
   let out : Array[String] = []
   for value in values.iter() {
@@ -78,6 +114,18 @@ fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] 
   }
   out.sort()
   out
+}
+
+///|
+priv struct WgslComposeSession {
+  assets_base : String
+  defines : @hashmap.HashMap[String, Bool]
+  value_defines : @hashmap.HashMap[String, Int]
+  modules : @hashmap.HashMap[String, String]
+  redirects : Array[WgslSymbolRedirect]
+  visited : @hashmap.HashMap[String, Bool]
+  active_rel_paths : Array[String]
+  resolved_source_files : @hashmap.HashMap[String, String]
 }
 
 ///|
@@ -101,12 +149,163 @@ fn composable_module_name_from_descriptor(
 }
 
 ///|
+fn composable_module_registry_rel_path(
+  desc : ComposableModuleDescriptor,
+  module_name : String,
+) -> String {
+  let normalized_file_path = normalize_shader_rel_path(desc.file_path)
+  if normalized_file_path != "" {
+    return normalized_file_path
+  }
+  default_shader_rel_path_for_module_path(module_name)
+}
+
+///|
+pub fn Composer::clear_registered_wgsl_source_registry(self : Composer) -> Unit {
+  clear_wgsl_source_registry(
+    self.registered_wgsl_sources,
+    self.registered_wgsl_import_modules,
+  )
+}
+
+///|
+pub fn Composer::register_wgsl_source(
+  self : Composer,
+  rel_path : String,
+  source : String,
+) -> Unit {
+  ignore(
+    register_wgsl_source_into(
+      self.registered_wgsl_sources,
+      self.registered_wgsl_import_modules,
+      rel_path,
+      source,
+      None,
+    ),
+  )
+}
+
+///|
+pub fn Composer::register_wgsl_source_files(
+  self : Composer,
+  files : Array[WgslSourceFile],
+) -> Unit {
+  register_wgsl_source_files_into(
+    self.registered_wgsl_sources,
+    self.registered_wgsl_import_modules,
+    files,
+  )
+}
+
+///|
+pub fn Composer::analyze_wgsl_source_files_for_registry(
+  self : Composer,
+  files : Array[WgslSourceFile],
+) -> Array[WgslDiagnostic] {
+  let diagnostics : Array[WgslDiagnostic] = []
+  analyze_wgsl_source_files_for_registry_against(
+    copy_wgsl_source_registry_map(self.registered_wgsl_sources),
+    copy_wgsl_import_module_map(self.registered_wgsl_import_modules),
+    files,
+    diagnostics,
+  )
+  diagnostics
+}
+
+///|
+pub fn Composer::register_wgsl_source_files_checked(
+  self : Composer,
+  files : Array[WgslSourceFile],
+) -> Array[WgslDiagnostic] {
+  let diagnostics : Array[WgslDiagnostic] = []
+  register_wgsl_source_files_checked_into(
+    self.registered_wgsl_sources,
+    self.registered_wgsl_import_modules,
+    files,
+    diagnostics,
+  )
+  diagnostics
+}
+
+///|
+pub fn Composer::registered_wgsl_source(
+  self : Composer,
+  rel_path : String,
+) -> String? {
+  registered_wgsl_source_from_registry(self.registered_wgsl_sources, rel_path)
+}
+
+///|
+pub fn Composer::copy_registered_wgsl_source_files(
+  self : Composer,
+) -> Array[WgslSourceFile] {
+  copy_wgsl_source_files_from_registry(self.registered_wgsl_sources)
+}
+
+///|
+pub fn Composer::copy_registered_wgsl_import_module_paths(
+  self : Composer,
+) -> @hashmap.HashMap[String, String] {
+  copy_wgsl_import_module_map(self.registered_wgsl_import_modules)
+}
+
+///|
+fn Composer::new_wgsl_compose_session(
+  self : Composer,
+  options : WgslComposeOptions,
+) -> WgslComposeSession {
+  WgslComposeSession::{
+    assets_base: options.assets_base.trim().to_string(),
+    defines: copy_bool_defs(options.defines),
+    value_defines: copy_int_defs(options.value_defines),
+    modules: self.copy_registered_wgsl_import_module_paths(),
+    redirects: options.redirects.copy(),
+    visited: @hashmap.HashMap::new(),
+    active_rel_paths: [],
+    resolved_source_files: @hashmap.HashMap::new(),
+  }
+}
+
+///|
+fn Composer::new_wgsl_legacy_session(
+  self : Composer,
+  assets_base : String,
+  defines : @hashmap.HashMap[String, Bool],
+  value_defines : @hashmap.HashMap[String, Int],
+  visited : @hashmap.HashMap[String, Bool],
+  modules : @hashmap.HashMap[String, String],
+  redirects : Array[WgslSymbolRedirect],
+) -> WgslComposeSession {
+  let merged_modules = self.copy_registered_wgsl_import_module_paths()
+  for entry in modules.iter() {
+    let (module_path, rel_path) = entry
+    merged_modules.set(module_path, rel_path)
+  }
+  WgslComposeSession::{
+    assets_base: assets_base.trim().to_string(),
+    defines,
+    value_defines,
+    modules: merged_modules,
+    redirects: redirects.copy(),
+    visited,
+    active_rel_paths: [],
+    resolved_source_files: @hashmap.HashMap::new(),
+  }
+}
+
+///|
 fn composer_remove_composable_module_recursive(
   composer : Composer,
   module_name : String,
 ) -> Unit {
   if !composer.module_sets.contains(module_name) {
     return
+  }
+  if composer.composable_module_registry_paths.get(module_name)
+    is Some(rel_path) {
+    ignore(composer.composable_module_registry_paths.remove(module_name))
+    ignore(composer.registered_wgsl_import_modules.remove(module_name))
+    ignore(composer.registered_wgsl_sources.remove(rel_path))
   }
   ignore(composer.module_sets.remove(module_name))
   let dependent_modules : Array[String] = []
@@ -341,11 +540,15 @@ fn wgsl_import_request_visit_key(request : WgslImportRequest) -> String {
 fn resolve_wgsl_import_request_module(
   importer_rel_path : String,
   import_path : String,
+  source_registry : @hashmap.HashMap[String, String],
   modules : @hashmap.HashMap[String, String],
 ) -> WgslResolvedImportModule? {
-  if resolve_wgsl_import_file_path(importer_rel_path, import_path)
+  if resolve_wgsl_import_file_path_from_registry(
+      source_registry, importer_rel_path, import_path,
+    )
     is Some(rel_path) {
-    let module_path = match registered_wgsl_source(rel_path) {
+    let module_path = match
+      registered_wgsl_source_from_registry(source_registry, rel_path) {
       Some(source) =>
         match get_preprocessor_metadata(source).name {
           Some(name) if name.trim() != "" => name.trim().to_string()
@@ -356,7 +559,9 @@ fn resolve_wgsl_import_request_module(
     return Some(WgslResolvedImportModule::{ module_path, rel_path })
   }
   if split_last_identifier(import_path) is Some((module_path, _)) {
-    if resolve_wgsl_import_file_path(importer_rel_path, module_path)
+    if resolve_wgsl_import_file_path_from_registry(
+        source_registry, importer_rel_path, module_path,
+      )
       is Some(rel_path) {
       return Some(WgslResolvedImportModule::{ module_path, rel_path })
     }
@@ -1049,7 +1254,18 @@ pub fn Composer::add_composable_module(
     additional_imports,
   }
 
+  let registry_rel_path = composable_module_registry_rel_path(desc, module_name)
   composer_remove_composable_module_recursive(self, module_name)
+  ignore(
+    register_wgsl_source_into(
+      self.registered_wgsl_sources,
+      self.registered_wgsl_import_modules,
+      registry_rel_path,
+      desc.source,
+      Some(module_name),
+    ),
+  )
+  self.composable_module_registry_paths.set(module_name, registry_rel_path)
   self.module_sets.set(module_name, definition)
   match self.module_sets.get(module_name) {
     Some(module_definition) => module_definition
@@ -1077,7 +1293,7 @@ pub fn registered_wgsl_source_required(
 
 ///|
 pub fn Composer::load_wgsl_source_required_raw(
-  _self : Composer,
+  self : Composer,
   _assets_base : String,
   rel : String,
 ) -> String raise ComposerError {
@@ -1085,7 +1301,11 @@ pub fn Composer::load_wgsl_source_required_raw(
   if normalized_rel == "" {
     return ""
   }
-  match registered_wgsl_source(normalized_rel) {
+  match
+    registered_wgsl_source_from_registry(
+      self.registered_wgsl_sources,
+      normalized_rel,
+    ) {
     Some(source) => source
     None => raise ComposerError::MissingStartupRegisteredSource(normalized_rel)
   }
@@ -1094,21 +1314,18 @@ pub fn Composer::load_wgsl_source_required_raw(
 ///|
 fn Composer::preprocess_wgsl_source_with_path(
   self : Composer,
-  assets_base : String,
   current_rel_path : String,
   source : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-  visited : @hashmap.HashMap[String, Bool],
-  active_rel_paths : Array[String],
-  modules : @hashmap.HashMap[String, String],
-  redirects : Array[WgslSymbolRedirect],
+  session : WgslComposeSession,
 ) -> String raise ComposerError {
-  let redirected_source = rewrite_wgsl_symbol_redirects(source, redirects)
+  let redirected_source = rewrite_wgsl_symbol_redirects(
+    source,
+    session.redirects,
+  )
   let mut merged = ""
   let active_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs(redirected_source, defines, value_defines),
-    value_defines,
+    apply_wgsl_ifdefs(redirected_source, session.defines, session.value_defines),
+    session.value_defines,
   )
   let active_scan_source = strip_wgsl_import_declarations(active_source)
   let aliases : Array[String] = []
@@ -1124,7 +1341,11 @@ fn Composer::preprocess_wgsl_source_with_path(
     let trimmed = line.trim().to_string()
     if starts_with_text(trimmed, "#ifdef ") {
       let name = wgsl_directive_tail(trimmed, 7)
-      let cond = wgsl_define_enabled(defines, value_defines, name)
+      let cond = wgsl_define_enabled(
+        session.defines,
+        session.value_defines,
+        name,
+      )
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
       import_branch_taken_stack.push(cond)
@@ -1134,7 +1355,11 @@ fn Composer::preprocess_wgsl_source_with_path(
     }
     if starts_with_text(trimmed, "#ifndef ") {
       let name = wgsl_directive_tail(trimmed, 8)
-      let cond = !wgsl_define_enabled(defines, value_defines, name)
+      let cond = !wgsl_define_enabled(
+        session.defines,
+        session.value_defines,
+        name,
+      )
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
       import_branch_taken_stack.push(cond)
@@ -1144,7 +1369,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     }
     if starts_with_text(trimmed, "#if ") {
       let expr = wgsl_directive_tail(trimmed, 4)
-      let cond = eval_wgsl_if_expr(expr, defines, value_defines)
+      let cond = eval_wgsl_if_expr(expr, session.defines, session.value_defines)
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
       import_branch_taken_stack.push(cond)
@@ -1157,7 +1382,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         let idx = import_branch_taken_stack.length() - 1
         let name = wgsl_directive_tail(trimmed, 13)
         let cond = !import_branch_taken_stack[idx] &&
-          wgsl_define_enabled(defines, value_defines, name)
+          wgsl_define_enabled(session.defines, session.value_defines, name)
         let parent = if import_active_stack.length() >= 2 {
           import_active_stack[import_active_stack.length() - 2]
         } else {
@@ -1175,7 +1400,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         let idx = import_branch_taken_stack.length() - 1
         let name = wgsl_directive_tail(trimmed, 14)
         let cond = !import_branch_taken_stack[idx] &&
-          !wgsl_define_enabled(defines, value_defines, name)
+          !wgsl_define_enabled(session.defines, session.value_defines, name)
         let parent = if import_active_stack.length() >= 2 {
           import_active_stack[import_active_stack.length() - 2]
         } else {
@@ -1240,7 +1465,8 @@ fn Composer::preprocess_wgsl_source_with_path(
         guard resolve_wgsl_import_request_module(
             current_rel_path,
             target.raw_path,
-            modules,
+            self.registered_wgsl_sources,
+            session.modules,
           )
           is Some(resolved_module) else {
           raise ComposerError::FailedToResolveImport(target.raw_path)
@@ -1327,66 +1553,59 @@ fn Composer::preprocess_wgsl_source_with_path(
         }
       }
       for request in requests {
-        if wgsl_path_stack_contains(active_rel_paths, request.rel_path) {
+        if wgsl_path_stack_contains(session.active_rel_paths, request.rel_path) {
           raise ComposerError::ImportCycle(
-            wgsl_import_cycle_string(active_rel_paths, request.rel_path),
+            wgsl_import_cycle_string(session.active_rel_paths, request.rel_path),
           )
         }
         if request.import_full_module {
-          if wgsl_visit_has_rel_prefix(visited, request.rel_path) {
+          if wgsl_visit_has_rel_prefix(session.visited, request.rel_path) {
             continue
           }
         }
         if !request.import_full_module {
           let full_module_key = "\{request.rel_path}|*"
-          if visited.contains(full_module_key) {
+          if session.visited.contains(full_module_key) {
             continue
           }
         }
         let visit_key = wgsl_import_request_visit_key(request)
-        if visited.contains(visit_key) {
+        if session.visited.contains(visit_key) {
           continue
         }
-        visited.set(visit_key, true)
+        session.visited.set(visit_key, true)
         let raw_source = self.load_wgsl_source_required_raw(
-          assets_base,
+          session.assets_base,
           request.rel_path,
         )
-        active_rel_paths.push(request.rel_path)
+        session.resolved_source_files.set(request.rel_path, raw_source)
+        session.active_rel_paths.push(request.rel_path)
         let module_source = if request.import_full_module {
           self.preprocess_wgsl_source_with_path(
-            assets_base,
             request.rel_path,
             raw_source,
-            defines,
-            value_defines,
-            visited,
-            active_rel_paths,
-            modules,
-            redirects,
+            session,
           )
         } else {
           let prepared_source = apply_wgsl_template_consts(
-            apply_wgsl_ifdefs(raw_source, defines, value_defines),
-            value_defines,
+            apply_wgsl_ifdefs(
+              raw_source,
+              session.defines,
+              session.value_defines,
+            ),
+            session.value_defines,
           )
           let filtered_source = extract_wgsl_module_items(
             prepared_source,
             request.requested_items,
           )
           self.preprocess_wgsl_source_with_path(
-            assets_base,
             request.rel_path,
             filtered_source,
-            defines,
-            value_defines,
-            visited,
-            active_rel_paths,
-            modules,
-            redirects,
+            session,
           )
         }
-        active_rel_paths.pop() |> ignore
+        session.active_rel_paths.pop() |> ignore
         if module_source != "" {
           merged = "\{merged}\{module_source}"
           let merged_len = merged.length()
@@ -1402,12 +1621,43 @@ fn Composer::preprocess_wgsl_source_with_path(
     merged = "\{merged}\{line}\n"
     line_index = line_index + 1
   }
-  let mut out = apply_wgsl_ifdefs(merged, defines, value_defines)
-  out = apply_wgsl_template_consts(out, value_defines)
+  let mut out = apply_wgsl_ifdefs(
+    merged,
+    session.defines,
+    session.value_defines,
+  )
+  out = apply_wgsl_template_consts(out, session.value_defines)
   for module_alias in aliases {
     out = replace_substring_all(out, "\{module_alias}::", "")
   }
   out
+}
+
+///|
+fn Composer::load_wgsl_preprocessed_into_session(
+  self : Composer,
+  rel : String,
+  session : WgslComposeSession,
+) -> String raise ComposerError {
+  let normalized_rel = normalize_shader_rel_path(rel)
+  if normalized_rel == "" {
+    return ""
+  }
+  if session.visited.contains(normalized_rel) {
+    return ""
+  }
+  session.visited.set(normalized_rel, true)
+  let source = self.load_wgsl_source_required_raw(
+    session.assets_base,
+    normalized_rel,
+  )
+  session.resolved_source_files.set(normalized_rel, source)
+  session.active_rel_paths.push(normalized_rel)
+  let composed = self.preprocess_wgsl_source_with_path(
+    normalized_rel, source, session,
+  )
+  session.active_rel_paths.pop() |> ignore
+  composed
 }
 
 ///|
@@ -1420,17 +1670,15 @@ pub fn Composer::preprocess_wgsl_source(
   visited : @hashmap.HashMap[String, Bool],
   modules : @hashmap.HashMap[String, String],
 ) -> String raise ComposerError {
-  self.preprocess_wgsl_source_with_path(
+  let session = self.new_wgsl_legacy_session(
     assets_base,
-    "",
-    source,
     defines,
     value_defines,
     visited,
-    [],
     modules,
     [],
   )
+  self.preprocess_wgsl_source_with_path("", source, session)
 }
 
 ///|
@@ -1443,27 +1691,25 @@ pub fn Composer::load_wgsl_preprocessed(
   visited : @hashmap.HashMap[String, Bool],
   modules : @hashmap.HashMap[String, String],
 ) -> String raise ComposerError {
-  let normalized_rel = normalize_shader_rel_path(rel)
-  if normalized_rel == "" {
-    return ""
-  }
-  if visited.contains(normalized_rel) {
-    return ""
-  }
-  visited.set(normalized_rel, true)
-  let source = self.load_wgsl_source_required_raw(assets_base, normalized_rel)
-  let active_rel_paths = [normalized_rel]
-  self.preprocess_wgsl_source_with_path(
+  let session = self.new_wgsl_legacy_session(
     assets_base,
-    normalized_rel,
-    source,
     defines,
     value_defines,
     visited,
-    active_rel_paths,
     modules,
     [],
   )
+  self.load_wgsl_preprocessed_into_session(rel, session)
+}
+
+///|
+pub fn Composer::compose_wgsl(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  let session = self.new_wgsl_compose_session(options)
+  self.load_wgsl_preprocessed_into_session(rel, session)
 }
 
 ///|
@@ -1476,12 +1722,10 @@ pub fn Composer::load_wgsl_from_assets_base_required(
   if base == "" {
     raise ComposerError::EmptyAssetsBase(rel)
   }
-  let normalized_rel = normalize_shader_rel_path(rel)
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let value_defines = default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = build_wgsl_import_module_paths(base)
-  self.load_wgsl_preprocessed(
-    base, normalized_rel, defines, value_defines, visited, modules,
-  )
+  self.compose_wgsl(rel, WgslComposeOptions::{
+    assets_base: base,
+    defines: @hashmap.HashMap::new(),
+    value_defines: default_wgsl_value_defines(),
+    redirects: [],
+  })
 }
