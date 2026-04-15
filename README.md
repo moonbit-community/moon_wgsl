@@ -35,12 +35,17 @@ composition in MoonBit without introducing a separate CLI step.
 - Supports quoted file-path imports such as
   `#import "../shared/common.wgsl" SharedVertex, build_color`.
 - Supports bulk source registration with `register_wgsl_source_files`.
+- Supports preflight registry diagnostics with
+  `analyze_wgsl_source_files_for_registry` and
+  `register_wgsl_source_files_checked`.
 - Preserves and re-emits WGSL `enable`, `requires`, and `diagnostic(...)`
   directives.
 - Tracks only actually used imported items when extracting metadata.
 - Resolves composable modules from registered WGSL source strings.
-- Exports single-file WGSL with declaration-level tree-shaking, source-map
-  entries, and diagnostics.
+- Exports single-file WGSL with declaration-level tree-shaking, an explicit
+  source catalog, source-map entries, and diagnostics.
+- Supports token-based source-level symbol redirects during composition and
+  export.
 
 ## Core Concepts
 
@@ -172,11 +177,34 @@ inspect(
 )
 ```
 
+If you want collision diagnostics before mutating the registry, use the checked
+path:
+
+```moonbit
+let files = [
+  {
+    rel_path: "shaders/demo/a.wgsl",
+    source: "#define_import_path demo::dup\nfn a() -> f32 { return 1.0; }\n",
+  },
+  {
+    rel_path: "shaders/demo/b.wgsl",
+    source: "#define_import_path demo::dup\nfn b() -> f32 { return 2.0; }\n",
+  },
+]
+
+let diagnostics = @moon_wgsl.analyze_wgsl_source_files_for_registry(files)
+inspect(diagnostics.length())
+
+let checked_diagnostics = @moon_wgsl.register_wgsl_source_files_checked(files)
+inspect(checked_diagnostics.length())
+```
+
 ### 5. Exporting a Single WGSL File
 
 Use `Composer::export_wgsl` to produce a fully expanded single-file WGSL output.
 The export path also supports declaration-level tree-shaking and returns
-best-effort source map entries plus diagnostics.
+best-effort source map entries, the full declaration source catalog used for
+matching, plus diagnostics.
 
 ```moonbit
 import "Milky2018/moon_wgsl"
@@ -198,8 +226,44 @@ let exported = @moon_wgsl.Composer::default().export_wgsl(
 }
 
 inspect(exported.source.contains("#import"))
+inspect(exported.source_catalog.length())
 inspect(exported.source_map.length())
 inspect(exported.diagnostics.length())
+```
+
+If you need the declaration catalog directly, without exporting a specific
+entrypoint, use `build_registered_wgsl_source_catalog`:
+
+```moonbit
+let catalog = @moon_wgsl.build_registered_wgsl_source_catalog(
+  defines,
+  value_defines,
+)
+inspect(catalog.length())
+```
+
+### 6. Applying Source-Level Redirects
+
+Use the redirect-aware APIs when you want to remap one imported symbol to
+another during composition/export without depending on Naga IR.
+
+```moonbit
+let redirects = [{ from_name: "build_shadow", to_name: "build_color" }]
+
+let exported = @moon_wgsl.Composer::default().export_wgsl_with_redirects(
+  "",
+  "shaders/effects/redirect.wgsl",
+  defines,
+  value_defines,
+  modules,
+  { root_items: ["shade"] },
+  redirects,
+) catch {
+  err => abort(err.message())
+}
+
+inspect(exported.source.contains("build_shadow"))
+inspect(exported.source.contains("build_color"))
 ```
 
 ## Import Syntax Supported
@@ -232,12 +296,28 @@ Main public entry points:
 - `register_wgsl_source_files`
   Registers a batch of WGSL source files and extracts module names
   automatically.
+- `analyze_wgsl_source_files_for_registry`
+  Performs preflight validation for duplicate module names and rel-path
+  ownership conflicts.
+- `register_wgsl_source_files_checked`
+  Runs preflight registry diagnostics and only mutates registry state when no
+  errors are reported.
+- `build_registered_wgsl_source_catalog`
+  Returns the declaration catalog used by export/source-map diagnostics.
 - `build_wgsl_import_module_paths` / `resolve_wgsl_import_module`
   Build and query module-path resolution data.
 - `resolve_wgsl_import_file_path`
   Resolves relative or quoted file-path imports against a source file path.
+- `rewrite_wgsl_symbol_redirects`
+  Applies token-based source-level symbol redirects to WGSL source.
+- `Composer::load_wgsl_preprocessed_with_redirects`
+  Composes WGSL while applying symbol redirects before import pruning.
 - `Composer::export_wgsl`
-  Produces single-file WGSL plus source-map entries and diagnostics.
+  Produces single-file WGSL plus source catalog, source-map entries, and
+  diagnostics.
+- `Composer::export_wgsl_with_redirects`
+  Produces redirect-aware single-file WGSL and tree-shakes the rewritten
+  dependency graph.
 
 Important public data structures:
 
@@ -249,8 +329,10 @@ Important public data structures:
 - `ComposableModuleDefinition`
 - `WgslDirectives`
 - `WgslSourceFile`
+- `WgslSymbolRedirect`
 - `WgslExportOptions`
 - `WgslExportOutput`
+- `WgslSourceCatalogEntry`
 - `WgslSourceMapEntry`
 - `WgslDiagnostic`
 
@@ -264,15 +346,20 @@ For the full exported surface, see
   sources, not by scanning directories on disk.
 - Relative quoted file imports are resolved against the importing shader's
   registered path.
+- `register_wgsl_source_files_checked` is the safe bulk-registration path when
+  callers need deterministic diagnostics before mutating the global registry.
 - `assets_base` is still present in the API for compatibility, but current
   source resolution is driven by the registry.
 - `get_preprocessor_metadata` is forgiving by design: on parse failure it
   returns empty/default metadata instead of raising.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.
-- `Composer::export_wgsl` returns declaration-level source-map entries on a
-  best-effort basis; ambiguous matches are reported as diagnostics instead of
-  hard errors.
+- `Composer::export_wgsl` returns the full declaration source catalog and
+  declaration-level source-map entries on a best-effort basis; ambiguous
+  matches are reported as diagnostics instead of hard errors.
+- Source-level redirects are token-based and intentionally skip declaration
+  heads, field accesses (`.`), and attributes (`@...`); they are intended for
+  imported helper/type names rather than locally shadowed identifiers.
 
 ## Development
 
@@ -287,10 +374,13 @@ The repository currently includes tests for:
 - metadata extraction
 - grouped and aliased imports
 - quoted relative file imports
+- bulk registry collision diagnostics
+- source catalog exposure for ambiguous source-map diagnostics
 - WGSL directive preservation
 - conditional preprocessing semantics
 - module registration and import resolution
 - recursive composition behavior
+- source-level symbol redirects during composition/export
 - single-file WGSL export with tree-shaking and diagnostics
 
 ## Compatibility Goal

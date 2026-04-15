@@ -1102,10 +1102,12 @@ fn Composer::preprocess_wgsl_source_with_path(
   visited : @hashmap.HashMap[String, Bool],
   active_rel_paths : Array[String],
   modules : @hashmap.HashMap[String, String],
+  redirects : Array[WgslSymbolRedirect],
 ) -> String raise ComposerError {
+  let redirected_source = rewrite_wgsl_symbol_redirects(source, redirects)
   let mut merged = ""
   let active_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs(source, defines, value_defines),
+    apply_wgsl_ifdefs(redirected_source, defines, value_defines),
     value_defines,
   )
   let active_scan_source = strip_wgsl_import_declarations(active_source)
@@ -1113,7 +1115,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   let lines : Array[String] = []
   let import_active_stack : Array[Bool] = [true]
   let import_branch_taken_stack : Array[Bool] = []
-  for line_item in source.split("\n") {
+  for line_item in redirected_source.split("\n") {
     lines.push(line_item.to_string())
   }
   let mut line_index = 0
@@ -1361,6 +1363,7 @@ fn Composer::preprocess_wgsl_source_with_path(
             visited,
             active_rel_paths,
             modules,
+            redirects,
           )
         } else {
           let prepared_source = apply_wgsl_template_consts(
@@ -1380,6 +1383,7 @@ fn Composer::preprocess_wgsl_source_with_path(
             visited,
             active_rel_paths,
             modules,
+            redirects,
           )
         }
         active_rel_paths.pop() |> ignore
@@ -1425,6 +1429,7 @@ pub fn Composer::preprocess_wgsl_source(
     visited,
     [],
     modules,
+    [],
   )
 }
 
@@ -1449,8 +1454,15 @@ pub fn Composer::load_wgsl_preprocessed(
   let source = self.load_wgsl_source_required_raw(assets_base, normalized_rel)
   let active_rel_paths = [normalized_rel]
   self.preprocess_wgsl_source_with_path(
-    assets_base, normalized_rel, source, defines, value_defines, visited, active_rel_paths,
+    assets_base,
+    normalized_rel,
+    source,
+    defines,
+    value_defines,
+    visited,
+    active_rel_paths,
     modules,
+    [],
   )
 }
 

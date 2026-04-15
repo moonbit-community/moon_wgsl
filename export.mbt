@@ -27,15 +27,6 @@ priv struct WgslDeclarationGraph {
 }
 
 ///|
-priv struct WgslSourceCatalogEntry {
-  rel_path : String
-  name : String
-  text : String
-  source_start : Int
-  source_end : Int
-}
-
-///|
 fn push_wgsl_diagnostic(
   diagnostics : Array[WgslDiagnostic],
   severity : WgslDiagnosticSeverity,
@@ -252,12 +243,220 @@ fn collect_wgsl_reachable_declarations(
 }
 
 ///|
-fn build_wgsl_source_catalog(
+fn compare_wgsl_source_catalog_entries(
+  lhs : WgslSourceCatalogEntry,
+  rhs : WgslSourceCatalogEntry,
+) -> Int {
+  let rel_path_compare = String::compare(lhs.rel_path, rhs.rel_path)
+  if rel_path_compare != 0 {
+    return rel_path_compare
+  }
+  let source_start_compare = lhs.source_start - rhs.source_start
+  if source_start_compare != 0 {
+    return source_start_compare
+  }
+  let source_end_compare = lhs.source_end - rhs.source_end
+  if source_end_compare != 0 {
+    return source_end_compare
+  }
+  String::compare(lhs.symbol_name, rhs.symbol_name)
+}
+
+///|
+fn wgsl_redirect_declaration_keyword(ident : String) -> Bool {
+  ident == "fn" ||
+  ident == "struct" ||
+  ident == "const" ||
+  ident == "override" ||
+  ident == "alias" ||
+  ident == "var" ||
+  ident == "let"
+}
+
+///|
+fn build_wgsl_symbol_redirect_map(
+  redirects : Array[WgslSymbolRedirect],
+) -> @hashmap.HashMap[String, String] {
+  let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for redirect in redirects {
+    let from_name = redirect.from_name.trim().to_string()
+    let to_name = redirect.to_name.trim().to_string()
+    if from_name == "" || to_name == "" || from_name == to_name {
+      continue
+    }
+    redirect_map.set(from_name, to_name)
+  }
+  redirect_map
+}
+
+///|
+fn rewrite_wgsl_declaration_text_with_redirects(
+  source : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  let mut output = ""
+  let mut i = 0
+  let mut in_substitution_position = true
+  let mut in_line_comment = false
+  let mut in_string = false
+  let mut block_comment_depth = 0
+  let mut pending_declaration_name = false
+  let mut pending_template_depth = 0
+
+  while i < source.length() {
+    let code = source.code_unit_at(i).to_int()
+    if in_line_comment {
+      output = output + code_unit_to_string(code)
+      i = i + 1
+      if code == 10 {
+        in_line_comment = false
+        in_substitution_position = true
+      }
+      continue
+    }
+    if block_comment_depth > 0 {
+      if code == 47 &&
+        i + 1 < source.length() &&
+        source.code_unit_at(i + 1).to_int() == 42 {
+        output = output + source[i:i + 2].to_string()
+        block_comment_depth = block_comment_depth + 1
+        i = i + 2
+        continue
+      }
+      if code == 42 &&
+        i + 1 < source.length() &&
+        source.code_unit_at(i + 1).to_int() == 47 {
+        output = output + source[i:i + 2].to_string()
+        block_comment_depth = block_comment_depth - 1
+        i = i + 2
+        continue
+      }
+      output = output + code_unit_to_string(code)
+      i = i + 1
+      continue
+    }
+    if in_string {
+      if code == 92 && i + 1 < source.length() {
+        output = output + source[i:i + 2].to_string()
+        i = i + 2
+        continue
+      }
+      output = output + code_unit_to_string(code)
+      i = i + 1
+      if code == 34 {
+        in_string = false
+        in_substitution_position = true
+      }
+      continue
+    }
+    if code == 47 &&
+      i + 1 < source.length() &&
+      source.code_unit_at(i + 1).to_int() == 47 {
+      output = output + source[i:i + 2].to_string()
+      in_line_comment = true
+      i = i + 2
+      continue
+    }
+    if code == 47 &&
+      i + 1 < source.length() &&
+      source.code_unit_at(i + 1).to_int() == 42 {
+      output = output + source[i:i + 2].to_string()
+      block_comment_depth = 1
+      i = i + 2
+      continue
+    }
+    if code == 34 {
+      output = output + code_unit_to_string(code)
+      in_string = true
+      i = i + 1
+      continue
+    }
+    if tokenizer_identifier_start(code) {
+      let start = i
+      i = i + 1
+      while i < source.length() {
+        let next_code = source.code_unit_at(i).to_int()
+        if tokenizer_identifier_continue(next_code) {
+          i = i + 1
+          continue
+        }
+        if next_code == 58 &&
+          i + 1 < source.length() &&
+          source.code_unit_at(i + 1).to_int() == 58 {
+          i = i + 2
+          continue
+        }
+        break
+      }
+      let ident = source[start:i].to_string()
+      if pending_declaration_name && pending_template_depth == 0 {
+        output = output + ident
+        pending_declaration_name = false
+      } else if in_substitution_position {
+        match redirect_map.get(ident) {
+          Some(rewritten_ident) => output = output + rewritten_ident
+          None => output = output + ident
+        }
+      } else {
+        output = output + ident
+      }
+      if wgsl_redirect_declaration_keyword(ident) {
+        pending_declaration_name = true
+        pending_template_depth = 0
+      }
+      in_substitution_position = true
+      continue
+    }
+    if pending_declaration_name {
+      if code == 60 {
+        pending_template_depth = pending_template_depth + 1
+      } else if code == 62 && pending_template_depth > 0 {
+        pending_template_depth = pending_template_depth - 1
+      }
+    }
+    output = output + code_unit_to_string(code)
+    i = i + 1
+    if code == 46 || code == 64 {
+      in_substitution_position = false
+    } else {
+      in_substitution_position = true
+    }
+  }
+
+  output
+}
+
+///|
+pub fn rewrite_wgsl_symbol_redirects(
+  source : String,
+  redirects : Array[WgslSymbolRedirect],
+) -> String {
+  if redirects.length() == 0 {
+    return source
+  }
+  let graph = build_wgsl_declaration_graph(source)
+  let redirect_map = build_wgsl_symbol_redirect_map(redirects)
+  let mut rewritten = ""
+  for import_block in graph.import_blocks {
+    rewritten = rewritten + import_block.text
+  }
+  for block in graph.declaration_blocks {
+    rewritten = rewritten +
+      rewrite_wgsl_declaration_text_with_redirects(block.text, redirect_map)
+  }
+  rewritten
+}
+
+///|
+pub fn build_registered_wgsl_source_catalog(
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
-) -> @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] {
-  let catalog : @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] = @hashmap.HashMap::new()
-  for source_file in copy_registered_wgsl_source_files() {
+) -> Array[WgslSourceCatalogEntry] {
+  let source_files = copy_registered_wgsl_source_files()
+  source_files.sort_by((lhs, rhs) => String::compare(lhs.rel_path, rhs.rel_path))
+
+  let catalog_entries : Array[WgslSourceCatalogEntry] = []
+  for source_file in source_files {
     let prepared_source = strip_wgsl_import_declarations(
       apply_wgsl_template_consts(
         apply_wgsl_ifdefs(source_file.source, defines, value_defines),
@@ -267,18 +466,29 @@ fn build_wgsl_source_catalog(
     let graph = build_wgsl_declaration_graph(prepared_source)
     for block in graph.declaration_blocks {
       guard block.name != "" else { continue }
-      let entry = WgslSourceCatalogEntry::{
+      catalog_entries.push(WgslSourceCatalogEntry::{
         rel_path: source_file.rel_path,
-        name: block.name,
-        text: block.text.trim().to_string(),
+        symbol_name: block.name,
+        source_text: block.text.trim().to_string(),
         source_start: block.start,
         source_end: block.end,
-      }
-      if catalog.get(block.name) is Some(entries) {
-        entries.push(entry)
-      } else {
-        catalog.set(block.name, [entry])
-      }
+      })
+    }
+  }
+  catalog_entries.sort_by(compare_wgsl_source_catalog_entries)
+  catalog_entries
+}
+
+///|
+fn build_wgsl_source_catalog_index(
+  catalog_entries : Array[WgslSourceCatalogEntry],
+) -> @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] {
+  let catalog : @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] = @hashmap.HashMap::new()
+  for entry in catalog_entries {
+    if catalog.get(entry.symbol_name) is Some(entries) {
+      entries.push(entry)
+    } else {
+      catalog.set(entry.symbol_name, [entry])
     }
   }
   catalog
@@ -310,7 +520,7 @@ fn match_wgsl_source_catalog_entry(
   let trimmed_block = block.text.trim().to_string()
   let exact_matches : Array[WgslSourceCatalogEntry] = []
   for entry in entries {
-    if entry.text == trimmed_block {
+    if entry.source_text == trimmed_block {
       exact_matches.push(entry)
     }
   }
@@ -342,7 +552,10 @@ fn serialize_wgsl_export_output(
     options.root_items,
     diagnostics,
   )
-  let catalog = build_wgsl_source_catalog(defines, value_defines)
+  let source_catalog = build_registered_wgsl_source_catalog(
+    defines, value_defines,
+  )
+  let catalog = build_wgsl_source_catalog_index(source_catalog)
   let source_map : Array[WgslSourceMapEntry] = []
   let mut source = ""
   let mut generated_start = 0
@@ -368,12 +581,31 @@ fn serialize_wgsl_export_output(
         rel_path: entry.rel_path,
         source_start: entry.source_start,
         source_end: entry.source_end,
-        symbol_name: Some(entry.name),
+        symbol_name: Some(entry.symbol_name),
       })
     }
   }
 
-  WgslExportOutput::{ source, source_map, diagnostics }
+  WgslExportOutput::{ source, source_catalog, source_map, diagnostics }
+}
+
+///|
+fn Composer::export_wgsl_internal(
+  self : Composer,
+  assets_base : String,
+  rel : String,
+  defines : @hashmap.HashMap[String, Bool],
+  value_defines : @hashmap.HashMap[String, Int],
+  modules : @hashmap.HashMap[String, String],
+  options : WgslExportOptions,
+  redirects : Array[WgslSymbolRedirect],
+) -> WgslExportOutput raise ComposerError {
+  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let source = self.load_wgsl_preprocessed_with_redirects(
+    assets_base, rel, defines, value_defines, visited, modules, redirects,
+  )
+  let graph = build_wgsl_declaration_graph(source)
+  serialize_wgsl_export_output(graph, options, defines, value_defines)
 }
 
 ///|
@@ -386,12 +618,31 @@ pub fn Composer::export_wgsl(
   modules : @hashmap.HashMap[String, String],
   options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let source = self.load_wgsl_preprocessed(
-    assets_base, rel, defines, value_defines, visited, modules,
+  self.export_wgsl_internal(
+    assets_base,
+    rel,
+    defines,
+    value_defines,
+    modules,
+    options,
+    [],
   )
-  let graph = build_wgsl_declaration_graph(source)
-  serialize_wgsl_export_output(graph, options, defines, value_defines)
+}
+
+///|
+pub fn Composer::export_wgsl_with_redirects(
+  self : Composer,
+  assets_base : String,
+  rel : String,
+  defines : @hashmap.HashMap[String, Bool],
+  value_defines : @hashmap.HashMap[String, Int],
+  modules : @hashmap.HashMap[String, String],
+  options : WgslExportOptions,
+  redirects : Array[WgslSymbolRedirect],
+) -> WgslExportOutput raise ComposerError {
+  self.export_wgsl_internal(
+    assets_base, rel, defines, value_defines, modules, options, redirects,
+  )
 }
 
 ///|
@@ -401,6 +652,22 @@ pub fn Composer::export_wgsl_from_assets_base_required(
   rel : String,
   options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
+  self.export_wgsl_from_assets_base_required_with_redirects(
+    assets_base,
+    rel,
+    options,
+    [],
+  )
+}
+
+///|
+pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(
+  self : Composer,
+  assets_base : String,
+  rel : String,
+  options : WgslExportOptions,
+  redirects : Array[WgslSymbolRedirect],
+) -> WgslExportOutput raise ComposerError {
   let base = assets_base.trim().to_string()
   if base == "" {
     raise ComposerError::EmptyAssetsBase(rel)
@@ -409,7 +676,34 @@ pub fn Composer::export_wgsl_from_assets_base_required(
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let value_defines = default_wgsl_value_defines()
   let modules = build_wgsl_import_module_paths(base)
-  self.export_wgsl(
-    base, normalized_rel, defines, value_defines, modules, options,
+  self.export_wgsl_internal(
+    base, normalized_rel, defines, value_defines, modules, options, redirects,
+  )
+}
+
+///|
+pub fn Composer::load_wgsl_preprocessed_with_redirects(
+  self : Composer,
+  assets_base : String,
+  rel : String,
+  defines : @hashmap.HashMap[String, Bool],
+  value_defines : @hashmap.HashMap[String, Int],
+  visited : @hashmap.HashMap[String, Bool],
+  modules : @hashmap.HashMap[String, String],
+  redirects : Array[WgslSymbolRedirect],
+) -> String raise ComposerError {
+  let normalized_rel = normalize_shader_rel_path(rel)
+  if normalized_rel == "" {
+    return ""
+  }
+  if visited.contains(normalized_rel) {
+    return ""
+  }
+  visited.set(normalized_rel, true)
+  let source = self.load_wgsl_source_required_raw(assets_base, normalized_rel)
+  let active_rel_paths = [normalized_rel]
+  self.preprocess_wgsl_source_with_path(
+    assets_base, normalized_rel, source, defines, value_defines, visited, active_rel_paths,
+    modules, redirects,
   )
 }

@@ -440,6 +440,132 @@ pub fn register_wgsl_source(rel_path : String, source : String) -> Unit {
 }
 
 ///|
+fn push_wgsl_registry_diagnostic(
+  diagnostics : Array[WgslDiagnostic],
+  severity : WgslDiagnosticSeverity,
+  message : String,
+  rel_path : String?,
+  symbol_name : String?,
+) -> Unit {
+  diagnostics.push(WgslDiagnostic::{
+    severity,
+    message,
+    rel_path,
+    symbol_name,
+    generated_start: None,
+    source_start: None,
+  })
+}
+
+///|
+fn wgsl_diagnostics_has_error(diagnostics : Array[WgslDiagnostic]) -> Bool {
+  for diagnostic in diagnostics {
+    if diagnostic.severity == WgslDiagnosticSeverity::Error {
+      return true
+    }
+  }
+  false
+}
+
+///|
+pub fn analyze_wgsl_source_files_for_registry(
+  files : Array[WgslSourceFile],
+) -> Array[WgslDiagnostic] {
+  let diagnostics : Array[WgslDiagnostic] = []
+  let existing_sources = copy_registered_wgsl_source_files()
+  let existing_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for source_file in existing_sources {
+    existing_rel_to_source.set(
+      normalize_shader_rel_path(source_file.rel_path),
+      source_file.source,
+    )
+  }
+  let existing_modules = copy_registered_wgsl_import_module_paths()
+  let batch_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let batch_module_to_rel : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+
+  for source_file in files {
+    let normalized_rel = normalize_shader_rel_path(source_file.rel_path)
+    if normalized_rel == "" {
+      push_wgsl_registry_diagnostic(
+        diagnostics,
+        WgslDiagnosticSeverity::Error,
+        "registry source file path resolves to an empty normalized path",
+        Some(source_file.rel_path),
+        None,
+      )
+      continue
+    }
+
+    if batch_rel_to_source.get(normalized_rel) is Some(existing_source) {
+      if existing_source != source_file.source {
+        push_wgsl_registry_diagnostic(
+          diagnostics,
+          WgslDiagnosticSeverity::Error,
+          "multiple WGSL source files normalize to the same rel_path with different contents",
+          Some(normalized_rel),
+          None,
+        )
+      }
+    } else if existing_rel_to_source.get(normalized_rel)
+      is Some(existing_source) {
+      if existing_source != source_file.source {
+        push_wgsl_registry_diagnostic(
+          diagnostics,
+          WgslDiagnosticSeverity::Error,
+          "bulk registry would overwrite an existing rel_path with different contents",
+          Some(normalized_rel),
+          None,
+        )
+      }
+    }
+    batch_rel_to_source.set(normalized_rel, source_file.source)
+
+    let (import_path, _, _) = get_preprocessor_data(source_file.source)
+    guard import_path is Some(module_path) && module_path != "" else {
+      continue
+    }
+
+    if batch_module_to_rel.get(module_path) is Some(existing_rel) {
+      if existing_rel != normalized_rel {
+        push_wgsl_registry_diagnostic(
+          diagnostics,
+          WgslDiagnosticSeverity::Error,
+          "multiple WGSL source files define the same #define_import_path in one batch",
+          Some(normalized_rel),
+          Some(module_path),
+        )
+      }
+    } else if existing_modules.get(module_path) is Some(existing_rel) {
+      if existing_rel != normalized_rel {
+        push_wgsl_registry_diagnostic(
+          diagnostics,
+          WgslDiagnosticSeverity::Error,
+          "bulk registry would overwrite an existing #define_import_path with a different rel_path",
+          Some(normalized_rel),
+          Some(module_path),
+        )
+      }
+    }
+    batch_module_to_rel.set(module_path, normalized_rel)
+  }
+
+  diagnostics
+}
+
+///|
+pub fn register_wgsl_source_files_checked(
+  files : Array[WgslSourceFile],
+) -> Array[WgslDiagnostic] {
+  let diagnostics = analyze_wgsl_source_files_for_registry(files)
+  if wgsl_diagnostics_has_error(diagnostics) {
+    return diagnostics
+  }
+  register_wgsl_source_files(files)
+  diagnostics
+}
+
+///|
 pub fn register_wgsl_source_files(files : Array[WgslSourceFile]) -> Unit {
   for file in files {
     register_wgsl_source(file.rel_path, file.source)

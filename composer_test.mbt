@@ -74,6 +74,21 @@ fn register_relative_file_import_test_shaders() -> Unit {
 }
 
 ///|
+fn register_redirect_test_shaders() -> Unit {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source_files([
+    {
+      rel_path: "shaders/shared/common.wgsl",
+      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn build_shadow(vertex: SharedVertex) -> vec4<f32> {\n  return vec4<f32>(0.0, 0.0, 0.0, 1.0);\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/redirect.wgsl",
+      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color, build_shadow\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_shadow(vertex);\n}\n",
+    },
+  ])
+}
+
+///|
 fn register_cycle_test_shaders() -> Unit {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   @moon_wgsl.register_wgsl_source(
@@ -264,6 +279,50 @@ test "naga_oil: composer preprocess resolves relative quoted file imports" {
   debug_inspect(preprocessed.contains("fn build_color"), content="true")
   debug_inspect(preprocessed.contains("fn shade"), content="true")
   debug_inspect(preprocessed.contains("#import"), content="false")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: source-level symbol redirects rewrite references but keep declarations" {
+  let rewritten = @moon_wgsl.rewrite_wgsl_symbol_redirects(
+    "fn shade() -> f32 {\n  return build_shadow();\n}\nfn build_shadow() -> f32 {\n  return 1.0;\n}\n",
+    [{ from_name: "build_shadow", to_name: "build_color" }],
+  )
+  debug_inspect(rewritten.contains("return build_color();"), content="true")
+  debug_inspect(rewritten.contains("return build_shadow();"), content="false")
+  debug_inspect(rewritten.contains("fn build_shadow()"), content="true")
+}
+
+///|
+test "naga_oil: composer preprocess can apply source-level symbol redirects" {
+  register_redirect_test_shaders()
+  let value_defines = @moon_wgsl.default_wgsl_value_defines()
+  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
+  let preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed_with_redirects(
+    "",
+    "shaders/effects/redirect.wgsl",
+    empty_bool_defines(),
+    value_defines,
+    visited,
+    modules,
+    [{ from_name: "build_shadow", to_name: "build_color" }],
+  ) catch {
+    err =>
+      abort(
+        "expected redirect-aware composer preprocess success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    preprocessed.contains("return build_color(vertex);"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("return build_shadow(vertex);"),
+    content="false",
+  )
+  debug_inspect(preprocessed.contains("fn build_color"), content="true")
+  debug_inspect(preprocessed.contains("fn build_shadow"), content="false")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
 

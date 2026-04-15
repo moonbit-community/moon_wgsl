@@ -158,6 +158,37 @@ pub fn WgslDiagnostic::default() -> WgslDiagnostic {
 }
 
 ///|
+pub struct WgslSourceCatalogEntry {
+  rel_path : String
+  symbol_name : String
+  source_text : String
+  source_start : Int
+  source_end : Int
+} derive(Eq, Debug)
+
+///|
+pub fn WgslSourceCatalogEntry::default() -> WgslSourceCatalogEntry {
+  WgslSourceCatalogEntry::{
+    rel_path: "",
+    symbol_name: "",
+    source_text: "",
+    source_start: 0,
+    source_end: 0,
+  }
+}
+
+///|
+pub(all) struct WgslSymbolRedirect {
+  from_name : String
+  to_name : String
+} derive(Eq, Debug)
+
+///|
+pub fn WgslSymbolRedirect::default() -> WgslSymbolRedirect {
+  WgslSymbolRedirect::{ from_name: "", to_name: "" }
+}
+
+///|
 pub struct WgslSourceMapEntry {
   generated_start : Int
   generated_end : Int
@@ -192,11 +223,17 @@ pub fn WgslExportOptions::default() -> WgslExportOptions {
 ///|
 pub struct WgslExportOutput {
   source : String
+  source_catalog : Array[WgslSourceCatalogEntry]
   source_map : Array[WgslSourceMapEntry]
   diagnostics : Array[WgslDiagnostic]
 } derive(Eq, Debug)
 
 ///|
 pub fn WgslExportOutput::default() -> WgslExportOutput {
-  WgslExportOutput::{ source: "", source_map: [], diagnostics: [] }
+  WgslExportOutput::{
+    source: "",
+    source_catalog: [],
+    source_map: [],
+    diagnostics: [],
+  }
 }

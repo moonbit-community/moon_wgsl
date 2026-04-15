@@ -91,3 +91,56 @@ test "naga_oil: bulk source registration resolves relative quoted file paths" {
   )
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
+
+///|
+test "naga_oil: registry analysis reports duplicate module paths in one batch" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let diagnostics = @moon_wgsl.analyze_wgsl_source_files_for_registry([
+    {
+      rel_path: "shaders/demo/a.wgsl",
+      source: "#define_import_path demo::dup\nfn a() -> f32 { return 1.0; }\n",
+    },
+    {
+      rel_path: "shaders/demo/b.wgsl",
+      source: "#define_import_path demo::dup\nfn b() -> f32 { return 2.0; }\n",
+    },
+  ])
+  debug_inspect(diagnostics.length(), content="1")
+  debug_inspect(diagnostics[0].severity, content="Error")
+  debug_inspect(diagnostics[0].symbol_name, content="Some(\"demo::dup\")")
+  debug_inspect(
+    diagnostics[0].message,
+    content="\"multiple WGSL source files define the same #define_import_path in one batch\"",
+  )
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let diagnostics = @moon_wgsl.register_wgsl_source_files_checked([
+    {
+      rel_path: "shaders/demo/./shared.wgsl",
+      source: "#define_import_path demo::shared_a\nfn a() -> f32 { return 1.0; }\n",
+    },
+    {
+      rel_path: "shaders/demo/shared.wgsl",
+      source: "#define_import_path demo::shared_b\nfn b() -> f32 { return 2.0; }\n",
+    },
+  ])
+  debug_inspect(diagnostics.length(), content="1")
+  debug_inspect(diagnostics[0].severity, content="Error")
+  debug_inspect(
+    diagnostics[0].rel_path,
+    content="Some(\"shaders/demo/shared.wgsl\")",
+  )
+  debug_inspect(
+    diagnostics[0].message,
+    content="\"multiple WGSL source files normalize to the same rel_path with different contents\"",
+  )
+  debug_inspect(
+    @moon_wgsl.registered_wgsl_source("shaders/demo/shared.wgsl"),
+    content="None",
+  )
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
