@@ -1,0 +1,202 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
+  "moonbitlang/core/hashset",
+}
+
+// Values
+pub fn build_wgsl_import_module_paths(String) -> @hashmap.HashMap[String, String]
+
+pub fn clear_registered_wgsl_source_registry() -> Unit
+
+pub fn collect_wgsl_import_targets(String, String, Array[WgslImportTarget]) -> Unit
+
+pub fn copy_registered_wgsl_import_module_paths() -> @hashmap.HashMap[String, String]
+
+pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int]
+
+pub fn get_preprocessor_data(String) -> (String?, Array[ImportDefinition], @hashmap.HashMap[String, ShaderDefValue])
+
+pub fn get_preprocessor_metadata(String) -> PreprocessorMetaData
+
+pub fn normalize_shader_rel_path(String) -> String
+
+pub fn register_wgsl_source(String, String) -> Unit
+
+pub fn registered_wgsl_source(String) -> String?
+
+pub fn registered_wgsl_source_required(String) -> String raise ComposerError
+
+pub fn resolve_wgsl_import_module(String, String, @hashmap.HashMap[String, String]) -> WgslResolvedImportModule?
+
+pub fn resolve_wgsl_source_file_path(String, String) -> String?
+
+// Errors
+pub(all) suberror ComposerError {
+  EmptyAssetsBase(String)
+  FailedToResolveImport(String)
+  MissingRegisteredSource(String)
+  MissingStartupRegisteredSource(String)
+  NoModuleName(String)
+}
+pub fn ComposerError::message(Self) -> String
+
+pub(all) suberror ParseImportsError {
+  Parse(String, Int)
+}
+
+pub(all) suberror PreprocessError {
+  GlslInvalidVersion(Int)
+  ElseWithoutCondition(Int)
+  TooManyEndIfs(Int)
+  NotEnoughEndIfs(Int)
+  UnknownShaderDef(String, Int)
+  UnknownShaderDefOperator(String, Int)
+  InvalidShaderDefComparisonValue(String, String, String, Int)
+  ImportParseError(String, Int)
+  DefineInModule(Int)
+}
+
+pub(all) suberror SubstituteIdentifiersError {
+  AmbiguousImport(Int)
+}
+
+// Types and methods
+pub(all) struct ComposableModuleDefinition {
+  name : String
+  sanitized_source : String
+  language : ShaderLanguage
+  file_path : String
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  effective_defs : Array[String]
+  all_imports : @hashset.HashSet[String]
+  additional_imports : Array[ImportDefinition]
+}
+
+pub(all) struct ComposableModuleDescriptor {
+  source : String
+  file_path : String
+  language : ShaderLanguage
+  as_name : String?
+  additional_imports : Array[ImportDefinition]
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+} derive(Eq, @debug.Debug)
+pub fn ComposableModuleDescriptor::default() -> Self
+
+pub struct Composer {
+  module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
+}
+pub fn Composer::add_composable_module(Self, ComposableModuleDescriptor) -> ComposableModuleDefinition raise ComposerError
+pub fn Composer::contains_module(Self, String) -> Bool
+pub fn Composer::default() -> Self
+pub fn Composer::load_wgsl_from_assets_base_required(Self, String, String) -> String raise ComposerError
+pub fn Composer::load_wgsl_preprocessed(Self, String, String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, String]) -> String raise ComposerError
+pub fn Composer::load_wgsl_source_required_raw(Self, String, String) -> String raise ComposerError
+pub fn Composer::preprocess_wgsl_source(Self, String, String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, String]) -> String raise ComposerError
+pub fn Composer::remove_composable_module(Self, String) -> Unit
+
+pub struct DiagnosticDirective {
+  severity : String
+  rule : String
+  source_location : Int
+} derive(Eq, @debug.Debug)
+
+pub struct EnableDirective {
+  extensions : Array[String]
+  source_location : Int
+} derive(Eq, @debug.Debug)
+
+pub struct ImportDefWithOffset {
+  definition : ImportDefinition
+  offset : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ImportDefinition {
+  import_path : String
+  items : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn ImportDefinition::default() -> Self
+
+pub(all) struct NagaModuleDescriptor {
+  source : String
+  file_path : String
+  shader_type : ShaderType
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  additional_imports : Array[ImportDefinition]
+} derive(Eq, @debug.Debug)
+pub fn NagaModuleDescriptor::default() -> Self
+
+pub struct PreprocessOutput {
+  preprocessed_source : String
+  imports : Array[ImportDefWithOffset]
+}
+pub fn PreprocessOutput::default() -> Self
+
+pub struct Preprocessor {
+}
+pub fn Preprocessor::default() -> Self
+pub fn Preprocessor::extract_wgsl_directives(Self, String) -> (String, WgslDirectives)
+pub fn Preprocessor::preprocess(Self, String, @hashmap.HashMap[String, ShaderDefValue]) -> PreprocessOutput raise PreprocessError
+
+pub struct PreprocessorMetaData {
+  name : String?
+  imports : Array[ImportDefWithOffset]
+  defines : @hashmap.HashMap[String, ShaderDefValue]
+  effective_defs : @hashset.HashSet[String]
+  wgsl_directives : WgslDirectives
+  cleaned_source : String
+}
+
+pub struct RequiresDirective {
+  extensions : Array[String]
+  source_location : Int
+} derive(Eq, @debug.Debug)
+
+type ScopeLevel derive(Eq)
+
+pub(all) enum ShaderDefValue {
+  Bool(Bool)
+  Int(Int)
+  UInt(UInt)
+} derive(Eq, @debug.Debug)
+pub fn ShaderDefValue::value_as_string(Self) -> String
+
+pub(all) enum ShaderLanguage {
+  Wgsl
+  Glsl
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ShaderType {
+  Wgsl
+  GlslVertex
+  GlslFragment
+} derive(Eq, @debug.Debug)
+
+type Token derive(Eq, @debug.Debug)
+
+pub struct WgslDirectives {
+  enables : Array[EnableDirective]
+  requires : Array[RequiresDirective]
+  diagnostics : Array[DiagnosticDirective]
+} derive(Eq, @debug.Debug)
+pub fn WgslDirectives::default() -> Self
+pub fn WgslDirectives::is_empty(Self) -> Bool
+pub fn WgslDirectives::to_wgsl_string(Self) -> String
+
+pub struct WgslImportTarget {
+  raw_path : String
+  alias_name : String
+} derive(Eq, @debug.Debug)
+
+pub struct WgslResolvedImportModule {
+  module_path : String
+  rel_path : String
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

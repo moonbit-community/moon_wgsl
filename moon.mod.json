@@ -1,0 +1,10 @@
+{
+  "name": "Milky2018/moon_wgsl",
+  "version": "0.1.0",
+  "readme": "README.md",
+  "repository": "https://github.com/moonbit-community/moon_wgsl",
+  "license": "Apache-2.0",
+  "keywords": ["wgsl", "shader"],
+  "description": "WGSL preprocess and composer utilities extracted from mgstudio.",
+  "preferred-target": "native"
+}
