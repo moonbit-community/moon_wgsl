@@ -133,3 +133,41 @@ test "naga_oil: composer rejects modules without an import path name" {
     content="\"shader module is missing #define_import_path: tests/no_name.wgsl\"",
   )
 }
+
+///|
+test "naga_oil: add_composable_module resolves imports from the composer registry" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "tests/plain_shared.wgsl", "#define_import_path test::plain\nfn plain_value() -> f32 {\n  return 2.0;\n}\n",
+  )
+
+  let child_definition = composer_test_add_or_abort(
+    composer,
+    composer_test_descriptor(
+      "#define_import_path test::child\n#import test::plain::plain_value\nfn child_value() -> f32 {\n  return plain_value();\n}\n",
+      "tests/child_against_registry.wgsl",
+      @hashmap.HashMap::new(),
+    ),
+  )
+
+  debug_inspect(
+    child_definition.all_imports.contains("test::plain"),
+    content="true",
+  )
+
+  let composed = composer.compose_wgsl("tests/child_against_registry.wgsl", {
+    assets_base: "",
+    defines: @hashmap.HashMap::new(),
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects: [],
+  }) catch {
+    err =>
+      abort(
+        "expected registry-backed composable module compose success: \{err.message()}",
+      )
+  }
+
+  debug_inspect(composed.contains("fn plain_value"), content="true")
+  debug_inspect(composed.contains("fn child_value"), content="true")
+  debug_inspect(composed.contains("return plain_value();"), content="true")
+}

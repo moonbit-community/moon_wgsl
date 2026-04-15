@@ -108,7 +108,9 @@ merges imported definitions into a final WGSL string.
 
 The recommended path is to register shaders on the `Composer` instance itself.
 Global registry helpers still exist for compatibility, but new code should
-prefer Composer-owned registry state.
+prefer Composer-owned registry state. `Composer::default()` starts empty; use
+`Composer::from_registered_wgsl_source_registry()` only when you explicitly
+want a snapshot of the global compatibility registry.
 
 ```moonbit
 import "Milky2018/moon_wgsl"
@@ -339,7 +341,8 @@ inspect(exported.source.contains("build_shadow"))
 inspect(exported.source.contains("build_color"))
 ```
 
-Legacy compatibility wrappers are still available:
+Global compatibility helpers are still available when you intentionally want
+to inspect the package-level registry:
 
 ```moonbit
 let catalog = @moon_wgsl.build_registered_wgsl_source_catalog(
@@ -399,15 +402,14 @@ Main public entry points:
   Resolves relative or quoted file-path imports against a source file path.
 - `rewrite_wgsl_symbol_redirects`
   Applies token-based source-level symbol redirects to WGSL source.
-- `Composer::load_wgsl_preprocessed_with_redirects`
-  Composes WGSL while applying symbol redirects before import pruning.
+- `Composer::from_registered_wgsl_source_registry`
+  Creates an explicit Composer snapshot from the global compatibility registry.
+- `Composer::compose_wgsl_source`
+  Composes a raw WGSL source string using `WgslComposeOptions` without exposing
+  session internals.
 - `Composer::export_wgsl_with_options`
   Produces single-file WGSL from `WgslComposeOptions` without exposing legacy
   session internals.
-- `Composer::export_wgsl`
-  Legacy compatibility wrapper for single-file WGSL export.
-- `Composer::export_wgsl_with_redirects`
-  Legacy compatibility wrapper for redirect-aware single-file WGSL export.
 
 Important public data structures:
 
@@ -434,10 +436,11 @@ For the full exported surface, see
 
 - `#define_import_path` is used as the canonical module name for composition.
 - `Composer` now owns registry/module resolution state; new code should prefer
-  `Composer::register_wgsl_source*`, `Composer::compose_wgsl`, and
-  `Composer::export_wgsl_with_options`.
-- `Composer::load_wgsl_preprocessed` and global registry helpers remain
-  available as compatibility APIs.
+  `Composer::register_wgsl_source*`, `Composer::compose_wgsl`,
+  `Composer::compose_wgsl_source`, and `Composer::export_wgsl_with_options`.
+- `Composer::default()` is hermetic and does not inherit the global registry.
+  Use `Composer::from_registered_wgsl_source_registry()` only when you
+  intentionally want a compatibility snapshot of global state.
 - Relative quoted file imports are resolved against the importing shader's
   registered path in the active Composer/global registry.
 - `register_wgsl_source_files_checked` is the safe bulk-registration path when

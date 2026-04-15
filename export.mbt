@@ -657,49 +657,6 @@ fn Composer::export_wgsl_from_session(
 }
 
 ///|
-pub fn Composer::export_wgsl(
-  self : Composer,
-  assets_base : String,
-  rel : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-  modules : @hashmap.HashMap[String, String],
-  options : WgslExportOptions,
-) -> WgslExportOutput raise ComposerError {
-  let session = self.new_wgsl_legacy_session(
-    assets_base,
-    defines,
-    value_defines,
-    @hashmap.HashMap::new(),
-    modules,
-    [],
-  )
-  self.export_wgsl_from_session(rel, session, options)
-}
-
-///|
-pub fn Composer::export_wgsl_with_redirects(
-  self : Composer,
-  assets_base : String,
-  rel : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-  modules : @hashmap.HashMap[String, String],
-  options : WgslExportOptions,
-  redirects : Array[WgslSymbolRedirect],
-) -> WgslExportOutput raise ComposerError {
-  let session = self.new_wgsl_legacy_session(
-    assets_base,
-    defines,
-    value_defines,
-    @hashmap.HashMap::new(),
-    modules,
-    redirects,
-  )
-  self.export_wgsl_from_session(rel, session, options)
-}
-
-///|
 pub fn Composer::export_wgsl_with_options(
   self : Composer,
   rel : String,
@@ -747,21 +704,4 @@ pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(
     },
     options,
   )
-}
-
-///|
-pub fn Composer::load_wgsl_preprocessed_with_redirects(
-  self : Composer,
-  assets_base : String,
-  rel : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-  visited : @hashmap.HashMap[String, Bool],
-  modules : @hashmap.HashMap[String, String],
-  redirects : Array[WgslSymbolRedirect],
-) -> String raise ComposerError {
-  let session = self.new_wgsl_legacy_session(
-    assets_base, defines, value_defines, visited, modules, redirects,
-  )
-  self.load_wgsl_preprocessed_into_session(rel, session)
 }

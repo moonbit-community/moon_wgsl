@@ -18,6 +18,24 @@ fn export_test_empty_defines() -> @hashmap.HashMap[String, Bool] {
 }
 
 ///|
+fn export_test_global_registry_composer() -> @moon_wgsl.Composer {
+  @moon_wgsl.Composer::from_registered_wgsl_source_registry()
+}
+
+///|
+fn export_test_compose_options(
+  defines : @hashmap.HashMap[String, Bool],
+  redirects : Array[@moon_wgsl.WgslSymbolRedirect],
+) -> @moon_wgsl.WgslComposeOptions {
+  {
+    assets_base: "",
+    defines,
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects,
+  }
+}
+
+///|
 fn register_export_test_shaders() -> Unit {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   @moon_wgsl.register_wgsl_source_files([
@@ -69,14 +87,9 @@ fn register_redirect_export_test_shaders() -> Unit {
 ///|
 test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map" {
   register_export_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let output = @moon_wgsl.Composer::default().export_wgsl(
-    "",
+  let output = export_test_global_registry_composer().export_wgsl_with_options(
     "shaders/effects/main.wgsl",
-    export_test_empty_defines(),
-    value_defines,
-    modules,
+    export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["shade"] },
   ) catch {
     err => abort("expected export success: \{err.message()}")
@@ -143,14 +156,9 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
 ///|
 test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
   register_export_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let output = @moon_wgsl.Composer::default().export_wgsl(
-    "",
+  let output = export_test_global_registry_composer().export_wgsl_with_options(
     "shaders/effects/main.wgsl",
-    export_test_empty_defines(),
-    value_defines,
-    modules,
+    export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["missing_entry"] },
   ) catch {
     err => abort("expected export success: \{err.message()}")
@@ -170,17 +178,13 @@ test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
 test "naga_oil: export source catalog is scoped to the current dependency closure" {
   register_ambiguous_export_test_shaders()
   let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
   let catalog = @moon_wgsl.build_registered_wgsl_source_catalog(
     export_test_empty_defines(),
     value_defines,
   )
-  let output = @moon_wgsl.Composer::default().export_wgsl(
-    "",
+  let output = export_test_global_registry_composer().export_wgsl_with_options(
     "shaders/effects/ambiguous.wgsl",
-    export_test_empty_defines(),
-    value_defines,
-    modules,
+    export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["shade"] },
   ) catch {
     err => abort("expected export success: \{err.message()}")
@@ -204,16 +208,12 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
 ///|
 test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-shaking" {
   register_redirect_export_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let output = @moon_wgsl.Composer::default().export_wgsl_with_redirects(
-    "",
+  let output = export_test_global_registry_composer().export_wgsl_with_options(
     "shaders/effects/redirect.wgsl",
-    export_test_empty_defines(),
-    value_defines,
-    modules,
+    export_test_compose_options(export_test_empty_defines(), [
+      { from_name: "build_shadow", to_name: "build_color" },
+    ]),
     { root_items: ["shade"] },
-    [{ from_name: "build_shadow", to_name: "build_color" }],
   ) catch {
     err => abort("expected redirect-aware export success: \{err.message()}")
   }

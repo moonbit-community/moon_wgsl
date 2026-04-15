@@ -18,6 +18,25 @@ fn empty_bool_defines() -> @hashmap.HashMap[String, Bool] {
 }
 
 ///|
+fn global_registry_composer() -> @moon_wgsl.Composer {
+  @moon_wgsl.Composer::from_registered_wgsl_source_registry()
+}
+
+///|
+fn composer_test_compose_options(
+  assets_base : String,
+  defines : @hashmap.HashMap[String, Bool],
+  redirects : Array[@moon_wgsl.WgslSymbolRedirect],
+) -> @moon_wgsl.WgslComposeOptions {
+  {
+    assets_base,
+    defines,
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects,
+  }
+}
+
+///|
 fn register_composer_test_shader_source(path : String, source : String) -> Unit {
   @moon_wgsl.register_wgsl_source(path, source)
 }
@@ -102,16 +121,9 @@ fn register_cycle_test_shaders() -> Unit {
 ///|
 test "naga_oil: composer preprocess supports multiline grouped imports" {
   register_grouped_import_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let preprocessed = @moon_wgsl.Composer::default().preprocess_wgsl_source(
-    "assets",
+  let preprocessed = global_registry_composer().compose_wgsl_source(
     "#import bevy_render::{\n  color_operations::{hsv_to_rgb, rgb_to_hsv},\n  maths::{PI_2, powsafe},\n}\nfn demo(color: vec3<f32>) -> vec3<f32> {\n  let h = rgb_to_hsv(color);\n  return hsv_to_rgb(vec3<f32>(h.x + PI_2, h.y, powsafe(h.z, 1.0)));\n}\n",
-    empty_bool_defines(),
-    value_defines,
-    visited,
-    modules,
+    composer_test_compose_options("assets", empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
   }
@@ -125,16 +137,9 @@ test "naga_oil: composer preprocess supports multiline grouped imports" {
 ///|
 test "naga_oil: composer preprocess strips module aliases" {
   register_grouped_import_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let preprocessed = @moon_wgsl.Composer::default().preprocess_wgsl_source(
-    "assets",
+  let preprocessed = global_registry_composer().compose_wgsl_source(
     "#import bevy_render::maths as maths\nfn demo() -> f32 {\n  return maths::PI_2;\n}\n",
-    empty_bool_defines(),
-    value_defines,
-    visited,
-    modules,
+    composer_test_compose_options("assets", empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
   }
@@ -146,17 +151,9 @@ test "naga_oil: composer preprocess strips module aliases" {
 ///|
 test "naga_oil: composer item imports keep dependent view declarations" {
   register_item_import_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-
-  let sprite_visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let sprite_preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed(
-    "",
+  let sprite_preprocessed = global_registry_composer().compose_wgsl(
     "sprite_render/render/sprite_view_bindings.wgsl",
-    empty_bool_defines(),
-    value_defines,
-    sprite_visited,
-    modules,
+    composer_test_compose_options("", empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected sprite composer preprocess success: \{err.message()}")
@@ -167,14 +164,9 @@ test "naga_oil: composer item imports keep dependent view declarations" {
   )
   debug_inspect(sprite_preprocessed.contains("struct View"), content="true")
 
-  let mesh2d_visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let mesh2d_preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed(
-    "",
+  let mesh2d_preprocessed = global_registry_composer().compose_wgsl(
     "sprite_render/mesh2d/mesh2d_view_bindings.wgsl",
-    empty_bool_defines(),
-    value_defines,
-    mesh2d_visited,
-    modules,
+    composer_test_compose_options("", empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected mesh2d composer preprocess success: \{err.message()}")
@@ -194,12 +186,9 @@ test "naga_oil: composer drops preprocess previous-view imports outside active b
   defines.set("WRITE_INDIRECT_PARAMETERS_METADATA", true)
   defines.set("INDIRECT", true)
   defines.set("FRUSTUM_CULLING", true)
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed(
-    "assets", "pbr/render/mesh_preprocess.wgsl", defines, value_defines, visited,
-    modules,
+  let preprocessed = global_registry_composer().compose_wgsl(
+    "pbr/render/mesh_preprocess.wgsl",
+    composer_test_compose_options("assets", defines, []),
   ) catch {
     err =>
       abort(
@@ -235,16 +224,9 @@ test "naga_oil: composer registered sources satisfy strict mesh2d preprocessing"
   @moon_wgsl.register_wgsl_source(
     "sprite_render/mesh2d/mesh2d.wgsl", "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
   )
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed(
-    "",
+  let preprocessed = global_registry_composer().compose_wgsl(
     "sprite_render/mesh2d/mesh2d.wgsl",
-    empty_bool_defines(),
-    value_defines,
-    visited,
-    modules,
+    composer_test_compose_options("", empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected registered-source preprocess success: \{err.message()}")
@@ -264,16 +246,9 @@ test "naga_oil: composer registered sources satisfy strict mesh2d preprocessing"
 ///|
 test "naga_oil: composer preprocess resolves relative quoted file imports" {
   register_relative_file_import_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed(
-    "",
+  let preprocessed = global_registry_composer().compose_wgsl(
     "shaders/effects/main.wgsl",
-    empty_bool_defines(),
-    value_defines,
-    visited,
-    modules,
+    composer_test_compose_options("", empty_bool_defines(), []),
   ) catch {
     err =>
       abort(
@@ -285,6 +260,27 @@ test "naga_oil: composer preprocess resolves relative quoted file imports" {
   debug_inspect(preprocessed.contains("fn build_color"), content="true")
   debug_inspect(preprocessed.contains("fn shade"), content="true")
   debug_inspect(preprocessed.contains("#import"), content="false")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: composer default is isolated from the global registry" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source(
+    "shaders/demo/global.wgsl", "#define_import_path demo::global\nfn global_value() -> f32 {\n  return 1.0;\n}\n",
+  )
+  debug_inspect(
+    @moon_wgsl.Composer::default().registered_wgsl_source(
+      "shaders/demo/global.wgsl",
+    ),
+    content="None",
+  )
+  debug_inspect(
+    global_registry_composer().registered_wgsl_source(
+      "shaders/demo/global.wgsl",
+    ),
+    content="Some(\"#define_import_path demo::global\\nfn global_value() -> f32 {\\n  return 1.0;\\n}\\n\")",
+  )
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
 
@@ -434,17 +430,11 @@ test "naga_oil: source-level symbol redirects rewrite references but keep declar
 ///|
 test "naga_oil: composer preprocess can apply source-level symbol redirects" {
   register_redirect_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
-  let preprocessed = @moon_wgsl.Composer::default().load_wgsl_preprocessed_with_redirects(
-    "",
+  let preprocessed = global_registry_composer().compose_wgsl(
     "shaders/effects/redirect.wgsl",
-    empty_bool_defines(),
-    value_defines,
-    visited,
-    modules,
-    [{ from_name: "build_shadow", to_name: "build_color" }],
+    composer_test_compose_options("", empty_bool_defines(), [
+      { from_name: "build_shadow", to_name: "build_color" },
+    ]),
   ) catch {
     err =>
       abort(
@@ -467,18 +457,11 @@ test "naga_oil: composer preprocess can apply source-level symbol redirects" {
 ///|
 test "naga_oil: composer reports import cycles explicitly" {
   register_cycle_test_shaders()
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let modules = @moon_wgsl.copy_registered_wgsl_import_module_paths()
   let mut message : String? = None
   ignore(
-    @moon_wgsl.Composer::default().load_wgsl_preprocessed(
-      "",
+    global_registry_composer().compose_wgsl(
       "shaders/cycle/a.wgsl",
-      empty_bool_defines(),
-      value_defines,
-      visited,
-      modules,
+      composer_test_compose_options("", empty_bool_defines(), []),
     ),
   ) catch {
     err => message = Some(err.message())

@@ -117,20 +117,17 @@ pub fn Composer::analyze_wgsl_source_files_for_registry(Self, Array[WgslSourceFi
 pub fn Composer::build_wgsl_source_catalog(Self, WgslComposeOptions) -> Array[WgslSourceCatalogEntry]
 pub fn Composer::clear_registered_wgsl_source_registry(Self) -> Unit
 pub fn Composer::compose_wgsl(Self, String, WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_source(Self, String, WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::contains_module(Self, String) -> Bool
 pub fn Composer::copy_registered_wgsl_import_module_paths(Self) -> @hashmap.HashMap[String, String]
 pub fn Composer::copy_registered_wgsl_source_files(Self) -> Array[WgslSourceFile]
 pub fn Composer::default() -> Self
-pub fn Composer::export_wgsl(Self, String, String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], @hashmap.HashMap[String, String], WgslExportOptions) -> WgslExportOutput raise ComposerError
 pub fn Composer::export_wgsl_from_assets_base_required(Self, String, String, WgslExportOptions) -> WgslExportOutput raise ComposerError
 pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(Self, String, String, WgslExportOptions, Array[WgslSymbolRedirect]) -> WgslExportOutput raise ComposerError
 pub fn Composer::export_wgsl_with_options(Self, String, WgslComposeOptions, WgslExportOptions) -> WgslExportOutput raise ComposerError
-pub fn Composer::export_wgsl_with_redirects(Self, String, String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], @hashmap.HashMap[String, String], WgslExportOptions, Array[WgslSymbolRedirect]) -> WgslExportOutput raise ComposerError
+pub fn Composer::from_registered_wgsl_source_registry() -> Self
 pub fn Composer::load_wgsl_from_assets_base_required(Self, String, String) -> String raise ComposerError
-pub fn Composer::load_wgsl_preprocessed(Self, String, String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, String]) -> String raise ComposerError
-pub fn Composer::load_wgsl_preprocessed_with_redirects(Self, String, String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, String], Array[WgslSymbolRedirect]) -> String raise ComposerError
 pub fn Composer::load_wgsl_source_required_raw(Self, String, String) -> String raise ComposerError
-pub fn Composer::preprocess_wgsl_source(Self, String, String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, String]) -> String raise ComposerError
 pub fn Composer::register_wgsl_source(Self, String, String) -> Unit
 pub fn Composer::register_wgsl_source_files(Self, Array[WgslSourceFile]) -> Unit
 pub fn Composer::register_wgsl_source_files_checked(Self, Array[WgslSourceFile]) -> Array[WgslDiagnostic]
