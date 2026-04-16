@@ -9,6 +9,7 @@ high-level concepts. After adding the dependency, reference the package through
 `@moon_wgsl`:
 
 ```mbt check
+///|
 test "README: root package surface" {
   let value_defines = @moon_wgsl.default_wgsl_value_defines()
   debug_inspect(value_defines.length() > 0, content="true")
@@ -71,11 +72,11 @@ Metadata includes:
 Example:
 
 ```mbt check
+///|
 test "README: metadata extraction" {
-  let metadata : @moon_wgsl.PreprocessorMetaData =
-    @moon_wgsl.get_preprocessor_metadata(
-      "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2u\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
-    )
+  let metadata : @moon_wgsl.PreprocessorMetaData = @moon_wgsl.get_preprocessor_metadata(
+    "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2u\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
+  )
 
   debug_inspect(metadata.name, content="Some(\"bevy_ui::ui_node\")")
   debug_inspect(metadata.imports.length(), content="3")
@@ -89,17 +90,18 @@ Use `Preprocessor::preprocess` to evaluate conditional blocks, strip import
 declarations from the output, and substitute shader-definition values.
 
 ```mbt check
+///|
 test "README: preprocess single shader" {
   let defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] = @hashmap.HashMap::new()
   defs.set("TEXTURE", @moon_wgsl.ShaderDefValue::Bool(true))
 
-  let source =
-    "#ifdef TEXTURE\nvar sprite_texture: texture_2d<f32>;\n#else\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
+  let source = "#ifdef TEXTURE\nvar sprite_texture: texture_2d<f32>;\n#else\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
 
-  let output : @moon_wgsl.PreprocessOutput =
-    @moon_wgsl.Preprocessor::default().preprocess(source, defs) catch {
-      _ => abort("preprocess failed")
-    }
+  let output : @moon_wgsl.PreprocessOutput = @moon_wgsl.Preprocessor::default().preprocess(
+    source, defs,
+  ) catch {
+    _ => abort("preprocess failed")
+  }
 
   debug_inspect(
     output.preprocessed_source.contains("texture_2d<f32>"),
@@ -121,6 +123,7 @@ prefer Composer-owned registry state. `Composer::default()` starts empty; use
 want a snapshot of the global compatibility registry.
 
 ```mbt check
+///|
 test "README: compose registered modules" {
   let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -128,18 +131,15 @@ test "README: compose registered modules" {
   composer.clear_registered_wgsl_source_registry()
 
   composer.register_wgsl_source(
-    "render/maths.wgsl",
-    "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318;\n",
+    "render/maths.wgsl", "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318;\n",
   )
 
   composer.register_wgsl_source(
-    "sprite_render/mesh2d/mesh2d_functions.wgsl",
-    "#define_import_path bevy_sprite::mesh2d_functions\n#import bevy_render::maths::PI_2\nfn twice_pi() -> f32 {\n  return PI_2;\n}\n",
+    "sprite_render/mesh2d/mesh2d_functions.wgsl", "#define_import_path bevy_sprite::mesh2d_functions\n#import bevy_render::maths::PI_2\nfn twice_pi() -> f32 {\n  return PI_2;\n}\n",
   )
 
   composer.register_wgsl_source(
-    "sprite_render/mesh2d/mesh2d.wgsl",
-    "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
+    "sprite_render/mesh2d/mesh2d.wgsl", "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
   )
 
   let compose_options : @moon_wgsl.WgslComposeOptions = {
@@ -149,8 +149,7 @@ test "README: compose registered modules" {
     redirects,
   }
   let composed : String = composer.compose_wgsl(
-    "sprite_render/mesh2d/mesh2d.wgsl",
-    compose_options,
+    "sprite_render/mesh2d/mesh2d.wgsl", compose_options,
   ) catch {
     _ => abort("compose failed")
   }
@@ -167,6 +166,7 @@ between them. Composer instances expose the same registry APIs as the global
 compatibility helpers.
 
 ```mbt check
+///|
 test "README: bulk registry and relative imports" {
   let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -196,8 +196,7 @@ test "README: bulk registry and relative imports" {
     redirects,
   }
   let composed : String = composer.compose_wgsl(
-    "shaders/effects/main.wgsl",
-    compose_options,
+    "shaders/effects/main.wgsl", compose_options,
   ) catch {
     _ => abort("compose failed")
   }
@@ -209,6 +208,7 @@ If you want collision diagnostics before mutating the registry, use the checked
 path:
 
 ```mbt check
+///|
 test "README: checked bulk registry" {
   let files : Array[@moon_wgsl.WgslSourceFile] = [
     {
@@ -222,12 +222,14 @@ test "README: checked bulk registry" {
   ]
 
   @moon_wgsl.clear_registered_wgsl_source_registry()
-  let diagnostics : Array[@moon_wgsl.WgslDiagnostic] =
-    @moon_wgsl.analyze_wgsl_source_files_for_registry(files)
+  let diagnostics : Array[@moon_wgsl.WgslDiagnostic] = @moon_wgsl.analyze_wgsl_source_files_for_registry(
+    files,
+  )
   debug_inspect(diagnostics.length(), content="1")
 
-  let checked_diagnostics : Array[@moon_wgsl.WgslDiagnostic] =
-    @moon_wgsl.register_wgsl_source_files_checked(files)
+  let checked_diagnostics : Array[@moon_wgsl.WgslDiagnostic] = @moon_wgsl.register_wgsl_source_files_checked(
+    files,
+  )
   debug_inspect(checked_diagnostics.length(), content="1")
 }
 ```
@@ -241,6 +243,7 @@ Scanned `rel_path` values are relative to the scan root, so scanning
 `assets/shaders` yields registry keys such as `effects/main.wgsl`.
 
 ```mbt check
+///|
 test "README: scan source tree" {
   let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -263,8 +266,7 @@ test "README: scan source tree" {
     redirects,
   }
   let composed : String = composer.compose_wgsl(
-    "effects/main.wgsl",
-    compose_options,
+    "effects/main.wgsl", compose_options,
   ) catch {
     _ => abort("compose failed")
   }
@@ -276,6 +278,7 @@ test "README: scan source tree" {
 If you want to preflight a tree before registration, use the checked scan path:
 
 ```mbt check
+///|
 test "README: checked tree scan" {
   let (files, diagnostics) = @moon_wgsl.scan_wgsl_source_files_checked(
     "testdata/wgsl_scan_dups",
@@ -297,6 +300,7 @@ tree-shaking and returns source-map entries, the dependency-closure source
 catalog used for matching, plus diagnostics.
 
 ```mbt check
+///|
 test "README: export single WGSL file" {
   let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -321,17 +325,12 @@ test "README: export single WGSL file" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
   }
-  let export_options : @moon_wgsl.WgslExportOptions = {
-    root_items: ["shade"],
+  let export_options : @moon_wgsl.WgslExportOptions = { root_items: ["shade"] }
+  let exported : @moon_wgsl.WgslExportOutput = composer.export_wgsl_with_options(
+    "shaders/effects/main.wgsl", compose_options, export_options,
+  ) catch {
+    _ => abort("export failed")
   }
-  let exported : @moon_wgsl.WgslExportOutput =
-    composer.export_wgsl_with_options(
-      "shaders/effects/main.wgsl",
-      compose_options,
-      export_options,
-    ) catch {
-      _ => abort("export failed")
-    }
 
   debug_inspect(exported.source.contains("#import"), content="false")
   debug_inspect(exported.source_catalog.length() > 0, content="true")
@@ -344,6 +343,7 @@ If you need the declaration catalog directly, without exporting a specific
 entrypoint, use `Composer::build_wgsl_source_catalog` on the same Composer:
 
 ```mbt check
+///|
 test "README: build source catalog" {
   let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -368,8 +368,9 @@ test "README: build source catalog" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
   }
-  let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] =
-    composer.build_wgsl_source_catalog(compose_options)
+  let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] = composer.build_wgsl_source_catalog(
+    compose_options,
+  )
   debug_inspect(catalog.length() > 0, content="true")
 }
 ```
@@ -383,6 +384,7 @@ Use the redirect-aware APIs when you want to remap one imported symbol to
 another during composition/export without depending on Naga IR.
 
 ```mbt check
+///|
 test "README: source-level redirects" {
   let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -409,17 +411,12 @@ test "README: source-level redirects" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
   }
-  let export_options : @moon_wgsl.WgslExportOptions = {
-    root_items: ["shade"],
+  let export_options : @moon_wgsl.WgslExportOptions = { root_items: ["shade"] }
+  let exported : @moon_wgsl.WgslExportOutput = composer.export_wgsl_with_options(
+    "shaders/effects/redirect.wgsl", compose_options, export_options,
+  ) catch {
+    _ => abort("redirect export failed")
   }
-  let exported : @moon_wgsl.WgslExportOutput =
-    composer.export_wgsl_with_options(
-      "shaders/effects/redirect.wgsl",
-      compose_options,
-      export_options,
-    ) catch {
-      _ => abort("redirect export failed")
-    }
 
   debug_inspect(exported.source.contains("build_shadow"), content="false")
   debug_inspect(exported.source.contains("build_color"), content="true")
@@ -430,20 +427,19 @@ Global compatibility helpers are still available when you intentionally want
 to inspect the package-level registry:
 
 ```mbt check
+///|
 test "README: global catalog helper" {
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
 
   @moon_wgsl.clear_registered_wgsl_source_registry()
   @moon_wgsl.register_wgsl_source(
-    "shaders/demo/catalog.wgsl",
-    "#define_import_path demo::catalog\nfn catalog_value() -> f32 {\n  return 1.0;\n}\n",
+    "shaders/demo/catalog.wgsl", "#define_import_path demo::catalog\nfn catalog_value() -> f32 {\n  return 1.0;\n}\n",
   )
 
-  let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] =
-    @moon_wgsl.build_registered_wgsl_source_catalog(
-      defines,
-      @moon_wgsl.default_wgsl_value_defines(),
-    )
+  let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] = @moon_wgsl.build_registered_wgsl_source_catalog(
+    defines,
+    @moon_wgsl.default_wgsl_value_defines(),
+  )
   debug_inspect(catalog.length() > 0, content="true")
 }
 ```

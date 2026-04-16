@@ -108,8 +108,7 @@ pub fn ComposableModuleDescriptor::default() -> Self
 
 pub struct Composer {
   module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
-  registered_wgsl_sources : @hashmap.HashMap[String, String]
-  registered_wgsl_import_modules : @hashmap.HashMap[String, String]
+  registry : WgslSourceRegistry
   composable_module_registry_paths : @hashmap.HashMap[String, String]
 }
 pub fn Composer::add_composable_module(Self, ComposableModuleDescriptor) -> ComposableModuleDefinition raise ComposerError
@@ -295,6 +294,8 @@ pub struct WgslSourceMapEntry {
   symbol_name : String?
 } derive(Eq, @debug.Debug)
 pub fn WgslSourceMapEntry::default() -> Self
+
+type WgslSourceRegistry
 
 pub(all) struct WgslSourceScanOptions {
   recursive : Bool
