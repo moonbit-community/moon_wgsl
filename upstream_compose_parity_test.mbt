@@ -515,3 +515,151 @@ test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
     content="false",
   )
 }
+
+///|
+test "github issue 3: item-imported entry points are emitted even when unused by source" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "mesh.wgsl",
+    "#define_import_path demo::mesh\n" +
+    "@vertex\n" +
+    "fn vertex() -> vec4<f32> {\n" +
+    "  return vec4<f32>(0.0);\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "pbr.wgsl",
+    "#define_import_path demo::pbr\n" +
+    "@fragment\n" +
+    "fn fragment() -> vec4<f32> {\n" +
+    "  return vec4<f32>(1.0);\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "entry.wgsl", "#import demo::{ mesh::vertex, pbr::fragment }\n",
+  )
+  let source = composer.compose_wgsl(
+    "entry.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err => abort("expected issue 3 entry compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("@vertex\nfn vertex"), content="true")
+  debug_inspect(source.contains("@fragment\nfn fragment"), content="true")
+}
+
+///|
+test "github issue 3: mixed full-module and item imports do not re-emit duplicate declarations" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "types.wgsl",
+    "#define_import_path demo::types\n" +
+    "struct StandardMaterial { value: f32 }\n",
+  )
+  composer.register_wgsl_source(
+    "bindings.wgsl",
+    "#define_import_path demo::bindings\n" +
+    "#import demo::types::StandardMaterial\n" +
+    "@group(3) @binding(0) var<uniform> material: StandardMaterial;\n",
+  )
+  composer.register_wgsl_source(
+    "fragment.wgsl",
+    "#define_import_path demo::fragment\n" +
+    "#import demo::{ types, bindings }\n" +
+    "fn use_material() -> types::StandardMaterial {\n" +
+    "  return bindings::material;\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "root.wgsl",
+    "#import demo::fragment as fragment\n" +
+    "fn fragment_entry() {\n" +
+    "  fragment::use_material();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err => abort("expected issue 3 mixed compose success: \{err.message()}")
+  }
+  debug_inspect(
+    upstream_parity_count_occurrences(
+      source, "struct fragment__types__StandardMaterial",
+    ),
+    content="1",
+  )
+  debug_inspect(
+    source.contains("fragment__bindings__StandardMaterial"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains(
+      "fragment__bindings__material: fragment__types__StandardMaterial",
+    ),
+    content="true",
+  )
+}
+
+///|
+test "github issue 3: nested alias imports rewrite variable declaration types" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "mesh_view_types.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_types\n" +
+    "struct Lights { value: u32 }\n",
+  )
+  composer.register_wgsl_source(
+    "view.wgsl",
+    "#define_import_path bevy_render::view\n" + "struct View { value: u32 }\n",
+  )
+  composer.register_wgsl_source(
+    "globals.wgsl",
+    "#define_import_path bevy_render::globals\n" +
+    "struct Globals { value: u32 }\n",
+  )
+  composer.register_wgsl_source(
+    "mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "#import bevy_pbr::mesh_view_types as types\n" +
+    "#import bevy_render::{ view::View, globals::Globals }\n" +
+    "@group(0) @binding(0) var<uniform> view: View;\n" +
+    "@group(0) @binding(1) var<uniform> globals: Globals;\n" +
+    "@group(0) @binding(2) var<uniform> lights: types::Lights;\n",
+  )
+  composer.register_wgsl_source(
+    "root.wgsl",
+    "#import bevy_pbr::mesh_view_bindings as mesh_view_bindings\n" +
+    "fn read_view() -> u32 {\n" +
+    "  return mesh_view_bindings::view.value + mesh_view_bindings::globals.value + mesh_view_bindings::lights.value;\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort("expected issue 3 nested alias compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains(": View"), content="false")
+  debug_inspect(source.contains(": Globals"), content="false")
+  debug_inspect(source.contains("types::Lights"), content="false")
+  debug_inspect(
+    source.contains(
+      "var<uniform> mesh_view_bindings__view: mesh_view_bindings__View",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    source.contains(
+      "var<uniform> mesh_view_bindings__globals: mesh_view_bindings__Globals",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    source.contains(
+      "var<uniform> mesh_view_bindings__lights: mesh_view_bindings__types__Lights",
+    ),
+    content="true",
+  )
+}

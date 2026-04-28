@@ -17,6 +17,7 @@ priv struct WgslImportRequest {
   module_path : String
   rel_path : String
   mut import_full_module : Bool
+  mut keep_requested_items : Bool
   requested_items : Array[String]
   alias_name : String
 }
@@ -318,6 +319,9 @@ fn wgsl_import_request_visit_key(
   if request.import_full_module {
     key = "\{key}|*"
   } else {
+    if request.keep_requested_items {
+      key = "\{key}|explicit"
+    }
     let sorted_items : Array[String] = []
     for item in request.requested_items {
       sorted_items.push(item)
@@ -328,6 +332,16 @@ fn wgsl_import_request_visit_key(
     }
   }
   key
+}
+
+///|
+fn wgsl_full_module_visit_key(rel_path : String, alias_name : String) -> String {
+  "\{rel_path}|\{alias_name}|*"
+}
+
+///|
+fn wgsl_imported_item_name_key(rel_path : String, item_name : String) -> String {
+  "\{rel_path}|\{item_name}"
 }
 
 ///|
@@ -360,21 +374,6 @@ fn resolve_wgsl_import_request_module(
     }
   }
   resolve_wgsl_import_module_in_registry(registry, import_path, modules)
-}
-
-///|
-fn wgsl_visit_has_rel_prefix(
-  visited : @hashmap.HashMap[String, Bool],
-  rel_path : String,
-) -> Bool {
-  let prefix = "\{rel_path}|"
-  for entry in visited.iter() {
-    let (key, _) = entry
-    if starts_with_text(key, prefix) {
-      return true
-    }
-  }
-  false
 }
 
 ///|

@@ -395,6 +395,32 @@ fn collect_wgsl_reachable_declaration_names(
 }
 
 ///|
+fn wgsl_declaration_block_has_entry_point_attribute(text : String) -> Bool {
+  let cleaned = replace_comments(text)
+  cleaned.contains("@vertex") ||
+  cleaned.contains("@fragment") ||
+  cleaned.contains("@compute")
+}
+
+///|
+fn wgsl_source_declares_entry_point(
+  source : String,
+  item_name : String,
+) -> Bool {
+  if item_name == "" {
+    return false
+  }
+  let graph = build_wgsl_declaration_graph(source)
+  for block in graph.declaration_blocks {
+    if block.name == item_name &&
+      wgsl_declaration_block_has_entry_point_attribute(block.text) {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn strip_wgsl_import_declarations(source : String) -> String {
   let lines : Array[String] = []
   for line_item in source.split("\n") {

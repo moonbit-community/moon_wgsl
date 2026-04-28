@@ -127,6 +127,7 @@ priv struct WgslComposeSession {
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
   visited : @hashmap.HashMap[String, Bool]
+  imported_item_names : @hashmap.HashMap[String, String]
   active_rel_paths : Array[String]
   resolved_source_files : @hashmap.HashMap[String, String]
 }
@@ -255,6 +256,7 @@ fn Composer::new_wgsl_compose_session(
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
     visited: @hashmap.HashMap::new(),
+    imported_item_names: @hashmap.HashMap::new(),
     active_rel_paths: [],
     resolved_source_files: @hashmap.HashMap::new(),
   }
@@ -776,6 +778,7 @@ fn Composer::build_wgsl_import_requests(
     target_index = target_index + 1
     let requested_items : Array[String] = []
     let mut request_module_prefix = target.raw_path
+    let mut keep_requested_items = false
     if target.alias_name != "" {
       if !active_scan_source.contains("\{target.alias_name}::") {
         continue
@@ -846,6 +849,7 @@ fn Composer::build_wgsl_import_requests(
       }
     } else if module_path != target.raw_path {
       import_full_module = false
+      keep_requested_items = true
       let requested_item = wgsl_import_requested_item_name(
         target.raw_path,
         module_path,
@@ -857,9 +861,18 @@ fn Composer::build_wgsl_import_requests(
       }
     }
     if !import_full_module {
+      let import_source = match
+        self.registry.registered_source(resolved_module.rel_path) {
+        Some(source) => source
+        None => ""
+      }
       let used_requested_items : Array[String] = []
       for requested_item in requested_items {
-        if wgsl_source_contains_identifier(active_scan_source, requested_item) {
+        if wgsl_source_contains_identifier(active_scan_source, requested_item) ||
+          (
+            keep_requested_items &&
+            wgsl_source_declares_entry_point(import_source, requested_item)
+          ) {
           used_requested_items.push(requested_item)
         }
       }
@@ -882,6 +895,9 @@ fn Composer::build_wgsl_import_requests(
       if import_full_module {
         request.import_full_module = true
       }
+      if keep_requested_items {
+        request.keep_requested_items = true
+      }
       for requested_item in requested_items {
         wgsl_string_list_push_unique(request.requested_items, requested_item)
       }
@@ -890,6 +906,7 @@ fn Composer::build_wgsl_import_requests(
         module_path,
         rel_path: resolved_module.rel_path,
         import_full_module,
+        keep_requested_items,
         requested_items,
         alias_name: module_alias,
       })
@@ -908,19 +925,39 @@ fn Composer::compose_wgsl_import_requests(
 ) -> String raise ComposerError {
   let mut merged = ""
   for request in requests {
+    let full_module_key = wgsl_full_module_visit_key(
+      request.rel_path,
+      request.alias_name,
+    )
     if wgsl_path_stack_contains(session.active_rel_paths, request.rel_path) {
       raise ComposerError::ImportCycle(
         wgsl_import_cycle_string(session.active_rel_paths, request.rel_path),
       )
     }
     if request.import_full_module {
-      if wgsl_visit_has_rel_prefix(session.visited, request.rel_path) {
+      if session.visited.contains(full_module_key) {
         continue
       }
     }
-    if !request.import_full_module {
-      let full_module_key = "\{request.rel_path}|*"
-      if session.visited.contains(full_module_key) {
+    if !request.import_full_module && request.alias_name == "" {
+      let mut resolved_requested_items = 0
+      for requested_item in request.requested_items {
+        match
+          session.imported_item_names.get(
+            wgsl_imported_item_name_key(request.rel_path, requested_item),
+          ) {
+          Some(imported_name) => {
+            alias_redirects.push(WgslSymbolRedirect::{
+              from_name: requested_item,
+              to_name: imported_name,
+            })
+            resolved_requested_items = resolved_requested_items + 1
+          }
+          None => ()
+        }
+      }
+      if request.requested_items.length() > 0 &&
+        resolved_requested_items == request.requested_items.length() {
         continue
       }
     }
@@ -960,21 +997,49 @@ fn Composer::compose_wgsl_import_requests(
     if module_source == "" {
       continue
     }
+    let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
     let final_module_source = if request.alias_name != "" {
-      let rename_map = build_wgsl_import_rename_map(
+      let request_rename_map = build_wgsl_import_rename_map(
         module_source,
         request.alias_name,
       )
+      for entry in request_rename_map.iter() {
+        let (from_name, to_name) = entry
+        rename_map.set(from_name, to_name)
+      }
       collect_wgsl_import_alias_redirects(
         request.alias_name,
-        rename_map,
+        request_rename_map,
         alias_redirects,
       )
       rewrite_wgsl_declaration_text_with_renamed_declarations(
-        module_source, rename_map,
+        module_source, request_rename_map,
       )
     } else {
       module_source
+    }
+    if rename_map.is_empty() {
+      let final_graph = build_wgsl_declaration_graph(final_module_source)
+      for block in final_graph.declaration_blocks {
+        if block.name == "" {
+          continue
+        }
+        session.imported_item_names.set(
+          wgsl_imported_item_name_key(request.rel_path, block.name),
+          block.name,
+        )
+      }
+    } else {
+      for entry in rename_map.iter() {
+        let (from_name, to_name) = entry
+        session.imported_item_names.set(
+          wgsl_imported_item_name_key(request.rel_path, from_name),
+          to_name,
+        )
+      }
+    }
+    if request.import_full_module {
+      session.visited.set(full_module_key, true)
     }
     merged = "\{merged}\{final_module_source}"
     let merged_len = merged.length()
