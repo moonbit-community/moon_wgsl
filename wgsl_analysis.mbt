@@ -172,6 +172,7 @@ fn wgsl_declaration_name(line : String) -> String {
 ///|
 fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
   let lines : Array[String] = []
+  let cleaned_lines : Array[String] = []
   let line_starts : Array[Int] = []
   let mut offset = 0
   for line_item in source.split("\n") {
@@ -179,6 +180,9 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
     lines.push(line)
     line_starts.push(offset)
     offset = offset + line.length() + 1
+  }
+  for line_item in replace_comments(source).split("\n") {
+    cleaned_lines.push(line_item.to_string())
   }
 
   let pending_prefix : Array[String] = []
@@ -188,11 +192,10 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
   let mut i = 0
   while i < lines.length() {
     let line = lines[i]
-    let trimmed = line.trim().to_string()
+    let cleaned_line = cleaned_lines[i]
+    let trimmed = cleaned_line.trim().to_string()
     let decl_name_hint = wgsl_declaration_name(trimmed)
-    if trimmed == "" ||
-      starts_with_text(trimmed, "//") ||
-      (starts_with_text(trimmed, "@") && decl_name_hint == "") {
+    if trimmed == "" || (starts_with_text(trimmed, "@") && decl_name_hint == "") {
       if pending_prefix.length() == 0 {
         pending_prefix_start = line_starts[i]
       }
@@ -214,7 +217,7 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
         i = i + 1
         let next_line = lines[i]
         import_block = "\{import_block}\n\{next_line}"
-        balance = balance + import_brace_balance(next_line)
+        balance = balance + import_brace_balance(cleaned_lines[i])
       }
       import_block = "\{import_block}\n"
       import_blocks.push(WgslGraphBlock::{
@@ -243,12 +246,13 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
     let mut done = false
     while !done {
       let block_line = lines[i]
+      let cleaned_block_line = cleaned_lines[i]
       block_lines.push(block_line)
-      if text_contains_code_unit(block_line, 123) {
+      if text_contains_code_unit(cleaned_block_line, 123) {
         saw_brace = true
       }
-      brace_depth = brace_depth + import_brace_balance(block_line)
-      let block_trimmed = block_line.trim().to_string()
+      brace_depth = brace_depth + import_brace_balance(cleaned_block_line)
+      let block_trimmed = cleaned_block_line.trim().to_string()
       if saw_brace {
         done = brace_depth == 0
       } else {

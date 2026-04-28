@@ -450,3 +450,68 @@ test "naga_oil upstream: modf result member access survives composition" {
   debug_inspect(source.contains("let f = fw.fract;"), content="true")
   debug_inspect(source.contains("let w = fw.whole;"), content="true")
 }
+
+///|
+test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
+  let composer = @moon_wgsl.Composer::default()
+  let pbr_types_source = "#define_import_path bevy_pbr::pbr_types\n" +
+    "struct StandardMaterial {\n" +
+    "  flags: u32,\n" +
+    "}\n" +
+    "struct PbrInput {\n" +
+    "  material: StandardMaterial,\n" +
+    "}\n" +
+    "const STANDARD_MATERIAL_FLAGS_ALPHA_MODE_RESERVED_BITS: u32          = 7u << 29u; // (0b111u << 29u)\n" +
+    "const STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE: u32                 = 0u << 29u;\n" +
+    "const STANDARD_MATERIAL_FLAGS_ALPHA_MODE_MASK: u32                   = 1u << 29u;\n" +
+    "const STANDARD_MATERIAL_FLAGS_ALPHA_MODE_ALPHA_TO_COVERAGE: u32      = 6u << 29u;\n"
+  composer.register_wgsl_source("pbr_types.wgsl", pbr_types_source)
+  let pbr_functions_source = "#define_import_path bevy_pbr::pbr_functions\n" +
+    "#import bevy_pbr::pbr_types as pbr_types\n" +
+    "fn alpha_discard(material: pbr_types::StandardMaterial, output_color: vec4<f32>) -> vec4<f32> {\n" +
+    "  var color = output_color;\n" +
+    "  let alpha_mode = material.flags & pbr_types::STANDARD_MATERIAL_FLAGS_ALPHA_MODE_RESERVED_BITS;\n" +
+    "  if alpha_mode == pbr_types::STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE {\n" +
+    "    color.a = 1.0;\n" +
+    "  }\n" +
+    "#ifdef MAY_DISCARD\n" +
+    "  else if alpha_mode == pbr_types::STANDARD_MATERIAL_FLAGS_ALPHA_MODE_MASK ||\n" +
+    "      alpha_mode == pbr_types::STANDARD_MATERIAL_FLAGS_ALPHA_MODE_ALPHA_TO_COVERAGE {\n" +
+    "    color.a = 0.5;\n" +
+    "  }\n" +
+    "#endif\n" +
+    "  return color;\n" +
+    "}\n" +
+    "fn fragment(material: pbr_types::StandardMaterial) -> vec4<f32> {\n" +
+    "  return alpha_discard(material, vec4<f32>(0.0));\n" +
+    "}\n"
+  composer.register_wgsl_source("pbr_functions.wgsl", pbr_functions_source)
+  let pbr_fragment_source = "#define_import_path bevy_pbr::pbr_fragment\n" +
+    "#import bevy_pbr::{ pbr_functions, pbr_types }\n" +
+    "fn fragment() -> vec4<f32> {\n" +
+    "  var input: pbr_types::PbrInput;\n" +
+    "  return pbr_functions::alpha_discard(input.material, vec4<f32>(0.0));\n" +
+    "}\n"
+  composer.register_wgsl_source("pbr_fragment.wgsl", pbr_fragment_source)
+  let root_source = "#import bevy_pbr::pbr_fragment as pbr\n" +
+    "fn fragment() -> vec4<f32> {\n" +
+    "  return pbr::fragment();\n" +
+    "}\n"
+  composer.register_wgsl_source("root.wgsl", root_source)
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(
+      upstream_parity_bool_defines(["MAY_DISCARD"]),
+    ),
+  ) catch {
+    err => abort("expected issue 2 repro compose success: \{err.message()}")
+  }
+  debug_inspect(
+    source.contains("pbr_types__STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("pbr_types::STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE"),
+    content="false",
+  )
+}
