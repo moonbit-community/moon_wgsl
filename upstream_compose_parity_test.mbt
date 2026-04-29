@@ -567,6 +567,57 @@ test "naga_oil upstream: virtual function override replaces imported body" {
 }
 
 ///|
+test "naga_oil upstream: transitive virtual override replaces imported body" {
+  let source = upstream_mirror_compose_case(
+    "overrides",
+    "top_with_middle.wgsl",
+    upstream_parity_empty_defines(),
+  )
+  debug_inspect(source.contains("virtual fn"), content="false")
+  debug_inspect(source.contains("override fn"), content="false")
+  debug_inspect(
+    source.contains("fn mod__inner(arg: f32) -> f32"),
+    content="true",
+  )
+  debug_inspect(source.contains("return arg * 3.0;"), content="true")
+  debug_inspect(source.contains("return arg * 2.0;"), content="false")
+  debug_inspect(source.contains("return mod__inner(1.0);"), content="true")
+  debug_inspect(source.contains("return mod__outer();"), content="true")
+}
+
+///|
+test "naga_oil upstream: additional import plugin overrides virtual function" {
+  let composer = upstream_mirror_composer("add_imports")
+  let options = upstream_parity_compose_options(upstream_parity_empty_defines())
+  options.additional_imports.push(@moon_wgsl.ImportDefinition::{
+    import_path: "plugin",
+    items: [],
+  })
+  let source = composer.compose_wgsl("top.wgsl", options) catch {
+    err =>
+      abort(
+        "expected additional-import override compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("virtual fn"), content="false")
+  debug_inspect(source.contains("override fn"), content="false")
+  debug_inspect(
+    source.contains("fn overridable__func() -> f32"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("fn overridable__func__virtual_base() -> f32"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("return overridable__func__virtual_base() + 1.0;"),
+    content="true",
+  )
+  debug_inspect(source.contains("return 1.0;"), content="true")
+  debug_inspect(source.contains("return overridable__func();"), content="true")
+}
+
+///|
 test "naga_oil upstream: invalid override reports non-virtual target" {
   let composer = upstream_mirror_composer("overrides")
   let mut message = ""

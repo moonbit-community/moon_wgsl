@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use naga_oil::compose::{
-    ComposableModuleDescriptor, Composer, NagaModuleDescriptor, ShaderDefValue,
+    ComposableModuleDescriptor, Composer, ImportDefinition, NagaModuleDescriptor, ShaderDefValue,
 };
 
 #[derive(Debug)]
@@ -13,6 +13,7 @@ struct Options {
     entry: String,
     output: Option<PathBuf>,
     defs: HashMap<String, ShaderDefValue>,
+    additional_imports: Vec<String>,
     capabilities: naga::valid::Capabilities,
     check_only: bool,
 }
@@ -25,7 +26,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl> [--def NAME=true|false|INT] [--capability ray-query] [--check-only] [--output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl> [--def NAME=true|false|INT] [--additional-import MODULE] [--capability ray-query] [--check-only] [--output <file>]"
     );
     std::process::exit(2);
 }
@@ -61,6 +62,7 @@ fn parse_options() -> Options {
     let mut entry = None;
     let mut output = None;
     let mut defs = HashMap::new();
+    let mut additional_imports = Vec::new();
     let mut capabilities = naga::valid::Capabilities::default();
     let mut check_only = false;
     let mut args = env::args().skip(1);
@@ -73,6 +75,10 @@ fn parse_options() -> Options {
                 let Some(value) = args.next() else { usage() };
                 let (name, def_value) = parse_shader_def(&value);
                 defs.insert(name, def_value);
+            }
+            "--additional-import" => {
+                let Some(value) = args.next() else { usage() };
+                additional_imports.push(value);
             }
             "--capability" => {
                 let Some(value) = args.next() else { usage() };
@@ -90,6 +96,7 @@ fn parse_options() -> Options {
         entry: entry.unwrap_or_else(|| usage()),
         output,
         defs,
+        additional_imports,
         capabilities,
         check_only,
     }
@@ -126,15 +133,30 @@ fn has_import_path(source: &str) -> bool {
         .any(|line| line.trim_start().starts_with("#define_import_path "))
 }
 
+fn inferred_module_path(rel_path: &str) -> Option<String> {
+    let without_ext = rel_path.strip_suffix(".wgsl")?;
+    let without_prefix = without_ext.strip_prefix("shaders/").unwrap_or(without_ext);
+    let segments = without_prefix
+        .split('/')
+        .filter(|segment| !segment.trim().is_empty())
+        .collect::<Vec<_>>();
+    (!segments.is_empty()).then(|| segments.join("::"))
+}
+
 fn add_modules_until_fixed_point(
     composer: &mut Composer,
     files: &[WgslFile],
     defs: &HashMap<String, ShaderDefValue>,
+    additional_imports: &[String],
 ) {
     let mut pending: Vec<usize> = files
         .iter()
         .enumerate()
-        .filter_map(|(index, file)| has_import_path(&file.source).then_some(index))
+        .filter_map(|(index, file)| {
+            let is_named_additional = inferred_module_path(&file.rel_path)
+                .is_some_and(|module| additional_imports.iter().any(|item| item == &module));
+            (has_import_path(&file.source) || is_named_additional).then_some(index)
+        })
         .collect();
     let mut made_progress = true;
     while made_progress && !pending.is_empty() {
@@ -142,9 +164,15 @@ fn add_modules_until_fixed_point(
         let mut still_pending = Vec::new();
         for index in pending {
             let file = &files[index];
+            let as_name = if has_import_path(&file.source) {
+                None
+            } else {
+                inferred_module_path(&file.rel_path)
+            };
             let result = composer.add_composable_module(ComposableModuleDescriptor {
                 source: &file.source,
                 file_path: &file.rel_path,
+                as_name,
                 shader_defs: defs.clone(),
                 ..Default::default()
             });
@@ -173,17 +201,31 @@ fn main() {
     files.sort_by(|lhs, rhs| lhs.rel_path.cmp(&rhs.rel_path));
 
     let mut composer = Composer::default().with_capabilities(options.capabilities);
-    add_modules_until_fixed_point(&mut composer, &files, &options.defs);
+    add_modules_until_fixed_point(
+        &mut composer,
+        &files,
+        &options.defs,
+        &options.additional_imports,
+    );
 
     let entry = files
         .iter()
         .find(|file| file.rel_path == options.entry)
         .unwrap_or_else(|| panic!("entry `{}` not found under fixture root", options.entry));
+    let additional_imports = options
+        .additional_imports
+        .iter()
+        .map(|import| ImportDefinition {
+            import: import.clone(),
+            ..Default::default()
+        })
+        .collect::<Vec<_>>();
     let module = composer
         .make_naga_module(NagaModuleDescriptor {
             source: &entry.source,
             file_path: &entry.rel_path,
             shader_defs: options.defs,
+            additional_imports: &additional_imports,
             ..Default::default()
         })
         .unwrap_or_else(|err| panic!("naga_oil failed to compose `{}`: {err:?}", entry.rel_path));

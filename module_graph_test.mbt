@@ -183,6 +183,35 @@ test "naga_oil: scan_wgsl_source_files reads a WGSL tree via moonbitlang/x/fs" {
 }
 
 ///|
+test "naga_oil: source tree registry infers module names from WGSL file paths" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  composer.register_wgsl_source_files([
+    @moon_wgsl.WgslSourceFile::{
+      rel_path: "plugin.wgsl",
+      source: "fn plugin_value() -> f32 {\n  return 2.0;\n}\n",
+    },
+    @moon_wgsl.WgslSourceFile::{
+      rel_path: "root.wgsl",
+      source: "#import plugin\nfn main() -> f32 {\n  return plugin::plugin_value();\n}\n",
+    },
+  ])
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    @moon_wgsl.WgslComposeOptions::default(),
+  ) catch {
+    err =>
+      abort("expected path-inferred module compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("fn plugin__plugin_value"), content="true")
+  debug_inspect(
+    source.contains("return plugin__plugin_value();"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: scan_wgsl_source_files_checked reports duplicate module paths" {
   let (files, diagnostics) = @moon_wgsl.scan_wgsl_source_files_checked(
     "testdata/wgsl_scan_dups",

@@ -961,7 +961,15 @@ fn Composer::build_wgsl_import_requests(
     if target.alias_name == "" {
       request_module_prefix = module_path
     }
-    let module_alias = if target.alias_name != "" {
+    let import_source = match
+      self.registry.registered_source(resolved_module.rel_path) {
+      Some(source) => source
+      None => ""
+    }
+    let imports_for_override_side_effect = wgsl_source_contains_override_directive(
+      import_source,
+    )
+    let mut module_alias = if target.alias_name != "" {
       target.alias_name
     } else if module_path == target.raw_path {
       wgsl_import_default_alias(module_path)
@@ -970,8 +978,13 @@ fn Composer::build_wgsl_import_requests(
     }
     let mut import_full_module = module_path == target.raw_path
     if target.alias_name == "" && module_alias != "" {
-      if !active_scan_source.contains("\{module_alias}::") {
+      if !active_scan_source.contains("\{module_alias}::") &&
+        !imports_for_override_side_effect {
         continue
+      }
+      if imports_for_override_side_effect &&
+        !active_scan_source.contains("\{module_alias}::") {
+        module_alias = ""
       }
       let requested_paths : Array[String] = []
       collect_wgsl_alias_requested_paths(
@@ -989,7 +1002,7 @@ fn Composer::build_wgsl_import_requests(
       }
       if requested_items.length() > 0 {
         import_full_module = false
-      } else {
+      } else if !imports_for_override_side_effect {
         continue
       }
     } else if module_path != target.raw_path {
@@ -1007,11 +1020,6 @@ fn Composer::build_wgsl_import_requests(
     }
     if !import_full_module {
       let import_only_source = active_scan_source.trim().to_owned() == ""
-      let import_source = match
-        self.registry.registered_source(resolved_module.rel_path) {
-        Some(source) => source
-        None => ""
-      }
       let used_requested_items : Array[String] = []
       for requested_item in requested_items {
         if wgsl_source_contains_identifier(active_scan_source, requested_item) ||
@@ -1030,8 +1038,11 @@ fn Composer::build_wgsl_import_requests(
       for requested_item in used_requested_items {
         requested_items.push(requested_item)
       }
-      if requested_items.length() == 0 {
+      if requested_items.length() == 0 && !imports_for_override_side_effect {
         continue
+      }
+      if imports_for_override_side_effect {
+        import_full_module = true
       }
     }
     if find_wgsl_import_request_index(

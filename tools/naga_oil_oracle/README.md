@@ -17,6 +17,17 @@ cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
   --output /tmp/naga_oil_simple.wgsl
 ```
 
+Additional-import fixtures can inject modules the same way upstream
+`NagaModuleDescriptor::additional_imports` does:
+
+```sh
+cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/add_imports \
+  --entry top.wgsl \
+  --additional-import plugin \
+  --output /tmp/naga_oil_additional_import.wgsl
+```
+
 Ray-query fixtures can enable the matching Naga capability:
 
 ```sh

@@ -85,7 +85,7 @@ mesh3d fixture used by mgstudio-style pipelines.
 | `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Oracle-backed | Requires GLSL frontend and cross-language composition. |
 | `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Oracle-backed | Requires GLSL parsing plus constant import/writeback semantics. |
 | `test_raycasts`, `raycast/` | Oracle-backed | Requires Naga/wgpu-style shader validation or runtime execution behavior. |
-| `additional_import`, `add_imports/` | Covered source-level subset | Root compose/export requests and registered composable modules can inject additional imports. Runtime shader execution remains oracle-only. |
+| `additional_import`, `add_imports/` | Covered | Root compose/export requests and registered composable modules can inject additional imports, including upstream-style override plugins without `#define_import_path`. Runtime shader execution remains oracle-only. |
 | `invalid_override` | Covered | Upstream `override fn module::item` syntax now errors when the target was not declared `virtual`; export diagnostics still warn when manual redirects never match. |
 | `bad_identifiers`, `invalid_identifiers/` | Covered | Top-level declaration names and function parameters are sanitized in final composed/exported source; invalid struct-member identifiers now report compose errors like upstream. |
 | `test_shader`, `compute_test.wgsl` | Covered source-level subset | Local export smoke coverage preserves the compute entry point and imported module dependency. Upstream runtime execution remains outside source-only scope. |
