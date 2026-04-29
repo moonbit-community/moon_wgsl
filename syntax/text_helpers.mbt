@@ -132,7 +132,7 @@ pub(all) struct WgslDirective {
   name : String
   tail : String
   text : String
-}
+} derive(Debug)
 
 ///|
 fn wgsl_directive_kind_from_name(name : String) -> WgslDirectiveKind {

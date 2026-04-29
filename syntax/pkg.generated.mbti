@@ -105,7 +105,7 @@ pub(all) struct WgslDirective {
   name : String
   tail : String
   text : String
-}
+} derive(@debug.Debug)
 
 pub(all) enum WgslDirectiveKind {
   Ifdef
@@ -152,6 +152,8 @@ pub(all) struct WgslGlobalDecl {
 }
 
 pub(all) enum WgslGlobalDeclData {
+  Directive(WgslDirective)
+  Import(WgslDirective)
   Function(WgslFunction)
   GlobalVariable(WgslGlobalVariable)
   Const(WgslConst)

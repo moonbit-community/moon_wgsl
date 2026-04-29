@@ -16,6 +16,16 @@ test "WGSL translation unit classifies top-level declarations" {
   debug_inspect(unit.declarations.length(), content="6")
   debug_inspect(unit.declarations[0].kind, content="Directive")
   debug_inspect(unit.declarations[1].kind, content="Import")
+  guard unit.declarations[0].data
+    is WgslGlobalDeclData::Directive(module_directive) else {
+    abort("expected directive payload")
+  }
+  debug_inspect(module_directive.kind, content="DefineImportPath")
+  guard unit.declarations[1].data
+    is WgslGlobalDeclData::Import(import_directive) else {
+    abort("expected import payload")
+  }
+  debug_inspect(import_directive.kind, content="Import")
   debug_inspect(unit.declarations[2].kind, content="Struct")
   debug_inspect(unit.declarations[3].kind, content="GlobalVariable")
   debug_inspect(unit.declarations[4].kind, content="ConstAssert")

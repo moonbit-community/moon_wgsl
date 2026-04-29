@@ -1,7 +1,9 @@
 ///|
 using @syntax {
   type Token,
+  type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
+  type WgslDirectiveKind,
   code_unit_to_string,
   parse_wgsl_translation_unit,
   replace_comments,

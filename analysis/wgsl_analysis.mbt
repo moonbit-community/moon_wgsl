@@ -224,11 +224,14 @@ pub fn wgsl_source_declares_entry_point(
 pub fn strip_wgsl_import_declarations(source : String) -> String {
   let mut out = ""
   for decl in parse_wgsl_translation_unit(source).declarations {
-    match decl.kind {
-      WgslGlobalDeclKind::Directive if decl.text
-        .trim()
-        .has_prefix("#define_import_path") => ()
-      WgslGlobalDeclKind::Import => ()
+    match decl.data {
+      WgslGlobalDeclData::Directive(directive) =>
+        if directive.kind == WgslDirectiveKind::DefineImportPath {
+          ()
+        } else {
+          out = out + decl.text
+        }
+      WgslGlobalDeclData::Import(_) => ()
       _ => out = out + decl.text
     }
   }

@@ -115,6 +115,8 @@ pub(all) struct WgslTypeAlias {
 
 ///|
 pub(all) enum WgslGlobalDeclData {
+  Directive(WgslDirective)
+  Import(WgslDirective)
   Function(WgslFunction)
   GlobalVariable(WgslGlobalVariable)
   Const(WgslConst)
@@ -710,6 +712,8 @@ fn wgsl_global_decl_kind_from_data(
     Struct(_) => WgslGlobalDeclKind::Struct
     TypeAlias(_) => WgslGlobalDeclKind::TypeAlias
     ConstAssert(_) => WgslGlobalDeclKind::ConstAssert
+    Directive(_) => WgslGlobalDeclKind::Directive
+    Import(_) => WgslGlobalDeclKind::Import
     Raw => WgslGlobalDeclKind::Unknown
   }
 }
@@ -723,7 +727,7 @@ fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
     Override(value) => value.name.name
     Struct(value) => value.name.name
     TypeAlias(value) => value.name.name
-    ConstAssert(_) | Raw => ""
+    Directive(_) | Import(_) | ConstAssert(_) | Raw => ""
   }
 }
 
@@ -767,15 +771,22 @@ fn WgslAstParser::parse_global_decl(
   item : WgslTopLevelItem,
 ) -> WgslGlobalDecl {
   let data = match item.kind {
+    WgslTopLevelKind::DefineImportPath | WgslTopLevelKind::Define =>
+      match parse_wgsl_directive_line(item.text) {
+        Some(directive) => WgslGlobalDeclData::Directive(directive)
+        None => WgslGlobalDeclData::Raw
+      }
+    WgslTopLevelKind::Import =>
+      match parse_wgsl_directive_line(item.text) {
+        Some(directive) => WgslGlobalDeclData::Import(directive)
+        None => WgslGlobalDeclData::Raw
+      }
     WgslTopLevelKind::Declaration => parse_wgsl_declaration_data(item.text)
     _ => WgslGlobalDeclData::Raw
   }
   let kind = match item.kind {
     WgslTopLevelKind::Trivia => WgslGlobalDeclKind::Trivia
-    WgslTopLevelKind::Import => WgslGlobalDeclKind::Import
-    WgslTopLevelKind::DefineImportPath | WgslTopLevelKind::Define =>
-      WgslGlobalDeclKind::Directive
-    WgslTopLevelKind::Declaration => wgsl_global_decl_kind_from_data(data)
+    _ => wgsl_global_decl_kind_from_data(data)
   }
   WgslGlobalDecl::{
     kind,
