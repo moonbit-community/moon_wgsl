@@ -4,6 +4,7 @@ using @syntax {
   type WgslAttribute,
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
+  type WgslIdent,
   type WgslTypeRef,
   type WgslDirectiveKind,
   code_unit_to_string,

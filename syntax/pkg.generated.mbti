@@ -211,6 +211,7 @@ pub(all) struct WgslStatement {
   kind : WgslStatementKind
   text : String
   local_name : String?
+  identifiers : Array[WgslIdent]
   start : Int
   end : Int
 } derive(@debug.Debug)

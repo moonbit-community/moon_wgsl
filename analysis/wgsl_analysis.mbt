@@ -161,6 +161,25 @@ fn collect_wgsl_optional_dependency_text(
 }
 
 ///|
+fn collect_wgsl_identifier_dependencies(
+  identifiers : Array[WgslIdent],
+  self_name : String,
+  declaration_names : @hashmap.HashMap[String, Bool],
+  dependencies : Array[String],
+) -> Unit {
+  for identifier in identifiers {
+    let dependency_name = match split_last_identifier(identifier.name) {
+      Some((_, suffix)) => suffix
+      None => identifier.name
+    }
+    if dependency_name != self_name &&
+      declaration_names.contains(dependency_name) {
+      wgsl_string_list_push_unique(dependencies, dependency_name)
+    }
+  }
+}
+
+///|
 fn collect_wgsl_type_ref_dependencies(
   ty_ref : WgslTypeRef?,
   self_name : String,
@@ -272,8 +291,8 @@ fn collect_wgsl_declaration_dependencies(
         None => ()
       }
       for statement in function.body.statements {
-        collect_wgsl_dependency_text_fragment(
-          statement.text,
+        collect_wgsl_identifier_dependencies(
+          statement.identifiers,
           self_name,
           declaration_names,
           dependencies,

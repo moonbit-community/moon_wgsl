@@ -71,6 +71,7 @@ pub(all) struct WgslStatement {
   kind : WgslStatementKind
   text : String
   local_name : String?
+  identifiers : Array[WgslIdent]
   start : Int
   end : Int
 } derive(Debug)
@@ -718,6 +719,7 @@ fn wgsl_statement_local_name_from_tokens(
 ///|
 fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   let tokens : Array[Token] = []
+  let identifiers : Array[WgslIdent] = []
   let mut first_identifier : String? = None
   let mut start_pos = -1
   let mut end_pos = -1
@@ -768,8 +770,17 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
         break
       }
       [token, .. rest] => {
-        match (first_identifier, token) {
-          (None, Token::Identifier(ident, _)) => first_identifier = Some(ident)
+        match token {
+          Token::Identifier(ident, pos) => {
+            if first_identifier is None {
+              first_identifier = Some(ident)
+            }
+            identifiers.push(WgslIdent::{
+              name: ident,
+              start: pos,
+              end: pos + ident.length(),
+            })
+          }
           _ => ()
         }
         tokens.push(token)
@@ -793,6 +804,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       kind,
       text,
       local_name: wgsl_statement_local_name_from_tokens(tokens, kind),
+      identifiers,
       start: start_pos,
       end: end_pos,
     })
