@@ -51,21 +51,28 @@ pub fn wgsl_string_list_push_unique(
 pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
   let import_blocks : Array[WgslGraphBlock] = []
   let declaration_blocks : Array[WgslGraphBlock] = []
-  for item in parse_wgsl_top_level_items(source) {
-    match item.kind {
-      WgslTopLevelKind::Import =>
+  for decl in parse_wgsl_translation_unit(source).declarations {
+    match decl.kind {
+      WgslGlobalDeclKind::Import =>
         import_blocks.push(WgslGraphBlock::{
-          name: item.name,
-          text: item.text,
-          start: item.start,
-          end: item.end,
+          name: decl.name,
+          text: decl.text,
+          start: decl.start,
+          end: decl.end,
         })
-      WgslTopLevelKind::Declaration =>
+      WgslGlobalDeclKind::Function
+      | WgslGlobalDeclKind::GlobalVariable
+      | WgslGlobalDeclKind::Const
+      | WgslGlobalDeclKind::Override
+      | WgslGlobalDeclKind::Struct
+      | WgslGlobalDeclKind::TypeAlias
+      | WgslGlobalDeclKind::ConstAssert
+      | WgslGlobalDeclKind::Unknown =>
         declaration_blocks.push(WgslGraphBlock::{
-          name: item.name,
-          text: item.text,
-          start: item.start,
-          end: item.end,
+          name: decl.name,
+          text: decl.text,
+          start: decl.start,
+          end: decl.end,
         })
       _ => ()
     }
@@ -216,10 +223,13 @@ pub fn wgsl_source_declares_entry_point(
 ///|
 pub fn strip_wgsl_import_declarations(source : String) -> String {
   let mut out = ""
-  for item in parse_wgsl_top_level_items(source) {
-    match item.kind {
-      WgslTopLevelKind::DefineImportPath | WgslTopLevelKind::Import => ()
-      _ => out = out + item.text
+  for decl in parse_wgsl_translation_unit(source).declarations {
+    match decl.kind {
+      WgslGlobalDeclKind::Directive if decl.text
+        .trim()
+        .has_prefix("#define_import_path") => ()
+      WgslGlobalDeclKind::Import => ()
+      _ => out = out + decl.text
     }
   }
   out

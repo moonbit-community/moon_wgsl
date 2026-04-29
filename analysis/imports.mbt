@@ -1,9 +1,9 @@
 ///|
 using @syntax {
   type Token,
-  type WgslTopLevelKind,
+  type WgslGlobalDeclKind,
   code_unit_to_string,
-  parse_wgsl_top_level_items,
+  parse_wgsl_translation_unit,
   replace_comments,
   tokenizer_identifier_continue,
   tokenizer_identifier_start,

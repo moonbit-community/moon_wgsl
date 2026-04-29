@@ -25,6 +25,8 @@ pub fn parse_wgsl_import_targets_from_tokens(String, Bool, String, Array[@common
 
 pub fn parse_wgsl_top_level_items(String) -> Array[WgslTopLevelItem]
 
+pub fn parse_wgsl_translation_unit(String) -> WgslTranslationUnit
+
 pub fn replace_comments(String) -> String
 
 pub fn source_lines(String) -> Array[String]
@@ -106,6 +108,28 @@ pub(all) enum WgslDirectiveKind {
   Other(String)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct WgslGlobalDecl {
+  kind : WgslGlobalDeclKind
+  name : String
+  text : String
+  start : Int
+  end : Int
+}
+
+pub(all) enum WgslGlobalDeclKind {
+  Directive
+  Import
+  Function
+  GlobalVariable
+  Const
+  Override
+  Struct
+  TypeAlias
+  ConstAssert
+  Trivia
+  Unknown
+} derive(Eq, @debug.Debug)
+
 pub(all) struct WgslTopLevelItem {
   kind : WgslTopLevelKind
   name : String
@@ -121,6 +145,10 @@ pub(all) enum WgslTopLevelKind {
   Define
   Declaration
 } derive(Eq, @debug.Debug)
+
+pub(all) struct WgslTranslationUnit {
+  declarations : Array[WgslGlobalDecl]
+}
 
 // Type aliases
 
