@@ -492,6 +492,19 @@ test "naga_oil upstream: dual source blending enable directive round-trips" {
 }
 
 ///|
+test "naga_oil upstream: multiline dual source blending members skip writeback validation" {
+  let source = @moon_wgsl.Composer::default().compose_wgsl_source(
+    "enable dual_source_blending;\nstruct FragmentOutput {\n  @location(0)\n  @blend_src(0)\n  source0_: vec4<f32>,\n  @location(0)\n  @blend_src(1)\n  source1_: vec4<f32>,\n}\n@fragment\nfn fragment() -> FragmentOutput {\n  return FragmentOutput(vec4<f32>(), vec4<f32>());\n}\n",
+    @moon_wgsl.WgslComposeOptions::default(),
+  ) catch {
+    err =>
+      abort("expected multiline blend_src compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("source0_"), content="true")
+  debug_inspect(source.contains("source1_"), content="true")
+}
+
+///|
 test "naga_oil upstream: modf result member access survives composition" {
   let source = upstream_parity_compose_case(
     "modf",
@@ -682,7 +695,7 @@ test "naga_oil upstream: invalid struct member identifier reports compose failur
     err => message = err.message()
   }
   debug_inspect(
-    message.contains("invalid WGSL struct member identifier"),
+    message.contains("requires naga writeback substitution"),
     content="true",
   )
   debug_inspect(message.contains("bad_"), content="true")

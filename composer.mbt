@@ -57,7 +57,7 @@ pub fn ComposerError::message(self : ComposerError) -> String {
       "failed to resolve shader import: \{import_path}"
     ImportCycle(cycle) => "shader import cycle detected: \{cycle}"
     InvalidStructMemberIdentifier(name) =>
-      "invalid WGSL struct member identifier: \{name}"
+      "composable module identifier requires naga writeback substitution: \{name}"
     InvalidOverride(name) =>
       "override is invalid because target is not virtual: \{name}"
     MissingRegisteredSource(rel) => "missing registered WGSL source: \{rel}"
@@ -1614,8 +1614,7 @@ pub fn Composer::compose_wgsl(
   let composed = strip_wgsl_virtual_functions(
     self.load_root_wgsl_preprocessed_into_session(rel, session),
   )
-  validate_wgsl_struct_member_identifiers(composed)
-  sanitize_wgsl_invalid_identifiers(composed)
+  finalize_wgsl_writeback_source(composed)
 }
 
 ///|
@@ -1632,8 +1631,7 @@ pub fn Composer::compose_wgsl_source(
       session,
     ),
   )
-  validate_wgsl_struct_member_identifiers(composed)
-  sanitize_wgsl_invalid_identifiers(composed)
+  finalize_wgsl_writeback_source(composed)
 }
 
 ///|

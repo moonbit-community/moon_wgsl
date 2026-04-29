@@ -102,6 +102,21 @@ fn register_analysis_alignment_export_test_shaders() -> Unit {
 }
 
 ///|
+fn register_invalid_struct_member_export_test_shaders() -> Unit {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @moon_wgsl.register_wgsl_source_files([
+    {
+      rel_path: "shaders/shared/invalid_member.wgsl",
+      source: "struct BadOutput {\n  F0_: vec3<f32>,\n}\nfn build_bad() -> BadOutput {\n  var out: BadOutput;\n  return out;\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/invalid_member.wgsl",
+      source: "#import \"../shared/invalid_member.wgsl\" BadOutput, build_bad\nfn main() -> BadOutput {\n  return build_bad();\n}\n",
+    },
+  ])
+}
+
+///|
 test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map" {
   register_export_test_shaders()
   let output = export_test_global_registry_composer().export_wgsl_with_options(
@@ -130,6 +145,27 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
     mapped_paths.join(","),
     content="\"shaders/effects/main.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl\"",
   )
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: export rejects invalid struct member identifiers before emission" {
+  register_invalid_struct_member_export_test_shaders()
+  let mut message = ""
+  ignore(
+    export_test_global_registry_composer().export_wgsl_with_options(
+      "shaders/effects/invalid_member.wgsl",
+      export_test_compose_options(export_test_empty_defines(), []),
+      { root_items: ["main"] },
+    ),
+  ) catch {
+    err => message = err.message()
+  }
+  debug_inspect(
+    message.contains("requires naga writeback substitution"),
+    content="true",
+  )
+  debug_inspect(message.contains("F0_"), content="true")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
 
