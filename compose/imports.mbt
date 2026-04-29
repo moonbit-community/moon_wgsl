@@ -9,7 +9,6 @@ using @analysis {
   strip_wgsl_import_declarations,
   wgsl_identifier_char,
   wgsl_string_list_push_unique,
-  wgsl_source_declares_entry_point,
 }
 
 ///|

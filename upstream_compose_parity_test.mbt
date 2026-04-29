@@ -38,7 +38,6 @@ fn upstream_parity_compose_options(
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
 }
 
@@ -526,7 +525,6 @@ test "naga_oil upstream: additional imports are applied only to the root compose
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [{ import_path: "plugin", items: [] }],
-    preserve_imported_entry_points: true,
   }) catch {
     err => abort("expected additional-import compose success: \{err.message()}")
   }
@@ -548,7 +546,6 @@ test "naga_oil upstream: additional imports participate in single-file export" {
       value_defines: @moon_wgsl.default_wgsl_value_defines(),
       redirects: [],
       additional_imports: [{ import_path: "plugin", items: [] }],
-      preserve_imported_entry_points: true,
     },
     { root_items: ["entry_point"] },
   ) catch {
@@ -847,7 +844,7 @@ test "github issue 6: Bevy F0_ struct member composes without writeback rejectio
 }
 
 ///|
-test "github issue 5: item-imported function keeps its imported mesh binding" {
+test "naga_oil parity: item-imported functions do not force imported mesh bindings" {
   let composer = @moon_wgsl.Composer::default()
   composer.register_wgsl_source(
     "mesh_types.wgsl",
@@ -939,36 +936,13 @@ test "github issue 5: item-imported function keeps its imported mesh binding" {
     upstream_parity_compose_options(upstream_parity_empty_defines()),
   ) catch {
     err =>
-      abort(
-        "expected issue 5 imported mesh binding compose success: \{err.message()}",
-      )
+      abort("expected item-imported function compose success: \{err.message()}")
   }
-  debug_inspect(
-    source.contains("var<storage> mesh: array<Mesh>;"),
-    content="false",
-  )
-  debug_inspect(
-    source.contains("mesh_functions__mesh_bindings__mesh"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains("struct mesh_functions__mesh_bindings__Mesh"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains("= mesh[in_wgsl.instance_index].flags"),
-    content="false",
-  )
-  debug_inspect(
-    source.contains(
-      "mesh_functions__mesh_bindings__mesh[in_wgsl.instance_index].flags",
-    ),
-    content="true",
-  )
+  debug_inspect(source.trim().length(), content="0")
 }
 
 ///|
-test "github issue 3: item-imported entry points are emitted even when unused by source" {
+test "naga_oil parity: item-imported entry points are dropped when unused by source" {
   let composer = @moon_wgsl.Composer::default()
   composer.register_wgsl_source(
     "mesh.wgsl",
@@ -995,12 +969,11 @@ test "github issue 3: item-imported entry points are emitted even when unused by
   ) catch {
     err => abort("expected issue 3 entry compose success: \{err.message()}")
   }
-  debug_inspect(source.contains("@vertex\nfn vertex"), content="true")
-  debug_inspect(source.contains("@fragment\nfn fragment"), content="true")
+  debug_inspect(source.trim().length(), content="0")
 }
 
 ///|
-test "github issue 3: explicit import-only entry modules keep vertex function dependencies" {
+test "naga_oil parity: explicit import-only entry modules do not force dependencies" {
   let composer = @moon_wgsl.Composer::default()
   composer.register_wgsl_source(
     "mesh.wgsl",
@@ -1019,16 +992,9 @@ test "github issue 3: explicit import-only entry modules keep vertex function de
     upstream_parity_compose_options(upstream_parity_empty_defines()),
   ) catch {
     err =>
-      abort(
-        "expected issue 3 import-only vertex compose success: \{err.message()}",
-      )
+      abort("expected import-only vertex compose success: \{err.message()}")
   }
-  debug_inspect(source.contains("struct Vertex"), content="true")
-  debug_inspect(source.contains("struct VertexOutput"), content="true")
-  debug_inspect(
-    source.contains("fn vertex(vertex_no_morph: Vertex) -> VertexOutput"),
-    content="true",
-  )
+  debug_inspect(source.trim().length(), content="0")
 }
 
 ///|

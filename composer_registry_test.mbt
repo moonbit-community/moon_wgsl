@@ -161,7 +161,6 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }) catch {
     err =>
       abort(

@@ -3,9 +3,8 @@
 `Milky2018/moon_wgsl` is a MoonBit library for WGSL preprocessing, import
 analysis, and shader composition.
 
-This package was extracted from `mgstudio` and keeps the former `naga_oil`
-surface at the root package so downstream code can continue to use the same
-high-level concepts. After adding the dependency, reference the package through
+The public surface follows `naga_oil` concepts while staying source-level and
+multi-backend. After adding the dependency, reference the package through
 `@moon_wgsl`:
 
 ```mbt check
@@ -148,7 +147,6 @@ test "README: compose registered modules" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
   let composed : String = composer.compose_wgsl(
     "sprite_render/mesh2d/mesh2d.wgsl",
@@ -197,7 +195,6 @@ test "README: bulk registry and relative imports" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
   let composed : String = composer.compose_wgsl(
     "shaders/effects/main.wgsl",
@@ -266,7 +263,6 @@ test "README: scan source tree" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
   let composed : String = composer.compose_wgsl(
     "effects/main.wgsl",
@@ -327,7 +323,6 @@ test "README: export single WGSL file" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
   let export_options : @moon_wgsl.WgslExportOptions = {
     root_items: ["shade"],
@@ -376,7 +371,6 @@ test "README: build source catalog" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
   let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] =
     @moon_wgsl.build_wgsl_source_catalog(composer, compose_options)
@@ -419,7 +413,6 @@ test "README: source-level redirects" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
   let export_options : @moon_wgsl.WgslExportOptions = {
     root_items: ["shade"],
@@ -531,8 +524,7 @@ Important public data structures:
 - `WgslSourceFile`
 - `WgslComposeOptions`
   Holds root compose settings: asset base, shader defs, value defs, symbol
-  redirects, root-only `additional_imports`, and whether import-only roots
-  should preserve item-imported entry points.
+  redirects, and root-only `additional_imports`.
 - `WgslSymbolRedirect`
 - `WgslExportOptions`
 - `WgslExportOutput`

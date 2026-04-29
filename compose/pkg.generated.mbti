@@ -65,7 +65,6 @@ pub(all) struct WgslComposeSession {
   modules : @hashmap.HashMap[String, String]
   redirects : Array[@common.WgslSymbolRedirect]
   additional_imports : Array[@common.ImportDefinition]
-  preserve_imported_entry_points : Bool
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
   imported_item_names : @hashmap.HashMap[String, String]

@@ -36,9 +36,8 @@ Parity is tracked with three increasingly strict gates:
 
 2. Real shader-tree regression tests.
    `bevy_wgsl_parity_test.mbt` registers complete Bevy WGSL fixture files from
-   `testdata/bevy_wgsl` and composes mgstudio-style entry shaders. These tests
-   check complete import graphs, declaration retention, alias rewriting, and
-   the absence of unresolved bare `mesh[...]` accesses in generated source.
+   `testdata/bevy_wgsl` and checks that import-only roots tree-shake to empty
+   output like upstream `naga_oil`.
 
 3. Optional upstream oracle.
    `tools/naga_oil_oracle` is a Rust harness pinned to the upstream commit
@@ -49,11 +48,9 @@ Parity is tracked with three increasingly strict gates:
    such as resolved imports, retained entry points, declaration dependencies,
    collision handling, and absence of unknown identifiers.
 
-`WgslComposeOptions::preserve_imported_entry_points` makes the only intentional
-source-level mode split explicit. Set it to `false` for strict `naga_oil`
-behavior on import-only roots. Keep the default `true` when a runtime asset root
-is intentionally just an item-import list of entry points, as in the Bevy
-mesh3d fixture used by mgstudio-style pipelines.
+There is no source-level compatibility mode for import-only entry points. If a
+root shader only imports items and never references them, composition
+tree-shakes them away, matching upstream `naga_oil`.
 
 ## Coverage Matrix
 
@@ -89,10 +86,7 @@ mesh3d fixture used by mgstudio-style pipelines.
 | `invalid_override` | Covered | Upstream `override fn module::item` syntax now errors when the target was not declared `virtual`; export diagnostics still warn when manual redirects never match. |
 | `bad_identifiers`, `invalid_identifiers/` | Covered | Top-level declaration names and function parameters are sanitized in final composed/exported source; invalid struct-member identifiers now report compose errors like upstream. |
 | `test_shader`, `compute_test.wgsl` | Covered | Local export smoke coverage preserves the compute entry point and imported module dependency. Upstream runtime execution remains outside the library scope and belongs to downstream runtime tests. |
-| Complete Bevy forward mesh3d shader graph | Covered real-world fixture | `bevy_wgsl_parity_test.mbt` composes `#import bevy_pbr::{ mesh::vertex, pbr::fragment }` against 104 Bevy WGSL files and verifies shared mesh binding rewrites. |
-| Complete Bevy prepass mesh3d shader graph | Covered real-world fixture | Composes `prepass::vertex` plus `pbr_prepass::fragment` with prepass/bindless shader defs and verifies shared mesh binding rewrites. |
-| Complete Bevy mesh-only vertex shader graph | Covered real-world fixture | Guards against tree-shaking the vertex output to an empty body when only `mesh::vertex` is item-imported. |
-| Strict naga_oil import-only root behavior | Covered | `preserve_imported_entry_points = false` makes an import-only Bevy root compose to empty source, matching upstream oracle behavior. |
+| Complete Bevy import-only roots | Covered real-world fixture | Forward, prepass, and mesh-only roots tree-shake to empty output when their item imports are not referenced by root source, matching upstream oracle behavior. |
 | Full upstream fixture mirror | Covered | `testdata/naga_oil_upstream/compose_tests` mirrors all 110 upstream fixture files, including 75 WGSL files, expected WGSL output, GLSL cases, errors, overrides, raycast, and Bevy path import fixtures. |
 
 ## Architecture Priorities

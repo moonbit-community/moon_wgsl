@@ -64,11 +64,5 @@ The output is not expected to be byte-identical to `moon_wgsl` because
 `naga_oil` writes validated Naga IR while `moon_wgsl` is a source-level
 composer. Compare structural properties instead: resolved imports, retained
 entry points, declaration dependencies, absence of unknown identifiers, and
-collision handling.
-
-For import-only Bevy root shaders such as
-`mgstudio/render/renderer/mesh3d_bevy_forward.wgsl`, keep the primary regression
-in MoonBit source-level tests. Upstream `naga_oil` can validly write an empty
-module for an import-only root when no entry point is referenced from root
-source, while `moon_wgsl` intentionally preserves item-imported entry points for
-the mgstudio runtime use case.
+collision handling. Import-only roots with no source references are expected to
+tree-shake to empty output, matching upstream `naga_oil`.

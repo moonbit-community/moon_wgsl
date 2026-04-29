@@ -29,11 +29,7 @@ fn bevy_parity_value_defines() -> @hashmap.HashMap[String, Int] {
 }
 
 ///|
-fn bevy_parity_compose_with_entrypoint_mode(
-  rel_path : String,
-  defines : Array[String],
-  preserve_imported_entry_points : Bool,
-) -> String {
+fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   let composer = @moon_wgsl.Composer::default()
   composer.clear_registered_wgsl_source_registry()
@@ -49,16 +45,10 @@ fn bevy_parity_compose_with_entrypoint_mode(
     value_defines: bevy_parity_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points,
   }) catch {
     err =>
       abort("expected complete Bevy WGSL compose success: \{err.message()}")
   }
-}
-
-///|
-fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
-  bevy_parity_compose_with_entrypoint_mode(rel_path, defines, true)
 }
 
 ///|
@@ -70,74 +60,29 @@ fn bevy_parity_forward_defines() -> Array[String] {
 }
 
 ///|
-fn bevy_parity_has_bare_mesh_access(source : String) -> Bool {
-  source.contains("= mesh[in_wgsl.instance_index]") ||
-  source.contains("= mesh[in.instance_index]") ||
-  source.contains(" mesh[in_wgsl.instance_index]") ||
-  source.contains(" mesh[in.instance_index]")
-}
-
-///|
-test "complete Bevy forward mesh3d shader rewrites shared mesh binding" {
+test "naga_oil parity: import-only Bevy forward root tree-shakes to empty" {
   let source = bevy_parity_compose(
     "mgstudio/render/renderer/mesh3d_bevy_forward.wgsl",
     bevy_parity_forward_defines(),
   )
-  debug_inspect(
-    source.contains("@group(2) @binding(0) var<storage> mesh_functions__mesh"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains(
-      "pbr_input.flags = mesh_functions__mesh[in_wgsl.instance_index].flags",
-    ),
-    content="true",
-  )
-  debug_inspect(bevy_parity_has_bare_mesh_access(source), content="false")
+  debug_inspect(source.trim().length(), content="0")
 }
 
 ///|
-test "complete Bevy prepass mesh3d shader rewrites shared mesh binding" {
+test "naga_oil parity: import-only Bevy prepass root tree-shakes to empty" {
   let source = bevy_parity_compose(
     "mgstudio/render/renderer/mesh3d_bevy_prepass.wgsl",
     bevy_parity_forward_defines() +
     ["PREPASS_FRAGMENT", "NORMAL_PREPASS", "BINDLESS"],
   )
-  debug_inspect(
-    source.contains("@group(2) @binding(0) var<storage> mesh_functions__mesh"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains(
-      "let slot = mesh_functions__mesh[in_wgsl.instance_index].material_and_lightmap_bind_group_slot & 0xffffu",
-    ),
-    content="true",
-  )
-  debug_inspect(bevy_parity_has_bare_mesh_access(source), content="false")
+  debug_inspect(source.trim().length(), content="0")
 }
 
 ///|
-test "complete Bevy mesh vertex shader keeps non-empty vertex output" {
+test "naga_oil parity: import-only Bevy mesh root tree-shakes to empty" {
   let source = bevy_parity_compose(
     "mgstudio/render/renderer/mesh3d_bevy_mesh_only.wgsl",
     bevy_parity_forward_defines(),
-  )
-  debug_inspect(source.contains("@vertex\nfn vertex("), content="true")
-  debug_inspect(source.contains("var out: VertexOutput;"), content="true")
-  debug_inspect(
-    source.contains(
-      "out.position = position_world_to_clip(out.world_position.xyz);",
-    ),
-    content="true",
-  )
-}
-
-///|
-test "strict naga_oil mode does not retain import-only Bevy entrypoints" {
-  let source = bevy_parity_compose_with_entrypoint_mode(
-    "mgstudio/render/renderer/mesh3d_bevy_forward.wgsl",
-    bevy_parity_forward_defines(),
-    false,
   )
   debug_inspect(source.trim().length(), content="0")
 }

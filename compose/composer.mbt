@@ -175,7 +175,6 @@ pub(all) struct WgslComposeSession {
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
-  preserve_imported_entry_points : Bool
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
   imported_item_names : @hashmap.HashMap[String, String]
@@ -307,7 +306,6 @@ pub fn Composer::new_wgsl_compose_session(
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
     additional_imports: copy_import_definitions(options.additional_imports),
-    preserve_imported_entry_points: options.preserve_imported_entry_points,
     redirect_match_counts: @hashmap.HashMap::new(),
     visited: @hashmap.HashMap::new(),
     imported_item_names: @hashmap.HashMap::new(),
@@ -1017,18 +1015,9 @@ fn Composer::build_wgsl_import_requests(
       }
     }
     if !import_full_module {
-      let import_only_source = active_scan_source.trim().to_owned() == ""
       let used_requested_items : Array[String] = []
       for requested_item in requested_items {
-        if wgsl_source_contains_identifier(active_scan_source, requested_item) ||
-          (
-            session.preserve_imported_entry_points &&
-            keep_requested_items &&
-            (
-              import_only_source ||
-              wgsl_source_declares_entry_point(import_source, requested_item)
-            )
-          ) {
+        if wgsl_source_contains_identifier(active_scan_source, requested_item) {
           used_requested_items.push(requested_item)
         }
       }
@@ -1664,6 +1653,5 @@ pub fn Composer::load_wgsl_from_assets_base_required(
     value_defines: default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   })
 }

@@ -34,7 +34,6 @@ fn composer_test_compose_options(
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }
 }
 
@@ -337,7 +336,6 @@ test "naga_oil: composer local registry can compose without global registry stat
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }) catch {
     err =>
       abort(
@@ -365,7 +363,6 @@ test "issue 5: template constants preserve non-BMP source text" {
       value_defines,
       redirects: [],
       additional_imports: [],
-      preserve_imported_entry_points: true,
     },
   ) catch {
     err => abort("expected non-BMP template compose success: \{err.message()}")
@@ -416,7 +413,6 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }) catch {
     err =>
       abort(
@@ -463,7 +459,6 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }) catch {
     err => abort("expected spaced-directive compose success: \{err.message()}")
   }
@@ -508,7 +503,6 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }) catch {
     err =>
       abort(
@@ -542,7 +536,6 @@ test "naga_oil: composer can register a WGSL source tree from moonbitlang/x/fs" 
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
-    preserve_imported_entry_points: true,
   }) catch {
     err =>
       abort("expected source-tree-backed preprocess success: \{err.message()}")

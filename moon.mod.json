@@ -11,5 +11,5 @@
     "wgsl",
     "shader"
   ],
-  "description": "WGSL preprocess and composer utilities extracted from mgstudio."
+  "description": "WGSL preprocess and composer utilities aligned with naga_oil."
 }
