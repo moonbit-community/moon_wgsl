@@ -54,3 +54,18 @@ test "commented entry point attributes do not mark functions as entry points" {
     content="false",
   )
 }
+
+///|
+test "declaration graph keeps dependencies from AST initializers" {
+  let source =
+    #|const BASE: u32 = 1u;
+    #|const VALUE: u32 = BASE + 1u;
+    #|fn use_value() -> u32 {
+    #|  return VALUE;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["use_value"])
+  debug_inspect(extracted.contains("const BASE"), content="true")
+  debug_inspect(extracted.contains("const VALUE"), content="true")
+  debug_inspect(extracted.contains("fn use_value"), content="true")
+}
