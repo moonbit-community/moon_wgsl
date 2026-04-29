@@ -74,7 +74,7 @@ Example:
 test "README: metadata extraction" {
   let metadata : @moon_wgsl.PreprocessorMetaData =
     @moon_wgsl.get_preprocessor_metadata(
-      "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2u\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
+      "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
     )
 
   debug_inspect(metadata.name, content="Some(\"bevy_ui::ui_node\")")

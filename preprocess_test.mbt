@@ -83,10 +83,10 @@ test "naga_oil: metadata parser records only used imports like upstream" {
   debug_inspect(enabled, content="true")
 
   guard metadata.defines.get("TONEMAP_MODE")
-    is Some(@moon_wgsl.ShaderDefValue::UInt(mode)) else {
+    is Some(@moon_wgsl.ShaderDefValue::Bool(mode)) else {
     abort("expected TONEMAP_MODE define")
   }
-  debug_inspect(mode.to_string(), content="\"2\"")
+  debug_inspect(mode, content="false")
 }
 
 ///|
@@ -330,6 +330,16 @@ test "naga_oil: preprocess applies module defines to output" {
 }
 
 ///|
+test "naga_oil: define metadata rejects unsigned suffix like upstream" {
+  let metadata = @moon_wgsl.get_preprocessor_metadata("#define VALUE 2u\n")
+  guard metadata.defines.get("VALUE")
+    is Some(@moon_wgsl.ShaderDefValue::Bool(value)) else {
+    abort("expected naga_oil-style failed unsigned suffix define")
+  }
+  debug_inspect(value, content="false")
+}
+
+///|
 test "naga_oil: preprocess accepts whitespace after hash directives" {
   let source = "# define_import_path demo::spaced\n# define MODE 2\n# if MODE==1\none\n# else if MODE==2\ntwo #MODE\n# else\nthree\n# endif\n"
   let metadata = @moon_wgsl.get_preprocessor_metadata(source)
@@ -418,6 +428,28 @@ test "naga_oil: define metadata consumes one token like upstream regexes" {
 }
 
 ///|
+test "naga_oil: define metadata follows upstream regex character classes" {
+  let metadata = @moon_wgsl.get_preprocessor_metadata(
+    "#define NAME+TAIL 7\n#define PLUS +1\n#define PIPE|NAME value|tail ignored\n",
+  )
+  guard metadata.defines.get("NAME")
+    is Some(@moon_wgsl.ShaderDefValue::Bool(name_value)) else {
+    abort("expected NAME define")
+  }
+  debug_inspect(name_value, content="true")
+  guard metadata.defines.get("PLUS")
+    is Some(@moon_wgsl.ShaderDefValue::Bool(plus_value)) else {
+    abort("expected PLUS define")
+  }
+  debug_inspect(plus_value, content="true")
+  guard metadata.defines.get("PIPE|NAME")
+    is Some(@moon_wgsl.ShaderDefValue::Bool(pipe_value)) else {
+    abort("expected PIPE|NAME define")
+  }
+  debug_inspect(pipe_value, content="false")
+}
+
+///|
 test "naga_oil: glsl version directive captures numeric version token" {
   let output = @moon_wgsl.Preprocessor::default().preprocess(
     "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",
@@ -464,6 +496,72 @@ test "naga_oil: wgsl directives accept upstream whitespace forms" {
     content="\"derivative_uniformity\"",
   )
   debug_inspect(metadata.cleaned_source.contains("fn shade()"), content="true")
+}
+
+///|
+test "naga_oil: invalid diagnostic severity reports directive error" {
+  let _ = @moon_wgsl.Preprocessor::default().extract_wgsl_directives(
+    "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+  ) catch {
+    @moon_wgsl.PreprocessError::InvalidWgslDirective(
+      directive,
+      position,
+      reason
+    ) => {
+      debug_inspect(
+        directive,
+        content="\"diagnostic(note, derivative_uniformity);\"",
+      )
+      debug_inspect(position.to_string(), content="\"0\"")
+      debug_inspect(reason.contains("Invalid severity 'note'"), content="true")
+      return
+    }
+    _ => abort("expected invalid WGSL directive error")
+  }
+  abort("expected invalid WGSL directive error")
+}
+
+///|
+test "naga_oil: empty directive extension list reports directive error" {
+  let _ = @moon_wgsl.Preprocessor::default().extract_wgsl_directives(
+    "enable , ;\nfn shade() {}\n",
+  ) catch {
+    @moon_wgsl.PreprocessError::InvalidWgslDirective(
+      directive,
+      position,
+      reason
+    ) => {
+      debug_inspect(directive, content="\"enable , ;\"")
+      debug_inspect(position.to_string(), content="\"0\"")
+      debug_inspect(reason, content="\"No extensions specified\"")
+      return
+    }
+    _ => abort("expected invalid WGSL directive error")
+  }
+  abort("expected invalid WGSL directive error")
+}
+
+///|
+test "naga_oil: uint comparison rejects unsigned suffix values" {
+  let defs = empty_shader_defs()
+  defs.set("COUNT", @moon_wgsl.ShaderDefValue::UInt(1U))
+  let _ = @moon_wgsl.Preprocessor::default().preprocess(
+    "#if COUNT == 1u\nok\n#endif\n", defs,
+  ) catch {
+    @moon_wgsl.PreprocessError::InvalidShaderDefComparisonValue(
+      name,
+      value,
+      expected,
+      _
+    ) => {
+      debug_inspect(name, content="\"COUNT\"")
+      debug_inspect(value, content="\"1u\"")
+      debug_inspect(expected, content="\"uint\"")
+      return
+    }
+    _ => abort("expected invalid uint comparison value")
+  }
+  abort("expected invalid uint comparison value")
 }
 
 ///|

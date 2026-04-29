@@ -29,6 +29,7 @@ pub(all) suberror PreprocessError {
   UnknownShaderDef(String, Int)
   UnknownShaderDefOperator(String, Int)
   InvalidShaderDefComparisonValue(String, String, String, Int)
+  InvalidWgslDirective(String, Int, String)
   ImportParseError(String, Int)
   DefineInModule(Int)
 }
@@ -210,13 +211,6 @@ fn parse_define_value(raw_value : String) -> ShaderDefValue {
   if value == "false" {
     return ShaderDefValue::Bool(false)
   }
-  if value.has_suffix("u") || value.has_suffix("U") {
-    let unsigned_text = value[:value.length() - 1].to_owned().trim().to_owned()
-    let parsed = @string.parse_int(unsigned_text[:], base=10) catch {
-      _ => return ShaderDefValue::Bool(false)
-    }
-    return ShaderDefValue::UInt(parsed.reinterpret_as_uint())
-  }
   let parsed_unsigned = @string.parse_int(value[:], base=10) catch { _ => -1 }
   if parsed_unsigned >= 0 {
     return ShaderDefValue::UInt(parsed_unsigned.reinterpret_as_uint())
@@ -233,18 +227,47 @@ fn split_define_name_and_value(text : String) -> (String, String) {
   if trimmed == "" {
     return ("", "")
   }
-  let mut i = 0
+  let mut name_end = 0
+  while name_end < trimmed.length() {
+    let code = trimmed.code_unit_at(name_end).to_int()
+    let is_name = (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 48 && code <= 57) ||
+      code == 95 ||
+      code == 124
+    if !is_name {
+      break
+    }
+    name_end = name_end + 1
+  }
+  if name_end == 0 {
+    return ("", "")
+  }
+  let name = trimmed[:name_end].to_owned()
+  let mut i = name_end
   while i < trimmed.length() {
     let code = trimmed.code_unit_at(i).to_int()
     if code == 32 || code == 9 {
-      return (
-        trimmed[:i].to_owned().trim().to_owned(),
-        first_space_separated_token(trimmed[i:trimmed.length()].to_owned()),
-      )
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let value_start = i
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    let is_value = (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 48 && code <= 57) ||
+      code == 95 ||
+      code == 124 ||
+      code == 45
+    if !is_value {
+      break
     }
     i = i + 1
   }
-  (trimmed, "")
+  (name, trimmed[value_start:i].to_owned())
 }
 
 ///|
@@ -546,12 +569,7 @@ fn eval_if_condition(
       compare_int_values(int_value, parsed, operator, offset)
     }
     ShaderDefValue::UInt(uint_value) => {
-      let parsed_text = if value.has_suffix("u") || value.has_suffix("U") {
-        value[:value.length() - 1].to_owned()
-      } else {
-        value
-      }
-      let parsed = @string.parse_int(parsed_text[:], base=10) catch {
+      let parsed = @string.parse_int(value[:], base=10) catch {
         _ =>
           raise PreprocessError::InvalidShaderDefComparisonValue(
             def, value, "uint", offset,
@@ -727,7 +745,7 @@ fn replace_shader_defs_in_line(
 pub fn Preprocessor::extract_wgsl_directives(
   _self : Preprocessor,
   source : String,
-) -> (String, WgslDirectives) {
+) -> (String, WgslDirectives) raise PreprocessError {
   let directives = WgslDirectives::default()
   let cleaned_lines : Array[String] = []
   let mut in_directive_section = true
@@ -743,24 +761,46 @@ pub fn Preprocessor::extract_wgsl_directives(
 
     if in_directive_section {
       if semicolon_directive_body(trimmed, "enable") is Some(body) {
+        let extensions = split_extensions(body)
+        if extensions.is_empty() {
+          raise PreprocessError::InvalidWgslDirective(
+            trimmed, line_index, "No extensions specified",
+          )
+        }
         cleaned_lines.push("")
         directives.enables.push(EnableDirective::{
-          extensions: split_extensions(body),
+          extensions,
           source_location: line_index,
         })
         line_index = line_index + 1
         continue
       }
       if semicolon_directive_body(trimmed, "requires") is Some(body) {
+        let extensions = split_extensions(body)
+        if extensions.is_empty() {
+          raise PreprocessError::InvalidWgslDirective(
+            trimmed, line_index, "No extensions specified",
+          )
+        }
         cleaned_lines.push("")
         directives.requires.push(RequiresDirective::{
-          extensions: split_extensions(body),
+          extensions,
           source_location: line_index,
         })
         line_index = line_index + 1
         continue
       }
       if parse_diagnostic_directive_body(trimmed) is Some((severity, rule)) {
+        if severity != "off" &&
+          severity != "info" &&
+          severity != "warn" &&
+          severity != "error" {
+          raise PreprocessError::InvalidWgslDirective(
+            trimmed,
+            line_index,
+            "Invalid severity '\{severity}'. Must be one of: off, info, warn, error",
+          )
+        }
         cleaned_lines.push("")
         directives.diagnostics.push(DiagnosticDirective::{
           severity,

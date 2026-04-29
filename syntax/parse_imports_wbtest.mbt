@@ -60,6 +60,37 @@ test "naga_oil wb: parse_imports matches upstream quoted path grouping" {
 }
 
 ///|
+test "naga_oil wb: parse_imports mirrors upstream import token suite" {
+  debug_inspect(parse_imports_snapshot("#import a::b\n"), content="\"b=a::b\"")
+  debug_inspect(
+    parse_imports_snapshot("#import a::{b, c}\n"),
+    content="\"b=a::b\\nc=a::c\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a::{b as d, c}\n"),
+    content="\"d=a::b\\nc=a::c\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a::{b::{c, d}, e}\n"),
+    content="\"c=a::b::c\\nd=a::b::d\\ne=a::e\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a::b::{c, d}, e\n"),
+    content="\"c=a::b::c\\nd=a::b::d\\ne=e\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a, b\n"),
+    content="\"a=a\\nb=b\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot(
+      "#import a::b::{\n  c::{d, e},\n  f,\n  g::{\n    h as i,\n    j::k::l as m,\n  }\n}\n",
+    ),
+    content="\"d=a::b::c::d\\ne=a::b::c::e\\nf=a::b::f\\ni=a::b::g::h\\nm=a::b::g::j::k::l\"",
+  )
+}
+
+///|
 test "naga_oil wb: parse_imports rejects malformed imports like upstream" {
   debug_inspect(
     parse_imports_snapshot("#import a::b::{{c}\n").has_prefix("ERR "),
