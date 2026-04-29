@@ -27,20 +27,6 @@ priv struct WgslDeclarationGraph {
 }
 
 ///|
-fn ends_with_text(text : String, suffix : String) -> Bool {
-  if text.length() < suffix.length() {
-    return false
-  }
-  let offset = text.length() - suffix.length()
-  for i in 0..<suffix.length() {
-    if text.code_unit_at(offset + i).to_int() != suffix.code_unit_at(i).to_int() {
-      return false
-    }
-  }
-  true
-}
-
-///|
 fn text_contains_code_unit(text : String, code : Int) -> Bool {
   for i in 0..<text.length() {
     if text.code_unit_at(i).to_int() == code {
@@ -264,7 +250,7 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
       if saw_brace {
         done = brace_depth == 0
       } else {
-        done = ends_with_text(block_trimmed, ";")
+        done = block_trimmed.has_suffix(";")
       }
       if !done {
         i = i + 1

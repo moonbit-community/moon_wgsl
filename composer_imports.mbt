@@ -91,7 +91,7 @@ fn wgsl_import_requested_item_name(
   module_path : String,
 ) -> String {
   let prefix = "\{module_path}::"
-  if !starts_with_text(raw_path, prefix) {
+  if !raw_path.has_prefix(prefix) {
     return ""
   }
   raw_path[prefix.length():raw_path.length()].to_string().trim().to_string()
@@ -106,11 +106,6 @@ fn collect_wgsl_alias_requested_paths(
   let pattern = "\{alias_name}::"
   let mut search_from = 0
   while search_from + pattern.length() <= source.length() {
-    let window = source[search_from:source.length()].to_string()
-    let guard_pattern = window.contains(pattern)
-    if !guard_pattern {
-      break
-    }
     let mut match_index = -1
     let limit = source.length() - pattern.length()
     for i in search_from..<=limit {
@@ -378,12 +373,7 @@ fn resolve_wgsl_import_request_module(
 
 ///|
 fn wgsl_path_stack_contains(paths : Array[String], rel_path : String) -> Bool {
-  for existing_path in paths {
-    if existing_path == rel_path {
-      return true
-    }
-  }
-  false
+  paths.contains(rel_path)
 }
 
 ///|

@@ -407,7 +407,7 @@ fn parse_wgsl_uint_literal(text : String) -> Int? {
   if token == "" {
     return None
   }
-  if ends_with_text(token, "u") || ends_with_text(token, "U") {
+  if token.has_suffix("u") || token.has_suffix("U") {
     token = token[:token.length() - 1].to_string().trim().to_string()
   }
   if token == "" {
@@ -419,14 +419,16 @@ fn parse_wgsl_uint_literal(text : String) -> Int? {
 
 ///|
 fn split_once_text(text : String, sep : String) -> (String, String)? {
-  let parts : Array[String] = []
-  for piece in text.split(sep) {
-    parts.push(piece.to_string())
+  match text.find(sep) {
+    Some(index) =>
+      Some(
+        (
+          text[:index].to_string(),
+          text[index + sep.length():text.length()].to_string(),
+        ),
+      )
+    None => None
   }
-  if parts.length() != 2 {
-    return None
-  }
-  Some((parts[0], parts[1]))
 }
 
 ///|
@@ -454,6 +456,15 @@ fn wgsl_define_enabled(
     return true
   }
   defines.get(name).unwrap_or(false)
+}
+
+///|
+fn wgsl_parent_active(active_stack : Array[Bool]) -> Bool {
+  if active_stack.length() >= 2 {
+    active_stack[active_stack.length() - 2]
+  } else {
+    true
+  }
 }
 
 ///|
@@ -625,11 +636,7 @@ fn apply_wgsl_ifdefs(
         let name = wgsl_directive_tail(trimmed, 13)
         let cond = !branch_taken_stack[idx] &&
           wgsl_define_enabled(defines, value_defines, name)
-        let parent = if active_stack.length() >= 2 {
-          active_stack[active_stack.length() - 2]
-        } else {
-          true
-        }
+        let parent = wgsl_parent_active(active_stack)
         active_stack[active_stack.length() - 1] = parent && cond
         branch_taken_stack[idx] = branch_taken_stack[idx] || cond
       }
@@ -641,11 +648,7 @@ fn apply_wgsl_ifdefs(
         let name = wgsl_directive_tail(trimmed, 14)
         let cond = !branch_taken_stack[idx] &&
           !wgsl_define_enabled(defines, value_defines, name)
-        let parent = if active_stack.length() >= 2 {
-          active_stack[active_stack.length() - 2]
-        } else {
-          true
-        }
+        let parent = wgsl_parent_active(active_stack)
         active_stack[active_stack.length() - 1] = parent && cond
         branch_taken_stack[idx] = branch_taken_stack[idx] || cond
       }
@@ -655,11 +658,7 @@ fn apply_wgsl_ifdefs(
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
         let cond = !branch_taken_stack[idx]
-        let parent = if active_stack.length() >= 2 {
-          active_stack[active_stack.length() - 2]
-        } else {
-          true
-        }
+        let parent = wgsl_parent_active(active_stack)
         active_stack[active_stack.length() - 1] = parent && cond
         branch_taken_stack[idx] = branch_taken_stack[idx] || cond
       }
@@ -1246,11 +1245,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         let name = wgsl_directive_tail(trimmed, 13)
         let cond = !import_branch_taken_stack[idx] &&
           wgsl_define_enabled(session.defines, session.value_defines, name)
-        let parent = if import_active_stack.length() >= 2 {
-          import_active_stack[import_active_stack.length() - 2]
-        } else {
-          true
-        }
+        let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
       }
@@ -1264,11 +1259,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         let name = wgsl_directive_tail(trimmed, 14)
         let cond = !import_branch_taken_stack[idx] &&
           !wgsl_define_enabled(session.defines, session.value_defines, name)
-        let parent = if import_active_stack.length() >= 2 {
-          import_active_stack[import_active_stack.length() - 2]
-        } else {
-          true
-        }
+        let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
       }
@@ -1280,11 +1271,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
         let cond = !import_branch_taken_stack[idx]
-        let parent = if import_active_stack.length() >= 2 {
-          import_active_stack[import_active_stack.length() - 2]
-        } else {
-          true
-        }
+        let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
       }

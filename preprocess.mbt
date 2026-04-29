@@ -230,15 +230,7 @@ fn split_define_name_and_value(text : String) -> (String, String) {
 
 ///|
 fn starts_with_text(text : String, prefix : String) -> Bool {
-  if text.length() < prefix.length() {
-    return false
-  }
-  for i in 0..<prefix.length() {
-    if text.code_unit_at(i).to_int() != prefix.code_unit_at(i).to_int() {
-      return false
-    }
-  }
-  true
+  text.has_prefix(prefix)
 }
 
 ///|

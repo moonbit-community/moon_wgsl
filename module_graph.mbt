@@ -59,10 +59,10 @@ pub fn normalize_shader_rel_path(rel : String) -> String {
   if i != 0 {
     text = text[i:n].to_string()
   }
-  while text.length() >= 2 && text[:2].to_string() == "./" {
+  while text.has_prefix("./") {
     text = text[2:text.length()].to_string()
   }
-  if text.length() >= 7 && text[:7].to_string() == "assets/" {
+  if text.has_prefix("assets/") {
     text = text[7:text.length()].to_string()
   }
   let normalized_segments : Array[String] = []
@@ -124,8 +124,8 @@ fn wgsl_import_looks_like_file_path(import_path : String) -> Bool {
   }
   trimmed.contains("/") ||
   trimmed.has_suffix(".wgsl") ||
-  starts_with_text(trimmed, "./") ||
-  starts_with_text(trimmed, "../")
+  trimmed.has_prefix("./") ||
+  trimmed.has_prefix("../")
 }
 
 ///|
@@ -149,8 +149,7 @@ fn resolve_wgsl_import_file_path_from_registry(
     Some(path) => path
     None => import_path.trim().to_string()
   }
-  let normalized = if starts_with_text(raw_path, "./") ||
-    starts_with_text(raw_path, "../") {
+  let normalized = if raw_path.has_prefix("./") || raw_path.has_prefix("../") {
     let parent = shader_parent_rel_path(importer_rel_path)
     if parent == "" {
       normalize_shader_rel_path(raw_path)
@@ -229,7 +228,7 @@ fn normalize_wgsl_scan_extensions(extensions : Array[String]) -> Array[String] {
     if trimmed == "" {
       continue
     }
-    if starts_with_text(trimmed, ".") {
+    if trimmed.has_prefix(".") {
       normalized.push(trimmed)
     } else {
       normalized.push(".\{trimmed}")
@@ -250,7 +249,7 @@ fn wgsl_scan_path_is_excluded(
       continue
     }
     if normalized_rel_path == normalized_prefix ||
-      starts_with_text(normalized_rel_path, "\{normalized_prefix}/") {
+      normalized_rel_path.has_prefix("\{normalized_prefix}/") {
       return true
     }
   }
