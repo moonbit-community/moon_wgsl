@@ -474,43 +474,45 @@ fn replace_shader_defs_in_line(
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String {
   let mut output = ""
-  let mut i = 0
-  while i < line.length() {
-    if line.code_unit_at(i).to_int() != 35 { // '#'
-      output = output + line[i:i + 1].to_owned()
-      i = i + 1
+  let mut scan = 0
+  let mut copy_start = 0
+  while scan < line.length() {
+    if line.code_unit_at(scan).to_int() != 35 { // '#'
+      scan = scan + 1
       continue
     }
 
-    let start = i
-    i = i + 1
-    while i < line.length() {
-      let code = line.code_unit_at(i).to_int()
+    let start = scan
+    scan = scan + 1
+    while scan < line.length() {
+      let code = line.code_unit_at(scan).to_int()
       if code == 32 || code == 9 {
-        i = i + 1
+        scan = scan + 1
         continue
       }
       break
     }
 
-    if i < line.length() && line.code_unit_at(i).to_int() == 123 { // '{'
-      let mut j = i + 1
+    if scan < line.length() && line.code_unit_at(scan).to_int() == 123 { // '{'
+      let mut j = scan + 1
       while j < line.length() && line.code_unit_at(j).to_int() != 125 { // '}'
         j = j + 1
       }
       if j < line.length() {
-        let name = line[i + 1:j].to_owned().trim().to_owned()
+        let name = line[scan + 1:j].to_owned().trim().to_owned()
         if shader_defs.get(name) is Some(value) {
+          output = output + line[copy_start:start].to_owned()
           output = output + value.value_as_string()
-          i = j + 1
+          scan = j + 1
+          copy_start = scan
           continue
         }
       }
-      output = output + line[start:i].to_owned()
+      scan = start + 1
       continue
     }
 
-    let mut j = i
+    let mut j = scan
     while j < line.length() {
       let code = line.code_unit_at(j).to_int()
       let is_ident = (code >= 65 && code <= 90) ||
@@ -522,16 +524,21 @@ fn replace_shader_defs_in_line(
       }
       j = j + 1
     }
-    if j > i {
-      let name = line[i:j].to_owned()
+    if j > scan {
+      let name = line[scan:j].to_owned()
       if shader_defs.get(name) is Some(value) {
+        output = output + line[copy_start:start].to_owned()
         output = output + value.value_as_string()
-        i = j
+        scan = j
+        copy_start = scan
         continue
       }
     }
 
-    output = output + line[start:i].to_owned()
+    scan = start + 1
+  }
+  if copy_start < line.length() {
+    output = output + line[copy_start:line.length()].to_owned()
   }
   output
 }

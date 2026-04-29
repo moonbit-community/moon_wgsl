@@ -179,6 +179,33 @@ test "naga_oil: preprocess strips imports and records used import offsets" {
 }
 
 ///|
+test "issue 5: preprocessor shader defs preserve non-BMP source text" {
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("CUSTOM_LIMIT", @moon_wgsl.ShaderDefValue::Int(42))
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    "// 😀 before a braced shader def\nlet a = #{CUSTOM_LIMIT};\n// 😃 before a bare shader def\nlet b = #CUSTOM_LIMIT;\n// 😄 before an unknown shader def\nlet c = #UNKNOWN;\n",
+    shader_defs,
+  ) catch {
+    _ => abort("expected non-BMP shader-def preprocess success")
+  }
+  debug_inspect(output.preprocessed_source.contains("😀"), content="true")
+  debug_inspect(output.preprocessed_source.contains("😃"), content="true")
+  debug_inspect(output.preprocessed_source.contains("😄"), content="true")
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 42;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let b = 42;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let c = #UNKNOWN;"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: preprocess follows else-ifdef fallback semantics" {
   let source = "\nstruct View {\n    view_proj: mat4x4<f32>,\n    world_position: vec3<f32>,\n};\n@group(0) @binding(0)\nvar<uniform> view: View;\n\n#ifdef TEXTURE\n@group(1) @binding(0)\nvar sprite_texture: texture_2d<f32>;\n#else ifdef SECOND_TEXTURE\n@group(1) @binding(0)\nvar sprite_texture: texture_2d<f32>;\n#else\n@group(1) @binding(0)\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
   let fallback_output = @moon_wgsl.Preprocessor::default().preprocess(

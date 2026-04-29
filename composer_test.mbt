@@ -352,6 +352,33 @@ test "naga_oil: composer local registry can compose without global registry stat
 }
 
 ///|
+test "issue 5: template constants preserve non-BMP source text" {
+  let value_defines = @moon_wgsl.default_wgsl_value_defines()
+  value_defines.set("CUSTOM_LIMIT", 42)
+  let preprocessed = @moon_wgsl.Composer::default().compose_wgsl_source(
+    "// 😀 before a braced template const\nconst A: u32 = #{CUSTOM_LIMIT}u;\n// 😃 before a bare template const\nconst B: u32 = #CUSTOM_LIMITu;\n// 😄 before an unknown template const\nconst C: u32 = #UNKNOWN;\n",
+    {
+      assets_base: "",
+      defines: empty_bool_defines(),
+      value_defines,
+      redirects: [],
+      additional_imports: [],
+    },
+  ) catch {
+    err => abort("expected non-BMP template compose success: \{err.message()}")
+  }
+  debug_inspect(preprocessed.contains("😀"), content="true")
+  debug_inspect(preprocessed.contains("😃"), content="true")
+  debug_inspect(preprocessed.contains("😄"), content="true")
+  debug_inspect(preprocessed.contains("const A: u32 = 42u;"), content="true")
+  debug_inspect(preprocessed.contains("const B: u32 = 42u;"), content="true")
+  debug_inspect(
+    preprocessed.contains("const C: u32 = #UNKNOWN;"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: add_composable_module feeds the composer compose path" {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   let composer = @moon_wgsl.Composer::default()

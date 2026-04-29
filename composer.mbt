@@ -532,30 +532,33 @@ fn apply_wgsl_template_consts(
   value_defines : @hashmap.HashMap[String, Int],
 ) -> String {
   let mut out = ""
-  let mut i = 0
+  let mut scan = 0
+  let mut copy_start = 0
   let n = source.length()
-  while i < n {
-    if i + 1 < n &&
-      source.code_unit_at(i).to_int() == 35 &&
-      source.code_unit_at(i + 1).to_int() == 123 {
-      let mut j = i + 2
+  while scan < n {
+    if scan + 1 < n &&
+      source.code_unit_at(scan).to_int() == 35 &&
+      source.code_unit_at(scan + 1).to_int() == 123 {
+      let mut j = scan + 2
       while j < n && source.code_unit_at(j).to_int() != 125 {
         j = j + 1
       }
       if j < n {
-        let name = source[i + 2:j].to_owned().trim().to_owned()
+        let name = source[scan + 2:j].to_owned().trim().to_owned()
         if value_defines.get(name) is Some(value) {
+          out = out + source[copy_start:scan].to_owned()
           out = out + value.to_string()
-          i = j + 1
+          scan = j + 1
+          copy_start = scan
           continue
         }
       }
     }
-    if i + 1 < n && source.code_unit_at(i).to_int() == 35 {
-      let next = source.code_unit_at(i + 1).to_int()
+    if scan + 1 < n && source.code_unit_at(scan).to_int() == 35 {
+      let next = source.code_unit_at(scan + 1).to_int()
       let starts_name = (next >= 65 && next <= 90) || next == 95
       if starts_name {
-        let mut j = i + 1
+        let mut j = scan + 1
         while j < n {
           let cu = source.code_unit_at(j).to_int()
           let continues_name = (cu >= 65 && cu <= 90) ||
@@ -566,16 +569,20 @@ fn apply_wgsl_template_consts(
           }
           j = j + 1
         }
-        let name = source[i + 1:j].to_owned()
+        let name = source[scan + 1:j].to_owned()
         if value_defines.get(name) is Some(value) {
+          out = out + source[copy_start:scan].to_owned()
           out = out + value.to_string()
-          i = j
+          scan = j
+          copy_start = scan
           continue
         }
       }
     }
-    out = out + source[i:i + 1].to_owned()
-    i = i + 1
+    scan = scan + 1
+  }
+  if copy_start < n {
+    out = out + source[copy_start:n].to_owned()
   }
   out
 }
@@ -1020,6 +1027,26 @@ fn Composer::build_wgsl_import_requests(
 }
 
 ///|
+fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
+  let graph = build_wgsl_declaration_graph(source)
+  let mut deduped = ""
+  let emitted_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  for import_block in graph.import_blocks {
+    deduped = deduped + import_block.text
+  }
+  for block in graph.declaration_blocks {
+    if block.name != "" {
+      if emitted_names.contains(block.name) {
+        continue
+      }
+      emitted_names.set(block.name, true)
+    }
+    deduped = deduped + block.text
+  }
+  deduped
+}
+
+///|
 fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -1178,6 +1205,7 @@ fn finalize_wgsl_composed_source(
     build_wgsl_symbol_redirect_map(alias_redirects),
     false,
   )
+  out = dedupe_wgsl_duplicate_declarations(out)
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }

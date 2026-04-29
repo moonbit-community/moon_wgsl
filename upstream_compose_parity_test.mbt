@@ -596,6 +596,48 @@ test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
 }
 
 ///|
+test "github issue 5: colliding lowered declarations from separate imports are deduped" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "pbr_types_a.wgsl",
+    "#define_import_path bevy_pbr::pbr_types_a\n" +
+    "struct StandardMaterial {\n" +
+    "  flags: u32,\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "pbr_types_b.wgsl",
+    "#define_import_path bevy_pbr::pbr_types_b\n" +
+    "struct StandardMaterial {\n" +
+    "  flags: u32,\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "entry.wgsl",
+    "#import bevy_pbr::pbr_types_a as pbr_types\n" +
+    "#import bevy_pbr::pbr_types_b as pbr_types\n" +
+    "fn fragment(material: pbr_types::StandardMaterial) -> u32 {\n" +
+    "  return material.flags;\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "entry.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort(
+        "expected issue 5 colliding declaration compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    upstream_parity_count_occurrences(
+      source, "struct pbr_types__StandardMaterial",
+    ),
+    content="1",
+  )
+}
+
+///|
 test "github issue 3: item-imported entry points are emitted even when unused by source" {
   let composer = @moon_wgsl.Composer::default()
   composer.register_wgsl_source(
