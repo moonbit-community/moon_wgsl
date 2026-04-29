@@ -49,7 +49,7 @@ fn replace_comments_line(
       match current_state {
         CommentState::Block(_) =>
           output = output + spaces(section_end - section_start)
-        _ => output = output + line_in[section_start:section_end].to_string()
+        _ => output = output + line_in[section_start:section_end].to_owned()
       }
       return (output, current_state)
     }
@@ -58,7 +58,7 @@ fn replace_comments_line(
     match current_state {
       CommentState::Block(_) =>
         output = output + spaces(marker_start - section_start)
-      _ => output = output + line_in[section_start:marker_start].to_string()
+      _ => output = output + line_in[section_start:marker_start].to_owned()
     }
 
     match marker_text {
@@ -160,7 +160,7 @@ fn replace_comments(source : String) -> String {
   let mut state = CommentState::None
   for line_item in source.split("\n") {
     let (output_line, next_state) = replace_comments_line(
-      line_item.to_string(),
+      line_item.to_owned(),
       state,
     )
     output_lines.push(output_line)

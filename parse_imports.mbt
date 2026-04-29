@@ -72,7 +72,7 @@ fn declared_imports_get_paths(
 fn split_once_identifier(text : String) -> (String, String)? {
   if text.find("::") is Some(index) {
     return Some(
-      (text[:index].to_string(), text[index + 2:text.length()].to_string()),
+      (text[:index].to_owned(), text[index + 2:text.length()].to_owned()),
     )
   }
   None
@@ -92,7 +92,7 @@ fn split_last_identifier(text : String) -> (String, String)? {
   if found < 0 {
     return None
   }
-  Some((text[:found].to_string(), text[found + 2:text.length()].to_string()))
+  Some((text[:found].to_owned(), text[found + 2:text.length()].to_owned()))
 }
 
 ///|
@@ -286,13 +286,13 @@ fn base32_nopad(input : String) -> String {
     bits = bits + 8
     while bits >= 5 {
       let index = ((value >> (bits - 5)) & 31U).reinterpret_as_int()
-      out = out + alphabet[index:index + 1].to_string()
+      out = out + alphabet[index:index + 1].to_owned()
       bits = bits - 5
     }
   }
   if bits > 0 {
     let index = ((value << (5 - bits)) & 31U).reinterpret_as_int()
-    out = out + alphabet[index:index + 1].to_string()
+    out = out + alphabet[index:index + 1].to_owned()
   }
   out
 }

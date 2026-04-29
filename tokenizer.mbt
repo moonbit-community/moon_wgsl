@@ -82,7 +82,7 @@ fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
       }
       tokens.push(
         Token::Identifier(
-          src[current_token_start:i].to_string(),
+          src[current_token_start:i].to_owned(),
           current_token_start,
         ),
       )
@@ -98,7 +98,7 @@ fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
       }
       tokens.push(
         Token::Whitespace(
-          src[current_token_start:i].to_string(),
+          src[current_token_start:i].to_owned(),
           current_token_start,
         ),
       )
@@ -130,14 +130,14 @@ fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
   if current_token_kind == 0 {
     tokens.push(
       Token::Identifier(
-        src[current_token_start:src.length()].to_string(),
+        src[current_token_start:src.length()].to_owned(),
         current_token_start,
       ),
     )
   } else if current_token_kind == 1 {
     tokens.push(
       Token::Whitespace(
-        src[current_token_start:src.length()].to_string(),
+        src[current_token_start:src.length()].to_owned(),
         current_token_start,
       ),
     )

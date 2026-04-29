@@ -89,13 +89,13 @@ fn copy_import_definitions(
 fn serialize_wgsl_import_definition(
   import_definition : ImportDefinition,
 ) -> String {
-  let import_path = import_definition.import_path.trim().to_string()
+  let import_path = import_definition.import_path.trim().to_owned()
   if import_path == "" {
     return ""
   }
   let items : Array[String] = []
   for item in import_definition.items {
-    let trimmed_item = item.trim().to_string()
+    let trimmed_item = item.trim().to_owned()
     if trimmed_item != "" {
       items.push(trimmed_item)
     }
@@ -182,7 +182,7 @@ fn composable_module_name_from_descriptor(
 ) -> String raise ComposerError {
   match desc.as_name {
     Some(as_name) => {
-      let trimmed = as_name.trim().to_string()
+      let trimmed = as_name.trim().to_owned()
       if trimmed == "" {
         raise ComposerError::NoModuleName(desc.file_path)
       }
@@ -190,7 +190,7 @@ fn composable_module_name_from_descriptor(
     }
     None =>
       match get_preprocessor_metadata(desc.source).name {
-        Some(name) if name.trim() != "" => name.trim().to_string()
+        Some(name) if name.trim() != "" => name.trim().to_owned()
         _ => raise ComposerError::NoModuleName(desc.file_path)
       }
   }
@@ -294,7 +294,7 @@ fn Composer::new_wgsl_compose_session(
   options : WgslComposeOptions,
 ) -> WgslComposeSession {
   WgslComposeSession::{
-    assets_base: options.assets_base.trim().to_string(),
+    assets_base: options.assets_base.trim().to_owned(),
     defines: copy_bool_defs(options.defines),
     value_defines: copy_int_defs(options.value_defines),
     modules: self.registry.copy_import_module_paths(),
@@ -322,7 +322,7 @@ fn collect_wgsl_cached_import_redirects(
     if !starts_with_text(key, prefix) {
       continue
     }
-    let item_name = key[prefix.length():key.length()].to_string()
+    let item_name = key[prefix.length():key.length()].to_owned()
     let from_name = if alias_name == "" {
       item_name
     } else {
@@ -340,8 +340,8 @@ fn record_wgsl_redirect_matches(
   session : WgslComposeSession,
 ) -> Unit {
   for redirect in session.redirects {
-    let from_name = redirect.from_name.trim().to_string()
-    let to_name = redirect.to_name.trim().to_string()
+    let from_name = redirect.from_name.trim().to_owned()
+    let to_name = redirect.to_name.trim().to_owned()
     if from_name == "" || to_name == "" || from_name == to_name {
       continue
     }
@@ -387,7 +387,7 @@ fn strip_wgsl_line_comment(text : String) -> String {
   while i + 1 < text.length() {
     if text.code_unit_at(i).to_int() == 47 &&
       text.code_unit_at(i + 1).to_int() == 47 {
-      return text[:i].to_string()
+      return text[:i].to_owned()
     }
     i = i + 1
   }
@@ -396,19 +396,19 @@ fn strip_wgsl_line_comment(text : String) -> String {
 
 ///|
 fn wgsl_directive_tail(text : String, prefix_length : Int) -> String {
-  strip_wgsl_line_comment(text[prefix_length:text.length()].to_string())
+  strip_wgsl_line_comment(text[prefix_length:text.length()].to_owned())
   .trim()
-  .to_string()
+  .to_owned()
 }
 
 ///|
 fn parse_wgsl_uint_literal(text : String) -> Int? {
-  let mut token = strip_wgsl_line_comment(text).trim().to_string()
+  let mut token = strip_wgsl_line_comment(text).trim().to_owned()
   if token == "" {
     return None
   }
   if token.has_suffix("u") || token.has_suffix("U") {
-    token = token[:token.length() - 1].to_string().trim().to_string()
+    token = token[:token.length() - 1].to_owned().trim().to_owned()
   }
   if token == "" {
     return None
@@ -423,8 +423,8 @@ fn split_once_text(text : String, sep : String) -> (String, String)? {
     Some(index) =>
       Some(
         (
-          text[:index].to_string(),
-          text[index + sep.length():text.length()].to_string(),
+          text[:index].to_owned(),
+          text[index + sep.length():text.length()].to_owned(),
         ),
       )
     None => None
@@ -473,7 +473,7 @@ fn wgsl_if_expr_value(
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
 ) -> Int {
-  let text = strip_wgsl_line_comment(token).trim().to_string()
+  let text = strip_wgsl_line_comment(token).trim().to_owned()
   if text == "" {
     return 0
   }
@@ -495,7 +495,7 @@ fn eval_wgsl_if_expr(
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
 ) -> Bool {
-  let text = strip_wgsl_line_comment(expr).trim().to_string()
+  let text = strip_wgsl_line_comment(expr).trim().to_owned()
   if text == "" {
     return false
   }
@@ -543,7 +543,7 @@ fn apply_wgsl_template_consts(
         j = j + 1
       }
       if j < n {
-        let name = source[i + 2:j].to_string().trim().to_string()
+        let name = source[i + 2:j].to_owned().trim().to_owned()
         if value_defines.get(name) is Some(value) {
           out = out + value.to_string()
           i = j + 1
@@ -566,7 +566,7 @@ fn apply_wgsl_template_consts(
           }
           j = j + 1
         }
-        let name = source[i + 1:j].to_string()
+        let name = source[i + 1:j].to_owned()
         if value_defines.get(name) is Some(value) {
           out = out + value.to_string()
           i = j
@@ -574,7 +574,7 @@ fn apply_wgsl_template_consts(
         }
       }
     }
-    out = out + source[i:i + 1].to_string()
+    out = out + source[i:i + 1].to_owned()
     i = i + 1
   }
   out
@@ -604,8 +604,8 @@ fn apply_wgsl_ifdefs(
   let active_stack : Array[Bool] = [true]
   let branch_taken_stack : Array[Bool] = []
   for line_item in source.split("\n") {
-    let line = line_item.to_string()
-    let trimmed = line.trim().to_string()
+    let line = line_item.to_owned()
+    let trimmed = line.trim().to_owned()
     if starts_with_text(trimmed, "#ifdef ") {
       let name = wgsl_directive_tail(trimmed, 7)
       let cond = wgsl_define_enabled(defines, value_defines, name)
@@ -856,7 +856,7 @@ fn Composer::seed_wgsl_compose_lines(
     lines.push("#import \{target.raw_path} as \{target.alias_name}")
   }
   for line_item in prepared.redirected_source.split("\n") {
-    lines.push(line_item.to_string())
+    lines.push(line_item.to_owned())
   }
   lines
 }
@@ -961,7 +961,7 @@ fn Composer::build_wgsl_import_requests(
       }
     }
     if !import_full_module {
-      let import_only_source = active_scan_source.trim().to_string() == ""
+      let import_only_source = active_scan_source.trim().to_owned() == ""
       let import_source = match
         self.registry.registered_source(resolved_module.rel_path) {
         Some(source) => source
@@ -1200,7 +1200,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   let mut line_index = 0
   while line_index < lines.length() {
     let line = lines[line_index]
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
     if starts_with_text(trimmed, "#ifdef ") {
       let name = wgsl_directive_tail(trimmed, 7)
       let cond = wgsl_define_enabled(
@@ -1300,7 +1300,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         line_index = line_index + 1
         continue
       }
-      let mut spec = trimmed[8:trimmed.length()].to_string()
+      let mut spec = trimmed[8:trimmed.length()].to_owned()
       let mut brace_balance = import_brace_balance(spec)
       while brace_balance > 0 && line_index + 1 < lines.length() {
         line_index = line_index + 1
@@ -1390,7 +1390,7 @@ pub fn Composer::load_wgsl_from_assets_base_required(
   assets_base : String,
   rel : String,
 ) -> String raise ComposerError {
-  let base = assets_base.trim().to_string()
+  let base = assets_base.trim().to_owned()
   if base == "" {
     raise ComposerError::EmptyAssetsBase(rel)
   }

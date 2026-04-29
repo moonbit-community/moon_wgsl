@@ -118,9 +118,9 @@ fn Scope::finish(self : Scope, offset : Int) -> Unit raise PreprocessError {
 
 ///|
 fn trim_trailing_semicolons(text : String) -> String {
-  let mut out = text.trim().to_string()
+  let mut out = text.trim().to_owned()
   while out.length() > 0 && out.code_unit_at(out.length() - 1).to_int() == 59 { // ';'
-    out = out[:out.length() - 1].to_string().trim().to_string()
+    out = out[:out.length() - 1].to_owned().trim().to_owned()
   }
   out
 }
@@ -129,7 +129,7 @@ fn trim_trailing_semicolons(text : String) -> String {
 fn split_extensions(raw : String) -> Array[String] {
   let extensions : Array[String] = []
   for item in raw.split(",") {
-    let text = item.to_string().trim().to_string()
+    let text = item.to_owned().trim().to_owned()
     if text != "" {
       extensions.push(text)
     }
@@ -151,7 +151,7 @@ fn collect_effective_def_names(
           j = j + 1
         }
         if j < line.length() {
-          let name = line[i + 2:j].to_string().trim().to_string()
+          let name = line[i + 2:j].to_owned().trim().to_owned()
           if name != "" {
             effective_defs.add(name)
           }
@@ -171,7 +171,7 @@ fn collect_effective_def_names(
         j = j + 1
       }
       if j > i + 1 {
-        effective_defs.add(line[i + 1:j].to_string())
+        effective_defs.add(line[i + 1:j].to_owned())
         i = j
         continue
       }
@@ -193,10 +193,7 @@ fn parse_define_value(raw_value : String) -> ShaderDefValue {
     return ShaderDefValue::Bool(false)
   }
   if value.has_suffix("u") || value.has_suffix("U") {
-    let unsigned_text = value[:value.length() - 1]
-      .to_string()
-      .trim()
-      .to_string()
+    let unsigned_text = value[:value.length() - 1].to_owned().trim().to_owned()
     let parsed = @string.parse_int(unsigned_text[:], base=10) catch {
       _ => return ShaderDefValue::Bool(false)
     }
@@ -210,7 +207,7 @@ fn parse_define_value(raw_value : String) -> ShaderDefValue {
 
 ///|
 fn split_define_name_and_value(text : String) -> (String, String) {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed == "" {
     return ("", "")
   }
@@ -219,8 +216,8 @@ fn split_define_name_and_value(text : String) -> (String, String) {
     let code = trimmed.code_unit_at(i).to_int()
     if code == 32 || code == 9 {
       return (
-        trimmed[:i].to_string().trim().to_string(),
-        trimmed[i:trimmed.length()].to_string().trim().to_string(),
+        trimmed[:i].to_owned().trim().to_owned(),
+        trimmed[i:trimmed.length()].to_owned().trim().to_owned(),
       )
     }
     i = i + 1
@@ -261,10 +258,10 @@ fn parse_bool_text(text : String) -> Bool? {
 
 ///|
 fn parse_prefixed_identifier(line : String, prefix : String) -> String? {
-  let trimmed = line.trim().to_string()
+  let trimmed = line.trim().to_owned()
   guard starts_with_text(trimmed, prefix) else { return None }
   let name = trim_trailing_semicolons(
-    trimmed[prefix.length():trimmed.length()].to_string(),
+    trimmed[prefix.length():trimmed.length()].to_owned(),
   )
   if name == "" {
     None
@@ -278,14 +275,14 @@ fn parse_if_operator_clause(
   line : String,
   prefix : String,
 ) -> (String, String, String)? {
-  let trimmed = line.trim().to_string()
+  let trimmed = line.trim().to_owned()
   guard starts_with_text(trimmed, prefix) else { return None }
   let expression = trim_trailing_semicolons(
-    trimmed[prefix.length():trimmed.length()].to_string(),
+    trimmed[prefix.length():trimmed.length()].to_owned(),
   )
   let parts : Array[String] = []
   for part in expression.split(" ") {
-    let token = part.to_string().trim().to_string()
+    let token = part.to_owned().trim().to_owned()
     if token != "" {
       parts.push(token)
     }
@@ -382,7 +379,7 @@ fn eval_if_condition(
     }
     ShaderDefValue::UInt(uint_value) => {
       let parsed_text = if value.has_suffix("u") || value.has_suffix("U") {
-        value[:value.length() - 1].to_string()
+        value[:value.length() - 1].to_owned()
       } else {
         value
       }
@@ -455,7 +452,7 @@ fn check_scope(
     scope_state.branch(false, condition, offset)
     return (true, Some(def))
   }
-  let trimmed = line.trim().to_string()
+  let trimmed = line.trim().to_owned()
   if starts_with_text(trimmed, "#else") {
     if scope is Some(scope_state) {
       scope_state.branch(true, true, offset)
@@ -480,7 +477,7 @@ fn replace_shader_defs_in_line(
   let mut i = 0
   while i < line.length() {
     if line.code_unit_at(i).to_int() != 35 { // '#'
-      output = output + line[i:i + 1].to_string()
+      output = output + line[i:i + 1].to_owned()
       i = i + 1
       continue
     }
@@ -502,14 +499,14 @@ fn replace_shader_defs_in_line(
         j = j + 1
       }
       if j < line.length() {
-        let name = line[i + 1:j].to_string().trim().to_string()
+        let name = line[i + 1:j].to_owned().trim().to_owned()
         if shader_defs.get(name) is Some(value) {
           output = output + value.value_as_string()
           i = j + 1
           continue
         }
       }
-      output = output + line[start:i].to_string()
+      output = output + line[start:i].to_owned()
       continue
     }
 
@@ -526,7 +523,7 @@ fn replace_shader_defs_in_line(
       j = j + 1
     }
     if j > i {
-      let name = line[i:j].to_string()
+      let name = line[i:j].to_owned()
       if shader_defs.get(name) is Some(value) {
         output = output + value.value_as_string()
         i = j
@@ -534,7 +531,7 @@ fn replace_shader_defs_in_line(
       }
     }
 
-    output = output + line[start:i].to_string()
+    output = output + line[start:i].to_owned()
   }
   output
 }
@@ -549,8 +546,8 @@ pub fn Preprocessor::extract_wgsl_directives(
   let mut in_directive_section = true
   let mut line_index = 0
   for line_item in source.split("\n") {
-    let line = line_item.to_string()
-    let trimmed = line.trim().to_string()
+    let line = line_item.to_owned()
+    let trimmed = line.trim().to_owned()
 
     if trimmed == "" || starts_with_text(trimmed, "//") {
       cleaned_lines.push(line)
@@ -563,7 +560,7 @@ pub fn Preprocessor::extract_wgsl_directives(
         cleaned_lines.push("")
         directives.enables.push(EnableDirective::{
           extensions: split_extensions(
-            trimmed[7:trimmed.length() - 1].to_string(),
+            trimmed[7:trimmed.length() - 1].to_owned(),
           ),
           source_location: line_index,
         })
@@ -574,7 +571,7 @@ pub fn Preprocessor::extract_wgsl_directives(
         cleaned_lines.push("")
         directives.requires.push(RequiresDirective::{
           extensions: split_extensions(
-            trimmed[9:trimmed.length() - 1].to_string(),
+            trimmed[9:trimmed.length() - 1].to_owned(),
           ),
           source_location: line_index,
         })
@@ -582,15 +579,15 @@ pub fn Preprocessor::extract_wgsl_directives(
         continue
       }
       if starts_with_text(trimmed, "diagnostic(") && trimmed.has_suffix(");") {
-        let body = trimmed[11:trimmed.length() - 2].to_string()
+        let body = trimmed[11:trimmed.length() - 2].to_owned()
         if body.find(",") is Some(comma_index) {
           cleaned_lines.push("")
           directives.diagnostics.push(DiagnosticDirective::{
-            severity: body[:comma_index].to_string().trim().to_string(),
+            severity: body[:comma_index].to_owned().trim().to_owned(),
             rule: body[comma_index + 1:body.length()]
-            .to_string()
+            .to_owned()
             .trim()
-            .to_string(),
+            .to_owned(),
             source_location: line_index,
           })
           line_index = line_index + 1
@@ -631,10 +628,10 @@ pub fn Preprocessor::preprocess(
   let original_lines : Array[String] = []
   let decommented_lines : Array[String] = []
   for line_item in source.split("\n") {
-    original_lines.push(line_item.to_string())
+    original_lines.push(line_item.to_owned())
   }
   for line_item in replace_comments(source).split("\n") {
-    decommented_lines.push(line_item.to_string())
+    decommented_lines.push(line_item.to_owned())
   }
 
   let mut final_string = ""
@@ -644,11 +641,11 @@ pub fn Preprocessor::preprocess(
     let mut line = decommented_lines[line_index]
     let original_line = original_lines[line_index]
     let mut output = false
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
 
     if starts_with_text(trimmed, "#version ") {
       let version = trim_trailing_semicolons(
-        trimmed[9:trimmed.length()].to_string(),
+        trimmed[9:trimmed.length()].to_owned(),
       )
       if version != "440" && version != "450" {
         raise PreprocessError::GlslInvalidVersion(offset)
@@ -753,13 +750,13 @@ fn try_get_preprocessor_metadata(
   let mut offset = 0
 
   for line_item in stripped.split("\n") {
-    lines.push(line_item.to_string())
+    lines.push(line_item.to_owned())
   }
 
   let mut line_index = 0
   while line_index < lines.length() {
     let line = lines[line_index]
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
     let (is_scope, def) = check_scope(
       @hashmap.HashMap::new(),
       line,
@@ -792,14 +789,14 @@ fn try_get_preprocessor_metadata(
           )
       }
     } else if starts_with_text(trimmed, "#define_import_path ") {
-      let raw_name = trimmed[20:trimmed.length()].to_string()
+      let raw_name = trimmed[20:trimmed.length()].to_owned()
       let import_path = trim_trailing_semicolons(raw_name)
       if import_path != "" {
         name = Some(import_path)
       }
     } else if starts_with_text(trimmed, "#define ") {
       if allow_defines {
-        let raw_define = trimmed[8:trimmed.length()].to_string()
+        let raw_define = trimmed[8:trimmed.length()].to_owned()
         let (define_name, define_value) = split_define_name_and_value(
           raw_define,
         )

@@ -69,8 +69,8 @@ fn build_wgsl_symbol_redirect_map(
 ) -> @hashmap.HashMap[String, String] {
   let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for redirect in redirects {
-    let from_name = redirect.from_name.trim().to_string()
-    let to_name = redirect.to_name.trim().to_string()
+    let from_name = redirect.from_name.trim().to_owned()
+    let to_name = redirect.to_name.trim().to_owned()
     if from_name == "" || to_name == "" || from_name == to_name {
       continue
     }
@@ -119,10 +119,10 @@ fn wgsl_identifier_is_reserved_or_invalid(ident : String) -> Bool {
 fn sanitize_wgsl_identifier(ident : String) -> String {
   let mut out = ident
   while out.has_suffix("_") {
-    out = out[:out.length() - 1].to_string()
+    out = out[:out.length() - 1].to_owned()
   }
   while starts_with_text(out, "__") {
-    out = out[1:out.length()].to_string()
+    out = out[1:out.length()].to_owned()
   }
   if out == "" {
     out = "wgsl"
@@ -176,7 +176,7 @@ fn rewrite_wgsl_declaration_text_with_map(
       if code == 47 &&
         i + 1 < source.length() &&
         source.code_unit_at(i + 1).to_int() == 42 {
-        output = output + source[i:i + 2].to_string()
+        output = output + source[i:i + 2].to_owned()
         block_comment_depth = block_comment_depth + 1
         i = i + 2
         continue
@@ -184,7 +184,7 @@ fn rewrite_wgsl_declaration_text_with_map(
       if code == 42 &&
         i + 1 < source.length() &&
         source.code_unit_at(i + 1).to_int() == 47 {
-        output = output + source[i:i + 2].to_string()
+        output = output + source[i:i + 2].to_owned()
         block_comment_depth = block_comment_depth - 1
         i = i + 2
         continue
@@ -195,7 +195,7 @@ fn rewrite_wgsl_declaration_text_with_map(
     }
     if in_string {
       if code == 92 && i + 1 < source.length() {
-        output = output + source[i:i + 2].to_string()
+        output = output + source[i:i + 2].to_owned()
         i = i + 2
         continue
       }
@@ -210,7 +210,7 @@ fn rewrite_wgsl_declaration_text_with_map(
     if code == 47 &&
       i + 1 < source.length() &&
       source.code_unit_at(i + 1).to_int() == 47 {
-      output = output + source[i:i + 2].to_string()
+      output = output + source[i:i + 2].to_owned()
       in_line_comment = true
       i = i + 2
       continue
@@ -218,7 +218,7 @@ fn rewrite_wgsl_declaration_text_with_map(
     if code == 47 &&
       i + 1 < source.length() &&
       source.code_unit_at(i + 1).to_int() == 42 {
-      output = output + source[i:i + 2].to_string()
+      output = output + source[i:i + 2].to_owned()
       block_comment_depth = 1
       i = i + 2
       continue
@@ -246,7 +246,7 @@ fn rewrite_wgsl_declaration_text_with_map(
         }
         break
       }
-      let ident = source[start:i].to_string()
+      let ident = source[start:i].to_owned()
       if pending_declaration_name && pending_template_depth == 0 {
         if rewrite_declaration_names {
           match redirect_map.get(ident) {
@@ -316,17 +316,17 @@ fn collect_wgsl_function_parameter_sanitizers(
     Some(index) => index
     None => block_text.length()
   }
-  let header = block_text[:header_end].to_string()
+  let header = block_text[:header_end].to_owned()
   guard header.find("fn ") is Some(fn_index) else { return }
-  let fn_header = header[fn_index:header.length()].to_string()
+  let fn_header = header[fn_index:header.length()].to_owned()
   guard fn_header.find("(") is Some(open_index) else { return }
   guard fn_header.find(")") is Some(close_index) else { return }
   if close_index <= open_index {
     return
   }
-  let params = fn_header[open_index + 1:close_index].to_string()
+  let params = fn_header[open_index + 1:close_index].to_owned()
   for param_item in params.split(",") {
-    let param = param_item.to_string().trim().to_string()
+    let param = param_item.to_owned().trim().to_owned()
     if param == "" {
       continue
     }
@@ -336,7 +336,7 @@ fn collect_wgsl_function_parameter_sanitizers(
       end = end + 1
     }
     if end > 0 {
-      wgsl_redirect_map_set_sanitized(redirect_map, param[:end].to_string())
+      wgsl_redirect_map_set_sanitized(redirect_map, param[:end].to_owned())
     }
   }
 }
@@ -424,7 +424,7 @@ fn build_wgsl_source_catalog_from_files(
       catalog_entries.push(WgslSourceCatalogEntry::{
         rel_path: source_file.rel_path,
         symbol_name: block.name,
-        source_text: block.text.trim().to_string(),
+        source_text: block.text.trim().to_owned(),
         source_start: block.start,
         source_end: block.end,
       })
@@ -496,7 +496,7 @@ fn match_wgsl_source_catalog_entry(
   if entries.length() == 1 {
     return Some(entries[0])
   }
-  let trimmed_block = block.text.trim().to_string()
+  let trimmed_block = block.text.trim().to_owned()
   let exact_matches : Array[WgslSourceCatalogEntry] = []
   for entry in entries {
     if entry.source_text == trimmed_block {
@@ -585,8 +585,8 @@ fn append_wgsl_unused_redirect_diagnostics(
   session : WgslComposeSession,
 ) -> Unit {
   for redirect in session.redirects {
-    let from_name = redirect.from_name.trim().to_string()
-    let to_name = redirect.to_name.trim().to_string()
+    let from_name = redirect.from_name.trim().to_owned()
+    let to_name = redirect.to_name.trim().to_owned()
     if from_name == "" || to_name == "" || from_name == to_name {
       continue
     }
@@ -664,7 +664,7 @@ pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(
   options : WgslExportOptions,
   redirects : Array[WgslSymbolRedirect],
 ) -> WgslExportOutput raise ComposerError {
-  let base = assets_base.trim().to_string()
+  let base = assets_base.trim().to_owned()
   if base == "" {
     raise ComposerError::EmptyAssetsBase(rel)
   }

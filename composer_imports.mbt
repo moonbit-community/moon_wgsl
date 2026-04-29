@@ -45,7 +45,7 @@ fn unresolved_wgsl_namespace_reference(source : String) -> String? {
         }
         end = end + 1
       }
-      let path = cleaned[start:end].to_string().trim().to_string()
+      let path = cleaned[start:end].to_owned().trim().to_owned()
       if path != "" && path != "::" {
         return Some(path)
       }
@@ -59,7 +59,7 @@ fn unresolved_wgsl_namespace_reference(source : String) -> String? {
 fn wgsl_import_default_alias(module_path : String) -> String {
   let mut alias_name = ""
   for seg in module_path.split("::") {
-    let text = seg.to_string().trim().to_string()
+    let text = seg.to_owned().trim().to_owned()
     if text != "" {
       alias_name = text
     }
@@ -73,7 +73,7 @@ fn wgsl_import_alias_prefix(alias_name : String) -> String {
   for i in 0..<alias_name.length() {
     let code = alias_name.code_unit_at(i).to_int()
     if wgsl_identifier_char(code) {
-      prefix = prefix + alias_name[i:i + 1].to_string()
+      prefix = prefix + alias_name[i:i + 1].to_owned()
     } else if !prefix.has_suffix("_") {
       prefix = prefix + "_"
     }
@@ -94,7 +94,7 @@ fn wgsl_import_requested_item_name(
   if !raw_path.has_prefix(prefix) {
     return ""
   }
-  raw_path[prefix.length():raw_path.length()].to_string().trim().to_string()
+  raw_path[prefix.length():raw_path.length()].to_owned().trim().to_owned()
 }
 
 ///|
@@ -109,7 +109,7 @@ fn collect_wgsl_alias_requested_paths(
     let mut match_index = -1
     let limit = source.length() - pattern.length()
     for i in search_from..<=limit {
-      if source[i:i + pattern.length()].to_string() == pattern {
+      if source[i:i + pattern.length()].to_owned() == pattern {
         match_index = i
         break
       }
@@ -135,7 +135,7 @@ fn collect_wgsl_alias_requested_paths(
       end = end + 1
     }
     if end > start {
-      let item_path = source[start:end].to_string()
+      let item_path = source[start:end].to_owned()
       wgsl_string_list_push_unique(requested_paths, item_path)
       search_from = end
     } else {
@@ -166,8 +166,8 @@ fn split_last_wgsl_path(path : String) -> (String, String)? {
   while i > 0 {
     if path.code_unit_at(i - 1).to_int() == 58 &&
       path.code_unit_at(i).to_int() == 58 {
-      let prefix = path[:i - 1].to_string().trim().to_string()
-      let suffix = path[i + 1:path.length()].to_string().trim().to_string()
+      let prefix = path[:i - 1].to_owned().trim().to_owned()
+      let suffix = path[i + 1:path.length()].to_owned().trim().to_owned()
       if prefix != "" && suffix != "" {
         return Some((prefix, suffix))
       }
@@ -272,7 +272,7 @@ fn wgsl_source_contains_identifier(
   }
   let limit = source.length() - identifier.length()
   for i in 0..<=limit {
-    if source[i:i + identifier.length()].to_string() != identifier {
+    if source[i:i + identifier.length()].to_owned() != identifier {
       continue
     }
     let left_ok = i == 0 ||
@@ -353,7 +353,7 @@ fn resolve_wgsl_import_request_module(
     let module_path = match registry.registered_source(rel_path) {
       Some(source) =>
         match get_preprocessor_metadata(source).name {
-          Some(name) if name.trim() != "" => name.trim().to_string()
+          Some(name) if name.trim() != "" => name.trim().to_owned()
           _ => import_path
         }
       None => import_path

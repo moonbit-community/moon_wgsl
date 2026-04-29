@@ -56,7 +56,7 @@ fn wgsl_string_list_push_unique(items : Array[String], item : String) -> Unit {
 
 ///|
 fn wgsl_declaration_name(line : String) -> String {
-  let trimmed = line.trim().to_string()
+  let trimmed = line.trim().to_owned()
   if trimmed == "" {
     return ""
   }
@@ -67,67 +67,65 @@ fn wgsl_declaration_name(line : String) -> String {
         trimmed.code_unit_at(i + 1).to_int() == 118 &&
         trimmed.code_unit_at(i + 2).to_int() == 97 &&
         trimmed.code_unit_at(i + 3).to_int() == 114 {
-        return wgsl_declaration_name(
-          trimmed[i + 1:trimmed.length()].to_string(),
-        )
+        return wgsl_declaration_name(trimmed[i + 1:trimmed.length()].to_owned())
       }
       i = i + 1
     }
     return ""
   }
   if starts_with_text(trimmed, "struct ") {
-    let rest = trimmed[7:trimmed.length()].to_string()
+    let rest = trimmed[7:trimmed.length()].to_owned()
     let mut end = 0
     while end < rest.length() &&
           wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
       end = end + 1
     }
-    return if end == 0 { "" } else { rest[:end].to_string() }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
   }
   if starts_with_text(trimmed, "fn ") {
-    let rest = trimmed[3:trimmed.length()].to_string()
+    let rest = trimmed[3:trimmed.length()].to_owned()
     let mut end = 0
     while end < rest.length() &&
           wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
       end = end + 1
     }
-    return if end == 0 { "" } else { rest[:end].to_string() }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
   }
   if starts_with_text(trimmed, "const ") {
-    let rest = trimmed[6:trimmed.length()].to_string()
+    let rest = trimmed[6:trimmed.length()].to_owned()
     let mut end = 0
     while end < rest.length() &&
           wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
       end = end + 1
     }
-    return if end == 0 { "" } else { rest[:end].to_string() }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
   }
   if starts_with_text(trimmed, "override ") {
-    let rest = trimmed[9:trimmed.length()].to_string()
+    let rest = trimmed[9:trimmed.length()].to_owned()
     let mut end = 0
     while end < rest.length() &&
           wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
       end = end + 1
     }
-    return if end == 0 { "" } else { rest[:end].to_string() }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
   }
   if starts_with_text(trimmed, "alias ") {
-    let rest = trimmed[6:trimmed.length()].to_string()
+    let rest = trimmed[6:trimmed.length()].to_owned()
     let mut end = 0
     while end < rest.length() &&
           wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
       end = end + 1
     }
-    return if end == 0 { "" } else { rest[:end].to_string() }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
   }
   if starts_with_text(trimmed, "type ") {
-    let rest = trimmed[5:trimmed.length()].to_string()
+    let rest = trimmed[5:trimmed.length()].to_owned()
     let mut end = 0
     while end < rest.length() &&
           wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
       end = end + 1
     }
-    return if end == 0 { "" } else { rest[:end].to_string() }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
   }
   if starts_with_text(trimmed, "var") {
     let mut i = 3
@@ -158,7 +156,7 @@ fn wgsl_declaration_name(line : String) -> String {
           wgsl_identifier_char(trimmed.code_unit_at(i).to_int()) {
       i = i + 1
     }
-    return if i == start { "" } else { trimmed[start:i].to_string() }
+    return if i == start { "" } else { trimmed[start:i].to_owned() }
   }
   ""
 }
@@ -170,13 +168,13 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
   let line_starts : Array[Int] = []
   let mut offset = 0
   for line_item in source.split("\n") {
-    let line = line_item.to_string()
+    let line = line_item.to_owned()
     lines.push(line)
     line_starts.push(offset)
     offset = offset + line.length() + 1
   }
   for line_item in replace_comments(source).split("\n") {
-    cleaned_lines.push(line_item.to_string())
+    cleaned_lines.push(line_item.to_owned())
   }
 
   let pending_prefix : Array[String] = []
@@ -187,7 +185,7 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
   while i < lines.length() {
     let line = lines[i]
     let cleaned_line = cleaned_lines[i]
-    let trimmed = cleaned_line.trim().to_string()
+    let trimmed = cleaned_line.trim().to_owned()
     let decl_name_hint = wgsl_declaration_name(trimmed)
     if trimmed == "" || (starts_with_text(trimmed, "@") && decl_name_hint == "") {
       if pending_prefix.length() == 0 {
@@ -205,7 +203,7 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
       let block_start = line_starts[i]
       let mut import_block = line
       let mut balance = import_brace_balance(
-        trimmed[8:trimmed.length()].to_string(),
+        trimmed[8:trimmed.length()].to_owned(),
       )
       while balance > 0 && i + 1 < lines.length() {
         i = i + 1
@@ -246,7 +244,7 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
         saw_brace = true
       }
       brace_depth = brace_depth + import_brace_balance(cleaned_block_line)
-      let block_trimmed = cleaned_block_line.trim().to_string()
+      let block_trimmed = cleaned_block_line.trim().to_owned()
       if saw_brace {
         done = brace_depth == 0
       } else {
@@ -306,7 +304,7 @@ fn collect_wgsl_declaration_dependencies(
         }
         let segments : Array[String] = []
         for raw_segment in ident.split("::") {
-          let segment = raw_segment.to_string().trim().to_string()
+          let segment = raw_segment.to_owned().trim().to_owned()
           if segment != "" {
             segments.push(segment)
           }
@@ -418,20 +416,20 @@ fn wgsl_source_declares_entry_point(
 fn strip_wgsl_import_declarations(source : String) -> String {
   let lines : Array[String] = []
   for line_item in source.split("\n") {
-    lines.push(line_item.to_string())
+    lines.push(line_item.to_owned())
   }
   let mut out = ""
   let mut index = 0
   while index < lines.length() {
     let line = lines[index]
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
     if starts_with_text(trimmed, "#define_import_path") {
       index = index + 1
       continue
     }
     if starts_with_text(trimmed, "#import ") {
       let mut brace_balance = import_brace_balance(
-        trimmed[8:trimmed.length()].to_string(),
+        trimmed[8:trimmed.length()].to_owned(),
       )
       while brace_balance > 0 && index + 1 < lines.length() {
         index = index + 1

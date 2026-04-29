@@ -26,8 +26,8 @@ pub struct WgslResolvedImportModule {
 
 ///|
 fn join_wgsl_import_prefix(prefix : String, path : String) -> String {
-  let lhs = prefix.trim().to_string()
-  let rhs = path.trim().to_string()
+  let lhs = prefix.trim().to_owned()
+  let rhs = path.trim().to_owned()
   if lhs == "" {
     rhs
   } else if rhs == "" {
@@ -50,24 +50,24 @@ pub fn collect_wgsl_import_targets(
 
 ///|
 pub fn normalize_shader_rel_path(rel : String) -> String {
-  let mut text = rel.trim().to_string()
+  let mut text = rel.trim().to_owned()
   let n = text.length()
   let mut i = 0
   while i < n && text.code_unit_at(i).to_int() == 47 { // '/'
     i = i + 1
   }
   if i != 0 {
-    text = text[i:n].to_string()
+    text = text[i:n].to_owned()
   }
   while text.has_prefix("./") {
-    text = text[2:text.length()].to_string()
+    text = text[2:text.length()].to_owned()
   }
   if text.has_prefix("assets/") {
-    text = text[7:text.length()].to_string()
+    text = text[7:text.length()].to_owned()
   }
   let normalized_segments : Array[String] = []
   for raw_segment in text.split("/") {
-    let segment = raw_segment.to_string().trim().to_string()
+    let segment = raw_segment.to_owned().trim().to_owned()
     if segment == "" || segment == "." {
       continue
     }
@@ -90,7 +90,7 @@ fn shader_parent_rel_path(rel_path : String) -> String {
   }
   let segments : Array[String] = []
   for raw_segment in normalized.split("/") {
-    let segment = raw_segment.to_string()
+    let segment = raw_segment.to_owned()
     if segment != "" {
       segments.push(segment)
     }
@@ -104,11 +104,11 @@ fn shader_parent_rel_path(rel_path : String) -> String {
 
 ///|
 fn unquote_wgsl_import_path(import_path : String) -> String? {
-  let trimmed = import_path.trim().to_string()
+  let trimmed = import_path.trim().to_owned()
   if trimmed.length() >= 2 &&
     trimmed.code_unit_at(0).to_int() == 34 &&
     trimmed.code_unit_at(trimmed.length() - 1).to_int() == 34 {
-    return Some(trimmed[1:trimmed.length() - 1].to_string())
+    return Some(trimmed[1:trimmed.length() - 1].to_owned())
   }
   None
 }
@@ -118,7 +118,7 @@ fn wgsl_import_looks_like_file_path(import_path : String) -> Bool {
   if unquote_wgsl_import_path(import_path) is Some(_) {
     return true
   }
-  let trimmed = import_path.trim().to_string()
+  let trimmed = import_path.trim().to_owned()
   if trimmed == "" {
     return false
   }
@@ -147,7 +147,7 @@ fn resolve_wgsl_import_file_path_from_registry(
   guard wgsl_import_looks_like_file_path(import_path) else { return None }
   let raw_path = match unquote_wgsl_import_path(import_path) {
     Some(path) => path
-    None => import_path.trim().to_string()
+    None => import_path.trim().to_owned()
   }
   let normalized = if raw_path.has_prefix("./") || raw_path.has_prefix("../") {
     let parent = shader_parent_rel_path(importer_rel_path)
@@ -186,7 +186,7 @@ pub fn resolve_wgsl_source_file_path(
 
 ///|
 fn normalize_wgsl_scan_path(path : String) -> String {
-  let trimmed = path.trim().to_string()
+  let trimmed = path.trim().to_owned()
   if trimmed == "" {
     return ""
   }
@@ -194,11 +194,11 @@ fn normalize_wgsl_scan_path(path : String) -> String {
   let mut start = 0
   for i in 0..<trimmed.length() {
     if trimmed.code_unit_at(i).to_int() == 92 { // '\\'
-      parts.push(trimmed[start:i].to_string())
+      parts.push(trimmed[start:i].to_owned())
       start = i + 1
     }
   }
-  parts.push(trimmed[start:trimmed.length()].to_string())
+  parts.push(trimmed[start:trimmed.length()].to_owned())
   parts.join("/")
 }
 
@@ -224,7 +224,7 @@ fn normalize_wgsl_scan_prefix(prefix : String) -> String {
 fn normalize_wgsl_scan_extensions(extensions : Array[String]) -> Array[String] {
   let normalized : Array[String] = []
   for extension in extensions {
-    let trimmed = extension.trim().to_string()
+    let trimmed = extension.trim().to_owned()
     if trimmed == "" {
       continue
     }
@@ -631,7 +631,7 @@ fn wgsl_module_path_to_rel_path(module_path : String) -> String {
   let mut rel = "shaders/"
   let mut first = true
   for seg in module_path.split("::") {
-    let text = seg.to_string()
+    let text = seg.to_owned()
     if text == "" {
       continue
     }
@@ -649,7 +649,7 @@ fn wgsl_module_path_to_rel_path(module_path : String) -> String {
 fn wgsl_module_path_to_rel_path_namespace(module_path : String) -> String {
   let segments : Array[String] = []
   for seg in module_path.split("::") {
-    let text = seg.to_string().trim().to_string()
+    let text = seg.to_owned().trim().to_owned()
     if text != "" {
       segments.push(text)
     }
@@ -684,7 +684,7 @@ fn resolve_wgsl_import_module_in_registry(
 ) -> WgslResolvedImportModule? {
   let segments : Array[String] = []
   for seg in import_path.split("::") {
-    let text = seg.to_string().trim().to_string()
+    let text = seg.to_owned().trim().to_owned()
     if text != "" {
       segments.push(text)
     }
