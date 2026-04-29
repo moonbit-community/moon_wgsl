@@ -27,18 +27,29 @@ pub(all) struct WgslAttribute {
 } derive(Debug)
 
 ///|
+pub(all) struct WgslTypeRef {
+  name : String
+  arguments : Array[WgslTypeRef]
+  text : String
+  start : Int
+  end : Int
+} derive(Debug)
+
+///|
 pub(all) struct WgslFunctionArgument {
   attributes : Array[WgslAttribute]
   name : String
   name_start : Int
   name_end : Int
   ty : String
+  ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
 pub(all) struct WgslFunctionResult {
   attributes : Array[WgslAttribute]
   ty : String
+  ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
@@ -86,6 +97,7 @@ pub(all) struct WgslStructMember {
   name_start : Int
   name_end : Int
   ty : String
+  ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
@@ -101,6 +113,7 @@ pub(all) struct WgslGlobalVariable {
   name : WgslIdent
   template_list : Array[String]
   ty : String?
+  ty_ref : WgslTypeRef?
   initializer : String?
 } derive(Debug)
 
@@ -108,6 +121,7 @@ pub(all) struct WgslGlobalVariable {
 pub(all) struct WgslConst {
   name : WgslIdent
   ty : String?
+  ty_ref : WgslTypeRef?
   initializer : String?
 } derive(Debug)
 
@@ -116,6 +130,7 @@ pub(all) struct WgslOverride {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   ty : String?
+  ty_ref : WgslTypeRef?
   initializer : String?
 } derive(Debug)
 
@@ -123,6 +138,7 @@ pub(all) struct WgslOverride {
 pub(all) struct WgslTypeAlias {
   name : WgslIdent
   ty : String
+  ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
@@ -185,6 +201,13 @@ fn wgsl_ast_token_end(token : Token) -> Int {
 priv struct WgslDeclParser {
   source_text : String
   mut token_view : ArrayView[Token]
+}
+
+///|
+priv struct WgslTextFragment {
+  text : String
+  start : Int
+  end : Int
 }
 
 ///|
@@ -314,11 +337,18 @@ fn WgslDeclParser::parse_attributes(
 }
 
 ///|
-fn WgslDeclParser::collect_until_top_level(
+fn WgslDeclParser::collect_until_top_level_fragment(
   self : WgslDeclParser,
   stops : Array[Int],
-) -> String {
-  let parts : Array[Token] = []
+) -> WgslTextFragment {
+  let mut start_pos = -1
+  let mut end_pos = -1
+  fn record_token(token : Token) -> Unit {
+    if start_pos < 0 {
+      start_pos = token.pos()
+    }
+    end_pos = wgsl_ast_token_end(token)
+  }
   let mut paren_depth = 0
   let mut angle_depth = 0
   let mut bracket_depth = 0
@@ -328,51 +358,198 @@ fn WgslDeclParser::collect_until_top_level(
         angle_depth == 0 &&
         bracket_depth == 0 &&
         stops.contains(code) => break
-      [Token::Other(40, _), .. rest] => {
+      [Token::Other(40, pos), .. rest] => {
         paren_depth = paren_depth + 1
-        parts.push(Token::Other(40, 0))
+        if start_pos < 0 {
+          start_pos = pos
+        }
+        end_pos = pos + 1
         self.update_view(rest)
         continue
       }
-      [Token::Other(41, _), .. rest] => {
+      [Token::Other(41, pos), .. rest] => {
         paren_depth = paren_depth - 1
-        parts.push(Token::Other(41, 0))
+        if start_pos < 0 {
+          start_pos = pos
+        }
+        end_pos = pos + 1
         self.update_view(rest)
         continue
       }
-      [Token::Other(60, _), .. rest] => {
+      [Token::Other(60, pos), .. rest] => {
         angle_depth = angle_depth + 1
-        parts.push(Token::Other(60, 0))
+        if start_pos < 0 {
+          start_pos = pos
+        }
+        end_pos = pos + 1
         self.update_view(rest)
         continue
       }
-      [Token::Other(62, _), .. rest] => {
+      [Token::Other(62, pos), .. rest] => {
         angle_depth = angle_depth - 1
-        parts.push(Token::Other(62, 0))
+        if start_pos < 0 {
+          start_pos = pos
+        }
+        end_pos = pos + 1
         self.update_view(rest)
         continue
       }
-      [Token::Other(91, _), .. rest] => {
+      [Token::Other(91, pos), .. rest] => {
         bracket_depth = bracket_depth + 1
-        parts.push(Token::Other(91, 0))
+        if start_pos < 0 {
+          start_pos = pos
+        }
+        end_pos = pos + 1
         self.update_view(rest)
         continue
       }
-      [Token::Other(93, _), .. rest] => {
+      [Token::Other(93, pos), .. rest] => {
         bracket_depth = bracket_depth - 1
-        parts.push(Token::Other(93, 0))
+        if start_pos < 0 {
+          start_pos = pos
+        }
+        end_pos = pos + 1
         self.update_view(rest)
         continue
       }
       [token, .. rest] => {
-        parts.push(token)
+        record_token(token)
         self.update_view(rest)
         continue
       }
       [] => break
     }
   }
-  wgsl_ast_tokens_text(parts).trim().to_owned()
+  let text = if start_pos < 0 || end_pos < start_pos {
+    ""
+  } else {
+    self.source_text[start_pos:end_pos].to_owned().trim().to_owned()
+  }
+  WgslTextFragment::{ text, start: start_pos, end: end_pos }
+}
+
+///|
+fn WgslDeclParser::collect_until_top_level(
+  self : WgslDeclParser,
+  stops : Array[Int],
+) -> String {
+  self.collect_until_top_level_fragment(stops).text
+}
+
+///|
+fn wgsl_trim_fragment_bounds(
+  text : String,
+  start : Int,
+  end_ : Int,
+) -> (String, Int, Int) {
+  let mut left = start
+  let mut right = end_
+  while left < right {
+    let code = text.code_unit_at(left).to_int()
+    if code == 32 || code == 9 || code == 10 || code == 13 {
+      left = left + 1
+      continue
+    }
+    break
+  }
+  while right > left {
+    let code = text.code_unit_at(right - 1).to_int()
+    if code == 32 || code == 9 || code == 10 || code == 13 {
+      right = right - 1
+      continue
+    }
+    break
+  }
+  (text[left:right].to_owned(), left, right)
+}
+
+///|
+fn parse_wgsl_type_ref_text(text : String, base : Int) -> WgslTypeRef? {
+  let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
+    text,
+    0,
+    text.length(),
+  )
+  if trimmed == "" {
+    return None
+  }
+  let tokens = tokenize(trimmed, false)
+  if tokens.length() == 0 {
+    return None
+  }
+  let name = match tokens[0] {
+    Token::Identifier(value, _) => value
+    _ => trimmed
+  }
+  let arguments : Array[WgslTypeRef] = []
+  let mut open_index = -1
+  for i in 1..<tokens.length() {
+    match tokens[i] {
+      Token::Other(60, _) => {
+        open_index = i
+        break
+      }
+      _ => ()
+    }
+  }
+  if open_index >= 0 {
+    let mut depth = 1
+    let mut arg_start = tokens[open_index].pos() + 1
+    let mut i = open_index + 1
+    while i < tokens.length() && depth > 0 {
+      match tokens[i] {
+        Token::Other(60, _) => depth = depth + 1
+        Token::Other(62, pos) => {
+          depth = depth - 1
+          if depth == 0 {
+            let (arg_text, arg_local_start, _) = wgsl_trim_fragment_bounds(
+              trimmed, arg_start, pos,
+            )
+            match
+              parse_wgsl_type_ref_text(
+                arg_text,
+                base + local_start + arg_local_start,
+              ) {
+              Some(arg) => arguments.push(arg)
+              None => ()
+            }
+            break
+          }
+        }
+        Token::Other(44, pos) if depth == 1 => {
+          let (arg_text, arg_local_start, _) = wgsl_trim_fragment_bounds(
+            trimmed, arg_start, pos,
+          )
+          match
+            parse_wgsl_type_ref_text(
+              arg_text,
+              base + local_start + arg_local_start,
+            ) {
+            Some(arg) => arguments.push(arg)
+            None => ()
+          }
+          arg_start = pos + 1
+        }
+        _ => ()
+      }
+      i = i + 1
+    }
+  }
+  Some(WgslTypeRef::{
+    name,
+    arguments,
+    text: trimmed,
+    start: base + local_start,
+    end: base + local_end,
+  })
+}
+
+///|
+fn parse_wgsl_type_ref_fragment(fragment : WgslTextFragment) -> WgslTypeRef? {
+  if fragment.start < 0 || fragment.end < fragment.start {
+    return None
+  }
+  parse_wgsl_type_ref_text(fragment.text, fragment.start)
 }
 
 ///|
@@ -411,13 +588,15 @@ fn WgslDeclParser::parse_function_arguments(
     match self.consume_ident_node() {
       Some(name_node) => {
         self.consume_if_other(58) |> ignore
-        let ty = self.collect_until_top_level([44, 41])
+        let ty_fragment = self.collect_until_top_level_fragment([44, 41])
+        let ty = ty_fragment.text
         arguments.push(WgslFunctionArgument::{
           attributes,
           name: name_node.name,
           name_start: name_node.start,
           name_end: name_node.end,
           ty,
+          ty_ref: parse_wgsl_type_ref_fragment(ty_fragment),
         })
       }
       None => ()
@@ -439,8 +618,13 @@ fn WgslDeclParser::parse_function_result(
     [Token::Other(45, _), Token::Other(62, _), .. rest] => {
       self.update_view(rest)
       let attributes = self.parse_attributes()
-      let ty = self.collect_until_top_level([123, 59])
-      Some(WgslFunctionResult::{ attributes, ty })
+      let ty_fragment = self.collect_until_top_level_fragment([123, 59])
+      let ty = ty_fragment.text
+      Some(WgslFunctionResult::{
+        attributes,
+        ty,
+        ty_ref: parse_wgsl_type_ref_fragment(ty_fragment),
+      })
     }
     _ => None
   }
@@ -672,13 +856,15 @@ fn WgslDeclParser::parse_struct_members(
     match self.consume_ident_node() {
       Some(name_node) => {
         self.consume_if_other(58) |> ignore
-        let ty = self.collect_until_top_level([44, 59, 125])
+        let ty_fragment = self.collect_until_top_level_fragment([44, 59, 125])
+        let ty = ty_fragment.text
         members.push(WgslStructMember::{
           attributes,
           name: name_node.name,
           name_start: name_node.start,
           name_end: name_node.end,
           ty,
+          ty_ref: parse_wgsl_type_ref_fragment(ty_fragment),
         })
       }
       None => ()
@@ -714,18 +900,27 @@ fn WgslDeclParser::parse_global_variable(
     Some(value) => value
     None => return None
   }
+  let mut ty_ref : WgslTypeRef? = None
   let ty : String? = if self.consume_if_other(58) {
-    let parsed = self.collect_until_top_level([61, 59])
-    if parsed == "" {
+    let parsed = self.collect_until_top_level_fragment([61, 59])
+    if parsed.text == "" {
       None
     } else {
-      Some(parsed)
+      ty_ref = parse_wgsl_type_ref_fragment(parsed)
+      Some(parsed.text)
     }
   } else {
     None
   }
   let initializer = self.parse_optional_initializer()
-  Some(WgslGlobalVariable::{ attributes, name, template_list, ty, initializer })
+  Some(WgslGlobalVariable::{
+    attributes,
+    name,
+    template_list,
+    ty,
+    ty_ref,
+    initializer,
+  })
 }
 
 ///|
@@ -747,18 +942,20 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
     Some(value) => value
     None => return None
   }
+  let mut ty_ref : WgslTypeRef? = None
   let ty : String? = if self.consume_if_other(58) {
-    let parsed = self.collect_until_top_level([61, 59])
-    if parsed == "" {
+    let parsed = self.collect_until_top_level_fragment([61, 59])
+    if parsed.text == "" {
       None
     } else {
-      Some(parsed)
+      ty_ref = parse_wgsl_type_ref_fragment(parsed)
+      Some(parsed.text)
     }
   } else {
     None
   }
   let initializer = self.parse_optional_initializer()
-  Some(WgslConst::{ name, ty, initializer })
+  Some(WgslConst::{ name, ty, ty_ref, initializer })
 }
 
 ///|
@@ -770,18 +967,20 @@ fn WgslDeclParser::parse_override(
     Some(value) => value
     None => return None
   }
+  let mut ty_ref : WgslTypeRef? = None
   let ty : String? = if self.consume_if_other(58) {
-    let parsed = self.collect_until_top_level([61, 59])
-    if parsed == "" {
+    let parsed = self.collect_until_top_level_fragment([61, 59])
+    if parsed.text == "" {
       None
     } else {
-      Some(parsed)
+      ty_ref = parse_wgsl_type_ref_fragment(parsed)
+      Some(parsed.text)
     }
   } else {
     None
   }
   let initializer = self.parse_optional_initializer()
-  Some(WgslOverride::{ attributes, name, ty, initializer })
+  Some(WgslOverride::{ attributes, name, ty, ty_ref, initializer })
 }
 
 ///|
@@ -791,8 +990,13 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
     None => return None
   }
   self.consume_if_other(61) |> ignore
-  let ty = self.collect_until_top_level([59])
-  Some(WgslTypeAlias::{ name, ty })
+  let ty_fragment = self.collect_until_top_level_fragment([59])
+  let ty = ty_fragment.text
+  Some(WgslTypeAlias::{
+    name,
+    ty,
+    ty_ref: parse_wgsl_type_ref_fragment(ty_fragment),
+  })
 }
 
 ///|

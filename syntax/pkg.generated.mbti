@@ -98,6 +98,7 @@ pub(all) struct WgslBlock {
 pub(all) struct WgslConst {
   name : WgslIdent
   ty : String?
+  ty_ref : WgslTypeRef?
   initializer : String?
 } derive(@debug.Debug)
 
@@ -138,11 +139,13 @@ pub(all) struct WgslFunctionArgument {
   name_start : Int
   name_end : Int
   ty : String
+  ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
 
 pub(all) struct WgslFunctionResult {
   attributes : Array[WgslAttribute]
   ty : String
+  ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
 
 pub(all) struct WgslGlobalDecl {
@@ -186,6 +189,7 @@ pub(all) struct WgslGlobalVariable {
   name : WgslIdent
   template_list : Array[String]
   ty : String?
+  ty_ref : WgslTypeRef?
   initializer : String?
 } derive(@debug.Debug)
 
@@ -199,6 +203,7 @@ pub(all) struct WgslOverride {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   ty : String?
+  ty_ref : WgslTypeRef?
   initializer : String?
 } derive(@debug.Debug)
 
@@ -235,6 +240,7 @@ pub(all) struct WgslStructMember {
   name_start : Int
   name_end : Int
   ty : String
+  ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
 
 pub(all) struct WgslTopLevelItem {
@@ -260,6 +266,15 @@ pub(all) struct WgslTranslationUnit {
 pub(all) struct WgslTypeAlias {
   name : WgslIdent
   ty : String
+  ty_ref : WgslTypeRef?
+} derive(@debug.Debug)
+
+pub(all) struct WgslTypeRef {
+  name : String
+  arguments : Array[WgslTypeRef]
+  text : String
+  start : Int
+  end : Int
 } derive(@debug.Debug)
 
 // Type aliases

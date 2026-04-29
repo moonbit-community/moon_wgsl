@@ -61,6 +61,12 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(struct_decl.members[0].name_start, content="31")
   debug_inspect(struct_decl.members[0].name_end, content="39")
   debug_inspect(struct_decl.members[0].ty, content="\"vec3<f32>\"")
+  guard struct_decl.members[0].ty_ref is Some(position_ty) else {
+    abort("expected struct member type ref")
+  }
+  debug_inspect(position_ty.name, content="\"vec3\"")
+  debug_inspect(position_ty.arguments.length(), content="1")
+  debug_inspect(position_ty.arguments[0].name, content="\"f32\"")
   guard unit.declarations[1].data is WgslGlobalDeclData::GlobalVariable(global) else {
     abort("expected global var payload")
   }
@@ -68,23 +74,40 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(global.template_list[0], content="\"uniform\"")
   debug_inspect(global.name.name, content="\"globals\"")
   debug_inspect(global.ty, content="Some(\"Globals\")")
+  guard global.ty_ref is Some(global_ty) else {
+    abort("expected global type ref")
+  }
+  debug_inspect(global_ty.name, content="\"Globals\"")
   debug_inspect(global.initializer, content="None")
   guard unit.declarations[2].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
   debug_inspect(alias_decl.name.name, content="\"Color\"")
   debug_inspect(alias_decl.ty, content="\"vec4<f32>\"")
+  guard alias_decl.ty_ref is Some(alias_ty) else {
+    abort("expected alias type ref")
+  }
+  debug_inspect(alias_ty.name, content="\"vec4\"")
+  debug_inspect(alias_ty.arguments[0].name, content="\"f32\"")
   guard unit.declarations[3].data is WgslGlobalDeclData::Const(const_decl) else {
     abort("expected const payload")
   }
   debug_inspect(const_decl.name.name, content="\"SCALE\"")
   debug_inspect(const_decl.ty, content="Some(\"f32\")")
+  guard const_decl.ty_ref is Some(const_ty) else {
+    abort("expected const type ref")
+  }
+  debug_inspect(const_ty.name, content="\"f32\"")
   debug_inspect(const_decl.initializer, content="Some(\"2.0\")")
   guard unit.declarations[4].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
   }
   debug_inspect(override_decl.attributes[0].name, content="\"id\"")
   debug_inspect(override_decl.name.name, content="\"ENABLED\"")
+  guard override_decl.ty_ref is Some(override_ty) else {
+    abort("expected override type ref")
+  }
+  debug_inspect(override_ty.name, content="\"bool\"")
   debug_inspect(override_decl.initializer, content="Some(\"true\")")
   guard unit.declarations[5].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
@@ -94,6 +117,10 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(function.arguments[0].name, content="\"color\"")
   debug_inspect(function.arguments[0].name_start, content="35")
   debug_inspect(function.arguments[0].name_end, content="40")
+  guard function.arguments[0].ty_ref is Some(arg_ty) else {
+    abort("expected argument type ref")
+  }
+  debug_inspect(arg_ty.name, content="\"Color\"")
   debug_inspect(
     function.arguments[0].attributes[0].name,
     content="\"location\"",
@@ -103,8 +130,28 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   }
   debug_inspect(result.attributes[0].name, content="\"location\"")
   debug_inspect(result.ty, content="\"vec4<f32>\"")
+  guard result.ty_ref is Some(result_ty) else {
+    abort("expected result type ref")
+  }
+  debug_inspect(result_ty.name, content="\"vec4\"")
+  debug_inspect(result_ty.arguments[0].name, content="\"f32\"")
   debug_inspect(function.body.statements.length(), content="1")
   debug_inspect(function.body.statements[0].kind, content="Return")
+}
+
+///|
+test "WGSL type refs expose nested template arguments" {
+  let source = "alias Values = array<vec4<f32>, 4>;\n"
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+    abort("expected type alias payload")
+  }
+  guard alias_decl.ty_ref is Some(ty) else { abort("expected alias type ref") }
+  debug_inspect(ty.name, content="\"array\"")
+  debug_inspect(ty.arguments.length(), content="2")
+  debug_inspect(ty.arguments[0].name, content="\"vec4\"")
+  debug_inspect(ty.arguments[0].arguments[0].name, content="\"f32\"")
+  debug_inspect(ty.arguments[1].name, content="\"4\"")
 }
 
 ///|
@@ -156,7 +203,15 @@ test "WGSL override function payload preserves qualified target path" {
   debug_inspect(function.arguments[0].name, content="\"arg\"")
   debug_inspect(
     function.result,
-    content="Some({ attributes: [], ty: \"f32\" })",
+    content=(
+      #|Some(
+      #|  {
+      #|    attributes: [],
+      #|    ty: "f32",
+      #|    ty_ref: Some({ name: "f32", arguments: [], text: "f32", start: 36, end: 39 }),
+      #|  },
+      #|)
+    ),
   )
 }
 
