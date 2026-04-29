@@ -56,6 +56,8 @@ pub(all) struct WgslStatement {
   kind : WgslStatementKind
   text : String
   local_name : String?
+  start : Int
+  end : Int
 } derive(Debug)
 
 ///|
@@ -581,6 +583,8 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       kind,
       text,
       local_name: wgsl_statement_local_name_from_tokens(tokens, kind),
+      start: start_pos,
+      end: end_pos,
     })
   }
 }

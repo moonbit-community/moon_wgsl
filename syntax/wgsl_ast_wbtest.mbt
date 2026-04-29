@@ -124,6 +124,8 @@ test "WGSL function payload exposes source-preserving statement AST" {
     function.body.statements[0].local_name,
     content="Some(\"local\")",
   )
+  debug_inspect(function.body.statements[0].start, content="31")
+  debug_inspect(function.body.statements[0].end, content="54")
   debug_inspect(function.body.statements[1].kind, content="If")
   debug_inspect(function.body.statements[2].kind, content="Return")
   debug_inspect(
