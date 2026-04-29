@@ -335,6 +335,36 @@ fn collect_wgsl_cached_import_redirects(
 }
 
 ///|
+fn find_wgsl_cached_imported_item_name(
+  session : WgslComposeSession,
+  rel_path : String,
+  item_name : String,
+) -> String? {
+  match
+    session.imported_item_names.get(
+      wgsl_imported_item_name_key(rel_path, item_name),
+    ) {
+    Some(imported_name) => Some(imported_name)
+    None => {
+      let suffix = "|\{item_name}"
+      let mut found : String? = None
+      for entry in session.imported_item_names.iter() {
+        let (key, imported_name) = entry
+        if !key.has_suffix(suffix) {
+          continue
+        }
+        match found {
+          Some(existing_name) if existing_name != imported_name => return None
+          Some(_) => ()
+          None => found = Some(imported_name)
+        }
+      }
+      found
+    }
+  }
+}
+
+///|
 fn record_wgsl_redirect_matches(
   source : String,
   session : WgslComposeSession,
@@ -1048,6 +1078,78 @@ fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
 }
 
 ///|
+fn wgsl_lowercase_identifier_start(name : String) -> Bool {
+  if name == "" {
+    return false
+  }
+  let code = name.code_unit_at(0).to_int()
+  code >= 97 && code <= 122
+}
+
+///|
+fn record_wgsl_lowered_suffix_redirect_candidate(
+  suffix : String,
+  lowered_name : String,
+  declared_names : @hashmap.HashMap[String, Bool],
+  candidate_redirects : @hashmap.HashMap[String, String],
+  ambiguous_suffixes : @hashmap.HashMap[String, Bool],
+) -> Unit {
+  if suffix == "" ||
+    !suffix.contains("__") ||
+    !wgsl_lowercase_identifier_start(suffix) ||
+    declared_names.contains(suffix) {
+    return
+  }
+  match candidate_redirects.get(suffix) {
+    Some(existing) if existing != lowered_name =>
+      ambiguous_suffixes.set(suffix, true)
+    Some(_) => ()
+    None => candidate_redirects.set(suffix, lowered_name)
+  }
+}
+
+///|
+fn build_wgsl_unique_lowered_suffix_redirect_map(
+  source : String,
+) -> @hashmap.HashMap[String, String] {
+  let graph = build_wgsl_declaration_graph(source)
+  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  for block in graph.declaration_blocks {
+    if block.name != "" {
+      declared_names.set(block.name, true)
+    }
+  }
+  for block in graph.declaration_blocks {
+    let mut i = 0
+    while i + 1 < block.name.length() {
+      if block.name.code_unit_at(i).to_int() == 95 &&
+        block.name.code_unit_at(i + 1).to_int() == 95 {
+        record_wgsl_lowered_suffix_redirect_candidate(
+          block.name[i + 2:block.name.length()].to_owned(),
+          block.name,
+          declared_names,
+          candidate_redirects,
+          ambiguous_suffixes,
+        )
+        i = i + 2
+        continue
+      }
+      i = i + 1
+    }
+  }
+  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for entry in candidate_redirects.iter() {
+    let (suffix, lowered_name) = entry
+    if !ambiguous_suffixes.contains(suffix) {
+      redirects.set(suffix, lowered_name)
+    }
+  }
+  redirects
+}
+
+///|
 fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -1082,8 +1184,10 @@ fn Composer::compose_wgsl_import_requests(
       let mut resolved_requested_items = 0
       for requested_item in request.requested_items {
         match
-          session.imported_item_names.get(
-            wgsl_imported_item_name_key(request.rel_path, requested_item),
+          find_wgsl_cached_imported_item_name(
+            session,
+            request.rel_path,
+            requested_item,
           ) {
           Some(imported_name) => {
             alias_redirects.push(WgslSymbolRedirect::{
@@ -1207,6 +1311,10 @@ fn finalize_wgsl_composed_source(
     false,
   )
   out = dedupe_wgsl_duplicate_declarations(out)
+  let suffix_redirects = build_wgsl_unique_lowered_suffix_redirect_map(out)
+  if !suffix_redirects.is_empty() {
+    out = rewrite_wgsl_declaration_text_with_map(out, suffix_redirects, false)
+  }
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }

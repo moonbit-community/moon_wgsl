@@ -656,6 +656,14 @@ test "github issue 5: item-imported function keeps its imported mesh binding" {
     "#endif\n",
   )
   composer.register_wgsl_source(
+    "mesh_functions.wgsl",
+    "#define_import_path bevy_pbr::mesh_functions\n" +
+    "#import bevy_pbr::mesh_bindings as mesh_bindings\n" +
+    "fn mesh_flags(instance_index: u32) -> u32 {\n" +
+    "  return mesh_bindings::mesh[instance_index].flags;\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
     "pbr_types.wgsl",
     "#define_import_path bevy_pbr::pbr_types\n" +
     "struct PbrInput {\n" +
@@ -700,12 +708,13 @@ test "github issue 5: item-imported function keeps its imported mesh binding" {
     "mesh.wgsl",
     "#define_import_path bevy_pbr::mesh\n" +
     "#import bevy_pbr::{\n" +
-    "  mesh_bindings::mesh,\n" +
+    "  mesh_functions,\n" +
     "  forward_io::VertexOutput,\n" +
     "}\n" +
     "@vertex\n" +
     "fn vertex() -> VertexOutput {\n" +
     "  var out: VertexOutput;\n" +
+    "  out.instance_index = mesh_functions::mesh_flags(0u);\n" +
     "  return out;\n" +
     "}\n" +
     "@fragment\n" +
@@ -727,11 +736,24 @@ test "github issue 5: item-imported function keeps its imported mesh binding" {
   }
   debug_inspect(
     source.contains("var<storage> mesh: array<Mesh>;"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("mesh_functions__mesh_bindings__mesh"),
     content="true",
   )
-  debug_inspect(source.contains("struct Mesh"), content="true")
   debug_inspect(
-    source.contains("mesh[in_wgsl.instance_index].flags"),
+    source.contains("struct mesh_functions__mesh_bindings__Mesh"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("= mesh[in_wgsl.instance_index].flags"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains(
+      "mesh_functions__mesh_bindings__mesh[in_wgsl.instance_index].flags",
+    ),
     content="true",
   )
 }
