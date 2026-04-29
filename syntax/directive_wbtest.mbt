@@ -19,3 +19,27 @@ test "WGSL directive parser keeps unknown directives structured" {
   )
   debug_inspect(hash_directive_tail("#custom thing", "import"), content="None")
 }
+
+///|
+test "WGSL directive parser exposes kind-based tails" {
+  debug_inspect(
+    wgsl_directive_tail("#import bevy::view", WgslDirectiveKind::Import),
+    content="Some(\"bevy::view\")",
+  )
+  debug_inspect(
+    wgsl_directive_tail("#import bevy::view", WgslDirectiveKind::Define),
+    content="None",
+  )
+}
+
+///|
+test "WGSL directive parser supports naga-oil prefix else endif semantics" {
+  debug_inspect(
+    wgsl_directive_prefix_tail("#elsewhere", WgslDirectiveKind::Else),
+    content="Some(\"where\")",
+  )
+  debug_inspect(
+    wgsl_directive_prefix_tail("#endif_trailing", WgslDirectiveKind::Endif),
+    content="Some(\"_trailing\")",
+  )
+}

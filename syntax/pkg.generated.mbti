@@ -49,6 +49,10 @@ pub fn tokenizer_identifier_start(Int) -> Bool
 
 pub fn trim_trailing_semicolons(String) -> String
 
+pub fn wgsl_directive_prefix_tail(String, WgslDirectiveKind) -> String?
+
+pub fn wgsl_directive_tail(String, WgslDirectiveKind) -> String?
+
 pub fn word_tail(String, String) -> String?
 
 // Errors

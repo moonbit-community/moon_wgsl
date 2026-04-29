@@ -178,6 +178,37 @@ pub fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
 }
 
 ///|
+pub fn wgsl_directive_tail(line : String, kind : WgslDirectiveKind) -> String? {
+  match parse_wgsl_directive_line(line) {
+    Some(parsed) => if parsed.kind == kind { Some(parsed.tail) } else { None }
+    None => None
+  }
+}
+
+///|
+pub fn wgsl_directive_prefix_tail(
+  line : String,
+  kind : WgslDirectiveKind,
+) -> String? {
+  let prefix = match kind {
+    WgslDirectiveKind::Else => "else"
+    WgslDirectiveKind::Endif => "endif"
+    _ => return wgsl_directive_tail(line, kind)
+  }
+  let trimmed = line.trim().to_owned()
+  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
+    return None
+  }
+  let mut start = skip_ascii_space(trimmed, 1)
+  guard start + prefix.length() <= trimmed.length() else { return None }
+  guard trimmed[start:start + prefix.length()].to_owned() == prefix else {
+    return None
+  }
+  start = start + prefix.length()
+  Some(trimmed[start:trimmed.length()].to_owned())
+}
+
+///|
 pub fn hash_directive_tail(line : String, directive : String) -> String? {
   match parse_wgsl_directive_line(line) {
     Some(parsed) =>

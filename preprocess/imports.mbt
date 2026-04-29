@@ -14,7 +14,7 @@ using @common {
 ///|
 using @syntax {
   type DeclaredImportBinding,
-  hash_directive_tail,
+  type WgslDirectiveKind,
   import_brace_balance,
   parse_imports,
   replace_comments,
@@ -24,4 +24,6 @@ using @syntax {
   substitute_identifiers,
   trim_trailing_semicolons,
   word_tail,
+  wgsl_directive_prefix_tail,
+  wgsl_directive_tail,
 }

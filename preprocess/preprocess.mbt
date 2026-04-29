@@ -403,29 +403,6 @@ fn directive_identifier(text : String) -> String? {
 }
 
 ///|
-fn hash_directive_prefix_tail(line : String, directive : String) -> String? {
-  let trimmed = line.trim().to_owned()
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
-    return None
-  }
-  let mut start = 1
-  while start < trimmed.length() {
-    let code = trimmed.code_unit_at(start).to_int()
-    if code == 32 || code == 9 {
-      start = start + 1
-      continue
-    }
-    break
-  }
-  guard start + directive.length() <= trimmed.length() else { return None }
-  guard trimmed[start:start + directive.length()].to_owned() == directive else {
-    return None
-  }
-  let tail_start = start + directive.length()
-  Some(trimmed[tail_start:trimmed.length()].to_owned())
-}
-
-///|
 fn parse_if_operator_expression(
   expression : String,
 ) -> (String, String, String)? {
@@ -599,7 +576,7 @@ fn check_scope(
   scope : Scope?,
   offset : Int,
 ) -> (Bool, String?) raise PreprocessError {
-  if hash_directive_tail(line, "ifdef") is Some(rest) &&
+  if wgsl_directive_tail(line, WgslDirectiveKind::Ifdef) is Some(rest) &&
     directive_identifier(rest) is Some(name) {
     let condition = shader_defs.contains(name)
     if scope is Some(scope_state) {
@@ -607,7 +584,7 @@ fn check_scope(
     }
     return (true, Some(name))
   }
-  if hash_directive_tail(line, "ifndef") is Some(rest) &&
+  if wgsl_directive_tail(line, WgslDirectiveKind::Ifndef) is Some(rest) &&
     directive_identifier(rest) is Some(name) {
     let condition = !shader_defs.contains(name)
     if scope is Some(scope_state) {
@@ -615,7 +592,8 @@ fn check_scope(
     }
     return (true, Some(name))
   }
-  if hash_directive_prefix_tail(line, "else") is Some(else_tail) {
+  if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Else)
+    is Some(else_tail) {
     let else_tail_has_space = else_tail.length() > 0 &&
       (
         else_tail.code_unit_at(0).to_int() == 32 ||
@@ -655,7 +633,7 @@ fn check_scope(
       return (true, Some(def))
     }
   }
-  if hash_directive_tail(line, "if") is Some(expr) &&
+  if wgsl_directive_tail(line, WgslDirectiveKind::If) is Some(expr) &&
     parse_if_operator_expression(expr) is Some((def, operator, value)) {
     if scope is None {
       return (true, Some(def))
@@ -665,13 +643,13 @@ fn check_scope(
     scope_state.branch(false, condition, offset)
     return (true, Some(def))
   }
-  if hash_directive_prefix_tail(line, "else") is Some(_) {
+  if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Else) is Some(_) {
     if scope is Some(scope_state) {
       scope_state.branch(true, true, offset)
     }
     return (true, None)
   }
-  if hash_directive_prefix_tail(line, "endif") is Some(_) {
+  if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Endif) is Some(_) {
     if scope is Some(scope_state) {
       scope_state.pop(offset)
     }
@@ -881,11 +859,12 @@ pub fn Preprocessor::preprocess(
     } else {
       let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
       if is_scope ||
-        hash_directive_tail(trimmed, "define_import_path") is Some(_) ||
-        hash_directive_tail(trimmed, "define") is Some(_) {
+        wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath)
+        is Some(_) ||
+        wgsl_directive_tail(trimmed, WgslDirectiveKind::Define) is Some(_) {
         ()
       } else if scope.active() {
-        if hash_directive_tail(trimmed, "import") is Some(_) {
+        if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(_) {
           let mut import_lines = ""
           let mut open_count = 0
           let initial_offset = offset
@@ -996,7 +975,7 @@ fn try_get_preprocessor_metadata(
       if def is Some(def_name) {
         effective_defs.add(def_name)
       }
-    } else if hash_directive_tail(trimmed, "import") is Some(_) {
+    } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(_) {
       let mut import_lines = "\{line}\n"
       let mut open_count = import_brace_balance(line)
       let initial_offset = offset
@@ -1016,7 +995,7 @@ fn try_get_preprocessor_metadata(
             initial_offset + line_offset,
           )
       }
-    } else if hash_directive_tail(trimmed, "define_import_path")
+    } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath)
       is Some(raw_name) {
       let import_path = trim_trailing_semicolons(
         first_space_separated_token(raw_name),
@@ -1024,7 +1003,8 @@ fn try_get_preprocessor_metadata(
       if import_path != "" {
         name = Some(import_path)
       }
-    } else if hash_directive_tail(trimmed, "define") is Some(raw_define) {
+    } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::Define)
+      is Some(raw_define) {
       if allow_defines {
         let (define_name, define_value) = split_define_name_and_value(
           raw_define,
