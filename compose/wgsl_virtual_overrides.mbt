@@ -43,9 +43,9 @@ fn wgsl_graph_block_override_target(block : WgslGraphBlock) -> String? {
 
 ///|
 fn wgsl_source_contains_override_directive(source : String) -> Bool {
-  let unit = parse_wgsl_translation_unit(source)
-  for decl in unit.declarations {
-    match decl.data {
+  let graph = build_wgsl_declaration_graph(source)
+  for block in graph.declaration_blocks {
+    match block.data {
       WgslGlobalDeclData::Function(function) =>
         if function.qualifier == "override" {
           return true
