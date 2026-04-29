@@ -66,6 +66,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(global.template_list[0], content="\"uniform\"")
   debug_inspect(global.name.name, content="\"globals\"")
   debug_inspect(global.ty, content="Some(\"Globals\")")
+  debug_inspect(global.initializer, content="None")
   guard unit.declarations[2].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
@@ -76,11 +77,13 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   }
   debug_inspect(const_decl.name.name, content="\"SCALE\"")
   debug_inspect(const_decl.ty, content="Some(\"f32\")")
+  debug_inspect(const_decl.initializer, content="Some(\"2.0\")")
   guard unit.declarations[4].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
   }
   debug_inspect(override_decl.attributes[0].name, content="\"id\"")
   debug_inspect(override_decl.name.name, content="\"ENABLED\"")
+  debug_inspect(override_decl.initializer, content="Some(\"true\")")
   guard unit.declarations[5].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }

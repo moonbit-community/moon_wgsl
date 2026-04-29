@@ -98,6 +98,7 @@ pub(all) struct WgslBlock {
 pub(all) struct WgslConst {
   name : WgslIdent
   ty : String?
+  initializer : String?
 } derive(@debug.Debug)
 
 pub(all) struct WgslDirective {
@@ -183,6 +184,7 @@ pub(all) struct WgslGlobalVariable {
   name : WgslIdent
   template_list : Array[String]
   ty : String?
+  initializer : String?
 } derive(@debug.Debug)
 
 pub(all) struct WgslIdent {
@@ -193,6 +195,7 @@ pub(all) struct WgslOverride {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   ty : String?
+  initializer : String?
 } derive(@debug.Debug)
 
 pub(all) struct WgslStatement {

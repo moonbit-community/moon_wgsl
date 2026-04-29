@@ -92,12 +92,14 @@ pub(all) struct WgslGlobalVariable {
   name : WgslIdent
   template_list : Array[String]
   ty : String?
+  initializer : String?
 } derive(Debug)
 
 ///|
 pub(all) struct WgslConst {
   name : WgslIdent
   ty : String?
+  initializer : String?
 } derive(Debug)
 
 ///|
@@ -105,6 +107,7 @@ pub(all) struct WgslOverride {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   ty : String?
+  initializer : String?
 } derive(Debug)
 
 ///|
@@ -599,12 +602,27 @@ fn WgslDeclParser::parse_global_variable(
   } else {
     None
   }
+  let initializer = self.parse_optional_initializer()
   Some(WgslGlobalVariable::{
     attributes,
     name: WgslIdent::{ name, },
     template_list,
     ty,
+    initializer,
   })
+}
+
+///|
+fn WgslDeclParser::parse_optional_initializer(self : WgslDeclParser) -> String? {
+  if !self.consume_if_other(61) {
+    return None
+  }
+  let parsed = self.collect_until_top_level([59])
+  if parsed == "" {
+    None
+  } else {
+    Some(parsed)
+  }
 }
 
 ///|
@@ -623,7 +641,8 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
   } else {
     None
   }
-  Some(WgslConst::{ name: WgslIdent::{ name, }, ty })
+  let initializer = self.parse_optional_initializer()
+  Some(WgslConst::{ name: WgslIdent::{ name, }, ty, initializer })
 }
 
 ///|
@@ -645,7 +664,8 @@ fn WgslDeclParser::parse_override(
   } else {
     None
   }
-  Some(WgslOverride::{ attributes, name: WgslIdent::{ name, }, ty })
+  let initializer = self.parse_optional_initializer()
+  Some(WgslOverride::{ attributes, name: WgslIdent::{ name, }, ty, initializer })
 }
 
 ///|
