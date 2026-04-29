@@ -1318,7 +1318,7 @@ fn Composer::build_wgsl_import_requests(
     let mut request_module_prefix = target.raw_path
     let mut keep_requested_items = false
     if target.alias_name != "" {
-      if !active_scan_source.contains("\{target.alias_name}::") {
+      if !wgsl_source_uses_import_alias(active_scan_source, target.alias_name) {
         continue
       }
       let requested_paths : Array[String] = []
@@ -1371,12 +1371,13 @@ fn Composer::build_wgsl_import_requests(
     }
     let mut import_full_module = module_path == target.raw_path
     if target.alias_name == "" && module_alias != "" {
-      if !active_scan_source.contains("\{module_alias}::") &&
-        !imports_for_override_side_effect {
+      let module_alias_is_used = wgsl_source_uses_import_alias(
+        active_scan_source, module_alias,
+      )
+      if !module_alias_is_used && !imports_for_override_side_effect {
         continue
       }
-      if imports_for_override_side_effect &&
-        !active_scan_source.contains("\{module_alias}::") {
+      if imports_for_override_side_effect && !module_alias_is_used {
         module_alias = ""
       }
       let requested_paths : Array[String] = []

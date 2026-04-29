@@ -150,6 +150,20 @@ test "naga_oil: composer preprocess strips module aliases" {
 }
 
 ///|
+test "naga_oil: commented module alias references do not trigger imports" {
+  register_grouped_import_test_shaders()
+  let preprocessed = global_registry_composer().compose_wgsl_source(
+    "#import bevy_render::maths as maths\n// return maths::PI_2;\nfn demo() -> f32 {\n  return 1.0;\n}\n",
+    composer_test_compose_options("assets", empty_bool_defines(), []),
+  ) catch {
+    err => abort("expected composer preprocess success: \{err.message()}")
+  }
+  debug_inspect(preprocessed.contains("const PI_2"), content="false")
+  debug_inspect(preprocessed.contains("return 1.0;"), content="true")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
 test "naga_oil: composer item imports keep dependent view declarations" {
   register_item_import_test_shaders()
   let sprite_preprocessed = global_registry_composer().compose_wgsl(

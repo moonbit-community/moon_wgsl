@@ -103,45 +103,24 @@ fn collect_wgsl_alias_requested_paths(
   alias_name : String,
   requested_paths : Array[String],
 ) -> Unit {
-  let pattern = "\{alias_name}::"
-  let mut search_from = 0
-  while search_from + pattern.length() <= source.length() {
-    let mut match_index = -1
-    let limit = source.length() - pattern.length()
-    for i in search_from..<=limit {
-      if source[i:i + pattern.length()].to_owned() == pattern {
-        match_index = i
-        break
+  for token in tokenize(replace_comments(source), false) {
+    match token {
+      Token::Identifier(path, _) => {
+        let requested_item = wgsl_import_requested_item_name(path, alias_name)
+        if requested_item != "" {
+          wgsl_string_list_push_unique(requested_paths, requested_item)
+        }
       }
-    }
-    if match_index < 0 {
-      break
-    }
-    let start = match_index + pattern.length()
-    let mut end = start
-    while end < source.length() &&
-          (
-            wgsl_identifier_char(source.code_unit_at(end).to_int()) ||
-            (
-              source.code_unit_at(end).to_int() == 58 &&
-              end + 1 < source.length() &&
-              source.code_unit_at(end + 1).to_int() == 58
-            )
-          ) {
-      if source.code_unit_at(end).to_int() == 58 {
-        end = end + 2
-        continue
-      }
-      end = end + 1
-    }
-    if end > start {
-      let item_path = source[start:end].to_owned()
-      wgsl_string_list_push_unique(requested_paths, item_path)
-      search_from = end
-    } else {
-      search_from = start
+      _ => ()
     }
   }
+}
+
+///|
+fn wgsl_source_uses_import_alias(source : String, alias_name : String) -> Bool {
+  let requested_paths : Array[String] = []
+  collect_wgsl_alias_requested_paths(source, alias_name, requested_paths)
+  requested_paths.length() > 0
 }
 
 ///|
