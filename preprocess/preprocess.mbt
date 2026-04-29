@@ -362,23 +362,26 @@ fn parse_bool_text(text : String) -> Bool? {
 ///|
 fn directive_identifier(text : String) -> String? {
   let trimmed = trim_trailing_semicolons(text)
-  let mut i = 0
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    let is_ident = (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      (code >= 48 && code <= 57) ||
-      code == 95 ||
-      code == 124
-    if !is_ident {
-      break
+  let tokens = tokenize(trimmed, false)
+  let mut out = ""
+  let mut expect_identifier = true
+  for token in tokens {
+    match token {
+      Token::Identifier(ident, _) if expect_identifier => {
+        out = out + ident
+        expect_identifier = false
+      }
+      Token::Other(124, _) if !expect_identifier => {
+        out = out + "|"
+        expect_identifier = true
+      }
+      _ => break
     }
-    i = i + 1
   }
-  if i == 0 {
+  if out == "" || expect_identifier {
     None
   } else {
-    Some(trimmed[:i].to_owned())
+    Some(out)
   }
 }
 

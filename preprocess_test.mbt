@@ -589,6 +589,23 @@ test "naga_oil: shader def placeholders accept hash whitespace and upstream name
 }
 
 ///|
+test "naga_oil: ifdef identifiers accept upstream pipe names" {
+  let source = "#ifdef MIXED|PIPE\nactive\n#else\ninactive\n#endif\n"
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("MIXED|PIPE", @moon_wgsl.ShaderDefValue::Bool(true))
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    source, shader_defs,
+  ) catch {
+    _ => abort("expected pipe shader-def preprocess success")
+  }
+  debug_inspect(output.preprocessed_source.contains("active"), content="true")
+  debug_inspect(
+    output.preprocessed_source.contains("inactive"),
+    content="false",
+  )
+}
+
+///|
 test "naga_oil: define metadata consumes one token like upstream regexes" {
   let metadata = @moon_wgsl.get_preprocessor_metadata(
     "# define_import_path demo::module trailing_text\n# define COUNT 3 ignored_tail\n# define FLAG true ignored_tail\n",
