@@ -215,30 +215,12 @@ pub fn wgsl_source_declares_entry_point(
 
 ///|
 pub fn strip_wgsl_import_declarations(source : String) -> String {
-  let lines : Array[String] = []
-  for line_item in source.split("\n") {
-    lines.push(line_item.to_owned())
-  }
   let mut out = ""
-  let mut index = 0
-  while index < lines.length() {
-    let line = lines[index]
-    let trimmed = line.trim().to_owned()
-    if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
-      index = index + 1
-      continue
+  for item in parse_wgsl_top_level_items(source) {
+    match item.kind {
+      WgslTopLevelKind::DefineImportPath | WgslTopLevelKind::Import => ()
+      _ => out = out + item.text
     }
-    if hash_directive_tail(trimmed, "import") is Some(import_tail) {
-      let mut brace_balance = import_brace_balance(import_tail)
-      while brace_balance > 0 && index + 1 < lines.length() {
-        index = index + 1
-        brace_balance = brace_balance + import_brace_balance(lines[index])
-      }
-      index = index + 1
-      continue
-    }
-    out = "\{out}\{line}\n"
-    index = index + 1
   }
   out
 }

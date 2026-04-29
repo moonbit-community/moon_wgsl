@@ -75,6 +75,7 @@ pub(all) struct WgslTopLevelItem {
 }
 
 pub(all) enum WgslTopLevelKind {
+  Trivia
   Import
   DefineImportPath
   Define

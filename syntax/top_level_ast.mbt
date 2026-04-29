@@ -14,6 +14,7 @@
 
 ///|
 pub(all) enum WgslTopLevelKind {
+  Trivia
   Import
   DefineImportPath
   Define
@@ -48,25 +49,107 @@ fn top_level_identifier_char(code : Int) -> Bool {
 }
 
 ///|
+fn top_level_text_has_prefix_at(
+  text : String,
+  offset : Int,
+  prefix : String,
+) -> Bool {
+  if offset < 0 || offset + prefix.length() > text.length() {
+    return false
+  }
+  let mut i = 0
+  while i < prefix.length() {
+    if text.code_unit_at(offset + i).to_int() != prefix.code_unit_at(i).to_int() {
+      return false
+    }
+    i = i + 1
+  }
+  true
+}
+
+///|
+fn top_level_keyword_at(text : String, offset : Int, keyword : String) -> Bool {
+  if !top_level_text_has_prefix_at(text, offset, keyword) {
+    return false
+  }
+  let before_ok = offset == 0 ||
+    !top_level_identifier_char(text.code_unit_at(offset - 1).to_int())
+  let after = offset + keyword.length()
+  let after_ok = after >= text.length() ||
+    !top_level_identifier_char(text.code_unit_at(after).to_int())
+  before_ok && after_ok
+}
+
+///|
+fn top_level_find_keyword(text : String, keyword : String) -> Int? {
+  let mut i = 0
+  while i < text.length() {
+    if top_level_keyword_at(text, i, keyword) {
+      return Some(i)
+    }
+    i = i + 1
+  }
+  None
+}
+
+///|
+fn top_level_declaration_after_attribute(trimmed : String) -> String {
+  if top_level_find_keyword(trimmed, "virtual fn") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "override fn") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "struct") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "fn") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "const") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "override") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "alias") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "type") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  if top_level_find_keyword(trimmed, "var") is Some(offset) {
+    return top_level_declaration_name(
+      trimmed[offset:trimmed.length()].to_owned(),
+    )
+  }
+  ""
+}
+
+///|
 fn top_level_declaration_name(line : String) -> String {
   let trimmed = line.trim().to_owned()
   if trimmed == "" {
     return ""
   }
   if starts_with_text(trimmed, "@") {
-    let mut i = 0
-    while i + 3 < trimmed.length() {
-      if trimmed.code_unit_at(i).to_int() == 32 &&
-        trimmed.code_unit_at(i + 1).to_int() == 118 &&
-        trimmed.code_unit_at(i + 2).to_int() == 97 &&
-        trimmed.code_unit_at(i + 3).to_int() == 114 {
-        return top_level_declaration_name(
-          trimmed[i + 1:trimmed.length()].to_owned(),
-        )
-      }
-      i = i + 1
-    }
-    return ""
+    return top_level_declaration_after_attribute(trimmed)
   }
   if starts_with_text(trimmed, "struct ") {
     return top_level_name_after_keyword(trimmed, 7)
@@ -175,6 +258,38 @@ fn top_level_push_directive_item(
 }
 
 ///|
+fn top_level_push_trivia_item(
+  items : Array[WgslTopLevelItem],
+  lines : Array[String],
+  start : Int,
+) -> Unit {
+  if lines.length() == 0 {
+    return
+  }
+  let mut text = ""
+  for line in lines {
+    text = "\{text}\{line}\n"
+  }
+  items.push(WgslTopLevelItem::{
+    kind: WgslTopLevelKind::Trivia,
+    name: "",
+    text,
+    start,
+    end: start + text.length(),
+  })
+}
+
+///|
+fn top_level_lines_have_text(lines : Array[String]) -> Bool {
+  for line in lines {
+    if line.trim() != "" {
+      return true
+    }
+  }
+  false
+}
+
+///|
 pub fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
   let lines : Array[String] = []
   let cleaned_lines : Array[String] = []
@@ -208,28 +323,32 @@ pub fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
       continue
     }
     if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
+      top_level_push_trivia_item(items, pending_prefix, pending_prefix_start)
+      pending_prefix.clear()
       top_level_push_directive_item(
         items,
         WgslTopLevelKind::DefineImportPath,
         line,
         line_starts[i],
       )
-      pending_prefix.clear()
       i = i + 1
       continue
     }
     if hash_directive_tail(trimmed, "define") is Some(_) {
+      top_level_push_trivia_item(items, pending_prefix, pending_prefix_start)
+      pending_prefix.clear()
       top_level_push_directive_item(
         items,
         WgslTopLevelKind::Define,
         line,
         line_starts[i],
       )
-      pending_prefix.clear()
       i = i + 1
       continue
     }
     if hash_directive_tail(trimmed, "import") is Some(import_tail) {
+      top_level_push_trivia_item(items, pending_prefix, pending_prefix_start)
+      pending_prefix.clear()
       let block_start = line_starts[i]
       let mut import_block = line
       let mut balance = import_brace_balance(import_tail)
@@ -247,7 +366,6 @@ pub fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
         start: block_start,
         end: block_start + import_block.length(),
       })
-      pending_prefix.clear()
       i = i + 1
       continue
     }
@@ -298,6 +416,9 @@ pub fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
       end: block_start + block_text.length(),
     })
     i = i + 1
+  }
+  if top_level_lines_have_text(pending_prefix) {
+    top_level_push_trivia_item(items, pending_prefix, pending_prefix_start)
   }
   items
 }
