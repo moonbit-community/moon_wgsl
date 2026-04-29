@@ -119,7 +119,8 @@ fn register_invalid_struct_member_export_test_shaders() -> Unit {
 ///|
 test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map" {
   register_export_test_shaders()
-  let output = export_test_global_registry_composer().export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    export_test_global_registry_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["shade"] },
@@ -153,7 +154,8 @@ test "naga_oil: export rejects invalid struct member identifiers before emission
   register_invalid_struct_member_export_test_shaders()
   let mut message = ""
   ignore(
-    export_test_global_registry_composer().export_wgsl_with_options(
+    @moon_wgsl.export_wgsl_with_options(
+      export_test_global_registry_composer(),
       "shaders/effects/invalid_member.wgsl",
       export_test_compose_options(export_test_empty_defines(), []),
       { root_items: ["main"] },
@@ -179,7 +181,8 @@ test "naga_oil: compose item extraction and export tree-shaking share dependency
   ) catch {
     err => abort("expected aligned compose success: \{err.message()}")
   }
-  let output = composer.export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    composer,
     "shaders/effects/aligned.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["shade"] },
@@ -216,7 +219,8 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
       source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
     },
   ])
-  let output = composer.export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    composer,
     "shaders/effects/main.wgsl",
     {
       assets_base: "",
@@ -243,7 +247,8 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
 ///|
 test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
   register_export_test_shaders()
-  let output = export_test_global_registry_composer().export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    export_test_global_registry_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["missing_entry"] },
@@ -269,7 +274,8 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
     export_test_empty_defines(),
     value_defines,
   )
-  let output = export_test_global_registry_composer().export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    export_test_global_registry_composer(),
     "shaders/effects/ambiguous.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["shade"] },
@@ -295,7 +301,8 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
 ///|
 test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-shaking" {
   register_redirect_export_test_shaders()
-  let output = export_test_global_registry_composer().export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    export_test_global_registry_composer(),
     "shaders/effects/redirect.wgsl",
     export_test_compose_options(export_test_empty_defines(), [
       { from_name: "build_shadow", to_name: "build_color" },
@@ -323,7 +330,8 @@ test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-sha
 ///|
 test "naga_oil: export warns when a source-level redirect never matches" {
   register_redirect_export_test_shaders()
-  let output = export_test_global_registry_composer().export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    export_test_global_registry_composer(),
     "shaders/effects/redirect.wgsl",
     export_test_compose_options(export_test_empty_defines(), [
       { from_name: "missing_shadow", to_name: "build_color" },

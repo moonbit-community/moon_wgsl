@@ -1,0 +1,79 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/compose"
+
+import {
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/resolver",
+  "moonbitlang/core/hashmap",
+  "moonbitlang/x/fs",
+}
+
+// Values
+pub fn apply_wgsl_ifdefs(String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) -> String
+
+pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, Int]) -> String
+
+pub fn finalize_wgsl_writeback_source(String) -> String raise ComposerError
+
+pub fn registered_wgsl_source_required(String) -> String raise ComposerError
+
+// Errors
+pub(all) suberror ComposerError {
+  EmptyAssetsBase(String)
+  FailedToResolveImport(String)
+  ImportCycle(String)
+  InvalidStructMemberIdentifier(String)
+  InvalidOverride(String)
+  MissingRegisteredSource(String)
+  MissingStartupRegisteredSource(String)
+  NoModuleName(String)
+}
+pub fn ComposerError::message(Self) -> String
+
+// Types and methods
+pub struct Composer {
+  module_sets : @hashmap.HashMap[String, @common.ComposableModuleDefinition]
+  registry : @resolver.WgslSourceRegistry
+  composable_module_registry_paths : @hashmap.HashMap[String, String]
+}
+pub fn Composer::add_composable_module(Self, @common.ComposableModuleDescriptor) -> @common.ComposableModuleDefinition raise ComposerError
+pub fn Composer::analyze_wgsl_source_files_for_registry(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
+pub fn Composer::clear_registered_wgsl_source_registry(Self) -> Unit
+pub fn Composer::compose_wgsl(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_source(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::contains_module(Self, String) -> Bool
+pub fn Composer::copy_registered_wgsl_import_module_paths(Self) -> @hashmap.HashMap[String, String]
+pub fn Composer::copy_registered_wgsl_source_files(Self) -> Array[@common.WgslSourceFile]
+pub fn Composer::default() -> Self
+pub fn Composer::from_registered_wgsl_source_registry() -> Self
+pub fn Composer::load_root_wgsl_preprocessed_into_session(Self, String, WgslComposeSession) -> String raise ComposerError
+pub fn Composer::load_wgsl_from_assets_base_required(Self, String, String) -> String raise ComposerError
+pub fn Composer::load_wgsl_source_required_raw(Self, String, String) -> String raise ComposerError
+pub fn Composer::new_wgsl_compose_session(Self, @common.WgslComposeOptions) -> WgslComposeSession
+pub fn Composer::register_wgsl_source(Self, String, String) -> Unit
+pub fn Composer::register_wgsl_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
+pub fn Composer::register_wgsl_source_files_checked(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
+pub fn Composer::register_wgsl_source_tree(Self, String, @common.WgslSourceScanOptions) -> Unit raise @fs.IOError
+pub fn Composer::register_wgsl_source_tree_checked(Self, String, @common.WgslSourceScanOptions) -> Array[@common.WgslDiagnostic] raise @fs.IOError
+pub fn Composer::registered_wgsl_source(Self, String) -> String?
+pub fn Composer::remove_composable_module(Self, String) -> Unit
+
+pub(all) struct WgslComposeSession {
+  assets_base : String
+  defines : @hashmap.HashMap[String, Bool]
+  value_defines : @hashmap.HashMap[String, Int]
+  modules : @hashmap.HashMap[String, String]
+  redirects : Array[@common.WgslSymbolRedirect]
+  additional_imports : Array[@common.ImportDefinition]
+  preserve_imported_entry_points : Bool
+  redirect_match_counts : @hashmap.HashMap[String, Int]
+  visited : @hashmap.HashMap[String, Bool]
+  imported_item_names : @hashmap.HashMap[String, String]
+  active_rel_paths : Array[String]
+  resolved_source_files : @hashmap.HashMap[String, String]
+}
+
+// Type aliases
+
+// Traits
+

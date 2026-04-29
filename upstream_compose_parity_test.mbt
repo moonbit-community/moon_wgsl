@@ -111,7 +111,8 @@ fn upstream_parity_export_case(
   root_items : Array[String],
   defines : @hashmap.HashMap[String, Bool],
 ) -> @moon_wgsl.WgslExportOutput {
-  upstream_parity_composer(case_name).export_wgsl_with_options(
+  @moon_wgsl.export_wgsl_with_options(
+    upstream_parity_composer(case_name),
     rel_path,
     upstream_parity_compose_options(defines),
     { root_items, },
@@ -538,7 +539,8 @@ test "naga_oil upstream: additional imports are applied only to the root compose
 ///|
 test "naga_oil upstream: additional imports participate in single-file export" {
   let composer = upstream_parity_composer("add_imports")
-  let output = composer.export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    composer,
     "top.wgsl",
     {
       assets_base: "",
@@ -1183,7 +1185,8 @@ test "github issue 4: nested module alias rewrites global binding member access"
     "  return pbr_functions::apply_transform(view_pos);\n" +
     "}\n",
   )
-  let output = composer.export_wgsl_with_options(
+  let output = @moon_wgsl.export_wgsl_with_options(
+    composer,
     "root.wgsl",
     upstream_parity_compose_options(upstream_parity_empty_defines()),
     { root_items: ["read_world"] },

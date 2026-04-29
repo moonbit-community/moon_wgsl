@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv struct DeclaredImportBinding {
+pub(all) struct DeclaredImportBinding {
   used_name : String
   full_paths : Array[String]
 }
@@ -79,7 +79,7 @@ fn split_once_identifier(text : String) -> (String, String)? {
 }
 
 ///|
-fn split_last_identifier(text : String) -> (String, String)? {
+pub fn split_last_identifier(text : String) -> (String, String)? {
   let mut found = -1
   let mut i = 0
   while i + 1 < text.length() {
@@ -105,7 +105,20 @@ fn stack_join(stack : Array[String]) -> String {
 }
 
 ///|
-fn parse_wgsl_import_targets_from_tokens(
+fn join_wgsl_import_prefix(prefix : String, path : String) -> String {
+  let lhs = prefix.trim().to_owned()
+  let rhs = path.trim().to_owned()
+  if lhs == "" {
+    rhs
+  } else if rhs == "" {
+    lhs
+  } else {
+    "\{lhs}::\{rhs}"
+  }
+}
+
+///|
+pub fn parse_wgsl_import_targets_from_tokens(
   input : String,
   require_directive : Bool,
   prefix : String,
@@ -250,7 +263,7 @@ fn wgsl_import_target_used_name(target : WgslImportTarget) -> String {
 }
 
 ///|
-fn parse_wgsl_import_targets(
+pub fn parse_wgsl_import_targets(
   input : String,
   prefix : String,
   targets : Array[WgslImportTarget],
@@ -259,7 +272,7 @@ fn parse_wgsl_import_targets(
 }
 
 ///|
-fn parse_imports(
+pub fn parse_imports(
   input : String,
   declared_imports : Array[DeclaredImportBinding],
 ) -> Unit raise ParseImportsError {
@@ -298,7 +311,7 @@ fn base32_nopad(input : String) -> String {
 }
 
 ///|
-fn decorate(module_name : String) -> String {
+pub fn decorate(module_name : String) -> String {
   "X_naga_oil_mod_X\{base32_nopad(module_name)}X"
 }
 
@@ -336,12 +349,12 @@ fn used_imports_record(
 }
 
 ///|
-fn code_unit_to_string(code : Int) -> String {
+pub fn code_unit_to_string(code : Int) -> String {
   String::from_array([Int::unsafe_to_char(code)])
 }
 
 ///|
-fn substitute_identifiers(
+pub fn substitute_identifiers(
   input : String,
   offset : Int,
   declared_imports : Array[DeclaredImportBinding],

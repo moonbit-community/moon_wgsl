@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/preprocess"
+
+import {
+  "Milky2018/moon_wgsl/common",
+  "moonbitlang/core/hashmap",
+}
+
+// Values
+pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue])
+
+pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
+
+// Errors
+pub(all) suberror PreprocessError {
+  GlslInvalidVersion(Int)
+  ElseWithoutCondition(Int)
+  TooManyEndIfs(Int)
+  NotEnoughEndIfs(Int)
+  UnknownShaderDef(String, Int)
+  UnknownShaderDefOperator(String, Int)
+  InvalidShaderDefComparisonValue(String, String, String, Int)
+  ImportParseError(String, Int)
+  DefineInModule(Int)
+}
+
+// Types and methods
+pub struct Preprocessor {
+}
+pub fn Preprocessor::default() -> Self
+pub fn Preprocessor::extract_wgsl_directives(Self, String) -> (String, @common.WgslDirectives)
+pub fn Preprocessor::preprocess(Self, String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> @common.PreprocessOutput raise PreprocessError
+
+type ScopeLevel derive(Eq)
+
+// Type aliases
+
+// Traits
+

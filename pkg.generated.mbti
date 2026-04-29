@@ -2,319 +2,135 @@
 package "Milky2018/moon_wgsl"
 
 import {
-  "moonbitlang/core/debug",
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/compose",
+  "Milky2018/moon_wgsl/preprocess",
+  "Milky2018/moon_wgsl/resolver",
   "moonbitlang/core/hashmap",
-  "moonbitlang/core/hashset",
   "moonbitlang/x/fs",
 }
 
 // Values
-pub fn analyze_wgsl_source_files_for_registry(Array[WgslSourceFile]) -> Array[WgslDiagnostic]
+pub fn analyze_wgsl_source_files_for_registry(Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
 
-pub fn build_registered_wgsl_source_catalog(@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) -> Array[WgslSourceCatalogEntry]
+pub fn build_registered_wgsl_source_catalog(@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) -> Array[@common.WgslSourceCatalogEntry]
 
 pub fn build_wgsl_import_module_paths(String) -> @hashmap.HashMap[String, String]
 
+pub fn build_wgsl_source_catalog(@compose.Composer, @common.WgslComposeOptions) -> Array[@common.WgslSourceCatalogEntry]
+
 pub fn clear_registered_wgsl_source_registry() -> Unit
 
-pub fn collect_wgsl_import_targets(String, String, Array[WgslImportTarget]) -> Unit
+pub fn collect_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit
 
 pub fn copy_registered_wgsl_import_module_paths() -> @hashmap.HashMap[String, String]
 
-pub fn copy_registered_wgsl_source_files() -> Array[WgslSourceFile]
+pub fn copy_registered_wgsl_source_files() -> Array[@common.WgslSourceFile]
 
 pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int]
 
-pub fn get_preprocessor_data(String) -> (String?, Array[ImportDefinition], @hashmap.HashMap[String, ShaderDefValue])
+pub fn export_wgsl_from_assets_base_required(@compose.Composer, String, String, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
 
-pub fn get_preprocessor_metadata(String) -> PreprocessorMetaData
+pub fn export_wgsl_from_assets_base_required_with_redirects(@compose.Composer, String, String, @common.WgslExportOptions, Array[@common.WgslSymbolRedirect]) -> @common.WgslExportOutput raise @compose.ComposerError
+
+pub fn export_wgsl_with_options(@compose.Composer, String, @common.WgslComposeOptions, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
+
+pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue])
+
+pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
 
 pub fn normalize_shader_rel_path(String) -> String
 
 pub fn register_wgsl_source(String, String) -> Unit
 
-pub fn register_wgsl_source_files(Array[WgslSourceFile]) -> Unit
+pub fn register_wgsl_source_files(Array[@common.WgslSourceFile]) -> Unit
 
-pub fn register_wgsl_source_files_checked(Array[WgslSourceFile]) -> Array[WgslDiagnostic]
+pub fn register_wgsl_source_files_checked(Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
 
 pub fn registered_wgsl_source(String) -> String?
 
-pub fn registered_wgsl_source_required(String) -> String raise ComposerError
+pub fn registered_wgsl_source_required(String) -> String raise @compose.ComposerError
 
 pub fn resolve_wgsl_import_file_path(String, String) -> String?
 
-pub fn resolve_wgsl_import_module(String, String, @hashmap.HashMap[String, String]) -> WgslResolvedImportModule?
+pub fn resolve_wgsl_import_module(String, String, @hashmap.HashMap[String, String]) -> @common.WgslResolvedImportModule?
 
 pub fn resolve_wgsl_source_file_path(String, String) -> String?
 
-pub fn rewrite_wgsl_symbol_redirects(String, Array[WgslSymbolRedirect]) -> String
+pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String
 
-pub fn scan_wgsl_source_files(String, WgslSourceScanOptions) -> Array[WgslSourceFile] raise @fs.IOError
+pub fn scan_wgsl_source_files(String, @common.WgslSourceScanOptions) -> Array[@common.WgslSourceFile] raise @fs.IOError
 
-pub fn scan_wgsl_source_files_checked(String, WgslSourceScanOptions) -> (Array[WgslSourceFile], Array[WgslDiagnostic]) raise @fs.IOError
+pub fn scan_wgsl_source_files_checked(String, @common.WgslSourceScanOptions) -> (Array[@common.WgslSourceFile], Array[@common.WgslDiagnostic]) raise @fs.IOError
 
 // Errors
-pub(all) suberror ComposerError {
-  EmptyAssetsBase(String)
-  FailedToResolveImport(String)
-  ImportCycle(String)
-  InvalidStructMemberIdentifier(String)
-  InvalidOverride(String)
-  MissingRegisteredSource(String)
-  MissingStartupRegisteredSource(String)
-  NoModuleName(String)
-}
-pub fn ComposerError::message(Self) -> String
-
-pub(all) suberror ParseImportsError {
-  Parse(String, Int)
-}
-
-pub(all) suberror PreprocessError {
-  GlslInvalidVersion(Int)
-  ElseWithoutCondition(Int)
-  TooManyEndIfs(Int)
-  NotEnoughEndIfs(Int)
-  UnknownShaderDef(String, Int)
-  UnknownShaderDefOperator(String, Int)
-  InvalidShaderDefComparisonValue(String, String, String, Int)
-  ImportParseError(String, Int)
-  DefineInModule(Int)
-}
-
-pub(all) suberror SubstituteIdentifiersError {
-  AmbiguousImport(Int)
-}
 
 // Types and methods
-pub(all) struct ComposableModuleDefinition {
-  name : String
-  sanitized_source : String
-  language : ShaderLanguage
-  file_path : String
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
-  effective_defs : Array[String]
-  all_imports : @hashset.HashSet[String]
-  additional_imports : Array[ImportDefinition]
-}
-
-pub(all) struct ComposableModuleDescriptor {
-  source : String
-  file_path : String
-  language : ShaderLanguage
-  as_name : String?
-  additional_imports : Array[ImportDefinition]
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
-} derive(Eq, @debug.Debug)
-pub fn ComposableModuleDescriptor::default() -> Self
-
-pub struct Composer {
-  module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
-  registry : WgslSourceRegistry
-  composable_module_registry_paths : @hashmap.HashMap[String, String]
-}
-pub fn Composer::add_composable_module(Self, ComposableModuleDescriptor) -> ComposableModuleDefinition raise ComposerError
-pub fn Composer::analyze_wgsl_source_files_for_registry(Self, Array[WgslSourceFile]) -> Array[WgslDiagnostic]
-pub fn Composer::build_wgsl_source_catalog(Self, WgslComposeOptions) -> Array[WgslSourceCatalogEntry]
-pub fn Composer::clear_registered_wgsl_source_registry(Self) -> Unit
-pub fn Composer::compose_wgsl(Self, String, WgslComposeOptions) -> String raise ComposerError
-pub fn Composer::compose_wgsl_source(Self, String, WgslComposeOptions) -> String raise ComposerError
-pub fn Composer::contains_module(Self, String) -> Bool
-pub fn Composer::copy_registered_wgsl_import_module_paths(Self) -> @hashmap.HashMap[String, String]
-pub fn Composer::copy_registered_wgsl_source_files(Self) -> Array[WgslSourceFile]
-pub fn Composer::default() -> Self
-pub fn Composer::export_wgsl_from_assets_base_required(Self, String, String, WgslExportOptions) -> WgslExportOutput raise ComposerError
-pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(Self, String, String, WgslExportOptions, Array[WgslSymbolRedirect]) -> WgslExportOutput raise ComposerError
-pub fn Composer::export_wgsl_with_options(Self, String, WgslComposeOptions, WgslExportOptions) -> WgslExportOutput raise ComposerError
-pub fn Composer::from_registered_wgsl_source_registry() -> Self
-pub fn Composer::load_wgsl_from_assets_base_required(Self, String, String) -> String raise ComposerError
-pub fn Composer::load_wgsl_source_required_raw(Self, String, String) -> String raise ComposerError
-pub fn Composer::register_wgsl_source(Self, String, String) -> Unit
-pub fn Composer::register_wgsl_source_files(Self, Array[WgslSourceFile]) -> Unit
-pub fn Composer::register_wgsl_source_files_checked(Self, Array[WgslSourceFile]) -> Array[WgslDiagnostic]
-pub fn Composer::register_wgsl_source_tree(Self, String, WgslSourceScanOptions) -> Unit raise @fs.IOError
-pub fn Composer::register_wgsl_source_tree_checked(Self, String, WgslSourceScanOptions) -> Array[WgslDiagnostic] raise @fs.IOError
-pub fn Composer::registered_wgsl_source(Self, String) -> String?
-pub fn Composer::remove_composable_module(Self, String) -> Unit
-
-pub struct DiagnosticDirective {
-  severity : String
-  rule : String
-  source_location : Int
-} derive(Eq, @debug.Debug)
-
-pub struct EnableDirective {
-  extensions : Array[String]
-  source_location : Int
-} derive(Eq, @debug.Debug)
-
-pub struct ImportDefWithOffset {
-  definition : ImportDefinition
-  offset : Int
-} derive(Eq, @debug.Debug)
-
-pub(all) struct ImportDefinition {
-  import_path : String
-  items : Array[String]
-} derive(Eq, @debug.Debug)
-pub fn ImportDefinition::default() -> Self
-
-pub(all) struct NagaModuleDescriptor {
-  source : String
-  file_path : String
-  shader_type : ShaderType
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
-  additional_imports : Array[ImportDefinition]
-} derive(Eq, @debug.Debug)
-pub fn NagaModuleDescriptor::default() -> Self
-
-pub struct PreprocessOutput {
-  preprocessed_source : String
-  imports : Array[ImportDefWithOffset]
-}
-pub fn PreprocessOutput::default() -> Self
-
-pub struct Preprocessor {
-}
-pub fn Preprocessor::default() -> Self
-pub fn Preprocessor::extract_wgsl_directives(Self, String) -> (String, WgslDirectives)
-pub fn Preprocessor::preprocess(Self, String, @hashmap.HashMap[String, ShaderDefValue]) -> PreprocessOutput raise PreprocessError
-
-pub struct PreprocessorMetaData {
-  name : String?
-  imports : Array[ImportDefWithOffset]
-  defines : @hashmap.HashMap[String, ShaderDefValue]
-  effective_defs : @hashset.HashSet[String]
-  wgsl_directives : WgslDirectives
-  cleaned_source : String
-}
-
-pub struct RequiresDirective {
-  extensions : Array[String]
-  source_location : Int
-} derive(Eq, @debug.Debug)
-
-type ScopeLevel derive(Eq)
-
-pub(all) enum ShaderDefValue {
-  Bool(Bool)
-  Int(Int)
-  UInt(UInt)
-} derive(Eq, @debug.Debug)
-pub fn ShaderDefValue::value_as_string(Self) -> String
-
-pub(all) enum ShaderLanguage {
-  Wgsl
-  Glsl
-} derive(Eq, @debug.Debug)
-
-pub(all) enum ShaderType {
-  Wgsl
-  GlslVertex
-  GlslFragment
-} derive(Eq, @debug.Debug)
-
-type Token derive(Eq, @debug.Debug)
-
-pub(all) struct WgslComposeOptions {
-  assets_base : String
-  defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, Int]
-  redirects : Array[WgslSymbolRedirect]
-  additional_imports : Array[ImportDefinition]
-  preserve_imported_entry_points : Bool
-} derive(Eq, @debug.Debug)
-pub fn WgslComposeOptions::default() -> Self
-
-pub struct WgslDiagnostic {
-  severity : WgslDiagnosticSeverity
-  message : String
-  rel_path : String?
-  symbol_name : String?
-  generated_start : Int?
-  source_start : Int?
-} derive(Eq, @debug.Debug)
-pub fn WgslDiagnostic::default() -> Self
-
-pub(all) enum WgslDiagnosticSeverity {
-  Info
-  Warn
-  Error
-} derive(Eq, @debug.Debug)
-
-pub struct WgslDirectives {
-  enables : Array[EnableDirective]
-  requires : Array[RequiresDirective]
-  diagnostics : Array[DiagnosticDirective]
-} derive(Eq, @debug.Debug)
-pub fn WgslDirectives::default() -> Self
-pub fn WgslDirectives::is_empty(Self) -> Bool
-pub fn WgslDirectives::to_wgsl_string(Self) -> String
-
-pub(all) struct WgslExportOptions {
-  root_items : Array[String]
-} derive(Eq, @debug.Debug)
-pub fn WgslExportOptions::default() -> Self
-
-pub struct WgslExportOutput {
-  source : String
-  source_catalog : Array[WgslSourceCatalogEntry]
-  source_map : Array[WgslSourceMapEntry]
-  diagnostics : Array[WgslDiagnostic]
-} derive(Eq, @debug.Debug)
-pub fn WgslExportOutput::default() -> Self
-
-pub struct WgslImportTarget {
-  raw_path : String
-  alias_name : String
-} derive(Eq, @debug.Debug)
-
-pub struct WgslResolvedImportModule {
-  module_path : String
-  rel_path : String
-} derive(Eq, @debug.Debug)
-
-pub struct WgslSourceCatalogEntry {
-  rel_path : String
-  symbol_name : String
-  source_text : String
-  source_start : Int
-  source_end : Int
-} derive(Eq, @debug.Debug)
-pub fn WgslSourceCatalogEntry::default() -> Self
-
-pub(all) struct WgslSourceFile {
-  rel_path : String
-  source : String
-} derive(Eq, @debug.Debug)
-pub fn WgslSourceFile::default() -> Self
-
-pub struct WgslSourceMapEntry {
-  generated_start : Int
-  generated_end : Int
-  rel_path : String
-  source_start : Int
-  source_end : Int
-  symbol_name : String?
-} derive(Eq, @debug.Debug)
-pub fn WgslSourceMapEntry::default() -> Self
-
-type WgslSourceRegistry
-
-pub(all) struct WgslSourceScanOptions {
-  recursive : Bool
-  extensions : Array[String]
-  exclude_prefixes : Array[String]
-} derive(Eq, @debug.Debug)
-pub fn WgslSourceScanOptions::default() -> Self
-
-pub(all) struct WgslSymbolRedirect {
-  from_name : String
-  to_name : String
-} derive(Eq, @debug.Debug)
-pub fn WgslSymbolRedirect::default() -> Self
 
 // Type aliases
+pub using @common {type ComposableModuleDefinition}
+
+pub using @common {type ComposableModuleDescriptor}
+
+pub using @compose {type Composer}
+
+pub using @compose {type ComposerError}
+
+pub using @common {type DiagnosticDirective}
+
+pub using @common {type EnableDirective}
+
+pub using @common {type ImportDefWithOffset}
+
+pub using @common {type ImportDefinition}
+
+pub using @common {type NagaModuleDescriptor}
+
+pub using @preprocess {type PreprocessError}
+
+pub using @common {type PreprocessOutput}
+
+pub using @preprocess {type Preprocessor}
+
+pub using @common {type PreprocessorMetaData}
+
+pub using @common {type RequiresDirective}
+
+pub using @common {type ShaderDefValue}
+
+pub using @common {type ShaderLanguage}
+
+pub using @common {type ShaderType}
+
+pub using @common {type WgslComposeOptions}
+
+pub using @compose {type WgslComposeSession}
+
+pub using @common {type WgslDiagnostic}
+
+pub using @common {type WgslDiagnosticSeverity}
+
+pub using @common {type WgslDirectives}
+
+pub using @common {type WgslExportOptions}
+
+pub using @common {type WgslExportOutput}
+
+pub using @common {type WgslImportTarget}
+
+pub using @common {type WgslResolvedImportModule}
+
+pub using @common {type WgslSourceCatalogEntry}
+
+pub using @common {type WgslSourceFile}
+
+pub using @common {type WgslSourceMapEntry}
+
+pub using @resolver {type WgslSourceRegistry}
+
+pub using @common {type WgslSourceScanOptions}
+
+pub using @common {type WgslSymbolRedirect}
 
 // Traits
 

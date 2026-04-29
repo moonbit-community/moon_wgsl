@@ -13,14 +13,14 @@
 // limitations under the License.
 
 ///|
-enum Token {
+pub(all) enum Token {
   Identifier(String, Int)
   Other(Int, Int)
   Whitespace(String, Int)
 } derive(Eq, Debug)
 
 ///|
-fn Token::pos(self : Token) -> Int {
+pub fn Token::pos(self : Token) -> Int {
   match self {
     Identifier(_, pos) => pos
     Other(_, pos) => pos
@@ -29,7 +29,7 @@ fn Token::pos(self : Token) -> Int {
 }
 
 ///|
-fn Token::identifier(self : Token) -> String? {
+pub fn Token::identifier(self : Token) -> String? {
   match self {
     Identifier(ident, _) => Some(ident)
     _ => None
@@ -37,7 +37,7 @@ fn Token::identifier(self : Token) -> String? {
 }
 
 ///|
-fn tokenizer_identifier_start(code : Int) -> Bool {
+pub fn tokenizer_identifier_start(code : Int) -> Bool {
   code == 95 || // '_'
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
@@ -45,12 +45,12 @@ fn tokenizer_identifier_start(code : Int) -> Bool {
 }
 
 ///|
-fn tokenizer_identifier_continue(code : Int) -> Bool {
+pub fn tokenizer_identifier_continue(code : Int) -> Bool {
   tokenizer_identifier_start(code) || (code >= 48 && code <= 57)
 }
 
 ///|
-fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
+pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
   let tokens : Array[Token] = []
   let mut current_token_start = 0
   let mut current_token_kind = -1

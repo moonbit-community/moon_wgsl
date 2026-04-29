@@ -13,31 +13,6 @@
 // limitations under the License.
 
 ///|
-pub struct WgslImportTarget {
-  raw_path : String
-  alias_name : String
-} derive(Eq, Debug)
-
-///|
-pub struct WgslResolvedImportModule {
-  module_path : String
-  rel_path : String
-} derive(Eq, Debug)
-
-///|
-fn join_wgsl_import_prefix(prefix : String, path : String) -> String {
-  let lhs = prefix.trim().to_owned()
-  let rhs = path.trim().to_owned()
-  if lhs == "" {
-    rhs
-  } else if rhs == "" {
-    lhs
-  } else {
-    "\{lhs}::\{rhs}"
-  }
-}
-
-///|
 pub fn collect_wgsl_import_targets(
   spec : String,
   prefix : String,
@@ -139,7 +114,7 @@ pub fn resolve_wgsl_import_file_path(
 }
 
 ///|
-fn resolve_wgsl_import_file_path_from_registry(
+pub fn resolve_wgsl_import_file_path_from_registry(
   registry : WgslSourceRegistry,
   importer_rel_path : String,
   import_path : String,
@@ -344,7 +319,7 @@ pub fn scan_wgsl_source_files_checked(
 }
 
 ///|
-let registered_wgsl_source_registry_singleton : WgslSourceRegistry = WgslSourceRegistry::default()
+pub let registered_wgsl_source_registry_singleton : WgslSourceRegistry = WgslSourceRegistry::default()
 
 ///|
 fn copy_wgsl_source_registry_map(
@@ -644,7 +619,7 @@ pub fn copy_registered_wgsl_source_files() -> Array[WgslSourceFile] {
 }
 
 ///|
-fn copy_wgsl_source_files_from_registry(
+pub fn copy_wgsl_source_files_from_registry(
   source_registry : @hashmap.HashMap[String, String],
 ) -> Array[WgslSourceFile] {
   let files : Array[WgslSourceFile] = []
@@ -702,7 +677,7 @@ fn wgsl_module_path_to_rel_path_namespace(module_path : String) -> String {
 }
 
 ///|
-fn default_shader_rel_path_for_module_path(module_path : String) -> String {
+pub fn default_shader_rel_path_for_module_path(module_path : String) -> String {
   wgsl_module_path_to_rel_path_namespace(module_path)
 }
 
@@ -714,7 +689,7 @@ pub fn build_wgsl_import_module_paths(
 }
 
 ///|
-fn resolve_wgsl_import_module_in_registry(
+pub fn resolve_wgsl_import_module_in_registry(
   registry : WgslSourceRegistry,
   import_path : String,
   modules : @hashmap.HashMap[String, String],

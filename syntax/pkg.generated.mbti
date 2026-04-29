@@ -1,0 +1,66 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/syntax"
+
+import {
+  "Milky2018/moon_wgsl/common",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn code_unit_to_string(Int) -> String
+
+pub fn decorate(String) -> String
+
+pub fn import_brace_balance(String) -> Int
+
+pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise ParseImportsError
+
+pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
+
+pub fn parse_wgsl_import_targets_from_tokens(String, Bool, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
+
+pub fn replace_comments(String) -> String
+
+pub fn spaces(Int) -> String
+
+pub fn split_last_identifier(String) -> (String, String)?
+
+pub fn starts_with_text(String, String) -> Bool
+
+pub fn substitute_identifiers(String, Int, Array[DeclaredImportBinding], Array[@common.ImportDefWithOffset], Bool) -> String raise SubstituteIdentifiersError
+
+pub fn tokenize(String, Bool) -> Array[Token]
+
+pub fn tokenizer_identifier_continue(Int) -> Bool
+
+pub fn tokenizer_identifier_start(Int) -> Bool
+
+pub fn trim_trailing_semicolons(String) -> String
+
+// Errors
+pub(all) suberror ParseImportsError {
+  Parse(String, Int)
+}
+
+pub(all) suberror SubstituteIdentifiersError {
+  AmbiguousImport(Int)
+}
+
+// Types and methods
+pub(all) struct DeclaredImportBinding {
+  used_name : String
+  full_paths : Array[String]
+}
+
+pub(all) enum Token {
+  Identifier(String, Int)
+  Other(Int, Int)
+  Whitespace(String, Int)
+} derive(Eq, @debug.Debug)
+pub fn Token::identifier(Self) -> String?
+pub fn Token::pos(Self) -> Int
+
+// Type aliases
+
+// Traits
+

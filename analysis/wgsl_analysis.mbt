@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv struct WgslGraphBlock {
+pub(all) struct WgslGraphBlock {
   name : String
   text : String
   start : Int
@@ -21,7 +21,7 @@ priv struct WgslGraphBlock {
 }
 
 ///|
-priv struct WgslDeclarationGraph {
+pub(all) struct WgslDeclarationGraph {
   import_blocks : Array[WgslGraphBlock]
   declaration_blocks : Array[WgslGraphBlock]
 }
@@ -37,7 +37,7 @@ fn text_contains_code_unit(text : String, code : Int) -> Bool {
 }
 
 ///|
-fn wgsl_identifier_char(code : Int) -> Bool {
+pub fn wgsl_identifier_char(code : Int) -> Bool {
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
   (code >= 48 && code <= 57) ||
@@ -45,7 +45,10 @@ fn wgsl_identifier_char(code : Int) -> Bool {
 }
 
 ///|
-fn wgsl_string_list_push_unique(items : Array[String], item : String) -> Unit {
+pub fn wgsl_string_list_push_unique(
+  items : Array[String],
+  item : String,
+) -> Unit {
   for existing in items {
     if existing == item {
       return
@@ -190,7 +193,7 @@ fn wgsl_declaration_name(line : String) -> String {
 }
 
 ///|
-fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
+pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
   let lines : Array[String] = []
   let cleaned_lines : Array[String] = []
   let line_starts : Array[Int] = []
@@ -302,7 +305,7 @@ fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
 }
 
 ///|
-fn build_wgsl_declaration_indexes(
+pub fn build_wgsl_declaration_indexes(
   declaration_blocks : Array[WgslGraphBlock],
 ) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
   let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -355,7 +358,7 @@ fn collect_wgsl_declaration_dependencies(
 }
 
 ///|
-fn collect_wgsl_reachable_declaration_names(
+pub fn collect_wgsl_reachable_declaration_names(
   declaration_blocks : Array[WgslGraphBlock],
   root_items : Array[String],
 ) -> (@hashmap.HashMap[String, Bool], Array[String]) {
@@ -423,7 +426,7 @@ fn wgsl_declaration_block_has_entry_point_attribute(text : String) -> Bool {
 }
 
 ///|
-fn wgsl_source_declares_entry_point(
+pub fn wgsl_source_declares_entry_point(
   source : String,
   item_name : String,
 ) -> Bool {
@@ -441,7 +444,7 @@ fn wgsl_source_declares_entry_point(
 }
 
 ///|
-fn strip_wgsl_import_declarations(source : String) -> String {
+pub fn strip_wgsl_import_declarations(source : String) -> String {
   let lines : Array[String] = []
   for line_item in source.split("\n") {
     lines.push(line_item.to_owned())
@@ -473,7 +476,7 @@ fn strip_wgsl_import_declarations(source : String) -> String {
 }
 
 ///|
-fn extract_wgsl_module_items(
+pub fn extract_wgsl_module_items(
   source : String,
   requested_items : Array[String],
 ) -> String {

@@ -1,0 +1,54 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/analysis"
+
+import {
+  "Milky2018/moon_wgsl/common",
+  "moonbitlang/core/hashmap",
+}
+
+// Values
+pub fn build_wgsl_declaration_graph(String) -> WgslDeclarationGraph
+
+pub fn build_wgsl_declaration_indexes(Array[WgslGraphBlock]) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int])
+
+pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
+
+pub fn collect_wgsl_reachable_declaration_names(Array[WgslGraphBlock], Array[String]) -> (@hashmap.HashMap[String, Bool], Array[String])
+
+pub fn extract_wgsl_module_items(String, Array[String]) -> String
+
+pub fn rewrite_wgsl_declaration_text_with_map(String, @hashmap.HashMap[String, String], Bool) -> String
+
+pub fn rewrite_wgsl_declaration_text_with_redirects(String, @hashmap.HashMap[String, String]) -> String
+
+pub fn rewrite_wgsl_declaration_text_with_renamed_declarations(String, @hashmap.HashMap[String, String]) -> String
+
+pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String
+
+pub fn strip_wgsl_import_declarations(String) -> String
+
+pub fn wgsl_identifier_char(Int) -> Bool
+
+pub fn wgsl_source_declares_entry_point(String, String) -> Bool
+
+pub fn wgsl_string_list_push_unique(Array[String], String) -> Unit
+
+// Errors
+
+// Types and methods
+pub(all) struct WgslDeclarationGraph {
+  import_blocks : Array[WgslGraphBlock]
+  declaration_blocks : Array[WgslGraphBlock]
+}
+
+pub(all) struct WgslGraphBlock {
+  name : String
+  text : String
+  start : Int
+  end : Int
+}
+
+// Type aliases
+
+// Traits
+

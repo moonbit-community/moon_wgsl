@@ -1,0 +1,205 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/common"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
+  "moonbitlang/core/hashset",
+}
+
+// Values
+pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int]
+
+// Errors
+
+// Types and methods
+pub(all) struct ComposableModuleDefinition {
+  name : String
+  sanitized_source : String
+  language : ShaderLanguage
+  file_path : String
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  effective_defs : Array[String]
+  all_imports : @hashset.HashSet[String]
+  additional_imports : Array[ImportDefinition]
+}
+
+pub(all) struct ComposableModuleDescriptor {
+  source : String
+  file_path : String
+  language : ShaderLanguage
+  as_name : String?
+  additional_imports : Array[ImportDefinition]
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+} derive(Eq, @debug.Debug)
+pub fn ComposableModuleDescriptor::default() -> Self
+
+pub(all) struct DiagnosticDirective {
+  severity : String
+  rule : String
+  source_location : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EnableDirective {
+  extensions : Array[String]
+  source_location : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ImportDefWithOffset {
+  definition : ImportDefinition
+  offset : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ImportDefinition {
+  import_path : String
+  items : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn ImportDefinition::default() -> Self
+
+pub(all) struct NagaModuleDescriptor {
+  source : String
+  file_path : String
+  shader_type : ShaderType
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  additional_imports : Array[ImportDefinition]
+} derive(Eq, @debug.Debug)
+pub fn NagaModuleDescriptor::default() -> Self
+
+pub(all) struct PreprocessOutput {
+  preprocessed_source : String
+  imports : Array[ImportDefWithOffset]
+}
+pub fn PreprocessOutput::default() -> Self
+
+pub(all) struct PreprocessorMetaData {
+  name : String?
+  imports : Array[ImportDefWithOffset]
+  defines : @hashmap.HashMap[String, ShaderDefValue]
+  effective_defs : @hashset.HashSet[String]
+  wgsl_directives : WgslDirectives
+  cleaned_source : String
+}
+
+pub(all) struct RequiresDirective {
+  extensions : Array[String]
+  source_location : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ShaderDefValue {
+  Bool(Bool)
+  Int(Int)
+  UInt(UInt)
+} derive(Eq, @debug.Debug)
+pub fn ShaderDefValue::value_as_string(Self) -> String
+
+pub(all) enum ShaderLanguage {
+  Wgsl
+  Glsl
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ShaderType {
+  Wgsl
+  GlslVertex
+  GlslFragment
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslComposeOptions {
+  assets_base : String
+  defines : @hashmap.HashMap[String, Bool]
+  value_defines : @hashmap.HashMap[String, Int]
+  redirects : Array[WgslSymbolRedirect]
+  additional_imports : Array[ImportDefinition]
+  preserve_imported_entry_points : Bool
+} derive(Eq, @debug.Debug)
+pub fn WgslComposeOptions::default() -> Self
+
+pub(all) struct WgslDiagnostic {
+  severity : WgslDiagnosticSeverity
+  message : String
+  rel_path : String?
+  symbol_name : String?
+  generated_start : Int?
+  source_start : Int?
+} derive(Eq, @debug.Debug)
+pub fn WgslDiagnostic::default() -> Self
+
+pub(all) enum WgslDiagnosticSeverity {
+  Info
+  Warn
+  Error
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslDirectives {
+  enables : Array[EnableDirective]
+  requires : Array[RequiresDirective]
+  diagnostics : Array[DiagnosticDirective]
+} derive(Eq, @debug.Debug)
+pub fn WgslDirectives::default() -> Self
+pub fn WgslDirectives::is_empty(Self) -> Bool
+pub fn WgslDirectives::to_wgsl_string(Self) -> String
+
+pub(all) struct WgslExportOptions {
+  root_items : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn WgslExportOptions::default() -> Self
+
+pub(all) struct WgslExportOutput {
+  source : String
+  source_catalog : Array[WgslSourceCatalogEntry]
+  source_map : Array[WgslSourceMapEntry]
+  diagnostics : Array[WgslDiagnostic]
+} derive(Eq, @debug.Debug)
+pub fn WgslExportOutput::default() -> Self
+
+pub(all) struct WgslImportTarget {
+  raw_path : String
+  alias_name : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslResolvedImportModule {
+  module_path : String
+  rel_path : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSourceCatalogEntry {
+  rel_path : String
+  symbol_name : String
+  source_text : String
+  source_start : Int
+  source_end : Int
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceCatalogEntry::default() -> Self
+
+pub(all) struct WgslSourceFile {
+  rel_path : String
+  source : String
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceFile::default() -> Self
+
+pub(all) struct WgslSourceMapEntry {
+  generated_start : Int
+  generated_end : Int
+  rel_path : String
+  source_start : Int
+  source_end : Int
+  symbol_name : String?
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceMapEntry::default() -> Self
+
+pub(all) struct WgslSourceScanOptions {
+  recursive : Bool
+  extensions : Array[String]
+  exclude_prefixes : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceScanOptions::default() -> Self
+
+pub(all) struct WgslSymbolRedirect {
+  from_name : String
+  to_name : String
+} derive(Eq, @debug.Debug)
+pub fn WgslSymbolRedirect::default() -> Self
+
+// Type aliases
+
+// Traits
+

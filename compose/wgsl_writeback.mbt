@@ -232,7 +232,7 @@ fn validate_wgsl_struct_member_identifiers(
 }
 
 ///|
-fn finalize_wgsl_writeback_source(
+pub fn finalize_wgsl_writeback_source(
   source : String,
 ) -> String raise ComposerError {
   validate_wgsl_struct_member_identifiers(source)

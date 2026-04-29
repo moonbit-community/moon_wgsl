@@ -13,13 +13,13 @@
 // limitations under the License.
 
 ///|
-struct WgslSourceRegistry {
+pub(all) struct WgslSourceRegistry {
   rel_to_source_ref : Ref[@hashmap.HashMap[String, String]]
   module_to_rel_ref : Ref[@hashmap.HashMap[String, String]]
 }
 
 ///|
-fn WgslSourceRegistry::default() -> WgslSourceRegistry {
+pub fn WgslSourceRegistry::default() -> WgslSourceRegistry {
   WgslSourceRegistry::{
     rel_to_source_ref: Ref::new(@hashmap.HashMap::new()),
     module_to_rel_ref: Ref::new(@hashmap.HashMap::new()),
@@ -27,7 +27,7 @@ fn WgslSourceRegistry::default() -> WgslSourceRegistry {
 }
 
 ///|
-fn WgslSourceRegistry::snapshot(
+pub fn WgslSourceRegistry::snapshot(
   self : WgslSourceRegistry,
 ) -> WgslSourceRegistry {
   WgslSourceRegistry::{
@@ -41,26 +41,26 @@ fn WgslSourceRegistry::snapshot(
 }
 
 ///|
-fn WgslSourceRegistry::source_registry(
+pub fn WgslSourceRegistry::source_registry(
   self : WgslSourceRegistry,
 ) -> @hashmap.HashMap[String, String] {
   self.rel_to_source_ref.val
 }
 
 ///|
-fn WgslSourceRegistry::module_paths(
+pub fn WgslSourceRegistry::module_paths(
   self : WgslSourceRegistry,
 ) -> @hashmap.HashMap[String, String] {
   self.module_to_rel_ref.val
 }
 
 ///|
-fn WgslSourceRegistry::clear(self : WgslSourceRegistry) -> Unit {
+pub fn WgslSourceRegistry::clear(self : WgslSourceRegistry) -> Unit {
   clear_wgsl_source_registry(self.source_registry(), self.module_paths())
 }
 
 ///|
-fn WgslSourceRegistry::register_source(
+pub fn WgslSourceRegistry::register_source(
   self : WgslSourceRegistry,
   rel_path : String,
   source : String,
@@ -76,7 +76,7 @@ fn WgslSourceRegistry::register_source(
 }
 
 ///|
-fn WgslSourceRegistry::analyze_source_files(
+pub fn WgslSourceRegistry::analyze_source_files(
   self : WgslSourceRegistry,
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
@@ -91,7 +91,7 @@ fn WgslSourceRegistry::analyze_source_files(
 }
 
 ///|
-fn WgslSourceRegistry::register_source_files_checked(
+pub fn WgslSourceRegistry::register_source_files_checked(
   self : WgslSourceRegistry,
   files : Array[WgslSourceFile],
   diagnostics : Array[WgslDiagnostic],
@@ -105,7 +105,7 @@ fn WgslSourceRegistry::register_source_files_checked(
 }
 
 ///|
-fn WgslSourceRegistry::register_source_files(
+pub fn WgslSourceRegistry::register_source_files(
   self : WgslSourceRegistry,
   files : Array[WgslSourceFile],
 ) -> Unit {
@@ -117,7 +117,7 @@ fn WgslSourceRegistry::register_source_files(
 }
 
 ///|
-fn WgslSourceRegistry::registered_source(
+pub fn WgslSourceRegistry::registered_source(
   self : WgslSourceRegistry,
   rel_path : String,
 ) -> String? {
@@ -125,21 +125,21 @@ fn WgslSourceRegistry::registered_source(
 }
 
 ///|
-fn WgslSourceRegistry::copy_source_files(
+pub fn WgslSourceRegistry::copy_source_files(
   self : WgslSourceRegistry,
 ) -> Array[WgslSourceFile] {
   copy_wgsl_source_files_from_registry(self.source_registry())
 }
 
 ///|
-fn WgslSourceRegistry::copy_import_module_paths(
+pub fn WgslSourceRegistry::copy_import_module_paths(
   self : WgslSourceRegistry,
 ) -> @hashmap.HashMap[String, String] {
   copy_wgsl_import_module_map(self.module_paths())
 }
 
 ///|
-fn WgslSourceRegistry::remove_source_and_module(
+pub fn WgslSourceRegistry::remove_source_and_module(
   self : WgslSourceRegistry,
   rel_path : String,
   module_path : String,

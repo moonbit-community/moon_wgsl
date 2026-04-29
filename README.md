@@ -297,7 +297,7 @@ test "README: checked tree scan" {
 
 ### 6. Exporting a Single WGSL File
 
-Use `Composer::export_wgsl_with_options` to produce a fully expanded
+Use `export_wgsl_with_options` to produce a fully expanded
 single-file WGSL output. The export path also supports declaration-level
 tree-shaking and returns source-map entries, the dependency-closure source
 catalog used for matching, plus diagnostics.
@@ -333,7 +333,7 @@ test "README: export single WGSL file" {
     root_items: ["shade"],
   }
   let exported : @moon_wgsl.WgslExportOutput =
-    composer.export_wgsl_with_options(
+    @moon_wgsl.export_wgsl_with_options(composer, 
       "shaders/effects/main.wgsl",
       compose_options,
       export_options,
@@ -349,7 +349,7 @@ test "README: export single WGSL file" {
 ```
 
 If you need the declaration catalog directly, without exporting a specific
-entrypoint, use `Composer::build_wgsl_source_catalog` on the same Composer:
+entrypoint, use `build_wgsl_source_catalog` on the same Composer:
 
 ```mbt check
 test "README: build source catalog" {
@@ -379,7 +379,7 @@ test "README: build source catalog" {
     preserve_imported_entry_points: true,
   }
   let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] =
-    composer.build_wgsl_source_catalog(compose_options)
+    @moon_wgsl.build_wgsl_source_catalog(composer, compose_options)
   debug_inspect(catalog.length() > 0, content="true")
 }
 ```
@@ -425,7 +425,7 @@ test "README: source-level redirects" {
     root_items: ["shade"],
   }
   let exported : @moon_wgsl.WgslExportOutput =
-    composer.export_wgsl_with_options(
+    @moon_wgsl.export_wgsl_with_options(composer, 
       "shaders/effects/redirect.wgsl",
       compose_options,
       export_options,
@@ -502,7 +502,7 @@ Main public entry points:
   errors are reported.
 - `build_registered_wgsl_source_catalog`
   Returns the declaration catalog for the global compatibility registry.
-- `Composer::build_wgsl_source_catalog`
+- `build_wgsl_source_catalog`
   Returns the declaration catalog for a specific Composer registry.
 - `build_wgsl_import_module_paths` / `resolve_wgsl_import_module`
   Build and query module-path resolution data.
@@ -515,7 +515,7 @@ Main public entry points:
 - `Composer::compose_wgsl_source`
   Composes a raw WGSL source string using `WgslComposeOptions` without exposing
   session internals.
-- `Composer::export_wgsl_with_options`
+- `export_wgsl_with_options`
   Produces single-file WGSL from `WgslComposeOptions` without exposing legacy
   session internals.
 
@@ -548,7 +548,7 @@ For the full exported surface, see
 - `#define_import_path` is used as the canonical module name for composition.
 - `Composer` now owns registry/module resolution state; new code should prefer
   `Composer::register_wgsl_source*`, `Composer::compose_wgsl`,
-  `Composer::compose_wgsl_source`, and `Composer::export_wgsl_with_options`.
+  `Composer::compose_wgsl_source`, and `export_wgsl_with_options`.
 - `Composer::default()` is hermetic and does not inherit the global registry.
   Use `Composer::from_registered_wgsl_source_registry()` only when you
   intentionally want a compatibility snapshot of global state.
@@ -562,7 +562,7 @@ For the full exported surface, see
   returns empty/default metadata instead of raising.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.
-- `Composer::export_wgsl_with_options` scopes `source_catalog` and
+- `export_wgsl_with_options` scopes `source_catalog` and
   `source_map` to the dependency closure of the current compose/export
   session instead of the full registry.
 - Source-level redirects are token-based and intentionally skip declaration

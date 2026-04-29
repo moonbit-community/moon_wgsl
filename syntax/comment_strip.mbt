@@ -20,7 +20,7 @@ priv enum CommentState {
 }
 
 ///|
-fn spaces(count : Int) -> String {
+pub fn spaces(count : Int) -> String {
   if count <= 0 {
     return ""
   }
@@ -155,7 +155,7 @@ fn find_first_quote_marker(line : String, start : Int) -> (Int, String)? {
 }
 
 ///|
-fn replace_comments(source : String) -> String {
+pub fn replace_comments(source : String) -> String {
   let output_lines : Array[String] = []
   let mut state = CommentState::None
   for line_item in source.split("\n") {
