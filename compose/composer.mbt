@@ -1618,6 +1618,173 @@ fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
 }
 
 ///|
+priv struct WgslGlobalBindingInfo {
+  name : String
+  group : Int
+  binding : Int
+  type_text : String
+}
+
+///|
+fn wgsl_binding_attr_decimal(text : String, attr : String) -> Int? {
+  let pattern = "@\{attr}("
+  if pattern.length() > text.length() {
+    return None
+  }
+  let limit = text.length() - pattern.length()
+  for i in 0..<=limit {
+    let mut matched = true
+    for j in 0..<pattern.length() {
+      if text.code_unit_at(i + j).to_int() != pattern.code_unit_at(j).to_int() {
+        matched = false
+        break
+      }
+    }
+    if !matched {
+      continue
+    }
+    let mut end = i + pattern.length()
+    let mut value = 0
+    while end < text.length() {
+      let code = text.code_unit_at(end).to_int()
+      if code < 48 || code > 57 {
+        break
+      }
+      value = value * 10 + code - 48
+      end = end + 1
+    }
+    if end == i + pattern.length() {
+      return None
+    }
+    return Some(value)
+  }
+  None
+}
+
+///|
+fn wgsl_global_var_type_text(block_text : String, name : String) -> String? {
+  let cleaned = replace_comments(block_text)
+  let tokens = tokenize(cleaned, false)
+  for i in 0..<tokens.length() {
+    guard token_identifier_value(tokens[i]) is Some("var") else { continue }
+    let mut j = i + 1
+    while j < tokens.length() {
+      guard token_identifier_value(tokens[j]) is Some(found_name) else {
+        j = j + 1
+        continue
+      }
+      if found_name != name {
+        j = j + 1
+        continue
+      }
+      let mut colon_index = j + 1
+      while colon_index < tokens.length() {
+        if token_other_code_value(tokens[colon_index]) is Some(58) {
+          let mut start = tokens[colon_index].pos() + 1
+          while start < block_text.length() {
+            let code = block_text.code_unit_at(start).to_int()
+            if code != 32 && code != 9 && code != 10 && code != 13 {
+              break
+            }
+            start = start + 1
+          }
+          let mut end = start
+          while end < block_text.length() {
+            let code = block_text.code_unit_at(end).to_int()
+            if code == 59 || code == 61 || code == 10 || code == 13 {
+              break
+            }
+            end = end + 1
+          }
+          let type_text = block_text[start:end].to_owned().trim().to_owned()
+          return if type_text == "" { None } else { Some(type_text) }
+        }
+        colon_index = colon_index + 1
+      }
+      return None
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_global_binding_info(
+  block : @analysis.WgslGraphBlock,
+) -> WgslGlobalBindingInfo? {
+  if block.name == "" {
+    return None
+  }
+  guard wgsl_binding_attr_decimal(block.text, "group") is Some(group) else {
+    return None
+  }
+  guard wgsl_binding_attr_decimal(block.text, "binding") is Some(binding) else {
+    return None
+  }
+  guard wgsl_global_var_type_text(block.text, block.name) is Some(type_text) else {
+    return None
+  }
+  Some(WgslGlobalBindingInfo::{ name: block.name, group, binding, type_text })
+}
+
+///|
+fn rewrite_wgsl_block_with_duplicate_binding_redirects(
+  block_text : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  let local_names = collect_wgsl_block_local_names(block_text)
+  let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for entry in redirect_map.iter() {
+    let (from_name, to_name) = entry
+    if !local_names.contains(from_name) {
+      block_redirects.set(from_name, to_name)
+    }
+  }
+  if block_redirects.is_empty() {
+    block_text
+  } else {
+    rewrite_wgsl_declaration_text_with_map(block_text, block_redirects, false)
+  }
+}
+
+///|
+fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
+  let graph = build_wgsl_declaration_graph(source)
+  let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let duplicate_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for block in graph.declaration_blocks {
+    guard wgsl_global_binding_info(block) is Some(info) else { continue }
+    let key = "\{info.group}:\{info.binding}:\{info.type_text}"
+    match binding_owner.get(key) {
+      Some(owner) =>
+        if info.name != owner {
+          duplicate_names.set(info.name, true)
+          redirect_map.set(info.name, owner)
+        }
+      None => binding_owner.set(key, info.name)
+    }
+  }
+  if redirect_map.is_empty() {
+    return source
+  }
+  let mut out = ""
+  for import_block in graph.import_blocks {
+    out = out + import_block.text
+  }
+  for block in graph.declaration_blocks {
+    if duplicate_names.contains(block.name) {
+      continue
+    }
+    out = out +
+      rewrite_wgsl_block_with_duplicate_binding_redirects(
+        block.text,
+        redirect_map,
+      )
+  }
+  out
+}
+
+///|
 fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -1787,6 +1954,7 @@ fn finalize_wgsl_composed_source(
       out, suffix_redirects,
     )
   }
+  out = dedupe_wgsl_duplicate_resource_bindings(out)
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }
@@ -1913,6 +2081,10 @@ fn Composer::preprocess_wgsl_source_with_path(
       continue
     }
     if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
+      line_index = line_index + 1
+      continue
+    }
+    if hash_directive_tail(trimmed, "define") is Some(_) {
       line_index = line_index + 1
       continue
     }

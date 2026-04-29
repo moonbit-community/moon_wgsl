@@ -1453,6 +1453,42 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
     source.contains(
       "var<uniform> pbr_functions__clustering__bindings__view: pbr_functions__view_bindings__View",
     ),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("pbr_functions__clustering__bindings__view"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("pbr_functions__view_bindings__view.value"),
     content="true",
   )
+  debug_inspect(
+    upstream_parity_count_occurrences(
+      source, "pbr_functions__view_bindings__view.value",
+    ),
+    content="2",
+  )
+}
+
+///|
+test "github issue 6: root local defines are stripped from final composed WGSL" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "root_define.wgsl",
+    "#define_import_path demo::root_define\n" +
+    "#define TONEMAPPING_PASS\n" +
+    "#ifdef TONEMAPPING_PASS\n" +
+    "const enabled: u32 = 1u;\n" +
+    "#endif\n",
+  )
+  let source = composer.compose_wgsl(
+    "root_define.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err => abort("expected root-local define compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("#define"), content="false")
+  debug_inspect(source.contains("TONEMAPPING_PASS"), content="false")
+  debug_inspect(source.contains("const enabled: u32 = 1u;"), content="true")
 }
