@@ -374,6 +374,39 @@ test "naga_oil upstream: preprocess supports else-ifndef and else-if comparisons
 }
 
 ///|
+test "naga_oil upstream: else and endif directives use prefix regex matching" {
+  let else_source = "\n#ifdef ENABLED\nactive\n#elsewhere\nfallback\n#endif\n"
+  debug_inspect(
+    preprocess_without_ascii_whitespace(else_source, empty_shader_defs()),
+    content="\"fallback\"",
+  )
+  debug_inspect(
+    preprocess_without_ascii_whitespace(
+      else_source,
+      bool_shader_def("ENABLED", true),
+    ),
+    content="\"active\"",
+  )
+  let else_ifdef_without_space_source = "\n#ifdef NOT_DEFINED\nfail\n#elseifdef ENABLED\nplain_else\n#endif\n"
+  debug_inspect(
+    preprocess_without_ascii_whitespace(
+      else_ifdef_without_space_source,
+      empty_shader_defs(),
+    ),
+    content="\"plain_else\"",
+  )
+
+  let endif_source = "\n#ifdef ENABLED\nactive\n#endif_trailing\noutside\n"
+  debug_inspect(
+    preprocess_without_ascii_whitespace(
+      endif_source,
+      bool_shader_def("ENABLED", true),
+    ),
+    content="\"activeoutside\"",
+  )
+}
+
+///|
 test "naga_oil upstream: preprocess handles complicated nested else-ifdef scopes" {
   let source = "\n#ifdef NOT_DEFINED\nfail1\n#else ifdef IS_DEFINED\nok1\n#ifdef NOT_DEFINED\nfail2\n#else\nok2\n#ifdef NOT_DEFINED\nfail3\n#else ifdef ALSO_NOT_DEFINED\nfail4\n#else ifdef IS_DEFINED\nok3\n#endif\n#endif\n#endif\n"
   debug_inspect(

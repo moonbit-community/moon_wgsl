@@ -419,6 +419,29 @@ fn directive_identifier(text : String) -> String? {
 }
 
 ///|
+fn hash_directive_prefix_tail(line : String, directive : String) -> String? {
+  let trimmed = line.trim().to_owned()
+  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
+    return None
+  }
+  let mut start = 1
+  while start < trimmed.length() {
+    let code = trimmed.code_unit_at(start).to_int()
+    if code == 32 || code == 9 {
+      start = start + 1
+      continue
+    }
+    break
+  }
+  guard start + directive.length() <= trimmed.length() else { return None }
+  guard trimmed[start:start + directive.length()].to_owned() == directive else {
+    return None
+  }
+  let tail_start = start + directive.length()
+  Some(trimmed[tail_start:trimmed.length()].to_owned())
+}
+
+///|
 fn parse_if_operator_expression(
   expression : String,
 ) -> (String, String, String)? {
@@ -608,8 +631,14 @@ fn check_scope(
     }
     return (true, Some(name))
   }
-  if hash_directive_tail(line, "else") is Some(else_tail) {
-    if word_tail(else_tail, "ifdef") is Some(rest) &&
+  if hash_directive_prefix_tail(line, "else") is Some(else_tail) {
+    let else_tail_has_space = else_tail.length() > 0 &&
+      (
+        else_tail.code_unit_at(0).to_int() == 32 ||
+        else_tail.code_unit_at(0).to_int() == 9
+      )
+    if else_tail_has_space &&
+      word_tail(else_tail, "ifdef") is Some(rest) &&
       directive_identifier(rest) is Some(name) {
       let condition = shader_defs.contains(name)
       if scope is Some(scope_state) {
@@ -617,7 +646,8 @@ fn check_scope(
       }
       return (true, Some(name))
     }
-    if word_tail(else_tail, "ifndef") is Some(rest) &&
+    if else_tail_has_space &&
+      word_tail(else_tail, "ifndef") is Some(rest) &&
       directive_identifier(rest) is Some(name) {
       let condition = !shader_defs.contains(name)
       if scope is Some(scope_state) {
@@ -625,7 +655,8 @@ fn check_scope(
       }
       return (true, Some(name))
     }
-    if word_tail(else_tail, "if") is Some(expr) &&
+    if else_tail_has_space &&
+      word_tail(else_tail, "if") is Some(expr) &&
       parse_if_operator_expression(expr) is Some((def, operator, value)) {
       if scope is None {
         return (true, Some(def))
@@ -650,13 +681,13 @@ fn check_scope(
     scope_state.branch(false, condition, offset)
     return (true, Some(def))
   }
-  if hash_directive_tail(line, "else") is Some(_) {
+  if hash_directive_prefix_tail(line, "else") is Some(_) {
     if scope is Some(scope_state) {
       scope_state.branch(true, true, offset)
     }
     return (true, None)
   }
-  if hash_directive_tail(line, "endif") is Some(_) {
+  if hash_directive_prefix_tail(line, "endif") is Some(_) {
     if scope is Some(scope_state) {
       scope_state.pop(offset)
     }
