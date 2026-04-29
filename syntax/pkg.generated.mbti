@@ -86,6 +86,16 @@ pub(all) enum Token {
 pub fn Token::identifier(Self) -> String?
 pub fn Token::pos(Self) -> Int
 
+pub(all) struct WgslAttribute {
+  name : String
+  arguments : String
+} derive(@debug.Debug)
+
+pub(all) struct WgslConst {
+  name : WgslIdent
+  ty : String?
+} derive(@debug.Debug)
+
 pub(all) struct WgslDirective {
   kind : WgslDirectiveKind
   name : String
@@ -108,13 +118,44 @@ pub(all) enum WgslDirectiveKind {
   Other(String)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct WgslFunction {
+  attributes : Array[WgslAttribute]
+  qualifier : String
+  name : WgslIdent
+  arguments : Array[WgslFunctionArgument]
+  result : WgslFunctionResult?
+} derive(@debug.Debug)
+
+pub(all) struct WgslFunctionArgument {
+  attributes : Array[WgslAttribute]
+  name : String
+  ty : String
+} derive(@debug.Debug)
+
+pub(all) struct WgslFunctionResult {
+  attributes : Array[WgslAttribute]
+  ty : String
+} derive(@debug.Debug)
+
 pub(all) struct WgslGlobalDecl {
   kind : WgslGlobalDeclKind
+  data : WgslGlobalDeclData
   name : String
   text : String
   start : Int
   end : Int
 }
+
+pub(all) enum WgslGlobalDeclData {
+  Function(WgslFunction)
+  GlobalVariable(WgslGlobalVariable)
+  Const(WgslConst)
+  Override(WgslOverride)
+  Struct(WgslStruct)
+  TypeAlias(WgslTypeAlias)
+  ConstAssert(String)
+  Raw
+} derive(@debug.Debug)
 
 pub(all) enum WgslGlobalDeclKind {
   Directive
@@ -129,6 +170,35 @@ pub(all) enum WgslGlobalDeclKind {
   Trivia
   Unknown
 } derive(Eq, @debug.Debug)
+
+pub(all) struct WgslGlobalVariable {
+  attributes : Array[WgslAttribute]
+  name : WgslIdent
+  template_list : Array[String]
+  ty : String?
+} derive(@debug.Debug)
+
+pub(all) struct WgslIdent {
+  name : String
+} derive(@debug.Debug)
+
+pub(all) struct WgslOverride {
+  attributes : Array[WgslAttribute]
+  name : WgslIdent
+  ty : String?
+} derive(@debug.Debug)
+
+pub(all) struct WgslStruct {
+  attributes : Array[WgslAttribute]
+  name : WgslIdent
+  members : Array[WgslStructMember]
+} derive(@debug.Debug)
+
+pub(all) struct WgslStructMember {
+  attributes : Array[WgslAttribute]
+  name : String
+  ty : String
+} derive(@debug.Debug)
 
 pub(all) struct WgslTopLevelItem {
   kind : WgslTopLevelKind
@@ -149,6 +219,11 @@ pub(all) enum WgslTopLevelKind {
 pub(all) struct WgslTranslationUnit {
   declarations : Array[WgslGlobalDecl]
 }
+
+pub(all) struct WgslTypeAlias {
+  name : WgslIdent
+  ty : String
+} derive(@debug.Debug)
 
 // Type aliases
 

@@ -14,8 +14,95 @@ pub(all) enum WgslGlobalDeclKind {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct WgslIdent {
+  name : String
+} derive(Debug)
+
+///|
+pub(all) struct WgslAttribute {
+  name : String
+  arguments : String
+} derive(Debug)
+
+///|
+pub(all) struct WgslFunctionArgument {
+  attributes : Array[WgslAttribute]
+  name : String
+  ty : String
+} derive(Debug)
+
+///|
+pub(all) struct WgslFunctionResult {
+  attributes : Array[WgslAttribute]
+  ty : String
+} derive(Debug)
+
+///|
+pub(all) struct WgslFunction {
+  attributes : Array[WgslAttribute]
+  qualifier : String
+  name : WgslIdent
+  arguments : Array[WgslFunctionArgument]
+  result : WgslFunctionResult?
+} derive(Debug)
+
+///|
+pub(all) struct WgslStructMember {
+  attributes : Array[WgslAttribute]
+  name : String
+  ty : String
+} derive(Debug)
+
+///|
+pub(all) struct WgslStruct {
+  attributes : Array[WgslAttribute]
+  name : WgslIdent
+  members : Array[WgslStructMember]
+} derive(Debug)
+
+///|
+pub(all) struct WgslGlobalVariable {
+  attributes : Array[WgslAttribute]
+  name : WgslIdent
+  template_list : Array[String]
+  ty : String?
+} derive(Debug)
+
+///|
+pub(all) struct WgslConst {
+  name : WgslIdent
+  ty : String?
+} derive(Debug)
+
+///|
+pub(all) struct WgslOverride {
+  attributes : Array[WgslAttribute]
+  name : WgslIdent
+  ty : String?
+} derive(Debug)
+
+///|
+pub(all) struct WgslTypeAlias {
+  name : WgslIdent
+  ty : String
+} derive(Debug)
+
+///|
+pub(all) enum WgslGlobalDeclData {
+  Function(WgslFunction)
+  GlobalVariable(WgslGlobalVariable)
+  Const(WgslConst)
+  Override(WgslOverride)
+  Struct(WgslStruct)
+  TypeAlias(WgslTypeAlias)
+  ConstAssert(String)
+  Raw
+} derive(Debug)
+
+///|
 pub(all) struct WgslGlobalDecl {
   kind : WgslGlobalDeclKind
+  data : WgslGlobalDeclData
   name : String
   text : String
   start : Int
@@ -28,102 +115,463 @@ pub(all) struct WgslTranslationUnit {
 }
 
 ///|
-fn wgsl_decl_text_after_attributes(trimmed : String) -> String {
-  let mut i = 0
-  while i < trimmed.length() {
-    while i < trimmed.length() {
-      let code = trimmed.code_unit_at(i).to_int()
-      if code == 32 || code == 9 {
-        i = i + 1
-      } else {
-        break
-      }
+fn wgsl_ast_token_text(token : Token) -> String {
+  match token {
+    Token::Identifier(text, _) => text
+    Token::Whitespace(text, _) => text
+    Token::Other(code, _) => code_unit_to_string(code)
+  }
+}
+
+///|
+fn wgsl_ast_tokens_text(tokens : Array[Token]) -> String {
+  let mut out = ""
+  for token in tokens {
+    out = out + wgsl_ast_token_text(token)
+  }
+  out
+}
+
+///|
+priv struct WgslDeclParser {
+  mut token_view : ArrayView[Token]
+}
+
+///|
+fn WgslDeclParser::new(text : String) -> WgslDeclParser {
+  let tokens = tokenize(replace_comments(text), false)
+  WgslDeclParser::{ token_view: tokens[:] }
+}
+
+///|
+fn WgslDeclParser::view(self : WgslDeclParser) -> ArrayView[Token] {
+  self.token_view
+}
+
+///|
+fn WgslDeclParser::update_view(
+  self : WgslDeclParser,
+  view : ArrayView[Token],
+) -> Unit {
+  self.token_view = view
+}
+
+///|
+fn WgslDeclParser::consume_if_other(self : WgslDeclParser, code : Int) -> Bool {
+  match self.view() {
+    [Token::Other(actual, _), .. rest] if actual == code => {
+      self.update_view(rest)
+      true
     }
-    if i >= trimmed.length() || trimmed.code_unit_at(i).to_int() != 64 {
+    _ => false
+  }
+}
+
+///|
+fn WgslDeclParser::consume_identifier(self : WgslDeclParser) -> String? {
+  match self.view() {
+    [Token::Identifier(name, _), .. rest] => {
+      self.update_view(rest)
+      Some(name)
+    }
+    _ => None
+  }
+}
+
+///|
+fn WgslDeclParser::parse_attributes(
+  self : WgslDeclParser,
+) -> Array[WgslAttribute] {
+  let attributes : Array[WgslAttribute] = []
+  while true {
+    match self.view() {
+      [Token::Other(64, _), Token::Identifier(name, _), .. rest] => {
+        self.update_view(rest)
+        let mut arguments = ""
+        if self.consume_if_other(40) {
+          let parts : Array[Token] = []
+          let mut depth = 1
+          while depth > 0 {
+            match self.view() {
+              [Token::Other(40, _), .. token_rest] => {
+                parts.push(Token::Other(40, 0))
+                depth = depth + 1
+                self.update_view(token_rest)
+                continue
+              }
+              [Token::Other(41, _), .. token_rest] => {
+                depth = depth - 1
+                self.update_view(token_rest)
+                if depth > 0 {
+                  parts.push(Token::Other(41, 0))
+                }
+                continue
+              }
+              [token, .. token_rest] => {
+                parts.push(token)
+                self.update_view(token_rest)
+                continue
+              }
+              [] => break
+            }
+          }
+          arguments = wgsl_ast_tokens_text(parts)
+        }
+        attributes.push(WgslAttribute::{ name, arguments })
+        continue
+      }
+      _ => break
+    }
+  }
+  attributes
+}
+
+///|
+fn WgslDeclParser::collect_until_top_level(
+  self : WgslDeclParser,
+  stops : Array[Int],
+) -> String {
+  let parts : Array[Token] = []
+  let mut paren_depth = 0
+  let mut angle_depth = 0
+  let mut bracket_depth = 0
+  while true {
+    match self.view() {
+      [Token::Other(code, _), ..] if paren_depth == 0 &&
+        angle_depth == 0 &&
+        bracket_depth == 0 &&
+        stops.contains(code) => break
+      [Token::Other(40, _), .. rest] => {
+        paren_depth = paren_depth + 1
+        parts.push(Token::Other(40, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(41, _), .. rest] => {
+        paren_depth = paren_depth - 1
+        parts.push(Token::Other(41, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(60, _), .. rest] => {
+        angle_depth = angle_depth + 1
+        parts.push(Token::Other(60, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(62, _), .. rest] => {
+        angle_depth = angle_depth - 1
+        parts.push(Token::Other(62, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(91, _), .. rest] => {
+        bracket_depth = bracket_depth + 1
+        parts.push(Token::Other(91, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(93, _), .. rest] => {
+        bracket_depth = bracket_depth - 1
+        parts.push(Token::Other(93, 0))
+        self.update_view(rest)
+        continue
+      }
+      [token, .. rest] => {
+        parts.push(token)
+        self.update_view(rest)
+        continue
+      }
+      [] => break
+    }
+  }
+  wgsl_ast_tokens_text(parts).trim().to_owned()
+}
+
+///|
+fn WgslDeclParser::parse_template_list(self : WgslDeclParser) -> Array[String] {
+  let templates : Array[String] = []
+  if !self.consume_if_other(60) {
+    return templates
+  }
+  while true {
+    let value = self.collect_until_top_level([44, 62])
+    if value != "" {
+      templates.push(value)
+    }
+    if self.consume_if_other(44) {
+      continue
+    }
+    self.consume_if_other(62) |> ignore
+    break
+  }
+  templates
+}
+
+///|
+fn WgslDeclParser::parse_function_arguments(
+  self : WgslDeclParser,
+) -> Array[WgslFunctionArgument] {
+  let arguments : Array[WgslFunctionArgument] = []
+  if !self.consume_if_other(40) {
+    return arguments
+  }
+  while true {
+    if self.consume_if_other(41) {
       break
     }
-    i = i + 1
-    while i < trimmed.length() &&
-          top_level_identifier_char(trimmed.code_unit_at(i).to_int()) {
-      i = i + 1
-    }
-    while i < trimmed.length() {
-      let code = trimmed.code_unit_at(i).to_int()
-      if code == 32 || code == 9 {
-        i = i + 1
-      } else {
-        break
+    let attributes = self.parse_attributes()
+    match self.consume_identifier() {
+      Some(name) => {
+        self.consume_if_other(58) |> ignore
+        let ty = self.collect_until_top_level([44, 41])
+        arguments.push(WgslFunctionArgument::{ attributes, name, ty })
       }
+      None => ()
     }
-    if i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 40 {
-      let mut depth = 1
-      i = i + 1
-      while i < trimmed.length() && depth > 0 {
-        let code = trimmed.code_unit_at(i).to_int()
-        if code == 40 {
-          depth = depth + 1
-        } else if code == 41 {
-          depth = depth - 1
-        }
-        i = i + 1
-      }
+    if self.consume_if_other(44) {
+      continue
     }
+    self.consume_if_other(41) |> ignore
+    break
   }
-  if i >= trimmed.length() {
-    ""
+  arguments
+}
+
+///|
+fn WgslDeclParser::parse_function_result(
+  self : WgslDeclParser,
+) -> WgslFunctionResult? {
+  match self.view() {
+    [Token::Other(45, _), Token::Other(62, _), .. rest] => {
+      self.update_view(rest)
+      let attributes = self.parse_attributes()
+      let ty = self.collect_until_top_level([123, 59])
+      Some(WgslFunctionResult::{ attributes, ty })
+    }
+    _ => None
+  }
+}
+
+///|
+fn WgslDeclParser::parse_function(
+  self : WgslDeclParser,
+  attributes : Array[WgslAttribute],
+  qualifier : String,
+) -> WgslFunction? {
+  let name = match self.consume_identifier() {
+    Some(value) => value
+    None => return None
+  }
+  let arguments = self.parse_function_arguments()
+  let result = self.parse_function_result()
+  Some(WgslFunction::{
+    attributes,
+    qualifier,
+    name: WgslIdent::{ name, },
+    arguments,
+    result,
+  })
+}
+
+///|
+fn WgslDeclParser::parse_struct_members(
+  self : WgslDeclParser,
+) -> Array[WgslStructMember] {
+  let members : Array[WgslStructMember] = []
+  if !self.consume_if_other(123) {
+    return members
+  }
+  while true {
+    if self.consume_if_other(125) {
+      break
+    }
+    let attributes = self.parse_attributes()
+    match self.consume_identifier() {
+      Some(name) => {
+        self.consume_if_other(58) |> ignore
+        let ty = self.collect_until_top_level([44, 59, 125])
+        members.push(WgslStructMember::{ attributes, name, ty })
+      }
+      None => ()
+    }
+    if self.consume_if_other(44) || self.consume_if_other(59) {
+      continue
+    }
+    self.consume_if_other(125) |> ignore
+    break
+  }
+  members
+}
+
+///|
+fn WgslDeclParser::parse_struct(
+  self : WgslDeclParser,
+  attributes : Array[WgslAttribute],
+) -> WgslStruct? {
+  let name = match self.consume_identifier() {
+    Some(value) => value
+    None => return None
+  }
+  Some(WgslStruct::{
+    attributes,
+    name: WgslIdent::{ name, },
+    members: self.parse_struct_members(),
+  })
+}
+
+///|
+fn WgslDeclParser::parse_global_variable(
+  self : WgslDeclParser,
+  attributes : Array[WgslAttribute],
+) -> WgslGlobalVariable? {
+  let template_list = self.parse_template_list()
+  let name = match self.consume_identifier() {
+    Some(value) => value
+    None => return None
+  }
+  let ty : String? = if self.consume_if_other(58) {
+    let parsed = self.collect_until_top_level([61, 59])
+    if parsed == "" {
+      None
+    } else {
+      Some(parsed)
+    }
   } else {
-    trimmed[i:trimmed.length()].to_owned()
+    None
+  }
+  Some(WgslGlobalVariable::{
+    attributes,
+    name: WgslIdent::{ name, },
+    template_list,
+    ty,
+  })
+}
+
+///|
+fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
+  let name = match self.consume_identifier() {
+    Some(value) => value
+    None => return None
+  }
+  let ty : String? = if self.consume_if_other(58) {
+    let parsed = self.collect_until_top_level([61, 59])
+    if parsed == "" {
+      None
+    } else {
+      Some(parsed)
+    }
+  } else {
+    None
+  }
+  Some(WgslConst::{ name: WgslIdent::{ name, }, ty })
+}
+
+///|
+fn WgslDeclParser::parse_override(
+  self : WgslDeclParser,
+  attributes : Array[WgslAttribute],
+) -> WgslOverride? {
+  let name = match self.consume_identifier() {
+    Some(value) => value
+    None => return None
+  }
+  let ty : String? = if self.consume_if_other(58) {
+    let parsed = self.collect_until_top_level([61, 59])
+    if parsed == "" {
+      None
+    } else {
+      Some(parsed)
+    }
+  } else {
+    None
+  }
+  Some(WgslOverride::{ attributes, name: WgslIdent::{ name, }, ty })
+}
+
+///|
+fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
+  let name = match self.consume_identifier() {
+    Some(value) => value
+    None => return None
+  }
+  self.consume_if_other(61) |> ignore
+  let ty = self.collect_until_top_level([59])
+  Some(WgslTypeAlias::{ name: WgslIdent::{ name, }, ty })
+}
+
+///|
+fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData {
+  let attributes = self.parse_attributes()
+  match self.consume_identifier() {
+    Some("virtual") =>
+      match self.consume_identifier() {
+        Some("fn") =>
+          match self.parse_function(attributes, "virtual") {
+            Some(function) => WgslGlobalDeclData::Function(function)
+            None => WgslGlobalDeclData::Raw
+          }
+        _ => WgslGlobalDeclData::Raw
+      }
+    Some("override") =>
+      match self.view() {
+        [Token::Identifier("fn", _), .. rest] => {
+          self.update_view(rest)
+          match self.parse_function(attributes, "override") {
+            Some(function) => WgslGlobalDeclData::Function(function)
+            None => WgslGlobalDeclData::Raw
+          }
+        }
+        _ =>
+          match self.parse_override(attributes) {
+            Some(value) => WgslGlobalDeclData::Override(value)
+            None => WgslGlobalDeclData::Raw
+          }
+      }
+    Some("fn") =>
+      match self.parse_function(attributes, "") {
+        Some(function) => WgslGlobalDeclData::Function(function)
+        None => WgslGlobalDeclData::Raw
+      }
+    Some("var") =>
+      match self.parse_global_variable(attributes) {
+        Some(value) => WgslGlobalDeclData::GlobalVariable(value)
+        None => WgslGlobalDeclData::Raw
+      }
+    Some("struct") =>
+      match self.parse_struct(attributes) {
+        Some(value) => WgslGlobalDeclData::Struct(value)
+        None => WgslGlobalDeclData::Raw
+      }
+    Some("const") =>
+      match self.parse_const() {
+        Some(value) => WgslGlobalDeclData::Const(value)
+        None => WgslGlobalDeclData::Raw
+      }
+    Some("const_assert") =>
+      WgslGlobalDeclData::ConstAssert(self.collect_until_top_level([59]))
+    Some("alias") | Some("type") =>
+      match self.parse_type_alias() {
+        Some(value) => WgslGlobalDeclData::TypeAlias(value)
+        None => WgslGlobalDeclData::Raw
+      }
+    _ => WgslGlobalDeclData::Raw
   }
 }
 
 ///|
-fn wgsl_global_decl_kind_from_declaration_text(
-  text : String,
+fn wgsl_global_decl_kind_from_data(
+  data : WgslGlobalDeclData,
 ) -> WgslGlobalDeclKind {
-  let trimmed = replace_comments(text).trim().to_owned()
-  if starts_with_text(trimmed, "@") {
-    return wgsl_global_decl_kind_from_declaration_text(
-      wgsl_decl_text_after_attributes(trimmed),
-    )
-  }
-  if starts_with_text(trimmed, "fn ") ||
-    starts_with_text(trimmed, "virtual fn ") ||
-    starts_with_text(trimmed, "override fn ") {
-    return WgslGlobalDeclKind::Function
-  }
-  if starts_with_text(trimmed, "var") {
-    return WgslGlobalDeclKind::GlobalVariable
-  }
-  if starts_with_text(trimmed, "const_assert ") ||
-    starts_with_text(trimmed, "const_assert(") {
-    return WgslGlobalDeclKind::ConstAssert
-  }
-  if starts_with_text(trimmed, "const ") {
-    return WgslGlobalDeclKind::Const
-  }
-  if starts_with_text(trimmed, "override ") {
-    return WgslGlobalDeclKind::Override
-  }
-  if starts_with_text(trimmed, "struct ") {
-    return WgslGlobalDeclKind::Struct
-  }
-  if starts_with_text(trimmed, "alias ") || starts_with_text(trimmed, "type ") {
-    return WgslGlobalDeclKind::TypeAlias
-  }
-  WgslGlobalDeclKind::Unknown
-}
-
-///|
-fn wgsl_global_decl_kind_from_top_level_item(
-  item : WgslTopLevelItem,
-) -> WgslGlobalDeclKind {
-  match item.kind {
-    WgslTopLevelKind::Trivia => WgslGlobalDeclKind::Trivia
-    WgslTopLevelKind::Import => WgslGlobalDeclKind::Import
-    WgslTopLevelKind::DefineImportPath | WgslTopLevelKind::Define =>
-      WgslGlobalDeclKind::Directive
-    WgslTopLevelKind::Declaration =>
-      wgsl_global_decl_kind_from_declaration_text(item.text)
+  match data {
+    Function(_) => WgslGlobalDeclKind::Function
+    GlobalVariable(_) => WgslGlobalDeclKind::GlobalVariable
+    Const(_) => WgslGlobalDeclKind::Const
+    Override(_) => WgslGlobalDeclKind::Override
+    Struct(_) => WgslGlobalDeclKind::Struct
+    TypeAlias(_) => WgslGlobalDeclKind::TypeAlias
+    ConstAssert(_) => WgslGlobalDeclKind::ConstAssert
+    Raw => WgslGlobalDeclKind::Unknown
   }
 }
 
@@ -156,8 +604,21 @@ fn WgslAstParser::parse_global_decl(
   _self : WgslAstParser,
   item : WgslTopLevelItem,
 ) -> WgslGlobalDecl {
+  let data = match item.kind {
+    WgslTopLevelKind::Declaration =>
+      WgslDeclParser::new(item.text).parse_decl_data()
+    _ => WgslGlobalDeclData::Raw
+  }
+  let kind = match item.kind {
+    WgslTopLevelKind::Trivia => WgslGlobalDeclKind::Trivia
+    WgslTopLevelKind::Import => WgslGlobalDeclKind::Import
+    WgslTopLevelKind::DefineImportPath | WgslTopLevelKind::Define =>
+      WgslGlobalDeclKind::Directive
+    WgslTopLevelKind::Declaration => wgsl_global_decl_kind_from_data(data)
+  }
   WgslGlobalDecl::{
-    kind: wgsl_global_decl_kind_from_top_level_item(item),
+    kind,
+    data,
     name: item.name,
     text: item.text,
     start: item.start,
