@@ -136,6 +136,10 @@ pub(all) struct WgslExprRef {
 pub(all) struct WgslFunction {
   attributes : Array[WgslAttribute]
   qualifier : String
+  qualifier_start : Int?
+  qualifier_end : Int?
+  fn_start : Int
+  fn_end : Int
   name : WgslIdent
   arguments : Array[WgslFunctionArgument]
   result : WgslFunctionResult?

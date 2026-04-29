@@ -118,6 +118,9 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected function payload")
   }
   debug_inspect(function.attributes[0].name, content="\"fragment\"")
+  debug_inspect(function.fn_start, content="10")
+  debug_inspect(function.fn_end, content="12")
+  debug_inspect(function.qualifier_start, content="None")
   debug_inspect(function.name.name, content="\"fragment\"")
   debug_inspect(function.arguments[0].name, content="\"color\"")
   debug_inspect(function.arguments[0].name_start, content="35")
@@ -245,6 +248,10 @@ test "WGSL override function payload preserves qualified target path" {
     abort("expected function payload")
   }
   debug_inspect(function.qualifier, content="\"override\"")
+  debug_inspect(function.qualifier_start, content="Some(0)")
+  debug_inspect(function.qualifier_end, content="Some(8)")
+  debug_inspect(function.fn_start, content="9")
+  debug_inspect(function.fn_end, content="11")
   debug_inspect(function.name.name, content="\"mod::inner\"")
   debug_inspect(function.name.start, content="12")
   debug_inspect(function.name.end, content="22")

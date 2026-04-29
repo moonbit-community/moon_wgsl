@@ -13,30 +13,6 @@
 // limitations under the License.
 
 ///|
-fn wgsl_index_of_code_unit(text : String, code : Int) -> Int {
-  for i in 0..<text.length() {
-    if text.code_unit_at(i).to_int() == code {
-      return i
-    }
-  }
-  -1
-}
-
-///|
-fn wgsl_virtual_token_end(token : Token) -> Int {
-  match token {
-    Token::Identifier(text, pos) | Token::Whitespace(text, pos) =>
-      pos + text.length()
-    Token::Other(_, pos) => pos + 1
-  }
-}
-
-///|
-fn wgsl_token_rewrite_source(block_text : String) -> String {
-  replace_comments(block_text)
-}
-
-///|
 fn wgsl_graph_block_function(block : WgslGraphBlock) -> WgslFunction? {
   match block.data {
     WgslGlobalDeclData::Function(function) => Some(function)
@@ -81,24 +57,26 @@ fn wgsl_source_contains_override_directive(source : String) -> Bool {
 }
 
 ///|
-fn wgsl_override_body_text(block_text : String) -> String {
-  let brace = wgsl_index_of_code_unit(block_text, 123)
-  if brace < 0 || brace + 1 >= block_text.length() {
-    ""
-  } else {
-    block_text[brace + 1:block_text.length()].to_owned()
-  }
-}
-
-///|
 fn wgsl_override_body_references_target(
-  block_text : String,
+  function : WgslFunction,
   raw_target : String,
   target_name : String,
 ) -> Bool {
-  let body = wgsl_override_body_text(block_text)
-  wgsl_source_contains_identifier(body, raw_target) ||
-  wgsl_source_contains_identifier(body, target_name)
+  for statement in function.body.statements {
+    for ident in statement.identifiers {
+      if ident.name == raw_target || ident.name == target_name {
+        return true
+      }
+      match split_last_identifier(ident.name) {
+        Some((_, suffix)) =>
+          if suffix == raw_target || suffix == target_name {
+            return true
+          }
+        None => ()
+      }
+    }
+  }
+  false
 }
 
 ///|
@@ -116,31 +94,29 @@ fn wgsl_flatten_path_identifier(path : String) -> String {
 }
 
 ///|
-fn rewrite_wgsl_virtual_fn_block(block_text : String) -> String {
-  let tokens = tokenize(wgsl_token_rewrite_source(block_text), false)
-  let mut i = 0
-  while i + 1 < tokens.length() {
-    match (tokens[i], tokens[i + 1]) {
-      (Token::Identifier("virtual", start), Token::Identifier("fn", fn_start)) =>
-        return block_text[:start].to_owned() +
-          block_text[fn_start:block_text.length()].to_owned()
-      _ => ()
-    }
-    i = i + 1
+fn rewrite_wgsl_virtual_fn_block(
+  block_text : String,
+  function : WgslFunction,
+) -> String {
+  match (function.qualifier_start, function.qualifier_end) {
+    (Some(start), Some(_)) =>
+      block_text[:start].to_owned() +
+      block_text[function.fn_start:block_text.length()].to_owned()
+    _ => block_text
   }
-  block_text
 }
 
 ///|
 fn rewrite_wgsl_virtual_base_block(
   block_text : String,
+  function : WgslFunction,
   target_name : String,
   base_name : String,
 ) -> String {
   let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   rename_map.set(target_name, base_name)
   rewrite_wgsl_declaration_text_with_map(
-    rewrite_wgsl_virtual_fn_block(block_text),
+    rewrite_wgsl_virtual_fn_block(block_text, function),
     rename_map,
     true,
   )
@@ -149,40 +125,18 @@ fn rewrite_wgsl_virtual_base_block(
 ///|
 fn rewrite_wgsl_override_fn_block(
   block_text : String,
+  function : WgslFunction,
   target_name : String,
   raw_target : String,
   base_name : String?,
 ) -> String {
-  let tokens = tokenize(wgsl_token_rewrite_source(block_text), false)
-  let mut out = block_text
-  let mut i = 0
-  while i + 2 < tokens.length() {
-    match (tokens[i], tokens[i + 1], tokens[i + 2]) {
-      (
-        Token::Identifier("override", start),
-        Token::Identifier("fn", _),
-        Token::Identifier(_, _),
-      ) => {
-        let mut end = wgsl_virtual_token_end(tokens[i + 2])
-        let mut j = i + 3
-        while j + 2 < tokens.length() {
-          match (tokens[j], tokens[j + 1], tokens[j + 2]) {
-            (Token::Other(58, _), Token::Other(58, _), Token::Identifier(_, _)) => {
-              end = wgsl_virtual_token_end(tokens[j + 2])
-              j = j + 3
-            }
-            _ => break
-          }
-        }
-        out = block_text[:start].to_owned() +
-          "fn " +
-          target_name +
-          block_text[end:block_text.length()].to_owned()
-        break
-      }
-      _ => ()
-    }
-    i = i + 1
+  let out = match function.qualifier_start {
+    Some(start) =>
+      block_text[:start].to_owned() +
+      "fn " +
+      target_name +
+      block_text[function.name.end:block_text.length()].to_owned()
+    None => block_text
   }
   match base_name {
     Some(base) => {
@@ -221,16 +175,15 @@ fn apply_wgsl_virtual_overrides(
     }
   }
   for block in graph.declaration_blocks {
-    match wgsl_graph_block_override_target(block) {
-      Some(raw_target) => {
+    match wgsl_graph_block_function(block) {
+      Some(function) if function.qualifier == "override" => {
+        let raw_target = function.name.name
         let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
         if !virtual_names.contains(target) {
           raise ComposerError::InvalidOverride(raw_target)
         }
         let needs_base = wgsl_override_body_references_target(
-          block.text,
-          raw_target,
-          target,
+          function, raw_target, target,
         )
         override_needs_base.set(target, needs_base)
         let base_name = if needs_base {
@@ -242,12 +195,14 @@ fn apply_wgsl_virtual_overrides(
           target,
           rewrite_wgsl_override_fn_block(
             block.text,
+            function,
             target,
             raw_target,
             base_name,
           ),
         )
       }
+      Some(_) => ()
       None => ()
     }
   }
@@ -263,26 +218,31 @@ fn apply_wgsl_virtual_overrides(
       Some(_) => continue
       None => ()
     }
-    if block.name != "" && wgsl_graph_block_is_virtual_fn(block) {
-      match overrides.get(block.name) {
-        Some(override_block) => {
-          let needs_base = match override_needs_base.get(block.name) {
-            Some(value) => value
-            None => false
+    match wgsl_graph_block_function(block) {
+      Some(function) if block.name != "" && function.qualifier == "virtual" => {
+        match overrides.get(block.name) {
+          Some(override_block) => {
+            let needs_base = match override_needs_base.get(block.name) {
+              Some(value) => value
+              None => false
+            }
+            if needs_base {
+              out = out +
+                rewrite_wgsl_virtual_base_block(
+                  block.text,
+                  function,
+                  block.name,
+                  wgsl_virtual_base_name(block.name),
+                )
+            }
+            out = out + override_block
           }
-          if needs_base {
-            out = out +
-              rewrite_wgsl_virtual_base_block(
-                block.text,
-                block.name,
-                wgsl_virtual_base_name(block.name),
-              )
-          }
-          out = out + override_block
+          None =>
+            out = out + rewrite_wgsl_virtual_fn_block(block.text, function)
         }
-        None => out = out + rewrite_wgsl_virtual_fn_block(block.text)
+        continue
       }
-      continue
+      _ => ()
     }
     out = out + block.text
   }
@@ -312,7 +272,11 @@ fn strip_wgsl_virtual_functions(source : String) -> String {
       if block.name != "" && emitted_names.contains(block.name) {
         continue
       }
-      out = out + rewrite_wgsl_virtual_fn_block(block.text)
+      match wgsl_graph_block_function(block) {
+        Some(function) =>
+          out = out + rewrite_wgsl_virtual_fn_block(block.text, function)
+        None => out = out + block.text
+      }
     } else {
       out = out + block.text
     }

@@ -94,6 +94,10 @@ pub(all) struct WgslBlock {
 pub(all) struct WgslFunction {
   attributes : Array[WgslAttribute]
   qualifier : String
+  qualifier_start : Int?
+  qualifier_end : Int?
+  fn_start : Int
+  fn_end : Int
   name : WgslIdent
   arguments : Array[WgslFunctionArgument]
   result : WgslFunctionResult?
@@ -286,17 +290,6 @@ fn WgslDeclParser::consume_if_other(self : WgslDeclParser, code : Int) -> Bool {
       true
     }
     _ => false
-  }
-}
-
-///|
-fn WgslDeclParser::consume_identifier(self : WgslDeclParser) -> String? {
-  match self.view() {
-    [Token::Identifier(name, _), .. rest] => {
-      self.update_view(rest)
-      Some(name)
-    }
-    _ => None
   }
 }
 
@@ -890,6 +883,9 @@ fn WgslDeclParser::parse_function(
   self : WgslDeclParser,
   attributes : Array[WgslAttribute],
   qualifier : String,
+  qualifier_start : Int?,
+  qualifier_end : Int?,
+  fn_keyword : WgslIdent,
 ) -> WgslFunction? {
   let name = if qualifier == "override" {
     match self.consume_path_ident_node() {
@@ -905,7 +901,18 @@ fn WgslDeclParser::parse_function(
   let arguments = self.parse_function_arguments()
   let result = self.parse_function_result()
   let body = self.parse_block()
-  Some(WgslFunction::{ attributes, qualifier, name, arguments, result, body })
+  Some(WgslFunction::{
+    attributes,
+    qualifier,
+    qualifier_start,
+    qualifier_end,
+    fn_start: fn_keyword.start,
+    fn_end: fn_keyword.end,
+    name,
+    arguments,
+    result,
+    body,
+  })
 }
 
 ///|
@@ -1080,21 +1087,35 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
 ///|
 fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData {
   let attributes = self.parse_attributes()
-  match self.consume_identifier() {
-    Some("virtual") =>
-      match self.consume_identifier() {
-        Some("fn") =>
-          match self.parse_function(attributes, "virtual") {
+  match self.consume_ident_node() {
+    Some(keyword) if keyword.name == "virtual" =>
+      match self.consume_ident_node() {
+        Some(fn_keyword) if fn_keyword.name == "fn" =>
+          match
+            self.parse_function(
+              attributes,
+              "virtual",
+              Some(keyword.start),
+              Some(keyword.end),
+              fn_keyword,
+            ) {
             Some(function) => WgslGlobalDeclData::Function(function)
             None => WgslGlobalDeclData::Raw
           }
         _ => WgslGlobalDeclData::Raw
       }
-    Some("override") =>
+    Some(keyword) if keyword.name == "override" =>
       match self.view() {
-        [Token::Identifier("fn", _), .. rest] => {
+        [Token::Identifier("fn", fn_pos), .. rest] => {
           self.update_view(rest)
-          match self.parse_function(attributes, "override") {
+          match
+            self.parse_function(
+              attributes,
+              "override",
+              Some(keyword.start),
+              Some(keyword.end),
+              WgslIdent::{ name: "fn", start: fn_pos, end: fn_pos + 2 },
+            ) {
             Some(function) => WgslGlobalDeclData::Function(function)
             None => WgslGlobalDeclData::Raw
           }
@@ -1105,33 +1126,33 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
             None => WgslGlobalDeclData::Raw
           }
       }
-    Some("fn") =>
-      match self.parse_function(attributes, "") {
+    Some(keyword) if keyword.name == "fn" =>
+      match self.parse_function(attributes, "", None, None, keyword) {
         Some(function) => WgslGlobalDeclData::Function(function)
         None => WgslGlobalDeclData::Raw
       }
-    Some("var") =>
+    Some(keyword) if keyword.name == "var" =>
       match self.parse_global_variable(attributes) {
         Some(value) => WgslGlobalDeclData::GlobalVariable(value)
         None => WgslGlobalDeclData::Raw
       }
-    Some("struct") =>
+    Some(keyword) if keyword.name == "struct" =>
       match self.parse_struct(attributes) {
         Some(value) => WgslGlobalDeclData::Struct(value)
         None => WgslGlobalDeclData::Raw
       }
-    Some("const") =>
+    Some(keyword) if keyword.name == "const" =>
       match self.parse_const() {
         Some(value) => WgslGlobalDeclData::Const(value)
         None => WgslGlobalDeclData::Raw
       }
-    Some("const_assert") =>
+    Some(keyword) if keyword.name == "const_assert" =>
       WgslGlobalDeclData::ConstAssert(
         parse_required_wgsl_expr_ref_fragment(
           self.collect_until_top_level_fragment([59]),
         ),
       )
-    Some("alias") | Some("type") =>
+    Some(keyword) if keyword.name == "alias" || keyword.name == "type" =>
       match self.parse_type_alias() {
         Some(value) => WgslGlobalDeclData::TypeAlias(value)
         None => WgslGlobalDeclData::Raw
