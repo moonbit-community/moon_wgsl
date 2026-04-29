@@ -405,45 +405,26 @@ fn WgslDeclParser::parse_function_result(
 }
 
 ///|
-fn wgsl_statement_kind_from_text(text : String) -> WgslStatementKind {
-  let trimmed = text.trim().to_owned()
-  if trimmed == "" {
-    return WgslStatementKind::Raw
+fn wgsl_statement_kind_from_first_identifier(
+  first_identifier : String?,
+) -> WgslStatementKind {
+  match first_identifier {
+    Some("var") | Some("let") | Some("const") => WgslStatementKind::LocalDecl
+    Some("if") => WgslStatementKind::If
+    Some("switch") => WgslStatementKind::Switch
+    Some("loop") | Some("for") | Some("while") => WgslStatementKind::Loop
+    Some("break") => WgslStatementKind::Break
+    Some("continue") => WgslStatementKind::Continue
+    Some("return") => WgslStatementKind::Return
+    Some("const_assert") => WgslStatementKind::ConstAssert
+    _ => WgslStatementKind::Raw
   }
-  if starts_with_text(trimmed, "var") ||
-    starts_with_text(trimmed, "let") ||
-    starts_with_text(trimmed, "const") {
-    return WgslStatementKind::LocalDecl
-  }
-  if starts_with_text(trimmed, "if") {
-    return WgslStatementKind::If
-  }
-  if starts_with_text(trimmed, "switch") {
-    return WgslStatementKind::Switch
-  }
-  if starts_with_text(trimmed, "loop") ||
-    starts_with_text(trimmed, "for") ||
-    starts_with_text(trimmed, "while") {
-    return WgslStatementKind::Loop
-  }
-  if starts_with_text(trimmed, "break") {
-    return WgslStatementKind::Break
-  }
-  if starts_with_text(trimmed, "continue") {
-    return WgslStatementKind::Continue
-  }
-  if starts_with_text(trimmed, "return") {
-    return WgslStatementKind::Return
-  }
-  if starts_with_text(trimmed, "const_assert") {
-    return WgslStatementKind::ConstAssert
-  }
-  WgslStatementKind::Raw
 }
 
 ///|
-fn WgslDeclParser::collect_statement_text(self : WgslDeclParser) -> String {
+fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   let parts : Array[Token] = []
+  let mut first_identifier : String? = None
   let mut brace_depth = 0
   let mut paren_depth = 0
   while true {
@@ -482,6 +463,10 @@ fn WgslDeclParser::collect_statement_text(self : WgslDeclParser) -> String {
         break
       }
       [token, .. rest] => {
+        match (first_identifier, token) {
+          (None, Token::Identifier(ident, _)) => first_identifier = Some(ident)
+          _ => ()
+        }
         parts.push(token)
         self.update_view(rest)
         continue
@@ -489,7 +474,15 @@ fn WgslDeclParser::collect_statement_text(self : WgslDeclParser) -> String {
       [] => break
     }
   }
-  wgsl_ast_tokens_text(parts).trim().to_owned()
+  let text = wgsl_ast_tokens_text(parts).trim().to_owned()
+  if text == "" {
+    None
+  } else {
+    Some(WgslStatement::{
+      kind: wgsl_statement_kind_from_first_identifier(first_identifier),
+      text,
+    })
+  }
 }
 
 ///|
@@ -502,14 +495,9 @@ fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
     if self.consume_if_other(125) {
       break
     }
-    let text = self.collect_statement_text()
-    if text != "" {
-      statements.push(WgslStatement::{
-        kind: wgsl_statement_kind_from_text(text),
-        text,
-      })
-    } else if self.view() is [] {
-      break
+    match self.collect_statement() {
+      Some(statement) => statements.push(statement)
+      None => if self.view() is [] { break }
     }
   }
   WgslBlock::{ statements, }

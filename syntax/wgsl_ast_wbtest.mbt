@@ -144,3 +144,19 @@ test "WGSL override function payload preserves qualified target path" {
     content="Some({ attributes: [], ty: \"f32\" })",
   )
 }
+
+///|
+test "WGSL statement classification uses identifier tokens" {
+  let source =
+    #|fn demo() {
+    #|  const_assert(true);
+    #|  var_name = 1u;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  debug_inspect(function.body.statements[0].kind, content="ConstAssert")
+  debug_inspect(function.body.statements[1].kind, content="Raw")
+}
