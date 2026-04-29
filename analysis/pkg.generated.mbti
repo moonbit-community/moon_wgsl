@@ -38,6 +38,7 @@ pub fn wgsl_string_list_push_unique(Array[String], String) -> Unit
 
 // Types and methods
 pub(all) struct WgslDeclarationGraph {
+  source_blocks : Array[WgslGraphBlock]
   import_blocks : Array[WgslGraphBlock]
   declaration_blocks : Array[WgslGraphBlock]
 }
