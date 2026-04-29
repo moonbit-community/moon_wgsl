@@ -63,14 +63,10 @@ fn wgsl_source_contains_identifier(
 
 ///|
 fn wgsl_import_default_alias(module_path : String) -> String {
-  let mut alias_name = ""
-  for seg in module_path.split("::") {
-    let text = seg.to_owned().trim().to_owned()
-    if text != "" {
-      alias_name = text
-    }
+  match split_last_identifier(module_path.trim().to_owned()) {
+    Some((_, suffix)) => suffix.trim().to_owned()
+    None => module_path.trim().to_owned()
   }
-  alias_name
 }
 
 ///|

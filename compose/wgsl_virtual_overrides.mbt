@@ -111,6 +111,15 @@ fn wgsl_virtual_base_name(target_name : String) -> String {
 }
 
 ///|
+fn wgsl_flatten_path_identifier(path : String) -> String {
+  match split_last_identifier(path) {
+    Some((prefix, suffix)) =>
+      "\{wgsl_flatten_path_identifier(prefix)}__\{suffix}"
+    None => path
+  }
+}
+
+///|
 fn rewrite_wgsl_virtual_fn_block(block_text : String) -> String {
   let tokens = tokenize(wgsl_token_rewrite_source(block_text), false)
   let mut i = 0
@@ -199,16 +208,7 @@ fn wgsl_alias_redirect_target(
 ) -> String {
   match alias_redirect_map.get(target) {
     Some(redirected) => redirected
-    None =>
-      if target.contains("::") {
-        let segments : Array[String] = []
-        for segment in target.split("::") {
-          segments.push(segment.to_owned())
-        }
-        segments.join("__")
-      } else {
-        target
-      }
+    None => wgsl_flatten_path_identifier(target)
   }
 }
 
