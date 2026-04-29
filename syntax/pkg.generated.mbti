@@ -201,6 +201,7 @@ pub(all) struct WgslOverride {
 pub(all) struct WgslStatement {
   kind : WgslStatementKind
   text : String
+  local_name : String?
 } derive(@debug.Debug)
 
 pub(all) enum WgslStatementKind {

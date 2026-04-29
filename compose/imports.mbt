@@ -46,6 +46,7 @@ using @resolver {
 ///|
 using @syntax {
   type Token,
+  type WgslAttribute,
   type WgslDirectiveKind,
   type WgslFunction,
   type WgslGlobalDeclData,

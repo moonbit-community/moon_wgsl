@@ -120,6 +120,10 @@ test "WGSL function payload exposes source-preserving statement AST" {
   }
   debug_inspect(function.body.statements.length(), content="3")
   debug_inspect(function.body.statements[0].kind, content="LocalDecl")
+  debug_inspect(
+    function.body.statements[0].local_name,
+    content="Some(\"local\")",
+  )
   debug_inspect(function.body.statements[1].kind, content="If")
   debug_inspect(function.body.statements[2].kind, content="Return")
   debug_inspect(
@@ -162,4 +166,5 @@ test "WGSL statement classification uses identifier tokens" {
   }
   debug_inspect(function.body.statements[0].kind, content="ConstAssert")
   debug_inspect(function.body.statements[1].kind, content="Raw")
+  debug_inspect(function.body.statements[1].local_name, content="None")
 }

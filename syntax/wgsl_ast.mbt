@@ -55,6 +55,7 @@ pub(all) enum WgslStatementKind {
 pub(all) struct WgslStatement {
   kind : WgslStatementKind
   text : String
+  local_name : String?
 } derive(Debug)
 
 ///|
@@ -435,7 +436,76 @@ fn wgsl_statement_kind_from_first_identifier(
 }
 
 ///|
+fn wgsl_statement_token_identifier(token : Token) -> String? {
+  match token {
+    Token::Identifier(ident, _) => Some(ident)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_statement_token_other_code(token : Token) -> Int? {
+  match token {
+    Token::Other(code, _) => Some(code)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_statement_skip_template_tokens(
+  tokens : Array[Token],
+  start : Int,
+) -> Int {
+  if start >= tokens.length() {
+    return start
+  }
+  guard wgsl_statement_token_other_code(tokens[start]) is Some(60) else {
+    return start
+  }
+  let mut depth = 1
+  let mut i = start + 1
+  while i < tokens.length() && depth > 0 {
+    match wgsl_statement_token_other_code(tokens[i]) {
+      Some(60) => depth = depth + 1
+      Some(62) => depth = depth - 1
+      _ => ()
+    }
+    i = i + 1
+  }
+  i
+}
+
+///|
+fn wgsl_statement_local_name_from_tokens(
+  tokens : Array[Token],
+  kind : WgslStatementKind,
+) -> String? {
+  guard kind == WgslStatementKind::LocalDecl else { return None }
+  for i in 0..<tokens.length() {
+    match wgsl_statement_token_identifier(tokens[i]) {
+      Some("var") => {
+        let name_index = wgsl_statement_skip_template_tokens(tokens, i + 1)
+        if name_index < tokens.length() {
+          return wgsl_statement_token_identifier(tokens[name_index])
+        }
+        return None
+      }
+      Some("let") | Some("const") =>
+        if i + 1 < tokens.length() {
+          return wgsl_statement_token_identifier(tokens[i + 1])
+        } else {
+          return None
+        }
+      Some(_) => return None
+      None => ()
+    }
+  }
+  None
+}
+
+///|
 fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
+  let tokens : Array[Token] = []
   let mut first_identifier : String? = None
   let mut start_pos = -1
   let mut end_pos = -1
@@ -490,6 +560,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
           (None, Token::Identifier(ident, _)) => first_identifier = Some(ident)
           _ => ()
         }
+        tokens.push(token)
         record_token(token)
         self.update_view(rest)
         continue
@@ -505,9 +576,11 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   if text == "" {
     None
   } else {
+    let kind = wgsl_statement_kind_from_first_identifier(first_identifier)
     Some(WgslStatement::{
-      kind: wgsl_statement_kind_from_first_identifier(first_identifier),
+      kind,
       text,
+      local_name: wgsl_statement_local_name_from_tokens(tokens, kind),
     })
   }
 }

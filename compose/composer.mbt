@@ -1542,59 +1542,33 @@ fn build_wgsl_unique_lowered_suffix_redirect_map(
 }
 
 ///|
-fn token_identifier_value(token : Token) -> String? {
-  match token {
-    Token::Identifier(ident, _) => Some(ident)
-    _ => None
-  }
-}
-
-///|
-fn token_other_code_value(token : Token) -> Int? {
-  match token {
-    Token::Other(code, _) => Some(code)
-    _ => None
-  }
-}
-
-///|
-fn skip_wgsl_template_tokens(tokens : Array[Token], start : Int) -> Int {
-  if start >= tokens.length() {
-    return start
-  }
-  guard token_other_code_value(tokens[start]) is Some(60) else { return start }
-  let mut depth = 1
-  let mut i = start + 1
-  while i < tokens.length() && depth > 0 {
-    match token_other_code_value(tokens[i]) {
-      Some(60) => depth = depth + 1
-      Some(62) => depth = depth - 1
-      _ => ()
-    }
-    i = i + 1
-  }
-  i
-}
-
-///|
 fn collect_wgsl_block_local_names(
   block_text : String,
 ) -> @hashmap.HashMap[String, Bool] {
   let locals : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let tokens = tokenize(replace_comments(block_text), false)
-  for i in 0..<tokens.length() {
-    guard token_identifier_value(tokens[i]) is Some(ident) else { continue }
-    if ident == "var" || ident == "let" || ident == "const" {
-      let name_index = skip_wgsl_template_tokens(tokens, i + 1)
-      if name_index < tokens.length() &&
-        token_identifier_value(tokens[name_index]) is Some(name) {
-        locals.set(name, true)
+  let unit = parse_wgsl_translation_unit(block_text)
+  for decl in unit.declarations {
+    match decl.data {
+      WgslGlobalDeclData::Function(function) => {
+        for argument in function.arguments {
+          if argument.name != "" {
+            locals.set(argument.name, true)
+          }
+        }
+        for statement in function.body.statements {
+          match statement.local_name {
+            Some(name) => locals.set(name, true)
+            None => ()
+          }
+        }
       }
-      continue
-    }
-    if i + 1 < tokens.length() &&
-      token_other_code_value(tokens[i + 1]) is Some(58) {
-      locals.set(ident, true)
+      WgslGlobalDeclData::Struct(struct_decl) =>
+        for struct_member in struct_decl.members {
+          if struct_member.name != "" {
+            locals.set(struct_member.name, true)
+          }
+        }
+      _ => ()
     }
   }
   locals
@@ -1642,82 +1616,13 @@ priv struct WgslGlobalBindingInfo {
 }
 
 ///|
-fn wgsl_binding_attr_decimal(text : String, attr : String) -> Int? {
-  let pattern = "@\{attr}("
-  if pattern.length() > text.length() {
-    return None
-  }
-  let limit = text.length() - pattern.length()
-  for i in 0..<=limit {
-    let mut matched = true
-    for j in 0..<pattern.length() {
-      if text.code_unit_at(i + j).to_int() != pattern.code_unit_at(j).to_int() {
-        matched = false
-        break
-      }
-    }
-    if !matched {
-      continue
-    }
-    let mut end = i + pattern.length()
-    let mut value = 0
-    while end < text.length() {
-      let code = text.code_unit_at(end).to_int()
-      if code < 48 || code > 57 {
-        break
-      }
-      value = value * 10 + code - 48
-      end = end + 1
-    }
-    if end == i + pattern.length() {
-      return None
-    }
-    return Some(value)
-  }
-  None
-}
-
-///|
-fn wgsl_global_var_type_text(block_text : String, name : String) -> String? {
-  let cleaned = replace_comments(block_text)
-  let tokens = tokenize(cleaned, false)
-  for i in 0..<tokens.length() {
-    guard token_identifier_value(tokens[i]) is Some("var") else { continue }
-    let mut j = i + 1
-    while j < tokens.length() {
-      guard token_identifier_value(tokens[j]) is Some(found_name) else {
-        j = j + 1
-        continue
-      }
-      if found_name != name {
-        j = j + 1
-        continue
-      }
-      let mut colon_index = j + 1
-      while colon_index < tokens.length() {
-        if token_other_code_value(tokens[colon_index]) is Some(58) {
-          let mut start = tokens[colon_index].pos() + 1
-          while start < block_text.length() {
-            let code = block_text.code_unit_at(start).to_int()
-            if code != 32 && code != 9 && code != 10 && code != 13 {
-              break
-            }
-            start = start + 1
-          }
-          let mut end = start
-          while end < block_text.length() {
-            let code = block_text.code_unit_at(end).to_int()
-            if code == 59 || code == 61 || code == 10 || code == 13 {
-              break
-            }
-            end = end + 1
-          }
-          let type_text = block_text[start:end].to_owned().trim().to_owned()
-          return if type_text == "" { None } else { Some(type_text) }
-        }
-        colon_index = colon_index + 1
-      }
-      return None
+fn wgsl_attribute_uint_value(
+  attributes : Array[WgslAttribute],
+  name : String,
+) -> Int? {
+  for attr in attributes {
+    if attr.name == name {
+      return parse_wgsl_uint_literal(attr.arguments)
     }
   }
   None
@@ -1727,19 +1632,30 @@ fn wgsl_global_var_type_text(block_text : String, name : String) -> String? {
 fn wgsl_global_binding_info(
   block : @analysis.WgslGraphBlock,
 ) -> WgslGlobalBindingInfo? {
-  if block.name == "" {
-    return None
+  let unit = parse_wgsl_translation_unit(block.text)
+  for decl in unit.declarations {
+    match decl.data {
+      WgslGlobalDeclData::GlobalVariable(global) => {
+        guard wgsl_attribute_uint_value(global.attributes, "group")
+          is Some(group) else {
+          return None
+        }
+        guard wgsl_attribute_uint_value(global.attributes, "binding")
+          is Some(binding) else {
+          return None
+        }
+        guard global.ty is Some(type_text) else { return None }
+        return Some(WgslGlobalBindingInfo::{
+          name: global.name.name,
+          group,
+          binding,
+          type_text,
+        })
+      }
+      _ => ()
+    }
   }
-  guard wgsl_binding_attr_decimal(block.text, "group") is Some(group) else {
-    return None
-  }
-  guard wgsl_binding_attr_decimal(block.text, "binding") is Some(binding) else {
-    return None
-  }
-  guard wgsl_global_var_type_text(block.text, block.name) is Some(type_text) else {
-    return None
-  }
-  Some(WgslGlobalBindingInfo::{ name: block.name, group, binding, type_text })
+  None
 }
 
 ///|
