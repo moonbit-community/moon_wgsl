@@ -297,34 +297,17 @@ fn wgsl_redirect_map_set_sanitized(
 
 ///|
 fn collect_wgsl_function_parameter_sanitizers(
-  block_text : String,
+  source : String,
   redirect_map : @hashmap.HashMap[String, String],
 ) -> Unit {
-  let header_end = match block_text.find("{") {
-    Some(index) => index
-    None => block_text.length()
-  }
-  let header = block_text[:header_end].to_owned()
-  guard header.find("fn ") is Some(fn_index) else { return }
-  let fn_header = header[fn_index:header.length()].to_owned()
-  guard fn_header.find("(") is Some(open_index) else { return }
-  guard fn_header.find(")") is Some(close_index) else { return }
-  if close_index <= open_index {
-    return
-  }
-  let params = fn_header[open_index + 1:close_index].to_owned()
-  for param_item in params.split(",") {
-    let param = param_item.to_owned().trim().to_owned()
-    if param == "" {
-      continue
-    }
-    let mut end = 0
-    while end < param.length() &&
-          wgsl_identifier_char(param.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    if end > 0 {
-      wgsl_redirect_map_set_sanitized(redirect_map, param[:end].to_owned())
+  let unit = parse_wgsl_translation_unit(source)
+  for decl in unit.declarations {
+    match decl.data {
+      WgslGlobalDeclData::Function(function) =>
+        for argument in function.arguments {
+          wgsl_redirect_map_set_sanitized(redirect_map, argument.name)
+        }
+      _ => ()
     }
   }
 }
@@ -370,75 +353,30 @@ fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
 }
 
 ///|
-fn last_wgsl_identifier_in_text(text : String) -> String {
-  let mut out = ""
-  for token in tokenize(text, false) {
-    match token {
-      Token::Identifier(ident, _) => out = ident
-      _ => ()
-    }
-  }
-  out
-}
-
-///|
-fn wgsl_line_contains_blend_src_attribute(line : String) -> Bool {
-  let tokens = tokenize(line, false)
-  let mut pending_attribute = false
-  for token in tokens {
-    match token {
-      Token::Other(code, _) => pending_attribute = code == 64
-      Token::Identifier(ident, _) => {
-        if pending_attribute && ident == "blend_src" {
-          return true
-        }
-        pending_attribute = false
-      }
-      _ => pending_attribute = false
-    }
-  }
-  false
-}
-
-///|
-fn wgsl_struct_member_allows_writeback_substitution(
-  line : String,
-  pending_blend_src : Bool,
-) -> Bool {
-  pending_blend_src || wgsl_line_contains_blend_src_attribute(line)
-}
-
-///|
 fn validate_wgsl_struct_member_identifiers(
   source : String,
 ) -> Unit raise ComposerError {
-  let graph = build_wgsl_declaration_graph(source)
-  for block in graph.declaration_blocks {
-    let trimmed = replace_comments(block.text).trim().to_owned()
-    if !starts_with_text(trimmed, "struct ") {
-      continue
-    }
-    let mut pending_blend_src = false
-    for line in split_source_lines(replace_comments(block.text)) {
-      if wgsl_line_contains_blend_src_attribute(line) {
-        pending_blend_src = true
-      }
-      let colon = wgsl_index_of_code_unit(line, 58)
-      if colon < 0 {
-        continue
-      }
-      let allows_writeback_substitution = wgsl_struct_member_allows_writeback_substitution(
-        line, pending_blend_src,
-      )
-      pending_blend_src = false
-      let member_name = last_wgsl_identifier_in_text(
-        line[:colon].to_owned().trim().to_owned(),
-      )
-      if !allows_writeback_substitution &&
-        member_name != "" &&
-        wgsl_writeback_identifier_requires_substitution(member_name) {
-        raise ComposerError::InvalidStructMemberIdentifier(member_name)
-      }
+  let unit = parse_wgsl_translation_unit(source)
+  for decl in unit.declarations {
+    match decl.data {
+      WgslGlobalDeclData::Struct(struct_decl) =>
+        for struct_member in struct_decl.members {
+          let mut allows_writeback_substitution = false
+          for attr in struct_member.attributes {
+            if attr.name == "blend_src" {
+              allows_writeback_substitution = true
+              break
+            }
+          }
+          if !allows_writeback_substitution &&
+            struct_member.name != "" &&
+            wgsl_writeback_identifier_requires_substitution(struct_member.name) {
+            raise ComposerError::InvalidStructMemberIdentifier(
+              struct_member.name,
+            )
+          }
+        }
+      _ => ()
     }
   }
 }

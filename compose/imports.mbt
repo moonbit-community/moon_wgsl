@@ -47,7 +47,9 @@ using @resolver {
 using @syntax {
   type Token,
   type WgslDirectiveKind,
+  type WgslGlobalDeclData,
   import_brace_balance,
+  parse_wgsl_translation_unit,
   replace_comments,
   split_last_identifier,
   split_source_lines,
