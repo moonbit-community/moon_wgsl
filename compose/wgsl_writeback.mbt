@@ -16,11 +16,53 @@
 // This layer mirrors naga_oil's writeback boundary: composable-module
 // identifiers that naga's WGSL writer would rename are rejected before output,
 // while final generated source still gets our compatibility sanitizer.
-fn wgsl_writeback_identifier_requires_substitution(ident : String) -> Bool {
+fn wgsl_writeback_identifier_is_reserved(ident : String) -> Bool {
   if ident == "" {
     return false
   }
+  ident == "array" ||
+  ident == "atomic" ||
+  ident == "bool" ||
+  ident == "f32" ||
+  ident == "f16" ||
+  ident == "i32" ||
+  ident == "i64" ||
+  ident == "mat2x2" ||
+  ident == "mat2x3" ||
+  ident == "mat2x4" ||
+  ident == "mat3x2" ||
+  ident == "mat3x3" ||
+  ident == "mat3x4" ||
+  ident == "mat4x2" ||
+  ident == "mat4x3" ||
+  ident == "mat4x4" ||
+  ident == "ptr" ||
+  ident == "sampler" ||
+  ident == "sampler_comparison" ||
+  ident == "texture_1d" ||
+  ident == "texture_2d" ||
+  ident == "texture_2d_array" ||
+  ident == "texture_3d" ||
+  ident == "texture_cube" ||
+  ident == "texture_cube_array" ||
+  ident == "texture_external" ||
+  ident == "texture_multisampled_2d" ||
+  ident == "texture_storage_1d" ||
+  ident == "texture_storage_2d" ||
+  ident == "texture_storage_2d_array" ||
+  ident == "texture_storage_3d" ||
+  ident == "texture_depth_2d" ||
+  ident == "texture_depth_2d_array" ||
+  ident == "texture_depth_cube" ||
+  ident == "texture_depth_cube_array" ||
+  ident == "texture_depth_multisampled_2d" ||
+  ident == "u32" ||
+  ident == "u64" ||
+  ident == "vec2" ||
+  ident == "vec3" ||
+  ident == "vec4" ||
   ident == "alias" ||
+  ident == "bitcast" ||
   ident == "break" ||
   ident == "case" ||
   ident == "const" ||
@@ -39,20 +81,180 @@ fn wgsl_writeback_identifier_requires_substitution(ident : String) -> Bool {
   ident == "let" ||
   ident == "loop" ||
   ident == "override" ||
-  ident == "requires" ||
   ident == "return" ||
+  ident == "static_assert" ||
   ident == "struct" ||
   ident == "switch" ||
   ident == "true" ||
+  ident == "type" ||
   ident == "var" ||
   ident == "while" ||
+  ident == "CompileShader" ||
+  ident == "ComputeShader" ||
+  ident == "DomainShader" ||
+  ident == "GeometryShader" ||
+  ident == "Hullshader" ||
+  ident == "NULL" ||
+  ident == "Self" ||
+  ident == "abstract" ||
+  ident == "active" ||
+  ident == "alignas" ||
+  ident == "alignof" ||
+  ident == "as" ||
+  ident == "asm" ||
+  ident == "asm_fragment" ||
+  ident == "async" ||
+  ident == "attribute" ||
+  ident == "auto" ||
+  ident == "await" ||
+  ident == "become" ||
+  ident == "binding_array" ||
+  ident == "cast" ||
+  ident == "catch" ||
+  ident == "class" ||
+  ident == "co_await" ||
+  ident == "co_return" ||
+  ident == "co_yield" ||
+  ident == "coherent" ||
+  ident == "column_major" ||
+  ident == "common" ||
+  ident == "compile" ||
+  ident == "compile_fragment" ||
+  ident == "concept" ||
+  ident == "const_cast" ||
+  ident == "consteval" ||
+  ident == "constexpr" ||
+  ident == "constinit" ||
+  ident == "crate" ||
+  ident == "debugger" ||
+  ident == "decltype" ||
+  ident == "delete" ||
+  ident == "demote" ||
+  ident == "demote_to_helper" ||
+  ident == "do" ||
+  ident == "dynamic_cast" ||
+  ident == "enum" ||
+  ident == "explicit" ||
+  ident == "export" ||
+  ident == "extends" ||
+  ident == "extern" ||
+  ident == "external" ||
+  ident == "fallthrough" ||
+  ident == "filter" ||
+  ident == "final" ||
+  ident == "finally" ||
+  ident == "friend" ||
+  ident == "from" ||
+  ident == "fxgroup" ||
+  ident == "get" ||
+  ident == "goto" ||
+  ident == "groupshared" ||
+  ident == "handle" ||
+  ident == "highp" ||
+  ident == "impl" ||
+  ident == "implements" ||
+  ident == "import" ||
+  ident == "inline" ||
   ident == "in" ||
-  ident.has_suffix("_") ||
-  starts_with_text(ident, "__")
+  ident == "inout" ||
+  ident == "instanceof" ||
+  ident == "interface" ||
+  ident == "layout" ||
+  ident == "lowp" ||
+  ident == "macro" ||
+  ident == "macro_rules" ||
+  ident == "match" ||
+  ident == "mediump" ||
+  ident == "meta" ||
+  ident == "mod" ||
+  ident == "module" ||
+  ident == "move" ||
+  ident == "mut" ||
+  ident == "mutable" ||
+  ident == "namespace" ||
+  ident == "new" ||
+  ident == "nil" ||
+  ident == "noexcept" ||
+  ident == "noinline" ||
+  ident == "nointerpolation" ||
+  ident == "noperspective" ||
+  ident == "null" ||
+  ident == "nullptr" ||
+  ident == "of" ||
+  ident == "operator" ||
+  ident == "package" ||
+  ident == "packoffset" ||
+  ident == "partition" ||
+  ident == "pass" ||
+  ident == "patch" ||
+  ident == "pixelfragment" ||
+  ident == "precise" ||
+  ident == "precision" ||
+  ident == "premerge" ||
+  ident == "priv" ||
+  ident == "protected" ||
+  ident == "pub" ||
+  ident == "public" ||
+  ident == "readonly" ||
+  ident == "ref" ||
+  ident == "regardless" ||
+  ident == "register" ||
+  ident == "reinterpret_cast" ||
+  ident == "requires" ||
+  ident == "resource" ||
+  ident == "restrict" ||
+  ident == "self" ||
+  ident == "set" ||
+  ident == "shared" ||
+  ident == "signed" ||
+  ident == "sizeof" ||
+  ident == "smooth" ||
+  ident == "snorm" ||
+  ident == "static" ||
+  ident == "static_cast" ||
+  ident == "std" ||
+  ident == "subroutine" ||
+  ident == "super" ||
+  ident == "target" ||
+  ident == "template" ||
+  ident == "this" ||
+  ident == "thread_local" ||
+  ident == "throw" ||
+  ident == "trait" ||
+  ident == "try" ||
+  ident == "typedef" ||
+  ident == "typeid" ||
+  ident == "typename" ||
+  ident == "typeof" ||
+  ident == "union" ||
+  ident == "unless" ||
+  ident == "unorm" ||
+  ident == "unsafe" ||
+  ident == "unsized" ||
+  ident == "use" ||
+  ident == "using" ||
+  ident == "varying" ||
+  ident == "virtual" ||
+  ident == "volatile" ||
+  ident == "wgsl" ||
+  ident == "where" ||
+  ident == "with" ||
+  ident == "writeonly" ||
+  ident == "yield"
+}
+
+///|
+fn wgsl_writeback_identifier_ends_with_digit(ident : String) -> Bool {
+  if ident == "" {
+    return false
+  }
+  let code = ident.code_unit_at(ident.length() - 1).to_int()
+  code >= 48 && code <= 57
 }
 
 ///|
 fn sanitize_wgsl_writeback_identifier(ident : String) -> String {
+  let had_trailing_separator = ident.has_suffix("_")
   let mut out = ident
   while out.has_suffix("_") {
     out = out[:out.length() - 1].to_owned()
@@ -61,12 +263,23 @@ fn sanitize_wgsl_writeback_identifier(ident : String) -> String {
     out = out[1:out.length()].to_owned()
   }
   if out == "" {
-    out = "wgsl"
+    out = "unnamed"
   }
-  if wgsl_writeback_identifier_requires_substitution(out) {
+  if starts_with_text(out, "_naga") {
+    out = "gen_\{out}"
+  }
+  if wgsl_writeback_identifier_is_reserved(out) {
     out = "\{out}_wgsl"
+  } else if had_trailing_separator &&
+    wgsl_writeback_identifier_ends_with_digit(out) {
+    out = "\{out}_"
   }
   out
+}
+
+///|
+fn wgsl_writeback_identifier_requires_substitution(ident : String) -> Bool {
+  ident != "" && sanitize_wgsl_writeback_identifier(ident) != ident
 }
 
 ///|

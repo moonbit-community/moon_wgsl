@@ -107,7 +107,7 @@ fn register_invalid_struct_member_export_test_shaders() -> Unit {
   @moon_wgsl.register_wgsl_source_files([
     {
       rel_path: "shaders/shared/invalid_member.wgsl",
-      source: "struct BadOutput {\n  F0_: vec3<f32>,\n}\nfn build_bad() -> BadOutput {\n  var out: BadOutput;\n  return out;\n}\n",
+      source: "struct BadOutput {\n  bad_: vec3<f32>,\n}\nfn build_bad() -> BadOutput {\n  var out: BadOutput;\n  return out;\n}\n",
     },
     {
       rel_path: "shaders/effects/invalid_member.wgsl",
@@ -167,7 +167,7 @@ test "naga_oil: export rejects invalid struct member identifiers before emission
     message.contains("requires naga writeback substitution"),
     content="true",
   )
-  debug_inspect(message.contains("F0_"), content="true")
+  debug_inspect(message.contains("bad_"), content="true")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
 

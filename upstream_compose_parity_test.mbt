@@ -831,6 +831,22 @@ test "github issue 5: colliding lowered declarations from separate imports are d
 }
 
 ///|
+test "github issue 6: Bevy F0_ struct member composes without writeback rejection" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "f0_member.wgsl",
+    "struct LightingInput {\n" + "  F0_: vec3<f32>,\n" + "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "f0_member.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err => abort("expected F0_ member compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("F0_: vec3<f32>"), content="true")
+}
+
+///|
 test "github issue 5: item-imported function keeps its imported mesh binding" {
   let composer = @moon_wgsl.Composer::default()
   composer.register_wgsl_source(
