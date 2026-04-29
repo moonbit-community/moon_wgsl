@@ -220,6 +220,13 @@ priv struct WgslActiveComposeDefs {
 }
 
 ///|
+priv struct WgslTemplateConstReference {
+  name : String
+  start : Int
+  end : Int
+}
+
+///|
 fn composable_module_name_from_descriptor(
   desc : ComposableModuleDescriptor,
 ) -> String raise ComposerError {
@@ -697,6 +704,99 @@ fn wgsl_compose_token_end(token : Token) -> Int {
 }
 
 ///|
+fn wgsl_template_const_name_boundary(text : String, name : String) -> Bool {
+  if text.length() == name.length() {
+    return true
+  }
+  if text.length() < name.length() {
+    return false
+  }
+  let code = text.code_unit_at(name.length()).to_int()
+  !((code >= 65 && code <= 90) || (code >= 48 && code <= 57) || code == 95)
+}
+
+///|
+fn longest_wgsl_template_const_prefix(
+  text : String,
+  value_defines : @hashmap.HashMap[String, Int],
+) -> String? {
+  let mut best = ""
+  for entry in value_defines.iter() {
+    let (name, _) = entry
+    if name.length() > best.length() &&
+      starts_with_text(text, name) &&
+      wgsl_template_const_name_boundary(text, name) {
+      best = name
+    }
+  }
+  if best == "" {
+    None
+  } else {
+    Some(best)
+  }
+}
+
+///|
+fn parse_wgsl_template_const_references(
+  source : String,
+  value_defines : @hashmap.HashMap[String, Int],
+) -> Array[WgslTemplateConstReference] {
+  let references : Array[WgslTemplateConstReference] = []
+  let tokens = tokenize(source, true)
+  let mut i = 0
+  while i < tokens.length() {
+    guard tokens[i] is Token::Other(35, start) else {
+      i = i + 1
+      continue
+    }
+    guard i + 1 < tokens.length() else {
+      i = i + 1
+      continue
+    }
+    match tokens[i + 1] {
+      Token::Other(123, _) => {
+        let body_start = wgsl_compose_token_end(tokens[i + 1])
+        let mut j = i + 2
+        while j < tokens.length() {
+          match tokens[j] {
+            Token::Other(125, _) => break
+            _ => j = j + 1
+          }
+        }
+        if j < tokens.length() {
+          let name = source[body_start:tokens[j].pos()]
+            .to_owned()
+            .trim()
+            .to_owned()
+          references.push(WgslTemplateConstReference::{
+            name,
+            start,
+            end: wgsl_compose_token_end(tokens[j]),
+          })
+          i = j + 1
+        } else {
+          i = i + 1
+        }
+      }
+      Token::Identifier(text, pos) =>
+        match longest_wgsl_template_const_prefix(text, value_defines) {
+          Some(name) => {
+            references.push(WgslTemplateConstReference::{
+              name,
+              start,
+              end: pos + name.length(),
+            })
+            i = i + 2
+          }
+          None => i = i + 1
+        }
+      _ => i = i + 1
+    }
+  }
+  references
+}
+
+///|
 fn wgsl_if_operator_code(code : Int) -> Bool {
   code == 61 || code == 33 || code == 60 || code == 62 // '=!<>'
 }
@@ -965,57 +1065,16 @@ pub fn apply_wgsl_template_consts(
   value_defines : @hashmap.HashMap[String, Int],
 ) -> String {
   let mut out = ""
-  let mut scan = 0
   let mut copy_start = 0
-  let n = source.length()
-  while scan < n {
-    if scan + 1 < n &&
-      source.code_unit_at(scan).to_int() == 35 &&
-      source.code_unit_at(scan + 1).to_int() == 123 {
-      let mut j = scan + 2
-      while j < n && source.code_unit_at(j).to_int() != 125 {
-        j = j + 1
-      }
-      if j < n {
-        let name = source[scan + 2:j].to_owned().trim().to_owned()
-        if value_defines.get(name) is Some(value) {
-          out = out + source[copy_start:scan].to_owned()
-          out = out + value.to_string()
-          scan = j + 1
-          copy_start = scan
-          continue
-        }
-      }
+  for reference in parse_wgsl_template_const_references(source, value_defines) {
+    if value_defines.get(reference.name) is Some(value) {
+      out = out + source[copy_start:reference.start].to_owned()
+      out = out + value.to_string()
+      copy_start = reference.end
     }
-    if scan + 1 < n && source.code_unit_at(scan).to_int() == 35 {
-      let next = source.code_unit_at(scan + 1).to_int()
-      let starts_name = (next >= 65 && next <= 90) || next == 95
-      if starts_name {
-        let mut j = scan + 1
-        while j < n {
-          let cu = source.code_unit_at(j).to_int()
-          let continues_name = (cu >= 65 && cu <= 90) ||
-            (cu >= 48 && cu <= 57) ||
-            cu == 95
-          if !continues_name {
-            break
-          }
-          j = j + 1
-        }
-        let name = source[scan + 1:j].to_owned()
-        if value_defines.get(name) is Some(value) {
-          out = out + source[copy_start:scan].to_owned()
-          out = out + value.to_string()
-          scan = j
-          copy_start = scan
-          continue
-        }
-      }
-    }
-    scan = scan + 1
   }
-  if copy_start < n {
-    out = out + source[copy_start:n].to_owned()
+  if copy_start < source.length() {
+    out = out + source[copy_start:source.length()].to_owned()
   }
   out
 }
