@@ -322,6 +322,11 @@ test "naga_oil: preprocess applies module defines to output" {
     output.preprocessed_source.contains("bool: false"),
     content="true",
   )
+  guard metadata.defines.get("DEFUINT")
+    is Some(@moon_wgsl.ShaderDefValue::UInt(uint_value)) else {
+    abort("expected naga_oil-style unsigned positive define")
+  }
+  debug_inspect(uint_value.to_string(), content="\"1\"")
 }
 
 ///|
@@ -330,7 +335,7 @@ test "naga_oil: preprocess accepts whitespace after hash directives" {
   let metadata = @moon_wgsl.get_preprocessor_metadata(source)
   debug_inspect(metadata.name, content="Some(\"demo::spaced\")")
   guard metadata.defines.get("MODE")
-    is Some(@moon_wgsl.ShaderDefValue::Int(mode)) else {
+    is Some(@moon_wgsl.ShaderDefValue::UInt(mode)) else {
     abort("expected MODE define")
   }
   debug_inspect(mode.to_string(), content="\"2\"")
@@ -392,4 +397,22 @@ test "naga_oil: shader def placeholders accept hash whitespace and upstream name
     output.preprocessed_source.contains("let b = 9;"),
     content="true",
   )
+}
+
+///|
+test "naga_oil: define metadata consumes one token like upstream regexes" {
+  let metadata = @moon_wgsl.get_preprocessor_metadata(
+    "# define_import_path demo::module trailing_text\n# define COUNT 3 ignored_tail\n# define FLAG true ignored_tail\n",
+  )
+  debug_inspect(metadata.name, content="Some(\"demo::module\")")
+  guard metadata.defines.get("COUNT")
+    is Some(@moon_wgsl.ShaderDefValue::UInt(count)) else {
+    abort("expected COUNT define")
+  }
+  debug_inspect(count.to_string(), content="\"3\"")
+  guard metadata.defines.get("FLAG")
+    is Some(@moon_wgsl.ShaderDefValue::Bool(flag)) else {
+    abort("expected FLAG define")
+  }
+  debug_inspect(flag, content="true")
 }

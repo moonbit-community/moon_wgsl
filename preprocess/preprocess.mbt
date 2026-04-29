@@ -201,6 +201,10 @@ fn parse_define_value(raw_value : String) -> ShaderDefValue {
     }
     return ShaderDefValue::UInt(parsed.reinterpret_as_uint())
   }
+  let parsed_unsigned = @string.parse_int(value[:], base=10) catch { _ => -1 }
+  if parsed_unsigned >= 0 {
+    return ShaderDefValue::UInt(parsed_unsigned.reinterpret_as_uint())
+  }
   let parsed = @string.parse_int(value[:], base=10) catch {
     _ => return ShaderDefValue::Bool(false)
   }
@@ -219,12 +223,26 @@ fn split_define_name_and_value(text : String) -> (String, String) {
     if code == 32 || code == 9 {
       return (
         trimmed[:i].to_owned().trim().to_owned(),
-        trimmed[i:trimmed.length()].to_owned().trim().to_owned(),
+        first_space_separated_token(trimmed[i:trimmed.length()].to_owned()),
       )
     }
     i = i + 1
   }
   (trimmed, "")
+}
+
+///|
+fn first_space_separated_token(text : String) -> String {
+  let trimmed = text.trim().to_owned()
+  let mut i = 0
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      break
+    }
+    i = i + 1
+  }
+  trimmed[:i].to_owned()
 }
 
 ///|
@@ -844,7 +862,9 @@ fn try_get_preprocessor_metadata(
       }
     } else if hash_directive_tail(trimmed, "define_import_path")
       is Some(raw_name) {
-      let import_path = trim_trailing_semicolons(raw_name)
+      let import_path = trim_trailing_semicolons(
+        first_space_separated_token(raw_name),
+      )
       if import_path != "" {
         name = Some(import_path)
       }
