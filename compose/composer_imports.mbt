@@ -27,7 +27,7 @@ fn unresolved_wgsl_namespace_reference(source : String) -> String? {
   let names : Array[String] = []
   collect_wgsl_source_identifier_names(source, names)
   for name in names {
-    if wgsl_path_separator_count(name) > 0 {
+    if split_last_identifier(name) is Some(_) {
       return Some(name)
     }
   }
@@ -120,35 +120,28 @@ fn wgsl_source_uses_import_alias(source : String, alias_name : String) -> Bool {
 ///|
 fn wgsl_path_separator_count(path : String) -> Int {
   let mut count = 0
-  let mut i = 0
-  while i + 1 < path.length() {
-    if path.code_unit_at(i).to_int() == 58 &&
-      path.code_unit_at(i + 1).to_int() == 58 {
-      count = count + 1
-      i = i + 2
-      continue
-    }
-    i = i + 1
+  let mut rest = path
+  while split_last_identifier(rest) is Some((prefix, _)) {
+    count = count + 1
+    rest = prefix
   }
   count
 }
 
 ///|
 fn split_last_wgsl_path(path : String) -> (String, String)? {
-  let mut i = path.length() - 1
-  while i > 0 {
-    if path.code_unit_at(i - 1).to_int() == 58 &&
-      path.code_unit_at(i).to_int() == 58 {
-      let prefix = path[:i - 1].to_owned().trim().to_owned()
-      let suffix = path[i + 1:path.length()].to_owned().trim().to_owned()
-      if prefix != "" && suffix != "" {
-        return Some((prefix, suffix))
+  match split_last_identifier(path) {
+    Some((prefix, suffix)) => {
+      let trimmed_prefix = prefix.trim().to_owned()
+      let trimmed_suffix = suffix.trim().to_owned()
+      if trimmed_prefix != "" && trimmed_suffix != "" {
+        Some((trimmed_prefix, trimmed_suffix))
+      } else {
+        None
       }
-      return None
     }
-    i = i - 1
+    None => None
   }
-  None
 }
 
 ///|

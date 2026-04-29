@@ -1919,8 +1919,7 @@ fn Composer::compose_wgsl_import_requests(
       session.visited.set(full_module_key, true)
     }
     merged = "\{merged}\{final_module_source}"
-    let merged_len = merged.length()
-    if merged_len == 0 || merged.code_unit_at(merged_len - 1).to_int() != 10 {
+    if !merged.has_suffix("\n") {
       merged = "\{merged}\n"
     }
   }
