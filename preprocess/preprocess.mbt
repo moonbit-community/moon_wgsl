@@ -386,69 +386,60 @@ fn directive_identifier(text : String) -> String? {
 }
 
 ///|
+fn preprocess_token_text(token : Token) -> String {
+  match token {
+    Token::Identifier(text, _) => text
+    Token::Whitespace(text, _) => text
+    Token::Other(code, _) => code_unit_to_string(code)
+  }
+}
+
+///|
 fn parse_if_operator_expression(
   expression : String,
 ) -> (String, String, String)? {
   let text = trim_trailing_semicolons(expression)
+  let tokens = tokenize(text, false)
   let mut i = 0
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    let is_ident = (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      (code >= 48 && code <= 57) ||
-      code == 95 ||
-      code == 124
-    if !is_ident {
-      break
+  let mut def = ""
+  while i < tokens.length() {
+    match tokens[i] {
+      Token::Identifier(ident, _) => def = def + ident
+      Token::Other(124, _) => def = def + "|"
+      _ => break
     }
     i = i + 1
   }
-  guard i > 0 else { return None }
-  let def = text[:i].to_owned()
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  let op_start = i
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if code == 61 || code == 33 || code == 60 || code == 62 {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  let operator = text[op_start:i].to_owned()
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  let value_start = i
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    let is_value = (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      (code >= 48 && code <= 57) ||
-      code == 95 ||
-      code == 124 ||
-      code == 45
-    if !is_value {
-      break
+  guard def != "" else { return None }
+  let mut operator = ""
+  while i < tokens.length() {
+    match tokens[i] {
+      Token::Other(code, _) if code == 61 ||
+        code == 33 ||
+        code == 60 ||
+        code == 62 => operator = operator + code_unit_to_string(code)
+      _ => break
     }
     i = i + 1
   }
-  if value_start == i {
-    return None
+  guard operator != "" else { return None }
+  let mut value = ""
+  while i < tokens.length() {
+    match tokens[i] {
+      Token::Identifier(ident, _) => value = value + ident
+      Token::Other(124, _) | Token::Other(45, _) =>
+        value = value + preprocess_token_text(tokens[i])
+      Token::Other(code, _) if code >= 48 && code <= 57 =>
+        value = value + code_unit_to_string(code)
+      _ => break
+    }
+    i = i + 1
   }
-  Some((def, operator, text[value_start:i].to_owned()))
+  if value == "" {
+    None
+  } else {
+    Some((def, operator, value))
+  }
 }
 
 ///|

@@ -16,6 +16,7 @@ using @syntax {
   type DeclaredImportBinding,
   type Token,
   type WgslDirectiveKind,
+  code_unit_to_string,
   import_brace_balance,
   parse_imports,
   replace_comments,
