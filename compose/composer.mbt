@@ -1551,34 +1551,31 @@ fn build_wgsl_unique_lowered_suffix_redirect_map(
 }
 
 ///|
-fn collect_wgsl_block_local_names(
-  block_text : String,
+fn collect_wgsl_decl_local_names(
+  data : WgslGlobalDeclData,
 ) -> @hashmap.HashMap[String, Bool] {
   let locals : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let unit = parse_wgsl_translation_unit(block_text)
-  for decl in unit.declarations {
-    match decl.data {
-      WgslGlobalDeclData::Function(function) => {
-        for argument in function.arguments {
-          if argument.name != "" {
-            locals.set(argument.name, true)
-          }
-        }
-        for statement in function.body.statements {
-          match statement.local_name {
-            Some(name) => locals.set(name, true)
-            None => ()
-          }
+  match data {
+    WgslGlobalDeclData::Function(function) => {
+      for argument in function.arguments {
+        if argument.name != "" {
+          locals.set(argument.name, true)
         }
       }
-      WgslGlobalDeclData::Struct(struct_decl) =>
-        for struct_member in struct_decl.members {
-          if struct_member.name != "" {
-            locals.set(struct_member.name, true)
-          }
+      for statement in function.body.statements {
+        match statement.local_name {
+          Some(name) => locals.set(name, true)
+          None => ()
         }
-      _ => ()
+      }
     }
+    WgslGlobalDeclData::Struct(struct_decl) =>
+      for struct_member in struct_decl.members {
+        if struct_member.name != "" {
+          locals.set(struct_member.name, true)
+        }
+      }
+    _ => ()
   }
   locals
 }
@@ -1594,7 +1591,7 @@ fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
     out = out + import_block.text
   }
   for block in graph.declaration_blocks {
-    let local_names = collect_wgsl_block_local_names(block.text)
+    let local_names = collect_wgsl_decl_local_names(block.data)
     let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
     for entry in redirect_map.iter() {
       let (from_name, to_name) = entry
@@ -1641,38 +1638,33 @@ fn wgsl_attribute_uint_value(
 fn wgsl_global_binding_info(
   block : @analysis.WgslGraphBlock,
 ) -> WgslGlobalBindingInfo? {
-  let unit = parse_wgsl_translation_unit(block.text)
-  for decl in unit.declarations {
-    match decl.data {
-      WgslGlobalDeclData::GlobalVariable(global) => {
-        guard wgsl_attribute_uint_value(global.attributes, "group")
-          is Some(group) else {
-          return None
-        }
-        guard wgsl_attribute_uint_value(global.attributes, "binding")
-          is Some(binding) else {
-          return None
-        }
-        guard global.ty is Some(type_text) else { return None }
-        return Some(WgslGlobalBindingInfo::{
-          name: global.name.name,
-          group,
-          binding,
-          type_text,
-        })
+  match block.data {
+    WgslGlobalDeclData::GlobalVariable(global) => {
+      guard wgsl_attribute_uint_value(global.attributes, "group") is Some(group) else {
+        return None
       }
-      _ => ()
+      guard wgsl_attribute_uint_value(global.attributes, "binding")
+        is Some(binding) else {
+        return None
+      }
+      guard global.ty is Some(type_text) else { return None }
+      Some(WgslGlobalBindingInfo::{
+        name: global.name.name,
+        group,
+        binding,
+        type_text,
+      })
     }
+    _ => None
   }
-  None
 }
 
 ///|
 fn rewrite_wgsl_block_with_duplicate_binding_redirects(
-  block_text : String,
+  block : WgslGraphBlock,
   redirect_map : @hashmap.HashMap[String, String],
 ) -> String {
-  let local_names = collect_wgsl_block_local_names(block_text)
+  let local_names = collect_wgsl_decl_local_names(block.data)
   let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for entry in redirect_map.iter() {
     let (from_name, to_name) = entry
@@ -1681,9 +1673,9 @@ fn rewrite_wgsl_block_with_duplicate_binding_redirects(
     }
   }
   if block_redirects.is_empty() {
-    block_text
+    block.text
   } else {
-    rewrite_wgsl_declaration_text_with_map(block_text, block_redirects, false)
+    rewrite_wgsl_declaration_text_with_map(block.text, block_redirects, false)
   }
 }
 
@@ -1717,10 +1709,7 @@ fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
       continue
     }
     out = out +
-      rewrite_wgsl_block_with_duplicate_binding_redirects(
-        block.text,
-        redirect_map,
-      )
+      rewrite_wgsl_block_with_duplicate_binding_redirects(block, redirect_map)
   }
   out
 }
