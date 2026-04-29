@@ -323,3 +323,73 @@ test "naga_oil: preprocess applies module defines to output" {
     content="true",
   )
 }
+
+///|
+test "naga_oil: preprocess accepts whitespace after hash directives" {
+  let source = "# define_import_path demo::spaced\n# define MODE 2\n# if MODE==1\none\n# else if MODE==2\ntwo #MODE\n# else\nthree\n# endif\n"
+  let metadata = @moon_wgsl.get_preprocessor_metadata(source)
+  debug_inspect(metadata.name, content="Some(\"demo::spaced\")")
+  guard metadata.defines.get("MODE")
+    is Some(@moon_wgsl.ShaderDefValue::Int(mode)) else {
+    abort("expected MODE define")
+  }
+  debug_inspect(mode.to_string(), content="\"2\"")
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    source,
+    metadata.defines,
+  ) catch {
+    _ => abort("expected spaced directive preprocess success")
+  }
+  debug_inspect(output.preprocessed_source.contains("two 2"), content="true")
+  debug_inspect(output.preprocessed_source.contains("one"), content="false")
+  debug_inspect(output.preprocessed_source.contains("three"), content="false")
+}
+
+///|
+test "naga_oil: preprocess accepts whitespace after hash import directives" {
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    "# import demo::math::PI\nfn main() -> f32 {\n  return PI;\n}\n",
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected spaced import preprocess success")
+  }
+  debug_inspect(output.imports.length(), content="1")
+  debug_inspect(
+    output.imports[0].definition.import_path,
+    content="\"demo::math\"",
+  )
+  debug_inspect(output.imports[0].definition.items[0], content="\"PI\"")
+  debug_inspect(
+    output.preprocessed_source.contains("# import"),
+    content="false",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("return PIX_naga_oil_mod_"),
+    content="true",
+  )
+}
+
+///|
+test "naga_oil: shader def placeholders accept hash whitespace and upstream name chars" {
+  let source = "let a = # lower_def;\nlet b = # {MIXED|PIPE};\n"
+  let metadata = @moon_wgsl.get_preprocessor_metadata(source)
+  debug_inspect(metadata.effective_defs.contains("lower_def"), content="true")
+  debug_inspect(metadata.effective_defs.contains("MIXED|PIPE"), content="true")
+
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("lower_def", @moon_wgsl.ShaderDefValue::Int(7))
+  shader_defs.set("MIXED|PIPE", @moon_wgsl.ShaderDefValue::Int(9))
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    source, shader_defs,
+  ) catch {
+    _ => abort("expected spaced shader-def preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 7;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let b = 9;"),
+    content="true",
+  )
+}

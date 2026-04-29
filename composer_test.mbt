@@ -429,6 +429,50 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
 }
 
 ///|
+test "naga_oil: composer accepts whitespace after hash import directives" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  ignore(
+    composer.add_composable_module({
+      source: "# define_import_path demo::maths\nconst PI_2: f32 = 6.28318;\n",
+      file_path: "shaders/demo/maths.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err => abort("expected maths module registration success: \{err.message()}")
+  }
+  ignore(
+    composer.add_composable_module({
+      source: "# define_import_path demo::main\n# import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
+      file_path: "shaders/demo/main.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err => abort("expected main module registration success: \{err.message()}")
+  }
+  let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
+    assets_base: "",
+    defines: empty_bool_defines(),
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects: [],
+    additional_imports: [],
+    preserve_imported_entry_points: true,
+  }) catch {
+    err => abort("expected spaced-directive compose success: \{err.message()}")
+  }
+  debug_inspect(preprocessed.contains("const PI_2"), content="true")
+  debug_inspect(preprocessed.contains("# import"), content="false")
+  debug_inspect(preprocessed.contains("return PI_2;"), content="true")
+}
+
+///|
 test "naga_oil: add_composable_module applies descriptor additional imports" {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   let composer = @moon_wgsl.Composer::default()

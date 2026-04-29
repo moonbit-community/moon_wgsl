@@ -2,6 +2,7 @@
 using @syntax {
   type Token,
   code_unit_to_string,
+  hash_directive_tail,
   import_brace_balance,
   replace_comments,
   starts_with_text,

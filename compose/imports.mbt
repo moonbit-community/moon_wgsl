@@ -47,9 +47,11 @@ using @resolver {
 ///|
 using @syntax {
   type Token,
+  hash_directive_tail,
   import_brace_balance,
   replace_comments,
   split_last_identifier,
   starts_with_text,
   tokenize,
+  word_tail,
 }

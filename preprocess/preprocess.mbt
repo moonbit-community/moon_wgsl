@@ -136,13 +136,22 @@ fn collect_effective_def_names(
   let mut i = 0
   while i < line.length() {
     if line.code_unit_at(i).to_int() == 35 { // '#'
-      if i + 1 < line.length() && line.code_unit_at(i + 1).to_int() == 123 { // '{'
-        let mut j = i + 2
+      let mut scan = i + 1
+      while scan < line.length() {
+        let code = line.code_unit_at(scan).to_int()
+        if code == 32 || code == 9 {
+          scan = scan + 1
+          continue
+        }
+        break
+      }
+      if scan < line.length() && line.code_unit_at(scan).to_int() == 123 { // '{'
+        let mut j = scan + 1
         while j < line.length() && line.code_unit_at(j).to_int() != 125 { // '}'
           j = j + 1
         }
         if j < line.length() {
-          let name = line[i + 2:j].to_owned().trim().to_owned()
+          let name = line[scan + 1:j].to_owned().trim().to_owned()
           if name != "" {
             effective_defs.add(name)
           }
@@ -150,19 +159,21 @@ fn collect_effective_def_names(
           continue
         }
       }
-      let mut j = i + 1
+      let mut j = scan
       while j < line.length() {
         let code = line.code_unit_at(j).to_int()
         let continue_name = (code >= 65 && code <= 90) ||
+          (code >= 97 && code <= 122) ||
           (code >= 48 && code <= 57) ||
-          code == 95
+          code == 95 ||
+          code == 124
         if !continue_name {
           break
         }
         j = j + 1
       }
-      if j > i + 1 {
-        effective_defs.add(line[i + 1:j].to_owned())
+      if j > scan {
+        effective_defs.add(line[scan:j].to_owned())
         i = j
         continue
       }
@@ -229,40 +240,92 @@ fn parse_bool_text(text : String) -> Bool? {
 }
 
 ///|
-fn parse_prefixed_identifier(line : String, prefix : String) -> String? {
-  let trimmed = line.trim().to_owned()
-  guard starts_with_text(trimmed, prefix) else { return None }
-  let name = trim_trailing_semicolons(
-    trimmed[prefix.length():trimmed.length()].to_owned(),
-  )
-  if name == "" {
+fn directive_identifier(text : String) -> String? {
+  let trimmed = trim_trailing_semicolons(text)
+  let mut i = 0
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    let is_ident = (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 48 && code <= 57) ||
+      code == 95 ||
+      code == 124
+    if !is_ident {
+      break
+    }
+    i = i + 1
+  }
+  if i == 0 {
     None
   } else {
-    Some(name)
+    Some(trimmed[:i].to_owned())
   }
 }
 
 ///|
-fn parse_if_operator_clause(
-  line : String,
-  prefix : String,
+fn parse_if_operator_expression(
+  expression : String,
 ) -> (String, String, String)? {
-  let trimmed = line.trim().to_owned()
-  guard starts_with_text(trimmed, prefix) else { return None }
-  let expression = trim_trailing_semicolons(
-    trimmed[prefix.length():trimmed.length()].to_owned(),
-  )
-  let parts : Array[String] = []
-  for part in expression.split(" ") {
-    let token = part.to_owned().trim().to_owned()
-    if token != "" {
-      parts.push(token)
+  let text = trim_trailing_semicolons(expression)
+  let mut i = 0
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    let is_ident = (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 48 && code <= 57) ||
+      code == 95 ||
+      code == 124
+    if !is_ident {
+      break
     }
+    i = i + 1
   }
-  if parts.length() != 3 {
+  guard i > 0 else { return None }
+  let def = text[:i].to_owned()
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let op_start = i
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 61 || code == 33 || code == 60 || code == 62 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let operator = text[op_start:i].to_owned()
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let value_start = i
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    let is_value = (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 48 && code <= 57) ||
+      code == 95 ||
+      code == 124 ||
+      code == 45
+    if !is_value {
+      break
+    }
+    i = i + 1
+  }
+  if value_start == i {
     return None
   }
-  Some((parts[0], parts[1], parts[2]))
+  Some((def, operator, text[value_start:i].to_owned()))
 }
 
 ///|
@@ -378,44 +441,56 @@ fn check_scope(
   scope : Scope?,
   offset : Int,
 ) -> (Bool, String?) raise PreprocessError {
-  if parse_prefixed_identifier(line, "#ifdef ") is Some(name) {
+  if hash_directive_tail(line, "ifdef") is Some(rest) &&
+    directive_identifier(rest) is Some(name) {
     let condition = shader_defs.contains(name)
     if scope is Some(scope_state) {
       scope_state.branch(false, condition, offset)
     }
     return (true, Some(name))
   }
-  if parse_prefixed_identifier(line, "#ifndef ") is Some(name) {
+  if hash_directive_tail(line, "ifndef") is Some(rest) &&
+    directive_identifier(rest) is Some(name) {
     let condition = !shader_defs.contains(name)
     if scope is Some(scope_state) {
       scope_state.branch(false, condition, offset)
     }
     return (true, Some(name))
   }
-  if parse_prefixed_identifier(line, "#else ifdef ") is Some(name) {
-    let condition = shader_defs.contains(name)
-    if scope is Some(scope_state) {
-      scope_state.branch(true, condition, offset)
+  if hash_directive_tail(line, "else") is Some(else_tail) {
+    if word_tail(else_tail, "ifdef") is Some(rest) &&
+      directive_identifier(rest) is Some(name) {
+      let condition = shader_defs.contains(name)
+      if scope is Some(scope_state) {
+        scope_state.branch(true, condition, offset)
+      }
+      return (true, Some(name))
     }
-    return (true, Some(name))
-  }
-  if parse_prefixed_identifier(line, "#else ifndef ") is Some(name) {
-    let condition = !shader_defs.contains(name)
-    if scope is Some(scope_state) {
-      scope_state.branch(true, condition, offset)
+    if word_tail(else_tail, "ifndef") is Some(rest) &&
+      directive_identifier(rest) is Some(name) {
+      let condition = !shader_defs.contains(name)
+      if scope is Some(scope_state) {
+        scope_state.branch(true, condition, offset)
+      }
+      return (true, Some(name))
     }
-    return (true, Some(name))
-  }
-  if parse_if_operator_clause(line, "#else if ") is Some((def, operator, value)) {
-    if scope is None {
+    if word_tail(else_tail, "if") is Some(expr) &&
+      parse_if_operator_expression(expr) is Some((def, operator, value)) {
+      if scope is None {
+        return (true, Some(def))
+      }
+      let condition = eval_if_condition(
+        shader_defs, def, operator, value, offset,
+      )
+      guard scope is Some(scope_state) else {
+        abort("unreachable missing scope")
+      }
+      scope_state.branch(true, condition, offset)
       return (true, Some(def))
     }
-    let condition = eval_if_condition(shader_defs, def, operator, value, offset)
-    guard scope is Some(scope_state) else { abort("unreachable missing scope") }
-    scope_state.branch(true, condition, offset)
-    return (true, Some(def))
   }
-  if parse_if_operator_clause(line, "#if ") is Some((def, operator, value)) {
+  if hash_directive_tail(line, "if") is Some(expr) &&
+    parse_if_operator_expression(expr) is Some((def, operator, value)) {
     if scope is None {
       return (true, Some(def))
     }
@@ -424,14 +499,13 @@ fn check_scope(
     scope_state.branch(false, condition, offset)
     return (true, Some(def))
   }
-  let trimmed = line.trim().to_owned()
-  if starts_with_text(trimmed, "#else") {
+  if hash_directive_tail(line, "else") is Some(_) {
     if scope is Some(scope_state) {
       scope_state.branch(true, true, offset)
     }
     return (true, None)
   }
-  if starts_with_text(trimmed, "#endif") {
+  if hash_directive_tail(line, "endif") is Some(_) {
     if scope is Some(scope_state) {
       scope_state.pop(offset)
     }
@@ -490,7 +564,8 @@ fn replace_shader_defs_in_line(
       let is_ident = (code >= 65 && code <= 90) ||
         (code >= 97 && code <= 122) ||
         (code >= 48 && code <= 57) ||
-        code == 95
+        code == 95 ||
+        code == 124
       if !is_ident {
         break
       }
@@ -632,11 +707,11 @@ pub fn Preprocessor::preprocess(
     } else {
       let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
       if is_scope ||
-        starts_with_text(trimmed, "#define_import_path ") ||
-        starts_with_text(trimmed, "#define ") {
+        hash_directive_tail(trimmed, "define_import_path") is Some(_) ||
+        hash_directive_tail(trimmed, "define") is Some(_) {
         ()
       } else if scope.active() {
-        if starts_with_text(trimmed, "#import ") {
+        if hash_directive_tail(trimmed, "import") is Some(_) {
           let mut import_lines = ""
           let mut open_count = 0
           let initial_offset = offset
@@ -747,7 +822,7 @@ fn try_get_preprocessor_metadata(
       if def is Some(def_name) {
         effective_defs.add(def_name)
       }
-    } else if starts_with_text(trimmed, "#import ") {
+    } else if hash_directive_tail(trimmed, "import") is Some(_) {
       let mut import_lines = "\{line}\n"
       let mut open_count = import_brace_balance(line)
       let initial_offset = offset
@@ -767,15 +842,14 @@ fn try_get_preprocessor_metadata(
             initial_offset + line_offset,
           )
       }
-    } else if starts_with_text(trimmed, "#define_import_path ") {
-      let raw_name = trimmed[20:trimmed.length()].to_owned()
+    } else if hash_directive_tail(trimmed, "define_import_path")
+      is Some(raw_name) {
       let import_path = trim_trailing_semicolons(raw_name)
       if import_path != "" {
         name = Some(import_path)
       }
-    } else if starts_with_text(trimmed, "#define ") {
+    } else if hash_directive_tail(trimmed, "define") is Some(raw_define) {
       if allow_defines {
-        let raw_define = trimmed[8:trimmed.length()].to_owned()
         let (define_name, define_value) = split_define_name_and_value(
           raw_define,
         )

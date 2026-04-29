@@ -14,6 +14,7 @@ using @common {
 ///|
 using @syntax {
   type DeclaredImportBinding,
+  hash_directive_tail,
   import_brace_balance,
   parse_imports,
   replace_comments,
@@ -21,4 +22,5 @@ using @syntax {
   starts_with_text,
   substitute_identifiers,
   trim_trailing_semicolons,
+  word_tail,
 }

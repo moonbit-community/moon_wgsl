@@ -433,10 +433,8 @@ fn strip_wgsl_line_comment(text : String) -> String {
 }
 
 ///|
-fn wgsl_directive_tail(text : String, prefix_length : Int) -> String {
-  strip_wgsl_line_comment(text[prefix_length:text.length()].to_owned())
-  .trim()
-  .to_owned()
+fn wgsl_clean_directive_tail(text : String) -> String {
+  strip_wgsl_line_comment(text).trim().to_owned()
 }
 
 ///|
@@ -637,34 +635,35 @@ pub fn apply_wgsl_ifdefs(
   for line_item in source.split("\n") {
     let line = line_item.to_owned()
     let trimmed = line.trim().to_owned()
-    if starts_with_text(trimmed, "#ifdef ") {
-      let name = wgsl_directive_tail(trimmed, 7)
+    if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
+      let name = wgsl_clean_directive_tail(tail)
       let cond = wgsl_define_enabled(defines, value_defines, name)
       let parent = active_stack[active_stack.length() - 1]
       active_stack.push(parent && cond)
       branch_taken_stack.push(cond)
       continue
     }
-    if starts_with_text(trimmed, "#ifndef ") {
-      let name = wgsl_directive_tail(trimmed, 8)
+    if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
+      let name = wgsl_clean_directive_tail(tail)
       let cond = !wgsl_define_enabled(defines, value_defines, name)
       let parent = active_stack[active_stack.length() - 1]
       active_stack.push(parent && cond)
       branch_taken_stack.push(cond)
       continue
     }
-    if starts_with_text(trimmed, "#if ") {
-      let expr = wgsl_directive_tail(trimmed, 4)
+    if hash_directive_tail(trimmed, "if") is Some(tail) {
+      let expr = wgsl_clean_directive_tail(tail)
       let cond = eval_wgsl_if_expr(expr, defines, value_defines)
       let parent = active_stack[active_stack.length() - 1]
       active_stack.push(parent && cond)
       branch_taken_stack.push(cond)
       continue
     }
-    if starts_with_text(trimmed, "#else ifdef ") {
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "ifdef") is Some(tail) {
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
-        let name = wgsl_directive_tail(trimmed, 13)
+        let name = wgsl_clean_directive_tail(tail)
         let cond = !branch_taken_stack[idx] &&
           wgsl_define_enabled(defines, value_defines, name)
         let parent = wgsl_parent_active(active_stack)
@@ -673,10 +672,11 @@ pub fn apply_wgsl_ifdefs(
       }
       continue
     }
-    if starts_with_text(trimmed, "#else ifndef ") {
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "ifndef") is Some(tail) {
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
-        let name = wgsl_directive_tail(trimmed, 14)
+        let name = wgsl_clean_directive_tail(tail)
         let cond = !branch_taken_stack[idx] &&
           !wgsl_define_enabled(defines, value_defines, name)
         let parent = wgsl_parent_active(active_stack)
@@ -685,7 +685,19 @@ pub fn apply_wgsl_ifdefs(
       }
       continue
     }
-    if starts_with_text(trimmed, "#else") {
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "if") is Some(tail) {
+      if branch_taken_stack.length() > 0 {
+        let idx = branch_taken_stack.length() - 1
+        let cond = !branch_taken_stack[idx] &&
+          eval_wgsl_if_expr(tail, defines, value_defines)
+        let parent = wgsl_parent_active(active_stack)
+        active_stack[active_stack.length() - 1] = parent && cond
+        branch_taken_stack[idx] = branch_taken_stack[idx] || cond
+      }
+      continue
+    }
+    if hash_directive_tail(trimmed, "else") is Some(_) {
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
         let cond = !branch_taken_stack[idx]
@@ -695,7 +707,7 @@ pub fn apply_wgsl_ifdefs(
       }
       continue
     }
-    if starts_with_text(trimmed, "#endif") {
+    if hash_directive_tail(trimmed, "endif") is Some(_) {
       if active_stack.length() > 1 {
         active_stack.pop() |> ignore
       }
@@ -1435,8 +1447,8 @@ fn Composer::preprocess_wgsl_source_with_path(
   while line_index < lines.length() {
     let line = lines[line_index]
     let trimmed = line.trim().to_owned()
-    if starts_with_text(trimmed, "#ifdef ") {
-      let name = wgsl_directive_tail(trimmed, 7)
+    if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
+      let name = wgsl_clean_directive_tail(tail)
       let cond = wgsl_define_enabled(
         session.defines,
         session.value_defines,
@@ -1449,8 +1461,8 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#ifndef ") {
-      let name = wgsl_directive_tail(trimmed, 8)
+    if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
+      let name = wgsl_clean_directive_tail(tail)
       let cond = !wgsl_define_enabled(
         session.defines,
         session.value_defines,
@@ -1463,8 +1475,8 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#if ") {
-      let expr = wgsl_directive_tail(trimmed, 4)
+    if hash_directive_tail(trimmed, "if") is Some(tail) {
+      let expr = wgsl_clean_directive_tail(tail)
       let cond = eval_wgsl_if_expr(expr, session.defines, session.value_defines)
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
@@ -1473,10 +1485,11 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#else ifdef ") {
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "ifdef") is Some(tail) {
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
-        let name = wgsl_directive_tail(trimmed, 13)
+        let name = wgsl_clean_directive_tail(tail)
         let cond = !import_branch_taken_stack[idx] &&
           wgsl_define_enabled(session.defines, session.value_defines, name)
         let parent = wgsl_parent_active(import_active_stack)
@@ -1487,10 +1500,11 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#else ifndef ") {
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "ifndef") is Some(tail) {
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
-        let name = wgsl_directive_tail(trimmed, 14)
+        let name = wgsl_clean_directive_tail(tail)
         let cond = !import_branch_taken_stack[idx] &&
           !wgsl_define_enabled(session.defines, session.value_defines, name)
         let parent = wgsl_parent_active(import_active_stack)
@@ -1501,7 +1515,21 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#else") {
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "if") is Some(tail) {
+      if import_branch_taken_stack.length() > 0 {
+        let idx = import_branch_taken_stack.length() - 1
+        let cond = !import_branch_taken_stack[idx] &&
+          eval_wgsl_if_expr(tail, session.defines, session.value_defines)
+        let parent = wgsl_parent_active(import_active_stack)
+        import_active_stack[import_active_stack.length() - 1] = parent && cond
+        import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
+      }
+      merged = "\{merged}\{line}\n"
+      line_index = line_index + 1
+      continue
+    }
+    if hash_directive_tail(trimmed, "else") is Some(_) {
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
         let cond = !import_branch_taken_stack[idx]
@@ -1513,7 +1541,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#endif") {
+    if hash_directive_tail(trimmed, "endif") is Some(_) {
       if import_active_stack.length() > 1 {
         import_active_stack.pop() |> ignore
       }
@@ -1524,17 +1552,17 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#define_import_path") {
+    if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
       line_index = line_index + 1
       continue
     }
-    if starts_with_text(trimmed, "#import ") {
+    if hash_directive_tail(trimmed, "import") is Some(import_tail) {
       if !import_active_stack[import_active_stack.length() - 1] {
         merged = "\{merged}\{line}\n"
         line_index = line_index + 1
         continue
       }
-      let mut spec = trimmed[8:trimmed.length()].to_owned()
+      let mut spec = import_tail
       let mut brace_balance = import_brace_balance(spec)
       while brace_balance > 0 && line_index + 1 < lines.length() {
         line_index = line_index + 1

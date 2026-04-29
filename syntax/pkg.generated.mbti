@@ -11,6 +11,8 @@ pub fn code_unit_to_string(Int) -> String
 
 pub fn decorate(String) -> String
 
+pub fn hash_directive_tail(String, String) -> String?
+
 pub fn import_brace_balance(String) -> Int
 
 pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise ParseImportsError
@@ -36,6 +38,8 @@ pub fn tokenizer_identifier_continue(Int) -> Bool
 pub fn tokenizer_identifier_start(Int) -> Bool
 
 pub fn trim_trailing_semicolons(String) -> String
+
+pub fn word_tail(String, String) -> String?
 
 // Errors
 pub(all) suberror ParseImportsError {

@@ -226,16 +226,14 @@ pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
       i = i + 1
       continue
     }
-    if starts_with_text(trimmed, "#define_import_path") {
+    if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
       i = i + 1
       continue
     }
-    if starts_with_text(trimmed, "#import ") {
+    if hash_directive_tail(trimmed, "import") is Some(import_tail) {
       let block_start = line_starts[i]
       let mut import_block = line
-      let mut balance = import_brace_balance(
-        trimmed[8:trimmed.length()].to_owned(),
-      )
+      let mut balance = import_brace_balance(import_tail)
       while balance > 0 && i + 1 < lines.length() {
         i = i + 1
         let next_line = lines[i]
@@ -454,14 +452,12 @@ pub fn strip_wgsl_import_declarations(source : String) -> String {
   while index < lines.length() {
     let line = lines[index]
     let trimmed = line.trim().to_owned()
-    if starts_with_text(trimmed, "#define_import_path") {
+    if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
       index = index + 1
       continue
     }
-    if starts_with_text(trimmed, "#import ") {
-      let mut brace_balance = import_brace_balance(
-        trimmed[8:trimmed.length()].to_owned(),
-      )
+    if hash_directive_tail(trimmed, "import") is Some(import_tail) {
+      let mut brace_balance = import_brace_balance(import_tail)
       while brace_balance > 0 && index + 1 < lines.length() {
         index = index + 1
         brace_balance = brace_balance + import_brace_balance(lines[index])
