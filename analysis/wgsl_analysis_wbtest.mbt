@@ -40,3 +40,17 @@ test "same-line attributed entry points stay reachable" {
   debug_inspect(extracted.contains("struct Output"), content="true")
   debug_inspect(extracted.contains("fn helper"), content="false")
 }
+
+///|
+test "commented entry point attributes do not mark functions as entry points" {
+  let source =
+    #|// @fragment belongs to a comment, not to helper.
+    #|fn helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+  debug_inspect(
+    wgsl_source_declares_entry_point(source, "helper"),
+    content="false",
+  )
+}
