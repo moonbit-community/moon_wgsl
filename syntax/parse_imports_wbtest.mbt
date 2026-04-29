@@ -47,6 +47,10 @@ test "naga_oil wb: parse_imports matches upstream grouped nested imports" {
     ),
     content="\"d=a::b::c::d\\ne=a::b::c::e\\nf=a::b::f\\ni=a::b::g::h\\nm=a::b::g::j::k::l\"",
   )
+  debug_inspect(
+    parse_imports_snapshot("#import a::b::{c::{d, e}, f, g::{h as i, j}}\n"),
+    content="\"d=a::b::c::d\\ne=a::b::c::e\\nf=a::b::f\\ni=a::b::g::h\\nj=a::b::g::j\"",
+  )
 }
 
 ///|

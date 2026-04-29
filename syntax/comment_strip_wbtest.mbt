@@ -33,6 +33,10 @@ test "naga_oil wb: comment stripping ignores comment markers inside quotes" {
     replace_comments(source),
     content="\"#import \\\"embedded:/* */ /* /**/* / / /// * / //*/*/ / */*file.wgsl\\\"\"",
   )
+  debug_inspect(
+    replace_comments("/* #import \"embedded:*/file.wgsl\" */"),
+    content="\"                       file.wgsl\\\" */\"",
+  )
 }
 
 ///|
@@ -46,6 +50,12 @@ test "naga_oil wb: comment stripping preserves line width around block comments"
   debug_inspect(
     replace_comments("1.0 /* block comment 1 *//* block comment 2 */ * 2.0"),
     content="\"1.0                                            * 2.0\"",
+  )
+  debug_inspect(
+    replace_comments(
+      "1.0 /* block comment with real line comment after */// line comment",
+    ),
+    content="\"1.0                                                                \"",
   )
 }
 
