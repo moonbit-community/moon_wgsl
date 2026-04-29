@@ -680,9 +680,10 @@ test "naga_oil: wgsl directives accept upstream whitespace forms" {
 ///|
 test "naga_oil: directive section ends on non-directive identifier prefix" {
   let metadata = @moon_wgsl.get_preprocessor_metadata(
-    "enable_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+    "enable_extra();\ndiagnostic_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="0")
+  debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="0")
   debug_inspect(metadata.cleaned_source.contains("enable f16;"), content="true")
 }
 

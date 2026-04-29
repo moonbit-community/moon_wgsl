@@ -300,71 +300,44 @@ fn parse_glsl_version_directive(line : String) -> String? {
 ///|
 fn semicolon_directive_body(line : String, keyword : String) -> String? {
   let trimmed = line.trim().to_owned()
-  guard trimmed.has_prefix(keyword) else { return None }
-  guard trimmed.length() > keyword.length() else { return None }
-  let mut i = keyword.length()
-  let first_space = trimmed.code_unit_at(i).to_int()
-  guard first_space == 32 || first_space == 9 else { return None }
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
+  let tokens = tokenize(trimmed, false)
+  match tokens {
+    [Token::Identifier(actual, start), ..] if actual == keyword && start == 0 => {
+      let body_start = keyword.length()
+      for token in tokens {
+        match token {
+          Token::Other(59, semicolon_pos) =>
+            if semicolon_pos > body_start {
+              return Some(
+                trimmed[body_start:semicolon_pos].to_owned().trim().to_owned(),
+              )
+            } else {
+              return None
+            }
+          _ => ()
+        }
+      }
+      None
     }
-    break
+    _ => None
   }
-  let start = i
-  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 59 { // ';'
-    i = i + 1
-  }
-  guard i < trimmed.length() else { return None }
-  Some(trimmed[start:i].to_owned().trim().to_owned())
 }
 
 ///|
 fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
-  let trimmed = line.trim().to_owned()
-  let keyword = "diagnostic"
-  guard trimmed.has_prefix(keyword) else { return None }
-  let mut i = keyword.length()
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
-    }
-    break
+  match tokenize(line.trim().to_owned(), false) {
+    [
+      Token::Identifier("diagnostic", 0),
+      Token::Other(40, _),
+      Token::Identifier(severity, _),
+      Token::Other(44, _),
+      Token::Identifier(rule, _),
+      Token::Other(41, _),
+      Token::Other(59, _),
+      ..,
+    ] => Some((severity, rule))
+    _ => None
   }
-  guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 40 else {
-    return None
-  }
-  i = i + 1
-  let severity_start = i
-  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 44 { // ','
-    i = i + 1
-  }
-  guard i < trimmed.length() else { return None }
-  let severity = trimmed[severity_start:i].to_owned().trim().to_owned()
-  i = i + 1
-  let rule_start = i
-  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 41 { // ')'
-    i = i + 1
-  }
-  guard i < trimmed.length() else { return None }
-  let rule = trimmed[rule_start:i].to_owned().trim().to_owned()
-  i = i + 1
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 59 else {
-    return None
-  }
-  Some((severity, rule))
 }
 
 ///|
