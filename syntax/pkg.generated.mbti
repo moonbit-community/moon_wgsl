@@ -17,6 +17,8 @@ pub fn import_brace_balance(String) -> Int
 
 pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise ParseImportsError
 
+pub fn parse_wgsl_directive_line(String) -> WgslDirective?
+
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
 
 pub fn parse_wgsl_import_targets_from_tokens(String, Bool, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
@@ -77,6 +79,28 @@ pub(all) enum Token {
 } derive(Eq, @debug.Debug)
 pub fn Token::identifier(Self) -> String?
 pub fn Token::pos(Self) -> Int
+
+pub(all) struct WgslDirective {
+  kind : WgslDirectiveKind
+  name : String
+  tail : String
+  text : String
+}
+
+pub(all) enum WgslDirectiveKind {
+  Ifdef
+  Ifndef
+  If
+  Else
+  Endif
+  DefineImportPath
+  Define
+  Import
+  Enable
+  Requires
+  Diagnostic
+  Other(String)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct WgslTopLevelItem {
   kind : WgslTopLevelKind

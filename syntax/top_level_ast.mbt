@@ -274,52 +274,63 @@ pub fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
       i = i + 1
       continue
     }
-    if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
-      top_level_push_trivia_item(items, pending_prefix, pending_prefix_start)
-      pending_prefix.clear()
-      top_level_push_directive_item(
-        items,
-        WgslTopLevelKind::DefineImportPath,
-        line,
-        line_starts[i],
-      )
-      i = i + 1
-      continue
-    }
-    if hash_directive_tail(trimmed, "define") is Some(_) {
-      top_level_push_trivia_item(items, pending_prefix, pending_prefix_start)
-      pending_prefix.clear()
-      top_level_push_directive_item(
-        items,
-        WgslTopLevelKind::Define,
-        line,
-        line_starts[i],
-      )
-      i = i + 1
-      continue
-    }
-    if hash_directive_tail(trimmed, "import") is Some(import_tail) {
-      top_level_push_trivia_item(items, pending_prefix, pending_prefix_start)
-      pending_prefix.clear()
-      let block_start = line_starts[i]
-      let mut import_block = line
-      let mut balance = import_brace_balance(import_tail)
-      while balance > 0 && i + 1 < lines.length() {
-        i = i + 1
-        let next_line = lines[i]
-        import_block = "\{import_block}\n\{next_line}"
-        balance = balance + import_brace_balance(cleaned_lines[i])
+    if parse_wgsl_directive_line(trimmed) is Some(directive) {
+      match directive.kind {
+        WgslDirectiveKind::DefineImportPath => {
+          top_level_push_trivia_item(
+            items, pending_prefix, pending_prefix_start,
+          )
+          pending_prefix.clear()
+          top_level_push_directive_item(
+            items,
+            WgslTopLevelKind::DefineImportPath,
+            line,
+            line_starts[i],
+          )
+          i = i + 1
+          continue
+        }
+        WgslDirectiveKind::Define => {
+          top_level_push_trivia_item(
+            items, pending_prefix, pending_prefix_start,
+          )
+          pending_prefix.clear()
+          top_level_push_directive_item(
+            items,
+            WgslTopLevelKind::Define,
+            line,
+            line_starts[i],
+          )
+          i = i + 1
+          continue
+        }
+        WgslDirectiveKind::Import => {
+          top_level_push_trivia_item(
+            items, pending_prefix, pending_prefix_start,
+          )
+          pending_prefix.clear()
+          let block_start = line_starts[i]
+          let mut import_block = line
+          let mut balance = import_brace_balance(directive.tail)
+          while balance > 0 && i + 1 < lines.length() {
+            i = i + 1
+            let next_line = lines[i]
+            import_block = "\{import_block}\n\{next_line}"
+            balance = balance + import_brace_balance(cleaned_lines[i])
+          }
+          import_block = "\{import_block}\n"
+          items.push(WgslTopLevelItem::{
+            kind: WgslTopLevelKind::Import,
+            name: "",
+            text: import_block,
+            start: block_start,
+            end: block_start + import_block.length(),
+          })
+          i = i + 1
+          continue
+        }
+        _ => ()
       }
-      import_block = "\{import_block}\n"
-      items.push(WgslTopLevelItem::{
-        kind: WgslTopLevelKind::Import,
-        name: "",
-        text: import_block,
-        start: block_start,
-        end: block_start + import_block.length(),
-      })
-      i = i + 1
-      continue
     }
 
     let block_lines : Array[String] = []

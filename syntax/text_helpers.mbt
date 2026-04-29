@@ -111,12 +111,83 @@ pub fn word_tail(text : String, word : String) -> String? {
 }
 
 ///|
-pub fn hash_directive_tail(line : String, directive : String) -> String? {
+pub(all) enum WgslDirectiveKind {
+  Ifdef
+  Ifndef
+  If
+  Else
+  Endif
+  DefineImportPath
+  Define
+  Import
+  Enable
+  Requires
+  Diagnostic
+  Other(String)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct WgslDirective {
+  kind : WgslDirectiveKind
+  name : String
+  tail : String
+  text : String
+}
+
+///|
+fn wgsl_directive_kind_from_name(name : String) -> WgslDirectiveKind {
+  match name {
+    "ifdef" => WgslDirectiveKind::Ifdef
+    "ifndef" => WgslDirectiveKind::Ifndef
+    "if" => WgslDirectiveKind::If
+    "else" => WgslDirectiveKind::Else
+    "endif" => WgslDirectiveKind::Endif
+    "define_import_path" => WgslDirectiveKind::DefineImportPath
+    "define" => WgslDirectiveKind::Define
+    "import" => WgslDirectiveKind::Import
+    "enable" => WgslDirectiveKind::Enable
+    "requires" => WgslDirectiveKind::Requires
+    "diagnostic" => WgslDirectiveKind::Diagnostic
+    _ => WgslDirectiveKind::Other(name)
+  }
+}
+
+///|
+pub fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
   let trimmed = line.trim().to_owned()
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else { // '#'
+  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
     return None
   }
-  word_tail(trimmed[1:trimmed.length()].to_owned(), directive)
+  let body = trimmed[1:trimmed.length()].to_owned().trim().to_owned()
+  let mut end = 0
+  while end < body.length() &&
+        identifier_code_unit(body.code_unit_at(end).to_int()) {
+    end = end + 1
+  }
+  if end == 0 {
+    return None
+  }
+  let name = body[:end].to_owned()
+  let tail = body[end:body.length()].to_owned().trim().to_owned()
+  Some(WgslDirective::{
+    kind: wgsl_directive_kind_from_name(name),
+    name,
+    tail,
+    text: trimmed,
+  })
+}
+
+///|
+pub fn hash_directive_tail(line : String, directive : String) -> String? {
+  match parse_wgsl_directive_line(line) {
+    Some(parsed) =>
+      if parsed.name == directive {
+        Some(parsed.tail)
+      } else {
+        None
+      }
+    None => None
+  }
 }
 
 ///|
