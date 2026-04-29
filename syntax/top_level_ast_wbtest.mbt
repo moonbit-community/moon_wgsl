@@ -86,3 +86,13 @@ test "top-level AST recognizes same-line attributed declarations" {
   debug_inspect(items[1].name, content="\"view\"")
   debug_inspect(items[2].name, content="\"exposure\"")
 }
+
+///|
+test "top-level AST does not treat attribute arguments as declarations" {
+  let source = "@diagnostic(off, fn) struct Output {\n" +
+    "  value: u32,\n" +
+    "}\n"
+  let items = parse_wgsl_top_level_items(source)
+  debug_inspect(items.length(), content="1")
+  debug_inspect(items[0].name, content="\"Output\"")
+}

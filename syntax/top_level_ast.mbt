@@ -49,97 +49,52 @@ fn top_level_identifier_char(code : Int) -> Bool {
 }
 
 ///|
-fn top_level_text_has_prefix_at(
-  text : String,
-  offset : Int,
-  prefix : String,
-) -> Bool {
-  if offset < 0 || offset + prefix.length() > text.length() {
-    return false
-  }
-  let mut i = 0
-  while i < prefix.length() {
-    if text.code_unit_at(offset + i).to_int() != prefix.code_unit_at(i).to_int() {
-      return false
-    }
-    i = i + 1
-  }
-  true
-}
-
-///|
-fn top_level_keyword_at(text : String, offset : Int, keyword : String) -> Bool {
-  if !top_level_text_has_prefix_at(text, offset, keyword) {
-    return false
-  }
-  let before_ok = offset == 0 ||
-    !top_level_identifier_char(text.code_unit_at(offset - 1).to_int())
-  let after = offset + keyword.length()
-  let after_ok = after >= text.length() ||
-    !top_level_identifier_char(text.code_unit_at(after).to_int())
-  before_ok && after_ok
-}
-
-///|
-fn top_level_find_keyword(text : String, keyword : String) -> Int? {
-  let mut i = 0
-  while i < text.length() {
-    if top_level_keyword_at(text, i, keyword) {
-      return Some(i)
-    }
-    i = i + 1
-  }
-  None
-}
-
-///|
 fn top_level_declaration_after_attribute(trimmed : String) -> String {
-  if top_level_find_keyword(trimmed, "virtual fn") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
+  let mut i = 0
+  while i < trimmed.length() {
+    while i < trimmed.length() {
+      let code = trimmed.code_unit_at(i).to_int()
+      if code == 32 || code == 9 {
+        i = i + 1
+      } else {
+        break
+      }
+    }
+    if i >= trimmed.length() || trimmed.code_unit_at(i).to_int() != 64 {
+      break
+    }
+    i = i + 1
+    while i < trimmed.length() &&
+          top_level_identifier_char(trimmed.code_unit_at(i).to_int()) {
+      i = i + 1
+    }
+    while i < trimmed.length() {
+      let code = trimmed.code_unit_at(i).to_int()
+      if code == 32 || code == 9 {
+        i = i + 1
+      } else {
+        break
+      }
+    }
+    if i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 40 {
+      let mut depth = 1
+      i = i + 1
+      while i < trimmed.length() && depth > 0 {
+        let code = trimmed.code_unit_at(i).to_int()
+        if code == 40 {
+          depth = depth + 1
+        } else if code == 41 {
+          depth = depth - 1
+        }
+        i = i + 1
+      }
+    }
   }
-  if top_level_find_keyword(trimmed, "override fn") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
+  if i >= trimmed.length() {
+    ""
+  } else {
+    top_level_declaration_name(trimmed[i:trimmed.length()].to_owned())
   }
-  if top_level_find_keyword(trimmed, "struct") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
-  }
-  if top_level_find_keyword(trimmed, "fn") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
-  }
-  if top_level_find_keyword(trimmed, "const") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
-  }
-  if top_level_find_keyword(trimmed, "override") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
-  }
-  if top_level_find_keyword(trimmed, "alias") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
-  }
-  if top_level_find_keyword(trimmed, "type") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
-  }
-  if top_level_find_keyword(trimmed, "var") is Some(offset) {
-    return top_level_declaration_name(
-      trimmed[offset:trimmed.length()].to_owned(),
-    )
-  }
-  ""
 }
 
 ///|
