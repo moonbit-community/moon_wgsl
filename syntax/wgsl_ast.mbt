@@ -38,12 +38,38 @@ pub(all) struct WgslFunctionResult {
 } derive(Debug)
 
 ///|
+pub(all) enum WgslStatementKind {
+  LocalDecl
+  Block
+  If
+  Switch
+  Loop
+  Break
+  Continue
+  Return
+  ConstAssert
+  Raw
+} derive(Eq, Debug)
+
+///|
+pub(all) struct WgslStatement {
+  kind : WgslStatementKind
+  text : String
+} derive(Debug)
+
+///|
+pub(all) struct WgslBlock {
+  statements : Array[WgslStatement]
+} derive(Debug)
+
+///|
 pub(all) struct WgslFunction {
   attributes : Array[WgslAttribute]
   qualifier : String
   name : WgslIdent
   arguments : Array[WgslFunctionArgument]
   result : WgslFunctionResult?
+  body : WgslBlock
 } derive(Debug)
 
 ///|
@@ -354,6 +380,117 @@ fn WgslDeclParser::parse_function_result(
 }
 
 ///|
+fn wgsl_statement_kind_from_text(text : String) -> WgslStatementKind {
+  let trimmed = text.trim().to_owned()
+  if trimmed == "" {
+    return WgslStatementKind::Raw
+  }
+  if starts_with_text(trimmed, "var") ||
+    starts_with_text(trimmed, "let") ||
+    starts_with_text(trimmed, "const") {
+    return WgslStatementKind::LocalDecl
+  }
+  if starts_with_text(trimmed, "if") {
+    return WgslStatementKind::If
+  }
+  if starts_with_text(trimmed, "switch") {
+    return WgslStatementKind::Switch
+  }
+  if starts_with_text(trimmed, "loop") ||
+    starts_with_text(trimmed, "for") ||
+    starts_with_text(trimmed, "while") {
+    return WgslStatementKind::Loop
+  }
+  if starts_with_text(trimmed, "break") {
+    return WgslStatementKind::Break
+  }
+  if starts_with_text(trimmed, "continue") {
+    return WgslStatementKind::Continue
+  }
+  if starts_with_text(trimmed, "return") {
+    return WgslStatementKind::Return
+  }
+  if starts_with_text(trimmed, "const_assert") {
+    return WgslStatementKind::ConstAssert
+  }
+  WgslStatementKind::Raw
+}
+
+///|
+fn WgslDeclParser::collect_statement_text(self : WgslDeclParser) -> String {
+  let parts : Array[Token] = []
+  let mut brace_depth = 0
+  let mut paren_depth = 0
+  while true {
+    match self.view() {
+      [Token::Other(123, _), .. rest] => {
+        brace_depth = brace_depth + 1
+        parts.push(Token::Other(123, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(125, _), ..] if brace_depth == 0 => break
+      [Token::Other(125, _), .. rest] => {
+        brace_depth = brace_depth - 1
+        parts.push(Token::Other(125, 0))
+        self.update_view(rest)
+        if brace_depth == 0 {
+          break
+        }
+        continue
+      }
+      [Token::Other(40, _), .. rest] => {
+        paren_depth = paren_depth + 1
+        parts.push(Token::Other(40, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(41, _), .. rest] => {
+        paren_depth = paren_depth - 1
+        parts.push(Token::Other(41, 0))
+        self.update_view(rest)
+        continue
+      }
+      [Token::Other(59, _), .. rest] if brace_depth == 0 && paren_depth == 0 => {
+        parts.push(Token::Other(59, 0))
+        self.update_view(rest)
+        break
+      }
+      [token, .. rest] => {
+        parts.push(token)
+        self.update_view(rest)
+        continue
+      }
+      [] => break
+    }
+  }
+  wgsl_ast_tokens_text(parts).trim().to_owned()
+}
+
+///|
+fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
+  let statements : Array[WgslStatement] = []
+  if !self.consume_if_other(123) {
+    return WgslBlock::{ statements, }
+  }
+  while true {
+    if self.consume_if_other(125) {
+      break
+    }
+    let text = self.collect_statement_text()
+    if text != "" {
+      statements.push(WgslStatement::{
+        kind: wgsl_statement_kind_from_text(text),
+        text,
+      })
+    } else if self.view() is [] {
+      break
+    }
+  }
+  WgslBlock::{ statements, }
+}
+
+///|
 fn WgslDeclParser::parse_function(
   self : WgslDeclParser,
   attributes : Array[WgslAttribute],
@@ -365,12 +502,14 @@ fn WgslDeclParser::parse_function(
   }
   let arguments = self.parse_function_arguments()
   let result = self.parse_function_result()
+  let body = self.parse_block()
   Some(WgslFunction::{
     attributes,
     qualifier,
     name: WgslIdent::{ name, },
     arguments,
     result,
+    body,
   })
 }
 

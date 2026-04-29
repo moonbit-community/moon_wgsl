@@ -91,6 +91,10 @@ pub(all) struct WgslAttribute {
   arguments : String
 } derive(@debug.Debug)
 
+pub(all) struct WgslBlock {
+  statements : Array[WgslStatement]
+} derive(@debug.Debug)
+
 pub(all) struct WgslConst {
   name : WgslIdent
   ty : String?
@@ -124,6 +128,7 @@ pub(all) struct WgslFunction {
   name : WgslIdent
   arguments : Array[WgslFunctionArgument]
   result : WgslFunctionResult?
+  body : WgslBlock
 } derive(@debug.Debug)
 
 pub(all) struct WgslFunctionArgument {
@@ -187,6 +192,24 @@ pub(all) struct WgslOverride {
   name : WgslIdent
   ty : String?
 } derive(@debug.Debug)
+
+pub(all) struct WgslStatement {
+  kind : WgslStatementKind
+  text : String
+} derive(@debug.Debug)
+
+pub(all) enum WgslStatementKind {
+  LocalDecl
+  Block
+  If
+  Switch
+  Loop
+  Break
+  Continue
+  Return
+  ConstAssert
+  Raw
+} derive(Eq, @debug.Debug)
 
 pub(all) struct WgslStruct {
   attributes : Array[WgslAttribute]

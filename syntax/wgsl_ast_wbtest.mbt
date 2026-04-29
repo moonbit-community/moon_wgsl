@@ -86,4 +86,31 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   }
   debug_inspect(result.attributes[0].name, content="\"location\"")
   debug_inspect(result.ty, content="\"vec4<f32>\"")
+  debug_inspect(function.body.statements.length(), content="1")
+  debug_inspect(function.body.statements[0].kind, content="Return")
+}
+
+///|
+test "WGSL function payload exposes source-preserving statement AST" {
+  let source =
+    #|fn demo(value: u32) -> u32 {
+    #|  var local: u32 = value;
+    #|  if (local > 0u) {
+    #|    return local;
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  debug_inspect(function.body.statements.length(), content="3")
+  debug_inspect(function.body.statements[0].kind, content="LocalDecl")
+  debug_inspect(function.body.statements[1].kind, content="If")
+  debug_inspect(function.body.statements[2].kind, content="Return")
+  debug_inspect(
+    function.body.statements[1].text.contains("returnlocal;"),
+    content="true",
+  )
 }
