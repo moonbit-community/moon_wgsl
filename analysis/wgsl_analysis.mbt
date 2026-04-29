@@ -110,20 +110,10 @@ fn collect_wgsl_dependency_text_fragment(
         if ident.contains("\"") {
           continue
         }
-        let segments : Array[String] = []
-        for raw_segment in ident.split("::") {
-          let segment = raw_segment.to_owned().trim().to_owned()
-          if segment != "" {
-            segments.push(segment)
-          }
+        let dependency_name = match split_last_identifier(ident) {
+          Some((_, suffix)) => suffix
+          None => ident
         }
-        if segments.length() == 0 {
-          if ident != self_name && declaration_names.contains(ident) {
-            wgsl_string_list_push_unique(dependencies, ident)
-          }
-          continue
-        }
-        let dependency_name = segments[segments.length() - 1]
         if dependency_name != self_name &&
           declaration_names.contains(dependency_name) {
           wgsl_string_list_push_unique(dependencies, dependency_name)
