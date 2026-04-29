@@ -90,6 +90,26 @@ fn top_level_lines_have_text(lines : Array[String]) -> Bool {
 }
 
 ///|
+fn top_level_line_starts_with_attribute(cleaned_line : String) -> Bool {
+  match tokenize(cleaned_line.trim().to_owned(), false) {
+    [Token::Other(64, _), ..] => true
+    _ => false
+  }
+}
+
+///|
+fn top_level_line_ends_with_semicolon(cleaned_line : String) -> Bool {
+  let tokens = tokenize(cleaned_line.trim().to_owned(), false)
+  if tokens.length() == 0 {
+    return false
+  }
+  match tokens[tokens.length() - 1] {
+    Token::Other(59, _) => true
+    _ => false
+  }
+}
+
+///|
 priv struct WgslTopLevelLine {
   text : String
   cleaned : String
@@ -246,7 +266,7 @@ fn WgslTopLevelParser::parse_declaration_item(
     let done = if saw_brace {
       brace_depth == 0
     } else {
-      block_trimmed.has_suffix(";")
+      top_level_line_ends_with_semicolon(block_trimmed)
     }
     if done {
       break
@@ -276,7 +296,7 @@ fn WgslTopLevelParser::parse_items(
         let trimmed = line.cleaned.trim().to_owned()
         if trimmed == "" ||
           (
-            starts_with_text(trimmed, "@") &&
+            top_level_line_starts_with_attribute(trimmed) &&
             parse_wgsl_declaration_name(trimmed) == ""
           ) {
           self.push_pending_prefix(line)
