@@ -2,6 +2,7 @@
 using @syntax {
   type Token,
   type WgslAttribute,
+  type WgslExprRef,
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
   type WgslIdent,

@@ -135,28 +135,46 @@ fn collect_wgsl_attribute_dependencies(
   dependencies : Array[String],
 ) -> Unit {
   for attr in attributes {
-    collect_wgsl_dependency_text_fragment(
-      attr.arguments,
-      self_name,
-      declaration_names,
-      dependencies,
-    )
+    match attr.arguments_ref {
+      Some(expr) =>
+        collect_wgsl_identifier_dependencies(
+          expr.identifiers,
+          self_name,
+          declaration_names,
+          dependencies,
+        )
+      None =>
+        collect_wgsl_dependency_text_fragment(
+          attr.arguments,
+          self_name,
+          declaration_names,
+          dependencies,
+        )
+    }
   }
 }
 
 ///|
-fn collect_wgsl_optional_dependency_text(
+fn collect_wgsl_optional_expr_ref_or_text_dependencies(
+  expr_ref : WgslExprRef?,
   text : String?,
   self_name : String,
   declaration_names : @hashmap.HashMap[String, Bool],
   dependencies : Array[String],
 ) -> Unit {
-  match text {
-    Some(value) =>
+  match (expr_ref, text) {
+    (Some(expr), _) =>
+      collect_wgsl_identifier_dependencies(
+        expr.identifiers,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+    (None, Some(value)) =>
       collect_wgsl_dependency_text_fragment(
         value, self_name, declaration_names, dependencies,
       )
-    None => ()
+    (None, None) => ()
   }
 }
 
@@ -341,7 +359,8 @@ fn collect_wgsl_declaration_dependencies(
         declaration_names,
         dependencies,
       )
-      collect_wgsl_optional_dependency_text(
+      collect_wgsl_optional_expr_ref_or_text_dependencies(
+        global.initializer_ref,
         global.initializer,
         self_name,
         declaration_names,
@@ -356,7 +375,8 @@ fn collect_wgsl_declaration_dependencies(
         declaration_names,
         dependencies,
       )
-      collect_wgsl_optional_dependency_text(
+      collect_wgsl_optional_expr_ref_or_text_dependencies(
+        const_decl.initializer_ref,
         const_decl.initializer,
         self_name,
         declaration_names,
@@ -377,7 +397,8 @@ fn collect_wgsl_declaration_dependencies(
         declaration_names,
         dependencies,
       )
-      collect_wgsl_optional_dependency_text(
+      collect_wgsl_optional_expr_ref_or_text_dependencies(
+        override_decl.initializer_ref,
         override_decl.initializer,
         self_name,
         declaration_names,

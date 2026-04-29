@@ -155,6 +155,37 @@ test "WGSL type refs expose nested template arguments" {
 }
 
 ///|
+test "WGSL expression refs expose attribute and initializer identifiers" {
+  let source =
+    #|const BASE: u32 = 1u;
+    #|const FACTOR: u32 = BASE + 1u;
+    #|@id(FACTOR) override VALUE: bool = ENABLED_FLAG;
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[1].data is WgslGlobalDeclData::Const(const_decl) else {
+    abort("expected const payload")
+  }
+  guard const_decl.initializer_ref is Some(const_initializer) else {
+    abort("expected const initializer ref")
+  }
+  debug_inspect(const_initializer.identifiers[0].name, content="\"BASE\"")
+  guard unit.declarations[2].data is WgslGlobalDeclData::Override(override_decl) else {
+    abort("expected override payload")
+  }
+  guard override_decl.attributes[0].arguments_ref is Some(attr_args) else {
+    abort("expected attribute arguments ref")
+  }
+  debug_inspect(attr_args.identifiers[0].name, content="\"FACTOR\"")
+  guard override_decl.initializer_ref is Some(override_initializer) else {
+    abort("expected override initializer ref")
+  }
+  debug_inspect(
+    override_initializer.identifiers[0].name,
+    content="\"ENABLED_FLAG\"",
+  )
+}
+
+///|
 test "WGSL function payload exposes source-preserving statement AST" {
   let source =
     #|fn demo(value: u32) -> u32 {

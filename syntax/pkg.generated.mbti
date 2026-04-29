@@ -89,6 +89,7 @@ pub fn Token::pos(Self) -> Int
 pub(all) struct WgslAttribute {
   name : String
   arguments : String
+  arguments_ref : WgslExprRef?
 } derive(@debug.Debug)
 
 pub(all) struct WgslBlock {
@@ -100,6 +101,7 @@ pub(all) struct WgslConst {
   ty : String?
   ty_ref : WgslTypeRef?
   initializer : String?
+  initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
 pub(all) struct WgslDirective {
@@ -123,6 +125,13 @@ pub(all) enum WgslDirectiveKind {
   Diagnostic
   Other(String)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct WgslExprRef {
+  text : String
+  identifiers : Array[WgslIdent]
+  start : Int
+  end : Int
+} derive(@debug.Debug)
 
 pub(all) struct WgslFunction {
   attributes : Array[WgslAttribute]
@@ -191,6 +200,7 @@ pub(all) struct WgslGlobalVariable {
   ty : String?
   ty_ref : WgslTypeRef?
   initializer : String?
+  initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
 pub(all) struct WgslIdent {
@@ -205,6 +215,7 @@ pub(all) struct WgslOverride {
   ty : String?
   ty_ref : WgslTypeRef?
   initializer : String?
+  initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
 pub(all) struct WgslStatement {

@@ -21,9 +21,18 @@ pub(all) struct WgslIdent {
 } derive(Debug)
 
 ///|
+pub(all) struct WgslExprRef {
+  text : String
+  identifiers : Array[WgslIdent]
+  start : Int
+  end : Int
+} derive(Debug)
+
+///|
 pub(all) struct WgslAttribute {
   name : String
   arguments : String
+  arguments_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -116,6 +125,7 @@ pub(all) struct WgslGlobalVariable {
   ty : String?
   ty_ref : WgslTypeRef?
   initializer : String?
+  initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -124,6 +134,7 @@ pub(all) struct WgslConst {
   ty : String?
   ty_ref : WgslTypeRef?
   initializer : String?
+  initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -133,6 +144,7 @@ pub(all) struct WgslOverride {
   ty : String?
   ty_ref : WgslTypeRef?
   initializer : String?
+  initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -172,30 +184,50 @@ pub(all) struct WgslTranslationUnit {
 }
 
 ///|
-fn wgsl_ast_token_text(token : Token) -> String {
-  match token {
-    Token::Identifier(text, _) => text
-    Token::Whitespace(text, _) => text
-    Token::Other(code, _) => code_unit_to_string(code)
-  }
-}
-
-///|
-fn wgsl_ast_tokens_text(tokens : Array[Token]) -> String {
-  let mut out = ""
-  for token in tokens {
-    out = out + wgsl_ast_token_text(token)
-  }
-  out
-}
-
-///|
 fn wgsl_ast_token_end(token : Token) -> Int {
   match token {
     Token::Identifier(text, pos) | Token::Whitespace(text, pos) =>
       pos + text.length()
     Token::Other(_, pos) => pos + 1
   }
+}
+
+///|
+fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
+  let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
+    text,
+    0,
+    text.length(),
+  )
+  if trimmed == "" {
+    return None
+  }
+  let identifiers : Array[WgslIdent] = []
+  for token in tokenize(replace_comments(trimmed), false) {
+    match token {
+      Token::Identifier(name, pos) =>
+        identifiers.push(WgslIdent::{
+          name,
+          start: base + local_start + pos,
+          end: base + local_start + pos + name.length(),
+        })
+      _ => ()
+    }
+  }
+  Some(WgslExprRef::{
+    text: trimmed,
+    identifiers,
+    start: base + local_start,
+    end: base + local_end,
+  })
+}
+
+///|
+fn parse_wgsl_expr_ref_fragment(fragment : WgslTextFragment) -> WgslExprRef? {
+  if fragment.start < 0 || fragment.end < fragment.start {
+    return None
+  }
+  parse_wgsl_expr_ref_text(fragment.text, fragment.start)
 }
 
 ///|
@@ -299,36 +331,44 @@ fn WgslDeclParser::parse_attributes(
       [Token::Other(64, _), Token::Identifier(name, _), .. rest] => {
         self.update_view(rest)
         let mut arguments = ""
-        if self.consume_if_other(40) {
-          let parts : Array[Token] = []
-          let mut depth = 1
-          while depth > 0 {
-            match self.view() {
-              [Token::Other(40, _), .. token_rest] => {
-                parts.push(Token::Other(40, 0))
-                depth = depth + 1
-                self.update_view(token_rest)
-                continue
-              }
-              [Token::Other(41, _), .. token_rest] => {
-                depth = depth - 1
-                self.update_view(token_rest)
-                if depth > 0 {
-                  parts.push(Token::Other(41, 0))
+        let mut arguments_ref : WgslExprRef? = None
+        match self.view() {
+          [Token::Other(40, open_pos), .. token_rest] => {
+            self.update_view(token_rest)
+            let arg_start = open_pos + 1
+            let mut arg_end = arg_start
+            let mut depth = 1
+            while depth > 0 {
+              match self.view() {
+                [Token::Other(40, _), .. nested_rest] => {
+                  depth = depth + 1
+                  self.update_view(nested_rest)
+                  continue
                 }
-                continue
+                [Token::Other(41, close_pos), .. nested_rest] => {
+                  depth = depth - 1
+                  self.update_view(nested_rest)
+                  if depth == 0 {
+                    arg_end = close_pos
+                    break
+                  }
+                  continue
+                }
+                [_, .. nested_rest] => {
+                  self.update_view(nested_rest)
+                  continue
+                }
+                [] => break
               }
-              [token, .. token_rest] => {
-                parts.push(token)
-                self.update_view(token_rest)
-                continue
-              }
-              [] => break
+            }
+            if arg_end >= arg_start {
+              arguments = self.source_text[arg_start:arg_end].to_owned()
+              arguments_ref = parse_wgsl_expr_ref_text(arguments, arg_start)
             }
           }
-          arguments = wgsl_ast_tokens_text(parts)
+          _ => ()
         }
-        attributes.push(WgslAttribute::{ name, arguments })
+        attributes.push(WgslAttribute::{ name, arguments, arguments_ref })
         continue
       }
       _ => break
@@ -924,7 +964,7 @@ fn WgslDeclParser::parse_global_variable(
   } else {
     None
   }
-  let initializer = self.parse_optional_initializer()
+  let (initializer, initializer_ref) = self.parse_optional_initializer()
   Some(WgslGlobalVariable::{
     attributes,
     name,
@@ -932,19 +972,22 @@ fn WgslDeclParser::parse_global_variable(
     ty,
     ty_ref,
     initializer,
+    initializer_ref,
   })
 }
 
 ///|
-fn WgslDeclParser::parse_optional_initializer(self : WgslDeclParser) -> String? {
+fn WgslDeclParser::parse_optional_initializer(
+  self : WgslDeclParser,
+) -> (String?, WgslExprRef?) {
   if !self.consume_if_other(61) {
-    return None
+    return (None, None)
   }
-  let parsed = self.collect_until_top_level([59])
-  if parsed == "" {
-    None
+  let parsed = self.collect_until_top_level_fragment([59])
+  if parsed.text == "" {
+    (None, None)
   } else {
-    Some(parsed)
+    (Some(parsed.text), parse_wgsl_expr_ref_fragment(parsed))
   }
 }
 
@@ -966,8 +1009,8 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
   } else {
     None
   }
-  let initializer = self.parse_optional_initializer()
-  Some(WgslConst::{ name, ty, ty_ref, initializer })
+  let (initializer, initializer_ref) = self.parse_optional_initializer()
+  Some(WgslConst::{ name, ty, ty_ref, initializer, initializer_ref })
 }
 
 ///|
@@ -991,8 +1034,15 @@ fn WgslDeclParser::parse_override(
   } else {
     None
   }
-  let initializer = self.parse_optional_initializer()
-  Some(WgslOverride::{ attributes, name, ty, ty_ref, initializer })
+  let (initializer, initializer_ref) = self.parse_optional_initializer()
+  Some(WgslOverride::{
+    attributes,
+    name,
+    ty,
+    ty_ref,
+    initializer,
+    initializer_ref,
+  })
 }
 
 ///|
