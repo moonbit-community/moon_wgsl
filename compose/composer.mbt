@@ -623,8 +623,10 @@ fn wgsl_parent_active(active_stack : Array[Bool]) -> Bool {
 
 ///|
 fn wgsl_directive_tail_has_ascii_space(tail : String) -> Bool {
-  tail.length() > 0 &&
-  (tail.code_unit_at(0).to_int() == 32 || tail.code_unit_at(0).to_int() == 9)
+  match tokenize(tail, true) {
+    [Token::Whitespace(_, 0), ..] => true
+    _ => false
+  }
 }
 
 ///|

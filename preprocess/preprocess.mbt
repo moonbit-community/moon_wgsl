@@ -321,6 +321,14 @@ fn first_space_separated_token(text : String) -> String {
 }
 
 ///|
+fn starts_with_tokenized_space(text : String) -> Bool {
+  match tokenize(text, true) {
+    [Token::Whitespace(_, 0), ..] => true
+    _ => false
+  }
+}
+
+///|
 fn parse_glsl_version_directive(line : String) -> String? {
   let trimmed = line.trim().to_owned()
   let tokens = tokenize(trimmed, false)
@@ -620,11 +628,7 @@ fn check_scope(
   }
   if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Else)
     is Some(else_tail) {
-    let else_tail_has_space = else_tail.length() > 0 &&
-      (
-        else_tail.code_unit_at(0).to_int() == 32 ||
-        else_tail.code_unit_at(0).to_int() == 9
-      )
+    let else_tail_has_space = starts_with_tokenized_space(else_tail)
     if else_tail_has_space &&
       word_tail(else_tail, "ifdef") is Some(rest) &&
       directive_identifier(rest) is Some(name) {
