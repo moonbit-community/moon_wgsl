@@ -28,8 +28,16 @@ priv struct WgslDeclarationGraph {
 
 ///|
 fn ends_with_text(text : String, suffix : String) -> Bool {
-  text.length() >= suffix.length() &&
-  text[text.length() - suffix.length():text.length()].to_string() == suffix
+  if text.length() < suffix.length() {
+    return false
+  }
+  let offset = text.length() - suffix.length()
+  for i in 0..<suffix.length() {
+    if text.code_unit_at(offset + i).to_int() != suffix.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
 }
 
 ///|

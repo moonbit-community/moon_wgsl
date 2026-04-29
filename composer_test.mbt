@@ -541,6 +541,19 @@ test "naga_oil: composer preprocess can apply source-level symbol redirects" {
 }
 
 ///|
+test "github issue 5: unicode source lines do not abort prefix checks" {
+  let source = "// 中文注释会让旧 starts_with_text 切到非法边界\n#ifdef ENABLED\nconst enabled_value: u32 = 1u;\n#endif\nfn main() -> u32 {\n  return 0u;\n}\n"
+  let preprocessed = global_registry_composer().compose_wgsl_source(
+    source,
+    composer_test_compose_options("", empty_bool_defines(), []),
+  ) catch {
+    err => abort("expected unicode-safe compose success: \{err.message()}")
+  }
+  debug_inspect(preprocessed.contains("fn main"), content="true")
+  debug_inspect(preprocessed.contains("enabled_value"), content="false")
+}
+
+///|
 test "naga_oil: composer reports import cycles explicitly" {
   register_cycle_test_shaders()
   let mut message : String? = None
