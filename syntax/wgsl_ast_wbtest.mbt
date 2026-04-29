@@ -29,6 +29,11 @@ test "WGSL translation unit classifies top-level declarations" {
   debug_inspect(unit.declarations[2].kind, content="Struct")
   debug_inspect(unit.declarations[3].kind, content="GlobalVariable")
   debug_inspect(unit.declarations[4].kind, content="ConstAssert")
+  guard unit.declarations[4].data
+    is WgslGlobalDeclData::ConstAssert(assert_expr) else {
+    abort("expected const assert payload")
+  }
+  debug_inspect(assert_expr.text, content="\"(1 == 1)\"")
   debug_inspect(unit.declarations[5].kind, content="Function")
   debug_inspect(unit.declarations[5].name, content="\"fragment\"")
 }

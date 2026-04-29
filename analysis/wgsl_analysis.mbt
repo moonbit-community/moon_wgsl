@@ -347,11 +347,6 @@ fn collect_wgsl_declaration_dependencies(
         declaration_names,
         dependencies,
       )
-      for template in global.template_list {
-        collect_wgsl_dependency_text_fragment(
-          template, self_name, declaration_names, dependencies,
-        )
-      }
       collect_wgsl_optional_type_ref_or_text_dependencies(
         global.ty_ref,
         global.ty,
@@ -414,8 +409,11 @@ fn collect_wgsl_declaration_dependencies(
         dependencies,
       )
     WgslGlobalDeclData::ConstAssert(expr) =>
-      collect_wgsl_dependency_text_fragment(
-        expr, self_name, declaration_names, dependencies,
+      collect_wgsl_identifier_dependencies(
+        expr.identifiers,
+        self_name,
+        declaration_names,
+        dependencies,
       )
     WgslGlobalDeclData::Raw =>
       collect_wgsl_dependency_text_fragment(

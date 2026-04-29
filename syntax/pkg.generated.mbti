@@ -175,7 +175,7 @@ pub(all) enum WgslGlobalDeclData {
   Override(WgslOverride)
   Struct(WgslStruct)
   TypeAlias(WgslTypeAlias)
-  ConstAssert(String)
+  ConstAssert(WgslExprRef)
   Raw
 } derive(@debug.Debug)
 

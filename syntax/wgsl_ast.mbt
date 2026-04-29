@@ -164,7 +164,7 @@ pub(all) enum WgslGlobalDeclData {
   Override(WgslOverride)
   Struct(WgslStruct)
   TypeAlias(WgslTypeAlias)
-  ConstAssert(String)
+  ConstAssert(WgslExprRef)
   Raw
 } derive(Debug)
 
@@ -228,6 +228,22 @@ fn parse_wgsl_expr_ref_fragment(fragment : WgslTextFragment) -> WgslExprRef? {
     return None
   }
   parse_wgsl_expr_ref_text(fragment.text, fragment.start)
+}
+
+///|
+fn parse_required_wgsl_expr_ref_fragment(
+  fragment : WgslTextFragment,
+) -> WgslExprRef {
+  match parse_wgsl_expr_ref_fragment(fragment) {
+    Some(expr) => expr
+    None =>
+      WgslExprRef::{
+        text: fragment.text,
+        identifiers: [],
+        start: fragment.start,
+        end: fragment.end,
+      }
+  }
 }
 
 ///|
@@ -1110,7 +1126,11 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
         None => WgslGlobalDeclData::Raw
       }
     Some("const_assert") =>
-      WgslGlobalDeclData::ConstAssert(self.collect_until_top_level([59]))
+      WgslGlobalDeclData::ConstAssert(
+        parse_required_wgsl_expr_ref_fragment(
+          self.collect_until_top_level_fragment([59]),
+        ),
+      )
     Some("alias") | Some("type") =>
       match self.parse_type_alias() {
         Some(value) => WgslGlobalDeclData::TypeAlias(value)
