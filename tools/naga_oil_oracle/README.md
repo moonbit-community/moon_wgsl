@@ -17,6 +17,16 @@ cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
   --output /tmp/naga_oil_simple.wgsl
 ```
 
+Ray-query fixtures can enable the matching Naga capability:
+
+```sh
+cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/raycast \
+  --entry top.wgsl \
+  --capability ray-query \
+  --check-only
+```
+
 The output is not expected to be byte-identical to `moon_wgsl` because
 `naga_oil` writes validated Naga IR while `moon_wgsl` is a source-level
 composer. Compare structural properties instead: resolved imports, retained

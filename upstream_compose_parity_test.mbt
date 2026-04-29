@@ -57,6 +57,37 @@ fn upstream_parity_composer(case_name : String) -> @moon_wgsl.Composer {
 }
 
 ///|
+fn upstream_mirror_composer(case_name : String) -> @moon_wgsl.Composer {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  composer.register_wgsl_source_tree(
+    "testdata/naga_oil_upstream/compose_tests/\{case_name}",
+    @moon_wgsl.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected upstream mirror fixture registration success")
+  }
+  composer
+}
+
+///|
+fn upstream_mirror_compose_case(
+  case_name : String,
+  rel_path : String,
+  defines : @hashmap.HashMap[String, Bool],
+) -> String {
+  upstream_mirror_composer(case_name).compose_wgsl(
+    rel_path,
+    upstream_parity_compose_options(defines),
+  ) catch {
+    err =>
+      abort(
+        "expected upstream mirror compose success for \{case_name}/\{rel_path}: \{err.message()}",
+      )
+  }
+}
+
+///|
 fn upstream_parity_compose_case(
   case_name : String,
   rel_path : String,
@@ -211,6 +242,25 @@ test "naga_oil upstream: nested missing conditional import reports a compose fai
     content="true",
   )
   debug_inspect(message.contains("b"), content="true")
+}
+
+///|
+test "naga_oil upstream: missing import in shader source reports a compose failure" {
+  let composer = upstream_mirror_composer("error_test")
+  let mut message = ""
+  ignore(
+    composer.compose_wgsl(
+      "include.wgsl",
+      upstream_parity_compose_options(upstream_parity_empty_defines()),
+    ),
+  ) catch {
+    err => message = err.message()
+  }
+  debug_inspect(
+    message.contains("failed to resolve shader import"),
+    content="true",
+  )
+  debug_inspect(message.contains("missing"), content="true")
 }
 
 ///|
@@ -498,6 +548,41 @@ test "naga_oil upstream: additional imports participate in single-file export" {
 }
 
 ///|
+test "naga_oil upstream: virtual function override replaces imported body" {
+  let source = upstream_mirror_compose_case(
+    "overrides",
+    "top.wgsl",
+    upstream_parity_empty_defines(),
+  )
+  debug_inspect(source.contains("virtual fn"), content="false")
+  debug_inspect(source.contains("override fn"), content="false")
+  debug_inspect(
+    source.contains("fn mod__inner(arg: f32) -> f32"),
+    content="true",
+  )
+  debug_inspect(source.contains("return arg * 3.0;"), content="true")
+  debug_inspect(source.contains("return arg * 2.0;"), content="false")
+  debug_inspect(source.contains("return mod__inner(1.0);"), content="true")
+  debug_inspect(source.contains("return mod__outer();"), content="true")
+}
+
+///|
+test "naga_oil upstream: invalid override reports non-virtual target" {
+  let composer = upstream_mirror_composer("overrides")
+  let mut message = ""
+  ignore(
+    composer.compose_wgsl(
+      "top_invalid.wgsl",
+      upstream_parity_compose_options(upstream_parity_empty_defines()),
+    ),
+  ) catch {
+    err => message = err.message()
+  }
+  debug_inspect(message.contains("override is invalid"), content="true")
+  debug_inspect(message.contains("mod::outer"), content="true")
+}
+
+///|
 test "naga_oil upstream: compute shader smoke preserves imported entry dependency" {
   let output = upstream_parity_export_case(
     "compute_test",
@@ -519,7 +604,7 @@ test "naga_oil upstream: compute shader smoke preserves imported entry dependenc
 
 ///|
 test "naga_oil upstream: source-level sanitizer handles invalid imported identifiers" {
-  let source = upstream_parity_compose_case(
+  let source = upstream_mirror_compose_case(
     "invalid_identifiers",
     "top_valid.wgsl",
     upstream_parity_empty_defines(),
@@ -531,6 +616,45 @@ test "naga_oil upstream: source-level sanitizer handles invalid imported identif
   debug_inspect(source.contains("globals__bad_: f32"), content="false")
   debug_inspect(source.contains("struct structs__Isbad {"), content="true")
   debug_inspect(source.contains("struct structs__Isbad_ {"), content="false")
+}
+
+///|
+test "naga_oil upstream: invalid struct member identifier reports compose failure" {
+  let composer = upstream_mirror_composer("invalid_identifiers")
+  let mut message = ""
+  ignore(
+    composer.compose_wgsl(
+      "top_invalid.wgsl",
+      upstream_parity_compose_options(upstream_parity_empty_defines()),
+    ),
+  ) catch {
+    err => message = err.message()
+  }
+  debug_inspect(
+    message.contains("invalid WGSL struct member identifier"),
+    content="true",
+  )
+  debug_inspect(message.contains("bad_"), content="true")
+}
+
+///|
+test "naga_oil upstream: raycast WGSL source graph composes" {
+  let source = upstream_mirror_compose_case(
+    "raycast",
+    "top.wgsl",
+    upstream_parity_empty_defines(),
+  )
+  debug_inspect(source.contains("enable wgpu_ray_query;"), content="true")
+  debug_inspect(
+    source.contains("var test_module__tlas: acceleration_structure;"),
+    content="true",
+  )
+  debug_inspect(source.contains("var rq: ray_query;"), content="true")
+  debug_inspect(source.contains("fn test_module__ray_func"), content="true")
+  debug_inspect(
+    source.contains("let ray = test_module__ray_func();"),
+    content="true",
+  )
 }
 
 ///|

@@ -58,6 +58,8 @@ pub(all) suberror ComposerError {
   EmptyAssetsBase(String)
   FailedToResolveImport(String)
   ImportCycle(String)
+  InvalidStructMemberIdentifier(String)
+  InvalidOverride(String)
   MissingRegisteredSource(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)

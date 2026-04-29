@@ -28,6 +28,25 @@ fn bool_shader_def(
 }
 
 ///|
+fn upstream_compose_fixture_source(
+  case_name : String,
+  rel_path : String,
+) -> String {
+  let files = @moon_wgsl.scan_wgsl_source_files(
+    "testdata/naga_oil_upstream/compose_tests/\{case_name}",
+    @moon_wgsl.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected upstream compose fixture scan success")
+  }
+  for file in files {
+    if file.rel_path == rel_path {
+      return file.source
+    }
+  }
+  abort("expected upstream compose fixture source \{case_name}/\{rel_path}")
+}
+
+///|
 test "naga_oil: metadata parser records only used imports like upstream" {
   let metadata = @moon_wgsl.get_preprocessor_metadata(
     "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2u\n#import bevy_render::{\n  view::View,\n  globals::Globals,\n}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
@@ -123,6 +142,54 @@ test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
     content="\"\\\"shaders/skills/shared.wgsl\\\"\"",
   )
   debug_inspect(imports[0].items.length(), content="3")
+  debug_inspect(
+    imports[1].import_path,
+    content="\"\\\"shaders/skills/sound.wgsl\\\"\"",
+  )
+  debug_inspect(
+    imports[2].import_path,
+    content="\"\\\"shaders/skills/orb.wgsl\\\"\"",
+  )
+  debug_inspect(
+    imports[3].import_path,
+    content="\"\\\"shaders/skills/slash.wgsl\\\"\"",
+  )
+  debug_inspect(
+    imports[4].import_path,
+    content="\"\\\"shaders/skills/railgun_trail.wgsl\\\"\"",
+  )
+  debug_inspect(
+    imports[5].import_path,
+    content="\"\\\"shaders/skills/magic_arrow.wgsl\\\"\"",
+  )
+  debug_inspect(
+    imports[6].import_path,
+    content="\"\\\"shaders/skills/hit.wgsl\\\"\"",
+  )
+  debug_inspect(
+    imports[7].import_path,
+    content="\"\\\"shaders/skills/lightning_ring.wgsl\\\"\"",
+  )
+  debug_inspect(
+    imports[8].import_path,
+    content="\"\\\"shaders/skills/lightning.wgsl\\\"\"",
+  )
+}
+
+///|
+test "naga_oil upstream mirror: metadata parser matches bevy path import fixture" {
+  let (_, imports, _) = @moon_wgsl.get_preprocessor_data(
+    upstream_compose_fixture_source("bevy_path_imports", "skill.wgsl"),
+  )
+  debug_inspect(imports.length(), content="9")
+  debug_inspect(
+    imports[0].import_path,
+    content="\"\\\"shaders/skills/shared.wgsl\\\"\"",
+  )
+  debug_inspect(imports[0].items.length(), content="3")
+  debug_inspect(imports[0].items[0], content="\"VertexOutput\"")
+  debug_inspect(imports[0].items[1], content="\"Vertex\"")
+  debug_inspect(imports[0].items[2], content="\"VertexOutput\"")
   debug_inspect(
     imports[1].import_path,
     content="\"\\\"shaders/skills/sound.wgsl\\\"\"",

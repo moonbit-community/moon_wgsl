@@ -63,7 +63,7 @@ mesh3d fixture used by mgstudio-style pipelines.
 | `big_shaderdefs`, `big_shaderdefs/` | Covered | Boolean and value shader definitions are covered in parity tests. |
 | `duplicate_import`, `dup_import/` | Covered | Import de-duplication and alias-scoped item emission are covered. |
 | `wgsl_call_entrypoint`, `call_entrypoint/` | Covered | Imported entrypoint dependencies are preserved. |
-| `apply_override`, `apply_mod_override`, `overrides/` | Covered | Source-level symbol redirects cover the practical override behavior available without Naga. |
+| `apply_override`, `apply_mod_override`, `overrides/` | Covered | Source-level composer now accepts upstream `virtual fn` / `override fn module::item` syntax for WGSL and reports non-virtual override targets. |
 | `import_in_decl`, `const_in_decl/` | Covered | Declaration dependency graph preserves imported globals referenced by declarations. |
 | `item_import_test`, `item_import/` | Covered | Explicit item import and alias rewrite cases are in the local parity corpus. |
 | `dup_struct_import`, `dup_struct_import/` | Covered | Alias-scoped type rewrites avoid duplicate struct collisions. |
@@ -85,9 +85,9 @@ mesh3d fixture used by mgstudio-style pipelines.
 | `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Oracle-backed | Requires GLSL frontend and cross-language composition. |
 | `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Oracle-backed | Requires GLSL parsing plus constant import/writeback semantics. |
 | `test_raycasts`, `raycast/` | Oracle-backed | Requires Naga/wgpu-style shader validation or runtime execution behavior. |
-| `additional_import`, `add_imports/` | Covered source-level subset | Root compose/export requests and registered composable modules can inject additional imports. Upstream `virtual`/`override` overlay semantics still require Naga and remain blocked. |
-| `invalid_override` | Covered source-level subset | Export diagnostics now warn when a source-level redirect never matches. Full Naga `virtual`/`override` validation remains blocked. |
-| `bad_identifiers`, `invalid_identifiers/` | Covered source-level subset | Top-level declaration names and function parameters are sanitized in final composed/exported source. Struct-member rewriteback remains blocked without a real parser/IR. |
+| `additional_import`, `add_imports/` | Covered source-level subset | Root compose/export requests and registered composable modules can inject additional imports. Runtime shader execution remains oracle-only. |
+| `invalid_override` | Covered | Upstream `override fn module::item` syntax now errors when the target was not declared `virtual`; export diagnostics still warn when manual redirects never match. |
+| `bad_identifiers`, `invalid_identifiers/` | Covered | Top-level declaration names and function parameters are sanitized in final composed/exported source; invalid struct-member identifiers now report compose errors like upstream. |
 | `test_shader`, `compute_test.wgsl` | Covered source-level subset | Local export smoke coverage preserves the compute entry point and imported module dependency. Upstream runtime execution remains outside source-only scope. |
 | Complete Bevy forward mesh3d shader graph | Covered real-world fixture | `bevy_wgsl_parity_test.mbt` composes `#import bevy_pbr::{ mesh::vertex, pbr::fragment }` against 104 Bevy WGSL files and verifies shared mesh binding rewrites. |
 | Complete Bevy prepass mesh3d shader graph | Covered real-world fixture | Composes `prepass::vertex` plus `pbr_prepass::fragment` with prepass/bindless shader defs and verifies shared mesh binding rewrites. |

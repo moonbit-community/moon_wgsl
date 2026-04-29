@@ -91,6 +91,34 @@ fn wgsl_declaration_name(line : String) -> String {
     }
     return if end == 0 { "" } else { rest[:end].to_owned() }
   }
+  if starts_with_text(trimmed, "virtual fn ") {
+    let rest = trimmed[11:trimmed.length()].to_owned()
+    let mut end = 0
+    while end < rest.length() &&
+          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
+      end = end + 1
+    }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
+  }
+  if starts_with_text(trimmed, "override fn ") {
+    let rest = trimmed[12:trimmed.length()].to_owned()
+    let mut end = 0
+    while end < rest.length() {
+      let code = rest.code_unit_at(end).to_int()
+      if wgsl_identifier_char(code) {
+        end = end + 1
+        continue
+      }
+      if code == 58 &&
+        end + 1 < rest.length() &&
+        rest.code_unit_at(end + 1).to_int() == 58 {
+        end = end + 2
+        continue
+      }
+      break
+    }
+    return if end == 0 { "" } else { rest[:end].to_owned() }
+  }
   if starts_with_text(trimmed, "const ") {
     let rest = trimmed[6:trimmed.length()].to_owned()
     let mut end = 0

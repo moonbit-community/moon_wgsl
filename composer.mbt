@@ -42,6 +42,8 @@ pub(all) suberror ComposerError {
   EmptyAssetsBase(String)
   FailedToResolveImport(String)
   ImportCycle(String)
+  InvalidStructMemberIdentifier(String)
+  InvalidOverride(String)
   MissingRegisteredSource(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
@@ -54,6 +56,10 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     FailedToResolveImport(import_path) =>
       "failed to resolve shader import: \{import_path}"
     ImportCycle(cycle) => "shader import cycle detected: \{cycle}"
+    InvalidStructMemberIdentifier(name) =>
+      "invalid WGSL struct member identifier: \{name}"
+    InvalidOverride(name) =>
+      "override is invalid because target is not virtual: \{name}"
     MissingRegisteredSource(rel) => "missing registered WGSL source: \{rel}"
     MissingStartupRegisteredSource(rel) =>
       "shader source was not startup-registered: \{rel}"
@@ -1399,11 +1405,9 @@ fn finalize_wgsl_composed_source(
     session.value_defines,
   )
   out = apply_wgsl_template_consts(out, session.value_defines)
-  out = rewrite_wgsl_declaration_text_with_map(
-    out,
-    build_wgsl_symbol_redirect_map(alias_redirects),
-    false,
-  )
+  let alias_redirect_map = build_wgsl_symbol_redirect_map(alias_redirects)
+  out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
+  out = rewrite_wgsl_declaration_text_with_map(out, alias_redirect_map, false)
   out = dedupe_wgsl_duplicate_declarations(out)
   let suffix_redirects = build_wgsl_unique_lowered_suffix_redirect_map(out)
   if !suffix_redirects.is_empty() {
@@ -1596,9 +1600,11 @@ pub fn Composer::compose_wgsl(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
-  sanitize_wgsl_invalid_identifiers(
+  let composed = strip_wgsl_virtual_functions(
     self.load_root_wgsl_preprocessed_into_session(rel, session),
   )
+  validate_wgsl_struct_member_identifiers(composed)
+  sanitize_wgsl_invalid_identifiers(composed)
 }
 
 ///|
@@ -1608,13 +1614,15 @@ pub fn Composer::compose_wgsl_source(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
-  sanitize_wgsl_invalid_identifiers(
+  let composed = strip_wgsl_virtual_functions(
     self.preprocess_wgsl_source_with_path(
       "",
       prepend_wgsl_additional_imports(source, session.additional_imports),
       session,
     ),
   )
+  validate_wgsl_struct_member_identifiers(composed)
+  sanitize_wgsl_invalid_identifiers(composed)
 }
 
 ///|

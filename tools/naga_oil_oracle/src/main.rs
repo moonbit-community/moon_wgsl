@@ -13,6 +13,8 @@ struct Options {
     entry: String,
     output: Option<PathBuf>,
     defs: HashMap<String, ShaderDefValue>,
+    capabilities: naga::valid::Capabilities,
+    check_only: bool,
 }
 
 #[derive(Debug)]
@@ -23,7 +25,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl> [--def NAME=true|false|INT] [--output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl> [--def NAME=true|false|INT] [--capability ray-query] [--check-only] [--output <file>]"
     );
     std::process::exit(2);
 }
@@ -59,6 +61,8 @@ fn parse_options() -> Options {
     let mut entry = None;
     let mut output = None;
     let mut defs = HashMap::new();
+    let mut capabilities = naga::valid::Capabilities::default();
+    let mut check_only = false;
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -70,6 +74,14 @@ fn parse_options() -> Options {
                 let (name, def_value) = parse_shader_def(&value);
                 defs.insert(name, def_value);
             }
+            "--capability" => {
+                let Some(value) = args.next() else { usage() };
+                match value.as_str() {
+                    "ray-query" => capabilities |= naga::valid::Capabilities::RAY_QUERY,
+                    _ => usage(),
+                }
+            }
+            "--check-only" => check_only = true,
             _ => usage(),
         }
     }
@@ -78,6 +90,8 @@ fn parse_options() -> Options {
         entry: entry.unwrap_or_else(|| usage()),
         output,
         defs,
+        capabilities,
+        check_only,
     }
 }
 
@@ -158,7 +172,7 @@ fn main() {
     collect_wgsl_files(&options.fixture_root, &options.fixture_root, &mut files);
     files.sort_by(|lhs, rhs| lhs.rel_path.cmp(&rhs.rel_path));
 
-    let mut composer = Composer::default();
+    let mut composer = Composer::default().with_capabilities(options.capabilities);
     add_modules_until_fixed_point(&mut composer, &files, &options.defs);
 
     let entry = files
@@ -173,13 +187,14 @@ fn main() {
             ..Default::default()
         })
         .unwrap_or_else(|err| panic!("naga_oil failed to compose `{}`: {err:?}", entry.rel_path));
-    let mut validator = naga::valid::Validator::new(
-        naga::valid::ValidationFlags::all(),
-        naga::valid::Capabilities::default(),
-    );
+    let mut validator =
+        naga::valid::Validator::new(naga::valid::ValidationFlags::all(), options.capabilities);
     let info = validator
         .validate(&module)
         .unwrap_or_else(|err| panic!("naga validation failed for `{}`: {err:?}", entry.rel_path));
+    if options.check_only {
+        return;
+    }
     let wgsl = naga::back::wgsl::write_string(
         &module,
         &info,
