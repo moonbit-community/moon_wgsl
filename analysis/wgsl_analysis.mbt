@@ -143,13 +143,7 @@ fn collect_wgsl_attribute_dependencies(
           declaration_names,
           dependencies,
         )
-      None =>
-        collect_wgsl_dependency_text_fragment(
-          attr.arguments,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
+      None => ()
     }
   }
 }
@@ -157,24 +151,20 @@ fn collect_wgsl_attribute_dependencies(
 ///|
 fn collect_wgsl_optional_expr_ref_or_text_dependencies(
   expr_ref : WgslExprRef?,
-  text : String?,
+  _text : String?,
   self_name : String,
   declaration_names : @hashmap.HashMap[String, Bool],
   dependencies : Array[String],
 ) -> Unit {
-  match (expr_ref, text) {
-    (Some(expr), _) =>
+  match expr_ref {
+    Some(expr) =>
       collect_wgsl_identifier_dependencies(
         expr.identifiers,
         self_name,
         declaration_names,
         dependencies,
       )
-    (None, Some(value)) =>
-      collect_wgsl_dependency_text_fragment(
-        value, self_name, declaration_names, dependencies,
-      )
-    (None, None) => ()
+    None => ()
   }
 }
 
@@ -225,7 +215,7 @@ fn collect_wgsl_type_ref_dependencies(
 ///|
 fn collect_wgsl_type_ref_or_text_dependencies(
   ty_ref : WgslTypeRef?,
-  ty_text : String,
+  _ty_text : String,
   self_name : String,
   declaration_names : @hashmap.HashMap[String, Bool],
   dependencies : Array[String],
@@ -235,10 +225,7 @@ fn collect_wgsl_type_ref_or_text_dependencies(
       collect_wgsl_type_ref_dependencies(
         ty_ref, self_name, declaration_names, dependencies,
       )
-    None =>
-      collect_wgsl_dependency_text_fragment(
-        ty_text, self_name, declaration_names, dependencies,
-      )
+    None => ()
   }
 }
 
