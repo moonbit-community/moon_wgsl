@@ -28,6 +28,28 @@ cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
   --output /tmp/naga_oil_additional_import.wgsl
 ```
 
+GLSL fixtures can use upstream's GLSL frontend through the same pinned oracle:
+
+```sh
+cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/glsl \
+  --entry top.glsl \
+  --shader-type glsl-vertex \
+  --output /tmp/naga_oil_glsl_call_wgsl.wgsl
+```
+
+Parser and validator diagnostics can be emitted and compared to upstream
+expected files:
+
+```sh
+cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/error_test \
+  --entry wgsl_parse_err.wgsl \
+  --entry-only \
+  --file-path-prefix tests/error_test \
+  --error-output /tmp/naga_oil_err_parse.txt
+```
+
 Ray-query fixtures can enable the matching Naga capability:
 
 ```sh

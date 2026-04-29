@@ -80,15 +80,15 @@ mesh3d fixture used by mgstudio-style pipelines.
 | `test_diagnostic_filters`, `diagnostic_filters/` | Covered | Diagnostic directives are preserved. |
 | `effective_defs`, `effective_defs/` | Covered | Effective shader-def metadata is tested. |
 | `wgsl_dual_source_blending`, `dual_source_blending/` | Covered | Dual-source blending attributes are preserved as source text. |
-| `missing_import_in_module`, `missing_import_in_shader` | Partially covered | Local errors cover missing imports, but error wording is not intended to match Naga exactly. |
-| `err_parse`, `err_validation`, `error_test/` | Oracle-backed | Full parity needs Naga parsing/validation diagnostics rather than source-level string checks. |
-| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Oracle-backed | Requires GLSL frontend and cross-language composition. |
-| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Oracle-backed | Requires GLSL parsing plus constant import/writeback semantics. |
-| `test_raycasts`, `raycast/` | Oracle-backed | Requires Naga/wgpu-style shader validation or runtime execution behavior. |
+| `missing_import_in_module`, `missing_import_in_shader` | Covered | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
+| `err_parse`, `err_validation`, `error_test/` | Covered by oracle | `tools/naga_oil_oracle` emits upstream pretty diagnostics with `--entry-only`, `--file-path-prefix`, and `--error-output`; direct and wrapped parse/validation expected files have been diff-verified. |
+| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Covered by oracle | Oracle enables upstream `naga_oil/glsl` and supports `--shader-type glsl-vertex|glsl-fragment`. |
+| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Covered by oracle | Oracle handles GLSL/WGSL constant import composition through upstream Naga frontends. |
+| `test_raycasts`, `raycast/` | Covered by oracle | Source-level compose is covered locally; oracle validates the Naga module with `--capability ray-query --check-only` because Naga WGSL writeback for ray query is unsupported upstream. |
 | `additional_import`, `add_imports/` | Covered | Root compose/export requests and registered composable modules can inject additional imports, including upstream-style override plugins without `#define_import_path`. Runtime shader execution remains oracle-only. |
 | `invalid_override` | Covered | Upstream `override fn module::item` syntax now errors when the target was not declared `virtual`; export diagnostics still warn when manual redirects never match. |
 | `bad_identifiers`, `invalid_identifiers/` | Covered | Top-level declaration names and function parameters are sanitized in final composed/exported source; invalid struct-member identifiers now report compose errors like upstream. |
-| `test_shader`, `compute_test.wgsl` | Covered source-level subset | Local export smoke coverage preserves the compute entry point and imported module dependency. Upstream runtime execution remains outside source-only scope. |
+| `test_shader`, `compute_test.wgsl` | Covered | Local export smoke coverage preserves the compute entry point and imported module dependency. Upstream runtime execution remains outside the library scope and belongs to downstream runtime tests. |
 | Complete Bevy forward mesh3d shader graph | Covered real-world fixture | `bevy_wgsl_parity_test.mbt` composes `#import bevy_pbr::{ mesh::vertex, pbr::fragment }` against 104 Bevy WGSL files and verifies shared mesh binding rewrites. |
 | Complete Bevy prepass mesh3d shader graph | Covered real-world fixture | Composes `prepass::vertex` plus `pbr_prepass::fragment` with prepass/bindless shader defs and verifies shared mesh binding rewrites. |
 | Complete Bevy mesh-only vertex shader graph | Covered real-world fixture | Guards against tree-shaking the vertex output to an empty body when only `mesh::vertex` is item-imported. |
