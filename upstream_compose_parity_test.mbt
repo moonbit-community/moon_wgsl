@@ -1399,3 +1399,60 @@ test "github issue 4: nested module alias rewrites global binding member access"
     content="true",
   )
 }
+
+///|
+test "github issue 6: transitive nested module alias rewrites imported binding types" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "view.wgsl",
+    "#define_import_path bevy_render::view\n" + "struct View { value: u32 }\n",
+  )
+  composer.register_wgsl_source(
+    "mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "#import bevy_render::view::View\n" +
+    "@group(0) @binding(0) var<uniform> view: View;\n",
+  )
+  composer.register_wgsl_source(
+    "clustered_forward.wgsl",
+    "#define_import_path bevy_pbr::clustered_forward\n" +
+    "#import bevy_pbr::mesh_view_bindings as bindings\n" +
+    "fn read_cluster_view() -> u32 {\n" +
+    "  return bindings::view.value;\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "pbr_functions.wgsl",
+    "#define_import_path bevy_pbr::pbr_functions\n" +
+    "#import bevy_pbr::{\n" +
+    "  mesh_view_bindings as view_bindings,\n" +
+    "  clustered_forward as clustering,\n" +
+    "}\n" +
+    "fn read_pbr_view() -> u32 {\n" +
+    "  return view_bindings::view.value + clustering::read_cluster_view();\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "root.wgsl",
+    "#import bevy_pbr::pbr_functions as pbr_functions\n" +
+    "fn read_view() -> u32 {\n" +
+    "  return pbr_functions::read_pbr_view();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort(
+        "expected issue 6 transitive nested alias compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains(": View"), content="false")
+  debug_inspect(
+    source.contains(
+      "var<uniform> pbr_functions__clustering__bindings__view: pbr_functions__view_bindings__View",
+    ),
+    content="true",
+  )
+}

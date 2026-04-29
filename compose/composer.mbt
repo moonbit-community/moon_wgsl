@@ -1466,15 +1466,6 @@ fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
 }
 
 ///|
-fn wgsl_lowercase_identifier_start(name : String) -> Bool {
-  if name == "" {
-    return false
-  }
-  let code = name.code_unit_at(0).to_int()
-  code >= 97 && code <= 122
-}
-
-///|
 fn record_wgsl_lowered_suffix_redirect_candidate(
   suffix : String,
   lowered_name : String,
@@ -1482,9 +1473,7 @@ fn record_wgsl_lowered_suffix_redirect_candidate(
   candidate_redirects : @hashmap.HashMap[String, String],
   ambiguous_suffixes : @hashmap.HashMap[String, Bool],
 ) -> Unit {
-  if suffix == "" ||
-    !wgsl_lowercase_identifier_start(suffix) ||
-    declared_names.contains(suffix) {
+  if suffix == "" || declared_names.contains(suffix) {
     return
   }
   match candidate_redirects.get(suffix) {
