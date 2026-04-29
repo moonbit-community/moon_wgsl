@@ -25,9 +25,15 @@ pub fn parse_wgsl_top_level_items(String) -> Array[WgslTopLevelItem]
 
 pub fn replace_comments(String) -> String
 
+pub fn source_lines(String) -> Array[String]
+
 pub fn spaces(Int) -> String
 
 pub fn split_last_identifier(String) -> (String, String)?
+
+pub fn split_source_line_spans(String) -> Array[SourceLineSpan]
+
+pub fn split_source_lines(String) -> Array[String]
 
 pub fn starts_with_text(String, String) -> Bool
 
@@ -56,6 +62,12 @@ pub(all) suberror SubstituteIdentifiersError {
 pub(all) struct DeclaredImportBinding {
   used_name : String
   full_paths : Array[String]
+}
+
+pub(all) struct SourceLineSpan {
+  text : String
+  start : Int
+  end : Int
 }
 
 pub(all) enum Token {

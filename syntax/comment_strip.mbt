@@ -158,11 +158,8 @@ fn find_first_quote_marker(line : String, start : Int) -> (Int, String)? {
 pub fn replace_comments(source : String) -> String {
   let output_lines : Array[String] = []
   let mut state = CommentState::None
-  for line_item in source.split("\n") {
-    let (output_line, next_state) = replace_comments_line(
-      line_item.to_owned(),
-      state,
-    )
+  for line in split_source_lines(source) {
+    let (output_line, next_state) = replace_comments_line(line, state)
     output_lines.push(output_line)
     state = next_state
   }

@@ -249,15 +249,12 @@ pub fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
   let lines : Array[String] = []
   let cleaned_lines : Array[String] = []
   let line_starts : Array[Int] = []
-  let mut offset = 0
-  for line_item in source.split("\n") {
-    let line = line_item.to_owned()
-    lines.push(line)
-    line_starts.push(offset)
-    offset = offset + line.length() + 1
+  for line in split_source_line_spans(source) {
+    lines.push(line.text)
+    line_starts.push(line.start)
   }
-  for line_item in replace_comments(source).split("\n") {
-    cleaned_lines.push(line_item.to_owned())
+  for line in split_source_lines(replace_comments(source)) {
+    cleaned_lines.push(line)
   }
 
   let items : Array[WgslTopLevelItem] = []

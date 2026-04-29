@@ -841,8 +841,7 @@ fn apply_wgsl_ifdefs_strict(
   let mut out = ""
   let active_stack : Array[Bool] = [true]
   let branch_taken_stack : Array[Bool] = []
-  for line_item in source.split("\n") {
-    let line = line_item.to_owned()
+  for line in split_source_lines(source) {
     let trimmed = line.trim().to_owned()
     if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
@@ -1010,8 +1009,7 @@ pub fn apply_wgsl_ifdefs(
   let mut out = ""
   let active_stack : Array[Bool] = [true]
   let branch_taken_stack : Array[Bool] = []
-  for line_item in source.split("\n") {
-    let line = line_item.to_owned()
+  for line in split_source_lines(source) {
     let trimmed = line.trim().to_owned()
     if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
@@ -1277,8 +1275,8 @@ fn Composer::seed_wgsl_compose_lines(
   for target in qualified_targets {
     lines.push("#import \{target.raw_path} as \{target.alias_name}")
   }
-  for line_item in prepared.redirected_source.split("\n") {
-    lines.push(line_item.to_owned())
+  for line in split_source_lines(prepared.redirected_source) {
+    lines.push(line)
   }
   lines
 }

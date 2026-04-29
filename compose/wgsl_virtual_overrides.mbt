@@ -38,8 +38,8 @@ fn wgsl_index_of_code_unit(text : String, code : Int) -> Int {
 
 ///|
 fn wgsl_source_block_is_virtual_fn(block_text : String) -> Bool {
-  for line_item in replace_comments(block_text).split("\n") {
-    if starts_with_text(line_item.trim().to_owned(), "virtual fn ") {
+  for line in split_source_lines(replace_comments(block_text)) {
+    if starts_with_text(line.trim().to_owned(), "virtual fn ") {
       return true
     }
   }
@@ -48,8 +48,8 @@ fn wgsl_source_block_is_virtual_fn(block_text : String) -> Bool {
 
 ///|
 fn wgsl_source_block_override_target(block_text : String) -> String? {
-  for line_item in replace_comments(block_text).split("\n") {
-    let trimmed = line_item.trim().to_owned()
+  for line in split_source_lines(replace_comments(block_text)) {
+    let trimmed = line.trim().to_owned()
     if starts_with_text(trimmed, "override fn ") {
       let rest = trimmed[12:trimmed.length()].to_owned()
       let end = wgsl_index_of_code_unit(rest, 40)
@@ -64,8 +64,8 @@ fn wgsl_source_block_override_target(block_text : String) -> String? {
 
 ///|
 fn wgsl_source_contains_override_directive(source : String) -> Bool {
-  for line_item in replace_comments(source).split("\n") {
-    if starts_with_text(line_item.trim().to_owned(), "override fn ") {
+  for line in split_source_lines(replace_comments(source)) {
+    if starts_with_text(line.trim().to_owned(), "override fn ") {
       return true
     }
   }
@@ -102,8 +102,7 @@ fn wgsl_virtual_base_name(target_name : String) -> String {
 fn rewrite_wgsl_virtual_fn_block(block_text : String) -> String {
   let mut out = ""
   let mut rewritten = false
-  for line_item in block_text.split("\n") {
-    let line = line_item.to_owned()
+  for line in split_source_lines(block_text) {
     if !rewritten {
       let trimmed = line.trim().to_owned()
       if starts_with_text(trimmed, "virtual fn ") {
@@ -145,8 +144,7 @@ fn rewrite_wgsl_override_fn_block(
 ) -> String {
   let mut out = ""
   let mut rewritten = false
-  for line_item in block_text.split("\n") {
-    let line = line_item.to_owned()
+  for line in split_source_lines(block_text) {
     if !rewritten {
       let trimmed = line.trim().to_owned()
       if starts_with_text(trimmed, "override fn ") {

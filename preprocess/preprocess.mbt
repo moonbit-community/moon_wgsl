@@ -118,22 +118,6 @@ fn Scope::finish(self : Scope, offset : Int) -> Unit raise PreprocessError {
 }
 
 ///|
-fn rust_source_lines(source : String) -> Array[String] {
-  let lines : Array[String] = []
-  for line_item in source.split("\n") {
-    let mut line = line_item.to_owned()
-    if line.has_suffix("\r") {
-      line = line[:line.length() - 1].to_owned()
-    }
-    lines.push(line)
-  }
-  if source.has_suffix("\n") && lines.length() > 0 {
-    lines.pop() |> ignore
-  }
-  lines
-}
-
-///|
 fn split_extensions(raw : String) -> Array[String] {
   let extensions : Array[String] = []
   for item in raw.split(",") {
@@ -781,7 +765,7 @@ pub fn Preprocessor::extract_wgsl_directives(
   let cleaned_lines : Array[String] = []
   let mut in_directive_section = true
   let mut line_index = 0
-  for line in rust_source_lines(source) {
+  for line in source_lines(source) {
     let trimmed = line.trim().to_owned()
 
     if trimmed == "" || starts_with_text(trimmed, "//") {
@@ -874,10 +858,10 @@ pub fn Preprocessor::preprocess(
   let scope = Scope::new()
   let original_lines : Array[String] = []
   let decommented_lines : Array[String] = []
-  for line_item in rust_source_lines(source) {
+  for line_item in source_lines(source) {
     original_lines.push(line_item)
   }
-  for line_item in rust_source_lines(replace_comments(source)) {
+  for line_item in source_lines(replace_comments(source)) {
     decommented_lines.push(line_item)
   }
 
@@ -993,7 +977,7 @@ fn try_get_preprocessor_metadata(
   let mut name : String? = None
   let mut offset = 0
 
-  for line_item in rust_source_lines(stripped) {
+  for line_item in source_lines(stripped) {
     lines.push(line_item)
   }
 

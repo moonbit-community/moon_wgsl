@@ -22,6 +22,52 @@ pub fn trim_trailing_semicolons(text : String) -> String {
 }
 
 ///|
+pub(all) struct SourceLineSpan {
+  text : String
+  start : Int
+  end : Int
+}
+
+///|
+pub fn split_source_lines(source : String) -> Array[String] {
+  let lines : Array[String] = []
+  for line_item in source.split("\n") {
+    lines.push(line_item.to_owned())
+  }
+  lines
+}
+
+///|
+pub fn split_source_line_spans(source : String) -> Array[SourceLineSpan] {
+  let spans : Array[SourceLineSpan] = []
+  let mut offset = 0
+  for line in split_source_lines(source) {
+    spans.push(SourceLineSpan::{
+      text: line,
+      start: offset,
+      end: offset + line.length(),
+    })
+    offset = offset + line.length() + 1
+  }
+  spans
+}
+
+///|
+pub fn source_lines(source : String) -> Array[String] {
+  let lines = split_source_lines(source)
+  for i in 0..<lines.length() {
+    let line = lines[i]
+    if line.has_suffix("\r") {
+      lines[i] = line[:line.length() - 1].to_owned()
+    }
+  }
+  if source.has_suffix("\n") && lines.length() > 0 {
+    lines.pop() |> ignore
+  }
+  lines
+}
+
+///|
 pub fn starts_with_text(text : String, prefix : String) -> Bool {
   text.has_prefix(prefix)
 }

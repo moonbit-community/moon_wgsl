@@ -419,8 +419,7 @@ fn validate_wgsl_struct_member_identifiers(
       continue
     }
     let mut pending_blend_src = false
-    for line_item in replace_comments(block.text).split("\n") {
-      let line = line_item.to_owned()
+    for line in split_source_lines(replace_comments(block.text)) {
       if wgsl_line_contains_blend_src_attribute(line) {
         pending_blend_src = true
       }

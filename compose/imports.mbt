@@ -50,6 +50,7 @@ using @syntax {
   import_brace_balance,
   replace_comments,
   split_last_identifier,
+  split_source_lines,
   starts_with_text,
   tokenize,
   word_tail,
