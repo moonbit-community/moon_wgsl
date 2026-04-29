@@ -51,6 +51,8 @@ using @syntax {
   type WgslDirectiveKind,
   type WgslFunction,
   type WgslGlobalDeclData,
+  type WgslIdent,
+  collect_wgsl_decl_identifier_nodes,
   collect_wgsl_source_identifier_names,
   import_brace_balance,
   split_last_identifier,

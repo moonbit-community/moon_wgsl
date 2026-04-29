@@ -1642,6 +1642,33 @@ fn collect_wgsl_decl_local_names(
 }
 
 ///|
+fn rewrite_wgsl_decl_identifier_nodes_with_map(
+  text : String,
+  data : WgslGlobalDeclData,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  let identifiers : Array[WgslIdent] = []
+  collect_wgsl_decl_identifier_nodes(data, identifiers)
+  let mut out = ""
+  let mut copy_start = 0
+  for identifier in identifiers {
+    guard identifier.start >= copy_start else { continue }
+    match redirect_map.get(identifier.name) {
+      Some(rewritten_name) => {
+        out = out + text[copy_start:identifier.start].to_owned()
+        out = out + rewritten_name
+        copy_start = identifier.end
+      }
+      None => ()
+    }
+  }
+  if copy_start < text.length() {
+    out = out + text[copy_start:text.length()].to_owned()
+  }
+  out
+}
+
+///|
 fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
   source : String,
   redirect_map : @hashmap.HashMap[String, String],
@@ -1664,10 +1691,10 @@ fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
       out = out + block.text
     } else {
       out = out +
-        rewrite_wgsl_declaration_text_with_map(
+        rewrite_wgsl_decl_identifier_nodes_with_map(
           block.text,
+          block.data,
           block_redirects,
-          false,
         )
     }
   }
