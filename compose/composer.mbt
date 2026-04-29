@@ -615,6 +615,12 @@ fn wgsl_parent_active(active_stack : Array[Bool]) -> Bool {
 }
 
 ///|
+fn wgsl_directive_tail_has_ascii_space(tail : String) -> Bool {
+  tail.length() > 0 &&
+  (tail.code_unit_at(0).to_int() == 32 || tail.code_unit_at(0).to_int() == 9)
+}
+
+///|
 fn wgsl_if_expr_value(
   token : String,
   defines : @hashmap.HashMap[String, Bool],
@@ -843,7 +849,7 @@ fn apply_wgsl_ifdefs_strict(
   let branch_taken_stack : Array[Bool] = []
   for line in split_source_lines(source) {
     let trimmed = line.trim().to_owned()
-    if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = wgsl_shader_def_enabled(active_defs, name)
       let parent = active_stack[active_stack.length() - 1]
@@ -851,7 +857,7 @@ fn apply_wgsl_ifdefs_strict(
       branch_taken_stack.push(cond)
       continue
     }
-    if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = !wgsl_shader_def_enabled(active_defs, name)
       let parent = active_stack[active_stack.length() - 1]
@@ -859,7 +865,7 @@ fn apply_wgsl_ifdefs_strict(
       branch_taken_stack.push(cond)
       continue
     }
-    if hash_directive_tail(trimmed, "if") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(tail) {
       let expr = wgsl_clean_directive_tail(tail)
       let cond = eval_wgsl_if_expr_strict(expr, active_defs)
       let parent = active_stack[active_stack.length() - 1]
@@ -867,7 +873,9 @@ fn apply_wgsl_ifdefs_strict(
       branch_taken_stack.push(cond)
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "ifdef") is Some(tail) {
       if branch_taken_stack.length() == 0 {
         raise ComposerError::ElseWithoutCondition
@@ -881,7 +889,9 @@ fn apply_wgsl_ifdefs_strict(
       branch_taken_stack[idx] = branch_taken_stack[idx] || cond
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "ifndef") is Some(tail) {
       if branch_taken_stack.length() == 0 {
         raise ComposerError::ElseWithoutCondition
@@ -895,7 +905,9 @@ fn apply_wgsl_ifdefs_strict(
       branch_taken_stack[idx] = branch_taken_stack[idx] || cond
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "if") is Some(tail) {
       if branch_taken_stack.length() == 0 {
         raise ComposerError::ElseWithoutCondition
@@ -908,7 +920,7 @@ fn apply_wgsl_ifdefs_strict(
       branch_taken_stack[idx] = branch_taken_stack[idx] || cond
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(_) {
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) {
       if branch_taken_stack.length() == 0 {
         raise ComposerError::ElseWithoutCondition
       }
@@ -919,7 +931,7 @@ fn apply_wgsl_ifdefs_strict(
       branch_taken_stack[idx] = branch_taken_stack[idx] || cond
       continue
     }
-    if hash_directive_tail(trimmed, "endif") is Some(_) {
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_) {
       if active_stack.length() <= 1 {
         raise ComposerError::TooManyEndIfs
       }
@@ -1011,7 +1023,7 @@ pub fn apply_wgsl_ifdefs(
   let branch_taken_stack : Array[Bool] = []
   for line in split_source_lines(source) {
     let trimmed = line.trim().to_owned()
-    if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = wgsl_define_enabled(defines, value_defines, name)
       let parent = active_stack[active_stack.length() - 1]
@@ -1019,7 +1031,7 @@ pub fn apply_wgsl_ifdefs(
       branch_taken_stack.push(cond)
       continue
     }
-    if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = !wgsl_define_enabled(defines, value_defines, name)
       let parent = active_stack[active_stack.length() - 1]
@@ -1027,7 +1039,7 @@ pub fn apply_wgsl_ifdefs(
       branch_taken_stack.push(cond)
       continue
     }
-    if hash_directive_tail(trimmed, "if") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(tail) {
       let expr = wgsl_clean_directive_tail(tail)
       let cond = eval_wgsl_if_expr(expr, defines, value_defines)
       let parent = active_stack[active_stack.length() - 1]
@@ -1035,7 +1047,9 @@ pub fn apply_wgsl_ifdefs(
       branch_taken_stack.push(cond)
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "ifdef") is Some(tail) {
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
@@ -1048,7 +1062,9 @@ pub fn apply_wgsl_ifdefs(
       }
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "ifndef") is Some(tail) {
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
@@ -1061,7 +1077,9 @@ pub fn apply_wgsl_ifdefs(
       }
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "if") is Some(tail) {
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
@@ -1073,7 +1091,7 @@ pub fn apply_wgsl_ifdefs(
       }
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(_) {
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) {
       if branch_taken_stack.length() > 0 {
         let idx = branch_taken_stack.length() - 1
         let cond = !branch_taken_stack[idx]
@@ -1083,7 +1101,7 @@ pub fn apply_wgsl_ifdefs(
       }
       continue
     }
-    if hash_directive_tail(trimmed, "endif") is Some(_) {
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_) {
       if active_stack.length() > 1 {
         active_stack.pop() |> ignore
       }
@@ -1981,7 +1999,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   while line_index < lines.length() {
     let line = lines[line_index]
     let trimmed = line.trim().to_owned()
-    if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = wgsl_shader_def_enabled(active_defs, name)
       let parent = import_active_stack[import_active_stack.length() - 1]
@@ -1991,7 +2009,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = !wgsl_shader_def_enabled(active_defs, name)
       let parent = import_active_stack[import_active_stack.length() - 1]
@@ -2001,7 +2019,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "if") is Some(tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(tail) {
       let expr = wgsl_clean_directive_tail(tail)
       let cond = eval_wgsl_if_expr_strict(expr, active_defs)
       let parent = import_active_stack[import_active_stack.length() - 1]
@@ -2011,7 +2029,9 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "ifdef") is Some(tail) {
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
@@ -2026,7 +2046,9 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "ifndef") is Some(tail) {
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
@@ -2041,7 +2063,9 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      wgsl_directive_tail_has_ascii_space(else_tail) &&
       word_tail(else_tail, "if") is Some(tail) {
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
@@ -2055,7 +2079,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "else") is Some(_) {
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) {
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
         let cond = !import_branch_taken_stack[idx]
@@ -2067,7 +2091,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "endif") is Some(_) {
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_) {
       if import_active_stack.length() > 1 {
         import_active_stack.pop() |> ignore
       }
@@ -2078,15 +2102,17 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath)
+      is Some(_) {
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "define") is Some(_) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Define) is Some(_) {
       line_index = line_index + 1
       continue
     }
-    if hash_directive_tail(trimmed, "import") is Some(import_tail) {
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import)
+      is Some(import_tail) {
       if !import_active_stack[import_active_stack.length() - 1] {
         merged = "\{merged}\{line}\n"
         line_index = line_index + 1

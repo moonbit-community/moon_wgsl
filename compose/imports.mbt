@@ -46,7 +46,7 @@ using @resolver {
 ///|
 using @syntax {
   type Token,
-  hash_directive_tail,
+  type WgslDirectiveKind,
   import_brace_balance,
   replace_comments,
   split_last_identifier,
@@ -54,4 +54,6 @@ using @syntax {
   starts_with_text,
   tokenize,
   word_tail,
+  wgsl_directive_prefix_tail,
+  wgsl_directive_tail,
 }
