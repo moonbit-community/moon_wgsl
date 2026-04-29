@@ -271,30 +271,29 @@ fn first_space_separated_token(text : String) -> String {
 ///|
 fn parse_glsl_version_directive(line : String) -> String? {
   let trimmed = line.trim().to_owned()
-  let prefix = "#version"
-  guard trimmed.has_prefix(prefix) else { return None }
-  guard trimmed.length() > prefix.length() else { return None }
-  let mut i = prefix.length()
-  let first_space = trimmed.code_unit_at(i).to_int()
-  guard first_space == 32 || first_space == 9 else { return None }
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
-    }
-    break
+  let tokens = tokenize(trimmed, false)
+  match tokens {
+    [Token::Other(35, 0), Token::Identifier("version", _), ..] => ()
+    _ => return None
   }
-  let start = i
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if code < 48 || code > 57 {
-      break
+  guard tokens.length() > 2 else { return None }
+  let start = tokens[2].pos()
+  let mut end = start
+  let mut i = 2
+  while i < tokens.length() {
+    match tokens[i] {
+      Token::Other(code, pos) if code >= 48 && code <= 57 && pos == end => {
+        end = end + 1
+        i = i + 1
+      }
+      _ => break
     }
-    i = i + 1
   }
-  guard i > start else { return None }
-  Some(trimmed[start:i].to_owned())
+  if end > start {
+    Some(trimmed[start:end].to_owned())
+  } else {
+    None
+  }
 }
 
 ///|
