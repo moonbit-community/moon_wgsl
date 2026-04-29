@@ -38,6 +38,7 @@ fn upstream_parity_compose_options(
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
+    preserve_imported_entry_points: true,
   }
 }
 
@@ -461,6 +462,7 @@ test "naga_oil upstream: additional imports are applied only to the root compose
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [{ import_path: "plugin", items: [] }],
+    preserve_imported_entry_points: true,
   }) catch {
     err => abort("expected additional-import compose success: \{err.message()}")
   }
@@ -481,6 +483,7 @@ test "naga_oil upstream: additional imports participate in single-file export" {
       value_defines: @moon_wgsl.default_wgsl_value_defines(),
       redirects: [],
       additional_imports: [{ import_path: "plugin", items: [] }],
+      preserve_imported_entry_points: true,
     },
     { root_items: ["entry_point"] },
   ) catch {

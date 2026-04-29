@@ -4,23 +4,56 @@ Last updated: 2026-04-29
 
 ## Scope
 
-`moon_wgsl` is a source-level WGSL composer and exporter. It should match
-`naga_oil` for source composition features that can be implemented without
-Naga IR, GLSL parsing, backend writeback, or runtime shader execution.
+`moon_wgsl` targets full `naga_oil` compose compatibility. The core MoonBit
+composer remains source-level, while behavior that requires real Naga IR,
+GLSL parsing, Naga diagnostics, or runtime shader execution is covered by the
+optional upstream oracle harness.
 
 The parity target is therefore:
 
 - Match upstream WGSL import syntax, shader-def condition handling, module path
   resolution, alias rewriting, declaration dependency expansion, diagnostics
-  preservation, and single-file export behavior.
+  preservation, and single-file export behavior in the MoonBit core.
 - Keep all source-only deltas covered by MoonBit tests.
-- Keep Naga-backed features explicit instead of hiding them behind approximate
-  source-text heuristics.
+- Route Naga-backed features through the pinned oracle instead of pretending a
+  source-text implementation can produce identical parser, validator, GLSL, or
+  writeback behavior.
 
 ## Upstream References
 
+- Upstream repository: `https://github.com/bevyengine/naga_oil`
+- Current pinned oracle commit: `bc444c82bb593ede94c55cdbf799e9743800843e`
 - `bevyengine/naga_oil/src/compose/test.rs`
 - `bevyengine/naga_oil/src/compose/tests`
+
+## Compatibility Gates
+
+Parity is tracked with three increasingly strict gates:
+
+1. Local source-level parity tests.
+   `upstream_compose_parity_test.mbt` contains MoonBit ports of upstream
+   `naga_oil` compose cases that can be expressed without Naga IR.
+
+2. Real shader-tree regression tests.
+   `bevy_wgsl_parity_test.mbt` registers complete Bevy WGSL fixture files from
+   `testdata/bevy_wgsl` and composes mgstudio-style entry shaders. These tests
+   check complete import graphs, declaration retention, alias rewriting, and
+   the absence of unresolved bare `mesh[...]` accesses in generated source.
+
+3. Optional upstream oracle.
+   `tools/naga_oil_oracle` is a Rust harness pinned to the upstream commit
+   above. It composes the same fixture tree through real `naga_oil`, validates
+   the resulting Naga module, and emits Naga-written WGSL. This is the
+   differential oracle for future parity investigations. The output is not
+   expected to be byte-identical to `moon_wgsl`; compare structural properties
+   such as resolved imports, retained entry points, declaration dependencies,
+   collision handling, and absence of unknown identifiers.
+
+`WgslComposeOptions::preserve_imported_entry_points` makes the only intentional
+source-level mode split explicit. Set it to `false` for strict `naga_oil`
+behavior on import-only roots. Keep the default `true` when a runtime asset root
+is intentionally just an item-import list of entry points, as in the Bevy
+mesh3d fixture used by mgstudio-style pipelines.
 
 ## Coverage Matrix
 
@@ -48,14 +81,19 @@ The parity target is therefore:
 | `effective_defs`, `effective_defs/` | Covered | Effective shader-def metadata is tested. |
 | `wgsl_dual_source_blending`, `dual_source_blending/` | Covered | Dual-source blending attributes are preserved as source text. |
 | `missing_import_in_module`, `missing_import_in_shader` | Partially covered | Local errors cover missing imports, but error wording is not intended to match Naga exactly. |
-| `err_parse`, `err_validation`, `error_test/` | Blocked | Full parity needs Naga parsing/validation diagnostics rather than source-level string checks. |
-| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Blocked | Requires GLSL frontend and cross-language composition. |
-| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Blocked | Requires GLSL parsing plus constant import/writeback semantics. |
-| `test_raycasts`, `raycast/` | Blocked | Requires Naga/wgpu-style shader validation or runtime execution behavior. |
+| `err_parse`, `err_validation`, `error_test/` | Oracle-backed | Full parity needs Naga parsing/validation diagnostics rather than source-level string checks. |
+| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Oracle-backed | Requires GLSL frontend and cross-language composition. |
+| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Oracle-backed | Requires GLSL parsing plus constant import/writeback semantics. |
+| `test_raycasts`, `raycast/` | Oracle-backed | Requires Naga/wgpu-style shader validation or runtime execution behavior. |
 | `additional_import`, `add_imports/` | Covered source-level subset | Root compose/export requests and registered composable modules can inject additional imports. Upstream `virtual`/`override` overlay semantics still require Naga and remain blocked. |
 | `invalid_override` | Covered source-level subset | Export diagnostics now warn when a source-level redirect never matches. Full Naga `virtual`/`override` validation remains blocked. |
 | `bad_identifiers`, `invalid_identifiers/` | Covered source-level subset | Top-level declaration names and function parameters are sanitized in final composed/exported source. Struct-member rewriteback remains blocked without a real parser/IR. |
 | `test_shader`, `compute_test.wgsl` | Covered source-level subset | Local export smoke coverage preserves the compute entry point and imported module dependency. Upstream runtime execution remains outside source-only scope. |
+| Complete Bevy forward mesh3d shader graph | Covered real-world fixture | `bevy_wgsl_parity_test.mbt` composes `#import bevy_pbr::{ mesh::vertex, pbr::fragment }` against 104 Bevy WGSL files and verifies shared mesh binding rewrites. |
+| Complete Bevy prepass mesh3d shader graph | Covered real-world fixture | Composes `prepass::vertex` plus `pbr_prepass::fragment` with prepass/bindless shader defs and verifies shared mesh binding rewrites. |
+| Complete Bevy mesh-only vertex shader graph | Covered real-world fixture | Guards against tree-shaking the vertex output to an empty body when only `mesh::vertex` is item-imported. |
+| Strict naga_oil import-only root behavior | Covered | `preserve_imported_entry_points = false` makes an import-only Bevy root compose to empty source, matching upstream oracle behavior. |
+| Full upstream fixture mirror | Covered | `testdata/naga_oil_upstream/compose_tests` mirrors all 110 upstream fixture files, including 75 WGSL files, expected WGSL output, GLSL cases, errors, overrides, raycast, and Bevy path import fixtures. |
 
 ## Architecture Priorities
 
@@ -75,22 +113,9 @@ The parity target is therefore:
    same declaration graph. Any new WGSL declaration form must be added there
    first, then consumed by composer/export.
 
-4. Separate source-only diagnostics from Naga diagnostics.
-   Missing import, duplicate registry, import cycle, and source-map diagnostics
-   belong in this library. Parser/validator diagnostics should remain blocked
-   unless a true Naga-backed integration layer is introduced.
-
-## Blocked Boundary
-
-The following upstream behavior is intentionally out of scope for a pure
-source-level MoonBit implementation:
-
-- GLSL parsing or GLSL/WGSL cross-language composition.
-- Naga validator error messages.
-- Naga IR writeback behavior that rewrites invalid identifiers with full parser
-  knowledge.
-- wgpu/runtime shader execution checks.
-
-These can be added later as an optional backend integration, but they should not
-be approximated in the core source composer because approximate behavior would
-make diagnostics and generated WGSL less predictable.
+4. Keep the Naga boundary explicit.
+   Missing import, duplicate registry, import cycle, source maps, source-level
+   WGSL compose, and source-level export belong in the MoonBit core. Parser
+   diagnostics, validator diagnostics, GLSL composition, IR writeback, and
+   runtime shader execution belong to the pinned oracle or a future
+   naga-backed integration layer.

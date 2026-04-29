@@ -169,6 +169,7 @@ priv struct WgslComposeSession {
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
+  preserve_imported_entry_points : Bool
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
   imported_item_names : @hashmap.HashMap[String, String]
@@ -300,6 +301,7 @@ fn Composer::new_wgsl_compose_session(
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
     additional_imports: copy_import_definitions(options.additional_imports),
+    preserve_imported_entry_points: options.preserve_imported_entry_points,
     redirect_match_counts: @hashmap.HashMap::new(),
     visited: @hashmap.HashMap::new(),
     imported_item_names: @hashmap.HashMap::new(),
@@ -1008,6 +1010,7 @@ fn Composer::build_wgsl_import_requests(
       for requested_item in requested_items {
         if wgsl_source_contains_identifier(active_scan_source, requested_item) ||
           (
+            session.preserve_imported_entry_points &&
             keep_requested_items &&
             (
               import_only_source ||
@@ -1095,7 +1098,6 @@ fn record_wgsl_lowered_suffix_redirect_candidate(
   ambiguous_suffixes : @hashmap.HashMap[String, Bool],
 ) -> Unit {
   if suffix == "" ||
-    !suffix.contains("__") ||
     !wgsl_lowercase_identifier_start(suffix) ||
     declared_names.contains(suffix) {
     return
@@ -1147,6 +1149,98 @@ fn build_wgsl_unique_lowered_suffix_redirect_map(
     }
   }
   redirects
+}
+
+///|
+fn token_identifier_value(token : Token) -> String? {
+  match token {
+    Token::Identifier(ident, _) => Some(ident)
+    _ => None
+  }
+}
+
+///|
+fn token_other_code_value(token : Token) -> Int? {
+  match token {
+    Token::Other(code, _) => Some(code)
+    _ => None
+  }
+}
+
+///|
+fn skip_wgsl_template_tokens(tokens : Array[Token], start : Int) -> Int {
+  if start >= tokens.length() {
+    return start
+  }
+  guard token_other_code_value(tokens[start]) is Some(60) else { return start }
+  let mut depth = 1
+  let mut i = start + 1
+  while i < tokens.length() && depth > 0 {
+    match token_other_code_value(tokens[i]) {
+      Some(60) => depth = depth + 1
+      Some(62) => depth = depth - 1
+      _ => ()
+    }
+    i = i + 1
+  }
+  i
+}
+
+///|
+fn collect_wgsl_block_local_names(
+  block_text : String,
+) -> @hashmap.HashMap[String, Bool] {
+  let locals : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let tokens = tokenize(replace_comments(block_text), false)
+  for i in 0..<tokens.length() {
+    guard token_identifier_value(tokens[i]) is Some(ident) else { continue }
+    if ident == "var" || ident == "let" || ident == "const" {
+      let name_index = skip_wgsl_template_tokens(tokens, i + 1)
+      if name_index < tokens.length() &&
+        token_identifier_value(tokens[name_index]) is Some(name) {
+        locals.set(name, true)
+      }
+      continue
+    }
+    if i + 1 < tokens.length() &&
+      token_other_code_value(tokens[i + 1]) is Some(58) {
+      locals.set(ident, true)
+    }
+  }
+  locals
+}
+
+///|
+fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
+  source : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  let graph = build_wgsl_declaration_graph(source)
+  let mut out = ""
+  for import_block in graph.import_blocks {
+    out = out + import_block.text
+  }
+  for block in graph.declaration_blocks {
+    let local_names = collect_wgsl_block_local_names(block.text)
+    let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+    for entry in redirect_map.iter() {
+      let (from_name, to_name) = entry
+      if !local_names.contains(from_name) {
+        block_redirects.set(from_name, to_name)
+      }
+    }
+    if block_redirects.is_empty() {
+      out = out + block.text
+    } else {
+      out = out +
+        rewrite_wgsl_declaration_text_with_map(
+          block.text,
+          block_redirects,
+          false,
+        )
+    }
+  }
+  out
 }
 
 ///|
@@ -1313,7 +1407,9 @@ fn finalize_wgsl_composed_source(
   out = dedupe_wgsl_duplicate_declarations(out)
   let suffix_redirects = build_wgsl_unique_lowered_suffix_redirect_map(out)
   if !suffix_redirects.is_empty() {
-    out = rewrite_wgsl_declaration_text_with_map(out, suffix_redirects, false)
+    out = rewrite_wgsl_declaration_blocks_with_suffix_redirects(
+      out, suffix_redirects,
+    )
   }
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
@@ -1537,5 +1633,6 @@ pub fn Composer::load_wgsl_from_assets_base_required(
     value_defines: default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
+    preserve_imported_entry_points: true,
   })
 }

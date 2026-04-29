@@ -148,6 +148,7 @@ test "README: compose registered modules" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
+    preserve_imported_entry_points: true,
   }
   let composed : String = composer.compose_wgsl(
     "sprite_render/mesh2d/mesh2d.wgsl", compose_options,
@@ -196,6 +197,7 @@ test "README: bulk registry and relative imports" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
+    preserve_imported_entry_points: true,
   }
   let composed : String = composer.compose_wgsl(
     "shaders/effects/main.wgsl", compose_options,
@@ -267,6 +269,7 @@ test "README: scan source tree" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
+    preserve_imported_entry_points: true,
   }
   let composed : String = composer.compose_wgsl(
     "effects/main.wgsl", compose_options,
@@ -328,6 +331,7 @@ test "README: export single WGSL file" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
+    preserve_imported_entry_points: true,
   }
   let export_options : @moon_wgsl.WgslExportOptions = { root_items: ["shade"] }
   let exported : @moon_wgsl.WgslExportOutput = composer.export_wgsl_with_options(
@@ -372,6 +376,7 @@ test "README: build source catalog" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
+    preserve_imported_entry_points: true,
   }
   let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] = composer.build_wgsl_source_catalog(
     compose_options,
@@ -416,6 +421,7 @@ test "README: source-level redirects" {
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
+    preserve_imported_entry_points: true,
   }
   let export_options : @moon_wgsl.WgslExportOptions = { root_items: ["shade"] }
   let exported : @moon_wgsl.WgslExportOutput = composer.export_wgsl_with_options(
@@ -521,7 +527,8 @@ Important public data structures:
 - `WgslSourceFile`
 - `WgslComposeOptions`
   Holds root compose settings: asset base, shader defs, value defs, symbol
-  redirects, and root-only `additional_imports`.
+  redirects, root-only `additional_imports`, and whether import-only roots
+  should preserve item-imported entry points.
 - `WgslSymbolRedirect`
 - `WgslExportOptions`
 - `WgslExportOutput`

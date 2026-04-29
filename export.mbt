@@ -676,6 +676,7 @@ pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(
       value_defines: default_wgsl_value_defines(),
       redirects,
       additional_imports: [],
+      preserve_imported_entry_points: true,
     },
     options,
   )
