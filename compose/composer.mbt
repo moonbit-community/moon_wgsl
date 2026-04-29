@@ -688,64 +688,72 @@ fn wgsl_shader_def_enabled(
 }
 
 ///|
+fn wgsl_compose_token_end(token : Token) -> Int {
+  match token {
+    Token::Identifier(text, pos) | Token::Whitespace(text, pos) =>
+      pos + text.length()
+    Token::Other(_, pos) => pos + 1
+  }
+}
+
+///|
+fn wgsl_if_operator_code(code : Int) -> Bool {
+  code == 61 || code == 33 || code == 60 || code == 62 // '=!<>'
+}
+
+///|
 fn parse_wgsl_strict_if_expr(expr : String) -> (String, String, String)? {
   let text = strip_wgsl_line_comment(expr).trim().to_owned()
   if text == "" {
     return None
   }
-  let mut def_end = 0
-  while def_end < text.length() {
-    let code = text.code_unit_at(def_end).to_int()
-    if wgsl_identifier_char(code) || code == 124 { // '|'
-      def_end = def_end + 1
-    } else {
-      break
+  let tokens = tokenize(text, false)
+  let mut operator_token_index = -1
+  for i in 0..<tokens.length() {
+    match tokens[i] {
+      Token::Other(code, _) if wgsl_if_operator_code(code) => {
+        operator_token_index = i
+        break
+      }
+      _ => ()
     }
   }
-  if def_end == 0 {
+  if operator_token_index <= 0 {
     return None
   }
-  let def_name = text[:def_end].to_owned()
-  let mut op_start = def_end
-  while op_start < text.length() {
-    let code = text.code_unit_at(op_start).to_int()
-    if code == 32 || code == 9 {
-      op_start = op_start + 1
-    } else {
-      break
+  let op_start = tokens[operator_token_index].pos()
+  let def_name = text[:op_start].to_owned().trim().to_owned()
+  if def_name == "" {
+    return None
+  }
+  let mut op_end_index = operator_token_index
+  while op_end_index < tokens.length() {
+    match tokens[op_end_index] {
+      Token::Other(code, _) if wgsl_if_operator_code(code) =>
+        op_end_index = op_end_index + 1
+      _ => break
     }
   }
-  let mut op_end = op_start
-  while op_end < text.length() {
-    let code = text.code_unit_at(op_end).to_int()
-    if code == 61 || code == 33 || code == 60 || code == 62 { // '=!<>'
-      op_end = op_end + 1
-    } else {
-      break
-    }
-  }
+  let op_end = wgsl_compose_token_end(tokens[op_end_index - 1])
   let operator = text[op_start:op_end].to_owned()
-  let mut value_start = op_end
-  while value_start < text.length() {
-    let code = text.code_unit_at(value_start).to_int()
-    if code == 32 || code == 9 {
-      value_start = value_start + 1
-    } else {
-      break
-    }
-  }
-  let mut value_end = value_start
-  while value_end < text.length() {
-    let code = text.code_unit_at(value_end).to_int()
-    if wgsl_identifier_char(code) || code == 45 || code == 124 { // '-|'
-      value_end = value_end + 1
-    } else {
-      break
-    }
-  }
-  if value_start == value_end {
+  if operator == "" || op_end_index >= tokens.length() {
     return None
   }
+  let value_start = tokens[op_end_index].pos()
+  let mut value_end_index = op_end_index
+  while value_end_index < tokens.length() {
+    match tokens[value_end_index] {
+      Token::Identifier(_, _) => value_end_index = value_end_index + 1
+      Token::Other(code, _) if code == 45 ||
+        code == 124 ||
+        (code >= 48 && code <= 57) => value_end_index = value_end_index + 1
+      _ => break
+    }
+  }
+  if value_end_index == op_end_index {
+    return None
+  }
+  let value_end = wgsl_compose_token_end(tokens[value_end_index - 1])
   Some((def_name, operator, text[value_start:value_end].to_owned()))
 }
 
