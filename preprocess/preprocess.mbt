@@ -270,61 +270,54 @@ fn split_define_name_and_value(text : String) -> (String, String) {
   if trimmed == "" {
     return ("", "")
   }
-  let mut name_end = 0
-  while name_end < trimmed.length() {
-    let code = trimmed.code_unit_at(name_end).to_int()
-    let is_name = (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      (code >= 48 && code <= 57) ||
-      code == 95 ||
-      code == 124
-    if !is_name {
-      break
+  let tokens = tokenize(trimmed, true)
+  let mut i = 0
+  let mut name = ""
+  while i < tokens.length() {
+    match shader_def_name_token_text(tokens[i]) {
+      Some(text) => {
+        name = name + text
+        i = i + 1
+      }
+      None => break
     }
-    name_end = name_end + 1
   }
-  if name_end == 0 {
+  if name == "" {
     return ("", "")
   }
-  let name = trimmed[:name_end].to_owned()
-  let mut i = name_end
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
+  while i < tokens.length() {
+    match tokens[i] {
+      Token::Whitespace(_, _) => i = i + 1
+      _ => break
     }
-    break
   }
-  let value_start = i
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    let is_value = (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      (code >= 48 && code <= 57) ||
-      code == 95 ||
-      code == 124 ||
-      code == 45
-    if !is_value {
-      break
+  let mut value = ""
+  while i < tokens.length() {
+    match shader_def_name_token_text(tokens[i]) {
+      Some(text) => value = value + text
+      None =>
+        match tokens[i] {
+          Token::Other(45, _) => value = value + "-"
+          _ => break
+        }
     }
     i = i + 1
   }
-  (name, trimmed[value_start:i].to_owned())
+  (name, value)
 }
 
 ///|
 fn first_space_separated_token(text : String) -> String {
   let trimmed = text.trim().to_owned()
-  let mut i = 0
-  while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      break
+  let tokens = tokenize(trimmed, true)
+  let mut output = ""
+  for token in tokens {
+    match token {
+      Token::Whitespace(_, _) => break
+      _ => output = output + preprocess_token_text(token)
     }
-    i = i + 1
   }
-  trimmed[:i].to_owned()
+  output
 }
 
 ///|
