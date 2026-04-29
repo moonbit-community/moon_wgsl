@@ -488,8 +488,9 @@ pub fn wgsl_source_declares_entry_point(
   if item_name == "" {
     return false
   }
-  for decl in parse_wgsl_translation_unit(source).declarations {
-    match decl.data {
+  let graph = build_wgsl_declaration_graph(source)
+  for block in graph.declaration_blocks {
+    match block.data {
       WgslGlobalDeclData::Function(function) =>
         if function.name.name == item_name {
           for attr in function.attributes {
