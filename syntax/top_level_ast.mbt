@@ -41,161 +41,6 @@ fn top_level_text_contains_code_unit(text : String, code : Int) -> Bool {
 }
 
 ///|
-fn top_level_identifier_char(code : Int) -> Bool {
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122) ||
-  (code >= 48 && code <= 57) ||
-  code == 95
-}
-
-///|
-fn top_level_declaration_after_attribute(trimmed : String) -> String {
-  let mut i = 0
-  while i < trimmed.length() {
-    while i < trimmed.length() {
-      let code = trimmed.code_unit_at(i).to_int()
-      if code == 32 || code == 9 {
-        i = i + 1
-      } else {
-        break
-      }
-    }
-    if i >= trimmed.length() || trimmed.code_unit_at(i).to_int() != 64 {
-      break
-    }
-    i = i + 1
-    while i < trimmed.length() &&
-          top_level_identifier_char(trimmed.code_unit_at(i).to_int()) {
-      i = i + 1
-    }
-    while i < trimmed.length() {
-      let code = trimmed.code_unit_at(i).to_int()
-      if code == 32 || code == 9 {
-        i = i + 1
-      } else {
-        break
-      }
-    }
-    if i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 40 {
-      let mut depth = 1
-      i = i + 1
-      while i < trimmed.length() && depth > 0 {
-        let code = trimmed.code_unit_at(i).to_int()
-        if code == 40 {
-          depth = depth + 1
-        } else if code == 41 {
-          depth = depth - 1
-        }
-        i = i + 1
-      }
-    }
-  }
-  if i >= trimmed.length() {
-    ""
-  } else {
-    top_level_declaration_name(trimmed[i:trimmed.length()].to_owned())
-  }
-}
-
-///|
-fn top_level_declaration_name(line : String) -> String {
-  let trimmed = line.trim().to_owned()
-  if trimmed == "" {
-    return ""
-  }
-  if starts_with_text(trimmed, "@") {
-    return top_level_declaration_after_attribute(trimmed)
-  }
-  if starts_with_text(trimmed, "struct ") {
-    return top_level_name_after_keyword(trimmed, 7)
-  }
-  if starts_with_text(trimmed, "fn ") {
-    return top_level_name_after_keyword(trimmed, 3)
-  }
-  if starts_with_text(trimmed, "virtual fn ") {
-    return top_level_name_after_keyword(trimmed, 11)
-  }
-  if starts_with_text(trimmed, "override fn ") {
-    let rest = trimmed[12:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() {
-      let code = rest.code_unit_at(end).to_int()
-      if top_level_identifier_char(code) {
-        end = end + 1
-        continue
-      }
-      if code == 58 &&
-        end + 1 < rest.length() &&
-        rest.code_unit_at(end + 1).to_int() == 58 {
-        end = end + 2
-        continue
-      }
-      break
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "const ") {
-    return top_level_name_after_keyword(trimmed, 6)
-  }
-  if starts_with_text(trimmed, "override ") {
-    return top_level_name_after_keyword(trimmed, 9)
-  }
-  if starts_with_text(trimmed, "alias ") {
-    return top_level_name_after_keyword(trimmed, 6)
-  }
-  if starts_with_text(trimmed, "type ") {
-    return top_level_name_after_keyword(trimmed, 5)
-  }
-  if starts_with_text(trimmed, "var") {
-    let mut i = 3
-    while i < trimmed.length() &&
-          (
-            trimmed.code_unit_at(i).to_int() == 32 ||
-            trimmed.code_unit_at(i).to_int() == 9
-          ) {
-      i = i + 1
-    }
-    if i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 60 {
-      while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 62 {
-        i = i + 1
-      }
-      if i < trimmed.length() {
-        i = i + 1
-      }
-    }
-    while i < trimmed.length() &&
-          (
-            trimmed.code_unit_at(i).to_int() == 32 ||
-            trimmed.code_unit_at(i).to_int() == 9
-          ) {
-      i = i + 1
-    }
-    let start = i
-    while i < trimmed.length() &&
-          top_level_identifier_char(trimmed.code_unit_at(i).to_int()) {
-      i = i + 1
-    }
-    return if i == start { "" } else { trimmed[start:i].to_owned() }
-  }
-  ""
-}
-
-///|
-fn top_level_name_after_keyword(trimmed : String, offset : Int) -> String {
-  let rest = trimmed[offset:trimmed.length()].to_owned()
-  let mut end = 0
-  while end < rest.length() &&
-        top_level_identifier_char(rest.code_unit_at(end).to_int()) {
-    end = end + 1
-  }
-  if end == 0 {
-    ""
-  } else {
-    rest[:end].to_owned()
-  }
-}
-
-///|
 fn top_level_push_directive_item(
   items : Array[WgslTopLevelItem],
   kind : WgslTopLevelKind,
@@ -368,7 +213,6 @@ fn WgslTopLevelParser::parse_import_item(
 fn WgslTopLevelParser::parse_declaration_item(
   self : WgslTopLevelParser,
   items : Array[WgslTopLevelItem],
-  decl_name_hint : String,
 ) -> Unit {
   let block_lines : Array[String] = []
   let block_start = if self.pending_prefix.length() > 0 {
@@ -414,7 +258,7 @@ fn WgslTopLevelParser::parse_declaration_item(
   }
   items.push(WgslTopLevelItem::{
     kind: WgslTopLevelKind::Declaration,
-    name: decl_name_hint,
+    name: parse_wgsl_declaration_name(block_text),
     text: block_text,
     start: block_start,
     end: block_start + block_text.length(),
@@ -430,9 +274,11 @@ fn WgslTopLevelParser::parse_items(
     match self.view() {
       [line, .. rest] => {
         let trimmed = line.cleaned.trim().to_owned()
-        let decl_name_hint = top_level_declaration_name(trimmed)
         if trimmed == "" ||
-          (starts_with_text(trimmed, "@") && decl_name_hint == "") {
+          (
+            starts_with_text(trimmed, "@") &&
+            parse_wgsl_declaration_name(trimmed) == ""
+          ) {
           self.push_pending_prefix(line)
           self.update_view(rest)
           continue
@@ -464,7 +310,7 @@ fn WgslTopLevelParser::parse_items(
             _ => ()
           }
         }
-        self.parse_declaration_item(items, decl_name_hint)
+        self.parse_declaration_item(items)
       }
       [] => break
     }

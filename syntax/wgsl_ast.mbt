@@ -576,6 +576,29 @@ fn wgsl_global_decl_kind_from_data(
 }
 
 ///|
+fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
+  match data {
+    Function(function) => function.name.name
+    GlobalVariable(global) => global.name.name
+    Const(value) => value.name.name
+    Override(value) => value.name.name
+    Struct(value) => value.name.name
+    TypeAlias(value) => value.name.name
+    ConstAssert(_) | Raw => ""
+  }
+}
+
+///|
+fn parse_wgsl_declaration_data(text : String) -> WgslGlobalDeclData {
+  WgslDeclParser::new(text).parse_decl_data()
+}
+
+///|
+fn parse_wgsl_declaration_name(text : String) -> String {
+  wgsl_decl_data_name(parse_wgsl_declaration_data(text))
+}
+
+///|
 priv struct WgslAstParser {
   mut item_view : ArrayView[WgslTopLevelItem]
 }
@@ -605,8 +628,7 @@ fn WgslAstParser::parse_global_decl(
   item : WgslTopLevelItem,
 ) -> WgslGlobalDecl {
   let data = match item.kind {
-    WgslTopLevelKind::Declaration =>
-      WgslDeclParser::new(item.text).parse_decl_data()
+    WgslTopLevelKind::Declaration => parse_wgsl_declaration_data(item.text)
     _ => WgslGlobalDeclData::Raw
   }
   let kind = match item.kind {
@@ -619,7 +641,11 @@ fn WgslAstParser::parse_global_decl(
   WgslGlobalDecl::{
     kind,
     data,
-    name: item.name,
+    name: if item.name == "" {
+      wgsl_decl_data_name(data)
+    } else {
+      item.name
+    },
     text: item.text,
     start: item.start,
     end: item.end,
