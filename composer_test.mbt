@@ -747,6 +747,30 @@ test "naga_oil: composer reports else without condition" {
 }
 
 ///|
+test "naga_oil: composer applies root-local shader defines" {
+  let composer = @moon_wgsl.Composer::default()
+  let source = "#define NOW_DEFINED\n#define MODE 2\n#ifdef NOW_DEFINED\nconst enabled: u32 = #MODE;\n#endif\n#if MODE == 2\nconst selected: u32 = #MODE;\n#else\nconst selected: u32 = 0u;\n#endif\n"
+  let preprocessed = composer.compose_wgsl_source(
+    source,
+    composer_test_compose_options("", empty_bool_defines(), []),
+  ) catch {
+    err => abort("expected root-local define compose success: \{err.message()}")
+  }
+  debug_inspect(
+    preprocessed.contains("const enabled: u32 = 2;"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("const selected: u32 = 2;"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("const selected: u32 = 0u;"),
+    content="false",
+  )
+}
+
+///|
 test "naga_oil: composer reports import cycles explicitly" {
   register_cycle_test_shaders()
   let mut message : String? = None

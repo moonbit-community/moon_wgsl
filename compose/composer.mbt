@@ -410,6 +410,24 @@ fn Composer::active_compose_defs_for_rel_path(
 }
 
 ///|
+fn merge_wgsl_source_local_shader_defs(
+  active_defs : WgslActiveComposeDefs,
+  source : String,
+) -> Unit {
+  let metadata = get_preprocessor_metadata(source)
+  for entry in metadata.defines.iter() {
+    let (name, value) = entry
+    merge_shader_def_value_into_compose_defs(
+      active_defs.defines,
+      active_defs.value_defines,
+      active_defs.shader_defs,
+      name,
+      value,
+    )
+  }
+}
+
+///|
 fn collect_wgsl_cached_import_redirects(
   session : WgslComposeSession,
   rel_path : String,
@@ -1797,6 +1815,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   let active_defs = self.active_compose_defs_for_rel_path(
     current_rel_path, session, inherited_defs,
   )
+  merge_wgsl_source_local_shader_defs(active_defs, source)
   let prepared = prepare_wgsl_compose_source(source, session, active_defs)
   let mut merged = ""
   let alias_redirects : Array[WgslSymbolRedirect] = []

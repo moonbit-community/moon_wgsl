@@ -67,7 +67,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `item_sub_point`, `item_sub_point/` | Covered | Nested item import paths are represented in local tests. |
 | `conditional_import`, `conditional_import/` | Covered | Conditional import inclusion is covered. |
 | `conditional_missing_import`, `conditional_missing_import_nested`, `conditional_import_fail/` | Covered | Missing imports under active conditions raise local composer errors. |
-| Strict preprocessor scope and comparison errors | Covered | Composer-level preprocessing now rejects missing shader defs in `#if`, unknown operators, invalid comparison literals, extra/missing `#endif`, and `#else` without a matching condition like upstream. |
+| Strict preprocessor scope, local defines, and comparison errors | Covered | Composer-level preprocessing now applies root/local `#define` values, rejects missing shader defs in `#if`, unknown operators, invalid comparison literals, extra/missing `#endif`, and `#else` without a matching condition like upstream. |
 | `rusty_imports`, `rusty_imports/` | Covered | Fully qualified namespace references synthesize source-level import targets. |
 | `test_bevy_path_imports`, `bevy_path_imports/` | Covered | Bevy-style path syntax is covered by metadata/parser parity tests. |
 | `test_quoted_import_dup_name`, `quoted_dup/` | Covered | Quoted import paths and duplicate local names are covered. |
