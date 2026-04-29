@@ -1,0 +1,59 @@
+// Copyright 2026 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+test "top-level AST classifies directives imports and declarations" {
+  let source = "#define_import_path bevy_pbr::demo\n" +
+    "#define TONEMAPPING_PASS\n" +
+    "#import bevy_render::{\n" +
+    "  view::View,\n" +
+    "  globals::Globals,\n" +
+    "}\n" +
+    "@group(0) @binding(0)\n" +
+    "var<uniform> view: View;\n" +
+    "struct Output {\n" +
+    "  value: vec4<f32>,\n" +
+    "}\n" +
+    "@fragment\n" +
+    "fn fragment() -> Output {\n" +
+    "  var out: Output;\n" +
+    "  return out;\n" +
+    "}\n"
+  let items = parse_wgsl_top_level_items(source)
+  debug_inspect(items.length(), content="6")
+  debug_inspect(items[0].kind, content="DefineImportPath")
+  debug_inspect(items[1].kind, content="Define")
+  debug_inspect(items[2].kind, content="Import")
+  debug_inspect(items[2].text.contains("globals::Globals"), content="true")
+  debug_inspect(items[3].kind, content="Declaration")
+  debug_inspect(items[3].name, content="\"view\"")
+  debug_inspect(items[4].name, content="\"Output\"")
+  debug_inspect(items[5].name, content="\"fragment\"")
+}
+
+///|
+test "top-level AST ignores comments while finding block boundaries" {
+  let source = "struct A {\n" +
+    "  // comment with }\n" +
+    "  value: u32,\n" +
+    "}\n" +
+    "fn b() -> u32 {\n" +
+    "  /* comment with { */\n" +
+    "  return 1u;\n" +
+    "}\n"
+  let items = parse_wgsl_top_level_items(source)
+  debug_inspect(items.length(), content="2")
+  debug_inspect(items[0].name, content="\"A\"")
+  debug_inspect(items[1].name, content="\"b\"")
+}

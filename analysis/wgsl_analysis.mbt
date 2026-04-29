@@ -27,16 +27,6 @@ pub(all) struct WgslDeclarationGraph {
 }
 
 ///|
-fn text_contains_code_unit(text : String, code : Int) -> Bool {
-  for i in 0..<text.length() {
-    if text.code_unit_at(i).to_int() == code {
-      return true
-    }
-  }
-  false
-}
-
-///|
 pub fn wgsl_identifier_char(code : Int) -> Bool {
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
@@ -58,245 +48,27 @@ pub fn wgsl_string_list_push_unique(
 }
 
 ///|
-fn wgsl_declaration_name(line : String) -> String {
-  let trimmed = line.trim().to_owned()
-  if trimmed == "" {
-    return ""
-  }
-  if starts_with_text(trimmed, "@") {
-    let mut i = 0
-    while i + 3 < trimmed.length() {
-      if trimmed.code_unit_at(i).to_int() == 32 &&
-        trimmed.code_unit_at(i + 1).to_int() == 118 &&
-        trimmed.code_unit_at(i + 2).to_int() == 97 &&
-        trimmed.code_unit_at(i + 3).to_int() == 114 {
-        return wgsl_declaration_name(trimmed[i + 1:trimmed.length()].to_owned())
-      }
-      i = i + 1
-    }
-    return ""
-  }
-  if starts_with_text(trimmed, "struct ") {
-    let rest = trimmed[7:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "fn ") {
-    let rest = trimmed[3:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "virtual fn ") {
-    let rest = trimmed[11:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "override fn ") {
-    let rest = trimmed[12:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() {
-      let code = rest.code_unit_at(end).to_int()
-      if wgsl_identifier_char(code) {
-        end = end + 1
-        continue
-      }
-      if code == 58 &&
-        end + 1 < rest.length() &&
-        rest.code_unit_at(end + 1).to_int() == 58 {
-        end = end + 2
-        continue
-      }
-      break
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "const ") {
-    let rest = trimmed[6:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "override ") {
-    let rest = trimmed[9:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "alias ") {
-    let rest = trimmed[6:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "type ") {
-    let rest = trimmed[5:trimmed.length()].to_owned()
-    let mut end = 0
-    while end < rest.length() &&
-          wgsl_identifier_char(rest.code_unit_at(end).to_int()) {
-      end = end + 1
-    }
-    return if end == 0 { "" } else { rest[:end].to_owned() }
-  }
-  if starts_with_text(trimmed, "var") {
-    let mut i = 3
-    while i < trimmed.length() &&
-          (
-            trimmed.code_unit_at(i).to_int() == 32 ||
-            trimmed.code_unit_at(i).to_int() == 9
-          ) {
-      i = i + 1
-    }
-    if i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 60 {
-      while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 62 {
-        i = i + 1
-      }
-      if i < trimmed.length() {
-        i = i + 1
-      }
-    }
-    while i < trimmed.length() &&
-          (
-            trimmed.code_unit_at(i).to_int() == 32 ||
-            trimmed.code_unit_at(i).to_int() == 9
-          ) {
-      i = i + 1
-    }
-    let start = i
-    while i < trimmed.length() &&
-          wgsl_identifier_char(trimmed.code_unit_at(i).to_int()) {
-      i = i + 1
-    }
-    return if i == start { "" } else { trimmed[start:i].to_owned() }
-  }
-  ""
-}
-
-///|
 pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
-  let lines : Array[String] = []
-  let cleaned_lines : Array[String] = []
-  let line_starts : Array[Int] = []
-  let mut offset = 0
-  for line_item in source.split("\n") {
-    let line = line_item.to_owned()
-    lines.push(line)
-    line_starts.push(offset)
-    offset = offset + line.length() + 1
-  }
-  for line_item in replace_comments(source).split("\n") {
-    cleaned_lines.push(line_item.to_owned())
-  }
-
-  let pending_prefix : Array[String] = []
   let import_blocks : Array[WgslGraphBlock] = []
   let declaration_blocks : Array[WgslGraphBlock] = []
-  let mut pending_prefix_start = 0
-  let mut i = 0
-  while i < lines.length() {
-    let line = lines[i]
-    let cleaned_line = cleaned_lines[i]
-    let trimmed = cleaned_line.trim().to_owned()
-    let decl_name_hint = wgsl_declaration_name(trimmed)
-    if trimmed == "" || (starts_with_text(trimmed, "@") && decl_name_hint == "") {
-      if pending_prefix.length() == 0 {
-        pending_prefix_start = line_starts[i]
-      }
-      pending_prefix.push(line)
-      i = i + 1
-      continue
+  for item in parse_wgsl_top_level_items(source) {
+    match item.kind {
+      WgslTopLevelKind::Import =>
+        import_blocks.push(WgslGraphBlock::{
+          name: item.name,
+          text: item.text,
+          start: item.start,
+          end: item.end,
+        })
+      WgslTopLevelKind::Declaration =>
+        declaration_blocks.push(WgslGraphBlock::{
+          name: item.name,
+          text: item.text,
+          start: item.start,
+          end: item.end,
+        })
+      _ => ()
     }
-    if hash_directive_tail(trimmed, "define_import_path") is Some(_) {
-      i = i + 1
-      continue
-    }
-    if hash_directive_tail(trimmed, "import") is Some(import_tail) {
-      let block_start = line_starts[i]
-      let mut import_block = line
-      let mut balance = import_brace_balance(import_tail)
-      while balance > 0 && i + 1 < lines.length() {
-        i = i + 1
-        let next_line = lines[i]
-        import_block = "\{import_block}\n\{next_line}"
-        balance = balance + import_brace_balance(cleaned_lines[i])
-      }
-      import_block = "\{import_block}\n"
-      import_blocks.push(WgslGraphBlock::{
-        name: "",
-        text: import_block,
-        start: block_start,
-        end: block_start + import_block.length(),
-      })
-      pending_prefix.clear()
-      i = i + 1
-      continue
-    }
-    let block_lines : Array[String] = []
-    let block_start = if pending_prefix.length() > 0 {
-      pending_prefix_start
-    } else {
-      line_starts[i]
-    }
-    for prefix_line in pending_prefix {
-      block_lines.push(prefix_line)
-    }
-    pending_prefix.clear()
-    let decl_name = decl_name_hint
-    let mut saw_brace = false
-    let mut brace_depth = 0
-    let mut done = false
-    while !done {
-      let block_line = lines[i]
-      let cleaned_block_line = cleaned_lines[i]
-      block_lines.push(block_line)
-      if text_contains_code_unit(cleaned_block_line, 123) {
-        saw_brace = true
-      }
-      brace_depth = brace_depth + import_brace_balance(cleaned_block_line)
-      let block_trimmed = cleaned_block_line.trim().to_owned()
-      if saw_brace {
-        done = brace_depth == 0
-      } else {
-        done = block_trimmed.has_suffix(";")
-      }
-      if !done {
-        i = i + 1
-        if i >= lines.length() {
-          done = true
-        }
-      }
-    }
-    let mut block_text = ""
-    for block_line in block_lines {
-      block_text = "\{block_text}\{block_line}\n"
-    }
-    declaration_blocks.push(WgslGraphBlock::{
-      name: decl_name,
-      text: block_text,
-      start: block_start,
-      end: block_start + block_text.length(),
-    })
-    i = i + 1
   }
 
   WgslDeclarationGraph::{ import_blocks, declaration_blocks }

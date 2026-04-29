@@ -21,6 +21,8 @@ pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]
 
 pub fn parse_wgsl_import_targets_from_tokens(String, Bool, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
 
+pub fn parse_wgsl_top_level_items(String) -> Array[WgslTopLevelItem]
+
 pub fn replace_comments(String) -> String
 
 pub fn spaces(Int) -> String
@@ -63,6 +65,21 @@ pub(all) enum Token {
 } derive(Eq, @debug.Debug)
 pub fn Token::identifier(Self) -> String?
 pub fn Token::pos(Self) -> Int
+
+pub(all) struct WgslTopLevelItem {
+  kind : WgslTopLevelKind
+  name : String
+  text : String
+  start : Int
+  end : Int
+}
+
+pub(all) enum WgslTopLevelKind {
+  Import
+  DefineImportPath
+  Define
+  Declaration
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
