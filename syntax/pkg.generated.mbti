@@ -189,6 +189,8 @@ pub(all) struct WgslGlobalVariable {
 
 pub(all) struct WgslIdent {
   name : String
+  start : Int
+  end : Int
 } derive(@debug.Debug)
 
 pub(all) struct WgslOverride {

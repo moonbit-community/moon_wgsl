@@ -147,6 +147,8 @@ test "WGSL override function payload preserves qualified target path" {
   }
   debug_inspect(function.qualifier, content="\"override\"")
   debug_inspect(function.name.name, content="\"mod::inner\"")
+  debug_inspect(function.name.start, content="12")
+  debug_inspect(function.name.end, content="22")
   debug_inspect(function.arguments[0].name, content="\"arg\"")
   debug_inspect(
     function.result,

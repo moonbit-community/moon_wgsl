@@ -16,6 +16,8 @@ pub(all) enum WgslGlobalDeclKind {
 ///|
 pub(all) struct WgslIdent {
   name : String
+  start : Int
+  end : Int
 } derive(Debug)
 
 ///|
@@ -223,26 +225,40 @@ fn WgslDeclParser::consume_identifier(self : WgslDeclParser) -> String? {
 }
 
 ///|
-fn WgslDeclParser::consume_path_identifier(self : WgslDeclParser) -> String? {
-  let mut name = match self.consume_identifier() {
+fn WgslDeclParser::consume_ident_node(self : WgslDeclParser) -> WgslIdent? {
+  match self.view() {
+    [Token::Identifier(name, pos), .. rest] => {
+      self.update_view(rest)
+      Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
+    }
+    _ => None
+  }
+}
+
+///|
+fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? {
+  let first = match self.consume_ident_node() {
     Some(value) => value
     None => return None
   }
+  let mut name = first.name
+  let mut end = first.end
   while true {
     match self.view() {
       [
         Token::Other(58, _),
         Token::Other(58, _),
-        Token::Identifier(segment, _),
+        Token::Identifier(segment, segment_pos),
         .. rest,
       ] => {
         name = name + "::" + segment
+        end = segment_pos + segment.length()
         self.update_view(rest)
       }
       _ => break
     }
   }
-  Some(name)
+  Some(WgslIdent::{ name, start: first.start, end })
 }
 
 ///|
@@ -614,12 +630,12 @@ fn WgslDeclParser::parse_function(
   qualifier : String,
 ) -> WgslFunction? {
   let name = if qualifier == "override" {
-    match self.consume_path_identifier() {
+    match self.consume_path_ident_node() {
       Some(value) => value
       None => return None
     }
   } else {
-    match self.consume_identifier() {
+    match self.consume_ident_node() {
       Some(value) => value
       None => return None
     }
@@ -627,14 +643,7 @@ fn WgslDeclParser::parse_function(
   let arguments = self.parse_function_arguments()
   let result = self.parse_function_result()
   let body = self.parse_block()
-  Some(WgslFunction::{
-    attributes,
-    qualifier,
-    name: WgslIdent::{ name, },
-    arguments,
-    result,
-    body,
-  })
+  Some(WgslFunction::{ attributes, qualifier, name, arguments, result, body })
 }
 
 ///|
@@ -672,15 +681,11 @@ fn WgslDeclParser::parse_struct(
   self : WgslDeclParser,
   attributes : Array[WgslAttribute],
 ) -> WgslStruct? {
-  let name = match self.consume_identifier() {
+  let name = match self.consume_ident_node() {
     Some(value) => value
     None => return None
   }
-  Some(WgslStruct::{
-    attributes,
-    name: WgslIdent::{ name, },
-    members: self.parse_struct_members(),
-  })
+  Some(WgslStruct::{ attributes, name, members: self.parse_struct_members() })
 }
 
 ///|
@@ -689,7 +694,7 @@ fn WgslDeclParser::parse_global_variable(
   attributes : Array[WgslAttribute],
 ) -> WgslGlobalVariable? {
   let template_list = self.parse_template_list()
-  let name = match self.consume_identifier() {
+  let name = match self.consume_ident_node() {
     Some(value) => value
     None => return None
   }
@@ -704,13 +709,7 @@ fn WgslDeclParser::parse_global_variable(
     None
   }
   let initializer = self.parse_optional_initializer()
-  Some(WgslGlobalVariable::{
-    attributes,
-    name: WgslIdent::{ name, },
-    template_list,
-    ty,
-    initializer,
-  })
+  Some(WgslGlobalVariable::{ attributes, name, template_list, ty, initializer })
 }
 
 ///|
@@ -728,7 +727,7 @@ fn WgslDeclParser::parse_optional_initializer(self : WgslDeclParser) -> String? 
 
 ///|
 fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
-  let name = match self.consume_identifier() {
+  let name = match self.consume_ident_node() {
     Some(value) => value
     None => return None
   }
@@ -743,7 +742,7 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
     None
   }
   let initializer = self.parse_optional_initializer()
-  Some(WgslConst::{ name: WgslIdent::{ name, }, ty, initializer })
+  Some(WgslConst::{ name, ty, initializer })
 }
 
 ///|
@@ -751,7 +750,7 @@ fn WgslDeclParser::parse_override(
   self : WgslDeclParser,
   attributes : Array[WgslAttribute],
 ) -> WgslOverride? {
-  let name = match self.consume_identifier() {
+  let name = match self.consume_ident_node() {
     Some(value) => value
     None => return None
   }
@@ -766,18 +765,18 @@ fn WgslDeclParser::parse_override(
     None
   }
   let initializer = self.parse_optional_initializer()
-  Some(WgslOverride::{ attributes, name: WgslIdent::{ name, }, ty, initializer })
+  Some(WgslOverride::{ attributes, name, ty, initializer })
 }
 
 ///|
 fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
-  let name = match self.consume_identifier() {
+  let name = match self.consume_ident_node() {
     Some(value) => value
     None => return None
   }
   self.consume_if_other(61) |> ignore
   let ty = self.collect_until_top_level([59])
-  Some(WgslTypeAlias::{ name: WgslIdent::{ name, }, ty })
+  Some(WgslTypeAlias::{ name, ty })
 }
 
 ///|
