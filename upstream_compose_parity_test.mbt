@@ -638,6 +638,105 @@ test "github issue 5: colliding lowered declarations from separate imports are d
 }
 
 ///|
+test "github issue 5: item-imported function keeps its imported mesh binding" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "mesh_types.wgsl",
+    "#define_import_path bevy_pbr::mesh_types\n" +
+    "struct Mesh {\n" +
+    "  flags: u32,\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "mesh_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_bindings\n" +
+    "#import bevy_pbr::mesh_types::Mesh\n" +
+    "#ifndef MESHLET_MESH_MATERIAL_PASS\n" +
+    "@group(2) @binding(0) var<storage> mesh: array<Mesh>;\n" +
+    "#endif\n",
+  )
+  composer.register_wgsl_source(
+    "pbr_types.wgsl",
+    "#define_import_path bevy_pbr::pbr_types\n" +
+    "struct PbrInput {\n" +
+    "  flags: u32,\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "forward_io.wgsl",
+    "#define_import_path bevy_pbr::forward_io\n" +
+    "struct VertexOutput {\n" +
+    "  instance_index: u32,\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "pbr_fragment.wgsl",
+    "#define_import_path bevy_pbr::pbr_fragment\n" +
+    "#import bevy_pbr::{\n" +
+    "  mesh_bindings::mesh,\n" +
+    "  pbr_types,\n" +
+    "  forward_io::VertexOutput,\n" +
+    "}\n" +
+    "fn pbr_input_from_standard_material(in: VertexOutput) -> pbr_types::PbrInput {\n" +
+    "  var pbr_input: pbr_types::PbrInput;\n" +
+    "  pbr_input.flags = mesh[in.instance_index].flags;\n" +
+    "  return pbr_input;\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "pbr.wgsl",
+    "#define_import_path bevy_pbr::pbr\n" +
+    "#import bevy_pbr::{\n" +
+    "  pbr_fragment::pbr_input_from_standard_material,\n" +
+    "  forward_io::VertexOutput,\n" +
+    "}\n" +
+    "@fragment\n" +
+    "fn fragment(vertex_output: VertexOutput) -> @location(0) vec4<f32> {\n" +
+    "  let pbr_input = pbr_input_from_standard_material(vertex_output);\n" +
+    "  return vec4<f32>(f32(pbr_input.flags));\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "mesh.wgsl",
+    "#define_import_path bevy_pbr::mesh\n" +
+    "#import bevy_pbr::{\n" +
+    "  mesh_bindings::mesh,\n" +
+    "  forward_io::VertexOutput,\n" +
+    "}\n" +
+    "@vertex\n" +
+    "fn vertex() -> VertexOutput {\n" +
+    "  var out: VertexOutput;\n" +
+    "  return out;\n" +
+    "}\n" +
+    "@fragment\n" +
+    "fn debug_fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {\n" +
+    "  return vec4<f32>(f32(mesh.instance_index));\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "entry.wgsl", "#import bevy_pbr::{ mesh::vertex, pbr::fragment }\n",
+  )
+  let source = composer.compose_wgsl(
+    "entry.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort(
+        "expected issue 5 imported mesh binding compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    source.contains("var<storage> mesh: array<Mesh>;"),
+    content="true",
+  )
+  debug_inspect(source.contains("struct Mesh"), content="true")
+  debug_inspect(
+    source.contains("mesh[in_wgsl.instance_index].flags"),
+    content="true",
+  )
+}
+
+///|
 test "github issue 3: item-imported entry points are emitted even when unused by source" {
   let composer = @moon_wgsl.Composer::default()
   composer.register_wgsl_source(

@@ -1030,16 +1030,17 @@ fn Composer::build_wgsl_import_requests(
 fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
   let graph = build_wgsl_declaration_graph(source)
   let mut deduped = ""
-  let emitted_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let emitted_blocks : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for import_block in graph.import_blocks {
     deduped = deduped + import_block.text
   }
   for block in graph.declaration_blocks {
     if block.name != "" {
-      if emitted_names.contains(block.name) {
-        continue
+      let normalized_text = block.text.trim().to_owned()
+      match emitted_blocks.get(block.name) {
+        Some(existing_text) if existing_text == normalized_text => continue
+        _ => emitted_blocks.set(block.name, normalized_text)
       }
-      emitted_names.set(block.name, true)
     }
     deduped = deduped + block.text
   }
