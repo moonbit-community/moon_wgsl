@@ -75,7 +75,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `test_atomics`, `atomics/` | Covered | Atomic declarations/usages are covered by source-level declaration dependency tests. |
 | `test_modf`, `modf/` | Covered | Builtin-return usage is covered at source-text dependency level. |
 | `test_diagnostic_filters`, `diagnostic_filters/` | Covered | Diagnostic directives are preserved. |
-| `effective_defs`, `effective_defs/` | Covered | Effective shader-def metadata is tested. |
+| `effective_defs`, `effective_defs/` | Covered | Descriptor-level shader defs now propagate through imported module branches, including the upstream bool-false `#ifdef` semantics and all eight branch combinations. |
 | `wgsl_dual_source_blending`, `dual_source_blending/` | Covered | Dual-source blending attributes are preserved as source text. |
 | `missing_import_in_module`, `missing_import_in_shader` | Covered | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
 | `err_parse`, `err_validation`, `error_test/` | Covered by oracle | `tools/naga_oil_oracle` emits upstream pretty diagnostics with `--entry-only`, `--file-path-prefix`, and `--error-output`; direct and wrapped parse/validation expected files have been diff-verified. |

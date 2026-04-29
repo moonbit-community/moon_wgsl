@@ -29,6 +29,17 @@ fn upstream_parity_bool_defines(
 }
 
 ///|
+fn upstream_parity_shader_def_values(
+  names : Array[String],
+) -> @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] {
+  let defines : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] = @hashmap.HashMap::new()
+  for name in names {
+    defines.set(name, @moon_wgsl.ShaderDefValue::Bool(true))
+  }
+  defines
+}
+
+///|
 fn upstream_parity_compose_options(
   defines : @hashmap.HashMap[String, Bool],
 ) -> @moon_wgsl.WgslComposeOptions {
@@ -39,6 +50,11 @@ fn upstream_parity_compose_options(
     redirects: [],
     additional_imports: [],
   }
+}
+
+///|
+fn upstream_parity_empty_compose_options() -> @moon_wgsl.WgslComposeOptions {
+  upstream_parity_compose_options(upstream_parity_empty_defines())
 }
 
 ///|
@@ -53,6 +69,124 @@ fn upstream_parity_composer(case_name : String) -> @moon_wgsl.Composer {
     _ => abort("expected upstream fixture registration success")
   }
   composer
+}
+
+///|
+fn upstream_parity_descriptor_effective_defs_source(
+  shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue],
+) -> String {
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path mod\n" +
+      "#ifdef DEF_ONE\n" +
+      "const a: u32 = 1u;\n" +
+      "#else\n" +
+      "const a: u32 = 0u;\n" +
+      "#endif\n" +
+      "#ifndef DEF_TWO\n" +
+      "const b: u32 = 0u;\n" +
+      "#else\n" +
+      "const b: u32 = 2u;\n" +
+      "#endif\n" +
+      "#if DEF_THREE == true\n" +
+      "const c: u32 = 4u;\n" +
+      "#else\n" +
+      "const c: u32 = 0u;\n" +
+      "#endif\n",
+      file_path: "mod.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err => abort("expected mod registration success: \{err.message()}")
+  }
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path test_module\n" +
+      "#import mod a, b, c\n" +
+      "fn entry_point() -> f32 {\n" +
+      "  return f32(a + b + c);\n" +
+      "}\n",
+      file_path: "top.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [],
+      shader_defs,
+    }),
+  ) catch {
+    err => abort("expected test_module registration success: \{err.message()}")
+  }
+  composer.register_wgsl_source(
+    "compute_test.wgsl",
+    "#import test_module::entry_point\n" +
+    "@compute @workgroup_size(1)\n" +
+    "fn run_test() {\n" +
+    "  let value = entry_point();\n" +
+    "}\n",
+  )
+  composer.compose_wgsl(
+    "compute_test.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected descriptor effective-def compose success: \{err.message()}",
+      )
+  }
+}
+
+///|
+fn upstream_parity_check_effective_defs_sum(
+  shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue],
+  expected_a : String,
+  expected_b : String,
+  expected_c : String,
+) -> Unit {
+  let source = upstream_parity_descriptor_effective_defs_source(shader_defs)
+  if !(source.contains("const a: u32 = \{expected_a};") ||
+    source.contains("const mod__a: u32 = \{expected_a};")) {
+    abort("expected a to resolve to \{expected_a}")
+  }
+  if !(source.contains("const b: u32 = \{expected_b};") ||
+    source.contains("const mod__b: u32 = \{expected_b};")) {
+    abort("expected b to resolve to \{expected_b}")
+  }
+  if !(source.contains("const c: u32 = \{expected_c};") ||
+    source.contains("const mod__c: u32 = \{expected_c};")) {
+    abort("expected c to resolve to \{expected_c}")
+  }
+}
+
+///|
+fn upstream_parity_check_effective_defs_sum_with_true_defs(
+  names : Array[String],
+  expected_a : String,
+  expected_b : String,
+  expected_c : String,
+) -> Unit {
+  upstream_parity_check_effective_defs_sum(
+    upstream_parity_shader_def_values(names),
+    expected_a,
+    expected_b,
+    expected_c,
+  )
+}
+
+///|
+fn upstream_parity_check_effective_defs_sum_with_false_three(
+  names : Array[String],
+  expected_a : String,
+  expected_b : String,
+) -> Unit {
+  let shader_defs = upstream_parity_shader_def_values(names)
+  shader_defs.set("DEF_THREE", @moon_wgsl.ShaderDefValue::Bool(false))
+  upstream_parity_check_effective_defs_sum(
+    shader_defs, expected_a, expected_b, "0u",
+  )
 }
 
 ///|
@@ -351,6 +485,78 @@ test "naga_oil upstream: effective defs drive imported declaration values" {
   debug_inspect(output.source.contains("const a: u32 = 1u;"), content="true")
   debug_inspect(output.source.contains("const b: u32 = 0u;"), content="true")
   debug_inspect(output.source.contains("const c: u32 = 4u;"), content="true")
+}
+
+///|
+test "naga_oil upstream: bool false shader def is still defined for ifdef" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "bool_false.wgsl",
+    "#ifdef FLAG\n" +
+    "const ifdef_value: u32 = 1u;\n" +
+    "#else\n" +
+    "const ifdef_value: u32 = 0u;\n" +
+    "#endif\n" +
+    "#if FLAG == true\n" +
+    "const if_value: u32 = 1u;\n" +
+    "#else\n" +
+    "const if_value: u32 = 0u;\n" +
+    "#endif\n",
+  )
+  let defines = upstream_parity_empty_defines()
+  defines.set("FLAG", false)
+  let source = composer.compose_wgsl(
+    "bool_false.wgsl",
+    upstream_parity_compose_options(defines),
+  ) catch {
+    err => abort("expected bool-false compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("const ifdef_value: u32 = 1u;"), content="true")
+  debug_inspect(source.contains("const if_value: u32 = 0u;"), content="true")
+}
+
+///|
+test "naga_oil upstream: descriptor effective defs cover all imported branches" {
+  upstream_parity_check_effective_defs_sum_with_false_three([], "0u", "0u")
+  upstream_parity_check_effective_defs_sum_with_false_three(
+    ["DEF_ONE"],
+    "1u",
+    "0u",
+  )
+  upstream_parity_check_effective_defs_sum_with_false_three(
+    ["DEF_TWO"],
+    "0u",
+    "2u",
+  )
+  upstream_parity_check_effective_defs_sum_with_false_three(
+    ["DEF_ONE", "DEF_TWO"],
+    "1u",
+    "2u",
+  )
+  upstream_parity_check_effective_defs_sum_with_true_defs(
+    ["DEF_THREE"],
+    "0u",
+    "0u",
+    "4u",
+  )
+  upstream_parity_check_effective_defs_sum_with_true_defs(
+    ["DEF_ONE", "DEF_THREE"],
+    "1u",
+    "0u",
+    "4u",
+  )
+  upstream_parity_check_effective_defs_sum_with_true_defs(
+    ["DEF_TWO", "DEF_THREE"],
+    "0u",
+    "2u",
+    "4u",
+  )
+  upstream_parity_check_effective_defs_sum_with_true_defs(
+    ["DEF_ONE", "DEF_TWO", "DEF_THREE"],
+    "1u",
+    "2u",
+    "4u",
+  )
 }
 
 ///|

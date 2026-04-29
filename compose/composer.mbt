@@ -158,6 +158,20 @@ fn copy_int_defs(
 }
 
 ///|
+fn merge_shader_def_value_into_compose_defs(
+  defines : @hashmap.HashMap[String, Bool],
+  value_defines : @hashmap.HashMap[String, Int],
+  name : String,
+  value : ShaderDefValue,
+) -> Unit {
+  match value {
+    Bool(flag) => defines.set(name, flag)
+    Int(int_value) => value_defines.set(name, int_value)
+    UInt(uint_value) => value_defines.set(name, uint_value.reinterpret_as_int())
+  }
+}
+
+///|
 fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] {
   let out : Array[String] = []
   for value in values.iter() {
@@ -180,6 +194,12 @@ pub(all) struct WgslComposeSession {
   imported_item_names : @hashmap.HashMap[String, String]
   active_rel_paths : Array[String]
   resolved_source_files : @hashmap.HashMap[String, String]
+}
+
+///|
+priv struct WgslActiveComposeDefs {
+  defines : @hashmap.HashMap[String, Bool]
+  value_defines : @hashmap.HashMap[String, Int]
 }
 
 ///|
@@ -312,6 +332,49 @@ pub fn Composer::new_wgsl_compose_session(
     active_rel_paths: [],
     resolved_source_files: @hashmap.HashMap::new(),
   }
+}
+
+///|
+fn Composer::composable_module_definition_for_rel_path(
+  self : Composer,
+  rel_path : String,
+) -> ComposableModuleDefinition? {
+  let normalized_rel = normalize_shader_rel_path(rel_path)
+  for entry in self.composable_module_registry_paths.iter() {
+    let (module_name, module_rel_path) = entry
+    if normalize_shader_rel_path(module_rel_path) == normalized_rel {
+      return self.module_sets.get(module_name)
+    }
+  }
+  None
+}
+
+///|
+fn Composer::active_compose_defs_for_rel_path(
+  self : Composer,
+  rel_path : String,
+  session : WgslComposeSession,
+  inherited_defs : WgslActiveComposeDefs?,
+) -> WgslActiveComposeDefs {
+  let (defines, value_defines) = match inherited_defs {
+    Some(parent_defs) =>
+      (
+        copy_bool_defs(parent_defs.defines),
+        copy_int_defs(parent_defs.value_defines),
+      )
+    None =>
+      (copy_bool_defs(session.defines), copy_int_defs(session.value_defines))
+  }
+  if self.composable_module_definition_for_rel_path(rel_path)
+    is Some(module_definition) {
+    for entry in module_definition.shader_defs.iter() {
+      let (name, value) = entry
+      merge_shader_def_value_into_compose_defs(
+        defines, value_defines, name, value,
+      )
+    }
+  }
+  WgslActiveComposeDefs::{ defines, value_defines }
 }
 
 ///|
@@ -489,7 +552,7 @@ fn wgsl_define_enabled(
   if value_defines.contains(name) {
     return true
   }
-  defines.get(name).unwrap_or(false)
+  defines.contains(name)
 }
 
 ///|
@@ -861,6 +924,7 @@ priv struct WgslPreparedComposeSource {
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
+  active_defs : WgslActiveComposeDefs,
 ) -> WgslPreparedComposeSource {
   record_wgsl_redirect_matches(source, session)
   let redirected_source = rewrite_wgsl_symbol_redirects(
@@ -868,8 +932,12 @@ fn prepare_wgsl_compose_source(
     session.redirects,
   )
   let active_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs(redirected_source, session.defines, session.value_defines),
-    session.value_defines,
+    apply_wgsl_ifdefs(
+      redirected_source,
+      active_defs.defines,
+      active_defs.value_defines,
+    ),
+    active_defs.value_defines,
   )
   WgslPreparedComposeSource::{
     redirected_source,
@@ -1254,6 +1322,7 @@ fn Composer::compose_wgsl_import_requests(
   requests : Array[WgslImportRequest],
   alias_redirects : Array[WgslSymbolRedirect],
   session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
   let mut merged = ""
   for request in requests {
@@ -1318,11 +1387,21 @@ fn Composer::compose_wgsl_import_requests(
         request.rel_path,
         raw_source,
         session,
+        Some(importer_defs),
       )
     } else {
+      let import_defs = self.active_compose_defs_for_rel_path(
+        request.rel_path,
+        session,
+        Some(importer_defs),
+      )
       let prepared_source = apply_wgsl_template_consts(
-        apply_wgsl_ifdefs(raw_source, session.defines, session.value_defines),
-        session.value_defines,
+        apply_wgsl_ifdefs(
+          raw_source,
+          import_defs.defines,
+          import_defs.value_defines,
+        ),
+        import_defs.value_defines,
       )
       let filtered_source = extract_wgsl_module_items(
         prepared_source,
@@ -1332,6 +1411,7 @@ fn Composer::compose_wgsl_import_requests(
         request.rel_path,
         filtered_source,
         session,
+        Some(importer_defs),
       )
     }
     session.active_rel_paths.pop() |> ignore
@@ -1395,14 +1475,14 @@ fn Composer::compose_wgsl_import_requests(
 fn finalize_wgsl_composed_source(
   merged : String,
   alias_redirects : Array[WgslSymbolRedirect],
-  session : WgslComposeSession,
+  active_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
   let mut out = apply_wgsl_ifdefs(
     merged,
-    session.defines,
-    session.value_defines,
+    active_defs.defines,
+    active_defs.value_defines,
   )
-  out = apply_wgsl_template_consts(out, session.value_defines)
+  out = apply_wgsl_template_consts(out, active_defs.value_defines)
   let alias_redirect_map = build_wgsl_symbol_redirect_map(alias_redirects)
   out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
   out = rewrite_wgsl_declaration_text_with_map(out, alias_redirect_map, false)
@@ -1425,8 +1505,12 @@ fn Composer::preprocess_wgsl_source_with_path(
   current_rel_path : String,
   source : String,
   session : WgslComposeSession,
+  inherited_defs : WgslActiveComposeDefs?,
 ) -> String raise ComposerError {
-  let prepared = prepare_wgsl_compose_source(source, session)
+  let active_defs = self.active_compose_defs_for_rel_path(
+    current_rel_path, session, inherited_defs,
+  )
+  let prepared = prepare_wgsl_compose_source(source, session, active_defs)
   let mut merged = ""
   let alias_redirects : Array[WgslSymbolRedirect] = []
   let lines = self.seed_wgsl_compose_lines(current_rel_path, prepared, session)
@@ -1439,8 +1523,8 @@ fn Composer::preprocess_wgsl_source_with_path(
     if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = wgsl_define_enabled(
-        session.defines,
-        session.value_defines,
+        active_defs.defines,
+        active_defs.value_defines,
         name,
       )
       let parent = import_active_stack[import_active_stack.length() - 1]
@@ -1453,8 +1537,8 @@ fn Composer::preprocess_wgsl_source_with_path(
     if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
       let cond = !wgsl_define_enabled(
-        session.defines,
-        session.value_defines,
+        active_defs.defines,
+        active_defs.value_defines,
         name,
       )
       let parent = import_active_stack[import_active_stack.length() - 1]
@@ -1466,7 +1550,11 @@ fn Composer::preprocess_wgsl_source_with_path(
     }
     if hash_directive_tail(trimmed, "if") is Some(tail) {
       let expr = wgsl_clean_directive_tail(tail)
-      let cond = eval_wgsl_if_expr(expr, session.defines, session.value_defines)
+      let cond = eval_wgsl_if_expr(
+        expr,
+        active_defs.defines,
+        active_defs.value_defines,
+      )
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
       import_branch_taken_stack.push(cond)
@@ -1480,7 +1568,11 @@ fn Composer::preprocess_wgsl_source_with_path(
         let idx = import_branch_taken_stack.length() - 1
         let name = wgsl_clean_directive_tail(tail)
         let cond = !import_branch_taken_stack[idx] &&
-          wgsl_define_enabled(session.defines, session.value_defines, name)
+          wgsl_define_enabled(
+            active_defs.defines,
+            active_defs.value_defines,
+            name,
+          )
         let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
@@ -1495,7 +1587,11 @@ fn Composer::preprocess_wgsl_source_with_path(
         let idx = import_branch_taken_stack.length() - 1
         let name = wgsl_clean_directive_tail(tail)
         let cond = !import_branch_taken_stack[idx] &&
-          !wgsl_define_enabled(session.defines, session.value_defines, name)
+          !wgsl_define_enabled(
+            active_defs.defines,
+            active_defs.value_defines,
+            name,
+          )
         let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
@@ -1509,7 +1605,11 @@ fn Composer::preprocess_wgsl_source_with_path(
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
         let cond = !import_branch_taken_stack[idx] &&
-          eval_wgsl_if_expr(tail, session.defines, session.value_defines)
+          eval_wgsl_if_expr(
+            tail,
+            active_defs.defines,
+            active_defs.value_defines,
+          )
         let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
@@ -1566,7 +1666,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         session,
       )
       let composed_imports = self.compose_wgsl_import_requests(
-        current_rel_path, requests, alias_redirects, session,
+        current_rel_path, requests, alias_redirects, session, active_defs,
       )
       merged = "\{merged}\{composed_imports}"
       line_index = line_index + 1
@@ -1575,7 +1675,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     merged = "\{merged}\{line}\n"
     line_index = line_index + 1
   }
-  finalize_wgsl_composed_source(merged, alias_redirects, session)
+  finalize_wgsl_composed_source(merged, alias_redirects, active_defs)
 }
 
 ///|
@@ -1602,6 +1702,7 @@ pub fn Composer::load_root_wgsl_preprocessed_into_session(
     normalized_rel,
     prepend_wgsl_additional_imports(source, session.additional_imports),
     session,
+    None,
   )
   session.active_rel_paths.pop() |> ignore
   composed
@@ -1632,6 +1733,7 @@ pub fn Composer::compose_wgsl_source(
       "",
       prepend_wgsl_additional_imports(source, session.additional_imports),
       session,
+      None,
     ),
   )
   finalize_wgsl_writeback_source(composed)
