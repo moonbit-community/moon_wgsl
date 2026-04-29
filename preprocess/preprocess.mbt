@@ -47,6 +47,13 @@ priv struct Scope {
 }
 
 ///|
+priv struct ShaderDefReference {
+  name : String
+  start : Int
+  end : Int
+}
+
+///|
 fn Scope::new() -> Scope {
   Scope::{ levels: [ScopeLevel::Active] }
 }
@@ -130,56 +137,108 @@ fn split_extensions(raw : String) -> Array[String] {
 }
 
 ///|
+fn shader_def_name_token_text(token : Token) -> String? {
+  match token {
+    Token::Identifier(text, _) => Some(text)
+    Token::Other(124, _) => Some("|")
+    Token::Other(code, _) if code >= 48 && code <= 57 =>
+      Some(code_unit_to_string(code))
+    _ => None
+  }
+}
+
+///|
+fn token_end(token : Token) -> Int {
+  token.pos() + preprocess_token_text(token).length()
+}
+
+///|
+fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
+  let references : Array[ShaderDefReference] = []
+  let tokens = tokenize(line, true)
+  let mut i = 0
+  while i < tokens.length() {
+    guard tokens[i] is Token::Other(35, start) else {
+      i = i + 1
+      continue
+    }
+    let mut j = i + 1
+    while j < tokens.length() {
+      match tokens[j] {
+        Token::Whitespace(_, _) => j = j + 1
+        _ => break
+      }
+    }
+    guard j < tokens.length() else {
+      i = i + 1
+      continue
+    }
+    match tokens[j] {
+      Token::Other(123, _) => {
+        let body_start = token_end(tokens[j])
+        let mut k = j + 1
+        while k < tokens.length() {
+          match tokens[k] {
+            Token::Other(125, _) => break
+            _ => k = k + 1
+          }
+        }
+        if k < tokens.length() {
+          let name = line[body_start:tokens[k].pos()]
+            .to_owned()
+            .trim()
+            .to_owned()
+          if name != "" {
+            references.push(ShaderDefReference::{
+              name,
+              start,
+              end: token_end(tokens[k]),
+            })
+          }
+          i = k + 1
+        } else {
+          i = i + 1
+        }
+      }
+      _ => {
+        let name_start = tokens[j].pos()
+        let mut name = ""
+        while j < tokens.length() {
+          match shader_def_name_token_text(tokens[j]) {
+            Some(text) => {
+              name = name + text
+              j = j + 1
+            }
+            None => break
+          }
+        }
+        if name != "" {
+          references.push(ShaderDefReference::{
+            name,
+            start,
+            end: if j > 0 {
+              token_end(tokens[j - 1])
+            } else {
+              name_start
+            },
+          })
+          i = j
+        } else {
+          i = i + 1
+        }
+      }
+    }
+  }
+  references
+}
+
+///|
 fn collect_effective_def_names(
   line : String,
   effective_defs : @hashset.HashSet[String],
 ) -> Unit {
-  let mut i = 0
-  while i < line.length() {
-    if line.code_unit_at(i).to_int() == 35 { // '#'
-      let mut scan = i + 1
-      while scan < line.length() {
-        let code = line.code_unit_at(scan).to_int()
-        if code == 32 || code == 9 {
-          scan = scan + 1
-          continue
-        }
-        break
-      }
-      if scan < line.length() && line.code_unit_at(scan).to_int() == 123 { // '{'
-        let mut j = scan + 1
-        while j < line.length() && line.code_unit_at(j).to_int() != 125 { // '}'
-          j = j + 1
-        }
-        if j < line.length() {
-          let name = line[scan + 1:j].to_owned().trim().to_owned()
-          if name != "" {
-            effective_defs.add(name)
-          }
-          i = j + 1
-          continue
-        }
-      }
-      let mut j = scan
-      while j < line.length() {
-        let code = line.code_unit_at(j).to_int()
-        let continue_name = (code >= 65 && code <= 90) ||
-          (code >= 97 && code <= 122) ||
-          (code >= 48 && code <= 57) ||
-          code == 95 ||
-          code == 124
-        if !continue_name {
-          break
-        }
-        j = j + 1
-      }
-      if j > scan {
-        effective_defs.add(line[scan:j].to_owned())
-        i = j
-        continue
-      }
-    }
-    i = i + 1
+  for reference in parse_shader_def_references(line) {
+    effective_defs.add(reference.name)
   }
 }
 
@@ -638,69 +697,13 @@ fn replace_shader_defs_in_line(
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String {
   let mut output = ""
-  let mut scan = 0
   let mut copy_start = 0
-  while scan < line.length() {
-    if line.code_unit_at(scan).to_int() != 35 { // '#'
-      scan = scan + 1
-      continue
+  for reference in parse_shader_def_references(line) {
+    if shader_defs.get(reference.name) is Some(value) {
+      output = output + line[copy_start:reference.start].to_owned()
+      output = output + value.value_as_string()
+      copy_start = reference.end
     }
-
-    let start = scan
-    scan = scan + 1
-    while scan < line.length() {
-      let code = line.code_unit_at(scan).to_int()
-      if code == 32 || code == 9 {
-        scan = scan + 1
-        continue
-      }
-      break
-    }
-
-    if scan < line.length() && line.code_unit_at(scan).to_int() == 123 { // '{'
-      let mut j = scan + 1
-      while j < line.length() && line.code_unit_at(j).to_int() != 125 { // '}'
-        j = j + 1
-      }
-      if j < line.length() {
-        let name = line[scan + 1:j].to_owned().trim().to_owned()
-        if shader_defs.get(name) is Some(value) {
-          output = output + line[copy_start:start].to_owned()
-          output = output + value.value_as_string()
-          scan = j + 1
-          copy_start = scan
-          continue
-        }
-      }
-      scan = start + 1
-      continue
-    }
-
-    let mut j = scan
-    while j < line.length() {
-      let code = line.code_unit_at(j).to_int()
-      let is_ident = (code >= 65 && code <= 90) ||
-        (code >= 97 && code <= 122) ||
-        (code >= 48 && code <= 57) ||
-        code == 95 ||
-        code == 124
-      if !is_ident {
-        break
-      }
-      j = j + 1
-    }
-    if j > scan {
-      let name = line[scan:j].to_owned()
-      if shader_defs.get(name) is Some(value) {
-        output = output + line[copy_start:start].to_owned()
-        output = output + value.value_as_string()
-        scan = j
-        copy_start = scan
-        continue
-      }
-    }
-
-    scan = start + 1
   }
   if copy_start < line.length() {
     output = output + line[copy_start:line.length()].to_owned()
