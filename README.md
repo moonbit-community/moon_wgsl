@@ -147,6 +147,7 @@ test "README: compose registered modules" {
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
   let composed : String = composer.compose_wgsl(
     "sprite_render/mesh2d/mesh2d.wgsl",
@@ -194,6 +195,7 @@ test "README: bulk registry and relative imports" {
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
   let composed : String = composer.compose_wgsl(
     "shaders/effects/main.wgsl",
@@ -261,6 +263,7 @@ test "README: scan source tree" {
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
   let composed : String = composer.compose_wgsl(
     "effects/main.wgsl",
@@ -320,6 +323,7 @@ test "README: export single WGSL file" {
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
   let export_options : @moon_wgsl.WgslExportOptions = {
     root_items: ["shade"],
@@ -367,6 +371,7 @@ test "README: build source catalog" {
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
   let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] =
     composer.build_wgsl_source_catalog(compose_options)
@@ -408,6 +413,7 @@ test "README: source-level redirects" {
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
   let export_options : @moon_wgsl.WgslExportOptions = {
     root_items: ["shade"],
@@ -518,6 +524,8 @@ Important public data structures:
 - `WgslDirectives`
 - `WgslSourceFile`
 - `WgslComposeOptions`
+  Holds root compose settings: asset base, shader defs, value defs, symbol
+  redirects, and root-only `additional_imports`.
 - `WgslSymbolRedirect`
 - `WgslExportOptions`
 - `WgslExportOutput`

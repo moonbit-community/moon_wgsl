@@ -33,6 +33,7 @@ fn composer_test_compose_options(
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
 }
 
@@ -334,6 +335,7 @@ test "naga_oil: composer local registry can compose without global registry stat
     defines: empty_bool_defines(),
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
+    additional_imports: [],
   }) catch {
     err =>
       abort(
@@ -383,6 +385,7 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
     defines: empty_bool_defines(),
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
+    additional_imports: [],
   }) catch {
     err =>
       abort(
@@ -392,6 +395,58 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
   debug_inspect(preprocessed.contains("const PI_2"), content="true")
   debug_inspect(preprocessed.contains("fn demo"), content="true")
   debug_inspect(preprocessed.contains("return PI_2;"), content="true")
+}
+
+///|
+test "naga_oil: add_composable_module applies descriptor additional imports" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = @moon_wgsl.Composer::default()
+  composer.clear_registered_wgsl_source_registry()
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path plugin\nfn external_scale() -> f32 {\n  return 2.0;\n}\n",
+      file_path: "shaders/demo/plugin.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err =>
+      abort("expected plugin module registration success: \{err.message()}")
+  }
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path demo::main\nfn demo() -> f32 {\n  return plugin::external_scale();\n}\n",
+      file_path: "shaders/demo/main.wgsl",
+      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      as_name: None,
+      additional_imports: [{ import_path: "plugin", items: [] }],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err => abort("expected main module registration success: \{err.message()}")
+  }
+  let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
+    assets_base: "",
+    defines: empty_bool_defines(),
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects: [],
+    additional_imports: [],
+  }) catch {
+    err =>
+      abort(
+        "expected additional-import-backed preprocess success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    preprocessed.contains("fn plugin__external_scale"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("plugin__external_scale()"),
+    content="true",
+  )
 }
 
 ///|
@@ -410,6 +465,7 @@ test "naga_oil: composer can register a WGSL source tree from moonbitlang/x/fs" 
     defines: empty_bool_defines(),
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
+    additional_imports: [],
   }) catch {
     err =>
       abort("expected source-tree-backed preprocess success: \{err.message()}")

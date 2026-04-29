@@ -32,6 +32,7 @@ fn export_test_compose_options(
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects,
+    additional_imports: [],
   }
 }
 
@@ -185,6 +186,7 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
       defines: export_test_empty_defines(),
       value_defines: @moon_wgsl.default_wgsl_value_defines(),
       redirects: [],
+      additional_imports: [],
     },
     { root_items: ["shade"] },
   ) catch {

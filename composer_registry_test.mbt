@@ -160,6 +160,7 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
     defines: @hashmap.HashMap::new(),
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
+    additional_imports: [],
   }) catch {
     err =>
       abort(

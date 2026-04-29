@@ -210,6 +210,7 @@ pub(all) struct WgslComposeOptions {
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
   redirects : Array[WgslSymbolRedirect]
+  additional_imports : Array[ImportDefinition]
 } derive(Eq, Debug)
 
 ///|
@@ -219,6 +220,7 @@ pub fn WgslComposeOptions::default() -> WgslComposeOptions {
     defines: @hashmap.HashMap::new(),
     value_defines: default_wgsl_value_defines(),
     redirects: [],
+    additional_imports: [],
   }
 }
 

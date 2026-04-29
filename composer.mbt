@@ -86,6 +86,48 @@ fn copy_import_definitions(
 }
 
 ///|
+fn serialize_wgsl_import_definition(
+  import_definition : ImportDefinition,
+) -> String {
+  let import_path = import_definition.import_path.trim().to_string()
+  if import_path == "" {
+    return ""
+  }
+  let items : Array[String] = []
+  for item in import_definition.items {
+    let trimmed_item = item.trim().to_string()
+    if trimmed_item != "" {
+      items.push(trimmed_item)
+    }
+  }
+  if items.length() == 0 {
+    "#import \{import_path}"
+  } else {
+    let item_list = items.join(", ")
+    "#import \{import_path} \{item_list}"
+  }
+}
+
+///|
+fn prepend_wgsl_additional_imports(
+  source : String,
+  additional_imports : Array[ImportDefinition],
+) -> String {
+  let lines : Array[String] = []
+  for import_definition in additional_imports {
+    let line = serialize_wgsl_import_definition(import_definition)
+    if line != "" {
+      lines.push(line)
+    }
+  }
+  if lines.length() == 0 {
+    return source
+  }
+  let import_block = lines.join("\n")
+  "\{import_block}\n\{source}"
+}
+
+///|
 fn copy_bool_defs(
   defs : @hashmap.HashMap[String, Bool],
 ) -> @hashmap.HashMap[String, Bool] {
@@ -126,6 +168,7 @@ priv struct WgslComposeSession {
   value_defines : @hashmap.HashMap[String, Int]
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
+  additional_imports : Array[ImportDefinition]
   visited : @hashmap.HashMap[String, Bool]
   imported_item_names : @hashmap.HashMap[String, String]
   active_rel_paths : Array[String]
@@ -255,6 +298,7 @@ fn Composer::new_wgsl_compose_session(
     value_defines: copy_int_defs(options.value_defines),
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
+    additional_imports: copy_import_definitions(options.additional_imports),
     visited: @hashmap.HashMap::new(),
     imported_item_names: @hashmap.HashMap::new(),
     active_rel_paths: [],
@@ -676,9 +720,16 @@ pub fn Composer::add_composable_module(
     effective_defs.remove(def_name)
   }
 
+  let source_with_additional_imports = prepend_wgsl_additional_imports(
+    desc.source,
+    additional_imports,
+  )
   let definition = ComposableModuleDefinition::{
     name: module_name,
-    sanitized_source: metadata.cleaned_source,
+    sanitized_source: prepend_wgsl_additional_imports(
+      metadata.cleaned_source,
+      additional_imports,
+    ),
     language: desc.language,
     file_path: desc.file_path,
     shader_defs,
@@ -691,7 +742,7 @@ pub fn Composer::add_composable_module(
   ignore(
     self.registry.register_source(
       registry_rel_path,
-      desc.source,
+      source_with_additional_imports,
       Some(module_name),
     ),
   )
@@ -1266,7 +1317,7 @@ fn Composer::preprocess_wgsl_source_with_path(
 }
 
 ///|
-fn Composer::load_wgsl_preprocessed_into_session(
+fn Composer::load_root_wgsl_preprocessed_into_session(
   self : Composer,
   rel : String,
   session : WgslComposeSession,
@@ -1286,7 +1337,9 @@ fn Composer::load_wgsl_preprocessed_into_session(
   session.resolved_source_files.set(normalized_rel, source)
   session.active_rel_paths.push(normalized_rel)
   let composed = self.preprocess_wgsl_source_with_path(
-    normalized_rel, source, session,
+    normalized_rel,
+    prepend_wgsl_additional_imports(source, session.additional_imports),
+    session,
   )
   session.active_rel_paths.pop() |> ignore
   composed
@@ -1299,7 +1352,7 @@ pub fn Composer::compose_wgsl(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
-  self.load_wgsl_preprocessed_into_session(rel, session)
+  self.load_root_wgsl_preprocessed_into_session(rel, session)
 }
 
 ///|
@@ -1309,7 +1362,11 @@ pub fn Composer::compose_wgsl_source(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
-  self.preprocess_wgsl_source_with_path("", source, session)
+  self.preprocess_wgsl_source_with_path(
+    "",
+    prepend_wgsl_additional_imports(source, session.additional_imports),
+    session,
+  )
 }
 
 ///|
@@ -1327,5 +1384,6 @@ pub fn Composer::load_wgsl_from_assets_base_required(
     defines: @hashmap.HashMap::new(),
     value_defines: default_wgsl_value_defines(),
     redirects: [],
+    additional_imports: [],
   })
 }

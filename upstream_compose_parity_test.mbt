@@ -37,6 +37,7 @@ fn upstream_parity_compose_options(
     defines,
     value_defines: @moon_wgsl.default_wgsl_value_defines(),
     redirects: [],
+    additional_imports: [],
   }
 }
 
@@ -449,6 +450,68 @@ test "naga_oil upstream: modf result member access survives composition" {
   debug_inspect(source.contains("let fw = modf(x);"), content="true")
   debug_inspect(source.contains("let f = fw.fract;"), content="true")
   debug_inspect(source.contains("let w = fw.whole;"), content="true")
+}
+
+///|
+test "naga_oil upstream: additional imports are applied only to the root compose request" {
+  let composer = upstream_parity_composer("add_imports")
+  let source = composer.compose_wgsl("top.wgsl", {
+    assets_base: "",
+    defines: upstream_parity_empty_defines(),
+    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    redirects: [],
+    additional_imports: [{ import_path: "plugin", items: [] }],
+  }) catch {
+    err => abort("expected additional-import compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("fn plugin__external_scale"), content="true")
+  debug_inspect(source.contains("fn entry_point"), content="true")
+  debug_inspect(source.contains("plugin__external_scale()"), content="true")
+  debug_inspect(source.contains("#import plugin"), content="false")
+}
+
+///|
+test "naga_oil upstream: additional imports participate in single-file export" {
+  let composer = upstream_parity_composer("add_imports")
+  let output = composer.export_wgsl_with_options(
+    "top.wgsl",
+    {
+      assets_base: "",
+      defines: upstream_parity_empty_defines(),
+      value_defines: @moon_wgsl.default_wgsl_value_defines(),
+      redirects: [],
+      additional_imports: [{ import_path: "plugin", items: [] }],
+    },
+    { root_items: ["entry_point"] },
+  ) catch {
+    err => abort("expected additional-import export success: \{err.message()}")
+  }
+  debug_inspect(
+    output.source.contains("fn plugin__external_scale"),
+    content="true",
+  )
+  debug_inspect(output.source.contains("fn entry_point"), content="true")
+  debug_inspect(output.source.contains("fn unused_external"), content="false")
+}
+
+///|
+test "naga_oil upstream: compute shader smoke preserves imported entry dependency" {
+  let output = upstream_parity_export_case(
+    "compute_test",
+    "compute_test.wgsl",
+    ["run_test"],
+    upstream_parity_empty_defines(),
+  )
+  debug_inspect(output.source.contains("@compute"), content="true")
+  debug_inspect(output.source.contains("fn run_test"), content="true")
+  debug_inspect(
+    output.source.contains("fn test_module__entry_point"),
+    content="true",
+  )
+  debug_inspect(
+    output.source.contains("test_module__entry_point()"),
+    content="true",
+  )
 }
 
 ///|

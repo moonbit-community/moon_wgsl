@@ -445,7 +445,7 @@ fn Composer::export_wgsl_from_session(
   session : WgslComposeSession,
   options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
-  let source = self.load_wgsl_preprocessed_into_session(rel, session)
+  let source = self.load_root_wgsl_preprocessed_into_session(rel, session)
   let graph = build_wgsl_declaration_graph(source)
   serialize_wgsl_export_output(
     graph,
@@ -501,6 +501,7 @@ pub fn Composer::export_wgsl_from_assets_base_required_with_redirects(
       defines: @hashmap.HashMap::new(),
       value_defines: default_wgsl_value_defines(),
       redirects,
+      additional_imports: [],
     },
     options,
   )
