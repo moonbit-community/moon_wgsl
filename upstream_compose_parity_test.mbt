@@ -549,6 +549,38 @@ test "github issue 3: item-imported entry points are emitted even when unused by
 }
 
 ///|
+test "github issue 3: explicit import-only entry modules keep vertex function dependencies" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "mesh.wgsl",
+    "#define_import_path demo::mesh\n" +
+    "struct Vertex { position: vec3<f32> }\n" +
+    "struct VertexOutput { position: vec4<f32> }\n" +
+    "fn vertex(vertex_no_morph: Vertex) -> VertexOutput {\n" +
+    "  var out: VertexOutput;\n" +
+    "  out.position = vec4<f32>(vertex_no_morph.position, 1.0);\n" +
+    "  return out;\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source("entry.wgsl", "#import demo::mesh::vertex\n")
+  let source = composer.compose_wgsl(
+    "entry.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort(
+        "expected issue 3 import-only vertex compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("struct Vertex"), content="true")
+  debug_inspect(source.contains("struct VertexOutput"), content="true")
+  debug_inspect(
+    source.contains("fn vertex(vertex_no_morph: Vertex) -> VertexOutput"),
+    content="true",
+  )
+}
+
+///|
 test "github issue 3: mixed full-module and item imports do not re-emit duplicate declarations" {
   let composer = @moon_wgsl.Composer::default()
   composer.register_wgsl_source(

@@ -861,6 +861,7 @@ fn Composer::build_wgsl_import_requests(
       }
     }
     if !import_full_module {
+      let import_only_source = active_scan_source.trim().to_string() == ""
       let import_source = match
         self.registry.registered_source(resolved_module.rel_path) {
         Some(source) => source
@@ -871,7 +872,10 @@ fn Composer::build_wgsl_import_requests(
         if wgsl_source_contains_identifier(active_scan_source, requested_item) ||
           (
             keep_requested_items &&
-            wgsl_source_declares_entry_point(import_source, requested_item)
+            (
+              import_only_source ||
+              wgsl_source_declares_entry_point(import_source, requested_item)
+            )
           ) {
           used_requested_items.push(requested_item)
         }
