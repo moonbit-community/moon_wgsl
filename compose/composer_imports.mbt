@@ -24,35 +24,41 @@ priv struct WgslImportRequest {
 
 ///|
 fn unresolved_wgsl_namespace_reference(source : String) -> String? {
-  let cleaned = replace_comments(source)
-  let mut i = 0
-  while i + 1 < cleaned.length() {
-    if cleaned.code_unit_at(i).to_int() == 58 &&
-      cleaned.code_unit_at(i + 1).to_int() == 58 {
-      let mut start = i
-      while start > 0 {
-        let cu = cleaned.code_unit_at(start - 1).to_int()
-        if !wgsl_identifier_char(cu) && cu != 58 {
-          break
+  for token in tokenize(replace_comments(source), false) {
+    match token {
+      Token::Identifier(path, _) =>
+        if wgsl_path_separator_count(path) > 0 {
+          return Some(path)
         }
-        start = start - 1
-      }
-      let mut end = i + 2
-      while end < cleaned.length() {
-        let cu = cleaned.code_unit_at(end).to_int()
-        if !wgsl_identifier_char(cu) && cu != 58 {
-          break
-        }
-        end = end + 1
-      }
-      let path = cleaned[start:end].to_owned().trim().to_owned()
-      if path != "" && path != "::" {
-        return Some(path)
-      }
+      _ => ()
     }
-    i = i + 1
   }
   None
+}
+
+///|
+fn wgsl_source_contains_identifier(
+  source : String,
+  identifier : String,
+) -> Bool {
+  if identifier == "" {
+    return false
+  }
+  for token in tokenize(replace_comments(source), false) {
+    match token {
+      Token::Identifier(path, _) => {
+        if path == identifier {
+          return true
+        }
+        match split_last_wgsl_path(path) {
+          Some((_, suffix)) => if suffix == identifier { return true }
+          None => ()
+        }
+      }
+      _ => ()
+    }
+  }
+  false
 }
 
 ///|
@@ -239,31 +245,6 @@ fn collect_wgsl_import_alias_redirects(
       to_name,
     })
   }
-}
-
-///|
-fn wgsl_source_contains_identifier(
-  source : String,
-  identifier : String,
-) -> Bool {
-  if identifier == "" || identifier.length() > source.length() {
-    return false
-  }
-  let limit = source.length() - identifier.length()
-  for i in 0..<=limit {
-    if source[i:i + identifier.length()].to_owned() != identifier {
-      continue
-    }
-    let left_ok = i == 0 ||
-      !wgsl_identifier_char(source.code_unit_at(i - 1).to_int())
-    let right_index = i + identifier.length()
-    let right_ok = right_index >= source.length() ||
-      !wgsl_identifier_char(source.code_unit_at(right_index).to_int())
-    if left_ok && right_ok {
-      return true
-    }
-  }
-  false
 }
 
 ///|
