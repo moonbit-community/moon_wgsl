@@ -624,6 +624,129 @@ test "github issue 5: unicode source lines do not abort prefix checks" {
 }
 
 ///|
+test "naga_oil: composer reports missing shader def in if comparison" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "missing_if.wgsl", "#if TEXTURE == 3\nconst active: u32 = 1u;\n#endif\n",
+  )
+  ignore(
+    composer.compose_wgsl(
+      "missing_if.wgsl",
+      composer_test_compose_options("", empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message().contains("unknown shader def: TEXTURE"),
+        content="true",
+      )
+      return
+    }
+  }
+  abort("expected missing shader-def compose failure")
+}
+
+///|
+test "naga_oil: composer rejects unsigned-suffix if comparison values" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "invalid_uint_if.wgsl", "#if COUNT == 1u\nconst active: u32 = 1u;\n#endif\n",
+  )
+  let options = composer_test_compose_options("", empty_bool_defines(), [])
+  options.value_defines.set("COUNT", 1)
+  ignore(composer.compose_wgsl("invalid_uint_if.wgsl", options)) catch {
+    err => {
+      debug_inspect(
+        err.message().contains("invalid shader def comparison value"),
+        content="true",
+      )
+      debug_inspect(err.message().contains("COUNT"), content="true")
+      debug_inspect(err.message().contains("1u"), content="true")
+      return
+    }
+  }
+  abort("expected invalid uint-suffix compose failure")
+}
+
+///|
+test "naga_oil: composer reports unknown shader def operator" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "bad_operator_if.wgsl", "#if TEXTURE !! true\nconst active: u32 = 1u;\n#endif\n",
+  )
+  let defines = empty_bool_defines()
+  defines.set("TEXTURE", true)
+  ignore(
+    composer.compose_wgsl(
+      "bad_operator_if.wgsl",
+      composer_test_compose_options("", defines, []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message().contains("unknown shader def operator: !!"),
+        content="true",
+      )
+      return
+    }
+  }
+  abort("expected unknown operator compose failure")
+}
+
+///|
+test "naga_oil: composer reports malformed shader-def scopes" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source("too_many.wgsl", "#endif\n")
+  ignore(
+    composer.compose_wgsl(
+      "too_many.wgsl",
+      composer_test_compose_options("", empty_bool_defines(), []),
+    ),
+  ) catch {
+    err =>
+      debug_inspect(err.message().contains("too many #endif"), content="true")
+  }
+  composer.register_wgsl_source(
+    "not_enough.wgsl", "#ifdef ENABLED\nconst a: u32 = 1u;\n",
+  )
+  ignore(
+    composer.compose_wgsl(
+      "not_enough.wgsl",
+      composer_test_compose_options("", empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(err.message().contains("not enough #endif"), content="true")
+      return
+    }
+  }
+  abort("expected not-enough-endif compose failure")
+}
+
+///|
+test "naga_oil: composer reports else without condition" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "else_without.wgsl", "#else\nconst a: u32 = 1u;\n",
+  )
+  ignore(
+    composer.compose_wgsl(
+      "else_without.wgsl",
+      composer_test_compose_options("", empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message().contains("#else without condition"),
+        content="true",
+      )
+      return
+    }
+  }
+  abort("expected else-without-condition compose failure")
+}
+
+///|
 test "naga_oil: composer reports import cycles explicitly" {
   register_cycle_test_shaders()
   let mut message : String? = None

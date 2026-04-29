@@ -27,6 +27,12 @@ pub(all) suberror ComposerError {
   MissingRegisteredSource(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
+  UnknownShaderDef(String)
+  UnknownShaderDefOperator(String)
+  InvalidShaderDefComparisonValue(String, String, String)
+  ElseWithoutCondition
+  TooManyEndIfs
+  NotEnoughEndIfs
 }
 pub fn ComposerError::message(Self) -> String
 

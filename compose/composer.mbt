@@ -47,6 +47,12 @@ pub(all) suberror ComposerError {
   MissingRegisteredSource(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
+  UnknownShaderDef(String)
+  UnknownShaderDefOperator(String)
+  InvalidShaderDefComparisonValue(String, String, String)
+  ElseWithoutCondition
+  TooManyEndIfs
+  NotEnoughEndIfs
 }
 
 ///|
@@ -65,6 +71,14 @@ pub fn ComposerError::message(self : ComposerError) -> String {
       "shader source was not startup-registered: \{rel}"
     NoModuleName(path) =>
       "shader module is missing #define_import_path: \{path}"
+    UnknownShaderDef(name) => "unknown shader def: \{name}"
+    UnknownShaderDefOperator(operator) =>
+      "unknown shader def operator: \{operator}"
+    InvalidShaderDefComparisonValue(name, value, expected) =>
+      "invalid shader def comparison value for \{name}: \{value}; expected \{expected}"
+    ElseWithoutCondition => "#else without condition"
+    TooManyEndIfs => "too many #endif directives"
+    NotEnoughEndIfs => "not enough #endif directives"
   }
 }
 
@@ -161,9 +175,11 @@ fn copy_int_defs(
 fn merge_shader_def_value_into_compose_defs(
   defines : @hashmap.HashMap[String, Bool],
   value_defines : @hashmap.HashMap[String, Int],
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   name : String,
   value : ShaderDefValue,
 ) -> Unit {
+  shader_defs.set(name, value)
   match value {
     Bool(flag) => defines.set(name, flag)
     Int(int_value) => value_defines.set(name, int_value)
@@ -200,6 +216,7 @@ pub(all) struct WgslComposeSession {
 priv struct WgslActiveComposeDefs {
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
 }
 
 ///|
@@ -356,25 +373,40 @@ fn Composer::active_compose_defs_for_rel_path(
   session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
 ) -> WgslActiveComposeDefs {
+  let shader_defs : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap::new()
   let (defines, value_defines) = match inherited_defs {
-    Some(parent_defs) =>
+    Some(parent_defs) => {
+      for entry in parent_defs.shader_defs.iter() {
+        let (name, value) = entry
+        shader_defs.set(name, value)
+      }
       (
         copy_bool_defs(parent_defs.defines),
         copy_int_defs(parent_defs.value_defines),
       )
-    None =>
+    }
+    None => {
+      for entry in session.defines.iter() {
+        let (name, value) = entry
+        shader_defs.set(name, ShaderDefValue::Bool(value))
+      }
+      for entry in session.value_defines.iter() {
+        let (name, value) = entry
+        shader_defs.set(name, ShaderDefValue::Int(value))
+      }
       (copy_bool_defs(session.defines), copy_int_defs(session.value_defines))
+    }
   }
   if self.composable_module_definition_for_rel_path(rel_path)
     is Some(module_definition) {
     for entry in module_definition.shader_defs.iter() {
       let (name, value) = entry
       merge_shader_def_value_into_compose_defs(
-        defines, value_defines, name, value,
+        defines, value_defines, shader_defs, name, value,
       )
     }
   }
-  WgslActiveComposeDefs::{ defines, value_defines }
+  WgslActiveComposeDefs::{ defines, value_defines, shader_defs }
 }
 
 ///|
@@ -621,6 +653,273 @@ fn eval_wgsl_if_expr(
       wgsl_if_expr_value(rhs, defines, value_defines)
   }
   wgsl_if_expr_value(text, defines, value_defines) != 0
+}
+
+///|
+fn wgsl_shader_def_enabled(
+  active_defs : WgslActiveComposeDefs,
+  name : String,
+) -> Bool {
+  active_defs.shader_defs.contains(name)
+}
+
+///|
+fn parse_wgsl_strict_if_expr(expr : String) -> (String, String, String)? {
+  let text = strip_wgsl_line_comment(expr).trim().to_owned()
+  if text == "" {
+    return None
+  }
+  let mut def_end = 0
+  while def_end < text.length() {
+    let code = text.code_unit_at(def_end).to_int()
+    if wgsl_identifier_char(code) || code == 124 { // '|'
+      def_end = def_end + 1
+    } else {
+      break
+    }
+  }
+  if def_end == 0 {
+    return None
+  }
+  let def_name = text[:def_end].to_owned()
+  let mut op_start = def_end
+  while op_start < text.length() {
+    let code = text.code_unit_at(op_start).to_int()
+    if code == 32 || code == 9 {
+      op_start = op_start + 1
+    } else {
+      break
+    }
+  }
+  let mut op_end = op_start
+  while op_end < text.length() {
+    let code = text.code_unit_at(op_end).to_int()
+    if code == 61 || code == 33 || code == 60 || code == 62 { // '=!<>'
+      op_end = op_end + 1
+    } else {
+      break
+    }
+  }
+  let operator = text[op_start:op_end].to_owned()
+  let mut value_start = op_end
+  while value_start < text.length() {
+    let code = text.code_unit_at(value_start).to_int()
+    if code == 32 || code == 9 {
+      value_start = value_start + 1
+    } else {
+      break
+    }
+  }
+  let mut value_end = value_start
+  while value_end < text.length() {
+    let code = text.code_unit_at(value_end).to_int()
+    if wgsl_identifier_char(code) || code == 45 || code == 124 { // '-|'
+      value_end = value_end + 1
+    } else {
+      break
+    }
+  }
+  if value_start == value_end {
+    return None
+  }
+  Some((def_name, operator, text[value_start:value_end].to_owned()))
+}
+
+///|
+fn compare_wgsl_int_values(
+  lhs : Int,
+  rhs : Int,
+  operator : String,
+) -> Bool raise ComposerError {
+  match operator {
+    "==" => lhs == rhs
+    "!=" => lhs != rhs
+    ">" => lhs > rhs
+    ">=" => lhs >= rhs
+    "<" => lhs < rhs
+    "<=" => lhs <= rhs
+    _ => raise ComposerError::UnknownShaderDefOperator(operator)
+  }
+}
+
+///|
+fn compare_wgsl_bool_values(
+  lhs : Bool,
+  rhs : Bool,
+  operator : String,
+) -> Bool raise ComposerError {
+  let lhs_value = if lhs { 1 } else { 0 }
+  let rhs_value = if rhs { 1 } else { 0 }
+  match operator {
+    "==" => lhs == rhs
+    "!=" => lhs != rhs
+    ">" => lhs_value > rhs_value
+    ">=" => lhs_value >= rhs_value
+    "<" => lhs_value < rhs_value
+    "<=" => lhs_value <= rhs_value
+    _ => raise ComposerError::UnknownShaderDefOperator(operator)
+  }
+}
+
+///|
+fn parse_wgsl_strict_int_value(value : String) -> Int? {
+  let parsed = @string.parse_int(value[:], base=10) catch { _ => return None }
+  Some(parsed)
+}
+
+///|
+fn parse_wgsl_strict_bool_value(value : String) -> Bool? {
+  match value {
+    "true" => Some(true)
+    "false" => Some(false)
+    _ => None
+  }
+}
+
+///|
+fn eval_wgsl_if_expr_strict(
+  expr : String,
+  active_defs : WgslActiveComposeDefs,
+) -> Bool raise ComposerError {
+  guard parse_wgsl_strict_if_expr(expr) is Some((def_name, operator, value)) else {
+    raise ComposerError::UnknownShaderDefOperator("")
+  }
+  guard active_defs.shader_defs.get(def_name) is Some(def_value) else {
+    raise ComposerError::UnknownShaderDef(def_name)
+  }
+  match def_value {
+    Bool(flag) => {
+      guard parse_wgsl_strict_bool_value(value) is Some(expected) else {
+        raise ComposerError::InvalidShaderDefComparisonValue(
+          def_name, value, "bool",
+        )
+      }
+      compare_wgsl_bool_values(flag, expected, operator)
+    }
+    Int(int_value) => {
+      guard parse_wgsl_strict_int_value(value) is Some(expected) else {
+        raise ComposerError::InvalidShaderDefComparisonValue(
+          def_name, value, "int",
+        )
+      }
+      compare_wgsl_int_values(int_value, expected, operator)
+    }
+    UInt(uint_value) => {
+      guard parse_wgsl_strict_int_value(value) is Some(parsed) else {
+        raise ComposerError::InvalidShaderDefComparisonValue(
+          def_name, value, "uint",
+        )
+      }
+      compare_wgsl_int_values(uint_value.reinterpret_as_int(), parsed, operator)
+    }
+  }
+}
+
+///|
+fn apply_wgsl_ifdefs_strict(
+  source : String,
+  active_defs : WgslActiveComposeDefs,
+) -> String raise ComposerError {
+  let mut out = ""
+  let active_stack : Array[Bool] = [true]
+  let branch_taken_stack : Array[Bool] = []
+  for line_item in source.split("\n") {
+    let line = line_item.to_owned()
+    let trimmed = line.trim().to_owned()
+    if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
+      let name = wgsl_clean_directive_tail(tail)
+      let cond = wgsl_shader_def_enabled(active_defs, name)
+      let parent = active_stack[active_stack.length() - 1]
+      active_stack.push(parent && cond)
+      branch_taken_stack.push(cond)
+      continue
+    }
+    if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
+      let name = wgsl_clean_directive_tail(tail)
+      let cond = !wgsl_shader_def_enabled(active_defs, name)
+      let parent = active_stack[active_stack.length() - 1]
+      active_stack.push(parent && cond)
+      branch_taken_stack.push(cond)
+      continue
+    }
+    if hash_directive_tail(trimmed, "if") is Some(tail) {
+      let expr = wgsl_clean_directive_tail(tail)
+      let cond = eval_wgsl_if_expr_strict(expr, active_defs)
+      let parent = active_stack[active_stack.length() - 1]
+      active_stack.push(parent && cond)
+      branch_taken_stack.push(cond)
+      continue
+    }
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "ifdef") is Some(tail) {
+      if branch_taken_stack.length() == 0 {
+        raise ComposerError::ElseWithoutCondition
+      }
+      let idx = branch_taken_stack.length() - 1
+      let name = wgsl_clean_directive_tail(tail)
+      let cond = !branch_taken_stack[idx] &&
+        wgsl_shader_def_enabled(active_defs, name)
+      let parent = wgsl_parent_active(active_stack)
+      active_stack[active_stack.length() - 1] = parent && cond
+      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
+      continue
+    }
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "ifndef") is Some(tail) {
+      if branch_taken_stack.length() == 0 {
+        raise ComposerError::ElseWithoutCondition
+      }
+      let idx = branch_taken_stack.length() - 1
+      let name = wgsl_clean_directive_tail(tail)
+      let cond = !branch_taken_stack[idx] &&
+        !wgsl_shader_def_enabled(active_defs, name)
+      let parent = wgsl_parent_active(active_stack)
+      active_stack[active_stack.length() - 1] = parent && cond
+      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
+      continue
+    }
+    if hash_directive_tail(trimmed, "else") is Some(else_tail) &&
+      word_tail(else_tail, "if") is Some(tail) {
+      if branch_taken_stack.length() == 0 {
+        raise ComposerError::ElseWithoutCondition
+      }
+      let idx = branch_taken_stack.length() - 1
+      let cond = !branch_taken_stack[idx] &&
+        eval_wgsl_if_expr_strict(tail, active_defs)
+      let parent = wgsl_parent_active(active_stack)
+      active_stack[active_stack.length() - 1] = parent && cond
+      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
+      continue
+    }
+    if hash_directive_tail(trimmed, "else") is Some(_) {
+      if branch_taken_stack.length() == 0 {
+        raise ComposerError::ElseWithoutCondition
+      }
+      let idx = branch_taken_stack.length() - 1
+      let cond = !branch_taken_stack[idx]
+      let parent = wgsl_parent_active(active_stack)
+      active_stack[active_stack.length() - 1] = parent && cond
+      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
+      continue
+    }
+    if hash_directive_tail(trimmed, "endif") is Some(_) {
+      if active_stack.length() <= 1 {
+        raise ComposerError::TooManyEndIfs
+      }
+      active_stack.pop() |> ignore
+      if branch_taken_stack.length() > 0 {
+        branch_taken_stack.pop() |> ignore
+      }
+      continue
+    }
+    if active_stack[active_stack.length() - 1] {
+      out = "\{out}\{line}\n"
+    }
+  }
+  if active_stack.length() != 1 {
+    raise ComposerError::NotEnoughEndIfs
+  }
+  out
 }
 
 ///|
@@ -925,18 +1224,14 @@ fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
-) -> WgslPreparedComposeSource {
+) -> WgslPreparedComposeSource raise ComposerError {
   record_wgsl_redirect_matches(source, session)
   let redirected_source = rewrite_wgsl_symbol_redirects(
     source,
     session.redirects,
   )
   let active_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs(
-      redirected_source,
-      active_defs.defines,
-      active_defs.value_defines,
-    ),
+    apply_wgsl_ifdefs_strict(redirected_source, active_defs),
     active_defs.value_defines,
   )
   WgslPreparedComposeSource::{
@@ -1396,11 +1691,7 @@ fn Composer::compose_wgsl_import_requests(
         Some(importer_defs),
       )
       let prepared_source = apply_wgsl_template_consts(
-        apply_wgsl_ifdefs(
-          raw_source,
-          import_defs.defines,
-          import_defs.value_defines,
-        ),
+        apply_wgsl_ifdefs_strict(raw_source, import_defs),
         import_defs.value_defines,
       )
       let filtered_source = extract_wgsl_module_items(
@@ -1477,11 +1768,7 @@ fn finalize_wgsl_composed_source(
   alias_redirects : Array[WgslSymbolRedirect],
   active_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
-  let mut out = apply_wgsl_ifdefs(
-    merged,
-    active_defs.defines,
-    active_defs.value_defines,
-  )
+  let mut out = apply_wgsl_ifdefs_strict(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
   let alias_redirect_map = build_wgsl_symbol_redirect_map(alias_redirects)
   out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
@@ -1522,11 +1809,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     let trimmed = line.trim().to_owned()
     if hash_directive_tail(trimmed, "ifdef") is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
-      let cond = wgsl_define_enabled(
-        active_defs.defines,
-        active_defs.value_defines,
-        name,
-      )
+      let cond = wgsl_shader_def_enabled(active_defs, name)
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
       import_branch_taken_stack.push(cond)
@@ -1536,11 +1819,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     }
     if hash_directive_tail(trimmed, "ifndef") is Some(tail) {
       let name = wgsl_clean_directive_tail(tail)
-      let cond = !wgsl_define_enabled(
-        active_defs.defines,
-        active_defs.value_defines,
-        name,
-      )
+      let cond = !wgsl_shader_def_enabled(active_defs, name)
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
       import_branch_taken_stack.push(cond)
@@ -1550,11 +1829,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     }
     if hash_directive_tail(trimmed, "if") is Some(tail) {
       let expr = wgsl_clean_directive_tail(tail)
-      let cond = eval_wgsl_if_expr(
-        expr,
-        active_defs.defines,
-        active_defs.value_defines,
-      )
+      let cond = eval_wgsl_if_expr_strict(expr, active_defs)
       let parent = import_active_stack[import_active_stack.length() - 1]
       import_active_stack.push(parent && cond)
       import_branch_taken_stack.push(cond)
@@ -1568,11 +1843,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         let idx = import_branch_taken_stack.length() - 1
         let name = wgsl_clean_directive_tail(tail)
         let cond = !import_branch_taken_stack[idx] &&
-          wgsl_define_enabled(
-            active_defs.defines,
-            active_defs.value_defines,
-            name,
-          )
+          wgsl_shader_def_enabled(active_defs, name)
         let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
@@ -1587,11 +1858,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         let idx = import_branch_taken_stack.length() - 1
         let name = wgsl_clean_directive_tail(tail)
         let cond = !import_branch_taken_stack[idx] &&
-          !wgsl_define_enabled(
-            active_defs.defines,
-            active_defs.value_defines,
-            name,
-          )
+          !wgsl_shader_def_enabled(active_defs, name)
         let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
@@ -1605,11 +1872,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       if import_branch_taken_stack.length() > 0 {
         let idx = import_branch_taken_stack.length() - 1
         let cond = !import_branch_taken_stack[idx] &&
-          eval_wgsl_if_expr(
-            tail,
-            active_defs.defines,
-            active_defs.value_defines,
-          )
+          eval_wgsl_if_expr_strict(tail, active_defs)
         let parent = wgsl_parent_active(import_active_stack)
         import_active_stack[import_active_stack.length() - 1] = parent && cond
         import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
