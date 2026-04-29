@@ -128,16 +128,62 @@ fn wgsl_global_decl_kind_from_top_level_item(
 }
 
 ///|
-pub fn parse_wgsl_translation_unit(source : String) -> WgslTranslationUnit {
+priv struct WgslAstParser {
+  mut item_view : ArrayView[WgslTopLevelItem]
+}
+
+///|
+fn WgslAstParser::new(source : String) -> WgslAstParser {
+  let items = parse_wgsl_top_level_items(source)
+  WgslAstParser::{ item_view: items[:] }
+}
+
+///|
+fn WgslAstParser::view(self : WgslAstParser) -> ArrayView[WgslTopLevelItem] {
+  self.item_view
+}
+
+///|
+fn WgslAstParser::update_view(
+  self : WgslAstParser,
+  view : ArrayView[WgslTopLevelItem],
+) -> Unit {
+  self.item_view = view
+}
+
+///|
+fn WgslAstParser::parse_global_decl(
+  _self : WgslAstParser,
+  item : WgslTopLevelItem,
+) -> WgslGlobalDecl {
+  WgslGlobalDecl::{
+    kind: wgsl_global_decl_kind_from_top_level_item(item),
+    name: item.name,
+    text: item.text,
+    start: item.start,
+    end: item.end,
+  }
+}
+
+///|
+fn WgslAstParser::parse_translation_unit(
+  self : WgslAstParser,
+) -> WgslTranslationUnit {
   let declarations : Array[WgslGlobalDecl] = []
-  for item in parse_wgsl_top_level_items(source) {
-    declarations.push(WgslGlobalDecl::{
-      kind: wgsl_global_decl_kind_from_top_level_item(item),
-      name: item.name,
-      text: item.text,
-      start: item.start,
-      end: item.end,
-    })
+  while true {
+    match self.view() {
+      [item, .. rest] => {
+        declarations.push(self.parse_global_decl(item))
+        self.update_view(rest)
+        continue
+      }
+      [] => break
+    }
   }
   WgslTranslationUnit::{ declarations, }
+}
+
+///|
+pub fn parse_wgsl_translation_unit(source : String) -> WgslTranslationUnit {
+  WgslAstParser::new(source).parse_translation_unit()
 }
