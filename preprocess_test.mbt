@@ -416,3 +416,67 @@ test "naga_oil: define metadata consumes one token like upstream regexes" {
   }
   debug_inspect(flag, content="true")
 }
+
+///|
+test "naga_oil: glsl version directive captures numeric version token" {
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected naga_oil-style glsl version preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("#version"),
+    content="false",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("return 1.0;"),
+    content="true",
+  )
+}
+
+///|
+test "naga_oil: wgsl directives accept upstream whitespace forms" {
+  let metadata = @moon_wgsl.get_preprocessor_metadata(
+    "enable   f16, subgroups ; trailing\nrequires\treadonly_and_readwrite_storage_textures ; trailing\ndiagnostic ( warn , derivative_uniformity ) ; trailing\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
+  debug_inspect(
+    metadata.wgsl_directives.enables[0].extensions[0],
+    content="\"f16\"",
+  )
+  debug_inspect(
+    metadata.wgsl_directives.enables[0].extensions[1],
+    content="\"subgroups\"",
+  )
+  debug_inspect(metadata.wgsl_directives.requires.length(), content="1")
+  debug_inspect(
+    metadata.wgsl_directives.requires[0].extensions[0],
+    content="\"readonly_and_readwrite_storage_textures\"",
+  )
+  debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="1")
+  debug_inspect(
+    metadata.wgsl_directives.diagnostics[0].severity,
+    content="\"warn\"",
+  )
+  debug_inspect(
+    metadata.wgsl_directives.diagnostics[0].rule,
+    content="\"derivative_uniformity\"",
+  )
+  debug_inspect(metadata.cleaned_source.contains("fn shade()"), content="true")
+}
+
+///|
+test "naga_oil: preprocess uses Rust lines trailing newline semantics" {
+  let source = "fn main() -> f32 {\r\n  return 1.0;\r\n}\r\n"
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    source,
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected trailing newline preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source,
+    content="\"fn main() -> f32 {\\n  return 1.0;\\n}\\n\"",
+  )
+}

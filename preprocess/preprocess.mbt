@@ -117,6 +117,22 @@ fn Scope::finish(self : Scope, offset : Int) -> Unit raise PreprocessError {
 }
 
 ///|
+fn rust_source_lines(source : String) -> Array[String] {
+  let lines : Array[String] = []
+  for line_item in source.split("\n") {
+    let mut line = line_item.to_owned()
+    if line.has_suffix("\r") {
+      line = line[:line.length() - 1].to_owned()
+    }
+    lines.push(line)
+  }
+  if source.has_suffix("\n") && lines.length() > 0 {
+    lines.pop() |> ignore
+  }
+  lines
+}
+
+///|
 fn split_extensions(raw : String) -> Array[String] {
   let extensions : Array[String] = []
   for item in raw.split(",") {
@@ -243,6 +259,105 @@ fn first_space_separated_token(text : String) -> String {
     i = i + 1
   }
   trimmed[:i].to_owned()
+}
+
+///|
+fn parse_glsl_version_directive(line : String) -> String? {
+  let trimmed = line.trim().to_owned()
+  let prefix = "#version"
+  guard trimmed.has_prefix(prefix) else { return None }
+  guard trimmed.length() > prefix.length() else { return None }
+  let mut i = prefix.length()
+  let first_space = trimmed.code_unit_at(i).to_int()
+  guard first_space == 32 || first_space == 9 else { return None }
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let start = i
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if code < 48 || code > 57 {
+      break
+    }
+    i = i + 1
+  }
+  guard i > start else { return None }
+  Some(trimmed[start:i].to_owned())
+}
+
+///|
+fn semicolon_directive_body(line : String, keyword : String) -> String? {
+  let trimmed = line.trim().to_owned()
+  guard trimmed.has_prefix(keyword) else { return None }
+  guard trimmed.length() > keyword.length() else { return None }
+  let mut i = keyword.length()
+  let first_space = trimmed.code_unit_at(i).to_int()
+  guard first_space == 32 || first_space == 9 else { return None }
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let start = i
+  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 59 { // ';'
+    i = i + 1
+  }
+  guard i < trimmed.length() else { return None }
+  Some(trimmed[start:i].to_owned().trim().to_owned())
+}
+
+///|
+fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
+  let trimmed = line.trim().to_owned()
+  let keyword = "diagnostic"
+  guard trimmed.has_prefix(keyword) else { return None }
+  let mut i = keyword.length()
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 40 else {
+    return None
+  }
+  i = i + 1
+  let severity_start = i
+  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 44 { // ','
+    i = i + 1
+  }
+  guard i < trimmed.length() else { return None }
+  let severity = trimmed[severity_start:i].to_owned().trim().to_owned()
+  i = i + 1
+  let rule_start = i
+  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 41 { // ')'
+    i = i + 1
+  }
+  guard i < trimmed.length() else { return None }
+  let rule = trimmed[rule_start:i].to_owned().trim().to_owned()
+  i = i + 1
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 59 else {
+    return None
+  }
+  Some((severity, rule))
 }
 
 ///|
@@ -617,8 +732,7 @@ pub fn Preprocessor::extract_wgsl_directives(
   let cleaned_lines : Array[String] = []
   let mut in_directive_section = true
   let mut line_index = 0
-  for line_item in source.split("\n") {
-    let line = line_item.to_owned()
+  for line in rust_source_lines(source) {
     let trimmed = line.trim().to_owned()
 
     if trimmed == "" || starts_with_text(trimmed, "//") {
@@ -628,43 +742,33 @@ pub fn Preprocessor::extract_wgsl_directives(
     }
 
     if in_directive_section {
-      if starts_with_text(trimmed, "enable ") && trimmed.has_suffix(";") {
+      if semicolon_directive_body(trimmed, "enable") is Some(body) {
         cleaned_lines.push("")
         directives.enables.push(EnableDirective::{
-          extensions: split_extensions(
-            trimmed[7:trimmed.length() - 1].to_owned(),
-          ),
+          extensions: split_extensions(body),
           source_location: line_index,
         })
         line_index = line_index + 1
         continue
       }
-      if starts_with_text(trimmed, "requires ") && trimmed.has_suffix(";") {
+      if semicolon_directive_body(trimmed, "requires") is Some(body) {
         cleaned_lines.push("")
         directives.requires.push(RequiresDirective::{
-          extensions: split_extensions(
-            trimmed[9:trimmed.length() - 1].to_owned(),
-          ),
+          extensions: split_extensions(body),
           source_location: line_index,
         })
         line_index = line_index + 1
         continue
       }
-      if starts_with_text(trimmed, "diagnostic(") && trimmed.has_suffix(");") {
-        let body = trimmed[11:trimmed.length() - 2].to_owned()
-        if body.find(",") is Some(comma_index) {
-          cleaned_lines.push("")
-          directives.diagnostics.push(DiagnosticDirective::{
-            severity: body[:comma_index].to_owned().trim().to_owned(),
-            rule: body[comma_index + 1:body.length()]
-            .to_owned()
-            .trim()
-            .to_owned(),
-            source_location: line_index,
-          })
-          line_index = line_index + 1
-          continue
-        }
+      if parse_diagnostic_directive_body(trimmed) is Some((severity, rule)) {
+        cleaned_lines.push("")
+        directives.diagnostics.push(DiagnosticDirective::{
+          severity,
+          rule,
+          source_location: line_index,
+        })
+        line_index = line_index + 1
+        continue
       }
       if !starts_with_text(trimmed, "enable") &&
         !starts_with_text(trimmed, "requires") &&
@@ -699,11 +803,11 @@ pub fn Preprocessor::preprocess(
   let scope = Scope::new()
   let original_lines : Array[String] = []
   let decommented_lines : Array[String] = []
-  for line_item in source.split("\n") {
-    original_lines.push(line_item.to_owned())
+  for line_item in rust_source_lines(source) {
+    original_lines.push(line_item)
   }
-  for line_item in replace_comments(source).split("\n") {
-    decommented_lines.push(line_item.to_owned())
+  for line_item in rust_source_lines(replace_comments(source)) {
+    decommented_lines.push(line_item)
   }
 
   let mut final_string = ""
@@ -715,10 +819,7 @@ pub fn Preprocessor::preprocess(
     let mut output = false
     let trimmed = line.trim().to_owned()
 
-    if starts_with_text(trimmed, "#version ") {
-      let version = trim_trailing_semicolons(
-        trimmed[9:trimmed.length()].to_owned(),
-      )
+    if parse_glsl_version_directive(trimmed) is Some(version) {
       if version != "440" && version != "450" {
         raise PreprocessError::GlslInvalidVersion(offset)
       }
@@ -821,8 +922,8 @@ fn try_get_preprocessor_metadata(
   let mut name : String? = None
   let mut offset = 0
 
-  for line_item in stripped.split("\n") {
-    lines.push(line_item.to_owned())
+  for line_item in rust_source_lines(stripped) {
+    lines.push(line_item)
   }
 
   let mut line_index = 0
