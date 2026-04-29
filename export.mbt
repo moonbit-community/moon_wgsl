@@ -80,6 +80,73 @@ fn build_wgsl_symbol_redirect_map(
 }
 
 ///|
+fn wgsl_identifier_is_reserved_or_invalid(ident : String) -> Bool {
+  if ident == "" {
+    return false
+  }
+  ident == "alias" ||
+  ident == "break" ||
+  ident == "case" ||
+  ident == "const" ||
+  ident == "const_assert" ||
+  ident == "continue" ||
+  ident == "continuing" ||
+  ident == "default" ||
+  ident == "diagnostic" ||
+  ident == "discard" ||
+  ident == "else" ||
+  ident == "enable" ||
+  ident == "false" ||
+  ident == "fn" ||
+  ident == "for" ||
+  ident == "if" ||
+  ident == "let" ||
+  ident == "loop" ||
+  ident == "override" ||
+  ident == "requires" ||
+  ident == "return" ||
+  ident == "struct" ||
+  ident == "switch" ||
+  ident == "true" ||
+  ident == "var" ||
+  ident == "while" ||
+  ident == "in" ||
+  ident.has_suffix("_") ||
+  starts_with_text(ident, "__")
+}
+
+///|
+fn sanitize_wgsl_identifier(ident : String) -> String {
+  let mut out = ident
+  while out.has_suffix("_") {
+    out = out[:out.length() - 1].to_string()
+  }
+  while starts_with_text(out, "__") {
+    out = out[1:out.length()].to_string()
+  }
+  if out == "" {
+    out = "wgsl"
+  }
+  if wgsl_identifier_is_reserved_or_invalid(out) {
+    out = "\{out}_wgsl"
+  }
+  out
+}
+
+///|
+fn wgsl_redirect_map_set_sanitized(
+  redirect_map : @hashmap.HashMap[String, String],
+  ident : String,
+) -> Unit {
+  if wgsl_identifier_is_reserved_or_invalid(ident) {
+    let sanitized = sanitize_wgsl_identifier(ident)
+    if sanitized != ident {
+      redirect_map.set(ident, sanitized)
+    }
+  }
+}
+
+///|
 fn rewrite_wgsl_declaration_text_with_map(
   source : String,
   redirect_map : @hashmap.HashMap[String, String],
@@ -238,6 +305,80 @@ fn rewrite_wgsl_declaration_text_with_renamed_declarations(
   redirect_map : @hashmap.HashMap[String, String],
 ) -> String {
   rewrite_wgsl_declaration_text_with_map(source, redirect_map, true)
+}
+
+///|
+fn collect_wgsl_function_parameter_sanitizers(
+  block_text : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> Unit {
+  let header_end = match block_text.find("{") {
+    Some(index) => index
+    None => block_text.length()
+  }
+  let header = block_text[:header_end].to_string()
+  guard header.find("fn ") is Some(fn_index) else { return }
+  let fn_header = header[fn_index:header.length()].to_string()
+  guard fn_header.find("(") is Some(open_index) else { return }
+  guard fn_header.find(")") is Some(close_index) else { return }
+  if close_index <= open_index {
+    return
+  }
+  let params = fn_header[open_index + 1:close_index].to_string()
+  for param_item in params.split(",") {
+    let param = param_item.to_string().trim().to_string()
+    if param == "" {
+      continue
+    }
+    let mut end = 0
+    while end < param.length() &&
+          wgsl_identifier_char(param.code_unit_at(end).to_int()) {
+      end = end + 1
+    }
+    if end > 0 {
+      wgsl_redirect_map_set_sanitized(redirect_map, param[:end].to_string())
+    }
+  }
+}
+
+///|
+fn sanitize_wgsl_invalid_identifiers(source : String) -> String {
+  let graph = build_wgsl_declaration_graph(source)
+  let global_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for block in graph.declaration_blocks {
+    wgsl_redirect_map_set_sanitized(global_redirects, block.name)
+  }
+  if global_redirects.is_empty() {
+    let mut has_parameter_sanitizers = false
+    for block in graph.declaration_blocks {
+      let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+      collect_wgsl_function_parameter_sanitizers(block.text, block_redirects)
+      if !block_redirects.is_empty() {
+        has_parameter_sanitizers = true
+      }
+    }
+    if !has_parameter_sanitizers {
+      return source
+    }
+  }
+  let mut sanitized = ""
+  for import_block in graph.import_blocks {
+    sanitized = sanitized + import_block.text
+  }
+  for block in graph.declaration_blocks {
+    let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+    for entry in global_redirects.iter() {
+      let (from_name, to_name) = entry
+      block_redirects.set(from_name, to_name)
+    }
+    collect_wgsl_function_parameter_sanitizers(block.text, block_redirects)
+    sanitized = sanitized +
+      rewrite_wgsl_declaration_text_with_renamed_declarations(
+        block.text,
+        block_redirects,
+      )
+  }
+  sanitized
 }
 
 ///|
@@ -439,21 +580,54 @@ fn serialize_wgsl_export_output(
 }
 
 ///|
+fn append_wgsl_unused_redirect_diagnostics(
+  diagnostics : Array[WgslDiagnostic],
+  session : WgslComposeSession,
+) -> Unit {
+  for redirect in session.redirects {
+    let from_name = redirect.from_name.trim().to_string()
+    let to_name = redirect.to_name.trim().to_string()
+    if from_name == "" || to_name == "" || from_name == to_name {
+      continue
+    }
+    let matched = match session.redirect_match_counts.get(from_name) {
+      Some(count) => count > 0
+      None => false
+    }
+    if !matched {
+      push_wgsl_diagnostic(
+        diagnostics,
+        WgslDiagnosticSeverity::Warn,
+        "symbol redirect did not match any source identifier",
+        None,
+        Some(from_name),
+        None,
+        None,
+      )
+    }
+  }
+}
+
+///|
 fn Composer::export_wgsl_from_session(
   self : Composer,
   rel : String,
   session : WgslComposeSession,
   options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
-  let source = self.load_root_wgsl_preprocessed_into_session(rel, session)
+  let source = sanitize_wgsl_invalid_identifiers(
+    self.load_root_wgsl_preprocessed_into_session(rel, session),
+  )
   let graph = build_wgsl_declaration_graph(source)
-  serialize_wgsl_export_output(
+  let output = serialize_wgsl_export_output(
     graph,
     copy_wgsl_source_files_from_registry(session.resolved_source_files),
     options,
     session.defines,
     session.value_defines,
   )
+  append_wgsl_unused_redirect_diagnostics(output.diagnostics, session)
+  output
 }
 
 ///|

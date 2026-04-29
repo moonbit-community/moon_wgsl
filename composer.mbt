@@ -169,6 +169,7 @@ priv struct WgslComposeSession {
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
+  redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
   imported_item_names : @hashmap.HashMap[String, String]
   active_rel_paths : Array[String]
@@ -299,6 +300,7 @@ fn Composer::new_wgsl_compose_session(
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
     additional_imports: copy_import_definitions(options.additional_imports),
+    redirect_match_counts: @hashmap.HashMap::new(),
     visited: @hashmap.HashMap::new(),
     imported_item_names: @hashmap.HashMap::new(),
     active_rel_paths: [],
@@ -330,6 +332,27 @@ fn collect_wgsl_cached_import_redirects(
     count = count + 1
   }
   count
+}
+
+///|
+fn record_wgsl_redirect_matches(
+  source : String,
+  session : WgslComposeSession,
+) -> Unit {
+  for redirect in session.redirects {
+    let from_name = redirect.from_name.trim().to_string()
+    let to_name = redirect.to_name.trim().to_string()
+    if from_name == "" || to_name == "" || from_name == to_name {
+      continue
+    }
+    if wgsl_source_contains_identifier(source, from_name) {
+      let current = match session.redirect_match_counts.get(from_name) {
+        Some(count) => count
+        None => 0
+      }
+      session.redirect_match_counts.set(from_name, current + 1)
+    }
+  }
 }
 
 ///|
@@ -799,6 +822,7 @@ fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
 ) -> WgslPreparedComposeSource {
+  record_wgsl_redirect_matches(source, session)
   let redirected_source = rewrite_wgsl_symbol_redirects(
     source,
     session.redirects,
@@ -1352,7 +1376,9 @@ pub fn Composer::compose_wgsl(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
-  self.load_root_wgsl_preprocessed_into_session(rel, session)
+  sanitize_wgsl_invalid_identifiers(
+    self.load_root_wgsl_preprocessed_into_session(rel, session),
+  )
 }
 
 ///|
@@ -1362,10 +1388,12 @@ pub fn Composer::compose_wgsl_source(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
-  self.preprocess_wgsl_source_with_path(
-    "",
-    prepend_wgsl_additional_imports(source, session.additional_imports),
-    session,
+  sanitize_wgsl_invalid_identifiers(
+    self.preprocess_wgsl_source_with_path(
+      "",
+      prepend_wgsl_additional_imports(source, session.additional_imports),
+      session,
+    ),
   )
 }
 

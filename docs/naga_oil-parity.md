@@ -53,8 +53,8 @@ The parity target is therefore:
 | `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Blocked | Requires GLSL parsing plus constant import/writeback semantics. |
 | `test_raycasts`, `raycast/` | Blocked | Requires Naga/wgpu-style shader validation or runtime execution behavior. |
 | `additional_import`, `add_imports/` | Covered source-level subset | Root compose/export requests and registered composable modules can inject additional imports. Upstream `virtual`/`override` overlay semantics still require Naga and remain blocked. |
-| `invalid_override` | TODO | Local redirect diagnostics should pin invalid redirect/override behavior explicitly. |
-| `bad_identifiers`, `invalid_identifiers/` | TODO | A limited source-level sanitizer is feasible for locally parsed declarations; full Naga writeback parity is not. |
+| `invalid_override` | Covered source-level subset | Export diagnostics now warn when a source-level redirect never matches. Full Naga `virtual`/`override` validation remains blocked. |
+| `bad_identifiers`, `invalid_identifiers/` | Covered source-level subset | Top-level declaration names and function parameters are sanitized in final composed/exported source. Struct-member rewriteback remains blocked without a real parser/IR. |
 | `test_shader`, `compute_test.wgsl` | Covered source-level subset | Local export smoke coverage preserves the compute entry point and imported module dependency. Upstream runtime execution remains outside source-only scope. |
 
 ## Architecture Priorities

@@ -281,3 +281,29 @@ test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-sha
   debug_inspect(output.diagnostics.length(), content="0")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
+
+///|
+test "naga_oil: export warns when a source-level redirect never matches" {
+  register_redirect_export_test_shaders()
+  let output = export_test_global_registry_composer().export_wgsl_with_options(
+    "shaders/effects/redirect.wgsl",
+    export_test_compose_options(export_test_empty_defines(), [
+      { from_name: "missing_shadow", to_name: "build_color" },
+    ]),
+    { root_items: ["shade"] },
+  ) catch {
+    err =>
+      abort("expected redirect diagnostic export success: \{err.message()}")
+  }
+  debug_inspect(output.diagnostics.length(), content="1")
+  debug_inspect(output.diagnostics[0].severity, content="Warn")
+  debug_inspect(
+    output.diagnostics[0].message,
+    content="\"symbol redirect did not match any source identifier\"",
+  )
+  debug_inspect(
+    output.diagnostics[0].symbol_name,
+    content="Some(\"missing_shadow\")",
+  )
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}

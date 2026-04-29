@@ -105,28 +105,36 @@ fn stack_join(stack : Array[String]) -> String {
 }
 
 ///|
-fn parse_imports(
+fn parse_wgsl_import_targets_from_tokens(
   input : String,
-  declared_imports : Array[DeclaredImportBinding],
+  require_directive : Bool,
+  prefix : String,
+  targets : Array[WgslImportTarget],
 ) -> Unit raise ParseImportsError {
   let tokens = tokenize(input, false)
   let mut index = 0
 
-  guard index < tokens.length() else {
-    raise Parse("expected #import", input.length())
-  }
-  guard tokens[index] == Token::Other(35, tokens[index].pos()) else {
-    raise Parse("expected `#import`", tokens[index].pos())
-  }
-  index = index + 1
+  if require_directive {
+    guard index < tokens.length() else {
+      raise Parse("expected #import", input.length())
+    }
+    guard tokens[index] == Token::Other(35, tokens[index].pos()) else {
+      raise Parse("expected `#import`", tokens[index].pos())
+    }
+    index = index + 1
 
-  guard index < tokens.length() else {
-    raise Parse("expected `#import`", input.length())
+    guard index < tokens.length() else {
+      raise Parse("expected `#import`", input.length())
+    }
+    guard tokens[index].identifier() == Some("import") else {
+      raise Parse("expected `#import`", tokens[index].pos())
+    }
+    index = index + 1
+  } else {
+    guard index < tokens.length() else {
+      raise Parse("expected import path", input.length())
+    }
   }
-  guard tokens[index].identifier() == Some("import") else {
-    raise Parse("expected `#import`", tokens[index].pos())
-  }
-  index = index + 1
 
   let stack : Array[String] = []
   let mut current = ""
@@ -173,19 +181,17 @@ fn parse_imports(
       }
       Some(Token::Other(code, pos)) if code == 44 || code == 125 => { // ',' or '}'
         if current != "" {
-          let used_name = match as_name {
-            Some(alias_name) => alias_name
-            None =>
-              match split_last_identifier(current) {
-                Some((_, tail)) => tail
-                None => current
-              }
+          let alias_name = match as_name {
+            Some(alias_text) => alias_text
+            None => ""
           }
-          declared_imports_add(
-            declared_imports,
-            used_name,
-            stack_join(stack) + current,
-          )
+          targets.push(WgslImportTarget::{
+            raw_path: join_wgsl_import_prefix(
+              prefix,
+              stack_join(stack) + current,
+            ),
+            alias_name,
+          })
           current = ""
           as_name = None
         }
@@ -209,19 +215,17 @@ fn parse_imports(
         abort("whitespace tokens should not be emitted here")
       None => {
         if current != "" {
-          let used_name = match as_name {
-            Some(alias_name) => alias_name
-            None =>
-              match split_last_identifier(current) {
-                Some((_, tail)) => tail
-                None => current
-              }
+          let alias_name = match as_name {
+            Some(alias_text) => alias_text
+            None => ""
           }
-          declared_imports_add(
-            declared_imports,
-            used_name,
-            stack_join(stack) + current,
-          )
+          targets.push(WgslImportTarget::{
+            raw_path: join_wgsl_import_prefix(
+              prefix,
+              stack_join(stack) + current,
+            ),
+            alias_name,
+          })
         }
         break
       }
@@ -232,6 +236,42 @@ fn parse_imports(
     raise Parse("missing close brace", input.length())
   }
   ()
+}
+
+///|
+fn wgsl_import_target_used_name(target : WgslImportTarget) -> String {
+  if target.alias_name != "" {
+    return target.alias_name
+  }
+  match split_last_identifier(target.raw_path) {
+    Some((_, tail)) => tail
+    None => target.raw_path
+  }
+}
+
+///|
+fn parse_wgsl_import_targets(
+  input : String,
+  prefix : String,
+  targets : Array[WgslImportTarget],
+) -> Unit raise ParseImportsError {
+  parse_wgsl_import_targets_from_tokens(input, false, prefix, targets)
+}
+
+///|
+fn parse_imports(
+  input : String,
+  declared_imports : Array[DeclaredImportBinding],
+) -> Unit raise ParseImportsError {
+  let targets : Array[WgslImportTarget] = []
+  parse_wgsl_import_targets_from_tokens(input, true, "", targets)
+  for target in targets {
+    declared_imports_add(
+      declared_imports,
+      wgsl_import_target_used_name(target),
+      target.raw_path,
+    )
+  }
 }
 
 ///|

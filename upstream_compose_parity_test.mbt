@@ -515,6 +515,22 @@ test "naga_oil upstream: compute shader smoke preserves imported entry dependenc
 }
 
 ///|
+test "naga_oil upstream: source-level sanitizer handles invalid imported identifiers" {
+  let source = upstream_parity_compose_case(
+    "invalid_identifiers",
+    "top_valid.wgsl",
+    upstream_parity_empty_defines(),
+  )
+  debug_inspect(source.contains("fn fns__bad("), content="true")
+  debug_inspect(source.contains("fn fns__bad_("), content="false")
+  debug_inspect(source.contains("in_wgsl: f32"), content="true")
+  debug_inspect(source.contains("globals__bad: f32"), content="true")
+  debug_inspect(source.contains("globals__bad_: f32"), content="false")
+  debug_inspect(source.contains("struct structs__Isbad {"), content="true")
+  debug_inspect(source.contains("struct structs__Isbad_ {"), content="false")
+}
+
+///|
 test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
   let composer = @moon_wgsl.Composer::default()
   let pbr_types_source = "#define_import_path bevy_pbr::pbr_types\n" +
