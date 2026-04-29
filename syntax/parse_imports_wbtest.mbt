@@ -93,7 +93,19 @@ test "naga_oil wb: parse_imports mirrors upstream import token suite" {
 ///|
 test "naga_oil wb: parse_imports rejects malformed imports like upstream" {
   debug_inspect(
+    parse_imports_snapshot("#import a::b::{\n").has_prefix("ERR "),
+    content="true",
+  )
+  debug_inspect(
     parse_imports_snapshot("#import a::b::{{c}\n").has_prefix("ERR "),
+    content="true",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a::b::{c}}\n").has_prefix("ERR "),
+    content="true",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a::b{{c,d}}\n").has_prefix("ERR "),
     content="true",
   )
   debug_inspect(

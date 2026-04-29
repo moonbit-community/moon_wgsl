@@ -28,6 +28,36 @@ fn bool_shader_def(
 }
 
 ///|
+fn int_shader_def(
+  name : String,
+  value : Int,
+) -> @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] {
+  let shader_defs = empty_shader_defs()
+  shader_defs.set(name, @moon_wgsl.ShaderDefValue::Int(value))
+  shader_defs
+}
+
+///|
+fn preprocess_without_ascii_whitespace(
+  source : String,
+  shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue],
+) -> String {
+  let output = @moon_wgsl.Preprocessor::default().preprocess(
+    source, shader_defs,
+  ) catch {
+    _ => abort("expected preprocess success")
+  }
+  let mut normalized = ""
+  for i in 0..<output.preprocessed_source.length() {
+    let code = output.preprocessed_source.code_unit_at(i).to_int()
+    if code != 9 && code != 10 && code != 13 && code != 32 {
+      normalized = normalized + output.preprocessed_source[i:i + 1].to_owned()
+    }
+  }
+  normalized
+}
+
+///|
 fn upstream_compose_fixture_source(
   case_name : String,
   rel_path : String,
@@ -304,6 +334,122 @@ test "naga_oil: preprocess follows else-ifdef fallback semantics" {
     first_clause_output.preprocessed_source.contains("texture_2d_array<f32>;"),
     content="false",
   )
+}
+
+///|
+test "naga_oil upstream: preprocess else-if chains choose only first active branch" {
+  let source = "\n#ifdef TEXTURE\nmain\n#else ifdef SECOND_TEXTURE\nsecond\n#else ifdef THIRD_TEXTURE\nthird\n#else\nfallback\n#endif\n"
+  debug_inspect(
+    preprocess_without_ascii_whitespace(source, empty_shader_defs()),
+    content="\"fallback\"",
+  )
+  debug_inspect(
+    preprocess_without_ascii_whitespace(
+      source,
+      bool_shader_def("SECOND_TEXTURE", true),
+    ),
+    content="\"second\"",
+  )
+  let defs = bool_shader_def("SECOND_TEXTURE", true)
+  defs.set("THIRD_TEXTURE", @moon_wgsl.ShaderDefValue::Bool(true))
+  debug_inspect(
+    preprocess_without_ascii_whitespace(source, defs),
+    content="\"second\"",
+  )
+}
+
+///|
+test "naga_oil upstream: preprocess supports else-ifndef and else-if comparisons" {
+  let ifndef_source = "\n#ifdef NOT_DEFINED\nfail1\n#else ifdef ALSO_NOT_DEFINED\nfail2\n#else ifndef ALSO_ALSO_NOT_DEFINED\nok\n#else\nfail3\n#endif\n"
+  debug_inspect(
+    preprocess_without_ascii_whitespace(ifndef_source, empty_shader_defs()),
+    content="\"ok\"",
+  )
+
+  let if_source = "\n#ifdef NOT_DEFINED\nfail1\n#else if x == 1\nfail2\n#else if x == 2\nok\n#else\nfail3\n#endif\n"
+  debug_inspect(
+    preprocess_without_ascii_whitespace(if_source, int_shader_def("x", 2)),
+    content="\"ok\"",
+  )
+}
+
+///|
+test "naga_oil upstream: preprocess handles complicated nested else-ifdef scopes" {
+  let source = "\n#ifdef NOT_DEFINED\nfail1\n#else ifdef IS_DEFINED\nok1\n#ifdef NOT_DEFINED\nfail2\n#else\nok2\n#ifdef NOT_DEFINED\nfail3\n#else ifdef ALSO_NOT_DEFINED\nfail4\n#else ifdef IS_DEFINED\nok3\n#endif\n#endif\n#endif\n"
+  debug_inspect(
+    preprocess_without_ascii_whitespace(
+      source,
+      bool_shader_def("IS_DEFINED", true),
+    ),
+    content="\"ok1ok2ok3\"",
+  )
+}
+
+///|
+test "naga_oil upstream: preprocess reports shader-def comparison errors" {
+  let unknown_operator_defs = bool_shader_def("TEXTURE", true)
+  let _ = @moon_wgsl.Preprocessor::default().preprocess(
+    "#if TEXTURE !! true\nok\n#endif\n", unknown_operator_defs,
+  ) catch {
+    @moon_wgsl.PreprocessError::UnknownShaderDefOperator(operator, _) => {
+      debug_inspect(operator, content="\"!!\"")
+      return
+    }
+    _ => abort("expected unknown shader-def operator")
+  }
+  abort("expected unknown shader-def operator")
+}
+
+///|
+test "naga_oil upstream: preprocess validates int and bool comparison values" {
+  ignore(
+    @moon_wgsl.Preprocessor::default().preprocess(
+      "#if TEXTURE == 3\nok\n#endif\n",
+      empty_shader_defs(),
+    ),
+  ) catch {
+    @moon_wgsl.PreprocessError::UnknownShaderDef(name, _) =>
+      debug_inspect(name, content="\"TEXTURE\"")
+    _ => abort("expected missing shader-def error")
+  }
+
+  ignore(
+    @moon_wgsl.Preprocessor::default().preprocess(
+      "#if TEXTURE == 3\nok\n#endif\n",
+      bool_shader_def("TEXTURE", true),
+    ),
+  ) catch {
+    @moon_wgsl.PreprocessError::InvalidShaderDefComparisonValue(
+      name,
+      value,
+      expected,
+      _
+    ) => {
+      debug_inspect(name, content="\"TEXTURE\"")
+      debug_inspect(value, content="\"3\"")
+      debug_inspect(expected, content="\"bool\"")
+    }
+    _ => abort("expected invalid bool comparison value")
+  }
+
+  let _ = @moon_wgsl.Preprocessor::default().preprocess(
+    "#if TEXTURE != false\nok\n#endif\n",
+    int_shader_def("TEXTURE", 7),
+  ) catch {
+    @moon_wgsl.PreprocessError::InvalidShaderDefComparisonValue(
+      name,
+      value,
+      expected,
+      _
+    ) => {
+      debug_inspect(name, content="\"TEXTURE\"")
+      debug_inspect(value, content="\"false\"")
+      debug_inspect(expected, content="\"int\"")
+      return
+    }
+    _ => abort("expected invalid int comparison value")
+  }
+  abort("expected invalid int comparison value")
 }
 
 ///|
