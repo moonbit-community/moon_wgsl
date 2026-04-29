@@ -207,6 +207,29 @@ fn WgslDeclParser::consume_identifier(self : WgslDeclParser) -> String? {
 }
 
 ///|
+fn WgslDeclParser::consume_path_identifier(self : WgslDeclParser) -> String? {
+  let mut name = match self.consume_identifier() {
+    Some(value) => value
+    None => return None
+  }
+  while true {
+    match self.view() {
+      [
+        Token::Other(58, _),
+        Token::Other(58, _),
+        Token::Identifier(segment, _),
+        .. rest,
+      ] => {
+        name = name + "::" + segment
+        self.update_view(rest)
+      }
+      _ => break
+    }
+  }
+  Some(name)
+}
+
+///|
 fn WgslDeclParser::parse_attributes(
   self : WgslDeclParser,
 ) -> Array[WgslAttribute] {
@@ -498,9 +521,16 @@ fn WgslDeclParser::parse_function(
   attributes : Array[WgslAttribute],
   qualifier : String,
 ) -> WgslFunction? {
-  let name = match self.consume_identifier() {
-    Some(value) => value
-    None => return None
+  let name = if qualifier == "override" {
+    match self.consume_path_identifier() {
+      Some(value) => value
+      None => return None
+    }
+  } else {
+    match self.consume_identifier() {
+      Some(value) => value
+      None => return None
+    }
   }
   let arguments = self.parse_function_arguments()
   let result = self.parse_function_result()

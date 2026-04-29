@@ -13,20 +13,6 @@
 // limitations under the License.
 
 ///|
-fn wgsl_leading_whitespace_length(text : String) -> Int {
-  let mut i = 0
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if code == 32 || code == 9 {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  i
-}
-
-///|
 fn wgsl_index_of_code_unit(text : String, code : Int) -> Int {
   for i in 0..<text.length() {
     if text.code_unit_at(i).to_int() == code {
@@ -37,36 +23,62 @@ fn wgsl_index_of_code_unit(text : String, code : Int) -> Int {
 }
 
 ///|
-fn wgsl_source_block_is_virtual_fn(block_text : String) -> Bool {
-  for line in split_source_lines(replace_comments(block_text)) {
-    if starts_with_text(line.trim().to_owned(), "virtual fn ") {
-      return true
-    }
+fn wgsl_virtual_token_end(token : Token) -> Int {
+  match token {
+    Token::Identifier(text, pos) | Token::Whitespace(text, pos) =>
+      pos + text.length()
+    Token::Other(_, pos) => pos + 1
   }
-  false
 }
 
 ///|
-fn wgsl_source_block_override_target(block_text : String) -> String? {
-  for line in split_source_lines(replace_comments(block_text)) {
-    let trimmed = line.trim().to_owned()
-    if starts_with_text(trimmed, "override fn ") {
-      let rest = trimmed[12:trimmed.length()].to_owned()
-      let end = wgsl_index_of_code_unit(rest, 40)
-      if end < 0 {
-        return Some(rest.trim().to_owned())
-      }
-      return Some(rest[:end].trim().to_owned())
+fn wgsl_token_rewrite_source(block_text : String) -> String {
+  replace_comments(block_text)
+}
+
+///|
+fn wgsl_source_block_function(block_text : String) -> WgslFunction? {
+  let unit = parse_wgsl_translation_unit(block_text)
+  for decl in unit.declarations {
+    match decl.data {
+      WgslGlobalDeclData::Function(function) => return Some(function)
+      _ => ()
     }
   }
   None
 }
 
 ///|
+fn wgsl_source_block_is_virtual_fn(block_text : String) -> Bool {
+  match wgsl_source_block_function(block_text) {
+    Some(function) => function.qualifier == "virtual"
+    None => false
+  }
+}
+
+///|
+fn wgsl_source_block_override_target(block_text : String) -> String? {
+  match wgsl_source_block_function(block_text) {
+    Some(function) =>
+      if function.qualifier == "override" {
+        Some(function.name.name)
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
 fn wgsl_source_contains_override_directive(source : String) -> Bool {
-  for line in split_source_lines(replace_comments(source)) {
-    if starts_with_text(line.trim().to_owned(), "override fn ") {
-      return true
+  let unit = parse_wgsl_translation_unit(source)
+  for decl in unit.declarations {
+    match decl.data {
+      WgslGlobalDeclData::Function(function) =>
+        if function.qualifier == "override" {
+          return true
+        }
+      _ => ()
     }
   }
   false
@@ -100,25 +112,18 @@ fn wgsl_virtual_base_name(target_name : String) -> String {
 
 ///|
 fn rewrite_wgsl_virtual_fn_block(block_text : String) -> String {
-  let mut out = ""
-  let mut rewritten = false
-  for line in split_source_lines(block_text) {
-    if !rewritten {
-      let trimmed = line.trim().to_owned()
-      if starts_with_text(trimmed, "virtual fn ") {
-        let leading = wgsl_leading_whitespace_length(line)
-        out = out +
-          line[:leading].to_owned() +
-          "fn " +
-          trimmed[11:trimmed.length()].to_owned() +
-          "\n"
-        rewritten = true
-        continue
-      }
+  let tokens = tokenize(wgsl_token_rewrite_source(block_text), false)
+  let mut i = 0
+  while i + 1 < tokens.length() {
+    match (tokens[i], tokens[i + 1]) {
+      (Token::Identifier("virtual", start), Token::Identifier("fn", fn_start)) =>
+        return block_text[:start].to_owned() +
+          block_text[fn_start:block_text.length()].to_owned()
+      _ => ()
     }
-    out = out + line + "\n"
+    i = i + 1
   }
-  out
+  block_text
 }
 
 ///|
@@ -142,31 +147,36 @@ fn rewrite_wgsl_override_fn_block(
   target_name : String,
   base_name : String?,
 ) -> String {
-  let mut out = ""
-  let mut rewritten = false
-  for line in split_source_lines(block_text) {
-    if !rewritten {
-      let trimmed = line.trim().to_owned()
-      if starts_with_text(trimmed, "override fn ") {
-        let rest = trimmed[12:trimmed.length()].to_owned()
-        let args_start = wgsl_index_of_code_unit(rest, 40)
-        let suffix = if args_start < 0 {
-          ""
-        } else {
-          rest[args_start:rest.length()].to_owned()
+  let tokens = tokenize(wgsl_token_rewrite_source(block_text), false)
+  let mut out = block_text
+  let mut i = 0
+  while i + 2 < tokens.length() {
+    match (tokens[i], tokens[i + 1], tokens[i + 2]) {
+      (
+        Token::Identifier("override", start),
+        Token::Identifier("fn", _),
+        Token::Identifier(_, _),
+      ) => {
+        let mut end = wgsl_virtual_token_end(tokens[i + 2])
+        let mut j = i + 3
+        while j + 2 < tokens.length() {
+          match (tokens[j], tokens[j + 1], tokens[j + 2]) {
+            (Token::Other(58, _), Token::Other(58, _), Token::Identifier(_, _)) => {
+              end = wgsl_virtual_token_end(tokens[j + 2])
+              j = j + 3
+            }
+            _ => break
+          }
         }
-        let leading = wgsl_leading_whitespace_length(line)
-        out = out +
-          line[:leading].to_owned() +
+        out = block_text[:start].to_owned() +
           "fn " +
           target_name +
-          suffix +
-          "\n"
-        rewritten = true
-        continue
+          block_text[end:block_text.length()].to_owned()
+        break
       }
+      _ => ()
     }
-    out = out + line + "\n"
+    i = i + 1
   }
   match base_name {
     Some(base) => {

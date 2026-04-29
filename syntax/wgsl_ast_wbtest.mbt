@@ -124,3 +124,23 @@ test "WGSL function payload exposes source-preserving statement AST" {
     content="true",
   )
 }
+
+///|
+test "WGSL override function payload preserves qualified target path" {
+  let source =
+    #|override fn mod::inner(arg: f32) -> f32 {
+    #|  return inner(arg);
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  debug_inspect(function.qualifier, content="\"override\"")
+  debug_inspect(function.name.name, content="\"mod::inner\"")
+  debug_inspect(function.arguments[0].name, content="\"arg\"")
+  debug_inspect(
+    function.result,
+    content="Some({ attributes: [], ty: \"f32\" })",
+  )
+}
