@@ -120,10 +120,10 @@ fn Scope::finish(self : Scope, offset : Int) -> Unit raise PreprocessError {
 ///|
 fn split_extensions(raw : String) -> Array[String] {
   let extensions : Array[String] = []
-  for item in raw.split(",") {
-    let text = item.to_owned().trim().to_owned()
-    if text != "" {
-      extensions.push(text)
+  for token in tokenize(raw, false) {
+    match token {
+      Token::Identifier(text, _) => extensions.push(text)
+      _ => ()
     }
   }
   extensions
@@ -726,7 +726,7 @@ pub fn Preprocessor::extract_wgsl_directives(
   for line in source_lines(source) {
     let trimmed = line.trim().to_owned()
 
-    if trimmed == "" || starts_with_text(trimmed, "//") {
+    if trimmed == "" || replace_comments(trimmed).trim().to_owned() == "" {
       cleaned_lines.push(line)
       line_index = line_index + 1
       continue
