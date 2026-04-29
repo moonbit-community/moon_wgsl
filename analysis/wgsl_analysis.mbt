@@ -215,12 +215,14 @@ fn collect_wgsl_declaration_dependencies(
           }
           None => ()
         }
-        collect_wgsl_dependency_text_fragment(
-          decl.text,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
+        for statement in function.body.statements {
+          collect_wgsl_dependency_text_fragment(
+            statement.text,
+            self_name,
+            declaration_names,
+            dependencies,
+          )
+        }
       }
       WgslGlobalDeclData::Struct(struct_decl) => {
         collect_wgsl_attribute_dependencies(

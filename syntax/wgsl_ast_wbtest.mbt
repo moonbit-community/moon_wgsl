@@ -123,7 +123,7 @@ test "WGSL function payload exposes source-preserving statement AST" {
   debug_inspect(function.body.statements[1].kind, content="If")
   debug_inspect(function.body.statements[2].kind, content="Return")
   debug_inspect(
-    function.body.statements[1].text.contains("returnlocal;"),
+    function.body.statements[1].text.contains("return local;"),
     content="true",
   )
 }

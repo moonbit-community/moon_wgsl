@@ -164,14 +164,24 @@ fn wgsl_ast_tokens_text(tokens : Array[Token]) -> String {
 }
 
 ///|
+fn wgsl_ast_token_end(token : Token) -> Int {
+  match token {
+    Token::Identifier(text, pos) | Token::Whitespace(text, pos) =>
+      pos + text.length()
+    Token::Other(_, pos) => pos + 1
+  }
+}
+
+///|
 priv struct WgslDeclParser {
+  source_text : String
   mut token_view : ArrayView[Token]
 }
 
 ///|
 fn WgslDeclParser::new(text : String) -> WgslDeclParser {
   let tokens = tokenize(replace_comments(text), false)
-  WgslDeclParser::{ token_view: tokens[:] }
+  WgslDeclParser::{ source_text: text, token_view: tokens[:] }
 }
 
 ///|
@@ -426,42 +436,52 @@ fn wgsl_statement_kind_from_first_identifier(
 
 ///|
 fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
-  let parts : Array[Token] = []
   let mut first_identifier : String? = None
+  let mut start_pos = -1
+  let mut end_pos = -1
   let mut brace_depth = 0
   let mut paren_depth = 0
+  fn record_span(start : Int, end_ : Int) -> Unit {
+    if start_pos < 0 {
+      start_pos = start
+    }
+    end_pos = end_
+  }
+  fn record_token(token : Token) -> Unit {
+    record_span(token.pos(), wgsl_ast_token_end(token))
+  }
   while true {
     match self.view() {
-      [Token::Other(123, _), .. rest] => {
+      [Token::Other(123, pos), .. rest] => {
         brace_depth = brace_depth + 1
-        parts.push(Token::Other(123, 0))
+        record_span(pos, pos + 1)
         self.update_view(rest)
         continue
       }
       [Token::Other(125, _), ..] if brace_depth == 0 => break
-      [Token::Other(125, _), .. rest] => {
+      [Token::Other(125, pos), .. rest] => {
         brace_depth = brace_depth - 1
-        parts.push(Token::Other(125, 0))
+        record_span(pos, pos + 1)
         self.update_view(rest)
         if brace_depth == 0 {
           break
         }
         continue
       }
-      [Token::Other(40, _), .. rest] => {
+      [Token::Other(40, pos), .. rest] => {
         paren_depth = paren_depth + 1
-        parts.push(Token::Other(40, 0))
+        record_span(pos, pos + 1)
         self.update_view(rest)
         continue
       }
-      [Token::Other(41, _), .. rest] => {
+      [Token::Other(41, pos), .. rest] => {
         paren_depth = paren_depth - 1
-        parts.push(Token::Other(41, 0))
+        record_span(pos, pos + 1)
         self.update_view(rest)
         continue
       }
-      [Token::Other(59, _), .. rest] if brace_depth == 0 && paren_depth == 0 => {
-        parts.push(Token::Other(59, 0))
+      [Token::Other(59, pos), .. rest] if brace_depth == 0 && paren_depth == 0 => {
+        record_span(pos, pos + 1)
         self.update_view(rest)
         break
       }
@@ -470,14 +490,18 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
           (None, Token::Identifier(ident, _)) => first_identifier = Some(ident)
           _ => ()
         }
-        parts.push(token)
+        record_token(token)
         self.update_view(rest)
         continue
       }
       [] => break
     }
   }
-  let text = wgsl_ast_tokens_text(parts).trim().to_owned()
+  let text = if start_pos < 0 || end_pos < start_pos {
+    ""
+  } else {
+    self.source_text[start_pos:end_pos].to_owned().trim().to_owned()
+  }
   if text == "" {
     None
   } else {
