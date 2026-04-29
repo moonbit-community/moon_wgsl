@@ -135,6 +135,8 @@ pub(all) struct WgslFunction {
 pub(all) struct WgslFunctionArgument {
   attributes : Array[WgslAttribute]
   name : String
+  name_start : Int
+  name_end : Int
   ty : String
 } derive(@debug.Debug)
 
@@ -230,6 +232,8 @@ pub(all) struct WgslStruct {
 pub(all) struct WgslStructMember {
   attributes : Array[WgslAttribute]
   name : String
+  name_start : Int
+  name_end : Int
   ty : String
 } derive(@debug.Debug)
 

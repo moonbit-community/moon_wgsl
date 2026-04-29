@@ -58,6 +58,8 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     struct_decl.members[0].attributes[0].name,
     content="\"location\"",
   )
+  debug_inspect(struct_decl.members[0].name_start, content="31")
+  debug_inspect(struct_decl.members[0].name_end, content="39")
   debug_inspect(struct_decl.members[0].ty, content="\"vec3<f32>\"")
   guard unit.declarations[1].data is WgslGlobalDeclData::GlobalVariable(global) else {
     abort("expected global var payload")
@@ -90,6 +92,8 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(function.attributes[0].name, content="\"fragment\"")
   debug_inspect(function.name.name, content="\"fragment\"")
   debug_inspect(function.arguments[0].name, content="\"color\"")
+  debug_inspect(function.arguments[0].name_start, content="35")
+  debug_inspect(function.arguments[0].name_end, content="40")
   debug_inspect(
     function.arguments[0].attributes[0].name,
     content="\"location\"",

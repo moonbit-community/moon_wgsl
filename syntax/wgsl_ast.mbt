@@ -30,6 +30,8 @@ pub(all) struct WgslAttribute {
 pub(all) struct WgslFunctionArgument {
   attributes : Array[WgslAttribute]
   name : String
+  name_start : Int
+  name_end : Int
   ty : String
 } derive(Debug)
 
@@ -81,6 +83,8 @@ pub(all) struct WgslFunction {
 pub(all) struct WgslStructMember {
   attributes : Array[WgslAttribute]
   name : String
+  name_start : Int
+  name_end : Int
   ty : String
 } derive(Debug)
 
@@ -404,11 +408,17 @@ fn WgslDeclParser::parse_function_arguments(
       break
     }
     let attributes = self.parse_attributes()
-    match self.consume_identifier() {
-      Some(name) => {
+    match self.consume_ident_node() {
+      Some(name_node) => {
         self.consume_if_other(58) |> ignore
         let ty = self.collect_until_top_level([44, 41])
-        arguments.push(WgslFunctionArgument::{ attributes, name, ty })
+        arguments.push(WgslFunctionArgument::{
+          attributes,
+          name: name_node.name,
+          name_start: name_node.start,
+          name_end: name_node.end,
+          ty,
+        })
       }
       None => ()
     }
@@ -659,11 +669,17 @@ fn WgslDeclParser::parse_struct_members(
       break
     }
     let attributes = self.parse_attributes()
-    match self.consume_identifier() {
-      Some(name) => {
+    match self.consume_ident_node() {
+      Some(name_node) => {
         self.consume_if_other(58) |> ignore
         let ty = self.collect_until_top_level([44, 59, 125])
-        members.push(WgslStructMember::{ attributes, name, ty })
+        members.push(WgslStructMember::{
+          attributes,
+          name: name_node.name,
+          name_start: name_node.start,
+          name_end: name_node.end,
+          ty,
+        })
       }
       None => ()
     }
