@@ -1,5 +1,6 @@
 ///|
 using @analysis {
+  type WgslGraphBlock,
   build_wgsl_declaration_graph,
   build_wgsl_symbol_redirect_map,
   extract_wgsl_module_items,

@@ -69,3 +69,29 @@ test "declaration graph keeps dependencies from AST initializers" {
   debug_inspect(extracted.contains("const VALUE"), content="true")
   debug_inspect(extracted.contains("fn use_value"), content="true")
 }
+
+///|
+test "declaration graph keeps dependencies from AST type refs" {
+  let source =
+    #|struct Item {
+    #|  value: u32,
+    #|}
+    #|alias Items = array<Item, 4>;
+    #|struct Output {
+    #|  values: Items,
+    #|}
+    #|fn make_output() -> Output {
+    #|  var out: Output;
+    #|  return out;
+    #|}
+    #|fn unused() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["make_output"])
+  debug_inspect(extracted.contains("struct Item"), content="true")
+  debug_inspect(extracted.contains("alias Items"), content="true")
+  debug_inspect(extracted.contains("struct Output"), content="true")
+  debug_inspect(extracted.contains("fn make_output"), content="true")
+  debug_inspect(extracted.contains("fn unused"), content="false")
+}

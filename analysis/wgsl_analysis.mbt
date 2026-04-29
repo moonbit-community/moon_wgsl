@@ -18,6 +18,7 @@ pub(all) struct WgslGraphBlock {
   text : String
   start : Int
   end : Int
+  data : WgslGlobalDeclData
 }
 
 ///|
@@ -59,6 +60,7 @@ pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
           text: decl.text,
           start: decl.start,
           end: decl.end,
+          data: decl.data,
         })
       WgslGlobalDeclKind::Function
       | WgslGlobalDeclKind::GlobalVariable
@@ -73,6 +75,7 @@ pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
           text: decl.text,
           start: decl.start,
           end: decl.end,
+          data: decl.data,
         })
       _ => ()
     }
@@ -158,163 +161,227 @@ fn collect_wgsl_optional_dependency_text(
 }
 
 ///|
+fn collect_wgsl_type_ref_dependencies(
+  ty_ref : WgslTypeRef?,
+  self_name : String,
+  declaration_names : @hashmap.HashMap[String, Bool],
+  dependencies : Array[String],
+) -> Unit {
+  match ty_ref {
+    Some(value) => {
+      if value.name != self_name && declaration_names.contains(value.name) {
+        wgsl_string_list_push_unique(dependencies, value.name)
+      }
+      for argument in value.arguments {
+        collect_wgsl_type_ref_dependencies(
+          Some(argument),
+          self_name,
+          declaration_names,
+          dependencies,
+        )
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn collect_wgsl_type_ref_or_text_dependencies(
+  ty_ref : WgslTypeRef?,
+  ty_text : String,
+  self_name : String,
+  declaration_names : @hashmap.HashMap[String, Bool],
+  dependencies : Array[String],
+) -> Unit {
+  match ty_ref {
+    Some(_) =>
+      collect_wgsl_type_ref_dependencies(
+        ty_ref, self_name, declaration_names, dependencies,
+      )
+    None =>
+      collect_wgsl_dependency_text_fragment(
+        ty_text, self_name, declaration_names, dependencies,
+      )
+  }
+}
+
+///|
+fn collect_wgsl_optional_type_ref_or_text_dependencies(
+  ty_ref : WgslTypeRef?,
+  ty_text : String?,
+  self_name : String,
+  declaration_names : @hashmap.HashMap[String, Bool],
+  dependencies : Array[String],
+) -> Unit {
+  match ty_text {
+    Some(text) =>
+      collect_wgsl_type_ref_or_text_dependencies(
+        ty_ref, text, self_name, declaration_names, dependencies,
+      )
+    None => ()
+  }
+}
+
+///|
 fn collect_wgsl_declaration_dependencies(
+  declaration_data : WgslGlobalDeclData,
   declaration_text : String,
   self_name : String,
   declaration_names : @hashmap.HashMap[String, Bool],
   dependencies : Array[String],
 ) -> Unit {
-  let unit = parse_wgsl_translation_unit(declaration_text)
-  for decl in unit.declarations {
-    match decl.data {
-      WgslGlobalDeclData::Function(function) => {
+  match declaration_data {
+    WgslGlobalDeclData::Function(function) => {
+      collect_wgsl_attribute_dependencies(
+        function.attributes,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+      for argument in function.arguments {
         collect_wgsl_attribute_dependencies(
-          function.attributes,
+          argument.attributes,
           self_name,
           declaration_names,
           dependencies,
         )
-        for argument in function.arguments {
+        collect_wgsl_type_ref_or_text_dependencies(
+          argument.ty_ref,
+          argument.ty,
+          self_name,
+          declaration_names,
+          dependencies,
+        )
+      }
+      match function.result {
+        Some(result) => {
           collect_wgsl_attribute_dependencies(
-            argument.attributes,
+            result.attributes,
             self_name,
             declaration_names,
             dependencies,
           )
-          collect_wgsl_dependency_text_fragment(
-            argument.ty,
-            self_name,
-            declaration_names,
-            dependencies,
-          )
-        }
-        match function.result {
-          Some(result) => {
-            collect_wgsl_attribute_dependencies(
-              result.attributes,
-              self_name,
-              declaration_names,
-              dependencies,
-            )
-            collect_wgsl_dependency_text_fragment(
-              result.ty,
-              self_name,
-              declaration_names,
-              dependencies,
-            )
-          }
-          None => ()
-        }
-        for statement in function.body.statements {
-          collect_wgsl_dependency_text_fragment(
-            statement.text,
+          collect_wgsl_type_ref_or_text_dependencies(
+            result.ty_ref,
+            result.ty,
             self_name,
             declaration_names,
             dependencies,
           )
         }
+        None => ()
       }
-      WgslGlobalDeclData::Struct(struct_decl) => {
-        collect_wgsl_attribute_dependencies(
-          struct_decl.attributes,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-        for struct_member in struct_decl.members {
-          collect_wgsl_attribute_dependencies(
-            struct_member.attributes,
-            self_name,
-            declaration_names,
-            dependencies,
-          )
-          collect_wgsl_dependency_text_fragment(
-            struct_member.ty,
-            self_name,
-            declaration_names,
-            dependencies,
-          )
-        }
-      }
-      WgslGlobalDeclData::GlobalVariable(global) => {
-        collect_wgsl_attribute_dependencies(
-          global.attributes,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-        for template in global.template_list {
-          collect_wgsl_dependency_text_fragment(
-            template, self_name, declaration_names, dependencies,
-          )
-        }
-        collect_wgsl_optional_dependency_text(
-          global.ty,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-        collect_wgsl_optional_dependency_text(
-          global.initializer,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-      }
-      WgslGlobalDeclData::Const(const_decl) => {
-        collect_wgsl_optional_dependency_text(
-          const_decl.ty,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-        collect_wgsl_optional_dependency_text(
-          const_decl.initializer,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-      }
-      WgslGlobalDeclData::Override(override_decl) => {
-        collect_wgsl_attribute_dependencies(
-          override_decl.attributes,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-        collect_wgsl_optional_dependency_text(
-          override_decl.ty,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-        collect_wgsl_optional_dependency_text(
-          override_decl.initializer,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-      }
-      WgslGlobalDeclData::TypeAlias(alias_decl) =>
+      for statement in function.body.statements {
         collect_wgsl_dependency_text_fragment(
-          alias_decl.ty,
+          statement.text,
           self_name,
           declaration_names,
           dependencies,
         )
-      WgslGlobalDeclData::ConstAssert(expr) =>
-        collect_wgsl_dependency_text_fragment(
-          expr, self_name, declaration_names, dependencies,
-        )
-      WgslGlobalDeclData::Raw =>
-        collect_wgsl_dependency_text_fragment(
-          decl.text,
-          self_name,
-          declaration_names,
-          dependencies,
-        )
-      WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) => ()
+      }
     }
+    WgslGlobalDeclData::Struct(struct_decl) => {
+      collect_wgsl_attribute_dependencies(
+        struct_decl.attributes,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+      for struct_member in struct_decl.members {
+        collect_wgsl_attribute_dependencies(
+          struct_member.attributes,
+          self_name,
+          declaration_names,
+          dependencies,
+        )
+        collect_wgsl_type_ref_or_text_dependencies(
+          struct_member.ty_ref,
+          struct_member.ty,
+          self_name,
+          declaration_names,
+          dependencies,
+        )
+      }
+    }
+    WgslGlobalDeclData::GlobalVariable(global) => {
+      collect_wgsl_attribute_dependencies(
+        global.attributes,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+      for template in global.template_list {
+        collect_wgsl_dependency_text_fragment(
+          template, self_name, declaration_names, dependencies,
+        )
+      }
+      collect_wgsl_optional_type_ref_or_text_dependencies(
+        global.ty_ref,
+        global.ty,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+      collect_wgsl_optional_dependency_text(
+        global.initializer,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+    }
+    WgslGlobalDeclData::Const(const_decl) => {
+      collect_wgsl_optional_type_ref_or_text_dependencies(
+        const_decl.ty_ref,
+        const_decl.ty,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+      collect_wgsl_optional_dependency_text(
+        const_decl.initializer,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+    }
+    WgslGlobalDeclData::Override(override_decl) => {
+      collect_wgsl_attribute_dependencies(
+        override_decl.attributes,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+      collect_wgsl_optional_type_ref_or_text_dependencies(
+        override_decl.ty_ref,
+        override_decl.ty,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+      collect_wgsl_optional_dependency_text(
+        override_decl.initializer,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+    }
+    WgslGlobalDeclData::TypeAlias(alias_decl) =>
+      collect_wgsl_type_ref_or_text_dependencies(
+        alias_decl.ty_ref,
+        alias_decl.ty,
+        self_name,
+        declaration_names,
+        dependencies,
+      )
+    WgslGlobalDeclData::ConstAssert(expr) =>
+      collect_wgsl_dependency_text_fragment(
+        expr, self_name, declaration_names, dependencies,
+      )
+    WgslGlobalDeclData::Raw =>
+      collect_wgsl_dependency_text_fragment(
+        declaration_text, self_name, declaration_names, dependencies,
+      )
+    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) => ()
   }
 }
 
@@ -364,6 +431,7 @@ pub fn collect_wgsl_reachable_declaration_names(
     let block = declaration_blocks[index]
     let dependencies : Array[String] = []
     collect_wgsl_declaration_dependencies(
+      block.data,
       block.text,
       name,
       declaration_names,

@@ -37,28 +37,24 @@ fn wgsl_token_rewrite_source(block_text : String) -> String {
 }
 
 ///|
-fn wgsl_source_block_function(block_text : String) -> WgslFunction? {
-  let unit = parse_wgsl_translation_unit(block_text)
-  for decl in unit.declarations {
-    match decl.data {
-      WgslGlobalDeclData::Function(function) => return Some(function)
-      _ => ()
-    }
+fn wgsl_graph_block_function(block : WgslGraphBlock) -> WgslFunction? {
+  match block.data {
+    WgslGlobalDeclData::Function(function) => Some(function)
+    _ => None
   }
-  None
 }
 
 ///|
-fn wgsl_source_block_is_virtual_fn(block_text : String) -> Bool {
-  match wgsl_source_block_function(block_text) {
+fn wgsl_graph_block_is_virtual_fn(block : WgslGraphBlock) -> Bool {
+  match wgsl_graph_block_function(block) {
     Some(function) => function.qualifier == "virtual"
     None => false
   }
 }
 
 ///|
-fn wgsl_source_block_override_target(block_text : String) -> String? {
-  match wgsl_source_block_function(block_text) {
+fn wgsl_graph_block_override_target(block : WgslGraphBlock) -> String? {
+  match wgsl_graph_block_function(block) {
     Some(function) =>
       if function.qualifier == "override" {
         Some(function.name.name)
@@ -154,6 +150,7 @@ fn rewrite_wgsl_virtual_base_block(
 fn rewrite_wgsl_override_fn_block(
   block_text : String,
   target_name : String,
+  raw_target : String,
   base_name : String?,
 ) -> String {
   let tokens = tokenize(wgsl_token_rewrite_source(block_text), false)
@@ -191,10 +188,7 @@ fn rewrite_wgsl_override_fn_block(
     Some(base) => {
       let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
       redirect_map.set(target_name, base)
-      match wgsl_source_block_override_target(block_text) {
-        Some(raw_target) => redirect_map.set(raw_target, base)
-        None => ()
-      }
+      redirect_map.set(raw_target, base)
       rewrite_wgsl_declaration_text_with_map(out, redirect_map, false)
     }
     None => out
@@ -222,12 +216,12 @@ fn apply_wgsl_virtual_overrides(
   let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let override_needs_base : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for block in graph.declaration_blocks {
-    if block.name != "" && wgsl_source_block_is_virtual_fn(block.text) {
+    if block.name != "" && wgsl_graph_block_is_virtual_fn(block) {
       virtual_names.set(block.name, true)
     }
   }
   for block in graph.declaration_blocks {
-    match wgsl_source_block_override_target(block.text) {
+    match wgsl_graph_block_override_target(block) {
       Some(raw_target) => {
         let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
         if !virtual_names.contains(target) {
@@ -246,7 +240,12 @@ fn apply_wgsl_virtual_overrides(
         }
         overrides.set(
           target,
-          rewrite_wgsl_override_fn_block(block.text, target, base_name),
+          rewrite_wgsl_override_fn_block(
+            block.text,
+            target,
+            raw_target,
+            base_name,
+          ),
         )
       }
       None => ()
@@ -260,11 +259,11 @@ fn apply_wgsl_virtual_overrides(
     out = out + import_block.text
   }
   for block in graph.declaration_blocks {
-    match wgsl_source_block_override_target(block.text) {
+    match wgsl_graph_block_override_target(block) {
       Some(_) => continue
       None => ()
     }
-    if block.name != "" && wgsl_source_block_is_virtual_fn(block.text) {
+    if block.name != "" && wgsl_graph_block_is_virtual_fn(block) {
       match overrides.get(block.name) {
         Some(override_block) => {
           let needs_base = match override_needs_base.get(block.name) {
@@ -295,7 +294,7 @@ fn strip_wgsl_virtual_functions(source : String) -> String {
   let graph = build_wgsl_declaration_graph(source)
   let mut saw_virtual = false
   for block in graph.declaration_blocks {
-    if wgsl_source_block_is_virtual_fn(block.text) {
+    if wgsl_graph_block_is_virtual_fn(block) {
       saw_virtual = true
       break
     }
@@ -309,7 +308,7 @@ fn strip_wgsl_virtual_functions(source : String) -> String {
     out = out + import_block.text
   }
   for block in graph.declaration_blocks {
-    if wgsl_source_block_is_virtual_fn(block.text) {
+    if wgsl_graph_block_is_virtual_fn(block) {
       if block.name != "" && emitted_names.contains(block.name) {
         continue
       }

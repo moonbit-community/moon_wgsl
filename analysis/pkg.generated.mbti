@@ -3,6 +3,7 @@ package "Milky2018/moon_wgsl/analysis"
 
 import {
   "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/syntax",
   "moonbitlang/core/hashmap",
 }
 
@@ -46,6 +47,7 @@ pub(all) struct WgslGraphBlock {
   text : String
   start : Int
   end : Int
+  data : @syntax.WgslGlobalDeclData
 }
 
 // Type aliases
