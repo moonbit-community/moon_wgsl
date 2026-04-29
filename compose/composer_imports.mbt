@@ -23,14 +23,124 @@ priv struct WgslImportRequest {
 }
 
 ///|
-fn unresolved_wgsl_namespace_reference(source : String) -> String? {
-  for token in tokenize(replace_comments(source), false) {
-    match token {
-      Token::Identifier(path, _) =>
-        if wgsl_path_separator_count(path) > 0 {
-          return Some(path)
+fn collect_wgsl_expr_ref_identifier_names(
+  expr_ref : WgslExprRef?,
+  names : Array[String],
+) -> Unit {
+  match expr_ref {
+    Some(expr) =>
+      for ident in expr.identifiers {
+        names.push(ident.name)
+      }
+    None => ()
+  }
+}
+
+///|
+fn collect_wgsl_type_ref_identifier_names(
+  ty_ref : WgslTypeRef?,
+  names : Array[String],
+) -> Unit {
+  match ty_ref {
+    Some(ty) => {
+      names.push(ty.name)
+      for argument in ty.arguments {
+        collect_wgsl_type_ref_identifier_names(Some(argument), names)
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn collect_wgsl_attribute_identifier_names(
+  attributes : Array[WgslAttribute],
+  names : Array[String],
+) -> Unit {
+  for attr in attributes {
+    collect_wgsl_expr_ref_identifier_names(attr.arguments_ref, names)
+  }
+}
+
+///|
+fn collect_wgsl_decl_identifier_names(
+  data : WgslGlobalDeclData,
+  names : Array[String],
+) -> Unit {
+  match data {
+    WgslGlobalDeclData::Function(function) => {
+      collect_wgsl_attribute_identifier_names(function.attributes, names)
+      if function.qualifier == "override" {
+        names.push(function.name.name)
+      }
+      for argument in function.arguments {
+        collect_wgsl_attribute_identifier_names(argument.attributes, names)
+        collect_wgsl_type_ref_identifier_names(argument.ty_ref, names)
+      }
+      match function.result {
+        Some(result) => {
+          collect_wgsl_attribute_identifier_names(result.attributes, names)
+          collect_wgsl_type_ref_identifier_names(result.ty_ref, names)
         }
-      _ => ()
+        None => ()
+      }
+      for statement in function.body.statements {
+        for ident in statement.identifiers {
+          names.push(ident.name)
+        }
+      }
+    }
+    WgslGlobalDeclData::Struct(struct_decl) => {
+      collect_wgsl_attribute_identifier_names(struct_decl.attributes, names)
+      for struct_member in struct_decl.members {
+        collect_wgsl_attribute_identifier_names(struct_member.attributes, names)
+        collect_wgsl_type_ref_identifier_names(struct_member.ty_ref, names)
+      }
+    }
+    WgslGlobalDeclData::GlobalVariable(global) => {
+      collect_wgsl_attribute_identifier_names(global.attributes, names)
+      collect_wgsl_type_ref_identifier_names(global.ty_ref, names)
+      collect_wgsl_expr_ref_identifier_names(global.initializer_ref, names)
+    }
+    WgslGlobalDeclData::Const(const_decl) => {
+      collect_wgsl_type_ref_identifier_names(const_decl.ty_ref, names)
+      collect_wgsl_expr_ref_identifier_names(const_decl.initializer_ref, names)
+    }
+    WgslGlobalDeclData::Override(override_decl) => {
+      collect_wgsl_attribute_identifier_names(override_decl.attributes, names)
+      collect_wgsl_type_ref_identifier_names(override_decl.ty_ref, names)
+      collect_wgsl_expr_ref_identifier_names(
+        override_decl.initializer_ref,
+        names,
+      )
+    }
+    WgslGlobalDeclData::TypeAlias(alias_decl) =>
+      collect_wgsl_type_ref_identifier_names(alias_decl.ty_ref, names)
+    WgslGlobalDeclData::ConstAssert(expr) =>
+      for ident in expr.identifiers {
+        names.push(ident.name)
+      }
+    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) | Raw => ()
+  }
+}
+
+///|
+fn collect_wgsl_source_identifier_names(
+  source : String,
+  names : Array[String],
+) -> Unit {
+  for decl in parse_wgsl_translation_unit(source).declarations {
+    collect_wgsl_decl_identifier_names(decl.data, names)
+  }
+}
+
+///|
+fn unresolved_wgsl_namespace_reference(source : String) -> String? {
+  let names : Array[String] = []
+  collect_wgsl_source_identifier_names(source, names)
+  for name in names {
+    if wgsl_path_separator_count(name) > 0 {
+      return Some(name)
     }
   }
   None
@@ -44,18 +154,15 @@ fn wgsl_source_contains_identifier(
   if identifier == "" {
     return false
   }
-  for token in tokenize(replace_comments(source), false) {
-    match token {
-      Token::Identifier(path, _) => {
-        if path == identifier {
-          return true
-        }
-        match split_last_wgsl_path(path) {
-          Some((_, suffix)) => if suffix == identifier { return true }
-          None => ()
-        }
-      }
-      _ => ()
+  let names : Array[String] = []
+  collect_wgsl_source_identifier_names(source, names)
+  for path in names {
+    if path == identifier {
+      return true
+    }
+    match split_last_wgsl_path(path) {
+      Some((_, suffix)) => if suffix == identifier { return true }
+      None => ()
     }
   }
   false
@@ -105,15 +212,12 @@ fn collect_wgsl_alias_requested_paths(
   alias_name : String,
   requested_paths : Array[String],
 ) -> Unit {
-  for token in tokenize(replace_comments(source), false) {
-    match token {
-      Token::Identifier(path, _) => {
-        let requested_item = wgsl_import_requested_item_name(path, alias_name)
-        if requested_item != "" {
-          wgsl_string_list_push_unique(requested_paths, requested_item)
-        }
-      }
-      _ => ()
+  let names : Array[String] = []
+  collect_wgsl_source_identifier_names(source, names)
+  for path in names {
+    let requested_item = wgsl_import_requested_item_name(path, alias_name)
+    if requested_item != "" {
+      wgsl_string_list_push_unique(requested_paths, requested_item)
     }
   }
 }
@@ -181,33 +285,29 @@ fn collect_wgsl_qualified_module_targets(
   modules : @hashmap.HashMap[String, String],
   targets : Array[WgslImportTarget],
 ) -> Unit {
-  let cleaned = replace_comments(source)
-  for token in tokenize(cleaned, false) {
-    match token {
-      Token::Identifier(ident, _) => {
-        if wgsl_path_separator_count(ident) < 2 {
-          continue
-        }
-        guard resolve_wgsl_import_request_module(
-            current_rel_path, ident, registry, modules,
-          )
-          is Some(resolved_module) else {
-          continue
-        }
-        let requested_item = wgsl_import_requested_item_name(
-          ident,
-          resolved_module.module_path,
-        )
-        if requested_item == "" {
-          continue
-        }
-        wgsl_import_targets_push_unique(targets, WgslImportTarget::{
-          raw_path: resolved_module.module_path,
-          alias_name: resolved_module.module_path,
-        })
-      }
-      _ => ()
+  let names : Array[String] = []
+  collect_wgsl_source_identifier_names(source, names)
+  for ident in names {
+    if wgsl_path_separator_count(ident) < 2 {
+      continue
     }
+    guard resolve_wgsl_import_request_module(
+        current_rel_path, ident, registry, modules,
+      )
+      is Some(resolved_module) else {
+      continue
+    }
+    let requested_item = wgsl_import_requested_item_name(
+      ident,
+      resolved_module.module_path,
+    )
+    if requested_item == "" {
+      continue
+    }
+    wgsl_import_targets_push_unique(targets, WgslImportTarget::{
+      raw_path: resolved_module.module_path,
+      alias_name: resolved_module.module_path,
+    })
   }
 }
 
