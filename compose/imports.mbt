@@ -53,7 +53,6 @@ using @syntax {
   type WgslGlobalDeclData,
   collect_wgsl_source_identifier_names,
   import_brace_balance,
-  parse_wgsl_translation_unit,
   split_last_identifier,
   split_source_lines,
   starts_with_text,

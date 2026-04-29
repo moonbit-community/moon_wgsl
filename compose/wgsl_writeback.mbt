@@ -297,18 +297,15 @@ fn wgsl_redirect_map_set_sanitized(
 
 ///|
 fn collect_wgsl_function_parameter_sanitizers(
-  source : String,
+  data : WgslGlobalDeclData,
   redirect_map : @hashmap.HashMap[String, String],
 ) -> Unit {
-  let unit = parse_wgsl_translation_unit(source)
-  for decl in unit.declarations {
-    match decl.data {
-      WgslGlobalDeclData::Function(function) =>
-        for argument in function.arguments {
-          wgsl_redirect_map_set_sanitized(redirect_map, argument.name)
-        }
-      _ => ()
-    }
+  match data {
+    WgslGlobalDeclData::Function(function) =>
+      for argument in function.arguments {
+        wgsl_redirect_map_set_sanitized(redirect_map, argument.name)
+      }
+    _ => ()
   }
 }
 
@@ -323,7 +320,7 @@ fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
     let mut has_parameter_sanitizers = false
     for block in graph.declaration_blocks {
       let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-      collect_wgsl_function_parameter_sanitizers(block.text, block_redirects)
+      collect_wgsl_function_parameter_sanitizers(block.data, block_redirects)
       if !block_redirects.is_empty() {
         has_parameter_sanitizers = true
       }
@@ -342,7 +339,7 @@ fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
       let (from_name, to_name) = entry
       block_redirects.set(from_name, to_name)
     }
-    collect_wgsl_function_parameter_sanitizers(block.text, block_redirects)
+    collect_wgsl_function_parameter_sanitizers(block.data, block_redirects)
     sanitized = sanitized +
       rewrite_wgsl_declaration_text_with_renamed_declarations(
         block.text,
@@ -356,9 +353,9 @@ fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
 fn validate_wgsl_struct_member_identifiers(
   source : String,
 ) -> Unit raise ComposerError {
-  let unit = parse_wgsl_translation_unit(source)
-  for decl in unit.declarations {
-    match decl.data {
+  let graph = build_wgsl_declaration_graph(source)
+  for block in graph.declaration_blocks {
+    match block.data {
       WgslGlobalDeclData::Struct(struct_decl) =>
         for struct_member in struct_decl.members {
           let mut allows_writeback_substitution = false
