@@ -194,6 +194,29 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
 }
 
 ///|
+test "WGSL identifier collection exposes source spans" {
+  let source =
+    #|alias Alias = vec4<f32>;
+    #|override fn mod::inner(value: Alias) -> Alias {
+    #|  return value;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  let nodes : Array[WgslIdent] = []
+  for decl in unit.declarations {
+    collect_wgsl_decl_identifier_nodes(decl.data, nodes)
+  }
+  debug_inspect(nodes[0].name, content="\"vec4\"")
+  debug_inspect(nodes[0].start, content="14")
+  debug_inspect(nodes[1].name, content="\"f32\"")
+  debug_inspect(nodes[2].name, content="\"mod::inner\"")
+  debug_inspect(nodes[3].name, content="\"Alias\"")
+  debug_inspect(nodes[4].name, content="\"Alias\"")
+  debug_inspect(nodes[5].name, content="\"return\"")
+  debug_inspect(nodes[6].name, content="\"value\"")
+}
+
+///|
 test "WGSL function payload exposes source-preserving statement AST" {
   let source =
     #|fn demo(value: u32) -> u32 {

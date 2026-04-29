@@ -11,7 +11,11 @@ pub fn code_unit_to_string(Int) -> String
 
 pub fn collect_wgsl_decl_identifier_names(WgslGlobalDeclData, Array[String]) -> Unit
 
+pub fn collect_wgsl_decl_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
+
 pub fn collect_wgsl_source_identifier_names(String, Array[String]) -> Unit
+
+pub fn collect_wgsl_source_identifier_nodes(String, Array[WgslIdent]) -> Unit
 
 pub fn decorate(String) -> String
 
