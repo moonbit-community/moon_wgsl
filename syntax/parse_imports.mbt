@@ -118,35 +118,107 @@ fn join_wgsl_import_prefix(prefix : String, path : String) -> String {
 }
 
 ///|
-pub fn parse_wgsl_import_targets_from_tokens(
-  input : String,
+priv struct WgslImportParser {
+  input : String
+  mut token_view : ArrayView[Token]
+}
+
+///|
+fn WgslImportParser::new(input : String) -> WgslImportParser {
+  let tokens = tokenize(input, false)
+  WgslImportParser::{ input, token_view: tokens[:] }
+}
+
+///|
+fn WgslImportParser::view(self : WgslImportParser) -> ArrayView[Token] {
+  self.token_view
+}
+
+///|
+fn WgslImportParser::update_view(
+  self : WgslImportParser,
+  view : ArrayView[Token],
+) -> Unit {
+  self.token_view = view
+}
+
+///|
+fn[A] WgslImportParser::error(
+  self : WgslImportParser,
+  message : String,
+  pos? : Int,
+) -> A raise ParseImportsError {
+  match pos {
+    Some(offset) => raise Parse(message, offset)
+    None =>
+      match self.view() {
+        [token, ..] => raise Parse(message, token.pos())
+        [] => raise Parse(message, self.input.length())
+      }
+  }
+}
+
+///|
+fn WgslImportParser::expect_import_directive(
+  self : WgslImportParser,
+) -> Unit raise ParseImportsError {
+  match self.view() {
+    [Token::Other(35, _), Token::Identifier("import", _), .. rest] =>
+      self.update_view(rest)
+    [Token::Other(35, _), token, ..] =>
+      self.error("expected `#import`", pos=token.pos())
+    [token, ..] => self.error("expected `#import`", pos=token.pos())
+    [] => self.error("expected #import", pos=self.input.length())
+  }
+}
+
+///|
+fn WgslImportParser::try_consume_alias(
+  self : WgslImportParser,
+) -> String? raise ParseImportsError {
+  match self.view() {
+    [Token::Identifier("as", _), Token::Identifier(name, _), .. rest] => {
+      self.update_view(rest)
+      Some(name)
+    }
+    [Token::Identifier("as", pos), ..] =>
+      self.error("expected identifier after `as`", pos~)
+    _ => None
+  }
+}
+
+///|
+fn push_wgsl_import_target(
+  targets : Array[WgslImportTarget],
+  prefix : String,
+  stack : Array[String],
+  current : String,
+  as_name : String?,
+) -> Unit {
+  if current == "" {
+    return
+  }
+  let alias_name = match as_name {
+    Some(alias_text) => alias_text
+    None => ""
+  }
+  targets.push(WgslImportTarget::{
+    raw_path: join_wgsl_import_prefix(prefix, stack_join(stack) + current),
+    alias_name,
+  })
+}
+
+///|
+fn WgslImportParser::parse_targets(
+  self : WgslImportParser,
   require_directive : Bool,
   prefix : String,
   targets : Array[WgslImportTarget],
 ) -> Unit raise ParseImportsError {
-  let tokens = tokenize(input, false)
-  let mut index = 0
-
   if require_directive {
-    guard index < tokens.length() else {
-      raise Parse("expected #import", input.length())
-    }
-    guard tokens[index] == Token::Other(35, tokens[index].pos()) else {
-      raise Parse("expected `#import`", tokens[index].pos())
-    }
-    index = index + 1
-
-    guard index < tokens.length() else {
-      raise Parse("expected `#import`", input.length())
-    }
-    guard tokens[index].identifier() == Some("import") else {
-      raise Parse("expected `#import`", tokens[index].pos())
-    }
-    index = index + 1
-  } else {
-    guard index < tokens.length() else {
-      raise Parse("expected import path", input.length())
-    }
+    self.expect_import_directive()
+  } else if self.view() is [] {
+    self.error("expected import path", pos=self.input.length())
   }
 
   let stack : Array[String] = []
@@ -155,26 +227,13 @@ pub fn parse_wgsl_import_targets_from_tokens(
   let mut is_deprecated_itemlist = false
 
   while true {
-    let peek = if index < tokens.length() { Some(tokens[index]) } else { None }
-    match peek {
-      Some(Token::Identifier(ident, _)) => {
+    match self.view() {
+      [Token::Identifier(ident, _), .. rest] => {
+        self.update_view(rest)
         current = current + ident
-        index = index + 1
+        as_name = self.try_consume_alias()
 
-        if index < tokens.length() && tokens[index].identifier() == Some("as") {
-          let pos = tokens[index].pos()
-          index = index + 1
-          guard index < tokens.length() else {
-            raise Parse("expected identifier after `as`", pos)
-          }
-          guard tokens[index] is Token::Identifier(name, _) else {
-            raise Parse("expected identifier after `as`", pos)
-          }
-          as_name = Some(name)
-          index = index + 1
-        }
-
-        if index < tokens.length() && tokens[index] is Token::Identifier(_, _) {
+        if self.view() is [Token::Identifier(_, _), ..] {
           is_deprecated_itemlist = true
           stack.push("\{current}::")
           current = ""
@@ -182,73 +241,59 @@ pub fn parse_wgsl_import_targets_from_tokens(
         }
         continue
       }
-      Some(Token::Other(code, pos)) if code == 123 => { // '{'
+      [Token::Other(code, pos), .. rest] if code == 123 => { // '{'
         if !current.has_suffix("::") {
-          raise Parse("open brace must follow `::`", pos)
+          self.error("open brace must follow `::`", pos~)
         }
         stack.push(current)
         current = ""
         as_name = None
-        index = index + 1
+        self.update_view(rest)
         continue
       }
-      Some(Token::Other(code, pos)) if code == 44 || code == 125 => { // ',' or '}'
-        if current != "" {
-          let alias_name = match as_name {
-            Some(alias_text) => alias_text
-            None => ""
-          }
-          targets.push(WgslImportTarget::{
-            raw_path: join_wgsl_import_prefix(
-              prefix,
-              stack_join(stack) + current,
-            ),
-            alias_name,
-          })
-          current = ""
-          as_name = None
-        }
+      [Token::Other(code, pos), .. rest] if code == 44 || code == 125 => { // ',' or '}'
+        push_wgsl_import_target(targets, prefix, stack, current, as_name)
+        current = ""
+        as_name = None
         if code == 125 {
           guard stack.pop() is Some(_) else {
-            raise Parse("close brace without open", pos)
+            self.error("close brace without open", pos~)
           }
         }
-        index = index + 1
+        self.update_view(rest)
         continue
       }
-      Some(Token::Other(code, _)) if code == 59 => { // ';'
-        index = index + 1
-        if index < tokens.length() {
-          raise Parse("unexpected token after ';'", tokens[index].pos())
+      [Token::Other(code, _), .. rest] if code == 59 => { // ';'
+        self.update_view(rest)
+        if self.view() is [token, ..] {
+          self.error("unexpected token after ';'", pos=token.pos())
         }
         break
       }
-      Some(Token::Other(_, pos)) => raise Parse("unexpected token", pos)
-      Some(Token::Whitespace(_, _)) =>
+      [Token::Other(_, pos), ..] => self.error("unexpected token", pos~)
+      [Token::Whitespace(_, _), ..] =>
         abort("whitespace tokens should not be emitted here")
-      None => {
-        if current != "" {
-          let alias_name = match as_name {
-            Some(alias_text) => alias_text
-            None => ""
-          }
-          targets.push(WgslImportTarget::{
-            raw_path: join_wgsl_import_prefix(
-              prefix,
-              stack_join(stack) + current,
-            ),
-            alias_name,
-          })
-        }
+      [] => {
+        push_wgsl_import_target(targets, prefix, stack, current, as_name)
         break
       }
     }
   }
 
   if !(stack.is_empty() || (is_deprecated_itemlist && stack.length() == 1)) {
-    raise Parse("missing close brace", input.length())
+    self.error("missing close brace", pos=self.input.length())
   }
   ()
+}
+
+///|
+pub fn parse_wgsl_import_targets_from_tokens(
+  input : String,
+  require_directive : Bool,
+  prefix : String,
+  targets : Array[WgslImportTarget],
+) -> Unit raise ParseImportsError {
+  WgslImportParser::new(input).parse_targets(require_directive, prefix, targets)
 }
 
 ///|
