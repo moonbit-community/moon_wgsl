@@ -263,6 +263,32 @@ fn Composer::new_wgsl_compose_session(
 }
 
 ///|
+fn collect_wgsl_cached_import_redirects(
+  session : WgslComposeSession,
+  rel_path : String,
+  alias_name : String,
+  redirects : Array[WgslSymbolRedirect],
+) -> Int {
+  let prefix = "\{rel_path}|"
+  let mut count = 0
+  for entry in session.imported_item_names.iter() {
+    let (key, imported_name) = entry
+    if !starts_with_text(key, prefix) {
+      continue
+    }
+    let item_name = key[prefix.length():key.length()].to_string()
+    let from_name = if alias_name == "" {
+      item_name
+    } else {
+      "\{alias_name}::\{item_name}"
+    }
+    redirects.push(WgslSymbolRedirect::{ from_name, to_name: imported_name })
+    count = count + 1
+  }
+  count
+}
+
+///|
 fn composer_remove_composable_module_recursive(
   composer : Composer,
   module_name : String,
@@ -940,6 +966,13 @@ fn Composer::compose_wgsl_import_requests(
     }
     if request.import_full_module {
       if session.visited.contains(full_module_key) {
+        collect_wgsl_cached_import_redirects(
+          session,
+          request.rel_path,
+          request.alias_name,
+          alias_redirects,
+        )
+        |> ignore
         continue
       }
     }

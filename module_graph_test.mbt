@@ -30,6 +30,23 @@ test "naga_oil: import target parser preserves nested group and alias shapes" {
 }
 
 ///|
+test "naga_oil: import target parser preserves grouped module aliases" {
+  let targets : Array[@moon_wgsl.WgslImportTarget] = []
+  @moon_wgsl.collect_wgsl_import_targets(
+    "bevy_pbr::{\n  mesh_view_bindings as view_bindings,\n  view_transformations,\n}",
+    "", targets,
+  )
+  debug_inspect(targets.length(), content="2")
+  debug_inspect(targets[0].raw_path, content="\"bevy_pbr::mesh_view_bindings\"")
+  debug_inspect(targets[0].alias_name, content="\"view_bindings\"")
+  debug_inspect(
+    targets[1].raw_path,
+    content="\"bevy_pbr::view_transformations\"",
+  )
+  debug_inspect(targets[1].alias_name, content="\"\"")
+}
+
+///|
 test "naga_oil: registered source registry tracks define_import_path" {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   @moon_wgsl.register_wgsl_source(

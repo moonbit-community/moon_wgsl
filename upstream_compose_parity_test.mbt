@@ -695,3 +695,83 @@ test "github issue 3: nested alias imports rewrite variable declaration types" {
     content="true",
   )
 }
+
+///|
+test "github issue 4: nested module alias rewrites global binding member access" {
+  let composer = @moon_wgsl.Composer::default()
+  composer.register_wgsl_source(
+    "view.wgsl",
+    "#define_import_path bevy_render::view\n" +
+    "struct View {\n" +
+    "  world_from_view: mat4x4<f32>,\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "#import bevy_render::view::View\n" +
+    "@group(0) @binding(0) var<uniform> view: View;\n",
+  )
+  composer.register_wgsl_source(
+    "view_transformations.wgsl",
+    "#define_import_path bevy_pbr::view_transformations\n" +
+    "#import bevy_pbr::mesh_view_bindings as view_bindings\n" +
+    "#import bevy_pbr::prepass_bindings\n" +
+    "fn view_to_world(view_pos: vec3<f32>) -> vec3<f32> {\n" +
+    "  let world_pos = view_bindings::view.world_from_view * vec4(view_pos, 1.0);\n" +
+    "  return world_pos.xyz;\n" +
+    "}\n" +
+    "fn world_to_prev_view(world_pos: vec3<f32>) -> vec3<f32> {\n" +
+    "  let view_pos = prepass_bindings::previous_view_uniforms.view_from_world * vec4(world_pos, 1.0);\n" +
+    "  return view_pos.xyz;\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "prepass_bindings.wgsl",
+    "#define_import_path bevy_pbr::prepass_bindings\n" +
+    "struct PreviousViewUniforms { view_from_world: mat4x4<f32> }\n" +
+    "@group(0) @binding(30) var<uniform> previous_view_uniforms: PreviousViewUniforms;\n",
+  )
+  composer.register_wgsl_source(
+    "pbr_functions.wgsl",
+    "#define_import_path bevy_pbr::pbr_functions\n" +
+    "#import bevy_pbr::{\n" +
+    "  mesh_view_bindings as view_bindings,\n" +
+    "  view_transformations,\n" +
+    "}\n" +
+    "fn apply_transform(view_pos: vec3<f32>) -> vec3<f32> {\n" +
+    "  return (view_bindings::view.world_from_view * vec4(view_pos, 1.0)).xyz + view_transformations::view_to_world(view_pos);\n" +
+    "}\n",
+  )
+  composer.register_wgsl_source(
+    "root.wgsl",
+    "#import bevy_pbr::pbr_functions as pbr_functions\n" +
+    "fn read_world(view_pos: vec3<f32>) -> vec3<f32> {\n" +
+    "  return pbr_functions::apply_transform(view_pos);\n" +
+    "}\n",
+  )
+  let output = composer.export_wgsl_with_options(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+    { root_items: ["read_world"] },
+  ) catch {
+    err =>
+      abort("expected issue 4 nested alias compose success: \{err.message()}")
+  }
+  let source = output.source
+  debug_inspect(source.contains("view_bindings::view"), content="false")
+  debug_inspect(
+    source.contains("pbr_functions__view_bindings__view.world_from_view"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("var<uniform> view_bindings__view: View"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains(
+      "var<uniform> pbr_functions__view_bindings__view: pbr_functions__view_bindings__View",
+    ),
+    content="true",
+  )
+}
