@@ -51,6 +51,7 @@ priv struct ShaderDefReference {
   name : String
   start : Int
   end : Int
+  delimited : Bool
 }
 
 ///|

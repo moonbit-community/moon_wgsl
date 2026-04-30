@@ -54,6 +54,7 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
               name,
               start,
               end: token_end(tokens[k]),
+              delimited: true,
             })
           }
           i = k + 1
@@ -82,6 +83,7 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
             } else {
               name_start
             },
+            delimited: false,
           })
           i = j
         } else {

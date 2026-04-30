@@ -832,6 +832,27 @@ test "naga_oil: directive keywords without required tail whitespace stay as sour
 }
 
 ///|
+test "naga_oil: shader-def replacement follows upstream first-match loop" {
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("KNOWN", @common.ShaderDefValue::Int(7))
+  shader_defs.set("KNOWN_BRACED", @common.ShaderDefValue::Int(9))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "let a = #MISSING + #KNOWN;\nlet b = #{MISSING_BRACED} + #{KNOWN_BRACED};\n",
+    shader_defs,
+  ) catch {
+    _ => abort("expected upstream first-match replacement success")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 7 + #KNOWN;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let b = 9 + #{KNOWN_BRACED};"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: glsl version directive captures numeric version token" {
   let output = @preprocess.Preprocessor::default().preprocess(
     "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",

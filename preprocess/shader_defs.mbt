@@ -272,19 +272,43 @@ fn replace_shader_defs_in_line(
   line : String,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String {
-  let mut output = ""
-  let mut copy_start = 0
-  for reference in parse_shader_def_references(line) {
-    if shader_defs.get(reference.name) is Some(value) {
-      output = output + line[copy_start:reference.start].to_owned()
-      output = output + value.value_as_string()
-      copy_start = reference.end
+  let references = parse_shader_def_references(line)
+  let mut output = line
+  for reference in references {
+    if !reference.delimited && shader_defs.get(reference.name) is Some(value) {
+      output = replace_first_shader_def_reference(
+        output,
+        false,
+        value.value_as_string(),
+      )
     }
   }
-  if copy_start < line.length() {
-    output = output + line[copy_start:line.length()].to_owned()
+  for reference in references {
+    if reference.delimited && shader_defs.get(reference.name) is Some(value) {
+      output = replace_first_shader_def_reference(
+        output,
+        true,
+        value.value_as_string(),
+      )
+    }
   }
   output
+}
+
+///|
+fn replace_first_shader_def_reference(
+  line : String,
+  delimited : Bool,
+  replacement : String,
+) -> String {
+  for reference in parse_shader_def_references(line) {
+    if reference.delimited == delimited {
+      return line[0:reference.start].to_owned() +
+        replacement +
+        line[reference.end:line.length()].to_owned()
+    }
+  }
+  line
 }
 
 ///|
