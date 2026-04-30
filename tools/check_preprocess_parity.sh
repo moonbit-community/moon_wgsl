@@ -23,6 +23,18 @@ diff_normalized() {
   diff -u "$tmpdir/$label.expected" "$tmpdir/$label.actual"
 }
 
+assert_contains() {
+  local file="$1"
+  local needle="$2"
+  local label="$3"
+  if ! grep -Fq "$needle" "$file"; then
+    printf 'expected %s to contain: %s\n' "$label" "$needle" >&2
+    printf 'actual %s:\n' "$label" >&2
+    sed -n '1,120p' "$file" >&2
+    exit 1
+  fi
+}
+
 assert_expected_coverage() {
   local label
   local uncovered=()
@@ -385,6 +397,24 @@ oracle \
   --entry top.wgsl \
   --capability ray-query \
   --check-only
+
+echo "== naga_oil oracle: diagnostic filters upstream failure =="
+if oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/diagnostic_filters \
+  --entry top.wgsl \
+  --check-only \
+  --error-output "$tmpdir/diagnostic_filters_error.txt"; then
+  echo "expected oracle diagnostic-filter failure, got success" >&2
+  exit 1
+fi
+assert_contains \
+  "$tmpdir/diagnostic_filters_error.txt" \
+  "invalid function call" \
+  diagnostic_filters
+assert_contains \
+  "$tmpdir/diagnostic_filters_error.txt" \
+  "Requires 3 arguments, but 0 are provided" \
+  diagnostic_filters
 
 echo "== naga_oil oracle: parser diagnostic =="
 if oracle \
