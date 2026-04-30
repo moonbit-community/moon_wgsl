@@ -19,26 +19,25 @@ using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|
 using @lex {
-  type WgslToken,
   naga_oil_raw_import_brace_balance_next,
   replace_comments_naga_oil,
   spaces,
   source_lines,
   trim_trailing_semicolons,
-  tokenize,
   utf8_byte_length,
   wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,
-  wgsl_regex_word_text,
 }
 
 ///|
 using @parser {
+  parse_glsl_version_directive,
   parse_wgsl_directive_identifier,
   parse_wgsl_directive_line_at,
   parse_wgsl_shader_def_references,
   parse_wgsl_shader_def_comparison,
+  parse_wgsl_template_const_references,
   wgsl_required_space_word_tail,
   wgsl_text_starts_with_tokenized_space,
 }

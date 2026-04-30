@@ -10,11 +10,6 @@ pub suberror SubstituteIdentifiersError {
 }
 
 ///|
-fn wgsl_metadata_code_unit_to_string(code : Int) -> String {
-  String::from_array([Int::unsafe_to_char(code)])
-}
-
-///|
 fn import_token_byte_offset(input : String, token : WgslToken) -> Int {
   utf8_byte_length(input[:token.pos()].to_owned())
 }
@@ -215,65 +210,53 @@ pub fn substitute_identifiers(
   used_imports : Array[ImportDefWithOffset],
   allow_ambiguous : Bool,
 ) -> String raise SubstituteIdentifiersError {
-  let tokens = tokenize(input, true)
   let mut output = ""
-  let mut in_substitution_position = true
+  let mut copy_start = 0
 
-  for token in tokens {
-    match token {
-      WgslToken::Identifier(ident, token_pos) =>
-        if in_substitution_position {
-          let token_byte_pos = utf8_byte_length(input[:token_pos].to_owned())
-          let (first, residual) = match split_once_identifier(ident) {
-            Some(parts) => parts
-            None => (ident, "")
-          }
-          let full_paths = match
-            declared_imports_get_paths(declared_imports, first) {
-            Some(paths) => paths
-            None => [first]
-          }
-          if !allow_ambiguous && full_paths.length() > 1 {
-            raise AmbiguousImport(offset + token_byte_pos)
-          }
-
-          for full_path_base in full_paths {
-            let full_path = if residual != "" {
-              "\{full_path_base}::\{residual}"
-            } else {
-              full_path_base
-            }
-
-            if split_last_identifier(full_path)
-              is Some((module_path, item_name)) {
-              used_imports_record(
-                used_imports,
-                module_path,
-                item_name,
-                offset + token_byte_pos,
-              )
-              output = output + item_name + decorate(module_path)
-            } else if full_path.contains("\"") {
-              output = output + ident
-            } else {
-              output = output + full_path
-            }
-          }
-        } else {
-          output = output + ident
-        }
-      WgslToken::Other(other, _) => {
-        output = output + wgsl_metadata_code_unit_to_string(other)
-        if other == 46 || other == 64 { // '.' or '@'
-          in_substitution_position = false
-          continue
-        }
-      }
-      WgslToken::Whitespace(ws, _) => output = output + ws
+  for reference in parse_wgsl_identifier_references(input) {
+    output = output + input[copy_start:reference.start].to_owned()
+    copy_start = reference.end
+    let ident = reference.text
+    if !reference.substitution_allowed {
+      output = output + ident
+      continue
+    }
+    let token_byte_pos = utf8_byte_length(input[:reference.start].to_owned())
+    let (first, residual) = match split_once_identifier(ident) {
+      Some(parts) => parts
+      None => (ident, "")
+    }
+    let full_paths = match declared_imports_get_paths(declared_imports, first) {
+      Some(paths) => paths
+      None => [first]
+    }
+    if !allow_ambiguous && full_paths.length() > 1 {
+      raise AmbiguousImport(offset + token_byte_pos)
     }
 
-    in_substitution_position = true
+    for full_path_base in full_paths {
+      let full_path = if residual != "" {
+        "\{full_path_base}::\{residual}"
+      } else {
+        full_path_base
+      }
+
+      if split_last_identifier(full_path) is Some((module_path, item_name)) {
+        used_imports_record(
+          used_imports,
+          module_path,
+          item_name,
+          offset + token_byte_pos,
+        )
+        output = output + item_name + decorate(module_path)
+      } else if full_path.contains("\"") {
+        output = output + ident
+      } else {
+        output = output + full_path
+      }
+    }
   }
+  output = output + input[copy_start:input.length()].to_owned()
 
   output
 }

@@ -47,13 +47,6 @@ priv struct Scope {
 }
 
 ///|
-priv struct WgslTemplateConstReference {
-  name : String
-  start : Int
-  end : Int
-}
-
-///|
 fn Scope::new() -> Scope {
   Scope::{ levels: [ScopeLevel::Active] }
 }

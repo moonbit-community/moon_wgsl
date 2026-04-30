@@ -58,7 +58,6 @@ using @preprocess {
   type PreprocessError,
   apply_wgsl_ifdefs_strict,
   apply_wgsl_template_consts,
-  parse_glsl_version_directive,
 }
 
 ///|
@@ -76,7 +75,11 @@ using @ast {type WgslDirectiveKind, type WgslGlobalDeclData}
 using @lex {type WgslToken, tokenize}
 
 ///|
-using @parser {parse_wgsl_import_targets, parse_wgsl_translation_unit}
+using @parser {
+  parse_glsl_version_directive,
+  parse_wgsl_import_targets,
+  parse_wgsl_translation_unit,
+}
 
 ///|
 using @writeback {

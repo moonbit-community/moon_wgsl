@@ -37,6 +37,7 @@ using @parser {
   type WgslSourceDirectiveItemKind,
   parse_wgsl_directive_identifier,
   parse_wgsl_directive_line_at,
+  parse_wgsl_identifier_references,
   parse_wgsl_import_targets,
   parse_wgsl_shader_def_references,
   parse_wgsl_source_directive_items,

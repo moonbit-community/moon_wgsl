@@ -1,6 +1,17 @@
 ///|
-fn token_end(token : WgslToken) -> Int {
-  token.pos() + preprocess_token_text(token).length()
+pub struct WgslTemplateConstReference {
+  name : String
+  start : Int
+  end : Int
+} derive(Debug)
+
+///|
+fn WgslTemplateConstReference::new(
+  name : String,
+  start : Int,
+  end : Int,
+) -> WgslTemplateConstReference {
+  WgslTemplateConstReference::{ name, start, end }
 }
 
 ///|
@@ -51,7 +62,7 @@ fn longest_wgsl_template_const_prefix(
 }
 
 ///|
-fn parse_wgsl_template_const_references(
+pub fn parse_wgsl_template_const_references(
   source : String,
   value_defines : @hashmap.HashMap[String, Int],
 ) -> Array[WgslTemplateConstReference] {
@@ -69,7 +80,7 @@ fn parse_wgsl_template_const_references(
     }
     match tokens[i + 1] {
       WgslToken::Other(123, _) => {
-        let body_start = token_end(tokens[i + 1])
+        let body_start = tokens[i + 1].end()
         let mut j = i + 2
         while j < tokens.length() {
           match tokens[j] {
@@ -80,11 +91,9 @@ fn parse_wgsl_template_const_references(
         if j < tokens.length() {
           let name = source[body_start:tokens[j].pos()].to_owned()
           if wgsl_regex_word_text(name) {
-            references.push(WgslTemplateConstReference::{
-              name,
-              start,
-              end: token_end(tokens[j]),
-            })
+            references.push(
+              WgslTemplateConstReference::new(name, start, tokens[j].end()),
+            )
           }
           i = j + 1
         } else {
@@ -94,11 +103,9 @@ fn parse_wgsl_template_const_references(
       WgslToken::Identifier(text, pos) =>
         match longest_wgsl_template_const_prefix(text, value_defines) {
           Some(name) => {
-            references.push(WgslTemplateConstReference::{
-              name,
-              start,
-              end: pos + name.length(),
-            })
+            references.push(
+              WgslTemplateConstReference::new(name, start, pos + name.length()),
+            )
             i = i + 2
           }
           None => i = i + 1
@@ -107,61 +114,4 @@ fn parse_wgsl_template_const_references(
     }
   }
   references
-}
-
-///|
-fn preprocess_has_ascii_keyword_at(
-  text : String,
-  start : Int,
-  keyword : String,
-) -> Bool {
-  guard start >= 0 && start + keyword.length() <= text.length() else {
-    return false
-  }
-  for i in 0..<keyword.length() {
-    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
-      return false
-    }
-  }
-  true
-}
-
-///|
-pub fn parse_glsl_version_directive(line : String) -> String? {
-  let trimmed = wgsl_regex_trim_whitespace(line)
-  let prefix = "#version"
-  guard trimmed.length() > prefix.length() &&
-    preprocess_has_ascii_keyword_at(trimmed, 0, prefix) else {
-    return None
-  }
-  let space_pos = prefix.length()
-  guard wgsl_regex_whitespace_code_point(
-    trimmed.code_unit_at(space_pos).to_int(),
-  ) else {
-    return None
-  }
-  let start = wgsl_regex_skip_whitespace(trimmed, space_pos)
-  let mut end = start
-  while end < trimmed.length() {
-    let code = trimmed.code_unit_at(end).to_int()
-    guard code >= 48 && code <= 57 else { break }
-    end = end + 1
-  }
-  if end > start {
-    Some(trimmed[start:end].to_owned())
-  } else {
-    None
-  }
-}
-
-///|
-fn parse_bool_text(text : String) -> Bool? {
-  let trimmed = trim_trailing_semicolons(text)
-  if trimmed == "true" {
-    return Some(true)
-  }
-  if trimmed == "false" {
-    return Some(false)
-  }
-  None
 }

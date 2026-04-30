@@ -143,4 +143,45 @@ test "WGSL preprocessor directive syntax parser extracts names and comparisons" 
   debug_inspect(comparison.def, content="\"VALUE\"")
   debug_inspect(comparison.operator, content="\">=\"")
   debug_inspect(comparison.value, content="\"-7u\"")
+  debug_inspect(
+    parse_glsl_version_directive(" #version 450 core"),
+    content="Some(\"450\")",
+  )
+  debug_inspect(parse_glsl_version_directive("#version450"), content="None")
+}
+
+///|
+test "WGSL identifier reference parser marks import substitution positions" {
+  let references = parse_wgsl_identifier_references(
+    "@group(0) foo.bar Baz::Qux",
+  )
+  debug_inspect(references.length(), content="4")
+  debug_inspect(references[0].text, content="\"group\"")
+  debug_inspect(references[0].substitution_allowed, content="false")
+  debug_inspect(references[1].text, content="\"foo\"")
+  debug_inspect(references[1].substitution_allowed, content="true")
+  debug_inspect(references[2].text, content="\"bar\"")
+  debug_inspect(references[2].substitution_allowed, content="false")
+  debug_inspect(references[3].text, content="\"Baz::Qux\"")
+  debug_inspect(references[3].substitution_allowed, content="true")
+}
+
+///|
+test "WGSL template const reference parser preserves naga-oil boundaries" {
+  let value_defines : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
+  value_defines.set("VALUE", 1)
+  value_defines.set("VALUE_LONG", 2)
+  let references = parse_wgsl_template_const_references(
+    "#VALUE #VALUE_LONG #VALUE_IGNORED #{VALUE} #{ VALUE }", value_defines,
+  )
+  debug_inspect(references.length(), content="3")
+  debug_inspect(references[0].name, content="\"VALUE\"")
+  debug_inspect(references[0].start, content="0")
+  debug_inspect(references[0].end, content="6")
+  debug_inspect(references[1].name, content="\"VALUE_LONG\"")
+  debug_inspect(references[1].start, content="7")
+  debug_inspect(references[1].end, content="18")
+  debug_inspect(references[2].name, content="\"VALUE\"")
+  debug_inspect(references[2].start, content="34")
+  debug_inspect(references[2].end, content="42")
 }

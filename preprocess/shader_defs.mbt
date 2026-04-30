@@ -1,10 +1,15 @@
 ///|
-fn preprocess_token_text(token : WgslToken) -> String {
-  match token {
-    WgslToken::Identifier(text, _) => text
-    WgslToken::Whitespace(text, _) => text
-    WgslToken::Other(code, _) => code_unit_to_string(code)
+
+///|
+fn parse_bool_text(text : String) -> Bool? {
+  let trimmed = trim_trailing_semicolons(text)
+  if trimmed == "true" {
+    return Some(true)
   }
+  if trimmed == "false" {
+    return Some(false)
+  }
+  None
 }
 
 ///|
