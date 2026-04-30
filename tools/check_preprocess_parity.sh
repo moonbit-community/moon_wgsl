@@ -88,6 +88,114 @@ diff_normalized \
   "$tmpdir/conditional_import_b.wgsl" \
   conditional_import_b
 
+echo "== naga_oil oracle: conditional missing import =="
+if oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/conditional_import_fail \
+  --entry top.wgsl \
+  --file-path-prefix tests/conditional_import_fail \
+  --error-output "$tmpdir/conditional_missing_import.txt"; then
+  echo "expected oracle conditional missing import failure, got success" >&2
+  exit 1
+fi
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/conditional_missing_import.txt \
+  "$tmpdir/conditional_missing_import.txt" \
+  conditional_missing_import
+
+echo "== naga_oil oracle: conditional nested missing import =="
+if oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/conditional_import_fail \
+  --entry top_nested.wgsl \
+  --file-path-prefix tests/conditional_import_fail \
+  --error-output "$tmpdir/conditional_missing_import_nested.txt"; then
+  echo "expected oracle conditional nested missing import failure, got success" >&2
+  exit 1
+fi
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/conditional_missing_import_nested.txt \
+  "$tmpdir/conditional_missing_import_nested.txt" \
+  conditional_missing_import_nested
+
+echo "== naga_oil oracle: duplicate imports =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/dup_import \
+  --entry top.wgsl \
+  --output "$tmpdir/dup_import.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/dup_import.txt \
+  "$tmpdir/dup_import.wgsl" \
+  dup_import
+
+echo "== naga_oil oracle: duplicate struct imports =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/dup_struct_import \
+  --entry top.wgsl \
+  --output "$tmpdir/dup_struct_import.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/dup_struct_import.txt \
+  "$tmpdir/dup_struct_import.wgsl" \
+  dup_struct_import
+
+echo "== naga_oil oracle: import in declaration =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/const_in_decl \
+  --entry top.wgsl \
+  --output "$tmpdir/import_in_decl.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/import_in_decl.txt \
+  "$tmpdir/import_in_decl.wgsl" \
+  import_in_decl
+
+echo "== naga_oil oracle: item import =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/item_import \
+  --entry top.wgsl \
+  --output "$tmpdir/item_import.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/item_import_test.txt \
+  "$tmpdir/item_import.wgsl" \
+  item_import
+
+echo "== naga_oil oracle: nested item import =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/item_sub_point \
+  --entry top.wgsl \
+  --output "$tmpdir/item_sub_point.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/item_sub_point.txt \
+  "$tmpdir/item_sub_point.wgsl" \
+  item_sub_point
+
+echo "== naga_oil oracle: quoted duplicate import name =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/quoted_dup \
+  --entry top.wgsl \
+  --output "$tmpdir/quoted_dup.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/test_quoted_import_dup_name.txt \
+  "$tmpdir/quoted_dup.wgsl" \
+  quoted_dup
+
+echo "== naga_oil oracle: shared global =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/use_shared_global \
+  --entry top.wgsl \
+  --output "$tmpdir/use_shared_global.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/use_shared_global.txt \
+  "$tmpdir/use_shared_global.wgsl" \
+  use_shared_global
+
+echo "== naga_oil oracle: imported entry point call =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/call_entrypoint \
+  --entry top.wgsl \
+  --output "$tmpdir/wgsl_call_entrypoint.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_entrypoint.txt \
+  "$tmpdir/wgsl_call_entrypoint.wgsl" \
+  wgsl_call_entrypoint
+
 echo "== naga_oil oracle: problematic expressions =="
 oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/problematic_expressions \
@@ -107,6 +215,30 @@ diff_normalized \
   testdata/naga_oil_upstream/compose_tests/expected/atomics.txt \
   "$tmpdir/atomics.wgsl" \
   atomics
+
+echo "== naga_oil oracle: invalid identifiers =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/invalid_identifiers \
+  --entry top_valid.wgsl \
+  --output "$tmpdir/bad_identifiers.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/bad_identifiers.txt \
+  "$tmpdir/bad_identifiers.wgsl" \
+  bad_identifiers
+
+echo "== naga_oil oracle: invalid override base =="
+if oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/overrides \
+  --entry top_invalid.wgsl \
+  --file-path-prefix tests/overrides \
+  --error-output "$tmpdir/invalid_override_base.txt"; then
+  echo "expected oracle invalid override failure, got success" >&2
+  exit 1
+fi
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/invalid_override_base.txt \
+  "$tmpdir/invalid_override_base.txt" \
+  invalid_override_base
 
 echo "== naga_oil oracle: parser diagnostic =="
 if oracle \
