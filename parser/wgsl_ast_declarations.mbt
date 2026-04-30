@@ -147,42 +147,92 @@ fn WgslDeclParser::parse_global_variable(
     Some(value) => value
     None => return None
   }
-  let mut ty_ref : WgslTypeRef? = None
-  let ty : String? = if self.consume_if_other(58) {
-    let parsed = self.collect_until_top_level_fragment([61, 59])
-    if parsed.text == "" {
-      None
-    } else {
-      ty_ref = parse_wgsl_type_ref_fragment(parsed)
-      Some(parsed.text)
-    }
-  } else {
-    None
-  }
-  let (initializer, initializer_ref) = self.parse_optional_initializer()
+  let tail = self.parse_typed_initializer_tail()
   Some(WgslGlobalVariable::{
     attributes,
     name,
     template_list,
-    ty,
-    ty_ref,
-    initializer,
-    initializer_ref,
+    ty: tail.ty,
+    ty_ref: tail.ty_ref,
+    initializer: tail.initializer,
+    initializer_ref: tail.initializer_ref,
   })
 }
 
 ///|
-fn WgslDeclParser::parse_optional_initializer(
-  self : WgslDeclParser,
-) -> (String?, WgslExprRef?) {
-  if !self.consume_if_other(61) {
-    return (None, None)
+priv struct WgslTypedInitializerTail {
+  ty : String?
+  ty_ref : WgslTypeRef?
+  initializer : String?
+  initializer_ref : WgslExprRef?
+}
+
+///|
+fn WgslTypedInitializerTail::empty() -> WgslTypedInitializerTail {
+  WgslTypedInitializerTail::{
+    ty: None,
+    ty_ref: None,
+    initializer: None,
+    initializer_ref: None,
   }
-  let parsed = self.collect_until_top_level_fragment([59])
-  if parsed.text == "" {
-    (None, None)
-  } else {
-    (Some(parsed.text), parse_wgsl_expr_ref_fragment(parsed))
+}
+
+///|
+fn WgslDeclParser::parse_typed_initializer_tail(
+  self : WgslDeclParser,
+) -> WgslTypedInitializerTail {
+  let tokens : Array[(@generated.Token, Int, Int)] = []
+  match self.view() {
+    [Token::Other(58, pos), .. rest] => {
+      self.update_view(rest)
+      tokens.push((@generated.Token::COLON, pos, pos + 1))
+      let ty_fragment = self.collect_until_top_level_fragment([61, 59])
+      if ty_fragment.text != "" {
+        tokens.push(
+          (
+            @generated.Token::DECL_TYPE(
+              (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+            ),
+            ty_fragment.start,
+            ty_fragment.end,
+          ),
+        )
+      }
+    }
+    _ => ()
+  }
+  match self.view() {
+    [Token::Other(61, pos), .. rest] => {
+      self.update_view(rest)
+      tokens.push((@generated.Token::EQUAL, pos, pos + 1))
+      let initializer = self.collect_until_top_level_fragment([59])
+      if initializer.text != "" {
+        tokens.push(
+          (
+            @generated.Token::INIT_EXPR(
+              (initializer.text, parse_wgsl_expr_ref_fragment(initializer)),
+            ),
+            initializer.start,
+            initializer.end,
+          ),
+        )
+      }
+    }
+    _ => ()
+  }
+  tokens.push(
+    (
+      @generated.Token::EOF,
+      self.source_text.length(),
+      self.source_text.length(),
+    ),
+  )
+  let parsed = @generated.typed_initializer_tail(tokens) catch {
+    _ => return WgslTypedInitializerTail::empty()
+  }
+  match parsed {
+    (ty, ty_ref, initializer, initializer_ref) =>
+      WgslTypedInitializerTail::{ ty, ty_ref, initializer, initializer_ref }
   }
 }
 
@@ -192,20 +242,14 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
     Some(value) => value
     None => return None
   }
-  let mut ty_ref : WgslTypeRef? = None
-  let ty : String? = if self.consume_if_other(58) {
-    let parsed = self.collect_until_top_level_fragment([61, 59])
-    if parsed.text == "" {
-      None
-    } else {
-      ty_ref = parse_wgsl_type_ref_fragment(parsed)
-      Some(parsed.text)
-    }
-  } else {
-    None
-  }
-  let (initializer, initializer_ref) = self.parse_optional_initializer()
-  Some(WgslConst::{ name, ty, ty_ref, initializer, initializer_ref })
+  let tail = self.parse_typed_initializer_tail()
+  Some(WgslConst::{
+    name,
+    ty: tail.ty,
+    ty_ref: tail.ty_ref,
+    initializer: tail.initializer,
+    initializer_ref: tail.initializer_ref,
+  })
 }
 
 ///|
@@ -217,26 +261,14 @@ fn WgslDeclParser::parse_override(
     Some(value) => value
     None => return None
   }
-  let mut ty_ref : WgslTypeRef? = None
-  let ty : String? = if self.consume_if_other(58) {
-    let parsed = self.collect_until_top_level_fragment([61, 59])
-    if parsed.text == "" {
-      None
-    } else {
-      ty_ref = parse_wgsl_type_ref_fragment(parsed)
-      Some(parsed.text)
-    }
-  } else {
-    None
-  }
-  let (initializer, initializer_ref) = self.parse_optional_initializer()
+  let tail = self.parse_typed_initializer_tail()
   Some(WgslOverride::{
     attributes,
     name,
-    ty,
-    ty_ref,
-    initializer,
-    initializer_ref,
+    ty: tail.ty,
+    ty_ref: tail.ty_ref,
+    initializer: tail.initializer,
+    initializer_ref: tail.initializer_ref,
   })
 }
 
@@ -246,28 +278,77 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
     Some(value) => value
     None => return None
   }
-  self.consume_if_other(61) |> ignore
+  match self.parse_type_alias_tail() {
+    Some((ty, ty_ref)) => Some(WgslTypeAlias::{ name, ty, ty_ref })
+    None => None
+  }
+}
+
+///|
+fn WgslDeclParser::parse_type_alias_tail(
+  self : WgslDeclParser,
+) -> (String, WgslTypeRef?)? {
+  let tokens : Array[(@generated.Token, Int, Int)] = []
+  match self.view() {
+    [Token::Other(61, pos), .. rest] => {
+      self.update_view(rest)
+      tokens.push((@generated.Token::EQUAL, pos, pos + 1))
+    }
+    _ => return None
+  }
   let ty_fragment = self.collect_until_top_level_fragment([59])
-  let ty = ty_fragment.text
-  Some(WgslTypeAlias::{
-    name,
-    ty,
-    ty_ref: parse_wgsl_type_ref_fragment(ty_fragment),
-  })
+  if ty_fragment.text == "" {
+    return None
+  }
+  tokens.push(
+    (
+      @generated.Token::DECL_TYPE(
+        (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+      ),
+      ty_fragment.start,
+      ty_fragment.end,
+    ),
+  )
+  tokens.push((@generated.Token::EOF, ty_fragment.end, ty_fragment.end))
+  Some(@generated.type_alias_tail(tokens) catch { _ => return None })
 }
 
 ///|
 fn WgslDeclParser::parse_source_directive(
   self : WgslDeclParser,
   keyword : WgslIdent,
-  kind : WgslDirectiveKind,
-) -> WgslDirective {
+  token : @generated.Token,
+) -> WgslDirective? {
   let tail = self.collect_until_top_level_fragment([59]).text
-  WgslDirective::{
-    kind,
-    name: keyword.name,
-    tail,
-    text: self.source_text.trim().to_owned(),
+  let text = self.source_text.trim().to_owned()
+  let tokens : Array[(@generated.Token, Int, Int)] = [
+    (@generated.Token::SOURCE_TEXT(text), 0, 0),
+    (token, keyword.start, keyword.end),
+  ]
+  if tail != "" {
+    tokens.push((@generated.Token::DIRECTIVE_TAIL(tail), 0, 0))
+  }
+  tokens.push(
+    (
+      @generated.Token::EOF,
+      self.source_text.length(),
+      self.source_text.length(),
+    ),
+  )
+  Some(@generated.source_directive(tokens) catch { _ => return None })
+}
+
+///|
+fn WgslDeclParser::parse_const_assert(self : WgslDeclParser) -> WgslExprRef {
+  let expr = parse_required_wgsl_expr_ref_fragment(
+    self.collect_until_top_level_fragment([59]),
+  )
+  let tokens : Array[(@generated.Token, Int, Int)] = [
+    (@generated.Token::EXPR_REF(expr), expr.start, expr.end),
+    (@generated.Token::EOF, expr.end, expr.end),
+  ]
+  @generated.const_assert_expr(tokens) catch {
+    _ => expr
   }
 }
 
@@ -370,23 +451,23 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
         Some(value) => WgslGlobalDeclData::Const(value)
         None => WgslGlobalDeclData::Raw
       }
-    ConstAssert =>
-      WgslGlobalDeclData::ConstAssert(
-        parse_required_wgsl_expr_ref_fragment(
-          self.collect_until_top_level_fragment([59]),
-        ),
-      )
+    ConstAssert => WgslGlobalDeclData::ConstAssert(self.parse_const_assert())
     TypeAlias =>
       match self.parse_type_alias() {
         Some(value) => WgslGlobalDeclData::TypeAlias(value)
         None => WgslGlobalDeclData::Raw
       }
-    SourceDirective(kind) =>
+    SourceDirective(_) =>
       match head.keyword {
         Some(keyword) =>
-          WgslGlobalDeclData::Directive(
-            self.parse_source_directive(keyword, kind),
-          )
+          match self.decl_head_token(keyword) {
+            Some(token) =>
+              match self.parse_source_directive(keyword, token) {
+                Some(value) => WgslGlobalDeclData::Directive(value)
+                None => WgslGlobalDeclData::Raw
+              }
+            None => WgslGlobalDeclData::Raw
+          }
         None => WgslGlobalDeclData::Raw
       }
     Raw => WgslGlobalDeclData::Raw

@@ -8,6 +8,8 @@ import {
 }
 
 // Values
+pub fn const_assert_expr(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslExprRef raise ParseError
+
 pub fn decl_head(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDeclHead raise ParseError
 
 pub fn directive_line(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDirective raise ParseError
@@ -22,11 +24,17 @@ pub fn import_targets(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@co
 
 pub fn raw_top_level_items(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslRawTopLevelItem] raise ParseError
 
+pub fn source_directive(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDirective raise ParseError
+
 pub fn struct_members(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslStructMember] raise ParseError
 
 pub fn template_list(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[String] raise ParseError
 
+pub fn type_alias_tail(Array[(Token, Int, Int)], initial_pos? : Int) -> (String, @ast.WgslTypeRef?) raise ParseError
+
 pub fn type_ref(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslTypeRef raise ParseError
+
+pub fn typed_initializer_tail(Array[(Token, Int, Int)], initial_pos? : Int) -> (String?, @ast.WgslTypeRef?, String?, @ast.WgslExprRef?) raise ParseError
 
 // Errors
 pub suberror ParseError {
@@ -44,6 +52,9 @@ pub(all) enum Token {
   ARG_TYPE((String, @ast.WgslTypeRef?))
   MEMBER_NAME(@ast.WgslIdent)
   MEMBER_TYPE((String, @ast.WgslTypeRef?))
+  DECL_TYPE((String, @ast.WgslTypeRef?))
+  INIT_EXPR((String, @ast.WgslExprRef?))
+  EXPR_REF(@ast.WgslExprRef)
   KW_VIRTUAL(@ast.WgslIdent)
   KW_OVERRIDE(@ast.WgslIdent)
   KW_FN(@ast.WgslIdent)
@@ -58,6 +69,7 @@ pub(all) enum Token {
   KW_DIAGNOSTIC(@ast.WgslIdent)
   DIRECTIVE_HEAD((String, String))
   DIRECTIVE_TAIL(String)
+  SOURCE_TEXT(String)
   HASH
   PREFIX
   AS
@@ -67,6 +79,7 @@ pub(all) enum Token {
   LBRACE
   RBRACE
   COLON
+  EQUAL
   TYPE_LT(Int)
   TYPE_GT(Int)
   COMMA
@@ -84,6 +97,9 @@ pub(all) enum TokenKind {
   TK_ARG_TYPE
   TK_MEMBER_NAME
   TK_MEMBER_TYPE
+  TK_DECL_TYPE
+  TK_INIT_EXPR
+  TK_EXPR_REF
   TK_KW_VIRTUAL
   TK_KW_OVERRIDE
   TK_KW_FN
@@ -98,6 +114,7 @@ pub(all) enum TokenKind {
   TK_KW_DIAGNOSTIC
   TK_DIRECTIVE_HEAD
   TK_DIRECTIVE_TAIL
+  TK_SOURCE_TEXT
   TK_HASH
   TK_PREFIX
   TK_AS
@@ -107,6 +124,7 @@ pub(all) enum TokenKind {
   TK_LBRACE
   TK_RBRACE
   TK_COLON
+  TK_EQUAL
   TK_TYPE_LT
   TK_TYPE_GT
   TK_COMMA

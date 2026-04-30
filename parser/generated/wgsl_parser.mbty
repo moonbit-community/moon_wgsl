@@ -11,6 +11,10 @@
 %start function_args
 %start function_result
 %start struct_members
+%start typed_initializer_tail
+%start type_alias_tail
+%start source_directive
+%start const_assert_expr
 
 %token<@ast.WgslRawTopLevelItem> ITEM
 %token<String> IDENT
@@ -20,6 +24,9 @@
 %token<(String, @ast.WgslTypeRef?)> ARG_TYPE
 %token<@ast.WgslIdent> MEMBER_NAME
 %token<(String, @ast.WgslTypeRef?)> MEMBER_TYPE
+%token<(String, @ast.WgslTypeRef?)> DECL_TYPE
+%token<(String, @ast.WgslExprRef?)> INIT_EXPR
+%token<@ast.WgslExprRef> EXPR_REF
 %token<@ast.WgslIdent> KW_VIRTUAL
 %token<@ast.WgslIdent> KW_OVERRIDE
 %token<@ast.WgslIdent> KW_FN
@@ -34,6 +41,7 @@
 %token<@ast.WgslIdent> KW_DIAGNOSTIC
 %token<(String, String)> DIRECTIVE_HEAD
 %token<String> DIRECTIVE_TAIL
+%token<String> SOURCE_TEXT
 %token HASH "#"
 %token PREFIX
 %token AS "as"
@@ -43,6 +51,7 @@
 %token LBRACE "{"
 %token RBRACE "}"
 %token COLON ":"
+%token EQUAL "="
 %token<Int> TYPE_LT "<"
 %token<Int> TYPE_GT ">"
 %token COMMA ","
@@ -366,6 +375,66 @@ struct_member -> @ast.WgslStructMember
         ty: ty_text,
         ty_ref,
       }
+    }
+  ;
+
+typed_initializer_tail -> (String?, @ast.WgslTypeRef?, String?, @ast.WgslExprRef?)
+  : EOF { (None, None, None, None) }
+  | ":" ty=DECL_TYPE init=initializer_opt EOF {
+      let (ty_text, ty_ref) = ty
+      let (init_text, init_ref) = init
+      (Some(ty_text), ty_ref, init_text, init_ref)
+    }
+  | init=initializer EOF {
+      let (init_text, init_ref) = init
+      (None, None, init_text, init_ref)
+    }
+  ;
+
+type_alias_tail -> (String, @ast.WgslTypeRef?)
+  : "=" ty=DECL_TYPE EOF { ty }
+  ;
+
+source_directive -> @ast.WgslDirective
+  : text=SOURCE_TEXT keyword=KW_ENABLE tail=directive_tail EOF {
+      @ast.WgslDirective::{
+        kind: @ast.WgslDirectiveKind::Enable,
+        name: keyword.name,
+        tail,
+        text,
+      }
+    }
+  | text=SOURCE_TEXT keyword=KW_REQUIRES tail=directive_tail EOF {
+      @ast.WgslDirective::{
+        kind: @ast.WgslDirectiveKind::Requires,
+        name: keyword.name,
+        tail,
+        text,
+      }
+    }
+  | text=SOURCE_TEXT keyword=KW_DIAGNOSTIC tail=directive_tail EOF {
+      @ast.WgslDirective::{
+        kind: @ast.WgslDirectiveKind::Diagnostic,
+        name: keyword.name,
+        tail,
+        text,
+      }
+    }
+  ;
+
+const_assert_expr -> @ast.WgslExprRef
+  : EXPR_REF EOF { $1 }
+  ;
+
+initializer_opt -> (String?, @ast.WgslExprRef?)
+  : { (None, None) }
+  | initializer { $1 }
+  ;
+
+initializer -> (String?, @ast.WgslExprRef?)
+  : "=" expr=INIT_EXPR {
+      let (text, expr_ref) = expr
+      (Some(text), expr_ref)
     }
   ;
 

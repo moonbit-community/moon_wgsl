@@ -298,6 +298,41 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
 }
 
 ///|
+test "WGSL typed initializer tails are parsed by grammar" {
+  let source =
+    #|var<private> cache: u32 = FACTOR;
+    #|const INFERRED = cache + 1u;
+    #|@id(1) override FLAG = ENABLED_FLAG;
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::GlobalVariable(global) else {
+    abort("expected global variable")
+  }
+  debug_inspect(global.ty, content="Some(\"u32\")")
+  guard global.ty_ref is Some(global_ty) else { abort("expected global type") }
+  debug_inspect(global_ty.name, content="\"u32\"")
+  debug_inspect(global.initializer, content="Some(\"FACTOR\")")
+  guard global.initializer_ref is Some(global_initializer) else {
+    abort("expected global initializer")
+  }
+  debug_inspect(global_initializer.identifiers[0].name, content="\"FACTOR\"")
+  guard unit.declarations[1].data is WgslGlobalDeclData::Const(const_decl) else {
+    abort("expected const")
+  }
+  debug_inspect(const_decl.ty, content="None")
+  debug_inspect(const_decl.initializer, content="Some(\"cache + 1u\")")
+  guard const_decl.initializer_ref is Some(const_initializer) else {
+    abort("expected const initializer")
+  }
+  debug_inspect(const_initializer.identifiers[0].name, content="\"cache\"")
+  guard unit.declarations[2].data is WgslGlobalDeclData::Override(override_decl) else {
+    abort("expected override")
+  }
+  debug_inspect(override_decl.ty, content="None")
+  debug_inspect(override_decl.initializer, content="Some(\"ENABLED_FLAG\")")
+}
+
+///|
 test "WGSL identifier collection exposes source spans" {
   let source =
     #|alias Alias = vec4<f32>;
