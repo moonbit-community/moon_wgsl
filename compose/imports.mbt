@@ -65,7 +65,6 @@ using @preprocess {
 ///|
 using @resolver {
   type WgslSourceRegistry,
-  collect_wgsl_import_targets,
   default_shader_rel_path_for_module_path,
   normalize_shader_rel_path,
   scan_wgsl_source_files,
@@ -76,13 +75,21 @@ using @ast {type WgslDirectiveKind}
 
 ///|
 using @lex {
+  type WgslToken,
   naga_oil_raw_import_brace_balance_next,
   split_source_lines,
+  tokenize,
+  wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
+  wgsl_regex_whitespace_code_point,
 }
 
 ///|
-using @parser {wgsl_directive_prefix_tail, wgsl_directive_tail}
+using @parser {
+  parse_wgsl_import_targets,
+  wgsl_directive_prefix_tail,
+  wgsl_directive_tail,
+}
 
 ///|
 using @writeback {

@@ -522,6 +522,51 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
 }
 
 ///|
+test "naga_oil: composer directive dispatch requires upstream tail whitespace" {
+  let output = @compose.Composer::default().compose_wgsl_source(
+    "#define\n#import\n#define_import_path\nfn shade() {}\n",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort(
+        "expected keyword-only compose source preservation: \{err.message()}",
+      )
+  }
+  debug_inspect(output.contains("fn shade"), content="true")
+}
+
+///|
+test "naga_oil: composer reports invalid active import specs" {
+  ignore(
+    @compose.Composer::default().compose_wgsl_source(
+      "#import @\nfn shade() {}\n",
+      composer_test_compose_options(empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message(),
+        content="\"failed to resolve shader import: unexpected token\"",
+      )
+      return
+    }
+  }
+  abort("expected invalid import spec compose failure")
+}
+
+///|
+test "naga_oil: composer accepts empty final-semicolon imports" {
+  let output = @compose.Composer::default().compose_wgsl_source(
+    "#import ;\nfn shade() {}\n",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err => abort("expected empty import compose success: \{err.message()}")
+  }
+  debug_inspect(output.contains("#import"), content="false")
+  debug_inspect(output.contains("fn shade"), content="true")
+}
+
+///|
 test "naga_oil: add_composable_module applies descriptor additional imports" {
   clear_composer_test_registry()
   let composer = @compose.Composer::default()

@@ -51,6 +51,18 @@ fn Composer::seed_wgsl_compose_lines(
 }
 
 ///|
+fn compose_import_spec_is_empty_or_final_semicolon(spec : String) -> Bool {
+  let tokens = tokenize(spec, false)
+  if tokens.length() == 0 {
+    return true
+  }
+  if tokens.length() == 1 && tokens[0] is WgslToken::Other(59, _) {
+    return true
+  }
+  false
+}
+
+///|
 fn Composer::build_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -60,7 +72,11 @@ fn Composer::build_wgsl_import_requests(
 ) -> Array[WgslImportRequest] raise ComposerError {
   let targets : Array[WgslImportTarget] = []
   let requests : Array[WgslImportRequest] = []
-  collect_wgsl_import_targets(spec, "", targets)
+  if !compose_import_spec_is_empty_or_final_semicolon(spec) {
+    parse_wgsl_import_targets(spec, "", targets) catch {
+      Parse(message, _) => raise ComposerError::FailedToResolveImport(message)
+    }
+  }
   let mut target_index = 0
   while target_index < targets.length() {
     let target = targets[target_index]

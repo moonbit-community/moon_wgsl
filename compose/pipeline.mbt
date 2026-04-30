@@ -1,4 +1,45 @@
 ///|
+fn compose_has_ascii_keyword_at(
+  text : String,
+  start : Int,
+  keyword : String,
+) -> Bool {
+  guard start >= 0 && start + keyword.length() <= text.length() else {
+    return false
+  }
+  for i in 0..<keyword.length() {
+    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn compose_required_space_directive_tail(
+  line : String,
+  keyword : String,
+) -> String? {
+  let trimmed = wgsl_regex_trim_whitespace(line)
+  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
+    return None
+  }
+  let start = wgsl_regex_skip_whitespace(trimmed, 1)
+  guard start + keyword.length() < trimmed.length() else { return None }
+  guard compose_has_ascii_keyword_at(trimmed, start, keyword) else {
+    return None
+  }
+  let space_pos = start + keyword.length()
+  guard wgsl_regex_whitespace_code_point(
+    trimmed.code_unit_at(space_pos).to_int(),
+  ) else {
+    return None
+  }
+  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
+  Some(wgsl_regex_trim_whitespace(trimmed[tail_start:].to_owned()))
+}
+
+///|
 fn wgsl_line_is_conditional_directive(trimmed : String) -> Bool {
   wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(_) ||
   wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(_) ||
@@ -46,16 +87,16 @@ fn Composer::preprocess_wgsl_source_with_path(
       line_index = line_index + 1
       continue
     }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath)
+    if compose_required_space_directive_tail(trimmed, "define_import_path")
       is Some(_) {
       line_index = line_index + 1
       continue
     }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Define) is Some(_) {
+    if compose_required_space_directive_tail(trimmed, "define") is Some(_) {
       line_index = line_index + 1
       continue
     }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import)
+    if compose_required_space_directive_tail(trimmed, "import")
       is Some(import_tail) {
       if line_index >= active_line_flags.length() ||
         !active_line_flags[line_index] {
