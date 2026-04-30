@@ -318,6 +318,35 @@ fn collect_wgsl_function_parameter_sanitizers(
 }
 
 ///|
+fn collect_wgsl_function_parameter_sanitizer_identifier_nodes(
+  data : WgslGlobalDeclData,
+  redirect_map : @hashmap.HashMap[String, String],
+  nodes : Array[WgslIdent],
+) -> Unit {
+  match data {
+    WgslGlobalDeclData::Function(function) => {
+      for argument in function.arguments {
+        if redirect_map.contains(argument.name) {
+          nodes.push(WgslIdent::{
+            name: argument.name,
+            start: argument.name_start,
+            end: argument.name_end,
+          })
+        }
+      }
+      for statement in function.body.statements {
+        for identifier in statement.identifiers {
+          if redirect_map.contains(identifier.name) {
+            nodes.push(identifier)
+          }
+        }
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
 fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
   let graph = build_wgsl_declaration_graph(source)
   let global_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
@@ -348,11 +377,18 @@ fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
       block_redirects.set(from_name, to_name)
     }
     collect_wgsl_function_parameter_sanitizers(block.data, block_redirects)
+    let parameter_identifier_nodes : Array[WgslIdent] = []
+    collect_wgsl_function_parameter_sanitizer_identifier_nodes(
+      block.data,
+      block_redirects,
+      parameter_identifier_nodes,
+    )
     sanitized = sanitized +
       rewrite_wgsl_declaration_blocks_with_redirects(
         block.text,
         block_redirects,
         rewrite_declaration_names=true,
+        extra_identifier_nodes=parameter_identifier_nodes,
       )
   }
   sanitized

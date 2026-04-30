@@ -1,6 +1,6 @@
 # moon_wgsl Issue Tracker
 
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## Status Legend
 
@@ -45,7 +45,10 @@ Last updated: 2026-04-29
 | `WGSL-030` | Oracle comparison follow-up | Descriptor-level `shader_defs` were not applied as upstream `effective_defs` while recursively composing imported modules, and `Bool(false)` shader defs were treated as disabled for `#ifdef`. | `DONE` | Composer now carries active shader defs through recursive imports, merges composable-module descriptor defs at the active module boundary, and treats present bool defs as defined for `#ifdef` while preserving their false value for `#if`. Verified with `moon test` on 2026-04-29. |
 | `WGSL-031` | Upstream preprocessor parity | Composer-level `#if` handling used a permissive source-level evaluator that treated missing shader defs as `0`, accepted `1u` comparison literals, and ignored malformed `#else/#endif` scope structure. | `DONE` | Added a strict composer preprocessing evaluator for recursive composition, mirroring upstream errors for unknown shader defs, unknown operators, invalid comparison values, `#else` without condition, extra `#endif`, and missing `#endif`. Verified with `moon test` and `moon check --target all --deny-warn` on 2026-04-29. |
 | `WGSL-032` | Upstream preprocessor parity | Root/local `#define` directives inside a composed shader source were parsed by metadata APIs but were not merged into composer active shader defs for the same source. | `DONE` | Composer now merges source-local `#define` metadata into active defs before strict scope evaluation and placeholder substitution, so root `#define` behaves like upstream `naga_oil` preprocessing. Verified with `moon test` on 2026-04-29. |
+| `WGSL-033` | Preprocessing parity release | Known source-level preprocessing regressions from GitHub #2, #3, #5, #6, and #7 needed release/version guidance and public issue closure. | `DONE` | Released `Milky2018/moon_wgsl 0.5.0` for the historical #2/#3/#5/#6 fixes and the original #7 duplicate-binding/root-local define regressions; #7 later reported an additional `in` parameter regression tracked separately in `WGSL-035`. |
+| `WGSL-034` | Oracle comparison follow-up | Oracle comparison existed as an ad hoc manual workflow rather than a reproducible project gate. | `DONE` | Added `tools/check_preprocess_parity.sh` and wired it into GitHub Actions. The script runs local preprocessing parity tests plus pinned `naga_oil` oracle diffs for simple compose, additional-import override compose, and parser diagnostics. Verified locally on 2026-04-30. |
+| `WGSL-035` | GitHub issue #7 latest comment | Alias-scoped declaration-name rewriting treated function parameters as global declarations, so an imported Bevy entrypoint parameter such as `in` could be renamed in the signature while the function body still referenced `in`. | `DONE` | Added a failing aliased-module regression and fixed the root cause by separating global declaration-name collection from local declared identifiers. Verified with targeted tests and the preprocessing parity gate on 2026-04-30. |
 
 ## Current work queue
 
-- No active `TODO`, `IN_PROGRESS`, or `BLOCKED` items remain. True runtime shader execution stays outside library scope and is documented as an oracle/runtime concern rather than a source-level feature gap.
+- No active `TODO`, `IN_PROGRESS`, or `BLOCKED` items remain for WGSL preprocessing/source-level composition parity. True IR, validator, GLSL frontend, WGSL writer byte parity, and runtime shader execution remain outside this package's core scope.

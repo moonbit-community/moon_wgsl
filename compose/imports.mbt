@@ -49,7 +49,7 @@ using @syntax {
   type WgslFunction,
   type WgslGlobalDeclData,
   type WgslIdent,
-  collect_wgsl_decl_declared_identifier_nodes,
+  collect_wgsl_decl_global_declared_identifier_nodes,
   collect_wgsl_decl_identifier_nodes,
   collect_wgsl_source_identifier_names,
   import_brace_balance,

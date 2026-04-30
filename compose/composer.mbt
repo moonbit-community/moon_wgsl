@@ -1675,12 +1675,16 @@ fn rewrite_wgsl_decl_identifier_nodes_with_map(
   data : WgslGlobalDeclData,
   redirect_map : @hashmap.HashMap[String, String],
   rewrite_declaration_names? : Bool = false,
+  extra_identifier_nodes? : Array[WgslIdent] = [],
 ) -> String {
   let identifiers : Array[WgslIdent] = []
   if rewrite_declaration_names {
-    collect_wgsl_decl_declared_identifier_nodes(data, identifiers)
+    collect_wgsl_decl_global_declared_identifier_nodes(data, identifiers)
   }
   collect_wgsl_decl_identifier_nodes(data, identifiers)
+  for identifier in extra_identifier_nodes {
+    identifiers.push(identifier)
+  }
   let mut out = ""
   let mut copy_start = 0
   while true {
@@ -1750,6 +1754,7 @@ fn rewrite_wgsl_declaration_blocks_with_redirects(
   source : String,
   redirect_map : @hashmap.HashMap[String, String],
   rewrite_declaration_names? : Bool = false,
+  extra_identifier_nodes? : Array[WgslIdent] = [],
 ) -> String {
   if redirect_map.is_empty() {
     return source
@@ -1771,6 +1776,7 @@ fn rewrite_wgsl_declaration_blocks_with_redirects(
             block.data,
             redirect_map,
             rewrite_declaration_names~,
+            extra_identifier_nodes~,
           )
     }
   }

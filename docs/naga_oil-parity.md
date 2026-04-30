@@ -1,23 +1,37 @@
-# naga_oil Parity Plan
+# naga_oil Preprocessing Parity
 
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## Scope
 
-`moon_wgsl` targets full `naga_oil` compose compatibility. The core MoonBit
-composer remains source-level, while behavior that requires real Naga IR,
-GLSL parsing, Naga diagnostics, or runtime shader execution is covered by the
-optional upstream oracle harness.
+`moon_wgsl` targets `naga_oil` preprocessing and source-level composition
+compatibility. The compatibility target is intentionally narrower than all of
+`naga_oil`: it does not include Naga IR generation, Naga validation, GLSL
+frontends, WGSL writer byte-for-byte output, or runtime shader execution.
 
-The parity target is therefore:
+The preprocessing target is:
 
 - Match upstream WGSL import syntax, shader-def condition handling, module path
-  resolution, alias rewriting, declaration dependency expansion, diagnostics
-  preservation, and single-file export behavior in the MoonBit core.
-- Keep all source-only deltas covered by MoonBit tests.
-- Route Naga-backed features through the pinned oracle instead of pretending a
-  source-text implementation can produce identical parser, validator, GLSL, or
-  writeback behavior.
+  resolution, alias rewriting, declaration dependency expansion, diagnostic
+  directive preservation, and single-file WGSL export behavior in the MoonBit
+  core.
+- Keep every known source-level delta covered by MoonBit tests.
+- Use the pinned `naga_oil` oracle only as a differential reference and CI
+  guardrail, not as a runtime dependency of the MoonBit library.
+
+## Current Status
+
+As of current `main` after `Milky2018/moon_wgsl 0.5.0`, there are no known
+open source-level preprocessing gaps. Release `0.5.0` covers the historical
+GitHub #2/#3/#5/#6 failures and the original GitHub #7 duplicate-binding /
+root-local `#define` regressions. The later GitHub #7 `identifier: in`
+regression was fixed after `0.5.0` by keeping function parameters out of
+alias/global declaration-name rewrites.
+
+Downstream consumers such as `mgstudio` should use the next release after
+`0.5.0` or current `main` for the `in`-parameter fix, then rerun their own
+shader-pipeline tests to confirm integration. That verification is downstream
+runtime scope; this repository gates the preprocessing output.
 
 ## Upstream References
 
@@ -39,14 +53,16 @@ Parity is tracked with three increasingly strict gates:
    `testdata/bevy_wgsl` and checks that import-only roots tree-shake to empty
    output like upstream `naga_oil`.
 
-3. Optional upstream oracle.
+3. Upstream oracle.
    `tools/naga_oil_oracle` is a Rust harness pinned to the upstream commit
-   above. It composes the same fixture tree through real `naga_oil`, validates
-   the resulting Naga module, and emits Naga-written WGSL. This is the
-   differential oracle for future parity investigations. The output is not
-   expected to be byte-identical to `moon_wgsl`; compare structural properties
-   such as resolved imports, retained entry points, declaration dependencies,
-   collision handling, and absence of unknown identifiers.
+   above. It composes selected fixture trees through real `naga_oil` and
+   compares stable expected output or diagnostics where upstream already has
+   deterministic fixture text.
+
+4. CI parity gate.
+   `tools/check_preprocess_parity.sh` runs the local preprocessing parity suite
+   and selected pinned-oracle comparisons. The GitHub Actions `check` workflow
+   runs this script after the normal MoonBit test matrix.
 
 There is no source-level compatibility mode for import-only entry points. If a
 root shader only imports items and never references them, composition
@@ -64,6 +80,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `import_in_decl`, `const_in_decl/` | Covered | Declaration dependency graph preserves imported globals referenced by declarations. |
 | `item_import_test`, `item_import/` | Covered | Explicit item import and alias rewrite cases are in the local parity corpus. |
 | `dup_struct_import`, `dup_struct_import/` | Covered | Alias-scoped type rewrites avoid duplicate struct collisions. |
+| Aliased function parameters | Covered | Alias/global declaration-name rewrites preserve function parameter locals such as Bevy entrypoint `in` while still rewriting visible function and type declarations. |
 | `item_sub_point`, `item_sub_point/` | Covered | Nested item import paths are represented in local tests. |
 | `conditional_import`, `conditional_import/` | Covered | Conditional import inclusion is covered. |
 | `conditional_missing_import`, `conditional_missing_import_nested`, `conditional_import_fail/` | Covered | Missing imports under active conditions raise local composer errors. |
@@ -79,10 +96,10 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `effective_defs`, `effective_defs/` | Covered | Descriptor-level shader defs now propagate through imported module branches, including the upstream bool-false `#ifdef` semantics and all eight branch combinations. |
 | `wgsl_dual_source_blending`, `dual_source_blending/` | Covered | Dual-source blending attributes are preserved as source text. |
 | `missing_import_in_module`, `missing_import_in_shader` | Covered | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
-| `err_parse`, `err_validation`, `error_test/` | Covered by oracle | `tools/naga_oil_oracle` emits upstream pretty diagnostics with `--entry-only`, `--file-path-prefix`, and `--error-output`; direct and wrapped parse/validation expected files have been diff-verified. |
-| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Covered by oracle | Oracle enables upstream `naga_oil/glsl` and supports `--shader-type glsl-vertex|glsl-fragment`. |
-| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Covered by oracle | Oracle handles GLSL/WGSL constant import composition through upstream Naga frontends. |
-| `test_raycasts`, `raycast/` | Covered by oracle | Source-level compose is covered locally; oracle validates the Naga module with `--capability ray-query --check-only` because Naga WGSL writeback for ray query is unsupported upstream. |
+| `err_parse`, `err_validation`, `error_test/` | Oracle guardrail | Exact Naga parser/validator diagnostics are out of preprocessing scope, but selected expected diagnostics are diff-checked by the pinned oracle. |
+| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Out of core scope | GLSL frontend behavior belongs to upstream Naga. The oracle can still run these fixtures when investigating parity, but `moon_wgsl` does not implement GLSL. |
+| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Out of core scope | Mixed GLSL/WGSL frontend composition is Naga-backed scope, not MoonBit source-level preprocessing scope. |
+| `test_raycasts`, `raycast/` | Out of core scope | Ray-query validation is Naga validator scope. Source-level imports remain covered locally. |
 | `additional_import`, `add_imports/` | Covered | Root compose/export requests and registered composable modules can inject additional imports, including upstream-style override plugins without `#define_import_path`. Runtime shader execution remains oracle-only. |
 | `invalid_override` | Covered | Upstream `override fn module::item` syntax now errors when the target was not declared `virtual`; export diagnostics still warn when manual redirects never match. |
 | `bad_identifiers`, `invalid_identifiers/` | Covered | Top-level declaration names and function parameters are sanitized in final composed/exported source; invalid struct-member identifiers now report compose errors like upstream. |
@@ -90,27 +107,38 @@ tree-shakes them away, matching upstream `naga_oil`.
 | Complete Bevy import-only roots | Covered real-world fixture | Forward, prepass, and mesh-only roots tree-shake to empty output when their item imports are not referenced by root source, matching upstream oracle behavior. |
 | Full upstream fixture mirror | Covered | `testdata/naga_oil_upstream/compose_tests` mirrors all 110 upstream fixture files, including 75 WGSL files, expected WGSL output, GLSL cases, errors, overrides, raycast, and Bevy path import fixtures. |
 
-## Architecture Priorities
+## Standing Guardrails
 
-1. Make import syntax one canonical subsystem.
-   Today, metadata parsing and compose planning can parse the same `#import`
-   syntax through different code paths. That has already caused alias/group
-   regressions. A canonical import AST should feed both the preprocessor output
-   and the recursive composer.
+1. Import syntax must stay canonical.
+   Metadata parsing and compose planning now share the tokenizer-based import
+   parser. Any future import syntax extension must land there first.
 
-2. Keep the compose request model explicit.
-   `WgslComposeOptions` now owns root-scoped additional imports alongside
-   shader defs, value defs, and redirects. Future request-level options should
-   continue to live on this stable surface instead of leaking session internals.
+2. Compose requests must stay explicit.
+   `WgslComposeOptions` owns root-scoped additional imports, shader defs, value
+   defs, and redirects. Do not reintroduce implicit mutable session parameters
+   on the public API.
 
-3. Keep declaration analysis shared.
-   Composition, export, source maps, and tree-shaking should continue using the
-   same declaration graph. Any new WGSL declaration form must be added there
-   first, then consumed by composer/export.
+3. Declaration analysis must stay shared.
+   Composition, export, source maps, and tree-shaking use the same declaration
+   graph. Any new WGSL declaration form must be parsed there before composer or
+   export logic consumes it.
 
-4. Keep the Naga boundary explicit.
-   Missing import, duplicate registry, import cycle, source maps, source-level
-   WGSL compose, and source-level export belong in the MoonBit core. Parser
-   diagnostics, validator diagnostics, GLSL composition, IR writeback, and
-   runtime shader execution belong to the pinned oracle or a future
-   naga-backed integration layer.
+4. The Naga boundary must stay explicit.
+   Preprocessing and source-level WGSL composition belong in MoonBit. Naga IR,
+   validation, GLSL, writer byte parity, and runtime execution remain outside
+   this package's core scope.
+
+## Downstream Verification
+
+For `mgstudio` or similar consumers, the expected verification path is:
+
+1. Upgrade to the next `Milky2018/moon_wgsl` release after `0.5.0`, or test
+   current `main` until that release is available.
+2. Rerun the downstream WGSL preprocessing/compose tests against byte-identical
+   Bevy WGSL sources.
+3. Confirm that previous preprocessing failures such as unresolved
+   `View`/`view_bindings::view`, duplicate aliased bindings, and leaked
+   root-local `#define TONEMAPPING_PASS`, and unresolved entrypoint parameter
+   `in` no longer appear.
+4. Treat any remaining wgpu pipeline creation or shader validation failure as a
+   new issue only if the emitted WGSL still shows a preprocessing mismatch.

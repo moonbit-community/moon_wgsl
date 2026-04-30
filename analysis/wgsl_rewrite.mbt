@@ -37,7 +37,7 @@ fn rewrite_wgsl_decl_identifier_nodes_with_map(
 ) -> String {
   let identifiers : Array[WgslIdent] = []
   if rewrite_declaration_names {
-    collect_wgsl_decl_declared_identifier_nodes(data, identifiers)
+    collect_wgsl_decl_global_declared_identifier_nodes(data, identifiers)
   }
   collect_wgsl_decl_identifier_nodes(data, identifiers)
   let mut out = ""

@@ -650,6 +650,53 @@ test "naga_oil: composer preprocess can apply source-level symbol redirects" {
 }
 
 ///|
+test "naga_oil: aliased module rewrite preserves function parameter locals" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let module_source =
+    #|#define_import_path bevy_pbr::mesh
+    #|struct VertexInput {
+    #|  instance_index: u32,
+    #|}
+    #|fn read_instance(in: VertexInput) -> u32 {
+    #|  return in.instance_index;
+    #|}
+    #|
+  let root_source =
+    #|#import bevy_pbr::mesh as mesh
+    #|fn use_mesh(input: mesh::VertexInput) -> u32 {
+    #|  return mesh::read_instance(input);
+    #|}
+    #|
+  register_composer_test_shader_source("bevy/pbr/mesh.wgsl", module_source)
+  register_composer_test_shader_source(
+    "root/aliased_parameter.wgsl", root_source,
+  )
+  let preprocessed = global_registry_composer().compose_wgsl(
+    "root/aliased_parameter.wgsl",
+    composer_test_compose_options("", empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort(
+        "expected aliased module parameter compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    preprocessed.contains("fn mesh__read_instance(in_wgsl: mesh__VertexInput)"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("return in_wgsl.instance_index;"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("return in.instance_index;"),
+    content="false",
+  )
+  debug_inspect(preprocessed.contains("mesh__in"), content="false")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
 test "naga_oil: virtual override base detection ignores local shadows" {
   @moon_wgsl.clear_registered_wgsl_source_registry()
   let composer = global_registry_composer()

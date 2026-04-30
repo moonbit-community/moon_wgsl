@@ -1482,6 +1482,26 @@ pub fn collect_wgsl_decl_declared_identifier_nodes(
 }
 
 ///|
+pub fn collect_wgsl_decl_global_declared_identifier_nodes(
+  data : WgslGlobalDeclData,
+  nodes : Array[WgslIdent],
+) -> Unit {
+  match data {
+    WgslGlobalDeclData::Function(function) => nodes.push(function.name)
+    WgslGlobalDeclData::Struct(struct_decl) => nodes.push(struct_decl.name)
+    WgslGlobalDeclData::GlobalVariable(global) => nodes.push(global.name)
+    WgslGlobalDeclData::Const(const_decl) => nodes.push(const_decl.name)
+    WgslGlobalDeclData::Override(override_decl) =>
+      nodes.push(override_decl.name)
+    WgslGlobalDeclData::TypeAlias(alias_decl) => nodes.push(alias_decl.name)
+    WgslGlobalDeclData::Directive(_)
+    | WgslGlobalDeclData::Import(_)
+    | WgslGlobalDeclData::ConstAssert(_)
+    | Raw => ()
+  }
+}
+
+///|
 pub fn collect_wgsl_decl_identifier_names(
   data : WgslGlobalDeclData,
   names : Array[String],
