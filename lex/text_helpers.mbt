@@ -95,19 +95,6 @@ pub fn split_last_identifier(text : String) -> (String, String)? {
 }
 
 ///|
-pub fn wgsl_token_brace_balance(text : String) -> Int {
-  let mut balance = 0
-  for token in tokenize(text, false) {
-    match token {
-      WgslToken::Other(123, _) => balance = balance + 1
-      WgslToken::Other(125, _) => balance = balance - 1
-      _ => ()
-    }
-  }
-  balance
-}
-
-///|
 pub fn naga_oil_raw_import_brace_balance_next(
   open_count : Int,
   line : String,

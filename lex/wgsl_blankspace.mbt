@@ -10,7 +10,7 @@ pub fn wgsl_blankspace_code_point(code_point : Int) -> Bool {
 }
 
 ///|
-pub fn wgsl_blankspace_width(text : String, index : Int) -> Int {
+fn wgsl_blankspace_width(text : String, index : Int) -> Int {
   match wgsl_code_point_at(text, index) {
     Some((code_point, width)) if wgsl_blankspace_code_point(code_point) => width
     _ => 0
@@ -18,7 +18,7 @@ pub fn wgsl_blankspace_width(text : String, index : Int) -> Int {
 }
 
 ///|
-pub fn wgsl_skip_blankspace(text : String, start : Int) -> Int {
+fn wgsl_skip_blankspace(text : String, start : Int) -> Int {
   let mut index = start
   while index < text.length() {
     let width = wgsl_blankspace_width(text, index)

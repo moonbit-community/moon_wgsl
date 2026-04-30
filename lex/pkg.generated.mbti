@@ -30,8 +30,6 @@ pub fn utf8_byte_length(String) -> Int
 
 pub fn wgsl_blankspace_code_point(Int) -> Bool
 
-pub fn wgsl_blankspace_width(String, Int) -> Int
-
 pub fn wgsl_regex_skip_whitespace(String, Int) -> Int
 
 pub fn wgsl_regex_trim_whitespace(String) -> String
@@ -45,10 +43,6 @@ pub fn wgsl_regex_word_code_point(Int) -> Bool
 pub fn wgsl_regex_word_text(String) -> Bool
 
 pub fn wgsl_regex_word_width(String, Int) -> Int
-
-pub fn wgsl_skip_blankspace(String, Int) -> Int
-
-pub fn wgsl_token_brace_balance(String) -> Int
 
 pub fn wgsl_trim_blankspace(String) -> String
 
