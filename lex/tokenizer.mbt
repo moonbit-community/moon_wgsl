@@ -32,7 +32,7 @@ pub fn WgslToken::pos(self : WgslToken) -> Int {
 pub fn WgslToken::end(self : WgslToken) -> Int {
   match self {
     Identifier(text, pos) | Whitespace(text, pos) => pos + text.length()
-    Other(_, pos) => pos + 1
+    Other(code, pos) => pos + tokenizer_code_point_width(code)
   }
 }
 
@@ -51,6 +51,23 @@ fn tokenizer_whitespace(code : Int, wgsl_blankspace : Bool) -> Bool {
     wgsl_blankspace_code_point(code)
   } else {
     wgsl_regex_whitespace_code_point(code)
+  }
+}
+
+///|
+fn tokenizer_code_point_width(code : Int) -> Int {
+  if code > 0xFFFF {
+    2
+  } else {
+    1
+  }
+}
+
+///|
+fn tokenizer_code_point_at(src : String, index : Int) -> (Int, Int) {
+  match wgsl_code_point_at(src, index) {
+    Some(point) => point
+    None => (src.code_unit_at(index).to_int(), 1)
   }
 }
 
@@ -79,7 +96,7 @@ fn tokenizer_number_continue(
   index : Int,
   wgsl_blankspace : Bool,
 ) -> Bool {
-  let code = src.code_unit_at(index).to_int()
+  let (code, _) = tokenizer_code_point_at(src, index)
   if (code >= 48 && code <= 57) ||
     tokenizer_identifier_start(code, wgsl_blankspace) ||
     code == 46 {
@@ -102,8 +119,11 @@ fn tokenizer_push_number_as_other(
   start : Int,
   end_ : Int,
 ) -> Unit {
-  for pos in start..<end_ {
-    tokens.push(WgslToken::Other(src.code_unit_at(pos).to_int(), pos))
+  let mut pos = start
+  while pos < end_ {
+    let (code, width) = tokenizer_code_point_at(src, pos)
+    tokens.push(WgslToken::Other(code, pos))
+    pos = pos + width
   }
 }
 
@@ -120,20 +140,20 @@ fn tokenize_with(
   let mut i = 0
 
   while i < src.length() {
-    let code = src.code_unit_at(i).to_int()
+    let (code, width) = tokenizer_code_point_at(src, i)
     if code == 34 { // '"'
       quoted_token = !quoted_token
       if current_token_kind == -1 {
         current_token_kind = 0
         current_token_start = i
       }
-      i = i + 1
+      i = i + width
       continue
     }
 
     if current_token_kind == 0 {
       if quoted_token || tokenizer_identifier_continue(code, wgsl_blankspace) {
-        i = i + 1
+        i = i + width
         continue
       }
       if code == 58 && // ':'
@@ -155,7 +175,7 @@ fn tokenize_with(
 
     if current_token_kind == 2 {
       if tokenizer_number_continue(src, i, wgsl_blankspace) {
-        i = i + 1
+        i = i + width
         continue
       }
       tokenizer_push_number_as_other(tokens, src, current_token_start, i)
@@ -166,7 +186,7 @@ fn tokenize_with(
 
     if current_token_kind == 1 {
       if tokenizer_whitespace(code, wgsl_blankspace) {
-        i = i + 1
+        i = i + width
         continue
       }
       tokens.push(
@@ -183,14 +203,14 @@ fn tokenize_with(
     if tokenizer_identifier_start(code, wgsl_blankspace) {
       current_token_kind = 0
       current_token_start = i
-      i = i + 1
+      i = i + width
       continue
     }
 
     if wgsl_blankspace && code >= 48 && code <= 57 {
       current_token_kind = 2
       current_token_start = i
-      i = i + 1
+      i = i + width
       continue
     }
 
@@ -199,12 +219,12 @@ fn tokenize_with(
         current_token_kind = 1
         current_token_start = i
       }
-      i = i + 1
+      i = i + width
       continue
     }
 
     tokens.push(WgslToken::Other(code, i))
-    i = i + 1
+    i = i + width
   }
 
   if current_token_kind == 0 {

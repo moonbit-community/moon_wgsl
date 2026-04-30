@@ -91,6 +91,10 @@ test "naga_oil wb: parse_imports mirrors upstream import token suite" {
   debug_inspect(parse_imports_snapshot("#import as\n"), content="\"as=as\"")
   debug_inspect(parse_imports_snapshot("#import a as as\n"), content="\"as=a\"")
   debug_inspect(
+    parse_imports_snapshot("#import 𐐀\n"),
+    content="\"𐐀=𐐀\"",
+  )
+  debug_inspect(
     parse_imports_snapshot(
       "#import a::b::{\n  c::{d, e},\n  f,\n  g::{\n    h as i,\n    j::k::l as m,\n  }\n}\n",
     ),
