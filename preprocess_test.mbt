@@ -751,6 +751,33 @@ test "naga_oil: define metadata follows upstream regex character classes" {
 }
 
 ///|
+test "naga_oil: shader-def token parsing keeps upstream underscore tails" {
+  let metadata = metadata_or_abort("#define 1_NAME false\n#define BAD 1_name\n")
+  guard metadata.defines.get("1_NAME")
+    is Some(@common.ShaderDefValue::Bool(one_name)) else {
+    abort("expected full digit-leading underscore define name")
+  }
+  debug_inspect(one_name, content="false")
+  debug_inspect(metadata.defines.contains("1"), content="false")
+  guard metadata.defines.get("BAD") is Some(@common.ShaderDefValue::Bool(bad)) else {
+    abort("expected malformed underscore value to follow upstream fallback")
+  }
+  debug_inspect(bad, content="false")
+
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("1_NAME", @common.ShaderDefValue::UInt(3U))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "let value = #1_NAME;\n", shader_defs,
+  ) catch {
+    _ => abort("expected digit-leading underscore shader-def replacement")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("let value = 3;"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: glsl version directive captures numeric version token" {
   let output = @preprocess.Preprocessor::default().preprocess(
     "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",

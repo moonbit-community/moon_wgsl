@@ -2,8 +2,7 @@
 fn shader_def_name_token_text(token : WgslToken) -> String? {
   match token {
     WgslToken::Identifier(text, _) => Some(text)
-    WgslToken::Other(124, _) => Some("|")
-    WgslToken::Other(code, _) if code >= 48 && code <= 57 =>
+    WgslToken::Other(code, _) if preprocess_shader_def_name_code_unit(code) =>
       Some(code_unit_to_string(code))
     _ => None
   }

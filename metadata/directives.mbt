@@ -19,8 +19,7 @@ fn split_extensions(raw : String) -> Array[String] {
 fn shader_def_name_token_text(token : WgslToken) -> String? {
   match token {
     WgslToken::Identifier(text, _) => Some(text)
-    WgslToken::Other(124, _) => Some("|")
-    WgslToken::Other(code, _) if code >= 48 && code <= 57 =>
+    WgslToken::Other(code, _) if metadata_shader_def_name_code_unit(code) =>
       Some(wgsl_metadata_code_unit_to_string(code))
     _ => None
   }
@@ -30,11 +29,8 @@ fn shader_def_name_token_text(token : WgslToken) -> String? {
 fn shader_def_value_token_text(token : WgslToken) -> String? {
   match token {
     WgslToken::Identifier(text, _) => Some(text)
-    WgslToken::Other(124, _) | WgslToken::Other(45, _) =>
-      Some(wgsl_metadata_token_text(token))
-    WgslToken::Other(code, _) if (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) =>
+    WgslToken::Other(45, _) => Some(wgsl_metadata_token_text(token))
+    WgslToken::Other(code, _) if metadata_shader_def_name_code_unit(code) =>
       Some(wgsl_metadata_code_unit_to_string(code))
     _ => None
   }
