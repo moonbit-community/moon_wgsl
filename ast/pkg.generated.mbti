@@ -198,6 +198,9 @@ pub(all) struct WgslSpan {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct WgslStatement {
+  text : String
+  start : Int
+  end : Int
   local_name : String?
   identifiers : Array[WgslIdent]
 } derive(@debug.Debug)

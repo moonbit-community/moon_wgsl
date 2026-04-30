@@ -22,29 +22,12 @@ pub fn trim_trailing_semicolons(text : String) -> String {
 }
 
 ///|
-priv struct SourceLineSpan {
-  text : String
-  start : Int
-}
-
-///|
 pub fn split_source_lines(source : String) -> Array[String] {
   let lines : Array[String] = []
   for line_item in source.split("\n") {
     lines.push(line_item.to_owned())
   }
   lines
-}
-
-///|
-fn split_source_line_spans(source : String) -> Array[SourceLineSpan] {
-  let spans : Array[SourceLineSpan] = []
-  let mut offset = 0
-  for line in split_source_lines(source) {
-    spans.push(SourceLineSpan::{ text: line, start: offset })
-    offset = offset + line.length() + 1
-  }
-  spans
 }
 
 ///|

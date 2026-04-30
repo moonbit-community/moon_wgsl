@@ -394,6 +394,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   if start_pos < 0 || end_pos < start_pos {
     None
   } else {
+    let text = self.source_text[start_pos:end_pos].to_owned()
     let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
     let local_name = wgsl_statement_local_name_from_tokens(
       tokens, is_local_decl,
@@ -401,7 +402,13 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     collect_wgsl_statement_identifier_nodes(
       tokens, is_local_decl, local_name, identifiers,
     )
-    Some(WgslStatement::{ local_name, identifiers })
+    Some(WgslStatement::{
+      text,
+      start: start_pos,
+      end: end_pos,
+      local_name,
+      identifiers,
+    })
   }
 }
 

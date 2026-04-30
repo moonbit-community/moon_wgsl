@@ -145,6 +145,45 @@ test "top-level AST recognizes same-line attributed declarations" {
 }
 
 ///|
+test "top-level AST splits adjacent declarations by token boundaries" {
+  let source = "const A: u32 = 1u; const B: u32 = 2u;\n" +
+    "fn make() -> u32 { return A; } const C: u32 = B;\n" +
+    "struct S { value: u32, }; const D: u32 = C;\n"
+  let items = parse_wgsl_top_level_items(source)
+  debug_inspect(items.length(), content="6")
+  debug_inspect(items[0].name, content="\"A\"")
+  debug_inspect(items[1].name, content="\"B\"")
+  debug_inspect(items[2].name, content="\"make\"")
+  debug_inspect(items[3].name, content="\"C\"")
+  debug_inspect(items[4].name, content="\"S\"")
+  debug_inspect(items[5].name, content="\"D\"")
+  debug_inspect(
+    items.map(fn(item) { top_level_kind_snapshot(item.kind) }),
+    content=(
+      #|[
+      #|  "Declaration",
+      #|  "Declaration",
+      #|  "Declaration",
+      #|  "Declaration",
+      #|  "Declaration",
+      #|  "Declaration",
+      #|]
+    ),
+  )
+}
+
+///|
+test "top-level AST does not treat hash interpolation braces as block boundaries" {
+  let source = "@group(#{MATERIAL_BIND_GROUP}) @binding(0) " +
+    "var<uniform> mesh: array<Mesh, #{PER_OBJECT_BUFFER_BATCH_SIZE}u>;\n" +
+    "const NEXT: u32 = 1u;\n"
+  let items = parse_wgsl_top_level_items(source)
+  debug_inspect(items.length(), content="2")
+  debug_inspect(items[0].name, content="\"mesh\"")
+  debug_inspect(items[1].name, content="\"NEXT\"")
+}
+
+///|
 test "top-level AST does not treat attribute arguments as declarations" {
   let source = "@diagnostic(off, fn) struct Output {\n" +
     "  value: u32,\n" +

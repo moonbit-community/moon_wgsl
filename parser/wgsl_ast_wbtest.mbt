@@ -399,6 +399,18 @@ test "WGSL function payload exposes source-preserving statement AST" {
   }
   debug_inspect(function.body.statements.length(), content="3")
   debug_inspect(
+    function.body.statements[0].text.trim().to_owned(),
+    content="\"var local: u32 = value;\"",
+  )
+  debug_inspect(
+    function.body.statements[1].text.contains("return local"),
+    content="true",
+  )
+  debug_inspect(
+    function.body.statements[2].text.trim().to_owned(),
+    content="\"return 0u;\"",
+  )
+  debug_inspect(
     function.body.statements[0].local_name,
     content="Some(\"local\")",
   )

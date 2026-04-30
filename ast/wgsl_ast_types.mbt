@@ -93,6 +93,9 @@ pub(all) struct WgslFunctionResult {
 
 ///|
 pub(all) struct WgslStatement {
+  text : String
+  start : Int
+  end : Int
   local_name : String?
   identifiers : Array[WgslIdent]
 } derive(Debug)

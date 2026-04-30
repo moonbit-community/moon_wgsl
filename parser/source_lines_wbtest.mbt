@@ -12,9 +12,9 @@ test "source line helpers preserve explicit semantics" {
 }
 
 ///|
-test "source line spans keep original offsets" {
-  let spans = split_source_line_spans("ab\nc")
-  debug_inspect(spans.length(), content="2")
-  debug_inspect(spans[0].start, content="0")
-  debug_inspect(spans[1].start, content="3")
+test "split source lines keeps trailing fragment without newline" {
+  let lines = split_source_lines("ab\nc")
+  debug_inspect(lines.length(), content="2")
+  debug_inspect(lines[0], content="\"ab\"")
+  debug_inspect(lines[1], content="\"c\"")
 }

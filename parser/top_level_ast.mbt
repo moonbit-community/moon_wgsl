@@ -13,203 +13,183 @@
 // limitations under the License.
 
 ///|
-fn top_level_text_contains_other_token(text : String, code : Int) -> Bool {
-  for token in tokenize(text, false) {
-    match token {
-      Token::Other(actual, _) if actual == code => return true
-      _ => ()
-    }
-  }
-  false
+fn top_level_span_has_text(source : String, start : Int, end_ : Int) -> Bool {
+  start >= 0 && end_ > start && source[start:end_].to_owned().trim() != ""
 }
 
 ///|
-fn top_level_push_directive_item(
+fn top_level_line_start(source : String, pos : Int) -> Int {
+  let mut i = pos
+  while i > 0 {
+    if source.code_unit_at(i - 1).to_int() == 10 {
+      return i
+    }
+    i = i - 1
+  }
+  0
+}
+
+///|
+fn top_level_line_end(source : String, pos : Int) -> Int {
+  let mut i = pos
+  while i < source.length() {
+    if source.code_unit_at(i).to_int() == 10 {
+      return i + 1
+    }
+    i = i + 1
+  }
+  source.length()
+}
+
+///|
+fn top_level_non_whitespace_index(tokens : Array[Token], start : Int) -> Int {
+  let mut i = start
+  while i < tokens.length() {
+    match tokens[i] {
+      Token::Whitespace(_, _) => i = i + 1
+      _ => return i
+    }
+  }
+  i
+}
+
+///|
+fn top_level_index_starts_semicolon(tokens : Array[Token], start : Int) -> Bool {
+  let next = top_level_non_whitespace_index(tokens, start)
+  next < tokens.length() && tokens[next] is Token::Other(59, _)
+}
+
+///|
+fn top_level_previous_token_is_hash(previous : Token?) -> Bool {
+  match previous {
+    Some(Token::Other(35, _)) => true
+    _ => false
+  }
+}
+
+///|
+fn top_level_directive_item_kind(
+  kind : WgslDirectiveKind,
+) -> WgslRawTopLevelKind {
+  match kind {
+    WgslDirectiveKind::DefineImportPath => WgslRawTopLevelKind::DefineImportPath
+    WgslDirectiveKind::Define => WgslRawTopLevelKind::Define
+    WgslDirectiveKind::Import => WgslRawTopLevelKind::Import
+    WgslDirectiveKind::Ifdef
+    | WgslDirectiveKind::Ifndef
+    | WgslDirectiveKind::If
+    | WgslDirectiveKind::Else
+    | WgslDirectiveKind::Endif
+    | WgslDirectiveKind::Enable
+    | WgslDirectiveKind::Requires
+    | WgslDirectiveKind::Diagnostic
+    | WgslDirectiveKind::Other(_) => WgslRawTopLevelKind::Directive
+  }
+}
+
+///|
+fn top_level_push_span_item(
   items : Array[WgslRawTopLevelItem],
+  source : String,
   kind : WgslRawTopLevelKind,
-  line : String,
+  name : String,
   start : Int,
+  end_ : Int,
 ) -> Unit {
-  let text = "\{line}\n"
-  items.push(WgslRawTopLevelItem::{
-    kind,
-    name: "",
-    text,
-    start,
-    end: start + text.length(),
-  })
-}
-
-///|
-fn top_level_push_trivia_item(
-  items : Array[WgslRawTopLevelItem],
-  lines : Array[String],
-  start : Int,
-) -> Unit {
-  if lines.length() == 0 {
-    return
-  }
-  let mut text = ""
-  for line in lines {
-    text = "\{text}\{line}\n"
-  }
-  items.push(WgslRawTopLevelItem::{
-    kind: WgslRawTopLevelKind::Trivia,
-    name: "",
-    text,
-    start,
-    end: start + text.length(),
-  })
-}
-
-///|
-fn top_level_lines_have_text(lines : Array[String]) -> Bool {
-  for line in lines {
-    if line.trim() != "" {
-      return true
-    }
-  }
-  false
-}
-
-///|
-fn top_level_line_starts_with_attribute(cleaned_line : String) -> Bool {
-  match tokenize(cleaned_line.trim().to_owned(), false) {
-    [Token::Other(64, _), ..] => true
-    _ => false
-  }
-}
-
-///|
-fn top_level_line_ends_with_semicolon(cleaned_line : String) -> Bool {
-  let tokens = tokenize(cleaned_line.trim().to_owned(), false)
-  if tokens.length() == 0 {
-    return false
-  }
-  match tokens[tokens.length() - 1] {
-    Token::Other(59, _) => true
-    _ => false
-  }
-}
-
-///|
-priv struct WgslTopLevelLine {
-  text : String
-  cleaned : String
-  start : Int
+  let text = source[start:end_].to_owned()
+  items.push(WgslRawTopLevelItem::{ kind, name, text, start, end: end_ })
 }
 
 ///|
 priv struct WgslTopLevelParser {
-  mut line_view : ArrayView[WgslTopLevelLine]
-  pending_prefix : Array[String]
-  mut pending_prefix_start : Int
+  source : String
+  cleaned : String
+  tokens : Array[Token]
+  mut index : Int
+  mut pending_start : Int
 }
 
 ///|
 fn WgslTopLevelParser::new(source : String) -> WgslTopLevelParser {
-  let lines : Array[WgslTopLevelLine] = []
-  let cleaned_lines = split_source_lines(replace_comments(source))
-  let spans = split_source_line_spans(source)
-  for i in 0..<spans.length() {
-    let cleaned = if i < cleaned_lines.length() { cleaned_lines[i] } else { "" }
-    lines.push(WgslTopLevelLine::{
-      text: spans[i].text,
-      cleaned,
-      start: spans[i].start,
-    })
-  }
+  let cleaned = replace_comments(source)
   WgslTopLevelParser::{
-    line_view: lines[:],
-    pending_prefix: [],
-    pending_prefix_start: 0,
+    source,
+    cleaned,
+    tokens: tokenize(cleaned, false),
+    index: 0,
+    pending_start: 0,
   }
 }
 
 ///|
-fn WgslTopLevelParser::view(
+fn WgslTopLevelParser::skip_to_span_end(
   self : WgslTopLevelParser,
-) -> ArrayView[WgslTopLevelLine] {
-  self.line_view
-}
-
-///|
-fn WgslTopLevelParser::update_view(
-  self : WgslTopLevelParser,
-  view : ArrayView[WgslTopLevelLine],
+  end_ : Int,
 ) -> Unit {
-  self.line_view = view
-}
-
-///|
-fn WgslTopLevelParser::push_pending_prefix(
-  self : WgslTopLevelParser,
-  line : WgslTopLevelLine,
-) -> Unit {
-  if self.pending_prefix.length() == 0 {
-    self.pending_prefix_start = line.start
+  while self.index < self.tokens.length() &&
+        self.tokens[self.index].pos() < end_ {
+    self.index = self.index + 1
   }
-  self.pending_prefix.push(line.text)
 }
 
 ///|
-fn WgslTopLevelParser::flush_trivia(
+fn WgslTopLevelParser::flush_trivia_until(
   self : WgslTopLevelParser,
   items : Array[WgslRawTopLevelItem],
+  end_ : Int,
 ) -> Unit {
-  top_level_push_trivia_item(
-    items,
-    self.pending_prefix,
-    self.pending_prefix_start,
-  )
-  self.pending_prefix.clear()
+  if top_level_span_has_text(self.source, self.pending_start, end_) {
+    top_level_push_span_item(
+      items,
+      self.source,
+      WgslRawTopLevelKind::Trivia,
+      "",
+      self.pending_start,
+      end_,
+    )
+  }
+  self.pending_start = end_
 }
 
 ///|
 fn WgslTopLevelParser::parse_directive_item(
   self : WgslTopLevelParser,
   items : Array[WgslRawTopLevelItem],
-  line : WgslTopLevelLine,
-  rest : ArrayView[WgslTopLevelLine],
-  kind : WgslRawTopLevelKind,
-) -> Unit {
-  self.flush_trivia(items)
-  top_level_push_directive_item(items, kind, line.text, line.start)
-  self.update_view(rest)
-}
-
-///|
-fn WgslTopLevelParser::parse_import_item(
-  self : WgslTopLevelParser,
-  items : Array[WgslRawTopLevelItem],
-  line : WgslTopLevelLine,
-  rest : ArrayView[WgslTopLevelLine],
   directive : WgslDirective,
 ) -> Unit {
-  self.flush_trivia(items)
-  let block_start = line.start
-  let mut import_block = line.text
-  let mut balance = wgsl_token_brace_balance(directive.tail)
-  self.update_view(rest)
-  while balance > 0 {
-    match self.view() {
-      [next_line, .. next_rest] => {
-        import_block = "\{import_block}\n\{next_line.text}"
-        balance = balance + wgsl_token_brace_balance(next_line.cleaned)
-        self.update_view(next_rest)
-        continue
-      }
-      [] => break
+  let token_pos = self.tokens[self.index].pos()
+  let physical_line_start = top_level_line_start(self.source, token_pos)
+  let item_start = if physical_line_start < self.pending_start {
+    self.pending_start
+  } else {
+    physical_line_start
+  }
+  self.flush_trivia_until(items, item_start)
+  let first_line_end = top_level_line_end(self.source, token_pos)
+  let mut item_end = first_line_end
+  if directive.kind == WgslDirectiveKind::Import {
+    let mut balance = wgsl_token_brace_balance(
+      replace_comments(self.source[token_pos:first_line_end].to_owned()),
+    )
+    while balance > 0 && item_end < self.source.length() {
+      let next_line_end = top_level_line_end(self.source, item_end)
+      balance = balance +
+        wgsl_token_brace_balance(
+          replace_comments(self.source[item_end:next_line_end].to_owned()),
+        )
+      item_end = next_line_end
     }
   }
-  import_block = "\{import_block}\n"
-  items.push(WgslRawTopLevelItem::{
-    kind: WgslRawTopLevelKind::Import,
-    name: "",
-    text: import_block,
-    start: block_start,
-    end: block_start + import_block.length(),
-  })
+  top_level_push_span_item(
+    items,
+    self.source,
+    top_level_directive_item_kind(directive.kind),
+    "",
+    item_start,
+    item_end,
+  )
+  self.skip_to_span_end(item_end)
+  self.pending_start = item_end
 }
 
 ///|
@@ -217,55 +197,67 @@ fn WgslTopLevelParser::parse_declaration_item(
   self : WgslTopLevelParser,
   items : Array[WgslRawTopLevelItem],
 ) -> Unit {
-  let block_lines : Array[String] = []
-  let block_start = if self.pending_prefix.length() > 0 {
-    self.pending_prefix_start
+  let first_token_pos = self.tokens[self.index].pos()
+  let item_start = if top_level_span_has_text(
+      self.source,
+      self.pending_start,
+      first_token_pos,
+    ) {
+    self.pending_start
   } else {
-    match self.view() {
-      [line, ..] => line.start
-      [] => 0
-    }
+    first_token_pos
   }
-  for prefix_line in self.pending_prefix {
-    block_lines.push(prefix_line)
-  }
-  self.pending_prefix.clear()
+  let depth = WgslTokenDepth::new()
   let mut saw_brace = false
-  let mut brace_depth = 0
-  while true {
-    let (block_line, cleaned_block_line) = match self.view() {
-      [line, .. rest] => {
-        self.update_view(rest)
-        (line.text, line.cleaned)
-      }
-      [] => break
-    }
-    block_lines.push(block_line)
-    if top_level_text_contains_other_token(cleaned_block_line, 123) {
-      saw_brace = true
-    }
-    brace_depth = brace_depth + wgsl_token_brace_balance(cleaned_block_line)
-    let block_trimmed = cleaned_block_line.trim().to_owned()
-    let done = if saw_brace {
-      brace_depth == 0
-    } else {
-      top_level_line_ends_with_semicolon(block_trimmed)
-    }
-    if done {
+  let mut item_end = first_token_pos
+  let mut previous_significant : Token? = None
+  while self.index < self.tokens.length() {
+    let token = self.tokens[self.index]
+    if !saw_brace && depth.at_top() && token is Token::Other(59, _) {
+      item_end = token.end()
+      self.index = self.index + 1
       break
     }
+    let starts_top_level_brace = depth.at_top() &&
+      token is Token::Other(123, _) &&
+      !top_level_previous_token_is_hash(previous_significant)
+    depth.observe_statement_token(token)
+    if starts_top_level_brace {
+      saw_brace = true
+    }
+    item_end = token.end()
+    self.index = self.index + 1
+    if saw_brace && depth.at_top() {
+      while top_level_index_starts_semicolon(self.tokens, self.index) {
+        while self.index < self.tokens.length() &&
+              self.tokens[self.index] is Token::Whitespace(_, _) {
+          item_end = self.tokens[self.index].end()
+          self.index = self.index + 1
+        }
+        if self.index < self.tokens.length() &&
+          self.tokens[self.index] is Token::Other(59, _) {
+          item_end = self.tokens[self.index].end()
+          self.index = self.index + 1
+        }
+      }
+      break
+    }
+    if !(token is Token::Whitespace(_, _)) {
+      previous_significant = Some(token)
+    }
   }
-  let mut block_text = ""
-  for block_line in block_lines {
-    block_text = "\{block_text}\{block_line}\n"
+  if top_level_span_has_text(self.source, item_start, item_end) {
+    let text = self.source[item_start:item_end].to_owned()
+    top_level_push_span_item(
+      items,
+      self.source,
+      WgslRawTopLevelKind::Declaration,
+      parse_wgsl_declaration_name(text),
+      item_start,
+      item_end,
+    )
   }
-  items.push(WgslRawTopLevelItem::{
-    kind: WgslRawTopLevelKind::Declaration,
-    name: parse_wgsl_declaration_name(block_text),
-    text: block_text,
-    start: block_start,
-    end: block_start + block_text.length(),
-  })
+  self.pending_start = item_end
 }
 
 ///|
@@ -274,69 +266,26 @@ fn WgslTopLevelParser::parse_items(
 ) -> Array[WgslRawTopLevelItem] {
   let items : Array[WgslRawTopLevelItem] = []
   while true {
-    match self.view() {
-      [line, .. rest] => {
-        let trimmed = line.cleaned.trim().to_owned()
-        if trimmed == "" ||
-          (
-            top_level_line_starts_with_attribute(trimmed) &&
-            parse_wgsl_declaration_name(trimmed) == ""
-          ) {
-          self.push_pending_prefix(line)
-          self.update_view(rest)
+    self.index = top_level_non_whitespace_index(self.tokens, self.index)
+    if self.index >= self.tokens.length() {
+      break
+    }
+    let token = self.tokens[self.index]
+    let token_pos = token.pos()
+    if token is Token::Other(35, _) {
+      let line_end = top_level_line_end(self.source, token_pos)
+      let cleaned_line = self.cleaned[token_pos:line_end].to_owned()
+      match parse_wgsl_directive_line(cleaned_line) {
+        Some(directive) => {
+          self.parse_directive_item(items, directive)
           continue
         }
-        if parse_wgsl_directive_line(trimmed) is Some(directive) {
-          match directive.kind {
-            WgslDirectiveKind::DefineImportPath => {
-              self.parse_directive_item(
-                items,
-                line,
-                rest,
-                WgslRawTopLevelKind::DefineImportPath,
-              )
-              continue
-            }
-            WgslDirectiveKind::Define => {
-              self.parse_directive_item(
-                items,
-                line,
-                rest,
-                WgslRawTopLevelKind::Define,
-              )
-              continue
-            }
-            WgslDirectiveKind::Import => {
-              self.parse_import_item(items, line, rest, directive)
-              continue
-            }
-            WgslDirectiveKind::Ifdef
-            | WgslDirectiveKind::Ifndef
-            | WgslDirectiveKind::If
-            | WgslDirectiveKind::Else
-            | WgslDirectiveKind::Endif
-            | WgslDirectiveKind::Enable
-            | WgslDirectiveKind::Requires
-            | WgslDirectiveKind::Diagnostic
-            | WgslDirectiveKind::Other(_) => {
-              self.parse_directive_item(
-                items,
-                line,
-                rest,
-                WgslRawTopLevelKind::Directive,
-              )
-              continue
-            }
-          }
-        }
-        self.parse_declaration_item(items)
+        None => ()
       }
-      [] => break
     }
+    self.parse_declaration_item(items)
   }
-  if top_level_lines_have_text(self.pending_prefix) {
-    self.flush_trivia(items)
-  }
+  self.flush_trivia_until(items, self.source.length())
   items
 }
 
