@@ -4,69 +4,6 @@ fn token_end(token : WgslToken) -> Int {
 }
 
 ///|
-fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
-  let references : Array[ShaderDefReference] = []
-  let mut i = 0
-  while i < line.length() {
-    guard line.code_unit_at(i).to_int() == 35 else {
-      i = i + 1
-      continue
-    }
-    let start = i
-    let mut j = i + 1
-    while j < line.length() &&
-          wgsl_regex_whitespace_code_point(line.code_unit_at(j).to_int()) {
-      j = j + 1
-    }
-    guard j < line.length() else {
-      i = i + 1
-      continue
-    }
-    if line.code_unit_at(j).to_int() == 123 {
-      let body_start = j + 1
-      let mut k = body_start
-      while k < line.length() && line.code_unit_at(k).to_int() != 125 {
-        k = k + 1
-      }
-      if k < line.length() {
-        let name = line[body_start:k].to_owned()
-        if wgsl_regex_word_text(name) {
-          references.push(ShaderDefReference::{
-            name,
-            start,
-            end: k + 1,
-            delimited: true,
-          })
-        }
-        i = k + 1
-      } else {
-        i = i + 1
-      }
-    } else {
-      let name_start = j
-      let mut name_end = j
-      while name_end < line.length() {
-        let width = wgsl_regex_word_width(line, name_end)
-        guard width > 0 else { break }
-        name_end = name_end + width
-      }
-      if name_end > name_start {
-        references.push(ShaderDefReference::{
-          name: line[name_start:name_end].to_owned(),
-          start,
-          end: name_end,
-          delimited: false,
-        })
-        i = name_end
-      } else {
-        i = i + 1
-      }
-    }
-  }
-  references
-}
-
-///|
 fn wgsl_template_const_name_boundary(text : String, name : String) -> Bool {
   if text.length() == name.length() {
     return true

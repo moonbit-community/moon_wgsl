@@ -4,6 +4,7 @@ package "Milky2018/moon_wgsl/parser"
 import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -12,6 +13,16 @@ pub fn parse_wgsl_directive_line(String) -> @ast.WgslDirective?
 pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
+
+pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
+
+pub fn parse_wgsl_shader_def_references_at(String, Int) -> Array[WgslShaderDefReference]
+
+pub fn parse_wgsl_source_directive_item(String) -> WgslSourceDirectiveItem
+
+pub fn parse_wgsl_source_directive_item_at(String, Int) -> WgslSourceDirectiveItem
+
+pub fn parse_wgsl_source_directive_items(String) -> Array[WgslSourceDirectiveItem]
 
 pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit
 
@@ -25,6 +36,28 @@ pub(all) suberror ParseImportsError {
 }
 
 // Types and methods
+pub struct WgslShaderDefReference {
+  name : String
+  start : Int
+  end : Int
+  delimited : Bool
+} derive(@debug.Debug)
+
+pub struct WgslSourceDirectiveItem {
+  kind : WgslSourceDirectiveItemKind
+  line : String
+  start : Int
+  end : Int
+} derive(@debug.Debug)
+
+pub enum WgslSourceDirectiveItemKind {
+  Trivia
+  Enable(String)
+  Requires(String)
+  Diagnostic(String, String)
+  PrefixCandidate
+  Source
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

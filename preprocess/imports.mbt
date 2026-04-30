@@ -35,4 +35,7 @@ using @lex {
 }
 
 ///|
-using @parser {parse_wgsl_directive_line_at}
+using @parser {
+  parse_wgsl_directive_line_at,
+  parse_wgsl_shader_def_references,
+}

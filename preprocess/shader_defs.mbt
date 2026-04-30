@@ -195,7 +195,7 @@ fn replace_shader_defs_in_line(
   line : String,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String {
-  let references = parse_shader_def_references(line)
+  let references = parse_wgsl_shader_def_references(line)
   let mut output = line
   for reference in references {
     if !reference.delimited && shader_defs.get(reference.name) is Some(value) {
@@ -224,7 +224,7 @@ fn replace_first_shader_def_reference(
   delimited : Bool,
   replacement : String,
 ) -> String {
-  for reference in parse_shader_def_references(line) {
+  for reference in parse_wgsl_shader_def_references(line) {
     if reference.delimited == delimited {
       return line[0:reference.start].to_owned() +
         replacement +

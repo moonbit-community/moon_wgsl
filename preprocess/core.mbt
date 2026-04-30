@@ -47,14 +47,6 @@ priv struct Scope {
 }
 
 ///|
-priv struct ShaderDefReference {
-  name : String
-  start : Int
-  end : Int
-  delimited : Bool
-}
-
-///|
 priv struct WgslTemplateConstReference {
   name : String
   start : Int
