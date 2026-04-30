@@ -21,18 +21,10 @@ using @common {
 }
 
 ///|
-using @compose {
-  type Composer,
-  type ComposerError,
-  type WgslComposeSession,
-  finalize_wgsl_writeback_source,
-}
+using @compose {type Composer, type ComposerError}
 
 ///|
 using @preprocess {apply_wgsl_ifdefs, apply_wgsl_template_consts}
 
 ///|
-using @resolver {
-  copy_registered_wgsl_source_files,
-  copy_wgsl_source_files_from_registry,
-}
+using @resolver {copy_registered_wgsl_source_files}

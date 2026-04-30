@@ -65,6 +65,14 @@ pub(all) struct NagaModuleDescriptor {
 } derive(Eq, @debug.Debug)
 pub fn NagaModuleDescriptor::default() -> Self
 
+pub(all) struct PreparedWgslSource {
+  source : String
+  source_files : Array[WgslSourceFile]
+  defines : @hashmap.HashMap[String, Bool]
+  value_defines : @hashmap.HashMap[String, Int]
+  diagnostics : Array[WgslDiagnostic]
+}
+
 pub(all) struct PreprocessOutput {
   preprocessed_source : String
   imports : Array[ImportDefWithOffset]

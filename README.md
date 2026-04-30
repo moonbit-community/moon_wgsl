@@ -498,9 +498,12 @@ Main public entry points:
 - `Composer::compose_wgsl_source`
   Composes a raw WGSL source string using `WgslComposeOptions` without exposing
   session internals.
+- `Composer::prepare_wgsl_source`
+  Produces a stable `PreparedWgslSource` intermediate for tools such as
+  single-file export.
 - `export_wgsl_with_options`
-  Produces single-file WGSL from `WgslComposeOptions` without exposing legacy
-  session internals.
+  Produces single-file WGSL from `WgslComposeOptions` without depending on
+  compose session internals.
 
 Important public data structures:
 
@@ -508,13 +511,14 @@ Important public data structures:
 - `ImportDefinition`
 - `PreprocessOutput`
 - `PreprocessorMetaData`
+- `PreparedWgslSource`
 - `ComposableModuleDescriptor`
 - `ComposableModuleDefinition`
 - `WgslDirectives`
 - `WgslSourceFile`
 - `WgslComposeOptions`
-  Holds root compose settings: asset base, shader defs, value defs, symbol
-  redirects, and root-only `additional_imports`.
+  Holds root compose settings: shader defs, value defs, symbol redirects, and
+  root-only `additional_imports`.
 - `WgslSymbolRedirect`
 - `WgslExportOptions`
 - `WgslExportOutput`
@@ -522,8 +526,11 @@ Important public data structures:
 - `WgslSourceMapEntry`
 - `WgslDiagnostic`
 
-For the full exported surface, see
-[pkg.generated.mbti](./pkg.generated.mbti).
+For the full exported surface, see the generated subpackage interfaces:
+`common/pkg.generated.mbti`, `syntax/pkg.generated.mbti`,
+`preprocess/pkg.generated.mbti`, `resolver/pkg.generated.mbti`,
+`analysis/pkg.generated.mbti`, `compose/pkg.generated.mbti`, and
+`export/pkg.generated.mbti`.
 
 ## Behavior Notes
 
@@ -531,20 +538,20 @@ For the full exported surface, see
 - `Composer` now owns registry/module resolution state; new code should prefer
   `Composer::register_wgsl_source*`, `Composer::compose_wgsl`,
   `Composer::compose_wgsl_source`, and `export_wgsl_with_options`.
-- `Composer::default()` is hermetic and does not inherit the global registry.
+- `Composer::default()` is hermetic and does not inherit the shared registry.
   Use `Composer::from_registered_wgsl_source_registry()` only when you
-  intentionally want a shared registry snapshot of global state.
+  intentionally want a shared registry snapshot.
 - Relative quoted file imports are resolved against the importing shader's
-  registered path in the active Composer/global registry.
+  registered path in the active Composer/shared registry.
 - `register_wgsl_source_files_checked` is the safe bulk-registration path when
-  callers need deterministic diagnostics before mutating the global registry.
+  callers need deterministic diagnostics before mutating the shared registry.
 - `get_preprocessor_metadata` is forgiving by design: on parse failure it
   returns empty/default metadata instead of raising.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.
 - `export_wgsl_with_options` scopes `source_catalog` and
   `source_map` to the dependency closure of the current compose/export
-  session instead of the full registry.
+  preparation result instead of the full registry.
 - Source-level redirects are token-based and intentionally skip declaration
   heads, field accesses (`.`), and attributes (`@...`); they are intended for
   imported helper/type names rather than locally shadowed identifiers.

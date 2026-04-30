@@ -40,8 +40,6 @@ pub fn Preprocessor::default() -> Self
 pub fn Preprocessor::extract_wgsl_directives(Self, String) -> (String, @common.WgslDirectives) raise PreprocessError
 pub fn Preprocessor::preprocess(Self, String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> @common.PreprocessOutput raise PreprocessError
 
-type ScopeLevel derive(Eq)
-
 // Type aliases
 
 // Traits

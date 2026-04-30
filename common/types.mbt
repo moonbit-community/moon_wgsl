@@ -129,6 +129,15 @@ pub fn WgslSourceFile::default() -> WgslSourceFile {
 }
 
 ///|
+pub(all) struct PreparedWgslSource {
+  source : String
+  source_files : Array[WgslSourceFile]
+  defines : @hashmap.HashMap[String, Bool]
+  value_defines : @hashmap.HashMap[String, Int]
+  diagnostics : Array[WgslDiagnostic]
+}
+
+///|
 pub(all) struct WgslSourceScanOptions {
   recursive : Bool
   extensions : Array[String]

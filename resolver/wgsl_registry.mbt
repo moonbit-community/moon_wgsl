@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub(all) struct WgslSourceRegistry {
+pub struct WgslSourceRegistry {
   rel_to_source_ref : Ref[@hashmap.HashMap[String, String]]
   module_to_rel_ref : Ref[@hashmap.HashMap[String, String]]
 }
@@ -41,14 +41,14 @@ pub fn WgslSourceRegistry::snapshot(
 }
 
 ///|
-pub fn WgslSourceRegistry::source_registry(
+fn WgslSourceRegistry::source_registry(
   self : WgslSourceRegistry,
 ) -> @hashmap.HashMap[String, String] {
   self.rel_to_source_ref.val
 }
 
 ///|
-pub fn WgslSourceRegistry::module_paths(
+fn WgslSourceRegistry::module_paths(
   self : WgslSourceRegistry,
 ) -> @hashmap.HashMap[String, String] {
   self.module_to_rel_ref.val

@@ -240,62 +240,23 @@ fn serialize_wgsl_export_output(
 }
 
 ///|
-fn append_wgsl_unused_redirect_diagnostics(
-  diagnostics : Array[WgslDiagnostic],
-  session : WgslComposeSession,
-) -> Unit {
-  for redirect in session.redirects {
-    let from_name = redirect.from_name.trim().to_owned()
-    let to_name = redirect.to_name.trim().to_owned()
-    if from_name == "" || to_name == "" || from_name == to_name {
-      continue
-    }
-    let matched = match session.redirect_match_counts.get(from_name) {
-      Some(count) => count > 0
-      None => false
-    }
-    if !matched {
-      push_wgsl_diagnostic(
-        diagnostics,
-        WgslDiagnosticSeverity::Warn,
-        "symbol redirect did not match any source identifier",
-        None,
-        Some(from_name),
-        None,
-        None,
-      )
-    }
-  }
-}
-
-///|
-fn export_wgsl_from_session(
-  composer : Composer,
-  rel : String,
-  session : WgslComposeSession,
-  options : WgslExportOptions,
-) -> WgslExportOutput raise ComposerError {
-  let source = composer.load_root_wgsl_preprocessed_into_session(rel, session)
-  let source = finalize_wgsl_writeback_source(source)
-  let graph = build_wgsl_declaration_graph(source)
-  let output = serialize_wgsl_export_output(
-    graph,
-    copy_wgsl_source_files_from_registry(session.resolved_source_files),
-    options,
-    session.defines,
-    session.value_defines,
-  )
-  append_wgsl_unused_redirect_diagnostics(output.diagnostics, session)
-  output
-}
-
-///|
 pub fn export_wgsl_with_options(
   composer : Composer,
   rel : String,
   compose_options : WgslComposeOptions,
   export_options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
-  let session = composer.new_wgsl_compose_session(compose_options)
-  export_wgsl_from_session(composer, rel, session, export_options)
+  let prepared = composer.prepare_wgsl_source(rel, compose_options)
+  let graph = build_wgsl_declaration_graph(prepared.source)
+  let output = serialize_wgsl_export_output(
+    graph,
+    prepared.source_files,
+    export_options,
+    prepared.defines,
+    prepared.value_defines,
+  )
+  for diagnostic in prepared.diagnostics {
+    output.diagnostics.push(diagnostic)
+  }
+  output
 }

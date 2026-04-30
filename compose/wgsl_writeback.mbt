@@ -361,7 +361,7 @@ fn validate_wgsl_struct_member_identifiers(
 }
 
 ///|
-pub fn finalize_wgsl_writeback_source(
+fn finalize_wgsl_writeback_source(
   source : String,
 ) -> String raise ComposerError {
   validate_wgsl_struct_member_identifiers(source)

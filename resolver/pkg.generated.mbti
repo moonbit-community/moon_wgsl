@@ -54,7 +54,7 @@ pub fn scan_wgsl_source_files_checked(String, @common.WgslSourceScanOptions) -> 
 // Errors
 
 // Types and methods
-pub(all) struct WgslSourceRegistry {
+pub struct WgslSourceRegistry {
   rel_to_source_ref : @ref.Ref[@hashmap.HashMap[String, String]]
   module_to_rel_ref : @ref.Ref[@hashmap.HashMap[String, String]]
 }
@@ -63,14 +63,12 @@ pub fn WgslSourceRegistry::clear(Self) -> Unit
 pub fn WgslSourceRegistry::copy_import_module_paths(Self) -> @hashmap.HashMap[String, String]
 pub fn WgslSourceRegistry::copy_source_files(Self) -> Array[@common.WgslSourceFile]
 pub fn WgslSourceRegistry::default() -> Self
-pub fn WgslSourceRegistry::module_paths(Self) -> @hashmap.HashMap[String, String]
 pub fn WgslSourceRegistry::register_source(Self, String, String, String?) -> String?
 pub fn WgslSourceRegistry::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
 pub fn WgslSourceRegistry::register_source_files_checked(Self, Array[@common.WgslSourceFile], Array[@common.WgslDiagnostic]) -> Unit
 pub fn WgslSourceRegistry::registered_source(Self, String) -> String?
 pub fn WgslSourceRegistry::remove_source_and_module(Self, String, String) -> Unit
 pub fn WgslSourceRegistry::snapshot(Self) -> Self
-pub fn WgslSourceRegistry::source_registry(Self) -> @hashmap.HashMap[String, String]
 
 // Type aliases
 
