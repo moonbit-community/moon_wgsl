@@ -1646,21 +1646,37 @@ fn rewrite_wgsl_decl_identifier_nodes_with_map(
   text : String,
   data : WgslGlobalDeclData,
   redirect_map : @hashmap.HashMap[String, String],
+  rewrite_declaration_names? : Bool = false,
 ) -> String {
   let identifiers : Array[WgslIdent] = []
+  if rewrite_declaration_names {
+    collect_wgsl_decl_declared_identifier_nodes(data, identifiers)
+  }
   collect_wgsl_decl_identifier_nodes(data, identifiers)
   let mut out = ""
   let mut copy_start = 0
-  for identifier in identifiers {
-    guard identifier.start >= copy_start else { continue }
-    match redirect_map.get(identifier.name) {
-      Some(rewritten_name) => {
-        out = out + text[copy_start:identifier.start].to_owned()
-        out = out + rewritten_name
-        copy_start = identifier.end
+  while true {
+    let mut next_index = -1
+    let mut next_start = text.length() + 1
+    for i in 0..<identifiers.length() {
+      let identifier = identifiers[i]
+      if identifier.start >= copy_start &&
+        identifier.start < next_start &&
+        redirect_map.contains(identifier.name) {
+        next_index = i
+        next_start = identifier.start
       }
-      None => ()
     }
+    if next_index < 0 {
+      break
+    }
+    let identifier = identifiers[next_index]
+    guard redirect_map.get(identifier.name) is Some(rewritten_name) else {
+      break
+    }
+    out = out + text[copy_start:identifier.start].to_owned()
+    out = out + rewritten_name
+    copy_start = identifier.end
   }
   if copy_start < text.length() {
     out = out + text[copy_start:text.length()].to_owned()
@@ -1705,6 +1721,7 @@ fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
 fn rewrite_wgsl_declaration_blocks_with_redirects(
   source : String,
   redirect_map : @hashmap.HashMap[String, String],
+  rewrite_declaration_names? : Bool = false,
 ) -> String {
   if redirect_map.is_empty() {
     return source
@@ -1716,13 +1733,21 @@ fn rewrite_wgsl_declaration_blocks_with_redirects(
   }
   for block in graph.declaration_blocks {
     match block.data {
-      WgslGlobalDeclData::Raw =>
-        out = out +
+      WgslGlobalDeclData::Raw => {
+        let rewritten_raw = if rewrite_declaration_names {
+          rewrite_wgsl_declaration_text_with_renamed_declarations(
+            block.text,
+            redirect_map,
+          )
+        } else {
           rewrite_wgsl_declaration_text_with_map(
             block.text,
             redirect_map,
             false,
           )
+        }
+        out = out + rewritten_raw
+      }
       WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
         out = out + block.text
       _ =>
@@ -1731,6 +1756,7 @@ fn rewrite_wgsl_declaration_blocks_with_redirects(
             block.text,
             block.data,
             redirect_map,
+            rewrite_declaration_names~,
           )
     }
   }
@@ -1956,8 +1982,10 @@ fn Composer::compose_wgsl_import_requests(
         request_rename_map,
         alias_redirects,
       )
-      rewrite_wgsl_declaration_text_with_renamed_declarations(
-        module_source, request_rename_map,
+      rewrite_wgsl_declaration_blocks_with_redirects(
+        module_source,
+        request_rename_map,
+        rewrite_declaration_names=true,
       )
     } else {
       module_source

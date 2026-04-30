@@ -341,9 +341,10 @@ fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
     }
     collect_wgsl_function_parameter_sanitizers(block.data, block_redirects)
     sanitized = sanitized +
-      rewrite_wgsl_declaration_text_with_renamed_declarations(
+      rewrite_wgsl_declaration_blocks_with_redirects(
         block.text,
         block_redirects,
+        rewrite_declaration_names=true,
       )
   }
   sanitized
