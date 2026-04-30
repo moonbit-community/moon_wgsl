@@ -55,9 +55,7 @@ fn try_get_preprocessor_metadata(
         trimmed, "define_import_path",
       )
       is Some(raw_name) {
-      let import_path = trim_trailing_semicolons(
-        wgsl_metadata_first_space_separated_token(raw_name),
-      )
+      let import_path = wgsl_metadata_first_space_separated_token(raw_name)
       if import_path != "" {
         name = Some(import_path)
       }

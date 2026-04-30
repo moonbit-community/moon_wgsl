@@ -47,9 +47,7 @@ pub fn wgsl_source_define_import_path(source : String) -> String? {
     let trimmed = line.trim().to_owned()
     match wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath) {
       Some(raw_name) => {
-        let import_path = trim_trailing_semicolons(
-          wgsl_metadata_first_space_separated_token(raw_name),
-        )
+        let import_path = wgsl_metadata_first_space_separated_token(raw_name)
         if import_path != "" {
           return Some(import_path)
         }

@@ -729,6 +729,12 @@ test "naga_oil: define metadata consumes one token like upstream regexes" {
 }
 
 ///|
+test "naga_oil: define import path keeps semicolon in captured token" {
+  let metadata = metadata_or_abort("#define_import_path demo::module;\n")
+  debug_inspect(metadata.name, content="Some(\"demo::module;\")")
+}
+
+///|
 test "naga_oil: define metadata follows upstream regex character classes" {
   let metadata = metadata_or_abort(
     "#define NAME+TAIL 7\n#define PLUS +1\n#define PIPE|NAME value|tail ignored\n",
