@@ -1044,3 +1044,51 @@ test "naga_oil: composer strips accepted GLSL version directive" {
   debug_inspect(output.contains("#version"), content="false")
   debug_inspect(output.contains("fn shade()"), content="true")
 }
+
+///|
+test "naga_oil: item imports reject invalid GLSL version before extraction" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "shaders/version/module.wgsl", "#define_import_path version::module\n#version 430\nfn value() -> f32 { return 1.0; }\n",
+  )
+  composer.register_source(
+    "shaders/version/root.wgsl", "#import version::module::value\nfn shade() -> f32 { return value(); }\n",
+  )
+  ignore(
+    composer.compose_wgsl(
+      "shaders/version/root.wgsl",
+      composer_test_compose_options(empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message(),
+        content="\"invalid GLSL #version directive\"",
+      )
+      return
+    }
+  }
+  abort("expected invalid GLSL version item-import compose failure")
+}
+
+///|
+test "naga_oil: item imports strip accepted GLSL version before extraction" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "shaders/version/module.wgsl", "#define_import_path version::module\n#version 450\nfn value() -> f32 { return 1.0; }\n",
+  )
+  composer.register_source(
+    "shaders/version/root.wgsl", "#import version::module::value\nfn shade() -> f32 { return value(); }\n",
+  )
+  let output = composer.compose_wgsl(
+    "shaders/version/root.wgsl",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort(
+        "expected accepted GLSL version item-import success: \{err.message()}",
+      )
+  }
+  debug_inspect(output.contains("#version"), content="false")
+  debug_inspect(output.contains("fn value()"), content="true")
+}

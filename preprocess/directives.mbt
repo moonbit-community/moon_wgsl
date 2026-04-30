@@ -251,6 +251,22 @@ pub fn parse_glsl_version_directive(line : String) -> String? {
 }
 
 ///|
+fn check_glsl_version_directive(
+  line : String,
+  offset : Int,
+) -> Bool raise PreprocessError {
+  match parse_glsl_version_directive(line) {
+    Some(version) => {
+      if version != "440" && version != "450" {
+        raise PreprocessError::GlslInvalidVersion(offset)
+      }
+      true
+    }
+    None => false
+  }
+}
+
+///|
 fn parse_bool_text(text : String) -> Bool? {
   let trimmed = trim_trailing_semicolons(text)
   if trimmed == "true" {

@@ -37,8 +37,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   while line_index < lines.length() {
     let line = lines[line_index]
     let trimmed = line.trim().to_owned()
-    if parse_glsl_version_directive(trimmed) is Some(version) {
-      validate_glsl_version_for_compose(version)
+    if parse_glsl_version_directive(trimmed) is Some(_) {
       line_index = line_index + 1
       continue
     }

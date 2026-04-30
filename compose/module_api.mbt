@@ -163,12 +163,3 @@ fn active_wgsl_ifdef_line_flags_strict_for_compose(
     error => raise composer_error_from_preprocess_error(error)
   }
 }
-
-///|
-fn validate_glsl_version_for_compose(
-  version : String,
-) -> Unit raise ComposerError {
-  if version != "440" && version != "450" {
-    raise ComposerError::GlslInvalidVersion
-  }
-}

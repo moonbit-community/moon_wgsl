@@ -39,10 +39,8 @@ pub fn Preprocessor::preprocess(
     let mut output = false
     let trimmed = line.trim().to_owned()
 
-    if parse_glsl_version_directive(trimmed) is Some(version) {
-      if version != "440" && version != "450" {
-        raise PreprocessError::GlslInvalidVersion(offset)
-      }
+    if check_glsl_version_directive(trimmed, offset) {
+      ()
     } else {
       let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
       if is_scope ||

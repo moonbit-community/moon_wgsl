@@ -128,9 +128,11 @@ tree-shakes them away, matching upstream `naga_oil`.
 
 4. Preprocessing must stay in `preprocess`.
    Template constant substitution and strict conditional filtering live in the
-   `preprocess` package. `compose` may map `PreprocessError` into
-   `ComposerError`, but must not maintain a second preprocessor or a permissive
-   conditional evaluator.
+   `preprocess` package. GLSL `#version` stripping/validation is also part of
+   that strict preprocessing boundary so full imports, item imports, active
+   scans, and source catalogs cannot diverge. `compose` may map
+   `PreprocessError` into `ComposerError`, but must not maintain a second
+   preprocessor or a permissive conditional evaluator.
 
 5. Declaration analysis must stay shared.
    Composition, export, source maps, and tree-shaking use the same declaration

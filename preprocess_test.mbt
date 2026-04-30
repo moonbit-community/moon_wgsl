@@ -813,3 +813,26 @@ test "naga_oil: strict ifdefs parse decommented conditions like preprocess" {
   debug_inspect(output.contains("active"), content="true")
   debug_inspect(output.contains("inactive"), content="false")
 }
+
+///|
+test "naga_oil: strict ifdefs apply GLSL version preprocessing" {
+  let output = @preprocess.apply_wgsl_ifdefs_strict(
+    "#version 450\nfn shade() -> f32 { return 1.0; }\n",
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected accepted GLSL version strict preprocess success")
+  }
+  debug_inspect(output.contains("#version"), content="false")
+  debug_inspect(output.contains("fn shade()"), content="true")
+
+  ignore(
+    @preprocess.apply_wgsl_ifdefs_strict(
+      "#version 430\nfn shade() -> f32 { return 1.0; }\n",
+      empty_shader_defs(),
+    ),
+  ) catch {
+    @preprocess.PreprocessError::GlslInvalidVersion(_) => return
+    _ => abort("expected invalid GLSL version strict preprocess error")
+  }
+  abort("expected invalid GLSL version strict preprocess error")
+}

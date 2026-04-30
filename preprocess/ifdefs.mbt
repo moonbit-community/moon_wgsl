@@ -42,7 +42,16 @@ pub fn apply_wgsl_ifdefs_strict(
     } else {
       line
     }
-    let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
+    let is_version = check_glsl_version_directive(
+      line.trim().to_owned(),
+      offset,
+    )
+    let is_scope = if is_version {
+      true
+    } else {
+      let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
+      is_scope
+    }
     if !is_scope && scope.active() {
       out = "\{out}\{original_line}\n"
     }
@@ -62,7 +71,16 @@ pub fn active_wgsl_ifdef_line_flags_strict(
   let flags : Array[Bool] = []
   let mut offset = 0
   for line in source_lines(replace_comments(source)) {
-    let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
+    let is_version = check_glsl_version_directive(
+      line.trim().to_owned(),
+      offset,
+    )
+    let is_scope = if is_version {
+      true
+    } else {
+      let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
+      is_scope
+    }
     flags.push(!is_scope && scope.active())
     offset = offset + line.length() + 1
   }
