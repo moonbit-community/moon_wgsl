@@ -1,13 +1,7 @@
 ///|
 priv struct WgslPreparedComposeSource {
-  redirected_source : String
+  active_source : String
   active_scan_source : String
-}
-
-///|
-priv struct WgslComposeLine {
-  original : String
-  decommented : String
 }
 
 ///|
@@ -26,38 +20,9 @@ fn prepare_wgsl_compose_source(
     active_defs.value_defines,
   )
   WgslPreparedComposeSource::{
-    redirected_source,
+    active_source,
     active_scan_source: strip_wgsl_import_declarations(active_source),
   }
-}
-
-///|
-fn seed_wgsl_compose_lines(
-  prepared : WgslPreparedComposeSource,
-) -> Array[WgslComposeLine] {
-  let lines : Array[WgslComposeLine] = []
-  let original_lines = split_source_lines(prepared.redirected_source)
-  let decommented_lines = split_source_lines(
-    replace_comments_naga_oil(prepared.redirected_source),
-  )
-  for i in 0..<original_lines.length() {
-    let decommented = if i < decommented_lines.length() {
-      decommented_lines[i]
-    } else {
-      original_lines[i]
-    }
-    lines.push(WgslComposeLine::{ original: original_lines[i], decommented })
-  }
-  lines
-}
-
-///|
-fn wgsl_compose_original_lines_source(lines : Array[WgslComposeLine]) -> String {
-  let originals : Array[String] = []
-  for line in lines {
-    originals.push(line.original)
-  }
-  originals.join("\n")
 }
 
 ///|

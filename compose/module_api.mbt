@@ -150,13 +150,3 @@ fn apply_wgsl_ifdefs_strict_for_compose(
     error => raise composer_error_from_preprocess_error(error)
   }
 }
-
-///|
-fn active_wgsl_ifdef_line_flags_strict_for_compose(
-  source : String,
-  active_defs : WgslActiveComposeDefs,
-) -> Array[Bool] raise ComposerError {
-  active_wgsl_ifdef_line_flags_strict(source, active_defs.shader_defs) catch {
-    error => raise composer_error_from_preprocess_error(error)
-  }
-}

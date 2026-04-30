@@ -1,54 +1,4 @@
 ///|
-fn compose_has_ascii_keyword_at(
-  text : String,
-  start : Int,
-  keyword : String,
-) -> Bool {
-  guard start >= 0 && start + keyword.length() <= text.length() else {
-    return false
-  }
-  for i in 0..<keyword.length() {
-    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
-      return false
-    }
-  }
-  true
-}
-
-///|
-fn compose_required_space_directive_tail(
-  line : String,
-  keyword : String,
-) -> String? {
-  let trimmed = wgsl_regex_trim_whitespace(line)
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
-    return None
-  }
-  let start = wgsl_regex_skip_whitespace(trimmed, 1)
-  guard start + keyword.length() < trimmed.length() else { return None }
-  guard compose_has_ascii_keyword_at(trimmed, start, keyword) else {
-    return None
-  }
-  let space_pos = start + keyword.length()
-  guard wgsl_regex_whitespace_code_point(
-    trimmed.code_unit_at(space_pos).to_int(),
-  ) else {
-    return None
-  }
-  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
-  Some(wgsl_regex_trim_whitespace(trimmed[tail_start:].to_owned()))
-}
-
-///|
-fn wgsl_line_is_conditional_directive(trimmed : String) -> Bool {
-  wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(_) ||
-  wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(_) ||
-  wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(_) ||
-  wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) ||
-  wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_)
-}
-
-///|
 fn Composer::preprocess_wgsl_source_with_path(
   self : Composer,
   current_rel_path : String,
@@ -79,67 +29,31 @@ fn Composer::preprocess_wgsl_source_with_path(
     current_rel_path, implicit_requests, alias_redirects, session, active_defs,
   )
   merged = merged + implicit_imports
-  let lines = seed_wgsl_compose_lines(prepared)
-  let active_line_flags = active_wgsl_ifdef_line_flags_strict_for_compose(
-    wgsl_compose_original_lines_source(lines),
-    active_defs,
-  )
-  let mut line_index = 0
-  while line_index < lines.length() {
-    let line = lines[line_index].original
-    let decommented = lines[line_index].decommented
-    let trimmed = wgsl_regex_trim_whitespace(decommented)
-    if parse_glsl_version_directive(trimmed) is Some(_) {
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_line_is_conditional_directive(trimmed) {
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if compose_required_space_directive_tail(trimmed, "define_import_path")
-      is Some(_) {
-      line_index = line_index + 1
-      continue
-    }
-    if compose_required_space_directive_tail(trimmed, "define") is Some(_) {
-      line_index = line_index + 1
-      continue
-    }
-    if compose_required_space_directive_tail(trimmed, "import")
-      is Some(import_tail) {
-      if line_index >= active_line_flags.length() ||
-        !active_line_flags[line_index] {
-        merged = "\{merged}\{line}\n"
-        line_index = line_index + 1
-        continue
-      }
-      let mut spec = import_tail
-      let mut brace_balance = naga_oil_raw_import_brace_balance_next(0, spec)
-      while brace_balance > 0 && line_index + 1 < lines.length() {
-        line_index = line_index + 1
-        let next_line = lines[line_index].decommented
-        spec = "\{spec}\n\{next_line}"
-        brace_balance = naga_oil_raw_import_brace_balance_next(
-          brace_balance, next_line,
+  for decl in parse_wgsl_translation_unit(prepared.active_source).declarations {
+    match decl.data {
+      WgslGlobalDeclData::Import(import_directive) => {
+        let requests = self.build_wgsl_import_requests(
+          current_rel_path,
+          import_directive.tail,
+          prepared.active_scan_source,
+          session,
         )
+        let composed_imports = self.compose_wgsl_import_requests(
+          current_rel_path, requests, alias_redirects, session, active_defs,
+        )
+        merged = "\{merged}\{composed_imports}"
       }
-      let requests = self.build_wgsl_import_requests(
-        current_rel_path,
-        spec,
-        prepared.active_scan_source,
-        session,
-      )
-      let composed_imports = self.compose_wgsl_import_requests(
-        current_rel_path, requests, alias_redirects, session, active_defs,
-      )
-      merged = "\{merged}\{composed_imports}"
-      line_index = line_index + 1
-      continue
+      WgslGlobalDeclData::Directive(directive) =>
+        match directive.kind {
+          WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define => ()
+          WgslDirectiveKind::Other(_) =>
+            if parse_glsl_version_directive(decl.text) is None {
+              merged = "\{merged}\{decl.text}"
+            }
+          _ => merged = "\{merged}\{decl.text}"
+        }
+      _ => merged = "\{merged}\{decl.text}"
     }
-    merged = "\{merged}\{line}\n"
-    line_index = line_index + 1
   }
   finalize_wgsl_composed_source(
     merged, alias_redirects, active_defs, session, apply_virtual_overrides,

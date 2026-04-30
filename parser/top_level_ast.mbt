@@ -42,6 +42,16 @@ fn top_level_line_end(source : String, pos : Int) -> Int {
 }
 
 ///|
+fn top_level_hash_starts_directive(cleaned : String, pos : Int) -> Bool {
+  let line_start = top_level_line_start(cleaned, pos)
+  guard wgsl_regex_trim_whitespace(cleaned[line_start:pos].to_owned()) == "" else {
+    return false
+  }
+  let line_end = top_level_line_end(cleaned, pos)
+  parse_wgsl_directive_line(cleaned[pos:line_end].to_owned()) is Some(_)
+}
+
+///|
 fn top_level_non_whitespace_index(
   tokens : Array[WgslToken],
   start : Int,
@@ -220,6 +230,13 @@ fn WgslTopLevelParser::parse_declaration_item(
   let mut previous_significant : WgslToken? = None
   while self.index < self.tokens.length() {
     let token = self.tokens[self.index]
+    if depth.at_top() &&
+      token.pos() > first_token_pos &&
+      token is WgslToken::Other(35, _) &&
+      top_level_hash_starts_directive(self.cleaned, token.pos()) {
+      item_end = token.pos()
+      break
+    }
     if !saw_brace && depth.at_top() && token is WgslToken::Other(59, _) {
       item_end = token.end()
       self.index = self.index + 1

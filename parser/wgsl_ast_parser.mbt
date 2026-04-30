@@ -18,19 +18,20 @@ fn parse_wgsl_declaration_name(text : String) -> String {
 
 ///|
 fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
+  let directive_text = replace_comments_naga_oil(item.text)
   let data = match item.kind {
     WgslRawTopLevelKind::DefineImportPath | WgslRawTopLevelKind::Define =>
-      match parse_wgsl_directive_line_at(item.text, item.start) {
+      match parse_wgsl_directive_line_at(directive_text, item.start) {
         Some(directive) => WgslGlobalDeclData::Directive(directive)
         None => WgslGlobalDeclData::Raw
       }
     WgslRawTopLevelKind::Import =>
-      match parse_wgsl_directive_line_at(item.text, item.start) {
+      match parse_wgsl_directive_line_at(directive_text, item.start) {
         Some(directive) => WgslGlobalDeclData::Import(directive)
         None => WgslGlobalDeclData::Raw
       }
     WgslRawTopLevelKind::Directive =>
-      match parse_wgsl_directive_line_at(item.text, item.start) {
+      match parse_wgsl_directive_line_at(directive_text, item.start) {
         Some(directive) => WgslGlobalDeclData::Directive(directive)
         None => WgslGlobalDeclData::Raw
       }

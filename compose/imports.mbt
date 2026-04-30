@@ -56,7 +56,6 @@ using @metadata {type MetadataError, get_preprocessor_metadata}
 ///|
 using @preprocess {
   type PreprocessError,
-  active_wgsl_ifdef_line_flags_strict,
   apply_wgsl_ifdefs_strict,
   apply_wgsl_template_consts,
   parse_glsl_version_directive,
@@ -71,26 +70,13 @@ using @resolver {
 }
 
 ///|
-using @ast {type WgslDirectiveKind}
+using @ast {type WgslDirectiveKind, type WgslGlobalDeclData}
 
 ///|
-using @lex {
-  type WgslToken,
-  naga_oil_raw_import_brace_balance_next,
-  replace_comments_naga_oil,
-  split_source_lines,
-  tokenize,
-  wgsl_regex_skip_whitespace,
-  wgsl_regex_trim_whitespace,
-  wgsl_regex_whitespace_code_point,
-}
+using @lex {type WgslToken, tokenize}
 
 ///|
-using @parser {
-  parse_wgsl_import_targets,
-  wgsl_directive_prefix_tail,
-  wgsl_directive_tail,
-}
+using @parser {parse_wgsl_import_targets, parse_wgsl_translation_unit}
 
 ///|
 using @writeback {
