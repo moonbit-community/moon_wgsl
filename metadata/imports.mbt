@@ -12,7 +12,7 @@ using @common {
 }
 
 ///|
-using @ast {type WgslDirectiveKind, type WgslGlobalDeclData}
+using @ast {type WgslDirective, type WgslDirectiveKind, type WgslGlobalDeclData}
 
 ///|
 using @lex {
@@ -35,7 +35,7 @@ using @lex {
 ///|
 using @parser {
   type ParseImportsError,
+  parse_wgsl_directive_line_at,
   parse_wgsl_import_targets,
   parse_wgsl_translation_unit,
-  wgsl_directive_prefix_tail,
 }

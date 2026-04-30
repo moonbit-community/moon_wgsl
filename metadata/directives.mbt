@@ -163,29 +163,6 @@ fn metadata_has_ascii_keyword_at(
 }
 
 ///|
-fn metadata_required_space_directive_tail(
-  line : String,
-  keyword : String,
-) -> String? {
-  let trimmed = wgsl_regex_trim_whitespace(line)
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
-    return None
-  }
-  let start = wgsl_regex_skip_whitespace(trimmed, 1)
-  guard start + keyword.length() < trimmed.length() else { return None }
-  guard metadata_has_ascii_keyword_at(trimmed, start, keyword) else {
-    return None
-  }
-  let space_pos = start + keyword.length()
-  let code = trimmed.code_unit_at(space_pos).to_int()
-  guard wgsl_regex_whitespace_code_point(code) else { return None }
-  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
-  Some(
-    wgsl_regex_trim_whitespace(trimmed[tail_start:trimmed.length()].to_owned()),
-  )
-}
-
-///|
 fn metadata_required_space_word_tail(
   text : String,
   keyword : String,
@@ -363,48 +340,6 @@ fn if_operator_expression_def(expression : String) -> String? {
     Some((def, _, _)) => Some(def)
     None => None
   }
-}
-
-///|
-fn metadata_scope_def(line : String) -> (Bool, String?) {
-  if metadata_required_space_directive_tail(line, "ifdef") is Some(rest) &&
-    directive_identifier(rest) is Some(name) {
-    return (true, Some(name))
-  }
-  if metadata_required_space_directive_tail(line, "ifndef") is Some(rest) &&
-    directive_identifier(rest) is Some(name) {
-    return (true, Some(name))
-  }
-  if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Else)
-    is Some(else_tail) {
-    let else_tail_has_space = starts_with_tokenized_space(else_tail)
-    if else_tail_has_space &&
-      metadata_required_space_word_tail(else_tail, "ifdef") is Some(rest) &&
-      directive_identifier(rest) is Some(name) {
-      return (true, Some(name))
-    }
-    if else_tail_has_space &&
-      metadata_required_space_word_tail(else_tail, "ifndef") is Some(rest) &&
-      directive_identifier(rest) is Some(name) {
-      return (true, Some(name))
-    }
-    if else_tail_has_space &&
-      metadata_required_space_word_tail(else_tail, "if") is Some(expr) &&
-      if_operator_expression_def(expr) is Some(def) {
-      return (true, Some(def))
-    }
-  }
-  if metadata_required_space_directive_tail(line, "if") is Some(expr) &&
-    if_operator_expression_def(expr) is Some(def) {
-    return (true, Some(def))
-  }
-  if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Else) is Some(_) {
-    return (true, None)
-  }
-  if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Endif) is Some(_) {
-    return (true, None)
-  }
-  (false, None)
 }
 
 ///|
