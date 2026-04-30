@@ -643,6 +643,12 @@ test "WGSL source directives parse as directive AST nodes" {
   }
   debug_inspect(enable.kind, content="Enable")
   debug_inspect(enable.tail, content="\"f16, subgroups\"")
+  debug_inspect(enable.start, content="0")
+  debug_inspect(enable.end, content="22")
+  debug_inspect(enable.name_start, content="0")
+  debug_inspect(enable.name_end, content="6")
+  debug_inspect(enable.tail_start, content="7")
+  debug_inspect(enable.tail_end, content="21")
   guard unit.declarations[2].data is WgslGlobalDeclData::Directive(diagnostic) else {
     abort("expected diagnostic directive")
   }
@@ -664,6 +670,12 @@ test "WGSL hash conditionals parse as directive AST nodes" {
   }
   debug_inspect(ifdef.kind, content="Ifdef")
   debug_inspect(ifdef.tail, content="\"ENABLED\"")
+  debug_inspect(ifdef.start, content="0")
+  debug_inspect(ifdef.end, content="14")
+  debug_inspect(ifdef.name_start, content="1")
+  debug_inspect(ifdef.name_end, content="6")
+  debug_inspect(ifdef.tail_start, content="7")
+  debug_inspect(ifdef.tail_end, content="14")
   debug_inspect(unit.declarations[1].kind, content="Const")
   debug_inspect(unit.declarations[2].kind, content="Directive")
 }

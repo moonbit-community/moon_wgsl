@@ -43,8 +43,8 @@
 %token<@ast.WgslIdent> KW_ENABLE
 %token<@ast.WgslIdent> KW_REQUIRES
 %token<@ast.WgslIdent> KW_DIAGNOSTIC
-%token<(String, String)> DIRECTIVE_HEAD
-%token<String> DIRECTIVE_TAIL
+%token<(String, String, Int, Int, Int, Int)> DIRECTIVE_HEAD
+%token<(String, Int, Int)> DIRECTIVE_TAIL
 %token<String> SOURCE_TEXT
 %token HASH "#"
 %token PREFIX
@@ -196,7 +196,10 @@ alias -> String
 
 directive_line -> @ast.WgslDirective
   : "#" head=DIRECTIVE_HEAD tail=directive_tail EOF {
-      let (name, text) = head
+      let (name, text, start, end, name_start, name_end) = head
+      let (tail, raw_tail_start, raw_tail_end) = tail
+      let tail_start = if tail == "" { name_end } else { raw_tail_start }
+      let tail_end = if tail == "" { name_end } else { raw_tail_end }
       let kind = match name {
         "ifdef" => @ast.WgslDirectiveKind::Ifdef
         "ifndef" => @ast.WgslDirectiveKind::Ifndef
@@ -211,16 +214,30 @@ directive_line -> @ast.WgslDirective
         "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
         _ => @ast.WgslDirectiveKind::Other(name)
       }
-      @ast.WgslDirective::{ kind, name, tail, text }
+      @ast.WgslDirective::{
+        kind,
+        name,
+        tail,
+        text,
+        start,
+        end,
+        name_start,
+        name_end,
+        tail_start,
+        tail_end,
+      }
     }
   ;
 
 directive_prefix_tail -> String
-  : "#" PREFIX tail=directive_tail EOF { tail }
+  : "#" PREFIX tail=directive_tail EOF {
+      let (tail, _, _) = tail
+      tail
+    }
   ;
 
-directive_tail -> String
-  : { "" }
+directive_tail -> (String, Int, Int)
+  : { ("", 0, 0) }
   | DIRECTIVE_TAIL { $1 }
   ;
 
@@ -464,27 +481,54 @@ type_alias_tail -> (String, @ast.WgslTypeRef?)
 
 source_directive -> @ast.WgslDirective
   : text=SOURCE_TEXT keyword=KW_ENABLE tail=directive_tail EOF {
+      let (tail, raw_tail_start, raw_tail_end) = tail
+      let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
+      let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
       @ast.WgslDirective::{
         kind: @ast.WgslDirectiveKind::Enable,
         name: keyword.name,
         tail,
         text,
+        start: 0,
+        end: text.length(),
+        name_start: keyword.start,
+        name_end: keyword.end,
+        tail_start,
+        tail_end,
       }
     }
   | text=SOURCE_TEXT keyword=KW_REQUIRES tail=directive_tail EOF {
+      let (tail, raw_tail_start, raw_tail_end) = tail
+      let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
+      let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
       @ast.WgslDirective::{
         kind: @ast.WgslDirectiveKind::Requires,
         name: keyword.name,
         tail,
         text,
+        start: 0,
+        end: text.length(),
+        name_start: keyword.start,
+        name_end: keyword.end,
+        tail_start,
+        tail_end,
       }
     }
   | text=SOURCE_TEXT keyword=KW_DIAGNOSTIC tail=directive_tail EOF {
+      let (tail, raw_tail_start, raw_tail_end) = tail
+      let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
+      let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
       @ast.WgslDirective::{
         kind: @ast.WgslDirectiveKind::Diagnostic,
         name: keyword.name,
         tail,
         text,
+        start: 0,
+        end: text.length(),
+        name_start: keyword.start,
+        name_end: keyword.end,
+        tail_start,
+        tail_end,
       }
     }
   ;

@@ -26,6 +26,12 @@ pub(all) struct WgslDirective {
   name : String
   tail : String
   text : String
+  start : Int
+  end : Int
+  name_start : Int
+  name_end : Int
+  tail_start : Int
+  tail_end : Int
 } derive(Debug)
 
 ///|

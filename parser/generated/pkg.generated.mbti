@@ -72,8 +72,8 @@ pub(all) enum Token {
   KW_ENABLE(@ast.WgslIdent)
   KW_REQUIRES(@ast.WgslIdent)
   KW_DIAGNOSTIC(@ast.WgslIdent)
-  DIRECTIVE_HEAD((String, String))
-  DIRECTIVE_TAIL(String)
+  DIRECTIVE_HEAD((String, String, Int, Int, Int, Int))
+  DIRECTIVE_TAIL((String, Int, Int))
   SOURCE_TEXT(String)
   HASH
   PREFIX

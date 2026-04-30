@@ -68,16 +68,31 @@ fn skip_ascii_space(text : String, start : Int) -> Int {
 }
 
 ///|
+fn trim_ascii_space_end(text : String, start : Int) -> Int {
+  let mut end = text.length()
+  while end > start {
+    let code = text.code_unit_at(end - 1).to_int()
+    if code == 32 || code == 9 || code == 10 || code == 13 {
+      end = end - 1
+      continue
+    }
+    break
+  }
+  end
+}
+
+///|
 fn tokenize_wgsl_directive_line(
   line : String,
 ) -> Array[(@generated.Token, Int, Int)]? {
-  let trimmed = line.trim().to_owned()
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
+  let hash_start = skip_ascii_space(line, 0)
+  guard hash_start < line.length() &&
+    line.code_unit_at(hash_start).to_int() == 35 else {
     return None
   }
-  let body_start = skip_ascii_space(trimmed, 1)
+  let body_start = skip_ascii_space(line, hash_start + 1)
   let mut end = 0
-  let body = trimmed[body_start:trimmed.length()].to_owned()
+  let body = line[body_start:line.length()].to_owned()
   while end < body.length() &&
         identifier_code_unit(body.code_unit_at(end).to_int()) {
     end = end + 1
@@ -86,22 +101,37 @@ fn tokenize_wgsl_directive_line(
     return None
   }
   let name = body[:end].to_owned()
-  let tail = body[end:body.length()].to_owned().trim().to_owned()
+  let name_start = body_start
+  let name_end = body_start + end
+  let tail_start = skip_ascii_space(line, name_end)
+  let tail_end = trim_ascii_space_end(line, tail_start)
+  let tail = if tail_end > tail_start {
+    line[tail_start:tail_end].to_owned()
+  } else {
+    ""
+  }
+  let text_end = if tail != "" { tail_end } else { name_end }
+  let text = line[hash_start:text_end].to_owned()
   let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::HASH, 0, 1),
+    (@generated.Token::HASH, hash_start, hash_start + 1),
     (
-      @generated.Token::DIRECTIVE_HEAD((name, trimmed)),
-      body_start,
-      body_start + end,
+      @generated.Token::DIRECTIVE_HEAD(
+        (name, text, hash_start, text_end, name_start, name_end),
+      ),
+      name_start,
+      name_end,
     ),
   ]
   if tail != "" {
-    let tail_start = trimmed.length() - tail.length()
     tokens.push(
-      (@generated.Token::DIRECTIVE_TAIL(tail), tail_start, trimmed.length()),
+      (
+        @generated.Token::DIRECTIVE_TAIL((tail, tail_start, tail_end)),
+        tail_start,
+        tail_end,
+      ),
     )
   }
-  tokens.push((@generated.Token::EOF, trimmed.length(), trimmed.length()))
+  tokens.push((@generated.Token::EOF, text_end, text_end))
   Some(tokens)
 }
 
@@ -147,7 +177,11 @@ pub fn wgsl_directive_prefix_tail(
   ]
   if tail != "" {
     tokens.push(
-      (@generated.Token::DIRECTIVE_TAIL(tail), start, trimmed.length()),
+      (
+        @generated.Token::DIRECTIVE_TAIL((tail, start, trimmed.length())),
+        start,
+        trimmed.length(),
+      ),
     )
   }
   tokens.push((@generated.Token::EOF, trimmed.length(), trimmed.length()))

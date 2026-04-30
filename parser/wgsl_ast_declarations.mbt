@@ -341,14 +341,29 @@ fn WgslDeclParser::parse_source_directive(
   keyword : WgslIdent,
   token : @generated.Token,
 ) -> WgslDirective? {
-  let tail = self.collect_until_top_level_fragment([59]).text
+  let tail_fragment = self.collect_until_top_level_fragment([59])
   let text = self.source_text.trim().to_owned()
+  let (tail_text, tail_start, tail_end) = if tail_fragment.start >= 0 {
+    wgsl_trim_fragment_bounds(
+      self.source_text,
+      tail_fragment.start,
+      tail_fragment.end,
+    )
+  } else {
+    ("", keyword.end, keyword.end)
+  }
   let tokens : Array[(@generated.Token, Int, Int)] = [
     (@generated.Token::SOURCE_TEXT(text), 0, 0),
     (token, keyword.start, keyword.end),
   ]
-  if tail != "" {
-    tokens.push((@generated.Token::DIRECTIVE_TAIL(tail), 0, 0))
+  if tail_text != "" {
+    tokens.push(
+      (
+        @generated.Token::DIRECTIVE_TAIL((tail_text, tail_start, tail_end)),
+        tail_start,
+        tail_end,
+      ),
+    )
   }
   tokens.push(
     (
