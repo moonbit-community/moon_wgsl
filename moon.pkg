@@ -10,9 +10,10 @@ import {
   "moonbitlang/core/hashmap",
   "moonbitlang/core/hashset",
   "moonbitlang/core/string",
-  "moonbitlang/x/fs",
-}
+} for "test"
 
 import {
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/resolver",
   "Milky2018/moon_wgsl/syntax",
 } for "wbtest"

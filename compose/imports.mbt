@@ -27,7 +27,6 @@ using @common {
   type WgslSourceFile,
   type WgslSourceScanOptions,
   type WgslSymbolRedirect,
-  default_wgsl_value_defines,
 }
 
 ///|

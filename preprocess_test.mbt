@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn empty_shader_defs() -> @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] {
+fn empty_shader_defs() -> @hashmap.HashMap[String, @common.ShaderDefValue] {
   @hashmap.HashMap::new()
 }
 
@@ -21,9 +21,9 @@ fn empty_shader_defs() -> @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] {
 fn bool_shader_def(
   name : String,
   value : Bool,
-) -> @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] {
+) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
-  shader_defs.set(name, @moon_wgsl.ShaderDefValue::Bool(value))
+  shader_defs.set(name, @common.ShaderDefValue::Bool(value))
   shader_defs
 }
 
@@ -31,18 +31,18 @@ fn bool_shader_def(
 fn int_shader_def(
   name : String,
   value : Int,
-) -> @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] {
+) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
-  shader_defs.set(name, @moon_wgsl.ShaderDefValue::Int(value))
+  shader_defs.set(name, @common.ShaderDefValue::Int(value))
   shader_defs
 }
 
 ///|
 fn preprocess_without_ascii_whitespace(
   source : String,
-  shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue],
+  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
 ) -> String {
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
     _ => abort("expected preprocess success")
@@ -62,9 +62,9 @@ fn upstream_compose_fixture_source(
   case_name : String,
   rel_path : String,
 ) -> String {
-  let files = @moon_wgsl.scan_wgsl_source_files(
+  let files = @resolver.scan_wgsl_source_files(
     "testdata/naga_oil_upstream/compose_tests/\{case_name}",
-    @moon_wgsl.WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream compose fixture scan success")
   }
@@ -78,7 +78,7 @@ fn upstream_compose_fixture_source(
 
 ///|
 test "naga_oil: metadata parser records only used imports like upstream" {
-  let metadata = @moon_wgsl.get_preprocessor_metadata(
+  let metadata = @preprocess.get_preprocessor_metadata(
     "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2u\n#import bevy_render::{\n  view::View,\n  globals::Globals,\n}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
   )
   debug_inspect(metadata.name, content="Some(\"bevy_ui::ui_node\")")
@@ -107,13 +107,13 @@ test "naga_oil: metadata parser records only used imports like upstream" {
   debug_inspect(metadata.wgsl_directives.is_empty(), content="true")
 
   guard metadata.defines.get("HDR")
-    is Some(@moon_wgsl.ShaderDefValue::Bool(enabled)) else {
+    is Some(@common.ShaderDefValue::Bool(enabled)) else {
     abort("expected HDR define")
   }
   debug_inspect(enabled, content="true")
 
   guard metadata.defines.get("TONEMAP_MODE")
-    is Some(@moon_wgsl.ShaderDefValue::Bool(mode)) else {
+    is Some(@common.ShaderDefValue::Bool(mode)) else {
     abort("expected TONEMAP_MODE define")
   }
   debug_inspect(mode, content="false")
@@ -121,7 +121,7 @@ test "naga_oil: metadata parser records only used imports like upstream" {
 
 ///|
 test "naga_oil: metadata parser keeps quoted path imports and duplicate item uses" {
-  let (_, imports, _) = @moon_wgsl.get_preprocessor_data(
+  let (_, imports, _) = @preprocess.get_preprocessor_data(
     "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\nfn vertex(vertex: Vertex) -> VertexOutput {\n  var out : VertexOutput;\n  return out;\n}\n",
   )
   debug_inspect(imports.length(), content="1")
@@ -137,7 +137,7 @@ test "naga_oil: metadata parser keeps quoted path imports and duplicate item use
 
 ///|
 test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
-  let metadata = @moon_wgsl.get_preprocessor_metadata(
+  let metadata = @preprocess.get_preprocessor_metadata(
     "enable f16, subgroups;\nrequires readonly_and_readwrite_storage_textures;\ndiagnostic(warn, derivative_uniformity);\nfn shade() -> f32 {\n  return #EXPOSURE + #{WHITE_POINT};\n}\n",
   )
   debug_inspect(metadata.wgsl_directives.is_empty(), content="false")
@@ -163,7 +163,7 @@ test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
 
 ///|
 test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
-  let (_, imports, _) = @moon_wgsl.get_preprocessor_data(
+  let (_, imports, _) = @preprocess.get_preprocessor_data(
     "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\n\n#if EFFECT_ID == 0\n    #import \"shaders/skills/sound.wgsl\" frag, vert\n#else if EFFECT_ID == 1\n    #import \"shaders/skills/orb.wgsl\" frag, vert\n#else if EFFECT_ID == 2\n    #import \"shaders/skills/slash.wgsl\" frag, vert\n#else if EFFECT_ID == 3\n    #import \"shaders/skills/railgun_trail.wgsl\" frag, vert\n#else if EFFECT_ID == 4\n    #import \"shaders/skills/magic_arrow.wgsl\" frag, vert\n#else if EFFECT_ID == 5\n    #import \"shaders/skills/hit.wgsl\" frag, vert\n#else if EFFECT_ID == 6\n    #import \"shaders/skills/lightning_ring.wgsl\" frag, vert\n#else if EFFECT_ID == 7\n    #import \"shaders/skills/lightning.wgsl\" frag, vert\n#endif\n\n#import something_unused\n\n@fragment\nfn fragment(in: VertexOutput) -> @location(0) vec4<f32> {\n    return frag(in);\n}\n\n@vertex\nfn vertex(vertex: Vertex) -> VertexOutput {\n    return vert(vertex);\n}\n",
   )
   debug_inspect(imports.length(), content="9")
@@ -208,7 +208,7 @@ test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
 
 ///|
 test "naga_oil upstream mirror: metadata parser matches bevy path import fixture" {
-  let (_, imports, _) = @moon_wgsl.get_preprocessor_data(
+  let (_, imports, _) = @preprocess.get_preprocessor_data(
     upstream_compose_fixture_source("bevy_path_imports", "skill.wgsl"),
   )
   debug_inspect(imports.length(), content="9")
@@ -256,7 +256,7 @@ test "naga_oil upstream mirror: metadata parser matches bevy path import fixture
 
 ///|
 test "naga_oil: preprocess strips imports and records used import offsets" {
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  let output = @preprocess.Preprocessor::default().preprocess(
     "#import bevy_render::view::View\nfn main(view: View) -> View {\n  return view;\n}\n",
     empty_shader_defs(),
   ) catch {
@@ -278,8 +278,8 @@ test "naga_oil: preprocess strips imports and records used import offsets" {
 ///|
 test "issue 5: preprocessor shader defs preserve non-BMP source text" {
   let shader_defs = empty_shader_defs()
-  shader_defs.set("CUSTOM_LIMIT", @moon_wgsl.ShaderDefValue::Int(42))
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  shader_defs.set("CUSTOM_LIMIT", @common.ShaderDefValue::Int(42))
+  let output = @preprocess.Preprocessor::default().preprocess(
     "// 😀 before a braced shader def\nlet a = #{CUSTOM_LIMIT};\n// 😃 before a bare shader def\nlet b = #CUSTOM_LIMIT;\n// 😄 before an unknown shader def\nlet c = #UNKNOWN;\n",
     shader_defs,
   ) catch {
@@ -305,7 +305,7 @@ test "issue 5: preprocessor shader defs preserve non-BMP source text" {
 ///|
 test "naga_oil: preprocess follows else-ifdef fallback semantics" {
   let source = "\nstruct View {\n    view_proj: mat4x4<f32>,\n    world_position: vec3<f32>,\n};\n@group(0) @binding(0)\nvar<uniform> view: View;\n\n#ifdef TEXTURE\n@group(1) @binding(0)\nvar sprite_texture: texture_2d<f32>;\n#else ifdef SECOND_TEXTURE\n@group(1) @binding(0)\nvar sprite_texture: texture_2d<f32>;\n#else\n@group(1) @binding(0)\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
-  let fallback_output = @moon_wgsl.Preprocessor::default().preprocess(
+  let fallback_output = @preprocess.Preprocessor::default().preprocess(
     source,
     empty_shader_defs(),
   ) catch {
@@ -320,7 +320,7 @@ test "naga_oil: preprocess follows else-ifdef fallback semantics" {
     content="false",
   )
 
-  let first_clause_output = @moon_wgsl.Preprocessor::default().preprocess(
+  let first_clause_output = @preprocess.Preprocessor::default().preprocess(
     source,
     bool_shader_def("TEXTURE", true),
   ) catch {
@@ -351,7 +351,7 @@ test "naga_oil upstream: preprocess else-if chains choose only first active bran
     content="\"second\"",
   )
   let defs = bool_shader_def("SECOND_TEXTURE", true)
-  defs.set("THIRD_TEXTURE", @moon_wgsl.ShaderDefValue::Bool(true))
+  defs.set("THIRD_TEXTURE", @common.ShaderDefValue::Bool(true))
   debug_inspect(
     preprocess_without_ascii_whitespace(source, defs),
     content="\"second\"",
@@ -421,10 +421,10 @@ test "naga_oil upstream: preprocess handles complicated nested else-ifdef scopes
 ///|
 test "naga_oil upstream: preprocess reports shader-def comparison errors" {
   let unknown_operator_defs = bool_shader_def("TEXTURE", true)
-  let _ = @moon_wgsl.Preprocessor::default().preprocess(
+  let _ = @preprocess.Preprocessor::default().preprocess(
     "#if TEXTURE !! true\nok\n#endif\n", unknown_operator_defs,
   ) catch {
-    @moon_wgsl.PreprocessError::UnknownShaderDefOperator(operator, _) => {
+    @preprocess.PreprocessError::UnknownShaderDefOperator(operator, _) => {
       debug_inspect(operator, content="\"!!\"")
       return
     }
@@ -436,23 +436,23 @@ test "naga_oil upstream: preprocess reports shader-def comparison errors" {
 ///|
 test "naga_oil upstream: preprocess validates int and bool comparison values" {
   ignore(
-    @moon_wgsl.Preprocessor::default().preprocess(
+    @preprocess.Preprocessor::default().preprocess(
       "#if TEXTURE == 3\nok\n#endif\n",
       empty_shader_defs(),
     ),
   ) catch {
-    @moon_wgsl.PreprocessError::UnknownShaderDef(name, _) =>
+    @preprocess.PreprocessError::UnknownShaderDef(name, _) =>
       debug_inspect(name, content="\"TEXTURE\"")
     _ => abort("expected missing shader-def error")
   }
 
   ignore(
-    @moon_wgsl.Preprocessor::default().preprocess(
+    @preprocess.Preprocessor::default().preprocess(
       "#if TEXTURE == 3\nok\n#endif\n",
       bool_shader_def("TEXTURE", true),
     ),
   ) catch {
-    @moon_wgsl.PreprocessError::InvalidShaderDefComparisonValue(
+    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
       name,
       value,
       expected,
@@ -465,11 +465,11 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
     _ => abort("expected invalid bool comparison value")
   }
 
-  let _ = @moon_wgsl.Preprocessor::default().preprocess(
+  let _ = @preprocess.Preprocessor::default().preprocess(
     "#if TEXTURE != false\nok\n#endif\n",
     int_shader_def("TEXTURE", 7),
   ) catch {
-    @moon_wgsl.PreprocessError::InvalidShaderDefComparisonValue(
+    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
       name,
       value,
       expected,
@@ -488,8 +488,8 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
 ///|
 test "naga_oil: preprocess applies module defines to output" {
   let source = "#define DEFUINT 1\n#define DEFINT -1\n#define DEFBOOL false\n#if DEFUINT == 1\nuint: #DEFUINT\n#endif\n#if DEFINT == -1\nint: #DEFINT\n#endif\n#if DEFBOOL == false\nbool: #DEFBOOL\n#endif\n"
-  let metadata = @moon_wgsl.get_preprocessor_metadata(source)
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  let metadata = @preprocess.get_preprocessor_metadata(source)
+  let output = @preprocess.Preprocessor::default().preprocess(
     source,
     metadata.defines,
   ) catch {
@@ -502,7 +502,7 @@ test "naga_oil: preprocess applies module defines to output" {
     content="true",
   )
   guard metadata.defines.get("DEFUINT")
-    is Some(@moon_wgsl.ShaderDefValue::UInt(uint_value)) else {
+    is Some(@common.ShaderDefValue::UInt(uint_value)) else {
     abort("expected naga_oil-style unsigned positive define")
   }
   debug_inspect(uint_value.to_string(), content="\"1\"")
@@ -510,9 +510,9 @@ test "naga_oil: preprocess applies module defines to output" {
 
 ///|
 test "naga_oil: define metadata rejects unsigned suffix like upstream" {
-  let metadata = @moon_wgsl.get_preprocessor_metadata("#define VALUE 2u\n")
+  let metadata = @preprocess.get_preprocessor_metadata("#define VALUE 2u\n")
   guard metadata.defines.get("VALUE")
-    is Some(@moon_wgsl.ShaderDefValue::Bool(value)) else {
+    is Some(@common.ShaderDefValue::Bool(value)) else {
     abort("expected naga_oil-style failed unsigned suffix define")
   }
   debug_inspect(value, content="false")
@@ -521,14 +521,13 @@ test "naga_oil: define metadata rejects unsigned suffix like upstream" {
 ///|
 test "naga_oil: preprocess accepts whitespace after hash directives" {
   let source = "# define_import_path demo::spaced\n# define MODE 2\n# if MODE==1\none\n# else if MODE==2\ntwo #MODE\n# else\nthree\n# endif\n"
-  let metadata = @moon_wgsl.get_preprocessor_metadata(source)
+  let metadata = @preprocess.get_preprocessor_metadata(source)
   debug_inspect(metadata.name, content="Some(\"demo::spaced\")")
-  guard metadata.defines.get("MODE")
-    is Some(@moon_wgsl.ShaderDefValue::UInt(mode)) else {
+  guard metadata.defines.get("MODE") is Some(@common.ShaderDefValue::UInt(mode)) else {
     abort("expected MODE define")
   }
   debug_inspect(mode.to_string(), content="\"2\"")
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  let output = @preprocess.Preprocessor::default().preprocess(
     source,
     metadata.defines,
   ) catch {
@@ -541,7 +540,7 @@ test "naga_oil: preprocess accepts whitespace after hash directives" {
 
 ///|
 test "naga_oil: preprocess accepts whitespace after hash import directives" {
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  let output = @preprocess.Preprocessor::default().preprocess(
     "# import demo::math::PI\nfn main() -> f32 {\n  return PI;\n}\n",
     empty_shader_defs(),
   ) catch {
@@ -566,14 +565,14 @@ test "naga_oil: preprocess accepts whitespace after hash import directives" {
 ///|
 test "naga_oil: shader def placeholders accept hash whitespace and upstream name chars" {
   let source = "let a = # lower_def;\nlet b = # {MIXED|PIPE};\n"
-  let metadata = @moon_wgsl.get_preprocessor_metadata(source)
+  let metadata = @preprocess.get_preprocessor_metadata(source)
   debug_inspect(metadata.effective_defs.contains("lower_def"), content="true")
   debug_inspect(metadata.effective_defs.contains("MIXED|PIPE"), content="true")
 
   let shader_defs = empty_shader_defs()
-  shader_defs.set("lower_def", @moon_wgsl.ShaderDefValue::Int(7))
-  shader_defs.set("MIXED|PIPE", @moon_wgsl.ShaderDefValue::Int(9))
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  shader_defs.set("lower_def", @common.ShaderDefValue::Int(7))
+  shader_defs.set("MIXED|PIPE", @common.ShaderDefValue::Int(9))
+  let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
     _ => abort("expected spaced shader-def preprocess success")
@@ -592,8 +591,8 @@ test "naga_oil: shader def placeholders accept hash whitespace and upstream name
 test "naga_oil: ifdef identifiers accept upstream pipe names" {
   let source = "#ifdef MIXED|PIPE\nactive\n#else\ninactive\n#endif\n"
   let shader_defs = empty_shader_defs()
-  shader_defs.set("MIXED|PIPE", @moon_wgsl.ShaderDefValue::Bool(true))
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  shader_defs.set("MIXED|PIPE", @common.ShaderDefValue::Bool(true))
+  let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
     _ => abort("expected pipe shader-def preprocess success")
@@ -609,8 +608,8 @@ test "naga_oil: ifdef identifiers accept upstream pipe names" {
 test "naga_oil: if comparison identifiers accept upstream pipe names" {
   let source = "#if MIXED|PIPE == 4\nactive\n#else\ninactive\n#endif\n"
   let shader_defs = empty_shader_defs()
-  shader_defs.set("MIXED|PIPE", @moon_wgsl.ShaderDefValue::Int(4))
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  shader_defs.set("MIXED|PIPE", @common.ShaderDefValue::Int(4))
+  let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
     _ => abort("expected pipe shader-def comparison preprocess success")
@@ -624,17 +623,16 @@ test "naga_oil: if comparison identifiers accept upstream pipe names" {
 
 ///|
 test "naga_oil: define metadata consumes one token like upstream regexes" {
-  let metadata = @moon_wgsl.get_preprocessor_metadata(
+  let metadata = @preprocess.get_preprocessor_metadata(
     "# define_import_path demo::module trailing_text\n# define COUNT 3 ignored_tail\n# define FLAG true ignored_tail\n",
   )
   debug_inspect(metadata.name, content="Some(\"demo::module\")")
   guard metadata.defines.get("COUNT")
-    is Some(@moon_wgsl.ShaderDefValue::UInt(count)) else {
+    is Some(@common.ShaderDefValue::UInt(count)) else {
     abort("expected COUNT define")
   }
   debug_inspect(count.to_string(), content="\"3\"")
-  guard metadata.defines.get("FLAG")
-    is Some(@moon_wgsl.ShaderDefValue::Bool(flag)) else {
+  guard metadata.defines.get("FLAG") is Some(@common.ShaderDefValue::Bool(flag)) else {
     abort("expected FLAG define")
   }
   debug_inspect(flag, content="true")
@@ -642,21 +640,21 @@ test "naga_oil: define metadata consumes one token like upstream regexes" {
 
 ///|
 test "naga_oil: define metadata follows upstream regex character classes" {
-  let metadata = @moon_wgsl.get_preprocessor_metadata(
+  let metadata = @preprocess.get_preprocessor_metadata(
     "#define NAME+TAIL 7\n#define PLUS +1\n#define PIPE|NAME value|tail ignored\n",
   )
   guard metadata.defines.get("NAME")
-    is Some(@moon_wgsl.ShaderDefValue::Bool(name_value)) else {
+    is Some(@common.ShaderDefValue::Bool(name_value)) else {
     abort("expected NAME define")
   }
   debug_inspect(name_value, content="true")
   guard metadata.defines.get("PLUS")
-    is Some(@moon_wgsl.ShaderDefValue::Bool(plus_value)) else {
+    is Some(@common.ShaderDefValue::Bool(plus_value)) else {
     abort("expected PLUS define")
   }
   debug_inspect(plus_value, content="true")
   guard metadata.defines.get("PIPE|NAME")
-    is Some(@moon_wgsl.ShaderDefValue::Bool(pipe_value)) else {
+    is Some(@common.ShaderDefValue::Bool(pipe_value)) else {
     abort("expected PIPE|NAME define")
   }
   debug_inspect(pipe_value, content="false")
@@ -664,7 +662,7 @@ test "naga_oil: define metadata follows upstream regex character classes" {
 
 ///|
 test "naga_oil: glsl version directive captures numeric version token" {
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  let output = @preprocess.Preprocessor::default().preprocess(
     "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",
     empty_shader_defs(),
   ) catch {
@@ -682,7 +680,7 @@ test "naga_oil: glsl version directive captures numeric version token" {
 
 ///|
 test "naga_oil: wgsl directives accept upstream whitespace forms" {
-  let metadata = @moon_wgsl.get_preprocessor_metadata(
+  let metadata = @preprocess.get_preprocessor_metadata(
     "enable   f16, subgroups ; trailing\nrequires\treadonly_and_readwrite_storage_textures ; trailing\ndiagnostic ( warn , derivative_uniformity ) ; trailing\nfn shade() -> f32 {\n  return 1.0;\n}\n",
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
@@ -713,7 +711,7 @@ test "naga_oil: wgsl directives accept upstream whitespace forms" {
 
 ///|
 test "naga_oil: directive section ends on non-directive identifier prefix" {
-  let metadata = @moon_wgsl.get_preprocessor_metadata(
+  let metadata = @preprocess.get_preprocessor_metadata(
     "enable_extra();\ndiagnostic_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="0")
@@ -723,10 +721,10 @@ test "naga_oil: directive section ends on non-directive identifier prefix" {
 
 ///|
 test "naga_oil: invalid diagnostic severity reports directive error" {
-  let _ = @moon_wgsl.Preprocessor::default().extract_wgsl_directives(
+  let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
     "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
   ) catch {
-    @moon_wgsl.PreprocessError::InvalidWgslDirective(
+    @preprocess.PreprocessError::InvalidWgslDirective(
       directive,
       position,
       reason
@@ -746,10 +744,10 @@ test "naga_oil: invalid diagnostic severity reports directive error" {
 
 ///|
 test "naga_oil: empty directive extension list reports directive error" {
-  let _ = @moon_wgsl.Preprocessor::default().extract_wgsl_directives(
+  let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
     "enable , ;\nfn shade() {}\n",
   ) catch {
-    @moon_wgsl.PreprocessError::InvalidWgslDirective(
+    @preprocess.PreprocessError::InvalidWgslDirective(
       directive,
       position,
       reason
@@ -767,11 +765,11 @@ test "naga_oil: empty directive extension list reports directive error" {
 ///|
 test "naga_oil: uint comparison rejects unsigned suffix values" {
   let defs = empty_shader_defs()
-  defs.set("COUNT", @moon_wgsl.ShaderDefValue::UInt(1U))
-  let _ = @moon_wgsl.Preprocessor::default().preprocess(
+  defs.set("COUNT", @common.ShaderDefValue::UInt(1U))
+  let _ = @preprocess.Preprocessor::default().preprocess(
     "#if COUNT == 1u\nok\n#endif\n", defs,
   ) catch {
-    @moon_wgsl.PreprocessError::InvalidShaderDefComparisonValue(
+    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
       name,
       value,
       expected,
@@ -790,7 +788,7 @@ test "naga_oil: uint comparison rejects unsigned suffix values" {
 ///|
 test "naga_oil: preprocess uses Rust lines trailing newline semantics" {
   let source = "fn main() -> f32 {\r\n  return 1.0;\r\n}\r\n"
-  let output = @moon_wgsl.Preprocessor::default().preprocess(
+  let output = @preprocess.Preprocessor::default().preprocess(
     source,
     empty_shader_defs(),
   ) catch {

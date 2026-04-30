@@ -206,7 +206,6 @@ pub fn WgslSymbolRedirect::default() -> WgslSymbolRedirect {
 
 ///|
 pub(all) struct WgslComposeOptions {
-  assets_base : String
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
   redirects : Array[WgslSymbolRedirect]
@@ -216,7 +215,6 @@ pub(all) struct WgslComposeOptions {
 ///|
 pub fn WgslComposeOptions::default() -> WgslComposeOptions {
   WgslComposeOptions::{
-    assets_base: "",
     defines: @hashmap.HashMap::new(),
     value_defines: default_wgsl_value_defines(),
     redirects: [],

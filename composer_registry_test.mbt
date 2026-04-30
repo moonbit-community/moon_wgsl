@@ -16,12 +16,12 @@
 fn composer_test_descriptor(
   source : String,
   file_path : String,
-  shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue],
-) -> @moon_wgsl.ComposableModuleDescriptor {
-  @moon_wgsl.ComposableModuleDescriptor::{
+  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
+) -> @common.ComposableModuleDescriptor {
+  @common.ComposableModuleDescriptor::{
     source,
     file_path,
-    language: @moon_wgsl.ShaderLanguage::Wgsl,
+    language: @common.ShaderLanguage::Wgsl,
     as_name: None,
     additional_imports: [],
     shader_defs,
@@ -30,9 +30,9 @@ fn composer_test_descriptor(
 
 ///|
 fn composer_test_add_or_abort(
-  composer : @moon_wgsl.Composer,
-  desc : @moon_wgsl.ComposableModuleDescriptor,
-) -> @moon_wgsl.ComposableModuleDefinition {
+  composer : @compose.Composer,
+  desc : @common.ComposableModuleDescriptor,
+) -> @common.ComposableModuleDefinition {
   composer.add_composable_module(desc) catch {
     err => abort("expected add_composable_module success: \{err.message()}")
   }
@@ -40,9 +40,9 @@ fn composer_test_add_or_abort(
 
 ///|
 test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
-  let composer = @moon_wgsl.Composer::default()
-  let base_shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] = @hashmap.HashMap::new()
-  base_shader_defs.set("BASE_DEF", @moon_wgsl.ShaderDefValue::Bool(true))
+  let composer = @compose.Composer::default()
+  let base_shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap::new()
+  base_shader_defs.set("BASE_DEF", @common.ShaderDefValue::Bool(true))
 
   let base_definition = composer_test_add_or_abort(
     composer,
@@ -82,7 +82,7 @@ test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
 
 ///|
 test "naga_oil: composer remove_composable_module removes dependent modules" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   ignore(
     composer_test_add_or_abort(
       composer,
@@ -112,7 +112,7 @@ test "naga_oil: composer remove_composable_module removes dependent modules" {
 
 ///|
 test "naga_oil: composer rejects modules without an import path name" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   let mut message : String? = None
   ignore(
     composer.add_composable_module(
@@ -136,7 +136,7 @@ test "naga_oil: composer rejects modules without an import path name" {
 
 ///|
 test "naga_oil: add_composable_module resolves imports from the composer registry" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "tests/plain_shared.wgsl", "#define_import_path test::plain\nfn plain_value() -> f32 {\n  return 2.0;\n}\n",
   )
@@ -156,9 +156,8 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
   )
 
   let composed = composer.compose_wgsl("tests/child_against_registry.wgsl", {
-    assets_base: "",
     defines: @hashmap.HashMap::new(),
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {

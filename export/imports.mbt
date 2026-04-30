@@ -18,7 +18,6 @@ using @common {
   type WgslSourceFile,
   type WgslSourceMapEntry,
   type WgslSymbolRedirect,
-  default_wgsl_value_defines,
 }
 
 ///|

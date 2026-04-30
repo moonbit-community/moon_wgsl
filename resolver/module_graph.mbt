@@ -144,10 +144,7 @@ pub fn resolve_wgsl_import_file_path_from_registry(
 }
 
 ///|
-pub fn resolve_wgsl_source_file_path(
-  _assets_base : String,
-  rel : String,
-) -> String? {
+pub fn resolve_wgsl_source_file_path(rel : String) -> String? {
   let normalized_rel = normalize_shader_rel_path(rel)
   if normalized_rel == "" {
     return None
@@ -682,9 +679,7 @@ pub fn default_shader_rel_path_for_module_path(module_path : String) -> String {
 }
 
 ///|
-pub fn build_wgsl_import_module_paths(
-  _assets_base : String,
-) -> @hashmap.HashMap[String, String] {
+pub fn build_wgsl_import_module_paths() -> @hashmap.HashMap[String, String] {
   copy_registered_wgsl_import_module_paths()
 }
 
@@ -732,7 +727,6 @@ pub fn resolve_wgsl_import_module_in_registry(
 
 ///|
 pub fn resolve_wgsl_import_module(
-  _assets_base : String,
   import_path : String,
   modules : @hashmap.HashMap[String, String],
 ) -> WgslResolvedImportModule? {

@@ -15,7 +15,6 @@ pub fn registered_wgsl_source_required(String) -> String raise ComposerError
 
 // Errors
 pub(all) suberror ComposerError {
-  EmptyAssetsBase(String)
   FailedToResolveImport(String)
   ImportCycle(String)
   InvalidStructMemberIdentifier(String)
@@ -49,8 +48,7 @@ pub fn Composer::copy_registered_wgsl_source_files(Self) -> Array[@common.WgslSo
 pub fn Composer::default() -> Self
 pub fn Composer::from_registered_wgsl_source_registry() -> Self
 pub fn Composer::load_root_wgsl_preprocessed_into_session(Self, String, WgslComposeSession) -> String raise ComposerError
-pub fn Composer::load_wgsl_from_assets_base_required(Self, String, String) -> String raise ComposerError
-pub fn Composer::load_wgsl_source_required_raw(Self, String, String) -> String raise ComposerError
+pub fn Composer::load_wgsl_source_required_raw(Self, String) -> String raise ComposerError
 pub fn Composer::new_wgsl_compose_session(Self, @common.WgslComposeOptions) -> WgslComposeSession
 pub fn Composer::register_wgsl_source(Self, String, String) -> Unit
 pub fn Composer::register_wgsl_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
@@ -61,7 +59,6 @@ pub fn Composer::registered_wgsl_source(Self, String) -> String?
 pub fn Composer::remove_composable_module(Self, String) -> Unit
 
 pub(all) struct WgslComposeSession {
-  assets_base : String
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
   modules : @hashmap.HashMap[String, String]

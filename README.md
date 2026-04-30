@@ -4,12 +4,13 @@
 analysis, and shader composition.
 
 The public surface follows `naga_oil` concepts while staying source-level and
-multi-backend. After adding the dependency, reference the package through
-`@moon_wgsl`:
+multi-backend. Import the focused subpackage you need, such as `@common`,
+`@preprocess`, `@resolver`, `@analysis`, `@compose`, or `@export`:
 
 ```mbt check
-test "README: root package surface" {
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
+///|
+test "README: common package surface" {
+  let value_defines = @common.default_wgsl_value_defines()
   debug_inspect(value_defines.length() > 0, content="true")
 }
 ```
@@ -70,11 +71,11 @@ Metadata includes:
 Example:
 
 ```mbt check
+///|
 test "README: metadata extraction" {
-  let metadata : @moon_wgsl.PreprocessorMetaData =
-    @moon_wgsl.get_preprocessor_metadata(
-      "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
-    )
+  let metadata : @common.PreprocessorMetaData = @preprocess.get_preprocessor_metadata(
+    "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
+  )
 
   debug_inspect(metadata.name, content="Some(\"bevy_ui::ui_node\")")
   debug_inspect(metadata.imports.length(), content="3")
@@ -88,17 +89,18 @@ Use `Preprocessor::preprocess` to evaluate conditional blocks, strip import
 declarations from the output, and substitute shader-definition values.
 
 ```mbt check
+///|
 test "README: preprocess single shader" {
-  let defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] = @hashmap.HashMap::new()
-  defs.set("TEXTURE", @moon_wgsl.ShaderDefValue::Bool(true))
+  let defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap::new()
+  defs.set("TEXTURE", @common.ShaderDefValue::Bool(true))
 
-  let source =
-    "#ifdef TEXTURE\nvar sprite_texture: texture_2d<f32>;\n#else\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
+  let source = "#ifdef TEXTURE\nvar sprite_texture: texture_2d<f32>;\n#else\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
 
-  let output : @moon_wgsl.PreprocessOutput =
-    @moon_wgsl.Preprocessor::default().preprocess(source, defs) catch {
-      _ => abort("preprocess failed")
-    }
+  let output : @common.PreprocessOutput = @preprocess.Preprocessor::default().preprocess(
+    source, defs,
+  ) catch {
+    _ => abort("preprocess failed")
+  }
 
   debug_inspect(
     output.preprocessed_source.contains("texture_2d<f32>"),
@@ -114,43 +116,39 @@ test "README: preprocess single shader" {
 merges imported definitions into a final WGSL string.
 
 The recommended path is to register shaders on the `Composer` instance itself.
-Global registry helpers still exist for compatibility, but new code should
+Shared registry helpers are available, but new code should
 prefer Composer-owned registry state. `Composer::default()` starts empty; use
 `Composer::from_registered_wgsl_source_registry()` only when you explicitly
-want a snapshot of the global compatibility registry.
+want a snapshot of the shared registry.
 
 ```mbt check
+///|
 test "README: compose registered modules" {
-  let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
+  let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirects : Array[@moon_wgsl.WgslSymbolRedirect] = []
+  let redirects : Array[@common.WgslSymbolRedirect] = []
   composer.clear_registered_wgsl_source_registry()
 
   composer.register_wgsl_source(
-    "render/maths.wgsl",
-    "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318;\n",
+    "render/maths.wgsl", "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318;\n",
   )
 
   composer.register_wgsl_source(
-    "sprite_render/mesh2d/mesh2d_functions.wgsl",
-    "#define_import_path bevy_sprite::mesh2d_functions\n#import bevy_render::maths::PI_2\nfn twice_pi() -> f32 {\n  return PI_2;\n}\n",
+    "sprite_render/mesh2d/mesh2d_functions.wgsl", "#define_import_path bevy_sprite::mesh2d_functions\n#import bevy_render::maths::PI_2\nfn twice_pi() -> f32 {\n  return PI_2;\n}\n",
   )
 
   composer.register_wgsl_source(
-    "sprite_render/mesh2d/mesh2d.wgsl",
-    "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
+    "sprite_render/mesh2d/mesh2d.wgsl", "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
   )
 
-  let compose_options : @moon_wgsl.WgslComposeOptions = {
-    assets_base: "",
+  let compose_options : @common.WgslComposeOptions = {
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
   let composed : String = composer.compose_wgsl(
-    "sprite_render/mesh2d/mesh2d.wgsl",
-    compose_options,
+    "sprite_render/mesh2d/mesh2d.wgsl", compose_options,
   ) catch {
     _ => abort("compose failed")
   }
@@ -164,14 +162,15 @@ test "README: compose registered modules" {
 
 You can register a batch of shader files at once and use relative quoted paths
 between them. Composer instances expose the same registry APIs as the global
-compatibility helpers.
+shared registry helpers.
 
 ```mbt check
+///|
 test "README: bulk registry and relative imports" {
-  let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
+  let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirects : Array[@moon_wgsl.WgslSymbolRedirect] = []
-  let files : Array[@moon_wgsl.WgslSourceFile] = [
+  let redirects : Array[@common.WgslSymbolRedirect] = []
+  let files : Array[@common.WgslSourceFile] = [
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedValue {\n  tint: vec4<f32>,\n}\n",
@@ -189,16 +188,14 @@ test "README: bulk registry and relative imports" {
     composer.registered_wgsl_source("shaders/effects/main.wgsl") is Some(_),
     content="true",
   )
-  let compose_options : @moon_wgsl.WgslComposeOptions = {
-    assets_base: "",
+  let compose_options : @common.WgslComposeOptions = {
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
   let composed : String = composer.compose_wgsl(
-    "shaders/effects/main.wgsl",
-    compose_options,
+    "shaders/effects/main.wgsl", compose_options,
   ) catch {
     _ => abort("compose failed")
   }
@@ -210,8 +207,9 @@ If you want collision diagnostics before mutating the registry, use the checked
 path:
 
 ```mbt check
+///|
 test "README: checked bulk registry" {
-  let files : Array[@moon_wgsl.WgslSourceFile] = [
+  let files : Array[@common.WgslSourceFile] = [
     {
       rel_path: "shaders/demo/a.wgsl",
       source: "#define_import_path demo::dup\nfn a() -> f32 { return 1.0; }\n",
@@ -222,13 +220,15 @@ test "README: checked bulk registry" {
     },
   ]
 
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let diagnostics : Array[@moon_wgsl.WgslDiagnostic] =
-    @moon_wgsl.analyze_wgsl_source_files_for_registry(files)
+  @resolver.clear_registered_wgsl_source_registry()
+  let diagnostics : Array[@common.WgslDiagnostic] = @resolver.analyze_wgsl_source_files_for_registry(
+    files,
+  )
   debug_inspect(diagnostics.length(), content="1")
 
-  let checked_diagnostics : Array[@moon_wgsl.WgslDiagnostic] =
-    @moon_wgsl.register_wgsl_source_files_checked(files)
+  let checked_diagnostics : Array[@common.WgslDiagnostic] = @resolver.register_wgsl_source_files_checked(
+    files,
+  )
   debug_inspect(checked_diagnostics.length(), content="1")
 }
 ```
@@ -242,11 +242,12 @@ Scanned `rel_path` values are relative to the scan root, so scanning
 `assets/shaders` yields registry keys such as `effects/main.wgsl`.
 
 ```mbt check
+///|
 test "README: scan source tree" {
-  let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
+  let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirects : Array[@moon_wgsl.WgslSymbolRedirect] = []
-  let scan_options : @moon_wgsl.WgslSourceScanOptions = {
+  let redirects : Array[@common.WgslSymbolRedirect] = []
+  let scan_options : @common.WgslSourceScanOptions = {
     recursive: true,
     extensions: [".wgsl"],
     exclude_prefixes: ["ignored"],
@@ -257,16 +258,14 @@ test "README: scan source tree" {
     _ => abort("failed to scan WGSL shader tree")
   }
 
-  let compose_options : @moon_wgsl.WgslComposeOptions = {
-    assets_base: "",
+  let compose_options : @common.WgslComposeOptions = {
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
   let composed : String = composer.compose_wgsl(
-    "effects/main.wgsl",
-    compose_options,
+    "effects/main.wgsl", compose_options,
   ) catch {
     _ => abort("compose failed")
   }
@@ -278,10 +277,11 @@ test "README: scan source tree" {
 If you want to preflight a tree before registration, use the checked scan path:
 
 ```mbt check
+///|
 test "README: checked tree scan" {
-  let (files, diagnostics) = @moon_wgsl.scan_wgsl_source_files_checked(
+  let (files, diagnostics) = @resolver.scan_wgsl_source_files_checked(
     "testdata/wgsl_scan_dups",
-    @moon_wgsl.WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("failed to scan WGSL shader tree")
   }
@@ -299,11 +299,12 @@ tree-shaking and returns source-map entries, the dependency-closure source
 catalog used for matching, plus diagnostics.
 
 ```mbt check
+///|
 test "README: export single WGSL file" {
-  let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
+  let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirects : Array[@moon_wgsl.WgslSymbolRedirect] = []
-  let files : Array[@moon_wgsl.WgslSourceFile] = [
+  let redirects : Array[@common.WgslSymbolRedirect] = []
+  let files : Array[@common.WgslSourceFile] = [
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\n",
@@ -317,24 +318,18 @@ test "README: export single WGSL file" {
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_files(files)
 
-  let compose_options : @moon_wgsl.WgslComposeOptions = {
-    assets_base: "",
+  let compose_options : @common.WgslComposeOptions = {
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
-  let export_options : @moon_wgsl.WgslExportOptions = {
-    root_items: ["shade"],
+  let export_options : @common.WgslExportOptions = { root_items: ["shade"] }
+  let exported : @common.WgslExportOutput = @export.export_wgsl_with_options(
+    composer, "shaders/effects/main.wgsl", compose_options, export_options,
+  ) catch {
+    _ => abort("export failed")
   }
-  let exported : @moon_wgsl.WgslExportOutput =
-    @moon_wgsl.export_wgsl_with_options(composer, 
-      "shaders/effects/main.wgsl",
-      compose_options,
-      export_options,
-    ) catch {
-      _ => abort("export failed")
-    }
 
   debug_inspect(exported.source.contains("#import"), content="false")
   debug_inspect(exported.source_catalog.length() > 0, content="true")
@@ -347,11 +342,12 @@ If you need the declaration catalog directly, without exporting a specific
 entrypoint, use `build_wgsl_source_catalog` on the same Composer:
 
 ```mbt check
+///|
 test "README: build source catalog" {
-  let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
+  let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirects : Array[@moon_wgsl.WgslSymbolRedirect] = []
-  let files : Array[@moon_wgsl.WgslSourceFile] = [
+  let redirects : Array[@common.WgslSymbolRedirect] = []
+  let files : Array[@common.WgslSourceFile] = [
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\n",
@@ -365,21 +361,21 @@ test "README: build source catalog" {
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_files(files)
 
-  let compose_options : @moon_wgsl.WgslComposeOptions = {
-    assets_base: "",
+  let compose_options : @common.WgslComposeOptions = {
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
-  let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] =
-    @moon_wgsl.build_wgsl_source_catalog(composer, compose_options)
+  let catalog : Array[@common.WgslSourceCatalogEntry] = @export.build_wgsl_source_catalog(
+    composer, compose_options,
+  )
   debug_inspect(catalog.length() > 0, content="true")
 }
 ```
 
 The top-level `build_registered_wgsl_source_catalog` helper is still available
-when you intentionally want to inspect the global compatibility registry.
+when you intentionally want to inspect the shared registry.
 
 ### 7. Applying Source-Level Redirects
 
@@ -387,13 +383,14 @@ Use the redirect-aware APIs when you want to remap one imported symbol to
 another during composition/export without depending on Naga IR.
 
 ```mbt check
+///|
 test "README: source-level redirects" {
-  let composer : @moon_wgsl.Composer = @moon_wgsl.Composer::default()
+  let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirects : Array[@moon_wgsl.WgslSymbolRedirect] = [
+  let redirects : Array[@common.WgslSymbolRedirect] = [
     { from_name: "build_shadow", to_name: "build_color" },
   ]
-  let files : Array[@moon_wgsl.WgslSourceFile] = [
+  let files : Array[@common.WgslSourceFile] = [
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn build_shadow(vertex: SharedVertex) -> vec4<f32> {\n  return vec4<f32>(0.0, 0.0, 0.0, 1.0);\n}\n",
@@ -407,48 +404,41 @@ test "README: source-level redirects" {
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_files(files)
 
-  let compose_options : @moon_wgsl.WgslComposeOptions = {
-    assets_base: "",
+  let compose_options : @common.WgslComposeOptions = {
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
-  let export_options : @moon_wgsl.WgslExportOptions = {
-    root_items: ["shade"],
+  let export_options : @common.WgslExportOptions = { root_items: ["shade"] }
+  let exported : @common.WgslExportOutput = @export.export_wgsl_with_options(
+    composer, "shaders/effects/redirect.wgsl", compose_options, export_options,
+  ) catch {
+    _ => abort("redirect export failed")
   }
-  let exported : @moon_wgsl.WgslExportOutput =
-    @moon_wgsl.export_wgsl_with_options(composer, 
-      "shaders/effects/redirect.wgsl",
-      compose_options,
-      export_options,
-    ) catch {
-      _ => abort("redirect export failed")
-    }
 
   debug_inspect(exported.source.contains("build_shadow"), content="false")
   debug_inspect(exported.source.contains("build_color"), content="true")
 }
 ```
 
-Global compatibility helpers are still available when you intentionally want
+Shared registry helpers are still available when you intentionally want
 to inspect the package-level registry:
 
 ```mbt check
+///|
 test "README: global catalog helper" {
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
 
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source(
-    "shaders/demo/catalog.wgsl",
-    "#define_import_path demo::catalog\nfn catalog_value() -> f32 {\n  return 1.0;\n}\n",
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source(
+    "shaders/demo/catalog.wgsl", "#define_import_path demo::catalog\nfn catalog_value() -> f32 {\n  return 1.0;\n}\n",
   )
 
-  let catalog : Array[@moon_wgsl.WgslSourceCatalogEntry] =
-    @moon_wgsl.build_registered_wgsl_source_catalog(
-      defines,
-      @moon_wgsl.default_wgsl_value_defines(),
-    )
+  let catalog : Array[@common.WgslSourceCatalogEntry] = @export.build_registered_wgsl_source_catalog(
+    defines,
+    @common.default_wgsl_value_defines(),
+  )
   debug_inspect(catalog.length() > 0, content="true")
 }
 ```
@@ -479,13 +469,13 @@ Main public entry points:
 - `get_preprocessor_data`
   Returns the simplified `(name, imports, defines)` tuple.
 - `register_wgsl_source` / `registered_wgsl_source`
-  Manage the global compatibility WGSL source registry.
+  Manage the shared WGSL source registry.
 - `Composer::register_wgsl_source` / `Composer::register_wgsl_source_files`
   Manage a Composer-owned WGSL source registry for hermetic composition.
 - `Composer::compose_wgsl`
   Composes WGSL from Composer-owned registry state and `WgslComposeOptions`.
 - `register_wgsl_source_files`
-  Registers a batch of WGSL source files into the global compatibility
+  Registers a batch of WGSL source files into the shared
   registry.
 - `analyze_wgsl_source_files_for_registry`
   Performs preflight validation for duplicate module names and rel-path
@@ -494,7 +484,7 @@ Main public entry points:
   Runs preflight registry diagnostics and only mutates registry state when no
   errors are reported.
 - `build_registered_wgsl_source_catalog`
-  Returns the declaration catalog for the global compatibility registry.
+  Returns the declaration catalog for the shared registry.
 - `build_wgsl_source_catalog`
   Returns the declaration catalog for a specific Composer registry.
 - `build_wgsl_import_module_paths` / `resolve_wgsl_import_module`
@@ -504,7 +494,7 @@ Main public entry points:
 - `rewrite_wgsl_symbol_redirects`
   Applies token-based source-level symbol redirects to WGSL source.
 - `Composer::from_registered_wgsl_source_registry`
-  Creates an explicit Composer snapshot from the global compatibility registry.
+  Creates an explicit Composer snapshot from the shared registry.
 - `Composer::compose_wgsl_source`
   Composes a raw WGSL source string using `WgslComposeOptions` without exposing
   session internals.
@@ -543,13 +533,11 @@ For the full exported surface, see
   `Composer::compose_wgsl_source`, and `export_wgsl_with_options`.
 - `Composer::default()` is hermetic and does not inherit the global registry.
   Use `Composer::from_registered_wgsl_source_registry()` only when you
-  intentionally want a compatibility snapshot of global state.
+  intentionally want a shared registry snapshot of global state.
 - Relative quoted file imports are resolved against the importing shader's
   registered path in the active Composer/global registry.
 - `register_wgsl_source_files_checked` is the safe bulk-registration path when
   callers need deterministic diagnostics before mutating the global registry.
-- `assets_base` is still present in the API for compatibility, but current
-  source resolution is driven by the registry.
 - `get_preprocessor_metadata` is forgiving by design: on parse failure it
   returns empty/default metadata instead of raising.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`

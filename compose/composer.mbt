@@ -39,7 +39,6 @@ pub fn Composer::from_registered_wgsl_source_registry() -> Composer {
 
 ///|
 pub(all) suberror ComposerError {
-  EmptyAssetsBase(String)
   FailedToResolveImport(String)
   ImportCycle(String)
   InvalidStructMemberIdentifier(String)
@@ -58,7 +57,6 @@ pub(all) suberror ComposerError {
 ///|
 pub fn ComposerError::message(self : ComposerError) -> String {
   match self {
-    EmptyAssetsBase(rel) => "assets_base is empty; cannot load shader: \{rel}"
     FailedToResolveImport(import_path) =>
       "failed to resolve shader import: \{import_path}"
     ImportCycle(cycle) => "shader import cycle detected: \{cycle}"
@@ -199,7 +197,6 @@ fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] 
 
 ///|
 pub(all) struct WgslComposeSession {
-  assets_base : String
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
   modules : @hashmap.HashMap[String, String]
@@ -337,7 +334,6 @@ pub fn Composer::new_wgsl_compose_session(
   options : WgslComposeOptions,
 ) -> WgslComposeSession {
   WgslComposeSession::{
-    assets_base: options.assets_base.trim().to_owned(),
     defines: copy_bool_defs(options.defines),
     value_defines: copy_int_defs(options.value_defines),
     modules: self.registry.copy_import_module_paths(),
@@ -647,7 +643,6 @@ pub fn registered_wgsl_source_required(
 ///|
 pub fn Composer::load_wgsl_source_required_raw(
   self : Composer,
-  _assets_base : String,
   rel : String,
 ) -> String raise ComposerError {
   let normalized_rel = normalize_shader_rel_path(rel)
@@ -974,10 +969,7 @@ fn Composer::compose_wgsl_import_requests(
       continue
     }
     session.visited.set(visit_key, true)
-    let raw_source = self.load_wgsl_source_required_raw(
-      session.assets_base,
-      request.rel_path,
-    )
+    let raw_source = self.load_wgsl_source_required_raw(request.rel_path)
     session.resolved_source_files.set(request.rel_path, raw_source)
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
@@ -1185,10 +1177,7 @@ pub fn Composer::load_root_wgsl_preprocessed_into_session(
     return ""
   }
   session.visited.set(normalized_rel, true)
-  let source = self.load_wgsl_source_required_raw(
-    session.assets_base,
-    normalized_rel,
-  )
+  let source = self.load_wgsl_source_required_raw(normalized_rel)
   session.resolved_source_files.set(normalized_rel, source)
   session.active_rel_paths.push(normalized_rel)
   let composed = self.preprocess_wgsl_source_with_path(
@@ -1233,20 +1222,3 @@ pub fn Composer::compose_wgsl_source(
 }
 
 ///|
-pub fn Composer::load_wgsl_from_assets_base_required(
-  self : Composer,
-  assets_base : String,
-  rel : String,
-) -> String raise ComposerError {
-  let base = assets_base.trim().to_owned()
-  if base == "" {
-    raise ComposerError::EmptyAssetsBase(rel)
-  }
-  self.compose_wgsl(rel, WgslComposeOptions::{
-    assets_base: base,
-    defines: @hashmap.HashMap::new(),
-    value_defines: default_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
-  })
-}

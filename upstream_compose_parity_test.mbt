@@ -31,10 +31,10 @@ fn upstream_parity_bool_defines(
 ///|
 fn upstream_parity_shader_def_values(
   names : Array[String],
-) -> @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] {
-  let defines : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue] = @hashmap.HashMap::new()
+) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
+  let defines : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap::new()
   for name in names {
-    defines.set(name, @moon_wgsl.ShaderDefValue::Bool(true))
+    defines.set(name, @common.ShaderDefValue::Bool(true))
   }
   defines
 }
@@ -42,29 +42,28 @@ fn upstream_parity_shader_def_values(
 ///|
 fn upstream_parity_compose_options(
   defines : @hashmap.HashMap[String, Bool],
-) -> @moon_wgsl.WgslComposeOptions {
+) -> @common.WgslComposeOptions {
   {
-    assets_base: "",
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }
 }
 
 ///|
-fn upstream_parity_empty_compose_options() -> @moon_wgsl.WgslComposeOptions {
+fn upstream_parity_empty_compose_options() -> @common.WgslComposeOptions {
   upstream_parity_compose_options(upstream_parity_empty_defines())
 }
 
 ///|
-fn upstream_parity_composer(case_name : String) -> @moon_wgsl.Composer {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+fn upstream_parity_composer(case_name : String) -> @compose.Composer {
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_tree(
     "testdata/upstream_compose/\{case_name}",
-    @moon_wgsl.WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream fixture registration success")
   }
@@ -73,9 +72,9 @@ fn upstream_parity_composer(case_name : String) -> @moon_wgsl.Composer {
 
 ///|
 fn upstream_parity_descriptor_effective_defs_source(
-  shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue],
+  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
 ) -> String {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   ignore(
     composer.add_composable_module({
@@ -96,7 +95,7 @@ fn upstream_parity_descriptor_effective_defs_source(
       "const c: u32 = 0u;\n" +
       "#endif\n",
       file_path: "mod.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -112,7 +111,7 @@ fn upstream_parity_descriptor_effective_defs_source(
       "  return f32(a + b + c);\n" +
       "}\n",
       file_path: "top.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs,
@@ -141,7 +140,7 @@ fn upstream_parity_descriptor_effective_defs_source(
 
 ///|
 fn upstream_parity_check_effective_defs_sum(
-  shader_defs : @hashmap.HashMap[String, @moon_wgsl.ShaderDefValue],
+  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
   expected_a : String,
   expected_b : String,
   expected_c : String,
@@ -183,20 +182,20 @@ fn upstream_parity_check_effective_defs_sum_with_false_three(
   expected_b : String,
 ) -> Unit {
   let shader_defs = upstream_parity_shader_def_values(names)
-  shader_defs.set("DEF_THREE", @moon_wgsl.ShaderDefValue::Bool(false))
+  shader_defs.set("DEF_THREE", @common.ShaderDefValue::Bool(false))
   upstream_parity_check_effective_defs_sum(
     shader_defs, expected_a, expected_b, "0u",
   )
 }
 
 ///|
-fn upstream_mirror_composer(case_name : String) -> @moon_wgsl.Composer {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+fn upstream_mirror_composer(case_name : String) -> @compose.Composer {
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_tree(
     "testdata/naga_oil_upstream/compose_tests/\{case_name}",
-    @moon_wgsl.WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream mirror fixture registration success")
   }
@@ -243,8 +242,8 @@ fn upstream_parity_export_case(
   rel_path : String,
   root_items : Array[String],
   defines : @hashmap.HashMap[String, Bool],
-) -> @moon_wgsl.WgslExportOutput {
-  @moon_wgsl.export_wgsl_with_options(
+) -> @common.WgslExportOutput {
+  @export.export_wgsl_with_options(
     upstream_parity_composer(case_name),
     rel_path,
     upstream_parity_compose_options(defines),
@@ -489,7 +488,7 @@ test "naga_oil upstream: effective defs drive imported declaration values" {
 
 ///|
 test "naga_oil upstream: bool false shader def is still defined for ifdef" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "bool_false.wgsl",
     "#ifdef FLAG\n" +
@@ -699,9 +698,9 @@ test "naga_oil upstream: dual source blending enable directive round-trips" {
 
 ///|
 test "naga_oil upstream: multiline dual source blending members skip writeback validation" {
-  let source = @moon_wgsl.Composer::default().compose_wgsl_source(
+  let source = @compose.Composer::default().compose_wgsl_source(
     "enable dual_source_blending;\nstruct FragmentOutput {\n  @location(0)\n  @blend_src(0)\n  source0_: vec4<f32>,\n  @location(0)\n  @blend_src(1)\n  source1_: vec4<f32>,\n}\n@fragment\nfn fragment() -> FragmentOutput {\n  return FragmentOutput(vec4<f32>(), vec4<f32>());\n}\n",
-    @moon_wgsl.WgslComposeOptions::default(),
+    @common.WgslComposeOptions::default(),
   ) catch {
     err =>
       abort("expected multiline blend_src compose success: \{err.message()}")
@@ -726,9 +725,8 @@ test "naga_oil upstream: modf result member access survives composition" {
 test "naga_oil upstream: additional imports are applied only to the root compose request" {
   let composer = upstream_parity_composer("add_imports")
   let source = composer.compose_wgsl("top.wgsl", {
-    assets_base: "",
     defines: upstream_parity_empty_defines(),
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [{ import_path: "plugin", items: [] }],
   }) catch {
@@ -743,13 +741,12 @@ test "naga_oil upstream: additional imports are applied only to the root compose
 ///|
 test "naga_oil upstream: additional imports participate in single-file export" {
   let composer = upstream_parity_composer("add_imports")
-  let output = @moon_wgsl.export_wgsl_with_options(
+  let output = @export.export_wgsl_with_options(
     composer,
     "top.wgsl",
     {
-      assets_base: "",
       defines: upstream_parity_empty_defines(),
-      value_defines: @moon_wgsl.default_wgsl_value_defines(),
+      value_defines: @common.default_wgsl_value_defines(),
       redirects: [],
       additional_imports: [{ import_path: "plugin", items: [] }],
     },
@@ -807,7 +804,7 @@ test "naga_oil upstream: transitive virtual override replaces imported body" {
 test "naga_oil upstream: additional import plugin overrides virtual function" {
   let composer = upstream_mirror_composer("add_imports")
   let options = upstream_parity_compose_options(upstream_parity_empty_defines())
-  options.additional_imports.push(@moon_wgsl.ImportDefinition::{
+  options.additional_imports.push(@common.ImportDefinition::{
     import_path: "plugin",
     items: [],
   })
@@ -928,7 +925,7 @@ test "naga_oil upstream: raycast WGSL source graph composes" {
 
 ///|
 test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   let pbr_types_source = "#define_import_path bevy_pbr::pbr_types\n" +
     "struct StandardMaterial {\n" +
     "  flags: u32,\n" +
@@ -993,7 +990,7 @@ test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
 
 ///|
 test "github issue 5: colliding lowered declarations from separate imports are deduped" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "pbr_types_a.wgsl",
     "#define_import_path bevy_pbr::pbr_types_a\n" +
@@ -1035,7 +1032,7 @@ test "github issue 5: colliding lowered declarations from separate imports are d
 
 ///|
 test "github issue 6: Bevy F0_ struct member composes without writeback rejection" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "f0_member.wgsl",
     "struct LightingInput {\n" + "  F0_: vec3<f32>,\n" + "}\n",
@@ -1051,7 +1048,7 @@ test "github issue 6: Bevy F0_ struct member composes without writeback rejectio
 
 ///|
 test "naga_oil parity: item-imported functions do not force imported mesh bindings" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "mesh_types.wgsl",
     "#define_import_path bevy_pbr::mesh_types\n" +
@@ -1149,7 +1146,7 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
 
 ///|
 test "naga_oil parity: item-imported entry points are dropped when unused by source" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "mesh.wgsl",
     "#define_import_path demo::mesh\n" +
@@ -1180,7 +1177,7 @@ test "naga_oil parity: item-imported entry points are dropped when unused by sou
 
 ///|
 test "naga_oil parity: explicit import-only entry modules do not force dependencies" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "mesh.wgsl",
     "#define_import_path demo::mesh\n" +
@@ -1205,7 +1202,7 @@ test "naga_oil parity: explicit import-only entry modules do not force dependenc
 
 ///|
 test "github issue 3: mixed full-module and item imports do not re-emit duplicate declarations" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "types.wgsl",
     "#define_import_path demo::types\n" +
@@ -1258,7 +1255,7 @@ test "github issue 3: mixed full-module and item imports do not re-emit duplicat
 
 ///|
 test "github issue 3: nested alias imports rewrite variable declaration types" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "mesh_view_types.wgsl",
     "#define_import_path bevy_pbr::mesh_view_types\n" +
@@ -1321,7 +1318,7 @@ test "github issue 3: nested alias imports rewrite variable declaration types" {
 
 ///|
 test "github issue 4: nested module alias rewrites global binding member access" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "view.wgsl",
     "#define_import_path bevy_render::view\n" +
@@ -1373,7 +1370,7 @@ test "github issue 4: nested module alias rewrites global binding member access"
     "  return pbr_functions::apply_transform(view_pos);\n" +
     "}\n",
   )
-  let output = @moon_wgsl.export_wgsl_with_options(
+  let output = @export.export_wgsl_with_options(
     composer,
     "root.wgsl",
     upstream_parity_compose_options(upstream_parity_empty_defines()),
@@ -1402,7 +1399,7 @@ test "github issue 4: nested module alias rewrites global binding member access"
 
 ///|
 test "github issue 6: transitive nested module alias rewrites imported binding types" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "view.wgsl",
     "#define_import_path bevy_render::view\n" + "struct View { value: u32 }\n",
@@ -1473,7 +1470,7 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
 
 ///|
 test "github issue 6: root local defines are stripped from final composed WGSL" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "root_define.wgsl",
     "#define_import_path demo::root_define\n" +

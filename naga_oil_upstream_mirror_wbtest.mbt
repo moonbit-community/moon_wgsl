@@ -14,9 +14,9 @@
 
 ///|
 test "naga_oil upstream WGSL fixture mirror parses without raw top-level declarations" {
-  let files = scan_wgsl_source_files(
+  let files = @resolver.scan_wgsl_source_files(
     "testdata/naga_oil_upstream/compose_tests",
-    WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected naga_oil upstream fixture scan success")
   }
@@ -46,9 +46,9 @@ test "naga_oil upstream WGSL fixture mirror parses without raw top-level declara
 
 ///|
 test "Bevy WGSL fixture mirror parses without raw top-level declarations" {
-  let files = scan_wgsl_source_files(
+  let files = @resolver.scan_wgsl_source_files(
     "testdata/bevy_wgsl",
-    WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture scan success")
   }

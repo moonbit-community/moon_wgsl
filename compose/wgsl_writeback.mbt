@@ -15,7 +15,7 @@
 ///|
 // This layer mirrors naga_oil's writeback boundary: composable-module
 // identifiers that naga's WGSL writer would rename are rejected before output,
-// while final generated source still gets our compatibility sanitizer.
+// while final generated source still gets the WGSL identifier sanitizer.
 fn wgsl_writeback_identifier_is_reserved(ident : String) -> Bool {
   if ident == "" {
     return false

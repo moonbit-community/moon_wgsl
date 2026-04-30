@@ -23,24 +23,23 @@ fn bevy_parity_defines(names : Array[String]) -> @hashmap.HashMap[String, Bool] 
 
 ///|
 fn bevy_parity_value_defines() -> @hashmap.HashMap[String, Int] {
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
+  let value_defines = @common.default_wgsl_value_defines()
   value_defines.remove("PER_OBJECT_BUFFER_BATCH_SIZE")
   value_defines
 }
 
 ///|
 fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_tree(
     "testdata/bevy_wgsl",
-    @moon_wgsl.WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
   composer.compose_wgsl(rel_path, {
-    assets_base: "",
     defines: bevy_parity_defines(defines),
     value_defines: bevy_parity_value_defines(),
     redirects: [],

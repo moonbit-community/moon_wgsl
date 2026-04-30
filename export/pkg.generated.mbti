@@ -12,10 +12,6 @@ pub fn build_registered_wgsl_source_catalog(@hashmap.HashMap[String, Bool], @has
 
 pub fn build_wgsl_source_catalog(@compose.Composer, @common.WgslComposeOptions) -> Array[@common.WgslSourceCatalogEntry]
 
-pub fn export_wgsl_from_assets_base_required(@compose.Composer, String, String, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
-
-pub fn export_wgsl_from_assets_base_required_with_redirects(@compose.Composer, String, String, @common.WgslExportOptions, Array[@common.WgslSymbolRedirect]) -> @common.WgslExportOutput raise @compose.ComposerError
-
 pub fn export_wgsl_with_options(@compose.Composer, String, @common.WgslComposeOptions, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
 
 pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String

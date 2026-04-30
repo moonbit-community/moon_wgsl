@@ -1,136 +1,13 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/moon_wgsl"
 
-import {
-  "Milky2018/moon_wgsl/common",
-  "Milky2018/moon_wgsl/compose",
-  "Milky2018/moon_wgsl/preprocess",
-  "Milky2018/moon_wgsl/resolver",
-  "moonbitlang/core/hashmap",
-  "moonbitlang/x/fs",
-}
-
 // Values
-pub fn analyze_wgsl_source_files_for_registry(Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
-
-pub fn build_registered_wgsl_source_catalog(@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) -> Array[@common.WgslSourceCatalogEntry]
-
-pub fn build_wgsl_import_module_paths(String) -> @hashmap.HashMap[String, String]
-
-pub fn build_wgsl_source_catalog(@compose.Composer, @common.WgslComposeOptions) -> Array[@common.WgslSourceCatalogEntry]
-
-pub fn clear_registered_wgsl_source_registry() -> Unit
-
-pub fn collect_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit
-
-pub fn copy_registered_wgsl_import_module_paths() -> @hashmap.HashMap[String, String]
-
-pub fn copy_registered_wgsl_source_files() -> Array[@common.WgslSourceFile]
-
-pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int]
-
-pub fn export_wgsl_from_assets_base_required(@compose.Composer, String, String, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
-
-pub fn export_wgsl_from_assets_base_required_with_redirects(@compose.Composer, String, String, @common.WgslExportOptions, Array[@common.WgslSymbolRedirect]) -> @common.WgslExportOutput raise @compose.ComposerError
-
-pub fn export_wgsl_with_options(@compose.Composer, String, @common.WgslComposeOptions, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
-
-pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue])
-
-pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
-
-pub fn normalize_shader_rel_path(String) -> String
-
-pub fn register_wgsl_source(String, String) -> Unit
-
-pub fn register_wgsl_source_files(Array[@common.WgslSourceFile]) -> Unit
-
-pub fn register_wgsl_source_files_checked(Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
-
-pub fn registered_wgsl_source(String) -> String?
-
-pub fn registered_wgsl_source_required(String) -> String raise @compose.ComposerError
-
-pub fn resolve_wgsl_import_file_path(String, String) -> String?
-
-pub fn resolve_wgsl_import_module(String, String, @hashmap.HashMap[String, String]) -> @common.WgslResolvedImportModule?
-
-pub fn resolve_wgsl_source_file_path(String, String) -> String?
-
-pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String
-
-pub fn scan_wgsl_source_files(String, @common.WgslSourceScanOptions) -> Array[@common.WgslSourceFile] raise @fs.IOError
-
-pub fn scan_wgsl_source_files_checked(String, @common.WgslSourceScanOptions) -> (Array[@common.WgslSourceFile], Array[@common.WgslDiagnostic]) raise @fs.IOError
 
 // Errors
 
 // Types and methods
 
 // Type aliases
-pub using @common {type ComposableModuleDefinition}
-
-pub using @common {type ComposableModuleDescriptor}
-
-pub using @compose {type Composer}
-
-pub using @compose {type ComposerError}
-
-pub using @common {type DiagnosticDirective}
-
-pub using @common {type EnableDirective}
-
-pub using @common {type ImportDefWithOffset}
-
-pub using @common {type ImportDefinition}
-
-pub using @common {type NagaModuleDescriptor}
-
-pub using @preprocess {type PreprocessError}
-
-pub using @common {type PreprocessOutput}
-
-pub using @preprocess {type Preprocessor}
-
-pub using @common {type PreprocessorMetaData}
-
-pub using @common {type RequiresDirective}
-
-pub using @common {type ShaderDefValue}
-
-pub using @common {type ShaderLanguage}
-
-pub using @common {type ShaderType}
-
-pub using @common {type WgslComposeOptions}
-
-pub using @compose {type WgslComposeSession}
-
-pub using @common {type WgslDiagnostic}
-
-pub using @common {type WgslDiagnosticSeverity}
-
-pub using @common {type WgslDirectives}
-
-pub using @common {type WgslExportOptions}
-
-pub using @common {type WgslExportOutput}
-
-pub using @common {type WgslImportTarget}
-
-pub using @common {type WgslResolvedImportModule}
-
-pub using @common {type WgslSourceCatalogEntry}
-
-pub using @common {type WgslSourceFile}
-
-pub using @common {type WgslSourceMapEntry}
-
-pub using @resolver {type WgslSourceRegistry}
-
-pub using @common {type WgslSourceScanOptions}
-
-pub using @common {type WgslSymbolRedirect}
 
 // Traits
 

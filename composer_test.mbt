@@ -18,20 +18,18 @@ fn empty_bool_defines() -> @hashmap.HashMap[String, Bool] {
 }
 
 ///|
-fn global_registry_composer() -> @moon_wgsl.Composer {
-  @moon_wgsl.Composer::from_registered_wgsl_source_registry()
+fn global_registry_composer() -> @compose.Composer {
+  @compose.Composer::from_registered_wgsl_source_registry()
 }
 
 ///|
 fn composer_test_compose_options(
-  assets_base : String,
   defines : @hashmap.HashMap[String, Bool],
-  redirects : Array[@moon_wgsl.WgslSymbolRedirect],
-) -> @moon_wgsl.WgslComposeOptions {
+  redirects : Array[@common.WgslSymbolRedirect],
+) -> @common.WgslComposeOptions {
   {
-    assets_base,
     defines,
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
@@ -39,12 +37,12 @@ fn composer_test_compose_options(
 
 ///|
 fn register_composer_test_shader_source(path : String, source : String) -> Unit {
-  @moon_wgsl.register_wgsl_source(path, source)
+  @resolver.register_wgsl_source(path, source)
 }
 
 ///|
 fn register_grouped_import_test_shaders() -> Unit {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
   register_composer_test_shader_source(
     "render/color_operations.wgsl", "#define_import_path bevy_render::color_operations\nfn rgb_to_hsv(color: vec3<f32>) -> vec3<f32> {\n  return color;\n}\nfn hsv_to_rgb(color: vec3<f32>) -> vec3<f32> {\n  return color;\n}\n",
   )
@@ -55,7 +53,7 @@ fn register_grouped_import_test_shaders() -> Unit {
 
 ///|
 fn register_item_import_test_shaders() -> Unit {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
   register_composer_test_shader_source(
     "render/view/view.wgsl", "#define_import_path bevy_render::view\nstruct View {\n  exposure: f32,\n}\nstruct ColorGrading {\n  view: View,\n}\n",
   )
@@ -69,7 +67,7 @@ fn register_item_import_test_shaders() -> Unit {
 
 ///|
 fn register_mesh_preprocess_branch_test_shaders() -> Unit {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
   register_composer_test_shader_source(
     "render/view/view.wgsl", "#define_import_path bevy_render::view\nstruct View {\n  exposure: f32,\n}\n",
   )
@@ -80,8 +78,8 @@ fn register_mesh_preprocess_branch_test_shaders() -> Unit {
 
 ///|
 fn register_relative_file_import_test_shaders() -> Unit {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source_files([
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source_files([
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
@@ -95,8 +93,8 @@ fn register_relative_file_import_test_shaders() -> Unit {
 
 ///|
 fn register_redirect_test_shaders() -> Unit {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source_files([
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source_files([
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn build_shadow(vertex: SharedVertex) -> vec4<f32> {\n  return vec4<f32>(0.0, 0.0, 0.0, 1.0);\n}\n",
@@ -110,11 +108,11 @@ fn register_redirect_test_shaders() -> Unit {
 
 ///|
 fn register_cycle_test_shaders() -> Unit {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source(
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source(
     "shaders/cycle/a.wgsl", "#define_import_path demo::a\n#import demo::b::b_value\nfn a_value() -> f32 {\n  return b_value();\n}\n",
   )
-  @moon_wgsl.register_wgsl_source(
+  @resolver.register_wgsl_source(
     "shaders/cycle/b.wgsl", "#define_import_path demo::b\n#import demo::a::a_value\nfn b_value() -> f32 {\n  return a_value();\n}\n",
   )
 }
@@ -124,7 +122,7 @@ test "naga_oil: composer preprocess supports multiline grouped imports" {
   register_grouped_import_test_shaders()
   let preprocessed = global_registry_composer().compose_wgsl_source(
     "#import bevy_render::{\n  color_operations::{hsv_to_rgb, rgb_to_hsv},\n  maths::{PI_2, powsafe},\n}\nfn demo(color: vec3<f32>) -> vec3<f32> {\n  let h = rgb_to_hsv(color);\n  return hsv_to_rgb(vec3<f32>(h.x + PI_2, h.y, powsafe(h.z, 1.0)));\n}\n",
-    composer_test_compose_options("assets", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
   }
@@ -132,7 +130,7 @@ test "naga_oil: composer preprocess supports multiline grouped imports" {
   debug_inspect(preprocessed.contains("fn hsv_to_rgb"), content="true")
   debug_inspect(preprocessed.contains("const PI_2"), content="true")
   debug_inspect(preprocessed.contains("bevy_render::"), content="false")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
@@ -140,13 +138,13 @@ test "naga_oil: composer preprocess strips module aliases" {
   register_grouped_import_test_shaders()
   let preprocessed = global_registry_composer().compose_wgsl_source(
     "#import bevy_render::maths as maths\nfn demo() -> f32 {\n  return maths::PI_2;\n}\n",
-    composer_test_compose_options("assets", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
   }
   debug_inspect(preprocessed.contains("return maths__PI_2;"), content="true")
   debug_inspect(preprocessed.contains("maths::PI_2"), content="false")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
@@ -154,26 +152,26 @@ test "naga_oil: commented module alias references do not trigger imports" {
   register_grouped_import_test_shaders()
   let preprocessed = global_registry_composer().compose_wgsl_source(
     "#import bevy_render::maths as maths\n// return maths::PI_2;\nfn demo() -> f32 {\n  return 1.0;\n}\n",
-    composer_test_compose_options("assets", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
   }
   debug_inspect(preprocessed.contains("const PI_2"), content="false")
   debug_inspect(preprocessed.contains("return 1.0;"), content="true")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: commented namespace paths do not report unresolved imports" {
   let preprocessed = global_registry_composer().compose_wgsl_source(
     "// unresolved::path should stay a comment\nfn demo() -> f32 {\n  return 1.0;\n}\n",
-    composer_test_compose_options("assets", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected commented namespace compose success: \{err.message()}")
   }
   debug_inspect(preprocessed.contains("return 1.0;"), content="true")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
@@ -181,7 +179,7 @@ test "naga_oil: composer item imports keep dependent view declarations" {
   register_item_import_test_shaders()
   let sprite_preprocessed = global_registry_composer().compose_wgsl(
     "sprite_render/render/sprite_view_bindings.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected sprite composer preprocess success: \{err.message()}")
@@ -194,7 +192,7 @@ test "naga_oil: composer item imports keep dependent view declarations" {
 
   let mesh2d_preprocessed = global_registry_composer().compose_wgsl(
     "sprite_render/mesh2d/mesh2d_view_bindings.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected mesh2d composer preprocess success: \{err.message()}")
@@ -204,7 +202,7 @@ test "naga_oil: composer item imports keep dependent view declarations" {
     content="true",
   )
   debug_inspect(mesh2d_preprocessed.contains("struct View"), content="true")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
@@ -216,7 +214,7 @@ test "naga_oil: composer drops preprocess previous-view imports outside active b
   defines.set("FRUSTUM_CULLING", true)
   let preprocessed = global_registry_composer().compose_wgsl(
     "pbr/render/mesh_preprocess.wgsl",
-    composer_test_compose_options("assets", defines, []),
+    composer_test_compose_options(defines, []),
   ) catch {
     err =>
       abort(
@@ -237,24 +235,24 @@ test "naga_oil: composer drops preprocess previous-view imports outside active b
     ),
     content="false",
   )
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: composer registered sources satisfy strict mesh2d preprocessing" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source(
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source(
     "render/maths.wgsl", "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318;\n",
   )
-  @moon_wgsl.register_wgsl_source(
+  @resolver.register_wgsl_source(
     "sprite_render/mesh2d/mesh2d_functions.wgsl", "#define_import_path bevy_sprite::mesh2d_functions\n#import bevy_render::maths::PI_2\nfn twice_pi() -> f32 {\n  return PI_2;\n}\n",
   )
-  @moon_wgsl.register_wgsl_source(
+  @resolver.register_wgsl_source(
     "sprite_render/mesh2d/mesh2d.wgsl", "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
   )
   let preprocessed = global_registry_composer().compose_wgsl(
     "sprite_render/mesh2d/mesh2d.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected registered-source preprocess success: \{err.message()}")
@@ -268,7 +266,7 @@ test "naga_oil: composer registered sources satisfy strict mesh2d preprocessing"
     content="true",
   )
   debug_inspect(preprocessed.contains("mesh_functions::"), content="false")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
@@ -276,7 +274,7 @@ test "naga_oil: composer preprocess resolves relative quoted file imports" {
   register_relative_file_import_test_shaders()
   let preprocessed = global_registry_composer().compose_wgsl(
     "shaders/effects/main.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
       abort(
@@ -288,17 +286,17 @@ test "naga_oil: composer preprocess resolves relative quoted file imports" {
   debug_inspect(preprocessed.contains("fn build_color"), content="true")
   debug_inspect(preprocessed.contains("fn shade"), content="true")
   debug_inspect(preprocessed.contains("#import"), content="false")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: composer default is isolated from the global registry" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source(
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source(
     "shaders/demo/global.wgsl", "#define_import_path demo::global\nfn global_value() -> f32 {\n  return 1.0;\n}\n",
   )
   debug_inspect(
-    @moon_wgsl.Composer::default().registered_wgsl_source(
+    @compose.Composer::default().registered_wgsl_source(
       "shaders/demo/global.wgsl",
     ),
     content="None",
@@ -309,18 +307,18 @@ test "naga_oil: composer default is isolated from the global registry" {
     ),
     content="Some(\"#define_import_path demo::global\\nfn global_value() -> f32 {\\n  return 1.0;\\n}\\n\")",
   )
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: composer global-registry snapshots stay isolated from later global mutations" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source(
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source(
     "shaders/demo/snap_a.wgsl", "#define_import_path demo::snap_a\nfn snap_a() -> f32 {\n  return 1.0;\n}\n",
   )
   let composer = global_registry_composer()
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  @moon_wgsl.register_wgsl_source(
+  @resolver.clear_registered_wgsl_source_registry()
+  @resolver.register_wgsl_source(
     "shaders/demo/snap_b.wgsl", "#define_import_path demo::snap_b\nfn snap_b() -> f32 {\n  return 2.0;\n}\n",
   )
   debug_inspect(
@@ -333,19 +331,19 @@ test "naga_oil: composer global-registry snapshots stay isolated from later glob
   )
   let preprocessed = composer.compose_wgsl(
     "shaders/demo/snap_a.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected snapshot-backed compose success: \{err.message()}")
   }
   debug_inspect(preprocessed.contains("fn snap_a"), content="true")
   debug_inspect(preprocessed.contains("fn snap_b"), content="false")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: composer local registry can compose without global registry state" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_files([
     {
@@ -358,9 +356,8 @@ test "naga_oil: composer local registry can compose without global registry stat
     },
   ])
   let preprocessed = composer.compose_wgsl("shaders/effects/main.wgsl", {
-    assets_base: "",
     defines: empty_bool_defines(),
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -370,7 +367,7 @@ test "naga_oil: composer local registry can compose without global registry stat
       )
   }
   debug_inspect(
-    @moon_wgsl.registered_wgsl_source("shaders/effects/main.wgsl"),
+    @resolver.registered_wgsl_source("shaders/effects/main.wgsl"),
     content="None",
   )
   debug_inspect(preprocessed.contains("struct SharedVertex"), content="true")
@@ -380,12 +377,11 @@ test "naga_oil: composer local registry can compose without global registry stat
 
 ///|
 test "issue 5: template constants preserve non-BMP source text" {
-  let value_defines = @moon_wgsl.default_wgsl_value_defines()
+  let value_defines = @common.default_wgsl_value_defines()
   value_defines.set("CUSTOM_LIMIT", 42)
-  let preprocessed = @moon_wgsl.Composer::default().compose_wgsl_source(
+  let preprocessed = @compose.Composer::default().compose_wgsl_source(
     "// 😀 before a braced template const\nconst A: u32 = #{CUSTOM_LIMIT}u;\n// 😃 before a bare template const\nconst B: u32 = #CUSTOM_LIMITu;\n// 😄 before an unknown template const\nconst C: u32 = #UNKNOWN;\n",
     {
-      assets_base: "",
       defines: empty_bool_defines(),
       value_defines,
       redirects: [],
@@ -407,14 +403,14 @@ test "issue 5: template constants preserve non-BMP source text" {
 
 ///|
 test "naga_oil: add_composable_module feeds the composer compose path" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   ignore(
     composer.add_composable_module({
       source: "#define_import_path demo::maths\nconst PI_2: f32 = 6.28318;\n",
       file_path: "shaders/demo/maths.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -426,7 +422,7 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
     composer.add_composable_module({
       source: "#define_import_path demo::main\n#import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
       file_path: "shaders/demo/main.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -435,9 +431,8 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
     err => abort("expected main module registration success: \{err.message()}")
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
-    assets_base: "",
     defines: empty_bool_defines(),
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -453,14 +448,14 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
 
 ///|
 test "naga_oil: composer accepts whitespace after hash import directives" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   ignore(
     composer.add_composable_module({
       source: "# define_import_path demo::maths\nconst PI_2: f32 = 6.28318;\n",
       file_path: "shaders/demo/maths.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -472,7 +467,7 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
     composer.add_composable_module({
       source: "# define_import_path demo::main\n# import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
       file_path: "shaders/demo/main.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -481,9 +476,8 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
     err => abort("expected main module registration success: \{err.message()}")
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
-    assets_base: "",
     defines: empty_bool_defines(),
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -496,14 +490,14 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
 
 ///|
 test "naga_oil: add_composable_module applies descriptor additional imports" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   ignore(
     composer.add_composable_module({
       source: "#define_import_path plugin\nfn external_scale() -> f32 {\n  return 2.0;\n}\n",
       file_path: "shaders/demo/plugin.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -516,7 +510,7 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
     composer.add_composable_module({
       source: "#define_import_path demo::main\nfn demo() -> f32 {\n  return plugin::external_scale();\n}\n",
       file_path: "shaders/demo/main.wgsl",
-      language: @moon_wgsl.ShaderLanguage::Wgsl,
+      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [{ import_path: "plugin", items: [] }],
       shader_defs: @hashmap.HashMap::new(),
@@ -525,9 +519,8 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
     err => abort("expected main module registration success: \{err.message()}")
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
-    assets_base: "",
     defines: empty_bool_defines(),
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -548,19 +541,18 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
 
 ///|
 test "naga_oil: composer can register a WGSL source tree from moonbitlang/x/fs" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source_tree(
     "testdata/wgsl_scan",
-    @moon_wgsl.WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected WGSL source tree registration success")
   }
   let preprocessed = composer.compose_wgsl("effects/main.wgsl", {
-    assets_base: "",
     defines: empty_bool_defines(),
-    value_defines: @moon_wgsl.default_wgsl_value_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -578,15 +570,15 @@ test "naga_oil: composer can register a WGSL source tree from moonbitlang/x/fs" 
 
 ///|
 test "naga_oil: checked source-tree registration preserves existing registry conflicts" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
-  let composer = @moon_wgsl.Composer::default()
+  @resolver.clear_registered_wgsl_source_registry()
+  let composer = @compose.Composer::default()
   composer.clear_registered_wgsl_source_registry()
   composer.register_wgsl_source(
     "shared/common.wgsl", "#define_import_path demo::shared\nfn shared_value() -> f32 {\n  return 1.0;\n}\n",
   )
   let diagnostics = composer.register_wgsl_source_tree_checked(
     "testdata/wgsl_scan_conflict",
-    @moon_wgsl.WgslSourceScanOptions::default(),
+    @common.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected checked WGSL source tree registration success")
   }
@@ -601,7 +593,7 @@ test "naga_oil: checked source-tree registration preserves existing registry con
 
 ///|
 test "naga_oil: source-level symbol redirects rewrite references but keep declarations" {
-  let rewritten = @moon_wgsl.rewrite_wgsl_symbol_redirects(
+  let rewritten = @analysis.rewrite_wgsl_symbol_redirects(
     "fn shade() -> f32 {\n  return build_shadow();\n}\nfn build_shadow() -> f32 {\n  return 1.0;\n}\n",
     [{ from_name: "build_shadow", to_name: "build_color" }],
   )
@@ -612,7 +604,7 @@ test "naga_oil: source-level symbol redirects rewrite references but keep declar
 
 ///|
 test "naga_oil: source-level symbol redirects ignore nested local shadows" {
-  let rewritten = @moon_wgsl.rewrite_wgsl_symbol_redirects(
+  let rewritten = @analysis.rewrite_wgsl_symbol_redirects(
     "fn shade(arg: u32) -> u32 {\n  if (arg > 0u) {\n    let build_shadow = arg;\n    return build_shadow;\n  }\n  for (var i: u32 = 0u; i < arg; i = i + 1u) {\n    continue;\n  }\n  return arg;\n}\nfn build_shadow() -> u32 {\n  return 1u;\n}\n",
     [{ from_name: "build_shadow", to_name: "build_color" }],
   )
@@ -627,7 +619,7 @@ test "naga_oil: composer preprocess can apply source-level symbol redirects" {
   register_redirect_test_shaders()
   let preprocessed = global_registry_composer().compose_wgsl(
     "shaders/effects/redirect.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), [
+    composer_test_compose_options(empty_bool_defines(), [
       { from_name: "build_shadow", to_name: "build_color" },
     ]),
   ) catch {
@@ -646,12 +638,12 @@ test "naga_oil: composer preprocess can apply source-level symbol redirects" {
   )
   debug_inspect(preprocessed.contains("fn build_color"), content="true")
   debug_inspect(preprocessed.contains("fn build_shadow"), content="false")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: aliased module rewrite preserves function parameter locals" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
   let module_source =
     #|#define_import_path bevy_pbr::mesh
     #|struct VertexInput {
@@ -673,7 +665,7 @@ test "naga_oil: aliased module rewrite preserves function parameter locals" {
   )
   let preprocessed = global_registry_composer().compose_wgsl(
     "root/aliased_parameter.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
       abort(
@@ -693,12 +685,12 @@ test "naga_oil: aliased module rewrite preserves function parameter locals" {
     content="false",
   )
   debug_inspect(preprocessed.contains("mesh__in"), content="false")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: virtual override base detection ignores local shadows" {
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
   let composer = global_registry_composer()
   composer.register_wgsl_source(
     "mod.wgsl", "#define_import_path mod\nvirtual fn inner() -> f32 {\n  return 1.0;\n}\n",
@@ -708,7 +700,7 @@ test "naga_oil: virtual override base detection ignores local shadows" {
   )
   let source = composer.compose_wgsl(
     "top.wgsl",
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
       abort("expected local-shadow virtual override success: \{err.message()}")
@@ -716,7 +708,7 @@ test "naga_oil: virtual override base detection ignores local shadows" {
   debug_inspect(source.contains("fn mod__inner__virtual_base"), content="false")
   debug_inspect(source.contains("let mod__inner = 2.0;"), content="true")
   debug_inspect(source.contains("return mod__inner;"), content="true")
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
@@ -724,7 +716,7 @@ test "github issue 5: unicode source lines do not abort prefix checks" {
   let source = "// 中文注释会让旧 starts_with_text 切到非法边界\n#ifdef ENABLED\nconst enabled_value: u32 = 1u;\n#endif\nfn main() -> u32 {\n  return 0u;\n}\n"
   let preprocessed = global_registry_composer().compose_wgsl_source(
     source,
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected unicode-safe compose success: \{err.message()}")
   }
@@ -734,14 +726,14 @@ test "github issue 5: unicode source lines do not abort prefix checks" {
 
 ///|
 test "naga_oil: composer reports missing shader def in if comparison" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "missing_if.wgsl", "#if TEXTURE == 3\nconst active: u32 = 1u;\n#endif\n",
   )
   ignore(
     composer.compose_wgsl(
       "missing_if.wgsl",
-      composer_test_compose_options("", empty_bool_defines(), []),
+      composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
     err => {
@@ -757,11 +749,11 @@ test "naga_oil: composer reports missing shader def in if comparison" {
 
 ///|
 test "naga_oil: composer rejects unsigned-suffix if comparison values" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "invalid_uint_if.wgsl", "#if COUNT == 1u\nconst active: u32 = 1u;\n#endif\n",
   )
-  let options = composer_test_compose_options("", empty_bool_defines(), [])
+  let options = composer_test_compose_options(empty_bool_defines(), [])
   options.value_defines.set("COUNT", 1)
   ignore(composer.compose_wgsl("invalid_uint_if.wgsl", options)) catch {
     err => {
@@ -779,7 +771,7 @@ test "naga_oil: composer rejects unsigned-suffix if comparison values" {
 
 ///|
 test "naga_oil: composer reports unknown shader def operator" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "bad_operator_if.wgsl", "#if TEXTURE !! true\nconst active: u32 = 1u;\n#endif\n",
   )
@@ -788,7 +780,7 @@ test "naga_oil: composer reports unknown shader def operator" {
   ignore(
     composer.compose_wgsl(
       "bad_operator_if.wgsl",
-      composer_test_compose_options("", defines, []),
+      composer_test_compose_options(defines, []),
     ),
   ) catch {
     err => {
@@ -804,12 +796,12 @@ test "naga_oil: composer reports unknown shader def operator" {
 
 ///|
 test "naga_oil: composer reports malformed shader-def scopes" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source("too_many.wgsl", "#endif\n")
   ignore(
     composer.compose_wgsl(
       "too_many.wgsl",
-      composer_test_compose_options("", empty_bool_defines(), []),
+      composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
     err =>
@@ -821,7 +813,7 @@ test "naga_oil: composer reports malformed shader-def scopes" {
   ignore(
     composer.compose_wgsl(
       "not_enough.wgsl",
-      composer_test_compose_options("", empty_bool_defines(), []),
+      composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
     err => {
@@ -834,14 +826,14 @@ test "naga_oil: composer reports malformed shader-def scopes" {
 
 ///|
 test "naga_oil: composer reports else without condition" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   composer.register_wgsl_source(
     "else_without.wgsl", "#else\nconst a: u32 = 1u;\n",
   )
   ignore(
     composer.compose_wgsl(
       "else_without.wgsl",
-      composer_test_compose_options("", empty_bool_defines(), []),
+      composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
     err => {
@@ -857,11 +849,11 @@ test "naga_oil: composer reports else without condition" {
 
 ///|
 test "naga_oil: composer applies root-local shader defines" {
-  let composer = @moon_wgsl.Composer::default()
+  let composer = @compose.Composer::default()
   let source = "#define NOW_DEFINED\n#define MODE 2\n#ifdef NOW_DEFINED\nconst enabled: u32 = #MODE;\n#endif\n#if MODE == 2\nconst selected: u32 = #MODE;\n#else\nconst selected: u32 = 0u;\n#endif\n"
   let preprocessed = composer.compose_wgsl_source(
     source,
-    composer_test_compose_options("", empty_bool_defines(), []),
+    composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected root-local define compose success: \{err.message()}")
   }
@@ -886,7 +878,7 @@ test "naga_oil: composer reports import cycles explicitly" {
   ignore(
     global_registry_composer().compose_wgsl(
       "shaders/cycle/a.wgsl",
-      composer_test_compose_options("", empty_bool_defines(), []),
+      composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
     err => message = Some(err.message())
@@ -895,5 +887,5 @@ test "naga_oil: composer reports import cycles explicitly" {
     message,
     content="Some(\"shader import cycle detected: shaders/cycle/a.wgsl -> shaders/cycle/b.wgsl -> shaders/cycle/a.wgsl\")",
   )
-  @moon_wgsl.clear_registered_wgsl_source_registry()
+  @resolver.clear_registered_wgsl_source_registry()
 }

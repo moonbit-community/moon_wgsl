@@ -104,7 +104,6 @@ pub(all) enum ShaderType {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct WgslComposeOptions {
-  assets_base : String
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
   redirects : Array[WgslSymbolRedirect]
