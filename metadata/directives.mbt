@@ -134,9 +134,11 @@ fn parse_define_value(raw_value : String) -> ShaderDefValue {
   if value == "false" {
     return ShaderDefValue::Bool(false)
   }
-  let parsed_unsigned = @string.parse_int(value[:], base=10) catch { _ => -1 }
-  if parsed_unsigned >= 0 {
-    return ShaderDefValue::UInt(parsed_unsigned.reinterpret_as_uint())
+  if !value.has_prefix("-") {
+    let parsed_unsigned = @string.parse_int(value[:], base=10) catch { _ => -1 }
+    if parsed_unsigned >= 0 {
+      return ShaderDefValue::UInt(parsed_unsigned.reinterpret_as_uint())
+    }
   }
   let parsed = @string.parse_int(value[:], base=10) catch {
     _ => return ShaderDefValue::Bool(false)

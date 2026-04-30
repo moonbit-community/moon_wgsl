@@ -142,6 +142,11 @@ fn eval_if_condition(
             def, value, "uint", offset,
           )
       }
+      if parsed < 0 {
+        raise PreprocessError::InvalidShaderDefComparisonValue(
+          def, value, "uint", offset,
+        )
+      }
       compare_uint_values(
         uint_value,
         parsed.reinterpret_as_uint(),

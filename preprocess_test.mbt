@@ -529,12 +529,17 @@ test "naga_oil: preprocess applies module defines to output" {
 
 ///|
 test "naga_oil: define metadata rejects unsigned suffix like upstream" {
-  let metadata = metadata_or_abort("#define VALUE 2u\n")
+  let metadata = metadata_or_abort("#define VALUE 2u\n#define NEG_ZERO -0\n")
   guard metadata.defines.get("VALUE")
     is Some(@common.ShaderDefValue::Bool(value)) else {
     abort("expected naga_oil-style failed unsigned suffix define")
   }
   debug_inspect(value, content="false")
+  guard metadata.defines.get("NEG_ZERO")
+    is Some(@common.ShaderDefValue::Int(neg_zero)) else {
+    abort("expected naga_oil-style signed negative zero define")
+  }
+  debug_inspect(neg_zero.to_string(), content="\"0\"")
 }
 
 ///|
@@ -805,8 +810,11 @@ test "naga_oil: empty directive extension list reports directive error" {
 test "naga_oil: uint comparison rejects unsigned suffix values" {
   let defs = empty_shader_defs()
   defs.set("COUNT", @common.ShaderDefValue::UInt(1U))
-  let _ = @preprocess.Preprocessor::default().preprocess(
-    "#if COUNT == 1u\nok\n#endif\n", defs,
+  let mut saw_suffix_error = false
+  ignore(
+    @preprocess.Preprocessor::default().preprocess(
+      "#if COUNT == 1u\nok\n#endif\n", defs,
+    ),
   ) catch {
     @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
       name,
@@ -817,11 +825,32 @@ test "naga_oil: uint comparison rejects unsigned suffix values" {
       debug_inspect(name, content="\"COUNT\"")
       debug_inspect(value, content="\"1u\"")
       debug_inspect(expected, content="\"uint\"")
-      return
+      saw_suffix_error = true
     }
     _ => abort("expected invalid uint comparison value")
   }
-  abort("expected invalid uint comparison value")
+  debug_inspect(saw_suffix_error, content="true")
+
+  let mut saw_negative_error = false
+  ignore(
+    @preprocess.Preprocessor::default().preprocess(
+      "#if COUNT == -1\nok\n#endif\n", defs,
+    ),
+  ) catch {
+    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
+      name,
+      value,
+      expected,
+      _
+    ) => {
+      debug_inspect(name, content="\"COUNT\"")
+      debug_inspect(value, content="\"-1\"")
+      debug_inspect(expected, content="\"uint\"")
+      saw_negative_error = true
+    }
+    _ => abort("expected invalid negative uint comparison value")
+  }
+  debug_inspect(saw_negative_error, content="true")
 }
 
 ///|
