@@ -853,6 +853,38 @@ test "naga_oil: shader-def replacement follows upstream first-match loop" {
 }
 
 ///|
+test "naga_oil: delimited shader-def references require regex name body" {
+  let metadata = metadata_or_abort(
+    "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\n",
+  )
+  debug_inspect(metadata.effective_defs.contains("KNOWN BAD"), content="false")
+  debug_inspect(metadata.effective_defs.contains("KNOWN+BAD"), content="false")
+  debug_inspect(metadata.effective_defs.contains("KNOWN_OK"), content="true")
+
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("KNOWN BAD", @common.ShaderDefValue::Int(1))
+  shader_defs.set("KNOWN+BAD", @common.ShaderDefValue::Int(2))
+  shader_defs.set("KNOWN_OK", @common.ShaderDefValue::Int(3))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\n", shader_defs,
+  ) catch {
+    _ => abort("expected delimited shader-def preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("#{KNOWN BAD}"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("#{KNOWN+BAD}"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let c = 3;"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: glsl version directive captures numeric version token" {
   let output = @preprocess.Preprocessor::default().preprocess(
     "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",

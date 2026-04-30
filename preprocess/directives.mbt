@@ -45,11 +45,16 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
           }
         }
         if k < tokens.length() {
-          let name = line[body_start:tokens[k].pos()]
-            .to_owned()
-            .trim()
-            .to_owned()
-          if name != "" {
+          let body_end = tokens[k].pos()
+          let mut name_end = body_start
+          while name_end < body_end &&
+                preprocess_shader_def_name_code_unit(
+                  line.code_unit_at(name_end).to_int(),
+                ) {
+            name_end = name_end + 1
+          }
+          let name = line[body_start:name_end].to_owned()
+          if name != "" && name_end == body_end {
             references.push(ShaderDefReference::{
               name,
               start,
