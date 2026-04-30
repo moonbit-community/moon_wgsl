@@ -99,8 +99,11 @@ pub fn parse_wgsl_import_targets(
   prefix : String,
   targets : Array[WgslImportTarget],
 ) -> Unit raise ParseImportsError {
-  if input.trim() == "" {
-    raise ParseImportsError::Parse("expected import path", input.length())
+  if wgsl_regex_trim_whitespace(input) == "" {
+    raise ParseImportsError::Parse(
+      "expected import path",
+      utf8_byte_length(input),
+    )
   }
   let parsed = import_targets(tokenize_wgsl_import_targets(input)) catch {
     ParseError::UnexpectedToken(_, (start, _), _) =>

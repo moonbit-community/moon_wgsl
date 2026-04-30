@@ -141,14 +141,14 @@ fn parse_wgsl_template_const_references(
           }
         }
         if j < tokens.length() {
-          let name = wgsl_regex_trim_whitespace(
-            source[body_start:tokens[j].pos()].to_owned(),
-          )
-          references.push(WgslTemplateConstReference::{
-            name,
-            start,
-            end: token_end(tokens[j]),
-          })
+          let name = source[body_start:tokens[j].pos()].to_owned()
+          if wgsl_regex_word_text(name) {
+            references.push(WgslTemplateConstReference::{
+              name,
+              start,
+              end: token_end(tokens[j]),
+            })
+          }
           i = j + 1
         } else {
           i = i + 1

@@ -881,7 +881,7 @@ test "naga_oil: shader-def replacement follows upstream first-match loop" {
 ///|
 test "naga_oil: delimited shader-def references require regex name body" {
   let metadata = metadata_or_abort(
-    "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\n",
+    "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\nlet d = #{ KNOWN_OK };\n",
   )
   debug_inspect(metadata.effective_defs.contains("KNOWN BAD"), content="false")
   debug_inspect(metadata.effective_defs.contains("KNOWN+BAD"), content="false")
@@ -892,7 +892,8 @@ test "naga_oil: delimited shader-def references require regex name body" {
   shader_defs.set("KNOWN+BAD", @common.ShaderDefValue::Int(2))
   shader_defs.set("KNOWN_OK", @common.ShaderDefValue::Int(3))
   let output = @preprocess.Preprocessor::default().preprocess(
-    "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\n", shader_defs,
+    "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\nlet d = #{ KNOWN_OK };\n",
+    shader_defs,
   ) catch {
     _ => abort("expected delimited shader-def preprocess success")
   }
@@ -906,6 +907,10 @@ test "naga_oil: delimited shader-def references require regex name body" {
   )
   debug_inspect(
     output.preprocessed_source.contains("let c = 3;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("#{ KNOWN_OK }"),
     content="true",
   )
 }
