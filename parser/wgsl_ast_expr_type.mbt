@@ -215,10 +215,10 @@ fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? 
 }
 
 ///|
-fn WgslDeclParser::parse_attributes(
+fn WgslDeclParser::push_attribute_tokens(
   self : WgslDeclParser,
-) -> Array[WgslAttribute] {
-  let tokens : Array[(@generated.Token, Int, Int)] = []
+  tokens : Array[(@generated.Token, Int, Int)],
+) -> Unit {
   while true {
     match self.view() {
       [Token::Other(64, at_pos), Token::Identifier(name, name_pos), .. rest] => {
@@ -258,16 +258,6 @@ fn WgslDeclParser::parse_attributes(
       }
       _ => break
     }
-  }
-  tokens.push(
-    (
-      @generated.Token::EOF,
-      self.source_text.length(),
-      self.source_text.length(),
-    ),
-  )
-  @generated.attribute_list(tokens) catch {
-    _ => []
   }
 }
 

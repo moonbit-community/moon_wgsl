@@ -8,8 +8,6 @@ import {
 }
 
 // Values
-pub fn attribute_list(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslAttribute] raise ParseError
-
 pub fn block(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslBlock raise ParseError
 
 pub fn const_assert_expr(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslExprRef raise ParseError
@@ -52,7 +50,6 @@ pub(all) enum Token {
   STMT(@ast.WgslStatement)
   IDENT(String)
   TYPE_ATOM((String, String, Int, Int, Int))
-  DECL_ATTRS(Array[@ast.WgslAttribute])
   ARG_NAME(@ast.WgslIdent)
   ARG_TYPE((String, @ast.WgslTypeRef?))
   MEMBER_NAME(@ast.WgslIdent)
@@ -101,7 +98,6 @@ pub(all) enum TokenKind {
   TK_STMT
   TK_IDENT
   TK_TYPE_ATOM
-  TK_DECL_ATTRS
   TK_ARG_NAME
   TK_ARG_TYPE
   TK_MEMBER_NAME

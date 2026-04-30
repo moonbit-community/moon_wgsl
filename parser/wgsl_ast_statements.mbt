@@ -55,8 +55,7 @@ fn WgslDeclParser::tokenize_function_arguments(
       tokens.push((@generated.Token::COMMA, 0, 0))
       continue
     }
-    let attributes = parser.parse_attributes()
-    tokens.push((@generated.Token::DECL_ATTRS(attributes), 0, 0))
+    parser.push_attribute_tokens(tokens)
     let name = match parser.consume_ident_node() {
       Some(value) => value
       None => raise WgslFunctionArgsTokenizeError::UnexpectedToken
@@ -108,14 +107,15 @@ fn WgslDeclParser::parse_function_result(
         token_view: rest,
       }
       let rest_len = rest.length()
-      let attributes = parser.parse_attributes()
+      let tokens : Array[(@generated.Token, Int, Int)] = [
+        (@generated.Token::ARROW, arrow_start, arrow_end + 1),
+      ]
+      parser.push_attribute_tokens(tokens)
       let ty_fragment = parser.collect_until_top_level_fragment([123, 59])
       if ty_fragment.text == "" {
         return None
       }
-      let tokens : Array[(@generated.Token, Int, Int)] = [
-        (@generated.Token::ARROW, arrow_start, arrow_end + 1),
-        (@generated.Token::DECL_ATTRS(attributes), 0, 0),
+      tokens.push(
         (
           @generated.Token::ARG_TYPE(
             (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
@@ -123,8 +123,8 @@ fn WgslDeclParser::parse_function_result(
           ty_fragment.start,
           ty_fragment.end,
         ),
-        (@generated.Token::EOF, ty_fragment.end, ty_fragment.end),
-      ]
+      )
+      tokens.push((@generated.Token::EOF, ty_fragment.end, ty_fragment.end))
       let result = @generated.function_result(tokens) catch { _ => return None }
       self.drop_tokens(2 + rest_len - parser.view().length())
       result

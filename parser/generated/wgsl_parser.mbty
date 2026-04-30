@@ -15,14 +15,12 @@
 %start type_alias_tail
 %start source_directive
 %start const_assert_expr
-%start attribute_list
 %start block
 
 %token<@ast.WgslRawTopLevelItem> ITEM
 %token<@ast.WgslStatement> STMT
 %token<String> IDENT
 %token<(String, String, Int, Int, Int)> TYPE_ATOM
-%token<Array[@ast.WgslAttribute]> DECL_ATTRS
 %token<@ast.WgslIdent> ARG_NAME
 %token<(String, @ast.WgslTypeRef?)> ARG_TYPE
 %token<@ast.WgslIdent> MEMBER_NAME
@@ -68,10 +66,6 @@
 
 raw_top_level_items -> Array[@ast.WgslRawTopLevelItem]
   : items EOF { $1 }
-  ;
-
-attribute_list -> Array[@ast.WgslAttribute]
-  : attributes EOF { $1 }
   ;
 
 block -> @ast.WgslBlock
@@ -216,7 +210,7 @@ directive_tail -> String
   ;
 
 decl_head -> @ast.WgslDeclHead
-  : attrs=DECL_ATTRS KW_VIRTUAL fn_kw=KW_FN EOF {
+  : attrs=attributes KW_VIRTUAL fn_kw=KW_FN EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::Function,
         attributes: attrs,
@@ -228,7 +222,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 2,
       }
     }
-  | attrs=DECL_ATTRS KW_OVERRIDE fn_kw=KW_FN EOF {
+  | attrs=attributes KW_OVERRIDE fn_kw=KW_FN EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::Function,
         attributes: attrs,
@@ -240,7 +234,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 2,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_FN EOF {
+  | attrs=attributes keyword=KW_FN EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::Function,
         attributes: attrs,
@@ -252,7 +246,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_OVERRIDE EOF {
+  | attrs=attributes keyword=KW_OVERRIDE EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::Override,
         attributes: attrs,
@@ -264,7 +258,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_VAR EOF {
+  | attrs=attributes keyword=KW_VAR EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::GlobalVariable,
         attributes: attrs,
@@ -276,7 +270,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_STRUCT EOF {
+  | attrs=attributes keyword=KW_STRUCT EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::Struct,
         attributes: attrs,
@@ -288,7 +282,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_CONST EOF {
+  | attrs=attributes keyword=KW_CONST EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::Const,
         attributes: attrs,
@@ -300,7 +294,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_CONST_ASSERT EOF {
+  | attrs=attributes keyword=KW_CONST_ASSERT EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::ConstAssert,
         attributes: attrs,
@@ -312,7 +306,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_ALIAS EOF {
+  | attrs=attributes keyword=KW_ALIAS EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::TypeAlias,
         attributes: attrs,
@@ -324,7 +318,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_TYPE EOF {
+  | attrs=attributes keyword=KW_TYPE EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::TypeAlias,
         attributes: attrs,
@@ -336,7 +330,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_ENABLE EOF {
+  | attrs=attributes keyword=KW_ENABLE EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Enable),
         attributes: attrs,
@@ -348,7 +342,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_REQUIRES EOF {
+  | attrs=attributes keyword=KW_REQUIRES EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Requires),
         attributes: attrs,
@@ -360,7 +354,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS keyword=KW_DIAGNOSTIC EOF {
+  | attrs=attributes keyword=KW_DIAGNOSTIC EOF {
       @ast.WgslDeclHead::{
         kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Diagnostic),
         attributes: attrs,
@@ -372,7 +366,7 @@ decl_head -> @ast.WgslDeclHead
         consumed: 1,
       }
     }
-  | attrs=DECL_ATTRS EOF {
+  | attrs=attributes EOF {
       @ast.WgslDeclHead::raw(attrs)
     }
   ;
@@ -387,7 +381,7 @@ function_args -> Array[@ast.WgslFunctionArgument]
   ;
 
 function_result -> @ast.WgslFunctionResult?
-  : "->" attrs=DECL_ATTRS ty=ARG_TYPE EOF {
+  : "->" attrs=attributes ty=ARG_TYPE EOF {
       let (ty_text, ty_ref) = ty
       Some(@ast.WgslFunctionResult::{ attributes: attrs, ty: ty_text, ty_ref })
     }
@@ -411,7 +405,7 @@ struct_member_list -> Array[@ast.WgslStructMember]
   ;
 
 struct_member -> @ast.WgslStructMember
-  : attrs=DECL_ATTRS name=MEMBER_NAME ":" ty=MEMBER_TYPE {
+  : attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
       let (ty_text, ty_ref) = ty
       @ast.WgslStructMember::{
         attributes: attrs,
@@ -505,7 +499,7 @@ function_arg_list -> Array[@ast.WgslFunctionArgument]
   ;
 
 function_arg -> @ast.WgslFunctionArgument
-  : attrs=DECL_ATTRS name=ARG_NAME ":" ty=ARG_TYPE {
+  : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
       let (ty_text, ty_ref) = ty
       @ast.WgslFunctionArgument::{
         attributes: attrs,

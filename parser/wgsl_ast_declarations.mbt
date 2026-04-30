@@ -83,8 +83,7 @@ fn WgslDeclParser::tokenize_struct_members(
       }
       _ => ()
     }
-    let attributes = parser.parse_attributes()
-    tokens.push((@generated.Token::DECL_ATTRS(attributes), 0, 0))
+    parser.push_attribute_tokens(tokens)
     let name = match parser.consume_ident_node() {
       Some(value) => value
       None => raise WgslStructMembersTokenizeError::UnexpectedToken
@@ -376,10 +375,8 @@ fn WgslDeclParser::decl_head_token(
 
 ///|
 fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
-  let attributes = self.parse_attributes()
-  let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::DECL_ATTRS(attributes), 0, 0),
-  ]
+  let tokens : Array[(@generated.Token, Int, Int)] = []
+  self.push_attribute_tokens(tokens)
   let mut view = self.view()
   let mut emitted = 0
   while emitted < 2 {
@@ -404,9 +401,7 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
       self.source_text.length(),
     ),
   )
-  let head = @generated.decl_head(tokens) catch {
-    _ => WgslDeclHead::raw(attributes)
-  }
+  let head = @generated.decl_head(tokens) catch { _ => WgslDeclHead::raw([]) }
   self.drop_tokens(head.consumed)
   head
 }
