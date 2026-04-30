@@ -27,20 +27,6 @@ pub fn WgslSourceRegistry::default() -> WgslSourceRegistry {
 }
 
 ///|
-pub fn WgslSourceRegistry::snapshot(
-  self : WgslSourceRegistry,
-) -> WgslSourceRegistry {
-  WgslSourceRegistry::{
-    rel_to_source_ref: Ref::new(
-      copy_wgsl_source_registry_map(self.rel_to_source_ref.val),
-    ),
-    module_to_rel_ref: Ref::new(
-      copy_wgsl_import_module_map(self.module_to_rel_ref.val),
-    ),
-  }
-}
-
-///|
 fn WgslSourceRegistry::source_registry(
   self : WgslSourceRegistry,
 ) -> @hashmap.HashMap[String, String] {
@@ -118,18 +104,6 @@ pub fn WgslSourceRegistry::registered_source(
   rel_path : String,
 ) -> String? {
   registered_source_from_registry(self.source_registry(), rel_path)
-}
-
-///|
-pub fn WgslSourceRegistry::copy_source_files(
-  self : WgslSourceRegistry,
-) -> Array[WgslSourceFile] {
-  let files : Array[WgslSourceFile] = []
-  for entry in self.source_registry().iter() {
-    let (rel_path, source) = entry
-    files.push(WgslSourceFile::{ rel_path, source })
-  }
-  files
 }
 
 ///|

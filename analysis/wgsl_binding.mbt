@@ -20,14 +20,14 @@ pub(all) enum WgslRenameRuleKind {
 }
 
 ///|
-pub(all) struct WgslRenameRule {
+pub struct WgslRenameRule {
   from_name : String
   to_name : String
   kind : WgslRenameRuleKind
 }
 
 ///|
-pub(all) struct WgslRenamePlan {
+pub struct WgslRenamePlan {
   rules : Array[WgslRenameRule]
 }
 

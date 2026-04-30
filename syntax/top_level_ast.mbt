@@ -13,17 +13,17 @@
 // limitations under the License.
 
 ///|
-pub(all) enum WgslTopLevelKind {
+priv enum WgslTopLevelKind {
   Trivia
   Import
   DefineImportPath
   Define
   Directive
   Declaration
-} derive(Eq, Debug)
+}
 
 ///|
-pub(all) struct WgslTopLevelItem {
+priv struct WgslTopLevelItem {
   kind : WgslTopLevelKind
   name : String
   text : String

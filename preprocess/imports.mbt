@@ -26,7 +26,6 @@ using @syntax {
   split_last_identifier,
   trim_trailing_semicolons,
   tokenize,
-  word_tail,
   wgsl_directive_prefix_tail,
   wgsl_directive_tail,
 }

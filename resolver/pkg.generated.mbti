@@ -33,14 +33,12 @@ pub struct WgslSourceRegistry {
 pub fn WgslSourceRegistry::analyze_source_files(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
 pub fn WgslSourceRegistry::clear(Self) -> Unit
 pub fn WgslSourceRegistry::copy_import_module_paths(Self) -> @hashmap.HashMap[String, String]
-pub fn WgslSourceRegistry::copy_source_files(Self) -> Array[@common.WgslSourceFile]
 pub fn WgslSourceRegistry::default() -> Self
 pub fn WgslSourceRegistry::register_source(Self, String, String, String?) -> String?
 pub fn WgslSourceRegistry::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
 pub fn WgslSourceRegistry::register_source_files_checked(Self, Array[@common.WgslSourceFile], Array[@common.WgslDiagnostic]) -> Unit
 pub fn WgslSourceRegistry::registered_source(Self, String) -> String?
 pub fn WgslSourceRegistry::remove_source_and_module(Self, String, String) -> Unit
-pub fn WgslSourceRegistry::snapshot(Self) -> Self
 
 // Type aliases
 

@@ -235,33 +235,6 @@ pub fn collect_wgsl_reachable_declaration_names(
 }
 
 ///|
-pub fn wgsl_source_declares_entry_point(
-  source : String,
-  item_name : String,
-) -> Bool {
-  if item_name == "" {
-    return false
-  }
-  let graph = build_wgsl_declaration_graph(source)
-  for block in graph.declaration_blocks {
-    match block.data {
-      WgslGlobalDeclData::Function(function) =>
-        if function.name.name == item_name {
-          for attr in function.attributes {
-            if attr.name == "vertex" ||
-              attr.name == "fragment" ||
-              attr.name == "compute" {
-              return true
-            }
-          }
-        }
-      _ => ()
-    }
-  }
-  false
-}
-
-///|
 pub fn strip_wgsl_import_declarations(source : String) -> String {
   let mut out = ""
   let graph = build_wgsl_declaration_graph(source)

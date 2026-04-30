@@ -43,7 +43,6 @@ pub fn Composer::default() -> Self
 pub fn Composer::prepare_wgsl_source(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
 pub fn Composer::register_source(Self, String, String) -> Unit
 pub fn Composer::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
-pub fn Composer::register_source_files_checked(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
 pub fn Composer::register_source_tree(Self, String, @common.WgslSourceScanOptions) -> Unit raise @fs.IOError
 pub fn Composer::register_source_tree_checked(Self, String, @common.WgslSourceScanOptions) -> Array[@common.WgslDiagnostic] raise @fs.IOError
 pub fn Composer::registered_source(Self, String) -> String?

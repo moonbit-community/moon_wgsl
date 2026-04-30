@@ -16,7 +16,5 @@ test "source line spans keep original offsets" {
   let spans = split_source_line_spans("ab\nc")
   debug_inspect(spans.length(), content="2")
   debug_inspect(spans[0].start, content="0")
-  debug_inspect(spans[0].end, content="2")
   debug_inspect(spans[1].start, content="3")
-  debug_inspect(spans[1].end, content="4")
 }

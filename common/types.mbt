@@ -35,11 +35,6 @@ pub(all) struct ImportDefinition {
 } derive(Eq, Debug)
 
 ///|
-pub fn ImportDefinition::default() -> ImportDefinition {
-  ImportDefinition::{ import_path: "", items: [] }
-}
-
-///|
 pub(all) struct ImportDefWithOffset {
   definition : ImportDefinition
   offset : Int
@@ -90,11 +85,6 @@ pub(all) struct PreprocessOutput {
 }
 
 ///|
-pub fn PreprocessOutput::default() -> PreprocessOutput {
-  PreprocessOutput::{ preprocessed_source: "", imports: [] }
-}
-
-///|
 pub(all) struct PreprocessorMetaData {
   name : String?
   imports : Array[ImportDefWithOffset]
@@ -111,11 +101,6 @@ pub(all) struct WgslSourceFile {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslSourceFile::default() -> WgslSourceFile {
-  WgslSourceFile::{ rel_path: "", source: "" }
-}
-
-///|
 pub(all) struct WgslSourceCatalogEntry {
   rel_path : String
   symbol_name : String
@@ -123,17 +108,6 @@ pub(all) struct WgslSourceCatalogEntry {
   source_start : Int
   source_end : Int
 } derive(Eq, Debug)
-
-///|
-pub fn WgslSourceCatalogEntry::default() -> WgslSourceCatalogEntry {
-  WgslSourceCatalogEntry::{
-    rel_path: "",
-    symbol_name: "",
-    source_text: "",
-    source_start: 0,
-    source_end: 0,
-  }
-}
 
 ///|
 pub(all) struct PreparedWgslSource {
@@ -179,27 +153,10 @@ pub(all) struct WgslDiagnostic {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslDiagnostic::default() -> WgslDiagnostic {
-  WgslDiagnostic::{
-    severity: WgslDiagnosticSeverity::Info,
-    message: "",
-    rel_path: None,
-    symbol_name: None,
-    generated_start: None,
-    source_start: None,
-  }
-}
-
-///|
 pub(all) struct WgslSymbolRedirect {
   from_name : String
   to_name : String
 } derive(Eq, Debug)
-
-///|
-pub fn WgslSymbolRedirect::default() -> WgslSymbolRedirect {
-  WgslSymbolRedirect::{ from_name: "", to_name: "" }
-}
 
 ///|
 pub(all) struct WgslComposeOptions {
@@ -244,26 +201,9 @@ pub(all) struct WgslSourceMapEntry {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslSourceMapEntry::default() -> WgslSourceMapEntry {
-  WgslSourceMapEntry::{
-    generated_start: 0,
-    generated_end: 0,
-    rel_path: "",
-    source_start: 0,
-    source_end: 0,
-    symbol_name: None,
-  }
-}
-
-///|
 pub(all) struct WgslExportOptions {
   root_items : Array[String]
 } derive(Eq, Debug)
-
-///|
-pub fn WgslExportOptions::default() -> WgslExportOptions {
-  WgslExportOptions::{ root_items: [] }
-}
 
 ///|
 pub(all) struct WgslExportOutput {
@@ -272,16 +212,6 @@ pub(all) struct WgslExportOutput {
   source_map : Array[WgslSourceMapEntry]
   diagnostics : Array[WgslDiagnostic]
 } derive(Eq, Debug)
-
-///|
-pub fn WgslExportOutput::default() -> WgslExportOutput {
-  WgslExportOutput::{
-    source: "",
-    source_catalog: [],
-    source_map: [],
-    diagnostics: [],
-  }
-}
 
 ///|
 pub(all) struct WgslImportTarget {

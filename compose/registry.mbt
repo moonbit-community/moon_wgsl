@@ -21,7 +21,7 @@ pub fn Composer::register_source_files(
 }
 
 ///|
-pub fn Composer::register_source_files_checked(
+fn Composer::register_source_files_checked(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {

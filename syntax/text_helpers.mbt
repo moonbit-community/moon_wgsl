@@ -22,10 +22,9 @@ pub fn trim_trailing_semicolons(text : String) -> String {
 }
 
 ///|
-pub(all) struct SourceLineSpan {
+priv struct SourceLineSpan {
   text : String
   start : Int
-  end : Int
 }
 
 ///|
@@ -38,15 +37,11 @@ pub fn split_source_lines(source : String) -> Array[String] {
 }
 
 ///|
-pub fn split_source_line_spans(source : String) -> Array[SourceLineSpan] {
+fn split_source_line_spans(source : String) -> Array[SourceLineSpan] {
   let spans : Array[SourceLineSpan] = []
   let mut offset = 0
   for line in split_source_lines(source) {
-    spans.push(SourceLineSpan::{
-      text: line,
-      start: offset,
-      end: offset + line.length(),
-    })
+    spans.push(SourceLineSpan::{ text: line, start: offset })
     offset = offset + line.length() + 1
   }
   spans
@@ -95,22 +90,6 @@ fn skip_ascii_space(text : String, start : Int) -> Int {
 }
 
 ///|
-pub fn word_tail(text : String, word : String) -> String? {
-  let trimmed = text.trim().to_owned()
-  let start = skip_ascii_space(trimmed, 0)
-  guard start + word.length() <= trimmed.length() else { return None }
-  guard trimmed[start:start + word.length()].to_owned() == word else {
-    return None
-  }
-  let end = start + word.length()
-  if end < trimmed.length() &&
-    identifier_code_unit(trimmed.code_unit_at(end).to_int()) {
-    return None
-  }
-  Some(trimmed[end:trimmed.length()].to_owned().trim().to_owned())
-}
-
-///|
 pub(all) enum WgslDirectiveKind {
   Ifdef
   Ifndef
@@ -153,7 +132,7 @@ fn wgsl_directive_kind_from_name(name : String) -> WgslDirectiveKind {
 }
 
 ///|
-pub fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
+fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
   let trimmed = line.trim().to_owned()
   guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
     return None

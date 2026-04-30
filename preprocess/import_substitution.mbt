@@ -81,8 +81,7 @@ fn parse_imports(
   while line_index < lines.length() {
     let line = lines[line_index]
     let trimmed = line.trim().to_owned()
-    guard wgsl_directive_tail(trimmed, WgslDirectiveKind::Import)
-      is Some(spec) else {
+    guard wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(spec) else {
       if trimmed == "" {
         source_offset = source_offset + line.length() + 1
         line_index = line_index + 1

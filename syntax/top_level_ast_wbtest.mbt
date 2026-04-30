@@ -13,6 +13,18 @@
 // limitations under the License.
 
 ///|
+fn top_level_kind_snapshot(kind : WgslTopLevelKind) -> String {
+  match kind {
+    Trivia => "Trivia"
+    Import => "Import"
+    DefineImportPath => "DefineImportPath"
+    Define => "Define"
+    Directive => "Directive"
+    Declaration => "Declaration"
+  }
+}
+
+///|
 test "top-level AST classifies directives imports and declarations" {
   let source = "#define_import_path bevy_pbr::demo\n" +
     "#define TONEMAPPING_PASS\n" +
@@ -32,11 +44,17 @@ test "top-level AST classifies directives imports and declarations" {
     "}\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="6")
-  debug_inspect(items[0].kind, content="DefineImportPath")
-  debug_inspect(items[1].kind, content="Define")
-  debug_inspect(items[2].kind, content="Import")
+  debug_inspect(
+    top_level_kind_snapshot(items[0].kind),
+    content="\"DefineImportPath\"",
+  )
+  debug_inspect(top_level_kind_snapshot(items[1].kind), content="\"Define\"")
+  debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Import\"")
   debug_inspect(items[2].text.contains("globals::Globals"), content="true")
-  debug_inspect(items[3].kind, content="Declaration")
+  debug_inspect(
+    top_level_kind_snapshot(items[3].kind),
+    content="\"Declaration\"",
+  )
   debug_inspect(items[3].name, content="\"view\"")
   debug_inspect(items[4].name, content="\"Output\"")
   debug_inspect(items[5].name, content="\"fragment\"")
@@ -65,9 +83,9 @@ test "top-level AST preserves directive-adjacent trivia" {
     "// trailing note\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="3")
-  debug_inspect(items[0].kind, content="Trivia")
-  debug_inspect(items[1].kind, content="Import")
-  debug_inspect(items[2].kind, content="Trivia")
+  debug_inspect(top_level_kind_snapshot(items[0].kind), content="\"Trivia\"")
+  debug_inspect(top_level_kind_snapshot(items[1].kind), content="\"Import\"")
+  debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Trivia\"")
   debug_inspect(items[0].text.contains("leading import note"), content="true")
   debug_inspect(items[2].text.contains("trailing note"), content="true")
 }
@@ -81,11 +99,17 @@ test "top-level AST classifies hash conditionals as directives" {
     "#endif\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="5")
-  debug_inspect(items[0].kind, content="Directive")
-  debug_inspect(items[1].kind, content="Declaration")
-  debug_inspect(items[2].kind, content="Directive")
-  debug_inspect(items[3].kind, content="Declaration")
-  debug_inspect(items[4].kind, content="Directive")
+  debug_inspect(top_level_kind_snapshot(items[0].kind), content="\"Directive\"")
+  debug_inspect(
+    top_level_kind_snapshot(items[1].kind),
+    content="\"Declaration\"",
+  )
+  debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Directive\"")
+  debug_inspect(
+    top_level_kind_snapshot(items[3].kind),
+    content="\"Declaration\"",
+  )
+  debug_inspect(top_level_kind_snapshot(items[4].kind), content="\"Directive\"")
 }
 
 ///|
@@ -97,7 +121,10 @@ test "top-level AST recognizes same-line attributed declarations" {
     "@id(0) override exposure: f32 = 1.0;\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="3")
-  debug_inspect(items[0].kind, content="Declaration")
+  debug_inspect(
+    top_level_kind_snapshot(items[0].kind),
+    content="\"Declaration\"",
+  )
   debug_inspect(items[0].name, content="\"fragment\"")
   debug_inspect(items[1].name, content="\"view\"")
   debug_inspect(items[2].name, content="\"exposure\"")

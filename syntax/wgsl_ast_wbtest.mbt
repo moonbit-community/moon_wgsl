@@ -296,28 +296,6 @@ test "WGSL statement identifiers skip local declarations and member access" {
 }
 
 ///|
-test "WGSL declaration identifier collection exposes declared names" {
-  let source =
-    #|alias Alias = vec4<f32>;
-    #|struct Vertex { value: Alias }
-    #|fn make_vertex(input: Alias) -> Vertex {
-    #|  return Vertex(input);
-    #|}
-    #|
-  let unit = parse_wgsl_translation_unit(source)
-  let nodes : Array[WgslIdent] = []
-  for decl in unit.declarations {
-    collect_wgsl_decl_declared_identifier_nodes(decl.data, nodes)
-  }
-  debug_inspect(
-    nodes.map(fn(node) { node.name }),
-    content=(
-      #|["Alias", "Vertex", "make_vertex", "input"]
-    ),
-  )
-}
-
-///|
 test "WGSL global declaration identifier collection excludes locals" {
   let source =
     #|alias Alias = vec4<f32>;

@@ -7,8 +7,6 @@ import {
 }
 
 // Values
-pub fn collect_wgsl_decl_declared_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
-
 pub fn collect_wgsl_decl_global_declared_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
 
 pub fn collect_wgsl_decl_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
@@ -16,8 +14,6 @@ pub fn collect_wgsl_decl_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) 
 pub fn collect_wgsl_source_identifier_names(String, Array[String]) -> Unit
 
 pub fn import_brace_balance(String) -> Int
-
-pub fn parse_wgsl_directive_line(String) -> WgslDirective?
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
 
@@ -31,8 +27,6 @@ pub fn spaces(Int) -> String
 
 pub fn split_last_identifier(String) -> (String, String)?
 
-pub fn split_source_line_spans(String) -> Array[SourceLineSpan]
-
 pub fn split_source_lines(String) -> Array[String]
 
 pub fn starts_with_text(String, String) -> Bool
@@ -45,26 +39,17 @@ pub fn wgsl_directive_prefix_tail(String, WgslDirectiveKind) -> String?
 
 pub fn wgsl_directive_tail(String, WgslDirectiveKind) -> String?
 
-pub fn word_tail(String, String) -> String?
-
 // Errors
 pub(all) suberror ParseImportsError {
   Parse(String, Int)
 }
 
 // Types and methods
-pub(all) struct SourceLineSpan {
-  text : String
-  start : Int
-  end : Int
-}
-
 pub(all) enum Token {
   Identifier(String, Int)
   Other(Int, Int)
   Whitespace(String, Int)
 } derive(Eq, @debug.Debug)
-pub fn Token::identifier(Self) -> String?
 pub fn Token::pos(Self) -> Int
 
 pub(all) struct WgslAttribute {
@@ -240,23 +225,6 @@ pub(all) struct WgslStructMember {
   ty : String
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
-
-pub(all) struct WgslTopLevelItem {
-  kind : WgslTopLevelKind
-  name : String
-  text : String
-  start : Int
-  end : Int
-}
-
-pub(all) enum WgslTopLevelKind {
-  Trivia
-  Import
-  DefineImportPath
-  Define
-  Directive
-  Declaration
-} derive(Eq, @debug.Debug)
 
 pub(all) struct WgslTranslationUnit {
   declarations : Array[WgslGlobalDecl]
