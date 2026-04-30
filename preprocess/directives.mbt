@@ -1,14 +1,4 @@
 ///|
-fn shader_def_name_token_text(token : WgslToken) -> String? {
-  match token {
-    WgslToken::Identifier(text, _) => Some(text)
-    WgslToken::Other(code, _) if preprocess_shader_def_name_code_unit(code) =>
-      Some(code_unit_to_string(code))
-    _ => None
-  }
-}
-
-///|
 fn token_end(token : WgslToken) -> Int {
   token.pos() + preprocess_token_text(token).length()
 }
@@ -16,86 +6,60 @@ fn token_end(token : WgslToken) -> Int {
 ///|
 fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
   let references : Array[ShaderDefReference] = []
-  let tokens = tokenize(line, true)
   let mut i = 0
-  while i < tokens.length() {
-    guard tokens[i] is WgslToken::Other(35, start) else {
+  while i < line.length() {
+    guard line.code_unit_at(i).to_int() == 35 else {
       i = i + 1
       continue
     }
+    let start = i
     let mut j = i + 1
-    while j < tokens.length() {
-      match tokens[j] {
-        WgslToken::Whitespace(_, _) => j = j + 1
-        WgslToken::Other(code, _) if preprocess_regex_whitespace_code_unit(code) =>
-          j = j + 1
-        _ => break
-      }
+    while j < line.length() &&
+          preprocess_regex_whitespace_code_unit(line.code_unit_at(j).to_int()) {
+      j = j + 1
     }
-    guard j < tokens.length() else {
+    guard j < line.length() else {
       i = i + 1
       continue
     }
-    match tokens[j] {
-      WgslToken::Other(123, _) => {
-        let body_start = token_end(tokens[j])
-        let mut k = j + 1
-        while k < tokens.length() {
-          match tokens[k] {
-            WgslToken::Other(125, _) => break
-            _ => k = k + 1
-          }
-        }
-        if k < tokens.length() {
-          let body_end = tokens[k].pos()
-          let mut name_end = body_start
-          while name_end < body_end &&
-                preprocess_shader_def_name_code_unit(
-                  line.code_unit_at(name_end).to_int(),
-                ) {
-            name_end = name_end + 1
-          }
-          let name = line[body_start:name_end].to_owned()
-          if name != "" && name_end == body_end {
-            references.push(ShaderDefReference::{
-              name,
-              start,
-              end: token_end(tokens[k]),
-              delimited: true,
-            })
-          }
-          i = k + 1
-        } else {
-          i = i + 1
-        }
+    if line.code_unit_at(j).to_int() == 123 {
+      let body_start = j + 1
+      let mut k = body_start
+      while k < line.length() && line.code_unit_at(k).to_int() != 125 {
+        k = k + 1
       }
-      _ => {
-        let name_start = tokens[j].pos()
-        let mut name = ""
-        while j < tokens.length() {
-          match shader_def_name_token_text(tokens[j]) {
-            Some(text) => {
-              name = name + text
-              j = j + 1
-            }
-            None => break
-          }
-        }
-        if name != "" {
+      if k < line.length() {
+        let name = line[body_start:k].to_owned()
+        if wgsl_regex_word_text(name) {
           references.push(ShaderDefReference::{
             name,
             start,
-            end: if j > 0 {
-              token_end(tokens[j - 1])
-            } else {
-              name_start
-            },
-            delimited: false,
+            end: k + 1,
+            delimited: true,
           })
-          i = j
-        } else {
-          i = i + 1
         }
+        i = k + 1
+      } else {
+        i = i + 1
+      }
+    } else {
+      let name_start = j
+      let mut name_end = j
+      while name_end < line.length() {
+        let width = wgsl_regex_word_width(line, name_end)
+        guard width > 0 else { break }
+        name_end = name_end + width
+      }
+      if name_end > name_start {
+        references.push(ShaderDefReference::{
+          name: line[name_start:name_end].to_owned(),
+          start,
+          end: name_end,
+          delimited: false,
+        })
+        i = name_end
+      } else {
+        i = i + 1
       }
     }
   }
@@ -216,6 +180,23 @@ fn starts_with_tokenized_space(text : String) -> Bool {
 }
 
 ///|
+fn preprocess_has_ascii_keyword_at(
+  text : String,
+  start : Int,
+  keyword : String,
+) -> Bool {
+  guard start >= 0 && start + keyword.length() <= text.length() else {
+    return false
+  }
+  for i in 0..<keyword.length() {
+    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn required_space_directive_tail(line : String, keyword : String) -> String? {
   let trimmed = preprocess_trim_regex_whitespace(line)
   guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
@@ -223,7 +204,7 @@ fn required_space_directive_tail(line : String, keyword : String) -> String? {
   }
   let start = preprocess_skip_regex_whitespace(trimmed, 1)
   guard start + keyword.length() < trimmed.length() else { return None }
-  guard trimmed[start:start + keyword.length()].to_owned() == keyword else {
+  guard preprocess_has_ascii_keyword_at(trimmed, start, keyword) else {
     return None
   }
   let space_pos = start + keyword.length()
@@ -241,7 +222,9 @@ fn required_space_directive_tail(line : String, keyword : String) -> String? {
 fn required_space_word_tail(text : String, keyword : String) -> String? {
   let trimmed = preprocess_trim_regex_whitespace(text)
   guard keyword.length() < trimmed.length() else { return None }
-  guard trimmed[0:keyword.length()].to_owned() == keyword else { return None }
+  guard preprocess_has_ascii_keyword_at(trimmed, 0, keyword) else {
+    return None
+  }
   let space_pos = keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
   guard preprocess_regex_whitespace_code_unit(code) else { return None }
@@ -258,7 +241,7 @@ pub fn parse_glsl_version_directive(line : String) -> String? {
   let trimmed = preprocess_trim_regex_whitespace(line)
   let prefix = "#version"
   guard trimmed.length() > prefix.length() &&
-    trimmed[0:prefix.length()].to_owned() == prefix else {
+    preprocess_has_ascii_keyword_at(trimmed, 0, prefix) else {
     return None
   }
   let space_pos = prefix.length()
@@ -314,12 +297,9 @@ fn directive_identifier(text : String) -> String? {
   let trimmed = trim_trailing_semicolons(text).trim().to_owned()
   let mut i = 0
   while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if preprocess_shader_def_name_code_unit(code) {
-      i = i + 1
-      continue
-    }
-    break
+    let width = wgsl_regex_word_width(trimmed, i)
+    guard width > 0 else { break }
+    i = i + width
   }
   if i == 0 {
     None

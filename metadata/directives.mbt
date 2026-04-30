@@ -16,99 +16,53 @@ fn split_extensions(raw : String) -> Array[String] {
 }
 
 ///|
-fn shader_def_name_token_text(token : WgslToken) -> String? {
-  match token {
-    WgslToken::Identifier(text, _) => Some(text)
-    WgslToken::Other(code, _) if metadata_shader_def_name_code_unit(code) =>
-      Some(wgsl_metadata_code_unit_to_string(code))
-    _ => None
-  }
-}
-
-///|
-fn shader_def_value_token_text(token : WgslToken) -> String? {
-  match token {
-    WgslToken::Identifier(text, _) => Some(text)
-    WgslToken::Other(45, _) => Some(wgsl_metadata_token_text(token))
-    WgslToken::Other(code, _) if metadata_shader_def_name_code_unit(code) =>
-      Some(wgsl_metadata_code_unit_to_string(code))
-    _ => None
-  }
-}
-
-///|
-fn token_end(token : WgslToken) -> Int {
-  token.pos() + wgsl_metadata_token_text(token).length()
-}
-
-///|
 fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
   let references : Array[ShaderDefReference] = []
-  let tokens = tokenize(line, true)
   let mut i = 0
-  while i < tokens.length() {
-    guard tokens[i] is WgslToken::Other(35, _) else {
+  while i < line.length() {
+    guard line.code_unit_at(i).to_int() == 35 else {
       i = i + 1
       continue
     }
     let mut j = i + 1
-    while j < tokens.length() {
-      match tokens[j] {
-        WgslToken::Whitespace(_, _) => j = j + 1
-        WgslToken::Other(code, _) if metadata_regex_whitespace_code_unit(code) =>
-          j = j + 1
-        _ => break
-      }
+    while j < line.length() &&
+          metadata_regex_whitespace_code_unit(line.code_unit_at(j).to_int()) {
+      j = j + 1
     }
-    guard j < tokens.length() else {
+    guard j < line.length() else {
       i = i + 1
       continue
     }
-    match tokens[j] {
-      WgslToken::Other(123, _) => {
-        let body_start = token_end(tokens[j])
-        let mut k = j + 1
-        while k < tokens.length() {
-          match tokens[k] {
-            WgslToken::Other(125, _) => break
-            _ => k = k + 1
-          }
-        }
-        if k < tokens.length() {
-          let body_end = tokens[k].pos()
-          let mut name_end = body_start
-          while name_end < body_end &&
-                metadata_shader_def_name_code_unit(
-                  line.code_unit_at(name_end).to_int(),
-                ) {
-            name_end = name_end + 1
-          }
-          let name = line[body_start:name_end].to_owned()
-          if name != "" && name_end == body_end {
-            references.push(ShaderDefReference::{ name, })
-          }
-          i = k + 1
-        } else {
-          i = i + 1
-        }
+    if line.code_unit_at(j).to_int() == 123 {
+      let body_start = j + 1
+      let mut k = body_start
+      while k < line.length() && line.code_unit_at(k).to_int() != 125 {
+        k = k + 1
       }
-      _ => {
-        let mut name = ""
-        while j < tokens.length() {
-          match shader_def_name_token_text(tokens[j]) {
-            Some(text) => {
-              name = name + text
-              j = j + 1
-            }
-            None => break
-          }
-        }
-        if name != "" {
+      if k < line.length() {
+        let name = line[body_start:k].to_owned()
+        if wgsl_regex_word_text(name) {
           references.push(ShaderDefReference::{ name, })
-          i = j
-        } else {
-          i = i + 1
         }
+        i = k + 1
+      } else {
+        i = i + 1
+      }
+    } else {
+      let name_start = j
+      let mut name_end = j
+      while name_end < line.length() {
+        let width = wgsl_regex_word_width(line, name_end)
+        guard width > 0 else { break }
+        name_end = name_end + width
+      }
+      if name_end > name_start {
+        references.push(ShaderDefReference::{
+          name: line[name_start:name_end].to_owned(),
+        })
+        i = name_end
+      } else {
+        i = i + 1
       }
     }
   }
@@ -154,44 +108,58 @@ fn split_define_name_and_value(text : String) -> (String, String) {
   if trimmed == "" {
     return ("", "")
   }
-  let tokens = tokenize(trimmed, true)
   let mut i = 0
-  let mut name = ""
-  while i < tokens.length() {
-    match shader_def_name_token_text(tokens[i]) {
-      Some(text) => {
-        name = name + text
-        i = i + 1
-      }
-      None => break
-    }
+  while i < trimmed.length() {
+    let width = wgsl_regex_word_width(trimmed, i)
+    guard width > 0 else { break }
+    i = i + width
   }
-  if name == "" {
+  if i == 0 {
     return ("", "")
   }
-  while i < tokens.length() {
-    match tokens[i] {
-      WgslToken::Whitespace(_, _) => i = i + 1
-      WgslToken::Other(code, _) if metadata_regex_whitespace_code_unit(code) =>
-        i = i + 1
-      _ => break
+  let name = trimmed[0:i].to_owned()
+  while i < trimmed.length() {
+    if metadata_regex_whitespace_code_unit(trimmed.code_unit_at(i).to_int()) {
+      i = i + 1
+      continue
     }
+    break
   }
-  let mut value = ""
-  while i < tokens.length() {
-    match shader_def_value_token_text(tokens[i]) {
-      Some(text) => value = value + text
-      None => break
+  let value_start = i
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if code == 45 {
+      i = i + 1
+      continue
     }
-    i = i + 1
+    let width = wgsl_regex_word_width(trimmed, i)
+    guard width > 0 else { break }
+    i = i + width
   }
-  (name, value)
+  (name, trimmed[value_start:i].to_owned())
 }
 
 ///|
 fn starts_with_tokenized_space(text : String) -> Bool {
   text.length() > 0 &&
   metadata_regex_whitespace_code_unit(text.code_unit_at(0).to_int())
+}
+
+///|
+fn metadata_has_ascii_keyword_at(
+  text : String,
+  start : Int,
+  keyword : String,
+) -> Bool {
+  guard start >= 0 && start + keyword.length() <= text.length() else {
+    return false
+  }
+  for i in 0..<keyword.length() {
+    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
 }
 
 ///|
@@ -205,7 +173,7 @@ fn metadata_required_space_directive_tail(
   }
   let start = metadata_skip_regex_whitespace(trimmed, 1)
   guard start + keyword.length() < trimmed.length() else { return None }
-  guard trimmed[start:start + keyword.length()].to_owned() == keyword else {
+  guard metadata_has_ascii_keyword_at(trimmed, start, keyword) else {
     return None
   }
   let space_pos = start + keyword.length()
@@ -226,7 +194,7 @@ fn metadata_required_space_word_tail(
 ) -> String? {
   let trimmed = metadata_trim_regex_whitespace(text)
   guard keyword.length() < trimmed.length() else { return None }
-  guard trimmed[0:keyword.length()].to_owned() == keyword else { return None }
+  guard metadata_has_ascii_keyword_at(trimmed, 0, keyword) else { return None }
   let space_pos = keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
   guard metadata_regex_whitespace_code_unit(code) else { return None }
@@ -242,7 +210,7 @@ fn metadata_required_space_word_tail(
 fn semicolon_directive_body(line : String, keyword : String) -> String? {
   let trimmed = metadata_trim_regex_whitespace(line)
   guard trimmed.length() > keyword.length() &&
-    trimmed[0:keyword.length()].to_owned() == keyword else {
+    metadata_has_ascii_keyword_at(trimmed, 0, keyword) else {
     return None
   }
   let whitespace_start = keyword.length()
@@ -275,7 +243,7 @@ fn semicolon_directive_body(line : String, keyword : String) -> String? {
 fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
   let trimmed = metadata_trim_regex_whitespace(line)
   guard trimmed.length() >= "diagnostic".length() &&
-    trimmed[0:"diagnostic".length()].to_owned() == "diagnostic" else {
+    metadata_has_ascii_keyword_at(trimmed, 0, "diagnostic") else {
     return None
   }
   let mut i = "diagnostic".length()
@@ -311,28 +279,15 @@ fn directive_identifier(text : String) -> String? {
   let trimmed = metadata_trim_regex_whitespace(trim_trailing_semicolons(text))
   let mut i = 0
   while i < trimmed.length() {
-    let code = trimmed.code_unit_at(i).to_int()
-    if metadata_shader_def_name_code_unit(code) {
-      i = i + 1
-      continue
-    }
-    break
+    let width = wgsl_regex_word_width(trimmed, i)
+    guard width > 0 else { break }
+    i = i + width
   }
   if i == 0 {
     None
   } else {
     Some(trimmed[0:i].to_owned())
   }
-}
-
-///|
-fn metadata_shader_def_name_code_unit(code : Int) -> Bool {
-  code == 124 ||
-  code == 95 ||
-  code > 127 ||
-  (code >= 48 && code <= 57) ||
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122)
 }
 
 ///|
@@ -390,12 +345,9 @@ fn parse_if_operator_expression(
   }
   let def_start = i
   while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if metadata_shader_def_name_code_unit(code) {
-      i = i + 1
-      continue
-    }
-    break
+    let width = wgsl_regex_word_width(text, i)
+    guard width > 0 else { break }
+    i = i + width
   }
   guard i > def_start else { return None }
   let def = text[def_start:i].to_owned()
@@ -428,11 +380,13 @@ fn parse_if_operator_expression(
   let value_start = i
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if code == 45 || metadata_shader_def_name_code_unit(code) {
+    if code == 45 {
       i = i + 1
       continue
     }
-    break
+    let width = wgsl_regex_word_width(text, i)
+    guard width > 0 else { break }
+    i = i + width
   }
   if i == value_start {
     None

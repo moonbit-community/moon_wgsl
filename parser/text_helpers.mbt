@@ -60,6 +60,19 @@ fn trim_regex_whitespace(text : String) -> String {
 }
 
 ///|
+fn has_ascii_keyword_at(text : String, start : Int, keyword : String) -> Bool {
+  guard start >= 0 && start + keyword.length() <= text.length() else {
+    return false
+  }
+  for i in 0..<keyword.length() {
+    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn trim_ascii_space_end(text : String, start : Int) -> Int {
   let mut end = text.length()
   while end > start {
@@ -178,9 +191,7 @@ pub fn wgsl_directive_prefix_tail(
   }
   let mut start = skip_regex_whitespace(trimmed, 1)
   guard start + prefix.length() <= trimmed.length() else { return None }
-  guard trimmed[start:start + prefix.length()].to_owned() == prefix else {
-    return None
-  }
+  guard has_ascii_keyword_at(trimmed, start, prefix) else { return None }
   start = start + prefix.length()
   let tail = trimmed[start:trimmed.length()].to_owned()
   let tokens : Array[(Token, Int, Int)] = [

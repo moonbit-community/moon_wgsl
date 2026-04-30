@@ -13,16 +13,6 @@
 // limitations under the License.
 
 ///|
-fn preprocess_shader_def_name_code_unit(code : Int) -> Bool {
-  code == 124 ||
-  code == 95 ||
-  code > 127 ||
-  (code >= 48 && code <= 57) ||
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122)
-}
-
-///|
 fn preprocess_regex_whitespace_code_unit(code : Int) -> Bool {
   code == 9 ||
   code == 10 ||

@@ -23,12 +23,9 @@ fn parse_if_operator_expression(
   }
   let def_start = i
   while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if preprocess_shader_def_name_code_unit(code) {
-      i = i + 1
-      continue
-    }
-    break
+    let width = wgsl_regex_word_width(text, i)
+    guard width > 0 else { break }
+    i = i + width
   }
   guard i > def_start else { return None }
   let def = text[def_start:i].to_owned()
@@ -61,11 +58,13 @@ fn parse_if_operator_expression(
   let value_start = i
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if code == 45 || preprocess_shader_def_name_code_unit(code) {
+    if code == 45 {
       i = i + 1
       continue
     }
-    break
+    let width = wgsl_regex_word_width(text, i)
+    guard width > 0 else { break }
+    i = i + width
   }
   if i == value_start {
     None

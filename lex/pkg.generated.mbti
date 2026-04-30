@@ -20,6 +20,12 @@ pub fn tokenize(String, Bool) -> Array[WgslToken]
 
 pub fn trim_trailing_semicolons(String) -> String
 
+pub fn wgsl_regex_word_code_point(Int) -> Bool
+
+pub fn wgsl_regex_word_text(String) -> Bool
+
+pub fn wgsl_regex_word_width(String, Int) -> Int
+
 pub fn wgsl_token_brace_balance(String) -> Int
 
 // Errors

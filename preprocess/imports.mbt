@@ -26,6 +26,8 @@ using @lex {
   source_lines,
   trim_trailing_semicolons,
   tokenize,
+  wgsl_regex_word_text,
+  wgsl_regex_word_width,
 }
 
 ///|

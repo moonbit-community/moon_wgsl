@@ -885,6 +885,52 @@ test "naga_oil: delimited shader-def references require regex name body" {
 }
 
 ///|
+test "naga_oil: shader-def regex word rejects emoji but keeps Unicode words" {
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("KNOWN", @common.ShaderDefValue::Int(7))
+  shader_defs.set("中文", @common.ShaderDefValue::Int(9))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "let a = #KNOWN💡;\nlet b = #{KNOWN💡};\nlet c = #中文;\n", shader_defs,
+  ) catch {
+    _ => abort("expected unicode shader-def preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 7💡;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let b = #{KNOWN💡};"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let c = 9;"),
+    content="true",
+  )
+}
+
+///|
+test "naga_oil: conditional directive regex word stops before emoji" {
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("FLAG", @common.ShaderDefValue::Bool(true))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "#ifdef FLAG💡\nactive\n#else\ninactive\n#endif\n", shader_defs,
+  ) catch {
+    _ => abort("expected emoji-suffixed ifdef preprocess success")
+  }
+  debug_inspect(output.preprocessed_source.contains("active"), content="true")
+  debug_inspect(
+    output.preprocessed_source.contains("inactive"),
+    content="false",
+  )
+  let metadata = metadata_or_abort(
+    "#ifdef FLAG💡\n#endif\n#FLAG💡\n#中文\n",
+  )
+  debug_inspect(metadata.effective_defs.contains("FLAG"), content="true")
+  debug_inspect(metadata.effective_defs.contains("FLAG💡"), content="false")
+  debug_inspect(metadata.effective_defs.contains("中文"), content="true")
+}
+
+///|
 test "naga_oil: conditional directive keywords require trailing whitespace" {
   let shader_defs = empty_shader_defs()
   shader_defs.set("|FLAG", @common.ShaderDefValue::Bool(true))
