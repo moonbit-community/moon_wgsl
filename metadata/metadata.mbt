@@ -105,21 +105,3 @@ pub fn get_preprocessor_metadata(
 ) -> PreprocessorMetaData raise MetadataError {
   try_get_preprocessor_metadata(source, allow_defines)
 }
-
-///|
-pub fn get_preprocessor_data(
-  source : String,
-) -> (
-  String?,
-  Array[ImportDefinition],
-  @hashmap.HashMap[String, ShaderDefValue],
-) raise MetadataError {
-  let metadata = get_preprocessor_metadata(source)
-  let imports : Array[ImportDefinition] = []
-  for import_with_offset in metadata.imports {
-    imports.push(import_with_offset.definition)
-  }
-  (metadata.name, imports, metadata.defines)
-}
-
-///|

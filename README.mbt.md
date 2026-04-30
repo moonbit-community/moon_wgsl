@@ -57,9 +57,8 @@ composition in MoonBit without introducing a separate CLI step.
 
 ### 1. Metadata Extraction
 
-Use `@metadata.get_preprocessor_metadata` or
-`@metadata.get_preprocessor_data` when you want to inspect a shader without
-fully composing it.
+Use `@metadata.get_preprocessor_metadata` when you want to inspect a shader
+without fully composing it.
 
 Metadata includes:
 
@@ -445,8 +444,6 @@ Main public entry points:
   Owns a WGSL registry and recursively composes registered shader modules.
 - `@metadata.get_preprocessor_metadata`
   Returns a rich metadata object for a shader source string.
-- `@metadata.get_preprocessor_data`
-  Returns the simplified `(name, imports, defines)` tuple.
 - `WgslSourceRegistry::register_source` / `WgslSourceRegistry::registered_source`
   Manage an explicit WGSL source registry value.
 - `Composer::register_source` / `Composer::register_source_files`

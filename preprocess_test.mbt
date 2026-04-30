@@ -65,16 +65,15 @@ fn metadata_or_abort(source : String) -> @common.PreprocessorMetaData {
 }
 
 ///|
-fn preprocessor_data_or_abort(
+fn metadata_imports_or_abort(
   source : String,
-) -> (
-  String?,
-  Array[@common.ImportDefinition],
-  @hashmap.HashMap[String, @common.ShaderDefValue],
-) {
-  @metadata.get_preprocessor_data(source) catch {
-    _ => abort("expected preprocessor data parse success")
+) -> Array[@common.ImportDefinition] {
+  let metadata = metadata_or_abort(source)
+  let imports : Array[@common.ImportDefinition] = []
+  for import_with_offset in metadata.imports {
+    imports.push(import_with_offset.definition)
   }
+  imports
 }
 
 ///|
@@ -141,7 +140,7 @@ test "naga_oil: metadata parser records only used imports like upstream" {
 
 ///|
 test "naga_oil: metadata parser keeps quoted path imports and duplicate item uses" {
-  let (_, imports, _) = preprocessor_data_or_abort(
+  let imports = metadata_imports_or_abort(
     "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\nfn vertex(vertex: Vertex) -> VertexOutput {\n  var out : VertexOutput;\n  return out;\n}\n",
   )
   debug_inspect(imports.length(), content="1")
@@ -183,7 +182,7 @@ test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
 
 ///|
 test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
-  let (_, imports, _) = preprocessor_data_or_abort(
+  let imports = metadata_imports_or_abort(
     "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\n\n#if EFFECT_ID == 0\n    #import \"shaders/skills/sound.wgsl\" frag, vert\n#else if EFFECT_ID == 1\n    #import \"shaders/skills/orb.wgsl\" frag, vert\n#else if EFFECT_ID == 2\n    #import \"shaders/skills/slash.wgsl\" frag, vert\n#else if EFFECT_ID == 3\n    #import \"shaders/skills/railgun_trail.wgsl\" frag, vert\n#else if EFFECT_ID == 4\n    #import \"shaders/skills/magic_arrow.wgsl\" frag, vert\n#else if EFFECT_ID == 5\n    #import \"shaders/skills/hit.wgsl\" frag, vert\n#else if EFFECT_ID == 6\n    #import \"shaders/skills/lightning_ring.wgsl\" frag, vert\n#else if EFFECT_ID == 7\n    #import \"shaders/skills/lightning.wgsl\" frag, vert\n#endif\n\n#import something_unused\n\n@fragment\nfn fragment(in: VertexOutput) -> @location(0) vec4<f32> {\n    return frag(in);\n}\n\n@vertex\nfn vertex(vertex: Vertex) -> VertexOutput {\n    return vert(vertex);\n}\n",
   )
   debug_inspect(imports.length(), content="9")
@@ -228,7 +227,7 @@ test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
 
 ///|
 test "naga_oil upstream mirror: metadata parser matches bevy path import fixture" {
-  let (_, imports, _) = preprocessor_data_or_abort(
+  let imports = metadata_imports_or_abort(
     upstream_compose_fixture_source("bevy_path_imports", "skill.wgsl"),
   )
   debug_inspect(imports.length(), content="9")
