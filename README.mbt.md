@@ -5,7 +5,8 @@ analysis, and shader composition.
 
 The public surface follows `naga_oil` concepts while staying source-level and
 multi-backend. Import the focused subpackage you need, such as `@common`,
-`@preprocess`, `@resolver`, `@analysis`, `@compose`, or `@export`:
+`@preprocess`, `@resolver`, `@analysis`, `@writeback`, `@compose`, or
+`@export`:
 
 ```mbt check
 ///|

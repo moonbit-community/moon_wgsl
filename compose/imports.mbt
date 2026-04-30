@@ -68,3 +68,9 @@ using @syntax {
   wgsl_directive_prefix_tail,
   wgsl_directive_tail,
 }
+
+///|
+using @writeback {
+  invalid_wgsl_struct_member_identifier,
+  sanitize_wgsl_writeback_identifiers,
+}

@@ -1,0 +1,16 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/writeback"
+
+// Values
+pub fn invalid_wgsl_struct_member_identifier(String) -> String?
+
+pub fn sanitize_wgsl_writeback_identifiers(String) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
