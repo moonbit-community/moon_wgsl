@@ -20,7 +20,7 @@ using @ast {type WgslDirectiveKind}
 ///|
 using @parser {
   type Token,
-  import_brace_balance,
+  wgsl_token_brace_balance,
   replace_comments,
   spaces,
   source_lines,

@@ -32,14 +32,14 @@ fn try_get_preprocessor_metadata(
       }
     } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(_) {
       let mut import_lines = "\{line}\n"
-      let mut open_count = import_brace_balance(line)
+      let mut open_count = wgsl_token_brace_balance(line)
       let initial_offset = offset
 
       while open_count > 0 && line_index + 1 < lines.length() {
         line_index = line_index + 1
         let next_line = lines[line_index]
         import_lines = "\{import_lines}\{next_line}\n"
-        open_count = open_count + import_brace_balance(next_line)
+        open_count = open_count + wgsl_token_brace_balance(next_line)
         offset = offset + next_line.length() + 1
       }
 

@@ -8,8 +8,6 @@ import {
 }
 
 // Values
-pub fn import_brace_balance(String) -> Int
-
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
 
 pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit
@@ -32,6 +30,8 @@ pub fn wgsl_directive_prefix_tail(String, @ast.WgslDirectiveKind) -> String?
 
 pub fn wgsl_directive_tail(String, @ast.WgslDirectiveKind) -> String?
 
+pub fn wgsl_token_brace_balance(String) -> Int
+
 // Errors
 pub(all) suberror ParseImportsError {
   Parse(String, Int)
@@ -43,6 +43,7 @@ pub enum Token {
   Other(Int, Int)
   Whitespace(String, Int)
 } derive(Eq, @debug.Debug)
+pub fn Token::end(Self) -> Int
 pub fn Token::pos(Self) -> Int
 
 // Type aliases

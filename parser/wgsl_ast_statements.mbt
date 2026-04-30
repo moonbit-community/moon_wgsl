@@ -353,8 +353,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   let mut first_identifier : String? = None
   let mut start_pos = -1
   let mut end_pos = -1
-  let mut brace_depth = 0
-  let mut paren_depth = 0
+  let depth = WgslTokenDepth::new()
   fn record_span(start : Int, end_ : Int) -> Unit {
     if start_pos < 0 {
       start_pos = start
@@ -362,41 +361,12 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     end_pos = end_
   }
   fn record_token(token : Token) -> Unit {
-    record_span(token.pos(), wgsl_ast_token_end(token))
+    record_span(token.pos(), token.end())
   }
   while true {
     match self.view() {
-      [Token::Other(123, pos), .. rest] => {
-        brace_depth = brace_depth + 1
-        tokens.push(Token::Other(123, pos))
-        record_span(pos, pos + 1)
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(125, _), ..] if brace_depth == 0 => break
-      [Token::Other(125, pos), .. rest] => {
-        brace_depth = brace_depth - 1
-        tokens.push(Token::Other(125, pos))
-        record_span(pos, pos + 1)
-        self.update_view(rest)
-        if brace_depth == 0 {
-          break
-        }
-        continue
-      }
-      [Token::Other(40, pos), .. rest] => {
-        paren_depth = paren_depth + 1
-        record_span(pos, pos + 1)
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(41, pos), .. rest] => {
-        paren_depth = paren_depth - 1
-        record_span(pos, pos + 1)
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(59, pos), .. rest] if brace_depth == 0 && paren_depth == 0 => {
+      [Token::Other(125, _), ..] if depth.at_top() => break
+      [Token::Other(59, pos), .. rest] if depth.at_top() => {
         record_span(pos, pos + 1)
         self.update_view(rest)
         break
@@ -410,8 +380,12 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
           _ => ()
         }
         tokens.push(token)
+        depth.observe_statement_token(token)
         record_token(token)
         self.update_view(rest)
+        if depth.at_top() && token is Token::Other(125, _) {
+          break
+        }
         continue
       }
       [] => break

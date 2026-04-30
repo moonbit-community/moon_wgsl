@@ -76,7 +76,7 @@ using @ast {type WgslDirectiveKind}
 
 ///|
 using @parser {
-  import_brace_balance,
+  wgsl_token_brace_balance,
   split_source_lines,
   wgsl_directive_prefix_tail,
   wgsl_directive_tail,

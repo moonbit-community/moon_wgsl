@@ -18,7 +18,7 @@ using @ast {type WgslDirectiveKind}
 using @parser {
   type ParseImportsError,
   type Token,
-  import_brace_balance,
+  wgsl_token_brace_balance,
   parse_wgsl_import_targets,
   replace_comments,
   source_lines,

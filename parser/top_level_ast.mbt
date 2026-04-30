@@ -13,10 +13,11 @@
 // limitations under the License.
 
 ///|
-fn top_level_text_contains_code_unit(text : String, code : Int) -> Bool {
-  for i in 0..<text.length() {
-    if text.code_unit_at(i).to_int() == code {
-      return true
+fn top_level_text_contains_other_token(text : String, code : Int) -> Bool {
+  for token in tokenize(text, false) {
+    match token {
+      Token::Other(actual, _) if actual == code => return true
+      _ => ()
     }
   }
   false
@@ -188,13 +189,13 @@ fn WgslTopLevelParser::parse_import_item(
   self.flush_trivia(items)
   let block_start = line.start
   let mut import_block = line.text
-  let mut balance = import_brace_balance(directive.tail)
+  let mut balance = wgsl_token_brace_balance(directive.tail)
   self.update_view(rest)
   while balance > 0 {
     match self.view() {
       [next_line, .. next_rest] => {
         import_block = "\{import_block}\n\{next_line.text}"
-        balance = balance + import_brace_balance(next_line.cleaned)
+        balance = balance + wgsl_token_brace_balance(next_line.cleaned)
         self.update_view(next_rest)
         continue
       }
@@ -240,10 +241,10 @@ fn WgslTopLevelParser::parse_declaration_item(
       [] => break
     }
     block_lines.push(block_line)
-    if top_level_text_contains_code_unit(cleaned_block_line, 123) {
+    if top_level_text_contains_other_token(cleaned_block_line, 123) {
       saw_brace = true
     }
-    brace_depth = brace_depth + import_brace_balance(cleaned_block_line)
+    brace_depth = brace_depth + wgsl_token_brace_balance(cleaned_block_line)
     let block_trimmed = cleaned_block_line.trim().to_owned()
     let done = if saw_brace {
       brace_depth == 0

@@ -77,6 +77,20 @@ test "top-level AST ignores comments while finding block boundaries" {
 }
 
 ///|
+test "top-level AST ignores quoted braces while finding boundaries" {
+  let source = "const A = \"{\";\n" +
+    "const B: u32 = 1u;\n" +
+    "#import demo::{\n" +
+    "  thing::Value,\n" +
+    "}\n"
+  let items = parse_wgsl_top_level_items(source)
+  debug_inspect(items.length(), content="3")
+  debug_inspect(items[0].name, content="\"A\"")
+  debug_inspect(items[1].name, content="\"B\"")
+  debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Import\"")
+}
+
+///|
 test "top-level AST preserves directive-adjacent trivia" {
   let source = "// leading import note\n" +
     "#import demo::thing\n" +

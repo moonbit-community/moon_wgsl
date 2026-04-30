@@ -175,14 +175,13 @@ pub fn wgsl_directive_prefix_tail(
 }
 
 ///|
-pub fn import_brace_balance(text : String) -> Int {
+pub fn wgsl_token_brace_balance(text : String) -> Int {
   let mut balance = 0
-  for i in 0..<text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if code == 123 { // '{'
-      balance = balance + 1
-    } else if code == 125 { // '}'
-      balance = balance - 1
+  for token in tokenize(text, false) {
+    match token {
+      Token::Other(123, _) => balance = balance + 1
+      Token::Other(125, _) => balance = balance - 1
+      _ => ()
     }
   }
   balance

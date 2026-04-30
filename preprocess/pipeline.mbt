@@ -58,7 +58,7 @@ pub fn Preprocessor::preprocess(
           while true {
             final_string = final_string + spaces(line.length())
             offset = offset + line.length() + 1
-            open_count = open_count + import_brace_balance(line)
+            open_count = open_count + wgsl_token_brace_balance(line)
             import_lines = "\{import_lines}\{line}\n"
             if open_count == 0 || line_index + 1 >= decommented_lines.length() {
               break

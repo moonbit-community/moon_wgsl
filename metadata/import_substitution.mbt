@@ -90,7 +90,7 @@ pub fn parse_imports(
       raise ParseImportsError::Parse("expected `#import`", source_offset)
     }
     let mut block_spec = spec
-    let mut brace_balance = import_brace_balance(block_spec)
+    let mut brace_balance = wgsl_token_brace_balance(block_spec)
     let spec_offset = match line.find(spec) {
       Some(index) => index
       None => 0
@@ -101,7 +101,7 @@ pub fn parse_imports(
       line_index = line_index + 1
       let next_line = lines[line_index]
       block_spec = "\{block_spec}\n\{next_line}"
-      brace_balance = brace_balance + import_brace_balance(next_line)
+      brace_balance = brace_balance + wgsl_token_brace_balance(next_line)
       consumed_length = consumed_length + next_line.length() + 1
     }
     let targets : Array[WgslImportTarget] = []

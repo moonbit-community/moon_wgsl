@@ -1,13 +1,4 @@
 ///|
-fn wgsl_ast_token_end(token : Token) -> Int {
-  match token {
-    Token::Identifier(text, pos) | Token::Whitespace(text, pos) =>
-      pos + text.length()
-    Token::Other(_, pos) => pos + 1
-  }
-}
-
-///|
 fn wgsl_expr_identifier_has_access_prefix(
   tokens : Array[Token],
   index : Int,
@@ -97,6 +88,55 @@ priv struct WgslDelimitedTokenView {
   open_start : Int
   close_start : Int
   consumed : Int
+}
+
+///|
+priv struct WgslTokenDepth {
+  mut paren : Int
+  mut angle : Int
+  mut bracket : Int
+  mut brace : Int
+}
+
+///|
+fn WgslTokenDepth::new() -> WgslTokenDepth {
+  WgslTokenDepth::{ paren: 0, angle: 0, bracket: 0, brace: 0 }
+}
+
+///|
+fn WgslTokenDepth::at_top(self : WgslTokenDepth) -> Bool {
+  self.paren == 0 && self.angle == 0 && self.bracket == 0 && self.brace == 0
+}
+
+///|
+fn WgslTokenDepth::observe(self : WgslTokenDepth, token : Token) -> Unit {
+  match token {
+    Token::Other(40, _) => self.paren = self.paren + 1
+    Token::Other(41, _) => self.paren = self.paren - 1
+    Token::Other(60, _) => self.angle = self.angle + 1
+    Token::Other(62, _) => self.angle = self.angle - 1
+    Token::Other(91, _) => self.bracket = self.bracket + 1
+    Token::Other(93, _) => self.bracket = self.bracket - 1
+    Token::Other(123, _) => self.brace = self.brace + 1
+    Token::Other(125, _) => self.brace = self.brace - 1
+    _ => ()
+  }
+}
+
+///|
+fn WgslTokenDepth::observe_statement_token(
+  self : WgslTokenDepth,
+  token : Token,
+) -> Unit {
+  match token {
+    Token::Other(40, _) => self.paren = self.paren + 1
+    Token::Other(41, _) => self.paren = self.paren - 1
+    Token::Other(91, _) => self.bracket = self.bracket + 1
+    Token::Other(93, _) => self.bracket = self.bracket - 1
+    Token::Other(123, _) => self.brace = self.brace + 1
+    Token::Other(125, _) => self.brace = self.brace - 1
+    _ => ()
+  }
 }
 
 ///|
@@ -272,72 +312,15 @@ fn WgslDeclParser::collect_until_top_level_fragment(
     if start_pos < 0 {
       start_pos = token.pos()
     }
-    end_pos = wgsl_ast_token_end(token)
+    end_pos = token.end()
   }
-  let mut paren_depth = 0
-  let mut angle_depth = 0
-  let mut bracket_depth = 0
+  let depth = WgslTokenDepth::new()
   while true {
     match self.view() {
-      [Token::Other(code, _), ..] if paren_depth == 0 &&
-        angle_depth == 0 &&
-        bracket_depth == 0 &&
-        stops.contains(code) => break
-      [Token::Other(40, pos), .. rest] => {
-        paren_depth = paren_depth + 1
-        if start_pos < 0 {
-          start_pos = pos
-        }
-        end_pos = pos + 1
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(41, pos), .. rest] => {
-        paren_depth = paren_depth - 1
-        if start_pos < 0 {
-          start_pos = pos
-        }
-        end_pos = pos + 1
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(60, pos), .. rest] => {
-        angle_depth = angle_depth + 1
-        if start_pos < 0 {
-          start_pos = pos
-        }
-        end_pos = pos + 1
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(62, pos), .. rest] => {
-        angle_depth = angle_depth - 1
-        if start_pos < 0 {
-          start_pos = pos
-        }
-        end_pos = pos + 1
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(91, pos), .. rest] => {
-        bracket_depth = bracket_depth + 1
-        if start_pos < 0 {
-          start_pos = pos
-        }
-        end_pos = pos + 1
-        self.update_view(rest)
-        continue
-      }
-      [Token::Other(93, pos), .. rest] => {
-        bracket_depth = bracket_depth - 1
-        if start_pos < 0 {
-          start_pos = pos
-        }
-        end_pos = pos + 1
-        self.update_view(rest)
-        continue
-      }
+      [Token::Other(code, _), ..] if depth.at_top() && stops.contains(code) =>
+        break
       [token, .. rest] => {
+        depth.observe(token)
         record_token(token)
         self.update_view(rest)
         continue

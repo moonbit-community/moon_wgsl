@@ -29,6 +29,14 @@ pub fn Token::pos(self : Token) -> Int {
 }
 
 ///|
+pub fn Token::end(self : Token) -> Int {
+  match self {
+    Identifier(text, pos) | Whitespace(text, pos) => pos + text.length()
+    Other(_, pos) => pos + 1
+  }
+}
+
+///|
 fn tokenizer_identifier_start(code : Int) -> Bool {
   code == 95 || // '_'
   (code >= 65 && code <= 90) ||
