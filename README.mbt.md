@@ -5,8 +5,8 @@ analysis, and shader composition.
 
 The public surface follows `naga_oil` concepts while staying source-level and
 multi-backend. Import the focused subpackage you need, such as `@common`,
-`@metadata`, `@preprocess`, `@resolver`, `@analysis`, `@virtual_overrides`,
-`@writeback`, `@compose`, or `@export`:
+`@metadata`, `@preprocess`, `@resolver`, `@analysis`, `@import_planner`,
+`@virtual_overrides`, `@writeback`, `@compose`, or `@export`:
 
 ```mbt check
 ///|
@@ -504,8 +504,8 @@ For the full exported surface, see the generated subpackage interfaces:
 `common/pkg.generated.mbti`, `syntax/pkg.generated.mbti`,
 `metadata/pkg.generated.mbti`, `preprocess/pkg.generated.mbti`,
 `resolver/pkg.generated.mbti`, `analysis/pkg.generated.mbti`,
-`virtual_overrides/pkg.generated.mbti`, `compose/pkg.generated.mbti`, and
-`export/pkg.generated.mbti`.
+`import_planner/pkg.generated.mbti`, `virtual_overrides/pkg.generated.mbti`,
+`compose/pkg.generated.mbti`, and `export/pkg.generated.mbti`.
 
 ## Behavior Notes
 

@@ -1,0 +1,62 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/import_planner"
+
+import {
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/resolver",
+  "moonbitlang/core/hashmap",
+}
+
+// Values
+pub fn build_wgsl_import_rename_map(String, String) -> @hashmap.HashMap[String, String]
+
+pub fn collect_wgsl_alias_requested_paths(String, String, Array[String]) -> Unit
+
+pub fn collect_wgsl_import_alias_redirects(String, @hashmap.HashMap[String, String], Array[@common.WgslSymbolRedirect]) -> Unit
+
+pub fn collect_wgsl_qualified_module_targets(String, String, @resolver.WgslSourceRegistry, @hashmap.HashMap[String, String], Array[@common.WgslImportTarget]) -> Unit
+
+pub fn find_wgsl_import_request_index(Array[WgslImportRequest], String, String, String) -> Int?
+
+pub fn resolve_wgsl_import_request_module(String, String, @resolver.WgslSourceRegistry, @hashmap.HashMap[String, String]) -> @common.WgslResolvedImportModule?
+
+pub fn split_last_wgsl_path(String) -> (String, String)?
+
+pub fn unresolved_wgsl_namespace_reference(String) -> String?
+
+pub fn wgsl_full_module_visit_key(String, String) -> String
+
+pub fn wgsl_import_cycle_string(Array[String], String) -> String
+
+pub fn wgsl_import_default_alias(String) -> String
+
+pub fn wgsl_import_request_visit_key(String, WgslImportRequest) -> String
+
+pub fn wgsl_import_requested_item_name(String, String) -> String
+
+pub fn wgsl_import_targets_push_unique(Array[@common.WgslImportTarget], @common.WgslImportTarget) -> Unit
+
+pub fn wgsl_imported_item_name_key(String, String) -> String
+
+pub fn wgsl_path_stack_contains(Array[String], String) -> Bool
+
+pub fn wgsl_source_contains_identifier(String, String) -> Bool
+
+pub fn wgsl_source_uses_import_alias(String, String) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) struct WgslImportRequest {
+  module_path : String
+  rel_path : String
+  mut import_full_module : Bool
+  mut keep_requested_items : Bool
+  requested_items : Array[String]
+  alias_name : String
+}
+
+// Type aliases
+
+// Traits
+

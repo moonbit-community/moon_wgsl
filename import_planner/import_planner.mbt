@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv struct WgslImportRequest {
+pub(all) struct WgslImportRequest {
   module_path : String
   rel_path : String
   mut import_full_module : Bool
@@ -23,7 +23,20 @@ priv struct WgslImportRequest {
 }
 
 ///|
-fn unresolved_wgsl_namespace_reference(source : String) -> String? {
+fn string_list_push_unique(items : Array[String], item : String) -> Unit {
+  if item == "" {
+    return
+  }
+  for existing in items {
+    if existing == item {
+      return
+    }
+  }
+  items.push(item)
+}
+
+///|
+pub fn unresolved_wgsl_namespace_reference(source : String) -> String? {
   let names : Array[String] = []
   collect_wgsl_source_identifier_names(source, names)
   for name in names {
@@ -35,7 +48,7 @@ fn unresolved_wgsl_namespace_reference(source : String) -> String? {
 }
 
 ///|
-fn wgsl_source_contains_identifier(
+pub fn wgsl_source_contains_identifier(
   source : String,
   identifier : String,
 ) -> Bool {
@@ -57,7 +70,7 @@ fn wgsl_source_contains_identifier(
 }
 
 ///|
-fn wgsl_import_default_alias(module_path : String) -> String {
+pub fn wgsl_import_default_alias(module_path : String) -> String {
   match split_last_identifier(module_path.trim().to_owned()) {
     Some((_, suffix)) => suffix.trim().to_owned()
     None => module_path.trim().to_owned()
@@ -100,7 +113,7 @@ fn wgsl_import_alias_prefix(alias_name : String) -> String {
 }
 
 ///|
-fn wgsl_import_requested_item_name(
+pub fn wgsl_import_requested_item_name(
   raw_path : String,
   module_path : String,
 ) -> String {
@@ -112,7 +125,7 @@ fn wgsl_import_requested_item_name(
 }
 
 ///|
-fn collect_wgsl_alias_requested_paths(
+pub fn collect_wgsl_alias_requested_paths(
   source : String,
   alias_name : String,
   requested_paths : Array[String],
@@ -122,13 +135,16 @@ fn collect_wgsl_alias_requested_paths(
   for path in names {
     let requested_item = wgsl_import_requested_item_name(path, alias_name)
     if requested_item != "" {
-      composer_string_list_push_unique(requested_paths, requested_item)
+      string_list_push_unique(requested_paths, requested_item)
     }
   }
 }
 
 ///|
-fn wgsl_source_uses_import_alias(source : String, alias_name : String) -> Bool {
+pub fn wgsl_source_uses_import_alias(
+  source : String,
+  alias_name : String,
+) -> Bool {
   let requested_paths : Array[String] = []
   collect_wgsl_alias_requested_paths(source, alias_name, requested_paths)
   requested_paths.length() > 0
@@ -146,7 +162,7 @@ fn wgsl_path_separator_count(path : String) -> Int {
 }
 
 ///|
-fn split_last_wgsl_path(path : String) -> (String, String)? {
+pub fn split_last_wgsl_path(path : String) -> (String, String)? {
   match split_last_identifier(path) {
     Some((prefix, suffix)) => {
       let trimmed_prefix = prefix.trim().to_owned()
@@ -162,7 +178,7 @@ fn split_last_wgsl_path(path : String) -> (String, String)? {
 }
 
 ///|
-fn wgsl_import_targets_push_unique(
+pub fn wgsl_import_targets_push_unique(
   targets : Array[WgslImportTarget],
   target : WgslImportTarget,
 ) -> Unit {
@@ -176,7 +192,7 @@ fn wgsl_import_targets_push_unique(
 }
 
 ///|
-fn collect_wgsl_qualified_module_targets(
+pub fn collect_wgsl_qualified_module_targets(
   source : String,
   current_rel_path : String,
   registry : WgslSourceRegistry,
@@ -210,7 +226,7 @@ fn collect_wgsl_qualified_module_targets(
 }
 
 ///|
-fn build_wgsl_import_rename_map(
+pub fn build_wgsl_import_rename_map(
   source : String,
   alias_name : String,
 ) -> @hashmap.HashMap[String, String] {
@@ -223,7 +239,7 @@ fn build_wgsl_import_rename_map(
 }
 
 ///|
-fn collect_wgsl_import_alias_redirects(
+pub fn collect_wgsl_import_alias_redirects(
   alias_name : String,
   rename_map : @hashmap.HashMap[String, String],
   redirects : Array[WgslSymbolRedirect],
@@ -238,7 +254,7 @@ fn collect_wgsl_import_alias_redirects(
 }
 
 ///|
-fn find_wgsl_import_request_index(
+pub fn find_wgsl_import_request_index(
   requests : Array[WgslImportRequest],
   module_path : String,
   rel_path : String,
@@ -256,7 +272,7 @@ fn find_wgsl_import_request_index(
 }
 
 ///|
-fn wgsl_import_request_visit_key(
+pub fn wgsl_import_request_visit_key(
   importer_rel_path : String,
   request : WgslImportRequest,
 ) -> String {
@@ -280,17 +296,23 @@ fn wgsl_import_request_visit_key(
 }
 
 ///|
-fn wgsl_full_module_visit_key(rel_path : String, alias_name : String) -> String {
+pub fn wgsl_full_module_visit_key(
+  rel_path : String,
+  alias_name : String,
+) -> String {
   "\{rel_path}|\{alias_name}|*"
 }
 
 ///|
-fn wgsl_imported_item_name_key(rel_path : String, item_name : String) -> String {
+pub fn wgsl_imported_item_name_key(
+  rel_path : String,
+  item_name : String,
+) -> String {
   "\{rel_path}|\{item_name}"
 }
 
 ///|
-fn resolve_wgsl_import_request_module(
+pub fn resolve_wgsl_import_request_module(
   importer_rel_path : String,
   import_path : String,
   registry : WgslSourceRegistry,
@@ -322,12 +344,15 @@ fn resolve_wgsl_import_request_module(
 }
 
 ///|
-fn wgsl_path_stack_contains(paths : Array[String], rel_path : String) -> Bool {
+pub fn wgsl_path_stack_contains(
+  paths : Array[String],
+  rel_path : String,
+) -> Bool {
   paths.contains(rel_path)
 }
 
 ///|
-fn wgsl_import_cycle_string(
+pub fn wgsl_import_cycle_string(
   active_rel_paths : Array[String],
   repeated_rel_path : String,
 ) -> String {
@@ -344,3 +369,5 @@ fn wgsl_import_cycle_string(
   cycle_paths.push(repeated_rel_path)
   cycle_paths.join(" -> ")
 }
+
+///|

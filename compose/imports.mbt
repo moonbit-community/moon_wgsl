@@ -21,11 +21,33 @@ using @common {
   type WgslDiagnostic,
   type WgslDiagnosticSeverity,
   type WgslImportTarget,
-  type WgslResolvedImportModule,
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceScanOptions,
   type WgslSymbolRedirect,
+}
+
+///|
+using @import_planner {
+  type WgslImportRequest,
+  build_wgsl_import_rename_map,
+  collect_wgsl_alias_requested_paths,
+  collect_wgsl_import_alias_redirects,
+  collect_wgsl_qualified_module_targets,
+  find_wgsl_import_request_index,
+  resolve_wgsl_import_request_module,
+  split_last_wgsl_path,
+  unresolved_wgsl_namespace_reference,
+  wgsl_full_module_visit_key,
+  wgsl_import_cycle_string,
+  wgsl_import_default_alias,
+  wgsl_import_request_visit_key,
+  wgsl_import_requested_item_name,
+  wgsl_import_targets_push_unique,
+  wgsl_imported_item_name_key,
+  wgsl_path_stack_contains,
+  wgsl_source_contains_identifier,
+  wgsl_source_uses_import_alias,
 }
 
 ///|
@@ -46,21 +68,15 @@ using @resolver {
   collect_wgsl_import_targets,
   default_shader_rel_path_for_module_path,
   normalize_shader_rel_path,
-  resolve_wgsl_import_file_path_from_registry,
-  resolve_wgsl_import_module_in_registry,
   scan_wgsl_source_files,
 }
 
 ///|
 using @syntax {
-  type Token,
   type WgslDirectiveKind,
-  collect_wgsl_source_identifier_names,
   import_brace_balance,
-  split_last_identifier,
   split_source_lines,
   starts_with_text,
-  tokenize,
   wgsl_directive_prefix_tail,
   wgsl_directive_tail,
 }
