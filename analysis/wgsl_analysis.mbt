@@ -17,7 +17,6 @@ pub struct WgslGraphBlock {
   name : String
   text : String
   start : Int
-  end : Int
   data : WgslGlobalDeclData
 }
 
@@ -61,7 +60,6 @@ pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
       name: decl.name,
       text: decl.text,
       start: decl.start,
-      end: decl.end,
       data: decl.data,
     }
     match decl.kind {

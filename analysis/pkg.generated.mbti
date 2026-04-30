@@ -47,7 +47,6 @@ pub struct WgslGraphBlock {
   name : String
   text : String
   start : Int
-  end : Int
   data : @ast.WgslGlobalDeclData
 }
 
