@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub(all) enum Token {
+pub enum Token {
   Identifier(String, Int)
   Other(Int, Int)
   Whitespace(String, Int)

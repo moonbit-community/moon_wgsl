@@ -60,7 +60,7 @@ pub(all) struct DiagnosticDirective {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct WgslDirectives {
+pub struct WgslDirectives {
   enables : Array[EnableDirective]
   requires : Array[RequiresDirective]
   diagnostics : Array[DiagnosticDirective]

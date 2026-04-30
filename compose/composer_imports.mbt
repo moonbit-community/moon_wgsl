@@ -216,12 +216,8 @@ fn build_wgsl_import_rename_map(
 ) -> @hashmap.HashMap[String, String] {
   let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let alias_prefix = wgsl_import_alias_prefix(alias_name)
-  let graph = build_wgsl_declaration_graph(source)
-  for block in graph.declaration_blocks {
-    if block.name == "" {
-      continue
-    }
-    rename_map.set(block.name, "\{alias_prefix}__\{block.name}")
+  for declaration in collect_wgsl_named_declarations(source) {
+    rename_map.set(declaration.name, "\{alias_prefix}__\{declaration.name}")
   }
   rename_map
 }

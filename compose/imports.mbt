@@ -6,6 +6,7 @@ using @analysis {
   build_wgsl_decl_local_name_map,
   build_wgsl_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,
+  collect_wgsl_named_declarations,
   extract_wgsl_module_items,
   normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_rename_plan,

@@ -16,6 +16,8 @@ pub fn build_wgsl_rename_plan_from_redirect_map(@hashmap.HashMap[String, String]
 
 pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
 
+pub fn collect_wgsl_named_declarations(String) -> Array[WgslEmittedDeclaration]
+
 pub fn emit_wgsl_tree_shaken_source(String, Array[String]) -> WgslTreeShakenSource
 
 pub fn extract_wgsl_module_items(String, Array[String]) -> String
@@ -31,20 +33,20 @@ pub fn strip_wgsl_import_declarations(String) -> String
 // Errors
 
 // Types and methods
-pub(all) struct WgslDeclarationGraph {
+pub struct WgslDeclarationGraph {
   source_blocks : Array[WgslGraphBlock]
   import_blocks : Array[WgslGraphBlock]
   declaration_blocks : Array[WgslGraphBlock]
 }
 
-pub(all) struct WgslEmittedDeclaration {
+pub struct WgslEmittedDeclaration {
   name : String
   text : String
   generated_start : Int
   generated_end : Int
 }
 
-pub(all) struct WgslGraphBlock {
+pub struct WgslGraphBlock {
   name : String
   text : String
   start : Int
@@ -71,7 +73,7 @@ pub(all) enum WgslRenameRuleKind {
   FunctionLocal
 }
 
-pub(all) struct WgslTreeShakenSource {
+pub struct WgslTreeShakenSource {
   source : String
   declarations : Array[WgslEmittedDeclaration]
   missing_root_items : Array[String]

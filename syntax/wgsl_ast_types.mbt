@@ -14,14 +14,14 @@ pub(all) enum WgslGlobalDeclKind {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct WgslIdent {
+pub struct WgslIdent {
   name : String
   start : Int
   end : Int
 } derive(Debug)
 
 ///|
-pub(all) struct WgslExprRef {
+pub struct WgslExprRef {
   text : String
   identifiers : Array[WgslIdent]
   start : Int
@@ -29,14 +29,14 @@ pub(all) struct WgslExprRef {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslAttribute {
+pub struct WgslAttribute {
   name : String
   arguments : String
   arguments_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
-pub(all) struct WgslTypeRef {
+pub struct WgslTypeRef {
   name : String
   arguments : Array[WgslTypeRef]
   text : String
@@ -45,7 +45,7 @@ pub(all) struct WgslTypeRef {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslFunctionArgument {
+pub struct WgslFunctionArgument {
   attributes : Array[WgslAttribute]
   name : String
   name_start : Int
@@ -55,7 +55,7 @@ pub(all) struct WgslFunctionArgument {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslFunctionResult {
+pub struct WgslFunctionResult {
   attributes : Array[WgslAttribute]
   ty : String
   ty_ref : WgslTypeRef?
@@ -76,7 +76,7 @@ pub(all) enum WgslStatementKind {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct WgslStatement {
+pub struct WgslStatement {
   kind : WgslStatementKind
   text : String
   local_name : String?
@@ -87,12 +87,12 @@ pub(all) struct WgslStatement {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslBlock {
+pub struct WgslBlock {
   statements : Array[WgslStatement]
 } derive(Debug)
 
 ///|
-pub(all) struct WgslFunction {
+pub struct WgslFunction {
   attributes : Array[WgslAttribute]
   qualifier : String
   qualifier_start : Int?
@@ -106,7 +106,7 @@ pub(all) struct WgslFunction {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslStructMember {
+pub struct WgslStructMember {
   attributes : Array[WgslAttribute]
   name : String
   name_start : Int
@@ -116,14 +116,14 @@ pub(all) struct WgslStructMember {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslStruct {
+pub struct WgslStruct {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   members : Array[WgslStructMember]
 } derive(Debug)
 
 ///|
-pub(all) struct WgslGlobalVariable {
+pub struct WgslGlobalVariable {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   template_list : Array[String]
@@ -134,7 +134,7 @@ pub(all) struct WgslGlobalVariable {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslConst {
+pub struct WgslConst {
   name : WgslIdent
   ty : String?
   ty_ref : WgslTypeRef?
@@ -143,7 +143,7 @@ pub(all) struct WgslConst {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslOverride {
+pub struct WgslOverride {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   ty : String?
@@ -153,7 +153,7 @@ pub(all) struct WgslOverride {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslTypeAlias {
+pub struct WgslTypeAlias {
   name : WgslIdent
   ty : String
   ty_ref : WgslTypeRef?
@@ -174,7 +174,7 @@ pub(all) enum WgslGlobalDeclData {
 } derive(Debug)
 
 ///|
-pub(all) struct WgslGlobalDecl {
+pub struct WgslGlobalDecl {
   kind : WgslGlobalDeclKind
   data : WgslGlobalDeclData
   name : String
@@ -184,6 +184,6 @@ pub(all) struct WgslGlobalDecl {
 }
 
 ///|
-pub(all) struct WgslTranslationUnit {
+pub struct WgslTranslationUnit {
   declarations : Array[WgslGlobalDecl]
 }

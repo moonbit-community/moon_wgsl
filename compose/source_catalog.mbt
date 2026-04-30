@@ -34,15 +34,13 @@ fn build_prepared_wgsl_source_catalog(
         value_defines,
       ),
     )
-    let graph = build_wgsl_declaration_graph(prepared_source)
-    for block in graph.declaration_blocks {
-      guard block.name != "" else { continue }
+    for declaration in collect_wgsl_named_declarations(prepared_source) {
       catalog_entries.push(WgslSourceCatalogEntry::{
         rel_path: source_file.rel_path,
-        symbol_name: block.name,
-        source_text: block.text.trim().to_owned(),
-        source_start: block.start,
-        source_end: block.end,
+        symbol_name: declaration.name,
+        source_text: declaration.text.trim().to_owned(),
+        source_start: declaration.generated_start,
+        source_end: declaration.generated_end,
       })
     }
   }

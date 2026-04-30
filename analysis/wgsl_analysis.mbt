@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub(all) struct WgslGraphBlock {
+pub struct WgslGraphBlock {
   name : String
   text : String
   start : Int
@@ -22,14 +22,14 @@ pub(all) struct WgslGraphBlock {
 }
 
 ///|
-pub(all) struct WgslDeclarationGraph {
+pub struct WgslDeclarationGraph {
   source_blocks : Array[WgslGraphBlock]
   import_blocks : Array[WgslGraphBlock]
   declaration_blocks : Array[WgslGraphBlock]
 }
 
 ///|
-pub(all) struct WgslEmittedDeclaration {
+pub struct WgslEmittedDeclaration {
   name : String
   text : String
   generated_start : Int
@@ -37,7 +37,7 @@ pub(all) struct WgslEmittedDeclaration {
 }
 
 ///|
-pub(all) struct WgslTreeShakenSource {
+pub struct WgslTreeShakenSource {
   source : String
   declarations : Array[WgslEmittedDeclaration]
   missing_root_items : Array[String]
@@ -289,6 +289,13 @@ pub fn emit_wgsl_tree_shaken_source(
     declarations,
     missing_root_items,
   }
+}
+
+///|
+pub fn collect_wgsl_named_declarations(
+  source : String,
+) -> Array[WgslEmittedDeclaration] {
+  emit_wgsl_tree_shaken_source(source, []).declarations
 }
 
 ///|

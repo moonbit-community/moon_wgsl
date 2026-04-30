@@ -111,7 +111,7 @@ pub(all) enum WgslDiagnosticSeverity {
   Error
 } derive(Eq, @debug.Debug)
 
-pub(all) struct WgslDirectives {
+pub struct WgslDirectives {
   enables : Array[EnableDirective]
   requires : Array[RequiresDirective]
   diagnostics : Array[DiagnosticDirective]

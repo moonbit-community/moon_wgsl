@@ -337,14 +337,10 @@ fn Composer::compose_wgsl_import_requests(
       module_source
     }
     if rename_map.is_empty() {
-      let final_graph = build_wgsl_declaration_graph(final_module_source)
-      for block in final_graph.declaration_blocks {
-        if block.name == "" {
-          continue
-        }
+      for declaration in collect_wgsl_named_declarations(final_module_source) {
         session.imported_item_names.set(
-          wgsl_imported_item_name_key(request.rel_path, block.name),
-          block.name,
+          wgsl_imported_item_name_key(request.rel_path, declaration.name),
+          declaration.name,
         )
       }
     } else {

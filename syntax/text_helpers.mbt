@@ -106,7 +106,7 @@ pub(all) enum WgslDirectiveKind {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct WgslDirective {
+pub struct WgslDirective {
   kind : WgslDirectiveKind
   name : String
   tail : String
