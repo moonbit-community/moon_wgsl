@@ -865,6 +865,22 @@ test "naga_oil: wgsl directive extension lists split only on commas" {
 }
 
 ///|
+test "naga_oil: diagnostic directive captures raw rule text" {
+  let metadata = metadata_or_abort(
+    "diagnostic(warn, derivative-uniformity rule); trailing\nfn shade() {}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="1")
+  debug_inspect(
+    metadata.wgsl_directives.diagnostics[0].severity,
+    content="\"warn\"",
+  )
+  debug_inspect(
+    metadata.wgsl_directives.diagnostics[0].rule,
+    content="\"derivative-uniformity rule\"",
+  )
+}
+
+///|
 test "naga_oil: directive section ends on non-directive identifier prefix" {
   let metadata = metadata_or_abort(
     "enable_extra();\ndiagnostic_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",

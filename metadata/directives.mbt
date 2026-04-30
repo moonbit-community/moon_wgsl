@@ -217,19 +217,35 @@ fn semicolon_directive_body(line : String, keyword : String) -> String? {
 
 ///|
 fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
-  match tokenize(line.trim().to_owned(), false) {
-    [
-      WgslToken::Identifier("diagnostic", 0),
-      WgslToken::Other(40, _),
-      WgslToken::Identifier(severity, _),
-      WgslToken::Other(44, _),
-      WgslToken::Identifier(rule, _),
-      WgslToken::Other(41, _),
-      WgslToken::Other(59, _),
-      ..,
-    ] => Some((severity, rule))
-    _ => None
+  let trimmed = line.trim().to_owned()
+  guard trimmed.length() >= "diagnostic".length() &&
+    trimmed[0:"diagnostic".length()].to_owned() == "diagnostic" else {
+    return None
   }
+  let mut i = "diagnostic".length()
+  i = metadata_skip_ascii_space(trimmed, i)
+  guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 40 else {
+    return None
+  }
+  i = metadata_skip_ascii_space(trimmed, i + 1)
+  let severity_start = i
+  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 44 {
+    i = i + 1
+  }
+  guard i > severity_start && i < trimmed.length() else { return None }
+  let severity = trimmed[severity_start:i].to_owned().trim().to_owned()
+  i = metadata_skip_ascii_space(trimmed, i + 1)
+  let rule_start = i
+  while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 41 {
+    i = i + 1
+  }
+  guard i > rule_start && i < trimmed.length() else { return None }
+  let rule = trimmed[rule_start:i].to_owned().trim().to_owned()
+  i = metadata_skip_ascii_space(trimmed, i + 1)
+  guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 59 else {
+    return None
+  }
+  Some((severity, rule))
 }
 
 ///|
