@@ -12,17 +12,17 @@ fn parse_wgsl_declaration_name(text : String) -> String {
 fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
   let data = match item.kind {
     WgslRawTopLevelKind::DefineImportPath | WgslRawTopLevelKind::Define =>
-      match parse_wgsl_directive_line(item.text) {
+      match parse_wgsl_directive_line_at(item.text, item.start) {
         Some(directive) => WgslGlobalDeclData::Directive(directive)
         None => WgslGlobalDeclData::Raw
       }
     WgslRawTopLevelKind::Import =>
-      match parse_wgsl_directive_line(item.text) {
+      match parse_wgsl_directive_line_at(item.text, item.start) {
         Some(directive) => WgslGlobalDeclData::Import(directive)
         None => WgslGlobalDeclData::Raw
       }
     WgslRawTopLevelKind::Directive =>
-      match parse_wgsl_directive_line(item.text) {
+      match parse_wgsl_directive_line_at(item.text, item.start) {
         Some(directive) => WgslGlobalDeclData::Directive(directive)
         None => WgslGlobalDeclData::Raw
       }

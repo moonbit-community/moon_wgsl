@@ -681,6 +681,26 @@ test "WGSL hash conditionals parse as directive AST nodes" {
 }
 
 ///|
+test "WGSL hash directive spans are absolute in translation units" {
+  let source =
+    #|// lead
+    #|#ifdef ENABLED
+    #|#endif
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  debug_inspect(unit.declarations[0].kind, content="Trivia")
+  guard unit.declarations[1].data is WgslGlobalDeclData::Directive(ifdef) else {
+    abort("expected ifdef directive")
+  }
+  debug_inspect(ifdef.start, content="8")
+  debug_inspect(ifdef.end, content="22")
+  debug_inspect(ifdef.name_start, content="9")
+  debug_inspect(ifdef.name_end, content="14")
+  debug_inspect(ifdef.tail_start, content="15")
+  debug_inspect(ifdef.tail_end, content="22")
+}
+
+///|
 test "WGSL override function payload preserves qualified target path" {
   let source =
     #|override fn mod::inner(arg: f32) -> f32 {

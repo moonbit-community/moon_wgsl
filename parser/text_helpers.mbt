@@ -84,6 +84,7 @@ fn trim_ascii_space_end(text : String, start : Int) -> Int {
 ///|
 fn tokenize_wgsl_directive_line(
   line : String,
+  source_start : Int,
 ) -> Array[(@generated.Token, Int, Int)]? {
   let hash_start = skip_ascii_space(line, 0)
   guard hash_start < line.length() &&
@@ -112,34 +113,55 @@ fn tokenize_wgsl_directive_line(
   }
   let text_end = if tail != "" { tail_end } else { name_end }
   let text = line[hash_start:text_end].to_owned()
+  let absolute_hash_start = source_start + hash_start
+  let absolute_text_end = source_start + text_end
+  let absolute_name_start = source_start + name_start
+  let absolute_name_end = source_start + name_end
+  let absolute_tail_start = source_start + tail_start
+  let absolute_tail_end = source_start + tail_end
   let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::HASH, hash_start, hash_start + 1),
+    (@generated.Token::HASH, absolute_hash_start, absolute_hash_start + 1),
     (
       @generated.Token::DIRECTIVE_HEAD(
-        (name, text, hash_start, text_end, name_start, name_end),
+        (
+          name, text, absolute_hash_start, absolute_text_end, absolute_name_start,
+          absolute_name_end,
+        ),
       ),
-      name_start,
-      name_end,
+      absolute_name_start,
+      absolute_name_end,
     ),
   ]
   if tail != "" {
     tokens.push(
       (
-        @generated.Token::DIRECTIVE_TAIL((tail, tail_start, tail_end)),
-        tail_start,
-        tail_end,
+        @generated.Token::DIRECTIVE_TAIL(
+          (tail, absolute_tail_start, absolute_tail_end),
+        ),
+        absolute_tail_start,
+        absolute_tail_end,
       ),
     )
   }
-  tokens.push((@generated.Token::EOF, text_end, text_end))
+  tokens.push((@generated.Token::EOF, absolute_text_end, absolute_text_end))
   Some(tokens)
 }
 
 ///|
-fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
-  guard tokenize_wgsl_directive_line(line) is Some(tokens) else { return None }
+fn parse_wgsl_directive_line_at(
+  line : String,
+  source_start : Int,
+) -> WgslDirective? {
+  guard tokenize_wgsl_directive_line(line, source_start) is Some(tokens) else {
+    return None
+  }
   let parsed = @generated.directive_line(tokens) catch { _ => return None }
   Some(parsed)
+}
+
+///|
+fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
+  parse_wgsl_directive_line_at(line, 0)
 }
 
 ///|
