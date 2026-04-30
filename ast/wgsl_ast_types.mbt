@@ -1,10 +1,4 @@
 ///|
-pub(all) struct WgslSpan {
-  start : Int
-  end : Int
-} derive(Eq, Debug)
-
-///|
 pub(all) enum WgslDirectiveKind {
   Ifdef
   Ifndef

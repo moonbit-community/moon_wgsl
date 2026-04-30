@@ -39,30 +39,6 @@ pub(all) struct WgslConst {
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
-pub(all) struct WgslDeclHead {
-  kind : WgslDeclHeadKind
-  attributes : Array[WgslAttribute]
-  keyword : WgslIdent?
-  qualifier : String
-  qualifier_start : Int?
-  qualifier_end : Int?
-  fn_keyword : WgslIdent?
-  consumed : Int
-} derive(@debug.Debug)
-pub fn WgslDeclHead::raw(Array[WgslAttribute]) -> Self
-
-pub(all) enum WgslDeclHeadKind {
-  Function
-  GlobalVariable
-  Struct
-  Const
-  Override
-  TypeAlias
-  ConstAssert
-  SourceDirective(WgslDirectiveKind)
-  Raw
-} derive(@debug.Debug)
-
 pub(all) struct WgslDirective {
   kind : WgslDirectiveKind
   name : String
@@ -190,28 +166,6 @@ pub(all) struct WgslOverride {
   initializer : String?
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
-
-pub(all) struct WgslRawTopLevelItem {
-  kind : WgslRawTopLevelKind
-  name : String
-  text : String
-  start : Int
-  end : Int
-} derive(@debug.Debug)
-
-pub(all) enum WgslRawTopLevelKind {
-  Trivia
-  Import
-  DefineImportPath
-  Define
-  Directive
-  Declaration
-} derive(Eq, @debug.Debug)
-
-pub(all) struct WgslSpan {
-  start : Int
-  end : Int
-} derive(Eq, @debug.Debug)
 
 pub(all) struct WgslStatement {
   kind : WgslStatementKind

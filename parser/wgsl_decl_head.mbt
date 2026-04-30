@@ -1,5 +1,5 @@
 ///|
-pub(all) enum WgslDeclHeadKind {
+priv enum WgslDeclHeadKind {
   Function
   GlobalVariable
   Struct
@@ -7,12 +7,12 @@ pub(all) enum WgslDeclHeadKind {
   Override
   TypeAlias
   ConstAssert
-  SourceDirective(WgslDirectiveKind)
+  SourceDirective
   Raw
-} derive(Debug)
+}
 
 ///|
-pub(all) struct WgslDeclHead {
+priv struct WgslDeclHead {
   kind : WgslDeclHeadKind
   attributes : Array[WgslAttribute]
   keyword : WgslIdent?
@@ -21,10 +21,10 @@ pub(all) struct WgslDeclHead {
   qualifier_end : Int?
   fn_keyword : WgslIdent?
   consumed : Int
-} derive(Debug)
+}
 
 ///|
-pub fn WgslDeclHead::raw(attributes : Array[WgslAttribute]) -> WgslDeclHead {
+fn WgslDeclHead::raw(attributes : Array[WgslAttribute]) -> WgslDeclHead {
   WgslDeclHead::{
     kind: Raw,
     attributes,

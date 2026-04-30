@@ -1,15 +1,15 @@
 ///|
-pub(all) enum WgslRawTopLevelKind {
+priv enum WgslRawTopLevelKind {
   Trivia
   Import
   DefineImportPath
   Define
   Directive
   Declaration
-} derive(Eq, Debug)
+} derive(Debug)
 
 ///|
-pub(all) struct WgslRawTopLevelItem {
+priv struct WgslRawTopLevelItem {
   kind : WgslRawTopLevelKind
   name : String
   text : String

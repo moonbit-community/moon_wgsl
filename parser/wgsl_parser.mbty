@@ -17,7 +17,7 @@
 %start const_assert_expr
 %start block
 
-%token<@ast.WgslRawTopLevelItem> ITEM
+%token<WgslRawTopLevelItem> ITEM
 %token<@ast.WgslStatement> STMT
 %token<String> IDENT
 %token<(String, String, Int, Int, Int)> TYPE_ATOM
@@ -64,7 +64,7 @@
 
 %%
 
-raw_top_level_items -> Array[@ast.WgslRawTopLevelItem]
+raw_top_level_items -> Array[WgslRawTopLevelItem]
   : items EOF { $1 }
   ;
 
@@ -119,7 +119,7 @@ attribute_args -> (String, @ast.WgslExprRef?, Int?)
     }
   ;
 
-items -> Array[@ast.WgslRawTopLevelItem]
+items -> Array[WgslRawTopLevelItem]
   : { [] }
   | items ITEM {
       let items = $1
@@ -241,10 +241,10 @@ directive_tail -> (String, Int, Int)
   | DIRECTIVE_TAIL { $1 }
   ;
 
-decl_head -> @ast.WgslDeclHead
+decl_head -> WgslDeclHead
   : attrs=attributes KW_VIRTUAL fn_kw=KW_FN EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Function,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Function,
         attributes: attrs,
         keyword: Some(fn_kw),
         qualifier: "virtual",
@@ -255,8 +255,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes KW_OVERRIDE fn_kw=KW_FN EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Function,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Function,
         attributes: attrs,
         keyword: Some(fn_kw),
         qualifier: "override",
@@ -267,8 +267,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_FN EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Function,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Function,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -279,8 +279,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_OVERRIDE EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Override,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Override,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -291,8 +291,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_VAR EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::GlobalVariable,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::GlobalVariable,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -303,8 +303,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_STRUCT EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Struct,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Struct,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -315,8 +315,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_CONST EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Const,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Const,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -327,8 +327,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_CONST_ASSERT EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::ConstAssert,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::ConstAssert,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -339,8 +339,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_ALIAS EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::TypeAlias,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::TypeAlias,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -351,8 +351,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_TYPE EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::TypeAlias,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::TypeAlias,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -363,8 +363,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_ENABLE EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Enable),
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::SourceDirective,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -375,8 +375,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_REQUIRES EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Requires),
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::SourceDirective,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -387,8 +387,8 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes keyword=KW_DIAGNOSTIC EOF {
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Diagnostic),
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::SourceDirective,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -399,7 +399,7 @@ decl_head -> @ast.WgslDeclHead
       }
     }
   | attrs=attributes EOF {
-      @ast.WgslDeclHead::raw(attrs)
+      WgslDeclHead::raw(attrs)
     }
   ;
 

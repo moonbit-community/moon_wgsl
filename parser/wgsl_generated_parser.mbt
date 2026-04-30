@@ -1,6 +1,6 @@
 ///|
 priv enum Token {
-  ITEM(@ast.WgslRawTopLevelItem)
+  ITEM(WgslRawTopLevelItem)
   STMT(@ast.WgslStatement)
   IDENT(String)
   TYPE_ATOM((String, String, Int, Int, Int))
@@ -172,6 +172,11 @@ priv suberror YYObj_Array_String_ {
 }
 
 ///|
+priv suberror YYObj_Array_WgslRawTopLevelItem_ {
+  YYObj_Array_WgslRawTopLevelItem_(Array[WgslRawTopLevelItem])
+}
+
+///|
 priv suberror YYObj_Array__ast_WgslTypeRef_ {
   YYObj_Array__ast_WgslTypeRef_(Array[@ast.WgslTypeRef])
 }
@@ -192,11 +197,6 @@ priv suberror YYObj_Array__ast_WgslStructMember_ {
 }
 
 ///|
-priv suberror YYObj_Array__ast_WgslRawTopLevelItem_ {
-  YYObj_Array__ast_WgslRawTopLevelItem_(Array[@ast.WgslRawTopLevelItem])
-}
-
-///|
 priv suberror YYObj_Array__ast_WgslFunctionArgument_ {
   YYObj_Array__ast_WgslFunctionArgument_(Array[@ast.WgslFunctionArgument])
 }
@@ -209,6 +209,16 @@ priv suberror YYObj_Array__common_WgslImportTarget_ {
 ///|
 priv suberror YYObj_String {
   YYObj_String(String)
+}
+
+///|
+priv suberror YYObj_WgslDeclHead {
+  YYObj_WgslDeclHead(WgslDeclHead)
+}
+
+///|
+priv suberror YYObj_WgslRawTopLevelItem {
+  YYObj_WgslRawTopLevelItem(WgslRawTopLevelItem)
 }
 
 ///|
@@ -232,11 +242,6 @@ priv suberror YYObj__ast_WgslTypeRef {
 }
 
 ///|
-priv suberror YYObj__ast_WgslDeclHead {
-  YYObj__ast_WgslDeclHead(@ast.WgslDeclHead)
-}
-
-///|
 priv suberror YYObj__ast_WgslAttribute {
   YYObj__ast_WgslAttribute(@ast.WgslAttribute)
 }
@@ -254,11 +259,6 @@ priv suberror YYObj__ast_WgslStatement {
 ///|
 priv suberror YYObj__ast_WgslStructMember {
   YYObj__ast_WgslStructMember(@ast.WgslStructMember)
-}
-
-///|
-priv suberror YYObj__ast_WgslRawTopLevelItem {
-  YYObj__ast_WgslRawTopLevelItem(@ast.WgslRawTopLevelItem)
 }
 
 ///|
@@ -443,8 +443,8 @@ fn init {
 
 ///|
 fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslRawTopLevelItem_(_dollar1)
-  YYObj_Array__ast_WgslRawTopLevelItem_(
+  guard _args[0].0 is YYObj_Array_WgslRawTopLevelItem_(_dollar1)
+  YYObj_Array_WgslRawTopLevelItem_(
     {
       ()
       _dollar1
@@ -461,9 +461,9 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array__ast_WgslRawTopLevelItem_(_dollar1)
-  guard _args[1].0 is YYObj__ast_WgslRawTopLevelItem(_dollar2)
-  YYObj_Array__ast_WgslRawTopLevelItem_(
+  guard _args[0].0 is YYObj_Array_WgslRawTopLevelItem_(_dollar1)
+  guard _args[1].0 is YYObj_WgslRawTopLevelItem(_dollar2)
+  YYObj_Array_WgslRawTopLevelItem_(
     {
       ()
       let items = _dollar1
@@ -478,7 +478,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  YYObj_Array__ast_WgslRawTopLevelItem_(
+  YYObj_Array_WgslRawTopLevelItem_(
     {
       ()
       []
@@ -804,8 +804,8 @@ fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 245|    attrs=attributes KW_VIRTUAL fn_kw=KW_FN EOF {
-// 246|      @ast.WgslDeclHead::{
-// 247|        kind: @ast.WgslDeclHeadKind::Function,
+// 246|      WgslDeclHead::{
+// 247|        kind: WgslDeclHeadKind::Function,
 // 248|        attributes: attrs,
 // 249|        keyword: Some(fn_kw),
 // 250|        qualifier: "virtual",
@@ -821,11 +821,11 @@ fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[2].0 is YYObj__ast_WgslIdent(fn_kw)
   guard _args[1].0 is YYObj__ast_WgslIdent(_dollar2)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Function,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Function,
         attributes: attrs,
         keyword: Some(fn_kw),
         qualifier: "virtual",
@@ -840,8 +840,8 @@ fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 257|    attrs=attributes KW_OVERRIDE fn_kw=KW_FN EOF {
-// 258|      @ast.WgslDeclHead::{
-// 259|        kind: @ast.WgslDeclHeadKind::Function,
+// 258|      WgslDeclHead::{
+// 259|        kind: WgslDeclHeadKind::Function,
 // 260|        attributes: attrs,
 // 261|        keyword: Some(fn_kw),
 // 262|        qualifier: "override",
@@ -857,11 +857,11 @@ fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[2].0 is YYObj__ast_WgslIdent(fn_kw)
   guard _args[1].0 is YYObj__ast_WgslIdent(_dollar2)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Function,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Function,
         attributes: attrs,
         keyword: Some(fn_kw),
         qualifier: "override",
@@ -876,8 +876,8 @@ fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 281|    attrs=attributes keyword=KW_OVERRIDE EOF {
-// 282|      @ast.WgslDeclHead::{
-// 283|        kind: @ast.WgslDeclHeadKind::Override,
+// 282|      WgslDeclHead::{
+// 283|        kind: WgslDeclHeadKind::Override,
 // 284|        attributes: attrs,
 // 285|        keyword: Some(keyword),
 // 286|        qualifier: "",
@@ -892,11 +892,11 @@ fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Override,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Override,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -911,8 +911,8 @@ fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 269|    attrs=attributes keyword=KW_FN EOF {
-// 270|      @ast.WgslDeclHead::{
-// 271|        kind: @ast.WgslDeclHeadKind::Function,
+// 270|      WgslDeclHead::{
+// 271|        kind: WgslDeclHeadKind::Function,
 // 272|        attributes: attrs,
 // 273|        keyword: Some(keyword),
 // 274|        qualifier: "",
@@ -927,11 +927,11 @@ fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Function,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Function,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -946,8 +946,8 @@ fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 293|    attrs=attributes keyword=KW_VAR EOF {
-// 294|      @ast.WgslDeclHead::{
-// 295|        kind: @ast.WgslDeclHeadKind::GlobalVariable,
+// 294|      WgslDeclHead::{
+// 295|        kind: WgslDeclHeadKind::GlobalVariable,
 // 296|        attributes: attrs,
 // 297|        keyword: Some(keyword),
 // 298|        qualifier: "",
@@ -962,11 +962,11 @@ fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::GlobalVariable,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::GlobalVariable,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -981,8 +981,8 @@ fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 305|    attrs=attributes keyword=KW_STRUCT EOF {
-// 306|      @ast.WgslDeclHead::{
-// 307|        kind: @ast.WgslDeclHeadKind::Struct,
+// 306|      WgslDeclHead::{
+// 307|        kind: WgslDeclHeadKind::Struct,
 // 308|        attributes: attrs,
 // 309|        keyword: Some(keyword),
 // 310|        qualifier: "",
@@ -997,11 +997,11 @@ fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Struct,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Struct,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1016,8 +1016,8 @@ fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 317|    attrs=attributes keyword=KW_CONST EOF {
-// 318|      @ast.WgslDeclHead::{
-// 319|        kind: @ast.WgslDeclHeadKind::Const,
+// 318|      WgslDeclHead::{
+// 319|        kind: WgslDeclHeadKind::Const,
 // 320|        attributes: attrs,
 // 321|        keyword: Some(keyword),
 // 322|        qualifier: "",
@@ -1032,11 +1032,11 @@ fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::Const,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::Const,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1051,8 +1051,8 @@ fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 329|    attrs=attributes keyword=KW_CONST_ASSERT EOF {
-// 330|      @ast.WgslDeclHead::{
-// 331|        kind: @ast.WgslDeclHeadKind::ConstAssert,
+// 330|      WgslDeclHead::{
+// 331|        kind: WgslDeclHeadKind::ConstAssert,
 // 332|        attributes: attrs,
 // 333|        keyword: Some(keyword),
 // 334|        qualifier: "",
@@ -1067,11 +1067,11 @@ fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::ConstAssert,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::ConstAssert,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1086,8 +1086,8 @@ fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 341|    attrs=attributes keyword=KW_ALIAS EOF {
-// 342|      @ast.WgslDeclHead::{
-// 343|        kind: @ast.WgslDeclHeadKind::TypeAlias,
+// 342|      WgslDeclHead::{
+// 343|        kind: WgslDeclHeadKind::TypeAlias,
 // 344|        attributes: attrs,
 // 345|        keyword: Some(keyword),
 // 346|        qualifier: "",
@@ -1102,11 +1102,11 @@ fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::TypeAlias,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::TypeAlias,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1121,8 +1121,8 @@ fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 353|    attrs=attributes keyword=KW_TYPE EOF {
-// 354|      @ast.WgslDeclHead::{
-// 355|        kind: @ast.WgslDeclHeadKind::TypeAlias,
+// 354|      WgslDeclHead::{
+// 355|        kind: WgslDeclHeadKind::TypeAlias,
 // 356|        attributes: attrs,
 // 357|        keyword: Some(keyword),
 // 358|        qualifier: "",
@@ -1137,11 +1137,11 @@ fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::TypeAlias,
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::TypeAlias,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1156,8 +1156,8 @@ fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 365|    attrs=attributes keyword=KW_ENABLE EOF {
-// 366|      @ast.WgslDeclHead::{
-// 367|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Enable),
+// 366|      WgslDeclHead::{
+// 367|        kind: WgslDeclHeadKind::SourceDirective,
 // 368|        attributes: attrs,
 // 369|        keyword: Some(keyword),
 // 370|        qualifier: "",
@@ -1172,13 +1172,11 @@ fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::SourceDirective(
-          @ast.WgslDirectiveKind::Enable,
-        ),
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::SourceDirective,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1193,8 +1191,8 @@ fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 377|    attrs=attributes keyword=KW_REQUIRES EOF {
-// 378|      @ast.WgslDeclHead::{
-// 379|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Requires),
+// 378|      WgslDeclHead::{
+// 379|        kind: WgslDeclHeadKind::SourceDirective,
 // 380|        attributes: attrs,
 // 381|        keyword: Some(keyword),
 // 382|        qualifier: "",
@@ -1209,13 +1207,11 @@ fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::SourceDirective(
-          @ast.WgslDirectiveKind::Requires,
-        ),
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::SourceDirective,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1230,8 +1226,8 @@ fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 389|    attrs=attributes keyword=KW_DIAGNOSTIC EOF {
-// 390|      @ast.WgslDeclHead::{
-// 391|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Diagnostic),
+// 390|      WgslDeclHead::{
+// 391|        kind: WgslDeclHeadKind::SourceDirective,
 // 392|        attributes: attrs,
 // 393|        keyword: Some(keyword),
 // 394|        qualifier: "",
@@ -1246,13 +1242,11 @@ fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(keyword)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::{
-        kind: @ast.WgslDeclHeadKind::SourceDirective(
-          @ast.WgslDirectiveKind::Diagnostic,
-        ),
+      WgslDeclHead::{
+        kind: WgslDeclHeadKind::SourceDirective,
         attributes: attrs,
         keyword: Some(keyword),
         qualifier: "",
@@ -1267,16 +1261,16 @@ fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 401|    attrs=attributes EOF {
-// 402|      @ast.WgslDeclHead::raw(attrs)
+// 402|      WgslDeclHead::raw(attrs)
 // 403|    }
 
 ///|
 fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
-  YYObj__ast_WgslDeclHead(
+  YYObj_WgslDeclHead(
     {
       ()
-      @ast.WgslDeclHead::raw(attrs)
+      WgslDeclHead::raw(attrs)
     },
   )
 }
@@ -2191,7 +2185,7 @@ fn yy_input(
   _end_pos : Int,
 ) -> (YYSymbol, YYObj) {
   match token {
-    ITEM(data) => (T_ITEM, YYObj__ast_WgslRawTopLevelItem(data))
+    ITEM(data) => (T_ITEM, YYObj_WgslRawTopLevelItem(data))
     STMT(data) => (T_STMT, YYObj__ast_WgslStatement(data))
     IDENT(data) => (T_IDENT, YYObj_String(data))
     TYPE_ATOM(data) =>
@@ -4242,12 +4236,12 @@ fn error(
 fn raw_top_level_items(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
-) -> Array[@ast.WgslRawTopLevelItem] raise ParseError {
+) -> Array[WgslRawTopLevelItem] raise ParseError {
   yy_parse(
     tokens,
     yy_state_169,
     it => {
-      guard it is YYObj_Array__ast_WgslRawTopLevelItem_(result)
+      guard it is YYObj_Array_WgslRawTopLevelItem_(result)
       result
     },
     initial_pos?,
@@ -4306,12 +4300,12 @@ fn directive_prefix_tail(
 fn decl_head(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
-) -> @ast.WgslDeclHead raise ParseError {
+) -> WgslDeclHead raise ParseError {
   yy_parse(
     tokens,
     yy_state_106,
     it => {
-      guard it is YYObj__ast_WgslDeclHead(result)
+      guard it is YYObj_WgslDeclHead(result)
       result
     },
     initial_pos?,

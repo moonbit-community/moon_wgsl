@@ -478,7 +478,7 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
         Some(value) => WgslGlobalDeclData::TypeAlias(value)
         None => WgslGlobalDeclData::Raw
       }
-    SourceDirective(_) =>
+    SourceDirective =>
       match head.keyword {
         Some(keyword) =>
           match self.decl_head_token(keyword) {
