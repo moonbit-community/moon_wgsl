@@ -34,6 +34,12 @@ fn wgsl_metadata_first_space_separated_token(text : String) -> String {
   for token in tokens {
     match token {
       WgslToken::Whitespace(_, _) => break
+      WgslToken::Other(code, _) if code == 9 ||
+        code == 10 ||
+        code == 11 ||
+        code == 12 ||
+        code == 13 ||
+        code == 32 => break
       _ => output = output + wgsl_metadata_token_text(token)
     }
   }

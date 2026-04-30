@@ -1033,6 +1033,84 @@ test "naga_oil: directive section stays open on directive name prefix" {
 }
 
 ///|
+test "naga_oil: enable and requires directives require whitespace body separator" {
+  let metadata = metadata_or_abort(
+    "enable+f16;\nrequires+subgroups;\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
+  debug_inspect(metadata.wgsl_directives.requires.length(), content="0")
+  debug_inspect(metadata.cleaned_source.contains("enable+f16;"), content="true")
+  debug_inspect(
+    metadata.cleaned_source.contains("requires+subgroups;"),
+    content="true",
+  )
+  debug_inspect(
+    metadata.cleaned_source.contains("enable f16;"),
+    content="false",
+  )
+}
+
+///|
+test "naga_oil: single whitespace empty enable body stays source" {
+  let metadata = metadata_or_abort(
+    "enable ;\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
+  debug_inspect(metadata.cleaned_source.contains("enable ;"), content="true")
+  debug_inspect(
+    metadata.cleaned_source.contains("enable f16;"),
+    content="false",
+  )
+}
+
+///|
+test "naga_oil: repeated whitespace empty enable body raises directive error" {
+  let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
+    "enable  ;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  ) catch {
+    @preprocess.PreprocessError::InvalidWgslDirective(_, _, message) => {
+      debug_inspect(message, content="\"No extensions specified\"")
+      return
+    }
+    _ => abort("expected empty enable directive error")
+  }
+  abort("expected empty enable directive error")
+}
+
+///|
+test "naga_oil: preprocessor directive regex whitespace includes form feed" {
+  let ff = "\u{000C}"
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("FLAG", @common.ShaderDefValue::Bool(true))
+  shader_defs.set("VALUE", @common.ShaderDefValue::Int(7))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "#\{ff}ifdef\{ff}FLAG\nlet a = #\{ff}VALUE;\n#\{ff}else\nlet a = 0;\n#\{ff}endif\n",
+    shader_defs,
+  ) catch {
+    _ => abort("expected regex-whitespace preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 7;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 0;"),
+    content="false",
+  )
+}
+
+///|
+test "naga_oil: wgsl source directives accept form feed whitespace" {
+  let ff = "\u{000C}"
+  let metadata = metadata_or_abort(
+    "enable\{ff}f16;\nrequires\{ff}subgroups;\ndiagnostic\{ff}(\{ff}off\{ff},\{ff}derivative_uniformity\{ff})\{ff};\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
+  debug_inspect(metadata.wgsl_directives.requires.length(), content="1")
+  debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="1")
+}
+
+///|
 test "naga_oil: block comments terminate directive section like upstream" {
   let metadata = metadata_or_abort(
     "/* block comment */\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",

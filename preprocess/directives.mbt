@@ -27,6 +27,8 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
     while j < tokens.length() {
       match tokens[j] {
         WgslToken::Whitespace(_, _) => j = j + 1
+        WgslToken::Other(code, _) if preprocess_regex_whitespace_code_unit(code) =>
+          j = j + 1
         _ => break
       }
     }
@@ -209,60 +211,68 @@ fn parse_wgsl_template_const_references(
 
 ///|
 fn starts_with_tokenized_space(text : String) -> Bool {
-  match tokenize(text, true) {
-    [WgslToken::Whitespace(_, 0), ..] => true
-    _ => false
-  }
+  text.length() > 0 &&
+  preprocess_regex_whitespace_code_unit(text.code_unit_at(0).to_int())
 }
 
 ///|
 fn required_space_directive_tail(line : String, keyword : String) -> String? {
-  let trimmed = line.trim().to_owned()
+  let trimmed = preprocess_trim_regex_whitespace(line)
   guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
     return None
   }
-  let start = preprocess_skip_ascii_space(trimmed, 1)
+  let start = preprocess_skip_regex_whitespace(trimmed, 1)
   guard start + keyword.length() < trimmed.length() else { return None }
   guard trimmed[start:start + keyword.length()].to_owned() == keyword else {
     return None
   }
   let space_pos = start + keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
-  guard code == 32 || code == 9 else { return None }
-  Some(trimmed[space_pos:trimmed.length()].to_owned().trim().to_owned())
+  guard preprocess_regex_whitespace_code_unit(code) else { return None }
+  let tail_start = preprocess_skip_regex_whitespace(trimmed, space_pos)
+  Some(
+    preprocess_trim_regex_whitespace(
+      trimmed[tail_start:trimmed.length()].to_owned(),
+    ),
+  )
 }
 
 ///|
 fn required_space_word_tail(text : String, keyword : String) -> String? {
-  let trimmed = text.trim().to_owned()
+  let trimmed = preprocess_trim_regex_whitespace(text)
   guard keyword.length() < trimmed.length() else { return None }
   guard trimmed[0:keyword.length()].to_owned() == keyword else { return None }
   let space_pos = keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
-  guard code == 32 || code == 9 else { return None }
-  Some(trimmed[space_pos:trimmed.length()].to_owned().trim().to_owned())
+  guard preprocess_regex_whitespace_code_unit(code) else { return None }
+  let tail_start = preprocess_skip_regex_whitespace(trimmed, space_pos)
+  Some(
+    preprocess_trim_regex_whitespace(
+      trimmed[tail_start:trimmed.length()].to_owned(),
+    ),
+  )
 }
 
 ///|
 pub fn parse_glsl_version_directive(line : String) -> String? {
-  let trimmed = line.trim().to_owned()
-  let tokens = tokenize(trimmed, false)
-  match tokens {
-    [WgslToken::Other(35, 0), WgslToken::Identifier("version", 1), ..] => ()
-    _ => return None
+  let trimmed = preprocess_trim_regex_whitespace(line)
+  let prefix = "#version"
+  guard trimmed.length() > prefix.length() &&
+    trimmed[0:prefix.length()].to_owned() == prefix else {
+    return None
   }
-  guard tokens.length() > 2 else { return None }
-  let start = tokens[2].pos()
+  let space_pos = prefix.length()
+  guard preprocess_regex_whitespace_code_unit(
+    trimmed.code_unit_at(space_pos).to_int(),
+  ) else {
+    return None
+  }
+  let start = preprocess_skip_regex_whitespace(trimmed, space_pos)
   let mut end = start
-  let mut i = 2
-  while i < tokens.length() {
-    match tokens[i] {
-      WgslToken::Other(code, pos) if code >= 48 && code <= 57 && pos == end => {
-        end = end + 1
-        i = i + 1
-      }
-      _ => break
-    }
+  while end < trimmed.length() {
+    let code = trimmed.code_unit_at(end).to_int()
+    guard code >= 48 && code <= 57 else { break }
+    end = end + 1
   }
   if end > start {
     Some(trimmed[start:end].to_owned())
