@@ -100,7 +100,26 @@ pub(all) struct WgslFunctionResult {
 } derive(Debug)
 
 ///|
+pub(all) enum WgslStatementKind {
+  Empty
+  LocalDeclaration
+  Return
+  If
+  For
+  While
+  Loop
+  Switch
+  Break
+  Continue
+  Discard
+  ConstAssert
+  Compound
+  Expression
+} derive(Eq, Debug)
+
+///|
 pub(all) struct WgslStatement {
+  kind : WgslStatementKind
   text : String
   start : Int
   end : Int

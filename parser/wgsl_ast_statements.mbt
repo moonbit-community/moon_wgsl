@@ -152,6 +152,34 @@ fn wgsl_statement_is_local_decl(first_identifier : String?) -> Bool {
 }
 
 ///|
+fn wgsl_statement_kind_from_tokens(
+  first_identifier : String?,
+  tokens : Array[Token],
+) -> WgslStatementKind {
+  match first_identifier {
+    Some("var") | Some("let") | Some("const") =>
+      WgslStatementKind::LocalDeclaration
+    Some("return") => WgslStatementKind::Return
+    Some("if") => WgslStatementKind::If
+    Some("for") => WgslStatementKind::For
+    Some("while") => WgslStatementKind::While
+    Some("loop") => WgslStatementKind::Loop
+    Some("switch") => WgslStatementKind::Switch
+    Some("break") => WgslStatementKind::Break
+    Some("continue") => WgslStatementKind::Continue
+    Some("discard") => WgslStatementKind::Discard
+    Some("const_assert") => WgslStatementKind::ConstAssert
+    Some(_) => WgslStatementKind::Expression
+    None =>
+      match tokens {
+        [Token::Other(123, _), ..] => WgslStatementKind::Compound
+        [] => WgslStatementKind::Empty
+        _ => WgslStatementKind::Expression
+      }
+  }
+}
+
+///|
 fn wgsl_statement_token_identifier(token : Token) -> String? {
   match token {
     Token::Identifier(ident, _) => Some(ident)
@@ -430,6 +458,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   } else {
     let text = self.source_text[start_pos:end_pos].to_owned()
     let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
+    let kind = wgsl_statement_kind_from_tokens(first_identifier, tokens)
     let local_declarations : Array[WgslIdent] = []
     let exported_locals : Array[WgslIdent] = []
     match wgsl_statement_local_declaration_from_tokens(tokens, is_local_decl) {
@@ -443,6 +472,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       tokens, is_local_decl, exported_locals, local_declarations, identifiers,
     )
     Some(WgslStatement::{
+      kind,
       text,
       start: start_pos,
       end: end_pos,

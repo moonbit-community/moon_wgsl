@@ -19,6 +19,7 @@ using @ast {
   type WgslRawTopLevelItem,
   type WgslRawTopLevelKind,
   type WgslStatement,
+  type WgslStatementKind,
   type WgslStruct,
   type WgslStructMember,
   type WgslTranslationUnit,

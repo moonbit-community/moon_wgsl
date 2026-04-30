@@ -448,6 +448,9 @@ test "WGSL function payload exposes source-preserving statement AST" {
     abort("expected function payload")
   }
   debug_inspect(function.body.statements.length(), content="3")
+  debug_inspect(function.body.statements[0].kind, content="LocalDeclaration")
+  debug_inspect(function.body.statements[1].kind, content="If")
+  debug_inspect(function.body.statements[2].kind, content="Return")
   debug_inspect(
     function.body.statements[0].text.trim().to_owned(),
     content="\"var local: u32 = value;\"",
@@ -582,6 +585,9 @@ test "WGSL statement AST records nested and loop local declarations" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
+  debug_inspect(function.body.statements[0].kind, content="If")
+  debug_inspect(function.body.statements[1].kind, content="For")
+  debug_inspect(function.body.statements[2].kind, content="Return")
   debug_inspect(
     function.body.statements[0].local_declarations.map(fn(node) { node.name }),
     content=(

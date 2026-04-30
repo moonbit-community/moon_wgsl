@@ -208,6 +208,7 @@ pub(all) struct WgslSpan {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct WgslStatement {
+  kind : WgslStatementKind
   text : String
   start : Int
   end : Int
@@ -215,6 +216,23 @@ pub(all) struct WgslStatement {
   exported_locals : Array[WgslIdent]
   identifiers : Array[WgslIdent]
 } derive(@debug.Debug)
+
+pub(all) enum WgslStatementKind {
+  Empty
+  LocalDeclaration
+  Return
+  If
+  For
+  While
+  Loop
+  Switch
+  Break
+  Continue
+  Discard
+  ConstAssert
+  Compound
+  Expression
+} derive(Eq, @debug.Debug)
 
 pub(all) struct WgslStruct {
   attributes : Array[WgslAttribute]
