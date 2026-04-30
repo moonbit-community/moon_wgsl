@@ -21,14 +21,6 @@ pub fn Composer::register_source_files(
 }
 
 ///|
-pub fn Composer::analyze_source_files(
-  self : Composer,
-  files : Array[WgslSourceFile],
-) -> Array[WgslDiagnostic] {
-  self.registry.analyze_source_files(files)
-}
-
-///|
 pub fn Composer::register_source_files_checked(
   self : Composer,
   files : Array[WgslSourceFile],
@@ -62,18 +54,6 @@ pub fn Composer::registered_source(
   rel_path : String,
 ) -> String? {
   self.registry.registered_source(rel_path)
-}
-
-///|
-pub fn Composer::copy_source_files(self : Composer) -> Array[WgslSourceFile] {
-  self.registry.copy_source_files()
-}
-
-///|
-pub fn Composer::copy_import_module_paths(
-  self : Composer,
-) -> @hashmap.HashMap[String, String] {
-  self.registry.copy_import_module_paths()
 }
 
 ///|

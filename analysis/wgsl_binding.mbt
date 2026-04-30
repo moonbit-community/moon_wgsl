@@ -71,7 +71,7 @@ pub fn WgslRenamePlan::add(
 }
 
 ///|
-pub fn WgslRenamePlan::add_redirect_map(
+fn WgslRenamePlan::add_redirect_map(
   self : WgslRenamePlan,
   redirect_map : @hashmap.HashMap[String, String],
   kind : WgslRenameRuleKind,
@@ -83,7 +83,7 @@ pub fn WgslRenamePlan::add_redirect_map(
 }
 
 ///|
-pub fn collect_wgsl_decl_local_names(
+fn collect_wgsl_decl_local_names(
   data : WgslGlobalDeclData,
   names : Array[String],
 ) -> Unit {
@@ -290,23 +290,6 @@ fn rewrite_wgsl_graph_block_with_rename_maps(
       rewrite_wgsl_text_with_nodes(block.text, nodes)
     }
   }
-}
-
-///|
-pub fn rewrite_wgsl_source_with_rename_plan(
-  source : String,
-  plan : WgslRenamePlan,
-) -> String {
-  if plan.is_empty() {
-    return source
-  }
-  let graph = build_wgsl_declaration_graph(source)
-  let maps = build_wgsl_rename_maps(plan)
-  let mut out = ""
-  for block in graph.source_blocks {
-    out = out + rewrite_wgsl_graph_block_with_rename_maps(block, maps)
-  }
-  out
 }
 
 ///|

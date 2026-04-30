@@ -359,6 +359,6 @@ fn WgslTopLevelParser::parse_items(
 }
 
 ///|
-pub fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
+fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
   WgslTopLevelParser::new(source).parse_items()
 }

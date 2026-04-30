@@ -13,11 +13,6 @@ test "WGSL directive parser keeps unknown directives structured" {
   guard parsed is Some(directive) else { abort("expected directive") }
   debug_inspect(directive.kind, content="Other(\"custom\")")
   debug_inspect(directive.tail, content="\"thing\"")
-  debug_inspect(
-    hash_directive_tail("#custom thing", "custom"),
-    content="Some(\"thing\")",
-  )
-  debug_inspect(hash_directive_tail("#custom thing", "import"), content="None")
 }
 
 ///|

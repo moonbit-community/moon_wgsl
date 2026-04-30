@@ -13,17 +13,9 @@ pub fn collect_wgsl_decl_declared_identifier_nodes(WgslGlobalDeclData, Array[Wgs
 
 pub fn collect_wgsl_decl_global_declared_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
 
-pub fn collect_wgsl_decl_identifier_names(WgslGlobalDeclData, Array[String]) -> Unit
-
 pub fn collect_wgsl_decl_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
 
 pub fn collect_wgsl_source_identifier_names(String, Array[String]) -> Unit
-
-pub fn collect_wgsl_source_identifier_nodes(String, Array[WgslIdent]) -> Unit
-
-pub fn decorate(String) -> String
-
-pub fn hash_directive_tail(String, String) -> String?
 
 pub fn import_brace_balance(String) -> Int
 
@@ -32,10 +24,6 @@ pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise ParseIm
 pub fn parse_wgsl_directive_line(String) -> WgslDirective?
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
-
-pub fn parse_wgsl_import_targets_from_tokens(String, Bool, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
-
-pub fn parse_wgsl_top_level_items(String) -> Array[WgslTopLevelItem]
 
 pub fn parse_wgsl_translation_unit(String) -> WgslTranslationUnit
 
@@ -56,10 +44,6 @@ pub fn starts_with_text(String, String) -> Bool
 pub fn substitute_identifiers(String, Int, Array[DeclaredImportBinding], Array[@common.ImportDefWithOffset], Bool) -> String raise SubstituteIdentifiersError
 
 pub fn tokenize(String, Bool) -> Array[Token]
-
-pub fn tokenizer_identifier_continue(Int) -> Bool
-
-pub fn tokenizer_identifier_start(Int) -> Bool
 
 pub fn trim_trailing_semicolons(String) -> String
 

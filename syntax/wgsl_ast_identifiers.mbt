@@ -210,19 +210,7 @@ pub fn collect_wgsl_decl_global_declared_identifier_nodes(
 }
 
 ///|
-pub fn collect_wgsl_decl_identifier_names(
-  data : WgslGlobalDeclData,
-  names : Array[String],
-) -> Unit {
-  let nodes : Array[WgslIdent] = []
-  collect_wgsl_decl_identifier_nodes(data, nodes)
-  for node in nodes {
-    names.push(node.name)
-  }
-}
-
-///|
-pub fn collect_wgsl_source_identifier_nodes(
+fn collect_wgsl_source_identifier_nodes(
   source : String,
   nodes : Array[WgslIdent],
 ) -> Unit {

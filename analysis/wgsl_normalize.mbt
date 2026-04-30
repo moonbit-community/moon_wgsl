@@ -21,7 +21,7 @@ priv struct WgslGlobalBindingInfo {
 }
 
 ///|
-pub fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
+fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
   let graph = build_wgsl_declaration_graph(source)
   let mut deduped = ""
   let emitted_blocks : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
@@ -61,7 +61,7 @@ fn record_wgsl_lowered_suffix_redirect_candidate(
 }
 
 ///|
-pub fn build_wgsl_unique_lowered_suffix_rename_plan(
+fn build_wgsl_unique_lowered_suffix_rename_plan(
   source : String,
 ) -> WgslRenamePlan {
   let graph = build_wgsl_declaration_graph(source)
@@ -165,7 +165,7 @@ fn wgsl_global_binding_info(block : WgslGraphBlock) -> WgslGlobalBindingInfo? {
 }
 
 ///|
-pub fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
+fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
   let graph = build_wgsl_declaration_graph(source)
   let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let duplicate_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()

@@ -361,9 +361,12 @@ test "README: build source catalog" {
     redirects,
     additional_imports: [],
   }
-  let catalog : Array[@common.WgslSourceCatalogEntry] = @export.build_wgsl_source_catalog(
-    composer, compose_options,
-  )
+  let prepared = composer.prepare_wgsl_source(
+    "shaders/effects/main.wgsl", compose_options,
+  ) catch {
+    err => abort("expected prepare success: \{err.message()}")
+  }
+  let catalog : Array[@common.WgslSourceCatalogEntry] = @export.build_wgsl_source_catalog(prepared)
   debug_inspect(catalog.length() > 0, content="true")
 }
 ```
@@ -453,7 +456,7 @@ Main public entry points:
   Runs preflight registry diagnostics and only mutates registry state when no
   errors are reported.
 - `build_wgsl_source_catalog`
-  Returns the declaration catalog for a specific Composer registry.
+  Returns the declaration catalog for a prepared dependency closure.
 - `WgslSourceRegistry::copy_import_module_paths` /
   `resolve_wgsl_import_module_in_registry`
   Build and query module-path resolution data for an explicit registry.

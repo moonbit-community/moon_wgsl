@@ -37,7 +37,7 @@ pub fn Token::identifier(self : Token) -> String? {
 }
 
 ///|
-pub fn tokenizer_identifier_start(code : Int) -> Bool {
+fn tokenizer_identifier_start(code : Int) -> Bool {
   code == 95 || // '_'
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
@@ -45,7 +45,7 @@ pub fn tokenizer_identifier_start(code : Int) -> Bool {
 }
 
 ///|
-pub fn tokenizer_identifier_continue(code : Int) -> Bool {
+fn tokenizer_identifier_continue(code : Int) -> Bool {
   tokenizer_identifier_start(code) || (code >= 48 && code <= 57)
 }
 

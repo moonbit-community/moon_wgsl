@@ -29,31 +29,6 @@ pub fn build_wgsl_symbol_redirect_map(
 }
 
 ///|
-pub fn rewrite_wgsl_declaration_text_with_redirects(
-  source : String,
-  redirect_map : @hashmap.HashMap[String, String],
-) -> String {
-  rewrite_wgsl_source_with_rename_plan(
-    source,
-    build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly),
-  )
-}
-
-///|
-pub fn rewrite_wgsl_declaration_text_with_renamed_declarations(
-  source : String,
-  redirect_map : @hashmap.HashMap[String, String],
-) -> String {
-  rewrite_wgsl_source_with_rename_plan(
-    source,
-    build_wgsl_rename_plan_from_redirect_map(
-      redirect_map,
-      GlobalDeclarationAndReferences,
-    ),
-  )
-}
-
-///|
 pub fn rewrite_wgsl_symbol_redirects(
   source : String,
   redirects : Array[WgslSymbolRedirect],

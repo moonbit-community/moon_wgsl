@@ -287,7 +287,7 @@ fn WgslImportParser::parse_targets(
 }
 
 ///|
-pub fn parse_wgsl_import_targets_from_tokens(
+fn parse_wgsl_import_targets_from_tokens(
   input : String,
   require_directive : Bool,
   prefix : String,
@@ -356,7 +356,7 @@ fn base32_nopad(input : String) -> String {
 }
 
 ///|
-pub fn decorate(module_name : String) -> String {
+fn decorate(module_name : String) -> String {
   "X_naga_oil_mod_X\{base32_nopad(module_name)}X"
 }
 

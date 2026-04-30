@@ -29,10 +29,7 @@ pub(all) struct WgslDeclarationGraph {
 }
 
 ///|
-pub fn wgsl_string_list_push_unique(
-  items : Array[String],
-  item : String,
-) -> Unit {
+fn wgsl_string_list_push_unique(items : Array[String], item : String) -> Unit {
   for existing in items {
     if existing == item {
       return
@@ -91,7 +88,7 @@ pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
 }
 
 ///|
-pub fn build_wgsl_declaration_indexes(
+fn build_wgsl_declaration_indexes(
   declaration_blocks : Array[WgslGraphBlock],
 ) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
   let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()

@@ -209,19 +209,6 @@ pub fn wgsl_directive_prefix_tail(
 }
 
 ///|
-pub fn hash_directive_tail(line : String, directive : String) -> String? {
-  match parse_wgsl_directive_line(line) {
-    Some(parsed) =>
-      if parsed.name == directive {
-        Some(parsed.tail)
-      } else {
-        None
-      }
-    None => None
-  }
-}
-
-///|
 pub fn import_brace_balance(text : String) -> Int {
   let mut balance = 0
   for i in 0..<text.length() {

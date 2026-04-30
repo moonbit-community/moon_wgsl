@@ -86,7 +86,7 @@ fn Composer::build_wgsl_import_requests(
           })
           continue
         }
-        wgsl_string_list_push_unique(requested_items, requested_path)
+        composer_string_list_push_unique(requested_items, requested_path)
       }
       if requested_items.length() == 0 {
         continue
@@ -143,7 +143,7 @@ fn Composer::build_wgsl_import_requests(
           })
           continue
         }
-        wgsl_string_list_push_unique(requested_items, requested_path)
+        composer_string_list_push_unique(requested_items, requested_path)
       }
       if requested_items.length() > 0 {
         import_full_module = false
@@ -196,7 +196,10 @@ fn Composer::build_wgsl_import_requests(
         request.keep_requested_items = true
       }
       for requested_item in requested_items {
-        wgsl_string_list_push_unique(request.requested_items, requested_item)
+        composer_string_list_push_unique(
+          request.requested_items,
+          requested_item,
+        )
       }
     } else {
       requests.push(WgslImportRequest::{

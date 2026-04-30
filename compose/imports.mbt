@@ -11,7 +11,6 @@ using @analysis {
   rewrite_wgsl_declarations_with_rename_plan,
   rewrite_wgsl_symbol_redirects,
   strip_wgsl_import_declarations,
-  wgsl_string_list_push_unique,
 }
 
 ///|

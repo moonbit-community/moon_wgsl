@@ -122,7 +122,7 @@ fn collect_wgsl_alias_requested_paths(
   for path in names {
     let requested_item = wgsl_import_requested_item_name(path, alias_name)
     if requested_item != "" {
-      wgsl_string_list_push_unique(requested_paths, requested_item)
+      composer_string_list_push_unique(requested_paths, requested_item)
     }
   }
 }

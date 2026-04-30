@@ -14,6 +14,7 @@ using @common {
   type WgslDiagnosticSeverity,
   type WgslExportOptions,
   type WgslExportOutput,
+  type PreparedWgslSource,
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceMapEntry,

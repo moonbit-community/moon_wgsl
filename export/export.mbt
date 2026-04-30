@@ -86,13 +86,12 @@ fn build_wgsl_source_catalog_from_files(
 
 ///|
 pub fn build_wgsl_source_catalog(
-  composer : Composer,
-  options : WgslComposeOptions,
+  prepared : PreparedWgslSource,
 ) -> Array[WgslSourceCatalogEntry] {
   build_wgsl_source_catalog_from_files(
-    composer.copy_source_files(),
-    options.defines,
-    options.value_defines,
+    prepared.source_files,
+    prepared.defines,
+    prepared.value_defines,
   )
 }
 
