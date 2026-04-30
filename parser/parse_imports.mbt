@@ -40,7 +40,9 @@ fn tokenize_wgsl_import_targets(
   input : String,
 ) -> Array[(Token, Int, Int)] raise ParseImportsError {
   let out : Array[(Token, Int, Int)] = []
-  for token in tokenize(input, false) {
+  let raw_tokens = tokenize(input, false)
+  let mut previous_can_start_alias = false
+  for token in raw_tokens {
     let start = utf8_byte_length(input[:token.pos()].to_owned())
     let end_ = start +
       utf8_byte_length(
@@ -48,16 +50,33 @@ fn tokenize_wgsl_import_targets(
       )
     match token {
       Identifier("as", _) =>
-        push_generated_import_token(out, Token::AS, start, end_)
-      Identifier(name, _) =>
+        if previous_can_start_alias {
+          push_generated_import_token(out, Token::AS, start, end_)
+          previous_can_start_alias = false
+        } else {
+          push_generated_import_token(out, Token::IDENT("as"), start, end_)
+          previous_can_start_alias = true
+        }
+      Identifier(name, _) => {
         push_generated_import_token(out, Token::IDENT(name), start, end_)
-      Other(123, _) =>
+        previous_can_start_alias = true
+      }
+      Other(123, _) => {
         push_generated_import_token(out, Token::LBRACE(start), start, end_)
-      Other(125, _) =>
+        previous_can_start_alias = false
+      }
+      Other(125, _) => {
         push_generated_import_token(out, Token::RBRACE(start), start, end_)
-      Other(44, _) =>
+        previous_can_start_alias = false
+      }
+      Other(44, _) => {
         push_generated_import_token(out, Token::COMMA, start, end_)
-      Other(59, _) => push_generated_import_token(out, Token::SEMI, start, end_)
+        previous_can_start_alias = false
+      }
+      Other(59, _) => {
+        push_generated_import_token(out, Token::SEMI, start, end_)
+        previous_can_start_alias = false
+      }
       Other(_, pos) =>
         raise ParseImportsError::Parse(
           "unexpected token",
