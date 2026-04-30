@@ -105,3 +105,13 @@ test "naga_oil wb: parse_imports rejects malformed imports like upstream" {
 }
 
 ///|
+test "naga_oil wb: parse_imports collects import blocks with raw brace counts" {
+  debug_inspect(
+    parse_imports_snapshot("#import \"path{\" Item\n#import other\n").has_prefix(
+      "ERR ",
+    ),
+    content="true",
+  )
+}
+
+///|

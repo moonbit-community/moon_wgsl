@@ -156,6 +156,25 @@ test "naga_oil: composer preprocess supports multiline grouped imports" {
 }
 
 ///|
+test "naga_oil: composer directives use Rust regex Unicode whitespace" {
+  clear_composer_test_registry()
+  register_composer_test_shader_source(
+    "shared/inc.wgsl", "#define_import_path demo::inc\nfn inc() -> f32 {\n  return 1.0;\n}\n",
+  )
+  let preprocessed = composer_test_composer().compose_wgsl_source(
+    "\u{00A0}#import demo::inc::inc\nfn demo() -> f32 {\n  return inc();\n}\n",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort(
+        "expected Unicode-whitespace import compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(preprocessed.contains("#import"), content="false")
+  clear_composer_test_registry()
+}
+
+///|
 test "naga_oil: composer preprocess strips module aliases" {
   register_grouped_import_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl_source(

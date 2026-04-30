@@ -36,7 +36,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   let mut line_index = 0
   while line_index < lines.length() {
     let line = lines[line_index]
-    let trimmed = line.trim().to_owned()
+    let trimmed = wgsl_regex_trim_whitespace(line)
     if parse_glsl_version_directive(trimmed) is Some(_) {
       line_index = line_index + 1
       continue

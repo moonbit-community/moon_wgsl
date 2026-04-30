@@ -75,7 +75,11 @@ using @resolver {
 using @ast {type WgslDirectiveKind}
 
 ///|
-using @lex {naga_oil_raw_import_brace_balance_next, split_source_lines}
+using @lex {
+  naga_oil_raw_import_brace_balance_next,
+  split_source_lines,
+  wgsl_regex_trim_whitespace,
+}
 
 ///|
 using @parser {wgsl_directive_prefix_tail, wgsl_directive_tail}
