@@ -23,7 +23,7 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     return None
   }
   let identifiers : Array[WgslIdent] = []
-  let tokens = tokenize(replace_comments(trimmed), false)
+  let tokens = tokenize_wgsl(replace_comments(trimmed), false)
   for i in 0..<tokens.length() {
     match tokens[i] {
       WgslToken::Identifier(name, pos) =>
@@ -145,7 +145,7 @@ fn tokenize_at(
   source_start : Int,
 ) -> Array[WgslToken] {
   let tokens : Array[WgslToken] = []
-  for token in tokenize(source, emit_whitespace) {
+  for token in tokenize_wgsl(source, emit_whitespace) {
     tokens.push(wgsl_shift_token(token, source_start))
   }
   tokens

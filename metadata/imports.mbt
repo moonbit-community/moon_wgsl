@@ -17,6 +17,7 @@ using @ast {type WgslDirectiveKind}
 ///|
 using @lex {
   type WgslToken,
+  naga_oil_raw_import_brace_balance_next,
   wgsl_token_brace_balance,
   replace_comments,
   source_lines,

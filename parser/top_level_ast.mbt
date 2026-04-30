@@ -121,7 +121,7 @@ fn WgslTopLevelParser::new(source : String) -> WgslTopLevelParser {
   WgslTopLevelParser::{
     source,
     cleaned,
-    tokens: tokenize(cleaned, false),
+    tokens: tokenize_wgsl(cleaned, false),
     index: 0,
     pending_start: 0,
   }
@@ -174,15 +174,16 @@ fn WgslTopLevelParser::parse_directive_item(
   let first_line_end = top_level_line_end(self.source, token_pos)
   let mut item_end = first_line_end
   if directive.kind == WgslDirectiveKind::Import {
-    let mut balance = wgsl_token_brace_balance(
+    let mut balance = naga_oil_raw_import_brace_balance_next(
+      0,
       replace_comments(self.source[token_pos:first_line_end].to_owned()),
     )
     while balance > 0 && item_end < self.source.length() {
       let next_line_end = top_level_line_end(self.source, item_end)
-      balance = balance +
-        wgsl_token_brace_balance(
-          replace_comments(self.source[item_end:next_line_end].to_owned()),
-        )
+      balance = naga_oil_raw_import_brace_balance_next(
+        balance,
+        replace_comments(self.source[item_end:next_line_end].to_owned()),
+      )
       item_end = next_line_end
     }
   }

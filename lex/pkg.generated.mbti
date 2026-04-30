@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn naga_oil_raw_import_brace_balance_next(Int, String) -> Int
+
 pub fn replace_comments(String) -> String
 
 pub fn source_lines(String) -> Array[String]
@@ -17,6 +19,8 @@ pub fn split_last_identifier(String) -> (String, String)?
 pub fn split_source_lines(String) -> Array[String]
 
 pub fn tokenize(String, Bool) -> Array[WgslToken]
+
+pub fn tokenize_wgsl(String, Bool) -> Array[WgslToken]
 
 pub fn trim_trailing_semicolons(String) -> String
 

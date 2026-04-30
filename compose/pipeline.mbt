@@ -64,12 +64,14 @@ fn Composer::preprocess_wgsl_source_with_path(
         continue
       }
       let mut spec = import_tail
-      let mut brace_balance = wgsl_token_brace_balance(spec)
+      let mut brace_balance = naga_oil_raw_import_brace_balance_next(0, spec)
       while brace_balance > 0 && line_index + 1 < lines.length() {
         line_index = line_index + 1
         let next_line = lines[line_index]
         spec = "\{spec}\n\{next_line}"
-        brace_balance = brace_balance + wgsl_token_brace_balance(next_line)
+        brace_balance = naga_oil_raw_import_brace_balance_next(
+          brace_balance, next_line,
+        )
       }
       let requests = self.build_wgsl_import_requests(
         current_rel_path,

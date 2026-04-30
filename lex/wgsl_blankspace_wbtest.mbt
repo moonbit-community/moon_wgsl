@@ -14,7 +14,7 @@ test "WGSL blankspace matches Pattern_White_Space representatives" {
 
 ///|
 test "WGSL tokenizer skips Pattern_White_Space blankspace" {
-  let tokens = tokenize("a\u{000C}b\u{200E}c", false)
+  let tokens = tokenize_wgsl("a\u{000C}b\u{200E}c", false)
   debug_inspect(tokens.length(), content="3")
   debug_inspect(tokens[0], content="Identifier(\"a\", 0)")
   debug_inspect(tokens[1], content="Identifier(\"b\", 2)")

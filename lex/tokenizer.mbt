@@ -46,23 +46,37 @@ pub fn WgslToken::shift(self : WgslToken, offset : Int) -> WgslToken {
 }
 
 ///|
-fn tokenizer_identifier_start(code : Int) -> Bool {
+fn tokenizer_whitespace(code : Int, wgsl_blankspace : Bool) -> Bool {
+  if wgsl_blankspace {
+    wgsl_blankspace_code_point(code)
+  } else {
+    wgsl_regex_whitespace_code_point(code)
+  }
+}
+
+///|
+fn tokenizer_identifier_start(code : Int, wgsl_blankspace : Bool) -> Bool {
   code == 95 || // '_'
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
-  (code > 127 && !wgsl_blankspace_code_point(code))
+  (code > 127 && !tokenizer_whitespace(code, wgsl_blankspace))
 }
 
 ///|
-fn tokenizer_identifier_continue(code : Int) -> Bool {
-  tokenizer_identifier_start(code) || (code >= 48 && code <= 57)
+fn tokenizer_identifier_continue(code : Int, wgsl_blankspace : Bool) -> Bool {
+  tokenizer_identifier_start(code, wgsl_blankspace) ||
+  (code >= 48 && code <= 57)
 }
 
 ///|
-fn tokenizer_number_continue(src : String, index : Int) -> Bool {
+fn tokenizer_number_continue(
+  src : String,
+  index : Int,
+  wgsl_blankspace : Bool,
+) -> Bool {
   let code = src.code_unit_at(index).to_int()
   if (code >= 48 && code <= 57) ||
-    tokenizer_identifier_start(code) ||
+    tokenizer_identifier_start(code, wgsl_blankspace) ||
     code == 46 {
     return true
   }
@@ -89,7 +103,11 @@ fn tokenizer_push_number_as_other(
 }
 
 ///|
-pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
+fn tokenize_with(
+  src : String,
+  emit_whitespace : Bool,
+  wgsl_blankspace : Bool,
+) -> Array[WgslToken] {
   let tokens : Array[WgslToken] = []
   let mut current_token_start = 0
   let mut current_token_kind = -1
@@ -109,7 +127,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
     }
 
     if current_token_kind == 0 {
-      if quoted_token || tokenizer_identifier_continue(code) {
+      if quoted_token || tokenizer_identifier_continue(code, wgsl_blankspace) {
         i = i + 1
         continue
       }
@@ -131,7 +149,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
     }
 
     if current_token_kind == 2 {
-      if tokenizer_number_continue(src, i) {
+      if tokenizer_number_continue(src, i, wgsl_blankspace) {
         i = i + 1
         continue
       }
@@ -142,7 +160,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
     }
 
     if current_token_kind == 1 {
-      if wgsl_blankspace_code_point(code) {
+      if tokenizer_whitespace(code, wgsl_blankspace) {
         i = i + 1
         continue
       }
@@ -157,7 +175,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
       continue
     }
 
-    if tokenizer_identifier_start(code) {
+    if tokenizer_identifier_start(code, wgsl_blankspace) {
       current_token_kind = 0
       current_token_start = i
       i = i + 1
@@ -171,7 +189,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
       continue
     }
 
-    if wgsl_blankspace_code_point(code) {
+    if tokenizer_whitespace(code, wgsl_blankspace) {
       if emit_whitespace {
         current_token_kind = 1
         current_token_start = i
@@ -208,4 +226,14 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
   }
 
   tokens
+}
+
+///|
+pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
+  tokenize_with(src, emit_whitespace, false)
+}
+
+///|
+pub fn tokenize_wgsl(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
+  tokenize_with(src, emit_whitespace, true)
 }

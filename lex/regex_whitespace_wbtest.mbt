@@ -15,3 +15,12 @@ test "naga_oil regex whitespace matches representative Unicode spaces" {
     content="2",
   )
 }
+
+///|
+test "naga_oil tokenizer uses Rust whitespace for imports" {
+  let tokens = tokenize("a\u{00A0}b\u{2003}c", false)
+  debug_inspect(tokens.length(), content="3")
+  debug_inspect(tokens[0], content="Identifier(\"a\", 0)")
+  debug_inspect(tokens[1], content="Identifier(\"b\", 2)")
+  debug_inspect(tokens[2], content="Identifier(\"c\", 4)")
+}

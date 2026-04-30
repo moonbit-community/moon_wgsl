@@ -31,12 +31,13 @@ using @common {type WgslImportTarget}
 ///|
 using @lex {
   type WgslToken,
+  naga_oil_raw_import_brace_balance_next,
   replace_comments,
   tokenize,
+  tokenize_wgsl,
   wgsl_blankspace_code_point,
   wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,
   wgsl_trim_blankspace,
-  wgsl_token_brace_balance,
 }

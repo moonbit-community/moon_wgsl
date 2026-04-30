@@ -155,6 +155,18 @@ test "naga_oil: metadata parser keeps quoted path imports and duplicate item use
 }
 
 ///|
+test "naga_oil: multiline import brace counting includes quoted braces" {
+  let _ = @preprocess.Preprocessor::default().preprocess(
+    "#import demo::{\n  \"quoted}\" as quoted,\n  item,\n}\nfn shade() {}\n",
+    empty_shader_defs(),
+  ) catch {
+    @preprocess.PreprocessError::ImportParseError(_, _) => return
+    _ => abort("expected import parse error")
+  }
+  abort("expected import parse error")
+}
+
+///|
 test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
   let metadata = metadata_or_abort(
     "enable f16, subgroups;\nrequires readonly_and_readwrite_storage_textures;\ndiagnostic(warn, derivative_uniformity);\nfn shade() -> f32 {\n  return #EXPOSURE + #{WHITE_POINT};\n}\n",
