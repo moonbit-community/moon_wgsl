@@ -294,7 +294,7 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
   ) catch {
     err => abort("expected prepare success: \{err.message()}")
   }
-  let catalog = @export.build_wgsl_source_catalog(prepared)
+  let catalog = prepared.source_catalog
   let output = @export.export_wgsl_with_options(
     composer,
     "shaders/effects/ambiguous.wgsl",

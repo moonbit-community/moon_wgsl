@@ -368,9 +368,7 @@ test "README: build source catalog" {
   ) catch {
     err => abort("expected prepare success: \{err.message()}")
   }
-  let catalog : Array[@common.WgslSourceCatalogEntry] = @export.build_wgsl_source_catalog(
-    prepared,
-  )
+  let catalog : Array[@common.WgslSourceCatalogEntry] = prepared.source_catalog
   debug_inspect(catalog.length() > 0, content="true")
 }
 ```

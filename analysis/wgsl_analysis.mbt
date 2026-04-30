@@ -29,6 +29,21 @@ pub(all) struct WgslDeclarationGraph {
 }
 
 ///|
+pub(all) struct WgslEmittedDeclaration {
+  name : String
+  text : String
+  generated_start : Int
+  generated_end : Int
+}
+
+///|
+pub(all) struct WgslTreeShakenSource {
+  source : String
+  declarations : Array[WgslEmittedDeclaration]
+  missing_root_items : Array[String]
+}
+
+///|
 fn wgsl_string_list_push_unique(items : Array[String], item : String) -> Unit {
   for existing in items {
     if existing == item {
@@ -174,7 +189,7 @@ fn collect_wgsl_declaration_dependencies(
 }
 
 ///|
-pub fn collect_wgsl_reachable_declaration_names(
+fn collect_wgsl_reachable_declaration_names(
   declaration_blocks : Array[WgslGraphBlock],
   root_items : Array[String],
 ) -> (@hashmap.HashMap[String, Bool], Array[String]) {
@@ -232,6 +247,48 @@ pub fn collect_wgsl_reachable_declaration_names(
     }
   }
   (included_names, missing_root_items)
+}
+
+///|
+pub fn emit_wgsl_tree_shaken_source(
+  source : String,
+  root_items : Array[String],
+) -> WgslTreeShakenSource {
+  let graph = build_wgsl_declaration_graph(source)
+  let (included_names, missing_root_items) = collect_wgsl_reachable_declaration_names(
+    graph.declaration_blocks,
+    root_items,
+  )
+  let declarations : Array[WgslEmittedDeclaration] = []
+  let mut emitted_source = ""
+  let mut generated_start = 0
+
+  for import_block in graph.import_blocks {
+    emitted_source = emitted_source + import_block.text
+    generated_start = generated_start + import_block.text.length()
+  }
+  for block in graph.declaration_blocks {
+    if block.name != "" && !included_names.contains(block.name) {
+      continue
+    }
+    let block_generated_start = generated_start
+    emitted_source = emitted_source + block.text
+    generated_start = generated_start + block.text.length()
+    if block.name != "" {
+      declarations.push(WgslEmittedDeclaration::{
+        name: block.name,
+        text: block.text,
+        generated_start: block_generated_start,
+        generated_end: generated_start,
+      })
+    }
+  }
+
+  WgslTreeShakenSource::{
+    source: emitted_source,
+    declarations,
+    missing_root_items,
+  }
 }
 
 ///|

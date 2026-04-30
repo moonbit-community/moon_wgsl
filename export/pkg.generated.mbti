@@ -7,8 +7,6 @@ import {
 }
 
 // Values
-pub fn build_wgsl_source_catalog(@common.PreparedWgslSource) -> Array[@common.WgslSourceCatalogEntry]
-
 pub fn export_wgsl_with_options(@compose.Composer, String, @common.WgslComposeOptions, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
 
 // Errors

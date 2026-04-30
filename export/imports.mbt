@@ -1,9 +1,8 @@
 ///|
 using @analysis {
-  type WgslDeclarationGraph,
-  type WgslGraphBlock,
-  build_wgsl_declaration_graph,
-  collect_wgsl_reachable_declaration_names,
+  type WgslEmittedDeclaration,
+  type WgslTreeShakenSource,
+  emit_wgsl_tree_shaken_source,
 }
 
 ///|
@@ -13,7 +12,6 @@ using @common {
   type WgslDiagnosticSeverity,
   type WgslExportOptions,
   type WgslExportOutput,
-  type PreparedWgslSource,
   type WgslSourceCatalogEntry,
   type WgslSourceMapEntry,
 }
