@@ -83,8 +83,38 @@ pub fn WgslIdent::new(name : String, start : Int, end : Int) -> WgslIdent {
 }
 
 ///|
+pub(all) enum WgslExprTokenKind {
+  Identifier
+  BoolLiteral(Bool)
+  UintLiteral(Int)
+  IntLiteral(Int)
+  FloatLiteral
+  Punctuation(Int)
+  Unknown
+} derive(Debug)
+
+///|
+pub struct WgslExprToken {
+  kind : WgslExprTokenKind
+  text : String
+  start : Int
+  end : Int
+} derive(Debug)
+
+///|
+pub fn WgslExprToken::new(
+  kind : WgslExprTokenKind,
+  text : String,
+  start : Int,
+  end : Int,
+) -> WgslExprToken {
+  WgslExprToken::{ kind, text, start, end }
+}
+
+///|
 pub struct WgslExprRef {
   text : String
+  tokens : Array[WgslExprToken]
   identifiers : Array[WgslIdent]
   start : Int
   end : Int
@@ -93,11 +123,12 @@ pub struct WgslExprRef {
 ///|
 pub fn WgslExprRef::new(
   text : String,
+  tokens : Array[WgslExprToken],
   identifiers : Array[WgslIdent],
   start : Int,
   end : Int,
 ) -> WgslExprRef {
-  WgslExprRef::{ text, identifiers, start, end }
+  WgslExprRef::{ text, tokens, identifiers, start, end }
 }
 
 ///|

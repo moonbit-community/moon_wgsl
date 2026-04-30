@@ -387,6 +387,33 @@ test "WGSL attributes are parsed by grammar" {
 }
 
 ///|
+test "WGSL expression refs expose token and literal AST" {
+  let source =
+    #|@group(0u) @binding(12) @id(true) override FLAG: bool = false;
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Override(override_decl) else {
+    abort("expected override")
+  }
+  guard override_decl.attributes[0].arguments_ref is Some(group_args) else {
+    abort("expected group args")
+  }
+  debug_inspect(group_args.tokens[0].kind, content="UintLiteral(0)")
+  guard override_decl.attributes[1].arguments_ref is Some(binding_args) else {
+    abort("expected binding args")
+  }
+  debug_inspect(binding_args.tokens[0].kind, content="UintLiteral(12)")
+  guard override_decl.attributes[2].arguments_ref is Some(id_args) else {
+    abort("expected id args")
+  }
+  debug_inspect(id_args.tokens[0].kind, content="BoolLiteral(true)")
+  guard override_decl.initializer_ref is Some(initializer) else {
+    abort("expected initializer")
+  }
+  debug_inspect(initializer.tokens[0].kind, content="BoolLiteral(false)")
+}
+
+///|
 test "WGSL typed initializer tails are parsed by grammar" {
   let source =
     #|var<private> cache: u32 = FACTOR;

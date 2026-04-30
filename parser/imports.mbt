@@ -6,6 +6,8 @@ using @ast {
   type WgslDirective,
   type WgslDirectiveKind,
   type WgslExprRef,
+  type WgslExprToken,
+  type WgslExprTokenKind,
   type WgslFunction,
   type WgslFunctionArgument,
   type WgslFunctionResult,

@@ -393,3 +393,57 @@ test "declaration graph keeps dependencies from recursively scoped blocks" {
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
+
+///|
+test "normalizer dedupes duplicate declarations by AST structure" {
+  let source =
+    #|struct Shared {
+    #|  value: u32,
+    #|}
+    #|struct Shared { value : u32 }
+    #|fn entry(v: Shared) -> u32 {
+    #|  return v.value;
+    #|}
+    #|
+  let normalized = normalize_wgsl_composed_declarations(source, [])
+  debug_inspect(
+    normalized.contains("struct Shared {\n  value: u32,\n}"),
+    content="true",
+  )
+  debug_inspect(normalized.contains("struct Shared { value"), content="false")
+  debug_inspect(normalized.contains("fn entry"), content="true")
+}
+
+///|
+test "normalizer reads resource binding keys from expression and type AST" {
+  let source =
+    #|struct Globals { value: u32 }
+    #|@group(0u) @binding(1u) var<uniform> globals: Globals;
+    #|@group(0) @binding(1) var<uniform> globals_alias: Globals;
+    #|fn entry() -> u32 {
+    #|  return globals_alias.value;
+    #|}
+    #|
+  let normalized = normalize_wgsl_composed_declarations(source, [])
+  debug_inspect(normalized.contains("globals_alias:"), content="false")
+  debug_inspect(normalized.contains("return globals.value;"), content="true")
+}
+
+///|
+test "normalizer suffix rewrites require explicit alias provenance" {
+  let source =
+    #|fn module__helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|fn entry() -> u32 {
+    #|  return helper();
+    #|}
+    #|
+  let untouched = normalize_wgsl_composed_declarations(source, [])
+  debug_inspect(untouched.contains("return helper();"), content="true")
+  let normalized = normalize_wgsl_composed_declarations(source, [
+    { from_name: "module::helper", to_name: "module__helper" },
+  ])
+  debug_inspect(normalized.contains("return module__helper();"), content="true")
+  debug_inspect(normalized.contains("return helper();"), content="false")
+}

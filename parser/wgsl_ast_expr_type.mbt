@@ -13,6 +13,173 @@ fn wgsl_expr_identifier_has_access_prefix(
 }
 
 ///|
+fn wgsl_expr_ascii_digit(code : Int) -> Bool {
+  code >= 48 && code <= 57
+}
+
+///|
+fn wgsl_expr_ascii_identifier_code(code : Int) -> Bool {
+  (code >= 65 && code <= 90) ||
+  (code >= 97 && code <= 122) ||
+  (code >= 48 && code <= 57) ||
+  code == 95
+}
+
+///|
+fn wgsl_expr_number_token_end(tokens : Array[WgslToken], start : Int) -> Int {
+  let mut end_index = start
+  while end_index < tokens.length() {
+    match tokens[end_index] {
+      WgslToken::Other(code, _) =>
+        if wgsl_expr_ascii_identifier_code(code) ||
+          code == 46 ||
+          code == 43 ||
+          code == 45 {
+          end_index = end_index + 1
+          continue
+        } else {
+          break
+        }
+      _ => break
+    }
+  }
+  end_index
+}
+
+///|
+fn parse_wgsl_uint_literal_token(text : String) -> Int? {
+  let mut end = text.length()
+  if end > 0 {
+    let last = text.code_unit_at(end - 1).to_int()
+    if last == 117 || last == 85 {
+      end = end - 1
+    }
+  }
+  if end <= 0 {
+    return None
+  }
+  let mut value = 0
+  for i in 0..<end {
+    let code = text.code_unit_at(i).to_int()
+    if !wgsl_expr_ascii_digit(code) {
+      return None
+    }
+    value = value * 10 + (code - 48)
+  }
+  Some(value)
+}
+
+///|
+fn parse_wgsl_int_literal_token(text : String) -> Int? {
+  let mut end = text.length()
+  if end > 0 {
+    let last = text.code_unit_at(end - 1).to_int()
+    if last == 105 || last == 73 {
+      end = end - 1
+    }
+  }
+  if end <= 0 {
+    return None
+  }
+  let mut value = 0
+  for i in 0..<end {
+    let code = text.code_unit_at(i).to_int()
+    if !wgsl_expr_ascii_digit(code) {
+      return None
+    }
+    value = value * 10 + (code - 48)
+  }
+  Some(value)
+}
+
+///|
+fn wgsl_expr_number_token_kind(text : String) -> WgslExprTokenKind {
+  match parse_wgsl_uint_literal_token(text) {
+    Some(value) => return WgslExprTokenKind::UintLiteral(value)
+    None => ()
+  }
+  match parse_wgsl_int_literal_token(text) {
+    Some(value) => return WgslExprTokenKind::IntLiteral(value)
+    None => ()
+  }
+  WgslExprTokenKind::FloatLiteral
+}
+
+///|
+fn collect_wgsl_expr_ref_tokens_and_identifiers(
+  text : String,
+  base : Int,
+  expr_tokens : Array[WgslExprToken],
+  identifiers : Array[WgslIdent],
+) -> Unit {
+  let tokens = tokenize_wgsl(replace_comments(text), false)
+  let mut i = 0
+  while i < tokens.length() {
+    match tokens[i] {
+      WgslToken::Identifier(name, pos) => {
+        let absolute_start = base + pos
+        let kind = match name {
+          "true" => WgslExprTokenKind::BoolLiteral(true)
+          "false" => WgslExprTokenKind::BoolLiteral(false)
+          _ => WgslExprTokenKind::Identifier
+        }
+        expr_tokens.push(
+          WgslExprToken::new(
+            kind,
+            name,
+            absolute_start,
+            absolute_start + name.length(),
+          ),
+        )
+        if !wgsl_expr_identifier_has_access_prefix(tokens, i) &&
+          kind is WgslExprTokenKind::Identifier {
+          identifiers.push(
+            WgslIdent::new(name, absolute_start, absolute_start + name.length()),
+          )
+        }
+        i = i + 1
+        continue
+      }
+      WgslToken::Other(code, pos) if wgsl_expr_ascii_digit(code) => {
+        let end_index = wgsl_expr_number_token_end(tokens, i)
+        let end_pos = if end_index > i {
+          tokens[end_index - 1].end()
+        } else {
+          tokens[i].end()
+        }
+        let token_text = text[pos:end_pos].to_owned()
+        expr_tokens.push(
+          WgslExprToken::new(
+            wgsl_expr_number_token_kind(token_text),
+            token_text,
+            base + pos,
+            base + end_pos,
+          ),
+        )
+        i = end_index
+        continue
+      }
+      WgslToken::Other(code, pos) => {
+        expr_tokens.push(
+          WgslExprToken::new(
+            WgslExprTokenKind::Punctuation(code),
+            text[pos:tokens[i].end()].to_owned(),
+            base + pos,
+            base + tokens[i].end(),
+          ),
+        )
+        i = i + 1
+        continue
+      }
+      WgslToken::Whitespace(_, _) => {
+        i = i + 1
+        continue
+      }
+    }
+  }
+}
+
+///|
 fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
     text,
@@ -22,25 +189,22 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   if trimmed == "" {
     return None
   }
+  let expr_tokens : Array[WgslExprToken] = []
   let identifiers : Array[WgslIdent] = []
-  let tokens = tokenize_wgsl(replace_comments(trimmed), false)
-  for i in 0..<tokens.length() {
-    match tokens[i] {
-      WgslToken::Identifier(name, pos) =>
-        if !wgsl_expr_identifier_has_access_prefix(tokens, i) {
-          identifiers.push(
-            WgslIdent::new(
-              name,
-              base + local_start + pos,
-              base + local_start + pos + name.length(),
-            ),
-          )
-        }
-      _ => ()
-    }
-  }
+  collect_wgsl_expr_ref_tokens_and_identifiers(
+    trimmed,
+    base + local_start,
+    expr_tokens,
+    identifiers,
+  )
   Some(
-    WgslExprRef::new(trimmed, identifiers, base + local_start, base + local_end),
+    WgslExprRef::new(
+      trimmed,
+      expr_tokens,
+      identifiers,
+      base + local_start,
+      base + local_end,
+    ),
   )
 }
 
@@ -58,7 +222,8 @@ fn parse_required_wgsl_expr_ref_fragment(
 ) -> WgslExprRef {
   match parse_wgsl_expr_ref_fragment(fragment) {
     Some(expr) => expr
-    None => WgslExprRef::new(fragment.text, [], fragment.start, fragment.end)
+    None =>
+      WgslExprRef::new(fragment.text, [], [], fragment.start, fragment.end)
   }
 }
 

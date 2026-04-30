@@ -17,7 +17,182 @@ priv struct WgslGlobalBindingInfo {
   name : String
   group : Int
   binding : Int
-  type_text : String
+  type_key : String
+}
+
+///|
+fn wgsl_string_list_key(items : Array[String]) -> String {
+  items.join("|")
+}
+
+///|
+fn wgsl_attribute_key(attribute : WgslAttribute) -> String {
+  let argument_key = match attribute.arguments_ref {
+    Some(expr) => wgsl_expr_ref_key(expr)
+    None => ""
+  }
+  "\{attribute.name}(\{argument_key})"
+}
+
+///|
+fn wgsl_attributes_key(attributes : Array[WgslAttribute]) -> String {
+  let keys : Array[String] = []
+  for attribute in attributes {
+    keys.push(wgsl_attribute_key(attribute))
+  }
+  wgsl_string_list_key(keys)
+}
+
+///|
+fn wgsl_expr_token_key(token : WgslExprToken) -> String {
+  match token.kind {
+    Identifier => "id:\{token.text}"
+    BoolLiteral(value) => "bool:\{value}"
+    UintLiteral(value) => "uint:\{value}"
+    IntLiteral(value) => "int:\{value}"
+    FloatLiteral => "float:\{token.text}"
+    Punctuation(code) => "punct:\{code}"
+    Unknown => "unknown:\{token.text}"
+  }
+}
+
+///|
+fn wgsl_expr_ref_key(expr : WgslExprRef) -> String {
+  let keys : Array[String] = []
+  for token in expr.tokens {
+    keys.push(wgsl_expr_token_key(token))
+  }
+  wgsl_string_list_key(keys)
+}
+
+///|
+fn wgsl_type_ref_key(ty : WgslTypeRef?) -> String {
+  match ty {
+    Some(type_ref) => {
+      let argument_keys : Array[String] = []
+      for argument in type_ref.arguments {
+        argument_keys.push(wgsl_type_ref_key(Some(argument)))
+      }
+      "\{type_ref.name}<\{wgsl_string_list_key(argument_keys)}>"
+    }
+    None => ""
+  }
+}
+
+///|
+fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
+  match kind {
+    Empty => "empty"
+    LocalDeclaration => "local"
+    Return => "return"
+    If => "if"
+    For => "for"
+    While => "while"
+    Loop => "loop"
+    Switch => "switch"
+    Break => "break"
+    Continue => "continue"
+    Discard => "discard"
+    ConstAssert => "const_assert"
+    Compound => "compound"
+    Expression => "expression"
+  }
+}
+
+///|
+fn wgsl_directive_kind_key(kind : WgslDirectiveKind) -> String {
+  match kind {
+    Ifdef => "ifdef"
+    Ifndef => "ifndef"
+    If => "if"
+    Else => "else"
+    Endif => "endif"
+    DefineImportPath => "define_import_path"
+    Define => "define"
+    Import => "import"
+    Enable => "enable"
+    Requires => "requires"
+    Diagnostic => "diagnostic"
+    Other(name) => "other:\{name}"
+  }
+}
+
+///|
+fn wgsl_optional_expr_ref_key(expr : WgslExprRef?) -> String {
+  match expr {
+    Some(value) => wgsl_expr_ref_key(value)
+    None => ""
+  }
+}
+
+///|
+fn wgsl_statement_key(statement : WgslStatement) -> String {
+  let identifiers : Array[String] = []
+  for ident in statement.identifiers {
+    identifiers.push(ident.name)
+  }
+  let locals : Array[String] = []
+  for binding in statement.local_declarations {
+    locals.push(binding.name)
+  }
+  let blocks : Array[String] = []
+  for block in statement.blocks {
+    blocks.push(wgsl_block_key(block))
+  }
+  "\{wgsl_statement_kind_key(statement.kind)}[\{wgsl_string_list_key(identifiers)}][\{wgsl_string_list_key(locals)}]{\{wgsl_string_list_key(blocks)}}"
+}
+
+///|
+fn wgsl_block_key(block : WgslBlock) -> String {
+  let statements : Array[String] = []
+  for statement in block.statements {
+    statements.push(wgsl_statement_key(statement))
+  }
+  wgsl_string_list_key(statements)
+}
+
+///|
+fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
+  match data {
+    WgslGlobalDeclData::Directive(directive) =>
+      "directive:\{wgsl_directive_kind_key(directive.kind)}:\{directive.name}:\{directive.tail}"
+    WgslGlobalDeclData::Import(directive) =>
+      "import:\{directive.name}:\{directive.tail}"
+    WgslGlobalDeclData::Function(function) => {
+      let args : Array[String] = []
+      for argument in function.arguments {
+        args.push(
+          "\{wgsl_attributes_key(argument.attributes)}:\{argument.name}:\{wgsl_type_ref_key(argument.ty_ref)}",
+        )
+      }
+      let result = match function.result {
+        Some(value) =>
+          "\{wgsl_attributes_key(value.attributes)}:\{wgsl_type_ref_key(value.ty_ref)}"
+        None => ""
+      }
+      "fn:\{wgsl_attributes_key(function.attributes)}:\{function.qualifier}:\{function.name.name}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body)}}"
+    }
+    WgslGlobalDeclData::GlobalVariable(global) =>
+      "global:\{wgsl_attributes_key(global.attributes)}:\{global.name.name}:\{wgsl_string_list_key(global.template_list)}:\{wgsl_type_ref_key(global.ty_ref)}=\{wgsl_optional_expr_ref_key(global.initializer_ref)}"
+    WgslGlobalDeclData::Const(const_decl) =>
+      "const:\{const_decl.name.name}:\{wgsl_type_ref_key(const_decl.ty_ref)}=\{wgsl_optional_expr_ref_key(const_decl.initializer_ref)}"
+    WgslGlobalDeclData::Override(override_decl) =>
+      "override:\{wgsl_attributes_key(override_decl.attributes)}:\{override_decl.name.name}:\{wgsl_type_ref_key(override_decl.ty_ref)}=\{wgsl_optional_expr_ref_key(override_decl.initializer_ref)}"
+    WgslGlobalDeclData::Struct(struct_decl) => {
+      let members : Array[String] = []
+      for field in struct_decl.members {
+        members.push(
+          "\{wgsl_attributes_key(field.attributes)}:\{field.name}:\{wgsl_type_ref_key(field.ty_ref)}",
+        )
+      }
+      "struct:\{wgsl_attributes_key(struct_decl.attributes)}:\{struct_decl.name.name}{\{wgsl_string_list_key(members)}}"
+    }
+    WgslGlobalDeclData::TypeAlias(alias_decl) =>
+      "alias:\{alias_decl.name.name}=\{wgsl_type_ref_key(alias_decl.ty_ref)}"
+    WgslGlobalDeclData::ConstAssert(expr) =>
+      "const_assert:\{wgsl_expr_ref_key(expr)}"
+    Raw => "raw"
+  }
 }
 
 ///|
@@ -30,10 +205,10 @@ fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
   }
   for block in graph.declaration_blocks {
     if block.name != "" {
-      let normalized_text = block.text.trim().to_owned()
+      let declaration_key = wgsl_declaration_structural_key(block.data)
       match emitted_blocks.get(block.name) {
-        Some(existing_text) if existing_text == normalized_text => continue
-        _ => emitted_blocks.set(block.name, normalized_text)
+        Some(existing_key) if existing_key == declaration_key => continue
+        _ => emitted_blocks.set(block.name, declaration_key)
       }
     }
     deduped = deduped + block.text
@@ -42,7 +217,7 @@ fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
 }
 
 ///|
-fn record_wgsl_lowered_suffix_redirect_candidate(
+fn record_wgsl_alias_suffix_redirect_candidate(
   suffix : String,
   lowered_name : String,
   declared_names : @hashmap.HashMap[String, Bool],
@@ -61,8 +236,9 @@ fn record_wgsl_lowered_suffix_redirect_candidate(
 }
 
 ///|
-fn build_wgsl_unique_lowered_suffix_rename_plan(
+fn build_wgsl_unique_alias_suffix_rename_plan(
   source : String,
+  alias_redirects : Array[WgslSymbolRedirect],
 ) -> WgslRenamePlan {
   let graph = build_wgsl_declaration_graph(source)
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -73,26 +249,26 @@ fn build_wgsl_unique_lowered_suffix_rename_plan(
       declared_names.set(block.name, true)
     }
   }
-  for block in graph.declaration_blocks {
+  for redirect in alias_redirects {
+    let lowered_name = redirect.to_name.trim().to_owned()
+    if lowered_name == "" {
+      continue
+    }
     let parts : Array[String] = []
-    for part in block.name.split("__") {
+    for part in redirect.from_name.trim().split("::") {
       parts.push(part.to_owned())
     }
     for i in 1..<parts.length() {
       let mut suffix = ""
       for j in i..<parts.length() {
         if suffix != "" {
-          suffix = "\{suffix}__"
+          suffix = "\{suffix}::"
         }
         suffix = "\{suffix}\{parts[j]}"
       }
       if suffix != "" {
-        record_wgsl_lowered_suffix_redirect_candidate(
-          suffix,
-          block.name,
-          declared_names,
-          candidate_redirects,
-          ambiguous_suffixes,
+        record_wgsl_alias_suffix_redirect_candidate(
+          suffix, lowered_name, declared_names, candidate_redirects, ambiguous_suffixes,
         )
       }
     }
@@ -108,24 +284,19 @@ fn build_wgsl_unique_lowered_suffix_rename_plan(
 }
 
 ///|
-fn parse_wgsl_uint_literal_for_attribute(text : String) -> Int? {
-  let trimmed = text.trim()
-  let digits = if trimmed.has_suffix("u") || trimmed.has_suffix("U") {
-    trimmed[:trimmed.length() - 1].to_owned()
-  } else {
-    trimmed.to_owned()
+fn wgsl_expr_ref_single_uint_value(expr_ref : WgslExprRef?) -> Int? {
+  match expr_ref {
+    Some(expr) =>
+      if expr.tokens.length() == 1 {
+        match expr.tokens[0].kind {
+          UintLiteral(value) | IntLiteral(value) => Some(value)
+          _ => None
+        }
+      } else {
+        None
+      }
+    None => None
   }
-  if digits == "" {
-    return None
-  }
-  let mut value = 0
-  for ch in digits {
-    if ch < '0' || ch > '9' {
-      return None
-    }
-    value = value * 10 + (ch.to_int() - '0'.to_int())
-  }
-  Some(value)
 }
 
 ///|
@@ -135,7 +306,7 @@ fn wgsl_attribute_uint_value(
 ) -> Int? {
   for attr in attributes {
     if attr.name == name {
-      return parse_wgsl_uint_literal_for_attribute(attr.arguments)
+      return wgsl_expr_ref_single_uint_value(attr.arguments_ref)
     }
   }
   None
@@ -152,12 +323,11 @@ fn wgsl_global_binding_info(block : WgslGraphBlock) -> WgslGlobalBindingInfo? {
         is Some(binding) else {
         return None
       }
-      guard global.ty is Some(type_text) else { return None }
       Some(WgslGlobalBindingInfo::{
         name: global.name.name,
         group,
         binding,
-        type_text,
+        type_key: wgsl_type_ref_key(global.ty_ref),
       })
     }
     _ => None
@@ -172,7 +342,7 @@ fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
   let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for block in graph.declaration_blocks {
     guard wgsl_global_binding_info(block) is Some(info) else { continue }
-    let key = "\{info.group}:\{info.binding}:\{info.type_text}"
+    let key = "\{info.group}:\{info.binding}:\{info.type_key}"
     match binding_owner.get(key) {
       Some(owner) =>
         if info.name != owner {
@@ -202,9 +372,14 @@ fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
 }
 
 ///|
-pub fn normalize_wgsl_composed_declarations(source : String) -> String {
+pub fn normalize_wgsl_composed_declarations(
+  source : String,
+  alias_redirects : Array[WgslSymbolRedirect],
+) -> String {
   let deduped = dedupe_wgsl_duplicate_declarations(source)
-  let suffix_plan = build_wgsl_unique_lowered_suffix_rename_plan(deduped)
+  let suffix_plan = build_wgsl_unique_alias_suffix_rename_plan(
+    deduped, alias_redirects,
+  )
   let suffix_rewritten = if suffix_plan.is_empty() {
     deduped
   } else {

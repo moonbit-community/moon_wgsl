@@ -418,7 +418,7 @@ fn finalize_wgsl_composed_source(
     out,
     build_wgsl_rename_plan_from_redirect_map(alias_redirect_map, ReferencesOnly),
   )
-  out = normalize_wgsl_composed_declarations(out)
+  out = normalize_wgsl_composed_declarations(out, alias_redirects)
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }
