@@ -202,6 +202,7 @@ fn collect_wgsl_block_rewrite_nodes(
 fn rewrite_wgsl_text_with_nodes(
   text : String,
   nodes : Array[WgslRewriteNode],
+  source_start : Int,
 ) -> String {
   if nodes.length() == 0 {
     return text
@@ -213,18 +214,27 @@ fn rewrite_wgsl_text_with_nodes(
     let mut next_start = text.length() + 1
     for i in 0..<nodes.length() {
       let node = nodes[i]
-      if node.start >= copy_start && node.start < next_start {
+      let local_start = node.start - source_start
+      if local_start >= copy_start &&
+        local_start >= 0 &&
+        local_start <= text.length() &&
+        local_start < next_start {
         next_index = i
-        next_start = node.start
+        next_start = local_start
       }
     }
     if next_index < 0 {
       break
     }
     let node = nodes[next_index]
-    out = out + text[copy_start:node.start].to_owned()
+    let local_start = node.start - source_start
+    let local_end = node.end - source_start
+    if local_end < local_start || local_end > text.length() {
+      break
+    }
+    out = out + text[copy_start:local_start].to_owned()
     out = out + node.replacement
-    copy_start = node.end
+    copy_start = local_end
   }
   if copy_start < text.length() {
     out = out + text[copy_start:text.length()].to_owned()
@@ -244,7 +254,7 @@ fn rewrite_wgsl_graph_block_with_rename_maps(
     _ => {
       let nodes : Array[WgslRewriteNode] = []
       collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
-      rewrite_wgsl_text_with_nodes(block.text, nodes)
+      rewrite_wgsl_text_with_nodes(block.text, nodes, block.start)
     }
   }
 }

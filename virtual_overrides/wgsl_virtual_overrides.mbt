@@ -126,11 +126,15 @@ fn wgsl_flatten_path_identifier(path : String) -> String {
 fn rewrite_wgsl_virtual_fn_block(
   block_text : String,
   function : WgslFunction,
+  block_start : Int,
 ) -> String {
   match (function.qualifier_start, function.qualifier_end) {
-    (Some(start), Some(_)) =>
-      block_text[:start].to_owned() +
-      block_text[function.fn_start:block_text.length()].to_owned()
+    (Some(start), Some(_)) => {
+      let local_start = start - block_start
+      let local_fn_start = function.fn_start - block_start
+      block_text[:local_start].to_owned() +
+      block_text[local_fn_start:block_text.length()].to_owned()
+    }
     _ => block_text
   }
 }
@@ -139,6 +143,7 @@ fn rewrite_wgsl_virtual_fn_block(
 fn rewrite_wgsl_virtual_base_block(
   block_text : String,
   function : WgslFunction,
+  block_start : Int,
   target_name : String,
   base_name : String,
 ) -> String {
@@ -147,6 +152,7 @@ fn rewrite_wgsl_virtual_base_block(
   rewrite_wgsl_virtual_fn_block(
     rewrite_wgsl_declarations_with_rename_plan(block_text, plan),
     function,
+    block_start,
   )
 }
 
@@ -154,6 +160,7 @@ fn rewrite_wgsl_virtual_base_block(
 fn rewrite_wgsl_override_fn_block(
   block_text : String,
   function : WgslFunction,
+  block_start : Int,
   target_name : String,
   raw_target : String,
   base_name : String?,
@@ -168,11 +175,14 @@ fn rewrite_wgsl_override_fn_block(
     None => block_text
   }
   match function.qualifier_start {
-    Some(start) =>
-      rewritten_body[:start].to_owned() +
+    Some(start) => {
+      let local_start = start - block_start
+      let local_name_end = function.name.end - block_start
+      rewritten_body[:local_start].to_owned() +
       "fn " +
       target_name +
-      rewritten_body[function.name.end:rewritten_body.length()].to_owned()
+      rewritten_body[local_name_end:rewritten_body.length()].to_owned()
+    }
     None => rewritten_body
   }
 }
@@ -227,6 +237,7 @@ pub fn apply_wgsl_virtual_overrides_raw(
           rewrite_wgsl_override_fn_block(
             block.text,
             function,
+            block.start,
             target,
             raw_target,
             base_name,
@@ -262,6 +273,7 @@ pub fn apply_wgsl_virtual_overrides_raw(
                 rewrite_wgsl_virtual_base_block(
                   block.text,
                   function,
+                  block.start,
                   block.name,
                   wgsl_virtual_base_name(block.name),
                 )
@@ -269,7 +281,8 @@ pub fn apply_wgsl_virtual_overrides_raw(
             out = out + override_block
           }
           None =>
-            out = out + rewrite_wgsl_virtual_fn_block(block.text, function)
+            out = out +
+              rewrite_wgsl_virtual_fn_block(block.text, function, block.start)
         }
         continue
       }
@@ -305,7 +318,8 @@ pub fn strip_wgsl_virtual_functions(source : String) -> String {
       }
       match wgsl_graph_block_function(block) {
         Some(function) =>
-          out = out + rewrite_wgsl_virtual_fn_block(block.text, function)
+          out = out +
+            rewrite_wgsl_virtual_fn_block(block.text, function, block.start)
         None => out = out + block.text
       }
     } else {

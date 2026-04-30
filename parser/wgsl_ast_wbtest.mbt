@@ -118,13 +118,13 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected function payload")
   }
   debug_inspect(function.attributes[0].name, content="\"fragment\"")
-  debug_inspect(function.fn_start, content="10")
-  debug_inspect(function.fn_end, content="12")
+  debug_inspect(function.fn_start, content="224")
+  debug_inspect(function.fn_end, content="226")
   debug_inspect(function.qualifier_start, content="None")
   debug_inspect(function.name.name, content="\"fragment\"")
   debug_inspect(function.arguments[0].name, content="\"color\"")
-  debug_inspect(function.arguments[0].name_start, content="35")
-  debug_inspect(function.arguments[0].name_end, content="40")
+  debug_inspect(function.arguments[0].name_start, content="249")
+  debug_inspect(function.arguments[0].name_end, content="254")
   guard function.arguments[0].ty_ref is Some(arg_ty) else {
     abort("expected argument type ref")
   }
@@ -311,38 +311,36 @@ test "WGSL AST records spans for attributes members and signatures" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
     abort("expected struct")
   }
-  let struct_text = unit.declarations[0].text
   let field = struct_decl.members[0]
   let field_attr = field.attributes[0]
   debug_inspect(
-    struct_text[field_attr.start:field_attr.end].to_owned(),
+    source[field_attr.start:field_attr.end].to_owned(),
     content="\"@location(0)\"",
   )
   debug_inspect(
-    struct_text[field.start:field.end].to_owned(),
+    source[field.start:field.end].to_owned(),
     content="\"@location(0) position: vec3<f32>\"",
   )
   guard unit.declarations[1].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function")
   }
-  let function_text = unit.declarations[1].text
   debug_inspect(
-    function_text[function.body.start:function.body.end].to_owned(),
+    source[function.body.start:function.body.end].to_owned(),
     content="\"{\\n  return color;\\n}\"",
   )
   let fn_attr = function.attributes[0]
   debug_inspect(
-    function_text[fn_attr.start:fn_attr.end].to_owned(),
+    source[fn_attr.start:fn_attr.end].to_owned(),
     content="\"@fragment\"",
   )
   let arg = function.arguments[0]
   debug_inspect(
-    function_text[arg.start:arg.end].to_owned(),
+    source[arg.start:arg.end].to_owned(),
     content="\"@location(0) color: Color\"",
   )
   guard function.result is Some(result) else { abort("expected result") }
   debug_inspect(
-    function_text[result.start:result.end].to_owned(),
+    source[result.start:result.end].to_owned(),
     content="\"-> @location(0) vec4<f32>\"",
   )
 }

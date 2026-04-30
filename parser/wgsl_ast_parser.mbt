@@ -4,6 +4,14 @@ fn parse_wgsl_declaration_data(text : String) -> WgslGlobalDeclData {
 }
 
 ///|
+fn parse_wgsl_declaration_data_at(
+  text : String,
+  source_start : Int,
+) -> WgslGlobalDeclData {
+  WgslDeclParser::new_at(text, source_start).parse_decl_data()
+}
+
+///|
 fn parse_wgsl_declaration_name(text : String) -> String {
   wgsl_decl_data_name(parse_wgsl_declaration_data(text))
 }
@@ -26,7 +34,8 @@ fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
         Some(directive) => WgslGlobalDeclData::Directive(directive)
         None => WgslGlobalDeclData::Raw
       }
-    WgslRawTopLevelKind::Declaration => parse_wgsl_declaration_data(item.text)
+    WgslRawTopLevelKind::Declaration =>
+      parse_wgsl_declaration_data_at(item.text, item.start)
     WgslRawTopLevelKind::Trivia => WgslGlobalDeclData::Raw
   }
   let kind = match item.kind {

@@ -72,6 +72,7 @@ fn parse_required_wgsl_expr_ref_fragment(
 ///|
 priv struct WgslDeclParser {
   source_text : String
+  source_start : Int
   mut token_view : ArrayView[Token]
 }
 
@@ -140,9 +141,52 @@ fn WgslTokenDepth::observe_statement_token(
 }
 
 ///|
+fn wgsl_shift_token(token : Token, offset : Int) -> Token {
+  match token {
+    Token::Identifier(name, pos) => Token::Identifier(name, pos + offset)
+    Token::Other(code, pos) => Token::Other(code, pos + offset)
+    Token::Whitespace(text, pos) => Token::Whitespace(text, pos + offset)
+  }
+}
+
+///|
+fn tokenize_at(
+  source : String,
+  emit_whitespace : Bool,
+  source_start : Int,
+) -> Array[Token] {
+  let tokens : Array[Token] = []
+  for token in tokenize(source, emit_whitespace) {
+    tokens.push(wgsl_shift_token(token, source_start))
+  }
+  tokens
+}
+
+///|
+fn WgslDeclParser::new_at(text : String, source_start : Int) -> WgslDeclParser {
+  let tokens = tokenize_at(replace_comments(text), false, source_start)
+  WgslDeclParser::{ source_text: text, source_start, token_view: tokens[:] }
+}
+
+///|
 fn WgslDeclParser::new(text : String) -> WgslDeclParser {
-  let tokens = tokenize(replace_comments(text), false)
-  WgslDeclParser::{ source_text: text, token_view: tokens[:] }
+  WgslDeclParser::new_at(text, 0)
+}
+
+///|
+fn WgslDeclParser::slice(
+  self : WgslDeclParser,
+  start : Int,
+  end_ : Int,
+) -> String {
+  let local_start = start - self.source_start
+  let local_end = end_ - self.source_start
+  if local_start < 0 ||
+    local_end < local_start ||
+    local_end > self.source_text.length() {
+    return ""
+  }
+  self.source_text[local_start:local_end].to_owned()
 }
 
 ///|
@@ -280,7 +324,7 @@ fn WgslDeclParser::push_attribute_tokens(
             let argument_start = arguments_fragment.open_start + 1
             let argument_end = arguments_fragment.close_start
             if argument_end >= argument_start {
-              let arguments = self.source_text[argument_start:argument_end].to_owned()
+              let arguments = self.slice(argument_start, argument_end)
               tokens.push(
                 (
                   @generated.Token::ATTR_ARGS(
@@ -336,7 +380,7 @@ fn WgslDeclParser::collect_until_top_level_fragment(
   let text = if start_pos < 0 || end_pos < start_pos {
     ""
   } else {
-    self.source_text[start_pos:end_pos].to_owned().trim().to_owned()
+    self.slice(start_pos, end_pos).trim().to_owned()
   }
   WgslTextFragment::{ text, start: start_pos, end: end_pos }
 }
@@ -513,7 +557,7 @@ fn WgslDeclParser::collect_template_list_fragment(
   }
   guard end_pos >= open_pos else { return None }
   Some(WgslTemplateListFragment::{
-    text: self.source_text[open_pos:end_pos].to_owned(),
+    text: self.slice(open_pos, end_pos),
     start: open_pos,
     consumed,
   })

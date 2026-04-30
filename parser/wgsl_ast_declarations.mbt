@@ -71,6 +71,7 @@ fn WgslDeclParser::tokenize_struct_members(
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
+    source_start: self.source_start,
     token_view: fragment.inner,
   }
   while parser.view().length() > 0 {
@@ -344,11 +345,12 @@ fn WgslDeclParser::parse_source_directive(
   let tail_fragment = self.collect_until_top_level_fragment([59])
   let text = self.source_text.trim().to_owned()
   let (tail_text, tail_start, tail_end) = if tail_fragment.start >= 0 {
-    wgsl_trim_fragment_bounds(
+    let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
       self.source_text,
-      tail_fragment.start,
-      tail_fragment.end,
+      tail_fragment.start - self.source_start,
+      tail_fragment.end - self.source_start,
     )
+    (trimmed, self.source_start + local_start, self.source_start + local_end)
   } else {
     ("", keyword.end, keyword.end)
   }

@@ -48,6 +48,7 @@ fn WgslDeclParser::tokenize_function_arguments(
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
+    source_start: self.source_start,
     token_view: fragment.inner,
   }
   while parser.view().length() > 0 {
@@ -109,6 +110,7 @@ fn WgslDeclParser::parse_function_result(
     [Token::Other(45, arrow_start), Token::Other(62, arrow_end), .. rest] => {
       let parser = WgslDeclParser::{
         source_text: self.source_text,
+        source_start: self.source_start,
         token_view: rest,
       }
       let rest_len = rest.length()
@@ -456,7 +458,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   if start_pos < 0 || end_pos < start_pos {
     None
   } else {
-    let text = self.source_text[start_pos:end_pos].to_owned()
+    let text = self.slice(start_pos, end_pos)
     let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
     let kind = wgsl_statement_kind_from_tokens(first_identifier, tokens)
     let local_declarations : Array[WgslIdent] = []
@@ -497,6 +499,7 @@ fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
       ]
       let parser = WgslDeclParser::{
         source_text: self.source_text,
+        source_start: self.source_start,
         token_view: fragment.inner,
       }
       while parser.view().length() > 0 {
