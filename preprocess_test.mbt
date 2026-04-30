@@ -851,6 +851,15 @@ test "naga_oil: directive section ends on non-directive identifier prefix" {
 }
 
 ///|
+test "naga_oil: block comments terminate directive section like upstream" {
+  let metadata = metadata_or_abort(
+    "/* block comment */\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="0")
+  debug_inspect(metadata.cleaned_source.contains("enable f16;"), content="true")
+}
+
+///|
 test "naga_oil: invalid diagnostic severity reports directive error" {
   let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
     "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",

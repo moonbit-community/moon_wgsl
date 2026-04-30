@@ -436,7 +436,7 @@ pub fn extract_wgsl_directives(
   for line in source_lines(source) {
     let trimmed = line.trim().to_owned()
 
-    if trimmed == "" || replace_comments(trimmed).trim().to_owned() == "" {
+    if trimmed == "" || trimmed.has_prefix("//") {
       cleaned_lines.push(line)
       line_index = line_index + 1
       continue
