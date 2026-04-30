@@ -345,7 +345,7 @@ fn WgslDeclParser::parse_source_directive(
   token : Token,
 ) -> WgslDirective? {
   let tail_fragment = self.collect_until_top_level_fragment([59])
-  let text = self.source_text.trim().to_owned()
+  let text = wgsl_trim_blankspace(self.source_text)
   let (tail_text, tail_start, tail_end) = if tail_fragment.start >= 0 {
     let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
       self.source_text,

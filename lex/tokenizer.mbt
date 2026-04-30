@@ -50,7 +50,7 @@ fn tokenizer_identifier_start(code : Int) -> Bool {
   code == 95 || // '_'
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
-  code > 127
+  (code > 127 && !wgsl_blankspace_code_point(code))
 }
 
 ///|
@@ -142,7 +142,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
     }
 
     if current_token_kind == 1 {
-      if code == 32 || code == 9 || code == 10 || code == 13 {
+      if wgsl_blankspace_code_point(code) {
         i = i + 1
         continue
       }
@@ -171,7 +171,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
       continue
     }
 
-    if code == 32 || code == 9 || code == 10 || code == 13 {
+    if wgsl_blankspace_code_point(code) {
       if emit_whitespace {
         current_token_kind = 1
         current_token_start = i

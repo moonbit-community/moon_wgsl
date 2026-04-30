@@ -15,7 +15,7 @@ fn parse_if_operator_expression(
   let mut i = 0
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if preprocess_regex_whitespace_code_unit(code) {
+    if wgsl_regex_whitespace_code_point(code) {
       i = i + 1
       continue
     }
@@ -31,7 +31,7 @@ fn parse_if_operator_expression(
   let def = text[def_start:i].to_owned()
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if preprocess_regex_whitespace_code_unit(code) {
+    if wgsl_regex_whitespace_code_point(code) {
       i = i + 1
       continue
     }
@@ -49,7 +49,7 @@ fn parse_if_operator_expression(
   let operator = text[operator_start:i].to_owned()
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if preprocess_regex_whitespace_code_unit(code) {
+    if wgsl_regex_whitespace_code_point(code) {
       i = i + 1
       continue
     }

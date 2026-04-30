@@ -50,3 +50,14 @@ test "WGSL directive parser supports naga-oil prefix else endif semantics" {
     content="Some(\"_trailing\")",
   )
 }
+
+///|
+test "WGSL directive parser accepts Rust regex Unicode whitespace" {
+  debug_inspect(
+    wgsl_directive_tail(
+      "\u{00A0}#\u{00A0}define_import_path\u{3000}demo::module\u{2003}",
+      WgslDirectiveKind::DefineImportPath,
+    ),
+    content="Some(\"demo::module\")",
+  )
+}

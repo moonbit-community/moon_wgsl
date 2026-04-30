@@ -182,6 +182,20 @@ test "WGSL type refs preserve template span text with spacing" {
 }
 
 ///|
+test "WGSL type refs accept Pattern_White_Space blankspace" {
+  let source = "alias Values = array\u{000C}<vec4\u{200E}<f32>\u{2029}, 4>;\n"
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+    abort("expected type alias payload")
+  }
+  guard alias_decl.ty_ref is Some(ty) else { abort("expected alias type ref") }
+  debug_inspect(ty.name, content="\"array\"")
+  debug_inspect(ty.arguments[0].name, content="\"vec4\"")
+  debug_inspect(ty.arguments[0].arguments[0].name, content="\"f32\"")
+  debug_inspect(ty.arguments[1].name, content="\"4\"")
+}
+
+///|
 test "WGSL variable template lists are parsed by grammar" {
   let source =
     #|@group(0) @binding(0) var<storage, read_write> values: array<vec4<f32>, 4>;

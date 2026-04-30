@@ -23,7 +23,7 @@ fn try_get_preprocessor_metadata(
   let mut line_index = 0
   while line_index < lines.length() {
     let line = lines[line_index]
-    let trimmed = line.trim().to_owned()
+    let trimmed = wgsl_regex_trim_whitespace(line)
     let (is_scope, def) = metadata_scope_def(line)
 
     if is_scope {

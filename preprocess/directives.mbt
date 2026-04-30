@@ -15,7 +15,7 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
     let start = i
     let mut j = i + 1
     while j < line.length() &&
-          preprocess_regex_whitespace_code_unit(line.code_unit_at(j).to_int()) {
+          wgsl_regex_whitespace_code_point(line.code_unit_at(j).to_int()) {
       j = j + 1
     }
     guard j < line.length() else {
@@ -141,10 +141,9 @@ fn parse_wgsl_template_const_references(
           }
         }
         if j < tokens.length() {
-          let name = source[body_start:tokens[j].pos()]
-            .to_owned()
-            .trim()
-            .to_owned()
+          let name = wgsl_regex_trim_whitespace(
+            source[body_start:tokens[j].pos()].to_owned(),
+          )
           references.push(WgslTemplateConstReference::{
             name,
             start,
@@ -176,7 +175,7 @@ fn parse_wgsl_template_const_references(
 ///|
 fn starts_with_tokenized_space(text : String) -> Bool {
   text.length() > 0 &&
-  preprocess_regex_whitespace_code_unit(text.code_unit_at(0).to_int())
+  wgsl_regex_whitespace_code_point(text.code_unit_at(0).to_int())
 }
 
 ///|
@@ -198,59 +197,55 @@ fn preprocess_has_ascii_keyword_at(
 
 ///|
 fn required_space_directive_tail(line : String, keyword : String) -> String? {
-  let trimmed = preprocess_trim_regex_whitespace(line)
+  let trimmed = wgsl_regex_trim_whitespace(line)
   guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
     return None
   }
-  let start = preprocess_skip_regex_whitespace(trimmed, 1)
+  let start = wgsl_regex_skip_whitespace(trimmed, 1)
   guard start + keyword.length() < trimmed.length() else { return None }
   guard preprocess_has_ascii_keyword_at(trimmed, start, keyword) else {
     return None
   }
   let space_pos = start + keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
-  guard preprocess_regex_whitespace_code_unit(code) else { return None }
-  let tail_start = preprocess_skip_regex_whitespace(trimmed, space_pos)
+  guard wgsl_regex_whitespace_code_point(code) else { return None }
+  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
   Some(
-    preprocess_trim_regex_whitespace(
-      trimmed[tail_start:trimmed.length()].to_owned(),
-    ),
+    wgsl_regex_trim_whitespace(trimmed[tail_start:trimmed.length()].to_owned()),
   )
 }
 
 ///|
 fn required_space_word_tail(text : String, keyword : String) -> String? {
-  let trimmed = preprocess_trim_regex_whitespace(text)
+  let trimmed = wgsl_regex_trim_whitespace(text)
   guard keyword.length() < trimmed.length() else { return None }
   guard preprocess_has_ascii_keyword_at(trimmed, 0, keyword) else {
     return None
   }
   let space_pos = keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
-  guard preprocess_regex_whitespace_code_unit(code) else { return None }
-  let tail_start = preprocess_skip_regex_whitespace(trimmed, space_pos)
+  guard wgsl_regex_whitespace_code_point(code) else { return None }
+  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
   Some(
-    preprocess_trim_regex_whitespace(
-      trimmed[tail_start:trimmed.length()].to_owned(),
-    ),
+    wgsl_regex_trim_whitespace(trimmed[tail_start:trimmed.length()].to_owned()),
   )
 }
 
 ///|
 pub fn parse_glsl_version_directive(line : String) -> String? {
-  let trimmed = preprocess_trim_regex_whitespace(line)
+  let trimmed = wgsl_regex_trim_whitespace(line)
   let prefix = "#version"
   guard trimmed.length() > prefix.length() &&
     preprocess_has_ascii_keyword_at(trimmed, 0, prefix) else {
     return None
   }
   let space_pos = prefix.length()
-  guard preprocess_regex_whitespace_code_unit(
+  guard wgsl_regex_whitespace_code_point(
     trimmed.code_unit_at(space_pos).to_int(),
   ) else {
     return None
   }
-  let start = preprocess_skip_regex_whitespace(trimmed, space_pos)
+  let start = wgsl_regex_skip_whitespace(trimmed, space_pos)
   let mut end = start
   while end < trimmed.length() {
     let code = trimmed.code_unit_at(end).to_int()
@@ -294,7 +289,7 @@ fn parse_bool_text(text : String) -> Bool? {
 
 ///|
 fn directive_identifier(text : String) -> String? {
-  let trimmed = trim_trailing_semicolons(text).trim().to_owned()
+  let trimmed = wgsl_regex_trim_whitespace(trim_trailing_semicolons(text))
   let mut i = 0
   while i < trimmed.length() {
     let width = wgsl_regex_word_width(trimmed, i)

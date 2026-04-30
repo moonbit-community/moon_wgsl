@@ -21,45 +21,6 @@ fn identifier_code_unit(code : Int) -> Bool {
 }
 
 ///|
-fn regex_whitespace_code_unit(code : Int) -> Bool {
-  code == 9 ||
-  code == 10 ||
-  code == 11 ||
-  code == 12 ||
-  code == 13 ||
-  code == 32
-}
-
-///|
-fn skip_regex_whitespace(text : String, start : Int) -> Int {
-  let mut i = start
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if regex_whitespace_code_unit(code) {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  i
-}
-
-///|
-fn trim_regex_whitespace(text : String) -> String {
-  let start = skip_regex_whitespace(text, 0)
-  let mut end = text.length()
-  while end > start {
-    let code = text.code_unit_at(end - 1).to_int()
-    if regex_whitespace_code_unit(code) {
-      end = end - 1
-      continue
-    }
-    break
-  }
-  text[start:end].to_owned()
-}
-
-///|
 fn has_ascii_keyword_at(text : String, start : Int, keyword : String) -> Bool {
   guard start >= 0 && start + keyword.length() <= text.length() else {
     return false
@@ -77,7 +38,7 @@ fn trim_ascii_space_end(text : String, start : Int) -> Int {
   let mut end = text.length()
   while end > start {
     let code = text.code_unit_at(end - 1).to_int()
-    if regex_whitespace_code_unit(code) {
+    if wgsl_regex_whitespace_code_point(code) {
       end = end - 1
       continue
     }
@@ -91,12 +52,12 @@ fn tokenize_wgsl_directive_line(
   line : String,
   source_start : Int,
 ) -> Array[(Token, Int, Int)]? {
-  let hash_start = skip_regex_whitespace(line, 0)
+  let hash_start = wgsl_regex_skip_whitespace(line, 0)
   guard hash_start < line.length() &&
     line.code_unit_at(hash_start).to_int() == 35 else {
     return None
   }
-  let body_start = skip_regex_whitespace(line, hash_start + 1)
+  let body_start = wgsl_regex_skip_whitespace(line, hash_start + 1)
   let mut end = 0
   let body = line[body_start:line.length()].to_owned()
   while end < body.length() &&
@@ -109,7 +70,7 @@ fn tokenize_wgsl_directive_line(
   let name = body[:end].to_owned()
   let name_start = body_start
   let name_end = body_start + end
-  let tail_start = skip_regex_whitespace(line, name_end)
+  let tail_start = wgsl_regex_skip_whitespace(line, name_end)
   let tail_end = trim_ascii_space_end(line, tail_start)
   let tail = if tail_end > tail_start {
     line[tail_start:tail_end].to_owned()
@@ -185,11 +146,11 @@ pub fn wgsl_directive_prefix_tail(
     WgslDirectiveKind::Endif => "endif"
     _ => return wgsl_directive_tail(line, kind)
   }
-  let trimmed = trim_regex_whitespace(line)
+  let trimmed = wgsl_regex_trim_whitespace(line)
   guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
     return None
   }
-  let mut start = skip_regex_whitespace(trimmed, 1)
+  let mut start = wgsl_regex_skip_whitespace(trimmed, 1)
   guard start + prefix.length() <= trimmed.length() else { return None }
   guard has_ascii_keyword_at(trimmed, start, prefix) else { return None }
   start = start + prefix.length()

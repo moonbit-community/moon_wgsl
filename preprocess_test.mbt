@@ -1157,6 +1157,43 @@ test "naga_oil: wgsl source directives accept form feed whitespace" {
 }
 
 ///|
+test "naga_oil: preprocessor directive regex whitespace includes Unicode spaces" {
+  let nbsp = "\u{00A0}"
+  let em = "\u{2003}"
+  let ideographic = "\u{3000}"
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("FLAG", @common.ShaderDefValue::Bool(true))
+  shader_defs.set("VALUE", @common.ShaderDefValue::Int(9))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "#\{nbsp}ifdef\{em}FLAG\nlet a = #\{ideographic}VALUE;\n#\{nbsp}else\nlet a = 0;\n#\{em}endif\n",
+    shader_defs,
+  ) catch {
+    _ => abort("expected Unicode regex-whitespace preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 9;"),
+    content="true",
+  )
+  debug_inspect(
+    output.preprocessed_source.contains("let a = 0;"),
+    content="false",
+  )
+}
+
+///|
+test "naga_oil: wgsl source directives accept Unicode regex whitespace" {
+  let nbsp = "\u{00A0}"
+  let em = "\u{2003}"
+  let ideographic = "\u{3000}"
+  let metadata = metadata_or_abort(
+    "enable\{nbsp}f16;\nrequires\{em}subgroups;\ndiagnostic\{ideographic}(\{nbsp}off\{em},\{ideographic}derivative_uniformity\{nbsp})\{em};\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
+  debug_inspect(metadata.wgsl_directives.requires.length(), content="1")
+  debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="1")
+}
+
+///|
 test "naga_oil: block comments terminate directive section like upstream" {
   let metadata = metadata_or_abort(
     "/* block comment */\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",

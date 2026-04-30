@@ -23,6 +23,10 @@ using @lex {
   split_last_identifier,
   tokenize,
   trim_trailing_semicolons,
+  wgsl_regex_skip_whitespace,
+  wgsl_regex_trim_whitespace,
+  wgsl_regex_whitespace_code_point,
+  wgsl_regex_whitespace_width,
   wgsl_regex_word_text,
   wgsl_regex_word_width,
 }

@@ -7,7 +7,7 @@ priv struct ShaderDefReference {
 fn split_extensions(raw : String) -> Array[String] {
   let extensions : Array[String] = []
   for part in raw.split(",") {
-    let extension = part.trim().to_owned()
+    let extension = wgsl_regex_trim_whitespace(part.to_owned())
     if extension != "" {
       extensions.push(extension)
     }
@@ -26,7 +26,7 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
     }
     let mut j = i + 1
     while j < line.length() &&
-          metadata_regex_whitespace_code_unit(line.code_unit_at(j).to_int()) {
+          wgsl_regex_whitespace_code_point(line.code_unit_at(j).to_int()) {
       j = j + 1
     }
     guard j < line.length() else {
@@ -104,7 +104,7 @@ fn parse_define_value(raw_value : String) -> ShaderDefValue {
 
 ///|
 fn split_define_name_and_value(text : String) -> (String, String) {
-  let trimmed = metadata_trim_regex_whitespace(text)
+  let trimmed = wgsl_regex_trim_whitespace(text)
   if trimmed == "" {
     return ("", "")
   }
@@ -119,7 +119,7 @@ fn split_define_name_and_value(text : String) -> (String, String) {
   }
   let name = trimmed[0:i].to_owned()
   while i < trimmed.length() {
-    if metadata_regex_whitespace_code_unit(trimmed.code_unit_at(i).to_int()) {
+    if wgsl_regex_whitespace_code_point(trimmed.code_unit_at(i).to_int()) {
       i = i + 1
       continue
     }
@@ -142,7 +142,7 @@ fn split_define_name_and_value(text : String) -> (String, String) {
 ///|
 fn starts_with_tokenized_space(text : String) -> Bool {
   text.length() > 0 &&
-  metadata_regex_whitespace_code_unit(text.code_unit_at(0).to_int())
+  wgsl_regex_whitespace_code_point(text.code_unit_at(0).to_int())
 }
 
 ///|
@@ -167,23 +167,21 @@ fn metadata_required_space_directive_tail(
   line : String,
   keyword : String,
 ) -> String? {
-  let trimmed = metadata_trim_regex_whitespace(line)
+  let trimmed = wgsl_regex_trim_whitespace(line)
   guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
     return None
   }
-  let start = metadata_skip_regex_whitespace(trimmed, 1)
+  let start = wgsl_regex_skip_whitespace(trimmed, 1)
   guard start + keyword.length() < trimmed.length() else { return None }
   guard metadata_has_ascii_keyword_at(trimmed, start, keyword) else {
     return None
   }
   let space_pos = start + keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
-  guard metadata_regex_whitespace_code_unit(code) else { return None }
-  let tail_start = metadata_skip_regex_whitespace(trimmed, space_pos)
+  guard wgsl_regex_whitespace_code_point(code) else { return None }
+  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
   Some(
-    metadata_trim_regex_whitespace(
-      trimmed[tail_start:trimmed.length()].to_owned(),
-    ),
+    wgsl_regex_trim_whitespace(trimmed[tail_start:trimmed.length()].to_owned()),
   )
 }
 
@@ -192,34 +190,32 @@ fn metadata_required_space_word_tail(
   text : String,
   keyword : String,
 ) -> String? {
-  let trimmed = metadata_trim_regex_whitespace(text)
+  let trimmed = wgsl_regex_trim_whitespace(text)
   guard keyword.length() < trimmed.length() else { return None }
   guard metadata_has_ascii_keyword_at(trimmed, 0, keyword) else { return None }
   let space_pos = keyword.length()
   let code = trimmed.code_unit_at(space_pos).to_int()
-  guard metadata_regex_whitespace_code_unit(code) else { return None }
-  let tail_start = metadata_skip_regex_whitespace(trimmed, space_pos)
+  guard wgsl_regex_whitespace_code_point(code) else { return None }
+  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
   Some(
-    metadata_trim_regex_whitespace(
-      trimmed[tail_start:trimmed.length()].to_owned(),
-    ),
+    wgsl_regex_trim_whitespace(trimmed[tail_start:trimmed.length()].to_owned()),
   )
 }
 
 ///|
 fn semicolon_directive_body(line : String, keyword : String) -> String? {
-  let trimmed = metadata_trim_regex_whitespace(line)
+  let trimmed = wgsl_regex_trim_whitespace(line)
   guard trimmed.length() > keyword.length() &&
     metadata_has_ascii_keyword_at(trimmed, 0, keyword) else {
     return None
   }
   let whitespace_start = keyword.length()
-  guard metadata_regex_whitespace_code_unit(
+  guard wgsl_regex_whitespace_code_point(
     trimmed.code_unit_at(whitespace_start).to_int(),
   ) else {
     return None
   }
-  let whitespace_end = metadata_skip_regex_whitespace(trimmed, whitespace_start)
+  let whitespace_end = wgsl_regex_skip_whitespace(trimmed, whitespace_start)
   let mut semicolon_pos = whitespace_start + 1
   while semicolon_pos < trimmed.length() &&
         trimmed.code_unit_at(semicolon_pos).to_int() != 59 {
@@ -233,41 +229,39 @@ fn semicolon_directive_body(line : String, keyword : String) -> String? {
     return Some("")
   }
   Some(
-    metadata_trim_regex_whitespace(
-      trimmed[whitespace_end:semicolon_pos].to_owned(),
-    ),
+    wgsl_regex_trim_whitespace(trimmed[whitespace_end:semicolon_pos].to_owned()),
   )
 }
 
 ///|
 fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
-  let trimmed = metadata_trim_regex_whitespace(line)
+  let trimmed = wgsl_regex_trim_whitespace(line)
   guard trimmed.length() >= "diagnostic".length() &&
     metadata_has_ascii_keyword_at(trimmed, 0, "diagnostic") else {
     return None
   }
   let mut i = "diagnostic".length()
-  i = metadata_skip_regex_whitespace(trimmed, i)
+  i = wgsl_regex_skip_whitespace(trimmed, i)
   guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 40 else {
     return None
   }
-  i = metadata_skip_regex_whitespace(trimmed, i + 1)
+  i = wgsl_regex_skip_whitespace(trimmed, i + 1)
   let severity_start = i
   while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 44 {
     i = i + 1
   }
   guard i > severity_start && i < trimmed.length() else { return None }
-  let severity = metadata_trim_regex_whitespace(
+  let severity = wgsl_regex_trim_whitespace(
     trimmed[severity_start:i].to_owned(),
   )
-  i = metadata_skip_regex_whitespace(trimmed, i + 1)
+  i = wgsl_regex_skip_whitespace(trimmed, i + 1)
   let rule_start = i
   while i < trimmed.length() && trimmed.code_unit_at(i).to_int() != 41 {
     i = i + 1
   }
   guard i > rule_start && i < trimmed.length() else { return None }
-  let rule = metadata_trim_regex_whitespace(trimmed[rule_start:i].to_owned())
-  i = metadata_skip_regex_whitespace(trimmed, i + 1)
+  let rule = wgsl_regex_trim_whitespace(trimmed[rule_start:i].to_owned())
+  i = wgsl_regex_skip_whitespace(trimmed, i + 1)
   guard i < trimmed.length() && trimmed.code_unit_at(i).to_int() == 59 else {
     return None
   }
@@ -276,7 +270,7 @@ fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
 
 ///|
 fn directive_identifier(text : String) -> String? {
-  let trimmed = metadata_trim_regex_whitespace(trim_trailing_semicolons(text))
+  let trimmed = wgsl_regex_trim_whitespace(trim_trailing_semicolons(text))
   let mut i = 0
   while i < trimmed.length() {
     let width = wgsl_regex_word_width(trimmed, i)
@@ -291,45 +285,6 @@ fn directive_identifier(text : String) -> String? {
 }
 
 ///|
-fn metadata_regex_whitespace_code_unit(code : Int) -> Bool {
-  code == 9 ||
-  code == 10 ||
-  code == 11 ||
-  code == 12 ||
-  code == 13 ||
-  code == 32
-}
-
-///|
-fn metadata_skip_regex_whitespace(text : String, start : Int) -> Int {
-  let mut i = start
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if metadata_regex_whitespace_code_unit(code) {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  i
-}
-
-///|
-fn metadata_trim_regex_whitespace(text : String) -> String {
-  let start = metadata_skip_regex_whitespace(text, 0)
-  let mut end = text.length()
-  while end > start {
-    let code = text.code_unit_at(end - 1).to_int()
-    if metadata_regex_whitespace_code_unit(code) {
-      end = end - 1
-      continue
-    }
-    break
-  }
-  text[start:end].to_owned()
-}
-
-///|
 fn parse_if_operator_expression(
   expression : String,
 ) -> (String, String, String)? {
@@ -337,7 +292,7 @@ fn parse_if_operator_expression(
   let mut i = 0
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if metadata_regex_whitespace_code_unit(code) {
+    if wgsl_regex_whitespace_code_point(code) {
       i = i + 1
       continue
     }
@@ -353,7 +308,7 @@ fn parse_if_operator_expression(
   let def = text[def_start:i].to_owned()
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if metadata_regex_whitespace_code_unit(code) {
+    if wgsl_regex_whitespace_code_point(code) {
       i = i + 1
       continue
     }
@@ -371,7 +326,7 @@ fn parse_if_operator_expression(
   let operator = text[operator_start:i].to_owned()
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if metadata_regex_whitespace_code_unit(code) {
+    if wgsl_regex_whitespace_code_point(code) {
       i = i + 1
       continue
     }
@@ -455,7 +410,7 @@ pub fn extract_wgsl_directives(
   let mut in_directive_section = true
   let mut line_index = 0
   for line in source_lines(source) {
-    let trimmed = metadata_trim_regex_whitespace(line)
+    let trimmed = wgsl_regex_trim_whitespace(line)
 
     if trimmed == "" || trimmed.has_prefix("//") {
       cleaned_lines.push(line)

@@ -37,7 +37,7 @@ pub fn Preprocessor::preprocess(
     let mut line = decommented_lines[line_index]
     let original_line = original_lines[line_index]
     let mut output = false
-    let trimmed = line.trim().to_owned()
+    let trimmed = wgsl_regex_trim_whitespace(line)
 
     if check_glsl_version_directive(trimmed, offset) {
       ()

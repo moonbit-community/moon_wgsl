@@ -13,44 +13,22 @@
 // limitations under the License.
 
 ///|
-fn wgsl_metadata_code_unit_to_string(code : Int) -> String {
-  String::from_array([Int::unsafe_to_char(code)])
-}
-
-///|
-fn wgsl_metadata_token_text(token : WgslToken) -> String {
-  match token {
-    WgslToken::Identifier(text, _) => text
-    WgslToken::Whitespace(text, _) => text
-    WgslToken::Other(code, _) => wgsl_metadata_code_unit_to_string(code)
-  }
-}
-
-///|
 fn wgsl_metadata_first_space_separated_token(text : String) -> String {
-  let trimmed = text.trim().to_owned()
-  let tokens = tokenize(trimmed, true)
-  let mut output = ""
-  for token in tokens {
-    match token {
-      WgslToken::Whitespace(_, _) => break
-      WgslToken::Other(code, _) if code == 9 ||
-        code == 10 ||
-        code == 11 ||
-        code == 12 ||
-        code == 13 ||
-        code == 32 => break
-      _ => output = output + wgsl_metadata_token_text(token)
-    }
+  let trimmed = wgsl_regex_trim_whitespace(text)
+  let mut end = 0
+  while end < trimmed.length() {
+    let width = wgsl_regex_whitespace_width(trimmed, end)
+    guard width == 0 else { break }
+    end = end + 1
   }
-  output
+  trimmed[0:end].to_owned()
 }
 
 ///|
 pub fn wgsl_source_define_import_path(source : String) -> String? {
   let stripped = replace_comments(source)
   for line in source_lines(stripped) {
-    let trimmed = line.trim().to_owned()
+    let trimmed = wgsl_regex_trim_whitespace(line)
     match wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath) {
       Some(raw_name) => {
         let import_path = wgsl_metadata_first_space_separated_token(raw_name)

@@ -43,7 +43,7 @@ pub fn apply_wgsl_ifdefs_strict(
       line
     }
     let is_version = check_glsl_version_directive(
-      line.trim().to_owned(),
+      wgsl_regex_trim_whitespace(line),
       offset,
     )
     let is_scope = if is_version {
@@ -72,7 +72,7 @@ pub fn active_wgsl_ifdef_line_flags_strict(
   let mut offset = 0
   for line in source_lines(replace_comments(source)) {
     let is_version = check_glsl_version_directive(
-      line.trim().to_owned(),
+      wgsl_regex_trim_whitespace(line),
       offset,
     )
     let is_scope = if is_version {

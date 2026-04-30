@@ -33,5 +33,10 @@ using @lex {
   type WgslToken,
   replace_comments,
   tokenize,
+  wgsl_blankspace_code_point,
+  wgsl_regex_skip_whitespace,
+  wgsl_regex_trim_whitespace,
+  wgsl_regex_whitespace_code_point,
+  wgsl_trim_blankspace,
   wgsl_token_brace_balance,
 }

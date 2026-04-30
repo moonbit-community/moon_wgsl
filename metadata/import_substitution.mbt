@@ -10,6 +10,11 @@ pub suberror SubstituteIdentifiersError {
 }
 
 ///|
+fn wgsl_metadata_code_unit_to_string(code : Int) -> String {
+  String::from_array([Int::unsafe_to_char(code)])
+}
+
+///|
 fn declared_imports_find_index(
   declared_imports : Array[DeclaredImportBinding],
   used_name : String,
@@ -80,7 +85,7 @@ pub fn parse_imports(
   let mut source_offset = 0
   while line_index < lines.length() {
     let line = lines[line_index]
-    let trimmed = line.trim().to_owned()
+    let trimmed = wgsl_regex_trim_whitespace(line)
     guard wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(spec) else {
       if trimmed == "" {
         source_offset = source_offset + line.length() + 1

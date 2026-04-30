@@ -371,7 +371,7 @@ fn WgslDeclParser::collect_until_top_level_fragment(
   let text = if start_pos < 0 || end_pos < start_pos {
     ""
   } else {
-    self.slice(start_pos, end_pos).trim().to_owned()
+    wgsl_trim_blankspace(self.slice(start_pos, end_pos))
   }
   WgslTextFragment::{ text, start: start_pos, end: end_pos }
 }
@@ -386,7 +386,7 @@ fn wgsl_trim_fragment_bounds(
   let mut right = end_
   while left < right {
     let code = text.code_unit_at(left).to_int()
-    if code == 32 || code == 9 || code == 10 || code == 13 {
+    if wgsl_blankspace_code_point(code) {
       left = left + 1
       continue
     }
@@ -394,7 +394,7 @@ fn wgsl_trim_fragment_bounds(
   }
   while right > left {
     let code = text.code_unit_at(right - 1).to_int()
-    if code == 32 || code == 9 || code == 10 || code == 13 {
+    if wgsl_blankspace_code_point(code) {
       right = right - 1
       continue
     }
@@ -423,7 +423,7 @@ fn parse_wgsl_type_ref_text(text : String, base : Int) -> WgslTypeRef? {
 
 ///|
 fn wgsl_type_ref_space(code : Int) -> Bool {
-  code == 32 || code == 9 || code == 10 || code == 13
+  wgsl_blankspace_code_point(code)
 }
 
 ///|

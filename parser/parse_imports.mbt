@@ -68,12 +68,12 @@ fn apply_wgsl_import_prefix(
   prefix : String,
   targets : Array[WgslImportTarget],
 ) -> Unit {
-  let normalized_prefix = prefix.trim().to_owned()
+  let normalized_prefix = wgsl_trim_blankspace(prefix)
   if normalized_prefix == "" {
     return
   }
   for i in 0..<targets.length() {
-    let path = targets[i].raw_path.trim().to_owned()
+    let path = wgsl_trim_blankspace(targets[i].raw_path)
     targets[i] = WgslImportTarget::{
       raw_path: if path == "" {
         normalized_prefix

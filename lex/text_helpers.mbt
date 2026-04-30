@@ -14,9 +14,9 @@
 
 ///|
 pub fn trim_trailing_semicolons(text : String) -> String {
-  let mut out = text.trim().to_owned()
+  let mut out = wgsl_regex_trim_whitespace(text)
   while out.length() > 0 && out.code_unit_at(out.length() - 1).to_int() == 59 { // ';'
-    out = out[:out.length() - 1].to_owned().trim().to_owned()
+    out = wgsl_regex_trim_whitespace(out[:out.length() - 1].to_owned())
   }
   out
 }
