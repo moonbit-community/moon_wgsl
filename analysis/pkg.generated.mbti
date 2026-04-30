@@ -8,21 +8,29 @@ import {
 }
 
 // Values
+pub fn build_wgsl_decl_local_name_map(@syntax.WgslGlobalDeclData) -> @hashmap.HashMap[String, Bool]
+
 pub fn build_wgsl_declaration_graph(String) -> WgslDeclarationGraph
 
 pub fn build_wgsl_declaration_indexes(Array[WgslGraphBlock]) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int])
 
+pub fn build_wgsl_rename_plan_from_redirect_map(@hashmap.HashMap[String, String], WgslRenameRuleKind) -> WgslRenamePlan
+
 pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
+
+pub fn collect_wgsl_decl_local_names(@syntax.WgslGlobalDeclData, Array[String]) -> Unit
 
 pub fn collect_wgsl_reachable_declaration_names(Array[WgslGraphBlock], Array[String]) -> (@hashmap.HashMap[String, Bool], Array[String])
 
 pub fn extract_wgsl_module_items(String, Array[String]) -> String
 
-pub fn rewrite_wgsl_declaration_text_with_map(String, @hashmap.HashMap[String, String], Bool) -> String
-
 pub fn rewrite_wgsl_declaration_text_with_redirects(String, @hashmap.HashMap[String, String]) -> String
 
 pub fn rewrite_wgsl_declaration_text_with_renamed_declarations(String, @hashmap.HashMap[String, String]) -> String
+
+pub fn rewrite_wgsl_declarations_with_rename_plan(String, WgslRenamePlan) -> String
+
+pub fn rewrite_wgsl_source_with_rename_plan(String, WgslRenamePlan) -> String
 
 pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String
 
@@ -47,6 +55,26 @@ pub(all) struct WgslGraphBlock {
   start : Int
   end : Int
   data : @syntax.WgslGlobalDeclData
+}
+
+pub(all) struct WgslRenamePlan {
+  rules : Array[WgslRenameRule]
+}
+pub fn WgslRenamePlan::add(Self, String, String, WgslRenameRuleKind) -> Unit
+pub fn WgslRenamePlan::add_redirect_map(Self, @hashmap.HashMap[String, String], WgslRenameRuleKind) -> Unit
+pub fn WgslRenamePlan::empty() -> Self
+pub fn WgslRenamePlan::is_empty(Self) -> Bool
+
+pub(all) struct WgslRenameRule {
+  from_name : String
+  to_name : String
+  kind : WgslRenameRuleKind
+}
+
+pub(all) enum WgslRenameRuleKind {
+  GlobalDeclarationAndReferences
+  ReferencesOnly
+  FunctionLocal
 }
 
 // Type aliases

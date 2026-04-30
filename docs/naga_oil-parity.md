@@ -123,7 +123,14 @@ tree-shakes them away, matching upstream `naga_oil`.
    graph. Any new WGSL declaration form must be parsed there before composer or
    export logic consumes it.
 
-4. The Naga boundary must stay explicit.
+4. Rename/writeback must be plan-driven.
+   All source rewrites must be expressed as `WgslRenamePlan` rules in
+   `analysis`: global declaration plus references, references only, or function
+   locals. Composer, virtual overrides, duplicate-binding cleanup, suffix
+   lowering, and writeback sanitization must not reintroduce ad hoc identifier
+   span rewriting.
+
+5. The Naga boundary must stay explicit.
    Preprocessing and source-level WGSL composition belong in MoonBit. Naga IR,
    validation, GLSL, writer byte parity, and runtime execution remain outside
    this package's core scope.

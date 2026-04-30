@@ -122,3 +122,56 @@ test "declaration graph does not keep globals shadowed by function locals" {
   debug_inspect(extracted.contains("const i"), content="false")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
+
+///|
+test "rename plan global rules do not rewrite function parameter locals" {
+  let source =
+    #|struct Input {
+    #|  instance_index: u32,
+    #|}
+    #|fn read_instance(in: Input) -> u32 {
+    #|  return in.instance_index;
+    #|}
+    #|
+  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  redirects.set("Input", "mesh__Input")
+  redirects.set("read_instance", "mesh__read_instance")
+  let rewritten = rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    build_wgsl_rename_plan_from_redirect_map(
+      redirects,
+      GlobalDeclarationAndReferences,
+    ),
+  )
+  debug_inspect(rewritten.contains("struct mesh__Input"), content="true")
+  debug_inspect(
+    rewritten.contains("fn mesh__read_instance(in: mesh__Input)"),
+    content="true",
+  )
+  debug_inspect(rewritten.contains("return in.instance_index;"), content="true")
+  debug_inspect(rewritten.contains("mesh__in"), content="false")
+}
+
+///|
+test "rename plan function-local rules rewrite parameter and body together" {
+  let source =
+    #|struct Input {
+    #|  rgb: vec3<f32>,
+    #|}
+    #|fn fragment(in: Input) -> vec3<f32> {
+    #|  return max(in.rgb, vec3(0.0));
+    #|}
+    #|
+  let plan = WgslRenamePlan::empty()
+  plan.add("in", "in_wgsl", FunctionLocal)
+  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
+  debug_inspect(
+    rewritten.contains("fn fragment(in_wgsl: Input)"),
+    content="true",
+  )
+  debug_inspect(
+    rewritten.contains("return max(in_wgsl.rgb, vec3(0.0));"),
+    content="true",
+  )
+  debug_inspect(rewritten.contains("return max(in.rgb"), content="false")
+}

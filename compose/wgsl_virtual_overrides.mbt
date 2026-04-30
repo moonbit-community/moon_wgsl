@@ -62,7 +62,7 @@ fn wgsl_override_body_references_target(
   raw_target : String,
   target_name : String,
 ) -> Bool {
-  let local_names = collect_wgsl_decl_local_names(
+  let local_names = build_wgsl_decl_local_name_map(
     WgslGlobalDeclData::Function(function),
   )
   for statement in function.body.statements {
@@ -113,62 +113,16 @@ fn rewrite_wgsl_virtual_fn_block(
 }
 
 ///|
-fn rewrite_wgsl_virtual_identifier_spans(
-  block_text : String,
-  function : WgslFunction,
-  redirect_map : @hashmap.HashMap[String, String],
-  include_function_name : Bool,
-) -> String {
-  let identifiers : Array[WgslIdent] = []
-  if include_function_name {
-    identifiers.push(function.name)
-  }
-  collect_wgsl_decl_identifier_nodes(
-    WgslGlobalDeclData::Function(function),
-    identifiers,
-  )
-  let mut out = ""
-  let mut copy_start = 0
-  while true {
-    let mut next_index = -1
-    let mut next_start = block_text.length() + 1
-    for i in 0..<identifiers.length() {
-      let ident = identifiers[i]
-      if ident.start >= copy_start &&
-        ident.start < next_start &&
-        redirect_map.contains(ident.name) {
-        next_index = i
-        next_start = ident.start
-      }
-    }
-    if next_index < 0 {
-      break
-    }
-    let ident = identifiers[next_index]
-    guard redirect_map.get(ident.name) is Some(rewritten) else { break }
-    out = out + block_text[copy_start:ident.start].to_owned()
-    out = out + rewritten
-    copy_start = ident.end
-  }
-  if copy_start < block_text.length() {
-    out = out + block_text[copy_start:block_text.length()].to_owned()
-  }
-  out
-}
-
-///|
 fn rewrite_wgsl_virtual_base_block(
   block_text : String,
   function : WgslFunction,
   target_name : String,
   base_name : String,
 ) -> String {
-  let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  rename_map.set(target_name, base_name)
+  let plan = WgslRenamePlan::empty()
+  plan.add(target_name, base_name, GlobalDeclarationAndReferences)
   rewrite_wgsl_virtual_fn_block(
-    rewrite_wgsl_virtual_identifier_spans(
-      block_text, function, rename_map, true,
-    ),
+    rewrite_wgsl_declarations_with_rename_plan(block_text, plan),
     function,
   )
 }
@@ -183,12 +137,10 @@ fn rewrite_wgsl_override_fn_block(
 ) -> String {
   let rewritten_body = match base_name {
     Some(base) => {
-      let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-      redirect_map.set(target_name, base)
-      redirect_map.set(raw_target, base)
-      rewrite_wgsl_virtual_identifier_spans(
-        block_text, function, redirect_map, false,
-      )
+      let plan = WgslRenamePlan::empty()
+      plan.add(target_name, base, ReferencesOnly)
+      plan.add(raw_target, base, ReferencesOnly)
+      rewrite_wgsl_declarations_with_rename_plan(block_text, plan)
     }
     None => block_text
   }

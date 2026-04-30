@@ -1635,152 +1635,14 @@ fn build_wgsl_unique_lowered_suffix_redirect_map(
 }
 
 ///|
-fn collect_wgsl_decl_local_names(
-  data : WgslGlobalDeclData,
-) -> @hashmap.HashMap[String, Bool] {
-  let locals : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  match data {
-    WgslGlobalDeclData::Function(function) => {
-      for argument in function.arguments {
-        if argument.name != "" {
-          locals.set(argument.name, true)
-        }
-      }
-      for statement in function.body.statements {
-        match statement.local_name {
-          Some(name) => locals.set(name, true)
-          None => ()
-        }
-        for name in statement.local_names {
-          if name != "" {
-            locals.set(name, true)
-          }
-        }
-      }
-    }
-    WgslGlobalDeclData::Struct(struct_decl) =>
-      for struct_member in struct_decl.members {
-        if struct_member.name != "" {
-          locals.set(struct_member.name, true)
-        }
-      }
-    _ => ()
-  }
-  locals
-}
-
-///|
-fn rewrite_wgsl_decl_identifier_nodes_with_map(
-  text : String,
-  data : WgslGlobalDeclData,
-  redirect_map : @hashmap.HashMap[String, String],
-  rewrite_declaration_names? : Bool = false,
-  extra_identifier_nodes? : Array[WgslIdent] = [],
-) -> String {
-  let identifiers : Array[WgslIdent] = []
-  if rewrite_declaration_names {
-    collect_wgsl_decl_global_declared_identifier_nodes(data, identifiers)
-  }
-  collect_wgsl_decl_identifier_nodes(data, identifiers)
-  for identifier in extra_identifier_nodes {
-    identifiers.push(identifier)
-  }
-  let mut out = ""
-  let mut copy_start = 0
-  while true {
-    let mut next_index = -1
-    let mut next_start = text.length() + 1
-    for i in 0..<identifiers.length() {
-      let identifier = identifiers[i]
-      if identifier.start >= copy_start &&
-        identifier.start < next_start &&
-        redirect_map.contains(identifier.name) {
-        next_index = i
-        next_start = identifier.start
-      }
-    }
-    if next_index < 0 {
-      break
-    }
-    let identifier = identifiers[next_index]
-    guard redirect_map.get(identifier.name) is Some(rewritten_name) else {
-      break
-    }
-    out = out + text[copy_start:identifier.start].to_owned()
-    out = out + rewritten_name
-    copy_start = identifier.end
-  }
-  if copy_start < text.length() {
-    out = out + text[copy_start:text.length()].to_owned()
-  }
-  out
-}
-
-///|
 fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
   source : String,
   redirect_map : @hashmap.HashMap[String, String],
 ) -> String {
-  let graph = build_wgsl_declaration_graph(source)
-  let mut out = ""
-  for import_block in graph.import_blocks {
-    out = out + import_block.text
-  }
-  for block in graph.declaration_blocks {
-    let local_names = collect_wgsl_decl_local_names(block.data)
-    let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-    for entry in redirect_map.iter() {
-      let (from_name, to_name) = entry
-      if !local_names.contains(from_name) {
-        block_redirects.set(from_name, to_name)
-      }
-    }
-    if block_redirects.is_empty() {
-      out = out + block.text
-    } else {
-      out = out +
-        rewrite_wgsl_decl_identifier_nodes_with_map(
-          block.text,
-          block.data,
-          block_redirects,
-        )
-    }
-  }
-  out
-}
-
-///|
-fn rewrite_wgsl_declaration_blocks_with_redirects(
-  source : String,
-  redirect_map : @hashmap.HashMap[String, String],
-  rewrite_declaration_names? : Bool = false,
-  extra_identifier_nodes? : Array[WgslIdent] = [],
-) -> String {
-  if redirect_map.is_empty() {
-    return source
-  }
-  let graph = build_wgsl_declaration_graph(source)
-  let mut out = ""
-  for import_block in graph.import_blocks {
-    out = out + import_block.text
-  }
-  for block in graph.declaration_blocks {
-    match block.data {
-      WgslGlobalDeclData::Raw => out = out + block.text
-      WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
-        out = out + block.text
-      _ =>
-        out = out +
-          rewrite_wgsl_decl_identifier_nodes_with_map(
-            block.text,
-            block.data,
-            redirect_map,
-            rewrite_declaration_names~,
-            extra_identifier_nodes~,
-          )
-    }
-  }
-  out
+  rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly),
+  )
 }
 
 ///|
@@ -1830,30 +1692,6 @@ fn wgsl_global_binding_info(
 }
 
 ///|
-fn rewrite_wgsl_block_with_duplicate_binding_redirects(
-  block : WgslGraphBlock,
-  redirect_map : @hashmap.HashMap[String, String],
-) -> String {
-  let local_names = collect_wgsl_decl_local_names(block.data)
-  let block_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for entry in redirect_map.iter() {
-    let (from_name, to_name) = entry
-    if !local_names.contains(from_name) {
-      block_redirects.set(from_name, to_name)
-    }
-  }
-  if block_redirects.is_empty() {
-    block.text
-  } else {
-    rewrite_wgsl_decl_identifier_nodes_with_map(
-      block.text,
-      block.data,
-      block_redirects,
-    )
-  }
-}
-
-///|
 fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
   let graph = build_wgsl_declaration_graph(source)
   let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
@@ -1882,10 +1720,12 @@ fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
     if duplicate_names.contains(block.name) {
       continue
     }
-    out = out +
-      rewrite_wgsl_block_with_duplicate_binding_redirects(block, redirect_map)
+    out = out + block.text
   }
-  out
+  rewrite_wgsl_declarations_with_rename_plan(
+    out,
+    build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly),
+  )
 }
 
 ///|
@@ -2002,10 +1842,12 @@ fn Composer::compose_wgsl_import_requests(
         request_rename_map,
         alias_redirects,
       )
-      rewrite_wgsl_declaration_blocks_with_redirects(
+      rewrite_wgsl_declarations_with_rename_plan(
         module_source,
-        request_rename_map,
-        rewrite_declaration_names=true,
+        build_wgsl_rename_plan_from_redirect_map(
+          request_rename_map,
+          GlobalDeclarationAndReferences,
+        ),
       )
     } else {
       module_source
@@ -2051,7 +1893,10 @@ fn finalize_wgsl_composed_source(
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
   let alias_redirect_map = build_wgsl_symbol_redirect_map(alias_redirects)
   out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
-  out = rewrite_wgsl_declaration_blocks_with_redirects(out, alias_redirect_map)
+  out = rewrite_wgsl_declarations_with_rename_plan(
+    out,
+    build_wgsl_rename_plan_from_redirect_map(alias_redirect_map, ReferencesOnly),
+  )
   out = dedupe_wgsl_duplicate_declarations(out)
   let suffix_redirects = build_wgsl_unique_lowered_suffix_redirect_map(out)
   if !suffix_redirects.is_empty() {

@@ -1,9 +1,13 @@
 ///|
 using @analysis {
   type WgslGraphBlock,
+  type WgslRenamePlan,
   build_wgsl_declaration_graph,
+  build_wgsl_decl_local_name_map,
+  build_wgsl_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,
   extract_wgsl_module_items,
+  rewrite_wgsl_declarations_with_rename_plan,
   rewrite_wgsl_symbol_redirects,
   strip_wgsl_import_declarations,
   wgsl_string_list_push_unique,
@@ -48,9 +52,6 @@ using @syntax {
   type WgslDirectiveKind,
   type WgslFunction,
   type WgslGlobalDeclData,
-  type WgslIdent,
-  collect_wgsl_decl_global_declared_identifier_nodes,
-  collect_wgsl_decl_identifier_nodes,
   collect_wgsl_source_identifier_names,
   import_brace_balance,
   split_last_identifier,
