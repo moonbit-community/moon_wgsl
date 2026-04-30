@@ -180,23 +180,13 @@ fn eval_if_condition(
       compare_int_values(int_value, parsed, operator, offset)
     }
     ShaderDefValue::UInt(uint_value) => {
-      let parsed = @string.parse_int(value[:], base=10) catch {
+      let parsed = @string.parse_uint(value[:], base=10) catch {
         _ =>
           raise PreprocessError::InvalidShaderDefComparisonValue(
             def, value, "uint", offset,
           )
       }
-      if parsed < 0 {
-        raise PreprocessError::InvalidShaderDefComparisonValue(
-          def, value, "uint", offset,
-        )
-      }
-      compare_uint_values(
-        uint_value,
-        parsed.reinterpret_as_uint(),
-        operator,
-        offset,
-      )
+      compare_uint_values(uint_value, parsed, operator, offset)
     }
   }
 }

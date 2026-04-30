@@ -583,6 +583,24 @@ test "naga_oil: define metadata rejects unsigned suffix like upstream" {
 }
 
 ///|
+test "naga_oil: unsigned shader defs support full u32 range" {
+  let source = "#define BIG 4000000000\n#if BIG == 4000000000\nbig\n#else\nsmall\n#endif\n"
+  let metadata = metadata_or_abort(source)
+  guard metadata.defines.get("BIG") is Some(@common.ShaderDefValue::UInt(big)) else {
+    abort("expected full-range unsigned define")
+  }
+  debug_inspect(big.to_string(), content="\"4000000000\"")
+  let output = @preprocess.Preprocessor::default().preprocess(
+    source,
+    metadata.defines,
+  ) catch {
+    _ => abort("expected full-range unsigned comparison preprocess success")
+  }
+  debug_inspect(output.preprocessed_source.contains("big"), content="true")
+  debug_inspect(output.preprocessed_source.contains("small"), content="false")
+}
+
+///|
 test "naga_oil: preprocess accepts whitespace after hash directives" {
   let source = "# define_import_path demo::spaced\n# define MODE 2\n# if MODE==1\none\n# else if MODE==2\ntwo #MODE\n# else\nthree\n# endif\n"
   let metadata = metadata_or_abort(source)
