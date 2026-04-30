@@ -88,7 +88,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `test_bevy_path_imports`, `bevy_path_imports/` | Covered | Bevy-style path syntax is covered by metadata/parser parity tests. |
 | `test_quoted_import_dup_name`, `quoted_dup/` | Covered | Quoted import paths and duplicate local names are covered. |
 | `use_shared_global`, `use_shared_global/` | Covered | Shared global dependencies are preserved once. |
-| `problematic_expressions`, `problematic_expressions/` | Covered | Local dependency analysis includes the expression forms that previously broke source-level tree-shaking. |
+| `problematic_expressions`, `problematic_expressions/` | Covered | Local dependency analysis includes the expression forms that previously broke source-level tree-shaking, including same-name local initializer callees such as Bevy PBR `let point_light = point_light(...)`. |
 | `test_atomics`, `atomics/` | Covered | Atomic declarations/usages are covered by source-level declaration dependency tests. |
 | `test_modf`, `modf/` | Covered | Builtin-return usage is covered at source-text dependency level. |
 | `test_diagnostic_filters`, `diagnostic_filters/` | Covered | Diagnostic directives are preserved. |

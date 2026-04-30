@@ -225,6 +225,30 @@ test "naga_oil: compose item extraction and export tree-shaking share dependency
 }
 
 ///|
+test "naga_oil: export keeps same-name local initializer callee" {
+  clear_export_test_registry()
+  let composer = export_test_composer()
+  composer.register_source(
+    "pbr/same_name_callee.wgsl", "fn point_light(light_id: u32) -> u32 {\n  return light_id + 1u;\n}\nfn fragment(light_id: u32) -> u32 {\n  let point_light = point_light(light_id);\n  return point_light;\n}\n",
+  )
+  let output = @export.export_wgsl_with_options(
+    composer,
+    "pbr/same_name_callee.wgsl",
+    export_test_compose_options(export_test_empty_defines(), []),
+    { root_items: ["fragment"] },
+  ) catch {
+    err => abort("expected same-name callee export success: \{err.message()}")
+  }
+  debug_inspect(output.source.contains("fn point_light"), content="true")
+  debug_inspect(
+    output.source.contains("let point_light = point_light(light_id);"),
+    content="true",
+  )
+  debug_inspect(output.source.contains("fn fragment"), content="true")
+  clear_export_test_registry()
+}
+
+///|
 test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
   clear_export_test_registry()
   let composer = @compose.Composer::default()

@@ -123,6 +123,125 @@ test "declaration graph keeps globals referenced before local shadows" {
 }
 
 ///|
+test "declaration graph keeps initializer callee with same local name" {
+  let source =
+    #|fn point_light(id: u32) -> u32 {
+    #|  return id + 1u;
+    #|}
+    #|fn entry(light_id: u32) -> u32 {
+    #|  let point_light = point_light(light_id);
+    #|  return point_light;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("fn point_light"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph keeps local declaration type refs with same local name" {
+  let source =
+    #|struct View {
+    #|  value: u32,
+    #|}
+    #|fn entry() -> u32 {
+    #|  let View: View = View(1u);
+    #|  return View.value;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("struct View"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph keeps compound initializer callee before local scope" {
+  let source =
+    #|fn helper(id: u32) -> u32 {
+    #|  return id + 1u;
+    #|}
+    #|fn entry(cond: bool, light_id: u32) -> u32 {
+    #|  if (cond) {
+    #|    let helper = helper(light_id);
+    #|    return helper;
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("fn helper"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph keeps for initializer callee before loop local scope" {
+  let source =
+    #|fn helper(id: u32) -> u32 {
+    #|  return id + 1u;
+    #|}
+    #|fn entry() -> u32 {
+    #|  for (var helper: u32 = helper(0u); helper < 2u; helper = helper + 1u) {
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("fn helper"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph filters compound locals after declaration" {
+  let source =
+    #|const helper: u32 = 1u;
+    #|fn entry(cond: bool) -> u32 {
+    #|  if (cond) {
+    #|    let helper = 2u;
+    #|    return helper;
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const helper"), content="false")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph does not leak for header locals after loop" {
+  let source =
+    #|const i: u32 = 9u;
+    #|fn entry() -> u32 {
+    #|  for (var i: u32 = 0u; i < 2u; i = i + 1u) {
+    #|  }
+    #|  return i;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const i"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph does not leak nested compound locals to outer block" {
+  let source =
+    #|const helper: u32 = 1u;
+    #|fn entry(cond: bool) -> u32 {
+    #|  if (cond) {
+    #|    if (cond) {
+    #|      let helper = 2u;
+    #|    }
+    #|    return helper;
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const helper"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
 test "declaration graph does not leak nested local shadows" {
   let source =
     #|const nested: u32 = 1u;
