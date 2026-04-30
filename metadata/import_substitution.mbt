@@ -20,18 +20,6 @@ fn import_token_byte_end(input : String, token : WgslToken) -> Int {
 }
 
 ///|
-fn import_tail_is_empty_or_final_semicolon(tail : String) -> Bool {
-  let tokens = tokenize(tail, false)
-  if tokens.length() == 0 {
-    return true
-  }
-  if tokens.length() == 1 && tokens[0] is WgslToken::Other(59, _) {
-    return true
-  }
-  false
-}
-
-///|
 fn declared_imports_find_index(
   declared_imports : Array[DeclaredImportBinding],
   used_name : String,
@@ -124,7 +112,7 @@ pub fn parse_imports(
   let tail_code_start = tokens[1].end()
   let tail_byte_start = import_token_byte_end(input, tokens[1])
   let tail = input[tail_code_start:input.length()].to_owned()
-  if import_tail_is_empty_or_final_semicolon(tail) {
+  if parse_wgsl_import_spec_is_empty_or_final_semicolon(tail) {
     return
   }
   let targets : Array[WgslImportTarget] = []

@@ -113,6 +113,17 @@ fn tokenize_wgsl_import_targets(
 }
 
 ///|
+pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(
+  spec : String,
+) -> Bool {
+  let tokens = tokenize(spec, false)
+  if tokens.length() == 0 {
+    return true
+  }
+  tokens.length() == 1 && tokens[0] is WgslToken::Other(59, _)
+}
+
+///|
 fn apply_wgsl_import_prefix(
   prefix : String,
   targets : Array[WgslImportTarget],

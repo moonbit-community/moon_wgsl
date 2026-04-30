@@ -6,7 +6,6 @@ import {
   "Milky2018/moon_wgsl/preprocess",
   "Milky2018/moon_wgsl/resolver",
   "Milky2018/moon_wgsl/ast",
-  "Milky2018/moon_wgsl/lex",
   "Milky2018/moon_wgsl/parser",
   "Milky2018/moon_wgsl/virtual_overrides",
   "Milky2018/moon_wgsl/writeback",

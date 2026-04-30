@@ -38,3 +38,19 @@ test "naga_oil wb: import target parser handles non-BMP other token widths" {
     content="\"ERR 3 unexpected token after ';'\"",
   )
 }
+
+///|
+test "WGSL import parser classifies empty import specs" {
+  debug_inspect(
+    parse_wgsl_import_spec_is_empty_or_final_semicolon(""),
+    content="true",
+  )
+  debug_inspect(
+    parse_wgsl_import_spec_is_empty_or_final_semicolon(" ; "),
+    content="true",
+  )
+  debug_inspect(
+    parse_wgsl_import_spec_is_empty_or_final_semicolon("a::b"),
+    content="false",
+  )
+}
