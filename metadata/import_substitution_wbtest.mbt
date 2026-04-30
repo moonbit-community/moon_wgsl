@@ -101,6 +101,18 @@ test "naga_oil wb: parse_imports rejects malformed imports like upstream" {
     content="true",
   )
   debug_inspect(
+    parse_imports_snapshot("#import a {b}\n"),
+    content="\"ERR 10 open brace must follow `::`\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a b {c}\n"),
+    content="\"ERR 12 open brace must follow `::`\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a as {\n"),
+    content="\"ERR 10 expected identifier after `as`\"",
+  )
+  debug_inspect(
     parse_imports_snapshot("#import a:b\n").has_prefix("ERR "),
     content="true",
   )

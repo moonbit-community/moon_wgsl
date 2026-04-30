@@ -42,7 +42,10 @@ fn tokenize_wgsl_import_targets(
   let out : Array[(Token, Int, Int)] = []
   let raw_tokens = tokenize(input, false)
   let mut previous_can_start_alias = false
-  for token in raw_tokens {
+  let mut previous_identifier : String? = None
+  let mut index = 0
+  while index < raw_tokens.length() {
+    let token = raw_tokens[index]
     let start = utf8_byte_length(input[:token.pos()].to_owned())
     let end_ = start +
       utf8_byte_length(
@@ -51,31 +54,47 @@ fn tokenize_wgsl_import_targets(
     match token {
       Identifier("as", _) =>
         if previous_can_start_alias {
+          guard index + 1 < raw_tokens.length() &&
+            raw_tokens[index + 1] is Identifier(_, _) else {
+            raise ParseImportsError::Parse(
+              "expected identifier after `as`", start,
+            )
+          }
           push_generated_import_token(out, Token::AS, start, end_)
           previous_can_start_alias = false
+          previous_identifier = None
         } else {
           push_generated_import_token(out, Token::IDENT("as"), start, end_)
           previous_can_start_alias = true
+          previous_identifier = Some("as")
         }
       Identifier(name, _) => {
         push_generated_import_token(out, Token::IDENT(name), start, end_)
         previous_can_start_alias = true
+        previous_identifier = Some(name)
       }
       Other(123, _) => {
+        guard previous_identifier is Some(name) && name.has_suffix("::") else {
+          raise ParseImportsError::Parse("open brace must follow `::`", start)
+        }
         push_generated_import_token(out, Token::LBRACE(start), start, end_)
         previous_can_start_alias = false
+        previous_identifier = None
       }
       Other(125, _) => {
         push_generated_import_token(out, Token::RBRACE(start), start, end_)
         previous_can_start_alias = false
+        previous_identifier = None
       }
       Other(44, _) => {
         push_generated_import_token(out, Token::COMMA, start, end_)
         previous_can_start_alias = false
+        previous_identifier = None
       }
       Other(59, _) => {
         push_generated_import_token(out, Token::SEMI, start, end_)
         previous_can_start_alias = false
+        previous_identifier = None
       }
       Other(_, pos) =>
         raise ParseImportsError::Parse(
@@ -84,6 +103,7 @@ fn tokenize_wgsl_import_targets(
         )
       Whitespace(_, _) => abort("whitespace tokens should not be emitted here")
     }
+    index = index + 1
   }
   let eof = utf8_byte_length(input)
   push_generated_import_token(out, Token::EOF, eof, eof)
