@@ -20,7 +20,7 @@ pub(all) enum WgslRenameRuleKind {
 }
 
 ///|
-pub struct WgslRenameRule {
+priv struct WgslRenameRule {
   from_name : String
   to_name : String
   kind : WgslRenameRuleKind
@@ -28,7 +28,7 @@ pub struct WgslRenameRule {
 
 ///|
 pub struct WgslRenamePlan {
-  rules : Array[WgslRenameRule]
+  priv rules : Array[WgslRenameRule]
 }
 
 ///|

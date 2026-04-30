@@ -14,8 +14,8 @@
 
 ///|
 pub struct WgslSourceRegistry {
-  rel_to_source_ref : Ref[@hashmap.HashMap[String, String]]
-  module_to_rel_ref : Ref[@hashmap.HashMap[String, String]]
+  priv rel_to_source_ref : Ref[@hashmap.HashMap[String, String]]
+  priv module_to_rel_ref : Ref[@hashmap.HashMap[String, String]]
 }
 
 ///|

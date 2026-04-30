@@ -14,9 +14,9 @@
 
 ///|
 pub struct Composer {
-  module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
-  registry : WgslSourceRegistry
-  composable_module_registry_paths : @hashmap.HashMap[String, String]
+  priv module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
+  priv registry : WgslSourceRegistry
+  priv composable_module_registry_paths : @hashmap.HashMap[String, String]
 }
 
 ///|

@@ -51,17 +51,11 @@ pub struct WgslGraphBlock {
 }
 
 pub struct WgslRenamePlan {
-  rules : Array[WgslRenameRule]
+  // private fields
 }
 pub fn WgslRenamePlan::add(Self, String, String, WgslRenameRuleKind) -> Unit
 pub fn WgslRenamePlan::empty() -> Self
 pub fn WgslRenamePlan::is_empty(Self) -> Bool
-
-pub struct WgslRenameRule {
-  from_name : String
-  to_name : String
-  kind : WgslRenameRuleKind
-}
 
 pub(all) enum WgslRenameRuleKind {
   GlobalDeclarationAndReferences

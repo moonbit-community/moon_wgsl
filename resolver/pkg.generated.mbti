@@ -4,7 +4,6 @@ package "Milky2018/moon_wgsl/resolver"
 import {
   "Milky2018/moon_wgsl/common",
   "moonbitlang/core/hashmap",
-  "moonbitlang/core/ref",
   "moonbitlang/x/fs",
 }
 
@@ -27,8 +26,7 @@ pub fn scan_wgsl_source_files_checked(String, @common.WgslSourceScanOptions) -> 
 
 // Types and methods
 pub struct WgslSourceRegistry {
-  rel_to_source_ref : @ref.Ref[@hashmap.HashMap[String, String]]
-  module_to_rel_ref : @ref.Ref[@hashmap.HashMap[String, String]]
+  // private fields
 }
 pub fn WgslSourceRegistry::analyze_source_files(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
 pub fn WgslSourceRegistry::clear(Self) -> Unit
