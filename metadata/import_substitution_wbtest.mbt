@@ -23,6 +23,10 @@ test "naga_oil wb: parse_imports matches upstream top-level item-list disambigua
     parse_imports_snapshot("#import a::b c\n"),
     content="\"c=a::b::c\"",
   )
+  debug_inspect(
+    parse_imports_snapshot("#import a:: b\n"),
+    content="\"b=a::::b\"",
+  )
 }
 
 ///|

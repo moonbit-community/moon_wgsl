@@ -133,13 +133,8 @@ import_targets -> Array[@common.WgslImportTarget]
   | module_path=IDENT targets=target_list semis EOF {
       let out : Array[@common.WgslImportTarget] = []
       for target in targets {
-        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
-          ""
-        } else {
-          "::"
-        }
         out.push(@common.WgslImportTarget::{
-          raw_path: module_path + sep + target.raw_path,
+          raw_path: module_path + "::" + target.raw_path,
           alias_name: target.alias_name,
         })
       }
