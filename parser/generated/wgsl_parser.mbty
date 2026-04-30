@@ -22,14 +22,15 @@
 %token<String> IDENT
 %token<(String, String, Int, Int, Int)> TYPE_ATOM
 %token<@ast.WgslIdent> ARG_NAME
-%token<(String, @ast.WgslTypeRef?)> ARG_TYPE
+%token<(String, @ast.WgslTypeRef?, Int, Int)> ARG_TYPE
 %token<@ast.WgslIdent> MEMBER_NAME
-%token<(String, @ast.WgslTypeRef?)> MEMBER_TYPE
-%token<(String, @ast.WgslTypeRef?)> DECL_TYPE
+%token<(String, @ast.WgslTypeRef?, Int, Int)> MEMBER_TYPE
+%token<(String, @ast.WgslTypeRef?, Int, Int)> DECL_TYPE
 %token<(String, @ast.WgslExprRef?)> INIT_EXPR
 %token<@ast.WgslExprRef> EXPR_REF
-%token<String> ATTR_NAME
-%token<(String, @ast.WgslExprRef?)> ATTR_ARGS
+%token<Int> AT "@"
+%token<@ast.WgslIdent> ATTR_NAME
+%token<(String, @ast.WgslExprRef?, Int)> ATTR_ARGS
 %token<@ast.WgslIdent> KW_VIRTUAL
 %token<@ast.WgslIdent> KW_OVERRIDE
 %token<@ast.WgslIdent> KW_FN
@@ -45,15 +46,14 @@
 %token<(String, String)> DIRECTIVE_HEAD
 %token<String> DIRECTIVE_TAIL
 %token<String> SOURCE_TEXT
-%token AT "@"
 %token HASH "#"
 %token PREFIX
 %token AS "as"
-%token ARROW "->"
+%token<Int> ARROW "->"
 %token LPAREN "("
 %token RPAREN ")"
-%token LBRACE "{"
-%token RBRACE "}"
+%token<Int> LBRACE "{"
+%token<Int> RBRACE "}"
 %token COLON ":"
 %token EQUAL "="
 %token<Int> TYPE_LT "<"
@@ -69,8 +69,8 @@ raw_top_level_items -> Array[@ast.WgslRawTopLevelItem]
   ;
 
 block -> @ast.WgslBlock
-  : "{" statements "}" EOF {
-      @ast.WgslBlock::{ statements: $2 }
+  : open=LBRACE statements close=RBRACE EOF {
+      @ast.WgslBlock::{ start: open, end: close + 1, statements: $2 }
     }
   ;
 
@@ -93,15 +93,30 @@ attributes -> Array[@ast.WgslAttribute]
   ;
 
 attribute -> @ast.WgslAttribute
-  : "@" name=ATTR_NAME args=attribute_args {
-      let (arguments, arguments_ref) = args
-      @ast.WgslAttribute::{ name, arguments, arguments_ref }
+  : at=AT name=ATTR_NAME args=attribute_args {
+      let (arguments, arguments_ref, args_end) = args
+      let end = match args_end {
+        Some(value) => value
+        None => name.end
+      }
+      @ast.WgslAttribute::{
+        name: name.name,
+        start: at,
+        end,
+        name_start: name.start,
+        name_end: name.end,
+        arguments,
+        arguments_ref,
+      }
     }
   ;
 
-attribute_args -> (String, @ast.WgslExprRef?)
-  : { ("", None) }
-  | ATTR_ARGS { $1 }
+attribute_args -> (String, @ast.WgslExprRef?, Int?)
+  : { ("", None, None) }
+  | ATTR_ARGS {
+      let (arguments, arguments_ref, end) = $1
+      (arguments, arguments_ref, Some(end))
+    }
   ;
 
 items -> Array[@ast.WgslRawTopLevelItem]
@@ -381,9 +396,15 @@ function_args -> Array[@ast.WgslFunctionArgument]
   ;
 
 function_result -> @ast.WgslFunctionResult?
-  : "->" attrs=attributes ty=ARG_TYPE EOF {
-      let (ty_text, ty_ref) = ty
-      Some(@ast.WgslFunctionResult::{ attributes: attrs, ty: ty_text, ty_ref })
+  : arrow=ARROW attrs=attributes ty=ARG_TYPE EOF {
+      let (ty_text, ty_ref, _, ty_end) = ty
+      Some(@ast.WgslFunctionResult::{
+        attributes: attrs,
+        start: arrow,
+        end: ty_end,
+        ty: ty_text,
+        ty_ref,
+      })
     }
   ;
 
@@ -406,10 +427,13 @@ struct_member_list -> Array[@ast.WgslStructMember]
 
 struct_member -> @ast.WgslStructMember
   : attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
-      let (ty_text, ty_ref) = ty
+      let (ty_text, ty_ref, _, ty_end) = ty
+      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
       @ast.WgslStructMember::{
         attributes: attrs,
         name: name.name,
+        start,
+        end: ty_end,
         name_start: name.start,
         name_end: name.end,
         ty: ty_text,
@@ -421,7 +445,7 @@ struct_member -> @ast.WgslStructMember
 typed_initializer_tail -> (String?, @ast.WgslTypeRef?, String?, @ast.WgslExprRef?)
   : EOF { (None, None, None, None) }
   | ":" ty=DECL_TYPE init=initializer_opt EOF {
-      let (ty_text, ty_ref) = ty
+      let (ty_text, ty_ref, _, _) = ty
       let (init_text, init_ref) = init
       (Some(ty_text), ty_ref, init_text, init_ref)
     }
@@ -432,7 +456,10 @@ typed_initializer_tail -> (String?, @ast.WgslTypeRef?, String?, @ast.WgslExprRef
   ;
 
 type_alias_tail -> (String, @ast.WgslTypeRef?)
-  : "=" ty=DECL_TYPE EOF { ty }
+  : "=" ty=DECL_TYPE EOF {
+      let (ty_text, ty_ref, _, _) = ty
+      (ty_text, ty_ref)
+    }
   ;
 
 source_directive -> @ast.WgslDirective
@@ -500,10 +527,13 @@ function_arg_list -> Array[@ast.WgslFunctionArgument]
 
 function_arg -> @ast.WgslFunctionArgument
   : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
-      let (ty_text, ty_ref) = ty
+      let (ty_text, ty_ref, _, ty_end) = ty
+      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
       @ast.WgslFunctionArgument::{
         attributes: attrs,
         name: name.name,
+        start,
+        end: ty_end,
         name_start: name.start,
         name_end: name.end,
         ty: ty_text,

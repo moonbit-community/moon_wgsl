@@ -5,14 +5,15 @@ pub(all) enum Token {
   IDENT(String)
   TYPE_ATOM((String, String, Int, Int, Int))
   ARG_NAME(@ast.WgslIdent)
-  ARG_TYPE((String, @ast.WgslTypeRef?))
+  ARG_TYPE((String, @ast.WgslTypeRef?, Int, Int))
   MEMBER_NAME(@ast.WgslIdent)
-  MEMBER_TYPE((String, @ast.WgslTypeRef?))
-  DECL_TYPE((String, @ast.WgslTypeRef?))
+  MEMBER_TYPE((String, @ast.WgslTypeRef?, Int, Int))
+  DECL_TYPE((String, @ast.WgslTypeRef?, Int, Int))
   INIT_EXPR((String, @ast.WgslExprRef?))
   EXPR_REF(@ast.WgslExprRef)
-  ATTR_NAME(String)
-  ATTR_ARGS((String, @ast.WgslExprRef?))
+  AT(Int)
+  ATTR_NAME(@ast.WgslIdent)
+  ATTR_ARGS((String, @ast.WgslExprRef?, Int))
   KW_VIRTUAL(@ast.WgslIdent)
   KW_OVERRIDE(@ast.WgslIdent)
   KW_FN(@ast.WgslIdent)
@@ -28,15 +29,14 @@ pub(all) enum Token {
   DIRECTIVE_HEAD((String, String))
   DIRECTIVE_TAIL(String)
   SOURCE_TEXT(String)
-  AT
   HASH
   PREFIX
   AS
-  ARROW
+  ARROW(Int)
   LPAREN
   RPAREN
-  LBRACE
-  RBRACE
+  LBRACE(Int)
+  RBRACE(Int)
   COLON
   EQUAL
   TYPE_LT(Int)
@@ -60,6 +60,7 @@ pub fn Token::kind(self : Token) -> TokenKind {
     DECL_TYPE(_) => TK_DECL_TYPE
     INIT_EXPR(_) => TK_INIT_EXPR
     EXPR_REF(_) => TK_EXPR_REF
+    AT(_) => TK_AT
     ATTR_NAME(_) => TK_ATTR_NAME
     ATTR_ARGS(_) => TK_ATTR_ARGS
     KW_VIRTUAL(_) => TK_KW_VIRTUAL
@@ -77,15 +78,14 @@ pub fn Token::kind(self : Token) -> TokenKind {
     DIRECTIVE_HEAD(_) => TK_DIRECTIVE_HEAD
     DIRECTIVE_TAIL(_) => TK_DIRECTIVE_TAIL
     SOURCE_TEXT(_) => TK_SOURCE_TEXT
-    AT => TK_AT
     HASH => TK_HASH
     PREFIX => TK_PREFIX
     AS => TK_AS
-    ARROW => TK_ARROW
+    ARROW(_) => TK_ARROW
     LPAREN => TK_LPAREN
     RPAREN => TK_RPAREN
-    LBRACE => TK_LBRACE
-    RBRACE => TK_RBRACE
+    LBRACE(_) => TK_LBRACE
+    RBRACE(_) => TK_RBRACE
     COLON => TK_COLON
     EQUAL => TK_EQUAL
     TYPE_LT(_) => TK_TYPE_LT
@@ -109,6 +109,7 @@ pub(all) enum TokenKind {
   TK_DECL_TYPE
   TK_INIT_EXPR
   TK_EXPR_REF
+  TK_AT
   TK_ATTR_NAME
   TK_ATTR_ARGS
   TK_KW_VIRTUAL
@@ -126,7 +127,6 @@ pub(all) enum TokenKind {
   TK_DIRECTIVE_HEAD
   TK_DIRECTIVE_TAIL
   TK_SOURCE_TEXT
-  TK_AT
   TK_HASH
   TK_PREFIX
   TK_AS
@@ -159,6 +159,7 @@ pub impl Show for TokenKind with output(self, logger) {
       TK_DECL_TYPE => "DECL_TYPE"
       TK_INIT_EXPR => "INIT_EXPR"
       TK_EXPR_REF => "EXPR_REF"
+      TK_AT => "\"@\""
       TK_ATTR_NAME => "ATTR_NAME"
       TK_ATTR_ARGS => "ATTR_ARGS"
       TK_KW_VIRTUAL => "KW_VIRTUAL"
@@ -176,7 +177,6 @@ pub impl Show for TokenKind with output(self, logger) {
       TK_DIRECTIVE_HEAD => "DIRECTIVE_HEAD"
       TK_DIRECTIVE_TAIL => "DIRECTIVE_TAIL"
       TK_SOURCE_TEXT => "SOURCE_TEXT"
-      TK_AT => "\"@\""
       TK_HASH => "\"#\""
       TK_PREFIX => "PREFIX"
       TK_AS => "\"as\""
@@ -210,6 +210,7 @@ pub impl Debug for TokenKind with to_repr(self) {
     TK_DECL_TYPE => to_repr("DECL_TYPE")
     TK_INIT_EXPR => to_repr("INIT_EXPR")
     TK_EXPR_REF => to_repr("EXPR_REF")
+    TK_AT => to_repr("@")
     TK_ATTR_NAME => to_repr("ATTR_NAME")
     TK_ATTR_ARGS => to_repr("ATTR_ARGS")
     TK_KW_VIRTUAL => to_repr("KW_VIRTUAL")
@@ -227,7 +228,6 @@ pub impl Debug for TokenKind with to_repr(self) {
     TK_DIRECTIVE_HEAD => to_repr("DIRECTIVE_HEAD")
     TK_DIRECTIVE_TAIL => to_repr("DIRECTIVE_TAIL")
     TK_SOURCE_TEXT => to_repr("SOURCE_TEXT")
-    TK_AT => to_repr("@")
     TK_HASH => to_repr("#")
     TK_PREFIX => to_repr("PREFIX")
     TK_AS => to_repr("as")
@@ -394,6 +394,23 @@ priv suberror YYObj__String____ast_WgslExprRef__ {
 }
 
 ///|
+priv suberror YYObj__String___ast_WgslExprRef___Int_ {
+  YYObj__String___ast_WgslExprRef___Int_((String, @ast.WgslExprRef?, Int))
+}
+
+///|
+priv suberror YYObj__String___ast_WgslExprRef___Int__ {
+  YYObj__String___ast_WgslExprRef___Int__((String, @ast.WgslExprRef?, Int?))
+}
+
+///|
+priv suberror YYObj__String___ast_WgslTypeRef___Int__Int_ {
+  YYObj__String___ast_WgslTypeRef___Int__Int_(
+    (String, @ast.WgslTypeRef?, Int, Int)
+  )
+}
+
+///|
 priv suberror YYObj__String____ast_WgslTypeRef___String____ast_WgslExprRef__ {
   YYObj__String____ast_WgslTypeRef___String____ast_WgslExprRef__(
     (String?, @ast.WgslTypeRef?, String?, @ast.WgslExprRef?)
@@ -433,6 +450,7 @@ priv enum YYSymbol {
   T_DECL_TYPE
   T_INIT_EXPR
   T_EXPR_REF
+  T_AT
   T_ATTR_NAME
   T_ATTR_ARGS
   T_KW_VIRTUAL
@@ -450,7 +468,6 @@ priv enum YYSymbol {
   T_DIRECTIVE_HEAD
   T_DIRECTIVE_TAIL
   T_SOURCE_TEXT
-  T_AT
   T_HASH
   T_PREFIX
   T_AS
@@ -531,11 +548,11 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 109|    items ITEM {
-// 110|      let items = $1
-// 111|      items.push($2)
-// 112|      items
-// 113|    }
+// 124|    items ITEM {
+// 125|      let items = $1
+// 126|      items.push($2)
+// 127|      items
+// 128|    }
 
 ///|
 fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -552,7 +569,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 108|    { [] }
+// 123|    { [] }
 
 ///|
 fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -565,7 +582,7 @@ fn yy_action_2(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 117|    target_list semis EOF { $1 }
+// 132|    target_list semis EOF { $1 }
 
 ///|
 fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -579,21 +596,21 @@ fn yy_action_3(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 118|    module_path=IDENT targets=target_list semis EOF {
-// 119|      let out : Array[@common.WgslImportTarget] = []
-// 120|      for target in targets {
-// 121|        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
-// 122|          ""
-// 123|        } else {
-// 124|          "::"
-// 125|        }
-// 126|        out.push(@common.WgslImportTarget::{
-// 127|          raw_path: module_path + sep + target.raw_path,
-// 128|          alias_name: target.alias_name,
-// 129|        })
-// 130|      }
-// 131|      out
-// 132|    }
+// 133|    module_path=IDENT targets=target_list semis EOF {
+// 134|      let out : Array[@common.WgslImportTarget] = []
+// 135|      for target in targets {
+// 136|        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
+// 137|          ""
+// 138|        } else {
+// 139|          "::"
+// 140|        }
+// 141|        out.push(@common.WgslImportTarget::{
+// 142|          raw_path: module_path + sep + target.raw_path,
+// 143|          alias_name: target.alias_name,
+// 144|        })
+// 145|      }
+// 146|      out
+// 147|    }
 
 ///|
 fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -620,7 +637,7 @@ fn yy_action_4(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 137|    semis ";" { () }
+// 152|    semis ";" { () }
 
 ///|
 fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -633,7 +650,7 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 136|    { () }
+// 151|    { () }
 
 ///|
 fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -646,13 +663,13 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 144|    target_list "," target {
-// 145|      let targets = $1
-// 146|      for target in $3 {
-// 147|        targets.push(target)
-// 148|      }
-// 149|      targets
-// 150|    }
+// 159|    target_list "," target {
+// 160|      let targets = $1
+// 161|      for target in $3 {
+// 162|        targets.push(target)
+// 163|      }
+// 164|      targets
+// 165|    }
 
 ///|
 fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -671,9 +688,9 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 151|    target_list "," {
-// 152|      $1
-// 153|    }
+// 166|    target_list "," {
+// 167|      $1
+// 168|    }
 
 ///|
 fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -687,21 +704,21 @@ fn yy_action_8(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 160|    module_path=IDENT "{" targets=target_list "}" {
-// 161|      let out : Array[@common.WgslImportTarget] = []
-// 162|      for target in targets {
-// 163|        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
-// 164|          ""
-// 165|        } else {
-// 166|          "::"
-// 167|        }
-// 168|        out.push(@common.WgslImportTarget::{
-// 169|          raw_path: module_path + sep + target.raw_path,
-// 170|          alias_name: target.alias_name,
-// 171|        })
-// 172|      }
-// 173|      out
-// 174|    }
+// 175|    module_path=IDENT "{" targets=target_list "}" {
+// 176|      let out : Array[@common.WgslImportTarget] = []
+// 177|      for target in targets {
+// 178|        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
+// 179|          ""
+// 180|        } else {
+// 181|          "::"
+// 182|        }
+// 183|        out.push(@common.WgslImportTarget::{
+// 184|          raw_path: module_path + sep + target.raw_path,
+// 185|          alias_name: target.alias_name,
+// 186|        })
+// 187|      }
+// 188|      out
+// 189|    }
 
 ///|
 fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -728,9 +745,9 @@ fn yy_action_9(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 }
 
 // file:///./wgsl_parser.mbty
-// 157|    path=IDENT alias_name=alias {
-// 158|      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
-// 159|    }
+// 172|    path=IDENT alias_name=alias {
+// 173|      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
+// 174|    }
 
 ///|
 fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -745,7 +762,7 @@ fn yy_action_10(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 179|    "as" name=IDENT { name }
+// 194|    "as" name=IDENT { name }
 
 ///|
 fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -759,7 +776,7 @@ fn yy_action_11(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 178|    { "" }
+// 193|    { "" }
 
 ///|
 fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -772,9 +789,9 @@ fn yy_action_12(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 141|    target {
-// 142|      $1
-// 143|    }
+// 156|    target {
+// 157|      $1
+// 158|    }
 
 ///|
 fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -788,24 +805,24 @@ fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 183|    "#" head=DIRECTIVE_HEAD tail=directive_tail EOF {
-// 184|      let (name, text) = head
-// 185|      let kind = match name {
-// 186|        "ifdef" => @ast.WgslDirectiveKind::Ifdef
-// 187|        "ifndef" => @ast.WgslDirectiveKind::Ifndef
-// 188|        "if" => @ast.WgslDirectiveKind::If
-// 189|        "else" => @ast.WgslDirectiveKind::Else
-// 190|        "endif" => @ast.WgslDirectiveKind::Endif
-// 191|        "define_import_path" => @ast.WgslDirectiveKind::DefineImportPath
-// 192|        "define" => @ast.WgslDirectiveKind::Define
-// 193|        "import" => @ast.WgslDirectiveKind::Import
-// 194|        "enable" => @ast.WgslDirectiveKind::Enable
-// 195|        "requires" => @ast.WgslDirectiveKind::Requires
-// 196|        "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
-// 197|        _ => @ast.WgslDirectiveKind::Other(name)
-// 198|      }
-// 199|      @ast.WgslDirective::{ kind, name, tail, text }
-// 200|    }
+// 198|    "#" head=DIRECTIVE_HEAD tail=directive_tail EOF {
+// 199|      let (name, text) = head
+// 200|      let kind = match name {
+// 201|        "ifdef" => @ast.WgslDirectiveKind::Ifdef
+// 202|        "ifndef" => @ast.WgslDirectiveKind::Ifndef
+// 203|        "if" => @ast.WgslDirectiveKind::If
+// 204|        "else" => @ast.WgslDirectiveKind::Else
+// 205|        "endif" => @ast.WgslDirectiveKind::Endif
+// 206|        "define_import_path" => @ast.WgslDirectiveKind::DefineImportPath
+// 207|        "define" => @ast.WgslDirectiveKind::Define
+// 208|        "import" => @ast.WgslDirectiveKind::Import
+// 209|        "enable" => @ast.WgslDirectiveKind::Enable
+// 210|        "requires" => @ast.WgslDirectiveKind::Requires
+// 211|        "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
+// 212|        _ => @ast.WgslDirectiveKind::Other(name)
+// 213|      }
+// 214|      @ast.WgslDirective::{ kind, name, tail, text }
+// 215|    }
 
 ///|
 fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -835,7 +852,7 @@ fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 204|    "#" PREFIX tail=directive_tail EOF { tail }
+// 219|    "#" PREFIX tail=directive_tail EOF { tail }
 
 ///|
 fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -849,18 +866,18 @@ fn yy_action_15(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 213|    attrs=attributes KW_VIRTUAL fn_kw=KW_FN EOF {
-// 214|      @ast.WgslDeclHead::{
-// 215|        kind: @ast.WgslDeclHeadKind::Function,
-// 216|        attributes: attrs,
-// 217|        keyword: Some(fn_kw),
-// 218|        qualifier: "virtual",
-// 219|        qualifier_start: Some($2.start),
-// 220|        qualifier_end: Some($2.end),
-// 221|        fn_keyword: Some(fn_kw),
-// 222|        consumed: 2,
-// 223|      }
-// 224|    }
+// 228|    attrs=attributes KW_VIRTUAL fn_kw=KW_FN EOF {
+// 229|      @ast.WgslDeclHead::{
+// 230|        kind: @ast.WgslDeclHeadKind::Function,
+// 231|        attributes: attrs,
+// 232|        keyword: Some(fn_kw),
+// 233|        qualifier: "virtual",
+// 234|        qualifier_start: Some($2.start),
+// 235|        qualifier_end: Some($2.end),
+// 236|        fn_keyword: Some(fn_kw),
+// 237|        consumed: 2,
+// 238|      }
+// 239|    }
 
 ///|
 fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -885,18 +902,18 @@ fn yy_action_16(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 225|    attrs=attributes KW_OVERRIDE fn_kw=KW_FN EOF {
-// 226|      @ast.WgslDeclHead::{
-// 227|        kind: @ast.WgslDeclHeadKind::Function,
-// 228|        attributes: attrs,
-// 229|        keyword: Some(fn_kw),
-// 230|        qualifier: "override",
-// 231|        qualifier_start: Some($2.start),
-// 232|        qualifier_end: Some($2.end),
-// 233|        fn_keyword: Some(fn_kw),
-// 234|        consumed: 2,
-// 235|      }
-// 236|    }
+// 240|    attrs=attributes KW_OVERRIDE fn_kw=KW_FN EOF {
+// 241|      @ast.WgslDeclHead::{
+// 242|        kind: @ast.WgslDeclHeadKind::Function,
+// 243|        attributes: attrs,
+// 244|        keyword: Some(fn_kw),
+// 245|        qualifier: "override",
+// 246|        qualifier_start: Some($2.start),
+// 247|        qualifier_end: Some($2.end),
+// 248|        fn_keyword: Some(fn_kw),
+// 249|        consumed: 2,
+// 250|      }
+// 251|    }
 
 ///|
 fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -921,18 +938,18 @@ fn yy_action_17(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 249|    attrs=attributes keyword=KW_OVERRIDE EOF {
-// 250|      @ast.WgslDeclHead::{
-// 251|        kind: @ast.WgslDeclHeadKind::Override,
-// 252|        attributes: attrs,
-// 253|        keyword: Some(keyword),
-// 254|        qualifier: "",
-// 255|        qualifier_start: None,
-// 256|        qualifier_end: None,
-// 257|        fn_keyword: None,
-// 258|        consumed: 1,
-// 259|      }
-// 260|    }
+// 264|    attrs=attributes keyword=KW_OVERRIDE EOF {
+// 265|      @ast.WgslDeclHead::{
+// 266|        kind: @ast.WgslDeclHeadKind::Override,
+// 267|        attributes: attrs,
+// 268|        keyword: Some(keyword),
+// 269|        qualifier: "",
+// 270|        qualifier_start: None,
+// 271|        qualifier_end: None,
+// 272|        fn_keyword: None,
+// 273|        consumed: 1,
+// 274|      }
+// 275|    }
 
 ///|
 fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -956,18 +973,18 @@ fn yy_action_18(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 237|    attrs=attributes keyword=KW_FN EOF {
-// 238|      @ast.WgslDeclHead::{
-// 239|        kind: @ast.WgslDeclHeadKind::Function,
-// 240|        attributes: attrs,
-// 241|        keyword: Some(keyword),
-// 242|        qualifier: "",
-// 243|        qualifier_start: None,
-// 244|        qualifier_end: None,
-// 245|        fn_keyword: Some(keyword),
-// 246|        consumed: 1,
-// 247|      }
-// 248|    }
+// 252|    attrs=attributes keyword=KW_FN EOF {
+// 253|      @ast.WgslDeclHead::{
+// 254|        kind: @ast.WgslDeclHeadKind::Function,
+// 255|        attributes: attrs,
+// 256|        keyword: Some(keyword),
+// 257|        qualifier: "",
+// 258|        qualifier_start: None,
+// 259|        qualifier_end: None,
+// 260|        fn_keyword: Some(keyword),
+// 261|        consumed: 1,
+// 262|      }
+// 263|    }
 
 ///|
 fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -991,18 +1008,18 @@ fn yy_action_19(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 261|    attrs=attributes keyword=KW_VAR EOF {
-// 262|      @ast.WgslDeclHead::{
-// 263|        kind: @ast.WgslDeclHeadKind::GlobalVariable,
-// 264|        attributes: attrs,
-// 265|        keyword: Some(keyword),
-// 266|        qualifier: "",
-// 267|        qualifier_start: None,
-// 268|        qualifier_end: None,
-// 269|        fn_keyword: None,
-// 270|        consumed: 1,
-// 271|      }
-// 272|    }
+// 276|    attrs=attributes keyword=KW_VAR EOF {
+// 277|      @ast.WgslDeclHead::{
+// 278|        kind: @ast.WgslDeclHeadKind::GlobalVariable,
+// 279|        attributes: attrs,
+// 280|        keyword: Some(keyword),
+// 281|        qualifier: "",
+// 282|        qualifier_start: None,
+// 283|        qualifier_end: None,
+// 284|        fn_keyword: None,
+// 285|        consumed: 1,
+// 286|      }
+// 287|    }
 
 ///|
 fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1026,18 +1043,18 @@ fn yy_action_20(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 273|    attrs=attributes keyword=KW_STRUCT EOF {
-// 274|      @ast.WgslDeclHead::{
-// 275|        kind: @ast.WgslDeclHeadKind::Struct,
-// 276|        attributes: attrs,
-// 277|        keyword: Some(keyword),
-// 278|        qualifier: "",
-// 279|        qualifier_start: None,
-// 280|        qualifier_end: None,
-// 281|        fn_keyword: None,
-// 282|        consumed: 1,
-// 283|      }
-// 284|    }
+// 288|    attrs=attributes keyword=KW_STRUCT EOF {
+// 289|      @ast.WgslDeclHead::{
+// 290|        kind: @ast.WgslDeclHeadKind::Struct,
+// 291|        attributes: attrs,
+// 292|        keyword: Some(keyword),
+// 293|        qualifier: "",
+// 294|        qualifier_start: None,
+// 295|        qualifier_end: None,
+// 296|        fn_keyword: None,
+// 297|        consumed: 1,
+// 298|      }
+// 299|    }
 
 ///|
 fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1061,18 +1078,18 @@ fn yy_action_21(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 285|    attrs=attributes keyword=KW_CONST EOF {
-// 286|      @ast.WgslDeclHead::{
-// 287|        kind: @ast.WgslDeclHeadKind::Const,
-// 288|        attributes: attrs,
-// 289|        keyword: Some(keyword),
-// 290|        qualifier: "",
-// 291|        qualifier_start: None,
-// 292|        qualifier_end: None,
-// 293|        fn_keyword: None,
-// 294|        consumed: 1,
-// 295|      }
-// 296|    }
+// 300|    attrs=attributes keyword=KW_CONST EOF {
+// 301|      @ast.WgslDeclHead::{
+// 302|        kind: @ast.WgslDeclHeadKind::Const,
+// 303|        attributes: attrs,
+// 304|        keyword: Some(keyword),
+// 305|        qualifier: "",
+// 306|        qualifier_start: None,
+// 307|        qualifier_end: None,
+// 308|        fn_keyword: None,
+// 309|        consumed: 1,
+// 310|      }
+// 311|    }
 
 ///|
 fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1096,18 +1113,18 @@ fn yy_action_22(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 297|    attrs=attributes keyword=KW_CONST_ASSERT EOF {
-// 298|      @ast.WgslDeclHead::{
-// 299|        kind: @ast.WgslDeclHeadKind::ConstAssert,
-// 300|        attributes: attrs,
-// 301|        keyword: Some(keyword),
-// 302|        qualifier: "",
-// 303|        qualifier_start: None,
-// 304|        qualifier_end: None,
-// 305|        fn_keyword: None,
-// 306|        consumed: 1,
-// 307|      }
-// 308|    }
+// 312|    attrs=attributes keyword=KW_CONST_ASSERT EOF {
+// 313|      @ast.WgslDeclHead::{
+// 314|        kind: @ast.WgslDeclHeadKind::ConstAssert,
+// 315|        attributes: attrs,
+// 316|        keyword: Some(keyword),
+// 317|        qualifier: "",
+// 318|        qualifier_start: None,
+// 319|        qualifier_end: None,
+// 320|        fn_keyword: None,
+// 321|        consumed: 1,
+// 322|      }
+// 323|    }
 
 ///|
 fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1131,18 +1148,18 @@ fn yy_action_23(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 309|    attrs=attributes keyword=KW_ALIAS EOF {
-// 310|      @ast.WgslDeclHead::{
-// 311|        kind: @ast.WgslDeclHeadKind::TypeAlias,
-// 312|        attributes: attrs,
-// 313|        keyword: Some(keyword),
-// 314|        qualifier: "",
-// 315|        qualifier_start: None,
-// 316|        qualifier_end: None,
-// 317|        fn_keyword: None,
-// 318|        consumed: 1,
-// 319|      }
-// 320|    }
+// 324|    attrs=attributes keyword=KW_ALIAS EOF {
+// 325|      @ast.WgslDeclHead::{
+// 326|        kind: @ast.WgslDeclHeadKind::TypeAlias,
+// 327|        attributes: attrs,
+// 328|        keyword: Some(keyword),
+// 329|        qualifier: "",
+// 330|        qualifier_start: None,
+// 331|        qualifier_end: None,
+// 332|        fn_keyword: None,
+// 333|        consumed: 1,
+// 334|      }
+// 335|    }
 
 ///|
 fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1166,18 +1183,18 @@ fn yy_action_24(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 321|    attrs=attributes keyword=KW_TYPE EOF {
-// 322|      @ast.WgslDeclHead::{
-// 323|        kind: @ast.WgslDeclHeadKind::TypeAlias,
-// 324|        attributes: attrs,
-// 325|        keyword: Some(keyword),
-// 326|        qualifier: "",
-// 327|        qualifier_start: None,
-// 328|        qualifier_end: None,
-// 329|        fn_keyword: None,
-// 330|        consumed: 1,
-// 331|      }
-// 332|    }
+// 336|    attrs=attributes keyword=KW_TYPE EOF {
+// 337|      @ast.WgslDeclHead::{
+// 338|        kind: @ast.WgslDeclHeadKind::TypeAlias,
+// 339|        attributes: attrs,
+// 340|        keyword: Some(keyword),
+// 341|        qualifier: "",
+// 342|        qualifier_start: None,
+// 343|        qualifier_end: None,
+// 344|        fn_keyword: None,
+// 345|        consumed: 1,
+// 346|      }
+// 347|    }
 
 ///|
 fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1201,18 +1218,18 @@ fn yy_action_25(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 333|    attrs=attributes keyword=KW_ENABLE EOF {
-// 334|      @ast.WgslDeclHead::{
-// 335|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Enable),
-// 336|        attributes: attrs,
-// 337|        keyword: Some(keyword),
-// 338|        qualifier: "",
-// 339|        qualifier_start: None,
-// 340|        qualifier_end: None,
-// 341|        fn_keyword: None,
-// 342|        consumed: 1,
-// 343|      }
-// 344|    }
+// 348|    attrs=attributes keyword=KW_ENABLE EOF {
+// 349|      @ast.WgslDeclHead::{
+// 350|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Enable),
+// 351|        attributes: attrs,
+// 352|        keyword: Some(keyword),
+// 353|        qualifier: "",
+// 354|        qualifier_start: None,
+// 355|        qualifier_end: None,
+// 356|        fn_keyword: None,
+// 357|        consumed: 1,
+// 358|      }
+// 359|    }
 
 ///|
 fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1238,18 +1255,18 @@ fn yy_action_26(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 345|    attrs=attributes keyword=KW_REQUIRES EOF {
-// 346|      @ast.WgslDeclHead::{
-// 347|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Requires),
-// 348|        attributes: attrs,
-// 349|        keyword: Some(keyword),
-// 350|        qualifier: "",
-// 351|        qualifier_start: None,
-// 352|        qualifier_end: None,
-// 353|        fn_keyword: None,
-// 354|        consumed: 1,
-// 355|      }
-// 356|    }
+// 360|    attrs=attributes keyword=KW_REQUIRES EOF {
+// 361|      @ast.WgslDeclHead::{
+// 362|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Requires),
+// 363|        attributes: attrs,
+// 364|        keyword: Some(keyword),
+// 365|        qualifier: "",
+// 366|        qualifier_start: None,
+// 367|        qualifier_end: None,
+// 368|        fn_keyword: None,
+// 369|        consumed: 1,
+// 370|      }
+// 371|    }
 
 ///|
 fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1275,18 +1292,18 @@ fn yy_action_27(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 357|    attrs=attributes keyword=KW_DIAGNOSTIC EOF {
-// 358|      @ast.WgslDeclHead::{
-// 359|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Diagnostic),
-// 360|        attributes: attrs,
-// 361|        keyword: Some(keyword),
-// 362|        qualifier: "",
-// 363|        qualifier_start: None,
-// 364|        qualifier_end: None,
-// 365|        fn_keyword: None,
-// 366|        consumed: 1,
-// 367|      }
-// 368|    }
+// 372|    attrs=attributes keyword=KW_DIAGNOSTIC EOF {
+// 373|      @ast.WgslDeclHead::{
+// 374|        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Diagnostic),
+// 375|        attributes: attrs,
+// 376|        keyword: Some(keyword),
+// 377|        qualifier: "",
+// 378|        qualifier_start: None,
+// 379|        qualifier_end: None,
+// 380|        fn_keyword: None,
+// 381|        consumed: 1,
+// 382|      }
+// 383|    }
 
 ///|
 fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1312,9 +1329,9 @@ fn yy_action_28(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 369|    attrs=attributes EOF {
-// 370|      @ast.WgslDeclHead::raw(attrs)
-// 371|    }
+// 384|    attrs=attributes EOF {
+// 385|      @ast.WgslDeclHead::raw(attrs)
+// 386|    }
 
 ///|
 fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1328,7 +1345,7 @@ fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 375|    value=type_expr EOF { value }
+// 390|    value=type_expr EOF { value }
 
 ///|
 fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1342,7 +1359,7 @@ fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 521|    TYPE_LT args=template_args TYPE_GT EOF { args }
+// 551|    TYPE_LT args=template_args TYPE_GT EOF { args }
 
 ///|
 fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1356,10 +1373,10 @@ fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 528|    args=template_args "," value=type_expr {
-// 529|      args.push(value.text)
-// 530|      args
-// 531|    }
+// 558|    args=template_args "," value=type_expr {
+// 559|      args.push(value.text)
+// 560|      args
+// 561|    }
 
 ///|
 fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1375,9 +1392,9 @@ fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 525|    value=type_expr {
-// 526|      [value.text]
-// 527|    }
+// 555|    value=type_expr {
+// 556|      [value.text]
+// 557|    }
 
 ///|
 fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1391,9 +1408,9 @@ fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 538|    atom=TYPE_ATOM TYPE_LT args=type_ref_args gt=TYPE_GT {
-// 539|      wgsl_type_ref_from_atom(atom, args, gt)
-// 540|    }
+// 568|    atom=TYPE_ATOM TYPE_LT args=type_ref_args gt=TYPE_GT {
+// 569|      wgsl_type_ref_from_atom(atom, args, gt)
+// 570|    }
 
 ///|
 fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1409,10 +1426,10 @@ fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 547|    args=type_ref_args "," value=type_expr {
-// 548|      args.push(value)
-// 549|      args
-// 550|    }
+// 577|    args=type_ref_args "," value=type_expr {
+// 578|      args.push(value)
+// 579|      args
+// 580|    }
 
 ///|
 fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1428,9 +1445,9 @@ fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 544|    value=type_expr {
-// 545|      [value]
-// 546|    }
+// 574|    value=type_expr {
+// 575|      [value]
+// 576|    }
 
 ///|
 fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1444,9 +1461,9 @@ fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 535|    atom=TYPE_ATOM {
-// 536|      wgsl_type_ref_from_atom(atom, [], atom.4)
-// 537|    }
+// 565|    atom=TYPE_ATOM {
+// 566|      wgsl_type_ref_from_atom(atom, [], atom.4)
+// 567|    }
 
 ///|
 fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1460,7 +1477,7 @@ fn yy_action_37(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 379|    "(" ")" EOF { [] }
+// 394|    "(" ")" EOF { [] }
 
 ///|
 fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1473,7 +1490,7 @@ fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 380|    "(" args=function_arg_list optional_comma ")" EOF { args }
+// 395|    "(" args=function_arg_list optional_comma ")" EOF { args }
 
 ///|
 fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1487,30 +1504,36 @@ fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 502|    attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
-// 503|      let (ty_text, ty_ref) = ty
-// 504|      @ast.WgslFunctionArgument::{
-// 505|        attributes: attrs,
-// 506|        name: name.name,
-// 507|        name_start: name.start,
-// 508|        name_end: name.end,
-// 509|        ty: ty_text,
-// 510|        ty_ref,
-// 511|      }
-// 512|    }
+// 529|    attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
+// 530|      let (ty_text, ty_ref, _, ty_end) = ty
+// 531|      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+// 532|      @ast.WgslFunctionArgument::{
+// 533|        attributes: attrs,
+// 534|        name: name.name,
+// 535|        start,
+// 536|        end: ty_end,
+// 537|        name_start: name.start,
+// 538|        name_end: name.end,
+// 539|        ty: ty_text,
+// 540|        ty_ref,
+// 541|      }
+// 542|    }
 
 ///|
 fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(name)
-  guard _args[3].0 is YYObj__String___ast_WgslTypeRef__(ty)
+  guard _args[3].0 is YYObj__String___ast_WgslTypeRef___Int__Int_(ty)
   YYObj__ast_WgslFunctionArgument(
     {
       ()
-      let (ty_text, ty_ref) = ty
+      let (ty_text, ty_ref, _, ty_end) = ty
+      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
       @ast.WgslFunctionArgument::{
         attributes: attrs,
         name: name.name,
+        start,
+        end: ty_end,
         name_start: name.start,
         name_end: name.end,
         ty: ty_text,
@@ -1521,10 +1544,10 @@ fn yy_action_40(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 495|    args=function_arg_list "," value=function_arg {
-// 496|      args.push(value)
-// 497|      args
-// 498|    }
+// 522|    args=function_arg_list "," value=function_arg {
+// 523|      args.push(value)
+// 524|      args
+// 525|    }
 
 ///|
 fn yy_action_41(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1540,7 +1563,7 @@ fn yy_action_41(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 517|    "," { () }
+// 547|    "," { () }
 
 ///|
 fn yy_action_42(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1553,7 +1576,7 @@ fn yy_action_42(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 516|    { () }
+// 546|    { () }
 
 ///|
 fn yy_action_43(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1566,9 +1589,9 @@ fn yy_action_43(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 492|    value=function_arg {
-// 493|      [value]
-// 494|    }
+// 519|    value=function_arg {
+// 520|      [value]
+// 521|    }
 
 ///|
 fn yy_action_44(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1582,26 +1605,39 @@ fn yy_action_44(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 384|    "->" attrs=attributes ty=ARG_TYPE EOF {
-// 385|      let (ty_text, ty_ref) = ty
-// 386|      Some(@ast.WgslFunctionResult::{ attributes: attrs, ty: ty_text, ty_ref })
-// 387|    }
+// 399|    arrow=ARROW attrs=attributes ty=ARG_TYPE EOF {
+// 400|      let (ty_text, ty_ref, _, ty_end) = ty
+// 401|      Some(@ast.WgslFunctionResult::{
+// 402|        attributes: attrs,
+// 403|        start: arrow,
+// 404|        end: ty_end,
+// 405|        ty: ty_text,
+// 406|        ty_ref,
+// 407|      })
+// 408|    }
 
 ///|
 fn yy_action_45(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
+  guard _args[0].0 is YYObj_Int(arrow)
   guard _args[1].0 is YYObj_Array__ast_WgslAttribute_(attrs)
-  guard _args[2].0 is YYObj__String___ast_WgslTypeRef__(ty)
+  guard _args[2].0 is YYObj__String___ast_WgslTypeRef___Int__Int_(ty)
   YYObj__ast_WgslFunctionResult_(
     {
       ()
-      let (ty_text, ty_ref) = ty
-      Some(@ast.WgslFunctionResult::{ attributes: attrs, ty: ty_text, ty_ref })
+      let (ty_text, ty_ref, _, ty_end) = ty
+      Some(@ast.WgslFunctionResult::{
+        attributes: attrs,
+        start: arrow,
+        end: ty_end,
+        ty: ty_text,
+        ty_ref,
+      })
     },
   )
 }
 
 // file:///./wgsl_parser.mbty
-// 391|    "{" "}" EOF { [] }
+// 412|    "{" "}" EOF { [] }
 
 ///|
 fn yy_action_46(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1614,9 +1650,9 @@ fn yy_action_46(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 392|    "{" members=struct_member_list optional_member_separator "}" EOF {
-// 393|      members
-// 394|    }
+// 413|    "{" members=struct_member_list optional_member_separator "}" EOF {
+// 414|      members
+// 415|    }
 
 ///|
 fn yy_action_47(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1651,76 +1687,111 @@ fn yy_action_48(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 96|    "@" name=ATTR_NAME args=attribute_args {
-// 97|      let (arguments, arguments_ref) = args
-// 98|      @ast.WgslAttribute::{ name, arguments, arguments_ref }
-// 99|    }
+//  96|    at=AT name=ATTR_NAME args=attribute_args {
+//  97|      let (arguments, arguments_ref, args_end) = args
+//  98|      let end = match args_end {
+//  99|        Some(value) => value
+// 100|        None => name.end
+// 101|      }
+// 102|      @ast.WgslAttribute::{
+// 103|        name: name.name,
+// 104|        start: at,
+// 105|        end,
+// 106|        name_start: name.start,
+// 107|        name_end: name.end,
+// 108|        arguments,
+// 109|        arguments_ref,
+// 110|      }
+// 111|    }
 
 ///|
 fn yy_action_49(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_String(name)
-  guard _args[2].0 is YYObj__String___ast_WgslExprRef__(args)
+  guard _args[0].0 is YYObj_Int(at)
+  guard _args[1].0 is YYObj__ast_WgslIdent(name)
+  guard _args[2].0 is YYObj__String___ast_WgslExprRef___Int__(args)
   YYObj__ast_WgslAttribute(
     {
       ()
-      let (arguments, arguments_ref) = args
-      @ast.WgslAttribute::{ name, arguments, arguments_ref }
+      let (arguments, arguments_ref, args_end) = args
+      let end = match args_end {
+        Some(value) => value
+        None => name.end
+      }
+      @ast.WgslAttribute::{
+        name: name.name,
+        start: at,
+        end,
+        name_start: name.start,
+        name_end: name.end,
+        arguments,
+        arguments_ref,
+      }
     },
   )
 }
 
 // file:///./wgsl_parser.mbty
-// 104|    ATTR_ARGS { $1 }
+// 116|    ATTR_ARGS {
+// 117|      let (arguments, arguments_ref, end) = $1
+// 118|      (arguments, arguments_ref, Some(end))
+// 119|    }
 
 ///|
 fn yy_action_50(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__String___ast_WgslExprRef__(_dollar1)
-  YYObj__String___ast_WgslExprRef__(
+  guard _args[0].0 is YYObj__String___ast_WgslExprRef___Int_(_dollar1)
+  YYObj__String___ast_WgslExprRef___Int__(
     {
       ()
-      _dollar1
+      let (arguments, arguments_ref, end) = _dollar1
+      (arguments, arguments_ref, Some(end))
     },
   )
 }
 
 // file:///./wgsl_parser.mbty
-// 103|    { ("", None) }
+// 115|    { ("", None, None) }
 
 ///|
 fn yy_action_51(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  YYObj__String___ast_WgslExprRef__(
+  YYObj__String___ast_WgslExprRef___Int__(
     {
       ()
-      ("", None)
+      ("", None, None)
     },
   )
 }
 
 // file:///./wgsl_parser.mbty
-// 408|    attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
-// 409|      let (ty_text, ty_ref) = ty
-// 410|      @ast.WgslStructMember::{
-// 411|        attributes: attrs,
-// 412|        name: name.name,
-// 413|        name_start: name.start,
-// 414|        name_end: name.end,
-// 415|        ty: ty_text,
-// 416|        ty_ref,
-// 417|      }
-// 418|    }
+// 429|    attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
+// 430|      let (ty_text, ty_ref, _, ty_end) = ty
+// 431|      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+// 432|      @ast.WgslStructMember::{
+// 433|        attributes: attrs,
+// 434|        name: name.name,
+// 435|        start,
+// 436|        end: ty_end,
+// 437|        name_start: name.start,
+// 438|        name_end: name.end,
+// 439|        ty: ty_text,
+// 440|        ty_ref,
+// 441|      }
+// 442|    }
 
 ///|
 fn yy_action_52(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj_Array__ast_WgslAttribute_(attrs)
   guard _args[1].0 is YYObj__ast_WgslIdent(name)
-  guard _args[3].0 is YYObj__String___ast_WgslTypeRef__(ty)
+  guard _args[3].0 is YYObj__String___ast_WgslTypeRef___Int__Int_(ty)
   YYObj__ast_WgslStructMember(
     {
       ()
-      let (ty_text, ty_ref) = ty
+      let (ty_text, ty_ref, _, ty_end) = ty
+      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
       @ast.WgslStructMember::{
         attributes: attrs,
         name: name.name,
+        start,
+        end: ty_end,
         name_start: name.start,
         name_end: name.end,
         ty: ty_text,
@@ -1731,10 +1802,10 @@ fn yy_action_52(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 401|    members=struct_member_list member_separator value=struct_member {
-// 402|      members.push(value)
-// 403|      members
-// 404|    }
+// 422|    members=struct_member_list member_separator value=struct_member {
+// 423|      members.push(value)
+// 424|      members
+// 425|    }
 
 ///|
 fn yy_action_53(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1750,7 +1821,7 @@ fn yy_action_53(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 488|    member_separator { () }
+// 515|    member_separator { () }
 
 ///|
 fn yy_action_54(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1763,7 +1834,7 @@ fn yy_action_54(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 482|    "," { () }
+// 509|    "," { () }
 
 ///|
 fn yy_action_55(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1776,7 +1847,7 @@ fn yy_action_55(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 483|    ";" { () }
+// 510|    ";" { () }
 
 ///|
 fn yy_action_56(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1789,7 +1860,7 @@ fn yy_action_56(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 487|    { () }
+// 514|    { () }
 
 ///|
 fn yy_action_57(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1802,9 +1873,9 @@ fn yy_action_57(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 398|    value=struct_member {
-// 399|      [value]
-// 400|    }
+// 419|    value=struct_member {
+// 420|      [value]
+// 421|    }
 
 ///|
 fn yy_action_58(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1831,7 +1902,7 @@ fn yy_action_59(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 422|    EOF { (None, None, None, None) }
+// 446|    EOF { (None, None, None, None) }
 
 ///|
 fn yy_action_60(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1844,20 +1915,20 @@ fn yy_action_60(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 423|    ":" ty=DECL_TYPE init=initializer_opt EOF {
-// 424|      let (ty_text, ty_ref) = ty
-// 425|      let (init_text, init_ref) = init
-// 426|      (Some(ty_text), ty_ref, init_text, init_ref)
-// 427|    }
+// 447|    ":" ty=DECL_TYPE init=initializer_opt EOF {
+// 448|      let (ty_text, ty_ref, _, _) = ty
+// 449|      let (init_text, init_ref) = init
+// 450|      (Some(ty_text), ty_ref, init_text, init_ref)
+// 451|    }
 
 ///|
 fn yy_action_61(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj__String___ast_WgslTypeRef__(ty)
+  guard _args[1].0 is YYObj__String___ast_WgslTypeRef___Int__Int_(ty)
   guard _args[2].0 is YYObj__String____ast_WgslExprRef__(init)
   YYObj__String____ast_WgslTypeRef___String____ast_WgslExprRef__(
     {
       ()
-      let (ty_text, ty_ref) = ty
+      let (ty_text, ty_ref, _, _) = ty
       let (init_text, init_ref) = init
       (Some(ty_text), ty_ref, init_text, init_ref)
     },
@@ -1865,7 +1936,7 @@ fn yy_action_61(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 471|    initializer { $1 }
+// 498|    initializer { $1 }
 
 ///|
 fn yy_action_62(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1879,7 +1950,7 @@ fn yy_action_62(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 470|    { (None, None) }
+// 497|    { (None, None) }
 
 ///|
 fn yy_action_63(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1892,10 +1963,10 @@ fn yy_action_63(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 428|    init=initializer EOF {
-// 429|      let (init_text, init_ref) = init
-// 430|      (None, None, init_text, init_ref)
-// 431|    }
+// 452|    init=initializer EOF {
+// 453|      let (init_text, init_ref) = init
+// 454|      (None, None, init_text, init_ref)
+// 455|    }
 
 ///|
 fn yy_action_64(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1910,10 +1981,10 @@ fn yy_action_64(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 475|    "=" expr=INIT_EXPR {
-// 476|      let (text, expr_ref) = expr
-// 477|      (Some(text), expr_ref)
-// 478|    }
+// 502|    "=" expr=INIT_EXPR {
+// 503|      let (text, expr_ref) = expr
+// 504|      (Some(text), expr_ref)
+// 505|    }
 
 ///|
 fn yy_action_65(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1928,28 +1999,32 @@ fn yy_action_65(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 435|    "=" ty=DECL_TYPE EOF { ty }
+// 459|    "=" ty=DECL_TYPE EOF {
+// 460|      let (ty_text, ty_ref, _, _) = ty
+// 461|      (ty_text, ty_ref)
+// 462|    }
 
 ///|
 fn yy_action_66(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj__String___ast_WgslTypeRef__(ty)
+  guard _args[1].0 is YYObj__String___ast_WgslTypeRef___Int__Int_(ty)
   YYObj__String___ast_WgslTypeRef__(
     {
       ()
-      ty
+      let (ty_text, ty_ref, _, _) = ty
+      (ty_text, ty_ref)
     },
   )
 }
 
 // file:///./wgsl_parser.mbty
-// 439|    text=SOURCE_TEXT keyword=KW_ENABLE tail=directive_tail EOF {
-// 440|      @ast.WgslDirective::{
-// 441|        kind: @ast.WgslDirectiveKind::Enable,
-// 442|        name: keyword.name,
-// 443|        tail,
-// 444|        text,
-// 445|      }
-// 446|    }
+// 466|    text=SOURCE_TEXT keyword=KW_ENABLE tail=directive_tail EOF {
+// 467|      @ast.WgslDirective::{
+// 468|        kind: @ast.WgslDirectiveKind::Enable,
+// 469|        name: keyword.name,
+// 470|        tail,
+// 471|        text,
+// 472|      }
+// 473|    }
 
 ///|
 fn yy_action_67(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1970,14 +2045,14 @@ fn yy_action_67(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 447|    text=SOURCE_TEXT keyword=KW_REQUIRES tail=directive_tail EOF {
-// 448|      @ast.WgslDirective::{
-// 449|        kind: @ast.WgslDirectiveKind::Requires,
-// 450|        name: keyword.name,
-// 451|        tail,
-// 452|        text,
-// 453|      }
-// 454|    }
+// 474|    text=SOURCE_TEXT keyword=KW_REQUIRES tail=directive_tail EOF {
+// 475|      @ast.WgslDirective::{
+// 476|        kind: @ast.WgslDirectiveKind::Requires,
+// 477|        name: keyword.name,
+// 478|        tail,
+// 479|        text,
+// 480|      }
+// 481|    }
 
 ///|
 fn yy_action_68(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1998,7 +2073,7 @@ fn yy_action_68(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 209|    DIRECTIVE_TAIL { $1 }
+// 224|    DIRECTIVE_TAIL { $1 }
 
 ///|
 fn yy_action_69(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -2012,14 +2087,14 @@ fn yy_action_69(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 455|    text=SOURCE_TEXT keyword=KW_DIAGNOSTIC tail=directive_tail EOF {
-// 456|      @ast.WgslDirective::{
-// 457|        kind: @ast.WgslDirectiveKind::Diagnostic,
-// 458|        name: keyword.name,
-// 459|        tail,
-// 460|        text,
-// 461|      }
-// 462|    }
+// 482|    text=SOURCE_TEXT keyword=KW_DIAGNOSTIC tail=directive_tail EOF {
+// 483|      @ast.WgslDirective::{
+// 484|        kind: @ast.WgslDirectiveKind::Diagnostic,
+// 485|        name: keyword.name,
+// 486|        tail,
+// 487|        text,
+// 488|      }
+// 489|    }
 
 ///|
 fn yy_action_70(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -2040,7 +2115,7 @@ fn yy_action_70(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 208|    { "" }
+// 223|    { "" }
 
 ///|
 fn yy_action_71(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -2053,7 +2128,7 @@ fn yy_action_71(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 466|    EXPR_REF EOF { $1 }
+// 493|    EXPR_REF EOF { $1 }
 
 ///|
 fn yy_action_72(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -2067,17 +2142,19 @@ fn yy_action_72(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 72|    "{" statements "}" EOF {
-// 73|      @ast.WgslBlock::{ statements: $2 }
+// 72|    open=LBRACE statements close=RBRACE EOF {
+// 73|      @ast.WgslBlock::{ start: open, end: close + 1, statements: $2 }
 // 74|    }
 
 ///|
 fn yy_action_73(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
+  guard _args[0].0 is YYObj_Int(open)
+  guard _args[2].0 is YYObj_Int(close)
   guard _args[1].0 is YYObj_Array__ast_WgslStatement_(_dollar2)
   YYObj__ast_WgslBlock(
     {
       ()
-      @ast.WgslBlock::{ statements: _dollar2 }
+      @ast.WgslBlock::{ start: open, end: close + 1, statements: _dollar2 }
     },
   )
 }
@@ -2129,15 +2206,19 @@ fn yy_input(
     TYPE_ATOM(data) =>
       (T_TYPE_ATOM, YYObj__String__String__Int__Int__Int_(data))
     ARG_NAME(data) => (T_ARG_NAME, YYObj__ast_WgslIdent(data))
-    ARG_TYPE(data) => (T_ARG_TYPE, YYObj__String___ast_WgslTypeRef__(data))
+    ARG_TYPE(data) =>
+      (T_ARG_TYPE, YYObj__String___ast_WgslTypeRef___Int__Int_(data))
     MEMBER_NAME(data) => (T_MEMBER_NAME, YYObj__ast_WgslIdent(data))
     MEMBER_TYPE(data) =>
-      (T_MEMBER_TYPE, YYObj__String___ast_WgslTypeRef__(data))
-    DECL_TYPE(data) => (T_DECL_TYPE, YYObj__String___ast_WgslTypeRef__(data))
+      (T_MEMBER_TYPE, YYObj__String___ast_WgslTypeRef___Int__Int_(data))
+    DECL_TYPE(data) =>
+      (T_DECL_TYPE, YYObj__String___ast_WgslTypeRef___Int__Int_(data))
     INIT_EXPR(data) => (T_INIT_EXPR, YYObj__String___ast_WgslExprRef__(data))
     EXPR_REF(data) => (T_EXPR_REF, YYObj__ast_WgslExprRef(data))
-    ATTR_NAME(data) => (T_ATTR_NAME, YYObj_String(data))
-    ATTR_ARGS(data) => (T_ATTR_ARGS, YYObj__String___ast_WgslExprRef__(data))
+    AT(data) => (T_AT, YYObj_Int(data))
+    ATTR_NAME(data) => (T_ATTR_NAME, YYObj__ast_WgslIdent(data))
+    ATTR_ARGS(data) =>
+      (T_ATTR_ARGS, YYObj__String___ast_WgslExprRef___Int_(data))
     KW_VIRTUAL(data) => (T_KW_VIRTUAL, YYObj__ast_WgslIdent(data))
     KW_OVERRIDE(data) => (T_KW_OVERRIDE, YYObj__ast_WgslIdent(data))
     KW_FN(data) => (T_KW_FN, YYObj__ast_WgslIdent(data))
@@ -2153,15 +2234,14 @@ fn yy_input(
     DIRECTIVE_HEAD(data) => (T_DIRECTIVE_HEAD, YYObj__String__String_(data))
     DIRECTIVE_TAIL(data) => (T_DIRECTIVE_TAIL, YYObj_String(data))
     SOURCE_TEXT(data) => (T_SOURCE_TEXT, YYObj_String(data))
-    AT => (T_AT, YYObj_Void)
     HASH => (T_HASH, YYObj_Void)
     PREFIX => (T_PREFIX, YYObj_Void)
     AS => (T_AS, YYObj_Void)
-    ARROW => (T_ARROW, YYObj_Void)
+    ARROW(data) => (T_ARROW, YYObj_Int(data))
     LPAREN => (T_LPAREN, YYObj_Void)
     RPAREN => (T_RPAREN, YYObj_Void)
-    LBRACE => (T_LBRACE, YYObj_Void)
-    RBRACE => (T_RBRACE, YYObj_Void)
+    LBRACE(data) => (T_LBRACE, YYObj_Int(data))
+    RBRACE(data) => (T_RBRACE, YYObj_Int(data))
     COLON => (T_COLON, YYObj_Void)
     EQUAL => (T_EQUAL, YYObj_Void)
     TYPE_LT(data) => (T_TYPE_LT, YYObj_Int(data))
@@ -2718,7 +2798,7 @@ fn yy_state_53(_lookahead : YYSymbol) -> YYDecision {
   ReduceNoLookahead(4, NT_struct_member, yy_action_52)
 }
 
-// [6, attribute → AT • ATTR_NAME attribute_args, ARG_NAME / ARG_TYPE / MEMBER_NAME / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
+// [6, attribute → AT • ATTR_NAME attribute_args, ARG_NAME / ARG_TYPE / MEMBER_NAME / AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
 
 ///|
 fn yy_state_54(_lookahead : YYSymbol) -> YYDecision {
@@ -2728,9 +2808,9 @@ fn yy_state_54(_lookahead : YYSymbol) -> YYDecision {
   }
 }
 
-// [6, attribute → AT ATTR_NAME • attribute_args, ARG_NAME / ARG_TYPE / MEMBER_NAME / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
-// [7, attribute_args → •, ARG_NAME / ARG_TYPE / MEMBER_NAME / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
-// [8, attribute_args → • ATTR_ARGS, ARG_NAME / ARG_TYPE / MEMBER_NAME / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
+// [6, attribute → AT ATTR_NAME • attribute_args, ARG_NAME / ARG_TYPE / MEMBER_NAME / AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
+// [7, attribute_args → •, ARG_NAME / ARG_TYPE / MEMBER_NAME / AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
+// [8, attribute_args → • ATTR_ARGS, ARG_NAME / ARG_TYPE / MEMBER_NAME / AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
 
 ///|
 fn yy_state_55(_lookahead : YYSymbol) -> YYDecision {
@@ -2740,6 +2820,7 @@ fn yy_state_55(_lookahead : YYSymbol) -> YYDecision {
     T_ARG_NAME
     | T_ARG_TYPE
     | T_MEMBER_NAME
+    | T_AT
     | T_KW_VIRTUAL
     | T_KW_OVERRIDE
     | T_KW_FN
@@ -2752,27 +2833,26 @@ fn yy_state_55(_lookahead : YYSymbol) -> YYDecision {
     | T_KW_ENABLE
     | T_KW_REQUIRES
     | T_KW_DIAGNOSTIC
-    | T_AT
     | T_EOF => Reduce(0, NT_attribute_args, yy_action_51)
     _ => Error
   }
 }
 
-// [8, attribute_args → ATTR_ARGS •, ARG_NAME / ARG_TYPE / MEMBER_NAME / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
+// [8, attribute_args → ATTR_ARGS •, ARG_NAME / ARG_TYPE / MEMBER_NAME / AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
 
 ///|
 fn yy_state_56(_lookahead : YYSymbol) -> YYDecision {
   ReduceNoLookahead(1, NT_attribute_args, yy_action_50)
 }
 
-// [6, attribute → AT ATTR_NAME attribute_args •, ARG_NAME / ARG_TYPE / MEMBER_NAME / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
+// [6, attribute → AT ATTR_NAME attribute_args •, ARG_NAME / ARG_TYPE / MEMBER_NAME / AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
 
 ///|
 fn yy_state_57(_lookahead : YYSymbol) -> YYDecision {
   ReduceNoLookahead(3, NT_attribute, yy_action_49)
 }
 
-// [5, attributes → attributes attribute •, ARG_NAME / ARG_TYPE / MEMBER_NAME / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
+// [5, attributes → attributes attribute •, ARG_NAME / ARG_TYPE / MEMBER_NAME / AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
 
 ///|
 fn yy_state_58(_lookahead : YYSymbol) -> YYDecision {
@@ -3261,8 +3341,8 @@ fn yy_state_105(_lookahead : YYSymbol) -> YYDecision {
   ReduceNoLookahead(2, NT_type_ref, yy_action_30)
 }
 
-// [4, attributes → •, KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
-// [5, attributes → • attributes attribute, KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
+// [4, attributes → •, AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
+// [5, attributes → • attributes attribute, AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
 // [26, decl_head → • attributes KW_VIRTUAL KW_FN EOF, $]
 // [27, decl_head → • attributes KW_OVERRIDE KW_FN EOF, $]
 // [28, decl_head → • attributes KW_FN EOF, $]
@@ -3284,7 +3364,8 @@ fn yy_state_106(_lookahead : YYSymbol) -> YYDecision {
   match _lookahead {
     NT_decl_head => Shift(yy_state_107)
     NT_attributes => Shift(yy_state_108)
-    T_KW_VIRTUAL
+    T_AT
+    | T_KW_VIRTUAL
     | T_KW_OVERRIDE
     | T_KW_FN
     | T_KW_VAR
@@ -3296,7 +3377,6 @@ fn yy_state_106(_lookahead : YYSymbol) -> YYDecision {
     | T_KW_ENABLE
     | T_KW_REQUIRES
     | T_KW_DIAGNOSTIC
-    | T_AT
     | T_EOF => Reduce(0, NT_attributes, yy_action_59)
     _ => Error
   }
@@ -3309,8 +3389,8 @@ fn yy_state_107(_lookahead : YYSymbol) -> YYDecision {
   Accept
 }
 
-// [5, attributes → attributes • attribute, KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
-// [6, attribute → • AT ATTR_NAME attribute_args, KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / AT / EOF]
+// [5, attributes → attributes • attribute, AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
+// [6, attribute → • AT ATTR_NAME attribute_args, AT / KW_VIRTUAL / KW_OVERRIDE / KW_FN / KW_VAR / KW_STRUCT / KW_CONST / KW_CONST_ASSERT / KW_ALIAS / KW_TYPE / KW_ENABLE / KW_REQUIRES / KW_DIAGNOSTIC / EOF]
 // [26, decl_head → attributes • KW_VIRTUAL KW_FN EOF, $]
 // [27, decl_head → attributes • KW_OVERRIDE KW_FN EOF, $]
 // [28, decl_head → attributes • KW_FN EOF, $]
@@ -4124,6 +4204,7 @@ fn error(
         (T_DECL_TYPE, TK_DECL_TYPE),
         (T_INIT_EXPR, TK_INIT_EXPR),
         (T_EXPR_REF, TK_EXPR_REF),
+        (T_AT, TK_AT),
         (T_ATTR_NAME, TK_ATTR_NAME),
         (T_ATTR_ARGS, TK_ATTR_ARGS),
         (T_KW_VIRTUAL, TK_KW_VIRTUAL),
@@ -4141,7 +4222,6 @@ fn error(
         (T_DIRECTIVE_HEAD, TK_DIRECTIVE_HEAD),
         (T_DIRECTIVE_TAIL, TK_DIRECTIVE_TAIL),
         (T_SOURCE_TEXT, TK_SOURCE_TEXT),
-        (T_AT, TK_AT),
         (T_HASH, TK_HASH),
         (T_PREFIX, TK_PREFIX),
         (T_AS, TK_AS),

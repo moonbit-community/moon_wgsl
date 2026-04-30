@@ -61,6 +61,10 @@ pub(all) struct WgslExprRef {
 ///|
 pub(all) struct WgslAttribute {
   name : String
+  start : Int
+  end : Int
+  name_start : Int
+  name_end : Int
   arguments : String
   arguments_ref : WgslExprRef?
 } derive(Debug)
@@ -78,6 +82,8 @@ pub(all) struct WgslTypeRef {
 pub(all) struct WgslFunctionArgument {
   attributes : Array[WgslAttribute]
   name : String
+  start : Int
+  end : Int
   name_start : Int
   name_end : Int
   ty : String
@@ -87,6 +93,8 @@ pub(all) struct WgslFunctionArgument {
 ///|
 pub(all) struct WgslFunctionResult {
   attributes : Array[WgslAttribute]
+  start : Int
+  end : Int
   ty : String
   ty_ref : WgslTypeRef?
 } derive(Debug)
@@ -102,6 +110,8 @@ pub(all) struct WgslStatement {
 
 ///|
 pub(all) struct WgslBlock {
+  start : Int
+  end : Int
   statements : Array[WgslStatement]
 } derive(Debug)
 
@@ -123,6 +133,8 @@ pub(all) struct WgslFunction {
 pub(all) struct WgslStructMember {
   attributes : Array[WgslAttribute]
   name : String
+  start : Int
+  end : Int
   name_start : Int
   name_end : Int
   ty : String

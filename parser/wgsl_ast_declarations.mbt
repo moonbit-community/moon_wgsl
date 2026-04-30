@@ -63,7 +63,11 @@ fn WgslDeclParser::tokenize_struct_members(
   fragment : WgslDelimitedTokenView,
 ) -> Array[(@generated.Token, Int, Int)] raise WgslStructMembersTokenizeError {
   let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::LBRACE, fragment.open_start, fragment.open_start + 1),
+    (
+      @generated.Token::LBRACE(fragment.open_start),
+      fragment.open_start,
+      fragment.open_start + 1,
+    ),
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
@@ -103,7 +107,12 @@ fn WgslDeclParser::tokenize_struct_members(
     tokens.push(
       (
         @generated.Token::MEMBER_TYPE(
-          (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+          (
+            ty_fragment.text,
+            parse_wgsl_type_ref_fragment(ty_fragment),
+            ty_fragment.start,
+            ty_fragment.end,
+          ),
         ),
         ty_fragment.start,
         ty_fragment.end,
@@ -116,7 +125,11 @@ fn WgslDeclParser::tokenize_struct_members(
     }
   }
   tokens.push(
-    (@generated.Token::RBRACE, fragment.close_start, fragment.close_start + 1),
+    (
+      @generated.Token::RBRACE(fragment.close_start),
+      fragment.close_start,
+      fragment.close_start + 1,
+    ),
   )
   tokens.push(
     (@generated.Token::EOF, fragment.close_start + 1, fragment.close_start + 1),
@@ -190,7 +203,12 @@ fn WgslDeclParser::parse_typed_initializer_tail(
         tokens.push(
           (
             @generated.Token::DECL_TYPE(
-              (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+              (
+                ty_fragment.text,
+                parse_wgsl_type_ref_fragment(ty_fragment),
+                ty_fragment.start,
+                ty_fragment.end,
+              ),
             ),
             ty_fragment.start,
             ty_fragment.end,
@@ -302,7 +320,12 @@ fn WgslDeclParser::parse_type_alias_tail(
   tokens.push(
     (
       @generated.Token::DECL_TYPE(
-        (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+        (
+          ty_fragment.text,
+          parse_wgsl_type_ref_fragment(ty_fragment),
+          ty_fragment.start,
+          ty_fragment.end,
+        ),
       ),
       ty_fragment.start,
       ty_fragment.end,

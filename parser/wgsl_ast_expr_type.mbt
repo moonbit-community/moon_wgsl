@@ -263,10 +263,14 @@ fn WgslDeclParser::push_attribute_tokens(
     match self.view() {
       [Token::Other(64, at_pos), Token::Identifier(name, name_pos), .. rest] => {
         self.update_view(rest)
-        tokens.push((@generated.Token::AT, at_pos, at_pos + 1))
+        tokens.push((@generated.Token::AT(at_pos), at_pos, at_pos + 1))
         tokens.push(
           (
-            @generated.Token::ATTR_NAME(name),
+            @generated.Token::ATTR_NAME(WgslIdent::{
+              name,
+              start: name_pos,
+              end: name_pos + name.length(),
+            }),
             name_pos,
             name_pos + name.length(),
           ),
@@ -283,6 +287,7 @@ fn WgslDeclParser::push_attribute_tokens(
                     (
                       arguments,
                       parse_wgsl_expr_ref_text(arguments, argument_start),
+                      arguments_fragment.close_start + 1,
                     ),
                   ),
                   arguments_fragment.open_start,

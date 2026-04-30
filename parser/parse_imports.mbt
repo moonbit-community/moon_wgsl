@@ -71,9 +71,19 @@ fn tokenize_wgsl_import_targets(
           end_,
         )
       Other(123, _) =>
-        push_generated_import_token(out, @generated.Token::LBRACE, start, end_)
+        push_generated_import_token(
+          out,
+          @generated.Token::LBRACE(start),
+          start,
+          end_,
+        )
       Other(125, _) =>
-        push_generated_import_token(out, @generated.Token::RBRACE, start, end_)
+        push_generated_import_token(
+          out,
+          @generated.Token::RBRACE(start),
+          start,
+          end_,
+        )
       Other(44, _) =>
         push_generated_import_token(out, @generated.Token::COMMA, start, end_)
       Other(59, _) =>

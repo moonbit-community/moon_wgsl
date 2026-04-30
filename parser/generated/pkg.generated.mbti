@@ -51,14 +51,15 @@ pub(all) enum Token {
   IDENT(String)
   TYPE_ATOM((String, String, Int, Int, Int))
   ARG_NAME(@ast.WgslIdent)
-  ARG_TYPE((String, @ast.WgslTypeRef?))
+  ARG_TYPE((String, @ast.WgslTypeRef?, Int, Int))
   MEMBER_NAME(@ast.WgslIdent)
-  MEMBER_TYPE((String, @ast.WgslTypeRef?))
-  DECL_TYPE((String, @ast.WgslTypeRef?))
+  MEMBER_TYPE((String, @ast.WgslTypeRef?, Int, Int))
+  DECL_TYPE((String, @ast.WgslTypeRef?, Int, Int))
   INIT_EXPR((String, @ast.WgslExprRef?))
   EXPR_REF(@ast.WgslExprRef)
-  ATTR_NAME(String)
-  ATTR_ARGS((String, @ast.WgslExprRef?))
+  AT(Int)
+  ATTR_NAME(@ast.WgslIdent)
+  ATTR_ARGS((String, @ast.WgslExprRef?, Int))
   KW_VIRTUAL(@ast.WgslIdent)
   KW_OVERRIDE(@ast.WgslIdent)
   KW_FN(@ast.WgslIdent)
@@ -74,15 +75,14 @@ pub(all) enum Token {
   DIRECTIVE_HEAD((String, String))
   DIRECTIVE_TAIL(String)
   SOURCE_TEXT(String)
-  AT
   HASH
   PREFIX
   AS
-  ARROW
+  ARROW(Int)
   LPAREN
   RPAREN
-  LBRACE
-  RBRACE
+  LBRACE(Int)
+  RBRACE(Int)
   COLON
   EQUAL
   TYPE_LT(Int)
@@ -105,6 +105,7 @@ pub(all) enum TokenKind {
   TK_DECL_TYPE
   TK_INIT_EXPR
   TK_EXPR_REF
+  TK_AT
   TK_ATTR_NAME
   TK_ATTR_ARGS
   TK_KW_VIRTUAL
@@ -122,7 +123,6 @@ pub(all) enum TokenKind {
   TK_DIRECTIVE_HEAD
   TK_DIRECTIVE_TAIL
   TK_SOURCE_TEXT
-  TK_AT
   TK_HASH
   TK_PREFIX
   TK_AS

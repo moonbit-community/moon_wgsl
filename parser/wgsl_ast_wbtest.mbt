@@ -298,6 +298,56 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
 }
 
 ///|
+test "WGSL AST records spans for attributes members and signatures" {
+  let source =
+    #|struct Vertex {
+    #|  @location(0) position: vec3<f32>,
+    #|}
+    #|@fragment fn fragment(@location(0) color: Color) -> @location(0) vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
+    abort("expected struct")
+  }
+  let struct_text = unit.declarations[0].text
+  let field = struct_decl.members[0]
+  let field_attr = field.attributes[0]
+  debug_inspect(
+    struct_text[field_attr.start:field_attr.end].to_owned(),
+    content="\"@location(0)\"",
+  )
+  debug_inspect(
+    struct_text[field.start:field.end].to_owned(),
+    content="\"@location(0) position: vec3<f32>\"",
+  )
+  guard unit.declarations[1].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function")
+  }
+  let function_text = unit.declarations[1].text
+  debug_inspect(
+    function_text[function.body.start:function.body.end].to_owned(),
+    content="\"{\\n  return color;\\n}\"",
+  )
+  let fn_attr = function.attributes[0]
+  debug_inspect(
+    function_text[fn_attr.start:fn_attr.end].to_owned(),
+    content="\"@fragment\"",
+  )
+  let arg = function.arguments[0]
+  debug_inspect(
+    function_text[arg.start:arg.end].to_owned(),
+    content="\"@location(0) color: Color\"",
+  )
+  guard function.result is Some(result) else { abort("expected result") }
+  debug_inspect(
+    function_text[result.start:result.end].to_owned(),
+    content="\"-> @location(0) vec4<f32>\"",
+  )
+}
+
+///|
 test "WGSL attributes are parsed by grammar" {
   let source =
     #|const WIDTH: u32 = 4u;
@@ -620,6 +670,8 @@ test "WGSL override function payload preserves qualified target path" {
       #|Some(
       #|  {
       #|    attributes: [],
+      #|    start: 33,
+      #|    end: 39,
       #|    ty: "f32",
       #|    ty_ref: Some({ name: "f32", arguments: [], text: "f32", start: 36, end: 39 }),
       #|  },

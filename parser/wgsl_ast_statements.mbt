@@ -75,7 +75,12 @@ fn WgslDeclParser::tokenize_function_arguments(
     tokens.push(
       (
         @generated.Token::ARG_TYPE(
-          (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+          (
+            ty_fragment.text,
+            parse_wgsl_type_ref_fragment(ty_fragment),
+            ty_fragment.start,
+            ty_fragment.end,
+          ),
         ),
         ty_fragment.start,
         ty_fragment.end,
@@ -108,7 +113,7 @@ fn WgslDeclParser::parse_function_result(
       }
       let rest_len = rest.length()
       let tokens : Array[(@generated.Token, Int, Int)] = [
-        (@generated.Token::ARROW, arrow_start, arrow_end + 1),
+        (@generated.Token::ARROW(arrow_start), arrow_start, arrow_end + 1),
       ]
       parser.push_attribute_tokens(tokens)
       let ty_fragment = parser.collect_until_top_level_fragment([123, 59])
@@ -118,7 +123,12 @@ fn WgslDeclParser::parse_function_result(
       tokens.push(
         (
           @generated.Token::ARG_TYPE(
-            (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+            (
+              ty_fragment.text,
+              parse_wgsl_type_ref_fragment(ty_fragment),
+              ty_fragment.start,
+              ty_fragment.end,
+            ),
           ),
           ty_fragment.start,
           ty_fragment.end,
@@ -414,11 +424,15 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
 
 ///|
 fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
-  let empty = WgslBlock::{ statements: [] }
+  let empty = WgslBlock::{ start: 0, end: 0, statements: [] }
   match self.collect_delimited_token_view(123, 125) {
     Some(fragment) => {
       let tokens : Array[(@generated.Token, Int, Int)] = [
-        (@generated.Token::LBRACE, fragment.open_start, fragment.open_start + 1),
+        (
+          @generated.Token::LBRACE(fragment.open_start),
+          fragment.open_start,
+          fragment.open_start + 1,
+        ),
       ]
       let parser = WgslDeclParser::{
         source_text: self.source_text,
@@ -433,7 +447,7 @@ fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
       }
       tokens.push(
         (
-          @generated.Token::RBRACE,
+          @generated.Token::RBRACE(fragment.close_start),
           fragment.close_start,
           fragment.close_start + 1,
         ),
