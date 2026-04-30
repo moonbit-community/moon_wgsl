@@ -30,10 +30,9 @@ fn bevy_parity_value_defines() -> @hashmap.HashMap[String, Int] {
 
 ///|
 fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
-  @resolver.clear_registered_wgsl_source_registry()
   let composer = @compose.Composer::default()
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_tree(
+  composer.clear_sources()
+  composer.register_source_tree(
     "testdata/bevy_wgsl",
     @common.WgslSourceScanOptions::default(),
   ) catch {

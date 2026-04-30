@@ -90,7 +90,7 @@ pub fn build_wgsl_source_catalog(
   options : WgslComposeOptions,
 ) -> Array[WgslSourceCatalogEntry] {
   build_wgsl_source_catalog_from_files(
-    composer.copy_registered_wgsl_source_files(),
+    composer.copy_source_files(),
     options.defines,
     options.value_defines,
   )

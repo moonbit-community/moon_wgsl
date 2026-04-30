@@ -104,16 +104,6 @@ fn wgsl_import_looks_like_file_path(import_path : String) -> Bool {
 }
 
 ///|
-pub fn resolve_wgsl_import_file_path(
-  importer_rel_path : String,
-  import_path : String,
-) -> String? {
-  resolve_wgsl_import_file_path_from_registry(
-    registered_wgsl_source_registry_singleton, importer_rel_path, import_path,
-  )
-}
-
-///|
 pub fn resolve_wgsl_import_file_path_from_registry(
   registry : WgslSourceRegistry,
   importer_rel_path : String,
@@ -144,14 +134,3 @@ pub fn resolve_wgsl_import_file_path_from_registry(
 }
 
 ///|
-pub fn resolve_wgsl_source_file_path(rel : String) -> String? {
-  let normalized_rel = normalize_shader_rel_path(rel)
-  if normalized_rel == "" {
-    return None
-  }
-  if registered_wgsl_source_registry_singleton.registered_source(normalized_rel)
-    is Some(_) {
-    return Some(normalized_rel)
-  }
-  None
-}

@@ -154,8 +154,5 @@ pub fn scan_wgsl_source_files_checked(
   options : WgslSourceScanOptions,
 ) -> (Array[WgslSourceFile], Array[WgslDiagnostic]) raise @fs.IOError {
   let files = scan_wgsl_source_files(root, options)
-  (files, analyze_wgsl_source_files_for_registry(files))
+  (files, WgslSourceRegistry::default().analyze_source_files(files))
 }
-
-///|
-pub let registered_wgsl_source_registry_singleton : WgslSourceRegistry = WgslSourceRegistry::default()

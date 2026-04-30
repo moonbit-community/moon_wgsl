@@ -58,7 +58,7 @@ fn clear_wgsl_source_registry(
 }
 
 ///|
-fn register_wgsl_source_into(
+fn register_source_into(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],
   rel_path : String,
@@ -82,22 +82,6 @@ fn register_wgsl_source_into(
     module_paths.set(path, normalized_rel)
   }
   Some(normalized_rel)
-}
-
-///|
-pub fn clear_registered_wgsl_source_registry() -> Unit {
-  registered_wgsl_source_registry_singleton.clear()
-}
-
-///|
-pub fn register_wgsl_source(rel_path : String, source : String) -> Unit {
-  ignore(
-    registered_wgsl_source_registry_singleton.register_source(
-      rel_path,
-      source,
-      None,
-    ),
-  )
 }
 
 ///|
@@ -129,14 +113,7 @@ fn wgsl_diagnostics_has_error(diagnostics : Array[WgslDiagnostic]) -> Bool {
 }
 
 ///|
-pub fn analyze_wgsl_source_files_for_registry(
-  files : Array[WgslSourceFile],
-) -> Array[WgslDiagnostic] {
-  registered_wgsl_source_registry_singleton.analyze_source_files(files)
-}
-
-///|
-fn analyze_wgsl_source_files_for_registry_against(
+fn analyze_source_files_against(
   existing_rel_to_source : @hashmap.HashMap[String, String],
   existing_modules : @hashmap.HashMap[String, String],
   files : Array[WgslSourceFile],
@@ -221,18 +198,7 @@ fn analyze_wgsl_source_files_for_registry_against(
 }
 
 ///|
-pub fn register_wgsl_source_files_checked(
-  files : Array[WgslSourceFile],
-) -> Array[WgslDiagnostic] {
-  let diagnostics : Array[WgslDiagnostic] = []
-  registered_wgsl_source_registry_singleton.register_source_files_checked(
-    files, diagnostics,
-  )
-  diagnostics
-}
-
-///|
-fn register_wgsl_source_files_checked_into(
+fn register_source_files_checked_into(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],
   files : Array[WgslSourceFile],
@@ -240,29 +206,24 @@ fn register_wgsl_source_files_checked_into(
 ) -> Unit {
   let existing_rel_to_source = copy_wgsl_source_registry_map(source_registry)
   let existing_modules = copy_wgsl_import_module_map(module_paths)
-  analyze_wgsl_source_files_for_registry_against(
+  analyze_source_files_against(
     existing_rel_to_source, existing_modules, files, diagnostics,
   )
   if wgsl_diagnostics_has_error(diagnostics) {
     return
   }
-  register_wgsl_source_files_into(source_registry, module_paths, files)
+  register_source_files_into(source_registry, module_paths, files)
 }
 
 ///|
-pub fn register_wgsl_source_files(files : Array[WgslSourceFile]) -> Unit {
-  registered_wgsl_source_registry_singleton.register_source_files(files)
-}
-
-///|
-fn register_wgsl_source_files_into(
+fn register_source_files_into(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],
   files : Array[WgslSourceFile],
 ) -> Unit {
   for file in files {
     ignore(
-      register_wgsl_source_into(
+      register_source_into(
         source_registry,
         module_paths,
         file.rel_path,
@@ -274,12 +235,7 @@ fn register_wgsl_source_files_into(
 }
 
 ///|
-pub fn registered_wgsl_source(rel_path : String) -> String? {
-  registered_wgsl_source_registry_singleton.registered_source(rel_path)
-}
-
-///|
-fn registered_wgsl_source_from_registry(
+fn registered_source_from_registry(
   source_registry : @hashmap.HashMap[String, String],
   rel_path : String,
 ) -> String? {
@@ -288,29 +244,4 @@ fn registered_wgsl_source_from_registry(
     return None
   }
   source_registry.get(normalized_rel)
-}
-
-///|
-pub fn copy_registered_wgsl_source_files() -> Array[WgslSourceFile] {
-  registered_wgsl_source_registry_singleton.copy_source_files()
-}
-
-///|
-pub fn copy_wgsl_source_files_from_registry(
-  source_registry : @hashmap.HashMap[String, String],
-) -> Array[WgslSourceFile] {
-  let files : Array[WgslSourceFile] = []
-  for entry in source_registry.iter() {
-    let (rel_path, source) = entry
-    files.push(WgslSourceFile::{ rel_path, source })
-  }
-  files
-}
-
-///|
-pub fn copy_registered_wgsl_import_module_paths() -> @hashmap.HashMap[
-  String,
-  String,
-] {
-  registered_wgsl_source_registry_singleton.copy_import_module_paths()
 }

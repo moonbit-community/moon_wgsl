@@ -42,11 +42,6 @@ pub fn default_shader_rel_path_for_module_path(module_path : String) -> String {
 }
 
 ///|
-pub fn build_wgsl_import_module_paths() -> @hashmap.HashMap[String, String] {
-  copy_registered_wgsl_import_module_paths()
-}
-
-///|
 pub fn resolve_wgsl_import_module_in_registry(
   registry : WgslSourceRegistry,
   import_path : String,
@@ -89,11 +84,3 @@ pub fn resolve_wgsl_import_module_in_registry(
 }
 
 ///|
-pub fn resolve_wgsl_import_module(
-  import_path : String,
-  modules : @hashmap.HashMap[String, String],
-) -> WgslResolvedImportModule? {
-  resolve_wgsl_import_module_in_registry(
-    registered_wgsl_source_registry_singleton, import_path, modules,
-  )
-}

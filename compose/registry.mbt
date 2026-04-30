@@ -1,10 +1,10 @@
 ///|
-pub fn Composer::clear_registered_wgsl_source_registry(self : Composer) -> Unit {
+pub fn Composer::clear_sources(self : Composer) -> Unit {
   self.registry.clear()
 }
 
 ///|
-pub fn Composer::register_wgsl_source(
+pub fn Composer::register_source(
   self : Composer,
   rel_path : String,
   source : String,
@@ -13,7 +13,7 @@ pub fn Composer::register_wgsl_source(
 }
 
 ///|
-pub fn Composer::register_wgsl_source_files(
+pub fn Composer::register_source_files(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Unit {
@@ -21,7 +21,7 @@ pub fn Composer::register_wgsl_source_files(
 }
 
 ///|
-pub fn Composer::analyze_wgsl_source_files_for_registry(
+pub fn Composer::analyze_source_files(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
@@ -29,7 +29,7 @@ pub fn Composer::analyze_wgsl_source_files_for_registry(
 }
 
 ///|
-pub fn Composer::register_wgsl_source_files_checked(
+pub fn Composer::register_source_files_checked(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
@@ -39,25 +39,25 @@ pub fn Composer::register_wgsl_source_files_checked(
 }
 
 ///|
-pub fn Composer::register_wgsl_source_tree(
+pub fn Composer::register_source_tree(
   self : Composer,
   root : String,
   options : WgslSourceScanOptions,
 ) -> Unit raise @fs.IOError {
-  self.register_wgsl_source_files(scan_wgsl_source_files(root, options))
+  self.register_source_files(scan_wgsl_source_files(root, options))
 }
 
 ///|
-pub fn Composer::register_wgsl_source_tree_checked(
+pub fn Composer::register_source_tree_checked(
   self : Composer,
   root : String,
   options : WgslSourceScanOptions,
 ) -> Array[WgslDiagnostic] raise @fs.IOError {
-  self.register_wgsl_source_files_checked(scan_wgsl_source_files(root, options))
+  self.register_source_files_checked(scan_wgsl_source_files(root, options))
 }
 
 ///|
-pub fn Composer::registered_wgsl_source(
+pub fn Composer::registered_source(
   self : Composer,
   rel_path : String,
 ) -> String? {
@@ -65,14 +65,12 @@ pub fn Composer::registered_wgsl_source(
 }
 
 ///|
-pub fn Composer::copy_registered_wgsl_source_files(
-  self : Composer,
-) -> Array[WgslSourceFile] {
+pub fn Composer::copy_source_files(self : Composer) -> Array[WgslSourceFile] {
   self.registry.copy_source_files()
 }
 
 ///|
-pub fn Composer::copy_registered_wgsl_import_module_paths(
+pub fn Composer::copy_import_module_paths(
   self : Composer,
 ) -> @hashmap.HashMap[String, String] {
   self.registry.copy_import_module_paths()

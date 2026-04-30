@@ -38,11 +38,11 @@ composition in MoonBit without introducing a separate CLI step.
 - Supports import aliases such as `#import bevy_render::maths as maths`.
 - Supports quoted file-path imports such as
   `#import "../shared/common.wgsl" SharedVertex, build_color`.
-- Supports bulk source registration with `register_wgsl_source_files`.
+- Supports bulk source registration with `register_source_files`.
 - Supports source-tree scanning and registration through `moonbitlang/x/fs`.
 - Supports preflight registry diagnostics with
-  `analyze_wgsl_source_files_for_registry` and
-  `register_wgsl_source_files_checked`.
+  `analyze_source_files` and
+  `register_source_files_checked`.
 - Preserves and re-emits WGSL `enable`, `requires`, and `diagnostic(...)`
   directives.
 - Tracks only actually used imported items when extracting metadata.
@@ -116,10 +116,8 @@ test "README: preprocess single shader" {
 merges imported definitions into a final WGSL string.
 
 The recommended path is to register shaders on the `Composer` instance itself.
-Shared registry helpers are available, but new code should
-prefer Composer-owned registry state. `Composer::default()` starts empty; use
-`Composer::from_registered_wgsl_source_registry()` only when you explicitly
-want a snapshot of the shared registry.
+`Composer::default()` starts with an empty registry and owns all state needed
+for module resolution and composition.
 
 ```mbt check
 ///|
@@ -127,17 +125,17 @@ test "README: compose registered modules" {
   let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let redirects : Array[@common.WgslSymbolRedirect] = []
-  composer.clear_registered_wgsl_source_registry()
+  composer.clear_sources()
 
-  composer.register_wgsl_source(
+  composer.register_source(
     "render/maths.wgsl", "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318;\n",
   )
 
-  composer.register_wgsl_source(
+  composer.register_source(
     "sprite_render/mesh2d/mesh2d_functions.wgsl", "#define_import_path bevy_sprite::mesh2d_functions\n#import bevy_render::maths::PI_2\nfn twice_pi() -> f32 {\n  return PI_2;\n}\n",
   )
 
-  composer.register_wgsl_source(
+  composer.register_source(
     "sprite_render/mesh2d/mesh2d.wgsl", "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
   )
 
@@ -161,8 +159,7 @@ test "README: compose registered modules" {
 ### 4. Bulk Registry and Relative File Imports
 
 You can register a batch of shader files at once and use relative quoted paths
-between them. Composer instances expose the same registry APIs as the global
-shared registry helpers.
+between them. Composer instances own the registry used by composition.
 
 ```mbt check
 ///|
@@ -181,11 +178,11 @@ test "README: bulk registry and relative imports" {
     },
   ]
 
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_files(files)
+  composer.clear_sources()
+  composer.register_source_files(files)
 
   debug_inspect(
-    composer.registered_wgsl_source("shaders/effects/main.wgsl") is Some(_),
+    composer.registered_source("shaders/effects/main.wgsl") is Some(_),
     content="true",
   )
   let compose_options : @common.WgslComposeOptions = {
@@ -220,15 +217,14 @@ test "README: checked bulk registry" {
     },
   ]
 
-  @resolver.clear_registered_wgsl_source_registry()
-  let diagnostics : Array[@common.WgslDiagnostic] = @resolver.analyze_wgsl_source_files_for_registry(
+  let registry = @resolver.WgslSourceRegistry::default()
+  let diagnostics : Array[@common.WgslDiagnostic] = registry.analyze_source_files(
     files,
   )
   debug_inspect(diagnostics.length(), content="1")
 
-  let checked_diagnostics : Array[@common.WgslDiagnostic] = @resolver.register_wgsl_source_files_checked(
-    files,
-  )
+  let checked_diagnostics : Array[@common.WgslDiagnostic] = []
+  registry.register_source_files_checked(files, checked_diagnostics)
   debug_inspect(checked_diagnostics.length(), content="1")
 }
 ```
@@ -253,8 +249,8 @@ test "README: scan source tree" {
     exclude_prefixes: ["ignored"],
   }
 
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_tree("testdata/wgsl_scan", scan_options) catch {
+  composer.clear_sources()
+  composer.register_source_tree("testdata/wgsl_scan", scan_options) catch {
     _ => abort("failed to scan WGSL shader tree")
   }
 
@@ -315,8 +311,8 @@ test "README: export single WGSL file" {
     },
   ]
 
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_files(files)
+  composer.clear_sources()
+  composer.register_source_files(files)
 
   let compose_options : @common.WgslComposeOptions = {
     defines,
@@ -358,8 +354,8 @@ test "README: build source catalog" {
     },
   ]
 
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_files(files)
+  composer.clear_sources()
+  composer.register_source_files(files)
 
   let compose_options : @common.WgslComposeOptions = {
     defines,
@@ -398,8 +394,8 @@ test "README: source-level redirects" {
     },
   ]
 
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_files(files)
+  composer.clear_sources()
+  composer.register_source_files(files)
 
   let compose_options : @common.WgslComposeOptions = {
     defines,
@@ -444,32 +440,30 @@ Main public entry points:
   Returns a rich metadata object for a shader source string.
 - `get_preprocessor_data`
   Returns the simplified `(name, imports, defines)` tuple.
-- `register_wgsl_source` / `registered_wgsl_source`
-  Manage the shared WGSL source registry.
-- `Composer::register_wgsl_source` / `Composer::register_wgsl_source_files`
+- `WgslSourceRegistry::register_source` / `WgslSourceRegistry::registered_source`
+  Manage an explicit WGSL source registry value.
+- `Composer::register_source` / `Composer::register_source_files`
   Manage a Composer-owned WGSL source registry for hermetic composition.
 - `Composer::compose_wgsl`
   Composes WGSL from Composer-owned registry state and `WgslComposeOptions`.
-- `register_wgsl_source_files`
-  Registers a batch of WGSL source files into the shared
-  registry.
-- `analyze_wgsl_source_files_for_registry`
+- `WgslSourceRegistry::register_source_files`
+  Registers a batch of WGSL source files into an explicit registry.
+- `WgslSourceRegistry::analyze_source_files`
   Performs preflight validation for duplicate module names and rel-path
   ownership conflicts.
-- `register_wgsl_source_files_checked`
+- `WgslSourceRegistry::register_source_files_checked`
   Runs preflight registry diagnostics and only mutates registry state when no
   errors are reported.
 - `build_wgsl_source_catalog`
   Returns the declaration catalog for a specific Composer registry.
-- `build_wgsl_import_module_paths` / `resolve_wgsl_import_module`
-  Build and query module-path resolution data.
-- `resolve_wgsl_import_file_path`
+- `WgslSourceRegistry::copy_import_module_paths` /
+  `resolve_wgsl_import_module_in_registry`
+  Build and query module-path resolution data for an explicit registry.
+- `resolve_wgsl_import_file_path_from_registry`
   Resolves relative or quoted file-path imports against a source file path.
 - `rewrite_wgsl_symbol_redirects`
   Applies token-based source-level symbol redirects to WGSL source from the
   `analysis` package.
-- `Composer::from_registered_wgsl_source_registry`
-  Creates an explicit Composer snapshot from the shared registry.
 - `Composer::compose_wgsl_source`
   Composes a raw WGSL source string using `WgslComposeOptions` without exposing
   session internals.
@@ -511,15 +505,13 @@ For the full exported surface, see the generated subpackage interfaces:
 
 - `#define_import_path` is used as the canonical module name for composition.
 - `Composer` now owns registry/module resolution state; new code should prefer
-  `Composer::register_wgsl_source*`, `Composer::compose_wgsl`,
+  `Composer::register_source*`, `Composer::compose_wgsl`,
   `Composer::compose_wgsl_source`, and `export_wgsl_with_options`.
-- `Composer::default()` is hermetic and does not inherit the shared registry.
-  Use `Composer::from_registered_wgsl_source_registry()` only when you
-  intentionally want a shared registry snapshot.
+- `Composer::default()` is hermetic and starts with an empty registry.
 - Relative quoted file imports are resolved against the importing shader's
-  registered path in the active Composer/shared registry.
-- `register_wgsl_source_files_checked` is the safe bulk-registration path when
-  callers need deterministic diagnostics before mutating the shared registry.
+  registered path in the active Composer registry.
+- `register_source_files_checked` is the safe bulk-registration path when
+  callers need deterministic diagnostics before mutating a Composer registry.
 - `get_preprocessor_metadata` is forgiving by design: on parse failure it
   returns empty/default metadata instead of raising.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`

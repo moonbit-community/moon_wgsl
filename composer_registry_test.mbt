@@ -136,7 +136,7 @@ test "naga_oil: composer rejects modules without an import path name" {
 ///|
 test "naga_oil: add_composable_module resolves imports from the composer registry" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "tests/plain_shared.wgsl", "#define_import_path test::plain\nfn plain_value() -> f32 {\n  return 2.0;\n}\n",
   )
 

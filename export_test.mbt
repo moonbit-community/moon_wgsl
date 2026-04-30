@@ -18,8 +18,30 @@ fn export_test_empty_defines() -> @hashmap.HashMap[String, Bool] {
 }
 
 ///|
-fn export_test_global_registry_composer() -> @compose.Composer {
-  @compose.Composer::from_registered_wgsl_source_registry()
+let export_test_registry_ref : @ref.Ref[@compose.Composer] = Ref::new(
+  @compose.Composer::default(),
+)
+
+///|
+fn clear_export_test_registry() -> Unit {
+  export_test_registry_ref.val = @compose.Composer::default()
+}
+
+///|
+fn export_test_composer() -> @compose.Composer {
+  export_test_registry_ref.val
+}
+
+///|
+fn register_export_test_shader_files(
+  files : Array[@common.WgslSourceFile],
+) -> Unit {
+  export_test_composer().register_source_files(files)
+}
+
+///|
+fn registered_export_test_shader_source(path : String) -> String? {
+  export_test_composer().registered_source(path)
 }
 
 ///|
@@ -37,8 +59,8 @@ fn export_test_compose_options(
 
 ///|
 fn register_export_test_shaders() -> Unit {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source_files([
+  clear_export_test_registry()
+  register_export_test_shader_files([
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
@@ -52,8 +74,8 @@ fn register_export_test_shaders() -> Unit {
 
 ///|
 fn register_ambiguous_export_test_shaders() -> Unit {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source_files([
+  clear_export_test_registry()
+  register_export_test_shader_files([
     {
       rel_path: "shaders/shared/a.wgsl",
       source: "fn identical_helper() -> f32 {\n  return 1.0;\n}\n",
@@ -71,8 +93,8 @@ fn register_ambiguous_export_test_shaders() -> Unit {
 
 ///|
 fn register_redirect_export_test_shaders() -> Unit {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source_files([
+  clear_export_test_registry()
+  register_export_test_shader_files([
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn build_shadow(vertex: SharedVertex) -> vec4<f32> {\n  return vec4<f32>(0.0, 0.0, 0.0, 1.0);\n}\n",
@@ -86,8 +108,8 @@ fn register_redirect_export_test_shaders() -> Unit {
 
 ///|
 fn register_analysis_alignment_export_test_shaders() -> Unit {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source_files([
+  clear_export_test_registry()
+  register_export_test_shader_files([
     {
       rel_path: "shaders/shared/aligned.wgsl",
       source: "struct SharedParams {\n  value: f32,\n}\n@group(0) @binding(0) var<uniform> shared_params: SharedParams;\nfn read_shared() -> f32 {\n  return shared_params.value;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
@@ -101,8 +123,8 @@ fn register_analysis_alignment_export_test_shaders() -> Unit {
 
 ///|
 fn register_invalid_struct_member_export_test_shaders() -> Unit {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source_files([
+  clear_export_test_registry()
+  register_export_test_shader_files([
     {
       rel_path: "shaders/shared/invalid_member.wgsl",
       source: "struct BadOutput {\n  bad_: vec3<f32>,\n}\nfn build_bad() -> BadOutput {\n  var out: BadOutput;\n  return out;\n}\n",
@@ -118,7 +140,7 @@ fn register_invalid_struct_member_export_test_shaders() -> Unit {
 test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map" {
   register_export_test_shaders()
   let output = @export.export_wgsl_with_options(
-    export_test_global_registry_composer(),
+    export_test_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["shade"] },
@@ -144,7 +166,7 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
     mapped_paths.join(","),
     content="\"shaders/effects/main.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl\"",
   )
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
 }
 
 ///|
@@ -153,7 +175,7 @@ test "naga_oil: export rejects invalid struct member identifiers before emission
   let mut message = ""
   ignore(
     @export.export_wgsl_with_options(
-      export_test_global_registry_composer(),
+      export_test_composer(),
       "shaders/effects/invalid_member.wgsl",
       export_test_compose_options(export_test_empty_defines(), []),
       { root_items: ["main"] },
@@ -166,13 +188,13 @@ test "naga_oil: export rejects invalid struct member identifiers before emission
     content="true",
   )
   debug_inspect(message.contains("bad_"), content="true")
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
 }
 
 ///|
 test "naga_oil: compose item extraction and export tree-shaking share dependency analysis" {
   register_analysis_alignment_export_test_shaders()
-  let composer = export_test_global_registry_composer()
+  let composer = export_test_composer()
   let composed = composer.compose_wgsl(
     "shaders/effects/aligned.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
@@ -199,15 +221,15 @@ test "naga_oil: compose item extraction and export tree-shaking share dependency
   debug_inspect(output.source.contains("fn read_shared"), content="true")
   debug_inspect(output.source.contains("unused_helper"), content="false")
   debug_inspect(output.diagnostics.length(), content="0")
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
 }
 
 ///|
 test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
   let composer = @compose.Composer::default()
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_files([
+  composer.clear_sources()
+  composer.register_source_files([
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\n",
@@ -235,7 +257,7 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
   debug_inspect(output.source_map.length(), content="4")
   debug_inspect(output.diagnostics.length(), content="0")
   debug_inspect(
-    @resolver.registered_wgsl_source("shaders/effects/main.wgsl"),
+    registered_export_test_shader_source("shaders/effects/main.wgsl"),
     content="None",
   )
 }
@@ -244,7 +266,7 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
 test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
   register_export_test_shaders()
   let output = @export.export_wgsl_with_options(
-    export_test_global_registry_composer(),
+    export_test_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["missing_entry"] },
@@ -259,13 +281,13 @@ test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
   )
   debug_inspect(output.source.contains("unused_helper"), content="false")
   debug_inspect(output.source.contains("fn build_color"), content="true")
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
 }
 
 ///|
 test "naga_oil: export source catalog is scoped to the current dependency closure" {
   register_ambiguous_export_test_shaders()
-  let composer = export_test_global_registry_composer()
+  let composer = export_test_composer()
   let catalog = @export.build_wgsl_source_catalog(
     composer,
     export_test_compose_options(export_test_empty_defines(), []),
@@ -291,14 +313,14 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
   }
   helper_paths.sort()
   debug_inspect(helper_paths.join(","), content="\"shaders/shared/a.wgsl\"")
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
 }
 
 ///|
 test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-shaking" {
   register_redirect_export_test_shaders()
   let output = @export.export_wgsl_with_options(
-    export_test_global_registry_composer(),
+    export_test_composer(),
     "shaders/effects/redirect.wgsl",
     export_test_compose_options(export_test_empty_defines(), [
       { from_name: "build_shadow", to_name: "build_color" },
@@ -320,14 +342,14 @@ test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-sha
   debug_inspect(output.source_catalog.length(), content="5")
   debug_inspect(output.source_map.length(), content="4")
   debug_inspect(output.diagnostics.length(), content="0")
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
 }
 
 ///|
 test "naga_oil: export warns when a source-level redirect never matches" {
   register_redirect_export_test_shaders()
   let output = @export.export_wgsl_with_options(
-    export_test_global_registry_composer(),
+    export_test_composer(),
     "shaders/effects/redirect.wgsl",
     export_test_compose_options(export_test_empty_defines(), [
       { from_name: "missing_shadow", to_name: "build_color" },
@@ -347,5 +369,5 @@ test "naga_oil: export warns when a source-level redirect never matches" {
     output.diagnostics[0].symbol_name,
     content="Some(\"missing_shadow\")",
   )
-  @resolver.clear_registered_wgsl_source_registry()
+  clear_export_test_registry()
 }

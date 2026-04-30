@@ -66,7 +66,7 @@ pub fn WgslSourceRegistry::register_source(
   source : String,
   explicit_module_path : String?,
 ) -> String? {
-  register_wgsl_source_into(
+  register_source_into(
     self.source_registry(),
     self.module_paths(),
     rel_path,
@@ -81,7 +81,7 @@ pub fn WgslSourceRegistry::analyze_source_files(
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
   let diagnostics : Array[WgslDiagnostic] = []
-  analyze_wgsl_source_files_for_registry_against(
+  analyze_source_files_against(
     copy_wgsl_source_registry_map(self.source_registry()),
     copy_wgsl_import_module_map(self.module_paths()),
     files,
@@ -96,7 +96,7 @@ pub fn WgslSourceRegistry::register_source_files_checked(
   files : Array[WgslSourceFile],
   diagnostics : Array[WgslDiagnostic],
 ) -> Unit {
-  register_wgsl_source_files_checked_into(
+  register_source_files_checked_into(
     self.source_registry(),
     self.module_paths(),
     files,
@@ -109,11 +109,7 @@ pub fn WgslSourceRegistry::register_source_files(
   self : WgslSourceRegistry,
   files : Array[WgslSourceFile],
 ) -> Unit {
-  register_wgsl_source_files_into(
-    self.source_registry(),
-    self.module_paths(),
-    files,
-  )
+  register_source_files_into(self.source_registry(), self.module_paths(), files)
 }
 
 ///|
@@ -121,14 +117,19 @@ pub fn WgslSourceRegistry::registered_source(
   self : WgslSourceRegistry,
   rel_path : String,
 ) -> String? {
-  registered_wgsl_source_from_registry(self.source_registry(), rel_path)
+  registered_source_from_registry(self.source_registry(), rel_path)
 }
 
 ///|
 pub fn WgslSourceRegistry::copy_source_files(
   self : WgslSourceRegistry,
 ) -> Array[WgslSourceFile] {
-  copy_wgsl_source_files_from_registry(self.source_registry())
+  let files : Array[WgslSourceFile] = []
+  for entry in self.source_registry().iter() {
+    let (rel_path, source) = entry
+    files.push(WgslSourceFile::{ rel_path, source })
+  }
+  files
 }
 
 ///|

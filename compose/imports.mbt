@@ -46,8 +46,6 @@ using @resolver {
   collect_wgsl_import_targets,
   default_shader_rel_path_for_module_path,
   normalize_shader_rel_path,
-  registered_wgsl_source_registry_singleton,
-  copy_wgsl_source_files_from_registry,
   resolve_wgsl_import_file_path_from_registry,
   resolve_wgsl_import_module_in_registry,
   scan_wgsl_source_files,

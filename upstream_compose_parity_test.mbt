@@ -58,10 +58,9 @@ fn upstream_parity_empty_compose_options() -> @common.WgslComposeOptions {
 
 ///|
 fn upstream_parity_composer(case_name : String) -> @compose.Composer {
-  @resolver.clear_registered_wgsl_source_registry()
   let composer = @compose.Composer::default()
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_tree(
+  composer.clear_sources()
+  composer.register_source_tree(
     "testdata/upstream_compose/\{case_name}",
     @common.WgslSourceScanOptions::default(),
   ) catch {
@@ -75,7 +74,7 @@ fn upstream_parity_descriptor_effective_defs_source(
   shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
 ) -> String {
   let composer = @compose.Composer::default()
-  composer.clear_registered_wgsl_source_registry()
+  composer.clear_sources()
   ignore(
     composer.add_composable_module({
       source: "#define_import_path mod\n" +
@@ -117,7 +116,7 @@ fn upstream_parity_descriptor_effective_defs_source(
   ) catch {
     err => abort("expected test_module registration success: \{err.message()}")
   }
-  composer.register_wgsl_source(
+  composer.register_source(
     "compute_test.wgsl",
     "#import test_module::entry_point\n" +
     "@compute @workgroup_size(1)\n" +
@@ -188,10 +187,9 @@ fn upstream_parity_check_effective_defs_sum_with_false_three(
 
 ///|
 fn upstream_mirror_composer(case_name : String) -> @compose.Composer {
-  @resolver.clear_registered_wgsl_source_registry()
   let composer = @compose.Composer::default()
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_tree(
+  composer.clear_sources()
+  composer.register_source_tree(
     "testdata/naga_oil_upstream/compose_tests/\{case_name}",
     @common.WgslSourceScanOptions::default(),
   ) catch {
@@ -487,7 +485,7 @@ test "naga_oil upstream: effective defs drive imported declaration values" {
 ///|
 test "naga_oil upstream: bool false shader def is still defined for ifdef" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "bool_false.wgsl",
     "#ifdef FLAG\n" +
     "const ifdef_value: u32 = 1u;\n" +
@@ -935,7 +933,7 @@ test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
     "const STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE: u32                 = 0u << 29u;\n" +
     "const STANDARD_MATERIAL_FLAGS_ALPHA_MODE_MASK: u32                   = 1u << 29u;\n" +
     "const STANDARD_MATERIAL_FLAGS_ALPHA_MODE_ALPHA_TO_COVERAGE: u32      = 6u << 29u;\n"
-  composer.register_wgsl_source("pbr_types.wgsl", pbr_types_source)
+  composer.register_source("pbr_types.wgsl", pbr_types_source)
   let pbr_functions_source = "#define_import_path bevy_pbr::pbr_functions\n" +
     "#import bevy_pbr::pbr_types as pbr_types\n" +
     "fn alpha_discard(material: pbr_types::StandardMaterial, output_color: vec4<f32>) -> vec4<f32> {\n" +
@@ -955,19 +953,19 @@ test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
     "fn fragment(material: pbr_types::StandardMaterial) -> vec4<f32> {\n" +
     "  return alpha_discard(material, vec4<f32>(0.0));\n" +
     "}\n"
-  composer.register_wgsl_source("pbr_functions.wgsl", pbr_functions_source)
+  composer.register_source("pbr_functions.wgsl", pbr_functions_source)
   let pbr_fragment_source = "#define_import_path bevy_pbr::pbr_fragment\n" +
     "#import bevy_pbr::{ pbr_functions, pbr_types }\n" +
     "fn fragment() -> vec4<f32> {\n" +
     "  var input: pbr_types::PbrInput;\n" +
     "  return pbr_functions::alpha_discard(input.material, vec4<f32>(0.0));\n" +
     "}\n"
-  composer.register_wgsl_source("pbr_fragment.wgsl", pbr_fragment_source)
+  composer.register_source("pbr_fragment.wgsl", pbr_fragment_source)
   let root_source = "#import bevy_pbr::pbr_fragment as pbr\n" +
     "fn fragment() -> vec4<f32> {\n" +
     "  return pbr::fragment();\n" +
     "}\n"
-  composer.register_wgsl_source("root.wgsl", root_source)
+  composer.register_source("root.wgsl", root_source)
   let source = composer.compose_wgsl(
     "root.wgsl",
     upstream_parity_compose_options(
@@ -989,21 +987,21 @@ test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
 ///|
 test "github issue 5: colliding lowered declarations from separate imports are deduped" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr_types_a.wgsl",
     "#define_import_path bevy_pbr::pbr_types_a\n" +
     "struct StandardMaterial {\n" +
     "  flags: u32,\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr_types_b.wgsl",
     "#define_import_path bevy_pbr::pbr_types_b\n" +
     "struct StandardMaterial {\n" +
     "  flags: u32,\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "entry.wgsl",
     "#import bevy_pbr::pbr_types_a as pbr_types\n" +
     "#import bevy_pbr::pbr_types_b as pbr_types\n" +
@@ -1031,7 +1029,7 @@ test "github issue 5: colliding lowered declarations from separate imports are d
 ///|
 test "github issue 6: Bevy F0_ struct member composes without writeback rejection" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "f0_member.wgsl",
     "struct LightingInput {\n" + "  F0_: vec3<f32>,\n" + "}\n",
   )
@@ -1047,14 +1045,14 @@ test "github issue 6: Bevy F0_ struct member composes without writeback rejectio
 ///|
 test "naga_oil parity: item-imported functions do not force imported mesh bindings" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh_types.wgsl",
     "#define_import_path bevy_pbr::mesh_types\n" +
     "struct Mesh {\n" +
     "  flags: u32,\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh_bindings.wgsl",
     "#define_import_path bevy_pbr::mesh_bindings\n" +
     "#import bevy_pbr::mesh_types::Mesh\n" +
@@ -1062,7 +1060,7 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
     "@group(2) @binding(0) var<storage> mesh: array<Mesh>;\n" +
     "#endif\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh_functions.wgsl",
     "#define_import_path bevy_pbr::mesh_functions\n" +
     "#import bevy_pbr::mesh_bindings as mesh_bindings\n" +
@@ -1070,21 +1068,21 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
     "  return mesh_bindings::mesh[instance_index].flags;\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr_types.wgsl",
     "#define_import_path bevy_pbr::pbr_types\n" +
     "struct PbrInput {\n" +
     "  flags: u32,\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "forward_io.wgsl",
     "#define_import_path bevy_pbr::forward_io\n" +
     "struct VertexOutput {\n" +
     "  instance_index: u32,\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr_fragment.wgsl",
     "#define_import_path bevy_pbr::pbr_fragment\n" +
     "#import bevy_pbr::{\n" +
@@ -1098,7 +1096,7 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
     "  return pbr_input;\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr.wgsl",
     "#define_import_path bevy_pbr::pbr\n" +
     "#import bevy_pbr::{\n" +
@@ -1111,7 +1109,7 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
     "  return vec4<f32>(f32(pbr_input.flags));\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh.wgsl",
     "#define_import_path bevy_pbr::mesh\n" +
     "#import bevy_pbr::{\n" +
@@ -1129,7 +1127,7 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
     "  return vec4<f32>(f32(mesh.instance_index));\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "entry.wgsl", "#import bevy_pbr::{ mesh::vertex, pbr::fragment }\n",
   )
   let source = composer.compose_wgsl(
@@ -1145,7 +1143,7 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
 ///|
 test "naga_oil parity: item-imported entry points are dropped when unused by source" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh.wgsl",
     "#define_import_path demo::mesh\n" +
     "@vertex\n" +
@@ -1153,7 +1151,7 @@ test "naga_oil parity: item-imported entry points are dropped when unused by sou
     "  return vec4<f32>(0.0);\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr.wgsl",
     "#define_import_path demo::pbr\n" +
     "@fragment\n" +
@@ -1161,7 +1159,7 @@ test "naga_oil parity: item-imported entry points are dropped when unused by sou
     "  return vec4<f32>(1.0);\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "entry.wgsl", "#import demo::{ mesh::vertex, pbr::fragment }\n",
   )
   let source = composer.compose_wgsl(
@@ -1176,7 +1174,7 @@ test "naga_oil parity: item-imported entry points are dropped when unused by sou
 ///|
 test "naga_oil parity: explicit import-only entry modules do not force dependencies" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh.wgsl",
     "#define_import_path demo::mesh\n" +
     "struct Vertex { position: vec3<f32> }\n" +
@@ -1187,7 +1185,7 @@ test "naga_oil parity: explicit import-only entry modules do not force dependenc
     "  return out;\n" +
     "}\n",
   )
-  composer.register_wgsl_source("entry.wgsl", "#import demo::mesh::vertex\n")
+  composer.register_source("entry.wgsl", "#import demo::mesh::vertex\n")
   let source = composer.compose_wgsl(
     "entry.wgsl",
     upstream_parity_compose_options(upstream_parity_empty_defines()),
@@ -1201,18 +1199,18 @@ test "naga_oil parity: explicit import-only entry modules do not force dependenc
 ///|
 test "github issue 3: mixed full-module and item imports do not re-emit duplicate declarations" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "types.wgsl",
     "#define_import_path demo::types\n" +
     "struct StandardMaterial { value: f32 }\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "bindings.wgsl",
     "#define_import_path demo::bindings\n" +
     "#import demo::types::StandardMaterial\n" +
     "@group(3) @binding(0) var<uniform> material: StandardMaterial;\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "fragment.wgsl",
     "#define_import_path demo::fragment\n" +
     "#import demo::{ types, bindings }\n" +
@@ -1220,7 +1218,7 @@ test "github issue 3: mixed full-module and item imports do not re-emit duplicat
     "  return bindings::material;\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "root.wgsl",
     "#import demo::fragment as fragment\n" +
     "fn fragment_entry() {\n" +
@@ -1254,21 +1252,21 @@ test "github issue 3: mixed full-module and item imports do not re-emit duplicat
 ///|
 test "github issue 3: nested alias imports rewrite variable declaration types" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh_view_types.wgsl",
     "#define_import_path bevy_pbr::mesh_view_types\n" +
     "struct Lights { value: u32 }\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "view.wgsl",
     "#define_import_path bevy_render::view\n" + "struct View { value: u32 }\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "globals.wgsl",
     "#define_import_path bevy_render::globals\n" +
     "struct Globals { value: u32 }\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh_view_bindings.wgsl",
     "#define_import_path bevy_pbr::mesh_view_bindings\n" +
     "#import bevy_pbr::mesh_view_types as types\n" +
@@ -1277,7 +1275,7 @@ test "github issue 3: nested alias imports rewrite variable declaration types" {
     "@group(0) @binding(1) var<uniform> globals: Globals;\n" +
     "@group(0) @binding(2) var<uniform> lights: types::Lights;\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "root.wgsl",
     "#import bevy_pbr::mesh_view_bindings as mesh_view_bindings\n" +
     "fn read_view() -> u32 {\n" +
@@ -1317,20 +1315,20 @@ test "github issue 3: nested alias imports rewrite variable declaration types" {
 ///|
 test "github issue 4: nested module alias rewrites global binding member access" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "view.wgsl",
     "#define_import_path bevy_render::view\n" +
     "struct View {\n" +
     "  world_from_view: mat4x4<f32>,\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh_view_bindings.wgsl",
     "#define_import_path bevy_pbr::mesh_view_bindings\n" +
     "#import bevy_render::view::View\n" +
     "@group(0) @binding(0) var<uniform> view: View;\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "view_transformations.wgsl",
     "#define_import_path bevy_pbr::view_transformations\n" +
     "#import bevy_pbr::mesh_view_bindings as view_bindings\n" +
@@ -1344,13 +1342,13 @@ test "github issue 4: nested module alias rewrites global binding member access"
     "  return view_pos.xyz;\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "prepass_bindings.wgsl",
     "#define_import_path bevy_pbr::prepass_bindings\n" +
     "struct PreviousViewUniforms { view_from_world: mat4x4<f32> }\n" +
     "@group(0) @binding(30) var<uniform> previous_view_uniforms: PreviousViewUniforms;\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr_functions.wgsl",
     "#define_import_path bevy_pbr::pbr_functions\n" +
     "#import bevy_pbr::{\n" +
@@ -1361,7 +1359,7 @@ test "github issue 4: nested module alias rewrites global binding member access"
     "  return (view_bindings::view.world_from_view * vec4(view_pos, 1.0)).xyz + view_transformations::view_to_world(view_pos);\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "root.wgsl",
     "#import bevy_pbr::pbr_functions as pbr_functions\n" +
     "fn read_world(view_pos: vec3<f32>) -> vec3<f32> {\n" +
@@ -1398,17 +1396,17 @@ test "github issue 4: nested module alias rewrites global binding member access"
 ///|
 test "github issue 6: transitive nested module alias rewrites imported binding types" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "view.wgsl",
     "#define_import_path bevy_render::view\n" + "struct View { value: u32 }\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "mesh_view_bindings.wgsl",
     "#define_import_path bevy_pbr::mesh_view_bindings\n" +
     "#import bevy_render::view::View\n" +
     "@group(0) @binding(0) var<uniform> view: View;\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "clustered_forward.wgsl",
     "#define_import_path bevy_pbr::clustered_forward\n" +
     "#import bevy_pbr::mesh_view_bindings as bindings\n" +
@@ -1416,7 +1414,7 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
     "  return bindings::view.value;\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "pbr_functions.wgsl",
     "#define_import_path bevy_pbr::pbr_functions\n" +
     "#import bevy_pbr::{\n" +
@@ -1427,7 +1425,7 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
     "  return view_bindings::view.value + clustering::read_cluster_view();\n" +
     "}\n",
   )
-  composer.register_wgsl_source(
+  composer.register_source(
     "root.wgsl",
     "#import bevy_pbr::pbr_functions as pbr_functions\n" +
     "fn read_view() -> u32 {\n" +
@@ -1469,7 +1467,7 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
 ///|
 test "github issue 6: root local defines are stripped from final composed WGSL" {
   let composer = @compose.Composer::default()
-  composer.register_wgsl_source(
+  composer.register_source(
     "root_define.wgsl",
     "#define_import_path demo::root_define\n" +
     "#define TONEMAPPING_PASS\n" +

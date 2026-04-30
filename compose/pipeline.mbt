@@ -137,6 +137,18 @@ fn collect_wgsl_unused_redirect_diagnostics(
 }
 
 ///|
+fn copy_composed_source_files(
+  source_registry : @hashmap.HashMap[String, String],
+) -> Array[WgslSourceFile] {
+  let files : Array[WgslSourceFile] = []
+  for entry in source_registry.iter() {
+    let (rel_path, source) = entry
+    files.push(WgslSourceFile::{ rel_path, source })
+  }
+  files
+}
+
+///|
 pub fn Composer::prepare_wgsl_source(
   self : Composer,
   rel : String,
@@ -148,9 +160,7 @@ pub fn Composer::prepare_wgsl_source(
   )
   PreparedWgslSource::{
     source: finalize_wgsl_writeback_source(composed),
-    source_files: copy_wgsl_source_files_from_registry(
-      session.resolved_source_files,
-    ),
+    source_files: copy_composed_source_files(session.resolved_source_files),
     defines: session.defines,
     value_defines: session.value_defines,
     diagnostics: collect_wgsl_unused_redirect_diagnostics(session),

@@ -29,15 +29,6 @@ pub fn Composer::default() -> Composer {
 }
 
 ///|
-pub fn Composer::from_registered_wgsl_source_registry() -> Composer {
-  Composer::{
-    module_sets: @hashmap.HashMap::new(),
-    registry: registered_wgsl_source_registry_singleton.snapshot(),
-    composable_module_registry_paths: @hashmap.HashMap::new(),
-  }
-}
-
-///|
 pub(all) suberror ComposerError {
   FailedToResolveImport(String)
   ImportCycle(String)

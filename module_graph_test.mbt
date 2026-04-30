@@ -48,43 +48,49 @@ test "naga_oil: import target parser preserves grouped module aliases" {
 
 ///|
 test "naga_oil: registered source registry tracks define_import_path" {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source(
-    "shaders/demo/module.wgsl", "#define_import_path demo::module\nfn shade() -> f32 { return 1.0; }\n",
+  let registry = @resolver.WgslSourceRegistry::default()
+  ignore(
+    registry.register_source(
+      "shaders/demo/module.wgsl",
+      "#define_import_path demo::module\nfn shade() -> f32 { return 1.0; }\n",
+      None,
+    ),
   )
   debug_inspect(
-    @resolver.registered_wgsl_source("shaders/demo/module.wgsl"),
+    registry.registered_source("shaders/demo/module.wgsl"),
     content="Some(\"#define_import_path demo::module\\nfn shade() -> f32 { return 1.0; }\\n\")",
   )
-  let modules = @resolver.build_wgsl_import_module_paths()
+  let modules = registry.copy_import_module_paths()
   debug_inspect(
     modules.get("demo::module"),
     content="Some(\"shaders/demo/module.wgsl\")",
   )
-  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: resolve import module prefers registered map entries" {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source(
-    "sprite_render/render/sprite_view_bindings.wgsl", "#define_import_path bevy_sprite_render::render::sprite_view_bindings\nfn shade() -> f32 { return 1.0; }\n",
+  let registry = @resolver.WgslSourceRegistry::default()
+  ignore(
+    registry.register_source(
+      "sprite_render/render/sprite_view_bindings.wgsl",
+      "#define_import_path bevy_sprite_render::render::sprite_view_bindings\nfn shade() -> f32 { return 1.0; }\n",
+      None,
+    ),
   )
-  let modules = @resolver.build_wgsl_import_module_paths()
-  let resolved = @resolver.resolve_wgsl_import_module(
-    "bevy_sprite_render::render::sprite_view_bindings::View", modules,
+  let modules = registry.copy_import_module_paths()
+  let resolved = @resolver.resolve_wgsl_import_module_in_registry(
+    registry, "bevy_sprite_render::render::sprite_view_bindings::View", modules,
   )
   debug_inspect(
     resolved,
     content="Some(\n  {\n    module_path: \"bevy_sprite_render::render::sprite_view_bindings\",\n    rel_path: \"sprite_render/render/sprite_view_bindings.wgsl\",\n  },\n)",
   )
-  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: bulk source registration resolves relative quoted file paths" {
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source_files([
+  let registry = @resolver.WgslSourceRegistry::default()
+  registry.register_source_files([
     {
       rel_path: "shaders/shared/common.wgsl",
       source: "#define_import_path demo::shared\nstruct SharedValue {\n  tint: vec4<f32>,\n}\n",
@@ -95,24 +101,23 @@ test "naga_oil: bulk source registration resolves relative quoted file paths" {
     },
   ])
   debug_inspect(
-    @resolver.resolve_wgsl_import_file_path(
-      "shaders/effects/main.wgsl", "\"../shared/common.wgsl\"",
+    @resolver.resolve_wgsl_import_file_path_from_registry(
+      registry, "shaders/effects/main.wgsl", "\"../shared/common.wgsl\"",
     ),
     content="Some(\"shaders/shared/common.wgsl\")",
   )
   debug_inspect(
-    @resolver.resolve_wgsl_import_file_path(
-      "shaders/effects/main.wgsl", "../shared/common.wgsl",
+    @resolver.resolve_wgsl_import_file_path_from_registry(
+      registry, "shaders/effects/main.wgsl", "../shared/common.wgsl",
     ),
     content="Some(\"shaders/shared/common.wgsl\")",
   )
-  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: registry analysis reports duplicate module paths in one batch" {
-  @resolver.clear_registered_wgsl_source_registry()
-  let diagnostics = @resolver.analyze_wgsl_source_files_for_registry([
+  let registry = @resolver.WgslSourceRegistry::default()
+  let diagnostics = registry.analyze_source_files([
     {
       rel_path: "shaders/demo/a.wgsl",
       source: "#define_import_path demo::dup\nfn a() -> f32 { return 1.0; }\n",
@@ -129,22 +134,25 @@ test "naga_oil: registry analysis reports duplicate module paths in one batch" {
     diagnostics[0].message,
     content="\"multiple WGSL source files define the same #define_import_path in one batch\"",
   )
-  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
 test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" {
-  @resolver.clear_registered_wgsl_source_registry()
-  let diagnostics = @resolver.register_wgsl_source_files_checked([
-    {
-      rel_path: "shaders/demo/./shared.wgsl",
-      source: "#define_import_path demo::shared_a\nfn a() -> f32 { return 1.0; }\n",
-    },
-    {
-      rel_path: "shaders/demo/shared.wgsl",
-      source: "#define_import_path demo::shared_b\nfn b() -> f32 { return 2.0; }\n",
-    },
-  ])
+  let registry = @resolver.WgslSourceRegistry::default()
+  let diagnostics : Array[@common.WgslDiagnostic] = []
+  registry.register_source_files_checked(
+    [
+      {
+        rel_path: "shaders/demo/./shared.wgsl",
+        source: "#define_import_path demo::shared_a\nfn a() -> f32 { return 1.0; }\n",
+      },
+      {
+        rel_path: "shaders/demo/shared.wgsl",
+        source: "#define_import_path demo::shared_b\nfn b() -> f32 { return 2.0; }\n",
+      },
+    ],
+    diagnostics,
+  )
   debug_inspect(diagnostics.length(), content="1")
   debug_inspect(diagnostics[0].severity, content="Error")
   debug_inspect(
@@ -156,10 +164,9 @@ test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" 
     content="\"multiple WGSL source files normalize to the same rel_path with different contents\"",
   )
   debug_inspect(
-    @resolver.registered_wgsl_source("shaders/demo/shared.wgsl"),
+    registry.registered_source("shaders/demo/shared.wgsl"),
     content="None",
   )
-  @resolver.clear_registered_wgsl_source_registry()
 }
 
 ///|
@@ -184,10 +191,9 @@ test "naga_oil: scan_wgsl_source_files reads a WGSL tree via moonbitlang/x/fs" {
 
 ///|
 test "naga_oil: source tree registry infers module names from WGSL file paths" {
-  @resolver.clear_registered_wgsl_source_registry()
   let composer = @compose.Composer::default()
-  composer.clear_registered_wgsl_source_registry()
-  composer.register_wgsl_source_files([
+  composer.clear_sources()
+  composer.register_source_files([
     @common.WgslSourceFile::{
       rel_path: "plugin.wgsl",
       source: "fn plugin_value() -> f32 {\n  return 2.0;\n}\n",

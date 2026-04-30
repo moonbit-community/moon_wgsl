@@ -35,22 +35,21 @@ pub struct Composer {
   composable_module_registry_paths : @hashmap.HashMap[String, String]
 }
 pub fn Composer::add_composable_module(Self, @common.ComposableModuleDescriptor) -> @common.ComposableModuleDefinition raise ComposerError
-pub fn Composer::analyze_wgsl_source_files_for_registry(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
-pub fn Composer::clear_registered_wgsl_source_registry(Self) -> Unit
+pub fn Composer::analyze_source_files(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
+pub fn Composer::clear_sources(Self) -> Unit
 pub fn Composer::compose_wgsl(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_source(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::contains_module(Self, String) -> Bool
-pub fn Composer::copy_registered_wgsl_import_module_paths(Self) -> @hashmap.HashMap[String, String]
-pub fn Composer::copy_registered_wgsl_source_files(Self) -> Array[@common.WgslSourceFile]
+pub fn Composer::copy_import_module_paths(Self) -> @hashmap.HashMap[String, String]
+pub fn Composer::copy_source_files(Self) -> Array[@common.WgslSourceFile]
 pub fn Composer::default() -> Self
-pub fn Composer::from_registered_wgsl_source_registry() -> Self
 pub fn Composer::prepare_wgsl_source(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
-pub fn Composer::register_wgsl_source(Self, String, String) -> Unit
-pub fn Composer::register_wgsl_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
-pub fn Composer::register_wgsl_source_files_checked(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
-pub fn Composer::register_wgsl_source_tree(Self, String, @common.WgslSourceScanOptions) -> Unit raise @fs.IOError
-pub fn Composer::register_wgsl_source_tree_checked(Self, String, @common.WgslSourceScanOptions) -> Array[@common.WgslDiagnostic] raise @fs.IOError
-pub fn Composer::registered_wgsl_source(Self, String) -> String?
+pub fn Composer::register_source(Self, String, String) -> Unit
+pub fn Composer::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
+pub fn Composer::register_source_files_checked(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
+pub fn Composer::register_source_tree(Self, String, @common.WgslSourceScanOptions) -> Unit raise @fs.IOError
+pub fn Composer::register_source_tree_checked(Self, String, @common.WgslSourceScanOptions) -> Array[@common.WgslDiagnostic] raise @fs.IOError
+pub fn Composer::registered_source(Self, String) -> String?
 pub fn Composer::remove_composable_module(Self, String) -> Unit
 
 // Type aliases
