@@ -192,23 +192,31 @@ fn wgsl_statement_skip_template_tokens(
 }
 
 ///|
-fn wgsl_statement_local_name_from_tokens(
+fn wgsl_statement_local_declaration_from_tokens(
   tokens : Array[Token],
   is_local_decl : Bool,
-) -> String? {
+) -> WgslIdent? {
   guard is_local_decl else { return None }
   for i in 0..<tokens.length() {
     match wgsl_statement_token_identifier(tokens[i]) {
       Some("var") => {
         let name_index = wgsl_statement_skip_template_tokens(tokens, i + 1)
         if name_index < tokens.length() {
-          return wgsl_statement_token_identifier(tokens[name_index])
+          return match tokens[name_index] {
+            Token::Identifier(name, pos) =>
+              Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
+            _ => None
+          }
         }
         return None
       }
       Some("let") | Some("const") =>
         if i + 1 < tokens.length() {
-          return wgsl_statement_token_identifier(tokens[i + 1])
+          return match tokens[i + 1] {
+            Token::Identifier(name, pos) =>
+              Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
+            _ => None
+          }
         } else {
           return None
         }
@@ -223,15 +231,20 @@ fn wgsl_statement_local_name_from_tokens(
 fn collect_wgsl_statement_pending_local_name(
   tokens : Array[Token],
   index : Int,
-  pending_local_names : Array[String],
+  pending_local_names : Array[WgslIdent],
 ) -> Int {
   match wgsl_statement_token_identifier(tokens[index]) {
     Some("var") => {
       let name_index = wgsl_statement_skip_template_tokens(tokens, index + 1)
       if name_index < tokens.length() {
-        match wgsl_statement_token_identifier(tokens[name_index]) {
-          Some(name) => pending_local_names.push(name)
-          None => ()
+        match tokens[name_index] {
+          Token::Identifier(name, pos) =>
+            pending_local_names.push(WgslIdent::{
+              name,
+              start: pos,
+              end: pos + name.length(),
+            })
+          _ => ()
         }
       }
       name_index
@@ -239,9 +252,14 @@ fn collect_wgsl_statement_pending_local_name(
     Some("let") | Some("const") => {
       let name_index = index + 1
       if name_index < tokens.length() {
-        match wgsl_statement_token_identifier(tokens[name_index]) {
-          Some(name) => pending_local_names.push(name)
-          None => ()
+        match tokens[name_index] {
+          Token::Identifier(name, pos) =>
+            pending_local_names.push(WgslIdent::{
+              name,
+              start: pos,
+              end: pos + name.length(),
+            })
+          _ => ()
         }
       }
       name_index
@@ -252,16 +270,18 @@ fn collect_wgsl_statement_pending_local_name(
 
 ///|
 fn activate_wgsl_statement_pending_local_names(
-  pending_local_names : Array[String],
+  pending_local_names : Array[WgslIdent],
   local_scopes : Array[Array[String]],
+  local_declarations : Array[WgslIdent],
 ) -> Unit {
   guard local_scopes.length() > 0 else {
     pending_local_names.clear()
     return
   }
   let active_local_names = local_scopes[local_scopes.length() - 1]
-  for name in pending_local_names {
-    wgsl_name_list_push_unique(active_local_names, name)
+  for node in pending_local_names {
+    wgsl_name_list_push_unique(active_local_names, node.name)
+    local_declarations.push(node)
   }
   pending_local_names.clear()
 }
@@ -297,12 +317,12 @@ fn wgsl_statement_identifier_has_access_prefix(
 fn collect_wgsl_statement_identifier_nodes(
   tokens : Array[Token],
   is_local_decl : Bool,
-  local_name : String?,
+  exported_locals : Array[WgslIdent],
+  local_declarations : Array[WgslIdent],
   identifiers : Array[WgslIdent],
 ) -> Unit {
-  let pending_local_names : Array[String] = []
+  let pending_local_names : Array[WgslIdent] = []
   let local_scopes : Array[Array[String]] = [[]]
-  let mut skipped_local_name = false
   let mut binding_index = -1
   for i in 0..<tokens.length() {
     match wgsl_statement_token_other_code(tokens[i]) {
@@ -318,7 +338,7 @@ fn collect_wgsl_statement_identifier_nodes(
       }
       Some(59) => {
         activate_wgsl_statement_pending_local_names(
-          pending_local_names, local_scopes,
+          pending_local_names, local_scopes, local_declarations,
         )
         continue
       }
@@ -338,12 +358,16 @@ fn collect_wgsl_statement_identifier_nodes(
     if i == binding_index {
       continue
     }
-    match local_name {
-      Some(name) if is_local_decl && !skipped_local_name && ident == name => {
-        skipped_local_name = true
-        continue
+    let mut is_exported_local = false
+    if is_local_decl {
+      for binding in exported_locals {
+        if binding.start == pos && binding.name == ident {
+          is_exported_local = true
+        }
       }
-      _ => ()
+    }
+    if is_exported_local {
+      continue
     }
     if wgsl_statement_scope_contains(local_scopes, ident) {
       continue
@@ -406,17 +430,24 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   } else {
     let text = self.source_text[start_pos:end_pos].to_owned()
     let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
-    let local_name = wgsl_statement_local_name_from_tokens(
-      tokens, is_local_decl,
-    )
+    let local_declarations : Array[WgslIdent] = []
+    let exported_locals : Array[WgslIdent] = []
+    match wgsl_statement_local_declaration_from_tokens(tokens, is_local_decl) {
+      Some(binding) => {
+        local_declarations.push(binding)
+        exported_locals.push(binding)
+      }
+      None => ()
+    }
     collect_wgsl_statement_identifier_nodes(
-      tokens, is_local_decl, local_name, identifiers,
+      tokens, is_local_decl, exported_locals, local_declarations, identifiers,
     )
     Some(WgslStatement::{
       text,
       start: start_pos,
       end: end_pos,
-      local_name,
+      local_declarations,
+      exported_locals,
       identifiers,
     })
   }

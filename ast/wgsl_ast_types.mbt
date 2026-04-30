@@ -104,7 +104,8 @@ pub(all) struct WgslStatement {
   text : String
   start : Int
   end : Int
-  local_name : String?
+  local_declarations : Array[WgslIdent]
+  exported_locals : Array[WgslIdent]
   identifiers : Array[WgslIdent]
 } derive(Debug)
 

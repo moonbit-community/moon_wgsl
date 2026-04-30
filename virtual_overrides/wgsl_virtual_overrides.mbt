@@ -101,9 +101,8 @@ fn wgsl_override_body_references_target(
         None => ()
       }
     }
-    match statement.local_name {
-      Some(name) => active_local_names.push(name)
-      None => ()
+    for binding in statement.exported_locals {
+      active_local_names.push(binding.name)
     }
   }
   false

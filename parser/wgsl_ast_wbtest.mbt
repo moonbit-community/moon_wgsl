@@ -461,8 +461,10 @@ test "WGSL function payload exposes source-preserving statement AST" {
     content="\"return 0u;\"",
   )
   debug_inspect(
-    function.body.statements[0].local_name,
-    content="Some(\"local\")",
+    function.body.statements[0].exported_locals.map(fn(node) { node.name }),
+    content=(
+      #|["local"]
+    ),
   )
   debug_inspect(
     function.body.statements[0].identifiers[0].name,
@@ -472,8 +474,8 @@ test "WGSL function payload exposes source-preserving statement AST" {
     function.body.statements[0].identifiers[1].name,
     content="\"u32\"",
   )
-  debug_inspect(function.body.statements[1].local_name, content="None")
-  debug_inspect(function.body.statements[2].local_name, content="None")
+  debug_inspect(function.body.statements[1].exported_locals, content="[]")
+  debug_inspect(function.body.statements[2].exported_locals, content="[]")
   debug_inspect(
     function.body.statements[2].identifiers[0].name,
     content="\"return\"",
@@ -493,8 +495,10 @@ test "WGSL statement identifiers skip local declarations and member access" {
     abort("expected function payload")
   }
   debug_inspect(
-    function.body.statements[0].local_name,
-    content="Some(\"local\")",
+    function.body.statements[0].exported_locals.map(fn(node) { node.name }),
+    content=(
+      #|["local"]
+    ),
   )
   debug_inspect(
     function.body.statements[0].identifiers.map(fn(node) { node.name }),
@@ -578,6 +582,20 @@ test "WGSL statement AST records nested and loop local declarations" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
+  debug_inspect(
+    function.body.statements[0].local_declarations.map(fn(node) { node.name }),
+    content=(
+      #|["nested"]
+    ),
+  )
+  debug_inspect(function.body.statements[0].exported_locals, content="[]")
+  debug_inspect(
+    function.body.statements[1].local_declarations.map(fn(node) { node.name }),
+    content=(
+      #|["i"]
+    ),
+  )
+  debug_inspect(function.body.statements[1].exported_locals, content="[]")
   let nodes : Array[WgslIdent] = []
   @ast.collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::Function(function),
@@ -693,5 +711,5 @@ test "WGSL statement classification uses identifier tokens" {
     abort("expected function payload")
   }
   debug_inspect(function.body.statements.length(), content="2")
-  debug_inspect(function.body.statements[1].local_name, content="None")
+  debug_inspect(function.body.statements[1].exported_locals, content="[]")
 }

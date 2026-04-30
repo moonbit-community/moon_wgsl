@@ -103,9 +103,8 @@ pub fn collect_wgsl_decl_identifier_nodes(
             nodes.push(ident)
           }
         }
-        match statement.local_name {
-          Some(name) => wgsl_name_list_push_unique(active_local_names, name)
-          None => ()
+        for binding in statement.exported_locals {
+          wgsl_name_list_push_unique(active_local_names, binding.name)
         }
       }
     }
