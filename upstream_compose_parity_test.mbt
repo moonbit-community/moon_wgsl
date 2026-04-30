@@ -616,7 +616,7 @@ test "naga_oil upstream: duplicate module imports are renamed per alias scope" {
 }
 
 ///|
-test "naga_oil upstream: namespace-style module refs synthesize source-level imports" {
+test "naga_oil upstream: namespace-style module refs resolve through AST import graph" {
   let output = upstream_parity_export_case(
     "rusty_imports",
     "top.wgsl",

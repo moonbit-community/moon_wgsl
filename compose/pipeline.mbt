@@ -70,7 +70,16 @@ fn Composer::preprocess_wgsl_source_with_path(
   let prepared = prepare_wgsl_compose_source(source, session, active_defs)
   let mut merged = ""
   let alias_redirects : Array[WgslSymbolRedirect] = []
-  let lines = self.seed_wgsl_compose_lines(current_rel_path, prepared, session)
+  let implicit_requests = self.build_wgsl_implicit_import_requests(
+    current_rel_path,
+    prepared.active_scan_source,
+    session,
+  )
+  let implicit_imports = self.compose_wgsl_import_requests(
+    current_rel_path, implicit_requests, alias_redirects, session, active_defs,
+  )
+  merged = merged + implicit_imports
+  let lines = seed_wgsl_compose_lines(prepared)
   let active_line_flags = active_wgsl_ifdef_line_flags_strict_for_compose(
     wgsl_compose_original_lines_source(lines),
     active_defs,

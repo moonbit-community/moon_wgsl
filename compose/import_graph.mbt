@@ -32,25 +32,10 @@ fn prepare_wgsl_compose_source(
 }
 
 ///|
-fn Composer::seed_wgsl_compose_lines(
-  self : Composer,
-  current_rel_path : String,
+fn seed_wgsl_compose_lines(
   prepared : WgslPreparedComposeSource,
-  session : WgslComposeSession,
 ) -> Array[WgslComposeLine] {
   let lines : Array[WgslComposeLine] = []
-  let qualified_targets : Array[WgslImportTarget] = []
-  collect_wgsl_qualified_module_targets(
-    prepared.active_scan_source,
-    current_rel_path,
-    self.registry,
-    session.modules,
-    qualified_targets,
-  )
-  for target in qualified_targets {
-    let line = "#import \{target.raw_path} as \{target.alias_name}"
-    lines.push(WgslComposeLine::{ original: line, decommented: line })
-  }
   let original_lines = split_source_lines(prepared.redirected_source)
   let decommented_lines = split_source_lines(
     replace_comments_naga_oil(prepared.redirected_source),
@@ -96,12 +81,25 @@ fn Composer::build_wgsl_import_requests(
   session : WgslComposeSession,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let targets : Array[WgslImportTarget] = []
-  let requests : Array[WgslImportRequest] = []
   if !compose_import_spec_is_empty_or_final_semicolon(spec) {
     parse_wgsl_import_targets(spec, "", targets) catch {
       Parse(message, _) => raise ComposerError::FailedToResolveImport(message)
     }
   }
+  self.build_wgsl_import_requests_from_targets(
+    current_rel_path, targets, active_scan_source, session,
+  )
+}
+
+///|
+fn Composer::build_wgsl_import_requests_from_targets(
+  self : Composer,
+  current_rel_path : String,
+  targets : Array[WgslImportTarget],
+  active_scan_source : String,
+  session : WgslComposeSession,
+) -> Array[WgslImportRequest] raise ComposerError {
+  let requests : Array[WgslImportRequest] = []
   let mut target_index = 0
   while target_index < targets.length() {
     let target = targets[target_index]
@@ -265,6 +263,26 @@ fn Composer::build_wgsl_import_requests(
     }
   }
   requests
+}
+
+///|
+fn Composer::build_wgsl_implicit_import_requests(
+  self : Composer,
+  current_rel_path : String,
+  active_scan_source : String,
+  session : WgslComposeSession,
+) -> Array[WgslImportRequest] raise ComposerError {
+  let qualified_targets : Array[WgslImportTarget] = []
+  collect_wgsl_qualified_module_targets(
+    active_scan_source,
+    current_rel_path,
+    self.registry,
+    session.modules,
+    qualified_targets,
+  )
+  self.build_wgsl_import_requests_from_targets(
+    current_rel_path, qualified_targets, active_scan_source, session,
+  )
 }
 
 ///|
