@@ -158,9 +158,15 @@ pub fn Composer::prepare_wgsl_source(
   let composed = strip_wgsl_virtual_functions(
     self.load_root_wgsl_preprocessed_into_session(rel, session),
   )
+  let source_files = copy_composed_source_files(session.resolved_source_files)
   PreparedWgslSource::{
     source: finalize_wgsl_writeback_source(composed),
-    source_files: copy_composed_source_files(session.resolved_source_files),
+    source_files,
+    source_catalog: build_prepared_wgsl_source_catalog(
+      source_files.copy(),
+      session.defines,
+      session.value_defines,
+    ),
     defines: session.defines,
     value_defines: session.value_defines,
     diagnostics: collect_wgsl_unused_redirect_diagnostics(session),

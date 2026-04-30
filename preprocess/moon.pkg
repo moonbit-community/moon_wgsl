@@ -1,6 +1,7 @@
 import {
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/syntax",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/hashmap",
   "moonbitlang/core/hashset",
   "moonbitlang/core/string",

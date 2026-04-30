@@ -33,66 +33,10 @@ fn push_wgsl_diagnostic(
 }
 
 ///|
-fn compare_wgsl_source_catalog_entries(
-  lhs : WgslSourceCatalogEntry,
-  rhs : WgslSourceCatalogEntry,
-) -> Int {
-  let rel_path_compare = String::compare(lhs.rel_path, rhs.rel_path)
-  if rel_path_compare != 0 {
-    return rel_path_compare
-  }
-  let source_start_compare = lhs.source_start - rhs.source_start
-  if source_start_compare != 0 {
-    return source_start_compare
-  }
-  let source_end_compare = lhs.source_end - rhs.source_end
-  if source_end_compare != 0 {
-    return source_end_compare
-  }
-  String::compare(lhs.symbol_name, rhs.symbol_name)
-}
-
-///|
-fn build_wgsl_source_catalog_from_files(
-  source_files : Array[WgslSourceFile],
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-) -> Array[WgslSourceCatalogEntry] {
-  source_files.sort_by((lhs, rhs) => String::compare(lhs.rel_path, rhs.rel_path))
-
-  let catalog_entries : Array[WgslSourceCatalogEntry] = []
-  for source_file in source_files {
-    let prepared_source = strip_wgsl_import_declarations(
-      apply_wgsl_template_consts(
-        apply_wgsl_ifdefs(source_file.source, defines, value_defines),
-        value_defines,
-      ),
-    )
-    let graph = build_wgsl_declaration_graph(prepared_source)
-    for block in graph.declaration_blocks {
-      guard block.name != "" else { continue }
-      catalog_entries.push(WgslSourceCatalogEntry::{
-        rel_path: source_file.rel_path,
-        symbol_name: block.name,
-        source_text: block.text.trim().to_owned(),
-        source_start: block.start,
-        source_end: block.end,
-      })
-    }
-  }
-  catalog_entries.sort_by(compare_wgsl_source_catalog_entries)
-  catalog_entries
-}
-
-///|
 pub fn build_wgsl_source_catalog(
   prepared : PreparedWgslSource,
 ) -> Array[WgslSourceCatalogEntry] {
-  build_wgsl_source_catalog_from_files(
-    prepared.source_files,
-    prepared.defines,
-    prepared.value_defines,
-  )
+  prepared.source_catalog.copy()
 }
 
 ///|
@@ -158,10 +102,8 @@ fn match_wgsl_source_catalog_entry(
 ///|
 fn serialize_wgsl_export_output(
   graph : WgslDeclarationGraph,
-  source_files : Array[WgslSourceFile],
+  source_catalog : Array[WgslSourceCatalogEntry],
   options : WgslExportOptions,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
 ) -> WgslExportOutput {
   let diagnostics : Array[WgslDiagnostic] = []
   let (included_names, missing_root_items) = collect_wgsl_reachable_declaration_names(
@@ -179,9 +121,6 @@ fn serialize_wgsl_export_output(
       None,
     )
   }
-  let source_catalog = build_wgsl_source_catalog_from_files(
-    source_files, defines, value_defines,
-  )
   let catalog = build_wgsl_source_catalog_index(source_catalog)
   let source_map : Array[WgslSourceMapEntry] = []
   let mut source = ""
@@ -227,10 +166,8 @@ pub fn export_wgsl_with_options(
   let graph = build_wgsl_declaration_graph(prepared.source)
   let output = serialize_wgsl_export_output(
     graph,
-    prepared.source_files,
+    prepared.source_catalog,
     export_options,
-    prepared.defines,
-    prepared.value_defines,
   )
   for diagnostic in prepared.diagnostics {
     output.diagnostics.push(diagnostic)

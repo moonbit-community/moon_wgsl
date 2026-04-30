@@ -25,6 +25,7 @@ using @common {
   type WgslDiagnosticSeverity,
   type WgslImportTarget,
   type WgslResolvedImportModule,
+  type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceScanOptions,
   type WgslSymbolRedirect,
@@ -34,6 +35,7 @@ using @common {
 using @preprocess {
   type PreprocessError,
   active_wgsl_ifdef_line_flags_strict,
+  apply_wgsl_ifdefs,
   apply_wgsl_ifdefs_strict,
   apply_wgsl_template_consts,
   get_preprocessor_metadata,

@@ -116,9 +116,30 @@ pub fn WgslSourceFile::default() -> WgslSourceFile {
 }
 
 ///|
+pub(all) struct WgslSourceCatalogEntry {
+  rel_path : String
+  symbol_name : String
+  source_text : String
+  source_start : Int
+  source_end : Int
+} derive(Eq, Debug)
+
+///|
+pub fn WgslSourceCatalogEntry::default() -> WgslSourceCatalogEntry {
+  WgslSourceCatalogEntry::{
+    rel_path: "",
+    symbol_name: "",
+    source_text: "",
+    source_start: 0,
+    source_end: 0,
+  }
+}
+
+///|
 pub(all) struct PreparedWgslSource {
   source : String
   source_files : Array[WgslSourceFile]
+  source_catalog : Array[WgslSourceCatalogEntry]
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
   diagnostics : Array[WgslDiagnostic]
@@ -166,26 +187,6 @@ pub fn WgslDiagnostic::default() -> WgslDiagnostic {
     symbol_name: None,
     generated_start: None,
     source_start: None,
-  }
-}
-
-///|
-pub(all) struct WgslSourceCatalogEntry {
-  rel_path : String
-  symbol_name : String
-  source_text : String
-  source_start : Int
-  source_end : Int
-} derive(Eq, Debug)
-
-///|
-pub fn WgslSourceCatalogEntry::default() -> WgslSourceCatalogEntry {
-  WgslSourceCatalogEntry::{
-    rel_path: "",
-    symbol_name: "",
-    source_text: "",
-    source_start: 0,
-    source_end: 0,
   }
 }
 

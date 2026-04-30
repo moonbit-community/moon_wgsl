@@ -9,21 +9,21 @@ using @common {
   type RequiresDirective,
   type ShaderDefValue,
   type WgslDirectives,
+  type WgslImportTarget,
 }
 
 ///|
 using @syntax {
-  type DeclaredImportBinding,
+  type ParseImportsError,
   type Token,
   type WgslDirectiveKind,
-  code_unit_to_string,
   import_brace_balance,
-  parse_imports,
+  parse_wgsl_import_targets,
   replace_comments,
   spaces,
   source_lines,
   starts_with_text,
-  substitute_identifiers,
+  split_last_identifier,
   trim_trailing_semicolons,
   tokenize,
   word_tail,

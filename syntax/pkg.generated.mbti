@@ -7,8 +7,6 @@ import {
 }
 
 // Values
-pub fn code_unit_to_string(Int) -> String
-
 pub fn collect_wgsl_decl_declared_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
 
 pub fn collect_wgsl_decl_global_declared_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
@@ -18,8 +16,6 @@ pub fn collect_wgsl_decl_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) 
 pub fn collect_wgsl_source_identifier_names(String, Array[String]) -> Unit
 
 pub fn import_brace_balance(String) -> Int
-
-pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise ParseImportsError
 
 pub fn parse_wgsl_directive_line(String) -> WgslDirective?
 
@@ -41,8 +37,6 @@ pub fn split_source_lines(String) -> Array[String]
 
 pub fn starts_with_text(String, String) -> Bool
 
-pub fn substitute_identifiers(String, Int, Array[DeclaredImportBinding], Array[@common.ImportDefWithOffset], Bool) -> String raise SubstituteIdentifiersError
-
 pub fn tokenize(String, Bool) -> Array[Token]
 
 pub fn trim_trailing_semicolons(String) -> String
@@ -58,16 +52,7 @@ pub(all) suberror ParseImportsError {
   Parse(String, Int)
 }
 
-pub(all) suberror SubstituteIdentifiersError {
-  AmbiguousImport(Int)
-}
-
 // Types and methods
-pub(all) struct DeclaredImportBinding {
-  used_name : String
-  full_paths : Array[String]
-}
-
 pub(all) struct SourceLineSpan {
   text : String
   start : Int
