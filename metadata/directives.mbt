@@ -6,10 +6,10 @@ priv struct ShaderDefReference {
 ///|
 fn split_extensions(raw : String) -> Array[String] {
   let extensions : Array[String] = []
-  for token in tokenize(raw, false) {
-    match token {
-      WgslToken::Identifier(text, _) => extensions.push(text)
-      _ => ()
+  for part in raw.split(",") {
+    let extension = part.trim().to_owned()
+    if extension != "" {
+      extensions.push(extension)
     }
   }
   extensions

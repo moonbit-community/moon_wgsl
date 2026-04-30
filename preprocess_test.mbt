@@ -841,6 +841,30 @@ test "naga_oil: wgsl directives accept upstream whitespace forms" {
 }
 
 ///|
+test "naga_oil: wgsl directive extension lists split only on commas" {
+  let metadata = metadata_or_abort(
+    "enable foo-bar, spaced extension;\nrequires one two, three-four;\nfn shade() {}\n",
+  )
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
+  debug_inspect(
+    metadata.wgsl_directives.enables[0].extensions[0],
+    content="\"foo-bar\"",
+  )
+  debug_inspect(
+    metadata.wgsl_directives.enables[0].extensions[1],
+    content="\"spaced extension\"",
+  )
+  debug_inspect(
+    metadata.wgsl_directives.requires[0].extensions[0],
+    content="\"one two\"",
+  )
+  debug_inspect(
+    metadata.wgsl_directives.requires[0].extensions[1],
+    content="\"three-four\"",
+  )
+}
+
+///|
 test "naga_oil: directive section ends on non-directive identifier prefix" {
   let metadata = metadata_or_abort(
     "enable_extra();\ndiagnostic_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
