@@ -77,6 +77,7 @@ using @ast {type WgslDirectiveKind}
 using @lex {
   type WgslToken,
   naga_oil_raw_import_brace_balance_next,
+  replace_comments_naga_oil,
   split_source_lines,
   tokenize,
   wgsl_regex_skip_whitespace,

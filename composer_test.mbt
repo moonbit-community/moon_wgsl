@@ -175,6 +175,27 @@ test "naga_oil: composer directives use Rust regex Unicode whitespace" {
 }
 
 ///|
+test "naga_oil: composer directives are detected after block comment stripping" {
+  clear_composer_test_registry()
+  register_composer_test_shader_source(
+    "shared/inc.wgsl", "#define_import_path demo::inc\nfn inc() -> f32 {\n  return 1.0;\n}\n",
+  )
+  let preprocessed = composer_test_composer().compose_wgsl_source(
+    "/* stripped prefix */#import demo::inc::inc\nfn demo() -> f32 {\n  return inc();\n}\n",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort(
+        "expected comment-stripped import compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(preprocessed.contains("fn inc"), content="true")
+  debug_inspect(preprocessed.contains("#import"), content="false")
+  debug_inspect(preprocessed.contains("return inc();"), content="true")
+  clear_composer_test_registry()
+}
+
+///|
 test "naga_oil: composer preprocess strips module aliases" {
   register_grouped_import_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl_source(

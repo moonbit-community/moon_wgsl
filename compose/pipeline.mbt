@@ -71,13 +71,14 @@ fn Composer::preprocess_wgsl_source_with_path(
   let alias_redirects : Array[WgslSymbolRedirect] = []
   let lines = self.seed_wgsl_compose_lines(current_rel_path, prepared, session)
   let active_line_flags = active_wgsl_ifdef_line_flags_strict_for_compose(
-    lines.join("\n"),
+    wgsl_compose_original_lines_source(lines),
     active_defs,
   )
   let mut line_index = 0
   while line_index < lines.length() {
-    let line = lines[line_index]
-    let trimmed = wgsl_regex_trim_whitespace(line)
+    let line = lines[line_index].original
+    let decommented = lines[line_index].decommented
+    let trimmed = wgsl_regex_trim_whitespace(decommented)
     if parse_glsl_version_directive(trimmed) is Some(_) {
       line_index = line_index + 1
       continue
@@ -108,7 +109,7 @@ fn Composer::preprocess_wgsl_source_with_path(
       let mut brace_balance = naga_oil_raw_import_brace_balance_next(0, spec)
       while brace_balance > 0 && line_index + 1 < lines.length() {
         line_index = line_index + 1
-        let next_line = lines[line_index]
+        let next_line = lines[line_index].decommented
         spec = "\{spec}\n\{next_line}"
         brace_balance = naga_oil_raw_import_brace_balance_next(
           brace_balance, next_line,

@@ -5,6 +5,12 @@ priv struct WgslPreparedComposeSource {
 }
 
 ///|
+priv struct WgslComposeLine {
+  original : String
+  decommented : String
+}
+
+///|
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
@@ -31,8 +37,8 @@ fn Composer::seed_wgsl_compose_lines(
   current_rel_path : String,
   prepared : WgslPreparedComposeSource,
   session : WgslComposeSession,
-) -> Array[String] {
-  let lines : Array[String] = []
+) -> Array[WgslComposeLine] {
+  let lines : Array[WgslComposeLine] = []
   let qualified_targets : Array[WgslImportTarget] = []
   collect_wgsl_qualified_module_targets(
     prepared.active_scan_source,
@@ -42,12 +48,31 @@ fn Composer::seed_wgsl_compose_lines(
     qualified_targets,
   )
   for target in qualified_targets {
-    lines.push("#import \{target.raw_path} as \{target.alias_name}")
+    let line = "#import \{target.raw_path} as \{target.alias_name}"
+    lines.push(WgslComposeLine::{ original: line, decommented: line })
   }
-  for line in split_source_lines(prepared.redirected_source) {
-    lines.push(line)
+  let original_lines = split_source_lines(prepared.redirected_source)
+  let decommented_lines = split_source_lines(
+    replace_comments_naga_oil(prepared.redirected_source),
+  )
+  for i in 0..<original_lines.length() {
+    let decommented = if i < decommented_lines.length() {
+      decommented_lines[i]
+    } else {
+      original_lines[i]
+    }
+    lines.push(WgslComposeLine::{ original: original_lines[i], decommented })
   }
   lines
+}
+
+///|
+fn wgsl_compose_original_lines_source(lines : Array[WgslComposeLine]) -> String {
+  let originals : Array[String] = []
+  for line in lines {
+    originals.push(line.original)
+  }
+  originals.join("\n")
 }
 
 ///|
