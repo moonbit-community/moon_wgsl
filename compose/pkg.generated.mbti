@@ -20,6 +20,7 @@ pub(all) suberror ComposerError {
   MissingPreparedSourceDefs(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
+  DefineInModule
   UnknownShaderDef(String)
   UnknownShaderDefOperator(String)
   InvalidShaderDefComparisonValue(String, String, String)

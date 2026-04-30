@@ -114,6 +114,14 @@ pub fn get_preprocessor_metadata(source : String) -> PreprocessorMetaData {
 }
 
 ///|
+pub fn get_preprocessor_metadata_checked(
+  source : String,
+  allow_defines? : Bool = true,
+) -> PreprocessorMetaData raise MetadataError {
+  try_get_preprocessor_metadata(source, allow_defines)
+}
+
+///|
 pub fn get_preprocessor_data(
   source : String,
 ) -> (

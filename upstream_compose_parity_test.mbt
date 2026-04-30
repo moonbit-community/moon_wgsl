@@ -660,21 +660,24 @@ test "naga_oil upstream: entrypoint imports are renamed instead of shadowing loc
 }
 
 ///|
-test "naga_oil upstream: diagnostic filters are preserved in exported WGSL" {
-  let output = upstream_parity_export_case(
-    "diagnostic_filters",
-    "top.wgsl",
-    ["main"],
-    upstream_parity_empty_defines(),
-  )
-  debug_inspect(
-    output.source.contains("diagnostic(warning, derivative_uniformity);"),
-    content="true",
-  )
-  debug_inspect(
-    output.source.contains("fn filters__diagnostic_test"),
-    content="true",
-  )
+test "naga_oil upstream: unsupported diagnostic filter severity reports compose failure" {
+  let mut error_message : String? = None
+  ignore(
+    upstream_parity_composer("diagnostic_filters").compose_wgsl(
+      "top.wgsl",
+      upstream_parity_empty_compose_options(),
+    ),
+  ) catch {
+    err => error_message = Some(err.message())
+  }
+  match error_message {
+    Some(message) =>
+      debug_inspect(
+        message.contains("Invalid severity 'warning'"),
+        content="true",
+      )
+    None => abort("expected diagnostic-filter compose failure")
+  }
 }
 
 ///|

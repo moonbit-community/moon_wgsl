@@ -14,6 +14,8 @@ pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition
 
 pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
 
+pub fn get_preprocessor_metadata_checked(String, allow_defines? : Bool) -> @common.PreprocessorMetaData raise MetadataError
+
 pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise @parser.ParseImportsError
 
 pub fn substitute_identifiers(String, Int, Array[DeclaredImportBinding], Array[@common.ImportDefWithOffset], Bool) -> String raise SubstituteIdentifiersError

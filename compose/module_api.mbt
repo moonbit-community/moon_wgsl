@@ -3,8 +3,13 @@ pub fn Composer::add_composable_module(
   self : Composer,
   desc : ComposableModuleDescriptor,
 ) -> ComposableModuleDefinition raise ComposerError {
-  let metadata = get_preprocessor_metadata(desc.source)
-  let module_name = composable_module_name_from_descriptor(desc) catch {
+  let metadata = get_preprocessor_metadata_checked(
+    desc.source,
+    allow_defines=false,
+  ) catch {
+    error => raise composer_error_from_metadata_error(error)
+  }
+  let module_name = composable_module_name_from_descriptor(desc, metadata.name) catch {
     err => raise err
   }
   let registry_rel_path = composable_module_registry_rel_path(desc, module_name)
@@ -127,6 +132,16 @@ fn composer_error_from_preprocess_error(
     InvalidWgslDirective(line, _, reason) =>
       UnknownShaderDefOperator("\{line}: \{reason}")
     GlslInvalidVersion(_) | DefineInModule(_) => UnknownShaderDefOperator("")
+  }
+}
+
+///|
+fn composer_error_from_metadata_error(error : MetadataError) -> ComposerError {
+  match error {
+    ImportParseError(message, _) => FailedToResolveImport(message)
+    InvalidWgslDirective(line, _, reason) =>
+      UnknownShaderDefOperator("\{line}: \{reason}")
+    DefineInModule(_) => DefineInModule
   }
 }
 

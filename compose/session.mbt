@@ -149,6 +149,7 @@ priv struct WgslActiveComposeDefs {
 ///|
 fn composable_module_name_from_descriptor(
   desc : ComposableModuleDescriptor,
+  metadata_name : String?,
 ) -> String raise ComposerError {
   match desc.as_name {
     Some(as_name) => {
@@ -159,7 +160,7 @@ fn composable_module_name_from_descriptor(
       trimmed
     }
     None =>
-      match get_preprocessor_metadata(desc.source).name {
+      match metadata_name {
         Some(name) if name.trim() != "" => name.trim().to_owned()
         _ => raise ComposerError::NoModuleName(desc.file_path)
       }

@@ -520,7 +520,9 @@ For the full exported surface, see the generated subpackage interfaces:
 - `register_source_files_checked` is the safe bulk-registration path when
   callers need deterministic diagnostics before mutating a Composer registry.
 - `@metadata.get_preprocessor_metadata` is forgiving by design: on parse failure it
-  returns empty/default metadata instead of raising.
+  returns empty/default metadata instead of raising. Compose internals use
+  `@metadata.get_preprocessor_metadata_checked` so upstream-invalid module
+  metadata is not silently accepted.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.
 - `export_wgsl_with_options` scopes `source_catalog` and

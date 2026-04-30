@@ -965,3 +965,26 @@ test "naga_oil: source catalog uses per-module strict shader defs" {
   module_catalog_names.sort()
   debug_inspect(module_catalog_names.join(","), content="\"from_if\"")
 }
+
+///|
+test "naga_oil: composable modules reject local define directives" {
+  let composer = @compose.Composer::default()
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path bad::module\n#define LOCAL_FLAG\nfn value() -> f32 {\n  return 1.0;\n}\n",
+      file_path: "shaders/bad/module.wgsl",
+      as_name: None,
+      additional_imports: [],
+      shader_defs: @hashmap.HashMap::new(),
+    }),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message(),
+        content="\"shader module cannot contain #define directives\"",
+      )
+      return
+    }
+  }
+  abort("expected composable module #define rejection")
+}

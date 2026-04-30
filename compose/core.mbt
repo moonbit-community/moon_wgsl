@@ -38,6 +38,7 @@ pub(all) suberror ComposerError {
   MissingPreparedSourceDefs(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
+  DefineInModule
   UnknownShaderDef(String)
   UnknownShaderDefOperator(String)
   InvalidShaderDefComparisonValue(String, String, String)
@@ -63,6 +64,7 @@ pub fn ComposerError::message(self : ComposerError) -> String {
       "shader source was not startup-registered: \{rel}"
     NoModuleName(path) =>
       "shader module is missing #define_import_path: \{path}"
+    DefineInModule => "shader module cannot contain #define directives"
     UnknownShaderDef(name) => "unknown shader def: \{name}"
     UnknownShaderDefOperator(operator) =>
       "unknown shader def operator: \{operator}"
