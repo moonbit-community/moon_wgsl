@@ -65,7 +65,6 @@ pub fn Composer::add_composable_module(
       metadata.cleaned_source,
       additional_imports,
     ),
-    language: desc.language,
     file_path: desc.file_path,
     shader_defs,
     effective_defs: hashset_strings_to_array(effective_defs),

@@ -16,7 +16,6 @@ pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int]
 pub(all) struct ComposableModuleDefinition {
   name : String
   sanitized_source : String
-  language : ShaderLanguage
   file_path : String
   shader_defs : @hashmap.HashMap[String, ShaderDefValue]
   effective_defs : Array[String]
@@ -27,7 +26,6 @@ pub(all) struct ComposableModuleDefinition {
 pub(all) struct ComposableModuleDescriptor {
   source : String
   file_path : String
-  language : ShaderLanguage
   as_name : String?
   additional_imports : Array[ImportDefinition]
   shader_defs : @hashmap.HashMap[String, ShaderDefValue]
@@ -55,15 +53,6 @@ pub(all) struct ImportDefinition {
   items : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn ImportDefinition::default() -> Self
-
-pub(all) struct NagaModuleDescriptor {
-  source : String
-  file_path : String
-  shader_type : ShaderType
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
-  additional_imports : Array[ImportDefinition]
-} derive(Eq, @debug.Debug)
-pub fn NagaModuleDescriptor::default() -> Self
 
 pub(all) struct PreparedWgslSource {
   source : String
@@ -99,17 +88,6 @@ pub(all) enum ShaderDefValue {
   UInt(UInt)
 } derive(Eq, @debug.Debug)
 pub fn ShaderDefValue::value_as_string(Self) -> String
-
-pub(all) enum ShaderLanguage {
-  Wgsl
-  Glsl
-} derive(Eq, @debug.Debug)
-
-pub(all) enum ShaderType {
-  Wgsl
-  GlslVertex
-  GlslFragment
-} derive(Eq, @debug.Debug)
 
 pub(all) struct WgslComposeOptions {
   defines : @hashmap.HashMap[String, Bool]

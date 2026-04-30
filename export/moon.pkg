@@ -3,6 +3,5 @@ import {
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/compose",
   "Milky2018/moon_wgsl/preprocess",
-  "Milky2018/moon_wgsl/resolver",
   "moonbitlang/core/hashmap",
 }

@@ -265,13 +265,13 @@ test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
 ///|
 test "naga_oil: export source catalog is scoped to the current dependency closure" {
   register_ambiguous_export_test_shaders()
-  let value_defines = @common.default_wgsl_value_defines()
-  let catalog = @export.build_registered_wgsl_source_catalog(
-    export_test_empty_defines(),
-    value_defines,
+  let composer = export_test_global_registry_composer()
+  let catalog = @export.build_wgsl_source_catalog(
+    composer,
+    export_test_compose_options(export_test_empty_defines(), []),
   )
   let output = @export.export_wgsl_with_options(
-    export_test_global_registry_composer(),
+    composer,
     "shaders/effects/ambiguous.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),
     { root_items: ["shade"] },

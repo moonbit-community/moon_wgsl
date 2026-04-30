@@ -16,7 +16,6 @@
 pub(all) struct ComposableModuleDescriptor {
   source : String
   file_path : String
-  language : ShaderLanguage
   as_name : String?
   additional_imports : Array[ImportDefinition]
   shader_defs : @hashmap.HashMap[String, ShaderDefValue]
@@ -27,7 +26,6 @@ pub fn ComposableModuleDescriptor::default() -> ComposableModuleDescriptor {
   {
     source: "",
     file_path: "",
-    language: ShaderLanguage::Wgsl,
     as_name: None,
     additional_imports: [],
     shader_defs: @hashmap.HashMap::new(),
@@ -35,30 +33,9 @@ pub fn ComposableModuleDescriptor::default() -> ComposableModuleDescriptor {
 }
 
 ///|
-pub(all) struct NagaModuleDescriptor {
-  source : String
-  file_path : String
-  shader_type : ShaderType
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
-  additional_imports : Array[ImportDefinition]
-} derive(Eq, Debug)
-
-///|
-pub fn NagaModuleDescriptor::default() -> NagaModuleDescriptor {
-  {
-    source: "",
-    file_path: "",
-    shader_type: ShaderType::Wgsl,
-    shader_defs: @hashmap.HashMap::new(),
-    additional_imports: [],
-  }
-}
-
-///|
 pub(all) struct ComposableModuleDefinition {
   name : String
   sanitized_source : String
-  language : ShaderLanguage
   file_path : String
   shader_defs : @hashmap.HashMap[String, ShaderDefValue]
   effective_defs : Array[String]

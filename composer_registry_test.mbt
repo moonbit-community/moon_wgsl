@@ -21,7 +21,6 @@ fn composer_test_descriptor(
   @common.ComposableModuleDescriptor::{
     source,
     file_path,
-    language: @common.ShaderLanguage::Wgsl,
     as_name: None,
     additional_imports: [],
     shader_defs,

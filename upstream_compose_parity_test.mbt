@@ -95,7 +95,6 @@ fn upstream_parity_descriptor_effective_defs_source(
       "const c: u32 = 0u;\n" +
       "#endif\n",
       file_path: "mod.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -111,7 +110,6 @@ fn upstream_parity_descriptor_effective_defs_source(
       "  return f32(a + b + c);\n" +
       "}\n",
       file_path: "top.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs,

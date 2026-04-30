@@ -53,16 +53,6 @@ fn compare_wgsl_source_catalog_entries(
 }
 
 ///|
-
-///|
-pub fn rewrite_wgsl_symbol_redirects(
-  source : String,
-  redirects : Array[WgslSymbolRedirect],
-) -> String {
-  @analysis.rewrite_wgsl_symbol_redirects(source, redirects)
-}
-
-///|
 fn build_wgsl_source_catalog_from_files(
   source_files : Array[WgslSourceFile],
   defines : @hashmap.HashMap[String, Bool],
@@ -92,18 +82,6 @@ fn build_wgsl_source_catalog_from_files(
   }
   catalog_entries.sort_by(compare_wgsl_source_catalog_entries)
   catalog_entries
-}
-
-///|
-pub fn build_registered_wgsl_source_catalog(
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-) -> Array[WgslSourceCatalogEntry] {
-  build_wgsl_source_catalog_from_files(
-    copy_registered_wgsl_source_files(),
-    defines,
-    value_defines,
-  )
 }
 
 ///|

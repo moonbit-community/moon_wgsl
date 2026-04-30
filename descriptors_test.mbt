@@ -13,19 +13,11 @@
 // limitations under the License.
 
 ///|
-test "naga_oil: composable and naga descriptors default to empty source" {
+test "naga_oil: composable descriptor defaults to empty source" {
   let composable = @common.ComposableModuleDescriptor::default()
   debug_inspect(composable.source, content="\"\"")
   debug_inspect(composable.file_path, content="\"\"")
-  debug_inspect(composable.language, content="Wgsl")
   debug_inspect(composable.as_name, content="None")
   debug_inspect(composable.additional_imports.length(), content="0")
   debug_inspect(composable.shader_defs.length(), content="0")
-
-  let naga = @common.NagaModuleDescriptor::default()
-  debug_inspect(naga.source, content="\"\"")
-  debug_inspect(naga.file_path, content="\"\"")
-  debug_inspect(naga.shader_type, content="Wgsl")
-  debug_inspect(naga.additional_imports.length(), content="0")
-  debug_inspect(naga.shader_defs.length(), content="0")
 }

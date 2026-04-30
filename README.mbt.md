@@ -374,9 +374,6 @@ test "README: build source catalog" {
 }
 ```
 
-The top-level `build_registered_wgsl_source_catalog` helper is still available
-when you intentionally want to inspect the shared registry.
-
 ### 7. Applying Source-Level Redirects
 
 Use the redirect-aware APIs when you want to remap one imported symbol to
@@ -422,27 +419,6 @@ test "README: source-level redirects" {
 }
 ```
 
-Shared registry helpers are still available when you intentionally want
-to inspect the package-level registry:
-
-```mbt check
-///|
-test "README: global catalog helper" {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-
-  @resolver.clear_registered_wgsl_source_registry()
-  @resolver.register_wgsl_source(
-    "shaders/demo/catalog.wgsl", "#define_import_path demo::catalog\nfn catalog_value() -> f32 {\n  return 1.0;\n}\n",
-  )
-
-  let catalog : Array[@common.WgslSourceCatalogEntry] = @export.build_registered_wgsl_source_catalog(
-    defines,
-    @common.default_wgsl_value_defines(),
-  )
-  debug_inspect(catalog.length() > 0, content="true")
-}
-```
-
 ## Import Syntax Supported
 
 The parser supports several common import forms:
@@ -483,8 +459,6 @@ Main public entry points:
 - `register_wgsl_source_files_checked`
   Runs preflight registry diagnostics and only mutates registry state when no
   errors are reported.
-- `build_registered_wgsl_source_catalog`
-  Returns the declaration catalog for the shared registry.
 - `build_wgsl_source_catalog`
   Returns the declaration catalog for a specific Composer registry.
 - `build_wgsl_import_module_paths` / `resolve_wgsl_import_module`
@@ -492,7 +466,8 @@ Main public entry points:
 - `resolve_wgsl_import_file_path`
   Resolves relative or quoted file-path imports against a source file path.
 - `rewrite_wgsl_symbol_redirects`
-  Applies token-based source-level symbol redirects to WGSL source.
+  Applies token-based source-level symbol redirects to WGSL source from the
+  `analysis` package.
 - `Composer::from_registered_wgsl_source_registry`
   Creates an explicit Composer snapshot from the shared registry.
 - `Composer::compose_wgsl_source`

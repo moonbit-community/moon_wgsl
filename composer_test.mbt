@@ -410,7 +410,6 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
     composer.add_composable_module({
       source: "#define_import_path demo::maths\nconst PI_2: f32 = 6.28318;\n",
       file_path: "shaders/demo/maths.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -422,7 +421,6 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
     composer.add_composable_module({
       source: "#define_import_path demo::main\n#import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
       file_path: "shaders/demo/main.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -455,7 +453,6 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
     composer.add_composable_module({
       source: "# define_import_path demo::maths\nconst PI_2: f32 = 6.28318;\n",
       file_path: "shaders/demo/maths.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -467,7 +464,6 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
     composer.add_composable_module({
       source: "# define_import_path demo::main\n# import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
       file_path: "shaders/demo/main.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -497,7 +493,6 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
     composer.add_composable_module({
       source: "#define_import_path plugin\nfn external_scale() -> f32 {\n  return 2.0;\n}\n",
       file_path: "shaders/demo/plugin.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [],
       shader_defs: @hashmap.HashMap::new(),
@@ -510,7 +505,6 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
     composer.add_composable_module({
       source: "#define_import_path demo::main\nfn demo() -> f32 {\n  return plugin::external_scale();\n}\n",
       file_path: "shaders/demo/main.wgsl",
-      language: @common.ShaderLanguage::Wgsl,
       as_name: None,
       additional_imports: [{ import_path: "plugin", items: [] }],
       shader_defs: @hashmap.HashMap::new(),

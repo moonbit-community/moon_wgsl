@@ -13,19 +13,6 @@
 // limitations under the License.
 
 ///|
-pub(all) enum ShaderLanguage {
-  Wgsl
-  Glsl
-} derive(Eq, Debug)
-
-///|
-pub(all) enum ShaderType {
-  Wgsl
-  GlslVertex
-  GlslFragment
-} derive(Eq, Debug)
-
-///|
 pub(all) enum ShaderDefValue {
   Bool(Bool)
   Int(Int)

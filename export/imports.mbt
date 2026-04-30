@@ -17,7 +17,6 @@ using @common {
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceMapEntry,
-  type WgslSymbolRedirect,
 }
 
 ///|
@@ -27,4 +26,3 @@ using @compose {type Composer, type ComposerError}
 using @preprocess {apply_wgsl_ifdefs, apply_wgsl_template_consts}
 
 ///|
-using @resolver {copy_registered_wgsl_source_files}
