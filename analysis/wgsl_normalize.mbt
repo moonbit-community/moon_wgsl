@@ -17,7 +17,6 @@ priv struct WgslGlobalBindingInfo {
   name : String
   group : Int
   binding : Int
-  type_key : String
 }
 
 ///|
@@ -249,6 +248,32 @@ fn build_wgsl_unique_alias_suffix_rename_plan(
       declared_names.set(block.name, true)
     }
   }
+  for entry in declared_names.iter() {
+    let (declared_name, _) = entry
+    let parts : Array[String] = []
+    for part in declared_name.split("__") {
+      let trimmed = part.trim().to_owned()
+      if trimmed != "" {
+        parts.push(trimmed)
+      }
+    }
+    if parts.length() > 2 {
+      for i in 1..<(parts.length() - 1) {
+        let mut suffix = ""
+        for j in i..<parts.length() {
+          if suffix != "" {
+            suffix = "\{suffix}__"
+          }
+          suffix = "\{suffix}\{parts[j]}"
+        }
+        if suffix != "" {
+          record_wgsl_alias_suffix_redirect_candidate(
+            suffix, declared_name, declared_names, candidate_redirects, ambiguous_suffixes,
+          )
+        }
+      }
+    }
+  }
   for redirect in alias_redirects {
     let lowered_name = redirect.to_name.trim().to_owned()
     if lowered_name == "" {
@@ -323,12 +348,7 @@ fn wgsl_global_binding_info(block : WgslGraphBlock) -> WgslGlobalBindingInfo? {
         is Some(binding) else {
         return None
       }
-      Some(WgslGlobalBindingInfo::{
-        name: global.name.name,
-        group,
-        binding,
-        type_key: wgsl_type_ref_key(global.ty_ref),
-      })
+      Some(WgslGlobalBindingInfo::{ name: global.name.name, group, binding })
     }
     _ => None
   }
@@ -342,7 +362,7 @@ fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
   let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for block in graph.declaration_blocks {
     guard wgsl_global_binding_info(block) is Some(info) else { continue }
-    let key = "\{info.group}:\{info.binding}:\{info.type_key}"
+    let key = "\{info.group}:\{info.binding}"
     match binding_owner.get(key) {
       Some(owner) =>
         if info.name != owner {

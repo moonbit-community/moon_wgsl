@@ -18,6 +18,11 @@ fn wgsl_source_contains_override_directive(source : String) -> Bool {
 }
 
 ///|
+fn wgsl_source_contains_virtual_directive(source : String) -> Bool {
+  @virtual_overrides.wgsl_source_contains_virtual_directive(source)
+}
+
+///|
 fn apply_wgsl_virtual_overrides(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
@@ -29,6 +34,16 @@ fn apply_wgsl_virtual_overrides(
     Some(name) => raise ComposerError::InvalidOverride(name)
     None => output.source
   }
+}
+
+///|
+fn rewrite_wgsl_override_targets_with_redirects(
+  source : String,
+  alias_redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  @virtual_overrides.rewrite_wgsl_override_targets_with_redirects(
+    source, alias_redirect_map,
+  )
 }
 
 ///|

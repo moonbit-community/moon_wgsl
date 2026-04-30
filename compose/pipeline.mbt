@@ -55,6 +55,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   source : String,
   session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
+  apply_virtual_overrides : Bool,
 ) -> String raise ComposerError {
   let active_defs = self.active_compose_defs_for_rel_path(
     current_rel_path, session, inherited_defs,
@@ -131,7 +132,9 @@ fn Composer::preprocess_wgsl_source_with_path(
     merged = "\{merged}\{line}\n"
     line_index = line_index + 1
   }
-  finalize_wgsl_composed_source(merged, alias_redirects, active_defs)
+  finalize_wgsl_composed_source(
+    merged, alias_redirects, active_defs, session, apply_virtual_overrides,
+  )
 }
 
 ///|
@@ -156,6 +159,7 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
     prepend_wgsl_additional_imports(source, session.additional_imports),
     session,
     None,
+    true,
   )
   session.active_rel_paths.pop() |> ignore
   composed
@@ -248,6 +252,7 @@ pub fn Composer::compose_wgsl_source(
       prepend_wgsl_additional_imports(source, session.additional_imports),
       session,
       None,
+      true,
     ),
   )
   finalize_wgsl_writeback_source(composed)

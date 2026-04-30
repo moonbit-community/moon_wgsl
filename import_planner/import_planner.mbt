@@ -23,6 +23,12 @@ pub(all) struct WgslImportRequest {
 }
 
 ///|
+priv struct WgslReferencePath {
+  text : String
+  segments : Array[String]
+}
+
+///|
 fn string_list_push_unique(items : Array[String], item : String) -> Unit {
   if item == "" {
     return
@@ -36,29 +42,66 @@ fn string_list_push_unique(items : Array[String], item : String) -> Unit {
 }
 
 ///|
-fn collect_wgsl_source_identifier_names(
+fn wgsl_path_segments(path : String) -> Array[String] {
+  let segments : Array[String] = []
+  for raw_segment in path.trim().split("::") {
+    let segment = raw_segment.trim().to_owned()
+    if segment != "" {
+      segments.push(segment)
+    }
+  }
+  segments
+}
+
+///|
+fn wgsl_reference_path_from_identifier(name : String) -> WgslReferencePath? {
+  let segments = wgsl_path_segments(name)
+  if segments.length() == 0 {
+    None
+  } else {
+    Some(WgslReferencePath::{ text: segments.join("::"), segments })
+  }
+}
+
+///|
+fn collect_wgsl_source_reference_paths(
   source : String,
-  names : Array[String],
+  paths : Array[WgslReferencePath],
 ) -> Unit {
   let nodes : Array[WgslIdent] = []
   for decl in parse_wgsl_translation_unit(source).declarations {
     collect_wgsl_decl_identifier_nodes(decl.data, nodes)
   }
   for node in nodes {
-    names.push(node.name)
+    match wgsl_reference_path_from_identifier(node.name) {
+      Some(path) => paths.push(path)
+      None => ()
+    }
   }
 }
 
 ///|
 pub fn unresolved_wgsl_namespace_reference(source : String) -> String? {
-  let names : Array[String] = []
-  collect_wgsl_source_identifier_names(source, names)
-  for name in names {
-    if split_last_identifier(name) is Some(_) {
-      return Some(name)
+  let paths : Array[WgslReferencePath] = []
+  collect_wgsl_source_reference_paths(source, paths)
+  for path in paths {
+    if path.segments.length() > 1 {
+      return Some(path.text)
     }
   }
   None
+}
+
+///|
+fn wgsl_reference_path_ends_with_identifier(
+  path : WgslReferencePath,
+  identifier : String,
+) -> Bool {
+  if identifier == "" || path.segments.length() == 0 {
+    return false
+  }
+  path.text == identifier ||
+  path.segments[path.segments.length() - 1] == identifier
 }
 
 ///|
@@ -69,15 +112,11 @@ pub fn wgsl_source_contains_identifier(
   if identifier == "" {
     return false
   }
-  let names : Array[String] = []
-  collect_wgsl_source_identifier_names(source, names)
-  for path in names {
-    if path == identifier {
+  let paths : Array[WgslReferencePath] = []
+  collect_wgsl_source_reference_paths(source, paths)
+  for path in paths {
+    if wgsl_reference_path_ends_with_identifier(path, identifier) {
       return true
-    }
-    match split_last_wgsl_path(path) {
-      Some((_, suffix)) => if suffix == identifier { return true }
-      None => ()
     }
   }
   false
@@ -131,11 +170,21 @@ pub fn wgsl_import_requested_item_name(
   raw_path : String,
   module_path : String,
 ) -> String {
-  let prefix = "\{module_path}::"
-  if !raw_path.has_prefix(prefix) {
+  let raw_segments = wgsl_path_segments(raw_path)
+  let module_segments = wgsl_path_segments(module_path)
+  if raw_segments.length() <= module_segments.length() {
     return ""
   }
-  raw_path[prefix.length():raw_path.length()].to_owned().trim().to_owned()
+  for i in 0..<module_segments.length() {
+    if raw_segments[i] != module_segments[i] {
+      return ""
+    }
+  }
+  let suffix : Array[String] = []
+  for i in module_segments.length()..<raw_segments.length() {
+    suffix.push(raw_segments[i])
+  }
+  suffix.join("::")
 }
 
 ///|
@@ -144,10 +193,13 @@ pub fn collect_wgsl_alias_requested_paths(
   alias_name : String,
   requested_paths : Array[String],
 ) -> Unit {
-  let names : Array[String] = []
-  collect_wgsl_source_identifier_names(source, names)
-  for path in names {
-    let requested_item = wgsl_import_requested_item_name(path, alias_name)
+  if alias_name == "" {
+    return
+  }
+  let paths : Array[WgslReferencePath] = []
+  collect_wgsl_source_reference_paths(source, paths)
+  for path in paths {
+    let requested_item = wgsl_import_requested_item_name(path.text, alias_name)
     if requested_item != "" {
       string_list_push_unique(requested_paths, requested_item)
     }
@@ -165,30 +217,16 @@ pub fn wgsl_source_uses_import_alias(
 }
 
 ///|
-fn wgsl_path_separator_count(path : String) -> Int {
-  let mut count = 0
-  let mut rest = path
-  while split_last_identifier(rest) is Some((prefix, _)) {
-    count = count + 1
-    rest = prefix
-  }
-  count
-}
-
-///|
 pub fn split_last_wgsl_path(path : String) -> (String, String)? {
-  match split_last_identifier(path) {
-    Some((prefix, suffix)) => {
-      let trimmed_prefix = prefix.trim().to_owned()
-      let trimmed_suffix = suffix.trim().to_owned()
-      if trimmed_prefix != "" && trimmed_suffix != "" {
-        Some((trimmed_prefix, trimmed_suffix))
-      } else {
-        None
-      }
-    }
-    None => None
+  let segments = wgsl_path_segments(path)
+  if segments.length() < 2 {
+    return None
   }
+  let prefix : Array[String] = []
+  for i in 0..<(segments.length() - 1) {
+    prefix.push(segments[i])
+  }
+  Some((prefix.join("::"), segments[segments.length() - 1]))
 }
 
 ///|
@@ -213,20 +251,23 @@ pub fn collect_wgsl_qualified_module_targets(
   modules : @hashmap.HashMap[String, String],
   targets : Array[WgslImportTarget],
 ) -> Unit {
-  let names : Array[String] = []
-  collect_wgsl_source_identifier_names(source, names)
-  for ident in names {
-    if wgsl_path_separator_count(ident) < 2 {
+  let paths : Array[WgslReferencePath] = []
+  collect_wgsl_source_reference_paths(source, paths)
+  for ident in paths {
+    if ident.segments.length() < 3 {
       continue
     }
     guard resolve_wgsl_import_request_module(
-        current_rel_path, ident, registry, modules,
+        current_rel_path,
+        ident.text,
+        registry,
+        modules,
       )
       is Some(resolved_module) else {
       continue
     }
     let requested_item = wgsl_import_requested_item_name(
-      ident,
+      ident.text,
       resolved_module.module_path,
     )
     if requested_item == "" {

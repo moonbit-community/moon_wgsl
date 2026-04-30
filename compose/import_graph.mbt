@@ -154,6 +154,9 @@ fn Composer::build_wgsl_import_requests(
     let imports_for_override_side_effect = wgsl_source_contains_override_directive(
       import_source,
     )
+    let imports_for_virtual_side_effect = wgsl_source_contains_virtual_directive(
+      import_source,
+    )
     let mut module_alias = if target.alias_name != "" {
       target.alias_name
     } else if module_path == target.raw_path {
@@ -166,10 +169,13 @@ fn Composer::build_wgsl_import_requests(
       let module_alias_is_used = wgsl_source_uses_import_alias(
         active_scan_source, module_alias,
       )
-      if !module_alias_is_used && !imports_for_override_side_effect {
+      if !module_alias_is_used &&
+        !imports_for_override_side_effect &&
+        !imports_for_virtual_side_effect {
         continue
       }
-      if imports_for_override_side_effect && !module_alias_is_used {
+      if (imports_for_override_side_effect || imports_for_virtual_side_effect) &&
+        !module_alias_is_used {
         module_alias = ""
       }
       let requested_paths : Array[String] = []
@@ -187,8 +193,11 @@ fn Composer::build_wgsl_import_requests(
         composer_string_list_push_unique(requested_items, requested_path)
       }
       if requested_items.length() > 0 {
-        import_full_module = false
-      } else if !imports_for_override_side_effect {
+        if !imports_for_virtual_side_effect {
+          import_full_module = false
+        }
+      } else if !imports_for_override_side_effect &&
+        !imports_for_virtual_side_effect {
         continue
       }
     } else if module_path != target.raw_path {
@@ -215,10 +224,12 @@ fn Composer::build_wgsl_import_requests(
       for requested_item in used_requested_items {
         requested_items.push(requested_item)
       }
-      if requested_items.length() == 0 && !imports_for_override_side_effect {
+      if requested_items.length() == 0 &&
+        !imports_for_override_side_effect &&
+        !imports_for_virtual_side_effect {
         continue
       }
-      if imports_for_override_side_effect {
+      if imports_for_override_side_effect || imports_for_virtual_side_effect {
         import_full_module = true
       }
     }
@@ -326,6 +337,7 @@ fn Composer::compose_wgsl_import_requests(
         raw_source,
         session,
         Some(importer_defs),
+        false,
       )
     } else {
       let import_defs = self.active_compose_defs_for_rel_path(
@@ -346,6 +358,7 @@ fn Composer::compose_wgsl_import_requests(
         filtered_source,
         session,
         Some(importer_defs),
+        false,
       )
     }
     session.active_rel_paths.pop() |> ignore
@@ -409,16 +422,35 @@ fn finalize_wgsl_composed_source(
   merged : String,
   alias_redirects : Array[WgslSymbolRedirect],
   active_defs : WgslActiveComposeDefs,
+  session : WgslComposeSession,
+  apply_virtual_overrides : Bool,
 ) -> String raise ComposerError {
   let mut out = apply_wgsl_ifdefs_strict_for_compose(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
-  let alias_redirect_map = build_wgsl_symbol_redirect_map(alias_redirects)
-  out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
+  for redirect in alias_redirects {
+    session.composed_alias_redirects.push(redirect)
+  }
+  let effective_alias_redirects = if apply_virtual_overrides {
+    session.composed_alias_redirects
+  } else {
+    alias_redirects
+  }
+  let alias_redirect_map = build_wgsl_symbol_redirect_map(
+    effective_alias_redirects,
+  )
+  if apply_virtual_overrides {
+    out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
+  } else {
+    out = rewrite_wgsl_override_targets_with_redirects(out, alias_redirect_map)
+  }
   out = rewrite_wgsl_declarations_with_rename_plan(
     out,
     build_wgsl_rename_plan_from_redirect_map(alias_redirect_map, ReferencesOnly),
   )
-  out = normalize_wgsl_composed_declarations(out, alias_redirects)
+  if !apply_virtual_overrides {
+    return out
+  }
+  out = normalize_wgsl_composed_declarations(out, effective_alias_redirects)
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }

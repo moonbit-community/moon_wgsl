@@ -63,6 +63,89 @@ pub fn wgsl_source_contains_override_directive(source : String) -> Bool {
 }
 
 ///|
+pub fn wgsl_source_contains_virtual_directive(source : String) -> Bool {
+  let graph = build_wgsl_declaration_graph(source)
+  for block in graph.declaration_blocks {
+    if wgsl_graph_block_is_virtual_fn(block) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+priv struct WgslVirtualRewriteNode {
+  start : Int
+  end : Int
+  replacement : String
+}
+
+///|
+fn compare_wgsl_virtual_rewrite_nodes(
+  lhs : WgslVirtualRewriteNode,
+  rhs : WgslVirtualRewriteNode,
+) -> Int {
+  let start_compare = lhs.start - rhs.start
+  if start_compare != 0 {
+    return start_compare
+  }
+  lhs.end - rhs.end
+}
+
+///|
+fn rewrite_wgsl_virtual_nodes(
+  source : String,
+  nodes : Array[WgslVirtualRewriteNode],
+) -> String {
+  if nodes.length() == 0 {
+    return source
+  }
+  nodes.sort_by(compare_wgsl_virtual_rewrite_nodes)
+  let mut out = ""
+  let mut copy_start = 0
+  for node in nodes {
+    if node.start < copy_start {
+      continue
+    }
+    out = out + source[copy_start:node.start].to_owned()
+    out = out + node.replacement
+    copy_start = node.end
+  }
+  out + source[copy_start:source.length()].to_owned()
+}
+
+///|
+pub fn rewrite_wgsl_override_targets_with_redirects(
+  source : String,
+  alias_redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  if alias_redirect_map.is_empty() {
+    return source
+  }
+  let graph = build_wgsl_declaration_graph(source)
+  let nodes : Array[WgslVirtualRewriteNode] = []
+  for block in graph.declaration_blocks {
+    guard wgsl_graph_block_function(block) is Some(function) else { continue }
+    if function.qualifier != "override" {
+      continue
+    }
+    let raw_target = function.name.name
+    if split_last_identifier(raw_target) is None {
+      continue
+    }
+    let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
+    if target != raw_target {
+      nodes.push(WgslVirtualRewriteNode::{
+        start: function.name.start,
+        end: function.name.end,
+        replacement: target,
+      })
+    }
+  }
+  rewrite_wgsl_virtual_nodes(source, nodes)
+}
+
+///|
 fn wgsl_override_body_references_target(
   function : WgslFunction,
   raw_target : String,
@@ -134,6 +217,39 @@ fn rewrite_wgsl_virtual_base_block(
 }
 
 ///|
+fn rewrite_wgsl_override_body_references_to_base(
+  block_text : String,
+  function : WgslFunction,
+  block_start : Int,
+  target_name : String,
+  raw_target : String,
+  base_name : String,
+) -> String {
+  let identifiers : Array[WgslIdent] = []
+  let nodes : Array[WgslVirtualRewriteNode] = []
+  collect_wgsl_function_body_identifier_nodes(function, identifiers)
+  for ident in identifiers {
+    let mut matches_target = ident.name == target_name ||
+      ident.name == raw_target
+    if !matches_target {
+      match split_last_identifier(ident.name) {
+        Some((_, suffix)) =>
+          matches_target = suffix == target_name || suffix == raw_target
+        None => ()
+      }
+    }
+    if matches_target {
+      nodes.push(WgslVirtualRewriteNode::{
+        start: ident.start - block_start,
+        end: ident.end - block_start,
+        replacement: base_name,
+      })
+    }
+  }
+  rewrite_wgsl_virtual_nodes(block_text, nodes)
+}
+
+///|
 fn rewrite_wgsl_override_fn_block(
   block_text : String,
   function : WgslFunction,
@@ -143,12 +259,10 @@ fn rewrite_wgsl_override_fn_block(
   base_name : String?,
 ) -> String {
   let rewritten_body = match base_name {
-    Some(base) => {
-      let plan = WgslRenamePlan::empty()
-      plan.add(target_name, base, ReferencesOnly)
-      plan.add(raw_target, base, ReferencesOnly)
-      rewrite_wgsl_declarations_with_rename_plan(block_text, plan)
-    }
+    Some(base) =>
+      rewrite_wgsl_override_body_references_to_base(
+        block_text, function, block_start, target_name, raw_target, base,
+      )
     None => block_text
   }
   match function.qualifier_start {
@@ -169,6 +283,9 @@ fn wgsl_alias_redirect_target(
   target : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
 ) -> String {
+  if split_last_identifier(target) is None {
+    return target
+  }
   match alias_redirect_map.get(target) {
     Some(redirected) => redirected
     None => wgsl_flatten_path_identifier(target)

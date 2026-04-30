@@ -130,6 +130,7 @@ priv struct WgslComposeSession {
   value_defines : @hashmap.HashMap[String, Int]
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
+  composed_alias_redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]

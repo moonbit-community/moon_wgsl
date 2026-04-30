@@ -837,6 +837,36 @@ test "naga_oil: virtual override base detection respects statement order" {
 }
 
 ///|
+test "naga_oil: transitive override keeps virtual module side effects" {
+  clear_composer_test_registry()
+  let composer = composer_test_composer()
+  composer.register_source(
+    "mod.wgsl", "#define_import_path mod\nvirtual fn inner() -> f32 {\n  return 1.0;\n}\nfn outer() -> f32 {\n  return inner();\n}\n",
+  )
+  composer.register_source(
+    "middle.wgsl", "#define_import_path middle\n#import mod\noverride fn mod::inner() -> f32 {\n  return 2.0;\n}\n",
+  )
+  composer.register_source(
+    "top.wgsl", "#import middle\n#import mod\nfn top() -> f32 {\n  return mod::outer();\n}\n",
+  )
+  let source = composer.compose_wgsl(
+    "top.wgsl",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort("expected transitive virtual override success: \{err.message()}")
+  }
+  debug_inspect(source.contains("virtual fn"), content="false")
+  debug_inspect(source.contains("override fn"), content="false")
+  debug_inspect(source.contains("fn mod__inner() -> f32"), content="true")
+  debug_inspect(source.contains("return 2.0;"), content="true")
+  debug_inspect(source.contains("return 1.0;"), content="false")
+  debug_inspect(source.contains("return mod__inner();"), content="true")
+  debug_inspect(source.contains("return mod__outer();"), content="true")
+  clear_composer_test_registry()
+}
+
+///|
 test "github issue 5: unicode source lines do not abort prefix checks" {
   let source = "// 中文注释会让旧 starts_with_text 切到非法边界\n#ifdef ENABLED\nconst enabled_value: u32 = 1u;\n#endif\nfn main() -> u32 {\n  return 0u;\n}\n"
   let preprocessed = composer_test_composer().compose_wgsl_source(

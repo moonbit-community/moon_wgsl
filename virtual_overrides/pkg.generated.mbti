@@ -8,9 +8,13 @@ import {
 // Values
 pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput
 
+pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String
+
 pub fn strip_wgsl_virtual_functions(String) -> String
 
 pub fn wgsl_source_contains_override_directive(String) -> Bool
+
+pub fn wgsl_source_contains_virtual_directive(String) -> Bool
 
 // Errors
 

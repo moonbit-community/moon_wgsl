@@ -25,6 +25,27 @@ pub fn build_wgsl_symbol_redirect_map(
     }
     redirect_map.set(from_name, to_name)
   }
+  let keys : Array[String] = []
+  for entry in redirect_map.iter() {
+    let (from_name, _) = entry
+    keys.push(from_name)
+  }
+  for key in keys {
+    let seen : Array[String] = []
+    let mut target = match redirect_map.get(key) {
+      Some(value) => value
+      None => continue
+    }
+    seen.push(key)
+    while redirect_map.get(target) is Some(next_target) {
+      if seen.contains(target) {
+        break
+      }
+      seen.push(target)
+      target = next_target
+    }
+    redirect_map.set(key, target)
+  }
   redirect_map
 }
 

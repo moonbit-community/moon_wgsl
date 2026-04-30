@@ -66,6 +66,7 @@ fn Composer::new_wgsl_compose_session(
     value_defines: copy_int_defs(options.value_defines),
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
+    composed_alias_redirects: [],
     additional_imports: copy_import_definitions(options.additional_imports),
     redirect_match_counts: @hashmap.HashMap::new(),
     visited: @hashmap.HashMap::new(),
