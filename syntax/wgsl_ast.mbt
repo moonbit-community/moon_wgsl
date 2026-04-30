@@ -1127,6 +1127,31 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
 }
 
 ///|
+fn wgsl_source_directive_kind_from_keyword(name : String) -> WgslDirectiveKind? {
+  match name {
+    "enable" => Some(WgslDirectiveKind::Enable)
+    "requires" => Some(WgslDirectiveKind::Requires)
+    "diagnostic" => Some(WgslDirectiveKind::Diagnostic)
+    _ => None
+  }
+}
+
+///|
+fn WgslDeclParser::parse_source_directive(
+  self : WgslDeclParser,
+  keyword : WgslIdent,
+  kind : WgslDirectiveKind,
+) -> WgslDirective {
+  let tail = self.collect_until_top_level_fragment([59]).text
+  WgslDirective::{
+    kind,
+    name: keyword.name,
+    tail,
+    text: self.source_text.trim().to_owned(),
+  }
+}
+
+///|
 fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData {
   let attributes = self.parse_attributes()
   match self.consume_ident_node() {
@@ -1197,6 +1222,14 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
     Some(keyword) if keyword.name == "alias" || keyword.name == "type" =>
       match self.parse_type_alias() {
         Some(value) => WgslGlobalDeclData::TypeAlias(value)
+        None => WgslGlobalDeclData::Raw
+      }
+    Some(keyword) =>
+      match wgsl_source_directive_kind_from_keyword(keyword.name) {
+        Some(kind) =>
+          WgslGlobalDeclData::Directive(
+            self.parse_source_directive(keyword, kind),
+          )
         None => WgslGlobalDeclData::Raw
       }
     _ => WgslGlobalDeclData::Raw

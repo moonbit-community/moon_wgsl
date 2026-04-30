@@ -312,6 +312,30 @@ test "WGSL declaration identifier collection exposes declared names" {
 }
 
 ///|
+test "WGSL source directives parse as directive AST nodes" {
+  let source =
+    #|enable f16, subgroups;
+    #|requires readonly_and_readwrite_storage_textures;
+    #|diagnostic(warn, derivative_uniformity);
+    #|fn shade() -> f32 { return 1.0; }
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  debug_inspect(unit.declarations[0].kind, content="Directive")
+  debug_inspect(unit.declarations[1].kind, content="Directive")
+  debug_inspect(unit.declarations[2].kind, content="Directive")
+  guard unit.declarations[0].data is WgslGlobalDeclData::Directive(enable) else {
+    abort("expected enable directive")
+  }
+  debug_inspect(enable.kind, content="Enable")
+  debug_inspect(enable.tail, content="\"f16, subgroups\"")
+  guard unit.declarations[2].data is WgslGlobalDeclData::Directive(diagnostic) else {
+    abort("expected diagnostic directive")
+  }
+  debug_inspect(diagnostic.kind, content="Diagnostic")
+  debug_inspect(diagnostic.tail, content="\"(warn, derivative_uniformity)\"")
+}
+
+///|
 test "WGSL override function payload preserves qualified target path" {
   let source =
     #|override fn mod::inner(arg: f32) -> f32 {

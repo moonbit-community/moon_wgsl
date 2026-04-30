@@ -81,7 +81,12 @@ pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
       WgslGlobalDeclKind::Directive =>
         match decl.data {
           WgslGlobalDeclData::Directive(directive) =>
-            if directive.kind != WgslDirectiveKind::DefineImportPath {
+            if directive.kind == WgslDirectiveKind::Enable ||
+              directive.kind == WgslDirectiveKind::Requires ||
+              directive.kind == WgslDirectiveKind::Diagnostic {
+              source_blocks.push(graph_block)
+              declaration_blocks.push(graph_block)
+            } else if directive.kind != WgslDirectiveKind::DefineImportPath {
               source_blocks.push(graph_block)
             }
           _ => source_blocks.push(graph_block)
