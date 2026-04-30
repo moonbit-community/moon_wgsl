@@ -1702,6 +1702,42 @@ fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
 }
 
 ///|
+fn rewrite_wgsl_declaration_blocks_with_redirects(
+  source : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  if redirect_map.is_empty() {
+    return source
+  }
+  let graph = build_wgsl_declaration_graph(source)
+  let mut out = ""
+  for import_block in graph.import_blocks {
+    out = out + import_block.text
+  }
+  for block in graph.declaration_blocks {
+    match block.data {
+      WgslGlobalDeclData::Raw =>
+        out = out +
+          rewrite_wgsl_declaration_text_with_map(
+            block.text,
+            redirect_map,
+            false,
+          )
+      WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
+        out = out + block.text
+      _ =>
+        out = out +
+          rewrite_wgsl_decl_identifier_nodes_with_map(
+            block.text,
+            block.data,
+            redirect_map,
+          )
+    }
+  }
+  out
+}
+
+///|
 priv struct WgslGlobalBindingInfo {
   name : String
   group : Int
@@ -1967,7 +2003,7 @@ fn finalize_wgsl_composed_source(
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
   let alias_redirect_map = build_wgsl_symbol_redirect_map(alias_redirects)
   out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
-  out = rewrite_wgsl_declaration_text_with_map(out, alias_redirect_map, false)
+  out = rewrite_wgsl_declaration_blocks_with_redirects(out, alias_redirect_map)
   out = dedupe_wgsl_duplicate_declarations(out)
   let suffix_redirects = build_wgsl_unique_lowered_suffix_redirect_map(out)
   if !suffix_redirects.is_empty() {
