@@ -12,3 +12,7 @@ import {
   "moonbitlang/core/string",
   "moonbitlang/x/fs",
 }
+
+import {
+  "Milky2018/moon_wgsl/syntax",
+} for "wbtest"

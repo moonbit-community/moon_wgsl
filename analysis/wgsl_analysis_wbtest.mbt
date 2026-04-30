@@ -95,3 +95,30 @@ test "declaration graph keeps dependencies from AST type refs" {
   debug_inspect(extracted.contains("fn make_output"), content="true")
   debug_inspect(extracted.contains("fn unused"), content="false")
 }
+
+///|
+test "declaration graph does not keep globals shadowed by function locals" {
+  let source =
+    #|const local: u32 = 99u;
+    #|const arg: u32 = 88u;
+    #|const nested: u32 = 77u;
+    #|const i: u32 = 66u;
+    #|fn entry(arg: u32) -> u32 {
+    #|  let local = arg + 1u;
+    #|  if (local > 0u) {
+    #|    let nested = local;
+    #|    return nested;
+    #|  }
+    #|  for (var i: u32 = 0u; i < arg; i = i + 1u) {
+    #|    continue;
+    #|  }
+    #|  return local;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const local"), content="false")
+  debug_inspect(extracted.contains("const arg"), content="false")
+  debug_inspect(extracted.contains("const nested"), content="false")
+  debug_inspect(extracted.contains("const i"), content="false")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}

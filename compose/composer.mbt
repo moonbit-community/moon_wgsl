@@ -813,6 +813,15 @@ fn wgsl_if_operator_code(code : Int) -> Bool {
 }
 
 ///|
+fn wgsl_if_value_token_code(code : Int) -> Bool {
+  code == 45 ||
+  code == 124 ||
+  (code >= 48 && code <= 57) ||
+  (code >= 65 && code <= 90) ||
+  (code >= 97 && code <= 122)
+}
+
+///|
 fn parse_wgsl_strict_if_expr(expr : String) -> (String, String, String)? {
   let text = strip_wgsl_line_comment(expr).trim().to_owned()
   if text == "" {
@@ -855,9 +864,8 @@ fn parse_wgsl_strict_if_expr(expr : String) -> (String, String, String)? {
   while value_end_index < tokens.length() {
     match tokens[value_end_index] {
       Token::Identifier(_, _) => value_end_index = value_end_index + 1
-      Token::Other(code, _) if code == 45 ||
-        code == 124 ||
-        (code >= 48 && code <= 57) => value_end_index = value_end_index + 1
+      Token::Other(code, _) if wgsl_if_value_token_code(code) =>
+        value_end_index = value_end_index + 1
       _ => break
     }
   }

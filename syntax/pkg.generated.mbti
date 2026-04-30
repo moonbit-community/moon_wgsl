@@ -236,6 +236,7 @@ pub(all) struct WgslStatement {
   kind : WgslStatementKind
   text : String
   local_name : String?
+  local_names : Array[String]
   identifiers : Array[WgslIdent]
   start : Int
   end : Int

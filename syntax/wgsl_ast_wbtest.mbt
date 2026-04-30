@@ -213,7 +213,7 @@ test "WGSL identifier collection exposes source spans" {
   debug_inspect(nodes[3].name, content="\"Alias\"")
   debug_inspect(nodes[4].name, content="\"Alias\"")
   debug_inspect(nodes[5].name, content="\"return\"")
-  debug_inspect(nodes[6].name, content="\"value\"")
+  debug_inspect(nodes.length(), content="6")
 }
 
 ///|
@@ -236,6 +236,12 @@ test "WGSL function payload exposes source-preserving statement AST" {
   debug_inspect(
     function.body.statements[0].local_name,
     content="Some(\"local\")",
+  )
+  debug_inspect(
+    function.body.statements[0].local_names,
+    content=(
+      #|["local"]
+    ),
   )
   debug_inspect(function.body.statements[0].start, content="31")
   debug_inspect(function.body.statements[0].end, content="54")
@@ -307,6 +313,88 @@ test "WGSL declaration identifier collection exposes declared names" {
     nodes.map(fn(node) { node.name }),
     content=(
       #|["Alias", "Vertex", "make_vertex", "input"]
+    ),
+  )
+}
+
+///|
+test "WGSL declaration identifier collection excludes function locals" {
+  let source =
+    #|struct GlobalValue {
+    #|  value: u32,
+    #|}
+    #|fn demo(GlobalValue: u32) -> u32 {
+    #|  let local = GlobalValue;
+    #|  return local;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[1].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let nodes : Array[WgslIdent] = []
+  collect_wgsl_decl_identifier_nodes(
+    WgslGlobalDeclData::Function(function),
+    nodes,
+  )
+  debug_inspect(
+    nodes.map(fn(node) { node.name }),
+    content=(
+      #|["u32", "u32", "let", "return"]
+    ),
+  )
+}
+
+///|
+test "WGSL statement AST records nested and loop local declarations" {
+  let source =
+    #|fn demo(arg: u32) -> u32 {
+    #|  if (arg > 0u) {
+    #|    let nested = arg;
+    #|    return nested;
+    #|  }
+    #|  for (var i: u32 = 0u; i < arg; i = i + 1u) {
+    #|    continue;
+    #|  }
+    #|  return arg;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  debug_inspect(
+    function.body.statements[0].local_names,
+    content=(
+      #|["nested"]
+    ),
+  )
+  debug_inspect(
+    function.body.statements[1].local_names,
+    content=(
+      #|["i"]
+    ),
+  )
+  let nodes : Array[WgslIdent] = []
+  collect_wgsl_decl_identifier_nodes(
+    WgslGlobalDeclData::Function(function),
+    nodes,
+  )
+  debug_inspect(
+    nodes.map(fn(node) { node.name }),
+    content=(
+      #|[
+      #|  "u32",
+      #|  "u32",
+      #|  "if",
+      #|  "let",
+      #|  "return",
+      #|  "for",
+      #|  "var",
+      #|  "u32",
+      #|  "continue",
+      #|  "return",
+      #|]
     ),
   )
 }

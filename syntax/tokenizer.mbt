@@ -50,6 +50,36 @@ pub fn tokenizer_identifier_continue(code : Int) -> Bool {
 }
 
 ///|
+fn tokenizer_number_continue(src : String, index : Int) -> Bool {
+  let code = src.code_unit_at(index).to_int()
+  if (code >= 48 && code <= 57) ||
+    tokenizer_identifier_start(code) ||
+    code == 46 {
+    return true
+  }
+  if (code == 43 || code == 45) && index > 0 {
+    let previous = src.code_unit_at(index - 1).to_int()
+    return previous == 69 ||
+      previous == 80 ||
+      previous == 101 ||
+      previous == 112
+  }
+  false
+}
+
+///|
+fn tokenizer_push_number_as_other(
+  tokens : Array[Token],
+  src : String,
+  start : Int,
+  end_ : Int,
+) -> Unit {
+  for pos in start..<end_ {
+    tokens.push(Token::Other(src.code_unit_at(pos).to_int(), pos))
+  }
+}
+
+///|
 pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
   let tokens : Array[Token] = []
   let mut current_token_start = 0
@@ -91,6 +121,17 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
       continue
     }
 
+    if current_token_kind == 2 {
+      if tokenizer_number_continue(src, i) {
+        i = i + 1
+        continue
+      }
+      tokenizer_push_number_as_other(tokens, src, current_token_start, i)
+      current_token_kind = -1
+      current_token_start = i
+      continue
+    }
+
     if current_token_kind == 1 {
       if code == 32 || code == 9 || code == 10 || code == 13 {
         i = i + 1
@@ -109,6 +150,13 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
 
     if tokenizer_identifier_start(code) {
       current_token_kind = 0
+      current_token_start = i
+      i = i + 1
+      continue
+    }
+
+    if code >= 48 && code <= 57 {
+      current_token_kind = 2
       current_token_start = i
       i = i + 1
       continue
@@ -133,6 +181,13 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
         src[current_token_start:src.length()].to_owned(),
         current_token_start,
       ),
+    )
+  } else if current_token_kind == 2 {
+    tokenizer_push_number_as_other(
+      tokens,
+      src,
+      current_token_start,
+      src.length(),
     )
   } else if current_token_kind == 1 {
     tokens.push(

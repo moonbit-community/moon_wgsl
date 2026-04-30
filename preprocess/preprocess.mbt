@@ -148,6 +148,19 @@ fn shader_def_name_token_text(token : Token) -> String? {
 }
 
 ///|
+fn shader_def_value_token_text(token : Token) -> String? {
+  match token {
+    Token::Identifier(text, _) => Some(text)
+    Token::Other(124, _) | Token::Other(45, _) =>
+      Some(preprocess_token_text(token))
+    Token::Other(code, _) if (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) => Some(code_unit_to_string(code))
+    _ => None
+  }
+}
+
+///|
 fn token_end(token : Token) -> Int {
   token.pos() + preprocess_token_text(token).length()
 }
@@ -293,13 +306,9 @@ fn split_define_name_and_value(text : String) -> (String, String) {
   }
   let mut value = ""
   while i < tokens.length() {
-    match shader_def_name_token_text(tokens[i]) {
+    match shader_def_value_token_text(tokens[i]) {
       Some(text) => value = value + text
-      None =>
-        match tokens[i] {
-          Token::Other(45, _) => value = value + "-"
-          _ => break
-        }
+      None => break
     }
     i = i + 1
   }
@@ -485,13 +494,9 @@ fn parse_if_operator_expression(
   guard operator != "" else { return None }
   let mut value = ""
   while i < tokens.length() {
-    match tokens[i] {
-      Token::Identifier(ident, _) => value = value + ident
-      Token::Other(124, _) | Token::Other(45, _) =>
-        value = value + preprocess_token_text(tokens[i])
-      Token::Other(code, _) if code >= 48 && code <= 57 =>
-        value = value + code_unit_to_string(code)
-      _ => break
+    match shader_def_value_token_text(tokens[i]) {
+      Some(text) => value = value + text
+      None => break
     }
     i = i + 1
   }

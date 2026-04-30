@@ -80,6 +80,7 @@ pub(all) struct WgslStatement {
   kind : WgslStatementKind
   text : String
   local_name : String?
+  local_names : Array[String]
   identifiers : Array[WgslIdent]
   start : Int
   end : Int
@@ -766,6 +767,34 @@ fn wgsl_statement_local_name_from_tokens(
 }
 
 ///|
+fn collect_wgsl_statement_local_names_from_tokens(
+  tokens : Array[Token],
+  names : Array[String],
+) -> Unit {
+  for i in 0..<tokens.length() {
+    match wgsl_statement_token_identifier(tokens[i]) {
+      Some("var") => {
+        let name_index = wgsl_statement_skip_template_tokens(tokens, i + 1)
+        if name_index < tokens.length() {
+          match wgsl_statement_token_identifier(tokens[name_index]) {
+            Some(name) => wgsl_name_list_push_unique(names, name)
+            None => ()
+          }
+        }
+      }
+      Some("let") | Some("const") =>
+        if i + 1 < tokens.length() {
+          match wgsl_statement_token_identifier(tokens[i + 1]) {
+            Some(name) => wgsl_name_list_push_unique(names, name)
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
 fn wgsl_statement_identifier_has_access_prefix(
   tokens : Array[Token],
   index : Int,
@@ -784,6 +813,7 @@ fn collect_wgsl_statement_identifier_nodes(
   tokens : Array[Token],
   kind : WgslStatementKind,
   local_name : String?,
+  local_names : Array[String],
   identifiers : Array[WgslIdent],
 ) -> Unit {
   let mut skipped_local_name = false
@@ -800,6 +830,9 @@ fn collect_wgsl_statement_identifier_nodes(
         continue
       }
       _ => ()
+    }
+    if wgsl_name_list_contains(local_names, ident) {
+      continue
     }
     identifiers.push(WgslIdent::{
       name: ident,
@@ -888,13 +921,16 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   } else {
     let kind = wgsl_statement_kind_from_first_identifier(first_identifier)
     let local_name = wgsl_statement_local_name_from_tokens(tokens, kind)
+    let local_names : Array[String] = []
+    collect_wgsl_statement_local_names_from_tokens(tokens, local_names)
     collect_wgsl_statement_identifier_nodes(
-      tokens, kind, local_name, identifiers,
+      tokens, kind, local_name, local_names, identifiers,
     )
     Some(WgslStatement::{
       kind,
       text,
       local_name,
+      local_names,
       identifiers,
       start: start_pos,
       end: end_pos,
@@ -1312,6 +1348,43 @@ fn collect_wgsl_attribute_identifier_nodes(
 }
 
 ///|
+fn wgsl_name_list_contains(names : Array[String], name : String) -> Bool {
+  for existing in names {
+    if existing == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_name_list_push_unique(names : Array[String], name : String) -> Unit {
+  if name == "" || wgsl_name_list_contains(names, name) {
+    return
+  }
+  names.push(name)
+}
+
+///|
+fn collect_wgsl_function_local_names(
+  function : WgslFunction,
+  names : Array[String],
+) -> Unit {
+  for argument in function.arguments {
+    wgsl_name_list_push_unique(names, argument.name)
+  }
+  for statement in function.body.statements {
+    match statement.local_name {
+      Some(name) => wgsl_name_list_push_unique(names, name)
+      None => ()
+    }
+    for name in statement.local_names {
+      wgsl_name_list_push_unique(names, name)
+    }
+  }
+}
+
+///|
 pub fn collect_wgsl_decl_identifier_nodes(
   data : WgslGlobalDeclData,
   nodes : Array[WgslIdent],
@@ -1333,9 +1406,13 @@ pub fn collect_wgsl_decl_identifier_nodes(
         }
         None => ()
       }
+      let local_names : Array[String] = []
+      collect_wgsl_function_local_names(function, local_names)
       for statement in function.body.statements {
         for ident in statement.identifiers {
-          nodes.push(ident)
+          if !wgsl_name_list_contains(local_names, ident.name) {
+            nodes.push(ident)
+          }
         }
       }
     }
