@@ -73,6 +73,22 @@ test "top-level AST preserves directive-adjacent trivia" {
 }
 
 ///|
+test "top-level AST classifies hash conditionals as directives" {
+  let source = "#ifdef ENABLED\n" +
+    "const A: u32 = 1u;\n" +
+    "#else\n" +
+    "const A: u32 = 0u;\n" +
+    "#endif\n"
+  let items = parse_wgsl_top_level_items(source)
+  debug_inspect(items.length(), content="5")
+  debug_inspect(items[0].kind, content="Directive")
+  debug_inspect(items[1].kind, content="Declaration")
+  debug_inspect(items[2].kind, content="Directive")
+  debug_inspect(items[3].kind, content="Declaration")
+  debug_inspect(items[4].kind, content="Directive")
+}
+
+///|
 test "top-level AST recognizes same-line attributed declarations" {
   let source = "@fragment fn fragment() -> vec4<f32> {\n" +
     "  return vec4<f32>(1.0);\n" +

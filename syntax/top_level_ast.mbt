@@ -18,6 +18,7 @@ pub(all) enum WgslTopLevelKind {
   Import
   DefineImportPath
   Define
+  Directive
   Declaration
 } derive(Eq, Debug)
 
@@ -327,7 +328,23 @@ fn WgslTopLevelParser::parse_items(
               self.parse_import_item(items, line, rest, directive)
               continue
             }
-            _ => ()
+            WgslDirectiveKind::Ifdef
+            | WgslDirectiveKind::Ifndef
+            | WgslDirectiveKind::If
+            | WgslDirectiveKind::Else
+            | WgslDirectiveKind::Endif
+            | WgslDirectiveKind::Enable
+            | WgslDirectiveKind::Requires
+            | WgslDirectiveKind::Diagnostic
+            | WgslDirectiveKind::Other(_) => {
+              self.parse_directive_item(
+                items,
+                line,
+                rest,
+                WgslTopLevelKind::Directive,
+              )
+              continue
+            }
           }
         }
         self.parse_declaration_item(items)

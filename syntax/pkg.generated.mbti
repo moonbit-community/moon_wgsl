@@ -282,6 +282,7 @@ pub(all) enum WgslTopLevelKind {
   Import
   DefineImportPath
   Define
+  Directive
   Declaration
 } derive(Eq, @debug.Debug)
 

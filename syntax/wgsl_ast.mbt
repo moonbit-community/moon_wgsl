@@ -1488,6 +1488,11 @@ fn WgslAstParser::parse_global_decl(
         Some(directive) => WgslGlobalDeclData::Import(directive)
         None => WgslGlobalDeclData::Raw
       }
+    WgslTopLevelKind::Directive =>
+      match parse_wgsl_directive_line(item.text) {
+        Some(directive) => WgslGlobalDeclData::Directive(directive)
+        None => WgslGlobalDeclData::Raw
+      }
     WgslTopLevelKind::Declaration => parse_wgsl_declaration_data(item.text)
     _ => WgslGlobalDeclData::Raw
   }

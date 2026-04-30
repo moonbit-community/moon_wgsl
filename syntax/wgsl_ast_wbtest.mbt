@@ -336,6 +336,24 @@ test "WGSL source directives parse as directive AST nodes" {
 }
 
 ///|
+test "WGSL hash conditionals parse as directive AST nodes" {
+  let source =
+    #|#ifdef ENABLED
+    #|const A: u32 = 1u;
+    #|#endif
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  debug_inspect(unit.declarations[0].kind, content="Directive")
+  guard unit.declarations[0].data is WgslGlobalDeclData::Directive(ifdef) else {
+    abort("expected ifdef directive")
+  }
+  debug_inspect(ifdef.kind, content="Ifdef")
+  debug_inspect(ifdef.tail, content="\"ENABLED\"")
+  debug_inspect(unit.declarations[1].kind, content="Const")
+  debug_inspect(unit.declarations[2].kind, content="Directive")
+}
+
+///|
 test "WGSL override function payload preserves qualified target path" {
   let source =
     #|override fn mod::inner(arg: f32) -> f32 {
