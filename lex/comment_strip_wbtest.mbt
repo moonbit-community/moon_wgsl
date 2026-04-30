@@ -66,3 +66,19 @@ test "naga_oil wb: comment stripping handles nested multiline comments" {
     content="\"  \\n   \\n           \\n  not commented\"",
   )
 }
+
+///|
+test "naga_oil wb: comment stripping replaces non-ascii comments by UTF-8 byte width" {
+  debug_inspect(replace_comments_naga_oil("a/*中*/b"), content="\"a       b\"")
+  debug_inspect(replace_comments_naga_oil("中//评"), content="\"中     \"")
+  debug_inspect(
+    replace_comments_naga_oil("a/*💡*/b"),
+    content="\"a        b\"",
+  )
+}
+
+///|
+test "WGSL parser comment stripping preserves code-unit source positions" {
+  debug_inspect(replace_comments("a/*中*/b"), content="\"a     b\"")
+  debug_inspect(replace_comments("a/*💡*/b"), content="\"a      b\"")
+}

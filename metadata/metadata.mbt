@@ -6,7 +6,7 @@ fn try_get_preprocessor_metadata(
   let (cleaned_for_directives, wgsl_directives) = extract_wgsl_directives(
     source,
   )
-  let stripped = replace_comments(cleaned_for_directives)
+  let stripped = replace_comments_naga_oil(cleaned_for_directives)
 
   let declared_imports : Array[DeclaredImportBinding] = []
   let used_imports : Array[ImportDefWithOffset] = []
@@ -43,7 +43,7 @@ fn try_get_preprocessor_metadata(
         open_count = naga_oil_raw_import_brace_balance_next(
           open_count, next_line,
         )
-        offset = offset + next_line.length() + 1
+        offset = offset + utf8_byte_length(next_line) + 1
       }
 
       parse_imports(import_lines, declared_imports) catch {
@@ -87,7 +87,7 @@ fn try_get_preprocessor_metadata(
       )
     }
 
-    offset = offset + line.length() + 1
+    offset = offset + utf8_byte_length(line) + 1
     line_index = line_index + 1
   }
 

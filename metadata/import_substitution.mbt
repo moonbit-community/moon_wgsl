@@ -88,7 +88,7 @@ pub fn parse_imports(
     let trimmed = wgsl_regex_trim_whitespace(line)
     guard wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(spec) else {
       if trimmed == "" {
-        source_offset = source_offset + line.length() + 1
+        source_offset = source_offset + utf8_byte_length(line) + 1
         line_index = line_index + 1
         continue
       }
@@ -100,14 +100,15 @@ pub fn parse_imports(
       Some(index) => index
       None => 0
     }
-    let spec_start = source_offset + spec_offset
-    let mut consumed_length = line.length() + 1
+    let spec_start = source_offset +
+      utf8_byte_length(line[:spec_offset].to_owned())
+    let mut consumed_length = utf8_byte_length(line) + 1
     while brace_balance > 0 && line_index + 1 < lines.length() {
       line_index = line_index + 1
       let next_line = lines[line_index]
       block_spec = "\{block_spec}\n\{next_line}"
       brace_balance = brace_balance + wgsl_token_brace_balance(next_line)
-      consumed_length = consumed_length + next_line.length() + 1
+      consumed_length = consumed_length + utf8_byte_length(next_line) + 1
     }
     let targets : Array[WgslImportTarget] = []
     parse_wgsl_import_targets(block_spec, "", targets) catch {

@@ -21,11 +21,12 @@ using @ast {type WgslDirectiveKind}
 using @lex {
   type WgslToken,
   naga_oil_raw_import_brace_balance_next,
-  replace_comments,
+  replace_comments_naga_oil,
   spaces,
   source_lines,
   trim_trailing_semicolons,
   tokenize,
+  utf8_byte_length,
   wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,

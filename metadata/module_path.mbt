@@ -26,7 +26,7 @@ fn wgsl_metadata_first_space_separated_token(text : String) -> String {
 
 ///|
 pub fn wgsl_source_define_import_path(source : String) -> String? {
-  let stripped = replace_comments(source)
+  let stripped = replace_comments_naga_oil(source)
   for line in source_lines(stripped) {
     let trimmed = wgsl_regex_trim_whitespace(line)
     match wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath) {

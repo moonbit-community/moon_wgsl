@@ -26,7 +26,7 @@ pub fn Preprocessor::preprocess(
   for line_item in source_lines(source) {
     original_lines.push(line_item)
   }
-  for line_item in source_lines(replace_comments(source)) {
+  for line_item in source_lines(replace_comments_naga_oil(source)) {
     decommented_lines.push(line_item)
   }
 
@@ -53,8 +53,8 @@ pub fn Preprocessor::preprocess(
           let mut open_count = 0
           let initial_offset = offset
           while true {
-            final_string = final_string + spaces(line.length())
-            offset = offset + line.length() + 1
+            final_string = final_string + spaces(utf8_byte_length(line))
+            offset = offset + utf8_byte_length(line) + 1
             open_count = naga_oil_raw_import_brace_balance_next(
               open_count, line,
             )
@@ -101,19 +101,20 @@ pub fn Preprocessor::preprocess(
             },
           )
           final_string = "\{final_string}\{item_replaced_line}"
-          let diff = line.length() - item_replaced_line.length()
+          let diff = utf8_byte_length(line) -
+            utf8_byte_length(item_replaced_line)
           if diff > 0 {
             final_string = "\{final_string}\{spaces(diff)}"
           }
-          offset = offset + original_line.length() + 1
+          offset = offset + utf8_byte_length(original_line) + 1
           output = true
         }
       }
     }
 
     if !output {
-      final_string = "\{final_string}\{spaces(line.length())}"
-      offset = offset + line.length() + 1
+      final_string = "\{final_string}\{spaces(utf8_byte_length(line))}"
+      offset = offset + utf8_byte_length(line) + 1
     }
     final_string = "\{final_string}\n"
     line_index = line_index + 1

@@ -30,7 +30,7 @@ pub fn apply_wgsl_ifdefs_strict(
   for line in source_lines(source) {
     original_lines.push(line)
   }
-  for line in source_lines(replace_comments(source)) {
+  for line in source_lines(replace_comments_naga_oil(source)) {
     decommented_lines.push(line)
   }
   let mut offset = 0
@@ -55,7 +55,7 @@ pub fn apply_wgsl_ifdefs_strict(
     if !is_scope && scope.active() {
       out = "\{out}\{original_line}\n"
     }
-    offset = offset + original_line.length() + 1
+    offset = offset + utf8_byte_length(original_line) + 1
     line_index = line_index + 1
   }
   scope.finish(offset)
@@ -70,7 +70,7 @@ pub fn active_wgsl_ifdef_line_flags_strict(
   let scope = Scope::new()
   let flags : Array[Bool] = []
   let mut offset = 0
-  for line in source_lines(replace_comments(source)) {
+  for line in source_lines(replace_comments_naga_oil(source)) {
     let is_version = check_glsl_version_directive(
       wgsl_regex_trim_whitespace(line),
       offset,
@@ -82,7 +82,7 @@ pub fn active_wgsl_ifdef_line_flags_strict(
       is_scope
     }
     flags.push(!is_scope && scope.active())
-    offset = offset + line.length() + 1
+    offset = offset + utf8_byte_length(line) + 1
   }
   scope.finish(offset)
   flags

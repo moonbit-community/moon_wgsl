@@ -22,6 +22,38 @@ pub fn trim_trailing_semicolons(text : String) -> String {
 }
 
 ///|
+fn utf8_byte_width(code_point : Int) -> Int {
+  if code_point <= 0x7F {
+    1
+  } else if code_point <= 0x7FF {
+    2
+  } else if code_point <= 0xFFFF {
+    3
+  } else {
+    4
+  }
+}
+
+///|
+pub fn utf8_byte_length(text : String) -> Int {
+  let mut length = 0
+  let mut index = 0
+  while index < text.length() {
+    match wgsl_code_point_at(text, index) {
+      Some((code_point, width)) => {
+        length = length + utf8_byte_width(code_point)
+        index = index + width
+      }
+      None => {
+        length = length + 3
+        index = index + 1
+      }
+    }
+  }
+  length
+}
+
+///|
 pub fn split_source_lines(source : String) -> Array[String] {
   let lines : Array[String] = []
   for line_item in source.split("\n") {

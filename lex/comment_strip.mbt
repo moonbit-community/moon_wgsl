@@ -31,6 +31,7 @@ pub fn spaces(count : Int) -> String {
 fn replace_comments_line(
   line_in : String,
   state : CommentState,
+  naga_oil_byte_width : Bool,
 ) -> (String, CommentState) {
   let mut output = ""
   let mut section_start = 0
@@ -48,7 +49,11 @@ fn replace_comments_line(
       let section_end = line_in.length()
       match current_state {
         CommentState::Block(_) =>
-          output = output + spaces(section_end - section_start)
+          output = output +
+            comment_spaces(
+              line_in[section_start:section_end].to_owned(),
+              naga_oil_byte_width,
+            )
         _ => output = output + line_in[section_start:section_end].to_owned()
       }
       return (output, current_state)
@@ -57,13 +62,21 @@ fn replace_comments_line(
     let (marker_start, marker_text) = marker
     match current_state {
       CommentState::Block(_) =>
-        output = output + spaces(marker_start - section_start)
+        output = output +
+          comment_spaces(
+            line_in[section_start:marker_start].to_owned(),
+            naga_oil_byte_width,
+          )
       _ => output = output + line_in[section_start:marker_start].to_owned()
     }
 
     match marker_text {
       "//" => {
-        output = output + spaces(line_in.length() - marker_start)
+        output = output +
+          comment_spaces(
+            line_in[marker_start:line_in.length()].to_owned(),
+            naga_oil_byte_width,
+          )
         return (output, current_state)
       }
       "/*" => {
@@ -98,6 +111,15 @@ fn replace_comments_line(
   }
 
   (output, current_state)
+}
+
+///|
+fn comment_spaces(text : String, naga_oil_byte_width : Bool) -> String {
+  if naga_oil_byte_width {
+    spaces(utf8_byte_length(text))
+  } else {
+    spaces(text.length())
+  }
 }
 
 ///|
@@ -155,11 +177,13 @@ fn find_first_quote_marker(line : String, start : Int) -> (Int, String)? {
 }
 
 ///|
-pub fn replace_comments(source : String) -> String {
+fn replace_comments_with(source : String, naga_oil_byte_width : Bool) -> String {
   let output_lines : Array[String] = []
   let mut state = CommentState::None
   for line in split_source_lines(source) {
-    let (output_line, next_state) = replace_comments_line(line, state)
+    let (output_line, next_state) = replace_comments_line(
+      line, state, naga_oil_byte_width,
+    )
     output_lines.push(output_line)
     state = next_state
   }
@@ -171,4 +195,14 @@ pub fn replace_comments(source : String) -> String {
     output = output + output_lines[i]
   }
   output
+}
+
+///|
+pub fn replace_comments(source : String) -> String {
+  replace_comments_with(source, false)
+}
+
+///|
+pub fn replace_comments_naga_oil(source : String) -> String {
+  replace_comments_with(source, true)
 }

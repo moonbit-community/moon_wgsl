@@ -167,6 +167,20 @@ test "naga_oil: multiline import brace counting includes quoted braces" {
 }
 
 ///|
+test "naga_oil: removed non-ascii directive lines pad by UTF-8 byte width" {
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "#define_import_path 模块\nfn shade() {}\n",
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected preprocess success")
+  }
+  debug_inspect(
+    output.preprocessed_source.has_prefix("\{String::make(26, ' ')}\n"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
   let metadata = metadata_or_abort(
     "enable f16, subgroups;\nrequires readonly_and_readwrite_storage_textures;\ndiagnostic(warn, derivative_uniformity);\nfn shade() -> f32 {\n  return #EXPOSURE + #{WHITE_POINT};\n}\n",
