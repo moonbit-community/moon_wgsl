@@ -1016,13 +1016,20 @@ test "naga_oil: diagnostic directive captures raw rule text" {
 }
 
 ///|
-test "naga_oil: directive section ends on non-directive identifier prefix" {
+test "naga_oil: directive section stays open on directive name prefix" {
   let metadata = metadata_or_abort(
     "enable_extra();\ndiagnostic_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
   )
-  debug_inspect(metadata.wgsl_directives.enables.length(), content="0")
+  debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
+  debug_inspect(
+    metadata.wgsl_directives.enables[0].extensions[0],
+    content="\"f16\"",
+  )
   debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="0")
-  debug_inspect(metadata.cleaned_source.contains("enable f16;"), content="true")
+  debug_inspect(
+    metadata.cleaned_source.contains("enable f16;"),
+    content="false",
+  )
 }
 
 ///|

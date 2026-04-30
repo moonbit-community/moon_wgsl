@@ -287,14 +287,6 @@ fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
 }
 
 ///|
-fn wgsl_source_directive_keyword(line : String) -> String? {
-  match tokenize(line.trim().to_owned(), false) {
-    [WgslToken::Identifier(keyword, _), ..] => Some(keyword)
-    _ => None
-  }
-}
-
-///|
 fn directive_identifier(text : String) -> String? {
   let trimmed = trim_trailing_semicolons(text).trim().to_owned()
   let mut i = 0
@@ -523,9 +515,10 @@ pub fn extract_wgsl_directives(
         line_index = line_index + 1
         continue
       }
-      match wgsl_source_directive_keyword(trimmed) {
-        Some("enable") | Some("requires") | Some("diagnostic") => ()
-        _ => in_directive_section = false
+      if !trimmed.has_prefix("enable") &&
+        !trimmed.has_prefix("requires") &&
+        !trimmed.has_prefix("diagnostic") {
+        in_directive_section = false
       }
     }
 
