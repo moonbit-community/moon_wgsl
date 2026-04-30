@@ -142,7 +142,7 @@ fn longest_wgsl_template_const_prefix(
   for entry in value_defines.iter() {
     let (name, _) = entry
     if name.length() > best.length() &&
-      starts_with_text(text, name) &&
+      text.has_prefix(name) &&
       wgsl_template_const_name_boundary(text, name) {
       best = name
     }

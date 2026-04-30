@@ -164,25 +164,3 @@ pub fn collect_wgsl_decl_global_declared_identifier_nodes(
 }
 
 ///|
-fn collect_wgsl_source_identifier_nodes(
-  source : String,
-  nodes : Array[WgslIdent],
-) -> Unit {
-  for decl in parse_wgsl_translation_unit(source).declarations {
-    collect_wgsl_decl_identifier_nodes(decl.data, nodes)
-  }
-}
-
-///|
-pub fn collect_wgsl_source_identifier_names(
-  source : String,
-  names : Array[String],
-) -> Unit {
-  let nodes : Array[WgslIdent] = []
-  collect_wgsl_source_identifier_nodes(source, nodes)
-  for node in nodes {
-    names.push(node.name)
-  }
-}
-
-///|

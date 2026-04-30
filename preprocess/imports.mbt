@@ -22,7 +22,6 @@ using @syntax {
   replace_comments,
   spaces,
   source_lines,
-  starts_with_text,
   trim_trailing_semicolons,
   tokenize,
   wgsl_directive_prefix_tail,

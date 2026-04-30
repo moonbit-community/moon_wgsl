@@ -144,7 +144,10 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(result_ty.name, content="\"vec4\"")
   debug_inspect(result_ty.arguments[0].name, content="\"f32\"")
   debug_inspect(function.body.statements.length(), content="1")
-  debug_inspect(function.body.statements[0].kind, content="Return")
+  debug_inspect(
+    function.body.statements[0].identifiers[0].name,
+    content="\"return\"",
+  )
 }
 
 ///|
@@ -232,19 +235,10 @@ test "WGSL function payload exposes source-preserving statement AST" {
     abort("expected function payload")
   }
   debug_inspect(function.body.statements.length(), content="3")
-  debug_inspect(function.body.statements[0].kind, content="LocalDecl")
   debug_inspect(
     function.body.statements[0].local_name,
     content="Some(\"local\")",
   )
-  debug_inspect(
-    function.body.statements[0].local_names,
-    content=(
-      #|["local"]
-    ),
-  )
-  debug_inspect(function.body.statements[0].start, content="31")
-  debug_inspect(function.body.statements[0].end, content="54")
   debug_inspect(
     function.body.statements[0].identifiers[0].name,
     content="\"var\"",
@@ -253,15 +247,11 @@ test "WGSL function payload exposes source-preserving statement AST" {
     function.body.statements[0].identifiers[1].name,
     content="\"u32\"",
   )
-  debug_inspect(function.body.statements[1].kind, content="If")
-  debug_inspect(function.body.statements[2].kind, content="Return")
+  debug_inspect(function.body.statements[1].local_name, content="None")
+  debug_inspect(function.body.statements[2].local_name, content="None")
   debug_inspect(
     function.body.statements[2].identifiers[0].name,
     content="\"return\"",
-  )
-  debug_inspect(
-    function.body.statements[1].text.contains("return local;"),
-    content="true",
   )
 }
 
@@ -363,18 +353,6 @@ test "WGSL statement AST records nested and loop local declarations" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
-  debug_inspect(
-    function.body.statements[0].local_names,
-    content=(
-      #|["nested"]
-    ),
-  )
-  debug_inspect(
-    function.body.statements[1].local_names,
-    content=(
-      #|["i"]
-    ),
-  )
   let nodes : Array[WgslIdent] = []
   collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::Function(function),
@@ -487,7 +465,6 @@ test "WGSL statement classification uses identifier tokens" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
-  debug_inspect(function.body.statements[0].kind, content="ConstAssert")
-  debug_inspect(function.body.statements[1].kind, content="Raw")
+  debug_inspect(function.body.statements.length(), content="2")
   debug_inspect(function.body.statements[1].local_name, content="None")
 }

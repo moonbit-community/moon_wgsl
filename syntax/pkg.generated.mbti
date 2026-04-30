@@ -11,8 +11,6 @@ pub fn collect_wgsl_decl_global_declared_identifier_nodes(WgslGlobalDeclData, Ar
 
 pub fn collect_wgsl_decl_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
 
-pub fn collect_wgsl_source_identifier_names(String, Array[String]) -> Unit
-
 pub fn import_brace_balance(String) -> Int
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
@@ -28,8 +26,6 @@ pub fn spaces(Int) -> String
 pub fn split_last_identifier(String) -> (String, String)?
 
 pub fn split_source_lines(String) -> Array[String]
-
-pub fn starts_with_text(String, String) -> Bool
 
 pub fn tokenize(String, Bool) -> Array[Token]
 
@@ -189,27 +185,9 @@ pub struct WgslOverride {
 } derive(@debug.Debug)
 
 pub struct WgslStatement {
-  kind : WgslStatementKind
-  text : String
   local_name : String?
-  local_names : Array[String]
   identifiers : Array[WgslIdent]
-  start : Int
-  end : Int
 } derive(@debug.Debug)
-
-pub(all) enum WgslStatementKind {
-  LocalDecl
-  Block
-  If
-  Switch
-  Loop
-  Break
-  Continue
-  Return
-  ConstAssert
-  Raw
-} derive(Eq, @debug.Debug)
 
 pub struct WgslStruct {
   attributes : Array[WgslAttribute]

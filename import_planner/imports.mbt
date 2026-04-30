@@ -21,7 +21,9 @@ using @resolver {
 ///|
 using @syntax {
   type Token,
-  collect_wgsl_source_identifier_names,
+  type WgslIdent,
+  collect_wgsl_decl_identifier_nodes,
+  parse_wgsl_translation_unit,
   split_last_identifier,
   tokenize,
 }

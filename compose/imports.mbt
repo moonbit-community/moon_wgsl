@@ -76,7 +76,6 @@ using @syntax {
   type WgslDirectiveKind,
   import_brace_balance,
   split_source_lines,
-  starts_with_text,
   wgsl_directive_prefix_tail,
   wgsl_directive_tail,
 }

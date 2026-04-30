@@ -63,11 +63,6 @@ pub fn source_lines(source : String) -> Array[String] {
 }
 
 ///|
-pub fn starts_with_text(text : String, prefix : String) -> Bool {
-  text.has_prefix(prefix)
-}
-
-///|
 fn identifier_code_unit(code : Int) -> Bool {
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||

@@ -62,28 +62,9 @@ pub struct WgslFunctionResult {
 } derive(Debug)
 
 ///|
-pub(all) enum WgslStatementKind {
-  LocalDecl
-  Block
-  If
-  Switch
-  Loop
-  Break
-  Continue
-  Return
-  ConstAssert
-  Raw
-} derive(Eq, Debug)
-
-///|
 pub struct WgslStatement {
-  kind : WgslStatementKind
-  text : String
   local_name : String?
-  local_names : Array[String]
   identifiers : Array[WgslIdent]
-  start : Int
-  end : Int
 } derive(Debug)
 
 ///|

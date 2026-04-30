@@ -136,7 +136,13 @@ tree-shakes them away, matching upstream `naga_oil`.
    duplicate-binding cleanup, suffix lowering, and writeback sanitization must
    not reintroduce ad hoc identifier span rewriting.
 
-6. The Naga boundary must stay explicit.
+6. Parser internals must stay narrow.
+   Syntax should not expose debug-only statement classification, raw text spans,
+   or convenience text wrappers unless a production package consumes them. Move
+   package-specific identifier collection and planning helpers into the owning
+   package instead of expanding the syntax public API.
+
+7. The Naga boundary must stay explicit.
    Preprocessing and source-level WGSL composition belong in MoonBit. Naga IR,
    validation, GLSL, writer byte parity, and runtime execution remain outside
    this package's core scope.

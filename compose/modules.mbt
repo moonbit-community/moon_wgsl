@@ -85,7 +85,7 @@ fn collect_wgsl_cached_import_redirects(
   let mut count = 0
   for entry in session.imported_item_names.iter() {
     let (key, imported_name) = entry
-    if !starts_with_text(key, prefix) {
+    if !key.has_prefix(prefix) {
       continue
     }
     let item_name = key[prefix.length():key.length()].to_owned()

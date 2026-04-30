@@ -6,4 +6,4 @@ using @analysis {
 }
 
 ///|
-using @syntax {type WgslGlobalDeclData, starts_with_text}
+using @syntax {type WgslGlobalDeclData}

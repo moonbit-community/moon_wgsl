@@ -267,13 +267,13 @@ fn sanitize_wgsl_writeback_identifier(ident : String) -> String {
   while out.has_suffix("_") {
     out = out[:out.length() - 1].to_owned()
   }
-  while starts_with_text(out, "__") {
+  while out.has_prefix("__") {
     out = out[1:out.length()].to_owned()
   }
   if out == "" {
     out = "unnamed"
   }
-  if starts_with_text(out, "_naga") {
+  if out.has_prefix("_naga") {
     out = "gen_\{out}"
   }
   if wgsl_writeback_identifier_is_reserved(out) {

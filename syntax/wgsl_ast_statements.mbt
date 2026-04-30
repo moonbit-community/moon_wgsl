@@ -57,19 +57,10 @@ fn WgslDeclParser::parse_function_result(
 }
 
 ///|
-fn wgsl_statement_kind_from_first_identifier(
-  first_identifier : String?,
-) -> WgslStatementKind {
+fn wgsl_statement_is_local_decl(first_identifier : String?) -> Bool {
   match first_identifier {
-    Some("var") | Some("let") | Some("const") => WgslStatementKind::LocalDecl
-    Some("if") => WgslStatementKind::If
-    Some("switch") => WgslStatementKind::Switch
-    Some("loop") | Some("for") | Some("while") => WgslStatementKind::Loop
-    Some("break") => WgslStatementKind::Break
-    Some("continue") => WgslStatementKind::Continue
-    Some("return") => WgslStatementKind::Return
-    Some("const_assert") => WgslStatementKind::ConstAssert
-    _ => WgslStatementKind::Raw
+    Some("var") | Some("let") | Some("const") => true
+    _ => false
   }
 }
 
@@ -116,9 +107,9 @@ fn wgsl_statement_skip_template_tokens(
 ///|
 fn wgsl_statement_local_name_from_tokens(
   tokens : Array[Token],
-  kind : WgslStatementKind,
+  is_local_decl : Bool,
 ) -> String? {
-  guard kind == WgslStatementKind::LocalDecl else { return None }
+  guard is_local_decl else { return None }
   for i in 0..<tokens.length() {
     match wgsl_statement_token_identifier(tokens[i]) {
       Some("var") => {
@@ -186,7 +177,7 @@ fn wgsl_statement_identifier_has_access_prefix(
 ///|
 fn collect_wgsl_statement_identifier_nodes(
   tokens : Array[Token],
-  kind : WgslStatementKind,
+  is_local_decl : Bool,
   local_name : String?,
   local_names : Array[String],
   identifiers : Array[WgslIdent],
@@ -198,9 +189,7 @@ fn collect_wgsl_statement_identifier_nodes(
       continue
     }
     match local_name {
-      Some(name) if kind == WgslStatementKind::LocalDecl &&
-        !skipped_local_name &&
-        ident == name => {
+      Some(name) if is_local_decl && !skipped_local_name && ident == name => {
         skipped_local_name = true
         continue
       }
@@ -286,30 +275,19 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       [] => break
     }
   }
-  let text = if start_pos < 0 || end_pos < start_pos {
-    ""
-  } else {
-    self.source_text[start_pos:end_pos].to_owned().trim().to_owned()
-  }
-  if text == "" {
+  if start_pos < 0 || end_pos < start_pos {
     None
   } else {
-    let kind = wgsl_statement_kind_from_first_identifier(first_identifier)
-    let local_name = wgsl_statement_local_name_from_tokens(tokens, kind)
+    let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
+    let local_name = wgsl_statement_local_name_from_tokens(
+      tokens, is_local_decl,
+    )
     let local_names : Array[String] = []
     collect_wgsl_statement_local_names_from_tokens(tokens, local_names)
     collect_wgsl_statement_identifier_nodes(
-      tokens, kind, local_name, local_names, identifiers,
+      tokens, is_local_decl, local_name, local_names, identifiers,
     )
-    Some(WgslStatement::{
-      kind,
-      text,
-      local_name,
-      local_names,
-      identifiers,
-      start: start_pos,
-      end: end_pos,
-    })
+    Some(WgslStatement::{ local_name, identifiers })
   }
 }
 

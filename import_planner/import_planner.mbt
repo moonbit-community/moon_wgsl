@@ -36,6 +36,20 @@ fn string_list_push_unique(items : Array[String], item : String) -> Unit {
 }
 
 ///|
+fn collect_wgsl_source_identifier_names(
+  source : String,
+  names : Array[String],
+) -> Unit {
+  let nodes : Array[WgslIdent] = []
+  for decl in parse_wgsl_translation_unit(source).declarations {
+    collect_wgsl_decl_identifier_nodes(decl.data, nodes)
+  }
+  for node in nodes {
+    names.push(node.name)
+  }
+}
+
+///|
 pub fn unresolved_wgsl_namespace_reference(source : String) -> String? {
   let names : Array[String] = []
   collect_wgsl_source_identifier_names(source, names)

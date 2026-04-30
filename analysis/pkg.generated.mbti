@@ -32,7 +32,6 @@ pub fn strip_wgsl_import_declarations(String) -> String
 
 // Types and methods
 pub struct WgslDeclarationGraph {
-  source_blocks : Array[WgslGraphBlock]
   import_blocks : Array[WgslGraphBlock]
   declaration_blocks : Array[WgslGraphBlock]
 }
@@ -47,8 +46,6 @@ pub struct WgslEmittedDeclaration {
 pub struct WgslGraphBlock {
   name : String
   text : String
-  start : Int
-  end : Int
   data : @syntax.WgslGlobalDeclData
 }
 
