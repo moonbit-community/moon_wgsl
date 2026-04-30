@@ -9,6 +9,9 @@ test "source line helpers preserve explicit semantics" {
   debug_inspect(rust_like.length(), content="2")
   debug_inspect(rust_like[0], content="\"a\"")
   debug_inspect(rust_like[1], content="\"b\"")
+  debug_inspect(source_lines("").length(), content="0")
+  debug_inspect(source_lines("a\r").join("|"), content="\"a\\r\"")
+  debug_inspect(source_lines("a\r\nb\r").join("|"), content="\"a|b\\r\"")
 }
 
 ///|

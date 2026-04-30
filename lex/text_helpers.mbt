@@ -64,15 +64,23 @@ pub fn split_source_lines(source : String) -> Array[String] {
 
 ///|
 pub fn source_lines(source : String) -> Array[String] {
-  let lines = split_source_lines(source)
-  for i in 0..<lines.length() {
-    let line = lines[i]
-    if line.has_suffix("\r") {
-      lines[i] = line[:line.length() - 1].to_owned()
+  let lines : Array[String] = []
+  let mut start = 0
+  let mut i = 0
+  while i < source.length() {
+    if source.code_unit_at(i).to_int() == 10 {
+      let end_ = if i > start && source.code_unit_at(i - 1).to_int() == 13 {
+        i - 1
+      } else {
+        i
+      }
+      lines.push(source[start:end_].to_owned())
+      start = i + 1
     }
+    i = i + 1
   }
-  if source.has_suffix("\n") && lines.length() > 0 {
-    lines.pop() |> ignore
+  if start < source.length() {
+    lines.push(source[start:source.length()].to_owned())
   }
   lines
 }
