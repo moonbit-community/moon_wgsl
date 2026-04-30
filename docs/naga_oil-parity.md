@@ -54,9 +54,9 @@ Parity is tracked with three increasingly strict gates:
 
 3. Upstream oracle.
    `tools/naga_oil_oracle` is a Rust harness pinned to the upstream commit
-   above. It composes WGSL fixture trees through real `naga_oil` and compares
-   every deterministic upstream WGSL preprocessing output or diagnostic that is
-   in this package's scope.
+   above. It composes WGSL and GLSL fixture trees through real `naga_oil` and
+   compares every deterministic upstream compose output or diagnostic that can
+   be emitted by the pinned oracle.
 
 4. CI parity gate.
    `tools/check_preprocess_parity.sh` runs the local preprocessing parity suite
@@ -99,9 +99,9 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `wgsl_dual_source_blending`, `dual_source_blending/` | Covered + oracle-diffed | Dual-source blending attributes are preserved as source text and pinned oracle output is diffed with `DUAL_SOURCE_BLENDING` enabled. |
 | `missing_import_in_module`, `missing_import_in_shader` | Covered + oracle-diffed | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
 | `err_parse`, `err_validation`, `error_test/` | Oracle guardrail | Exact Naga parser/validator diagnostics are out of preprocessing scope, but selected expected diagnostics are diff-checked by the pinned oracle. |
-| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Out of core scope | GLSL frontend behavior belongs to upstream Naga. The oracle can still run these fixtures when investigating parity, but `moon_wgsl` does not implement GLSL. |
-| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Out of core scope | Mixed GLSL/WGSL frontend composition is Naga-backed scope, not MoonBit source-level preprocessing scope. |
-| `test_raycasts`, `raycast/` | Out of core scope | Ray-query validation is Naga validator scope. Source-level imports remain covered locally. |
+| `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Oracle-covered / out of MoonBit core scope | GLSL frontend behavior belongs to upstream Naga, so the MoonBit core does not implement it. The pinned parity gate now diff-checks both deterministic GLSL/WGSL writer outputs and treats `basic_glsl` as a frontend smoke case without a stable expected writer file. |
+| `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Oracle-covered / out of MoonBit core scope | Mixed GLSL/WGSL frontend composition is Naga-backed scope, not MoonBit source-level preprocessing scope. The pinned parity gate diff-checks all three upstream expected outputs. |
+| `test_raycasts`, `raycast/` | Oracle-covered / out of MoonBit core scope | Ray-query validation is Naga validator scope. Source-level imports remain covered locally, and the pinned parity gate compiles the upstream ray-query fixture with `RAY_QUERY` enabled because upstream intentionally has no stable writer expected output. |
 | `additional_import`, `add_imports/` | Covered | Root compose/export requests and registered composable modules can inject additional imports, including upstream-style override plugins without `#define_import_path`. Runtime shader execution remains oracle-only. |
 | `invalid_override` | Covered | Upstream `override fn module::item` syntax now errors when the target was not declared `virtual`; export diagnostics still warn when manual redirects never match. |
 | `bad_identifiers`, `invalid_identifiers/` | Covered | Top-level declaration names and function parameters are sanitized in final composed/exported source; invalid struct-member identifiers now report compose errors like upstream. |

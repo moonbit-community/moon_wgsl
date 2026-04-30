@@ -42,6 +42,9 @@ assert_expected_coverage() {
       err_parse | \
       err_validation_1 | \
       err_validation_2 | \
+      glsl_call_wgsl | \
+      glsl_const_import | \
+      glsl_wgsl_const_import | \
       import_in_decl | \
       invalid_override_base | \
       item_import_test | \
@@ -52,14 +55,11 @@ assert_expected_coverage() {
       test_quoted_import_dup_name | \
       use_shared_global | \
       wgsl_call_entrypoint | \
-      wgsl_dual_source_blending)
-        ;;
-      diagnostic_filters | \
-      glsl_call_wgsl | \
-      glsl_const_import | \
-      glsl_wgsl_const_import | \
       wgsl_call_glsl | \
+      wgsl_dual_source_blending | \
       wgsl_glsl_const_import)
+        ;;
+      diagnostic_filters)
         ;;
       *)
         uncovered+=("$label")
@@ -245,6 +245,70 @@ diff_normalized \
   "$tmpdir/wgsl_call_entrypoint.wgsl" \
   wgsl_call_entrypoint
 
+echo "== naga_oil oracle: WGSL calls GLSL module =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/glsl \
+  --entry top.wgsl \
+  --output "$tmpdir/wgsl_call_glsl.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_glsl.txt \
+  "$tmpdir/wgsl_call_glsl.wgsl" \
+  wgsl_call_glsl
+
+echo "== naga_oil oracle: GLSL calls WGSL module =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/glsl \
+  --entry top.glsl \
+  --shader-type glsl-vertex \
+  --output "$tmpdir/glsl_call_wgsl.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/glsl_call_wgsl.txt \
+  "$tmpdir/glsl_call_wgsl.wgsl" \
+  glsl_call_wgsl
+
+echo "== naga_oil oracle: GLSL imports GLSL const =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/glsl_const_import \
+  --entry top.glsl \
+  --shader-type glsl-fragment \
+  --module consts.glsl \
+  --output "$tmpdir/glsl_const_import.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/glsl_const_import.txt \
+  "$tmpdir/glsl_const_import.wgsl" \
+  glsl_const_import
+
+echo "== naga_oil oracle: WGSL imports GLSL const =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/glsl_const_import \
+  --entry top.wgsl \
+  --module consts.glsl \
+  --output "$tmpdir/glsl_wgsl_const_import.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/glsl_wgsl_const_import.txt \
+  "$tmpdir/glsl_wgsl_const_import.wgsl" \
+  glsl_wgsl_const_import
+
+echo "== naga_oil oracle: GLSL imports WGSL const =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/glsl_const_import \
+  --entry top.glsl \
+  --shader-type glsl-fragment \
+  --module consts.wgsl \
+  --output "$tmpdir/wgsl_glsl_const_import.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_glsl_const_import.txt \
+  "$tmpdir/wgsl_glsl_const_import.wgsl" \
+  wgsl_glsl_const_import
+
+echo "== naga_oil oracle: basic GLSL frontend check =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/glsl \
+  --entry basic.glsl \
+  --shader-type glsl-fragment \
+  --entry-only \
+  --check-only
+
 echo "== naga_oil oracle: problematic expressions =="
 oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/problematic_expressions \
@@ -314,6 +378,13 @@ diff_normalized \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_dual_source_blending.txt \
   "$tmpdir/wgsl_dual_source_blending.wgsl" \
   wgsl_dual_source_blending
+
+echo "== naga_oil oracle: ray query compile check =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/raycast \
+  --entry top.wgsl \
+  --capability ray-query \
+  --check-only
 
 echo "== naga_oil oracle: parser diagnostic =="
 if oracle \
