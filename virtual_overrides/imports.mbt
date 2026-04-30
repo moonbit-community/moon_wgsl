@@ -7,7 +7,12 @@ using @analysis {
 }
 
 ///|
-using @ast {type WgslFunction, type WgslGlobalDeclData}
+using @ast {
+  type WgslFunction,
+  type WgslGlobalDeclData,
+  type WgslIdent,
+  collect_wgsl_function_body_identifier_nodes,
+}
 
 ///|
 using @lex {split_last_identifier}

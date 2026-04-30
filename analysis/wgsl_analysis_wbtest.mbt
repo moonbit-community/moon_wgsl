@@ -327,3 +327,69 @@ test "rename plan function-local rules rewrite parameter and body together" {
   )
   debug_inspect(rewritten.contains("return max(in.rgb"), content="false")
 }
+
+///|
+test "rename plan function-local rules follow nested statement scopes" {
+  let source =
+    #|fn fragment(value: u32) -> u32 {
+    #|  if (value > 0u) {
+    #|    let item = value + 1u;
+    #|    return item;
+    #|  }
+    #|  return value;
+    #|}
+    #|
+  let plan = WgslRenamePlan::empty()
+  plan.add("item", "item_wgsl", FunctionLocal)
+  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
+  debug_inspect(
+    rewritten.contains("let item_wgsl = value + 1u;"),
+    content="true",
+  )
+  debug_inspect(rewritten.contains("return item_wgsl;"), content="true")
+  debug_inspect(rewritten.contains("let item ="), content="false")
+}
+
+///|
+test "rename plan reference rules rewrite recursively scoped blocks" {
+  let source =
+    #|fn helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|fn entry(flag: bool) -> u32 {
+    #|  if (flag) {
+    #|    return helper();
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  redirects.set("helper", "renamed_helper")
+  let rewritten = rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    build_wgsl_rename_plan_from_redirect_map(redirects, ReferencesOnly),
+  )
+  debug_inspect(rewritten.contains("fn helper()"), content="true")
+  debug_inspect(rewritten.contains("return renamed_helper();"), content="true")
+  debug_inspect(rewritten.contains("return helper();"), content="false")
+}
+
+///|
+test "declaration graph keeps dependencies from recursively scoped blocks" {
+  let source =
+    #|fn helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|fn entry(flag: bool) -> u32 {
+    #|  if (flag) {
+    #|    {
+    #|      return helper();
+    #|    }
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("fn helper"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}

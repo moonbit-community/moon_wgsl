@@ -135,6 +135,84 @@ fn collect_wgsl_rewrite_nodes_from_identifiers(
 }
 
 ///|
+fn copy_wgsl_redirect_map(
+  redirect_map : @hashmap.HashMap[String, String],
+) -> @hashmap.HashMap[String, String] {
+  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for entry in redirect_map.iter() {
+    let (from_name, to_name) = entry
+    copied.set(from_name, to_name)
+  }
+  copied
+}
+
+///|
+fn collect_wgsl_local_binding_rewrite_node(
+  binding : WgslIdent,
+  source_redirects : @hashmap.HashMap[String, String],
+  active_redirects : @hashmap.HashMap[String, String],
+  nodes : Array[WgslRewriteNode],
+) -> Unit {
+  match source_redirects.get(binding.name) {
+    Some(replacement) => {
+      active_redirects.set(binding.name, replacement)
+      nodes.push(WgslRewriteNode::{
+        start: binding.start,
+        end: binding.end,
+        replacement,
+      })
+    }
+    None => ()
+  }
+}
+
+///|
+fn collect_wgsl_statement_local_rewrite_nodes(
+  statement : WgslStatement,
+  active_redirects : @hashmap.HashMap[String, String],
+  source_redirects : @hashmap.HashMap[String, String],
+  nodes : Array[WgslRewriteNode],
+) -> Unit {
+  collect_wgsl_rewrite_nodes_from_identifiers(
+    statement.identifiers,
+    active_redirects,
+    nodes,
+  )
+  let block_redirects = copy_wgsl_redirect_map(active_redirects)
+  for binding in statement.local_declarations {
+    collect_wgsl_local_binding_rewrite_node(
+      binding, source_redirects, block_redirects, nodes,
+    )
+  }
+  for block in statement.blocks {
+    collect_wgsl_block_local_rewrite_nodes(
+      block, block_redirects, source_redirects, nodes,
+    )
+  }
+}
+
+///|
+fn collect_wgsl_block_local_rewrite_nodes(
+  block : WgslBlock,
+  inherited_redirects : @hashmap.HashMap[String, String],
+  source_redirects : @hashmap.HashMap[String, String],
+  nodes : Array[WgslRewriteNode],
+) -> Unit {
+  let active_redirects = copy_wgsl_redirect_map(inherited_redirects)
+  for statement in block.statements {
+    collect_wgsl_statement_local_rewrite_nodes(
+      statement, active_redirects, source_redirects, nodes,
+    )
+    for binding in statement.exported_locals {
+      match source_redirects.get(binding.name) {
+        Some(replacement) => active_redirects.set(binding.name, replacement)
+        None => ()
+      }
+    }
+  }
+}
+
+///|
 fn collect_wgsl_function_local_rewrite_nodes(
   data : WgslGlobalDeclData,
   redirect_map : @hashmap.HashMap[String, String],
@@ -156,16 +234,12 @@ fn collect_wgsl_function_local_rewrite_nodes(
           None => ()
         }
       }
-      if active_redirects.is_empty() {
-        return
-      }
-      for statement in function.body.statements {
-        collect_wgsl_rewrite_nodes_from_identifiers(
-          statement.identifiers,
-          active_redirects,
-          nodes,
-        )
-      }
+      collect_wgsl_block_local_rewrite_nodes(
+        function.body,
+        active_redirects,
+        redirect_map,
+        nodes,
+      )
     }
     _ => ()
   }

@@ -616,8 +616,22 @@ test "WGSL statement AST records nested and loop local declarations" {
   )
   debug_inspect(
     function.body.statements[0].local_declarations.map(fn(node) { node.name }),
+    content="[]",
+  )
+  debug_inspect(
+    function.body.statements[0].blocks[0].statements[0].local_declarations.map(fn(
+      node,
+    ) {
+      node.name
+    }),
     content=(
       #|["nested"]
+    ),
+  )
+  debug_inspect(
+    function.body.statements[0].identifiers.map(fn(node) { node.name }),
+    content=(
+      #|["if", "arg"]
     ),
   )
   debug_inspect(function.body.statements[0].exported_locals, content="[]")

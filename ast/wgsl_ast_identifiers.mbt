@@ -70,6 +70,70 @@ fn wgsl_name_list_push_unique(names : Array[String], name : String) -> Unit {
 }
 
 ///|
+fn wgsl_name_list_copy(names : Array[String]) -> Array[String] {
+  let copied : Array[String] = []
+  for name in names {
+    copied.push(name)
+  }
+  copied
+}
+
+///|
+fn collect_wgsl_statement_identifier_nodes_with_scope(
+  statement : WgslStatement,
+  active_local_names : Array[String],
+  nodes : Array[WgslIdent],
+) -> Unit {
+  for ident in statement.identifiers {
+    if !wgsl_name_list_contains(active_local_names, ident.name) {
+      nodes.push(ident)
+    }
+  }
+  let block_local_names = wgsl_name_list_copy(active_local_names)
+  for binding in statement.local_declarations {
+    wgsl_name_list_push_unique(block_local_names, binding.name)
+  }
+  for block in statement.blocks {
+    collect_wgsl_block_identifier_nodes_with_scope(
+      block, block_local_names, nodes,
+    )
+  }
+}
+
+///|
+fn collect_wgsl_block_identifier_nodes_with_scope(
+  block : WgslBlock,
+  inherited_local_names : Array[String],
+  nodes : Array[WgslIdent],
+) -> Unit {
+  let active_local_names = wgsl_name_list_copy(inherited_local_names)
+  for statement in block.statements {
+    collect_wgsl_statement_identifier_nodes_with_scope(
+      statement, active_local_names, nodes,
+    )
+    for binding in statement.exported_locals {
+      wgsl_name_list_push_unique(active_local_names, binding.name)
+    }
+  }
+}
+
+///|
+pub fn collect_wgsl_function_body_identifier_nodes(
+  function : WgslFunction,
+  nodes : Array[WgslIdent],
+) -> Unit {
+  let active_local_names : Array[String] = []
+  for argument in function.arguments {
+    wgsl_name_list_push_unique(active_local_names, argument.name)
+  }
+  collect_wgsl_block_identifier_nodes_with_scope(
+    function.body,
+    active_local_names,
+    nodes,
+  )
+}
+
+///|
 pub fn collect_wgsl_decl_identifier_nodes(
   data : WgslGlobalDeclData,
   nodes : Array[WgslIdent],
@@ -93,16 +157,11 @@ pub fn collect_wgsl_decl_identifier_nodes(
         }
         None => ()
       }
-      for statement in function.body.statements {
-        for ident in statement.identifiers {
-          if !wgsl_name_list_contains(active_local_names, ident.name) {
-            nodes.push(ident)
-          }
-        }
-        for binding in statement.exported_locals {
-          wgsl_name_list_push_unique(active_local_names, binding.name)
-        }
-      }
+      collect_wgsl_block_identifier_nodes_with_scope(
+        function.body,
+        active_local_names,
+        nodes,
+      )
     }
     WgslGlobalDeclData::Struct(struct_decl) => {
       collect_wgsl_attribute_identifier_nodes(struct_decl.attributes, nodes)

@@ -19,19 +19,6 @@ pub struct WgslVirtualOverrideOutput {
 }
 
 ///|
-fn wgsl_virtual_name_list_contains(
-  names : Array[String],
-  name : String,
-) -> Bool {
-  for existing in names {
-    if existing == name {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn wgsl_graph_block_function(block : WgslGraphBlock) -> WgslFunction? {
   match block.data {
     WgslGlobalDeclData::Function(function) => Some(function)
@@ -81,28 +68,18 @@ fn wgsl_override_body_references_target(
   raw_target : String,
   target_name : String,
 ) -> Bool {
-  let active_local_names : Array[String] = []
-  for argument in function.arguments {
-    active_local_names.push(argument.name)
-  }
-  for statement in function.body.statements {
-    for ident in statement.identifiers {
-      if wgsl_virtual_name_list_contains(active_local_names, ident.name) {
-        continue
-      }
-      if ident.name == raw_target || ident.name == target_name {
-        return true
-      }
-      match split_last_identifier(ident.name) {
-        Some((_, suffix)) =>
-          if suffix == raw_target || suffix == target_name {
-            return true
-          }
-        None => ()
-      }
+  let identifiers : Array[WgslIdent] = []
+  collect_wgsl_function_body_identifier_nodes(function, identifiers)
+  for ident in identifiers {
+    if ident.name == raw_target || ident.name == target_name {
+      return true
     }
-    for binding in statement.exported_locals {
-      active_local_names.push(binding.name)
+    match split_last_identifier(ident.name) {
+      Some((_, suffix)) =>
+        if suffix == raw_target || suffix == target_name {
+          return true
+        }
+      None => ()
     }
   }
   false

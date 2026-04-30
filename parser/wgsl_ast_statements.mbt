@@ -463,6 +463,31 @@ fn WgslDeclParser::collect_statement_blocks(
 }
 
 ///|
+fn collect_wgsl_statement_scope_tokens(
+  tokens : Array[WgslToken],
+) -> Array[WgslToken] {
+  let scope_tokens : Array[WgslToken] = []
+  let mut block_depth = 0
+  for token in tokens {
+    match token {
+      WgslToken::Other(123, _) => {
+        block_depth = block_depth + 1
+        continue
+      }
+      WgslToken::Other(125, _) if block_depth > 0 => {
+        block_depth = block_depth - 1
+        continue
+      }
+      _ => ()
+    }
+    if block_depth == 0 {
+      scope_tokens.push(token)
+    }
+  }
+  scope_tokens
+}
+
+///|
 fn wgsl_statement_view_continues_after_block(
   view : ArrayView[WgslToken],
 ) -> Bool {
@@ -527,9 +552,11 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     let text = self.slice(start_pos, end_pos)
     let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
     let kind = wgsl_statement_kind_from_tokens(first_identifier, tokens)
+    let scope_tokens = collect_wgsl_statement_scope_tokens(tokens)
     let local_declarations : Array[WgslIdent] = []
     let exported_locals : Array[WgslIdent] = []
-    match wgsl_statement_local_declaration_from_tokens(tokens, is_local_decl) {
+    match
+      wgsl_statement_local_declaration_from_tokens(scope_tokens, is_local_decl) {
       Some(binding) => {
         local_declarations.push(binding)
         exported_locals.push(binding)
@@ -537,7 +564,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       None => ()
     }
     collect_wgsl_statement_identifier_nodes(
-      tokens, is_local_decl, exported_locals, local_declarations, identifiers,
+      scope_tokens, is_local_decl, exported_locals, local_declarations, identifiers,
     )
     let blocks = self.collect_statement_blocks(tokens)
     Some(
