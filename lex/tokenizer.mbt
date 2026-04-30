@@ -56,16 +56,21 @@ fn tokenizer_whitespace(code : Int, wgsl_blankspace : Bool) -> Bool {
 
 ///|
 fn tokenizer_identifier_start(code : Int, wgsl_blankspace : Bool) -> Bool {
-  code == 95 || // '_'
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122) ||
-  (code > 127 && !tokenizer_whitespace(code, wgsl_blankspace))
+  if wgsl_blankspace {
+    code == 95 || // '_'
+    wgsl_xid_start_code_point(code)
+  } else {
+    wgsl_xid_start_code_point(code)
+  }
 }
 
 ///|
 fn tokenizer_identifier_continue(code : Int, wgsl_blankspace : Bool) -> Bool {
-  tokenizer_identifier_start(code, wgsl_blankspace) ||
-  (code >= 48 && code <= 57)
+  if wgsl_blankspace {
+    tokenizer_identifier_start(code, true) || (code >= 48 && code <= 57)
+  } else {
+    wgsl_xid_continue_code_point(code)
+  }
 }
 
 ///|

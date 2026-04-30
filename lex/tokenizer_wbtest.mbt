@@ -29,3 +29,13 @@ test "WGSL tokenizer does not split numeric suffixes into identifiers" {
     ),
   )
 }
+
+///|
+test "naga_oil tokenizer uses XID identifiers instead of all Unicode" {
+  let tokens = tokenize("alpha💡β", false)
+  debug_inspect(tokens.length(), content="4")
+  debug_inspect(tokens[0], content="Identifier(\"alpha\", 0)")
+  debug_inspect(tokens[1], content="Other(55357, 5)")
+  debug_inspect(tokens[2], content="Other(56481, 6)")
+  debug_inspect(tokens[3], content="Identifier(\"β\", 7)")
+}
