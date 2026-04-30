@@ -107,6 +107,50 @@ fn rewrite_wgsl_virtual_fn_block(
 }
 
 ///|
+fn rewrite_wgsl_virtual_identifier_spans(
+  block_text : String,
+  function : WgslFunction,
+  redirect_map : @hashmap.HashMap[String, String],
+  include_function_name : Bool,
+) -> String {
+  let identifiers : Array[WgslIdent] = []
+  if include_function_name {
+    identifiers.push(function.name)
+  }
+  collect_wgsl_decl_identifier_nodes(
+    WgslGlobalDeclData::Function(function),
+    identifiers,
+  )
+  let mut out = ""
+  let mut copy_start = 0
+  while true {
+    let mut next_index = -1
+    let mut next_start = block_text.length() + 1
+    for i in 0..<identifiers.length() {
+      let ident = identifiers[i]
+      if ident.start >= copy_start &&
+        ident.start < next_start &&
+        redirect_map.contains(ident.name) {
+        next_index = i
+        next_start = ident.start
+      }
+    }
+    if next_index < 0 {
+      break
+    }
+    let ident = identifiers[next_index]
+    guard redirect_map.get(ident.name) is Some(rewritten) else { break }
+    out = out + block_text[copy_start:ident.start].to_owned()
+    out = out + rewritten
+    copy_start = ident.end
+  }
+  if copy_start < block_text.length() {
+    out = out + block_text[copy_start:block_text.length()].to_owned()
+  }
+  out
+}
+
+///|
 fn rewrite_wgsl_virtual_base_block(
   block_text : String,
   function : WgslFunction,
@@ -115,10 +159,11 @@ fn rewrite_wgsl_virtual_base_block(
 ) -> String {
   let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   rename_map.set(target_name, base_name)
-  rewrite_wgsl_declaration_text_with_map(
-    rewrite_wgsl_virtual_fn_block(block_text, function),
-    rename_map,
-    true,
+  rewrite_wgsl_virtual_fn_block(
+    rewrite_wgsl_virtual_identifier_spans(
+      block_text, function, rename_map, true,
+    ),
+    function,
   )
 }
 
@@ -130,22 +175,24 @@ fn rewrite_wgsl_override_fn_block(
   raw_target : String,
   base_name : String?,
 ) -> String {
-  let out = match function.qualifier_start {
-    Some(start) =>
-      block_text[:start].to_owned() +
-      "fn " +
-      target_name +
-      block_text[function.name.end:block_text.length()].to_owned()
-    None => block_text
-  }
-  match base_name {
+  let rewritten_body = match base_name {
     Some(base) => {
       let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
       redirect_map.set(target_name, base)
       redirect_map.set(raw_target, base)
-      rewrite_wgsl_declaration_text_with_map(out, redirect_map, false)
+      rewrite_wgsl_virtual_identifier_spans(
+        block_text, function, redirect_map, false,
+      )
     }
-    None => out
+    None => block_text
+  }
+  match function.qualifier_start {
+    Some(start) =>
+      rewritten_body[:start].to_owned() +
+      "fn " +
+      target_name +
+      rewritten_body[function.name.end:rewritten_body.length()].to_owned()
+    None => rewritten_body
   }
 }
 
