@@ -201,6 +201,52 @@ pub fn rewrite_wgsl_declaration_text_with_renamed_declarations(
 }
 
 ///|
+fn rewrite_wgsl_decl_identifier_nodes_with_map(
+  text : String,
+  data : WgslGlobalDeclData,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  let identifiers : Array[WgslIdent] = []
+  collect_wgsl_decl_identifier_nodes(data, identifiers)
+  let mut out = ""
+  let mut copy_start = 0
+  for identifier in identifiers {
+    guard identifier.start >= copy_start else { continue }
+    match redirect_map.get(identifier.name) {
+      Some(rewritten_name) => {
+        out = out + text[copy_start:identifier.start].to_owned()
+        out = out + rewritten_name
+        copy_start = identifier.end
+      }
+      None => ()
+    }
+  }
+  if copy_start < text.length() {
+    out = out + text[copy_start:text.length()].to_owned()
+  }
+  out
+}
+
+///|
+fn rewrite_wgsl_declaration_block_with_redirects(
+  block : WgslGraphBlock,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String {
+  match block.data {
+    WgslGlobalDeclData::Raw =>
+      rewrite_wgsl_declaration_text_with_redirects(block.text, redirect_map)
+    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
+      block.text
+    _ =>
+      rewrite_wgsl_decl_identifier_nodes_with_map(
+        block.text,
+        block.data,
+        redirect_map,
+      )
+  }
+}
+
+///|
 pub fn rewrite_wgsl_symbol_redirects(
   source : String,
   redirects : Array[WgslSymbolRedirect],
@@ -216,7 +262,7 @@ pub fn rewrite_wgsl_symbol_redirects(
   }
   for block in graph.declaration_blocks {
     rewritten = rewritten +
-      rewrite_wgsl_declaration_text_with_redirects(block.text, redirect_map)
+      rewrite_wgsl_declaration_block_with_redirects(block, redirect_map)
   }
   rewritten
 }

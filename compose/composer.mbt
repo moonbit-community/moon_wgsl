@@ -1763,7 +1763,11 @@ fn rewrite_wgsl_block_with_duplicate_binding_redirects(
   if block_redirects.is_empty() {
     block.text
   } else {
-    rewrite_wgsl_declaration_text_with_map(block.text, block_redirects, false)
+    rewrite_wgsl_decl_identifier_nodes_with_map(
+      block.text,
+      block.data,
+      block_redirects,
+    )
   }
 }
 
