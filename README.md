@@ -56,8 +56,9 @@ composition in MoonBit without introducing a separate CLI step.
 
 ### 1. Metadata Extraction
 
-Use `get_preprocessor_metadata` or `get_preprocessor_data` when you want to
-inspect a shader without fully composing it.
+Use `@metadata.get_preprocessor_metadata` or
+`@metadata.get_preprocessor_data` when you want to inspect a shader without
+fully composing it.
 
 Metadata includes:
 
@@ -73,7 +74,7 @@ Example:
 ```mbt check
 ///|
 test "README: metadata extraction" {
-  let metadata : @common.PreprocessorMetaData = @preprocess.get_preprocessor_metadata(
+  let metadata : @common.PreprocessorMetaData = @metadata.get_preprocessor_metadata(
     "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
   )
 
@@ -437,9 +438,9 @@ Main public entry points:
   Parses and preprocesses a single shader source string.
 - `Composer`
   Owns a WGSL registry and recursively composes registered shader modules.
-- `get_preprocessor_metadata`
+- `@metadata.get_preprocessor_metadata`
   Returns a rich metadata object for a shader source string.
-- `get_preprocessor_data`
+- `@metadata.get_preprocessor_data`
   Returns the simplified `(name, imports, defines)` tuple.
 - `WgslSourceRegistry::register_source` / `WgslSourceRegistry::registered_source`
   Manage an explicit WGSL source registry value.
@@ -513,7 +514,7 @@ For the full exported surface, see the generated subpackage interfaces:
   registered path in the active Composer registry.
 - `register_source_files_checked` is the safe bulk-registration path when
   callers need deterministic diagnostics before mutating a Composer registry.
-- `get_preprocessor_metadata` is forgiving by design: on parse failure it
+- `@metadata.get_preprocessor_metadata` is forgiving by design: on parse failure it
   returns empty/default metadata instead of raising.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.

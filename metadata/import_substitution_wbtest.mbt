@@ -103,3 +103,5 @@ test "naga_oil wb: parse_imports rejects malformed imports like upstream" {
     content="true",
   )
 }
+
+///|

@@ -2,9 +2,8 @@
 fn try_get_preprocessor_metadata(
   source : String,
   allow_defines : Bool,
-) -> PreprocessorMetaData raise PreprocessError {
-  let preprocessor = Preprocessor::default()
-  let (cleaned_for_directives, wgsl_directives) = preprocessor.extract_wgsl_directives(
+) -> PreprocessorMetaData raise MetadataError {
+  let (cleaned_for_directives, wgsl_directives) = extract_wgsl_directives(
     source,
   )
   let stripped = replace_comments(cleaned_for_directives)
@@ -25,12 +24,7 @@ fn try_get_preprocessor_metadata(
   while line_index < lines.length() {
     let line = lines[line_index]
     let trimmed = line.trim().to_owned()
-    let (is_scope, def) = check_scope(
-      @hashmap.HashMap::new(),
-      line,
-      None,
-      offset,
-    )
+    let (is_scope, def) = metadata_scope_def(line)
 
     if is_scope {
       if def is Some(def_name) {
@@ -51,7 +45,7 @@ fn try_get_preprocessor_metadata(
 
       parse_imports(import_lines, declared_imports) catch {
         Parse(message, line_offset) =>
-          raise PreprocessError::ImportParseError(
+          raise MetadataError::ImportParseError(
             message,
             initial_offset + line_offset,
           )
@@ -59,7 +53,7 @@ fn try_get_preprocessor_metadata(
     } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath)
       is Some(raw_name) {
       let import_path = trim_trailing_semicolons(
-        first_space_separated_token(raw_name),
+        wgsl_metadata_first_space_separated_token(raw_name),
       )
       if import_path != "" {
         name = Some(import_path)
@@ -74,7 +68,7 @@ fn try_get_preprocessor_metadata(
           defines.set(define_name, parse_define_value(define_value))
         }
       } else {
-        raise PreprocessError::DefineInModule(offset)
+        raise MetadataError::DefineInModule(offset)
       }
     } else {
       collect_effective_def_names(line, effective_defs)
@@ -83,7 +77,7 @@ fn try_get_preprocessor_metadata(
           line, offset, declared_imports, used_imports, true,
         ) catch {
           AmbiguousImport(position) =>
-            raise PreprocessError::ImportParseError(
+            raise MetadataError::ImportParseError(
               "Ambiguous import path for item", position,
             )
         },
@@ -134,3 +128,5 @@ pub fn get_preprocessor_data(
   }
   (metadata.name, imports, metadata.defines)
 }
+
+///|

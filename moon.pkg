@@ -3,6 +3,7 @@ import {
   "Milky2018/moon_wgsl/compose",
   "Milky2018/moon_wgsl/export",
   "Milky2018/moon_wgsl/analysis",
+  "Milky2018/moon_wgsl/metadata",
   "Milky2018/moon_wgsl/preprocess",
   "Milky2018/moon_wgsl/resolver",
   "moonbitlang/core/ref",

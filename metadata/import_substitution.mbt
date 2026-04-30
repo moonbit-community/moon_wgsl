@@ -1,11 +1,11 @@
 ///|
-priv struct DeclaredImportBinding {
+pub struct DeclaredImportBinding {
   used_name : String
   full_paths : Array[String]
 }
 
 ///|
-priv suberror SubstituteIdentifiersError {
+pub suberror SubstituteIdentifiersError {
   AmbiguousImport(Int)
 }
 
@@ -71,7 +71,7 @@ fn wgsl_import_target_used_name(target : WgslImportTarget) -> String {
 }
 
 ///|
-fn parse_imports(
+pub fn parse_imports(
   input : String,
   declared_imports : Array[DeclaredImportBinding],
 ) -> Unit raise ParseImportsError {
@@ -150,11 +150,6 @@ fn decorate(module_name : String) -> String {
 }
 
 ///|
-fn code_unit_to_string(code : Int) -> String {
-  String::from_array([Int::unsafe_to_char(code)])
-}
-
-///|
 fn used_imports_find_index(
   used_imports : Array[ImportDefWithOffset],
   module_path : String,
@@ -188,7 +183,7 @@ fn used_imports_record(
 }
 
 ///|
-fn substitute_identifiers(
+pub fn substitute_identifiers(
   input : String,
   offset : Int,
   declared_imports : Array[DeclaredImportBinding],
@@ -242,7 +237,7 @@ fn substitute_identifiers(
           output = output + ident
         }
       Token::Other(other, _) => {
-        output = output + code_unit_to_string(other)
+        output = output + wgsl_metadata_code_unit_to_string(other)
         if other == 46 || other == 64 { // '.' or '@'
           in_substitution_position = false
           continue
@@ -256,3 +251,5 @@ fn substitute_identifiers(
 
   output
 }
+
+///|

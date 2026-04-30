@@ -21,6 +21,11 @@ fn preprocess_identifier_code_unit(code : Int) -> Bool {
 }
 
 ///|
+fn code_unit_to_string(code : Int) -> String {
+  String::from_array([Int::unsafe_to_char(code)])
+}
+
+///|
 fn preprocess_skip_ascii_space(text : String, start : Int) -> Int {
   let mut i = start
   while i < text.length() {

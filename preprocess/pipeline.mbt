@@ -3,89 +3,13 @@ pub fn Preprocessor::extract_wgsl_directives(
   _self : Preprocessor,
   source : String,
 ) -> (String, WgslDirectives) raise PreprocessError {
-  let directives = WgslDirectives::default()
-  let cleaned_lines : Array[String] = []
-  let mut in_directive_section = true
-  let mut line_index = 0
-  for line in source_lines(source) {
-    let trimmed = line.trim().to_owned()
-
-    if trimmed == "" || replace_comments(trimmed).trim().to_owned() == "" {
-      cleaned_lines.push(line)
-      line_index = line_index + 1
-      continue
-    }
-
-    if in_directive_section {
-      if semicolon_directive_body(trimmed, "enable") is Some(body) {
-        let extensions = split_extensions(body)
-        if extensions.is_empty() {
-          raise PreprocessError::InvalidWgslDirective(
-            trimmed, line_index, "No extensions specified",
-          )
-        }
-        cleaned_lines.push("")
-        directives.enables.push(EnableDirective::{
-          extensions,
-          source_location: line_index,
-        })
-        line_index = line_index + 1
-        continue
-      }
-      if semicolon_directive_body(trimmed, "requires") is Some(body) {
-        let extensions = split_extensions(body)
-        if extensions.is_empty() {
-          raise PreprocessError::InvalidWgslDirective(
-            trimmed, line_index, "No extensions specified",
-          )
-        }
-        cleaned_lines.push("")
-        directives.requires.push(RequiresDirective::{
-          extensions,
-          source_location: line_index,
-        })
-        line_index = line_index + 1
-        continue
-      }
-      if parse_diagnostic_directive_body(trimmed) is Some((severity, rule)) {
-        if severity != "off" &&
-          severity != "info" &&
-          severity != "warn" &&
-          severity != "error" {
-          raise PreprocessError::InvalidWgslDirective(
-            trimmed,
-            line_index,
-            "Invalid severity '\{severity}'. Must be one of: off, info, warn, error",
-          )
-        }
-        cleaned_lines.push("")
-        directives.diagnostics.push(DiagnosticDirective::{
-          severity,
-          rule,
-          source_location: line_index,
-        })
-        line_index = line_index + 1
-        continue
-      }
-      match wgsl_source_directive_keyword(trimmed) {
-        Some("enable") | Some("requires") | Some("diagnostic") => ()
-        _ => in_directive_section = false
-      }
-    }
-
-    cleaned_lines.push(line)
-    line_index = line_index + 1
+  extract_wgsl_directives(source) catch {
+    InvalidWgslDirective(line, line_index, message) =>
+      raise PreprocessError::InvalidWgslDirective(line, line_index, message)
+    ImportParseError(message, offset) =>
+      raise PreprocessError::ImportParseError(message, offset)
+    DefineInModule(offset) => raise PreprocessError::DefineInModule(offset)
   }
-
-  let mut cleaned_source = ""
-  for i in 0..<cleaned_lines.length() {
-    if i > 0 {
-      cleaned_source = "\{cleaned_source}\n"
-    }
-    cleaned_source = cleaned_source + cleaned_lines[i]
-  }
-
-  (cleaned_source, directives)
 }
 
 ///|

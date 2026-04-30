@@ -1,12 +1,41 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/moon_wgsl/metadata"
 
+import {
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/syntax",
+  "moonbitlang/core/hashmap",
+}
+
 // Values
+pub fn extract_wgsl_directives(String) -> (String, @common.WgslDirectives) raise MetadataError
+
+pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue])
+
+pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
+
+pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise @syntax.ParseImportsError
+
+pub fn substitute_identifiers(String, Int, Array[DeclaredImportBinding], Array[@common.ImportDefWithOffset], Bool) -> String raise SubstituteIdentifiersError
+
 pub fn wgsl_source_define_import_path(String) -> String?
 
 // Errors
+pub suberror MetadataError {
+  InvalidWgslDirective(String, Int, String)
+  ImportParseError(String, Int)
+  DefineInModule(Int)
+}
+
+pub suberror SubstituteIdentifiersError {
+  AmbiguousImport(Int)
+}
 
 // Types and methods
+pub struct DeclaredImportBinding {
+  used_name : String
+  full_paths : Array[String]
+}
 
 // Type aliases
 

@@ -15,10 +15,6 @@ pub fn apply_wgsl_ifdefs_strict(String, @hashmap.HashMap[String, @common.ShaderD
 
 pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, Int]) -> String
 
-pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue])
-
-pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
-
 // Errors
 pub suberror PreprocessError {
   GlslInvalidVersion(Int)

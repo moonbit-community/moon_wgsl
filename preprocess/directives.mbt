@@ -1,16 +1,4 @@
 ///|
-fn split_extensions(raw : String) -> Array[String] {
-  let extensions : Array[String] = []
-  for token in tokenize(raw, false) {
-    match token {
-      Token::Identifier(text, _) => extensions.push(text)
-      _ => ()
-    }
-  }
-  extensions
-}
-
-///|
 fn shader_def_name_token_text(token : Token) -> String? {
   match token {
     Token::Identifier(text, _) => Some(text)
@@ -227,90 +215,6 @@ fn parse_wgsl_template_const_references(
 }
 
 ///|
-fn collect_effective_def_names(
-  line : String,
-  effective_defs : @hashset.HashSet[String],
-) -> Unit {
-  for reference in parse_shader_def_references(line) {
-    effective_defs.add(reference.name)
-  }
-}
-
-///|
-fn parse_define_value(raw_value : String) -> ShaderDefValue {
-  let value = trim_trailing_semicolons(raw_value)
-  if value == "" {
-    return ShaderDefValue::Bool(true)
-  }
-  if value == "true" {
-    return ShaderDefValue::Bool(true)
-  }
-  if value == "false" {
-    return ShaderDefValue::Bool(false)
-  }
-  let parsed_unsigned = @string.parse_int(value[:], base=10) catch { _ => -1 }
-  if parsed_unsigned >= 0 {
-    return ShaderDefValue::UInt(parsed_unsigned.reinterpret_as_uint())
-  }
-  let parsed = @string.parse_int(value[:], base=10) catch {
-    _ => return ShaderDefValue::Bool(false)
-  }
-  ShaderDefValue::Int(parsed)
-}
-
-///|
-fn split_define_name_and_value(text : String) -> (String, String) {
-  let trimmed = text.trim().to_owned()
-  if trimmed == "" {
-    return ("", "")
-  }
-  let tokens = tokenize(trimmed, true)
-  let mut i = 0
-  let mut name = ""
-  while i < tokens.length() {
-    match shader_def_name_token_text(tokens[i]) {
-      Some(text) => {
-        name = name + text
-        i = i + 1
-      }
-      None => break
-    }
-  }
-  if name == "" {
-    return ("", "")
-  }
-  while i < tokens.length() {
-    match tokens[i] {
-      Token::Whitespace(_, _) => i = i + 1
-      _ => break
-    }
-  }
-  let mut value = ""
-  while i < tokens.length() {
-    match shader_def_value_token_text(tokens[i]) {
-      Some(text) => value = value + text
-      None => break
-    }
-    i = i + 1
-  }
-  (name, value)
-}
-
-///|
-fn first_space_separated_token(text : String) -> String {
-  let trimmed = text.trim().to_owned()
-  let tokens = tokenize(trimmed, true)
-  let mut output = ""
-  for token in tokens {
-    match token {
-      Token::Whitespace(_, _) => break
-      _ => output = output + preprocess_token_text(token)
-    }
-  }
-  output
-}
-
-///|
 fn starts_with_tokenized_space(text : String) -> Bool {
   match tokenize(text, true) {
     [Token::Whitespace(_, 0), ..] => true
@@ -343,57 +247,6 @@ fn parse_glsl_version_directive(line : String) -> String? {
     Some(trimmed[start:end].to_owned())
   } else {
     None
-  }
-}
-
-///|
-fn semicolon_directive_body(line : String, keyword : String) -> String? {
-  let trimmed = line.trim().to_owned()
-  let tokens = tokenize(trimmed, false)
-  match tokens {
-    [Token::Identifier(actual, start), ..] if actual == keyword && start == 0 => {
-      let body_start = keyword.length()
-      for token in tokens {
-        match token {
-          Token::Other(59, semicolon_pos) =>
-            if semicolon_pos > body_start {
-              return Some(
-                trimmed[body_start:semicolon_pos].to_owned().trim().to_owned(),
-              )
-            } else {
-              return None
-            }
-          _ => ()
-        }
-      }
-      None
-    }
-    _ => None
-  }
-}
-
-///|
-fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
-  match tokenize(line.trim().to_owned(), false) {
-    [
-      Token::Identifier("diagnostic", 0),
-      Token::Other(40, _),
-      Token::Identifier(severity, _),
-      Token::Other(44, _),
-      Token::Identifier(rule, _),
-      Token::Other(41, _),
-      Token::Other(59, _),
-      ..,
-    ] => Some((severity, rule))
-    _ => None
-  }
-}
-
-///|
-fn wgsl_source_directive_keyword(line : String) -> String? {
-  match tokenize(line.trim().to_owned(), false) {
-    [Token::Identifier(keyword, _), ..] => Some(keyword)
-    _ => None
   }
 }
 
