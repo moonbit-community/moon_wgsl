@@ -26,17 +26,17 @@ fn wgsl_metadata_first_space_separated_token(text : String) -> String {
 
 ///|
 pub fn wgsl_source_define_import_path(source : String) -> String? {
-  let stripped = replace_comments_naga_oil(source)
-  for line in source_lines(stripped) {
-    let trimmed = wgsl_regex_trim_whitespace(line)
-    match wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath) {
-      Some(raw_name) => {
-        let import_path = wgsl_metadata_first_space_separated_token(raw_name)
-        if import_path != "" {
-          return Some(import_path)
+  for decl in parse_wgsl_translation_unit(source).declarations {
+    match decl.data {
+      WgslGlobalDeclData::Directive(directive) =>
+        if directive.kind == WgslDirectiveKind::DefineImportPath {
+          let raw_name = directive.tail
+          let import_path = wgsl_metadata_first_space_separated_token(raw_name)
+          if import_path != "" {
+            return Some(import_path)
+          }
         }
-      }
-      None => ()
+      _ => ()
     }
   }
   None
