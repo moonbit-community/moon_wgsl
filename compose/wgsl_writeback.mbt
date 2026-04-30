@@ -248,8 +248,16 @@ fn wgsl_writeback_identifier_ends_with_digit(ident : String) -> Bool {
   if ident == "" {
     return false
   }
-  let code = ident.code_unit_at(ident.length() - 1).to_int()
-  code >= 48 && code <= 57
+  ident.has_suffix("0") ||
+  ident.has_suffix("1") ||
+  ident.has_suffix("2") ||
+  ident.has_suffix("3") ||
+  ident.has_suffix("4") ||
+  ident.has_suffix("5") ||
+  ident.has_suffix("6") ||
+  ident.has_suffix("7") ||
+  ident.has_suffix("8") ||
+  ident.has_suffix("9")
 }
 
 ///|

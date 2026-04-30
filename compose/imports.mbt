@@ -4,11 +4,8 @@ using @analysis {
   build_wgsl_declaration_graph,
   build_wgsl_symbol_redirect_map,
   extract_wgsl_module_items,
-  rewrite_wgsl_declaration_text_with_map,
-  rewrite_wgsl_declaration_text_with_renamed_declarations,
   rewrite_wgsl_symbol_redirects,
   strip_wgsl_import_declarations,
-  wgsl_identifier_char,
   wgsl_string_list_push_unique,
 }
 

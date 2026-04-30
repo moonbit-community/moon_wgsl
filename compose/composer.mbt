@@ -539,13 +539,8 @@ fn composer_remove_composable_module_recursive(
 
 ///|
 fn strip_wgsl_line_comment(text : String) -> String {
-  let mut i = 0
-  while i + 1 < text.length() {
-    if text.code_unit_at(i).to_int() == 47 &&
-      text.code_unit_at(i + 1).to_int() == 47 {
-      return text[:i].to_owned()
-    }
-    i = i + 1
+  for part in text.split("//") {
+    return part.to_owned()
   }
   text
 }
@@ -713,8 +708,22 @@ fn wgsl_template_const_name_boundary(text : String, name : String) -> Bool {
   if text.length() < name.length() {
     return false
   }
-  let code = text.code_unit_at(name.length()).to_int()
-  !((code >= 65 && code <= 90) || (code >= 48 && code <= 57) || code == 95)
+  let tail = text[name.length():text.length()].to_owned()
+  for prefix in ["_", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] {
+    if tail.has_prefix(prefix) {
+      return false
+    }
+  }
+  for
+    prefix in [
+      "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+      "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    ] {
+    if tail.has_prefix(prefix) {
+      return false
+    }
+  }
+  true
 }
 
 ///|
@@ -1584,21 +1593,27 @@ fn build_wgsl_unique_lowered_suffix_redirect_map(
     }
   }
   for block in graph.declaration_blocks {
-    let mut i = 0
-    while i + 1 < block.name.length() {
-      if block.name.code_unit_at(i).to_int() == 95 &&
-        block.name.code_unit_at(i + 1).to_int() == 95 {
+    let parts : Array[String] = []
+    for part in block.name.split("__") {
+      parts.push(part.to_owned())
+    }
+    for i in 1..<parts.length() {
+      let mut suffix = ""
+      for j in i..<parts.length() {
+        if suffix != "" {
+          suffix = "\{suffix}__"
+        }
+        suffix = "\{suffix}\{parts[j]}"
+      }
+      if suffix != "" {
         record_wgsl_lowered_suffix_redirect_candidate(
-          block.name[i + 2:block.name.length()].to_owned(),
+          suffix,
           block.name,
           declared_names,
           candidate_redirects,
           ambiguous_suffixes,
         )
-        i = i + 2
-        continue
       }
-      i = i + 1
     }
   }
   let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
@@ -1733,21 +1748,7 @@ fn rewrite_wgsl_declaration_blocks_with_redirects(
   }
   for block in graph.declaration_blocks {
     match block.data {
-      WgslGlobalDeclData::Raw => {
-        let rewritten_raw = if rewrite_declaration_names {
-          rewrite_wgsl_declaration_text_with_renamed_declarations(
-            block.text,
-            redirect_map,
-          )
-        } else {
-          rewrite_wgsl_declaration_text_with_map(
-            block.text,
-            redirect_map,
-            false,
-          )
-        }
-        out = out + rewritten_raw
-      }
+      WgslGlobalDeclData::Raw => out = out + block.text
       WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
         out = out + block.text
       _ =>

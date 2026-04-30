@@ -13,17 +13,6 @@
 // limitations under the License.
 
 ///|
-fn wgsl_redirect_declaration_keyword(ident : String) -> Bool {
-  ident == "fn" ||
-  ident == "struct" ||
-  ident == "const" ||
-  ident == "override" ||
-  ident == "alias" ||
-  ident == "var" ||
-  ident == "let"
-}
-
-///|
 pub fn build_wgsl_symbol_redirect_map(
   redirects : Array[WgslSymbolRedirect],
 ) -> @hashmap.HashMap[String, String] {
@@ -37,151 +26,6 @@ pub fn build_wgsl_symbol_redirect_map(
     redirect_map.set(from_name, to_name)
   }
   redirect_map
-}
-
-///|
-fn rewrite_wgsl_declaration_text_with_map_legacy(
-  source : String,
-  redirect_map : @hashmap.HashMap[String, String],
-  rewrite_declaration_names : Bool,
-) -> String {
-  let mut output = ""
-  let mut i = 0
-  let mut in_substitution_position = true
-  let mut in_line_comment = false
-  let mut in_string = false
-  let mut block_comment_depth = 0
-  let mut pending_declaration_name = false
-  let mut pending_template_depth = 0
-
-  while i < source.length() {
-    let code = source.code_unit_at(i).to_int()
-    if in_line_comment {
-      output = output + code_unit_to_string(code)
-      i = i + 1
-      if code == 10 {
-        in_line_comment = false
-        in_substitution_position = true
-      }
-      continue
-    }
-    if block_comment_depth > 0 {
-      if code == 47 &&
-        i + 1 < source.length() &&
-        source.code_unit_at(i + 1).to_int() == 42 {
-        output = output + source[i:i + 2].to_owned()
-        block_comment_depth = block_comment_depth + 1
-        i = i + 2
-        continue
-      }
-      if code == 42 &&
-        i + 1 < source.length() &&
-        source.code_unit_at(i + 1).to_int() == 47 {
-        output = output + source[i:i + 2].to_owned()
-        block_comment_depth = block_comment_depth - 1
-        i = i + 2
-        continue
-      }
-      output = output + code_unit_to_string(code)
-      i = i + 1
-      continue
-    }
-    if in_string {
-      if code == 92 && i + 1 < source.length() {
-        output = output + source[i:i + 2].to_owned()
-        i = i + 2
-        continue
-      }
-      output = output + code_unit_to_string(code)
-      i = i + 1
-      if code == 34 {
-        in_string = false
-        in_substitution_position = true
-      }
-      continue
-    }
-    if code == 47 &&
-      i + 1 < source.length() &&
-      source.code_unit_at(i + 1).to_int() == 47 {
-      output = output + source[i:i + 2].to_owned()
-      in_line_comment = true
-      i = i + 2
-      continue
-    }
-    if code == 47 &&
-      i + 1 < source.length() &&
-      source.code_unit_at(i + 1).to_int() == 42 {
-      output = output + source[i:i + 2].to_owned()
-      block_comment_depth = 1
-      i = i + 2
-      continue
-    }
-    if code == 34 {
-      output = output + code_unit_to_string(code)
-      in_string = true
-      i = i + 1
-      continue
-    }
-    if tokenizer_identifier_start(code) {
-      let start = i
-      i = i + 1
-      while i < source.length() {
-        let next_code = source.code_unit_at(i).to_int()
-        if tokenizer_identifier_continue(next_code) {
-          i = i + 1
-          continue
-        }
-        if next_code == 58 &&
-          i + 1 < source.length() &&
-          source.code_unit_at(i + 1).to_int() == 58 {
-          i = i + 2
-          continue
-        }
-        break
-      }
-      let ident = source[start:i].to_owned()
-      if pending_declaration_name && pending_template_depth == 0 {
-        if rewrite_declaration_names {
-          match redirect_map.get(ident) {
-            Some(rewritten_ident) => output = output + rewritten_ident
-            None => output = output + ident
-          }
-        } else {
-          output = output + ident
-        }
-        pending_declaration_name = false
-      } else if in_substitution_position {
-        match redirect_map.get(ident) {
-          Some(rewritten_ident) => output = output + rewritten_ident
-          None => output = output + ident
-        }
-      } else {
-        output = output + ident
-      }
-      if wgsl_redirect_declaration_keyword(ident) {
-        pending_declaration_name = true
-        pending_template_depth = 0
-      }
-      in_substitution_position = true
-      continue
-    }
-    if pending_declaration_name {
-      if code == 60 {
-        pending_template_depth = pending_template_depth + 1
-      } else if code == 62 && pending_template_depth > 0 {
-        pending_template_depth = pending_template_depth - 1
-      }
-    }
-    output = output + code_unit_to_string(code)
-    i = i + 1
-    if code == 46 || code == 64 {
-      in_substitution_position = false
-    } else {
-      in_substitution_position = true
-    }
-  }
-
-  output
 }
 
 ///|
@@ -234,12 +78,7 @@ fn rewrite_wgsl_declaration_block_with_redirects(
   rewrite_declaration_names : Bool,
 ) -> String {
   match block.data {
-    WgslGlobalDeclData::Raw =>
-      rewrite_wgsl_declaration_text_with_map_legacy(
-        block.text,
-        redirect_map,
-        rewrite_declaration_names,
-      )
+    WgslGlobalDeclData::Raw => block.text
     WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
       block.text
     _ =>
@@ -262,11 +101,6 @@ pub fn rewrite_wgsl_declaration_text_with_map(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  if graph.source_blocks.length() == 0 {
-    return rewrite_wgsl_declaration_text_with_map_legacy(
-      source, redirect_map, rewrite_declaration_names,
-    )
-  }
   let mut out = ""
   for block in graph.source_blocks {
     out = out +

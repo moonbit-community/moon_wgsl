@@ -65,14 +65,31 @@ fn wgsl_import_default_alias(module_path : String) -> String {
 }
 
 ///|
+fn wgsl_import_alias_prefix_separator(prefix : String) -> String {
+  if prefix == "" || prefix.has_suffix("_") {
+    prefix
+  } else {
+    "\{prefix}_"
+  }
+}
+
+///|
 fn wgsl_import_alias_prefix(alias_name : String) -> String {
   let mut prefix = ""
-  for i in 0..<alias_name.length() {
-    let code = alias_name.code_unit_at(i).to_int()
-    if wgsl_identifier_char(code) {
-      prefix = prefix + alias_name[i:i + 1].to_owned()
-    } else if !prefix.has_suffix("_") {
-      prefix = prefix + "_"
+  let segments : Array[String] = []
+  for segment in alias_name.trim().split("::") {
+    segments.push(segment.to_owned())
+  }
+  for i in 0..<segments.length() {
+    if i > 0 {
+      prefix = wgsl_import_alias_prefix_separator(prefix)
+    }
+    for token in tokenize(segments[i], true) {
+      match token {
+        Token::Identifier(text, _) if !text.contains("\"") =>
+          prefix = "\{prefix}\{text}"
+        _ => prefix = wgsl_import_alias_prefix_separator(prefix)
+      }
     }
   }
   if prefix == "" {
