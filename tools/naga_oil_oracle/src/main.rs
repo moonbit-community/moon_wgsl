@@ -17,6 +17,7 @@ struct Options {
     output: Option<PathBuf>,
     error_output: Option<PathBuf>,
     defs: HashMap<String, ShaderDefValue>,
+    modules: Vec<String>,
     additional_imports: Vec<String>,
     capabilities: naga::valid::Capabilities,
     entry_only: bool,
@@ -32,7 +33,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--additional-import MODULE] [--entry-only] [--capability ray-query] [--check-only] [--output <file>] [--error-output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability ray-query] [--check-only] [--output <file>] [--error-output <file>]"
     );
     std::process::exit(2);
 }
@@ -80,6 +81,7 @@ fn parse_options() -> Options {
     let mut output = None;
     let mut error_output = None;
     let mut defs = HashMap::new();
+    let mut modules = Vec::new();
     let mut additional_imports = Vec::new();
     let mut capabilities = naga::valid::Capabilities::default();
     let mut entry_only = false;
@@ -103,6 +105,10 @@ fn parse_options() -> Options {
                 let Some(value) = args.next() else { usage() };
                 let (name, def_value) = parse_shader_def(&value);
                 defs.insert(name, def_value);
+            }
+            "--module" => {
+                let Some(value) = args.next() else { usage() };
+                modules.push(value);
             }
             "--additional-import" => {
                 let Some(value) = args.next() else { usage() };
@@ -136,6 +142,7 @@ fn parse_options() -> Options {
         output,
         error_output,
         defs,
+        modules,
         additional_imports,
         capabilities,
         entry_only,
@@ -153,6 +160,20 @@ fn display_file_path(prefix: &str, rel_path: &str) -> String {
     } else {
         format!("{}/{}", prefix.trim_end_matches('/'), rel_path)
     }
+}
+
+fn exit_with_error(text: String, output: Option<&PathBuf>) -> ! {
+    if let Some(output) = output {
+        fs::write(output, &text).unwrap_or_else(|write_err| {
+            panic!(
+                "failed to write error output `{}`: {write_err}",
+                output.display()
+            );
+        });
+    } else {
+        eprint!("{text}");
+    }
+    std::process::exit(1);
 }
 
 fn collect_wgsl_files(root: &Path, dir: &Path, files: &mut Vec<WgslFile>) {
@@ -204,19 +225,36 @@ fn add_modules_until_fixed_point(
     composer: &mut Composer,
     files: &[WgslFile],
     defs: &HashMap<String, ShaderDefValue>,
+    modules: &[String],
     additional_imports: &[String],
     file_path_prefix: &str,
+    error_output: Option<&PathBuf>,
 ) {
-    let mut pending: Vec<usize> = files
-        .iter()
-        .enumerate()
-        .filter_map(|(index, file)| {
-            let is_named_additional = inferred_module_path(&file.rel_path)
-                .is_some_and(|module| additional_imports.iter().any(|item| item == &module));
-            (has_import_path(&file.source) || is_named_additional).then_some(index)
-        })
-        .collect();
+    let mut pending: Vec<usize> = if modules.is_empty() {
+        files
+            .iter()
+            .enumerate()
+            .filter_map(|(index, file)| {
+                let is_named_additional = inferred_module_path(&file.rel_path)
+                    .is_some_and(|module| additional_imports.iter().any(|item| item == &module));
+                (has_import_path(&file.source) || is_named_additional).then_some(index)
+            })
+            .collect()
+    } else {
+        modules
+            .iter()
+            .map(|module| {
+                files
+                    .iter()
+                    .position(|file| file.rel_path == *module)
+                    .unwrap_or_else(|| {
+                        panic!("module `{module}` not found under fixture root");
+                    })
+            })
+            .collect()
+    };
     let mut made_progress = true;
+    let mut last_error = None;
     while made_progress && !pending.is_empty() {
         made_progress = false;
         let mut still_pending = Vec::new();
@@ -239,12 +277,16 @@ fn add_modules_until_fixed_point(
             if result.is_ok() {
                 made_progress = true;
             } else {
+                last_error = result.err().map(|err| err.emit_to_string(composer));
                 still_pending.push(index);
             }
         }
         pending = still_pending;
     }
     if !pending.is_empty() {
+        if let Some(text) = last_error {
+            exit_with_error(text, error_output);
+        }
         let unresolved = pending
             .iter()
             .map(|index| files[*index].rel_path.as_str())
@@ -261,13 +303,15 @@ fn main() {
     files.sort_by(|lhs, rhs| lhs.rel_path.cmp(&rhs.rel_path));
 
     let mut composer = Composer::default().with_capabilities(options.capabilities);
-    if !options.entry_only {
+    if !options.entry_only || !options.modules.is_empty() {
         add_modules_until_fixed_point(
             &mut composer,
             &files,
             &options.defs,
+            &options.modules,
             &options.additional_imports,
             &options.file_path_prefix,
+            options.error_output.as_ref(),
         );
     }
 
@@ -294,18 +338,7 @@ fn main() {
             ..Default::default()
         })
         .unwrap_or_else(|err| {
-            let text = err.emit_to_string(&composer);
-            if let Some(output) = &options.error_output {
-                fs::write(output, &text).unwrap_or_else(|write_err| {
-                    panic!(
-                        "failed to write error output `{}`: {write_err}",
-                        output.display()
-                    );
-                });
-            } else {
-                eprint!("{text}");
-            }
-            std::process::exit(1);
+            exit_with_error(err.emit_to_string(&composer), options.error_output.as_ref());
         });
     let mut validator =
         naga::valid::Validator::new(naga::valid::ValidationFlags::all(), options.capabilities);

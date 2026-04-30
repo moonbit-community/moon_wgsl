@@ -123,4 +123,35 @@ diff_normalized \
   "$tmpdir/err_parse.txt" \
   err_parse
 
+echo "== naga_oil oracle: validation diagnostic direct =="
+if oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/error_test \
+  --entry wgsl_valid_err.wgsl \
+  --entry-only \
+  --file-path-prefix tests/error_test \
+  --error-output "$tmpdir/err_validation_1.txt"; then
+  echo "expected oracle validation diagnostic failure, got success" >&2
+  exit 1
+fi
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/err_validation_1.txt \
+  "$tmpdir/err_validation_1.txt" \
+  err_validation_1
+
+echo "== naga_oil oracle: validation diagnostic wrapped =="
+if oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/error_test \
+  --entry wgsl_valid_wrap.wgsl \
+  --module wgsl_valid_err.wgsl \
+  --additional-import valid_inc \
+  --file-path-prefix tests/error_test \
+  --error-output "$tmpdir/err_validation_2.txt"; then
+  echo "expected oracle wrapped validation diagnostic failure, got success" >&2
+  exit 1
+fi
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/err_validation_2.txt \
+  "$tmpdir/err_validation_2.txt" \
+  err_validation_2
+
 echo "preprocess parity gate passed"

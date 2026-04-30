@@ -50,6 +50,19 @@ cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
   --error-output /tmp/naga_oil_err_parse.txt
 ```
 
+Use `--module` when a fixture directory contains unrelated invalid files and
+the upstream test registered only a selected composable module:
+
+```sh
+cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/error_test \
+  --entry wgsl_valid_wrap.wgsl \
+  --module wgsl_valid_err.wgsl \
+  --additional-import valid_inc \
+  --file-path-prefix tests/error_test \
+  --error-output /tmp/naga_oil_err_validation.txt
+```
+
 Ray-query fixtures can enable the matching Naga capability:
 
 ```sh
