@@ -26,3 +26,15 @@ test "naga_oil wb: import target parser rejects tokens after semicolon" {
     content="\"ERR 2 unexpected token after ';'\"",
   )
 }
+
+///|
+test "naga_oil wb: import target parser handles non-BMP other token widths" {
+  debug_inspect(
+    import_targets_error("💡"),
+    content="\"ERR 0 unexpected token\"",
+  )
+  debug_inspect(
+    import_targets_error("a; 💡"),
+    content="\"ERR 3 unexpected token after ';'\"",
+  )
+}

@@ -19,10 +19,7 @@ pub(all) suberror ParseImportsError {
 
 ///|
 fn wgsl_generated_import_token_end(token : WgslToken) -> Int {
-  match token {
-    Identifier(text, pos) | Whitespace(text, pos) => pos + text.length()
-    Other(_, pos) => pos + 1
-  }
+  token.end()
 }
 
 ///|
@@ -43,6 +40,7 @@ fn tokenize_wgsl_import_targets(
   let raw_tokens = tokenize(input, false)
   let mut previous_can_start_alias = false
   let mut previous_identifier : String? = None
+  let mut after_final_semicolon = false
   let mut index = 0
   while index < raw_tokens.length() {
     let token = raw_tokens[index]
@@ -51,6 +49,9 @@ fn tokenize_wgsl_import_targets(
       utf8_byte_length(
         input[token.pos():wgsl_generated_import_token_end(token)].to_owned(),
       )
+    if after_final_semicolon {
+      raise ParseImportsError::Parse("unexpected token after ';'", start)
+    }
     match token {
       Identifier("as", _) =>
         if previous_can_start_alias {
@@ -95,6 +96,7 @@ fn tokenize_wgsl_import_targets(
         push_generated_import_token(out, Token::SEMI, start, end_)
         previous_can_start_alias = false
         previous_identifier = None
+        after_final_semicolon = true
       }
       Other(_, pos) =>
         raise ParseImportsError::Parse(
