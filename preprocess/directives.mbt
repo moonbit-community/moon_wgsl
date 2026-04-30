@@ -10,19 +10,6 @@ fn shader_def_name_token_text(token : WgslToken) -> String? {
 }
 
 ///|
-fn shader_def_value_token_text(token : WgslToken) -> String? {
-  match token {
-    WgslToken::Identifier(text, _) => Some(text)
-    WgslToken::Other(124, _) | WgslToken::Other(45, _) =>
-      Some(preprocess_token_text(token))
-    WgslToken::Other(code, _) if (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) => Some(code_unit_to_string(code))
-    _ => None
-  }
-}
-
-///|
 fn token_end(token : WgslToken) -> Int {
   token.pos() + preprocess_token_text(token).length()
 }
@@ -227,7 +214,7 @@ pub fn parse_glsl_version_directive(line : String) -> String? {
   let trimmed = line.trim().to_owned()
   let tokens = tokenize(trimmed, false)
   match tokens {
-    [WgslToken::Other(35, 0), WgslToken::Identifier("version", _), ..] => ()
+    [WgslToken::Other(35, 0), WgslToken::Identifier("version", 1), ..] => ()
     _ => return None
   }
   guard tokens.length() > 2 else { return None }

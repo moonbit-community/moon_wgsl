@@ -12,43 +12,98 @@ fn parse_if_operator_expression(
   expression : String,
 ) -> (String, String, String)? {
   let text = trim_trailing_semicolons(expression)
-  let tokens = tokenize(text, false)
   let mut i = 0
-  let mut def = ""
-  while i < tokens.length() {
-    match tokens[i] {
-      WgslToken::Identifier(ident, _) => def = def + ident
-      WgslToken::Other(124, _) => def = def + "|"
-      _ => break
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
     }
-    i = i + 1
+    break
   }
-  guard def != "" else { return None }
-  let mut operator = ""
-  while i < tokens.length() {
-    match tokens[i] {
-      WgslToken::Other(code, _) if code == 61 ||
-        code == 33 ||
-        code == 60 ||
-        code == 62 => operator = operator + code_unit_to_string(code)
-      _ => break
+  let def_start = i
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 124 ||
+      code == 95 ||
+      code > 127 ||
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) {
+      i = i + 1
+      continue
     }
-    i = i + 1
+    break
   }
-  guard operator != "" else { return None }
-  let mut value = ""
-  while i < tokens.length() {
-    match shader_def_value_token_text(tokens[i]) {
-      Some(text) => value = value + text
-      None => break
+  guard i > def_start else { return None }
+  let def = text[def_start:i].to_owned()
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
     }
-    i = i + 1
+    break
   }
-  if value == "" {
+  let operator_start = i
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 61 || code == 33 || code == 60 || code == 62 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let operator = text[operator_start:i].to_owned()
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 32 || code == 9 {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  let value_start = i
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    if code == 45 ||
+      code == 124 ||
+      code == 95 ||
+      code > 127 ||
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) {
+      i = i + 1
+      continue
+    }
+    break
+  }
+  if i == value_start {
     None
   } else {
+    let value = text[value_start:i].to_owned()
     Some((def, operator, value))
   }
+}
+
+///|
+fn check_if_operator_scope(
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  expression : String,
+  scope : Scope?,
+  offset : Int,
+  is_else : Bool,
+) -> (Bool, String?) raise PreprocessError {
+  guard parse_if_operator_expression(expression) is Some((def, operator, value)) else {
+    return (false, None)
+  }
+  if scope is None {
+    return (true, Some(def))
+  }
+  let condition = eval_if_condition(shader_defs, def, operator, value, offset)
+  guard scope is Some(scope_state) else { abort("unreachable missing scope") }
+  scope_state.branch(is_else, condition, offset)
+  (true, Some(def))
 }
 
 ///|
@@ -202,33 +257,21 @@ fn check_scope(
       return (true, Some(name))
     }
     if else_tail_has_space && word_tail(else_tail, "if") is Some(expr) {
-      guard parse_if_operator_expression(expr) is Some((def, operator, value)) else {
-        raise PreprocessError::UnknownShaderDefOperator("", offset)
-      }
-      if scope is None {
-        return (true, Some(def))
-      }
-      let condition = eval_if_condition(
-        shader_defs, def, operator, value, offset,
+      let (is_scope, def) = check_if_operator_scope(
+        shader_defs, expr, scope, offset, true,
       )
-      guard scope is Some(scope_state) else {
-        abort("unreachable missing scope")
+      if is_scope {
+        return (true, def)
       }
-      scope_state.branch(true, condition, offset)
-      return (true, Some(def))
     }
   }
   if wgsl_directive_tail(line, WgslDirectiveKind::If) is Some(expr) {
-    guard parse_if_operator_expression(expr) is Some((def, operator, value)) else {
-      raise PreprocessError::UnknownShaderDefOperator("", offset)
+    let (is_scope, def) = check_if_operator_scope(
+      shader_defs, expr, scope, offset, false,
+    )
+    if is_scope {
+      return (true, def)
     }
-    if scope is None {
-      return (true, Some(def))
-    }
-    let condition = eval_if_condition(shader_defs, def, operator, value, offset)
-    guard scope is Some(scope_state) else { abort("unreachable missing scope") }
-    scope_state.branch(false, condition, offset)
-    return (true, Some(def))
   }
   if wgsl_directive_prefix_tail(line, WgslDirectiveKind::Else) is Some(_) {
     if scope is Some(scope_state) {

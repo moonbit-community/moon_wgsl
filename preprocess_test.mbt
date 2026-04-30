@@ -453,6 +453,46 @@ test "naga_oil upstream: preprocess reports shader-def comparison errors" {
 }
 
 ///|
+test "naga_oil upstream: if comparison parser preserves whitespace token boundaries" {
+  let mut saw_missing_def = false
+  ignore(
+    @preprocess.Preprocessor::default().preprocess(
+      "#if TEXTURE true\nok\n#endif\n",
+      empty_shader_defs(),
+    ),
+  ) catch {
+    @preprocess.PreprocessError::UnknownShaderDef(name, _) => {
+      debug_inspect(name, content="\"TEXTURE\"")
+      saw_missing_def = true
+    }
+    _ => abort("expected missing shader-def for operatorless comparison")
+  }
+  debug_inspect(saw_missing_def, content="true")
+
+  let defs = bool_shader_def("TEXTURE", true)
+  let mut saw_empty_operator = false
+  ignore(
+    @preprocess.Preprocessor::default().preprocess(
+      "#if TEXTURE true\nok\n#endif\n", defs,
+    ),
+  ) catch {
+    @preprocess.PreprocessError::UnknownShaderDefOperator(operator, _) => {
+      debug_inspect(operator, content="\"\"")
+      saw_empty_operator = true
+    }
+    _ => abort("expected empty shader-def operator")
+  }
+  debug_inspect(saw_empty_operator, content="true")
+
+  let metadata = metadata_or_abort("#if TEXTURE true\n#VALUE\n#endif\n")
+  debug_inspect(metadata.effective_defs.contains("TEXTURE"), content="true")
+  debug_inspect(
+    metadata.effective_defs.contains("TEXTUREtrue"),
+    content="false",
+  )
+}
+
+///|
 test "naga_oil upstream: preprocess validates int and bool comparison values" {
   ignore(
     @preprocess.Preprocessor::default().preprocess(
@@ -698,6 +738,20 @@ test "naga_oil: glsl version directive captures numeric version token" {
   )
   debug_inspect(
     output.preprocessed_source.contains("return 1.0;"),
+    content="true",
+  )
+}
+
+///|
+test "naga_oil: glsl version directive does not allow hash whitespace" {
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "# version 450\nfn main() -> f32 {\n  return 1.0;\n}\n",
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected spaced hash version to stay as normal source")
+  }
+  debug_inspect(
+    output.preprocessed_source.contains("# version 450"),
     content="true",
   )
 }
