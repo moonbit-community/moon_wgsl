@@ -113,10 +113,7 @@ fn collect_wgsl_identifier_dependencies(
   dependencies : Array[String],
 ) -> Unit {
   for identifier in identifiers {
-    let dependency_name = match split_last_identifier(identifier.name) {
-      Some((_, suffix)) => suffix
-      None => identifier.name
-    }
+    let dependency_name = identifier.name
     if dependency_name != self_name &&
       declaration_names.contains(dependency_name) {
       wgsl_string_list_push_unique(dependencies, dependency_name)

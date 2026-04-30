@@ -276,6 +276,19 @@ test "declaration graph ignores member access suffix dependencies" {
 }
 
 ///|
+test "declaration graph does not resolve namespace suffix as local dependency" {
+  let source =
+    #|const helper: u32 = 1u;
+    #|fn entry() -> u32 {
+    #|  return module::helper();
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const helper"), content="false")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
 test "rename plan global rules do not rewrite function parameter locals" {
   let source =
     #|struct Input {

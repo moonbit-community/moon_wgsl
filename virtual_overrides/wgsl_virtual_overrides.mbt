@@ -157,13 +157,6 @@ fn wgsl_override_body_references_target(
     if ident.name == raw_target || ident.name == target_name {
       return true
     }
-    match split_last_identifier(ident.name) {
-      Some((_, suffix)) =>
-        if suffix == raw_target || suffix == target_name {
-          return true
-        }
-      None => ()
-    }
   }
   false
 }
@@ -229,16 +222,7 @@ fn rewrite_wgsl_override_body_references_to_base(
   let nodes : Array[WgslVirtualRewriteNode] = []
   collect_wgsl_function_body_identifier_nodes(function, identifiers)
   for ident in identifiers {
-    let mut matches_target = ident.name == target_name ||
-      ident.name == raw_target
-    if !matches_target {
-      match split_last_identifier(ident.name) {
-        Some((_, suffix)) =>
-          matches_target = suffix == target_name || suffix == raw_target
-        None => ()
-      }
-    }
-    if matches_target {
+    if ident.name == target_name || ident.name == raw_target {
       nodes.push(WgslVirtualRewriteNode::{
         start: ident.start - block_start,
         end: ident.end - block_start,
