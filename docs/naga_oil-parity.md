@@ -127,10 +127,10 @@ tree-shakes them away, matching upstream `naga_oil`.
    on the public API.
 
 4. Preprocessing must stay in `preprocess`.
-   Template constant substitution, permissive `#ifdef` filtering for source
-   catalogs, and strict compose-time conditional filtering live in the
+   Template constant substitution and strict conditional filtering live in the
    `preprocess` package. `compose` may map `PreprocessError` into
-   `ComposerError`, but must not maintain a second preprocessor.
+   `ComposerError`, but must not maintain a second preprocessor or a permissive
+   conditional evaluator.
 
 5. Declaration analysis must stay shared.
    Composition, export, source maps, and tree-shaking use the same declaration
@@ -140,8 +140,8 @@ tree-shakes them away, matching upstream `naga_oil`.
 6. Source catalogs must use compose-time shader defs.
    `PreparedWgslSource.source_catalog` is part of the composed dependency
    closure and must be built from the same strict per-source `ShaderDefValue`
-   state as the emitted source. Do not rebuild catalogs with the permissive
-   source-tree ifdef helper or root-only bool/int maps.
+   state as the emitted source. Do not rebuild catalogs with root-only bool/int
+   maps.
 
 7. Rename/writeback and dependency analysis must be AST/span-driven.
    All source rewrites must be expressed as `WgslRenamePlan` rules in
