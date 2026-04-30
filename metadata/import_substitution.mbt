@@ -204,6 +204,7 @@ pub fn substitute_identifiers(
     match token {
       WgslToken::Identifier(ident, token_pos) =>
         if in_substitution_position {
+          let token_byte_pos = utf8_byte_length(input[:token_pos].to_owned())
           let (first, residual) = match split_once_identifier(ident) {
             Some(parts) => parts
             None => (ident, "")
@@ -214,7 +215,7 @@ pub fn substitute_identifiers(
             None => [first]
           }
           if !allow_ambiguous && full_paths.length() > 1 {
-            raise AmbiguousImport(offset + token_pos)
+            raise AmbiguousImport(offset + token_byte_pos)
           }
 
           for full_path_base in full_paths {
@@ -230,7 +231,7 @@ pub fn substitute_identifiers(
                 used_imports,
                 module_path,
                 item_name,
-                offset + token_pos,
+                offset + token_byte_pos,
               )
               output = output + item_name + decorate(module_path)
             } else if full_path.contains("\"") {

@@ -35,6 +35,7 @@ using @lex {
   replace_comments,
   tokenize,
   tokenize_wgsl,
+  utf8_byte_length,
   wgsl_blankspace_code_point,
   wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,

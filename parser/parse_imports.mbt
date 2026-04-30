@@ -41,8 +41,11 @@ fn tokenize_wgsl_import_targets(
 ) -> Array[(Token, Int, Int)] raise ParseImportsError {
   let out : Array[(Token, Int, Int)] = []
   for token in tokenize(input, false) {
-    let start = token.pos()
-    let end_ = wgsl_generated_import_token_end(token)
+    let start = utf8_byte_length(input[:token.pos()].to_owned())
+    let end_ = start +
+      utf8_byte_length(
+        input[token.pos():wgsl_generated_import_token_end(token)].to_owned(),
+      )
     match token {
       Identifier("as", _) =>
         push_generated_import_token(out, Token::AS, start, end_)
@@ -55,11 +58,16 @@ fn tokenize_wgsl_import_targets(
       Other(44, _) =>
         push_generated_import_token(out, Token::COMMA, start, end_)
       Other(59, _) => push_generated_import_token(out, Token::SEMI, start, end_)
-      Other(_, pos) => raise ParseImportsError::Parse("unexpected token", pos)
+      Other(_, pos) =>
+        raise ParseImportsError::Parse(
+          "unexpected token",
+          utf8_byte_length(input[:pos].to_owned()),
+        )
       Whitespace(_, _) => abort("whitespace tokens should not be emitted here")
     }
   }
-  push_generated_import_token(out, Token::EOF, input.length(), input.length())
+  let eof = utf8_byte_length(input)
+  push_generated_import_token(out, Token::EOF, eof, eof)
   out
 }
 
