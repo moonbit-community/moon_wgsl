@@ -180,7 +180,12 @@ fn find_first_quote_marker(line : String, start : Int) -> (Int, String)? {
 fn replace_comments_with(source : String, naga_oil_byte_width : Bool) -> String {
   let output_lines : Array[String] = []
   let mut state = CommentState::None
-  for line in split_source_lines(source) {
+  let lines = if naga_oil_byte_width {
+    source_lines(source)
+  } else {
+    split_source_lines(source)
+  }
+  for line in lines {
     let (output_line, next_state) = replace_comments_line(
       line, state, naga_oil_byte_width,
     )

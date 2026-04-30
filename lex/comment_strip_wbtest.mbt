@@ -78,6 +78,18 @@ test "naga_oil wb: comment stripping replaces non-ascii comments by UTF-8 byte w
 }
 
 ///|
+test "naga_oil wb: comment stripping uses Rust CRLF line semantics" {
+  debug_inspect(
+    replace_comments_naga_oil("//x\r\nvalue"),
+    content="\"   \\nvalue\"",
+  )
+  debug_inspect(
+    replace_comments_naga_oil("/*x*/\r\nvalue"),
+    content="\"     \\nvalue\"",
+  )
+}
+
+///|
 test "WGSL parser comment stripping preserves code-unit source positions" {
   debug_inspect(replace_comments("a/*中*/b"), content="\"a     b\"")
   debug_inspect(replace_comments("a/*💡*/b"), content="\"a      b\"")
