@@ -13,8 +13,26 @@
 // limitations under the License.
 
 ///|
-test "WGSL tokenizer does not split numeric suffixes into identifiers" {
+test "naga_oil tokenizer treats numeric suffix letters as identifiers" {
   let tokens = tokenize("let x = 1u + 2.0e-3f;", false)
+  let identifiers : Array[String] = []
+  for token in tokens {
+    match token {
+      WgslToken::Identifier(name, _) => identifiers.push(name)
+      _ => ()
+    }
+  }
+  debug_inspect(
+    identifiers,
+    content=(
+      #|["let", "x", "u", "e", "f"]
+    ),
+  )
+}
+
+///|
+test "WGSL tokenizer does not split numeric suffixes into identifiers" {
+  let tokens = tokenize_wgsl("let x = 1u + 2.0e-3f;", false)
   let identifiers : Array[String] = []
   for token in tokens {
     match token {

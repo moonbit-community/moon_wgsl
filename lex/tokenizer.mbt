@@ -187,7 +187,7 @@ fn tokenize_with(
       continue
     }
 
-    if code >= 48 && code <= 57 {
+    if wgsl_blankspace && code >= 48 && code <= 57 {
       current_token_kind = 2
       current_token_start = i
       i = i + 1

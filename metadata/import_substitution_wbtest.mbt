@@ -14,6 +14,18 @@ fn parse_imports_snapshot(input : String) -> String {
 }
 
 ///|
+fn substitute_snapshot(imports : String, source : String) -> String {
+  let declared_imports : Array[DeclaredImportBinding] = []
+  parse_imports(imports, declared_imports) catch {
+    Parse(message, offset) => return "ERR \{offset.to_string()} \{message}"
+  }
+  let used_imports : Array[ImportDefWithOffset] = []
+  substitute_identifiers(source, 0, declared_imports, used_imports, false) catch {
+    AmbiguousImport(offset) => return "ERR \{offset.to_string()} ambiguous"
+  }
+}
+
+///|
 test "naga_oil wb: parse_imports matches upstream top-level item-list disambiguation" {
   debug_inspect(
     parse_imports_snapshot("#import a::b c, d\n"),
@@ -130,6 +142,12 @@ test "naga_oil wb: parse_imports collects import blocks with raw brace counts" {
     ),
     content="true",
   )
+}
+
+///|
+test "naga_oil wb: substitute_identifiers sees numeric suffix letters" {
+  let output = substitute_snapshot("#import math::u\n", "let x = 1u;\n")
+  debug_inspect(output.contains("1uX_naga_oil_mod_XNVQXI"), content="true")
 }
 
 ///|
