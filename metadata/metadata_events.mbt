@@ -228,7 +228,7 @@ fn metadata_scope_def_from_directive(
   match metadata_effective_directive_kind(directive) {
     WgslDirectiveKind::Ifdef =>
       if required_tail_space {
-        match directive_identifier(tail) {
+        match parse_wgsl_directive_identifier(tail) {
           Some(name) => (true, Some(name))
           None => (false, None)
         }
@@ -237,7 +237,7 @@ fn metadata_scope_def_from_directive(
       }
     WgslDirectiveKind::Ifndef =>
       if required_tail_space {
-        match directive_identifier(tail) {
+        match parse_wgsl_directive_identifier(tail) {
           Some(name) => (true, Some(name))
           None => (false, None)
         }
@@ -246,7 +246,7 @@ fn metadata_scope_def_from_directive(
       }
     WgslDirectiveKind::If =>
       if required_tail_space {
-        match if_operator_expression_def(tail) {
+        match wgsl_shader_def_comparison_def(tail) {
           Some(def) => (true, Some(def))
           None => (false, None)
         }
@@ -254,20 +254,20 @@ fn metadata_scope_def_from_directive(
         (false, None)
       }
     WgslDirectiveKind::Else => {
-      let else_tail_has_space = starts_with_tokenized_space(tail)
+      let else_tail_has_space = wgsl_text_starts_with_tokenized_space(tail)
       if else_tail_has_space &&
-        metadata_required_space_word_tail(tail, "ifdef") is Some(rest) &&
-        directive_identifier(rest) is Some(name) {
+        wgsl_required_space_word_tail(tail, "ifdef") is Some(rest) &&
+        parse_wgsl_directive_identifier(rest) is Some(name) {
         return (true, Some(name))
       }
       if else_tail_has_space &&
-        metadata_required_space_word_tail(tail, "ifndef") is Some(rest) &&
-        directive_identifier(rest) is Some(name) {
+        wgsl_required_space_word_tail(tail, "ifndef") is Some(rest) &&
+        parse_wgsl_directive_identifier(rest) is Some(name) {
         return (true, Some(name))
       }
       if else_tail_has_space &&
-        metadata_required_space_word_tail(tail, "if") is Some(expr) &&
-        if_operator_expression_def(expr) is Some(def) {
+        wgsl_required_space_word_tail(tail, "if") is Some(expr) &&
+        wgsl_shader_def_comparison_def(expr) is Some(def) {
         return (true, Some(def))
       }
       (true, None)

@@ -31,11 +31,14 @@ using @lex {
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,
   wgsl_regex_word_text,
-  wgsl_regex_word_width,
 }
 
 ///|
 using @parser {
+  parse_wgsl_directive_identifier,
   parse_wgsl_directive_line_at,
   parse_wgsl_shader_def_references,
+  parse_wgsl_shader_def_comparison,
+  wgsl_required_space_word_tail,
+  wgsl_text_starts_with_tokenized_space,
 }

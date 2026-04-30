@@ -8,73 +8,6 @@ fn preprocess_token_text(token : WgslToken) -> String {
 }
 
 ///|
-fn parse_if_operator_expression(
-  expression : String,
-) -> (String, String, String)? {
-  let text = trim_trailing_semicolons(expression)
-  let mut i = 0
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if wgsl_regex_whitespace_code_point(code) {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  let def_start = i
-  while i < text.length() {
-    let width = wgsl_regex_word_width(text, i)
-    guard width > 0 else { break }
-    i = i + width
-  }
-  guard i > def_start else { return None }
-  let def = text[def_start:i].to_owned()
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if wgsl_regex_whitespace_code_point(code) {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  let operator_start = i
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if code == 61 || code == 33 || code == 60 || code == 62 {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  let operator = text[operator_start:i].to_owned()
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if wgsl_regex_whitespace_code_point(code) {
-      i = i + 1
-      continue
-    }
-    break
-  }
-  let value_start = i
-  while i < text.length() {
-    let code = text.code_unit_at(i).to_int()
-    if code == 45 {
-      i = i + 1
-      continue
-    }
-    let width = wgsl_regex_word_width(text, i)
-    guard width > 0 else { break }
-    i = i + width
-  }
-  if i == value_start {
-    None
-  } else {
-    let value = text[value_start:i].to_owned()
-    Some((def, operator, value))
-  }
-}
-
-///|
 fn check_if_operator_scope(
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   expression : String,
@@ -82,13 +15,20 @@ fn check_if_operator_scope(
   offset : Int,
   is_else : Bool,
 ) -> (Bool, String?) raise PreprocessError {
-  guard parse_if_operator_expression(expression) is Some((def, operator, value)) else {
+  guard parse_wgsl_shader_def_comparison(expression) is Some(comparison) else {
     return (false, None)
   }
+  let def = comparison.def
   if scope is None {
     return (true, Some(def))
   }
-  let condition = eval_if_condition(shader_defs, def, operator, value, offset)
+  let condition = eval_if_condition(
+    shader_defs,
+    def,
+    comparison.operator,
+    comparison.value,
+    offset,
+  )
   guard scope is Some(scope_state) else { abort("unreachable missing scope") }
   scope_state.branch(is_else, condition, offset)
   (true, Some(def))

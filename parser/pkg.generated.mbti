@@ -8,11 +8,15 @@ import {
 }
 
 // Values
+pub fn parse_wgsl_directive_identifier(String) -> String?
+
 pub fn parse_wgsl_directive_line(String) -> @ast.WgslDirective?
 
 pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
+
+pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?
 
 pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
 
@@ -30,12 +34,24 @@ pub fn wgsl_directive_prefix_tail(String, @ast.WgslDirectiveKind) -> String?
 
 pub fn wgsl_directive_tail(String, @ast.WgslDirectiveKind) -> String?
 
+pub fn wgsl_required_space_word_tail(String, String) -> String?
+
+pub fn wgsl_shader_def_comparison_def(String) -> String?
+
+pub fn wgsl_text_starts_with_tokenized_space(String) -> Bool
+
 // Errors
 pub(all) suberror ParseImportsError {
   Parse(String, Int)
 }
 
 // Types and methods
+pub struct WgslShaderDefComparison {
+  def : String
+  operator : String
+  value : String
+} derive(@debug.Debug)
+
 pub struct WgslShaderDefReference {
   name : String
   start : Int

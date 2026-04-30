@@ -110,12 +110,6 @@ fn parse_wgsl_template_const_references(
 }
 
 ///|
-fn starts_with_tokenized_space(text : String) -> Bool {
-  text.length() > 0 &&
-  wgsl_regex_whitespace_code_point(text.code_unit_at(0).to_int())
-}
-
-///|
 fn preprocess_has_ascii_keyword_at(
   text : String,
   start : Int,
@@ -130,22 +124,6 @@ fn preprocess_has_ascii_keyword_at(
     }
   }
   true
-}
-
-///|
-fn required_space_word_tail(text : String, keyword : String) -> String? {
-  let trimmed = wgsl_regex_trim_whitespace(text)
-  guard keyword.length() < trimmed.length() else { return None }
-  guard preprocess_has_ascii_keyword_at(trimmed, 0, keyword) else {
-    return None
-  }
-  let space_pos = keyword.length()
-  let code = trimmed.code_unit_at(space_pos).to_int()
-  guard wgsl_regex_whitespace_code_point(code) else { return None }
-  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
-  Some(
-    wgsl_regex_trim_whitespace(trimmed[tail_start:trimmed.length()].to_owned()),
-  )
 }
 
 ///|
@@ -186,20 +164,4 @@ fn parse_bool_text(text : String) -> Bool? {
     return Some(false)
   }
   None
-}
-
-///|
-fn directive_identifier(text : String) -> String? {
-  let trimmed = wgsl_regex_trim_whitespace(trim_trailing_semicolons(text))
-  let mut i = 0
-  while i < trimmed.length() {
-    let width = wgsl_regex_word_width(trimmed, i)
-    guard width > 0 else { break }
-    i = i + width
-  }
-  if i == 0 {
-    None
-  } else {
-    Some(trimmed[0:i].to_owned())
-  }
 }

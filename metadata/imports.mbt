@@ -35,9 +35,13 @@ using @lex {
 using @parser {
   type ParseImportsError,
   type WgslSourceDirectiveItemKind,
+  parse_wgsl_directive_identifier,
   parse_wgsl_directive_line_at,
   parse_wgsl_import_targets,
   parse_wgsl_shader_def_references,
   parse_wgsl_source_directive_items,
   parse_wgsl_translation_unit,
+  wgsl_required_space_word_tail,
+  wgsl_shader_def_comparison_def,
+  wgsl_text_starts_with_tokenized_space,
 }
