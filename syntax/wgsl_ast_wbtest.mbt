@@ -245,7 +245,7 @@ test "WGSL function payload exposes source-preserving statement AST" {
   )
   debug_inspect(
     function.body.statements[0].identifiers[1].name,
-    content="\"local\"",
+    content="\"u32\"",
   )
   debug_inspect(function.body.statements[1].kind, content="If")
   debug_inspect(function.body.statements[2].kind, content="Return")
@@ -256,6 +256,36 @@ test "WGSL function payload exposes source-preserving statement AST" {
   debug_inspect(
     function.body.statements[1].text.contains("return local;"),
     content="true",
+  )
+}
+
+///|
+test "WGSL statement identifiers skip local declarations and member access" {
+  let source =
+    #|fn demo(input: Vertex) -> f32 {
+    #|  let local = input.position.x;
+    #|  return local + input.color.r;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  debug_inspect(
+    function.body.statements[0].local_name,
+    content="Some(\"local\")",
+  )
+  debug_inspect(
+    function.body.statements[0].identifiers.map(fn(node) { node.name }),
+    content=(
+      #|["let", "input"]
+    ),
+  )
+  debug_inspect(
+    function.body.statements[1].identifiers.map(fn(node) { node.name }),
+    content=(
+      #|["return", "local", "input"]
+    ),
   )
 }
 

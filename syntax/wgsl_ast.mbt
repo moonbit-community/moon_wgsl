@@ -766,6 +766,50 @@ fn wgsl_statement_local_name_from_tokens(
 }
 
 ///|
+fn wgsl_statement_identifier_has_access_prefix(
+  tokens : Array[Token],
+  index : Int,
+) -> Bool {
+  if index == 0 {
+    return false
+  }
+  match tokens[index - 1] {
+    Token::Other(46, _) | Token::Other(64, _) => true
+    _ => false
+  }
+}
+
+///|
+fn collect_wgsl_statement_identifier_nodes(
+  tokens : Array[Token],
+  kind : WgslStatementKind,
+  local_name : String?,
+  identifiers : Array[WgslIdent],
+) -> Unit {
+  let mut skipped_local_name = false
+  for i in 0..<tokens.length() {
+    guard tokens[i] is Token::Identifier(ident, pos) else { continue }
+    if wgsl_statement_identifier_has_access_prefix(tokens, i) {
+      continue
+    }
+    match local_name {
+      Some(name) if kind == WgslStatementKind::LocalDecl &&
+        !skipped_local_name &&
+        ident == name => {
+        skipped_local_name = true
+        continue
+      }
+      _ => ()
+    }
+    identifiers.push(WgslIdent::{
+      name: ident,
+      start: pos,
+      end: pos + ident.length(),
+    })
+  }
+}
+
+///|
 fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   let tokens : Array[Token] = []
   let identifiers : Array[WgslIdent] = []
@@ -820,16 +864,10 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       }
       [token, .. rest] => {
         match token {
-          Token::Identifier(ident, pos) => {
+          Token::Identifier(ident, _) =>
             if first_identifier is None {
               first_identifier = Some(ident)
             }
-            identifiers.push(WgslIdent::{
-              name: ident,
-              start: pos,
-              end: pos + ident.length(),
-            })
-          }
           _ => ()
         }
         tokens.push(token)
@@ -849,10 +887,14 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     None
   } else {
     let kind = wgsl_statement_kind_from_first_identifier(first_identifier)
+    let local_name = wgsl_statement_local_name_from_tokens(tokens, kind)
+    collect_wgsl_statement_identifier_nodes(
+      tokens, kind, local_name, identifiers,
+    )
     Some(WgslStatement::{
       kind,
       text,
-      local_name: wgsl_statement_local_name_from_tokens(tokens, kind),
+      local_name,
       identifiers,
       start: start_pos,
       end: end_pos,
