@@ -29,14 +29,6 @@ pub(all) struct WgslDeclarationGraph {
 }
 
 ///|
-pub fn wgsl_identifier_char(code : Int) -> Bool {
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122) ||
-  (code >= 48 && code <= 57) ||
-  code == 95
-}
-
-///|
 pub fn wgsl_string_list_push_unique(
   items : Array[String],
   item : String,

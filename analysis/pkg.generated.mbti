@@ -28,8 +28,6 @@ pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) 
 
 pub fn strip_wgsl_import_declarations(String) -> String
 
-pub fn wgsl_identifier_char(Int) -> Bool
-
 pub fn wgsl_source_declares_entry_point(String, String) -> Bool
 
 pub fn wgsl_string_list_push_unique(Array[String], String) -> Unit
