@@ -1,8 +1,7 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Milky2018/moon_wgsl/syntax"
+package "Milky2018/moon_wgsl/ast"
 
 import {
-  "Milky2018/moon_wgsl/common",
   "moonbitlang/core/debug",
 }
 
@@ -11,54 +10,22 @@ pub fn collect_wgsl_decl_global_declared_identifier_nodes(WgslGlobalDeclData, Ar
 
 pub fn collect_wgsl_decl_identifier_nodes(WgslGlobalDeclData, Array[WgslIdent]) -> Unit
 
-pub fn import_brace_balance(String) -> Int
-
-pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
-
-pub fn parse_wgsl_translation_unit(String) -> WgslTranslationUnit
-
-pub fn replace_comments(String) -> String
-
-pub fn source_lines(String) -> Array[String]
-
-pub fn spaces(Int) -> String
-
-pub fn split_last_identifier(String) -> (String, String)?
-
-pub fn split_source_lines(String) -> Array[String]
-
-pub fn tokenize(String, Bool) -> Array[Token]
-
-pub fn trim_trailing_semicolons(String) -> String
-
-pub fn wgsl_directive_prefix_tail(String, WgslDirectiveKind) -> String?
-
-pub fn wgsl_directive_tail(String, WgslDirectiveKind) -> String?
+pub fn wgsl_decl_data_name(WgslGlobalDeclData) -> String
 
 // Errors
-pub(all) suberror ParseImportsError {
-  Parse(String, Int)
-}
 
 // Types and methods
-pub enum Token {
-  Identifier(String, Int)
-  Other(Int, Int)
-  Whitespace(String, Int)
-} derive(Eq, @debug.Debug)
-pub fn Token::pos(Self) -> Int
-
-pub struct WgslAttribute {
+pub(all) struct WgslAttribute {
   name : String
   arguments : String
   arguments_ref : WgslExprRef?
 } derive(@debug.Debug)
 
-pub struct WgslBlock {
+pub(all) struct WgslBlock {
   statements : Array[WgslStatement]
 } derive(@debug.Debug)
 
-pub struct WgslConst {
+pub(all) struct WgslConst {
   name : WgslIdent
   ty : String?
   ty_ref : WgslTypeRef?
@@ -66,7 +33,31 @@ pub struct WgslConst {
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
-pub struct WgslDirective {
+pub(all) struct WgslDeclHead {
+  kind : WgslDeclHeadKind
+  attributes : Array[WgslAttribute]
+  keyword : WgslIdent?
+  qualifier : String
+  qualifier_start : Int?
+  qualifier_end : Int?
+  fn_keyword : WgslIdent?
+  consumed : Int
+} derive(@debug.Debug)
+pub fn WgslDeclHead::raw(Array[WgslAttribute]) -> Self
+
+pub(all) enum WgslDeclHeadKind {
+  Function
+  GlobalVariable
+  Struct
+  Const
+  Override
+  TypeAlias
+  ConstAssert
+  SourceDirective(WgslDirectiveKind)
+  Raw
+} derive(@debug.Debug)
+
+pub(all) struct WgslDirective {
   kind : WgslDirectiveKind
   name : String
   tail : String
@@ -88,14 +79,14 @@ pub(all) enum WgslDirectiveKind {
   Other(String)
 } derive(Eq, @debug.Debug)
 
-pub struct WgslExprRef {
+pub(all) struct WgslExprRef {
   text : String
   identifiers : Array[WgslIdent]
   start : Int
   end : Int
 } derive(@debug.Debug)
 
-pub struct WgslFunction {
+pub(all) struct WgslFunction {
   attributes : Array[WgslAttribute]
   qualifier : String
   qualifier_start : Int?
@@ -108,7 +99,7 @@ pub struct WgslFunction {
   body : WgslBlock
 } derive(@debug.Debug)
 
-pub struct WgslFunctionArgument {
+pub(all) struct WgslFunctionArgument {
   attributes : Array[WgslAttribute]
   name : String
   name_start : Int
@@ -117,20 +108,20 @@ pub struct WgslFunctionArgument {
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
 
-pub struct WgslFunctionResult {
+pub(all) struct WgslFunctionResult {
   attributes : Array[WgslAttribute]
   ty : String
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
 
-pub struct WgslGlobalDecl {
+pub(all) struct WgslGlobalDecl {
   kind : WgslGlobalDeclKind
   data : WgslGlobalDeclData
   name : String
   text : String
   start : Int
   end : Int
-}
+} derive(@debug.Debug)
 
 pub(all) enum WgslGlobalDeclData {
   Directive(WgslDirective)
@@ -159,7 +150,7 @@ pub(all) enum WgslGlobalDeclKind {
   Unknown
 } derive(Eq, @debug.Debug)
 
-pub struct WgslGlobalVariable {
+pub(all) struct WgslGlobalVariable {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   template_list : Array[String]
@@ -169,13 +160,13 @@ pub struct WgslGlobalVariable {
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
-pub struct WgslIdent {
+pub(all) struct WgslIdent {
   name : String
   start : Int
   end : Int
 } derive(@debug.Debug)
 
-pub struct WgslOverride {
+pub(all) struct WgslOverride {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   ty : String?
@@ -184,18 +175,40 @@ pub struct WgslOverride {
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
-pub struct WgslStatement {
+pub(all) struct WgslRawTopLevelItem {
+  kind : WgslRawTopLevelKind
+  name : String
+  text : String
+  start : Int
+  end : Int
+} derive(@debug.Debug)
+
+pub(all) enum WgslRawTopLevelKind {
+  Trivia
+  Import
+  DefineImportPath
+  Define
+  Directive
+  Declaration
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSpan {
+  start : Int
+  end : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslStatement {
   local_name : String?
   identifiers : Array[WgslIdent]
 } derive(@debug.Debug)
 
-pub struct WgslStruct {
+pub(all) struct WgslStruct {
   attributes : Array[WgslAttribute]
   name : WgslIdent
   members : Array[WgslStructMember]
 } derive(@debug.Debug)
 
-pub struct WgslStructMember {
+pub(all) struct WgslStructMember {
   attributes : Array[WgslAttribute]
   name : String
   name_start : Int
@@ -204,17 +217,17 @@ pub struct WgslStructMember {
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
 
-pub struct WgslTranslationUnit {
+pub(all) struct WgslTranslationUnit {
   declarations : Array[WgslGlobalDecl]
-}
+} derive(@debug.Debug)
 
-pub struct WgslTypeAlias {
+pub(all) struct WgslTypeAlias {
   name : WgslIdent
   ty : String
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
 
-pub struct WgslTypeRef {
+pub(all) struct WgslTypeRef {
   name : String
   arguments : Array[WgslTypeRef]
   text : String

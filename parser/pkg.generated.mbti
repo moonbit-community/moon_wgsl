@@ -1,0 +1,51 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/parser"
+
+import {
+  "Milky2018/moon_wgsl/ast",
+  "Milky2018/moon_wgsl/common",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn import_brace_balance(String) -> Int
+
+pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
+
+pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit
+
+pub fn replace_comments(String) -> String
+
+pub fn source_lines(String) -> Array[String]
+
+pub fn spaces(Int) -> String
+
+pub fn split_last_identifier(String) -> (String, String)?
+
+pub fn split_source_lines(String) -> Array[String]
+
+pub fn tokenize(String, Bool) -> Array[Token]
+
+pub fn trim_trailing_semicolons(String) -> String
+
+pub fn wgsl_directive_prefix_tail(String, @ast.WgslDirectiveKind) -> String?
+
+pub fn wgsl_directive_tail(String, @ast.WgslDirectiveKind) -> String?
+
+// Errors
+pub(all) suberror ParseImportsError {
+  Parse(String, Int)
+}
+
+// Types and methods
+pub enum Token {
+  Identifier(String, Int)
+  Other(Int, Int)
+  Whitespace(String, Int)
+} derive(Eq, @debug.Debug)
+pub fn Token::pos(Self) -> Int
+
+// Type aliases
+
+// Traits
+

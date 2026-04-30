@@ -3,7 +3,7 @@ package "Milky2018/moon_wgsl/metadata"
 
 import {
   "Milky2018/moon_wgsl/common",
-  "Milky2018/moon_wgsl/syntax",
+  "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/hashmap",
 }
 
@@ -14,7 +14,7 @@ pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition
 
 pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
 
-pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise @syntax.ParseImportsError
+pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise @parser.ParseImportsError
 
 pub fn substitute_identifiers(String, Int, Array[DeclaredImportBinding], Array[@common.ImportDefWithOffset], Bool) -> String raise SubstituteIdentifiersError
 

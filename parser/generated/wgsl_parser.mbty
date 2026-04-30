@@ -1,0 +1,473 @@
+%position<Int>
+%derive<Debug> Token
+%derive<Debug> ParseError
+%start raw_top_level_items
+%start import_targets
+%start directive_line
+%start directive_prefix_tail
+%start decl_head
+%start type_ref
+%start template_list
+%start function_args
+%start function_result
+%start struct_members
+
+%token<@ast.WgslRawTopLevelItem> ITEM
+%token<String> IDENT
+%token<(String, String, Int, Int, Int)> TYPE_ATOM
+%token<Array[@ast.WgslAttribute]> DECL_ATTRS
+%token<@ast.WgslIdent> ARG_NAME
+%token<(String, @ast.WgslTypeRef?)> ARG_TYPE
+%token<@ast.WgslIdent> MEMBER_NAME
+%token<(String, @ast.WgslTypeRef?)> MEMBER_TYPE
+%token<@ast.WgslIdent> KW_VIRTUAL
+%token<@ast.WgslIdent> KW_OVERRIDE
+%token<@ast.WgslIdent> KW_FN
+%token<@ast.WgslIdent> KW_VAR
+%token<@ast.WgslIdent> KW_STRUCT
+%token<@ast.WgslIdent> KW_CONST
+%token<@ast.WgslIdent> KW_CONST_ASSERT
+%token<@ast.WgslIdent> KW_ALIAS
+%token<@ast.WgslIdent> KW_TYPE
+%token<@ast.WgslIdent> KW_ENABLE
+%token<@ast.WgslIdent> KW_REQUIRES
+%token<@ast.WgslIdent> KW_DIAGNOSTIC
+%token<(String, String)> DIRECTIVE_HEAD
+%token<String> DIRECTIVE_TAIL
+%token HASH "#"
+%token PREFIX
+%token AS "as"
+%token ARROW "->"
+%token LPAREN "("
+%token RPAREN ")"
+%token LBRACE "{"
+%token RBRACE "}"
+%token COLON ":"
+%token<Int> TYPE_LT "<"
+%token<Int> TYPE_GT ">"
+%token COMMA ","
+%token SEMI ";"
+%token EOF
+
+%%
+
+raw_top_level_items -> Array[@ast.WgslRawTopLevelItem]
+  : items EOF { $1 }
+  ;
+
+items -> Array[@ast.WgslRawTopLevelItem]
+  : { [] }
+  | items ITEM {
+      let items = $1
+      items.push($2)
+      items
+    }
+  ;
+
+import_targets -> Array[@common.WgslImportTarget]
+  : target_list semis EOF { $1 }
+  | module_path=IDENT targets=target_list semis EOF {
+      let out : Array[@common.WgslImportTarget] = []
+      for target in targets {
+        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
+          ""
+        } else {
+          "::"
+        }
+        out.push(@common.WgslImportTarget::{
+          raw_path: module_path + sep + target.raw_path,
+          alias_name: target.alias_name,
+        })
+      }
+      out
+    }
+  ;
+
+semis -> Unit
+  : { () }
+  | semis ";" { () }
+  ;
+
+target_list -> Array[@common.WgslImportTarget]
+  : target {
+      $1
+    }
+  | target_list "," target {
+      let targets = $1
+      for target in $3 {
+        targets.push(target)
+      }
+      targets
+    }
+  | target_list "," {
+      $1
+    }
+  ;
+
+target -> Array[@common.WgslImportTarget]
+  : path=IDENT alias_name=alias {
+      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
+    }
+  | module_path=IDENT "{" targets=target_list "}" {
+      let out : Array[@common.WgslImportTarget] = []
+      for target in targets {
+        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
+          ""
+        } else {
+          "::"
+        }
+        out.push(@common.WgslImportTarget::{
+          raw_path: module_path + sep + target.raw_path,
+          alias_name: target.alias_name,
+        })
+      }
+      out
+    }
+  ;
+
+alias -> String
+  : { "" }
+  | "as" name=IDENT { name }
+  ;
+
+directive_line -> @ast.WgslDirective
+  : "#" head=DIRECTIVE_HEAD tail=directive_tail EOF {
+      let (name, text) = head
+      let kind = match name {
+        "ifdef" => @ast.WgslDirectiveKind::Ifdef
+        "ifndef" => @ast.WgslDirectiveKind::Ifndef
+        "if" => @ast.WgslDirectiveKind::If
+        "else" => @ast.WgslDirectiveKind::Else
+        "endif" => @ast.WgslDirectiveKind::Endif
+        "define_import_path" => @ast.WgslDirectiveKind::DefineImportPath
+        "define" => @ast.WgslDirectiveKind::Define
+        "import" => @ast.WgslDirectiveKind::Import
+        "enable" => @ast.WgslDirectiveKind::Enable
+        "requires" => @ast.WgslDirectiveKind::Requires
+        "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
+        _ => @ast.WgslDirectiveKind::Other(name)
+      }
+      @ast.WgslDirective::{ kind, name, tail, text }
+    }
+  ;
+
+directive_prefix_tail -> String
+  : "#" PREFIX tail=directive_tail EOF { tail }
+  ;
+
+directive_tail -> String
+  : { "" }
+  | DIRECTIVE_TAIL { $1 }
+  ;
+
+decl_head -> @ast.WgslDeclHead
+  : attrs=DECL_ATTRS KW_VIRTUAL fn_kw=KW_FN EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::Function,
+        attributes: attrs,
+        keyword: Some(fn_kw),
+        qualifier: "virtual",
+        qualifier_start: Some($2.start),
+        qualifier_end: Some($2.end),
+        fn_keyword: Some(fn_kw),
+        consumed: 2,
+      }
+    }
+  | attrs=DECL_ATTRS KW_OVERRIDE fn_kw=KW_FN EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::Function,
+        attributes: attrs,
+        keyword: Some(fn_kw),
+        qualifier: "override",
+        qualifier_start: Some($2.start),
+        qualifier_end: Some($2.end),
+        fn_keyword: Some(fn_kw),
+        consumed: 2,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_FN EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::Function,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: Some(keyword),
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_OVERRIDE EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::Override,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_VAR EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::GlobalVariable,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_STRUCT EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::Struct,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_CONST EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::Const,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_CONST_ASSERT EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::ConstAssert,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_ALIAS EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::TypeAlias,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_TYPE EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::TypeAlias,
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_ENABLE EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Enable),
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_REQUIRES EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Requires),
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS keyword=KW_DIAGNOSTIC EOF {
+      @ast.WgslDeclHead::{
+        kind: @ast.WgslDeclHeadKind::SourceDirective(@ast.WgslDirectiveKind::Diagnostic),
+        attributes: attrs,
+        keyword: Some(keyword),
+        qualifier: "",
+        qualifier_start: None,
+        qualifier_end: None,
+        fn_keyword: None,
+        consumed: 1,
+      }
+    }
+  | attrs=DECL_ATTRS EOF {
+      @ast.WgslDeclHead::raw(attrs)
+    }
+  ;
+
+type_ref -> @ast.WgslTypeRef
+  : value=type_expr EOF { value }
+  ;
+
+function_args -> Array[@ast.WgslFunctionArgument]
+  : "(" ")" EOF { [] }
+  | "(" args=function_arg_list optional_comma ")" EOF { args }
+  ;
+
+function_result -> @ast.WgslFunctionResult?
+  : "->" attrs=DECL_ATTRS ty=ARG_TYPE EOF {
+      let (ty_text, ty_ref) = ty
+      Some(@ast.WgslFunctionResult::{ attributes: attrs, ty: ty_text, ty_ref })
+    }
+  ;
+
+struct_members -> Array[@ast.WgslStructMember]
+  : "{" "}" EOF { [] }
+  | "{" members=struct_member_list optional_member_separator "}" EOF {
+      members
+    }
+  ;
+
+struct_member_list -> Array[@ast.WgslStructMember]
+  : value=struct_member {
+      [value]
+    }
+  | members=struct_member_list member_separator value=struct_member {
+      members.push(value)
+      members
+    }
+  ;
+
+struct_member -> @ast.WgslStructMember
+  : attrs=DECL_ATTRS name=MEMBER_NAME ":" ty=MEMBER_TYPE {
+      let (ty_text, ty_ref) = ty
+      @ast.WgslStructMember::{
+        attributes: attrs,
+        name: name.name,
+        name_start: name.start,
+        name_end: name.end,
+        ty: ty_text,
+        ty_ref,
+      }
+    }
+  ;
+
+member_separator -> Unit
+  : "," { () }
+  | ";" { () }
+  ;
+
+optional_member_separator -> Unit
+  : { () }
+  | member_separator { () }
+  ;
+
+function_arg_list -> Array[@ast.WgslFunctionArgument]
+  : value=function_arg {
+      [value]
+    }
+  | args=function_arg_list "," value=function_arg {
+      args.push(value)
+      args
+    }
+  ;
+
+function_arg -> @ast.WgslFunctionArgument
+  : attrs=DECL_ATTRS name=ARG_NAME ":" ty=ARG_TYPE {
+      let (ty_text, ty_ref) = ty
+      @ast.WgslFunctionArgument::{
+        attributes: attrs,
+        name: name.name,
+        name_start: name.start,
+        name_end: name.end,
+        ty: ty_text,
+        ty_ref,
+      }
+    }
+  ;
+
+optional_comma -> Unit
+  : { () }
+  | "," { () }
+  ;
+
+template_list -> Array[String]
+  : TYPE_LT args=template_args TYPE_GT EOF { args }
+  ;
+
+template_args -> Array[String]
+  : value=type_expr {
+      [value.text]
+    }
+  | args=template_args "," value=type_expr {
+      args.push(value.text)
+      args
+    }
+  ;
+
+type_expr -> @ast.WgslTypeRef
+  : atom=TYPE_ATOM {
+      wgsl_type_ref_from_atom(atom, [], atom.4)
+    }
+  | atom=TYPE_ATOM TYPE_LT args=type_ref_args gt=TYPE_GT {
+      wgsl_type_ref_from_atom(atom, args, gt)
+    }
+  ;
+
+type_ref_args -> Array[@ast.WgslTypeRef]
+  : value=type_expr {
+      [value]
+    }
+  | args=type_ref_args "," value=type_expr {
+      args.push(value)
+      args
+    }
+  ;
+
+%%
+
+fn wgsl_type_ref_text(
+  source : String,
+  source_start : Int,
+  start : Int,
+  end_ : Int,
+) -> String {
+  let local_start = start - source_start
+  let local_end = end_ - source_start
+  if local_start < 0 || local_end < local_start || local_end > source.length() {
+    return ""
+  }
+  source[local_start:local_end].to_owned()
+}
+
+fn wgsl_type_ref_from_atom(
+  atom : (String, String, Int, Int, Int),
+  arguments : Array[@ast.WgslTypeRef],
+  end_ : Int,
+) -> @ast.WgslTypeRef {
+  let (name, source, source_start, start, _) = atom
+  @ast.WgslTypeRef::{
+    name,
+    arguments,
+    text: wgsl_type_ref_text(source, source_start, start, end_),
+    start,
+    end: end_,
+  }
+}

@@ -15,9 +15,11 @@ using @metadata {
 }
 
 ///|
-using @syntax {
+using @ast {type WgslDirectiveKind}
+
+///|
+using @parser {
   type Token,
-  type WgslDirectiveKind,
   import_brace_balance,
   replace_comments,
   spaces,

@@ -19,10 +19,11 @@ using @resolver {
 }
 
 ///|
-using @syntax {
+using @ast {type WgslIdent, collect_wgsl_decl_identifier_nodes}
+
+///|
+using @parser {
   type Token,
-  type WgslIdent,
-  collect_wgsl_decl_identifier_nodes,
   parse_wgsl_translation_unit,
   split_last_identifier,
   tokenize,

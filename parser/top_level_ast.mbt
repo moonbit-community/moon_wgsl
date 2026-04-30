@@ -13,25 +13,6 @@
 // limitations under the License.
 
 ///|
-priv enum WgslTopLevelKind {
-  Trivia
-  Import
-  DefineImportPath
-  Define
-  Directive
-  Declaration
-}
-
-///|
-priv struct WgslTopLevelItem {
-  kind : WgslTopLevelKind
-  name : String
-  text : String
-  start : Int
-  end : Int
-}
-
-///|
 fn top_level_text_contains_code_unit(text : String, code : Int) -> Bool {
   for i in 0..<text.length() {
     if text.code_unit_at(i).to_int() == code {
@@ -43,13 +24,13 @@ fn top_level_text_contains_code_unit(text : String, code : Int) -> Bool {
 
 ///|
 fn top_level_push_directive_item(
-  items : Array[WgslTopLevelItem],
-  kind : WgslTopLevelKind,
+  items : Array[WgslRawTopLevelItem],
+  kind : WgslRawTopLevelKind,
   line : String,
   start : Int,
 ) -> Unit {
   let text = "\{line}\n"
-  items.push(WgslTopLevelItem::{
+  items.push(WgslRawTopLevelItem::{
     kind,
     name: "",
     text,
@@ -60,7 +41,7 @@ fn top_level_push_directive_item(
 
 ///|
 fn top_level_push_trivia_item(
-  items : Array[WgslTopLevelItem],
+  items : Array[WgslRawTopLevelItem],
   lines : Array[String],
   start : Int,
 ) -> Unit {
@@ -71,8 +52,8 @@ fn top_level_push_trivia_item(
   for line in lines {
     text = "\{text}\{line}\n"
   }
-  items.push(WgslTopLevelItem::{
-    kind: WgslTopLevelKind::Trivia,
+  items.push(WgslRawTopLevelItem::{
+    kind: WgslRawTopLevelKind::Trivia,
     name: "",
     text,
     start,
@@ -173,7 +154,7 @@ fn WgslTopLevelParser::push_pending_prefix(
 ///|
 fn WgslTopLevelParser::flush_trivia(
   self : WgslTopLevelParser,
-  items : Array[WgslTopLevelItem],
+  items : Array[WgslRawTopLevelItem],
 ) -> Unit {
   top_level_push_trivia_item(
     items,
@@ -186,10 +167,10 @@ fn WgslTopLevelParser::flush_trivia(
 ///|
 fn WgslTopLevelParser::parse_directive_item(
   self : WgslTopLevelParser,
-  items : Array[WgslTopLevelItem],
+  items : Array[WgslRawTopLevelItem],
   line : WgslTopLevelLine,
   rest : ArrayView[WgslTopLevelLine],
-  kind : WgslTopLevelKind,
+  kind : WgslRawTopLevelKind,
 ) -> Unit {
   self.flush_trivia(items)
   top_level_push_directive_item(items, kind, line.text, line.start)
@@ -199,7 +180,7 @@ fn WgslTopLevelParser::parse_directive_item(
 ///|
 fn WgslTopLevelParser::parse_import_item(
   self : WgslTopLevelParser,
-  items : Array[WgslTopLevelItem],
+  items : Array[WgslRawTopLevelItem],
   line : WgslTopLevelLine,
   rest : ArrayView[WgslTopLevelLine],
   directive : WgslDirective,
@@ -221,8 +202,8 @@ fn WgslTopLevelParser::parse_import_item(
     }
   }
   import_block = "\{import_block}\n"
-  items.push(WgslTopLevelItem::{
-    kind: WgslTopLevelKind::Import,
+  items.push(WgslRawTopLevelItem::{
+    kind: WgslRawTopLevelKind::Import,
     name: "",
     text: import_block,
     start: block_start,
@@ -233,7 +214,7 @@ fn WgslTopLevelParser::parse_import_item(
 ///|
 fn WgslTopLevelParser::parse_declaration_item(
   self : WgslTopLevelParser,
-  items : Array[WgslTopLevelItem],
+  items : Array[WgslRawTopLevelItem],
 ) -> Unit {
   let block_lines : Array[String] = []
   let block_start = if self.pending_prefix.length() > 0 {
@@ -277,8 +258,8 @@ fn WgslTopLevelParser::parse_declaration_item(
   for block_line in block_lines {
     block_text = "\{block_text}\{block_line}\n"
   }
-  items.push(WgslTopLevelItem::{
-    kind: WgslTopLevelKind::Declaration,
+  items.push(WgslRawTopLevelItem::{
+    kind: WgslRawTopLevelKind::Declaration,
     name: parse_wgsl_declaration_name(block_text),
     text: block_text,
     start: block_start,
@@ -289,8 +270,8 @@ fn WgslTopLevelParser::parse_declaration_item(
 ///|
 fn WgslTopLevelParser::parse_items(
   self : WgslTopLevelParser,
-) -> Array[WgslTopLevelItem] {
-  let items : Array[WgslTopLevelItem] = []
+) -> Array[WgslRawTopLevelItem] {
+  let items : Array[WgslRawTopLevelItem] = []
   while true {
     match self.view() {
       [line, .. rest] => {
@@ -311,7 +292,7 @@ fn WgslTopLevelParser::parse_items(
                 items,
                 line,
                 rest,
-                WgslTopLevelKind::DefineImportPath,
+                WgslRawTopLevelKind::DefineImportPath,
               )
               continue
             }
@@ -320,7 +301,7 @@ fn WgslTopLevelParser::parse_items(
                 items,
                 line,
                 rest,
-                WgslTopLevelKind::Define,
+                WgslRawTopLevelKind::Define,
               )
               continue
             }
@@ -341,7 +322,7 @@ fn WgslTopLevelParser::parse_items(
                 items,
                 line,
                 rest,
-                WgslTopLevelKind::Directive,
+                WgslRawTopLevelKind::Directive,
               )
               continue
             }
@@ -359,6 +340,6 @@ fn WgslTopLevelParser::parse_items(
 }
 
 ///|
-fn parse_wgsl_top_level_items(source : String) -> Array[WgslTopLevelItem] {
+fn parse_wgsl_top_level_items(source : String) -> Array[WgslRawTopLevelItem] {
   WgslTopLevelParser::new(source).parse_items()
 }

@@ -1,0 +1,122 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/parser/generated"
+
+import {
+  "Milky2018/moon_wgsl/ast",
+  "Milky2018/moon_wgsl/common",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn decl_head(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDeclHead raise ParseError
+
+pub fn directive_line(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDirective raise ParseError
+
+pub fn directive_prefix_tail(Array[(Token, Int, Int)], initial_pos? : Int) -> String raise ParseError
+
+pub fn function_args(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslFunctionArgument] raise ParseError
+
+pub fn function_result(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslFunctionResult? raise ParseError
+
+pub fn import_targets(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@common.WgslImportTarget] raise ParseError
+
+pub fn raw_top_level_items(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslRawTopLevelItem] raise ParseError
+
+pub fn struct_members(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslStructMember] raise ParseError
+
+pub fn template_list(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[String] raise ParseError
+
+pub fn type_ref(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslTypeRef raise ParseError
+
+// Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) enum Token {
+  ITEM(@ast.WgslRawTopLevelItem)
+  IDENT(String)
+  TYPE_ATOM((String, String, Int, Int, Int))
+  DECL_ATTRS(Array[@ast.WgslAttribute])
+  ARG_NAME(@ast.WgslIdent)
+  ARG_TYPE((String, @ast.WgslTypeRef?))
+  MEMBER_NAME(@ast.WgslIdent)
+  MEMBER_TYPE((String, @ast.WgslTypeRef?))
+  KW_VIRTUAL(@ast.WgslIdent)
+  KW_OVERRIDE(@ast.WgslIdent)
+  KW_FN(@ast.WgslIdent)
+  KW_VAR(@ast.WgslIdent)
+  KW_STRUCT(@ast.WgslIdent)
+  KW_CONST(@ast.WgslIdent)
+  KW_CONST_ASSERT(@ast.WgslIdent)
+  KW_ALIAS(@ast.WgslIdent)
+  KW_TYPE(@ast.WgslIdent)
+  KW_ENABLE(@ast.WgslIdent)
+  KW_REQUIRES(@ast.WgslIdent)
+  KW_DIAGNOSTIC(@ast.WgslIdent)
+  DIRECTIVE_HEAD((String, String))
+  DIRECTIVE_TAIL(String)
+  HASH
+  PREFIX
+  AS
+  ARROW
+  LPAREN
+  RPAREN
+  LBRACE
+  RBRACE
+  COLON
+  TYPE_LT(Int)
+  TYPE_GT(Int)
+  COMMA
+  SEMI
+  EOF
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_ITEM
+  TK_IDENT
+  TK_TYPE_ATOM
+  TK_DECL_ATTRS
+  TK_ARG_NAME
+  TK_ARG_TYPE
+  TK_MEMBER_NAME
+  TK_MEMBER_TYPE
+  TK_KW_VIRTUAL
+  TK_KW_OVERRIDE
+  TK_KW_FN
+  TK_KW_VAR
+  TK_KW_STRUCT
+  TK_KW_CONST
+  TK_KW_CONST_ASSERT
+  TK_KW_ALIAS
+  TK_KW_TYPE
+  TK_KW_ENABLE
+  TK_KW_REQUIRES
+  TK_KW_DIAGNOSTIC
+  TK_DIRECTIVE_HEAD
+  TK_DIRECTIVE_TAIL
+  TK_HASH
+  TK_PREFIX
+  TK_AS
+  TK_ARROW
+  TK_LPAREN
+  TK_RPAREN
+  TK_LBRACE
+  TK_RBRACE
+  TK_COLON
+  TK_TYPE_LT
+  TK_TYPE_GT
+  TK_COMMA
+  TK_SEMI
+  TK_EOF
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
+
+// Type aliases
+
+// Traits
+

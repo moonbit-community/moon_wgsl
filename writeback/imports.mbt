@@ -6,4 +6,4 @@ using @analysis {
 }
 
 ///|
-using @syntax {type WgslGlobalDeclData}
+using @ast {type WgslGlobalDeclData}

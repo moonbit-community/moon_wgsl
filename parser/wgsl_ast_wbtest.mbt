@@ -159,10 +159,111 @@ test "WGSL type refs expose nested template arguments" {
   }
   guard alias_decl.ty_ref is Some(ty) else { abort("expected alias type ref") }
   debug_inspect(ty.name, content="\"array\"")
+  debug_inspect(ty.text, content="\"array<vec4<f32>, 4>\"")
   debug_inspect(ty.arguments.length(), content="2")
   debug_inspect(ty.arguments[0].name, content="\"vec4\"")
+  debug_inspect(ty.arguments[0].text, content="\"vec4<f32>\"")
   debug_inspect(ty.arguments[0].arguments[0].name, content="\"f32\"")
   debug_inspect(ty.arguments[1].name, content="\"4\"")
+}
+
+///|
+test "WGSL type refs preserve template span text with spacing" {
+  let source = "alias Values = array < vec4 < f32 > , 4 >;\n"
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+    abort("expected type alias payload")
+  }
+  guard alias_decl.ty_ref is Some(ty) else { abort("expected alias type ref") }
+  debug_inspect(ty.text, content="\"array < vec4 < f32 > , 4 >\"")
+  debug_inspect(ty.arguments[0].text, content="\"vec4 < f32 >\"")
+  debug_inspect(ty.arguments[0].arguments[0].text, content="\"f32\"")
+  debug_inspect(ty.arguments[1].text, content="\"4\"")
+}
+
+///|
+test "WGSL variable template lists are parsed by grammar" {
+  let source =
+    #|@group(0) @binding(0) var<storage, read_write> values: array<vec4<f32>, 4>;
+    #|@group(0) @binding(1) var<texture_storage_2d<rgba8unorm>, write> image: texture_storage_2d<rgba8unorm, write>;
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::GlobalVariable(values) else {
+    abort("expected values global")
+  }
+  debug_inspect(values.template_list.length(), content="2")
+  debug_inspect(values.template_list[0], content="\"storage\"")
+  debug_inspect(values.template_list[1], content="\"read_write\"")
+  guard unit.declarations[1].data is WgslGlobalDeclData::GlobalVariable(image) else {
+    abort("expected image global")
+  }
+  debug_inspect(image.template_list.length(), content="2")
+  debug_inspect(
+    image.template_list[0],
+    content="\"texture_storage_2d<rgba8unorm>\"",
+  )
+  debug_inspect(image.template_list[1], content="\"write\"")
+}
+
+///|
+test "WGSL function arguments are parsed by grammar" {
+  let source =
+    #|fn shade(
+    #|  @location(0) color: vec4<f32>,
+    #|  values: array<vec4<f32>, 4>,
+    #|) -> f32 { return values[0].x; }
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  debug_inspect(function.arguments.length(), content="2")
+  debug_inspect(
+    function.arguments[0].attributes[0].name,
+    content="\"location\"",
+  )
+  debug_inspect(function.arguments[0].name, content="\"color\"")
+  guard function.arguments[0].ty_ref is Some(color_ty) else {
+    abort("expected color type")
+  }
+  debug_inspect(color_ty.text, content="\"vec4<f32>\"")
+  debug_inspect(function.arguments[1].name, content="\"values\"")
+  guard function.arguments[1].ty_ref is Some(values_ty) else {
+    abort("expected values type")
+  }
+  debug_inspect(values_ty.arguments.length(), content="2")
+  debug_inspect(values_ty.arguments[0].text, content="\"vec4<f32>\"")
+  debug_inspect(values_ty.arguments[1].text, content="\"4\"")
+}
+
+///|
+test "WGSL struct members are parsed by grammar" {
+  let source =
+    #|struct Storage {
+    #|  @location(0) color: vec4<f32>;
+    #|  values: array<vec4<f32>, 4>;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
+    abort("expected struct payload")
+  }
+  debug_inspect(struct_decl.members.length(), content="2")
+  debug_inspect(
+    struct_decl.members[0].attributes[0].name,
+    content="\"location\"",
+  )
+  debug_inspect(struct_decl.members[0].name, content="\"color\"")
+  guard struct_decl.members[0].ty_ref is Some(color_ty) else {
+    abort("expected color type")
+  }
+  debug_inspect(color_ty.text, content="\"vec4<f32>\"")
+  debug_inspect(struct_decl.members[1].name, content="\"values\"")
+  guard struct_decl.members[1].ty_ref is Some(values_ty) else {
+    abort("expected values type")
+  }
+  debug_inspect(values_ty.arguments[0].text, content="\"vec4<f32>\"")
+  debug_inspect(values_ty.arguments[1].text, content="\"4\"")
 }
 
 ///|
@@ -207,7 +308,7 @@ test "WGSL identifier collection exposes source spans" {
   let unit = parse_wgsl_translation_unit(source)
   let nodes : Array[WgslIdent] = []
   for decl in unit.declarations {
-    collect_wgsl_decl_identifier_nodes(decl.data, nodes)
+    @ast.collect_wgsl_decl_identifier_nodes(decl.data, nodes)
   }
   debug_inspect(nodes[0].name, content="\"vec4\"")
   debug_inspect(nodes[0].start, content="14")
@@ -297,7 +398,7 @@ test "WGSL global declaration identifier collection excludes locals" {
   let unit = parse_wgsl_translation_unit(source)
   let nodes : Array[WgslIdent] = []
   for decl in unit.declarations {
-    collect_wgsl_decl_global_declared_identifier_nodes(decl.data, nodes)
+    @ast.collect_wgsl_decl_global_declared_identifier_nodes(decl.data, nodes)
   }
   debug_inspect(
     nodes.map(fn(node) { node.name }),
@@ -323,7 +424,7 @@ test "WGSL declaration identifier collection excludes function locals" {
     abort("expected function payload")
   }
   let nodes : Array[WgslIdent] = []
-  collect_wgsl_decl_identifier_nodes(
+  @ast.collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::Function(function),
     nodes,
   )
@@ -354,7 +455,7 @@ test "WGSL statement AST records nested and loop local declarations" {
     abort("expected function payload")
   }
   let nodes : Array[WgslIdent] = []
-  collect_wgsl_decl_identifier_nodes(
+  @ast.collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::Function(function),
     nodes,
   )

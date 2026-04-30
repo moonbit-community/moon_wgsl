@@ -25,10 +25,10 @@ test "naga_oil upstream WGSL fixture mirror parses without raw top-level declara
     if file.rel_path.has_prefix("error_test/") {
       continue
     }
-    let unit = @syntax.parse_wgsl_translation_unit(file.source)
+    let unit = @parser.parse_wgsl_translation_unit(file.source)
     let mut count = 0
     for decl in unit.declarations {
-      if decl.kind == @syntax.WgslGlobalDeclKind::Unknown {
+      if decl.kind == @ast.WgslGlobalDeclKind::Unknown {
         count = count + 1
       }
     }
@@ -54,10 +54,10 @@ test "Bevy WGSL fixture mirror parses without raw top-level declarations" {
   }
   let unknowns : Array[String] = []
   for file in files {
-    let unit = @syntax.parse_wgsl_translation_unit(file.source)
+    let unit = @parser.parse_wgsl_translation_unit(file.source)
     let mut count = 0
     for decl in unit.declarations {
-      if decl.kind == @syntax.WgslGlobalDeclKind::Unknown {
+      if decl.kind == @ast.WgslGlobalDeclKind::Unknown {
         count = count + 1
       }
     }

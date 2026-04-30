@@ -7,8 +7,7 @@ using @analysis {
 }
 
 ///|
-using @syntax {
-  type WgslFunction,
-  type WgslGlobalDeclData,
-  split_last_identifier,
-}
+using @ast {type WgslFunction, type WgslGlobalDeclData}
+
+///|
+using @parser {split_last_identifier}

@@ -12,4 +12,4 @@ using @common {
 using @metadata {wgsl_source_define_import_path}
 
 ///|
-using @syntax {parse_wgsl_import_targets, trim_trailing_semicolons}
+using @parser {parse_wgsl_import_targets, trim_trailing_semicolons}

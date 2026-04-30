@@ -1,5 +1,5 @@
 ///|
-fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
+pub fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
   match data {
     Function(function) => function.name.name
     GlobalVariable(global) => global.name.name

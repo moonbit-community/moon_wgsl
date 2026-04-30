@@ -2,8 +2,8 @@
 package "Milky2018/moon_wgsl/analysis"
 
 import {
+  "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
-  "Milky2018/moon_wgsl/syntax",
   "moonbitlang/core/hashmap",
 }
 
@@ -46,7 +46,7 @@ pub struct WgslEmittedDeclaration {
 pub struct WgslGraphBlock {
   name : String
   text : String
-  data : @syntax.WgslGlobalDeclData
+  data : @ast.WgslGlobalDeclData
 }
 
 pub struct WgslRenamePlan {

@@ -85,55 +85,16 @@ fn skip_ascii_space(text : String, start : Int) -> Int {
 }
 
 ///|
-pub(all) enum WgslDirectiveKind {
-  Ifdef
-  Ifndef
-  If
-  Else
-  Endif
-  DefineImportPath
-  Define
-  Import
-  Enable
-  Requires
-  Diagnostic
-  Other(String)
-} derive(Eq, Debug)
-
-///|
-pub struct WgslDirective {
-  kind : WgslDirectiveKind
-  name : String
-  tail : String
-  text : String
-} derive(Debug)
-
-///|
-fn wgsl_directive_kind_from_name(name : String) -> WgslDirectiveKind {
-  match name {
-    "ifdef" => WgslDirectiveKind::Ifdef
-    "ifndef" => WgslDirectiveKind::Ifndef
-    "if" => WgslDirectiveKind::If
-    "else" => WgslDirectiveKind::Else
-    "endif" => WgslDirectiveKind::Endif
-    "define_import_path" => WgslDirectiveKind::DefineImportPath
-    "define" => WgslDirectiveKind::Define
-    "import" => WgslDirectiveKind::Import
-    "enable" => WgslDirectiveKind::Enable
-    "requires" => WgslDirectiveKind::Requires
-    "diagnostic" => WgslDirectiveKind::Diagnostic
-    _ => WgslDirectiveKind::Other(name)
-  }
-}
-
-///|
-fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
+fn tokenize_wgsl_directive_line(
+  line : String,
+) -> Array[(@generated.Token, Int, Int)]? {
   let trimmed = line.trim().to_owned()
   guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
     return None
   }
-  let body = trimmed[1:trimmed.length()].to_owned().trim().to_owned()
+  let body_start = skip_ascii_space(trimmed, 1)
   let mut end = 0
+  let body = trimmed[body_start:trimmed.length()].to_owned()
   while end < body.length() &&
         identifier_code_unit(body.code_unit_at(end).to_int()) {
     end = end + 1
@@ -143,12 +104,29 @@ fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
   }
   let name = body[:end].to_owned()
   let tail = body[end:body.length()].to_owned().trim().to_owned()
-  Some(WgslDirective::{
-    kind: wgsl_directive_kind_from_name(name),
-    name,
-    tail,
-    text: trimmed,
-  })
+  let tokens : Array[(@generated.Token, Int, Int)] = [
+    (@generated.Token::HASH, 0, 1),
+    (
+      @generated.Token::DIRECTIVE_HEAD((name, trimmed)),
+      body_start,
+      body_start + end,
+    ),
+  ]
+  if tail != "" {
+    let tail_start = trimmed.length() - tail.length()
+    tokens.push(
+      (@generated.Token::DIRECTIVE_TAIL(tail), tail_start, trimmed.length()),
+    )
+  }
+  tokens.push((@generated.Token::EOF, trimmed.length(), trimmed.length()))
+  Some(tokens)
+}
+
+///|
+fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
+  guard tokenize_wgsl_directive_line(line) is Some(tokens) else { return None }
+  let parsed = @generated.directive_line(tokens) catch { _ => return None }
+  Some(parsed)
 }
 
 ///|
@@ -179,7 +157,21 @@ pub fn wgsl_directive_prefix_tail(
     return None
   }
   start = start + prefix.length()
-  Some(trimmed[start:trimmed.length()].to_owned())
+  let tail = trimmed[start:trimmed.length()].to_owned()
+  let tokens : Array[(@generated.Token, Int, Int)] = [
+    (@generated.Token::HASH, 0, 1),
+    (@generated.Token::PREFIX, start - prefix.length(), start),
+  ]
+  if tail != "" {
+    tokens.push(
+      (@generated.Token::DIRECTIVE_TAIL(tail), start, trimmed.length()),
+    )
+  }
+  tokens.push((@generated.Token::EOF, trimmed.length(), trimmed.length()))
+  let parsed = @generated.directive_prefix_tail(tokens) catch {
+    _ => return None
+  }
+  Some(parsed)
 }
 
 ///|

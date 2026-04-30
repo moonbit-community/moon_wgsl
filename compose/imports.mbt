@@ -72,8 +72,10 @@ using @resolver {
 }
 
 ///|
-using @syntax {
-  type WgslDirectiveKind,
+using @ast {type WgslDirectiveKind}
+
+///|
+using @parser {
   import_brace_balance,
   split_source_lines,
   wgsl_directive_prefix_tail,

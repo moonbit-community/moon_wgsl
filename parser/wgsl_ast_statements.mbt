@@ -1,39 +1,100 @@
 ///|
+fn wgsl_name_list_contains(names : Array[String], name : String) -> Bool {
+  for existing in names {
+    if existing == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_name_list_push_unique(names : Array[String], name : String) -> Unit {
+  if name == "" || wgsl_name_list_contains(names, name) {
+    return
+  }
+  names.push(name)
+}
+
+///|
 fn WgslDeclParser::parse_function_arguments(
   self : WgslDeclParser,
 ) -> Array[WgslFunctionArgument] {
-  let arguments : Array[WgslFunctionArgument] = []
-  if !self.consume_if_other(40) {
-    return arguments
-  }
-  while true {
-    if self.consume_if_other(41) {
-      break
-    }
-    let attributes = self.parse_attributes()
-    match self.consume_ident_node() {
-      Some(name_node) => {
-        self.consume_if_other(58) |> ignore
-        let ty_fragment = self.collect_until_top_level_fragment([44, 41])
-        let ty = ty_fragment.text
-        arguments.push(WgslFunctionArgument::{
-          attributes,
-          name: name_node.name,
-          name_start: name_node.start,
-          name_end: name_node.end,
-          ty,
-          ty_ref: parse_wgsl_type_ref_fragment(ty_fragment),
-        })
+  match self.collect_delimited_token_view(40, 41) {
+    Some(fragment) => {
+      let tokens = self.tokenize_function_arguments(fragment) catch {
+        _ => return []
       }
-      None => ()
+      let arguments = @generated.function_args(tokens) catch { _ => return [] }
+      self.drop_tokens(fragment.consumed)
+      arguments
     }
-    if self.consume_if_other(44) {
+    None => []
+  }
+}
+
+///|
+priv suberror WgslFunctionArgsTokenizeError {
+  UnexpectedToken
+}
+
+///|
+fn WgslDeclParser::tokenize_function_arguments(
+  self : WgslDeclParser,
+  fragment : WgslDelimitedTokenView,
+) -> Array[(@generated.Token, Int, Int)] raise WgslFunctionArgsTokenizeError {
+  let tokens : Array[(@generated.Token, Int, Int)] = [
+    (@generated.Token::LPAREN, fragment.open_start, fragment.open_start + 1),
+  ]
+  let parser = WgslDeclParser::{
+    source_text: self.source_text,
+    token_view: fragment.inner,
+  }
+  while parser.view().length() > 0 {
+    if parser.consume_if_other(44) {
+      tokens.push((@generated.Token::COMMA, 0, 0))
       continue
     }
-    self.consume_if_other(41) |> ignore
-    break
+    let attributes = parser.parse_attributes()
+    tokens.push((@generated.Token::DECL_ATTRS(attributes), 0, 0))
+    let name = match parser.consume_ident_node() {
+      Some(value) => value
+      None => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+    }
+    tokens.push((@generated.Token::ARG_NAME(name), name.start, name.end))
+    match parser.view() {
+      [Token::Other(58, pos), .. rest] => {
+        parser.update_view(rest)
+        tokens.push((@generated.Token::COLON, pos, pos + 1))
+      }
+      _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+    }
+    let ty_fragment = parser.collect_until_top_level_fragment([44])
+    if ty_fragment.text == "" {
+      raise WgslFunctionArgsTokenizeError::UnexpectedToken
+    }
+    tokens.push(
+      (
+        @generated.Token::ARG_TYPE(
+          (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+        ),
+        ty_fragment.start,
+        ty_fragment.end,
+      ),
+    )
+    match parser.view() {
+      [Token::Other(44, _), ..] => continue
+      [] => break
+      _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+    }
   }
-  arguments
+  tokens.push(
+    (@generated.Token::RPAREN, fragment.close_start, fragment.close_start + 1),
+  )
+  tokens.push(
+    (@generated.Token::EOF, fragment.close_start + 1, fragment.close_start + 1),
+  )
+  tokens
 }
 
 ///|
@@ -41,16 +102,32 @@ fn WgslDeclParser::parse_function_result(
   self : WgslDeclParser,
 ) -> WgslFunctionResult? {
   match self.view() {
-    [Token::Other(45, _), Token::Other(62, _), .. rest] => {
-      self.update_view(rest)
-      let attributes = self.parse_attributes()
-      let ty_fragment = self.collect_until_top_level_fragment([123, 59])
-      let ty = ty_fragment.text
-      Some(WgslFunctionResult::{
-        attributes,
-        ty,
-        ty_ref: parse_wgsl_type_ref_fragment(ty_fragment),
-      })
+    [Token::Other(45, arrow_start), Token::Other(62, arrow_end), .. rest] => {
+      let parser = WgslDeclParser::{
+        source_text: self.source_text,
+        token_view: rest,
+      }
+      let rest_len = rest.length()
+      let attributes = parser.parse_attributes()
+      let ty_fragment = parser.collect_until_top_level_fragment([123, 59])
+      if ty_fragment.text == "" {
+        return None
+      }
+      let tokens : Array[(@generated.Token, Int, Int)] = [
+        (@generated.Token::ARROW, arrow_start, arrow_end + 1),
+        (@generated.Token::DECL_ATTRS(attributes), 0, 0),
+        (
+          @generated.Token::ARG_TYPE(
+            (ty_fragment.text, parse_wgsl_type_ref_fragment(ty_fragment)),
+          ),
+          ty_fragment.start,
+          ty_fragment.end,
+        ),
+        (@generated.Token::EOF, ty_fragment.end, ty_fragment.end),
+      ]
+      let result = @generated.function_result(tokens) catch { _ => return None }
+      self.drop_tokens(2 + rest_len - parser.view().length())
+      result
     }
     _ => None
   }

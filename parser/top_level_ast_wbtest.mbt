@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn top_level_kind_snapshot(kind : WgslTopLevelKind) -> String {
+fn top_level_kind_snapshot(kind : WgslRawTopLevelKind) -> String {
   match kind {
     Trivia => "Trivia"
     Import => "Import"
