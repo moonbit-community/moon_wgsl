@@ -106,6 +106,57 @@ test "declaration graph does not keep globals shadowed by function locals" {
 }
 
 ///|
+test "declaration graph keeps globals referenced before local shadows" {
+  let source =
+    #|fn helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|fn entry() -> u32 {
+    #|  let value = helper();
+    #|  let helper = 2u;
+    #|  return value + helper;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("fn helper"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph does not leak nested local shadows" {
+  let source =
+    #|const nested: u32 = 1u;
+    #|fn entry(cond: bool) -> u32 {
+    #|  if (cond) {
+    #|    let nested = 2u;
+    #|  }
+    #|  return nested;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const nested"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph ignores member access suffix dependencies" {
+  let source =
+    #|struct Item {
+    #|  value: f32,
+    #|}
+    #|const value: f32 = 2.0;
+    #|const selected: f32 = Item(1.0).value;
+    #|fn entry() -> f32 {
+    #|  return selected;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("struct Item"), content="true")
+  debug_inspect(extracted.contains("const selected"), content="true")
+  debug_inspect(extracted.contains("const value"), content="false")
+}
+
+///|
 test "rename plan global rules do not rewrite function parameter locals" {
   let source =
     #|struct Input {

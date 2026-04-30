@@ -724,6 +724,34 @@ test "naga_oil: virtual override base detection ignores local shadows" {
 }
 
 ///|
+test "naga_oil: virtual override base detection respects statement order" {
+  clear_composer_test_registry()
+  let composer = composer_test_composer()
+  composer.register_source(
+    "mod.wgsl", "#define_import_path mod\nvirtual fn inner() -> f32 {\n  return 1.0;\n}\n",
+  )
+  composer.register_source(
+    "top.wgsl", "#import mod\noverride fn mod::inner() -> f32 {\n  let value = mod::inner();\n  let mod__inner = 2.0;\n  return value + mod__inner;\n}\nfn top() -> f32 {\n  return mod::inner();\n}\n",
+  )
+  let source = composer.compose_wgsl(
+    "top.wgsl",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort(
+        "expected ordered local-shadow virtual override success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("fn mod__inner__virtual_base"), content="true")
+  debug_inspect(
+    source.contains("let value = mod__inner__virtual_base();"),
+    content="true",
+  )
+  debug_inspect(source.contains("let mod__inner = 2.0;"), content="true")
+  clear_composer_test_registry()
+}
+
+///|
 test "github issue 5: unicode source lines do not abort prefix checks" {
   let source = "// 中文注释会让旧 starts_with_text 切到非法边界\n#ifdef ENABLED\nconst enabled_value: u32 = 1u;\n#endif\nfn main() -> u32 {\n  return 0u;\n}\n"
   let preprocessed = composer_test_composer().compose_wgsl_source(

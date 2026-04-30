@@ -74,25 +74,6 @@ fn wgsl_name_list_push_unique(names : Array[String], name : String) -> Unit {
 }
 
 ///|
-fn collect_wgsl_function_local_names(
-  function : WgslFunction,
-  names : Array[String],
-) -> Unit {
-  for argument in function.arguments {
-    wgsl_name_list_push_unique(names, argument.name)
-  }
-  for statement in function.body.statements {
-    match statement.local_name {
-      Some(name) => wgsl_name_list_push_unique(names, name)
-      None => ()
-    }
-    for name in statement.local_names {
-      wgsl_name_list_push_unique(names, name)
-    }
-  }
-}
-
-///|
 pub fn collect_wgsl_decl_identifier_nodes(
   data : WgslGlobalDeclData,
   nodes : Array[WgslIdent],
@@ -103,7 +84,9 @@ pub fn collect_wgsl_decl_identifier_nodes(
       if function.qualifier == "override" {
         nodes.push(function.name)
       }
+      let active_local_names : Array[String] = []
       for argument in function.arguments {
+        wgsl_name_list_push_unique(active_local_names, argument.name)
         collect_wgsl_attribute_identifier_nodes(argument.attributes, nodes)
         collect_wgsl_type_ref_identifier_nodes(argument.ty_ref, nodes)
       }
@@ -114,13 +97,15 @@ pub fn collect_wgsl_decl_identifier_nodes(
         }
         None => ()
       }
-      let local_names : Array[String] = []
-      collect_wgsl_function_local_names(function, local_names)
       for statement in function.body.statements {
         for ident in statement.identifiers {
-          if !wgsl_name_list_contains(local_names, ident.name) {
+          if !wgsl_name_list_contains(active_local_names, ident.name) {
             nodes.push(ident)
           }
+        }
+        match statement.local_name {
+          Some(name) => wgsl_name_list_push_unique(active_local_names, name)
+          None => ()
         }
       }
     }

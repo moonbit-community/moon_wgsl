@@ -1,6 +1,5 @@
 ///|
 using @syntax {
-  type Token,
   type WgslAttribute,
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
@@ -10,7 +9,6 @@ using @syntax {
   collect_wgsl_decl_identifier_nodes,
   parse_wgsl_translation_unit,
   split_last_identifier,
-  tokenize,
 }
 
 ///|

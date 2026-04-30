@@ -8,6 +8,20 @@ fn wgsl_ast_token_end(token : Token) -> Int {
 }
 
 ///|
+fn wgsl_expr_identifier_has_access_prefix(
+  tokens : Array[Token],
+  index : Int,
+) -> Bool {
+  if index == 0 {
+    return false
+  }
+  match tokens[index - 1] {
+    Token::Other(46, _) | Token::Other(64, _) => true
+    _ => false
+  }
+}
+
+///|
 fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
     text,
@@ -18,14 +32,17 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     return None
   }
   let identifiers : Array[WgslIdent] = []
-  for token in tokenize(replace_comments(trimmed), false) {
-    match token {
+  let tokens = tokenize(replace_comments(trimmed), false)
+  for i in 0..<tokens.length() {
+    match tokens[i] {
       Token::Identifier(name, pos) =>
-        identifiers.push(WgslIdent::{
-          name,
-          start: base + local_start + pos,
-          end: base + local_start + pos + name.length(),
-        })
+        if !wgsl_expr_identifier_has_access_prefix(tokens, i) {
+          identifiers.push(WgslIdent::{
+            name,
+            start: base + local_start + pos,
+            end: base + local_start + pos + name.length(),
+          })
+        }
       _ => ()
     }
   }

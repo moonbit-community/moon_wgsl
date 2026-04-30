@@ -83,49 +83,6 @@ fn WgslRenamePlan::add_redirect_map(
 }
 
 ///|
-fn collect_wgsl_decl_local_names(
-  data : WgslGlobalDeclData,
-  names : Array[String],
-) -> Unit {
-  match data {
-    WgslGlobalDeclData::Function(function) => {
-      for argument in function.arguments {
-        wgsl_string_list_push_unique(names, argument.name)
-      }
-      for statement in function.body.statements {
-        match statement.local_name {
-          Some(name) => wgsl_string_list_push_unique(names, name)
-          None => ()
-        }
-        for name in statement.local_names {
-          wgsl_string_list_push_unique(names, name)
-        }
-      }
-    }
-    WgslGlobalDeclData::Struct(struct_decl) =>
-      for struct_member in struct_decl.members {
-        wgsl_string_list_push_unique(names, struct_member.name)
-      }
-    _ => ()
-  }
-}
-
-///|
-pub fn build_wgsl_decl_local_name_map(
-  data : WgslGlobalDeclData,
-) -> @hashmap.HashMap[String, Bool] {
-  let names : Array[String] = []
-  collect_wgsl_decl_local_names(data, names)
-  let map : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  for name in names {
-    if name != "" {
-      map.set(name, true)
-    }
-  }
-  map
-}
-
-///|
 pub fn build_wgsl_rename_plan_from_redirect_map(
   redirect_map : @hashmap.HashMap[String, String],
   kind : WgslRenameRuleKind,

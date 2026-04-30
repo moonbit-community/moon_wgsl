@@ -8,8 +8,6 @@ import {
 }
 
 // Values
-pub fn build_wgsl_decl_local_name_map(@syntax.WgslGlobalDeclData) -> @hashmap.HashMap[String, Bool]
-
 pub fn build_wgsl_declaration_graph(String) -> WgslDeclarationGraph
 
 pub fn build_wgsl_rename_plan_from_redirect_map(@hashmap.HashMap[String, String], WgslRenameRuleKind) -> WgslRenamePlan

@@ -119,33 +119,6 @@ fn build_wgsl_declaration_indexes(
 }
 
 ///|
-fn collect_wgsl_dependency_text_fragment(
-  text : String,
-  self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
-  dependencies : Array[String],
-) -> Unit {
-  for token in tokenize(text, false) {
-    match token {
-      Token::Identifier(ident, _) => {
-        if ident.contains("\"") {
-          continue
-        }
-        let dependency_name = match split_last_identifier(ident) {
-          Some((_, suffix)) => suffix
-          None => ident
-        }
-        if dependency_name != self_name &&
-          declaration_names.contains(dependency_name) {
-          wgsl_string_list_push_unique(dependencies, dependency_name)
-        }
-      }
-      _ => ()
-    }
-  }
-}
-
-///|
 fn collect_wgsl_identifier_dependencies(
   identifiers : Array[WgslIdent],
   self_name : String,
@@ -167,16 +140,12 @@ fn collect_wgsl_identifier_dependencies(
 ///|
 fn collect_wgsl_declaration_dependencies(
   declaration_data : WgslGlobalDeclData,
-  declaration_text : String,
   self_name : String,
   declaration_names : @hashmap.HashMap[String, Bool],
   dependencies : Array[String],
 ) -> Unit {
   match declaration_data {
-    WgslGlobalDeclData::Raw =>
-      collect_wgsl_dependency_text_fragment(
-        declaration_text, self_name, declaration_names, dependencies,
-      )
+    WgslGlobalDeclData::Raw => ()
     WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) => ()
     _ => {
       let identifiers : Array[WgslIdent] = []
@@ -235,7 +204,6 @@ fn collect_wgsl_reachable_declaration_names(
     let dependencies : Array[String] = []
     collect_wgsl_declaration_dependencies(
       block.data,
-      block.text,
       name,
       declaration_names,
       dependencies,

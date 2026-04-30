@@ -21,17 +21,16 @@ The preprocessing target is:
 
 ## Current Status
 
-As of current `main` after `Milky2018/moon_wgsl 0.5.0`, there are no known
+As of current `main` after `Milky2018/moon_wgsl 0.6.0`, there are no known
 open source-level preprocessing gaps. Release `0.5.0` covers the historical
 GitHub #2/#3/#5/#6 failures and the original GitHub #7 duplicate-binding /
 root-local `#define` regressions. The later GitHub #7 `identifier: in`
-regression was fixed after `0.5.0` by keeping function parameters out of
-alias/global declaration-name rewrites.
+regression and later AST dependency-analysis cleanup are covered by `0.6.0`.
 
-Downstream consumers such as `mgstudio` should use the next release after
-`0.5.0` or current `main` for the `in`-parameter fix, then rerun their own
-shader-pipeline tests to confirm integration. That verification is downstream
-runtime scope; this repository gates the preprocessing output.
+Downstream consumers such as `mgstudio` should use `0.6.0` or current `main`,
+then rerun their own shader-pipeline tests to confirm integration. That
+verification is downstream runtime scope; this repository gates the
+preprocessing output.
 
 ## Upstream References
 
@@ -129,12 +128,13 @@ tree-shakes them away, matching upstream `naga_oil`.
    graph. Any new WGSL declaration form must be parsed there before composer or
    export logic consumes it.
 
-5. Rename/writeback must be plan-driven.
+5. Rename/writeback and dependency analysis must be AST/span-driven.
    All source rewrites must be expressed as `WgslRenamePlan` rules in
    `analysis`: global declaration plus references, references only, or function
-   locals. Composer, virtual overrides, duplicate-binding cleanup, suffix
-   lowering, and writeback sanitization must not reintroduce ad hoc identifier
-   span rewriting.
+   locals. Dependency analysis must consume parsed declaration identifiers
+   rather than raw declaration text. Composer, virtual overrides,
+   duplicate-binding cleanup, suffix lowering, and writeback sanitization must
+   not reintroduce ad hoc identifier span rewriting.
 
 6. The Naga boundary must stay explicit.
    Preprocessing and source-level WGSL composition belong in MoonBit. Naga IR,
@@ -145,8 +145,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 
 For `mgstudio` or similar consumers, the expected verification path is:
 
-1. Upgrade to the next `Milky2018/moon_wgsl` release after `0.5.0`, or test
-   current `main` until that release is available.
+1. Upgrade to `Milky2018/moon_wgsl 0.6.0` or current `main`.
 2. Rerun the downstream WGSL preprocessing/compose tests against byte-identical
    Bevy WGSL sources.
 3. Confirm that previous preprocessing failures such as unresolved
