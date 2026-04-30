@@ -10,7 +10,10 @@ using @ast {
 }
 
 ///|
-using @parser {parse_wgsl_translation_unit, split_last_identifier}
+using @parser {parse_wgsl_translation_unit}
+
+///|
+using @lex {split_last_identifier}
 
 ///|
 using @common {type WgslSymbolRedirect}

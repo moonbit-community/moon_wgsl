@@ -142,13 +142,7 @@ fn WgslTokenDepth::observe_statement_token(
 
 ///|
 fn wgsl_shift_token(token : WgslToken, offset : Int) -> WgslToken {
-  match token {
-    WgslToken::Identifier(name, pos) =>
-      WgslToken::Identifier(name, pos + offset)
-    WgslToken::Other(code, pos) => WgslToken::Other(code, pos + offset)
-    WgslToken::Whitespace(text, pos) =>
-      WgslToken::Whitespace(text, pos + offset)
-  }
+  token.shift(offset)
 }
 
 ///|

@@ -18,23 +18,6 @@ pub(all) suberror ParseImportsError {
 }
 
 ///|
-pub fn split_last_identifier(text : String) -> (String, String)? {
-  let mut found = -1
-  let mut i = 0
-  while i + 1 < text.length() {
-    if text.code_unit_at(i).to_int() == 58 &&
-      text.code_unit_at(i + 1).to_int() == 58 {
-      found = i
-    }
-    i = i + 1
-  }
-  if found < 0 {
-    return None
-  }
-  Some((text[:found].to_owned(), text[found + 2:text.length()].to_owned()))
-}
-
-///|
 fn wgsl_generated_import_token_end(token : WgslToken) -> Int {
   match token {
     Identifier(text, pos) | Whitespace(text, pos) => pos + text.length()

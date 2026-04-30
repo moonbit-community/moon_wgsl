@@ -37,6 +37,15 @@ pub fn WgslToken::end(self : WgslToken) -> Int {
 }
 
 ///|
+pub fn WgslToken::shift(self : WgslToken, offset : Int) -> WgslToken {
+  match self {
+    Identifier(name, pos) => Identifier(name, pos + offset)
+    Other(code, pos) => Other(code, pos + offset)
+    Whitespace(text, pos) => Whitespace(text, pos + offset)
+  }
+}
+
+///|
 fn tokenizer_identifier_start(code : Int) -> Bool {
   code == 95 || // '_'
   (code >= 65 && code <= 90) ||

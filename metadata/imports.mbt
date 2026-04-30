@@ -15,16 +15,20 @@ using @common {
 using @ast {type WgslDirectiveKind}
 
 ///|
-using @parser {
-  type ParseImportsError,
+using @lex {
   type WgslToken,
   wgsl_token_brace_balance,
-  parse_wgsl_import_targets,
   replace_comments,
   source_lines,
   split_last_identifier,
   tokenize,
   trim_trailing_semicolons,
+}
+
+///|
+using @parser {
+  type ParseImportsError,
+  parse_wgsl_import_targets,
   wgsl_directive_prefix_tail,
   wgsl_directive_tail,
 }

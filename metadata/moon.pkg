@@ -1,6 +1,7 @@
 import {
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/ast",
+  "Milky2018/moon_wgsl/lex",
   "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/hashmap",

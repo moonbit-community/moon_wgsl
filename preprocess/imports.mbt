@@ -18,7 +18,7 @@ using @metadata {
 using @ast {type WgslDirectiveKind}
 
 ///|
-using @parser {
+using @lex {
   type WgslToken,
   wgsl_token_brace_balance,
   replace_comments,
@@ -26,6 +26,7 @@ using @parser {
   source_lines,
   trim_trailing_semicolons,
   tokenize,
-  wgsl_directive_prefix_tail,
-  wgsl_directive_tail,
 }
+
+///|
+using @parser {wgsl_directive_prefix_tail, wgsl_directive_tail}

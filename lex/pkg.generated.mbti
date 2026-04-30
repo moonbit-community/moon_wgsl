@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/lex"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn replace_comments(String) -> String
+
+pub fn source_lines(String) -> Array[String]
+
+pub fn spaces(Int) -> String
+
+pub fn split_last_identifier(String) -> (String, String)?
+
+pub fn split_source_lines(String) -> Array[String]
+
+pub fn tokenize(String, Bool) -> Array[WgslToken]
+
+pub fn trim_trailing_semicolons(String) -> String
+
+pub fn wgsl_token_brace_balance(String) -> Int
+
+// Errors
+
+// Types and methods
+pub enum WgslToken {
+  Identifier(String, Int)
+  Other(Int, Int)
+  Whitespace(String, Int)
+} derive(Eq, @debug.Debug)
+pub fn WgslToken::end(Self) -> Int
+pub fn WgslToken::pos(Self) -> Int
+pub fn WgslToken::shift(Self, Int) -> Self
+
+// Type aliases
+
+// Traits
+

@@ -13,39 +13,6 @@
 // limitations under the License.
 
 ///|
-pub fn trim_trailing_semicolons(text : String) -> String {
-  let mut out = text.trim().to_owned()
-  while out.length() > 0 && out.code_unit_at(out.length() - 1).to_int() == 59 { // ';'
-    out = out[:out.length() - 1].to_owned().trim().to_owned()
-  }
-  out
-}
-
-///|
-pub fn split_source_lines(source : String) -> Array[String] {
-  let lines : Array[String] = []
-  for line_item in source.split("\n") {
-    lines.push(line_item.to_owned())
-  }
-  lines
-}
-
-///|
-pub fn source_lines(source : String) -> Array[String] {
-  let lines = split_source_lines(source)
-  for i in 0..<lines.length() {
-    let line = lines[i]
-    if line.has_suffix("\r") {
-      lines[i] = line[:line.length() - 1].to_owned()
-    }
-  }
-  if source.has_suffix("\n") && lines.length() > 0 {
-    lines.pop() |> ignore
-  }
-  lines
-}
-
-///|
 fn identifier_code_unit(code : Int) -> Bool {
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
@@ -207,17 +174,4 @@ pub fn wgsl_directive_prefix_tail(
   tokens.push((Token::EOF, trimmed.length(), trimmed.length()))
   let parsed = directive_prefix_tail(tokens) catch { _ => return None }
   Some(parsed)
-}
-
-///|
-pub fn wgsl_token_brace_balance(text : String) -> Int {
-  let mut balance = 0
-  for token in tokenize(text, false) {
-    match token {
-      WgslToken::Other(123, _) => balance = balance + 1
-      WgslToken::Other(125, _) => balance = balance - 1
-      _ => ()
-    }
-  }
-  balance
 }

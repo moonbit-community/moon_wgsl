@@ -10,4 +10,4 @@ using @analysis {
 using @ast {type WgslFunction, type WgslGlobalDeclData}
 
 ///|
-using @parser {split_last_identifier}
+using @lex {split_last_identifier}

@@ -30,3 +30,11 @@ using @ast {
 
 ///|
 using @common {type WgslImportTarget}
+
+///|
+using @lex {
+  type WgslToken,
+  replace_comments,
+  tokenize,
+  wgsl_token_brace_balance,
+}

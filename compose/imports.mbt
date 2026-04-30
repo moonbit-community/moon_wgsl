@@ -75,12 +75,10 @@ using @resolver {
 using @ast {type WgslDirectiveKind}
 
 ///|
-using @parser {
-  wgsl_token_brace_balance,
-  split_source_lines,
-  wgsl_directive_prefix_tail,
-  wgsl_directive_tail,
-}
+using @lex {wgsl_token_brace_balance, split_source_lines}
+
+///|
+using @parser {wgsl_directive_prefix_tail, wgsl_directive_tail}
 
 ///|
 using @writeback {
