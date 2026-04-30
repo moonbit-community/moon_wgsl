@@ -338,7 +338,7 @@ pub fn resolve_wgsl_import_request_module(
     is Some(rel_path) {
     let module_path = match registry.registered_source(rel_path) {
       Some(source) =>
-        match get_preprocessor_metadata(source).name {
+        match wgsl_source_define_import_path(source) {
           Some(name) if name.trim() != "" => name.trim().to_owned()
           _ => import_path
         }

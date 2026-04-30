@@ -58,6 +58,26 @@ fn preprocess_without_ascii_whitespace(
 }
 
 ///|
+fn metadata_or_abort(source : String) -> @common.PreprocessorMetaData {
+  @metadata.get_preprocessor_metadata(source) catch {
+    _ => abort("expected metadata parse success")
+  }
+}
+
+///|
+fn preprocessor_data_or_abort(
+  source : String,
+) -> (
+  String?,
+  Array[@common.ImportDefinition],
+  @hashmap.HashMap[String, @common.ShaderDefValue],
+) {
+  @metadata.get_preprocessor_data(source) catch {
+    _ => abort("expected preprocessor data parse success")
+  }
+}
+
+///|
 fn upstream_compose_fixture_source(
   case_name : String,
   rel_path : String,
@@ -78,7 +98,7 @@ fn upstream_compose_fixture_source(
 
 ///|
 test "naga_oil: metadata parser records only used imports like upstream" {
-  let metadata = @metadata.get_preprocessor_metadata(
+  let metadata = metadata_or_abort(
     "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2u\n#import bevy_render::{\n  view::View,\n  globals::Globals,\n}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
   )
   debug_inspect(metadata.name, content="Some(\"bevy_ui::ui_node\")")
@@ -121,7 +141,7 @@ test "naga_oil: metadata parser records only used imports like upstream" {
 
 ///|
 test "naga_oil: metadata parser keeps quoted path imports and duplicate item uses" {
-  let (_, imports, _) = @metadata.get_preprocessor_data(
+  let (_, imports, _) = preprocessor_data_or_abort(
     "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\nfn vertex(vertex: Vertex) -> VertexOutput {\n  var out : VertexOutput;\n  return out;\n}\n",
   )
   debug_inspect(imports.length(), content="1")
@@ -137,7 +157,7 @@ test "naga_oil: metadata parser keeps quoted path imports and duplicate item use
 
 ///|
 test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
-  let metadata = @metadata.get_preprocessor_metadata(
+  let metadata = metadata_or_abort(
     "enable f16, subgroups;\nrequires readonly_and_readwrite_storage_textures;\ndiagnostic(warn, derivative_uniformity);\nfn shade() -> f32 {\n  return #EXPOSURE + #{WHITE_POINT};\n}\n",
   )
   debug_inspect(metadata.wgsl_directives.is_empty(), content="false")
@@ -163,7 +183,7 @@ test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
 
 ///|
 test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
-  let (_, imports, _) = @metadata.get_preprocessor_data(
+  let (_, imports, _) = preprocessor_data_or_abort(
     "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\n\n#if EFFECT_ID == 0\n    #import \"shaders/skills/sound.wgsl\" frag, vert\n#else if EFFECT_ID == 1\n    #import \"shaders/skills/orb.wgsl\" frag, vert\n#else if EFFECT_ID == 2\n    #import \"shaders/skills/slash.wgsl\" frag, vert\n#else if EFFECT_ID == 3\n    #import \"shaders/skills/railgun_trail.wgsl\" frag, vert\n#else if EFFECT_ID == 4\n    #import \"shaders/skills/magic_arrow.wgsl\" frag, vert\n#else if EFFECT_ID == 5\n    #import \"shaders/skills/hit.wgsl\" frag, vert\n#else if EFFECT_ID == 6\n    #import \"shaders/skills/lightning_ring.wgsl\" frag, vert\n#else if EFFECT_ID == 7\n    #import \"shaders/skills/lightning.wgsl\" frag, vert\n#endif\n\n#import something_unused\n\n@fragment\nfn fragment(in: VertexOutput) -> @location(0) vec4<f32> {\n    return frag(in);\n}\n\n@vertex\nfn vertex(vertex: Vertex) -> VertexOutput {\n    return vert(vertex);\n}\n",
   )
   debug_inspect(imports.length(), content="9")
@@ -208,7 +228,7 @@ test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
 
 ///|
 test "naga_oil upstream mirror: metadata parser matches bevy path import fixture" {
-  let (_, imports, _) = @metadata.get_preprocessor_data(
+  let (_, imports, _) = preprocessor_data_or_abort(
     upstream_compose_fixture_source("bevy_path_imports", "skill.wgsl"),
   )
   debug_inspect(imports.length(), content="9")
@@ -488,7 +508,7 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
 ///|
 test "naga_oil: preprocess applies module defines to output" {
   let source = "#define DEFUINT 1\n#define DEFINT -1\n#define DEFBOOL false\n#if DEFUINT == 1\nuint: #DEFUINT\n#endif\n#if DEFINT == -1\nint: #DEFINT\n#endif\n#if DEFBOOL == false\nbool: #DEFBOOL\n#endif\n"
-  let metadata = @metadata.get_preprocessor_metadata(source)
+  let metadata = metadata_or_abort(source)
   let output = @preprocess.Preprocessor::default().preprocess(
     source,
     metadata.defines,
@@ -510,7 +530,7 @@ test "naga_oil: preprocess applies module defines to output" {
 
 ///|
 test "naga_oil: define metadata rejects unsigned suffix like upstream" {
-  let metadata = @metadata.get_preprocessor_metadata("#define VALUE 2u\n")
+  let metadata = metadata_or_abort("#define VALUE 2u\n")
   guard metadata.defines.get("VALUE")
     is Some(@common.ShaderDefValue::Bool(value)) else {
     abort("expected naga_oil-style failed unsigned suffix define")
@@ -521,7 +541,7 @@ test "naga_oil: define metadata rejects unsigned suffix like upstream" {
 ///|
 test "naga_oil: preprocess accepts whitespace after hash directives" {
   let source = "# define_import_path demo::spaced\n# define MODE 2\n# if MODE==1\none\n# else if MODE==2\ntwo #MODE\n# else\nthree\n# endif\n"
-  let metadata = @metadata.get_preprocessor_metadata(source)
+  let metadata = metadata_or_abort(source)
   debug_inspect(metadata.name, content="Some(\"demo::spaced\")")
   guard metadata.defines.get("MODE") is Some(@common.ShaderDefValue::UInt(mode)) else {
     abort("expected MODE define")
@@ -565,7 +585,7 @@ test "naga_oil: preprocess accepts whitespace after hash import directives" {
 ///|
 test "naga_oil: shader def placeholders accept hash whitespace and upstream name chars" {
   let source = "let a = # lower_def;\nlet b = # {MIXED|PIPE};\n"
-  let metadata = @metadata.get_preprocessor_metadata(source)
+  let metadata = metadata_or_abort(source)
   debug_inspect(metadata.effective_defs.contains("lower_def"), content="true")
   debug_inspect(metadata.effective_defs.contains("MIXED|PIPE"), content="true")
 
@@ -623,7 +643,7 @@ test "naga_oil: if comparison identifiers accept upstream pipe names" {
 
 ///|
 test "naga_oil: define metadata consumes one token like upstream regexes" {
-  let metadata = @metadata.get_preprocessor_metadata(
+  let metadata = metadata_or_abort(
     "# define_import_path demo::module trailing_text\n# define COUNT 3 ignored_tail\n# define FLAG true ignored_tail\n",
   )
   debug_inspect(metadata.name, content="Some(\"demo::module\")")
@@ -640,7 +660,7 @@ test "naga_oil: define metadata consumes one token like upstream regexes" {
 
 ///|
 test "naga_oil: define metadata follows upstream regex character classes" {
-  let metadata = @metadata.get_preprocessor_metadata(
+  let metadata = metadata_or_abort(
     "#define NAME+TAIL 7\n#define PLUS +1\n#define PIPE|NAME value|tail ignored\n",
   )
   guard metadata.defines.get("NAME")
@@ -680,7 +700,7 @@ test "naga_oil: glsl version directive captures numeric version token" {
 
 ///|
 test "naga_oil: wgsl directives accept upstream whitespace forms" {
-  let metadata = @metadata.get_preprocessor_metadata(
+  let metadata = metadata_or_abort(
     "enable   f16, subgroups ; trailing\nrequires\treadonly_and_readwrite_storage_textures ; trailing\ndiagnostic ( warn , derivative_uniformity ) ; trailing\nfn shade() -> f32 {\n  return 1.0;\n}\n",
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
@@ -711,7 +731,7 @@ test "naga_oil: wgsl directives accept upstream whitespace forms" {
 
 ///|
 test "naga_oil: directive section ends on non-directive identifier prefix" {
-  let metadata = @metadata.get_preprocessor_metadata(
+  let metadata = metadata_or_abort(
     "enable_extra();\ndiagnostic_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="0")
@@ -740,6 +760,26 @@ test "naga_oil: invalid diagnostic severity reports directive error" {
     _ => abort("expected invalid WGSL directive error")
   }
   abort("expected invalid WGSL directive error")
+}
+
+///|
+test "naga_oil: metadata parser reports invalid WGSL directive errors" {
+  ignore(
+    @metadata.get_preprocessor_metadata(
+      "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+    ),
+  ) catch {
+    @metadata.MetadataError::InvalidWgslDirective(directive, _, reason) => {
+      debug_inspect(
+        directive,
+        content="\"diagnostic(note, derivative_uniformity);\"",
+      )
+      debug_inspect(reason.contains("Invalid severity 'note'"), content="true")
+      return
+    }
+    _ => abort("expected invalid metadata directive error")
+  }
+  abort("expected invalid metadata directive error")
 }
 
 ///|

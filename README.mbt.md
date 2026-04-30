@@ -77,7 +77,9 @@ Example:
 test "README: metadata extraction" {
   let metadata : @common.PreprocessorMetaData = @metadata.get_preprocessor_metadata(
     "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2\n#import bevy_render::{view::View, globals::Globals}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
-  )
+  ) catch {
+    _ => abort("expected metadata extraction success")
+  }
 
   debug_inspect(metadata.name, content="Some(\"bevy_ui::ui_node\")")
   debug_inspect(metadata.imports.length(), content="3")
@@ -519,10 +521,8 @@ For the full exported surface, see the generated subpackage interfaces:
   registered path in the active Composer registry.
 - `register_source_files_checked` is the safe bulk-registration path when
   callers need deterministic diagnostics before mutating a Composer registry.
-- `@metadata.get_preprocessor_metadata` is forgiving by design: on parse failure it
-  returns empty/default metadata instead of raising. Compose internals use
-  `@metadata.get_preprocessor_metadata_checked` so upstream-invalid module
-  metadata is not silently accepted.
+- `@metadata.get_preprocessor_metadata` is strict like upstream naga_oil and
+  raises `MetadataError` when directive or import metadata is invalid.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.
 - `export_wgsl_with_options` scopes `source_catalog` and

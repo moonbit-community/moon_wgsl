@@ -51,7 +51,7 @@ using @import_planner {
 }
 
 ///|
-using @metadata {type MetadataError, get_preprocessor_metadata_checked}
+using @metadata {type MetadataError, get_preprocessor_metadata}
 
 ///|
 using @preprocess {

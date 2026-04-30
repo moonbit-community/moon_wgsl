@@ -116,10 +116,10 @@ tree-shakes them away, matching upstream `naga_oil`.
    parser. Any future import syntax extension must land there first.
 
 2. Compose must use checked metadata.
-   The forgiving `metadata.get_preprocessor_metadata` helper is for read-only
-   discovery. Composer paths must use checked metadata extraction so module
-   construction rejects upstream-invalid directives, including module-local
-   `#define` directives in composable modules.
+   `metadata.get_preprocessor_metadata` is a strict raising API, matching
+   upstream metadata extraction. Composer paths must keep propagating metadata
+   errors so module construction rejects upstream-invalid directives, including
+   module-local `#define` directives in composable modules.
 
 3. Compose requests must stay explicit.
    `WgslComposeOptions` owns root-scoped additional imports, shader defs, value

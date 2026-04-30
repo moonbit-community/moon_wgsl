@@ -10,11 +10,9 @@ import {
 // Values
 pub fn extract_wgsl_directives(String) -> (String, @common.WgslDirectives) raise MetadataError
 
-pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue])
+pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue]) raise MetadataError
 
-pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
-
-pub fn get_preprocessor_metadata_checked(String, allow_defines? : Bool) -> @common.PreprocessorMetaData raise MetadataError
+pub fn get_preprocessor_metadata(String, allow_defines? : Bool) -> @common.PreprocessorMetaData raise MetadataError
 
 pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise @parser.ParseImportsError
 

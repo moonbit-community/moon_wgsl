@@ -3,10 +3,7 @@ pub fn Composer::add_composable_module(
   self : Composer,
   desc : ComposableModuleDescriptor,
 ) -> ComposableModuleDefinition raise ComposerError {
-  let metadata = get_preprocessor_metadata_checked(
-    desc.source,
-    allow_defines=false,
-  ) catch {
+  let metadata = get_preprocessor_metadata(desc.source, allow_defines=false) catch {
     error => raise composer_error_from_metadata_error(error)
   }
   let module_name = composable_module_name_from_descriptor(desc, metadata.name) catch {

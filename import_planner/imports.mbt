@@ -9,7 +9,7 @@ using @common {
 }
 
 ///|
-using @metadata {get_preprocessor_metadata}
+using @metadata {wgsl_source_define_import_path}
 
 ///|
 using @resolver {

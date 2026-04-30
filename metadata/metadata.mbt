@@ -99,22 +99,7 @@ fn try_get_preprocessor_metadata(
 }
 
 ///|
-pub fn get_preprocessor_metadata(source : String) -> PreprocessorMetaData {
-  try_get_preprocessor_metadata(source, true) catch {
-    _ =>
-      PreprocessorMetaData::{
-        name: None,
-        imports: [],
-        defines: @hashmap.HashMap::new(),
-        effective_defs: @hashset.HashSet::new(),
-        wgsl_directives: WgslDirectives::default(),
-        cleaned_source: source,
-      }
-  }
-}
-
-///|
-pub fn get_preprocessor_metadata_checked(
+pub fn get_preprocessor_metadata(
   source : String,
   allow_defines? : Bool = true,
 ) -> PreprocessorMetaData raise MetadataError {
@@ -128,7 +113,7 @@ pub fn get_preprocessor_data(
   String?,
   Array[ImportDefinition],
   @hashmap.HashMap[String, ShaderDefValue],
-) {
+) raise MetadataError {
   let metadata = get_preprocessor_metadata(source)
   let imports : Array[ImportDefinition] = []
   for import_with_offset in metadata.imports {
