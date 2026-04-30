@@ -213,6 +213,20 @@ fn metadata_required_space_directive_tail(
 }
 
 ///|
+fn metadata_required_space_word_tail(
+  text : String,
+  keyword : String,
+) -> String? {
+  let trimmed = text.trim().to_owned()
+  guard keyword.length() < trimmed.length() else { return None }
+  guard trimmed[0:keyword.length()].to_owned() == keyword else { return None }
+  let space_pos = keyword.length()
+  let code = trimmed.code_unit_at(space_pos).to_int()
+  guard code == 32 || code == 9 else { return None }
+  Some(trimmed[space_pos:trimmed.length()].to_owned().trim().to_owned())
+}
+
+///|
 fn semicolon_directive_body(line : String, keyword : String) -> String? {
   let trimmed = line.trim().to_owned()
   let tokens = tokenize(trimmed, false)
@@ -300,14 +314,6 @@ fn directive_identifier(text : String) -> String? {
 }
 
 ///|
-fn metadata_identifier_code_unit(code : Int) -> Bool {
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122) ||
-  (code >= 48 && code <= 57) ||
-  code == 95
-}
-
-///|
 fn metadata_shader_def_name_code_unit(code : Int) -> Bool {
   code == 124 ||
   code == 95 ||
@@ -329,22 +335,6 @@ fn metadata_skip_ascii_space(text : String, start : Int) -> Int {
     break
   }
   i
-}
-
-///|
-fn metadata_word_tail(text : String, word : String) -> String? {
-  let trimmed = text.trim().to_owned()
-  let start = metadata_skip_ascii_space(trimmed, 0)
-  guard start + word.length() <= trimmed.length() else { return None }
-  guard trimmed[start:start + word.length()].to_owned() == word else {
-    return None
-  }
-  let end = start + word.length()
-  if end < trimmed.length() &&
-    metadata_identifier_code_unit(trimmed.code_unit_at(end).to_int()) {
-    return None
-  }
-  Some(trimmed[end:trimmed.length()].to_owned().trim().to_owned())
 }
 
 ///|
@@ -425,11 +415,11 @@ fn if_operator_expression_def(expression : String) -> String? {
 
 ///|
 fn metadata_scope_def(line : String) -> (Bool, String?) {
-  if wgsl_directive_tail(line, WgslDirectiveKind::Ifdef) is Some(rest) &&
+  if metadata_required_space_directive_tail(line, "ifdef") is Some(rest) &&
     directive_identifier(rest) is Some(name) {
     return (true, Some(name))
   }
-  if wgsl_directive_tail(line, WgslDirectiveKind::Ifndef) is Some(rest) &&
+  if metadata_required_space_directive_tail(line, "ifndef") is Some(rest) &&
     directive_identifier(rest) is Some(name) {
     return (true, Some(name))
   }
@@ -437,22 +427,22 @@ fn metadata_scope_def(line : String) -> (Bool, String?) {
     is Some(else_tail) {
     let else_tail_has_space = starts_with_tokenized_space(else_tail)
     if else_tail_has_space &&
-      metadata_word_tail(else_tail, "ifdef") is Some(rest) &&
+      metadata_required_space_word_tail(else_tail, "ifdef") is Some(rest) &&
       directive_identifier(rest) is Some(name) {
       return (true, Some(name))
     }
     if else_tail_has_space &&
-      metadata_word_tail(else_tail, "ifndef") is Some(rest) &&
+      metadata_required_space_word_tail(else_tail, "ifndef") is Some(rest) &&
       directive_identifier(rest) is Some(name) {
       return (true, Some(name))
     }
     if else_tail_has_space &&
-      metadata_word_tail(else_tail, "if") is Some(expr) &&
+      metadata_required_space_word_tail(else_tail, "if") is Some(expr) &&
       if_operator_expression_def(expr) is Some(def) {
       return (true, Some(def))
     }
   }
-  if wgsl_directive_tail(line, WgslDirectiveKind::If) is Some(expr) &&
+  if metadata_required_space_directive_tail(line, "if") is Some(expr) &&
     if_operator_expression_def(expr) is Some(def) {
     return (true, Some(def))
   }

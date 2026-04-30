@@ -198,7 +198,7 @@ fn check_scope(
   scope : Scope?,
   offset : Int,
 ) -> (Bool, String?) raise PreprocessError {
-  if wgsl_directive_tail(line, WgslDirectiveKind::Ifdef) is Some(rest) &&
+  if required_space_directive_tail(line, "ifdef") is Some(rest) &&
     directive_identifier(rest) is Some(name) {
     let condition = shader_defs.contains(name)
     if scope is Some(scope_state) {
@@ -206,7 +206,7 @@ fn check_scope(
     }
     return (true, Some(name))
   }
-  if wgsl_directive_tail(line, WgslDirectiveKind::Ifndef) is Some(rest) &&
+  if required_space_directive_tail(line, "ifndef") is Some(rest) &&
     directive_identifier(rest) is Some(name) {
     let condition = !shader_defs.contains(name)
     if scope is Some(scope_state) {
@@ -218,7 +218,7 @@ fn check_scope(
     is Some(else_tail) {
     let else_tail_has_space = starts_with_tokenized_space(else_tail)
     if else_tail_has_space &&
-      word_tail(else_tail, "ifdef") is Some(rest) &&
+      required_space_word_tail(else_tail, "ifdef") is Some(rest) &&
       directive_identifier(rest) is Some(name) {
       let condition = shader_defs.contains(name)
       if scope is Some(scope_state) {
@@ -227,7 +227,7 @@ fn check_scope(
       return (true, Some(name))
     }
     if else_tail_has_space &&
-      word_tail(else_tail, "ifndef") is Some(rest) &&
+      required_space_word_tail(else_tail, "ifndef") is Some(rest) &&
       directive_identifier(rest) is Some(name) {
       let condition = !shader_defs.contains(name)
       if scope is Some(scope_state) {
@@ -235,7 +235,8 @@ fn check_scope(
       }
       return (true, Some(name))
     }
-    if else_tail_has_space && word_tail(else_tail, "if") is Some(expr) {
+    if else_tail_has_space &&
+      required_space_word_tail(else_tail, "if") is Some(expr) {
       let (is_scope, def) = check_if_operator_scope(
         shader_defs, expr, scope, offset, true,
       )
@@ -244,7 +245,7 @@ fn check_scope(
       }
     }
   }
-  if wgsl_directive_tail(line, WgslDirectiveKind::If) is Some(expr) {
+  if required_space_directive_tail(line, "if") is Some(expr) {
     let (is_scope, def) = check_if_operator_scope(
       shader_defs, expr, scope, offset, false,
     )

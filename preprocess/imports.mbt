@@ -29,4 +29,4 @@ using @lex {
 }
 
 ///|
-using @parser {wgsl_directive_prefix_tail, wgsl_directive_tail}
+using @parser {wgsl_directive_prefix_tail}

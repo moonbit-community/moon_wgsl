@@ -885,6 +885,34 @@ test "naga_oil: delimited shader-def references require regex name body" {
 }
 
 ///|
+test "naga_oil: conditional directive keywords require trailing whitespace" {
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("|FLAG", @common.ShaderDefValue::Bool(true))
+  let direct = @preprocess.Preprocessor::default().preprocess(
+    "#ifdef|FLAG\nbody\n", shader_defs,
+  ) catch {
+    _ => abort("expected non-directive ifdef source success")
+  }
+  debug_inspect(
+    direct.preprocessed_source.contains("#ifdef|FLAG"),
+    content="true",
+  )
+  debug_inspect(direct.preprocessed_source.contains("body"), content="true")
+
+  let fallback = @preprocess.Preprocessor::default().preprocess(
+    "#ifdef MISSING\nno\n#else ifdef|FLAG\nfallback\n#endif\n",
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected else-prefix fallback success")
+  }
+  debug_inspect(
+    fallback.preprocessed_source.contains("fallback"),
+    content="true",
+  )
+  debug_inspect(fallback.preprocessed_source.contains("no"), content="false")
+}
+
+///|
 test "naga_oil: glsl version directive captures numeric version token" {
   let output = @preprocess.Preprocessor::default().preprocess(
     "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",

@@ -13,14 +13,6 @@
 // limitations under the License.
 
 ///|
-fn preprocess_identifier_code_unit(code : Int) -> Bool {
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122) ||
-  (code >= 48 && code <= 57) ||
-  code == 95
-}
-
-///|
 fn preprocess_shader_def_name_code_unit(code : Int) -> Bool {
   code == 124 ||
   code == 95 ||
@@ -47,20 +39,4 @@ fn preprocess_skip_ascii_space(text : String, start : Int) -> Int {
     break
   }
   i
-}
-
-///|
-fn word_tail(text : String, word : String) -> String? {
-  let trimmed = text.trim().to_owned()
-  let start = preprocess_skip_ascii_space(trimmed, 0)
-  guard start + word.length() <= trimmed.length() else { return None }
-  guard trimmed[start:start + word.length()].to_owned() == word else {
-    return None
-  }
-  let end = start + word.length()
-  if end < trimmed.length() &&
-    preprocess_identifier_code_unit(trimmed.code_unit_at(end).to_int()) {
-    return None
-  }
-  Some(trimmed[end:trimmed.length()].to_owned().trim().to_owned())
 }
