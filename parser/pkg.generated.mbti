@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub fn parse_wgsl_directive_line(String) -> @ast.WgslDirective?
+
+pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
+
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
 
 pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit

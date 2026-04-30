@@ -112,7 +112,7 @@ fn tokenize_wgsl_directive_line(
 }
 
 ///|
-fn parse_wgsl_directive_line_at(
+pub fn parse_wgsl_directive_line_at(
   line : String,
   source_start : Int,
 ) -> WgslDirective? {
@@ -124,7 +124,7 @@ fn parse_wgsl_directive_line_at(
 }
 
 ///|
-fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
+pub fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
   parse_wgsl_directive_line_at(line, 0)
 }
 

@@ -25,65 +25,31 @@ pub fn apply_wgsl_ifdefs_strict(
 ) -> String raise PreprocessError {
   let mut out = ""
   let scope = Scope::new()
-  let original_lines : Array[String] = []
-  let decommented_lines : Array[String] = []
-  for line in source_lines(source) {
-    original_lines.push(line)
-  }
-  for line in source_lines(replace_comments_naga_oil(source)) {
-    decommented_lines.push(line)
-  }
-  let mut offset = 0
-  let mut line_index = 0
-  while line_index < decommented_lines.length() {
-    let line = decommented_lines[line_index]
-    let original_line = if line_index < original_lines.length() {
-      original_lines[line_index]
-    } else {
-      line
+  for item in parse_wgsl_preprocess_items(source) {
+    let offset = item.start
+    match item.kind {
+      WgslPreprocessItemKind::GlslVersion(version) =>
+        if version != "440" && version != "450" {
+          raise PreprocessError::GlslInvalidVersion(offset)
+        }
+      WgslPreprocessItemKind::Directive(directive) => {
+        let (is_scope, _) = preprocess_check_scope_directive(
+          shader_defs,
+          directive,
+          item.required_tail_space,
+          Some(scope),
+          offset,
+        )
+        if !is_scope && scope.active() {
+          out = out + item.original_text
+        }
+      }
+      WgslPreprocessItemKind::Source =>
+        if scope.active() {
+          out = out + item.original_text
+        }
     }
-    let is_version = check_glsl_version_directive(
-      wgsl_regex_trim_whitespace(line),
-      offset,
-    )
-    let is_scope = if is_version {
-      true
-    } else {
-      let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
-      is_scope
-    }
-    if !is_scope && scope.active() {
-      out = "\{out}\{original_line}\n"
-    }
-    offset = offset + utf8_byte_length(original_line) + 1
-    line_index = line_index + 1
   }
-  scope.finish(offset)
+  scope.finish(utf8_byte_length(source))
   out
-}
-
-///|
-pub fn active_wgsl_ifdef_line_flags_strict(
-  source : String,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
-) -> Array[Bool] raise PreprocessError {
-  let scope = Scope::new()
-  let flags : Array[Bool] = []
-  let mut offset = 0
-  for line in source_lines(replace_comments_naga_oil(source)) {
-    let is_version = check_glsl_version_directive(
-      wgsl_regex_trim_whitespace(line),
-      offset,
-    )
-    let is_scope = if is_version {
-      true
-    } else {
-      let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
-      is_scope
-    }
-    flags.push(!is_scope && scope.active())
-    offset = offset + utf8_byte_length(line) + 1
-  }
-  scope.finish(offset)
-  flags
 }

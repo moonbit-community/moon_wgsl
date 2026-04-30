@@ -196,26 +196,6 @@ fn preprocess_has_ascii_keyword_at(
 }
 
 ///|
-fn required_space_directive_tail(line : String, keyword : String) -> String? {
-  let trimmed = wgsl_regex_trim_whitespace(line)
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
-    return None
-  }
-  let start = wgsl_regex_skip_whitespace(trimmed, 1)
-  guard start + keyword.length() < trimmed.length() else { return None }
-  guard preprocess_has_ascii_keyword_at(trimmed, start, keyword) else {
-    return None
-  }
-  let space_pos = start + keyword.length()
-  let code = trimmed.code_unit_at(space_pos).to_int()
-  guard wgsl_regex_whitespace_code_point(code) else { return None }
-  let tail_start = wgsl_regex_skip_whitespace(trimmed, space_pos)
-  Some(
-    wgsl_regex_trim_whitespace(trimmed[tail_start:trimmed.length()].to_owned()),
-  )
-}
-
-///|
 fn required_space_word_tail(text : String, keyword : String) -> String? {
   let trimmed = wgsl_regex_trim_whitespace(text)
   guard keyword.length() < trimmed.length() else { return None }
@@ -256,22 +236,6 @@ pub fn parse_glsl_version_directive(line : String) -> String? {
     Some(trimmed[start:end].to_owned())
   } else {
     None
-  }
-}
-
-///|
-fn check_glsl_version_directive(
-  line : String,
-  offset : Int,
-) -> Bool raise PreprocessError {
-  match parse_glsl_version_directive(line) {
-    Some(version) => {
-      if version != "440" && version != "450" {
-        raise PreprocessError::GlslInvalidVersion(offset)
-      }
-      true
-    }
-    None => false
   }
 }
 

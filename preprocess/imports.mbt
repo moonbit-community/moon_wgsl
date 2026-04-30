@@ -15,7 +15,7 @@ using @metadata {
 }
 
 ///|
-using @ast {type WgslDirectiveKind}
+using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|
 using @lex {
@@ -35,4 +35,4 @@ using @lex {
 }
 
 ///|
-using @parser {wgsl_directive_prefix_tail}
+using @parser {parse_wgsl_directive_line_at}
