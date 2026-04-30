@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn active_wgsl_ifdef_line_flags_strict(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> Array[Bool] raise PreprocessError
+
 pub fn apply_wgsl_ifdefs(String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) -> String
 
 pub fn apply_wgsl_ifdefs_strict(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> String raise PreprocessError

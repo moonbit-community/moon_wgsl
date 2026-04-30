@@ -1235,6 +1235,35 @@ pub fn apply_wgsl_ifdefs_strict(
 }
 
 ///|
+pub fn active_wgsl_ifdef_line_flags_strict(
+  source : String,
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+) -> Array[Bool] raise PreprocessError {
+  let scope = Scope::new()
+  let flags : Array[Bool] = []
+  let mut offset = 0
+  for line in source_lines(replace_comments(source)) {
+    let trimmed = line.trim().to_owned()
+    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(expr) &&
+      parse_if_operator_expression(expr) is None {
+      raise PreprocessError::UnknownShaderDefOperator("", offset)
+    }
+    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
+      is Some(else_tail) &&
+      starts_with_tokenized_space(else_tail) &&
+      word_tail(else_tail, "if") is Some(expr) &&
+      parse_if_operator_expression(expr) is None {
+      raise PreprocessError::UnknownShaderDefOperator("", offset)
+    }
+    let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
+    flags.push(!is_scope && scope.active())
+    offset = offset + line.length() + 1
+  }
+  scope.finish(offset)
+  flags
+}
+
+///|
 pub fn Preprocessor::extract_wgsl_directives(
   _self : Preprocessor,
   source : String,

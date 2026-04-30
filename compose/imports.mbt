@@ -33,6 +33,7 @@ using @common {
 ///|
 using @preprocess {
   type PreprocessError,
+  active_wgsl_ifdef_line_flags_strict,
   apply_wgsl_ifdefs_strict,
   apply_wgsl_template_consts,
   get_preprocessor_metadata,
@@ -63,7 +64,6 @@ using @syntax {
   split_source_lines,
   starts_with_text,
   tokenize,
-  word_tail,
   wgsl_directive_prefix_tail,
   wgsl_directive_tail,
 }

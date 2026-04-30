@@ -531,212 +531,6 @@ fn composer_remove_composable_module_recursive(
 }
 
 ///|
-fn strip_wgsl_line_comment(text : String) -> String {
-  for part in text.split("//") {
-    return part.to_owned()
-  }
-  text
-}
-
-///|
-fn wgsl_clean_directive_tail(text : String) -> String {
-  strip_wgsl_line_comment(text).trim().to_owned()
-}
-
-///|
-fn wgsl_parent_active(active_stack : Array[Bool]) -> Bool {
-  if active_stack.length() >= 2 {
-    active_stack[active_stack.length() - 2]
-  } else {
-    true
-  }
-}
-
-///|
-fn wgsl_directive_tail_has_ascii_space(tail : String) -> Bool {
-  match tokenize(tail, true) {
-    [Token::Whitespace(_, 0), ..] => true
-    _ => false
-  }
-}
-
-///|
-fn wgsl_shader_def_enabled(
-  active_defs : WgslActiveComposeDefs,
-  name : String,
-) -> Bool {
-  active_defs.shader_defs.contains(name)
-}
-
-///|
-fn wgsl_compose_token_end(token : Token) -> Int {
-  match token {
-    Token::Identifier(text, pos) | Token::Whitespace(text, pos) =>
-      pos + text.length()
-    Token::Other(_, pos) => pos + 1
-  }
-}
-
-///|
-fn wgsl_if_operator_code(code : Int) -> Bool {
-  code == 61 || code == 33 || code == 60 || code == 62 // '=!<>'
-}
-
-///|
-fn wgsl_if_value_token_code(code : Int) -> Bool {
-  code == 45 ||
-  code == 124 ||
-  (code >= 48 && code <= 57) ||
-  (code >= 65 && code <= 90) ||
-  (code >= 97 && code <= 122)
-}
-
-///|
-fn parse_wgsl_strict_if_expr(expr : String) -> (String, String, String)? {
-  let text = strip_wgsl_line_comment(expr).trim().to_owned()
-  if text == "" {
-    return None
-  }
-  let tokens = tokenize(text, false)
-  let mut operator_token_index = -1
-  for i in 0..<tokens.length() {
-    match tokens[i] {
-      Token::Other(code, _) if wgsl_if_operator_code(code) => {
-        operator_token_index = i
-        break
-      }
-      _ => ()
-    }
-  }
-  if operator_token_index <= 0 {
-    return None
-  }
-  let op_start = tokens[operator_token_index].pos()
-  let def_name = text[:op_start].to_owned().trim().to_owned()
-  if def_name == "" {
-    return None
-  }
-  let mut op_end_index = operator_token_index
-  while op_end_index < tokens.length() {
-    match tokens[op_end_index] {
-      Token::Other(code, _) if wgsl_if_operator_code(code) =>
-        op_end_index = op_end_index + 1
-      _ => break
-    }
-  }
-  let op_end = wgsl_compose_token_end(tokens[op_end_index - 1])
-  let operator = text[op_start:op_end].to_owned()
-  if operator == "" || op_end_index >= tokens.length() {
-    return None
-  }
-  let value_start = tokens[op_end_index].pos()
-  let mut value_end_index = op_end_index
-  while value_end_index < tokens.length() {
-    match tokens[value_end_index] {
-      Token::Identifier(_, _) => value_end_index = value_end_index + 1
-      Token::Other(code, _) if wgsl_if_value_token_code(code) =>
-        value_end_index = value_end_index + 1
-      _ => break
-    }
-  }
-  if value_end_index == op_end_index {
-    return None
-  }
-  let value_end = wgsl_compose_token_end(tokens[value_end_index - 1])
-  Some((def_name, operator, text[value_start:value_end].to_owned()))
-}
-
-///|
-fn compare_wgsl_int_values(
-  lhs : Int,
-  rhs : Int,
-  operator : String,
-) -> Bool raise ComposerError {
-  match operator {
-    "==" => lhs == rhs
-    "!=" => lhs != rhs
-    ">" => lhs > rhs
-    ">=" => lhs >= rhs
-    "<" => lhs < rhs
-    "<=" => lhs <= rhs
-    _ => raise ComposerError::UnknownShaderDefOperator(operator)
-  }
-}
-
-///|
-fn compare_wgsl_bool_values(
-  lhs : Bool,
-  rhs : Bool,
-  operator : String,
-) -> Bool raise ComposerError {
-  let lhs_value = if lhs { 1 } else { 0 }
-  let rhs_value = if rhs { 1 } else { 0 }
-  match operator {
-    "==" => lhs == rhs
-    "!=" => lhs != rhs
-    ">" => lhs_value > rhs_value
-    ">=" => lhs_value >= rhs_value
-    "<" => lhs_value < rhs_value
-    "<=" => lhs_value <= rhs_value
-    _ => raise ComposerError::UnknownShaderDefOperator(operator)
-  }
-}
-
-///|
-fn parse_wgsl_strict_int_value(value : String) -> Int? {
-  let parsed = @string.parse_int(value[:], base=10) catch { _ => return None }
-  Some(parsed)
-}
-
-///|
-fn parse_wgsl_strict_bool_value(value : String) -> Bool? {
-  match value {
-    "true" => Some(true)
-    "false" => Some(false)
-    _ => None
-  }
-}
-
-///|
-fn eval_wgsl_if_expr_strict(
-  expr : String,
-  active_defs : WgslActiveComposeDefs,
-) -> Bool raise ComposerError {
-  guard parse_wgsl_strict_if_expr(expr) is Some((def_name, operator, value)) else {
-    raise ComposerError::UnknownShaderDefOperator("")
-  }
-  guard active_defs.shader_defs.get(def_name) is Some(def_value) else {
-    raise ComposerError::UnknownShaderDef(def_name)
-  }
-  match def_value {
-    Bool(flag) => {
-      guard parse_wgsl_strict_bool_value(value) is Some(expected) else {
-        raise ComposerError::InvalidShaderDefComparisonValue(
-          def_name, value, "bool",
-        )
-      }
-      compare_wgsl_bool_values(flag, expected, operator)
-    }
-    Int(int_value) => {
-      guard parse_wgsl_strict_int_value(value) is Some(expected) else {
-        raise ComposerError::InvalidShaderDefComparisonValue(
-          def_name, value, "int",
-        )
-      }
-      compare_wgsl_int_values(int_value, expected, operator)
-    }
-    UInt(uint_value) => {
-      guard parse_wgsl_strict_int_value(value) is Some(parsed) else {
-        raise ComposerError::InvalidShaderDefComparisonValue(
-          def_name, value, "uint",
-        )
-      }
-      compare_wgsl_int_values(uint_value.reinterpret_as_int(), parsed, operator)
-    }
-  }
-}
-
-///|
 pub fn Composer::contains_module(self : Composer, module_name : String) -> Bool {
   self.module_sets.contains(module_name)
 }
@@ -891,6 +685,16 @@ fn apply_wgsl_ifdefs_strict_for_compose(
   active_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
   apply_wgsl_ifdefs_strict(source, active_defs.shader_defs) catch {
+    error => raise composer_error_from_preprocess_error(error)
+  }
+}
+
+///|
+fn active_wgsl_ifdef_line_flags_strict_for_compose(
+  source : String,
+  active_defs : WgslActiveComposeDefs,
+) -> Array[Bool] raise ComposerError {
+  active_wgsl_ifdef_line_flags_strict(source, active_defs.shader_defs) catch {
     error => raise composer_error_from_preprocess_error(error)
   }
 }
@@ -1286,6 +1090,15 @@ fn finalize_wgsl_composed_source(
 }
 
 ///|
+fn wgsl_line_is_conditional_directive(trimmed : String) -> Bool {
+  wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(_) ||
+  wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(_) ||
+  wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(_) ||
+  wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) ||
+  wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_)
+}
+
+///|
 fn Composer::preprocess_wgsl_source_with_path(
   self : Composer,
   current_rel_path : String,
@@ -1301,111 +1114,15 @@ fn Composer::preprocess_wgsl_source_with_path(
   let mut merged = ""
   let alias_redirects : Array[WgslSymbolRedirect] = []
   let lines = self.seed_wgsl_compose_lines(current_rel_path, prepared, session)
-  let import_active_stack : Array[Bool] = [true]
-  let import_branch_taken_stack : Array[Bool] = []
+  let active_line_flags = active_wgsl_ifdef_line_flags_strict_for_compose(
+    lines.join("\n"),
+    active_defs,
+  )
   let mut line_index = 0
   while line_index < lines.length() {
     let line = lines[line_index]
     let trimmed = line.trim().to_owned()
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(tail) {
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = wgsl_shader_def_enabled(active_defs, name)
-      let parent = import_active_stack[import_active_stack.length() - 1]
-      import_active_stack.push(parent && cond)
-      import_branch_taken_stack.push(cond)
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(tail) {
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = !wgsl_shader_def_enabled(active_defs, name)
-      let parent = import_active_stack[import_active_stack.length() - 1]
-      import_active_stack.push(parent && cond)
-      import_branch_taken_stack.push(cond)
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(tail) {
-      let expr = wgsl_clean_directive_tail(tail)
-      let cond = eval_wgsl_if_expr_strict(expr, active_defs)
-      let parent = import_active_stack[import_active_stack.length() - 1]
-      import_active_stack.push(parent && cond)
-      import_branch_taken_stack.push(cond)
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifdef") is Some(tail) {
-      if import_branch_taken_stack.length() > 0 {
-        let idx = import_branch_taken_stack.length() - 1
-        let name = wgsl_clean_directive_tail(tail)
-        let cond = !import_branch_taken_stack[idx] &&
-          wgsl_shader_def_enabled(active_defs, name)
-        let parent = wgsl_parent_active(import_active_stack)
-        import_active_stack[import_active_stack.length() - 1] = parent && cond
-        import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
-      }
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifndef") is Some(tail) {
-      if import_branch_taken_stack.length() > 0 {
-        let idx = import_branch_taken_stack.length() - 1
-        let name = wgsl_clean_directive_tail(tail)
-        let cond = !import_branch_taken_stack[idx] &&
-          !wgsl_shader_def_enabled(active_defs, name)
-        let parent = wgsl_parent_active(import_active_stack)
-        import_active_stack[import_active_stack.length() - 1] = parent && cond
-        import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
-      }
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "if") is Some(tail) {
-      if import_branch_taken_stack.length() > 0 {
-        let idx = import_branch_taken_stack.length() - 1
-        let cond = !import_branch_taken_stack[idx] &&
-          eval_wgsl_if_expr_strict(tail, active_defs)
-        let parent = wgsl_parent_active(import_active_stack)
-        import_active_stack[import_active_stack.length() - 1] = parent && cond
-        import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
-      }
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) {
-      if import_branch_taken_stack.length() > 0 {
-        let idx = import_branch_taken_stack.length() - 1
-        let cond = !import_branch_taken_stack[idx]
-        let parent = wgsl_parent_active(import_active_stack)
-        import_active_stack[import_active_stack.length() - 1] = parent && cond
-        import_branch_taken_stack[idx] = import_branch_taken_stack[idx] || cond
-      }
-      merged = "\{merged}\{line}\n"
-      line_index = line_index + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_) {
-      if import_active_stack.length() > 1 {
-        import_active_stack.pop() |> ignore
-      }
-      if import_branch_taken_stack.length() > 0 {
-        import_branch_taken_stack.pop() |> ignore
-      }
+    if wgsl_line_is_conditional_directive(trimmed) {
       merged = "\{merged}\{line}\n"
       line_index = line_index + 1
       continue
@@ -1421,7 +1138,8 @@ fn Composer::preprocess_wgsl_source_with_path(
     }
     if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import)
       is Some(import_tail) {
-      if !import_active_stack[import_active_stack.length() - 1] {
+      if line_index >= active_line_flags.length() ||
+        !active_line_flags[line_index] {
         merged = "\{merged}\{line}\n"
         line_index = line_index + 1
         continue
