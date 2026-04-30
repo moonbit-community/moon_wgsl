@@ -83,6 +83,7 @@ pub fn parse_imports(
   let lines = source_lines(input)
   let mut line_index = 0
   let mut source_offset = 0
+  let mut parsed_any = false
   while line_index < lines.length() {
     let line = lines[line_index]
     let trimmed = wgsl_regex_trim_whitespace(line)
@@ -94,6 +95,7 @@ pub fn parse_imports(
       }
       raise ParseImportsError::Parse("expected `#import`", source_offset)
     }
+    parsed_any = true
     let mut block_spec = spec
     let mut brace_balance = naga_oil_raw_import_brace_balance_next(
       0, block_spec,
@@ -128,6 +130,9 @@ pub fn parse_imports(
     }
     source_offset = source_offset + consumed_length
     line_index = line_index + 1
+  }
+  if !parsed_any {
+    raise ParseImportsError::Parse("expected #import", utf8_byte_length(input))
   }
 }
 

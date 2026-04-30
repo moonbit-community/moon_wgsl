@@ -105,12 +105,26 @@ pub fn parse_wgsl_import_targets(
       utf8_byte_length(input),
     )
   }
-  let parsed = import_targets(tokenize_wgsl_import_targets(input)) catch {
+  let tokens = tokenize_wgsl_import_targets(input)
+  for i in 0..<tokens.length() {
+    let (token, _, _) = tokens[i]
+    if token is Token::SEMI {
+      let next_index = i + 1
+      if next_index < tokens.length() {
+        let (next_token, next_start, _) = tokens[next_index]
+        if !(next_token is Token::EOF) {
+          raise ParseImportsError::Parse(
+            "unexpected token after ';'", next_start,
+          )
+        }
+      }
+    }
+  }
+  let parsed = import_targets(tokens) catch {
     ParseError::UnexpectedToken(_, (start, _), _) =>
       raise ParseImportsError::Parse("unexpected token", start)
     ParseError::UnexpectedEndOfInput(pos, _) =>
       raise ParseImportsError::Parse("unexpected end of input", pos)
-    _ => raise ParseImportsError::Parse("unexpected parser failure", 0)
   }
   apply_wgsl_import_prefix(prefix, parsed)
   for target in parsed {

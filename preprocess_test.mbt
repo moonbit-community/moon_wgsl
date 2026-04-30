@@ -879,6 +879,23 @@ test "naga_oil: shader-def replacement follows upstream first-match loop" {
 }
 
 ///|
+test "naga_oil: shader-def replacement width advances later diagnostics" {
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("LONG", @common.ShaderDefValue::UInt(1234567890U))
+  let _ = @preprocess.Preprocessor::default().preprocess(
+    "#import a::Thing\n#import b::Thing\nlet x = #LONG;\nThing\n", shader_defs,
+  ) catch {
+    @preprocess.PreprocessError::ImportParseError(message, offset) => {
+      debug_inspect(message, content="\"Ambiguous import path for item\"")
+      debug_inspect(offset, content="54")
+      return
+    }
+    _ => abort("expected ambiguous import parse error")
+  }
+  abort("expected ambiguous import parse error")
+}
+
+///|
 test "naga_oil: delimited shader-def references require regex name body" {
   let metadata = metadata_or_abort(
     "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\nlet d = #{ KNOWN_OK };\n",

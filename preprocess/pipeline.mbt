@@ -106,7 +106,7 @@ pub fn Preprocessor::preprocess(
           if diff > 0 {
             final_string = "\{final_string}\{spaces(diff)}"
           }
-          offset = offset + utf8_byte_length(original_line) + 1
+          offset = offset + utf8_byte_length(replaced_original) + 1
           output = true
         }
       }

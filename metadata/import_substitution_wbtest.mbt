@@ -115,3 +115,15 @@ test "naga_oil wb: parse_imports collects import blocks with raw brace counts" {
 }
 
 ///|
+test "naga_oil wb: parse_imports rejects empty or whitespace-only input" {
+  debug_inspect(
+    parse_imports_snapshot(""),
+    content="\"ERR 0 expected #import\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("\u{00A0}\n"),
+    content="\"ERR 3 expected #import\"",
+  )
+}
+
+///|

@@ -14,3 +14,15 @@ test "naga_oil wb: import target parser treats regex whitespace as empty" {
     content="\"ERR 2 expected import path\"",
   )
 }
+
+///|
+test "naga_oil wb: import target parser rejects tokens after semicolon" {
+  debug_inspect(
+    import_targets_error("a; b"),
+    content="\"ERR 3 unexpected token after ';'\"",
+  )
+  debug_inspect(
+    import_targets_error("a;;"),
+    content="\"ERR 2 unexpected token after ';'\"",
+  )
+}
