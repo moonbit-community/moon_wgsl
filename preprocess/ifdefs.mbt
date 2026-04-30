@@ -270,138 +270,37 @@ pub fn apply_wgsl_ifdefs(
 }
 
 ///|
-fn strict_shader_def_enabled(
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
-  name : String,
-) -> Bool {
-  shader_defs.contains(name)
-}
-
-///|
 pub fn apply_wgsl_ifdefs_strict(
   source : String,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String raise PreprocessError {
   let mut out = ""
-  let active_stack : Array[Bool] = [true]
-  let branch_taken_stack : Array[Bool] = []
-  let mut offset = 0
+  let scope = Scope::new()
+  let original_lines : Array[String] = []
+  let decommented_lines : Array[String] = []
   for line in source_lines(source) {
-    let trimmed = line.trim().to_owned()
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(tail) {
-      let name = apply_ifdefs_clean_directive_tail(tail)
-      let cond = strict_shader_def_enabled(shader_defs, name)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      offset = offset + line.length() + 1
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(tail) {
-      let name = apply_ifdefs_clean_directive_tail(tail)
-      let cond = !strict_shader_def_enabled(shader_defs, name)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      offset = offset + line.length() + 1
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(tail) {
-      let expr = apply_ifdefs_clean_directive_tail(tail)
-      guard parse_if_operator_expression(expr) is Some((def, operator, value)) else {
-        raise PreprocessError::UnknownShaderDefOperator("", offset)
-      }
-      let cond = eval_if_condition(shader_defs, def, operator, value, offset)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      offset = offset + line.length() + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      apply_ifdefs_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifdef") is Some(tail) {
-      if branch_taken_stack.length() == 0 {
-        raise PreprocessError::ElseWithoutCondition(offset)
-      }
-      let idx = branch_taken_stack.length() - 1
-      let name = apply_ifdefs_clean_directive_tail(tail)
-      let cond = !branch_taken_stack[idx] &&
-        strict_shader_def_enabled(shader_defs, name)
-      let parent = apply_ifdefs_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      offset = offset + line.length() + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      apply_ifdefs_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifndef") is Some(tail) {
-      if branch_taken_stack.length() == 0 {
-        raise PreprocessError::ElseWithoutCondition(offset)
-      }
-      let idx = branch_taken_stack.length() - 1
-      let name = apply_ifdefs_clean_directive_tail(tail)
-      let cond = !branch_taken_stack[idx] &&
-        !strict_shader_def_enabled(shader_defs, name)
-      let parent = apply_ifdefs_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      offset = offset + line.length() + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      apply_ifdefs_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "if") is Some(tail) {
-      if branch_taken_stack.length() == 0 {
-        raise PreprocessError::ElseWithoutCondition(offset)
-      }
-      let idx = branch_taken_stack.length() - 1
-      guard parse_if_operator_expression(tail) is Some((def, operator, value)) else {
-        raise PreprocessError::UnknownShaderDefOperator("", offset)
-      }
-      let cond = !branch_taken_stack[idx] &&
-        eval_if_condition(shader_defs, def, operator, value, offset)
-      let parent = apply_ifdefs_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      offset = offset + line.length() + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) {
-      if branch_taken_stack.length() == 0 {
-        raise PreprocessError::ElseWithoutCondition(offset)
-      }
-      let idx = branch_taken_stack.length() - 1
-      let cond = !branch_taken_stack[idx]
-      let parent = apply_ifdefs_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      offset = offset + line.length() + 1
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_) {
-      if active_stack.length() <= 1 {
-        raise PreprocessError::TooManyEndIfs(offset)
-      }
-      active_stack.pop() |> ignore
-      if branch_taken_stack.length() > 0 {
-        branch_taken_stack.pop() |> ignore
-      }
-      offset = offset + line.length() + 1
-      continue
-    }
-    if active_stack[active_stack.length() - 1] {
-      out = "\{out}\{line}\n"
-    }
-    offset = offset + line.length() + 1
+    original_lines.push(line)
   }
-  if active_stack.length() != 1 {
-    raise PreprocessError::NotEnoughEndIfs(offset)
+  for line in source_lines(replace_comments(source)) {
+    decommented_lines.push(line)
   }
+  let mut offset = 0
+  let mut line_index = 0
+  while line_index < decommented_lines.length() {
+    let line = decommented_lines[line_index]
+    let original_line = if line_index < original_lines.length() {
+      original_lines[line_index]
+    } else {
+      line
+    }
+    let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
+    if !is_scope && scope.active() {
+      out = "\{out}\{original_line}\n"
+    }
+    offset = offset + original_line.length() + 1
+    line_index = line_index + 1
+  }
+  scope.finish(offset)
   out
 }
 
@@ -414,18 +313,6 @@ pub fn active_wgsl_ifdef_line_flags_strict(
   let flags : Array[Bool] = []
   let mut offset = 0
   for line in source_lines(replace_comments(source)) {
-    let trimmed = line.trim().to_owned()
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(expr) &&
-      parse_if_operator_expression(expr) is None {
-      raise PreprocessError::UnknownShaderDefOperator("", offset)
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      starts_with_tokenized_space(else_tail) &&
-      word_tail(else_tail, "if") is Some(expr) &&
-      parse_if_operator_expression(expr) is None {
-      raise PreprocessError::UnknownShaderDefOperator("", offset)
-    }
     let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
     flags.push(!is_scope && scope.active())
     offset = offset + line.length() + 1

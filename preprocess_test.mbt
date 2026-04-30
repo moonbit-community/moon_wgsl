@@ -799,3 +799,17 @@ test "naga_oil: preprocess uses Rust lines trailing newline semantics" {
     content="\"fn main() -> f32 {\\n  return 1.0;\\n}\\n\"",
   )
 }
+
+///|
+test "naga_oil: strict ifdefs parse decommented conditions like preprocess" {
+  let defs = empty_shader_defs()
+  defs.set("COUNT", @common.ShaderDefValue::Int(2))
+  let output = @preprocess.apply_wgsl_ifdefs_strict(
+    "#if COUNT /* comment before operator */ == 2\nactive\n#else\ninactive\n#endif\n",
+    defs,
+  ) catch {
+    _ => abort("expected strict ifdef success with block comment")
+  }
+  debug_inspect(output.contains("active"), content="true")
+  debug_inspect(output.contains("inactive"), content="false")
+}

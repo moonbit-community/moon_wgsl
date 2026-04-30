@@ -196,9 +196,10 @@ fn check_scope(
       }
       return (true, Some(name))
     }
-    if else_tail_has_space &&
-      word_tail(else_tail, "if") is Some(expr) &&
-      parse_if_operator_expression(expr) is Some((def, operator, value)) {
+    if else_tail_has_space && word_tail(else_tail, "if") is Some(expr) {
+      guard parse_if_operator_expression(expr) is Some((def, operator, value)) else {
+        raise PreprocessError::UnknownShaderDefOperator("", offset)
+      }
       if scope is None {
         return (true, Some(def))
       }
@@ -212,8 +213,10 @@ fn check_scope(
       return (true, Some(def))
     }
   }
-  if wgsl_directive_tail(line, WgslDirectiveKind::If) is Some(expr) &&
-    parse_if_operator_expression(expr) is Some((def, operator, value)) {
+  if wgsl_directive_tail(line, WgslDirectiveKind::If) is Some(expr) {
+    guard parse_if_operator_expression(expr) is Some((def, operator, value)) else {
+      raise PreprocessError::UnknownShaderDefOperator("", offset)
+    }
     if scope is None {
       return (true, Some(def))
     }
