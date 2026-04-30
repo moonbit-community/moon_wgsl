@@ -196,7 +196,7 @@ pub fn substitute_identifiers(
 
   for token in tokens {
     match token {
-      Token::Identifier(ident, token_pos) =>
+      WgslToken::Identifier(ident, token_pos) =>
         if in_substitution_position {
           let (first, residual) = match split_once_identifier(ident) {
             Some(parts) => parts
@@ -236,14 +236,14 @@ pub fn substitute_identifiers(
         } else {
           output = output + ident
         }
-      Token::Other(other, _) => {
+      WgslToken::Other(other, _) => {
         output = output + wgsl_metadata_code_unit_to_string(other)
         if other == 46 || other == 64 { // '.' or '@'
           in_substitution_position = false
           continue
         }
       }
-      Token::Whitespace(ws, _) => output = output + ws
+      WgslToken::Whitespace(ws, _) => output = output + ws
     }
 
     in_substitution_position = true

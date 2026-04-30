@@ -1,9 +1,9 @@
 ///|
-fn preprocess_token_text(token : Token) -> String {
+fn preprocess_token_text(token : WgslToken) -> String {
   match token {
-    Token::Identifier(text, _) => text
-    Token::Whitespace(text, _) => text
-    Token::Other(code, _) => code_unit_to_string(code)
+    WgslToken::Identifier(text, _) => text
+    WgslToken::Whitespace(text, _) => text
+    WgslToken::Other(code, _) => code_unit_to_string(code)
   }
 }
 
@@ -17,8 +17,8 @@ fn parse_if_operator_expression(
   let mut def = ""
   while i < tokens.length() {
     match tokens[i] {
-      Token::Identifier(ident, _) => def = def + ident
-      Token::Other(124, _) => def = def + "|"
+      WgslToken::Identifier(ident, _) => def = def + ident
+      WgslToken::Other(124, _) => def = def + "|"
       _ => break
     }
     i = i + 1
@@ -27,7 +27,7 @@ fn parse_if_operator_expression(
   let mut operator = ""
   while i < tokens.length() {
     match tokens[i] {
-      Token::Other(code, _) if code == 61 ||
+      WgslToken::Other(code, _) if code == 61 ||
         code == 33 ||
         code == 60 ||
         code == 62 => operator = operator + code_unit_to_string(code)

@@ -85,7 +85,7 @@ fn trim_ascii_space_end(text : String, start : Int) -> Int {
 fn tokenize_wgsl_directive_line(
   line : String,
   source_start : Int,
-) -> Array[(@generated.Token, Int, Int)]? {
+) -> Array[(Token, Int, Int)]? {
   let hash_start = skip_ascii_space(line, 0)
   guard hash_start < line.length() &&
     line.code_unit_at(hash_start).to_int() == 35 else {
@@ -119,10 +119,10 @@ fn tokenize_wgsl_directive_line(
   let absolute_name_end = source_start + name_end
   let absolute_tail_start = source_start + tail_start
   let absolute_tail_end = source_start + tail_end
-  let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::HASH, absolute_hash_start, absolute_hash_start + 1),
+  let tokens : Array[(Token, Int, Int)] = [
+    (Token::HASH, absolute_hash_start, absolute_hash_start + 1),
     (
-      @generated.Token::DIRECTIVE_HEAD(
+      Token::DIRECTIVE_HEAD(
         (
           name, text, absolute_hash_start, absolute_text_end, absolute_name_start,
           absolute_name_end,
@@ -135,15 +135,13 @@ fn tokenize_wgsl_directive_line(
   if tail != "" {
     tokens.push(
       (
-        @generated.Token::DIRECTIVE_TAIL(
-          (tail, absolute_tail_start, absolute_tail_end),
-        ),
+        Token::DIRECTIVE_TAIL((tail, absolute_tail_start, absolute_tail_end)),
         absolute_tail_start,
         absolute_tail_end,
       ),
     )
   }
-  tokens.push((@generated.Token::EOF, absolute_text_end, absolute_text_end))
+  tokens.push((Token::EOF, absolute_text_end, absolute_text_end))
   Some(tokens)
 }
 
@@ -155,7 +153,7 @@ fn parse_wgsl_directive_line_at(
   guard tokenize_wgsl_directive_line(line, source_start) is Some(tokens) else {
     return None
   }
-  let parsed = @generated.directive_line(tokens) catch { _ => return None }
+  let parsed = directive_line(tokens) catch { _ => return None }
   Some(parsed)
 }
 
@@ -193,23 +191,21 @@ pub fn wgsl_directive_prefix_tail(
   }
   start = start + prefix.length()
   let tail = trimmed[start:trimmed.length()].to_owned()
-  let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::HASH, 0, 1),
-    (@generated.Token::PREFIX, start - prefix.length(), start),
+  let tokens : Array[(Token, Int, Int)] = [
+    (Token::HASH, 0, 1),
+    (Token::PREFIX, start - prefix.length(), start),
   ]
   if tail != "" {
     tokens.push(
       (
-        @generated.Token::DIRECTIVE_TAIL((tail, start, trimmed.length())),
+        Token::DIRECTIVE_TAIL((tail, start, trimmed.length())),
         start,
         trimmed.length(),
       ),
     )
   }
-  tokens.push((@generated.Token::EOF, trimmed.length(), trimmed.length()))
-  let parsed = @generated.directive_prefix_tail(tokens) catch {
-    _ => return None
-  }
+  tokens.push((Token::EOF, trimmed.length(), trimmed.length()))
+  let parsed = directive_prefix_tail(tokens) catch { _ => return None }
   Some(parsed)
 }
 
@@ -218,8 +214,8 @@ pub fn wgsl_token_brace_balance(text : String) -> Int {
   let mut balance = 0
   for token in tokenize(text, false) {
     match token {
-      Token::Other(123, _) => balance = balance + 1
-      Token::Other(125, _) => balance = balance - 1
+      WgslToken::Other(123, _) => balance = balance + 1
+      WgslToken::Other(125, _) => balance = balance - 1
       _ => ()
     }
   }

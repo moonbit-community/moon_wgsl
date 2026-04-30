@@ -100,7 +100,7 @@ fn apply_ifdefs_parent_active(active_stack : Array[Bool]) -> Bool {
 ///|
 fn apply_ifdefs_tail_has_ascii_space(tail : String) -> Bool {
   match tokenize(tail, true) {
-    [Token::Whitespace(_, 0), ..] => true
+    [WgslToken::Whitespace(_, 0), ..] => true
     _ => false
   }
 }

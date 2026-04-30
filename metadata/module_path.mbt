@@ -18,11 +18,11 @@ fn wgsl_metadata_code_unit_to_string(code : Int) -> String {
 }
 
 ///|
-fn wgsl_metadata_token_text(token : Token) -> String {
+fn wgsl_metadata_token_text(token : WgslToken) -> String {
   match token {
-    Token::Identifier(text, _) => text
-    Token::Whitespace(text, _) => text
-    Token::Other(code, _) => wgsl_metadata_code_unit_to_string(code)
+    WgslToken::Identifier(text, _) => text
+    WgslToken::Whitespace(text, _) => text
+    WgslToken::Other(code, _) => wgsl_metadata_code_unit_to_string(code)
   }
 }
 
@@ -33,7 +33,7 @@ fn wgsl_metadata_first_space_separated_token(text : String) -> String {
   let mut output = ""
   for token in tokens {
     match token {
-      Token::Whitespace(_, _) => break
+      WgslToken::Whitespace(_, _) => break
       _ => output = output + wgsl_metadata_token_text(token)
     }
   }

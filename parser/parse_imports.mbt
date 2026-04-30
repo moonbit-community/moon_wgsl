@@ -35,7 +35,7 @@ pub fn split_last_identifier(text : String) -> (String, String)? {
 }
 
 ///|
-fn wgsl_generated_import_token_end(token : Token) -> Int {
+fn wgsl_generated_import_token_end(token : WgslToken) -> Int {
   match token {
     Identifier(text, pos) | Whitespace(text, pos) => pos + text.length()
     Other(_, pos) => pos + 1
@@ -44,8 +44,8 @@ fn wgsl_generated_import_token_end(token : Token) -> Int {
 
 ///|
 fn push_generated_import_token(
-  tokens : Array[(@generated.Token, Int, Int)],
-  generated : @generated.Token,
+  tokens : Array[(Token, Int, Int)],
+  generated : Token,
   start : Int,
   end_ : Int,
 ) -> Unit {
@@ -55,49 +55,28 @@ fn push_generated_import_token(
 ///|
 fn tokenize_wgsl_import_targets(
   input : String,
-) -> Array[(@generated.Token, Int, Int)] raise ParseImportsError {
-  let out : Array[(@generated.Token, Int, Int)] = []
+) -> Array[(Token, Int, Int)] raise ParseImportsError {
+  let out : Array[(Token, Int, Int)] = []
   for token in tokenize(input, false) {
     let start = token.pos()
     let end_ = wgsl_generated_import_token_end(token)
     match token {
       Identifier("as", _) =>
-        push_generated_import_token(out, @generated.Token::AS, start, end_)
+        push_generated_import_token(out, Token::AS, start, end_)
       Identifier(name, _) =>
-        push_generated_import_token(
-          out,
-          @generated.Token::IDENT(name),
-          start,
-          end_,
-        )
+        push_generated_import_token(out, Token::IDENT(name), start, end_)
       Other(123, _) =>
-        push_generated_import_token(
-          out,
-          @generated.Token::LBRACE(start),
-          start,
-          end_,
-        )
+        push_generated_import_token(out, Token::LBRACE(start), start, end_)
       Other(125, _) =>
-        push_generated_import_token(
-          out,
-          @generated.Token::RBRACE(start),
-          start,
-          end_,
-        )
+        push_generated_import_token(out, Token::RBRACE(start), start, end_)
       Other(44, _) =>
-        push_generated_import_token(out, @generated.Token::COMMA, start, end_)
-      Other(59, _) =>
-        push_generated_import_token(out, @generated.Token::SEMI, start, end_)
+        push_generated_import_token(out, Token::COMMA, start, end_)
+      Other(59, _) => push_generated_import_token(out, Token::SEMI, start, end_)
       Other(_, pos) => raise ParseImportsError::Parse("unexpected token", pos)
       Whitespace(_, _) => abort("whitespace tokens should not be emitted here")
     }
   }
-  push_generated_import_token(
-    out,
-    @generated.Token::EOF,
-    input.length(),
-    input.length(),
-  )
+  push_generated_import_token(out, Token::EOF, input.length(), input.length())
   out
 }
 
@@ -132,10 +111,10 @@ pub fn parse_wgsl_import_targets(
   if input.trim() == "" {
     raise ParseImportsError::Parse("expected import path", input.length())
   }
-  let parsed = @generated.import_targets(tokenize_wgsl_import_targets(input)) catch {
-    @generated.ParseError::UnexpectedToken(_, (start, _), _) =>
+  let parsed = import_targets(tokenize_wgsl_import_targets(input)) catch {
+    ParseError::UnexpectedToken(_, (start, _), _) =>
       raise ParseImportsError::Parse("unexpected token", start)
-    @generated.ParseError::UnexpectedEndOfInput(pos, _) =>
+    ParseError::UnexpectedEndOfInput(pos, _) =>
       raise ParseImportsError::Parse("unexpected end of input", pos)
     _ => raise ParseImportsError::Parse("unexpected parser failure", 0)
   }

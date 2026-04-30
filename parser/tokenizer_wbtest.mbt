@@ -18,7 +18,7 @@ test "WGSL tokenizer does not split numeric suffixes into identifiers" {
   let identifiers : Array[String] = []
   for token in tokens {
     match token {
-      Token::Identifier(name, _) => identifiers.push(name)
+      WgslToken::Identifier(name, _) => identifiers.push(name)
       _ => ()
     }
   }

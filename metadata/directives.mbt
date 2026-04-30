@@ -8,7 +8,7 @@ fn split_extensions(raw : String) -> Array[String] {
   let extensions : Array[String] = []
   for token in tokenize(raw, false) {
     match token {
-      Token::Identifier(text, _) => extensions.push(text)
+      WgslToken::Identifier(text, _) => extensions.push(text)
       _ => ()
     }
   }
@@ -16,23 +16,23 @@ fn split_extensions(raw : String) -> Array[String] {
 }
 
 ///|
-fn shader_def_name_token_text(token : Token) -> String? {
+fn shader_def_name_token_text(token : WgslToken) -> String? {
   match token {
-    Token::Identifier(text, _) => Some(text)
-    Token::Other(124, _) => Some("|")
-    Token::Other(code, _) if code >= 48 && code <= 57 =>
+    WgslToken::Identifier(text, _) => Some(text)
+    WgslToken::Other(124, _) => Some("|")
+    WgslToken::Other(code, _) if code >= 48 && code <= 57 =>
       Some(wgsl_metadata_code_unit_to_string(code))
     _ => None
   }
 }
 
 ///|
-fn shader_def_value_token_text(token : Token) -> String? {
+fn shader_def_value_token_text(token : WgslToken) -> String? {
   match token {
-    Token::Identifier(text, _) => Some(text)
-    Token::Other(124, _) | Token::Other(45, _) =>
+    WgslToken::Identifier(text, _) => Some(text)
+    WgslToken::Other(124, _) | WgslToken::Other(45, _) =>
       Some(wgsl_metadata_token_text(token))
-    Token::Other(code, _) if (code >= 48 && code <= 57) ||
+    WgslToken::Other(code, _) if (code >= 48 && code <= 57) ||
       (code >= 65 && code <= 90) ||
       (code >= 97 && code <= 122) =>
       Some(wgsl_metadata_code_unit_to_string(code))
@@ -41,7 +41,7 @@ fn shader_def_value_token_text(token : Token) -> String? {
 }
 
 ///|
-fn token_end(token : Token) -> Int {
+fn token_end(token : WgslToken) -> Int {
   token.pos() + wgsl_metadata_token_text(token).length()
 }
 
@@ -51,14 +51,14 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
   let tokens = tokenize(line, true)
   let mut i = 0
   while i < tokens.length() {
-    guard tokens[i] is Token::Other(35, _) else {
+    guard tokens[i] is WgslToken::Other(35, _) else {
       i = i + 1
       continue
     }
     let mut j = i + 1
     while j < tokens.length() {
       match tokens[j] {
-        Token::Whitespace(_, _) => j = j + 1
+        WgslToken::Whitespace(_, _) => j = j + 1
         _ => break
       }
     }
@@ -67,12 +67,12 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
       continue
     }
     match tokens[j] {
-      Token::Other(123, _) => {
+      WgslToken::Other(123, _) => {
         let body_start = token_end(tokens[j])
         let mut k = j + 1
         while k < tokens.length() {
           match tokens[k] {
-            Token::Other(125, _) => break
+            WgslToken::Other(125, _) => break
             _ => k = k + 1
           }
         }
@@ -167,7 +167,7 @@ fn split_define_name_and_value(text : String) -> (String, String) {
   }
   while i < tokens.length() {
     match tokens[i] {
-      Token::Whitespace(_, _) => i = i + 1
+      WgslToken::Whitespace(_, _) => i = i + 1
       _ => break
     }
   }
@@ -185,7 +185,7 @@ fn split_define_name_and_value(text : String) -> (String, String) {
 ///|
 fn starts_with_tokenized_space(text : String) -> Bool {
   match tokenize(text, true) {
-    [Token::Whitespace(_, 0), ..] => true
+    [WgslToken::Whitespace(_, 0), ..] => true
     _ => false
   }
 }
@@ -195,11 +195,12 @@ fn semicolon_directive_body(line : String, keyword : String) -> String? {
   let trimmed = line.trim().to_owned()
   let tokens = tokenize(trimmed, false)
   match tokens {
-    [Token::Identifier(actual, start), ..] if actual == keyword && start == 0 => {
+    [WgslToken::Identifier(actual, start), ..] if actual == keyword &&
+      start == 0 => {
       let body_start = keyword.length()
       for token in tokens {
         match token {
-          Token::Other(59, semicolon_pos) =>
+          WgslToken::Other(59, semicolon_pos) =>
             if semicolon_pos > body_start {
               return Some(
                 trimmed[body_start:semicolon_pos].to_owned().trim().to_owned(),
@@ -220,13 +221,13 @@ fn semicolon_directive_body(line : String, keyword : String) -> String? {
 fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
   match tokenize(line.trim().to_owned(), false) {
     [
-      Token::Identifier("diagnostic", 0),
-      Token::Other(40, _),
-      Token::Identifier(severity, _),
-      Token::Other(44, _),
-      Token::Identifier(rule, _),
-      Token::Other(41, _),
-      Token::Other(59, _),
+      WgslToken::Identifier("diagnostic", 0),
+      WgslToken::Other(40, _),
+      WgslToken::Identifier(severity, _),
+      WgslToken::Other(44, _),
+      WgslToken::Identifier(rule, _),
+      WgslToken::Other(41, _),
+      WgslToken::Other(59, _),
       ..,
     ] => Some((severity, rule))
     _ => None
@@ -236,7 +237,7 @@ fn parse_diagnostic_directive_body(line : String) -> (String, String)? {
 ///|
 fn wgsl_source_directive_keyword(line : String) -> String? {
   match tokenize(line.trim().to_owned(), false) {
-    [Token::Identifier(keyword, _), ..] => Some(keyword)
+    [WgslToken::Identifier(keyword, _), ..] => Some(keyword)
     _ => None
   }
 }
@@ -249,11 +250,11 @@ fn directive_identifier(text : String) -> String? {
   let mut expect_identifier = true
   for token in tokens {
     match token {
-      Token::Identifier(ident, _) if expect_identifier => {
+      WgslToken::Identifier(ident, _) if expect_identifier => {
         out = out + ident
         expect_identifier = false
       }
-      Token::Other(124, _) if !expect_identifier => {
+      WgslToken::Other(124, _) if !expect_identifier => {
         out = out + "|"
         expect_identifier = true
       }
@@ -315,8 +316,8 @@ fn parse_if_operator_expression(
   let mut def = ""
   while i < tokens.length() {
     match tokens[i] {
-      Token::Identifier(ident, _) => def = def + ident
-      Token::Other(124, _) => def = def + "|"
+      WgslToken::Identifier(ident, _) => def = def + ident
+      WgslToken::Other(124, _) => def = def + "|"
       _ => break
     }
     i = i + 1
@@ -325,7 +326,7 @@ fn parse_if_operator_expression(
   let mut operator = ""
   while i < tokens.length() {
     match tokens[i] {
-      Token::Other(code, _) if code == 61 ||
+      WgslToken::Other(code, _) if code == 61 ||
         code == 33 ||
         code == 60 ||
         code == 62 =>

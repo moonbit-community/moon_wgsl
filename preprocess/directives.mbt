@@ -1,21 +1,21 @@
 ///|
-fn shader_def_name_token_text(token : Token) -> String? {
+fn shader_def_name_token_text(token : WgslToken) -> String? {
   match token {
-    Token::Identifier(text, _) => Some(text)
-    Token::Other(124, _) => Some("|")
-    Token::Other(code, _) if code >= 48 && code <= 57 =>
+    WgslToken::Identifier(text, _) => Some(text)
+    WgslToken::Other(124, _) => Some("|")
+    WgslToken::Other(code, _) if code >= 48 && code <= 57 =>
       Some(code_unit_to_string(code))
     _ => None
   }
 }
 
 ///|
-fn shader_def_value_token_text(token : Token) -> String? {
+fn shader_def_value_token_text(token : WgslToken) -> String? {
   match token {
-    Token::Identifier(text, _) => Some(text)
-    Token::Other(124, _) | Token::Other(45, _) =>
+    WgslToken::Identifier(text, _) => Some(text)
+    WgslToken::Other(124, _) | WgslToken::Other(45, _) =>
       Some(preprocess_token_text(token))
-    Token::Other(code, _) if (code >= 48 && code <= 57) ||
+    WgslToken::Other(code, _) if (code >= 48 && code <= 57) ||
       (code >= 65 && code <= 90) ||
       (code >= 97 && code <= 122) => Some(code_unit_to_string(code))
     _ => None
@@ -23,7 +23,7 @@ fn shader_def_value_token_text(token : Token) -> String? {
 }
 
 ///|
-fn token_end(token : Token) -> Int {
+fn token_end(token : WgslToken) -> Int {
   token.pos() + preprocess_token_text(token).length()
 }
 
@@ -33,14 +33,14 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
   let tokens = tokenize(line, true)
   let mut i = 0
   while i < tokens.length() {
-    guard tokens[i] is Token::Other(35, start) else {
+    guard tokens[i] is WgslToken::Other(35, start) else {
       i = i + 1
       continue
     }
     let mut j = i + 1
     while j < tokens.length() {
       match tokens[j] {
-        Token::Whitespace(_, _) => j = j + 1
+        WgslToken::Whitespace(_, _) => j = j + 1
         _ => break
       }
     }
@@ -49,12 +49,12 @@ fn parse_shader_def_references(line : String) -> Array[ShaderDefReference] {
       continue
     }
     match tokens[j] {
-      Token::Other(123, _) => {
+      WgslToken::Other(123, _) => {
         let body_start = token_end(tokens[j])
         let mut k = j + 1
         while k < tokens.length() {
           match tokens[k] {
-            Token::Other(125, _) => break
+            WgslToken::Other(125, _) => break
             _ => k = k + 1
           }
         }
@@ -163,7 +163,7 @@ fn parse_wgsl_template_const_references(
   let tokens = tokenize(source, true)
   let mut i = 0
   while i < tokens.length() {
-    guard tokens[i] is Token::Other(35, start) else {
+    guard tokens[i] is WgslToken::Other(35, start) else {
       i = i + 1
       continue
     }
@@ -172,12 +172,12 @@ fn parse_wgsl_template_const_references(
       continue
     }
     match tokens[i + 1] {
-      Token::Other(123, _) => {
+      WgslToken::Other(123, _) => {
         let body_start = token_end(tokens[i + 1])
         let mut j = i + 2
         while j < tokens.length() {
           match tokens[j] {
-            Token::Other(125, _) => break
+            WgslToken::Other(125, _) => break
             _ => j = j + 1
           }
         }
@@ -196,7 +196,7 @@ fn parse_wgsl_template_const_references(
           i = i + 1
         }
       }
-      Token::Identifier(text, pos) =>
+      WgslToken::Identifier(text, pos) =>
         match longest_wgsl_template_const_prefix(text, value_defines) {
           Some(name) => {
             references.push(WgslTemplateConstReference::{
@@ -217,7 +217,7 @@ fn parse_wgsl_template_const_references(
 ///|
 fn starts_with_tokenized_space(text : String) -> Bool {
   match tokenize(text, true) {
-    [Token::Whitespace(_, 0), ..] => true
+    [WgslToken::Whitespace(_, 0), ..] => true
     _ => false
   }
 }
@@ -227,7 +227,7 @@ fn parse_glsl_version_directive(line : String) -> String? {
   let trimmed = line.trim().to_owned()
   let tokens = tokenize(trimmed, false)
   match tokens {
-    [Token::Other(35, 0), Token::Identifier("version", _), ..] => ()
+    [WgslToken::Other(35, 0), WgslToken::Identifier("version", _), ..] => ()
     _ => return None
   }
   guard tokens.length() > 2 else { return None }
@@ -236,7 +236,7 @@ fn parse_glsl_version_directive(line : String) -> String? {
   let mut i = 2
   while i < tokens.length() {
     match tokens[i] {
-      Token::Other(code, pos) if code >= 48 && code <= 57 && pos == end => {
+      WgslToken::Other(code, pos) if code >= 48 && code <= 57 && pos == end => {
         end = end + 1
         i = i + 1
       }
@@ -270,11 +270,11 @@ fn directive_identifier(text : String) -> String? {
   let mut expect_identifier = true
   for token in tokens {
     match token {
-      Token::Identifier(ident, _) if expect_identifier => {
+      WgslToken::Identifier(ident, _) if expect_identifier => {
         out = out + ident
         expect_identifier = false
       }
-      Token::Other(124, _) if !expect_identifier => {
+      WgslToken::Other(124, _) if !expect_identifier => {
         out = out + "|"
         expect_identifier = true
       }

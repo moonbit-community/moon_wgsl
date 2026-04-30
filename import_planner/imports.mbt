@@ -23,7 +23,7 @@ using @ast {type WgslIdent, collect_wgsl_decl_identifier_nodes}
 
 ///|
 using @parser {
-  type Token,
+  type WgslToken,
   parse_wgsl_translation_unit,
   split_last_identifier,
   tokenize,

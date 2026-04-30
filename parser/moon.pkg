@@ -1,6 +1,16 @@
 import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
-  "Milky2018/moon_wgsl/parser/generated",
   "moonbitlang/core/hashmap",
+  "moonbitlang/core/list",
 }
+
+options(
+  "pre-build": [
+    {
+      "command": "bash $mod_dir/tools/generate_private_wgsl_parser.sh $input $output",
+      "input": "wgsl_parser.mbty",
+      "output": "wgsl_generated_parser.mbt",
+    },
+  ],
+)

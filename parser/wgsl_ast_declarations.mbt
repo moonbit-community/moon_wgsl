@@ -44,7 +44,7 @@ fn WgslDeclParser::parse_struct_members(
       let tokens = self.tokenize_struct_members(fragment) catch {
         _ => return []
       }
-      let members = @generated.struct_members(tokens) catch { _ => return [] }
+      let members = struct_members(tokens) catch { _ => return [] }
       self.drop_tokens(fragment.consumed)
       members
     }
@@ -61,10 +61,10 @@ priv suberror WgslStructMembersTokenizeError {
 fn WgslDeclParser::tokenize_struct_members(
   self : WgslDeclParser,
   fragment : WgslDelimitedTokenView,
-) -> Array[(@generated.Token, Int, Int)] raise WgslStructMembersTokenizeError {
-  let tokens : Array[(@generated.Token, Int, Int)] = [
+) -> Array[(Token, Int, Int)] raise WgslStructMembersTokenizeError {
+  let tokens : Array[(Token, Int, Int)] = [
     (
-      @generated.Token::LBRACE(fragment.open_start),
+      Token::LBRACE(fragment.open_start),
       fragment.open_start,
       fragment.open_start + 1,
     ),
@@ -76,14 +76,14 @@ fn WgslDeclParser::tokenize_struct_members(
   }
   while parser.view().length() > 0 {
     match parser.view() {
-      [Token::Other(44, pos), .. rest] => {
+      [WgslToken::Other(44, pos), .. rest] => {
         parser.update_view(rest)
-        tokens.push((@generated.Token::COMMA, pos, pos + 1))
+        tokens.push((Token::COMMA, pos, pos + 1))
         continue
       }
-      [Token::Other(59, pos), .. rest] => {
+      [WgslToken::Other(59, pos), .. rest] => {
         parser.update_view(rest)
-        tokens.push((@generated.Token::SEMI, pos, pos + 1))
+        tokens.push((Token::SEMI, pos, pos + 1))
         continue
       }
       _ => ()
@@ -93,11 +93,11 @@ fn WgslDeclParser::tokenize_struct_members(
       Some(value) => value
       None => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
-    tokens.push((@generated.Token::MEMBER_NAME(name), name.start, name.end))
+    tokens.push((Token::MEMBER_NAME(name), name.start, name.end))
     match parser.view() {
-      [Token::Other(58, pos), .. rest] => {
+      [WgslToken::Other(58, pos), .. rest] => {
         parser.update_view(rest)
-        tokens.push((@generated.Token::COLON, pos, pos + 1))
+        tokens.push((Token::COLON, pos, pos + 1))
       }
       _ => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
@@ -107,7 +107,7 @@ fn WgslDeclParser::tokenize_struct_members(
     }
     tokens.push(
       (
-        @generated.Token::MEMBER_TYPE(
+        Token::MEMBER_TYPE(
           (
             ty_fragment.text,
             parse_wgsl_type_ref_fragment(ty_fragment),
@@ -120,21 +120,19 @@ fn WgslDeclParser::tokenize_struct_members(
       ),
     )
     match parser.view() {
-      [Token::Other(44, _), ..] | [Token::Other(59, _), ..] => continue
+      [WgslToken::Other(44, _), ..] | [WgslToken::Other(59, _), ..] => continue
       [] => break
       _ => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
   }
   tokens.push(
     (
-      @generated.Token::RBRACE(fragment.close_start),
+      Token::RBRACE(fragment.close_start),
       fragment.close_start,
       fragment.close_start + 1,
     ),
   )
-  tokens.push(
-    (@generated.Token::EOF, fragment.close_start + 1, fragment.close_start + 1),
-  )
+  tokens.push((Token::EOF, fragment.close_start + 1, fragment.close_start + 1))
   tokens
 }
 
@@ -194,16 +192,16 @@ fn WgslTypedInitializerTail::empty() -> WgslTypedInitializerTail {
 fn WgslDeclParser::parse_typed_initializer_tail(
   self : WgslDeclParser,
 ) -> WgslTypedInitializerTail {
-  let tokens : Array[(@generated.Token, Int, Int)] = []
+  let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
-    [Token::Other(58, pos), .. rest] => {
+    [WgslToken::Other(58, pos), .. rest] => {
       self.update_view(rest)
-      tokens.push((@generated.Token::COLON, pos, pos + 1))
+      tokens.push((Token::COLON, pos, pos + 1))
       let ty_fragment = self.collect_until_top_level_fragment([61, 59])
       if ty_fragment.text != "" {
         tokens.push(
           (
-            @generated.Token::DECL_TYPE(
+            Token::DECL_TYPE(
               (
                 ty_fragment.text,
                 parse_wgsl_type_ref_fragment(ty_fragment),
@@ -220,14 +218,14 @@ fn WgslDeclParser::parse_typed_initializer_tail(
     _ => ()
   }
   match self.view() {
-    [Token::Other(61, pos), .. rest] => {
+    [WgslToken::Other(61, pos), .. rest] => {
       self.update_view(rest)
-      tokens.push((@generated.Token::EQUAL, pos, pos + 1))
+      tokens.push((Token::EQUAL, pos, pos + 1))
       let initializer = self.collect_until_top_level_fragment([59])
       if initializer.text != "" {
         tokens.push(
           (
-            @generated.Token::INIT_EXPR(
+            Token::INIT_EXPR(
               (initializer.text, parse_wgsl_expr_ref_fragment(initializer)),
             ),
             initializer.start,
@@ -239,13 +237,9 @@ fn WgslDeclParser::parse_typed_initializer_tail(
     _ => ()
   }
   tokens.push(
-    (
-      @generated.Token::EOF,
-      self.source_text.length(),
-      self.source_text.length(),
-    ),
+    (Token::EOF, self.source_text.length(), self.source_text.length()),
   )
-  let parsed = @generated.typed_initializer_tail(tokens) catch {
+  let parsed = typed_initializer_tail(tokens) catch {
     _ => return WgslTypedInitializerTail::empty()
   }
   match parsed {
@@ -306,11 +300,11 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
 fn WgslDeclParser::parse_type_alias_tail(
   self : WgslDeclParser,
 ) -> (String, WgslTypeRef?)? {
-  let tokens : Array[(@generated.Token, Int, Int)] = []
+  let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
-    [Token::Other(61, pos), .. rest] => {
+    [WgslToken::Other(61, pos), .. rest] => {
       self.update_view(rest)
-      tokens.push((@generated.Token::EQUAL, pos, pos + 1))
+      tokens.push((Token::EQUAL, pos, pos + 1))
     }
     _ => return None
   }
@@ -320,7 +314,7 @@ fn WgslDeclParser::parse_type_alias_tail(
   }
   tokens.push(
     (
-      @generated.Token::DECL_TYPE(
+      Token::DECL_TYPE(
         (
           ty_fragment.text,
           parse_wgsl_type_ref_fragment(ty_fragment),
@@ -332,15 +326,15 @@ fn WgslDeclParser::parse_type_alias_tail(
       ty_fragment.end,
     ),
   )
-  tokens.push((@generated.Token::EOF, ty_fragment.end, ty_fragment.end))
-  Some(@generated.type_alias_tail(tokens) catch { _ => return None })
+  tokens.push((Token::EOF, ty_fragment.end, ty_fragment.end))
+  Some(type_alias_tail(tokens) catch { _ => return None })
 }
 
 ///|
 fn WgslDeclParser::parse_source_directive(
   self : WgslDeclParser,
   keyword : WgslIdent,
-  token : @generated.Token,
+  token : Token,
 ) -> WgslDirective? {
   let tail_fragment = self.collect_until_top_level_fragment([59])
   let text = self.source_text.trim().to_owned()
@@ -354,27 +348,23 @@ fn WgslDeclParser::parse_source_directive(
   } else {
     ("", keyword.end, keyword.end)
   }
-  let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::SOURCE_TEXT(text), 0, 0),
+  let tokens : Array[(Token, Int, Int)] = [
+    (Token::SOURCE_TEXT(text), 0, 0),
     (token, keyword.start, keyword.end),
   ]
   if tail_text != "" {
     tokens.push(
       (
-        @generated.Token::DIRECTIVE_TAIL((tail_text, tail_start, tail_end)),
+        Token::DIRECTIVE_TAIL((tail_text, tail_start, tail_end)),
         tail_start,
         tail_end,
       ),
     )
   }
   tokens.push(
-    (
-      @generated.Token::EOF,
-      self.source_text.length(),
-      self.source_text.length(),
-    ),
+    (Token::EOF, self.source_text.length(), self.source_text.length()),
   )
-  Some(@generated.source_directive(tokens) catch { _ => return None })
+  Some(source_directive(tokens) catch { _ => return None })
 }
 
 ///|
@@ -382,11 +372,11 @@ fn WgslDeclParser::parse_const_assert(self : WgslDeclParser) -> WgslExprRef {
   let expr = parse_required_wgsl_expr_ref_fragment(
     self.collect_until_top_level_fragment([59]),
   )
-  let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::EXPR_REF(expr), expr.start, expr.end),
-    (@generated.Token::EOF, expr.end, expr.end),
+  let tokens : Array[(Token, Int, Int)] = [
+    (Token::EXPR_REF(expr), expr.start, expr.end),
+    (Token::EOF, expr.end, expr.end),
   ]
-  @generated.const_assert_expr(tokens) catch {
+  const_assert_expr(tokens) catch {
     _ => expr
   }
 }
@@ -395,33 +385,33 @@ fn WgslDeclParser::parse_const_assert(self : WgslDeclParser) -> WgslExprRef {
 fn WgslDeclParser::decl_head_token(
   _self : WgslDeclParser,
   ident : WgslIdent,
-) -> @generated.Token? {
+) -> Token? {
   match ident.name {
-    "virtual" => Some(@generated.Token::KW_VIRTUAL(ident))
-    "override" => Some(@generated.Token::KW_OVERRIDE(ident))
-    "fn" => Some(@generated.Token::KW_FN(ident))
-    "var" => Some(@generated.Token::KW_VAR(ident))
-    "struct" => Some(@generated.Token::KW_STRUCT(ident))
-    "const" => Some(@generated.Token::KW_CONST(ident))
-    "const_assert" => Some(@generated.Token::KW_CONST_ASSERT(ident))
-    "alias" => Some(@generated.Token::KW_ALIAS(ident))
-    "type" => Some(@generated.Token::KW_TYPE(ident))
-    "enable" => Some(@generated.Token::KW_ENABLE(ident))
-    "requires" => Some(@generated.Token::KW_REQUIRES(ident))
-    "diagnostic" => Some(@generated.Token::KW_DIAGNOSTIC(ident))
+    "virtual" => Some(Token::KW_VIRTUAL(ident))
+    "override" => Some(Token::KW_OVERRIDE(ident))
+    "fn" => Some(Token::KW_FN(ident))
+    "var" => Some(Token::KW_VAR(ident))
+    "struct" => Some(Token::KW_STRUCT(ident))
+    "const" => Some(Token::KW_CONST(ident))
+    "const_assert" => Some(Token::KW_CONST_ASSERT(ident))
+    "alias" => Some(Token::KW_ALIAS(ident))
+    "type" => Some(Token::KW_TYPE(ident))
+    "enable" => Some(Token::KW_ENABLE(ident))
+    "requires" => Some(Token::KW_REQUIRES(ident))
+    "diagnostic" => Some(Token::KW_DIAGNOSTIC(ident))
     _ => None
   }
 }
 
 ///|
 fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
-  let tokens : Array[(@generated.Token, Int, Int)] = []
+  let tokens : Array[(Token, Int, Int)] = []
   self.push_attribute_tokens(tokens)
   let mut view = self.view()
   let mut emitted = 0
   while emitted < 2 {
     match view {
-      [Token::Identifier(name, pos), .. rest] => {
+      [WgslToken::Identifier(name, pos), .. rest] => {
         let ident = WgslIdent::{ name, start: pos, end: pos + name.length() }
         match self.decl_head_token(ident) {
           Some(token) => tokens.push((token, ident.start, ident.end))
@@ -435,13 +425,9 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
     }
   }
   tokens.push(
-    (
-      @generated.Token::EOF,
-      self.source_text.length(),
-      self.source_text.length(),
-    ),
+    (Token::EOF, self.source_text.length(), self.source_text.length()),
   )
-  let head = @generated.decl_head(tokens) catch { _ => WgslDeclHead::raw([]) }
+  let head = decl_head(tokens) catch { _ => WgslDeclHead::raw([]) }
   self.drop_tokens(head.consumed)
   head
 }

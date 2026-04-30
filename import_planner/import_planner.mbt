@@ -113,7 +113,7 @@ fn wgsl_import_alias_prefix(alias_name : String) -> String {
     }
     for token in tokenize(segments[i], true) {
       match token {
-        Token::Identifier(text, _) if !text.contains("\"") =>
+        WgslToken::Identifier(text, _) if !text.contains("\"") =>
           prefix = "\{prefix}\{text}"
         _ => prefix = wgsl_import_alias_prefix_separator(prefix)
       }

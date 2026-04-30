@@ -61,12 +61,12 @@ fn parse_wgsl_raw_top_level_items(
   source : String,
 ) -> Array[WgslRawTopLevelItem] {
   let raw_items = parse_wgsl_top_level_items(source)
-  let tokens : Array[(@generated.Token, Int, Int)] = []
+  let tokens : Array[(Token, Int, Int)] = []
   for item in raw_items {
-    tokens.push((@generated.Token::ITEM(item), item.start, item.end))
+    tokens.push((Token::ITEM(item), item.start, item.end))
   }
-  tokens.push((@generated.Token::EOF, source.length(), source.length()))
-  @generated.raw_top_level_items(tokens) catch {
+  tokens.push((Token::EOF, source.length(), source.length()))
+  raw_top_level_items(tokens) catch {
     _ => raw_items
   }
 }

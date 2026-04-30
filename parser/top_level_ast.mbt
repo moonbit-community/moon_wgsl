@@ -42,11 +42,14 @@ fn top_level_line_end(source : String, pos : Int) -> Int {
 }
 
 ///|
-fn top_level_non_whitespace_index(tokens : Array[Token], start : Int) -> Int {
+fn top_level_non_whitespace_index(
+  tokens : Array[WgslToken],
+  start : Int,
+) -> Int {
   let mut i = start
   while i < tokens.length() {
     match tokens[i] {
-      Token::Whitespace(_, _) => i = i + 1
+      WgslToken::Whitespace(_, _) => i = i + 1
       _ => return i
     }
   }
@@ -54,15 +57,18 @@ fn top_level_non_whitespace_index(tokens : Array[Token], start : Int) -> Int {
 }
 
 ///|
-fn top_level_index_starts_semicolon(tokens : Array[Token], start : Int) -> Bool {
+fn top_level_index_starts_semicolon(
+  tokens : Array[WgslToken],
+  start : Int,
+) -> Bool {
   let next = top_level_non_whitespace_index(tokens, start)
-  next < tokens.length() && tokens[next] is Token::Other(59, _)
+  next < tokens.length() && tokens[next] is WgslToken::Other(59, _)
 }
 
 ///|
-fn top_level_previous_token_is_hash(previous : Token?) -> Bool {
+fn top_level_previous_token_is_hash(previous : WgslToken?) -> Bool {
   match previous {
-    Some(Token::Other(35, _)) => true
+    Some(WgslToken::Other(35, _)) => true
     _ => false
   }
 }
@@ -104,7 +110,7 @@ fn top_level_push_span_item(
 priv struct WgslTopLevelParser {
   source : String
   cleaned : String
-  tokens : Array[Token]
+  tokens : Array[WgslToken]
   mut index : Int
   mut pending_start : Int
 }
@@ -210,16 +216,16 @@ fn WgslTopLevelParser::parse_declaration_item(
   let depth = WgslTokenDepth::new()
   let mut saw_brace = false
   let mut item_end = first_token_pos
-  let mut previous_significant : Token? = None
+  let mut previous_significant : WgslToken? = None
   while self.index < self.tokens.length() {
     let token = self.tokens[self.index]
-    if !saw_brace && depth.at_top() && token is Token::Other(59, _) {
+    if !saw_brace && depth.at_top() && token is WgslToken::Other(59, _) {
       item_end = token.end()
       self.index = self.index + 1
       break
     }
     let starts_top_level_brace = depth.at_top() &&
-      token is Token::Other(123, _) &&
+      token is WgslToken::Other(123, _) &&
       !top_level_previous_token_is_hash(previous_significant)
     depth.observe_statement_token(token)
     if starts_top_level_brace {
@@ -230,19 +236,19 @@ fn WgslTopLevelParser::parse_declaration_item(
     if saw_brace && depth.at_top() {
       while top_level_index_starts_semicolon(self.tokens, self.index) {
         while self.index < self.tokens.length() &&
-              self.tokens[self.index] is Token::Whitespace(_, _) {
+              self.tokens[self.index] is WgslToken::Whitespace(_, _) {
           item_end = self.tokens[self.index].end()
           self.index = self.index + 1
         }
         if self.index < self.tokens.length() &&
-          self.tokens[self.index] is Token::Other(59, _) {
+          self.tokens[self.index] is WgslToken::Other(59, _) {
           item_end = self.tokens[self.index].end()
           self.index = self.index + 1
         }
       }
       break
     }
-    if !(token is Token::Whitespace(_, _)) {
+    if !(token is WgslToken::Whitespace(_, _)) {
       previous_significant = Some(token)
     }
   }
@@ -272,7 +278,7 @@ fn WgslTopLevelParser::parse_items(
     }
     let token = self.tokens[self.index]
     let token_pos = token.pos()
-    if token is Token::Other(35, _) {
+    if token is WgslToken::Other(35, _) {
       let line_end = top_level_line_end(self.source, token_pos)
       let cleaned_line = self.cleaned[token_pos:line_end].to_owned()
       match parse_wgsl_directive_line(cleaned_line) {

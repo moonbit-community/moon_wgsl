@@ -25,7 +25,7 @@ fn WgslDeclParser::parse_function_arguments(
       let tokens = self.tokenize_function_arguments(fragment) catch {
         _ => return []
       }
-      let arguments = @generated.function_args(tokens) catch { _ => return [] }
+      let arguments = function_args(tokens) catch { _ => return [] }
       self.drop_tokens(fragment.consumed)
       arguments
     }
@@ -42,9 +42,9 @@ priv suberror WgslFunctionArgsTokenizeError {
 fn WgslDeclParser::tokenize_function_arguments(
   self : WgslDeclParser,
   fragment : WgslDelimitedTokenView,
-) -> Array[(@generated.Token, Int, Int)] raise WgslFunctionArgsTokenizeError {
-  let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::LPAREN, fragment.open_start, fragment.open_start + 1),
+) -> Array[(Token, Int, Int)] raise WgslFunctionArgsTokenizeError {
+  let tokens : Array[(Token, Int, Int)] = [
+    (Token::LPAREN, fragment.open_start, fragment.open_start + 1),
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
@@ -53,7 +53,7 @@ fn WgslDeclParser::tokenize_function_arguments(
   }
   while parser.view().length() > 0 {
     if parser.consume_if_other(44) {
-      tokens.push((@generated.Token::COMMA, 0, 0))
+      tokens.push((Token::COMMA, 0, 0))
       continue
     }
     parser.push_attribute_tokens(tokens)
@@ -61,11 +61,11 @@ fn WgslDeclParser::tokenize_function_arguments(
       Some(value) => value
       None => raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
-    tokens.push((@generated.Token::ARG_NAME(name), name.start, name.end))
+    tokens.push((Token::ARG_NAME(name), name.start, name.end))
     match parser.view() {
-      [Token::Other(58, pos), .. rest] => {
+      [WgslToken::Other(58, pos), .. rest] => {
         parser.update_view(rest)
-        tokens.push((@generated.Token::COLON, pos, pos + 1))
+        tokens.push((Token::COLON, pos, pos + 1))
       }
       _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
@@ -75,7 +75,7 @@ fn WgslDeclParser::tokenize_function_arguments(
     }
     tokens.push(
       (
-        @generated.Token::ARG_TYPE(
+        Token::ARG_TYPE(
           (
             ty_fragment.text,
             parse_wgsl_type_ref_fragment(ty_fragment),
@@ -88,17 +88,13 @@ fn WgslDeclParser::tokenize_function_arguments(
       ),
     )
     match parser.view() {
-      [Token::Other(44, _), ..] => continue
+      [WgslToken::Other(44, _), ..] => continue
       [] => break
       _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
   }
-  tokens.push(
-    (@generated.Token::RPAREN, fragment.close_start, fragment.close_start + 1),
-  )
-  tokens.push(
-    (@generated.Token::EOF, fragment.close_start + 1, fragment.close_start + 1),
-  )
+  tokens.push((Token::RPAREN, fragment.close_start, fragment.close_start + 1))
+  tokens.push((Token::EOF, fragment.close_start + 1, fragment.close_start + 1))
   tokens
 }
 
@@ -107,15 +103,19 @@ fn WgslDeclParser::parse_function_result(
   self : WgslDeclParser,
 ) -> WgslFunctionResult? {
   match self.view() {
-    [Token::Other(45, arrow_start), Token::Other(62, arrow_end), .. rest] => {
+    [
+      WgslToken::Other(45, arrow_start),
+      WgslToken::Other(62, arrow_end),
+      .. rest,
+    ] => {
       let parser = WgslDeclParser::{
         source_text: self.source_text,
         source_start: self.source_start,
         token_view: rest,
       }
       let rest_len = rest.length()
-      let tokens : Array[(@generated.Token, Int, Int)] = [
-        (@generated.Token::ARROW(arrow_start), arrow_start, arrow_end + 1),
+      let tokens : Array[(Token, Int, Int)] = [
+        (Token::ARROW(arrow_start), arrow_start, arrow_end + 1),
       ]
       parser.push_attribute_tokens(tokens)
       let ty_fragment = parser.collect_until_top_level_fragment([123, 59])
@@ -124,7 +124,7 @@ fn WgslDeclParser::parse_function_result(
       }
       tokens.push(
         (
-          @generated.Token::ARG_TYPE(
+          Token::ARG_TYPE(
             (
               ty_fragment.text,
               parse_wgsl_type_ref_fragment(ty_fragment),
@@ -136,8 +136,8 @@ fn WgslDeclParser::parse_function_result(
           ty_fragment.end,
         ),
       )
-      tokens.push((@generated.Token::EOF, ty_fragment.end, ty_fragment.end))
-      let result = @generated.function_result(tokens) catch { _ => return None }
+      tokens.push((Token::EOF, ty_fragment.end, ty_fragment.end))
+      let result = function_result(tokens) catch { _ => return None }
       self.drop_tokens(2 + rest_len - parser.view().length())
       result
     }
@@ -156,7 +156,7 @@ fn wgsl_statement_is_local_decl(first_identifier : String?) -> Bool {
 ///|
 fn wgsl_statement_kind_from_tokens(
   first_identifier : String?,
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
 ) -> WgslStatementKind {
   match first_identifier {
     Some("var") | Some("let") | Some("const") =>
@@ -174,7 +174,7 @@ fn wgsl_statement_kind_from_tokens(
     Some(_) => WgslStatementKind::Expression
     None =>
       match tokens {
-        [Token::Other(123, _), ..] => WgslStatementKind::Compound
+        [WgslToken::Other(123, _), ..] => WgslStatementKind::Compound
         [] => WgslStatementKind::Empty
         _ => WgslStatementKind::Expression
       }
@@ -182,24 +182,24 @@ fn wgsl_statement_kind_from_tokens(
 }
 
 ///|
-fn wgsl_statement_token_identifier(token : Token) -> String? {
+fn wgsl_statement_token_identifier(token : WgslToken) -> String? {
   match token {
-    Token::Identifier(ident, _) => Some(ident)
+    WgslToken::Identifier(ident, _) => Some(ident)
     _ => None
   }
 }
 
 ///|
-fn wgsl_statement_token_other_code(token : Token) -> Int? {
+fn wgsl_statement_token_other_code(token : WgslToken) -> Int? {
   match token {
-    Token::Other(code, _) => Some(code)
+    WgslToken::Other(code, _) => Some(code)
     _ => None
   }
 }
 
 ///|
 fn wgsl_statement_skip_template_tokens(
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
   start : Int,
 ) -> Int {
   if start >= tokens.length() {
@@ -223,7 +223,7 @@ fn wgsl_statement_skip_template_tokens(
 
 ///|
 fn wgsl_statement_local_declaration_from_tokens(
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
   is_local_decl : Bool,
 ) -> WgslIdent? {
   guard is_local_decl else { return None }
@@ -233,7 +233,7 @@ fn wgsl_statement_local_declaration_from_tokens(
         let name_index = wgsl_statement_skip_template_tokens(tokens, i + 1)
         if name_index < tokens.length() {
           return match tokens[name_index] {
-            Token::Identifier(name, pos) =>
+            WgslToken::Identifier(name, pos) =>
               Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
             _ => None
           }
@@ -243,7 +243,7 @@ fn wgsl_statement_local_declaration_from_tokens(
       Some("let") | Some("const") =>
         if i + 1 < tokens.length() {
           return match tokens[i + 1] {
-            Token::Identifier(name, pos) =>
+            WgslToken::Identifier(name, pos) =>
               Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
             _ => None
           }
@@ -259,7 +259,7 @@ fn wgsl_statement_local_declaration_from_tokens(
 
 ///|
 fn collect_wgsl_statement_pending_local_name(
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
   index : Int,
   pending_local_names : Array[WgslIdent],
 ) -> Int {
@@ -268,7 +268,7 @@ fn collect_wgsl_statement_pending_local_name(
       let name_index = wgsl_statement_skip_template_tokens(tokens, index + 1)
       if name_index < tokens.length() {
         match tokens[name_index] {
-          Token::Identifier(name, pos) =>
+          WgslToken::Identifier(name, pos) =>
             pending_local_names.push(WgslIdent::{
               name,
               start: pos,
@@ -283,7 +283,7 @@ fn collect_wgsl_statement_pending_local_name(
       let name_index = index + 1
       if name_index < tokens.length() {
         match tokens[name_index] {
-          Token::Identifier(name, pos) =>
+          WgslToken::Identifier(name, pos) =>
             pending_local_names.push(WgslIdent::{
               name,
               start: pos,
@@ -331,21 +331,21 @@ fn wgsl_statement_scope_contains(
 
 ///|
 fn wgsl_statement_identifier_has_access_prefix(
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
   index : Int,
 ) -> Bool {
   if index == 0 {
     return false
   }
   match tokens[index - 1] {
-    Token::Other(46, _) | Token::Other(64, _) => true
+    WgslToken::Other(46, _) | WgslToken::Other(64, _) => true
     _ => false
   }
 }
 
 ///|
 fn collect_wgsl_statement_identifier_nodes(
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
   is_local_decl : Bool,
   exported_locals : Array[WgslIdent],
   local_declarations : Array[WgslIdent],
@@ -381,7 +381,7 @@ fn collect_wgsl_statement_identifier_nodes(
         )
       _ => ()
     }
-    guard tokens[i] is Token::Identifier(ident, pos) else { continue }
+    guard tokens[i] is WgslToken::Identifier(ident, pos) else { continue }
     if wgsl_statement_identifier_has_access_prefix(tokens, i) {
       continue
     }
@@ -415,11 +415,11 @@ fn WgslDeclParser::parse_block_tokens(
   self : WgslDeclParser,
   open_start : Int,
   close_start : Int,
-  inner : ArrayView[Token],
+  inner : ArrayView[WgslToken],
 ) -> WgslBlock {
   let empty = WgslBlock::{ start: 0, end: 0, statements: [] }
-  let tokens : Array[(@generated.Token, Int, Int)] = [
-    (@generated.Token::LBRACE(open_start), open_start, open_start + 1),
+  let tokens : Array[(Token, Int, Int)] = [
+    (Token::LBRACE(open_start), open_start, open_start + 1),
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
@@ -428,15 +428,13 @@ fn WgslDeclParser::parse_block_tokens(
   }
   while parser.view().length() > 0 {
     match parser.collect_statement() {
-      Some(statement) => tokens.push((@generated.Token::STMT(statement), 0, 0))
+      Some(statement) => tokens.push((Token::STMT(statement), 0, 0))
       None => if parser.view() is [] { break } else { return empty }
     }
   }
-  tokens.push(
-    (@generated.Token::RBRACE(close_start), close_start, close_start + 1),
-  )
-  tokens.push((@generated.Token::EOF, close_start + 1, close_start + 1))
-  @generated.block(tokens) catch {
+  tokens.push((Token::RBRACE(close_start), close_start, close_start + 1))
+  tokens.push((Token::EOF, close_start + 1, close_start + 1))
+  block(tokens) catch {
     _ => empty
   }
 }
@@ -444,14 +442,14 @@ fn WgslDeclParser::parse_block_tokens(
 ///|
 fn WgslDeclParser::collect_statement_blocks(
   self : WgslDeclParser,
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
 ) -> Array[WgslBlock] {
   let blocks : Array[WgslBlock] = []
   let open_stack : Array[Int] = []
   for i in 0..<tokens.length() {
     match tokens[i] {
-      Token::Other(123, _) => open_stack.push(i)
-      Token::Other(125, close_start) =>
+      WgslToken::Other(123, _) => open_stack.push(i)
+      WgslToken::Other(125, close_start) =>
         match open_stack.pop() {
           Some(open_index) =>
             if open_stack.is_empty() {
@@ -473,17 +471,19 @@ fn WgslDeclParser::collect_statement_blocks(
 }
 
 ///|
-fn wgsl_statement_view_continues_after_block(view : ArrayView[Token]) -> Bool {
+fn wgsl_statement_view_continues_after_block(
+  view : ArrayView[WgslToken],
+) -> Bool {
   match view {
-    [Token::Identifier("else", _), ..] => true
-    [Token::Identifier("continuing", _), ..] => true
+    [WgslToken::Identifier("else", _), ..] => true
+    [WgslToken::Identifier("continuing", _), ..] => true
     _ => false
   }
 }
 
 ///|
 fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
-  let tokens : Array[Token] = []
+  let tokens : Array[WgslToken] = []
   let identifiers : Array[WgslIdent] = []
   let mut first_identifier : String? = None
   let mut start_pos = -1
@@ -495,20 +495,20 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     }
     end_pos = end_
   }
-  fn record_token(token : Token) -> Unit {
+  fn record_token(token : WgslToken) -> Unit {
     record_span(token.pos(), token.end())
   }
   while true {
     match self.view() {
-      [Token::Other(125, _), ..] if depth.at_top() => break
-      [Token::Other(59, pos), .. rest] if depth.at_top() => {
+      [WgslToken::Other(125, _), ..] if depth.at_top() => break
+      [WgslToken::Other(59, pos), .. rest] if depth.at_top() => {
         record_span(pos, pos + 1)
         self.update_view(rest)
         break
       }
       [token, .. rest] => {
         match token {
-          Token::Identifier(ident, _) =>
+          WgslToken::Identifier(ident, _) =>
             if first_identifier is None {
               first_identifier = Some(ident)
             }
@@ -518,7 +518,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
         depth.observe_statement_token(token)
         record_token(token)
         self.update_view(rest)
-        if depth.at_top() && token is Token::Other(125, _) {
+        if depth.at_top() && token is WgslToken::Other(125, _) {
           if wgsl_statement_view_continues_after_block(self.view()) {
             continue
           }

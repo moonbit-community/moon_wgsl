@@ -13,14 +13,14 @@
 // limitations under the License.
 
 ///|
-pub enum Token {
+pub enum WgslToken {
   Identifier(String, Int)
   Other(Int, Int)
   Whitespace(String, Int)
 } derive(Eq, Debug)
 
 ///|
-pub fn Token::pos(self : Token) -> Int {
+pub fn WgslToken::pos(self : WgslToken) -> Int {
   match self {
     Identifier(_, pos) => pos
     Other(_, pos) => pos
@@ -29,7 +29,7 @@ pub fn Token::pos(self : Token) -> Int {
 }
 
 ///|
-pub fn Token::end(self : Token) -> Int {
+pub fn WgslToken::end(self : WgslToken) -> Int {
   match self {
     Identifier(text, pos) | Whitespace(text, pos) => pos + text.length()
     Other(_, pos) => pos + 1
@@ -69,19 +69,19 @@ fn tokenizer_number_continue(src : String, index : Int) -> Bool {
 
 ///|
 fn tokenizer_push_number_as_other(
-  tokens : Array[Token],
+  tokens : Array[WgslToken],
   src : String,
   start : Int,
   end_ : Int,
 ) -> Unit {
   for pos in start..<end_ {
-    tokens.push(Token::Other(src.code_unit_at(pos).to_int(), pos))
+    tokens.push(WgslToken::Other(src.code_unit_at(pos).to_int(), pos))
   }
 }
 
 ///|
-pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
-  let tokens : Array[Token] = []
+pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[WgslToken] {
+  let tokens : Array[WgslToken] = []
   let mut current_token_start = 0
   let mut current_token_kind = -1
   let mut quoted_token = false
@@ -111,7 +111,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
         continue
       }
       tokens.push(
-        Token::Identifier(
+        WgslToken::Identifier(
           src[current_token_start:i].to_owned(),
           current_token_start,
         ),
@@ -138,7 +138,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
         continue
       }
       tokens.push(
-        Token::Whitespace(
+        WgslToken::Whitespace(
           src[current_token_start:i].to_owned(),
           current_token_start,
         ),
@@ -171,13 +171,13 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
       continue
     }
 
-    tokens.push(Token::Other(code, i))
+    tokens.push(WgslToken::Other(code, i))
     i = i + 1
   }
 
   if current_token_kind == 0 {
     tokens.push(
-      Token::Identifier(
+      WgslToken::Identifier(
         src[current_token_start:src.length()].to_owned(),
         current_token_start,
       ),
@@ -191,7 +191,7 @@ pub fn tokenize(src : String, emit_whitespace : Bool) -> Array[Token] {
     )
   } else if current_token_kind == 1 {
     tokens.push(
-      Token::Whitespace(
+      WgslToken::Whitespace(
         src[current_token_start:src.length()].to_owned(),
         current_token_start,
       ),
