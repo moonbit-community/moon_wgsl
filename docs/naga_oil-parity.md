@@ -131,7 +131,13 @@ tree-shakes them away, matching upstream `naga_oil`.
    graph. Any new WGSL declaration form must be parsed there before composer or
    export logic consumes it.
 
-5. Rename/writeback and dependency analysis must be AST/span-driven.
+5. Source catalogs must use compose-time shader defs.
+   `PreparedWgslSource.source_catalog` is part of the composed dependency
+   closure and must be built from the same strict per-source `ShaderDefValue`
+   state as the emitted source. Do not rebuild catalogs with the permissive
+   source-tree ifdef helper or root-only bool/int maps.
+
+6. Rename/writeback and dependency analysis must be AST/span-driven.
    All source rewrites must be expressed as `WgslRenamePlan` rules in
    `analysis`: global declaration plus references, references only, or function
    locals. Dependency analysis must consume parsed declaration identifiers
@@ -139,13 +145,13 @@ tree-shakes them away, matching upstream `naga_oil`.
    duplicate-binding cleanup, suffix lowering, and writeback sanitization must
    not reintroduce ad hoc identifier span rewriting.
 
-6. Parser internals must stay narrow.
+7. Parser internals must stay narrow.
    Syntax should not expose debug-only statement classification, raw text spans,
    or convenience text wrappers unless a production package consumes them. Move
    package-specific identifier collection and planning helpers into the owning
    package instead of expanding the syntax public API.
 
-7. The Naga boundary must stay explicit.
+8. The Naga boundary must stay explicit.
    Preprocessing and source-level WGSL composition belong in MoonBit. Naga IR,
    validation, GLSL, writer byte parity, and runtime execution remain outside
    this package's core scope.

@@ -19,6 +19,12 @@ fn Composer::preprocess_wgsl_source_with_path(
     current_rel_path, session, inherited_defs,
   )
   merge_wgsl_source_local_shader_defs(active_defs, source)
+  if current_rel_path != "" {
+    session.resolved_source_defs.set(
+      current_rel_path,
+      copy_active_compose_defs(active_defs),
+    )
+  }
   let prepared = prepare_wgsl_compose_source(source, session, active_defs)
   let mut merged = ""
   let alias_redirects : Array[WgslSymbolRedirect] = []
@@ -164,8 +170,7 @@ pub fn Composer::prepare_wgsl_source(
     source_files,
     source_catalog: build_prepared_wgsl_source_catalog(
       source_files.copy(),
-      session.defines,
-      session.value_defines,
+      session.resolved_source_defs,
     ),
     defines: session.defines,
     value_defines: session.value_defines,

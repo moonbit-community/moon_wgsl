@@ -57,7 +57,6 @@ using @metadata {get_preprocessor_metadata}
 using @preprocess {
   type PreprocessError,
   active_wgsl_ifdef_line_flags_strict,
-  apply_wgsl_ifdefs,
   apply_wgsl_ifdefs_strict,
   apply_wgsl_template_consts,
 }

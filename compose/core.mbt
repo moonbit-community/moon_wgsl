@@ -35,6 +35,7 @@ pub(all) suberror ComposerError {
   InvalidStructMemberIdentifier(String)
   InvalidOverride(String)
   MissingRegisteredSource(String)
+  MissingPreparedSourceDefs(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
   UnknownShaderDef(String)
@@ -56,6 +57,8 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     InvalidOverride(name) =>
       "override is invalid because target is not virtual: \{name}"
     MissingRegisteredSource(rel) => "missing registered WGSL source: \{rel}"
+    MissingPreparedSourceDefs(rel) =>
+      "missing prepared shader defs for WGSL source: \{rel}"
     MissingStartupRegisteredSource(rel) =>
       "shader source was not startup-registered: \{rel}"
     NoModuleName(path) =>

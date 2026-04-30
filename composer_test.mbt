@@ -927,3 +927,41 @@ test "naga_oil: composer reports import cycles explicitly" {
   )
   clear_composer_test_registry()
 }
+
+///|
+test "naga_oil: source catalog uses per-module strict shader defs" {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  let module_defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap::new()
+  module_defs.set("MODULE_FLAG", @common.ShaderDefValue::Bool(false))
+  ignore(
+    composer.add_composable_module({
+      source: "#define_import_path catalog::module\n#ifdef MODULE_FLAG\nfn from_if() -> f32 {\n  return 1.0;\n}\n#else\nfn from_else() -> f32 {\n  return 2.0;\n}\n#endif\n",
+      file_path: "shaders/catalog/module.wgsl",
+      as_name: None,
+      additional_imports: [],
+      shader_defs: module_defs,
+    }),
+  ) catch {
+    err => abort("expected module registration success: \{err.message()}")
+  }
+  composer.register_source(
+    "shaders/catalog/root.wgsl", "#import catalog::module::from_if\nfn shade() -> f32 {\n  return from_if();\n}\n",
+  )
+  let prepared = composer.prepare_wgsl_source(
+    "shaders/catalog/root.wgsl",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err => abort("expected prepared source success: \{err.message()}")
+  }
+  debug_inspect(prepared.source.contains("fn from_if"), content="true")
+  debug_inspect(prepared.source.contains("fn from_else"), content="false")
+  let module_catalog_names : Array[String] = []
+  for entry in prepared.source_catalog {
+    if entry.rel_path == "shaders/catalog/module.wgsl" {
+      module_catalog_names.push(entry.symbol_name)
+    }
+  }
+  module_catalog_names.sort()
+  debug_inspect(module_catalog_names.join(","), content="\"from_if\"")
+}

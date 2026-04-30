@@ -72,5 +72,6 @@ fn Composer::new_wgsl_compose_session(
     imported_item_names: @hashmap.HashMap::new(),
     active_rel_paths: [],
     resolved_source_files: @hashmap.HashMap::new(),
+    resolved_source_defs: @hashmap.HashMap::new(),
   }
 }

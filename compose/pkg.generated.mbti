@@ -17,6 +17,7 @@ pub(all) suberror ComposerError {
   InvalidStructMemberIdentifier(String)
   InvalidOverride(String)
   MissingRegisteredSource(String)
+  MissingPreparedSourceDefs(String)
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
   UnknownShaderDef(String)
