@@ -42,18 +42,18 @@ fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
     WgslRawTopLevelKind::Trivia => WgslGlobalDeclKind::Trivia
     _ => wgsl_global_decl_kind_from_data(data)
   }
-  WgslGlobalDecl::{
+  WgslGlobalDecl::new(
     kind,
     data,
-    name: if item.name == "" {
+    if item.name == "" {
       wgsl_decl_data_name(data)
     } else {
       item.name
     },
-    text: item.text,
-    start: item.start,
-    end: item.end,
-  }
+    item.text,
+    item.start,
+    item.end,
+  )
 }
 
 ///|
@@ -77,5 +77,5 @@ pub fn parse_wgsl_translation_unit(source : String) -> WgslTranslationUnit {
   for item in parse_wgsl_raw_top_level_items(source) {
     declarations.push(parse_wgsl_raw_global_decl(item))
   }
-  WgslTranslationUnit::{ declarations, }
+  WgslTranslationUnit::new(declarations)
 }

@@ -70,7 +70,7 @@ raw_top_level_items -> Array[WgslRawTopLevelItem]
 
 block -> @ast.WgslBlock
   : open=LBRACE statements close=RBRACE EOF {
-      @ast.WgslBlock::{ start: open, end: close + 1, statements: $2 }
+      @ast.WgslBlock::new(open, close + 1, $2)
     }
   ;
 
@@ -99,15 +99,15 @@ attribute -> @ast.WgslAttribute
         Some(value) => value
         None => name.end
       }
-      @ast.WgslAttribute::{
-        name: name.name,
-        start: at,
+      @ast.WgslAttribute::new(
+        name.name,
+        at,
         end,
-        name_start: name.start,
-        name_end: name.end,
+        name.start,
+        name.end,
         arguments,
         arguments_ref,
-      }
+      )
     }
   ;
 
@@ -214,7 +214,7 @@ directive_line -> @ast.WgslDirective
         "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
         _ => @ast.WgslDirectiveKind::Other(name)
       }
-      @ast.WgslDirective::{
+      @ast.WgslDirective::new(
         kind,
         name,
         tail,
@@ -225,7 +225,7 @@ directive_line -> @ast.WgslDirective
         name_end,
         tail_start,
         tail_end,
-      }
+      )
     }
   ;
 
@@ -415,13 +415,7 @@ function_args -> Array[@ast.WgslFunctionArgument]
 function_result -> @ast.WgslFunctionResult?
   : arrow=ARROW attrs=attributes ty=ARG_TYPE EOF {
       let (ty_text, ty_ref, _, ty_end) = ty
-      Some(@ast.WgslFunctionResult::{
-        attributes: attrs,
-        start: arrow,
-        end: ty_end,
-        ty: ty_text,
-        ty_ref,
-      })
+      Some(@ast.WgslFunctionResult::new(attrs, arrow, ty_end, ty_text, ty_ref))
     }
   ;
 
@@ -446,16 +440,16 @@ struct_member -> @ast.WgslStructMember
   : attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
       let (ty_text, ty_ref, _, ty_end) = ty
       let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
-      @ast.WgslStructMember::{
-        attributes: attrs,
-        name: name.name,
+      @ast.WgslStructMember::new(
+        attrs,
+        name.name,
         start,
-        end: ty_end,
-        name_start: name.start,
-        name_end: name.end,
-        ty: ty_text,
+        ty_end,
+        name.start,
+        name.end,
+        ty_text,
         ty_ref,
-      }
+      )
     }
   ;
 
@@ -484,52 +478,52 @@ source_directive -> @ast.WgslDirective
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
-      @ast.WgslDirective::{
-        kind: @ast.WgslDirectiveKind::Enable,
-        name: keyword.name,
+      @ast.WgslDirective::new(
+        @ast.WgslDirectiveKind::Enable,
+        keyword.name,
         tail,
         text,
-        start: 0,
-        end: text.length(),
-        name_start: keyword.start,
-        name_end: keyword.end,
+        0,
+        text.length(),
+        keyword.start,
+        keyword.end,
         tail_start,
         tail_end,
-      }
+      )
     }
   | text=SOURCE_TEXT keyword=KW_REQUIRES tail=directive_tail EOF {
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
-      @ast.WgslDirective::{
-        kind: @ast.WgslDirectiveKind::Requires,
-        name: keyword.name,
+      @ast.WgslDirective::new(
+        @ast.WgslDirectiveKind::Requires,
+        keyword.name,
         tail,
         text,
-        start: 0,
-        end: text.length(),
-        name_start: keyword.start,
-        name_end: keyword.end,
+        0,
+        text.length(),
+        keyword.start,
+        keyword.end,
         tail_start,
         tail_end,
-      }
+      )
     }
   | text=SOURCE_TEXT keyword=KW_DIAGNOSTIC tail=directive_tail EOF {
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
-      @ast.WgslDirective::{
-        kind: @ast.WgslDirectiveKind::Diagnostic,
-        name: keyword.name,
+      @ast.WgslDirective::new(
+        @ast.WgslDirectiveKind::Diagnostic,
+        keyword.name,
         tail,
         text,
-        start: 0,
-        end: text.length(),
-        name_start: keyword.start,
-        name_end: keyword.end,
+        0,
+        text.length(),
+        keyword.start,
+        keyword.end,
         tail_start,
         tail_end,
-      }
+      )
     }
   ;
 
@@ -573,16 +567,16 @@ function_arg -> @ast.WgslFunctionArgument
   : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
       let (ty_text, ty_ref, _, ty_end) = ty
       let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
-      @ast.WgslFunctionArgument::{
-        attributes: attrs,
-        name: name.name,
+      @ast.WgslFunctionArgument::new(
+        attrs,
+        name.name,
         start,
-        end: ty_end,
-        name_start: name.start,
-        name_end: name.end,
-        ty: ty_text,
+        ty_end,
+        name.start,
+        name.end,
+        ty_text,
         ty_ref,
-      }
+      )
     }
   ;
 
@@ -646,11 +640,11 @@ fn wgsl_type_ref_from_atom(
   end_ : Int,
 ) -> @ast.WgslTypeRef {
   let (name, source, source_start, start, _) = atom
-  @ast.WgslTypeRef::{
+  @ast.WgslTypeRef::new(
     name,
     arguments,
-    text: wgsl_type_ref_text(source, source_start, start, end_),
+    wgsl_type_ref_text(source, source_start, start, end_),
     start,
-    end: end_,
-  }
+    end_,
+  )
 }

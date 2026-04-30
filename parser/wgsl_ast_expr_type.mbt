@@ -39,12 +39,9 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
       _ => ()
     }
   }
-  Some(WgslExprRef::{
-    text: trimmed,
-    identifiers,
-    start: base + local_start,
-    end: base + local_end,
-  })
+  Some(
+    WgslExprRef::new(trimmed, identifiers, base + local_start, base + local_end),
+  )
 }
 
 ///|
@@ -61,13 +58,7 @@ fn parse_required_wgsl_expr_ref_fragment(
 ) -> WgslExprRef {
   match parse_wgsl_expr_ref_fragment(fragment) {
     Some(expr) => expr
-    None =>
-      WgslExprRef::{
-        text: fragment.text,
-        identifiers: [],
-        start: fragment.start,
-        end: fragment.end,
-      }
+    None => WgslExprRef::new(fragment.text, [], fragment.start, fragment.end)
   }
 }
 

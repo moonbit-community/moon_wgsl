@@ -21,18 +21,20 @@ fn WgslDeclParser::parse_function(
   let arguments = self.parse_function_arguments()
   let result = self.parse_function_result()
   let body = self.parse_block()
-  Some(WgslFunction::{
-    attributes,
-    qualifier,
-    qualifier_start,
-    qualifier_end,
-    fn_start: fn_keyword.start,
-    fn_end: fn_keyword.end,
-    name,
-    arguments,
-    result,
-    body,
-  })
+  Some(
+    WgslFunction::new(
+      attributes,
+      qualifier,
+      qualifier_start,
+      qualifier_end,
+      fn_keyword.start,
+      fn_keyword.end,
+      name,
+      arguments,
+      result,
+      body,
+    ),
+  )
 }
 
 ///|
@@ -145,7 +147,7 @@ fn WgslDeclParser::parse_struct(
     Some(value) => value
     None => return None
   }
-  Some(WgslStruct::{ attributes, name, members: self.parse_struct_members() })
+  Some(WgslStruct::new(attributes, name, self.parse_struct_members()))
 }
 
 ///|
@@ -159,15 +161,17 @@ fn WgslDeclParser::parse_global_variable(
     None => return None
   }
   let tail = self.parse_typed_initializer_tail()
-  Some(WgslGlobalVariable::{
-    attributes,
-    name,
-    template_list,
-    ty: tail.ty,
-    ty_ref: tail.ty_ref,
-    initializer: tail.initializer,
-    initializer_ref: tail.initializer_ref,
-  })
+  Some(
+    WgslGlobalVariable::new(
+      attributes,
+      name,
+      template_list,
+      tail.ty,
+      tail.ty_ref,
+      tail.initializer,
+      tail.initializer_ref,
+    ),
+  )
 }
 
 ///|
@@ -255,13 +259,15 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
     None => return None
   }
   let tail = self.parse_typed_initializer_tail()
-  Some(WgslConst::{
-    name,
-    ty: tail.ty,
-    ty_ref: tail.ty_ref,
-    initializer: tail.initializer,
-    initializer_ref: tail.initializer_ref,
-  })
+  Some(
+    WgslConst::new(
+      name,
+      tail.ty,
+      tail.ty_ref,
+      tail.initializer,
+      tail.initializer_ref,
+    ),
+  )
 }
 
 ///|
@@ -274,14 +280,16 @@ fn WgslDeclParser::parse_override(
     None => return None
   }
   let tail = self.parse_typed_initializer_tail()
-  Some(WgslOverride::{
-    attributes,
-    name,
-    ty: tail.ty,
-    ty_ref: tail.ty_ref,
-    initializer: tail.initializer,
-    initializer_ref: tail.initializer_ref,
-  })
+  Some(
+    WgslOverride::new(
+      attributes,
+      name,
+      tail.ty,
+      tail.ty_ref,
+      tail.initializer,
+      tail.initializer_ref,
+    ),
+  )
 }
 
 ///|
@@ -291,7 +299,7 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
     None => return None
   }
   match self.parse_type_alias_tail() {
-    Some((ty, ty_ref)) => Some(WgslTypeAlias::{ name, ty, ty_ref })
+    Some((ty, ty_ref)) => Some(WgslTypeAlias::new(name, ty, ty_ref))
     None => None
   }
 }

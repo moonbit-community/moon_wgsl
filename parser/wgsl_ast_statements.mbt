@@ -409,7 +409,7 @@ fn WgslDeclParser::parse_block_tokens(
   close_start : Int,
   inner : ArrayView[WgslToken],
 ) -> WgslBlock {
-  let empty = WgslBlock::{ start: 0, end: 0, statements: [] }
+  let empty = WgslBlock::new(0, 0, [])
   let tokens : Array[(Token, Int, Int)] = [
     (Token::LBRACE(open_start), open_start, open_start + 1),
   ]
@@ -540,22 +540,18 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       tokens, is_local_decl, exported_locals, local_declarations, identifiers,
     )
     let blocks = self.collect_statement_blocks(tokens)
-    Some(WgslStatement::{
-      kind,
-      text,
-      start: start_pos,
-      end: end_pos,
-      blocks,
-      local_declarations,
-      exported_locals,
-      identifiers,
-    })
+    Some(
+      WgslStatement::new(
+        kind, text, start_pos, end_pos, blocks, local_declarations, exported_locals,
+        identifiers,
+      ),
+    )
   }
 }
 
 ///|
 fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
-  let empty = WgslBlock::{ start: 0, end: 0, statements: [] }
+  let empty = WgslBlock::new(0, 0, [])
   match self.collect_delimited_token_view(123, 125) {
     Some(fragment) => {
       let block = self.parse_block_tokens(
