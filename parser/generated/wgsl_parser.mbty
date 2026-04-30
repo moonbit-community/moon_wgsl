@@ -15,8 +15,11 @@
 %start type_alias_tail
 %start source_directive
 %start const_assert_expr
+%start attribute_list
+%start block
 
 %token<@ast.WgslRawTopLevelItem> ITEM
+%token<@ast.WgslStatement> STMT
 %token<String> IDENT
 %token<(String, String, Int, Int, Int)> TYPE_ATOM
 %token<Array[@ast.WgslAttribute]> DECL_ATTRS
@@ -27,6 +30,8 @@
 %token<(String, @ast.WgslTypeRef?)> DECL_TYPE
 %token<(String, @ast.WgslExprRef?)> INIT_EXPR
 %token<@ast.WgslExprRef> EXPR_REF
+%token<String> ATTR_NAME
+%token<(String, @ast.WgslExprRef?)> ATTR_ARGS
 %token<@ast.WgslIdent> KW_VIRTUAL
 %token<@ast.WgslIdent> KW_OVERRIDE
 %token<@ast.WgslIdent> KW_FN
@@ -42,6 +47,7 @@
 %token<(String, String)> DIRECTIVE_HEAD
 %token<String> DIRECTIVE_TAIL
 %token<String> SOURCE_TEXT
+%token AT "@"
 %token HASH "#"
 %token PREFIX
 %token AS "as"
@@ -62,6 +68,46 @@
 
 raw_top_level_items -> Array[@ast.WgslRawTopLevelItem]
   : items EOF { $1 }
+  ;
+
+attribute_list -> Array[@ast.WgslAttribute]
+  : attributes EOF { $1 }
+  ;
+
+block -> @ast.WgslBlock
+  : "{" statements "}" EOF {
+      @ast.WgslBlock::{ statements: $2 }
+    }
+  ;
+
+statements -> Array[@ast.WgslStatement]
+  : { [] }
+  | statements STMT {
+      let statements = $1
+      statements.push($2)
+      statements
+    }
+  ;
+
+attributes -> Array[@ast.WgslAttribute]
+  : { [] }
+  | attributes attribute {
+      let attributes = $1
+      attributes.push($2)
+      attributes
+    }
+  ;
+
+attribute -> @ast.WgslAttribute
+  : "@" name=ATTR_NAME args=attribute_args {
+      let (arguments, arguments_ref) = args
+      @ast.WgslAttribute::{ name, arguments, arguments_ref }
+    }
+  ;
+
+attribute_args -> (String, @ast.WgslExprRef?)
+  : { ("", None) }
+  | ATTR_ARGS { $1 }
   ;
 
 items -> Array[@ast.WgslRawTopLevelItem]

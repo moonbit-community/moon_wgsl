@@ -8,6 +8,10 @@ import {
 }
 
 // Values
+pub fn attribute_list(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslAttribute] raise ParseError
+
+pub fn block(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslBlock raise ParseError
+
 pub fn const_assert_expr(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslExprRef raise ParseError
 
 pub fn decl_head(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDeclHead raise ParseError
@@ -45,6 +49,7 @@ pub suberror ParseError {
 // Types and methods
 pub(all) enum Token {
   ITEM(@ast.WgslRawTopLevelItem)
+  STMT(@ast.WgslStatement)
   IDENT(String)
   TYPE_ATOM((String, String, Int, Int, Int))
   DECL_ATTRS(Array[@ast.WgslAttribute])
@@ -55,6 +60,8 @@ pub(all) enum Token {
   DECL_TYPE((String, @ast.WgslTypeRef?))
   INIT_EXPR((String, @ast.WgslExprRef?))
   EXPR_REF(@ast.WgslExprRef)
+  ATTR_NAME(String)
+  ATTR_ARGS((String, @ast.WgslExprRef?))
   KW_VIRTUAL(@ast.WgslIdent)
   KW_OVERRIDE(@ast.WgslIdent)
   KW_FN(@ast.WgslIdent)
@@ -70,6 +77,7 @@ pub(all) enum Token {
   DIRECTIVE_HEAD((String, String))
   DIRECTIVE_TAIL(String)
   SOURCE_TEXT(String)
+  AT
   HASH
   PREFIX
   AS
@@ -90,6 +98,7 @@ pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {
   TK_ITEM
+  TK_STMT
   TK_IDENT
   TK_TYPE_ATOM
   TK_DECL_ATTRS
@@ -100,6 +109,8 @@ pub(all) enum TokenKind {
   TK_DECL_TYPE
   TK_INIT_EXPR
   TK_EXPR_REF
+  TK_ATTR_NAME
+  TK_ATTR_ARGS
   TK_KW_VIRTUAL
   TK_KW_OVERRIDE
   TK_KW_FN
@@ -115,6 +126,7 @@ pub(all) enum TokenKind {
   TK_DIRECTIVE_HEAD
   TK_DIRECTIVE_TAIL
   TK_SOURCE_TEXT
+  TK_AT
   TK_HASH
   TK_PREFIX
   TK_AS

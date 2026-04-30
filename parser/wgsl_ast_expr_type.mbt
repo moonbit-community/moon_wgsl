@@ -218,56 +218,57 @@ fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? 
 fn WgslDeclParser::parse_attributes(
   self : WgslDeclParser,
 ) -> Array[WgslAttribute] {
-  let attributes : Array[WgslAttribute] = []
+  let tokens : Array[(@generated.Token, Int, Int)] = []
   while true {
     match self.view() {
-      [Token::Other(64, _), Token::Identifier(name, _), .. rest] => {
+      [Token::Other(64, at_pos), Token::Identifier(name, name_pos), .. rest] => {
         self.update_view(rest)
-        let mut arguments = ""
-        let mut arguments_ref : WgslExprRef? = None
-        match self.view() {
-          [Token::Other(40, open_pos), .. token_rest] => {
-            self.update_view(token_rest)
-            let arg_start = open_pos + 1
-            let mut arg_end = arg_start
-            let mut depth = 1
-            while depth > 0 {
-              match self.view() {
-                [Token::Other(40, _), .. nested_rest] => {
-                  depth = depth + 1
-                  self.update_view(nested_rest)
-                  continue
-                }
-                [Token::Other(41, close_pos), .. nested_rest] => {
-                  depth = depth - 1
-                  self.update_view(nested_rest)
-                  if depth == 0 {
-                    arg_end = close_pos
-                    break
-                  }
-                  continue
-                }
-                [_, .. nested_rest] => {
-                  self.update_view(nested_rest)
-                  continue
-                }
-                [] => break
-              }
+        tokens.push((@generated.Token::AT, at_pos, at_pos + 1))
+        tokens.push(
+          (
+            @generated.Token::ATTR_NAME(name),
+            name_pos,
+            name_pos + name.length(),
+          ),
+        )
+        match self.collect_delimited_token_view(40, 41) {
+          Some(arguments_fragment) => {
+            let argument_start = arguments_fragment.open_start + 1
+            let argument_end = arguments_fragment.close_start
+            if argument_end >= argument_start {
+              let arguments = self.source_text[argument_start:argument_end].to_owned()
+              tokens.push(
+                (
+                  @generated.Token::ATTR_ARGS(
+                    (
+                      arguments,
+                      parse_wgsl_expr_ref_text(arguments, argument_start),
+                    ),
+                  ),
+                  arguments_fragment.open_start,
+                  arguments_fragment.close_start + 1,
+                ),
+              )
             }
-            if arg_end >= arg_start {
-              arguments = self.source_text[arg_start:arg_end].to_owned()
-              arguments_ref = parse_wgsl_expr_ref_text(arguments, arg_start)
-            }
+            self.drop_tokens(arguments_fragment.consumed)
           }
           _ => ()
         }
-        attributes.push(WgslAttribute::{ name, arguments, arguments_ref })
         continue
       }
       _ => break
     }
   }
-  attributes
+  tokens.push(
+    (
+      @generated.Token::EOF,
+      self.source_text.length(),
+      self.source_text.length(),
+    ),
+  )
+  @generated.attribute_list(tokens) catch {
+    _ => []
+  }
 }
 
 ///|

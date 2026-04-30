@@ -298,6 +298,33 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
 }
 
 ///|
+test "WGSL attributes are parsed by grammar" {
+  let source =
+    #|const WIDTH: u32 = 4u;
+    #|@workgroup_size(WIDTH, max(1u, WIDTH - 1u), 1) @compute fn main() {
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[1].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function")
+  }
+  debug_inspect(function.attributes.length(), content="2")
+  debug_inspect(function.attributes[0].name, content="\"workgroup_size\"")
+  debug_inspect(
+    function.attributes[0].arguments,
+    content="\"WIDTH, max(1u, WIDTH - 1u), 1\"",
+  )
+  guard function.attributes[0].arguments_ref is Some(arguments) else {
+    abort("expected attribute arguments ref")
+  }
+  debug_inspect(arguments.identifiers[0].name, content="\"WIDTH\"")
+  debug_inspect(arguments.identifiers[1].name, content="\"max\"")
+  debug_inspect(arguments.identifiers[2].name, content="\"WIDTH\"")
+  debug_inspect(function.attributes[1].name, content="\"compute\"")
+  debug_inspect(function.attributes[1].arguments, content="\"\"")
+}
+
+///|
 test "WGSL typed initializer tails are parsed by grammar" {
   let source =
     #|var<private> cache: u32 = FACTOR;

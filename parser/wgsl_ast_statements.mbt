@@ -433,20 +433,43 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
 
 ///|
 fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
-  let statements : Array[WgslStatement] = []
-  if !self.consume_if_other(123) {
-    return WgslBlock::{ statements, }
-  }
-  while true {
-    if self.consume_if_other(125) {
-      break
+  let empty = WgslBlock::{ statements: [] }
+  match self.collect_delimited_token_view(123, 125) {
+    Some(fragment) => {
+      let tokens : Array[(@generated.Token, Int, Int)] = [
+        (@generated.Token::LBRACE, fragment.open_start, fragment.open_start + 1),
+      ]
+      let parser = WgslDeclParser::{
+        source_text: self.source_text,
+        token_view: fragment.inner,
+      }
+      while parser.view().length() > 0 {
+        match parser.collect_statement() {
+          Some(statement) =>
+            tokens.push((@generated.Token::STMT(statement), 0, 0))
+          None => if parser.view() is [] { break } else { return empty }
+        }
+      }
+      tokens.push(
+        (
+          @generated.Token::RBRACE,
+          fragment.close_start,
+          fragment.close_start + 1,
+        ),
+      )
+      tokens.push(
+        (
+          @generated.Token::EOF,
+          fragment.close_start + 1,
+          fragment.close_start + 1,
+        ),
+      )
+      let block = @generated.block(tokens) catch { _ => return empty }
+      self.drop_tokens(fragment.consumed)
+      block
     }
-    match self.collect_statement() {
-      Some(statement) => statements.push(statement)
-      None => if self.view() is [] { break }
-    }
+    None => empty
   }
-  WgslBlock::{ statements, }
 }
 
 ///|
