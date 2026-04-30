@@ -129,6 +129,7 @@ pub(all) struct WgslStatement {
   text : String
   start : Int
   end : Int
+  blocks : Array[WgslBlock]
   local_declarations : Array[WgslIdent]
   exported_locals : Array[WgslIdent]
   identifiers : Array[WgslIdent]

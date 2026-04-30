@@ -411,6 +411,77 @@ fn collect_wgsl_statement_identifier_nodes(
 }
 
 ///|
+fn WgslDeclParser::parse_block_tokens(
+  self : WgslDeclParser,
+  open_start : Int,
+  close_start : Int,
+  inner : ArrayView[Token],
+) -> WgslBlock {
+  let empty = WgslBlock::{ start: 0, end: 0, statements: [] }
+  let tokens : Array[(@generated.Token, Int, Int)] = [
+    (@generated.Token::LBRACE(open_start), open_start, open_start + 1),
+  ]
+  let parser = WgslDeclParser::{
+    source_text: self.source_text,
+    source_start: self.source_start,
+    token_view: inner,
+  }
+  while parser.view().length() > 0 {
+    match parser.collect_statement() {
+      Some(statement) => tokens.push((@generated.Token::STMT(statement), 0, 0))
+      None => if parser.view() is [] { break } else { return empty }
+    }
+  }
+  tokens.push(
+    (@generated.Token::RBRACE(close_start), close_start, close_start + 1),
+  )
+  tokens.push((@generated.Token::EOF, close_start + 1, close_start + 1))
+  @generated.block(tokens) catch {
+    _ => empty
+  }
+}
+
+///|
+fn WgslDeclParser::collect_statement_blocks(
+  self : WgslDeclParser,
+  tokens : Array[Token],
+) -> Array[WgslBlock] {
+  let blocks : Array[WgslBlock] = []
+  let open_stack : Array[Int] = []
+  for i in 0..<tokens.length() {
+    match tokens[i] {
+      Token::Other(123, _) => open_stack.push(i)
+      Token::Other(125, close_start) =>
+        match open_stack.pop() {
+          Some(open_index) =>
+            if open_stack.is_empty() {
+              let open_start = tokens[open_index].pos()
+              blocks.push(
+                self.parse_block_tokens(
+                  open_start,
+                  close_start,
+                  tokens[open_index + 1:i],
+                ),
+              )
+            }
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  blocks
+}
+
+///|
+fn wgsl_statement_view_continues_after_block(view : ArrayView[Token]) -> Bool {
+  match view {
+    [Token::Identifier("else", _), ..] => true
+    [Token::Identifier("continuing", _), ..] => true
+    _ => false
+  }
+}
+
+///|
 fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   let tokens : Array[Token] = []
   let identifiers : Array[WgslIdent] = []
@@ -448,6 +519,9 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
         record_token(token)
         self.update_view(rest)
         if depth.at_top() && token is Token::Other(125, _) {
+          if wgsl_statement_view_continues_after_block(self.view()) {
+            continue
+          }
           break
         }
         continue
@@ -473,11 +547,13 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     collect_wgsl_statement_identifier_nodes(
       tokens, is_local_decl, exported_locals, local_declarations, identifiers,
     )
+    let blocks = self.collect_statement_blocks(tokens)
     Some(WgslStatement::{
       kind,
       text,
       start: start_pos,
       end: end_pos,
+      blocks,
       local_declarations,
       exported_locals,
       identifiers,
@@ -490,40 +566,11 @@ fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
   let empty = WgslBlock::{ start: 0, end: 0, statements: [] }
   match self.collect_delimited_token_view(123, 125) {
     Some(fragment) => {
-      let tokens : Array[(@generated.Token, Int, Int)] = [
-        (
-          @generated.Token::LBRACE(fragment.open_start),
-          fragment.open_start,
-          fragment.open_start + 1,
-        ),
-      ]
-      let parser = WgslDeclParser::{
-        source_text: self.source_text,
-        source_start: self.source_start,
-        token_view: fragment.inner,
-      }
-      while parser.view().length() > 0 {
-        match parser.collect_statement() {
-          Some(statement) =>
-            tokens.push((@generated.Token::STMT(statement), 0, 0))
-          None => if parser.view() is [] { break } else { return empty }
-        }
-      }
-      tokens.push(
-        (
-          @generated.Token::RBRACE(fragment.close_start),
-          fragment.close_start,
-          fragment.close_start + 1,
-        ),
+      let block = self.parse_block_tokens(
+        fragment.open_start,
+        fragment.close_start,
+        fragment.inner,
       )
-      tokens.push(
-        (
-          @generated.Token::EOF,
-          fragment.close_start + 1,
-          fragment.close_start + 1,
-        ),
-      )
-      let block = @generated.block(tokens) catch { _ => return empty }
       self.drop_tokens(fragment.consumed)
       block
     }

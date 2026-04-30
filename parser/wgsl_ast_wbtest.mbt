@@ -586,6 +586,20 @@ test "WGSL statement AST records nested and loop local declarations" {
   debug_inspect(function.body.statements[0].kind, content="If")
   debug_inspect(function.body.statements[1].kind, content="For")
   debug_inspect(function.body.statements[2].kind, content="Return")
+  debug_inspect(function.body.statements[0].blocks.length(), content="1")
+  debug_inspect(
+    function.body.statements[0].blocks[0].statements.map(fn(statement) {
+      statement.kind
+    }),
+    content=(
+      #|[LocalDeclaration, Return]
+    ),
+  )
+  debug_inspect(function.body.statements[1].blocks.length(), content="1")
+  debug_inspect(
+    function.body.statements[1].blocks[0].statements[0].kind,
+    content="Continue",
+  )
   debug_inspect(
     function.body.statements[0].local_declarations.map(fn(node) { node.name }),
     content=(
@@ -621,6 +635,32 @@ test "WGSL statement AST records nested and loop local declarations" {
       #|  "return",
       #|]
     ),
+  )
+}
+
+///|
+test "WGSL statement AST parses multiple branch blocks structurally" {
+  let source =
+    #|fn demo(arg: u32) -> u32 {
+    #|  if (arg > 0u) {
+    #|    return 1u;
+    #|  } else {
+    #|    return 0u;
+    #|  }
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function")
+  }
+  let statement = function.body.statements[0]
+  debug_inspect(statement.kind, content="If")
+  debug_inspect(statement.blocks.length(), content="2")
+  debug_inspect(statement.blocks[0].statements[0].kind, content="Return")
+  debug_inspect(statement.blocks[1].statements[0].kind, content="Return")
+  debug_inspect(
+    source[statement.blocks[1].start:statement.blocks[1].end].to_owned(),
+    content="\"{\\n    return 0u;\\n  }\"",
   )
 }
 
