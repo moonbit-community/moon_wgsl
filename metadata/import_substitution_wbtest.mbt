@@ -103,6 +103,27 @@ test "naga_oil wb: parse_imports mirrors upstream import token suite" {
 }
 
 ///|
+test "naga_oil wb: direct parse_imports uses one upstream token stream" {
+  debug_inspect(parse_imports_snapshot("# import a\n"), content="\"a=a\"")
+  debug_inspect(parse_imports_snapshot("  #import a\n"), content="\"a=a\"")
+  debug_inspect(
+    parse_imports_snapshot("  not_import\n"),
+    content="\"ERR 2 expected `#import`\"",
+  )
+  debug_inspect(parse_imports_snapshot("#import"), content="\"\"")
+  debug_inspect(parse_imports_snapshot("#import ;"), content="\"\"")
+  debug_inspect(parse_imports_snapshot("#import a\nb\n"), content="\"b=a::b\"")
+  debug_inspect(
+    parse_imports_snapshot("#import a\n#import b\n"),
+    content="\"ERR 10 unexpected token\"",
+  )
+  debug_inspect(
+    parse_imports_snapshot("#import a\r\n#import b\r\n"),
+    content="\"ERR 11 unexpected token\"",
+  )
+}
+
+///|
 test "naga_oil wb: parse_imports rejects malformed imports like upstream" {
   debug_inspect(
     parse_imports_snapshot("#import a::b::{\n").has_prefix("ERR "),

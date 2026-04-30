@@ -15,6 +15,28 @@ fn wgsl_metadata_code_unit_to_string(code : Int) -> String {
 }
 
 ///|
+fn import_token_byte_offset(input : String, token : WgslToken) -> Int {
+  utf8_byte_length(input[:token.pos()].to_owned())
+}
+
+///|
+fn import_token_byte_end(input : String, token : WgslToken) -> Int {
+  utf8_byte_length(input[:token.end()].to_owned())
+}
+
+///|
+fn import_tail_is_empty_or_final_semicolon(tail : String) -> Bool {
+  let tokens = tokenize(tail, false)
+  if tokens.length() == 0 {
+    return true
+  }
+  if tokens.length() == 1 && tokens[0] is WgslToken::Other(59, _) {
+    return true
+  }
+  false
+}
+
+///|
 fn declared_imports_find_index(
   declared_imports : Array[DeclaredImportBinding],
   used_name : String,
@@ -80,59 +102,47 @@ pub fn parse_imports(
   input : String,
   declared_imports : Array[DeclaredImportBinding],
 ) -> Unit raise ParseImportsError {
-  let lines = source_lines(input)
-  let mut line_index = 0
-  let mut source_offset = 0
-  let mut parsed_any = false
-  while line_index < lines.length() {
-    let line = lines[line_index]
-    let trimmed = wgsl_regex_trim_whitespace(line)
-    guard wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(spec) else {
-      if trimmed == "" {
-        source_offset = source_offset + utf8_byte_length(line) + 1
-        line_index = line_index + 1
-        continue
-      }
-      raise ParseImportsError::Parse("expected `#import`", source_offset)
-    }
-    parsed_any = true
-    let mut block_spec = spec
-    let mut brace_balance = naga_oil_raw_import_brace_balance_next(
-      0, block_spec,
-    )
-    let spec_offset = match line.find(spec) {
-      Some(index) => index
-      None => 0
-    }
-    let spec_start = source_offset +
-      utf8_byte_length(line[:spec_offset].to_owned())
-    let mut consumed_length = utf8_byte_length(line) + 1
-    while brace_balance > 0 && line_index + 1 < lines.length() {
-      line_index = line_index + 1
-      let next_line = lines[line_index]
-      block_spec = "\{block_spec}\n\{next_line}"
-      brace_balance = naga_oil_raw_import_brace_balance_next(
-        brace_balance, next_line,
-      )
-      consumed_length = consumed_length + utf8_byte_length(next_line) + 1
-    }
-    let targets : Array[WgslImportTarget] = []
-    parse_wgsl_import_targets(block_spec, "", targets) catch {
-      Parse(message, offset) =>
-        raise ParseImportsError::Parse(message, spec_start + offset)
-    }
-    for target in targets {
-      declared_imports_add(
-        declared_imports,
-        wgsl_import_target_used_name(target),
-        target.raw_path,
-      )
-    }
-    source_offset = source_offset + consumed_length
-    line_index = line_index + 1
-  }
-  if !parsed_any {
+  let tokens = tokenize(input, false)
+  if tokens.length() == 0 {
     raise ParseImportsError::Parse("expected #import", utf8_byte_length(input))
+  }
+
+  guard tokens[0] is WgslToken::Other(35, _) else {
+    raise ParseImportsError::Parse(
+      "expected `#import`",
+      import_token_byte_offset(input, tokens[0]),
+    )
+  }
+  if tokens.length() == 1 {
+    raise ParseImportsError::Parse(
+      "expected `#import`",
+      utf8_byte_length(input),
+    )
+  }
+  guard tokens[1] is WgslToken::Identifier("import", _) else {
+    raise ParseImportsError::Parse(
+      "expected `#import`",
+      import_token_byte_offset(input, tokens[1]),
+    )
+  }
+
+  let tail_code_start = tokens[1].end()
+  let tail_byte_start = import_token_byte_end(input, tokens[1])
+  let tail = input[tail_code_start:input.length()].to_owned()
+  if import_tail_is_empty_or_final_semicolon(tail) {
+    return
+  }
+  let targets : Array[WgslImportTarget] = []
+  parse_wgsl_import_targets(tail, "", targets) catch {
+    Parse(message, offset) =>
+      raise ParseImportsError::Parse(message, tail_byte_start + offset)
+  }
+  for target in targets {
+    declared_imports_add(
+      declared_imports,
+      wgsl_import_target_used_name(target),
+      target.raw_path,
+    )
   }
 }
 
