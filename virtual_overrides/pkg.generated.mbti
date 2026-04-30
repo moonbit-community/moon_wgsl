@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/virtual_overrides"
+
+import {
+  "moonbitlang/core/hashmap",
+}
+
+// Values
+pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput
+
+pub fn strip_wgsl_virtual_functions(String) -> String
+
+pub fn wgsl_source_contains_override_directive(String) -> Bool
+
+// Errors
+
+// Types and methods
+pub struct WgslVirtualOverrideOutput {
+  source : String
+  invalid_override : String?
+}
+
+// Type aliases
+
+// Traits
+

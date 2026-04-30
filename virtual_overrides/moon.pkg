@@ -1,0 +1,5 @@
+import {
+  "Milky2018/moon_wgsl/analysis",
+  "Milky2018/moon_wgsl/syntax",
+  "moonbitlang/core/hashmap",
+}

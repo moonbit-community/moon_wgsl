@@ -1,9 +1,5 @@
 ///|
 using @analysis {
-  type WgslGraphBlock,
-  type WgslRenamePlan,
-  build_wgsl_declaration_graph,
-  build_wgsl_decl_local_name_map,
   build_wgsl_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,
   collect_wgsl_named_declarations,
@@ -57,8 +53,6 @@ using @resolver {
 using @syntax {
   type Token,
   type WgslDirectiveKind,
-  type WgslFunction,
-  type WgslGlobalDeclData,
   collect_wgsl_source_identifier_names,
   import_brace_balance,
   split_last_identifier,
