@@ -1651,6 +1651,11 @@ fn collect_wgsl_decl_local_names(
           Some(name) => locals.set(name, true)
           None => ()
         }
+        for name in statement.local_names {
+          if name != "" {
+            locals.set(name, true)
+          }
+        }
       }
     }
     WgslGlobalDeclData::Struct(struct_decl) =>

@@ -611,6 +611,18 @@ test "naga_oil: source-level symbol redirects rewrite references but keep declar
 }
 
 ///|
+test "naga_oil: source-level symbol redirects ignore nested local shadows" {
+  let rewritten = @moon_wgsl.rewrite_wgsl_symbol_redirects(
+    "fn shade(arg: u32) -> u32 {\n  if (arg > 0u) {\n    let build_shadow = arg;\n    return build_shadow;\n  }\n  for (var i: u32 = 0u; i < arg; i = i + 1u) {\n    continue;\n  }\n  return arg;\n}\nfn build_shadow() -> u32 {\n  return 1u;\n}\n",
+    [{ from_name: "build_shadow", to_name: "build_color" }],
+  )
+  debug_inspect(rewritten.contains("let build_shadow = arg;"), content="true")
+  debug_inspect(rewritten.contains("return build_shadow;"), content="true")
+  debug_inspect(rewritten.contains("fn build_shadow()"), content="true")
+  debug_inspect(rewritten.contains("let build_color = arg;"), content="false")
+}
+
+///|
 test "naga_oil: composer preprocess can apply source-level symbol redirects" {
   register_redirect_test_shaders()
   let preprocessed = global_registry_composer().compose_wgsl(
@@ -634,6 +646,29 @@ test "naga_oil: composer preprocess can apply source-level symbol redirects" {
   )
   debug_inspect(preprocessed.contains("fn build_color"), content="true")
   debug_inspect(preprocessed.contains("fn build_shadow"), content="false")
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+}
+
+///|
+test "naga_oil: virtual override base detection ignores local shadows" {
+  @moon_wgsl.clear_registered_wgsl_source_registry()
+  let composer = global_registry_composer()
+  composer.register_wgsl_source(
+    "mod.wgsl", "#define_import_path mod\nvirtual fn inner() -> f32 {\n  return 1.0;\n}\n",
+  )
+  composer.register_wgsl_source(
+    "top.wgsl", "#import mod\noverride fn mod::inner() -> f32 {\n  let mod__inner = 2.0;\n  return mod__inner;\n}\nfn top() -> f32 {\n  return mod::inner();\n}\n",
+  )
+  let source = composer.compose_wgsl(
+    "top.wgsl",
+    composer_test_compose_options("", empty_bool_defines(), []),
+  ) catch {
+    err =>
+      abort("expected local-shadow virtual override success: \{err.message()}")
+  }
+  debug_inspect(source.contains("fn mod__inner__virtual_base"), content="false")
+  debug_inspect(source.contains("let mod__inner = 2.0;"), content="true")
+  debug_inspect(source.contains("return mod__inner;"), content="true")
   @moon_wgsl.clear_registered_wgsl_source_registry()
 }
 

@@ -62,8 +62,14 @@ fn wgsl_override_body_references_target(
   raw_target : String,
   target_name : String,
 ) -> Bool {
+  let local_names = collect_wgsl_decl_local_names(
+    WgslGlobalDeclData::Function(function),
+  )
   for statement in function.body.statements {
     for ident in statement.identifiers {
+      if local_names.contains(ident.name) {
+        continue
+      }
       if ident.name == raw_target || ident.name == target_name {
         return true
       }
