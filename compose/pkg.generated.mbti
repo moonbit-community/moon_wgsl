@@ -21,6 +21,8 @@ pub(all) suberror ComposerError {
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
   DefineInModule
+  GlslInvalidVersion
+  InvalidWgslDirective(String, String)
   UnknownShaderDef(String)
   UnknownShaderDefOperator(String)
   InvalidShaderDefComparisonValue(String, String, String)

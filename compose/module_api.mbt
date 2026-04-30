@@ -129,9 +129,9 @@ fn composer_error_from_preprocess_error(
     TooManyEndIfs(_) => TooManyEndIfs
     NotEnoughEndIfs(_) => NotEnoughEndIfs
     ImportParseError(message, _) => FailedToResolveImport(message)
-    InvalidWgslDirective(line, _, reason) =>
-      UnknownShaderDefOperator("\{line}: \{reason}")
-    GlslInvalidVersion(_) | DefineInModule(_) => UnknownShaderDefOperator("")
+    InvalidWgslDirective(line, _, reason) => InvalidWgslDirective(line, reason)
+    GlslInvalidVersion(_) => GlslInvalidVersion
+    DefineInModule(_) => DefineInModule
   }
 }
 
@@ -139,8 +139,7 @@ fn composer_error_from_preprocess_error(
 fn composer_error_from_metadata_error(error : MetadataError) -> ComposerError {
   match error {
     ImportParseError(message, _) => FailedToResolveImport(message)
-    InvalidWgslDirective(line, _, reason) =>
-      UnknownShaderDefOperator("\{line}: \{reason}")
+    InvalidWgslDirective(line, _, reason) => InvalidWgslDirective(line, reason)
     DefineInModule(_) => DefineInModule
   }
 }
@@ -162,5 +161,14 @@ fn active_wgsl_ifdef_line_flags_strict_for_compose(
 ) -> Array[Bool] raise ComposerError {
   active_wgsl_ifdef_line_flags_strict(source, active_defs.shader_defs) catch {
     error => raise composer_error_from_preprocess_error(error)
+  }
+}
+
+///|
+fn validate_glsl_version_for_compose(
+  version : String,
+) -> Unit raise ComposerError {
+  if version != "440" && version != "450" {
+    raise ComposerError::GlslInvalidVersion
   }
 }

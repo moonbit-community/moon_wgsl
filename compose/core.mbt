@@ -39,6 +39,8 @@ pub(all) suberror ComposerError {
   MissingStartupRegisteredSource(String)
   NoModuleName(String)
   DefineInModule
+  GlslInvalidVersion
+  InvalidWgslDirective(String, String)
   UnknownShaderDef(String)
   UnknownShaderDefOperator(String)
   InvalidShaderDefComparisonValue(String, String, String)
@@ -65,6 +67,9 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     NoModuleName(path) =>
       "shader module is missing #define_import_path: \{path}"
     DefineInModule => "shader module cannot contain #define directives"
+    GlslInvalidVersion => "invalid GLSL #version directive"
+    InvalidWgslDirective(line, reason) =>
+      "invalid WGSL directive: \{line}: \{reason}"
     UnknownShaderDef(name) => "unknown shader def: \{name}"
     UnknownShaderDefOperator(operator) =>
       "unknown shader def operator: \{operator}"

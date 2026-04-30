@@ -59,6 +59,7 @@ using @preprocess {
   active_wgsl_ifdef_line_flags_strict,
   apply_wgsl_ifdefs_strict,
   apply_wgsl_template_consts,
+  parse_glsl_version_directive,
 }
 
 ///|

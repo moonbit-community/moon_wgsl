@@ -223,7 +223,7 @@ fn starts_with_tokenized_space(text : String) -> Bool {
 }
 
 ///|
-fn parse_glsl_version_directive(line : String) -> String? {
+pub fn parse_glsl_version_directive(line : String) -> String? {
   let trimmed = line.trim().to_owned()
   let tokens = tokenize(trimmed, false)
   match tokens {

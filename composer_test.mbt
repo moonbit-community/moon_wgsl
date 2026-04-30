@@ -988,3 +988,59 @@ test "naga_oil: composable modules reject local define directives" {
   }
   abort("expected composable module #define rejection")
 }
+
+///|
+test "naga_oil: composer reports invalid WGSL directive as directive error" {
+  let composer = @compose.Composer::default()
+  ignore(
+    composer.compose_wgsl_source(
+      "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+      composer_test_compose_options(empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message().contains("invalid WGSL directive:"),
+        content="true",
+      )
+      debug_inspect(
+        err.message().contains("Invalid severity 'note'"),
+        content="true",
+      )
+      return
+    }
+  }
+  abort("expected invalid WGSL directive compose failure")
+}
+
+///|
+test "naga_oil: composer reports invalid GLSL version as version error" {
+  let composer = @compose.Composer::default()
+  ignore(
+    composer.compose_wgsl_source(
+      "#version 430\nfn shade() -> f32 { return 1.0; }\n",
+      composer_test_compose_options(empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message(),
+        content="\"invalid GLSL #version directive\"",
+      )
+      return
+    }
+  }
+  abort("expected invalid GLSL version compose failure")
+}
+
+///|
+test "naga_oil: composer strips accepted GLSL version directive" {
+  let output = @compose.Composer::default().compose_wgsl_source(
+    "#version 450\nfn shade() -> f32 { return 1.0; }\n",
+    composer_test_compose_options(empty_bool_defines(), []),
+  ) catch {
+    err => abort("expected GLSL version compose success: \{err.message()}")
+  }
+  debug_inspect(output.contains("#version"), content="false")
+  debug_inspect(output.contains("fn shade()"), content="true")
+}

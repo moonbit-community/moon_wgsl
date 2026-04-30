@@ -13,6 +13,8 @@ pub fn apply_wgsl_ifdefs_strict(String, @hashmap.HashMap[String, @common.ShaderD
 
 pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, Int]) -> String
 
+pub fn parse_glsl_version_directive(String) -> String?
+
 // Errors
 pub suberror PreprocessError {
   GlslInvalidVersion(Int)
