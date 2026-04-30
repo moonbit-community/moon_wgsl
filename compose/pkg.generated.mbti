@@ -9,10 +9,6 @@ import {
 }
 
 // Values
-pub fn apply_wgsl_ifdefs(String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) -> String
-
-pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, Int]) -> String
-
 pub fn finalize_wgsl_writeback_source(String) -> String raise ComposerError
 
 pub fn registered_wgsl_source_required(String) -> String raise ComposerError

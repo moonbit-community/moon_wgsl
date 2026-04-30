@@ -220,13 +220,6 @@ priv struct WgslActiveComposeDefs {
 }
 
 ///|
-priv struct WgslTemplateConstReference {
-  name : String
-  start : Int
-  end : Int
-}
-
-///|
 fn composable_module_name_from_descriptor(
   desc : ComposableModuleDescriptor,
 ) -> String raise ComposerError {
@@ -551,63 +544,6 @@ fn wgsl_clean_directive_tail(text : String) -> String {
 }
 
 ///|
-fn parse_wgsl_uint_literal(text : String) -> Int? {
-  let mut token = strip_wgsl_line_comment(text).trim().to_owned()
-  if token == "" {
-    return None
-  }
-  if token.has_suffix("u") || token.has_suffix("U") {
-    token = token[:token.length() - 1].to_owned().trim().to_owned()
-  }
-  if token == "" {
-    return None
-  }
-  let parsed = @string.parse_int(token[:], base=10) catch { _ => return None }
-  Some(parsed)
-}
-
-///|
-fn split_once_text(text : String, sep : String) -> (String, String)? {
-  match text.find(sep) {
-    Some(index) =>
-      Some(
-        (
-          text[:index].to_owned(),
-          text[index + sep.length():text.length()].to_owned(),
-        ),
-      )
-    None => None
-  }
-}
-
-///|
-fn wgsl_define_value(
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-  name : String,
-) -> Int {
-  if value_defines.get(name) is Some(value) {
-    return value
-  }
-  if defines.get(name) is Some(flag) && flag {
-    return 1
-  }
-  0
-}
-
-///|
-fn wgsl_define_enabled(
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-  name : String,
-) -> Bool {
-  if value_defines.contains(name) {
-    return true
-  }
-  defines.contains(name)
-}
-
-///|
 fn wgsl_parent_active(active_stack : Array[Bool]) -> Bool {
   if active_stack.length() >= 2 {
     active_stack[active_stack.length() - 2]
@@ -625,65 +561,6 @@ fn wgsl_directive_tail_has_ascii_space(tail : String) -> Bool {
 }
 
 ///|
-fn wgsl_if_expr_value(
-  token : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-) -> Int {
-  let text = strip_wgsl_line_comment(token).trim().to_owned()
-  if text == "" {
-    return 0
-  }
-  if text == "true" {
-    return 1
-  }
-  if text == "false" {
-    return 0
-  }
-  if parse_wgsl_uint_literal(text) is Some(value) {
-    return value
-  }
-  wgsl_define_value(defines, value_defines, text)
-}
-
-///|
-fn eval_wgsl_if_expr(
-  expr : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-) -> Bool {
-  let text = strip_wgsl_line_comment(expr).trim().to_owned()
-  if text == "" {
-    return false
-  }
-  if split_once_text(text, ">=") is Some((lhs, rhs)) {
-    return wgsl_if_expr_value(lhs, defines, value_defines) >=
-      wgsl_if_expr_value(rhs, defines, value_defines)
-  }
-  if split_once_text(text, "<=") is Some((lhs, rhs)) {
-    return wgsl_if_expr_value(lhs, defines, value_defines) <=
-      wgsl_if_expr_value(rhs, defines, value_defines)
-  }
-  if split_once_text(text, "==") is Some((lhs, rhs)) {
-    return wgsl_if_expr_value(lhs, defines, value_defines) ==
-      wgsl_if_expr_value(rhs, defines, value_defines)
-  }
-  if split_once_text(text, "!=") is Some((lhs, rhs)) {
-    return wgsl_if_expr_value(lhs, defines, value_defines) !=
-      wgsl_if_expr_value(rhs, defines, value_defines)
-  }
-  if split_once_text(text, ">") is Some((lhs, rhs)) {
-    return wgsl_if_expr_value(lhs, defines, value_defines) >
-      wgsl_if_expr_value(rhs, defines, value_defines)
-  }
-  if split_once_text(text, "<") is Some((lhs, rhs)) {
-    return wgsl_if_expr_value(lhs, defines, value_defines) <
-      wgsl_if_expr_value(rhs, defines, value_defines)
-  }
-  wgsl_if_expr_value(text, defines, value_defines) != 0
-}
-
-///|
 fn wgsl_shader_def_enabled(
   active_defs : WgslActiveComposeDefs,
   name : String,
@@ -698,113 +575,6 @@ fn wgsl_compose_token_end(token : Token) -> Int {
       pos + text.length()
     Token::Other(_, pos) => pos + 1
   }
-}
-
-///|
-fn wgsl_template_const_name_boundary(text : String, name : String) -> Bool {
-  if text.length() == name.length() {
-    return true
-  }
-  if text.length() < name.length() {
-    return false
-  }
-  let tail = text[name.length():text.length()].to_owned()
-  for prefix in ["_", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] {
-    if tail.has_prefix(prefix) {
-      return false
-    }
-  }
-  for
-    prefix in [
-      "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
-      "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-    ] {
-    if tail.has_prefix(prefix) {
-      return false
-    }
-  }
-  true
-}
-
-///|
-fn longest_wgsl_template_const_prefix(
-  text : String,
-  value_defines : @hashmap.HashMap[String, Int],
-) -> String? {
-  let mut best = ""
-  for entry in value_defines.iter() {
-    let (name, _) = entry
-    if name.length() > best.length() &&
-      starts_with_text(text, name) &&
-      wgsl_template_const_name_boundary(text, name) {
-      best = name
-    }
-  }
-  if best == "" {
-    None
-  } else {
-    Some(best)
-  }
-}
-
-///|
-fn parse_wgsl_template_const_references(
-  source : String,
-  value_defines : @hashmap.HashMap[String, Int],
-) -> Array[WgslTemplateConstReference] {
-  let references : Array[WgslTemplateConstReference] = []
-  let tokens = tokenize(source, true)
-  let mut i = 0
-  while i < tokens.length() {
-    guard tokens[i] is Token::Other(35, start) else {
-      i = i + 1
-      continue
-    }
-    guard i + 1 < tokens.length() else {
-      i = i + 1
-      continue
-    }
-    match tokens[i + 1] {
-      Token::Other(123, _) => {
-        let body_start = wgsl_compose_token_end(tokens[i + 1])
-        let mut j = i + 2
-        while j < tokens.length() {
-          match tokens[j] {
-            Token::Other(125, _) => break
-            _ => j = j + 1
-          }
-        }
-        if j < tokens.length() {
-          let name = source[body_start:tokens[j].pos()]
-            .to_owned()
-            .trim()
-            .to_owned()
-          references.push(WgslTemplateConstReference::{
-            name,
-            start,
-            end: wgsl_compose_token_end(tokens[j]),
-          })
-          i = j + 1
-        } else {
-          i = i + 1
-        }
-      }
-      Token::Identifier(text, pos) =>
-        match longest_wgsl_template_const_prefix(text, value_defines) {
-          Some(name) => {
-            references.push(WgslTemplateConstReference::{
-              name,
-              start,
-              end: pos + name.length(),
-            })
-            i = i + 2
-          }
-          None => i = i + 1
-        }
-      _ => i = i + 1
-    }
-  }
-  references
 }
 
 ///|
@@ -967,243 +737,6 @@ fn eval_wgsl_if_expr_strict(
 }
 
 ///|
-fn apply_wgsl_ifdefs_strict(
-  source : String,
-  active_defs : WgslActiveComposeDefs,
-) -> String raise ComposerError {
-  let mut out = ""
-  let active_stack : Array[Bool] = [true]
-  let branch_taken_stack : Array[Bool] = []
-  for line in split_source_lines(source) {
-    let trimmed = line.trim().to_owned()
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(tail) {
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = wgsl_shader_def_enabled(active_defs, name)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(tail) {
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = !wgsl_shader_def_enabled(active_defs, name)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(tail) {
-      let expr = wgsl_clean_directive_tail(tail)
-      let cond = eval_wgsl_if_expr_strict(expr, active_defs)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifdef") is Some(tail) {
-      if branch_taken_stack.length() == 0 {
-        raise ComposerError::ElseWithoutCondition
-      }
-      let idx = branch_taken_stack.length() - 1
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = !branch_taken_stack[idx] &&
-        wgsl_shader_def_enabled(active_defs, name)
-      let parent = wgsl_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifndef") is Some(tail) {
-      if branch_taken_stack.length() == 0 {
-        raise ComposerError::ElseWithoutCondition
-      }
-      let idx = branch_taken_stack.length() - 1
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = !branch_taken_stack[idx] &&
-        !wgsl_shader_def_enabled(active_defs, name)
-      let parent = wgsl_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "if") is Some(tail) {
-      if branch_taken_stack.length() == 0 {
-        raise ComposerError::ElseWithoutCondition
-      }
-      let idx = branch_taken_stack.length() - 1
-      let cond = !branch_taken_stack[idx] &&
-        eval_wgsl_if_expr_strict(tail, active_defs)
-      let parent = wgsl_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) {
-      if branch_taken_stack.length() == 0 {
-        raise ComposerError::ElseWithoutCondition
-      }
-      let idx = branch_taken_stack.length() - 1
-      let cond = !branch_taken_stack[idx]
-      let parent = wgsl_parent_active(active_stack)
-      active_stack[active_stack.length() - 1] = parent && cond
-      branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_) {
-      if active_stack.length() <= 1 {
-        raise ComposerError::TooManyEndIfs
-      }
-      active_stack.pop() |> ignore
-      if branch_taken_stack.length() > 0 {
-        branch_taken_stack.pop() |> ignore
-      }
-      continue
-    }
-    if active_stack[active_stack.length() - 1] {
-      out = "\{out}\{line}\n"
-    }
-  }
-  if active_stack.length() != 1 {
-    raise ComposerError::NotEnoughEndIfs
-  }
-  out
-}
-
-///|
-pub fn apply_wgsl_template_consts(
-  source : String,
-  value_defines : @hashmap.HashMap[String, Int],
-) -> String {
-  let mut out = ""
-  let mut copy_start = 0
-  for reference in parse_wgsl_template_const_references(source, value_defines) {
-    if value_defines.get(reference.name) is Some(value) {
-      out = out + source[copy_start:reference.start].to_owned()
-      out = out + value.to_string()
-      copy_start = reference.end
-    }
-  }
-  if copy_start < source.length() {
-    out = out + source[copy_start:source.length()].to_owned()
-  }
-  out
-}
-
-///|
-pub fn apply_wgsl_ifdefs(
-  source : String,
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
-) -> String {
-  let mut out = ""
-  let active_stack : Array[Bool] = [true]
-  let branch_taken_stack : Array[Bool] = []
-  for line in split_source_lines(source) {
-    let trimmed = line.trim().to_owned()
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifdef) is Some(tail) {
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = wgsl_define_enabled(defines, value_defines, name)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::Ifndef) is Some(tail) {
-      let name = wgsl_clean_directive_tail(tail)
-      let cond = !wgsl_define_enabled(defines, value_defines, name)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      continue
-    }
-    if wgsl_directive_tail(trimmed, WgslDirectiveKind::If) is Some(tail) {
-      let expr = wgsl_clean_directive_tail(tail)
-      let cond = eval_wgsl_if_expr(expr, defines, value_defines)
-      let parent = active_stack[active_stack.length() - 1]
-      active_stack.push(parent && cond)
-      branch_taken_stack.push(cond)
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifdef") is Some(tail) {
-      if branch_taken_stack.length() > 0 {
-        let idx = branch_taken_stack.length() - 1
-        let name = wgsl_clean_directive_tail(tail)
-        let cond = !branch_taken_stack[idx] &&
-          wgsl_define_enabled(defines, value_defines, name)
-        let parent = wgsl_parent_active(active_stack)
-        active_stack[active_stack.length() - 1] = parent && cond
-        branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      }
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "ifndef") is Some(tail) {
-      if branch_taken_stack.length() > 0 {
-        let idx = branch_taken_stack.length() - 1
-        let name = wgsl_clean_directive_tail(tail)
-        let cond = !branch_taken_stack[idx] &&
-          !wgsl_define_enabled(defines, value_defines, name)
-        let parent = wgsl_parent_active(active_stack)
-        active_stack[active_stack.length() - 1] = parent && cond
-        branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      }
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else)
-      is Some(else_tail) &&
-      wgsl_directive_tail_has_ascii_space(else_tail) &&
-      word_tail(else_tail, "if") is Some(tail) {
-      if branch_taken_stack.length() > 0 {
-        let idx = branch_taken_stack.length() - 1
-        let cond = !branch_taken_stack[idx] &&
-          eval_wgsl_if_expr(tail, defines, value_defines)
-        let parent = wgsl_parent_active(active_stack)
-        active_stack[active_stack.length() - 1] = parent && cond
-        branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      }
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Else) is Some(_) {
-      if branch_taken_stack.length() > 0 {
-        let idx = branch_taken_stack.length() - 1
-        let cond = !branch_taken_stack[idx]
-        let parent = wgsl_parent_active(active_stack)
-        active_stack[active_stack.length() - 1] = parent && cond
-        branch_taken_stack[idx] = branch_taken_stack[idx] || cond
-      }
-      continue
-    }
-    if wgsl_directive_prefix_tail(trimmed, WgslDirectiveKind::Endif) is Some(_) {
-      if active_stack.length() > 1 {
-        active_stack.pop() |> ignore
-      }
-      if branch_taken_stack.length() > 0 {
-        branch_taken_stack.pop() |> ignore
-      }
-      continue
-    }
-    if active_stack[active_stack.length() - 1] {
-      out = "\{out}\{line}\n"
-    }
-  }
-  out
-}
-
-///|
 pub fn Composer::contains_module(self : Composer, module_name : String) -> Bool {
   self.module_sets.contains(module_name)
 }
@@ -1334,6 +867,35 @@ pub fn Composer::load_wgsl_source_required_raw(
 }
 
 ///|
+fn composer_error_from_preprocess_error(
+  error : PreprocessError,
+) -> ComposerError {
+  match error {
+    UnknownShaderDef(name, _) => UnknownShaderDef(name)
+    UnknownShaderDefOperator(operator, _) => UnknownShaderDefOperator(operator)
+    InvalidShaderDefComparisonValue(name, value, expected, _) =>
+      InvalidShaderDefComparisonValue(name, value, expected)
+    ElseWithoutCondition(_) => ElseWithoutCondition
+    TooManyEndIfs(_) => TooManyEndIfs
+    NotEnoughEndIfs(_) => NotEnoughEndIfs
+    ImportParseError(message, _) => FailedToResolveImport(message)
+    InvalidWgslDirective(line, _, reason) =>
+      UnknownShaderDefOperator("\{line}: \{reason}")
+    GlslInvalidVersion(_) | DefineInModule(_) => UnknownShaderDefOperator("")
+  }
+}
+
+///|
+fn apply_wgsl_ifdefs_strict_for_compose(
+  source : String,
+  active_defs : WgslActiveComposeDefs,
+) -> String raise ComposerError {
+  apply_wgsl_ifdefs_strict(source, active_defs.shader_defs) catch {
+    error => raise composer_error_from_preprocess_error(error)
+  }
+}
+
+///|
 priv struct WgslPreparedComposeSource {
   redirected_source : String
   active_scan_source : String
@@ -1351,7 +913,7 @@ fn prepare_wgsl_compose_source(
     session.redirects,
   )
   let active_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs_strict(redirected_source, active_defs),
+    apply_wgsl_ifdefs_strict_for_compose(redirected_source, active_defs),
     active_defs.value_defines,
   )
   WgslPreparedComposeSource::{
@@ -1548,187 +1110,6 @@ fn Composer::build_wgsl_import_requests(
 }
 
 ///|
-fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
-  let graph = build_wgsl_declaration_graph(source)
-  let mut deduped = ""
-  let emitted_blocks : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for import_block in graph.import_blocks {
-    deduped = deduped + import_block.text
-  }
-  for block in graph.declaration_blocks {
-    if block.name != "" {
-      let normalized_text = block.text.trim().to_owned()
-      match emitted_blocks.get(block.name) {
-        Some(existing_text) if existing_text == normalized_text => continue
-        _ => emitted_blocks.set(block.name, normalized_text)
-      }
-    }
-    deduped = deduped + block.text
-  }
-  deduped
-}
-
-///|
-fn record_wgsl_lowered_suffix_redirect_candidate(
-  suffix : String,
-  lowered_name : String,
-  declared_names : @hashmap.HashMap[String, Bool],
-  candidate_redirects : @hashmap.HashMap[String, String],
-  ambiguous_suffixes : @hashmap.HashMap[String, Bool],
-) -> Unit {
-  if suffix == "" || declared_names.contains(suffix) {
-    return
-  }
-  match candidate_redirects.get(suffix) {
-    Some(existing) if existing != lowered_name =>
-      ambiguous_suffixes.set(suffix, true)
-    Some(_) => ()
-    None => candidate_redirects.set(suffix, lowered_name)
-  }
-}
-
-///|
-fn build_wgsl_unique_lowered_suffix_redirect_map(
-  source : String,
-) -> @hashmap.HashMap[String, String] {
-  let graph = build_wgsl_declaration_graph(source)
-  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  for block in graph.declaration_blocks {
-    if block.name != "" {
-      declared_names.set(block.name, true)
-    }
-  }
-  for block in graph.declaration_blocks {
-    let parts : Array[String] = []
-    for part in block.name.split("__") {
-      parts.push(part.to_owned())
-    }
-    for i in 1..<parts.length() {
-      let mut suffix = ""
-      for j in i..<parts.length() {
-        if suffix != "" {
-          suffix = "\{suffix}__"
-        }
-        suffix = "\{suffix}\{parts[j]}"
-      }
-      if suffix != "" {
-        record_wgsl_lowered_suffix_redirect_candidate(
-          suffix,
-          block.name,
-          declared_names,
-          candidate_redirects,
-          ambiguous_suffixes,
-        )
-      }
-    }
-  }
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for entry in candidate_redirects.iter() {
-    let (suffix, lowered_name) = entry
-    if !ambiguous_suffixes.contains(suffix) {
-      redirects.set(suffix, lowered_name)
-    }
-  }
-  redirects
-}
-
-///|
-fn rewrite_wgsl_declaration_blocks_with_suffix_redirects(
-  source : String,
-  redirect_map : @hashmap.HashMap[String, String],
-) -> String {
-  rewrite_wgsl_declarations_with_rename_plan(
-    source,
-    build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly),
-  )
-}
-
-///|
-priv struct WgslGlobalBindingInfo {
-  name : String
-  group : Int
-  binding : Int
-  type_text : String
-}
-
-///|
-fn wgsl_attribute_uint_value(
-  attributes : Array[WgslAttribute],
-  name : String,
-) -> Int? {
-  for attr in attributes {
-    if attr.name == name {
-      return parse_wgsl_uint_literal(attr.arguments)
-    }
-  }
-  None
-}
-
-///|
-fn wgsl_global_binding_info(
-  block : @analysis.WgslGraphBlock,
-) -> WgslGlobalBindingInfo? {
-  match block.data {
-    WgslGlobalDeclData::GlobalVariable(global) => {
-      guard wgsl_attribute_uint_value(global.attributes, "group") is Some(group) else {
-        return None
-      }
-      guard wgsl_attribute_uint_value(global.attributes, "binding")
-        is Some(binding) else {
-        return None
-      }
-      guard global.ty is Some(type_text) else { return None }
-      Some(WgslGlobalBindingInfo::{
-        name: global.name.name,
-        group,
-        binding,
-        type_text,
-      })
-    }
-    _ => None
-  }
-}
-
-///|
-fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
-  let graph = build_wgsl_declaration_graph(source)
-  let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let duplicate_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for block in graph.declaration_blocks {
-    guard wgsl_global_binding_info(block) is Some(info) else { continue }
-    let key = "\{info.group}:\{info.binding}:\{info.type_text}"
-    match binding_owner.get(key) {
-      Some(owner) =>
-        if info.name != owner {
-          duplicate_names.set(info.name, true)
-          redirect_map.set(info.name, owner)
-        }
-      None => binding_owner.set(key, info.name)
-    }
-  }
-  if redirect_map.is_empty() {
-    return source
-  }
-  let mut out = ""
-  for import_block in graph.import_blocks {
-    out = out + import_block.text
-  }
-  for block in graph.declaration_blocks {
-    if duplicate_names.contains(block.name) {
-      continue
-    }
-    out = out + block.text
-  }
-  rewrite_wgsl_declarations_with_rename_plan(
-    out,
-    build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly),
-  )
-}
-
-///|
 fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -1809,7 +1190,7 @@ fn Composer::compose_wgsl_import_requests(
         Some(importer_defs),
       )
       let prepared_source = apply_wgsl_template_consts(
-        apply_wgsl_ifdefs_strict(raw_source, import_defs),
+        apply_wgsl_ifdefs_strict_for_compose(raw_source, import_defs),
         import_defs.value_defines,
       )
       let filtered_source = extract_wgsl_module_items(
@@ -1889,7 +1270,7 @@ fn finalize_wgsl_composed_source(
   alias_redirects : Array[WgslSymbolRedirect],
   active_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
-  let mut out = apply_wgsl_ifdefs_strict(merged, active_defs)
+  let mut out = apply_wgsl_ifdefs_strict_for_compose(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
   let alias_redirect_map = build_wgsl_symbol_redirect_map(alias_redirects)
   out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
@@ -1897,14 +1278,7 @@ fn finalize_wgsl_composed_source(
     out,
     build_wgsl_rename_plan_from_redirect_map(alias_redirect_map, ReferencesOnly),
   )
-  out = dedupe_wgsl_duplicate_declarations(out)
-  let suffix_redirects = build_wgsl_unique_lowered_suffix_redirect_map(out)
-  if !suffix_redirects.is_empty() {
-    out = rewrite_wgsl_declaration_blocks_with_suffix_redirects(
-      out, suffix_redirects,
-    )
-  }
-  out = dedupe_wgsl_duplicate_resource_bindings(out)
+  out = normalize_wgsl_composed_declarations(out)
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }

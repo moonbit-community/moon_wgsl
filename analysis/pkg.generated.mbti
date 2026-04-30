@@ -18,11 +18,19 @@ pub fn build_wgsl_rename_plan_from_redirect_map(@hashmap.HashMap[String, String]
 
 pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
 
+pub fn build_wgsl_unique_lowered_suffix_rename_plan(String) -> WgslRenamePlan
+
 pub fn collect_wgsl_decl_local_names(@syntax.WgslGlobalDeclData, Array[String]) -> Unit
 
 pub fn collect_wgsl_reachable_declaration_names(Array[WgslGraphBlock], Array[String]) -> (@hashmap.HashMap[String, Bool], Array[String])
 
+pub fn dedupe_wgsl_duplicate_declarations(String) -> String
+
+pub fn dedupe_wgsl_duplicate_resource_bindings(String) -> String
+
 pub fn extract_wgsl_module_items(String, Array[String]) -> String
+
+pub fn normalize_wgsl_composed_declarations(String) -> String
 
 pub fn rewrite_wgsl_declaration_text_with_redirects(String, @hashmap.HashMap[String, String]) -> String
 

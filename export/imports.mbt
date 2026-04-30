@@ -26,10 +26,11 @@ using @compose {
   type Composer,
   type ComposerError,
   type WgslComposeSession,
-  apply_wgsl_ifdefs,
-  apply_wgsl_template_consts,
   finalize_wgsl_writeback_source,
 }
+
+///|
+using @preprocess {apply_wgsl_ifdefs, apply_wgsl_template_consts}
 
 ///|
 using @resolver {

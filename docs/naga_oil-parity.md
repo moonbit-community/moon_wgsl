@@ -118,19 +118,25 @@ tree-shakes them away, matching upstream `naga_oil`.
    defs, and redirects. Do not reintroduce implicit mutable session parameters
    on the public API.
 
-3. Declaration analysis must stay shared.
+3. Preprocessing must stay in `preprocess`.
+   Template constant substitution, permissive `#ifdef` filtering for source
+   catalogs, and strict compose-time conditional filtering live in the
+   `preprocess` package. `compose` may map `PreprocessError` into
+   `ComposerError`, but must not maintain a second preprocessor.
+
+4. Declaration analysis must stay shared.
    Composition, export, source maps, and tree-shaking use the same declaration
    graph. Any new WGSL declaration form must be parsed there before composer or
    export logic consumes it.
 
-4. Rename/writeback must be plan-driven.
+5. Rename/writeback must be plan-driven.
    All source rewrites must be expressed as `WgslRenamePlan` rules in
    `analysis`: global declaration plus references, references only, or function
    locals. Composer, virtual overrides, duplicate-binding cleanup, suffix
    lowering, and writeback sanitization must not reintroduce ad hoc identifier
    span rewriting.
 
-5. The Naga boundary must stay explicit.
+6. The Naga boundary must stay explicit.
    Preprocessing and source-level WGSL composition belong in MoonBit. Naga IR,
    validation, GLSL, writer byte parity, and runtime execution remain outside
    this package's core scope.

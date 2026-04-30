@@ -7,6 +7,7 @@ using @analysis {
   build_wgsl_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,
   extract_wgsl_module_items,
+  normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_rename_plan,
   rewrite_wgsl_symbol_redirects,
   strip_wgsl_import_declarations,
@@ -30,7 +31,12 @@ using @common {
 }
 
 ///|
-using @preprocess {get_preprocessor_metadata}
+using @preprocess {
+  type PreprocessError,
+  apply_wgsl_ifdefs_strict,
+  apply_wgsl_template_consts,
+  get_preprocessor_metadata,
+}
 
 ///|
 using @resolver {
@@ -48,7 +54,6 @@ using @resolver {
 ///|
 using @syntax {
   type Token,
-  type WgslAttribute,
   type WgslDirectiveKind,
   type WgslFunction,
   type WgslGlobalDeclData,

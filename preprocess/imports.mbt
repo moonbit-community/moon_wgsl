@@ -22,6 +22,7 @@ using @syntax {
   replace_comments,
   spaces,
   source_lines,
+  starts_with_text,
   substitute_identifiers,
   trim_trailing_semicolons,
   tokenize,

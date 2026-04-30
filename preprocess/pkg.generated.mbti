@@ -7,6 +7,12 @@ import {
 }
 
 // Values
+pub fn apply_wgsl_ifdefs(String, @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) -> String
+
+pub fn apply_wgsl_ifdefs_strict(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> String raise PreprocessError
+
+pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, Int]) -> String
+
 pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition], @hashmap.HashMap[String, @common.ShaderDefValue])
 
 pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
