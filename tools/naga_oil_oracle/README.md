@@ -73,6 +73,16 @@ cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
   --check-only
 ```
 
+Dual-source blending fixtures use the same capability flag style:
+
+```sh
+cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/dual_source_blending \
+  --entry blending.wgsl \
+  --capability dual-source-blending \
+  --output /tmp/naga_oil_dual_source_blending.wgsl
+```
+
 The output is not expected to be byte-identical to `moon_wgsl` because
 `naga_oil` writes validated Naga IR while `moon_wgsl` is a source-level
 composer. Compare structural properties instead: resolved imports, retained

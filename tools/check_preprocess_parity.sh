@@ -23,6 +23,55 @@ diff_normalized() {
   diff -u "$tmpdir/$label.expected" "$tmpdir/$label.actual"
 }
 
+assert_expected_coverage() {
+  local label
+  local uncovered=()
+  for expected in testdata/naga_oil_upstream/compose_tests/expected/*.txt; do
+    label="$(basename "$expected" .txt)"
+    case "$label" in
+      additional_import | \
+      atomics | \
+      bad_identifiers | \
+      big_shaderdefs | \
+      conditional_import_a | \
+      conditional_import_b | \
+      conditional_missing_import | \
+      conditional_missing_import_nested | \
+      dup_import | \
+      dup_struct_import | \
+      err_parse | \
+      err_validation_1 | \
+      err_validation_2 | \
+      import_in_decl | \
+      invalid_override_base | \
+      item_import_test | \
+      item_sub_point | \
+      missing_import | \
+      problematic_expressions | \
+      simple_compose | \
+      test_quoted_import_dup_name | \
+      use_shared_global | \
+      wgsl_call_entrypoint | \
+      wgsl_dual_source_blending)
+        ;;
+      diagnostic_filters | \
+      glsl_call_wgsl | \
+      glsl_const_import | \
+      glsl_wgsl_const_import | \
+      wgsl_call_glsl | \
+      wgsl_glsl_const_import)
+        ;;
+      *)
+        uncovered+=("$label")
+        ;;
+    esac
+  done
+  if ((${#uncovered[@]} > 0)); then
+    printf 'unclassified naga_oil expected fixture(s): %s\n' "${uncovered[*]}" >&2
+    exit 1
+  fi
+}
+
 echo "== moon_wgsl source-level preprocessing parity tests =="
 moon test \
   preprocess_test.mbt \
@@ -240,6 +289,32 @@ diff_normalized \
   "$tmpdir/invalid_override_base.txt" \
   invalid_override_base
 
+echo "== naga_oil oracle: missing import in module =="
+if oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/error_test \
+  --entry wgsl_parse_err.wgsl \
+  --module include.wgsl \
+  --file-path-prefix tests/error_test \
+  --error-output "$tmpdir/missing_import.txt"; then
+  echo "expected oracle missing import failure, got success" >&2
+  exit 1
+fi
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/missing_import.txt \
+  "$tmpdir/missing_import.txt" \
+  missing_import
+
+echo "== naga_oil oracle: dual-source blending =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/dual_source_blending \
+  --entry blending.wgsl \
+  --capability dual-source-blending \
+  --output "$tmpdir/wgsl_dual_source_blending.wgsl"
+diff_normalized \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_dual_source_blending.txt \
+  "$tmpdir/wgsl_dual_source_blending.wgsl" \
+  wgsl_dual_source_blending
+
 echo "== naga_oil oracle: parser diagnostic =="
 if oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/error_test \
@@ -285,5 +360,8 @@ diff_normalized \
   testdata/naga_oil_upstream/compose_tests/expected/err_validation_2.txt \
   "$tmpdir/err_validation_2.txt" \
   err_validation_2
+
+echo "== naga_oil oracle: expected fixture coverage inventory =="
+assert_expected_coverage
 
 echo "preprocess parity gate passed"

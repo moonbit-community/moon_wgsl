@@ -33,7 +33,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability ray-query] [--check-only] [--output <file>] [--error-output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability ray-query|dual-source-blending] [--check-only] [--output <file>] [--error-output <file>]"
     );
     std::process::exit(2);
 }
@@ -118,6 +118,9 @@ fn parse_options() -> Options {
                 let Some(value) = args.next() else { usage() };
                 match value.as_str() {
                     "ray-query" => capabilities |= naga::valid::Capabilities::RAY_QUERY,
+                    "dual-source-blending" => {
+                        capabilities |= naga::valid::Capabilities::DUAL_SOURCE_BLENDING
+                    }
                     _ => usage(),
                 }
             }

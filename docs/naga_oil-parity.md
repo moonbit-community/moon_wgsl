@@ -54,14 +54,17 @@ Parity is tracked with three increasingly strict gates:
 
 3. Upstream oracle.
    `tools/naga_oil_oracle` is a Rust harness pinned to the upstream commit
-   above. It composes selected fixture trees through real `naga_oil` and
-   compares stable expected output or diagnostics where upstream already has
-   deterministic fixture text.
+   above. It composes WGSL fixture trees through real `naga_oil` and compares
+   every deterministic upstream WGSL preprocessing output or diagnostic that is
+   in this package's scope.
 
 4. CI parity gate.
    `tools/check_preprocess_parity.sh` runs the local preprocessing parity suite
-   and selected pinned-oracle comparisons. The GitHub Actions `check` workflow
-   runs this script after the normal MoonBit test matrix.
+   and pinned-oracle comparisons. The script also audits the upstream expected
+   fixture inventory so newly mirrored expected files must be either diffed by
+   the gate or explicitly classified as outside the MoonBit preprocessing
+   boundary. The GitHub Actions `check` workflow runs this script after the
+   normal MoonBit test matrix.
 
 There is no source-level compatibility mode for import-only entry points. If a
 root shader only imports items and never references them, composition
@@ -91,10 +94,10 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `problematic_expressions`, `problematic_expressions/` | Covered | Local dependency analysis includes the expression forms that previously broke source-level tree-shaking, including same-name local initializer callees such as Bevy PBR `let point_light = point_light(...)`. |
 | `test_atomics`, `atomics/` | Covered | Atomic declarations/usages are covered by source-level declaration dependency tests. |
 | `test_modf`, `modf/` | Covered | Builtin-return usage is covered at source-text dependency level. |
-| `test_diagnostic_filters`, `diagnostic_filters/` | Covered | Diagnostic directives are preserved. |
+| `test_diagnostic_filters`, `diagnostic_filters/` | Source-level covered / oracle out-of-scope | Diagnostic directives are preserved by MoonBit tests. The pinned upstream test is marked `should_panic` in `naga_oil` because diagnostic-filter validation/writeback is not supported there yet, so its stale expected writer output is tracked as an explicit oracle exclusion. |
 | `effective_defs`, `effective_defs/` | Covered | Descriptor-level shader defs now propagate through imported module branches, including the upstream bool-false `#ifdef` semantics and all eight branch combinations. |
-| `wgsl_dual_source_blending`, `dual_source_blending/` | Covered | Dual-source blending attributes are preserved as source text. |
-| `missing_import_in_module`, `missing_import_in_shader` | Covered | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
+| `wgsl_dual_source_blending`, `dual_source_blending/` | Covered + oracle-diffed | Dual-source blending attributes are preserved as source text and pinned oracle output is diffed with `DUAL_SOURCE_BLENDING` enabled. |
+| `missing_import_in_module`, `missing_import_in_shader` | Covered + oracle-diffed | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
 | `err_parse`, `err_validation`, `error_test/` | Oracle guardrail | Exact Naga parser/validator diagnostics are out of preprocessing scope, but selected expected diagnostics are diff-checked by the pinned oracle. |
 | `wgsl_call_glsl`, `glsl_call_wgsl`, `basic_glsl`, `glsl/` | Out of core scope | GLSL frontend behavior belongs to upstream Naga. The oracle can still run these fixtures when investigating parity, but `moon_wgsl` does not implement GLSL. |
 | `glsl_const_import`, `glsl_wgsl_const_import`, `wgsl_glsl_const_import`, `glsl_const_import/` | Out of core scope | Mixed GLSL/WGSL frontend composition is Naga-backed scope, not MoonBit source-level preprocessing scope. |
