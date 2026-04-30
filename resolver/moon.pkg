@@ -1,6 +1,6 @@
 import {
   "Milky2018/moon_wgsl/common",
-  "Milky2018/moon_wgsl/preprocess",
+  "Milky2018/moon_wgsl/metadata",
   "Milky2018/moon_wgsl/syntax",
   "moonbitlang/core/hashmap",
   "moonbitlang/core/ref",

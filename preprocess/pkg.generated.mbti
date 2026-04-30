@@ -20,7 +20,7 @@ pub fn get_preprocessor_data(String) -> (String?, Array[@common.ImportDefinition
 pub fn get_preprocessor_metadata(String) -> @common.PreprocessorMetaData
 
 // Errors
-pub(all) suberror PreprocessError {
+pub suberror PreprocessError {
   GlslInvalidVersion(Int)
   ElseWithoutCondition(Int)
   TooManyEndIfs(Int)

@@ -72,8 +72,7 @@ fn register_source_into(
   source_registry.set(normalized_rel, source)
   let mut module_path : String? = explicit_module_path
   if module_path is None {
-    let (detected_import_path, _, _) = get_preprocessor_data(source)
-    module_path = detected_import_path
+    module_path = wgsl_source_define_import_path(source)
   }
   if module_path is None {
     module_path = wgsl_module_path_from_rel_path(normalized_rel)
@@ -159,7 +158,7 @@ fn analyze_source_files_against(
     }
     batch_rel_to_source.set(normalized_rel, source_file.source)
 
-    let (import_path, _, _) = get_preprocessor_data(source_file.source)
+    let import_path = wgsl_source_define_import_path(source_file.source)
     let module_path = match import_path {
       Some(path) if path != "" => path
       _ =>

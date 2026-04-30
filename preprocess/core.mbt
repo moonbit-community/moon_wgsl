@@ -21,7 +21,7 @@ pub fn Preprocessor::default() -> Preprocessor {
 }
 
 ///|
-pub(all) suberror PreprocessError {
+pub suberror PreprocessError {
   GlslInvalidVersion(Int)
   ElseWithoutCondition(Int)
   TooManyEndIfs(Int)
