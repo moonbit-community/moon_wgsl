@@ -189,6 +189,26 @@ fn starts_with_tokenized_space(text : String) -> Bool {
 }
 
 ///|
+fn metadata_required_space_directive_tail(
+  line : String,
+  keyword : String,
+) -> String? {
+  let trimmed = line.trim().to_owned()
+  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
+    return None
+  }
+  let start = metadata_skip_ascii_space(trimmed, 1)
+  guard start + keyword.length() < trimmed.length() else { return None }
+  guard trimmed[start:start + keyword.length()].to_owned() == keyword else {
+    return None
+  }
+  let space_pos = start + keyword.length()
+  let code = trimmed.code_unit_at(space_pos).to_int()
+  guard code == 32 || code == 9 else { return None }
+  Some(trimmed[space_pos:trimmed.length()].to_owned().trim().to_owned())
+}
+
+///|
 fn semicolon_directive_body(line : String, keyword : String) -> String? {
   let trimmed = line.trim().to_owned()
   let tokens = tokenize(trimmed, false)

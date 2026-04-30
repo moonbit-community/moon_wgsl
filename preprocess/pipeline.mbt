@@ -44,12 +44,11 @@ pub fn Preprocessor::preprocess(
     } else {
       let (is_scope, _) = check_scope(shader_defs, line, Some(scope), offset)
       if is_scope ||
-        wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath)
-        is Some(_) ||
-        wgsl_directive_tail(trimmed, WgslDirectiveKind::Define) is Some(_) {
+        required_space_directive_tail(trimmed, "define_import_path") is Some(_) ||
+        required_space_directive_tail(trimmed, "define") is Some(_) {
         ()
       } else if scope.active() {
-        if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(_) {
+        if required_space_directive_tail(trimmed, "import") is Some(_) {
           let mut import_lines = ""
           let mut open_count = 0
           let initial_offset = offset

@@ -778,6 +778,36 @@ test "naga_oil: shader-def token parsing keeps upstream underscore tails" {
 }
 
 ///|
+test "naga_oil: directive keywords without required tail whitespace stay as source" {
+  let metadata = @metadata.get_preprocessor_metadata(
+    "#define\n#import\n#define_import_path\nfn shade() {}\n",
+    allow_defines=false,
+  ) catch {
+    _ => abort("expected keyword-only directive metadata success")
+  }
+  debug_inspect(metadata.defines.is_empty(), content="true")
+  debug_inspect(metadata.effective_defs.contains("define"), content="true")
+  debug_inspect(metadata.effective_defs.contains("import"), content="true")
+  debug_inspect(
+    metadata.effective_defs.contains("define_import_path"),
+    content="true",
+  )
+
+  let output = @preprocess.Preprocessor::default().preprocess(
+    "#define\n#import\n#define_import_path\nfn shade() {}\n",
+    empty_shader_defs(),
+  ) catch {
+    _ => abort("expected keyword-only directive preprocess success")
+  }
+  debug_inspect(output.preprocessed_source.contains("#define"), content="true")
+  debug_inspect(output.preprocessed_source.contains("#import"), content="true")
+  debug_inspect(
+    output.preprocessed_source.contains("#define_import_path"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil: glsl version directive captures numeric version token" {
   let output = @preprocess.Preprocessor::default().preprocess(
     "#version\t450 trailing_text\nfn main() -> f32 {\n  return 1.0;\n}\n",

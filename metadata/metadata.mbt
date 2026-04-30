@@ -30,7 +30,8 @@ fn try_get_preprocessor_metadata(
       if def is Some(def_name) {
         effective_defs.add(def_name)
       }
-    } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::Import) is Some(_) {
+    } else if metadata_required_space_directive_tail(trimmed, "import")
+      is Some(_) {
       let mut import_lines = "\{line}\n"
       let mut open_count = wgsl_token_brace_balance(line)
       let initial_offset = offset
@@ -50,7 +51,9 @@ fn try_get_preprocessor_metadata(
             initial_offset + line_offset,
           )
       }
-    } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::DefineImportPath)
+    } else if metadata_required_space_directive_tail(
+        trimmed, "define_import_path",
+      )
       is Some(raw_name) {
       let import_path = trim_trailing_semicolons(
         wgsl_metadata_first_space_separated_token(raw_name),
@@ -58,7 +61,7 @@ fn try_get_preprocessor_metadata(
       if import_path != "" {
         name = Some(import_path)
       }
-    } else if wgsl_directive_tail(trimmed, WgslDirectiveKind::Define)
+    } else if metadata_required_space_directive_tail(trimmed, "define")
       is Some(raw_define) {
       if allow_defines {
         let (define_name, define_value) = split_define_name_and_value(
