@@ -21,6 +21,16 @@ fn preprocess_identifier_code_unit(code : Int) -> Bool {
 }
 
 ///|
+fn preprocess_shader_def_name_code_unit(code : Int) -> Bool {
+  code == 124 ||
+  code == 95 ||
+  code > 127 ||
+  (code >= 48 && code <= 57) ||
+  (code >= 65 && code <= 90) ||
+  (code >= 97 && code <= 122)
+}
+
+///|
 fn code_unit_to_string(code : Int) -> String {
   String::from_array([Int::unsafe_to_char(code)])
 }

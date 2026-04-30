@@ -669,6 +669,32 @@ test "naga_oil: ifdef identifiers accept upstream pipe names" {
 }
 
 ///|
+test "naga_oil: ifdef identifiers accept upstream leading digit and pipe names" {
+  let source = "#ifdef 1FLAG\none\n#endif\n#ifdef |PIPE\npipe\n#endif\n#ifdef 1FLAG trailing\ntrail\n#endif\n"
+  let shader_defs = empty_shader_defs()
+  shader_defs.set("1FLAG", @common.ShaderDefValue::Bool(true))
+  shader_defs.set("|PIPE", @common.ShaderDefValue::Bool(true))
+  let output = @preprocess.Preprocessor::default().preprocess(
+    source, shader_defs,
+  ) catch {
+    _ => abort("expected leading-character shader-def preprocess success")
+  }
+  debug_inspect(output.preprocessed_source.contains("one"), content="true")
+  debug_inspect(output.preprocessed_source.contains("pipe"), content="true")
+  debug_inspect(output.preprocessed_source.contains("trail"), content="true")
+
+  let metadata = metadata_or_abort(
+    "#ifdef 1FLAG\n#VALUE\n#endif\n#ifndef |PIPE\n#OTHER\n#endif\n#ifdef 1FLAG trailing\n#TAIL\n#endif\n",
+  )
+  debug_inspect(metadata.effective_defs.contains("1FLAG"), content="true")
+  debug_inspect(metadata.effective_defs.contains("|PIPE"), content="true")
+  debug_inspect(
+    metadata.effective_defs.contains("1FLAGtrailing"),
+    content="false",
+  )
+}
+
+///|
 test "naga_oil: if comparison identifiers accept upstream pipe names" {
   let source = "#if MIXED|PIPE == 4\nactive\n#else\ninactive\n#endif\n"
   let shader_defs = empty_shader_defs()

@@ -267,26 +267,19 @@ fn parse_bool_text(text : String) -> Bool? {
 
 ///|
 fn directive_identifier(text : String) -> String? {
-  let trimmed = trim_trailing_semicolons(text)
-  let tokens = tokenize(trimmed, false)
-  let mut out = ""
-  let mut expect_identifier = true
-  for token in tokens {
-    match token {
-      WgslToken::Identifier(ident, _) if expect_identifier => {
-        out = out + ident
-        expect_identifier = false
-      }
-      WgslToken::Other(124, _) if !expect_identifier => {
-        out = out + "|"
-        expect_identifier = true
-      }
-      _ => break
+  let trimmed = trim_trailing_semicolons(text).trim().to_owned()
+  let mut i = 0
+  while i < trimmed.length() {
+    let code = trimmed.code_unit_at(i).to_int()
+    if preprocess_shader_def_name_code_unit(code) {
+      i = i + 1
+      continue
     }
+    break
   }
-  if out == "" || expect_identifier {
+  if i == 0 {
     None
   } else {
-    Some(out)
+    Some(trimmed[0:i].to_owned())
   }
 }

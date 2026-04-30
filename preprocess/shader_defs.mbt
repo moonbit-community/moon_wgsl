@@ -24,12 +24,7 @@ fn parse_if_operator_expression(
   let def_start = i
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if code == 124 ||
-      code == 95 ||
-      code > 127 ||
-      (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) {
+    if preprocess_shader_def_name_code_unit(code) {
       i = i + 1
       continue
     }
@@ -66,13 +61,7 @@ fn parse_if_operator_expression(
   let value_start = i
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
-    if code == 45 ||
-      code == 124 ||
-      code == 95 ||
-      code > 127 ||
-      (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) {
+    if code == 45 || preprocess_shader_def_name_code_unit(code) {
       i = i + 1
       continue
     }
