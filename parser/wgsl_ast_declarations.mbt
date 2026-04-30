@@ -412,7 +412,7 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
   while emitted < 2 {
     match view {
       [WgslToken::Identifier(name, pos), .. rest] => {
-        let ident = WgslIdent::{ name, start: pos, end: pos + name.length() }
+        let ident = WgslIdent::new(name, pos, pos + name.length())
         match self.decl_head_token(ident) {
           Some(token) => tokens.push((token, ident.start, ident.end))
           None => ()

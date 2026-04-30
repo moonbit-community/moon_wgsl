@@ -28,11 +28,13 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     match tokens[i] {
       WgslToken::Identifier(name, pos) =>
         if !wgsl_expr_identifier_has_access_prefix(tokens, i) {
-          identifiers.push(WgslIdent::{
-            name,
-            start: base + local_start + pos,
-            end: base + local_start + pos + name.length(),
-          })
+          identifiers.push(
+            WgslIdent::new(
+              name,
+              base + local_start + pos,
+              base + local_start + pos + name.length(),
+            ),
+          )
         }
       _ => ()
     }
@@ -214,7 +216,7 @@ fn WgslDeclParser::consume_ident_node(self : WgslDeclParser) -> WgslIdent? {
   match self.view() {
     [WgslToken::Identifier(name, pos), .. rest] => {
       self.update_view(rest)
-      Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
+      Some(WgslIdent::new(name, pos, pos + name.length()))
     }
     _ => None
   }
@@ -291,7 +293,7 @@ fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? 
       _ => break
     }
   }
-  Some(WgslIdent::{ name, start: first.start, end })
+  Some(WgslIdent::new(name, first.start, end))
 }
 
 ///|
@@ -310,11 +312,9 @@ fn WgslDeclParser::push_attribute_tokens(
         tokens.push((Token::AT(at_pos), at_pos, at_pos + 1))
         tokens.push(
           (
-            Token::ATTR_NAME(WgslIdent::{
-              name,
-              start: name_pos,
-              end: name_pos + name.length(),
-            }),
+            Token::ATTR_NAME(
+              WgslIdent::new(name, name_pos, name_pos + name.length()),
+            ),
             name_pos,
             name_pos + name.length(),
           ),

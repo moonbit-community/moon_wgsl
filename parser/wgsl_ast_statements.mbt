@@ -234,7 +234,7 @@ fn wgsl_statement_local_declaration_from_tokens(
         if name_index < tokens.length() {
           return match tokens[name_index] {
             WgslToken::Identifier(name, pos) =>
-              Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
+              Some(WgslIdent::new(name, pos, pos + name.length()))
             _ => None
           }
         }
@@ -244,7 +244,7 @@ fn wgsl_statement_local_declaration_from_tokens(
         if i + 1 < tokens.length() {
           return match tokens[i + 1] {
             WgslToken::Identifier(name, pos) =>
-              Some(WgslIdent::{ name, start: pos, end: pos + name.length() })
+              Some(WgslIdent::new(name, pos, pos + name.length()))
             _ => None
           }
         } else {
@@ -269,11 +269,9 @@ fn collect_wgsl_statement_pending_local_name(
       if name_index < tokens.length() {
         match tokens[name_index] {
           WgslToken::Identifier(name, pos) =>
-            pending_local_names.push(WgslIdent::{
-              name,
-              start: pos,
-              end: pos + name.length(),
-            })
+            pending_local_names.push(
+              WgslIdent::new(name, pos, pos + name.length()),
+            )
           _ => ()
         }
       }
@@ -284,11 +282,9 @@ fn collect_wgsl_statement_pending_local_name(
       if name_index < tokens.length() {
         match tokens[name_index] {
           WgslToken::Identifier(name, pos) =>
-            pending_local_names.push(WgslIdent::{
-              name,
-              start: pos,
-              end: pos + name.length(),
-            })
+            pending_local_names.push(
+              WgslIdent::new(name, pos, pos + name.length()),
+            )
           _ => ()
         }
       }
@@ -402,11 +398,7 @@ fn collect_wgsl_statement_identifier_nodes(
     if wgsl_statement_scope_contains(local_scopes, ident) {
       continue
     }
-    identifiers.push(WgslIdent::{
-      name: ident,
-      start: pos,
-      end: pos + ident.length(),
-    })
+    identifiers.push(WgslIdent::new(ident, pos, pos + ident.length()))
   }
 }
 

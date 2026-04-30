@@ -44,11 +44,16 @@ pub(all) enum WgslGlobalDeclKind {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct WgslIdent {
+pub struct WgslIdent {
   name : String
   start : Int
   end : Int
 } derive(Debug)
+
+///|
+pub fn WgslIdent::new(name : String, start : Int, end : Int) -> WgslIdent {
+  WgslIdent::{ name, start, end }
+}
 
 ///|
 pub(all) struct WgslExprRef {

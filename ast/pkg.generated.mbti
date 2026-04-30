@@ -152,11 +152,12 @@ pub(all) struct WgslGlobalVariable {
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
 
-pub(all) struct WgslIdent {
+pub struct WgslIdent {
   name : String
   start : Int
   end : Int
 } derive(@debug.Debug)
+pub fn WgslIdent::new(String, Int, Int) -> Self
 
 pub(all) struct WgslOverride {
   attributes : Array[WgslAttribute]
