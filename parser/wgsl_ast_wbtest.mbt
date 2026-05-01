@@ -474,7 +474,7 @@ test "WGSL identifier collection exposes source spans" {
 test "WGSL function payload exposes source-preserving statement AST" {
   let source =
     #|fn demo(value: u32) -> u32 {
-    #|  var local: u32 = value;
+    #|  var<function> local: u32 = value;
     #|  if (local > 0u) {
     #|    return local;
     #|  }
@@ -491,7 +491,7 @@ test "WGSL function payload exposes source-preserving statement AST" {
   debug_inspect(function.body.statements[2].kind, content="Return")
   debug_inspect(
     function.body.statements[0].text.trim().to_owned(),
-    content="\"var local: u32 = value;\"",
+    content="\"var<function> local: u32 = value;\"",
   )
   debug_inspect(
     function.body.statements[1].text.contains("return local"),
@@ -505,6 +505,42 @@ test "WGSL function payload exposes source-preserving statement AST" {
     function.body.statements[0].exported_locals.map(fn(node) { node.name }),
     content=(
       #|["local"]
+    ),
+  )
+  debug_inspect(
+    function.body.statements[0].local_bindings.length(),
+    content="1",
+  )
+  debug_inspect(
+    function.body.statements[0].local_bindings[0].kind,
+    content="\"var\"",
+  )
+  debug_inspect(
+    function.body.statements[0].local_bindings[0].name.name,
+    content="\"local\"",
+  )
+  debug_inspect(
+    function.body.statements[0].local_bindings[0].template_list,
+    content=(
+      #|["function"]
+    ),
+  )
+  debug_inspect(
+    function.body.statements[0].local_bindings[0].ty,
+    content="Some(\"u32\")",
+  )
+  guard function.body.statements[0].local_bindings[0].ty_ref is Some(local_ty) else {
+    abort("expected local type ref")
+  }
+  debug_inspect(local_ty.name, content="\"u32\"")
+  guard function.body.statements[0].local_bindings[0].initializer_ref
+    is Some(local_init) else {
+    abort("expected local initializer ref")
+  }
+  debug_inspect(
+    local_init.identifiers.map(fn(node) { node.name }),
+    content=(
+      #|["value"]
     ),
   )
   debug_inspect(
@@ -664,6 +700,18 @@ test "WGSL statement AST records nested and loop local declarations" {
     content=(
       #|["i"]
     ),
+  )
+  debug_inspect(
+    function.body.statements[1].local_bindings.length(),
+    content="1",
+  )
+  debug_inspect(
+    function.body.statements[1].local_bindings[0].name.name,
+    content="\"i\"",
+  )
+  debug_inspect(
+    function.body.statements[1].local_bindings[0].ty,
+    content="Some(\"u32\")",
   )
   debug_inspect(function.body.statements[1].exported_locals, content="[]")
   let nodes : Array[WgslIdent] = []

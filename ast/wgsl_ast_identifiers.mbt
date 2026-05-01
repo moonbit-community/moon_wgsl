@@ -26,6 +26,23 @@ fn collect_wgsl_expr_ref_identifier_nodes(
 }
 
 ///|
+fn collect_wgsl_expr_ref_identifier_nodes_with_scope(
+  expr_ref : WgslExprRef?,
+  active_local_names : Array[String],
+  nodes : Array[WgslIdent],
+) -> Unit {
+  match expr_ref {
+    Some(expr) =>
+      for ident in expr.identifiers {
+        if !wgsl_name_list_contains(active_local_names, ident.name) {
+          nodes.push(ident)
+        }
+      }
+    None => ()
+  }
+}
+
+///|
 fn collect_wgsl_type_ref_identifier_nodes(
   ty_ref : WgslTypeRef?,
   nodes : Array[WgslIdent],
@@ -79,12 +96,74 @@ fn wgsl_name_list_copy(names : Array[String]) -> Array[String] {
 }
 
 ///|
+fn wgsl_ident_inside_span(ident : WgslIdent, start : Int, end_ : Int) -> Bool {
+  ident.start >= start && ident.end <= end_
+}
+
+///|
+fn wgsl_ident_inside_local_binding_ref(
+  ident : WgslIdent,
+  binding : WgslLocalDeclaration,
+) -> Bool {
+  match binding.ty_ref {
+    Some(ty) =>
+      if wgsl_ident_inside_span(ident, ty.start, ty.end) {
+        return true
+      }
+    None => ()
+  }
+  match binding.initializer_ref {
+    Some(expr) =>
+      if wgsl_ident_inside_span(ident, expr.start, expr.end) {
+        return true
+      }
+    None => ()
+  }
+  false
+}
+
+///|
+fn wgsl_ident_inside_statement_local_binding_refs(
+  ident : WgslIdent,
+  statement : WgslStatement,
+) -> Bool {
+  for binding in statement.local_bindings {
+    if wgsl_ident_inside_local_binding_ref(ident, binding) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn collect_wgsl_local_binding_identifier_nodes_with_scope(
+  binding : WgslLocalDeclaration,
+  active_local_names : Array[String],
+  nodes : Array[WgslIdent],
+) -> Unit {
+  collect_wgsl_type_ref_identifier_nodes(binding.ty_ref, nodes)
+  collect_wgsl_expr_ref_identifier_nodes_with_scope(
+    binding.initializer_ref,
+    active_local_names,
+    nodes,
+  )
+}
+
+///|
 fn collect_wgsl_statement_identifier_nodes_with_scope(
   statement : WgslStatement,
   active_local_names : Array[String],
   nodes : Array[WgslIdent],
 ) -> Unit {
+  for binding in statement.local_bindings {
+    collect_wgsl_local_binding_identifier_nodes_with_scope(
+      binding, active_local_names, nodes,
+    )
+  }
   for ident in statement.identifiers {
+    if wgsl_ident_inside_statement_local_binding_refs(ident, statement) {
+      continue
+    }
     if !wgsl_name_list_contains(active_local_names, ident.name) {
       nodes.push(ident)
     }

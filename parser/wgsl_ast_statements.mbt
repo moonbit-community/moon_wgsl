@@ -258,10 +258,55 @@ fn wgsl_statement_local_declaration_from_tokens(
 }
 
 ///|
+fn WgslDeclParser::parse_statement_local_binding(
+  self : WgslDeclParser,
+  tokens : Array[WgslToken],
+  keyword_index : Int,
+) -> WgslLocalDeclaration? {
+  guard keyword_index >= 0 && keyword_index < tokens.length() else {
+    return None
+  }
+  let kind = match wgsl_statement_token_identifier(tokens[keyword_index]) {
+    Some("var") => "var"
+    Some("let") => "let"
+    Some("const") => "const"
+    _ => return None
+  }
+  let parser = WgslDeclParser::{
+    source_text: self.source_text,
+    source_start: self.source_start,
+    token_view: tokens[keyword_index + 1:],
+  }
+  let template_list = if kind == "var" {
+    parser.parse_template_list()
+  } else {
+    []
+  }
+  let name = match parser.consume_ident_node() {
+    Some(value) => value
+    None => return None
+  }
+  let tail = parser.parse_typed_initializer_tail()
+  Some(
+    WgslLocalDeclaration::new(
+      kind,
+      name,
+      template_list,
+      tail.ty,
+      tail.ty_ref,
+      tail.initializer,
+      tail.initializer_ref,
+    ),
+  )
+}
+
+///|
 fn collect_wgsl_statement_pending_local_name(
   tokens : Array[WgslToken],
   index : Int,
   pending_local_names : Array[WgslIdent],
+  local_bindings : Array[WgslLocalDeclaration],
+  owner : WgslDeclParser,
 ) -> Int {
   match wgsl_statement_token_identifier(tokens[index]) {
     Some("var") => {
@@ -275,6 +320,10 @@ fn collect_wgsl_statement_pending_local_name(
           _ => ()
         }
       }
+      match owner.parse_statement_local_binding(tokens, index) {
+        Some(binding) => local_bindings.push(binding)
+        None => ()
+      }
       name_index
     }
     Some("let") | Some("const") => {
@@ -287,6 +336,10 @@ fn collect_wgsl_statement_pending_local_name(
             )
           _ => ()
         }
+      }
+      match owner.parse_statement_local_binding(tokens, index) {
+        Some(binding) => local_bindings.push(binding)
+        None => ()
       }
       name_index
     }
@@ -366,8 +419,10 @@ fn wgsl_statement_syntax_keyword(ident : String) -> Bool {
 
 ///|
 fn collect_wgsl_statement_identifier_nodes(
+  owner : WgslDeclParser,
   tokens : Array[WgslToken],
   is_local_decl : Bool,
+  local_bindings : Array[WgslLocalDeclaration],
   exported_locals : Array[WgslIdent],
   local_declarations : Array[WgslIdent],
   identifiers : Array[WgslIdent],
@@ -398,12 +453,15 @@ fn collect_wgsl_statement_identifier_nodes(
     match wgsl_statement_token_identifier(tokens[i]) {
       Some("var") | Some("let") | Some("const") if !is_local_decl =>
         binding_index = collect_wgsl_statement_pending_local_name(
-          tokens, i, pending_local_names,
+          tokens, i, pending_local_names, local_bindings, owner,
         )
       _ => ()
     }
     guard tokens[i] is WgslToken::Identifier(ident, pos) else { continue }
     if wgsl_statement_syntax_keyword(ident) {
+      continue
+    }
+    if binding_index >= 0 && i < binding_index {
       continue
     }
     if wgsl_statement_identifier_has_access_prefix(tokens, i) {
@@ -419,6 +477,11 @@ fn collect_wgsl_statement_identifier_nodes(
           is_exported_local = true
         }
       }
+    }
+    if is_local_decl &&
+      exported_locals.length() > 0 &&
+      pos < exported_locals[0].start {
+      continue
     }
     if is_exported_local {
       continue
@@ -582,23 +645,29 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     let kind = wgsl_statement_kind_from_tokens(first_identifier, tokens)
     let scope_tokens = collect_wgsl_statement_scope_tokens(tokens)
     let local_declarations : Array[WgslIdent] = []
+    let local_bindings : Array[WgslLocalDeclaration] = []
     let exported_locals : Array[WgslIdent] = []
     match
       wgsl_statement_local_declaration_from_tokens(scope_tokens, is_local_decl) {
       Some(binding) => {
         local_declarations.push(binding)
         exported_locals.push(binding)
+        match self.parse_statement_local_binding(scope_tokens, 0) {
+          Some(local_binding) => local_bindings.push(local_binding)
+          None => ()
+        }
       }
       None => ()
     }
     collect_wgsl_statement_identifier_nodes(
-      scope_tokens, is_local_decl, exported_locals, local_declarations, identifiers,
+      self, scope_tokens, is_local_decl, local_bindings, exported_locals, local_declarations,
+      identifiers,
     )
     let blocks = self.collect_statement_blocks(tokens)
     Some(
       WgslStatement::new(
-        kind, text, start_pos, end_pos, blocks, local_declarations, exported_locals,
-        identifiers,
+        kind, text, start_pos, end_pos, blocks, local_bindings, local_declarations,
+        exported_locals, identifiers,
       ),
     )
   }

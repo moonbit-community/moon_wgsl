@@ -257,12 +257,45 @@ pub(all) enum WgslStatementKind {
 } derive(Eq, Debug)
 
 ///|
+pub struct WgslLocalDeclaration {
+  kind : String
+  name : WgslIdent
+  template_list : Array[String]
+  ty : String?
+  ty_ref : WgslTypeRef?
+  initializer : String?
+  initializer_ref : WgslExprRef?
+} derive(Debug)
+
+///|
+pub fn WgslLocalDeclaration::new(
+  kind : String,
+  name : WgslIdent,
+  template_list : Array[String],
+  ty : String?,
+  ty_ref : WgslTypeRef?,
+  initializer : String?,
+  initializer_ref : WgslExprRef?,
+) -> WgslLocalDeclaration {
+  WgslLocalDeclaration::{
+    kind,
+    name,
+    template_list,
+    ty,
+    ty_ref,
+    initializer,
+    initializer_ref,
+  }
+}
+
+///|
 pub struct WgslStatement {
   kind : WgslStatementKind
   text : String
   start : Int
   end : Int
   blocks : Array[WgslBlock]
+  local_bindings : Array[WgslLocalDeclaration]
   local_declarations : Array[WgslIdent]
   exported_locals : Array[WgslIdent]
   identifiers : Array[WgslIdent]
@@ -275,6 +308,7 @@ pub fn WgslStatement::new(
   start : Int,
   end : Int,
   blocks : Array[WgslBlock],
+  local_bindings : Array[WgslLocalDeclaration],
   local_declarations : Array[WgslIdent],
   exported_locals : Array[WgslIdent],
   identifiers : Array[WgslIdent],
@@ -285,6 +319,7 @@ pub fn WgslStatement::new(
     start,
     end,
     blocks,
+    local_bindings,
     local_declarations,
     exported_locals,
     identifiers,

@@ -190,6 +190,17 @@ pub struct WgslIdent {
 } derive(@debug.Debug)
 pub fn WgslIdent::new(String, Int, Int) -> Self
 
+pub struct WgslLocalDeclaration {
+  kind : String
+  name : WgslIdent
+  template_list : Array[String]
+  ty : String?
+  ty_ref : WgslTypeRef?
+  initializer : String?
+  initializer_ref : WgslExprRef?
+} derive(@debug.Debug)
+pub fn WgslLocalDeclaration::new(String, WgslIdent, Array[String], String?, WgslTypeRef?, String?, WgslExprRef?) -> Self
+
 pub struct WgslOverride {
   attributes : Array[WgslAttribute]
   name : WgslIdent
@@ -206,11 +217,12 @@ pub struct WgslStatement {
   start : Int
   end : Int
   blocks : Array[WgslBlock]
+  local_bindings : Array[WgslLocalDeclaration]
   local_declarations : Array[WgslIdent]
   exported_locals : Array[WgslIdent]
   identifiers : Array[WgslIdent]
 } derive(@debug.Debug)
-pub fn WgslStatement::new(WgslStatementKind, String, Int, Int, Array[WgslBlock], Array[WgslIdent], Array[WgslIdent], Array[WgslIdent]) -> Self
+pub fn WgslStatement::new(WgslStatementKind, String, Int, Int, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslIdent], Array[WgslIdent], Array[WgslIdent]) -> Self
 
 pub(all) enum WgslStatementKind {
   Empty
