@@ -21,7 +21,7 @@ The preprocessing target is:
 
 ## Current Status
 
-As of current `main` after `Milky2018/moon_wgsl 0.6.0`, there are no known
+As of current `main` after `Milky2018/moon_wgsl 0.6.2`, there are no known
 open source-level preprocessing gaps. Release `0.5.0` covers the historical
 GitHub #2/#3/#5/#6 failures and the original GitHub #7 duplicate-binding /
 root-local `#define` regressions. The later GitHub #7 `identifier: in`
@@ -168,7 +168,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 
 For `mgstudio` or similar consumers, the expected verification path is:
 
-1. Upgrade to `Milky2018/moon_wgsl 0.6.0` or current `main`.
+1. Upgrade to `Milky2018/moon_wgsl 0.6.2` or current `main`.
 2. Rerun the downstream WGSL preprocessing/compose tests against byte-identical
    Bevy WGSL sources.
 3. Confirm that previous preprocessing failures such as unresolved
