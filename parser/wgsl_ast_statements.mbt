@@ -275,13 +275,17 @@ fn collect_wgsl_statement_local_bindings(
 }
 
 ///|
-fn WgslDeclParser::parse_block_tokens(
+priv suberror WgslBlockParseError {
+  UnexpectedToken
+}
+
+///|
+fn WgslDeclParser::parse_block_tokens_checked(
   self : WgslDeclParser,
   open_start : Int,
   close_start : Int,
   inner : ArrayView[WgslToken],
-) -> WgslBlock {
-  let empty = WgslBlock::new(0, 0, [])
+) -> WgslBlock raise WgslBlockParseError {
   let tokens : Array[(Token, Int, Int)] = [
     (Token::LBRACE(open_start), open_start, open_start + 1),
   ]
@@ -293,13 +297,30 @@ fn WgslDeclParser::parse_block_tokens(
   while parser.view().length() > 0 {
     match parser.collect_statement() {
       Some(statement) => tokens.push((Token::STMT(statement), 0, 0))
-      None => if parser.view() is [] { break } else { return empty }
+      None =>
+        if parser.view() is [] {
+          break
+        } else {
+          raise WgslBlockParseError::UnexpectedToken
+        }
     }
   }
   tokens.push((Token::RBRACE(close_start), close_start, close_start + 1))
   tokens.push((Token::EOF, close_start + 1, close_start + 1))
   block(tokens) catch {
-    _ => empty
+    _ => raise WgslBlockParseError::UnexpectedToken
+  }
+}
+
+///|
+fn WgslDeclParser::parse_block_tokens(
+  self : WgslDeclParser,
+  open_start : Int,
+  close_start : Int,
+  inner : ArrayView[WgslToken],
+) -> WgslBlock {
+  self.parse_block_tokens_checked(open_start, close_start, inner) catch {
+    _ => WgslBlock::new(0, 0, [])
   }
 }
 
@@ -786,11 +807,12 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
 }
 
 ///|
-fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
-  let empty = WgslBlock::new(0, 0, [])
+fn WgslDeclParser::parse_block_checked(
+  self : WgslDeclParser,
+) -> WgslBlock raise WgslBlockParseError {
   match self.collect_delimited_token_view(123, 125) {
     Some(fragment) => {
-      let block = self.parse_block_tokens(
+      let block = self.parse_block_tokens_checked(
         fragment.open_start,
         fragment.close_start,
         fragment.inner,
@@ -798,7 +820,7 @@ fn WgslDeclParser::parse_block(self : WgslDeclParser) -> WgslBlock {
       self.drop_tokens(fragment.consumed)
       block
     }
-    None => empty
+    None => raise WgslBlockParseError::UnexpectedToken
   }
 }
 

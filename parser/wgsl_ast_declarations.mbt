@@ -31,7 +31,7 @@ fn WgslDeclParser::parse_function(
     _ => None
   }
   guard self.view() is [WgslToken::Other(123, _), ..] else { return None }
-  let body = self.parse_block()
+  let body = self.parse_block_checked() catch { _ => return None }
   Some(
     WgslFunction::new(
       attributes,
@@ -49,19 +49,26 @@ fn WgslDeclParser::parse_function(
 }
 
 ///|
-fn WgslDeclParser::parse_struct_members(
+priv suberror WgslStructMembersParseError {
+  UnexpectedToken
+}
+
+///|
+fn WgslDeclParser::parse_struct_members_checked(
   self : WgslDeclParser,
-) -> Array[WgslStructMember] {
+) -> Array[WgslStructMember] raise WgslStructMembersParseError {
   match self.collect_delimited_token_view(123, 125) {
     Some(fragment) => {
       let tokens = self.tokenize_struct_members(fragment) catch {
-        _ => return []
+        _ => raise WgslStructMembersParseError::UnexpectedToken
       }
-      let members = struct_members(tokens) catch { _ => return [] }
+      let members = struct_members(tokens) catch {
+        _ => raise WgslStructMembersParseError::UnexpectedToken
+      }
       self.drop_tokens(fragment.consumed)
       members
     }
-    None => []
+    None => raise WgslStructMembersParseError::UnexpectedToken
   }
 }
 
@@ -88,6 +95,20 @@ fn WgslDeclParser::tokenize_struct_members(
     token_view: fragment.inner,
   }
   while parser.view().length() > 0 {
+    match parser.view() {
+      [WgslToken::Other(35, hash_pos), ..] =>
+        match parser.directive_line_end_at_hash(hash_pos) {
+          Some(line_end) => {
+            while parser.view().length() > 0 &&
+                  parser.view()[0].pos() < line_end {
+              parser.drop_tokens(1)
+            }
+            continue
+          }
+          None => ()
+        }
+      _ => ()
+    }
     match parser.view() {
       [WgslToken::Other(44, pos), .. rest] => {
         parser.update_view(rest)
@@ -158,7 +179,8 @@ fn WgslDeclParser::parse_struct(
     Some(value) => value
     None => return None
   }
-  Some(WgslStruct::new(attributes, name, self.parse_struct_members()))
+  let members = self.parse_struct_members_checked() catch { _ => return None }
+  Some(WgslStruct::new(attributes, name, members))
 }
 
 ///|
