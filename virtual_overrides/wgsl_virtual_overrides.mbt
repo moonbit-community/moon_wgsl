@@ -212,25 +212,14 @@ fn rewrite_wgsl_virtual_base_block(
 ///|
 fn rewrite_wgsl_override_body_references_to_base(
   block_text : String,
-  function : WgslFunction,
-  block_start : Int,
   target_name : String,
   raw_target : String,
   base_name : String,
 ) -> String {
-  let identifiers : Array[WgslIdent] = []
-  let nodes : Array[WgslVirtualRewriteNode] = []
-  collect_wgsl_function_body_identifier_nodes(function, identifiers)
-  for ident in identifiers {
-    if ident.name == target_name || ident.name == raw_target {
-      nodes.push(WgslVirtualRewriteNode::{
-        start: ident.start - block_start,
-        end: ident.end - block_start,
-        replacement: base_name,
-      })
-    }
-  }
-  rewrite_wgsl_virtual_nodes(block_text, nodes)
+  let plan = WgslRenamePlan::empty()
+  plan.add(target_name, base_name, FunctionBodyReferencesOnly)
+  plan.add(raw_target, base_name, FunctionBodyReferencesOnly)
+  rewrite_wgsl_declarations_with_rename_plan(block_text, plan)
 }
 
 ///|
@@ -245,7 +234,7 @@ fn rewrite_wgsl_override_fn_block(
   let rewritten_body = match base_name {
     Some(base) =>
       rewrite_wgsl_override_body_references_to_base(
-        block_text, function, block_start, target_name, raw_target, base,
+        block_text, target_name, raw_target, base,
       )
     None => block_text
   }

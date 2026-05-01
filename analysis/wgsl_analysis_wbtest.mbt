@@ -427,6 +427,30 @@ test "rename plan reference rules rewrite recursively scoped blocks" {
 }
 
 ///|
+test "rename plan function-body reference rules preserve override target heads" {
+  let source =
+    #|override fn mod::inner() -> f32 {
+    #|  let value = mod::inner();
+    #|  let mod__inner = 2.0;
+    #|  return value + mod__inner;
+    #|}
+    #|
+  let plan = WgslRenamePlan::empty()
+  plan.add("mod::inner", "mod__inner__virtual_base", FunctionBodyReferencesOnly)
+  plan.add("mod__inner", "mod__inner__virtual_base", FunctionBodyReferencesOnly)
+  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
+  debug_inspect(rewritten.contains("override fn mod::inner()"), content="true")
+  debug_inspect(
+    rewritten.contains("let value = mod__inner__virtual_base();"),
+    content="true",
+  )
+  debug_inspect(
+    rewritten.contains("return value + mod__inner;"),
+    content="true",
+  )
+}
+
+///|
 test "rename plan reference rules do not rewrite statement keywords" {
   let source =
     #|fn entry(flag: bool) -> u32 {

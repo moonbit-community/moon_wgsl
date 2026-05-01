@@ -291,21 +291,50 @@ fn wgsl_writeback_identifier_requires_substitution(ident : String) -> Bool {
 }
 
 ///|
-fn collect_wgsl_function_parameter_sanitizers(
+fn collect_wgsl_function_local_name_sanitizer(
+  name : String,
+  plan : WgslRenamePlan,
+) -> Unit {
+  if wgsl_writeback_identifier_requires_substitution(name) {
+    plan.add(name, sanitize_wgsl_writeback_identifier(name), FunctionLocal)
+  }
+}
+
+///|
+fn collect_wgsl_statement_local_sanitizers(
+  statement : WgslStatement,
+  plan : WgslRenamePlan,
+) -> Unit {
+  for binding in statement.local_bindings {
+    collect_wgsl_function_local_name_sanitizer(binding.name.name, plan)
+  }
+  for block in statement.blocks {
+    collect_wgsl_block_local_sanitizers(block, plan)
+  }
+}
+
+///|
+fn collect_wgsl_block_local_sanitizers(
+  block : WgslBlock,
+  plan : WgslRenamePlan,
+) -> Unit {
+  for statement in block.statements {
+    collect_wgsl_statement_local_sanitizers(statement, plan)
+  }
+}
+
+///|
+fn collect_wgsl_function_local_sanitizers(
   data : WgslGlobalDeclData,
   plan : WgslRenamePlan,
 ) -> Unit {
   match data {
-    WgslGlobalDeclData::Function(function) =>
+    WgslGlobalDeclData::Function(function) => {
       for argument in function.arguments {
-        if wgsl_writeback_identifier_requires_substitution(argument.name) {
-          plan.add(
-            argument.name,
-            sanitize_wgsl_writeback_identifier(argument.name),
-            FunctionLocal,
-          )
-        }
+        collect_wgsl_function_local_name_sanitizer(argument.name, plan)
       }
+      collect_wgsl_block_local_sanitizers(function.body, plan)
+    }
     _ => ()
   }
 }
@@ -322,7 +351,7 @@ pub fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
         GlobalDeclarationAndReferences,
       )
     }
-    collect_wgsl_function_parameter_sanitizers(block.data, plan)
+    collect_wgsl_function_local_sanitizers(block.data, plan)
   }
   if plan.is_empty() {
     source

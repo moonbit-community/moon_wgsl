@@ -14,6 +14,7 @@ using @ast {
   type WgslTypeRef,
   collect_wgsl_decl_global_declared_identifier_nodes,
   collect_wgsl_decl_identifier_nodes,
+  collect_wgsl_function_body_identifier_nodes,
 }
 
 ///|

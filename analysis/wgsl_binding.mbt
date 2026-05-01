@@ -16,6 +16,7 @@
 pub(all) enum WgslRenameRuleKind {
   GlobalDeclarationAndReferences
   ReferencesOnly
+  FunctionBodyReferencesOnly
   FunctionLocal
 }
 
@@ -42,6 +43,7 @@ priv struct WgslRewriteNode {
 priv struct WgslRenameMaps {
   global_declaration_redirects : @hashmap.HashMap[String, String]
   reference_redirects : @hashmap.HashMap[String, String]
+  function_body_reference_redirects : @hashmap.HashMap[String, String]
   function_local_redirects : @hashmap.HashMap[String, String]
 }
 
@@ -96,6 +98,7 @@ pub fn build_wgsl_rename_plan_from_redirect_map(
 fn build_wgsl_rename_maps(plan : WgslRenamePlan) -> WgslRenameMaps {
   let global_declaration_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let reference_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let function_body_reference_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let function_local_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for rule in plan.rules {
     match rule.kind {
@@ -104,6 +107,8 @@ fn build_wgsl_rename_maps(plan : WgslRenamePlan) -> WgslRenameMaps {
         reference_redirects.set(rule.from_name, rule.to_name)
       }
       ReferencesOnly => reference_redirects.set(rule.from_name, rule.to_name)
+      FunctionBodyReferencesOnly =>
+        function_body_reference_redirects.set(rule.from_name, rule.to_name)
       FunctionLocal =>
         function_local_redirects.set(rule.from_name, rule.to_name)
     }
@@ -111,6 +116,7 @@ fn build_wgsl_rename_maps(plan : WgslRenamePlan) -> WgslRenameMaps {
   WgslRenameMaps::{
     global_declaration_redirects,
     reference_redirects,
+    function_body_reference_redirects,
     function_local_redirects,
   }
 }
@@ -305,6 +311,24 @@ fn collect_wgsl_function_local_rewrite_nodes(
 }
 
 ///|
+fn collect_wgsl_function_body_reference_rewrite_nodes(
+  data : WgslGlobalDeclData,
+  redirect_map : @hashmap.HashMap[String, String],
+  nodes : Array[WgslRewriteNode],
+) -> Unit {
+  match data {
+    WgslGlobalDeclData::Function(function) => {
+      let identifiers : Array[WgslIdent] = []
+      collect_wgsl_function_body_identifier_nodes(function, identifiers)
+      collect_wgsl_rewrite_nodes_from_identifiers(
+        identifiers, redirect_map, nodes,
+      )
+    }
+    _ => ()
+  }
+}
+
+///|
 fn collect_wgsl_block_rewrite_nodes(
   data : WgslGlobalDeclData,
   maps : WgslRenameMaps,
@@ -322,6 +346,11 @@ fn collect_wgsl_block_rewrite_nodes(
   collect_wgsl_rewrite_nodes_from_identifiers(
     identifiers,
     maps.reference_redirects,
+    nodes,
+  )
+  collect_wgsl_function_body_reference_rewrite_nodes(
+    data,
+    maps.function_body_reference_redirects,
     nodes,
   )
   collect_wgsl_function_local_rewrite_nodes(
