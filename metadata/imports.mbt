@@ -24,7 +24,6 @@ using @lex {
   tokenize,
   trim_trailing_semicolons,
   utf8_byte_length,
-  wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,
   wgsl_regex_whitespace_width,
@@ -44,6 +43,9 @@ using @parser {
   parse_wgsl_source_directive_items,
   parse_wgsl_translation_unit,
   wgsl_required_space_word_tail,
+  wgsl_directive_line_required_tail_space,
+  wgsl_effective_directive_kind,
+  wgsl_effective_directive_tail,
   wgsl_shader_def_comparison_def,
   wgsl_text_starts_with_tokenized_space,
 }

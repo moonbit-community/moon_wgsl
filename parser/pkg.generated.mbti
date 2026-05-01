@@ -39,9 +39,15 @@ pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, Int
 
 pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit
 
+pub fn wgsl_directive_line_required_tail_space(String, String) -> Bool
+
 pub fn wgsl_directive_prefix_tail(String, @ast.WgslDirectiveKind) -> String?
 
 pub fn wgsl_directive_tail(String, @ast.WgslDirectiveKind) -> String?
+
+pub fn wgsl_effective_directive_kind(@ast.WgslDirective) -> @ast.WgslDirectiveKind
+
+pub fn wgsl_effective_directive_tail(@ast.WgslDirective) -> String
 
 pub fn wgsl_required_space_word_tail(String, String) -> String?
 

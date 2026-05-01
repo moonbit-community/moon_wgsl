@@ -69,18 +69,6 @@ fn preprocess_parse_line_directive(
 }
 
 ///|
-fn preprocess_line_required_tail_space(line : String, name : String) -> Bool {
-  let trimmed = wgsl_regex_trim_whitespace(line)
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
-    return false
-  }
-  let name_start = wgsl_regex_skip_whitespace(trimmed, 1)
-  let space_pos = name_start + name.length()
-  guard space_pos < trimmed.length() else { return false }
-  wgsl_regex_whitespace_code_point(trimmed.code_unit_at(space_pos).to_int())
-}
-
-///|
 fn preprocess_import_item_line_end(
   lines : Array[WgslPreprocessLine],
   line_index : Int,
@@ -132,7 +120,10 @@ fn preprocess_push_line_item(
   }
   let required_tail_space = match kind {
     WgslPreprocessItemKind::Directive(directive) =>
-      preprocess_line_required_tail_space(lines[start].cleaned, directive.name)
+      wgsl_directive_line_required_tail_space(
+        lines[start].cleaned,
+        directive.name,
+      )
     _ => false
   }
   items.push(WgslPreprocessItem::{
@@ -205,55 +196,6 @@ fn preprocess_blank_text(text : String) -> String {
 }
 
 ///|
-fn preprocess_effective_directive_tail(directive : WgslDirective) -> String {
-  match directive.kind {
-    WgslDirectiveKind::Else =>
-      if directive.tail == "" {
-        ""
-      } else {
-        " \{directive.tail}"
-      }
-    WgslDirectiveKind::Endif => directive.tail
-    WgslDirectiveKind::Other(name) =>
-      if name.has_prefix("else") {
-        let suffix = name["else".length():name.length()].to_owned()
-        if directive.tail == "" {
-          suffix
-        } else {
-          "\{suffix} \{directive.tail}"
-        }
-      } else if name.has_prefix("endif") {
-        let suffix = name["endif".length():name.length()].to_owned()
-        if directive.tail == "" {
-          suffix
-        } else {
-          "\{suffix} \{directive.tail}"
-        }
-      } else {
-        directive.tail
-      }
-    _ => directive.tail
-  }
-}
-
-///|
-fn preprocess_effective_directive_kind(
-  directive : WgslDirective,
-) -> WgslDirectiveKind {
-  match directive.kind {
-    WgslDirectiveKind::Other(name) =>
-      if name.has_prefix("else") {
-        WgslDirectiveKind::Else
-      } else if name.has_prefix("endif") {
-        WgslDirectiveKind::Endif
-      } else {
-        directive.kind
-      }
-    _ => directive.kind
-  }
-}
-
-///|
 fn preprocess_check_scope_directive(
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   directive : WgslDirective,
@@ -261,8 +203,8 @@ fn preprocess_check_scope_directive(
   scope : Scope?,
   offset : Int,
 ) -> (Bool, String?) raise PreprocessError {
-  let tail = preprocess_effective_directive_tail(directive)
-  match preprocess_effective_directive_kind(directive) {
+  let tail = wgsl_effective_directive_tail(directive)
+  match wgsl_effective_directive_kind(directive) {
     WgslDirectiveKind::Ifdef =>
       if required_tail_space {
         match parse_wgsl_directive_identifier(tail) {

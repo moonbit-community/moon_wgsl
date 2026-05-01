@@ -52,6 +52,30 @@ test "WGSL directive parser supports naga-oil prefix else endif semantics" {
 }
 
 ///|
+test "WGSL directive parser exposes effective naga-oil directive semantics" {
+  guard parse_wgsl_directive_line("#elsewhere FLAG") is Some(else_directive) else {
+    abort("expected else directive")
+  }
+  debug_inspect(wgsl_effective_directive_kind(else_directive), content="Else")
+  debug_inspect(
+    wgsl_effective_directive_tail(else_directive),
+    content="\"where FLAG\"",
+  )
+  debug_inspect(
+    wgsl_directive_line_required_tail_space("#elsewhere FLAG", "elsewhere"),
+    content="true",
+  )
+  guard parse_wgsl_directive_line("#endif_trailing") is Some(endif_directive) else {
+    abort("expected endif directive")
+  }
+  debug_inspect(wgsl_effective_directive_kind(endif_directive), content="Endif")
+  debug_inspect(
+    wgsl_effective_directive_tail(endif_directive),
+    content="\"_trailing\"",
+  )
+}
+
+///|
 test "WGSL directive parser accepts Rust regex Unicode whitespace" {
   debug_inspect(
     wgsl_directive_tail(
