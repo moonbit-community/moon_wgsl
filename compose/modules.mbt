@@ -83,7 +83,7 @@ fn collect_wgsl_cached_import_redirects(
   alias_name : String,
   redirects : Array[WgslSymbolRedirect],
 ) -> Int {
-  let prefix = "\{rel_path}|"
+  let prefix = wgsl_imported_item_name_key(rel_path, alias_name, "")
   let mut count = 0
   for entry in session.imported_item_names.iter() {
     let (key, imported_name) = entry
@@ -108,28 +108,28 @@ fn find_wgsl_cached_imported_item_name(
   rel_path : String,
   item_name : String,
 ) -> String? {
-  match
-    session.imported_item_names.get(
-      wgsl_imported_item_name_key(rel_path, item_name),
-    ) {
-    Some(imported_name) => Some(imported_name)
-    None => {
-      let suffix = "|\{item_name}"
-      let mut found : String? = None
-      for entry in session.imported_item_names.iter() {
-        let (key, imported_name) = entry
-        if !key.has_suffix(suffix) {
-          continue
-        }
-        match found {
-          Some(existing_name) if existing_name != imported_name => return None
-          Some(_) => ()
-          None => found = Some(imported_name)
-        }
-      }
-      found
+  session.imported_item_names.get(
+    wgsl_imported_item_name_key(rel_path, "", item_name),
+  )
+}
+
+///|
+fn find_wgsl_visible_alias_imported_item_name(
+  alias_redirects : Array[WgslSymbolRedirect],
+  module_path : String,
+  item_name : String,
+) -> String? {
+  let default_alias = wgsl_import_default_alias(module_path)
+  if default_alias == "" || item_name == "" {
+    return None
+  }
+  let from_name = "\{default_alias}::\{item_name}"
+  for redirect in alias_redirects {
+    if redirect.from_name == from_name {
+      return Some(redirect.to_name)
     }
   }
+  None
 }
 
 ///|

@@ -326,9 +326,10 @@ pub fn wgsl_full_module_visit_key(
 ///|
 pub fn wgsl_imported_item_name_key(
   rel_path : String,
+  alias_name : String,
   item_name : String,
 ) -> String {
-  "\{rel_path}|\{item_name}"
+  "\{rel_path}|\{alias_name}|\{item_name}"
 }
 
 ///|

@@ -84,3 +84,49 @@ test "naga_oil parity: import-only Bevy mesh root tree-shakes to empty" {
   )
   debug_inspect(source.trim().length(), content="0")
 }
+
+///|
+test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live" {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source_tree(
+    "testdata/bevy_wgsl",
+    @common.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected Bevy fixture registration success")
+  }
+  composer.register_source(
+    "mgstudio/render/renderer/issue8_lighting_repro.wgsl",
+    (
+      #|#import bevy_pbr::lighting as lighting
+      #|fn entry() -> vec3<f32> {
+      #|  var input: lighting::LightingInput;
+      #|  return lighting::spot_light(0u, &input, true);
+      #|}
+      #|
+    ),
+  )
+  let source = composer.compose_wgsl(
+    "mgstudio/render/renderer/issue8_lighting_repro.wgsl",
+    {
+      defines: bevy_parity_defines(bevy_parity_forward_defines()),
+      value_defines: bevy_parity_value_defines(),
+      redirects: [],
+      additional_imports: [],
+    },
+  ) catch {
+    err => abort("expected issue 8 lighting compose success: \{err.message()}")
+  }
+  debug_inspect(
+    source.contains("& types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("const lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("& lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    content="true",
+  )
+}

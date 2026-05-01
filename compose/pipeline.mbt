@@ -5,6 +5,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   source : String,
   session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
+  inherited_alias_redirects : Array[WgslSymbolRedirect],
   apply_virtual_overrides : Bool,
 ) -> String raise ComposerError {
   let active_defs = self.active_compose_defs_for_rel_path(
@@ -20,6 +21,9 @@ fn Composer::preprocess_wgsl_source_with_path(
   let prepared = prepare_wgsl_compose_source(source, session, active_defs)
   let mut merged = ""
   let alias_redirects : Array[WgslSymbolRedirect] = []
+  for redirect in inherited_alias_redirects {
+    alias_redirects.push(redirect)
+  }
   let implicit_requests = self.build_wgsl_implicit_import_requests(
     current_rel_path,
     prepared.active_scan_source,
@@ -82,6 +86,7 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
     prepend_wgsl_additional_imports(source, session.additional_imports),
     session,
     None,
+    [],
     true,
   )
   session.active_rel_paths.pop() |> ignore
@@ -175,6 +180,7 @@ pub fn Composer::compose_wgsl_source(
       prepend_wgsl_additional_imports(source, session.additional_imports),
       session,
       None,
+      [],
       true,
     ),
   )

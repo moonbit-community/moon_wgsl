@@ -548,3 +548,19 @@ test "normalizer suffix rewrites require explicit alias provenance" {
   debug_inspect(normalized.contains("return module__helper();"), content="true")
   debug_inspect(normalized.contains("return helper();"), content="false")
 }
+
+///|
+test "normalizer suffix rewrites ignore stale tree-shaken alias targets" {
+  let source =
+    #|const FLAG: u32 = 1u;
+    #|fn entry() -> u32 {
+    #|  return FLAG;
+    #|}
+    #|
+  let normalized = normalize_wgsl_composed_declarations(source, [
+    { from_name: "types::FLAG", to_name: "types__FLAG" },
+  ])
+  debug_inspect(normalized.contains("const FLAG: u32 = 1u;"), content="true")
+  debug_inspect(normalized.contains("return FLAG;"), content="true")
+  debug_inspect(normalized.contains("types__FLAG"), content="false")
+}

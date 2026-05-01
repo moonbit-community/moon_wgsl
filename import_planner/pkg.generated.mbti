@@ -36,7 +36,7 @@ pub fn wgsl_import_requested_item_name(String, String) -> String
 
 pub fn wgsl_import_targets_push_unique(Array[@common.WgslImportTarget], @common.WgslImportTarget) -> Unit
 
-pub fn wgsl_imported_item_name_key(String, String) -> String
+pub fn wgsl_imported_item_name_key(String, String, String) -> String
 
 pub fn wgsl_path_stack_contains(Array[String], String) -> Bool
 

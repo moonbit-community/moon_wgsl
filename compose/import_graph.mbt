@@ -274,9 +274,9 @@ fn Composer::compose_wgsl_import_requests(
       let mut resolved_requested_items = 0
       for requested_item in request.requested_items {
         match
-          find_wgsl_cached_imported_item_name(
-            session,
-            request.rel_path,
+          find_wgsl_visible_alias_imported_item_name(
+            alias_redirects,
+            request.module_path,
             requested_item,
           ) {
           Some(imported_name) => {
@@ -286,7 +286,22 @@ fn Composer::compose_wgsl_import_requests(
             })
             resolved_requested_items = resolved_requested_items + 1
           }
-          None => ()
+          None =>
+            match
+              find_wgsl_cached_imported_item_name(
+                session,
+                request.rel_path,
+                requested_item,
+              ) {
+              Some(imported_name) => {
+                alias_redirects.push(WgslSymbolRedirect::{
+                  from_name: requested_item,
+                  to_name: imported_name,
+                })
+                resolved_requested_items = resolved_requested_items + 1
+              }
+              None => ()
+            }
         }
       }
       if request.requested_items.length() > 0 &&
@@ -308,6 +323,7 @@ fn Composer::compose_wgsl_import_requests(
         raw_source,
         session,
         Some(importer_defs),
+        alias_redirects,
         false,
       )
     } else {
@@ -329,6 +345,7 @@ fn Composer::compose_wgsl_import_requests(
         filtered_source,
         session,
         Some(importer_defs),
+        alias_redirects,
         false,
       )
     }
@@ -364,7 +381,7 @@ fn Composer::compose_wgsl_import_requests(
     if rename_map.is_empty() {
       for declaration in collect_wgsl_named_declarations(final_module_source) {
         session.imported_item_names.set(
-          wgsl_imported_item_name_key(request.rel_path, declaration.name),
+          wgsl_imported_item_name_key(request.rel_path, "", declaration.name),
           declaration.name,
         )
       }
@@ -372,7 +389,11 @@ fn Composer::compose_wgsl_import_requests(
       for entry in rename_map.iter() {
         let (from_name, to_name) = entry
         session.imported_item_names.set(
-          wgsl_imported_item_name_key(request.rel_path, from_name),
+          wgsl_imported_item_name_key(
+            request.rel_path,
+            request.alias_name,
+            from_name,
+          ),
           to_name,
         )
       }
@@ -386,6 +407,31 @@ fn Composer::compose_wgsl_import_requests(
     }
   }
   merged
+}
+
+///|
+fn collect_wgsl_live_alias_redirects(
+  source : String,
+  alias_redirects : Array[WgslSymbolRedirect],
+) -> Array[WgslSymbolRedirect] {
+  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  for declaration in collect_wgsl_named_declarations(source) {
+    if declaration.name != "" {
+      declared_names.set(declaration.name, true)
+    }
+  }
+  let live_redirects : Array[WgslSymbolRedirect] = []
+  for redirect in alias_redirects {
+    let to_name = redirect.to_name.trim().to_owned()
+    if to_name != "" &&
+      (
+        declared_names.contains(to_name) ||
+        split_last_wgsl_path(redirect.from_name) is None
+      ) {
+      live_redirects.push(redirect)
+    }
+  }
+  live_redirects
 }
 
 ///|
@@ -406,9 +452,10 @@ fn finalize_wgsl_composed_source(
   } else {
     alias_redirects
   }
-  let alias_redirect_map = build_wgsl_symbol_redirect_map(
-    effective_alias_redirects,
+  let live_alias_redirects = collect_wgsl_live_alias_redirects(
+    out, effective_alias_redirects,
   )
+  let alias_redirect_map = build_wgsl_symbol_redirect_map(live_alias_redirects)
   if apply_virtual_overrides {
     out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
   } else {
@@ -421,7 +468,7 @@ fn finalize_wgsl_composed_source(
   if !apply_virtual_overrides {
     return out
   }
-  out = normalize_wgsl_composed_declarations(out, effective_alias_redirects)
+  out = normalize_wgsl_composed_declarations(out, live_alias_redirects)
   if unresolved_wgsl_namespace_reference(out) is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }

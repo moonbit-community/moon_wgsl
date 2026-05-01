@@ -60,6 +60,7 @@ pub fn WgslRenamePlan::is_empty(Self) -> Bool
 pub(all) enum WgslRenameRuleKind {
   GlobalDeclarationAndReferences
   ReferencesOnly
+  FunctionBodyReferencesOnly
   FunctionLocal
 }
 

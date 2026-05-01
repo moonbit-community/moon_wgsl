@@ -285,7 +285,7 @@ fn build_wgsl_unique_alias_suffix_rename_plan(
   }
   for redirect in alias_redirects {
     let lowered_name = redirect.to_name.trim().to_owned()
-    if lowered_name == "" {
+    if lowered_name == "" || !declared_names.contains(lowered_name) {
       continue
     }
     let parts : Array[String] = []
