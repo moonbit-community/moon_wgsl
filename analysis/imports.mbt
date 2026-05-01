@@ -18,7 +18,14 @@ using @ast {
 }
 
 ///|
-using @parser {parse_wgsl_translation_unit}
+using @parser {
+  type WgslParseError,
+  parse_wgsl_translation_unit,
+  parse_wgsl_translation_unit_strict,
+}
+
+///|
+using @ast {type WgslTranslationUnit}
 
 ///|
 using @common {type WgslSymbolRedirect}

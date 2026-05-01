@@ -357,10 +357,12 @@ fn Composer::compose_wgsl_import_requests(
         apply_wgsl_ifdefs_strict_for_compose(raw_source, import_defs),
         import_defs.value_defines,
       )
-      let filtered_source = extract_wgsl_module_items(
+      let filtered_source = extract_wgsl_module_items_strict(
         prepared_source,
         request.requested_items,
-      )
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
       self.preprocess_wgsl_source_with_path(
         request.rel_path,
         filtered_source,
@@ -407,7 +409,12 @@ fn Composer::compose_wgsl_import_requests(
       module_source
     }
     if rename_map.is_empty() {
-      for declaration in collect_wgsl_named_declarations(final_module_source) {
+      let declarations = collect_wgsl_named_declarations_strict(
+        final_module_source,
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+      for declaration in declarations {
         session.imported_item_names.set(
           wgsl_imported_item_name_key(request.rel_path, "", declaration.name),
           declaration.name,
@@ -441,9 +448,12 @@ fn Composer::compose_wgsl_import_requests(
 fn collect_wgsl_live_alias_redirects(
   source : String,
   alias_redirects : Array[WgslScopedAliasRedirect],
-) -> Array[WgslSymbolRedirect] {
+) -> Array[WgslSymbolRedirect] raise ComposerError {
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  for declaration in collect_wgsl_named_declarations(source) {
+  let declarations = collect_wgsl_named_declarations_strict(source) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  for declaration in declarations {
     if declaration.name != "" {
       declared_names.set(declaration.name, true)
     }

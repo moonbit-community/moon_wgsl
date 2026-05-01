@@ -4,11 +4,14 @@ package "Milky2018/moon_wgsl/analysis"
 import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/hashmap",
 }
 
 // Values
 pub fn build_wgsl_declaration_graph(String) -> WgslDeclarationGraph
+
+pub fn build_wgsl_declaration_graph_strict(String) -> WgslDeclarationGraph raise @parser.WgslParseError
 
 pub fn build_wgsl_rename_plan_from_redirect_map(@hashmap.HashMap[String, String], WgslRenameRuleKind) -> WgslRenamePlan
 
@@ -16,9 +19,15 @@ pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @has
 
 pub fn collect_wgsl_named_declarations(String) -> Array[WgslEmittedDeclaration]
 
+pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
+
 pub fn emit_wgsl_tree_shaken_source(String, Array[String]) -> WgslTreeShakenSource
 
+pub fn emit_wgsl_tree_shaken_source_strict(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
+
 pub fn extract_wgsl_module_items(String, Array[String]) -> String
+
+pub fn extract_wgsl_module_items_strict(String, Array[String]) -> String raise @parser.WgslParseError
 
 pub fn normalize_wgsl_composed_declarations(String, Array[@common.WgslSymbolRedirect]) -> String
 
@@ -27,6 +36,8 @@ pub fn rewrite_wgsl_declarations_with_rename_plan(String, WgslRenamePlan) -> Str
 pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String
 
 pub fn strip_wgsl_import_declarations(String) -> String
+
+pub fn strip_wgsl_import_declarations_strict(String) -> String raise @parser.WgslParseError
 
 // Errors
 

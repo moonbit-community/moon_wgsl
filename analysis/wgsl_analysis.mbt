@@ -52,10 +52,12 @@ fn wgsl_string_list_push_unique(items : Array[String], item : String) -> Unit {
 }
 
 ///|
-pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
+fn build_wgsl_declaration_graph_from_unit(
+  unit : WgslTranslationUnit,
+) -> WgslDeclarationGraph {
   let import_blocks : Array[WgslGraphBlock] = []
   let declaration_blocks : Array[WgslGraphBlock] = []
-  for decl in parse_wgsl_translation_unit(source).declarations {
+  for decl in unit.declarations {
     let graph_block = WgslGraphBlock::{
       name: decl.name,
       text: decl.text,
@@ -87,6 +89,20 @@ pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
   }
 
   WgslDeclarationGraph::{ import_blocks, declaration_blocks }
+}
+
+///|
+pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
+  build_wgsl_declaration_graph_from_unit(parse_wgsl_translation_unit(source))
+}
+
+///|
+pub fn build_wgsl_declaration_graph_strict(
+  source : String,
+) -> WgslDeclarationGraph raise WgslParseError {
+  build_wgsl_declaration_graph_from_unit(
+    parse_wgsl_translation_unit_strict(source),
+  )
 }
 
 ///|
@@ -202,11 +218,10 @@ fn collect_wgsl_reachable_declaration_names(
 }
 
 ///|
-pub fn emit_wgsl_tree_shaken_source(
-  source : String,
+fn emit_wgsl_tree_shaken_source_from_graph(
+  graph : WgslDeclarationGraph,
   root_items : Array[String],
 ) -> WgslTreeShakenSource {
-  let graph = build_wgsl_declaration_graph(source)
   let (included_names, missing_root_items) = collect_wgsl_reachable_declaration_names(
     graph.declaration_blocks,
     root_items,
@@ -244,6 +259,28 @@ pub fn emit_wgsl_tree_shaken_source(
 }
 
 ///|
+pub fn emit_wgsl_tree_shaken_source(
+  source : String,
+  root_items : Array[String],
+) -> WgslTreeShakenSource {
+  emit_wgsl_tree_shaken_source_from_graph(
+    build_wgsl_declaration_graph(source),
+    root_items,
+  )
+}
+
+///|
+pub fn emit_wgsl_tree_shaken_source_strict(
+  source : String,
+  root_items : Array[String],
+) -> WgslTreeShakenSource raise WgslParseError {
+  emit_wgsl_tree_shaken_source_from_graph(
+    build_wgsl_declaration_graph_strict(source),
+    root_items,
+  )
+}
+
+///|
 pub fn collect_wgsl_named_declarations(
   source : String,
 ) -> Array[WgslEmittedDeclaration] {
@@ -251,9 +288,18 @@ pub fn collect_wgsl_named_declarations(
 }
 
 ///|
-pub fn strip_wgsl_import_declarations(source : String) -> String {
+pub fn collect_wgsl_named_declarations_strict(
+  source : String,
+) -> Array[WgslEmittedDeclaration] raise WgslParseError {
+  emit_wgsl_tree_shaken_source_strict(source, []).declarations
+}
+
+///|
+fn strip_wgsl_import_declarations_from_unit(
+  unit : WgslTranslationUnit,
+) -> String {
   let mut out = ""
-  for decl in parse_wgsl_translation_unit(source).declarations {
+  for decl in unit.declarations {
     match decl.data {
       WgslGlobalDeclData::Import(_) => ()
       WgslGlobalDeclData::Directive(directive) =>
@@ -269,14 +315,28 @@ pub fn strip_wgsl_import_declarations(source : String) -> String {
 }
 
 ///|
-pub fn extract_wgsl_module_items(
+pub fn strip_wgsl_import_declarations(source : String) -> String {
+  strip_wgsl_import_declarations_from_unit(parse_wgsl_translation_unit(source))
+}
+
+///|
+pub fn strip_wgsl_import_declarations_strict(
   source : String,
+) -> String raise WgslParseError {
+  strip_wgsl_import_declarations_from_unit(
+    parse_wgsl_translation_unit_strict(source),
+  )
+}
+
+///|
+fn extract_wgsl_module_items_from_graph(
+  source : String,
+  graph : WgslDeclarationGraph,
   requested_items : Array[String],
 ) -> String {
   if requested_items.length() == 0 {
     return source
   }
-  let graph = build_wgsl_declaration_graph(source)
   let (included_names, _) = collect_wgsl_reachable_declaration_names(
     graph.declaration_blocks,
     requested_items,
@@ -300,4 +360,28 @@ pub fn extract_wgsl_module_items(
     }
   }
   out
+}
+
+///|
+pub fn extract_wgsl_module_items(
+  source : String,
+  requested_items : Array[String],
+) -> String {
+  extract_wgsl_module_items_from_graph(
+    source,
+    build_wgsl_declaration_graph(source),
+    requested_items,
+  )
+}
+
+///|
+pub fn extract_wgsl_module_items_strict(
+  source : String,
+  requested_items : Array[String],
+) -> String raise WgslParseError {
+  extract_wgsl_module_items_from_graph(
+    source,
+    build_wgsl_declaration_graph_strict(source),
+    requested_items,
+  )
 }
