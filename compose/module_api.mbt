@@ -142,6 +142,29 @@ fn composer_error_from_metadata_error(error : MetadataError) -> ComposerError {
 }
 
 ///|
+fn composer_error_from_wgsl_parse_error(
+  error : WgslParseError,
+) -> ComposerError {
+  match error {
+    Parse(message, offset) => InvalidWgslSyntax(message, offset)
+    UnparsedDeclaration(text, offset) =>
+      InvalidWgslSyntax("declaration could not be parsed: \{text}", offset)
+  }
+}
+
+///|
+fn validate_wgsl_translation_unit_strict(
+  source : String,
+) -> Unit raise ComposerError {
+  if parse_glsl_version_directive(source) is Some(_) {
+    return
+  }
+  ignore(parse_wgsl_translation_unit_strict(source)) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+}
+
+///|
 fn apply_wgsl_ifdefs_strict_for_compose(
   source : String,
   active_defs : WgslActiveComposeDefs,

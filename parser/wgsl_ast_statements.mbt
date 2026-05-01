@@ -1,17 +1,24 @@
 ///|
-fn WgslDeclParser::parse_function_arguments(
+priv suberror WgslFunctionArgsParseError {
+  UnexpectedToken
+}
+
+///|
+fn WgslDeclParser::parse_function_arguments_checked(
   self : WgslDeclParser,
-) -> Array[WgslFunctionArgument] {
+) -> Array[WgslFunctionArgument] raise WgslFunctionArgsParseError {
   match self.collect_delimited_token_view(40, 41) {
     Some(fragment) => {
       let tokens = self.tokenize_function_arguments(fragment) catch {
-        _ => return []
+        _ => raise WgslFunctionArgsParseError::UnexpectedToken
       }
-      let arguments = function_args(tokens) catch { _ => return [] }
+      let arguments = function_args(tokens) catch {
+        _ => raise WgslFunctionArgsParseError::UnexpectedToken
+      }
       self.drop_tokens(fragment.consumed)
       arguments
     }
-    None => []
+    None => raise WgslFunctionArgsParseError::UnexpectedToken
   }
 }
 
@@ -34,6 +41,20 @@ fn WgslDeclParser::tokenize_function_arguments(
     token_view: fragment.inner,
   }
   while parser.view().length() > 0 {
+    match parser.view() {
+      [WgslToken::Other(35, hash_pos), ..] =>
+        match parser.directive_line_end_at_hash(hash_pos) {
+          Some(line_end) => {
+            while parser.view().length() > 0 &&
+                  parser.view()[0].pos() < line_end {
+              parser.drop_tokens(1)
+            }
+            continue
+          }
+          None => ()
+        }
+      _ => ()
+    }
     if parser.consume_if_other(44) {
       tokens.push((Token::COMMA, 0, 0))
       continue

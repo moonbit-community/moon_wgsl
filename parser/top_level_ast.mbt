@@ -14,7 +14,9 @@
 
 ///|
 fn top_level_span_has_text(source : String, start : Int, end_ : Int) -> Bool {
-  start >= 0 && end_ > start && source[start:end_].to_owned().trim() != ""
+  start >= 0 &&
+  end_ > start &&
+  wgsl_regex_trim_whitespace(source[start:end_].to_owned()) != ""
 }
 
 ///|

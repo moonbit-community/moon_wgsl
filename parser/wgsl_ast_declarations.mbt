@@ -18,8 +18,19 @@ fn WgslDeclParser::parse_function(
       None => return None
     }
   }
-  let arguments = self.parse_function_arguments()
-  let result = self.parse_function_result()
+  guard self.view() is [WgslToken::Other(40, _), ..] else { return None }
+  let arguments = self.parse_function_arguments_checked() catch {
+    _ => return None
+  }
+  let result = match self.view() {
+    [WgslToken::Other(45, _), WgslToken::Other(62, _), ..] =>
+      match self.parse_function_result() {
+        Some(value) => Some(value)
+        None => return None
+      }
+    _ => None
+  }
+  guard self.view() is [WgslToken::Other(123, _), ..] else { return None }
   let body = self.parse_block()
   Some(
     WgslFunction::new(

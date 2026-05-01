@@ -39,6 +39,26 @@ test "WGSL translation unit classifies top-level declarations" {
 }
 
 ///|
+test "strict WGSL translation unit rejects unparsed declarations" {
+  let source =
+    #|fn broken( -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+  let mut failed = false
+  ignore(parse_wgsl_translation_unit_strict(source)) catch {
+    err => {
+      debug_inspect(
+        err.message(),
+        content="\"WGSL declaration could not be parsed at 0: fn broken( -> u32 {\\n  return 1u;\\n}\"",
+      )
+      failed = true
+    }
+  }
+  guard failed is true else { abort("expected strict parser failure") }
+}
+
+///|
 test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   let source =
     #|struct Vertex {

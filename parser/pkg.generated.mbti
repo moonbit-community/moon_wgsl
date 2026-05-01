@@ -39,6 +39,8 @@ pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, Int
 
 pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit
 
+pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit raise WgslParseError
+
 pub fn wgsl_directive_line_required_tail_space(String, String) -> Bool
 
 pub fn wgsl_directive_prefix_tail(String, @ast.WgslDirectiveKind) -> String?
@@ -59,6 +61,12 @@ pub fn wgsl_text_starts_with_tokenized_space(String) -> Bool
 pub(all) suberror ParseImportsError {
   Parse(String, Int)
 }
+
+pub suberror WgslParseError {
+  Parse(String, Int)
+  UnparsedDeclaration(String, Int)
+}
+pub fn WgslParseError::message(Self) -> String
 
 // Types and methods
 pub struct WgslShaderDefComparison {

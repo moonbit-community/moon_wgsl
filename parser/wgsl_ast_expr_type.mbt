@@ -328,6 +328,32 @@ fn WgslDeclParser::new(text : String) -> WgslDeclParser {
 }
 
 ///|
+fn WgslDeclParser::directive_line_end_at_hash(
+  self : WgslDeclParser,
+  absolute_hash_pos : Int,
+) -> Int? {
+  let local_hash_pos = absolute_hash_pos - self.source_start
+  if local_hash_pos < 0 || local_hash_pos >= self.source_text.length() {
+    return None
+  }
+  let cleaned = replace_comments(self.source_text)
+  let line_start = top_level_line_start(cleaned, local_hash_pos)
+  guard wgsl_regex_trim_whitespace(
+      cleaned[line_start:local_hash_pos].to_owned(),
+    ) ==
+    "" else {
+    return None
+  }
+  let line_end = top_level_line_end(cleaned, local_hash_pos)
+  if parse_wgsl_directive_line(cleaned[local_hash_pos:line_end].to_owned())
+    is Some(_) {
+    Some(self.source_start + line_end)
+  } else {
+    None
+  }
+}
+
+///|
 fn WgslDeclParser::slice(
   self : WgslDeclParser,
   start : Int,

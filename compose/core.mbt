@@ -33,6 +33,7 @@ pub(all) suberror ComposerError {
   FailedToResolveImport(String)
   ImportCycle(String)
   InvalidStructMemberIdentifier(String)
+  InvalidWgslSyntax(String, Int)
   InvalidOverride(String)
   MissingRegisteredSource(String)
   MissingPreparedSourceDefs(String)
@@ -57,6 +58,8 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     ImportCycle(cycle) => "shader import cycle detected: \{cycle}"
     InvalidStructMemberIdentifier(name) =>
       "composable module identifier requires naga writeback substitution: \{name}"
+    InvalidWgslSyntax(message, offset) =>
+      "invalid WGSL syntax at \{offset}: \{message}"
     InvalidOverride(name) =>
       "override is invalid because target is not virtual: \{name}"
     MissingRegisteredSource(rel) => "missing registered WGSL source: \{rel}"

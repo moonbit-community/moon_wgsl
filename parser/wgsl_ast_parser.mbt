@@ -58,7 +58,32 @@ fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
 }
 
 ///|
-fn parse_wgsl_raw_top_level_items(
+pub suberror WgslParseError {
+  Parse(String, Int)
+  UnparsedDeclaration(String, Int)
+}
+
+///|
+pub fn WgslParseError::message(self : WgslParseError) -> String {
+  match self {
+    Parse(message, offset) => "WGSL parse error at \{offset}: \{message}"
+    UnparsedDeclaration(text, offset) =>
+      "WGSL declaration could not be parsed at \{offset}: \{text}"
+  }
+}
+
+///|
+fn wgsl_parse_error_from_generated(error : ParseError) -> WgslParseError {
+  match error {
+    UnexpectedToken(_, (start, _), _) =>
+      WgslParseError::Parse("unexpected token", start)
+    UnexpectedEndOfInput(pos, _) =>
+      WgslParseError::Parse("unexpected end of input", pos)
+  }
+}
+
+///|
+fn parse_wgsl_raw_top_level_items_lenient(
   source : String,
 ) -> Array[WgslRawTopLevelItem] {
   let raw_items = parse_wgsl_top_level_items(source)
@@ -73,10 +98,48 @@ fn parse_wgsl_raw_top_level_items(
 }
 
 ///|
+fn parse_wgsl_raw_top_level_items_strict(
+  source : String,
+) -> Array[WgslRawTopLevelItem] raise WgslParseError {
+  let raw_items = parse_wgsl_top_level_items(source)
+  let tokens : Array[(Token, Int, Int)] = []
+  for item in raw_items {
+    tokens.push((Token::ITEM(item), item.start, item.end))
+  }
+  tokens.push((Token::EOF, source.length(), source.length()))
+  raw_top_level_items(tokens) catch {
+    error => raise wgsl_parse_error_from_generated(error)
+  }
+}
+
+///|
 pub fn parse_wgsl_translation_unit(source : String) -> WgslTranslationUnit {
   let declarations : Array[WgslGlobalDecl] = []
-  for item in parse_wgsl_raw_top_level_items(source) {
+  for item in parse_wgsl_raw_top_level_items_lenient(source) {
     declarations.push(parse_wgsl_raw_global_decl(item))
+  }
+  WgslTranslationUnit::new(declarations)
+}
+
+///|
+fn parse_wgsl_raw_global_decl_strict(
+  item : WgslRawTopLevelItem,
+) -> WgslGlobalDecl raise WgslParseError {
+  let declaration = parse_wgsl_raw_global_decl(item)
+  match declaration.kind {
+    WgslGlobalDeclKind::Unknown =>
+      raise WgslParseError::UnparsedDeclaration(item.text, item.start)
+    _ => declaration
+  }
+}
+
+///|
+pub fn parse_wgsl_translation_unit_strict(
+  source : String,
+) -> WgslTranslationUnit raise WgslParseError {
+  let declarations : Array[WgslGlobalDecl] = []
+  for item in parse_wgsl_raw_top_level_items_strict(source) {
+    declarations.push(parse_wgsl_raw_global_decl_strict(item))
   }
   WgslTranslationUnit::new(declarations)
 }

@@ -13,6 +13,7 @@ pub(all) suberror ComposerError {
   FailedToResolveImport(String)
   ImportCycle(String)
   InvalidStructMemberIdentifier(String)
+  InvalidWgslSyntax(String, Int)
   InvalidOverride(String)
   MissingRegisteredSource(String)
   MissingPreparedSourceDefs(String)
