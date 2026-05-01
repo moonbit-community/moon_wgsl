@@ -146,7 +146,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(function.body.statements.length(), content="1")
   debug_inspect(
     function.body.statements[0].identifiers[0].name,
-    content="\"return\"",
+    content="\"color\"",
   )
 }
 
@@ -467,8 +467,7 @@ test "WGSL identifier collection exposes source spans" {
   debug_inspect(nodes[2].name, content="\"mod::inner\"")
   debug_inspect(nodes[3].name, content="\"Alias\"")
   debug_inspect(nodes[4].name, content="\"Alias\"")
-  debug_inspect(nodes[5].name, content="\"return\"")
-  debug_inspect(nodes.length(), content="6")
+  debug_inspect(nodes.length(), content="5")
 }
 
 ///|
@@ -509,18 +508,16 @@ test "WGSL function payload exposes source-preserving statement AST" {
     ),
   )
   debug_inspect(
-    function.body.statements[0].identifiers[0].name,
-    content="\"var\"",
-  )
-  debug_inspect(
-    function.body.statements[0].identifiers[1].name,
-    content="\"u32\"",
+    function.body.statements[0].identifiers.map(fn(node) { node.name }),
+    content=(
+      #|["u32", "value"]
+    ),
   )
   debug_inspect(function.body.statements[1].exported_locals, content="[]")
   debug_inspect(function.body.statements[2].exported_locals, content="[]")
   debug_inspect(
-    function.body.statements[2].identifiers[0].name,
-    content="\"return\"",
+    function.body.statements[2].identifiers.map(fn(node) { node.name }),
+    content="[]",
   )
 }
 
@@ -545,13 +542,13 @@ test "WGSL statement identifiers skip local declarations and member access" {
   debug_inspect(
     function.body.statements[0].identifiers.map(fn(node) { node.name }),
     content=(
-      #|["let", "input"]
+      #|["input"]
     ),
   )
   debug_inspect(
     function.body.statements[1].identifiers.map(fn(node) { node.name }),
     content=(
-      #|["return", "local", "input"]
+      #|["local", "input"]
     ),
   )
 }
@@ -601,7 +598,7 @@ test "WGSL declaration identifier collection excludes function locals" {
   debug_inspect(
     nodes.map(fn(node) { node.name }),
     content=(
-      #|["u32", "u32", "let", "return"]
+      #|["u32", "u32"]
     ),
   )
 }
@@ -658,7 +655,7 @@ test "WGSL statement AST records nested and loop local declarations" {
   debug_inspect(
     function.body.statements[0].identifiers.map(fn(node) { node.name }),
     content=(
-      #|["if", "arg"]
+      #|["arg"]
     ),
   )
   debug_inspect(function.body.statements[0].exported_locals, content="[]")
@@ -677,18 +674,7 @@ test "WGSL statement AST records nested and loop local declarations" {
   debug_inspect(
     nodes.map(fn(node) { node.name }),
     content=(
-      #|[
-      #|  "u32",
-      #|  "u32",
-      #|  "if",
-      #|  "let",
-      #|  "return",
-      #|  "for",
-      #|  "var",
-      #|  "u32",
-      #|  "continue",
-      #|  "return",
-      #|]
+      #|["u32", "u32", "u32"]
     ),
   )
 }
@@ -711,6 +697,12 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
   let statement = function.body.statements[0]
   debug_inspect(statement.kind, content="If")
   debug_inspect(statement.blocks.length(), content="2")
+  debug_inspect(
+    statement.identifiers.map(fn(node) { node.name }),
+    content=(
+      #|["arg"]
+    ),
+  )
   debug_inspect(statement.blocks[0].statements[0].kind, content="Return")
   debug_inspect(statement.blocks[1].statements[0].kind, content="Return")
   debug_inspect(

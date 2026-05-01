@@ -340,6 +340,31 @@ fn wgsl_statement_identifier_has_access_prefix(
 }
 
 ///|
+fn wgsl_statement_syntax_keyword(ident : String) -> Bool {
+  match ident {
+    "var"
+    | "let"
+    | "const"
+    | "return"
+    | "if"
+    | "else"
+    | "for"
+    | "while"
+    | "loop"
+    | "switch"
+    | "case"
+    | "default"
+    | "break"
+    | "continue"
+    | "continuing"
+    | "discard"
+    | "fallthrough"
+    | "const_assert" => true
+    _ => false
+  }
+}
+
+///|
 fn collect_wgsl_statement_identifier_nodes(
   tokens : Array[WgslToken],
   is_local_decl : Bool,
@@ -378,6 +403,9 @@ fn collect_wgsl_statement_identifier_nodes(
       _ => ()
     }
     guard tokens[i] is WgslToken::Identifier(ident, pos) else { continue }
+    if wgsl_statement_syntax_keyword(ident) {
+      continue
+    }
     if wgsl_statement_identifier_has_access_prefix(tokens, i) {
       continue
     }

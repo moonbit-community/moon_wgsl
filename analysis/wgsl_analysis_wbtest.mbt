@@ -388,6 +388,31 @@ test "rename plan reference rules rewrite recursively scoped blocks" {
 }
 
 ///|
+test "rename plan reference rules do not rewrite statement keywords" {
+  let source =
+    #|fn entry(flag: bool) -> u32 {
+    #|  if (flag) {
+    #|    return 1u;
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  redirects.set("if", "if_renamed")
+  redirects.set("return", "return_renamed")
+  redirects.set("let", "let_renamed")
+  let rewritten = rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    build_wgsl_rename_plan_from_redirect_map(redirects, ReferencesOnly),
+  )
+  debug_inspect(rewritten.contains("if (flag)"), content="true")
+  debug_inspect(rewritten.contains("return 1u;"), content="true")
+  debug_inspect(rewritten.contains("return 0u;"), content="true")
+  debug_inspect(rewritten.contains("if_renamed"), content="false")
+  debug_inspect(rewritten.contains("return_renamed"), content="false")
+}
+
+///|
 test "declaration graph keeps dependencies from recursively scoped blocks" {
   let source =
     #|fn helper() -> u32 {
