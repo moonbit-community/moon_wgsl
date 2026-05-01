@@ -243,7 +243,7 @@ fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   requests : Array[WgslImportRequest],
-  alias_redirects : Array[WgslSymbolRedirect],
+  alias_redirects : Array[WgslScopedAliasRedirect],
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
@@ -280,9 +280,12 @@ fn Composer::compose_wgsl_import_requests(
             requested_item,
           ) {
           Some(imported_name) => {
-            alias_redirects.push(WgslSymbolRedirect::{
-              from_name: requested_item,
-              to_name: imported_name,
+            alias_redirects.push(WgslScopedAliasRedirect::{
+              redirect: WgslSymbolRedirect::{
+                from_name: requested_item,
+                to_name: imported_name,
+              },
+              scope: UnqualifiedItemBinding,
             })
             resolved_requested_items = resolved_requested_items + 1
           }
@@ -294,9 +297,12 @@ fn Composer::compose_wgsl_import_requests(
                 requested_item,
               ) {
               Some(imported_name) => {
-                alias_redirects.push(WgslSymbolRedirect::{
-                  from_name: requested_item,
-                  to_name: imported_name,
+                alias_redirects.push(WgslScopedAliasRedirect::{
+                  redirect: WgslSymbolRedirect::{
+                    from_name: requested_item,
+                    to_name: imported_name,
+                  },
+                  scope: UnqualifiedItemBinding,
                 })
                 resolved_requested_items = resolved_requested_items + 1
               }
@@ -363,11 +369,18 @@ fn Composer::compose_wgsl_import_requests(
         let (from_name, to_name) = entry
         rename_map.set(from_name, to_name)
       }
+      let collected_redirects : Array[WgslSymbolRedirect] = []
       collect_wgsl_import_alias_redirects(
         request.alias_name,
         request_rename_map,
-        alias_redirects,
+        collected_redirects,
       )
+      for redirect in collected_redirects {
+        alias_redirects.push(WgslScopedAliasRedirect::{
+          redirect,
+          scope: QualifiedAliasReference,
+        })
+      }
       rewrite_wgsl_declarations_with_rename_plan(
         module_source,
         build_wgsl_rename_plan_from_redirect_map(
@@ -412,7 +425,7 @@ fn Composer::compose_wgsl_import_requests(
 ///|
 fn collect_wgsl_live_alias_redirects(
   source : String,
-  alias_redirects : Array[WgslSymbolRedirect],
+  alias_redirects : Array[WgslScopedAliasRedirect],
 ) -> Array[WgslSymbolRedirect] {
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for declaration in collect_wgsl_named_declarations(source) {
@@ -421,12 +434,13 @@ fn collect_wgsl_live_alias_redirects(
     }
   }
   let live_redirects : Array[WgslSymbolRedirect] = []
-  for redirect in alias_redirects {
+  for scoped_redirect in alias_redirects {
+    let redirect = scoped_redirect.redirect
     let to_name = redirect.to_name.trim().to_owned()
     if to_name != "" &&
       (
         declared_names.contains(to_name) ||
-        split_last_wgsl_path(redirect.from_name) is None
+        scoped_redirect.scope == UnqualifiedItemBinding
       ) {
       live_redirects.push(redirect)
     }
@@ -437,7 +451,7 @@ fn collect_wgsl_live_alias_redirects(
 ///|
 fn finalize_wgsl_composed_source(
   merged : String,
-  alias_redirects : Array[WgslSymbolRedirect],
+  alias_redirects : Array[WgslScopedAliasRedirect],
   active_defs : WgslActiveComposeDefs,
   session : WgslComposeSession,
   apply_virtual_overrides : Bool,

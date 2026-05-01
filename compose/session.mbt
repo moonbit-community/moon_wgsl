@@ -130,7 +130,7 @@ priv struct WgslComposeSession {
   value_defines : @hashmap.HashMap[String, Int]
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
-  composed_alias_redirects : Array[WgslSymbolRedirect]
+  composed_alias_redirects : Array[WgslScopedAliasRedirect]
   additional_imports : Array[ImportDefinition]
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
@@ -138,6 +138,18 @@ priv struct WgslComposeSession {
   active_rel_paths : Array[String]
   resolved_source_files : @hashmap.HashMap[String, String]
   resolved_source_defs : @hashmap.HashMap[String, WgslActiveComposeDefs]
+}
+
+///|
+priv enum WgslAliasRedirectScope {
+  QualifiedAliasReference
+  UnqualifiedItemBinding
+} derive(Eq)
+
+///|
+priv struct WgslScopedAliasRedirect {
+  redirect : WgslSymbolRedirect
+  scope : WgslAliasRedirectScope
 }
 
 ///|

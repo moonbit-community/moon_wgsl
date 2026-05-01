@@ -81,7 +81,7 @@ fn collect_wgsl_cached_import_redirects(
   session : WgslComposeSession,
   rel_path : String,
   alias_name : String,
-  redirects : Array[WgslSymbolRedirect],
+  redirects : Array[WgslScopedAliasRedirect],
 ) -> Int {
   let prefix = wgsl_imported_item_name_key(rel_path, alias_name, "")
   let mut count = 0
@@ -96,7 +96,15 @@ fn collect_wgsl_cached_import_redirects(
     } else {
       "\{alias_name}::\{item_name}"
     }
-    redirects.push(WgslSymbolRedirect::{ from_name, to_name: imported_name })
+    let scope = if alias_name == "" {
+      UnqualifiedItemBinding
+    } else {
+      QualifiedAliasReference
+    }
+    redirects.push(WgslScopedAliasRedirect::{
+      redirect: WgslSymbolRedirect::{ from_name, to_name: imported_name },
+      scope,
+    })
     count = count + 1
   }
   count
@@ -115,7 +123,7 @@ fn find_wgsl_cached_imported_item_name(
 
 ///|
 fn find_wgsl_visible_alias_imported_item_name(
-  alias_redirects : Array[WgslSymbolRedirect],
+  alias_redirects : Array[WgslScopedAliasRedirect],
   module_path : String,
   item_name : String,
 ) -> String? {
@@ -124,9 +132,9 @@ fn find_wgsl_visible_alias_imported_item_name(
     return None
   }
   let from_name = "\{default_alias}::\{item_name}"
-  for redirect in alias_redirects {
-    if redirect.from_name == from_name {
-      return Some(redirect.to_name)
+  for scoped_redirect in alias_redirects {
+    if scoped_redirect.redirect.from_name == from_name {
+      return Some(scoped_redirect.redirect.to_name)
     }
   }
   None
