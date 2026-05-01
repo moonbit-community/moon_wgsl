@@ -19,6 +19,8 @@ pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
 
 pub fn parse_wgsl_identifier_references(String) -> Array[WgslIdentifierReference]
 
+pub fn parse_wgsl_import_alias_prefix(String) -> String
+
 pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError

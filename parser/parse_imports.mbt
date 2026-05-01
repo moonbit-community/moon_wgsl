@@ -124,6 +124,41 @@ pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(
 }
 
 ///|
+fn wgsl_import_alias_prefix_separator(prefix : String) -> String {
+  if prefix == "" || prefix.has_suffix("_") {
+    prefix
+  } else {
+    "\{prefix}_"
+  }
+}
+
+///|
+pub fn parse_wgsl_import_alias_prefix(alias_name : String) -> String {
+  let mut prefix = ""
+  let segments : Array[String] = []
+  for segment in alias_name.trim().split("::") {
+    segments.push(segment.to_owned())
+  }
+  for i in 0..<segments.length() {
+    if i > 0 {
+      prefix = wgsl_import_alias_prefix_separator(prefix)
+    }
+    for token in tokenize(segments[i], true) {
+      match token {
+        WgslToken::Identifier(text, _) if !text.contains("\"") =>
+          prefix = "\{prefix}\{text}"
+        _ => prefix = wgsl_import_alias_prefix_separator(prefix)
+      }
+    }
+  }
+  if prefix == "" {
+    "import"
+  } else {
+    prefix
+  }
+}
+
+///|
 fn apply_wgsl_import_prefix(
   prefix : String,
   targets : Array[WgslImportTarget],

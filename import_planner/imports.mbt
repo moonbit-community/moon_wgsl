@@ -22,7 +22,7 @@ using @resolver {
 using @ast {type WgslIdent, collect_wgsl_decl_identifier_nodes}
 
 ///|
-using @parser {parse_wgsl_translation_unit}
+using @parser {parse_wgsl_import_alias_prefix, parse_wgsl_translation_unit}
 
 ///|
-using @lex {type WgslToken, split_last_identifier, tokenize}
+using @lex {split_last_identifier}
