@@ -296,9 +296,8 @@ pub struct WgslStatement {
   end : Int
   blocks : Array[WgslBlock]
   local_bindings : Array[WgslLocalDeclaration]
-  local_declarations : Array[WgslIdent]
-  exported_locals : Array[WgslIdent]
-  identifiers : Array[WgslIdent]
+  exported_local_bindings : Array[WgslLocalDeclaration]
+  expression_refs : Array[WgslExprRef]
 } derive(Debug)
 
 ///|
@@ -309,9 +308,8 @@ pub fn WgslStatement::new(
   end : Int,
   blocks : Array[WgslBlock],
   local_bindings : Array[WgslLocalDeclaration],
-  local_declarations : Array[WgslIdent],
-  exported_locals : Array[WgslIdent],
-  identifiers : Array[WgslIdent],
+  exported_local_bindings : Array[WgslLocalDeclaration],
+  expression_refs : Array[WgslExprRef],
 ) -> WgslStatement {
   WgslStatement::{
     kind,
@@ -320,9 +318,8 @@ pub fn WgslStatement::new(
     end,
     blocks,
     local_bindings,
-    local_declarations,
-    exported_locals,
-    identifiers,
+    exported_local_bindings,
+    expression_refs,
   }
 }
 

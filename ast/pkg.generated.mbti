@@ -218,11 +218,10 @@ pub struct WgslStatement {
   end : Int
   blocks : Array[WgslBlock]
   local_bindings : Array[WgslLocalDeclaration]
-  local_declarations : Array[WgslIdent]
-  exported_locals : Array[WgslIdent]
-  identifiers : Array[WgslIdent]
+  exported_local_bindings : Array[WgslLocalDeclaration]
+  expression_refs : Array[WgslExprRef]
 } derive(@debug.Debug)
-pub fn WgslStatement::new(WgslStatementKind, String, Int, Int, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslIdent], Array[WgslIdent], Array[WgslIdent]) -> Self
+pub fn WgslStatement::new(WgslStatementKind, String, Int, Int, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef]) -> Self
 
 pub(all) enum WgslStatementKind {
   Empty

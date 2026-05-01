@@ -145,7 +145,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(result_ty.arguments[0].name, content="\"f32\"")
   debug_inspect(function.body.statements.length(), content="1")
   debug_inspect(
-    function.body.statements[0].identifiers[0].name,
+    function.body.statements[0].expression_refs[0].identifiers[0].name,
     content="\"color\"",
   )
 }
@@ -502,7 +502,9 @@ test "WGSL function payload exposes source-preserving statement AST" {
     content="\"return 0u;\"",
   )
   debug_inspect(
-    function.body.statements[0].exported_locals.map(fn(node) { node.name }),
+    function.body.statements[0].exported_local_bindings.map(fn(binding) {
+      binding.name.name
+    }),
     content=(
       #|["local"]
     ),
@@ -543,22 +545,25 @@ test "WGSL function payload exposes source-preserving statement AST" {
       #|["value"]
     ),
   )
+  debug_inspect(function.body.statements[0].expression_refs, content="[]")
   debug_inspect(
-    function.body.statements[0].identifiers.map(fn(node) { node.name }),
-    content=(
-      #|["u32", "value"]
-    ),
+    function.body.statements[1].exported_local_bindings,
+    content="[]",
   )
-  debug_inspect(function.body.statements[1].exported_locals, content="[]")
-  debug_inspect(function.body.statements[2].exported_locals, content="[]")
   debug_inspect(
-    function.body.statements[2].identifiers.map(fn(node) { node.name }),
+    function.body.statements[2].exported_local_bindings,
+    content="[]",
+  )
+  debug_inspect(
+    function.body.statements[2].expression_refs[0].identifiers.map(fn(node) {
+      node.name
+    }),
     content="[]",
   )
 }
 
 ///|
-test "WGSL statement identifiers skip local declarations and member access" {
+test "WGSL statement expression refs skip local declarations and member access" {
   let source =
     #|fn demo(input: Vertex) -> f32 {
     #|  let local = input.position.x;
@@ -570,19 +575,27 @@ test "WGSL statement identifiers skip local declarations and member access" {
     abort("expected function payload")
   }
   debug_inspect(
-    function.body.statements[0].exported_locals.map(fn(node) { node.name }),
+    function.body.statements[0].exported_local_bindings.map(fn(binding) {
+      binding.name.name
+    }),
     content=(
       #|["local"]
     ),
   )
+  guard function.body.statements[0].local_bindings[0].initializer_ref
+    is Some(local_init) else {
+    abort("expected local initializer ref")
+  }
   debug_inspect(
-    function.body.statements[0].identifiers.map(fn(node) { node.name }),
+    local_init.identifiers.map(fn(node) { node.name }),
     content=(
       #|["input"]
     ),
   )
   debug_inspect(
-    function.body.statements[1].identifiers.map(fn(node) { node.name }),
+    function.body.statements[1].expression_refs[0].identifiers.map(fn(node) {
+      node.name
+    }),
     content=(
       #|["local", "input"]
     ),
@@ -675,28 +688,37 @@ test "WGSL statement AST records nested and loop local declarations" {
     content="Continue",
   )
   debug_inspect(
-    function.body.statements[0].local_declarations.map(fn(node) { node.name }),
+    function.body.statements[0].local_bindings.map(fn(binding) {
+      binding.name.name
+    }),
     content="[]",
   )
   debug_inspect(
-    function.body.statements[0].blocks[0].statements[0].local_declarations.map(fn(
-      node,
+    function.body.statements[0].blocks[0].statements[0].local_bindings.map(fn(
+      binding,
     ) {
-      node.name
+      binding.name.name
     }),
     content=(
       #|["nested"]
     ),
   )
   debug_inspect(
-    function.body.statements[0].identifiers.map(fn(node) { node.name }),
+    function.body.statements[0].expression_refs[0].identifiers.map(fn(node) {
+      node.name
+    }),
     content=(
       #|["arg"]
     ),
   )
-  debug_inspect(function.body.statements[0].exported_locals, content="[]")
   debug_inspect(
-    function.body.statements[1].local_declarations.map(fn(node) { node.name }),
+    function.body.statements[0].exported_local_bindings,
+    content="[]",
+  )
+  debug_inspect(
+    function.body.statements[1].local_bindings.map(fn(binding) {
+      binding.name.name
+    }),
     content=(
       #|["i"]
     ),
@@ -713,7 +735,24 @@ test "WGSL statement AST records nested and loop local declarations" {
     function.body.statements[1].local_bindings[0].ty,
     content="Some(\"u32\")",
   )
-  debug_inspect(function.body.statements[1].exported_locals, content="[]")
+  debug_inspect(
+    function.body.statements[1].expression_refs.map(fn(expr) { expr.text }),
+    content=(
+      #|["i < arg", "i = i + 1u"]
+    ),
+  )
+  debug_inspect(
+    function.body.statements[1].expression_refs[0].identifiers.map(fn(node) {
+      node.name
+    }),
+    content=(
+      #|["i", "arg"]
+    ),
+  )
+  debug_inspect(
+    function.body.statements[1].exported_local_bindings,
+    content="[]",
+  )
   let nodes : Array[WgslIdent] = []
   @ast.collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::Function(function),
@@ -746,12 +785,24 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
   debug_inspect(statement.kind, content="If")
   debug_inspect(statement.blocks.length(), content="2")
   debug_inspect(
-    statement.identifiers.map(fn(node) { node.name }),
+    statement.expression_refs[0].identifiers.map(fn(node) { node.name }),
     content=(
       #|["arg"]
     ),
   )
+  debug_inspect(
+    statement.expression_refs.map(fn(expr) { expr.text }),
+    content=(
+      #|["arg > 0u"]
+    ),
+  )
   debug_inspect(statement.blocks[0].statements[0].kind, content="Return")
+  debug_inspect(
+    statement.blocks[0].statements[0].expression_refs.map(fn(expr) { expr.text }),
+    content=(
+      #|["1u"]
+    ),
+  )
   debug_inspect(statement.blocks[1].statements[0].kind, content="Return")
   debug_inspect(
     source[statement.blocks[1].start:statement.blocks[1].end].to_owned(),
@@ -882,5 +933,8 @@ test "WGSL statement classification uses identifier tokens" {
     abort("expected function payload")
   }
   debug_inspect(function.body.statements.length(), content="2")
-  debug_inspect(function.body.statements[1].exported_locals, content="[]")
+  debug_inspect(
+    function.body.statements[1].exported_local_bindings,
+    content="[]",
+  )
 }

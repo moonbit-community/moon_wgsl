@@ -289,6 +289,45 @@ test "declaration graph does not resolve namespace suffix as local dependency" {
 }
 
 ///|
+test "declaration graph reads switch case expressions without keyword leaks" {
+  let source =
+    #|const case: u32 = 99u;
+    #|const SELECTED: u32 = 1u;
+    #|fn entry(value: u32) -> u32 {
+    #|  switch(value) {
+    #|    case SELECTED: {
+    #|      return 1u;
+    #|    }
+    #|    default: {
+    #|    }
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const SELECTED"), content="true")
+  debug_inspect(extracted.contains("const case"), content="false")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph keeps break-if expression dependencies" {
+  let source =
+    #|const STOP: bool = true;
+    #|fn entry() {
+    #|  loop {
+    #|    continuing {
+    #|      break if STOP;
+    #|    }
+    #|  }
+    #|}
+    #|
+  let extracted = extract_wgsl_module_items(source, ["entry"])
+  debug_inspect(extracted.contains("const STOP"), content="true")
+  debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
 test "rename plan global rules do not rewrite function parameter locals" {
   let source =
     #|struct Input {

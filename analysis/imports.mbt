@@ -8,6 +8,7 @@ using @ast {
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
   type WgslIdent,
+  type WgslLocalDeclaration,
   type WgslStatement,
   type WgslStatementKind,
   type WgslTypeRef,

@@ -96,46 +96,6 @@ fn wgsl_name_list_copy(names : Array[String]) -> Array[String] {
 }
 
 ///|
-fn wgsl_ident_inside_span(ident : WgslIdent, start : Int, end_ : Int) -> Bool {
-  ident.start >= start && ident.end <= end_
-}
-
-///|
-fn wgsl_ident_inside_local_binding_ref(
-  ident : WgslIdent,
-  binding : WgslLocalDeclaration,
-) -> Bool {
-  match binding.ty_ref {
-    Some(ty) =>
-      if wgsl_ident_inside_span(ident, ty.start, ty.end) {
-        return true
-      }
-    None => ()
-  }
-  match binding.initializer_ref {
-    Some(expr) =>
-      if wgsl_ident_inside_span(ident, expr.start, expr.end) {
-        return true
-      }
-    None => ()
-  }
-  false
-}
-
-///|
-fn wgsl_ident_inside_statement_local_binding_refs(
-  ident : WgslIdent,
-  statement : WgslStatement,
-) -> Bool {
-  for binding in statement.local_bindings {
-    if wgsl_ident_inside_local_binding_ref(ident, binding) {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn collect_wgsl_local_binding_identifier_nodes_with_scope(
   binding : WgslLocalDeclaration,
   active_local_names : Array[String],
@@ -160,17 +120,16 @@ fn collect_wgsl_statement_identifier_nodes_with_scope(
       binding, active_local_names, nodes,
     )
   }
-  for ident in statement.identifiers {
-    if wgsl_ident_inside_statement_local_binding_refs(ident, statement) {
-      continue
-    }
-    if !wgsl_name_list_contains(active_local_names, ident.name) {
-      nodes.push(ident)
-    }
-  }
   let block_local_names = wgsl_name_list_copy(active_local_names)
-  for binding in statement.local_declarations {
-    wgsl_name_list_push_unique(block_local_names, binding.name)
+  for binding in statement.local_bindings {
+    wgsl_name_list_push_unique(block_local_names, binding.name.name)
+  }
+  for expr_ref in statement.expression_refs {
+    collect_wgsl_expr_ref_identifier_nodes_with_scope(
+      Some(expr_ref),
+      block_local_names,
+      nodes,
+    )
   }
   for block in statement.blocks {
     collect_wgsl_block_identifier_nodes_with_scope(
@@ -190,8 +149,8 @@ fn collect_wgsl_block_identifier_nodes_with_scope(
     collect_wgsl_statement_identifier_nodes_with_scope(
       statement, active_local_names, nodes,
     )
-    for binding in statement.exported_locals {
-      wgsl_name_list_push_unique(active_local_names, binding.name)
+    for binding in statement.exported_local_bindings {
+      wgsl_name_list_push_unique(active_local_names, binding.name.name)
     }
   }
 }

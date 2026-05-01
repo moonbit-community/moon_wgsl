@@ -99,6 +99,11 @@ fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
 }
 
 ///|
+fn wgsl_local_binding_key(binding : WgslLocalDeclaration) -> String {
+  "\{binding.kind}:\{binding.name.name}<\{wgsl_string_list_key(binding.template_list)}>:\{wgsl_type_ref_key(binding.ty_ref)}=\{wgsl_optional_expr_ref_key(binding.initializer_ref)}"
+}
+
+///|
 fn wgsl_directive_kind_key(kind : WgslDirectiveKind) -> String {
   match kind {
     Ifdef => "ifdef"
@@ -126,19 +131,23 @@ fn wgsl_optional_expr_ref_key(expr : WgslExprRef?) -> String {
 
 ///|
 fn wgsl_statement_key(statement : WgslStatement) -> String {
-  let identifiers : Array[String] = []
-  for ident in statement.identifiers {
-    identifiers.push(ident.name)
-  }
   let locals : Array[String] = []
-  for binding in statement.local_declarations {
-    locals.push(binding.name)
+  for binding in statement.local_bindings {
+    locals.push(wgsl_local_binding_key(binding))
+  }
+  let exported_local_names : Array[String] = []
+  for binding in statement.exported_local_bindings {
+    exported_local_names.push(binding.name.name)
+  }
+  let expressions : Array[String] = []
+  for expr_ref in statement.expression_refs {
+    expressions.push(wgsl_expr_ref_key(expr_ref))
   }
   let blocks : Array[String] = []
   for block in statement.blocks {
     blocks.push(wgsl_block_key(block))
   }
-  "\{wgsl_statement_kind_key(statement.kind)}[\{wgsl_string_list_key(identifiers)}][\{wgsl_string_list_key(locals)}]{\{wgsl_string_list_key(blocks)}}"
+  "\{wgsl_statement_kind_key(statement.kind)}[expr:\{wgsl_string_list_key(expressions)}][\{wgsl_string_list_key(locals)}][export:\{wgsl_string_list_key(exported_local_names)}]{\{wgsl_string_list_key(blocks)}}"
 }
 
 ///|
