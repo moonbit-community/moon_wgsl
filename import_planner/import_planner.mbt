@@ -123,6 +123,26 @@ pub fn wgsl_source_contains_identifier(
 }
 
 ///|
+pub fn wgsl_source_contains_reference_path(
+  source : String,
+  reference_path : String,
+) -> Bool {
+  match wgsl_reference_path_from_identifier(reference_path) {
+    Some(expected) => {
+      let paths : Array[WgslReferencePath] = []
+      collect_wgsl_source_reference_paths(source, paths)
+      for path in paths {
+        if path.text == expected.text {
+          return true
+        }
+      }
+      false
+    }
+    None => false
+  }
+}
+
+///|
 pub fn wgsl_import_default_alias(module_path : String) -> String {
   match split_last_identifier(module_path.trim().to_owned()) {
     Some((_, suffix)) => suffix.trim().to_owned()

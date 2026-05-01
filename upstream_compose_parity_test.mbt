@@ -1175,6 +1175,35 @@ test "naga_oil parity: item-imported entry points are dropped when unused by sou
 }
 
 ///|
+test "naga_oil parity: direct item imports require exact AST reference paths" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "unused.wgsl",
+    "#define_import_path demo::unused\n" + "fn Item() -> u32 { return 1u; }\n",
+  )
+  composer.register_source(
+    "other.wgsl",
+    "#define_import_path demo::other\n" + "fn Item() -> u32 { return 2u; }\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#import demo::unused::Item\n" +
+    "#import demo::other as other\n" +
+    "fn entry() -> u32 { return other::Item(); }\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort("expected exact reference path compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("return 1u"), content="false")
+  debug_inspect(source.contains("fn other__Item() -> u32"), content="true")
+  debug_inspect(source.contains("return other__Item();"), content="true")
+}
+
+///|
 test "naga_oil parity: explicit import-only entry modules do not force dependencies" {
   let composer = @compose.Composer::default()
   composer.register_source(

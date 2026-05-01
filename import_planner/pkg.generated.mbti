@@ -42,6 +42,8 @@ pub fn wgsl_path_stack_contains(Array[String], String) -> Bool
 
 pub fn wgsl_source_contains_identifier(String, String) -> Bool
 
+pub fn wgsl_source_contains_reference_path(String, String) -> Bool
+
 pub fn wgsl_source_uses_import_alias(String, String) -> Bool
 
 // Errors

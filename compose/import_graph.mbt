@@ -5,6 +5,12 @@ priv struct WgslPreparedComposeSource {
 }
 
 ///|
+priv enum WgslRequestedItemLiveness {
+  ExplicitUnqualifiedItemBinding
+  AstDerivedAliasReference
+}
+
+///|
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
@@ -60,6 +66,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let requested_items : Array[String] = []
     let mut request_module_prefix = target.raw_path
     let mut keep_requested_items = false
+    let mut requested_item_liveness = AstDerivedAliasReference
     if target.alias_name != "" {
       if !wgsl_source_uses_import_alias(active_scan_source, target.alias_name) {
         continue
@@ -154,6 +161,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
     } else if module_path != target.raw_path {
       import_full_module = false
       keep_requested_items = true
+      requested_item_liveness = ExplicitUnqualifiedItemBinding
       let requested_item = wgsl_import_requested_item_name(
         target.raw_path,
         module_path,
@@ -167,7 +175,14 @@ fn Composer::build_wgsl_import_requests_from_targets(
     if !import_full_module {
       let used_requested_items : Array[String] = []
       for requested_item in requested_items {
-        if wgsl_source_contains_identifier(active_scan_source, requested_item) {
+        let item_is_live = match requested_item_liveness {
+          ExplicitUnqualifiedItemBinding =>
+            wgsl_source_contains_reference_path(
+              active_scan_source, requested_item,
+            )
+          AstDerivedAliasReference => true
+        }
+        if item_is_live {
           used_requested_items.push(requested_item)
         }
       }
