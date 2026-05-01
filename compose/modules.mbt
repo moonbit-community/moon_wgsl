@@ -151,7 +151,7 @@ fn record_wgsl_redirect_matches(
     if from_name == "" || to_name == "" || from_name == to_name {
       continue
     }
-    if wgsl_source_contains_identifier(source, from_name) {
+    if wgsl_source_contains_reference_path(source, from_name) {
       let current = match session.redirect_match_counts.get(from_name) {
         Some(count) => count
         None => 0

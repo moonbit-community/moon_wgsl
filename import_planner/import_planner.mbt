@@ -93,36 +93,6 @@ pub fn unresolved_wgsl_namespace_reference(source : String) -> String? {
 }
 
 ///|
-fn wgsl_reference_path_ends_with_identifier(
-  path : WgslReferencePath,
-  identifier : String,
-) -> Bool {
-  if identifier == "" || path.segments.length() == 0 {
-    return false
-  }
-  path.text == identifier ||
-  path.segments[path.segments.length() - 1] == identifier
-}
-
-///|
-pub fn wgsl_source_contains_identifier(
-  source : String,
-  identifier : String,
-) -> Bool {
-  if identifier == "" {
-    return false
-  }
-  let paths : Array[WgslReferencePath] = []
-  collect_wgsl_source_reference_paths(source, paths)
-  for path in paths {
-    if wgsl_reference_path_ends_with_identifier(path, identifier) {
-      return true
-    }
-  }
-  false
-}
-
-///|
 pub fn wgsl_source_contains_reference_path(
   source : String,
   reference_path : String,

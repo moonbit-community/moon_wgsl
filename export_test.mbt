@@ -398,3 +398,43 @@ test "naga_oil: export warns when a source-level redirect never matches" {
   )
   clear_export_test_registry()
 }
+
+///|
+test "redirect diagnostics require exact AST reference path matches" {
+  clear_export_test_registry()
+  register_export_test_shader_files([
+    {
+      rel_path: "shaders/shared/other.wgsl",
+      source: "#define_import_path demo::other\nfn Item() -> u32 {\n  return 1u;\n}\n",
+    },
+    {
+      rel_path: "shaders/effects/qualified_suffix.wgsl",
+      source: "#import demo::other as other\nfn shade() -> u32 {\n  return other::Item();\n}\n",
+    },
+  ])
+  let output = @export.export_wgsl_with_options(
+    export_test_composer(),
+    "shaders/effects/qualified_suffix.wgsl",
+    export_test_compose_options(export_test_empty_defines(), [
+      { from_name: "Item", to_name: "RenamedItem" },
+    ]),
+    { root_items: ["shade"] },
+  ) catch {
+    err =>
+      abort(
+        "expected qualified suffix diagnostic export success: \{err.message()}",
+      )
+  }
+  let mut unmatched_item_redirects = 0
+  for diagnostic in output.diagnostics {
+    if diagnostic.message ==
+      "symbol redirect did not match any source identifier" {
+      match diagnostic.symbol_name {
+        Some("Item") => unmatched_item_redirects = unmatched_item_redirects + 1
+        _ => ()
+      }
+    }
+  }
+  debug_inspect(unmatched_item_redirects, content="1")
+  clear_export_test_registry()
+}

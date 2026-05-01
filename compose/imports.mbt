@@ -46,7 +46,6 @@ using @import_planner {
   wgsl_import_targets_push_unique,
   wgsl_imported_item_name_key,
   wgsl_path_stack_contains,
-  wgsl_source_contains_identifier,
   wgsl_source_contains_reference_path,
   wgsl_source_uses_import_alias,
 }

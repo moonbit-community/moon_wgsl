@@ -19,7 +19,6 @@ test "reference path matcher distinguishes qualified suffixes" {
     #|  return other::Item();
     #|}
     #|
-  debug_inspect(wgsl_source_contains_identifier(source, "Item"), content="true")
   debug_inspect(
     wgsl_source_contains_reference_path(source, "Item"),
     content="false",
