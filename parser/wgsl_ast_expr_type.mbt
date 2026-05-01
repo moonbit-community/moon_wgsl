@@ -217,17 +217,6 @@ fn parse_wgsl_expr_ref_fragment(fragment : WgslTextFragment) -> WgslExprRef? {
 }
 
 ///|
-fn parse_required_wgsl_expr_ref_fragment(
-  fragment : WgslTextFragment,
-) -> WgslExprRef {
-  match parse_wgsl_expr_ref_fragment(fragment) {
-    Some(expr) => expr
-    None =>
-      WgslExprRef::new(fragment.text, [], [], fragment.start, fragment.end)
-  }
-}
-
-///|
 priv struct WgslDeclParser {
   source_text : String
   source_start : Int

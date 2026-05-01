@@ -20,24 +20,17 @@ test "naga_oil upstream WGSL fixture mirror parses without raw top-level declara
   ) catch {
     _ => abort("expected naga_oil upstream fixture scan success")
   }
-  let unknowns : Array[String] = []
+  let failures : Array[String] = []
   for file in files {
     if file.rel_path.has_prefix("error_test/") {
       continue
     }
-    let unit = @parser.parse_wgsl_translation_unit(file.source)
-    let mut count = 0
-    for decl in unit.declarations {
-      if decl.kind == @ast.WgslGlobalDeclKind::Unknown {
-        count = count + 1
-      }
-    }
-    if count > 0 {
-      unknowns.push("\{file.rel_path}:\{count}")
+    ignore(@parser.parse_wgsl_translation_unit_strict(file.source)) catch {
+      err => failures.push("\{file.rel_path}:\{err.message()}")
     }
   }
   debug_inspect(
-    unknowns,
+    failures,
     content=(
       #|[]
     ),
@@ -52,21 +45,14 @@ test "Bevy WGSL fixture mirror parses without raw top-level declarations" {
   ) catch {
     _ => abort("expected Bevy fixture scan success")
   }
-  let unknowns : Array[String] = []
+  let failures : Array[String] = []
   for file in files {
-    let unit = @parser.parse_wgsl_translation_unit(file.source)
-    let mut count = 0
-    for decl in unit.declarations {
-      if decl.kind == @ast.WgslGlobalDeclKind::Unknown {
-        count = count + 1
-      }
-    }
-    if count > 0 {
-      unknowns.push("\{file.rel_path}:\{count}")
+    ignore(@parser.parse_wgsl_translation_unit_strict(file.source)) catch {
+      err => failures.push("\{file.rel_path}:\{err.message()}")
     }
   }
   debug_inspect(
-    unknowns,
+    failures,
     content=(
       #|[]
     ),

@@ -193,7 +193,9 @@ fn WgslDeclParser::parse_global_variable(
     Some(value) => value
     None => return None
   }
-  let tail = self.parse_typed_initializer_tail()
+  let tail = self.parse_typed_initializer_tail_checked() catch {
+    _ => return None
+  }
   Some(
     WgslGlobalVariable::new(
       attributes,
@@ -216,19 +218,14 @@ priv struct WgslTypedInitializerTail {
 }
 
 ///|
-fn WgslTypedInitializerTail::empty() -> WgslTypedInitializerTail {
-  WgslTypedInitializerTail::{
-    ty: None,
-    ty_ref: None,
-    initializer: None,
-    initializer_ref: None,
-  }
+priv suberror WgslTypedInitializerTailParseError {
+  UnexpectedToken
 }
 
 ///|
-fn WgslDeclParser::parse_typed_initializer_tail(
+fn WgslDeclParser::parse_typed_initializer_tail_checked(
   self : WgslDeclParser,
-) -> WgslTypedInitializerTail {
+) -> WgslTypedInitializerTail raise WgslTypedInitializerTailParseError {
   let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
     [WgslToken::Other(58, pos), .. rest] => {
@@ -250,6 +247,8 @@ fn WgslDeclParser::parse_typed_initializer_tail(
             ty_fragment.end,
           ),
         )
+      } else {
+        raise WgslTypedInitializerTailParseError::UnexpectedToken
       }
     }
     _ => ()
@@ -269,6 +268,8 @@ fn WgslDeclParser::parse_typed_initializer_tail(
             initializer.end,
           ),
         )
+      } else {
+        raise WgslTypedInitializerTailParseError::UnexpectedToken
       }
     }
     _ => ()
@@ -277,7 +278,7 @@ fn WgslDeclParser::parse_typed_initializer_tail(
     (Token::EOF, self.source_text.length(), self.source_text.length()),
   )
   let parsed = typed_initializer_tail(tokens) catch {
-    _ => return WgslTypedInitializerTail::empty()
+    _ => raise WgslTypedInitializerTailParseError::UnexpectedToken
   }
   match parsed {
     (ty, ty_ref, initializer, initializer_ref) =>
@@ -291,7 +292,9 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
     Some(value) => value
     None => return None
   }
-  let tail = self.parse_typed_initializer_tail()
+  let tail = self.parse_typed_initializer_tail_checked() catch {
+    _ => return None
+  }
   Some(
     WgslConst::new(
       name,
@@ -312,7 +315,9 @@ fn WgslDeclParser::parse_override(
     Some(value) => value
     None => return None
   }
-  let tail = self.parse_typed_initializer_tail()
+  let tail = self.parse_typed_initializer_tail_checked() catch {
+    _ => return None
+  }
   Some(
     WgslOverride::new(
       attributes,
@@ -409,16 +414,25 @@ fn WgslDeclParser::parse_source_directive(
 }
 
 ///|
-fn WgslDeclParser::parse_const_assert(self : WgslDeclParser) -> WgslExprRef {
-  let expr = parse_required_wgsl_expr_ref_fragment(
-    self.collect_until_top_level_fragment([59]),
-  )
+priv suberror WgslConstAssertParseError {
+  UnexpectedToken
+}
+
+///|
+fn WgslDeclParser::parse_const_assert_checked(
+  self : WgslDeclParser,
+) -> WgslExprRef raise WgslConstAssertParseError {
+  let fragment = self.collect_until_top_level_fragment([59])
+  let expr = match parse_wgsl_expr_ref_fragment(fragment) {
+    Some(value) => value
+    None => raise WgslConstAssertParseError::UnexpectedToken
+  }
   let tokens : Array[(Token, Int, Int)] = [
     (Token::EXPR_REF(expr), expr.start, expr.end),
     (Token::EOF, expr.end, expr.end),
   ]
   const_assert_expr(tokens) catch {
-    _ => expr
+    _ => raise WgslConstAssertParseError::UnexpectedToken
   }
 }
 
@@ -513,7 +527,12 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
         Some(value) => WgslGlobalDeclData::Const(value)
         None => WgslGlobalDeclData::Raw
       }
-    ConstAssert => WgslGlobalDeclData::ConstAssert(self.parse_const_assert())
+    ConstAssert => {
+      let value = self.parse_const_assert_checked() catch {
+        _ => return WgslGlobalDeclData::Raw
+      }
+      WgslGlobalDeclData::ConstAssert(value)
+    }
     TypeAlias =>
       match self.parse_type_alias() {
         Some(value) => WgslGlobalDeclData::TypeAlias(value)

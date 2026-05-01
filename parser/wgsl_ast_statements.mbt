@@ -221,7 +221,9 @@ fn WgslDeclParser::parse_statement_local_binding(
     Some(value) => value
     None => return None
   }
-  let tail = parser.parse_typed_initializer_tail()
+  let tail = parser.parse_typed_initializer_tail_checked() catch {
+    _ => return None
+  }
   Some(
     WgslLocalDeclaration::new(
       kind,

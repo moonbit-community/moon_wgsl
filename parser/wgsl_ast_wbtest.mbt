@@ -59,6 +59,33 @@ test "strict WGSL translation unit rejects unparsed declarations" {
 }
 
 ///|
+test "strict WGSL translation unit rejects malformed typed initializer tails" {
+  let sources = [
+    (
+      #|const VALUE: = 1u;
+    ),
+    (
+      #|@group(0) @binding(0) var<uniform> globals: ;
+    ),
+    (
+      #|override FLAG: bool = ;
+    ),
+    (
+      #|const_assert;
+    ),
+  ]
+  for source in sources {
+    let mut failed = false
+    ignore(parse_wgsl_translation_unit_strict(source)) catch {
+      _ => failed = true
+    }
+    guard failed is true else {
+      abort("expected strict parser failure for \{source}")
+    }
+  }
+}
+
+///|
 test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   let source =
     #|struct Vertex {
