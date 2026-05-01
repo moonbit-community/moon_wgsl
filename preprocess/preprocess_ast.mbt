@@ -298,65 +298,112 @@ fn preprocess_source_line_text_end(text : String, line_start : Int) -> Int {
 }
 
 ///|
+fn preprocess_replace_shader_defs_in_text(
+  text : String,
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+) -> String {
+  let mut out = ""
+  let mut line_start = 0
+  while line_start < text.length() {
+    let line_text_end = preprocess_source_line_text_end(text, line_start)
+    let line_end = if line_text_end < text.length() {
+      line_text_end + 1
+    } else {
+      line_text_end
+    }
+    let line = text[line_start:line_text_end].to_owned()
+    out = out + replace_shader_defs_in_line(line, shader_defs)
+    if line_end > line_text_end {
+      out = out + "\n"
+    }
+    line_start = line_end
+  }
+  out
+}
+
+///|
+fn preprocess_pad_rewritten_source_item(
+  rewritten : String,
+  reference : String,
+) -> String {
+  let mut out = ""
+  let mut rewritten_line_start = 0
+  let mut reference_line_start = 0
+  while rewritten_line_start < rewritten.length() {
+    let rewritten_line_text_end = preprocess_source_line_text_end(
+      rewritten, rewritten_line_start,
+    )
+    let rewritten_line_end = if rewritten_line_text_end < rewritten.length() {
+      rewritten_line_text_end + 1
+    } else {
+      rewritten_line_text_end
+    }
+    let reference_line_text_end = preprocess_source_line_text_end(
+      reference, reference_line_start,
+    )
+    let reference_line_end = if reference_line_text_end < reference.length() {
+      reference_line_text_end + 1
+    } else {
+      reference_line_text_end
+    }
+    let rewritten_line = rewritten[rewritten_line_start:rewritten_line_text_end].to_owned()
+    let reference_line = reference[reference_line_start:reference_line_text_end].to_owned()
+    out = out + rewritten_line
+    let diff = utf8_byte_length(reference_line) -
+      utf8_byte_length(rewritten_line)
+    if diff > 0 {
+      out = out + spaces(diff)
+    }
+    if rewritten_line_end > rewritten_line_text_end {
+      out = out + "\n"
+    }
+    rewritten_line_start = rewritten_line_end
+    reference_line_start = reference_line_end
+  }
+  out
+}
+
+///|
 fn preprocess_rewrite_source_item(
   item : WgslPreprocessItem,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   declared_imports : Array[DeclaredImportBinding],
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
-  let mut out = ""
-  let mut virtual_offset = item.start
-  let mut line_start = 0
-  while line_start < item.original_text.length() {
-    let line_text_end = preprocess_source_line_text_end(
-      item.original_text,
-      line_start,
-    )
-    let line_end = if line_text_end < item.original_text.length() {
-      line_text_end + 1
-    } else {
-      line_text_end
-    }
-    let original_line = item.original_text[line_start:line_text_end].to_owned()
-    let cleaned_line = item.cleaned_text[line_start:line_text_end].to_owned()
-    let replaced_original = replace_shader_defs_in_line(
-      original_line, shader_defs,
-    )
-    let replaced_decommented = replace_shader_defs_in_line(
-      cleaned_line, shader_defs,
-    )
-    let ignored_imports : Array[ImportDefWithOffset] = []
-    let item_replaced_line = substitute_identifiers(
-      replaced_original, virtual_offset, declared_imports, ignored_imports, true,
+  let replaced_original = preprocess_replace_shader_defs_in_text(
+    item.original_text,
+    shader_defs,
+  )
+  let replaced_decommented = preprocess_replace_shader_defs_in_text(
+    item.cleaned_text,
+    shader_defs,
+  )
+  let ignored_imports : Array[ImportDefWithOffset] = []
+  let rewritten_original = substitute_identifiers(
+    replaced_original,
+    item.start,
+    declared_imports,
+    ignored_imports,
+    true,
+  ) catch {
+    AmbiguousImport(position) =>
+      raise PreprocessError::ImportParseError(
+        "Ambiguous import path for item", position,
+      )
+  }
+  ignore(
+    substitute_identifiers(
+      replaced_decommented,
+      item.start,
+      declared_imports,
+      used_imports,
+      false,
     ) catch {
       AmbiguousImport(position) =>
         raise PreprocessError::ImportParseError(
           "Ambiguous import path for item", position,
         )
-    }
-    ignore(
-      substitute_identifiers(
-        replaced_decommented, virtual_offset, declared_imports, used_imports, false,
-      ) catch {
-        AmbiguousImport(position) =>
-          raise PreprocessError::ImportParseError(
-            "Ambiguous import path for item", position,
-          )
-      },
-    )
-    out = out + item_replaced_line
-    let diff = utf8_byte_length(cleaned_line) -
-      utf8_byte_length(item_replaced_line)
-    if diff > 0 {
-      out = out + spaces(diff)
-    }
-    if line_end > line_text_end {
-      out = out + "\n"
-      virtual_offset = virtual_offset + utf8_byte_length(replaced_original) + 1
-    } else {
-      virtual_offset = virtual_offset + utf8_byte_length(replaced_original)
-    }
-    line_start = line_end
-  }
-  out
+    },
+  )
+  preprocess_pad_rewritten_source_item(rewritten_original, replaced_decommented)
 }

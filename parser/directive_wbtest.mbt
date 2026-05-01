@@ -175,22 +175,6 @@ test "WGSL preprocessor directive syntax parser extracts names and comparisons" 
 }
 
 ///|
-test "WGSL identifier reference parser marks import substitution positions" {
-  let references = parse_wgsl_identifier_references(
-    "@group(0) foo.bar Baz::Qux",
-  )
-  debug_inspect(references.length(), content="4")
-  debug_inspect(references[0].text, content="\"group\"")
-  debug_inspect(references[0].substitution_allowed, content="false")
-  debug_inspect(references[1].text, content="\"foo\"")
-  debug_inspect(references[1].substitution_allowed, content="true")
-  debug_inspect(references[2].text, content="\"bar\"")
-  debug_inspect(references[2].substitution_allowed, content="false")
-  debug_inspect(references[3].text, content="\"Baz::Qux\"")
-  debug_inspect(references[3].substitution_allowed, content="true")
-}
-
-///|
 test "WGSL template const reference parser preserves naga-oil boundaries" {
   let value_defines : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
   value_defines.set("VALUE", 1)

@@ -170,9 +170,26 @@ test "naga_oil wb: parse_imports collects import blocks with raw brace counts" {
 }
 
 ///|
-test "naga_oil wb: substitute_identifiers sees numeric suffix letters" {
+test "AST import substitution does not rewrite numeric literal suffixes" {
   let output = substitute_snapshot("#import math::u\n", "let x = 1u;\n")
-  debug_inspect(output.contains("1uX_naga_oil_mod_XNVQXI"), content="true")
+  debug_inspect(output.contains("1uX_naga_oil_mod_XNVQXI"), content="false")
+}
+
+///|
+test "AST import substitution rewrites full declaration references only" {
+  let output = substitute_snapshot(
+    "#import math::{mix_value, Value}\n",
+    (
+      #|fn entry(input: Value) -> f32 {
+      #|  let local = mix_value(input.value);
+      #|  return local;
+      #|}
+      #|,
+    ),
+  )
+  debug_inspect(output.contains("ValueX_naga_oil_mod_X"), content="true")
+  debug_inspect(output.contains("mix_valueX_naga_oil_mod_X"), content="true")
+  debug_inspect(output.contains(".valueX_naga_oil_mod"), content="false")
 }
 
 ///|

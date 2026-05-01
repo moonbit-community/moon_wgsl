@@ -191,6 +191,85 @@ fn used_imports_record(
 }
 
 ///|
+priv struct WgslImportRewriteNode {
+  start : Int
+  end : Int
+  replacement : String
+}
+
+///|
+fn compare_wgsl_import_rewrite_nodes(
+  lhs : WgslImportRewriteNode,
+  rhs : WgslImportRewriteNode,
+) -> Int {
+  let start_compare = lhs.start - rhs.start
+  if start_compare != 0 {
+    return start_compare
+  }
+  lhs.end - rhs.end
+}
+
+///|
+fn rewrite_wgsl_import_nodes(
+  source : String,
+  nodes : Array[WgslImportRewriteNode],
+) -> String {
+  if nodes.length() == 0 {
+    return source
+  }
+  nodes.sort_by(compare_wgsl_import_rewrite_nodes)
+  let mut output = ""
+  let mut copy_start = 0
+  for node in nodes {
+    if node.start < copy_start {
+      continue
+    }
+    output = output + source[copy_start:node.start].to_owned()
+    output = output + node.replacement
+    copy_start = node.end
+  }
+  output + source[copy_start:source.length()].to_owned()
+}
+
+///|
+fn imported_identifier_replacement(
+  ident : String,
+  token_byte_pos : Int,
+  declared_imports : Array[DeclaredImportBinding],
+  used_imports : Array[ImportDefWithOffset],
+  allow_ambiguous : Bool,
+) -> String raise SubstituteIdentifiersError {
+  let (first, residual) = match split_once_identifier(ident) {
+    Some(parts) => parts
+    None => (ident, "")
+  }
+  let full_paths = match declared_imports_get_paths(declared_imports, first) {
+    Some(paths) => paths
+    None => [first]
+  }
+  if !allow_ambiguous && full_paths.length() > 1 {
+    raise AmbiguousImport(token_byte_pos)
+  }
+  let mut replacement = ""
+  for full_path_base in full_paths {
+    let full_path = if residual != "" {
+      "\{full_path_base}::\{residual}"
+    } else {
+      full_path_base
+    }
+    if split_last_identifier(full_path) is Some((module_path, item_name)) {
+      used_imports_record(used_imports, module_path, item_name, token_byte_pos)
+      replacement = replacement + item_name + decorate(module_path)
+    } else if full_path.contains("\"") {
+      replacement = replacement + ident
+    } else {
+      replacement = replacement + full_path
+    }
+  }
+  replacement
+}
+
+///|
 pub fn substitute_identifiers(
   input : String,
   offset : Int,
@@ -198,55 +277,30 @@ pub fn substitute_identifiers(
   used_imports : Array[ImportDefWithOffset],
   allow_ambiguous : Bool,
 ) -> String raise SubstituteIdentifiersError {
-  let mut output = ""
-  let mut copy_start = 0
-
-  for reference in parse_wgsl_identifier_references(input) {
-    output = output + input[copy_start:reference.start].to_owned()
-    copy_start = reference.end
-    let ident = reference.text
-    if !reference.substitution_allowed {
-      output = output + ident
-      continue
-    }
-    let token_byte_pos = utf8_byte_length(input[:reference.start].to_owned())
-    let (first, residual) = match split_once_identifier(ident) {
-      Some(parts) => parts
-      None => (ident, "")
-    }
-    let full_paths = match declared_imports_get_paths(declared_imports, first) {
-      Some(paths) => paths
-      None => [first]
-    }
-    if !allow_ambiguous && full_paths.length() > 1 {
-      raise AmbiguousImport(offset + token_byte_pos)
-    }
-
-    for full_path_base in full_paths {
-      let full_path = if residual != "" {
-        "\{full_path_base}::\{residual}"
-      } else {
-        full_path_base
-      }
-
-      if split_last_identifier(full_path) is Some((module_path, item_name)) {
-        used_imports_record(
-          used_imports,
-          module_path,
-          item_name,
-          offset + token_byte_pos,
-        )
-        output = output + item_name + decorate(module_path)
-      } else if full_path.contains("\"") {
-        output = output + ident
-      } else {
-        output = output + full_path
+  let nodes : Array[WgslImportRewriteNode] = []
+  let unit = parse_wgsl_translation_unit(input)
+  for decl in unit.declarations {
+    let identifiers : Array[WgslIdent] = []
+    collect_wgsl_decl_identifier_nodes(decl.data, identifiers)
+    for ident in identifiers {
+      let token_byte_pos = utf8_byte_length(input[:ident.start].to_owned())
+      let replacement = imported_identifier_replacement(
+        ident.name,
+        offset + token_byte_pos,
+        declared_imports,
+        used_imports,
+        allow_ambiguous,
+      )
+      if replacement != ident.name {
+        nodes.push(WgslImportRewriteNode::{
+          start: ident.start,
+          end: ident.end,
+          replacement,
+        })
       }
     }
   }
-  output = output + input[copy_start:input.length()].to_owned()
-
-  output
+  rewrite_wgsl_import_nodes(input, nodes)
 }
 
 ///|

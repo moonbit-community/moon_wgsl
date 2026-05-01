@@ -883,11 +883,12 @@ test "naga_oil: shader-def replacement width advances later diagnostics" {
   let shader_defs = empty_shader_defs()
   shader_defs.set("LONG", @common.ShaderDefValue::UInt(1234567890U))
   let _ = @preprocess.Preprocessor::default().preprocess(
-    "#import a::Thing\n#import b::Thing\nlet x = #LONG;\nThing\n", shader_defs,
+    "#import a::Thing\n#import b::Thing\nfn entry() -> u32 {\n  let x = #LONG;\n  let y: Thing;\n}\n",
+    shader_defs,
   ) catch {
     @preprocess.PreprocessError::ImportParseError(message, offset) => {
       debug_inspect(message, content="\"Ambiguous import path for item\"")
-      debug_inspect(offset, content="54")
+      debug_inspect(offset, content="85")
       return
     }
     _ => abort("expected ambiguous import parse error")

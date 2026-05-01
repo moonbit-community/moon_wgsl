@@ -250,17 +250,21 @@ fn metadata_collect_source_item(
       line_text_end
     }
     let line = item.cleaned_text[line_start:line_text_end].to_owned()
-    let offset = item.start +
-      utf8_byte_length(item.cleaned_text[0:line_start].to_owned())
     collect_effective_def_names(line, effective_defs)
-    ignore(
-      substitute_identifiers(line, offset, declared_imports, used_imports, true) catch {
-        AmbiguousImport(position) =>
-          raise MetadataError::ImportParseError(
-            "Ambiguous import path for item", position,
-          )
-      },
-    )
     line_start = line_end
   }
+  ignore(
+    substitute_identifiers(
+      item.cleaned_text,
+      item.start,
+      declared_imports,
+      used_imports,
+      true,
+    ) catch {
+      AmbiguousImport(position) =>
+        raise MetadataError::ImportParseError(
+          "Ambiguous import path for item", position,
+        )
+    },
+  )
 }
