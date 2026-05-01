@@ -22,16 +22,16 @@ pub fn Preprocessor::preprocess(
   let used_imports : Array[ImportDefWithOffset] = []
   let scope = Scope::new()
   let mut final_string = ""
-  for item in parse_wgsl_preprocess_items(source) {
+  for item in parse_wgsl_directive_scan_items(source) {
     let offset = item.start
     match item.kind {
-      WgslPreprocessItemKind::GlslVersion(version) => {
+      WgslDirectiveScanItemKind::GlslVersion(version) => {
         if version != "440" && version != "450" {
           raise PreprocessError::GlslInvalidVersion(offset)
         }
         final_string = final_string + preprocess_blank_text(item.original_text)
       }
-      WgslPreprocessItemKind::Directive(directive) => {
+      WgslDirectiveScanItemKind::Directive(directive) => {
         let (is_scope, _) = preprocess_check_scope_directive(
           shader_defs,
           directive,
@@ -71,7 +71,7 @@ pub fn Preprocessor::preprocess(
             preprocess_blank_text(item.original_text)
         }
       }
-      WgslPreprocessItemKind::Source =>
+      WgslDirectiveScanItemKind::Source =>
         if scope.active() {
           final_string = final_string +
             preprocess_rewrite_source_item(

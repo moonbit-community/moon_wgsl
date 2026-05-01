@@ -650,6 +650,91 @@ test "WGSL statement expression refs skip local declarations and member access" 
 }
 
 ///|
+test "WGSL expression refs expose structured expression root" {
+  let source =
+    #|fn demo(input: Vertex, index: u32) -> f32 {
+    #|  return compute(input.values[index] + 1.0).x;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let expr = function.body.statements[0].expression_refs[0]
+  guard expr.root is Some(root) else { abort("expected expression root") }
+  debug_inspect(
+    function.body.statements[0].expressions.map(fn(item) { item.role }),
+    content=(
+      #|[ReturnValue]
+    ),
+  )
+  debug_inspect(
+    root.kind,
+    content=(
+      #|Member(
+      #|  {
+      #|    kind: Call(
+      #|      {
+      #|        kind: Identifier({ name: "compute", start: 53, end: 60 }),
+      #|        text: "compute",
+      #|        start: 53,
+      #|        end: 60,
+      #|      },
+      #|      [
+      #|        {
+      #|          kind: Binary(
+      #|            "+",
+      #|            {
+      #|              kind: Index(
+      #|                {
+      #|                  kind: Member(
+      #|                    {
+      #|                      kind: Identifier({ name: "input", start: 61, end: 66 }),
+      #|                      text: "input",
+      #|                      start: 61,
+      #|                      end: 66,
+      #|                    },
+      #|                    { name: "values", start: 67, end: 73 },
+      #|                  ),
+      #|                  text: "input.values",
+      #|                  start: 61,
+      #|                  end: 73,
+      #|                },
+      #|                {
+      #|                  kind: Identifier({ name: "index", start: 74, end: 79 }),
+      #|                  text: "index",
+      #|                  start: 74,
+      #|                  end: 79,
+      #|                },
+      #|              ),
+      #|              text: "input.values[index]",
+      #|              start: 61,
+      #|              end: 80,
+      #|            },
+      #|            {
+      #|              kind: Literal({ kind: FloatLiteral, text: "1.0", start: 83, end: 86 }),
+      #|              text: "1.0",
+      #|              start: 83,
+      #|              end: 86,
+      #|            },
+      #|          ),
+      #|          text: "input.values[index] + 1.0",
+      #|          start: 61,
+      #|          end: 86,
+      #|        },
+      #|      ],
+      #|    ),
+      #|    text: "compute(input.values[index] + 1.0)",
+      #|    start: 53,
+      #|    end: 87,
+      #|  },
+      #|  { name: "x", start: 88, end: 89 },
+      #|)
+    ),
+  )
+}
+
+///|
 test "WGSL global declaration identifier collection excludes locals" {
   let source =
     #|alias Alias = vec4<f32>;

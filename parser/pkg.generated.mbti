@@ -17,6 +17,8 @@ pub fn parse_wgsl_directive_line(String) -> @ast.WgslDirective?
 
 pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
 
+pub fn parse_wgsl_directive_scan_items(String, include_glsl_version? : Bool) -> Array[WgslDirectiveScanItem]
+
 pub fn parse_wgsl_import_alias_prefix(String) -> String
 
 pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
@@ -69,6 +71,21 @@ pub suberror WgslParseError {
 pub fn WgslParseError::message(Self) -> String
 
 // Types and methods
+pub struct WgslDirectiveScanItem {
+  kind : WgslDirectiveScanItemKind
+  start : Int
+  end : Int
+  required_tail_space : Bool
+  original_text : String
+  cleaned_text : String
+} derive(@debug.Debug)
+
+pub enum WgslDirectiveScanItemKind {
+  Source
+  GlslVersion(String)
+  Directive(@ast.WgslDirective)
+} derive(@debug.Debug)
+
 pub struct WgslShaderDefComparison {
   def : String
   operator : String

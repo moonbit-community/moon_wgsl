@@ -33,9 +33,14 @@ fn Composer::preprocess_wgsl_source_with_path(
     current_rel_path, implicit_requests, alias_redirects, session, active_defs,
   )
   merged = merged + implicit_imports
-  for decl in parse_wgsl_translation_unit(prepared.active_source).declarations {
-    match decl.data {
-      WgslGlobalDeclData::Import(import_directive) => {
+  for
+    item in parse_wgsl_directive_scan_items(
+      prepared.active_source,
+      include_glsl_version=false,
+    ) {
+    match item.kind {
+      WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind ==
+        WgslDirectiveKind::Import => {
         let requests = self.build_wgsl_import_requests(
           current_rel_path,
           import_directive.tail,
@@ -47,16 +52,19 @@ fn Composer::preprocess_wgsl_source_with_path(
         )
         merged = "\{merged}\{composed_imports}"
       }
-      WgslGlobalDeclData::Directive(directive) =>
+      WgslDirectiveScanItemKind::Directive(directive) =>
         match directive.kind {
           WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define => ()
           WgslDirectiveKind::Other(_) =>
-            if parse_glsl_version_directive(decl.text) is None {
-              merged = "\{merged}\{decl.text}"
+            if parse_glsl_version_directive(item.cleaned_text) is None {
+              merged = "\{merged}\{item.original_text}"
             }
-          _ => merged = "\{merged}\{decl.text}"
+          _ => merged = "\{merged}\{item.original_text}"
         }
-      _ => merged = "\{merged}\{decl.text}"
+      WgslDirectiveScanItemKind::Source =>
+        merged = "\{merged}\{item.original_text}"
+      WgslDirectiveScanItemKind::GlslVersion(_) =>
+        merged = "\{merged}\{item.original_text}"
     }
   }
   finalize_wgsl_composed_source(

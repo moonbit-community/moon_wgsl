@@ -112,10 +112,44 @@ pub fn WgslExprToken::new(
 }
 
 ///|
+pub(all) enum WgslExprNodeKind {
+  Identifier(WgslIdent)
+  Literal(WgslExprToken)
+  Token(WgslExprToken)
+  Unary(String, WgslExprNode)
+  Binary(String, WgslExprNode, WgslExprNode)
+  Call(WgslExprNode, Array[WgslExprNode])
+  PathAccess(WgslExprNode, WgslIdent)
+  Member(WgslExprNode, WgslIdent)
+  Index(WgslExprNode, WgslExprNode)
+  Group(WgslExprNode)
+  Sequence(Array[WgslExprNode])
+} derive(Debug)
+
+///|
+pub struct WgslExprNode {
+  kind : WgslExprNodeKind
+  text : String
+  start : Int
+  end : Int
+} derive(Debug)
+
+///|
+pub fn WgslExprNode::new(
+  kind : WgslExprNodeKind,
+  text : String,
+  start : Int,
+  end : Int,
+) -> WgslExprNode {
+  WgslExprNode::{ kind, text, start, end }
+}
+
+///|
 pub struct WgslExprRef {
   text : String
   tokens : Array[WgslExprToken]
   identifiers : Array[WgslIdent]
+  root : WgslExprNode?
   start : Int
   end : Int
 } derive(Debug)
@@ -125,10 +159,11 @@ pub fn WgslExprRef::new(
   text : String,
   tokens : Array[WgslExprToken],
   identifiers : Array[WgslIdent],
+  root : WgslExprNode?,
   start : Int,
   end : Int,
 ) -> WgslExprRef {
-  WgslExprRef::{ text, tokens, identifiers, start, end }
+  WgslExprRef::{ text, tokens, identifiers, root, start, end }
 }
 
 ///|
@@ -289,6 +324,32 @@ pub fn WgslLocalDeclaration::new(
 }
 
 ///|
+pub(all) enum WgslStatementExpressionRole {
+  Condition
+  ReturnValue
+  ForHeader
+  SwitchSelector
+  CaseSelector
+  BreakIf
+  ConstAssertValue
+  ExpressionValue
+} derive(Eq, Debug)
+
+///|
+pub struct WgslStatementExpression {
+  role : WgslStatementExpressionRole
+  expression : WgslExprRef
+} derive(Debug)
+
+///|
+pub fn WgslStatementExpression::new(
+  role : WgslStatementExpressionRole,
+  expression : WgslExprRef,
+) -> WgslStatementExpression {
+  WgslStatementExpression::{ role, expression }
+}
+
+///|
 pub struct WgslStatement {
   kind : WgslStatementKind
   text : String
@@ -298,6 +359,7 @@ pub struct WgslStatement {
   local_bindings : Array[WgslLocalDeclaration]
   exported_local_bindings : Array[WgslLocalDeclaration]
   expression_refs : Array[WgslExprRef]
+  expressions : Array[WgslStatementExpression]
 } derive(Debug)
 
 ///|
@@ -310,6 +372,7 @@ pub fn WgslStatement::new(
   local_bindings : Array[WgslLocalDeclaration],
   exported_local_bindings : Array[WgslLocalDeclaration],
   expression_refs : Array[WgslExprRef],
+  expressions : Array[WgslStatementExpression],
 ) -> WgslStatement {
   WgslStatement::{
     kind,
@@ -320,6 +383,7 @@ pub fn WgslStatement::new(
     local_bindings,
     exported_local_bindings,
     expression_refs,
+    expressions,
   }
 }
 

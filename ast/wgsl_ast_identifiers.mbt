@@ -18,10 +18,63 @@ fn collect_wgsl_expr_ref_identifier_nodes(
 ) -> Unit {
   match expr_ref {
     Some(expr) =>
-      for ident in expr.identifiers {
-        nodes.push(ident)
+      match expr.root {
+        Some(root) => collect_wgsl_expr_node_identifier_nodes(root, [], nodes)
+        None =>
+          for ident in expr.identifiers {
+            nodes.push(ident)
+          }
       }
     None => ()
+  }
+}
+
+///|
+fn collect_wgsl_expr_node_identifier_nodes(
+  node : WgslExprNode,
+  active_local_names : Array[String],
+  nodes : Array[WgslIdent],
+) -> Unit {
+  match node.kind {
+    Identifier(ident) =>
+      if !wgsl_name_list_contains(active_local_names, ident.name) {
+        nodes.push(ident)
+      }
+    Literal(_) | Token(_) => ()
+    Unary(_, expr) =>
+      collect_wgsl_expr_node_identifier_nodes(expr, active_local_names, nodes)
+    Binary(_, lhs, rhs) => {
+      collect_wgsl_expr_node_identifier_nodes(lhs, active_local_names, nodes)
+      collect_wgsl_expr_node_identifier_nodes(rhs, active_local_names, nodes)
+    }
+    Call(callee, args) => {
+      collect_wgsl_expr_node_identifier_nodes(callee, active_local_names, nodes)
+      for arg in args {
+        collect_wgsl_expr_node_identifier_nodes(arg, active_local_names, nodes)
+      }
+    }
+    PathAccess(base, segment) => {
+      let full_name = if base.text == "" {
+        segment.name
+      } else {
+        "\{base.text}::\{segment.name}"
+      }
+      if !wgsl_name_list_contains(active_local_names, full_name) {
+        nodes.push(WgslIdent::new(full_name, base.start, segment.end))
+      }
+    }
+    Member(base, _) =>
+      collect_wgsl_expr_node_identifier_nodes(base, active_local_names, nodes)
+    Index(base, index) => {
+      collect_wgsl_expr_node_identifier_nodes(base, active_local_names, nodes)
+      collect_wgsl_expr_node_identifier_nodes(index, active_local_names, nodes)
+    }
+    Group(expr) =>
+      collect_wgsl_expr_node_identifier_nodes(expr, active_local_names, nodes)
+    Sequence(items) =>
+      for item in items {
+        collect_wgsl_expr_node_identifier_nodes(item, active_local_names, nodes)
+      }
   }
 }
 
@@ -33,10 +86,17 @@ fn collect_wgsl_expr_ref_identifier_nodes_with_scope(
 ) -> Unit {
   match expr_ref {
     Some(expr) =>
-      for ident in expr.identifiers {
-        if !wgsl_name_list_contains(active_local_names, ident.name) {
-          nodes.push(ident)
-        }
+      match expr.root {
+        Some(root) =>
+          collect_wgsl_expr_node_identifier_nodes(
+            root, active_local_names, nodes,
+          )
+        None =>
+          for ident in expr.identifiers {
+            if !wgsl_name_list_contains(active_local_names, ident.name) {
+              nodes.push(ident)
+            }
+          }
       }
     None => ()
   }
@@ -228,9 +288,7 @@ pub fn collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::TypeAlias(alias_decl) =>
       collect_wgsl_type_ref_identifier_nodes(alias_decl.ty_ref, nodes)
     WgslGlobalDeclData::ConstAssert(expr) =>
-      for ident in expr.identifiers {
-        nodes.push(ident)
-      }
+      collect_wgsl_expr_ref_identifier_nodes(Some(expr), nodes)
     WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) | Raw => ()
   }
 }

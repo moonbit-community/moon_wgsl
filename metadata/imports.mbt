@@ -15,7 +15,6 @@ using @common {
 using @ast {
   type WgslDirective,
   type WgslDirectiveKind,
-  type WgslGlobalDeclData,
   type WgslIdent,
   collect_wgsl_decl_identifier_nodes,
 }
@@ -23,9 +22,6 @@ using @ast {
 ///|
 using @lex {
   type WgslToken,
-  naga_oil_raw_import_brace_balance_next,
-  replace_comments_naga_oil,
-  source_lines,
   split_last_identifier,
   tokenize,
   trim_trailing_semicolons,
@@ -39,16 +35,17 @@ using @lex {
 ///|
 using @parser {
   type ParseImportsError,
+  type WgslDirectiveScanItem,
+  type WgslDirectiveScanItemKind,
   type WgslSourceDirectiveItemKind,
   parse_wgsl_directive_identifier,
-  parse_wgsl_directive_line_at,
+  parse_wgsl_directive_scan_items,
   parse_wgsl_import_spec_is_empty_or_final_semicolon,
   parse_wgsl_import_targets,
   parse_wgsl_shader_def_references,
   parse_wgsl_source_directive_items,
   parse_wgsl_translation_unit,
   wgsl_required_space_word_tail,
-  wgsl_directive_line_required_tail_space,
   wgsl_effective_directive_kind,
   wgsl_effective_directive_tail,
   wgsl_shader_def_comparison_def,

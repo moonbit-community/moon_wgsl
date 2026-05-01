@@ -70,15 +70,16 @@ using @resolver {
 }
 
 ///|
-using @ast {type WgslDirectiveKind, type WgslGlobalDeclData}
+using @ast {type WgslDirectiveKind}
 
 ///|
 using @parser {
   type WgslParseError,
+  type WgslDirectiveScanItemKind,
   parse_glsl_version_directive,
   parse_wgsl_import_spec_is_empty_or_final_semicolon,
   parse_wgsl_import_targets,
-  parse_wgsl_translation_unit,
+  parse_wgsl_directive_scan_items,
   parse_wgsl_translation_unit_strict,
 }
 

@@ -449,14 +449,19 @@ fn wgsl_statement_push_expr_ref(
   tokens : Array[WgslToken],
   start : Int,
   end_ : Int,
+  role : WgslStatementExpressionRole,
   expression_refs : Array[WgslExprRef],
+  expressions : Array[WgslStatementExpression],
 ) -> Unit {
   guard start >= 0 && end_ > start && end_ <= tokens.length() else { return }
   let expr_start = tokens[start].pos()
   let expr_end = tokens[end_ - 1].end()
   match
     parse_wgsl_expr_ref_text(owner.slice(expr_start, expr_end), expr_start) {
-    Some(expr) => expression_refs.push(expr)
+    Some(expr) => {
+      expression_refs.push(expr)
+      expressions.push(WgslStatementExpression::new(role, expr))
+    }
     None => ()
   }
 }
@@ -504,6 +509,7 @@ fn wgsl_statement_collect_condition_expr(
   tokens : Array[WgslToken],
   keyword_index : Int,
   expression_refs : Array[WgslExprRef],
+  expressions : Array[WgslStatementExpression],
 ) -> Int {
   let expr_start = keyword_index + 1
   guard expr_start < tokens.length() else { return expr_start }
@@ -516,7 +522,9 @@ fn wgsl_statement_collect_condition_expr(
           tokens,
           expr_start + 1,
           close_index,
+          WgslStatementExpressionRole::Condition,
           expression_refs,
+          expressions,
         )
         return close_index + 1
       }
@@ -531,7 +539,13 @@ fn wgsl_statement_collect_condition_expr(
       )
       let expr_end = if else_index >= 0 { else_index } else { tokens.length() }
       wgsl_statement_push_expr_ref(
-        owner, tokens, expr_start, expr_end, expression_refs,
+        owner,
+        tokens,
+        expr_start,
+        expr_end,
+        WgslStatementExpressionRole::Condition,
+        expression_refs,
+        expressions,
       )
       expr_end
     }
@@ -544,6 +558,7 @@ fn wgsl_statement_collect_for_header_exprs(
   tokens : Array[WgslToken],
   for_index : Int,
   expression_refs : Array[WgslExprRef],
+  expressions : Array[WgslStatementExpression],
 ) -> Int {
   let header_start = for_index + 1
   guard header_start < tokens.length() else { return header_start }
@@ -571,7 +586,9 @@ fn wgsl_statement_collect_for_header_exprs(
       tokens,
       header_start + 1,
       first_end,
+      WgslStatementExpressionRole::ForHeader,
       expression_refs,
+      expressions,
     )
   }
   let second_start = first_end + 1
@@ -580,19 +597,33 @@ fn wgsl_statement_collect_for_header_exprs(
   )
   if second_end < 0 {
     wgsl_statement_push_expr_ref(
-      owner, tokens, second_start, header_end, expression_refs,
+      owner,
+      tokens,
+      second_start,
+      header_end,
+      WgslStatementExpressionRole::ForHeader,
+      expression_refs,
+      expressions,
     )
     return header_end + 1
   }
   wgsl_statement_push_expr_ref(
-    owner, tokens, second_start, second_end, expression_refs,
+    owner,
+    tokens,
+    second_start,
+    second_end,
+    WgslStatementExpressionRole::ForHeader,
+    expression_refs,
+    expressions,
   )
   wgsl_statement_push_expr_ref(
     owner,
     tokens,
     second_end + 1,
     header_end,
+    WgslStatementExpressionRole::ForHeader,
     expression_refs,
+    expressions,
   )
   header_end + 1
 }
@@ -603,6 +634,7 @@ fn collect_wgsl_statement_expression_refs(
   tokens : Array[WgslToken],
   kind : WgslStatementKind,
   expression_refs : Array[WgslExprRef],
+  expressions : Array[WgslStatementExpression],
 ) -> Unit {
   match kind {
     LocalDeclaration | Empty | Continue | Discard | Compound => return
@@ -614,7 +646,9 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             2,
             tokens.length(),
+            WgslStatementExpressionRole::BreakIf,
             expression_refs,
+            expressions,
           )
         _ => ()
       }
@@ -626,7 +660,9 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         1,
         tokens.length(),
+        WgslStatementExpressionRole::ReturnValue,
         expression_refs,
+        expressions,
       )
       return
     }
@@ -635,7 +671,13 @@ fn collect_wgsl_statement_expression_refs(
         let close_index = wgsl_statement_delimited_end(tokens, 1, 40, 41)
         if close_index > 1 {
           wgsl_statement_push_expr_ref(
-            owner, tokens, 2, close_index, expression_refs,
+            owner,
+            tokens,
+            2,
+            close_index,
+            WgslStatementExpressionRole::ConstAssertValue,
+            expression_refs,
+            expressions,
           )
           return
         }
@@ -645,7 +687,9 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         1,
         tokens.length(),
+        WgslStatementExpressionRole::ConstAssertValue,
         expression_refs,
+        expressions,
       )
       return
     }
@@ -654,7 +698,7 @@ fn collect_wgsl_statement_expression_refs(
         match tokens[i] {
           WgslToken::Identifier("for", _) => {
             wgsl_statement_collect_for_header_exprs(
-              owner, tokens, i, expression_refs,
+              owner, tokens, i, expression_refs, expressions,
             )
             |> ignore
             return
@@ -670,7 +714,7 @@ fn collect_wgsl_statement_expression_refs(
           | WgslToken::Identifier("while", _)
           | WgslToken::Identifier("switch", _) =>
             i = wgsl_statement_collect_condition_expr(
-              owner, tokens, i, expression_refs,
+              owner, tokens, i, expression_refs, expressions,
             )
           WgslToken::Identifier("case", _) => {
             let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
@@ -680,7 +724,9 @@ fn collect_wgsl_statement_expression_refs(
               tokens,
               i + 1,
               expr_end,
+              WgslStatementExpressionRole::CaseSelector,
               expression_refs,
+              expressions,
             )
             i = expr_end
           }
@@ -695,7 +741,13 @@ fn collect_wgsl_statement_expression_refs(
           let colon = wgsl_statement_top_level_token_index(tokens, 1, 58)
           let expr_end = if colon >= 0 { colon } else { tokens.length() }
           wgsl_statement_push_expr_ref(
-            owner, tokens, 1, expr_end, expression_refs,
+            owner,
+            tokens,
+            1,
+            expr_end,
+            WgslStatementExpressionRole::CaseSelector,
+            expression_refs,
+            expressions,
           )
           return
         }
@@ -707,7 +759,9 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         0,
         tokens.length(),
+        WgslStatementExpressionRole::ExpressionValue,
         expression_refs,
+        expressions,
       )
       return
     }
@@ -730,6 +784,7 @@ fn wgsl_statement_view_continues_after_block(
 fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   let tokens : Array[WgslToken] = []
   let expression_refs : Array[WgslExprRef] = []
+  let expressions : Array[WgslStatementExpression] = []
   let mut first_identifier : String? = None
   let mut start_pos = -1
   let mut end_pos = -1
@@ -796,13 +851,13 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       self, scope_tokens, is_local_decl, local_bindings,
     )
     collect_wgsl_statement_expression_refs(
-      self, scope_tokens, kind, expression_refs,
+      self, scope_tokens, kind, expression_refs, expressions,
     )
     let blocks = self.collect_statement_blocks(tokens)
     Some(
       WgslStatement::new(
         kind, text, start_pos, end_pos, blocks, local_bindings, exported_local_bindings,
-        expression_refs,
+        expression_refs, expressions,
       ),
     )
   }

@@ -13,9 +13,13 @@ fn try_get_preprocessor_metadata(
   let effective_defs : @hashset.HashSet[String] = @hashset.HashSet::new()
   let mut name : String? = None
 
-  for item in parse_wgsl_metadata_items(cleaned_for_directives) {
+  for
+    item in parse_wgsl_directive_scan_items(
+      cleaned_for_directives,
+      include_glsl_version=false,
+    ) {
     match item.kind {
-      WgslMetadataItemKind::Directive(directive) => {
+      WgslDirectiveScanItemKind::Directive(directive) => {
         let (is_scope, def) = metadata_scope_def_from_directive(
           directive,
           item.required_tail_space,
@@ -59,10 +63,11 @@ fn try_get_preprocessor_metadata(
           )
         }
       }
-      WgslMetadataItemKind::Source =>
+      WgslDirectiveScanItemKind::Source =>
         metadata_collect_source_item(
           item, declared_imports, used_imports, effective_defs,
         )
+      WgslDirectiveScanItemKind::GlslVersion(_) => ()
     }
   }
 

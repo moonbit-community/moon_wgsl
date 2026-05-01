@@ -73,14 +73,37 @@ pub(all) enum WgslDirectiveKind {
   Other(String)
 } derive(Eq, @debug.Debug)
 
+pub struct WgslExprNode {
+  kind : WgslExprNodeKind
+  text : String
+  start : Int
+  end : Int
+} derive(@debug.Debug)
+pub fn WgslExprNode::new(WgslExprNodeKind, String, Int, Int) -> Self
+
+pub(all) enum WgslExprNodeKind {
+  Identifier(WgslIdent)
+  Literal(WgslExprToken)
+  Token(WgslExprToken)
+  Unary(String, WgslExprNode)
+  Binary(String, WgslExprNode, WgslExprNode)
+  Call(WgslExprNode, Array[WgslExprNode])
+  PathAccess(WgslExprNode, WgslIdent)
+  Member(WgslExprNode, WgslIdent)
+  Index(WgslExprNode, WgslExprNode)
+  Group(WgslExprNode)
+  Sequence(Array[WgslExprNode])
+} derive(@debug.Debug)
+
 pub struct WgslExprRef {
   text : String
   tokens : Array[WgslExprToken]
   identifiers : Array[WgslIdent]
+  root : WgslExprNode?
   start : Int
   end : Int
 } derive(@debug.Debug)
-pub fn WgslExprRef::new(String, Array[WgslExprToken], Array[WgslIdent], Int, Int) -> Self
+pub fn WgslExprRef::new(String, Array[WgslExprToken], Array[WgslIdent], WgslExprNode?, Int, Int) -> Self
 
 pub struct WgslExprToken {
   kind : WgslExprTokenKind
@@ -220,8 +243,26 @@ pub struct WgslStatement {
   local_bindings : Array[WgslLocalDeclaration]
   exported_local_bindings : Array[WgslLocalDeclaration]
   expression_refs : Array[WgslExprRef]
+  expressions : Array[WgslStatementExpression]
 } derive(@debug.Debug)
-pub fn WgslStatement::new(WgslStatementKind, String, Int, Int, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef]) -> Self
+pub fn WgslStatement::new(WgslStatementKind, String, Int, Int, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
+
+pub struct WgslStatementExpression {
+  role : WgslStatementExpressionRole
+  expression : WgslExprRef
+} derive(@debug.Debug)
+pub fn WgslStatementExpression::new(WgslStatementExpressionRole, WgslExprRef) -> Self
+
+pub(all) enum WgslStatementExpressionRole {
+  Condition
+  ReturnValue
+  ForHeader
+  SwitchSelector
+  CaseSelector
+  BreakIf
+  ConstAssertValue
+  ExpressionValue
+} derive(Eq, @debug.Debug)
 
 pub(all) enum WgslStatementKind {
   Empty

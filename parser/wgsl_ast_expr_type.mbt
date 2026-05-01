@@ -180,6 +180,441 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
 }
 
 ///|
+priv struct WgslExprNodeParser {
+  source_text : String
+  source_start : Int
+  tokens : Array[WgslExprToken]
+  mut index : Int
+}
+
+///|
+fn WgslExprNodeParser::new(
+  source_text : String,
+  source_start : Int,
+  tokens : Array[WgslExprToken],
+) -> WgslExprNodeParser {
+  WgslExprNodeParser::{ source_text, source_start, tokens, index: 0 }
+}
+
+///|
+fn WgslExprNodeParser::at_end(self : WgslExprNodeParser) -> Bool {
+  self.index >= self.tokens.length()
+}
+
+///|
+fn WgslExprNodeParser::peek(self : WgslExprNodeParser) -> WgslExprToken? {
+  if self.at_end() {
+    None
+  } else {
+    Some(self.tokens[self.index])
+  }
+}
+
+///|
+fn WgslExprNodeParser::node_text(
+  self : WgslExprNodeParser,
+  start : Int,
+  end_ : Int,
+) -> String {
+  let local_start = start - self.source_start
+  let local_end = end_ - self.source_start
+  if local_start < 0 ||
+    local_end < local_start ||
+    local_end > self.source_text.length() {
+    ""
+  } else {
+    self.source_text[local_start:local_end].to_owned()
+  }
+}
+
+///|
+fn WgslExprNodeParser::make_node(
+  self : WgslExprNodeParser,
+  kind : WgslExprNodeKind,
+  start : Int,
+  end_ : Int,
+) -> WgslExprNode {
+  WgslExprNode::new(kind, self.node_text(start, end_), start, end_)
+}
+
+///|
+fn wgsl_expr_token_is_punct(token : WgslExprToken, code : Int) -> Bool {
+  match token.kind {
+    WgslExprTokenKind::Punctuation(actual) => actual == code
+    _ => false
+  }
+}
+
+///|
+fn WgslExprNodeParser::consume_punct(
+  self : WgslExprNodeParser,
+  code : Int,
+) -> Bool {
+  match self.peek() {
+    Some(token) if wgsl_expr_token_is_punct(token, code) => {
+      self.index = self.index + 1
+      true
+    }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_expr_binary_precedence(op : String) -> Int {
+  match op {
+    "||" => 1
+    "&&" => 2
+    "|" => 3
+    "^" => 4
+    "&" => 5
+    "==" | "!=" => 6
+    "<" | ">" | "<=" | ">=" => 7
+    "<<" | ">>" => 8
+    "+" | "-" => 9
+    "*" | "/" | "%" => 10
+    _ => -1
+  }
+}
+
+///|
+fn WgslExprNodeParser::binary_operator_at(
+  self : WgslExprNodeParser,
+) -> (String, Int)? {
+  guard self.index < self.tokens.length() else { return None }
+  let first = self.tokens[self.index]
+  let second = if self.index + 1 < self.tokens.length() {
+    Some(self.tokens[self.index + 1])
+  } else {
+    None
+  }
+  match first.kind {
+    WgslExprTokenKind::Punctuation(124) =>
+      match second {
+        Some(next) if wgsl_expr_token_is_punct(next, 124) => Some(("||", 2))
+        _ => Some(("|", 1))
+      }
+    WgslExprTokenKind::Punctuation(38) =>
+      match second {
+        Some(next) if wgsl_expr_token_is_punct(next, 38) => Some(("&&", 2))
+        _ => Some(("&", 1))
+      }
+    WgslExprTokenKind::Punctuation(61) =>
+      match second {
+        Some(next) if wgsl_expr_token_is_punct(next, 61) => Some(("==", 2))
+        _ => None
+      }
+    WgslExprTokenKind::Punctuation(33) =>
+      match second {
+        Some(next) if wgsl_expr_token_is_punct(next, 61) => Some(("!=", 2))
+        _ => None
+      }
+    WgslExprTokenKind::Punctuation(60) =>
+      match second {
+        Some(next) if wgsl_expr_token_is_punct(next, 61) => Some(("<=", 2))
+        Some(next) if wgsl_expr_token_is_punct(next, 60) => Some(("<<", 2))
+        _ => Some(("<", 1))
+      }
+    WgslExprTokenKind::Punctuation(62) =>
+      match second {
+        Some(next) if wgsl_expr_token_is_punct(next, 61) => Some((">=", 2))
+        Some(next) if wgsl_expr_token_is_punct(next, 62) => Some((">>", 2))
+        _ => Some((">", 1))
+      }
+    WgslExprTokenKind::Punctuation(43) => Some(("+", 1))
+    WgslExprTokenKind::Punctuation(45) => Some(("-", 1))
+    WgslExprTokenKind::Punctuation(42) => Some(("*", 1))
+    WgslExprTokenKind::Punctuation(47) => Some(("/", 1))
+    WgslExprTokenKind::Punctuation(37) => Some(("%", 1))
+    WgslExprTokenKind::Punctuation(94) => Some(("^", 1))
+    _ => None
+  }
+}
+
+///|
+fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? {
+  match self.peek() {
+    Some(token) =>
+      match token.kind {
+        WgslExprTokenKind::Punctuation(33)
+        | WgslExprTokenKind::Punctuation(45)
+        | WgslExprTokenKind::Punctuation(43)
+        | WgslExprTokenKind::Punctuation(42)
+        | WgslExprTokenKind::Punctuation(38)
+        | WgslExprTokenKind::Punctuation(126) => {
+          self.index = self.index + 1
+          let rhs = match self.parse_prefix() {
+            Some(node) => node
+            None =>
+              return Some(
+                self.make_node(
+                  WgslExprNodeKind::Token(token),
+                  token.start,
+                  token.end,
+                ),
+              )
+          }
+          Some(
+            self.make_node(
+              WgslExprNodeKind::Unary(token.text, rhs),
+              token.start,
+              rhs.end,
+            ),
+          )
+        }
+        WgslExprTokenKind::Punctuation(40) => {
+          let start = token.start
+          self.index = self.index + 1
+          let inner = self.parse_sequence_until(41)
+          let end_ = match self.peek() {
+            Some(close) if wgsl_expr_token_is_punct(close, 41) => {
+              self.index = self.index + 1
+              close.end
+            }
+            _ => inner.end
+          }
+          Some(self.make_node(WgslExprNodeKind::Group(inner), start, end_))
+        }
+        WgslExprTokenKind::Identifier => {
+          self.index = self.index + 1
+          Some(
+            self.make_node(
+              WgslExprNodeKind::Identifier(
+                WgslIdent::new(token.text, token.start, token.end),
+              ),
+              token.start,
+              token.end,
+            ),
+          )
+        }
+        WgslExprTokenKind::BoolLiteral(_)
+        | WgslExprTokenKind::UintLiteral(_)
+        | WgslExprTokenKind::IntLiteral(_)
+        | WgslExprTokenKind::FloatLiteral => {
+          self.index = self.index + 1
+          Some(
+            self.make_node(
+              WgslExprNodeKind::Literal(token),
+              token.start,
+              token.end,
+            ),
+          )
+        }
+        _ => {
+          self.index = self.index + 1
+          Some(
+            self.make_node(
+              WgslExprNodeKind::Token(token),
+              token.start,
+              token.end,
+            ),
+          )
+        }
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslExprNodeParser::parse_postfix(
+  self : WgslExprNodeParser,
+  base : WgslExprNode,
+) -> WgslExprNode {
+  let mut node = base
+  while true {
+    match self.peek() {
+      Some(token) if wgsl_expr_token_is_punct(token, 40) => {
+        self.index = self.index + 1
+        let args : Array[WgslExprNode] = []
+        while !self.at_end() {
+          match self.peek() {
+            Some(close) if wgsl_expr_token_is_punct(close, 41) => {
+              self.index = self.index + 1
+              node = self.make_node(
+                WgslExprNodeKind::Call(node, args),
+                node.start,
+                close.end,
+              )
+              break
+            }
+            _ => {
+              args.push(self.parse_sequence_until_any([44, 41]))
+              if self.consume_punct(44) {
+                continue
+              }
+            }
+          }
+        }
+        continue
+      }
+      Some(token) if wgsl_expr_token_is_punct(token, 46) => {
+        self.index = self.index + 1
+        match self.peek() {
+          Some(member_token) if member_token.kind
+            is WgslExprTokenKind::Identifier => {
+            self.index = self.index + 1
+            node = self.make_node(
+              WgslExprNodeKind::Member(
+                node,
+                WgslIdent::new(
+                  member_token.text,
+                  member_token.start,
+                  member_token.end,
+                ),
+              ),
+              node.start,
+              member_token.end,
+            )
+            continue
+          }
+          _ => return node
+        }
+      }
+      Some(token) if wgsl_expr_token_is_punct(token, 58) &&
+        self.index + 1 < self.tokens.length() &&
+        wgsl_expr_token_is_punct(self.tokens[self.index + 1], 58) => {
+        self.index = self.index + 2
+        match self.peek() {
+          Some(segment_token) if segment_token.kind
+            is WgslExprTokenKind::Identifier => {
+            self.index = self.index + 1
+            node = self.make_node(
+              WgslExprNodeKind::PathAccess(
+                node,
+                WgslIdent::new(
+                  segment_token.text,
+                  segment_token.start,
+                  segment_token.end,
+                ),
+              ),
+              node.start,
+              segment_token.end,
+            )
+            continue
+          }
+          _ => {
+            self.index = self.index - 2
+            return node
+          }
+        }
+      }
+      Some(token) if wgsl_expr_token_is_punct(token, 91) => {
+        self.index = self.index + 1
+        let index = self.parse_sequence_until(93)
+        let end_ = match self.peek() {
+          Some(close) if wgsl_expr_token_is_punct(close, 93) => {
+            self.index = self.index + 1
+            close.end
+          }
+          _ => index.end
+        }
+        node = self.make_node(
+          WgslExprNodeKind::Index(node, index),
+          node.start,
+          end_,
+        )
+        continue
+      }
+      _ => return node
+    }
+  }
+  node
+}
+
+///|
+fn WgslExprNodeParser::parse_expression(
+  self : WgslExprNodeParser,
+  min_precedence : Int,
+) -> WgslExprNode? {
+  let prefix = match self.parse_prefix() {
+    Some(value) => value
+    None => return None
+  }
+  let mut lhs = self.parse_postfix(prefix)
+  while true {
+    let (op, consumed) = match self.binary_operator_at() {
+      Some(value) => value
+      None => break
+    }
+    let precedence = wgsl_expr_binary_precedence(op)
+    if precedence < min_precedence {
+      break
+    }
+    self.index = self.index + consumed
+    let rhs = match self.parse_expression(precedence + 1) {
+      Some(value) => value
+      None => break
+    }
+    lhs = self.make_node(
+      WgslExprNodeKind::Binary(op, lhs, rhs),
+      lhs.start,
+      rhs.end,
+    )
+  }
+  Some(lhs)
+}
+
+///|
+fn WgslExprNodeParser::parse_sequence_until_any(
+  self : WgslExprNodeParser,
+  stop_codes : Array[Int],
+) -> WgslExprNode {
+  let nodes : Array[WgslExprNode] = []
+  while !self.at_end() {
+    match self.peek() {
+      Some(token) if token.kind is WgslExprTokenKind::Punctuation(code) &&
+        stop_codes.contains(code) => break
+      _ => ()
+    }
+    match self.parse_expression(0) {
+      Some(node) => nodes.push(node)
+      None => break
+    }
+    if self.consume_punct(44) {
+      continue
+    }
+    match self.peek() {
+      Some(token) if token.kind is WgslExprTokenKind::Punctuation(code) &&
+        stop_codes.contains(code) => break
+      _ => ()
+    }
+  }
+  match nodes {
+    [single] => single
+    [] =>
+      self.make_node(
+        WgslExprNodeKind::Sequence([]),
+        self.source_start,
+        self.source_start,
+      )
+    _ => {
+      let start = nodes[0].start
+      let end_ = nodes[nodes.length() - 1].end
+      self.make_node(WgslExprNodeKind::Sequence(nodes), start, end_)
+    }
+  }
+}
+
+///|
+fn WgslExprNodeParser::parse_sequence_until(
+  self : WgslExprNodeParser,
+  stop_code : Int,
+) -> WgslExprNode {
+  self.parse_sequence_until_any([stop_code])
+}
+
+///|
+fn parse_wgsl_expr_node(
+  text : String,
+  base : Int,
+  tokens : Array[WgslExprToken],
+) -> WgslExprNode? {
+  if tokens.length() == 0 {
+    return None
+  }
+  Some(WgslExprNodeParser::new(text, base, tokens).parse_sequence_until_any([]))
+}
+
+///|
 fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
     text,
@@ -197,11 +632,13 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     expr_tokens,
     identifiers,
   )
+  let root = parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens)
   Some(
     WgslExprRef::new(
       trimmed,
       expr_tokens,
       identifiers,
+      root,
       base + local_start,
       base + local_end,
     ),

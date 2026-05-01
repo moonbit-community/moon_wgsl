@@ -26,9 +26,10 @@ fn wgsl_metadata_first_space_separated_token(text : String) -> String {
 
 ///|
 pub fn wgsl_source_define_import_path(source : String) -> String? {
-  for decl in parse_wgsl_translation_unit(source).declarations {
-    match decl.data {
-      WgslGlobalDeclData::Directive(directive) =>
+  for
+    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+    match item.kind {
+      WgslDirectiveScanItemKind::Directive(directive) =>
         if directive.kind == WgslDirectiveKind::DefineImportPath {
           let raw_name = directive.tail
           let import_path = wgsl_metadata_first_space_separated_token(raw_name)
