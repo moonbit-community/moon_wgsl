@@ -16,3 +16,6 @@ using @ast {
 
 ///|
 using @lex {split_last_identifier}
+
+///|
+using @parser {type WgslParseError}

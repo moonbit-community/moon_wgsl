@@ -350,8 +350,29 @@ pub fn WgslStatementExpression::new(
 }
 
 ///|
+pub(all) enum WgslStatementPayload {
+  Empty
+  LocalDeclaration(Array[WgslLocalDeclaration])
+  Return(WgslExprRef?)
+  If(WgslExprRef?)
+  For(Array[WgslStatementExpression])
+  While(WgslExprRef?)
+  Loop
+  Switch(WgslExprRef?)
+  Break(WgslExprRef?)
+  Continue
+  Discard
+  ConstAssert(WgslExprRef?)
+  Compound
+  Case(WgslExprRef?)
+  DefaultCase
+  Expression(WgslExprRef?)
+} derive(Debug)
+
+///|
 pub struct WgslStatement {
   kind : WgslStatementKind
+  payload : WgslStatementPayload
   text : String
   start : Int
   end : Int
@@ -365,6 +386,7 @@ pub struct WgslStatement {
 ///|
 pub fn WgslStatement::new(
   kind : WgslStatementKind,
+  payload : WgslStatementPayload,
   text : String,
   start : Int,
   end : Int,
@@ -376,6 +398,7 @@ pub fn WgslStatement::new(
 ) -> WgslStatement {
   WgslStatement::{
     kind,
+    payload,
     text,
     start,
     end,

@@ -67,9 +67,9 @@ fn wgsl_reference_path_from_identifier(name : String) -> WgslReferencePath? {
 fn collect_wgsl_source_reference_paths(
   source : String,
   paths : Array[WgslReferencePath],
-) -> Unit {
+) -> Unit raise WgslParseError {
   let nodes : Array[WgslIdent] = []
-  for decl in parse_wgsl_translation_unit(source).declarations {
+  for decl in parse_wgsl_translation_unit_strict(source).declarations {
     collect_wgsl_decl_identifier_nodes(decl.data, nodes)
   }
   for node in nodes {
@@ -81,9 +81,33 @@ fn collect_wgsl_source_reference_paths(
 }
 
 ///|
-pub fn unresolved_wgsl_namespace_reference(source : String) -> String? {
+fn collect_wgsl_source_reference_paths_strict(
+  source : String,
+  paths : Array[WgslReferencePath],
+) -> Unit raise WgslParseError {
+  collect_wgsl_source_reference_paths(source, paths)
+}
+
+///|
+pub fn unresolved_wgsl_namespace_reference(
+  source : String,
+) -> String? raise WgslParseError {
   let paths : Array[WgslReferencePath] = []
   collect_wgsl_source_reference_paths(source, paths)
+  for path in paths {
+    if path.segments.length() > 1 {
+      return Some(path.text)
+    }
+  }
+  None
+}
+
+///|
+pub fn unresolved_wgsl_namespace_reference_strict(
+  source : String,
+) -> String? raise WgslParseError {
+  let paths : Array[WgslReferencePath] = []
+  collect_wgsl_source_reference_paths_strict(source, paths)
   for path in paths {
     if path.segments.length() > 1 {
       return Some(path.text)
@@ -96,11 +120,31 @@ pub fn unresolved_wgsl_namespace_reference(source : String) -> String? {
 pub fn wgsl_source_contains_reference_path(
   source : String,
   reference_path : String,
-) -> Bool {
+) -> Bool raise WgslParseError {
   match wgsl_reference_path_from_identifier(reference_path) {
     Some(expected) => {
       let paths : Array[WgslReferencePath] = []
       collect_wgsl_source_reference_paths(source, paths)
+      for path in paths {
+        if path.text == expected.text {
+          return true
+        }
+      }
+      false
+    }
+    None => false
+  }
+}
+
+///|
+pub fn wgsl_source_contains_reference_path_strict(
+  source : String,
+  reference_path : String,
+) -> Bool raise WgslParseError {
+  match wgsl_reference_path_from_identifier(reference_path) {
+    Some(expected) => {
+      let paths : Array[WgslReferencePath] = []
+      collect_wgsl_source_reference_paths_strict(source, paths)
       for path in paths {
         if path.text == expected.text {
           return true
@@ -147,7 +191,7 @@ pub fn collect_wgsl_alias_requested_paths(
   source : String,
   alias_name : String,
   requested_paths : Array[String],
-) -> Unit {
+) -> Unit raise WgslParseError {
   if alias_name == "" {
     return
   }
@@ -162,12 +206,41 @@ pub fn collect_wgsl_alias_requested_paths(
 }
 
 ///|
+pub fn collect_wgsl_alias_requested_paths_strict(
+  source : String,
+  alias_name : String,
+  requested_paths : Array[String],
+) -> Unit raise WgslParseError {
+  if alias_name == "" {
+    return
+  }
+  let paths : Array[WgslReferencePath] = []
+  collect_wgsl_source_reference_paths_strict(source, paths)
+  for path in paths {
+    let requested_item = wgsl_import_requested_item_name(path.text, alias_name)
+    if requested_item != "" {
+      string_list_push_unique(requested_paths, requested_item)
+    }
+  }
+}
+
+///|
 pub fn wgsl_source_uses_import_alias(
   source : String,
   alias_name : String,
-) -> Bool {
+) -> Bool raise WgslParseError {
   let requested_paths : Array[String] = []
   collect_wgsl_alias_requested_paths(source, alias_name, requested_paths)
+  requested_paths.length() > 0
+}
+
+///|
+pub fn wgsl_source_uses_import_alias_strict(
+  source : String,
+  alias_name : String,
+) -> Bool raise WgslParseError {
+  let requested_paths : Array[String] = []
+  collect_wgsl_alias_requested_paths_strict(source, alias_name, requested_paths)
   requested_paths.length() > 0
 }
 
@@ -205,9 +278,46 @@ pub fn collect_wgsl_qualified_module_targets(
   registry : WgslSourceRegistry,
   modules : @hashmap.HashMap[String, String],
   targets : Array[WgslImportTarget],
-) -> Unit {
+) -> Unit raise WgslParseError {
   let paths : Array[WgslReferencePath] = []
   collect_wgsl_source_reference_paths(source, paths)
+  for ident in paths {
+    if ident.segments.length() < 3 {
+      continue
+    }
+    guard resolve_wgsl_import_request_module(
+        current_rel_path,
+        ident.text,
+        registry,
+        modules,
+      )
+      is Some(resolved_module) else {
+      continue
+    }
+    let requested_item = wgsl_import_requested_item_name(
+      ident.text,
+      resolved_module.module_path,
+    )
+    if requested_item == "" {
+      continue
+    }
+    wgsl_import_targets_push_unique(targets, WgslImportTarget::{
+      raw_path: resolved_module.module_path,
+      alias_name: resolved_module.module_path,
+    })
+  }
+}
+
+///|
+pub fn collect_wgsl_qualified_module_targets_strict(
+  source : String,
+  current_rel_path : String,
+  registry : WgslSourceRegistry,
+  modules : @hashmap.HashMap[String, String],
+  targets : Array[WgslImportTarget],
+) -> Unit raise WgslParseError {
+  let paths : Array[WgslReferencePath] = []
+  collect_wgsl_source_reference_paths_strict(source, paths)
   for ident in paths {
     if ident.segments.length() < 3 {
       continue
@@ -239,10 +349,23 @@ pub fn collect_wgsl_qualified_module_targets(
 pub fn build_wgsl_import_rename_map(
   source : String,
   alias_name : String,
-) -> @hashmap.HashMap[String, String] {
+) -> @hashmap.HashMap[String, String] raise WgslParseError {
   let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let alias_prefix = parse_wgsl_import_alias_prefix(alias_name)
   for declaration in collect_wgsl_named_declarations(source) {
+    rename_map.set(declaration.name, "\{alias_prefix}__\{declaration.name}")
+  }
+  rename_map
+}
+
+///|
+pub fn build_wgsl_import_rename_map_strict(
+  source : String,
+  alias_name : String,
+) -> @hashmap.HashMap[String, String] raise WgslParseError {
+  let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let alias_prefix = parse_wgsl_import_alias_prefix(alias_name)
+  for declaration in collect_wgsl_named_declarations_strict(source) {
     rename_map.set(declaration.name, "\{alias_prefix}__\{declaration.name}")
   }
   rename_map

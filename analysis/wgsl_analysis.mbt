@@ -92,17 +92,19 @@ fn build_wgsl_declaration_graph_from_unit(
 }
 
 ///|
-pub fn build_wgsl_declaration_graph(source : String) -> WgslDeclarationGraph {
-  build_wgsl_declaration_graph_from_unit(parse_wgsl_translation_unit(source))
+pub fn build_wgsl_declaration_graph(
+  source : String,
+) -> WgslDeclarationGraph raise WgslParseError {
+  build_wgsl_declaration_graph_from_unit(
+    parse_wgsl_translation_unit_strict(source),
+  )
 }
 
 ///|
 pub fn build_wgsl_declaration_graph_strict(
   source : String,
 ) -> WgslDeclarationGraph raise WgslParseError {
-  build_wgsl_declaration_graph_from_unit(
-    parse_wgsl_translation_unit_strict(source),
-  )
+  build_wgsl_declaration_graph(source)
 }
 
 ///|
@@ -262,7 +264,7 @@ fn emit_wgsl_tree_shaken_source_from_graph(
 pub fn emit_wgsl_tree_shaken_source(
   source : String,
   root_items : Array[String],
-) -> WgslTreeShakenSource {
+) -> WgslTreeShakenSource raise WgslParseError {
   emit_wgsl_tree_shaken_source_from_graph(
     build_wgsl_declaration_graph(source),
     root_items,
@@ -283,7 +285,7 @@ pub fn emit_wgsl_tree_shaken_source_strict(
 ///|
 pub fn collect_wgsl_named_declarations(
   source : String,
-) -> Array[WgslEmittedDeclaration] {
+) -> Array[WgslEmittedDeclaration] raise WgslParseError {
   emit_wgsl_tree_shaken_source(source, []).declarations
 }
 
@@ -315,8 +317,12 @@ fn strip_wgsl_import_declarations_from_unit(
 }
 
 ///|
-pub fn strip_wgsl_import_declarations(source : String) -> String {
-  strip_wgsl_import_declarations_from_unit(parse_wgsl_translation_unit(source))
+pub fn strip_wgsl_import_declarations(
+  source : String,
+) -> String raise WgslParseError {
+  strip_wgsl_import_declarations_from_unit(
+    parse_wgsl_translation_unit_strict(source),
+  )
 }
 
 ///|
@@ -366,7 +372,7 @@ fn extract_wgsl_module_items_from_graph(
 pub fn extract_wgsl_module_items(
   source : String,
   requested_items : Array[String],
-) -> String {
+) -> String raise WgslParseError {
   extract_wgsl_module_items_from_graph(
     source,
     build_wgsl_declaration_graph(source),

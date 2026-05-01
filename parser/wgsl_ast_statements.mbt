@@ -508,6 +508,7 @@ fn wgsl_statement_collect_condition_expr(
   owner : WgslDeclParser,
   tokens : Array[WgslToken],
   keyword_index : Int,
+  role : WgslStatementExpressionRole,
   expression_refs : Array[WgslExprRef],
   expressions : Array[WgslStatementExpression],
 ) -> Int {
@@ -522,7 +523,7 @@ fn wgsl_statement_collect_condition_expr(
           tokens,
           expr_start + 1,
           close_index,
-          WgslStatementExpressionRole::Condition,
+          role,
           expression_refs,
           expressions,
         )
@@ -539,13 +540,7 @@ fn wgsl_statement_collect_condition_expr(
       )
       let expr_end = if else_index >= 0 { else_index } else { tokens.length() }
       wgsl_statement_push_expr_ref(
-        owner,
-        tokens,
-        expr_start,
-        expr_end,
-        WgslStatementExpressionRole::Condition,
-        expression_refs,
-        expressions,
+        owner, tokens, expr_start, expr_end, role, expression_refs, expressions,
       )
       expr_end
     }
@@ -706,15 +701,50 @@ fn collect_wgsl_statement_expression_refs(
           _ => ()
         }
       }
-    If | While | Switch => {
+    If | While => {
       let mut i = 0
       while i < tokens.length() {
         match tokens[i] {
-          WgslToken::Identifier("if", _)
-          | WgslToken::Identifier("while", _)
-          | WgslToken::Identifier("switch", _) =>
+          WgslToken::Identifier("if", _) | WgslToken::Identifier("while", _) =>
             i = wgsl_statement_collect_condition_expr(
-              owner, tokens, i, expression_refs, expressions,
+              owner,
+              tokens,
+              i,
+              WgslStatementExpressionRole::Condition,
+              expression_refs,
+              expressions,
+            )
+          WgslToken::Identifier("case", _) => {
+            let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
+            let expr_end = if colon >= 0 { colon } else { tokens.length() }
+            wgsl_statement_push_expr_ref(
+              owner,
+              tokens,
+              i + 1,
+              expr_end,
+              WgslStatementExpressionRole::CaseSelector,
+              expression_refs,
+              expressions,
+            )
+            i = expr_end
+          }
+          _ => i = i + 1
+        }
+      }
+      return
+    }
+    Switch => {
+      let mut i = 0
+      while i < tokens.length() {
+        match tokens[i] {
+          WgslToken::Identifier("switch", _) =>
+            i = wgsl_statement_collect_condition_expr(
+              owner,
+              tokens,
+              i,
+              WgslStatementExpressionRole::SwitchSelector,
+              expression_refs,
+              expressions,
             )
           WgslToken::Identifier("case", _) => {
             let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
@@ -777,6 +807,97 @@ fn wgsl_statement_view_continues_after_block(
     [WgslToken::Identifier("else", _), ..] => true
     [WgslToken::Identifier("continuing", _), ..] => true
     _ => false
+  }
+}
+
+///|
+fn wgsl_statement_first_expression_by_role(
+  expressions : Array[WgslStatementExpression],
+  role : WgslStatementExpressionRole,
+) -> WgslExprRef? {
+  for expression in expressions {
+    if expression.role == role {
+      return Some(expression.expression)
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_statement_payload_from_ast(
+  kind : WgslStatementKind,
+  first_identifier : String?,
+  local_bindings : Array[WgslLocalDeclaration],
+  expressions : Array[WgslStatementExpression],
+) -> WgslStatementPayload {
+  match kind {
+    Empty => Empty
+    LocalDeclaration => LocalDeclaration(local_bindings)
+    Return =>
+      Return(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::ReturnValue,
+        ),
+      )
+    If =>
+      If(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::Condition,
+        ),
+      )
+    For => For(expressions)
+    While =>
+      While(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::Condition,
+        ),
+      )
+    Loop => Loop
+    Switch =>
+      Switch(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::SwitchSelector,
+        ),
+      )
+    Break =>
+      Break(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::BreakIf,
+        ),
+      )
+    Continue => Continue
+    Discard => Discard
+    ConstAssert =>
+      ConstAssert(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::ConstAssertValue,
+        ),
+      )
+    Compound => Compound
+    Expression =>
+      match first_identifier {
+        Some("case") =>
+          Case(
+            wgsl_statement_first_expression_by_role(
+              expressions,
+              WgslStatementExpressionRole::CaseSelector,
+            ),
+          )
+        Some("default") => DefaultCase
+        _ =>
+          Expression(
+            wgsl_statement_first_expression_by_role(
+              expressions,
+              WgslStatementExpressionRole::ExpressionValue,
+            ),
+          )
+      }
   }
 }
 
@@ -853,10 +974,13 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     collect_wgsl_statement_expression_refs(
       self, scope_tokens, kind, expression_refs, expressions,
     )
+    let payload = wgsl_statement_payload_from_ast(
+      kind, first_identifier, local_bindings, expressions,
+    )
     let blocks = self.collect_statement_blocks(tokens)
     Some(
       WgslStatement::new(
-        kind, text, start_pos, end_pos, blocks, local_bindings, exported_local_bindings,
+        kind, payload, text, start_pos, end_pos, blocks, local_bindings, exported_local_bindings,
         expression_refs, expressions,
       ),
     )

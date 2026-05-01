@@ -2,7 +2,7 @@
 using @analysis {
   type WgslEmittedDeclaration,
   type WgslTreeShakenSource,
-  emit_wgsl_tree_shaken_source,
+  emit_wgsl_tree_shaken_source_strict,
 }
 
 ///|
@@ -18,5 +18,8 @@ using @common {
 
 ///|
 using @compose {type Composer, type ComposerError}
+
+///|
+using @parser {type WgslParseError}
 
 ///|

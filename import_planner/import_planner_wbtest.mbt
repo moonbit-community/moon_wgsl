@@ -20,11 +20,52 @@ test "reference path matcher distinguishes qualified suffixes" {
     #|}
     #|
   debug_inspect(
-    wgsl_source_contains_reference_path(source, "Item"),
+    wgsl_source_contains_reference_path(source, "Item") catch {
+      _ => abort("strict parser should accept valid source")
+    },
     content="false",
   )
   debug_inspect(
-    wgsl_source_contains_reference_path(source, "other::Item"),
+    wgsl_source_contains_reference_path(source, "other::Item") catch {
+      _ => abort("strict parser should accept valid source")
+    },
     content="true",
   )
+}
+
+///|
+test "strict reference path matcher is AST driven" {
+  let source =
+    #|fn entry(input: Input) -> f32 {
+    #|  return lighting::spot_light(input.value).x + input.member;
+    #|}
+    #|
+  debug_inspect(
+    wgsl_source_contains_reference_path_strict(source, "lighting::spot_light") catch {
+      _ => abort("strict parser should accept valid source")
+    },
+    content="true",
+  )
+  debug_inspect(
+    wgsl_source_contains_reference_path_strict(source, "member") catch {
+      _ => abort("strict parser should accept valid source")
+    },
+    content="false",
+  )
+}
+
+///|
+test "strict reference path matcher rejects malformed WGSL" {
+  let source =
+    #|fn entry( {
+    #|  return lighting::spot_light();
+    #|}
+    #|
+  let mut rejected = false
+  ignore(
+    wgsl_source_contains_reference_path_strict(source, "lighting::spot_light"),
+  ) catch {
+    _ => rejected = true
+  }
+  debug_inspect(rejected, content="true")
 }

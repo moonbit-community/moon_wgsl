@@ -53,7 +53,7 @@ pub fn build_wgsl_symbol_redirect_map(
 pub fn rewrite_wgsl_symbol_redirects(
   source : String,
   redirects : Array[WgslSymbolRedirect],
-) -> String {
+) -> String raise WgslParseError {
   if redirects.length() == 0 {
     return source
   }

@@ -2,19 +2,20 @@
 package "Milky2018/moon_wgsl/virtual_overrides"
 
 import {
+  "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/hashmap",
 }
 
 // Values
-pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput
+pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput raise @parser.WgslParseError
 
-pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String
+pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
 
-pub fn strip_wgsl_virtual_functions(String) -> String
+pub fn strip_wgsl_virtual_functions(String) -> String raise @parser.WgslParseError
 
-pub fn wgsl_source_contains_override_directive(String) -> Bool
+pub fn wgsl_source_contains_override_directive(String) -> Bool raise @parser.WgslParseError
 
-pub fn wgsl_source_contains_virtual_directive(String) -> Bool
+pub fn wgsl_source_contains_virtual_directive(String) -> Bool raise @parser.WgslParseError
 
 // Errors
 

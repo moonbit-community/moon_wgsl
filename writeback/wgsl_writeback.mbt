@@ -340,7 +340,9 @@ fn collect_wgsl_function_local_sanitizers(
 }
 
 ///|
-pub fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
+pub fn sanitize_wgsl_writeback_identifiers(
+  source : String,
+) -> String raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let plan = WgslRenamePlan::empty()
   for block in graph.declaration_blocks {
@@ -361,7 +363,9 @@ pub fn sanitize_wgsl_writeback_identifiers(source : String) -> String {
 }
 
 ///|
-pub fn invalid_wgsl_struct_member_identifier(source : String) -> String? {
+pub fn invalid_wgsl_struct_member_identifier(
+  source : String,
+) -> String? raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   for block in graph.declaration_blocks {
     match block.data {

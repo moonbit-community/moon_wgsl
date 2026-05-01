@@ -20,15 +20,36 @@ fn prepare_wgsl_compose_source(
   let redirected_source = rewrite_wgsl_symbol_redirects(
     source,
     session.redirects,
-  )
+  ) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
   let active_source = apply_wgsl_template_consts(
     apply_wgsl_ifdefs_strict_for_compose(redirected_source, active_defs),
     active_defs.value_defines,
   )
-  WgslPreparedComposeSource::{
+  let active_scan_source = strip_wgsl_import_declarations_for_compose_scan(
     active_source,
-    active_scan_source: strip_wgsl_import_declarations(active_source),
+  )
+  WgslPreparedComposeSource::{ active_source, active_scan_source }
+}
+
+///|
+fn strip_wgsl_import_declarations_for_compose_scan(source : String) -> String {
+  let mut out = ""
+  for
+    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+    match item.kind {
+      WgslDirectiveScanItemKind::Directive(directive) =>
+        if directive.kind == WgslDirectiveKind::Import ||
+          directive.kind == WgslDirectiveKind::DefineImportPath {
+          ()
+        } else {
+          out = out + item.original_text
+        }
+      _ => out = out + item.original_text
+    }
   }
+  out
 }
 
 ///|
@@ -38,6 +59,7 @@ fn Composer::build_wgsl_import_requests(
   spec : String,
   active_scan_source : String,
   session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let targets : Array[WgslImportTarget] = []
   if !parse_wgsl_import_spec_is_empty_or_final_semicolon(spec) {
@@ -46,7 +68,7 @@ fn Composer::build_wgsl_import_requests(
     }
   }
   self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, active_scan_source, session,
+    current_rel_path, targets, active_scan_source, session, importer_defs,
   )
 }
 
@@ -57,6 +79,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
   targets : Array[WgslImportTarget],
   active_scan_source : String,
   session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let requests : Array[WgslImportRequest] = []
   let mut target_index = 0
@@ -68,15 +91,23 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let mut keep_requested_items = false
     let mut requested_item_liveness = AstDerivedAliasReference
     if target.alias_name != "" {
-      if !wgsl_source_uses_import_alias(active_scan_source, target.alias_name) {
+      let target_alias_is_used = wgsl_source_uses_import_alias_strict(
+        active_scan_source,
+        target.alias_name,
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+      if !target_alias_is_used {
         continue
       }
       let requested_paths : Array[String] = []
-      collect_wgsl_alias_requested_paths(
+      collect_wgsl_alias_requested_paths_strict(
         active_scan_source,
         target.alias_name,
         requested_paths,
-      )
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
       for requested_path in requested_paths {
         if split_last_wgsl_path(requested_path) is Some((nested_prefix, _)) {
           wgsl_import_targets_push_unique(targets, WgslImportTarget::{
@@ -109,11 +140,20 @@ fn Composer::build_wgsl_import_requests_from_targets(
       Some(source) => source
       None => ""
     }
+    let import_defs = self.active_compose_defs_for_rel_path(
+      resolved_module.rel_path,
+      session,
+      Some(importer_defs),
+    )
+    let active_import_source = apply_wgsl_template_consts(
+      apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
+      import_defs.value_defines,
+    )
     let imports_for_override_side_effect = wgsl_source_contains_override_directive(
-      import_source,
+      active_import_source,
     )
     let imports_for_virtual_side_effect = wgsl_source_contains_virtual_directive(
-      import_source,
+      active_import_source,
     )
     let mut module_alias = if target.alias_name != "" {
       target.alias_name
@@ -124,9 +164,11 @@ fn Composer::build_wgsl_import_requests_from_targets(
     }
     let mut import_full_module = module_path == target.raw_path
     if target.alias_name == "" && module_alias != "" {
-      let module_alias_is_used = wgsl_source_uses_import_alias(
+      let module_alias_is_used = wgsl_source_uses_import_alias_strict(
         active_scan_source, module_alias,
-      )
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
       if !module_alias_is_used &&
         !imports_for_override_side_effect &&
         !imports_for_virtual_side_effect {
@@ -137,9 +179,11 @@ fn Composer::build_wgsl_import_requests_from_targets(
         module_alias = ""
       }
       let requested_paths : Array[String] = []
-      collect_wgsl_alias_requested_paths(
+      collect_wgsl_alias_requested_paths_strict(
         active_scan_source, module_alias, requested_paths,
-      )
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
       for requested_path in requested_paths {
         if split_last_wgsl_path(requested_path) is Some((nested_prefix, _)) {
           wgsl_import_targets_push_unique(targets, WgslImportTarget::{
@@ -177,9 +221,11 @@ fn Composer::build_wgsl_import_requests_from_targets(
       for requested_item in requested_items {
         let item_is_live = match requested_item_liveness {
           ExplicitUnqualifiedItemBinding =>
-            wgsl_source_contains_reference_path(
+            wgsl_source_contains_reference_path_strict(
               active_scan_source, requested_item,
-            )
+            ) catch {
+              error => raise composer_error_from_wgsl_parse_error(error)
+            }
           AstDerivedAliasReference => true
         }
         if item_is_live {
@@ -239,17 +285,20 @@ fn Composer::build_wgsl_implicit_import_requests(
   current_rel_path : String,
   active_scan_source : String,
   session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let qualified_targets : Array[WgslImportTarget] = []
-  collect_wgsl_qualified_module_targets(
+  collect_wgsl_qualified_module_targets_strict(
     active_scan_source,
     current_rel_path,
     self.registry,
     session.modules,
     qualified_targets,
-  )
+  ) catch {
+    _ => return []
+  }
   self.build_wgsl_import_requests_from_targets(
-    current_rel_path, qualified_targets, active_scan_source, session,
+    current_rel_path, qualified_targets, active_scan_source, session, importer_defs,
   )
 }
 
@@ -378,10 +427,12 @@ fn Composer::compose_wgsl_import_requests(
     }
     let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
     let final_module_source = if request.alias_name != "" {
-      let request_rename_map = build_wgsl_import_rename_map(
+      let request_rename_map = build_wgsl_import_rename_map_strict(
         module_source,
         request.alias_name,
-      )
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
       for entry in request_rename_map.iter() {
         let (from_name, to_name) = entry
         rename_map.set(from_name, to_name)
@@ -404,7 +455,9 @@ fn Composer::compose_wgsl_import_requests(
           request_rename_map,
           GlobalDeclarationAndReferences,
         ),
-      )
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
     } else {
       module_source
     }
@@ -503,13 +556,20 @@ fn finalize_wgsl_composed_source(
   out = rewrite_wgsl_declarations_with_rename_plan(
     out,
     build_wgsl_rename_plan_from_redirect_map(alias_redirect_map, ReferencesOnly),
-  )
+  ) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
   if !apply_virtual_overrides {
     validate_wgsl_translation_unit_strict(out)
     return out
   }
-  out = normalize_wgsl_composed_declarations(out, live_alias_redirects)
-  if unresolved_wgsl_namespace_reference(out) is Some(path) {
+  out = normalize_wgsl_composed_declarations(out, live_alias_redirects) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  let unresolved_namespace = unresolved_wgsl_namespace_reference_strict(out) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  if unresolved_namespace is Some(path) {
     raise ComposerError::FailedToResolveImport(path)
   }
   validate_wgsl_translation_unit_strict(out)

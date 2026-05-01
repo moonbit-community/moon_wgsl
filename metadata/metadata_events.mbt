@@ -85,10 +85,8 @@ fn metadata_source_line_text_end(text : String, line_start : Int) -> Int {
 ///|
 fn metadata_collect_source_item(
   item : WgslDirectiveScanItem,
-  declared_imports : Array[DeclaredImportBinding],
-  used_imports : Array[ImportDefWithOffset],
   effective_defs : @hashset.HashSet[String],
-) -> Unit raise MetadataError {
+) -> Unit {
   let mut line_start = 0
   while line_start < item.cleaned_text.length() {
     let line_text_end = metadata_source_line_text_end(
@@ -104,18 +102,21 @@ fn metadata_collect_source_item(
     collect_effective_def_names(line, effective_defs)
     line_start = line_end
   }
+}
+
+///|
+fn metadata_collect_import_uses(
+  source : String,
+  declared_imports : Array[DeclaredImportBinding],
+  used_imports : Array[ImportDefWithOffset],
+) -> Unit raise MetadataError {
   ignore(
-    substitute_identifiers(
-      item.cleaned_text,
-      item.start,
-      declared_imports,
-      used_imports,
-      true,
-    ) catch {
+    substitute_identifiers(source, 0, declared_imports, used_imports, true) catch {
       AmbiguousImport(position) =>
         raise MetadataError::ImportParseError(
           "Ambiguous import path for item", position,
         )
+      InvalidWgslSyntax(_, _) => source
     },
   )
 }

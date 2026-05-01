@@ -28,6 +28,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     current_rel_path,
     prepared.active_scan_source,
     session,
+    active_defs,
   )
   let implicit_imports = self.compose_wgsl_import_requests(
     current_rel_path, implicit_requests, alias_redirects, session, active_defs,
@@ -46,6 +47,7 @@ fn Composer::preprocess_wgsl_source_with_path(
           import_directive.tail,
           prepared.active_scan_source,
           session,
+          active_defs,
         )
         let composed_imports = self.compose_wgsl_import_requests(
           current_rel_path, requests, alias_redirects, session, active_defs,

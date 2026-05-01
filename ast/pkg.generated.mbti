@@ -236,6 +236,7 @@ pub fn WgslOverride::new(Array[WgslAttribute], WgslIdent, String?, WgslTypeRef?,
 
 pub struct WgslStatement {
   kind : WgslStatementKind
+  payload : WgslStatementPayload
   text : String
   start : Int
   end : Int
@@ -245,7 +246,7 @@ pub struct WgslStatement {
   expression_refs : Array[WgslExprRef]
   expressions : Array[WgslStatementExpression]
 } derive(@debug.Debug)
-pub fn WgslStatement::new(WgslStatementKind, String, Int, Int, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
+pub fn WgslStatement::new(WgslStatementKind, WgslStatementPayload, String, Int, Int, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
 
 pub struct WgslStatementExpression {
   role : WgslStatementExpressionRole
@@ -280,6 +281,25 @@ pub(all) enum WgslStatementKind {
   Compound
   Expression
 } derive(Eq, @debug.Debug)
+
+pub(all) enum WgslStatementPayload {
+  Empty
+  LocalDeclaration(Array[WgslLocalDeclaration])
+  Return(WgslExprRef?)
+  If(WgslExprRef?)
+  For(Array[WgslStatementExpression])
+  While(WgslExprRef?)
+  Loop
+  Switch(WgslExprRef?)
+  Break(WgslExprRef?)
+  Continue
+  Discard
+  ConstAssert(WgslExprRef?)
+  Compound
+  Case(WgslExprRef?)
+  DefaultCase
+  Expression(WgslExprRef?)
+} derive(@debug.Debug)
 
 pub struct WgslStruct {
   attributes : Array[WgslAttribute]

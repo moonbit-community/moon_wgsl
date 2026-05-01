@@ -2,13 +2,12 @@
 using @analysis {
   build_wgsl_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,
-  collect_wgsl_named_declarations,
   collect_wgsl_named_declarations_strict,
   extract_wgsl_module_items_strict,
   normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_rename_plan,
   rewrite_wgsl_symbol_redirects,
-  strip_wgsl_import_declarations,
+  strip_wgsl_import_declarations_strict,
 }
 
 ///|
@@ -31,14 +30,14 @@ using @common {
 ///|
 using @import_planner {
   type WgslImportRequest,
-  build_wgsl_import_rename_map,
-  collect_wgsl_alias_requested_paths,
+  build_wgsl_import_rename_map_strict,
+  collect_wgsl_alias_requested_paths_strict,
   collect_wgsl_import_alias_redirects,
-  collect_wgsl_qualified_module_targets,
+  collect_wgsl_qualified_module_targets_strict,
   find_wgsl_import_request_index,
   resolve_wgsl_import_request_module,
   split_last_wgsl_path,
-  unresolved_wgsl_namespace_reference,
+  unresolved_wgsl_namespace_reference_strict,
   wgsl_full_module_visit_key,
   wgsl_import_cycle_string,
   wgsl_import_default_alias,
@@ -47,8 +46,8 @@ using @import_planner {
   wgsl_import_targets_push_unique,
   wgsl_imported_item_name_key,
   wgsl_path_stack_contains,
-  wgsl_source_contains_reference_path,
-  wgsl_source_uses_import_alias,
+  wgsl_source_contains_reference_path_strict,
+  wgsl_source_uses_import_alias_strict,
 }
 
 ///|

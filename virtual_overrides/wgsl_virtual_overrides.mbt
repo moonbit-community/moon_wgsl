@@ -48,7 +48,9 @@ fn wgsl_graph_block_override_target(block : WgslGraphBlock) -> String? {
 }
 
 ///|
-pub fn wgsl_source_contains_override_directive(source : String) -> Bool {
+pub fn wgsl_source_contains_override_directive(
+  source : String,
+) -> Bool raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   for block in graph.declaration_blocks {
     match block.data {
@@ -63,7 +65,9 @@ pub fn wgsl_source_contains_override_directive(source : String) -> Bool {
 }
 
 ///|
-pub fn wgsl_source_contains_virtual_directive(source : String) -> Bool {
+pub fn wgsl_source_contains_virtual_directive(
+  source : String,
+) -> Bool raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   for block in graph.declaration_blocks {
     if wgsl_graph_block_is_virtual_fn(block) {
@@ -118,7 +122,7 @@ fn rewrite_wgsl_virtual_nodes(
 pub fn rewrite_wgsl_override_targets_with_redirects(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
-) -> String {
+) -> String raise WgslParseError {
   if alias_redirect_map.is_empty() {
     return source
   }
@@ -199,7 +203,7 @@ fn rewrite_wgsl_virtual_base_block(
   block_start : Int,
   target_name : String,
   base_name : String,
-) -> String {
+) -> String raise WgslParseError {
   let plan = WgslRenamePlan::empty()
   plan.add(target_name, base_name, GlobalDeclarationAndReferences)
   rewrite_wgsl_virtual_fn_block(
@@ -215,7 +219,7 @@ fn rewrite_wgsl_override_body_references_to_base(
   target_name : String,
   raw_target : String,
   base_name : String,
-) -> String {
+) -> String raise WgslParseError {
   let plan = WgslRenamePlan::empty()
   plan.add(target_name, base_name, FunctionBodyReferencesOnly)
   plan.add(raw_target, base_name, FunctionBodyReferencesOnly)
@@ -230,7 +234,7 @@ fn rewrite_wgsl_override_fn_block(
   target_name : String,
   raw_target : String,
   base_name : String?,
-) -> String {
+) -> String raise WgslParseError {
   let rewritten_body = match base_name {
     Some(base) =>
       rewrite_wgsl_override_body_references_to_base(
@@ -269,7 +273,7 @@ fn wgsl_alias_redirect_target(
 pub fn apply_wgsl_virtual_overrides_raw(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
-) -> WgslVirtualOverrideOutput {
+) -> WgslVirtualOverrideOutput raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let virtual_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
@@ -361,7 +365,9 @@ pub fn apply_wgsl_virtual_overrides_raw(
 }
 
 ///|
-pub fn strip_wgsl_virtual_functions(source : String) -> String {
+pub fn strip_wgsl_virtual_functions(
+  source : String,
+) -> String raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let mut saw_virtual = false
   for block in graph.declaration_blocks {

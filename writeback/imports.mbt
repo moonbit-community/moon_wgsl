@@ -7,3 +7,6 @@ using @analysis {
 
 ///|
 using @ast {type WgslBlock, type WgslGlobalDeclData, type WgslStatement}
+
+///|
+using @parser {type WgslParseError}

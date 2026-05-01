@@ -204,7 +204,9 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
 }
 
 ///|
-fn dedupe_wgsl_duplicate_declarations(source : String) -> String {
+fn dedupe_wgsl_duplicate_declarations(
+  source : String,
+) -> String raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let mut deduped = ""
   let emitted_blocks : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
@@ -247,7 +249,7 @@ fn record_wgsl_alias_suffix_redirect_candidate(
 fn build_wgsl_unique_alias_suffix_rename_plan(
   source : String,
   alias_redirects : Array[WgslSymbolRedirect],
-) -> WgslRenamePlan {
+) -> WgslRenamePlan raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
@@ -338,7 +340,9 @@ fn wgsl_global_binding_info(block : WgslGraphBlock) -> WgslGlobalBindingInfo? {
 }
 
 ///|
-fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
+fn dedupe_wgsl_duplicate_resource_bindings(
+  source : String,
+) -> String raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let duplicate_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -378,7 +382,7 @@ fn dedupe_wgsl_duplicate_resource_bindings(source : String) -> String {
 pub fn normalize_wgsl_composed_declarations(
   source : String,
   alias_redirects : Array[WgslSymbolRedirect],
-) -> String {
+) -> String raise WgslParseError {
   let deduped = dedupe_wgsl_duplicate_declarations(source)
   let suffix_plan = build_wgsl_unique_alias_suffix_rename_plan(
     deduped, alias_redirects,

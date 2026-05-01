@@ -1070,3 +1070,131 @@ test "WGSL statement classification uses identifier tokens" {
     content="[]",
   )
 }
+
+///|
+test "WGSL statement payload exposes structured statement semantics" {
+  let source =
+    #|fn demo(input: Input) -> f32 {
+    #|  var value: f32 = input.base;
+    #|  switch(input.mode) {
+    #|    case MODE_A: {
+    #|      value = input.alt;
+    #|    }
+    #|    default: {
+    #|      value = input.fallback;
+    #|    }
+    #|  }
+    #|  return value;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  match function.body.statements[0].payload {
+    LocalDeclaration(bindings) =>
+      debug_inspect(
+        bindings.map(fn(binding) { binding.name.name }),
+        content=(
+          #|["value"]
+        ),
+      )
+    _ => abort("expected local declaration payload")
+  }
+  match function.body.statements[1].payload {
+    Switch(Some(expr)) => debug_inspect(expr.text, content="\"input.mode\"")
+    _ => abort("expected switch payload")
+  }
+  debug_inspect(
+    function.body.statements[1].expressions.map(fn(item) { item.role }),
+    content=(
+      #|[SwitchSelector]
+    ),
+  )
+  match function.body.statements[2].payload {
+    Return(Some(expr)) => debug_inspect(expr.text, content="\"value\"")
+    _ => abort("expected return payload")
+  }
+}
+
+///|
+test "WGSL struct parser accepts preprocessing directives inside members" {
+  let source =
+    #|struct LightingInput {
+    #|#ifdef STANDARD_MATERIAL_CLEARCOAT
+    #|  layers: array<LayerLightingInput, 2>,
+    #|#else   // STANDARD_MATERIAL_CLEARCOAT
+    #|  layers: array<LayerLightingInput, 1>,
+    #|#endif  // STANDARD_MATERIAL_CLEARCOAT
+    #|  P: vec3<f32>,
+    #|  F0_dielectric: vec3<f32>,
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    _ => abort("expected strict struct parse")
+  }
+  guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
+    abort("expected struct")
+  }
+  debug_inspect(struct_decl.members.length(), content="4")
+  debug_inspect(struct_decl.members[2].name, content="\"P\"")
+}
+
+///|
+test "WGSL struct parser accepts Bevy LightingInput member shape" {
+  let source =
+    #|struct LightingInput {
+    #|#ifdef STANDARD_MATERIAL_CLEARCOAT
+    #|    layers: array<LayerLightingInput, 2>,
+    #|#else   // STANDARD_MATERIAL_CLEARCOAT
+    #|    layers: array<LayerLightingInput, 1>,
+    #|#endif  // STANDARD_MATERIAL_CLEARCOAT
+    #|
+    #|    // The world-space position.
+    #|    P: vec3<f32>,
+    #|    // The vector to the view.
+    #|    V: vec3<f32>,
+    #|
+    #|    // The diffuse color of the material.
+    #|    diffuse_color: vec3<f32>,
+    #|
+    #|    // The 0-1 metallic factor of the material.
+    #|    metallic: f32,
+    #|
+    #|    // Specular reflectance at the normal incidence angle.
+    #|    F0_dielectric: vec3<f32>,
+    #|    F0_metallic: vec3<f32>,
+    #|
+    #|    // Constants for the BRDF approximation.
+    #|    //
+    #|    // See `EnvBRDFApprox` in
+    #|    // <https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile>.
+    #|    // What we call `F_ab` they call `AB`.
+    #|    F_ab: vec2<f32>,
+    #|
+    #|#ifdef STANDARD_MATERIAL_CLEARCOAT
+    #|    // The strength of the clearcoat layer.
+    #|    clearcoat_strength: f32,
+    #|#endif  // STANDARD_MATERIAL_CLEARCOAT
+    #|
+    #|#ifdef STANDARD_MATERIAL_ANISOTROPY
+    #|    // The anisotropy strength, reflecting the amount of increased roughness in
+    #|    // the tangent direction.
+    #|    anisotropy: f32,
+    #|    // The tangent direction for anisotropy: i.e. the direction in which
+    #|    // roughness increases.
+    #|    Ta: vec3<f32>,
+    #|    // The bitangent direction, which is the cross product of the normal with
+    #|    // the tangent direction.
+    #|    Ba: vec3<f32>,
+    #|#endif  // STANDARD_MATERIAL_ANISOTROPY
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    _ => abort("expected strict Bevy struct parse")
+  }
+  guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
+    abort("expected struct")
+  }
+  debug_inspect(struct_decl.members.length() > 10, content="true")
+}

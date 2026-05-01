@@ -1,5 +1,8 @@
 ///|
-using @analysis {collect_wgsl_named_declarations}
+using @analysis {
+  collect_wgsl_named_declarations,
+  collect_wgsl_named_declarations_strict,
+}
 
 ///|
 using @common {
@@ -22,7 +25,11 @@ using @resolver {
 using @ast {type WgslIdent, collect_wgsl_decl_identifier_nodes}
 
 ///|
-using @parser {parse_wgsl_import_alias_prefix, parse_wgsl_translation_unit}
+using @parser {
+  type WgslParseError,
+  parse_wgsl_import_alias_prefix,
+  parse_wgsl_translation_unit_strict,
+}
 
 ///|
 using @lex {split_last_identifier}

@@ -32,13 +32,17 @@ fn build_prepared_wgsl_source_catalog(
       None =>
         raise ComposerError::MissingPreparedSourceDefs(source_file.rel_path)
     }
-    let prepared_source = strip_wgsl_import_declarations(
-      apply_wgsl_template_consts(
-        apply_wgsl_ifdefs_strict_for_compose(source_file.source, active_defs),
-        active_defs.value_defines,
-      ),
+    let active_source = apply_wgsl_template_consts(
+      apply_wgsl_ifdefs_strict_for_compose(source_file.source, active_defs),
+      active_defs.value_defines,
     )
-    for declaration in collect_wgsl_named_declarations(prepared_source) {
+    let prepared_source = strip_wgsl_import_declarations_strict(active_source) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    let declarations = collect_wgsl_named_declarations_strict(prepared_source) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    for declaration in declarations {
       catalog_entries.push(WgslSourceCatalogEntry::{
         rel_path: source_file.rel_path,
         symbol_name: declaration.name,

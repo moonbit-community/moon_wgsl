@@ -16,8 +16,14 @@
 fn finalize_wgsl_writeback_source(
   source : String,
 ) -> String raise ComposerError {
-  match invalid_wgsl_struct_member_identifier(source) {
+  let invalid_identifier = invalid_wgsl_struct_member_identifier(source) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  match invalid_identifier {
     Some(name) => raise ComposerError::InvalidStructMemberIdentifier(name)
-    None => sanitize_wgsl_writeback_identifiers(source)
+    None =>
+      sanitize_wgsl_writeback_identifiers(source) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
   }
 }

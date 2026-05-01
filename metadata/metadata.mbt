@@ -58,18 +58,17 @@ fn try_get_preprocessor_metadata(
             raise MetadataError::DefineInModule(item.start)
           }
         } else {
-          metadata_collect_source_item(
-            item, declared_imports, used_imports, effective_defs,
-          )
+          metadata_collect_source_item(item, effective_defs)
         }
       }
       WgslDirectiveScanItemKind::Source =>
-        metadata_collect_source_item(
-          item, declared_imports, used_imports, effective_defs,
-        )
+        metadata_collect_source_item(item, effective_defs)
       WgslDirectiveScanItemKind::GlslVersion(_) => ()
     }
   }
+  metadata_collect_import_uses(
+    cleaned_for_directives, declared_imports, used_imports,
+  )
 
   PreprocessorMetaData::{
     name,

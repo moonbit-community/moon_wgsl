@@ -7,6 +7,7 @@ pub struct DeclaredImportBinding {
 ///|
 pub suberror SubstituteIdentifiersError {
   AmbiguousImport(Int)
+  InvalidWgslSyntax(String, Int)
 }
 
 ///|
@@ -277,8 +278,13 @@ pub fn substitute_identifiers(
   used_imports : Array[ImportDefWithOffset],
   allow_ambiguous : Bool,
 ) -> String raise SubstituteIdentifiersError {
+  if declared_imports.length() == 0 {
+    return input
+  }
   let nodes : Array[WgslImportRewriteNode] = []
-  let unit = parse_wgsl_translation_unit(input)
+  let unit = parse_wgsl_translation_unit_strict(input) catch {
+    error => raise substitute_identifiers_wgsl_parse_error(error, offset)
+  }
   for decl in unit.declarations {
     let identifiers : Array[WgslIdent] = []
     collect_wgsl_decl_identifier_nodes(decl.data, identifiers)
@@ -301,6 +307,22 @@ pub fn substitute_identifiers(
     }
   }
   rewrite_wgsl_import_nodes(input, nodes)
+}
+
+///|
+fn substitute_identifiers_wgsl_parse_error(
+  error : WgslParseError,
+  offset : Int,
+) -> SubstituteIdentifiersError {
+  match error {
+    Parse(message, parse_offset) =>
+      InvalidWgslSyntax(message, offset + parse_offset)
+    UnparsedDeclaration(text, parse_offset) =>
+      InvalidWgslSyntax(
+        "declaration could not be parsed: \{text}",
+        offset + parse_offset,
+      )
+  }
 }
 
 ///|

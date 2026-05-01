@@ -96,6 +96,13 @@ fn WgslDeclParser::tokenize_struct_members(
   }
   while parser.view().length() > 0 {
     match parser.view() {
+      [WgslToken::Whitespace(_, _), .. rest] => {
+        parser.update_view(rest)
+        continue
+      }
+      _ => ()
+    }
+    match parser.view() {
       [WgslToken::Other(35, hash_pos), ..] =>
         match parser.directive_line_end_at_hash(hash_pos) {
           Some(line_end) => {

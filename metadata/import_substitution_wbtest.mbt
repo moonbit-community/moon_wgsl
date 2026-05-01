@@ -22,6 +22,8 @@ fn substitute_snapshot(imports : String, source : String) -> String {
   let used_imports : Array[ImportDefWithOffset] = []
   substitute_identifiers(source, 0, declared_imports, used_imports, false) catch {
     AmbiguousImport(offset) => return "ERR \{offset.to_string()} ambiguous"
+    InvalidWgslSyntax(message, offset) =>
+      return "ERR \{offset.to_string()} \{message}"
   }
 }
 
@@ -184,7 +186,7 @@ test "AST import substitution rewrites full declaration references only" {
       #|  let local = mix_value(input.value);
       #|  return local;
       #|}
-      #|,
+      #|
     ),
   )
   debug_inspect(output.contains("ValueX_naga_oil_mod_X"), content="true")

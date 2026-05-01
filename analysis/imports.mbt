@@ -18,11 +18,7 @@ using @ast {
 }
 
 ///|
-using @parser {
-  type WgslParseError,
-  parse_wgsl_translation_unit,
-  parse_wgsl_translation_unit_strict,
-}
+using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 
 ///|
 using @ast {type WgslTranslationUnit}

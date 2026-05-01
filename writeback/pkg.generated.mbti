@@ -1,10 +1,14 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/moon_wgsl/writeback"
 
-// Values
-pub fn invalid_wgsl_struct_member_identifier(String) -> String?
+import {
+  "Milky2018/moon_wgsl/parser",
+}
 
-pub fn sanitize_wgsl_writeback_identifiers(String) -> String
+// Values
+pub fn invalid_wgsl_struct_member_identifier(String) -> String? raise @parser.WgslParseError
+
+pub fn sanitize_wgsl_writeback_identifiers(String) -> String raise @parser.WgslParseError
 
 // Errors
 

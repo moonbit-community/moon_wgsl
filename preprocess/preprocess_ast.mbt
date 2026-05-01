@@ -225,6 +225,8 @@ fn preprocess_rewrite_source_item(
       raise PreprocessError::ImportParseError(
         "Ambiguous import path for item", position,
       )
+    InvalidWgslSyntax(message, position) =>
+      raise PreprocessError::ImportParseError(message, position)
   }
   ignore(
     substitute_identifiers(
@@ -238,6 +240,8 @@ fn preprocess_rewrite_source_item(
         raise PreprocessError::ImportParseError(
           "Ambiguous import path for item", position,
         )
+      InvalidWgslSyntax(message, position) =>
+        raise PreprocessError::ImportParseError(message, position)
     },
   )
   preprocess_pad_rewritten_source_item(rewritten_original, replaced_decommented)

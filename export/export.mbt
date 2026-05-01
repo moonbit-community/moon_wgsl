@@ -13,6 +13,20 @@
 // limitations under the License.
 
 ///|
+fn export_composer_error_from_wgsl_parse_error(
+  error : WgslParseError,
+) -> ComposerError {
+  match error {
+    Parse(message, offset) => ComposerError::InvalidWgslSyntax(message, offset)
+    UnparsedDeclaration(text, offset) =>
+      ComposerError::InvalidWgslSyntax(
+        "declaration could not be parsed: \{text}",
+        offset,
+      )
+  }
+}
+
+///|
 fn push_wgsl_diagnostic(
   diagnostics : Array[WgslDiagnostic],
   severity : WgslDiagnosticSeverity,
@@ -140,10 +154,12 @@ pub fn export_wgsl_with_options(
   export_options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
   let prepared = composer.prepare_wgsl_source(rel, compose_options)
-  let tree_shaken = emit_wgsl_tree_shaken_source(
+  let tree_shaken = emit_wgsl_tree_shaken_source_strict(
     prepared.source,
     export_options.root_items,
-  )
+  ) catch {
+    error => raise export_composer_error_from_wgsl_parse_error(error)
+  }
   let output = serialize_wgsl_export_output(
     tree_shaken,
     prepared.source_catalog,

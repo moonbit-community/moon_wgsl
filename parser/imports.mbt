@@ -24,6 +24,7 @@ using @ast {
   type WgslStatementExpression,
   type WgslStatementExpressionRole,
   type WgslStatementKind,
+  type WgslStatementPayload,
   type WgslStruct,
   type WgslStructMember,
   type WgslTranslationUnit,

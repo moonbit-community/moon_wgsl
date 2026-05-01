@@ -26,6 +26,7 @@ pub suberror MetadataError {
 
 pub suberror SubstituteIdentifiersError {
   AmbiguousImport(Int)
+  InvalidWgslSyntax(String, Int)
 }
 
 // Types and methods

@@ -425,7 +425,7 @@ fn rewrite_wgsl_graph_block_with_rename_maps(
 pub fn rewrite_wgsl_declarations_with_rename_plan(
   source : String,
   plan : WgslRenamePlan,
-) -> String {
+) -> String raise WgslParseError {
   if plan.is_empty() {
     return source
   }
