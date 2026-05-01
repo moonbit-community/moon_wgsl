@@ -550,6 +550,24 @@ test "normalizer suffix rewrites require explicit alias provenance" {
 }
 
 ///|
+test "normalizer does not infer alias provenance from lowered declaration names" {
+  let source =
+    #|fn module__inner__helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|fn entry() -> u32 {
+    #|  return inner__helper();
+    #|}
+    #|
+  let normalized = normalize_wgsl_composed_declarations(source, [])
+  debug_inspect(normalized.contains("return inner__helper();"), content="true")
+  debug_inspect(
+    normalized.contains("return module__inner__helper();"),
+    content="false",
+  )
+}
+
+///|
 test "normalizer suffix rewrites ignore stale tree-shaken alias targets" {
   let source =
     #|const FLAG: u32 = 1u;
