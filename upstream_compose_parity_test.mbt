@@ -1426,6 +1426,55 @@ test "github issue 4: nested module alias rewrites global binding member access"
 }
 
 ///|
+test "github issue 8: Bevy module alias keeps clustered_lights binding live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "struct ClusteredLights { value: u32 }\n" +
+    "@group(0) @binding(0) var<storage, read> clustered_lights: ClusteredLights;\n",
+  )
+  composer.register_source(
+    "pbr_lighting.wgsl",
+    "#define_import_path bevy_pbr::pbr_lighting\n" +
+    "#import bevy_pbr::mesh_view_bindings as view_bindings\n" +
+    "fn read_clustered_light() -> u32 {\n" +
+    "  return view_bindings::clustered_lights.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#import bevy_pbr::pbr_lighting as lighting\n" +
+    "fn entry() -> u32 {\n" +
+    "  return lighting::read_clustered_light();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort(
+        "expected issue 8 clustered_lights compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    source.contains("view_bindings::clustered_lights"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains(
+      "var<storage, read> lighting__view_bindings__clustered_lights: lighting__view_bindings__ClusteredLights",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("lighting__view_bindings__clustered_lights.value"),
+    content="true",
+  )
+}
+
+///|
 test "github issue 6: transitive nested module alias rewrites imported binding types" {
   let composer = @compose.Composer::default()
   composer.register_source(

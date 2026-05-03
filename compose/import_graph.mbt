@@ -91,7 +91,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let mut keep_requested_items = false
     let mut requested_item_liveness = AstDerivedAliasReference
     if target.alias_name != "" {
-      let target_alias_is_used = wgsl_source_uses_import_alias_strict(
+      let target_alias_is_used = wgsl_semantic_source_uses_alias(
         active_scan_source,
         target.alias_name,
       ) catch {
@@ -101,7 +101,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
         continue
       }
       let requested_paths : Array[String] = []
-      collect_wgsl_alias_requested_paths_strict(
+      collect_wgsl_semantic_alias_requested_paths(
         active_scan_source,
         target.alias_name,
         requested_paths,
@@ -109,7 +109,8 @@ fn Composer::build_wgsl_import_requests_from_targets(
         error => raise composer_error_from_wgsl_parse_error(error)
       }
       for requested_path in requested_paths {
-        if split_last_wgsl_path(requested_path) is Some((nested_prefix, _)) {
+        if split_last_wgsl_semantic_path(requested_path)
+          is Some((nested_prefix, _)) {
           wgsl_import_targets_push_unique(targets, WgslImportTarget::{
             raw_path: "\{target.raw_path}::\{nested_prefix}",
             alias_name: "\{target.alias_name}::\{nested_prefix}",
@@ -122,7 +123,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
         continue
       }
     }
-    guard resolve_wgsl_import_request_module(
+    guard resolve_wgsl_semantic_import_module(
         current_rel_path,
         target.raw_path,
         self.registry,
@@ -164,7 +165,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
     }
     let mut import_full_module = module_path == target.raw_path
     if target.alias_name == "" && module_alias != "" {
-      let module_alias_is_used = wgsl_source_uses_import_alias_strict(
+      let module_alias_is_used = wgsl_semantic_source_uses_alias(
         active_scan_source, module_alias,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
@@ -179,13 +180,14 @@ fn Composer::build_wgsl_import_requests_from_targets(
         module_alias = ""
       }
       let requested_paths : Array[String] = []
-      collect_wgsl_alias_requested_paths_strict(
+      collect_wgsl_semantic_alias_requested_paths(
         active_scan_source, module_alias, requested_paths,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
       for requested_path in requested_paths {
-        if split_last_wgsl_path(requested_path) is Some((nested_prefix, _)) {
+        if split_last_wgsl_semantic_path(requested_path)
+          is Some((nested_prefix, _)) {
           wgsl_import_targets_push_unique(targets, WgslImportTarget::{
             raw_path: "\{request_module_prefix}::\{nested_prefix}",
             alias_name: "\{module_alias}::\{nested_prefix}",
@@ -206,7 +208,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
       import_full_module = false
       keep_requested_items = true
       requested_item_liveness = ExplicitUnqualifiedItemBinding
-      let requested_item = wgsl_import_requested_item_name(
+      let requested_item = wgsl_semantic_requested_item_name(
         target.raw_path,
         module_path,
       )
@@ -221,7 +223,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
       for requested_item in requested_items {
         let item_is_live = match requested_item_liveness {
           ExplicitUnqualifiedItemBinding =>
-            wgsl_source_contains_reference_path_strict(
+            wgsl_semantic_source_contains_reference_path(
               active_scan_source, requested_item,
             ) catch {
               error => raise composer_error_from_wgsl_parse_error(error)
@@ -288,7 +290,7 @@ fn Composer::build_wgsl_implicit_import_requests(
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let qualified_targets : Array[WgslImportTarget] = []
-  collect_wgsl_qualified_module_targets_strict(
+  collect_wgsl_semantic_qualified_module_targets(
     active_scan_source,
     current_rel_path,
     self.registry,
@@ -427,7 +429,7 @@ fn Composer::compose_wgsl_import_requests(
     }
     let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
     let final_module_source = if request.alias_name != "" {
-      let request_rename_map = build_wgsl_import_rename_map_strict(
+      let request_rename_map = build_wgsl_semantic_import_rename_map(
         module_source,
         request.alias_name,
       ) catch {
@@ -438,7 +440,7 @@ fn Composer::compose_wgsl_import_requests(
         rename_map.set(from_name, to_name)
       }
       let collected_redirects : Array[WgslSymbolRedirect] = []
-      collect_wgsl_import_alias_redirects(
+      collect_wgsl_semantic_import_alias_redirects(
         request.alias_name,
         request_rename_map,
         collected_redirects,
@@ -566,7 +568,7 @@ fn finalize_wgsl_composed_source(
   out = normalize_wgsl_composed_declarations(out, live_alias_redirects) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
-  let unresolved_namespace = unresolved_wgsl_namespace_reference_strict(out) catch {
+  let unresolved_namespace = unresolved_wgsl_semantic_namespace_reference(out) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
   if unresolved_namespace is Some(path) {

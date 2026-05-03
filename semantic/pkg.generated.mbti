@@ -1,0 +1,76 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/semantic"
+
+import {
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/parser",
+  "Milky2018/moon_wgsl/resolver",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
+}
+
+// Values
+pub fn build_wgsl_semantic_import_graph(String, String, @resolver.WgslSourceRegistry, @hashmap.HashMap[String, String], Array[WgslSemanticAliasBinding]) -> WgslSemanticImportGraph raise @parser.WgslParseError
+
+pub fn build_wgsl_semantic_import_rename_map(String, String) -> @hashmap.HashMap[String, String] raise @parser.WgslParseError
+
+pub fn collect_wgsl_semantic_alias_requested_paths(String, String, Array[String]) -> Unit raise @parser.WgslParseError
+
+pub fn collect_wgsl_semantic_import_alias_redirects(String, @hashmap.HashMap[String, String], Array[@common.WgslSymbolRedirect]) -> Unit
+
+pub fn collect_wgsl_semantic_qualified_module_targets(String, String, @resolver.WgslSourceRegistry, @hashmap.HashMap[String, String], Array[@common.WgslImportTarget]) -> Unit raise @parser.WgslParseError
+
+pub fn collect_wgsl_semantic_reference_paths(String, Array[WgslSemanticReferencePath]) -> Unit raise @parser.WgslParseError
+
+pub fn resolve_wgsl_semantic_import_module(String, String, @resolver.WgslSourceRegistry, @hashmap.HashMap[String, String]) -> @common.WgslResolvedImportModule?
+
+pub fn split_last_wgsl_semantic_path(String) -> (String, String)?
+
+pub fn unresolved_wgsl_semantic_namespace_reference(String) -> String? raise @parser.WgslParseError
+
+pub fn wgsl_semantic_alias_requested_item_name(WgslSemanticReferencePath, String) -> String
+
+pub fn wgsl_semantic_path_segments(String) -> Array[String]
+
+pub fn wgsl_semantic_reference_path_from_identifier(String) -> WgslSemanticReferencePath?
+
+pub fn wgsl_semantic_requested_item_name(String, String) -> String
+
+pub fn wgsl_semantic_source_contains_reference_path(String, String) -> Bool raise @parser.WgslParseError
+
+pub fn wgsl_semantic_source_uses_alias(String, String) -> Bool raise @parser.WgslParseError
+
+// Errors
+
+// Types and methods
+pub(all) struct WgslSemanticAliasBinding {
+  alias_name : String
+  module_path : String
+  rel_path : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSemanticImportGraph {
+  references : Array[WgslSemanticReferencePath]
+  aliases : Array[WgslSemanticAliasBinding]
+  resolved_references : Array[WgslSemanticResolvedReference]
+  targets : Array[@common.WgslImportTarget]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSemanticReferencePath {
+  text : String
+  segments : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSemanticResolvedReference {
+  reference_path : String
+  alias_name : String
+  module_path : String
+  rel_path : String
+  item_path : String
+  is_alias_reference : Bool
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

@@ -151,7 +151,7 @@ fn record_wgsl_redirect_matches(
     if from_name == "" || to_name == "" || from_name == to_name {
       continue
     }
-    let contains_reference = wgsl_source_contains_reference_path_strict(
+    let contains_reference = wgsl_semantic_source_contains_reference_path(
       source, from_name,
     ) catch {
       error => raise composer_error_from_wgsl_parse_error(error)

@@ -30,7 +30,7 @@ pub fn Composer::add_composable_module(
   }
 
   for import_name in import_names {
-    guard resolve_wgsl_import_request_module(
+    guard resolve_wgsl_semantic_import_module(
         registry_rel_path,
         import_name,
         self.registry,

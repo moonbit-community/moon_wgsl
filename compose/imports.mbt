@@ -30,24 +30,14 @@ using @common {
 ///|
 using @import_planner {
   type WgslImportRequest,
-  build_wgsl_import_rename_map_strict,
-  collect_wgsl_alias_requested_paths_strict,
-  collect_wgsl_import_alias_redirects,
-  collect_wgsl_qualified_module_targets_strict,
   find_wgsl_import_request_index,
-  resolve_wgsl_import_request_module,
-  split_last_wgsl_path,
-  unresolved_wgsl_namespace_reference_strict,
   wgsl_full_module_visit_key,
   wgsl_import_cycle_string,
   wgsl_import_default_alias,
   wgsl_import_request_visit_key,
-  wgsl_import_requested_item_name,
   wgsl_import_targets_push_unique,
   wgsl_imported_item_name_key,
   wgsl_path_stack_contains,
-  wgsl_source_contains_reference_path_strict,
-  wgsl_source_uses_import_alias_strict,
 }
 
 ///|
@@ -80,6 +70,20 @@ using @parser {
   parse_wgsl_import_targets,
   parse_wgsl_directive_scan_items,
   parse_wgsl_translation_unit_strict,
+}
+
+///|
+using @semantic {
+  build_wgsl_semantic_import_rename_map,
+  collect_wgsl_semantic_alias_requested_paths,
+  collect_wgsl_semantic_import_alias_redirects,
+  collect_wgsl_semantic_qualified_module_targets,
+  resolve_wgsl_semantic_import_module,
+  split_last_wgsl_semantic_path,
+  unresolved_wgsl_semantic_namespace_reference,
+  wgsl_semantic_requested_item_name,
+  wgsl_semantic_source_contains_reference_path,
+  wgsl_semantic_source_uses_alias,
 }
 
 ///|
