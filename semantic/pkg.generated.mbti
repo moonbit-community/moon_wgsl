@@ -14,6 +14,8 @@ pub fn build_wgsl_semantic_import_graph(String, String, @resolver.WgslSourceRegi
 
 pub fn build_wgsl_semantic_import_rename_map(String, String) -> @hashmap.HashMap[String, String] raise @parser.WgslParseError
 
+pub fn build_wgsl_semantic_import_target_plans(String, String, Array[@common.WgslImportTarget], @resolver.WgslSourceRegistry, @hashmap.HashMap[String, String]) -> WgslSemanticImportTargetPlans raise @parser.WgslParseError
+
 pub fn collect_wgsl_semantic_alias_requested_paths(String, String, Array[String]) -> Unit raise @parser.WgslParseError
 
 pub fn collect_wgsl_semantic_import_alias_redirects(String, @hashmap.HashMap[String, String], Array[@common.WgslSymbolRedirect]) -> Unit
@@ -29,6 +31,8 @@ pub fn split_last_wgsl_semantic_path(String) -> (String, String)?
 pub fn unresolved_wgsl_semantic_namespace_reference(String) -> String? raise @parser.WgslParseError
 
 pub fn wgsl_semantic_alias_requested_item_name(WgslSemanticReferencePath, String) -> String
+
+pub fn wgsl_semantic_import_default_alias(String) -> String
 
 pub fn wgsl_semantic_path_segments(String) -> Array[String]
 
@@ -54,6 +58,24 @@ pub(all) struct WgslSemanticImportGraph {
   aliases : Array[WgslSemanticAliasBinding]
   resolved_references : Array[WgslSemanticResolvedReference]
   targets : Array[@common.WgslImportTarget]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSemanticImportTargetPlan {
+  target : @common.WgslImportTarget
+  resolved_module : @common.WgslResolvedImportModule
+  module_alias : String
+  request_module_prefix : String
+  requested_items : Array[String]
+  import_full_module : Bool
+  keep_requested_items : Bool
+  explicit_item_binding : Bool
+  default_module_alias_candidate : Bool
+  alias_is_used : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSemanticImportTargetPlans {
+  plans : Array[WgslSemanticImportTargetPlan]
+  unresolved_targets : Array[String]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct WgslSemanticReferencePath {

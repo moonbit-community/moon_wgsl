@@ -7,6 +7,7 @@ using @analysis {
   normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_rename_plan,
   rewrite_wgsl_symbol_redirects,
+  strip_wgsl_import_declarations,
   strip_wgsl_import_declarations_strict,
 }
 
@@ -25,19 +26,6 @@ using @common {
   type WgslSourceFile,
   type WgslSourceScanOptions,
   type WgslSymbolRedirect,
-}
-
-///|
-using @import_planner {
-  type WgslImportRequest,
-  find_wgsl_import_request_index,
-  wgsl_full_module_visit_key,
-  wgsl_import_cycle_string,
-  wgsl_import_default_alias,
-  wgsl_import_request_visit_key,
-  wgsl_import_targets_push_unique,
-  wgsl_imported_item_name_key,
-  wgsl_path_stack_contains,
 }
 
 ///|
@@ -74,16 +62,14 @@ using @parser {
 
 ///|
 using @semantic {
+  build_wgsl_semantic_import_target_plans,
   build_wgsl_semantic_import_rename_map,
-  collect_wgsl_semantic_alias_requested_paths,
   collect_wgsl_semantic_import_alias_redirects,
   collect_wgsl_semantic_qualified_module_targets,
   resolve_wgsl_semantic_import_module,
-  split_last_wgsl_semantic_path,
   unresolved_wgsl_semantic_namespace_reference,
-  wgsl_semantic_requested_item_name,
+  wgsl_semantic_import_default_alias,
   wgsl_semantic_source_contains_reference_path,
-  wgsl_semantic_source_uses_alias,
 }
 
 ///|

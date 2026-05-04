@@ -5,12 +5,6 @@ priv struct WgslPreparedComposeSource {
 }
 
 ///|
-priv enum WgslRequestedItemLiveness {
-  ExplicitUnqualifiedItemBinding
-  AstDerivedAliasReference
-}
-
-///|
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
@@ -27,29 +21,8 @@ fn prepare_wgsl_compose_source(
     apply_wgsl_ifdefs_strict_for_compose(redirected_source, active_defs),
     active_defs.value_defines,
   )
-  let active_scan_source = strip_wgsl_import_declarations_for_compose_scan(
-    active_source,
-  )
+  let active_scan_source = strip_wgsl_import_declarations(active_source)
   WgslPreparedComposeSource::{ active_source, active_scan_source }
-}
-
-///|
-fn strip_wgsl_import_declarations_for_compose_scan(source : String) -> String {
-  let mut out = ""
-  for
-    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
-    match item.kind {
-      WgslDirectiveScanItemKind::Directive(directive) =>
-        if directive.kind == WgslDirectiveKind::Import ||
-          directive.kind == WgslDirectiveKind::DefineImportPath {
-          ()
-        } else {
-          out = out + item.original_text
-        }
-      _ => out = out + item.original_text
-    }
-  }
-  out
 }
 
 ///|
@@ -82,60 +55,24 @@ fn Composer::build_wgsl_import_requests_from_targets(
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let requests : Array[WgslImportRequest] = []
-  let mut target_index = 0
-  while target_index < targets.length() {
-    let target = targets[target_index]
-    target_index = target_index + 1
-    let requested_items : Array[String] = []
-    let mut request_module_prefix = target.raw_path
-    let mut keep_requested_items = false
-    let mut requested_item_liveness = AstDerivedAliasReference
-    if target.alias_name != "" {
-      let target_alias_is_used = wgsl_semantic_source_uses_alias(
-        active_scan_source,
-        target.alias_name,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-      if !target_alias_is_used {
-        continue
-      }
-      let requested_paths : Array[String] = []
-      collect_wgsl_semantic_alias_requested_paths(
-        active_scan_source,
-        target.alias_name,
-        requested_paths,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-      for requested_path in requested_paths {
-        if split_last_wgsl_semantic_path(requested_path)
-          is Some((nested_prefix, _)) {
-          wgsl_import_targets_push_unique(targets, WgslImportTarget::{
-            raw_path: "\{target.raw_path}::\{nested_prefix}",
-            alias_name: "\{target.alias_name}::\{nested_prefix}",
-          })
-          continue
-        }
-        composer_string_list_push_unique(requested_items, requested_path)
-      }
-      if requested_items.length() == 0 {
-        continue
-      }
-    }
-    guard resolve_wgsl_semantic_import_module(
-        current_rel_path,
-        target.raw_path,
-        self.registry,
-        session.modules,
-      )
-      is Some(resolved_module) else {
-      raise ComposerError::FailedToResolveImport(target.raw_path)
-    }
+  let target_plans = build_wgsl_semantic_import_target_plans(
+    active_scan_source,
+    current_rel_path,
+    targets,
+    self.registry,
+    session.modules,
+  ) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  if target_plans.unresolved_targets.length() > 0 {
+    raise ComposerError::FailedToResolveImport(
+      target_plans.unresolved_targets[0],
+    )
+  }
+  for target_plan in target_plans.plans {
+    let requested_items = target_plan.requested_items
+    let resolved_module = target_plan.resolved_module
     let module_path = resolved_module.module_path
-    if target.alias_name == "" {
-      request_module_prefix = module_path
-    }
     let import_source = match
       self.registry.registered_source(resolved_module.rel_path) {
       Some(source) => source
@@ -156,45 +93,17 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let imports_for_virtual_side_effect = wgsl_source_contains_virtual_directive(
       active_import_source,
     )
-    let mut module_alias = if target.alias_name != "" {
-      target.alias_name
-    } else if module_path == target.raw_path {
-      wgsl_import_default_alias(module_path)
-    } else {
-      ""
-    }
-    let mut import_full_module = module_path == target.raw_path
-    if target.alias_name == "" && module_alias != "" {
-      let module_alias_is_used = wgsl_semantic_source_uses_alias(
-        active_scan_source, module_alias,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-      if !module_alias_is_used &&
+    let mut module_alias = target_plan.module_alias
+    let mut import_full_module = target_plan.import_full_module
+    if target_plan.default_module_alias_candidate {
+      if !target_plan.alias_is_used &&
         !imports_for_override_side_effect &&
         !imports_for_virtual_side_effect {
         continue
       }
       if (imports_for_override_side_effect || imports_for_virtual_side_effect) &&
-        !module_alias_is_used {
+        !target_plan.alias_is_used {
         module_alias = ""
-      }
-      let requested_paths : Array[String] = []
-      collect_wgsl_semantic_alias_requested_paths(
-        active_scan_source, module_alias, requested_paths,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-      for requested_path in requested_paths {
-        if split_last_wgsl_semantic_path(requested_path)
-          is Some((nested_prefix, _)) {
-          wgsl_import_targets_push_unique(targets, WgslImportTarget::{
-            raw_path: "\{request_module_prefix}::\{nested_prefix}",
-            alias_name: "\{module_alias}::\{nested_prefix}",
-          })
-          continue
-        }
-        composer_string_list_push_unique(requested_items, requested_path)
       }
       if requested_items.length() > 0 {
         if !imports_for_virtual_side_effect {
@@ -204,31 +113,18 @@ fn Composer::build_wgsl_import_requests_from_targets(
         !imports_for_virtual_side_effect {
         continue
       }
-    } else if module_path != target.raw_path {
-      import_full_module = false
-      keep_requested_items = true
-      requested_item_liveness = ExplicitUnqualifiedItemBinding
-      let requested_item = wgsl_semantic_requested_item_name(
-        target.raw_path,
-        module_path,
-      )
-      if requested_item == "" {
-        import_full_module = true
-      } else {
-        requested_items.push(requested_item)
-      }
     }
     if !import_full_module {
       let used_requested_items : Array[String] = []
       for requested_item in requested_items {
-        let item_is_live = match requested_item_liveness {
-          ExplicitUnqualifiedItemBinding =>
-            wgsl_semantic_source_contains_reference_path(
-              active_scan_source, requested_item,
-            ) catch {
-              error => raise composer_error_from_wgsl_parse_error(error)
-            }
-          AstDerivedAliasReference => true
+        let item_is_live = if target_plan.explicit_item_binding {
+          wgsl_semantic_source_contains_reference_path(
+            active_scan_source, requested_item,
+          ) catch {
+            error => raise composer_error_from_wgsl_parse_error(error)
+          }
+        } else {
+          true
         }
         if item_is_live {
           used_requested_items.push(requested_item)
@@ -258,7 +154,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
       if import_full_module {
         request.import_full_module = true
       }
-      if keep_requested_items {
+      if target_plan.keep_requested_items {
         request.keep_requested_items = true
       }
       for requested_item in requested_items {
@@ -272,7 +168,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
         module_path,
         rel_path: resolved_module.rel_path,
         import_full_module,
-        keep_requested_items,
+        keep_requested_items: target_plan.keep_requested_items,
         requested_items,
         alias_name: module_alias,
       })

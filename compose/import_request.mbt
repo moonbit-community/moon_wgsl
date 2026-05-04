@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub(all) struct WgslImportRequest {
+priv struct WgslImportRequest {
   module_path : String
   rel_path : String
   mut import_full_module : Bool
@@ -23,29 +23,7 @@ pub(all) struct WgslImportRequest {
 }
 
 ///|
-pub fn wgsl_import_default_alias(module_path : String) -> String {
-  match split_last_identifier(module_path.trim().to_owned()) {
-    Some((_, suffix)) => suffix.trim().to_owned()
-    None => module_path.trim().to_owned()
-  }
-}
-
-///|
-pub fn wgsl_import_targets_push_unique(
-  targets : Array[WgslImportTarget],
-  target : WgslImportTarget,
-) -> Unit {
-  for existing in targets {
-    if existing.raw_path == target.raw_path &&
-      existing.alias_name == target.alias_name {
-      return
-    }
-  }
-  targets.push(target)
-}
-
-///|
-pub fn find_wgsl_import_request_index(
+fn find_wgsl_import_request_index(
   requests : Array[WgslImportRequest],
   module_path : String,
   rel_path : String,
@@ -63,7 +41,7 @@ pub fn find_wgsl_import_request_index(
 }
 
 ///|
-pub fn wgsl_import_request_visit_key(
+fn wgsl_import_request_visit_key(
   importer_rel_path : String,
   request : WgslImportRequest,
 ) -> String {
@@ -87,15 +65,12 @@ pub fn wgsl_import_request_visit_key(
 }
 
 ///|
-pub fn wgsl_full_module_visit_key(
-  rel_path : String,
-  alias_name : String,
-) -> String {
+fn wgsl_full_module_visit_key(rel_path : String, alias_name : String) -> String {
   "\{rel_path}|\{alias_name}|*"
 }
 
 ///|
-pub fn wgsl_imported_item_name_key(
+fn wgsl_imported_item_name_key(
   rel_path : String,
   alias_name : String,
   item_name : String,
@@ -104,15 +79,12 @@ pub fn wgsl_imported_item_name_key(
 }
 
 ///|
-pub fn wgsl_path_stack_contains(
-  paths : Array[String],
-  rel_path : String,
-) -> Bool {
+fn wgsl_path_stack_contains(paths : Array[String], rel_path : String) -> Bool {
   paths.contains(rel_path)
 }
 
 ///|
-pub fn wgsl_import_cycle_string(
+fn wgsl_import_cycle_string(
   active_rel_paths : Array[String],
   repeated_rel_path : String,
 ) -> String {
@@ -129,5 +101,3 @@ pub fn wgsl_import_cycle_string(
   cycle_paths.push(repeated_rel_path)
   cycle_paths.join(" -> ")
 }
-
-///|

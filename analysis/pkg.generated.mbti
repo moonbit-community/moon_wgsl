@@ -35,7 +35,7 @@ pub fn rewrite_wgsl_declarations_with_rename_plan(String, WgslRenamePlan) -> Str
 
 pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String raise @parser.WgslParseError
 
-pub fn strip_wgsl_import_declarations(String) -> String raise @parser.WgslParseError
+pub fn strip_wgsl_import_declarations(String) -> String
 
 pub fn strip_wgsl_import_declarations_strict(String) -> String raise @parser.WgslParseError
 

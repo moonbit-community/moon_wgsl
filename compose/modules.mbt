@@ -127,7 +127,7 @@ fn find_wgsl_visible_alias_imported_item_name(
   module_path : String,
   item_name : String,
 ) -> String? {
-  let default_alias = wgsl_import_default_alias(module_path)
+  let default_alias = wgsl_semantic_import_default_alias(module_path)
   if default_alias == "" || item_name == "" {
     return None
   }

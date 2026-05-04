@@ -44,6 +44,26 @@ pub(all) struct WgslSemanticImportGraph {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct WgslSemanticImportTargetPlan {
+  target : WgslImportTarget
+  resolved_module : WgslResolvedImportModule
+  module_alias : String
+  request_module_prefix : String
+  requested_items : Array[String]
+  import_full_module : Bool
+  keep_requested_items : Bool
+  explicit_item_binding : Bool
+  default_module_alias_candidate : Bool
+  alias_is_used : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) struct WgslSemanticImportTargetPlans {
+  plans : Array[WgslSemanticImportTargetPlan]
+  unresolved_targets : Array[String]
+} derive(Eq, Debug)
+
+///|
 fn semantic_string_list_push_unique(
   items : Array[String],
   item : String,
@@ -147,6 +167,14 @@ pub fn split_last_wgsl_semantic_path(path : String) -> (String, String)? {
     prefix.push(segments[i])
   }
   Some((prefix.join("::"), segments[segments.length() - 1]))
+}
+
+///|
+pub fn wgsl_semantic_import_default_alias(module_path : String) -> String {
+  match split_last_identifier(module_path.trim().to_owned()) {
+    Some((_, suffix)) => suffix.trim().to_owned()
+    None => module_path.trim().to_owned()
+  }
 }
 
 ///|
@@ -303,6 +331,206 @@ pub fn collect_wgsl_semantic_qualified_module_targets(
       alias_name: resolved_module.module_path,
     })
   }
+}
+
+///|
+fn wgsl_semantic_collect_alias_plan_items(
+  source : String,
+  target : WgslImportTarget,
+  pending_targets : Array[WgslImportTarget],
+  requested_items : Array[String],
+) -> Bool raise WgslParseError {
+  let requested_paths : Array[String] = []
+  collect_wgsl_semantic_alias_requested_paths(
+    source,
+    target.alias_name,
+    requested_paths,
+  )
+  for requested_path in requested_paths {
+    if split_last_wgsl_semantic_path(requested_path) is Some((nested_prefix, _)) {
+      semantic_import_targets_push_unique(pending_targets, WgslImportTarget::{
+        raw_path: "\{target.raw_path}::\{nested_prefix}",
+        alias_name: "\{target.alias_name}::\{nested_prefix}",
+      })
+    } else {
+      semantic_string_list_push_unique(requested_items, requested_path)
+    }
+  }
+  requested_items.length() > 0
+}
+
+///|
+fn wgsl_semantic_collect_default_alias_plan_items(
+  source : String,
+  request_module_prefix : String,
+  module_alias : String,
+  pending_targets : Array[WgslImportTarget],
+  requested_items : Array[String],
+) -> Bool raise WgslParseError {
+  let requested_paths : Array[String] = []
+  collect_wgsl_semantic_alias_requested_paths(
+    source, module_alias, requested_paths,
+  )
+  for requested_path in requested_paths {
+    if split_last_wgsl_semantic_path(requested_path) is Some((nested_prefix, _)) {
+      semantic_import_targets_push_unique(pending_targets, WgslImportTarget::{
+        raw_path: "\{request_module_prefix}::\{nested_prefix}",
+        alias_name: "\{module_alias}::\{nested_prefix}",
+      })
+    } else {
+      semantic_string_list_push_unique(requested_items, requested_path)
+    }
+  }
+  requested_items.length() > 0
+}
+
+///|
+fn unresolved_wgsl_semantic_import_target_plan(
+  target : WgslImportTarget,
+) -> WgslSemanticImportTargetPlan {
+  WgslSemanticImportTargetPlan::{
+    target,
+    resolved_module: WgslResolvedImportModule::{ module_path: "", rel_path: "" },
+    module_alias: "",
+    request_module_prefix: target.raw_path,
+    requested_items: [],
+    import_full_module: false,
+    keep_requested_items: false,
+    explicit_item_binding: false,
+    default_module_alias_candidate: false,
+    alias_is_used: false,
+  }
+}
+
+///|
+fn build_wgsl_semantic_import_target_plan(
+  source : String,
+  current_rel_path : String,
+  target : WgslImportTarget,
+  registry : WgslSourceRegistry,
+  modules : @hashmap.HashMap[String, String],
+  pending_targets : Array[WgslImportTarget],
+) -> WgslSemanticImportTargetPlan? raise WgslParseError {
+  let requested_items : Array[String] = []
+  let resolved_module_opt = resolve_wgsl_semantic_import_module(
+    current_rel_path,
+    target.raw_path,
+    registry,
+    modules,
+  )
+  if target.alias_name != "" && resolved_module_opt is None {
+    let mut alias_parse_failed = false
+    ignore(
+      wgsl_semantic_collect_alias_plan_items(
+        source, target, pending_targets, requested_items,
+      ),
+    ) catch {
+      _ => alias_parse_failed = true
+    }
+    if alias_parse_failed || requested_items.length() > 0 {
+      return Some(unresolved_wgsl_semantic_import_target_plan(target))
+    }
+    return None
+  }
+  if target.alias_name != "" &&
+    !wgsl_semantic_collect_alias_plan_items(
+      source, target, pending_targets, requested_items,
+    ) {
+    return None
+  }
+  guard resolved_module_opt is Some(resolved_module) else {
+    return Some(unresolved_wgsl_semantic_import_target_plan(target))
+  }
+  let request_module_prefix = if target.alias_name == "" {
+    resolved_module.module_path
+  } else {
+    target.raw_path
+  }
+  let module_alias = if target.alias_name != "" {
+    target.alias_name
+  } else if resolved_module.module_path == target.raw_path {
+    wgsl_semantic_import_default_alias(resolved_module.module_path)
+  } else {
+    ""
+  }
+  let mut import_full_module = resolved_module.module_path == target.raw_path
+  let mut keep_requested_items = false
+  let mut explicit_item_binding = false
+  let mut default_module_alias_candidate = false
+  let mut alias_is_used = false
+  if target.alias_name != "" {
+    alias_is_used = true
+  } else if module_alias != "" {
+    default_module_alias_candidate = true
+    alias_is_used = wgsl_semantic_source_uses_alias(source, module_alias)
+    if alias_is_used {
+      ignore(
+        wgsl_semantic_collect_default_alias_plan_items(
+          source, request_module_prefix, module_alias, pending_targets, requested_items,
+        ),
+      )
+    }
+  } else if resolved_module.module_path != target.raw_path {
+    import_full_module = false
+    keep_requested_items = true
+    explicit_item_binding = true
+    let requested_item = wgsl_semantic_requested_item_name(
+      target.raw_path,
+      resolved_module.module_path,
+    )
+    if requested_item == "" {
+      import_full_module = true
+    } else {
+      requested_items.push(requested_item)
+    }
+  }
+  Some(WgslSemanticImportTargetPlan::{
+    target,
+    resolved_module,
+    module_alias,
+    request_module_prefix,
+    requested_items,
+    import_full_module,
+    keep_requested_items,
+    explicit_item_binding,
+    default_module_alias_candidate,
+    alias_is_used,
+  })
+}
+
+///|
+pub fn build_wgsl_semantic_import_target_plans(
+  source : String,
+  current_rel_path : String,
+  initial_targets : Array[WgslImportTarget],
+  registry : WgslSourceRegistry,
+  modules : @hashmap.HashMap[String, String],
+) -> WgslSemanticImportTargetPlans raise WgslParseError {
+  let pending_targets : Array[WgslImportTarget] = []
+  for target in initial_targets {
+    semantic_import_targets_push_unique(pending_targets, target)
+  }
+  let plans : Array[WgslSemanticImportTargetPlan] = []
+  let unresolved_targets : Array[String] = []
+  let mut target_index = 0
+  while target_index < pending_targets.length() {
+    let target = pending_targets[target_index]
+    target_index = target_index + 1
+    match
+      build_wgsl_semantic_import_target_plan(
+        source, current_rel_path, target, registry, modules, pending_targets,
+      ) {
+      Some(plan) =>
+        if plan.resolved_module.module_path == "" &&
+          plan.resolved_module.rel_path == "" {
+          semantic_string_list_push_unique(unresolved_targets, target.raw_path)
+        } else {
+          plans.push(plan)
+        }
+      None => ()
+    }
+  }
+  WgslSemanticImportTargetPlans::{ plans, unresolved_targets }
 }
 
 ///|
