@@ -153,7 +153,7 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
   debug_inspect(output.source.contains("fn shade"), content="true")
   debug_inspect(output.source.contains("unused_helper"), content="false")
   debug_inspect(output.source.contains("#import"), content="false")
-  debug_inspect(output.source_catalog.length(), content="5")
+  debug_inspect(output.source_catalog.length(), content="4")
   debug_inspect(output.source_map.length(), content="4")
   debug_inspect(output.diagnostics.length(), content="0")
 
@@ -164,7 +164,7 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
   mapped_paths.sort()
   debug_inspect(
     mapped_paths.join(","),
-    content="\"shaders/effects/main.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl\"",
+    content="\"shaders/effects/main.wgsl,shaders/effects/main.wgsl,shaders/effects/main.wgsl,shaders/effects/main.wgsl\"",
   )
   clear_export_test_registry()
 }
@@ -339,7 +339,7 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
     }
   }
   helper_paths.sort()
-  debug_inspect(helper_paths.join(","), content="\"shaders/shared/a.wgsl\"")
+  debug_inspect(helper_paths.join(","), content="\"shaders/effects/ambiguous.wgsl\"")
   clear_export_test_registry()
 }
 
@@ -366,7 +366,7 @@ test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-sha
     output.source.contains("return build_shadow(vertex);"),
     content="false",
   )
-  debug_inspect(output.source_catalog.length(), content="5")
+  debug_inspect(output.source_catalog.length(), content="4")
   debug_inspect(output.source_map.length(), content="4")
   debug_inspect(output.diagnostics.length(), content="0")
   clear_export_test_registry()

@@ -139,11 +139,11 @@ tree-shakes them away, matching upstream `naga_oil`.
    graph. Any new WGSL declaration form must be parsed there before composer or
    export logic consumes it.
 
-6. Source catalogs must use compose-time shader defs.
-   `PreparedWgslSource.source_catalog` is part of the composed dependency
-   closure and must be built from the same strict per-source `ShaderDefValue`
-   state as the emitted source. Do not rebuild catalogs with root-only bool/int
-   maps.
+6. Source catalogs must come from final prepared WGSL.
+   `PreparedWgslSource.source_catalog` must be extracted from the same resolved
+   WGSL stored in `PreparedWgslSource.source`. Do not rebuild catalogs from raw
+   registered files, root-only bool/int maps, or any dependency-closure source
+   that has not passed through compose-time alias resolution and writeback.
 
 7. Rename/writeback and dependency analysis must be AST/span-driven.
    All source rewrites must be expressed as `WgslRenamePlan` rules in

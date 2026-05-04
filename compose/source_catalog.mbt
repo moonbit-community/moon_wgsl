@@ -21,22 +21,14 @@ fn compare_wgsl_source_catalog_entries(
 ///|
 fn build_prepared_wgsl_source_catalog(
   source_files : Array[WgslSourceFile],
-  source_defs : @hashmap.HashMap[String, WgslActiveComposeDefs],
 ) -> Array[WgslSourceCatalogEntry] raise ComposerError {
   source_files.sort_by((lhs, rhs) => String::compare(lhs.rel_path, rhs.rel_path))
 
   let catalog_entries : Array[WgslSourceCatalogEntry] = []
   for source_file in source_files {
-    let active_defs = match source_defs.get(source_file.rel_path) {
-      Some(defs) => defs
-      None =>
-        raise ComposerError::MissingPreparedSourceDefs(source_file.rel_path)
-    }
-    let active_source = apply_wgsl_template_consts(
-      apply_wgsl_ifdefs_strict_for_compose(source_file.source, active_defs),
-      active_defs.value_defines,
-    )
-    let prepared_source = strip_wgsl_import_declarations_strict(active_source) catch {
+    let prepared_source = strip_wgsl_import_declarations_strict(
+      source_file.source,
+    ) catch {
       error => raise composer_error_from_wgsl_parse_error(error)
     }
     let declarations = collect_wgsl_named_declarations_strict(prepared_source) catch {

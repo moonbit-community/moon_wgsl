@@ -11,17 +11,6 @@ fn copy_shader_def_values(
 }
 
 ///|
-fn copy_active_compose_defs(
-  defs : WgslActiveComposeDefs,
-) -> WgslActiveComposeDefs {
-  WgslActiveComposeDefs::{
-    defines: copy_bool_defs(defs.defines),
-    value_defines: copy_int_defs(defs.value_defines),
-    shader_defs: copy_shader_def_values(defs.shader_defs),
-  }
-}
-
-///|
 fn copy_import_definitions(
   imports : Array[ImportDefinition],
 ) -> Array[ImportDefinition] {
@@ -136,8 +125,6 @@ priv struct WgslComposeSession {
   visited : @hashmap.HashMap[String, Bool]
   imported_item_names : @hashmap.HashMap[String, String]
   active_rel_paths : Array[String]
-  resolved_source_files : @hashmap.HashMap[String, String]
-  resolved_source_defs : @hashmap.HashMap[String, WgslActiveComposeDefs]
 }
 
 ///|

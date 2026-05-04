@@ -138,3 +138,57 @@ test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live"
     content="true",
   )
 }
+
+///|
+test "naga_oil parity: prepared Bevy catalog resolves alias-qualified bindings" {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source_tree(
+    "testdata/bevy_wgsl",
+    @common.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected Bevy fixture registration success")
+  }
+  composer.register_source(
+    "mgstudio/render/renderer/issue8_lighting_repro.wgsl",
+    (
+      #|#import bevy_pbr::lighting as lighting
+      #|fn entry() -> vec3<f32> {
+      #|  var input: lighting::LightingInput;
+      #|  return lighting::spot_light(0u, &input, true);
+      #|}
+      #|
+    ),
+  )
+  let prepared = composer.prepare_wgsl_source(
+    "mgstudio/render/renderer/issue8_lighting_repro.wgsl",
+    {
+      defines: bevy_parity_defines(bevy_parity_forward_defines()),
+      value_defines: bevy_parity_value_defines(),
+      redirects: [],
+      additional_imports: [],
+    },
+  ) catch {
+    err => abort("expected Bevy prepared source success: \{err.message()}")
+  }
+  let mut unresolved_entries = 0
+  let mut resolved_entries = 0
+  let mut unresolved_source_files = 0
+  for entry in prepared.source_catalog {
+    if entry.source_text.contains("view_bindings::clustered_lights") {
+      unresolved_entries = unresolved_entries + 1
+    }
+    if entry.source_text.contains("view_bindings__clustered_lights") {
+      resolved_entries = resolved_entries + 1
+    }
+  }
+  for source_file in prepared.source_files {
+    if source_file.source.contains("view_bindings::clustered_lights") {
+      unresolved_source_files = unresolved_source_files + 1
+    }
+  }
+  debug_inspect(prepared.source_files.length(), content="1")
+  debug_inspect(unresolved_source_files, content="0")
+  debug_inspect(unresolved_entries, content="0")
+  debug_inspect(resolved_entries > 0, content="true")
+}

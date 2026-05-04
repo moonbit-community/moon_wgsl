@@ -294,8 +294,8 @@ test "README: checked tree scan" {
 
 Use `export_wgsl_with_options` to produce a fully expanded
 single-file WGSL output. The export path also supports declaration-level
-tree-shaking and returns source-map entries, the dependency-closure source
-catalog used for matching, plus diagnostics.
+tree-shaking and returns source-map entries, a source catalog derived from the
+final prepared WGSL, plus diagnostics.
 
 ```mbt check
 ///|
@@ -338,7 +338,9 @@ test "README: export single WGSL file" {
 ```
 
 If you need the declaration catalog directly, without exporting a specific
-entrypoint, use `build_wgsl_source_catalog` on the same Composer:
+entrypoint, call `prepare_wgsl_source` on the same Composer. The catalog entries
+are extracted from the same resolved WGSL stored in `PreparedWgslSource.source`,
+so alias-qualified imports and redirects cannot diverge from the runtime source.
 
 ```mbt check
 ///|
@@ -458,8 +460,6 @@ Main public entry points:
 - `WgslSourceRegistry::register_source_files_checked`
   Runs preflight registry diagnostics and only mutates registry state when no
   errors are reported.
-- `build_wgsl_source_catalog`
-  Returns the declaration catalog for a prepared dependency closure.
 - `WgslSourceRegistry::copy_import_module_paths` /
   `resolve_wgsl_import_module_in_registry`
   Build and query module-path resolution data for an explicit registry.
@@ -523,8 +523,8 @@ For the full exported surface, see the generated subpackage interfaces:
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.
 - `export_wgsl_with_options` scopes `source_catalog` and
-  `source_map` to the dependency closure of the current compose/export
-  preparation result instead of the full registry.
+  `source_map` to the final prepared source for the current compose/export
+  result instead of rebuilding a catalog from raw registered files.
 - Source-level redirects are token-based and intentionally skip declaration
   heads, field accesses (`.`), and attributes (`@...`); they are intended for
   imported helper/type names rather than locally shadowed identifiers.

@@ -1073,12 +1073,12 @@ test "naga_oil: source catalog uses per-module strict shader defs" {
   debug_inspect(prepared.source.contains("fn from_else"), content="false")
   let module_catalog_names : Array[String] = []
   for entry in prepared.source_catalog {
-    if entry.rel_path == "shaders/catalog/module.wgsl" {
+    if entry.rel_path == "shaders/catalog/root.wgsl" {
       module_catalog_names.push(entry.symbol_name)
     }
   }
   module_catalog_names.sort()
-  debug_inspect(module_catalog_names.join(","), content="\"from_if\"")
+  debug_inspect(module_catalog_names.join(","), content="\"shade,from_if\"")
 }
 
 ///|

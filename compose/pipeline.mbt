@@ -12,12 +12,6 @@ fn Composer::preprocess_wgsl_source_with_path(
     current_rel_path, session, inherited_defs,
   )
   merge_wgsl_source_local_shader_defs(active_defs, source)
-  if current_rel_path != "" {
-    session.resolved_source_defs.set(
-      current_rel_path,
-      copy_active_compose_defs(active_defs),
-    )
-  }
   let prepared = prepare_wgsl_compose_source(source, session, active_defs)
   let mut merged = ""
   let alias_redirects : Array[WgslScopedAliasRedirect] = []
@@ -89,7 +83,6 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
   }
   session.visited.set(normalized_rel, true)
   let source = self.load_wgsl_source_required_raw(normalized_rel)
-  session.resolved_source_files.set(normalized_rel, source)
   session.active_rel_paths.push(normalized_rel)
   let composed = self.preprocess_wgsl_source_with_path(
     normalized_rel,
@@ -133,18 +126,6 @@ fn collect_wgsl_unused_redirect_diagnostics(
 }
 
 ///|
-fn copy_composed_source_files(
-  source_registry : @hashmap.HashMap[String, String],
-) -> Array[WgslSourceFile] {
-  let files : Array[WgslSourceFile] = []
-  for entry in source_registry.iter() {
-    let (rel_path, source) = entry
-    files.push(WgslSourceFile::{ rel_path, source })
-  }
-  files
-}
-
-///|
 pub fn Composer::prepare_wgsl_source(
   self : Composer,
   rel : String,
@@ -154,14 +135,14 @@ pub fn Composer::prepare_wgsl_source(
   let composed = strip_wgsl_virtual_functions(
     self.load_root_wgsl_preprocessed_into_session(rel, session),
   )
-  let source_files = copy_composed_source_files(session.resolved_source_files)
+  let prepared_source = finalize_wgsl_writeback_source(composed)
+  let source_files : Array[WgslSourceFile] = [
+    { rel_path: normalize_shader_rel_path(rel), source: prepared_source },
+  ]
   PreparedWgslSource::{
-    source: finalize_wgsl_writeback_source(composed),
+    source: prepared_source,
     source_files,
-    source_catalog: build_prepared_wgsl_source_catalog(
-      source_files.copy(),
-      session.resolved_source_defs,
-    ),
+    source_catalog: build_prepared_wgsl_source_catalog(source_files.copy()),
     defines: session.defines,
     value_defines: session.value_defines,
     diagnostics: collect_wgsl_unused_redirect_diagnostics(session),

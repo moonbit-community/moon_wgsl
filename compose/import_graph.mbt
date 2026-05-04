@@ -283,7 +283,6 @@ fn Composer::compose_wgsl_import_requests(
     }
     session.visited.set(visit_key, true)
     let raw_source = self.load_wgsl_source_required_raw(request.rel_path)
-    session.resolved_source_files.set(request.rel_path, raw_source)
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
       self.preprocess_wgsl_source_with_path(
