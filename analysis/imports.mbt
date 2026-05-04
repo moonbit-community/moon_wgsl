@@ -5,6 +5,7 @@ using @ast {
   type WgslDirectiveKind,
   type WgslExprRef,
   type WgslExprToken,
+  type WgslGlobalDecl,
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
   type WgslIdent,
@@ -29,3 +30,6 @@ using @ast {type WgslTranslationUnit}
 
 ///|
 using @common {type WgslSymbolRedirect}
+
+///|
+using @semantic {collect_wgsl_semantic_reachable_declaration_names}

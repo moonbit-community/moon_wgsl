@@ -1,8 +1,10 @@
 ///|
-using @analysis {collect_wgsl_named_declarations_strict}
-
-///|
-using @ast {type WgslIdent, collect_wgsl_decl_identifier_nodes}
+using @ast {
+  type WgslGlobalDecl,
+  type WgslGlobalDeclData,
+  type WgslIdent,
+  collect_wgsl_decl_identifier_nodes,
+}
 
 ///|
 using @common {

@@ -148,3 +148,46 @@ test "semantic import target plan expands nested module aliases" {
   debug_inspect(plans.plans[0].module_alias, content="\"pbr::bindings\"")
   debug_inspect(plans.plans[0].requested_items.join(","), content="\"view\"")
 }
+
+///|
+test "semantic declaration graph resolves transitive dependencies" {
+  let source =
+    #|const BASE: u32 = 1u;
+    #|const VALUE: u32 = BASE + 1u;
+    #|fn entry() -> u32 {
+    #|  return VALUE;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    _ => abort("expected valid WGSL parse")
+  }
+  let reachable = collect_wgsl_semantic_reachable_declaration_names(
+    unit.declarations,
+    ["entry"],
+  )
+  let names = reachable.included_names
+  names.sort()
+  debug_inspect(names.join(","), content="\"BASE,VALUE,entry\"")
+  debug_inspect(reachable.missing_root_items.length(), content="0")
+}
+
+///|
+test "semantic declaration graph respects function local shadowing" {
+  let source =
+    #|const helper: u32 = 1u;
+    #|fn entry() -> u32 {
+    #|  let helper = 2u;
+    #|  return helper;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    _ => abort("expected valid WGSL parse")
+  }
+  let reachable = collect_wgsl_semantic_reachable_declaration_names(
+    unit.declarations,
+    ["entry"],
+  )
+  let names = reachable.included_names
+  names.sort()
+  debug_inspect(names.join(","), content="\"entry\"")
+}

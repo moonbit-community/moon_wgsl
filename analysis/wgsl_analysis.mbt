@@ -42,16 +42,6 @@ pub struct WgslTreeShakenSource {
 }
 
 ///|
-fn wgsl_string_list_push_unique(items : Array[String], item : String) -> Unit {
-  for existing in items {
-    if existing == item {
-      return
-    }
-  }
-  items.push(item)
-}
-
-///|
 fn build_wgsl_declaration_graph_from_unit(
   unit : WgslTranslationUnit,
 ) -> WgslDeclarationGraph {
@@ -108,115 +98,31 @@ pub fn build_wgsl_declaration_graph_strict(
 }
 
 ///|
-fn build_wgsl_declaration_indexes(
-  declaration_blocks : Array[WgslGraphBlock],
-) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
-  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
-  for i in 0..<declaration_blocks.length() {
-    let block = declaration_blocks[i]
-    if block.name != "" {
-      declaration_names.set(block.name, true)
-      declaration_indexes.set(block.name, i)
-    }
-  }
-  (declaration_names, declaration_indexes)
-}
-
-///|
-fn collect_wgsl_identifier_dependencies(
-  identifiers : Array[WgslIdent],
-  self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
-  dependencies : Array[String],
-) -> Unit {
-  for identifier in identifiers {
-    let dependency_name = identifier.name
-    if dependency_name != self_name &&
-      declaration_names.contains(dependency_name) {
-      wgsl_string_list_push_unique(dependencies, dependency_name)
-    }
-  }
-}
-
-///|
-fn collect_wgsl_declaration_dependencies(
-  declaration_data : WgslGlobalDeclData,
-  self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
-  dependencies : Array[String],
-) -> Unit {
-  match declaration_data {
-    WgslGlobalDeclData::Raw => ()
-    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) => ()
-    _ => {
-      let identifiers : Array[WgslIdent] = []
-      collect_wgsl_decl_identifier_nodes(declaration_data, identifiers)
-      collect_wgsl_identifier_dependencies(
-        identifiers, self_name, declaration_names, dependencies,
-      )
-    }
-  }
-}
-
-///|
-fn collect_wgsl_reachable_declaration_names(
+fn wgsl_reachable_declaration_map(
   declaration_blocks : Array[WgslGraphBlock],
   root_items : Array[String],
 ) -> (@hashmap.HashMap[String, Bool], Array[String]) {
   let included_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  if root_items.length() == 0 {
-    for block in declaration_blocks {
-      if block.name != "" {
-        included_names.set(block.name, true)
-      }
-    }
-    return (included_names, [])
-  }
-
-  let (declaration_names, declaration_indexes) = build_wgsl_declaration_indexes(
-    declaration_blocks,
-  )
-  let worklist : Array[String] = []
-  let missing_root_items : Array[String] = []
-  for root_item in root_items {
-    if declaration_names.contains(root_item) {
-      worklist.push(root_item)
-    } else {
-      missing_root_items.push(root_item)
-    }
-  }
-  if worklist.length() == 0 {
-    for block in declaration_blocks {
-      if block.name != "" {
-        included_names.set(block.name, true)
-      }
-    }
-    return (included_names, missing_root_items)
-  }
-
-  while worklist.length() > 0 {
-    let name = worklist.pop().unwrap()
-    if included_names.contains(name) {
-      continue
-    }
-    included_names.set(name, true)
-    guard declaration_indexes.get(name) is Some(index) else { continue }
-    let block = declaration_blocks[index]
-    let dependencies : Array[String] = []
-    collect_wgsl_declaration_dependencies(
-      block.data,
-      name,
-      declaration_names,
-      dependencies,
+  let declarations : Array[WgslGlobalDecl] = []
+  for block in declaration_blocks {
+    declarations.push(
+      WgslGlobalDecl::new(
+        WgslGlobalDeclKind::Unknown,
+        block.data,
+        block.name,
+        block.text,
+        block.start,
+        block.start + block.text.length(),
+      ),
     )
-    for dependency in dependencies {
-      if !included_names.contains(dependency) {
-        worklist.push(dependency)
-      }
-    }
   }
-  (included_names, missing_root_items)
+  let reachable = collect_wgsl_semantic_reachable_declaration_names(
+    declarations, root_items,
+  )
+  for name in reachable.included_names {
+    included_names.set(name, true)
+  }
+  (included_names, reachable.missing_root_items)
 }
 
 ///|
@@ -224,7 +130,7 @@ fn emit_wgsl_tree_shaken_source_from_graph(
   graph : WgslDeclarationGraph,
   root_items : Array[String],
 ) -> WgslTreeShakenSource {
-  let (included_names, missing_root_items) = collect_wgsl_reachable_declaration_names(
+  let (included_names, missing_root_items) = wgsl_reachable_declaration_map(
     graph.declaration_blocks,
     root_items,
   )
@@ -339,7 +245,7 @@ fn extract_wgsl_module_items_from_graph(
   if requested_items.length() == 0 {
     return source
   }
-  let (included_names, _) = collect_wgsl_reachable_declaration_names(
+  let (included_names, _) = wgsl_reachable_declaration_map(
     graph.declaration_blocks,
     requested_items,
   )

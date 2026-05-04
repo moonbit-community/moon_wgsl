@@ -64,6 +64,12 @@ pub(all) struct WgslSemanticImportTargetPlans {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct WgslSemanticReachableDeclarations {
+  included_names : Array[String]
+  missing_root_items : Array[String]
+} derive(Eq, Debug)
+
+///|
 fn semantic_string_list_push_unique(
   items : Array[String],
   item : String,
@@ -132,6 +138,118 @@ pub fn collect_wgsl_semantic_reference_paths(
       None => ()
     }
   }
+}
+
+///|
+fn semantic_declaration_name_map(
+  declarations : Array[WgslGlobalDecl],
+) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
+  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
+  for i in 0..<declarations.length() {
+    let decl = declarations[i]
+    if decl.name != "" {
+      declaration_names.set(decl.name, true)
+      declaration_indexes.set(decl.name, i)
+    }
+  }
+  (declaration_names, declaration_indexes)
+}
+
+///|
+fn semantic_collect_identifier_dependencies(
+  identifiers : Array[WgslIdent],
+  self_name : String,
+  declaration_names : @hashmap.HashMap[String, Bool],
+  dependencies : Array[String],
+) -> Unit {
+  for identifier in identifiers {
+    let dependency_name = identifier.name
+    if dependency_name != self_name &&
+      declaration_names.contains(dependency_name) {
+      semantic_string_list_push_unique(dependencies, dependency_name)
+    }
+  }
+}
+
+///|
+fn semantic_collect_declaration_dependencies(
+  declaration_data : WgslGlobalDeclData,
+  self_name : String,
+  declaration_names : @hashmap.HashMap[String, Bool],
+  dependencies : Array[String],
+) -> Unit {
+  match declaration_data {
+    WgslGlobalDeclData::Raw => ()
+    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) => ()
+    _ => {
+      let identifiers : Array[WgslIdent] = []
+      collect_wgsl_decl_identifier_nodes(declaration_data, identifiers)
+      semantic_collect_identifier_dependencies(
+        identifiers, self_name, declaration_names, dependencies,
+      )
+    }
+  }
+}
+
+///|
+pub fn collect_wgsl_semantic_reachable_declaration_names(
+  declarations : Array[WgslGlobalDecl],
+  root_items : Array[String],
+) -> WgslSemanticReachableDeclarations {
+  let included_names : Array[String] = []
+  if root_items.length() == 0 {
+    for decl in declarations {
+      semantic_string_list_push_unique(included_names, decl.name)
+    }
+    return WgslSemanticReachableDeclarations::{
+      included_names,
+      missing_root_items: [],
+    }
+  }
+  let (declaration_names, declaration_indexes) = semantic_declaration_name_map(
+    declarations,
+  )
+  let worklist : Array[String] = []
+  let missing_root_items : Array[String] = []
+  for root_item in root_items {
+    if declaration_names.contains(root_item) {
+      worklist.push(root_item)
+    } else {
+      semantic_string_list_push_unique(missing_root_items, root_item)
+    }
+  }
+  if worklist.length() == 0 {
+    for decl in declarations {
+      semantic_string_list_push_unique(included_names, decl.name)
+    }
+    return WgslSemanticReachableDeclarations::{
+      included_names,
+      missing_root_items,
+    }
+  }
+  while worklist.length() > 0 {
+    let name = worklist.pop().unwrap()
+    if included_names.contains(name) {
+      continue
+    }
+    included_names.push(name)
+    guard declaration_indexes.get(name) is Some(index) else { continue }
+    let decl = declarations[index]
+    let dependencies : Array[String] = []
+    semantic_collect_declaration_dependencies(
+      decl.data,
+      name,
+      declaration_names,
+      dependencies,
+    )
+    for dependency in dependencies {
+      if !included_names.contains(dependency) {
+        worklist.push(dependency)
+      }
+    }
+  }
+  WgslSemanticReachableDeclarations::{ included_names, missing_root_items }
 }
 
 ///|
@@ -540,8 +658,10 @@ pub fn build_wgsl_semantic_import_rename_map(
 ) -> @hashmap.HashMap[String, String] raise WgslParseError {
   let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let alias_prefix = parse_wgsl_import_alias_prefix(alias_name)
-  for declaration in collect_wgsl_named_declarations_strict(source) {
-    rename_map.set(declaration.name, "\{alias_prefix}__\{declaration.name}")
+  for declaration in parse_wgsl_translation_unit_strict(source).declarations {
+    if declaration.name != "" {
+      rename_map.set(declaration.name, "\{alias_prefix}__\{declaration.name}")
+    }
   }
   rename_map
 }

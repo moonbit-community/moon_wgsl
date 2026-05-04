@@ -2,6 +2,7 @@
 package "Milky2018/moon_wgsl/semantic"
 
 import {
+  "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/parser",
   "Milky2018/moon_wgsl/resolver",
@@ -21,6 +22,8 @@ pub fn collect_wgsl_semantic_alias_requested_paths(String, String, Array[String]
 pub fn collect_wgsl_semantic_import_alias_redirects(String, @hashmap.HashMap[String, String], Array[@common.WgslSymbolRedirect]) -> Unit
 
 pub fn collect_wgsl_semantic_qualified_module_targets(String, String, @resolver.WgslSourceRegistry, @hashmap.HashMap[String, String], Array[@common.WgslImportTarget]) -> Unit raise @parser.WgslParseError
+
+pub fn collect_wgsl_semantic_reachable_declaration_names(Array[@ast.WgslGlobalDecl], Array[String]) -> WgslSemanticReachableDeclarations
 
 pub fn collect_wgsl_semantic_reference_paths(String, Array[WgslSemanticReferencePath]) -> Unit raise @parser.WgslParseError
 
@@ -76,6 +79,11 @@ pub(all) struct WgslSemanticImportTargetPlan {
 pub(all) struct WgslSemanticImportTargetPlans {
   plans : Array[WgslSemanticImportTargetPlan]
   unresolved_targets : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSemanticReachableDeclarations {
+  included_names : Array[String]
+  missing_root_items : Array[String]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct WgslSemanticReferencePath {

@@ -1,5 +1,4 @@
 import {
-  "Milky2018/moon_wgsl/analysis",
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/lex",
