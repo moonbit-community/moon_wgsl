@@ -22,11 +22,11 @@ using @ast {
 ///|
 using @lex {
   type WgslToken,
-  replace_comments,
+  type WgslTokenReplacement,
+  emit_wgsl_source_tokens_canonical,
   source_lines,
   split_last_identifier,
   tokenize,
-  tokenize_wgsl,
   trim_trailing_semicolons,
   utf8_byte_length,
   wgsl_regex_skip_whitespace,

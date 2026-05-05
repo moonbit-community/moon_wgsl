@@ -25,9 +25,10 @@ using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 ///|
 using @lex {
   type WgslToken,
-  replace_comments,
+  type WgslTokenReplacement,
+  emit_wgsl_token_stream_canonical,
   split_last_identifier,
-  tokenize_wgsl,
+  tokenize_wgsl_absolute_fragment,
 }
 
 ///|

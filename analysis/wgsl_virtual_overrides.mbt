@@ -117,7 +117,7 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
       out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
-    let nodes : Array[WgslRewriteNode] = []
+    let nodes : Array[WgslTokenReplacement] = []
     let raw_target = function.name().name()
     if split_last_identifier(raw_target) is None {
       out = out + emit_wgsl_graph_block_canonical(block)
@@ -125,13 +125,15 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     }
     let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
     if target != raw_target {
-      nodes.push(WgslRewriteNode::{
-        start: function.name().start(),
-        end: function.name().end(),
-        replacement: target,
-      })
+      nodes.push(
+        WgslTokenReplacement::new(
+          function.name().start(),
+          function.name().end(),
+          target,
+        ),
+      )
     }
-    out = out + wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
+    out = out + emit_wgsl_token_stream_canonical(block.tokens, nodes)
   }
   out
 }
@@ -169,11 +171,11 @@ fn wgsl_flatten_path_identifier(path : String) -> String {
 ///|
 fn collect_wgsl_virtual_fn_nodes(
   function : WgslFunction,
-  nodes : Array[WgslRewriteNode],
+  nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   match (function.qualifier_start(), function.qualifier_end()) {
     (Some(start), Some(end_)) =>
-      nodes.push(WgslRewriteNode::{ start, end: end_, replacement: "" })
+      nodes.push(WgslTokenReplacement::new(start, end_, ""))
     _ => ()
   }
 }
@@ -183,9 +185,9 @@ fn rewrite_wgsl_virtual_fn_block(
   block : WgslGraphBlock,
   function : WgslFunction,
 ) -> String {
-  let nodes : Array[WgslRewriteNode] = []
+  let nodes : Array[WgslTokenReplacement] = []
   collect_wgsl_virtual_fn_nodes(function, nodes)
-  wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
+  emit_wgsl_token_stream_canonical(block.tokens, nodes)
 }
 
 ///|
@@ -198,10 +200,10 @@ fn rewrite_wgsl_virtual_base_block(
   let plan = WgslRenamePlan::empty()
   plan.add(target_name, base_name, GlobalDeclarationAndReferences)
   let maps = build_wgsl_rename_maps(plan)
-  let nodes : Array[WgslRewriteNode] = []
+  let nodes : Array[WgslTokenReplacement] = []
   collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
   collect_wgsl_virtual_fn_nodes(function, nodes)
-  wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
+  emit_wgsl_token_stream_canonical(block.tokens, nodes)
 }
 
 ///|
@@ -210,7 +212,7 @@ fn collect_wgsl_override_body_reference_nodes(
   target_name : String,
   raw_target : String,
   base_name : String,
-  nodes : Array[WgslRewriteNode],
+  nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   let plan = WgslRenamePlan::empty()
   plan.add(target_name, base_name, FunctionBodyReferencesOnly)
@@ -226,7 +228,7 @@ fn rewrite_wgsl_override_fn_block(
   raw_target : String,
   base_name : String?,
 ) -> String {
-  let nodes : Array[WgslRewriteNode] = []
+  let nodes : Array[WgslTokenReplacement] = []
   match base_name {
     Some(base) =>
       collect_wgsl_override_body_reference_nodes(
@@ -240,15 +242,17 @@ fn rewrite_wgsl_override_fn_block(
   }
   match (function.qualifier_start(), function.qualifier_end()) {
     (Some(start), Some(end_)) => {
-      nodes.push(WgslRewriteNode::{ start, end: end_, replacement: "" })
-      nodes.push(WgslRewriteNode::{
-        start: function.name().start(),
-        end: function.name().end(),
-        replacement: target_name,
-      })
-      wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
+      nodes.push(WgslTokenReplacement::new(start, end_, ""))
+      nodes.push(
+        WgslTokenReplacement::new(
+          function.name().start(),
+          function.name().end(),
+          target_name,
+        ),
+      )
+      emit_wgsl_token_stream_canonical(block.tokens, nodes)
     }
-    _ => wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
+    _ => emit_wgsl_token_stream_canonical(block.tokens, nodes)
   }
 }
 
