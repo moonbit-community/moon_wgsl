@@ -74,13 +74,13 @@ fn top_level_index_starts_semicolon(
   start : Int,
 ) -> Bool {
   let next = top_level_non_whitespace_index(tokens, start)
-  next < tokens.length() && tokens[next] is WgslToken::Other(59, _)
+  next < tokens.length() && tokens[next] is WgslToken::Punctuation(59, _)
 }
 
 ///|
 fn top_level_previous_token_is_hash(previous : WgslToken?) -> Bool {
   match previous {
-    Some(WgslToken::Other(35, _)) => true
+    Some(WgslToken::Punctuation(35, _)) => true
     _ => false
   }
 }
@@ -234,18 +234,18 @@ fn WgslTopLevelParser::parse_declaration_item(
     let token = self.tokens[self.index]
     if depth.at_top() &&
       token.pos() > first_token_pos &&
-      token is WgslToken::Other(35, _) &&
+      token is WgslToken::Punctuation(35, _) &&
       top_level_hash_starts_directive(self.cleaned, token.pos()) {
       item_end = token.pos()
       break
     }
-    if !saw_brace && depth.at_top() && token is WgslToken::Other(59, _) {
+    if !saw_brace && depth.at_top() && token is WgslToken::Punctuation(59, _) {
       item_end = token.end()
       self.index = self.index + 1
       break
     }
     let starts_top_level_brace = depth.at_top() &&
-      token is WgslToken::Other(123, _) &&
+      token is WgslToken::Punctuation(123, _) &&
       !top_level_previous_token_is_hash(previous_significant)
     depth.observe_statement_token(token)
     if starts_top_level_brace {
@@ -261,7 +261,7 @@ fn WgslTopLevelParser::parse_declaration_item(
           self.index = self.index + 1
         }
         if self.index < self.tokens.length() &&
-          self.tokens[self.index] is WgslToken::Other(59, _) {
+          self.tokens[self.index] is WgslToken::Punctuation(59, _) {
           item_end = self.tokens[self.index].end()
           self.index = self.index + 1
         }
@@ -298,7 +298,7 @@ fn WgslTopLevelParser::parse_items(
     }
     let token = self.tokens[self.index]
     let token_pos = token.pos()
-    if token is WgslToken::Other(35, _) {
+    if token is WgslToken::Punctuation(35, _) {
       let line_end = top_level_line_end(self.source, token_pos)
       let cleaned_line = self.cleaned[token_pos:line_end].to_owned()
       match parse_wgsl_directive_line(cleaned_line) {

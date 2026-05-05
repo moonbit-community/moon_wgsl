@@ -91,7 +91,7 @@ pub fn parse_imports(
     raise ParseImportsError::Parse("expected #import", utf8_byte_length(input))
   }
 
-  guard tokens[0] is WgslToken::Other(35, _) else {
+  guard tokens[0] is WgslToken::Punctuation(35, _) else {
     raise ParseImportsError::Parse(
       "expected `#import`",
       import_token_byte_offset(input, tokens[0]),

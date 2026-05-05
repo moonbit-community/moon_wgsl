@@ -502,7 +502,9 @@ fn wgsl_emit_token_text(
         None => text
       }
     }
-    WgslToken::Other(code, _) => wgsl_ascii_code_text(code)
+    WgslToken::Number(text, _) => text
+    WgslToken::Operator(text, _) => text
+    WgslToken::Punctuation(code, _) => wgsl_ascii_code_text(code)
     WgslToken::Whitespace(text, _) => text
   }
 }
@@ -511,30 +513,8 @@ fn wgsl_emit_token_text(
 fn wgsl_emit_token_class(token : WgslToken) -> WgslEmitTokenClass {
   match token {
     WgslToken::Identifier(_, _) => Word
-    WgslToken::Other(code, _) if code >= 48 && code <= 57 => Number
-    WgslToken::Other(code, _) if code >= 65 && code <= 90 => Word
-    WgslToken::Other(code, _) if code >= 97 && code <= 122 => Word
-    WgslToken::Other(95, _) => Word
+    WgslToken::Number(_, _) => Number
     _ => Other
-  }
-}
-
-///|
-fn wgsl_emit_code_pair_text(lhs : Int, rhs : Int) -> String? {
-  match (lhs, rhs) {
-    (45, 62) => Some("->")
-    (61, 61) => Some("==")
-    (33, 61) => Some("!=")
-    (60, 61) => Some("<=")
-    (62, 61) => Some(">=")
-    (38, 38) => Some("&&")
-    (124, 124) => Some("||")
-    (43, 61) => Some("+=")
-    (45, 61) => Some("-=")
-    (42, 61) => Some("*=")
-    (47, 61) => Some("/=")
-    (37, 61) => Some("%=")
-    _ => None
   }
 }
 
@@ -547,64 +527,17 @@ fn wgsl_emit_token_at(
 ) -> (WgslEmittedToken, Int)? {
   guard index >= 0 && index < tokens.length() else { return None }
   let token = tokens[index]
-  match token {
-    WgslToken::Other(lhs, _) if index + 1 < tokens.length() =>
-      match tokens[index + 1] {
-        WgslToken::Other(rhs, _) =>
-          match wgsl_emit_code_pair_text(lhs, rhs) {
-            Some(text) =>
-              Some(
-                (
-                  WgslEmittedToken::{
-                    text,
-                    start: token.pos(),
-                    end: tokens[index + 1].end(),
-                    kind: Other,
-                  },
-                  2,
-                ),
-              )
-            None =>
-              Some(
-                (
-                  WgslEmittedToken::{
-                    text: wgsl_emit_token_text(
-                      token, replacements, source_start,
-                    ),
-                    start: token.pos(),
-                    end: token.end(),
-                    kind: wgsl_emit_token_class(token),
-                  },
-                  1,
-                ),
-              )
-          }
-        _ =>
-          Some(
-            (
-              WgslEmittedToken::{
-                text: wgsl_emit_token_text(token, replacements, source_start),
-                start: token.pos(),
-                end: token.end(),
-                kind: wgsl_emit_token_class(token),
-              },
-              1,
-            ),
-          )
-      }
-    _ =>
-      Some(
-        (
-          WgslEmittedToken::{
-            text: wgsl_emit_token_text(token, replacements, source_start),
-            start: token.pos(),
-            end: token.end(),
-            kind: wgsl_emit_token_class(token),
-          },
-          1,
-        ),
-      )
-  }
+  Some(
+    (
+      WgslEmittedToken::{
+        text: wgsl_emit_token_text(token, replacements, source_start),
+        start: token.pos(),
+        end: token.end(),
+        kind: wgsl_emit_token_class(token),
+      },
+      1,
+    ),
+  )
 }
 
 ///|

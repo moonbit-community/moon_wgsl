@@ -99,6 +99,11 @@ test "naga_oil parity: Bevy PBR fragment resolves aliased clustered lights" {
     source.contains("view_bindings__clustered_lights"),
     content="true",
   )
+  debug_inspect(source.contains("vec3<f32 >="), content="false")
+  debug_inspect(
+    source.contains("var output: vec3<f32> = world_normal"),
+    content="true",
+  )
 }
 
 ///|

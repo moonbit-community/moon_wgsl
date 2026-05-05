@@ -42,7 +42,7 @@ fn WgslDeclParser::tokenize_function_arguments(
   }
   while parser.view().length() > 0 {
     match parser.view() {
-      [WgslToken::Other(35, hash_pos), ..] =>
+      [WgslToken::Punctuation(35, hash_pos), ..] =>
         match parser.directive_line_end_at_hash(hash_pos) {
           Some(line_end) => {
             while parser.view().length() > 0 &&
@@ -66,7 +66,7 @@ fn WgslDeclParser::tokenize_function_arguments(
     }
     tokens.push((Token::ARG_NAME(name), name.start, name.end))
     match parser.view() {
-      [WgslToken::Other(58, pos), .. rest] => {
+      [WgslToken::Punctuation(58, pos), .. rest] => {
         parser.update_view(rest)
         tokens.push((Token::COLON, pos, pos + 1))
       }
@@ -91,7 +91,7 @@ fn WgslDeclParser::tokenize_function_arguments(
       ),
     )
     match parser.view() {
-      [WgslToken::Other(44, _), ..] => continue
+      [WgslToken::Punctuation(44, _), ..] => continue
       [] => break
       _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
@@ -106,11 +106,7 @@ fn WgslDeclParser::parse_function_result(
   self : WgslDeclParser,
 ) -> WgslFunctionResult? {
   match self.view() {
-    [
-      WgslToken::Other(45, arrow_start),
-      WgslToken::Other(62, arrow_end),
-      .. rest,
-    ] => {
+    [WgslToken::Operator("->", arrow_start), .. rest] => {
       let parser = WgslDeclParser::{
         source_text: self.source_text,
         source_start: self.source_start,
@@ -118,7 +114,7 @@ fn WgslDeclParser::parse_function_result(
       }
       let rest_len = rest.length()
       let tokens : Array[(Token, Int, Int)] = [
-        (Token::ARROW(arrow_start), arrow_start, arrow_end + 1),
+        (Token::ARROW(arrow_start), arrow_start, arrow_start + 2),
       ]
       parser.push_attribute_tokens(tokens)
       let ty_fragment = parser.collect_until_top_level_fragment([123, 59])
@@ -141,7 +137,7 @@ fn WgslDeclParser::parse_function_result(
       )
       tokens.push((Token::EOF, ty_fragment.end, ty_fragment.end))
       let result = function_result(tokens) catch { _ => return None }
-      self.drop_tokens(2 + rest_len - parser.view().length())
+      self.drop_tokens(1 + rest_len - parser.view().length())
       result
     }
     _ => None
@@ -177,7 +173,7 @@ fn wgsl_statement_kind_from_tokens(
     Some(_) => WgslStatementKind::Expression
     None =>
       match tokens {
-        [WgslToken::Other(123, _), ..] => WgslStatementKind::Compound
+        [WgslToken::Punctuation(123, _), ..] => WgslStatementKind::Compound
         [] => WgslStatementKind::Empty
         _ => WgslStatementKind::Expression
       }
@@ -335,8 +331,8 @@ fn WgslDeclParser::collect_statement_blocks(
   let open_stack : Array[Int] = []
   for i in 0..<tokens.length() {
     match tokens[i] {
-      WgslToken::Other(123, _) => open_stack.push(i)
-      WgslToken::Other(125, close_start) =>
+      WgslToken::Punctuation(123, _) => open_stack.push(i)
+      WgslToken::Punctuation(125, close_start) =>
         match open_stack.pop() {
           Some(open_index) =>
             if open_stack.is_empty() {
@@ -365,11 +361,11 @@ fn collect_wgsl_statement_scope_tokens(
   let mut block_depth = 0
   for token in tokens {
     match token {
-      WgslToken::Other(123, _) => {
+      WgslToken::Punctuation(123, _) => {
         block_depth = block_depth + 1
         continue
       }
-      WgslToken::Other(125, _) if block_depth > 0 => {
+      WgslToken::Punctuation(125, _) if block_depth > 0 => {
         block_depth = block_depth - 1
         continue
       }
@@ -407,7 +403,7 @@ fn wgsl_statement_top_level_token_index_until(
   let limit = if end_ < tokens.length() { end_ } else { tokens.length() }
   for i in start..<limit {
     match tokens[i] {
-      WgslToken::Other(actual, _) if depth.at_top() && actual == code =>
+      WgslToken::Punctuation(actual, _) if depth.at_top() && actual == code =>
         return i
       _ => ()
     }
@@ -424,14 +420,16 @@ fn wgsl_statement_delimited_end(
   close_code : Int,
 ) -> Int {
   guard open_index >= 0 && open_index < tokens.length() else { return -1 }
-  guard tokens[open_index] is WgslToken::Other(code, _) && code == open_code else {
+  guard tokens[open_index] is WgslToken::Punctuation(code, _) &&
+    code == open_code else {
     return -1
   }
   let mut depth = 0
   for i in open_index..<tokens.length() {
     match tokens[i] {
-      WgslToken::Other(actual, _) if actual == open_code => depth = depth + 1
-      WgslToken::Other(actual, _) if actual == close_code => {
+      WgslToken::Punctuation(actual, _) if actual == open_code =>
+        depth = depth + 1
+      WgslToken::Punctuation(actual, _) if actual == close_code => {
         depth = depth - 1
         if depth == 0 {
           return i
@@ -515,7 +513,7 @@ fn wgsl_statement_collect_condition_expr(
   let expr_start = keyword_index + 1
   guard expr_start < tokens.length() else { return expr_start }
   match tokens[expr_start] {
-    WgslToken::Other(40, _) => {
+    WgslToken::Punctuation(40, _) => {
       let close_index = wgsl_statement_delimited_end(tokens, expr_start, 40, 41)
       if close_index > expr_start {
         wgsl_statement_push_expr_ref(
@@ -557,7 +555,7 @@ fn wgsl_statement_collect_for_header_exprs(
 ) -> Int {
   let header_start = for_index + 1
   guard header_start < tokens.length() else { return header_start }
-  guard tokens[header_start] is WgslToken::Other(40, _) else {
+  guard tokens[header_start] is WgslToken::Punctuation(40, _) else {
     return header_start
   }
   let header_end = wgsl_statement_delimited_end(tokens, header_start, 40, 41)
@@ -662,7 +660,7 @@ fn collect_wgsl_statement_expression_refs(
       return
     }
     ConstAssert => {
-      if tokens.length() > 1 && tokens[1] is WgslToken::Other(40, _) {
+      if tokens.length() > 1 && tokens[1] is WgslToken::Punctuation(40, _) {
         let close_index = wgsl_statement_delimited_end(tokens, 1, 40, 41)
         if close_index > 1 {
           wgsl_statement_push_expr_ref(
@@ -921,8 +919,8 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   }
   while true {
     match self.view() {
-      [WgslToken::Other(125, _), ..] if depth.at_top() => break
-      [WgslToken::Other(59, pos), .. rest] if depth.at_top() => {
+      [WgslToken::Punctuation(125, _), ..] if depth.at_top() => break
+      [WgslToken::Punctuation(59, pos), .. rest] if depth.at_top() => {
         record_span(pos, pos + 1)
         self.update_view(rest)
         break
@@ -939,7 +937,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
         depth.observe_statement_token(token)
         record_token(token)
         self.update_view(rest)
-        if depth.at_top() && token is WgslToken::Other(125, _) {
+        if depth.at_top() && token is WgslToken::Punctuation(125, _) {
           if wgsl_statement_view_continues_after_block(self.view()) {
             continue
           }

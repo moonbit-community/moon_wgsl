@@ -49,11 +49,29 @@ test "WGSL tokenizer does not split numeric suffixes into identifiers" {
 }
 
 ///|
+test "WGSL tokenizer emits numeric literals as semantic tokens" {
+  let tokens = tokenize_wgsl("let x = 1u + 2.0e-3f;", false)
+  debug_inspect(tokens[3], content="Number(\"1u\", 8)")
+  debug_inspect(tokens[5], content="Number(\"2.0e-3f\", 13)")
+}
+
+///|
+test "WGSL tokenizer emits adjacent compound operators only" {
+  let tokens = tokenize_wgsl(
+    "a >= b; c > = d; fn f() -> u32 { return 1u; }", false,
+  )
+  debug_inspect(tokens[1], content="Operator(\">=\", 2)")
+  debug_inspect(tokens[5], content="Punctuation(62, 10)")
+  debug_inspect(tokens[6], content="Punctuation(61, 12)")
+  debug_inspect(tokens[13], content="Operator(\"->\", 24)")
+}
+
+///|
 test "naga_oil tokenizer uses XID identifiers instead of all Unicode" {
   let tokens = tokenize("alpha💡β", false)
   debug_inspect(tokens.length(), content="3")
   debug_inspect(tokens[0], content="Identifier(\"alpha\", 0)")
-  debug_inspect(tokens[1], content="Other(128161, 5)")
+  debug_inspect(tokens[1], content="Punctuation(128161, 5)")
   debug_inspect(tokens[2], content="Identifier(\"β\", 7)")
 }
 

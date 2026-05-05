@@ -74,7 +74,7 @@ fn tokenize_wgsl_import_targets(
         previous_can_start_alias = true
         previous_identifier = Some(name)
       }
-      Other(123, _) => {
+      Punctuation(123, _) => {
         guard previous_identifier is Some(name) && name.has_suffix("::") else {
           raise ParseImportsError::Parse("open brace must follow `::`", start)
         }
@@ -82,23 +82,33 @@ fn tokenize_wgsl_import_targets(
         previous_can_start_alias = false
         previous_identifier = None
       }
-      Other(125, _) => {
+      Punctuation(125, _) => {
         push_generated_import_token(out, Token::RBRACE(start), start, end_)
         previous_can_start_alias = false
         previous_identifier = None
       }
-      Other(44, _) => {
+      Punctuation(44, _) => {
         push_generated_import_token(out, Token::COMMA, start, end_)
         previous_can_start_alias = false
         previous_identifier = None
       }
-      Other(59, _) => {
+      Punctuation(59, _) => {
         push_generated_import_token(out, Token::SEMI, start, end_)
         previous_can_start_alias = false
         previous_identifier = None
         after_final_semicolon = true
       }
-      Other(_, pos) =>
+      Punctuation(_, pos) =>
+        raise ParseImportsError::Parse(
+          "unexpected token",
+          utf8_byte_length(input[:pos].to_owned()),
+        )
+      Operator(_, pos) =>
+        raise ParseImportsError::Parse(
+          "unexpected token",
+          utf8_byte_length(input[:pos].to_owned()),
+        )
+      Number(_, pos) =>
         raise ParseImportsError::Parse(
           "unexpected token",
           utf8_byte_length(input[:pos].to_owned()),
@@ -120,7 +130,7 @@ pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(
   if tokens.length() == 0 {
     return true
   }
-  tokens.length() == 1 && tokens[0] is WgslToken::Other(59, _)
+  tokens.length() == 1 && tokens[0] is WgslToken::Punctuation(59, _)
 }
 
 ///|

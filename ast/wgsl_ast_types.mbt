@@ -89,6 +89,7 @@ pub(all) enum WgslExprTokenKind {
   UintLiteral(Int)
   IntLiteral(Int)
   FloatLiteral
+  Operator(String)
   Punctuation(Int)
   Unknown
 } derive(Debug)

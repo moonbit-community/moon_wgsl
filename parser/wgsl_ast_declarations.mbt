@@ -18,19 +18,19 @@ fn WgslDeclParser::parse_function(
       None => return None
     }
   }
-  guard self.view() is [WgslToken::Other(40, _), ..] else { return None }
+  guard self.view() is [WgslToken::Punctuation(40, _), ..] else { return None }
   let arguments = self.parse_function_arguments_checked() catch {
     _ => return None
   }
   let result = match self.view() {
-    [WgslToken::Other(45, _), WgslToken::Other(62, _), ..] =>
+    [WgslToken::Operator("->", _), ..] =>
       match self.parse_function_result() {
         Some(value) => Some(value)
         None => return None
       }
     _ => None
   }
-  guard self.view() is [WgslToken::Other(123, _), ..] else { return None }
+  guard self.view() is [WgslToken::Punctuation(123, _), ..] else { return None }
   let body = self.parse_block_checked() catch { _ => return None }
   Some(
     WgslFunction::new(
@@ -103,7 +103,7 @@ fn WgslDeclParser::tokenize_struct_members(
       _ => ()
     }
     match parser.view() {
-      [WgslToken::Other(35, hash_pos), ..] =>
+      [WgslToken::Punctuation(35, hash_pos), ..] =>
         match parser.directive_line_end_at_hash(hash_pos) {
           Some(line_end) => {
             while parser.view().length() > 0 &&
@@ -117,12 +117,12 @@ fn WgslDeclParser::tokenize_struct_members(
       _ => ()
     }
     match parser.view() {
-      [WgslToken::Other(44, pos), .. rest] => {
+      [WgslToken::Punctuation(44, pos), .. rest] => {
         parser.update_view(rest)
         tokens.push((Token::COMMA, pos, pos + 1))
         continue
       }
-      [WgslToken::Other(59, pos), .. rest] => {
+      [WgslToken::Punctuation(59, pos), .. rest] => {
         parser.update_view(rest)
         tokens.push((Token::SEMI, pos, pos + 1))
         continue
@@ -136,7 +136,7 @@ fn WgslDeclParser::tokenize_struct_members(
     }
     tokens.push((Token::MEMBER_NAME(name), name.start, name.end))
     match parser.view() {
-      [WgslToken::Other(58, pos), .. rest] => {
+      [WgslToken::Punctuation(58, pos), .. rest] => {
         parser.update_view(rest)
         tokens.push((Token::COLON, pos, pos + 1))
       }
@@ -161,7 +161,8 @@ fn WgslDeclParser::tokenize_struct_members(
       ),
     )
     match parser.view() {
-      [WgslToken::Other(44, _), ..] | [WgslToken::Other(59, _), ..] => continue
+      [WgslToken::Punctuation(44, _), ..]
+      | [WgslToken::Punctuation(59, _), ..] => continue
       [] => break
       _ => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
@@ -235,7 +236,7 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
 ) -> WgslTypedInitializerTail raise WgslTypedInitializerTailParseError {
   let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
-    [WgslToken::Other(58, pos), .. rest] => {
+    [WgslToken::Punctuation(58, pos), .. rest] => {
       self.update_view(rest)
       tokens.push((Token::COLON, pos, pos + 1))
       let ty_fragment = self.collect_until_top_level_fragment([61, 59])
@@ -261,7 +262,7 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
     _ => ()
   }
   match self.view() {
-    [WgslToken::Other(61, pos), .. rest] => {
+    [WgslToken::Punctuation(61, pos), .. rest] => {
       self.update_view(rest)
       tokens.push((Token::EQUAL, pos, pos + 1))
       let initializer = self.collect_until_top_level_fragment([59])
@@ -355,7 +356,7 @@ fn WgslDeclParser::parse_type_alias_tail(
 ) -> (String, WgslTypeRef?)? {
   let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
-    [WgslToken::Other(61, pos), .. rest] => {
+    [WgslToken::Punctuation(61, pos), .. rest] => {
       self.update_view(rest)
       tokens.push((Token::EQUAL, pos, pos + 1))
     }

@@ -15,7 +15,9 @@
 ///|
 pub enum WgslToken {
   Identifier(String, Int)
-  Other(Int, Int)
+  Number(String, Int)
+  Operator(String, Int)
+  Punctuation(Int, Int)
   Whitespace(String, Int)
 } derive(Eq, Debug)
 
@@ -23,7 +25,9 @@ pub enum WgslToken {
 pub fn WgslToken::pos(self : WgslToken) -> Int {
   match self {
     Identifier(_, pos) => pos
-    Other(_, pos) => pos
+    Number(_, pos) => pos
+    Operator(_, pos) => pos
+    Punctuation(_, pos) => pos
     Whitespace(_, pos) => pos
   }
 }
@@ -31,8 +35,11 @@ pub fn WgslToken::pos(self : WgslToken) -> Int {
 ///|
 pub fn WgslToken::end(self : WgslToken) -> Int {
   match self {
-    Identifier(text, pos) | Whitespace(text, pos) => pos + text.length()
-    Other(code, pos) => pos + tokenizer_code_point_width(code)
+    Identifier(text, pos)
+    | Number(text, pos)
+    | Operator(text, pos)
+    | Whitespace(text, pos) => pos + text.length()
+    Punctuation(code, pos) => pos + tokenizer_code_point_width(code)
   }
 }
 
@@ -40,8 +47,37 @@ pub fn WgslToken::end(self : WgslToken) -> Int {
 pub fn WgslToken::shift(self : WgslToken, offset : Int) -> WgslToken {
   match self {
     Identifier(name, pos) => Identifier(name, pos + offset)
-    Other(code, pos) => Other(code, pos + offset)
+    Number(text, pos) => Number(text, pos + offset)
+    Operator(text, pos) => Operator(text, pos + offset)
+    Punctuation(code, pos) => Punctuation(code, pos + offset)
     Whitespace(text, pos) => Whitespace(text, pos + offset)
+  }
+}
+
+///|
+pub fn WgslToken::text(self : WgslToken) -> String {
+  match self {
+    Identifier(text, _)
+    | Number(text, _)
+    | Operator(text, _)
+    | Whitespace(text, _) => text
+    Punctuation(code, _) => tokenizer_ascii_code_text(code)
+  }
+}
+
+///|
+pub fn WgslToken::punctuation_code(self : WgslToken) -> Int? {
+  match self {
+    Punctuation(code, _) => Some(code)
+    _ => None
+  }
+}
+
+///|
+pub fn WgslToken::operator_text(self : WgslToken) -> String? {
+  match self {
+    Operator(text, _) => Some(text)
+    _ => None
   }
 }
 
@@ -68,6 +104,132 @@ fn tokenizer_code_point_at(src : String, index : Int) -> (Int, Int) {
   match wgsl_code_point_at(src, index) {
     Some(point) => point
     None => (src.code_unit_at(index).to_int(), 1)
+  }
+}
+
+///|
+fn tokenizer_ascii_code_text(code : Int) -> String {
+  match code {
+    32 => " "
+    33 => "!"
+    34 => "\""
+    35 => "#"
+    36 => "$"
+    37 => "%"
+    38 => "&"
+    39 => "'"
+    40 => "("
+    41 => ")"
+    42 => "*"
+    43 => "+"
+    44 => ","
+    45 => "-"
+    46 => "."
+    47 => "/"
+    48 => "0"
+    49 => "1"
+    50 => "2"
+    51 => "3"
+    52 => "4"
+    53 => "5"
+    54 => "6"
+    55 => "7"
+    56 => "8"
+    57 => "9"
+    58 => ":"
+    59 => ";"
+    60 => "<"
+    61 => "="
+    62 => ">"
+    63 => "?"
+    64 => "@"
+    65 => "A"
+    66 => "B"
+    67 => "C"
+    68 => "D"
+    69 => "E"
+    70 => "F"
+    71 => "G"
+    72 => "H"
+    73 => "I"
+    74 => "J"
+    75 => "K"
+    76 => "L"
+    77 => "M"
+    78 => "N"
+    79 => "O"
+    80 => "P"
+    81 => "Q"
+    82 => "R"
+    83 => "S"
+    84 => "T"
+    85 => "U"
+    86 => "V"
+    87 => "W"
+    88 => "X"
+    89 => "Y"
+    90 => "Z"
+    91 => "["
+    92 => "\\"
+    93 => "]"
+    94 => "^"
+    95 => "_"
+    96 => "`"
+    97 => "a"
+    98 => "b"
+    99 => "c"
+    100 => "d"
+    101 => "e"
+    102 => "f"
+    103 => "g"
+    104 => "h"
+    105 => "i"
+    106 => "j"
+    107 => "k"
+    108 => "l"
+    109 => "m"
+    110 => "n"
+    111 => "o"
+    112 => "p"
+    113 => "q"
+    114 => "r"
+    115 => "s"
+    116 => "t"
+    117 => "u"
+    118 => "v"
+    119 => "w"
+    120 => "x"
+    121 => "y"
+    122 => "z"
+    123 => "{"
+    124 => "|"
+    125 => "}"
+    126 => "~"
+    _ => ""
+  }
+}
+
+///|
+fn tokenizer_operator_pair_text(lhs : Int, rhs : Int) -> String? {
+  match (lhs, rhs) {
+    (45, 62) => Some("->")
+    (61, 61) => Some("==")
+    (33, 61) => Some("!=")
+    (60, 61) => Some("<=")
+    (62, 61) => Some(">=")
+    (38, 38) => Some("&&")
+    (124, 124) => Some("||")
+    (60, 60) => Some("<<")
+    (62, 62) => Some(">>")
+    (43, 61) => Some("+=")
+    (45, 61) => Some("-=")
+    (42, 61) => Some("*=")
+    (47, 61) => Some("/=")
+    (37, 61) => Some("%=")
+    (38, 61) => Some("&=")
+    (124, 61) => Some("|=")
+    (94, 61) => Some("^=")
+    _ => None
   }
 }
 
@@ -118,11 +280,16 @@ fn tokenizer_push_number_as_other(
   src : String,
   start : Int,
   end_ : Int,
+  wgsl_blankspace : Bool,
 ) -> Unit {
+  if wgsl_blankspace {
+    tokens.push(WgslToken::Number(src[start:end_].to_owned(), start))
+    return
+  }
   let mut pos = start
   while pos < end_ {
     let (code, width) = tokenizer_code_point_at(src, pos)
-    tokens.push(WgslToken::Other(code, pos))
+    tokens.push(WgslToken::Punctuation(code, pos))
     pos = pos + width
   }
 }
@@ -178,7 +345,9 @@ fn tokenize_with(
         i = i + width
         continue
       }
-      tokenizer_push_number_as_other(tokens, src, current_token_start, i)
+      tokenizer_push_number_as_other(
+        tokens, src, current_token_start, i, wgsl_blankspace,
+      )
       current_token_kind = -1
       current_token_start = i
       continue
@@ -223,7 +392,19 @@ fn tokenize_with(
       continue
     }
 
-    tokens.push(WgslToken::Other(code, i))
+    if i + 1 < src.length() {
+      let rhs = src.code_unit_at(i + 1).to_int()
+      match tokenizer_operator_pair_text(code, rhs) {
+        Some(text) => {
+          tokens.push(WgslToken::Operator(text, i))
+          i = i + 2
+          continue
+        }
+        None => ()
+      }
+    }
+
+    tokens.push(WgslToken::Punctuation(code, i))
     i = i + width
   }
 
@@ -240,6 +421,7 @@ fn tokenize_with(
       src,
       current_token_start,
       src.length(),
+      wgsl_blankspace,
     )
   } else if current_token_kind == 1 {
     tokens.push(

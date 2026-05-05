@@ -70,7 +70,7 @@ pub fn parse_wgsl_template_const_references(
   let tokens = tokenize(source, true)
   let mut i = 0
   while i < tokens.length() {
-    guard tokens[i] is WgslToken::Other(35, start) else {
+    guard tokens[i] is WgslToken::Punctuation(35, start) else {
       i = i + 1
       continue
     }
@@ -79,12 +79,12 @@ pub fn parse_wgsl_template_const_references(
       continue
     }
     match tokens[i + 1] {
-      WgslToken::Other(123, _) => {
+      WgslToken::Punctuation(123, _) => {
         let body_start = tokens[i + 1].end()
         let mut j = i + 2
         while j < tokens.length() {
           match tokens[j] {
-            WgslToken::Other(125, _) => break
+            WgslToken::Punctuation(125, _) => break
             _ => j = j + 1
           }
         }

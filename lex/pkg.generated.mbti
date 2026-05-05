@@ -51,12 +51,17 @@ pub fn wgsl_trim_blankspace(String) -> String
 // Types and methods
 pub enum WgslToken {
   Identifier(String, Int)
-  Other(Int, Int)
+  Number(String, Int)
+  Operator(String, Int)
+  Punctuation(Int, Int)
   Whitespace(String, Int)
 } derive(Eq, @debug.Debug)
 pub fn WgslToken::end(Self) -> Int
+pub fn WgslToken::operator_text(Self) -> String?
 pub fn WgslToken::pos(Self) -> Int
+pub fn WgslToken::punctuation_code(Self) -> Int?
 pub fn WgslToken::shift(Self, Int) -> Self
+pub fn WgslToken::text(Self) -> String
 
 // Type aliases
 

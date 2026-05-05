@@ -381,6 +381,23 @@ test "rename plan function-local rules rewrite parameter and body together" {
 }
 
 ///|
+test "writer preserves separated generic close and assignment tokens" {
+  let source =
+    #|fn prepare_world_normal(world_normal: vec3<f32>) -> vec3<f32> {
+    #|  var output: vec3<f32> = world_normal;
+    #|  if (output.x >= 1.0) {
+    #|    return output;
+    #|  }
+    #|  return world_normal;
+    #|}
+    #|
+  let rewritten = emit_wgsl_text_with_token_rewrites(source, [], 0)
+  debug_inspect(rewritten.contains("vec3<f32 >="), content="false")
+  debug_inspect(rewritten.contains("vec3<f32> = world_normal"), content="true")
+  debug_inspect(rewritten.contains("output.x >= 1.0"), content="true")
+}
+
+///|
 test "rename plan function-local rules follow nested statement scopes" {
   let source =
     #|fn fragment(value: u32) -> u32 {

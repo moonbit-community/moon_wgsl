@@ -735,6 +735,49 @@ test "WGSL expression refs expose structured expression root" {
 }
 
 ///|
+test "WGSL expression parser uses lexer compound operator tokens" {
+  let source =
+    #|fn demo(input: Vertex) -> bool {
+    #|  return input.x >= 1.0;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit(source)
+  guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let expr = function.body.statements[0].expression_refs[0]
+  guard expr.root is Some(root) else { abort("expected expression root") }
+  debug_inspect(
+    root.kind,
+    content=(
+      #|Binary(
+      #|  ">=",
+      #|  {
+      #|    kind: Member(
+      #|      {
+      #|        kind: Identifier({ name: "input", start: 42, end: 47 }),
+      #|        text: "input",
+      #|        start: 42,
+      #|        end: 47,
+      #|      },
+      #|      { name: "x", start: 48, end: 49 },
+      #|    ),
+      #|    text: "input.x",
+      #|    start: 42,
+      #|    end: 49,
+      #|  },
+      #|  {
+      #|    kind: Literal({ kind: FloatLiteral, text: "1.0", start: 53, end: 56 }),
+      #|    text: "1.0",
+      #|    start: 53,
+      #|    end: 56,
+      #|  },
+      #|)
+    ),
+  )
+}
+
+///|
 test "WGSL global declaration identifier collection excludes locals" {
   let source =
     #|alias Alias = vec4<f32>;
