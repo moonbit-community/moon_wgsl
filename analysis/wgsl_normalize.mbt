@@ -212,7 +212,7 @@ fn dedupe_wgsl_duplicate_declarations(
   let mut deduped = ""
   let emitted_blocks : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for import_block in graph.import_blocks {
-    deduped = deduped + import_block.text
+    deduped = deduped + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
     if block.name != "" {
@@ -222,7 +222,7 @@ fn dedupe_wgsl_duplicate_declarations(
         _ => emitted_blocks.set(block.name, declaration_key)
       }
     }
-    deduped = deduped + block.text
+    deduped = deduped + emit_wgsl_graph_block_canonical(block)
   }
   deduped
 }
@@ -365,13 +365,13 @@ fn dedupe_wgsl_duplicate_resource_bindings(
   }
   let mut out = ""
   for import_block in graph.import_blocks {
-    out = out + import_block.text
+    out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
     if duplicate_names.contains(block.name) {
       continue
     }
-    out = out + block.text
+    out = out + emit_wgsl_graph_block_canonical(block)
   }
   rewrite_wgsl_declarations_with_rename_plan(
     out,

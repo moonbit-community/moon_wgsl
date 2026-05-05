@@ -288,7 +288,7 @@ pub fn apply_wgsl_virtual_overrides_raw(
   }
   let mut out = ""
   for import_block in graph.import_blocks {
-    out = out + import_block.text
+    out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
     match wgsl_graph_block_override_target(block) {
@@ -323,7 +323,7 @@ pub fn apply_wgsl_virtual_overrides_raw(
       }
       _ => ()
     }
-    out = out + block.text
+    out = out + emit_wgsl_graph_block_canonical(block)
   }
   WgslVirtualOverrideOutput::{ source: out, invalid_override: None }
 }
@@ -346,7 +346,7 @@ pub fn strip_wgsl_virtual_functions(
   let mut out = ""
   let emitted_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for import_block in graph.import_blocks {
-    out = out + import_block.text
+    out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
     if wgsl_graph_block_is_virtual_fn(block) {
@@ -357,10 +357,10 @@ pub fn strip_wgsl_virtual_functions(
         Some(function) =>
           out = out +
             rewrite_wgsl_virtual_fn_block(block.text, function, block.start)
-        None => out = out + block.text
+        None => out = out + emit_wgsl_graph_block_canonical(block)
       }
     } else {
-      out = out + block.text
+      out = out + emit_wgsl_graph_block_canonical(block)
     }
     if block.name != "" {
       emitted_names.set(block.name, true)

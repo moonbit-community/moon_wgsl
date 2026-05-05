@@ -530,7 +530,7 @@ test "normalizer dedupes duplicate declarations by AST structure" {
     #|
   let normalized = normalize_wgsl_composed_declarations(source, [])
   debug_inspect(
-    normalized.contains("struct Shared {\n  value: u32,\n}"),
+    normalized.contains("struct Shared {value: u32, }"),
     content="true",
   )
   debug_inspect(normalized.contains("struct Shared { value"), content="false")

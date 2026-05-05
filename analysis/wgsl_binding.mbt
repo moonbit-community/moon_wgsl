@@ -681,11 +681,20 @@ fn emit_wgsl_canonical_tokens_with_edits(
 }
 
 ///|
+fn wgsl_canonical_top_level_block_text(text : String) -> String {
+  if text == "" || text.has_suffix("\n") {
+    text
+  } else {
+    "\{text}\n"
+  }
+}
+
+///|
 fn rewrite_wgsl_graph_block_with_rename_maps(
   block : WgslGraphBlock,
   maps : WgslRenameMaps,
 ) -> String {
-  match block.data {
+  let rewritten = match block.data {
     WgslGlobalDeclData::Raw =>
       emit_wgsl_text_with_nodes(block.text, [], block.start)
     WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
@@ -696,6 +705,23 @@ fn rewrite_wgsl_graph_block_with_rename_maps(
       emit_wgsl_text_with_nodes(block.text, nodes, block.start)
     }
   }
+  wgsl_canonical_top_level_block_text(rewritten)
+}
+
+///|
+fn emit_wgsl_graph_block_canonical(block : WgslGraphBlock) -> String {
+  wgsl_canonical_top_level_block_text(
+    emit_wgsl_text_with_nodes(block.text, [], block.start),
+  )
+}
+
+///|
+fn emit_wgsl_graph_blocks_canonical(blocks : Array[WgslGraphBlock]) -> String {
+  let mut out = ""
+  for block in blocks {
+    out = out + emit_wgsl_graph_block_canonical(block)
+  }
+  out
 }
 
 ///|
@@ -710,7 +736,7 @@ pub fn rewrite_wgsl_declarations_with_rename_plan(
   let maps = build_wgsl_rename_maps(plan)
   let mut out = ""
   for import_block in graph.import_blocks {
-    out = out + import_block.text
+    out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
     out = out + rewrite_wgsl_graph_block_with_rename_maps(block, maps)

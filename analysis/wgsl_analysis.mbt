@@ -152,20 +152,22 @@ fn emit_wgsl_tree_shaken_source_from_graph(
   let mut generated_start = 0
 
   for import_block in graph.import_blocks {
-    emitted_source = emitted_source + import_block.text
-    generated_start = generated_start + import_block.text.length()
+    let emitted_block = emit_wgsl_graph_block_canonical(import_block)
+    emitted_source = emitted_source + emitted_block
+    generated_start = generated_start + emitted_block.length()
   }
   for block in graph.declaration_blocks {
     if block.name != "" && !included_names.contains(block.name) {
       continue
     }
+    let emitted_block = emit_wgsl_graph_block_canonical(block)
     let block_generated_start = generated_start
-    emitted_source = emitted_source + block.text
-    generated_start = generated_start + block.text.length()
+    emitted_source = emitted_source + emitted_block
+    generated_start = generated_start + emitted_block.length()
     if block.name != "" {
       declarations.push(WgslEmittedDeclaration::{
         name: block.name,
-        text: block.text,
+        text: emitted_block,
         generated_start: block_generated_start,
         generated_end: generated_start,
       })
@@ -221,15 +223,20 @@ fn strip_wgsl_import_declarations_from_unit(
 ) -> String {
   let mut out = ""
   for decl in unit.declarations {
-    match decl.data {
-      WgslGlobalDeclData::Import(_) => ()
+    let skip = match decl.data {
+      WgslGlobalDeclData::Import(_) => true
       WgslGlobalDeclData::Directive(directive) =>
-        if directive.kind == WgslDirectiveKind::DefineImportPath {
-          ()
-        } else {
-          out = out + decl.text
-        }
-      _ => out = out + decl.text
+        directive.kind == WgslDirectiveKind::DefineImportPath
+      _ => false
+    }
+    if !skip {
+      out = out +
+        emit_wgsl_graph_block_canonical(WgslGraphBlock::{
+          name: decl.name,
+          text: decl.text,
+          start: decl.start,
+          data: decl.data,
+        })
     }
   }
   out
@@ -251,7 +258,7 @@ pub fn strip_wgsl_import_declarations_strict(
 
 ///|
 fn extract_wgsl_module_item_extraction_from_graph(
-  source : String,
+  _source : String,
   graph : WgslDeclarationGraph,
   requested_items : Array[String],
 ) -> WgslModuleItemExtraction {
@@ -266,7 +273,10 @@ fn extract_wgsl_module_item_extraction_from_graph(
         })
       }
     }
-    return WgslModuleItemExtraction::{ source, origins }
+    return WgslModuleItemExtraction::{
+      source: emit_wgsl_graph_blocks_canonical(graph.declaration_blocks),
+      origins,
+    }
   }
   let (included_names, _) = wgsl_reachable_declaration_map(
     graph.declaration_blocks,
@@ -288,15 +298,18 @@ fn extract_wgsl_module_item_extraction_from_graph(
         })
       }
     }
-    return WgslModuleItemExtraction::{ source, origins }
+    return WgslModuleItemExtraction::{
+      source: emit_wgsl_graph_blocks_canonical(graph.declaration_blocks),
+      origins,
+    }
   }
   let mut out = ""
   for import_block in graph.import_blocks {
-    out = out + import_block.text
+    out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
     if block.name == "" || included_names.contains(block.name) {
-      out = out + block.text
+      out = out + emit_wgsl_graph_block_canonical(block)
       if block.name != "" {
         origins.push(WgslModuleItemOrigin::{
           name: block.name,
