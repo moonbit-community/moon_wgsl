@@ -2,15 +2,14 @@
 using @analysis {
   type WgslEmittedDeclaration,
   type WgslModuleItemExtraction,
-  build_wgsl_global_rename_plan_from_redirect_map,
-  build_wgsl_reference_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,
   collect_wgsl_named_declarations_strict,
   extract_wgsl_module_item_origins_strict,
   invalid_wgsl_struct_member_identifier,
   normalize_wgsl_output_identifiers,
   normalize_wgsl_composed_declarations,
-  rewrite_wgsl_declarations_with_rename_plan,
+  rewrite_wgsl_declarations_with_global_rename_map,
+  rewrite_wgsl_references_with_rename_map,
   rewrite_wgsl_symbol_redirects,
   strip_wgsl_import_declarations_strict,
 }

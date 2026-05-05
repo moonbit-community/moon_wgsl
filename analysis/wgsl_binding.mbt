@@ -28,8 +28,8 @@ priv struct WgslRenameRule {
 }
 
 ///|
-pub struct WgslRenamePlan {
-  priv rules : Array[WgslRenameRule]
+priv struct WgslRenamePlan {
+  rules : Array[WgslRenameRule]
 }
 
 ///|
@@ -95,7 +95,7 @@ fn build_wgsl_rename_plan_from_redirect_map(
 }
 
 ///|
-pub fn build_wgsl_global_rename_plan_from_redirect_map(
+fn build_wgsl_global_rename_plan_from_redirect_map(
   redirect_map : @hashmap.HashMap[String, String],
 ) -> WgslRenamePlan {
   build_wgsl_rename_plan_from_redirect_map(
@@ -105,7 +105,7 @@ pub fn build_wgsl_global_rename_plan_from_redirect_map(
 }
 
 ///|
-pub fn build_wgsl_reference_rename_plan_from_redirect_map(
+fn build_wgsl_reference_rename_plan_from_redirect_map(
   redirect_map : @hashmap.HashMap[String, String],
 ) -> WgslRenamePlan {
   build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly)
@@ -437,7 +437,7 @@ fn emit_wgsl_graph_blocks_canonical(blocks : Array[WgslGraphBlock]) -> String {
 }
 
 ///|
-pub fn rewrite_wgsl_declarations_with_rename_plan(
+fn rewrite_wgsl_declarations_with_rename_plan(
   source : String,
   plan : WgslRenamePlan,
 ) -> String raise WgslParseError {
@@ -454,4 +454,26 @@ pub fn rewrite_wgsl_declarations_with_rename_plan(
     out = out + rewrite_wgsl_graph_block_with_rename_maps(block, maps)
   }
   out
+}
+
+///|
+pub fn rewrite_wgsl_declarations_with_global_rename_map(
+  source : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String raise WgslParseError {
+  rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    build_wgsl_global_rename_plan_from_redirect_map(redirect_map),
+  )
+}
+
+///|
+pub fn rewrite_wgsl_references_with_rename_map(
+  source : String,
+  redirect_map : @hashmap.HashMap[String, String],
+) -> String raise WgslParseError {
+  rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    build_wgsl_reference_rename_plan_from_redirect_map(redirect_map),
+  )
 }

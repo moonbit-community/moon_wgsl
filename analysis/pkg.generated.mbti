@@ -10,10 +10,6 @@ import {
 // Values
 pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput raise @parser.WgslParseError
 
-pub fn build_wgsl_global_rename_plan_from_redirect_map(@hashmap.HashMap[String, String]) -> WgslRenamePlan
-
-pub fn build_wgsl_reference_rename_plan_from_redirect_map(@hashmap.HashMap[String, String]) -> WgslRenamePlan
-
 pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
 
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
@@ -28,9 +24,11 @@ pub fn normalize_wgsl_composed_declarations(String, Array[@common.WgslSymbolRedi
 
 pub fn normalize_wgsl_output_identifiers(String) -> String raise @parser.WgslParseError
 
-pub fn rewrite_wgsl_declarations_with_rename_plan(String, WgslRenamePlan) -> String raise @parser.WgslParseError
+pub fn rewrite_wgsl_declarations_with_global_rename_map(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
+
+pub fn rewrite_wgsl_references_with_rename_map(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String raise @parser.WgslParseError
 
@@ -61,10 +59,6 @@ pub struct WgslModuleItemOrigin {
   name : String
   source_start : Int
   source_end : Int
-}
-
-pub struct WgslRenamePlan {
-  // private fields
 }
 
 pub struct WgslTreeShakenSource {

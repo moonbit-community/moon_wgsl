@@ -400,9 +400,8 @@ fn Composer::compose_wgsl_import_requests(
           scope: QualifiedAliasReference,
         })
       }
-      rewrite_wgsl_declarations_with_rename_plan(
-        module_source,
-        build_wgsl_global_rename_plan_from_redirect_map(request_rename_map),
+      rewrite_wgsl_declarations_with_global_rename_map(
+        module_source, request_rename_map,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
@@ -535,10 +534,7 @@ fn finalize_wgsl_composed_source(
   } else {
     out = rewrite_wgsl_override_targets_with_redirects(out, alias_redirect_map)
   }
-  out = rewrite_wgsl_declarations_with_rename_plan(
-    out,
-    build_wgsl_reference_rename_plan_from_redirect_map(alias_redirect_map),
-  ) catch {
+  out = rewrite_wgsl_references_with_rename_map(out, alias_redirect_map) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
   if !apply_virtual_overrides {
