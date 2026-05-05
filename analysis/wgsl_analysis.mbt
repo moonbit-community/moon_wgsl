@@ -317,12 +317,21 @@ fn strip_wgsl_import_declarations_from_source_unit(
 }
 
 ///|
-pub fn strip_wgsl_import_declarations_strict(
+fn strip_wgsl_import_declarations_strict(
   source : String,
 ) -> String raise WgslParseError {
   strip_wgsl_import_declarations_from_source_unit(
     source,
     parse_wgsl_translation_unit_strict(source),
+  )
+}
+
+///|
+pub fn collect_wgsl_source_catalog_declarations_strict(
+  source : String,
+) -> Array[WgslEmittedDeclaration] raise WgslParseError {
+  collect_wgsl_named_declarations_strict(
+    strip_wgsl_import_declarations_strict(source),
   )
 }
 

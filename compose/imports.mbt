@@ -4,13 +4,13 @@ using @analysis {
   type WgslModuleItemExtraction,
   build_wgsl_symbol_redirect_map,
   collect_wgsl_named_declarations_strict,
+  collect_wgsl_source_catalog_declarations_strict,
   extract_wgsl_module_item_origins_strict,
   invalid_wgsl_struct_member_identifier,
   normalize_wgsl_output_identifiers,
   normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_global_rename_map,
   rewrite_wgsl_references_with_rename_map,
-  strip_wgsl_import_declarations_strict,
 }
 
 ///|

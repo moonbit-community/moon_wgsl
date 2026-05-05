@@ -14,6 +14,8 @@ pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @has
 
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
 
+pub fn collect_wgsl_source_catalog_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
+
 pub fn emit_wgsl_tree_shaken_source_strict(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
 
 pub fn extract_wgsl_module_item_origins_strict(String, Array[String]) -> WgslModuleItemExtraction raise @parser.WgslParseError
@@ -29,8 +31,6 @@ pub fn rewrite_wgsl_declarations_with_global_rename_map(String, @hashmap.HashMap
 pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_references_with_rename_map(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
-
-pub fn strip_wgsl_import_declarations_strict(String) -> String raise @parser.WgslParseError
 
 pub fn strip_wgsl_virtual_functions(String) -> String raise @parser.WgslParseError
 

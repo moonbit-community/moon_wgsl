@@ -26,12 +26,9 @@ fn build_prepared_wgsl_source_catalog(
 
   let catalog_entries : Array[WgslSourceCatalogEntry] = []
   for source_file in source_files {
-    let prepared_source = strip_wgsl_import_declarations_strict(
+    let declarations = collect_wgsl_source_catalog_declarations_strict(
       source_file.source,
     ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
-    let declarations = collect_wgsl_named_declarations_strict(prepared_source) catch {
       error => raise composer_error_from_wgsl_parse_error(error)
     }
     for declaration in declarations {
