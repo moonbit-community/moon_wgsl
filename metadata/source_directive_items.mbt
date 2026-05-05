@@ -1,5 +1,5 @@
 ///|
-pub enum WgslSourceDirectiveItemKind {
+enum WgslSourceDirectiveItemKind {
   Trivia
   Enable(String)
   Requires(String)
@@ -9,7 +9,7 @@ pub enum WgslSourceDirectiveItemKind {
 } derive(Debug, Eq)
 
 ///|
-pub struct WgslSourceDirectiveItem {
+struct WgslSourceDirectiveItem {
   kind : WgslSourceDirectiveItemKind
   line : String
 } derive(Debug)
@@ -23,13 +23,30 @@ fn WgslSourceDirectiveItem::new(
 }
 
 ///|
+fn metadata_has_ascii_keyword_at(
+  text : String,
+  start : Int,
+  keyword : String,
+) -> Bool {
+  guard start >= 0 && start + keyword.length() <= text.length() else {
+    return false
+  }
+  for i in 0..<keyword.length() {
+    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn wgsl_source_directive_keyword_tail(
   line : String,
   keyword : String,
 ) -> String? {
   let trimmed = wgsl_regex_trim_whitespace(line)
   guard trimmed.length() > keyword.length() &&
-    has_ascii_keyword_at(trimmed, 0, keyword) else {
+    metadata_has_ascii_keyword_at(trimmed, 0, keyword) else {
     return None
   }
   let whitespace_start = keyword.length()
@@ -60,7 +77,7 @@ fn wgsl_source_directive_keyword_tail(
 fn wgsl_source_diagnostic_tail(line : String) -> (String, String)? {
   let trimmed = wgsl_regex_trim_whitespace(line)
   guard trimmed.length() >= "diagnostic".length() &&
-    has_ascii_keyword_at(trimmed, 0, "diagnostic") else {
+    metadata_has_ascii_keyword_at(trimmed, 0, "diagnostic") else {
     return None
   }
   let mut i = "diagnostic".length()
@@ -99,9 +116,9 @@ fn wgsl_source_diagnostic_tail(line : String) -> (String, String)? {
 
 ///|
 fn wgsl_source_directive_prefix_candidate(trimmed : String) -> Bool {
-  has_ascii_keyword_at(trimmed, 0, "enable") ||
-  has_ascii_keyword_at(trimmed, 0, "requires") ||
-  has_ascii_keyword_at(trimmed, 0, "diagnostic")
+  metadata_has_ascii_keyword_at(trimmed, 0, "enable") ||
+  metadata_has_ascii_keyword_at(trimmed, 0, "requires") ||
+  metadata_has_ascii_keyword_at(trimmed, 0, "diagnostic")
 }
 
 ///|
@@ -124,7 +141,7 @@ fn parse_wgsl_source_directive_item(line : String) -> WgslSourceDirectiveItem {
 }
 
 ///|
-pub fn parse_wgsl_source_directive_items(
+fn parse_wgsl_source_directive_items(
   source : String,
 ) -> Array[WgslSourceDirectiveItem] {
   let items : Array[WgslSourceDirectiveItem] = []

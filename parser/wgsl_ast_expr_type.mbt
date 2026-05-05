@@ -205,7 +205,6 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
 
 ///|
 priv struct WgslExprNodeParser {
-  source_text : String
   source_start : Int
   tokens : Array[WgslExprToken]
   mut index : Int
@@ -213,11 +212,10 @@ priv struct WgslExprNodeParser {
 
 ///|
 fn WgslExprNodeParser::new(
-  source_text : String,
   source_start : Int,
   tokens : Array[WgslExprToken],
 ) -> WgslExprNodeParser {
-  WgslExprNodeParser::{ source_text, source_start, tokens, index: 0 }
+  WgslExprNodeParser::{ source_start, tokens, index: 0 }
 }
 
 ///|
@@ -235,30 +233,14 @@ fn WgslExprNodeParser::peek(self : WgslExprNodeParser) -> WgslExprToken? {
 }
 
 ///|
-fn WgslExprNodeParser::node_text(
-  self : WgslExprNodeParser,
-  start : Int,
-  end_ : Int,
-) -> String {
-  let local_start = start - self.source_start
-  let local_end = end_ - self.source_start
-  if local_start < 0 ||
-    local_end < local_start ||
-    local_end > self.source_text.length() {
-    ""
-  } else {
-    self.source_text[local_start:local_end].to_owned()
-  }
-}
-
-///|
 fn WgslExprNodeParser::make_node(
   self : WgslExprNodeParser,
   kind : WgslExprNodeKind,
   start : Int,
   end_ : Int,
 ) -> WgslExprNode {
-  WgslExprNode::new(kind, self.node_text(start, end_), start, end_)
+  ignore(self)
+  WgslExprNode::new(kind, start, end_)
 }
 
 ///|
@@ -596,14 +578,13 @@ fn WgslExprNodeParser::parse_sequence_until(
 
 ///|
 fn parse_wgsl_expr_node(
-  text : String,
   base : Int,
   tokens : Array[WgslExprToken],
 ) -> WgslExprNode? {
   if tokens.length() == 0 {
     return None
   }
-  Some(WgslExprNodeParser::new(text, base, tokens).parse_sequence_until_any([]))
+  Some(WgslExprNodeParser::new(base, tokens).parse_sequence_until_any([]))
 }
 
 ///|
@@ -624,7 +605,7 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     expr_tokens,
     identifiers,
   )
-  let root = parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens)
+  let root = parse_wgsl_expr_node(base + local_start, expr_tokens)
   Some(
     WgslExprRef::new(
       trimmed,

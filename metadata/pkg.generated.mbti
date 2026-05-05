@@ -4,6 +4,7 @@ package "Milky2018/moon_wgsl/metadata"
 import {
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/parser",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -33,6 +34,10 @@ pub suberror SubstituteIdentifiersError {
 pub struct DeclaredImportBinding {
   // private fields
 }
+
+type WgslSourceDirectiveItem derive(@debug.Debug)
+
+type WgslSourceDirectiveItemKind derive(Eq, @debug.Debug)
 
 // Type aliases
 

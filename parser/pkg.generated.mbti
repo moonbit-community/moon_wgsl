@@ -25,8 +25,6 @@ pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?
 
 pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
 
-pub fn parse_wgsl_source_directive_items(String) -> Array[WgslSourceDirectiveItem]
-
 pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, Int]) -> Array[WgslTemplateConstReference]
 
 pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit
@@ -81,20 +79,6 @@ pub struct WgslShaderDefReference {
   end : Int
   delimited : Bool
 } derive(@debug.Debug)
-
-pub struct WgslSourceDirectiveItem {
-  kind : WgslSourceDirectiveItemKind
-  line : String
-} derive(@debug.Debug)
-
-pub enum WgslSourceDirectiveItemKind {
-  Trivia
-  Enable(String)
-  Requires(String)
-  Diagnostic(String, String)
-  PrefixCandidate
-  Source
-} derive(Eq, @debug.Debug)
 
 pub struct WgslTemplateConstReference {
   name : String

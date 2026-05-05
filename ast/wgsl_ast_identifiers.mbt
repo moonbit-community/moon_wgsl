@@ -54,10 +54,11 @@ fn collect_wgsl_expr_node_identifier_nodes(
       }
     }
     PathAccess(base, segment) => {
-      let full_name = if base.text == "" {
+      let base_path = wgsl_expr_node_path_name(base)
+      let full_name = if base_path == "" {
         segment.name
       } else {
-        "\{base.text}::\{segment.name}"
+        "\{base_path}::\{segment.name}"
       }
       if !wgsl_name_list_contains(active_local_names, full_name) {
         nodes.push(WgslIdent::new(full_name, base.start, segment.end))
@@ -75,6 +76,22 @@ fn collect_wgsl_expr_node_identifier_nodes(
       for item in items {
         collect_wgsl_expr_node_identifier_nodes(item, active_local_names, nodes)
       }
+  }
+}
+
+///|
+fn wgsl_expr_node_path_name(node : WgslExprNode) -> String {
+  match node.kind {
+    Identifier(ident) => ident.name
+    PathAccess(base, segment) => {
+      let base_path = wgsl_expr_node_path_name(base)
+      if base_path == "" {
+        segment.name
+      } else {
+        "\{base_path}::\{segment.name}"
+      }
+    }
+    _ => ""
   }
 }
 

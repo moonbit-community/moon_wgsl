@@ -72,11 +72,10 @@ pub(all) enum WgslDirectiveKind {
 
 pub struct WgslExprNode {
   kind : WgslExprNodeKind
-  text : String
   start : Int
   end : Int
 } derive(@debug.Debug)
-pub fn WgslExprNode::new(WgslExprNodeKind, String, Int, Int) -> Self
+pub fn WgslExprNode::new(WgslExprNodeKind, Int, Int) -> Self
 
 pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)

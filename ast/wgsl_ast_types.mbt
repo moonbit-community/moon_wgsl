@@ -127,7 +127,6 @@ pub(all) enum WgslExprNodeKind {
 ///|
 pub struct WgslExprNode {
   kind : WgslExprNodeKind
-  text : String
   start : Int
   end : Int
 } derive(Debug)
@@ -135,11 +134,10 @@ pub struct WgslExprNode {
 ///|
 pub fn WgslExprNode::new(
   kind : WgslExprNodeKind,
-  text : String,
   start : Int,
   end : Int,
 ) -> WgslExprNode {
-  WgslExprNode::{ kind, text, start, end }
+  WgslExprNode::{ kind, start, end }
 }
 
 ///|
