@@ -30,8 +30,8 @@ pub fn wgsl_source_define_import_path(source : String) -> String? {
     item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
     match item.kind() {
       WgslDirectiveScanItemKind::Directive(directive) =>
-        if directive.kind == WgslDirectiveKind::DefineImportPath {
-          let raw_name = directive.tail
+        if directive.kind() == WgslDirectiveKind::DefineImportPath {
+          let raw_name = directive.tail()
           let import_path = wgsl_metadata_first_space_separated_token(raw_name)
           if import_path != "" {
             return Some(import_path)

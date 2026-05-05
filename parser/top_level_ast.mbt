@@ -186,7 +186,7 @@ fn WgslTopLevelParser::parse_directive_item(
   self.flush_trivia_until(items, item_start)
   let first_line_end = top_level_line_end(self.source, token_pos)
   let mut item_end = first_line_end
-  if directive.kind == WgslDirectiveKind::Import {
+  if directive.kind() == WgslDirectiveKind::Import {
     let mut balance = naga_oil_raw_import_brace_balance_next(
       0,
       replace_comments(self.source[token_pos:first_line_end].to_owned()),
@@ -203,7 +203,7 @@ fn WgslTopLevelParser::parse_directive_item(
   top_level_push_span_item(
     items,
     self.source,
-    top_level_directive_item_kind(directive.kind),
+    top_level_directive_item_kind(directive.kind()),
     "",
     item_start,
     item_end,

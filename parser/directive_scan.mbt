@@ -170,7 +170,7 @@ fn wgsl_directive_scan_push_item(
     WgslDirectiveScanItemKind::Directive(directive) =>
       wgsl_directive_line_required_tail_space(
         lines[start].cleaned,
-        directive.name,
+        directive.name(),
       )
     _ => false
   }
@@ -207,7 +207,7 @@ pub fn parse_wgsl_directive_scan_items(
         )
         let item_end = match kind {
           WgslDirectiveScanItemKind::Directive(directive) =>
-            if directive.kind == WgslDirectiveKind::Import {
+            if directive.kind() == WgslDirectiveKind::Import {
               wgsl_directive_scan_import_item_line_end(lines, line_index)
             } else {
               line_index + 1

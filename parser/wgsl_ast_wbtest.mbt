@@ -32,12 +32,12 @@ test "WGSL translation unit classifies top-level declarations" {
     is WgslGlobalDeclData::Directive(module_directive) else {
     abort("expected directive payload")
   }
-  debug_inspect(module_directive.kind, content="DefineImportPath")
+  debug_inspect(module_directive.kind(), content="DefineImportPath")
   guard unit.declarations[1].data
     is WgslGlobalDeclData::Import(import_directive) else {
     abort("expected import payload")
   }
-  debug_inspect(import_directive.kind, content="Import")
+  debug_inspect(import_directive.kind(), content="Import")
   debug_inspect(unit.declarations[2].kind, content="Struct")
   debug_inspect(unit.declarations[3].kind, content="GlobalVariable")
   debug_inspect(unit.declarations[4].kind, content="ConstAssert")
@@ -1019,19 +1019,19 @@ test "WGSL source directives parse as directive AST nodes" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Directive(enable) else {
     abort("expected enable directive")
   }
-  debug_inspect(enable.kind, content="Enable")
-  debug_inspect(enable.tail, content="\"f16, subgroups\"")
-  debug_inspect(enable.start, content="0")
-  debug_inspect(enable.end, content="22")
-  debug_inspect(enable.name_start, content="0")
-  debug_inspect(enable.name_end, content="6")
-  debug_inspect(enable.tail_start, content="7")
-  debug_inspect(enable.tail_end, content="21")
+  debug_inspect(enable.kind(), content="Enable")
+  debug_inspect(enable.tail(), content="\"f16, subgroups\"")
+  debug_inspect(enable.start(), content="0")
+  debug_inspect(enable.end(), content="22")
+  debug_inspect(enable.name_start(), content="0")
+  debug_inspect(enable.name_end(), content="6")
+  debug_inspect(enable.tail_start(), content="7")
+  debug_inspect(enable.tail_end(), content="21")
   guard unit.declarations[2].data is WgslGlobalDeclData::Directive(diagnostic) else {
     abort("expected diagnostic directive")
   }
-  debug_inspect(diagnostic.kind, content="Diagnostic")
-  debug_inspect(diagnostic.tail, content="\"(warn, derivative_uniformity)\"")
+  debug_inspect(diagnostic.kind(), content="Diagnostic")
+  debug_inspect(diagnostic.tail(), content="\"(warn, derivative_uniformity)\"")
 }
 
 ///|
@@ -1046,14 +1046,14 @@ test "WGSL hash conditionals parse as directive AST nodes" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Directive(ifdef) else {
     abort("expected ifdef directive")
   }
-  debug_inspect(ifdef.kind, content="Ifdef")
-  debug_inspect(ifdef.tail, content="\"ENABLED\"")
-  debug_inspect(ifdef.start, content="0")
-  debug_inspect(ifdef.end, content="14")
-  debug_inspect(ifdef.name_start, content="1")
-  debug_inspect(ifdef.name_end, content="6")
-  debug_inspect(ifdef.tail_start, content="7")
-  debug_inspect(ifdef.tail_end, content="14")
+  debug_inspect(ifdef.kind(), content="Ifdef")
+  debug_inspect(ifdef.tail(), content="\"ENABLED\"")
+  debug_inspect(ifdef.start(), content="0")
+  debug_inspect(ifdef.end(), content="14")
+  debug_inspect(ifdef.name_start(), content="1")
+  debug_inspect(ifdef.name_end(), content="6")
+  debug_inspect(ifdef.tail_start(), content="7")
+  debug_inspect(ifdef.tail_end(), content="14")
   debug_inspect(unit.declarations[1].kind, content="Const")
   debug_inspect(unit.declarations[2].kind, content="Directive")
 }
@@ -1070,12 +1070,12 @@ test "WGSL hash directive spans are absolute in translation units" {
   guard unit.declarations[1].data is WgslGlobalDeclData::Directive(ifdef) else {
     abort("expected ifdef directive")
   }
-  debug_inspect(ifdef.start, content="8")
-  debug_inspect(ifdef.end, content="22")
-  debug_inspect(ifdef.name_start, content="9")
-  debug_inspect(ifdef.name_end, content="14")
-  debug_inspect(ifdef.tail_start, content="15")
-  debug_inspect(ifdef.tail_end, content="22")
+  debug_inspect(ifdef.start(), content="8")
+  debug_inspect(ifdef.end(), content="22")
+  debug_inspect(ifdef.name_start(), content="9")
+  debug_inspect(ifdef.name_end(), content="14")
+  debug_inspect(ifdef.tail_start(), content="15")
+  debug_inspect(ifdef.tail_end(), content="22")
 }
 
 ///|

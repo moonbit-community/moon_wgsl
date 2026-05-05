@@ -154,9 +154,9 @@ fn build_wgsl_declaration_graph_from_unit(
       WgslGlobalDeclKind::Directive =>
         match decl.data {
           WgslGlobalDeclData::Directive(directive) =>
-            if directive.kind == WgslDirectiveKind::Enable ||
-              directive.kind == WgslDirectiveKind::Requires ||
-              directive.kind == WgslDirectiveKind::Diagnostic {
+            if directive.kind() == WgslDirectiveKind::Enable ||
+              directive.kind() == WgslDirectiveKind::Requires ||
+              directive.kind() == WgslDirectiveKind::Diagnostic {
               declaration_blocks.push(graph_block)
             }
           _ => ()
@@ -289,7 +289,7 @@ fn strip_wgsl_import_declarations_from_unit(
     let skip = match decl.data {
       WgslGlobalDeclData::Import(_) => true
       WgslGlobalDeclData::Directive(directive) =>
-        directive.kind == WgslDirectiveKind::DefineImportPath
+        directive.kind() == WgslDirectiveKind::DefineImportPath
       _ => false
     }
     if !skip {

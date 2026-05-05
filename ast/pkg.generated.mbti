@@ -43,17 +43,18 @@ pub struct WgslConst {
 pub fn WgslConst::new(WgslIdent, String?, WgslTypeRef?, String?, WgslExprRef?) -> Self
 
 pub struct WgslDirective {
-  kind : WgslDirectiveKind
-  name : String
-  tail : String
-  start : Int
-  end : Int
-  name_start : Int
-  name_end : Int
-  tail_start : Int
-  tail_end : Int
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslDirective::end(Self) -> Int
+pub fn WgslDirective::kind(Self) -> WgslDirectiveKind
+pub fn WgslDirective::name(Self) -> String
+pub fn WgslDirective::name_end(Self) -> Int
+pub fn WgslDirective::name_start(Self) -> Int
 pub fn WgslDirective::new(WgslDirectiveKind, String, String, Int, Int, Int, Int, Int, Int) -> Self
+pub fn WgslDirective::start(Self) -> Int
+pub fn WgslDirective::tail(Self) -> String
+pub fn WgslDirective::tail_end(Self) -> Int
+pub fn WgslDirective::tail_start(Self) -> Int
 
 pub(all) enum WgslDirectiveKind {
   Ifdef

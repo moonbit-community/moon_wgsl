@@ -22,7 +22,7 @@ fn wgsl_compose_directive_emission_kind(
   item : WgslDirectiveScanItem,
   directive : WgslDirective,
 ) -> WgslComposeSourceEmissionKind {
-  match directive.kind {
+  match directive.kind() {
     WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
       DropDirective
     WgslDirectiveKind::Other(_) =>
@@ -46,11 +46,11 @@ fn Composer::compose_wgsl_scanned_item(
   active_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
   match item.kind() {
-    WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind ==
+    WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
       WgslDirectiveKind::Import => {
       let requests = self.build_wgsl_import_requests(
         current_rel_path,
-        import_directive.tail,
+        import_directive.tail(),
         active_scan_source,
         session,
         active_defs,

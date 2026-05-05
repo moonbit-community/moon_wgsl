@@ -199,33 +199,33 @@ fn wgsl_directive_line_required_tail_space(
 
 ///|
 pub fn wgsl_effective_directive_tail(directive : WgslDirective) -> String {
-  match directive.kind {
+  match directive.kind() {
     WgslDirectiveKind::Else =>
-      if directive.tail == "" {
+      if directive.tail() == "" {
         ""
       } else {
-        " \{directive.tail}"
+        " \{directive.tail()}"
       }
-    WgslDirectiveKind::Endif => directive.tail
+    WgslDirectiveKind::Endif => directive.tail()
     WgslDirectiveKind::Other(name) =>
       if name.has_prefix("else") {
         let suffix = name["else".length():name.length()].to_owned()
-        if directive.tail == "" {
+        if directive.tail() == "" {
           suffix
         } else {
-          "\{suffix} \{directive.tail}"
+          "\{suffix} \{directive.tail()}"
         }
       } else if name.has_prefix("endif") {
         let suffix = name["endif".length():name.length()].to_owned()
-        if directive.tail == "" {
+        if directive.tail() == "" {
           suffix
         } else {
-          "\{suffix} \{directive.tail}"
+          "\{suffix} \{directive.tail()}"
         }
       } else {
-        directive.tail
+        directive.tail()
       }
-    _ => directive.tail
+    _ => directive.tail()
   }
 }
 
@@ -233,15 +233,15 @@ pub fn wgsl_effective_directive_tail(directive : WgslDirective) -> String {
 pub fn wgsl_effective_directive_kind(
   directive : WgslDirective,
 ) -> WgslDirectiveKind {
-  match directive.kind {
+  match directive.kind() {
     WgslDirectiveKind::Other(name) =>
       if name.has_prefix("else") {
         WgslDirectiveKind::Else
       } else if name.has_prefix("endif") {
         WgslDirectiveKind::Endif
       } else {
-        directive.kind
+        directive.kind()
       }
-    _ => directive.kind
+    _ => directive.kind()
   }
 }

@@ -29,7 +29,7 @@ fn try_get_preprocessor_metadata(
             effective_defs.add(def_name)
           }
         } else if item.requires_tail_space() &&
-          directive.kind == WgslDirectiveKind::Import {
+          directive.kind() == WgslDirectiveKind::Import {
           import_state.declare_imports(item.cleaned_directive_text()) catch {
             Parse(message, item_offset) =>
               raise MetadataError::ImportParseError(
@@ -38,18 +38,18 @@ fn try_get_preprocessor_metadata(
               )
           }
         } else if item.requires_tail_space() &&
-          directive.kind == WgslDirectiveKind::DefineImportPath {
+          directive.kind() == WgslDirectiveKind::DefineImportPath {
           let import_path = wgsl_metadata_first_space_separated_token(
-            directive.tail,
+            directive.tail(),
           )
           if import_path != "" {
             name = Some(import_path)
           }
         } else if item.requires_tail_space() &&
-          directive.kind == WgslDirectiveKind::Define {
+          directive.kind() == WgslDirectiveKind::Define {
           if allow_defines {
             let (define_name, define_value) = split_define_name_and_value(
-              directive.tail,
+              directive.tail(),
             )
             if define_name != "" {
               defines.set(define_name, parse_define_value(define_value))

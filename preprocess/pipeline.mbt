@@ -32,8 +32,8 @@ fn preprocess_emit_pipeline_item(
         (
           item.requires_tail_space() &&
           (
-            directive.kind == WgslDirectiveKind::DefineImportPath ||
-            directive.kind == WgslDirectiveKind::Define
+            directive.kind() == WgslDirectiveKind::DefineImportPath ||
+            directive.kind() == WgslDirectiveKind::Define
           )
         ) {
         return preprocess_emit_scanned_item(
@@ -46,7 +46,7 @@ fn preprocess_emit_pipeline_item(
       }
       if scope.active() &&
         item.requires_tail_space() &&
-        directive.kind == WgslDirectiveKind::Import {
+        directive.kind() == WgslDirectiveKind::Import {
         import_state.declare_imports(item.cleaned_directive_text()) catch {
           Parse(message, item_offset) =>
             raise PreprocessError::ImportParseError(
