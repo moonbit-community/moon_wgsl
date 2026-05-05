@@ -35,14 +35,11 @@ pub fn ComposerError::message(Self) -> String
 pub struct ComposableModuleDefinition {
   // private fields
 }
-pub fn ComposableModuleDefinition::all_import_count(Self) -> Int
 pub fn ComposableModuleDefinition::all_imports_is_empty(Self) -> Bool
 pub fn ComposableModuleDefinition::contains_effective_def(Self, String) -> Bool
-pub fn ComposableModuleDefinition::effective_defs(Self) -> Array[String]
 pub fn ComposableModuleDefinition::imports_module(Self, String) -> Bool
 pub fn ComposableModuleDefinition::name(Self) -> String
 pub fn ComposableModuleDefinition::shader_def(Self, String) -> @common.ShaderDefValue?
-pub fn ComposableModuleDefinition::shader_def_count(Self) -> Int
 
 pub struct Composer {
   // private fields
@@ -64,4 +61,3 @@ pub fn Composer::remove_composable_module(Self, String) -> Unit
 // Type aliases
 
 // Traits
-

@@ -38,13 +38,6 @@ pub fn ComposableModuleDefinition::name(
 }
 
 ///|
-pub fn ComposableModuleDefinition::shader_def_count(
-  self : ComposableModuleDefinition,
-) -> Int {
-  self.shader_defs.length()
-}
-
-///|
 pub fn ComposableModuleDefinition::shader_def(
   self : ComposableModuleDefinition,
   name : String,
@@ -53,25 +46,11 @@ pub fn ComposableModuleDefinition::shader_def(
 }
 
 ///|
-pub fn ComposableModuleDefinition::effective_defs(
-  self : ComposableModuleDefinition,
-) -> Array[String] {
-  self.effective_defs.copy()
-}
-
-///|
 pub fn ComposableModuleDefinition::contains_effective_def(
   self : ComposableModuleDefinition,
   name : String,
 ) -> Bool {
   self.effective_defs.contains(name)
-}
-
-///|
-pub fn ComposableModuleDefinition::all_import_count(
-  self : ComposableModuleDefinition,
-) -> Int {
-  self.all_imports.length()
 }
 
 ///|
