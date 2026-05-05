@@ -788,8 +788,8 @@ fn wgsl_statement_first_expression_by_role(
   role : WgslStatementExpressionRole,
 ) -> WgslExprRef? {
   for expression in expressions {
-    if expression.role == role {
-      return Some(expression.expression)
+    if expression.role() == role {
+      return Some(expression.expression())
     }
   }
   None

@@ -206,6 +206,21 @@ pub fn WgslExprNode::new(
 }
 
 ///|
+pub fn WgslExprNode::kind(self : WgslExprNode) -> WgslExprNodeKind {
+  self.kind
+}
+
+///|
+pub fn WgslExprNode::start(self : WgslExprNode) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslExprNode::end(self : WgslExprNode) -> Int {
+  self.end
+}
+
+///|
 pub struct WgslExprRef {
   priv tokens : Array[WgslExprToken]
   priv identifiers : Array[WgslIdent]
@@ -372,6 +387,45 @@ pub fn WgslFunctionArgument::new(
 }
 
 ///|
+pub fn WgslFunctionArgument::attributes(
+  self : WgslFunctionArgument,
+) -> Array[WgslAttribute] {
+  self.attributes.copy()
+}
+
+///|
+pub fn WgslFunctionArgument::name(self : WgslFunctionArgument) -> String {
+  self.name
+}
+
+///|
+pub fn WgslFunctionArgument::start(self : WgslFunctionArgument) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslFunctionArgument::end(self : WgslFunctionArgument) -> Int {
+  self.end
+}
+
+///|
+pub fn WgslFunctionArgument::name_start(self : WgslFunctionArgument) -> Int {
+  self.name_start
+}
+
+///|
+pub fn WgslFunctionArgument::name_end(self : WgslFunctionArgument) -> Int {
+  self.name_end
+}
+
+///|
+pub fn WgslFunctionArgument::ty_ref(
+  self : WgslFunctionArgument,
+) -> WgslTypeRef? {
+  self.ty_ref
+}
+
+///|
 pub struct WgslFunctionResult {
   attributes : Array[WgslAttribute]
   start : Int
@@ -389,6 +443,33 @@ pub fn WgslFunctionResult::new(
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionResult {
   WgslFunctionResult::{ attributes, start, end, ty, ty_ref }
+}
+
+///|
+pub fn WgslFunctionResult::attributes(
+  self : WgslFunctionResult,
+) -> Array[WgslAttribute] {
+  self.attributes.copy()
+}
+
+///|
+pub fn WgslFunctionResult::start(self : WgslFunctionResult) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslFunctionResult::end(self : WgslFunctionResult) -> Int {
+  self.end
+}
+
+///|
+pub fn WgslFunctionResult::ty(self : WgslFunctionResult) -> String {
+  self.ty
+}
+
+///|
+pub fn WgslFunctionResult::ty_ref(self : WgslFunctionResult) -> WgslTypeRef? {
+  self.ty_ref
 }
 
 ///|
@@ -411,12 +492,12 @@ pub(all) enum WgslStatementKind {
 
 ///|
 pub struct WgslLocalDeclaration {
-  kind : String
-  name : WgslIdent
-  template_list : Array[String]
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer_ref : WgslExprRef?
+  priv kind : String
+  priv name : WgslIdent
+  priv template_list : Array[String]
+  priv ty : String?
+  priv ty_ref : WgslTypeRef?
+  priv initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -439,6 +520,42 @@ pub fn WgslLocalDeclaration::new(
 }
 
 ///|
+pub fn WgslLocalDeclaration::kind(self : WgslLocalDeclaration) -> String {
+  self.kind
+}
+
+///|
+pub fn WgslLocalDeclaration::name(self : WgslLocalDeclaration) -> WgslIdent {
+  self.name
+}
+
+///|
+pub fn WgslLocalDeclaration::template_list(
+  self : WgslLocalDeclaration,
+) -> Array[String] {
+  self.template_list.copy()
+}
+
+///|
+pub fn WgslLocalDeclaration::ty(self : WgslLocalDeclaration) -> String? {
+  self.ty
+}
+
+///|
+pub fn WgslLocalDeclaration::ty_ref(
+  self : WgslLocalDeclaration,
+) -> WgslTypeRef? {
+  self.ty_ref
+}
+
+///|
+pub fn WgslLocalDeclaration::initializer_ref(
+  self : WgslLocalDeclaration,
+) -> WgslExprRef? {
+  self.initializer_ref
+}
+
+///|
 pub(all) enum WgslStatementExpressionRole {
   Condition
   ReturnValue
@@ -452,8 +569,8 @@ pub(all) enum WgslStatementExpressionRole {
 
 ///|
 pub struct WgslStatementExpression {
-  role : WgslStatementExpressionRole
-  expression : WgslExprRef
+  priv role : WgslStatementExpressionRole
+  priv expression : WgslExprRef
 } derive(Debug)
 
 ///|
@@ -462,6 +579,20 @@ pub fn WgslStatementExpression::new(
   expression : WgslExprRef,
 ) -> WgslStatementExpression {
   WgslStatementExpression::{ role, expression }
+}
+
+///|
+pub fn WgslStatementExpression::role(
+  self : WgslStatementExpression,
+) -> WgslStatementExpressionRole {
+  self.role
+}
+
+///|
+pub fn WgslStatementExpression::expression(
+  self : WgslStatementExpression,
+) -> WgslExprRef {
+  self.expression
 }
 
 ///|
@@ -486,14 +617,14 @@ pub(all) enum WgslStatementPayload {
 
 ///|
 pub struct WgslStatement {
-  kind : WgslStatementKind
-  payload : WgslStatementPayload
-  text : String
-  blocks : Array[WgslBlock]
-  local_bindings : Array[WgslLocalDeclaration]
-  exported_local_bindings : Array[WgslLocalDeclaration]
-  expression_refs : Array[WgslExprRef]
-  expressions : Array[WgslStatementExpression]
+  priv kind : WgslStatementKind
+  priv payload : WgslStatementPayload
+  priv text : String
+  priv blocks : Array[WgslBlock]
+  priv local_bindings : Array[WgslLocalDeclaration]
+  priv exported_local_bindings : Array[WgslLocalDeclaration]
+  priv expression_refs : Array[WgslExprRef]
+  priv expressions : Array[WgslStatementExpression]
 } derive(Debug)
 
 ///|
@@ -520,10 +651,58 @@ pub fn WgslStatement::new(
 }
 
 ///|
+pub fn WgslStatement::kind(self : WgslStatement) -> WgslStatementKind {
+  self.kind
+}
+
+///|
+pub fn WgslStatement::payload(self : WgslStatement) -> WgslStatementPayload {
+  self.payload
+}
+
+///|
+pub fn WgslStatement::text(self : WgslStatement) -> String {
+  self.text
+}
+
+///|
+pub fn WgslStatement::blocks(self : WgslStatement) -> Array[WgslBlock] {
+  self.blocks.copy()
+}
+
+///|
+pub fn WgslStatement::local_bindings(
+  self : WgslStatement,
+) -> Array[WgslLocalDeclaration] {
+  self.local_bindings.copy()
+}
+
+///|
+pub fn WgslStatement::exported_local_bindings(
+  self : WgslStatement,
+) -> Array[WgslLocalDeclaration] {
+  self.exported_local_bindings.copy()
+}
+
+///|
+pub fn WgslStatement::expression_refs(
+  self : WgslStatement,
+) -> Array[WgslExprRef] {
+  self.expression_refs.copy()
+}
+
+///|
+pub fn WgslStatement::expressions(
+  self : WgslStatement,
+) -> Array[WgslStatementExpression] {
+  self.expressions.copy()
+}
+
+///|
 pub struct WgslBlock {
-  start : Int
-  end : Int
-  statements : Array[WgslStatement]
+  priv start : Int
+  priv end : Int
+  priv statements : Array[WgslStatement]
 } derive(Debug)
 
 ///|
@@ -533,6 +712,21 @@ pub fn WgslBlock::new(
   statements : Array[WgslStatement],
 ) -> WgslBlock {
   WgslBlock::{ start, end, statements }
+}
+
+///|
+pub fn WgslBlock::start(self : WgslBlock) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslBlock::end(self : WgslBlock) -> Int {
+  self.end
+}
+
+///|
+pub fn WgslBlock::statements(self : WgslBlock) -> Array[WgslStatement] {
+  self.statements.copy()
 }
 
 ///|
@@ -577,6 +771,58 @@ pub fn WgslFunction::new(
 }
 
 ///|
+pub fn WgslFunction::attributes(self : WgslFunction) -> Array[WgslAttribute] {
+  self.attributes.copy()
+}
+
+///|
+pub fn WgslFunction::qualifier(self : WgslFunction) -> String {
+  self.qualifier
+}
+
+///|
+pub fn WgslFunction::qualifier_start(self : WgslFunction) -> Int? {
+  self.qualifier_start
+}
+
+///|
+pub fn WgslFunction::qualifier_end(self : WgslFunction) -> Int? {
+  self.qualifier_end
+}
+
+///|
+pub fn WgslFunction::fn_start(self : WgslFunction) -> Int {
+  self.fn_start
+}
+
+///|
+pub fn WgslFunction::fn_end(self : WgslFunction) -> Int {
+  self.fn_end
+}
+
+///|
+pub fn WgslFunction::name(self : WgslFunction) -> WgslIdent {
+  self.name
+}
+
+///|
+pub fn WgslFunction::arguments(
+  self : WgslFunction,
+) -> Array[WgslFunctionArgument] {
+  self.arguments.copy()
+}
+
+///|
+pub fn WgslFunction::result(self : WgslFunction) -> WgslFunctionResult? {
+  self.result
+}
+
+///|
+pub fn WgslFunction::body(self : WgslFunction) -> WgslBlock {
+  self.body
+}
+
+///|
 pub struct WgslStructMember {
   attributes : Array[WgslAttribute]
   name : String
@@ -612,6 +858,48 @@ pub fn WgslStructMember::new(
 }
 
 ///|
+pub fn WgslStructMember::attributes(
+  self : WgslStructMember,
+) -> Array[WgslAttribute] {
+  self.attributes.copy()
+}
+
+///|
+pub fn WgslStructMember::name(self : WgslStructMember) -> String {
+  self.name
+}
+
+///|
+pub fn WgslStructMember::start(self : WgslStructMember) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslStructMember::end(self : WgslStructMember) -> Int {
+  self.end
+}
+
+///|
+pub fn WgslStructMember::name_start(self : WgslStructMember) -> Int {
+  self.name_start
+}
+
+///|
+pub fn WgslStructMember::name_end(self : WgslStructMember) -> Int {
+  self.name_end
+}
+
+///|
+pub fn WgslStructMember::ty(self : WgslStructMember) -> String {
+  self.ty
+}
+
+///|
+pub fn WgslStructMember::ty_ref(self : WgslStructMember) -> WgslTypeRef? {
+  self.ty_ref
+}
+
+///|
 pub struct WgslStruct {
   attributes : Array[WgslAttribute]
   name : WgslIdent
@@ -625,6 +913,21 @@ pub fn WgslStruct::new(
   members : Array[WgslStructMember],
 ) -> WgslStruct {
   WgslStruct::{ attributes, name, members }
+}
+
+///|
+pub fn WgslStruct::attributes(self : WgslStruct) -> Array[WgslAttribute] {
+  self.attributes.copy()
+}
+
+///|
+pub fn WgslStruct::name(self : WgslStruct) -> WgslIdent {
+  self.name
+}
+
+///|
+pub fn WgslStruct::members(self : WgslStruct) -> Array[WgslStructMember] {
+  self.members.copy()
 }
 
 ///|
@@ -660,6 +963,47 @@ pub fn WgslGlobalVariable::new(
 }
 
 ///|
+pub fn WgslGlobalVariable::attributes(
+  self : WgslGlobalVariable,
+) -> Array[WgslAttribute] {
+  self.attributes.copy()
+}
+
+///|
+pub fn WgslGlobalVariable::name(self : WgslGlobalVariable) -> WgslIdent {
+  self.name
+}
+
+///|
+pub fn WgslGlobalVariable::template_list(
+  self : WgslGlobalVariable,
+) -> Array[String] {
+  self.template_list.copy()
+}
+
+///|
+pub fn WgslGlobalVariable::ty(self : WgslGlobalVariable) -> String? {
+  self.ty
+}
+
+///|
+pub fn WgslGlobalVariable::ty_ref(self : WgslGlobalVariable) -> WgslTypeRef? {
+  self.ty_ref
+}
+
+///|
+pub fn WgslGlobalVariable::initializer(self : WgslGlobalVariable) -> String? {
+  self.initializer
+}
+
+///|
+pub fn WgslGlobalVariable::initializer_ref(
+  self : WgslGlobalVariable,
+) -> WgslExprRef? {
+  self.initializer_ref
+}
+
+///|
 pub struct WgslConst {
   name : WgslIdent
   ty : String?
@@ -677,6 +1021,31 @@ pub fn WgslConst::new(
   initializer_ref : WgslExprRef?,
 ) -> WgslConst {
   WgslConst::{ name, ty, ty_ref, initializer, initializer_ref }
+}
+
+///|
+pub fn WgslConst::name(self : WgslConst) -> WgslIdent {
+  self.name
+}
+
+///|
+pub fn WgslConst::ty(self : WgslConst) -> String? {
+  self.ty
+}
+
+///|
+pub fn WgslConst::ty_ref(self : WgslConst) -> WgslTypeRef? {
+  self.ty_ref
+}
+
+///|
+pub fn WgslConst::initializer(self : WgslConst) -> String? {
+  self.initializer
+}
+
+///|
+pub fn WgslConst::initializer_ref(self : WgslConst) -> WgslExprRef? {
+  self.initializer_ref
 }
 
 ///|
@@ -702,6 +1071,36 @@ pub fn WgslOverride::new(
 }
 
 ///|
+pub fn WgslOverride::attributes(self : WgslOverride) -> Array[WgslAttribute] {
+  self.attributes.copy()
+}
+
+///|
+pub fn WgslOverride::name(self : WgslOverride) -> WgslIdent {
+  self.name
+}
+
+///|
+pub fn WgslOverride::ty(self : WgslOverride) -> String? {
+  self.ty
+}
+
+///|
+pub fn WgslOverride::ty_ref(self : WgslOverride) -> WgslTypeRef? {
+  self.ty_ref
+}
+
+///|
+pub fn WgslOverride::initializer(self : WgslOverride) -> String? {
+  self.initializer
+}
+
+///|
+pub fn WgslOverride::initializer_ref(self : WgslOverride) -> WgslExprRef? {
+  self.initializer_ref
+}
+
+///|
 pub struct WgslTypeAlias {
   name : WgslIdent
   ty : String
@@ -715,6 +1114,21 @@ pub fn WgslTypeAlias::new(
   ty_ref : WgslTypeRef?,
 ) -> WgslTypeAlias {
   WgslTypeAlias::{ name, ty, ty_ref }
+}
+
+///|
+pub fn WgslTypeAlias::name(self : WgslTypeAlias) -> WgslIdent {
+  self.name
+}
+
+///|
+pub fn WgslTypeAlias::ty(self : WgslTypeAlias) -> String {
+  self.ty
+}
+
+///|
+pub fn WgslTypeAlias::ty_ref(self : WgslTypeAlias) -> WgslTypeRef? {
+  self.ty_ref
 }
 
 ///|
@@ -749,6 +1163,31 @@ pub fn WgslGlobalDecl::new(
   start : Int,
 ) -> WgslGlobalDecl {
   WgslGlobalDecl::{ kind, data, name, text, start }
+}
+
+///|
+pub fn WgslGlobalDecl::kind(self : WgslGlobalDecl) -> WgslGlobalDeclKind {
+  self.kind
+}
+
+///|
+pub fn WgslGlobalDecl::data(self : WgslGlobalDecl) -> WgslGlobalDeclData {
+  self.data
+}
+
+///|
+pub fn WgslGlobalDecl::name(self : WgslGlobalDecl) -> String {
+  self.name
+}
+
+///|
+pub fn WgslGlobalDecl::text(self : WgslGlobalDecl) -> String {
+  self.text
+}
+
+///|
+pub fn WgslGlobalDecl::start(self : WgslGlobalDecl) -> Int {
+  self.start
 }
 
 ///|

@@ -303,10 +303,10 @@ fn collect_wgsl_statement_local_sanitizers(
   statement : WgslStatement,
   plan : WgslRenamePlan,
 ) -> Unit {
-  for binding in statement.local_bindings {
-    collect_wgsl_function_local_name_sanitizer(binding.name.name, plan)
+  for binding in statement.local_bindings() {
+    collect_wgsl_function_local_name_sanitizer(binding.name().name, plan)
   }
-  for block in statement.blocks {
+  for block in statement.blocks() {
     collect_wgsl_block_local_sanitizers(block, plan)
   }
 }
@@ -316,7 +316,7 @@ fn collect_wgsl_block_local_sanitizers(
   block : WgslBlock,
   plan : WgslRenamePlan,
 ) -> Unit {
-  for statement in block.statements {
+  for statement in block.statements() {
     collect_wgsl_statement_local_sanitizers(statement, plan)
   }
 }

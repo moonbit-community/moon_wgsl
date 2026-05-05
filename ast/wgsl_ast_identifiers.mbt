@@ -35,7 +35,7 @@ fn collect_wgsl_expr_node_identifier_nodes(
   active_local_names : Array[String],
   nodes : Array[WgslIdent],
 ) -> Unit {
-  match node.kind {
+  match node.kind() {
     Identifier(ident) =>
       if !wgsl_name_list_contains(active_local_names, ident.name) {
         nodes.push(ident)
@@ -81,7 +81,7 @@ fn collect_wgsl_expr_node_identifier_nodes(
 
 ///|
 fn wgsl_expr_node_path_name(node : WgslExprNode) -> String {
-  match node.kind {
+  match node.kind() {
     Identifier(ident) => ident.name
     PathAccess(base, segment) => {
       let base_path = wgsl_expr_node_path_name(base)
@@ -180,9 +180,9 @@ fn collect_wgsl_local_binding_identifier_nodes_with_scope(
   active_local_names : Array[String],
   nodes : Array[WgslIdent],
 ) -> Unit {
-  collect_wgsl_type_ref_identifier_nodes(binding.ty_ref, nodes)
+  collect_wgsl_type_ref_identifier_nodes(binding.ty_ref(), nodes)
   collect_wgsl_expr_ref_identifier_nodes_with_scope(
-    binding.initializer_ref,
+    binding.initializer_ref(),
     active_local_names,
     nodes,
   )
@@ -194,23 +194,23 @@ fn collect_wgsl_statement_identifier_nodes_with_scope(
   active_local_names : Array[String],
   nodes : Array[WgslIdent],
 ) -> Unit {
-  for binding in statement.local_bindings {
+  for binding in statement.local_bindings() {
     collect_wgsl_local_binding_identifier_nodes_with_scope(
       binding, active_local_names, nodes,
     )
   }
   let block_local_names = wgsl_name_list_copy(active_local_names)
-  for binding in statement.local_bindings {
-    wgsl_name_list_push_unique(block_local_names, binding.name.name)
+  for binding in statement.local_bindings() {
+    wgsl_name_list_push_unique(block_local_names, binding.name().name)
   }
-  for expr_ref in statement.expression_refs {
+  for expr_ref in statement.expression_refs() {
     collect_wgsl_expr_ref_identifier_nodes_with_scope(
       Some(expr_ref),
       block_local_names,
       nodes,
     )
   }
-  for block in statement.blocks {
+  for block in statement.blocks() {
     collect_wgsl_block_identifier_nodes_with_scope(
       block, block_local_names, nodes,
     )
@@ -224,12 +224,12 @@ fn collect_wgsl_block_identifier_nodes_with_scope(
   nodes : Array[WgslIdent],
 ) -> Unit {
   let active_local_names = wgsl_name_list_copy(inherited_local_names)
-  for statement in block.statements {
+  for statement in block.statements() {
     collect_wgsl_statement_identifier_nodes_with_scope(
       statement, active_local_names, nodes,
     )
-    for binding in statement.exported_local_bindings {
-      wgsl_name_list_push_unique(active_local_names, binding.name.name)
+    for binding in statement.exported_local_bindings() {
+      wgsl_name_list_push_unique(active_local_names, binding.name().name)
     }
   }
 }

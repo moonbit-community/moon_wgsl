@@ -224,12 +224,12 @@ fn collect_wgsl_local_binding_rewrite_node(
   active_redirects : @hashmap.HashMap[String, String],
   nodes : Array[WgslRewriteNode],
 ) -> Unit {
-  match source_redirects.get(binding.name.name) {
+  match source_redirects.get(binding.name().name) {
     Some(replacement) => {
-      active_redirects.set(binding.name.name, replacement)
+      active_redirects.set(binding.name().name, replacement)
       nodes.push(WgslRewriteNode::{
-        start: binding.name.start,
-        end: binding.name.end,
+        start: binding.name().start,
+        end: binding.name().end,
         replacement,
       })
     }
@@ -245,14 +245,14 @@ fn collect_wgsl_statement_local_rewrite_nodes(
   nodes : Array[WgslRewriteNode],
 ) -> Unit {
   let block_redirects = copy_wgsl_redirect_map(active_redirects)
-  for binding in statement.local_bindings {
+  for binding in statement.local_bindings() {
     collect_wgsl_rewrite_nodes_from_type_ref(
-      binding.ty_ref,
+      binding.ty_ref(),
       block_redirects,
       nodes,
     )
     collect_wgsl_rewrite_nodes_from_expr_ref(
-      binding.initializer_ref,
+      binding.initializer_ref(),
       block_redirects,
       nodes,
     )
@@ -260,14 +260,14 @@ fn collect_wgsl_statement_local_rewrite_nodes(
       binding, source_redirects, block_redirects, nodes,
     )
   }
-  for expr_ref in statement.expression_refs {
+  for expr_ref in statement.expression_refs() {
     collect_wgsl_rewrite_nodes_from_expr_ref(
       Some(expr_ref),
       block_redirects,
       nodes,
     )
   }
-  for block in statement.blocks {
+  for block in statement.blocks() {
     collect_wgsl_block_local_rewrite_nodes(
       block, block_redirects, source_redirects, nodes,
     )
@@ -282,14 +282,14 @@ fn collect_wgsl_block_local_rewrite_nodes(
   nodes : Array[WgslRewriteNode],
 ) -> Unit {
   let active_redirects = copy_wgsl_redirect_map(inherited_redirects)
-  for statement in block.statements {
+  for statement in block.statements() {
     collect_wgsl_statement_local_rewrite_nodes(
       statement, active_redirects, source_redirects, nodes,
     )
-    for binding in statement.exported_local_bindings {
-      match source_redirects.get(binding.name.name) {
+    for binding in statement.exported_local_bindings() {
+      match source_redirects.get(binding.name().name) {
         Some(replacement) =>
-          active_redirects.set(binding.name.name, replacement)
+          active_redirects.set(binding.name().name, replacement)
         None => ()
       }
     }

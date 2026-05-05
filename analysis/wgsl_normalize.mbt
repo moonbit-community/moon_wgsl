@@ -101,7 +101,7 @@ fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
 
 ///|
 fn wgsl_local_binding_key(binding : WgslLocalDeclaration) -> String {
-  "\{binding.kind}:\{binding.name.name}<\{wgsl_string_list_key(binding.template_list)}>:\{wgsl_type_ref_key(binding.ty_ref)}=\{wgsl_optional_expr_ref_key(binding.initializer_ref)}"
+  "\{binding.kind()}:\{binding.name().name}<\{wgsl_string_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
 }
 
 ///|
@@ -133,28 +133,28 @@ fn wgsl_optional_expr_ref_key(expr : WgslExprRef?) -> String {
 ///|
 fn wgsl_statement_key(statement : WgslStatement) -> String {
   let locals : Array[String] = []
-  for binding in statement.local_bindings {
+  for binding in statement.local_bindings() {
     locals.push(wgsl_local_binding_key(binding))
   }
   let exported_local_names : Array[String] = []
-  for binding in statement.exported_local_bindings {
-    exported_local_names.push(binding.name.name)
+  for binding in statement.exported_local_bindings() {
+    exported_local_names.push(binding.name().name)
   }
   let expressions : Array[String] = []
-  for expr_ref in statement.expression_refs {
+  for expr_ref in statement.expression_refs() {
     expressions.push(wgsl_expr_ref_key(expr_ref))
   }
   let blocks : Array[String] = []
-  for block in statement.blocks {
+  for block in statement.blocks() {
     blocks.push(wgsl_block_key(block))
   }
-  "\{wgsl_statement_kind_key(statement.kind)}[expr:\{wgsl_string_list_key(expressions)}][\{wgsl_string_list_key(locals)}][export:\{wgsl_string_list_key(exported_local_names)}]{\{wgsl_string_list_key(blocks)}}"
+  "\{wgsl_statement_kind_key(statement.kind())}[expr:\{wgsl_string_list_key(expressions)}][\{wgsl_string_list_key(locals)}][export:\{wgsl_string_list_key(exported_local_names)}]{\{wgsl_string_list_key(blocks)}}"
 }
 
 ///|
 fn wgsl_block_key(block : WgslBlock) -> String {
   let statements : Array[String] = []
-  for statement in block.statements {
+  for statement in block.statements() {
     statements.push(wgsl_statement_key(statement))
   }
   wgsl_string_list_key(statements)

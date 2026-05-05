@@ -28,11 +28,12 @@ pub fn WgslAttribute::new(String, Int, Int, String, WgslExprRef?) -> Self
 pub fn WgslAttribute::start(Self) -> Int
 
 pub struct WgslBlock {
-  start : Int
-  end : Int
-  statements : Array[WgslStatement]
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslBlock::end(Self) -> Int
 pub fn WgslBlock::new(Int, Int, Array[WgslStatement]) -> Self
+pub fn WgslBlock::start(Self) -> Int
+pub fn WgslBlock::statements(Self) -> Array[WgslStatement]
 
 pub struct WgslConst {
   name : WgslIdent
@@ -41,7 +42,12 @@ pub struct WgslConst {
   initializer : String?
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
+pub fn WgslConst::initializer(Self) -> String?
+pub fn WgslConst::initializer_ref(Self) -> WgslExprRef?
+pub fn WgslConst::name(Self) -> WgslIdent
 pub fn WgslConst::new(WgslIdent, String?, WgslTypeRef?, String?, WgslExprRef?) -> Self
+pub fn WgslConst::ty(Self) -> String?
+pub fn WgslConst::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslDirective {
   // private fields
@@ -77,7 +83,10 @@ pub struct WgslExprNode {
   start : Int
   end : Int
 } derive(@debug.Debug)
+pub fn WgslExprNode::end(Self) -> Int
+pub fn WgslExprNode::kind(Self) -> WgslExprNodeKind
 pub fn WgslExprNode::new(WgslExprNodeKind, Int, Int) -> Self
+pub fn WgslExprNode::start(Self) -> Int
 
 pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)
@@ -135,7 +144,17 @@ pub struct WgslFunction {
   result : WgslFunctionResult?
   body : WgslBlock
 } derive(@debug.Debug)
+pub fn WgslFunction::arguments(Self) -> Array[WgslFunctionArgument]
+pub fn WgslFunction::attributes(Self) -> Array[WgslAttribute]
+pub fn WgslFunction::body(Self) -> WgslBlock
+pub fn WgslFunction::fn_end(Self) -> Int
+pub fn WgslFunction::fn_start(Self) -> Int
+pub fn WgslFunction::name(Self) -> WgslIdent
 pub fn WgslFunction::new(Array[WgslAttribute], String, Int?, Int?, Int, Int, WgslIdent, Array[WgslFunctionArgument], WgslFunctionResult?, WgslBlock) -> Self
+pub fn WgslFunction::qualifier(Self) -> String
+pub fn WgslFunction::qualifier_end(Self) -> Int?
+pub fn WgslFunction::qualifier_start(Self) -> Int?
+pub fn WgslFunction::result(Self) -> WgslFunctionResult?
 
 pub struct WgslFunctionArgument {
   attributes : Array[WgslAttribute]
@@ -146,7 +165,14 @@ pub struct WgslFunctionArgument {
   name_end : Int
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
+pub fn WgslFunctionArgument::attributes(Self) -> Array[WgslAttribute]
+pub fn WgslFunctionArgument::end(Self) -> Int
+pub fn WgslFunctionArgument::name(Self) -> String
+pub fn WgslFunctionArgument::name_end(Self) -> Int
+pub fn WgslFunctionArgument::name_start(Self) -> Int
 pub fn WgslFunctionArgument::new(Array[WgslAttribute], String, Int, Int, Int, Int, WgslTypeRef?) -> Self
+pub fn WgslFunctionArgument::start(Self) -> Int
+pub fn WgslFunctionArgument::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslFunctionResult {
   attributes : Array[WgslAttribute]
@@ -155,7 +181,12 @@ pub struct WgslFunctionResult {
   ty : String
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
+pub fn WgslFunctionResult::attributes(Self) -> Array[WgslAttribute]
+pub fn WgslFunctionResult::end(Self) -> Int
 pub fn WgslFunctionResult::new(Array[WgslAttribute], Int, Int, String, WgslTypeRef?) -> Self
+pub fn WgslFunctionResult::start(Self) -> Int
+pub fn WgslFunctionResult::ty(Self) -> String
+pub fn WgslFunctionResult::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslGlobalDecl {
   kind : WgslGlobalDeclKind
@@ -164,7 +195,12 @@ pub struct WgslGlobalDecl {
   text : String
   start : Int
 } derive(@debug.Debug)
+pub fn WgslGlobalDecl::data(Self) -> WgslGlobalDeclData
+pub fn WgslGlobalDecl::kind(Self) -> WgslGlobalDeclKind
+pub fn WgslGlobalDecl::name(Self) -> String
 pub fn WgslGlobalDecl::new(WgslGlobalDeclKind, WgslGlobalDeclData, String, String, Int) -> Self
+pub fn WgslGlobalDecl::start(Self) -> Int
+pub fn WgslGlobalDecl::text(Self) -> String
 
 pub(all) enum WgslGlobalDeclData {
   Directive(WgslDirective)
@@ -202,7 +238,14 @@ pub struct WgslGlobalVariable {
   initializer : String?
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
+pub fn WgslGlobalVariable::attributes(Self) -> Array[WgslAttribute]
+pub fn WgslGlobalVariable::initializer(Self) -> String?
+pub fn WgslGlobalVariable::initializer_ref(Self) -> WgslExprRef?
+pub fn WgslGlobalVariable::name(Self) -> WgslIdent
 pub fn WgslGlobalVariable::new(Array[WgslAttribute], WgslIdent, Array[String], String?, WgslTypeRef?, String?, WgslExprRef?) -> Self
+pub fn WgslGlobalVariable::template_list(Self) -> Array[String]
+pub fn WgslGlobalVariable::ty(Self) -> String?
+pub fn WgslGlobalVariable::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslIdent {
   name : String
@@ -212,14 +255,15 @@ pub struct WgslIdent {
 pub fn WgslIdent::new(String, Int, Int) -> Self
 
 pub struct WgslLocalDeclaration {
-  kind : String
-  name : WgslIdent
-  template_list : Array[String]
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer_ref : WgslExprRef?
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslLocalDeclaration::initializer_ref(Self) -> WgslExprRef?
+pub fn WgslLocalDeclaration::kind(Self) -> String
+pub fn WgslLocalDeclaration::name(Self) -> WgslIdent
 pub fn WgslLocalDeclaration::new(String, WgslIdent, Array[String], String?, WgslTypeRef?, WgslExprRef?) -> Self
+pub fn WgslLocalDeclaration::template_list(Self) -> Array[String]
+pub fn WgslLocalDeclaration::ty(Self) -> String?
+pub fn WgslLocalDeclaration::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslOverride {
   attributes : Array[WgslAttribute]
@@ -229,25 +273,33 @@ pub struct WgslOverride {
   initializer : String?
   initializer_ref : WgslExprRef?
 } derive(@debug.Debug)
+pub fn WgslOverride::attributes(Self) -> Array[WgslAttribute]
+pub fn WgslOverride::initializer(Self) -> String?
+pub fn WgslOverride::initializer_ref(Self) -> WgslExprRef?
+pub fn WgslOverride::name(Self) -> WgslIdent
 pub fn WgslOverride::new(Array[WgslAttribute], WgslIdent, String?, WgslTypeRef?, String?, WgslExprRef?) -> Self
+pub fn WgslOverride::ty(Self) -> String?
+pub fn WgslOverride::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslStatement {
-  kind : WgslStatementKind
-  payload : WgslStatementPayload
-  text : String
-  blocks : Array[WgslBlock]
-  local_bindings : Array[WgslLocalDeclaration]
-  exported_local_bindings : Array[WgslLocalDeclaration]
-  expression_refs : Array[WgslExprRef]
-  expressions : Array[WgslStatementExpression]
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslStatement::blocks(Self) -> Array[WgslBlock]
+pub fn WgslStatement::exported_local_bindings(Self) -> Array[WgslLocalDeclaration]
+pub fn WgslStatement::expression_refs(Self) -> Array[WgslExprRef]
+pub fn WgslStatement::expressions(Self) -> Array[WgslStatementExpression]
+pub fn WgslStatement::kind(Self) -> WgslStatementKind
+pub fn WgslStatement::local_bindings(Self) -> Array[WgslLocalDeclaration]
 pub fn WgslStatement::new(WgslStatementKind, WgslStatementPayload, String, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
+pub fn WgslStatement::payload(Self) -> WgslStatementPayload
+pub fn WgslStatement::text(Self) -> String
 
 pub struct WgslStatementExpression {
-  role : WgslStatementExpressionRole
-  expression : WgslExprRef
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslStatementExpression::expression(Self) -> WgslExprRef
 pub fn WgslStatementExpression::new(WgslStatementExpressionRole, WgslExprRef) -> Self
+pub fn WgslStatementExpression::role(Self) -> WgslStatementExpressionRole
 
 pub(all) enum WgslStatementExpressionRole {
   Condition
@@ -301,6 +353,9 @@ pub struct WgslStruct {
   name : WgslIdent
   members : Array[WgslStructMember]
 } derive(@debug.Debug)
+pub fn WgslStruct::attributes(Self) -> Array[WgslAttribute]
+pub fn WgslStruct::members(Self) -> Array[WgslStructMember]
+pub fn WgslStruct::name(Self) -> WgslIdent
 pub fn WgslStruct::new(Array[WgslAttribute], WgslIdent, Array[WgslStructMember]) -> Self
 
 pub struct WgslStructMember {
@@ -313,7 +368,15 @@ pub struct WgslStructMember {
   ty : String
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
+pub fn WgslStructMember::attributes(Self) -> Array[WgslAttribute]
+pub fn WgslStructMember::end(Self) -> Int
+pub fn WgslStructMember::name(Self) -> String
+pub fn WgslStructMember::name_end(Self) -> Int
+pub fn WgslStructMember::name_start(Self) -> Int
 pub fn WgslStructMember::new(Array[WgslAttribute], String, Int, Int, Int, Int, String, WgslTypeRef?) -> Self
+pub fn WgslStructMember::start(Self) -> Int
+pub fn WgslStructMember::ty(Self) -> String
+pub fn WgslStructMember::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslTranslationUnit {
   declarations : Array[WgslGlobalDecl]
@@ -325,7 +388,10 @@ pub struct WgslTypeAlias {
   ty : String
   ty_ref : WgslTypeRef?
 } derive(@debug.Debug)
+pub fn WgslTypeAlias::name(Self) -> WgslIdent
 pub fn WgslTypeAlias::new(WgslIdent, String, WgslTypeRef?) -> Self
+pub fn WgslTypeAlias::ty(Self) -> String
+pub fn WgslTypeAlias::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslTypeRef {
   // private fields
