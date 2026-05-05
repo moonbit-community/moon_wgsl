@@ -11,6 +11,7 @@ using @ast {
   type WgslGlobalDeclKind,
   type WgslIdent,
   type WgslLocalDeclaration,
+  type WgslLocalDeclarationKind,
   type WgslStatement,
   type WgslStatementKind,
   type WgslTypeRef,

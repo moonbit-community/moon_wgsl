@@ -664,7 +664,7 @@ test "WGSL function payload exposes statement AST spans" {
   )
   debug_inspect(
     function.body().statements()[0].local_bindings()[0].kind(),
-    content="\"var\"",
+    content="Var",
   )
   debug_inspect(
     function.body().statements()[0].local_bindings()[0].name().name(),

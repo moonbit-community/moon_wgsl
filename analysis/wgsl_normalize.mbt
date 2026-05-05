@@ -109,8 +109,17 @@ fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
 }
 
 ///|
+fn wgsl_local_declaration_kind_key(kind : WgslLocalDeclarationKind) -> String {
+  match kind {
+    Var => "var"
+    Let => "let"
+    Const => "const"
+  }
+}
+
+///|
 fn wgsl_local_binding_key(binding : WgslLocalDeclaration) -> String {
-  "\{binding.kind()}:\{binding.name().name()}<\{wgsl_type_ref_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
+  "\{wgsl_local_declaration_kind_key(binding.kind())}:\{binding.name().name()}<\{wgsl_type_ref_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
 }
 
 ///|

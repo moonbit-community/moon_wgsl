@@ -181,9 +181,9 @@ fn WgslDeclParser::parse_statement_local_binding(
     return None
   }
   let kind = match wgsl_statement_token_identifier(tokens[keyword_index]) {
-    Some("var") => "var"
-    Some("let") => "let"
-    Some("const") => "const"
+    Some("var") => WgslLocalDeclarationKind::Var
+    Some("let") => WgslLocalDeclarationKind::Let
+    Some("const") => WgslLocalDeclarationKind::Const
     _ => return None
   }
   let parser = WgslDeclParser::{
@@ -191,7 +191,7 @@ fn WgslDeclParser::parse_statement_local_binding(
     source_start: self.source_start,
     token_view: tokens[keyword_index + 1:],
   }
-  let template_list = if kind == "var" {
+  let template_list = if kind == WgslLocalDeclarationKind::Var {
     parser.parse_template_list()
   } else {
     []

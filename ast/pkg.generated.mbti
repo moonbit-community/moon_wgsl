@@ -218,11 +218,17 @@ pub struct WgslLocalDeclaration {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslLocalDeclaration::initializer_ref(Self) -> WgslExprRef?
-pub fn WgslLocalDeclaration::kind(Self) -> String
+pub fn WgslLocalDeclaration::kind(Self) -> WgslLocalDeclarationKind
 pub fn WgslLocalDeclaration::name(Self) -> WgslIdent
-pub fn WgslLocalDeclaration::new(String, WgslIdent, Array[WgslTypeRef], WgslTypeRef?, WgslExprRef?) -> Self
+pub fn WgslLocalDeclaration::new(WgslLocalDeclarationKind, WgslIdent, Array[WgslTypeRef], WgslTypeRef?, WgslExprRef?) -> Self
 pub fn WgslLocalDeclaration::template_list(Self) -> Array[WgslTypeRef]
 pub fn WgslLocalDeclaration::ty_ref(Self) -> WgslTypeRef?
+
+pub(all) enum WgslLocalDeclarationKind {
+  Var
+  Let
+  Const
+} derive(Eq, @debug.Debug)
 
 pub struct WgslOverride {
   // private fields

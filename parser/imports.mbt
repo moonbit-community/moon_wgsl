@@ -19,6 +19,7 @@ using @ast {
   type WgslGlobalVariable,
   type WgslIdent,
   type WgslLocalDeclaration,
+  type WgslLocalDeclarationKind,
   type WgslOverride,
   type WgslStatement,
   type WgslStatementExpression,

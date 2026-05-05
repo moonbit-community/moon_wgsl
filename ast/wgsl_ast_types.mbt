@@ -499,8 +499,15 @@ pub(all) enum WgslStatementKind {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum WgslLocalDeclarationKind {
+  Var
+  Let
+  Const
+} derive(Eq, Debug)
+
+///|
 pub struct WgslLocalDeclaration {
-  priv kind : String
+  priv kind : WgslLocalDeclarationKind
   priv name : WgslIdent
   priv template_list : Array[WgslTypeRef]
   priv ty_ref : WgslTypeRef?
@@ -509,7 +516,7 @@ pub struct WgslLocalDeclaration {
 
 ///|
 pub fn WgslLocalDeclaration::new(
-  kind : String,
+  kind : WgslLocalDeclarationKind,
   name : WgslIdent,
   template_list : Array[WgslTypeRef],
   ty_ref : WgslTypeRef?,
@@ -519,7 +526,9 @@ pub fn WgslLocalDeclaration::new(
 }
 
 ///|
-pub fn WgslLocalDeclaration::kind(self : WgslLocalDeclaration) -> String {
+pub fn WgslLocalDeclaration::kind(
+  self : WgslLocalDeclaration,
+) -> WgslLocalDeclarationKind {
   self.kind
 }
 
