@@ -1,12 +1,12 @@
 ///|
-pub struct WgslTokenReplacement {
-  priv start : Int
-  priv end : Int
-  priv replacement : String
+priv struct WgslTokenReplacement {
+  start : Int
+  end : Int
+  replacement : String
 }
 
 ///|
-pub fn WgslTokenReplacement::new(
+fn WgslTokenReplacement::new(
   start : Int,
   end : Int,
   replacement : String,
@@ -170,7 +170,7 @@ fn wgsl_emit_needs_space(previous : String, current : String) -> Bool {
 }
 
 ///|
-pub fn emit_wgsl_token_stream_canonical(
+fn emit_wgsl_token_stream_canonical(
   tokens : Array[WgslToken],
   replacements : Array[WgslTokenReplacement],
 ) -> String {
@@ -199,7 +199,7 @@ pub fn emit_wgsl_token_stream_canonical(
 }
 
 ///|
-pub fn emit_wgsl_source_tokens_canonical(
+fn emit_wgsl_source_tokens_canonical(
   source : String,
   replacements : Array[WgslTokenReplacement],
 ) -> String {
@@ -215,7 +215,7 @@ pub fn emit_wgsl_source_tokens_canonical(
 }
 
 ///|
-pub fn tokenize_wgsl_absolute_fragment(
+fn tokenize_wgsl_absolute_fragment(
   source : String,
   start : Int,
   end_ : Int,

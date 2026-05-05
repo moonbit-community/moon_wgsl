@@ -41,6 +41,11 @@ pub fn wgsl_source_contains_override_directive(String) -> Bool raise @parser.Wgs
 pub fn wgsl_source_contains_virtual_directive(String) -> Bool raise @parser.WgslParseError
 
 // Errors
+pub suberror WgslImportSubstitutionError {
+  AmbiguousImport(Int)
+  InvalidWgslSyntax(String, Int)
+}
+
 pub suberror WgslVirtualOverrideError {
   InvalidOverride(String)
   Parse(String, Int)
@@ -55,6 +60,13 @@ pub fn WgslEmittedDeclaration::generated_end(Self) -> Int
 pub fn WgslEmittedDeclaration::generated_start(Self) -> Int
 pub fn WgslEmittedDeclaration::is_type_declaration(Self) -> Bool
 pub fn WgslEmittedDeclaration::name(Self) -> String
+
+pub struct WgslImportSubstitutionState {
+  // private fields
+}
+pub fn WgslImportSubstitutionState::declare_imports(Self, String) -> Unit raise @parser.ParseImportsError
+pub fn WgslImportSubstitutionState::default() -> Self
+pub fn WgslImportSubstitutionState::rewrite_source(Self, String, Int, Array[@common.ImportDefWithOffset], Bool) -> String raise WgslImportSubstitutionError
 
 pub struct WgslModuleItemExtraction {
   // private fields

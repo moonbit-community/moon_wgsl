@@ -6,10 +6,6 @@ import {
 }
 
 // Values
-pub fn emit_wgsl_source_tokens_canonical(String, Array[WgslTokenReplacement]) -> String
-
-pub fn emit_wgsl_token_stream_canonical(Array[WgslToken], Array[WgslTokenReplacement]) -> String
-
 pub fn replace_comments(String) -> String
 
 pub fn replace_comments_naga_oil(String) -> String
@@ -23,8 +19,6 @@ pub fn split_last_identifier(String) -> (String, String)?
 pub fn tokenize(String, Bool) -> Array[WgslToken]
 
 pub fn tokenize_wgsl(String, Bool) -> Array[WgslToken]
-
-pub fn tokenize_wgsl_absolute_fragment(String, Int, Int) -> Array[WgslToken]
 
 pub fn trim_trailing_semicolons(String) -> String
 
@@ -63,11 +57,6 @@ pub fn WgslToken::operator_text(Self) -> String?
 pub fn WgslToken::pos(Self) -> Int
 pub fn WgslToken::punctuation_code(Self) -> Int?
 pub fn WgslToken::shift(Self, Int) -> Self
-
-pub struct WgslTokenReplacement {
-  // private fields
-}
-pub fn WgslTokenReplacement::new(Int, Int, String) -> Self
 
 // Type aliases
 

@@ -28,14 +28,27 @@ using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 ///|
 using @lex {
   type WgslToken,
-  type WgslTokenReplacement,
-  emit_wgsl_token_stream_canonical,
   split_last_identifier,
-  tokenize_wgsl_absolute_fragment,
+  tokenize,
+  tokenize_wgsl,
+  replace_comments,
+  utf8_byte_length,
 }
 
 ///|
 using @ast {type WgslTranslationUnit}
 
 ///|
-using @common {type WgslSymbolRedirect}
+using @common {
+  type ImportDefWithOffset,
+  type ImportDefinition,
+  type WgslImportTarget,
+  type WgslSymbolRedirect,
+}
+
+///|
+using @parser {
+  type ParseImportsError,
+  parse_wgsl_import_spec_is_empty_or_final_semicolon,
+  parse_wgsl_import_targets,
+}
