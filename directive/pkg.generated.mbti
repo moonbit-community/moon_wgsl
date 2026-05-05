@@ -12,6 +12,10 @@ pub fn parse_glsl_version_directive(String) -> String?
 
 pub fn parse_wgsl_directive_identifier(String) -> String?
 
+pub fn parse_wgsl_directive_line(String) -> @ast.WgslDirective?
+
+pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
+
 pub fn parse_wgsl_directive_scan_items(String, include_glsl_version? : Bool) -> Array[WgslDirectiveScanItem]
 
 pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?

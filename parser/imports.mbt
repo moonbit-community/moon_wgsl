@@ -41,6 +41,9 @@ using @ast {
 using @common {type WgslImportTarget}
 
 ///|
+using @directive {parse_wgsl_directive_line, parse_wgsl_directive_line_at}
+
+///|
 using @lex {
   type WgslToken,
   replace_comments,
@@ -50,9 +53,7 @@ using @lex {
   tokenize_wgsl,
   utf8_byte_length,
   wgsl_blankspace_code_point,
-  wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
-  wgsl_regex_whitespace_code_point,
   wgsl_regex_word_text,
   wgsl_trim_blankspace,
 }

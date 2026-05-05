@@ -3,7 +3,6 @@
 %derive<Debug> ParseError
 %start raw_top_level_items
 %start import_targets
-%start directive_line
 %start decl_head
 %start type_ref
 %start template_list
@@ -42,10 +41,8 @@
 %token<@ast.WgslIdent> KW_ENABLE
 %token<@ast.WgslIdent> KW_REQUIRES
 %token<@ast.WgslIdent> KW_DIAGNOSTIC
-%token<(String, String, Int, Int, Int, Int)> DIRECTIVE_HEAD
 %token<(String, Int, Int)> DIRECTIVE_TAIL
 %token<String> SOURCE_TEXT
-%token HASH "#"
 %token AS "as"
 %token<Int> ARROW "->"
 %token LPAREN "("
@@ -182,42 +179,6 @@ target -> Array[@common.WgslImportTarget]
 alias -> String
   : { "" }
   | "as" name=IDENT { name }
-  ;
-
-directive_line -> @ast.WgslDirective
-  : "#" head=DIRECTIVE_HEAD tail=directive_tail EOF {
-      let (name, _, start, end, name_start, name_end) = head
-      let (tail, raw_tail_start, raw_tail_end) = tail
-      let tail_start = if tail == "" { name_end } else { raw_tail_start }
-      let tail_end = if tail == "" { name_end } else { raw_tail_end }
-      let has_required_separator = tail != "" && tail_start > name_end
-      let kind = match name {
-        "ifdef" => @ast.WgslDirectiveKind::Ifdef
-        "ifndef" => @ast.WgslDirectiveKind::Ifndef
-        "if" => @ast.WgslDirectiveKind::If
-        "else" => @ast.WgslDirectiveKind::Else
-        "endif" => @ast.WgslDirectiveKind::Endif
-        "define_import_path" => @ast.WgslDirectiveKind::DefineImportPath
-        "define" => @ast.WgslDirectiveKind::Define
-        "import" => @ast.WgslDirectiveKind::Import
-        "enable" => @ast.WgslDirectiveKind::Enable
-        "requires" => @ast.WgslDirectiveKind::Requires
-        "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
-        _ => @ast.WgslDirectiveKind::Other
-      }
-      @ast.WgslDirective::new(
-        kind,
-        @ast.WgslIdent::new(name, name_start, name_end),
-        @ast.WgslDirectiveTail::new(
-          tail,
-          tail_start,
-          tail_end,
-          has_required_separator,
-        ),
-        start,
-        end,
-      )
-    }
   ;
 
 directive_tail -> (String, Int, Int)

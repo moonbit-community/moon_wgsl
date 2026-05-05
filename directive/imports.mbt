@@ -1,5 +1,10 @@
 ///|
-using @ast {type WgslDirective, type WgslDirectiveKind}
+using @ast {
+  type WgslDirective,
+  type WgslDirectiveKind,
+  type WgslDirectiveTail,
+  type WgslIdent,
+}
 
 ///|
 using @lex {
@@ -15,6 +20,3 @@ using @lex {
   wgsl_regex_word_text,
   wgsl_regex_word_width,
 }
-
-///|
-using @parser {parse_wgsl_directive_line_at}
