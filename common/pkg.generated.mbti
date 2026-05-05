@@ -15,14 +15,11 @@ pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int]
 // Types and methods
 pub struct ComposableModuleDefinition {
   name : String
-  sanitized_source : String
-  file_path : String
   shader_defs : @hashmap.HashMap[String, ShaderDefValue]
   effective_defs : Array[String]
   all_imports : @hashset.HashSet[String]
-  additional_imports : Array[ImportDefinition]
 }
-pub fn ComposableModuleDefinition::new(String, String, String, @hashmap.HashMap[String, ShaderDefValue], Array[String], @hashset.HashSet[String], Array[ImportDefinition]) -> Self
+pub fn ComposableModuleDefinition::new(String, @hashmap.HashMap[String, ShaderDefValue], Array[String], @hashset.HashSet[String]) -> Self
 
 pub(all) struct ComposableModuleDescriptor {
   source : String
@@ -36,21 +33,18 @@ pub fn ComposableModuleDescriptor::default() -> Self
 pub struct DiagnosticDirective {
   severity : String
   rule : String
-  source_location : Int
 } derive(Eq, @debug.Debug)
-pub fn DiagnosticDirective::new(String, String, Int) -> Self
+pub fn DiagnosticDirective::new(String, String) -> Self
 
 pub struct EnableDirective {
   extensions : Array[String]
-  source_location : Int
 } derive(Eq, @debug.Debug)
-pub fn EnableDirective::new(Array[String], Int) -> Self
+pub fn EnableDirective::new(Array[String]) -> Self
 
 pub struct ImportDefWithOffset {
   definition : ImportDefinition
-  offset : Int
 } derive(Eq, @debug.Debug)
-pub fn ImportDefWithOffset::new(ImportDefinition, Int) -> Self
+pub fn ImportDefWithOffset::new(ImportDefinition) -> Self
 
 pub(all) struct ImportDefinition {
   import_path : String
@@ -62,11 +56,9 @@ pub struct PreparedWgslSource {
   source_files : Array[WgslSourceFile]
   source_catalog : Array[WgslSourceCatalogEntry]
   source_origins : Array[WgslSourceOriginEntry]
-  defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, Int]
   diagnostics : Array[WgslDiagnostic]
 }
-pub fn PreparedWgslSource::new(String, Array[WgslSourceFile], Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], @hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int], Array[WgslDiagnostic]) -> Self
+pub fn PreparedWgslSource::new(String, Array[WgslSourceFile], Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslDiagnostic]) -> Self
 
 pub struct PreprocessOutput {
   preprocessed_source : String
@@ -86,9 +78,8 @@ pub fn PreprocessorMetaData::new(String?, Array[ImportDefWithOffset], @hashmap.H
 
 pub struct RequiresDirective {
   extensions : Array[String]
-  source_location : Int
 } derive(Eq, @debug.Debug)
-pub fn RequiresDirective::new(Array[String], Int) -> Self
+pub fn RequiresDirective::new(Array[String]) -> Self
 
 pub(all) enum ShaderDefValue {
   Bool(Bool)
@@ -110,10 +101,8 @@ pub struct WgslDiagnostic {
   message : String
   rel_path : String?
   symbol_name : String?
-  generated_start : Int?
-  source_start : Int?
 } derive(Eq, @debug.Debug)
-pub fn WgslDiagnostic::new(WgslDiagnosticSeverity, String, String?, String?, Int?, Int?) -> Self
+pub fn WgslDiagnostic::new(WgslDiagnosticSeverity, String, String?, String?) -> Self
 
 pub(all) enum WgslDiagnosticSeverity {
   Warn
@@ -168,14 +157,10 @@ pub(all) struct WgslSourceFile {
 } derive(Eq, @debug.Debug)
 
 pub struct WgslSourceMapEntry {
-  generated_start : Int
-  generated_end : Int
   rel_path : String
-  source_start : Int
-  source_end : Int
   symbol_name : String?
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceMapEntry::new(Int, Int, String, Int, Int, String?) -> Self
+pub fn WgslSourceMapEntry::new(String, String?) -> Self
 
 pub struct WgslSourceOriginEntry {
   generated_symbol_name : String

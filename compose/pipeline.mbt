@@ -180,8 +180,6 @@ fn collect_wgsl_unused_redirect_diagnostics(
           "symbol redirect did not match any source identifier",
           None,
           Some(from_name),
-          None,
-          None,
         ),
       )
     }
@@ -208,8 +206,6 @@ pub fn Composer::prepare_wgsl_source(
     source_files,
     build_prepared_wgsl_source_catalog(source_files.copy()),
     session.source_origins.copy(),
-    session.defines,
-    session.value_defines,
     collect_wgsl_unused_redirect_diagnostics(session),
   )
 }

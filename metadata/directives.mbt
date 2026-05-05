@@ -111,7 +111,7 @@ pub fn extract_wgsl_directives(
             )
           }
           cleaned_lines.push("")
-          directives.enables.push(EnableDirective::new(extensions, line_index))
+          directives.enables.push(EnableDirective::new(extensions))
           line_index = line_index + 1
           continue
         }
@@ -123,9 +123,7 @@ pub fn extract_wgsl_directives(
             )
           }
           cleaned_lines.push("")
-          directives.requires.push(
-            RequiresDirective::new(extensions, line_index),
-          )
+          directives.requires.push(RequiresDirective::new(extensions))
           line_index = line_index + 1
           continue
         }
@@ -141,9 +139,7 @@ pub fn extract_wgsl_directives(
             )
           }
           cleaned_lines.push("")
-          directives.diagnostics.push(
-            DiagnosticDirective::new(severity, rule, line_index),
-          )
+          directives.diagnostics.push(DiagnosticDirective::new(severity, rule))
           line_index = line_index + 1
           continue
         }

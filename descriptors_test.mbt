@@ -21,3 +21,17 @@ test "naga_oil: composable descriptor defaults to empty source" {
   debug_inspect(composable.additional_imports.length(), content="0")
   debug_inspect(composable.shader_defs.length(), content="0")
 }
+
+///|
+test "naga_oil: composable definition exposes only semantic registration state" {
+  let definition = @common.ComposableModuleDefinition::new(
+    "demo",
+    @hashmap.HashMap::new(),
+    ["HDR"],
+    @hashset.HashSet::new(),
+  )
+  debug_inspect(definition.name, content="\"demo\"")
+  debug_inspect(definition.shader_defs.length(), content="0")
+  debug_inspect(definition.effective_defs, content="[\"HDR\"]")
+  debug_inspect(definition.all_imports.length(), content="0")
+}

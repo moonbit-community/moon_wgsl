@@ -33,13 +33,9 @@ fn push_wgsl_diagnostic(
   message : String,
   rel_path : String?,
   symbol_name : String?,
-  generated_start : Int?,
-  source_start : Int?,
 ) -> Unit {
   diagnostics.push(
-    WgslDiagnostic::new(
-      severity, message, rel_path, symbol_name, generated_start, source_start,
-    ),
+    WgslDiagnostic::new(severity, message, rel_path, symbol_name),
   )
 }
 
@@ -86,8 +82,6 @@ fn match_wgsl_source_catalog_entry(
       "source map entry could not be resolved for declaration",
       None,
       Some(declaration.name),
-      Some(declaration.generated_start),
-      None,
     )
     return None
   }
@@ -110,8 +104,6 @@ fn match_wgsl_source_catalog_entry(
     "source map entry is ambiguous for declaration",
     None,
     Some(declaration.name),
-    Some(declaration.generated_start),
-    None,
   )
   None
 }
@@ -129,8 +121,6 @@ fn match_wgsl_source_origin_entry(
       "source origin entry could not be resolved for declaration",
       None,
       Some(declaration.name),
-      Some(declaration.generated_start),
-      None,
     )
     return None
   }
@@ -143,8 +133,6 @@ fn match_wgsl_source_origin_entry(
     "source origin entry is ambiguous for declaration",
     None,
     Some(declaration.name),
-    Some(declaration.generated_start),
-    None,
   )
   None
 }
@@ -163,8 +151,6 @@ fn serialize_wgsl_export_output(
       "tree-shake root item was not found in the composed WGSL",
       None,
       Some(missing_root),
-      None,
-      None,
     )
   }
   let catalog = build_wgsl_source_catalog_index(source_catalog)
@@ -176,25 +162,14 @@ fn serialize_wgsl_export_output(
       is Some(origin) {
       source_map.push(
         WgslSourceMapEntry::new(
-          declaration.generated_start,
-          declaration.generated_end,
           origin.rel_path,
-          origin.source_start,
-          origin.source_end,
           Some(origin.source_symbol_name),
         ),
       )
     } else if match_wgsl_source_catalog_entry(catalog, declaration, diagnostics)
       is Some(entry) {
       source_map.push(
-        WgslSourceMapEntry::new(
-          declaration.generated_start,
-          declaration.generated_end,
-          entry.rel_path,
-          entry.source_start,
-          entry.source_end,
-          Some(declaration.name),
-        ),
+        WgslSourceMapEntry::new(entry.rel_path, Some(declaration.name)),
       )
     }
   }

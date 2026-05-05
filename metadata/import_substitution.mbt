@@ -176,16 +176,15 @@ fn used_imports_record(
   used_imports : Array[ImportDefWithOffset],
   module_path : String,
   item_name : String,
-  offset : Int,
 ) -> Unit {
   if used_imports_find_index(used_imports, module_path) is Some(index) {
     used_imports[index].definition.items.push(item_name)
   } else {
     used_imports.push(
-      ImportDefWithOffset::new(
-        ImportDefinition::{ import_path: module_path, items: [item_name] },
-        offset,
-      ),
+      ImportDefWithOffset::new(ImportDefinition::{
+        import_path: module_path,
+        items: [item_name],
+      }),
     )
   }
 }
@@ -217,7 +216,7 @@ fn imported_identifier_replacement(
       full_path_base
     }
     if split_last_identifier(full_path) is Some((module_path, item_name)) {
-      used_imports_record(used_imports, module_path, item_name, token_byte_pos)
+      used_imports_record(used_imports, module_path, item_name)
       replacement = replacement + item_name + decorate(module_path)
     } else if full_path.contains("\"") {
       replacement = replacement + ident
