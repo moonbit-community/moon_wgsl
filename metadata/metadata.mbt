@@ -20,15 +20,12 @@ fn try_get_preprocessor_metadata(
     ) {
     match item.kind() {
       WgslDirectiveScanItemKind::Directive(directive) => {
-        let (is_scope, def) = metadata_scope_def_from_directive(
-          directive,
-          item.requires_tail_space(),
-        )
+        let (is_scope, def) = metadata_scope_def_from_directive(directive)
         if is_scope {
           if def is Some(def_name) {
             effective_defs.add(def_name)
           }
-        } else if item.requires_tail_space() &&
+        } else if directive.has_required_tail_separator() &&
           directive.kind() == WgslDirectiveKind::Import {
           import_state.declare_imports(item.cleaned_directive_text()) catch {
             Parse(message, item_offset) =>
@@ -37,7 +34,7 @@ fn try_get_preprocessor_metadata(
                 item.start() + item_offset,
               )
           }
-        } else if item.requires_tail_space() &&
+        } else if directive.has_required_tail_separator() &&
           directive.kind() == WgslDirectiveKind::DefineImportPath {
           let import_path = wgsl_metadata_first_space_separated_token(
             directive.tail(),
@@ -45,7 +42,7 @@ fn try_get_preprocessor_metadata(
           if import_path != "" {
             name = Some(import_path)
           }
-        } else if item.requires_tail_space() &&
+        } else if directive.has_required_tail_separator() &&
           directive.kind() == WgslDirectiveKind::Define {
           if allow_defines {
             let (define_name, define_value) = split_define_name_and_value(

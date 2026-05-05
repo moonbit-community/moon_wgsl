@@ -15,12 +15,12 @@
 ///|
 fn metadata_scope_def_from_directive(
   directive : WgslDirective,
-  required_tail_space : Bool,
 ) -> (Bool, String?) {
   let tail = wgsl_effective_directive_tail(directive)
+  let has_required_separator = directive.has_required_tail_separator()
   match wgsl_effective_directive_kind(directive) {
     WgslDirectiveKind::Ifdef =>
-      if required_tail_space {
+      if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => (true, Some(name))
           None => (false, None)
@@ -29,7 +29,7 @@ fn metadata_scope_def_from_directive(
         (false, None)
       }
     WgslDirectiveKind::Ifndef =>
-      if required_tail_space {
+      if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => (true, Some(name))
           None => (false, None)
@@ -38,7 +38,7 @@ fn metadata_scope_def_from_directive(
         (false, None)
       }
     WgslDirectiveKind::If =>
-      if required_tail_space {
+      if has_required_separator {
         match wgsl_shader_def_comparison_def(tail) {
           Some(def) => (true, Some(def))
           None => (false, None)

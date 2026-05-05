@@ -39,4 +39,3 @@ type WgslSourceDirectiveItemKind derive(Eq, @debug.Debug)
 // Type aliases
 
 // Traits
-

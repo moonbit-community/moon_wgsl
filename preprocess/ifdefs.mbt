@@ -37,7 +37,6 @@ pub fn apply_wgsl_ifdefs_strict(
         let (is_scope, _) = preprocess_check_scope_directive(
           shader_defs,
           directive,
-          item.requires_tail_space(),
           Some(scope),
           offset,
         )

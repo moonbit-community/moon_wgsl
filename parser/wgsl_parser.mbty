@@ -190,6 +190,7 @@ directive_line -> @ast.WgslDirective
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { name_end } else { raw_tail_start }
       let tail_end = if tail == "" { name_end } else { raw_tail_end }
+      let has_required_separator = tail != "" && tail_start > name_end
       let kind = match name {
         "ifdef" => @ast.WgslDirectiveKind::Ifdef
         "ifndef" => @ast.WgslDirectiveKind::Ifndef
@@ -207,7 +208,12 @@ directive_line -> @ast.WgslDirective
       @ast.WgslDirective::new(
         kind,
         @ast.WgslIdent::new(name, name_start, name_end),
-        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
+        @ast.WgslDirectiveTail::new(
+          tail,
+          tail_start,
+          tail_end,
+          has_required_separator,
+        ),
         start,
         end,
       )
@@ -447,10 +453,16 @@ source_directive -> @ast.WgslDirective
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
+      let has_required_separator = tail != "" && tail_start > keyword.end()
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Enable,
         keyword,
-        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
+        @ast.WgslDirectiveTail::new(
+          tail,
+          tail_start,
+          tail_end,
+          has_required_separator,
+        ),
         0,
         text.length(),
       )
@@ -459,10 +471,16 @@ source_directive -> @ast.WgslDirective
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
+      let has_required_separator = tail != "" && tail_start > keyword.end()
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Requires,
         keyword,
-        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
+        @ast.WgslDirectiveTail::new(
+          tail,
+          tail_start,
+          tail_end,
+          has_required_separator,
+        ),
         0,
         text.length(),
       )
@@ -471,10 +489,16 @@ source_directive -> @ast.WgslDirective
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
+      let has_required_separator = tail != "" && tail_start > keyword.end()
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Diagnostic,
         keyword,
-        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
+        @ast.WgslDirectiveTail::new(
+          tail,
+          tail_start,
+          tail_end,
+          has_required_separator,
+        ),
         0,
         text.length(),
       )

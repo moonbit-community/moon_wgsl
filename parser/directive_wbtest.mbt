@@ -37,10 +37,7 @@ test "WGSL directive parser exposes effective naga-oil directive semantics" {
     wgsl_effective_directive_tail(else_directive),
     content="\"where FLAG\"",
   )
-  debug_inspect(
-    wgsl_directive_line_required_tail_space("#elsewhere FLAG", "elsewhere"),
-    content="true",
-  )
+  debug_inspect(else_directive.has_tail(), content="true")
   guard parse_wgsl_directive_line("#endif_trailing") is Some(endif_directive) else {
     abort("expected endif directive")
   }

@@ -34,14 +34,14 @@ fn preprocess_blank_text(text : String) -> String {
 fn preprocess_check_scope_directive(
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   directive : WgslDirective,
-  required_tail_space : Bool,
   scope : Scope?,
   offset : Int,
 ) -> (Bool, String?) raise PreprocessError {
   let tail = wgsl_effective_directive_tail(directive)
+  let has_required_separator = directive.has_required_tail_separator()
   match wgsl_effective_directive_kind(directive) {
     WgslDirectiveKind::Ifdef =>
-      if required_tail_space {
+      if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => {
             let condition = shader_defs.contains(name)
@@ -56,7 +56,7 @@ fn preprocess_check_scope_directive(
         (false, None)
       }
     WgslDirectiveKind::Ifndef =>
-      if required_tail_space {
+      if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => {
             let condition = !shader_defs.contains(name)
@@ -71,7 +71,7 @@ fn preprocess_check_scope_directive(
         (false, None)
       }
     WgslDirectiveKind::If =>
-      if required_tail_space {
+      if has_required_separator {
         check_if_operator_scope(shader_defs, tail, scope, offset, false)
       } else {
         (false, None)

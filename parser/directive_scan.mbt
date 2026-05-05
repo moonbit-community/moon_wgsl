@@ -9,7 +9,6 @@ pub enum WgslDirectiveScanItemKind {
 pub struct WgslDirectiveScanItem {
   priv kind : WgslDirectiveScanItemKind
   priv start : Int
-  priv required_tail_space : Bool
   priv original_text : String
   priv cleaned_text : String
 } derive(Debug)
@@ -27,15 +26,8 @@ fn WgslDirectiveScanItem::new(
   start : Int,
   original_text : String,
   cleaned_text : String,
-  required_tail_space : Bool,
 ) -> WgslDirectiveScanItem {
-  WgslDirectiveScanItem::{
-    kind,
-    start,
-    required_tail_space,
-    original_text,
-    cleaned_text,
-  }
+  WgslDirectiveScanItem::{ kind, start, original_text, cleaned_text }
 }
 
 ///|
@@ -48,13 +40,6 @@ pub fn WgslDirectiveScanItem::kind(
 ///|
 pub fn WgslDirectiveScanItem::start(self : WgslDirectiveScanItem) -> Int {
   self.start
-}
-
-///|
-pub fn WgslDirectiveScanItem::requires_tail_space(
-  self : WgslDirectiveScanItem,
-) -> Bool {
-  self.required_tail_space
 }
 
 ///|
@@ -166,21 +151,12 @@ fn wgsl_directive_scan_push_item(
       }
     _ => raw_kind
   }
-  let required_tail_space = match kind {
-    WgslDirectiveScanItemKind::Directive(directive) =>
-      wgsl_directive_line_required_tail_space(
-        lines[start].cleaned,
-        directive.name().name(),
-      )
-    _ => false
-  }
   items.push(
     WgslDirectiveScanItem::new(
       kind,
       lines[start].start,
       original_text,
       cleaned_text,
-      required_tail_space,
     ),
   )
 }

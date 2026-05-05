@@ -19,6 +19,7 @@ pub struct WgslDirectiveTail {
   priv text : String
   priv start : Int
   priv end : Int
+  priv has_required_separator : Bool
 } derive(Debug)
 
 ///|
@@ -26,13 +27,26 @@ pub fn WgslDirectiveTail::new(
   text : String,
   start : Int,
   end : Int,
+  has_required_separator : Bool,
 ) -> WgslDirectiveTail {
-  WgslDirectiveTail::{ text, start, end }
+  WgslDirectiveTail::{ text, start, end, has_required_separator }
 }
 
 ///|
 pub fn WgslDirectiveTail::text(self : WgslDirectiveTail) -> String {
   self.text
+}
+
+///|
+pub fn WgslDirectiveTail::has_text(self : WgslDirectiveTail) -> Bool {
+  self.text != ""
+}
+
+///|
+pub fn WgslDirectiveTail::has_required_separator(
+  self : WgslDirectiveTail,
+) -> Bool {
+  self.has_required_separator
 }
 
 ///|
@@ -83,6 +97,16 @@ pub fn WgslDirective::tail(self : WgslDirective) -> String {
 ///|
 pub fn WgslDirective::tail_node(self : WgslDirective) -> WgslDirectiveTail {
   self.tail
+}
+
+///|
+pub fn WgslDirective::has_tail(self : WgslDirective) -> Bool {
+  self.tail.has_text()
+}
+
+///|
+pub fn WgslDirective::has_required_tail_separator(self : WgslDirective) -> Bool {
+  self.tail.has_required_separator()
 }
 
 ///|

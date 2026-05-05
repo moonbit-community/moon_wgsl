@@ -46,6 +46,8 @@ pub struct WgslDirective {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslDirective::end(Self) -> Int
+pub fn WgslDirective::has_required_tail_separator(Self) -> Bool
+pub fn WgslDirective::has_tail(Self) -> Bool
 pub fn WgslDirective::kind(Self) -> WgslDirectiveKind
 pub fn WgslDirective::name(Self) -> WgslIdent
 pub fn WgslDirective::new(WgslDirectiveKind, WgslIdent, WgslDirectiveTail, Int, Int) -> Self
@@ -74,7 +76,9 @@ pub struct WgslDirectiveTail {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslDirectiveTail::end(Self) -> Int
-pub fn WgslDirectiveTail::new(String, Int, Int) -> Self
+pub fn WgslDirectiveTail::has_required_separator(Self) -> Bool
+pub fn WgslDirectiveTail::has_text(Self) -> Bool
+pub fn WgslDirectiveTail::new(String, Int, Int, Bool) -> Self
 pub fn WgslDirectiveTail::start(Self) -> Int
 pub fn WgslDirectiveTail::text(Self) -> String
 

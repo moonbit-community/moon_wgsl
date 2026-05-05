@@ -24,13 +24,12 @@ fn preprocess_emit_pipeline_item(
       let (is_scope, _) = preprocess_check_scope_directive(
         shader_defs,
         directive,
-        item.requires_tail_space(),
         Some(scope),
         offset,
       )
       if is_scope ||
         (
-          item.requires_tail_space() &&
+          directive.has_required_tail_separator() &&
           (
             directive.kind() == WgslDirectiveKind::DefineImportPath ||
             directive.kind() == WgslDirectiveKind::Define
@@ -45,7 +44,7 @@ fn preprocess_emit_pipeline_item(
         )
       }
       if scope.active() &&
-        item.requires_tail_space() &&
+        directive.has_required_tail_separator() &&
         directive.kind() == WgslDirectiveKind::Import {
         import_state.declare_imports(item.cleaned_directive_text()) catch {
           Parse(message, item_offset) =>

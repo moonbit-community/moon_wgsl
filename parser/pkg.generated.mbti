@@ -57,7 +57,6 @@ pub struct WgslDirectiveScanItem {
 pub fn WgslDirectiveScanItem::cleaned_directive_text(Self) -> String
 pub fn WgslDirectiveScanItem::kind(Self) -> WgslDirectiveScanItemKind
 pub fn WgslDirectiveScanItem::original_trivia(Self) -> String
-pub fn WgslDirectiveScanItem::requires_tail_space(Self) -> Bool
 pub fn WgslDirectiveScanItem::start(Self) -> Int
 
 pub enum WgslDirectiveScanItemKind {
