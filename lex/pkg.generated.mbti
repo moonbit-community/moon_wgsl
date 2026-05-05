@@ -51,15 +51,19 @@ pub fn WgslCanonicalTokenRewriter::emit(Self, String, Int) -> String
 pub fn WgslCanonicalTokenRewriter::is_empty(Self) -> Bool
 pub fn WgslCanonicalTokenRewriter::replace(Self, Int, Int, String) -> Unit
 
-pub enum WgslToken {
-  Identifier(String, Int)
-  Number(String, Int)
-  Operator(String, Int)
-  Punctuation(Int, Int)
-  Whitespace(String, Int)
+pub struct WgslToken {
+  // private fields
 } derive(Eq, @debug.Debug)
 pub fn WgslToken::end(Self) -> Int
+pub fn WgslToken::identifier_text(Self) -> String?
+pub fn WgslToken::is_identifier(Self, String) -> Bool
+pub fn WgslToken::is_operator(Self, String) -> Bool
+pub fn WgslToken::is_punctuation(Self, Int) -> Bool
+pub fn WgslToken::is_whitespace(Self) -> Bool
+pub fn WgslToken::number_text(Self) -> String?
+pub fn WgslToken::operator_text(Self) -> String?
 pub fn WgslToken::pos(Self) -> Int
+pub fn WgslToken::punctuation_code(Self) -> Int?
 pub fn WgslToken::shift(Self, Int) -> Self
 
 // Type aliases

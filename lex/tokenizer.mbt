@@ -13,44 +13,137 @@
 // limitations under the License.
 
 ///|
-pub enum WgslToken {
-  Identifier(String, Int)
-  Number(String, Int)
-  Operator(String, Int)
-  Punctuation(Int, Int)
-  Whitespace(String, Int)
+priv enum WgslTokenKind {
+  Identifier
+  Number
+  Operator
+  Punctuation
+  Whitespace
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslToken::pos(self : WgslToken) -> Int {
-  match self {
-    Identifier(_, pos) => pos
-    Number(_, pos) => pos
-    Operator(_, pos) => pos
-    Punctuation(_, pos) => pos
-    Whitespace(_, pos) => pos
+pub struct WgslToken {
+  priv kind : WgslTokenKind
+  priv text : String
+  priv code : Int
+  priv pos : Int
+  priv end : Int
+} derive(Eq, Debug)
+
+///|
+fn WgslToken::new_text(
+  kind : WgslTokenKind,
+  text : String,
+  pos : Int,
+) -> WgslToken {
+  WgslToken::{ kind, text, code: -1, pos, end: pos + text.length() }
+}
+
+///|
+fn WgslToken::new_identifier(text : String, pos : Int) -> WgslToken {
+  WgslToken::new_text(Identifier, text, pos)
+}
+
+///|
+fn WgslToken::new_number(text : String, pos : Int) -> WgslToken {
+  WgslToken::new_text(Number, text, pos)
+}
+
+///|
+fn WgslToken::new_operator(text : String, pos : Int) -> WgslToken {
+  WgslToken::new_text(Operator, text, pos)
+}
+
+///|
+fn WgslToken::new_whitespace(text : String, pos : Int) -> WgslToken {
+  WgslToken::new_text(Whitespace, text, pos)
+}
+
+///|
+fn WgslToken::new_punctuation(code : Int, pos : Int) -> WgslToken {
+  WgslToken::{
+    kind: Punctuation,
+    text: "",
+    code,
+    pos,
+    end: pos + tokenizer_code_point_width(code),
   }
+}
+
+///|
+pub fn WgslToken::identifier_text(self : WgslToken) -> String? {
+  if self.kind == Identifier {
+    Some(self.text)
+  } else {
+    None
+  }
+}
+
+///|
+pub fn WgslToken::number_text(self : WgslToken) -> String? {
+  if self.kind == Number {
+    Some(self.text)
+  } else {
+    None
+  }
+}
+
+///|
+pub fn WgslToken::operator_text(self : WgslToken) -> String? {
+  if self.kind == Operator {
+    Some(self.text)
+  } else {
+    None
+  }
+}
+
+///|
+pub fn WgslToken::punctuation_code(self : WgslToken) -> Int? {
+  if self.kind == Punctuation {
+    Some(self.code)
+  } else {
+    None
+  }
+}
+
+///|
+pub fn WgslToken::is_identifier(self : WgslToken, text : String) -> Bool {
+  self.kind == Identifier && self.text == text
+}
+
+///|
+pub fn WgslToken::is_operator(self : WgslToken, text : String) -> Bool {
+  self.kind == Operator && self.text == text
+}
+
+///|
+pub fn WgslToken::is_punctuation(self : WgslToken, code : Int) -> Bool {
+  self.kind == Punctuation && self.code == code
+}
+
+///|
+pub fn WgslToken::is_whitespace(self : WgslToken) -> Bool {
+  self.kind == Whitespace
+}
+
+///|
+pub fn WgslToken::pos(self : WgslToken) -> Int {
+  self.pos
 }
 
 ///|
 pub fn WgslToken::end(self : WgslToken) -> Int {
-  match self {
-    Identifier(text, pos)
-    | Number(text, pos)
-    | Operator(text, pos)
-    | Whitespace(text, pos) => pos + text.length()
-    Punctuation(code, pos) => pos + tokenizer_code_point_width(code)
-  }
+  self.end
 }
 
 ///|
 pub fn WgslToken::shift(self : WgslToken, offset : Int) -> WgslToken {
-  match self {
-    Identifier(name, pos) => Identifier(name, pos + offset)
-    Number(text, pos) => Number(text, pos + offset)
-    Operator(text, pos) => Operator(text, pos + offset)
-    Punctuation(code, pos) => Punctuation(code, pos + offset)
-    Whitespace(text, pos) => Whitespace(text, pos + offset)
+  WgslToken::{
+    kind: self.kind,
+    text: self.text,
+    code: self.code,
+    pos: self.pos + offset,
+    end: self.end + offset,
   }
 }
 
@@ -156,13 +249,13 @@ fn tokenizer_push_number_as_other(
   wgsl_blankspace : Bool,
 ) -> Unit {
   if wgsl_blankspace {
-    tokens.push(WgslToken::Number(src[start:end_].to_owned(), start))
+    tokens.push(WgslToken::new_number(src[start:end_].to_owned(), start))
     return
   }
   let mut pos = start
   while pos < end_ {
     let (code, width) = tokenizer_code_point_at(src, pos)
-    tokens.push(WgslToken::Punctuation(code, pos))
+    tokens.push(WgslToken::new_punctuation(code, pos))
     pos = pos + width
   }
 }
@@ -203,7 +296,7 @@ fn tokenize_with(
         continue
       }
       tokens.push(
-        WgslToken::Identifier(
+        WgslToken::new_identifier(
           src[current_token_start:i].to_owned(),
           current_token_start,
         ),
@@ -232,7 +325,7 @@ fn tokenize_with(
         continue
       }
       tokens.push(
-        WgslToken::Whitespace(
+        WgslToken::new_whitespace(
           src[current_token_start:i].to_owned(),
           current_token_start,
         ),
@@ -269,7 +362,7 @@ fn tokenize_with(
       let rhs = src.code_unit_at(i + 1).to_int()
       match tokenizer_operator_pair_text(code, rhs) {
         Some(text) => {
-          tokens.push(WgslToken::Operator(text, i))
+          tokens.push(WgslToken::new_operator(text, i))
           i = i + 2
           continue
         }
@@ -277,13 +370,13 @@ fn tokenize_with(
       }
     }
 
-    tokens.push(WgslToken::Punctuation(code, i))
+    tokens.push(WgslToken::new_punctuation(code, i))
     i = i + width
   }
 
   if current_token_kind == 0 {
     tokens.push(
-      WgslToken::Identifier(
+      WgslToken::new_identifier(
         src[current_token_start:src.length()].to_owned(),
         current_token_start,
       ),
@@ -298,7 +391,7 @@ fn tokenize_with(
     )
   } else if current_token_kind == 1 {
     tokens.push(
-      WgslToken::Whitespace(
+      WgslToken::new_whitespace(
         src[current_token_start:src.length()].to_owned(),
         current_token_start,
       ),

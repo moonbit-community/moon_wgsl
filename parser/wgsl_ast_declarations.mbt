@@ -18,19 +18,23 @@ fn WgslDeclParser::parse_function(
       None => return None
     }
   }
-  guard self.view() is [WgslToken::Punctuation(40, _), ..] else { return None }
+  guard self.view() is [token, ..] && token.is_punctuation(40) else {
+    return None
+  }
   let arguments = self.parse_function_arguments_checked() catch {
     _ => return None
   }
   let result = match self.view() {
-    [WgslToken::Operator("->", _), ..] =>
+    [token, ..] if token.is_operator("->") =>
       match self.parse_function_result() {
         Some(value) => Some(value)
         None => return None
       }
     _ => None
   }
-  guard self.view() is [WgslToken::Punctuation(123, _), ..] else { return None }
+  guard self.view() is [token, ..] && token.is_punctuation(123) else {
+    return None
+  }
   let body = self.parse_block_checked() catch { _ => return None }
   Some(
     WgslFunction::new(
@@ -96,14 +100,15 @@ fn WgslDeclParser::tokenize_struct_members(
   }
   while parser.view().length() > 0 {
     match parser.view() {
-      [WgslToken::Whitespace(_, _), .. rest] => {
+      [token, .. rest] if token.is_whitespace() => {
         parser.update_view(rest)
         continue
       }
       _ => ()
     }
     match parser.view() {
-      [WgslToken::Punctuation(35, hash_pos), ..] =>
+      [token, ..] if token.is_punctuation(35) => {
+        let hash_pos = token.pos()
         match parser.directive_line_end_at_hash(hash_pos) {
           Some(line_end) => {
             while parser.view().length() > 0 &&
@@ -114,15 +119,18 @@ fn WgslDeclParser::tokenize_struct_members(
           }
           None => ()
         }
+      }
       _ => ()
     }
     match parser.view() {
-      [WgslToken::Punctuation(44, pos), .. rest] => {
+      [token, .. rest] if token.is_punctuation(44) => {
+        let pos = token.pos()
         parser.update_view(rest)
         tokens.push((Token::COMMA, pos, pos + 1))
         continue
       }
-      [WgslToken::Punctuation(59, pos), .. rest] => {
+      [token, .. rest] if token.is_punctuation(59) => {
+        let pos = token.pos()
         parser.update_view(rest)
         tokens.push((Token::SEMI, pos, pos + 1))
         continue
@@ -136,7 +144,8 @@ fn WgslDeclParser::tokenize_struct_members(
     }
     tokens.push((Token::MEMBER_NAME(name), name.start, name.end))
     match parser.view() {
-      [WgslToken::Punctuation(58, pos), .. rest] => {
+      [token, .. rest] if token.is_punctuation(58) => {
+        let pos = token.pos()
         parser.update_view(rest)
         tokens.push((Token::COLON, pos, pos + 1))
       }
@@ -161,8 +170,8 @@ fn WgslDeclParser::tokenize_struct_members(
       ),
     )
     match parser.view() {
-      [WgslToken::Punctuation(44, _), ..]
-      | [WgslToken::Punctuation(59, _), ..] => continue
+      [token, ..] if token.is_punctuation(44) || token.is_punctuation(59) =>
+        continue
       [] => break
       _ => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
@@ -236,7 +245,8 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
 ) -> WgslTypedInitializerTail raise WgslTypedInitializerTailParseError {
   let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
-    [WgslToken::Punctuation(58, pos), .. rest] => {
+    [token, .. rest] if token.is_punctuation(58) => {
+      let pos = token.pos()
       self.update_view(rest)
       tokens.push((Token::COLON, pos, pos + 1))
       let ty_fragment = self.collect_until_top_level_fragment([61, 59])
@@ -262,7 +272,8 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
     _ => ()
   }
   match self.view() {
-    [WgslToken::Punctuation(61, pos), .. rest] => {
+    [token, .. rest] if token.is_punctuation(61) => {
+      let pos = token.pos()
       self.update_view(rest)
       tokens.push((Token::EQUAL, pos, pos + 1))
       let initializer = self.collect_until_top_level_fragment([59])
@@ -356,7 +367,8 @@ fn WgslDeclParser::parse_type_alias_tail(
 ) -> (String, WgslTypeRef?)? {
   let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
-    [WgslToken::Punctuation(61, pos), .. rest] => {
+    [token, .. rest] if token.is_punctuation(61) => {
+      let pos = token.pos()
       self.update_view(rest)
       tokens.push((Token::EQUAL, pos, pos + 1))
     }
@@ -474,7 +486,8 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
   let mut emitted = 0
   while emitted < 2 {
     match view {
-      [WgslToken::Identifier(name, pos), .. rest] => {
+      [token, .. rest] if token.identifier_text() is Some(name) => {
+        let pos = token.pos()
         let ident = WgslIdent::new(name, pos, pos + name.length())
         match self.decl_head_token(ident) {
           Some(token) => tokens.push((token, ident.start, ident.end))

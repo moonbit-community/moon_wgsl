@@ -91,37 +91,42 @@ pub fn parse_wgsl_template_const_references(
   let tokens = tokenize(source, true)
   let mut i = 0
   while i < tokens.length() {
-    guard tokens[i] is WgslToken::Punctuation(35, start) else {
+    guard tokens[i].is_punctuation(35) else {
       i = i + 1
       continue
     }
+    let start = tokens[i].pos()
     guard i + 1 < tokens.length() else {
       i = i + 1
       continue
     }
-    match tokens[i + 1] {
-      WgslToken::Punctuation(123, _) => {
-        let body_start = tokens[i + 1].end()
-        let mut j = i + 2
-        while j < tokens.length() {
-          match tokens[j] {
-            WgslToken::Punctuation(125, _) => break
-            _ => j = j + 1
-          }
-        }
-        if j < tokens.length() {
-          let name = source[body_start:tokens[j].pos()].to_owned()
-          if wgsl_regex_word_text(name) {
-            references.push(
-              WgslTemplateConstReference::new(name, start, tokens[j].end()),
-            )
-          }
-          i = j + 1
+    let next = tokens[i + 1]
+    if next.is_punctuation(123) {
+      let body_start = tokens[i + 1].end()
+      let mut j = i + 2
+      while j < tokens.length() {
+        if tokens[j].is_punctuation(125) {
+          break
         } else {
-          i = i + 1
+          j = j + 1
         }
       }
-      WgslToken::Identifier(text, pos) =>
+      if j < tokens.length() {
+        let name = source[body_start:tokens[j].pos()].to_owned()
+        if wgsl_regex_word_text(name) {
+          references.push(
+            WgslTemplateConstReference::new(name, start, tokens[j].end()),
+          )
+        }
+        i = j + 1
+      } else {
+        i = i + 1
+      }
+      continue
+    }
+    match next.identifier_text() {
+      Some(text) => {
+        let pos = next.pos()
         match longest_wgsl_template_const_prefix(text, value_defines) {
           Some(name) => {
             references.push(
@@ -131,7 +136,8 @@ pub fn parse_wgsl_template_const_references(
           }
           None => i = i + 1
         }
-      _ => i = i + 1
+      }
+      None => i = i + 1
     }
   }
   references

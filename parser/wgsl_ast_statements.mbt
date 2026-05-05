@@ -42,7 +42,8 @@ fn WgslDeclParser::tokenize_function_arguments(
   }
   while parser.view().length() > 0 {
     match parser.view() {
-      [WgslToken::Punctuation(35, hash_pos), ..] =>
+      [token, ..] if token.is_punctuation(35) => {
+        let hash_pos = token.pos()
         match parser.directive_line_end_at_hash(hash_pos) {
           Some(line_end) => {
             while parser.view().length() > 0 &&
@@ -53,6 +54,7 @@ fn WgslDeclParser::tokenize_function_arguments(
           }
           None => ()
         }
+      }
       _ => ()
     }
     if parser.consume_if_other(44) {
@@ -66,7 +68,8 @@ fn WgslDeclParser::tokenize_function_arguments(
     }
     tokens.push((Token::ARG_NAME(name), name.start, name.end))
     match parser.view() {
-      [WgslToken::Punctuation(58, pos), .. rest] => {
+      [token, .. rest] if token.is_punctuation(58) => {
+        let pos = token.pos()
         parser.update_view(rest)
         tokens.push((Token::COLON, pos, pos + 1))
       }
@@ -91,7 +94,7 @@ fn WgslDeclParser::tokenize_function_arguments(
       ),
     )
     match parser.view() {
-      [WgslToken::Punctuation(44, _), ..] => continue
+      [token, ..] if token.is_punctuation(44) => continue
       [] => break
       _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
@@ -106,7 +109,8 @@ fn WgslDeclParser::parse_function_result(
   self : WgslDeclParser,
 ) -> WgslFunctionResult? {
   match self.view() {
-    [WgslToken::Operator("->", arrow_start), .. rest] => {
+    [arrow_token, .. rest] if arrow_token.is_operator("->") => {
+      let arrow_start = arrow_token.pos()
       let parser = WgslDeclParser::{
         source_text: self.source_text,
         source_start: self.source_start,
@@ -173,7 +177,7 @@ fn wgsl_statement_kind_from_tokens(
     Some(_) => WgslStatementKind::Expression
     None =>
       match tokens {
-        [WgslToken::Punctuation(123, _), ..] => WgslStatementKind::Compound
+        [token, ..] if token.is_punctuation(123) => WgslStatementKind::Compound
         [] => WgslStatementKind::Empty
         _ => WgslStatementKind::Expression
       }
@@ -182,10 +186,7 @@ fn wgsl_statement_kind_from_tokens(
 
 ///|
 fn wgsl_statement_token_identifier(token : WgslToken) -> String? {
-  match token {
-    WgslToken::Identifier(ident, _) => Some(ident)
-    _ => None
-  }
+  token.identifier_text()
 }
 
 ///|
@@ -329,24 +330,24 @@ fn WgslDeclParser::collect_statement_blocks(
   let blocks : Array[WgslBlock] = []
   let open_stack : Array[Int] = []
   for i in 0..<tokens.length() {
-    match tokens[i] {
-      WgslToken::Punctuation(123, _) => open_stack.push(i)
-      WgslToken::Punctuation(125, close_start) =>
-        match open_stack.pop() {
-          Some(open_index) =>
-            if open_stack.is_empty() {
-              let open_start = tokens[open_index].pos()
-              blocks.push(
-                self.parse_block_tokens(
-                  open_start,
-                  close_start,
-                  tokens[open_index + 1:i],
-                ),
-              )
-            }
-          None => ()
-        }
-      _ => ()
+    if tokens[i].is_punctuation(123) {
+      open_stack.push(i)
+    } else if tokens[i].is_punctuation(125) {
+      let close_start = tokens[i].pos()
+      match open_stack.pop() {
+        Some(open_index) =>
+          if open_stack.is_empty() {
+            let open_start = tokens[open_index].pos()
+            blocks.push(
+              self.parse_block_tokens(
+                open_start,
+                close_start,
+                tokens[open_index + 1:i],
+              ),
+            )
+          }
+        None => ()
+      }
     }
   }
   blocks
@@ -359,16 +360,13 @@ fn collect_wgsl_statement_scope_tokens(
   let scope_tokens : Array[WgslToken] = []
   let mut block_depth = 0
   for token in tokens {
-    match token {
-      WgslToken::Punctuation(123, _) => {
-        block_depth = block_depth + 1
-        continue
-      }
-      WgslToken::Punctuation(125, _) if block_depth > 0 => {
-        block_depth = block_depth - 1
-        continue
-      }
-      _ => ()
+    if token.is_punctuation(123) {
+      block_depth = block_depth + 1
+      continue
+    }
+    if token.is_punctuation(125) && block_depth > 0 {
+      block_depth = block_depth - 1
+      continue
     }
     if block_depth == 0 {
       scope_tokens.push(token)
@@ -401,10 +399,8 @@ fn wgsl_statement_top_level_token_index_until(
   let depth = WgslTokenDepth::new()
   let limit = if end_ < tokens.length() { end_ } else { tokens.length() }
   for i in start..<limit {
-    match tokens[i] {
-      WgslToken::Punctuation(actual, _) if depth.at_top() && actual == code =>
-        return i
-      _ => ()
+    if depth.at_top() && tokens[i].is_punctuation(code) {
+      return i
     }
     depth.observe_statement_token(tokens[i])
   }
@@ -419,22 +415,16 @@ fn wgsl_statement_delimited_end(
   close_code : Int,
 ) -> Int {
   guard open_index >= 0 && open_index < tokens.length() else { return -1 }
-  guard tokens[open_index] is WgslToken::Punctuation(code, _) &&
-    code == open_code else {
-    return -1
-  }
+  guard tokens[open_index].is_punctuation(open_code) else { return -1 }
   let mut depth = 0
   for i in open_index..<tokens.length() {
-    match tokens[i] {
-      WgslToken::Punctuation(actual, _) if actual == open_code =>
-        depth = depth + 1
-      WgslToken::Punctuation(actual, _) if actual == close_code => {
-        depth = depth - 1
-        if depth == 0 {
-          return i
-        }
+    if tokens[i].is_punctuation(open_code) {
+      depth = depth + 1
+    } else if tokens[i].is_punctuation(close_code) {
+      depth = depth - 1
+      if depth == 0 {
+        return i
       }
-      _ => ()
     }
   }
   -1
@@ -473,10 +463,8 @@ fn wgsl_statement_top_level_identifier_index(
   let depth = WgslTokenDepth::new()
   let limit = if end_ < tokens.length() { end_ } else { tokens.length() }
   for i in start..<limit {
-    match tokens[i] {
-      WgslToken::Identifier(actual, _) if depth.at_top() && actual == ident =>
-        return i
-      _ => ()
+    if depth.at_top() && tokens[i].is_identifier(ident) {
+      return i
     }
     depth.observe_statement_token(tokens[i])
   }
@@ -492,12 +480,9 @@ fn wgsl_statement_starts_with_local_binding(
   guard start >= 0 && start < end_ && start < tokens.length() else {
     return false
   }
-  match tokens[start] {
-    WgslToken::Identifier("var", _)
-    | WgslToken::Identifier("let", _)
-    | WgslToken::Identifier("const", _) => true
-    _ => false
-  }
+  tokens[start].is_identifier("var") ||
+  tokens[start].is_identifier("let") ||
+  tokens[start].is_identifier("const")
 }
 
 ///|
@@ -511,36 +496,33 @@ fn wgsl_statement_collect_condition_expr(
 ) -> Int {
   let expr_start = keyword_index + 1
   guard expr_start < tokens.length() else { return expr_start }
-  match tokens[expr_start] {
-    WgslToken::Punctuation(40, _) => {
-      let close_index = wgsl_statement_delimited_end(tokens, expr_start, 40, 41)
-      if close_index > expr_start {
-        wgsl_statement_push_expr_ref(
-          owner,
-          tokens,
-          expr_start + 1,
-          close_index,
-          role,
-          expression_refs,
-          expressions,
-        )
-        return close_index + 1
-      }
-      expr_start
-    }
-    _ => {
-      let else_index = wgsl_statement_top_level_identifier_index(
-        tokens,
-        expr_start,
-        tokens.length(),
-        "else",
-      )
-      let expr_end = if else_index >= 0 { else_index } else { tokens.length() }
+  if tokens[expr_start].is_punctuation(40) {
+    let close_index = wgsl_statement_delimited_end(tokens, expr_start, 40, 41)
+    if close_index > expr_start {
       wgsl_statement_push_expr_ref(
-        owner, tokens, expr_start, expr_end, role, expression_refs, expressions,
+        owner,
+        tokens,
+        expr_start + 1,
+        close_index,
+        role,
+        expression_refs,
+        expressions,
       )
-      expr_end
+      return close_index + 1
     }
+    expr_start
+  } else {
+    let else_index = wgsl_statement_top_level_identifier_index(
+      tokens,
+      expr_start,
+      tokens.length(),
+      "else",
+    )
+    let expr_end = if else_index >= 0 { else_index } else { tokens.length() }
+    wgsl_statement_push_expr_ref(
+      owner, tokens, expr_start, expr_end, role, expression_refs, expressions,
+    )
+    expr_end
   }
 }
 
@@ -554,9 +536,7 @@ fn wgsl_statement_collect_for_header_exprs(
 ) -> Int {
   let header_start = for_index + 1
   guard header_start < tokens.length() else { return header_start }
-  guard tokens[header_start] is WgslToken::Punctuation(40, _) else {
-    return header_start
-  }
+  guard tokens[header_start].is_punctuation(40) else { return header_start }
   let header_end = wgsl_statement_delimited_end(tokens, header_start, 40, 41)
   guard header_end > header_start else { return header_start }
   let first_end = wgsl_statement_top_level_token_index_until(
@@ -632,7 +612,7 @@ fn collect_wgsl_statement_expression_refs(
     LocalDeclaration | Empty | Continue | Discard | Compound => return
     Break => {
       match tokens {
-        [_, WgslToken::Identifier("if", _), ..] =>
+        [_, token, ..] if token.is_identifier("if") =>
           wgsl_statement_push_expr_ref(
             owner,
             tokens,
@@ -659,7 +639,7 @@ fn collect_wgsl_statement_expression_refs(
       return
     }
     ConstAssert => {
-      if tokens.length() > 1 && tokens[1] is WgslToken::Punctuation(40, _) {
+      if tokens.length() > 1 && tokens[1].is_punctuation(40) {
         let close_index = wgsl_statement_delimited_end(tokens, 1, 40, 41)
         if close_index > 1 {
           wgsl_statement_push_expr_ref(
@@ -687,45 +667,41 @@ fn collect_wgsl_statement_expression_refs(
     }
     For =>
       for i in 0..<tokens.length() {
-        match tokens[i] {
-          WgslToken::Identifier("for", _) => {
-            wgsl_statement_collect_for_header_exprs(
-              owner, tokens, i, expression_refs, expressions,
-            )
-            |> ignore
-            return
-          }
-          _ => ()
+        if tokens[i].is_identifier("for") {
+          wgsl_statement_collect_for_header_exprs(
+            owner, tokens, i, expression_refs, expressions,
+          )
+          |> ignore
+          return
         }
       }
     If | While => {
       let mut i = 0
       while i < tokens.length() {
-        match tokens[i] {
-          WgslToken::Identifier("if", _) | WgslToken::Identifier("while", _) =>
-            i = wgsl_statement_collect_condition_expr(
-              owner,
-              tokens,
-              i,
-              WgslStatementExpressionRole::Condition,
-              expression_refs,
-              expressions,
-            )
-          WgslToken::Identifier("case", _) => {
-            let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
-            let expr_end = if colon >= 0 { colon } else { tokens.length() }
-            wgsl_statement_push_expr_ref(
-              owner,
-              tokens,
-              i + 1,
-              expr_end,
-              WgslStatementExpressionRole::CaseSelector,
-              expression_refs,
-              expressions,
-            )
-            i = expr_end
-          }
-          _ => i = i + 1
+        if tokens[i].is_identifier("if") || tokens[i].is_identifier("while") {
+          i = wgsl_statement_collect_condition_expr(
+            owner,
+            tokens,
+            i,
+            WgslStatementExpressionRole::Condition,
+            expression_refs,
+            expressions,
+          )
+        } else if tokens[i].is_identifier("case") {
+          let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
+          let expr_end = if colon >= 0 { colon } else { tokens.length() }
+          wgsl_statement_push_expr_ref(
+            owner,
+            tokens,
+            i + 1,
+            expr_end,
+            WgslStatementExpressionRole::CaseSelector,
+            expression_refs,
+            expressions,
+          )
+          i = expr_end
+        } else {
+          i = i + 1
         }
       }
       return
@@ -733,38 +709,37 @@ fn collect_wgsl_statement_expression_refs(
     Switch => {
       let mut i = 0
       while i < tokens.length() {
-        match tokens[i] {
-          WgslToken::Identifier("switch", _) =>
-            i = wgsl_statement_collect_condition_expr(
-              owner,
-              tokens,
-              i,
-              WgslStatementExpressionRole::SwitchSelector,
-              expression_refs,
-              expressions,
-            )
-          WgslToken::Identifier("case", _) => {
-            let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
-            let expr_end = if colon >= 0 { colon } else { tokens.length() }
-            wgsl_statement_push_expr_ref(
-              owner,
-              tokens,
-              i + 1,
-              expr_end,
-              WgslStatementExpressionRole::CaseSelector,
-              expression_refs,
-              expressions,
-            )
-            i = expr_end
-          }
-          _ => i = i + 1
+        if tokens[i].is_identifier("switch") {
+          i = wgsl_statement_collect_condition_expr(
+            owner,
+            tokens,
+            i,
+            WgslStatementExpressionRole::SwitchSelector,
+            expression_refs,
+            expressions,
+          )
+        } else if tokens[i].is_identifier("case") {
+          let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
+          let expr_end = if colon >= 0 { colon } else { tokens.length() }
+          wgsl_statement_push_expr_ref(
+            owner,
+            tokens,
+            i + 1,
+            expr_end,
+            WgslStatementExpressionRole::CaseSelector,
+            expression_refs,
+            expressions,
+          )
+          i = expr_end
+        } else {
+          i = i + 1
         }
       }
       return
     }
     Expression => {
       match tokens {
-        [WgslToken::Identifier("case", _), ..] => {
+        [token, ..] if token.is_identifier("case") => {
           let colon = wgsl_statement_top_level_token_index(tokens, 1, 58)
           let expr_end = if colon >= 0 { colon } else { tokens.length() }
           wgsl_statement_push_expr_ref(
@@ -778,7 +753,7 @@ fn collect_wgsl_statement_expression_refs(
           )
           return
         }
-        [WgslToken::Identifier("default", _), ..] => return
+        [token, ..] if token.is_identifier("default") => return
         _ => ()
       }
       wgsl_statement_push_expr_ref(
@@ -801,8 +776,8 @@ fn wgsl_statement_view_continues_after_block(
   view : ArrayView[WgslToken],
 ) -> Bool {
   match view {
-    [WgslToken::Identifier("else", _), ..] => true
-    [WgslToken::Identifier("continuing", _), ..] => true
+    [token, ..] if token.is_identifier("else") => true
+    [token, ..] if token.is_identifier("continuing") => true
     _ => false
   }
 }
@@ -918,25 +893,24 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   }
   while true {
     match self.view() {
-      [WgslToken::Punctuation(125, _), ..] if depth.at_top() => break
-      [WgslToken::Punctuation(59, pos), .. rest] if depth.at_top() => {
+      [token, ..] if depth.at_top() && token.is_punctuation(125) => break
+      [token, .. rest] if depth.at_top() && token.is_punctuation(59) => {
+        let pos = token.pos()
         record_span(pos, pos + 1)
         self.update_view(rest)
         break
       }
       [token, .. rest] => {
-        match token {
-          WgslToken::Identifier(ident, _) =>
-            if first_identifier is None {
-              first_identifier = Some(ident)
-            }
+        match token.identifier_text() {
+          Some(ident) if first_identifier is None =>
+            first_identifier = Some(ident)
           _ => ()
         }
         tokens.push(token)
         depth.observe_statement_token(token)
         record_token(token)
         self.update_view(rest)
-        if depth.at_top() && token is WgslToken::Punctuation(125, _) {
+        if depth.at_top() && token.is_punctuation(125) {
           if wgsl_statement_view_continues_after_block(self.view()) {
             continue
           }

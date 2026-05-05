@@ -181,27 +181,30 @@ fn wgsl_emit_token_text(
   replacements : @hashmap.HashMap[String, String],
   source_start : Int,
 ) -> String {
-  match token {
-    WgslToken::Identifier(text, pos) => {
-      let absolute_pos = source_start + pos
+  match token.kind {
+    Identifier => {
+      let text = token.text
+      let absolute_pos = source_start + token.pos()
       let key = "\{absolute_pos}:\{absolute_pos + text.length()}"
       match replacements.get(key) {
         Some(replacement) => replacement
         None => text
       }
     }
-    WgslToken::Number(text, _) => text
-    WgslToken::Operator(text, _) => text
-    WgslToken::Punctuation(code, _) => wgsl_ascii_code_text(code)
-    WgslToken::Whitespace(text, _) => text
+    Number | Operator | Whitespace => token.text
+    Punctuation =>
+      match token.punctuation_code() {
+        Some(code) => wgsl_ascii_code_text(code)
+        None => ""
+      }
   }
 }
 
 ///|
 fn wgsl_emit_token_class(token : WgslToken) -> WgslEmitTokenClass {
-  match token {
-    WgslToken::Identifier(_, _) => Word
-    WgslToken::Number(_, _) => Number
+  match token.kind {
+    Identifier => Word
+    Number => Number
     _ => Other
   }
 }

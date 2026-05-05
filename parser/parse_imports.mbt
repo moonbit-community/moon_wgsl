@@ -52,11 +52,11 @@ fn tokenize_wgsl_import_targets(
     if after_final_semicolon {
       raise ParseImportsError::Parse("unexpected token after ';'", start)
     }
-    match token {
-      Identifier("as", _) =>
+    match token.identifier_text() {
+      Some("as") =>
         if previous_can_start_alias {
           guard index + 1 < raw_tokens.length() &&
-            raw_tokens[index + 1] is Identifier(_, _) else {
+            raw_tokens[index + 1].identifier_text() is Some(_) else {
             raise ParseImportsError::Parse(
               "expected identifier after `as`", start,
             )
@@ -69,12 +69,12 @@ fn tokenize_wgsl_import_targets(
           previous_can_start_alias = true
           previous_identifier = Some("as")
         }
-      Identifier(name, _) => {
+      Some(name) => {
         push_generated_import_token(out, Token::IDENT(name), start, end_)
         previous_can_start_alias = true
         previous_identifier = Some(name)
       }
-      Punctuation(123, _) => {
+      None if token.is_punctuation(123) => {
         guard previous_identifier is Some(name) && name.has_suffix("::") else {
           raise ParseImportsError::Parse("open brace must follow `::`", start)
         }
@@ -82,38 +82,29 @@ fn tokenize_wgsl_import_targets(
         previous_can_start_alias = false
         previous_identifier = None
       }
-      Punctuation(125, _) => {
+      None if token.is_punctuation(125) => {
         push_generated_import_token(out, Token::RBRACE(start), start, end_)
         previous_can_start_alias = false
         previous_identifier = None
       }
-      Punctuation(44, _) => {
+      None if token.is_punctuation(44) => {
         push_generated_import_token(out, Token::COMMA, start, end_)
         previous_can_start_alias = false
         previous_identifier = None
       }
-      Punctuation(59, _) => {
+      None if token.is_punctuation(59) => {
         push_generated_import_token(out, Token::SEMI, start, end_)
         previous_can_start_alias = false
         previous_identifier = None
         after_final_semicolon = true
       }
-      Punctuation(_, pos) =>
+      None if token.is_whitespace() =>
+        abort("whitespace tokens should not be emitted here")
+      _ =>
         raise ParseImportsError::Parse(
           "unexpected token",
-          utf8_byte_length(input[:pos].to_owned()),
+          utf8_byte_length(input[:token.pos()].to_owned()),
         )
-      Operator(_, pos) =>
-        raise ParseImportsError::Parse(
-          "unexpected token",
-          utf8_byte_length(input[:pos].to_owned()),
-        )
-      Number(_, pos) =>
-        raise ParseImportsError::Parse(
-          "unexpected token",
-          utf8_byte_length(input[:pos].to_owned()),
-        )
-      Whitespace(_, _) => abort("whitespace tokens should not be emitted here")
     }
     index = index + 1
   }
@@ -130,7 +121,7 @@ pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(
   if tokens.length() == 0 {
     return true
   }
-  tokens.length() == 1 && tokens[0] is WgslToken::Punctuation(59, _)
+  tokens.length() == 1 && tokens[0].is_punctuation(59)
 }
 
 ///|
@@ -154,9 +145,8 @@ pub fn parse_wgsl_import_alias_prefix(alias_name : String) -> String {
       prefix = wgsl_import_alias_prefix_separator(prefix)
     }
     for token in tokenize(segments[i], true) {
-      match token {
-        WgslToken::Identifier(text, _) if !text.contains("\"") =>
-          prefix = "\{prefix}\{text}"
+      match token.identifier_text() {
+        Some(text) if !text.contains("\"") => prefix = "\{prefix}\{text}"
         _ => prefix = wgsl_import_alias_prefix_separator(prefix)
       }
     }

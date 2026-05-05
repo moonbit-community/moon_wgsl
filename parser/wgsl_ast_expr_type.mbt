@@ -6,10 +6,7 @@ fn wgsl_expr_identifier_has_access_prefix(
   if index == 0 {
     return false
   }
-  match tokens[index - 1] {
-    WgslToken::Punctuation(46, _) | WgslToken::Punctuation(64, _) => true
-    _ => false
-  }
+  tokens[index - 1].is_punctuation(46) || tokens[index - 1].is_punctuation(64)
 }
 
 ///|
@@ -29,8 +26,8 @@ fn wgsl_expr_ascii_identifier_code(code : Int) -> Bool {
 fn wgsl_expr_number_token_end(tokens : Array[WgslToken], start : Int) -> Int {
   let mut end_index = start
   while end_index < tokens.length() {
-    match tokens[end_index] {
-      WgslToken::Punctuation(code, _) =>
+    match tokens[end_index].punctuation_code() {
+      Some(code) =>
         if wgsl_expr_ascii_identifier_code(code) ||
           code == 46 ||
           code == 43 ||
@@ -115,8 +112,10 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
   let tokens = tokenize_wgsl(replace_comments(text), false)
   let mut i = 0
   while i < tokens.length() {
-    match tokens[i] {
-      WgslToken::Identifier(name, pos) => {
+    let token = tokens[i]
+    match token.identifier_text() {
+      Some(name) => {
+        let pos = token.pos()
         let absolute_start = base + pos
         let kind = match name {
           "true" => WgslExprTokenKind::BoolLiteral(true)
@@ -140,50 +139,46 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
         i = i + 1
         continue
       }
-      WgslToken::Number(token_text, pos) => {
+      None => ()
+    }
+    match token.number_text() {
+      Some(token_text) => {
         expr_tokens.push(
           WgslExprToken::new(
             wgsl_expr_number_token_kind(token_text),
             token_text,
-            base + pos,
+            base + token.pos(),
             base + tokens[i].end(),
           ),
         )
         i = i + 1
         continue
       }
-      WgslToken::Punctuation(code, pos) if wgsl_expr_ascii_digit(code) => {
-        let end_index = wgsl_expr_number_token_end(tokens, i)
-        let end_pos = if end_index > i {
-          tokens[end_index - 1].end()
-        } else {
-          tokens[i].end()
+      None => ()
+    }
+    match token.punctuation_code() {
+      Some(code) => {
+        if wgsl_expr_ascii_digit(code) {
+          let pos = token.pos()
+          let end_index = wgsl_expr_number_token_end(tokens, i)
+          let end_pos = if end_index > i {
+            tokens[end_index - 1].end()
+          } else {
+            tokens[i].end()
+          }
+          let token_text = text[pos:end_pos].to_owned()
+          expr_tokens.push(
+            WgslExprToken::new(
+              wgsl_expr_number_token_kind(token_text),
+              token_text,
+              base + pos,
+              base + end_pos,
+            ),
+          )
+          i = end_index
+          continue
         }
-        let token_text = text[pos:end_pos].to_owned()
-        expr_tokens.push(
-          WgslExprToken::new(
-            wgsl_expr_number_token_kind(token_text),
-            token_text,
-            base + pos,
-            base + end_pos,
-          ),
-        )
-        i = end_index
-        continue
-      }
-      WgslToken::Operator(operator, pos) => {
-        expr_tokens.push(
-          WgslExprToken::new(
-            WgslExprTokenKind::Operator(operator),
-            operator,
-            base + pos,
-            base + tokens[i].end(),
-          ),
-        )
-        i = i + 1
-        continue
-      }
-      WgslToken::Punctuation(code, pos) => {
+        let pos = token.pos()
         expr_tokens.push(
           WgslExprToken::new(
             WgslExprTokenKind::Punctuation(code),
@@ -195,11 +190,28 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
         i = i + 1
         continue
       }
-      WgslToken::Whitespace(_, _) => {
+      None => ()
+    }
+    match token.operator_text() {
+      Some(operator) => {
+        expr_tokens.push(
+          WgslExprToken::new(
+            WgslExprTokenKind::Operator(operator),
+            operator,
+            base + token.pos(),
+            base + tokens[i].end(),
+          ),
+        )
         i = i + 1
         continue
       }
+      None => ()
     }
+    if token.is_whitespace() {
+      i = i + 1
+      continue
+    }
+    i = i + 1
   }
 }
 
@@ -667,15 +679,15 @@ fn WgslTokenDepth::at_top(self : WgslTokenDepth) -> Bool {
 
 ///|
 fn WgslTokenDepth::observe(self : WgslTokenDepth, token : WgslToken) -> Unit {
-  match token {
-    WgslToken::Punctuation(40, _) => self.paren = self.paren + 1
-    WgslToken::Punctuation(41, _) => self.paren = self.paren - 1
-    WgslToken::Punctuation(60, _) => self.angle = self.angle + 1
-    WgslToken::Punctuation(62, _) => self.angle = self.angle - 1
-    WgslToken::Punctuation(91, _) => self.bracket = self.bracket + 1
-    WgslToken::Punctuation(93, _) => self.bracket = self.bracket - 1
-    WgslToken::Punctuation(123, _) => self.brace = self.brace + 1
-    WgslToken::Punctuation(125, _) => self.brace = self.brace - 1
+  match token.punctuation_code() {
+    Some(40) => self.paren = self.paren + 1
+    Some(41) => self.paren = self.paren - 1
+    Some(60) => self.angle = self.angle + 1
+    Some(62) => self.angle = self.angle - 1
+    Some(91) => self.bracket = self.bracket + 1
+    Some(93) => self.bracket = self.bracket - 1
+    Some(123) => self.brace = self.brace + 1
+    Some(125) => self.brace = self.brace - 1
     _ => ()
   }
 }
@@ -685,13 +697,13 @@ fn WgslTokenDepth::observe_statement_token(
   self : WgslTokenDepth,
   token : WgslToken,
 ) -> Unit {
-  match token {
-    WgslToken::Punctuation(40, _) => self.paren = self.paren + 1
-    WgslToken::Punctuation(41, _) => self.paren = self.paren - 1
-    WgslToken::Punctuation(91, _) => self.bracket = self.bracket + 1
-    WgslToken::Punctuation(93, _) => self.bracket = self.bracket - 1
-    WgslToken::Punctuation(123, _) => self.brace = self.brace + 1
-    WgslToken::Punctuation(125, _) => self.brace = self.brace - 1
+  match token.punctuation_code() {
+    Some(40) => self.paren = self.paren + 1
+    Some(41) => self.paren = self.paren - 1
+    Some(91) => self.bracket = self.bracket + 1
+    Some(93) => self.bracket = self.bracket - 1
+    Some(123) => self.brace = self.brace + 1
+    Some(125) => self.brace = self.brace - 1
     _ => ()
   }
 }
@@ -783,7 +795,7 @@ fn WgslDeclParser::update_view(
 ///|
 fn WgslDeclParser::consume_if_other(self : WgslDeclParser, code : Int) -> Bool {
   match self.view() {
-    [WgslToken::Punctuation(actual, _), .. rest] if actual == code => {
+    [token, .. rest] if token.is_punctuation(code) => {
       self.update_view(rest)
       true
     }
@@ -794,7 +806,8 @@ fn WgslDeclParser::consume_if_other(self : WgslDeclParser, code : Int) -> Bool {
 ///|
 fn WgslDeclParser::consume_ident_node(self : WgslDeclParser) -> WgslIdent? {
   match self.view() {
-    [WgslToken::Identifier(name, pos), .. rest] => {
+    [token, .. rest] if token.identifier_text() is Some(name) => {
+      let pos = token.pos()
       self.update_view(rest)
       Some(WgslIdent::new(name, pos, pos + name.length()))
     }
@@ -826,25 +839,24 @@ fn WgslDeclParser::collect_delimited_token_view(
 ) -> WgslDelimitedTokenView? {
   let view = self.view()
   let open_start = match view {
-    [WgslToken::Punctuation(code, pos), ..] if code == open_code => pos
+    [token, ..] if token.is_punctuation(open_code) => token.pos()
     _ => return None
   }
   let mut depth = 0
   for i in 0..<view.length() {
-    match view[i] {
-      WgslToken::Punctuation(code, _) if code == open_code => depth = depth + 1
-      WgslToken::Punctuation(code, pos) if code == close_code => {
-        depth = depth - 1
-        if depth == 0 {
-          return Some(WgslDelimitedTokenView::{
-            inner: view[1:i],
-            open_start,
-            close_start: pos,
-            consumed: i + 1,
-          })
-        }
+    if view[i].is_punctuation(open_code) {
+      depth = depth + 1
+    } else if view[i].is_punctuation(close_code) {
+      let pos = view[i].pos()
+      depth = depth - 1
+      if depth == 0 {
+        return Some(WgslDelimitedTokenView::{
+          inner: view[1:i],
+          open_start,
+          close_start: pos,
+          consumed: i + 1,
+        })
       }
-      _ => ()
     }
   }
   None
@@ -860,12 +872,10 @@ fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? 
   let mut end = first.end
   while true {
     match self.view() {
-      [
-        WgslToken::Punctuation(58, _),
-        WgslToken::Punctuation(58, _),
-        WgslToken::Identifier(segment, segment_pos),
-        .. rest,
-      ] => {
+      [colon_a, colon_b, segment_token, .. rest] if colon_a.is_punctuation(58) &&
+        colon_b.is_punctuation(58) &&
+        segment_token.identifier_text() is Some(segment) => {
+        let segment_pos = segment_token.pos()
         name = name + "::" + segment
         end = segment_pos + segment.length()
         self.update_view(rest)
@@ -883,11 +893,10 @@ fn WgslDeclParser::push_attribute_tokens(
 ) -> Unit {
   while true {
     match self.view() {
-      [
-        WgslToken::Punctuation(64, at_pos),
-        WgslToken::Identifier(name, name_pos),
-        .. rest,
-      ] => {
+      [at_token, name_token, .. rest] if at_token.is_punctuation(64) &&
+        name_token.identifier_text() is Some(name) => {
+        let at_pos = at_token.pos()
+        let name_pos = name_token.pos()
         self.update_view(rest)
         tokens.push((Token::AT(at_pos), at_pos, at_pos + 1))
         tokens.push(
@@ -946,7 +955,8 @@ fn WgslDeclParser::collect_until_top_level_fragment(
   let depth = WgslTokenDepth::new()
   while true {
     match self.view() {
-      [WgslToken::Punctuation(code, _), ..] if depth.at_top() &&
+      [token, ..] if depth.at_top() &&
+        token.punctuation_code() is Some(code) &&
         stops.contains(code) => break
       [token, .. rest] => {
         depth.observe(token)
@@ -1112,22 +1122,24 @@ fn WgslDeclParser::collect_template_list_fragment(
   self : WgslDeclParser,
 ) -> WgslTemplateListFragment? {
   let view = self.view()
-  guard view is [WgslToken::Punctuation(60, open_pos), ..] else { return None }
+  guard view is [open_token, ..] && open_token.is_punctuation(60) else {
+    return None
+  }
+  let open_pos = open_token.pos()
   let mut depth = 0
   let mut consumed = 0
   let mut end_pos = -1
   while consumed < view.length() {
-    match view[consumed] {
-      WgslToken::Punctuation(60, _) => depth = depth + 1
-      WgslToken::Punctuation(62, pos) => {
-        depth = depth - 1
-        if depth == 0 {
-          end_pos = pos + 1
-          consumed = consumed + 1
-          break
-        }
+    if view[consumed].is_punctuation(60) {
+      depth = depth + 1
+    } else if view[consumed].is_punctuation(62) {
+      let pos = view[consumed].pos()
+      depth = depth - 1
+      if depth == 0 {
+        end_pos = pos + 1
+        consumed = consumed + 1
+        break
       }
-      _ => ()
     }
     consumed = consumed + 1
   }
