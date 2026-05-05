@@ -133,5 +133,5 @@ pub fn Preprocessor::preprocess(
   }
 
   scope.finish(utf8_byte_length(source))
-  PreprocessOutput::{ preprocessed_source: final_string, imports: used_imports }
+  PreprocessOutput::new(final_string, used_imports)
 }

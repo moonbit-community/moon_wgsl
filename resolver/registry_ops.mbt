@@ -91,14 +91,9 @@ fn push_wgsl_registry_diagnostic(
   rel_path : String?,
   symbol_name : String?,
 ) -> Unit {
-  diagnostics.push(WgslDiagnostic::{
-    severity,
-    message,
-    rel_path,
-    symbol_name,
-    generated_start: None,
-    source_start: None,
-  })
+  diagnostics.push(
+    WgslDiagnostic::new(severity, message, rel_path, symbol_name, None, None),
+  )
 }
 
 ///|

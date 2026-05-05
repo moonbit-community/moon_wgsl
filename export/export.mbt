@@ -36,14 +36,11 @@ fn push_wgsl_diagnostic(
   generated_start : Int?,
   source_start : Int?,
 ) -> Unit {
-  diagnostics.push(WgslDiagnostic::{
-    severity,
-    message,
-    rel_path,
-    symbol_name,
-    generated_start,
-    source_start,
-  })
+  diagnostics.push(
+    WgslDiagnostic::new(
+      severity, message, rel_path, symbol_name, generated_start, source_start,
+    ),
+  )
 }
 
 ///|
@@ -177,34 +174,38 @@ fn serialize_wgsl_export_output(
   for declaration in tree_shaken.declarations {
     if match_wgsl_source_origin_entry(origins, declaration, diagnostics)
       is Some(origin) {
-      source_map.push(WgslSourceMapEntry::{
-        generated_start: declaration.generated_start,
-        generated_end: declaration.generated_end,
-        rel_path: origin.rel_path,
-        source_start: origin.source_start,
-        source_end: origin.source_end,
-        symbol_name: Some(origin.source_symbol_name),
-      })
+      source_map.push(
+        WgslSourceMapEntry::new(
+          declaration.generated_start,
+          declaration.generated_end,
+          origin.rel_path,
+          origin.source_start,
+          origin.source_end,
+          Some(origin.source_symbol_name),
+        ),
+      )
     } else if match_wgsl_source_catalog_entry(catalog, declaration, diagnostics)
       is Some(entry) {
-      source_map.push(WgslSourceMapEntry::{
-        generated_start: declaration.generated_start,
-        generated_end: declaration.generated_end,
-        rel_path: entry.rel_path,
-        source_start: entry.source_start,
-        source_end: entry.source_end,
-        symbol_name: Some(declaration.name),
-      })
+      source_map.push(
+        WgslSourceMapEntry::new(
+          declaration.generated_start,
+          declaration.generated_end,
+          entry.rel_path,
+          entry.source_start,
+          entry.source_end,
+          Some(declaration.name),
+        ),
+      )
     }
   }
 
-  WgslExportOutput::{
-    source: tree_shaken.source,
+  WgslExportOutput::new(
+    tree_shaken.source,
     source_catalog,
     source_origins,
     source_map,
     diagnostics,
-  }
+  )
 }
 
 ///|

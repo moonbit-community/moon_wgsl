@@ -61,18 +61,15 @@ pub fn Composer::add_composable_module(
     desc.source,
     additional_imports,
   )
-  let definition = ComposableModuleDefinition::{
-    name: module_name,
-    sanitized_source: prepend_wgsl_additional_imports(
-      metadata.cleaned_source,
-      additional_imports,
-    ),
-    file_path: desc.file_path,
+  let definition = ComposableModuleDefinition::new(
+    module_name,
+    prepend_wgsl_additional_imports(metadata.cleaned_source, additional_imports),
+    desc.file_path,
     shader_defs,
-    effective_defs: hashset_strings_to_array(effective_defs),
+    hashset_strings_to_array(effective_defs),
     all_imports,
     additional_imports,
-  }
+  )
 
   composer_remove_composable_module_recursive(self, module_name)
   ignore(

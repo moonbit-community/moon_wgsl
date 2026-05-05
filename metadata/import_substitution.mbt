@@ -181,13 +181,12 @@ fn used_imports_record(
   if used_imports_find_index(used_imports, module_path) is Some(index) {
     used_imports[index].definition.items.push(item_name)
   } else {
-    used_imports.push(ImportDefWithOffset::{
-      definition: ImportDefinition::{
-        import_path: module_path,
-        items: [item_name],
-      },
-      offset,
-    })
+    used_imports.push(
+      ImportDefWithOffset::new(
+        ImportDefinition::{ import_path: module_path, items: [item_name] },
+        offset,
+      ),
+    )
   }
 }
 

@@ -174,14 +174,16 @@ fn collect_wgsl_unused_redirect_diagnostics(
       None => false
     }
     if !matched {
-      diagnostics.push(WgslDiagnostic::{
-        severity: WgslDiagnosticSeverity::Warn,
-        message: "symbol redirect did not match any source identifier",
-        rel_path: None,
-        symbol_name: Some(from_name),
-        generated_start: None,
-        source_start: None,
-      })
+      diagnostics.push(
+        WgslDiagnostic::new(
+          WgslDiagnosticSeverity::Warn,
+          "symbol redirect did not match any source identifier",
+          None,
+          Some(from_name),
+          None,
+          None,
+        ),
+      )
     }
   }
   diagnostics
@@ -201,15 +203,15 @@ pub fn Composer::prepare_wgsl_source(
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: prepared_source },
   ]
-  PreparedWgslSource::{
-    source: prepared_source,
+  PreparedWgslSource::new(
+    prepared_source,
     source_files,
-    source_catalog: build_prepared_wgsl_source_catalog(source_files.copy()),
-    source_origins: session.source_origins.copy(),
-    defines: session.defines,
-    value_defines: session.value_defines,
-    diagnostics: collect_wgsl_unused_redirect_diagnostics(session),
-  }
+    build_prepared_wgsl_source_catalog(source_files.copy()),
+    session.source_origins.copy(),
+    session.defines,
+    session.value_defines,
+    collect_wgsl_unused_redirect_diagnostics(session),
+  )
 }
 
 ///|

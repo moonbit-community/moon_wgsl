@@ -70,14 +70,9 @@ fn try_get_preprocessor_metadata(
     cleaned_for_directives, declared_imports, used_imports,
   )
 
-  PreprocessorMetaData::{
-    name,
-    imports: used_imports,
-    defines,
-    effective_defs,
-    wgsl_directives,
-    cleaned_source: cleaned_for_directives,
-  }
+  PreprocessorMetaData::new(
+    name, used_imports, defines, effective_defs, wgsl_directives, cleaned_for_directives,
+  )
 }
 
 ///|

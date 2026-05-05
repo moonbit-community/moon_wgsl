@@ -35,13 +35,15 @@ fn build_prepared_wgsl_source_catalog(
       error => raise composer_error_from_wgsl_parse_error(error)
     }
     for declaration in declarations {
-      catalog_entries.push(WgslSourceCatalogEntry::{
-        rel_path: source_file.rel_path,
-        symbol_name: declaration.name,
-        source_text: declaration.text.trim().to_owned(),
-        source_start: declaration.generated_start,
-        source_end: declaration.generated_end,
-      })
+      catalog_entries.push(
+        WgslSourceCatalogEntry::new(
+          source_file.rel_path,
+          declaration.name,
+          declaration.text.trim().to_owned(),
+          declaration.generated_start,
+          declaration.generated_end,
+        ),
+      )
     }
   }
   catalog_entries.sort_by(compare_wgsl_source_catalog_entries)
@@ -60,13 +62,11 @@ fn push_wgsl_source_origin(
   if generated_symbol_name == "" || rel_path == "" {
     return
   }
-  session.source_origins.push(WgslSourceOriginEntry::{
-    generated_symbol_name,
-    rel_path,
-    source_symbol_name,
-    source_start,
-    source_end,
-  })
+  session.source_origins.push(
+    WgslSourceOriginEntry::new(
+      generated_symbol_name, rel_path, source_symbol_name, source_start, source_end,
+    ),
+  )
 }
 
 ///|
@@ -121,13 +121,13 @@ fn apply_wgsl_origin_renames(
     let origin = origins[i]
     match rename_map.get(origin.generated_symbol_name) {
       Some(renamed) =>
-        origins[i] = WgslSourceOriginEntry::{
-          generated_symbol_name: renamed,
-          rel_path: origin.rel_path,
-          source_symbol_name: origin.source_symbol_name,
-          source_start: origin.source_start,
-          source_end: origin.source_end,
-        }
+        origins[i] = WgslSourceOriginEntry::new(
+          renamed,
+          origin.rel_path,
+          origin.source_symbol_name,
+          origin.source_start,
+          origin.source_end,
+        )
       None => ()
     }
   }
