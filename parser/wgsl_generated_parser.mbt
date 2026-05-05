@@ -3,7 +3,7 @@ priv enum Token {
   ITEM(WgslRawTopLevelItem)
   STMT(@ast.WgslStatement)
   IDENT(String)
-  TYPE_ATOM((String, Int, Int))
+  TYPE_ATOM(@ast.WgslTypeAtom)
   ARG_NAME(@ast.WgslIdent)
   ARG_TYPE(@ast.WgslTypeRef)
   MEMBER_NAME(@ast.WgslIdent)
@@ -231,6 +231,11 @@ priv suberror YYObj__ast_WgslExprRef {
 ///|
 priv suberror YYObj__ast_WgslTypeRef {
   YYObj__ast_WgslTypeRef(@ast.WgslTypeRef)
+}
+
+///|
+priv suberror YYObj__ast_WgslTypeAtom {
+  YYObj__ast_WgslTypeAtom(@ast.WgslTypeAtom)
 }
 
 ///|
@@ -1273,13 +1278,13 @@ fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 564|    atom=TYPE_ATOM TYPE_LT args=type_ref_args gt=TYPE_GT {
-// 565|      wgsl_type_ref_from_atom(atom, args, gt)
-// 566|    }
+// 563|    atom=TYPE_ATOM TYPE_LT args=type_ref_args gt=TYPE_GT {
+// 564|      wgsl_type_ref_from_atom(atom, args, gt)
+// 565|    }
 
 ///|
 fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__String__Int__Int_(atom)
+  guard _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
   guard _args[2].0 is YYObj_Array__ast_WgslTypeRef_(args)
   guard _args[3].0 is YYObj_Int(gt)
   YYObj__ast_WgslTypeRef(
@@ -1291,10 +1296,10 @@ fn yy_action_33(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 573|    args=type_ref_args "," value=type_expr {
-// 574|      args.push(value)
-// 575|      args
-// 576|    }
+// 572|    args=type_ref_args "," value=type_expr {
+// 573|      args.push(value)
+// 574|      args
+// 575|    }
 
 ///|
 fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1310,9 +1315,9 @@ fn yy_action_34(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 }
 
 // file:///./wgsl_parser.mbty
-// 570|    value=type_expr {
-// 571|      [value]
-// 572|    }
+// 569|    value=type_expr {
+// 570|      [value]
+// 571|    }
 
 ///|
 fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
@@ -1327,18 +1332,16 @@ fn yy_action_35(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 560|    atom=TYPE_ATOM {
-// 561|      let (_, _, atom_end) = atom
-// 562|      wgsl_type_ref_from_atom(atom, [], atom_end)
-// 563|    }
+// 561|      wgsl_type_ref_from_atom(atom, [], atom.end())
+// 562|    }
 
 ///|
 fn yy_action_36(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj__String__Int__Int_(atom)
+  guard _args[0].0 is YYObj__ast_WgslTypeAtom(atom)
   YYObj__ast_WgslTypeRef(
     {
       ()
-      let (_, _, atom_end) = atom
-      wgsl_type_ref_from_atom(atom, [], atom_end)
+      wgsl_type_ref_from_atom(atom, [], atom.end())
     },
   )
 }
@@ -2051,7 +2054,7 @@ fn yy_input(
     ITEM(data) => (T_ITEM, YYObj_WgslRawTopLevelItem(data))
     STMT(data) => (T_STMT, YYObj__ast_WgslStatement(data))
     IDENT(data) => (T_IDENT, YYObj_String(data))
-    TYPE_ATOM(data) => (T_TYPE_ATOM, YYObj__String__Int__Int_(data))
+    TYPE_ATOM(data) => (T_TYPE_ATOM, YYObj__ast_WgslTypeAtom(data))
     ARG_NAME(data) => (T_ARG_NAME, YYObj__ast_WgslIdent(data))
     ARG_TYPE(data) => (T_ARG_TYPE, YYObj__ast_WgslTypeRef(data))
     MEMBER_NAME(data) => (T_MEMBER_NAME, YYObj__ast_WgslIdent(data))
@@ -4254,10 +4257,9 @@ fn block(
 
 ///|
 fn wgsl_type_ref_from_atom(
-  atom : (String, Int, Int),
+  atom : @ast.WgslTypeAtom,
   arguments : Array[@ast.WgslTypeRef],
   end_ : Int,
 ) -> @ast.WgslTypeRef {
-  let (name, start, atom_end) = atom
-  @ast.WgslTypeRef::new(name, arguments, start, end_.max(atom_end))
+  @ast.WgslTypeRef::new(atom, arguments, atom.start(), end_.max(atom.end()))
 }

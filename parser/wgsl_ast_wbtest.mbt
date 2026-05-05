@@ -632,6 +632,33 @@ test "WGSL identifier collection exposes source spans" {
 }
 
 ///|
+test "WGSL type identifier collection ignores numeric type atoms" {
+  let source =
+    #|alias Alias = vec4<f32>;
+    #|alias Sized = array<Alias, 4>;
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  let nodes : Array[WgslIdent] = []
+  for decl in unit.declarations() {
+    @ast.collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
+  }
+  debug_inspect(
+    nodes.map(fn(node) { node.name() }),
+    content=(
+      #|["vec4", "f32", "array", "Alias"]
+    ),
+  )
+  guard unit.declarations()[1].data()
+    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+    abort("expected type alias")
+  }
+  guard alias_decl.ty_ref() is Some(sized_ty) else {
+    abort("expected type alias type")
+  }
+  debug_inspect(sized_ty.arguments()[1].atom().kind(), content="Numeric")
+}
+
+///|
 test "WGSL function payload exposes statement AST spans" {
   let source =
     #|fn demo(value: u32) -> u32 {
@@ -1183,7 +1210,14 @@ test "WGSL override function payload preserves qualified target path" {
       #|    attributes: [],
       #|    start: 33,
       #|    end: 39,
-      #|    ty_ref: Some({ name: "f32", arguments: [], start: 36, end: 39 }),
+      #|    ty_ref: Some(
+      #|      {
+      #|        atom: { kind: Identifier, text: "f32", start: 36, end: 39 },
+      #|        arguments: [],
+      #|        start: 36,
+      #|        end: 39,
+      #|      },
+      #|    ),
       #|  },
       #|)
     ),

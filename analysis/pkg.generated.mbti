@@ -79,4 +79,3 @@ pub fn WgslTreeShakenSource::source(Self) -> String
 // Type aliases
 
 // Traits
-

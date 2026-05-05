@@ -1062,6 +1062,36 @@ fn wgsl_type_ref_delimiter(code : Int) -> Bool {
 }
 
 ///|
+fn wgsl_type_atom_is_identifier_path(text : String) -> Bool {
+  if text == "" {
+    return false
+  }
+  let parts = text.split("::")
+  for part in parts {
+    let segment = part.to_owned()
+    if segment == "" || !wgsl_regex_word_text(segment) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn wgsl_type_atom_kind(text : String) -> WgslTypeAtomKind {
+  if text.length() == 0 {
+    return WgslTypeAtomKind::Unknown
+  }
+  let first = text.code_unit_at(0).to_int()
+  if first >= 48 && first <= 57 {
+    WgslTypeAtomKind::Numeric
+  } else if wgsl_type_atom_is_identifier_path(text) {
+    WgslTypeAtomKind::Identifier
+  } else {
+    WgslTypeAtomKind::Unknown
+  }
+}
+
+///|
 fn tokenize_wgsl_type_ref(
   source : String,
   source_start : Int,
@@ -1111,10 +1141,16 @@ fn tokenize_wgsl_type_ref(
       i = i + 1
     }
     let absolute_end = source_start + i
+    let text = source[start:i].to_owned()
     tokens.push(
       (
         Token::TYPE_ATOM(
-          (source[start:i].to_owned(), absolute_start, absolute_end),
+          WgslTypeAtom::new(
+            wgsl_type_atom_kind(text),
+            text,
+            absolute_start,
+            absolute_end,
+          ),
         ),
         absolute_start,
         absolute_end,

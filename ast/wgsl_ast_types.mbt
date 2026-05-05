@@ -295,8 +295,61 @@ pub fn WgslAttribute::arguments_ref(self : WgslAttribute) -> WgslExprRef? {
 }
 
 ///|
+pub(all) enum WgslTypeAtomKind {
+  Identifier
+  Numeric
+  Unknown
+} derive(Eq, Debug)
+
+///|
+pub struct WgslTypeAtom {
+  priv kind : WgslTypeAtomKind
+  priv text : String
+  priv start : Int
+  priv end : Int
+} derive(Debug)
+
+///|
+pub fn WgslTypeAtom::new(
+  kind : WgslTypeAtomKind,
+  text : String,
+  start : Int,
+  end : Int,
+) -> WgslTypeAtom {
+  WgslTypeAtom::{ kind, text, start, end }
+}
+
+///|
+pub fn WgslTypeAtom::kind(self : WgslTypeAtom) -> WgslTypeAtomKind {
+  self.kind
+}
+
+///|
+pub fn WgslTypeAtom::text(self : WgslTypeAtom) -> String {
+  self.text
+}
+
+///|
+pub fn WgslTypeAtom::start(self : WgslTypeAtom) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslTypeAtom::end(self : WgslTypeAtom) -> Int {
+  self.end
+}
+
+///|
+pub fn WgslTypeAtom::identifier(self : WgslTypeAtom) -> WgslIdent? {
+  match self.kind {
+    Identifier => Some(WgslIdent::new(self.text, self.start, self.end))
+    Numeric | Unknown => None
+  }
+}
+
+///|
 pub struct WgslTypeRef {
-  priv name : String
+  priv atom : WgslTypeAtom
   priv arguments : Array[WgslTypeRef]
   priv start : Int
   priv end : Int
@@ -304,17 +357,22 @@ pub struct WgslTypeRef {
 
 ///|
 pub fn WgslTypeRef::new(
-  name : String,
+  atom : WgslTypeAtom,
   arguments : Array[WgslTypeRef],
   start : Int,
   end : Int,
 ) -> WgslTypeRef {
-  WgslTypeRef::{ name, arguments, start, end }
+  WgslTypeRef::{ atom, arguments, start, end }
+}
+
+///|
+pub fn WgslTypeRef::atom(self : WgslTypeRef) -> WgslTypeAtom {
+  self.atom
 }
 
 ///|
 pub fn WgslTypeRef::name(self : WgslTypeRef) -> String {
-  self.name
+  self.atom.text()
 }
 
 ///|
@@ -325,14 +383,14 @@ pub fn WgslTypeRef::arguments(self : WgslTypeRef) -> Array[WgslTypeRef] {
 ///|
 pub fn WgslTypeRef::canonical_text(self : WgslTypeRef) -> String {
   if self.arguments.length() == 0 {
-    return self.name
+    return self.name()
   }
   let argument_texts : Array[String] = []
   for argument in self.arguments {
     argument_texts.push(argument.canonical_text())
   }
   let joined_arguments = argument_texts.join(", ")
-  "\{self.name}<\{joined_arguments}>"
+  "\{self.name()}<\{joined_arguments}>"
 }
 
 ///|

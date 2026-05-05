@@ -177,17 +177,19 @@ fn collect_wgsl_rewrite_nodes_from_type_ref(
 ) -> Unit {
   match ty_ref {
     Some(ty) => {
-      let ty_name = ty.name()
-      let ty_start = ty.start()
-      match redirect_map.get(ty_name) {
-        Some(replacement) =>
-          nodes.push(
-            WgslTokenReplacement::new(
-              ty_start,
-              ty_start + ty_name.length(),
-              replacement,
-            ),
-          )
+      match ty.atom().identifier() {
+        Some(identifier) =>
+          match redirect_map.get(identifier.name()) {
+            Some(replacement) =>
+              nodes.push(
+                WgslTokenReplacement::new(
+                  identifier.start(),
+                  identifier.end(),
+                  replacement,
+                ),
+              )
+            None => ()
+          }
         None => ()
       }
       for argument in ty.arguments() {
