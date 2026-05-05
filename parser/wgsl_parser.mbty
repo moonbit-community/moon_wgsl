@@ -19,13 +19,13 @@
 %token<WgslRawTopLevelItem> ITEM
 %token<@ast.WgslStatement> STMT
 %token<String> IDENT
-%token<(String, String, Int, Int, Int)> TYPE_ATOM
+%token<(String, Int, Int)> TYPE_ATOM
 %token<@ast.WgslIdent> ARG_NAME
-%token<(String, @ast.WgslTypeRef?, Int, Int)> ARG_TYPE
+%token<@ast.WgslTypeRef> ARG_TYPE
 %token<@ast.WgslIdent> MEMBER_NAME
-%token<(String, @ast.WgslTypeRef?, Int, Int)> MEMBER_TYPE
-%token<(String, @ast.WgslTypeRef?, Int, Int)> DECL_TYPE
-%token<(String, @ast.WgslExprRef?)> INIT_EXPR
+%token<@ast.WgslTypeRef> MEMBER_TYPE
+%token<@ast.WgslTypeRef> DECL_TYPE
+%token<@ast.WgslExprRef> INIT_EXPR
 %token<@ast.WgslExprRef> EXPR_REF
 %token<Int> AT "@"
 %token<@ast.WgslIdent> ATTR_NAME
@@ -397,8 +397,7 @@ function_args -> Array[@ast.WgslFunctionArgument]
 
 function_result -> @ast.WgslFunctionResult?
   : arrow=ARROW attrs=attributes ty=ARG_TYPE EOF {
-      let (ty_text, ty_ref, _, ty_end) = ty
-      Some(@ast.WgslFunctionResult::new(attrs, arrow, ty_end, ty_text, ty_ref))
+      Some(@ast.WgslFunctionResult::new(attrs, arrow, ty.end(), Some(ty)))
     }
   ;
 
@@ -421,38 +420,32 @@ struct_member_list -> Array[@ast.WgslStructMember]
 
 struct_member -> @ast.WgslStructMember
   : attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
-      let (ty_text, ty_ref, _, ty_end) = ty
       let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
       @ast.WgslStructMember::new(
         attrs,
         name.name(),
         start,
-        ty_end,
+        ty.end(),
         name.start(),
         name.end(),
-        ty_text,
-        ty_ref,
+        Some(ty),
       )
     }
   ;
 
-typed_initializer_tail -> (String?, @ast.WgslTypeRef?, String?, @ast.WgslExprRef?)
-  : EOF { (None, None, None, None) }
+typed_initializer_tail -> (@ast.WgslTypeRef?, @ast.WgslExprRef?)
+  : EOF { (None, None) }
   | ":" ty=DECL_TYPE init=initializer_opt EOF {
-      let (ty_text, ty_ref, _, _) = ty
-      let (init_text, init_ref) = init
-      (Some(ty_text), ty_ref, init_text, init_ref)
+      (Some(ty), init)
     }
   | init=initializer EOF {
-      let (init_text, init_ref) = init
-      (None, None, init_text, init_ref)
+      (None, init)
     }
   ;
 
-type_alias_tail -> (String, @ast.WgslTypeRef?)
+type_alias_tail -> @ast.WgslTypeRef
   : "=" ty=DECL_TYPE EOF {
-      let (ty_text, ty_ref, _, _) = ty
-      (ty_text, ty_ref)
+      ty
     }
   ;
 
@@ -511,15 +504,14 @@ const_assert_expr -> @ast.WgslExprRef
   : EXPR_REF EOF { $1 }
   ;
 
-initializer_opt -> (String?, @ast.WgslExprRef?)
-  : { (None, None) }
+initializer_opt -> @ast.WgslExprRef?
+  : { None }
   | initializer { $1 }
   ;
 
-initializer -> (String?, @ast.WgslExprRef?)
+initializer -> @ast.WgslExprRef?
   : "=" expr=INIT_EXPR {
-      let (text, expr_ref) = expr
-      (Some(text), expr_ref)
+      Some(expr)
     }
   ;
 
@@ -545,16 +537,15 @@ function_arg_list -> Array[@ast.WgslFunctionArgument]
 
 function_arg -> @ast.WgslFunctionArgument
   : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
-      let (_, ty_ref, _, ty_end) = ty
       let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
       @ast.WgslFunctionArgument::new(
         attrs,
         name.name(),
         start,
-        ty_end,
+        ty.end(),
         name.start(),
         name.end(),
-        ty_ref,
+        Some(ty),
       )
     }
   ;
@@ -580,7 +571,8 @@ template_args -> Array[String]
 
 type_expr -> @ast.WgslTypeRef
   : atom=TYPE_ATOM {
-      wgsl_type_ref_from_atom(atom, [], atom.4)
+      let (_, _, atom_end) = atom
+      wgsl_type_ref_from_atom(atom, [], atom_end)
     }
   | atom=TYPE_ATOM TYPE_LT args=type_ref_args gt=TYPE_GT {
       wgsl_type_ref_from_atom(atom, args, gt)
@@ -600,10 +592,10 @@ type_ref_args -> Array[@ast.WgslTypeRef]
 %%
 
 fn wgsl_type_ref_from_atom(
-  atom : (String, String, Int, Int, Int),
+  atom : (String, Int, Int),
   arguments : Array[@ast.WgslTypeRef],
-  _end : Int,
+  end_ : Int,
 ) -> @ast.WgslTypeRef {
-  let (name, _, _, start, _) = atom
-  @ast.WgslTypeRef::new(name, arguments, start)
+  let (name, start, atom_end) = atom
+  @ast.WgslTypeRef::new(name, arguments, start, end_.max(atom_end))
 }

@@ -151,27 +151,22 @@ fn WgslDeclParser::tokenize_struct_members(
       }
       _ => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
-    let ty_fragment = parser.collect_until_top_level_fragment([44, 59])
+    let ty_fragment = parser.collect_until_top_level_type_fragment([44, 59])
     if ty_fragment.text == "" {
       raise WgslStructMembersTokenizeError::UnexpectedToken
     }
+    let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
+      Some(value) => value
+      None => raise WgslStructMembersTokenizeError::UnexpectedToken
+    }
     tokens.push(
-      (
-        Token::MEMBER_TYPE(
-          (
-            ty_fragment.text,
-            parse_wgsl_type_ref_fragment(ty_fragment),
-            ty_fragment.start,
-            ty_fragment.end,
-          ),
-        ),
-        ty_fragment.start,
-        ty_fragment.end,
-      ),
+      (Token::MEMBER_TYPE(ty_ref), ty_fragment.start, ty_fragment.end),
     )
     match parser.view() {
       [token, ..] if token.is_punctuation(44) || token.is_punctuation(59) =>
         continue
+      [token, ..] if token.is_punctuation(35) &&
+        parser.directive_line_end_at_hash(token.pos()) is Some(_) => continue
       [] => break
       _ => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
@@ -218,9 +213,7 @@ fn WgslDeclParser::parse_global_variable(
       attributes,
       name,
       template_list,
-      tail.ty,
       tail.ty_ref,
-      tail.initializer,
       tail.initializer_ref,
     ),
   )
@@ -228,9 +221,7 @@ fn WgslDeclParser::parse_global_variable(
 
 ///|
 priv struct WgslTypedInitializerTail {
-  ty : String?
   ty_ref : WgslTypeRef?
-  initializer : String?
   initializer_ref : WgslExprRef?
 }
 
@@ -249,21 +240,14 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
       let pos = token.pos()
       self.update_view(rest)
       tokens.push((Token::COLON, pos, pos + 1))
-      let ty_fragment = self.collect_until_top_level_fragment([61, 59])
+      let ty_fragment = self.collect_until_top_level_type_fragment([61, 59])
       if ty_fragment.text != "" {
+        let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
+          Some(value) => value
+          None => raise WgslTypedInitializerTailParseError::UnexpectedToken
+        }
         tokens.push(
-          (
-            Token::DECL_TYPE(
-              (
-                ty_fragment.text,
-                parse_wgsl_type_ref_fragment(ty_fragment),
-                ty_fragment.start,
-                ty_fragment.end,
-              ),
-            ),
-            ty_fragment.start,
-            ty_fragment.end,
-          ),
+          (Token::DECL_TYPE(ty_ref), ty_fragment.start, ty_fragment.end),
         )
       } else {
         raise WgslTypedInitializerTailParseError::UnexpectedToken
@@ -278,11 +262,13 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
       tokens.push((Token::EQUAL, pos, pos + 1))
       let initializer = self.collect_until_top_level_fragment([59])
       if initializer.text != "" {
+        let initializer_ref = match parse_wgsl_expr_ref_fragment(initializer) {
+          Some(value) => value
+          None => raise WgslTypedInitializerTailParseError::UnexpectedToken
+        }
         tokens.push(
           (
-            Token::INIT_EXPR(
-              (initializer.text, parse_wgsl_expr_ref_fragment(initializer)),
-            ),
+            Token::INIT_EXPR(initializer_ref),
             initializer.start,
             initializer.end,
           ),
@@ -300,8 +286,8 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
     _ => raise WgslTypedInitializerTailParseError::UnexpectedToken
   }
   match parsed {
-    (ty, ty_ref, initializer, initializer_ref) =>
-      WgslTypedInitializerTail::{ ty, ty_ref, initializer, initializer_ref }
+    (ty_ref, initializer_ref) =>
+      WgslTypedInitializerTail::{ ty_ref, initializer_ref }
   }
 }
 
@@ -314,15 +300,7 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
   let tail = self.parse_typed_initializer_tail_checked() catch {
     _ => return None
   }
-  Some(
-    WgslConst::new(
-      name,
-      tail.ty,
-      tail.ty_ref,
-      tail.initializer,
-      tail.initializer_ref,
-    ),
-  )
+  Some(WgslConst::new(name, tail.ty_ref, tail.initializer_ref))
 }
 
 ///|
@@ -337,16 +315,7 @@ fn WgslDeclParser::parse_override(
   let tail = self.parse_typed_initializer_tail_checked() catch {
     _ => return None
   }
-  Some(
-    WgslOverride::new(
-      attributes,
-      name,
-      tail.ty,
-      tail.ty_ref,
-      tail.initializer,
-      tail.initializer_ref,
-    ),
-  )
+  Some(WgslOverride::new(attributes, name, tail.ty_ref, tail.initializer_ref))
 }
 
 ///|
@@ -356,15 +325,13 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
     None => return None
   }
   match self.parse_type_alias_tail() {
-    Some((ty, ty_ref)) => Some(WgslTypeAlias::new(name, ty, ty_ref))
+    Some(ty_ref) => Some(WgslTypeAlias::new(name, Some(ty_ref)))
     None => None
   }
 }
 
 ///|
-fn WgslDeclParser::parse_type_alias_tail(
-  self : WgslDeclParser,
-) -> (String, WgslTypeRef?)? {
+fn WgslDeclParser::parse_type_alias_tail(self : WgslDeclParser) -> WgslTypeRef? {
   let tokens : Array[(Token, Int, Int)] = []
   match self.view() {
     [token, .. rest] if token.is_punctuation(61) => {
@@ -374,24 +341,15 @@ fn WgslDeclParser::parse_type_alias_tail(
     }
     _ => return None
   }
-  let ty_fragment = self.collect_until_top_level_fragment([59])
+  let ty_fragment = self.collect_until_top_level_type_fragment([59])
   if ty_fragment.text == "" {
     return None
   }
-  tokens.push(
-    (
-      Token::DECL_TYPE(
-        (
-          ty_fragment.text,
-          parse_wgsl_type_ref_fragment(ty_fragment),
-          ty_fragment.start,
-          ty_fragment.end,
-        ),
-      ),
-      ty_fragment.start,
-      ty_fragment.end,
-    ),
-  )
+  let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
+    Some(value) => value
+    None => return None
+  }
+  tokens.push((Token::DECL_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
   tokens.push((Token::EOF, ty_fragment.end, ty_fragment.end))
   Some(type_alias_tail(tokens) catch { _ => return None })
 }

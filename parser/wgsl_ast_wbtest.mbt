@@ -146,7 +146,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected global type ref")
   }
   debug_inspect(global_ty.name(), content="\"Globals\"")
-  debug_inspect(global.initializer(), content="None")
+  debug_inspect(global.initializer_ref(), content="None")
   guard unit.declarations()[2].data()
     is WgslGlobalDeclData::TypeAlias(alias_decl) else {
     abort("expected type alias payload")
@@ -167,7 +167,10 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected const type ref")
   }
   debug_inspect(const_ty.name(), content="\"f32\"")
-  debug_inspect(const_decl.initializer(), content="Some(\"2.0\")")
+  guard const_decl.initializer_ref() is Some(const_initializer) else {
+    abort("expected const initializer")
+  }
+  debug_inspect(const_initializer.tokens()[0].text(), content="\"2.0\"")
   guard unit.declarations()[4].data()
     is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
@@ -178,7 +181,10 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected override type ref")
   }
   debug_inspect(override_ty.name(), content="\"bool\"")
-  debug_inspect(override_decl.initializer(), content="Some(\"true\")")
+  guard override_decl.initializer_ref() is Some(override_initializer) else {
+    abort("expected override initializer")
+  }
+  debug_inspect(override_initializer.tokens()[0].text(), content="\"true\"")
   guard unit.declarations()[5].data() is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -233,6 +239,64 @@ test "WGSL type refs expose nested template arguments" {
   debug_inspect(ty.arguments()[0].canonical_text(), content="\"vec4<f32>\"")
   debug_inspect(ty.arguments()[0].arguments()[0].name(), content="\"f32\"")
   debug_inspect(ty.arguments()[1].name(), content="\"4\"")
+}
+
+///|
+test "WGSL type refs parse adjacent generic closes" {
+  guard parse_wgsl_type_ref_text("array<mat4x4<f32>>", 0) is Some(ty) else {
+    abort("expected nested type ref")
+  }
+  debug_inspect(ty.name(), content="\"array\"")
+  debug_inspect(ty.arguments()[0].name(), content="\"mat4x4\"")
+  debug_inspect(ty.arguments()[0].arguments()[0].name(), content="\"f32\"")
+}
+
+///|
+test "WGSL declarations parse adjacent generic type closes" {
+  let source =
+    #|@group(2) @binding(1) var<storage> joint_matrices: array<mat4x4<f32>>;
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data()
+    is WgslGlobalDeclData::GlobalVariable(global) else {
+    abort("expected global variable")
+  }
+  guard global.ty_ref() is Some(ty) else {
+    abort("expected global variable type")
+  }
+  debug_inspect(ty.canonical_text(), content="\"array<mat4x4<f32>>\"")
+}
+
+///|
+test "WGSL initializer fragments do not treat comparison as type depth" {
+  let source = "const LESS = value < limit;\n"
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Const(value) else {
+    abort("expected const")
+  }
+  guard value.initializer_ref() is Some(initializer) else {
+    abort("expected initializer")
+  }
+  debug_inspect(initializer.end(), content="26")
+}
+
+///|
+test "WGSL struct member parser skips conditional directive lines" {
+  let source =
+    #|struct Globals {
+    #|  frame_count: u32,
+    #|#ifdef SIXTEEN_BYTE_ALIGNMENT
+    #|  _webgl2_padding: f32
+    #|#endif
+    #|};
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(value) else {
+    abort("expected struct")
+  }
+  debug_inspect(value.members().length(), content="2")
+  debug_inspect(value.members()[1].name(), content="\"_webgl2_padding\"")
+  debug_inspect(value.members()[1].ty(), content="\"f32\"")
 }
 
 ///|
@@ -517,7 +581,6 @@ test "WGSL typed initializer tails are parsed by grammar" {
     abort("expected global type")
   }
   debug_inspect(global_ty.name(), content="\"u32\"")
-  debug_inspect(global.initializer(), content="Some(\"FACTOR\")")
   guard global.initializer_ref() is Some(global_initializer) else {
     abort("expected global initializer")
   }
@@ -529,7 +592,6 @@ test "WGSL typed initializer tails are parsed by grammar" {
     abort("expected const")
   }
   debug_inspect(const_decl.ty(), content="None")
-  debug_inspect(const_decl.initializer(), content="Some(\"cache + 1u\")")
   guard const_decl.initializer_ref() is Some(const_initializer) else {
     abort("expected const initializer")
   }
@@ -539,7 +601,13 @@ test "WGSL typed initializer tails are parsed by grammar" {
     abort("expected override")
   }
   debug_inspect(override_decl.ty(), content="None")
-  debug_inspect(override_decl.initializer(), content="Some(\"ENABLED_FLAG\")")
+  guard override_decl.initializer_ref() is Some(override_initializer) else {
+    abort("expected override initializer")
+  }
+  debug_inspect(
+    override_initializer.identifiers()[0].name(),
+    content="\"ENABLED_FLAG\"",
+  )
 }
 
 ///|
@@ -1120,8 +1188,7 @@ test "WGSL override function payload preserves qualified target path" {
       #|    attributes: [],
       #|    start: 33,
       #|    end: 39,
-      #|    ty: "f32",
-      #|    ty_ref: Some({ name: "f32", arguments: [], start: 36 }),
+      #|    ty_ref: Some({ name: "f32", arguments: [], start: 36, end: 39 }),
       #|  },
       #|)
     ),

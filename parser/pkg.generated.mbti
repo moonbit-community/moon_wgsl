@@ -91,4 +91,3 @@ pub fn WgslTemplateConstReference::start(Self) -> Int
 // Type aliases
 
 // Traits
-

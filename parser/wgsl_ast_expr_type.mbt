@@ -679,6 +679,17 @@ fn WgslTokenDepth::at_top(self : WgslTokenDepth) -> Bool {
 
 ///|
 fn WgslTokenDepth::observe(self : WgslTokenDepth, token : WgslToken) -> Unit {
+  match token.operator_text() {
+    Some(">>") => {
+      if self.angle >= 2 {
+        self.angle = self.angle - 2
+      } else {
+        self.angle = 0
+      }
+      return
+    }
+    _ => ()
+  }
   match token.punctuation_code() {
     Some(40) => self.paren = self.paren + 1
     Some(41) => self.paren = self.paren - 1
@@ -944,6 +955,23 @@ fn WgslDeclParser::collect_until_top_level_fragment(
   self : WgslDeclParser,
   stops : Array[Int],
 ) -> WgslTextFragment {
+  self.collect_until_top_level_fragment_with_mode(stops, false)
+}
+
+///|
+fn WgslDeclParser::collect_until_top_level_type_fragment(
+  self : WgslDeclParser,
+  stops : Array[Int],
+) -> WgslTextFragment {
+  self.collect_until_top_level_fragment_with_mode(stops, true)
+}
+
+///|
+fn WgslDeclParser::collect_until_top_level_fragment_with_mode(
+  self : WgslDeclParser,
+  stops : Array[Int],
+  track_angle : Bool,
+) -> WgslTextFragment {
   let mut start_pos = -1
   let mut end_pos = -1
   fn record_token(token : WgslToken) -> Unit {
@@ -956,10 +984,17 @@ fn WgslDeclParser::collect_until_top_level_fragment(
   while true {
     match self.view() {
       [token, ..] if depth.at_top() &&
+        token.is_punctuation(35) &&
+        self.directive_line_end_at_hash(token.pos()) is Some(_) => break
+      [token, ..] if depth.at_top() &&
         token.punctuation_code() is Some(code) &&
         stops.contains(code) => break
       [token, .. rest] => {
-        depth.observe(token)
+        if track_angle {
+          depth.observe(token)
+        } else {
+          depth.observe_statement_token(token)
+        }
         record_token(token)
         self.update_view(rest)
         continue
@@ -1083,13 +1118,7 @@ fn tokenize_wgsl_type_ref(
     tokens.push(
       (
         Token::TYPE_ATOM(
-          (
-            source[start:i].to_owned(),
-            source,
-            source_start,
-            absolute_start,
-            absolute_end,
-          ),
+          (source[start:i].to_owned(), absolute_start, absolute_end),
         ),
         absolute_start,
         absolute_end,

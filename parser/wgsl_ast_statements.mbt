@@ -75,24 +75,15 @@ fn WgslDeclParser::tokenize_function_arguments(
       }
       _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
-    let ty_fragment = parser.collect_until_top_level_fragment([44])
+    let ty_fragment = parser.collect_until_top_level_type_fragment([44])
     if ty_fragment.text == "" {
       raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
-    tokens.push(
-      (
-        Token::ARG_TYPE(
-          (
-            ty_fragment.text,
-            parse_wgsl_type_ref_fragment(ty_fragment),
-            ty_fragment.start,
-            ty_fragment.end,
-          ),
-        ),
-        ty_fragment.start,
-        ty_fragment.end,
-      ),
-    )
+    let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
+      Some(value) => value
+      None => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+    }
+    tokens.push((Token::ARG_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
     match parser.view() {
       [token, ..] if token.is_punctuation(44) => continue
       [] => break
@@ -121,24 +112,15 @@ fn WgslDeclParser::parse_function_result(
         (Token::ARROW(arrow_start), arrow_start, arrow_start + 2),
       ]
       parser.push_attribute_tokens(tokens)
-      let ty_fragment = parser.collect_until_top_level_fragment([123, 59])
+      let ty_fragment = parser.collect_until_top_level_type_fragment([123, 59])
       if ty_fragment.text == "" {
         return None
       }
-      tokens.push(
-        (
-          Token::ARG_TYPE(
-            (
-              ty_fragment.text,
-              parse_wgsl_type_ref_fragment(ty_fragment),
-              ty_fragment.start,
-              ty_fragment.end,
-            ),
-          ),
-          ty_fragment.start,
-          ty_fragment.end,
-        ),
-      )
+      let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
+        Some(value) => value
+        None => return None
+      }
+      tokens.push((Token::ARG_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
       tokens.push((Token::EOF, ty_fragment.end, ty_fragment.end))
       let result = function_result(tokens) catch { _ => return None }
       self.drop_tokens(1 + rest_len - parser.view().length())
@@ -226,7 +208,6 @@ fn WgslDeclParser::parse_statement_local_binding(
       kind,
       name,
       template_list,
-      tail.ty,
       tail.ty_ref,
       tail.initializer_ref,
     ),

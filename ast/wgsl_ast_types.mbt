@@ -330,6 +330,7 @@ pub struct WgslTypeRef {
   priv name : String
   priv arguments : Array[WgslTypeRef]
   priv start : Int
+  priv end : Int
 } derive(Debug)
 
 ///|
@@ -337,8 +338,9 @@ pub fn WgslTypeRef::new(
   name : String,
   arguments : Array[WgslTypeRef],
   start : Int,
+  end : Int,
 ) -> WgslTypeRef {
-  WgslTypeRef::{ name, arguments, start }
+  WgslTypeRef::{ name, arguments, start, end }
 }
 
 ///|
@@ -367,6 +369,11 @@ pub fn WgslTypeRef::canonical_text(self : WgslTypeRef) -> String {
 ///|
 pub fn WgslTypeRef::start(self : WgslTypeRef) -> Int {
   self.start
+}
+
+///|
+pub fn WgslTypeRef::end(self : WgslTypeRef) -> Int {
+  self.end
 }
 
 ///|
@@ -445,7 +452,6 @@ pub struct WgslFunctionResult {
   priv attributes : Array[WgslAttribute]
   priv start : Int
   priv end : Int
-  priv ty : String
   priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
@@ -454,10 +460,9 @@ pub fn WgslFunctionResult::new(
   attributes : Array[WgslAttribute],
   start : Int,
   end : Int,
-  ty : String,
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionResult {
-  WgslFunctionResult::{ attributes, start, end, ty, ty_ref }
+  WgslFunctionResult::{ attributes, start, end, ty_ref }
 }
 
 ///|
@@ -479,7 +484,10 @@ pub fn WgslFunctionResult::end(self : WgslFunctionResult) -> Int {
 
 ///|
 pub fn WgslFunctionResult::ty(self : WgslFunctionResult) -> String {
-  self.ty
+  match self.ty_ref {
+    Some(ty) => ty.canonical_text()
+    None => ""
+  }
 }
 
 ///|
@@ -510,7 +518,6 @@ pub struct WgslLocalDeclaration {
   priv kind : String
   priv name : WgslIdent
   priv template_list : Array[String]
-  priv ty : String?
   priv ty_ref : WgslTypeRef?
   priv initializer_ref : WgslExprRef?
 } derive(Debug)
@@ -520,18 +527,10 @@ pub fn WgslLocalDeclaration::new(
   kind : String,
   name : WgslIdent,
   template_list : Array[String],
-  ty : String?,
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslLocalDeclaration {
-  WgslLocalDeclaration::{
-    kind,
-    name,
-    template_list,
-    ty,
-    ty_ref,
-    initializer_ref,
-  }
+  WgslLocalDeclaration::{ kind, name, template_list, ty_ref, initializer_ref }
 }
 
 ///|
@@ -553,7 +552,10 @@ pub fn WgslLocalDeclaration::template_list(
 
 ///|
 pub fn WgslLocalDeclaration::ty(self : WgslLocalDeclaration) -> String? {
-  self.ty
+  match self.ty_ref {
+    Some(ty) => Some(ty.canonical_text())
+    None => None
+  }
 }
 
 ///|
@@ -837,7 +839,6 @@ pub struct WgslStructMember {
   priv end : Int
   priv name_start : Int
   priv name_end : Int
-  priv ty : String
   priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
@@ -849,7 +850,6 @@ pub fn WgslStructMember::new(
   end : Int,
   name_start : Int,
   name_end : Int,
-  ty : String,
   ty_ref : WgslTypeRef?,
 ) -> WgslStructMember {
   WgslStructMember::{
@@ -859,7 +859,6 @@ pub fn WgslStructMember::new(
     end,
     name_start,
     name_end,
-    ty,
     ty_ref,
   }
 }
@@ -898,7 +897,10 @@ pub fn WgslStructMember::name_end(self : WgslStructMember) -> Int {
 
 ///|
 pub fn WgslStructMember::ty(self : WgslStructMember) -> String {
-  self.ty
+  match self.ty_ref {
+    Some(ty) => ty.canonical_text()
+    None => ""
+  }
 }
 
 ///|
@@ -942,9 +944,7 @@ pub struct WgslGlobalVariable {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
   priv template_list : Array[String]
-  priv ty : String?
   priv ty_ref : WgslTypeRef?
-  priv initializer : String?
   priv initializer_ref : WgslExprRef?
 } derive(Debug)
 
@@ -953,18 +953,14 @@ pub fn WgslGlobalVariable::new(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
   template_list : Array[String],
-  ty : String?,
   ty_ref : WgslTypeRef?,
-  initializer : String?,
   initializer_ref : WgslExprRef?,
 ) -> WgslGlobalVariable {
   WgslGlobalVariable::{
     attributes,
     name,
     template_list,
-    ty,
     ty_ref,
-    initializer,
     initializer_ref,
   }
 }
@@ -990,17 +986,15 @@ pub fn WgslGlobalVariable::template_list(
 
 ///|
 pub fn WgslGlobalVariable::ty(self : WgslGlobalVariable) -> String? {
-  self.ty
+  match self.ty_ref {
+    Some(ty) => Some(ty.canonical_text())
+    None => None
+  }
 }
 
 ///|
 pub fn WgslGlobalVariable::ty_ref(self : WgslGlobalVariable) -> WgslTypeRef? {
   self.ty_ref
-}
-
-///|
-pub fn WgslGlobalVariable::initializer(self : WgslGlobalVariable) -> String? {
-  self.initializer
 }
 
 ///|
@@ -1013,21 +1007,17 @@ pub fn WgslGlobalVariable::initializer_ref(
 ///|
 pub struct WgslConst {
   priv name : WgslIdent
-  priv ty : String?
   priv ty_ref : WgslTypeRef?
-  priv initializer : String?
   priv initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
 pub fn WgslConst::new(
   name : WgslIdent,
-  ty : String?,
   ty_ref : WgslTypeRef?,
-  initializer : String?,
   initializer_ref : WgslExprRef?,
 ) -> WgslConst {
-  WgslConst::{ name, ty, ty_ref, initializer, initializer_ref }
+  WgslConst::{ name, ty_ref, initializer_ref }
 }
 
 ///|
@@ -1037,17 +1027,15 @@ pub fn WgslConst::name(self : WgslConst) -> WgslIdent {
 
 ///|
 pub fn WgslConst::ty(self : WgslConst) -> String? {
-  self.ty
+  match self.ty_ref {
+    Some(ty) => Some(ty.canonical_text())
+    None => None
+  }
 }
 
 ///|
 pub fn WgslConst::ty_ref(self : WgslConst) -> WgslTypeRef? {
   self.ty_ref
-}
-
-///|
-pub fn WgslConst::initializer(self : WgslConst) -> String? {
-  self.initializer
 }
 
 ///|
@@ -1059,9 +1047,7 @@ pub fn WgslConst::initializer_ref(self : WgslConst) -> WgslExprRef? {
 pub struct WgslOverride {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
-  priv ty : String?
   priv ty_ref : WgslTypeRef?
-  priv initializer : String?
   priv initializer_ref : WgslExprRef?
 } derive(Debug)
 
@@ -1069,12 +1055,10 @@ pub struct WgslOverride {
 pub fn WgslOverride::new(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
-  ty : String?,
   ty_ref : WgslTypeRef?,
-  initializer : String?,
   initializer_ref : WgslExprRef?,
 ) -> WgslOverride {
-  WgslOverride::{ attributes, name, ty, ty_ref, initializer, initializer_ref }
+  WgslOverride::{ attributes, name, ty_ref, initializer_ref }
 }
 
 ///|
@@ -1089,17 +1073,15 @@ pub fn WgslOverride::name(self : WgslOverride) -> WgslIdent {
 
 ///|
 pub fn WgslOverride::ty(self : WgslOverride) -> String? {
-  self.ty
+  match self.ty_ref {
+    Some(ty) => Some(ty.canonical_text())
+    None => None
+  }
 }
 
 ///|
 pub fn WgslOverride::ty_ref(self : WgslOverride) -> WgslTypeRef? {
   self.ty_ref
-}
-
-///|
-pub fn WgslOverride::initializer(self : WgslOverride) -> String? {
-  self.initializer
 }
 
 ///|
@@ -1110,17 +1092,15 @@ pub fn WgslOverride::initializer_ref(self : WgslOverride) -> WgslExprRef? {
 ///|
 pub struct WgslTypeAlias {
   priv name : WgslIdent
-  priv ty : String
   priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
 pub fn WgslTypeAlias::new(
   name : WgslIdent,
-  ty : String,
   ty_ref : WgslTypeRef?,
 ) -> WgslTypeAlias {
-  WgslTypeAlias::{ name, ty, ty_ref }
+  WgslTypeAlias::{ name, ty_ref }
 }
 
 ///|
@@ -1130,7 +1110,10 @@ pub fn WgslTypeAlias::name(self : WgslTypeAlias) -> WgslIdent {
 
 ///|
 pub fn WgslTypeAlias::ty(self : WgslTypeAlias) -> String {
-  self.ty
+  match self.ty_ref {
+    Some(ty) => ty.canonical_text()
+    None => ""
+  }
 }
 
 ///|
