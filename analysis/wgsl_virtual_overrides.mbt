@@ -281,8 +281,8 @@ fn apply_wgsl_virtual_overrides_checked(
   let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let override_needs_base : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for block in graph.declaration_blocks {
-    if block.name != "" && wgsl_graph_block_is_virtual_fn(block) {
-      virtual_names.set(block.name, true)
+    if block.name() != "" && wgsl_graph_block_is_virtual_fn(block) {
+      virtual_names.set(block.name(), true)
     }
   }
   for block in graph.declaration_blocks {
@@ -330,11 +330,11 @@ fn apply_wgsl_virtual_overrides_checked(
       None => ()
     }
     match wgsl_graph_block_function(block) {
-      Some(function) if block.name != "" &&
+      Some(function) if block.name() != "" &&
         function.qualifier() == Some(WgslFunctionQualifier::Virtual) => {
-        match overrides.get(block.name) {
+        match overrides.get(block.name()) {
           Some(override_block) => {
-            let needs_base = match override_needs_base.get(block.name) {
+            let needs_base = match override_needs_base.get(block.name()) {
               Some(value) => value
               None => false
             }
@@ -343,8 +343,8 @@ fn apply_wgsl_virtual_overrides_checked(
                 rewrite_wgsl_virtual_base_block(
                   block,
                   function,
-                  block.name,
-                  wgsl_virtual_base_name(block.name),
+                  block.name(),
+                  wgsl_virtual_base_name(block.name()),
                 )
             }
             out = out + override_block
@@ -396,7 +396,7 @@ pub fn strip_wgsl_virtual_functions(
   }
   for block in graph.declaration_blocks {
     if wgsl_graph_block_is_virtual_fn(block) {
-      if block.name != "" && emitted_names.contains(block.name) {
+      if block.name() != "" && emitted_names.contains(block.name()) {
         continue
       }
       match wgsl_graph_block_function(block) {
@@ -407,8 +407,8 @@ pub fn strip_wgsl_virtual_functions(
     } else {
       out = out + emit_wgsl_graph_block_canonical(block)
     }
-    if block.name != "" {
-      emitted_names.set(block.name, true)
+    if block.name() != "" {
+      emitted_names.set(block.name(), true)
     }
   }
   out

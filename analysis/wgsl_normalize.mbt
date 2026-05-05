@@ -242,11 +242,11 @@ fn dedupe_wgsl_duplicate_declarations(
     deduped = deduped + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
-    if block.name != "" {
+    if block.name() != "" {
       let declaration_key = wgsl_declaration_structural_key(block.data)
-      match emitted_blocks.get(block.name) {
+      match emitted_blocks.get(block.name()) {
         Some(existing_key) if existing_key == declaration_key => continue
-        _ => emitted_blocks.set(block.name, declaration_key)
+        _ => emitted_blocks.set(block.name(), declaration_key)
       }
     }
     deduped = deduped + emit_wgsl_graph_block_canonical(block)
@@ -283,8 +283,8 @@ fn build_wgsl_unique_alias_suffix_rename_plan(
   let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for block in graph.declaration_blocks {
-    if block.name != "" {
-      declared_names.set(block.name, true)
+    if block.name() != "" {
+      declared_names.set(block.name(), true)
     }
   }
   for redirect in alias_redirects {
@@ -398,7 +398,7 @@ fn dedupe_wgsl_duplicate_resource_bindings(
     out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
-    if duplicate_names.contains(block.name) {
+    if duplicate_names.contains(block.name()) {
       continue
     }
     out = out + emit_wgsl_graph_block_canonical(block)

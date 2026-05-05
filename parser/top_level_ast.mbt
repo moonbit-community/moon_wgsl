@@ -111,12 +111,11 @@ fn top_level_push_span_item(
   items : Array[WgslRawTopLevelItem],
   source : String,
   kind : WgslRawTopLevelKind,
-  name : String,
   start : Int,
   end_ : Int,
 ) -> Unit {
   let text = source[start:end_].to_owned()
-  items.push(WgslRawTopLevelItem::{ kind, name, text, start, end: end_ })
+  items.push(WgslRawTopLevelItem::{ kind, text, start, end: end_ })
 }
 
 ///|
@@ -162,7 +161,6 @@ fn WgslTopLevelParser::flush_trivia_until(
       items,
       self.source,
       WgslRawTopLevelKind::Trivia,
-      "",
       self.pending_start,
       end_,
     )
@@ -204,7 +202,6 @@ fn WgslTopLevelParser::parse_directive_item(
     items,
     self.source,
     top_level_directive_item_kind(directive.kind()),
-    "",
     item_start,
     item_end,
   )
@@ -274,12 +271,10 @@ fn WgslTopLevelParser::parse_declaration_item(
     }
   }
   if top_level_span_has_text(self.source, item_start, item_end) {
-    let text = self.source[item_start:item_end].to_owned()
     top_level_push_span_item(
       items,
       self.source,
       WgslRawTopLevelKind::Declaration,
-      parse_wgsl_declaration_name(text),
       item_start,
       item_end,
     )

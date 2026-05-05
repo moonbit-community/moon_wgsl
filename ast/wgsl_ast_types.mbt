@@ -1023,7 +1023,6 @@ pub(all) enum WgslGlobalDeclData {
 pub struct WgslGlobalDecl {
   priv kind : WgslGlobalDeclKind
   priv data : WgslGlobalDeclData
-  priv name : String
   priv start : Int
   priv end : Int
 } derive(Debug)
@@ -1032,11 +1031,10 @@ pub struct WgslGlobalDecl {
 pub fn WgslGlobalDecl::new(
   kind : WgslGlobalDeclKind,
   data : WgslGlobalDeclData,
-  name : String,
   start : Int,
   end : Int,
 ) -> WgslGlobalDecl {
-  WgslGlobalDecl::{ kind, data, name, start, end }
+  WgslGlobalDecl::{ kind, data, start, end }
 }
 
 ///|
@@ -1051,7 +1049,7 @@ pub fn WgslGlobalDecl::data(self : WgslGlobalDecl) -> WgslGlobalDeclData {
 
 ///|
 pub fn WgslGlobalDecl::name(self : WgslGlobalDecl) -> String {
-  self.name
+  wgsl_decl_data_name(self.data)
 }
 
 ///|

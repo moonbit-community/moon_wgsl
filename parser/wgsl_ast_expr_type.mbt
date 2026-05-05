@@ -744,11 +744,6 @@ fn WgslDeclParser::new_at(text : String, source_start : Int) -> WgslDeclParser {
 }
 
 ///|
-fn WgslDeclParser::new(text : String) -> WgslDeclParser {
-  WgslDeclParser::new_at(text, 0)
-}
-
-///|
 fn WgslDeclParser::directive_line_end_at_hash(
   self : WgslDeclParser,
   absolute_hash_pos : Int,

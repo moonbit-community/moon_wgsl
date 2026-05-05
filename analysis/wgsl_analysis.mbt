@@ -14,7 +14,6 @@
 
 ///|
 priv struct WgslGraphBlock {
-  name : String
   tokens : Array[WgslToken]
   start : Int
   end : Int
@@ -138,7 +137,6 @@ fn build_wgsl_declaration_graph_from_unit(
   let declaration_blocks : Array[WgslGraphBlock] = []
   for decl in unit.declarations() {
     let graph_block = WgslGraphBlock::{
-      name: decl.name(),
       tokens: tokenize_wgsl_absolute_fragment(source, decl.start(), decl.end()),
       start: decl.start(),
       end: decl.end(),
@@ -169,6 +167,11 @@ fn build_wgsl_declaration_graph_from_unit(
   }
 
   WgslDeclarationGraph::{ import_blocks, declaration_blocks }
+}
+
+///|
+fn WgslGraphBlock::name(self : WgslGraphBlock) -> String {
+  wgsl_decl_data_name(self.data)
 }
 
 ///|
@@ -208,7 +211,6 @@ fn wgsl_reachable_declaration_map(
       WgslGlobalDecl::new(
         WgslGlobalDeclKind::Unknown,
         block.data,
-        block.name,
         block.start,
         block.end,
       ),
@@ -242,16 +244,16 @@ fn emit_wgsl_tree_shaken_source_from_graph(
     generated_start = generated_start + emitted_block.length()
   }
   for block in graph.declaration_blocks {
-    if block.name != "" && !included_names.contains(block.name) {
+    if block.name() != "" && !included_names.contains(block.name()) {
       continue
     }
     let emitted_block = emit_wgsl_graph_block_canonical(block)
     let block_generated_start = generated_start
     emitted_source = emitted_source + emitted_block
     generated_start = generated_start + emitted_block.length()
-    if block.name != "" {
+    if block.name() != "" {
       declarations.push(WgslEmittedDeclaration::{
-        name: block.name,
+        name: block.name(),
         is_type_declaration: block.is_type_declaration(),
         generated_start: block_generated_start,
         generated_end: generated_start,
@@ -300,7 +302,6 @@ fn strip_wgsl_import_declarations_from_source_unit(
     if !skip {
       out = out +
         emit_wgsl_graph_block_canonical(WgslGraphBlock::{
-          name: decl.name(),
           tokens: tokenize_wgsl_absolute_fragment(
             source,
             decl.start(),
@@ -334,9 +335,9 @@ fn extract_wgsl_module_item_extraction_from_graph(
   let origins : Array[WgslModuleItemOrigin] = []
   if requested_items.length() == 0 {
     for block in graph.declaration_blocks {
-      if block.name != "" {
+      if block.name() != "" {
         origins.push(WgslModuleItemOrigin::{
-          name: block.name,
+          name: block.name(),
           source_start: block.start,
           source_end: block.end,
         })
@@ -359,9 +360,9 @@ fn extract_wgsl_module_item_extraction_from_graph(
   }
   if matched_requested == 0 {
     for block in graph.declaration_blocks {
-      if block.name != "" {
+      if block.name() != "" {
         origins.push(WgslModuleItemOrigin::{
-          name: block.name,
+          name: block.name(),
           source_start: block.start,
           source_end: block.end,
         })
@@ -377,11 +378,11 @@ fn extract_wgsl_module_item_extraction_from_graph(
     out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
-    if block.name == "" || included_names.contains(block.name) {
+    if block.name() == "" || included_names.contains(block.name()) {
       out = out + emit_wgsl_graph_block_canonical(block)
-      if block.name != "" {
+      if block.name() != "" {
         origins.push(WgslModuleItemOrigin::{
-          name: block.name,
+          name: block.name(),
           source_start: block.start,
           source_end: block.end,
         })

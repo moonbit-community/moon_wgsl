@@ -167,7 +167,7 @@ pub fn WgslGlobalDecl::data(Self) -> WgslGlobalDeclData
 pub fn WgslGlobalDecl::end(Self) -> Int
 pub fn WgslGlobalDecl::kind(Self) -> WgslGlobalDeclKind
 pub fn WgslGlobalDecl::name(Self) -> String
-pub fn WgslGlobalDecl::new(WgslGlobalDeclKind, WgslGlobalDeclData, String, Int, Int) -> Self
+pub fn WgslGlobalDecl::new(WgslGlobalDeclKind, WgslGlobalDeclData, Int, Int) -> Self
 pub fn WgslGlobalDecl::start(Self) -> Int
 
 pub(all) enum WgslGlobalDeclData {

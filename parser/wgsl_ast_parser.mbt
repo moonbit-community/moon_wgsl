@@ -1,19 +1,9 @@
 ///|
-fn parse_wgsl_declaration_data(text : String) -> WgslGlobalDeclData {
-  WgslDeclParser::new(text).parse_decl_data()
-}
-
-///|
 fn parse_wgsl_declaration_data_at(
   text : String,
   source_start : Int,
 ) -> WgslGlobalDeclData {
   WgslDeclParser::new_at(text, source_start).parse_decl_data()
-}
-
-///|
-fn parse_wgsl_declaration_name(text : String) -> String {
-  wgsl_decl_data_name(parse_wgsl_declaration_data(text))
 }
 
 ///|
@@ -43,17 +33,7 @@ fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
     WgslRawTopLevelKind::Trivia => WgslGlobalDeclKind::Trivia
     _ => wgsl_global_decl_kind_from_data(data)
   }
-  WgslGlobalDecl::new(
-    kind,
-    data,
-    if item.name == "" {
-      wgsl_decl_data_name(data)
-    } else {
-      item.name
-    },
-    item.start,
-    item.end,
-  )
+  WgslGlobalDecl::new(kind, data, item.start, item.end)
 }
 
 ///|

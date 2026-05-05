@@ -32,7 +32,6 @@ using @ast {
   type WgslTranslationUnit,
   type WgslTypeAlias,
   type WgslTypeRef,
-  wgsl_decl_data_name,
 }
 
 ///|

@@ -344,10 +344,10 @@ pub fn normalize_wgsl_output_identifiers(
   let graph = build_wgsl_declaration_graph(source)
   let plan = WgslRenamePlan::empty()
   for block in graph.declaration_blocks {
-    if wgsl_identifier_requires_substitution(block.name) {
+    if wgsl_identifier_requires_substitution(block.name()) {
       plan.add(
-        block.name,
-        sanitize_wgsl_identifier(block.name),
+        block.name(),
+        sanitize_wgsl_identifier(block.name()),
         GlobalDeclarationAndReferences,
       )
     }
