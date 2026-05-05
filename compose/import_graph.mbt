@@ -61,7 +61,7 @@ fn prepare_wgsl_compose_source(
     apply_wgsl_ifdefs_strict_for_compose(redirected_source, active_defs),
     active_defs.value_defines,
   )
-  let active_scan_source = strip_wgsl_import_declarations(active_source)
+  let active_scan_source = active_source
   WgslPreparedComposeSource::{ active_source, active_scan_source }
 }
 

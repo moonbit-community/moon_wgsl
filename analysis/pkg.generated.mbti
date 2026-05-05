@@ -34,8 +34,6 @@ pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[Str
 
 pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String raise @parser.WgslParseError
 
-pub fn strip_wgsl_import_declarations(String) -> String
-
 pub fn strip_wgsl_import_declarations_strict(String) -> String raise @parser.WgslParseError
 
 pub fn strip_wgsl_virtual_functions(String) -> String raise @parser.WgslParseError

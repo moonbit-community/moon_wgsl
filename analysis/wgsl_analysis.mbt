@@ -224,11 +224,6 @@ fn strip_wgsl_import_declarations_from_unit(
 }
 
 ///|
-pub fn strip_wgsl_import_declarations(source : String) -> String {
-  strip_wgsl_import_declarations_from_unit(parse_wgsl_translation_unit(source))
-}
-
-///|
 pub fn strip_wgsl_import_declarations_strict(
   source : String,
 ) -> String raise WgslParseError {

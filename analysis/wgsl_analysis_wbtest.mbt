@@ -9,7 +9,9 @@ test "AST import stripping preserves non-import items" {
     #|}
     #|const VALUE: u32 = 1u;
     #|
-  let stripped = strip_wgsl_import_declarations(source)
+  let stripped = strip_wgsl_import_declarations_strict(source) catch {
+    error => abort(error.message())
+  }
   debug_inspect(stripped.contains("#define_import_path"), content="false")
   debug_inspect(stripped.contains("#import"), content="false")
   debug_inspect(stripped.contains("shared::Globals"), content="false")
