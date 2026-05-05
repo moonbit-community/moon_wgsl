@@ -199,6 +199,31 @@ fn preprocess_pad_rewritten_source_item(
 }
 
 ///|
+priv enum WgslPreprocessEmitAction {
+  BlankOriginal
+  PreserveOriginal
+  RewriteActiveSource
+}
+
+///|
+fn preprocess_emit_item(
+  action : WgslPreprocessEmitAction,
+  item : WgslDirectiveScanItem,
+  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  declared_imports : Array[DeclaredImportBinding],
+  used_imports : Array[ImportDefWithOffset],
+) -> String raise PreprocessError {
+  match action {
+    BlankOriginal => preprocess_blank_text(item.original_text)
+    PreserveOriginal => item.original_text
+    RewriteActiveSource =>
+      preprocess_rewrite_source_item(
+        item, shader_defs, declared_imports, used_imports,
+      )
+  }
+}
+
+///|
 fn preprocess_rewrite_source_item(
   item : WgslDirectiveScanItem,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],

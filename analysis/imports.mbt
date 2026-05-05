@@ -26,11 +26,7 @@ using @parser {
 }
 
 ///|
-using @lex {
-  type WgslToken,
-  replace_comments,
-  tokenize_wgsl,
-}
+using @lex {type WgslToken, replace_comments, tokenize_wgsl}
 
 ///|
 using @ast {type WgslTranslationUnit}

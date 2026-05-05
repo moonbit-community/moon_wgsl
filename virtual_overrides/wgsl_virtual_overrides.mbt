@@ -77,6 +77,7 @@ pub fn wgsl_source_contains_virtual_directive(
   false
 }
 
+///|
 pub fn rewrite_wgsl_override_targets_with_redirects(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
@@ -145,9 +146,11 @@ fn rewrite_wgsl_virtual_fn_block(
 ) -> String {
   match (function.qualifier_start, function.qualifier_end) {
     (Some(start), Some(end_)) =>
-      emit_wgsl_text_with_token_rewrites(block_text, [
-        WgslTokenRewrite::{ start, end: end_, replacement: "" },
-      ], block_start)
+      emit_wgsl_text_with_token_rewrites(
+        block_text,
+        [WgslTokenRewrite::{ start, end: end_, replacement: "" }],
+        block_start,
+      )
     _ => block_text
   }
 }
@@ -200,14 +203,18 @@ fn rewrite_wgsl_override_fn_block(
   }
   match (function.qualifier_start, function.qualifier_end) {
     (Some(start), Some(end_)) =>
-      emit_wgsl_text_with_token_rewrites(rewritten_body, [
-        WgslTokenRewrite::{ start, end: end_, replacement: "" },
-        WgslTokenRewrite::{
-          start: function.name.start,
-          end: function.name.end,
-          replacement: target_name,
-        },
-      ], block_start)
+      emit_wgsl_text_with_token_rewrites(
+        rewritten_body,
+        [
+          WgslTokenRewrite::{ start, end: end_, replacement: "" },
+          WgslTokenRewrite::{
+            start: function.name.start,
+            end: function.name.end,
+            replacement: target_name,
+          },
+        ],
+        block_start,
+      )
     _ => rewritten_body
   }
 }

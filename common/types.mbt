@@ -110,10 +110,20 @@ pub(all) struct WgslSourceCatalogEntry {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct WgslSourceOriginEntry {
+  generated_symbol_name : String
+  rel_path : String
+  source_symbol_name : String
+  source_start : Int
+  source_end : Int
+} derive(Eq, Debug)
+
+///|
 pub(all) struct PreparedWgslSource {
   source : String
   source_files : Array[WgslSourceFile]
   source_catalog : Array[WgslSourceCatalogEntry]
+  source_origins : Array[WgslSourceOriginEntry]
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
   diagnostics : Array[WgslDiagnostic]
@@ -209,6 +219,7 @@ pub(all) struct WgslExportOptions {
 pub(all) struct WgslExportOutput {
   source : String
   source_catalog : Array[WgslSourceCatalogEntry]
+  source_origins : Array[WgslSourceOriginEntry]
   source_map : Array[WgslSourceMapEntry]
   diagnostics : Array[WgslDiagnostic]
 } derive(Eq, Debug)

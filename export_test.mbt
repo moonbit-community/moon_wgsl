@@ -154,6 +154,7 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
   debug_inspect(output.source.contains("unused_helper"), content="false")
   debug_inspect(output.source.contains("#import"), content="false")
   debug_inspect(output.source_catalog.length(), content="4")
+  debug_inspect(output.source_origins.length(), content="4")
   debug_inspect(output.source_map.length(), content="4")
   debug_inspect(output.diagnostics.length(), content="0")
 
@@ -164,7 +165,7 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
   mapped_paths.sort()
   debug_inspect(
     mapped_paths.join(","),
-    content="\"shaders/effects/main.wgsl,shaders/effects/main.wgsl,shaders/effects/main.wgsl,shaders/effects/main.wgsl\"",
+    content="\"shaders/effects/main.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl\"",
   )
   clear_export_test_registry()
 }
@@ -339,7 +340,10 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
     }
   }
   helper_paths.sort()
-  debug_inspect(helper_paths.join(","), content="\"shaders/effects/ambiguous.wgsl\"")
+  debug_inspect(
+    helper_paths.join(","),
+    content="\"shaders/effects/ambiguous.wgsl\"",
+  )
   clear_export_test_registry()
 }
 
@@ -436,5 +440,22 @@ test "redirect diagnostics require exact AST reference path matches" {
     }
   }
   debug_inspect(unmatched_item_redirects, content="1")
+  let mut renamed_origins = 0
+  for origin in output.source_origins {
+    if origin.generated_symbol_name == "other__Item" &&
+      origin.source_symbol_name == "Item" &&
+      origin.rel_path == "shaders/shared/other.wgsl" {
+      renamed_origins = renamed_origins + 1
+    }
+  }
+  let mut item_source_maps = 0
+  for entry in output.source_map {
+    if entry.symbol_name == Some("Item") &&
+      entry.rel_path == "shaders/shared/other.wgsl" {
+      item_source_maps = item_source_maps + 1
+    }
+  }
+  debug_inspect(renamed_origins, content="1")
+  debug_inspect(item_source_maps, content="1")
   clear_export_test_registry()
 }

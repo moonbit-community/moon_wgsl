@@ -1,9 +1,11 @@
 ///|
 using @analysis {
+  type WgslModuleItemExtraction,
   build_wgsl_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,
   collect_wgsl_named_declarations_strict,
-  extract_wgsl_module_items_strict,
+  extract_wgsl_module_item_origins,
+  extract_wgsl_module_item_origins_strict,
   normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_rename_plan,
   rewrite_wgsl_symbol_redirects,
@@ -24,6 +26,7 @@ using @common {
   type WgslImportTarget,
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
+  type WgslSourceOriginEntry,
   type WgslSourceScanOptions,
   type WgslSymbolRedirect,
 }
@@ -52,6 +55,7 @@ using @ast {type WgslDirectiveKind}
 ///|
 using @parser {
   type WgslParseError,
+  type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
   parse_glsl_version_directive,
   parse_wgsl_import_spec_is_empty_or_final_semicolon,

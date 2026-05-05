@@ -62,6 +62,21 @@ fn build_wgsl_source_catalog_index(
 }
 
 ///|
+fn build_wgsl_source_origin_index(
+  origin_entries : Array[WgslSourceOriginEntry],
+) -> @hashmap.HashMap[String, Array[WgslSourceOriginEntry]] {
+  let origins : @hashmap.HashMap[String, Array[WgslSourceOriginEntry]] = @hashmap.HashMap::new()
+  for entry in origin_entries {
+    if origins.get(entry.generated_symbol_name) is Some(entries) {
+      entries.push(entry)
+    } else {
+      origins.set(entry.generated_symbol_name, [entry])
+    }
+  }
+  origins
+}
+
+///|
 fn match_wgsl_source_catalog_entry(
   catalog : @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]],
   declaration : WgslEmittedDeclaration,
@@ -105,9 +120,43 @@ fn match_wgsl_source_catalog_entry(
 }
 
 ///|
+fn match_wgsl_source_origin_entry(
+  origins : @hashmap.HashMap[String, Array[WgslSourceOriginEntry]],
+  declaration : WgslEmittedDeclaration,
+  diagnostics : Array[WgslDiagnostic],
+) -> WgslSourceOriginEntry? {
+  guard origins.get(declaration.name) is Some(entries) else {
+    push_wgsl_diagnostic(
+      diagnostics,
+      WgslDiagnosticSeverity::Warn,
+      "source origin entry could not be resolved for declaration",
+      None,
+      Some(declaration.name),
+      Some(declaration.generated_start),
+      None,
+    )
+    return None
+  }
+  if entries.length() == 1 {
+    return Some(entries[0])
+  }
+  push_wgsl_diagnostic(
+    diagnostics,
+    WgslDiagnosticSeverity::Warn,
+    "source origin entry is ambiguous for declaration",
+    None,
+    Some(declaration.name),
+    Some(declaration.generated_start),
+    None,
+  )
+  None
+}
+
+///|
 fn serialize_wgsl_export_output(
   tree_shaken : WgslTreeShakenSource,
   source_catalog : Array[WgslSourceCatalogEntry],
+  source_origins : Array[WgslSourceOriginEntry],
 ) -> WgslExportOutput {
   let diagnostics : Array[WgslDiagnostic] = []
   for missing_root in tree_shaken.missing_root_items {
@@ -122,10 +171,21 @@ fn serialize_wgsl_export_output(
     )
   }
   let catalog = build_wgsl_source_catalog_index(source_catalog)
+  let origins = build_wgsl_source_origin_index(source_origins)
   let source_map : Array[WgslSourceMapEntry] = []
 
   for declaration in tree_shaken.declarations {
-    if match_wgsl_source_catalog_entry(catalog, declaration, diagnostics)
+    if match_wgsl_source_origin_entry(origins, declaration, diagnostics)
+      is Some(origin) {
+      source_map.push(WgslSourceMapEntry::{
+        generated_start: declaration.generated_start,
+        generated_end: declaration.generated_end,
+        rel_path: origin.rel_path,
+        source_start: origin.source_start,
+        source_end: origin.source_end,
+        symbol_name: Some(origin.source_symbol_name),
+      })
+    } else if match_wgsl_source_catalog_entry(catalog, declaration, diagnostics)
       is Some(entry) {
       source_map.push(WgslSourceMapEntry::{
         generated_start: declaration.generated_start,
@@ -141,6 +201,7 @@ fn serialize_wgsl_export_output(
   WgslExportOutput::{
     source: tree_shaken.source,
     source_catalog,
+    source_origins,
     source_map,
     diagnostics,
   }
@@ -163,6 +224,7 @@ pub fn export_wgsl_with_options(
   let output = serialize_wgsl_export_output(
     tree_shaken,
     prepared.source_catalog,
+    prepared.source_origins,
   )
   for diagnostic in prepared.diagnostics {
     output.diagnostics.push(diagnostic)

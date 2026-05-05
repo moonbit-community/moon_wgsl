@@ -568,7 +568,9 @@ fn wgsl_emit_token_at(
               Some(
                 (
                   WgslEmittedToken::{
-                    text: wgsl_emit_token_text(token, replacements, source_start),
+                    text: wgsl_emit_token_text(
+                      token, replacements, source_start,
+                    ),
                     start: token.pos(),
                     end: token.end(),
                     kind: wgsl_emit_token_class(token),
@@ -712,10 +714,7 @@ pub fn emit_wgsl_text_with_token_rewrites(
 ) -> String {
   let replacements : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for rewrite in rewrites {
-    replacements.set(
-      "\{rewrite.start}:\{rewrite.end}",
-      rewrite.replacement,
-    )
+    replacements.set("\{rewrite.start}:\{rewrite.end}", rewrite.replacement)
   }
   let tokens = tokenize_wgsl(replace_comments(text), false)
   let mut out = ""
@@ -723,9 +722,8 @@ pub fn emit_wgsl_text_with_token_rewrites(
   let mut previous_text = ""
   let mut i = 0
   while i < tokens.length() {
-    guard wgsl_emit_token_at(tokens, i, replacements, source_start) is Some(
-        (token, consumed),
-      ) else {
+    guard wgsl_emit_token_at(tokens, i, replacements, source_start)
+      is Some((token, consumed)) else {
       break
     }
     i = i + consumed

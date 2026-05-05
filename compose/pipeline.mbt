@@ -1,4 +1,23 @@
 ///|
+
+///|
+priv enum WgslComposeSourceEmitAction {
+  DropOriginal
+  PreserveOriginal
+}
+
+///|
+fn compose_emit_source_item(
+  action : WgslComposeSourceEmitAction,
+  item : WgslDirectiveScanItem,
+) -> String {
+  match action {
+    DropOriginal => ""
+    PreserveOriginal => item.original_text
+  }
+}
+
+///|
 fn Composer::preprocess_wgsl_source_with_path(
   self : Composer,
   current_rel_path : String,
@@ -7,12 +26,20 @@ fn Composer::preprocess_wgsl_source_with_path(
   inherited_defs : WgslActiveComposeDefs?,
   inherited_alias_redirects : Array[WgslScopedAliasRedirect],
   apply_virtual_overrides : Bool,
+  record_current_origins : Bool,
 ) -> String raise ComposerError {
   let active_defs = self.active_compose_defs_for_rel_path(
     current_rel_path, session, inherited_defs,
   )
   merge_wgsl_source_local_shader_defs(active_defs, source)
   let prepared = prepare_wgsl_compose_source(source, session, active_defs)
+  if record_current_origins {
+    record_wgsl_source_origins_from_source(
+      session,
+      current_rel_path,
+      prepared.active_source,
+    )
+  }
   let mut merged = ""
   let alias_redirects : Array[WgslScopedAliasRedirect] = []
   for redirect in inherited_alias_redirects {
@@ -50,17 +77,19 @@ fn Composer::preprocess_wgsl_source_with_path(
       }
       WgslDirectiveScanItemKind::Directive(directive) =>
         match directive.kind {
-          WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define => ()
+          WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
+            merged = merged + compose_emit_source_item(DropOriginal, item)
           WgslDirectiveKind::Other(_) =>
             if parse_glsl_version_directive(item.cleaned_text) is None {
-              merged = "\{merged}\{item.original_text}"
+              merged = merged + compose_emit_source_item(PreserveOriginal, item)
             }
-          _ => merged = "\{merged}\{item.original_text}"
+          _ =>
+            merged = merged + compose_emit_source_item(PreserveOriginal, item)
         }
       WgslDirectiveScanItemKind::Source =>
-        merged = "\{merged}\{item.original_text}"
+        merged = merged + compose_emit_source_item(PreserveOriginal, item)
       WgslDirectiveScanItemKind::GlslVersion(_) =>
-        merged = "\{merged}\{item.original_text}"
+        merged = merged + compose_emit_source_item(PreserveOriginal, item)
     }
   }
   finalize_wgsl_composed_source(
@@ -90,6 +119,7 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
     session,
     None,
     [],
+    true,
     true,
   )
   session.active_rel_paths.pop() |> ignore
@@ -143,6 +173,7 @@ pub fn Composer::prepare_wgsl_source(
     source: prepared_source,
     source_files,
     source_catalog: build_prepared_wgsl_source_catalog(source_files.copy()),
+    source_origins: session.source_origins.copy(),
     defines: session.defines,
     value_defines: session.value_defines,
     diagnostics: collect_wgsl_unused_redirect_diagnostics(session),
@@ -173,6 +204,7 @@ pub fn Composer::compose_wgsl_source(
       None,
       [],
       true,
+      false,
     ),
   )
   finalize_wgsl_writeback_source(composed)

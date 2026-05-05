@@ -29,7 +29,14 @@ pub fn Preprocessor::preprocess(
         if version != "440" && version != "450" {
           raise PreprocessError::GlslInvalidVersion(offset)
         }
-        final_string = final_string + preprocess_blank_text(item.original_text)
+        final_string = final_string +
+          preprocess_emit_item(
+            BlankOriginal,
+            item,
+            shader_defs,
+            declared_imports,
+            used_imports,
+          )
       }
       WgslDirectiveScanItemKind::Directive(directive) => {
         let (is_scope, _) = preprocess_check_scope_directive(
@@ -48,7 +55,13 @@ pub fn Preprocessor::preprocess(
             )
           ) {
           final_string = final_string +
-            preprocess_blank_text(item.original_text)
+            preprocess_emit_item(
+              BlankOriginal,
+              item,
+              shader_defs,
+              declared_imports,
+              used_imports,
+            )
         } else if scope.active() &&
           item.required_tail_space &&
           directive.kind == WgslDirectiveKind::Import {
@@ -60,26 +73,52 @@ pub fn Preprocessor::preprocess(
               )
           }
           final_string = final_string +
-            preprocess_blank_text(item.original_text)
+            preprocess_emit_item(
+              BlankOriginal,
+              item,
+              shader_defs,
+              declared_imports,
+              used_imports,
+            )
         } else if scope.active() {
           final_string = final_string +
-            preprocess_rewrite_source_item(
-              item, shader_defs, declared_imports, used_imports,
+            preprocess_emit_item(
+              RewriteActiveSource,
+              item,
+              shader_defs,
+              declared_imports,
+              used_imports,
             )
         } else {
           final_string = final_string +
-            preprocess_blank_text(item.original_text)
+            preprocess_emit_item(
+              BlankOriginal,
+              item,
+              shader_defs,
+              declared_imports,
+              used_imports,
+            )
         }
       }
       WgslDirectiveScanItemKind::Source =>
         if scope.active() {
           final_string = final_string +
-            preprocess_rewrite_source_item(
-              item, shader_defs, declared_imports, used_imports,
+            preprocess_emit_item(
+              RewriteActiveSource,
+              item,
+              shader_defs,
+              declared_imports,
+              used_imports,
             )
         } else {
           final_string = final_string +
-            preprocess_blank_text(item.original_text)
+            preprocess_emit_item(
+              BlankOriginal,
+              item,
+              shader_defs,
+              declared_imports,
+              used_imports,
+            )
         }
     }
   }

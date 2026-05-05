@@ -125,6 +125,7 @@ priv struct WgslComposeSession {
   visited : @hashmap.HashMap[String, Bool]
   imported_item_names : @hashmap.HashMap[String, String]
   active_rel_paths : Array[String]
+  source_origins : Array[WgslSourceOriginEntry]
 }
 
 ///|

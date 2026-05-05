@@ -42,6 +42,19 @@ pub struct WgslTreeShakenSource {
 }
 
 ///|
+pub struct WgslModuleItemOrigin {
+  name : String
+  source_start : Int
+  source_end : Int
+}
+
+///|
+pub struct WgslModuleItemExtraction {
+  source : String
+  origins : Array[WgslModuleItemOrigin]
+}
+
+///|
 fn build_wgsl_declaration_graph_from_unit(
   unit : WgslTranslationUnit,
 ) -> WgslDeclarationGraph {
@@ -237,13 +250,23 @@ pub fn strip_wgsl_import_declarations_strict(
 }
 
 ///|
-fn extract_wgsl_module_items_from_graph(
+fn extract_wgsl_module_item_extraction_from_graph(
   source : String,
   graph : WgslDeclarationGraph,
   requested_items : Array[String],
-) -> String {
+) -> WgslModuleItemExtraction {
+  let origins : Array[WgslModuleItemOrigin] = []
   if requested_items.length() == 0 {
-    return source
+    for block in graph.declaration_blocks {
+      if block.name != "" {
+        origins.push(WgslModuleItemOrigin::{
+          name: block.name,
+          source_start: block.start,
+          source_end: block.start + block.text.length(),
+        })
+      }
+    }
+    return WgslModuleItemExtraction::{ source, origins }
   }
   let (included_names, _) = wgsl_reachable_declaration_map(
     graph.declaration_blocks,
@@ -256,7 +279,16 @@ fn extract_wgsl_module_items_from_graph(
     }
   }
   if matched_requested == 0 {
-    return source
+    for block in graph.declaration_blocks {
+      if block.name != "" {
+        origins.push(WgslModuleItemOrigin::{
+          name: block.name,
+          source_start: block.start,
+          source_end: block.start + block.text.length(),
+        })
+      }
+    }
+    return WgslModuleItemExtraction::{ source, origins }
   }
   let mut out = ""
   for import_block in graph.import_blocks {
@@ -265,9 +297,25 @@ fn extract_wgsl_module_items_from_graph(
   for block in graph.declaration_blocks {
     if block.name == "" || included_names.contains(block.name) {
       out = out + block.text
+      if block.name != "" {
+        origins.push(WgslModuleItemOrigin::{
+          name: block.name,
+          source_start: block.start,
+          source_end: block.start + block.text.length(),
+        })
+      }
     }
   }
-  out
+  WgslModuleItemExtraction::{ source: out, origins }
+}
+
+///|
+fn extract_wgsl_module_items_from_graph(
+  source : String,
+  graph : WgslDeclarationGraph,
+  requested_items : Array[String],
+) -> String {
+  extract_wgsl_module_item_extraction_from_graph(source, graph, requested_items).source
 }
 
 ///|
@@ -290,6 +338,30 @@ pub fn extract_wgsl_module_items_strict(
   extract_wgsl_module_items_from_graph(
     source,
     build_wgsl_declaration_graph_strict(source),
+    requested_items,
+  )
+}
+
+///|
+pub fn extract_wgsl_module_item_origins_strict(
+  source : String,
+  requested_items : Array[String],
+) -> WgslModuleItemExtraction raise WgslParseError {
+  extract_wgsl_module_item_extraction_from_graph(
+    source,
+    build_wgsl_declaration_graph_strict(source),
+    requested_items,
+  )
+}
+
+///|
+pub fn extract_wgsl_module_item_origins(
+  source : String,
+  requested_items : Array[String],
+) -> WgslModuleItemExtraction raise WgslParseError {
+  extract_wgsl_module_item_extraction_from_graph(
+    source,
+    build_wgsl_declaration_graph(source),
     requested_items,
   )
 }

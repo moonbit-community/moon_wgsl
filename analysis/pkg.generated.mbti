@@ -27,6 +27,10 @@ pub fn emit_wgsl_tree_shaken_source(String, Array[String]) -> WgslTreeShakenSour
 
 pub fn emit_wgsl_tree_shaken_source_strict(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
 
+pub fn extract_wgsl_module_item_origins(String, Array[String]) -> WgslModuleItemExtraction raise @parser.WgslParseError
+
+pub fn extract_wgsl_module_item_origins_strict(String, Array[String]) -> WgslModuleItemExtraction raise @parser.WgslParseError
+
 pub fn extract_wgsl_module_items(String, Array[String]) -> String raise @parser.WgslParseError
 
 pub fn extract_wgsl_module_items_strict(String, Array[String]) -> String raise @parser.WgslParseError
@@ -61,6 +65,17 @@ pub struct WgslGraphBlock {
   text : String
   start : Int
   data : @ast.WgslGlobalDeclData
+}
+
+pub struct WgslModuleItemExtraction {
+  source : String
+  origins : Array[WgslModuleItemOrigin]
+}
+
+pub struct WgslModuleItemOrigin {
+  name : String
+  source_start : Int
+  source_end : Int
 }
 
 pub struct WgslRenamePlan {

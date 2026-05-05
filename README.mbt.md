@@ -294,7 +294,8 @@ test "README: checked tree scan" {
 Use `export_wgsl_with_options` to produce a fully expanded
 single-file WGSL output. The export path also supports declaration-level
 tree-shaking and returns source-map entries, a source catalog derived from the
-final prepared WGSL, plus diagnostics.
+final prepared WGSL, a declaration origin graph for original-file provenance,
+plus diagnostics.
 
 ```mbt check
 ///|
@@ -331,6 +332,7 @@ test "README: export single WGSL file" {
 
   debug_inspect(exported.source.contains("#import"), content="false")
   debug_inspect(exported.source_catalog.length() > 0, content="true")
+  debug_inspect(exported.source_origins.length() > 0, content="true")
   debug_inspect(exported.source_map.length() > 0, content="true")
   debug_inspect(exported.diagnostics.length(), content="0")
 }
@@ -340,6 +342,10 @@ If you need the declaration catalog directly, without exporting a specific
 entrypoint, call `prepare_wgsl_source` on the same Composer. The catalog entries
 are extracted from the same resolved WGSL stored in `PreparedWgslSource.source`,
 so alias-qualified imports and redirects cannot diverge from the runtime source.
+`PreparedWgslSource.source_origins` is separate: it maps final declaration names
+back to their original registered file and declaration range, which lets
+source-map consumers keep original provenance without rebuilding catalogs from
+raw source files.
 
 ```mbt check
 ///|
@@ -495,6 +501,7 @@ Important public data structures:
 - `WgslExportOptions`
 - `WgslExportOutput`
 - `WgslSourceCatalogEntry`
+- `WgslSourceOriginEntry`
 - `WgslSourceMapEntry`
 - `WgslDiagnostic`
 
@@ -521,9 +528,10 @@ For the full exported surface, see the generated subpackage interfaces:
   raises `MetadataError` when directive or import metadata is invalid.
 - `Preprocessor::preprocess` is the strict path and raises `PreprocessError`
   when parsing or conditional evaluation fails.
-- `export_wgsl_with_options` scopes `source_catalog` and
-  `source_map` to the final prepared source for the current compose/export
-  result instead of rebuilding a catalog from raw registered files.
+- `export_wgsl_with_options` scopes `source_catalog` to the final prepared
+  source for the current compose/export result and builds `source_map` from the
+  separate `source_origins` declaration graph instead of rebuilding a catalog
+  from raw registered files.
 - Source-level redirects are token-based and intentionally skip declaration
   heads, field accesses (`.`), and attributes (`@...`); they are intended for
   imported helper/type names rather than locally shadowed identifiers.

@@ -41,12 +41,14 @@ pub fn apply_wgsl_ifdefs_strict(
           offset,
         )
         if !is_scope && scope.active() {
-          out = out + item.original_text
+          out = out +
+            preprocess_emit_item(PreserveOriginal, item, shader_defs, [], [])
         }
       }
       WgslDirectiveScanItemKind::Source =>
         if scope.active() {
-          out = out + item.original_text
+          out = out +
+            preprocess_emit_item(PreserveOriginal, item, shader_defs, [], [])
         }
     }
   }

@@ -47,3 +47,88 @@ fn build_prepared_wgsl_source_catalog(
   catalog_entries.sort_by(compare_wgsl_source_catalog_entries)
   catalog_entries
 }
+
+///|
+fn push_wgsl_source_origin(
+  session : WgslComposeSession,
+  generated_symbol_name : String,
+  rel_path : String,
+  source_symbol_name : String,
+  source_start : Int,
+  source_end : Int,
+) -> Unit {
+  if generated_symbol_name == "" || rel_path == "" {
+    return
+  }
+  session.source_origins.push(WgslSourceOriginEntry::{
+    generated_symbol_name,
+    rel_path,
+    source_symbol_name,
+    source_start,
+    source_end,
+  })
+}
+
+///|
+fn record_wgsl_source_origins_from_source(
+  session : WgslComposeSession,
+  rel_path : String,
+  source : String,
+) -> Unit {
+  let extraction = extract_wgsl_module_item_origins(source, []) catch {
+    _ => return
+  }
+  for origin in extraction.origins {
+    push_wgsl_source_origin(
+      session,
+      origin.name,
+      rel_path,
+      origin.name,
+      origin.source_start,
+      origin.source_end,
+    )
+  }
+}
+
+///|
+fn record_wgsl_source_origins_from_extraction(
+  session : WgslComposeSession,
+  rel_path : String,
+  extraction : WgslModuleItemExtraction,
+) -> Unit {
+  for origin in extraction.origins {
+    push_wgsl_source_origin(
+      session,
+      origin.name,
+      rel_path,
+      origin.name,
+      origin.source_start,
+      origin.source_end,
+    )
+  }
+}
+
+///|
+fn apply_wgsl_origin_renames(
+  origins : Array[WgslSourceOriginEntry],
+  start_index : Int,
+  rename_map : @hashmap.HashMap[String, String],
+) -> Unit {
+  if rename_map.is_empty() {
+    return
+  }
+  for i in start_index..<origins.length() {
+    let origin = origins[i]
+    match rename_map.get(origin.generated_symbol_name) {
+      Some(renamed) =>
+        origins[i] = WgslSourceOriginEntry::{
+          generated_symbol_name: renamed,
+          rel_path: origin.rel_path,
+          source_symbol_name: origin.source_symbol_name,
+          source_start: origin.source_start,
+          source_end: origin.source_end,
+        }
+      None => ()
+    }
+  }
+}

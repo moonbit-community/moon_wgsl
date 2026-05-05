@@ -283,6 +283,7 @@ fn Composer::compose_wgsl_import_requests(
     }
     session.visited.set(visit_key, true)
     let raw_source = self.load_wgsl_source_required_raw(request.rel_path)
+    let origin_start_index = session.source_origins.length()
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
       self.preprocess_wgsl_source_with_path(
@@ -292,6 +293,7 @@ fn Composer::compose_wgsl_import_requests(
         Some(importer_defs),
         alias_redirects,
         false,
+        true,
       )
     } else {
       let import_defs = self.active_compose_defs_for_rel_path(
@@ -303,18 +305,24 @@ fn Composer::compose_wgsl_import_requests(
         apply_wgsl_ifdefs_strict_for_compose(raw_source, import_defs),
         import_defs.value_defines,
       )
-      let filtered_source = extract_wgsl_module_items_strict(
+      let extraction = extract_wgsl_module_item_origins_strict(
         prepared_source,
         request.requested_items,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
+      record_wgsl_source_origins_from_extraction(
+        session,
+        request.rel_path,
+        extraction,
+      )
       self.preprocess_wgsl_source_with_path(
         request.rel_path,
-        filtered_source,
+        extraction.source,
         session,
         Some(importer_defs),
         alias_redirects,
+        false,
         false,
       )
     }
@@ -358,6 +366,11 @@ fn Composer::compose_wgsl_import_requests(
     } else {
       module_source
     }
+    apply_wgsl_origin_renames(
+      session.source_origins,
+      origin_start_index,
+      rename_map,
+    )
     if rename_map.is_empty() {
       let declarations = collect_wgsl_named_declarations_strict(
         final_module_source,

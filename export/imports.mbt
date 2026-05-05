@@ -14,6 +14,7 @@ using @common {
   type WgslExportOutput,
   type WgslSourceCatalogEntry,
   type WgslSourceMapEntry,
+  type WgslSourceOriginEntry,
 }
 
 ///|
