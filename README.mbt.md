@@ -3,8 +3,8 @@
 `Milky2018/moon_wgsl` is a MoonBit library for WGSL preprocessing, import
 analysis, and shader composition.
 
-The public surface follows `naga_oil` concepts while staying source-level and
-multi-backend. Import the focused subpackage you need, such as `@common`,
+The public surface follows `naga_oil` concepts while keeping preprocessing and
+composition multi-backend. Import the focused subpackage you need, such as `@common`,
 `@ast`, `@parser`, `@metadata`, `@preprocess`, `@resolver`, `@analysis`,
 `@compose`, or `@export`:
 
@@ -470,9 +470,6 @@ Main public entry points:
   Build and query module-path resolution data for an explicit registry.
 - `resolve_wgsl_import_file_path_from_registry`
   Resolves relative or quoted file-path imports against a source file path.
-- `rewrite_wgsl_symbol_redirects`
-  Applies AST-scoped symbol redirects to WGSL source from the `analysis`
-  package.
 - `Composer::compose_wgsl_source`
   Composes a raw WGSL source string using `WgslComposeOptions` without exposing
   session internals.
