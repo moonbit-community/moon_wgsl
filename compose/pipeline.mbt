@@ -13,7 +13,7 @@ fn compose_emit_scanned_item(
 ) -> String {
   match kind {
     DropDirective => ""
-    KeepTrivia => item.original_trivia()
+    KeepTrivia => item.source().original_text()
   }
 }
 
@@ -26,7 +26,7 @@ fn wgsl_compose_directive_emission_kind(
     WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
       DropDirective
     WgslDirectiveKind::Other =>
-      if parse_glsl_version_directive(item.cleaned_directive_text()) is None {
+      if parse_glsl_version_directive(item.source().cleaned_text()) is None {
         KeepTrivia
       } else {
         DropDirective

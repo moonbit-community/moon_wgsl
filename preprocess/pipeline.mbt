@@ -46,7 +46,7 @@ fn preprocess_emit_pipeline_item(
       if scope.active() &&
         directive.has_required_tail_separator() &&
         directive.kind() == WgslDirectiveKind::Import {
-        import_state.declare_imports(item.cleaned_directive_text()) catch {
+        import_state.declare_imports(item.source().cleaned_text()) catch {
           Parse(message, item_offset) =>
             raise PreprocessError::ImportParseError(
               message,

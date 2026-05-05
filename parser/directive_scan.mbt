@@ -6,11 +6,44 @@ pub enum WgslDirectiveScanItemKind {
 } derive(Debug)
 
 ///|
-pub struct WgslDirectiveScanItem {
-  priv kind : WgslDirectiveScanItemKind
+pub struct WgslDirectiveScanSource {
   priv start : Int
   priv original_text : String
   priv cleaned_text : String
+} derive(Debug)
+
+///|
+fn WgslDirectiveScanSource::new(
+  start : Int,
+  original_text : String,
+  cleaned_text : String,
+) -> WgslDirectiveScanSource {
+  WgslDirectiveScanSource::{ start, original_text, cleaned_text }
+}
+
+///|
+pub fn WgslDirectiveScanSource::start(self : WgslDirectiveScanSource) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslDirectiveScanSource::original_text(
+  self : WgslDirectiveScanSource,
+) -> String {
+  self.original_text
+}
+
+///|
+pub fn WgslDirectiveScanSource::cleaned_text(
+  self : WgslDirectiveScanSource,
+) -> String {
+  self.cleaned_text
+}
+
+///|
+pub struct WgslDirectiveScanItem {
+  priv kind : WgslDirectiveScanItemKind
+  priv source : WgslDirectiveScanSource
 } derive(Debug)
 
 ///|
@@ -27,7 +60,10 @@ fn WgslDirectiveScanItem::new(
   original_text : String,
   cleaned_text : String,
 ) -> WgslDirectiveScanItem {
-  WgslDirectiveScanItem::{ kind, start, original_text, cleaned_text }
+  WgslDirectiveScanItem::{
+    kind,
+    source: WgslDirectiveScanSource::new(start, original_text, cleaned_text),
+  }
 }
 
 ///|
@@ -39,21 +75,14 @@ pub fn WgslDirectiveScanItem::kind(
 
 ///|
 pub fn WgslDirectiveScanItem::start(self : WgslDirectiveScanItem) -> Int {
-  self.start
+  self.source.start()
 }
 
 ///|
-pub fn WgslDirectiveScanItem::original_trivia(
+pub fn WgslDirectiveScanItem::source(
   self : WgslDirectiveScanItem,
-) -> String {
-  self.original_text
-}
-
-///|
-pub fn WgslDirectiveScanItem::cleaned_directive_text(
-  self : WgslDirectiveScanItem,
-) -> String {
-  self.cleaned_text
+) -> WgslDirectiveScanSource {
+  self.source
 }
 
 ///|

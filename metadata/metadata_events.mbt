@@ -88,7 +88,7 @@ fn metadata_collect_source_item(
   effective_defs : @hashset.HashSet[String],
 ) -> Unit {
   let mut line_start = 0
-  let cleaned_text = item.cleaned_directive_text()
+  let cleaned_text = item.source().cleaned_text()
   while line_start < cleaned_text.length() {
     let line_text_end = metadata_source_line_text_end(cleaned_text, line_start)
     let line_end = if line_text_end < cleaned_text.length() {

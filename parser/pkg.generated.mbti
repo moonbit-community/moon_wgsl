@@ -54,9 +54,8 @@ pub fn WgslParseError::message(Self) -> String
 pub struct WgslDirectiveScanItem {
   // private fields
 } derive(@debug.Debug)
-pub fn WgslDirectiveScanItem::cleaned_directive_text(Self) -> String
 pub fn WgslDirectiveScanItem::kind(Self) -> WgslDirectiveScanItemKind
-pub fn WgslDirectiveScanItem::original_trivia(Self) -> String
+pub fn WgslDirectiveScanItem::source(Self) -> WgslDirectiveScanSource
 pub fn WgslDirectiveScanItem::start(Self) -> Int
 
 pub enum WgslDirectiveScanItemKind {
@@ -64,6 +63,13 @@ pub enum WgslDirectiveScanItemKind {
   GlslVersion(String)
   Directive(@ast.WgslDirective)
 } derive(@debug.Debug)
+
+pub struct WgslDirectiveScanSource {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslDirectiveScanSource::cleaned_text(Self) -> String
+pub fn WgslDirectiveScanSource::original_text(Self) -> String
+pub fn WgslDirectiveScanSource::start(Self) -> Int
 
 pub struct WgslShaderDefComparison {
   // private fields

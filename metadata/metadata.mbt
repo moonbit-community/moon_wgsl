@@ -27,7 +27,7 @@ fn try_get_preprocessor_metadata(
           }
         } else if directive.has_required_tail_separator() &&
           directive.kind() == WgslDirectiveKind::Import {
-          import_state.declare_imports(item.cleaned_directive_text()) catch {
+          import_state.declare_imports(item.source().cleaned_text()) catch {
             Parse(message, item_offset) =>
               raise MetadataError::ImportParseError(
                 message,

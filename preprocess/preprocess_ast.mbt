@@ -213,9 +213,10 @@ fn preprocess_emit_scanned_item(
   import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
+  let source = item.source()
   match kind {
-    BlankTrivia => preprocess_blank_text(item.original_trivia())
-    KeepTrivia => item.original_trivia()
+    BlankTrivia => preprocess_blank_text(source.original_text())
+    KeepTrivia => source.original_text()
     RewriteActiveSource =>
       preprocess_rewrite_source_item(
         item, shader_defs, import_state, used_imports,
@@ -230,12 +231,13 @@ fn preprocess_rewrite_source_item(
   import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
+  let source = item.source()
   let replaced_original = preprocess_replace_shader_defs_in_text(
-    item.original_trivia(),
+    source.original_text(),
     shader_defs,
   )
   let replaced_decommented = preprocess_replace_shader_defs_in_text(
-    item.cleaned_directive_text(),
+    source.cleaned_text(),
     shader_defs,
   )
   let ignored_imports : Array[ImportDefWithOffset] = []
