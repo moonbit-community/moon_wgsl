@@ -125,7 +125,6 @@ fn wgsl_reachable_declaration_map(
         block.name,
         block.text,
         block.start,
-        block.start + block.text.length(),
       ),
     )
   }

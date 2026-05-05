@@ -227,7 +227,6 @@ fn WgslDeclParser::parse_statement_local_binding(
       template_list,
       tail.ty,
       tail.ty_ref,
-      tail.initializer,
       tail.initializer_ref,
     ),
   )
@@ -978,8 +977,8 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     let blocks = self.collect_statement_blocks(tokens)
     Some(
       WgslStatement::new(
-        kind, payload, text, start_pos, end_pos, blocks, local_bindings, exported_local_bindings,
-        expression_refs, expressions,
+        kind, payload, text, blocks, local_bindings, exported_local_bindings, expression_refs,
+        expressions,
       ),
     )
   }

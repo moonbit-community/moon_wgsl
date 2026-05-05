@@ -101,8 +101,6 @@ attribute -> @ast.WgslAttribute
         name.name,
         at,
         end,
-        name.start,
-        name.end,
         arguments,
         arguments_ref,
       )
@@ -189,7 +187,7 @@ alias -> String
 
 directive_line -> @ast.WgslDirective
   : "#" head=DIRECTIVE_HEAD tail=directive_tail EOF {
-      let (name, text, start, end, name_start, name_end) = head
+      let (name, _, start, end, name_start, name_end) = head
       let (tail, raw_tail_start, raw_tail_end) = tail
       let tail_start = if tail == "" { name_end } else { raw_tail_start }
       let tail_end = if tail == "" { name_end } else { raw_tail_end }
@@ -211,7 +209,6 @@ directive_line -> @ast.WgslDirective
         kind,
         name,
         tail,
-        text,
         start,
         end,
         name_start,
@@ -468,7 +465,6 @@ source_directive -> @ast.WgslDirective
         @ast.WgslDirectiveKind::Enable,
         keyword.name,
         tail,
-        text,
         0,
         text.length(),
         keyword.start,
@@ -485,7 +481,6 @@ source_directive -> @ast.WgslDirective
         @ast.WgslDirectiveKind::Requires,
         keyword.name,
         tail,
-        text,
         0,
         text.length(),
         keyword.start,
@@ -502,7 +497,6 @@ source_directive -> @ast.WgslDirective
         @ast.WgslDirectiveKind::Diagnostic,
         keyword.name,
         tail,
-        text,
         0,
         text.length(),
         keyword.start,
@@ -551,7 +545,7 @@ function_arg_list -> Array[@ast.WgslFunctionArgument]
 
 function_arg -> @ast.WgslFunctionArgument
   : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
-      let (ty_text, ty_ref, _, ty_end) = ty
+      let (_, ty_ref, _, ty_end) = ty
       let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
       @ast.WgslFunctionArgument::new(
         attrs,
@@ -560,7 +554,6 @@ function_arg -> @ast.WgslFunctionArgument
         ty_end,
         name.start,
         name.end,
-        ty_text,
         ty_ref,
       )
     }
@@ -631,6 +624,5 @@ fn wgsl_type_ref_from_atom(
     arguments,
     wgsl_type_ref_text(source, source_start, start, end_),
     start,
-    end_,
   )
 }

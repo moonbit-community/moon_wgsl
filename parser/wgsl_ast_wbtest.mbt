@@ -1088,7 +1088,7 @@ test "WGSL override function payload preserves qualified target path" {
       #|    start: 33,
       #|    end: 39,
       #|    ty: "f32",
-      #|    ty_ref: Some({ name: "f32", arguments: [], text: "f32", start: 36, end: 39 }),
+      #|    ty_ref: Some({ name: "f32", arguments: [], text: "f32", start: 36 }),
       #|  },
       #|)
     ),

@@ -19,7 +19,6 @@ pub struct WgslDirective {
   kind : WgslDirectiveKind
   name : String
   tail : String
-  text : String
   start : Int
   end : Int
   name_start : Int
@@ -33,7 +32,6 @@ pub fn WgslDirective::new(
   kind : WgslDirectiveKind,
   name : String,
   tail : String,
-  text : String,
   start : Int,
   end : Int,
   name_start : Int,
@@ -45,7 +43,6 @@ pub fn WgslDirective::new(
     kind,
     name,
     tail,
-    text,
     start,
     end,
     name_start,
@@ -172,8 +169,6 @@ pub struct WgslAttribute {
   name : String
   start : Int
   end : Int
-  name_start : Int
-  name_end : Int
   arguments : String
   arguments_ref : WgslExprRef?
 } derive(Debug)
@@ -183,20 +178,10 @@ pub fn WgslAttribute::new(
   name : String,
   start : Int,
   end : Int,
-  name_start : Int,
-  name_end : Int,
   arguments : String,
   arguments_ref : WgslExprRef?,
 ) -> WgslAttribute {
-  WgslAttribute::{
-    name,
-    start,
-    end,
-    name_start,
-    name_end,
-    arguments,
-    arguments_ref,
-  }
+  WgslAttribute::{ name, start, end, arguments, arguments_ref }
 }
 
 ///|
@@ -205,7 +190,6 @@ pub struct WgslTypeRef {
   arguments : Array[WgslTypeRef]
   text : String
   start : Int
-  end : Int
 } derive(Debug)
 
 ///|
@@ -214,9 +198,8 @@ pub fn WgslTypeRef::new(
   arguments : Array[WgslTypeRef],
   text : String,
   start : Int,
-  end : Int,
 ) -> WgslTypeRef {
-  WgslTypeRef::{ name, arguments, text, start, end }
+  WgslTypeRef::{ name, arguments, text, start }
 }
 
 ///|
@@ -227,7 +210,6 @@ pub struct WgslFunctionArgument {
   end : Int
   name_start : Int
   name_end : Int
-  ty : String
   ty_ref : WgslTypeRef?
 } derive(Debug)
 
@@ -239,7 +221,6 @@ pub fn WgslFunctionArgument::new(
   end : Int,
   name_start : Int,
   name_end : Int,
-  ty : String,
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionArgument {
   WgslFunctionArgument::{
@@ -249,7 +230,6 @@ pub fn WgslFunctionArgument::new(
     end,
     name_start,
     name_end,
-    ty,
     ty_ref,
   }
 }
@@ -299,7 +279,6 @@ pub struct WgslLocalDeclaration {
   template_list : Array[String]
   ty : String?
   ty_ref : WgslTypeRef?
-  initializer : String?
   initializer_ref : WgslExprRef?
 } derive(Debug)
 
@@ -310,7 +289,6 @@ pub fn WgslLocalDeclaration::new(
   template_list : Array[String],
   ty : String?,
   ty_ref : WgslTypeRef?,
-  initializer : String?,
   initializer_ref : WgslExprRef?,
 ) -> WgslLocalDeclaration {
   WgslLocalDeclaration::{
@@ -319,7 +297,6 @@ pub fn WgslLocalDeclaration::new(
     template_list,
     ty,
     ty_ref,
-    initializer,
     initializer_ref,
   }
 }
@@ -375,8 +352,6 @@ pub struct WgslStatement {
   kind : WgslStatementKind
   payload : WgslStatementPayload
   text : String
-  start : Int
-  end : Int
   blocks : Array[WgslBlock]
   local_bindings : Array[WgslLocalDeclaration]
   exported_local_bindings : Array[WgslLocalDeclaration]
@@ -389,8 +364,6 @@ pub fn WgslStatement::new(
   kind : WgslStatementKind,
   payload : WgslStatementPayload,
   text : String,
-  start : Int,
-  end : Int,
   blocks : Array[WgslBlock],
   local_bindings : Array[WgslLocalDeclaration],
   exported_local_bindings : Array[WgslLocalDeclaration],
@@ -401,8 +374,6 @@ pub fn WgslStatement::new(
     kind,
     payload,
     text,
-    start,
-    end,
     blocks,
     local_bindings,
     exported_local_bindings,
@@ -630,7 +601,6 @@ pub struct WgslGlobalDecl {
   name : String
   text : String
   start : Int
-  end : Int
 } derive(Debug)
 
 ///|
@@ -640,9 +610,8 @@ pub fn WgslGlobalDecl::new(
   name : String,
   text : String,
   start : Int,
-  end : Int,
 ) -> WgslGlobalDecl {
-  WgslGlobalDecl::{ kind, data, name, text, start, end }
+  WgslGlobalDecl::{ kind, data, name, text, start }
 }
 
 ///|
