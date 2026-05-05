@@ -128,7 +128,7 @@ fn wgsl_reachable_declaration_map(
       ),
     )
   }
-  let reachable = collect_wgsl_semantic_reachable_declaration_names(
+  let reachable = collect_wgsl_reachable_declaration_names(
     declarations, root_items,
   )
   for name in reachable.included_names {

@@ -606,3 +606,44 @@ test "normalizer suffix rewrites ignore stale tree-shaken alias targets" {
   debug_inspect(normalized.contains("return FLAG;"), content="true")
   debug_inspect(normalized.contains("types__FLAG"), content="false")
 }
+
+///|
+test "analysis reachability resolves transitive dependencies" {
+  let source =
+    #|const BASE: u32 = 1u;
+    #|const VALUE: u32 = BASE + 1u;
+    #|fn entry() -> u32 {
+    #|  return VALUE;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    _ => abort("expected valid WGSL parse")
+  }
+  let reachable = collect_wgsl_reachable_declaration_names(unit.declarations, [
+    "entry",
+  ])
+  let names = reachable.included_names
+  names.sort()
+  debug_inspect(names.join(","), content="\"BASE,VALUE,entry\"")
+  debug_inspect(reachable.missing_root_items.length(), content="0")
+}
+
+///|
+test "analysis reachability respects function local shadowing" {
+  let source =
+    #|const helper: u32 = 1u;
+    #|fn entry() -> u32 {
+    #|  let helper = 2u;
+    #|  return helper;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    _ => abort("expected valid WGSL parse")
+  }
+  let reachable = collect_wgsl_reachable_declaration_names(unit.declarations, [
+    "entry",
+  ])
+  let names = reachable.included_names
+  names.sort()
+  debug_inspect(names.join(","), content="\"entry\"")
+}

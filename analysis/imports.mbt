@@ -34,6 +34,3 @@ using @ast {type WgslTranslationUnit}
 
 ///|
 using @common {type WgslSymbolRedirect}
-
-///|
-using @semantic {collect_wgsl_semantic_reachable_declaration_names}

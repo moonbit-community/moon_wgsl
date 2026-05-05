@@ -509,8 +509,7 @@ For the full exported surface, see the generated subpackage interfaces:
 `common/pkg.generated.mbti`, `ast/pkg.generated.mbti`,
 `parser/pkg.generated.mbti`, `metadata/pkg.generated.mbti`, `preprocess/pkg.generated.mbti`,
 `resolver/pkg.generated.mbti`, `analysis/pkg.generated.mbti`,
-`semantic/pkg.generated.mbti`, `compose/pkg.generated.mbti`, and
-`export/pkg.generated.mbti`.
+`compose/pkg.generated.mbti`, and `export/pkg.generated.mbti`.
 
 ## Behavior Notes
 

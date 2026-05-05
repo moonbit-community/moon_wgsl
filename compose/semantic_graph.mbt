@@ -19,7 +19,7 @@ priv struct WgslSemanticReferencePath {
 }
 
 ///|
-pub struct WgslSemanticImportTargetPlan {
+priv struct WgslSemanticImportTargetPlan {
   resolved_module : WgslResolvedImportModule
   module_alias : String
   requested_items : Array[String]
@@ -28,19 +28,13 @@ pub struct WgslSemanticImportTargetPlan {
   explicit_item_binding : Bool
   default_module_alias_candidate : Bool
   alias_is_used : Bool
-} derive(Eq, Debug)
+}
 
 ///|
-pub struct WgslSemanticImportTargetPlans {
+priv struct WgslSemanticImportTargetPlans {
   plans : Array[WgslSemanticImportTargetPlan]
   unresolved_targets : Array[String]
-} derive(Eq, Debug)
-
-///|
-pub struct WgslSemanticReachableDeclarations {
-  included_names : Array[String]
-  missing_root_items : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
 fn semantic_string_list_push_unique(
@@ -114,118 +108,6 @@ fn collect_wgsl_semantic_reference_paths(
 }
 
 ///|
-fn semantic_declaration_name_map(
-  declarations : Array[WgslGlobalDecl],
-) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
-  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
-  for i in 0..<declarations.length() {
-    let decl = declarations[i]
-    if decl.name != "" {
-      declaration_names.set(decl.name, true)
-      declaration_indexes.set(decl.name, i)
-    }
-  }
-  (declaration_names, declaration_indexes)
-}
-
-///|
-fn semantic_collect_identifier_dependencies(
-  identifiers : Array[WgslIdent],
-  self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
-  dependencies : Array[String],
-) -> Unit {
-  for identifier in identifiers {
-    let dependency_name = identifier.name
-    if dependency_name != self_name &&
-      declaration_names.contains(dependency_name) {
-      semantic_string_list_push_unique(dependencies, dependency_name)
-    }
-  }
-}
-
-///|
-fn semantic_collect_declaration_dependencies(
-  declaration_data : WgslGlobalDeclData,
-  self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
-  dependencies : Array[String],
-) -> Unit {
-  match declaration_data {
-    WgslGlobalDeclData::Raw => ()
-    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) => ()
-    _ => {
-      let identifiers : Array[WgslIdent] = []
-      collect_wgsl_decl_identifier_nodes(declaration_data, identifiers)
-      semantic_collect_identifier_dependencies(
-        identifiers, self_name, declaration_names, dependencies,
-      )
-    }
-  }
-}
-
-///|
-pub fn collect_wgsl_semantic_reachable_declaration_names(
-  declarations : Array[WgslGlobalDecl],
-  root_items : Array[String],
-) -> WgslSemanticReachableDeclarations {
-  let included_names : Array[String] = []
-  if root_items.length() == 0 {
-    for decl in declarations {
-      semantic_string_list_push_unique(included_names, decl.name)
-    }
-    return WgslSemanticReachableDeclarations::{
-      included_names,
-      missing_root_items: [],
-    }
-  }
-  let (declaration_names, declaration_indexes) = semantic_declaration_name_map(
-    declarations,
-  )
-  let worklist : Array[String] = []
-  let missing_root_items : Array[String] = []
-  for root_item in root_items {
-    if declaration_names.contains(root_item) {
-      worklist.push(root_item)
-    } else {
-      semantic_string_list_push_unique(missing_root_items, root_item)
-    }
-  }
-  if worklist.length() == 0 {
-    for decl in declarations {
-      semantic_string_list_push_unique(included_names, decl.name)
-    }
-    return WgslSemanticReachableDeclarations::{
-      included_names,
-      missing_root_items,
-    }
-  }
-  while worklist.length() > 0 {
-    let name = worklist.pop().unwrap()
-    if included_names.contains(name) {
-      continue
-    }
-    included_names.push(name)
-    guard declaration_indexes.get(name) is Some(index) else { continue }
-    let decl = declarations[index]
-    let dependencies : Array[String] = []
-    semantic_collect_declaration_dependencies(
-      decl.data,
-      name,
-      declaration_names,
-      dependencies,
-    )
-    for dependency in dependencies {
-      if !included_names.contains(dependency) {
-        worklist.push(dependency)
-      }
-    }
-  }
-  WgslSemanticReachableDeclarations::{ included_names, missing_root_items }
-}
-
-///|
 fn wgsl_semantic_requested_item_name(
   raw_path : String,
   module_path : String,
@@ -261,7 +143,7 @@ fn split_last_wgsl_semantic_path(path : String) -> (String, String)? {
 }
 
 ///|
-pub fn wgsl_semantic_import_default_alias(module_path : String) -> String {
+fn wgsl_semantic_import_default_alias(module_path : String) -> String {
   match split_last_identifier(module_path.trim().to_owned()) {
     Some((_, suffix)) => suffix.trim().to_owned()
     None => module_path.trim().to_owned()
@@ -322,7 +204,7 @@ fn wgsl_semantic_source_uses_alias(
 }
 
 ///|
-pub fn wgsl_semantic_source_contains_reference_path(
+fn wgsl_semantic_source_contains_reference_path(
   source : String,
   reference_path : String,
 ) -> Bool raise WgslParseError {
@@ -342,7 +224,7 @@ pub fn wgsl_semantic_source_contains_reference_path(
 }
 
 ///|
-pub fn unresolved_wgsl_semantic_namespace_reference(
+fn unresolved_wgsl_semantic_namespace_reference(
   source : String,
 ) -> String? raise WgslParseError {
   let paths : Array[WgslSemanticReferencePath] = []
@@ -356,7 +238,7 @@ pub fn unresolved_wgsl_semantic_namespace_reference(
 }
 
 ///|
-pub fn resolve_wgsl_semantic_import_module(
+fn resolve_wgsl_semantic_import_module(
   importer_rel_path : String,
   import_path : String,
   registry : WgslSourceRegistry,
@@ -388,7 +270,7 @@ pub fn resolve_wgsl_semantic_import_module(
 }
 
 ///|
-pub fn collect_wgsl_semantic_qualified_module_targets(
+fn collect_wgsl_semantic_qualified_module_targets(
   source : String,
   current_rel_path : String,
   registry : WgslSourceRegistry,
@@ -584,7 +466,7 @@ fn build_wgsl_semantic_import_target_plan(
 }
 
 ///|
-pub fn build_wgsl_semantic_import_target_plans(
+fn build_wgsl_semantic_import_target_plans(
   source : String,
   current_rel_path : String,
   initial_targets : Array[WgslImportTarget],
@@ -619,7 +501,7 @@ pub fn build_wgsl_semantic_import_target_plans(
 }
 
 ///|
-pub fn build_wgsl_semantic_import_rename_map(
+fn build_wgsl_semantic_import_rename_map(
   source : String,
   alias_name : String,
 ) -> @hashmap.HashMap[String, String] raise WgslParseError {
@@ -634,7 +516,7 @@ pub fn build_wgsl_semantic_import_rename_map(
 }
 
 ///|
-pub fn collect_wgsl_semantic_import_alias_redirects(
+fn collect_wgsl_semantic_import_alias_redirects(
   alias_name : String,
   rename_map : @hashmap.HashMap[String, String],
   redirects : Array[WgslSymbolRedirect],

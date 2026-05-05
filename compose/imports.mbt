@@ -67,13 +67,3 @@ using @parser {
 }
 
 ///|
-using @semantic {
-  build_wgsl_semantic_import_target_plans,
-  build_wgsl_semantic_import_rename_map,
-  collect_wgsl_semantic_import_alias_redirects,
-  collect_wgsl_semantic_qualified_module_targets,
-  resolve_wgsl_semantic_import_module,
-  unresolved_wgsl_semantic_namespace_reference,
-  wgsl_semantic_import_default_alias,
-  wgsl_semantic_source_contains_reference_path,
-}
