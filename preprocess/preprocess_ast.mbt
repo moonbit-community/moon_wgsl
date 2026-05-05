@@ -199,23 +199,23 @@ fn preprocess_pad_rewritten_source_item(
 }
 
 ///|
-priv enum WgslPreprocessEmitAction {
-  BlankOriginal
-  PreserveOriginal
+priv enum WgslPreprocessEmissionKind {
+  BlankTrivia
+  KeepTrivia
   RewriteActiveSource
 }
 
 ///|
-fn preprocess_emit_item(
-  action : WgslPreprocessEmitAction,
+fn preprocess_emit_scanned_item(
+  kind : WgslPreprocessEmissionKind,
   item : WgslDirectiveScanItem,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   declared_imports : Array[DeclaredImportBinding],
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
-  match action {
-    BlankOriginal => preprocess_blank_text(item.original_text)
-    PreserveOriginal => item.original_text
+  match kind {
+    BlankTrivia => preprocess_blank_text(item.original_text)
+    KeepTrivia => item.original_text
     RewriteActiveSource =>
       preprocess_rewrite_source_item(
         item, shader_defs, declared_imports, used_imports,

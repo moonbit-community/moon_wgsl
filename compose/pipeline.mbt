@@ -1,19 +1,73 @@
 ///|
 
 ///|
-priv enum WgslComposeSourceEmitAction {
-  DropOriginal
-  PreserveOriginal
+priv enum WgslComposeSourceEmissionKind {
+  DropDirective
+  KeepTrivia
 }
 
 ///|
-fn compose_emit_source_item(
-  action : WgslComposeSourceEmitAction,
+fn compose_emit_scanned_item(
+  kind : WgslComposeSourceEmissionKind,
   item : WgslDirectiveScanItem,
 ) -> String {
-  match action {
-    DropOriginal => ""
-    PreserveOriginal => item.original_text
+  match kind {
+    DropDirective => ""
+    KeepTrivia => item.original_text
+  }
+}
+
+///|
+fn wgsl_compose_directive_emission_kind(
+  item : WgslDirectiveScanItem,
+  directive : WgslDirective,
+) -> WgslComposeSourceEmissionKind {
+  match directive.kind {
+    WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
+      DropDirective
+    WgslDirectiveKind::Other(_) =>
+      if parse_glsl_version_directive(item.cleaned_text) is None {
+        KeepTrivia
+      } else {
+        DropDirective
+      }
+    _ => KeepTrivia
+  }
+}
+
+///|
+fn Composer::compose_wgsl_scanned_item(
+  self : Composer,
+  current_rel_path : String,
+  item : WgslDirectiveScanItem,
+  active_scan_source : String,
+  alias_redirects : Array[WgslScopedAliasRedirect],
+  session : WgslComposeSession,
+  active_defs : WgslActiveComposeDefs,
+) -> String raise ComposerError {
+  match item.kind {
+    WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind ==
+      WgslDirectiveKind::Import => {
+      let requests = self.build_wgsl_import_requests(
+        current_rel_path,
+        import_directive.tail,
+        active_scan_source,
+        session,
+        active_defs,
+      )
+      self.compose_wgsl_import_requests(
+        current_rel_path, requests, alias_redirects, session, active_defs,
+      )
+    }
+    WgslDirectiveScanItemKind::Directive(directive) =>
+      compose_emit_scanned_item(
+        wgsl_compose_directive_emission_kind(item, directive),
+        item,
+      )
+    WgslDirectiveScanItemKind::Source =>
+      compose_emit_scanned_item(KeepTrivia, item)
+    WgslDirectiveScanItemKind::GlslVersion(_) =>
+      compose_emit_scanned_item(KeepTrivia, item)
   }
 }
 
@@ -60,37 +114,15 @@ fn Composer::preprocess_wgsl_source_with_path(
       prepared.active_source,
       include_glsl_version=false,
     ) {
-    match item.kind {
-      WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind ==
-        WgslDirectiveKind::Import => {
-        let requests = self.build_wgsl_import_requests(
-          current_rel_path,
-          import_directive.tail,
-          prepared.active_scan_source,
-          session,
-          active_defs,
-        )
-        let composed_imports = self.compose_wgsl_import_requests(
-          current_rel_path, requests, alias_redirects, session, active_defs,
-        )
-        merged = "\{merged}\{composed_imports}"
-      }
-      WgslDirectiveScanItemKind::Directive(directive) =>
-        match directive.kind {
-          WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
-            merged = merged + compose_emit_source_item(DropOriginal, item)
-          WgslDirectiveKind::Other(_) =>
-            if parse_glsl_version_directive(item.cleaned_text) is None {
-              merged = merged + compose_emit_source_item(PreserveOriginal, item)
-            }
-          _ =>
-            merged = merged + compose_emit_source_item(PreserveOriginal, item)
-        }
-      WgslDirectiveScanItemKind::Source =>
-        merged = merged + compose_emit_source_item(PreserveOriginal, item)
-      WgslDirectiveScanItemKind::GlslVersion(_) =>
-        merged = merged + compose_emit_source_item(PreserveOriginal, item)
-    }
+    merged = merged +
+      self.compose_wgsl_scanned_item(
+        current_rel_path,
+        item,
+        prepared.active_scan_source,
+        alias_redirects,
+        session,
+        active_defs,
+      )
   }
   finalize_wgsl_composed_source(
     merged, alias_redirects, active_defs, session, apply_virtual_overrides,

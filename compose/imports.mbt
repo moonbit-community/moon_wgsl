@@ -53,7 +53,7 @@ using @resolver {
 }
 
 ///|
-using @ast {type WgslDirectiveKind}
+using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|
 using @parser {

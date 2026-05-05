@@ -42,13 +42,13 @@ pub fn apply_wgsl_ifdefs_strict(
         )
         if !is_scope && scope.active() {
           out = out +
-            preprocess_emit_item(PreserveOriginal, item, shader_defs, [], [])
+            preprocess_emit_scanned_item(KeepTrivia, item, shader_defs, [], [])
         }
       }
       WgslDirectiveScanItemKind::Source =>
         if scope.active() {
           out = out +
-            preprocess_emit_item(PreserveOriginal, item, shader_defs, [], [])
+            preprocess_emit_scanned_item(KeepTrivia, item, shader_defs, [], [])
         }
     }
   }
