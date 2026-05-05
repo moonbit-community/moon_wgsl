@@ -11,7 +11,7 @@ pub(all) enum WgslDirectiveKind {
   Enable
   Requires
   Diagnostic
-  Other(String)
+  Other
 } derive(Eq, Debug)
 
 ///|

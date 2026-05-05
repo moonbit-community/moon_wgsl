@@ -202,7 +202,7 @@ directive_line -> @ast.WgslDirective
         "enable" => @ast.WgslDirectiveKind::Enable
         "requires" => @ast.WgslDirectiveKind::Requires
         "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
-        _ => @ast.WgslDirectiveKind::Other(name)
+        _ => @ast.WgslDirectiveKind::Other
       }
       @ast.WgslDirective::new(
         kind,

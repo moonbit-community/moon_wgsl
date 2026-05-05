@@ -102,7 +102,7 @@ fn top_level_directive_item_kind(
     | WgslDirectiveKind::Enable
     | WgslDirectiveKind::Requires
     | WgslDirectiveKind::Diagnostic
-    | WgslDirectiveKind::Other(_) => WgslRawTopLevelKind::Directive
+    | WgslDirectiveKind::Other => WgslRawTopLevelKind::Directive
   }
 }
 

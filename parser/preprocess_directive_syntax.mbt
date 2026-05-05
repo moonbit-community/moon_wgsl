@@ -244,7 +244,8 @@ pub fn wgsl_effective_directive_tail(directive : WgslDirective) -> String {
         " \{directive.tail()}"
       }
     WgslDirectiveKind::Endif => directive.tail()
-    WgslDirectiveKind::Other(name) =>
+    WgslDirectiveKind::Other => {
+      let name = directive.name().name()
       if name.has_prefix("else") {
         let suffix = name["else".length():name.length()].to_owned()
         if directive.tail() == "" {
@@ -262,6 +263,7 @@ pub fn wgsl_effective_directive_tail(directive : WgslDirective) -> String {
       } else {
         directive.tail()
       }
+    }
     _ => directive.tail()
   }
 }
@@ -271,7 +273,8 @@ pub fn wgsl_effective_directive_kind(
   directive : WgslDirective,
 ) -> WgslDirectiveKind {
   match directive.kind() {
-    WgslDirectiveKind::Other(name) =>
+    WgslDirectiveKind::Other => {
+      let name = directive.name().name()
       if name.has_prefix("else") {
         WgslDirectiveKind::Else
       } else if name.has_prefix("endif") {
@@ -279,6 +282,7 @@ pub fn wgsl_effective_directive_kind(
       } else {
         directive.kind()
       }
+    }
     _ => directive.kind()
   }
 }

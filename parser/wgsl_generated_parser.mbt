@@ -690,7 +690,7 @@ fn yy_action_13(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 // 202|        "enable" => @ast.WgslDirectiveKind::Enable
 // 203|        "requires" => @ast.WgslDirectiveKind::Requires
 // 204|        "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
-// 205|        _ => @ast.WgslDirectiveKind::Other(name)
+// 205|        _ => @ast.WgslDirectiveKind::Other
 // 206|      }
 // 207|      @ast.WgslDirective::new(
 // 208|        kind,
@@ -726,7 +726,7 @@ fn yy_action_14(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
         "enable" => @ast.WgslDirectiveKind::Enable
         "requires" => @ast.WgslDirectiveKind::Requires
         "diagnostic" => @ast.WgslDirectiveKind::Diagnostic
-        _ => @ast.WgslDirectiveKind::Other(name)
+        _ => @ast.WgslDirectiveKind::Other
       }
       @ast.WgslDirective::new(
         kind,

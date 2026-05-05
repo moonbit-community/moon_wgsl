@@ -25,7 +25,7 @@ fn wgsl_compose_directive_emission_kind(
   match directive.kind() {
     WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
       DropDirective
-    WgslDirectiveKind::Other(_) =>
+    WgslDirectiveKind::Other =>
       if parse_glsl_version_directive(item.cleaned_directive_text()) is None {
         KeepTrivia
       } else {

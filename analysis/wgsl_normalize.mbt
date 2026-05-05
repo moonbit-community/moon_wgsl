@@ -145,7 +145,7 @@ fn wgsl_directive_kind_key(kind : WgslDirectiveKind) -> String {
     Enable => "enable"
     Requires => "requires"
     Diagnostic => "diagnostic"
-    Other(name) => "other:\{name}"
+    Other => "other"
   }
 }
 

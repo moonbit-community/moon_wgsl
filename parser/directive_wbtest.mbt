@@ -17,7 +17,7 @@ test "WGSL directive parser classifies known directives" {
 test "WGSL directive parser keeps unknown directives structured" {
   let parsed = parse_wgsl_directive_line("#custom thing")
   guard parsed is Some(directive) else { abort("expected directive") }
-  debug_inspect(directive.kind(), content="Other(\"custom\")")
+  debug_inspect(directive.kind(), content="Other")
   debug_inspect(directive.tail(), content="\"thing\"")
   debug_inspect(directive.start(), content="0")
   debug_inspect(directive.end(), content="13")
