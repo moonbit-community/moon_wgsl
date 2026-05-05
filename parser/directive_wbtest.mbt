@@ -38,14 +38,3 @@ test "WGSL directive parser accepts Rust regex Unicode whitespace" {
   debug_inspect(directive.kind(), content="DefineImportPath")
   debug_inspect(directive.tail(), content="\"demo::module\"")
 }
-
-///|
-test "WGSL GLSL version directive parser extracts versions" {
-  debug_inspect(
-    parse_glsl_version_directive(" #version 450 core"),
-    content="Some(\"450\")",
-  )
-  debug_inspect(parse_glsl_version_directive("#version450"), content="None")
-}
-
-///|

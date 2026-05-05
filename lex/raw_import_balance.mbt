@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn naga_oil_raw_import_brace_balance_next(
+pub fn naga_oil_raw_import_brace_balance_next(
   open_count : Int,
   line : String,
 ) -> Int {

@@ -1,9 +1,6 @@
 import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/lex",
+  "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/hashmap",
 }
-
-import {
-  "Milky2018/moon_wgsl/parser",
-} for "wbtest"

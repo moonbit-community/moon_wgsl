@@ -3,7 +3,7 @@ pub fn parse_glsl_version_directive(line : String) -> String? {
   let trimmed = wgsl_regex_trim_whitespace(line)
   let prefix = "#version"
   guard trimmed.length() > prefix.length() &&
-    has_ascii_keyword_at(trimmed, 0, prefix) else {
+    glsl_version_has_ascii_keyword_at(trimmed, 0, prefix) else {
     return None
   }
   let space_pos = prefix.length()
@@ -24,4 +24,21 @@ pub fn parse_glsl_version_directive(line : String) -> String? {
   } else {
     None
   }
+}
+
+///|
+fn glsl_version_has_ascii_keyword_at(
+  text : String,
+  offset : Int,
+  keyword : String,
+) -> Bool {
+  if offset < 0 || offset + keyword.length() > text.length() {
+    return false
+  }
+  for i in 0..<keyword.length() {
+    if text.code_unit_at(offset + i) != keyword.code_unit_at(i) {
+      return false
+    }
+  }
+  true
 }

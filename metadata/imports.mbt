@@ -24,15 +24,11 @@ using @lex {
 }
 
 ///|
-using @parser {
+using @directive {
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
-  parse_wgsl_directive_scan_items,
-}
-
-///|
-using @directive {
   parse_wgsl_directive_identifier,
+  parse_wgsl_directive_scan_items,
   parse_wgsl_shader_def_comparison,
   parse_wgsl_shader_def_references,
   wgsl_required_space_word_tail,

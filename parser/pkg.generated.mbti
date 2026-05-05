@@ -4,13 +4,10 @@ package "Milky2018/moon_wgsl/parser"
 import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
-  "moonbitlang/core/debug",
 }
 
 // Values
-pub fn parse_glsl_version_directive(String) -> String?
-
-pub fn parse_wgsl_directive_scan_items(String, include_glsl_version? : Bool) -> Array[WgslDirectiveScanItem]
+pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
 
 pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
 
@@ -30,24 +27,6 @@ pub suberror WgslParseError {
 pub fn WgslParseError::message(Self) -> String
 
 // Types and methods
-pub struct WgslDirectiveScanItem {
-  // private fields
-} derive(@debug.Debug)
-pub fn WgslDirectiveScanItem::kind(Self) -> WgslDirectiveScanItemKind
-pub fn WgslDirectiveScanItem::source(Self) -> WgslDirectiveScanSource
-pub fn WgslDirectiveScanItem::start(Self) -> Int
-
-pub enum WgslDirectiveScanItemKind {
-  Source
-  GlslVersion(String)
-  Directive(@ast.WgslDirective)
-} derive(@debug.Debug)
-
-pub struct WgslDirectiveScanSource {
-  // private fields
-} derive(@debug.Debug)
-pub fn WgslDirectiveScanSource::cleaned_text(Self) -> String
-pub fn WgslDirectiveScanSource::original_text(Self) -> String
 
 // Type aliases
 

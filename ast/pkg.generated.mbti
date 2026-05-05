@@ -379,7 +379,6 @@ pub fn WgslTypeAtom::identifier(Self) -> WgslIdent?
 pub fn WgslTypeAtom::kind(Self) -> WgslTypeAtomKind
 pub fn WgslTypeAtom::new(WgslTypeAtomKind, String, Int, Int) -> Self
 pub fn WgslTypeAtom::start(Self) -> Int
-pub fn WgslTypeAtom::text(Self) -> String
 
 pub(all) enum WgslTypeAtomKind {
   Identifier
@@ -396,7 +395,6 @@ pub fn WgslTypeRef::canonical_text(Self) -> String
 pub fn WgslTypeRef::end(Self) -> Int
 pub fn WgslTypeRef::name(Self) -> String
 pub fn WgslTypeRef::new(WgslTypeAtom, Array[Self], Int, Int) -> Self
-pub fn WgslTypeRef::start(Self) -> Int
 
 // Type aliases
 

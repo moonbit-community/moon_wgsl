@@ -1,11 +1,20 @@
 ///|
 fn directive_from_source(source : String) -> @ast.WgslDirective {
-  let items = @parser.parse_wgsl_directive_scan_items(source)
+  let items = parse_wgsl_directive_scan_items(source)
   guard items.length() == 1 else { abort("expected one directive item") }
   match items[0].kind() {
     Directive(directive) => directive
     _ => abort("expected directive")
   }
+}
+
+///|
+test "WGSL GLSL version directive parser extracts versions" {
+  debug_inspect(
+    parse_glsl_version_directive(" #version 450 core"),
+    content="Some(\"450\")",
+  )
+  debug_inspect(parse_glsl_version_directive("#version450"), content="None")
 }
 
 ///|

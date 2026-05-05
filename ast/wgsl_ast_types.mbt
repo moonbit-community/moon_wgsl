@@ -470,7 +470,7 @@ pub fn WgslTypeAtom::kind(self : WgslTypeAtom) -> WgslTypeAtomKind {
 }
 
 ///|
-pub fn WgslTypeAtom::text(self : WgslTypeAtom) -> String {
+fn WgslTypeAtom::text(self : WgslTypeAtom) -> String {
   self.text
 }
 
@@ -536,11 +536,6 @@ pub fn WgslTypeRef::canonical_text(self : WgslTypeRef) -> String {
   }
   let joined_arguments = argument_texts.join(", ")
   "\{self.name()}<\{joined_arguments}>"
-}
-
-///|
-pub fn WgslTypeRef::start(self : WgslTypeRef) -> Int {
-  self.start
 }
 
 ///|

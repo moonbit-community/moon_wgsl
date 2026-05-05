@@ -15,16 +15,12 @@ using @ast {type WgslDirective, type WgslDirectiveKind}
 using @lex {spaces, trim_trailing_semicolons, utf8_byte_length}
 
 ///|
-using @parser {
+using @directive {
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
-  parse_wgsl_directive_scan_items,
-}
-
-///|
-using @directive {
   type WgslShaderDefOperator,
   parse_wgsl_directive_identifier,
+  parse_wgsl_directive_scan_items,
   parse_wgsl_shader_def_comparison,
   parse_wgsl_shader_def_references,
   parse_wgsl_template_const_references,

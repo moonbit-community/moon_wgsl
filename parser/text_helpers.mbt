@@ -21,19 +21,6 @@ fn identifier_code_unit(code : Int) -> Bool {
 }
 
 ///|
-fn has_ascii_keyword_at(text : String, start : Int, keyword : String) -> Bool {
-  guard start >= 0 && start + keyword.length() <= text.length() else {
-    return false
-  }
-  for i in 0..<keyword.length() {
-    if text.code_unit_at(start + i).to_int() != keyword.code_unit_at(i).to_int() {
-      return false
-    }
-  }
-  true
-}
-
-///|
 fn trim_ascii_space_end(text : String, start : Int) -> Int {
   let mut end = text.length()
   while end > start {
@@ -112,7 +99,7 @@ fn tokenize_wgsl_directive_line(
 }
 
 ///|
-fn parse_wgsl_directive_line_at(
+pub fn parse_wgsl_directive_line_at(
   line : String,
   source_start : Int,
 ) -> WgslDirective? {

@@ -45,7 +45,7 @@ using @lex {
   type WgslToken,
   replace_comments,
   replace_comments_naga_oil,
-  source_lines,
+  naga_oil_raw_import_brace_balance_next,
   tokenize,
   tokenize_wgsl,
   utf8_byte_length,
