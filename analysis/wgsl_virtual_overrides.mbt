@@ -104,22 +104,36 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let rewriter = WgslCanonicalTokenRewriter::default()
+  let mut out = ""
+  for import_block in graph.import_blocks {
+    out = out + emit_wgsl_graph_block_canonical(import_block)
+  }
   for block in graph.declaration_blocks {
-    guard wgsl_graph_block_function(block) is Some(function) else { continue }
-    if function.qualifier() != "override" {
+    guard wgsl_graph_block_function(block) is Some(function) else {
+      out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
+    if function.qualifier() != "override" {
+      out = out + emit_wgsl_graph_block_canonical(block)
+      continue
+    }
+    let nodes : Array[WgslRewriteNode] = []
     let raw_target = function.name().name()
     if split_last_identifier(raw_target) is None {
+      out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
     let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
     if target != raw_target {
-      rewriter.replace(function.name().start(), function.name().end(), target)
+      nodes.push(WgslRewriteNode::{
+        start: function.name().start(),
+        end: function.name().end(),
+        replacement: target,
+      })
     }
+    out = out + wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
   }
-  rewriter.emit(source, 0)
+  out
 }
 
 ///|
@@ -153,79 +167,88 @@ fn wgsl_flatten_path_identifier(path : String) -> String {
 }
 
 ///|
-fn rewrite_wgsl_virtual_fn_block(
-  block_text : String,
+fn collect_wgsl_virtual_fn_nodes(
   function : WgslFunction,
-  block_start : Int,
-) -> String {
+  nodes : Array[WgslRewriteNode],
+) -> Unit {
   match (function.qualifier_start(), function.qualifier_end()) {
-    (Some(start), Some(end_)) => {
-      let rewriter = WgslCanonicalTokenRewriter::default()
-      rewriter.replace(start, end_, "")
-      rewriter.emit(block_text, block_start)
-    }
-    _ => block_text
+    (Some(start), Some(end_)) =>
+      nodes.push(WgslRewriteNode::{ start, end: end_, replacement: "" })
+    _ => ()
   }
+}
+
+///|
+fn rewrite_wgsl_virtual_fn_block(
+  block : WgslGraphBlock,
+  function : WgslFunction,
+) -> String {
+  let nodes : Array[WgslRewriteNode] = []
+  collect_wgsl_virtual_fn_nodes(function, nodes)
+  wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
 }
 
 ///|
 fn rewrite_wgsl_virtual_base_block(
-  block_text : String,
+  block : WgslGraphBlock,
   function : WgslFunction,
-  block_start : Int,
   target_name : String,
   base_name : String,
-) -> String raise WgslParseError {
+) -> String {
   let plan = WgslRenamePlan::empty()
   plan.add(target_name, base_name, GlobalDeclarationAndReferences)
-  rewrite_wgsl_virtual_fn_block(
-    rewrite_wgsl_declarations_with_rename_plan(block_text, plan),
-    function,
-    block_start,
-  )
+  let maps = build_wgsl_rename_maps(plan)
+  let nodes : Array[WgslRewriteNode] = []
+  collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
+  collect_wgsl_virtual_fn_nodes(function, nodes)
+  wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
 }
 
 ///|
-fn rewrite_wgsl_override_body_references_to_base(
-  block_text : String,
+fn collect_wgsl_override_body_reference_nodes(
+  data : WgslGlobalDeclData,
   target_name : String,
   raw_target : String,
   base_name : String,
-) -> String raise WgslParseError {
+  nodes : Array[WgslRewriteNode],
+) -> Unit {
   let plan = WgslRenamePlan::empty()
   plan.add(target_name, base_name, FunctionBodyReferencesOnly)
   plan.add(raw_target, base_name, FunctionBodyReferencesOnly)
-  rewrite_wgsl_declarations_with_rename_plan(block_text, plan)
+  collect_wgsl_block_rewrite_nodes(data, build_wgsl_rename_maps(plan), nodes)
 }
 
 ///|
 fn rewrite_wgsl_override_fn_block(
-  block_text : String,
+  block : WgslGraphBlock,
   function : WgslFunction,
-  block_start : Int,
   target_name : String,
   raw_target : String,
   base_name : String?,
-) -> String raise WgslParseError {
-  let rewritten_body = match base_name {
+) -> String {
+  let nodes : Array[WgslRewriteNode] = []
+  match base_name {
     Some(base) =>
-      rewrite_wgsl_override_body_references_to_base(
-        block_text, target_name, raw_target, base,
+      collect_wgsl_override_body_reference_nodes(
+        block.data,
+        target_name,
+        raw_target,
+        base,
+        nodes,
       )
-    None => block_text
+    None => ()
   }
   match (function.qualifier_start(), function.qualifier_end()) {
     (Some(start), Some(end_)) => {
-      let rewriter = WgslCanonicalTokenRewriter::default()
-      rewriter.replace(start, end_, "")
-      rewriter.replace(
-        function.name().start(),
-        function.name().end(),
-        target_name,
-      )
-      rewriter.emit(rewritten_body, block_start)
+      nodes.push(WgslRewriteNode::{ start, end: end_, replacement: "" })
+      nodes.push(WgslRewriteNode::{
+        start: function.name().start(),
+        end: function.name().end(),
+        replacement: target_name,
+      })
+      wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
     }
-    _ => rewritten_body
+    _ => wgsl_emit_token_stream_with_nodes(block.tokens, nodes)
   }
 }
 
@@ -280,12 +303,7 @@ fn apply_wgsl_virtual_overrides_checked(
         overrides.set(
           target,
           rewrite_wgsl_override_fn_block(
-            block.text,
-            function,
-            block.start,
-            target,
-            raw_target,
-            base_name,
+            block, function, target, raw_target, base_name,
           ),
         )
       }
@@ -316,18 +334,15 @@ fn apply_wgsl_virtual_overrides_checked(
             if needs_base {
               out = out +
                 rewrite_wgsl_virtual_base_block(
-                  block.text,
+                  block,
                   function,
-                  block.start,
                   block.name,
                   wgsl_virtual_base_name(block.name),
                 )
             }
             out = out + override_block
           }
-          None =>
-            out = out +
-              rewrite_wgsl_virtual_fn_block(block.text, function, block.start)
+          None => out = out + rewrite_wgsl_virtual_fn_block(block, function)
         }
         continue
       }
@@ -379,8 +394,7 @@ pub fn strip_wgsl_virtual_functions(
       }
       match wgsl_graph_block_function(block) {
         Some(function) =>
-          out = out +
-            rewrite_wgsl_virtual_fn_block(block.text, function, block.start)
+          out = out + rewrite_wgsl_virtual_fn_block(block, function)
         None => out = out + emit_wgsl_graph_block_canonical(block)
       }
     } else {

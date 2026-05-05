@@ -43,14 +43,6 @@ pub fn wgsl_trim_blankspace(String) -> String
 // Errors
 
 // Types and methods
-pub struct WgslCanonicalTokenRewriter {
-  // private fields
-}
-pub fn WgslCanonicalTokenRewriter::default() -> Self
-pub fn WgslCanonicalTokenRewriter::emit(Self, String, Int) -> String
-pub fn WgslCanonicalTokenRewriter::is_empty(Self) -> Bool
-pub fn WgslCanonicalTokenRewriter::replace(Self, Int, Int, String) -> Unit
-
 pub struct WgslToken {
   // private fields
 } derive(Eq, @debug.Debug)

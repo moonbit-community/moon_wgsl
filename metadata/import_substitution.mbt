@@ -238,6 +238,203 @@ fn imported_identifier_replacement(
 }
 
 ///|
+priv struct WgslImportRewriteNode {
+  start : Int
+  end : Int
+  replacement : String
+}
+
+///|
+fn wgsl_import_token_text(token : WgslToken) -> String {
+  match token.identifier_text() {
+    Some(text) => return text
+    None => ()
+  }
+  match token.number_text() {
+    Some(text) => return text
+    None => ()
+  }
+  match token.operator_text() {
+    Some(text) => return text
+    None => ()
+  }
+  match token.punctuation_code() {
+    Some(35) => "#"
+    Some(37) => "%"
+    Some(38) => "&"
+    Some(40) => "("
+    Some(41) => ")"
+    Some(42) => "*"
+    Some(43) => "+"
+    Some(44) => ","
+    Some(45) => "-"
+    Some(46) => "."
+    Some(47) => "/"
+    Some(58) => ":"
+    Some(59) => ";"
+    Some(60) => "<"
+    Some(61) => "="
+    Some(62) => ">"
+    Some(64) => "@"
+    Some(91) => "["
+    Some(93) => "]"
+    Some(94) => "^"
+    Some(123) => "{"
+    Some(124) => "|"
+    Some(125) => "}"
+    Some(126) => "~"
+    _ => ""
+  }
+}
+
+///|
+fn wgsl_import_token_replacement(
+  token : WgslToken,
+  nodes : Array[WgslImportRewriteNode],
+) -> String? {
+  for node in nodes {
+    if node.start == token.pos() && node.end == token.end() {
+      return Some(node.replacement)
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_import_token_is_wordlike(text : String) -> Bool {
+  if text == "" {
+    return false
+  }
+  let code = text.code_unit_at(0).to_int()
+  (code >= 48 && code <= 57) ||
+  (code >= 65 && code <= 90) ||
+  (code >= 97 && code <= 122) ||
+  code == 95 ||
+  code == 34
+}
+
+///|
+fn wgsl_import_emit_needs_space(previous : String, current : String) -> Bool {
+  if previous == "" || current == "" || previous == "\n" {
+    return false
+  }
+  if current == ")" ||
+    current == "]" ||
+    current == ">" ||
+    current == "," ||
+    current == ";" ||
+    current == ":" ||
+    current == "." {
+    return false
+  }
+  if previous == "(" ||
+    previous == "[" ||
+    previous == "." ||
+    previous == "@" ||
+    previous == "<" {
+    return false
+  }
+  if current == "(" {
+    return previous == "if" ||
+      previous == "for" ||
+      previous == "while" ||
+      previous == "switch" ||
+      previous == "const_assert"
+  }
+  if current == "{" || current == "@" {
+    return true
+  }
+  if (previous == ")" || previous == ">") &&
+    wgsl_import_token_is_wordlike(current) {
+    return true
+  }
+  if previous == "&" && wgsl_import_token_is_wordlike(current) {
+    return true
+  }
+  if previous == "," || previous == ":" || previous == ";" || previous == "}" {
+    return true
+  }
+  if previous == "->" || current == "->" || previous == "=" || current == "=" {
+    return true
+  }
+  if previous == "==" ||
+    previous == "!=" ||
+    previous == "<=" ||
+    previous == ">=" ||
+    previous == "&&" ||
+    previous == "||" ||
+    previous == "+=" ||
+    previous == "-=" ||
+    previous == "*=" ||
+    previous == "/=" ||
+    previous == "%=" ||
+    previous == "&=" ||
+    previous == "|=" ||
+    previous == "^=" ||
+    previous == "+" ||
+    previous == "-" ||
+    previous == "*" ||
+    previous == "/" ||
+    previous == "%" ||
+    current == "==" ||
+    current == "!=" ||
+    current == "<=" ||
+    current == ">=" ||
+    current == "&&" ||
+    current == "||" ||
+    current == "+=" ||
+    current == "-=" ||
+    current == "*=" ||
+    current == "/=" ||
+    current == "%=" ||
+    current == "&=" ||
+    current == "|=" ||
+    current == "^=" ||
+    current == "+" ||
+    current == "-" ||
+    current == "*" ||
+    current == "/" ||
+    current == "%" {
+    return true
+  }
+  wgsl_import_token_is_wordlike(previous) &&
+  wgsl_import_token_is_wordlike(current)
+}
+
+///|
+fn emit_wgsl_import_token_stream_with_nodes(
+  input : String,
+  nodes : Array[WgslImportRewriteNode],
+) -> String {
+  let mut out = ""
+  let mut previous = ""
+  for token in tokenize_wgsl(replace_comments(input), false) {
+    let text = match wgsl_import_token_replacement(token, nodes) {
+      Some(replacement) => replacement
+      None => wgsl_import_token_text(token)
+    }
+    if text == "" {
+      continue
+    }
+    if wgsl_import_emit_needs_space(previous, text) {
+      out = out + " "
+    }
+    out = out + text
+    if text == ";" || text == "}" {
+      out = out + "\n"
+      previous = "\n"
+    } else {
+      previous = text
+    }
+  }
+  if out == "" || out.has_suffix("\n") {
+    out
+  } else {
+    "\{out}\n"
+  }
+}
+
+///|
 fn substitute_identifiers(
   input : String,
   offset : Int,
@@ -248,7 +445,7 @@ fn substitute_identifiers(
   if declared_imports.length() == 0 {
     return input
   }
-  let rewriter = WgslCanonicalTokenRewriter::default()
+  let nodes : Array[WgslImportRewriteNode] = []
   let unit = parse_wgsl_translation_unit_strict(input) catch {
     error => raise substitute_identifiers_wgsl_parse_error(error, offset)
   }
@@ -265,14 +462,18 @@ fn substitute_identifiers(
         allow_ambiguous,
       )
       if replacement != ident.name() {
-        rewriter.replace(ident.start(), ident.end(), replacement)
+        nodes.push(WgslImportRewriteNode::{
+          start: ident.start(),
+          end: ident.end(),
+          replacement,
+        })
       }
     }
   }
-  if rewriter.is_empty() {
+  if nodes.length() == 0 {
     return input
   }
-  rewriter.emit(input, 0)
+  emit_wgsl_import_token_stream_with_nodes(input, nodes)
 }
 
 ///|

@@ -15,7 +15,7 @@
 ///|
 priv struct WgslGraphBlock {
   name : String
-  text : String
+  tokens : Array[WgslToken]
   start : Int
   end : Int
   data : WgslGlobalDeclData
@@ -137,10 +137,9 @@ fn build_wgsl_declaration_graph_from_unit(
   let import_blocks : Array[WgslGraphBlock] = []
   let declaration_blocks : Array[WgslGraphBlock] = []
   for decl in unit.declarations() {
-    let text = source[decl.start():decl.end()].to_owned()
     let graph_block = WgslGraphBlock::{
       name: decl.name(),
-      text,
+      tokens: tokenize_wgsl_absolute_fragment(source, decl.start(), decl.end()),
       start: decl.start(),
       end: decl.end(),
       data: decl.data(),
@@ -299,11 +298,14 @@ fn strip_wgsl_import_declarations_from_source_unit(
       _ => false
     }
     if !skip {
-      let text = source[decl.start():decl.end()].to_owned()
       out = out +
         emit_wgsl_graph_block_canonical(WgslGraphBlock::{
           name: decl.name(),
-          text,
+          tokens: tokenize_wgsl_absolute_fragment(
+            source,
+            decl.start(),
+            decl.end(),
+          ),
           start: decl.start(),
           end: decl.end(),
           data: decl.data(),
