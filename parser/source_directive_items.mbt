@@ -12,17 +12,14 @@ pub enum WgslSourceDirectiveItemKind {
 pub struct WgslSourceDirectiveItem {
   kind : WgslSourceDirectiveItemKind
   line : String
-  start : Int
-  end : Int
 } derive(Debug)
 
 ///|
 fn WgslSourceDirectiveItem::new(
   kind : WgslSourceDirectiveItemKind,
   line : String,
-  start : Int,
 ) -> WgslSourceDirectiveItem {
-  WgslSourceDirectiveItem::{ kind, line, start, end: start + line.length() }
+  WgslSourceDirectiveItem::{ kind, line }
 }
 
 ///|
@@ -108,10 +105,7 @@ fn wgsl_source_directive_prefix_candidate(trimmed : String) -> Bool {
 }
 
 ///|
-fn parse_wgsl_source_directive_item_at(
-  line : String,
-  source_start : Int,
-) -> WgslSourceDirectiveItem {
+fn parse_wgsl_source_directive_item(line : String) -> WgslSourceDirectiveItem {
   let trimmed = wgsl_regex_trim_whitespace(line)
   let kind = if trimmed == "" || trimmed.has_prefix("//") {
     WgslSourceDirectiveItemKind::Trivia
@@ -126,7 +120,7 @@ fn parse_wgsl_source_directive_item_at(
   } else {
     WgslSourceDirectiveItemKind::Source
   }
-  WgslSourceDirectiveItem::new(kind, line, source_start)
+  WgslSourceDirectiveItem::new(kind, line)
 }
 
 ///|
@@ -134,10 +128,8 @@ pub fn parse_wgsl_source_directive_items(
   source : String,
 ) -> Array[WgslSourceDirectiveItem] {
   let items : Array[WgslSourceDirectiveItem] = []
-  let mut offset = 0
   for line in source_lines(source) {
-    items.push(parse_wgsl_source_directive_item_at(line, offset))
-    offset = offset + utf8_byte_length(line) + 1
+    items.push(parse_wgsl_source_directive_item(line))
   }
   items
 }

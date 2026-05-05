@@ -9,7 +9,6 @@ pub enum WgslDirectiveScanItemKind {
 pub struct WgslDirectiveScanItem {
   kind : WgslDirectiveScanItemKind
   start : Int
-  end : Int
   required_tail_space : Bool
   original_text : String
   cleaned_text : String
@@ -33,7 +32,6 @@ fn WgslDirectiveScanItem::new(
   WgslDirectiveScanItem::{
     kind,
     start,
-    end: start + utf8_byte_length(original_text),
     required_tail_space,
     original_text,
     cleaned_text,

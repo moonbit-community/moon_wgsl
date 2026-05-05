@@ -58,7 +58,6 @@ pub fn WgslParseError::message(Self) -> String
 pub struct WgslDirectiveScanItem {
   kind : WgslDirectiveScanItemKind
   start : Int
-  end : Int
   required_tail_space : Bool
   original_text : String
   cleaned_text : String
@@ -86,8 +85,6 @@ pub struct WgslShaderDefReference {
 pub struct WgslSourceDirectiveItem {
   kind : WgslSourceDirectiveItemKind
   line : String
-  start : Int
-  end : Int
 } derive(@debug.Debug)
 
 pub enum WgslSourceDirectiveItemKind {
