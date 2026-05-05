@@ -59,7 +59,7 @@ fn wgsl_expr_token_key(token : WgslExprToken) -> String {
     UintLiteral(value) => "uint:\{value}"
     IntLiteral(value) => "int:\{value}"
     FloatLiteral => "float:\{token.text()}"
-    Operator(text) => "op:\{text}"
+    Operator(op) => "op:\{op.text()}"
     Punctuation(code) => "punct:\{code}"
     Unknown => "unknown:\{token.text()}"
   }

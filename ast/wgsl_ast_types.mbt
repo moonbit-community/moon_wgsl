@@ -116,13 +116,109 @@ pub fn WgslIdent::end(self : WgslIdent) -> Int {
 }
 
 ///|
+pub(all) enum WgslExprOperator {
+  LogicalOr
+  LogicalAnd
+  BitOr
+  BitXor
+  BitAnd
+  Equal
+  NotEqual
+  Less
+  Greater
+  LessEqual
+  GreaterEqual
+  ShiftLeft
+  ShiftRight
+  Add
+  Subtract
+  Multiply
+  Divide
+  Modulo
+  Not
+  Complement
+  Unknown(String)
+} derive(Eq, Debug)
+
+///|
+pub fn WgslExprOperator::from_text(text : String) -> WgslExprOperator {
+  match text {
+    "||" => LogicalOr
+    "&&" => LogicalAnd
+    "|" => BitOr
+    "^" => BitXor
+    "&" => BitAnd
+    "==" => Equal
+    "!=" => NotEqual
+    "<" => Less
+    ">" => Greater
+    "<=" => LessEqual
+    ">=" => GreaterEqual
+    "<<" => ShiftLeft
+    ">>" => ShiftRight
+    "+" => Add
+    "-" => Subtract
+    "*" => Multiply
+    "/" => Divide
+    "%" => Modulo
+    "!" => Not
+    "~" => Complement
+    _ => Unknown(text)
+  }
+}
+
+///|
+pub fn WgslExprOperator::text(self : WgslExprOperator) -> String {
+  match self {
+    LogicalOr => "||"
+    LogicalAnd => "&&"
+    BitOr => "|"
+    BitXor => "^"
+    BitAnd => "&"
+    Equal => "=="
+    NotEqual => "!="
+    Less => "<"
+    Greater => ">"
+    LessEqual => "<="
+    GreaterEqual => ">="
+    ShiftLeft => "<<"
+    ShiftRight => ">>"
+    Add => "+"
+    Subtract => "-"
+    Multiply => "*"
+    Divide => "/"
+    Modulo => "%"
+    Not => "!"
+    Complement => "~"
+    Unknown(text) => text
+  }
+}
+
+///|
+pub fn WgslExprOperator::binary_precedence(self : WgslExprOperator) -> Int {
+  match self {
+    LogicalOr => 1
+    LogicalAnd => 2
+    BitOr => 3
+    BitXor => 4
+    BitAnd => 5
+    Equal | NotEqual => 6
+    Less | Greater | LessEqual | GreaterEqual => 7
+    ShiftLeft | ShiftRight => 8
+    Add | Subtract => 9
+    Multiply | Divide | Modulo => 10
+    Not | Complement | Unknown(_) => -1
+  }
+}
+
+///|
 pub(all) enum WgslExprTokenKind {
   Identifier
   BoolLiteral(Bool)
   UintLiteral(Int)
   IntLiteral(Int)
   FloatLiteral
-  Operator(String)
+  Operator(WgslExprOperator)
   Punctuation(Int)
   Unknown
 } derive(Debug)
@@ -170,8 +266,8 @@ pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)
   Literal(WgslExprToken)
   Token(WgslExprToken)
-  Unary(String, WgslExprNode)
-  Binary(String, WgslExprNode, WgslExprNode)
+  Unary(WgslExprOperator, WgslExprNode)
+  Binary(WgslExprOperator, WgslExprNode, WgslExprNode)
   Call(WgslExprNode, Array[WgslExprNode])
   PathAccess(WgslExprNode, WgslIdent)
   Member(WgslExprNode, WgslIdent)

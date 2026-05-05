@@ -7,6 +7,7 @@ using @ast {
   type WgslDirectiveKind,
   type WgslExprNode,
   type WgslExprNodeKind,
+  type WgslExprOperator,
   type WgslExprRef,
   type WgslExprToken,
   type WgslExprTokenKind,

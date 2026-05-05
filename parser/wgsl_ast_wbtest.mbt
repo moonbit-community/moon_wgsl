@@ -810,7 +810,7 @@ test "WGSL expression refs expose structured expression root" {
       #|      [
       #|        {
       #|          kind: Binary(
-      #|            "+",
+      #|            Add,
       #|            {
       #|              kind: Index(
       #|                {
@@ -871,7 +871,7 @@ test "WGSL expression parser uses lexer compound operator tokens" {
     root.kind(),
     content=(
       #|Binary(
-      #|  ">=",
+      #|  GreaterEqual,
       #|  {
       #|    kind: Member(
       #|      {
