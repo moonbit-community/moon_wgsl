@@ -38,4 +38,4 @@ using @parser {
 }
 
 ///|
-using @analysis {type WgslImportSubstitutionState}
+using @transform {type WgslImportSubstitutionState}

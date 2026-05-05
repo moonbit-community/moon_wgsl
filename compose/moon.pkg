@@ -1,5 +1,5 @@
 import {
-  "Milky2018/moon_wgsl/analysis",
+  "Milky2018/moon_wgsl/transform",
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/metadata",
   "Milky2018/moon_wgsl/preprocess",

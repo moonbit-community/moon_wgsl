@@ -6,7 +6,7 @@ using @common {
 }
 
 ///|
-using @analysis {type WgslImportSubstitutionState}
+using @transform {type WgslImportSubstitutionState}
 
 ///|
 using @ast {type WgslDirective, type WgslDirectiveKind}

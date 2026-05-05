@@ -41,4 +41,3 @@ pub fn WgslSourceRegistry::remove_source_and_module(Self, String, String) -> Uni
 // Type aliases
 
 // Traits
-

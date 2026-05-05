@@ -1,5 +1,5 @@
 ///|
-using @analysis {
+using @transform {
   type WgslEmittedDeclaration,
   type WgslTreeShakenSource,
   emit_wgsl_tree_shaken_source_strict,
