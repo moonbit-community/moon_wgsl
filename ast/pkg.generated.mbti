@@ -20,11 +20,10 @@ pub fn wgsl_decl_data_name(WgslGlobalDeclData) -> String
 pub struct WgslAttribute {
   // private fields
 } derive(@debug.Debug)
-pub fn WgslAttribute::arguments(Self) -> String
 pub fn WgslAttribute::arguments_ref(Self) -> WgslExprRef?
 pub fn WgslAttribute::end(Self) -> Int
 pub fn WgslAttribute::name(Self) -> String
-pub fn WgslAttribute::new(String, Int, Int, String, WgslExprRef?) -> Self
+pub fn WgslAttribute::new(String, Int, Int, WgslExprRef?) -> Self
 pub fn WgslAttribute::start(Self) -> Int
 
 pub struct WgslBlock {
@@ -41,7 +40,6 @@ pub struct WgslConst {
 pub fn WgslConst::initializer_ref(Self) -> WgslExprRef?
 pub fn WgslConst::name(Self) -> WgslIdent
 pub fn WgslConst::new(WgslIdent, WgslTypeRef?, WgslExprRef?) -> Self
-pub fn WgslConst::ty(Self) -> String?
 pub fn WgslConst::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslDirective {
@@ -159,7 +157,6 @@ pub fn WgslFunctionResult::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslFunctionResult::end(Self) -> Int
 pub fn WgslFunctionResult::new(Array[WgslAttribute], Int, Int, WgslTypeRef?) -> Self
 pub fn WgslFunctionResult::start(Self) -> Int
-pub fn WgslFunctionResult::ty(Self) -> String
 pub fn WgslFunctionResult::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslGlobalDecl {
@@ -207,7 +204,6 @@ pub fn WgslGlobalVariable::initializer_ref(Self) -> WgslExprRef?
 pub fn WgslGlobalVariable::name(Self) -> WgslIdent
 pub fn WgslGlobalVariable::new(Array[WgslAttribute], WgslIdent, Array[String], WgslTypeRef?, WgslExprRef?) -> Self
 pub fn WgslGlobalVariable::template_list(Self) -> Array[String]
-pub fn WgslGlobalVariable::ty(Self) -> String?
 pub fn WgslGlobalVariable::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslIdent {
@@ -226,7 +222,6 @@ pub fn WgslLocalDeclaration::kind(Self) -> String
 pub fn WgslLocalDeclaration::name(Self) -> WgslIdent
 pub fn WgslLocalDeclaration::new(String, WgslIdent, Array[String], WgslTypeRef?, WgslExprRef?) -> Self
 pub fn WgslLocalDeclaration::template_list(Self) -> Array[String]
-pub fn WgslLocalDeclaration::ty(Self) -> String?
 pub fn WgslLocalDeclaration::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslOverride {
@@ -236,7 +231,6 @@ pub fn WgslOverride::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslOverride::initializer_ref(Self) -> WgslExprRef?
 pub fn WgslOverride::name(Self) -> WgslIdent
 pub fn WgslOverride::new(Array[WgslAttribute], WgslIdent, WgslTypeRef?, WgslExprRef?) -> Self
-pub fn WgslOverride::ty(Self) -> String?
 pub fn WgslOverride::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslStatement {
@@ -323,7 +317,6 @@ pub fn WgslStructMember::name_end(Self) -> Int
 pub fn WgslStructMember::name_start(Self) -> Int
 pub fn WgslStructMember::new(Array[WgslAttribute], String, Int, Int, Int, Int, WgslTypeRef?) -> Self
 pub fn WgslStructMember::start(Self) -> Int
-pub fn WgslStructMember::ty(Self) -> String
 pub fn WgslStructMember::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslTranslationUnit {
@@ -337,7 +330,6 @@ pub struct WgslTypeAlias {
 } derive(@debug.Debug)
 pub fn WgslTypeAlias::name(Self) -> WgslIdent
 pub fn WgslTypeAlias::new(WgslIdent, WgslTypeRef?) -> Self
-pub fn WgslTypeAlias::ty(Self) -> String
 pub fn WgslTypeAlias::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslTypeRef {

@@ -127,10 +127,10 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   )
   debug_inspect(struct_decl.members()[0].name_start(), content="31")
   debug_inspect(struct_decl.members()[0].name_end(), content="39")
-  debug_inspect(struct_decl.members()[0].ty(), content="\"vec3<f32>\"")
   guard struct_decl.members()[0].ty_ref() is Some(position_ty) else {
     abort("expected struct member type ref")
   }
+  debug_inspect(position_ty.canonical_text(), content="\"vec3<f32>\"")
   debug_inspect(position_ty.name(), content="\"vec3\"")
   debug_inspect(position_ty.arguments().length(), content="1")
   debug_inspect(position_ty.arguments()[0].name(), content="\"f32\"")
@@ -141,7 +141,6 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(global.attributes().length(), content="2")
   debug_inspect(global.template_list()[0], content="\"uniform\"")
   debug_inspect(global.name().name(), content="\"globals\"")
-  debug_inspect(global.ty(), content="Some(\"Globals\")")
   guard global.ty_ref() is Some(global_ty) else {
     abort("expected global type ref")
   }
@@ -152,17 +151,16 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected type alias payload")
   }
   debug_inspect(alias_decl.name().name(), content="\"Color\"")
-  debug_inspect(alias_decl.ty(), content="\"vec4<f32>\"")
   guard alias_decl.ty_ref() is Some(alias_ty) else {
     abort("expected alias type ref")
   }
+  debug_inspect(alias_ty.canonical_text(), content="\"vec4<f32>\"")
   debug_inspect(alias_ty.name(), content="\"vec4\"")
   debug_inspect(alias_ty.arguments()[0].name(), content="\"f32\"")
   guard unit.declarations()[3].data() is WgslGlobalDeclData::Const(const_decl) else {
     abort("expected const payload")
   }
   debug_inspect(const_decl.name().name(), content="\"SCALE\"")
-  debug_inspect(const_decl.ty(), content="Some(\"f32\")")
   guard const_decl.ty_ref() is Some(const_ty) else {
     abort("expected const type ref")
   }
@@ -208,10 +206,10 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected function result")
   }
   debug_inspect(result.attributes()[0].name(), content="\"location\"")
-  debug_inspect(result.ty(), content="\"vec4<f32>\"")
   guard result.ty_ref() is Some(result_ty) else {
     abort("expected result type ref")
   }
+  debug_inspect(result_ty.canonical_text(), content="\"vec4<f32>\"")
   debug_inspect(result_ty.name(), content="\"vec4\"")
   debug_inspect(result_ty.arguments()[0].name(), content="\"f32\"")
   debug_inspect(function.body().statements().length(), content="1")
@@ -296,7 +294,10 @@ test "WGSL struct member parser skips conditional directive lines" {
   }
   debug_inspect(value.members().length(), content="2")
   debug_inspect(value.members()[1].name(), content="\"_webgl2_padding\"")
-  debug_inspect(value.members()[1].ty(), content="\"f32\"")
+  guard value.members()[1].ty_ref() is Some(padding_ty) else {
+    abort("expected padding type")
+  }
+  debug_inspect(padding_ty.name(), content="\"f32\"")
 }
 
 ///|
@@ -522,10 +523,6 @@ test "WGSL attributes are parsed by grammar" {
   }
   debug_inspect(function.attributes().length(), content="2")
   debug_inspect(function.attributes()[0].name(), content="\"workgroup_size\"")
-  debug_inspect(
-    function.attributes()[0].arguments(),
-    content="\"WIDTH, max(1u, WIDTH - 1u), 1\"",
-  )
   guard function.attributes()[0].arguments_ref() is Some(arguments) else {
     abort("expected attribute arguments ref")
   }
@@ -533,7 +530,7 @@ test "WGSL attributes are parsed by grammar" {
   debug_inspect(arguments.identifiers()[1].name(), content="\"max\"")
   debug_inspect(arguments.identifiers()[2].name(), content="\"WIDTH\"")
   debug_inspect(function.attributes()[1].name(), content="\"compute\"")
-  debug_inspect(function.attributes()[1].arguments(), content="\"\"")
+  debug_inspect(function.attributes()[1].arguments_ref(), content="None")
 }
 
 ///|
@@ -576,7 +573,6 @@ test "WGSL typed initializer tails are parsed by grammar" {
     is WgslGlobalDeclData::GlobalVariable(global) else {
     abort("expected global variable")
   }
-  debug_inspect(global.ty(), content="Some(\"u32\")")
   guard global.ty_ref() is Some(global_ty) else {
     abort("expected global type")
   }
@@ -591,7 +587,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
   guard unit.declarations()[1].data() is WgslGlobalDeclData::Const(const_decl) else {
     abort("expected const")
   }
-  debug_inspect(const_decl.ty(), content="None")
+  debug_inspect(const_decl.ty_ref(), content="None")
   guard const_decl.initializer_ref() is Some(const_initializer) else {
     abort("expected const initializer")
   }
@@ -600,7 +596,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
     is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override")
   }
-  debug_inspect(override_decl.ty(), content="None")
+  debug_inspect(override_decl.ty_ref(), content="None")
   guard override_decl.initializer_ref() is Some(override_initializer) else {
     abort("expected override initializer")
   }
@@ -680,14 +676,11 @@ test "WGSL function payload exposes statement AST spans" {
       #|["function"]
     ),
   )
-  debug_inspect(
-    function.body().statements()[0].local_bindings()[0].ty(),
-    content="Some(\"u32\")",
-  )
   guard function.body().statements()[0].local_bindings()[0].ty_ref()
     is Some(local_ty) else {
     abort("expected local type ref")
   }
+  debug_inspect(local_ty.name(), content="\"u32\"")
   debug_inspect(local_ty.name(), content="\"u32\"")
   guard function.body().statements()[0].local_bindings()[0].initializer_ref()
     is Some(local_init) else {
@@ -1000,10 +993,11 @@ test "WGSL statement AST records nested and loop local declarations" {
     function.body().statements()[1].local_bindings()[0].name().name(),
     content="\"i\"",
   )
-  debug_inspect(
-    function.body().statements()[1].local_bindings()[0].ty(),
-    content="Some(\"u32\")",
-  )
+  guard function.body().statements()[1].local_bindings()[0].ty_ref()
+    is Some(loop_ty) else {
+    abort("expected loop local type ref")
+  }
+  debug_inspect(loop_ty.name(), content="\"u32\"")
   debug_inspect(
     function.body().statements()[1]
     .expression_refs()

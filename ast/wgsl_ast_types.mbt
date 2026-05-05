@@ -285,7 +285,6 @@ pub struct WgslAttribute {
   priv name : String
   priv start : Int
   priv end : Int
-  priv arguments : String
   priv arguments_ref : WgslExprRef?
 } derive(Debug)
 
@@ -294,10 +293,9 @@ pub fn WgslAttribute::new(
   name : String,
   start : Int,
   end : Int,
-  arguments : String,
   arguments_ref : WgslExprRef?,
 ) -> WgslAttribute {
-  WgslAttribute::{ name, start, end, arguments, arguments_ref }
+  WgslAttribute::{ name, start, end, arguments_ref }
 }
 
 ///|
@@ -313,11 +311,6 @@ pub fn WgslAttribute::start(self : WgslAttribute) -> Int {
 ///|
 pub fn WgslAttribute::end(self : WgslAttribute) -> Int {
   self.end
-}
-
-///|
-pub fn WgslAttribute::arguments(self : WgslAttribute) -> String {
-  self.arguments
 }
 
 ///|
@@ -483,14 +476,6 @@ pub fn WgslFunctionResult::end(self : WgslFunctionResult) -> Int {
 }
 
 ///|
-pub fn WgslFunctionResult::ty(self : WgslFunctionResult) -> String {
-  match self.ty_ref {
-    Some(ty) => ty.canonical_text()
-    None => ""
-  }
-}
-
-///|
 pub fn WgslFunctionResult::ty_ref(self : WgslFunctionResult) -> WgslTypeRef? {
   self.ty_ref
 }
@@ -548,14 +533,6 @@ pub fn WgslLocalDeclaration::template_list(
   self : WgslLocalDeclaration,
 ) -> Array[String] {
   self.template_list.copy()
-}
-
-///|
-pub fn WgslLocalDeclaration::ty(self : WgslLocalDeclaration) -> String? {
-  match self.ty_ref {
-    Some(ty) => Some(ty.canonical_text())
-    None => None
-  }
 }
 
 ///|
@@ -896,14 +873,6 @@ pub fn WgslStructMember::name_end(self : WgslStructMember) -> Int {
 }
 
 ///|
-pub fn WgslStructMember::ty(self : WgslStructMember) -> String {
-  match self.ty_ref {
-    Some(ty) => ty.canonical_text()
-    None => ""
-  }
-}
-
-///|
 pub fn WgslStructMember::ty_ref(self : WgslStructMember) -> WgslTypeRef? {
   self.ty_ref
 }
@@ -985,14 +954,6 @@ pub fn WgslGlobalVariable::template_list(
 }
 
 ///|
-pub fn WgslGlobalVariable::ty(self : WgslGlobalVariable) -> String? {
-  match self.ty_ref {
-    Some(ty) => Some(ty.canonical_text())
-    None => None
-  }
-}
-
-///|
 pub fn WgslGlobalVariable::ty_ref(self : WgslGlobalVariable) -> WgslTypeRef? {
   self.ty_ref
 }
@@ -1023,14 +984,6 @@ pub fn WgslConst::new(
 ///|
 pub fn WgslConst::name(self : WgslConst) -> WgslIdent {
   self.name
-}
-
-///|
-pub fn WgslConst::ty(self : WgslConst) -> String? {
-  match self.ty_ref {
-    Some(ty) => Some(ty.canonical_text())
-    None => None
-  }
 }
 
 ///|
@@ -1072,14 +1025,6 @@ pub fn WgslOverride::name(self : WgslOverride) -> WgslIdent {
 }
 
 ///|
-pub fn WgslOverride::ty(self : WgslOverride) -> String? {
-  match self.ty_ref {
-    Some(ty) => Some(ty.canonical_text())
-    None => None
-  }
-}
-
-///|
 pub fn WgslOverride::ty_ref(self : WgslOverride) -> WgslTypeRef? {
   self.ty_ref
 }
@@ -1106,14 +1051,6 @@ pub fn WgslTypeAlias::new(
 ///|
 pub fn WgslTypeAlias::name(self : WgslTypeAlias) -> WgslIdent {
   self.name
-}
-
-///|
-pub fn WgslTypeAlias::ty(self : WgslTypeAlias) -> String {
-  match self.ty_ref {
-    Some(ty) => ty.canonical_text()
-    None => ""
-  }
 }
 
 ///|

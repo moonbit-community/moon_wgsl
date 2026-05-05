@@ -29,7 +29,7 @@
 %token<@ast.WgslExprRef> EXPR_REF
 %token<Int> AT "@"
 %token<@ast.WgslIdent> ATTR_NAME
-%token<(String, @ast.WgslExprRef?, Int)> ATTR_ARGS
+%token<(@ast.WgslExprRef?, Int)> ATTR_ARGS
 %token<@ast.WgslIdent> KW_VIRTUAL
 %token<@ast.WgslIdent> KW_OVERRIDE
 %token<@ast.WgslIdent> KW_FN
@@ -92,7 +92,7 @@ attributes -> Array[@ast.WgslAttribute]
 
 attribute -> @ast.WgslAttribute
   : at=AT name=ATTR_NAME args=attribute_args {
-      let (arguments, arguments_ref, args_end) = args
+      let (arguments_ref, args_end) = args
       let end = match args_end {
         Some(value) => value
         None => name.end()
@@ -101,17 +101,16 @@ attribute -> @ast.WgslAttribute
         name.name(),
         at,
         end,
-        arguments,
         arguments_ref,
       )
     }
   ;
 
-attribute_args -> (String, @ast.WgslExprRef?, Int?)
-  : { ("", None, None) }
+attribute_args -> (@ast.WgslExprRef?, Int?)
+  : { (None, None) }
   | ATTR_ARGS {
-      let (arguments, arguments_ref, end) = $1
-      (arguments, arguments_ref, Some(end))
+      let (arguments_ref, end) = $1
+      (arguments_ref, Some(end))
     }
   ;
 

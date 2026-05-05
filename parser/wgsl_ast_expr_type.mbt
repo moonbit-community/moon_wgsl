@@ -924,13 +924,14 @@ fn WgslDeclParser::push_attribute_tokens(
             let argument_start = arguments_fragment.open_start + 1
             let argument_end = arguments_fragment.close_start
             if argument_end >= argument_start {
-              let arguments = self.slice(argument_start, argument_end)
               tokens.push(
                 (
                   Token::ATTR_ARGS(
                     (
-                      arguments,
-                      parse_wgsl_expr_ref_text(arguments, argument_start),
+                      parse_wgsl_expr_ref_text(
+                        self.slice(argument_start, argument_end),
+                        argument_start,
+                      ),
                       arguments_fragment.close_start + 1,
                     ),
                   ),
