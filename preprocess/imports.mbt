@@ -7,12 +7,7 @@ using @common {
 }
 
 ///|
-using @metadata {
-  type DeclaredImportBinding,
-  extract_wgsl_directives,
-  parse_imports,
-  substitute_identifiers,
-}
+using @metadata {type WgslImportSubstitutionState, extract_wgsl_directives}
 
 ///|
 using @ast {type WgslDirective, type WgslDirectiveKind}

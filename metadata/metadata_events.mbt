@@ -105,11 +105,11 @@ fn metadata_collect_source_item(
 ///|
 fn metadata_collect_import_uses(
   source : String,
-  declared_imports : Array[DeclaredImportBinding],
+  import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
 ) -> Unit raise MetadataError {
   ignore(
-    substitute_identifiers(source, 0, declared_imports, used_imports, true) catch {
+    import_state.rewrite_source(source, 0, used_imports, true) catch {
       AmbiguousImport(position) =>
         raise MetadataError::ImportParseError(
           "Ambiguous import path for item", position,

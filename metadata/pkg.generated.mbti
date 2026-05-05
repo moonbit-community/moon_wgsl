@@ -12,10 +12,6 @@ pub fn extract_wgsl_directives(String) -> (String, @common.WgslDirectives) raise
 
 pub fn get_preprocessor_metadata(String, allow_defines? : Bool) -> @common.PreprocessorMetaData raise MetadataError
 
-pub fn parse_imports(String, Array[DeclaredImportBinding]) -> Unit raise @parser.ParseImportsError
-
-pub fn substitute_identifiers(String, Int, Array[DeclaredImportBinding], Array[@common.ImportDefWithOffset], Bool) -> String raise SubstituteIdentifiersError
-
 pub fn wgsl_source_define_import_path(String) -> String?
 
 // Errors
@@ -25,15 +21,18 @@ pub suberror MetadataError {
   DefineInModule(Int)
 }
 
-pub suberror SubstituteIdentifiersError {
+pub suberror WgslImportSubstitutionError {
   AmbiguousImport(Int)
   InvalidWgslSyntax(String, Int)
 }
 
 // Types and methods
-pub struct DeclaredImportBinding {
+pub struct WgslImportSubstitutionState {
   // private fields
 }
+pub fn WgslImportSubstitutionState::declare_imports(Self, String) -> Unit raise @parser.ParseImportsError
+pub fn WgslImportSubstitutionState::default() -> Self
+pub fn WgslImportSubstitutionState::rewrite_source(Self, String, Int, Array[@common.ImportDefWithOffset], Bool) -> String raise WgslImportSubstitutionError
 
 type WgslSourceDirectiveItem derive(@debug.Debug)
 

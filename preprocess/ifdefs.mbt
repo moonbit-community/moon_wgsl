@@ -25,6 +25,7 @@ pub fn apply_wgsl_ifdefs_strict(
 ) -> String raise PreprocessError {
   let mut out = ""
   let scope = Scope::new()
+  let import_state = WgslImportSubstitutionState::default()
   for item in parse_wgsl_directive_scan_items(source) {
     let offset = item.start()
     match item.kind() {
@@ -42,13 +43,25 @@ pub fn apply_wgsl_ifdefs_strict(
         )
         if !is_scope && scope.active() {
           out = out +
-            preprocess_emit_scanned_item(KeepTrivia, item, shader_defs, [], [])
+            preprocess_emit_scanned_item(
+              KeepTrivia,
+              item,
+              shader_defs,
+              import_state,
+              [],
+            )
         }
       }
       WgslDirectiveScanItemKind::Source =>
         if scope.active() {
           out = out +
-            preprocess_emit_scanned_item(KeepTrivia, item, shader_defs, [], [])
+            preprocess_emit_scanned_item(
+              KeepTrivia,
+              item,
+              shader_defs,
+              import_state,
+              [],
+            )
         }
     }
   }

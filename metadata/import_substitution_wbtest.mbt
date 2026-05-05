@@ -1,12 +1,12 @@
 ///|
 fn parse_imports_snapshot(input : String) -> String {
-  let declared_imports : Array[DeclaredImportBinding] = []
-  parse_imports(input, declared_imports) catch {
+  let state = WgslImportSubstitutionState::default()
+  state.declare_imports(input) catch {
     Parse(message, offset) => return "ERR \{offset.to_string()} \{message}"
   }
 
   let rows : Array[String] = []
-  for binding in declared_imports {
+  for binding in state.declared_imports {
     let full_paths = binding.full_paths.join(",")
     rows.push("\{binding.used_name}=\{full_paths}")
   }
@@ -15,12 +15,12 @@ fn parse_imports_snapshot(input : String) -> String {
 
 ///|
 fn substitute_snapshot(imports : String, source : String) -> String {
-  let declared_imports : Array[DeclaredImportBinding] = []
-  parse_imports(imports, declared_imports) catch {
+  let state = WgslImportSubstitutionState::default()
+  state.declare_imports(imports) catch {
     Parse(message, offset) => return "ERR \{offset.to_string()} \{message}"
   }
   let used_imports : Array[ImportDefWithOffset] = []
-  substitute_identifiers(source, 0, declared_imports, used_imports, false) catch {
+  state.rewrite_source(source, 0, used_imports, false) catch {
     AmbiguousImport(offset) => return "ERR \{offset.to_string()} ambiguous"
     InvalidWgslSyntax(message, offset) =>
       return "ERR \{offset.to_string()} \{message}"

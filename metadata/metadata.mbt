@@ -7,7 +7,7 @@ fn try_get_preprocessor_metadata(
     source,
   )
 
-  let declared_imports : Array[DeclaredImportBinding] = []
+  let import_state = WgslImportSubstitutionState::default()
   let used_imports : Array[ImportDefWithOffset] = []
   let defines : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap::new()
   let effective_defs : @hashset.HashSet[String] = @hashset.HashSet::new()
@@ -30,7 +30,7 @@ fn try_get_preprocessor_metadata(
           }
         } else if item.requires_tail_space() &&
           directive.kind == WgslDirectiveKind::Import {
-          parse_imports(item.cleaned_directive_text(), declared_imports) catch {
+          import_state.declare_imports(item.cleaned_directive_text()) catch {
             Parse(message, item_offset) =>
               raise MetadataError::ImportParseError(
                 message,
@@ -67,7 +67,7 @@ fn try_get_preprocessor_metadata(
     }
   }
   metadata_collect_import_uses(
-    cleaned_for_directives, declared_imports, used_imports,
+    cleaned_for_directives, import_state, used_imports,
   )
 
   PreprocessorMetaData::new(

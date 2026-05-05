@@ -16,7 +16,7 @@ pub fn Preprocessor::extract_wgsl_directives(
 fn preprocess_emit_pipeline_item(
   item : WgslDirectiveScanItem,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
-  declared_imports : Array[DeclaredImportBinding],
+  import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
   scope : Scope,
 ) -> String raise PreprocessError {
@@ -30,7 +30,7 @@ fn preprocess_emit_pipeline_item(
         BlankTrivia,
         item,
         shader_defs,
-        declared_imports,
+        import_state,
         used_imports,
       )
     }
@@ -54,14 +54,14 @@ fn preprocess_emit_pipeline_item(
           BlankTrivia,
           item,
           shader_defs,
-          declared_imports,
+          import_state,
           used_imports,
         )
       }
       if scope.active() &&
         item.requires_tail_space() &&
         directive.kind == WgslDirectiveKind::Import {
-        parse_imports(item.cleaned_directive_text(), declared_imports) catch {
+        import_state.declare_imports(item.cleaned_directive_text()) catch {
           Parse(message, item_offset) =>
             raise PreprocessError::ImportParseError(
               message,
@@ -72,7 +72,7 @@ fn preprocess_emit_pipeline_item(
           BlankTrivia,
           item,
           shader_defs,
-          declared_imports,
+          import_state,
           used_imports,
         )
       }
@@ -81,7 +81,7 @@ fn preprocess_emit_pipeline_item(
           RewriteActiveSource,
           item,
           shader_defs,
-          declared_imports,
+          import_state,
           used_imports,
         )
       } else {
@@ -89,7 +89,7 @@ fn preprocess_emit_pipeline_item(
           BlankTrivia,
           item,
           shader_defs,
-          declared_imports,
+          import_state,
           used_imports,
         )
       }
@@ -100,7 +100,7 @@ fn preprocess_emit_pipeline_item(
           RewriteActiveSource,
           item,
           shader_defs,
-          declared_imports,
+          import_state,
           used_imports,
         )
       } else {
@@ -108,7 +108,7 @@ fn preprocess_emit_pipeline_item(
           BlankTrivia,
           item,
           shader_defs,
-          declared_imports,
+          import_state,
           used_imports,
         )
       }
@@ -121,14 +121,14 @@ pub fn Preprocessor::preprocess(
   source : String,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> PreprocessOutput raise PreprocessError {
-  let declared_imports : Array[DeclaredImportBinding] = []
+  let import_state = WgslImportSubstitutionState::default()
   let used_imports : Array[ImportDefWithOffset] = []
   let scope = Scope::new()
   let mut final_string = ""
   for item in parse_wgsl_directive_scan_items(source) {
     final_string = final_string +
       preprocess_emit_pipeline_item(
-        item, shader_defs, declared_imports, used_imports, scope,
+        item, shader_defs, import_state, used_imports, scope,
       )
   }
 

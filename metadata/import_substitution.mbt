@@ -1,11 +1,21 @@
 ///|
-pub struct DeclaredImportBinding {
-  priv used_name : String
-  priv full_paths : Array[String]
+priv struct DeclaredImportBinding {
+  used_name : String
+  full_paths : Array[String]
 }
 
 ///|
-pub suberror SubstituteIdentifiersError {
+pub struct WgslImportSubstitutionState {
+  priv declared_imports : Array[DeclaredImportBinding]
+}
+
+///|
+pub fn WgslImportSubstitutionState::default() -> WgslImportSubstitutionState {
+  WgslImportSubstitutionState::{ declared_imports: [] }
+}
+
+///|
+pub suberror WgslImportSubstitutionError {
   AmbiguousImport(Int)
   InvalidWgslSyntax(String, Int)
 }
@@ -82,7 +92,7 @@ fn wgsl_import_target_used_name(target : WgslImportTarget) -> String {
 }
 
 ///|
-pub fn parse_imports(
+fn parse_imports(
   input : String,
   declared_imports : Array[DeclaredImportBinding],
 ) -> Unit raise ParseImportsError {
@@ -196,7 +206,7 @@ fn imported_identifier_replacement(
   declared_imports : Array[DeclaredImportBinding],
   used_imports : Array[ImportDefWithOffset],
   allow_ambiguous : Bool,
-) -> String raise SubstituteIdentifiersError {
+) -> String raise WgslImportSubstitutionError {
   let (first, residual) = match split_once_identifier(ident) {
     Some(parts) => parts
     None => (ident, "")
@@ -228,13 +238,13 @@ fn imported_identifier_replacement(
 }
 
 ///|
-pub fn substitute_identifiers(
+fn substitute_identifiers(
   input : String,
   offset : Int,
   declared_imports : Array[DeclaredImportBinding],
   used_imports : Array[ImportDefWithOffset],
   allow_ambiguous : Bool,
-) -> String raise SubstituteIdentifiersError {
+) -> String raise WgslImportSubstitutionError {
   if declared_imports.length() == 0 {
     return input
   }
@@ -271,7 +281,7 @@ pub fn substitute_identifiers(
 fn substitute_identifiers_wgsl_parse_error(
   error : WgslParseError,
   offset : Int,
-) -> SubstituteIdentifiersError {
+) -> WgslImportSubstitutionError {
   match error {
     Parse(message, parse_offset) =>
       InvalidWgslSyntax(message, offset + parse_offset)
@@ -281,6 +291,31 @@ fn substitute_identifiers_wgsl_parse_error(
         offset + parse_offset,
       )
   }
+}
+
+///|
+pub fn WgslImportSubstitutionState::declare_imports(
+  self : WgslImportSubstitutionState,
+  input : String,
+) -> Unit raise ParseImportsError {
+  parse_imports(input, self.declared_imports)
+}
+
+///|
+pub fn WgslImportSubstitutionState::rewrite_source(
+  self : WgslImportSubstitutionState,
+  input : String,
+  offset : Int,
+  used_imports : Array[ImportDefWithOffset],
+  allow_ambiguous : Bool,
+) -> String raise WgslImportSubstitutionError {
+  substitute_identifiers(
+    input,
+    offset,
+    self.declared_imports,
+    used_imports,
+    allow_ambiguous,
+  )
 }
 
 ///|

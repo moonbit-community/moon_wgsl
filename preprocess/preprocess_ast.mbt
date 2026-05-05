@@ -210,7 +210,7 @@ fn preprocess_emit_scanned_item(
   kind : WgslPreprocessEmissionKind,
   item : WgslDirectiveScanItem,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
-  declared_imports : Array[DeclaredImportBinding],
+  import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
   match kind {
@@ -218,7 +218,7 @@ fn preprocess_emit_scanned_item(
     KeepTrivia => item.original_trivia()
     RewriteActiveSource =>
       preprocess_rewrite_source_item(
-        item, shader_defs, declared_imports, used_imports,
+        item, shader_defs, import_state, used_imports,
       )
   }
 }
@@ -227,7 +227,7 @@ fn preprocess_emit_scanned_item(
 fn preprocess_rewrite_source_item(
   item : WgslDirectiveScanItem,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
-  declared_imports : Array[DeclaredImportBinding],
+  import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
   let replaced_original = preprocess_replace_shader_defs_in_text(
@@ -239,10 +239,9 @@ fn preprocess_rewrite_source_item(
     shader_defs,
   )
   let ignored_imports : Array[ImportDefWithOffset] = []
-  let rewritten_original = substitute_identifiers(
+  let rewritten_original = import_state.rewrite_source(
     replaced_original,
     item.start(),
-    declared_imports,
     ignored_imports,
     true,
   ) catch {
@@ -254,10 +253,9 @@ fn preprocess_rewrite_source_item(
       raise PreprocessError::ImportParseError(message, position)
   }
   ignore(
-    substitute_identifiers(
+    import_state.rewrite_source(
       replaced_decommented,
       item.start(),
-      declared_imports,
       used_imports,
       false,
     ) catch {
