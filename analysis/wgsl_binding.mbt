@@ -145,11 +145,11 @@ fn collect_wgsl_rewrite_nodes_from_identifiers(
   nodes : Array[WgslRewriteNode],
 ) -> Unit {
   for identifier in identifiers {
-    match redirect_map.get(identifier.name) {
+    match redirect_map.get(identifier.name()) {
       Some(replacement) =>
         nodes.push(WgslRewriteNode::{
-          start: identifier.start,
-          end: identifier.end,
+          start: identifier.start(),
+          end: identifier.end(),
           replacement,
         })
       None => ()
@@ -224,12 +224,12 @@ fn collect_wgsl_local_binding_rewrite_node(
   active_redirects : @hashmap.HashMap[String, String],
   nodes : Array[WgslRewriteNode],
 ) -> Unit {
-  match source_redirects.get(binding.name().name) {
+  match source_redirects.get(binding.name().name()) {
     Some(replacement) => {
-      active_redirects.set(binding.name().name, replacement)
+      active_redirects.set(binding.name().name(), replacement)
       nodes.push(WgslRewriteNode::{
-        start: binding.name().start,
-        end: binding.name().end,
+        start: binding.name().start(),
+        end: binding.name().end(),
         replacement,
       })
     }
@@ -287,9 +287,9 @@ fn collect_wgsl_block_local_rewrite_nodes(
       statement, active_redirects, source_redirects, nodes,
     )
     for binding in statement.exported_local_bindings() {
-      match source_redirects.get(binding.name().name) {
+      match source_redirects.get(binding.name().name()) {
         Some(replacement) =>
-          active_redirects.set(binding.name().name, replacement)
+          active_redirects.set(binding.name().name(), replacement)
         None => ()
       }
     }

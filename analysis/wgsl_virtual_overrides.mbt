@@ -57,7 +57,7 @@ fn wgsl_graph_block_override_target(block : WgslGraphBlock) -> String? {
   match wgsl_graph_block_function(block) {
     Some(function) =>
       if function.qualifier() == "override" {
-        Some(function.name().name)
+        Some(function.name().name())
       } else {
         None
       }
@@ -110,13 +110,13 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     if function.qualifier() != "override" {
       continue
     }
-    let raw_target = function.name().name
+    let raw_target = function.name().name()
     if split_last_identifier(raw_target) is None {
       continue
     }
     let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
     if target != raw_target {
-      rewriter.replace(function.name().start, function.name().end, target)
+      rewriter.replace(function.name().start(), function.name().end(), target)
     }
   }
   rewriter.emit(source, 0)
@@ -131,7 +131,7 @@ fn wgsl_override_body_references_target(
   let identifiers : Array[WgslIdent] = []
   collect_wgsl_function_body_identifier_nodes(function, identifiers)
   for ident in identifiers {
-    if ident.name == raw_target || ident.name == target_name {
+    if ident.name() == raw_target || ident.name() == target_name {
       return true
     }
   }
@@ -218,7 +218,11 @@ fn rewrite_wgsl_override_fn_block(
     (Some(start), Some(end_)) => {
       let rewriter = WgslCanonicalTokenRewriter::default()
       rewriter.replace(start, end_, "")
-      rewriter.replace(function.name().start, function.name().end, target_name)
+      rewriter.replace(
+        function.name().start(),
+        function.name().end(),
+        target_name,
+      )
       rewriter.emit(rewritten_body, block_start)
     }
     _ => rewritten_body
@@ -256,7 +260,7 @@ fn apply_wgsl_virtual_overrides_checked(
   for block in graph.declaration_blocks {
     match wgsl_graph_block_function(block) {
       Some(function) if function.qualifier() == "override" => {
-        let raw_target = function.name().name
+        let raw_target = function.name().name()
         let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
         if !virtual_names.contains(target) {
           return WgslVirtualOverrideOutput::{

@@ -42,8 +42,8 @@ fn WgslDeclParser::parse_function(
       qualifier,
       qualifier_start,
       qualifier_end,
-      fn_keyword.start,
-      fn_keyword.end,
+      fn_keyword.start(),
+      fn_keyword.end(),
       name,
       arguments,
       result,
@@ -142,7 +142,7 @@ fn WgslDeclParser::tokenize_struct_members(
       Some(value) => value
       None => raise WgslStructMembersTokenizeError::UnexpectedToken
     }
-    tokens.push((Token::MEMBER_NAME(name), name.start, name.end))
+    tokens.push((Token::MEMBER_NAME(name), name.start(), name.end()))
     match parser.view() {
       [token, .. rest] if token.is_punctuation(58) => {
         let pos = token.pos()
@@ -412,11 +412,11 @@ fn WgslDeclParser::parse_source_directive(
     )
     (trimmed, self.source_start + local_start, self.source_start + local_end)
   } else {
-    ("", keyword.end, keyword.end)
+    ("", keyword.end(), keyword.end())
   }
   let tokens : Array[(Token, Int, Int)] = [
     (Token::SOURCE_TEXT(text), 0, 0),
-    (token, keyword.start, keyword.end),
+    (token, keyword.start(), keyword.end()),
   ]
   if tail_text != "" {
     tokens.push(
@@ -461,7 +461,7 @@ fn WgslDeclParser::decl_head_token(
   _self : WgslDeclParser,
   ident : WgslIdent,
 ) -> Token? {
-  match ident.name {
+  match ident.name() {
     "virtual" => Some(Token::KW_VIRTUAL(ident))
     "override" => Some(Token::KW_OVERRIDE(ident))
     "fn" => Some(Token::KW_FN(ident))
@@ -490,7 +490,7 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
         let pos = token.pos()
         let ident = WgslIdent::new(name, pos, pos + name.length())
         match self.decl_head_token(ident) {
-          Some(token) => tokens.push((token, ident.start, ident.end))
+          Some(token) => tokens.push((token, ident.start(), ident.end()))
           None => ()
         }
         view = rest

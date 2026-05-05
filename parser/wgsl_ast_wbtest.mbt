@@ -119,7 +119,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(struct_decl) else {
     abort("expected struct declaration payload")
   }
-  debug_inspect(struct_decl.name().name, content="\"Vertex\"")
+  debug_inspect(struct_decl.name().name(), content="\"Vertex\"")
   debug_inspect(struct_decl.members().length(), content="2")
   debug_inspect(
     struct_decl.members()[0].attributes()[0].name(),
@@ -140,7 +140,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   }
   debug_inspect(global.attributes().length(), content="2")
   debug_inspect(global.template_list()[0], content="\"uniform\"")
-  debug_inspect(global.name().name, content="\"globals\"")
+  debug_inspect(global.name().name(), content="\"globals\"")
   debug_inspect(global.ty(), content="Some(\"Globals\")")
   guard global.ty_ref() is Some(global_ty) else {
     abort("expected global type ref")
@@ -151,7 +151,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     is WgslGlobalDeclData::TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
-  debug_inspect(alias_decl.name().name, content="\"Color\"")
+  debug_inspect(alias_decl.name().name(), content="\"Color\"")
   debug_inspect(alias_decl.ty(), content="\"vec4<f32>\"")
   guard alias_decl.ty_ref() is Some(alias_ty) else {
     abort("expected alias type ref")
@@ -161,7 +161,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   guard unit.declarations()[3].data() is WgslGlobalDeclData::Const(const_decl) else {
     abort("expected const payload")
   }
-  debug_inspect(const_decl.name().name, content="\"SCALE\"")
+  debug_inspect(const_decl.name().name(), content="\"SCALE\"")
   debug_inspect(const_decl.ty(), content="Some(\"f32\")")
   guard const_decl.ty_ref() is Some(const_ty) else {
     abort("expected const type ref")
@@ -173,7 +173,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected override payload")
   }
   debug_inspect(override_decl.attributes()[0].name(), content="\"id\"")
-  debug_inspect(override_decl.name().name, content="\"ENABLED\"")
+  debug_inspect(override_decl.name().name(), content="\"ENABLED\"")
   guard override_decl.ty_ref() is Some(override_ty) else {
     abort("expected override type ref")
   }
@@ -186,7 +186,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(function.fn_start(), content="224")
   debug_inspect(function.fn_end(), content="226")
   debug_inspect(function.qualifier_start(), content="None")
-  debug_inspect(function.name().name, content="\"fragment\"")
+  debug_inspect(function.name().name(), content="\"fragment\"")
   debug_inspect(function.arguments()[0].name(), content="\"color\"")
   debug_inspect(function.arguments()[0].name_start(), content="249")
   debug_inspect(function.arguments()[0].name_end(), content="254")
@@ -210,7 +210,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(result_ty.arguments()[0].name(), content="\"f32\"")
   debug_inspect(function.body().statements().length(), content="1")
   debug_inspect(
-    function.body().statements()[0].expression_refs()[0].identifiers()[0].name,
+    function.body().statements()[0].expression_refs()[0].identifiers()[0].name(),
     content="\"color\"",
   )
 }
@@ -379,7 +379,7 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
   guard const_decl.initializer_ref() is Some(const_initializer) else {
     abort("expected const initializer ref")
   }
-  debug_inspect(const_initializer.identifiers()[0].name, content="\"BASE\"")
+  debug_inspect(const_initializer.identifiers()[0].name(), content="\"BASE\"")
   guard unit.declarations()[2].data()
     is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
@@ -387,12 +387,12 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
   guard override_decl.attributes()[0].arguments_ref() is Some(attr_args) else {
     abort("expected attribute arguments ref")
   }
-  debug_inspect(attr_args.identifiers()[0].name, content="\"FACTOR\"")
+  debug_inspect(attr_args.identifiers()[0].name(), content="\"FACTOR\"")
   guard override_decl.initializer_ref() is Some(override_initializer) else {
     abort("expected override initializer ref")
   }
   debug_inspect(
-    override_initializer.identifiers()[0].name,
+    override_initializer.identifiers()[0].name(),
     content="\"ENABLED_FLAG\"",
   )
 }
@@ -465,9 +465,9 @@ test "WGSL attributes are parsed by grammar" {
   guard function.attributes()[0].arguments_ref() is Some(arguments) else {
     abort("expected attribute arguments ref")
   }
-  debug_inspect(arguments.identifiers()[0].name, content="\"WIDTH\"")
-  debug_inspect(arguments.identifiers()[1].name, content="\"max\"")
-  debug_inspect(arguments.identifiers()[2].name, content="\"WIDTH\"")
+  debug_inspect(arguments.identifiers()[0].name(), content="\"WIDTH\"")
+  debug_inspect(arguments.identifiers()[1].name(), content="\"max\"")
+  debug_inspect(arguments.identifiers()[2].name(), content="\"WIDTH\"")
   debug_inspect(function.attributes()[1].name(), content="\"compute\"")
   debug_inspect(function.attributes()[1].arguments(), content="\"\"")
 }
@@ -521,7 +521,10 @@ test "WGSL typed initializer tails are parsed by grammar" {
   guard global.initializer_ref() is Some(global_initializer) else {
     abort("expected global initializer")
   }
-  debug_inspect(global_initializer.identifiers()[0].name, content="\"FACTOR\"")
+  debug_inspect(
+    global_initializer.identifiers()[0].name(),
+    content="\"FACTOR\"",
+  )
   guard unit.declarations()[1].data() is WgslGlobalDeclData::Const(const_decl) else {
     abort("expected const")
   }
@@ -530,7 +533,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
   guard const_decl.initializer_ref() is Some(const_initializer) else {
     abort("expected const initializer")
   }
-  debug_inspect(const_initializer.identifiers()[0].name, content="\"cache\"")
+  debug_inspect(const_initializer.identifiers()[0].name(), content="\"cache\"")
   guard unit.declarations()[2].data()
     is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override")
@@ -552,12 +555,12 @@ test "WGSL identifier collection exposes source spans" {
   for decl in unit.declarations() {
     @ast.collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
   }
-  debug_inspect(nodes[0].name, content="\"vec4\"")
-  debug_inspect(nodes[0].start, content="14")
-  debug_inspect(nodes[1].name, content="\"f32\"")
-  debug_inspect(nodes[2].name, content="\"mod::inner\"")
-  debug_inspect(nodes[3].name, content="\"Alias\"")
-  debug_inspect(nodes[4].name, content="\"Alias\"")
+  debug_inspect(nodes[0].name(), content="\"vec4\"")
+  debug_inspect(nodes[0].start(), content="14")
+  debug_inspect(nodes[1].name(), content="\"f32\"")
+  debug_inspect(nodes[2].name(), content="\"mod::inner\"")
+  debug_inspect(nodes[3].name(), content="\"Alias\"")
+  debug_inspect(nodes[4].name(), content="\"Alias\"")
   debug_inspect(nodes.length(), content="5")
 }
 
@@ -598,7 +601,7 @@ test "WGSL function payload exposes statement AST spans" {
   debug_inspect(
     function.body().statements()[0]
     .exported_local_bindings()
-    .map(fn(binding) { binding.name().name }),
+    .map(fn(binding) { binding.name().name() }),
     content=(
       #|["local"]
     ),
@@ -612,7 +615,7 @@ test "WGSL function payload exposes statement AST spans" {
     content="\"var\"",
   )
   debug_inspect(
-    function.body().statements()[0].local_bindings()[0].name().name,
+    function.body().statements()[0].local_bindings()[0].name().name(),
     content="\"local\"",
   )
   debug_inspect(
@@ -635,7 +638,7 @@ test "WGSL function payload exposes statement AST spans" {
     abort("expected local initializer ref")
   }
   debug_inspect(
-    local_init.identifiers().map(fn(node) { node.name }),
+    local_init.identifiers().map(fn(node) { node.name() }),
     content=(
       #|["value"]
     ),
@@ -652,7 +655,7 @@ test "WGSL function payload exposes statement AST spans" {
   debug_inspect(
     function.body().statements()[2].expression_refs()[0]
     .identifiers()
-    .map(fn(node) { node.name }),
+    .map(fn(node) { node.name() }),
     content="[]",
   )
 }
@@ -672,7 +675,7 @@ test "WGSL statement expression refs skip local declarations and member access" 
   debug_inspect(
     function.body().statements()[0]
     .exported_local_bindings()
-    .map(fn(binding) { binding.name().name }),
+    .map(fn(binding) { binding.name().name() }),
     content=(
       #|["local"]
     ),
@@ -682,7 +685,7 @@ test "WGSL statement expression refs skip local declarations and member access" 
     abort("expected local initializer ref")
   }
   debug_inspect(
-    local_init.identifiers().map(fn(node) { node.name }),
+    local_init.identifiers().map(fn(node) { node.name() }),
     content=(
       #|["input"]
     ),
@@ -690,7 +693,7 @@ test "WGSL statement expression refs skip local declarations and member access" 
   debug_inspect(
     function.body().statements()[1].expression_refs()[0]
     .identifiers()
-    .map(fn(node) { node.name }),
+    .map(fn(node) { node.name() }),
     content=(
       #|["local", "input"]
     ),
@@ -829,7 +832,7 @@ test "WGSL global declaration identifier collection excludes locals" {
     @ast.collect_wgsl_decl_global_declared_identifier_nodes(decl.data(), nodes)
   }
   debug_inspect(
-    nodes.map(fn(node) { node.name }),
+    nodes.map(fn(node) { node.name() }),
     content=(
       #|["Alias", "Vertex", "make_vertex"]
     ),
@@ -857,7 +860,7 @@ test "WGSL declaration identifier collection excludes function locals" {
     nodes,
   )
   debug_inspect(
-    nodes.map(fn(node) { node.name }),
+    nodes.map(fn(node) { node.name() }),
     content=(
       #|["u32", "u32"]
     ),
@@ -902,13 +905,13 @@ test "WGSL statement AST records nested and loop local declarations" {
   debug_inspect(
     function.body().statements()[0]
     .local_bindings()
-    .map(fn(binding) { binding.name().name }),
+    .map(fn(binding) { binding.name().name() }),
     content="[]",
   )
   debug_inspect(
     function.body().statements()[0].blocks()[0].statements()[0]
     .local_bindings()
-    .map(fn(binding) { binding.name().name }),
+    .map(fn(binding) { binding.name().name() }),
     content=(
       #|["nested"]
     ),
@@ -916,7 +919,7 @@ test "WGSL statement AST records nested and loop local declarations" {
   debug_inspect(
     function.body().statements()[0].expression_refs()[0]
     .identifiers()
-    .map(fn(node) { node.name }),
+    .map(fn(node) { node.name() }),
     content=(
       #|["arg"]
     ),
@@ -928,7 +931,7 @@ test "WGSL statement AST records nested and loop local declarations" {
   debug_inspect(
     function.body().statements()[1]
     .local_bindings()
-    .map(fn(binding) { binding.name().name }),
+    .map(fn(binding) { binding.name().name() }),
     content=(
       #|["i"]
     ),
@@ -938,7 +941,7 @@ test "WGSL statement AST records nested and loop local declarations" {
     content="1",
   )
   debug_inspect(
-    function.body().statements()[1].local_bindings()[0].name().name,
+    function.body().statements()[1].local_bindings()[0].name().name(),
     content="\"i\"",
   )
   debug_inspect(
@@ -956,7 +959,7 @@ test "WGSL statement AST records nested and loop local declarations" {
   debug_inspect(
     function.body().statements()[1].expression_refs()[0]
     .identifiers()
-    .map(fn(node) { node.name }),
+    .map(fn(node) { node.name() }),
     content=(
       #|["i", "arg"]
     ),
@@ -971,7 +974,7 @@ test "WGSL statement AST records nested and loop local declarations" {
     nodes,
   )
   debug_inspect(
-    nodes.map(fn(node) { node.name }),
+    nodes.map(fn(node) { node.name() }),
     content=(
       #|["u32", "u32", "u32"]
     ),
@@ -997,7 +1000,7 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
   debug_inspect(statement.kind(), content="If")
   debug_inspect(statement.blocks().length(), content="2")
   debug_inspect(
-    statement.expression_refs()[0].identifiers().map(fn(node) { node.name }),
+    statement.expression_refs()[0].identifiers().map(fn(node) { node.name() }),
     content=(
       #|["arg"]
     ),
@@ -1117,9 +1120,9 @@ test "WGSL override function payload preserves qualified target path" {
   debug_inspect(function.qualifier_end(), content="Some(8)")
   debug_inspect(function.fn_start(), content="9")
   debug_inspect(function.fn_end(), content="11")
-  debug_inspect(function.name().name, content="\"mod::inner\"")
-  debug_inspect(function.name().start, content="12")
-  debug_inspect(function.name().end, content="22")
+  debug_inspect(function.name().name(), content="\"mod::inner\"")
+  debug_inspect(function.name().start(), content="12")
+  debug_inspect(function.name().end(), content="22")
   debug_inspect(function.arguments()[0].name(), content="\"arg\"")
   debug_inspect(
     function.result(),
@@ -1179,7 +1182,7 @@ test "WGSL statement payload exposes structured statement semantics" {
   match function.body().statements()[0].payload() {
     LocalDeclaration(bindings) =>
       debug_inspect(
-        bindings.map(fn(binding) { binding.name().name }),
+        bindings.map(fn(binding) { binding.name().name() }),
         content=(
           #|["value"]
         ),

@@ -256,16 +256,16 @@ fn substitute_identifiers(
     let identifiers : Array[WgslIdent] = []
     collect_wgsl_decl_identifier_nodes(decl.data(), identifiers)
     for ident in identifiers {
-      let token_byte_pos = utf8_byte_length(input[:ident.start].to_owned())
+      let token_byte_pos = utf8_byte_length(input[:ident.start()].to_owned())
       let replacement = imported_identifier_replacement(
-        ident.name,
+        ident.name(),
         offset + token_byte_pos,
         declared_imports,
         used_imports,
         allow_ambiguous,
       )
-      if replacement != ident.name {
-        rewriter.replace(ident.start, ident.end, replacement)
+      if replacement != ident.name() {
+        rewriter.replace(ident.start(), ident.end(), replacement)
       }
     }
   }

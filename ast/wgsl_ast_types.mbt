@@ -114,14 +114,29 @@ pub(all) enum WgslGlobalDeclKind {
 
 ///|
 pub struct WgslIdent {
-  name : String
-  start : Int
-  end : Int
+  priv name : String
+  priv start : Int
+  priv end : Int
 } derive(Debug)
 
 ///|
 pub fn WgslIdent::new(name : String, start : Int, end : Int) -> WgslIdent {
   WgslIdent::{ name, start, end }
+}
+
+///|
+pub fn WgslIdent::name(self : WgslIdent) -> String {
+  self.name
+}
+
+///|
+pub fn WgslIdent::start(self : WgslIdent) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslIdent::end(self : WgslIdent) -> Int {
+  self.end
 }
 
 ///|
@@ -191,9 +206,9 @@ pub(all) enum WgslExprNodeKind {
 
 ///|
 pub struct WgslExprNode {
-  kind : WgslExprNodeKind
-  start : Int
-  end : Int
+  priv kind : WgslExprNodeKind
+  priv start : Int
+  priv end : Int
 } derive(Debug)
 
 ///|

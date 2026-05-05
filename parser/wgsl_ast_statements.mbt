@@ -66,7 +66,7 @@ fn WgslDeclParser::tokenize_function_arguments(
       Some(value) => value
       None => raise WgslFunctionArgsTokenizeError::UnexpectedToken
     }
-    tokens.push((Token::ARG_NAME(name), name.start, name.end))
+    tokens.push((Token::ARG_NAME(name), name.start(), name.end()))
     match parser.view() {
       [token, .. rest] if token.is_punctuation(58) => {
         let pos = token.pos()

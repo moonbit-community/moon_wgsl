@@ -75,9 +75,7 @@ pub(all) enum WgslDirectiveKind {
 } derive(Eq, @debug.Debug)
 
 pub struct WgslExprNode {
-  kind : WgslExprNodeKind
-  start : Int
-  end : Int
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslExprNode::end(Self) -> Int
 pub fn WgslExprNode::kind(Self) -> WgslExprNodeKind
@@ -215,11 +213,12 @@ pub fn WgslGlobalVariable::ty(Self) -> String?
 pub fn WgslGlobalVariable::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslIdent {
-  name : String
-  start : Int
-  end : Int
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslIdent::end(Self) -> Int
+pub fn WgslIdent::name(Self) -> String
 pub fn WgslIdent::new(String, Int, Int) -> Self
+pub fn WgslIdent::start(Self) -> Int
 
 pub struct WgslLocalDeclaration {
   // private fields

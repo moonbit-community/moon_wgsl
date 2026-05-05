@@ -343,7 +343,7 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
             self.make_node(
               WgslExprNodeKind::Unary(token.text(), rhs),
               token.start(),
-              rhs.end,
+              rhs.end(),
             ),
           )
         }
@@ -356,7 +356,7 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
               self.index = self.index + 1
               close.end()
             }
-            _ => inner.end
+            _ => inner.end()
           }
           Some(self.make_node(WgslExprNodeKind::Group(inner), start, end_))
         }
@@ -417,7 +417,7 @@ fn WgslExprNodeParser::parse_postfix(
               self.index = self.index + 1
               node = self.make_node(
                 WgslExprNodeKind::Call(node, args),
-                node.start,
+                node.start(),
                 close.end(),
               )
               break
@@ -447,7 +447,7 @@ fn WgslExprNodeParser::parse_postfix(
                   member_token.end(),
                 ),
               ),
-              node.start,
+              node.start(),
               member_token.end(),
             )
             continue
@@ -472,7 +472,7 @@ fn WgslExprNodeParser::parse_postfix(
                   segment_token.end(),
                 ),
               ),
-              node.start,
+              node.start(),
               segment_token.end(),
             )
             continue
@@ -491,11 +491,11 @@ fn WgslExprNodeParser::parse_postfix(
             self.index = self.index + 1
             close.end()
           }
-          _ => index.end
+          _ => index.end()
         }
         node = self.make_node(
           WgslExprNodeKind::Index(node, index),
-          node.start,
+          node.start(),
           end_,
         )
         continue
@@ -532,8 +532,8 @@ fn WgslExprNodeParser::parse_expression(
     }
     lhs = self.make_node(
       WgslExprNodeKind::Binary(op, lhs, rhs),
-      lhs.start,
-      rhs.end,
+      lhs.start(),
+      rhs.end(),
     )
   }
   Some(lhs)
@@ -573,8 +573,8 @@ fn WgslExprNodeParser::parse_sequence_until_any(
         self.source_start,
       )
     _ => {
-      let start = nodes[0].start
-      let end_ = nodes[nodes.length() - 1].end
+      let start = nodes[0].start()
+      let end_ = nodes[nodes.length() - 1].end()
       self.make_node(WgslExprNodeKind::Sequence(nodes), start, end_)
     }
   }
@@ -868,8 +868,8 @@ fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? 
     Some(value) => value
     None => return None
   }
-  let mut name = first.name
-  let mut end = first.end
+  let mut name = first.name()
+  let mut end = first.end()
   while true {
     match self.view() {
       [colon_a, colon_b, segment_token, .. rest] if colon_a.is_punctuation(58) &&
@@ -883,7 +883,7 @@ fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? 
       _ => break
     }
   }
-  Some(WgslIdent::new(name, first.start, end))
+  Some(WgslIdent::new(name, first.start(), end))
 }
 
 ///|

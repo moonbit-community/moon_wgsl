@@ -101,7 +101,7 @@ fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
 
 ///|
 fn wgsl_local_binding_key(binding : WgslLocalDeclaration) -> String {
-  "\{binding.kind()}:\{binding.name().name}<\{wgsl_string_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
+  "\{binding.kind()}:\{binding.name().name()}<\{wgsl_string_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
 }
 
 ///|
@@ -138,7 +138,7 @@ fn wgsl_statement_key(statement : WgslStatement) -> String {
   }
   let exported_local_names : Array[String] = []
   for binding in statement.exported_local_bindings() {
-    exported_local_names.push(binding.name().name)
+    exported_local_names.push(binding.name().name())
   }
   let expressions : Array[String] = []
   for expr_ref in statement.expression_refs() {
@@ -179,14 +179,14 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
           "\{wgsl_attributes_key(value.attributes())}:\{wgsl_type_ref_key(value.ty_ref())}"
         None => ""
       }
-      "fn:\{wgsl_attributes_key(function.attributes())}:\{function.qualifier()}:\{function.name().name}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body())}}"
+      "fn:\{wgsl_attributes_key(function.attributes())}:\{function.qualifier()}:\{function.name().name()}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body())}}"
     }
     WgslGlobalDeclData::GlobalVariable(global) =>
-      "global:\{wgsl_attributes_key(global.attributes())}:\{global.name().name}:\{wgsl_string_list_key(global.template_list())}:\{wgsl_type_ref_key(global.ty_ref())}=\{wgsl_optional_expr_ref_key(global.initializer_ref())}"
+      "global:\{wgsl_attributes_key(global.attributes())}:\{global.name().name()}:\{wgsl_string_list_key(global.template_list())}:\{wgsl_type_ref_key(global.ty_ref())}=\{wgsl_optional_expr_ref_key(global.initializer_ref())}"
     WgslGlobalDeclData::Const(const_decl) =>
-      "const:\{const_decl.name().name}:\{wgsl_type_ref_key(const_decl.ty_ref())}=\{wgsl_optional_expr_ref_key(const_decl.initializer_ref())}"
+      "const:\{const_decl.name().name()}:\{wgsl_type_ref_key(const_decl.ty_ref())}=\{wgsl_optional_expr_ref_key(const_decl.initializer_ref())}"
     WgslGlobalDeclData::Override(override_decl) =>
-      "override:\{wgsl_attributes_key(override_decl.attributes())}:\{override_decl.name().name}:\{wgsl_type_ref_key(override_decl.ty_ref())}=\{wgsl_optional_expr_ref_key(override_decl.initializer_ref())}"
+      "override:\{wgsl_attributes_key(override_decl.attributes())}:\{override_decl.name().name()}:\{wgsl_type_ref_key(override_decl.ty_ref())}=\{wgsl_optional_expr_ref_key(override_decl.initializer_ref())}"
     WgslGlobalDeclData::Struct(struct_decl) => {
       let members : Array[String] = []
       for field in struct_decl.members() {
@@ -194,10 +194,10 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
           "\{wgsl_attributes_key(field.attributes())}:\{field.name()}:\{wgsl_type_ref_key(field.ty_ref())}",
         )
       }
-      "struct:\{wgsl_attributes_key(struct_decl.attributes())}:\{struct_decl.name().name}{\{wgsl_string_list_key(members)}}"
+      "struct:\{wgsl_attributes_key(struct_decl.attributes())}:\{struct_decl.name().name()}{\{wgsl_string_list_key(members)}}"
     }
     WgslGlobalDeclData::TypeAlias(alias_decl) =>
-      "alias:\{alias_decl.name().name}=\{wgsl_type_ref_key(alias_decl.ty_ref())}"
+      "alias:\{alias_decl.name().name()}=\{wgsl_type_ref_key(alias_decl.ty_ref())}"
     WgslGlobalDeclData::ConstAssert(expr) =>
       "const_assert:\{wgsl_expr_ref_key(expr)}"
     Raw => "raw"
@@ -337,7 +337,7 @@ fn wgsl_global_binding_info(block : WgslGraphBlock) -> WgslGlobalBindingInfo? {
         is Some(binding) else {
         return None
       }
-      Some(WgslGlobalBindingInfo::{ name: global.name().name, group, binding })
+      Some(WgslGlobalBindingInfo::{ name: global.name().name(), group, binding })
     }
     _ => None
   }

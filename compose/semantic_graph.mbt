@@ -100,7 +100,7 @@ fn collect_wgsl_semantic_reference_paths(
     collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
   }
   for node in nodes {
-    match wgsl_semantic_reference_path_from_identifier(node.name) {
+    match wgsl_semantic_reference_path_from_identifier(node.name()) {
       Some(path) => paths.push(path)
       None => ()
     }

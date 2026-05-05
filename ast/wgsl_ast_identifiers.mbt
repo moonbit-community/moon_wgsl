@@ -1,12 +1,12 @@
 ///|
 pub fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
   match data {
-    Function(function) => function.name().name
-    GlobalVariable(global) => global.name().name
-    Const(value) => value.name.name
-    Override(value) => value.name.name
-    Struct(value) => value.name.name
-    TypeAlias(value) => value.name.name
+    Function(function) => function.name().name()
+    GlobalVariable(global) => global.name().name()
+    Const(value) => value.name().name()
+    Override(value) => value.name().name()
+    Struct(value) => value.name().name()
+    TypeAlias(value) => value.name().name()
     Directive(_) | Import(_) | ConstAssert(_) | Raw => ""
   }
 }
@@ -37,7 +37,7 @@ fn collect_wgsl_expr_node_identifier_nodes(
 ) -> Unit {
   match node.kind() {
     Identifier(ident) =>
-      if !wgsl_name_list_contains(active_local_names, ident.name) {
+      if !wgsl_name_list_contains(active_local_names, ident.name()) {
         nodes.push(ident)
       }
     Literal(_) | Token(_) => ()
@@ -56,12 +56,12 @@ fn collect_wgsl_expr_node_identifier_nodes(
     PathAccess(base, segment) => {
       let base_path = wgsl_expr_node_path_name(base)
       let full_name = if base_path == "" {
-        segment.name
+        segment.name()
       } else {
-        "\{base_path}::\{segment.name}"
+        "\{base_path}::\{segment.name()}"
       }
       if !wgsl_name_list_contains(active_local_names, full_name) {
-        nodes.push(WgslIdent::new(full_name, base.start, segment.end))
+        nodes.push(WgslIdent::new(full_name, base.start(), segment.end()))
       }
     }
     Member(base, _) =>
@@ -82,13 +82,13 @@ fn collect_wgsl_expr_node_identifier_nodes(
 ///|
 fn wgsl_expr_node_path_name(node : WgslExprNode) -> String {
   match node.kind() {
-    Identifier(ident) => ident.name
+    Identifier(ident) => ident.name()
     PathAccess(base, segment) => {
       let base_path = wgsl_expr_node_path_name(base)
       if base_path == "" {
-        segment.name
+        segment.name()
       } else {
-        "\{base_path}::\{segment.name}"
+        "\{base_path}::\{segment.name()}"
       }
     }
     _ => ""
@@ -110,7 +110,7 @@ fn collect_wgsl_expr_ref_identifier_nodes_with_scope(
           )
         None =>
           for ident in expr.identifiers() {
-            if !wgsl_name_list_contains(active_local_names, ident.name) {
+            if !wgsl_name_list_contains(active_local_names, ident.name()) {
               nodes.push(ident)
             }
           }
@@ -201,7 +201,7 @@ fn collect_wgsl_statement_identifier_nodes_with_scope(
   }
   let block_local_names = wgsl_name_list_copy(active_local_names)
   for binding in statement.local_bindings() {
-    wgsl_name_list_push_unique(block_local_names, binding.name().name)
+    wgsl_name_list_push_unique(block_local_names, binding.name().name())
   }
   for expr_ref in statement.expression_refs() {
     collect_wgsl_expr_ref_identifier_nodes_with_scope(
@@ -229,7 +229,7 @@ fn collect_wgsl_block_identifier_nodes_with_scope(
       statement, active_local_names, nodes,
     )
     for binding in statement.exported_local_bindings() {
-      wgsl_name_list_push_unique(active_local_names, binding.name().name)
+      wgsl_name_list_push_unique(active_local_names, binding.name().name())
     }
   }
 }

@@ -304,7 +304,7 @@ fn collect_wgsl_statement_local_sanitizers(
   plan : WgslRenamePlan,
 ) -> Unit {
   for binding in statement.local_bindings() {
-    collect_wgsl_function_local_name_sanitizer(binding.name().name, plan)
+    collect_wgsl_function_local_name_sanitizer(binding.name().name(), plan)
   }
   for block in statement.blocks() {
     collect_wgsl_block_local_sanitizers(block, plan)

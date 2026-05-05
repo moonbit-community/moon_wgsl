@@ -95,10 +95,10 @@ attribute -> @ast.WgslAttribute
       let (arguments, arguments_ref, args_end) = args
       let end = match args_end {
         Some(value) => value
-        None => name.end
+        None => name.end()
       }
       @ast.WgslAttribute::new(
-        name.name,
+        name.name(),
         at,
         end,
         arguments,
@@ -231,8 +231,8 @@ decl_head -> WgslDeclHead
         attributes: attrs,
         keyword: Some(fn_kw),
         qualifier: "virtual",
-        qualifier_start: Some($2.start),
-        qualifier_end: Some($2.end),
+        qualifier_start: Some($2.start()),
+        qualifier_end: Some($2.end()),
         fn_keyword: Some(fn_kw),
         consumed: 2,
       }
@@ -243,8 +243,8 @@ decl_head -> WgslDeclHead
         attributes: attrs,
         keyword: Some(fn_kw),
         qualifier: "override",
-        qualifier_start: Some($2.start),
-        qualifier_end: Some($2.end),
+        qualifier_start: Some($2.start()),
+        qualifier_end: Some($2.end()),
         fn_keyword: Some(fn_kw),
         consumed: 2,
       }
@@ -422,14 +422,14 @@ struct_member_list -> Array[@ast.WgslStructMember]
 struct_member -> @ast.WgslStructMember
   : attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
       let (ty_text, ty_ref, _, ty_end) = ty
-      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
+      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
       @ast.WgslStructMember::new(
         attrs,
-        name.name,
+        name.name(),
         start,
         ty_end,
-        name.start,
-        name.end,
+        name.start(),
+        name.end(),
         ty_text,
         ty_ref,
       )
@@ -459,48 +459,48 @@ type_alias_tail -> (String, @ast.WgslTypeRef?)
 source_directive -> @ast.WgslDirective
   : text=SOURCE_TEXT keyword=KW_ENABLE tail=directive_tail EOF {
       let (tail, raw_tail_start, raw_tail_end) = tail
-      let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
-      let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
+      let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
+      let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Enable,
-        keyword.name,
+        keyword.name(),
         tail,
         0,
         text.length(),
-        keyword.start,
-        keyword.end,
+        keyword.start(),
+        keyword.end(),
         tail_start,
         tail_end,
       )
     }
   | text=SOURCE_TEXT keyword=KW_REQUIRES tail=directive_tail EOF {
       let (tail, raw_tail_start, raw_tail_end) = tail
-      let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
-      let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
+      let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
+      let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Requires,
-        keyword.name,
+        keyword.name(),
         tail,
         0,
         text.length(),
-        keyword.start,
-        keyword.end,
+        keyword.start(),
+        keyword.end(),
         tail_start,
         tail_end,
       )
     }
   | text=SOURCE_TEXT keyword=KW_DIAGNOSTIC tail=directive_tail EOF {
       let (tail, raw_tail_start, raw_tail_end) = tail
-      let tail_start = if tail == "" { keyword.end } else { raw_tail_start }
-      let tail_end = if tail == "" { keyword.end } else { raw_tail_end }
+      let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
+      let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Diagnostic,
-        keyword.name,
+        keyword.name(),
         tail,
         0,
         text.length(),
-        keyword.start,
-        keyword.end,
+        keyword.start(),
+        keyword.end(),
         tail_start,
         tail_end,
       )
@@ -546,14 +546,14 @@ function_arg_list -> Array[@ast.WgslFunctionArgument]
 function_arg -> @ast.WgslFunctionArgument
   : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
       let (_, ty_ref, _, ty_end) = ty
-      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
+      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
       @ast.WgslFunctionArgument::new(
         attrs,
-        name.name,
+        name.name(),
         start,
         ty_end,
-        name.start,
-        name.end,
+        name.start(),
+        name.end(),
         ty_ref,
       )
     }
