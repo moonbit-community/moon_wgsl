@@ -27,10 +27,14 @@ using @lex {
 using @parser {
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
-  parse_wgsl_directive_identifier,
   parse_wgsl_directive_scan_items,
-  parse_wgsl_shader_def_comparison,
   parse_wgsl_shader_def_references,
+}
+
+///|
+using @directive {
+  parse_wgsl_directive_identifier,
+  parse_wgsl_shader_def_comparison,
   wgsl_required_space_word_tail,
   wgsl_effective_directive_kind,
   wgsl_effective_directive_tail,

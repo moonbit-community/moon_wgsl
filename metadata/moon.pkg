@@ -1,5 +1,6 @@
 import {
   "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/directive",
   "Milky2018/moon_wgsl/transform",
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/lex",

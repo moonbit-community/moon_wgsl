@@ -28,27 +28,6 @@ test "WGSL directive parser keeps unknown directives structured" {
 }
 
 ///|
-test "WGSL directive parser exposes effective naga-oil directive semantics" {
-  guard parse_wgsl_directive_line("#elsewhere FLAG") is Some(else_directive) else {
-    abort("expected else directive")
-  }
-  debug_inspect(wgsl_effective_directive_kind(else_directive), content="Else")
-  debug_inspect(
-    wgsl_effective_directive_tail(else_directive),
-    content="\"where FLAG\"",
-  )
-  debug_inspect(else_directive.has_tail(), content="true")
-  guard parse_wgsl_directive_line("#endif_trailing") is Some(endif_directive) else {
-    abort("expected endif directive")
-  }
-  debug_inspect(wgsl_effective_directive_kind(endif_directive), content="Endif")
-  debug_inspect(
-    wgsl_effective_directive_tail(endif_directive),
-    content="\"_trailing\"",
-  )
-}
-
-///|
 test "WGSL directive parser accepts Rust regex Unicode whitespace" {
   guard parse_wgsl_directive_line(
       "\u{00A0}#\u{00A0}define_import_path\u{3000}demo::module\u{2003}",
@@ -91,26 +70,7 @@ test "WGSL shader-def reference parser accepts delimited names without trimming"
 }
 
 ///|
-test "WGSL preprocessor directive syntax parser extracts names and comparisons" {
-  debug_inspect(
-    parse_wgsl_directive_identifier(" FLAG; trailing"),
-    content="Some(\"FLAG\")",
-  )
-  debug_inspect(
-    wgsl_required_space_word_tail(" ifdef   FLAG", "ifdef"),
-    content="Some(\"FLAG\")",
-  )
-  debug_inspect(
-    wgsl_text_starts_with_tokenized_space(" if FLAG"),
-    content="true",
-  )
-  guard parse_wgsl_shader_def_comparison("VALUE >= -7u; ignored")
-    is Some(comparison) else {
-    abort("expected comparison")
-  }
-  debug_inspect(comparison.def_name(), content="\"VALUE\"")
-  debug_inspect(comparison.operator(), content="GreaterEqual")
-  debug_inspect(comparison.value_text(), content="\"-7u\"")
+test "WGSL GLSL version directive parser extracts versions" {
   debug_inspect(
     parse_glsl_version_directive(" #version 450 core"),
     content="Some(\"450\")",

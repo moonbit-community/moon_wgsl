@@ -11,29 +11,17 @@ import {
 // Values
 pub fn parse_glsl_version_directive(String) -> String?
 
-pub fn parse_wgsl_directive_identifier(String) -> String?
-
 pub fn parse_wgsl_directive_scan_items(String, include_glsl_version? : Bool) -> Array[WgslDirectiveScanItem]
 
 pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
 
-pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?
-
 pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
 
 pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, Int]) -> Array[WgslTemplateConstReference]
 
 pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit raise WgslParseError
-
-pub fn wgsl_effective_directive_kind(@ast.WgslDirective) -> @ast.WgslDirectiveKind
-
-pub fn wgsl_effective_directive_tail(@ast.WgslDirective) -> String
-
-pub fn wgsl_required_space_word_tail(String, String) -> String?
-
-pub fn wgsl_text_starts_with_tokenized_space(String) -> Bool
 
 // Errors
 pub(all) suberror ParseImportsError {
@@ -65,23 +53,6 @@ pub struct WgslDirectiveScanSource {
 } derive(@debug.Debug)
 pub fn WgslDirectiveScanSource::cleaned_text(Self) -> String
 pub fn WgslDirectiveScanSource::original_text(Self) -> String
-
-pub struct WgslShaderDefComparison {
-  // private fields
-} derive(@debug.Debug)
-pub fn WgslShaderDefComparison::def_name(Self) -> String
-pub fn WgslShaderDefComparison::operator(Self) -> WgslShaderDefOperator
-pub fn WgslShaderDefComparison::value_text(Self) -> String
-
-pub(all) enum WgslShaderDefOperator {
-  Equal
-  NotEqual
-  Greater
-  GreaterEqual
-  Less
-  LessEqual
-  Unknown(String)
-} derive(Eq, @debug.Debug)
 
 pub struct WgslShaderDefReference {
   // private fields

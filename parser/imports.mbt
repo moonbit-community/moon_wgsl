@@ -48,7 +48,6 @@ using @lex {
   source_lines,
   tokenize,
   tokenize_wgsl,
-  trim_trailing_semicolons,
   utf8_byte_length,
   wgsl_blankspace_code_point,
   wgsl_regex_skip_whitespace,

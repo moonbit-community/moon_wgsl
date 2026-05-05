@@ -18,12 +18,16 @@ using @lex {spaces, trim_trailing_semicolons, utf8_byte_length}
 using @parser {
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
-  type WgslShaderDefOperator,
-  parse_wgsl_directive_identifier,
   parse_wgsl_directive_scan_items,
   parse_wgsl_shader_def_references,
-  parse_wgsl_shader_def_comparison,
   parse_wgsl_template_const_references,
+}
+
+///|
+using @directive {
+  type WgslShaderDefOperator,
+  parse_wgsl_directive_identifier,
+  parse_wgsl_shader_def_comparison,
   wgsl_required_space_word_tail,
   wgsl_effective_directive_kind,
   wgsl_effective_directive_tail,
