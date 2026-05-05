@@ -17,12 +17,10 @@ pub(all) enum WgslDirectiveKind {
 ///|
 pub struct WgslDirective {
   priv kind : WgslDirectiveKind
-  priv name : String
+  priv name : WgslIdent
   priv tail : String
   priv start : Int
   priv end : Int
-  priv name_start : Int
-  priv name_end : Int
   priv tail_start : Int
   priv tail_end : Int
 } derive(Debug)
@@ -30,26 +28,14 @@ pub struct WgslDirective {
 ///|
 pub fn WgslDirective::new(
   kind : WgslDirectiveKind,
-  name : String,
+  name : WgslIdent,
   tail : String,
   start : Int,
   end : Int,
-  name_start : Int,
-  name_end : Int,
   tail_start : Int,
   tail_end : Int,
 ) -> WgslDirective {
-  WgslDirective::{
-    kind,
-    name,
-    tail,
-    start,
-    end,
-    name_start,
-    name_end,
-    tail_start,
-    tail_end,
-  }
+  WgslDirective::{ kind, name, tail, start, end, tail_start, tail_end }
 }
 
 ///|
@@ -58,7 +44,7 @@ pub fn WgslDirective::kind(self : WgslDirective) -> WgslDirectiveKind {
 }
 
 ///|
-pub fn WgslDirective::name(self : WgslDirective) -> String {
+pub fn WgslDirective::name(self : WgslDirective) -> WgslIdent {
   self.name
 }
 
@@ -75,16 +61,6 @@ pub fn WgslDirective::start(self : WgslDirective) -> Int {
 ///|
 pub fn WgslDirective::end(self : WgslDirective) -> Int {
   self.end
-}
-
-///|
-pub fn WgslDirective::name_start(self : WgslDirective) -> Int {
-  self.name_start
-}
-
-///|
-pub fn WgslDirective::name_end(self : WgslDirective) -> Int {
-  self.name_end
 }
 
 ///|

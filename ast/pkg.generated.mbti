@@ -47,10 +47,8 @@ pub struct WgslDirective {
 } derive(@debug.Debug)
 pub fn WgslDirective::end(Self) -> Int
 pub fn WgslDirective::kind(Self) -> WgslDirectiveKind
-pub fn WgslDirective::name(Self) -> String
-pub fn WgslDirective::name_end(Self) -> Int
-pub fn WgslDirective::name_start(Self) -> Int
-pub fn WgslDirective::new(WgslDirectiveKind, String, String, Int, Int, Int, Int, Int, Int) -> Self
+pub fn WgslDirective::name(Self) -> WgslIdent
+pub fn WgslDirective::new(WgslDirectiveKind, WgslIdent, String, Int, Int, Int, Int) -> Self
 pub fn WgslDirective::start(Self) -> Int
 pub fn WgslDirective::tail(Self) -> String
 pub fn WgslDirective::tail_end(Self) -> Int

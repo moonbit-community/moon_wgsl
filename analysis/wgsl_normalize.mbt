@@ -191,9 +191,9 @@ fn wgsl_block_key(block : WgslBlock) -> String {
 fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
   match data {
     WgslGlobalDeclData::Directive(directive) =>
-      "directive:\{wgsl_directive_kind_key(directive.kind())}:\{directive.name()}:\{directive.tail()}"
+      "directive:\{wgsl_directive_kind_key(directive.kind())}:\{directive.name().name()}:\{directive.tail()}"
     WgslGlobalDeclData::Import(directive) =>
-      "import:\{directive.name()}:\{directive.tail()}"
+      "import:\{directive.name().name()}:\{directive.tail()}"
     WgslGlobalDeclData::Function(function) => {
       let args : Array[String] = []
       for argument in function.arguments() {

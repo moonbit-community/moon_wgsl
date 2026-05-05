@@ -206,12 +206,10 @@ directive_line -> @ast.WgslDirective
       }
       @ast.WgslDirective::new(
         kind,
-        name,
+        @ast.WgslIdent::new(name, name_start, name_end),
         tail,
         start,
         end,
-        name_start,
-        name_end,
         tail_start,
         tail_end,
       )
@@ -453,12 +451,10 @@ source_directive -> @ast.WgslDirective
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Enable,
-        keyword.name(),
+        keyword,
         tail,
         0,
         text.length(),
-        keyword.start(),
-        keyword.end(),
         tail_start,
         tail_end,
       )
@@ -469,12 +465,10 @@ source_directive -> @ast.WgslDirective
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Requires,
-        keyword.name(),
+        keyword,
         tail,
         0,
         text.length(),
-        keyword.start(),
-        keyword.end(),
         tail_start,
         tail_end,
       )
@@ -485,12 +479,10 @@ source_directive -> @ast.WgslDirective
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Diagnostic,
-        keyword.name(),
+        keyword,
         tail,
         0,
         text.length(),
-        keyword.start(),
-        keyword.end(),
         tail_start,
         tail_end,
       )

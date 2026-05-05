@@ -170,7 +170,7 @@ fn wgsl_directive_scan_push_item(
     WgslDirectiveScanItemKind::Directive(directive) =>
       wgsl_directive_line_required_tail_space(
         lines[start].cleaned,
-        directive.name(),
+        directive.name().name(),
       )
     _ => false
   }
