@@ -22,8 +22,8 @@ pub struct WgslAttribute {
 } derive(@debug.Debug)
 pub fn WgslAttribute::arguments_ref(Self) -> WgslExprRef?
 pub fn WgslAttribute::end(Self) -> Int
-pub fn WgslAttribute::name(Self) -> String
-pub fn WgslAttribute::new(String, Int, Int, WgslExprRef?) -> Self
+pub fn WgslAttribute::name(Self) -> WgslIdent
+pub fn WgslAttribute::new(WgslIdent, Int, Int, WgslExprRef?) -> Self
 pub fn WgslAttribute::start(Self) -> Int
 
 pub struct WgslBlock {

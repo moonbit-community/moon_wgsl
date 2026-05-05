@@ -1537,7 +1537,7 @@ fn yy_action_47(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 //  98|        None => name.end()
 //  99|      }
 // 100|      @ast.WgslAttribute::new(
-// 101|        name.name(),
+// 101|        name,
 // 102|        at,
 // 103|        end,
 // 104|        arguments_ref,
@@ -1557,7 +1557,7 @@ fn yy_action_48(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
         Some(value) => value
         None => name.end()
       }
-      @ast.WgslAttribute::new(name.name(), at, end, arguments_ref)
+      @ast.WgslAttribute::new(name, at, end, arguments_ref)
     },
   )
 }

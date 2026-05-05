@@ -122,7 +122,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(struct_decl.name().name(), content="\"Vertex\"")
   debug_inspect(struct_decl.members().length(), content="2")
   debug_inspect(
-    struct_decl.members()[0].attributes()[0].name(),
+    struct_decl.members()[0].attributes()[0].name().name(),
     content="\"location\"",
   )
   debug_inspect(struct_decl.members()[0].name().start(), content="31")
@@ -173,7 +173,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
   }
-  debug_inspect(override_decl.attributes()[0].name(), content="\"id\"")
+  debug_inspect(override_decl.attributes()[0].name().name(), content="\"id\"")
   debug_inspect(override_decl.name().name(), content="\"ENABLED\"")
   guard override_decl.ty_ref() is Some(override_ty) else {
     abort("expected override type ref")
@@ -186,7 +186,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   guard unit.declarations()[5].data() is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
-  debug_inspect(function.attributes()[0].name(), content="\"fragment\"")
+  debug_inspect(function.attributes()[0].name().name(), content="\"fragment\"")
   debug_inspect(function.fn_start(), content="224")
   debug_inspect(function.fn_end(), content="226")
   debug_inspect(function.qualifier_start(), content="None")
@@ -199,13 +199,13 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   }
   debug_inspect(arg_ty.name(), content="\"Color\"")
   debug_inspect(
-    function.arguments()[0].attributes()[0].name(),
+    function.arguments()[0].attributes()[0].name().name(),
     content="\"location\"",
   )
   guard function.result() is Some(result) else {
     abort("expected function result")
   }
-  debug_inspect(result.attributes()[0].name(), content="\"location\"")
+  debug_inspect(result.attributes()[0].name().name(), content="\"location\"")
   guard result.ty_ref() is Some(result_ty) else {
     abort("expected result type ref")
   }
@@ -377,7 +377,7 @@ test "WGSL function arguments are parsed by grammar" {
   }
   debug_inspect(function.arguments().length(), content="2")
   debug_inspect(
-    function.arguments()[0].attributes()[0].name(),
+    function.arguments()[0].attributes()[0].name().name(),
     content="\"location\"",
   )
   debug_inspect(function.arguments()[0].name().name(), content="\"color\"")
@@ -411,7 +411,7 @@ test "WGSL struct members are parsed by grammar" {
   }
   debug_inspect(struct_decl.members().length(), content="2")
   debug_inspect(
-    struct_decl.members()[0].attributes()[0].name(),
+    struct_decl.members()[0].attributes()[0].name().name(),
     content="\"location\"",
   )
   debug_inspect(struct_decl.members()[0].name().name(), content="\"color\"")
@@ -522,14 +522,17 @@ test "WGSL attributes are parsed by grammar" {
     abort("expected function")
   }
   debug_inspect(function.attributes().length(), content="2")
-  debug_inspect(function.attributes()[0].name(), content="\"workgroup_size\"")
+  debug_inspect(
+    function.attributes()[0].name().name(),
+    content="\"workgroup_size\"",
+  )
   guard function.attributes()[0].arguments_ref() is Some(arguments) else {
     abort("expected attribute arguments ref")
   }
   debug_inspect(arguments.identifiers()[0].name(), content="\"WIDTH\"")
   debug_inspect(arguments.identifiers()[1].name(), content="\"max\"")
   debug_inspect(arguments.identifiers()[2].name(), content="\"WIDTH\"")
-  debug_inspect(function.attributes()[1].name(), content="\"compute\"")
+  debug_inspect(function.attributes()[1].name().name(), content="\"compute\"")
   debug_inspect(function.attributes()[1].arguments_ref(), content="None")
 }
 

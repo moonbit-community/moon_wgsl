@@ -98,7 +98,7 @@ attribute -> @ast.WgslAttribute
         None => name.end()
       }
       @ast.WgslAttribute::new(
-        name.name(),
+        name,
         at,
         end,
         arguments_ref,

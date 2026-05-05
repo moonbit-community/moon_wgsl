@@ -39,7 +39,7 @@ fn wgsl_attribute_key(attribute : WgslAttribute) -> String {
     Some(expr) => wgsl_expr_ref_key(expr)
     None => ""
   }
-  "\{attribute.name()}(\{argument_key})"
+  "\{attribute.name().name()}(\{argument_key})"
 }
 
 ///|
@@ -345,7 +345,7 @@ fn wgsl_attribute_uint_value(
   name : String,
 ) -> Int? {
   for attr in attributes {
-    if attr.name() == name {
+    if attr.name().name() == name {
       return wgsl_expr_ref_single_uint_value(attr.arguments_ref())
     }
   }

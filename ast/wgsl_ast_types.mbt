@@ -258,7 +258,7 @@ pub fn WgslExprRef::end(self : WgslExprRef) -> Int {
 
 ///|
 pub struct WgslAttribute {
-  priv name : String
+  priv name : WgslIdent
   priv start : Int
   priv end : Int
   priv arguments_ref : WgslExprRef?
@@ -266,7 +266,7 @@ pub struct WgslAttribute {
 
 ///|
 pub fn WgslAttribute::new(
-  name : String,
+  name : WgslIdent,
   start : Int,
   end : Int,
   arguments_ref : WgslExprRef?,
@@ -275,7 +275,7 @@ pub fn WgslAttribute::new(
 }
 
 ///|
-pub fn WgslAttribute::name(self : WgslAttribute) -> String {
+pub fn WgslAttribute::name(self : WgslAttribute) -> WgslIdent {
   self.name
 }
 
