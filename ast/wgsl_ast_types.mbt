@@ -15,27 +15,54 @@ pub(all) enum WgslDirectiveKind {
 } derive(Eq, Debug)
 
 ///|
+pub struct WgslDirectiveTail {
+  priv text : String
+  priv start : Int
+  priv end : Int
+} derive(Debug)
+
+///|
+pub fn WgslDirectiveTail::new(
+  text : String,
+  start : Int,
+  end : Int,
+) -> WgslDirectiveTail {
+  WgslDirectiveTail::{ text, start, end }
+}
+
+///|
+pub fn WgslDirectiveTail::text(self : WgslDirectiveTail) -> String {
+  self.text
+}
+
+///|
+pub fn WgslDirectiveTail::start(self : WgslDirectiveTail) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslDirectiveTail::end(self : WgslDirectiveTail) -> Int {
+  self.end
+}
+
+///|
 pub struct WgslDirective {
   priv kind : WgslDirectiveKind
   priv name : WgslIdent
-  priv tail : String
+  priv tail : WgslDirectiveTail
   priv start : Int
   priv end : Int
-  priv tail_start : Int
-  priv tail_end : Int
 } derive(Debug)
 
 ///|
 pub fn WgslDirective::new(
   kind : WgslDirectiveKind,
   name : WgslIdent,
-  tail : String,
+  tail : WgslDirectiveTail,
   start : Int,
   end : Int,
-  tail_start : Int,
-  tail_end : Int,
 ) -> WgslDirective {
-  WgslDirective::{ kind, name, tail, start, end, tail_start, tail_end }
+  WgslDirective::{ kind, name, tail, start, end }
 }
 
 ///|
@@ -50,6 +77,11 @@ pub fn WgslDirective::name(self : WgslDirective) -> WgslIdent {
 
 ///|
 pub fn WgslDirective::tail(self : WgslDirective) -> String {
+  self.tail.text()
+}
+
+///|
+pub fn WgslDirective::tail_node(self : WgslDirective) -> WgslDirectiveTail {
   self.tail
 }
 
@@ -65,12 +97,12 @@ pub fn WgslDirective::end(self : WgslDirective) -> Int {
 
 ///|
 pub fn WgslDirective::tail_start(self : WgslDirective) -> Int {
-  self.tail_start
+  self.tail.start()
 }
 
 ///|
 pub fn WgslDirective::tail_end(self : WgslDirective) -> Int {
-  self.tail_end
+  self.tail.end()
 }
 
 ///|

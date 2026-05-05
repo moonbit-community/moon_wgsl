@@ -207,11 +207,9 @@ directive_line -> @ast.WgslDirective
       @ast.WgslDirective::new(
         kind,
         @ast.WgslIdent::new(name, name_start, name_end),
-        tail,
+        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
         start,
         end,
-        tail_start,
-        tail_end,
       )
     }
   ;
@@ -452,11 +450,9 @@ source_directive -> @ast.WgslDirective
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Enable,
         keyword,
-        tail,
+        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
         0,
         text.length(),
-        tail_start,
-        tail_end,
       )
     }
   | text=SOURCE_TEXT keyword=KW_REQUIRES tail=directive_tail EOF {
@@ -466,11 +462,9 @@ source_directive -> @ast.WgslDirective
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Requires,
         keyword,
-        tail,
+        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
         0,
         text.length(),
-        tail_start,
-        tail_end,
       )
     }
   | text=SOURCE_TEXT keyword=KW_DIAGNOSTIC tail=directive_tail EOF {
@@ -480,11 +474,9 @@ source_directive -> @ast.WgslDirective
       @ast.WgslDirective::new(
         @ast.WgslDirectiveKind::Diagnostic,
         keyword,
-        tail,
+        @ast.WgslDirectiveTail::new(tail, tail_start, tail_end),
         0,
         text.length(),
-        tail_start,
-        tail_end,
       )
     }
   ;
