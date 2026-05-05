@@ -21,9 +21,8 @@ using @ast {
 
 ///|
 using @lex {
-  type WgslCanonicalTokenEdit,
+  type WgslCanonicalTokenRewriter,
   type WgslToken,
-  emit_wgsl_canonical_tokens_with_edits,
   source_lines,
   split_last_identifier,
   tokenize,

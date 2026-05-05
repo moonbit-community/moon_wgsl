@@ -13,19 +13,46 @@
 // limitations under the License.
 
 ///|
-pub struct WgslCanonicalTokenEdit {
-  priv start : Int
-  priv end : Int
-  priv replacement : String
+priv struct WgslCanonicalTokenEdit {
+  start : Int
+  end : Int
+  replacement : String
 }
 
 ///|
-pub fn WgslCanonicalTokenEdit::new(
+fn WgslCanonicalTokenEdit::new(
   start : Int,
   end : Int,
   replacement : String,
 ) -> WgslCanonicalTokenEdit {
   WgslCanonicalTokenEdit::{ start, end, replacement }
+}
+
+///|
+pub struct WgslCanonicalTokenRewriter {
+  priv edits : Array[WgslCanonicalTokenEdit]
+}
+
+///|
+pub fn WgslCanonicalTokenRewriter::default() -> WgslCanonicalTokenRewriter {
+  WgslCanonicalTokenRewriter::{ edits: [] }
+}
+
+///|
+pub fn WgslCanonicalTokenRewriter::replace(
+  self : WgslCanonicalTokenRewriter,
+  start : Int,
+  end : Int,
+  replacement : String,
+) -> Unit {
+  self.edits.push(WgslCanonicalTokenEdit::new(start, end, replacement))
+}
+
+///|
+pub fn WgslCanonicalTokenRewriter::is_empty(
+  self : WgslCanonicalTokenRewriter,
+) -> Bool {
+  self.edits.length() == 0
 }
 
 ///|
@@ -284,7 +311,7 @@ fn wgsl_emit_tokens_need_space(
 }
 
 ///|
-pub fn emit_wgsl_canonical_tokens_with_edits(
+fn emit_wgsl_canonical_tokens_with_edits(
   text : String,
   edits : Array[WgslCanonicalTokenEdit],
   source_start : Int,
@@ -322,4 +349,13 @@ pub fn emit_wgsl_canonical_tokens_with_edits(
     previous_text = token_text
   }
   out
+}
+
+///|
+pub fn WgslCanonicalTokenRewriter::emit(
+  self : WgslCanonicalTokenRewriter,
+  text : String,
+  source_start : Int,
+) -> String {
+  emit_wgsl_canonical_tokens_with_edits(text, self.edits, source_start)
 }

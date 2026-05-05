@@ -6,8 +6,6 @@ import {
 }
 
 // Values
-pub fn emit_wgsl_canonical_tokens_with_edits(String, Array[WgslCanonicalTokenEdit], Int) -> String
-
 pub fn naga_oil_raw_import_brace_balance_next(Int, String) -> Int
 
 pub fn replace_comments(String) -> String
@@ -47,10 +45,13 @@ pub fn wgsl_trim_blankspace(String) -> String
 // Errors
 
 // Types and methods
-pub struct WgslCanonicalTokenEdit {
+pub struct WgslCanonicalTokenRewriter {
   // private fields
 }
-pub fn WgslCanonicalTokenEdit::new(Int, Int, String) -> Self
+pub fn WgslCanonicalTokenRewriter::default() -> Self
+pub fn WgslCanonicalTokenRewriter::emit(Self, String, Int) -> String
+pub fn WgslCanonicalTokenRewriter::is_empty(Self) -> Bool
+pub fn WgslCanonicalTokenRewriter::replace(Self, Int, Int, String) -> Unit
 
 pub enum WgslToken {
   Identifier(String, Int)

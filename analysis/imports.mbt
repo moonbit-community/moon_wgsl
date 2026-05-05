@@ -23,11 +23,7 @@ using @ast {
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 
 ///|
-using @lex {
-  type WgslCanonicalTokenEdit,
-  emit_wgsl_canonical_tokens_with_edits,
-  split_last_identifier,
-}
+using @lex {type WgslCanonicalTokenRewriter, split_last_identifier}
 
 ///|
 using @ast {type WgslTranslationUnit}

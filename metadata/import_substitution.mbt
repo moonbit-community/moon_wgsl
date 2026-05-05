@@ -248,7 +248,7 @@ fn substitute_identifiers(
   if declared_imports.length() == 0 {
     return input
   }
-  let edits : Array[WgslCanonicalTokenEdit] = []
+  let rewriter = WgslCanonicalTokenRewriter::default()
   let unit = parse_wgsl_translation_unit_strict(input) catch {
     error => raise substitute_identifiers_wgsl_parse_error(error, offset)
   }
@@ -265,16 +265,14 @@ fn substitute_identifiers(
         allow_ambiguous,
       )
       if replacement != ident.name {
-        edits.push(
-          WgslCanonicalTokenEdit::new(ident.start, ident.end, replacement),
-        )
+        rewriter.replace(ident.start, ident.end, replacement)
       }
     }
   }
-  if edits.length() == 0 {
+  if rewriter.is_empty() {
     return input
   }
-  emit_wgsl_canonical_tokens_with_edits(input, edits, 0)
+  rewriter.emit(input, 0)
 }
 
 ///|

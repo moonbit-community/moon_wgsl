@@ -383,13 +383,11 @@ fn emit_wgsl_text_with_nodes(
   nodes : Array[WgslRewriteNode],
   source_start : Int,
 ) -> String {
-  let rewrites : Array[WgslCanonicalTokenEdit] = []
+  let rewriter = WgslCanonicalTokenRewriter::default()
   for node in nodes {
-    rewrites.push(
-      WgslCanonicalTokenEdit::new(node.start, node.end, node.replacement),
-    )
+    rewriter.replace(node.start, node.end, node.replacement)
   }
-  emit_wgsl_canonical_tokens_with_edits(text, rewrites, source_start)
+  rewriter.emit(text, source_start)
 }
 
 ///|
