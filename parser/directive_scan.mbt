@@ -22,7 +22,7 @@ fn WgslDirectiveScanSource::new(
 }
 
 ///|
-pub fn WgslDirectiveScanSource::start(self : WgslDirectiveScanSource) -> Int {
+fn WgslDirectiveScanSource::start(self : WgslDirectiveScanSource) -> Int {
   self.start
 }
 

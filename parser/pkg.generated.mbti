@@ -69,7 +69,6 @@ pub struct WgslDirectiveScanSource {
 } derive(@debug.Debug)
 pub fn WgslDirectiveScanSource::cleaned_text(Self) -> String
 pub fn WgslDirectiveScanSource::original_text(Self) -> String
-pub fn WgslDirectiveScanSource::start(Self) -> Int
 
 pub struct WgslShaderDefComparison {
   // private fields

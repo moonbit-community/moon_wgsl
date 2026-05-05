@@ -33,29 +33,27 @@ pub fn WgslDirectiveTail::new(
 }
 
 ///|
-pub fn WgslDirectiveTail::text(self : WgslDirectiveTail) -> String {
+fn WgslDirectiveTail::text(self : WgslDirectiveTail) -> String {
   self.text
 }
 
 ///|
-pub fn WgslDirectiveTail::has_text(self : WgslDirectiveTail) -> Bool {
+fn WgslDirectiveTail::has_text(self : WgslDirectiveTail) -> Bool {
   self.text != ""
 }
 
 ///|
-pub fn WgslDirectiveTail::has_required_separator(
-  self : WgslDirectiveTail,
-) -> Bool {
+fn WgslDirectiveTail::has_required_separator(self : WgslDirectiveTail) -> Bool {
   self.has_required_separator
 }
 
 ///|
-pub fn WgslDirectiveTail::start(self : WgslDirectiveTail) -> Int {
+fn WgslDirectiveTail::start(self : WgslDirectiveTail) -> Int {
   self.start
 }
 
 ///|
-pub fn WgslDirectiveTail::end(self : WgslDirectiveTail) -> Int {
+fn WgslDirectiveTail::end(self : WgslDirectiveTail) -> Int {
   self.end
 }
 
@@ -92,11 +90,6 @@ pub fn WgslDirective::name(self : WgslDirective) -> WgslIdent {
 ///|
 pub fn WgslDirective::tail(self : WgslDirective) -> String {
   self.tail.text()
-}
-
-///|
-pub fn WgslDirective::tail_node(self : WgslDirective) -> WgslDirectiveTail {
-  self.tail
 }
 
 ///|
