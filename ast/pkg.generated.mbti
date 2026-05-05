@@ -103,12 +103,13 @@ pub fn WgslExprRef::text(Self) -> String
 pub fn WgslExprRef::tokens(Self) -> Array[WgslExprToken]
 
 pub struct WgslExprToken {
-  kind : WgslExprTokenKind
-  text : String
-  start : Int
-  end : Int
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslExprToken::end(Self) -> Int
+pub fn WgslExprToken::kind(Self) -> WgslExprTokenKind
 pub fn WgslExprToken::new(WgslExprTokenKind, String, Int, Int) -> Self
+pub fn WgslExprToken::start(Self) -> Int
+pub fn WgslExprToken::text(Self) -> String
 
 pub(all) enum WgslExprTokenKind {
   Identifier

@@ -245,7 +245,7 @@ fn WgslExprNodeParser::make_node(
 
 ///|
 fn wgsl_expr_token_is_punct(token : WgslExprToken, code : Int) -> Bool {
-  match token.kind {
+  match token.kind() {
     WgslExprTokenKind::Punctuation(actual) => actual == code
     _ => false
   }
@@ -288,7 +288,7 @@ fn WgslExprNodeParser::binary_operator_at(
 ) -> (String, Int)? {
   guard self.index < self.tokens.length() else { return None }
   let first = self.tokens[self.index]
-  match first.kind {
+  match first.kind() {
     WgslExprTokenKind::Operator(op) => Some((op, 1))
     WgslExprTokenKind::Punctuation(124) => Some(("|", 1))
     WgslExprTokenKind::Punctuation(38) => Some(("&", 1))
@@ -308,7 +308,7 @@ fn WgslExprNodeParser::binary_operator_at(
 fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? {
   match self.peek() {
     Some(token) =>
-      match token.kind {
+      match token.kind() {
         WgslExprTokenKind::Punctuation(33)
         | WgslExprTokenKind::Punctuation(45)
         | WgslExprTokenKind::Punctuation(43)
@@ -322,27 +322,27 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
               return Some(
                 self.make_node(
                   WgslExprNodeKind::Token(token),
-                  token.start,
-                  token.end,
+                  token.start(),
+                  token.end(),
                 ),
               )
           }
           Some(
             self.make_node(
-              WgslExprNodeKind::Unary(token.text, rhs),
-              token.start,
+              WgslExprNodeKind::Unary(token.text(), rhs),
+              token.start(),
               rhs.end,
             ),
           )
         }
         WgslExprTokenKind::Punctuation(40) => {
-          let start = token.start
+          let start = token.start()
           self.index = self.index + 1
           let inner = self.parse_sequence_until(41)
           let end_ = match self.peek() {
             Some(close) if wgsl_expr_token_is_punct(close, 41) => {
               self.index = self.index + 1
-              close.end
+              close.end()
             }
             _ => inner.end
           }
@@ -353,10 +353,10 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
           Some(
             self.make_node(
               WgslExprNodeKind::Identifier(
-                WgslIdent::new(token.text, token.start, token.end),
+                WgslIdent::new(token.text(), token.start(), token.end()),
               ),
-              token.start,
-              token.end,
+              token.start(),
+              token.end(),
             ),
           )
         }
@@ -368,8 +368,8 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
           Some(
             self.make_node(
               WgslExprNodeKind::Literal(token),
-              token.start,
-              token.end,
+              token.start(),
+              token.end(),
             ),
           )
         }
@@ -378,8 +378,8 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
           Some(
             self.make_node(
               WgslExprNodeKind::Token(token),
-              token.start,
-              token.end,
+              token.start(),
+              token.end(),
             ),
           )
         }
@@ -406,7 +406,7 @@ fn WgslExprNodeParser::parse_postfix(
               node = self.make_node(
                 WgslExprNodeKind::Call(node, args),
                 node.start,
-                close.end,
+                close.end(),
               )
               break
             }
@@ -423,20 +423,20 @@ fn WgslExprNodeParser::parse_postfix(
       Some(token) if wgsl_expr_token_is_punct(token, 46) => {
         self.index = self.index + 1
         match self.peek() {
-          Some(member_token) if member_token.kind
+          Some(member_token) if member_token.kind()
             is WgslExprTokenKind::Identifier => {
             self.index = self.index + 1
             node = self.make_node(
               WgslExprNodeKind::Member(
                 node,
                 WgslIdent::new(
-                  member_token.text,
-                  member_token.start,
-                  member_token.end,
+                  member_token.text(),
+                  member_token.start(),
+                  member_token.end(),
                 ),
               ),
               node.start,
-              member_token.end,
+              member_token.end(),
             )
             continue
           }
@@ -448,20 +448,20 @@ fn WgslExprNodeParser::parse_postfix(
         wgsl_expr_token_is_punct(self.tokens[self.index + 1], 58) => {
         self.index = self.index + 2
         match self.peek() {
-          Some(segment_token) if segment_token.kind
+          Some(segment_token) if segment_token.kind()
             is WgslExprTokenKind::Identifier => {
             self.index = self.index + 1
             node = self.make_node(
               WgslExprNodeKind::PathAccess(
                 node,
                 WgslIdent::new(
-                  segment_token.text,
-                  segment_token.start,
-                  segment_token.end,
+                  segment_token.text(),
+                  segment_token.start(),
+                  segment_token.end(),
                 ),
               ),
               node.start,
-              segment_token.end,
+              segment_token.end(),
             )
             continue
           }
@@ -477,7 +477,7 @@ fn WgslExprNodeParser::parse_postfix(
         let end_ = match self.peek() {
           Some(close) if wgsl_expr_token_is_punct(close, 93) => {
             self.index = self.index + 1
-            close.end
+            close.end()
           }
           _ => index.end
         }
@@ -535,7 +535,7 @@ fn WgslExprNodeParser::parse_sequence_until_any(
   let nodes : Array[WgslExprNode] = []
   while !self.at_end() {
     match self.peek() {
-      Some(token) if token.kind is WgslExprTokenKind::Punctuation(code) &&
+      Some(token) if token.kind() is WgslExprTokenKind::Punctuation(code) &&
         stop_codes.contains(code) => break
       _ => ()
     }
@@ -547,7 +547,7 @@ fn WgslExprNodeParser::parse_sequence_until_any(
       continue
     }
     match self.peek() {
-      Some(token) if token.kind is WgslExprTokenKind::Punctuation(code) &&
+      Some(token) if token.kind() is WgslExprTokenKind::Punctuation(code) &&
         stop_codes.contains(code) => break
       _ => ()
     }

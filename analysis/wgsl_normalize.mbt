@@ -44,15 +44,15 @@ fn wgsl_attributes_key(attributes : Array[WgslAttribute]) -> String {
 
 ///|
 fn wgsl_expr_token_key(token : WgslExprToken) -> String {
-  match token.kind {
-    Identifier => "id:\{token.text}"
+  match token.kind() {
+    Identifier => "id:\{token.text()}"
     BoolLiteral(value) => "bool:\{value}"
     UintLiteral(value) => "uint:\{value}"
     IntLiteral(value) => "int:\{value}"
-    FloatLiteral => "float:\{token.text}"
+    FloatLiteral => "float:\{token.text()}"
     Operator(text) => "op:\{text}"
     Punctuation(code) => "punct:\{code}"
-    Unknown => "unknown:\{token.text}"
+    Unknown => "unknown:\{token.text()}"
   }
 }
 
@@ -300,7 +300,7 @@ fn wgsl_expr_ref_single_uint_value(expr_ref : WgslExprRef?) -> Int? {
     Some(expr) => {
       let tokens = expr.tokens()
       if tokens.length() == 1 {
-        match tokens[0].kind {
+        match tokens[0].kind() {
           UintLiteral(value) | IntLiteral(value) => Some(value)
           _ => None
         }

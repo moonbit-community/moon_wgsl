@@ -93,10 +93,10 @@ pub(all) enum WgslExprTokenKind {
 
 ///|
 pub struct WgslExprToken {
-  kind : WgslExprTokenKind
-  text : String
-  start : Int
-  end : Int
+  priv kind : WgslExprTokenKind
+  priv text : String
+  priv start : Int
+  priv end : Int
 } derive(Debug)
 
 ///|
@@ -107,6 +107,26 @@ pub fn WgslExprToken::new(
   end : Int,
 ) -> WgslExprToken {
   WgslExprToken::{ kind, text, start, end }
+}
+
+///|
+pub fn WgslExprToken::kind(self : WgslExprToken) -> WgslExprTokenKind {
+  self.kind
+}
+
+///|
+pub fn WgslExprToken::text(self : WgslExprToken) -> String {
+  self.text
+}
+
+///|
+pub fn WgslExprToken::start(self : WgslExprToken) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslExprToken::end(self : WgslExprToken) -> Int {
+  self.end
 }
 
 ///|
