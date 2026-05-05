@@ -8,7 +8,7 @@ import {
 }
 
 // Values
-pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput raise @parser.WgslParseError
+pub fn apply_wgsl_virtual_overrides(String, @hashmap.HashMap[String, String]) -> String raise WgslVirtualOverrideError
 
 pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
 
@@ -41,6 +41,11 @@ pub fn wgsl_source_contains_override_directive(String) -> Bool raise @parser.Wgs
 pub fn wgsl_source_contains_virtual_directive(String) -> Bool raise @parser.WgslParseError
 
 // Errors
+pub suberror WgslVirtualOverrideError {
+  InvalidOverride(String)
+  Parse(String, Int)
+  UnparsedDeclaration(String, Int)
+}
 
 // Types and methods
 pub struct WgslEmittedDeclaration {
@@ -65,11 +70,6 @@ pub struct WgslTreeShakenSource {
   source : String
   declarations : Array[WgslEmittedDeclaration]
   missing_root_items : Array[String]
-}
-
-pub struct WgslVirtualOverrideOutput {
-  source : String
-  invalid_override : String?
 }
 
 // Type aliases

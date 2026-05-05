@@ -13,9 +13,27 @@
 // limitations under the License.
 
 ///|
-pub struct WgslVirtualOverrideOutput {
+priv struct WgslVirtualOverrideOutput {
   source : String
   invalid_override : String?
+}
+
+///|
+pub suberror WgslVirtualOverrideError {
+  InvalidOverride(String)
+  Parse(String, Int)
+  UnparsedDeclaration(String, Int)
+}
+
+///|
+fn wgsl_virtual_override_error_from_parse(
+  error : WgslParseError,
+) -> WgslVirtualOverrideError {
+  match error {
+    Parse(message, offset) => WgslVirtualOverrideError::Parse(message, offset)
+    UnparsedDeclaration(text, offset) =>
+      WgslVirtualOverrideError::UnparsedDeclaration(text, offset)
+  }
 }
 
 ///|
@@ -236,7 +254,7 @@ fn wgsl_alias_redirect_target(
 }
 
 ///|
-pub fn apply_wgsl_virtual_overrides_raw(
+fn apply_wgsl_virtual_overrides_checked(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
 ) -> WgslVirtualOverrideOutput raise WgslParseError {
@@ -328,6 +346,20 @@ pub fn apply_wgsl_virtual_overrides_raw(
     out = out + emit_wgsl_graph_block_canonical(block)
   }
   WgslVirtualOverrideOutput::{ source: out, invalid_override: None }
+}
+
+///|
+pub fn apply_wgsl_virtual_overrides(
+  source : String,
+  alias_redirect_map : @hashmap.HashMap[String, String],
+) -> String raise WgslVirtualOverrideError {
+  let output = apply_wgsl_virtual_overrides_checked(source, alias_redirect_map) catch {
+    error => raise wgsl_virtual_override_error_from_parse(error)
+  }
+  match output.invalid_override {
+    Some(name) => raise WgslVirtualOverrideError::InvalidOverride(name)
+    None => output.source
+  }
 }
 
 ///|

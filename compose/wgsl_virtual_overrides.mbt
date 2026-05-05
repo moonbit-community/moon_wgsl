@@ -35,14 +35,15 @@ fn apply_wgsl_virtual_overrides(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
 ) -> String raise ComposerError {
-  let output = @analysis.apply_wgsl_virtual_overrides_raw(
-    source, alias_redirect_map,
-  ) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  match output.invalid_override {
-    Some(name) => raise ComposerError::InvalidOverride(name)
-    None => output.source
+  @analysis.apply_wgsl_virtual_overrides(source, alias_redirect_map) catch {
+    InvalidOverride(name) => raise ComposerError::InvalidOverride(name)
+    Parse(message, offset) =>
+      raise ComposerError::InvalidWgslSyntax(message, offset)
+    UnparsedDeclaration(text, offset) =>
+      raise ComposerError::InvalidWgslSyntax(
+        "declaration could not be parsed: \{text}",
+        offset,
+      )
   }
 }
 
