@@ -570,10 +570,10 @@ template_list -> Array[String]
 
 template_args -> Array[String]
   : value=type_expr {
-      [value.text]
+      [value.canonical_text()]
     }
   | args=template_args "," value=type_expr {
-      args.push(value.text)
+      args.push(value.canonical_text())
       args
     }
   ;
@@ -599,30 +599,11 @@ type_ref_args -> Array[@ast.WgslTypeRef]
 
 %%
 
-fn wgsl_type_ref_text(
-  source : String,
-  source_start : Int,
-  start : Int,
-  end_ : Int,
-) -> String {
-  let local_start = start - source_start
-  let local_end = end_ - source_start
-  if local_start < 0 || local_end < local_start || local_end > source.length() {
-    return ""
-  }
-  source[local_start:local_end].to_owned()
-}
-
 fn wgsl_type_ref_from_atom(
   atom : (String, String, Int, Int, Int),
   arguments : Array[@ast.WgslTypeRef],
-  end_ : Int,
+  _end : Int,
 ) -> @ast.WgslTypeRef {
-  let (name, source, source_start, start, _) = atom
-  @ast.WgslTypeRef::new(
-    name,
-    arguments,
-    wgsl_type_ref_text(source, source_start, start, end_),
-    start,
-  )
+  let (name, _, _, start, _) = atom
+  @ast.WgslTypeRef::new(name, arguments, start)
 }

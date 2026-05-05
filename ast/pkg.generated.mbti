@@ -327,12 +327,13 @@ pub struct WgslTypeAlias {
 pub fn WgslTypeAlias::new(WgslIdent, String, WgslTypeRef?) -> Self
 
 pub struct WgslTypeRef {
-  name : String
-  arguments : Array[WgslTypeRef]
-  text : String
-  start : Int
+  // private fields
 } derive(@debug.Debug)
-pub fn WgslTypeRef::new(String, Array[Self], String, Int) -> Self
+pub fn WgslTypeRef::arguments(Self) -> Array[Self]
+pub fn WgslTypeRef::canonical_text(Self) -> String
+pub fn WgslTypeRef::name(Self) -> String
+pub fn WgslTypeRef::new(String, Array[Self], Int) -> Self
+pub fn WgslTypeRef::start(Self) -> Int
 
 // Type aliases
 

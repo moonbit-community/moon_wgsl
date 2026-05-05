@@ -14,9 +14,7 @@ fn record_wgsl_nested_flattened_item_names(
     if generated_name == "" {
       continue
     }
-    let declaration_text = declaration.text().trim()
-    if !(declaration_text.has_prefix("struct ") ||
-      declaration_text.has_prefix("alias ")) {
+    if !declaration.is_type_declaration() {
       continue
     }
     for entry in session.modules.iter() {

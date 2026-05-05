@@ -126,8 +126,10 @@ fn collect_wgsl_type_ref_identifier_nodes(
 ) -> Unit {
   match ty_ref {
     Some(ty) => {
-      nodes.push(WgslIdent::new(ty.name, ty.start, ty.start + ty.name.length()))
-      for argument in ty.arguments {
+      let name = ty.name()
+      let start = ty.start()
+      nodes.push(WgslIdent::new(name, start, start + name.length()))
+      for argument in ty.arguments() {
         collect_wgsl_type_ref_identifier_nodes(Some(argument), nodes)
       }
     }

@@ -1262,7 +1262,7 @@ fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 575|    args=template_args "," value=type_expr {
-// 576|      args.push(value.text)
+// 576|      args.push(value.canonical_text())
 // 577|      args
 // 578|    }
 
@@ -1273,7 +1273,7 @@ fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_Array_String_(
     {
       ()
-      args.push(value.text)
+      args.push(value.canonical_text())
       args
     },
   )
@@ -1281,7 +1281,7 @@ fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 572|    value=type_expr {
-// 573|      [value.text]
+// 573|      [value.canonical_text()]
 // 574|    }
 
 ///|
@@ -1290,7 +1290,7 @@ fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
   YYObj_Array_String_(
     {
       ()
-      [value.text]
+      [value.canonical_text()]
     },
   )
 }
@@ -4325,31 +4325,11 @@ fn block(
 }
 
 ///|
-fn wgsl_type_ref_text(
-  source : String,
-  source_start : Int,
-  start : Int,
-  end_ : Int,
-) -> String {
-  let local_start = start - source_start
-  let local_end = end_ - source_start
-  if local_start < 0 || local_end < local_start || local_end > source.length() {
-    return ""
-  }
-  source[local_start:local_end].to_owned()
-}
-
-///|
 fn wgsl_type_ref_from_atom(
   atom : (String, String, Int, Int, Int),
   arguments : Array[@ast.WgslTypeRef],
-  end_ : Int,
+  _end : Int,
 ) -> @ast.WgslTypeRef {
-  let (name, source, source_start, start, _) = atom
-  @ast.WgslTypeRef::new(
-    name,
-    arguments,
-    wgsl_type_ref_text(source, source_start, start, end_),
-    start,
-  )
+  let (name, _, _, start, _) = atom
+  @ast.WgslTypeRef::new(name, arguments, start)
 }

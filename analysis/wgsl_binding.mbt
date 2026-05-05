@@ -182,16 +182,18 @@ fn collect_wgsl_rewrite_nodes_from_type_ref(
 ) -> Unit {
   match ty_ref {
     Some(ty) => {
-      match redirect_map.get(ty.name) {
+      let ty_name = ty.name()
+      let ty_start = ty.start()
+      match redirect_map.get(ty_name) {
         Some(replacement) =>
           nodes.push(WgslRewriteNode::{
-            start: ty.start,
-            end: ty.start + ty.name.length(),
+            start: ty_start,
+            end: ty_start + ty_name.length(),
             replacement,
           })
         None => ()
       }
-      for argument in ty.arguments {
+      for argument in ty.arguments() {
         collect_wgsl_rewrite_nodes_from_type_ref(
           Some(argument),
           redirect_map,

@@ -53,8 +53,8 @@ pub struct WgslEmittedDeclaration {
 }
 pub fn WgslEmittedDeclaration::generated_end(Self) -> Int
 pub fn WgslEmittedDeclaration::generated_start(Self) -> Int
+pub fn WgslEmittedDeclaration::is_type_declaration(Self) -> Bool
 pub fn WgslEmittedDeclaration::name(Self) -> String
-pub fn WgslEmittedDeclaration::text(Self) -> String
 
 pub struct WgslModuleItemExtraction {
   // private fields

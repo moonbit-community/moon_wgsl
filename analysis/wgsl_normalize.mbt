@@ -70,10 +70,10 @@ fn wgsl_type_ref_key(ty : WgslTypeRef?) -> String {
   match ty {
     Some(type_ref) => {
       let argument_keys : Array[String] = []
-      for argument in type_ref.arguments {
+      for argument in type_ref.arguments() {
         argument_keys.push(wgsl_type_ref_key(Some(argument)))
       }
-      "\{type_ref.name}<\{wgsl_string_list_key(argument_keys)}>"
+      "\{type_ref.name()}<\{wgsl_string_list_key(argument_keys)}>"
     }
     None => ""
   }

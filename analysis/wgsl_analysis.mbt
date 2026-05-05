@@ -29,7 +29,7 @@ priv struct WgslDeclarationGraph {
 ///|
 pub struct WgslEmittedDeclaration {
   priv name : String
-  priv text : String
+  priv is_type_declaration : Bool
   priv generated_start : Int
   priv generated_end : Int
 }
@@ -60,8 +60,10 @@ pub fn WgslEmittedDeclaration::name(self : WgslEmittedDeclaration) -> String {
 }
 
 ///|
-pub fn WgslEmittedDeclaration::text(self : WgslEmittedDeclaration) -> String {
-  self.text
+pub fn WgslEmittedDeclaration::is_type_declaration(
+  self : WgslEmittedDeclaration,
+) -> Bool {
+  self.is_type_declaration
 }
 
 ///|
@@ -167,6 +169,14 @@ fn build_wgsl_declaration_graph_from_unit(
 }
 
 ///|
+fn WgslGraphBlock::is_type_declaration(self : WgslGraphBlock) -> Bool {
+  match self.data {
+    WgslGlobalDeclData::Struct(_) | WgslGlobalDeclData::TypeAlias(_) => true
+    _ => false
+  }
+}
+
+///|
 fn build_wgsl_declaration_graph(
   source : String,
 ) -> WgslDeclarationGraph raise WgslParseError {
@@ -238,7 +248,7 @@ fn emit_wgsl_tree_shaken_source_from_graph(
     if block.name != "" {
       declarations.push(WgslEmittedDeclaration::{
         name: block.name,
-        text: emitted_block,
+        is_type_declaration: block.is_type_declaration(),
         generated_start: block_generated_start,
         generated_end: generated_start,
       })

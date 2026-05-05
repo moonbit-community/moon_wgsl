@@ -234,20 +234,46 @@ pub fn WgslAttribute::new(
 
 ///|
 pub struct WgslTypeRef {
-  name : String
-  arguments : Array[WgslTypeRef]
-  text : String
-  start : Int
+  priv name : String
+  priv arguments : Array[WgslTypeRef]
+  priv start : Int
 } derive(Debug)
 
 ///|
 pub fn WgslTypeRef::new(
   name : String,
   arguments : Array[WgslTypeRef],
-  text : String,
   start : Int,
 ) -> WgslTypeRef {
-  WgslTypeRef::{ name, arguments, text, start }
+  WgslTypeRef::{ name, arguments, start }
+}
+
+///|
+pub fn WgslTypeRef::name(self : WgslTypeRef) -> String {
+  self.name
+}
+
+///|
+pub fn WgslTypeRef::arguments(self : WgslTypeRef) -> Array[WgslTypeRef] {
+  self.arguments.copy()
+}
+
+///|
+pub fn WgslTypeRef::canonical_text(self : WgslTypeRef) -> String {
+  if self.arguments.length() == 0 {
+    return self.name
+  }
+  let argument_texts : Array[String] = []
+  for argument in self.arguments {
+    argument_texts.push(argument.canonical_text())
+  }
+  let joined_arguments = argument_texts.join(", ")
+  "\{self.name}<\{joined_arguments}>"
+}
+
+///|
+pub fn WgslTypeRef::start(self : WgslTypeRef) -> Int {
+  self.start
 }
 
 ///|
