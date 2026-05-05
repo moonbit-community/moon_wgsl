@@ -48,20 +48,3 @@ pub fn build_wgsl_symbol_redirect_map(
   }
   redirect_map
 }
-
-///|
-pub fn rewrite_wgsl_symbol_redirects(
-  source : String,
-  redirects : Array[WgslSymbolRedirect],
-) -> String raise WgslParseError {
-  if redirects.length() == 0 {
-    return source
-  }
-  rewrite_wgsl_declarations_with_rename_plan(
-    source,
-    build_wgsl_rename_plan_from_redirect_map(
-      build_wgsl_symbol_redirect_map(redirects),
-      ReferencesOnly,
-    ),
-  )
-}

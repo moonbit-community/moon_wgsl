@@ -49,9 +49,9 @@ fn prepare_wgsl_compose_source(
   active_defs : WgslActiveComposeDefs,
 ) -> WgslPreparedComposeSource raise ComposerError {
   record_wgsl_redirect_matches(source, session)
-  let redirected_source = rewrite_wgsl_symbol_redirects(
-    source,
-    session.redirects,
+  let redirect_map = build_wgsl_symbol_redirect_map(session.redirects)
+  let redirected_source = rewrite_wgsl_references_with_rename_map(
+    source, redirect_map,
   ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }

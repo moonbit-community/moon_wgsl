@@ -10,7 +10,6 @@ using @analysis {
   normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_global_rename_map,
   rewrite_wgsl_references_with_rename_map,
-  rewrite_wgsl_symbol_redirects,
   strip_wgsl_import_declarations_strict,
 }
 
