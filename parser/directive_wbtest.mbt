@@ -112,7 +112,7 @@ test "WGSL preprocessor directive syntax parser extracts names and comparisons" 
     abort("expected comparison")
   }
   debug_inspect(comparison.def_name(), content="\"VALUE\"")
-  debug_inspect(comparison.operator(), content="\">=\"")
+  debug_inspect(comparison.operator(), content="GreaterEqual")
   debug_inspect(comparison.value_text(), content="\"-7u\"")
   debug_inspect(
     parse_glsl_version_directive(" #version 450 core"),

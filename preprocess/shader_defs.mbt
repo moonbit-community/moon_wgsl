@@ -43,17 +43,18 @@ fn check_if_operator_scope(
 fn compare_bool_values(
   lhs : Bool,
   rhs : Bool,
-  operator : String,
+  operator : WgslShaderDefOperator,
   offset : Int,
 ) -> Bool raise PreprocessError {
   match operator {
-    "==" => lhs == rhs
-    "!=" => lhs != rhs
-    ">" => lhs > rhs
-    ">=" => lhs >= rhs
-    "<" => lhs < rhs
-    "<=" => lhs <= rhs
-    _ => raise PreprocessError::UnknownShaderDefOperator(operator, offset)
+    Equal => lhs == rhs
+    NotEqual => lhs != rhs
+    Greater => lhs > rhs
+    GreaterEqual => lhs >= rhs
+    Less => lhs < rhs
+    LessEqual => lhs <= rhs
+    Unknown(text) =>
+      raise PreprocessError::UnknownShaderDefOperator(text, offset)
   }
 }
 
@@ -61,17 +62,18 @@ fn compare_bool_values(
 fn compare_int_values(
   lhs : Int,
   rhs : Int,
-  operator : String,
+  operator : WgslShaderDefOperator,
   offset : Int,
 ) -> Bool raise PreprocessError {
   match operator {
-    "==" => lhs == rhs
-    "!=" => lhs != rhs
-    ">" => lhs > rhs
-    ">=" => lhs >= rhs
-    "<" => lhs < rhs
-    "<=" => lhs <= rhs
-    _ => raise PreprocessError::UnknownShaderDefOperator(operator, offset)
+    Equal => lhs == rhs
+    NotEqual => lhs != rhs
+    Greater => lhs > rhs
+    GreaterEqual => lhs >= rhs
+    Less => lhs < rhs
+    LessEqual => lhs <= rhs
+    Unknown(text) =>
+      raise PreprocessError::UnknownShaderDefOperator(text, offset)
   }
 }
 
@@ -79,17 +81,18 @@ fn compare_int_values(
 fn compare_uint_values(
   lhs : UInt,
   rhs : UInt,
-  operator : String,
+  operator : WgslShaderDefOperator,
   offset : Int,
 ) -> Bool raise PreprocessError {
   match operator {
-    "==" => lhs == rhs
-    "!=" => lhs != rhs
-    ">" => lhs > rhs
-    ">=" => lhs >= rhs
-    "<" => lhs < rhs
-    "<=" => lhs <= rhs
-    _ => raise PreprocessError::UnknownShaderDefOperator(operator, offset)
+    Equal => lhs == rhs
+    NotEqual => lhs != rhs
+    Greater => lhs > rhs
+    GreaterEqual => lhs >= rhs
+    Less => lhs < rhs
+    LessEqual => lhs <= rhs
+    Unknown(text) =>
+      raise PreprocessError::UnknownShaderDefOperator(text, offset)
   }
 }
 
@@ -97,7 +100,7 @@ fn compare_uint_values(
 fn eval_if_condition(
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   def : String,
-  operator : String,
+  operator : WgslShaderDefOperator,
   value : String,
   offset : Int,
 ) -> Bool raise PreprocessError {

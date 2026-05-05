@@ -70,8 +70,19 @@ pub struct WgslShaderDefComparison {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslShaderDefComparison::def_name(Self) -> String
-pub fn WgslShaderDefComparison::operator(Self) -> String
+pub fn WgslShaderDefComparison::operator(Self) -> WgslShaderDefOperator
 pub fn WgslShaderDefComparison::value_text(Self) -> String
+
+pub(all) enum WgslShaderDefOperator {
+  Equal
+  NotEqual
+  Greater
+  GreaterEqual
+  Less
+  LessEqual
+  Unknown(String)
+} derive(Eq, @debug.Debug)
+pub fn WgslShaderDefOperator::text(Self) -> String
 
 pub struct WgslShaderDefReference {
   // private fields

@@ -18,6 +18,7 @@ using @lex {spaces, trim_trailing_semicolons, utf8_byte_length}
 using @parser {
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
+  type WgslShaderDefOperator,
   parse_wgsl_directive_identifier,
   parse_wgsl_directive_scan_items,
   parse_wgsl_shader_def_references,

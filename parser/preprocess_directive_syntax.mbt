@@ -1,14 +1,51 @@
 ///|
+pub(all) enum WgslShaderDefOperator {
+  Equal
+  NotEqual
+  Greater
+  GreaterEqual
+  Less
+  LessEqual
+  Unknown(String)
+} derive(Eq, Debug)
+
+///|
+fn WgslShaderDefOperator::from_text(text : String) -> WgslShaderDefOperator {
+  match text {
+    "==" => Equal
+    "!=" => NotEqual
+    ">" => Greater
+    ">=" => GreaterEqual
+    "<" => Less
+    "<=" => LessEqual
+    _ => Unknown(text)
+  }
+}
+
+///|
+pub fn WgslShaderDefOperator::text(self : WgslShaderDefOperator) -> String {
+  match self {
+    Equal => "=="
+    NotEqual => "!="
+    Greater => ">"
+    GreaterEqual => ">="
+    Less => "<"
+    LessEqual => "<="
+    Unknown(text) => text
+  }
+}
+
+///|
 pub struct WgslShaderDefComparison {
   priv def : String
-  priv operator : String
+  priv operator : WgslShaderDefOperator
   priv value : String
 } derive(Debug)
 
 ///|
 fn WgslShaderDefComparison::new(
   def : String,
-  operator : String,
+  operator : WgslShaderDefOperator,
   value : String,
 ) -> WgslShaderDefComparison {
   WgslShaderDefComparison::{ def, operator, value }
@@ -24,7 +61,7 @@ pub fn WgslShaderDefComparison::def_name(
 ///|
 pub fn WgslShaderDefComparison::operator(
   self : WgslShaderDefComparison,
-) -> String {
+) -> WgslShaderDefOperator {
   self.operator
 }
 
@@ -139,7 +176,7 @@ pub fn parse_wgsl_shader_def_comparison(
     Some(
       WgslShaderDefComparison::new(
         def,
-        operator,
+        WgslShaderDefOperator::from_text(operator),
         text[value_start:i].to_owned(),
       ),
     )
