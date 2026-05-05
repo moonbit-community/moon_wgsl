@@ -28,9 +28,9 @@ fn wgsl_analysis_declaration_name_map(
   let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
   for i in 0..<declarations.length() {
     let decl = declarations[i]
-    if decl.name != "" {
-      declaration_names.set(decl.name, true)
-      declaration_indexes.set(decl.name, i)
+    if decl.name() != "" {
+      declaration_names.set(decl.name(), true)
+      declaration_indexes.set(decl.name(), i)
     }
   }
   (declaration_names, declaration_indexes)
@@ -80,7 +80,7 @@ fn collect_wgsl_reachable_declaration_names(
   let included_names : Array[String] = []
   if root_items.length() == 0 {
     for decl in declarations {
-      wgsl_analysis_string_list_push_unique(included_names, decl.name)
+      wgsl_analysis_string_list_push_unique(included_names, decl.name())
     }
     return WgslReachableDeclarations::{ included_names, missing_root_items: [] }
   }
@@ -98,7 +98,7 @@ fn collect_wgsl_reachable_declaration_names(
   }
   if worklist.length() == 0 {
     for decl in declarations {
-      wgsl_analysis_string_list_push_unique(included_names, decl.name)
+      wgsl_analysis_string_list_push_unique(included_names, decl.name())
     }
     return WgslReachableDeclarations::{ included_names, missing_root_items }
   }
@@ -112,7 +112,7 @@ fn collect_wgsl_reachable_declaration_names(
     let decl = declarations[index]
     let dependencies : Array[String] = []
     wgsl_analysis_collect_declaration_dependencies(
-      decl.data,
+      decl.data(),
       name,
       declaration_names,
       dependencies,

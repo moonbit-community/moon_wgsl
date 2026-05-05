@@ -619,9 +619,10 @@ test "analysis reachability resolves transitive dependencies" {
   let unit = parse_wgsl_translation_unit_strict(source) catch {
     _ => abort("expected valid WGSL parse")
   }
-  let reachable = collect_wgsl_reachable_declaration_names(unit.declarations, [
-    "entry",
-  ])
+  let reachable = collect_wgsl_reachable_declaration_names(
+    unit.declarations(),
+    ["entry"],
+  )
   let names = reachable.included_names
   names.sort()
   debug_inspect(names.join(","), content="\"BASE,VALUE,entry\"")
@@ -640,9 +641,10 @@ test "analysis reachability respects function local shadowing" {
   let unit = parse_wgsl_translation_unit_strict(source) catch {
     _ => abort("expected valid WGSL parse")
   }
-  let reachable = collect_wgsl_reachable_declaration_names(unit.declarations, [
-    "entry",
-  ])
+  let reachable = collect_wgsl_reachable_declaration_names(
+    unit.declarations(),
+    ["entry"],
+  )
   let names = reachable.included_names
   names.sort()
   debug_inspect(names.join(","), content="\"entry\"")

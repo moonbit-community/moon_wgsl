@@ -1,8 +1,8 @@
 ///|
 pub fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
   match data {
-    Function(function) => function.name.name
-    GlobalVariable(global) => global.name.name
+    Function(function) => function.name().name
+    GlobalVariable(global) => global.name().name
     Const(value) => value.name.name
     Override(value) => value.name.name
     Struct(value) => value.name.name
@@ -240,11 +240,11 @@ pub fn collect_wgsl_function_body_identifier_nodes(
   nodes : Array[WgslIdent],
 ) -> Unit {
   let active_local_names : Array[String] = []
-  for argument in function.arguments {
-    wgsl_name_list_push_unique(active_local_names, argument.name)
+  for argument in function.arguments() {
+    wgsl_name_list_push_unique(active_local_names, argument.name())
   }
   collect_wgsl_block_identifier_nodes_with_scope(
-    function.body,
+    function.body(),
     active_local_names,
     nodes,
   )
@@ -257,55 +257,61 @@ pub fn collect_wgsl_decl_identifier_nodes(
 ) -> Unit {
   match data {
     WgslGlobalDeclData::Function(function) => {
-      collect_wgsl_attribute_identifier_nodes(function.attributes, nodes)
-      if function.qualifier == "override" {
-        nodes.push(function.name)
+      collect_wgsl_attribute_identifier_nodes(function.attributes(), nodes)
+      if function.qualifier() == "override" {
+        nodes.push(function.name())
       }
       let active_local_names : Array[String] = []
-      for argument in function.arguments {
-        wgsl_name_list_push_unique(active_local_names, argument.name)
-        collect_wgsl_attribute_identifier_nodes(argument.attributes, nodes)
-        collect_wgsl_type_ref_identifier_nodes(argument.ty_ref, nodes)
+      for argument in function.arguments() {
+        wgsl_name_list_push_unique(active_local_names, argument.name())
+        collect_wgsl_attribute_identifier_nodes(argument.attributes(), nodes)
+        collect_wgsl_type_ref_identifier_nodes(argument.ty_ref(), nodes)
       }
-      match function.result {
+      match function.result() {
         Some(result) => {
-          collect_wgsl_attribute_identifier_nodes(result.attributes, nodes)
-          collect_wgsl_type_ref_identifier_nodes(result.ty_ref, nodes)
+          collect_wgsl_attribute_identifier_nodes(result.attributes(), nodes)
+          collect_wgsl_type_ref_identifier_nodes(result.ty_ref(), nodes)
         }
         None => ()
       }
       collect_wgsl_block_identifier_nodes_with_scope(
-        function.body,
+        function.body(),
         active_local_names,
         nodes,
       )
     }
     WgslGlobalDeclData::Struct(struct_decl) => {
-      collect_wgsl_attribute_identifier_nodes(struct_decl.attributes, nodes)
-      for struct_member in struct_decl.members {
-        collect_wgsl_attribute_identifier_nodes(struct_member.attributes, nodes)
-        collect_wgsl_type_ref_identifier_nodes(struct_member.ty_ref, nodes)
+      collect_wgsl_attribute_identifier_nodes(struct_decl.attributes(), nodes)
+      for struct_member in struct_decl.members() {
+        collect_wgsl_attribute_identifier_nodes(
+          struct_member.attributes(),
+          nodes,
+        )
+        collect_wgsl_type_ref_identifier_nodes(struct_member.ty_ref(), nodes)
       }
     }
     WgslGlobalDeclData::GlobalVariable(global) => {
-      collect_wgsl_attribute_identifier_nodes(global.attributes, nodes)
-      collect_wgsl_type_ref_identifier_nodes(global.ty_ref, nodes)
-      collect_wgsl_expr_ref_identifier_nodes(global.initializer_ref, nodes)
+      collect_wgsl_attribute_identifier_nodes(global.attributes(), nodes)
+      collect_wgsl_type_ref_identifier_nodes(global.ty_ref(), nodes)
+      collect_wgsl_expr_ref_identifier_nodes(global.initializer_ref(), nodes)
     }
     WgslGlobalDeclData::Const(const_decl) => {
-      collect_wgsl_type_ref_identifier_nodes(const_decl.ty_ref, nodes)
-      collect_wgsl_expr_ref_identifier_nodes(const_decl.initializer_ref, nodes)
+      collect_wgsl_type_ref_identifier_nodes(const_decl.ty_ref(), nodes)
+      collect_wgsl_expr_ref_identifier_nodes(
+        const_decl.initializer_ref(),
+        nodes,
+      )
     }
     WgslGlobalDeclData::Override(override_decl) => {
-      collect_wgsl_attribute_identifier_nodes(override_decl.attributes, nodes)
-      collect_wgsl_type_ref_identifier_nodes(override_decl.ty_ref, nodes)
+      collect_wgsl_attribute_identifier_nodes(override_decl.attributes(), nodes)
+      collect_wgsl_type_ref_identifier_nodes(override_decl.ty_ref(), nodes)
       collect_wgsl_expr_ref_identifier_nodes(
-        override_decl.initializer_ref,
+        override_decl.initializer_ref(),
         nodes,
       )
     }
     WgslGlobalDeclData::TypeAlias(alias_decl) =>
-      collect_wgsl_type_ref_identifier_nodes(alias_decl.ty_ref, nodes)
+      collect_wgsl_type_ref_identifier_nodes(alias_decl.ty_ref(), nodes)
     WgslGlobalDeclData::ConstAssert(expr) =>
       collect_wgsl_expr_ref_identifier_nodes(Some(expr), nodes)
     WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) | Raw => ()
@@ -318,13 +324,13 @@ pub fn collect_wgsl_decl_global_declared_identifier_nodes(
   nodes : Array[WgslIdent],
 ) -> Unit {
   match data {
-    WgslGlobalDeclData::Function(function) => nodes.push(function.name)
-    WgslGlobalDeclData::Struct(struct_decl) => nodes.push(struct_decl.name)
-    WgslGlobalDeclData::GlobalVariable(global) => nodes.push(global.name)
-    WgslGlobalDeclData::Const(const_decl) => nodes.push(const_decl.name)
+    WgslGlobalDeclData::Function(function) => nodes.push(function.name())
+    WgslGlobalDeclData::Struct(struct_decl) => nodes.push(struct_decl.name())
+    WgslGlobalDeclData::GlobalVariable(global) => nodes.push(global.name())
+    WgslGlobalDeclData::Const(const_decl) => nodes.push(const_decl.name())
     WgslGlobalDeclData::Override(override_decl) =>
-      nodes.push(override_decl.name)
-    WgslGlobalDeclData::TypeAlias(alias_decl) => nodes.push(alias_decl.name)
+      nodes.push(override_decl.name())
+    WgslGlobalDeclData::TypeAlias(alias_decl) => nodes.push(alias_decl.name())
     WgslGlobalDeclData::Directive(_)
     | WgslGlobalDeclData::Import(_)
     | WgslGlobalDeclData::ConstAssert(_)

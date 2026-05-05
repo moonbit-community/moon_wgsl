@@ -356,13 +356,13 @@ pub fn WgslTypeRef::start(self : WgslTypeRef) -> Int {
 
 ///|
 pub struct WgslFunctionArgument {
-  attributes : Array[WgslAttribute]
-  name : String
-  start : Int
-  end : Int
-  name_start : Int
-  name_end : Int
-  ty_ref : WgslTypeRef?
+  priv attributes : Array[WgslAttribute]
+  priv name : String
+  priv start : Int
+  priv end : Int
+  priv name_start : Int
+  priv name_end : Int
+  priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
@@ -427,11 +427,11 @@ pub fn WgslFunctionArgument::ty_ref(
 
 ///|
 pub struct WgslFunctionResult {
-  attributes : Array[WgslAttribute]
-  start : Int
-  end : Int
-  ty : String
-  ty_ref : WgslTypeRef?
+  priv attributes : Array[WgslAttribute]
+  priv start : Int
+  priv end : Int
+  priv ty : String
+  priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
@@ -731,16 +731,16 @@ pub fn WgslBlock::statements(self : WgslBlock) -> Array[WgslStatement] {
 
 ///|
 pub struct WgslFunction {
-  attributes : Array[WgslAttribute]
-  qualifier : String
-  qualifier_start : Int?
-  qualifier_end : Int?
-  fn_start : Int
-  fn_end : Int
-  name : WgslIdent
-  arguments : Array[WgslFunctionArgument]
-  result : WgslFunctionResult?
-  body : WgslBlock
+  priv attributes : Array[WgslAttribute]
+  priv qualifier : String
+  priv qualifier_start : Int?
+  priv qualifier_end : Int?
+  priv fn_start : Int
+  priv fn_end : Int
+  priv name : WgslIdent
+  priv arguments : Array[WgslFunctionArgument]
+  priv result : WgslFunctionResult?
+  priv body : WgslBlock
 } derive(Debug)
 
 ///|
@@ -824,14 +824,14 @@ pub fn WgslFunction::body(self : WgslFunction) -> WgslBlock {
 
 ///|
 pub struct WgslStructMember {
-  attributes : Array[WgslAttribute]
-  name : String
-  start : Int
-  end : Int
-  name_start : Int
-  name_end : Int
-  ty : String
-  ty_ref : WgslTypeRef?
+  priv attributes : Array[WgslAttribute]
+  priv name : String
+  priv start : Int
+  priv end : Int
+  priv name_start : Int
+  priv name_end : Int
+  priv ty : String
+  priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
@@ -901,9 +901,9 @@ pub fn WgslStructMember::ty_ref(self : WgslStructMember) -> WgslTypeRef? {
 
 ///|
 pub struct WgslStruct {
-  attributes : Array[WgslAttribute]
-  name : WgslIdent
-  members : Array[WgslStructMember]
+  priv attributes : Array[WgslAttribute]
+  priv name : WgslIdent
+  priv members : Array[WgslStructMember]
 } derive(Debug)
 
 ///|
@@ -932,13 +932,13 @@ pub fn WgslStruct::members(self : WgslStruct) -> Array[WgslStructMember] {
 
 ///|
 pub struct WgslGlobalVariable {
-  attributes : Array[WgslAttribute]
-  name : WgslIdent
-  template_list : Array[String]
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer : String?
-  initializer_ref : WgslExprRef?
+  priv attributes : Array[WgslAttribute]
+  priv name : WgslIdent
+  priv template_list : Array[String]
+  priv ty : String?
+  priv ty_ref : WgslTypeRef?
+  priv initializer : String?
+  priv initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -1005,11 +1005,11 @@ pub fn WgslGlobalVariable::initializer_ref(
 
 ///|
 pub struct WgslConst {
-  name : WgslIdent
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer : String?
-  initializer_ref : WgslExprRef?
+  priv name : WgslIdent
+  priv ty : String?
+  priv ty_ref : WgslTypeRef?
+  priv initializer : String?
+  priv initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -1050,12 +1050,12 @@ pub fn WgslConst::initializer_ref(self : WgslConst) -> WgslExprRef? {
 
 ///|
 pub struct WgslOverride {
-  attributes : Array[WgslAttribute]
-  name : WgslIdent
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer : String?
-  initializer_ref : WgslExprRef?
+  priv attributes : Array[WgslAttribute]
+  priv name : WgslIdent
+  priv ty : String?
+  priv ty_ref : WgslTypeRef?
+  priv initializer : String?
+  priv initializer_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -1102,9 +1102,9 @@ pub fn WgslOverride::initializer_ref(self : WgslOverride) -> WgslExprRef? {
 
 ///|
 pub struct WgslTypeAlias {
-  name : WgslIdent
-  ty : String
-  ty_ref : WgslTypeRef?
+  priv name : WgslIdent
+  priv ty : String
+  priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
@@ -1147,11 +1147,11 @@ pub(all) enum WgslGlobalDeclData {
 
 ///|
 pub struct WgslGlobalDecl {
-  kind : WgslGlobalDeclKind
-  data : WgslGlobalDeclData
-  name : String
-  text : String
-  start : Int
+  priv kind : WgslGlobalDeclKind
+  priv data : WgslGlobalDeclData
+  priv name : String
+  priv text : String
+  priv start : Int
 } derive(Debug)
 
 ///|
@@ -1192,7 +1192,7 @@ pub fn WgslGlobalDecl::start(self : WgslGlobalDecl) -> Int {
 
 ///|
 pub struct WgslTranslationUnit {
-  declarations : Array[WgslGlobalDecl]
+  priv declarations : Array[WgslGlobalDecl]
 } derive(Debug)
 
 ///|
@@ -1200,4 +1200,11 @@ pub fn WgslTranslationUnit::new(
   declarations : Array[WgslGlobalDecl],
 ) -> WgslTranslationUnit {
   WgslTranslationUnit::{ declarations, }
+}
+
+///|
+pub fn WgslTranslationUnit::declarations(
+  self : WgslTranslationUnit,
+) -> Array[WgslGlobalDecl] {
+  self.declarations.copy()
 }

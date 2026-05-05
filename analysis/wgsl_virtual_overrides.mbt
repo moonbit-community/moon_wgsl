@@ -47,7 +47,7 @@ fn wgsl_graph_block_function(block : WgslGraphBlock) -> WgslFunction? {
 ///|
 fn wgsl_graph_block_is_virtual_fn(block : WgslGraphBlock) -> Bool {
   match wgsl_graph_block_function(block) {
-    Some(function) => function.qualifier == "virtual"
+    Some(function) => function.qualifier() == "virtual"
     None => false
   }
 }
@@ -56,8 +56,8 @@ fn wgsl_graph_block_is_virtual_fn(block : WgslGraphBlock) -> Bool {
 fn wgsl_graph_block_override_target(block : WgslGraphBlock) -> String? {
   match wgsl_graph_block_function(block) {
     Some(function) =>
-      if function.qualifier == "override" {
-        Some(function.name.name)
+      if function.qualifier() == "override" {
+        Some(function.name().name)
       } else {
         None
       }
@@ -73,7 +73,7 @@ pub fn wgsl_source_contains_override_directive(
   for block in graph.declaration_blocks {
     match block.data {
       WgslGlobalDeclData::Function(function) =>
-        if function.qualifier == "override" {
+        if function.qualifier() == "override" {
           return true
         }
       _ => ()
@@ -107,16 +107,16 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
   let rewriter = WgslCanonicalTokenRewriter::default()
   for block in graph.declaration_blocks {
     guard wgsl_graph_block_function(block) is Some(function) else { continue }
-    if function.qualifier != "override" {
+    if function.qualifier() != "override" {
       continue
     }
-    let raw_target = function.name.name
+    let raw_target = function.name().name
     if split_last_identifier(raw_target) is None {
       continue
     }
     let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
     if target != raw_target {
-      rewriter.replace(function.name.start, function.name.end, target)
+      rewriter.replace(function.name().start, function.name().end, target)
     }
   }
   rewriter.emit(source, 0)
@@ -158,7 +158,7 @@ fn rewrite_wgsl_virtual_fn_block(
   function : WgslFunction,
   block_start : Int,
 ) -> String {
-  match (function.qualifier_start, function.qualifier_end) {
+  match (function.qualifier_start(), function.qualifier_end()) {
     (Some(start), Some(end_)) => {
       let rewriter = WgslCanonicalTokenRewriter::default()
       rewriter.replace(start, end_, "")
@@ -214,11 +214,11 @@ fn rewrite_wgsl_override_fn_block(
       )
     None => block_text
   }
-  match (function.qualifier_start, function.qualifier_end) {
+  match (function.qualifier_start(), function.qualifier_end()) {
     (Some(start), Some(end_)) => {
       let rewriter = WgslCanonicalTokenRewriter::default()
       rewriter.replace(start, end_, "")
-      rewriter.replace(function.name.start, function.name.end, target_name)
+      rewriter.replace(function.name().start, function.name().end, target_name)
       rewriter.emit(rewritten_body, block_start)
     }
     _ => rewritten_body
@@ -255,8 +255,8 @@ fn apply_wgsl_virtual_overrides_checked(
   }
   for block in graph.declaration_blocks {
     match wgsl_graph_block_function(block) {
-      Some(function) if function.qualifier == "override" => {
-        let raw_target = function.name.name
+      Some(function) if function.qualifier() == "override" => {
+        let raw_target = function.name().name
         let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
         if !virtual_names.contains(target) {
           return WgslVirtualOverrideOutput::{
@@ -302,7 +302,7 @@ fn apply_wgsl_virtual_overrides_checked(
       None => ()
     }
     match wgsl_graph_block_function(block) {
-      Some(function) if block.name != "" && function.qualifier == "virtual" => {
+      Some(function) if block.name != "" && function.qualifier() == "virtual" => {
         match overrides.get(block.name) {
           Some(override_block) => {
             let needs_base = match override_needs_base.get(block.name) {

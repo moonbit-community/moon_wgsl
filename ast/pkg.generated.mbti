@@ -36,11 +36,7 @@ pub fn WgslBlock::start(Self) -> Int
 pub fn WgslBlock::statements(Self) -> Array[WgslStatement]
 
 pub struct WgslConst {
-  name : WgslIdent
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer : String?
-  initializer_ref : WgslExprRef?
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslConst::initializer(Self) -> String?
 pub fn WgslConst::initializer_ref(Self) -> WgslExprRef?
@@ -133,16 +129,7 @@ pub(all) enum WgslExprTokenKind {
 } derive(@debug.Debug)
 
 pub struct WgslFunction {
-  attributes : Array[WgslAttribute]
-  qualifier : String
-  qualifier_start : Int?
-  qualifier_end : Int?
-  fn_start : Int
-  fn_end : Int
-  name : WgslIdent
-  arguments : Array[WgslFunctionArgument]
-  result : WgslFunctionResult?
-  body : WgslBlock
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslFunction::arguments(Self) -> Array[WgslFunctionArgument]
 pub fn WgslFunction::attributes(Self) -> Array[WgslAttribute]
@@ -157,13 +144,7 @@ pub fn WgslFunction::qualifier_start(Self) -> Int?
 pub fn WgslFunction::result(Self) -> WgslFunctionResult?
 
 pub struct WgslFunctionArgument {
-  attributes : Array[WgslAttribute]
-  name : String
-  start : Int
-  end : Int
-  name_start : Int
-  name_end : Int
-  ty_ref : WgslTypeRef?
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslFunctionArgument::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslFunctionArgument::end(Self) -> Int
@@ -175,11 +156,7 @@ pub fn WgslFunctionArgument::start(Self) -> Int
 pub fn WgslFunctionArgument::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslFunctionResult {
-  attributes : Array[WgslAttribute]
-  start : Int
-  end : Int
-  ty : String
-  ty_ref : WgslTypeRef?
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslFunctionResult::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslFunctionResult::end(Self) -> Int
@@ -189,11 +166,7 @@ pub fn WgslFunctionResult::ty(Self) -> String
 pub fn WgslFunctionResult::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslGlobalDecl {
-  kind : WgslGlobalDeclKind
-  data : WgslGlobalDeclData
-  name : String
-  text : String
-  start : Int
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslGlobalDecl::data(Self) -> WgslGlobalDeclData
 pub fn WgslGlobalDecl::kind(Self) -> WgslGlobalDeclKind
@@ -230,13 +203,7 @@ pub(all) enum WgslGlobalDeclKind {
 } derive(Eq, @debug.Debug)
 
 pub struct WgslGlobalVariable {
-  attributes : Array[WgslAttribute]
-  name : WgslIdent
-  template_list : Array[String]
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer : String?
-  initializer_ref : WgslExprRef?
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslGlobalVariable::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslGlobalVariable::initializer(Self) -> String?
@@ -266,12 +233,7 @@ pub fn WgslLocalDeclaration::ty(Self) -> String?
 pub fn WgslLocalDeclaration::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslOverride {
-  attributes : Array[WgslAttribute]
-  name : WgslIdent
-  ty : String?
-  ty_ref : WgslTypeRef?
-  initializer : String?
-  initializer_ref : WgslExprRef?
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslOverride::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslOverride::initializer(Self) -> String?
@@ -349,9 +311,7 @@ pub(all) enum WgslStatementPayload {
 } derive(@debug.Debug)
 
 pub struct WgslStruct {
-  attributes : Array[WgslAttribute]
-  name : WgslIdent
-  members : Array[WgslStructMember]
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslStruct::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslStruct::members(Self) -> Array[WgslStructMember]
@@ -359,14 +319,7 @@ pub fn WgslStruct::name(Self) -> WgslIdent
 pub fn WgslStruct::new(Array[WgslAttribute], WgslIdent, Array[WgslStructMember]) -> Self
 
 pub struct WgslStructMember {
-  attributes : Array[WgslAttribute]
-  name : String
-  start : Int
-  end : Int
-  name_start : Int
-  name_end : Int
-  ty : String
-  ty_ref : WgslTypeRef?
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslStructMember::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslStructMember::end(Self) -> Int
@@ -379,14 +332,13 @@ pub fn WgslStructMember::ty(Self) -> String
 pub fn WgslStructMember::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslTranslationUnit {
-  declarations : Array[WgslGlobalDecl]
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslTranslationUnit::declarations(Self) -> Array[WgslGlobalDecl]
 pub fn WgslTranslationUnit::new(Array[WgslGlobalDecl]) -> Self
 
 pub struct WgslTypeAlias {
-  name : WgslIdent
-  ty : String
-  ty_ref : WgslTypeRef?
+  // private fields
 } derive(@debug.Debug)
 pub fn WgslTypeAlias::name(Self) -> WgslIdent
 pub fn WgslTypeAlias::new(WgslIdent, String, WgslTypeRef?) -> Self

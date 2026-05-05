@@ -305,13 +305,13 @@ fn collect_wgsl_function_local_rewrite_nodes(
   match data {
     WgslGlobalDeclData::Function(function) => {
       let active_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-      for argument in function.arguments {
-        match redirect_map.get(argument.name) {
+      for argument in function.arguments() {
+        match redirect_map.get(argument.name()) {
           Some(replacement) => {
-            active_redirects.set(argument.name, replacement)
+            active_redirects.set(argument.name(), replacement)
             nodes.push(WgslRewriteNode::{
-              start: argument.name_start,
-              end: argument.name_end,
+              start: argument.name_start(),
+              end: argument.name_end(),
               replacement,
             })
           }
@@ -319,7 +319,7 @@ fn collect_wgsl_function_local_rewrite_nodes(
         }
       }
       collect_wgsl_block_local_rewrite_nodes(
-        function.body,
+        function.body(),
         active_redirects,
         redirect_map,
         nodes,

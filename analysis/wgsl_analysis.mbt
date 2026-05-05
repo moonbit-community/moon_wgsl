@@ -134,14 +134,14 @@ fn build_wgsl_declaration_graph_from_unit(
 ) -> WgslDeclarationGraph {
   let import_blocks : Array[WgslGraphBlock] = []
   let declaration_blocks : Array[WgslGraphBlock] = []
-  for decl in unit.declarations {
+  for decl in unit.declarations() {
     let graph_block = WgslGraphBlock::{
-      name: decl.name,
-      text: decl.text,
-      start: decl.start,
-      data: decl.data,
+      name: decl.name(),
+      text: decl.text(),
+      start: decl.start(),
+      data: decl.data(),
     }
-    match decl.kind {
+    match decl.kind() {
       WgslGlobalDeclKind::Import => import_blocks.push(graph_block)
       WgslGlobalDeclKind::Function
       | WgslGlobalDeclKind::GlobalVariable
@@ -152,7 +152,7 @@ fn build_wgsl_declaration_graph_from_unit(
       | WgslGlobalDeclKind::ConstAssert
       | WgslGlobalDeclKind::Unknown => declaration_blocks.push(graph_block)
       WgslGlobalDeclKind::Directive =>
-        match decl.data {
+        match decl.data() {
           WgslGlobalDeclData::Directive(directive) =>
             if directive.kind() == WgslDirectiveKind::Enable ||
               directive.kind() == WgslDirectiveKind::Requires ||
@@ -285,8 +285,8 @@ fn strip_wgsl_import_declarations_from_unit(
   unit : WgslTranslationUnit,
 ) -> String {
   let mut out = ""
-  for decl in unit.declarations {
-    let skip = match decl.data {
+  for decl in unit.declarations() {
+    let skip = match decl.data() {
       WgslGlobalDeclData::Import(_) => true
       WgslGlobalDeclData::Directive(directive) =>
         directive.kind() == WgslDirectiveKind::DefineImportPath
@@ -295,10 +295,10 @@ fn strip_wgsl_import_declarations_from_unit(
     if !skip {
       out = out +
         emit_wgsl_graph_block_canonical(WgslGraphBlock::{
-          name: decl.name,
-          text: decl.text,
-          start: decl.start,
-          data: decl.data,
+          name: decl.name(),
+          text: decl.text(),
+          start: decl.start(),
+          data: decl.data(),
         })
     }
   }

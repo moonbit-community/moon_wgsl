@@ -328,10 +328,10 @@ fn collect_wgsl_function_local_sanitizers(
 ) -> Unit {
   match data {
     WgslGlobalDeclData::Function(function) => {
-      for argument in function.arguments {
-        collect_wgsl_function_local_name_sanitizer(argument.name, plan)
+      for argument in function.arguments() {
+        collect_wgsl_function_local_name_sanitizer(argument.name(), plan)
       }
-      collect_wgsl_block_local_sanitizers(function.body, plan)
+      collect_wgsl_block_local_sanitizers(function.body(), plan)
     }
     _ => ()
   }
@@ -368,18 +368,18 @@ pub fn invalid_wgsl_struct_member_identifier(
   for block in graph.declaration_blocks {
     match block.data {
       WgslGlobalDeclData::Struct(struct_decl) =>
-        for struct_member in struct_decl.members {
+        for struct_member in struct_decl.members() {
           let mut allows_identifier_substitution = false
-          for attr in struct_member.attributes {
+          for attr in struct_member.attributes() {
             if attr.name() == "blend_src" {
               allows_identifier_substitution = true
               break
             }
           }
           if !allows_identifier_substitution &&
-            struct_member.name != "" &&
-            wgsl_identifier_requires_substitution(struct_member.name) {
-            return Some(struct_member.name)
+            struct_member.name() != "" &&
+            wgsl_identifier_requires_substitution(struct_member.name()) {
+            return Some(struct_member.name())
           }
         }
       _ => ()

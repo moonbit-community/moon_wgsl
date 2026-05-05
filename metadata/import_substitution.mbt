@@ -252,9 +252,9 @@ fn substitute_identifiers(
   let unit = parse_wgsl_translation_unit_strict(input) catch {
     error => raise substitute_identifiers_wgsl_parse_error(error, offset)
   }
-  for decl in unit.declarations {
+  for decl in unit.declarations() {
     let identifiers : Array[WgslIdent] = []
-    collect_wgsl_decl_identifier_nodes(decl.data, identifiers)
+    collect_wgsl_decl_identifier_nodes(decl.data(), identifiers)
     for ident in identifiers {
       let token_byte_pos = utf8_byte_length(input[:ident.start].to_owned())
       let replacement = imported_identifier_replacement(

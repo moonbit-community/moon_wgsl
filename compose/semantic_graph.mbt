@@ -96,8 +96,8 @@ fn collect_wgsl_semantic_reference_paths(
   paths : Array[WgslSemanticReferencePath],
 ) -> Unit raise WgslParseError {
   let nodes : Array[WgslIdent] = []
-  for decl in parse_wgsl_translation_unit_strict(source).declarations {
-    collect_wgsl_decl_identifier_nodes(decl.data, nodes)
+  for decl in parse_wgsl_translation_unit_strict(source).declarations() {
+    collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
   }
   for node in nodes {
     match wgsl_semantic_reference_path_from_identifier(node.name) {
@@ -506,9 +506,12 @@ fn build_wgsl_semantic_import_rename_map(
 ) -> @hashmap.HashMap[String, String] raise WgslParseError {
   let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let alias_prefix = parse_wgsl_import_alias_prefix(alias_name)
-  for declaration in parse_wgsl_translation_unit_strict(source).declarations {
-    if declaration.name != "" {
-      rename_map.set(declaration.name, "\{alias_prefix}__\{declaration.name}")
+  for declaration in parse_wgsl_translation_unit_strict(source).declarations() {
+    if declaration.name() != "" {
+      rename_map.set(
+        declaration.name(),
+        "\{alias_prefix}__\{declaration.name()}",
+      )
     }
   }
   rename_map

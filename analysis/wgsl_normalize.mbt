@@ -169,35 +169,35 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
       "import:\{directive.name()}:\{directive.tail()}"
     WgslGlobalDeclData::Function(function) => {
       let args : Array[String] = []
-      for argument in function.arguments {
+      for argument in function.arguments() {
         args.push(
-          "\{wgsl_attributes_key(argument.attributes)}:\{argument.name}:\{wgsl_type_ref_key(argument.ty_ref)}",
+          "\{wgsl_attributes_key(argument.attributes())}:\{argument.name()}:\{wgsl_type_ref_key(argument.ty_ref())}",
         )
       }
-      let result = match function.result {
+      let result = match function.result() {
         Some(value) =>
-          "\{wgsl_attributes_key(value.attributes)}:\{wgsl_type_ref_key(value.ty_ref)}"
+          "\{wgsl_attributes_key(value.attributes())}:\{wgsl_type_ref_key(value.ty_ref())}"
         None => ""
       }
-      "fn:\{wgsl_attributes_key(function.attributes)}:\{function.qualifier}:\{function.name.name}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body)}}"
+      "fn:\{wgsl_attributes_key(function.attributes())}:\{function.qualifier()}:\{function.name().name}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body())}}"
     }
     WgslGlobalDeclData::GlobalVariable(global) =>
-      "global:\{wgsl_attributes_key(global.attributes)}:\{global.name.name}:\{wgsl_string_list_key(global.template_list)}:\{wgsl_type_ref_key(global.ty_ref)}=\{wgsl_optional_expr_ref_key(global.initializer_ref)}"
+      "global:\{wgsl_attributes_key(global.attributes())}:\{global.name().name}:\{wgsl_string_list_key(global.template_list())}:\{wgsl_type_ref_key(global.ty_ref())}=\{wgsl_optional_expr_ref_key(global.initializer_ref())}"
     WgslGlobalDeclData::Const(const_decl) =>
-      "const:\{const_decl.name.name}:\{wgsl_type_ref_key(const_decl.ty_ref)}=\{wgsl_optional_expr_ref_key(const_decl.initializer_ref)}"
+      "const:\{const_decl.name().name}:\{wgsl_type_ref_key(const_decl.ty_ref())}=\{wgsl_optional_expr_ref_key(const_decl.initializer_ref())}"
     WgslGlobalDeclData::Override(override_decl) =>
-      "override:\{wgsl_attributes_key(override_decl.attributes)}:\{override_decl.name.name}:\{wgsl_type_ref_key(override_decl.ty_ref)}=\{wgsl_optional_expr_ref_key(override_decl.initializer_ref)}"
+      "override:\{wgsl_attributes_key(override_decl.attributes())}:\{override_decl.name().name}:\{wgsl_type_ref_key(override_decl.ty_ref())}=\{wgsl_optional_expr_ref_key(override_decl.initializer_ref())}"
     WgslGlobalDeclData::Struct(struct_decl) => {
       let members : Array[String] = []
-      for field in struct_decl.members {
+      for field in struct_decl.members() {
         members.push(
-          "\{wgsl_attributes_key(field.attributes)}:\{field.name}:\{wgsl_type_ref_key(field.ty_ref)}",
+          "\{wgsl_attributes_key(field.attributes())}:\{field.name()}:\{wgsl_type_ref_key(field.ty_ref())}",
         )
       }
-      "struct:\{wgsl_attributes_key(struct_decl.attributes)}:\{struct_decl.name.name}{\{wgsl_string_list_key(members)}}"
+      "struct:\{wgsl_attributes_key(struct_decl.attributes())}:\{struct_decl.name().name}{\{wgsl_string_list_key(members)}}"
     }
     WgslGlobalDeclData::TypeAlias(alias_decl) =>
-      "alias:\{alias_decl.name.name}=\{wgsl_type_ref_key(alias_decl.ty_ref)}"
+      "alias:\{alias_decl.name().name}=\{wgsl_type_ref_key(alias_decl.ty_ref())}"
     WgslGlobalDeclData::ConstAssert(expr) =>
       "const_assert:\{wgsl_expr_ref_key(expr)}"
     Raw => "raw"
@@ -329,14 +329,15 @@ fn wgsl_attribute_uint_value(
 fn wgsl_global_binding_info(block : WgslGraphBlock) -> WgslGlobalBindingInfo? {
   match block.data {
     WgslGlobalDeclData::GlobalVariable(global) => {
-      guard wgsl_attribute_uint_value(global.attributes, "group") is Some(group) else {
+      guard wgsl_attribute_uint_value(global.attributes(), "group")
+        is Some(group) else {
         return None
       }
-      guard wgsl_attribute_uint_value(global.attributes, "binding")
+      guard wgsl_attribute_uint_value(global.attributes(), "binding")
         is Some(binding) else {
         return None
       }
-      Some(WgslGlobalBindingInfo::{ name: global.name.name, group, binding })
+      Some(WgslGlobalBindingInfo::{ name: global.name().name, group, binding })
     }
     _ => None
   }

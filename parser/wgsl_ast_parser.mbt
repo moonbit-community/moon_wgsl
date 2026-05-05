@@ -101,7 +101,7 @@ fn parse_wgsl_raw_global_decl_strict(
   item : WgslRawTopLevelItem,
 ) -> WgslGlobalDecl raise WgslParseError {
   let declaration = parse_wgsl_raw_global_decl(item)
-  match declaration.kind {
+  match declaration.kind() {
     WgslGlobalDeclKind::Unknown =>
       raise WgslParseError::UnparsedDeclaration(item.text, item.start)
     _ => declaration
