@@ -57,7 +57,7 @@ pub fn ComposerError::message(self : ComposerError) -> String {
       "failed to resolve shader import: \{import_path}"
     ImportCycle(cycle) => "shader import cycle detected: \{cycle}"
     InvalidStructMemberIdentifier(name) =>
-      "composable module identifier requires naga writeback substitution: \{name}"
+      "composable module identifier requires AST identifier normalization: \{name}"
     InvalidWgslSyntax(message, offset) =>
       "invalid WGSL syntax at \{offset}: \{message}"
     InvalidOverride(name) =>

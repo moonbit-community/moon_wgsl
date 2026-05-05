@@ -7,6 +7,8 @@ using @analysis {
   collect_wgsl_named_declarations_strict,
   extract_wgsl_module_item_origins,
   extract_wgsl_module_item_origins_strict,
+  invalid_wgsl_struct_member_identifier,
+  normalize_wgsl_output_identifiers,
   normalize_wgsl_composed_declarations,
   rewrite_wgsl_declarations_with_rename_plan,
   rewrite_wgsl_symbol_redirects,
@@ -75,10 +77,4 @@ using @semantic {
   unresolved_wgsl_semantic_namespace_reference,
   wgsl_semantic_import_default_alias,
   wgsl_semantic_source_contains_reference_path,
-}
-
-///|
-using @writeback {
-  invalid_wgsl_struct_member_identifier,
-  sanitize_wgsl_writeback_identifiers,
 }

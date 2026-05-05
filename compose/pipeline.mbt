@@ -165,7 +165,7 @@ pub fn Composer::prepare_wgsl_source(
   let composed = strip_wgsl_virtual_functions(
     self.load_root_wgsl_preprocessed_into_session(rel, session),
   )
-  let prepared_source = finalize_wgsl_writeback_source(composed)
+  let prepared_source = finalize_wgsl_output_source(composed)
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: prepared_source },
   ]
@@ -207,7 +207,7 @@ pub fn Composer::compose_wgsl_source(
       false,
     ),
   )
-  finalize_wgsl_writeback_source(composed)
+  finalize_wgsl_output_source(composed)
 }
 
 ///|

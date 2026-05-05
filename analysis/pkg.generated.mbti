@@ -35,7 +35,11 @@ pub fn extract_wgsl_module_items(String, Array[String]) -> String raise @parser.
 
 pub fn extract_wgsl_module_items_strict(String, Array[String]) -> String raise @parser.WgslParseError
 
+pub fn invalid_wgsl_struct_member_identifier(String) -> String? raise @parser.WgslParseError
+
 pub fn normalize_wgsl_composed_declarations(String, Array[@common.WgslSymbolRedirect]) -> String raise @parser.WgslParseError
+
+pub fn normalize_wgsl_output_identifiers(String) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_declarations_with_rename_plan(String, WgslRenamePlan) -> String raise @parser.WgslParseError
 

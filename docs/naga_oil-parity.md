@@ -94,7 +94,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `problematic_expressions`, `problematic_expressions/` | Covered | Local dependency analysis includes the expression forms that previously broke source-level tree-shaking, including same-name local initializer callees such as Bevy PBR `let point_light = point_light(...)`. |
 | `test_atomics`, `atomics/` | Covered | Atomic declarations/usages are covered by source-level declaration dependency tests. |
 | `test_modf`, `modf/` | Covered | Builtin-return usage is covered at source-text dependency level. |
-| `test_diagnostic_filters`, `diagnostic_filters/` | Source-level failure-covered / oracle failure-guarded | The pinned upstream test is marked `should_panic` in `naga_oil` because diagnostic-filter validation/writeback is not supported there yet. MoonBit now treats the mirrored unsupported `diagnostic(warning, ...)` fixture as a compose failure, and the stale expected writer output is excluded from byte diffing while the parity gate explicitly asserts the current upstream diagnostic failure. |
+| `test_diagnostic_filters`, `diagnostic_filters/` | Source-level failure-covered / oracle failure-guarded | The pinned upstream test is marked `should_panic` in `naga_oil` because diagnostic-filter validation/output emission is not supported there yet. MoonBit now treats the mirrored unsupported `diagnostic(warning, ...)` fixture as a compose failure, and the stale expected writer output is excluded from byte diffing while the parity gate explicitly asserts the current upstream diagnostic failure. |
 | `effective_defs`, `effective_defs/` | Covered | Descriptor-level shader defs now propagate through imported module branches, including the upstream bool-false `#ifdef` semantics and all eight branch combinations. |
 | `wgsl_dual_source_blending`, `dual_source_blending/` | Covered + oracle-diffed | Dual-source blending attributes are preserved as source text and pinned oracle output is diffed with `DUAL_SOURCE_BLENDING` enabled. |
 | `missing_import_in_module`, `missing_import_in_shader` | Covered + oracle-diffed | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
@@ -143,7 +143,8 @@ tree-shakes them away, matching upstream `naga_oil`.
    `PreparedWgslSource.source_catalog` must be extracted from the same resolved
    WGSL stored in `PreparedWgslSource.source`. Do not rebuild catalogs from raw
    registered files, root-only bool/int maps, or any dependency-closure source
-   that has not passed through compose-time alias resolution and writeback.
+   that has not passed through compose-time alias resolution and identifier
+   normalization.
 
 7. Original-file provenance must use the origin graph.
    Source maps must read declaration provenance from
@@ -151,13 +152,13 @@ tree-shakes them away, matching upstream `naga_oil`.
    from the final prepared-source catalog. The catalog describes runtime WGSL;
    the origin graph describes where each final declaration came from.
 
-8. Rename/writeback and dependency analysis must be AST/token-driven.
+8. Rename and dependency analysis must be AST/token-driven.
    All semantic rewrites must be expressed as `WgslRenamePlan` rules in
    `analysis`: global declaration plus references, references only, or function
    locals. Dependency analysis must consume parsed declaration identifiers
    rather than raw declaration text. Composer, virtual overrides,
-   duplicate-binding cleanup, suffix lowering, and writeback sanitization must
-   not reintroduce source-span copy-and-replace rewriting.
+   duplicate-binding cleanup, suffix lowering, and identifier normalization
+   must not reintroduce source-span copy-and-replace rewriting.
 
 9. Parser internals must stay narrow.
    Syntax should not expose debug-only statement classification, raw text spans,

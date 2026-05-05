@@ -696,7 +696,7 @@ test "naga_oil upstream: dual source blending enable directive round-trips" {
 }
 
 ///|
-test "naga_oil upstream: multiline dual source blending members skip writeback validation" {
+test "naga_oil upstream: multiline dual source blending members skip identifier validation" {
   let source = @compose.Composer::default().compose_wgsl_source(
     "enable dual_source_blending;\nstruct FragmentOutput {\n  @location(0)\n  @blend_src(0)\n  source0_: vec4<f32>,\n  @location(0)\n  @blend_src(1)\n  source1_: vec4<f32>,\n}\n@fragment\nfn fragment() -> FragmentOutput {\n  return FragmentOutput(vec4<f32>(), vec4<f32>());\n}\n",
     @common.WgslComposeOptions::default(),
@@ -868,7 +868,7 @@ test "naga_oil upstream: compute shader smoke preserves imported entry dependenc
 }
 
 ///|
-test "naga_oil upstream: source-level sanitizer handles invalid imported identifiers" {
+test "naga_oil upstream: AST identifier policy handles invalid imported identifiers" {
   let source = upstream_mirror_compose_case(
     "invalid_identifiers",
     "top_valid.wgsl",
@@ -896,7 +896,7 @@ test "naga_oil upstream: invalid struct member identifier reports compose failur
     err => message = err.message()
   }
   debug_inspect(
-    message.contains("requires naga writeback substitution"),
+    message.contains("requires AST identifier normalization"),
     content="true",
   )
   debug_inspect(message.contains("bad_"), content="true")
@@ -1030,7 +1030,7 @@ test "github issue 5: colliding lowered declarations from separate imports are d
 }
 
 ///|
-test "github issue 6: Bevy F0_ struct member composes without writeback rejection" {
+test "github issue 6: Bevy F0_ struct member composes without identifier-policy rejection" {
   let composer = @compose.Composer::default()
   composer.register_source(
     "f0_member.wgsl",

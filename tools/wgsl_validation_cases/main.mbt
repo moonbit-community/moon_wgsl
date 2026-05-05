@@ -57,19 +57,15 @@ fn validation_bevy_forward_defines() -> Array[String] {
 
 ///|
 fn validation_writer_boundary_source() -> String {
-  @analysis.emit_wgsl_text_with_token_rewrites(
-    (
-      #|fn prepare_world_normal(world_normal: vec3<f32>) -> vec3<f32> {
-      #|  var output: vec3<f32> = world_normal;
-      #|  if (output.x >= 1.0) {
-      #|    return output;
-      #|  }
-      #|  return world_normal;
-      #|}
-      #|
-    ),
-    [],
-    0,
+  (
+    #|fn prepare_world_normal(world_normal: vec3<f32>) -> vec3<f32> {
+    #|  var output: vec3<f32> = world_normal;
+    #|  if (output.x >= 1.0) {
+    #|    return output;
+    #|  }
+    #|  return world_normal;
+    #|}
+    #|
   )
 }
 

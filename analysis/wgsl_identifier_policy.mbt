@@ -13,10 +13,9 @@
 // limitations under the License.
 
 ///|
-// This layer mirrors naga_oil's writeback boundary: composable-module
-// identifiers that naga's WGSL writer would rename are rejected before output,
-// while final generated source still gets the WGSL identifier sanitizer.
-fn wgsl_writeback_identifier_is_reserved(ident : String) -> Bool {
+// Identifier normalization is part of semantic analysis. Compose validates
+// unsupported struct members here instead of running a final text-emission pass.
+fn wgsl_identifier_is_reserved(ident : String) -> Bool {
   if ident == "" {
     return false
   }
@@ -244,7 +243,7 @@ fn wgsl_writeback_identifier_is_reserved(ident : String) -> Bool {
 }
 
 ///|
-fn wgsl_writeback_identifier_ends_with_digit(ident : String) -> Bool {
+fn wgsl_identifier_ends_with_digit(ident : String) -> Bool {
   if ident == "" {
     return false
   }
@@ -261,7 +260,7 @@ fn wgsl_writeback_identifier_ends_with_digit(ident : String) -> Bool {
 }
 
 ///|
-fn sanitize_wgsl_writeback_identifier(ident : String) -> String {
+fn sanitize_wgsl_identifier(ident : String) -> String {
   let had_trailing_separator = ident.has_suffix("_")
   let mut out = ident
   while out.has_suffix("_") {
@@ -276,18 +275,17 @@ fn sanitize_wgsl_writeback_identifier(ident : String) -> String {
   if out.has_prefix("_naga") {
     out = "gen_\{out}"
   }
-  if wgsl_writeback_identifier_is_reserved(out) {
+  if wgsl_identifier_is_reserved(out) {
     out = "\{out}_wgsl"
-  } else if had_trailing_separator &&
-    wgsl_writeback_identifier_ends_with_digit(out) {
+  } else if had_trailing_separator && wgsl_identifier_ends_with_digit(out) {
     out = "\{out}_"
   }
   out
 }
 
 ///|
-fn wgsl_writeback_identifier_requires_substitution(ident : String) -> Bool {
-  ident != "" && sanitize_wgsl_writeback_identifier(ident) != ident
+fn wgsl_identifier_requires_substitution(ident : String) -> Bool {
+  ident != "" && sanitize_wgsl_identifier(ident) != ident
 }
 
 ///|
@@ -295,8 +293,8 @@ fn collect_wgsl_function_local_name_sanitizer(
   name : String,
   plan : WgslRenamePlan,
 ) -> Unit {
-  if wgsl_writeback_identifier_requires_substitution(name) {
-    plan.add(name, sanitize_wgsl_writeback_identifier(name), FunctionLocal)
+  if wgsl_identifier_requires_substitution(name) {
+    plan.add(name, sanitize_wgsl_identifier(name), FunctionLocal)
   }
 }
 
@@ -340,16 +338,16 @@ fn collect_wgsl_function_local_sanitizers(
 }
 
 ///|
-pub fn sanitize_wgsl_writeback_identifiers(
+pub fn normalize_wgsl_output_identifiers(
   source : String,
 ) -> String raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let plan = WgslRenamePlan::empty()
   for block in graph.declaration_blocks {
-    if wgsl_writeback_identifier_requires_substitution(block.name) {
+    if wgsl_identifier_requires_substitution(block.name) {
       plan.add(
         block.name,
-        sanitize_wgsl_writeback_identifier(block.name),
+        sanitize_wgsl_identifier(block.name),
         GlobalDeclarationAndReferences,
       )
     }
@@ -371,16 +369,16 @@ pub fn invalid_wgsl_struct_member_identifier(
     match block.data {
       WgslGlobalDeclData::Struct(struct_decl) =>
         for struct_member in struct_decl.members {
-          let mut allows_writeback_substitution = false
+          let mut allows_identifier_substitution = false
           for attr in struct_member.attributes {
             if attr.name == "blend_src" {
-              allows_writeback_substitution = true
+              allows_identifier_substitution = true
               break
             }
           }
-          if !allows_writeback_substitution &&
+          if !allows_identifier_substitution &&
             struct_member.name != "" &&
-            wgsl_writeback_identifier_requires_substitution(struct_member.name) {
+            wgsl_identifier_requires_substitution(struct_member.name) {
             return Some(struct_member.name)
           }
         }

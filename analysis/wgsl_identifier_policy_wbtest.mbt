@@ -13,14 +13,14 @@
 // limitations under the License.
 
 ///|
-test "writeback sanitizer rewrites reserved local bindings through AST scopes" {
+test "identifier policy normalizes reserved local bindings through AST scopes" {
   let source =
     #|fn fragment(value: f32) -> f32 {
     #|  let in = value + 1.0;
     #|  return in;
     #|}
     #|
-  let rewritten = sanitize_wgsl_writeback_identifiers(source)
+  let rewritten = normalize_wgsl_output_identifiers(source)
   debug_inspect(
     rewritten.contains("let in_wgsl = value + 1.0;"),
     content="true",
@@ -30,14 +30,14 @@ test "writeback sanitizer rewrites reserved local bindings through AST scopes" {
 }
 
 ///|
-test "writeback sanitizer rewrites naga local prefixes through AST scopes" {
+test "identifier policy normalizes naga local prefixes through AST scopes" {
   let source =
     #|fn fragment(value: f32) -> f32 {
     #|  let _naga_tmp = value + 1.0;
     #|  return _naga_tmp;
     #|}
     #|
-  let rewritten = sanitize_wgsl_writeback_identifiers(source)
+  let rewritten = normalize_wgsl_output_identifiers(source)
   debug_inspect(
     rewritten.contains("let gen__naga_tmp = value + 1.0;"),
     content="true",
@@ -47,7 +47,7 @@ test "writeback sanitizer rewrites naga local prefixes through AST scopes" {
 }
 
 ///|
-test "writeback sanitizer rewrites nested local bindings through AST scopes" {
+test "identifier policy normalizes nested local bindings through AST scopes" {
   let source =
     #|fn fragment(value: f32) -> f32 {
     #|  if (value > 0.0) {
@@ -57,7 +57,7 @@ test "writeback sanitizer rewrites nested local bindings through AST scopes" {
     #|  return value;
     #|}
     #|
-  let rewritten = sanitize_wgsl_writeback_identifiers(source)
+  let rewritten = normalize_wgsl_output_identifiers(source)
   debug_inspect(
     rewritten.contains("let in_wgsl = value + 1.0;"),
     content="true",

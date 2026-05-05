@@ -185,7 +185,7 @@ test "naga_oil: export rejects invalid struct member identifiers before emission
     err => message = err.message()
   }
   debug_inspect(
-    message.contains("requires naga writeback substitution"),
+    message.contains("requires AST identifier normalization"),
     content="true",
   )
   debug_inspect(message.contains("bad_"), content="true")
