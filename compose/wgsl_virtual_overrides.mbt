@@ -16,7 +16,7 @@
 fn wgsl_source_contains_override_directive(
   source : String,
 ) -> Bool raise ComposerError {
-  @virtual_overrides.wgsl_source_contains_override_directive(source) catch {
+  @analysis.wgsl_source_contains_override_directive(source) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
 }
@@ -25,7 +25,7 @@ fn wgsl_source_contains_override_directive(
 fn wgsl_source_contains_virtual_directive(
   source : String,
 ) -> Bool raise ComposerError {
-  @virtual_overrides.wgsl_source_contains_virtual_directive(source) catch {
+  @analysis.wgsl_source_contains_virtual_directive(source) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
 }
@@ -35,7 +35,7 @@ fn apply_wgsl_virtual_overrides(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
 ) -> String raise ComposerError {
-  let output = @virtual_overrides.apply_wgsl_virtual_overrides_raw(
+  let output = @analysis.apply_wgsl_virtual_overrides_raw(
     source, alias_redirect_map,
   ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
@@ -51,7 +51,7 @@ fn rewrite_wgsl_override_targets_with_redirects(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
 ) -> String raise ComposerError {
-  @virtual_overrides.rewrite_wgsl_override_targets_with_redirects(
+  @analysis.rewrite_wgsl_override_targets_with_redirects(
     source, alias_redirect_map,
   ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
@@ -60,7 +60,7 @@ fn rewrite_wgsl_override_targets_with_redirects(
 
 ///|
 fn strip_wgsl_virtual_functions(source : String) -> String raise ComposerError {
-  @virtual_overrides.strip_wgsl_virtual_functions(source) catch {
+  @analysis.strip_wgsl_virtual_functions(source) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
 }

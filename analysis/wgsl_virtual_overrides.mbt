@@ -86,7 +86,7 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let rewrites : Array[WgslTokenRewrite] = []
+  let rewrites : Array[WgslCanonicalTokenEdit] = []
   for block in graph.declaration_blocks {
     guard wgsl_graph_block_function(block) is Some(function) else { continue }
     if function.qualifier != "override" {
@@ -98,14 +98,14 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     }
     let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
     if target != raw_target {
-      rewrites.push(WgslTokenRewrite::{
+      rewrites.push(WgslCanonicalTokenEdit::{
         start: function.name.start,
         end: function.name.end,
         replacement: target,
       })
     }
   }
-  emit_wgsl_text_with_token_rewrites(source, rewrites, 0)
+  emit_wgsl_canonical_tokens_with_edits(source, rewrites, 0)
 }
 
 ///|
@@ -146,9 +146,9 @@ fn rewrite_wgsl_virtual_fn_block(
 ) -> String {
   match (function.qualifier_start, function.qualifier_end) {
     (Some(start), Some(end_)) =>
-      emit_wgsl_text_with_token_rewrites(
+      emit_wgsl_canonical_tokens_with_edits(
         block_text,
-        [WgslTokenRewrite::{ start, end: end_, replacement: "" }],
+        [WgslCanonicalTokenEdit::{ start, end: end_, replacement: "" }],
         block_start,
       )
     _ => block_text
@@ -203,11 +203,11 @@ fn rewrite_wgsl_override_fn_block(
   }
   match (function.qualifier_start, function.qualifier_end) {
     (Some(start), Some(end_)) =>
-      emit_wgsl_text_with_token_rewrites(
+      emit_wgsl_canonical_tokens_with_edits(
         rewritten_body,
         [
-          WgslTokenRewrite::{ start, end: end_, replacement: "" },
-          WgslTokenRewrite::{
+          WgslCanonicalTokenEdit::{ start, end: end_, replacement: "" },
+          WgslCanonicalTokenEdit::{
             start: function.name.start,
             end: function.name.end,
             replacement: target_name,

@@ -5,6 +5,7 @@ using @ast {
   type WgslDirectiveKind,
   type WgslExprRef,
   type WgslExprToken,
+  type WgslFunction,
   type WgslGlobalDecl,
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
@@ -26,7 +27,12 @@ using @parser {
 }
 
 ///|
-using @lex {type WgslToken, replace_comments, tokenize_wgsl}
+using @lex {
+  type WgslToken,
+  replace_comments,
+  split_last_identifier,
+  tokenize_wgsl,
+}
 
 ///|
 using @ast {type WgslTranslationUnit}

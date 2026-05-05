@@ -7,7 +7,6 @@ import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/parser",
   "Milky2018/moon_wgsl/semantic",
-  "Milky2018/moon_wgsl/virtual_overrides",
   "moonbitlang/core/hashmap",
   "moonbitlang/core/hashset",
   "moonbitlang/core/ref",

@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput raise @parser.WgslParseError
+
 pub fn build_wgsl_declaration_graph(String) -> WgslDeclarationGraph raise @parser.WgslParseError
 
 pub fn build_wgsl_declaration_graph_strict(String) -> WgslDeclarationGraph raise @parser.WgslParseError
@@ -20,8 +22,6 @@ pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @has
 pub fn collect_wgsl_named_declarations(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
 
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
-
-pub fn emit_wgsl_text_with_token_rewrites(String, Array[WgslTokenRewrite], Int) -> String
 
 pub fn emit_wgsl_tree_shaken_source(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
 
@@ -43,11 +43,19 @@ pub fn normalize_wgsl_output_identifiers(String) -> String raise @parser.WgslPar
 
 pub fn rewrite_wgsl_declarations_with_rename_plan(String, WgslRenamePlan) -> String raise @parser.WgslParseError
 
+pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
+
 pub fn rewrite_wgsl_symbol_redirects(String, Array[@common.WgslSymbolRedirect]) -> String raise @parser.WgslParseError
 
 pub fn strip_wgsl_import_declarations(String) -> String
 
 pub fn strip_wgsl_import_declarations_strict(String) -> String raise @parser.WgslParseError
+
+pub fn strip_wgsl_virtual_functions(String) -> String raise @parser.WgslParseError
+
+pub fn wgsl_source_contains_override_directive(String) -> Bool raise @parser.WgslParseError
+
+pub fn wgsl_source_contains_virtual_directive(String) -> Bool raise @parser.WgslParseError
 
 // Errors
 
@@ -96,16 +104,15 @@ pub(all) enum WgslRenameRuleKind {
   FunctionLocal
 }
 
-pub(all) struct WgslTokenRewrite {
-  start : Int
-  end : Int
-  replacement : String
-}
-
 pub struct WgslTreeShakenSource {
   source : String
   declarations : Array[WgslEmittedDeclaration]
   missing_root_items : Array[String]
+}
+
+pub struct WgslVirtualOverrideOutput {
+  source : String
+  invalid_override : String?
 }
 
 // Type aliases

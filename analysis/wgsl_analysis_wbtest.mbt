@@ -381,7 +381,7 @@ test "rename plan function-local rules rewrite parameter and body together" {
 }
 
 ///|
-test "writer preserves separated generic close and assignment tokens" {
+test "rename plan emitter preserves separated generic close and assignment tokens" {
   let source =
     #|fn prepare_world_normal(world_normal: vec3<f32>) -> vec3<f32> {
     #|  var output: vec3<f32> = world_normal;
@@ -391,9 +391,14 @@ test "writer preserves separated generic close and assignment tokens" {
     #|  return world_normal;
     #|}
     #|
-  let rewritten = emit_wgsl_text_with_token_rewrites(source, [], 0)
+  let plan = WgslRenamePlan::empty()
+  plan.add("world_normal", "renamed_world_normal", FunctionLocal)
+  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
   debug_inspect(rewritten.contains("vec3<f32 >="), content="false")
-  debug_inspect(rewritten.contains("vec3<f32> = world_normal"), content="true")
+  debug_inspect(
+    rewritten.contains("vec3<f32> = renamed_world_normal"),
+    content="true",
+  )
   debug_inspect(rewritten.contains("output.x >= 1.0"), content="true")
 }
 

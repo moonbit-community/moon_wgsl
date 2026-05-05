@@ -518,7 +518,7 @@ test "WGSL identifier collection exposes source spans" {
 }
 
 ///|
-test "WGSL function payload exposes source-preserving statement AST" {
+test "WGSL function payload exposes statement AST spans" {
   let source =
     #|fn demo(value: u32) -> u32 {
     #|  var<function> local: u32 = value;

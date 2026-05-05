@@ -40,7 +40,7 @@ priv struct WgslRewriteNode {
 }
 
 ///|
-pub(all) struct WgslTokenRewrite {
+priv struct WgslCanonicalTokenEdit {
   start : Int
   end : Int
   replacement : String
@@ -628,21 +628,21 @@ fn emit_wgsl_text_with_nodes(
   nodes : Array[WgslRewriteNode],
   source_start : Int,
 ) -> String {
-  let rewrites : Array[WgslTokenRewrite] = []
+  let rewrites : Array[WgslCanonicalTokenEdit] = []
   for node in nodes {
-    rewrites.push(WgslTokenRewrite::{
+    rewrites.push(WgslCanonicalTokenEdit::{
       start: node.start,
       end: node.end,
       replacement: node.replacement,
     })
   }
-  emit_wgsl_text_with_token_rewrites(text, rewrites, source_start)
+  emit_wgsl_canonical_tokens_with_edits(text, rewrites, source_start)
 }
 
 ///|
-pub fn emit_wgsl_text_with_token_rewrites(
+fn emit_wgsl_canonical_tokens_with_edits(
   text : String,
-  rewrites : Array[WgslTokenRewrite],
+  rewrites : Array[WgslCanonicalTokenEdit],
   source_start : Int,
 ) -> String {
   let replacements : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
