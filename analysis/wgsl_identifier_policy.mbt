@@ -371,7 +371,7 @@ pub fn invalid_wgsl_struct_member_identifier(
         for struct_member in struct_decl.members {
           let mut allows_identifier_substitution = false
           for attr in struct_member.attributes {
-            if attr.name == "blend_src" {
+            if attr.name() == "blend_src" {
               allows_identifier_substitution = true
               break
             }

@@ -422,7 +422,7 @@ struct_member_list -> Array[@ast.WgslStructMember]
 struct_member -> @ast.WgslStructMember
   : attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
       let (ty_text, ty_ref, _, ty_end) = ty
-      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
       @ast.WgslStructMember::new(
         attrs,
         name.name,
@@ -546,7 +546,7 @@ function_arg_list -> Array[@ast.WgslFunctionArgument]
 function_arg -> @ast.WgslFunctionArgument
   : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
       let (_, ty_ref, _, ty_end) = ty
-      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
       @ast.WgslFunctionArgument::new(
         attrs,
         name.name,

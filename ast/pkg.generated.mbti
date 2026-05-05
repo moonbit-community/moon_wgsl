@@ -18,13 +18,14 @@ pub fn wgsl_decl_data_name(WgslGlobalDeclData) -> String
 
 // Types and methods
 pub struct WgslAttribute {
-  name : String
-  start : Int
-  end : Int
-  arguments : String
-  arguments_ref : WgslExprRef?
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslAttribute::arguments(Self) -> String
+pub fn WgslAttribute::arguments_ref(Self) -> WgslExprRef?
+pub fn WgslAttribute::end(Self) -> Int
+pub fn WgslAttribute::name(Self) -> String
 pub fn WgslAttribute::new(String, Int, Int, String, WgslExprRef?) -> Self
+pub fn WgslAttribute::start(Self) -> Int
 
 pub struct WgslBlock {
   start : Int

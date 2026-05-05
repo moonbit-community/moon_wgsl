@@ -26,11 +26,11 @@ fn wgsl_string_list_key(items : Array[String]) -> String {
 
 ///|
 fn wgsl_attribute_key(attribute : WgslAttribute) -> String {
-  let argument_key = match attribute.arguments_ref {
+  let argument_key = match attribute.arguments_ref() {
     Some(expr) => wgsl_expr_ref_key(expr)
     None => ""
   }
-  "\{attribute.name}(\{argument_key})"
+  "\{attribute.name()}(\{argument_key})"
 }
 
 ///|
@@ -318,8 +318,8 @@ fn wgsl_attribute_uint_value(
   name : String,
 ) -> Int? {
   for attr in attributes {
-    if attr.name == name {
-      return wgsl_expr_ref_single_uint_value(attr.arguments_ref)
+    if attr.name() == name {
+      return wgsl_expr_ref_single_uint_value(attr.arguments_ref())
     }
   }
   None

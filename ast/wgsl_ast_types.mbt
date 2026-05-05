@@ -252,11 +252,11 @@ pub fn WgslExprRef::end(self : WgslExprRef) -> Int {
 
 ///|
 pub struct WgslAttribute {
-  name : String
-  start : Int
-  end : Int
-  arguments : String
-  arguments_ref : WgslExprRef?
+  priv name : String
+  priv start : Int
+  priv end : Int
+  priv arguments : String
+  priv arguments_ref : WgslExprRef?
 } derive(Debug)
 
 ///|
@@ -268,6 +268,31 @@ pub fn WgslAttribute::new(
   arguments_ref : WgslExprRef?,
 ) -> WgslAttribute {
   WgslAttribute::{ name, start, end, arguments, arguments_ref }
+}
+
+///|
+pub fn WgslAttribute::name(self : WgslAttribute) -> String {
+  self.name
+}
+
+///|
+pub fn WgslAttribute::start(self : WgslAttribute) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslAttribute::end(self : WgslAttribute) -> Int {
+  self.end
+}
+
+///|
+pub fn WgslAttribute::arguments(self : WgslAttribute) -> String {
+  self.arguments
+}
+
+///|
+pub fn WgslAttribute::arguments_ref(self : WgslAttribute) -> WgslExprRef? {
+  self.arguments_ref
 }
 
 ///|

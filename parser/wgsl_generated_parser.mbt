@@ -1394,7 +1394,7 @@ fn yy_action_38(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 // file:///./wgsl_parser.mbty
 // 547|    attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
 // 548|      let (_, ty_ref, _, ty_end) = ty
-// 549|      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+// 549|      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
 // 550|      @ast.WgslFunctionArgument::new(
 // 551|        attrs,
 // 552|        name.name,
@@ -1415,7 +1415,7 @@ fn yy_action_39(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
     {
       ()
       let (_, ty_ref, _, ty_end) = ty
-      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
       @ast.WgslFunctionArgument::new(
         attrs,
         name.name,
@@ -1628,7 +1628,7 @@ fn yy_action_50(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 // file:///./wgsl_parser.mbty
 // 423|    attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
 // 424|      let (ty_text, ty_ref, _, ty_end) = ty
-// 425|      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+// 425|      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
 // 426|      @ast.WgslStructMember::new(
 // 427|        attrs,
 // 428|        name.name,
@@ -1650,7 +1650,7 @@ fn yy_action_51(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
     {
       ()
       let (ty_text, ty_ref, _, ty_end) = ty
-      let start = if attrs.length() > 0 { attrs[0].start } else { name.start }
+      let start = if attrs.length() > 0 { attrs[0].start() } else { name.start }
       @ast.WgslStructMember::new(
         attrs,
         name.name,

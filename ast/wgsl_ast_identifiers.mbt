@@ -143,7 +143,7 @@ fn collect_wgsl_attribute_identifier_nodes(
   nodes : Array[WgslIdent],
 ) -> Unit {
   for attr in attributes {
-    collect_wgsl_expr_ref_identifier_nodes(attr.arguments_ref, nodes)
+    collect_wgsl_expr_ref_identifier_nodes(attr.arguments_ref(), nodes)
   }
 }
 

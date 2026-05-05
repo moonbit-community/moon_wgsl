@@ -122,7 +122,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(struct_decl.name.name, content="\"Vertex\"")
   debug_inspect(struct_decl.members.length(), content="2")
   debug_inspect(
-    struct_decl.members[0].attributes[0].name,
+    struct_decl.members[0].attributes[0].name(),
     content="\"location\"",
   )
   debug_inspect(struct_decl.members[0].name_start, content="31")
@@ -169,7 +169,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   guard unit.declarations[4].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
   }
-  debug_inspect(override_decl.attributes[0].name, content="\"id\"")
+  debug_inspect(override_decl.attributes[0].name(), content="\"id\"")
   debug_inspect(override_decl.name.name, content="\"ENABLED\"")
   guard override_decl.ty_ref is Some(override_ty) else {
     abort("expected override type ref")
@@ -179,7 +179,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   guard unit.declarations[5].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
-  debug_inspect(function.attributes[0].name, content="\"fragment\"")
+  debug_inspect(function.attributes[0].name(), content="\"fragment\"")
   debug_inspect(function.fn_start, content="224")
   debug_inspect(function.fn_end, content="226")
   debug_inspect(function.qualifier_start, content="None")
@@ -192,13 +192,13 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   }
   debug_inspect(arg_ty.name(), content="\"Color\"")
   debug_inspect(
-    function.arguments[0].attributes[0].name,
+    function.arguments[0].attributes[0].name(),
     content="\"location\"",
   )
   guard function.result is Some(result) else {
     abort("expected function result")
   }
-  debug_inspect(result.attributes[0].name, content="\"location\"")
+  debug_inspect(result.attributes[0].name(), content="\"location\"")
   debug_inspect(result.ty, content="\"vec4<f32>\"")
   guard result.ty_ref is Some(result_ty) else {
     abort("expected result type ref")
@@ -298,7 +298,7 @@ test "WGSL function arguments are parsed by grammar" {
   }
   debug_inspect(function.arguments.length(), content="2")
   debug_inspect(
-    function.arguments[0].attributes[0].name,
+    function.arguments[0].attributes[0].name(),
     content="\"location\"",
   )
   debug_inspect(function.arguments[0].name, content="\"color\"")
@@ -332,7 +332,7 @@ test "WGSL struct members are parsed by grammar" {
   }
   debug_inspect(struct_decl.members.length(), content="2")
   debug_inspect(
-    struct_decl.members[0].attributes[0].name,
+    struct_decl.members[0].attributes[0].name(),
     content="\"location\"",
   )
   debug_inspect(struct_decl.members[0].name, content="\"color\"")
@@ -369,7 +369,7 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
   guard unit.declarations[2].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
   }
-  guard override_decl.attributes[0].arguments_ref is Some(attr_args) else {
+  guard override_decl.attributes[0].arguments_ref() is Some(attr_args) else {
     abort("expected attribute arguments ref")
   }
   debug_inspect(attr_args.identifiers()[0].name, content="\"FACTOR\"")
@@ -399,7 +399,7 @@ test "WGSL AST records spans for attributes members and signatures" {
   let field = struct_decl.members[0]
   let field_attr = field.attributes[0]
   debug_inspect(
-    source[field_attr.start:field_attr.end].to_owned(),
+    source[field_attr.start():field_attr.end()].to_owned(),
     content="\"@location(0)\"",
   )
   debug_inspect(
@@ -415,7 +415,7 @@ test "WGSL AST records spans for attributes members and signatures" {
   )
   let fn_attr = function.attributes[0]
   debug_inspect(
-    source[fn_attr.start:fn_attr.end].to_owned(),
+    source[fn_attr.start():fn_attr.end()].to_owned(),
     content="\"@fragment\"",
   )
   let arg = function.arguments[0]
@@ -442,19 +442,19 @@ test "WGSL attributes are parsed by grammar" {
     abort("expected function")
   }
   debug_inspect(function.attributes.length(), content="2")
-  debug_inspect(function.attributes[0].name, content="\"workgroup_size\"")
+  debug_inspect(function.attributes[0].name(), content="\"workgroup_size\"")
   debug_inspect(
-    function.attributes[0].arguments,
+    function.attributes[0].arguments(),
     content="\"WIDTH, max(1u, WIDTH - 1u), 1\"",
   )
-  guard function.attributes[0].arguments_ref is Some(arguments) else {
+  guard function.attributes[0].arguments_ref() is Some(arguments) else {
     abort("expected attribute arguments ref")
   }
   debug_inspect(arguments.identifiers()[0].name, content="\"WIDTH\"")
   debug_inspect(arguments.identifiers()[1].name, content="\"max\"")
   debug_inspect(arguments.identifiers()[2].name, content="\"WIDTH\"")
-  debug_inspect(function.attributes[1].name, content="\"compute\"")
-  debug_inspect(function.attributes[1].arguments, content="\"\"")
+  debug_inspect(function.attributes[1].name(), content="\"compute\"")
+  debug_inspect(function.attributes[1].arguments(), content="\"\"")
 }
 
 ///|
@@ -466,15 +466,15 @@ test "WGSL expression refs expose token and literal AST" {
   guard unit.declarations[0].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override")
   }
-  guard override_decl.attributes[0].arguments_ref is Some(group_args) else {
+  guard override_decl.attributes[0].arguments_ref() is Some(group_args) else {
     abort("expected group args")
   }
   debug_inspect(group_args.tokens()[0].kind(), content="UintLiteral(0)")
-  guard override_decl.attributes[1].arguments_ref is Some(binding_args) else {
+  guard override_decl.attributes[1].arguments_ref() is Some(binding_args) else {
     abort("expected binding args")
   }
   debug_inspect(binding_args.tokens()[0].kind(), content="UintLiteral(12)")
-  guard override_decl.attributes[2].arguments_ref is Some(id_args) else {
+  guard override_decl.attributes[2].arguments_ref() is Some(id_args) else {
     abort("expected id args")
   }
   debug_inspect(id_args.tokens()[0].kind(), content="BoolLiteral(true)")
