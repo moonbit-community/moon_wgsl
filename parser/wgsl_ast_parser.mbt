@@ -51,8 +51,8 @@ fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
     } else {
       item.name
     },
-    item.text,
     item.start,
+    item.end,
   )
 }
 

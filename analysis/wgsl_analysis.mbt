@@ -17,6 +17,7 @@ priv struct WgslGraphBlock {
   name : String
   text : String
   start : Int
+  end : Int
   data : WgslGlobalDeclData
 }
 
@@ -130,15 +131,18 @@ pub fn WgslModuleItemExtraction::origins(
 
 ///|
 fn build_wgsl_declaration_graph_from_unit(
+  source : String,
   unit : WgslTranslationUnit,
 ) -> WgslDeclarationGraph {
   let import_blocks : Array[WgslGraphBlock] = []
   let declaration_blocks : Array[WgslGraphBlock] = []
   for decl in unit.declarations() {
+    let text = source[decl.start():decl.end()].to_owned()
     let graph_block = WgslGraphBlock::{
       name: decl.name(),
-      text: decl.text(),
+      text,
       start: decl.start(),
+      end: decl.end(),
       data: decl.data(),
     }
     match decl.kind() {
@@ -181,6 +185,7 @@ fn build_wgsl_declaration_graph(
   source : String,
 ) -> WgslDeclarationGraph raise WgslParseError {
   build_wgsl_declaration_graph_from_unit(
+    source,
     parse_wgsl_translation_unit_strict(source),
   )
 }
@@ -205,8 +210,8 @@ fn wgsl_reachable_declaration_map(
         WgslGlobalDeclKind::Unknown,
         block.data,
         block.name,
-        block.text,
         block.start,
+        block.end,
       ),
     )
   }
@@ -281,7 +286,8 @@ pub fn collect_wgsl_named_declarations_strict(
 }
 
 ///|
-fn strip_wgsl_import_declarations_from_unit(
+fn strip_wgsl_import_declarations_from_source_unit(
+  source : String,
   unit : WgslTranslationUnit,
 ) -> String {
   let mut out = ""
@@ -293,11 +299,13 @@ fn strip_wgsl_import_declarations_from_unit(
       _ => false
     }
     if !skip {
+      let text = source[decl.start():decl.end()].to_owned()
       out = out +
         emit_wgsl_graph_block_canonical(WgslGraphBlock::{
           name: decl.name(),
-          text: decl.text(),
+          text,
           start: decl.start(),
+          end: decl.end(),
           data: decl.data(),
         })
     }
@@ -309,7 +317,8 @@ fn strip_wgsl_import_declarations_from_unit(
 pub fn strip_wgsl_import_declarations_strict(
   source : String,
 ) -> String raise WgslParseError {
-  strip_wgsl_import_declarations_from_unit(
+  strip_wgsl_import_declarations_from_source_unit(
+    source,
     parse_wgsl_translation_unit_strict(source),
   )
 }
@@ -327,7 +336,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
         origins.push(WgslModuleItemOrigin::{
           name: block.name,
           source_start: block.start,
-          source_end: block.start + block.text.length(),
+          source_end: block.end,
         })
       }
     }
@@ -352,7 +361,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
         origins.push(WgslModuleItemOrigin::{
           name: block.name,
           source_start: block.start,
-          source_end: block.start + block.text.length(),
+          source_end: block.end,
         })
       }
     }
@@ -372,7 +381,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
         origins.push(WgslModuleItemOrigin::{
           name: block.name,
           source_start: block.start,
-          source_end: block.start + block.text.length(),
+          source_end: block.end,
         })
       }
     }

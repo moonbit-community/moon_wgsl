@@ -167,11 +167,11 @@ pub struct WgslGlobalDecl {
   // private fields
 } derive(@debug.Debug)
 pub fn WgslGlobalDecl::data(Self) -> WgslGlobalDeclData
+pub fn WgslGlobalDecl::end(Self) -> Int
 pub fn WgslGlobalDecl::kind(Self) -> WgslGlobalDeclKind
 pub fn WgslGlobalDecl::name(Self) -> String
-pub fn WgslGlobalDecl::new(WgslGlobalDeclKind, WgslGlobalDeclData, String, String, Int) -> Self
+pub fn WgslGlobalDecl::new(WgslGlobalDeclKind, WgslGlobalDeclData, String, Int, Int) -> Self
 pub fn WgslGlobalDecl::start(Self) -> Int
-pub fn WgslGlobalDecl::text(Self) -> String
 
 pub(all) enum WgslGlobalDeclData {
   Directive(WgslDirective)

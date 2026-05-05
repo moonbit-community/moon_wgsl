@@ -1157,8 +1157,8 @@ pub struct WgslGlobalDecl {
   priv kind : WgslGlobalDeclKind
   priv data : WgslGlobalDeclData
   priv name : String
-  priv text : String
   priv start : Int
+  priv end : Int
 } derive(Debug)
 
 ///|
@@ -1166,10 +1166,10 @@ pub fn WgslGlobalDecl::new(
   kind : WgslGlobalDeclKind,
   data : WgslGlobalDeclData,
   name : String,
-  text : String,
   start : Int,
+  end : Int,
 ) -> WgslGlobalDecl {
-  WgslGlobalDecl::{ kind, data, name, text, start }
+  WgslGlobalDecl::{ kind, data, name, start, end }
 }
 
 ///|
@@ -1188,13 +1188,13 @@ pub fn WgslGlobalDecl::name(self : WgslGlobalDecl) -> String {
 }
 
 ///|
-pub fn WgslGlobalDecl::text(self : WgslGlobalDecl) -> String {
-  self.text
+pub fn WgslGlobalDecl::start(self : WgslGlobalDecl) -> Int {
+  self.start
 }
 
 ///|
-pub fn WgslGlobalDecl::start(self : WgslGlobalDecl) -> Int {
-  self.start
+pub fn WgslGlobalDecl::end(self : WgslGlobalDecl) -> Int {
+  self.end
 }
 
 ///|
