@@ -125,8 +125,8 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     struct_decl.members()[0].attributes()[0].name(),
     content="\"location\"",
   )
-  debug_inspect(struct_decl.members()[0].name_start(), content="31")
-  debug_inspect(struct_decl.members()[0].name_end(), content="39")
+  debug_inspect(struct_decl.members()[0].name().start(), content="31")
+  debug_inspect(struct_decl.members()[0].name().end(), content="39")
   guard struct_decl.members()[0].ty_ref() is Some(position_ty) else {
     abort("expected struct member type ref")
   }
@@ -191,9 +191,9 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(function.fn_end(), content="226")
   debug_inspect(function.qualifier_start(), content="None")
   debug_inspect(function.name().name(), content="\"fragment\"")
-  debug_inspect(function.arguments()[0].name(), content="\"color\"")
-  debug_inspect(function.arguments()[0].name_start(), content="249")
-  debug_inspect(function.arguments()[0].name_end(), content="254")
+  debug_inspect(function.arguments()[0].name().name(), content="\"color\"")
+  debug_inspect(function.arguments()[0].name().start(), content="249")
+  debug_inspect(function.arguments()[0].name().end(), content="254")
   guard function.arguments()[0].ty_ref() is Some(arg_ty) else {
     abort("expected argument type ref")
   }
@@ -293,7 +293,7 @@ test "WGSL struct member parser skips conditional directive lines" {
     abort("expected struct")
   }
   debug_inspect(value.members().length(), content="2")
-  debug_inspect(value.members()[1].name(), content="\"_webgl2_padding\"")
+  debug_inspect(value.members()[1].name().name(), content="\"_webgl2_padding\"")
   guard value.members()[1].ty_ref() is Some(padding_ty) else {
     abort("expected padding type")
   }
@@ -380,12 +380,12 @@ test "WGSL function arguments are parsed by grammar" {
     function.arguments()[0].attributes()[0].name(),
     content="\"location\"",
   )
-  debug_inspect(function.arguments()[0].name(), content="\"color\"")
+  debug_inspect(function.arguments()[0].name().name(), content="\"color\"")
   guard function.arguments()[0].ty_ref() is Some(color_ty) else {
     abort("expected color type")
   }
   debug_inspect(color_ty.canonical_text(), content="\"vec4<f32>\"")
-  debug_inspect(function.arguments()[1].name(), content="\"values\"")
+  debug_inspect(function.arguments()[1].name().name(), content="\"values\"")
   guard function.arguments()[1].ty_ref() is Some(values_ty) else {
     abort("expected values type")
   }
@@ -414,12 +414,12 @@ test "WGSL struct members are parsed by grammar" {
     struct_decl.members()[0].attributes()[0].name(),
     content="\"location\"",
   )
-  debug_inspect(struct_decl.members()[0].name(), content="\"color\"")
+  debug_inspect(struct_decl.members()[0].name().name(), content="\"color\"")
   guard struct_decl.members()[0].ty_ref() is Some(color_ty) else {
     abort("expected color type")
   }
   debug_inspect(color_ty.canonical_text(), content="\"vec4<f32>\"")
-  debug_inspect(struct_decl.members()[1].name(), content="\"values\"")
+  debug_inspect(struct_decl.members()[1].name().name(), content="\"values\"")
   guard struct_decl.members()[1].ty_ref() is Some(values_ty) else {
     abort("expected values type")
   }
@@ -1171,7 +1171,7 @@ test "WGSL override function payload preserves qualified target path" {
   debug_inspect(function.name().name(), content="\"mod::inner\"")
   debug_inspect(function.name().start(), content="12")
   debug_inspect(function.name().end(), content="22")
-  debug_inspect(function.arguments()[0].name(), content="\"arg\"")
+  debug_inspect(function.arguments()[0].name().name(), content="\"arg\"")
   debug_inspect(
     function.result(),
     content=(
@@ -1280,7 +1280,7 @@ test "WGSL struct parser accepts preprocessing directives inside members" {
     abort("expected struct")
   }
   debug_inspect(struct_decl.members().length(), content="4")
-  debug_inspect(struct_decl.members()[2].name(), content="\"P\"")
+  debug_inspect(struct_decl.members()[2].name().name(), content="\"P\"")
 }
 
 ///|

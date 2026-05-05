@@ -372,33 +372,21 @@ pub fn WgslTypeRef::end(self : WgslTypeRef) -> Int {
 ///|
 pub struct WgslFunctionArgument {
   priv attributes : Array[WgslAttribute]
-  priv name : String
+  priv name : WgslIdent
   priv start : Int
   priv end : Int
-  priv name_start : Int
-  priv name_end : Int
   priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
 pub fn WgslFunctionArgument::new(
   attributes : Array[WgslAttribute],
-  name : String,
+  name : WgslIdent,
   start : Int,
   end : Int,
-  name_start : Int,
-  name_end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionArgument {
-  WgslFunctionArgument::{
-    attributes,
-    name,
-    start,
-    end,
-    name_start,
-    name_end,
-    ty_ref,
-  }
+  WgslFunctionArgument::{ attributes, name, start, end, ty_ref }
 }
 
 ///|
@@ -409,7 +397,7 @@ pub fn WgslFunctionArgument::attributes(
 }
 
 ///|
-pub fn WgslFunctionArgument::name(self : WgslFunctionArgument) -> String {
+pub fn WgslFunctionArgument::name(self : WgslFunctionArgument) -> WgslIdent {
   self.name
 }
 
@@ -421,16 +409,6 @@ pub fn WgslFunctionArgument::start(self : WgslFunctionArgument) -> Int {
 ///|
 pub fn WgslFunctionArgument::end(self : WgslFunctionArgument) -> Int {
   self.end
-}
-
-///|
-pub fn WgslFunctionArgument::name_start(self : WgslFunctionArgument) -> Int {
-  self.name_start
-}
-
-///|
-pub fn WgslFunctionArgument::name_end(self : WgslFunctionArgument) -> Int {
-  self.name_end
 }
 
 ///|
@@ -826,33 +804,21 @@ pub fn WgslFunction::body(self : WgslFunction) -> WgslBlock {
 ///|
 pub struct WgslStructMember {
   priv attributes : Array[WgslAttribute]
-  priv name : String
+  priv name : WgslIdent
   priv start : Int
   priv end : Int
-  priv name_start : Int
-  priv name_end : Int
   priv ty_ref : WgslTypeRef?
 } derive(Debug)
 
 ///|
 pub fn WgslStructMember::new(
   attributes : Array[WgslAttribute],
-  name : String,
+  name : WgslIdent,
   start : Int,
   end : Int,
-  name_start : Int,
-  name_end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslStructMember {
-  WgslStructMember::{
-    attributes,
-    name,
-    start,
-    end,
-    name_start,
-    name_end,
-    ty_ref,
-  }
+  WgslStructMember::{ attributes, name, start, end, ty_ref }
 }
 
 ///|
@@ -863,7 +829,7 @@ pub fn WgslStructMember::attributes(
 }
 
 ///|
-pub fn WgslStructMember::name(self : WgslStructMember) -> String {
+pub fn WgslStructMember::name(self : WgslStructMember) -> WgslIdent {
   self.name
 }
 
@@ -875,16 +841,6 @@ pub fn WgslStructMember::start(self : WgslStructMember) -> Int {
 ///|
 pub fn WgslStructMember::end(self : WgslStructMember) -> Int {
   self.end
-}
-
-///|
-pub fn WgslStructMember::name_start(self : WgslStructMember) -> Int {
-  self.name_start
-}
-
-///|
-pub fn WgslStructMember::name_end(self : WgslStructMember) -> Int {
-  self.name_end
 }
 
 ///|

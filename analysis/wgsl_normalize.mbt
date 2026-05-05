@@ -198,7 +198,7 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
       let args : Array[String] = []
       for argument in function.arguments() {
         args.push(
-          "\{wgsl_attributes_key(argument.attributes())}:\{argument.name()}:\{wgsl_type_ref_key(argument.ty_ref())}",
+          "\{wgsl_attributes_key(argument.attributes())}:\{argument.name().name()}:\{wgsl_type_ref_key(argument.ty_ref())}",
         )
       }
       let result = match function.result() {
@@ -218,7 +218,7 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
       let members : Array[String] = []
       for field in struct_decl.members() {
         members.push(
-          "\{wgsl_attributes_key(field.attributes())}:\{field.name()}:\{wgsl_type_ref_key(field.ty_ref())}",
+          "\{wgsl_attributes_key(field.attributes())}:\{field.name().name()}:\{wgsl_type_ref_key(field.ty_ref())}",
         )
       }
       "struct:\{wgsl_attributes_key(struct_decl.attributes())}:\{struct_decl.name().name()}{\{wgsl_string_list_key(members)}}"

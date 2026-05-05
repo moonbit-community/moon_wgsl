@@ -329,7 +329,7 @@ fn collect_wgsl_function_local_sanitizers(
   match data {
     WgslGlobalDeclData::Function(function) => {
       for argument in function.arguments() {
-        collect_wgsl_function_local_name_sanitizer(argument.name(), plan)
+        collect_wgsl_function_local_name_sanitizer(argument.name().name(), plan)
       }
       collect_wgsl_block_local_sanitizers(function.body(), plan)
     }
@@ -377,9 +377,9 @@ pub fn invalid_wgsl_struct_member_identifier(
             }
           }
           if !allows_identifier_substitution &&
-            struct_member.name() != "" &&
-            wgsl_identifier_requires_substitution(struct_member.name()) {
-            return Some(struct_member.name())
+            struct_member.name().name() != "" &&
+            wgsl_identifier_requires_substitution(struct_member.name().name()) {
+            return Some(struct_member.name().name())
           }
         }
       _ => ()

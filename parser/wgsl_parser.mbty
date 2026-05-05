@@ -422,11 +422,9 @@ struct_member -> @ast.WgslStructMember
       let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
       @ast.WgslStructMember::new(
         attrs,
-        name.name(),
+        name,
         start,
         ty.end(),
-        name.start(),
-        name.end(),
         Some(ty),
       )
     }
@@ -539,11 +537,9 @@ function_arg -> @ast.WgslFunctionArgument
       let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
       @ast.WgslFunctionArgument::new(
         attrs,
-        name.name(),
+        name,
         start,
         ty.end(),
-        name.start(),
-        name.end(),
         Some(ty),
       )
     }

@@ -244,7 +244,7 @@ pub fn collect_wgsl_function_body_identifier_nodes(
 ) -> Unit {
   let active_local_names : Array[String] = []
   for argument in function.arguments() {
-    wgsl_name_list_push_unique(active_local_names, argument.name())
+    wgsl_name_list_push_unique(active_local_names, argument.name().name())
   }
   collect_wgsl_block_identifier_nodes_with_scope(
     function.body(),
@@ -266,7 +266,7 @@ pub fn collect_wgsl_decl_identifier_nodes(
       }
       let active_local_names : Array[String] = []
       for argument in function.arguments() {
-        wgsl_name_list_push_unique(active_local_names, argument.name())
+        wgsl_name_list_push_unique(active_local_names, argument.name().name())
         collect_wgsl_attribute_identifier_nodes(argument.attributes(), nodes)
         collect_wgsl_type_ref_identifier_nodes(argument.ty_ref(), nodes)
       }

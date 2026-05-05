@@ -143,10 +143,8 @@ pub struct WgslFunctionArgument {
 } derive(@debug.Debug)
 pub fn WgslFunctionArgument::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslFunctionArgument::end(Self) -> Int
-pub fn WgslFunctionArgument::name(Self) -> String
-pub fn WgslFunctionArgument::name_end(Self) -> Int
-pub fn WgslFunctionArgument::name_start(Self) -> Int
-pub fn WgslFunctionArgument::new(Array[WgslAttribute], String, Int, Int, Int, Int, WgslTypeRef?) -> Self
+pub fn WgslFunctionArgument::name(Self) -> WgslIdent
+pub fn WgslFunctionArgument::new(Array[WgslAttribute], WgslIdent, Int, Int, WgslTypeRef?) -> Self
 pub fn WgslFunctionArgument::start(Self) -> Int
 pub fn WgslFunctionArgument::ty_ref(Self) -> WgslTypeRef?
 
@@ -323,10 +321,8 @@ pub struct WgslStructMember {
 } derive(@debug.Debug)
 pub fn WgslStructMember::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslStructMember::end(Self) -> Int
-pub fn WgslStructMember::name(Self) -> String
-pub fn WgslStructMember::name_end(Self) -> Int
-pub fn WgslStructMember::name_start(Self) -> Int
-pub fn WgslStructMember::new(Array[WgslAttribute], String, Int, Int, Int, Int, WgslTypeRef?) -> Self
+pub fn WgslStructMember::name(Self) -> WgslIdent
+pub fn WgslStructMember::new(Array[WgslAttribute], WgslIdent, Int, Int, WgslTypeRef?) -> Self
 pub fn WgslStructMember::start(Self) -> Int
 pub fn WgslStructMember::ty_ref(Self) -> WgslTypeRef?
 

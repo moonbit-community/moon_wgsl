@@ -305,13 +305,13 @@ fn collect_wgsl_function_local_rewrite_nodes(
     WgslGlobalDeclData::Function(function) => {
       let active_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
       for argument in function.arguments() {
-        match redirect_map.get(argument.name()) {
+        match redirect_map.get(argument.name().name()) {
           Some(replacement) => {
-            active_redirects.set(argument.name(), replacement)
+            active_redirects.set(argument.name().name(), replacement)
             nodes.push(
               WgslTokenReplacement::new(
-                argument.name_start(),
-                argument.name_end(),
+                argument.name().start(),
+                argument.name().end(),
                 replacement,
               ),
             )
