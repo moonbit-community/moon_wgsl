@@ -4,12 +4,17 @@ package "Milky2018/moon_wgsl/directive"
 import {
   "Milky2018/moon_wgsl/ast",
   "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
 }
 
 // Values
 pub fn parse_wgsl_directive_identifier(String) -> String?
 
 pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?
+
+pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
+
+pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, Int]) -> Array[WgslTemplateConstReference]
 
 pub fn wgsl_effective_directive_kind(@ast.WgslDirective) -> @ast.WgslDirectiveKind
 
@@ -38,6 +43,21 @@ pub(all) enum WgslShaderDefOperator {
   LessEqual
   Unknown(String)
 } derive(Eq, @debug.Debug)
+
+pub struct WgslShaderDefReference {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslShaderDefReference::end(Self) -> Int
+pub fn WgslShaderDefReference::is_delimited(Self) -> Bool
+pub fn WgslShaderDefReference::name(Self) -> String
+pub fn WgslShaderDefReference::start(Self) -> Int
+
+pub struct WgslTemplateConstReference {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslTemplateConstReference::end(Self) -> Int
+pub fn WgslTemplateConstReference::name(Self) -> String
+pub fn WgslTemplateConstReference::start(Self) -> Int
 
 // Type aliases
 

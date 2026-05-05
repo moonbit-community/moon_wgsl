@@ -40,36 +40,6 @@ test "WGSL directive parser accepts Rust regex Unicode whitespace" {
 }
 
 ///|
-test "WGSL shader-def reference parser preserves replacement spans" {
-  let references = parse_wgsl_shader_def_references(
-    "#FOO + #\tBAR + #{BAZ_2} + #{ BAD } + #+",
-  )
-  debug_inspect(references.length(), content="3")
-  debug_inspect(references[0].name(), content="\"FOO\"")
-  debug_inspect(references[0].start(), content="0")
-  debug_inspect(references[0].end(), content="4")
-  debug_inspect(references[0].is_delimited(), content="false")
-  debug_inspect(references[1].name(), content="\"BAR\"")
-  debug_inspect(references[1].start(), content="7")
-  debug_inspect(references[1].end(), content="12")
-  debug_inspect(references[1].is_delimited(), content="false")
-  debug_inspect(references[2].name(), content="\"BAZ_2\"")
-  debug_inspect(references[2].start(), content="15")
-  debug_inspect(references[2].end(), content="23")
-  debug_inspect(references[2].is_delimited(), content="true")
-}
-
-///|
-test "WGSL shader-def reference parser accepts delimited names without trimming" {
-  let references = parse_wgsl_shader_def_references("#{VALUE_1} #{ VALUE_2 }")
-  debug_inspect(references.length(), content="1")
-  debug_inspect(references[0].name(), content="\"VALUE_1\"")
-  debug_inspect(references[0].start(), content="0")
-  debug_inspect(references[0].end(), content="10")
-  debug_inspect(references[0].is_delimited(), content="true")
-}
-
-///|
 test "WGSL GLSL version directive parser extracts versions" {
   debug_inspect(
     parse_glsl_version_directive(" #version 450 core"),
@@ -79,21 +49,3 @@ test "WGSL GLSL version directive parser extracts versions" {
 }
 
 ///|
-test "WGSL template const reference parser preserves naga-oil boundaries" {
-  let value_defines : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
-  value_defines.set("VALUE", 1)
-  value_defines.set("VALUE_LONG", 2)
-  let references = parse_wgsl_template_const_references(
-    "#VALUE #VALUE_LONG #VALUE_IGNORED #{VALUE} #{ VALUE }", value_defines,
-  )
-  debug_inspect(references.length(), content="3")
-  debug_inspect(references[0].name, content="\"VALUE\"")
-  debug_inspect(references[0].start, content="0")
-  debug_inspect(references[0].end, content="6")
-  debug_inspect(references[1].name, content="\"VALUE_LONG\"")
-  debug_inspect(references[1].start, content="7")
-  debug_inspect(references[1].end, content="18")
-  debug_inspect(references[2].name, content="\"VALUE\"")
-  debug_inspect(references[2].start, content="34")
-  debug_inspect(references[2].end, content="42")
-}
