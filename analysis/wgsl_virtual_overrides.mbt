@@ -98,11 +98,13 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     }
     let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
     if target != raw_target {
-      rewrites.push(WgslCanonicalTokenEdit::{
-        start: function.name.start,
-        end: function.name.end,
-        replacement: target,
-      })
+      rewrites.push(
+        WgslCanonicalTokenEdit::new(
+          function.name.start,
+          function.name.end,
+          target,
+        ),
+      )
     }
   }
   emit_wgsl_canonical_tokens_with_edits(source, rewrites, 0)
@@ -148,7 +150,7 @@ fn rewrite_wgsl_virtual_fn_block(
     (Some(start), Some(end_)) =>
       emit_wgsl_canonical_tokens_with_edits(
         block_text,
-        [WgslCanonicalTokenEdit::{ start, end: end_, replacement: "" }],
+        [WgslCanonicalTokenEdit::new(start, end_, "")],
         block_start,
       )
     _ => block_text
@@ -206,12 +208,12 @@ fn rewrite_wgsl_override_fn_block(
       emit_wgsl_canonical_tokens_with_edits(
         rewritten_body,
         [
-          WgslCanonicalTokenEdit::{ start, end: end_, replacement: "" },
-          WgslCanonicalTokenEdit::{
-            start: function.name.start,
-            end: function.name.end,
-            replacement: target_name,
-          },
+          WgslCanonicalTokenEdit::new(start, end_, ""),
+          WgslCanonicalTokenEdit::new(
+            function.name.start,
+            function.name.end,
+            target_name,
+          ),
         ],
         block_start,
       )

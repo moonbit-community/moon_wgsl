@@ -34,11 +34,13 @@ using @lex {
 
 ///|
 using @parser {
+  type WgslCanonicalTokenEdit,
   type ParseImportsError,
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
   type WgslParseError,
   type WgslSourceDirectiveItemKind,
+  emit_wgsl_canonical_tokens_with_edits,
   parse_wgsl_directive_identifier,
   parse_wgsl_directive_scan_items,
   parse_wgsl_import_spec_is_empty_or_final_semicolon,

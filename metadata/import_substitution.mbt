@@ -191,47 +191,6 @@ fn used_imports_record(
 }
 
 ///|
-priv struct WgslImportRewriteNode {
-  start : Int
-  end : Int
-  replacement : String
-}
-
-///|
-fn compare_wgsl_import_rewrite_nodes(
-  lhs : WgslImportRewriteNode,
-  rhs : WgslImportRewriteNode,
-) -> Int {
-  let start_compare = lhs.start - rhs.start
-  if start_compare != 0 {
-    return start_compare
-  }
-  lhs.end - rhs.end
-}
-
-///|
-fn rewrite_wgsl_import_nodes(
-  source : String,
-  nodes : Array[WgslImportRewriteNode],
-) -> String {
-  if nodes.length() == 0 {
-    return source
-  }
-  nodes.sort_by(compare_wgsl_import_rewrite_nodes)
-  let mut output = ""
-  let mut copy_start = 0
-  for node in nodes {
-    if node.start < copy_start {
-      continue
-    }
-    output = output + source[copy_start:node.start].to_owned()
-    output = output + node.replacement
-    copy_start = node.end
-  }
-  output + source[copy_start:source.length()].to_owned()
-}
-
-///|
 fn imported_identifier_replacement(
   ident : String,
   token_byte_pos : Int,
@@ -280,7 +239,7 @@ pub fn substitute_identifiers(
   if declared_imports.length() == 0 {
     return input
   }
-  let nodes : Array[WgslImportRewriteNode] = []
+  let edits : Array[WgslCanonicalTokenEdit] = []
   let unit = parse_wgsl_translation_unit_strict(input) catch {
     error => raise substitute_identifiers_wgsl_parse_error(error, offset)
   }
@@ -297,15 +256,16 @@ pub fn substitute_identifiers(
         allow_ambiguous,
       )
       if replacement != ident.name {
-        nodes.push(WgslImportRewriteNode::{
-          start: ident.start,
-          end: ident.end,
-          replacement,
-        })
+        edits.push(
+          WgslCanonicalTokenEdit::new(ident.start, ident.end, replacement),
+        )
       }
     }
   }
-  rewrite_wgsl_import_nodes(input, nodes)
+  if edits.length() == 0 {
+    return input
+  }
+  emit_wgsl_canonical_tokens_with_edits(input, edits, 0)
 }
 
 ///|
