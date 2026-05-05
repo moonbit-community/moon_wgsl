@@ -9,8 +9,6 @@ import {
 }
 
 // Values
-pub fn emit_wgsl_canonical_tokens_with_edits(String, Array[WgslCanonicalTokenEdit], Int) -> String
-
 pub fn parse_glsl_version_directive(String) -> String?
 
 pub fn parse_wgsl_directive_identifier(String) -> String?
@@ -57,13 +55,6 @@ pub suberror WgslParseError {
 pub fn WgslParseError::message(Self) -> String
 
 // Types and methods
-pub struct WgslCanonicalTokenEdit {
-  start : Int
-  end : Int
-  replacement : String
-}
-pub fn WgslCanonicalTokenEdit::new(Int, Int, String) -> Self
-
 pub struct WgslDirectiveScanItem {
   kind : WgslDirectiveScanItemKind
   start : Int

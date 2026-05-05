@@ -21,15 +21,17 @@ using @ast {
 
 ///|
 using @parser {
-  type WgslCanonicalTokenEdit,
   type WgslParseError,
-  emit_wgsl_canonical_tokens_with_edits,
   parse_wgsl_translation_unit,
   parse_wgsl_translation_unit_strict,
 }
 
 ///|
-using @lex {split_last_identifier}
+using @lex {
+  type WgslCanonicalTokenEdit,
+  emit_wgsl_canonical_tokens_with_edits,
+  split_last_identifier,
+}
 
 ///|
 using @ast {type WgslTranslationUnit}
