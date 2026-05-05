@@ -39,9 +39,9 @@ pub fn Composer::add_composable_module(
       is Some(resolved_module) else {
       raise ComposerError::FailedToResolveImport(import_name)
     }
-    all_imports.add(resolved_module.module_path)
-    if self.module_sets.get(resolved_module.module_path)
-      is Some(imported_module) {
+    let resolved_module_path = resolved_module.module_path()
+    all_imports.add(resolved_module_path)
+    if self.module_sets.get(resolved_module_path) is Some(imported_module) {
       for effective_def in imported_module.effective_defs {
         effective_defs.add(effective_def)
       }

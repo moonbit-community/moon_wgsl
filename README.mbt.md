@@ -491,7 +491,7 @@ Important public data structures:
 - `PreprocessorMetaData`
 - `PreparedWgslSource`
 - `ComposableModuleDescriptor`
-- `ComposableModuleDefinition`
+- `@compose.ComposableModuleDefinition`
 - `WgslDirectives`
 - `WgslSourceFile`
 - `WgslComposeOptions`

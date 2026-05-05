@@ -112,14 +112,14 @@ fn Composer::build_wgsl_import_requests_from_targets(
   for target_plan in target_plans.plans {
     let requested_items = target_plan.requested_items
     let resolved_module = target_plan.resolved_module
-    let module_path = resolved_module.module_path
+    let module_path = resolved_module.module_path()
     let import_source = match
-      self.registry.registered_source(resolved_module.rel_path) {
+      self.registry.registered_source(resolved_module.rel_path()) {
       Some(source) => source
       None => ""
     }
     let import_defs = self.active_compose_defs_for_rel_path(
-      resolved_module.rel_path,
+      resolved_module.rel_path(),
       session,
       Some(importer_defs),
     )
@@ -186,7 +186,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
     if find_wgsl_import_request_index(
         requests,
         module_path,
-        resolved_module.rel_path,
+        resolved_module.rel_path(),
         module_alias,
       )
       is Some(request_index) {
@@ -206,7 +206,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
     } else {
       requests.push(WgslImportRequest::{
         module_path,
-        rel_path: resolved_module.rel_path,
+        rel_path: resolved_module.rel_path(),
         import_full_module,
         keep_requested_items: target_plan.keep_requested_items,
         requested_items,

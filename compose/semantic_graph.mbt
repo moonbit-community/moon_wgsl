@@ -294,14 +294,14 @@ fn collect_wgsl_semantic_qualified_module_targets(
     }
     let requested_item = wgsl_semantic_requested_item_name(
       path.text,
-      resolved_module.module_path,
+      resolved_module.module_path(),
     )
     if requested_item == "" {
       continue
     }
     semantic_import_targets_push_unique(targets, WgslImportTarget::{
-      raw_path: resolved_module.module_path,
-      alias_name: resolved_module.module_path,
+      raw_path: resolved_module.module_path(),
+      alias_name: resolved_module.module_path(),
     })
   }
 }
@@ -411,18 +411,18 @@ fn build_wgsl_semantic_import_target_plan(
     return Some(unresolved_wgsl_semantic_import_target_plan())
   }
   let request_module_prefix = if target.alias_name == "" {
-    resolved_module.module_path
+    resolved_module.module_path()
   } else {
     target.raw_path
   }
   let module_alias = if target.alias_name != "" {
     target.alias_name
-  } else if resolved_module.module_path == target.raw_path {
-    wgsl_semantic_import_default_alias(resolved_module.module_path)
+  } else if resolved_module.module_path() == target.raw_path {
+    wgsl_semantic_import_default_alias(resolved_module.module_path())
   } else {
     ""
   }
-  let mut import_full_module = resolved_module.module_path == target.raw_path
+  let mut import_full_module = resolved_module.module_path() == target.raw_path
   let mut keep_requested_items = false
   let mut explicit_item_binding = false
   let mut default_module_alias_candidate = false
@@ -439,13 +439,13 @@ fn build_wgsl_semantic_import_target_plan(
         ),
       )
     }
-  } else if resolved_module.module_path != target.raw_path {
+  } else if resolved_module.module_path() != target.raw_path {
     import_full_module = false
     keep_requested_items = true
     explicit_item_binding = true
     let requested_item = wgsl_semantic_requested_item_name(
       target.raw_path,
-      resolved_module.module_path,
+      resolved_module.module_path(),
     )
     if requested_item == "" {
       import_full_module = true
@@ -488,8 +488,7 @@ fn build_wgsl_semantic_import_target_plans(
         source, current_rel_path, target, registry, modules, pending_targets,
       ) {
       Some(plan) =>
-        if plan.resolved_module.module_path == "" &&
-          plan.resolved_module.rel_path == "" {
+        if plan.resolved_module.is_empty() {
           semantic_string_list_push_unique(unresolved_targets, target.raw_path)
         } else {
           plans.push(plan)

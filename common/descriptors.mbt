@@ -31,21 +31,3 @@ pub fn ComposableModuleDescriptor::default() -> ComposableModuleDescriptor {
     shader_defs: @hashmap.HashMap::new(),
   }
 }
-
-///|
-pub struct ComposableModuleDefinition {
-  name : String
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
-  effective_defs : Array[String]
-  all_imports : @hashset.HashSet[String]
-}
-
-///|
-pub fn ComposableModuleDefinition::new(
-  name : String,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
-  effective_defs : Array[String],
-  all_imports : @hashset.HashSet[String],
-) -> ComposableModuleDefinition {
-  ComposableModuleDefinition::{ name, shader_defs, effective_defs, all_imports }
-}

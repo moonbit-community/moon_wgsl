@@ -350,8 +350,8 @@ pub(all) struct WgslImportTarget {
 
 ///|
 pub struct WgslResolvedImportModule {
-  module_path : String
-  rel_path : String
+  priv module_path : String
+  priv rel_path : String
 } derive(Eq, Debug)
 
 ///|
@@ -360,4 +360,25 @@ pub fn WgslResolvedImportModule::new(
   rel_path : String,
 ) -> WgslResolvedImportModule {
   WgslResolvedImportModule::{ module_path, rel_path }
+}
+
+///|
+pub fn WgslResolvedImportModule::module_path(
+  self : WgslResolvedImportModule,
+) -> String {
+  self.module_path
+}
+
+///|
+pub fn WgslResolvedImportModule::rel_path(
+  self : WgslResolvedImportModule,
+) -> String {
+  self.rel_path
+}
+
+///|
+pub fn WgslResolvedImportModule::is_empty(
+  self : WgslResolvedImportModule,
+) -> Bool {
+  self.module_path == "" && self.rel_path == ""
 }

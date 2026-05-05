@@ -31,7 +31,7 @@ fn composer_test_descriptor(
 fn composer_test_add_or_abort(
   composer : @compose.Composer,
   desc : @common.ComposableModuleDescriptor,
-) -> @common.ComposableModuleDefinition {
+) -> @compose.ComposableModuleDefinition {
   composer.add_composable_module(desc) catch {
     err => abort("expected add_composable_module success: \{err.message()}")
   }
@@ -50,8 +50,8 @@ test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
       "tests/base.wgsl", base_shader_defs,
     ),
   )
-  debug_inspect(base_definition.name, content="\"test::base\"")
-  debug_inspect(base_definition.all_imports.is_empty(), content="true")
+  debug_inspect(base_definition.name(), content="\"test::base\"")
+  debug_inspect(base_definition.all_imports_is_empty(), content="true")
 
   let child_definition = composer_test_add_or_abort(
     composer,
@@ -64,17 +64,14 @@ test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
 
   debug_inspect(composer.contains_module("test::base"), content="true")
   debug_inspect(composer.contains_module("test::child"), content="true")
-  debug_inspect(child_definition.name, content="\"test::child\"")
+  debug_inspect(child_definition.name(), content="\"test::child\"")
+  debug_inspect(child_definition.imports_module("test::base"), content="true")
   debug_inspect(
-    child_definition.all_imports.contains("test::base"),
+    child_definition.contains_effective_def("USE_CHILD"),
     content="true",
   )
   debug_inspect(
-    child_definition.effective_defs.contains("USE_CHILD"),
-    content="true",
-  )
-  debug_inspect(
-    child_definition.shader_defs.get("BASE_DEF"),
+    child_definition.shader_def("BASE_DEF"),
     content="Some(Bool(true))",
   )
 }
@@ -149,10 +146,7 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
     ),
   )
 
-  debug_inspect(
-    child_definition.all_imports.contains("test::plain"),
-    content="true",
-  )
+  debug_inspect(child_definition.imports_module("test::plain"), content="true")
 
   let composed = composer.compose_wgsl("tests/child_against_registry.wgsl", {
     defines: @hashmap.HashMap::new(),

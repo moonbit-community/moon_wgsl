@@ -16,7 +16,6 @@ using @analysis {
 
 ///|
 using @common {
-  type ComposableModuleDefinition,
   type ComposableModuleDescriptor,
   type ImportDefinition,
   type PreparedWgslSource,
