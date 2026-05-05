@@ -1,4 +1,11 @@
 ///|
+fn parse_wgsl_translation_unit_for_test(source : String) -> WgslTranslationUnit {
+  parse_wgsl_translation_unit_strict(source) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
 test "WGSL translation unit classifies top-level declarations" {
   let source =
     #|#define_import_path demo::module
@@ -12,7 +19,7 @@ test "WGSL translation unit classifies top-level declarations" {
     #|  return vec4<f32>(1.0);
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   debug_inspect(unit.declarations.length(), content="6")
   debug_inspect(unit.declarations[0].kind, content="Directive")
   debug_inspect(unit.declarations[1].kind, content="Import")
@@ -100,7 +107,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     #|  return color;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
     abort("expected struct declaration payload")
   }
@@ -200,7 +207,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
 ///|
 test "WGSL type refs expose nested template arguments" {
   let source = "alias Values = array<vec4<f32>, 4>;\n"
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
@@ -217,7 +224,7 @@ test "WGSL type refs expose nested template arguments" {
 ///|
 test "WGSL type refs preserve template span text with spacing" {
   let source = "alias Values = array < vec4 < f32 > , 4 >;\n"
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
@@ -231,7 +238,7 @@ test "WGSL type refs preserve template span text with spacing" {
 ///|
 test "WGSL type refs accept Pattern_White_Space blankspace" {
   let source = "alias Values = array\u{000C}<vec4\u{200E}<f32>\u{2029}, 4>;\n"
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
@@ -248,7 +255,7 @@ test "WGSL variable template lists are parsed by grammar" {
     #|@group(0) @binding(0) var<storage, read_write> values: array<vec4<f32>, 4>;
     #|@group(0) @binding(1) var<texture_storage_2d<rgba8unorm>, write> image: texture_storage_2d<rgba8unorm, write>;
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::GlobalVariable(values) else {
     abort("expected values global")
   }
@@ -274,7 +281,7 @@ test "WGSL function arguments are parsed by grammar" {
     #|  values: array<vec4<f32>, 4>,
     #|) -> f32 { return values[0].x; }
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -305,7 +312,7 @@ test "WGSL struct members are parsed by grammar" {
     #|  values: array<vec4<f32>, 4>;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
     abort("expected struct payload")
   }
@@ -334,7 +341,7 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
     #|const FACTOR: u32 = BASE + 1u;
     #|@id(FACTOR) override VALUE: bool = ENABLED_FLAG;
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[1].data is WgslGlobalDeclData::Const(const_decl) else {
     abort("expected const payload")
   }
@@ -368,7 +375,7 @@ test "WGSL AST records spans for attributes members and signatures" {
     #|  return color;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Struct(struct_decl) else {
     abort("expected struct")
   }
@@ -413,7 +420,7 @@ test "WGSL attributes are parsed by grammar" {
     #|@workgroup_size(WIDTH, max(1u, WIDTH - 1u), 1) @compute fn main() {
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[1].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function")
   }
@@ -438,7 +445,7 @@ test "WGSL expression refs expose token and literal AST" {
   let source =
     #|@group(0u) @binding(12) @id(true) override FLAG: bool = false;
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override")
   }
@@ -467,7 +474,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
     #|const INFERRED = cache + 1u;
     #|@id(1) override FLAG = ENABLED_FLAG;
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::GlobalVariable(global) else {
     abort("expected global variable")
   }
@@ -503,7 +510,7 @@ test "WGSL identifier collection exposes source spans" {
     #|  return value;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   let nodes : Array[WgslIdent] = []
   for decl in unit.declarations {
     @ast.collect_wgsl_decl_identifier_nodes(decl.data, nodes)
@@ -528,7 +535,7 @@ test "WGSL function payload exposes statement AST spans" {
     #|  return 0u;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -617,7 +624,7 @@ test "WGSL statement expression refs skip local declarations and member access" 
     #|  return local + input.color.r;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -656,7 +663,7 @@ test "WGSL expression refs expose structured expression root" {
     #|  return compute(input.values[index] + 1.0).x;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -733,7 +740,7 @@ test "WGSL expression parser uses lexer compound operator tokens" {
     #|  return input.x >= 1.0;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -775,7 +782,7 @@ test "WGSL global declaration identifier collection excludes locals" {
     #|  return Vertex(input);
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   let nodes : Array[WgslIdent] = []
   for decl in unit.declarations {
     @ast.collect_wgsl_decl_global_declared_identifier_nodes(decl.data, nodes)
@@ -799,7 +806,7 @@ test "WGSL declaration identifier collection excludes function locals" {
     #|  return local;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[1].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -830,7 +837,7 @@ test "WGSL statement AST records nested and loop local declarations" {
     #|  return arg;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -941,7 +948,7 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
     #|  }
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function")
   }
@@ -982,7 +989,7 @@ test "WGSL source directives parse as directive AST nodes" {
     #|diagnostic(warn, derivative_uniformity);
     #|fn shade() -> f32 { return 1.0; }
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   debug_inspect(unit.declarations[0].kind, content="Directive")
   debug_inspect(unit.declarations[1].kind, content="Directive")
   debug_inspect(unit.declarations[2].kind, content="Directive")
@@ -1011,7 +1018,7 @@ test "WGSL hash conditionals parse as directive AST nodes" {
     #|const A: u32 = 1u;
     #|#endif
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   debug_inspect(unit.declarations[0].kind, content="Directive")
   guard unit.declarations[0].data is WgslGlobalDeclData::Directive(ifdef) else {
     abort("expected ifdef directive")
@@ -1035,7 +1042,7 @@ test "WGSL hash directive spans are absolute in translation units" {
     #|#ifdef ENABLED
     #|#endif
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   debug_inspect(unit.declarations[0].kind, content="Trivia")
   guard unit.declarations[1].data is WgslGlobalDeclData::Directive(ifdef) else {
     abort("expected ifdef directive")
@@ -1055,7 +1062,7 @@ test "WGSL override function payload preserves qualified target path" {
     #|  return inner(arg);
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -1092,7 +1099,7 @@ test "WGSL statement classification uses identifier tokens" {
     #|  var_name = 1u;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
@@ -1119,7 +1126,7 @@ test "WGSL statement payload exposes structured statement semantics" {
     #|  return value;
     #|}
     #|
-  let unit = parse_wgsl_translation_unit(source)
+  let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations[0].data is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }

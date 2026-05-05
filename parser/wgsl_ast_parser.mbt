@@ -82,21 +82,6 @@ fn wgsl_parse_error_from_generated(error : ParseError) -> WgslParseError {
 }
 
 ///|
-fn parse_wgsl_raw_top_level_items_lenient(
-  source : String,
-) -> Array[WgslRawTopLevelItem] {
-  let raw_items = parse_wgsl_top_level_items(source)
-  let tokens : Array[(Token, Int, Int)] = []
-  for item in raw_items {
-    tokens.push((Token::ITEM(item), item.start, item.end))
-  }
-  tokens.push((Token::EOF, source.length(), source.length()))
-  raw_top_level_items(tokens) catch {
-    _ => raw_items
-  }
-}
-
-///|
 fn parse_wgsl_raw_top_level_items_strict(
   source : String,
 ) -> Array[WgslRawTopLevelItem] raise WgslParseError {
@@ -109,15 +94,6 @@ fn parse_wgsl_raw_top_level_items_strict(
   raw_top_level_items(tokens) catch {
     error => raise wgsl_parse_error_from_generated(error)
   }
-}
-
-///|
-pub fn parse_wgsl_translation_unit(source : String) -> WgslTranslationUnit {
-  let declarations : Array[WgslGlobalDecl] = []
-  for item in parse_wgsl_raw_top_level_items_lenient(source) {
-    declarations.push(parse_wgsl_raw_global_decl(item))
-  }
-  WgslTranslationUnit::new(declarations)
 }
 
 ///|

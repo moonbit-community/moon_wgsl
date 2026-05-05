@@ -27,8 +27,6 @@ pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
 
 pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, Int]) -> Array[WgslTemplateConstReference]
 
-pub fn parse_wgsl_translation_unit(String) -> @ast.WgslTranslationUnit
-
 pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit raise WgslParseError
 
 pub fn wgsl_effective_directive_kind(@ast.WgslDirective) -> @ast.WgslDirectiveKind
