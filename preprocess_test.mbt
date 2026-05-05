@@ -1112,14 +1112,12 @@ test "naga_oil: diagnostic directive captures raw rule text" {
 
 ///|
 test "naga_oil: diagnostic directive accepts whitespace-only severity capture" {
-  let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
-    "diagnostic( , derivative_uniformity);\nfn shade() {}\n",
+  ignore(
+    @metadata.get_preprocessor_metadata(
+      "diagnostic( , derivative_uniformity);\nfn shade() {}\n",
+    ),
   ) catch {
-    @preprocess.PreprocessError::InvalidWgslDirective(
-      directive,
-      position,
-      reason
-    ) => {
+    @metadata.MetadataError::InvalidWgslDirective(directive, position, reason) => {
       debug_inspect(
         directive,
         content="\"diagnostic( , derivative_uniformity);\"",
@@ -1194,10 +1192,12 @@ test "naga_oil: single whitespace empty enable body stays source" {
 
 ///|
 test "naga_oil: repeated whitespace empty enable body raises directive error" {
-  let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
-    "enable  ;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+  ignore(
+    @metadata.get_preprocessor_metadata(
+      "enable  ;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+    ),
   ) catch {
-    @preprocess.PreprocessError::InvalidWgslDirective(_, _, message) => {
+    @metadata.MetadataError::InvalidWgslDirective(_, _, message) => {
       debug_inspect(message, content="\"No extensions specified\"")
       return
     }
@@ -1287,14 +1287,12 @@ test "naga_oil: block comments terminate directive section like upstream" {
 
 ///|
 test "naga_oil: invalid diagnostic severity reports directive error" {
-  let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
-    "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+  ignore(
+    @metadata.get_preprocessor_metadata(
+      "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+    ),
   ) catch {
-    @preprocess.PreprocessError::InvalidWgslDirective(
-      directive,
-      position,
-      reason
-    ) => {
+    @metadata.MetadataError::InvalidWgslDirective(directive, position, reason) => {
       debug_inspect(
         directive,
         content="\"diagnostic(note, derivative_uniformity);\"",
@@ -1330,14 +1328,8 @@ test "naga_oil: metadata parser reports invalid WGSL directive errors" {
 
 ///|
 test "naga_oil: empty directive extension list reports directive error" {
-  let _ = @preprocess.Preprocessor::default().extract_wgsl_directives(
-    "enable , ;\nfn shade() {}\n",
-  ) catch {
-    @preprocess.PreprocessError::InvalidWgslDirective(
-      directive,
-      position,
-      reason
-    ) => {
+  ignore(@metadata.get_preprocessor_metadata("enable , ;\nfn shade() {}\n")) catch {
+    @metadata.MetadataError::InvalidWgslDirective(directive, position, reason) => {
       debug_inspect(directive, content="\"enable , ;\"")
       debug_inspect(position.to_string(), content="\"0\"")
       debug_inspect(reason, content="\"No extensions specified\"")

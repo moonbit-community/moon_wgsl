@@ -3,11 +3,10 @@ using @common {
   type ImportDefWithOffset,
   type PreprocessOutput,
   type ShaderDefValue,
-  type WgslDirectives,
 }
 
 ///|
-using @metadata {type WgslImportSubstitutionState, extract_wgsl_directives}
+using @metadata {type WgslImportSubstitutionState}
 
 ///|
 using @ast {type WgslDirective, type WgslDirectiveKind}

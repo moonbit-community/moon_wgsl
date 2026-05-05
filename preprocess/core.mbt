@@ -29,9 +29,7 @@ pub suberror PreprocessError {
   UnknownShaderDef(String, Int)
   UnknownShaderDefOperator(String, Int)
   InvalidShaderDefComparisonValue(String, String, String, Int)
-  InvalidWgslDirective(String, Int, String)
   ImportParseError(String, Int)
-  DefineInModule(Int)
 }
 
 ///|

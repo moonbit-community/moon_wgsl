@@ -1,18 +1,4 @@
 ///|
-pub fn Preprocessor::extract_wgsl_directives(
-  _self : Preprocessor,
-  source : String,
-) -> (String, WgslDirectives) raise PreprocessError {
-  extract_wgsl_directives(source) catch {
-    InvalidWgslDirective(line, line_index, message) =>
-      raise PreprocessError::InvalidWgslDirective(line, line_index, message)
-    ImportParseError(message, offset) =>
-      raise PreprocessError::ImportParseError(message, offset)
-    DefineInModule(offset) => raise PreprocessError::DefineInModule(offset)
-  }
-}
-
-///|
 fn preprocess_emit_pipeline_item(
   item : WgslDirectiveScanItem,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],

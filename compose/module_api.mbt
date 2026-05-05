@@ -120,9 +120,7 @@ fn composer_error_from_preprocess_error(
     TooManyEndIfs(_) => TooManyEndIfs
     NotEnoughEndIfs(_) => NotEnoughEndIfs
     ImportParseError(message, _) => FailedToResolveImport(message)
-    InvalidWgslDirective(line, _, reason) => InvalidWgslDirective(line, reason)
     GlslInvalidVersion(_) => GlslInvalidVersion
-    DefineInModule(_) => DefineInModule
   }
 }
 
