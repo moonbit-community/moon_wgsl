@@ -192,6 +192,7 @@ pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int] {
   defines.set("AVAILABLE_STORAGE_BUFFER_BINDINGS", 8)
   defines.set("MAX_DIRECTIONAL_LIGHTS", 10)
   defines.set("MAX_CASCADES_PER_LIGHT", 4)
+  defines.set("MAX_RECT_LIGHTS", 4)
   defines.set("MATERIAL_BIND_GROUP", 3)
   defines.set("SORTED_FRAGMENT_MAX_COUNT", 8)
   defines.set("WORLD_CACHE_SIZE", 1048576)

@@ -221,6 +221,8 @@ fn tokenizer_operator_pair_text(lhs : Int, rhs : Int) -> String? {
     (124, 124) => Some("||")
     (60, 60) => Some("<<")
     (62, 62) => Some(">>")
+    (43, 43) => Some("++")
+    (45, 45) => Some("--")
     (43, 61) => Some("+=")
     (45, 61) => Some("-=")
     (42, 61) => Some("*=")

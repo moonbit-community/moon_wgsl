@@ -58,12 +58,14 @@ test "WGSL tokenizer emits numeric literals as semantic tokens" {
 ///|
 test "WGSL tokenizer emits adjacent compound operators only" {
   let tokens = tokenize_wgsl(
-    "a >= b; c > = d; fn f() -> u32 { return 1u; }", false,
+    "a >= b; c > = d; fn f() -> u32 { i++; j--; return 1u; }", false,
   )
   debug_inspect(tokens[1], content="Operator(\">=\", 2)")
   debug_inspect(tokens[5], content="Punctuation(62, 10)")
   debug_inspect(tokens[6], content="Punctuation(61, 12)")
   debug_inspect(tokens[13], content="Operator(\"->\", 24)")
+  debug_inspect(tokens[17], content="Operator(\"++\", 34)")
+  debug_inspect(tokens[20], content="Operator(\"--\", 39)")
 }
 
 ///|

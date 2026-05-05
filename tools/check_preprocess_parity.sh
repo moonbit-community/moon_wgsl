@@ -11,7 +11,7 @@ cleanup() {
 trap cleanup EXIT
 
 oracle() {
-  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml -- "$@"
+  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin naga_oil_oracle -- "$@"
 }
 
 diff_normalized() {
@@ -464,5 +464,7 @@ diff_normalized \
 
 echo "== naga_oil oracle: expected fixture coverage inventory =="
 assert_expected_coverage
+
+tools/check_wgsl_validation.sh
 
 echo "preprocess parity gate passed"

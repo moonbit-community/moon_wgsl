@@ -1,0 +1,12 @@
+import {
+  "Milky2018/moon_wgsl/analysis",
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/compose",
+  "Milky2018/moon_wgsl/export",
+  "moonbitlang/core/env",
+  "moonbitlang/core/hashmap",
+}
+
+options(
+  "is-main": true,
+)
