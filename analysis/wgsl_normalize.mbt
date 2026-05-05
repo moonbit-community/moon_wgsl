@@ -59,7 +59,7 @@ fn wgsl_expr_token_key(token : WgslExprToken) -> String {
 ///|
 fn wgsl_expr_ref_key(expr : WgslExprRef) -> String {
   let keys : Array[String] = []
-  for token in expr.tokens {
+  for token in expr.tokens() {
     keys.push(wgsl_expr_token_key(token))
   }
   wgsl_string_list_key(keys)
@@ -297,15 +297,17 @@ fn build_wgsl_unique_alias_suffix_rename_plan(
 ///|
 fn wgsl_expr_ref_single_uint_value(expr_ref : WgslExprRef?) -> Int? {
   match expr_ref {
-    Some(expr) =>
-      if expr.tokens.length() == 1 {
-        match expr.tokens[0].kind {
+    Some(expr) => {
+      let tokens = expr.tokens()
+      if tokens.length() == 1 {
+        match tokens[0].kind {
           UintLiteral(value) | IntLiteral(value) => Some(value)
           _ => None
         }
       } else {
         None
       }
+    }
     None => None
   }
 }

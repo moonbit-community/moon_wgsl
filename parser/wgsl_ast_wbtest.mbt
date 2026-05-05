@@ -40,7 +40,7 @@ test "WGSL translation unit classifies top-level declarations" {
     is WgslGlobalDeclData::ConstAssert(assert_expr) else {
     abort("expected const assert payload")
   }
-  debug_inspect(assert_expr.text, content="\"(1 == 1)\"")
+  debug_inspect(assert_expr.text(), content="\"(1 == 1)\"")
   debug_inspect(unit.declarations[5].kind, content="Function")
   debug_inspect(unit.declarations[5].name, content="\"fragment\"")
 }
@@ -199,7 +199,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(result_ty.arguments[0].name, content="\"f32\"")
   debug_inspect(function.body.statements.length(), content="1")
   debug_inspect(
-    function.body.statements[0].expression_refs[0].identifiers[0].name,
+    function.body.statements[0].expression_refs[0].identifiers()[0].name,
     content="\"color\"",
   )
 }
@@ -348,19 +348,19 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
   guard const_decl.initializer_ref is Some(const_initializer) else {
     abort("expected const initializer ref")
   }
-  debug_inspect(const_initializer.identifiers[0].name, content="\"BASE\"")
+  debug_inspect(const_initializer.identifiers()[0].name, content="\"BASE\"")
   guard unit.declarations[2].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override payload")
   }
   guard override_decl.attributes[0].arguments_ref is Some(attr_args) else {
     abort("expected attribute arguments ref")
   }
-  debug_inspect(attr_args.identifiers[0].name, content="\"FACTOR\"")
+  debug_inspect(attr_args.identifiers()[0].name, content="\"FACTOR\"")
   guard override_decl.initializer_ref is Some(override_initializer) else {
     abort("expected override initializer ref")
   }
   debug_inspect(
-    override_initializer.identifiers[0].name,
+    override_initializer.identifiers()[0].name,
     content="\"ENABLED_FLAG\"",
   )
 }
@@ -433,9 +433,9 @@ test "WGSL attributes are parsed by grammar" {
   guard function.attributes[0].arguments_ref is Some(arguments) else {
     abort("expected attribute arguments ref")
   }
-  debug_inspect(arguments.identifiers[0].name, content="\"WIDTH\"")
-  debug_inspect(arguments.identifiers[1].name, content="\"max\"")
-  debug_inspect(arguments.identifiers[2].name, content="\"WIDTH\"")
+  debug_inspect(arguments.identifiers()[0].name, content="\"WIDTH\"")
+  debug_inspect(arguments.identifiers()[1].name, content="\"max\"")
+  debug_inspect(arguments.identifiers()[2].name, content="\"WIDTH\"")
   debug_inspect(function.attributes[1].name, content="\"compute\"")
   debug_inspect(function.attributes[1].arguments, content="\"\"")
 }
@@ -452,19 +452,19 @@ test "WGSL expression refs expose token and literal AST" {
   guard override_decl.attributes[0].arguments_ref is Some(group_args) else {
     abort("expected group args")
   }
-  debug_inspect(group_args.tokens[0].kind, content="UintLiteral(0)")
+  debug_inspect(group_args.tokens()[0].kind, content="UintLiteral(0)")
   guard override_decl.attributes[1].arguments_ref is Some(binding_args) else {
     abort("expected binding args")
   }
-  debug_inspect(binding_args.tokens[0].kind, content="UintLiteral(12)")
+  debug_inspect(binding_args.tokens()[0].kind, content="UintLiteral(12)")
   guard override_decl.attributes[2].arguments_ref is Some(id_args) else {
     abort("expected id args")
   }
-  debug_inspect(id_args.tokens[0].kind, content="BoolLiteral(true)")
+  debug_inspect(id_args.tokens()[0].kind, content="BoolLiteral(true)")
   guard override_decl.initializer_ref is Some(initializer) else {
     abort("expected initializer")
   }
-  debug_inspect(initializer.tokens[0].kind, content="BoolLiteral(false)")
+  debug_inspect(initializer.tokens()[0].kind, content="BoolLiteral(false)")
 }
 
 ///|
@@ -485,7 +485,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
   guard global.initializer_ref is Some(global_initializer) else {
     abort("expected global initializer")
   }
-  debug_inspect(global_initializer.identifiers[0].name, content="\"FACTOR\"")
+  debug_inspect(global_initializer.identifiers()[0].name, content="\"FACTOR\"")
   guard unit.declarations[1].data is WgslGlobalDeclData::Const(const_decl) else {
     abort("expected const")
   }
@@ -494,7 +494,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
   guard const_decl.initializer_ref is Some(const_initializer) else {
     abort("expected const initializer")
   }
-  debug_inspect(const_initializer.identifiers[0].name, content="\"cache\"")
+  debug_inspect(const_initializer.identifiers()[0].name, content="\"cache\"")
   guard unit.declarations[2].data is WgslGlobalDeclData::Override(override_decl) else {
     abort("expected override")
   }
@@ -594,7 +594,7 @@ test "WGSL function payload exposes statement AST spans" {
     abort("expected local initializer ref")
   }
   debug_inspect(
-    local_init.identifiers.map(fn(node) { node.name }),
+    local_init.identifiers().map(fn(node) { node.name }),
     content=(
       #|["value"]
     ),
@@ -609,9 +609,9 @@ test "WGSL function payload exposes statement AST spans" {
     content="[]",
   )
   debug_inspect(
-    function.body.statements[2].expression_refs[0].identifiers.map(fn(node) {
-      node.name
-    }),
+    function.body.statements[2].expression_refs[0]
+    .identifiers()
+    .map(fn(node) { node.name }),
     content="[]",
   )
 }
@@ -641,15 +641,15 @@ test "WGSL statement expression refs skip local declarations and member access" 
     abort("expected local initializer ref")
   }
   debug_inspect(
-    local_init.identifiers.map(fn(node) { node.name }),
+    local_init.identifiers().map(fn(node) { node.name }),
     content=(
       #|["input"]
     ),
   )
   debug_inspect(
-    function.body.statements[1].expression_refs[0].identifiers.map(fn(node) {
-      node.name
-    }),
+    function.body.statements[1].expression_refs[0]
+    .identifiers()
+    .map(fn(node) { node.name }),
     content=(
       #|["local", "input"]
     ),
@@ -668,7 +668,7 @@ test "WGSL expression refs expose structured expression root" {
     abort("expected function payload")
   }
   let expr = function.body.statements[0].expression_refs[0]
-  guard expr.root is Some(root) else { abort("expected expression root") }
+  guard expr.root() is Some(root) else { abort("expected expression root") }
   debug_inspect(
     function.body.statements[0].expressions.map(fn(item) { item.role }),
     content=(
@@ -745,7 +745,7 @@ test "WGSL expression parser uses lexer compound operator tokens" {
     abort("expected function payload")
   }
   let expr = function.body.statements[0].expression_refs[0]
-  guard expr.root is Some(root) else { abort("expected expression root") }
+  guard expr.root() is Some(root) else { abort("expected expression root") }
   debug_inspect(
     root.kind,
     content=(
@@ -875,9 +875,9 @@ test "WGSL statement AST records nested and loop local declarations" {
     ),
   )
   debug_inspect(
-    function.body.statements[0].expression_refs[0].identifiers.map(fn(node) {
-      node.name
-    }),
+    function.body.statements[0].expression_refs[0]
+    .identifiers()
+    .map(fn(node) { node.name }),
     content=(
       #|["arg"]
     ),
@@ -907,15 +907,15 @@ test "WGSL statement AST records nested and loop local declarations" {
     content="Some(\"u32\")",
   )
   debug_inspect(
-    function.body.statements[1].expression_refs.map(fn(expr) { expr.text }),
+    function.body.statements[1].expression_refs.map(fn(expr) { expr.text() }),
     content=(
       #|["i < arg", "i = i + 1u"]
     ),
   )
   debug_inspect(
-    function.body.statements[1].expression_refs[0].identifiers.map(fn(node) {
-      node.name
-    }),
+    function.body.statements[1].expression_refs[0]
+    .identifiers()
+    .map(fn(node) { node.name }),
     content=(
       #|["i", "arg"]
     ),
@@ -956,20 +956,22 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
   debug_inspect(statement.kind, content="If")
   debug_inspect(statement.blocks.length(), content="2")
   debug_inspect(
-    statement.expression_refs[0].identifiers.map(fn(node) { node.name }),
+    statement.expression_refs[0].identifiers().map(fn(node) { node.name }),
     content=(
       #|["arg"]
     ),
   )
   debug_inspect(
-    statement.expression_refs.map(fn(expr) { expr.text }),
+    statement.expression_refs.map(fn(expr) { expr.text() }),
     content=(
       #|["arg > 0u"]
     ),
   )
   debug_inspect(statement.blocks[0].statements[0].kind, content="Return")
   debug_inspect(
-    statement.blocks[0].statements[0].expression_refs.map(fn(expr) { expr.text }),
+    statement.blocks[0].statements[0].expression_refs.map(fn(expr) {
+      expr.text()
+    }),
     content=(
       #|["1u"]
     ),
@@ -1141,7 +1143,7 @@ test "WGSL statement payload exposes structured statement semantics" {
     _ => abort("expected local declaration payload")
   }
   match function.body.statements[1].payload {
-    Switch(Some(expr)) => debug_inspect(expr.text, content="\"input.mode\"")
+    Switch(Some(expr)) => debug_inspect(expr.text(), content="\"input.mode\"")
     _ => abort("expected switch payload")
   }
   debug_inspect(
@@ -1151,7 +1153,7 @@ test "WGSL statement payload exposes structured statement semantics" {
     ),
   )
   match function.body.statements[2].payload {
-    Return(Some(expr)) => debug_inspect(expr.text, content="\"value\"")
+    Return(Some(expr)) => debug_inspect(expr.text(), content="\"value\"")
     _ => abort("expected return payload")
   }
 }

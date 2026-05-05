@@ -166,7 +166,7 @@ fn collect_wgsl_rewrite_nodes_from_expr_ref(
   match expr_ref {
     Some(expr) =>
       collect_wgsl_rewrite_nodes_from_identifiers(
-        expr.identifiers,
+        expr.identifiers(),
         redirect_map,
         nodes,
       )

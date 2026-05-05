@@ -92,14 +92,15 @@ pub(all) enum WgslExprNodeKind {
 } derive(@debug.Debug)
 
 pub struct WgslExprRef {
-  text : String
-  tokens : Array[WgslExprToken]
-  identifiers : Array[WgslIdent]
-  root : WgslExprNode?
-  start : Int
-  end : Int
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslExprRef::end(Self) -> Int
+pub fn WgslExprRef::identifiers(Self) -> Array[WgslIdent]
 pub fn WgslExprRef::new(String, Array[WgslExprToken], Array[WgslIdent], WgslExprNode?, Int, Int) -> Self
+pub fn WgslExprRef::root(Self) -> WgslExprNode?
+pub fn WgslExprRef::start(Self) -> Int
+pub fn WgslExprRef::text(Self) -> String
+pub fn WgslExprRef::tokens(Self) -> Array[WgslExprToken]
 
 pub struct WgslExprToken {
   kind : WgslExprTokenKind

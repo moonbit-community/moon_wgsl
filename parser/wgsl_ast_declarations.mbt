@@ -436,8 +436,8 @@ fn WgslDeclParser::parse_const_assert_checked(
     None => raise WgslConstAssertParseError::UnexpectedToken
   }
   let tokens : Array[(Token, Int, Int)] = [
-    (Token::EXPR_REF(expr), expr.start, expr.end),
-    (Token::EOF, expr.end, expr.end),
+    (Token::EXPR_REF(expr), expr.start(), expr.end()),
+    (Token::EOF, expr.end(), expr.end()),
   ]
   const_assert_expr(tokens) catch {
     _ => raise WgslConstAssertParseError::UnexpectedToken

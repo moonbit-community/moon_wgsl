@@ -18,10 +18,10 @@ fn collect_wgsl_expr_ref_identifier_nodes(
 ) -> Unit {
   match expr_ref {
     Some(expr) =>
-      match expr.root {
+      match expr.root() {
         Some(root) => collect_wgsl_expr_node_identifier_nodes(root, [], nodes)
         None =>
-          for ident in expr.identifiers {
+          for ident in expr.identifiers() {
             nodes.push(ident)
           }
       }
@@ -103,13 +103,13 @@ fn collect_wgsl_expr_ref_identifier_nodes_with_scope(
 ) -> Unit {
   match expr_ref {
     Some(expr) =>
-      match expr.root {
+      match expr.root() {
         Some(root) =>
           collect_wgsl_expr_node_identifier_nodes(
             root, active_local_names, nodes,
           )
         None =>
-          for ident in expr.identifiers {
+          for ident in expr.identifiers() {
             if !wgsl_name_list_contains(active_local_names, ident.name) {
               nodes.push(ident)
             }
