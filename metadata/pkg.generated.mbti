@@ -31,8 +31,7 @@ pub suberror SubstituteIdentifiersError {
 
 // Types and methods
 pub struct DeclaredImportBinding {
-  used_name : String
-  full_paths : Array[String]
+  // private fields
 }
 
 // Type aliases

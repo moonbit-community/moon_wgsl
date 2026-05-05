@@ -1,7 +1,7 @@
 ///|
 pub struct DeclaredImportBinding {
-  used_name : String
-  full_paths : Array[String]
+  priv used_name : String
+  priv full_paths : Array[String]
 }
 
 ///|

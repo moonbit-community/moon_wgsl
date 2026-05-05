@@ -14,9 +14,9 @@
 
 ///|
 pub struct WgslCanonicalTokenEdit {
-  start : Int
-  end : Int
-  replacement : String
+  priv start : Int
+  priv end : Int
+  priv replacement : String
 }
 
 ///|

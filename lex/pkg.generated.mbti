@@ -48,9 +48,7 @@ pub fn wgsl_trim_blankspace(String) -> String
 
 // Types and methods
 pub struct WgslCanonicalTokenEdit {
-  start : Int
-  end : Int
-  replacement : String
+  // private fields
 }
 pub fn WgslCanonicalTokenEdit::new(Int, Int, String) -> Self
 
