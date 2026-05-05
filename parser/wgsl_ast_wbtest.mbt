@@ -6,6 +6,11 @@ fn parse_wgsl_translation_unit_for_test(source : String) -> WgslTranslationUnit 
 }
 
 ///|
+fn wgsl_expr_ref_source_text(source : String, expr : WgslExprRef) -> String {
+  source[expr.start():expr.end()].to_owned()
+}
+
+///|
 test "WGSL translation unit classifies top-level declarations" {
   let source =
     #|#define_import_path demo::module
@@ -40,7 +45,10 @@ test "WGSL translation unit classifies top-level declarations" {
     is WgslGlobalDeclData::ConstAssert(assert_expr) else {
     abort("expected const assert payload")
   }
-  debug_inspect(assert_expr.text(), content="\"(1 == 1)\"")
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, assert_expr),
+    content="\"(1 == 1)\"",
+  )
   debug_inspect(unit.declarations[5].kind, content="Function")
   debug_inspect(unit.declarations[5].name, content="\"fragment\"")
 }
@@ -916,7 +924,9 @@ test "WGSL statement AST records nested and loop local declarations" {
     content="Some(\"u32\")",
   )
   debug_inspect(
-    function.body.statements[1].expression_refs.map(fn(expr) { expr.text() }),
+    function.body.statements[1].expression_refs.map(fn(expr) {
+      wgsl_expr_ref_source_text(source, expr)
+    }),
     content=(
       #|["i < arg", "i = i + 1u"]
     ),
@@ -971,7 +981,9 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
     ),
   )
   debug_inspect(
-    statement.expression_refs.map(fn(expr) { expr.text() }),
+    statement.expression_refs.map(fn(expr) {
+      wgsl_expr_ref_source_text(source, expr)
+    }),
     content=(
       #|["arg > 0u"]
     ),
@@ -979,7 +991,7 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
   debug_inspect(statement.blocks[0].statements[0].kind, content="Return")
   debug_inspect(
     statement.blocks[0].statements[0].expression_refs.map(fn(expr) {
-      expr.text()
+      wgsl_expr_ref_source_text(source, expr)
     }),
     content=(
       #|["1u"]
@@ -1152,7 +1164,11 @@ test "WGSL statement payload exposes structured statement semantics" {
     _ => abort("expected local declaration payload")
   }
   match function.body.statements[1].payload {
-    Switch(Some(expr)) => debug_inspect(expr.text(), content="\"input.mode\"")
+    Switch(Some(expr)) =>
+      debug_inspect(
+        wgsl_expr_ref_source_text(source, expr),
+        content="\"input.mode\"",
+      )
     _ => abort("expected switch payload")
   }
   debug_inspect(
@@ -1162,7 +1178,11 @@ test "WGSL statement payload exposes structured statement semantics" {
     ),
   )
   match function.body.statements[2].payload {
-    Return(Some(expr)) => debug_inspect(expr.text(), content="\"value\"")
+    Return(Some(expr)) =>
+      debug_inspect(
+        wgsl_expr_ref_source_text(source, expr),
+        content="\"value\"",
+      )
     _ => abort("expected return payload")
   }
 }

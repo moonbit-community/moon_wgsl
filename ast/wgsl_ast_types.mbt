@@ -162,7 +162,6 @@ pub fn WgslExprNode::new(
 
 ///|
 pub struct WgslExprRef {
-  priv text : String
   priv tokens : Array[WgslExprToken]
   priv identifiers : Array[WgslIdent]
   priv root : WgslExprNode?
@@ -172,19 +171,13 @@ pub struct WgslExprRef {
 
 ///|
 pub fn WgslExprRef::new(
-  text : String,
   tokens : Array[WgslExprToken],
   identifiers : Array[WgslIdent],
   root : WgslExprNode?,
   start : Int,
   end : Int,
 ) -> WgslExprRef {
-  WgslExprRef::{ text, tokens, identifiers, root, start, end }
-}
-
-///|
-pub fn WgslExprRef::text(self : WgslExprRef) -> String {
-  self.text
+  WgslExprRef::{ tokens, identifiers, root, start, end }
 }
 
 ///|

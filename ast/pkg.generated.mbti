@@ -96,10 +96,9 @@ pub struct WgslExprRef {
 } derive(@debug.Debug)
 pub fn WgslExprRef::end(Self) -> Int
 pub fn WgslExprRef::identifiers(Self) -> Array[WgslIdent]
-pub fn WgslExprRef::new(String, Array[WgslExprToken], Array[WgslIdent], WgslExprNode?, Int, Int) -> Self
+pub fn WgslExprRef::new(Array[WgslExprToken], Array[WgslIdent], WgslExprNode?, Int, Int) -> Self
 pub fn WgslExprRef::root(Self) -> WgslExprNode?
 pub fn WgslExprRef::start(Self) -> Int
-pub fn WgslExprRef::text(Self) -> String
 pub fn WgslExprRef::tokens(Self) -> Array[WgslExprToken]
 
 pub struct WgslExprToken {
@@ -338,4 +337,3 @@ pub fn WgslTypeRef::start(Self) -> Int
 // Type aliases
 
 // Traits
-

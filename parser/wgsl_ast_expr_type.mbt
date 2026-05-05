@@ -608,7 +608,6 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   let root = parse_wgsl_expr_node(base + local_start, expr_tokens)
   Some(
     WgslExprRef::new(
-      trimmed,
       expr_tokens,
       identifiers,
       root,
