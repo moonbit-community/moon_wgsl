@@ -88,15 +88,15 @@ fn match_wgsl_source_catalog_entry(
   if entries.length() == 1 {
     return Some(entries[0])
   }
-  let trimmed_block = declaration.text.trim().to_owned()
-  let exact_matches : Array[WgslSourceCatalogEntry] = []
+  let span_matches : Array[WgslSourceCatalogEntry] = []
   for entry in entries {
-    if entry.source_text == trimmed_block {
-      exact_matches.push(entry)
+    if entry.source_start == declaration.generated_start &&
+      entry.source_end == declaration.generated_end {
+      span_matches.push(entry)
     }
   }
-  if exact_matches.length() == 1 {
-    return Some(exact_matches[0])
+  if span_matches.length() == 1 {
+    return Some(span_matches[0])
   }
   push_wgsl_diagnostic(
     diagnostics,

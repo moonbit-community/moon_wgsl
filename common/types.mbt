@@ -152,7 +152,6 @@ pub(all) struct WgslSourceFile {
 pub struct WgslSourceCatalogEntry {
   rel_path : String
   symbol_name : String
-  source_text : String
   source_start : Int
   source_end : Int
 } derive(Eq, Debug)
@@ -161,17 +160,10 @@ pub struct WgslSourceCatalogEntry {
 pub fn WgslSourceCatalogEntry::new(
   rel_path : String,
   symbol_name : String,
-  source_text : String,
   source_start : Int,
   source_end : Int,
 ) -> WgslSourceCatalogEntry {
-  WgslSourceCatalogEntry::{
-    rel_path,
-    symbol_name,
-    source_text,
-    source_start,
-    source_end,
-  }
+  WgslSourceCatalogEntry::{ rel_path, symbol_name, source_start, source_end }
 }
 
 ///|

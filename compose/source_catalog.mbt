@@ -39,7 +39,6 @@ fn build_prepared_wgsl_source_catalog(
         WgslSourceCatalogEntry::new(
           source_file.rel_path,
           declaration.name,
-          declaration.text.trim().to_owned(),
           declaration.generated_start,
           declaration.generated_end,
         ),

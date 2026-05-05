@@ -29,6 +29,22 @@ fn bevy_parity_value_defines() -> @hashmap.HashMap[String, Int] {
 }
 
 ///|
+fn bevy_prepared_catalog_entry_text(
+  prepared : @common.PreparedWgslSource,
+  entry : @common.WgslSourceCatalogEntry,
+) -> String {
+  for source_file in prepared.source_files {
+    if source_file.rel_path == entry.rel_path &&
+      entry.source_start >= 0 &&
+      entry.source_end >= entry.source_start &&
+      entry.source_end <= source_file.source.length() {
+      return source_file.source[entry.source_start:entry.source_end].to_owned()
+    }
+  }
+  ""
+}
+
+///|
 fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
@@ -212,10 +228,11 @@ test "naga_oil parity: prepared Bevy catalog resolves alias-qualified bindings" 
   let mut resolved_entries = 0
   let mut unresolved_source_files = 0
   for entry in prepared.source_catalog {
-    if entry.source_text.contains("view_bindings::clustered_lights") {
+    let entry_text = bevy_prepared_catalog_entry_text(prepared, entry)
+    if entry_text.contains("view_bindings::clustered_lights") {
       unresolved_entries = unresolved_entries + 1
     }
-    if entry.source_text.contains("view_bindings__clustered_lights") {
+    if entry_text.contains("view_bindings__clustered_lights") {
       resolved_entries = resolved_entries + 1
     }
   }

@@ -145,11 +145,10 @@ pub fn WgslResolvedImportModule::new(String, String) -> Self
 pub struct WgslSourceCatalogEntry {
   rel_path : String
   symbol_name : String
-  source_text : String
   source_start : Int
   source_end : Int
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceCatalogEntry::new(String, String, String, Int, Int) -> Self
+pub fn WgslSourceCatalogEntry::new(String, String, Int, Int) -> Self
 
 pub(all) struct WgslSourceFile {
   rel_path : String
