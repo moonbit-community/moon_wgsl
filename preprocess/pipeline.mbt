@@ -20,8 +20,8 @@ fn preprocess_emit_pipeline_item(
   used_imports : Array[ImportDefWithOffset],
   scope : Scope,
 ) -> String raise PreprocessError {
-  let offset = item.start
-  match item.kind {
+  let offset = item.start()
+  match item.kind() {
     WgslDirectiveScanItemKind::GlslVersion(version) => {
       if version != "440" && version != "450" {
         raise PreprocessError::GlslInvalidVersion(offset)
@@ -38,13 +38,13 @@ fn preprocess_emit_pipeline_item(
       let (is_scope, _) = preprocess_check_scope_directive(
         shader_defs,
         directive,
-        item.required_tail_space,
+        item.requires_tail_space(),
         Some(scope),
         offset,
       )
       if is_scope ||
         (
-          item.required_tail_space &&
+          item.requires_tail_space() &&
           (
             directive.kind == WgslDirectiveKind::DefineImportPath ||
             directive.kind == WgslDirectiveKind::Define
@@ -59,9 +59,9 @@ fn preprocess_emit_pipeline_item(
         )
       }
       if scope.active() &&
-        item.required_tail_space &&
+        item.requires_tail_space() &&
         directive.kind == WgslDirectiveKind::Import {
-        parse_imports(item.cleaned_text, declared_imports) catch {
+        parse_imports(item.cleaned_directive_text(), declared_imports) catch {
           Parse(message, item_offset) =>
             raise PreprocessError::ImportParseError(
               message,

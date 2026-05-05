@@ -26,8 +26,8 @@ pub fn apply_wgsl_ifdefs_strict(
   let mut out = ""
   let scope = Scope::new()
   for item in parse_wgsl_directive_scan_items(source) {
-    let offset = item.start
-    match item.kind {
+    let offset = item.start()
+    match item.kind() {
       WgslDirectiveScanItemKind::GlslVersion(version) =>
         if version != "440" && version != "450" {
           raise PreprocessError::GlslInvalidVersion(offset)
@@ -36,7 +36,7 @@ pub fn apply_wgsl_ifdefs_strict(
         let (is_scope, _) = preprocess_check_scope_directive(
           shader_defs,
           directive,
-          item.required_tail_space,
+          item.requires_tail_space(),
           Some(scope),
           offset,
         )

@@ -13,7 +13,7 @@ fn compose_emit_scanned_item(
 ) -> String {
   match kind {
     DropDirective => ""
-    KeepTrivia => item.original_text
+    KeepTrivia => item.original_trivia()
   }
 }
 
@@ -26,7 +26,7 @@ fn wgsl_compose_directive_emission_kind(
     WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
       DropDirective
     WgslDirectiveKind::Other(_) =>
-      if parse_glsl_version_directive(item.cleaned_text) is None {
+      if parse_glsl_version_directive(item.cleaned_directive_text()) is None {
         KeepTrivia
       } else {
         DropDirective
@@ -45,7 +45,7 @@ fn Composer::compose_wgsl_scanned_item(
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
-  match item.kind {
+  match item.kind() {
     WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind ==
       WgslDirectiveKind::Import => {
       let requests = self.build_wgsl_import_requests(

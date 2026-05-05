@@ -18,26 +18,26 @@ fn try_get_preprocessor_metadata(
       cleaned_for_directives,
       include_glsl_version=false,
     ) {
-    match item.kind {
+    match item.kind() {
       WgslDirectiveScanItemKind::Directive(directive) => {
         let (is_scope, def) = metadata_scope_def_from_directive(
           directive,
-          item.required_tail_space,
+          item.requires_tail_space(),
         )
         if is_scope {
           if def is Some(def_name) {
             effective_defs.add(def_name)
           }
-        } else if item.required_tail_space &&
+        } else if item.requires_tail_space() &&
           directive.kind == WgslDirectiveKind::Import {
-          parse_imports(item.cleaned_text, declared_imports) catch {
+          parse_imports(item.cleaned_directive_text(), declared_imports) catch {
             Parse(message, item_offset) =>
               raise MetadataError::ImportParseError(
                 message,
-                item.start + item_offset,
+                item.start() + item_offset,
               )
           }
-        } else if item.required_tail_space &&
+        } else if item.requires_tail_space() &&
           directive.kind == WgslDirectiveKind::DefineImportPath {
           let import_path = wgsl_metadata_first_space_separated_token(
             directive.tail,
@@ -45,7 +45,7 @@ fn try_get_preprocessor_metadata(
           if import_path != "" {
             name = Some(import_path)
           }
-        } else if item.required_tail_space &&
+        } else if item.requires_tail_space() &&
           directive.kind == WgslDirectiveKind::Define {
           if allow_defines {
             let (define_name, define_value) = split_define_name_and_value(
@@ -55,7 +55,7 @@ fn try_get_preprocessor_metadata(
               defines.set(define_name, parse_define_value(define_value))
             }
           } else {
-            raise MetadataError::DefineInModule(item.start)
+            raise MetadataError::DefineInModule(item.start())
           }
         } else {
           metadata_collect_source_item(item, effective_defs)

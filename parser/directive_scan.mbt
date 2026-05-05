@@ -7,11 +7,11 @@ pub enum WgslDirectiveScanItemKind {
 
 ///|
 pub struct WgslDirectiveScanItem {
-  kind : WgslDirectiveScanItemKind
-  start : Int
-  required_tail_space : Bool
-  original_text : String
-  cleaned_text : String
+  priv kind : WgslDirectiveScanItemKind
+  priv start : Int
+  priv required_tail_space : Bool
+  priv original_text : String
+  priv cleaned_text : String
 } derive(Debug)
 
 ///|
@@ -36,6 +36,39 @@ fn WgslDirectiveScanItem::new(
     original_text,
     cleaned_text,
   }
+}
+
+///|
+pub fn WgslDirectiveScanItem::kind(
+  self : WgslDirectiveScanItem,
+) -> WgslDirectiveScanItemKind {
+  self.kind
+}
+
+///|
+pub fn WgslDirectiveScanItem::start(self : WgslDirectiveScanItem) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslDirectiveScanItem::requires_tail_space(
+  self : WgslDirectiveScanItem,
+) -> Bool {
+  self.required_tail_space
+}
+
+///|
+pub fn WgslDirectiveScanItem::original_trivia(
+  self : WgslDirectiveScanItem,
+) -> String {
+  self.original_text
+}
+
+///|
+pub fn WgslDirectiveScanItem::cleaned_directive_text(
+  self : WgslDirectiveScanItem,
+) -> String {
+  self.cleaned_text
 }
 
 ///|

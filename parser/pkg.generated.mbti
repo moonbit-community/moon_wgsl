@@ -52,12 +52,13 @@ pub fn WgslParseError::message(Self) -> String
 
 // Types and methods
 pub struct WgslDirectiveScanItem {
-  kind : WgslDirectiveScanItemKind
-  start : Int
-  required_tail_space : Bool
-  original_text : String
-  cleaned_text : String
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslDirectiveScanItem::cleaned_directive_text(Self) -> String
+pub fn WgslDirectiveScanItem::kind(Self) -> WgslDirectiveScanItemKind
+pub fn WgslDirectiveScanItem::original_trivia(Self) -> String
+pub fn WgslDirectiveScanItem::requires_tail_space(Self) -> Bool
+pub fn WgslDirectiveScanItem::start(Self) -> Int
 
 pub enum WgslDirectiveScanItemKind {
   Source

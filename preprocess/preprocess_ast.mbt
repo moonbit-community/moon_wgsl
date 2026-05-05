@@ -214,8 +214,8 @@ fn preprocess_emit_scanned_item(
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
   match kind {
-    BlankTrivia => preprocess_blank_text(item.original_text)
-    KeepTrivia => item.original_text
+    BlankTrivia => preprocess_blank_text(item.original_trivia())
+    KeepTrivia => item.original_trivia()
     RewriteActiveSource =>
       preprocess_rewrite_source_item(
         item, shader_defs, declared_imports, used_imports,
@@ -231,17 +231,17 @@ fn preprocess_rewrite_source_item(
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
   let replaced_original = preprocess_replace_shader_defs_in_text(
-    item.original_text,
+    item.original_trivia(),
     shader_defs,
   )
   let replaced_decommented = preprocess_replace_shader_defs_in_text(
-    item.cleaned_text,
+    item.cleaned_directive_text(),
     shader_defs,
   )
   let ignored_imports : Array[ImportDefWithOffset] = []
   let rewritten_original = substitute_identifiers(
     replaced_original,
-    item.start,
+    item.start(),
     declared_imports,
     ignored_imports,
     true,
@@ -256,7 +256,7 @@ fn preprocess_rewrite_source_item(
   ignore(
     substitute_identifiers(
       replaced_decommented,
-      item.start,
+      item.start(),
       declared_imports,
       used_imports,
       false,

@@ -88,17 +88,15 @@ fn metadata_collect_source_item(
   effective_defs : @hashset.HashSet[String],
 ) -> Unit {
   let mut line_start = 0
-  while line_start < item.cleaned_text.length() {
-    let line_text_end = metadata_source_line_text_end(
-      item.cleaned_text,
-      line_start,
-    )
-    let line_end = if line_text_end < item.cleaned_text.length() {
+  let cleaned_text = item.cleaned_directive_text()
+  while line_start < cleaned_text.length() {
+    let line_text_end = metadata_source_line_text_end(cleaned_text, line_start)
+    let line_end = if line_text_end < cleaned_text.length() {
       line_text_end + 1
     } else {
       line_text_end
     }
-    let line = item.cleaned_text[line_start:line_text_end].to_owned()
+    let line = cleaned_text[line_start:line_text_end].to_owned()
     collect_effective_def_names(line, effective_defs)
     line_start = line_end
   }
