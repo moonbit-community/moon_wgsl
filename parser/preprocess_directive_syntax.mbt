@@ -23,19 +23,6 @@ fn WgslShaderDefOperator::from_text(text : String) -> WgslShaderDefOperator {
 }
 
 ///|
-pub fn WgslShaderDefOperator::text(self : WgslShaderDefOperator) -> String {
-  match self {
-    Equal => "=="
-    NotEqual => "!="
-    Greater => ">"
-    GreaterEqual => ">="
-    Less => "<"
-    LessEqual => "<="
-    Unknown(text) => text
-  }
-}
-
-///|
 pub struct WgslShaderDefComparison {
   priv def : String
   priv operator : WgslShaderDefOperator
@@ -180,14 +167,6 @@ pub fn parse_wgsl_shader_def_comparison(
         text[value_start:i].to_owned(),
       ),
     )
-  }
-}
-
-///|
-pub fn wgsl_shader_def_comparison_def(expression : String) -> String? {
-  match parse_wgsl_shader_def_comparison(expression) {
-    Some(comparison) => Some(comparison.def_name())
-    None => None
   }
 }
 

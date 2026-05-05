@@ -33,8 +33,6 @@ pub fn wgsl_effective_directive_tail(@ast.WgslDirective) -> String
 
 pub fn wgsl_required_space_word_tail(String, String) -> String?
 
-pub fn wgsl_shader_def_comparison_def(String) -> String?
-
 pub fn wgsl_text_starts_with_tokenized_space(String) -> Bool
 
 // Errors
@@ -84,7 +82,6 @@ pub(all) enum WgslShaderDefOperator {
   LessEqual
   Unknown(String)
 } derive(Eq, @debug.Debug)
-pub fn WgslShaderDefOperator::text(Self) -> String
 
 pub struct WgslShaderDefReference {
   // private fields

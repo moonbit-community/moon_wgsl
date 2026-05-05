@@ -39,7 +39,7 @@ fn metadata_scope_def_from_directive(
       }
     WgslDirectiveKind::If =>
       if has_required_separator {
-        match wgsl_shader_def_comparison_def(tail) {
+        match metadata_shader_def_comparison_def(tail) {
           Some(def) => (true, Some(def))
           None => (false, None)
         }
@@ -60,13 +60,21 @@ fn metadata_scope_def_from_directive(
       }
       if else_tail_has_space &&
         wgsl_required_space_word_tail(tail, "if") is Some(expr) &&
-        wgsl_shader_def_comparison_def(expr) is Some(def) {
+        metadata_shader_def_comparison_def(expr) is Some(def) {
         return (true, Some(def))
       }
       (true, None)
     }
     WgslDirectiveKind::Endif => (true, None)
     _ => (false, None)
+  }
+}
+
+///|
+fn metadata_shader_def_comparison_def(expression : String) -> String? {
+  match parse_wgsl_shader_def_comparison(expression) {
+    Some(comparison) => Some(comparison.def_name())
+    None => None
   }
 }
 
