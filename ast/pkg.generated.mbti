@@ -251,9 +251,8 @@ pub fn WgslStatement::expression_refs(Self) -> Array[WgslExprRef]
 pub fn WgslStatement::expressions(Self) -> Array[WgslStatementExpression]
 pub fn WgslStatement::kind(Self) -> WgslStatementKind
 pub fn WgslStatement::local_bindings(Self) -> Array[WgslLocalDeclaration]
-pub fn WgslStatement::new(WgslStatementKind, WgslStatementPayload, String, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
+pub fn WgslStatement::new(WgslStatementKind, WgslStatementPayload, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
 pub fn WgslStatement::payload(Self) -> WgslStatementPayload
-pub fn WgslStatement::text(Self) -> String
 
 pub struct WgslStatementExpression {
   // private fields

@@ -924,7 +924,6 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   if start_pos < 0 || end_pos < start_pos {
     None
   } else {
-    let text = self.slice(start_pos, end_pos)
     let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
     let kind = wgsl_statement_kind_from_tokens(first_identifier, tokens)
     let scope_tokens = collect_wgsl_statement_scope_tokens(tokens)
@@ -951,7 +950,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     let blocks = self.collect_statement_blocks(tokens)
     Some(
       WgslStatement::new(
-        kind, payload, text, blocks, local_bindings, exported_local_bindings, expression_refs,
+        kind, payload, blocks, local_bindings, exported_local_bindings, expression_refs,
         expressions,
       ),
     )

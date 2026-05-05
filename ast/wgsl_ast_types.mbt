@@ -634,7 +634,6 @@ pub(all) enum WgslStatementPayload {
 pub struct WgslStatement {
   priv kind : WgslStatementKind
   priv payload : WgslStatementPayload
-  priv text : String
   priv blocks : Array[WgslBlock]
   priv local_bindings : Array[WgslLocalDeclaration]
   priv exported_local_bindings : Array[WgslLocalDeclaration]
@@ -646,7 +645,6 @@ pub struct WgslStatement {
 pub fn WgslStatement::new(
   kind : WgslStatementKind,
   payload : WgslStatementPayload,
-  text : String,
   blocks : Array[WgslBlock],
   local_bindings : Array[WgslLocalDeclaration],
   exported_local_bindings : Array[WgslLocalDeclaration],
@@ -656,7 +654,6 @@ pub fn WgslStatement::new(
   WgslStatement::{
     kind,
     payload,
-    text,
     blocks,
     local_bindings,
     exported_local_bindings,
@@ -673,11 +670,6 @@ pub fn WgslStatement::kind(self : WgslStatement) -> WgslStatementKind {
 ///|
 pub fn WgslStatement::payload(self : WgslStatement) -> WgslStatementPayload {
   self.payload
-}
-
-///|
-pub fn WgslStatement::text(self : WgslStatement) -> String {
-  self.text
 }
 
 ///|

@@ -587,18 +587,6 @@ test "WGSL function payload exposes statement AST spans" {
   debug_inspect(function.body().statements()[1].kind(), content="If")
   debug_inspect(function.body().statements()[2].kind(), content="Return")
   debug_inspect(
-    function.body().statements()[0].text().trim().to_owned(),
-    content="\"var<function> local: u32 = value;\"",
-  )
-  debug_inspect(
-    function.body().statements()[1].text().contains("return local"),
-    content="true",
-  )
-  debug_inspect(
-    function.body().statements()[2].text().trim().to_owned(),
-    content="\"return 0u;\"",
-  )
-  debug_inspect(
     function.body().statements()[0]
     .exported_local_bindings()
     .map(fn(binding) { binding.name().name() }),
