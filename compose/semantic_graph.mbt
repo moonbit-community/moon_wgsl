@@ -151,6 +151,40 @@ fn wgsl_semantic_import_default_alias(module_path : String) -> String {
 }
 
 ///|
+fn wgsl_semantic_import_alias_prefix_separator(prefix : String) -> String {
+  if prefix == "" || prefix.has_suffix("_") {
+    prefix
+  } else {
+    "\{prefix}_"
+  }
+}
+
+///|
+fn wgsl_semantic_import_alias_prefix(alias_name : String) -> String {
+  let mut prefix = ""
+  let segments : Array[String] = []
+  for segment in alias_name.trim().split("::") {
+    segments.push(segment.to_owned())
+  }
+  for i in 0..<segments.length() {
+    if i > 0 {
+      prefix = wgsl_semantic_import_alias_prefix_separator(prefix)
+    }
+    for token in tokenize(segments[i], true) {
+      match token.identifier_text() {
+        Some(text) if !text.contains("\"") => prefix = "\{prefix}\{text}"
+        _ => prefix = wgsl_semantic_import_alias_prefix_separator(prefix)
+      }
+    }
+  }
+  if prefix == "" {
+    "import"
+  } else {
+    prefix
+  }
+}
+
+///|
 fn wgsl_semantic_alias_requested_item_name(
   reference_path : WgslSemanticReferencePath,
   alias_name : String,
@@ -505,7 +539,7 @@ fn build_wgsl_semantic_import_rename_map(
   alias_name : String,
 ) -> @hashmap.HashMap[String, String] raise WgslParseError {
   let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let alias_prefix = parse_wgsl_import_alias_prefix(alias_name)
+  let alias_prefix = wgsl_semantic_import_alias_prefix(alias_name)
   for declaration in parse_wgsl_translation_unit_strict(source).declarations() {
     if declaration.name() != "" {
       rename_map.set(

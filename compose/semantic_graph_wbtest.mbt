@@ -29,6 +29,22 @@ test "semantic alias graph resolves global binding member access" {
 }
 
 ///|
+test "semantic import alias prefix policy sanitizes aliases" {
+  debug_inspect(
+    wgsl_semantic_import_alias_prefix("demo::math"),
+    content="\"demo_math\"",
+  )
+  debug_inspect(
+    wgsl_semantic_import_alias_prefix("\"quoted path\""),
+    content="\"import\"",
+  )
+  debug_inspect(
+    wgsl_semantic_import_alias_prefix("bad-name::Item"),
+    content="\"bad_name_Item\"",
+  )
+}
+
+///|
 test "semantic reference matcher includes address-of alias member access" {
   let source =
     #|fn point_light(light_id: u32) -> u32 {

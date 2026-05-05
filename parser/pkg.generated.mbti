@@ -15,8 +15,6 @@ pub fn parse_wgsl_directive_identifier(String) -> String?
 
 pub fn parse_wgsl_directive_scan_items(String, include_glsl_version? : Bool) -> Array[WgslDirectiveScanItem]
 
-pub fn parse_wgsl_import_alias_prefix(String) -> String
-
 pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError

@@ -56,17 +56,3 @@ test "WGSL import parser classifies empty import specs" {
 }
 
 ///|
-test "WGSL import parser builds alias prefixes" {
-  debug_inspect(
-    parse_wgsl_import_alias_prefix("demo::math"),
-    content="\"demo_math\"",
-  )
-  debug_inspect(
-    parse_wgsl_import_alias_prefix("\"quoted path\""),
-    content="\"import\"",
-  )
-  debug_inspect(
-    parse_wgsl_import_alias_prefix("bad-name::Item"),
-    content="\"bad_name_Item\"",
-  )
-}

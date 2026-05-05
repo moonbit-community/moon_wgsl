@@ -5,13 +5,10 @@ using @ast {type WgslIdent, collect_wgsl_decl_identifier_nodes}
 using @common {type WgslResolvedImportModule}
 
 ///|
-using @lex {split_last_identifier}
+using @lex {split_last_identifier, tokenize}
 
 ///|
 using @metadata {wgsl_source_define_import_path}
-
-///|
-using @parser {parse_wgsl_import_alias_prefix}
 
 ///|
 using @resolver {
