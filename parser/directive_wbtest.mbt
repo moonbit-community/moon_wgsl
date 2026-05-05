@@ -69,28 +69,28 @@ test "WGSL shader-def reference parser preserves replacement spans" {
     "#FOO + #\tBAR + #{BAZ_2} + #{ BAD } + #+",
   )
   debug_inspect(references.length(), content="3")
-  debug_inspect(references[0].name, content="\"FOO\"")
-  debug_inspect(references[0].start, content="0")
-  debug_inspect(references[0].end, content="4")
-  debug_inspect(references[0].delimited, content="false")
-  debug_inspect(references[1].name, content="\"BAR\"")
-  debug_inspect(references[1].start, content="7")
-  debug_inspect(references[1].end, content="12")
-  debug_inspect(references[1].delimited, content="false")
-  debug_inspect(references[2].name, content="\"BAZ_2\"")
-  debug_inspect(references[2].start, content="15")
-  debug_inspect(references[2].end, content="23")
-  debug_inspect(references[2].delimited, content="true")
+  debug_inspect(references[0].name(), content="\"FOO\"")
+  debug_inspect(references[0].start(), content="0")
+  debug_inspect(references[0].end(), content="4")
+  debug_inspect(references[0].is_delimited(), content="false")
+  debug_inspect(references[1].name(), content="\"BAR\"")
+  debug_inspect(references[1].start(), content="7")
+  debug_inspect(references[1].end(), content="12")
+  debug_inspect(references[1].is_delimited(), content="false")
+  debug_inspect(references[2].name(), content="\"BAZ_2\"")
+  debug_inspect(references[2].start(), content="15")
+  debug_inspect(references[2].end(), content="23")
+  debug_inspect(references[2].is_delimited(), content="true")
 }
 
 ///|
 test "WGSL shader-def reference parser accepts delimited names without trimming" {
   let references = parse_wgsl_shader_def_references("#{VALUE_1} #{ VALUE_2 }")
   debug_inspect(references.length(), content="1")
-  debug_inspect(references[0].name, content="\"VALUE_1\"")
-  debug_inspect(references[0].start, content="0")
-  debug_inspect(references[0].end, content="10")
-  debug_inspect(references[0].delimited, content="true")
+  debug_inspect(references[0].name(), content="\"VALUE_1\"")
+  debug_inspect(references[0].start(), content="0")
+  debug_inspect(references[0].end(), content="10")
+  debug_inspect(references[0].is_delimited(), content="true")
 }
 
 ///|
@@ -111,9 +111,9 @@ test "WGSL preprocessor directive syntax parser extracts names and comparisons" 
     is Some(comparison) else {
     abort("expected comparison")
   }
-  debug_inspect(comparison.def, content="\"VALUE\"")
-  debug_inspect(comparison.operator, content="\">=\"")
-  debug_inspect(comparison.value, content="\"-7u\"")
+  debug_inspect(comparison.def_name(), content="\"VALUE\"")
+  debug_inspect(comparison.operator(), content="\">=\"")
+  debug_inspect(comparison.value_text(), content="\"-7u\"")
   debug_inspect(
     parse_glsl_version_directive(" #version 450 core"),
     content="Some(\"450\")",

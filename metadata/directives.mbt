@@ -16,7 +16,7 @@ fn collect_effective_def_names(
   effective_defs : @hashset.HashSet[String],
 ) -> Unit {
   for reference in parse_wgsl_shader_def_references(line) {
-    effective_defs.add(reference.name)
+    effective_defs.add(reference.name())
   }
 }
 

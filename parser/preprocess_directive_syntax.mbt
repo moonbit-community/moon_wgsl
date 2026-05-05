@@ -1,8 +1,8 @@
 ///|
 pub struct WgslShaderDefComparison {
-  def : String
-  operator : String
-  value : String
+  priv def : String
+  priv operator : String
+  priv value : String
 } derive(Debug)
 
 ///|
@@ -12,6 +12,27 @@ fn WgslShaderDefComparison::new(
   value : String,
 ) -> WgslShaderDefComparison {
   WgslShaderDefComparison::{ def, operator, value }
+}
+
+///|
+pub fn WgslShaderDefComparison::def_name(
+  self : WgslShaderDefComparison,
+) -> String {
+  self.def
+}
+
+///|
+pub fn WgslShaderDefComparison::operator(
+  self : WgslShaderDefComparison,
+) -> String {
+  self.operator
+}
+
+///|
+pub fn WgslShaderDefComparison::value_text(
+  self : WgslShaderDefComparison,
+) -> String {
+  self.value
 }
 
 ///|
@@ -128,7 +149,7 @@ pub fn parse_wgsl_shader_def_comparison(
 ///|
 pub fn wgsl_shader_def_comparison_def(expression : String) -> String? {
   match parse_wgsl_shader_def_comparison(expression) {
-    Some(comparison) => Some(comparison.def)
+    Some(comparison) => Some(comparison.def_name())
     None => None
   }
 }

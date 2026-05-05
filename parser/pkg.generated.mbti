@@ -67,23 +67,26 @@ pub enum WgslDirectiveScanItemKind {
 } derive(@debug.Debug)
 
 pub struct WgslShaderDefComparison {
-  def : String
-  operator : String
-  value : String
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslShaderDefComparison::def_name(Self) -> String
+pub fn WgslShaderDefComparison::operator(Self) -> String
+pub fn WgslShaderDefComparison::value_text(Self) -> String
 
 pub struct WgslShaderDefReference {
-  name : String
-  start : Int
-  end : Int
-  delimited : Bool
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslShaderDefReference::end(Self) -> Int
+pub fn WgslShaderDefReference::is_delimited(Self) -> Bool
+pub fn WgslShaderDefReference::name(Self) -> String
+pub fn WgslShaderDefReference::start(Self) -> Int
 
 pub struct WgslTemplateConstReference {
-  name : String
-  start : Int
-  end : Int
+  // private fields
 } derive(@debug.Debug)
+pub fn WgslTemplateConstReference::end(Self) -> Int
+pub fn WgslTemplateConstReference::name(Self) -> String
+pub fn WgslTemplateConstReference::start(Self) -> Int
 
 // Type aliases
 

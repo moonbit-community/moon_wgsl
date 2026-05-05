@@ -23,15 +23,15 @@ fn check_if_operator_scope(
   guard parse_wgsl_shader_def_comparison(expression) is Some(comparison) else {
     return (false, None)
   }
-  let def = comparison.def
+  let def = comparison.def_name()
   if scope is None {
     return (true, Some(def))
   }
   let condition = eval_if_condition(
     shader_defs,
     def,
-    comparison.operator,
-    comparison.value,
+    comparison.operator(),
+    comparison.value_text(),
     offset,
   )
   guard scope is Some(scope_state) else { abort("unreachable missing scope") }
@@ -143,7 +143,8 @@ fn replace_shader_defs_in_line(
   let references = parse_wgsl_shader_def_references(line)
   let mut output = line
   for reference in references {
-    if !reference.delimited && shader_defs.get(reference.name) is Some(value) {
+    if !reference.is_delimited() &&
+      shader_defs.get(reference.name()) is Some(value) {
       output = replace_first_shader_def_reference(
         output,
         false,
@@ -152,7 +153,8 @@ fn replace_shader_defs_in_line(
     }
   }
   for reference in references {
-    if reference.delimited && shader_defs.get(reference.name) is Some(value) {
+    if reference.is_delimited() &&
+      shader_defs.get(reference.name()) is Some(value) {
       output = replace_first_shader_def_reference(
         output,
         true,
@@ -170,10 +172,10 @@ fn replace_first_shader_def_reference(
   replacement : String,
 ) -> String {
   for reference in parse_wgsl_shader_def_references(line) {
-    if reference.delimited == delimited {
-      return line[0:reference.start].to_owned() +
+    if reference.is_delimited() == delimited {
+      return line[0:reference.start()].to_owned() +
         replacement +
-        line[reference.end:line.length()].to_owned()
+        line[reference.end():line.length()].to_owned()
     }
   }
   line

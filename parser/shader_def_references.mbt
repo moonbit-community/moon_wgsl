@@ -1,9 +1,9 @@
 ///|
 pub struct WgslShaderDefReference {
-  name : String
-  start : Int
-  end : Int
-  delimited : Bool
+  priv name : String
+  priv start : Int
+  priv end : Int
+  priv delimited : Bool
 } derive(Debug)
 
 ///|
@@ -14,6 +14,28 @@ fn WgslShaderDefReference::new(
   delimited : Bool,
 ) -> WgslShaderDefReference {
   WgslShaderDefReference::{ name, start, end, delimited }
+}
+
+///|
+pub fn WgslShaderDefReference::name(self : WgslShaderDefReference) -> String {
+  self.name
+}
+
+///|
+pub fn WgslShaderDefReference::start(self : WgslShaderDefReference) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslShaderDefReference::end(self : WgslShaderDefReference) -> Int {
+  self.end
+}
+
+///|
+pub fn WgslShaderDefReference::is_delimited(
+  self : WgslShaderDefReference,
+) -> Bool {
+  self.delimited
 }
 
 ///|

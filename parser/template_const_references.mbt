@@ -1,8 +1,8 @@
 ///|
 pub struct WgslTemplateConstReference {
-  name : String
-  start : Int
-  end : Int
+  priv name : String
+  priv start : Int
+  priv end : Int
 } derive(Debug)
 
 ///|
@@ -12,6 +12,27 @@ fn WgslTemplateConstReference::new(
   end : Int,
 ) -> WgslTemplateConstReference {
   WgslTemplateConstReference::{ name, start, end }
+}
+
+///|
+pub fn WgslTemplateConstReference::name(
+  self : WgslTemplateConstReference,
+) -> String {
+  self.name
+}
+
+///|
+pub fn WgslTemplateConstReference::start(
+  self : WgslTemplateConstReference,
+) -> Int {
+  self.start
+}
+
+///|
+pub fn WgslTemplateConstReference::end(
+  self : WgslTemplateConstReference,
+) -> Int {
+  self.end
 }
 
 ///|
