@@ -32,6 +32,10 @@ echo "== WGSL validation: issue 8 alias binding compose =="
 emit_case bevy-issue8 "$tmpdir/bevy_issue8.wgsl"
 validate_wgsl "$tmpdir/bevy_issue8.wgsl"
 
+echo "== WGSL validation: issue 9 imported type identity =="
+emit_case issue9-type-identity "$tmpdir/issue9_type_identity.wgsl"
+validate_wgsl "$tmpdir/issue9_type_identity.wgsl"
+
 echo "== WGSL validation: Bevy PBR functions compose =="
 emit_case bevy-pbr-functions "$tmpdir/bevy_pbr_functions.wgsl"
 validate_wgsl "$tmpdir/bevy_pbr_functions.wgsl"

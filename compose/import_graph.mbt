@@ -5,6 +5,46 @@ priv struct WgslPreparedComposeSource {
 }
 
 ///|
+fn record_wgsl_nested_flattened_item_names(
+  session : WgslComposeSession,
+  declarations : Array[WgslEmittedDeclaration],
+) -> Unit {
+  for declaration in declarations {
+    let generated_name = declaration.name
+    if generated_name == "" {
+      continue
+    }
+    let declaration_text = declaration.text.trim()
+    if !(declaration_text.has_prefix("struct ") ||
+      declaration_text.has_prefix("alias ")) {
+      continue
+    }
+    for entry in session.modules.iter() {
+      let (module_path, rel_path) = entry
+      let module_alias_name = wgsl_semantic_import_default_alias(module_path)
+      if module_alias_name == "" {
+        continue
+      }
+      let marker = "__\{module_alias_name}__"
+      let mut saw_marker = false
+      let mut item_name = ""
+      for part in generated_name.split(marker) {
+        if saw_marker {
+          item_name = part.to_owned()
+        }
+        saw_marker = true
+      }
+      if item_name != "" {
+        let key = wgsl_imported_item_name_key(rel_path, "", item_name)
+        if !session.imported_item_names.contains(key) {
+          session.imported_item_names.set(key, generated_name)
+        }
+      }
+    }
+  }
+}
+
+///|
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
@@ -330,11 +370,15 @@ fn Composer::compose_wgsl_import_requests(
     if module_source == "" {
       continue
     }
+    let rename_alias = if request.alias_name != "" {
+      request.alias_name
+    } else {
+      ""
+    }
     let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-    let final_module_source = if request.alias_name != "" {
+    let final_module_source = if rename_alias != "" {
       let request_rename_map = build_wgsl_semantic_import_rename_map(
-        module_source,
-        request.alias_name,
+        module_source, rename_alias,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
@@ -343,11 +387,13 @@ fn Composer::compose_wgsl_import_requests(
         rename_map.set(from_name, to_name)
       }
       let collected_redirects : Array[WgslSymbolRedirect] = []
-      collect_wgsl_semantic_import_alias_redirects(
-        request.alias_name,
-        request_rename_map,
-        collected_redirects,
-      )
+      if request.alias_name != "" {
+        collect_wgsl_semantic_import_alias_redirects(
+          request.alias_name,
+          rename_map,
+          collected_redirects,
+        )
+      }
       for redirect in collected_redirects {
         alias_redirects.push(WgslScopedAliasRedirect::{
           redirect,
@@ -371,13 +417,29 @@ fn Composer::compose_wgsl_import_requests(
       origin_start_index,
       rename_map,
     )
-    if rename_map.is_empty() {
-      let declarations = collect_wgsl_named_declarations_strict(
-        final_module_source,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
+    for i in origin_start_index..<session.source_origins.length() {
+      let origin = session.source_origins[i]
+      if origin.rel_path != "" &&
+        origin.source_symbol_name != "" &&
+        origin.generated_symbol_name != "" {
+        let key = wgsl_imported_item_name_key(
+          origin.rel_path,
+          "",
+          origin.source_symbol_name,
+        )
+        if !session.imported_item_names.contains(key) {
+          session.imported_item_names.set(key, origin.generated_symbol_name)
+        }
       }
-      for declaration in declarations {
+    }
+    let final_declarations = collect_wgsl_named_declarations_strict(
+      final_module_source,
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    record_wgsl_nested_flattened_item_names(session, final_declarations)
+    if rename_map.is_empty() {
+      for declaration in final_declarations {
         session.imported_item_names.set(
           wgsl_imported_item_name_key(request.rel_path, "", declaration.name),
           declaration.name,
@@ -386,6 +448,10 @@ fn Composer::compose_wgsl_import_requests(
     } else {
       for entry in rename_map.iter() {
         let (from_name, to_name) = entry
+        session.imported_item_names.set(
+          wgsl_imported_item_name_key(request.rel_path, "", from_name),
+          to_name,
+        )
         session.imported_item_names.set(
           wgsl_imported_item_name_key(
             request.rel_path,

@@ -149,11 +149,62 @@ fn validation_bevy_pbr_functions_source() -> String {
 }
 
 ///|
+fn validation_issue9_type_identity_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "pbr_types.wgsl",
+    "#define_import_path bevy_pbr::pbr_types\n" +
+    "struct PbrInput { value: u32 }\n" +
+    "fn pbr_input_new() -> PbrInput {\n" +
+    "  var input: PbrInput;\n" +
+    "  input.value = 1u;\n" +
+    "  return input;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr_fragment.wgsl",
+    "#define_import_path bevy_pbr::pbr_fragment\n" +
+    "#import bevy_pbr::pbr_types as pbr_types\n" +
+    "fn pbr_input_from_standard_material() -> pbr_types::PbrInput {\n" +
+    "  return pbr_types::pbr_input_new();\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "clustered.wgsl",
+    "#define_import_path bevy_pbr::decal::clustered\n" +
+    "#import bevy_pbr::pbr_types::PbrInput\n" +
+    "fn apply_decals(pbr_input: ptr<function, PbrInput>) {\n" +
+    "  (*pbr_input).value = (*pbr_input).value + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr.wgsl",
+    "#import bevy_pbr::{\n" +
+    "  pbr_types,\n" +
+    "  pbr_fragment::pbr_input_from_standard_material,\n" +
+    "  decal::clustered::apply_decals,\n" +
+    "}\n" +
+    "@fragment\n" +
+    "fn fragment() -> @location(0) u32 {\n" +
+    "  var pbr_input = pbr_input_from_standard_material();\n" +
+    "  apply_decals(&pbr_input);\n" +
+    "  return pbr_input.value;\n" +
+    "}\n",
+  )
+  composer.compose_wgsl(
+    "pbr.wgsl",
+    validation_compose_options(validation_empty_defines()),
+  ) catch {
+    err => abort("expected issue 9 compose success: \{err.message()}")
+  }
+}
+
+///|
 fn validation_case_arg() -> String {
   let args = @env.args()
   if args.length() == 0 {
     abort(
-      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions",
+      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity",
     )
   }
   args[args.length() - 1]
@@ -166,9 +217,10 @@ fn main {
     "upstream-compute" => validation_upstream_compute_source()
     "bevy-issue8" => validation_bevy_issue8_source()
     "bevy-pbr-functions" => validation_bevy_pbr_functions_source()
+    "issue9-type-identity" => validation_issue9_type_identity_source()
     _ =>
       abort(
-        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions",
+        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity",
       )
   }
   println(source)

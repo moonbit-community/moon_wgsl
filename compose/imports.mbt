@@ -1,5 +1,6 @@
 ///|
 using @analysis {
+  type WgslEmittedDeclaration,
   type WgslModuleItemExtraction,
   build_wgsl_rename_plan_from_redirect_map,
   build_wgsl_symbol_redirect_map,

@@ -1475,6 +1475,64 @@ test "github issue 8: Bevy module alias keeps clustered_lights binding live" {
 }
 
 ///|
+test "github issue 9: item imported struct preserves canonical type identity" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "pbr_types.wgsl",
+    "#define_import_path bevy_pbr::pbr_types\n" +
+    "struct PbrInput { value: u32 }\n" +
+    "fn pbr_input_new() -> PbrInput {\n" +
+    "  var input: PbrInput;\n" +
+    "  input.value = 1u;\n" +
+    "  return input;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr_fragment.wgsl",
+    "#define_import_path bevy_pbr::pbr_fragment\n" +
+    "#import bevy_pbr::pbr_types as pbr_types\n" +
+    "fn pbr_input_from_standard_material() -> pbr_types::PbrInput {\n" +
+    "  return pbr_types::pbr_input_new();\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "clustered.wgsl",
+    "#define_import_path bevy_pbr::decal::clustered\n" +
+    "#import bevy_pbr::pbr_types::PbrInput\n" +
+    "fn apply_decals(pbr_input: ptr<function, PbrInput>) {\n" +
+    "  (*pbr_input).value = (*pbr_input).value + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr.wgsl",
+    "#import bevy_pbr::{\n" +
+    "  pbr_types,\n" +
+    "  pbr_fragment::pbr_input_from_standard_material,\n" +
+    "  decal::clustered::apply_decals,\n" +
+    "}\n" +
+    "@fragment\n" +
+    "fn fragment() -> @location(0) u32 {\n" +
+    "  var pbr_input = pbr_input_from_standard_material();\n" +
+    "  apply_decals(&pbr_input);\n" +
+    "  return pbr_input.value;\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "pbr.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err => abort("expected issue 9 compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("struct pbr_types__PbrInput"), content="true")
+  debug_inspect(source.contains("struct PbrInput"), content="false")
+  debug_inspect(
+    source.contains("ptr<function, pbr_types__PbrInput>"),
+    content="true",
+  )
+  debug_inspect(source.contains("ptr<function, PbrInput>"), content="false")
+}
+
+///|
 test "github issue 6: transitive nested module alias rewrites imported binding types" {
   let composer = @compose.Composer::default()
   composer.register_source(
