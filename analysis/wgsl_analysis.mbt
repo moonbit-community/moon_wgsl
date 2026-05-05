@@ -182,17 +182,6 @@ fn emit_wgsl_tree_shaken_source_from_graph(
 }
 
 ///|
-pub fn emit_wgsl_tree_shaken_source(
-  source : String,
-  root_items : Array[String],
-) -> WgslTreeShakenSource raise WgslParseError {
-  emit_wgsl_tree_shaken_source_from_graph(
-    build_wgsl_declaration_graph(source),
-    root_items,
-  )
-}
-
-///|
 pub fn emit_wgsl_tree_shaken_source_strict(
   source : String,
   root_items : Array[String],
@@ -201,13 +190,6 @@ pub fn emit_wgsl_tree_shaken_source_strict(
     build_wgsl_declaration_graph_strict(source),
     root_items,
   )
-}
-
-///|
-pub fn collect_wgsl_named_declarations(
-  source : String,
-) -> Array[WgslEmittedDeclaration] raise WgslParseError {
-  emit_wgsl_tree_shaken_source(source, []).declarations
 }
 
 ///|
@@ -323,39 +305,6 @@ fn extract_wgsl_module_item_extraction_from_graph(
 }
 
 ///|
-fn extract_wgsl_module_items_from_graph(
-  source : String,
-  graph : WgslDeclarationGraph,
-  requested_items : Array[String],
-) -> String {
-  extract_wgsl_module_item_extraction_from_graph(source, graph, requested_items).source
-}
-
-///|
-pub fn extract_wgsl_module_items(
-  source : String,
-  requested_items : Array[String],
-) -> String raise WgslParseError {
-  extract_wgsl_module_items_from_graph(
-    source,
-    build_wgsl_declaration_graph(source),
-    requested_items,
-  )
-}
-
-///|
-pub fn extract_wgsl_module_items_strict(
-  source : String,
-  requested_items : Array[String],
-) -> String raise WgslParseError {
-  extract_wgsl_module_items_from_graph(
-    source,
-    build_wgsl_declaration_graph_strict(source),
-    requested_items,
-  )
-}
-
-///|
 pub fn extract_wgsl_module_item_origins_strict(
   source : String,
   requested_items : Array[String],
@@ -368,13 +317,3 @@ pub fn extract_wgsl_module_item_origins_strict(
 }
 
 ///|
-pub fn extract_wgsl_module_item_origins(
-  source : String,
-  requested_items : Array[String],
-) -> WgslModuleItemExtraction raise WgslParseError {
-  extract_wgsl_module_item_extraction_from_graph(
-    source,
-    build_wgsl_declaration_graph(source),
-    requested_items,
-  )
-}

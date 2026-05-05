@@ -800,7 +800,7 @@ let wgsl_regex_word_ranges : Array[(Int, Int)] = [
 ]
 
 ///|
-pub fn wgsl_regex_word_code_point(code_point : Int) -> Bool {
+fn wgsl_regex_word_code_point(code_point : Int) -> Bool {
   let mut low = 0
   let mut high = wgsl_regex_word_ranges.length()
   while low < high {

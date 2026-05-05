@@ -54,7 +54,7 @@ pub fn utf8_byte_length(text : String) -> Int {
 }
 
 ///|
-pub fn split_source_lines(source : String) -> Array[String] {
+fn split_source_lines(source : String) -> Array[String] {
   let lines : Array[String] = []
   for line_item in source.split("\n") {
     lines.push(line_item.to_owned())

@@ -28,30 +28,6 @@ test "WGSL directive parser keeps unknown directives structured" {
 }
 
 ///|
-test "WGSL directive parser exposes kind-based tails" {
-  debug_inspect(
-    wgsl_directive_tail("#import bevy::view", WgslDirectiveKind::Import),
-    content="Some(\"bevy::view\")",
-  )
-  debug_inspect(
-    wgsl_directive_tail("#import bevy::view", WgslDirectiveKind::Define),
-    content="None",
-  )
-}
-
-///|
-test "WGSL directive parser supports naga-oil prefix else endif semantics" {
-  debug_inspect(
-    wgsl_directive_prefix_tail("#elsewhere", WgslDirectiveKind::Else),
-    content="Some(\"where\")",
-  )
-  debug_inspect(
-    wgsl_directive_prefix_tail("#endif_trailing", WgslDirectiveKind::Endif),
-    content="Some(\"_trailing\")",
-  )
-}
-
-///|
 test "WGSL directive parser exposes effective naga-oil directive semantics" {
   guard parse_wgsl_directive_line("#elsewhere FLAG") is Some(else_directive) else {
     abort("expected else directive")
@@ -77,13 +53,14 @@ test "WGSL directive parser exposes effective naga-oil directive semantics" {
 
 ///|
 test "WGSL directive parser accepts Rust regex Unicode whitespace" {
-  debug_inspect(
-    wgsl_directive_tail(
+  guard parse_wgsl_directive_line(
       "\u{00A0}#\u{00A0}define_import_path\u{3000}demo::module\u{2003}",
-      WgslDirectiveKind::DefineImportPath,
-    ),
-    content="Some(\"demo::module\")",
-  )
+    )
+    is Some(directive) else {
+    abort("expected directive")
+  }
+  debug_inspect(directive.kind, content="DefineImportPath")
+  debug_inspect(directive.tail, content="\"demo::module\"")
 }
 
 ///|

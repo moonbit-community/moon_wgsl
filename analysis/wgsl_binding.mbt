@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub(all) enum WgslRenameRuleKind {
+priv enum WgslRenameRuleKind {
   GlobalDeclarationAndReferences
   ReferencesOnly
   FunctionBodyReferencesOnly
@@ -70,17 +70,17 @@ priv struct WgslRenameMaps {
 }
 
 ///|
-pub fn WgslRenamePlan::empty() -> WgslRenamePlan {
+fn WgslRenamePlan::empty() -> WgslRenamePlan {
   WgslRenamePlan::{ rules: [] }
 }
 
 ///|
-pub fn WgslRenamePlan::is_empty(self : WgslRenamePlan) -> Bool {
+fn WgslRenamePlan::is_empty(self : WgslRenamePlan) -> Bool {
   self.rules.length() == 0
 }
 
 ///|
-pub fn WgslRenamePlan::add(
+fn WgslRenamePlan::add(
   self : WgslRenamePlan,
   from_name : String,
   to_name : String,
@@ -107,13 +107,30 @@ fn WgslRenamePlan::add_redirect_map(
 }
 
 ///|
-pub fn build_wgsl_rename_plan_from_redirect_map(
+fn build_wgsl_rename_plan_from_redirect_map(
   redirect_map : @hashmap.HashMap[String, String],
   kind : WgslRenameRuleKind,
 ) -> WgslRenamePlan {
   let plan = WgslRenamePlan::empty()
   plan.add_redirect_map(redirect_map, kind)
   plan
+}
+
+///|
+pub fn build_wgsl_global_rename_plan_from_redirect_map(
+  redirect_map : @hashmap.HashMap[String, String],
+) -> WgslRenamePlan {
+  build_wgsl_rename_plan_from_redirect_map(
+    redirect_map,
+    GlobalDeclarationAndReferences,
+  )
+}
+
+///|
+pub fn build_wgsl_reference_rename_plan_from_redirect_map(
+  redirect_map : @hashmap.HashMap[String, String],
+) -> WgslRenamePlan {
+  build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly)
 }
 
 ///|

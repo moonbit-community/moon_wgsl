@@ -31,7 +31,7 @@ test "same-line attributed declarations stay reachable" {
     #|  return 1u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["fragment"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["fragment"]).source
   debug_inspect(extracted.contains("@fragment fn fragment"), content="true")
   debug_inspect(extracted.contains("struct Output"), content="true")
   debug_inspect(extracted.contains("fn helper"), content="false")
@@ -46,7 +46,7 @@ test "declaration graph keeps dependencies from AST initializers" {
     #|  return VALUE;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["use_value"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["use_value"]).source
   debug_inspect(extracted.contains("const BASE"), content="true")
   debug_inspect(extracted.contains("const VALUE"), content="true")
   debug_inspect(extracted.contains("fn use_value"), content="true")
@@ -70,7 +70,7 @@ test "declaration graph keeps dependencies from AST type refs" {
     #|  return 1u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["make_output"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["make_output"]).source
   debug_inspect(extracted.contains("struct Item"), content="true")
   debug_inspect(extracted.contains("alias Items"), content="true")
   debug_inspect(extracted.contains("struct Output"), content="true")
@@ -97,7 +97,7 @@ test "declaration graph does not keep globals shadowed by function locals" {
     #|  return local;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const local"), content="false")
   debug_inspect(extracted.contains("const arg"), content="false")
   debug_inspect(extracted.contains("const nested"), content="false")
@@ -117,7 +117,7 @@ test "declaration graph keeps globals referenced before local shadows" {
     #|  return value + helper;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -133,7 +133,7 @@ test "declaration graph keeps initializer callee with same local name" {
     #|  return point_light;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("fn point_light"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -149,7 +149,7 @@ test "declaration graph keeps local declaration type refs with same local name" 
     #|  return View.value;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("struct View"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -168,7 +168,7 @@ test "declaration graph keeps compound initializer callee before local scope" {
     #|  return 0u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -185,7 +185,7 @@ test "declaration graph keeps for initializer callee before loop local scope" {
     #|  return 0u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -202,7 +202,7 @@ test "declaration graph filters compound locals after declaration" {
     #|  return 0u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const helper"), content="false")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -217,7 +217,7 @@ test "declaration graph does not leak for header locals after loop" {
     #|  return i;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const i"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -236,7 +236,7 @@ test "declaration graph does not leak nested compound locals to outer block" {
     #|  return 0u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -252,7 +252,7 @@ test "declaration graph does not leak nested local shadows" {
     #|  return nested;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const nested"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -269,7 +269,7 @@ test "declaration graph ignores member access suffix dependencies" {
     #|  return selected;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("struct Item"), content="true")
   debug_inspect(extracted.contains("const selected"), content="true")
   debug_inspect(extracted.contains("const value"), content="false")
@@ -283,7 +283,7 @@ test "declaration graph does not resolve namespace suffix as local dependency" {
     #|  return module::helper();
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const helper"), content="false")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -304,7 +304,7 @@ test "declaration graph reads switch case expressions without keyword leaks" {
     #|  return 0u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const SELECTED"), content="true")
   debug_inspect(extracted.contains("const case"), content="false")
   debug_inspect(extracted.contains("fn entry"), content="true")
@@ -322,7 +322,7 @@ test "declaration graph keeps break-if expression dependencies" {
     #|  }
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("const STOP"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -512,7 +512,7 @@ test "declaration graph keeps dependencies from recursively scoped blocks" {
     #|  return 0u;
     #|}
     #|
-  let extracted = extract_wgsl_module_items(source, ["entry"])
+  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }

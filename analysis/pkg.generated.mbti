@@ -10,25 +10,17 @@ import {
 // Values
 pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput raise @parser.WgslParseError
 
-pub fn build_wgsl_rename_plan_from_redirect_map(@hashmap.HashMap[String, String], WgslRenameRuleKind) -> WgslRenamePlan
+pub fn build_wgsl_global_rename_plan_from_redirect_map(@hashmap.HashMap[String, String]) -> WgslRenamePlan
+
+pub fn build_wgsl_reference_rename_plan_from_redirect_map(@hashmap.HashMap[String, String]) -> WgslRenamePlan
 
 pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
 
-pub fn collect_wgsl_named_declarations(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
-
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
-
-pub fn emit_wgsl_tree_shaken_source(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
 
 pub fn emit_wgsl_tree_shaken_source_strict(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
 
-pub fn extract_wgsl_module_item_origins(String, Array[String]) -> WgslModuleItemExtraction raise @parser.WgslParseError
-
 pub fn extract_wgsl_module_item_origins_strict(String, Array[String]) -> WgslModuleItemExtraction raise @parser.WgslParseError
-
-pub fn extract_wgsl_module_items(String, Array[String]) -> String raise @parser.WgslParseError
-
-pub fn extract_wgsl_module_items_strict(String, Array[String]) -> String raise @parser.WgslParseError
 
 pub fn invalid_wgsl_struct_member_identifier(String) -> String? raise @parser.WgslParseError
 
@@ -75,16 +67,6 @@ pub struct WgslModuleItemOrigin {
 
 pub struct WgslRenamePlan {
   // private fields
-}
-pub fn WgslRenamePlan::add(Self, String, String, WgslRenameRuleKind) -> Unit
-pub fn WgslRenamePlan::empty() -> Self
-pub fn WgslRenamePlan::is_empty(Self) -> Bool
-
-pub(all) enum WgslRenameRuleKind {
-  GlobalDeclarationAndReferences
-  ReferencesOnly
-  FunctionBodyReferencesOnly
-  FunctionLocal
 }
 
 pub struct WgslTreeShakenSource {

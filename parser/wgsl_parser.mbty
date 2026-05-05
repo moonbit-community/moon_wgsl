@@ -4,7 +4,6 @@
 %start raw_top_level_items
 %start import_targets
 %start directive_line
-%start directive_prefix_tail
 %start decl_head
 %start type_ref
 %start template_list
@@ -47,7 +46,6 @@
 %token<(String, Int, Int)> DIRECTIVE_TAIL
 %token<String> SOURCE_TEXT
 %token HASH "#"
-%token PREFIX
 %token AS "as"
 %token<Int> ARROW "->"
 %token LPAREN "("
@@ -221,13 +219,6 @@ directive_line -> @ast.WgslDirective
         tail_start,
         tail_end,
       )
-    }
-  ;
-
-directive_prefix_tail -> String
-  : "#" PREFIX tail=directive_tail EOF {
-      let (tail, _, _) = tail
-      tail
     }
   ;
 

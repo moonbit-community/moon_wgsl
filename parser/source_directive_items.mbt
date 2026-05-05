@@ -108,7 +108,7 @@ fn wgsl_source_directive_prefix_candidate(trimmed : String) -> Bool {
 }
 
 ///|
-pub fn parse_wgsl_source_directive_item_at(
+fn parse_wgsl_source_directive_item_at(
   line : String,
   source_start : Int,
 ) -> WgslSourceDirectiveItem {
@@ -127,13 +127,6 @@ pub fn parse_wgsl_source_directive_item_at(
     WgslSourceDirectiveItemKind::Source
   }
   WgslSourceDirectiveItem::new(kind, line, source_start)
-}
-
-///|
-pub fn parse_wgsl_source_directive_item(
-  line : String,
-) -> WgslSourceDirectiveItem {
-  parse_wgsl_source_directive_item_at(line, 0)
 }
 
 ///|

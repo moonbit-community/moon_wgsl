@@ -162,7 +162,7 @@ pub fn parse_glsl_version_directive(line : String) -> String? {
 }
 
 ///|
-pub fn wgsl_directive_line_required_tail_space(
+fn wgsl_directive_line_required_tail_space(
   line : String,
   name : String,
 ) -> Bool {

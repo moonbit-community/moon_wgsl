@@ -17,7 +17,7 @@ fn WgslShaderDefReference::new(
 }
 
 ///|
-pub fn parse_wgsl_shader_def_references_at(
+fn parse_wgsl_shader_def_references_at(
   line : String,
   source_start : Int,
 ) -> Array[WgslShaderDefReference] {

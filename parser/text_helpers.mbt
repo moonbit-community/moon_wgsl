@@ -112,7 +112,7 @@ fn tokenize_wgsl_directive_line(
 }
 
 ///|
-pub fn parse_wgsl_directive_line_at(
+fn parse_wgsl_directive_line_at(
   line : String,
   source_start : Int,
 ) -> WgslDirective? {
@@ -124,51 +124,8 @@ pub fn parse_wgsl_directive_line_at(
 }
 
 ///|
-pub fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
+fn parse_wgsl_directive_line(line : String) -> WgslDirective? {
   parse_wgsl_directive_line_at(line, 0)
 }
 
 ///|
-pub fn wgsl_directive_tail(line : String, kind : WgslDirectiveKind) -> String? {
-  match parse_wgsl_directive_line(line) {
-    Some(parsed) => if parsed.kind == kind { Some(parsed.tail) } else { None }
-    None => None
-  }
-}
-
-///|
-pub fn wgsl_directive_prefix_tail(
-  line : String,
-  kind : WgslDirectiveKind,
-) -> String? {
-  let prefix = match kind {
-    WgslDirectiveKind::Else => "else"
-    WgslDirectiveKind::Endif => "endif"
-    _ => return wgsl_directive_tail(line, kind)
-  }
-  let trimmed = wgsl_regex_trim_whitespace(line)
-  guard trimmed.length() > 0 && trimmed.code_unit_at(0).to_int() == 35 else {
-    return None
-  }
-  let mut start = wgsl_regex_skip_whitespace(trimmed, 1)
-  guard start + prefix.length() <= trimmed.length() else { return None }
-  guard has_ascii_keyword_at(trimmed, start, prefix) else { return None }
-  start = start + prefix.length()
-  let tail = trimmed[start:trimmed.length()].to_owned()
-  let tokens : Array[(Token, Int, Int)] = [
-    (Token::HASH, 0, 1),
-    (Token::PREFIX, start - prefix.length(), start),
-  ]
-  if tail != "" {
-    tokens.push(
-      (
-        Token::DIRECTIVE_TAIL((tail, start, trimmed.length())),
-        start,
-        trimmed.length(),
-      ),
-    )
-  }
-  tokens.push((Token::EOF, trimmed.length(), trimmed.length()))
-  let parsed = directive_prefix_tail(tokens) catch { _ => return None }
-  Some(parsed)
-}

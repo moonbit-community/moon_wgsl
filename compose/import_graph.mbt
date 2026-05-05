@@ -402,10 +402,7 @@ fn Composer::compose_wgsl_import_requests(
       }
       rewrite_wgsl_declarations_with_rename_plan(
         module_source,
-        build_wgsl_rename_plan_from_redirect_map(
-          request_rename_map,
-          GlobalDeclarationAndReferences,
-        ),
+        build_wgsl_global_rename_plan_from_redirect_map(request_rename_map),
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
@@ -540,7 +537,7 @@ fn finalize_wgsl_composed_source(
   }
   out = rewrite_wgsl_declarations_with_rename_plan(
     out,
-    build_wgsl_rename_plan_from_redirect_map(alias_redirect_map, ReferencesOnly),
+    build_wgsl_reference_rename_plan_from_redirect_map(alias_redirect_map),
   ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }

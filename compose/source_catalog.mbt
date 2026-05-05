@@ -75,7 +75,7 @@ fn record_wgsl_source_origins_from_source(
   rel_path : String,
   source : String,
 ) -> Unit {
-  let extraction = extract_wgsl_module_item_origins(source, []) catch {
+  let extraction = extract_wgsl_module_item_origins_strict(source, []) catch {
     _ => return
   }
   for origin in extraction.origins {
