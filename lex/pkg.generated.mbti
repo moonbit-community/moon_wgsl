@@ -6,8 +6,6 @@ import {
 }
 
 // Values
-pub fn naga_oil_raw_import_brace_balance_next(Int, String) -> Int
-
 pub fn replace_comments(String) -> String
 
 pub fn replace_comments_naga_oil(String) -> String

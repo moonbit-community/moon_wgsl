@@ -39,7 +39,6 @@ using @common {type WgslImportTarget}
 ///|
 using @lex {
   type WgslToken,
-  naga_oil_raw_import_brace_balance_next,
   replace_comments,
   replace_comments_naga_oil,
   source_lines,

@@ -101,22 +101,3 @@ pub fn split_last_identifier(text : String) -> (String, String)? {
   }
   Some((text[:found].to_owned(), text[found + 2:text.length()].to_owned()))
 }
-
-///|
-pub fn naga_oil_raw_import_brace_balance_next(
-  open_count : Int,
-  line : String,
-) -> Int {
-  let mut next = open_count
-  for i in 0..<line.length() {
-    let code = line.code_unit_at(i).to_int()
-    if code == 123 {
-      next = next + 1
-    } else if code == 125 {
-      if next > 0 {
-        next = next - 1
-      }
-    }
-  }
-  next
-}
