@@ -13,42 +13,15 @@
 // limitations under the License.
 
 ///|
-pub(all) struct WgslSemanticReferencePath {
+priv struct WgslSemanticReferencePath {
   text : String
   segments : Array[String]
-} derive(Eq, Debug)
+}
 
 ///|
-pub(all) struct WgslSemanticAliasBinding {
-  alias_name : String
-  module_path : String
-  rel_path : String
-} derive(Eq, Debug)
-
-///|
-pub(all) struct WgslSemanticResolvedReference {
-  reference_path : String
-  alias_name : String
-  module_path : String
-  rel_path : String
-  item_path : String
-  is_alias_reference : Bool
-} derive(Eq, Debug)
-
-///|
-pub(all) struct WgslSemanticImportGraph {
-  references : Array[WgslSemanticReferencePath]
-  aliases : Array[WgslSemanticAliasBinding]
-  resolved_references : Array[WgslSemanticResolvedReference]
-  targets : Array[WgslImportTarget]
-} derive(Eq, Debug)
-
-///|
-pub(all) struct WgslSemanticImportTargetPlan {
-  target : WgslImportTarget
+pub struct WgslSemanticImportTargetPlan {
   resolved_module : WgslResolvedImportModule
   module_alias : String
-  request_module_prefix : String
   requested_items : Array[String]
   import_full_module : Bool
   keep_requested_items : Bool
@@ -58,13 +31,13 @@ pub(all) struct WgslSemanticImportTargetPlan {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct WgslSemanticImportTargetPlans {
+pub struct WgslSemanticImportTargetPlans {
   plans : Array[WgslSemanticImportTargetPlan]
   unresolved_targets : Array[String]
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct WgslSemanticReachableDeclarations {
+pub struct WgslSemanticReachableDeclarations {
   included_names : Array[String]
   missing_root_items : Array[String]
 } derive(Eq, Debug)
@@ -100,7 +73,7 @@ fn semantic_import_targets_push_unique(
 }
 
 ///|
-pub fn wgsl_semantic_path_segments(path : String) -> Array[String] {
+fn wgsl_semantic_path_segments(path : String) -> Array[String] {
   let segments : Array[String] = []
   for raw_segment in path.trim().split("::") {
     let segment = raw_segment.trim().to_owned()
@@ -112,7 +85,7 @@ pub fn wgsl_semantic_path_segments(path : String) -> Array[String] {
 }
 
 ///|
-pub fn wgsl_semantic_reference_path_from_identifier(
+fn wgsl_semantic_reference_path_from_identifier(
   name : String,
 ) -> WgslSemanticReferencePath? {
   let segments = wgsl_semantic_path_segments(name)
@@ -124,7 +97,7 @@ pub fn wgsl_semantic_reference_path_from_identifier(
 }
 
 ///|
-pub fn collect_wgsl_semantic_reference_paths(
+fn collect_wgsl_semantic_reference_paths(
   source : String,
   paths : Array[WgslSemanticReferencePath],
 ) -> Unit raise WgslParseError {
@@ -253,7 +226,7 @@ pub fn collect_wgsl_semantic_reachable_declaration_names(
 }
 
 ///|
-pub fn wgsl_semantic_requested_item_name(
+fn wgsl_semantic_requested_item_name(
   raw_path : String,
   module_path : String,
 ) -> String {
@@ -275,7 +248,7 @@ pub fn wgsl_semantic_requested_item_name(
 }
 
 ///|
-pub fn split_last_wgsl_semantic_path(path : String) -> (String, String)? {
+fn split_last_wgsl_semantic_path(path : String) -> (String, String)? {
   let segments = wgsl_semantic_path_segments(path)
   if segments.length() < 2 {
     return None
@@ -296,7 +269,7 @@ pub fn wgsl_semantic_import_default_alias(module_path : String) -> String {
 }
 
 ///|
-pub fn wgsl_semantic_alias_requested_item_name(
+fn wgsl_semantic_alias_requested_item_name(
   reference_path : WgslSemanticReferencePath,
   alias_name : String,
 ) -> String {
@@ -318,7 +291,7 @@ pub fn wgsl_semantic_alias_requested_item_name(
 }
 
 ///|
-pub fn collect_wgsl_semantic_alias_requested_paths(
+fn collect_wgsl_semantic_alias_requested_paths(
   source : String,
   alias_name : String,
   requested_paths : Array[String],
@@ -337,7 +310,7 @@ pub fn collect_wgsl_semantic_alias_requested_paths(
 }
 
 ///|
-pub fn wgsl_semantic_source_uses_alias(
+fn wgsl_semantic_source_uses_alias(
   source : String,
   alias_name : String,
 ) -> Bool raise WgslParseError {
@@ -503,14 +476,10 @@ fn wgsl_semantic_collect_default_alias_plan_items(
 }
 
 ///|
-fn unresolved_wgsl_semantic_import_target_plan(
-  target : WgslImportTarget,
-) -> WgslSemanticImportTargetPlan {
+fn unresolved_wgsl_semantic_import_target_plan() -> WgslSemanticImportTargetPlan {
   WgslSemanticImportTargetPlan::{
-    target,
     resolved_module: WgslResolvedImportModule::{ module_path: "", rel_path: "" },
     module_alias: "",
-    request_module_prefix: target.raw_path,
     requested_items: [],
     import_full_module: false,
     keep_requested_items: false,
@@ -546,7 +515,7 @@ fn build_wgsl_semantic_import_target_plan(
       _ => alias_parse_failed = true
     }
     if alias_parse_failed || requested_items.length() > 0 {
-      return Some(unresolved_wgsl_semantic_import_target_plan(target))
+      return Some(unresolved_wgsl_semantic_import_target_plan())
     }
     return None
   }
@@ -557,7 +526,7 @@ fn build_wgsl_semantic_import_target_plan(
     return None
   }
   guard resolved_module_opt is Some(resolved_module) else {
-    return Some(unresolved_wgsl_semantic_import_target_plan(target))
+    return Some(unresolved_wgsl_semantic_import_target_plan())
   }
   let request_module_prefix = if target.alias_name == "" {
     resolved_module.module_path
@@ -603,10 +572,8 @@ fn build_wgsl_semantic_import_target_plan(
     }
   }
   Some(WgslSemanticImportTargetPlan::{
-    target,
     resolved_module,
     module_alias,
-    request_module_prefix,
     requested_items,
     import_full_module,
     keep_requested_items,
@@ -682,60 +649,3 @@ pub fn collect_wgsl_semantic_import_alias_redirects(
 }
 
 ///|
-pub fn build_wgsl_semantic_import_graph(
-  source : String,
-  current_rel_path : String,
-  registry : WgslSourceRegistry,
-  modules : @hashmap.HashMap[String, String],
-  aliases : Array[WgslSemanticAliasBinding],
-) -> WgslSemanticImportGraph raise WgslParseError {
-  let references : Array[WgslSemanticReferencePath] = []
-  let resolved_references : Array[WgslSemanticResolvedReference] = []
-  let targets : Array[WgslImportTarget] = []
-  collect_wgsl_semantic_reference_paths(source, references)
-  collect_wgsl_semantic_qualified_module_targets(
-    source, current_rel_path, registry, modules, targets,
-  )
-  for reference in references {
-    for binding in aliases {
-      let requested_item = wgsl_semantic_alias_requested_item_name(
-        reference,
-        binding.alias_name,
-      )
-      if requested_item != "" {
-        resolved_references.push(WgslSemanticResolvedReference::{
-          reference_path: reference.text,
-          alias_name: binding.alias_name,
-          module_path: binding.module_path,
-          rel_path: binding.rel_path,
-          item_path: requested_item,
-          is_alias_reference: true,
-        })
-      }
-    }
-    guard resolve_wgsl_semantic_import_module(
-        current_rel_path,
-        reference.text,
-        registry,
-        modules,
-      )
-      is Some(resolved_module) else {
-      continue
-    }
-    let requested_item = wgsl_semantic_requested_item_name(
-      reference.text,
-      resolved_module.module_path,
-    )
-    if requested_item != "" {
-      resolved_references.push(WgslSemanticResolvedReference::{
-        reference_path: reference.text,
-        alias_name: resolved_module.module_path,
-        module_path: resolved_module.module_path,
-        rel_path: resolved_module.rel_path,
-        item_path: requested_item,
-        is_alias_reference: false,
-      })
-    }
-  }
-  WgslSemanticImportGraph::{ references, aliases, resolved_references, targets }
-}

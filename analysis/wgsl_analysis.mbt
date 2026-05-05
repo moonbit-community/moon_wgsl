@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-pub struct WgslGraphBlock {
+priv struct WgslGraphBlock {
   name : String
   text : String
   start : Int
@@ -21,7 +21,7 @@ pub struct WgslGraphBlock {
 }
 
 ///|
-pub struct WgslDeclarationGraph {
+priv struct WgslDeclarationGraph {
   import_blocks : Array[WgslGraphBlock]
   declaration_blocks : Array[WgslGraphBlock]
 }
@@ -95,7 +95,7 @@ fn build_wgsl_declaration_graph_from_unit(
 }
 
 ///|
-pub fn build_wgsl_declaration_graph(
+fn build_wgsl_declaration_graph(
   source : String,
 ) -> WgslDeclarationGraph raise WgslParseError {
   build_wgsl_declaration_graph_from_unit(
@@ -104,7 +104,7 @@ pub fn build_wgsl_declaration_graph(
 }
 
 ///|
-pub fn build_wgsl_declaration_graph_strict(
+fn build_wgsl_declaration_graph_strict(
   source : String,
 ) -> WgslDeclarationGraph raise WgslParseError {
   build_wgsl_declaration_graph(source)

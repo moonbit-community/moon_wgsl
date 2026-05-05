@@ -2,7 +2,6 @@
 package "Milky2018/moon_wgsl/analysis"
 
 import {
-  "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/hashmap",
@@ -10,10 +9,6 @@ import {
 
 // Values
 pub fn apply_wgsl_virtual_overrides_raw(String, @hashmap.HashMap[String, String]) -> WgslVirtualOverrideOutput raise @parser.WgslParseError
-
-pub fn build_wgsl_declaration_graph(String) -> WgslDeclarationGraph raise @parser.WgslParseError
-
-pub fn build_wgsl_declaration_graph_strict(String) -> WgslDeclarationGraph raise @parser.WgslParseError
 
 pub fn build_wgsl_rename_plan_from_redirect_map(@hashmap.HashMap[String, String], WgslRenameRuleKind) -> WgslRenamePlan
 
@@ -60,23 +55,11 @@ pub fn wgsl_source_contains_virtual_directive(String) -> Bool raise @parser.Wgsl
 // Errors
 
 // Types and methods
-pub struct WgslDeclarationGraph {
-  import_blocks : Array[WgslGraphBlock]
-  declaration_blocks : Array[WgslGraphBlock]
-}
-
 pub struct WgslEmittedDeclaration {
   name : String
   text : String
   generated_start : Int
   generated_end : Int
-}
-
-pub struct WgslGraphBlock {
-  name : String
-  text : String
-  start : Int
-  data : @ast.WgslGlobalDeclData
 }
 
 pub struct WgslModuleItemExtraction {
