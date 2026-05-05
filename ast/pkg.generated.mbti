@@ -202,8 +202,8 @@ pub struct WgslGlobalVariable {
 pub fn WgslGlobalVariable::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslGlobalVariable::initializer_ref(Self) -> WgslExprRef?
 pub fn WgslGlobalVariable::name(Self) -> WgslIdent
-pub fn WgslGlobalVariable::new(Array[WgslAttribute], WgslIdent, Array[String], WgslTypeRef?, WgslExprRef?) -> Self
-pub fn WgslGlobalVariable::template_list(Self) -> Array[String]
+pub fn WgslGlobalVariable::new(Array[WgslAttribute], WgslIdent, Array[WgslTypeRef], WgslTypeRef?, WgslExprRef?) -> Self
+pub fn WgslGlobalVariable::template_list(Self) -> Array[WgslTypeRef]
 pub fn WgslGlobalVariable::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslIdent {
@@ -220,8 +220,8 @@ pub struct WgslLocalDeclaration {
 pub fn WgslLocalDeclaration::initializer_ref(Self) -> WgslExprRef?
 pub fn WgslLocalDeclaration::kind(Self) -> String
 pub fn WgslLocalDeclaration::name(Self) -> WgslIdent
-pub fn WgslLocalDeclaration::new(String, WgslIdent, Array[String], WgslTypeRef?, WgslExprRef?) -> Self
-pub fn WgslLocalDeclaration::template_list(Self) -> Array[String]
+pub fn WgslLocalDeclaration::new(String, WgslIdent, Array[WgslTypeRef], WgslTypeRef?, WgslExprRef?) -> Self
+pub fn WgslLocalDeclaration::template_list(Self) -> Array[WgslTypeRef]
 pub fn WgslLocalDeclaration::ty_ref(Self) -> WgslTypeRef?
 
 pub struct WgslOverride {

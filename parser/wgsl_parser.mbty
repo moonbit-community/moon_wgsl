@@ -554,16 +554,16 @@ optional_comma -> Unit
   | "," { () }
   ;
 
-template_list -> Array[String]
+template_list -> Array[@ast.WgslTypeRef]
   : TYPE_LT args=template_args TYPE_GT EOF { args }
   ;
 
-template_args -> Array[String]
+template_args -> Array[@ast.WgslTypeRef]
   : value=type_expr {
-      [value.canonical_text()]
+      [value]
     }
   | args=template_args "," value=type_expr {
-      args.push(value.canonical_text())
+      args.push(value)
       args
     }
   ;

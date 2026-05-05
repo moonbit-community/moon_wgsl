@@ -164,11 +164,6 @@ priv suberror YYObj_Unit {
 }
 
 ///|
-priv suberror YYObj_Array_String_ {
-  YYObj_Array_String_(Array[String])
-}
-
-///|
 priv suberror YYObj_Array_WgslRawTopLevelItem_ {
   YYObj_Array_WgslRawTopLevelItem_(Array[WgslRawTopLevelItem])
 }
@@ -1229,8 +1224,8 @@ fn yy_action_29(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 ///|
 fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[1].0 is YYObj_Array_String_(args)
-  YYObj_Array_String_(
+  guard _args[1].0 is YYObj_Array__ast_WgslTypeRef_(args)
+  YYObj_Array__ast_WgslTypeRef_(
     {
       ()
       args
@@ -1240,18 +1235,18 @@ fn yy_action_30(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 565|    args=template_args "," value=type_expr {
-// 566|      args.push(value.canonical_text())
+// 566|      args.push(value)
 // 567|      args
 // 568|    }
 
 ///|
 fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
-  guard _args[0].0 is YYObj_Array_String_(args)
+  guard _args[0].0 is YYObj_Array__ast_WgslTypeRef_(args)
   guard _args[2].0 is YYObj__ast_WgslTypeRef(value)
-  YYObj_Array_String_(
+  YYObj_Array__ast_WgslTypeRef_(
     {
       ()
-      args.push(value.canonical_text())
+      args.push(value)
       args
     },
   )
@@ -1259,16 +1254,16 @@ fn yy_action_31(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj 
 
 // file:///./wgsl_parser.mbty
 // 562|    value=type_expr {
-// 563|      [value.canonical_text()]
+// 563|      [value]
 // 564|    }
 
 ///|
 fn yy_action_32(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   guard _args[0].0 is YYObj__ast_WgslTypeRef(value)
-  YYObj_Array_String_(
+  YYObj_Array__ast_WgslTypeRef_(
     {
       ()
-      [value.canonical_text()]
+      [value]
     },
   )
 }
@@ -4145,12 +4140,12 @@ fn type_ref(
 fn template_list(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
-) -> Array[String] raise ParseError {
+) -> Array[@ast.WgslTypeRef] raise ParseError {
   yy_parse(
     tokens,
     yy_state_86,
     it => {
-      guard it is YYObj_Array_String_(result)
+      guard it is YYObj_Array__ast_WgslTypeRef_(result)
       result
     },
     initial_pos?,

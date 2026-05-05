@@ -1182,7 +1182,9 @@ fn WgslDeclParser::collect_template_list_fragment(
 }
 
 ///|
-fn WgslDeclParser::parse_template_list(self : WgslDeclParser) -> Array[String] {
+fn WgslDeclParser::parse_template_list(
+  self : WgslDeclParser,
+) -> Array[WgslTypeRef] {
   match self.collect_template_list_fragment() {
     Some(fragment) => {
       let parsed = template_list(

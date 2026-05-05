@@ -139,7 +139,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected global var payload")
   }
   debug_inspect(global.attributes().length(), content="2")
-  debug_inspect(global.template_list()[0], content="\"uniform\"")
+  debug_inspect(global.template_list()[0].name(), content="\"uniform\"")
   debug_inspect(global.name().name(), content="\"globals\"")
   guard global.ty_ref() is Some(global_ty) else {
     abort("expected global type ref")
@@ -349,18 +349,18 @@ test "WGSL variable template lists are parsed by grammar" {
     abort("expected values global")
   }
   debug_inspect(values.template_list().length(), content="2")
-  debug_inspect(values.template_list()[0], content="\"storage\"")
-  debug_inspect(values.template_list()[1], content="\"read_write\"")
+  debug_inspect(values.template_list()[0].name(), content="\"storage\"")
+  debug_inspect(values.template_list()[1].name(), content="\"read_write\"")
   guard unit.declarations()[1].data()
     is WgslGlobalDeclData::GlobalVariable(image) else {
     abort("expected image global")
   }
   debug_inspect(image.template_list().length(), content="2")
   debug_inspect(
-    image.template_list()[0],
+    image.template_list()[0].canonical_text(),
     content="\"texture_storage_2d<rgba8unorm>\"",
   )
-  debug_inspect(image.template_list()[1], content="\"write\"")
+  debug_inspect(image.template_list()[1].name(), content="\"write\"")
 }
 
 ///|
@@ -671,10 +671,8 @@ test "WGSL function payload exposes statement AST spans" {
     content="\"local\"",
   )
   debug_inspect(
-    function.body().statements()[0].local_bindings()[0].template_list(),
-    content=(
-      #|["function"]
-    ),
+    function.body().statements()[0].local_bindings()[0].template_list()[0].name(),
+    content="\"function\"",
   )
   guard function.body().statements()[0].local_bindings()[0].ty_ref()
     is Some(local_ty) else {

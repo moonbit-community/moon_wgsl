@@ -25,6 +25,15 @@ fn wgsl_string_list_key(items : Array[String]) -> String {
 }
 
 ///|
+fn wgsl_type_ref_list_key(items : Array[WgslTypeRef]) -> String {
+  let keys : Array[String] = []
+  for item in items {
+    keys.push(wgsl_type_ref_key(Some(item)))
+  }
+  keys.join("|")
+}
+
+///|
 fn wgsl_attribute_key(attribute : WgslAttribute) -> String {
   let argument_key = match attribute.arguments_ref() {
     Some(expr) => wgsl_expr_ref_key(expr)
@@ -101,7 +110,7 @@ fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
 
 ///|
 fn wgsl_local_binding_key(binding : WgslLocalDeclaration) -> String {
-  "\{binding.kind()}:\{binding.name().name()}<\{wgsl_string_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
+  "\{binding.kind()}:\{binding.name().name()}<\{wgsl_type_ref_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
 }
 
 ///|
@@ -182,7 +191,7 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
       "fn:\{wgsl_attributes_key(function.attributes())}:\{function.qualifier()}:\{function.name().name()}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body())}}"
     }
     WgslGlobalDeclData::GlobalVariable(global) =>
-      "global:\{wgsl_attributes_key(global.attributes())}:\{global.name().name()}:\{wgsl_string_list_key(global.template_list())}:\{wgsl_type_ref_key(global.ty_ref())}=\{wgsl_optional_expr_ref_key(global.initializer_ref())}"
+      "global:\{wgsl_attributes_key(global.attributes())}:\{global.name().name()}:\{wgsl_type_ref_list_key(global.template_list())}:\{wgsl_type_ref_key(global.ty_ref())}=\{wgsl_optional_expr_ref_key(global.initializer_ref())}"
     WgslGlobalDeclData::Const(const_decl) =>
       "const:\{const_decl.name().name()}:\{wgsl_type_ref_key(const_decl.ty_ref())}=\{wgsl_optional_expr_ref_key(const_decl.initializer_ref())}"
     WgslGlobalDeclData::Override(override_decl) =>

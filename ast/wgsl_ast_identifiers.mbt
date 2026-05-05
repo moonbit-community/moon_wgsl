@@ -180,6 +180,9 @@ fn collect_wgsl_local_binding_identifier_nodes_with_scope(
   active_local_names : Array[String],
   nodes : Array[WgslIdent],
 ) -> Unit {
+  for argument in binding.template_list() {
+    collect_wgsl_type_ref_identifier_nodes(Some(argument), nodes)
+  }
   collect_wgsl_type_ref_identifier_nodes(binding.ty_ref(), nodes)
   collect_wgsl_expr_ref_identifier_nodes_with_scope(
     binding.initializer_ref(),
@@ -292,6 +295,9 @@ pub fn collect_wgsl_decl_identifier_nodes(
     }
     WgslGlobalDeclData::GlobalVariable(global) => {
       collect_wgsl_attribute_identifier_nodes(global.attributes(), nodes)
+      for argument in global.template_list() {
+        collect_wgsl_type_ref_identifier_nodes(Some(argument), nodes)
+      }
       collect_wgsl_type_ref_identifier_nodes(global.ty_ref(), nodes)
       collect_wgsl_expr_ref_identifier_nodes(global.initializer_ref(), nodes)
     }

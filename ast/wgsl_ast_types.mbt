@@ -502,7 +502,7 @@ pub(all) enum WgslStatementKind {
 pub struct WgslLocalDeclaration {
   priv kind : String
   priv name : WgslIdent
-  priv template_list : Array[String]
+  priv template_list : Array[WgslTypeRef]
   priv ty_ref : WgslTypeRef?
   priv initializer_ref : WgslExprRef?
 } derive(Debug)
@@ -511,7 +511,7 @@ pub struct WgslLocalDeclaration {
 pub fn WgslLocalDeclaration::new(
   kind : String,
   name : WgslIdent,
-  template_list : Array[String],
+  template_list : Array[WgslTypeRef],
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslLocalDeclaration {
@@ -531,7 +531,7 @@ pub fn WgslLocalDeclaration::name(self : WgslLocalDeclaration) -> WgslIdent {
 ///|
 pub fn WgslLocalDeclaration::template_list(
   self : WgslLocalDeclaration,
-) -> Array[String] {
+) -> Array[WgslTypeRef] {
   self.template_list.copy()
 }
 
@@ -912,7 +912,7 @@ pub fn WgslStruct::members(self : WgslStruct) -> Array[WgslStructMember] {
 pub struct WgslGlobalVariable {
   priv attributes : Array[WgslAttribute]
   priv name : WgslIdent
-  priv template_list : Array[String]
+  priv template_list : Array[WgslTypeRef]
   priv ty_ref : WgslTypeRef?
   priv initializer_ref : WgslExprRef?
 } derive(Debug)
@@ -921,7 +921,7 @@ pub struct WgslGlobalVariable {
 pub fn WgslGlobalVariable::new(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
-  template_list : Array[String],
+  template_list : Array[WgslTypeRef],
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslGlobalVariable {
@@ -949,7 +949,7 @@ pub fn WgslGlobalVariable::name(self : WgslGlobalVariable) -> WgslIdent {
 ///|
 pub fn WgslGlobalVariable::template_list(
   self : WgslGlobalVariable,
-) -> Array[String] {
+) -> Array[WgslTypeRef] {
   self.template_list.copy()
 }
 
