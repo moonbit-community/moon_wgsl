@@ -81,7 +81,7 @@ fn split_define_name_and_value(text : String) -> (String, String) {
 }
 
 ///|
-pub fn extract_wgsl_directives(
+fn extract_wgsl_directives(
   source : String,
 ) -> (String, WgslDirectives) raise MetadataError {
   let directives = WgslDirectives::default()

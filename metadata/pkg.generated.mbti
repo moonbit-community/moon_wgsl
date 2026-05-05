@@ -8,8 +8,6 @@ import {
 }
 
 // Values
-pub fn extract_wgsl_directives(String) -> (String, @common.WgslDirectives) raise MetadataError
-
 pub fn get_preprocessor_metadata(String, allow_defines? : Bool) -> @common.PreprocessorMetaData raise MetadataError
 
 pub fn wgsl_source_define_import_path(String) -> String?
