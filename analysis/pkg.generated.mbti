@@ -49,28 +49,32 @@ pub suberror WgslVirtualOverrideError {
 
 // Types and methods
 pub struct WgslEmittedDeclaration {
-  name : String
-  text : String
-  generated_start : Int
-  generated_end : Int
+  // private fields
 }
+pub fn WgslEmittedDeclaration::generated_end(Self) -> Int
+pub fn WgslEmittedDeclaration::generated_start(Self) -> Int
+pub fn WgslEmittedDeclaration::name(Self) -> String
+pub fn WgslEmittedDeclaration::text(Self) -> String
 
 pub struct WgslModuleItemExtraction {
-  source : String
-  origins : Array[WgslModuleItemOrigin]
+  // private fields
 }
+pub fn WgslModuleItemExtraction::origins(Self) -> Array[WgslModuleItemOrigin]
+pub fn WgslModuleItemExtraction::source(Self) -> String
 
 pub struct WgslModuleItemOrigin {
-  name : String
-  source_start : Int
-  source_end : Int
+  // private fields
 }
+pub fn WgslModuleItemOrigin::name(Self) -> String
+pub fn WgslModuleItemOrigin::source_end(Self) -> Int
+pub fn WgslModuleItemOrigin::source_start(Self) -> Int
 
 pub struct WgslTreeShakenSource {
-  source : String
-  declarations : Array[WgslEmittedDeclaration]
-  missing_root_items : Array[String]
+  // private fields
 }
+pub fn WgslTreeShakenSource::declarations(Self) -> Array[WgslEmittedDeclaration]
+pub fn WgslTreeShakenSource::missing_root_items(Self) -> Array[String]
+pub fn WgslTreeShakenSource::source(Self) -> String
 
 // Type aliases
 

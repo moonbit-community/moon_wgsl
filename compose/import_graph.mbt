@@ -10,11 +10,11 @@ fn record_wgsl_nested_flattened_item_names(
   declarations : Array[WgslEmittedDeclaration],
 ) -> Unit {
   for declaration in declarations {
-    let generated_name = declaration.name
+    let generated_name = declaration.name()
     if generated_name == "" {
       continue
     }
-    let declaration_text = declaration.text.trim()
+    let declaration_text = declaration.text().trim()
     if !(declaration_text.has_prefix("struct ") ||
       declaration_text.has_prefix("alias ")) {
       continue
@@ -358,7 +358,7 @@ fn Composer::compose_wgsl_import_requests(
       )
       self.preprocess_wgsl_source_with_path(
         request.rel_path,
-        extraction.source,
+        extraction.source(),
         session,
         Some(importer_defs),
         alias_redirects,
@@ -436,9 +436,10 @@ fn Composer::compose_wgsl_import_requests(
     record_wgsl_nested_flattened_item_names(session, final_declarations)
     if rename_map.is_empty() {
       for declaration in final_declarations {
+        let declaration_name = declaration.name()
         session.imported_item_names.set(
-          wgsl_imported_item_name_key(request.rel_path, "", declaration.name),
-          declaration.name,
+          wgsl_imported_item_name_key(request.rel_path, "", declaration_name),
+          declaration_name,
         )
       }
     } else {
@@ -479,8 +480,9 @@ fn collect_wgsl_live_alias_redirects(
     error => raise composer_error_from_wgsl_parse_error(error)
   }
   for declaration in declarations {
-    if declaration.name != "" {
-      declared_names.set(declaration.name, true)
+    let declaration_name = declaration.name()
+    if declaration_name != "" {
+      declared_names.set(declaration_name, true)
     }
   }
   let live_redirects : Array[WgslSymbolRedirect] = []

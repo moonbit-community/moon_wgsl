@@ -38,9 +38,9 @@ fn build_prepared_wgsl_source_catalog(
       catalog_entries.push(
         WgslSourceCatalogEntry::new(
           source_file.rel_path,
-          declaration.name,
-          declaration.generated_start,
-          declaration.generated_end,
+          declaration.name(),
+          declaration.generated_start(),
+          declaration.generated_end(),
         ),
       )
     }
@@ -77,14 +77,14 @@ fn record_wgsl_source_origins_from_source(
   let extraction = extract_wgsl_module_item_origins_strict(source, []) catch {
     _ => return
   }
-  for origin in extraction.origins {
+  for origin in extraction.origins() {
     push_wgsl_source_origin(
       session,
-      origin.name,
+      origin.name(),
       rel_path,
-      origin.name,
-      origin.source_start,
-      origin.source_end,
+      origin.name(),
+      origin.source_start(),
+      origin.source_end(),
     )
   }
 }
@@ -95,14 +95,14 @@ fn record_wgsl_source_origins_from_extraction(
   rel_path : String,
   extraction : WgslModuleItemExtraction,
 ) -> Unit {
-  for origin in extraction.origins {
+  for origin in extraction.origins() {
     push_wgsl_source_origin(
       session,
-      origin.name,
+      origin.name(),
       rel_path,
-      origin.name,
-      origin.source_start,
-      origin.source_end,
+      origin.name(),
+      origin.source_start(),
+      origin.source_end(),
     )
   }
 }

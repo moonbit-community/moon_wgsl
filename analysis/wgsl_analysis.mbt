@@ -28,30 +28,102 @@ priv struct WgslDeclarationGraph {
 
 ///|
 pub struct WgslEmittedDeclaration {
-  name : String
-  text : String
-  generated_start : Int
-  generated_end : Int
+  priv name : String
+  priv text : String
+  priv generated_start : Int
+  priv generated_end : Int
 }
 
 ///|
 pub struct WgslTreeShakenSource {
-  source : String
-  declarations : Array[WgslEmittedDeclaration]
-  missing_root_items : Array[String]
+  priv source : String
+  priv declarations : Array[WgslEmittedDeclaration]
+  priv missing_root_items : Array[String]
 }
 
 ///|
 pub struct WgslModuleItemOrigin {
-  name : String
-  source_start : Int
-  source_end : Int
+  priv name : String
+  priv source_start : Int
+  priv source_end : Int
 }
 
 ///|
 pub struct WgslModuleItemExtraction {
-  source : String
-  origins : Array[WgslModuleItemOrigin]
+  priv source : String
+  priv origins : Array[WgslModuleItemOrigin]
+}
+
+///|
+pub fn WgslEmittedDeclaration::name(self : WgslEmittedDeclaration) -> String {
+  self.name
+}
+
+///|
+pub fn WgslEmittedDeclaration::text(self : WgslEmittedDeclaration) -> String {
+  self.text
+}
+
+///|
+pub fn WgslEmittedDeclaration::generated_start(
+  self : WgslEmittedDeclaration,
+) -> Int {
+  self.generated_start
+}
+
+///|
+pub fn WgslEmittedDeclaration::generated_end(
+  self : WgslEmittedDeclaration,
+) -> Int {
+  self.generated_end
+}
+
+///|
+pub fn WgslTreeShakenSource::source(self : WgslTreeShakenSource) -> String {
+  self.source
+}
+
+///|
+pub fn WgslTreeShakenSource::declarations(
+  self : WgslTreeShakenSource,
+) -> Array[WgslEmittedDeclaration] {
+  self.declarations.copy()
+}
+
+///|
+pub fn WgslTreeShakenSource::missing_root_items(
+  self : WgslTreeShakenSource,
+) -> Array[String] {
+  self.missing_root_items.copy()
+}
+
+///|
+pub fn WgslModuleItemOrigin::name(self : WgslModuleItemOrigin) -> String {
+  self.name
+}
+
+///|
+pub fn WgslModuleItemOrigin::source_start(self : WgslModuleItemOrigin) -> Int {
+  self.source_start
+}
+
+///|
+pub fn WgslModuleItemOrigin::source_end(self : WgslModuleItemOrigin) -> Int {
+  self.source_end
+}
+
+///|
+pub fn WgslModuleItemExtraction::source(
+  self : WgslModuleItemExtraction,
+) -> String {
+  self.source
+}
+
+///|
+pub fn WgslModuleItemExtraction::origins(
+  self : WgslModuleItemExtraction,
+) -> Array[WgslModuleItemOrigin] {
+  self.origins.copy()
 }
 
 ///|
@@ -195,7 +267,7 @@ pub fn emit_wgsl_tree_shaken_source_strict(
 pub fn collect_wgsl_named_declarations_strict(
   source : String,
 ) -> Array[WgslEmittedDeclaration] raise WgslParseError {
-  emit_wgsl_tree_shaken_source_strict(source, []).declarations
+  emit_wgsl_tree_shaken_source_strict(source, []).declarations()
 }
 
 ///|

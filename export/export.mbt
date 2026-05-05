@@ -75,13 +75,13 @@ fn match_wgsl_source_catalog_entry(
   declaration : WgslEmittedDeclaration,
   diagnostics : Array[WgslDiagnostic],
 ) -> WgslSourceCatalogEntry? {
-  guard catalog.get(declaration.name) is Some(entries) else {
+  guard catalog.get(declaration.name()) is Some(entries) else {
     push_wgsl_diagnostic(
       diagnostics,
       WgslDiagnosticSeverity::Warn,
       "source map entry could not be resolved for declaration",
       None,
-      Some(declaration.name),
+      Some(declaration.name()),
     )
     return None
   }
@@ -90,8 +90,8 @@ fn match_wgsl_source_catalog_entry(
   }
   let span_matches : Array[WgslSourceCatalogEntry] = []
   for entry in entries {
-    if entry.source_start == declaration.generated_start &&
-      entry.source_end == declaration.generated_end {
+    if entry.source_start == declaration.generated_start() &&
+      entry.source_end == declaration.generated_end() {
       span_matches.push(entry)
     }
   }
@@ -103,7 +103,7 @@ fn match_wgsl_source_catalog_entry(
     WgslDiagnosticSeverity::Warn,
     "source map entry is ambiguous for declaration",
     None,
-    Some(declaration.name),
+    Some(declaration.name()),
   )
   None
 }
@@ -114,13 +114,13 @@ fn match_wgsl_source_origin_entry(
   declaration : WgslEmittedDeclaration,
   diagnostics : Array[WgslDiagnostic],
 ) -> WgslSourceOriginEntry? {
-  guard origins.get(declaration.name) is Some(entries) else {
+  guard origins.get(declaration.name()) is Some(entries) else {
     push_wgsl_diagnostic(
       diagnostics,
       WgslDiagnosticSeverity::Warn,
       "source origin entry could not be resolved for declaration",
       None,
-      Some(declaration.name),
+      Some(declaration.name()),
     )
     return None
   }
@@ -132,7 +132,7 @@ fn match_wgsl_source_origin_entry(
     WgslDiagnosticSeverity::Warn,
     "source origin entry is ambiguous for declaration",
     None,
-    Some(declaration.name),
+    Some(declaration.name()),
   )
   None
 }
@@ -144,7 +144,7 @@ fn serialize_wgsl_export_output(
   source_origins : Array[WgslSourceOriginEntry],
 ) -> WgslExportOutput {
   let diagnostics : Array[WgslDiagnostic] = []
-  for missing_root in tree_shaken.missing_root_items {
+  for missing_root in tree_shaken.missing_root_items() {
     push_wgsl_diagnostic(
       diagnostics,
       WgslDiagnosticSeverity::Warn,
@@ -157,7 +157,7 @@ fn serialize_wgsl_export_output(
   let origins = build_wgsl_source_origin_index(source_origins)
   let source_map : Array[WgslSourceMapEntry] = []
 
-  for declaration in tree_shaken.declarations {
+  for declaration in tree_shaken.declarations() {
     if match_wgsl_source_origin_entry(origins, declaration, diagnostics)
       is Some(origin) {
       source_map.push(
@@ -169,13 +169,13 @@ fn serialize_wgsl_export_output(
     } else if match_wgsl_source_catalog_entry(catalog, declaration, diagnostics)
       is Some(entry) {
       source_map.push(
-        WgslSourceMapEntry::new(entry.rel_path, Some(declaration.name)),
+        WgslSourceMapEntry::new(entry.rel_path, Some(declaration.name())),
       )
     }
   }
 
   WgslExportOutput::new(
-    tree_shaken.source,
+    tree_shaken.source(),
     source_catalog,
     source_origins,
     source_map,
