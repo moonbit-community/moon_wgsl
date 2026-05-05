@@ -425,10 +425,19 @@ fn collect_wgsl_live_alias_redirects(
   for scoped_redirect in alias_redirects {
     let redirect = scoped_redirect.redirect
     let to_name = redirect.to_name.trim().to_owned()
+    let source_contains_cached_alias = if scoped_redirect.scope ==
+      CachedQualifiedAliasReference {
+      wgsl_semantic_source_contains_reference_path(source, redirect.from_name) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+    } else {
+      false
+    }
     if to_name != "" &&
       (
         declared_names.contains(to_name) ||
-        scoped_redirect.scope == UnqualifiedItemBinding
+        scoped_redirect.scope == UnqualifiedItemBinding ||
+        source_contains_cached_alias
       ) {
       live_redirects.push(redirect)
     }

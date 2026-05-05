@@ -29,6 +29,24 @@ test "semantic alias graph resolves global binding member access" {
 }
 
 ///|
+test "semantic reference matcher includes address-of alias member access" {
+  let source =
+    #|fn point_light(light_id: u32) -> u32 {
+    #|  let light = &view_bindings::clustered_lights.data[light_id];
+    #|  return (*light).flags;
+    #|}
+    #|
+  debug_inspect(
+    wgsl_semantic_source_contains_reference_path(
+      source, "view_bindings::clustered_lights",
+    ) catch {
+      _ => abort("expected semantic matcher to parse valid WGSL")
+    },
+    content="true",
+  )
+}
+
+///|
 test "semantic alias graph resolves nested module alias paths" {
   let source =
     #|fn read() -> u32 {

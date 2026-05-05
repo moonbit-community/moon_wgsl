@@ -131,6 +131,7 @@ priv struct WgslComposeSession {
 ///|
 priv enum WgslAliasRedirectScope {
   QualifiedAliasReference
+  CachedQualifiedAliasReference
   UnqualifiedItemBinding
 } derive(Eq)
 

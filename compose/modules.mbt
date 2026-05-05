@@ -99,7 +99,7 @@ fn collect_wgsl_cached_import_redirects(
     let scope = if alias_name == "" {
       UnqualifiedItemBinding
     } else {
-      QualifiedAliasReference
+      CachedQualifiedAliasReference
     }
     redirects.push(WgslScopedAliasRedirect::{
       redirect: WgslSymbolRedirect::{ from_name, to_name: imported_name },

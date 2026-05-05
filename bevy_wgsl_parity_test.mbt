@@ -86,6 +86,38 @@ test "naga_oil parity: import-only Bevy mesh root tree-shakes to empty" {
 }
 
 ///|
+test "naga_oil parity: Bevy PBR fragment resolves aliased clustered lights" {
+  let source = bevy_parity_compose(
+    "bevy_pbr/src/render/pbr.wgsl",
+    bevy_parity_forward_defines(),
+  )
+  debug_inspect(
+    source.contains("view_bindings::clustered_lights"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("view_bindings__clustered_lights"),
+    content="true",
+  )
+}
+
+///|
+test "naga_oil parity: Bevy PBR functions resolves local view bindings alias" {
+  let source = bevy_parity_compose(
+    "bevy_pbr/src/render/pbr_functions.wgsl",
+    bevy_parity_forward_defines(),
+  )
+  debug_inspect(
+    source.contains("view_bindings::clustered_lights"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("view_bindings__clustered_lights"),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
