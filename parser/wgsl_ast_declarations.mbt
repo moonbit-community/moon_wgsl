@@ -2,12 +2,12 @@
 fn WgslDeclParser::parse_function(
   self : WgslDeclParser,
   attributes : Array[WgslAttribute],
-  qualifier : String,
+  qualifier : WgslFunctionQualifier?,
   qualifier_start : Int?,
   qualifier_end : Int?,
   fn_keyword : WgslIdent,
 ) -> WgslFunction? {
-  let name = if qualifier == "override" {
+  let name = if qualifier == Some(WgslFunctionQualifier::Override) {
     match self.consume_path_ident_node() {
       Some(value) => value
       None => return None

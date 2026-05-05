@@ -12,6 +12,7 @@ using @ast {
   type WgslExprTokenKind,
   type WgslFunction,
   type WgslFunctionArgument,
+  type WgslFunctionQualifier,
   type WgslFunctionResult,
   type WgslGlobalDecl,
   type WgslGlobalDeclData,

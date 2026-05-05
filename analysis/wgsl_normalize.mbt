@@ -118,6 +118,15 @@ fn wgsl_local_declaration_kind_key(kind : WgslLocalDeclarationKind) -> String {
 }
 
 ///|
+fn wgsl_function_qualifier_key(qualifier : WgslFunctionQualifier?) -> String {
+  match qualifier {
+    Some(Virtual) => "virtual"
+    Some(Override) => "override"
+    None => ""
+  }
+}
+
+///|
 fn wgsl_local_binding_key(binding : WgslLocalDeclaration) -> String {
   "\{wgsl_local_declaration_kind_key(binding.kind())}:\{binding.name().name()}<\{wgsl_type_ref_list_key(binding.template_list())}>:\{wgsl_type_ref_key(binding.ty_ref())}=\{wgsl_optional_expr_ref_key(binding.initializer_ref())}"
 }
@@ -197,7 +206,7 @@ fn wgsl_declaration_structural_key(data : WgslGlobalDeclData) -> String {
           "\{wgsl_attributes_key(value.attributes())}:\{wgsl_type_ref_key(value.ty_ref())}"
         None => ""
       }
-      "fn:\{wgsl_attributes_key(function.attributes())}:\{function.qualifier()}:\{function.name().name()}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body())}}"
+      "fn:\{wgsl_attributes_key(function.attributes())}:\{wgsl_function_qualifier_key(function.qualifier())}:\{function.name().name()}(\{wgsl_string_list_key(args)})->\{result}{\{wgsl_block_key(function.body())}}"
     }
     WgslGlobalDeclData::GlobalVariable(global) =>
       "global:\{wgsl_attributes_key(global.attributes())}:\{global.name().name()}:\{wgsl_type_ref_list_key(global.template_list())}:\{wgsl_type_ref_key(global.ty_ref())}=\{wgsl_optional_expr_ref_key(global.initializer_ref())}"

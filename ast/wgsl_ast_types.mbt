@@ -725,9 +725,15 @@ pub fn WgslBlock::statements(self : WgslBlock) -> Array[WgslStatement] {
 }
 
 ///|
+pub(all) enum WgslFunctionQualifier {
+  Virtual
+  Override
+} derive(Eq, Debug)
+
+///|
 pub struct WgslFunction {
   priv attributes : Array[WgslAttribute]
-  priv qualifier : String
+  priv qualifier : WgslFunctionQualifier?
   priv qualifier_start : Int?
   priv qualifier_end : Int?
   priv fn_start : Int
@@ -741,7 +747,7 @@ pub struct WgslFunction {
 ///|
 pub fn WgslFunction::new(
   attributes : Array[WgslAttribute],
-  qualifier : String,
+  qualifier : WgslFunctionQualifier?,
   qualifier_start : Int?,
   qualifier_end : Int?,
   fn_start : Int,
@@ -771,7 +777,7 @@ pub fn WgslFunction::attributes(self : WgslFunction) -> Array[WgslAttribute] {
 }
 
 ///|
-pub fn WgslFunction::qualifier(self : WgslFunction) -> String {
+pub fn WgslFunction::qualifier(self : WgslFunction) -> WgslFunctionQualifier? {
   self.qualifier
 }
 

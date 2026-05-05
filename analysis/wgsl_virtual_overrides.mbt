@@ -47,7 +47,8 @@ fn wgsl_graph_block_function(block : WgslGraphBlock) -> WgslFunction? {
 ///|
 fn wgsl_graph_block_is_virtual_fn(block : WgslGraphBlock) -> Bool {
   match wgsl_graph_block_function(block) {
-    Some(function) => function.qualifier() == "virtual"
+    Some(function) =>
+      function.qualifier() == Some(WgslFunctionQualifier::Virtual)
     None => false
   }
 }
@@ -56,7 +57,7 @@ fn wgsl_graph_block_is_virtual_fn(block : WgslGraphBlock) -> Bool {
 fn wgsl_graph_block_override_target(block : WgslGraphBlock) -> String? {
   match wgsl_graph_block_function(block) {
     Some(function) =>
-      if function.qualifier() == "override" {
+      if function.qualifier() == Some(WgslFunctionQualifier::Override) {
         Some(function.name().name())
       } else {
         None
@@ -73,7 +74,7 @@ pub fn wgsl_source_contains_override_directive(
   for block in graph.declaration_blocks {
     match block.data {
       WgslGlobalDeclData::Function(function) =>
-        if function.qualifier() == "override" {
+        if function.qualifier() == Some(WgslFunctionQualifier::Override) {
           return true
         }
       _ => ()
@@ -113,7 +114,7 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
       out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
-    if function.qualifier() != "override" {
+    if function.qualifier() != Some(WgslFunctionQualifier::Override) {
       out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
@@ -286,7 +287,8 @@ fn apply_wgsl_virtual_overrides_checked(
   }
   for block in graph.declaration_blocks {
     match wgsl_graph_block_function(block) {
-      Some(function) if function.qualifier() == "override" => {
+      Some(function) if function.qualifier() ==
+        Some(WgslFunctionQualifier::Override) => {
         let raw_target = function.name().name()
         let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
         if !virtual_names.contains(target) {
@@ -328,7 +330,8 @@ fn apply_wgsl_virtual_overrides_checked(
       None => ()
     }
     match wgsl_graph_block_function(block) {
-      Some(function) if block.name != "" && function.qualifier() == "virtual" => {
+      Some(function) if block.name != "" &&
+        function.qualifier() == Some(WgslFunctionQualifier::Virtual) => {
         match overrides.get(block.name) {
           Some(override_block) => {
             let needs_base = match override_needs_base.get(block.name) {

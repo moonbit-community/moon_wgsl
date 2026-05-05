@@ -132,8 +132,8 @@ pub fn WgslFunction::body(Self) -> WgslBlock
 pub fn WgslFunction::fn_end(Self) -> Int
 pub fn WgslFunction::fn_start(Self) -> Int
 pub fn WgslFunction::name(Self) -> WgslIdent
-pub fn WgslFunction::new(Array[WgslAttribute], String, Int?, Int?, Int, Int, WgslIdent, Array[WgslFunctionArgument], WgslFunctionResult?, WgslBlock) -> Self
-pub fn WgslFunction::qualifier(Self) -> String
+pub fn WgslFunction::new(Array[WgslAttribute], WgslFunctionQualifier?, Int?, Int?, Int, Int, WgslIdent, Array[WgslFunctionArgument], WgslFunctionResult?, WgslBlock) -> Self
+pub fn WgslFunction::qualifier(Self) -> WgslFunctionQualifier?
 pub fn WgslFunction::qualifier_end(Self) -> Int?
 pub fn WgslFunction::qualifier_start(Self) -> Int?
 pub fn WgslFunction::result(Self) -> WgslFunctionResult?
@@ -149,6 +149,11 @@ pub fn WgslFunctionArgument::name_start(Self) -> Int
 pub fn WgslFunctionArgument::new(Array[WgslAttribute], String, Int, Int, Int, Int, WgslTypeRef?) -> Self
 pub fn WgslFunctionArgument::start(Self) -> Int
 pub fn WgslFunctionArgument::ty_ref(Self) -> WgslTypeRef?
+
+pub(all) enum WgslFunctionQualifier {
+  Virtual
+  Override
+} derive(Eq, @debug.Debug)
 
 pub struct WgslFunctionResult {
   // private fields

@@ -6,6 +6,7 @@ using @ast {
   type WgslExprRef,
   type WgslExprToken,
   type WgslFunction,
+  type WgslFunctionQualifier,
   type WgslGlobalDecl,
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,

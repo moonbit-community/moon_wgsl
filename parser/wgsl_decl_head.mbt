@@ -16,7 +16,7 @@ priv struct WgslDeclHead {
   kind : WgslDeclHeadKind
   attributes : Array[WgslAttribute]
   keyword : WgslIdent?
-  qualifier : String
+  qualifier : WgslFunctionQualifier?
   qualifier_start : Int?
   qualifier_end : Int?
   fn_keyword : WgslIdent?
@@ -29,7 +29,7 @@ fn WgslDeclHead::raw(attributes : Array[WgslAttribute]) -> WgslDeclHead {
     kind: Raw,
     attributes,
     keyword: None,
-    qualifier: "",
+    qualifier: None,
     qualifier_start: None,
     qualifier_end: None,
     fn_keyword: None,

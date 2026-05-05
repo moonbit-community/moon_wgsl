@@ -1163,7 +1163,7 @@ test "WGSL override function payload preserves qualified target path" {
   guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
     abort("expected function payload")
   }
-  debug_inspect(function.qualifier(), content="\"override\"")
+  debug_inspect(function.qualifier(), content="Some(Override)")
   debug_inspect(function.qualifier_start(), content="Some(0)")
   debug_inspect(function.qualifier_end(), content="Some(8)")
   debug_inspect(function.fn_start(), content="9")

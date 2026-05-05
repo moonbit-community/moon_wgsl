@@ -261,7 +261,7 @@ pub fn collect_wgsl_decl_identifier_nodes(
   match data {
     WgslGlobalDeclData::Function(function) => {
       collect_wgsl_attribute_identifier_nodes(function.attributes(), nodes)
-      if function.qualifier() == "override" {
+      if function.qualifier() == Some(WgslFunctionQualifier::Override) {
         nodes.push(function.name())
       }
       let active_local_names : Array[String] = []
