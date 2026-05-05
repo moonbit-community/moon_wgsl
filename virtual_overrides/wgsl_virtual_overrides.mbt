@@ -77,48 +77,6 @@ pub fn wgsl_source_contains_virtual_directive(
   false
 }
 
-///|
-priv struct WgslVirtualRewriteNode {
-  start : Int
-  end : Int
-  replacement : String
-}
-
-///|
-fn compare_wgsl_virtual_rewrite_nodes(
-  lhs : WgslVirtualRewriteNode,
-  rhs : WgslVirtualRewriteNode,
-) -> Int {
-  let start_compare = lhs.start - rhs.start
-  if start_compare != 0 {
-    return start_compare
-  }
-  lhs.end - rhs.end
-}
-
-///|
-fn rewrite_wgsl_virtual_nodes(
-  source : String,
-  nodes : Array[WgslVirtualRewriteNode],
-) -> String {
-  if nodes.length() == 0 {
-    return source
-  }
-  nodes.sort_by(compare_wgsl_virtual_rewrite_nodes)
-  let mut out = ""
-  let mut copy_start = 0
-  for node in nodes {
-    if node.start < copy_start {
-      continue
-    }
-    out = out + source[copy_start:node.start].to_owned()
-    out = out + node.replacement
-    copy_start = node.end
-  }
-  out + source[copy_start:source.length()].to_owned()
-}
-
-///|
 pub fn rewrite_wgsl_override_targets_with_redirects(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
@@ -127,7 +85,7 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let nodes : Array[WgslVirtualRewriteNode] = []
+  let rewrites : Array[WgslTokenRewrite] = []
   for block in graph.declaration_blocks {
     guard wgsl_graph_block_function(block) is Some(function) else { continue }
     if function.qualifier != "override" {
@@ -139,14 +97,14 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     }
     let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
     if target != raw_target {
-      nodes.push(WgslVirtualRewriteNode::{
+      rewrites.push(WgslTokenRewrite::{
         start: function.name.start,
         end: function.name.end,
         replacement: target,
       })
     }
   }
-  rewrite_wgsl_virtual_nodes(source, nodes)
+  emit_wgsl_text_with_token_rewrites(source, rewrites, 0)
 }
 
 ///|
@@ -186,12 +144,10 @@ fn rewrite_wgsl_virtual_fn_block(
   block_start : Int,
 ) -> String {
   match (function.qualifier_start, function.qualifier_end) {
-    (Some(start), Some(_)) => {
-      let local_start = start - block_start
-      let local_fn_start = function.fn_start - block_start
-      block_text[:local_start].to_owned() +
-      block_text[local_fn_start:block_text.length()].to_owned()
-    }
+    (Some(start), Some(end_)) =>
+      emit_wgsl_text_with_token_rewrites(block_text, [
+        WgslTokenRewrite::{ start, end: end_, replacement: "" },
+      ], block_start)
     _ => block_text
   }
 }
@@ -242,16 +198,17 @@ fn rewrite_wgsl_override_fn_block(
       )
     None => block_text
   }
-  match function.qualifier_start {
-    Some(start) => {
-      let local_start = start - block_start
-      let local_name_end = function.name.end - block_start
-      rewritten_body[:local_start].to_owned() +
-      "fn " +
-      target_name +
-      rewritten_body[local_name_end:rewritten_body.length()].to_owned()
-    }
-    None => rewritten_body
+  match (function.qualifier_start, function.qualifier_end) {
+    (Some(start), Some(end_)) =>
+      emit_wgsl_text_with_token_rewrites(rewritten_body, [
+        WgslTokenRewrite::{ start, end: end_, replacement: "" },
+        WgslTokenRewrite::{
+          start: function.name.start,
+          end: function.name.end,
+          replacement: target_name,
+        },
+      ], block_start)
+    _ => rewritten_body
   }
 }
 

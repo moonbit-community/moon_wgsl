@@ -21,6 +21,8 @@ pub fn collect_wgsl_named_declarations(String) -> Array[WgslEmittedDeclaration] 
 
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
 
+pub fn emit_wgsl_text_with_token_rewrites(String, Array[WgslTokenRewrite], Int) -> String
+
 pub fn emit_wgsl_tree_shaken_source(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
 
 pub fn emit_wgsl_tree_shaken_source_strict(String, Array[String]) -> WgslTreeShakenSource raise @parser.WgslParseError
@@ -73,6 +75,12 @@ pub(all) enum WgslRenameRuleKind {
   ReferencesOnly
   FunctionBodyReferencesOnly
   FunctionLocal
+}
+
+pub(all) struct WgslTokenRewrite {
+  start : Int
+  end : Int
+  replacement : String
 }
 
 pub struct WgslTreeShakenSource {

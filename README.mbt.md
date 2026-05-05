@@ -50,8 +50,7 @@ composition in MoonBit without introducing a separate CLI step.
 - Resolves composable modules from registered WGSL source strings.
 - Exports single-file WGSL with declaration-level tree-shaking, an explicit
   source catalog, source-map entries, and diagnostics.
-- Supports token-based source-level symbol redirects during composition and
-  export.
+- Supports AST-scoped symbol redirects during composition and export.
 
 ## Core Concepts
 
@@ -378,14 +377,14 @@ test "README: build source catalog" {
 }
 ```
 
-### 7. Applying Source-Level Redirects
+### 7. Applying Symbol Redirects
 
 Use the redirect-aware APIs when you want to remap one imported symbol to
 another during composition/export without depending on Naga IR.
 
 ```mbt check
 ///|
-test "README: source-level redirects" {
+test "README: symbol redirects" {
   let composer : @compose.Composer = @compose.Composer::default()
   let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let redirects : Array[@common.WgslSymbolRedirect] = [
@@ -466,8 +465,8 @@ Main public entry points:
 - `resolve_wgsl_import_file_path_from_registry`
   Resolves relative or quoted file-path imports against a source file path.
 - `rewrite_wgsl_symbol_redirects`
-  Applies token-based source-level symbol redirects to WGSL source from the
-  `analysis` package.
+  Applies AST-scoped symbol redirects to WGSL source from the `analysis`
+  package.
 - `Composer::compose_wgsl_source`
   Composes a raw WGSL source string using `WgslComposeOptions` without exposing
   session internals.
@@ -548,7 +547,7 @@ The repository currently includes tests for:
 - conditional preprocessing semantics
 - module registration and import resolution
 - recursive composition behavior
-- source-level symbol redirects during composition/export
+- AST-scoped symbol redirects during composition/export
 - single-file WGSL export with tree-shaking and diagnostics
 
 ## Compatibility Goal

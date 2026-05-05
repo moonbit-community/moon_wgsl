@@ -40,6 +40,28 @@ priv struct WgslRewriteNode {
 }
 
 ///|
+pub(all) struct WgslTokenRewrite {
+  start : Int
+  end : Int
+  replacement : String
+}
+
+///|
+priv enum WgslEmitTokenClass {
+  Word
+  Number
+  Other
+}
+
+///|
+priv struct WgslEmittedToken {
+  text : String
+  start : Int
+  end : Int
+  kind : WgslEmitTokenClass
+}
+
+///|
 priv struct WgslRenameMaps {
   global_declaration_redirects : @hashmap.HashMap[String, String]
   reference_redirects : @hashmap.HashMap[String, String]
@@ -361,45 +383,368 @@ fn collect_wgsl_block_rewrite_nodes(
 }
 
 ///|
-fn rewrite_wgsl_text_with_nodes(
+fn wgsl_ascii_code_text(code : Int) -> String {
+  match code {
+    9 => "\t"
+    10 => "\n"
+    13 => "\r"
+    32 => " "
+    33 => "!"
+    34 => "\""
+    35 => "#"
+    36 => "$"
+    37 => "%"
+    38 => "&"
+    39 => "'"
+    40 => "("
+    41 => ")"
+    42 => "*"
+    43 => "+"
+    44 => ","
+    45 => "-"
+    46 => "."
+    47 => "/"
+    48 => "0"
+    49 => "1"
+    50 => "2"
+    51 => "3"
+    52 => "4"
+    53 => "5"
+    54 => "6"
+    55 => "7"
+    56 => "8"
+    57 => "9"
+    58 => ":"
+    59 => ";"
+    60 => "<"
+    61 => "="
+    62 => ">"
+    63 => "?"
+    64 => "@"
+    65 => "A"
+    66 => "B"
+    67 => "C"
+    68 => "D"
+    69 => "E"
+    70 => "F"
+    71 => "G"
+    72 => "H"
+    73 => "I"
+    74 => "J"
+    75 => "K"
+    76 => "L"
+    77 => "M"
+    78 => "N"
+    79 => "O"
+    80 => "P"
+    81 => "Q"
+    82 => "R"
+    83 => "S"
+    84 => "T"
+    85 => "U"
+    86 => "V"
+    87 => "W"
+    88 => "X"
+    89 => "Y"
+    90 => "Z"
+    91 => "["
+    92 => "\\"
+    93 => "]"
+    94 => "^"
+    95 => "_"
+    96 => "`"
+    97 => "a"
+    98 => "b"
+    99 => "c"
+    100 => "d"
+    101 => "e"
+    102 => "f"
+    103 => "g"
+    104 => "h"
+    105 => "i"
+    106 => "j"
+    107 => "k"
+    108 => "l"
+    109 => "m"
+    110 => "n"
+    111 => "o"
+    112 => "p"
+    113 => "q"
+    114 => "r"
+    115 => "s"
+    116 => "t"
+    117 => "u"
+    118 => "v"
+    119 => "w"
+    120 => "x"
+    121 => "y"
+    122 => "z"
+    123 => "{"
+    124 => "|"
+    125 => "}"
+    126 => "~"
+    _ => ""
+  }
+}
+
+///|
+fn wgsl_emit_token_text(
+  token : WgslToken,
+  replacements : @hashmap.HashMap[String, String],
+  source_start : Int,
+) -> String {
+  match token {
+    WgslToken::Identifier(text, pos) => {
+      let absolute_pos = source_start + pos
+      let key = "\{absolute_pos}:\{absolute_pos + text.length()}"
+      match replacements.get(key) {
+        Some(replacement) => replacement
+        None => text
+      }
+    }
+    WgslToken::Other(code, _) => wgsl_ascii_code_text(code)
+    WgslToken::Whitespace(text, _) => text
+  }
+}
+
+///|
+fn wgsl_emit_token_class(token : WgslToken) -> WgslEmitTokenClass {
+  match token {
+    WgslToken::Identifier(_, _) => Word
+    WgslToken::Other(code, _) if code >= 48 && code <= 57 => Number
+    WgslToken::Other(code, _) if code >= 65 && code <= 90 => Word
+    WgslToken::Other(code, _) if code >= 97 && code <= 122 => Word
+    WgslToken::Other(95, _) => Word
+    _ => Other
+  }
+}
+
+///|
+fn wgsl_emit_code_pair_text(lhs : Int, rhs : Int) -> String? {
+  match (lhs, rhs) {
+    (45, 62) => Some("->")
+    (61, 61) => Some("==")
+    (33, 61) => Some("!=")
+    (60, 61) => Some("<=")
+    (62, 61) => Some(">=")
+    (38, 38) => Some("&&")
+    (124, 124) => Some("||")
+    (43, 61) => Some("+=")
+    (45, 61) => Some("-=")
+    (42, 61) => Some("*=")
+    (47, 61) => Some("/=")
+    (37, 61) => Some("%=")
+    _ => None
+  }
+}
+
+///|
+fn wgsl_emit_token_at(
+  tokens : Array[WgslToken],
+  index : Int,
+  replacements : @hashmap.HashMap[String, String],
+  source_start : Int,
+) -> (WgslEmittedToken, Int)? {
+  guard index >= 0 && index < tokens.length() else { return None }
+  let token = tokens[index]
+  match token {
+    WgslToken::Other(lhs, _) if index + 1 < tokens.length() =>
+      match tokens[index + 1] {
+        WgslToken::Other(rhs, _) =>
+          match wgsl_emit_code_pair_text(lhs, rhs) {
+            Some(text) =>
+              Some(
+                (
+                  WgslEmittedToken::{
+                    text,
+                    start: token.pos(),
+                    end: tokens[index + 1].end(),
+                    kind: Other,
+                  },
+                  2,
+                ),
+              )
+            None =>
+              Some(
+                (
+                  WgslEmittedToken::{
+                    text: wgsl_emit_token_text(token, replacements, source_start),
+                    start: token.pos(),
+                    end: token.end(),
+                    kind: wgsl_emit_token_class(token),
+                  },
+                  1,
+                ),
+              )
+          }
+        _ =>
+          Some(
+            (
+              WgslEmittedToken::{
+                text: wgsl_emit_token_text(token, replacements, source_start),
+                start: token.pos(),
+                end: token.end(),
+                kind: wgsl_emit_token_class(token),
+              },
+              1,
+            ),
+          )
+      }
+    _ =>
+      Some(
+        (
+          WgslEmittedToken::{
+            text: wgsl_emit_token_text(token, replacements, source_start),
+            start: token.pos(),
+            end: token.end(),
+            kind: wgsl_emit_token_class(token),
+          },
+          1,
+        ),
+      )
+  }
+}
+
+///|
+fn wgsl_emit_tokens_need_space(
+  previous : WgslEmittedToken,
+  current : WgslEmittedToken,
+  previous_text : String,
+  current_text : String,
+) -> Bool {
+  if previous_text == "if" ||
+    previous_text == "for" ||
+    previous_text == "while" ||
+    previous_text == "switch" ||
+    previous_text == "return" ||
+    previous_text == "break" ||
+    previous_text == "case" ||
+    previous_text == "fn" ||
+    previous_text == "struct" ||
+    previous_text == "alias" ||
+    previous_text == "let" ||
+    previous_text == "const" ||
+    previous_text == "override" ||
+    previous_text == "virtual" {
+    return true
+  }
+  if previous_text == ":" ||
+    previous_text == "," ||
+    previous_text == "=" ||
+    previous_text == "+" ||
+    previous_text == "-" ||
+    previous_text == "*" ||
+    previous_text == "/" ||
+    previous_text == "%" ||
+    previous_text == "&" ||
+    previous_text == "|" ||
+    previous_text == "==" ||
+    previous_text == "!=" ||
+    previous_text == "<=" ||
+    previous_text == ">=" ||
+    previous_text == "&&" ||
+    previous_text == "||" ||
+    previous_text == "+=" ||
+    previous_text == "-=" ||
+    previous_text == "*=" ||
+    previous_text == "/=" ||
+    previous_text == "%=" ||
+    previous_text == "->" {
+    return true
+  }
+  if current_text == "{" || current_text == "=" || current_text == "->" {
+    return true
+  }
+  if previous_text == ">" && current.kind is Word {
+    return true
+  }
+  if current_text == "+" ||
+    current_text == "-" ||
+    current_text == "*" ||
+    current_text == "/" ||
+    current_text == "%" ||
+    current_text == "&" ||
+    current_text == "|" ||
+    current_text == "==" ||
+    current_text == "!=" ||
+    current_text == "<=" ||
+    current_text == ">=" ||
+    current_text == "&&" ||
+    current_text == "||" ||
+    current_text == "+=" ||
+    current_text == "-=" ||
+    current_text == "*=" ||
+    current_text == "/=" ||
+    current_text == "%=" {
+    return true
+  }
+  if previous.end == current.start {
+    return false
+  }
+  match (previous.kind, current.kind) {
+    (Word, Word) | (Word, Number) | (Number, Word) => true
+    _ => false
+  }
+}
+
+///|
+fn emit_wgsl_text_with_nodes(
   text : String,
   nodes : Array[WgslRewriteNode],
   source_start : Int,
 ) -> String {
-  if nodes.length() == 0 {
-    return text
+  let rewrites : Array[WgslTokenRewrite] = []
+  for node in nodes {
+    rewrites.push(WgslTokenRewrite::{
+      start: node.start,
+      end: node.end,
+      replacement: node.replacement,
+    })
   }
+  emit_wgsl_text_with_token_rewrites(text, rewrites, source_start)
+}
+
+///|
+pub fn emit_wgsl_text_with_token_rewrites(
+  text : String,
+  rewrites : Array[WgslTokenRewrite],
+  source_start : Int,
+) -> String {
+  let replacements : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for rewrite in rewrites {
+    replacements.set(
+      "\{rewrite.start}:\{rewrite.end}",
+      rewrite.replacement,
+    )
+  }
+  let tokens = tokenize_wgsl(replace_comments(text), false)
   let mut out = ""
-  let mut copy_start = 0
-  while true {
-    let mut next_index = -1
-    let mut next_start = text.length() + 1
-    for i in 0..<nodes.length() {
-      let node = nodes[i]
-      let local_start = node.start - source_start
-      if local_start >= copy_start &&
-        local_start >= 0 &&
-        local_start <= text.length() &&
-        local_start < next_start {
-        next_index = i
-        next_start = local_start
-      }
-    }
-    if next_index < 0 {
+  let mut previous : WgslEmittedToken? = None
+  let mut previous_text = ""
+  let mut i = 0
+  while i < tokens.length() {
+    guard wgsl_emit_token_at(tokens, i, replacements, source_start) is Some(
+        (token, consumed),
+      ) else {
       break
     }
-    let node = nodes[next_index]
-    let local_start = node.start - source_start
-    let local_end = node.end - source_start
-    if local_end < local_start || local_end > text.length() {
-      break
+    i = i + consumed
+    let token_text = token.text
+    if token_text == "" {
+      continue
     }
-    out = out + text[copy_start:local_start].to_owned()
-    out = out + node.replacement
-    copy_start = local_end
-  }
-  if copy_start < text.length() {
-    out = out + text[copy_start:text.length()].to_owned()
+    match previous {
+      Some(previous_token) =>
+        if wgsl_emit_tokens_need_space(
+            previous_token, token, previous_text, token_text,
+          ) {
+          out = out + " "
+        }
+      None => ()
+    }
+    out = out + token_text
+    previous = Some(token)
+    previous_text = token_text
   }
   out
 }
@@ -410,13 +755,14 @@ fn rewrite_wgsl_graph_block_with_rename_maps(
   maps : WgslRenameMaps,
 ) -> String {
   match block.data {
-    WgslGlobalDeclData::Raw => block.text
+    WgslGlobalDeclData::Raw =>
+      emit_wgsl_text_with_nodes(block.text, [], block.start)
     WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
-      block.text
+      emit_wgsl_text_with_nodes(block.text, [], block.start)
     _ => {
       let nodes : Array[WgslRewriteNode] = []
       collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
-      rewrite_wgsl_text_with_nodes(block.text, nodes, block.start)
+      emit_wgsl_text_with_nodes(block.text, nodes, block.start)
     }
   }
 }

@@ -145,13 +145,13 @@ tree-shakes them away, matching upstream `naga_oil`.
    registered files, root-only bool/int maps, or any dependency-closure source
    that has not passed through compose-time alias resolution and writeback.
 
-7. Rename/writeback and dependency analysis must be AST/span-driven.
-   All source rewrites must be expressed as `WgslRenamePlan` rules in
+7. Rename/writeback and dependency analysis must be AST/token-driven.
+   All semantic rewrites must be expressed as `WgslRenamePlan` rules in
    `analysis`: global declaration plus references, references only, or function
    locals. Dependency analysis must consume parsed declaration identifiers
    rather than raw declaration text. Composer, virtual overrides,
    duplicate-binding cleanup, suffix lowering, and writeback sanitization must
-   not reintroduce ad hoc identifier span rewriting.
+   not reintroduce source-span copy-and-replace rewriting.
 
 8. Parser internals must stay narrow.
    Syntax should not expose debug-only statement classification, raw text spans,

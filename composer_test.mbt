@@ -689,7 +689,7 @@ test "naga_oil: checked source-tree registration preserves existing registry con
 }
 
 ///|
-test "naga_oil: source-level symbol redirects rewrite references but keep declarations" {
+test "naga_oil: AST-scoped symbol redirects rewrite references but keep declarations" {
   let rewritten = @analysis.rewrite_wgsl_symbol_redirects(
     "fn shade() -> f32 {\n  return build_shadow();\n}\nfn build_shadow() -> f32 {\n  return 1.0;\n}\n",
     [{ from_name: "build_shadow", to_name: "build_color" }],
@@ -700,7 +700,7 @@ test "naga_oil: source-level symbol redirects rewrite references but keep declar
 }
 
 ///|
-test "naga_oil: source-level symbol redirects ignore nested local shadows" {
+test "naga_oil: AST-scoped symbol redirects ignore nested local shadows" {
   let rewritten = @analysis.rewrite_wgsl_symbol_redirects(
     "fn shade(arg: u32) -> u32 {\n  if (arg > 0u) {\n    let build_shadow = arg;\n    return build_shadow;\n  }\n  for (var i: u32 = 0u; i < arg; i = i + 1u) {\n    continue;\n  }\n  return arg;\n}\nfn build_shadow() -> u32 {\n  return 1u;\n}\n",
     [{ from_name: "build_shadow", to_name: "build_color" }],
@@ -712,7 +712,7 @@ test "naga_oil: source-level symbol redirects ignore nested local shadows" {
 }
 
 ///|
-test "naga_oil: composer preprocess can apply source-level symbol redirects" {
+test "naga_oil: composer preprocess can apply AST-scoped symbol redirects" {
   register_redirect_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl(
     "shaders/effects/redirect.wgsl",
