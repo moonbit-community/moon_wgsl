@@ -271,8 +271,12 @@ fn Composer::compose_wgsl_import_requests(
   importer_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
   let mut merged = ""
-  session.symbol_graph.record_request_batch_edges(current_rel_path, requests)
   for request in requests {
+    if !session.graph_request_is_planned(current_rel_path, request) {
+      raise ComposerError::FailedToResolveImport(
+        "internal compose graph is missing planned request \{wgsl_import_request_visit_key(current_rel_path, request)}",
+      )
+    }
     let full_module_key = wgsl_full_module_visit_key(
       request.rel_path,
       request.alias_name,

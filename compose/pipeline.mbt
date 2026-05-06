@@ -140,12 +140,22 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
   if session.visited.contains(normalized_rel) {
     return ""
   }
-  session.visited.set(normalized_rel, true)
   let source = self.load_wgsl_source_required_raw(normalized_rel)
+  let root_source = prepend_wgsl_additional_imports(
+    source,
+    session.additional_imports,
+  )
+  self.complete_wgsl_compose_graph_execution(
+    normalized_rel,
+    root_source,
+    session,
+    None,
+  )
+  session.visited.set(normalized_rel, true)
   session.active_rel_paths.push(normalized_rel)
   let composed = self.preprocess_wgsl_source_with_path(
     normalized_rel,
-    prepend_wgsl_additional_imports(source, session.additional_imports),
+    root_source,
     session,
     None,
     WgslComposeBindingSet::new(),
@@ -224,10 +234,15 @@ pub fn Composer::compose_wgsl_source(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
+  let root_source = prepend_wgsl_additional_imports(
+    source,
+    session.additional_imports,
+  )
+  self.complete_wgsl_compose_graph_execution("", root_source, session, None)
   let composed = strip_wgsl_virtual_functions(
     self.preprocess_wgsl_source_with_path(
       "",
-      prepend_wgsl_additional_imports(source, session.additional_imports),
+      root_source,
       session,
       None,
       WgslComposeBindingSet::new(),

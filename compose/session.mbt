@@ -248,6 +248,9 @@ priv struct WgslComposeSession {
   additional_imports : Array[ImportDefinition]
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
+  graph_planned_requests : @hashmap.HashMap[String, Bool]
+  graph_planning_rel_paths : Array[String]
+  mut graph_execution_complete : Bool
   final_names : WgslFinalNameTables
   symbol_graph : WgslComposeSymbolGraph
   semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
