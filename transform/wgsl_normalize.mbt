@@ -288,29 +288,54 @@ fn build_wgsl_unique_alias_suffix_rename_plan(
     }
   }
   for redirect in alias_redirects {
-    let lowered_name = redirect.to_name.trim().to_owned()
-    if lowered_name == "" || !declared_names.contains(lowered_name) {
-      continue
-    }
-    let parts : Array[String] = []
-    for part in redirect.from_name.trim().split("::") {
-      parts.push(part.to_owned())
-    }
-    for i in 1..<parts.length() {
-      let mut suffix = ""
-      for j in i..<parts.length() {
-        if suffix != "" {
-          suffix = "\{suffix}::"
-        }
-        suffix = "\{suffix}\{parts[j]}"
-      }
+    collect_wgsl_alias_suffix_redirect_candidates(
+      redirect.from_name,
+      redirect.to_name,
+      declared_names,
+      candidate_redirects,
+      ambiguous_suffixes,
+    )
+  }
+  finish_wgsl_alias_suffix_rename_plan(candidate_redirects, ambiguous_suffixes)
+}
+
+///|
+fn collect_wgsl_alias_suffix_redirect_candidates(
+  from_name : String,
+  to_name : String,
+  declared_names : @hashmap.HashMap[String, Bool],
+  candidate_redirects : @hashmap.HashMap[String, String],
+  ambiguous_suffixes : @hashmap.HashMap[String, Bool],
+) -> Unit {
+  let lowered_name = to_name.trim().to_owned()
+  if lowered_name == "" || !declared_names.contains(lowered_name) {
+    return
+  }
+  let parts : Array[String] = []
+  for part in from_name.trim().split("::") {
+    parts.push(part.to_owned())
+  }
+  for i in 1..<parts.length() {
+    let mut suffix = ""
+    for j in i..<parts.length() {
       if suffix != "" {
-        record_wgsl_alias_suffix_redirect_candidate(
-          suffix, lowered_name, declared_names, candidate_redirects, ambiguous_suffixes,
-        )
+        suffix = "\{suffix}::"
       }
+      suffix = "\{suffix}\{parts[j]}"
+    }
+    if suffix != "" {
+      record_wgsl_alias_suffix_redirect_candidate(
+        suffix, lowered_name, declared_names, candidate_redirects, ambiguous_suffixes,
+      )
     }
   }
+}
+
+///|
+fn finish_wgsl_alias_suffix_rename_plan(
+  candidate_redirects : @hashmap.HashMap[String, String],
+  ambiguous_suffixes : @hashmap.HashMap[String, Bool],
+) -> WgslRenamePlan {
   let plan = WgslRenamePlan::empty()
   for entry in candidate_redirects.iter() {
     let (suffix, lowered_name) = entry
@@ -319,6 +344,32 @@ fn build_wgsl_unique_alias_suffix_rename_plan(
     }
   }
   plan
+}
+
+///|
+fn build_wgsl_unique_alias_suffix_rename_plan_from_binding_plan(
+  source : String,
+  binding_plan : WgslReferenceRewritePlan,
+) -> WgslRenamePlan raise WgslParseError {
+  let graph = build_wgsl_declaration_graph(source)
+  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  for block in graph.declaration_blocks {
+    if block.name() != "" {
+      declared_names.set(block.name(), true)
+    }
+  }
+  for binding in binding_plan.bindings {
+    collect_wgsl_alias_suffix_redirect_candidates(
+      binding.from_name,
+      binding.to_name,
+      declared_names,
+      candidate_redirects,
+      ambiguous_suffixes,
+    )
+  }
+  finish_wgsl_alias_suffix_rename_plan(candidate_redirects, ambiguous_suffixes)
 }
 
 ///|
@@ -431,5 +482,14 @@ pub fn normalize_wgsl_composed_declarations_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
 ) -> String raise WgslParseError {
-  normalize_wgsl_composed_declarations(source, plan.symbol_redirects())
+  let deduped = dedupe_wgsl_duplicate_declarations(source)
+  let suffix_plan = build_wgsl_unique_alias_suffix_rename_plan_from_binding_plan(
+    deduped, plan,
+  )
+  let suffix_rewritten = if suffix_plan.is_empty() {
+    deduped
+  } else {
+    rewrite_wgsl_declarations_with_rename_plan(deduped, suffix_plan)
+  }
+  dedupe_wgsl_duplicate_resource_bindings(suffix_rewritten)
 }
