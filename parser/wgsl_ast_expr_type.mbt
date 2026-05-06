@@ -217,6 +217,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
 
 ///|
 priv struct WgslExprNodeParser {
+  source_text : String
   source_start : Int
   tokens : Array[WgslExprToken]
   mut index : Int
@@ -224,10 +225,11 @@ priv struct WgslExprNodeParser {
 
 ///|
 fn WgslExprNodeParser::new(
+  source_text : String,
   source_start : Int,
   tokens : Array[WgslExprToken],
 ) -> WgslExprNodeParser {
-  WgslExprNodeParser::{ source_start, tokens, index: 0 }
+  WgslExprNodeParser::{ source_text, source_start, tokens, index: 0 }
 }
 
 ///|
@@ -274,6 +276,78 @@ fn WgslExprNodeParser::consume_punct(
       true
     }
     _ => false
+  }
+}
+
+///|
+fn wgsl_expr_token_is_shift_right(token : WgslExprToken) -> Bool {
+  match token.kind() {
+    WgslExprTokenKind::Operator(WgslExprOperator::ShiftRight) => true
+    _ => false
+  }
+}
+
+///|
+fn WgslExprNodeParser::template_argument_end(
+  self : WgslExprNodeParser,
+  lt_index : Int,
+) -> (Int, Int)? {
+  guard lt_index >= 0 && lt_index < self.tokens.length() else { return None }
+  guard wgsl_expr_token_is_punct(self.tokens[lt_index], 60) else { return None }
+  let mut depth = 0
+  for i in lt_index..<self.tokens.length() {
+    let token = self.tokens[i]
+    if wgsl_expr_token_is_punct(token, 60) {
+      depth = depth + 1
+      continue
+    }
+    if wgsl_expr_token_is_punct(token, 62) {
+      depth = depth - 1
+      if depth == 0 {
+        return Some((i, token.start() - self.source_start))
+      }
+      continue
+    }
+    if wgsl_expr_token_is_shift_right(token) {
+      if depth == 2 {
+        return Some((i, token.start() + 1 - self.source_start))
+      }
+      if depth == 1 {
+        return Some((i, token.start() - self.source_start))
+      }
+      if depth > 2 {
+        depth = depth - 2
+      }
+    }
+  }
+  None
+}
+
+///|
+fn WgslExprNodeParser::template_arguments_at(
+  self : WgslExprNodeParser,
+  lt_index : Int,
+) -> (Array[WgslTypeArgument], Int)? {
+  match self.template_argument_end(lt_index) {
+    Some((gt_index, argument_end)) => {
+      guard gt_index + 1 < self.tokens.length() &&
+        wgsl_expr_token_is_punct(self.tokens[gt_index + 1], 40) else {
+        return None
+      }
+      let lt_local = self.tokens[lt_index].start() - self.source_start
+      Some(
+        (
+          parse_wgsl_type_template_arguments(
+            self.source_text,
+            self.source_start,
+            lt_local,
+            argument_end,
+          ),
+          gt_index,
+        ),
+      )
+    }
+    None => None
   }
 }
 
@@ -394,6 +468,19 @@ fn WgslExprNodeParser::parse_postfix(
   let mut node = base
   while true {
     match self.peek() {
+      Some(token) if wgsl_expr_token_is_punct(token, 60) =>
+        match self.template_arguments_at(self.index) {
+          Some((args, gt_index)) => {
+            self.index = gt_index + 1
+            node = self.make_node(
+              WgslExprNodeKind::Template(node, args),
+              node.start(),
+              self.tokens[gt_index].end(),
+            )
+            continue
+          }
+          None => return node
+        }
       Some(token) if wgsl_expr_token_is_punct(token, 40) => {
         self.index = self.index + 1
         let args : Array[WgslExprNode] = []
@@ -576,13 +663,17 @@ fn WgslExprNodeParser::parse_sequence_until(
 
 ///|
 fn parse_wgsl_expr_node(
+  source_text : String,
   base : Int,
   tokens : Array[WgslExprToken],
 ) -> WgslExprNode? {
   if tokens.length() == 0 {
     return None
   }
-  Some(WgslExprNodeParser::new(base, tokens).parse_sequence_until_any([]))
+  Some(
+    WgslExprNodeParser::new(source_text, base, tokens).parse_sequence_until_any([],
+    ),
+  )
 }
 
 ///|
@@ -603,7 +694,7 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     expr_tokens,
     identifiers,
   )
-  let root = parse_wgsl_expr_node(base + local_start, expr_tokens)
+  let root = parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens)
   Some(
     WgslExprRef::new(
       expr_tokens,

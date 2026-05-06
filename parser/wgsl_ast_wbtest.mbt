@@ -906,6 +906,51 @@ test "WGSL expression parser uses lexer compound operator tokens" {
 }
 
 ///|
+test "WGSL expression parser structures template elaborated calls" {
+  let source =
+    #|alias Color = vec4<f32>;
+    #|fn demo(value: f32) -> Color {
+    #|  return vec4<f32>(value);
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[1].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let expr = function.body().statements()[0].expression_refs()[0]
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, expr),
+    content="\"vec4<f32>(value)\"",
+  )
+  match expr.root() {
+    Some(root) =>
+      match root.kind() {
+        WgslExprNodeKind::Call(callee, args) => {
+          debug_inspect(args.length(), content="1")
+          match callee.kind() {
+            WgslExprNodeKind::Template(base, template_args) => {
+              debug_inspect(template_args.length(), content="1")
+              match base.kind() {
+                WgslExprNodeKind::Identifier(ident) =>
+                  debug_inspect(ident.name(), content="\"vec4\"")
+                _ => abort("expected template base identifier")
+              }
+              match template_args[0] {
+                WgslTypeArgument::Type(ty) =>
+                  debug_inspect(ty.name(), content="\"f32\"")
+                _ => abort("expected type template argument")
+              }
+            }
+            _ => abort("expected template callee")
+          }
+        }
+        _ => abort("expected call root")
+      }
+    None => abort("expected expression root")
+  }
+}
+
+///|
 test "WGSL global declaration identifier collection excludes locals" {
   let source =
     #|alias Alias = vec4<f32>;

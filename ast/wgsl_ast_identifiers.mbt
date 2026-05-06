@@ -53,6 +53,20 @@ fn collect_wgsl_expr_node_identifier_nodes(
         collect_wgsl_expr_node_identifier_nodes(arg, active_local_names, nodes)
       }
     }
+    Template(callee, args) => {
+      collect_wgsl_expr_node_identifier_nodes(callee, active_local_names, nodes)
+      for arg in args {
+        match arg {
+          Type(ty) => collect_wgsl_type_ref_identifier_nodes(Some(ty), nodes)
+          Expression(expr) =>
+            collect_wgsl_expr_ref_identifier_nodes_with_scope(
+              Some(expr),
+              active_local_names,
+              nodes,
+            )
+        }
+      }
+    }
     PathAccess(base, segment) => {
       let base_path = wgsl_expr_node_path_name(base)
       let full_name = if base_path == "" {

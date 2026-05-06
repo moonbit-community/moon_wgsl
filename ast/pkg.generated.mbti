@@ -91,6 +91,7 @@ pub(all) enum WgslExprNodeKind {
   Unary(WgslExprOperator, WgslExprNode)
   Binary(WgslExprOperator, WgslExprNode, WgslExprNode)
   Call(WgslExprNode, Array[WgslExprNode])
+  Template(WgslExprNode, Array[WgslTypeArgument])
   PathAccess(WgslExprNode, WgslIdent)
   Member(WgslExprNode, WgslIdent)
   Index(WgslExprNode, WgslExprNode)
