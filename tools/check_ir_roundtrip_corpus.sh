@@ -44,6 +44,10 @@ roundtrip_case "for-compute" "testdata/ir_corpus/for_compute.wgsl"
 roundtrip_case "struct-member-compute" \
   "testdata/ir_corpus/struct_member_compute.wgsl"
 roundtrip_case "texture-compute" "testdata/ir_corpus/texture_compute.wgsl"
+roundtrip_case "advanced-texture-fragment" \
+  "testdata/ir_corpus/advanced_texture_fragment.wgsl"
+roundtrip_case "texture-load-queries-compute" \
+  "testdata/ir_corpus/texture_load_queries_compute.wgsl"
 compose_roundtrip_case \
   "simple-compose-compute" \
   "testdata/ir_corpus/compose" \

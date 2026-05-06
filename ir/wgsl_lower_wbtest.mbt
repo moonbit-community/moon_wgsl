@@ -65,10 +65,7 @@ test "WGSL AST lowerer uses stable function handles for calls" {
     #|  helper(1u);
     #|}
   let module_ = parse_wgsl_module_to_ir(source) catch {
-    error => {
-      debug_inspect(error.message())
-      abort(error.message())
-    }
+    error => abort(error.message())
   }
   debug_inspect(module_.functions.items.length(), content="1")
   debug_inspect(module_.entry_points.length(), content="1")
@@ -285,4 +282,127 @@ test "WGSL AST lowerer supports basic texture calls" {
   )
   debug_inspect(emitted.contains("textureDimensions(tex).x"), content="true")
   debug_inspect(emitted.contains("textureStore(out_tex"), content="true")
+}
+
+///|
+test "WGSL AST lowerer uses texture type to lower advanced sampling arguments" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var tex: texture_2d<f32>;
+    #|@group(0) @binding(1)
+    #|var tex_arr: texture_2d_array<f32>;
+    #|@group(0) @binding(2)
+    #|var depth_tex: texture_depth_2d;
+    #|@group(0) @binding(3)
+    #|var depth_arr: texture_depth_2d_array;
+    #|@group(0) @binding(4)
+    #|var samp: sampler;
+    #|@group(0) @binding(5)
+    #|var cmp_samp: sampler_comparison;
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4f {
+    #|  let uv: vec2f = vec2f(0.5, 0.25);
+    #|  let dx: vec2f = vec2f(0.01, 0.0);
+    #|  let dy: vec2f = vec2f(0.0, 0.01);
+    #|  var color = textureSampleBias(tex, samp, uv, 0.25, vec2i(0i, 0i));
+    #|  color = color + textureSampleGrad(tex, samp, uv, dx, dy, vec2i(0i, 0i));
+    #|  color = color + textureSampleLevel(tex_arr, samp, uv, 0u, 1.0, vec2i(0i, 0i));
+    #|  let count: u32 = textureNumLevels(tex) + textureDimensions(tex).x;
+    #|  let cmp: f32 = textureSampleCompare(depth_tex, cmp_samp, uv, 0.5, vec2i(0i, 0i));
+    #|  let cmp0: f32 = textureSampleCompareLevel(depth_tex, cmp_samp, uv, 0.5, vec2i(0i, 0i));
+    #|  color = color + textureGather(1u, tex, samp, uv, vec2i(0i, 0i));
+    #|  color = color + textureGather(depth_tex, samp, uv, vec2i(0i, 0i));
+    #|  color = color + textureGatherCompare(depth_arr, cmp_samp, uv, 0u, 0.5, vec2i(0i, 0i));
+    #|  return color + vec4f(f32(count) * 0.0 + cmp + cmp0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("textureSampleBias(tex, samp, uv, 0.25, vec2<i32>(0, 0))"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "textureSampleGrad(tex, samp, uv, dx, dy, vec2<i32>(0, 0))",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "textureSampleLevel(tex_arr, samp, uv, 0u, 1, vec2<i32>(0, 0))",
+    ),
+    content="true",
+  )
+  debug_inspect(emitted.contains("textureNumLevels(tex)"), content="true")
+  debug_inspect(
+    emitted.contains(
+      "textureSampleCompare(depth_tex, cmp_samp, uv, 0.5, vec2<i32>(0, 0))",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "textureSampleCompareLevel(depth_tex, cmp_samp, uv, 0.5, vec2<i32>(0, 0))",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("textureGather(1, tex, samp, uv, vec2<i32>(0, 0))"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("textureGather(depth_tex, samp, uv, vec2<i32>(0, 0))"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "textureGatherCompare(depth_arr, cmp_samp, uv, 0u, 0.5, vec2<i32>(0, 0))",
+    ),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer lowers textureLoad arguments from texture type" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var ms_tex: texture_multisampled_2d<f32>;
+    #|@group(0) @binding(1)
+    #|var arr_tex: texture_2d_array<f32>;
+    #|@group(0) @binding(2)
+    #|var storage_arr: texture_storage_2d_array<rgba8unorm, read>;
+    #|
+    #|@compute
+    #|fn main() {
+    #|  let coords: vec2u = vec2u(0u, 0u);
+    #|  let ms_color = textureLoad(ms_tex, coords, 0u);
+    #|  let arr_color = textureLoad(arr_tex, coords, 0u, 0u);
+    #|  let storage_color = textureLoad(storage_arr, coords, 0u);
+    #|  let count: u32 = textureNumSamples(ms_tex) + textureNumLayers(arr_tex) + textureNumLayers(storage_arr);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("textureLoad(ms_tex, coords, 0u)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("textureLoad(arr_tex, coords, 0u, 0u)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("textureLoad(storage_arr, coords, 0u)"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("textureNumSamples(ms_tex)"), content="true")
+  debug_inspect(emitted.contains("textureNumLayers(arr_tex)"), content="true")
 }

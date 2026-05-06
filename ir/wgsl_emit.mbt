@@ -493,11 +493,11 @@ fn WgslIrEmitter::emit_expression(
       offset,
       level,
       depth_ref,
-      _
+      clamp_to_edge
     ) =>
       self.image_sample_expression(
         function, image, sampler, gather, coordinate, array_index, offset, level,
-        depth_ref,
+        depth_ref, clamp_to_edge,
       )
     ImageLoad(image, coordinate, array_index, sample, level) =>
       self.image_load_expression(
@@ -530,15 +530,42 @@ fn WgslIrEmitter::image_sample_expression(
   offset : Handle?,
   level : SampleLevel,
   depth_ref : Handle?,
+  clamp_to_edge : Bool,
 ) -> String raise WgslIrEmitError {
-  if gather != None || offset != None || depth_ref != None {
-    raise WgslIrEmitError::Unsupported("advanced texture sampling arguments")
+  match gather {
+    Some(component) =>
+      return self.image_gather_expression(
+        function, image, sampler, component, coordinate, array_index, offset, depth_ref,
+      )
+    None => ()
   }
-  let callee = match level {
-    Auto => "textureSample"
-    Exact(_) => "textureSampleLevel"
-    Zero | Bias(_) | Gradient(_, _) =>
-      raise WgslIrEmitError::Unsupported("texture sampling level mode")
+  if clamp_to_edge {
+    if array_index != None || offset != None || depth_ref != None {
+      raise WgslIrEmitError::Unsupported(
+        "textureSampleBaseClampToEdge advanced arguments",
+      )
+    }
+    let callee = "textureSampleBaseClampToEdge"
+    return "\{callee}(\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, sampler)}, \{self.required_function_expression(function, coordinate)})"
+  }
+  let callee = match depth_ref {
+    Some(_) =>
+      match level {
+        Auto => "textureSampleCompare"
+        Zero => "textureSampleCompareLevel"
+        _ =>
+          raise WgslIrEmitError::Unsupported(
+            "texture compare sampling level mode",
+          )
+      }
+    None =>
+      match level {
+        Auto => "textureSample"
+        Exact(_) => "textureSampleLevel"
+        Bias(_) => "textureSampleBias"
+        Gradient(_, _) => "textureSampleGrad"
+        Zero => "textureSampleLevel"
+      }
   }
   let out = StringBuilder::new()
   out.write_string(
@@ -556,7 +583,81 @@ fn WgslIrEmitter::image_sample_expression(
       out.write_string(
         ", \{self.required_function_expression(function, handle)}",
       )
+    Bias(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    Gradient(ddx, ddy) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, ddx)}, \{self.required_function_expression(function, ddy)}",
+      )
+    Zero if depth_ref == None => out.write_string(", 0")
     _ => ()
+  }
+  match depth_ref {
+    Some(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    None => ()
+  }
+  match offset {
+    Some(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    None => ()
+  }
+  out.write_string(")")
+  out.to_string()
+}
+
+///|
+fn WgslIrEmitter::image_gather_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  image : Handle,
+  sampler : Handle,
+  component : SwizzleComponent,
+  coordinate : Handle,
+  array_index : Handle?,
+  offset : Handle?,
+  depth_ref : Handle?,
+) -> String raise WgslIrEmitError {
+  let depth = self.expression_is_depth_image(function, image)
+  let callee = if depth_ref != None {
+    "textureGatherCompare"
+  } else {
+    "textureGather"
+  }
+  let out = StringBuilder::new()
+  out.write_string("\{callee}(")
+  if !depth {
+    out.write_string("\{wgsl_ir_gather_component_index(component)}, ")
+  }
+  out.write_string(
+    "\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, sampler)}, \{self.required_function_expression(function, coordinate)}",
+  )
+  match array_index {
+    Some(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    None => ()
+  }
+  match depth_ref {
+    Some(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    None => ()
+  }
+  match offset {
+    Some(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    None => ()
   }
   out.write_string(")")
   out.to_string()
@@ -572,9 +673,6 @@ fn WgslIrEmitter::image_load_expression(
   sample : Handle?,
   level : Handle?,
 ) -> String raise WgslIrEmitError {
-  if sample != None {
-    raise WgslIrEmitError::Unsupported("textureLoad sample argument")
-  }
   let out = StringBuilder::new()
   out.write_string(
     "textureLoad(\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, coordinate)}",
@@ -583,6 +681,13 @@ fn WgslIrEmitter::image_load_expression(
     Some(index) =>
       out.write_string(
         ", \{self.required_function_expression(function, index)}",
+      )
+    None => ()
+  }
+  match sample {
+    Some(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
       )
     None => ()
   }
@@ -620,7 +725,32 @@ fn WgslIrEmitter::image_query_expression(
       out.write_string(")")
       out.to_string()
     }
-    _ => raise WgslIrEmitError::Unsupported("image query kind")
+    NumLevels =>
+      "textureNumLevels(\{self.required_function_expression(function, image)})"
+    NumLayers =>
+      "textureNumLayers(\{self.required_function_expression(function, image)})"
+    NumSamples =>
+      "textureNumSamples(\{self.required_function_expression(function, image)})"
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_is_depth_image(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Bool {
+  match self.expression_type(function, handle) {
+    Some(ty_handle) =>
+      match self.shader_module.types.get(ty_handle) {
+        Some(ty) =>
+          match ty.inner {
+            Image(_, _, Depth(_)) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
   }
 }
 
@@ -1414,6 +1544,16 @@ fn wgsl_ir_swizzle_component(index : Int) -> String raise WgslIrEmitError {
     2 => "z"
     3 => "w"
     _ => raise WgslIrEmitError::Unsupported("access index \{index}")
+  }
+}
+
+///|
+fn wgsl_ir_gather_component_index(component : SwizzleComponent) -> Int {
+  match component {
+    X => 0
+    Y => 1
+    Z => 2
+    W => 3
   }
 }
 
