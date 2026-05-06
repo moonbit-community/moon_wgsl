@@ -90,9 +90,9 @@ fn collect_wgsl_cached_import_redirects(
   }
   let mut count = 0
   let symbol_names = if alias_name == "" {
-    session.final_symbol_names
+    session.final_names.canonical
   } else {
-    session.alias_final_symbol_names
+    session.final_names.alias_scoped
   }
   for entry in symbol_names.iter() {
     let (key, imported_name) = entry
@@ -125,7 +125,9 @@ fn find_wgsl_cached_imported_item_name(
   rel_path : String,
   item_name : String,
 ) -> String? {
-  session.final_symbol_names.get(wgsl_symbol_identity_key(rel_path, item_name))
+  session.final_names.canonical_get(
+    WgslSymbolIdentity::new(rel_path, item_name),
+  )
 }
 
 ///|

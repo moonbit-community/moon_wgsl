@@ -33,10 +33,10 @@ fn record_wgsl_nested_flattened_item_names(
         saw_marker = true
       }
       if item_name != "" {
-        let key = wgsl_symbol_identity_key(rel_path, item_name)
-        if !session.final_symbol_names.contains(key) {
-          session.final_symbol_names.set(key, generated_name)
-        }
+        session.final_names.canonical_set_if_absent(
+          WgslSymbolIdentity::new(rel_path, item_name),
+          generated_name,
+        )
       }
     }
   }
@@ -61,6 +61,27 @@ fn prepare_wgsl_compose_source(
   )
   let active_scan_source = active_source
   WgslPreparedComposeSource::{ active_source, active_scan_source }
+}
+
+///|
+fn collect_wgsl_compose_semantic_facts(
+  session : WgslComposeSession,
+  source : String,
+) -> WgslComposeSemanticFacts raise ComposerError {
+  match session.semantic_facts.get(source) {
+    Some(facts) => facts
+    None => {
+      let declarations = collect_wgsl_named_declarations_strict(source) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+      let reference_paths = collect_wgsl_semantic_reference_path_set(source) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+      let facts = WgslComposeSemanticFacts::{ declarations, reference_paths }
+      session.semantic_facts.set(source, facts)
+      facts
+    }
+  }
 }
 
 ///|
@@ -153,16 +174,15 @@ fn Composer::build_wgsl_import_requests_from_targets(
       }
     }
     if !import_full_module {
-      let active_reference_paths = collect_wgsl_semantic_reference_path_set(
-        active_scan_source,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
+      let active_facts = collect_wgsl_compose_semantic_facts(
+        session, active_scan_source,
+      )
       let used_requested_items : Array[String] = []
       for requested_item in requested_items {
         let item_is_live = if target_plan.explicit_item_binding {
           wgsl_semantic_reference_path_set_contains(
-            active_reference_paths, requested_item,
+            active_facts.reference_paths,
+            requested_item,
           )
         } else {
           true
@@ -429,34 +449,33 @@ fn Composer::compose_wgsl_import_requests(
           )
         }
         let symbol_names = if request.alias_name == "" {
-          session.final_symbol_names
+          session.final_names.canonical
         } else {
-          session.alias_final_symbol_names
+          session.final_names.alias_scoped
         }
         if !symbol_names.contains(key) {
           symbol_names.set(key, origin.generated_symbol_name)
         }
       }
     }
-    let final_declarations = collect_wgsl_named_declarations_strict(
-      final_module_source,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    let final_facts = collect_wgsl_compose_semantic_facts(
+      session, final_module_source,
+    )
+    let final_declarations = final_facts.declarations
     if rename_map.is_empty() {
       record_wgsl_nested_flattened_item_names(session, final_declarations)
       for declaration in final_declarations {
         let declaration_name = declaration.name()
-        session.final_symbol_names.set(
-          wgsl_symbol_identity_key(request.rel_path, declaration_name),
+        session.final_names.canonical_set(
+          WgslSymbolIdentity::new(request.rel_path, declaration_name),
           declaration_name,
         )
       }
     } else {
       for entry in rename_map.iter() {
         let (from_name, to_name) = entry
-        session.alias_final_symbol_names.set(
-          wgsl_alias_symbol_identity_key(
+        session.final_names.alias_set(
+          WgslAliasSymbolIdentity::new(
             request.rel_path,
             request.alias_name,
             from_name,
@@ -478,14 +497,11 @@ fn Composer::compose_wgsl_import_requests(
 
 ///|
 fn collect_wgsl_live_alias_redirects(
-  source : String,
+  facts : WgslComposeSemanticFacts,
   alias_redirects : Array[WgslScopedAliasRedirect],
-) -> Array[WgslSymbolRedirect] raise ComposerError {
+) -> Array[WgslSymbolRedirect] {
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let declarations = collect_wgsl_named_declarations_strict(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  for declaration in declarations {
+  for declaration in facts.declarations {
     let declaration_name = declaration.name()
     if declaration_name != "" {
       declared_names.set(declaration_name, true)
@@ -493,9 +509,6 @@ fn collect_wgsl_live_alias_redirects(
   }
   let live_redirects : Array[WgslSymbolRedirect] = []
   let seen_redirect_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
-  let reference_paths = collect_wgsl_semantic_reference_path_set(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
   for scoped_redirect in alias_redirects {
     let redirect = scoped_redirect.redirect
     let from_name = redirect.from_name.trim().to_owned()
@@ -507,7 +520,10 @@ fn collect_wgsl_live_alias_redirects(
     seen_redirect_keys.add(redirect_key)
     let source_contains_cached_alias = if scoped_redirect.scope ==
       CachedQualifiedAliasReference {
-      wgsl_semantic_reference_path_set_contains(reference_paths, from_name)
+      wgsl_semantic_reference_path_set_contains(
+        facts.reference_paths,
+        from_name,
+      )
     } else {
       false
     }
@@ -541,8 +557,9 @@ fn finalize_wgsl_composed_source(
   } else {
     alias_redirects
   }
+  let out_facts = collect_wgsl_compose_semantic_facts(session, out)
   let live_alias_redirects = collect_wgsl_live_alias_redirects(
-    out, effective_alias_redirects,
+    out_facts, effective_alias_redirects,
   )
   let alias_redirect_map = build_wgsl_symbol_redirect_map(live_alias_redirects)
   if apply_virtual_overrides {

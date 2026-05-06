@@ -114,6 +114,64 @@ fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] 
 }
 
 ///|
+priv struct WgslComposeSemanticFacts {
+  declarations : Array[WgslEmittedDeclaration]
+  reference_paths : @hashset.HashSet[String]
+}
+
+///|
+priv struct WgslFinalNameTables {
+  canonical : @hashmap.HashMap[String, String]
+  alias_scoped : @hashmap.HashMap[String, String]
+}
+
+///|
+fn WgslFinalNameTables::new() -> WgslFinalNameTables {
+  WgslFinalNameTables::{
+    canonical: @hashmap.HashMap::new(),
+    alias_scoped: @hashmap.HashMap::new(),
+  }
+}
+
+///|
+fn WgslFinalNameTables::canonical_set(
+  self : WgslFinalNameTables,
+  identity : WgslSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  self.canonical.set(identity.key(), generated_name)
+}
+
+///|
+fn WgslFinalNameTables::canonical_set_if_absent(
+  self : WgslFinalNameTables,
+  identity : WgslSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  let key = identity.key()
+  if !self.canonical.contains(key) {
+    self.canonical.set(key, generated_name)
+  }
+}
+
+///|
+fn WgslFinalNameTables::canonical_get(
+  self : WgslFinalNameTables,
+  identity : WgslSymbolIdentity,
+) -> String? {
+  self.canonical.get(identity.key())
+}
+
+///|
+fn WgslFinalNameTables::alias_set(
+  self : WgslFinalNameTables,
+  identity : WgslAliasSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  self.alias_scoped.set(identity.key(), generated_name)
+}
+
+///|
 priv struct WgslComposeSession {
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, Int]
@@ -124,8 +182,8 @@ priv struct WgslComposeSession {
   additional_imports : Array[ImportDefinition]
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
-  final_symbol_names : @hashmap.HashMap[String, String]
-  alias_final_symbol_names : @hashmap.HashMap[String, String]
+  final_names : WgslFinalNameTables
+  semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
   active_rel_paths : Array[String]
   source_origins : Array[WgslSourceOriginEntry]
 }

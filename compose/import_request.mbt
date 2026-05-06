@@ -70,8 +70,50 @@ fn wgsl_full_module_visit_key(rel_path : String, alias_name : String) -> String 
 }
 
 ///|
+priv struct WgslSymbolIdentity {
+  rel_path : String
+  original_name : String
+}
+
+///|
+priv struct WgslAliasSymbolIdentity {
+  alias_name : String
+  symbol : WgslSymbolIdentity
+}
+
+///|
+fn WgslSymbolIdentity::new(
+  rel_path : String,
+  original_name : String,
+) -> WgslSymbolIdentity {
+  WgslSymbolIdentity::{ rel_path, original_name }
+}
+
+///|
+fn WgslSymbolIdentity::key(self : WgslSymbolIdentity) -> String {
+  "\{self.rel_path}|\{self.original_name}"
+}
+
+///|
+fn WgslAliasSymbolIdentity::new(
+  rel_path : String,
+  alias_name : String,
+  original_name : String,
+) -> WgslAliasSymbolIdentity {
+  WgslAliasSymbolIdentity::{
+    alias_name,
+    symbol: WgslSymbolIdentity::new(rel_path, original_name),
+  }
+}
+
+///|
+fn WgslAliasSymbolIdentity::key(self : WgslAliasSymbolIdentity) -> String {
+  "\{self.alias_name}|\{self.symbol.key()}"
+}
+
+///|
 fn wgsl_symbol_identity_key(rel_path : String, item_name : String) -> String {
-  "\{rel_path}|\{item_name}"
+  WgslSymbolIdentity::new(rel_path, item_name).key()
 }
 
 ///|
@@ -80,7 +122,7 @@ fn wgsl_alias_symbol_identity_key(
   alias_name : String,
   item_name : String,
 ) -> String {
-  "\{alias_name}|\{wgsl_symbol_identity_key(rel_path, item_name)}"
+  WgslAliasSymbolIdentity::new(rel_path, alias_name, item_name).key()
 }
 
 ///|
