@@ -1384,7 +1384,8 @@ fn WgslIrEmitter::type_inner_name(
       match size {
         Constant(value) => "array<\{self.type_name(base)}, \{value}>"
         Dynamic => "array<\{self.type_name(base)}>"
-        Pending(_) => raise WgslIrEmitError::Unsupported("pending array size")
+        Pending(handle) =>
+          "array<\{self.type_name(base)}, \{self.global_expression(handle)}>"
       }
     Struct(_, _) => raise WgslIrEmitError::Unsupported("anonymous struct type")
     Image(dimension, arrayed, image_class) =>
@@ -1399,8 +1400,8 @@ fn WgslIrEmitter::type_inner_name(
       match size {
         Constant(value) => "binding_array<\{self.type_name(base)}, \{value}>"
         Dynamic => "binding_array<\{self.type_name(base)}>"
-        Pending(_) =>
-          raise WgslIrEmitError::Unsupported("pending binding array size")
+        Pending(handle) =>
+          "binding_array<\{self.type_name(base)}, \{self.global_expression(handle)}>"
       }
     _ => raise WgslIrEmitError::Unsupported("type kind")
   }

@@ -27,6 +27,7 @@ compose_roundtrip_case() {
   local label="$1"
   local fixture_root="$2"
   local entry="$3"
+  shift 3
   local composed="$tmpdir/${label}.composed.wgsl"
   local output="$tmpdir/${label}.ir.wgsl"
   echo "== Compose -> IR roundtrip corpus: ${label} =="
@@ -34,6 +35,7 @@ compose_roundtrip_case() {
     --fixture-root "$fixture_root" \
     --entry "$entry" \
     --ir \
+    "$@" \
     --output "$composed"
   validate_wgsl "$composed"
   moon run tools/ir_roundtrip -- --input "$composed" --output "$output"
@@ -75,6 +77,11 @@ compose_roundtrip_case \
   "testdata/upstream_compose/conditional_import" \
   "top.wgsl"
 compose_roundtrip_case \
+  "upstream-conditional-import-a-compose" \
+  "testdata/upstream_compose/conditional_import" \
+  "top.wgsl" \
+  --def USE_A
+compose_roundtrip_case \
   "upstream-shared-global-compose" \
   "testdata/upstream_compose/use_shared_global" \
   "top.wgsl"
@@ -89,6 +96,36 @@ compose_roundtrip_case \
 compose_roundtrip_case \
   "upstream-call-entrypoint-compose" \
   "testdata/upstream_compose/call_entrypoint" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-big-shaderdefs-compose" \
+  "testdata/upstream_compose/big_shaderdefs" \
+  "top.wgsl" \
+  $(for i in $(seq 1 67); do printf -- '--def a%s ' "$i"; done)
+compose_roundtrip_case \
+  "upstream-add-imports-compose" \
+  "testdata/upstream_compose/add_imports" \
+  "top.wgsl" \
+  --additional-import plugin
+compose_roundtrip_case \
+  "upstream-const-in-decl-compose" \
+  "testdata/upstream_compose/const_in_decl" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-item-sub-point-compose" \
+  "testdata/upstream_compose/item_sub_point" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-quoted-dup-compose" \
+  "testdata/upstream_compose/quoted_dup" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-problematic-expressions-compose" \
+  "testdata/upstream_compose/problematic_expressions" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-rusty-imports-compose" \
+  "testdata/upstream_compose/rusty_imports" \
   "top.wgsl"
 
 echo "IR roundtrip corpus gate passed"

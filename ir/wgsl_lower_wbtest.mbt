@@ -475,6 +475,24 @@ test "WGSL AST lowerer supports abstract hex integer constants" {
 }
 
 ///|
+test "WGSL AST lowerer preserves constant-backed array sizes" {
+  let source =
+    #|const COUNT: u32 = 4u;
+    #|var<private> data: array<u32, COUNT>;
+    #|
+    #|fn main() -> u32 {
+    #|  return data[0];
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("array<u32, COUNT>"), content="true")
+}
+
+///|
 test "WGSL AST lowerer preserves local declaration order around atomics" {
   let source =
     #|var<workgroup> atom: atomic<u32>;

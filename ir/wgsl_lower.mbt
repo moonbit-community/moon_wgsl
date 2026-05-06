@@ -2832,11 +2832,7 @@ fn WgslIrLowerer::lower_composite_type_ref(
       }
       let element = self.lower_type_ref(element_ty)
       let size = match rest {
-        [Expression(expr), ..] =>
-          match wgsl_ir_int_literal_from_expr_ref(expr) {
-            Some(value) => ArraySize::Constant(value)
-            None => ArraySize::Dynamic
-          }
+        [size_arg, ..] => self.lower_type_template_array_size(size_arg)
         _ => ArraySize::Dynamic
       }
       let stride = self.type_layout(element).size
@@ -2928,11 +2924,7 @@ fn WgslIrLowerer::lower_composite_type_ref(
         raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
       }
       let size = match rest {
-        [Expression(expr), ..] =>
-          match wgsl_ir_int_literal_from_expr_ref(expr) {
-            Some(value) => ArraySize::Constant(value)
-            None => ArraySize::Dynamic
-          }
+        [size_arg, ..] => self.lower_type_template_array_size(size_arg)
         _ => ArraySize::Dynamic
       }
       self.intern_type(
@@ -2941,6 +2933,52 @@ fn WgslIrLowerer::lower_composite_type_ref(
       )
     }
     _ => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_type_template_array_size(
+  self : WgslIrLowerer,
+  argument : @ast.WgslTypeArgument,
+) -> ArraySize raise WgslIrLowerError {
+  match argument {
+    Expression(expr) =>
+      match wgsl_ir_int_literal_from_expr_ref(expr) {
+        Some(value) => ArraySize::Constant(value)
+        None => ArraySize::Pending(self.lower_global_expression_ref(expr))
+      }
+    Type(ty_ref) => self.lower_type_template_array_size_type_ref(ty_ref)
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_type_template_array_size_type_ref(
+  self : WgslIrLowerer,
+  ty_ref : @ast.WgslTypeRef,
+) -> ArraySize {
+  let name = ty_ref.name()
+  let literal : Int? = Some(@strconv.from_str(name)) catch { _ => None }
+  match literal {
+    Some(value) => ArraySize::Constant(value)
+    None =>
+      match self.constant_names.get(name) {
+        Some(handle) =>
+          ArraySize::Pending(
+            self.shader_module.append_global_expression(
+              Expression::Constant(handle),
+            ),
+          )
+        None =>
+          match self.override_names.get(name) {
+            Some(handle) =>
+              ArraySize::Pending(
+                self.shader_module.append_global_expression(
+                  Expression::Override(handle),
+                ),
+              )
+            None => ArraySize::Dynamic
+          }
+      }
   }
 }
 
