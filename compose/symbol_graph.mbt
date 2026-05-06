@@ -18,7 +18,6 @@ priv struct WgslComposeImportEdge {
 ///|
 priv struct WgslComposeSymbolNode {
   identity : WgslSymbolIdentity
-  generated_name : String
 }
 
 ///|
@@ -61,19 +60,18 @@ fn WgslComposeImportEdge::key(self : WgslComposeImportEdge) -> String {
 fn WgslComposeSymbolGraph::record_symbol(
   self : WgslComposeSymbolGraph,
   identity : WgslSymbolIdentity,
-  generated_name : String,
 ) -> Unit {
   let key = identity.key()
   if self.symbol_keys.contains(key) {
     for node in self.symbol_nodes {
-      if node.identity.key() == key && node.generated_name == generated_name {
+      if node.identity.key() == key {
         return
       }
     }
     return
   }
   self.symbol_keys.add(key)
-  self.symbol_nodes.push(WgslComposeSymbolNode::{ identity, generated_name })
+  self.symbol_nodes.push(WgslComposeSymbolNode::{ identity, })
 }
 
 ///|
@@ -101,9 +99,8 @@ fn WgslComposeSymbolGraph::mark_reachable(
 fn WgslComposeSymbolGraph::record_reachable_symbol(
   self : WgslComposeSymbolGraph,
   identity : WgslSymbolIdentity,
-  generated_name : String,
 ) -> Unit {
-  self.record_symbol(identity, generated_name)
+  self.record_symbol(identity)
   self.mark_reachable(identity)
 }
 

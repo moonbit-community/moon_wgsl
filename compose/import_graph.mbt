@@ -473,7 +473,6 @@ fn Composer::compose_wgsl_import_requests(
         )
         session.symbol_graph.record_reachable_symbol(
           WgslSymbolIdentity::new(request.rel_path, declaration_name),
-          declaration_name,
         )
       }
     } else {
@@ -489,7 +488,6 @@ fn Composer::compose_wgsl_import_requests(
         )
         session.symbol_graph.record_reachable_symbol(
           WgslSymbolIdentity::new(request.rel_path, from_name),
-          to_name,
         )
       }
     }
