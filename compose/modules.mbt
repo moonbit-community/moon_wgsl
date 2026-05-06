@@ -83,38 +83,36 @@ fn collect_wgsl_cached_import_redirects(
   alias_name : String,
   redirects : WgslScopedAliasRedirectSet,
 ) -> Int {
-  let prefix = if alias_name == "" {
-    wgsl_symbol_identity_key(rel_path, "")
-  } else {
-    wgsl_alias_symbol_identity_key(rel_path, alias_name, "")
-  }
   let mut count = 0
-  let symbol_names = if alias_name == "" {
-    session.final_names.canonical
+  if alias_name == "" {
+    for entry in session.final_names.canonical_entries {
+      if entry.identity.rel_path != rel_path {
+        continue
+      }
+      redirects.push(WgslScopedAliasRedirect::{
+        redirect: WgslSymbolRedirect::{
+          from_name: entry.identity.original_name,
+          to_name: entry.generated_name,
+        },
+        scope: UnqualifiedItemBinding,
+      })
+      count = count + 1
+    }
   } else {
-    session.final_names.alias_scoped
-  }
-  for entry in symbol_names.iter() {
-    let (key, imported_name) = entry
-    if !key.has_prefix(prefix) {
-      continue
+    for entry in session.final_names.alias_entries {
+      if entry.identity.alias_name != alias_name ||
+        entry.identity.symbol.rel_path != rel_path {
+        continue
+      }
+      redirects.push(WgslScopedAliasRedirect::{
+        redirect: WgslSymbolRedirect::{
+          from_name: "\{alias_name}::\{entry.identity.symbol.original_name}",
+          to_name: entry.generated_name,
+        },
+        scope: CachedQualifiedAliasReference,
+      })
+      count = count + 1
     }
-    let item_name = key[prefix.length():key.length()].to_owned()
-    let from_name = if alias_name == "" {
-      item_name
-    } else {
-      "\{alias_name}::\{item_name}"
-    }
-    let scope = if alias_name == "" {
-      UnqualifiedItemBinding
-    } else {
-      CachedQualifiedAliasReference
-    }
-    redirects.push(WgslScopedAliasRedirect::{
-      redirect: WgslSymbolRedirect::{ from_name, to_name: imported_name },
-      scope,
-    })
-    count = count + 1
   }
   count
 }

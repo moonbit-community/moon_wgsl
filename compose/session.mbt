@@ -120,9 +120,23 @@ priv struct WgslComposeSemanticFacts {
 }
 
 ///|
+priv struct WgslCanonicalFinalNameEntry {
+  identity : WgslSymbolIdentity
+  generated_name : String
+}
+
+///|
+priv struct WgslAliasFinalNameEntry {
+  identity : WgslAliasSymbolIdentity
+  generated_name : String
+}
+
+///|
 priv struct WgslFinalNameTables {
   canonical : @hashmap.HashMap[String, String]
   alias_scoped : @hashmap.HashMap[String, String]
+  canonical_entries : Array[WgslCanonicalFinalNameEntry]
+  alias_entries : Array[WgslAliasFinalNameEntry]
 }
 
 ///|
@@ -130,6 +144,8 @@ fn WgslFinalNameTables::new() -> WgslFinalNameTables {
   WgslFinalNameTables::{
     canonical: @hashmap.HashMap::new(),
     alias_scoped: @hashmap.HashMap::new(),
+    canonical_entries: [],
+    alias_entries: [],
   }
 }
 
@@ -139,7 +155,21 @@ fn WgslFinalNameTables::canonical_set(
   identity : WgslSymbolIdentity,
   generated_name : String,
 ) -> Unit {
-  self.canonical.set(identity.key(), generated_name)
+  let key = identity.key()
+  self.canonical.set(key, generated_name)
+  for i in 0..<self.canonical_entries.length() {
+    if self.canonical_entries[i].identity.key() == key {
+      self.canonical_entries[i] = WgslCanonicalFinalNameEntry::{
+        identity,
+        generated_name,
+      }
+      return
+    }
+  }
+  self.canonical_entries.push(WgslCanonicalFinalNameEntry::{
+    identity,
+    generated_name,
+  })
 }
 
 ///|
@@ -150,7 +180,7 @@ fn WgslFinalNameTables::canonical_set_if_absent(
 ) -> Unit {
   let key = identity.key()
   if !self.canonical.contains(key) {
-    self.canonical.set(key, generated_name)
+    self.canonical_set(identity, generated_name)
   }
 }
 
@@ -168,7 +198,29 @@ fn WgslFinalNameTables::alias_set(
   identity : WgslAliasSymbolIdentity,
   generated_name : String,
 ) -> Unit {
-  self.alias_scoped.set(identity.key(), generated_name)
+  let key = identity.key()
+  self.alias_scoped.set(key, generated_name)
+  for i in 0..<self.alias_entries.length() {
+    if self.alias_entries[i].identity.key() == key {
+      self.alias_entries[i] = WgslAliasFinalNameEntry::{
+        identity,
+        generated_name,
+      }
+      return
+    }
+  }
+  self.alias_entries.push(WgslAliasFinalNameEntry::{ identity, generated_name })
+}
+
+///|
+fn WgslFinalNameTables::alias_set_if_absent(
+  self : WgslFinalNameTables,
+  identity : WgslAliasSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  if !self.alias_scoped.contains(identity.key()) {
+    self.alias_set(identity, generated_name)
+  }
 }
 
 ///|

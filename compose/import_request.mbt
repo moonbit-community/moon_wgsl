@@ -112,20 +112,6 @@ fn WgslAliasSymbolIdentity::key(self : WgslAliasSymbolIdentity) -> String {
 }
 
 ///|
-fn wgsl_symbol_identity_key(rel_path : String, item_name : String) -> String {
-  WgslSymbolIdentity::new(rel_path, item_name).key()
-}
-
-///|
-fn wgsl_alias_symbol_identity_key(
-  rel_path : String,
-  alias_name : String,
-  item_name : String,
-) -> String {
-  WgslAliasSymbolIdentity::new(rel_path, alias_name, item_name).key()
-}
-
-///|
 fn wgsl_path_stack_contains(paths : Array[String], rel_path : String) -> Bool {
   paths.contains(rel_path)
 }

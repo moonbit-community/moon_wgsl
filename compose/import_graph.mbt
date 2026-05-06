@@ -440,22 +440,21 @@ fn Composer::compose_wgsl_import_requests(
       if origin.rel_path != "" &&
         origin.source_symbol_name != "" &&
         origin.generated_symbol_name != "" {
-        let key = if request.alias_name == "" {
-          wgsl_symbol_identity_key(origin.rel_path, origin.source_symbol_name)
+        if request.alias_name == "" {
+          session.final_names.canonical_set_if_absent(
+            WgslSymbolIdentity::new(origin.rel_path, origin.source_symbol_name),
+            origin.generated_symbol_name,
+          )
         } else {
-          wgsl_alias_symbol_identity_key(
+          let identity = WgslAliasSymbolIdentity::new(
             origin.rel_path,
             request.alias_name,
             origin.source_symbol_name,
           )
-        }
-        let symbol_names = if request.alias_name == "" {
-          session.final_names.canonical
-        } else {
-          session.final_names.alias_scoped
-        }
-        if !symbol_names.contains(key) {
-          symbol_names.set(key, origin.generated_symbol_name)
+          session.final_names.alias_set_if_absent(
+            identity,
+            origin.generated_symbol_name,
+          )
         }
       }
     }
