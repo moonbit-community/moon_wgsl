@@ -324,7 +324,7 @@ fn WgslIrLowerer::lower_function(
             binding: wgsl_ir_binding_from_attributes(result.attributes()),
           })
         None => None
-    }
+      }
     None => None
   }
   let body = self.lower_block(function.body(), ir_function, scope)
@@ -433,7 +433,7 @@ fn WgslIrLowerer::lower_statement(
     Break(_) => block.push(Statement::Break)
     Continue => block.push(Statement::Continue)
     Discard => block.push(Statement::Kill)
-    Assignment(_, lhs, rhs) => {
+    Assignment(op, lhs, rhs) => {
       guard lhs is Some(lhs_ref) else {
         raise WgslIrLowerError::UnsupportedStatement("assignment without lhs")
       }
@@ -441,7 +441,20 @@ fn WgslIrLowerer::lower_statement(
         raise WgslIrLowerError::UnsupportedStatement("assignment without rhs")
       }
       let target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
-      let value = self.lower_function_expression_ref(rhs_ref, function, scope)
+      let rhs_value = self.lower_function_expression_ref(
+        rhs_ref, function, scope,
+      )
+      let value = match wgsl_ir_compound_assignment_operator(op) {
+        Some(binary_op) => {
+          let loaded_target = function.expressions.append(
+            Expression::Load(target),
+          )
+          function.expressions.append(
+            Expression::Binary(binary_op, loaded_target, rhs_value),
+          )
+        }
+        None => rhs_value
+      }
       block.push(Statement::Store(target, value))
     }
     Increment(target) =>
@@ -760,8 +773,10 @@ fn WgslIrLowerer::lower_function_expression_node(
       match callee.kind() {
         Identifier(name) =>
           match self.function_names.get(name.name()) {
-            Some(handle) =>
-              function.expressions.append(Expression::CallResult(handle))
+            Some(_) =>
+              raise WgslIrLowerError::UnsupportedExpression(
+                "function call expression requires statement-result lowering",
+              )
             None => {
               let ty = self.lower_type_name_with_expression_arguments(
                 name.name(),
@@ -1340,6 +1355,23 @@ fn wgsl_ir_binary_operator(
       raise WgslIrLowerError::UnsupportedExpression(
         "binary operator \{op.text()}",
       )
+  }
+}
+
+///|
+fn wgsl_ir_compound_assignment_operator(op : String) -> BinaryOperator? {
+  match op {
+    "+=" => Some(BinaryOperator::Add)
+    "-=" => Some(BinaryOperator::Subtract)
+    "*=" => Some(BinaryOperator::Multiply)
+    "/=" => Some(BinaryOperator::Divide)
+    "%=" => Some(BinaryOperator::Modulo)
+    "&=" => Some(BinaryOperator::And)
+    "^=" => Some(BinaryOperator::ExclusiveOr)
+    "|=" => Some(BinaryOperator::InclusiveOr)
+    "<<=" => Some(BinaryOperator::ShiftLeft)
+    ">>=" => Some(BinaryOperator::ShiftRight)
+    _ => None
   }
 }
 

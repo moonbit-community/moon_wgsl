@@ -100,3 +100,43 @@ test "WGSL AST lowerer rejects unresolved expression identifiers" {
     content="\"unknown WGSL identifier in IR lowering: missing_name\"",
   )
 }
+
+///|
+test "WGSL AST lowerer preserves compound assignment semantics in IR" {
+  let source =
+    #|@compute
+    #|fn main() {
+    #|  var value: u32 = 1u;
+    #|  value += 2u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("value = (value + 2u);"), content="true")
+}
+
+///|
+test "WGSL AST lowerer rejects function call expressions until result calls are modeled" {
+  let source =
+    #|fn helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+    #|@compute
+    #|fn main() {
+    #|  var value: u32 = helper();
+    #|}
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"unsupported WGSL expression: function call expression requires statement-result lowering\"",
+  )
+}

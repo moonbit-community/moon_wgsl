@@ -7,11 +7,22 @@ import {
 }
 
 // Values
+pub fn emit_wgsl_module_from_ir(Module) -> String raise WgslIrEmitError
+
 pub fn lower_wgsl_translation_unit_to_ir(@ast.WgslTranslationUnit) -> Module raise WgslIrLowerError
 
 pub fn parse_wgsl_module_to_ir(String) -> Module raise WgslIrLowerError
 
+pub fn validate_wgsl_ir_module(Module) -> Unit raise WgslIrValidationError
+
 // Errors
+pub suberror WgslIrEmitError {
+  MissingHandle(String)
+  MissingName(String)
+  Unsupported(String)
+}
+pub fn WgslIrEmitError::message(Self) -> String
+
 pub suberror WgslIrLowerError {
   Parse(String)
   MissingType(String)
@@ -21,6 +32,20 @@ pub suberror WgslIrLowerError {
   UnknownIdentifier(String)
 }
 pub fn WgslIrLowerError::message(Self) -> String
+
+pub suberror WgslIrValidationError {
+  InvalidTypeHandle(Int)
+  InvalidConstantHandle(Int)
+  InvalidOverrideHandle(Int)
+  InvalidGlobalVariableHandle(Int)
+  InvalidGlobalExpressionHandle(Int)
+  InvalidFunctionHandle(Int)
+  InvalidLocalVariableHandle(Int)
+  InvalidFunctionExpressionHandle(Int)
+  InvalidHandleRange(Int, Int)
+  InvalidEntryPoint(String)
+}
+pub fn WgslIrValidationError::message(Self) -> String
 
 // Types and methods
 pub enum AddressSpace {
