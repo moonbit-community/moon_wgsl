@@ -55,6 +55,15 @@ pub fn OverrideArena::append(self : OverrideArena, item : Override) -> Handle {
 }
 
 ///|
+pub fn OverrideArena::set(
+  self : OverrideArena,
+  handle : Handle,
+  item : Override,
+) -> Unit {
+  self.items[handle.index()] = item
+}
+
+///|
 pub(all) struct GlobalVariableArena {
   items : Array[GlobalVariable]
 } derive(Eq, Debug)

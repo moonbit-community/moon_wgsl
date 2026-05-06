@@ -153,7 +153,7 @@ fn WgslIrEmitter::emit_constant(
   guard constant.name is Some(name) else {
     raise WgslIrEmitError::MissingName("constant")
   }
-  if self.type_is_abstract_scalar(constant.ty) {
+  if self.type_contains_abstract_scalar(constant.ty) {
     out.write_string(
       "const \{name} = \{self.global_expression(constant.init)};\n",
     )
@@ -177,7 +177,11 @@ fn WgslIrEmitter::emit_override(
   guard override_.name is Some(name) else {
     raise WgslIrEmitError::MissingName("override")
   }
-  out.write_string("override \{name}: \{self.type_name(override_.ty)}")
+  if self.type_contains_abstract_scalar(override_.ty) {
+    out.write_string("override \{name}")
+  } else {
+    out.write_string("override \{name}: \{self.type_name(override_.ty)}")
+  }
   match override_.init {
     Some(init) => out.write_string(" = \{self.global_expression(init)}")
     None => ()
@@ -226,18 +230,41 @@ fn WgslIrEmitter::type_is_pointer(
 }
 
 ///|
-fn WgslIrEmitter::type_is_abstract_scalar(
+fn WgslIrEmitter::type_contains_abstract_scalar(
   self : WgslIrEmitter,
   handle : Handle,
 ) -> Bool {
   match self.shader_module.types.get(handle) {
-    Some(ty) =>
-      match ty.inner {
-        Scalar(scalar) =>
-          scalar.kind == AbstractInt || scalar.kind == AbstractFloat
-        _ => false
-      }
+    Some(ty) => self.type_inner_contains_abstract_scalar(ty.inner)
     None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::type_inner_contains_abstract_scalar(
+  self : WgslIrEmitter,
+  inner : TypeInner,
+) -> Bool {
+  match inner {
+    Scalar(scalar)
+    | Vector(_, scalar)
+    | Matrix(_, _, scalar)
+    | CooperativeMatrix(_, _, scalar, _)
+    | Atomic(scalar)
+    | ValuePointer(_, scalar, _) =>
+      scalar.kind == AbstractInt || scalar.kind == AbstractFloat
+    Pointer(base, _) | Array(base, _, _) | BindingArray(base, _) =>
+      self.type_contains_abstract_scalar(base)
+    Struct(members, _) | PredeclaredStruct(members, _) => {
+      for struct_member in members {
+        if self.type_contains_abstract_scalar(struct_member.ty) {
+          return true
+        }
+      }
+      false
+    }
+    Image(_, _, _) | Sampler(_) | AccelerationStructure(_) | RayQuery(_) =>
+      false
   }
 }
 
@@ -397,7 +424,7 @@ fn WgslIrEmitter::local_variable_needs_type_annotation(
   self : WgslIrEmitter,
   local_var : LocalVariable,
 ) -> Bool {
-  if self.type_is_abstract_scalar(local_var.ty) {
+  if self.type_contains_abstract_scalar(local_var.ty) {
     return false
   }
   !self.type_is_predeclared_result(local_var.ty)
@@ -658,7 +685,7 @@ fn WgslIrEmitter::emit_expression(
     Override(handle) => self.override_name(handle)
     ZeroValue(ty) => "\{self.type_name(ty)}()"
     Compose(ty, components) =>
-      "\{self.type_name(ty)}(\{self.expression_list(components, function)})"
+      "\{self.compose_constructor_name(ty)}(\{self.expression_list(components, function)})"
     Access(base, index) =>
       "\{self.required_function_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
@@ -1687,6 +1714,27 @@ fn WgslIrEmitter::type_name(
 }
 
 ///|
+fn WgslIrEmitter::compose_constructor_name(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> String raise WgslIrEmitError {
+  let ty = match self.shader_module.types.items.get(handle.index()) {
+    Some(value) => value
+    None => raise WgslIrEmitError::MissingHandle("type \{handle.index()}")
+  }
+  if !self.type_inner_contains_abstract_scalar(ty.inner) {
+    return self.type_name(handle)
+  }
+  match ty.inner {
+    Scalar(_) => self.type_name(handle)
+    Vector(size, _) => "vec\{size.width()}"
+    Matrix(columns, rows, _) => "mat\{columns.width()}x\{rows.width()}"
+    Array(_, _, _) => "array"
+    _ => self.type_name(handle)
+  }
+}
+
+///|
 fn WgslIrEmitter::type_inner_name(
   self : WgslIrEmitter,
   inner : TypeInner,
@@ -1966,8 +2014,8 @@ fn WgslIrEmitter::sampling_name(
 fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
   ignore(self)
   match literal {
-    F64(value) => "\{value}"
-    F32(value) => "\{value}"
+    F64(value) => wgsl_ir_emit_float_literal_text("\{value}")
+    F32(value) => wgsl_ir_emit_float_literal_text("\{value}")
     F16Bits(value) => "\{value}h"
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
@@ -1977,7 +2025,16 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
     I64(value) => "\{value}"
     Bool(value) => if value { "true" } else { "false" }
     AbstractInt(value) => "\{value}"
-    AbstractFloat(value) => "\{value}"
+    AbstractFloat(value) => wgsl_ir_emit_float_literal_text("\{value}")
+  }
+}
+
+///|
+fn wgsl_ir_emit_float_literal_text(text : String) -> String {
+  if text.contains(".") || text.contains("e") || text.contains("E") {
+    text
+  } else {
+    "\{text}.0"
   }
 }
 

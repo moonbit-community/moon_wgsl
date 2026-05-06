@@ -166,6 +166,12 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
       TypeInner::Scalar(Scalar::new(AbstractInt, 8)),
     ),
   )
+  ignore(
+    self.intern_type(
+      "__abstract_float",
+      TypeInner::Scalar(Scalar::new(AbstractFloat, 8)),
+    ),
+  )
 }
 
 ///|
@@ -196,7 +202,7 @@ fn WgslIrLowerer::intern_type(
 fn WgslIrLowerer::predeclare_global_declaration(
   self : WgslIrLowerer,
   declaration : @ast.WgslGlobalDecl,
-) -> Unit {
+) -> Unit raise WgslIrLowerError {
   match declaration.data() {
     Function(function) => {
       let handle = self.shader_module.append_function(
@@ -204,7 +210,53 @@ fn WgslIrLowerer::predeclare_global_declaration(
       )
       self.function_names.set(function.name().name(), handle)
     }
+    Override(override_decl) =>
+      self.predeclare_override_declaration(override_decl)
     _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_override_declaration(
+  self : WgslIrLowerer,
+  override_decl : @ast.WgslOverride,
+) -> Unit raise WgslIrLowerError {
+  let ty = match override_decl.ty_ref() {
+    Some(ty_ref) => self.lower_type_ref(ty_ref)
+    None => self.predeclared_override_fallback_type(override_decl)
+  }
+  let handle = self.shader_module.append_override(Override::{
+    name: Some(override_decl.name().name()),
+    id: wgsl_ir_id_from_attributes(override_decl.attributes()),
+    ty,
+    init: None,
+  })
+  self.override_names.set(override_decl.name().name(), handle)
+}
+
+///|
+fn WgslIrLowerer::predeclared_override_fallback_type(
+  self : WgslIrLowerer,
+  override_decl : @ast.WgslOverride,
+) -> Handle raise WgslIrLowerError {
+  match override_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) =>
+          match root.kind() {
+            Literal(token) =>
+              match token.kind() {
+                BoolLiteral(_) => self.lower_builtin_type_name("bool")
+                IntLiteral(_) => self.lower_builtin_type_name("__abstract_int")
+                UintLiteral(_) => self.lower_builtin_type_name("u32")
+                FloatLiteral => self.lower_builtin_type_name("__abstract_float")
+                _ => self.lower_builtin_type_name("__abstract_int")
+              }
+            _ => self.lower_builtin_type_name("__abstract_int")
+          }
+        None => self.lower_builtin_type_name("__abstract_int")
+      }
+    None => self.lower_builtin_type_name("__abstract_int")
   }
 }
 
@@ -400,7 +452,7 @@ fn WgslIrLowerer::lower_override(
         override_decl.initializer_ref(),
       )
   }
-  let handle = self.shader_module.append_override(Override::{
+  let override_ = Override::{
     name: Some(override_decl.name().name()),
     id: wgsl_ir_id_from_attributes(override_decl.attributes()),
     ty,
@@ -409,8 +461,14 @@ fn WgslIrLowerer::lower_override(
         Some(self.lower_global_expression_ref_with_expected(expr, explicit_ty))
       None => None
     },
-  })
-  self.override_names.set(override_decl.name().name(), handle)
+  }
+  match self.override_names.get(override_decl.name().name()) {
+    Some(handle) => self.shader_module.set_override(handle, override_)
+    None => {
+      let handle = self.shader_module.append_override(override_)
+      self.override_names.set(override_decl.name().name(), handle)
+    }
+  }
 }
 
 ///|
@@ -2332,7 +2390,7 @@ fn WgslIrLowerer::infer_expression_type(
             self.lower_builtin_type_name("__abstract_int")
           }
         UintLiteral(_) => self.lower_builtin_type_name("u32")
-        FloatLiteral => self.lower_builtin_type_name("f32")
+        FloatLiteral => self.lower_builtin_type_name("__abstract_float")
         _ => raise WgslIrLowerError::MissingType(name)
       }
     Identifier(identifier) =>
@@ -2361,6 +2419,8 @@ fn WgslIrLowerer::infer_expression_type(
                 Identifier(ident) =>
                   if ident.name() == "select" {
                     self.infer_select_expression_type(arguments, name)
+                  } else if ident.name() == "array" {
+                    self.infer_array_constructor_type_from_ast(arguments, name)
                   } else {
                     match wgsl_ir_relational_function_from_name(ident.name()) {
                       Some(relational_function) =>
@@ -3169,8 +3229,9 @@ fn WgslIrLowerer::lower_global_array_constructor_call(
   expected_ty : Handle?,
   arguments : Array[@ast.WgslExprNode],
 ) -> Expression raise WgslIrLowerError {
-  guard expected_ty is Some(ty) else {
-    raise WgslIrLowerError::UnsupportedType("array")
+  let ty = match expected_ty {
+    Some(ty) => ty
+    None => self.infer_array_constructor_type_from_ast(arguments, "array")
   }
   guard self.array_element_type(ty) is Some(element_ty) else {
     raise WgslIrLowerError::UnsupportedType("array")
@@ -3776,23 +3837,30 @@ fn WgslIrLowerer::lower_function_array_constructor_call(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
-  guard expected_ty is Some(ty) else {
-    raise WgslIrLowerError::UnsupportedType("array")
+  let lowered_arguments = self.lower_function_expression_arguments(
+    arguments, function, scope,
+  )
+  let ty = match expected_ty {
+    Some(ty) => ty
+    None =>
+      self.infer_array_constructor_type_from_handles(
+        lowered_arguments, function, "array",
+      )
   }
   guard self.array_element_type(ty) is Some(element_ty) else {
     raise WgslIrLowerError::UnsupportedType("array")
   }
-  function.expressions.append(
-    Expression::Compose(
-      ty,
+  let components = match expected_ty {
+    Some(_) =>
       self.lower_function_expression_arguments_with_expected(
         arguments,
         function,
         scope,
         Some(element_ty),
-      ),
-    ),
-  )
+      )
+    None => lowered_arguments
+  }
+  function.expressions.append(Expression::Compose(ty, components))
 }
 
 ///|
@@ -4368,6 +4436,20 @@ fn WgslIrLowerer::lower_generic_constructor_type_from_ast(
 }
 
 ///|
+fn WgslIrLowerer::infer_array_constructor_type_from_ast(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+) -> Handle raise WgslIrLowerError {
+  let flattened = wgsl_ir_flatten_expression_arguments(arguments)
+  guard flattened is [first, ..] else {
+    raise WgslIrLowerError::MissingType(diagnostic_name)
+  }
+  let element_ty = self.infer_expression_type(first, diagnostic_name)
+  self.intern_inferred_array_type(element_ty, flattened.length())
+}
+
+///|
 fn WgslIrLowerer::constructor_scalar_from_ast_arguments(
   self : WgslIrLowerer,
   arguments : Array[@ast.WgslExprNode],
@@ -4377,9 +4459,7 @@ fn WgslIrLowerer::constructor_scalar_from_ast_arguments(
     raise WgslIrLowerError::MissingType(diagnostic_name)
   }
   let ty = self.infer_expression_type(first, diagnostic_name)
-  wgsl_ir_concrete_constructor_scalar(
-    self.scalar_from_type_handle(ty, diagnostic_name),
-  )
+  self.scalar_from_type_handle(ty, diagnostic_name)
 }
 
 ///|
@@ -4452,6 +4532,22 @@ fn WgslIrLowerer::lower_generic_constructor_type_from_handles(
 }
 
 ///|
+fn WgslIrLowerer::infer_array_constructor_type_from_handles(
+  self : WgslIrLowerer,
+  lowered_arguments : Array[Handle],
+  function : Function,
+  diagnostic_name : String,
+) -> Handle raise WgslIrLowerError {
+  guard lowered_arguments is [first, ..] else {
+    raise WgslIrLowerError::MissingType(diagnostic_name)
+  }
+  guard self.function_expression_type(function, first) is Some(element_ty) else {
+    raise WgslIrLowerError::MissingType(diagnostic_name)
+  }
+  self.intern_inferred_array_type(element_ty, lowered_arguments.length())
+}
+
+///|
 fn WgslIrLowerer::constructor_scalar_from_handles(
   self : WgslIrLowerer,
   lowered_arguments : Array[Handle],
@@ -4464,9 +4560,36 @@ fn WgslIrLowerer::constructor_scalar_from_handles(
   guard self.function_expression_type(function, first) is Some(ty) else {
     raise WgslIrLowerError::MissingType(diagnostic_name)
   }
-  wgsl_ir_concrete_constructor_scalar(
-    self.scalar_from_type_handle(ty, diagnostic_name),
+  self.scalar_from_type_handle(ty, diagnostic_name)
+}
+
+///|
+fn WgslIrLowerer::intern_inferred_array_type(
+  self : WgslIrLowerer,
+  element_ty : Handle,
+  length : Int,
+) -> Handle raise WgslIrLowerError {
+  let layout = self.type_layout(element_ty)
+  let stride = wgsl_ir_align_to(layout.size, layout.align)
+  self.intern_type(
+    "array<\{self.type_cache_name(element_ty)}, \{length}>",
+    TypeInner::Array(element_ty, Constant(length), stride),
   )
+}
+
+///|
+fn WgslIrLowerer::type_cache_name(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> String raise WgslIrLowerError {
+  match self.shader_module.types.get(handle) {
+    Some(type_) =>
+      match type_.name {
+        Some(name) => name
+        None => "type_\{handle.index()}"
+      }
+    None => raise WgslIrLowerError::MissingType("type handle")
+  }
 }
 
 ///|
@@ -4484,15 +4607,6 @@ fn WgslIrLowerer::scalar_from_type_handle(
         _ => raise WgslIrLowerError::MissingType(diagnostic_name)
       }
     None => raise WgslIrLowerError::MissingType(diagnostic_name)
-  }
-}
-
-///|
-fn wgsl_ir_concrete_constructor_scalar(scalar : Scalar) -> Scalar {
-  match scalar.kind {
-    AbstractInt => Scalar::new(Sint, 4)
-    AbstractFloat => Scalar::new(Float, 4)
-    _ => scalar
   }
 }
 
@@ -5979,7 +6093,8 @@ fn WgslIrLowerer::literal_type(
     I32(_) => self.type_cache.get("i32")
     AbstractInt(_) => self.type_cache.get("__abstract_int")
     U32(_) => self.type_cache.get("u32")
-    F32(_) | AbstractFloat(_) => self.type_cache.get("f32")
+    F32(_) => self.type_cache.get("f32")
+    AbstractFloat(_) => self.type_cache.get("__abstract_float")
     _ => None
   }
 }
@@ -5994,8 +6109,8 @@ fn WgslIrLowerer::scalar_type_handle(
     Sint => "i32"
     Uint => "u32"
     Float => if scalar.width == 2 { "f16" } else { "f32" }
-    AbstractInt => "i32"
-    AbstractFloat => "f32"
+    AbstractInt => "__abstract_int"
+    AbstractFloat => "__abstract_float"
   }
   self.intern_type(name, TypeInner::Scalar(scalar))
 }
@@ -6007,8 +6122,8 @@ fn wgsl_ir_scalar_name(kind : ScalarKind, width : Int) -> String {
     Sint => "i32"
     Uint => "u32"
     Float => if width == 2 { "f16" } else { "f32" }
-    AbstractInt => "i32"
-    AbstractFloat => "f32"
+    AbstractInt => "__abstract_int"
+    AbstractFloat => "__abstract_float"
   }
 }
 

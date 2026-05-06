@@ -596,6 +596,7 @@ pub fn Module::append_override(Self, Override) -> Handle
 pub fn Module::append_type(Self, Type) -> Handle
 pub fn Module::new() -> Self
 pub fn Module::set_function(Self, Handle, Function) -> Unit
+pub fn Module::set_override(Self, Handle, Override) -> Unit
 
 pub(all) struct NamedExpression {
   handle : Handle
@@ -614,6 +615,7 @@ pub(all) struct OverrideArena {
 } derive(Eq, @debug.Debug)
 pub fn OverrideArena::append(Self, Override) -> Handle
 pub fn OverrideArena::new() -> Self
+pub fn OverrideArena::set(Self, Handle, Override) -> Unit
 
 pub enum PredeclaredType {
   AtomicCompareExchangeWeakResult(Scalar)

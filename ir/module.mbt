@@ -66,6 +66,15 @@ pub fn Module::append_override(self : Module, override_ : Override) -> Handle {
 }
 
 ///|
+pub fn Module::set_override(
+  self : Module,
+  handle : Handle,
+  override_ : Override,
+) -> Unit {
+  self.overrides.set(handle, override_)
+}
+
+///|
 pub fn Module::append_global_variable(
   self : Module,
   global : GlobalVariable,

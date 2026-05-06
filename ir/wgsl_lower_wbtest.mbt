@@ -634,7 +634,7 @@ test "WGSL AST lowerer supports basic texture calls" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("textureSampleLevel(tex, samp, uv, 0)"),
+    emitted.contains("textureSampleLevel(tex, samp, uv, 0.0)"),
     content="true",
   )
   debug_inspect(emitted.contains("textureDimensions(tex).x"), content="true")
@@ -691,7 +691,7 @@ test "WGSL AST lowerer uses texture type to lower advanced sampling arguments" {
   )
   debug_inspect(
     emitted.contains(
-      "textureSampleLevel(tex_arr, samp, uv, 0u, 1, vec2<i32>(0, 0))",
+      "textureSampleLevel(tex_arr, samp, uv, 0u, 1.0, vec2<i32>(0, 0))",
     ),
     content="true",
   )
@@ -829,6 +829,42 @@ test "WGSL AST lowerer supports abstract hex integer constants" {
   }
   debug_inspect(emitted.contains("const lhs = 68719411200;"), content="true")
   debug_inspect(emitted.contains("const res = (lhs << 4u);"), content="true")
+}
+
+///|
+test "WGSL AST lowerer preserves abstract composite constructors" {
+  let source =
+    #|const vector = vec2(0xffffffffff, 0xfffffffff0);
+    #|const values = array(0xffffffffff, 0xfffffffff0);
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("const vector = vec2(1099511627775, 1099511627760);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("const values = array(1099511627775, 1099511627760);"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer resolves forward override types" {
+  let source =
+    #|override x = y;
+    #|override y: i32;
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("override x: i32 = y;"), content="true")
+  debug_inspect(emitted.contains("override y: i32;"), content="true")
 }
 
 ///|

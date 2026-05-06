@@ -219,7 +219,7 @@ test "naga_oil: commented module alias references do not trigger imports" {
     err => abort("expected composer preprocess success: \{err.message()}")
   }
   debug_inspect(preprocessed.contains("const PI_2"), content="false")
-  debug_inspect(preprocessed.contains("return 1;"), content="true")
+  debug_inspect(preprocessed.contains("return 1.0;"), content="true")
   clear_composer_test_registry()
 }
 
@@ -232,7 +232,7 @@ test "naga_oil: commented namespace paths do not report unresolved imports" {
     err =>
       abort("expected commented namespace compose success: \{err.message()}")
   }
-  debug_inspect(preprocessed.contains("return 1;"), content="true")
+  debug_inspect(preprocessed.contains("return 1.0;"), content="true")
   clear_composer_test_registry()
 }
 
@@ -770,7 +770,7 @@ test "naga_oil: virtual override base detection ignores local shadows" {
       abort("expected local-shadow virtual override success: \{err.message()}")
   }
   debug_inspect(source.contains("fn mod__inner__virtual_base"), content="false")
-  debug_inspect(source.contains("let mod__inner: f32 = 2;"), content="true")
+  debug_inspect(source.contains("let mod__inner = 2.0;"), content="true")
   debug_inspect(source.contains("return mod__inner;"), content="true")
   clear_composer_test_registry()
 }
@@ -799,7 +799,7 @@ test "naga_oil: virtual override base detection respects statement order" {
     source.contains("let value: f32 = mod__inner__virtual_base();"),
     content="true",
   )
-  debug_inspect(source.contains("let mod__inner: f32 = 2;"), content="true")
+  debug_inspect(source.contains("let mod__inner = 2.0;"), content="true")
   clear_composer_test_registry()
 }
 
@@ -826,8 +826,8 @@ test "naga_oil: transitive override keeps virtual module side effects" {
   debug_inspect(source.contains("virtual fn"), content="false")
   debug_inspect(source.contains("override fn"), content="false")
   debug_inspect(source.contains("fn mod__inner() -> f32"), content="true")
-  debug_inspect(source.contains("return 2;"), content="true")
-  debug_inspect(source.contains("return 1;"), content="false")
+  debug_inspect(source.contains("return 2.0;"), content="true")
+  debug_inspect(source.contains("return 1.0;"), content="false")
   debug_inspect(source.contains("return mod__inner();"), content="true")
   debug_inspect(source.contains("return mod__outer();"), content="true")
   clear_composer_test_registry()
