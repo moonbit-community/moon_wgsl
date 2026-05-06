@@ -78,5 +78,17 @@ compose_roundtrip_case \
   "upstream-shared-global-compose" \
   "testdata/upstream_compose/use_shared_global" \
   "top.wgsl"
+compose_roundtrip_case \
+  "upstream-atomics-compose" \
+  "testdata/upstream_compose/atomics" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-modf-compose" \
+  "testdata/upstream_compose/modf" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-call-entrypoint-compose" \
+  "testdata/upstream_compose/call_entrypoint" \
+  "top.wgsl"
 
 echo "IR roundtrip corpus gate passed"

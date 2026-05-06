@@ -28,6 +28,7 @@ priv struct WgslIrLowerer {
   global_names : @hashmap.HashMap[String, Handle]
   constant_names : @hashmap.HashMap[String, Handle]
   override_names : @hashmap.HashMap[String, Handle]
+  referenced_names : @hashset.HashSet[String]
 }
 
 ///|
@@ -59,6 +60,7 @@ fn WgslIrLowerer::new() -> WgslIrLowerer {
     global_names: @hashmap.HashMap::new(),
     constant_names: @hashmap.HashMap::new(),
     override_names: @hashmap.HashMap::new(),
+    referenced_names: @hashset.HashSet::new(),
   }
 }
 
@@ -84,12 +86,27 @@ pub fn lower_wgsl_translation_unit_to_ir(
   let lowerer = WgslIrLowerer::new()
   lowerer.register_prelude_types()
   for declaration in unit.declarations() {
+    lowerer.record_referenced_names(declaration)
+  }
+  for declaration in unit.declarations() {
     lowerer.predeclare_global_declaration(declaration)
   }
   for declaration in unit.declarations() {
     lowerer.lower_global_declaration(declaration)
   }
   lowerer.shader_module
+}
+
+///|
+fn WgslIrLowerer::record_referenced_names(
+  self : WgslIrLowerer,
+  declaration : @ast.WgslGlobalDecl,
+) -> Unit {
+  let identifiers : Array[@ast.WgslIdent] = []
+  @ast.collect_wgsl_decl_identifier_nodes(declaration.data(), identifiers)
+  for identifier in identifiers {
+    self.referenced_names.add(identifier.name())
+  }
 }
 
 ///|
@@ -132,13 +149,12 @@ fn WgslIrLowerer::predeclare_global_declaration(
   declaration : @ast.WgslGlobalDecl,
 ) -> Unit {
   match declaration.data() {
-    Function(function) =>
-      if wgsl_ir_shader_stage_from_attributes(function.attributes()) == None {
-        let handle = self.shader_module.append_function(
-          Function::new(Some(function.name().name())),
-        )
-        self.function_names.set(function.name().name(), handle)
-      }
+    Function(function) => {
+      let handle = self.shader_module.append_function(
+        Function::new(Some(function.name().name())),
+      )
+      self.function_names.set(function.name().name(), handle)
+    }
     _ => ()
   }
 }
@@ -307,32 +323,69 @@ fn WgslIrLowerer::lower_function_declaration(
   self : WgslIrLowerer,
   function : @ast.WgslFunction,
 ) -> Unit raise WgslIrLowerError {
-  let ir_function = self.lower_function(function)
-  match wgsl_ir_shader_stage_from_attributes(function.attributes()) {
+  let stage = wgsl_ir_shader_stage_from_attributes(function.attributes())
+  let referenced_stage_function = match stage {
+    Some(_) => self.referenced_names.contains(function.name().name())
+    None => false
+  }
+  let ir_function = if referenced_stage_function {
+    wgsl_ir_strip_function_io_bindings(self.lower_function(function))
+  } else {
+    self.lower_function(function)
+  }
+  match self.function_names.get(function.name().name()) {
+    Some(handle) => self.shader_module.set_function(handle, ir_function)
+    None => {
+      let handle = self.shader_module.append_function(ir_function)
+      self.function_names.set(function.name().name(), handle)
+    }
+  }
+  match stage {
     Some(stage) =>
-      self.shader_module.append_entry_point(EntryPoint::{
-        name: function.name().name(),
-        stage,
-        early_depth_test: wgsl_ir_early_depth_test_from_attributes(
-          function.attributes(),
-        ),
-        workgroup_size: wgsl_ir_workgroup_size_from_attributes(
-          function.attributes(),
-        ),
-        workgroup_size_overrides: None,
-        function: ir_function,
-        mesh_info: None,
-        task_payload: None,
-        incoming_ray_payload: None,
-      })
-    None =>
-      match self.function_names.get(function.name().name()) {
-        Some(handle) => self.shader_module.set_function(handle, ir_function)
-        None => {
-          let handle = self.shader_module.append_function(ir_function)
-          self.function_names.set(function.name().name(), handle)
-        }
+      if !self.referenced_names.contains(function.name().name()) {
+        self.shader_module.append_entry_point(EntryPoint::{
+          name: function.name().name(),
+          stage,
+          early_depth_test: wgsl_ir_early_depth_test_from_attributes(
+            function.attributes(),
+          ),
+          workgroup_size: wgsl_ir_workgroup_size_from_attributes(
+            function.attributes(),
+          ),
+          workgroup_size_overrides: None,
+          function: ir_function,
+          mesh_info: None,
+          task_payload: None,
+          incoming_ray_payload: None,
+        })
       }
+    None => ()
+  }
+}
+
+///|
+fn wgsl_ir_strip_function_io_bindings(function : Function) -> Function {
+  let arguments : Array[FunctionArgument] = []
+  for argument in function.arguments {
+    arguments.push(FunctionArgument::{
+      name: argument.name,
+      ty: argument.ty,
+      binding: None,
+    })
+  }
+  let result = match function.result {
+    Some(value) => Some(FunctionResult::{ ty: value.ty, binding: None })
+    None => None
+  }
+  Function::{
+    name: function.name,
+    arguments,
+    result,
+    local_variables: function.local_variables,
+    expressions: function.expressions,
+    named_expressions: function.named_expressions,
+    body: function.body,
+    diagnostic_filter_leaf: function.diagnostic_filter_leaf,
   }
 }
 
@@ -413,7 +466,7 @@ fn WgslIrLowerer::lower_statement(
       }
     LocalDeclaration(locals) =>
       for local_decl in locals {
-        self.lower_local_declaration(local_decl, function, scope)
+        self.lower_local_declaration(local_decl, function, scope, block)
       }
     Return(expr) => {
       let value = match expr {
@@ -519,8 +572,12 @@ fn WgslIrLowerer::lower_statement(
     }
     Expression(expr) =>
       match expr {
-        Some(expr_ref) =>
-          ignore(self.lower_function_expression_ref(expr_ref, function, scope))
+        Some(expr_ref) => {
+          let handle = self.lower_function_expression_ref(
+            expr_ref, function, scope,
+          )
+          block.push(Statement::Emit(HandleRange::new(handle, handle)))
+        }
         None => ()
       }
     ConstAssert(_) => ()
@@ -558,7 +615,7 @@ fn WgslIrLowerer::lower_for_statement(
   block : Block,
 ) -> Unit raise WgslIrLowerError {
   for local_decl in statement.local_bindings() {
-    self.lower_local_declaration(local_decl, function, scope)
+    self.lower_local_declaration(local_decl, function, scope, block)
   }
   for expr in expressions {
     if expr.role() == @ast.WgslStatementExpressionRole::ForInitializer {
@@ -750,6 +807,7 @@ fn WgslIrLowerer::lower_local_declaration(
   local_decl : @ast.WgslLocalDeclaration,
   function : Function,
   scope : WgslIrFunctionScope,
+  block : Block,
 ) -> Unit raise WgslIrLowerError {
   let init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
@@ -783,6 +841,7 @@ fn WgslIrLowerer::lower_local_declaration(
     init,
   })
   scope.locals.set(local_decl.name().name(), handle)
+  block.push(Statement::Declare(handle))
 }
 
 ///|
@@ -811,27 +870,38 @@ fn WgslIrLowerer::lower_call_statement(
     Call(callee, arguments) =>
       match callee.kind() {
         Identifier(name) =>
-          match self.function_names.get(name.name()) {
-            Some(handle) => {
-              let values : Array[Handle] = []
-              for argument in arguments {
-                values.push(
-                  self.lower_function_expression_node(argument, function, scope),
-                )
-              }
-              block.push(Statement::Call(handle, values, None))
+          match wgsl_ir_atomic_function_from_name(name.name()) {
+            Some(atomic_function) => {
+              let handle = self.lower_function_atomic_call(
+                atomic_function, arguments, function, scope,
+              )
+              block.push(Statement::Emit(HandleRange::new(handle, handle)))
             }
             None =>
-              if !self.lower_texture_statement_call(
-                  name.name(),
-                  arguments,
-                  function,
-                  scope,
-                  block,
-                ) {
-                ignore(
-                  self.lower_function_expression_node(root, function, scope),
-                )
+              match self.function_names.get(name.name()) {
+                Some(handle) => {
+                  let values : Array[Handle] = []
+                  for argument in arguments {
+                    values.push(
+                      self.lower_function_expression_node(
+                        argument, function, scope,
+                      ),
+                    )
+                  }
+                  block.push(Statement::Call(handle, values, None))
+                }
+                None =>
+                  if !self.lower_texture_statement_call(
+                      name.name(),
+                      arguments,
+                      function,
+                      scope,
+                      block,
+                    ) {
+                    ignore(
+                      self.lower_function_expression_node(root, function, scope),
+                    )
+                  }
               }
           }
         _ => ignore(self.lower_function_expression_node(root, function, scope))
@@ -2475,28 +2545,35 @@ fn WgslIrLowerer::lower_function_expression_node(
                     math_function, arguments, function, scope,
                   )
                 None =>
-                  match
-                    self.lower_texture_expression_call(
-                      name.name(),
-                      arguments,
-                      function,
-                      scope,
-                    ) {
-                    Some(handle) => handle
-                    None => {
-                      let lowered_arguments = self.lower_function_expression_arguments(
-                        arguments, function, scope,
+                  match wgsl_ir_atomic_function_from_name(name.name()) {
+                    Some(atomic_function) =>
+                      self.lower_function_atomic_call(
+                        atomic_function, arguments, function, scope,
                       )
-                      let ty = self.lower_untemplated_constructor_type_from_handles(
-                        name.name(),
-                        arguments,
-                        lowered_arguments,
-                        function,
-                      )
-                      function.expressions.append(
-                        Expression::Compose(ty, lowered_arguments),
-                      )
-                    }
+                    None =>
+                      match
+                        self.lower_texture_expression_call(
+                          name.name(),
+                          arguments,
+                          function,
+                          scope,
+                        ) {
+                        Some(handle) => handle
+                        None => {
+                          let lowered_arguments = self.lower_function_expression_arguments(
+                            arguments, function, scope,
+                          )
+                          let ty = self.lower_untemplated_constructor_type_from_handles(
+                            name.name(),
+                            arguments,
+                            lowered_arguments,
+                            function,
+                          )
+                          function.expressions.append(
+                            Expression::Compose(ty, lowered_arguments),
+                          )
+                        }
+                      }
                   }
               }
           }
@@ -2611,6 +2688,33 @@ fn WgslIrLowerer::lower_function_math_call(
     _ => None
   }
   function.expressions.append(Expression::Math(math_function, a, b, c, d))
+}
+
+///|
+fn WgslIrLowerer::lower_function_atomic_call(
+  self : WgslIrLowerer,
+  atomic_function : AtomicFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  let expected = match atomic_function {
+    Load => 1
+    Store => 2
+    Add | Subtract | And | ExclusiveOr | InclusiveOr | Min | Max | Exchange => 2
+    CompareExchangeWeak => 3
+  }
+  if arguments.length() != expected {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "\{wgsl_ir_atomic_function_name(atomic_function)} expects \{expected} arguments",
+    )
+  }
+  let handles : Array[Handle] = []
+  for argument in arguments {
+    handles.push(self.lower_function_expression_node(argument, function, scope))
+  }
+  function.expressions.append(Expression::AtomicCall(atomic_function, handles))
 }
 
 ///|
@@ -3256,6 +3360,9 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
     "round" => Some(Round)
     "fract" => Some(Fract)
     "trunc" => Some(Trunc)
+    "modf" => Some(Modf)
+    "frexp" => Some(Frexp)
+    "ldexp" => Some(Ldexp)
     "exp" => Some(Exp)
     "exp2" => Some(Exp2)
     "log" => Some(Log)
@@ -3276,6 +3383,7 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
     "smoothstep" => Some(SmoothStep)
     "sqrt" => Some(Sqrt)
     "inverseSqrt" => Some(InverseSqrt)
+    "inverse" => Some(Inverse)
     "transpose" => Some(Transpose)
     "determinant" => Some(Determinant)
     "countTrailingZeros" => Some(CountTrailingZeros)
@@ -3287,6 +3395,41 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
     "firstTrailingBit" => Some(FirstTrailingBit)
     "firstLeadingBit" => Some(FirstLeadingBit)
     _ => None
+  }
+}
+
+///|
+fn wgsl_ir_atomic_function_from_name(name : String) -> AtomicFunction? {
+  match name {
+    "atomicLoad" => Some(Load)
+    "atomicStore" => Some(Store)
+    "atomicAdd" => Some(Add)
+    "atomicSub" => Some(Subtract)
+    "atomicMax" => Some(Max)
+    "atomicMin" => Some(Min)
+    "atomicAnd" => Some(And)
+    "atomicOr" => Some(InclusiveOr)
+    "atomicXor" => Some(ExclusiveOr)
+    "atomicExchange" => Some(Exchange)
+    "atomicCompareExchangeWeak" => Some(CompareExchangeWeak)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_atomic_function_name(function : AtomicFunction) -> String {
+  match function {
+    Load => "atomicLoad"
+    Store => "atomicStore"
+    Add => "atomicAdd"
+    Subtract => "atomicSub"
+    Max => "atomicMax"
+    Min => "atomicMin"
+    And => "atomicAnd"
+    InclusiveOr => "atomicOr"
+    ExclusiveOr => "atomicXor"
+    Exchange => "atomicExchange"
+    CompareExchangeWeak => "atomicCompareExchangeWeak"
   }
 }
 
@@ -3671,7 +3814,10 @@ fn WgslIrLowerer::function_expression_inner_type(
           }
         None => None
       }
-    Math(_, a, _, _, _) => self.function_expression_type(function, a)
+    Math(math_function, a, _, _, _) =>
+      self.math_expression_result_type(function, math_function, a)
+    AtomicCall(atomic_function, arguments) =>
+      self.atomic_expression_result_type(function, atomic_function, arguments)
     ImageSample(image, _, gather, _, _, _, _, depth_ref, _) =>
       self.image_expression_result_type(function, image, gather, depth_ref)
     ImageLoad(image, _, _, _, _) =>
@@ -3679,6 +3825,228 @@ fn WgslIrLowerer::function_expression_inner_type(
     ImageQuery(_, _) => self.type_cache.get("u32")
     Literal(literal) => self.literal_type(literal)
     _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::math_expression_result_type(
+  self : WgslIrLowerer,
+  function : Function,
+  math_function : MathFunction,
+  argument : Handle,
+) -> Handle? {
+  guard self.function_expression_type(function, argument) is Some(input_ty) else {
+    return None
+  }
+  match math_function {
+    Modf => self.predeclared_modf_result_type(input_ty)
+    Frexp => self.predeclared_frexp_result_type(input_ty)
+    _ => Some(input_ty)
+  }
+}
+
+///|
+fn WgslIrLowerer::atomic_expression_result_type(
+  self : WgslIrLowerer,
+  function : Function,
+  atomic_function : AtomicFunction,
+  arguments : Array[Handle],
+) -> Handle? {
+  guard arguments is [pointer, ..] else { return None }
+  let scalar = self.atomic_pointer_scalar_type(function, pointer)
+  match atomic_function {
+    Store => None
+    CompareExchangeWeak =>
+      match scalar {
+        Some(value) =>
+          Some(
+            self.predeclared_struct_type(AtomicCompareExchangeWeakResult(value)),
+          )
+        None => None
+      }
+    _ =>
+      match scalar {
+        Some(value) => Some(self.scalar_type_handle(value))
+        None => None
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::atomic_pointer_scalar_type(
+  self : WgslIrLowerer,
+  function : Function,
+  pointer : Handle,
+) -> Scalar? {
+  guard self.function_expression_type(function, pointer) is Some(ty_handle) else {
+    return None
+  }
+  self.atomic_scalar_type_from_handle(ty_handle)
+}
+
+///|
+fn WgslIrLowerer::atomic_scalar_type_from_handle(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Scalar? {
+  match self.shader_module.types.items.get(ty_handle.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Atomic(scalar) => Some(scalar)
+        Pointer(base, _) => self.atomic_scalar_type_from_handle(base)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclared_numeric_result_type(
+  self : WgslIrLowerer,
+  input_ty : Handle,
+  frexp : Bool,
+) -> Handle? {
+  match self.shader_module.types.items.get(input_ty.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) =>
+          if frexp {
+            Some(self.predeclared_struct_type(FrexpResult(None, scalar)))
+          } else {
+            Some(self.predeclared_struct_type(ModfResult(None, scalar)))
+          }
+        Vector(size, scalar) =>
+          if frexp {
+            Some(self.predeclared_struct_type(FrexpResult(Some(size), scalar)))
+          } else {
+            Some(self.predeclared_struct_type(ModfResult(Some(size), scalar)))
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclared_modf_result_type(
+  self : WgslIrLowerer,
+  input_ty : Handle,
+) -> Handle? {
+  self.predeclared_numeric_result_type(input_ty, false)
+}
+
+///|
+fn WgslIrLowerer::predeclared_frexp_result_type(
+  self : WgslIrLowerer,
+  input_ty : Handle,
+) -> Handle? {
+  self.predeclared_numeric_result_type(input_ty, true)
+}
+
+///|
+fn WgslIrLowerer::predeclared_struct_type(
+  self : WgslIrLowerer,
+  predeclared : PredeclaredType,
+) -> Handle {
+  for item in self.shader_module.special_types.predeclared_types {
+    let (existing, handle) = item
+    if existing == predeclared {
+      return handle
+    }
+  }
+  let handle = self.shader_module.append_type(Type::{
+    name: None,
+    inner: self.predeclared_type_inner(predeclared),
+  })
+  self.shader_module.special_types.predeclared_types.push((predeclared, handle))
+  handle
+}
+
+///|
+fn WgslIrLowerer::predeclared_type_inner(
+  self : WgslIrLowerer,
+  predeclared : PredeclaredType,
+) -> TypeInner {
+  match predeclared {
+    AtomicCompareExchangeWeakResult(scalar) => {
+      let value_ty = self.scalar_type_handle(scalar)
+      let bool_ty = self.scalar_type_handle(Scalar::new(Bool, 1))
+      TypeInner::Struct(
+        [
+          StructMember::{
+            name: Some("old_value"),
+            ty: value_ty,
+            binding: None,
+            offset: 0,
+          },
+          StructMember::{
+            name: Some("exchanged"),
+            ty: bool_ty,
+            binding: None,
+            offset: scalar.width,
+          },
+        ],
+        scalar.width + 1,
+      )
+    }
+    ModfResult(size, scalar) => {
+      let value_ty = self.numeric_value_type_handle(size, scalar)
+      TypeInner::Struct(
+        [
+          StructMember::{
+            name: Some("fract"),
+            ty: value_ty,
+            binding: None,
+            offset: 0,
+          },
+          StructMember::{
+            name: Some("whole"),
+            ty: value_ty,
+            binding: None,
+            offset: self.type_layout(value_ty).size,
+          },
+        ],
+        self.type_layout(value_ty).size * 2,
+      )
+    }
+    FrexpResult(size, scalar) => {
+      let fract_ty = self.numeric_value_type_handle(size, scalar)
+      let exponent_scalar = Scalar::new(Sint, 4)
+      let exponent_ty = self.numeric_value_type_handle(size, exponent_scalar)
+      TypeInner::Struct(
+        [
+          StructMember::{
+            name: Some("fract"),
+            ty: fract_ty,
+            binding: None,
+            offset: 0,
+          },
+          StructMember::{
+            name: Some("exp"),
+            ty: exponent_ty,
+            binding: None,
+            offset: self.type_layout(fract_ty).size,
+          },
+        ],
+        self.type_layout(fract_ty).size + self.type_layout(exponent_ty).size,
+      )
+    }
+  }
+}
+
+///|
+fn WgslIrLowerer::numeric_value_type_handle(
+  self : WgslIrLowerer,
+  size : VectorSize?,
+  scalar : Scalar,
+) -> Handle {
+  match size {
+    Some(vector_size) =>
+      self.intern_type(
+        "vec\{vector_size.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+        TypeInner::Vector(vector_size, scalar),
+      )
+    None => self.scalar_type_handle(scalar)
   }
 }
 

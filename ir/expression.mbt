@@ -91,6 +91,8 @@ pub enum BinaryOperator {
 
 ///|
 pub enum AtomicFunction {
+  Load
+  Store
   Add
   Subtract
   And
@@ -98,7 +100,8 @@ pub enum AtomicFunction {
   InclusiveOr
   Min
   Max
-  Exchange(Handle?)
+  Exchange
+  CompareExchangeWeak
 } derive(Eq, Debug)
 
 ///|
@@ -292,6 +295,7 @@ pub enum Expression {
   GlobalVariable(Handle)
   LocalVariable(Handle)
   Load(Handle)
+  AtomicCall(AtomicFunction, Array[Handle])
   ImageSample(
     Handle,
     Handle,

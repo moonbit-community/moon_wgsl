@@ -28,6 +28,7 @@ pub enum RayPipelineFunction {
 
 ///|
 pub enum Statement {
+  Declare(Handle)
   Emit(HandleRange)
   Block(Block)
   If(Handle, Block, Block)

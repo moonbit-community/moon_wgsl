@@ -68,6 +68,8 @@ pub enum ArraySize {
 } derive(Eq, @debug.Debug)
 
 pub enum AtomicFunction {
+  Load
+  Store
   Add
   Subtract
   And
@@ -75,7 +77,8 @@ pub enum AtomicFunction {
   InclusiveOr
   Min
   Max
-  Exchange(Handle?)
+  Exchange
+  CompareExchangeWeak
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Barrier {
@@ -289,6 +292,7 @@ pub enum Expression {
   GlobalVariable(Handle)
   LocalVariable(Handle)
   Load(Handle)
+  AtomicCall(AtomicFunction, Array[Handle])
   ImageSample(Handle, Handle, SwizzleComponent?, Handle, Handle?, Handle?, SampleLevel, Handle?, Bool)
   ImageLoad(Handle, Handle, Handle?, Handle?, Handle?)
   ImageQuery(Handle, ImageQuery)
@@ -721,6 +725,7 @@ pub enum StandardFilterableTriggeringRule {
 } derive(Eq, @debug.Debug)
 
 pub enum Statement {
+  Declare(Handle)
   Emit(HandleRange)
   Block(Block)
   If(Handle, Block, Block)

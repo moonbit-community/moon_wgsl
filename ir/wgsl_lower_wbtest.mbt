@@ -49,7 +49,7 @@ test "WGSL AST lowers declarations, bindings, and entry point metadata into IR" 
   )
   debug_inspect(
     module_.entry_points[0].function.body.statements.length(),
-    content="2",
+    content="3",
   )
 }
 
@@ -67,7 +67,7 @@ test "WGSL AST lowerer uses stable function handles for calls" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  debug_inspect(module_.functions.items.length(), content="1")
+  debug_inspect(module_.functions.items.length(), content="2")
   debug_inspect(module_.entry_points.length(), content="1")
   debug_inspect(
     module_.entry_points[0].function.body.statements.length(),
@@ -180,7 +180,7 @@ test "WGSL AST lowerer supports switch statements" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  match module_.entry_points[0].function.body.statements[0] {
+  match module_.entry_points[0].function.body.statements[1] {
     Switch(_, cases) => {
       debug_inspect(cases.length(), content="3")
       debug_inspect(cases[0].value, content="U32(0)")
@@ -215,7 +215,7 @@ test "WGSL AST lowerer lowers for loops into IR loops" {
   let function = module_.entry_points[0].function
   debug_inspect(function.local_variables.items.length(), content="2")
   match function.body.statements {
-    [Loop(_, _, _), Store(_, _), Loop(_, _, _)] => ()
+    [Declare(_), Declare(_), Loop(_, _, _), Store(_, _), Loop(_, _, _)] => ()
     _ => abort("expected lowered loops with explicit second initializer")
   }
   let emitted = emit_wgsl_module_from_ir(module_) catch {
@@ -472,4 +472,87 @@ test "WGSL AST lowerer supports abstract hex integer constants" {
   }
   debug_inspect(emitted.contains("const lhs = 68719411200;"), content="true")
   debug_inspect(emitted.contains("const res = (lhs << 4u);"), content="true")
+}
+
+///|
+test "WGSL AST lowerer preserves local declaration order around atomics" {
+  let source =
+    #|var<workgroup> atom: atomic<u32>;
+    #|
+    #|fn main() -> u32 {
+    #|  atomicStore(&atom, 1u);
+    #|  var y = atomicLoad(&atom);
+    #|  y += atomicAdd(&atom, 2u);
+    #|  let exchange = atomicCompareExchangeWeak(&atom, 12u, 0u);
+    #|  if exchange.exchanged {
+    #|    y += exchange.old_value;
+    #|  }
+    #|  return y;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let store_index = emitted.find("atomicStore(&atom, 1u);")
+  let load_index = emitted.find("var y: u32 = atomicLoad(&atom);")
+  debug_inspect(store_index != None, content="true")
+  let load_after_store = match (store_index, load_index) {
+    (Some(store), Some(load)) => load > store
+    _ => false
+  }
+  debug_inspect(load_after_store, content="true")
+  debug_inspect(
+    emitted.contains("atomicCompareExchangeWeak(&atom, 12u, 0u)"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("exchange.old_value"), content="true")
+}
+
+///|
+test "WGSL AST lowerer supports modf predeclared result members" {
+  let source =
+    #|fn main(x: f32) -> f32 {
+    #|  let fw = modf(x);
+    #|  return fw.fract * fw.whole;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let fw = modf(x);"), content="true")
+  debug_inspect(emitted.contains("fw.fract"), content="true")
+  debug_inspect(emitted.contains("fw.whole"), content="true")
+}
+
+///|
+test "WGSL AST lowerer makes referenced entry points callable helpers" {
+  let source =
+    #|@fragment
+    #|fn imported(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
+    #|  return vec4<f32>(frag_coord);
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
+    #|  return imported(frag_coord);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(module_.entry_points.length(), content="1")
+  debug_inspect(
+    emitted.contains("fn imported(frag_coord: vec4<f32>) -> vec4<f32>"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("return imported(frag_coord);"),
+    content="true",
+  )
 }

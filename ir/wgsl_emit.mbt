@@ -39,7 +39,7 @@ fn WgslIrEmitter::emit_module(
   for index in 0..<self.shader_module.types.items.length() {
     let ty = self.shader_module.types.items[index]
     match ty.inner {
-      Struct(_, _) => {
+      Struct(_, _) if ty.name != None => {
         if needs_blank {
           out.write_string("\n")
         }
@@ -74,6 +74,11 @@ fn WgslIrEmitter::emit_module(
     needs_blank = true
   }
   for index in 0..<self.shader_module.functions.items.length() {
+    if self.function_is_entry_point_name(
+        self.shader_module.functions.items[index],
+      ) {
+      continue
+    }
     if needs_blank {
       out.write_string("\n")
     }
@@ -88,6 +93,23 @@ fn WgslIrEmitter::emit_module(
     needs_blank = true
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::function_is_entry_point_name(
+  self : WgslIrEmitter,
+  function : Function,
+) -> Bool {
+  match function.name {
+    Some(name) =>
+      for entry_point in self.shader_module.entry_points {
+        if entry_point.name == name {
+          return true
+        }
+      }
+    None => ()
+  }
+  false
 }
 
 ///|
@@ -215,6 +237,32 @@ fn WgslIrEmitter::type_is_abstract_scalar(
 }
 
 ///|
+fn WgslIrEmitter::type_is_predeclared_result(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Bool {
+  for item in self.shader_module.special_types.predeclared_types {
+    let (_, existing) = item
+    if existing == handle {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn WgslIrEmitter::expression_is_pointer(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Bool {
+  match self.expression_type(function, handle) {
+    Some(ty) => self.type_is_pointer(ty)
+    None => false
+  }
+}
+
+///|
 fn WgslIrEmitter::emit_entry_point(
   self : WgslIrEmitter,
   out : StringBuilder,
@@ -265,7 +313,6 @@ fn WgslIrEmitter::emit_function(
     None => ()
   }
   out.write_string(" {\n")
-  self.emit_function_locals(out, function)
   self.emit_block_statements(out, function, function.body, 1)
   out.write_string("}\n")
 }
@@ -286,34 +333,40 @@ fn WgslIrEmitter::emit_function_argument(
 }
 
 ///|
-fn WgslIrEmitter::emit_function_locals(
+fn WgslIrEmitter::emit_local_declaration(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
+  handle : Handle,
+  indent : Int,
 ) -> Unit raise WgslIrEmitError {
-  for index in 0..<function.local_variables.items.length() {
-    let local_var = function.local_variables.items[index]
-    let name = match local_var.name {
-      Some(value) => value
-      None => "local\{index}"
-    }
-    out.write_string("  \{self.local_variable_keyword(local_var.kind)} \{name}")
-    if !self.type_is_abstract_scalar(local_var.ty) {
-      out.write_string(": \{self.type_name(local_var.ty)}")
-    }
-    match local_var.init {
-      Some(init) =>
-        if self.type_is_pointer(local_var.ty) {
-          out.write_string(
-            " = &\{self.function_pointer_expression(function, init)}",
-          )
-        } else {
-          out.write_string(" = \{self.function_expression(function, init)}")
-        }
-      None => ()
-    }
-    out.write_string(";\n")
+  let local_var = match function.local_variables.items.get(handle.index()) {
+    Some(value) => value
+    None =>
+      raise WgslIrEmitError::MissingHandle("local variable \{handle.index()}")
   }
+  let name = match local_var.name {
+    Some(value) => value
+    None => "local\{handle.index()}"
+  }
+  out.write_string(
+    "\{wgsl_ir_indent(indent)}\{self.local_variable_keyword(local_var.kind)} \{name}",
+  )
+  if self.local_variable_needs_type_annotation(local_var) {
+    out.write_string(": \{self.type_name(local_var.ty)}")
+  }
+  match local_var.init {
+    Some(init) =>
+      if self.type_is_pointer(local_var.ty) {
+        out.write_string(
+          " = &\{self.function_pointer_expression(function, init)}",
+        )
+      } else {
+        out.write_string(" = \{self.function_expression(function, init)}")
+      }
+    None => ()
+  }
+  out.write_string(";\n")
 }
 
 ///|
@@ -327,6 +380,17 @@ fn WgslIrEmitter::local_variable_keyword(
     Let => "let"
     Const => "const"
   }
+}
+
+///|
+fn WgslIrEmitter::local_variable_needs_type_annotation(
+  self : WgslIrEmitter,
+  local_var : LocalVariable,
+) -> Bool {
+  if self.type_is_abstract_scalar(local_var.ty) {
+    return false
+  }
+  !self.type_is_predeclared_result(local_var.ty)
 }
 
 ///|
@@ -352,11 +416,17 @@ fn WgslIrEmitter::emit_statement(
 ) -> Unit raise WgslIrEmitError {
   let pad = wgsl_ir_indent(indent)
   match statement {
+    Declare(handle) =>
+      self.emit_local_declaration(out, function, handle, indent)
     Emit(range) =>
       for index in range.start.index()..<=range.end.index() {
-        out.write_string(
-          "\{pad}_ = \{self.function_expression(function, Handle::new(index))};\n",
-        )
+        let handle = Handle::new(index)
+        let expr = self.function_expression(function, handle)
+        if self.expression_type(Some(function), handle) == None {
+          out.write_string("\{pad}\{expr};\n")
+        } else {
+          out.write_string("\{pad}_ = \{expr};\n")
+        }
       }
     Block(child) => {
       out.write_string("\{pad}{\n")
@@ -551,6 +621,8 @@ fn WgslIrEmitter::emit_expression(
     GlobalVariable(handle) => self.global_variable_name(handle)
     LocalVariable(handle) => self.local_variable_name(function, handle)
     Load(pointer) => self.required_function_expression(function, pointer)
+    AtomicCall(atomic_function, arguments) =>
+      self.atomic_call_expression(function, atomic_function, arguments)
     ImageSample(
       image,
       sampler,
@@ -677,6 +749,42 @@ fn WgslIrEmitter::image_sample_expression(
   }
   out.write_string(")")
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::atomic_call_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  atomic_function : AtomicFunction,
+  arguments : Array[Handle],
+) -> String raise WgslIrEmitError {
+  guard arguments is [pointer, .. rest] else {
+    raise WgslIrEmitError::Unsupported("atomic call without pointer")
+  }
+  let out = StringBuilder::new()
+  out.write_string(
+    "\{self.atomic_function_name(atomic_function)}(\{self.atomic_pointer_expression(function, pointer)}",
+  )
+  for argument in rest {
+    out.write_string(
+      ", \{self.required_function_expression(function, argument)}",
+    )
+  }
+  out.write_string(")")
+  out.to_string()
+}
+
+///|
+fn WgslIrEmitter::atomic_pointer_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  pointer : Handle,
+) -> String raise WgslIrEmitError {
+  if self.expression_is_pointer(function, pointer) {
+    self.required_function_expression(function, pointer)
+  } else {
+    "&\{self.required_function_expression(function, pointer)}"
+  }
 }
 
 ///|
@@ -934,7 +1042,14 @@ fn WgslIrEmitter::function_expression_inner_type(
           }
         None => None
       }
-    Math(_, a, _, _, _) => self.expression_type(Some(function), a)
+    Math(math_function, a, _, _, _) =>
+      self.math_expression_result_type(Some(function), math_function, a)
+    AtomicCall(atomic_function, arguments) =>
+      self.atomic_expression_result_type(
+        Some(function),
+        atomic_function,
+        arguments,
+      )
     _ => None
   }
 }
@@ -968,6 +1083,10 @@ fn WgslIrEmitter::global_expression_inner_type(
     Swizzle(size, base, _) => self.swizzle_expression_type(None, base, size)
     Unary(_, inner) => self.expression_type(None, inner)
     Binary(_, left, _) => self.expression_type(None, left)
+    Math(math_function, a, _, _, _) =>
+      self.math_expression_result_type(None, math_function, a)
+    AtomicCall(atomic_function, arguments) =>
+      self.atomic_expression_result_type(None, atomic_function, arguments)
     _ => None
   }
 }
@@ -1047,6 +1166,121 @@ fn WgslIrEmitter::find_vector_type(
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == vector_inner {
       return Some(Handle::new(i))
+    }
+  }
+  None
+}
+
+///|
+fn WgslIrEmitter::math_expression_result_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  math_function : MathFunction,
+  argument : Handle,
+) -> Handle? {
+  guard self.expression_type(function, argument) is Some(input_ty) else {
+    return None
+  }
+  match math_function {
+    Modf | Frexp =>
+      self.predeclared_numeric_result_type(input_ty, math_function)
+    _ => Some(input_ty)
+  }
+}
+
+///|
+fn WgslIrEmitter::predeclared_numeric_result_type(
+  self : WgslIrEmitter,
+  input_ty : Handle,
+  math_function : MathFunction,
+) -> Handle? {
+  let key = match self.shader_module.types.items.get(input_ty.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) =>
+          if math_function == Modf {
+            Some(PredeclaredType::ModfResult(None, scalar))
+          } else {
+            Some(PredeclaredType::FrexpResult(None, scalar))
+          }
+        Vector(size, scalar) =>
+          if math_function == Modf {
+            Some(PredeclaredType::ModfResult(Some(size), scalar))
+          } else {
+            Some(PredeclaredType::FrexpResult(Some(size), scalar))
+          }
+        _ => None
+      }
+    None => None
+  }
+  match key {
+    Some(predeclared) => self.predeclared_type_handle(predeclared)
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::atomic_expression_result_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  atomic_function : AtomicFunction,
+  arguments : Array[Handle],
+) -> Handle? {
+  guard arguments is [pointer, ..] else { return None }
+  let scalar = self.atomic_pointer_scalar_type(function, pointer)
+  match atomic_function {
+    Store => None
+    CompareExchangeWeak =>
+      match scalar {
+        Some(value) =>
+          self.predeclared_type_handle(AtomicCompareExchangeWeakResult(value))
+        None => None
+      }
+    _ =>
+      match scalar {
+        Some(value) => self.find_vector_scalar_type(value)
+        None => None
+      }
+  }
+}
+
+///|
+fn WgslIrEmitter::atomic_pointer_scalar_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  pointer : Handle,
+) -> Scalar? {
+  guard self.expression_type(function, pointer) is Some(ty_handle) else {
+    return None
+  }
+  self.atomic_scalar_type_from_handle(ty_handle)
+}
+
+///|
+fn WgslIrEmitter::atomic_scalar_type_from_handle(
+  self : WgslIrEmitter,
+  ty_handle : Handle,
+) -> Scalar? {
+  match self.shader_module.types.items.get(ty_handle.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Atomic(scalar) => Some(scalar)
+        Pointer(base, _) => self.atomic_scalar_type_from_handle(base)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::predeclared_type_handle(
+  self : WgslIrEmitter,
+  predeclared : PredeclaredType,
+) -> Handle? {
+  for item in self.shader_module.special_types.predeclared_types {
+    let (existing, handle) = item
+    if existing == predeclared {
+      return Some(handle)
     }
   }
   None
@@ -1585,6 +1819,9 @@ fn WgslIrEmitter::math_function_name(
     Round => "round"
     Fract => "fract"
     Trunc => "trunc"
+    Modf => "modf"
+    Frexp => "frexp"
+    Ldexp => "ldexp"
     Exp => "exp"
     Exp2 => "exp2"
     Log => "log"
@@ -1605,6 +1842,7 @@ fn WgslIrEmitter::math_function_name(
     SmoothStep => "smoothstep"
     Sqrt => "sqrt"
     InverseSqrt => "inverseSqrt"
+    Inverse => "inverse"
     Transpose => "transpose"
     Determinant => "determinant"
     CountTrailingZeros => "countTrailingZeros"
@@ -1616,6 +1854,27 @@ fn WgslIrEmitter::math_function_name(
     FirstTrailingBit => "firstTrailingBit"
     FirstLeadingBit => "firstLeadingBit"
     _ => raise WgslIrEmitError::Unsupported("math function")
+  }
+}
+
+///|
+fn WgslIrEmitter::atomic_function_name(
+  self : WgslIrEmitter,
+  atomic_function : AtomicFunction,
+) -> String {
+  ignore(self)
+  match atomic_function {
+    Load => "atomicLoad"
+    Store => "atomicStore"
+    Add => "atomicAdd"
+    Subtract => "atomicSub"
+    Max => "atomicMax"
+    Min => "atomicMin"
+    And => "atomicAnd"
+    InclusiveOr => "atomicOr"
+    ExclusiveOr => "atomicXor"
+    Exchange => "atomicExchange"
+    CompareExchangeWeak => "atomicCompareExchangeWeak"
   }
 }
 

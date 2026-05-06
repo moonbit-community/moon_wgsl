@@ -170,6 +170,7 @@ fn WgslIrValidator::validate_statement(
   statement : Statement,
 ) -> Unit raise WgslIrValidationError {
   match statement {
+    Declare(handle) => self.require_local_variable(function, handle)
     Emit(range) => self.validate_function_expression_range(function, range)
     Block(block) => self.validate_block(function, block)
     If(condition, accept, reject) => {
@@ -429,6 +430,10 @@ fn WgslIrValidator::validate_function_expression(
       self.validate_optional_function_expression(function, c)
       self.validate_optional_function_expression(function, d)
     }
+    AtomicCall(_, arguments) =>
+      for argument in arguments {
+        self.validate_function_expression_handle(function, argument)
+      }
     As(expr, _, _) => self.validate_function_expression_handle(function, expr)
     CallResult(handle) => self.require_function(handle)
     AtomicResult(handle, _) =>
