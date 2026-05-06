@@ -50,6 +50,7 @@ pub(all) enum Token {
   ITEM(WgslRawTopLevelItem)
   STMT(@ast.WgslStatement)
   TYPE_ATOM(@ast.WgslTypeAtom)
+  TYPE_ARGS((Array[@ast.WgslTypeArgument], Int))
   ARG_NAME(@ast.WgslIdent)
   ARG_TYPE(@ast.WgslTypeRef)
   MEMBER_NAME(@ast.WgslIdent)
@@ -93,6 +94,7 @@ pub(all) enum TokenKind {
   TK_ITEM
   TK_STMT
   TK_TYPE_ATOM
+  TK_TYPE_ARGS
   TK_ARG_NAME
   TK_ARG_TYPE
   TK_MEMBER_NAME

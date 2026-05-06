@@ -130,8 +130,12 @@ fn collect_wgsl_type_ref_identifier_nodes(
         Some(identifier) => nodes.push(identifier)
         None => ()
       }
-      for argument in ty.arguments() {
-        collect_wgsl_type_ref_identifier_nodes(Some(argument), nodes)
+      for argument in ty.template_arguments() {
+        match argument {
+          Type(ty) => collect_wgsl_type_ref_identifier_nodes(Some(ty), nodes)
+          Expression(expr) =>
+            collect_wgsl_expr_ref_identifier_nodes(Some(expr), nodes)
+        }
       }
     }
     None => ()

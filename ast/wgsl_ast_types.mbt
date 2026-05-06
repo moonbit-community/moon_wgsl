@@ -455,6 +455,12 @@ pub struct WgslTypeAtom {
 } derive(Debug)
 
 ///|
+pub(all) enum WgslTypeArgument {
+  Type(WgslTypeRef)
+  Expression(WgslExprRef)
+} derive(Debug)
+
+///|
 pub fn WgslTypeAtom::new(
   kind : WgslTypeAtomKind,
   text : String,
@@ -496,6 +502,7 @@ pub fn WgslTypeAtom::identifier(self : WgslTypeAtom) -> WgslIdent? {
 pub struct WgslTypeRef {
   priv atom : WgslTypeAtom
   priv arguments : Array[WgslTypeRef]
+  priv template_arguments : Array[WgslTypeArgument]
   priv start : Int
   priv end : Int
 } derive(Debug)
@@ -507,7 +514,28 @@ pub fn WgslTypeRef::new(
   start : Int,
   end : Int,
 ) -> WgslTypeRef {
-  WgslTypeRef::{ atom, arguments, start, end }
+  let template_arguments : Array[WgslTypeArgument] = []
+  for argument in arguments {
+    template_arguments.push(WgslTypeArgument::Type(argument))
+  }
+  WgslTypeRef::{ atom, arguments, template_arguments, start, end }
+}
+
+///|
+pub fn WgslTypeRef::new_with_template_arguments(
+  atom : WgslTypeAtom,
+  template_arguments : Array[WgslTypeArgument],
+  start : Int,
+  end : Int,
+) -> WgslTypeRef {
+  let arguments : Array[WgslTypeRef] = []
+  for argument in template_arguments {
+    match argument {
+      Type(ty) => arguments.push(ty)
+      Expression(_) => ()
+    }
+  }
+  WgslTypeRef::{ atom, arguments, template_arguments, start, end }
 }
 
 ///|
@@ -526,13 +554,34 @@ pub fn WgslTypeRef::arguments(self : WgslTypeRef) -> Array[WgslTypeRef] {
 }
 
 ///|
+pub fn WgslTypeRef::template_arguments(
+  self : WgslTypeRef,
+) -> Array[WgslTypeArgument] {
+  self.template_arguments.copy()
+}
+
+///|
+fn wgsl_type_argument_canonical_text(argument : WgslTypeArgument) -> String {
+  match argument {
+    Type(ty) => ty.canonical_text()
+    Expression(expr) => {
+      let parts : Array[String] = []
+      for token in expr.tokens() {
+        parts.push(token.text())
+      }
+      parts.join(" ")
+    }
+  }
+}
+
+///|
 pub fn WgslTypeRef::canonical_text(self : WgslTypeRef) -> String {
-  if self.arguments.length() == 0 {
+  if self.template_arguments.length() == 0 {
     return self.name()
   }
   let argument_texts : Array[String] = []
-  for argument in self.arguments {
-    argument_texts.push(argument.canonical_text())
+  for argument in self.template_arguments {
+    argument_texts.push(wgsl_type_argument_canonical_text(argument))
   }
   let joined_arguments = argument_texts.join(", ")
   "\{self.name()}<\{joined_arguments}>"
@@ -641,7 +690,10 @@ pub(all) enum WgslStatementKind {
   For
   While
   Loop
+  Continuing
   Switch
+  Case
+  DefaultCase
   Break
   Continue
   Discard
@@ -773,6 +825,7 @@ pub(all) enum WgslStatementPayload {
 ///|
 pub struct WgslStatement {
   priv kind : WgslStatementKind
+  priv attributes : Array[WgslAttribute]
   priv payload : WgslStatementPayload
   priv blocks : Array[WgslBlock]
   priv local_bindings : Array[WgslLocalDeclaration]
@@ -784,6 +837,7 @@ pub struct WgslStatement {
 ///|
 pub fn WgslStatement::new(
   kind : WgslStatementKind,
+  attributes : Array[WgslAttribute],
   payload : WgslStatementPayload,
   blocks : Array[WgslBlock],
   local_bindings : Array[WgslLocalDeclaration],
@@ -793,6 +847,7 @@ pub fn WgslStatement::new(
 ) -> WgslStatement {
   WgslStatement::{
     kind,
+    attributes,
     payload,
     blocks,
     local_bindings,
@@ -805,6 +860,11 @@ pub fn WgslStatement::new(
 ///|
 pub fn WgslStatement::kind(self : WgslStatement) -> WgslStatementKind {
   self.kind
+}
+
+///|
+pub fn WgslStatement::attributes(self : WgslStatement) -> Array[WgslAttribute] {
+  self.attributes.copy()
 }
 
 ///|
@@ -893,6 +953,7 @@ pub struct WgslFunction {
   priv name : WgslIdent
   priv arguments : Array[WgslFunctionArgument]
   priv result : WgslFunctionResult?
+  priv body_attributes : Array[WgslAttribute]
   priv body : WgslBlock
 } derive(Debug)
 
@@ -907,6 +968,7 @@ pub fn WgslFunction::new(
   name : WgslIdent,
   arguments : Array[WgslFunctionArgument],
   result : WgslFunctionResult?,
+  body_attributes : Array[WgslAttribute],
   body : WgslBlock,
 ) -> WgslFunction {
   WgslFunction::{
@@ -919,6 +981,7 @@ pub fn WgslFunction::new(
     name,
     arguments,
     result,
+    body_attributes,
     body,
   }
 }
@@ -968,6 +1031,13 @@ pub fn WgslFunction::arguments(
 ///|
 pub fn WgslFunction::result(self : WgslFunction) -> WgslFunctionResult? {
   self.result
+}
+
+///|
+pub fn WgslFunction::body_attributes(
+  self : WgslFunction,
+) -> Array[WgslAttribute] {
+  self.body_attributes.copy()
 }
 
 ///|

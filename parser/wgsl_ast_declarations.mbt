@@ -32,6 +32,7 @@ fn WgslDeclParser::parse_function(
       }
     _ => None
   }
+  let body_attributes = self.consume_leading_attributes()
   guard self.view() is [token, ..] && token.is_punctuation(123) else {
     return None
   }
@@ -47,9 +48,47 @@ fn WgslDeclParser::parse_function(
       name,
       arguments,
       result,
+      body_attributes,
       body,
     ),
   )
+}
+
+///|
+fn WgslDeclParser::consume_leading_attributes(
+  self : WgslDeclParser,
+) -> Array[WgslAttribute] {
+  let attributes : Array[WgslAttribute] = []
+  while true {
+    let view_tokens = self.view().to_owned()
+    guard view_tokens.length() >= 2 && view_tokens[0].is_punctuation(64) else {
+      break
+    }
+    guard view_tokens[1].identifier_text() is Some(name_text) else { break }
+    let name = WgslIdent::new(
+      name_text,
+      view_tokens[1].pos(),
+      view_tokens[1].end(),
+    )
+    let mut consumed = 2
+    let mut end_ = name.end()
+    let mut arguments_ref : WgslExprRef? = None
+    if view_tokens.length() > 2 && view_tokens[2].is_punctuation(40) {
+      let close_index = wgsl_statement_delimited_end(view_tokens, 2, 40, 41)
+      if close_index > 2 {
+        consumed = close_index + 1
+        end_ = view_tokens[close_index].end()
+        arguments_ref = self.expr_ref_from_token_range(
+          view_tokens, 3, close_index,
+        )
+      }
+    }
+    attributes.push(
+      WgslAttribute::new(name, view_tokens[0].pos(), end_, arguments_ref),
+    )
+    self.drop_tokens(consumed)
+  }
+  attributes
 }
 
 ///|
@@ -300,6 +339,7 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
   let tail = self.parse_typed_initializer_tail_checked() catch {
     _ => return None
   }
+  guard tail.initializer_ref is Some(_) else { return None }
   Some(WgslConst::new(name, tail.ty_ref, tail.initializer_ref))
 }
 

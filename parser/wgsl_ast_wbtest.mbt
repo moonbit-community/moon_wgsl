@@ -101,6 +101,17 @@ test "strict WGSL translation unit rejects malformed typed initializer tails" {
 }
 
 ///|
+test "strict WGSL translation unit rejects official global const without initializer" {
+  let source =
+    #|const VALUE: u32;
+  let mut failed = false
+  ignore(parse_wgsl_translation_unit_strict(source)) catch {
+    _ => failed = true
+  }
+  guard failed is true else { abort("expected strict parser failure") }
+}
+
+///|
 test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   let source =
     #|struct Vertex {
@@ -1214,6 +1225,7 @@ test "WGSL override function payload preserves qualified target path" {
       #|      {
       #|        atom: { kind: Identifier, text: "f32", start: 36, end: 39 },
       #|        arguments: [],
+      #|        template_arguments: [],
       #|        start: 36,
       #|        end: 39,
       #|      },
@@ -1377,4 +1389,103 @@ test "WGSL struct parser accepts Bevy LightingInput member shape" {
     abort("expected struct")
   }
   debug_inspect(struct_decl.members().length() > 10, content="true")
+}
+
+///|
+test "WGSL parser accepts official directives and statement attributes" {
+  let source =
+    #|enable f16, subgroups;
+    #|requires readonly_and_readwrite_storage_textures;
+    #|diagnostic(off, derivative_uniformity);
+    #|const N: u32 = 3u;
+    #|alias Values = array<vec4<f32>, N + 1u>;
+    #|@compute @workgroup_size(1, 2, 3)
+    #|fn main(@builtin(global_invocation_id) gid: vec3<u32>) @diagnostic(off, derivative_uniformity) {
+    #|  @diagnostic(off, derivative_uniformity) if gid.x > 0u {
+    #|    var<function> values: Values;
+    #|    _ = values[0];
+    #|  }
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  debug_inspect(unit.declarations().length(), content="6")
+  debug_inspect(unit.declarations()[0].kind(), content="Directive")
+  debug_inspect(unit.declarations()[1].kind(), content="Directive")
+  debug_inspect(unit.declarations()[2].kind(), content="Directive")
+  guard unit.declarations()[4].data()
+    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+    abort("expected type alias")
+  }
+  guard alias_decl.ty_ref() is Some(alias_ty) else {
+    abort("expected alias type")
+  }
+  debug_inspect(
+    alias_ty.canonical_text(),
+    content="\"array<vec4<f32>, N + 1u>\"",
+  )
+  debug_inspect(alias_ty.template_arguments().length(), content="2")
+  match alias_ty.template_arguments()[1] {
+    Expression(expr) =>
+      debug_inspect(
+        expr.identifiers().map(fn(ident) { ident.name() }),
+        content=(
+          #|["N"]
+        ),
+      )
+    _ => abort("expected expression template argument")
+  }
+  guard unit.declarations()[5].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function")
+  }
+  debug_inspect(function.body_attributes().length(), content="1")
+  debug_inspect(
+    function.body_attributes()[0].name().name(),
+    content="\"diagnostic\"",
+  )
+  let first_statement = function.body().statements()[0]
+  debug_inspect(first_statement.kind(), content="If")
+  debug_inspect(first_statement.attributes().length(), content="1")
+  debug_inspect(
+    first_statement.attributes()[0].name().name(),
+    content="\"diagnostic\"",
+  )
+}
+
+///|
+test "WGSL parser classifies official loop continuing and switch clauses" {
+  let source =
+    #|fn main(mode: u32) -> u32 {
+    #|  var value: u32 = 0u;
+    #|  loop {
+    #|    value++;
+    #|    continuing {
+    #|      break if value > 4u;
+    #|    }
+    #|  }
+    #|  switch mode {
+    #|    case 0u, 1u: {
+    #|      value += 1u;
+    #|    }
+    #|    default {
+    #|      value += 2u;
+    #|    }
+    #|  }
+    #|  return value;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function")
+  }
+  debug_inspect(function.body().statements()[1].kind(), content="Loop")
+  let loop_body = function.body().statements()[1].blocks()[0]
+  debug_inspect(loop_body.statements()[1].kind(), content="Continuing")
+  debug_inspect(
+    loop_body.statements()[1].blocks()[0].statements()[0].kind(),
+    content="Break",
+  )
+  debug_inspect(function.body().statements()[2].kind(), content="Switch")
+  let switch_body = function.body().statements()[2].blocks()[0]
+  debug_inspect(switch_body.statements()[0].kind(), content="Case")
+  debug_inspect(switch_body.statements()[1].kind(), content="DefaultCase")
 }

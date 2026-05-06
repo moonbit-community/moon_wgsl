@@ -17,6 +17,7 @@
 %token<WgslRawTopLevelItem> ITEM
 %token<@ast.WgslStatement> STMT
 %token<@ast.WgslTypeAtom> TYPE_ATOM
+%token<(Array[@ast.WgslTypeArgument], Int)> TYPE_ARGS
 %token<@ast.WgslIdent> ARG_NAME
 %token<@ast.WgslTypeRef> ARG_TYPE
 %token<@ast.WgslIdent> MEMBER_NAME
@@ -473,6 +474,9 @@ type_expr -> @ast.WgslTypeRef
   : atom=TYPE_ATOM {
       wgsl_type_ref_from_atom(atom, [], atom.end())
     }
+  | atom=TYPE_ATOM args=TYPE_ARGS {
+      wgsl_type_ref_from_template_arguments(atom, args)
+    }
   | atom=TYPE_ATOM TYPE_LT args=type_ref_args gt=TYPE_GT {
       wgsl_type_ref_from_atom(atom, args, gt)
     }
@@ -496,4 +500,17 @@ fn wgsl_type_ref_from_atom(
   end_ : Int,
 ) -> @ast.WgslTypeRef {
   @ast.WgslTypeRef::new(atom, arguments, atom.start(), end_.max(atom.end()))
+}
+
+fn wgsl_type_ref_from_template_arguments(
+  atom : @ast.WgslTypeAtom,
+  args : (Array[@ast.WgslTypeArgument], Int),
+) -> @ast.WgslTypeRef {
+  let (arguments, end_) = args
+  @ast.WgslTypeRef::new_with_template_arguments(
+    atom,
+    arguments,
+    atom.start(),
+    end_,
+  )
 }

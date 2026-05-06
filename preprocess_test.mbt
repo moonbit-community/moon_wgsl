@@ -883,7 +883,7 @@ test "naga_oil: shader-def replacement width advances later diagnostics" {
   let shader_defs = empty_shader_defs()
   shader_defs.set("LONG", @common.ShaderDefValue::UInt(1234567890U))
   let _ = @preprocess.Preprocessor::default().preprocess(
-    "#import a::Thing\n#import b::Thing\nfn entry() -> u32 {\n  let x = #LONG;\n  let y: Thing;\n}\n",
+    "#import a::Thing\n#import b::Thing\nfn entry() -> u32 {\n  let x = #LONG;\n  var y: Thing;\n}\n",
     shader_defs,
   ) catch {
     @preprocess.PreprocessError::ImportParseError(message, offset) => {

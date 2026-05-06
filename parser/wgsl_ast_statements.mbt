@@ -151,7 +151,10 @@ fn wgsl_statement_kind_from_tokens(
     Some("for") => WgslStatementKind::For
     Some("while") => WgslStatementKind::While
     Some("loop") => WgslStatementKind::Loop
+    Some("continuing") => WgslStatementKind::Continuing
     Some("switch") => WgslStatementKind::Switch
+    Some("case") => WgslStatementKind::Case
+    Some("default") => WgslStatementKind::DefaultCase
     Some("break") => WgslStatementKind::Break
     Some("continue") => WgslStatementKind::Continue
     Some("discard") => WgslStatementKind::Discard
@@ -202,6 +205,11 @@ fn WgslDeclParser::parse_statement_local_binding(
   }
   let tail = parser.parse_typed_initializer_tail_checked() catch {
     _ => return None
+  }
+  match (kind, tail.initializer_ref) {
+    (WgslLocalDeclarationKind::Let, None)
+    | (WgslLocalDeclarationKind::Const, None) => return None
+    _ => ()
   }
   Some(
     WgslLocalDeclaration::new(
@@ -435,6 +443,21 @@ fn wgsl_statement_push_expr_ref(
 }
 
 ///|
+fn WgslDeclParser::expr_ref_from_token_range(
+  self : WgslDeclParser,
+  tokens : Array[WgslToken],
+  start : Int,
+  end_ : Int,
+) -> WgslExprRef? {
+  guard start >= 0 && end_ > start && end_ <= tokens.length() else {
+    return None
+  }
+  let expr_start = tokens[start].pos()
+  let expr_end = tokens[end_ - 1].end()
+  parse_wgsl_expr_ref_text(self.slice(expr_start, expr_end), expr_start)
+}
+
+///|
 fn wgsl_statement_top_level_identifier_index(
   tokens : Array[WgslToken],
   start : Int,
@@ -590,7 +613,13 @@ fn collect_wgsl_statement_expression_refs(
   expressions : Array[WgslStatementExpression],
 ) -> Unit {
   match kind {
-    LocalDeclaration | Empty | Continue | Discard | Compound => return
+    LocalDeclaration
+    | Empty
+    | Continue
+    | Discard
+    | Compound
+    | Continuing
+    | DefaultCase => return
     Break => {
       match tokens {
         [_, token, ..] if token.is_identifier("if") =>
@@ -749,6 +778,20 @@ fn collect_wgsl_statement_expression_refs(
       return
     }
     Loop => return
+    Case => {
+      let colon = wgsl_statement_top_level_token_index(tokens, 1, 58)
+      let expr_end = if colon >= 0 { colon } else { tokens.length() }
+      wgsl_statement_push_expr_ref(
+        owner,
+        tokens,
+        1,
+        expr_end,
+        WgslStatementExpressionRole::CaseSelector,
+        expression_refs,
+        expressions,
+      )
+      return
+    }
   }
 }
 
@@ -809,6 +852,7 @@ fn wgsl_statement_payload_from_ast(
         ),
       )
     Loop => Loop
+    Continuing => Compound
     Switch =>
       Switch(
         wgsl_statement_first_expression_by_role(
@@ -833,6 +877,14 @@ fn wgsl_statement_payload_from_ast(
         ),
       )
     Compound => Compound
+    Case =>
+      Case(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::CaseSelector,
+        ),
+      )
+    DefaultCase => DefaultCase
     Expression =>
       match first_identifier {
         Some("case") =>
@@ -852,6 +904,44 @@ fn wgsl_statement_payload_from_ast(
           )
       }
   }
+}
+
+///|
+fn wgsl_statement_leading_attributes(
+  owner : WgslDeclParser,
+  tokens : Array[WgslToken],
+) -> (Array[WgslAttribute], Int) {
+  let attributes : Array[WgslAttribute] = []
+  let mut index = 0
+  while index + 1 < tokens.length() {
+    guard tokens[index].is_punctuation(64) else { break }
+    let at_token = tokens[index]
+    let name_token = tokens[index + 1]
+    let name = match name_token.identifier_text() {
+      Some(text) => WgslIdent::new(text, name_token.pos(), name_token.end())
+      None => break
+    }
+    let mut end_ = name.end()
+    let mut next_index = index + 2
+    let mut arguments_ref : WgslExprRef? = None
+    if next_index < tokens.length() && tokens[next_index].is_punctuation(40) {
+      let close_index = wgsl_statement_delimited_end(tokens, next_index, 40, 41)
+      if close_index > next_index {
+        end_ = tokens[close_index].end()
+        arguments_ref = owner.expr_ref_from_token_range(
+          tokens,
+          next_index + 1,
+          close_index,
+        )
+        next_index = close_index + 1
+      }
+    }
+    attributes.push(
+      WgslAttribute::new(name, at_token.pos(), end_, arguments_ref),
+    )
+    index = next_index
+  }
+  (attributes, index)
 }
 
 ///|
@@ -905,9 +995,19 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   if start_pos < 0 || end_pos < start_pos {
     None
   } else {
-    let is_local_decl = wgsl_statement_is_local_decl(first_identifier)
-    let kind = wgsl_statement_kind_from_tokens(first_identifier, tokens)
-    let scope_tokens = collect_wgsl_statement_scope_tokens(tokens)
+    let (attributes, body_start) = wgsl_statement_leading_attributes(
+      self, tokens,
+    )
+    let body_tokens = tokens[body_start:].to_owned()
+    let body_first_identifier = match body_tokens {
+      [token, ..] => token.identifier_text()
+      [] => first_identifier
+    }
+    let is_local_decl = wgsl_statement_is_local_decl(body_first_identifier)
+    let kind = wgsl_statement_kind_from_tokens(
+      body_first_identifier, body_tokens,
+    )
+    let scope_tokens = collect_wgsl_statement_scope_tokens(body_tokens)
     let local_bindings : Array[WgslLocalDeclaration] = []
     let exported_local_bindings : Array[WgslLocalDeclaration] = []
     if is_local_decl {
@@ -916,7 +1016,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
           local_bindings.push(local_binding)
           exported_local_bindings.push(local_binding)
         }
-        None => ()
+        None => return None
       }
     }
     collect_wgsl_statement_local_bindings(
@@ -926,13 +1026,13 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       self, scope_tokens, kind, expression_refs, expressions,
     )
     let payload = wgsl_statement_payload_from_ast(
-      kind, first_identifier, local_bindings, expressions,
+      kind, body_first_identifier, local_bindings, expressions,
     )
     let blocks = self.collect_statement_blocks(tokens)
     Some(
       WgslStatement::new(
-        kind, payload, blocks, local_bindings, exported_local_bindings, expression_refs,
-        expressions,
+        kind, attributes, payload, blocks, local_bindings, exported_local_bindings,
+        expression_refs, expressions,
       ),
     )
   }

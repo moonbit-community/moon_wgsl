@@ -1078,11 +1078,241 @@ fn wgsl_type_atom_kind(text : String) -> WgslTypeAtomKind {
 }
 
 ///|
+fn wgsl_type_ref_top_level_template_start(source : String) -> Int? {
+  let mut paren = 0
+  let mut bracket = 0
+  let mut brace = 0
+  for i in 0..<source.length() {
+    let code = source.code_unit_at(i).to_int()
+    match code {
+      40 => paren = paren + 1
+      41 => paren = paren - 1
+      91 => bracket = bracket + 1
+      93 => bracket = bracket - 1
+      123 => brace = brace + 1
+      125 => brace = brace - 1
+      60 if paren == 0 && bracket == 0 && brace == 0 => return Some(i)
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_type_ref_matching_template_end(source : String, lt_index : Int) -> Int? {
+  let mut angle = 0
+  let mut paren = 0
+  let mut bracket = 0
+  let mut brace = 0
+  for i in lt_index..<source.length() {
+    let code = source.code_unit_at(i).to_int()
+    match code {
+      40 => paren = paren + 1
+      41 => paren = paren - 1
+      91 => bracket = bracket + 1
+      93 => bracket = bracket - 1
+      123 => brace = brace + 1
+      125 => brace = brace - 1
+      60 if paren == 0 && bracket == 0 && brace == 0 => angle = angle + 1
+      62 if paren == 0 && bracket == 0 && brace == 0 => {
+        angle = angle - 1
+        if angle == 0 {
+          return Some(i)
+        }
+      }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_template_arg_has_top_level_expression_operator(text : String) -> Bool {
+  let mut angle = 0
+  let mut paren = 0
+  let mut bracket = 0
+  let mut brace = 0
+  let mut i = 0
+  while i < text.length() {
+    let code = text.code_unit_at(i).to_int()
+    match code {
+      40 => paren = paren + 1
+      41 => paren = paren - 1
+      91 => bracket = bracket + 1
+      93 => bracket = bracket - 1
+      123 => brace = brace + 1
+      125 => brace = brace - 1
+      60 if paren == 0 && bracket == 0 && brace == 0 => angle = angle + 1
+      62 if paren == 0 && bracket == 0 && brace == 0 && angle > 0 =>
+        angle = angle - 1
+      33 | 37 | 38 | 42 | 43 | 45 | 47 | 61 | 94 | 124 =>
+        if angle == 0 && paren == 0 && bracket == 0 && brace == 0 {
+          return true
+        }
+      _ => ()
+    }
+    i = i + 1
+  }
+  false
+}
+
+///|
+fn split_wgsl_template_argument_fragments(
+  source : String,
+  inner_start : Int,
+  inner_end : Int,
+) -> Array[WgslTextFragment] {
+  let fragments : Array[WgslTextFragment] = []
+  let mut angle = 0
+  let mut paren = 0
+  let mut bracket = 0
+  let mut brace = 0
+  let mut start = inner_start
+  let mut i = inner_start
+  while i < inner_end {
+    let code = source.code_unit_at(i).to_int()
+    match code {
+      40 => paren = paren + 1
+      41 => paren = paren - 1
+      91 => bracket = bracket + 1
+      93 => bracket = bracket - 1
+      123 => brace = brace + 1
+      125 => brace = brace - 1
+      60 if paren == 0 && bracket == 0 && brace == 0 => angle = angle + 1
+      62 if paren == 0 && bracket == 0 && brace == 0 && angle > 0 =>
+        angle = angle - 1
+      44 if angle == 0 && paren == 0 && bracket == 0 && brace == 0 => {
+        let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
+          source[start:i].to_owned(),
+          0,
+          i - start,
+        )
+        if trimmed != "" {
+          fragments.push(WgslTextFragment::{
+            text: trimmed,
+            start: start + local_start,
+            end: start + local_end,
+          })
+        }
+        start = i + 1
+      }
+      _ => ()
+    }
+    i = i + 1
+  }
+  let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
+    source[start:inner_end].to_owned(),
+    0,
+    inner_end - start,
+  )
+  if trimmed != "" {
+    fragments.push(WgslTextFragment::{
+      text: trimmed,
+      start: start + local_start,
+      end: start + local_end,
+    })
+  }
+  fragments
+}
+
+///|
+fn parse_wgsl_type_template_argument(
+  fragment : WgslTextFragment,
+  source_start : Int,
+) -> WgslTypeArgument? {
+  let absolute_start = source_start + fragment.start
+  if !wgsl_template_arg_has_top_level_expression_operator(fragment.text) {
+    match parse_wgsl_type_ref_text(fragment.text, absolute_start) {
+      Some(ty) => return Some(WgslTypeArgument::Type(ty))
+      None => ()
+    }
+  }
+  match parse_wgsl_expr_ref_text(fragment.text, absolute_start) {
+    Some(expr) => Some(WgslTypeArgument::Expression(expr))
+    None => None
+  }
+}
+
+///|
+fn parse_wgsl_type_template_arguments(
+  source : String,
+  source_start : Int,
+  lt_index : Int,
+  gt_index : Int,
+) -> Array[WgslTypeArgument] {
+  let arguments : Array[WgslTypeArgument] = []
+  for
+    fragment in split_wgsl_template_argument_fragments(
+      source,
+      lt_index + 1,
+      gt_index,
+    ) {
+    match parse_wgsl_type_template_argument(fragment, source_start) {
+      Some(argument) => arguments.push(argument)
+      None => ()
+    }
+  }
+  arguments
+}
+
+///|
 fn tokenize_wgsl_type_ref(
   source : String,
   source_start : Int,
 ) -> Array[(Token, Int, Int)] {
   let tokens : Array[(Token, Int, Int)] = []
+  match wgsl_type_ref_top_level_template_start(source) {
+    Some(lt_index) if lt_index > 0 =>
+      match wgsl_type_ref_matching_template_end(source, lt_index) {
+        Some(gt_index) if gt_index == source.length() - 1 => {
+          let (atom_text, atom_local_start, atom_local_end) = wgsl_trim_fragment_bounds(
+            source[0:lt_index].to_owned(),
+            0,
+            lt_index,
+          )
+          let atom_start = source_start + atom_local_start
+          let atom_end = source_start + atom_local_end
+          tokens.push(
+            (
+              Token::TYPE_ATOM(
+                WgslTypeAtom::new(
+                  wgsl_type_atom_kind(atom_text),
+                  atom_text,
+                  atom_start,
+                  atom_end,
+                ),
+              ),
+              atom_start,
+              atom_end,
+            ),
+          )
+          tokens.push(
+            (
+              Token::TYPE_ARGS(
+                (
+                  parse_wgsl_type_template_arguments(
+                    source, source_start, lt_index, gt_index,
+                  ),
+                  source_start + gt_index + 1,
+                ),
+              ),
+              source_start + lt_index,
+              source_start + gt_index + 1,
+            ),
+          )
+          tokens.push(
+            (
+              Token::EOF,
+              source_start + source.length(),
+              source_start + source.length(),
+            ),
+          )
+          return tokens
+        }
+        _ => ()
+      }
+    _ => ()
+  }
   let mut i = 0
   while i < source.length() {
     let code = source.code_unit_at(i).to_int()

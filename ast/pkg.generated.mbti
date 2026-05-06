@@ -161,10 +161,11 @@ pub struct WgslFunction {
 pub fn WgslFunction::arguments(Self) -> Array[WgslFunctionArgument]
 pub fn WgslFunction::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslFunction::body(Self) -> WgslBlock
+pub fn WgslFunction::body_attributes(Self) -> Array[WgslAttribute]
 pub fn WgslFunction::fn_end(Self) -> Int
 pub fn WgslFunction::fn_start(Self) -> Int
 pub fn WgslFunction::name(Self) -> WgslIdent
-pub fn WgslFunction::new(Array[WgslAttribute], WgslFunctionQualifier?, Int?, Int?, Int, Int, WgslIdent, Array[WgslFunctionArgument], WgslFunctionResult?, WgslBlock) -> Self
+pub fn WgslFunction::new(Array[WgslAttribute], WgslFunctionQualifier?, Int?, Int?, Int, Int, WgslIdent, Array[WgslFunctionArgument], WgslFunctionResult?, Array[WgslAttribute], WgslBlock) -> Self
 pub fn WgslFunction::qualifier(Self) -> WgslFunctionQualifier?
 pub fn WgslFunction::qualifier_end(Self) -> Int?
 pub fn WgslFunction::qualifier_start(Self) -> Int?
@@ -277,13 +278,14 @@ pub fn WgslOverride::ty_ref(Self) -> WgslTypeRef?
 pub struct WgslStatement {
   // private fields
 } derive(@debug.Debug)
+pub fn WgslStatement::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslStatement::blocks(Self) -> Array[WgslBlock]
 pub fn WgslStatement::exported_local_bindings(Self) -> Array[WgslLocalDeclaration]
 pub fn WgslStatement::expression_refs(Self) -> Array[WgslExprRef]
 pub fn WgslStatement::expressions(Self) -> Array[WgslStatementExpression]
 pub fn WgslStatement::kind(Self) -> WgslStatementKind
 pub fn WgslStatement::local_bindings(Self) -> Array[WgslLocalDeclaration]
-pub fn WgslStatement::new(WgslStatementKind, WgslStatementPayload, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
+pub fn WgslStatement::new(WgslStatementKind, Array[WgslAttribute], WgslStatementPayload, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
 pub fn WgslStatement::payload(Self) -> WgslStatementPayload
 
 pub struct WgslStatementExpression {
@@ -312,7 +314,10 @@ pub(all) enum WgslStatementKind {
   For
   While
   Loop
+  Continuing
   Switch
+  Case
+  DefaultCase
   Break
   Continue
   Discard
@@ -371,6 +376,11 @@ pub fn WgslTypeAlias::name(Self) -> WgslIdent
 pub fn WgslTypeAlias::new(WgslIdent, WgslTypeRef?) -> Self
 pub fn WgslTypeAlias::ty_ref(Self) -> WgslTypeRef?
 
+pub(all) enum WgslTypeArgument {
+  Type(WgslTypeRef)
+  Expression(WgslExprRef)
+} derive(@debug.Debug)
+
 pub struct WgslTypeAtom {
   // private fields
 } derive(@debug.Debug)
@@ -395,6 +405,8 @@ pub fn WgslTypeRef::canonical_text(Self) -> String
 pub fn WgslTypeRef::end(Self) -> Int
 pub fn WgslTypeRef::name(Self) -> String
 pub fn WgslTypeRef::new(WgslTypeAtom, Array[Self], Int, Int) -> Self
+pub fn WgslTypeRef::new_with_template_arguments(WgslTypeAtom, Array[WgslTypeArgument], Int, Int) -> Self
+pub fn WgslTypeRef::template_arguments(Self) -> Array[WgslTypeArgument]
 
 // Type aliases
 

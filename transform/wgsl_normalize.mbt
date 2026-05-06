@@ -79,8 +79,11 @@ fn wgsl_type_ref_key(ty : WgslTypeRef?) -> String {
   match ty {
     Some(type_ref) => {
       let argument_keys : Array[String] = []
-      for argument in type_ref.arguments() {
-        argument_keys.push(wgsl_type_ref_key(Some(argument)))
+      for argument in type_ref.template_arguments() {
+        match argument {
+          Type(ty) => argument_keys.push(wgsl_type_ref_key(Some(ty)))
+          Expression(expr) => argument_keys.push(wgsl_expr_ref_key(expr))
+        }
       }
       "\{type_ref.name()}<\{wgsl_string_list_key(argument_keys)}>"
     }
@@ -98,7 +101,10 @@ fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
     For => "for"
     While => "while"
     Loop => "loop"
+    Continuing => "continuing"
     Switch => "switch"
+    Case => "case"
+    DefaultCase => "default"
     Break => "break"
     Continue => "continue"
     Discard => "discard"

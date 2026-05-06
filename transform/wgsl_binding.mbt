@@ -337,8 +337,13 @@ fn collect_wgsl_rewrite_nodes_from_type_ref(
           }
         None => ()
       }
-      for argument in ty.arguments() {
-        collect_wgsl_rewrite_nodes_from_type_ref(Some(argument), rules, nodes)
+      for argument in ty.template_arguments() {
+        match argument {
+          Type(ty) =>
+            collect_wgsl_rewrite_nodes_from_type_ref(Some(ty), rules, nodes)
+          Expression(expr) =>
+            collect_wgsl_rewrite_nodes_from_expr_ref(Some(expr), rules, nodes)
+        }
       }
     }
     None => ()

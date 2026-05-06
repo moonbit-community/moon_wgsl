@@ -34,6 +34,7 @@ using @ast {
   type WgslTypeAtom,
   type WgslTypeAtomKind,
   type WgslTypeAlias,
+  type WgslTypeArgument,
   type WgslTypeRef,
 }
 
