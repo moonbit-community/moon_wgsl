@@ -37,6 +37,12 @@ priv struct WgslIrFunctionScope {
 }
 
 ///|
+priv struct WgslIrExprTokenParser {
+  tokens : Array[@ast.WgslExprToken]
+  mut index : Int
+}
+
+///|
 fn WgslIrFunctionScope::new() -> WgslIrFunctionScope {
   WgslIrFunctionScope::{
     arguments: @hashmap.HashMap::new(),
@@ -208,7 +214,7 @@ fn WgslIrLowerer::lower_global_variable(
   }
   let handle = self.shader_module.append_global_variable(GlobalVariable::{
     name: Some(global.name().name()),
-    space: wgsl_ir_address_space_from_template_list(global.template_list()),
+    space: self.global_address_space(global.template_list(), ty),
     binding: wgsl_ir_resource_binding_from_attributes(global.attributes()),
     ty,
     init,
@@ -217,6 +223,26 @@ fn WgslIrLowerer::lower_global_variable(
     ),
   })
   self.global_names.set(global.name().name(), handle)
+}
+
+///|
+fn WgslIrLowerer::global_address_space(
+  self : WgslIrLowerer,
+  template_list : Array[@ast.WgslTypeRef],
+  ty : Handle,
+) -> AddressSpace {
+  if template_list.length() > 0 {
+    return wgsl_ir_address_space_from_template_list(template_list)
+  }
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, _, _) | Sampler(_) | AccelerationStructure(_) | RayQuery(_) =>
+          Handle
+        _ => Private
+      }
+    None => Private
+  }
 }
 
 ///|
@@ -476,6 +502,8 @@ fn WgslIrLowerer::lower_statement(
         None => ()
       }
     ConstAssert(_) => ()
+    For(expressions) =>
+      self.lower_for_statement(statement, expressions, function, scope, block)
     Switch(selector) => {
       guard selector is Some(selector_ref) else {
         raise WgslIrLowerError::UnsupportedStatement("switch without selector")
@@ -491,11 +519,87 @@ fn WgslIrLowerer::lower_statement(
       }
       block.push(Statement::Switch(selector_handle, cases))
     }
-    For(_) | Case(_) | DefaultCase =>
+    Case(_) | DefaultCase =>
       raise WgslIrLowerError::UnsupportedStatement(
         "structured statement not yet representable by this WGSL IR lowerer",
       )
   }
+}
+
+///|
+fn WgslIrLowerer::lower_for_statement(
+  self : WgslIrLowerer,
+  statement : @ast.WgslStatement,
+  expressions : Array[@ast.WgslStatementExpression],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Unit raise WgslIrLowerError {
+  for local_decl in statement.local_bindings() {
+    self.lower_local_declaration(local_decl, function, scope)
+  }
+  for expr in expressions {
+    if expr.role() == @ast.WgslStatementExpressionRole::ForInitializer {
+      self.lower_for_header_statement(expr.expression(), function, scope, block)
+    }
+  }
+  let loop_body = Block::new()
+  match
+    wgsl_ir_for_expression_by_role(
+      expressions,
+      @ast.WgslStatementExpressionRole::ForCondition,
+    ) {
+    Some(condition_ref) => {
+      let condition = self.lower_function_expression_ref(
+        condition_ref, function, scope,
+      )
+      let not_condition = function.expressions.append(
+        Expression::Unary(UnaryOperator::LogicalNot, condition),
+      )
+      loop_body.push(
+        Statement::If(
+          not_condition,
+          Block::{ statements: [Statement::Break] },
+          Block::new(),
+        ),
+      )
+    }
+    None => ()
+  }
+  match statement.blocks() {
+    [body_block, ..] => {
+      let body = self.lower_block(body_block, function, scope)
+      for body_statement in body.statements {
+        loop_body.push(body_statement)
+      }
+    }
+    [] => ()
+  }
+  let continuing = Block::new()
+  for expr in expressions {
+    if expr.role() == @ast.WgslStatementExpressionRole::ForUpdate {
+      self.lower_for_header_statement(
+        expr.expression(),
+        function,
+        scope,
+        continuing,
+      )
+    }
+  }
+  block.push(Statement::Loop(loop_body, continuing, None))
+}
+
+///|
+fn wgsl_ir_for_expression_by_role(
+  expressions : Array[@ast.WgslStatementExpression],
+  role : @ast.WgslStatementExpressionRole,
+) -> @ast.WgslExprRef? {
+  for expr in expressions {
+    if expr.role() == role {
+      return Some(expr.expression())
+    }
+  }
+  None
 }
 
 ///|
@@ -558,23 +662,92 @@ fn wgsl_ir_switch_value_from_expression(
 }
 
 ///|
+fn WgslIrLowerer::lower_for_header_statement(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Unit raise WgslIrLowerError {
+  let tokens = expr_ref.tokens()
+  match wgsl_ir_expr_tokens_update_operator(tokens) {
+    Some((target_tokens, increment)) => {
+      let target = self.lower_function_lvalue_node(
+        wgsl_ir_expr_node_from_tokens(target_tokens),
+        function,
+        scope,
+      )
+      wgsl_ir_lower_update_handle(target, function, block, increment)
+      return
+    }
+    None => ()
+  }
+  match wgsl_ir_expr_tokens_assignment(tokens) {
+    Some((op, lhs_tokens, rhs_tokens)) => {
+      let target = self.lower_function_lvalue_node(
+        wgsl_ir_expr_node_from_tokens(lhs_tokens),
+        function,
+        scope,
+      )
+      let rhs_value = self.lower_function_expression_node(
+        wgsl_ir_expr_node_from_tokens(rhs_tokens),
+        function,
+        scope,
+      )
+      let value = match wgsl_ir_compound_assignment_operator(op) {
+        Some(binary_op) => {
+          let loaded_target = function.expressions.append(
+            Expression::Load(target),
+          )
+          function.expressions.append(
+            Expression::Binary(binary_op, loaded_target, rhs_value),
+          )
+        }
+        None => rhs_value
+      }
+      block.push(Statement::Store(target, value))
+      return
+    }
+    None => ()
+  }
+  ignore(self.lower_function_expression_ref(expr_ref, function, scope))
+}
+
+///|
 fn WgslIrLowerer::lower_local_declaration(
   self : WgslIrLowerer,
   local_decl : @ast.WgslLocalDeclaration,
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
-  guard local_decl.ty_ref() is Some(ty_ref) else {
-    raise WgslIrLowerError::MissingType(local_decl.name().name())
-  }
   let init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
       Some(self.lower_function_expression_ref(expr_ref, function, scope))
     None => None
   }
+  let ty = match local_decl.ty_ref() {
+    Some(ty_ref) => self.lower_type_ref(ty_ref)
+    None =>
+      match init {
+        Some(init_handle) =>
+          match self.function_expression_type(function, init_handle) {
+            Some(inferred) => inferred
+            None =>
+              self.infer_local_type_from_initializer(
+                local_decl.name().name(),
+                local_decl.initializer_ref(),
+              )
+          }
+        None =>
+          self.infer_local_type_from_initializer(
+            local_decl.name().name(),
+            local_decl.initializer_ref(),
+          )
+      }
+  }
   let handle = function.local_variables.append(LocalVariable::{
     name: Some(local_decl.name().name()),
-    ty: self.lower_type_ref(ty_ref),
+    ty,
     init,
   })
   scope.locals.set(local_decl.name().name(), handle)
@@ -606,12 +779,232 @@ fn WgslIrLowerer::lower_call_statement(
               block.push(Statement::Call(handle, values, None))
             }
             None =>
-              ignore(self.lower_function_expression_node(root, function, scope))
+              if !self.lower_texture_statement_call(
+                  name.name(),
+                  arguments,
+                  function,
+                  scope,
+                  block,
+                ) {
+                ignore(
+                  self.lower_function_expression_node(root, function, scope),
+                )
+              }
           }
         _ => ignore(self.lower_function_expression_node(root, function, scope))
       }
     _ => ignore(self.lower_function_expression_node(root, function, scope))
   }
+}
+
+///|
+fn WgslIrLowerer::lower_texture_statement_call(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Bool raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  match name {
+    "textureStore" => {
+      guard arguments.length() == 3 || arguments.length() == 4 else {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "textureStore expects 3 or 4 arguments",
+        )
+      }
+      let image = self.lower_function_expression_node(
+        arguments[0],
+        function,
+        scope,
+      )
+      let coordinate = self.lower_function_expression_node(
+        arguments[1],
+        function,
+        scope,
+      )
+      let (array_index, value_index) = if arguments.length() == 4 {
+        (
+          Some(
+            self.lower_function_expression_node(arguments[2], function, scope),
+          ),
+          3,
+        )
+      } else {
+        (None, 2)
+      }
+      let value = self.lower_function_expression_node(
+        arguments[value_index],
+        function,
+        scope,
+      )
+      block.push(Statement::ImageStore(image, coordinate, array_index, value))
+      true
+    }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_texture_expression_call(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match name {
+    "textureSample" =>
+      Some(
+        self.lower_image_sample_expression(
+          arguments,
+          function,
+          scope,
+          SampleLevel::Auto,
+        ),
+      )
+    "textureSampleLevel" =>
+      Some(self.lower_image_sample_level_expression(arguments, function, scope))
+    "textureLoad" =>
+      Some(self.lower_image_load_expression(arguments, function, scope))
+    "textureDimensions" =>
+      Some(self.lower_image_query_expression(arguments, function, scope))
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_image_sample_expression(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  level : SampleLevel,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments.length() == 3 || arguments.length() == 4 else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "textureSample expects 3 or 4 arguments",
+    )
+  }
+  let image = self.lower_function_expression_node(arguments[0], function, scope)
+  let sampler = self.lower_function_expression_node(
+    arguments[1],
+    function,
+    scope,
+  )
+  let coordinate = self.lower_function_expression_node(
+    arguments[2],
+    function,
+    scope,
+  )
+  let array_index = if arguments.length() == 4 {
+    Some(self.lower_function_expression_node(arguments[3], function, scope))
+  } else {
+    None
+  }
+  function.expressions.append(
+    Expression::ImageSample(
+      image,
+      sampler,
+      None,
+      coordinate,
+      array_index,
+      None,
+      level,
+      None,
+      false,
+    ),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_image_sample_level_expression(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments.length() == 4 || arguments.length() == 5 else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "textureSampleLevel expects 4 or 5 arguments",
+    )
+  }
+  let level_arg = arguments[arguments.length() - 1]
+  let level = SampleLevel::Exact(
+    self.lower_function_expression_node(level_arg, function, scope),
+  )
+  let sample_args : Array[@ast.WgslExprNode] = []
+  for i in 0..<(arguments.length() - 1) {
+    sample_args.push(arguments[i])
+  }
+  self.lower_image_sample_expression(sample_args, function, scope, level)
+}
+
+///|
+fn WgslIrLowerer::lower_image_load_expression(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments.length() >= 2 && arguments.length() <= 4 else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "textureLoad expects 2 to 4 arguments",
+    )
+  }
+  let image = self.lower_function_expression_node(arguments[0], function, scope)
+  let coordinate = self.lower_function_expression_node(
+    arguments[1],
+    function,
+    scope,
+  )
+  let array_index = if arguments.length() == 4 {
+    Some(self.lower_function_expression_node(arguments[2], function, scope))
+  } else {
+    None
+  }
+  let level = if arguments.length() >= 3 {
+    Some(
+      self.lower_function_expression_node(
+        arguments[arguments.length() - 1],
+        function,
+        scope,
+      ),
+    )
+  } else {
+    None
+  }
+  function.expressions.append(
+    Expression::ImageLoad(image, coordinate, array_index, None, level),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_image_query_expression(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments.length() == 1 || arguments.length() == 2 else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "textureDimensions expects 1 or 2 arguments",
+    )
+  }
+  let image = self.lower_function_expression_node(arguments[0], function, scope)
+  let level = if arguments.length() == 2 {
+    Some(self.lower_function_expression_node(arguments[1], function, scope))
+  } else {
+    None
+  }
+  function.expressions.append(
+    Expression::ImageQuery(image, ImageQuery::Size(level)),
+  )
 }
 
 ///|
@@ -627,6 +1020,16 @@ fn WgslIrLowerer::lower_update_statement(
     raise WgslIrLowerError::UnsupportedStatement("update without target")
   }
   let pointer = self.lower_function_lvalue_ref(target_ref, function, scope)
+  wgsl_ir_lower_update_handle(pointer, function, block, increment)
+}
+
+///|
+fn wgsl_ir_lower_update_handle(
+  pointer : Handle,
+  function : Function,
+  block : Block,
+  increment : Bool,
+) -> Unit {
   let loaded = function.expressions.append(Expression::Load(pointer))
   let one = function.expressions.append(Expression::Literal(Literal::I32(1)))
   let op = if increment {
@@ -636,6 +1039,506 @@ fn WgslIrLowerer::lower_update_statement(
   }
   let value = function.expressions.append(Expression::Binary(op, loaded, one))
   block.push(Statement::Store(pointer, value))
+}
+
+///|
+fn WgslIrLowerer::infer_local_type_from_initializer(
+  self : WgslIrLowerer,
+  name : String,
+  initializer : @ast.WgslExprRef?,
+) -> Handle raise WgslIrLowerError {
+  guard initializer is Some(expr_ref) else {
+    raise WgslIrLowerError::MissingType(name)
+  }
+  match expr_ref.root() {
+    Some(root) => self.infer_expression_type(root, name)
+    None => raise WgslIrLowerError::MissingType(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::infer_expression_type(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  name : String,
+) -> Handle raise WgslIrLowerError {
+  match node.kind() {
+    Literal(token) =>
+      match token.kind() {
+        BoolLiteral(_) => self.lower_builtin_type_name("bool")
+        IntLiteral(_) => self.lower_builtin_type_name("i32")
+        UintLiteral(_) => self.lower_builtin_type_name("u32")
+        FloatLiteral => self.lower_builtin_type_name("f32")
+        _ => raise WgslIrLowerError::MissingType(name)
+      }
+    Group(inner) => self.infer_expression_type(inner, name)
+    _ => raise WgslIrLowerError::MissingType(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_builtin_type_name(
+  self : WgslIrLowerer,
+  name : String,
+) -> Handle raise WgslIrLowerError {
+  match self.type_cache.get(name) {
+    Some(handle) => handle
+    None => raise WgslIrLowerError::MissingType(name)
+  }
+}
+
+///|
+priv struct WgslIrExprTokenDepth {
+  mut paren : Int
+  mut angle : Int
+  mut bracket : Int
+  mut brace : Int
+}
+
+///|
+fn WgslIrExprTokenDepth::new() -> WgslIrExprTokenDepth {
+  WgslIrExprTokenDepth::{ paren: 0, angle: 0, bracket: 0, brace: 0 }
+}
+
+///|
+fn WgslIrExprTokenDepth::at_top(self : WgslIrExprTokenDepth) -> Bool {
+  self.paren == 0 && self.angle == 0 && self.bracket == 0 && self.brace == 0
+}
+
+///|
+fn WgslIrExprTokenDepth::observe(
+  self : WgslIrExprTokenDepth,
+  token : @ast.WgslExprToken,
+) -> Unit {
+  match token.kind() {
+    Operator(ShiftRight) => {
+      if self.angle >= 2 {
+        self.angle = self.angle - 2
+      } else {
+        self.angle = 0
+      }
+      return
+    }
+    _ => ()
+  }
+  match token.kind() {
+    Punctuation(40) => self.paren = self.paren + 1
+    Punctuation(41) => self.paren = self.paren - 1
+    Punctuation(60) => self.angle = self.angle + 1
+    Punctuation(62) => self.angle = self.angle - 1
+    Punctuation(91) => self.bracket = self.bracket + 1
+    Punctuation(93) => self.bracket = self.bracket - 1
+    Punctuation(123) => self.brace = self.brace + 1
+    Punctuation(125) => self.brace = self.brace - 1
+    _ => ()
+  }
+}
+
+///|
+fn wgsl_ir_expr_tokens_assignment(
+  tokens : Array[@ast.WgslExprToken],
+) -> (String, Array[@ast.WgslExprToken], Array[@ast.WgslExprToken])? {
+  let depth = WgslIrExprTokenDepth::new()
+  for i in 0..<tokens.length() {
+    if depth.at_top() {
+      match wgsl_ir_expr_assignment_at(tokens, i) {
+        Some((op, consumed)) =>
+          return Some(
+            (
+              op,
+              wgsl_ir_expr_token_slice(tokens, 0, i),
+              wgsl_ir_expr_token_slice(tokens, i + consumed, tokens.length()),
+            ),
+          )
+        None => ()
+      }
+    }
+    depth.observe(tokens[i])
+  }
+  None
+}
+
+///|
+fn wgsl_ir_expr_assignment_at(
+  tokens : Array[@ast.WgslExprToken],
+  index : Int,
+) -> (String, Int)? {
+  guard index >= 0 && index < tokens.length() else { return None }
+  match tokens[index].kind() {
+    Operator(Unknown(op)) if wgsl_ir_is_compound_assignment_operator(op) =>
+      Some((op, 1))
+    Operator(ShiftLeft) if index + 1 < tokens.length() &&
+      wgsl_ir_expr_token_is_punctuation(tokens[index + 1], 61) =>
+      Some(("<<=", 2))
+    Operator(ShiftRight) if index + 1 < tokens.length() &&
+      wgsl_ir_expr_token_is_punctuation(tokens[index + 1], 61) =>
+      Some((">>=", 2))
+    Punctuation(61) => Some(("=", 1))
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_is_compound_assignment_operator(op : String) -> Bool {
+  op == "+=" ||
+  op == "-=" ||
+  op == "*=" ||
+  op == "/=" ||
+  op == "%=" ||
+  op == "&=" ||
+  op == "|=" ||
+  op == "^="
+}
+
+///|
+fn wgsl_ir_expr_tokens_update_operator(
+  tokens : Array[@ast.WgslExprToken],
+) -> (Array[@ast.WgslExprToken], Bool)? {
+  guard tokens.length() > 1 else { return None }
+  let last = tokens[tokens.length() - 1]
+  match last.kind() {
+    Operator(Unknown("++")) =>
+      Some((wgsl_ir_expr_token_slice(tokens, 0, tokens.length() - 1), true))
+    Operator(Unknown("--")) =>
+      Some((wgsl_ir_expr_token_slice(tokens, 0, tokens.length() - 1), false))
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_expr_token_slice(
+  tokens : Array[@ast.WgslExprToken],
+  start : Int,
+  end_ : Int,
+) -> Array[@ast.WgslExprToken] {
+  let out : Array[@ast.WgslExprToken] = []
+  for i in start..<end_ {
+    out.push(tokens[i])
+  }
+  out
+}
+
+///|
+fn wgsl_ir_expr_token_is_punctuation(
+  token : @ast.WgslExprToken,
+  code : Int,
+) -> Bool {
+  match token.kind() {
+    Punctuation(value) => value == code
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_from_tokens(
+  tokens : Array[@ast.WgslExprToken],
+) -> @ast.WgslExprNode raise WgslIrLowerError {
+  guard tokens.length() > 0 else {
+    raise WgslIrLowerError::UnsupportedExpression("empty expression token list")
+  }
+  let parser = WgslIrExprTokenParser::{ tokens, index: 0 }
+  match parser.parse_expression(0) {
+    Some(node) => node
+    None =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "failed to parse expression token list",
+      )
+  }
+}
+
+///|
+fn WgslIrExprTokenParser::at_end(self : WgslIrExprTokenParser) -> Bool {
+  self.index >= self.tokens.length()
+}
+
+///|
+fn WgslIrExprTokenParser::peek(
+  self : WgslIrExprTokenParser,
+) -> @ast.WgslExprToken? {
+  self.tokens.get(self.index)
+}
+
+///|
+fn WgslIrExprTokenParser::consume_punctuation(
+  self : WgslIrExprTokenParser,
+  code : Int,
+) -> Bool {
+  match self.peek() {
+    Some(token) if wgsl_ir_expr_token_is_punctuation(token, code) => {
+      self.index = self.index + 1
+      true
+    }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_make_node(
+  kind : @ast.WgslExprNodeKind,
+  start : Int,
+  end_ : Int,
+) -> @ast.WgslExprNode {
+  @ast.WgslExprNode::new(kind, start, end_)
+}
+
+///|
+fn WgslIrExprTokenParser::parse_expression(
+  self : WgslIrExprTokenParser,
+  min_precedence : Int,
+) -> @ast.WgslExprNode? {
+  let prefix = match self.parse_prefix() {
+    Some(value) => value
+    None => return None
+  }
+  let mut lhs = self.parse_postfix(prefix)
+  while true {
+    let (op, consumed) = match self.binary_operator_at() {
+      Some(value) => value
+      None => break
+    }
+    let precedence = op.binary_precedence()
+    if precedence < min_precedence {
+      break
+    }
+    self.index = self.index + consumed
+    let rhs = match self.parse_expression(precedence + 1) {
+      Some(value) => value
+      None => break
+    }
+    lhs = wgsl_ir_expr_make_node(
+      @ast.WgslExprNodeKind::Binary(op, lhs, rhs),
+      lhs.start(),
+      rhs.end(),
+    )
+  }
+  Some(lhs)
+}
+
+///|
+fn WgslIrExprTokenParser::parse_prefix(
+  self : WgslIrExprTokenParser,
+) -> @ast.WgslExprNode? {
+  match self.peek() {
+    Some(token) =>
+      match token.kind() {
+        Identifier => {
+          self.index = self.index + 1
+          Some(
+            wgsl_ir_expr_make_node(
+              @ast.WgslExprNodeKind::Identifier(
+                @ast.WgslIdent::new(token.text(), token.start(), token.end()),
+              ),
+              token.start(),
+              token.end(),
+            ),
+          )
+        }
+        BoolLiteral(_) | UintLiteral(_) | IntLiteral(_) | FloatLiteral => {
+          self.index = self.index + 1
+          Some(
+            wgsl_ir_expr_make_node(
+              @ast.WgslExprNodeKind::Literal(token),
+              token.start(),
+              token.end(),
+            ),
+          )
+        }
+        Punctuation(33)
+        | Punctuation(45)
+        | Punctuation(43)
+        | Punctuation(42)
+        | Punctuation(38)
+        | Punctuation(126) => {
+          self.index = self.index + 1
+          let rhs = match self.parse_prefix() {
+            Some(node) => node
+            None =>
+              return Some(
+                wgsl_ir_expr_make_node(
+                  @ast.WgslExprNodeKind::Token(token),
+                  token.start(),
+                  token.end(),
+                ),
+              )
+          }
+          Some(
+            wgsl_ir_expr_make_node(
+              @ast.WgslExprNodeKind::Unary(
+                @ast.WgslExprOperator::from_text(token.text()),
+                rhs,
+              ),
+              token.start(),
+              rhs.end(),
+            ),
+          )
+        }
+        Punctuation(40) => {
+          let start = token.start()
+          self.index = self.index + 1
+          let inner = self.parse_sequence_until_any([41])
+          let end_ = match self.peek() {
+            Some(close) if wgsl_ir_expr_token_is_punctuation(close, 41) => {
+              self.index = self.index + 1
+              close.end()
+            }
+            _ => inner.end()
+          }
+          Some(
+            wgsl_ir_expr_make_node(
+              @ast.WgslExprNodeKind::Group(inner),
+              start,
+              end_,
+            ),
+          )
+        }
+        _ => {
+          self.index = self.index + 1
+          Some(
+            wgsl_ir_expr_make_node(
+              @ast.WgslExprNodeKind::Token(token),
+              token.start(),
+              token.end(),
+            ),
+          )
+        }
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrExprTokenParser::parse_postfix(
+  self : WgslIrExprTokenParser,
+  base : @ast.WgslExprNode,
+) -> @ast.WgslExprNode {
+  let mut node = base
+  while true {
+    match self.peek() {
+      Some(token) if wgsl_ir_expr_token_is_punctuation(token, 40) => {
+        self.index = self.index + 1
+        let args : Array[@ast.WgslExprNode] = []
+        while !self.at_end() {
+          match self.peek() {
+            Some(close) if wgsl_ir_expr_token_is_punctuation(close, 41) => {
+              self.index = self.index + 1
+              node = wgsl_ir_expr_make_node(
+                @ast.WgslExprNodeKind::Call(node, args),
+                node.start(),
+                close.end(),
+              )
+              break
+            }
+            _ => {
+              args.push(self.parse_sequence_until_any([44, 41]))
+              if self.consume_punctuation(44) {
+                continue
+              }
+            }
+          }
+        }
+        continue
+      }
+      Some(token) if wgsl_ir_expr_token_is_punctuation(token, 46) => {
+        self.index = self.index + 1
+        match self.peek() {
+          Some(member_token) if member_token.kind() is Identifier => {
+            self.index = self.index + 1
+            node = wgsl_ir_expr_make_node(
+              @ast.WgslExprNodeKind::Member(
+                node,
+                @ast.WgslIdent::new(
+                  member_token.text(),
+                  member_token.start(),
+                  member_token.end(),
+                ),
+              ),
+              node.start(),
+              member_token.end(),
+            )
+            continue
+          }
+          _ => return node
+        }
+      }
+      Some(token) if wgsl_ir_expr_token_is_punctuation(token, 91) => {
+        self.index = self.index + 1
+        let index = self.parse_sequence_until_any([93])
+        let end_ = match self.peek() {
+          Some(close) if wgsl_ir_expr_token_is_punctuation(close, 93) => {
+            self.index = self.index + 1
+            close.end()
+          }
+          _ => index.end()
+        }
+        node = wgsl_ir_expr_make_node(
+          @ast.WgslExprNodeKind::Index(node, index),
+          node.start(),
+          end_,
+        )
+        continue
+      }
+      _ => return node
+    }
+  }
+  node
+}
+
+///|
+fn WgslIrExprTokenParser::parse_sequence_until_any(
+  self : WgslIrExprTokenParser,
+  stop_codes : Array[Int],
+) -> @ast.WgslExprNode {
+  let nodes : Array[@ast.WgslExprNode] = []
+  while !self.at_end() {
+    match self.peek() {
+      Some(token) if token.kind() is Punctuation(code) &&
+        stop_codes.contains(code) => break
+      _ => ()
+    }
+    match self.parse_expression(0) {
+      Some(node) => nodes.push(node)
+      None => break
+    }
+    if self.consume_punctuation(44) {
+      continue
+    }
+    match self.peek() {
+      Some(token) if token.kind() is Punctuation(code) &&
+        stop_codes.contains(code) => break
+      _ => ()
+    }
+  }
+  match nodes {
+    [single] => single
+    [] => wgsl_ir_expr_make_node(@ast.WgslExprNodeKind::Sequence([]), 0, 0)
+    _ =>
+      wgsl_ir_expr_make_node(
+        @ast.WgslExprNodeKind::Sequence(nodes),
+        nodes[0].start(),
+        nodes[nodes.length() - 1].end(),
+      )
+  }
+}
+
+///|
+fn WgslIrExprTokenParser::binary_operator_at(
+  self : WgslIrExprTokenParser,
+) -> (@ast.WgslExprOperator, Int)? {
+  guard self.index < self.tokens.length() else { return None }
+  match self.tokens[self.index].kind() {
+    Operator(op) => Some((op, 1))
+    Punctuation(124) => Some((@ast.WgslExprOperator::BitOr, 1))
+    Punctuation(38) => Some((@ast.WgslExprOperator::BitAnd, 1))
+    Punctuation(60) => Some((@ast.WgslExprOperator::Less, 1))
+    Punctuation(62) => Some((@ast.WgslExprOperator::Greater, 1))
+    Punctuation(43) => Some((@ast.WgslExprOperator::Add, 1))
+    Punctuation(45) => Some((@ast.WgslExprOperator::Subtract, 1))
+    Punctuation(42) => Some((@ast.WgslExprOperator::Multiply, 1))
+    Punctuation(47) => Some((@ast.WgslExprOperator::Divide, 1))
+    Punctuation(37) => Some((@ast.WgslExprOperator::Modulo, 1))
+    Punctuation(94) => Some((@ast.WgslExprOperator::BitXor, 1))
+    _ => None
+  }
 }
 
 ///|
@@ -812,7 +1715,11 @@ fn WgslIrLowerer::lower_function_lvalue_node(
       function.expressions.append(
         Expression::AccessIndex(
           base_handle,
-          wgsl_ir_member_index(member_name.name()),
+          self.member_index_for_expression(
+            function,
+            base_handle,
+            member_name.name(),
+          ),
         ),
       )
     }
@@ -867,7 +1774,11 @@ fn WgslIrLowerer::lower_function_expression_node(
       function.expressions.append(
         Expression::AccessIndex(
           base_handle,
-          wgsl_ir_member_index(member_name.name()),
+          self.member_index_for_expression(
+            function,
+            base_handle,
+            member_name.name(),
+          ),
         ),
       )
     }
@@ -899,20 +1810,30 @@ fn WgslIrLowerer::lower_function_expression_node(
                   self.lower_function_math_call(
                     math_function, arguments, function, scope,
                   )
-                None => {
-                  let ty = self.lower_type_name_with_expression_arguments(
-                    name.name(),
-                    arguments,
-                  )
-                  function.expressions.append(
-                    Expression::Compose(
-                      ty,
-                      self.lower_function_expression_arguments(
-                        arguments, function, scope,
-                      ),
-                    ),
-                  )
-                }
+                None =>
+                  match
+                    self.lower_texture_expression_call(
+                      name.name(),
+                      arguments,
+                      function,
+                      scope,
+                    ) {
+                    Some(handle) => handle
+                    None => {
+                      let ty = self.lower_type_name_with_expression_arguments(
+                        name.name(),
+                        arguments,
+                      )
+                      function.expressions.append(
+                        Expression::Compose(
+                          ty,
+                          self.lower_function_expression_arguments(
+                            arguments, function, scope,
+                          ),
+                        ),
+                      )
+                    }
+                  }
               }
           }
         _ =>
@@ -1597,6 +2518,216 @@ fn wgsl_ir_compound_assignment_operator(op : String) -> BinaryOperator? {
     ">>=" => Some(BinaryOperator::ShiftRight)
     _ => None
   }
+}
+
+///|
+fn WgslIrLowerer::member_index_for_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  expression_handle : Handle,
+  member_name : String,
+) -> Int raise WgslIrLowerError {
+  match self.function_expression_type(function, expression_handle) {
+    Some(ty_handle) =>
+      match self.shader_module.types.get(ty_handle) {
+        Some(ty) =>
+          match ty.inner {
+            Struct(members, _) =>
+              match wgsl_ir_struct_member_index(members, member_name) {
+                Some(index) => index
+                None =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "unknown struct member \{member_name}",
+                  )
+              }
+            _ => wgsl_ir_member_index(member_name)
+          }
+        None => wgsl_ir_member_index(member_name)
+      }
+    None => wgsl_ir_member_index(member_name)
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_type(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.function_expression_inner_type(function, expression)
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_inner_type(
+  self : WgslIrLowerer,
+  function : Function,
+  expression : Expression,
+) -> Handle? {
+  match expression {
+    FunctionArgument(index) =>
+      match function.arguments.get(index) {
+        Some(argument) => Some(argument.ty)
+        None => None
+      }
+    LocalVariable(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_variable) => Some(local_variable.ty)
+        None => None
+      }
+    GlobalVariable(handle) =>
+      match self.shader_module.global_variables.items.get(handle.index()) {
+        Some(global) => Some(global.ty)
+        None => None
+      }
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => Some(constant.ty)
+        None => None
+      }
+    Override(handle) =>
+      match self.shader_module.overrides.items.get(handle.index()) {
+        Some(override_) => Some(override_.ty)
+        None => None
+      }
+    Load(inner) => self.function_expression_type(function, inner)
+    Compose(ty, _) | ZeroValue(ty) => Some(ty)
+    AccessIndex(base, index) =>
+      self.indexed_expression_type(function, base, Some(index))
+    Access(base, _) => self.indexed_expression_type(function, base, None)
+    Unary(_, inner) => self.function_expression_type(function, inner)
+    Binary(_, left, _) => self.function_expression_type(function, left)
+    FunctionCall(handle, _) =>
+      match self.shader_module.functions.items.get(handle.index()) {
+        Some(callee) =>
+          match callee.result {
+            Some(result) => Some(result.ty)
+            None => None
+          }
+        None => None
+      }
+    Math(_, a, _, _, _) => self.function_expression_type(function, a)
+    ImageSample(image, _, _, _, _, _, _, _, _) | ImageLoad(image, _, _, _, _) =>
+      self.image_expression_result_type(function, image)
+    ImageQuery(_, _) => self.type_cache.get("u32")
+    Literal(literal) => self.literal_type(literal)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::image_expression_result_type(
+  self : WgslIrLowerer,
+  function : Function,
+  image : Handle,
+) -> Handle? {
+  guard self.function_expression_type(function, image) is Some(image_ty) else {
+    return None
+  }
+  match self.shader_module.types.items.get(image_ty.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Image(_, _, Sampled(kind, _)) =>
+          Some(
+            self.intern_type(
+              "vec4<\{wgsl_ir_scalar_name(kind, 4)}>",
+              TypeInner::Vector(Quad, Scalar::new(kind, 4)),
+            ),
+          )
+        Image(_, _, Depth(_)) => self.type_cache.get("f32")
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::indexed_expression_type(
+  self : WgslIrLowerer,
+  function : Function,
+  base : Handle,
+  index : Int?,
+) -> Handle? {
+  guard self.function_expression_type(function, base) is Some(base_ty) else {
+    return None
+  }
+  match self.shader_module.types.get(base_ty) {
+    Some(ty) =>
+      match ty.inner {
+        Struct(members, _) =>
+          match index {
+            Some(i) =>
+              match members.get(i) {
+                Some(struct_member) => Some(struct_member.ty)
+                None => None
+              }
+            None => None
+          }
+        Vector(_, scalar) => Some(self.scalar_type_handle(scalar))
+        Array(element, _, _) | BindingArray(element, _) => Some(element)
+        Pointer(inner, _) => Some(inner)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::literal_type(
+  self : WgslIrLowerer,
+  literal : Literal,
+) -> Handle? {
+  match literal {
+    Bool(_) => self.type_cache.get("bool")
+    I32(_) => self.type_cache.get("i32")
+    U32(_) => self.type_cache.get("u32")
+    F32(_) | AbstractFloat(_) => self.type_cache.get("f32")
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::scalar_type_handle(
+  self : WgslIrLowerer,
+  scalar : Scalar,
+) -> Handle {
+  let name = match scalar.kind {
+    Bool => "bool"
+    Sint => "i32"
+    Uint => "u32"
+    Float => if scalar.width == 2 { "f16" } else { "f32" }
+    AbstractInt => "i32"
+    AbstractFloat => "f32"
+  }
+  self.intern_type(name, TypeInner::Scalar(scalar))
+}
+
+///|
+fn wgsl_ir_scalar_name(kind : ScalarKind, width : Int) -> String {
+  match kind {
+    Bool => "bool"
+    Sint => "i32"
+    Uint => "u32"
+    Float => if width == 2 { "f16" } else { "f32" }
+    AbstractInt => "i32"
+    AbstractFloat => "f32"
+  }
+}
+
+///|
+fn wgsl_ir_struct_member_index(
+  members : Array[StructMember],
+  member_name : String,
+) -> Int? {
+  for i in 0..<members.length() {
+    if members[i].name == Some(member_name) {
+      return Some(i)
+    }
+  }
+  None
 }
 
 ///|

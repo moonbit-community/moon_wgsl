@@ -40,6 +40,10 @@ compose_roundtrip_case() {
 
 roundtrip_case "simple-compute" "testdata/ir_corpus/simple_compute.wgsl"
 roundtrip_case "switch-compute" "testdata/ir_corpus/switch_compute.wgsl"
+roundtrip_case "for-compute" "testdata/ir_corpus/for_compute.wgsl"
+roundtrip_case "struct-member-compute" \
+  "testdata/ir_corpus/struct_member_compute.wgsl"
+roundtrip_case "texture-compute" "testdata/ir_corpus/texture_compute.wgsl"
 compose_roundtrip_case \
   "simple-compose-compute" \
   "testdata/ir_corpus/compose" \

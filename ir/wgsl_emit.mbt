@@ -361,6 +361,17 @@ fn WgslIrEmitter::emit_statement(
       out.write_string(
         "\{pad}\{self.function_pointer_expression(function, pointer)} = \{self.function_expression(function, value)};\n",
       )
+    ImageStore(image, coordinate, array_index, value) => {
+      out.write_string(
+        "\{pad}textureStore(\{self.function_expression(function, image)}, \{self.function_expression(function, coordinate)}",
+      )
+      match array_index {
+        Some(index) =>
+          out.write_string(", \{self.function_expression(function, index)}")
+        None => ()
+      }
+      out.write_string(", \{self.function_expression(function, value)});\n")
+    }
     Call(function_handle, arguments, result) => {
       match result {
         Some(_) =>
@@ -468,11 +479,32 @@ fn WgslIrEmitter::emit_expression(
     Access(base, index) =>
       "\{self.required_function_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
-      "\{self.required_function_expression(function, base)}.\{wgsl_ir_swizzle_component(index)}"
+      "\{self.required_function_expression(function, base)}.\{self.member_name_for_expression(function, base, index)}"
     FunctionArgument(index) => self.function_argument_name(function, index)
     GlobalVariable(handle) => self.global_variable_name(handle)
     LocalVariable(handle) => self.local_variable_name(function, handle)
     Load(pointer) => self.required_function_expression(function, pointer)
+    ImageSample(
+      image,
+      sampler,
+      gather,
+      coordinate,
+      array_index,
+      offset,
+      level,
+      depth_ref,
+      _
+    ) =>
+      self.image_sample_expression(
+        function, image, sampler, gather, coordinate, array_index, offset, level,
+        depth_ref,
+      )
+    ImageLoad(image, coordinate, array_index, sample, level) =>
+      self.image_load_expression(
+        function, image, coordinate, array_index, sample, level,
+      )
+    ImageQuery(image, query) =>
+      self.image_query_expression(function, image, query)
     Unary(op, expr) =>
       "\{self.unary_operator(op)}\{self.required_function_expression(function, expr)}"
     Binary(op, left, right) =>
@@ -483,6 +515,277 @@ fn WgslIrEmitter::emit_expression(
       "\{self.math_function_name(math_function)}(\{self.math_argument_list(a, b, c, d, function)})"
     CallResult(handle) => self.function_name(handle)
     _ => raise WgslIrEmitError::Unsupported("expression kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::image_sample_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  image : Handle,
+  sampler : Handle,
+  gather : SwizzleComponent?,
+  coordinate : Handle,
+  array_index : Handle?,
+  offset : Handle?,
+  level : SampleLevel,
+  depth_ref : Handle?,
+) -> String raise WgslIrEmitError {
+  if gather != None || offset != None || depth_ref != None {
+    raise WgslIrEmitError::Unsupported("advanced texture sampling arguments")
+  }
+  let callee = match level {
+    Auto => "textureSample"
+    Exact(_) => "textureSampleLevel"
+    Zero | Bias(_) | Gradient(_, _) =>
+      raise WgslIrEmitError::Unsupported("texture sampling level mode")
+  }
+  let out = StringBuilder::new()
+  out.write_string(
+    "\{callee}(\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, sampler)}, \{self.required_function_expression(function, coordinate)}",
+  )
+  match array_index {
+    Some(index) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, index)}",
+      )
+    None => ()
+  }
+  match level {
+    Exact(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    _ => ()
+  }
+  out.write_string(")")
+  out.to_string()
+}
+
+///|
+fn WgslIrEmitter::image_load_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  image : Handle,
+  coordinate : Handle,
+  array_index : Handle?,
+  sample : Handle?,
+  level : Handle?,
+) -> String raise WgslIrEmitError {
+  if sample != None {
+    raise WgslIrEmitError::Unsupported("textureLoad sample argument")
+  }
+  let out = StringBuilder::new()
+  out.write_string(
+    "textureLoad(\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, coordinate)}",
+  )
+  match array_index {
+    Some(index) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, index)}",
+      )
+    None => ()
+  }
+  match level {
+    Some(handle) =>
+      out.write_string(
+        ", \{self.required_function_expression(function, handle)}",
+      )
+    None => ()
+  }
+  out.write_string(")")
+  out.to_string()
+}
+
+///|
+fn WgslIrEmitter::image_query_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  image : Handle,
+  query : ImageQuery,
+) -> String raise WgslIrEmitError {
+  match query {
+    Size(level) => {
+      let out = StringBuilder::new()
+      out.write_string(
+        "textureDimensions(\{self.required_function_expression(function, image)}",
+      )
+      match level {
+        Some(handle) =>
+          out.write_string(
+            ", \{self.required_function_expression(function, handle)}",
+          )
+        None => ()
+      }
+      out.write_string(")")
+      out.to_string()
+    }
+    _ => raise WgslIrEmitError::Unsupported("image query kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::member_name_for_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+  index : Int,
+) -> String raise WgslIrEmitError {
+  match self.expression_type(function, base) {
+    Some(ty_handle) =>
+      match self.shader_module.types.items.get(ty_handle.index()) {
+        Some(ty) =>
+          match ty.inner {
+            Struct(members, _) =>
+              match members.get(index) {
+                Some(struct_member) =>
+                  match struct_member.name {
+                    Some(name) => name
+                    None => wgsl_ir_swizzle_component(index)
+                  }
+                None => wgsl_ir_swizzle_component(index)
+              }
+            _ => wgsl_ir_swizzle_component(index)
+          }
+        None => wgsl_ir_swizzle_component(index)
+      }
+    None => wgsl_ir_swizzle_component(index)
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Handle? {
+  match function {
+    Some(function) =>
+      match function.expressions.items.get(handle.index()) {
+        Some(expression) =>
+          self.function_expression_inner_type(function, expression)
+        None => None
+      }
+    None =>
+      match self.shader_module.global_expressions.items.get(handle.index()) {
+        Some(expression) => self.global_expression_inner_type(expression)
+        None => None
+      }
+  }
+}
+
+///|
+fn WgslIrEmitter::function_expression_inner_type(
+  self : WgslIrEmitter,
+  function : Function,
+  expression : Expression,
+) -> Handle? {
+  match expression {
+    FunctionArgument(index) =>
+      match function.arguments.get(index) {
+        Some(argument) => Some(argument.ty)
+        None => None
+      }
+    LocalVariable(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_variable) => Some(local_variable.ty)
+        None => None
+      }
+    GlobalVariable(handle) =>
+      match self.shader_module.global_variables.items.get(handle.index()) {
+        Some(global) => Some(global.ty)
+        None => None
+      }
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => Some(constant.ty)
+        None => None
+      }
+    Override(handle) =>
+      match self.shader_module.overrides.items.get(handle.index()) {
+        Some(override_) => Some(override_.ty)
+        None => None
+      }
+    Load(inner) => self.expression_type(Some(function), inner)
+    Compose(ty, _) | ZeroValue(ty) => Some(ty)
+    AccessIndex(base, index) =>
+      self.indexed_expression_type(Some(function), base, Some(index))
+    Access(base, _) => self.indexed_expression_type(Some(function), base, None)
+    Unary(_, inner) => self.expression_type(Some(function), inner)
+    Binary(_, left, _) => self.expression_type(Some(function), left)
+    FunctionCall(handle, _) =>
+      match self.shader_module.functions.items.get(handle.index()) {
+        Some(callee) =>
+          match callee.result {
+            Some(result) => Some(result.ty)
+            None => None
+          }
+        None => None
+      }
+    Math(_, a, _, _, _) => self.expression_type(Some(function), a)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::global_expression_inner_type(
+  self : WgslIrEmitter,
+  expression : Expression,
+) -> Handle? {
+  match expression {
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => Some(constant.ty)
+        None => None
+      }
+    Override(handle) =>
+      match self.shader_module.overrides.items.get(handle.index()) {
+        Some(override_) => Some(override_.ty)
+        None => None
+      }
+    GlobalVariable(handle) =>
+      match self.shader_module.global_variables.items.get(handle.index()) {
+        Some(global) => Some(global.ty)
+        None => None
+      }
+    Load(inner) => self.expression_type(None, inner)
+    Compose(ty, _) | ZeroValue(ty) => Some(ty)
+    AccessIndex(base, index) =>
+      self.indexed_expression_type(None, base, Some(index))
+    Access(base, _) => self.indexed_expression_type(None, base, None)
+    Unary(_, inner) => self.expression_type(None, inner)
+    Binary(_, left, _) => self.expression_type(None, left)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::indexed_expression_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+  index : Int?,
+) -> Handle? {
+  guard self.expression_type(function, base) is Some(base_ty) else {
+    return None
+  }
+  match self.shader_module.types.items.get(base_ty.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Struct(members, _) =>
+          match index {
+            Some(i) =>
+              match members.get(i) {
+                Some(struct_member) => Some(struct_member.ty)
+                None => None
+              }
+            None => None
+          }
+        Array(element, _, _) | BindingArray(element, _) => Some(element)
+        Pointer(inner, _) => Some(inner)
+        _ => None
+      }
+    None => None
   }
 }
 

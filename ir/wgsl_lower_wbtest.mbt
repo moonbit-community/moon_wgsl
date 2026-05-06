@@ -150,10 +150,7 @@ test "WGSL AST lowerer supports builtin math call expressions" {
     #|  value = clamp(value, 1u, 9u);
     #|}
   let module_ = parse_wgsl_module_to_ir(source) catch {
-    error => {
-      println(error.message())
-      abort(error.message())
-    }
+    error => abort(error.message())
   }
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
@@ -200,4 +197,92 @@ test "WGSL AST lowerer supports switch statements" {
   debug_inspect(emitted.contains("switch value {"), content="true")
   debug_inspect(emitted.contains("case 0u {"), content="true")
   debug_inspect(emitted.contains("default {"), content="true")
+}
+
+///|
+test "WGSL AST lowerer lowers for loops into IR loops" {
+  let source =
+    #|@compute
+    #|fn main() {
+    #|  var sum: u32 = 0u;
+    #|  for (var i = 0u; i < 4u; i++) {
+    #|    sum += i;
+    #|  }
+    #|  for (sum = 0u; sum < 8u; sum += 1u) {
+    #|    sum += 2u;
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.entry_points[0].function
+  debug_inspect(function.local_variables.items.length(), content="2")
+  match function.body.statements {
+    [Loop(_, _, _), Store(_, _), Loop(_, _, _)] => ()
+    _ => abort("expected lowered loops with explicit second initializer")
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var i: u32 = 0u;"), content="true")
+  debug_inspect(emitted.contains("loop {"), content="true")
+  debug_inspect(emitted.contains("if (!(i < 4u)) {"), content="true")
+  debug_inspect(emitted.contains("i = (i + 1);"), content="true")
+  debug_inspect(emitted.contains("sum = (sum + 2u);"), content="true")
+}
+
+///|
+test "WGSL AST lowerer resolves struct member names by type" {
+  let source =
+    #|struct Item {
+    #|  weight: u32,
+    #|  count: u32,
+    #|}
+    #|
+    #|@compute
+    #|fn main() {
+    #|  var item: Item = Item(1u, 2u);
+    #|  var weight: u32 = item.weight;
+    #|  item.count = weight;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("item.weight"), content="true")
+  debug_inspect(emitted.contains("item.count = weight;"), content="true")
+  debug_inspect(emitted.contains("item.x"), content="false")
+}
+
+///|
+test "WGSL AST lowerer supports basic texture calls" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var tex: texture_2d<f32>;
+    #|@group(0) @binding(1)
+    #|var samp: sampler;
+    #|@group(0) @binding(2)
+    #|var out_tex: texture_storage_2d<rgba8unorm, write>;
+    #|
+    #|@compute
+    #|fn main() {
+    #|  var uv: vec2f = vec2f(0.5, 0.25);
+    #|  var color = textureSampleLevel(tex, samp, uv, 0.0);
+    #|  var dims: u32 = textureDimensions(tex).x;
+    #|  textureStore(out_tex, vec2u(0u, 0u), color);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("textureSampleLevel(tex, samp, uv, 0)"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("textureDimensions(tex).x"), content="true")
+  debug_inspect(emitted.contains("textureStore(out_tex"), content="true")
 }
