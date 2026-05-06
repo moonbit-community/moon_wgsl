@@ -165,7 +165,11 @@ fn Composer::plan_wgsl_import_request_batch(
   importer_defs : WgslActiveComposeDefs,
   alias_prefixes : Array[String],
 ) -> Unit raise ComposerError {
-  session.symbol_graph.record_request_batch_edges(current_rel_path, requests)
+  record_wgsl_import_request_batch_link_edges(
+    session.link_graph,
+    current_rel_path,
+    requests,
+  )
   for request in requests {
     if session.graph_request_is_planned(current_rel_path, request) {
       continue

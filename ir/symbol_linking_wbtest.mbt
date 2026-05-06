@@ -22,3 +22,15 @@ test "IR final-name table keeps alias scopes separate" {
     content="1",
   )
 }
+
+///|
+test "IR link graph records import edges and reachable symbols" {
+  let graph = WgslIrLinkGraph::new()
+  let identity = WgslIrSymbolIdentity::new("dep.wgsl", "dep_fn")
+  graph.record_symbol(identity)
+  graph.mark_reachable(identity)
+  graph.record_import("root.wgsl", "dep.wgsl", "dep", "", "dep_fn", ItemBinding)
+  graph.record_import("root.wgsl", "dep.wgsl", "dep", "", "dep_fn", ItemBinding)
+  debug_inspect(graph.import_edge_count(), content="1")
+  debug_inspect(graph.contains_reachable_symbol(identity), content="true")
+}

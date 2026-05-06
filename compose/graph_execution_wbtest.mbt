@@ -38,9 +38,11 @@ test "compose graph execution plans reachability before emission" {
     error => abort(error.message())
   }
   debug_inspect(session.graph_execution_complete, content="true")
-  debug_inspect(session.symbol_graph.import_edges.length(), content="1")
+  debug_inspect(session.link_graph.import_edge_count(), content="1")
   debug_inspect(
-    session.symbol_graph.reachable_symbol_keys.contains("dep.wgsl|dep_fn"),
+    session.link_graph.contains_reachable_symbol(
+      WgslIrSymbolIdentity::new("dep.wgsl", "dep_fn"),
+    ),
     content="true",
   )
   debug_inspect(session.final_names.canonical_entry_count(), content="0")

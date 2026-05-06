@@ -905,6 +905,31 @@ pub fn WgslIrFinalNameTable::canonical_get(Self, WgslIrSymbolIdentity) -> String
 pub fn WgslIrFinalNameTable::canonical_set(Self, WgslIrSymbolIdentity, String) -> Unit
 pub fn WgslIrFinalNameTable::new() -> Self
 
+pub struct WgslIrImportEdge {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrImportEdge::key(Self) -> String
+pub fn WgslIrImportEdge::new(String, String, String, String, String, WgslIrImportEdgeKind) -> Self
+
+pub(all) enum WgslIrImportEdgeKind {
+  FullModule
+  AliasModule
+  ItemBinding
+} derive(Eq, @debug.Debug)
+pub fn WgslIrImportEdgeKind::key(Self) -> String
+
+pub struct WgslIrLinkGraph {
+  // private fields
+}
+pub fn WgslIrLinkGraph::contains_reachable_symbol(Self, WgslIrSymbolIdentity) -> Bool
+pub fn WgslIrLinkGraph::import_edge_count(Self) -> Int
+pub fn WgslIrLinkGraph::mark_reachable(Self, WgslIrSymbolIdentity) -> Unit
+pub fn WgslIrLinkGraph::new() -> Self
+pub fn WgslIrLinkGraph::record_import(Self, String, String, String, String, String, WgslIrImportEdgeKind) -> Unit
+pub fn WgslIrLinkGraph::record_import_edge(Self, WgslIrImportEdge) -> Unit
+pub fn WgslIrLinkGraph::record_reachable_symbol(Self, WgslIrSymbolIdentity) -> Unit
+pub fn WgslIrLinkGraph::record_symbol(Self, WgslIrSymbolIdentity) -> Unit
+
 pub struct WgslIrSymbolIdentity {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -912,6 +937,11 @@ pub fn WgslIrSymbolIdentity::key(Self) -> String
 pub fn WgslIrSymbolIdentity::new(String, String) -> Self
 pub fn WgslIrSymbolIdentity::original_name(Self) -> String
 pub fn WgslIrSymbolIdentity::rel_path(Self) -> String
+
+pub struct WgslIrSymbolNode {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrSymbolNode::identity(Self) -> WgslIrSymbolIdentity
 
 // Type aliases
 

@@ -75,7 +75,7 @@ fn Composer::new_wgsl_compose_session(
     graph_execution_complete: false,
     assigned_final_names: WgslIrFinalNameTable::new(),
     final_names: WgslIrFinalNameTable::new(),
-    symbol_graph: WgslComposeSymbolGraph::new(),
+    link_graph: WgslIrLinkGraph::new(),
     semantic_facts: @hashmap.HashMap::new(),
     active_rel_paths: [],
     source_origins: [],

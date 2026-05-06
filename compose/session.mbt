@@ -134,7 +134,7 @@ priv struct WgslComposeSession {
   mut graph_execution_complete : Bool
   assigned_final_names : WgslIrFinalNameTable
   final_names : WgslIrFinalNameTable
-  symbol_graph : WgslComposeSymbolGraph
+  link_graph : WgslIrLinkGraph
   semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
   active_rel_paths : Array[String]
   source_origins : Array[WgslSourceOriginEntry]
@@ -327,7 +327,7 @@ fn WgslComposeSession::record_canonical_final_name(
   final_name : String,
 ) -> Unit {
   self.final_names.canonical_set(identity, final_name)
-  self.symbol_graph.record_reachable_symbol(identity)
+  self.link_graph.record_reachable_symbol(identity)
 }
 
 ///|
@@ -337,7 +337,7 @@ fn WgslComposeSession::assign_canonical_final_name(
   final_name : String,
 ) -> Unit {
   self.assigned_final_names.canonical_set(identity, final_name)
-  self.symbol_graph.record_reachable_symbol(identity)
+  self.link_graph.record_reachable_symbol(identity)
 }
 
 ///|
@@ -356,7 +356,7 @@ fn WgslComposeSession::assign_alias_final_name(
 ) -> Unit {
   self.assigned_final_names.canonical_set(identity.symbol(), final_name)
   self.assigned_final_names.alias_set(identity, final_name)
-  self.symbol_graph.record_reachable_symbol(identity.symbol())
+  self.link_graph.record_reachable_symbol(identity.symbol())
 }
 
 ///|
@@ -377,7 +377,7 @@ fn WgslComposeSession::record_alias_final_name(
   final_name : String,
 ) -> Unit {
   self.final_names.alias_set(identity, final_name)
-  self.symbol_graph.record_reachable_symbol(identity.symbol())
+  self.link_graph.record_reachable_symbol(identity.symbol())
 }
 
 ///|

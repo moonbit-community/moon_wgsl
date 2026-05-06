@@ -60,6 +60,7 @@ using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 using @ir {
   type WgslIrAliasSymbolIdentity,
   type WgslIrFinalNameTable,
+  type WgslIrLinkGraph,
   type WgslIrSymbolIdentity,
 }
 
