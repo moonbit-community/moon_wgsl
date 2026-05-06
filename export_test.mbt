@@ -276,7 +276,7 @@ test "naga_oil: export keeps same-name local initializer callee" {
   }
   debug_inspect(output.source.contains("fn point_light"), content="true")
   debug_inspect(
-    output.source.contains("let point_light = point_light(light_id);"),
+    output.source.contains("let point_light: u32 = point_light(light_id);"),
     content="true",
   )
   debug_inspect(output.source.contains("fn fragment"), content="true")

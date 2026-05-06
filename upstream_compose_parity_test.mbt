@@ -293,7 +293,7 @@ test "naga_oil upstream: big shaderdefs keep deep active branches" {
     "top.wgsl",
     upstream_parity_bool_defines(define_names),
   )
-  debug_inspect(source.contains("x = 1.0;"), content="true")
+  debug_inspect(source.contains("x = 1;"), content="true")
   debug_inspect(source.contains("mod::f"), content="false")
 }
 
@@ -430,11 +430,11 @@ test "naga_oil upstream: shared global imports are flattened without namespace p
     upstream_parity_empty_defines(),
   )
   debug_inspect(
-    source.contains("var<private> mod__a: f32 = 0.0;"),
+    source.contains("var<private> mod__a: f32 = 0;"),
     content="true",
   )
   debug_inspect(source.contains("mod::a"), content="false")
-  debug_inspect(source.contains("mod__a += 1.0;"), content="true")
+  debug_inspect(source.contains("mod__a = (mod__a + 1);"), content="true")
 }
 
 ///|
@@ -445,12 +445,12 @@ test "naga_oil upstream: problematic texture sample expressions survive composit
     upstream_parity_empty_defines(),
   )
   debug_inspect(
-    source.contains("textureSample(mod__image, mod__s, vec2<f32>(0.0)).r"),
+    source.contains("textureSample(mod__image, mod__s, vec2<f32>(0)).x"),
     content="true",
   )
   debug_inspect(
     source.contains(
-      "textureSample(mod__image, mod__s, vec2<f32>(0.0), vec2<i32>(1, 1)).r",
+      "textureSample(mod__image, mod__s, vec2<f32>(0), vec2<i32>(1, 1)).x",
     ),
     content="true",
   )
@@ -716,8 +716,8 @@ test "naga_oil upstream: modf result member access survives composition" {
     upstream_parity_empty_defines(),
   )
   debug_inspect(source.contains("let fw = modf(x);"), content="true")
-  debug_inspect(source.contains("let f = fw.fract;"), content="true")
-  debug_inspect(source.contains("let w = fw.whole;"), content="true")
+  debug_inspect(source.contains("let f: f32 = fw.fract;"), content="true")
+  debug_inspect(source.contains("let w: f32 = fw.whole;"), content="true")
 }
 
 ///|
@@ -774,9 +774,9 @@ test "naga_oil upstream: virtual function override replaces imported body" {
     source.contains("fn mod__inner(arg: f32) -> f32"),
     content="true",
   )
-  debug_inspect(source.contains("return arg * 3.0;"), content="true")
-  debug_inspect(source.contains("return arg * 2.0;"), content="false")
-  debug_inspect(source.contains("return mod__inner(1.0);"), content="true")
+  debug_inspect(source.contains("return (arg * 3);"), content="true")
+  debug_inspect(source.contains("return (arg * 2);"), content="false")
+  debug_inspect(source.contains("return mod__inner(1);"), content="true")
   debug_inspect(source.contains("return mod__outer();"), content="true")
 }
 
@@ -793,9 +793,9 @@ test "naga_oil upstream: transitive virtual override replaces imported body" {
     source.contains("fn mod__inner(arg: f32) -> f32"),
     content="true",
   )
-  debug_inspect(source.contains("return arg * 3.0;"), content="true")
-  debug_inspect(source.contains("return arg * 2.0;"), content="false")
-  debug_inspect(source.contains("return mod__inner(1.0);"), content="true")
+  debug_inspect(source.contains("return (arg * 3);"), content="true")
+  debug_inspect(source.contains("return (arg * 2);"), content="false")
+  debug_inspect(source.contains("return mod__inner(1);"), content="true")
   debug_inspect(source.contains("return mod__outer();"), content="true")
 }
 
@@ -824,10 +824,10 @@ test "naga_oil upstream: additional import plugin overrides virtual function" {
     content="true",
   )
   debug_inspect(
-    source.contains("return overridable__func__virtual_base() + 1.0;"),
+    source.contains("return (overridable__func__virtual_base() + 1);"),
     content="true",
   )
-  debug_inspect(source.contains("return 1.0;"), content="true")
+  debug_inspect(source.contains("return 1;"), content="true")
   debug_inspect(source.contains("return overridable__func();"), content="true")
 }
 
@@ -917,7 +917,7 @@ test "naga_oil upstream: raycast WGSL source graph composes" {
   debug_inspect(source.contains("var rq: ray_query;"), content="true")
   debug_inspect(source.contains("fn test_module__ray_func"), content="true")
   debug_inspect(
-    source.contains("let ray = test_module__ray_func();"),
+    source.contains("let ray: RayIntersection = test_module__ray_func();"),
     content="true",
   )
 }

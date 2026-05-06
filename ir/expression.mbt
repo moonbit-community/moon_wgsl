@@ -323,6 +323,11 @@ pub enum Expression {
   AtomicResult(Handle, Bool)
   WorkGroupUniformLoadResult(Handle)
   ArrayLength(Handle)
+  RayQueryInitialize(Handle, Handle, Handle)
+  RayQueryProceed(Handle)
+  RayQueryGenerateIntersection(Handle, Handle)
+  RayQueryConfirmIntersection(Handle)
+  RayQueryTerminate(Handle)
   RayQueryVertexPositions(Handle, Bool)
   RayQueryProceedResult
   RayQueryGetIntersection(Handle, Bool)

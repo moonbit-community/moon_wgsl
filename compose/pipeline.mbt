@@ -200,7 +200,7 @@ fn collect_wgsl_unused_redirect_diagnostics(
 }
 
 ///|
-pub fn Composer::prepare_wgsl_source(
+fn Composer::prepare_wgsl_source_legacy(
   self : Composer,
   rel : String,
   options : WgslComposeOptions,
@@ -223,15 +223,6 @@ pub fn Composer::prepare_wgsl_source(
 }
 
 ///|
-pub fn Composer::compose_wgsl(
-  self : Composer,
-  rel : String,
-  options : WgslComposeOptions,
-) -> String raise ComposerError {
-  self.prepare_wgsl_source(rel, options).source
-}
-
-///|
 fn compose_wgsl_source_via_ir(source : String) -> String raise ComposerError {
   let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
     error => raise ComposerError::InvalidIr(error.message())
@@ -242,12 +233,12 @@ fn compose_wgsl_source_via_ir(source : String) -> String raise ComposerError {
 }
 
 ///|
-pub fn Composer::prepare_wgsl_source_ir(
+pub fn Composer::prepare_wgsl_source(
   self : Composer,
   rel : String,
   options : WgslComposeOptions,
 ) -> PreparedWgslSource raise ComposerError {
-  let prepared = self.prepare_wgsl_source(rel, options)
+  let prepared = self.prepare_wgsl_source_legacy(rel, options)
   let ir_source = compose_wgsl_source_via_ir(prepared.source)
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: ir_source },
@@ -262,12 +253,30 @@ pub fn Composer::prepare_wgsl_source_ir(
 }
 
 ///|
+pub fn Composer::prepare_wgsl_source_ir(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> PreparedWgslSource raise ComposerError {
+  self.prepare_wgsl_source(rel, options)
+}
+
+///|
+pub fn Composer::compose_wgsl(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  self.prepare_wgsl_source(rel, options).source
+}
+
+///|
 pub fn Composer::compose_wgsl_ir(
   self : Composer,
   rel : String,
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
-  self.prepare_wgsl_source_ir(rel, options).source
+  self.compose_wgsl(rel, options)
 }
 
 ///|
@@ -294,7 +303,7 @@ pub fn Composer::compose_wgsl_source(
       [],
     ),
   )
-  finalize_wgsl_output_source(composed)
+  compose_wgsl_source_via_ir(finalize_wgsl_output_source(composed))
 }
 
 ///|
@@ -303,7 +312,7 @@ pub fn Composer::compose_wgsl_source_ir(
   source : String,
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
-  compose_wgsl_source_via_ir(self.compose_wgsl_source(source, options))
+  self.compose_wgsl_source(source, options)
 }
 
 ///|

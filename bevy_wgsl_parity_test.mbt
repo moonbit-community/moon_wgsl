@@ -183,7 +183,9 @@ test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live"
     content="true",
   )
   debug_inspect(
-    source.contains("& lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    source.contains(
+      "light.flags & lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE",
+    ),
     content="true",
   )
   debug_inspect(

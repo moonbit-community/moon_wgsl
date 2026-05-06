@@ -1,5 +1,6 @@
 ///|
 pub(all) struct Module {
+  directives : Array[String]
   types : TypeArena
   special_types : SpecialTypes
   constants : ConstantArena
@@ -16,6 +17,7 @@ pub(all) struct Module {
 ///|
 pub fn Module::new() -> Module {
   Module::{
+    directives: [],
     types: TypeArena::new(),
     special_types: SpecialTypes::new(),
     constants: ConstantArena::new(),
@@ -28,6 +30,16 @@ pub fn Module::new() -> Module {
     diagnostic_filter_leaf: None,
     doc_comments: None,
   }
+}
+
+///|
+pub fn Module::append_directive(self : Module, directive : String) -> Unit {
+  for existing in self.directives {
+    if existing == directive {
+      return
+    }
+  }
+  self.directives.push(directive)
 }
 
 ///|

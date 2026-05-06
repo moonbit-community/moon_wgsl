@@ -64,4 +64,12 @@ echo "== WGSL validation: Bevy PBR functions IR compose =="
 emit_case bevy-pbr-functions-ir "$tmpdir/bevy_pbr_functions_ir.wgsl"
 validate_wgsl "$tmpdir/bevy_pbr_functions_ir.wgsl"
 
+echo "== WGSL validation: upstream raycast compose =="
+emit_case upstream-raycast "$tmpdir/upstream_raycast.wgsl"
+validate_wgsl --capability ray-query "$tmpdir/upstream_raycast.wgsl"
+
+echo "== WGSL validation: upstream dual source blending compose =="
+emit_case upstream-dual-source-blending "$tmpdir/upstream_dual_source_blending.wgsl"
+validate_wgsl --capability dual-source-blending "$tmpdir/upstream_dual_source_blending.wgsl"
+
 echo "WGSL validation gate passed"

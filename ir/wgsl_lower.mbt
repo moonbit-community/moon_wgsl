@@ -113,15 +113,62 @@ fn WgslIrLowerer::record_referenced_names(
 fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
   ignore(self.intern_type("bool", TypeInner::Scalar(Scalar::new(Bool, 1))))
   ignore(self.intern_type("i32", TypeInner::Scalar(Scalar::new(Sint, 4))))
-  ignore(self.intern_type("u32", TypeInner::Scalar(Scalar::new(Uint, 4))))
-  ignore(self.intern_type("f32", TypeInner::Scalar(Scalar::new(Float, 4))))
+  let u32_ty = self.intern_type("u32", TypeInner::Scalar(Scalar::new(Uint, 4)))
+  let f32_ty = self.intern_type("f32", TypeInner::Scalar(Scalar::new(Float, 4)))
   ignore(self.intern_type("f16", TypeInner::Scalar(Scalar::new(Float, 2))))
+  let vec2_f32_ty = self.intern_type(
+    "vec2<f32>",
+    TypeInner::Vector(Bi, Scalar::new(Float, 4)),
+  )
+  let vec3_f32_ty = self.intern_type(
+    "vec3<f32>",
+    TypeInner::Vector(Tri, Scalar::new(Float, 4)),
+  )
+  ignore(
+    self.intern_type(
+      "RayDesc",
+      TypeInner::PredeclaredStruct(
+        [
+          wgsl_ir_synthetic_struct_member("flags", u32_ty),
+          wgsl_ir_synthetic_struct_member("cull_mask", u32_ty),
+          wgsl_ir_synthetic_struct_member("t_min", f32_ty),
+          wgsl_ir_synthetic_struct_member("t_max", f32_ty),
+          wgsl_ir_synthetic_struct_member("origin", vec3_f32_ty),
+          wgsl_ir_synthetic_struct_member("direction", vec3_f32_ty),
+        ],
+        48,
+      ),
+    ),
+  )
+  ignore(
+    self.intern_type(
+      "RayIntersection",
+      TypeInner::PredeclaredStruct(
+        [
+          wgsl_ir_synthetic_struct_member("kind", u32_ty),
+          wgsl_ir_synthetic_struct_member("t", f32_ty),
+          wgsl_ir_synthetic_struct_member("instance_custom_index", u32_ty),
+          wgsl_ir_synthetic_struct_member("instance_index", u32_ty),
+          wgsl_ir_synthetic_struct_member("sbt_record_offset", u32_ty),
+          wgsl_ir_synthetic_struct_member("geometry_index", u32_ty),
+          wgsl_ir_synthetic_struct_member("primitive_index", u32_ty),
+          wgsl_ir_synthetic_struct_member("barycentrics", vec2_f32_ty),
+        ],
+        48,
+      ),
+    ),
+  )
   ignore(
     self.intern_type(
       "__abstract_int",
       TypeInner::Scalar(Scalar::new(AbstractInt, 8)),
     ),
   )
+}
+
+///|
+fn wgsl_ir_synthetic_struct_member(name : String, ty : Handle) -> StructMember {
+  StructMember::{ name: Some(name), ty, binding: None, offset: 0 }
 }
 
 ///|
@@ -171,8 +218,35 @@ fn WgslIrLowerer::lower_global_declaration(
     Const(constant) => self.lower_constant(constant)
     Override(override_decl) => self.lower_override(override_decl)
     Function(function) => self.lower_function_declaration(function)
+    Directive(directive) => self.lower_source_directive(directive)
     _ => ()
   }
+}
+
+///|
+fn WgslIrLowerer::lower_source_directive(
+  self : WgslIrLowerer,
+  directive : @ast.WgslDirective,
+) -> Unit {
+  match directive.kind() {
+    Enable | Requires | Diagnostic =>
+      self.shader_module.append_directive(wgsl_ir_directive_text(directive))
+    _ => ()
+  }
+}
+
+///|
+fn wgsl_ir_directive_text(directive : @ast.WgslDirective) -> String {
+  let out = StringBuilder::new()
+  out.write_string(directive.name().name())
+  if directive.has_tail() {
+    if directive.has_required_tail_separator() {
+      out.write_string(" ")
+    }
+    out.write_string(directive.tail())
+  }
+  out.write_string(";")
+  out.to_string()
 }
 
 ///|
@@ -546,6 +620,11 @@ fn WgslIrLowerer::lower_statement(
         raise WgslIrLowerError::UnsupportedStatement("assignment without rhs")
       }
       if wgsl_ir_expr_ref_is_phony(lhs_ref) {
+        if self.lower_ray_query_statement_expr_ref(
+            rhs_ref, function, scope, block,
+          ) {
+          return
+        }
         let rhs_value = self.lower_function_expression_ref(
           rhs_ref, function, scope,
         )
@@ -583,12 +662,19 @@ fn WgslIrLowerer::lower_statement(
     }
     Expression(expr) =>
       match expr {
-        Some(expr_ref) => {
-          let handle = self.lower_function_expression_ref(
-            expr_ref, function, scope,
-          )
-          block.push(Statement::Emit(HandleRange::new(handle, handle)))
-        }
+        Some(expr_ref) =>
+          if self.lower_ray_query_statement_expr_ref(
+              expr_ref, function, scope, block,
+            ) {
+            ()
+          } else if wgsl_ir_expr_ref_is_call(expr_ref) {
+            self.lower_call_statement(expr_ref, function, scope, block)
+          } else {
+            let handle = self.lower_function_expression_ref(
+              expr_ref, function, scope,
+            )
+            block.push(Statement::Emit(HandleRange::new(handle, handle)))
+          }
         None => ()
       }
     ConstAssert(_) => ()
@@ -613,6 +699,68 @@ fn WgslIrLowerer::lower_statement(
       raise WgslIrLowerError::UnsupportedStatement(
         "structured statement not yet representable by this WGSL IR lowerer",
       )
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_ray_query_statement_expr_ref(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Bool raise WgslIrLowerError {
+  match expr_ref.root() {
+    Some(root) =>
+      self.lower_ray_query_statement_node(root, function, scope, block)
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_ray_query_statement_node(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Bool raise WgslIrLowerError {
+  match node.kind() {
+    Group(inner) =>
+      self.lower_ray_query_statement_node(inner, function, scope, block)
+    Sequence([single]) =>
+      self.lower_ray_query_statement_node(single, function, scope, block)
+    Call(callee, arguments) =>
+      match callee.kind() {
+        Identifier(name) =>
+          self.lower_ray_query_statement_call(
+            name.name(),
+            arguments,
+            function,
+            scope,
+            block,
+          )
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_ref_is_call(expr_ref : @ast.WgslExprRef) -> Bool {
+  match expr_ref.root() {
+    Some(root) => wgsl_ir_expr_node_is_call(root)
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_call(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Call(_, _) => true
+    Group(inner) => wgsl_ir_expr_node_is_call(inner)
+    Sequence([single]) => wgsl_ir_expr_node_is_call(single)
+    _ => false
   }
 }
 
@@ -713,7 +861,7 @@ fn WgslIrLowerer::lower_switch_cases(
           )
           cases.push(SwitchCase::{
             value: wgsl_ir_switch_value_from_expression(
-              function, selector_handle,
+              self, function, selector_handle,
             ),
             body,
             fall_through: false,
@@ -738,15 +886,127 @@ fn WgslIrLowerer::lower_switch_cases(
 
 ///|
 fn wgsl_ir_switch_value_from_expression(
+  lowerer : WgslIrLowerer,
   function : Function,
   handle : Handle,
 ) -> SwitchValue raise WgslIrLowerError {
   match function.expressions.items.get(handle.index()) {
     Some(Expression::Literal(Literal::I32(value))) => SwitchValue::I32(value)
     Some(Expression::Literal(Literal::U32(value))) => SwitchValue::U32(value)
+    Some(Expression::Constant(const_handle)) =>
+      lowerer.switch_value_from_constant(const_handle)
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
         "switch case selector must lower to an integer literal",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::switch_value_from_constant(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> SwitchValue raise WgslIrLowerError {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) => {
+      let (value, unsigned) = self.eval_global_integer_expression(constant.init)
+      if unsigned {
+        let parsed : UInt = @strconv.from_str("\{value}") catch {
+          _ =>
+            raise WgslIrLowerError::UnsupportedExpression(
+              "switch case const selector is outside u32 range",
+            )
+        }
+        SwitchValue::U32(parsed)
+      } else {
+        SwitchValue::I32(value)
+      }
+    }
+    None =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "switch case selector references missing const",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_global_integer_expression(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> (Int, Bool) raise WgslIrLowerError {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) => self.eval_global_integer_expression_inner(expression)
+    None =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "switch case selector references missing expression",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_global_integer_expression_inner(
+  self : WgslIrLowerer,
+  expression : Expression,
+) -> (Int, Bool) raise WgslIrLowerError {
+  match expression {
+    Literal(Literal::I32(value)) => (value, false)
+    Literal(Literal::U32(value)) => (value.reinterpret_as_int(), true)
+    Literal(Literal::AbstractInt(value)) => (value.to_int(), false)
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => self.eval_global_integer_expression(constant.init)
+        None =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "switch case selector references missing nested const",
+          )
+      }
+    Binary(op, left, right) => {
+      let (left_value, left_unsigned) = self.eval_global_integer_expression(
+        left,
+      )
+      let (right_value, right_unsigned) = self.eval_global_integer_expression(
+        right,
+      )
+      (
+        wgsl_ir_eval_integer_binary(op, left_value, right_value),
+        left_unsigned || right_unsigned,
+      )
+    }
+    Unary(UnaryOperator::Negate, inner) => {
+      let (value, _) = self.eval_global_integer_expression(inner)
+      (-value, false)
+    }
+    Unary(UnaryOperator::BitwiseNot, inner) => {
+      let (value, unsigned) = self.eval_global_integer_expression(inner)
+      (value.lnot(), unsigned)
+    }
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "switch case const selector must initialize to an integer expression",
+      )
+  }
+}
+
+///|
+fn wgsl_ir_eval_integer_binary(
+  op : BinaryOperator,
+  left : Int,
+  right : Int,
+) -> Int raise WgslIrLowerError {
+  match op {
+    Add => left + right
+    Subtract => left - right
+    Multiply => left * right
+    Divide => left / right
+    Modulo => left % right
+    And => left & right
+    ExclusiveOr => left ^ right
+    InclusiveOr => left | right
+    ShiftLeft => left << right
+    ShiftRight => left >> right
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "switch case const selector uses non-integer binary operator",
       )
   }
 }
@@ -948,7 +1208,7 @@ fn WgslIrLowerer::lower_call_statement(
   guard expr_ref.root() is Some(root) else {
     raise WgslIrLowerError::UnsupportedExpression("empty function call")
   }
-  match root.kind() {
+  match wgsl_ir_expr_call_node(root).kind() {
     Call(callee, arguments) =>
       match callee.kind() {
         Identifier(name) =>
@@ -973,7 +1233,14 @@ fn WgslIrLowerer::lower_call_statement(
                   block.push(Statement::Call(handle, values, None))
                 }
                 None =>
-                  if !self.lower_texture_statement_call(
+                  if !self.lower_ray_query_statement_call(
+                      name.name(),
+                      arguments,
+                      function,
+                      scope,
+                      block,
+                    ) &&
+                    !self.lower_texture_statement_call(
                       name.name(),
                       arguments,
                       function,
@@ -989,6 +1256,96 @@ fn WgslIrLowerer::lower_call_statement(
         _ => ignore(self.lower_function_expression_node(root, function, scope))
       }
     _ => ignore(self.lower_function_expression_node(root, function, scope))
+  }
+}
+
+///|
+fn wgsl_ir_expr_call_node(node : @ast.WgslExprNode) -> @ast.WgslExprNode {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_call_node(inner)
+    Sequence([single]) => wgsl_ir_expr_call_node(single)
+    _ => node
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_ray_query_statement_call(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Bool raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  match name {
+    "rayQueryInitialize" => {
+      guard arguments is [query, acceleration, ray_desc] else { return false }
+      let query_handle = self.lower_function_expression_node(
+        query, function, scope,
+      )
+      let acceleration_handle = self.lower_function_expression_node(
+        acceleration, function, scope,
+      )
+      let ray_desc_handle = self.lower_function_expression_node(
+        ray_desc, function, scope,
+      )
+      block.push(
+        Statement::RayQuery(
+          query_handle,
+          RayQueryFunction::Initialize(acceleration_handle, ray_desc_handle),
+        ),
+      )
+      true
+    }
+    "rayQueryProceed" => {
+      guard arguments is [query] else { return false }
+      let query_handle = self.lower_function_expression_node(
+        query, function, scope,
+      )
+      block.push(
+        Statement::RayQuery(
+          query_handle,
+          RayQueryFunction::Proceed(query_handle),
+        ),
+      )
+      true
+    }
+    "rayQueryGenerateIntersection" => {
+      guard arguments is [query, intersection_t] else { return false }
+      let query_handle = self.lower_function_expression_node(
+        query, function, scope,
+      )
+      let t_handle = self.lower_function_expression_node(
+        intersection_t, function, scope,
+      )
+      block.push(
+        Statement::RayQuery(
+          query_handle,
+          RayQueryFunction::GenerateIntersection(t_handle),
+        ),
+      )
+      true
+    }
+    "rayQueryConfirmIntersection" => {
+      guard arguments is [query] else { return false }
+      let query_handle = self.lower_function_expression_node(
+        query, function, scope,
+      )
+      block.push(
+        Statement::RayQuery(query_handle, RayQueryFunction::ConfirmIntersection),
+      )
+      true
+    }
+    "rayQueryTerminate" => {
+      guard arguments is [query] else { return false }
+      let query_handle = self.lower_function_expression_node(
+        query, function, scope,
+      )
+      block.push(Statement::RayQuery(query_handle, RayQueryFunction::Terminate))
+      true
+    }
+    _ => false
   }
 }
 
@@ -1049,6 +1406,7 @@ fn WgslIrLowerer::lower_texture_expression_call(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle? raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   match name {
     "textureSample" =>
       Some(
@@ -3020,33 +3378,43 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                                   ) {
                                   Some(handle) => handle
                                   None =>
-                                    if name.name() == "array" {
-                                      self.lower_function_array_constructor_call(
-                                        expected_ty, arguments, function, scope,
-                                      )
-                                    } else {
-                                      let lowered_arguments = self.lower_function_expression_arguments(
-                                        arguments, function, scope,
-                                      )
-                                      let ty = match
-                                        self.expected_constructor_type(
-                                          name.name(),
-                                          expected_ty,
-                                        ) {
-                                        Some(ty) => ty
-                                        None =>
-                                          self.lower_untemplated_constructor_type_from_handles(
-                                            name.name(),
-                                            arguments,
-                                            lowered_arguments,
-                                            function,
+                                    match
+                                      self.lower_ray_query_expression_call(
+                                        name.name(),
+                                        arguments,
+                                        function,
+                                        scope,
+                                      ) {
+                                      Some(handle) => handle
+                                      None =>
+                                        if name.name() == "array" {
+                                          self.lower_function_array_constructor_call(
+                                            expected_ty, arguments, function, scope,
                                           )
-                                      }
-                                      function.expressions.append(
-                                        Expression::Compose(
-                                          ty, lowered_arguments,
-                                        ),
-                                      )
+                                        } else {
+                                          let lowered_arguments = self.lower_function_expression_arguments(
+                                            arguments, function, scope,
+                                          )
+                                          let ty = match
+                                            self.expected_constructor_type(
+                                              name.name(),
+                                              expected_ty,
+                                            ) {
+                                            Some(ty) => ty
+                                            None =>
+                                              self.lower_untemplated_constructor_type_from_handles(
+                                                name.name(),
+                                                arguments,
+                                                lowered_arguments,
+                                                function,
+                                              )
+                                          }
+                                          function.expressions.append(
+                                            Expression::Compose(
+                                              ty, lowered_arguments,
+                                            ),
+                                          )
+                                        }
                                     }
                                 }
                             }
@@ -3118,6 +3486,94 @@ fn WgslIrLowerer::lower_identifier_expression(
               }
           }
       }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_ray_query_expression_call(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match name {
+    "rayQueryInitialize" => {
+      guard arguments is [query, acceleration, ray_desc] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryInitialize(
+            self.lower_function_expression_node(query, function, scope),
+            self.lower_function_expression_node(acceleration, function, scope),
+            self.lower_function_expression_node(ray_desc, function, scope),
+          ),
+        ),
+      )
+    }
+    "rayQueryProceed" => {
+      guard arguments is [query] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryProceed(
+            self.lower_function_expression_node(query, function, scope),
+          ),
+        ),
+      )
+    }
+    "rayQueryGenerateIntersection" => {
+      guard arguments is [query, intersection_t] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryGenerateIntersection(
+            self.lower_function_expression_node(query, function, scope),
+            self.lower_function_expression_node(intersection_t, function, scope),
+          ),
+        ),
+      )
+    }
+    "rayQueryConfirmIntersection" => {
+      guard arguments is [query] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryConfirmIntersection(
+            self.lower_function_expression_node(query, function, scope),
+          ),
+        ),
+      )
+    }
+    "rayQueryTerminate" => {
+      guard arguments is [query] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryTerminate(
+            self.lower_function_expression_node(query, function, scope),
+          ),
+        ),
+      )
+    }
+    "rayQueryGetCommittedIntersection" => {
+      guard arguments is [query] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryGetIntersection(
+            self.lower_function_expression_node(query, function, scope),
+            true,
+          ),
+        ),
+      )
+    }
+    "rayQueryGetCandidateIntersection" => {
+      guard arguments is [query] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryGetIntersection(
+            self.lower_function_expression_node(query, function, scope),
+            false,
+          ),
+        ),
+      )
+    }
+    _ => None
   }
 }
 
@@ -3470,6 +3926,9 @@ fn WgslIrLowerer::lower_composite_type_ref(
     }
     "sampler" => self.intern_type(name, TypeInner::Sampler(false))
     "sampler_comparison" => self.intern_type(name, TypeInner::Sampler(true))
+    "acceleration_structure" =>
+      self.intern_type(name, TypeInner::AccelerationStructure(false))
+    "ray_query" => self.intern_type(name, TypeInner::RayQuery(false))
     "texture_1d"
     | "texture_2d"
     | "texture_2d_array"
@@ -3923,7 +4382,8 @@ fn WgslIrLowerer::type_layout(
           }
         }
         Array(_, _, stride) => WgslIrLayout::{ align: 16, size: stride }
-        Struct(_, span) => WgslIrLayout::{ align: 16, size: span }
+        Struct(_, span) | PredeclaredStruct(_, span) =>
+          WgslIrLayout::{ align: 16, size: span }
         _ => WgslIrLayout::{ align: 4, size: 4 }
       }
     None => WgslIrLayout::{ align: 4, size: 4 }
@@ -4362,7 +4822,7 @@ fn WgslIrLowerer::member_index_for_expression(
         self.shader_module.types.get(self.deref_pointer_type_handle(ty_handle)) {
         Some(ty) =>
           match ty.inner {
-            Struct(members, _) =>
+            Struct(members, _) | PredeclaredStruct(members, _) =>
               match wgsl_ir_struct_member_index(members, member_name) {
                 Some(index) => index
                 None =>
@@ -4632,6 +5092,8 @@ fn WgslIrLowerer::function_expression_inner_type(
     ImageLoad(image, _, _, _, _) =>
       self.image_expression_result_type(function, image, None, None)
     ImageQuery(_, _) => self.type_cache.get("u32")
+    RayQueryGetIntersection(_, _) => self.type_cache.get("RayIntersection")
+    RayQueryProceedResult => self.type_cache.get("bool")
     Literal(literal) => self.literal_type(literal)
     _ => None
   }
@@ -5111,7 +5573,7 @@ fn WgslIrLowerer::indexed_type_from_type_handle(
   match self.shader_module.types.get(ty_handle) {
     Some(ty) =>
       match ty.inner {
-        Struct(members, _) =>
+        Struct(members, _) | PredeclaredStruct(members, _) =>
           match index {
             Some(i) =>
               match members.get(i) {
@@ -5405,7 +5867,7 @@ fn wgsl_ir_binding_from_attributes(
                   location,
                   wgsl_ir_interpolation_from_attributes(attributes),
                   wgsl_ir_sampling_from_attributes(attributes),
-                  None,
+                  wgsl_ir_blend_src_from_attributes(attributes),
                   false,
                 ),
               )
@@ -5413,6 +5875,16 @@ fn wgsl_ir_binding_from_attributes(
           }
         None => None
       }
+  }
+}
+
+///|
+fn wgsl_ir_blend_src_from_attributes(
+  attributes : Array[@ast.WgslAttribute],
+) -> Int? {
+  match wgsl_ir_attribute_named(attributes, "blend_src") {
+    Some(attribute) => wgsl_ir_attribute_int_value(attribute)
+    None => None
   }
 }
 

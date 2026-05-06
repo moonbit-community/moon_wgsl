@@ -257,6 +257,7 @@ pub enum TypeInner {
   ValuePointer(VectorSize?, Scalar, AddressSpace)
   Array(Handle, ArraySize, Int)
   Struct(Array[StructMember], Int)
+  PredeclaredStruct(Array[StructMember], Int)
   Image(ImageDimension, Bool, ImageClass)
   Sampler(Bool)
   AccelerationStructure(Bool)

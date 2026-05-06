@@ -36,6 +36,11 @@ fn WgslIrEmitter::emit_module(
 ) -> String raise WgslIrEmitError {
   let out = StringBuilder::new()
   let mut needs_blank = false
+  for directive in self.shader_module.directives {
+    out.write_string(directive)
+    out.write_string("\n")
+    needs_blank = true
+  }
   for index in 0..<self.shader_module.types.items.length() {
     let ty = self.shader_module.types.items[index]
     match ty.inner {
@@ -525,7 +530,45 @@ fn WgslIrEmitter::emit_statement(
       self.emit_function_call_arguments(out, function, arguments)
       out.write_string(");\n")
     }
+    RayQuery(query, query_function) =>
+      self.emit_ray_query_statement(
+        out, function, query, query_function, indent,
+      )
     _ => raise WgslIrEmitError::Unsupported("statement kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::emit_ray_query_statement(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  function : Function,
+  query : Handle,
+  query_function : RayQueryFunction,
+  indent : Int,
+) -> Unit raise WgslIrEmitError {
+  let pad = wgsl_ir_indent(indent)
+  match query_function {
+    Initialize(acceleration, ray_desc) =>
+      out.write_string(
+        "\{pad}rayQueryInitialize(\{self.function_expression(function, query)}, \{self.function_expression(function, acceleration)}, \{self.function_expression(function, ray_desc)});\n",
+      )
+    Proceed(_) =>
+      out.write_string(
+        "\{pad}rayQueryProceed(\{self.function_expression(function, query)});\n",
+      )
+    GenerateIntersection(intersection_t) =>
+      out.write_string(
+        "\{pad}rayQueryGenerateIntersection(\{self.function_expression(function, query)}, \{self.function_expression(function, intersection_t)});\n",
+      )
+    ConfirmIntersection =>
+      out.write_string(
+        "\{pad}rayQueryConfirmIntersection(\{self.function_expression(function, query)});\n",
+      )
+    Terminate =>
+      out.write_string(
+        "\{pad}rayQueryTerminate(\{self.function_expression(function, query)});\n",
+      )
   }
 }
 
@@ -656,6 +699,18 @@ fn WgslIrEmitter::emit_expression(
       )
     ImageQuery(image, query) =>
       self.image_query_expression(function, image, query)
+    RayQueryInitialize(query, acceleration, ray_desc) =>
+      "rayQueryInitialize(\{self.required_function_expression(function, query)}, \{self.required_function_expression(function, acceleration)}, \{self.required_function_expression(function, ray_desc)})"
+    RayQueryProceed(query) =>
+      "rayQueryProceed(\{self.required_function_expression(function, query)})"
+    RayQueryGenerateIntersection(query, intersection_t) =>
+      "rayQueryGenerateIntersection(\{self.required_function_expression(function, query)}, \{self.required_function_expression(function, intersection_t)})"
+    RayQueryConfirmIntersection(query) =>
+      "rayQueryConfirmIntersection(\{self.required_function_expression(function, query)})"
+    RayQueryTerminate(query) =>
+      "rayQueryTerminate(\{self.required_function_expression(function, query)})"
+    RayQueryGetIntersection(query, committed) =>
+      self.ray_query_get_intersection_expression(function, query, committed)
     Unary(op, expr) =>
       "\{self.unary_operator(op)}\{self.required_function_expression(function, expr)}"
     Binary(op, left, right) =>
@@ -928,6 +983,21 @@ fn WgslIrEmitter::image_query_expression(
 }
 
 ///|
+fn WgslIrEmitter::ray_query_get_intersection_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  query : Handle,
+  committed : Bool,
+) -> String raise WgslIrEmitError {
+  let name = if committed {
+    "rayQueryGetCommittedIntersection"
+  } else {
+    "rayQueryGetCandidateIntersection"
+  }
+  "\{name}(\{self.required_function_expression(function, query)})"
+}
+
+///|
 fn WgslIrEmitter::expression_is_depth_image(
   self : WgslIrEmitter,
   function : Function?,
@@ -962,7 +1032,7 @@ fn WgslIrEmitter::member_name_for_expression(
         ) {
         Some(ty) =>
           match ty.inner {
-            Struct(members, _) =>
+            Struct(members, _) | PredeclaredStruct(members, _) =>
               match members.get(index) {
                 Some(struct_member) =>
                   match struct_member.name {
@@ -1108,8 +1178,24 @@ fn WgslIrEmitter::function_expression_inner_type(
         atomic_function,
         arguments,
       )
+    RayQueryGetIntersection(_, _) => self.type_handle_named("RayIntersection")
+    RayQueryProceedResult => self.type_handle_named("bool")
     _ => None
   }
+}
+
+///|
+fn WgslIrEmitter::type_handle_named(
+  self : WgslIrEmitter,
+  name : String,
+) -> Handle? {
+  for index in 0..<self.shader_module.types.items.length() {
+    match self.shader_module.types.items[index].name {
+      Some(existing) if existing == name => return Some(Handle::new(index))
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|
@@ -1188,7 +1274,7 @@ fn WgslIrEmitter::indexed_type_from_type_handle(
   match self.shader_module.types.items.get(ty_handle.index()) {
     Some(ty) =>
       match ty.inner {
-        Struct(members, _) =>
+        Struct(members, _) | PredeclaredStruct(members, _) =>
           match index {
             Some(i) =>
               match members.get(i) {
@@ -1594,7 +1680,7 @@ fn WgslIrEmitter::type_name(
     Some(name) =>
       match ty.inner {
         Scalar(_) => name
-        Struct(_, _) => name
+        Struct(_, _) | PredeclaredStruct(_, _) => name
         _ => self.type_inner_name(ty.inner)
       }
     None => self.type_inner_name(ty.inner)
@@ -1626,6 +1712,8 @@ fn WgslIrEmitter::type_inner_name(
           "array<\{self.type_name(base)}, \{self.global_expression(handle)}>"
       }
     Struct(_, _) => raise WgslIrEmitError::Unsupported("anonymous struct type")
+    PredeclaredStruct(_, _) =>
+      raise WgslIrEmitError::Unsupported("anonymous predeclared struct type")
     Image(dimension, arrayed, image_class) =>
       self.image_type_name(dimension, arrayed, image_class)
     Sampler(comparison) =>
@@ -1634,6 +1722,8 @@ fn WgslIrEmitter::type_inner_name(
       } else {
         "sampler"
       }
+    AccelerationStructure(_) => "acceleration_structure"
+    RayQuery(_) => "ray_query"
     BindingArray(base, size) =>
       match size {
         Constant(value) => "binding_array<\{self.type_name(base)}, \{value}>"
@@ -1798,8 +1888,12 @@ fn WgslIrEmitter::emit_binding_attribute_prefix(
   match binding {
     Some(BuiltIn(builtin)) =>
       out.write_string("@builtin(\{self.builtin_name(builtin)}) ")
-    Some(Location(location, interpolation, sampling, _, _)) => {
+    Some(Location(location, interpolation, sampling, blend_src, _)) => {
       out.write_string("@location(\{location}) ")
+      match blend_src {
+        Some(value) => out.write_string("@blend_src(\{value}) ")
+        None => ()
+      }
       match interpolation {
         Some(value) => {
           out.write_string("@interpolate(\{self.interpolation_name(value)}")

@@ -108,7 +108,7 @@ fn WgslIrValidator::validate_type_inner(
       self.require_type(base)
       self.validate_array_size(size)
     }
-    Struct(members, _) =>
+    Struct(members, _) | PredeclaredStruct(members, _) =>
       for struct_member in members {
         self.require_type(struct_member.ty)
       }
@@ -433,6 +433,20 @@ fn WgslIrValidator::validate_function_expression(
           }
         _ => ()
       }
+    }
+    RayQueryInitialize(query, acceleration, ray_desc) => {
+      self.validate_function_expression_handle(function, query)
+      self.validate_function_expression_handle(function, acceleration)
+      self.validate_function_expression_handle(function, ray_desc)
+    }
+    RayQueryProceed(query)
+    | RayQueryConfirmIntersection(query)
+    | RayQueryTerminate(query)
+    | RayQueryGetIntersection(query, _) =>
+      self.validate_function_expression_handle(function, query)
+    RayQueryGenerateIntersection(query, intersection_t) => {
+      self.validate_function_expression_handle(function, query)
+      self.validate_function_expression_handle(function, intersection_t)
     }
     Math(_, a, b, c, d) => {
       self.validate_function_expression_handle(function, a)

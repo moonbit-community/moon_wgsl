@@ -310,6 +310,11 @@ pub enum Expression {
   AtomicResult(Handle, Bool)
   WorkGroupUniformLoadResult(Handle)
   ArrayLength(Handle)
+  RayQueryInitialize(Handle, Handle, Handle)
+  RayQueryProceed(Handle)
+  RayQueryGenerateIntersection(Handle, Handle)
+  RayQueryConfirmIntersection(Handle)
+  RayQueryTerminate(Handle)
   RayQueryVertexPositions(Handle, Bool)
   RayQueryProceedResult
   RayQueryGetIntersection(Handle, Bool)
@@ -569,6 +574,7 @@ pub(all) struct MeshStageInfo {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Module {
+  directives : Array[String]
   types : TypeArena
   special_types : SpecialTypes
   constants : ConstantArena
@@ -582,6 +588,7 @@ pub(all) struct Module {
   doc_comments : DocComments?
 } derive(Eq, @debug.Debug)
 pub fn Module::append_constant(Self, Constant) -> Handle
+pub fn Module::append_directive(Self, String) -> Unit
 pub fn Module::append_entry_point(Self, EntryPoint) -> Unit
 pub fn Module::append_function(Self, Function) -> Handle
 pub fn Module::append_global_expression(Self, Expression) -> Handle
@@ -867,6 +874,7 @@ pub enum TypeInner {
   ValuePointer(VectorSize?, Scalar, AddressSpace)
   Array(Handle, ArraySize, Int)
   Struct(Array[StructMember], Int)
+  PredeclaredStruct(Array[StructMember], Int)
   Image(ImageDimension, Bool, ImageClass)
   Sampler(Bool)
   AccelerationStructure(Bool)
