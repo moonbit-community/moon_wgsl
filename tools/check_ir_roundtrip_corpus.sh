@@ -127,5 +127,15 @@ compose_roundtrip_case \
   "upstream-rusty-imports-compose" \
   "testdata/upstream_compose/rusty_imports" \
   "top.wgsl"
+compose_roundtrip_case \
+  "upstream-effective-defs-compose" \
+  "testdata/upstream_compose/effective_defs" \
+  "top.wgsl" \
+  --def DEF_ONE \
+  --def DEF_THREE
+compose_roundtrip_case \
+  "upstream-invalid-identifiers-compose" \
+  "testdata/upstream_compose/invalid_identifiers" \
+  "top_valid.wgsl"
 
 echo "IR roundtrip corpus gate passed"
