@@ -30,3 +30,19 @@ test "naga_oil wb: AST-scoped symbol redirects ignore nested local shadows" {
   debug_inspect(rewritten.contains("fn build_shadow()"), content="true")
   debug_inspect(rewritten.contains("let build_color = arg;"), content="false")
 }
+
+///|
+test "naga_oil wb: reference rewrite plan carries symbol identity" {
+  let plan = WgslReferenceRewritePlan::new()
+  plan.add_symbol_binding(
+    "lighting.wgsl", "build_shadow", "lighting::build_shadow", "lighting__build_shadow",
+  )
+  let rewritten = rewrite_wgsl_references_with_binding_plan(
+    "fn shade() -> f32 {\n  return lighting::build_shadow();\n}\n", plan,
+  )
+  debug_inspect(
+    rewritten.contains("return lighting__build_shadow();"),
+    content="true",
+  )
+  debug_inspect(rewritten.contains("lighting::build_shadow"), content="false")
+}

@@ -31,11 +31,11 @@ fn wgsl_source_contains_virtual_directive(
 }
 
 ///|
-fn apply_wgsl_virtual_overrides(
+fn apply_wgsl_virtual_overrides_with_binding_plan(
   source : String,
-  alias_redirect_map : @hashmap.HashMap[String, String],
+  plan : WgslReferenceRewritePlan,
 ) -> String raise ComposerError {
-  @transform.apply_wgsl_virtual_overrides(source, alias_redirect_map) catch {
+  @transform.apply_wgsl_virtual_overrides_with_binding_plan(source, plan) catch {
     InvalidOverride(name) => raise ComposerError::InvalidOverride(name)
     Parse(message, offset) =>
       raise ComposerError::InvalidWgslSyntax(message, offset)
@@ -48,13 +48,11 @@ fn apply_wgsl_virtual_overrides(
 }
 
 ///|
-fn rewrite_wgsl_override_targets_with_redirects(
+fn rewrite_wgsl_override_targets_with_binding_plan(
   source : String,
-  alias_redirect_map : @hashmap.HashMap[String, String],
+  plan : WgslReferenceRewritePlan,
 ) -> String raise ComposerError {
-  @transform.rewrite_wgsl_override_targets_with_redirects(
-    source, alias_redirect_map,
-  ) catch {
+  @transform.rewrite_wgsl_override_targets_with_binding_plan(source, plan) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
 }

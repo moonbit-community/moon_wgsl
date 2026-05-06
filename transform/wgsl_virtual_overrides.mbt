@@ -140,6 +140,14 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
 }
 
 ///|
+pub fn rewrite_wgsl_override_targets_with_binding_plan(
+  source : String,
+  plan : WgslReferenceRewritePlan,
+) -> String raise WgslParseError {
+  rewrite_wgsl_override_targets_with_redirects(source, plan.redirect_map())
+}
+
+///|
 fn wgsl_override_body_references_target(
   function : WgslFunction,
   raw_target : String,
@@ -372,6 +380,14 @@ pub fn apply_wgsl_virtual_overrides(
     Some(name) => raise WgslVirtualOverrideError::InvalidOverride(name)
     None => output.source
   }
+}
+
+///|
+pub fn apply_wgsl_virtual_overrides_with_binding_plan(
+  source : String,
+  plan : WgslReferenceRewritePlan,
+) -> String raise WgslVirtualOverrideError {
+  apply_wgsl_virtual_overrides(source, plan.redirect_map())
 }
 
 ///|

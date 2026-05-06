@@ -295,21 +295,23 @@ fn WgslLiveAliasBindingPlan::push(
 }
 
 ///|
-fn WgslLiveAliasBindingPlan::symbol_redirects(
+fn WgslLiveAliasBindingPlan::reference_rewrite_plan(
   self : WgslLiveAliasBindingPlan,
-) -> Array[WgslSymbolRedirect] {
-  let redirects : Array[WgslSymbolRedirect] = []
+) -> WgslReferenceRewritePlan {
+  let plan = WgslReferenceRewritePlan::new()
   for binding in self.bindings {
-    redirects.push(binding.redirect)
+    match binding.identity {
+      Some(identity) =>
+        plan.add_symbol_binding(
+          identity.rel_path,
+          identity.original_name,
+          binding.redirect.from_name,
+          binding.redirect.to_name,
+        )
+      None => plan.add(binding.redirect.from_name, binding.redirect.to_name)
+    }
   }
-  redirects
-}
-
-///|
-fn WgslLiveAliasBindingPlan::redirect_map(
-  self : WgslLiveAliasBindingPlan,
-) -> @hashmap.HashMap[String, String] {
-  build_wgsl_symbol_redirect_map(self.symbol_redirects())
+  plan
 }
 
 ///|

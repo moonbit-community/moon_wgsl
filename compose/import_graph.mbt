@@ -554,21 +554,22 @@ fn finalize_wgsl_composed_source(
   let live_alias_bindings = collect_wgsl_live_alias_binding_plan(
     out_facts, effective_alias_redirects,
   )
-  let alias_redirect_map = live_alias_bindings.redirect_map()
+  let rewrite_plan = live_alias_bindings.reference_rewrite_plan()
   if apply_virtual_overrides {
-    out = apply_wgsl_virtual_overrides(out, alias_redirect_map)
+    out = apply_wgsl_virtual_overrides_with_binding_plan(out, rewrite_plan)
   } else {
-    out = rewrite_wgsl_override_targets_with_redirects(out, alias_redirect_map)
+    out = rewrite_wgsl_override_targets_with_binding_plan(out, rewrite_plan)
   }
-  out = rewrite_wgsl_references_with_rename_map(out, alias_redirect_map) catch {
+  out = rewrite_wgsl_references_with_binding_plan(out, rewrite_plan) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
   if !apply_virtual_overrides {
     validate_wgsl_translation_unit_strict(out)
     return out
   }
-  let live_alias_redirects = live_alias_bindings.symbol_redirects()
-  out = normalize_wgsl_composed_declarations(out, live_alias_redirects) catch {
+  out = normalize_wgsl_composed_declarations_with_binding_plan(
+    out, rewrite_plan,
+  ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
   let unresolved_namespace = unresolved_wgsl_semantic_namespace_reference(out) catch {

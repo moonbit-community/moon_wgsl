@@ -11,6 +11,8 @@ import {
 // Values
 pub fn apply_wgsl_virtual_overrides(String, @hashmap.HashMap[String, String]) -> String raise WgslVirtualOverrideError
 
+pub fn apply_wgsl_virtual_overrides_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise WgslVirtualOverrideError
+
 pub fn build_wgsl_symbol_redirect_map(Array[@common.WgslSymbolRedirect]) -> @hashmap.HashMap[String, String]
 
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
@@ -25,11 +27,17 @@ pub fn invalid_wgsl_struct_member_identifier(String) -> String? raise @parser.Wg
 
 pub fn normalize_wgsl_composed_declarations(String, Array[@common.WgslSymbolRedirect]) -> String raise @parser.WgslParseError
 
+pub fn normalize_wgsl_composed_declarations_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
+
 pub fn normalize_wgsl_output_identifiers(String) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_declarations_with_global_rename_map(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
 
+pub fn rewrite_wgsl_override_targets_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
+
 pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
+
+pub fn rewrite_wgsl_references_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_references_with_rename_map(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
 
@@ -79,6 +87,13 @@ pub struct WgslModuleItemOrigin {
 pub fn WgslModuleItemOrigin::name(Self) -> String
 pub fn WgslModuleItemOrigin::source_end(Self) -> Int
 pub fn WgslModuleItemOrigin::source_start(Self) -> Int
+
+pub struct WgslReferenceRewritePlan {
+  // private fields
+}
+pub fn WgslReferenceRewritePlan::add(Self, String, String) -> Unit
+pub fn WgslReferenceRewritePlan::add_symbol_binding(Self, String, String, String, String) -> Unit
+pub fn WgslReferenceRewritePlan::new() -> Self
 
 pub struct WgslTreeShakenSource {
   // private fields

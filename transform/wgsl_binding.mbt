@@ -41,6 +41,89 @@ priv struct WgslRenameMaps {
 }
 
 ///|
+pub struct WgslReferenceRewritePlan {
+  priv bindings : Array[WgslReferenceRewriteBinding]
+}
+
+///|
+priv struct WgslReferenceRewriteBinding {
+  from_name : String
+  to_name : String
+  rel_path : String
+  original_name : String
+}
+
+///|
+fn WgslReferenceRewriteBinding::key(
+  self : WgslReferenceRewriteBinding,
+) -> String {
+  "\{self.rel_path}|\{self.original_name}|\{self.from_name}|\{self.to_name}"
+}
+
+///|
+pub fn WgslReferenceRewritePlan::new() -> WgslReferenceRewritePlan {
+  WgslReferenceRewritePlan::{ bindings: [] }
+}
+
+///|
+pub fn WgslReferenceRewritePlan::add_symbol_binding(
+  self : WgslReferenceRewritePlan,
+  rel_path : String,
+  original_name : String,
+  from_name : String,
+  to_name : String,
+) -> Unit {
+  let from_name = from_name.trim().to_owned()
+  let to_name = to_name.trim().to_owned()
+  if from_name == "" || to_name == "" || from_name == to_name {
+    return
+  }
+  let binding = WgslReferenceRewriteBinding::{
+    from_name,
+    to_name,
+    rel_path,
+    original_name,
+  }
+  let key = binding.key()
+  for existing in self.bindings {
+    if existing.key() == key {
+      return
+    }
+  }
+  self.bindings.push(binding)
+}
+
+///|
+pub fn WgslReferenceRewritePlan::add(
+  self : WgslReferenceRewritePlan,
+  from_name : String,
+  to_name : String,
+) -> Unit {
+  self.add_symbol_binding("", "", from_name, to_name)
+}
+
+///|
+fn WgslReferenceRewritePlan::redirect_map(
+  self : WgslReferenceRewritePlan,
+) -> @hashmap.HashMap[String, String] {
+  build_wgsl_symbol_redirect_map(self.symbol_redirects())
+}
+
+///|
+fn WgslReferenceRewritePlan::symbol_redirects(
+  self : WgslReferenceRewritePlan,
+) -> Array[WgslSymbolRedirect] {
+  let redirects : Array[WgslSymbolRedirect] = []
+  for binding in self.bindings {
+    redirects.push(WgslSymbolRedirect::{
+      from_name: binding.from_name,
+      to_name: binding.to_name,
+    })
+  }
+  redirects
+}
+
+///|
 fn WgslRenamePlan::empty() -> WgslRenamePlan {
   WgslRenamePlan::{ rules: [] }
 }
@@ -466,4 +549,12 @@ pub fn rewrite_wgsl_references_with_rename_map(
     source,
     build_wgsl_reference_rename_plan_from_redirect_map(redirect_map),
   )
+}
+
+///|
+pub fn rewrite_wgsl_references_with_binding_plan(
+  source : String,
+  plan : WgslReferenceRewritePlan,
+) -> String raise WgslParseError {
+  rewrite_wgsl_references_with_rename_map(source, plan.redirect_map())
 }

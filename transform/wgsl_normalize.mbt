@@ -425,3 +425,11 @@ pub fn normalize_wgsl_composed_declarations(
   }
   dedupe_wgsl_duplicate_resource_bindings(suffix_rewritten)
 }
+
+///|
+pub fn normalize_wgsl_composed_declarations_with_binding_plan(
+  source : String,
+  plan : WgslReferenceRewritePlan,
+) -> String raise WgslParseError {
+  normalize_wgsl_composed_declarations(source, plan.symbol_redirects())
+}
