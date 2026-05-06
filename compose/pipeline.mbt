@@ -41,7 +41,7 @@ fn Composer::compose_wgsl_scanned_item(
   current_rel_path : String,
   item : WgslDirectiveScanItem,
   active_scan_source : String,
-  alias_redirects : Array[WgslScopedAliasRedirect],
+  alias_redirects : WgslScopedAliasRedirectSet,
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
@@ -78,7 +78,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   source : String,
   session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
-  inherited_alias_redirects : Array[WgslScopedAliasRedirect],
+  inherited_alias_redirects : WgslScopedAliasRedirectSet,
   apply_virtual_overrides : Bool,
   record_current_origins : Bool,
 ) -> String raise ComposerError {
@@ -95,10 +95,8 @@ fn Composer::preprocess_wgsl_source_with_path(
     )
   }
   let mut merged = ""
-  let alias_redirects : Array[WgslScopedAliasRedirect] = []
-  for redirect in inherited_alias_redirects {
-    alias_redirects.push(redirect)
-  }
+  let alias_redirects = WgslScopedAliasRedirectSet::new()
+  alias_redirects.extend(inherited_alias_redirects)
   let implicit_requests = self.build_wgsl_implicit_import_requests(
     current_rel_path,
     prepared.active_scan_source,
@@ -150,7 +148,7 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
     prepend_wgsl_additional_imports(source, session.additional_imports),
     session,
     None,
-    [],
+    WgslScopedAliasRedirectSet::new(),
     true,
     true,
   )
@@ -232,7 +230,7 @@ pub fn Composer::compose_wgsl_source(
       prepend_wgsl_additional_imports(source, session.additional_imports),
       session,
       None,
-      [],
+      WgslScopedAliasRedirectSet::new(),
       true,
       false,
     ),

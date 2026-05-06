@@ -177,8 +177,7 @@ priv struct WgslComposeSession {
   value_defines : @hashmap.HashMap[String, Int]
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
-  composed_alias_redirects : Array[WgslScopedAliasRedirect]
-  composed_alias_redirect_keys : @hashset.HashSet[String]
+  composed_alias_redirects : WgslScopedAliasRedirectSet
   additional_imports : Array[ImportDefinition]
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
@@ -203,6 +202,17 @@ priv struct WgslScopedAliasRedirect {
 }
 
 ///|
+priv struct WgslScopedAliasRedirectSet {
+  redirects : Array[WgslScopedAliasRedirect]
+  keys : @hashset.HashSet[String]
+}
+
+///|
+fn WgslScopedAliasRedirectSet::new() -> WgslScopedAliasRedirectSet {
+  WgslScopedAliasRedirectSet::{ redirects: [], keys: @hashset.HashSet::new() }
+}
+
+///|
 fn wgsl_alias_redirect_scope_key(scope : WgslAliasRedirectScope) -> String {
   match scope {
     QualifiedAliasReference => "qualified"
@@ -222,30 +232,26 @@ fn wgsl_scoped_alias_redirect_key(
 }
 
 ///|
-fn push_wgsl_scoped_alias_redirect_unique(
-  redirects : Array[WgslScopedAliasRedirect],
+fn WgslScopedAliasRedirectSet::push(
+  self : WgslScopedAliasRedirectSet,
   scoped_redirect : WgslScopedAliasRedirect,
 ) -> Unit {
   let key = wgsl_scoped_alias_redirect_key(scoped_redirect)
-  for existing in redirects {
-    if wgsl_scoped_alias_redirect_key(existing) == key {
-      return
-    }
+  if self.keys.contains(key) {
+    return
   }
-  redirects.push(scoped_redirect)
+  self.keys.add(key)
+  self.redirects.push(scoped_redirect)
 }
 
 ///|
-fn push_wgsl_session_alias_redirect_unique(
-  session : WgslComposeSession,
-  scoped_redirect : WgslScopedAliasRedirect,
+fn WgslScopedAliasRedirectSet::extend(
+  self : WgslScopedAliasRedirectSet,
+  other : WgslScopedAliasRedirectSet,
 ) -> Unit {
-  let key = wgsl_scoped_alias_redirect_key(scoped_redirect)
-  if session.composed_alias_redirect_keys.contains(key) {
-    return
+  for redirect in other.redirects {
+    self.push(redirect)
   }
-  session.composed_alias_redirect_keys.add(key)
-  session.composed_alias_redirects.push(scoped_redirect)
 }
 
 ///|

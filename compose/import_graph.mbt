@@ -266,7 +266,7 @@ fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   requests : Array[WgslImportRequest],
-  alias_redirects : Array[WgslScopedAliasRedirect],
+  alias_redirects : WgslScopedAliasRedirectSet,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
@@ -304,7 +304,7 @@ fn Composer::compose_wgsl_import_requests(
             requested_item,
           ) {
           Some(imported_name) => {
-            push_wgsl_scoped_alias_redirect_unique(alias_redirects, WgslScopedAliasRedirect::{
+            alias_redirects.push(WgslScopedAliasRedirect::{
               redirect: WgslSymbolRedirect::{
                 from_name: requested_item,
                 to_name: imported_name,
@@ -321,7 +321,7 @@ fn Composer::compose_wgsl_import_requests(
                 requested_item,
               ) {
               Some(imported_name) => {
-                push_wgsl_scoped_alias_redirect_unique(alias_redirects, WgslScopedAliasRedirect::{
+                alias_redirects.push(WgslScopedAliasRedirect::{
                   redirect: WgslSymbolRedirect::{
                     from_name: requested_item,
                     to_name: imported_name,
@@ -417,7 +417,7 @@ fn Composer::compose_wgsl_import_requests(
         )
       }
       for redirect in collected_redirects {
-        push_wgsl_scoped_alias_redirect_unique(alias_redirects, WgslScopedAliasRedirect::{
+        alias_redirects.push(WgslScopedAliasRedirect::{
           redirect,
           scope: QualifiedAliasReference,
         })
@@ -505,7 +505,7 @@ fn Composer::compose_wgsl_import_requests(
 ///|
 fn collect_wgsl_live_alias_redirects(
   facts : WgslComposeSemanticFacts,
-  alias_redirects : Array[WgslScopedAliasRedirect],
+  alias_redirects : WgslScopedAliasRedirectSet,
 ) -> Array[WgslSymbolRedirect] {
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for declaration in facts.declarations {
@@ -516,7 +516,7 @@ fn collect_wgsl_live_alias_redirects(
   }
   let live_redirects : Array[WgslSymbolRedirect] = []
   let seen_redirect_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
-  for scoped_redirect in alias_redirects {
+  for scoped_redirect in alias_redirects.redirects {
     let redirect = scoped_redirect.redirect
     let from_name = redirect.from_name.trim().to_owned()
     let to_name = redirect.to_name.trim().to_owned()
@@ -549,16 +549,14 @@ fn collect_wgsl_live_alias_redirects(
 ///|
 fn finalize_wgsl_composed_source(
   merged : String,
-  alias_redirects : Array[WgslScopedAliasRedirect],
+  alias_redirects : WgslScopedAliasRedirectSet,
   active_defs : WgslActiveComposeDefs,
   session : WgslComposeSession,
   apply_virtual_overrides : Bool,
 ) -> String raise ComposerError {
   let mut out = apply_wgsl_ifdefs_strict_for_compose(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
-  for redirect in alias_redirects {
-    push_wgsl_session_alias_redirect_unique(session, redirect)
-  }
+  session.composed_alias_redirects.extend(alias_redirects)
   let effective_alias_redirects = if apply_virtual_overrides {
     session.composed_alias_redirects
   } else {
