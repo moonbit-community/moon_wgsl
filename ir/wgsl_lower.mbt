@@ -277,16 +277,24 @@ fn WgslIrLowerer::lower_struct_declaration(
     }
     let ty = self.lower_type_ref(member_ty_ref)
     let layout = self.type_layout(ty)
-    offset = wgsl_ir_align_to(offset, layout.align)
+    let member_size = wgsl_ir_struct_member_size(
+      struct_member.attributes(),
+      layout,
+    )
+    let member_align = wgsl_ir_struct_member_align(
+      struct_member.attributes(),
+      layout,
+    )
+    offset = wgsl_ir_align_to(offset, member_align)
     members.push(StructMember::{
       name: Some(struct_member.name().name()),
       ty,
       binding: wgsl_ir_binding_from_attributes(struct_member.attributes()),
       offset,
     })
-    offset = offset + layout.size
-    if layout.align > max_align {
-      max_align = layout.align
+    offset = offset + member_size
+    if member_align > max_align {
+      max_align = member_align
     }
   }
   let span = wgsl_ir_align_to(if offset == 0 { 1 } else { offset }, max_align)
@@ -4052,7 +4060,8 @@ fn WgslIrLowerer::lower_composite_type_ref(
         [size_arg, ..] => self.lower_type_template_array_size(size_arg)
         _ => ArraySize::Dynamic
       }
-      let stride = self.type_layout(element).size
+      let layout = self.type_layout(element)
+      let stride = wgsl_ir_align_to(layout.size, layout.align)
       self.intern_type(
         ty_ref.canonical_text(),
         TypeInner::Array(element, size, stride),
@@ -4497,11 +4506,11 @@ priv struct WgslIrLayout {
 fn WgslIrLowerer::type_layout(
   self : WgslIrLowerer,
   handle : Handle,
-) -> WgslIrLayout {
+) -> WgslIrLayout raise WgslIrLowerError {
   match self.shader_module.types.get(handle) {
     Some(ty) =>
       match ty.inner {
-        Scalar(scalar) =>
+        Scalar(scalar) | Atomic(scalar) =>
           WgslIrLayout::{ align: scalar.width, size: scalar.width }
         Vector(size, scalar) => {
           let width = size.width()
@@ -4530,12 +4539,126 @@ fn WgslIrLowerer::type_layout(
             size: column_size * columns.width(),
           }
         }
-        Array(_, _, stride) => WgslIrLayout::{ align: 16, size: stride }
-        Struct(_, span) | PredeclaredStruct(_, span) =>
-          WgslIrLayout::{ align: 16, size: span }
-        _ => WgslIrLayout::{ align: 4, size: 4 }
+        Array(base, size, stride) => {
+          let base_layout = self.type_layout(base)
+          WgslIrLayout::{
+            align: base_layout.align,
+            size: self.array_size_layout_count(size) * stride,
+          }
+        }
+        Struct(members, span) | PredeclaredStruct(members, span) => {
+          let mut align = 1
+          for struct_member in members {
+            let member_layout = self.type_layout(struct_member.ty)
+            if member_layout.align > align {
+              align = member_layout.align
+            }
+          }
+          WgslIrLayout::{ align, size: span }
+        }
+        Pointer(_, _) | ValuePointer(_, _, _) =>
+          WgslIrLayout::{ align: 1, size: 4 }
+        Image(_, _, _)
+        | Sampler(_)
+        | AccelerationStructure(_)
+        | RayQuery(_)
+        | BindingArray(_, _) => WgslIrLayout::{ align: 1, size: 0 }
+        CooperativeMatrix(columns, rows, scalar, _) =>
+          WgslIrLayout::{
+            align: scalar.width,
+            size: wgsl_ir_cooperative_size_width(columns) *
+            wgsl_ir_cooperative_size_width(rows) *
+            scalar.width,
+          }
       }
-    None => WgslIrLayout::{ align: 4, size: 4 }
+    None => raise WgslIrLowerError::UnsupportedType("invalid type handle")
+  }
+}
+
+///|
+fn WgslIrLowerer::array_size_layout_count(
+  self : WgslIrLowerer,
+  size : ArraySize,
+) -> Int raise WgslIrLowerError {
+  match size {
+    Constant(value) => value
+    Dynamic => 1
+    Pending(handle) => {
+      let (value, _) = self.eval_global_integer_expression(handle)
+      if value < 0 {
+        raise WgslIrLowerError::UnsupportedType(
+          "array size must be non-negative",
+        )
+      }
+      value
+    }
+  }
+}
+
+///|
+fn wgsl_ir_struct_member_size(
+  attributes : Array[@ast.WgslAttribute],
+  layout : WgslIrLayout,
+) -> Int raise WgslIrLowerError {
+  match wgsl_ir_attribute_named(attributes, "size") {
+    Some(attribute) =>
+      match wgsl_ir_attribute_int_value(attribute) {
+        Some(size) =>
+          if size < layout.size {
+            raise WgslIrLowerError::UnsupportedType(
+              "@size is smaller than member type size",
+            )
+          } else {
+            size
+          }
+        None =>
+          raise WgslIrLowerError::UnsupportedType(
+            "@size must be an integer literal",
+          )
+      }
+    None => layout.size
+  }
+}
+
+///|
+fn wgsl_ir_struct_member_align(
+  attributes : Array[@ast.WgslAttribute],
+  layout : WgslIrLayout,
+) -> Int raise WgslIrLowerError {
+  match wgsl_ir_attribute_named(attributes, "align") {
+    Some(attribute) =>
+      match wgsl_ir_attribute_int_value(attribute) {
+        Some(align) =>
+          if !wgsl_ir_is_power_of_two(align) {
+            raise WgslIrLowerError::UnsupportedType(
+              "@align must be a positive power of two",
+            )
+          } else if align < layout.align {
+            raise WgslIrLowerError::UnsupportedType(
+              "@align is smaller than member type alignment",
+            )
+          } else {
+            align
+          }
+        None =>
+          raise WgslIrLowerError::UnsupportedType(
+            "@align must be an integer literal",
+          )
+      }
+    None => layout.align
+  }
+}
+
+///|
+fn wgsl_ir_is_power_of_two(value : Int) -> Bool {
+  value > 0 && (value & (value - 1)) == 0
+}
+
+///|
+fn wgsl_ir_cooperative_size_width(size : CooperativeSize) -> Int {
+  match size {
+    Eight => 8
+    Sixteen => 16
   }
 }
 
@@ -5546,6 +5669,19 @@ fn WgslIrLowerer::predeclared_type_inner(
     AtomicCompareExchangeWeakResult(scalar) => {
       let value_ty = self.scalar_type_handle(scalar)
       let bool_ty = self.scalar_type_handle(Scalar::new(Bool, 1))
+      let value_layout = WgslIrLayout::{
+        align: scalar.width,
+        size: scalar.width,
+      }
+      let bool_layout = WgslIrLayout::{ align: 1, size: 1 }
+      let exchanged_offset = wgsl_ir_align_to(
+        value_layout.size,
+        bool_layout.align,
+      )
+      let span = wgsl_ir_align_to(
+        exchanged_offset + bool_layout.size,
+        value_layout.align,
+      )
       TypeInner::Struct(
         [
           StructMember::{
@@ -5558,14 +5694,20 @@ fn WgslIrLowerer::predeclared_type_inner(
             name: Some("exchanged"),
             ty: bool_ty,
             binding: None,
-            offset: scalar.width,
+            offset: exchanged_offset,
           },
         ],
-        scalar.width + 1,
+        span,
       )
     }
     ModfResult(size, scalar) => {
       let value_ty = self.numeric_value_type_handle(size, scalar)
+      let value_layout = wgsl_ir_numeric_value_layout(size, scalar)
+      let whole_offset = wgsl_ir_align_to(value_layout.size, value_layout.align)
+      let span = wgsl_ir_align_to(
+        whole_offset + value_layout.size,
+        value_layout.align,
+      )
       TypeInner::Struct(
         [
           StructMember::{
@@ -5578,16 +5720,31 @@ fn WgslIrLowerer::predeclared_type_inner(
             name: Some("whole"),
             ty: value_ty,
             binding: None,
-            offset: self.type_layout(value_ty).size,
+            offset: whole_offset,
           },
         ],
-        self.type_layout(value_ty).size * 2,
+        span,
       )
     }
     FrexpResult(size, scalar) => {
       let fract_ty = self.numeric_value_type_handle(size, scalar)
       let exponent_scalar = Scalar::new(Sint, 4)
       let exponent_ty = self.numeric_value_type_handle(size, exponent_scalar)
+      let fract_layout = wgsl_ir_numeric_value_layout(size, scalar)
+      let exponent_layout = wgsl_ir_numeric_value_layout(size, exponent_scalar)
+      let exponent_offset = wgsl_ir_align_to(
+        fract_layout.size,
+        exponent_layout.align,
+      )
+      let max_align = if fract_layout.align > exponent_layout.align {
+        fract_layout.align
+      } else {
+        exponent_layout.align
+      }
+      let span = wgsl_ir_align_to(
+        exponent_offset + exponent_layout.size,
+        max_align,
+      )
       TypeInner::Struct(
         [
           StructMember::{
@@ -5600,12 +5757,34 @@ fn WgslIrLowerer::predeclared_type_inner(
             name: Some("exp"),
             ty: exponent_ty,
             binding: None,
-            offset: self.type_layout(fract_ty).size,
+            offset: exponent_offset,
           },
         ],
-        self.type_layout(fract_ty).size + self.type_layout(exponent_ty).size,
+        span,
       )
     }
+  }
+}
+
+///|
+fn wgsl_ir_numeric_value_layout(
+  size : VectorSize?,
+  scalar : Scalar,
+) -> WgslIrLayout {
+  match size {
+    Some(vector_size) => {
+      let width = vector_size.width()
+      let raw = width * scalar.width
+      WgslIrLayout::{
+        align: if width == 3 {
+          4 * scalar.width
+        } else {
+          raw
+        },
+        size: raw,
+      }
+    }
+    None => WgslIrLayout::{ align: scalar.width, size: scalar.width }
   }
 }
 

@@ -427,6 +427,55 @@ test "WGSL AST lowerer preserves suffixed array size literals" {
 }
 
 ///|
+test "WGSL AST lowerer applies recursive struct layout semantics" {
+  let source =
+    #|struct Layout {
+    #|  a: vec3<f32>,
+    #|  b: array<vec3<f32>, 2>,
+    #|  @align(32) @size(64) c: f32,
+    #|  d: u32,
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let offsets : Array[Int] = []
+  let mut span = -1
+  for ty in module_.types.items {
+    if ty.name == Some("Layout") {
+      match ty.inner {
+        Struct(members, struct_span) => {
+          span = struct_span
+          for struct_member in members {
+            offsets.push(struct_member.offset)
+          }
+        }
+        _ => ()
+      }
+    }
+  }
+  debug_inspect(offsets, content="[0, 16, 64, 128]")
+  debug_inspect(span, content="160")
+}
+
+///|
+test "WGSL AST lowerer rejects invalid struct layout attributes" {
+  let source =
+    #|struct InvalidLayout {
+    #|  @align(3) value: f32,
+    #|}
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"unsupported WGSL type: @align must be a positive power of two\"",
+  )
+}
+
+///|
 test "WGSL AST lowerer supports function call expressions" {
   let source =
     #|fn helper() -> u32 {
