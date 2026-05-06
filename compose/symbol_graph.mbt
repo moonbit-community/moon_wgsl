@@ -137,3 +137,14 @@ fn WgslComposeSymbolGraph::record_request_edges(
     })
   }
 }
+
+///|
+fn WgslComposeSymbolGraph::record_request_batch_edges(
+  self : WgslComposeSymbolGraph,
+  importer_rel_path : String,
+  requests : Array[WgslImportRequest],
+) -> Unit {
+  for request in requests {
+    self.record_request_edges(importer_rel_path, request)
+  }
+}

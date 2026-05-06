@@ -244,7 +244,7 @@ priv struct WgslComposeSession {
   value_defines : @hashmap.HashMap[String, Int]
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
-  composed_alias_redirects : WgslScopedAliasRedirectSet
+  composed_bindings : WgslComposeBindingSet
   additional_imports : Array[ImportDefinition]
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
@@ -256,47 +256,48 @@ priv struct WgslComposeSession {
 }
 
 ///|
-priv enum WgslAliasRedirectScope {
-  QualifiedAliasReference
-  CachedQualifiedAliasReference
+priv enum WgslComposeBindingScope {
+  QualifiedAliasBinding
+  CachedQualifiedAliasBinding
   UnqualifiedItemBinding
 } derive(Eq)
 
 ///|
-priv struct WgslScopedAliasRedirect {
-  redirect : WgslSymbolRedirect
-  scope : WgslAliasRedirectScope
+priv struct WgslComposeBinding {
+  from_name : String
+  to_name : String
+  scope : WgslComposeBindingScope
   identity : WgslSymbolIdentity?
   alias_name : String
 }
 
 ///|
-priv struct WgslScopedAliasRedirectSet {
-  redirects : Array[WgslScopedAliasRedirect]
+priv struct WgslComposeBindingSet {
+  bindings : Array[WgslComposeBinding]
   keys : @hashset.HashSet[String]
 }
 
 ///|
-priv struct WgslLiveAliasBindingPlan {
-  bindings : Array[WgslScopedAliasRedirect]
+priv struct WgslLiveBindingPlan {
+  bindings : Array[WgslComposeBinding]
 }
 
 ///|
-fn WgslLiveAliasBindingPlan::new() -> WgslLiveAliasBindingPlan {
-  WgslLiveAliasBindingPlan::{ bindings: [] }
+fn WgslLiveBindingPlan::new() -> WgslLiveBindingPlan {
+  WgslLiveBindingPlan::{ bindings: [] }
 }
 
 ///|
-fn WgslLiveAliasBindingPlan::push(
-  self : WgslLiveAliasBindingPlan,
-  binding : WgslScopedAliasRedirect,
+fn WgslLiveBindingPlan::push(
+  self : WgslLiveBindingPlan,
+  binding : WgslComposeBinding,
 ) -> Unit {
   self.bindings.push(binding)
 }
 
 ///|
-fn WgslLiveAliasBindingPlan::reference_rewrite_plan(
-  self : WgslLiveAliasBindingPlan,
+fn WgslLiveBindingPlan::reference_rewrite_plan(
+  self : WgslLiveBindingPlan,
 ) -> WgslReferenceRewritePlan {
   let plan = WgslReferenceRewritePlan::new()
   for binding in self.bindings {
@@ -305,66 +306,62 @@ fn WgslLiveAliasBindingPlan::reference_rewrite_plan(
         plan.add_symbol_binding(
           identity.rel_path,
           identity.original_name,
-          binding.redirect.from_name,
-          binding.redirect.to_name,
+          binding.from_name,
+          binding.to_name,
         )
-      None => plan.add(binding.redirect.from_name, binding.redirect.to_name)
+      None => plan.add(binding.from_name, binding.to_name)
     }
   }
   plan
 }
 
 ///|
-fn WgslScopedAliasRedirectSet::new() -> WgslScopedAliasRedirectSet {
-  WgslScopedAliasRedirectSet::{ redirects: [], keys: @hashset.HashSet::new() }
+fn WgslComposeBindingSet::new() -> WgslComposeBindingSet {
+  WgslComposeBindingSet::{ bindings: [], keys: @hashset.HashSet::new() }
 }
 
 ///|
-fn wgsl_alias_redirect_scope_key(scope : WgslAliasRedirectScope) -> String {
+fn wgsl_compose_binding_scope_key(scope : WgslComposeBindingScope) -> String {
   match scope {
-    QualifiedAliasReference => "qualified"
-    CachedQualifiedAliasReference => "cached"
+    QualifiedAliasBinding => "qualified"
+    CachedQualifiedAliasBinding => "cached"
     UnqualifiedItemBinding => "unqualified"
   }
 }
 
 ///|
-fn wgsl_scoped_alias_redirect_key(
-  scoped_redirect : WgslScopedAliasRedirect,
-) -> String {
-  let redirect = scoped_redirect.redirect
-  let from_name = redirect.from_name.trim().to_owned()
-  let to_name = redirect.to_name.trim().to_owned()
-  let identity_key = match scoped_redirect.identity {
+fn wgsl_compose_binding_key(binding : WgslComposeBinding) -> String {
+  let from_name = binding.from_name.trim().to_owned()
+  let to_name = binding.to_name.trim().to_owned()
+  let identity_key = match binding.identity {
     Some(identity) => identity.key()
     None => ""
   }
-  "\{wgsl_alias_redirect_scope_key(scoped_redirect.scope)}|\{from_name}|\{to_name}|\{scoped_redirect.alias_name}|\{identity_key}"
+  "\{wgsl_compose_binding_scope_key(binding.scope)}|\{from_name}|\{to_name}|\{binding.alias_name}|\{identity_key}"
 }
 
 ///|
-fn WgslScopedAliasRedirect::new(
-  redirect : WgslSymbolRedirect,
-  scope : WgslAliasRedirectScope,
+fn WgslComposeBinding::new(
+  from_name : String,
+  to_name : String,
+  scope : WgslComposeBindingScope,
   identity : WgslSymbolIdentity?,
   alias_name : String,
-) -> WgslScopedAliasRedirect {
-  WgslScopedAliasRedirect::{ redirect, scope, identity, alias_name }
+) -> WgslComposeBinding {
+  WgslComposeBinding::{ from_name, to_name, scope, identity, alias_name }
 }
 
 ///|
-fn WgslScopedAliasRedirect::for_alias_symbol(
+fn WgslComposeBinding::for_alias_symbol(
   rel_path : String,
   alias_name : String,
   original_name : String,
   generated_name : String,
-  scope : WgslAliasRedirectScope,
-) -> WgslScopedAliasRedirect {
-  WgslScopedAliasRedirect::new(
-    WgslSymbolRedirect::{
-      from_name: "\{alias_name}::\{original_name}",
-      to_name: generated_name,
-    },
+  scope : WgslComposeBindingScope,
+) -> WgslComposeBinding {
+  WgslComposeBinding::new(
+    "\{alias_name}::\{original_name}",
+    generated_name,
     scope,
     Some(WgslSymbolIdentity::new(rel_path, original_name)),
     alias_name,
@@ -372,14 +369,15 @@ fn WgslScopedAliasRedirect::for_alias_symbol(
 }
 
 ///|
-fn WgslScopedAliasRedirect::for_unqualified_symbol(
+fn WgslComposeBinding::for_unqualified_symbol(
   rel_path : String,
   original_name : String,
   generated_name : String,
-  scope : WgslAliasRedirectScope,
-) -> WgslScopedAliasRedirect {
-  WgslScopedAliasRedirect::new(
-    WgslSymbolRedirect::{ from_name: original_name, to_name: generated_name },
+  scope : WgslComposeBindingScope,
+) -> WgslComposeBinding {
+  WgslComposeBinding::new(
+    original_name,
+    generated_name,
     scope,
     Some(WgslSymbolIdentity::new(rel_path, original_name)),
     "",
@@ -387,12 +385,13 @@ fn WgslScopedAliasRedirect::for_unqualified_symbol(
 }
 
 ///|
-fn WgslScopedAliasRedirect::as_unqualified_binding(
-  self : WgslScopedAliasRedirect,
+fn WgslComposeBinding::as_unqualified_binding(
+  self : WgslComposeBinding,
   from_name : String,
-) -> WgslScopedAliasRedirect {
-  WgslScopedAliasRedirect::new(
-    WgslSymbolRedirect::{ from_name, to_name: self.redirect.to_name },
+) -> WgslComposeBinding {
+  WgslComposeBinding::new(
+    from_name,
+    self.to_name,
     UnqualifiedItemBinding,
     self.identity,
     self.alias_name,
@@ -400,25 +399,25 @@ fn WgslScopedAliasRedirect::as_unqualified_binding(
 }
 
 ///|
-fn WgslScopedAliasRedirectSet::push(
-  self : WgslScopedAliasRedirectSet,
-  scoped_redirect : WgslScopedAliasRedirect,
+fn WgslComposeBindingSet::push(
+  self : WgslComposeBindingSet,
+  binding : WgslComposeBinding,
 ) -> Unit {
-  let key = wgsl_scoped_alias_redirect_key(scoped_redirect)
+  let key = wgsl_compose_binding_key(binding)
   if self.keys.contains(key) {
     return
   }
   self.keys.add(key)
-  self.redirects.push(scoped_redirect)
+  self.bindings.push(binding)
 }
 
 ///|
-fn WgslScopedAliasRedirectSet::extend(
-  self : WgslScopedAliasRedirectSet,
-  other : WgslScopedAliasRedirectSet,
+fn WgslComposeBindingSet::extend(
+  self : WgslComposeBindingSet,
+  other : WgslComposeBindingSet,
 ) -> Unit {
-  for redirect in other.redirects {
-    self.push(redirect)
+  for binding in other.bindings {
+    self.push(binding)
   }
 }
 

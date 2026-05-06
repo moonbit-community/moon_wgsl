@@ -266,13 +266,13 @@ fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   requests : Array[WgslImportRequest],
-  alias_redirects : WgslScopedAliasRedirectSet,
+  bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> String raise ComposerError {
   let mut merged = ""
+  session.symbol_graph.record_request_batch_edges(current_rel_path, requests)
   for request in requests {
-    session.symbol_graph.record_request_edges(current_rel_path, request)
     let full_module_key = wgsl_full_module_visit_key(
       request.rel_path,
       request.alias_name,
@@ -284,11 +284,11 @@ fn Composer::compose_wgsl_import_requests(
     }
     if request.import_full_module {
       if session.visited.contains(full_module_key) {
-        collect_wgsl_cached_import_redirects(
+        collect_wgsl_cached_import_bindings(
           session,
           request.rel_path,
           request.alias_name,
-          alias_redirects,
+          bindings,
         )
         |> ignore
         continue
@@ -299,12 +299,12 @@ fn Composer::compose_wgsl_import_requests(
       for requested_item in request.requested_items {
         match
           find_wgsl_visible_alias_imported_item_binding(
-            alias_redirects,
+            bindings,
             request.module_path,
             requested_item,
           ) {
           Some(binding) => {
-            alias_redirects.push(binding)
+            bindings.push(binding)
             resolved_requested_items = resolved_requested_items + 1
           }
           None =>
@@ -315,8 +315,8 @@ fn Composer::compose_wgsl_import_requests(
                 requested_item,
               ) {
               Some(imported_name) => {
-                alias_redirects.push(
-                  WgslScopedAliasRedirect::for_unqualified_symbol(
+                bindings.push(
+                  WgslComposeBinding::for_unqualified_symbol(
                     request.rel_path,
                     requested_item,
                     imported_name,
@@ -348,7 +348,7 @@ fn Composer::compose_wgsl_import_requests(
         raw_source,
         session,
         Some(importer_defs),
-        alias_redirects,
+        bindings,
         false,
         true,
       )
@@ -378,7 +378,7 @@ fn Composer::compose_wgsl_import_requests(
         extraction.source(),
         session,
         Some(importer_defs),
-        alias_redirects,
+        bindings,
         false,
         false,
       )
@@ -406,13 +406,13 @@ fn Composer::compose_wgsl_import_requests(
       if request.alias_name != "" {
         for entry in rename_map.iter() {
           let (original_name, generated_name) = entry
-          alias_redirects.push(
-            WgslScopedAliasRedirect::for_alias_symbol(
+          bindings.push(
+            WgslComposeBinding::for_alias_symbol(
               request.rel_path,
               request.alias_name,
               original_name,
               generated_name,
-              QualifiedAliasReference,
+              QualifiedAliasBinding,
             ),
           )
         }
@@ -491,10 +491,10 @@ fn Composer::compose_wgsl_import_requests(
 }
 
 ///|
-fn collect_wgsl_live_alias_binding_plan(
+fn collect_wgsl_live_binding_plan(
   facts : WgslComposeSemanticFacts,
-  alias_redirects : WgslScopedAliasRedirectSet,
-) -> WgslLiveAliasBindingPlan {
+  bindings : WgslComposeBindingSet,
+) -> WgslLiveBindingPlan {
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for declaration in facts.declarations {
     let declaration_name = declaration.name()
@@ -502,19 +502,18 @@ fn collect_wgsl_live_alias_binding_plan(
       declared_names.set(declaration_name, true)
     }
   }
-  let plan = WgslLiveAliasBindingPlan::new()
-  let seen_redirect_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
-  for scoped_redirect in alias_redirects.redirects {
-    let redirect = scoped_redirect.redirect
-    let from_name = redirect.from_name.trim().to_owned()
-    let to_name = redirect.to_name.trim().to_owned()
-    let redirect_key = wgsl_scoped_alias_redirect_key(scoped_redirect)
-    if seen_redirect_keys.contains(redirect_key) {
+  let plan = WgslLiveBindingPlan::new()
+  let seen_binding_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
+  for binding in bindings.bindings {
+    let from_name = binding.from_name.trim().to_owned()
+    let to_name = binding.to_name.trim().to_owned()
+    let binding_key = wgsl_compose_binding_key(binding)
+    if seen_binding_keys.contains(binding_key) {
       continue
     }
-    seen_redirect_keys.add(redirect_key)
-    let source_contains_cached_alias = if scoped_redirect.scope ==
-      CachedQualifiedAliasReference {
+    seen_binding_keys.add(binding_key)
+    let source_contains_cached_alias = if binding.scope ==
+      CachedQualifiedAliasBinding {
       wgsl_semantic_reference_path_set_contains(
         facts.reference_paths,
         from_name,
@@ -525,10 +524,10 @@ fn collect_wgsl_live_alias_binding_plan(
     if to_name != "" &&
       (
         declared_names.contains(to_name) ||
-        scoped_redirect.scope == UnqualifiedItemBinding ||
+        binding.scope == UnqualifiedItemBinding ||
         source_contains_cached_alias
       ) {
-      plan.push(scoped_redirect)
+      plan.push(binding)
     }
   }
   plan
@@ -537,24 +536,24 @@ fn collect_wgsl_live_alias_binding_plan(
 ///|
 fn finalize_wgsl_composed_source(
   merged : String,
-  alias_redirects : WgslScopedAliasRedirectSet,
+  bindings : WgslComposeBindingSet,
   active_defs : WgslActiveComposeDefs,
   session : WgslComposeSession,
   apply_virtual_overrides : Bool,
 ) -> String raise ComposerError {
   let mut out = apply_wgsl_ifdefs_strict_for_compose(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
-  session.composed_alias_redirects.extend(alias_redirects)
-  let effective_alias_redirects = if apply_virtual_overrides {
-    session.composed_alias_redirects
+  session.composed_bindings.extend(bindings)
+  let effective_bindings = if apply_virtual_overrides {
+    session.composed_bindings
   } else {
-    alias_redirects
+    bindings
   }
   let out_facts = collect_wgsl_compose_semantic_facts(session, out)
-  let live_alias_bindings = collect_wgsl_live_alias_binding_plan(
-    out_facts, effective_alias_redirects,
+  let live_bindings = collect_wgsl_live_binding_plan(
+    out_facts, effective_bindings,
   )
-  let rewrite_plan = live_alias_bindings.reference_rewrite_plan()
+  let rewrite_plan = live_bindings.reference_rewrite_plan()
   if apply_virtual_overrides {
     out = apply_wgsl_virtual_overrides_with_binding_plan(out, rewrite_plan)
   } else {

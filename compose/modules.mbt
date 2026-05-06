@@ -77,17 +77,17 @@ fn merge_wgsl_source_local_shader_defs(
 }
 
 ///|
-fn collect_wgsl_cached_import_redirects(
+fn collect_wgsl_cached_import_bindings(
   session : WgslComposeSession,
   rel_path : String,
   alias_name : String,
-  redirects : WgslScopedAliasRedirectSet,
+  bindings : WgslComposeBindingSet,
 ) -> Int {
   let mut count = 0
   if alias_name == "" {
     for entry in session.final_names.canonical_entries_for_rel_path(rel_path) {
-      redirects.push(
-        WgslScopedAliasRedirect::for_unqualified_symbol(
+      bindings.push(
+        WgslComposeBinding::for_unqualified_symbol(
           entry.identity.rel_path,
           entry.identity.original_name,
           entry.generated_name,
@@ -99,13 +99,13 @@ fn collect_wgsl_cached_import_redirects(
   } else {
     for
       entry in session.final_names.alias_entries_for_scope(rel_path, alias_name) {
-      redirects.push(
-        WgslScopedAliasRedirect::for_alias_symbol(
+      bindings.push(
+        WgslComposeBinding::for_alias_symbol(
           entry.identity.symbol.rel_path,
           alias_name,
           entry.identity.symbol.original_name,
           entry.generated_name,
-          CachedQualifiedAliasReference,
+          CachedQualifiedAliasBinding,
         ),
       )
       count = count + 1
@@ -127,18 +127,18 @@ fn find_wgsl_cached_imported_item_name(
 
 ///|
 fn find_wgsl_visible_alias_imported_item_binding(
-  alias_redirects : WgslScopedAliasRedirectSet,
+  bindings : WgslComposeBindingSet,
   module_path : String,
   item_name : String,
-) -> WgslScopedAliasRedirect? {
+) -> WgslComposeBinding? {
   let default_alias = wgsl_semantic_import_default_alias(module_path)
   if default_alias == "" || item_name == "" {
     return None
   }
   let from_name = "\{default_alias}::\{item_name}"
-  for scoped_redirect in alias_redirects.redirects {
-    if scoped_redirect.redirect.from_name == from_name {
-      return Some(scoped_redirect.as_unqualified_binding(item_name))
+  for binding in bindings.bindings {
+    if binding.from_name == from_name {
+      return Some(binding.as_unqualified_binding(item_name))
     }
   }
   None
