@@ -667,7 +667,7 @@ fn wgsl_statement_collect_for_header_exprs(
       tokens,
       header_start + 1,
       first_end,
-      WgslStatementExpressionRole::ForHeader,
+      WgslStatementExpressionRole::ForInitializer,
       expression_refs,
       expressions,
     )
@@ -682,7 +682,7 @@ fn wgsl_statement_collect_for_header_exprs(
       tokens,
       second_start,
       header_end,
-      WgslStatementExpressionRole::ForHeader,
+      WgslStatementExpressionRole::ForCondition,
       expression_refs,
       expressions,
     )
@@ -693,7 +693,7 @@ fn wgsl_statement_collect_for_header_exprs(
     tokens,
     second_start,
     second_end,
-    WgslStatementExpressionRole::ForHeader,
+    WgslStatementExpressionRole::ForCondition,
     expression_refs,
     expressions,
   )
@@ -702,7 +702,7 @@ fn wgsl_statement_collect_for_header_exprs(
     tokens,
     second_end + 1,
     header_end,
-    WgslStatementExpressionRole::ForHeader,
+    WgslStatementExpressionRole::ForUpdate,
     expression_refs,
     expressions,
   )

@@ -1355,6 +1355,63 @@ test "WGSL statement payload exposes structured statement semantics" {
 }
 
 ///|
+test "WGSL for statement expressions keep official header roles" {
+  let source =
+    #|fn demo(n: u32) -> u32 {
+    #|  var sum: u32 = 0u;
+    #|  for (var i: u32 = 0u; i < n; i++) {
+    #|    sum += i;
+    #|  }
+    #|  for (sum = 0u; sum < n; sum += 1u) {
+    #|    sum += 2u;
+    #|  }
+    #|  return sum;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let statements = function.body().statements()
+  debug_inspect(statements[1].kind(), content="For")
+  debug_inspect(
+    statements[1].local_bindings().map(fn(binding) { binding.name().name() }),
+    content=(
+      #|["i"]
+    ),
+  )
+  debug_inspect(
+    statements[1].expressions().map(fn(item) { item.role() }),
+    content=(
+      #|[ForCondition, ForUpdate]
+    ),
+  )
+  debug_inspect(
+    statements[1]
+    .expression_refs()
+    .map(fn(expr) { wgsl_expr_ref_source_text(source, expr) }),
+    content=(
+      #|["i < n", "i++"]
+    ),
+  )
+  debug_inspect(statements[2].kind(), content="For")
+  debug_inspect(
+    statements[2].expressions().map(fn(item) { item.role() }),
+    content=(
+      #|[ForInitializer, ForCondition, ForUpdate]
+    ),
+  )
+  debug_inspect(
+    statements[2]
+    .expression_refs()
+    .map(fn(expr) { wgsl_expr_ref_source_text(source, expr) }),
+    content=(
+      #|["sum = 0u", "sum < n", "sum += 1u"]
+    ),
+  )
+}
+
+///|
 test "WGSL struct parser accepts preprocessing directives inside members" {
   let source =
     #|struct LightingInput {

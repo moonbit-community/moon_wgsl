@@ -772,6 +772,9 @@ pub(all) enum WgslStatementExpressionRole {
   Condition
   ReturnValue
   ForHeader
+  ForInitializer
+  ForCondition
+  ForUpdate
   SwitchSelector
   CaseSelector
   BreakIf
