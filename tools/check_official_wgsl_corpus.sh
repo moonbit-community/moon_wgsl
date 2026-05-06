@@ -8,6 +8,7 @@ cts_ref="${WGSL_CTS_REF:-3b327ebc44f11212fd3872972a6dd394634fb9e3}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
 allowlist="$repo_root/testdata/gpuweb_cts_ir_allowlist.txt"
 min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-100}"
+min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-80}"
 
 if [[ ! -d "$cts_root/.git" ]]; then
   mkdir -p "$(dirname "$cts_root")"
@@ -72,6 +73,10 @@ done < "$allowlist"
 
 if ((ir_count == 0)); then
   echo "official WGSL CTS IR allowlist is empty" >&2
+  exit 1
+fi
+if ((ir_count < min_ir_cases)); then
+  echo "official WGSL CTS IR allowlist contains only $ir_count case(s); expected at least $min_ir_cases" >&2
   exit 1
 fi
 
