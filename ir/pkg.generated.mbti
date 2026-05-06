@@ -438,6 +438,7 @@ pub enum Literal {
 
 pub(all) struct LocalVariable {
   name : String?
+  kind : LocalVariableKind
   ty : Handle
   init : Handle?
 } derive(Eq, @debug.Debug)
@@ -447,6 +448,12 @@ pub(all) struct LocalVariableArena {
 } derive(Eq, @debug.Debug)
 pub fn LocalVariableArena::append(Self, LocalVariable) -> Handle
 pub fn LocalVariableArena::new() -> Self
+
+pub enum LocalVariableKind {
+  Var
+  Let
+  Const
+} derive(Eq, @debug.Debug)
 
 pub enum MathFunction {
   Abs

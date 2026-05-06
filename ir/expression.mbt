@@ -46,8 +46,16 @@ pub(all) struct GlobalVariable {
 } derive(Eq, Debug)
 
 ///|
+pub enum LocalVariableKind {
+  Var
+  Let
+  Const
+} derive(Eq, Debug)
+
+///|
 pub(all) struct LocalVariable {
   name : String?
+  kind : LocalVariableKind
   ty : Handle
   init : Handle?
 } derive(Eq, Debug)

@@ -297,7 +297,10 @@ fn WgslIrEmitter::emit_function_locals(
       Some(value) => value
       None => "local\{index}"
     }
-    out.write_string("  var \{name}: \{self.type_name(local_var.ty)}")
+    out.write_string("  \{self.local_variable_keyword(local_var.kind)} \{name}")
+    if !self.type_is_abstract_scalar(local_var.ty) {
+      out.write_string(": \{self.type_name(local_var.ty)}")
+    }
     match local_var.init {
       Some(init) =>
         if self.type_is_pointer(local_var.ty) {
@@ -310,6 +313,19 @@ fn WgslIrEmitter::emit_function_locals(
       None => ()
     }
     out.write_string(";\n")
+  }
+}
+
+///|
+fn WgslIrEmitter::local_variable_keyword(
+  self : WgslIrEmitter,
+  kind : LocalVariableKind,
+) -> String {
+  ignore(self)
+  match kind {
+    Var => "var"
+    Let => "let"
+    Const => "const"
   }
 }
 

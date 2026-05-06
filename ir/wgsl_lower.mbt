@@ -778,10 +778,22 @@ fn WgslIrLowerer::lower_local_declaration(
   }
   let handle = function.local_variables.append(LocalVariable::{
     name: Some(local_decl.name().name()),
+    kind: wgsl_ir_local_variable_kind(local_decl.kind()),
     ty,
     init,
   })
   scope.locals.set(local_decl.name().name(), handle)
+}
+
+///|
+fn wgsl_ir_local_variable_kind(
+  kind : @ast.WgslLocalDeclarationKind,
+) -> LocalVariableKind {
+  match kind {
+    Var => LocalVariableKind::Var
+    Let => LocalVariableKind::Let
+    Const => LocalVariableKind::Const
+  }
 }
 
 ///|
