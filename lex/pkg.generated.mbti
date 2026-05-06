@@ -63,3 +63,4 @@ pub fn WgslToken::shift(Self, Int) -> Self
 // Type aliases
 
 // Traits
+

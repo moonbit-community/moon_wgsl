@@ -20,3 +20,4 @@ pub fn WgslParseError::message(Self) -> String
 // Type aliases
 
 // Traits
+

@@ -399,3 +399,4 @@ pub fn WgslTypeRef::new(WgslTypeAtom, Array[Self], Int, Int) -> Self
 // Type aliases
 
 // Traits
+

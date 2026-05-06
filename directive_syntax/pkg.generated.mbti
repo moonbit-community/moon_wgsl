@@ -19,3 +19,4 @@ pub fn parse_wgsl_directive_line_at(String, Int) -> @ast.WgslDirective?
 // Type aliases
 
 // Traits
+
