@@ -35,6 +35,7 @@ priv struct WgslIrLowerer {
 priv struct WgslIrFunctionScope {
   arguments : @hashmap.HashMap[String, Int]
   locals : @hashmap.HashMap[String, Handle]
+  local_constants : @hashmap.HashMap[String, Handle]
 }
 
 ///|
@@ -48,6 +49,7 @@ fn WgslIrFunctionScope::new() -> WgslIrFunctionScope {
   WgslIrFunctionScope::{
     arguments: @hashmap.HashMap::new(),
     locals: @hashmap.HashMap::new(),
+    local_constants: @hashmap.HashMap::new(),
   }
 }
 
@@ -1080,6 +1082,10 @@ fn WgslIrLowerer::lower_local_declaration(
   scope : WgslIrFunctionScope,
   block : Block,
 ) -> Unit raise WgslIrLowerError {
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Const {
+    self.lower_local_const_declaration(local_decl, function, scope)
+    return
+  }
   let explicit_ty = match local_decl.ty_ref() {
     Some(ty_ref) => Some(self.lower_type_ref(ty_ref))
     None => None
@@ -1143,8 +1149,138 @@ fn WgslIrLowerer::lower_local_declaration(
     ty,
     init,
   })
+  ignore(scope.local_constants.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
+}
+
+///|
+fn WgslIrLowerer::lower_local_const_declaration(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  let explicit_ty = match local_decl.ty_ref() {
+    Some(ty_ref) => Some(self.lower_type_ref(ty_ref))
+    None => None
+  }
+  let init = match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      self.lower_function_expression_ref_with_expected(
+        expr_ref, function, scope, explicit_ty,
+      )
+    None => raise WgslIrLowerError::MissingType(local_decl.name().name())
+  }
+  if !self.function_expression_is_const_expression(function, init) {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "local const initializer is not a const expression",
+    )
+  }
+  ignore(scope.locals.remove(local_decl.name().name()))
+  scope.local_constants.set(local_decl.name().name(), init)
+}
+
+///|
+fn WgslIrLowerer::function_expression_is_const_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.function_expression_inner_is_const_expression(function, expression)
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_inner_is_const_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  expression : Expression,
+) -> Bool {
+  match expression {
+    Literal(_) | Constant(_) | ZeroValue(_) => true
+    Override(_)
+    | FunctionArgument(_)
+    | GlobalVariable(_)
+    | LocalVariable(_)
+    | Load(_)
+    | AddressOf(_, _)
+    | FunctionCall(_, _)
+    | AtomicCall(_, _)
+    | ImageSample(_, _, _, _, _, _, _, _, _)
+    | ImageLoad(_, _, _, _, _)
+    | ImageQuery(_, _)
+    | CallResult(_)
+    | AtomicResult(_, _)
+    | WorkGroupUniformLoadResult(_)
+    | ArrayLength(_)
+    | RayQueryInitialize(_, _, _)
+    | RayQueryProceed(_)
+    | RayQueryGenerateIntersection(_, _)
+    | RayQueryConfirmIntersection(_)
+    | RayQueryTerminate(_)
+    | RayQueryVertexPositions(_, _)
+    | RayQueryProceedResult
+    | RayQueryGetIntersection(_, _)
+    | SubgroupBallotResult
+    | SubgroupOperationResult(_)
+    | CooperativeLoad(_, _, _, _)
+    | CooperativeMultiplyAdd(_, _, _) => false
+    Compose(_, components) =>
+      self.function_expression_list_is_const_expression(function, components)
+    Access(base, index) =>
+      self.function_expression_is_const_expression(function, base) &&
+      self.function_expression_is_const_expression(function, index)
+    AccessIndex(base, _) | Splat(_, base) | Swizzle(_, base, _) =>
+      self.function_expression_is_const_expression(function, base)
+    Unary(_, inner)
+    | Bitcast(_, inner)
+    | Relational(_, inner)
+    | As(inner, _, _) =>
+      self.function_expression_is_const_expression(function, inner)
+    Binary(_, left, right) =>
+      self.function_expression_is_const_expression(function, left) &&
+      self.function_expression_is_const_expression(function, right)
+    Select(left, right, condition) =>
+      self.function_expression_is_const_expression(function, left) &&
+      self.function_expression_is_const_expression(function, right) &&
+      self.function_expression_is_const_expression(function, condition)
+    Derivative(_, _, _) => false
+    Math(_, first, second, third, fourth) =>
+      self.function_expression_is_const_expression(function, first) &&
+      self.optional_function_expression_is_const_expression(function, second) &&
+      self.optional_function_expression_is_const_expression(function, third) &&
+      self.optional_function_expression_is_const_expression(function, fourth)
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_list_is_const_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handles : Array[Handle],
+) -> Bool {
+  for handle in handles {
+    if !self.function_expression_is_const_expression(function, handle) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn WgslIrLowerer::optional_function_expression_is_const_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle?,
+) -> Bool {
+  match handle {
+    Some(value) => self.function_expression_is_const_expression(function, value)
+    None => true
+  }
 }
 
 ///|
@@ -1193,7 +1329,7 @@ fn wgsl_ir_local_variable_kind(
   match kind {
     Var => LocalVariableKind::Var
     Let => LocalVariableKind::Let
-    Const => LocalVariableKind::Const
+    Const => abort("local const declarations are not local variables")
   }
 }
 
@@ -3162,14 +3298,23 @@ fn WgslIrLowerer::lower_function_lvalue_node(
 ) -> Handle raise WgslIrLowerError {
   match node.kind() {
     Identifier(name) =>
-      match scope.locals.get(name.name()) {
-        Some(handle) =>
-          function.expressions.append(Expression::LocalVariable(handle))
+      match scope.local_constants.get(name.name()) {
+        Some(_) =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "local const is not assignable",
+          )
         None =>
-          match self.global_names.get(name.name()) {
+          match scope.locals.get(name.name()) {
             Some(handle) =>
-              function.expressions.append(Expression::GlobalVariable(handle))
-            None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+              function.expressions.append(Expression::LocalVariable(handle))
+            None =>
+              match self.global_names.get(name.name()) {
+                Some(handle) =>
+                  function.expressions.append(
+                    Expression::GlobalVariable(handle),
+                  )
+                None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+              }
           }
       }
     Group(inner) => self.lower_function_lvalue_node(inner, function, scope)
@@ -3452,36 +3597,40 @@ fn WgslIrLowerer::lower_identifier_expression(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
-  match scope.arguments.get(name) {
-    Some(index) =>
-      function.expressions.append(Expression::FunctionArgument(index))
+  match scope.local_constants.get(name) {
+    Some(handle) => handle
     None =>
-      match scope.locals.get(name) {
-        Some(handle) =>
-          function.expressions.append(
-            Expression::Load(
-              function.expressions.append(Expression::LocalVariable(handle)),
-            ),
-          )
+      match scope.arguments.get(name) {
+        Some(index) =>
+          function.expressions.append(Expression::FunctionArgument(index))
         None =>
-          match self.constant_names.get(name) {
+          match scope.locals.get(name) {
             Some(handle) =>
-              function.expressions.append(Expression::Constant(handle))
+              function.expressions.append(
+                Expression::Load(
+                  function.expressions.append(Expression::LocalVariable(handle)),
+                ),
+              )
             None =>
-              match self.override_names.get(name) {
+              match self.constant_names.get(name) {
                 Some(handle) =>
-                  function.expressions.append(Expression::Override(handle))
+                  function.expressions.append(Expression::Constant(handle))
                 None =>
-                  match self.global_names.get(name) {
+                  match self.override_names.get(name) {
                     Some(handle) =>
-                      function.expressions.append(
-                        Expression::Load(
+                      function.expressions.append(Expression::Override(handle))
+                    None =>
+                      match self.global_names.get(name) {
+                        Some(handle) =>
                           function.expressions.append(
-                            Expression::GlobalVariable(handle),
-                          ),
-                        ),
-                      )
-                    None => raise WgslIrLowerError::UnknownIdentifier(name)
+                            Expression::Load(
+                              function.expressions.append(
+                                Expression::GlobalVariable(handle),
+                              ),
+                            ),
+                          )
+                        None => raise WgslIrLowerError::UnknownIdentifier(name)
+                      }
                   }
               }
           }

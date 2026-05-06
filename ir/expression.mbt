@@ -49,7 +49,6 @@ pub(all) struct GlobalVariable {
 pub enum LocalVariableKind {
   Var
   Let
-  Const
 } derive(Eq, Debug)
 
 ///|

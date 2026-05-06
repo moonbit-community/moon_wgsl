@@ -463,7 +463,6 @@ pub fn LocalVariableArena::new() -> Self
 pub enum LocalVariableKind {
   Var
   Let
-  Const
 } derive(Eq, @debug.Debug)
 
 pub enum MathFunction {

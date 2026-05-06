@@ -362,6 +362,53 @@ test "WGSL AST lowerer binds context-typed array constructors" {
 }
 
 ///|
+test "WGSL AST lowerer binds local consts as constant expressions" {
+  let source =
+    #|const COUNT: u32 = 4u;
+    #|
+    #|fn main() -> u32 {
+    #|  const LOCAL: u32 = COUNT + 1u;
+    #|  let value: u32 = LOCAL + 2u;
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    module_.functions.items[0].local_variables.items.length(),
+    content="1",
+  )
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("const LOCAL"), content="false")
+  debug_inspect(
+    emitted.contains("let value: u32 = ((COUNT + 1u) + 2u);"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer rejects runtime local const initializers" {
+  let source =
+    #|fn main() -> u32 {
+    #|  let runtime_value: u32 = 1u;
+    #|  const LOCAL: u32 = runtime_value;
+    #|  return LOCAL;
+    #|}
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"unsupported WGSL expression: local const initializer is not a const expression\"",
+  )
+}
+
+///|
 test "WGSL AST lowerer preserves suffixed array size literals" {
   let source =
     #|struct Light {

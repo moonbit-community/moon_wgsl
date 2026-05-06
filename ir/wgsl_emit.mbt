@@ -389,7 +389,6 @@ fn WgslIrEmitter::local_variable_keyword(
   match kind {
     Var => "var"
     Let => "let"
-    Const => "const"
   }
 }
 
