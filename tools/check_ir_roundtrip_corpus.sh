@@ -33,7 +33,9 @@ compose_roundtrip_case() {
   moon run tools/compose_case -- \
     --fixture-root "$fixture_root" \
     --entry "$entry" \
+    --ir \
     --output "$composed"
+  validate_wgsl "$composed"
   moon run tools/ir_roundtrip -- --input "$composed" --output "$output"
   validate_wgsl "$output"
 }

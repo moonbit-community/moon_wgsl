@@ -67,3 +67,39 @@ test "compose graph execution plans reachability before emission" {
     content="true",
   )
 }
+
+///|
+test "composer exposes IR-backed compose output" {
+  let composer = Composer::default()
+  let inc_source =
+    #|#define_import_path ir_corpus::inc
+    #|
+    #|fn helper(value: u32) -> u32 {
+    #|  return value + 1u;
+    #|}
+    #|
+  composer.register_source("inc.wgsl", inc_source)
+  let top_source =
+    #|#import ir_corpus::inc::helper
+    #|
+    #|@group(0) @binding(0)
+    #|var<storage, read_write> buffer: u32;
+    #|
+    #|@compute @workgroup_size(1, 1, 1)
+    #|fn main() {
+    #|  var result: u32 = helper(1u);
+    #|  result = min(result, 9u);
+    #|  buffer = result;
+    #|}
+    #|
+  composer.register_source("top.wgsl", top_source)
+  let emitted = composer.compose_wgsl_ir(
+    "top.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("#import"), content="false")
+  debug_inspect(emitted.contains("fn helper"), content="true")
+  debug_inspect(emitted.contains("@compute @workgroup_size"), content="true")
+}

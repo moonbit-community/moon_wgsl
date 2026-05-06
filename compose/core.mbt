@@ -42,6 +42,7 @@ pub(all) suberror ComposerError {
   DefineInModule
   GlslInvalidVersion
   InvalidWgslDirective(String, String)
+  InvalidIr(String)
   UnknownShaderDef(String)
   UnknownShaderDefOperator(String)
   InvalidShaderDefComparisonValue(String, String, String)
@@ -73,6 +74,7 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     GlslInvalidVersion => "invalid GLSL #version directive"
     InvalidWgslDirective(line, reason) =>
       "invalid WGSL directive: \{line}: \{reason}"
+    InvalidIr(message) => "invalid WGSL IR pipeline: \{message}"
     UnknownShaderDef(name) => "unknown shader def: \{name}"
     UnknownShaderDefOperator(operator) =>
       "unknown shader def operator: \{operator}"

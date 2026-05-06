@@ -232,6 +232,25 @@ pub fn Composer::compose_wgsl(
 }
 
 ///|
+fn compose_wgsl_source_via_ir(source : String) -> String raise ComposerError {
+  let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
+    error => raise ComposerError::InvalidIr(error.message())
+  }
+  @ir.emit_wgsl_module_from_ir(module_) catch {
+    error => raise ComposerError::InvalidIr(error.message())
+  }
+}
+
+///|
+pub fn Composer::compose_wgsl_ir(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  compose_wgsl_source_via_ir(self.compose_wgsl(rel, options))
+}
+
+///|
 pub fn Composer::compose_wgsl_source(
   self : Composer,
   source : String,
@@ -256,6 +275,15 @@ pub fn Composer::compose_wgsl_source(
     ),
   )
   finalize_wgsl_output_source(composed)
+}
+
+///|
+pub fn Composer::compose_wgsl_source_ir(
+  self : Composer,
+  source : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  compose_wgsl_source_via_ir(self.compose_wgsl_source(source, options))
 }
 
 ///|
