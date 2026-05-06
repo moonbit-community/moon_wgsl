@@ -33,9 +33,9 @@ fn record_wgsl_nested_flattened_item_names(
         saw_marker = true
       }
       if item_name != "" {
-        let key = wgsl_imported_item_name_key(rel_path, "", item_name)
-        if !session.imported_item_names.contains(key) {
-          session.imported_item_names.set(key, generated_name)
+        let key = wgsl_symbol_identity_key(rel_path, item_name)
+        if !session.final_symbol_names.contains(key) {
+          session.final_symbol_names.set(key, generated_name)
         }
       }
     }
@@ -419,13 +419,22 @@ fn Composer::compose_wgsl_import_requests(
       if origin.rel_path != "" &&
         origin.source_symbol_name != "" &&
         origin.generated_symbol_name != "" {
-        let key = wgsl_imported_item_name_key(
-          origin.rel_path,
-          "",
-          origin.source_symbol_name,
-        )
-        if !session.imported_item_names.contains(key) {
-          session.imported_item_names.set(key, origin.generated_symbol_name)
+        let key = if request.alias_name == "" {
+          wgsl_symbol_identity_key(origin.rel_path, origin.source_symbol_name)
+        } else {
+          wgsl_alias_symbol_identity_key(
+            origin.rel_path,
+            request.alias_name,
+            origin.source_symbol_name,
+          )
+        }
+        let symbol_names = if request.alias_name == "" {
+          session.final_symbol_names
+        } else {
+          session.alias_final_symbol_names
+        }
+        if !symbol_names.contains(key) {
+          symbol_names.set(key, origin.generated_symbol_name)
         }
       }
     }
@@ -434,24 +443,20 @@ fn Composer::compose_wgsl_import_requests(
     ) catch {
       error => raise composer_error_from_wgsl_parse_error(error)
     }
-    record_wgsl_nested_flattened_item_names(session, final_declarations)
     if rename_map.is_empty() {
+      record_wgsl_nested_flattened_item_names(session, final_declarations)
       for declaration in final_declarations {
         let declaration_name = declaration.name()
-        session.imported_item_names.set(
-          wgsl_imported_item_name_key(request.rel_path, "", declaration_name),
+        session.final_symbol_names.set(
+          wgsl_symbol_identity_key(request.rel_path, declaration_name),
           declaration_name,
         )
       }
     } else {
       for entry in rename_map.iter() {
         let (from_name, to_name) = entry
-        session.imported_item_names.set(
-          wgsl_imported_item_name_key(request.rel_path, "", from_name),
-          to_name,
-        )
-        session.imported_item_names.set(
-          wgsl_imported_item_name_key(
+        session.alias_final_symbol_names.set(
+          wgsl_alias_symbol_identity_key(
             request.rel_path,
             request.alias_name,
             from_name,

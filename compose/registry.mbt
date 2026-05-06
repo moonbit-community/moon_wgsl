@@ -71,7 +71,8 @@ fn Composer::new_wgsl_compose_session(
     additional_imports: copy_import_definitions(options.additional_imports),
     redirect_match_counts: @hashmap.HashMap::new(),
     visited: @hashmap.HashMap::new(),
-    imported_item_names: @hashmap.HashMap::new(),
+    final_symbol_names: @hashmap.HashMap::new(),
+    alias_final_symbol_names: @hashmap.HashMap::new(),
     active_rel_paths: [],
     source_origins: [],
   }

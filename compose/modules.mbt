@@ -83,9 +83,18 @@ fn collect_wgsl_cached_import_redirects(
   alias_name : String,
   redirects : Array[WgslScopedAliasRedirect],
 ) -> Int {
-  let prefix = wgsl_imported_item_name_key(rel_path, alias_name, "")
+  let prefix = if alias_name == "" {
+    wgsl_symbol_identity_key(rel_path, "")
+  } else {
+    wgsl_alias_symbol_identity_key(rel_path, alias_name, "")
+  }
   let mut count = 0
-  for entry in session.imported_item_names.iter() {
+  let symbol_names = if alias_name == "" {
+    session.final_symbol_names
+  } else {
+    session.alias_final_symbol_names
+  }
+  for entry in symbol_names.iter() {
     let (key, imported_name) = entry
     if !key.has_prefix(prefix) {
       continue
@@ -116,9 +125,7 @@ fn find_wgsl_cached_imported_item_name(
   rel_path : String,
   item_name : String,
 ) -> String? {
-  session.imported_item_names.get(
-    wgsl_imported_item_name_key(rel_path, "", item_name),
-  )
+  session.final_symbol_names.get(wgsl_symbol_identity_key(rel_path, item_name))
 }
 
 ///|

@@ -253,6 +253,42 @@ test "issue 10: Bevy PBR forward fragment compose completes" {
 }
 
 ///|
+test "issue 11: Bevy PBR point-light flag uses emitted symbol name" {
+  let source = bevy_parity_compose(
+    "bevy_pbr/src/render/pbr.wgsl",
+    bevy_parity_forward_defines(),
+  )
+  debug_inspect(
+    source.contains("const types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("& types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("const lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains(
+      "const pbr_functions__view_bindings__types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("& lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains(
+      "& pbr_functions__view_bindings__types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE",
+    ),
+    content="true",
+  )
+}
+
+///|
 test "naga_oil parity: prepared Bevy catalog resolves alias-qualified bindings" {
   let composer = @compose.Composer::default()
   composer.clear_sources()

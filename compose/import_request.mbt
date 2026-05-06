@@ -70,12 +70,17 @@ fn wgsl_full_module_visit_key(rel_path : String, alias_name : String) -> String 
 }
 
 ///|
-fn wgsl_imported_item_name_key(
+fn wgsl_symbol_identity_key(rel_path : String, item_name : String) -> String {
+  "\{rel_path}|\{item_name}"
+}
+
+///|
+fn wgsl_alias_symbol_identity_key(
   rel_path : String,
   alias_name : String,
   item_name : String,
 ) -> String {
-  "\{rel_path}|\{alias_name}|\{item_name}"
+  "\{alias_name}|\{wgsl_symbol_identity_key(rel_path, item_name)}"
 }
 
 ///|
