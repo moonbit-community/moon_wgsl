@@ -105,26 +105,3 @@ fn record_wgsl_source_origins_from_extraction(
 }
 
 ///|
-fn apply_wgsl_origin_renames(
-  origins : Array[WgslSourceOriginEntry],
-  start_index : Int,
-  rename_map : @hashmap.HashMap[String, String],
-) -> Unit {
-  if rename_map.is_empty() {
-    return
-  }
-  for i in start_index..<origins.length() {
-    let origin = origins[i]
-    match rename_map.get(origin.generated_symbol_name) {
-      Some(renamed) =>
-        origins[i] = WgslSourceOriginEntry::new(
-          renamed,
-          origin.rel_path,
-          origin.source_symbol_name,
-          origin.source_start,
-          origin.source_end,
-        )
-      None => ()
-    }
-  }
-}

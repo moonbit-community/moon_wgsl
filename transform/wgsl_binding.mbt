@@ -170,16 +170,6 @@ fn build_wgsl_rename_plan_from_redirect_map(
 }
 
 ///|
-fn build_wgsl_global_rename_plan_from_redirect_map(
-  redirect_map : @hashmap.HashMap[String, String],
-) -> WgslRenamePlan {
-  build_wgsl_rename_plan_from_redirect_map(
-    redirect_map,
-    GlobalDeclarationAndReferences,
-  )
-}
-
-///|
 fn build_wgsl_reference_rename_plan_from_redirect_map(
   redirect_map : @hashmap.HashMap[String, String],
 ) -> WgslRenamePlan {
@@ -198,6 +188,23 @@ fn WgslReferenceRewritePlan::reference_rename_plan(
       binding.from_name,
       binding.to_name,
       ReferencesOnly,
+    )
+  }
+  plan
+}
+
+///|
+fn WgslReferenceRewritePlan::global_declaration_rename_plan(
+  self : WgslReferenceRewritePlan,
+) -> WgslRenamePlan {
+  let plan = WgslRenamePlan::empty()
+  for binding in self.bindings {
+    plan.add_symbol_binding(
+      binding.rel_path,
+      binding.original_name,
+      binding.from_name,
+      binding.to_name,
+      GlobalDeclarationAndReferences,
     )
   }
   plan
@@ -593,17 +600,6 @@ fn rewrite_wgsl_declarations_with_rename_plan(
 }
 
 ///|
-pub fn rewrite_wgsl_declarations_with_global_rename_map(
-  source : String,
-  redirect_map : @hashmap.HashMap[String, String],
-) -> String raise WgslParseError {
-  rewrite_wgsl_declarations_with_rename_plan(
-    source,
-    build_wgsl_global_rename_plan_from_redirect_map(redirect_map),
-  )
-}
-
-///|
 pub fn rewrite_wgsl_references_with_rename_map(
   source : String,
   redirect_map : @hashmap.HashMap[String, String],
@@ -622,5 +618,16 @@ pub fn rewrite_wgsl_references_with_binding_plan(
   rewrite_wgsl_declarations_with_rename_plan(
     source,
     plan.reference_rename_plan(),
+  )
+}
+
+///|
+pub fn rewrite_wgsl_declarations_with_binding_plan(
+  source : String,
+  plan : WgslReferenceRewritePlan,
+) -> String raise WgslParseError {
+  rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    plan.global_declaration_rename_plan(),
   )
 }

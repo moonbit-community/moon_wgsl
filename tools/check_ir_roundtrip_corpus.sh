@@ -39,6 +39,7 @@ compose_roundtrip_case() {
 }
 
 roundtrip_case "simple-compute" "testdata/ir_corpus/simple_compute.wgsl"
+roundtrip_case "switch-compute" "testdata/ir_corpus/switch_compute.wgsl"
 compose_roundtrip_case \
   "simple-compose-compute" \
   "testdata/ir_corpus/compose" \

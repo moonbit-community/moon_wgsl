@@ -167,3 +167,37 @@ test "WGSL AST lowerer supports builtin math call expressions" {
     content="true",
   )
 }
+
+///|
+test "WGSL AST lowerer supports switch statements" {
+  let source =
+    #|@compute
+    #|fn main() {
+    #|  var value: u32 = 0u;
+    #|  switch value {
+    #|    case 0u, 1u: {
+    #|      value = value + 1u;
+    #|    }
+    #|    default {
+    #|      value = 9u;
+    #|    }
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  match module_.entry_points[0].function.body.statements[0] {
+    Switch(_, cases) => {
+      debug_inspect(cases.length(), content="3")
+      debug_inspect(cases[0].value, content="U32(0)")
+      debug_inspect(cases[2].value, content="Default")
+    }
+    _ => abort("expected switch statement")
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("switch value {"), content="true")
+  debug_inspect(emitted.contains("case 0u {"), content="true")
+  debug_inspect(emitted.contains("default {"), content="true")
+}

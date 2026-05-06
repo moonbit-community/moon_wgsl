@@ -476,9 +476,83 @@ fn WgslIrLowerer::lower_statement(
         None => ()
       }
     ConstAssert(_) => ()
-    For(_) | Switch(_) | Case(_) | DefaultCase =>
+    Switch(selector) => {
+      guard selector is Some(selector_ref) else {
+        raise WgslIrLowerError::UnsupportedStatement("switch without selector")
+      }
+      let selector_handle = self.lower_function_expression_ref(
+        selector_ref, function, scope,
+      )
+      let cases : Array[SwitchCase] = []
+      match statement.blocks() {
+        [switch_block, ..] =>
+          self.lower_switch_cases(switch_block, function, scope, cases)
+        [] => ()
+      }
+      block.push(Statement::Switch(selector_handle, cases))
+    }
+    For(_) | Case(_) | DefaultCase =>
       raise WgslIrLowerError::UnsupportedStatement(
         "structured statement not yet representable by this WGSL IR lowerer",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_switch_cases(
+  self : WgslIrLowerer,
+  switch_block : @ast.WgslBlock,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  cases : Array[SwitchCase],
+) -> Unit raise WgslIrLowerError {
+  for statement in switch_block.statements() {
+    match statement.payload() {
+      Case(selectors) => {
+        let body = match statement.blocks() {
+          [case_block, ..] => self.lower_block(case_block, function, scope)
+          [] => Block::new()
+        }
+        for selector in selectors {
+          let selector_handle = self.lower_function_expression_ref(
+            selector, function, scope,
+          )
+          cases.push(SwitchCase::{
+            value: wgsl_ir_switch_value_from_expression(
+              function, selector_handle,
+            ),
+            body,
+            fall_through: false,
+          })
+        }
+      }
+      DefaultCase => {
+        let body = match statement.blocks() {
+          [case_block, ..] => self.lower_block(case_block, function, scope)
+          [] => Block::new()
+        }
+        cases.push(SwitchCase::{ value: Default, body, fall_through: false })
+      }
+      Empty => ()
+      _ =>
+        raise WgslIrLowerError::UnsupportedStatement(
+          "switch body contains non-case statement",
+        )
+    }
+  }
+}
+
+///|
+fn wgsl_ir_switch_value_from_expression(
+  function : Function,
+  handle : Handle,
+) -> SwitchValue raise WgslIrLowerError {
+  match function.expressions.items.get(handle.index()) {
+    Some(Expression::Literal(Literal::I32(value))) => SwitchValue::I32(value)
+    Some(Expression::Literal(Literal::U32(value))) => SwitchValue::U32(value)
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "switch case selector must lower to an integer literal",
       )
   }
 }

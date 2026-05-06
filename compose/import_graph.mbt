@@ -5,6 +5,129 @@ priv struct WgslPreparedComposeSource {
 }
 
 ///|
+priv struct WgslModuleFinalNameApplication {
+  origin_index : Int
+  rel_path : String
+  original_name : String
+  current_name : String
+  final_name : String
+}
+
+///|
+priv struct WgslModuleFinalNameApplicationPlan {
+  entries : Array[WgslModuleFinalNameApplication]
+}
+
+///|
+fn WgslModuleFinalNameApplicationPlan::new() -> WgslModuleFinalNameApplicationPlan {
+  WgslModuleFinalNameApplicationPlan::{ entries: [] }
+}
+
+///|
+fn WgslModuleFinalNameApplicationPlan::is_empty(
+  self : WgslModuleFinalNameApplicationPlan,
+) -> Bool {
+  self.entries.length() == 0
+}
+
+///|
+fn WgslModuleFinalNameApplicationPlan::push(
+  self : WgslModuleFinalNameApplicationPlan,
+  origin_index : Int,
+  origin : WgslSourceOriginEntry,
+  final_name : String,
+) -> Unit {
+  if final_name == "" || final_name == origin.generated_symbol_name {
+    return
+  }
+  self.entries.push(WgslModuleFinalNameApplication::{
+    origin_index,
+    rel_path: origin.rel_path,
+    original_name: origin.source_symbol_name,
+    current_name: origin.generated_symbol_name,
+    final_name,
+  })
+}
+
+///|
+fn WgslModuleFinalNameApplicationPlan::reference_rewrite_plan(
+  self : WgslModuleFinalNameApplicationPlan,
+) -> WgslReferenceRewritePlan {
+  let plan = WgslReferenceRewritePlan::new()
+  for entry in self.entries {
+    plan.add_symbol_binding(
+      entry.rel_path,
+      entry.original_name,
+      entry.current_name,
+      entry.final_name,
+    )
+  }
+  plan
+}
+
+///|
+fn WgslModuleFinalNameApplicationPlan::apply_to_origins(
+  self : WgslModuleFinalNameApplicationPlan,
+  origins : Array[WgslSourceOriginEntry],
+) -> Unit {
+  for entry in self.entries {
+    let origin = origins[entry.origin_index]
+    origins[entry.origin_index] = WgslSourceOriginEntry::new(
+      entry.final_name,
+      origin.rel_path,
+      origin.source_symbol_name,
+      origin.source_start,
+      origin.source_end,
+    )
+  }
+}
+
+///|
+fn WgslComposeSession::assigned_final_name_for_origin(
+  self : WgslComposeSession,
+  origin : WgslSourceOriginEntry,
+  alias_prefixes : Array[String],
+) -> String? {
+  if origin.rel_path == "" ||
+    origin.source_symbol_name == "" ||
+    origin.generated_symbol_name == "" {
+    return None
+  }
+  let identity = WgslIrSymbolIdentity::new(
+    origin.rel_path,
+    origin.source_symbol_name,
+  )
+  if alias_prefixes.length() == 0 {
+    self.assigned_canonical_final_name(identity)
+  } else {
+    self.assigned_final_names.alias_get(
+      WgslIrAliasSymbolIdentity::new(
+        origin.rel_path,
+        alias_prefixes.join("__"),
+        origin.source_symbol_name,
+      ),
+    )
+  }
+}
+
+///|
+fn collect_wgsl_module_final_name_application_plan(
+  session : WgslComposeSession,
+  start_index : Int,
+  alias_prefixes : Array[String],
+) -> WgslModuleFinalNameApplicationPlan {
+  let plan = WgslModuleFinalNameApplicationPlan::new()
+  for i in start_index..<session.source_origins.length() {
+    let origin = session.source_origins[i]
+    match session.assigned_final_name_for_origin(origin, alias_prefixes) {
+      Some(final_name) => plan.push(i, origin, final_name)
+      None => ()
+    }
+  }
+  plan
+}
+
+///|
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
@@ -376,50 +499,20 @@ fn Composer::compose_wgsl_import_requests(
     if module_source == "" {
       continue
     }
-    let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-    for i in origin_start_index..<session.source_origins.length() {
-      let origin = session.source_origins[i]
-      if origin.rel_path != "" &&
-        origin.source_symbol_name != "" &&
-        origin.generated_symbol_name != "" {
-        let identity = WgslIrSymbolIdentity::new(
-          origin.rel_path,
-          origin.source_symbol_name,
-        )
-        let assigned_name = if request_alias_prefixes.length() == 0 {
-          session.assigned_canonical_final_name(identity)
-        } else {
-          session.assigned_final_names.alias_get(
-            WgslIrAliasSymbolIdentity::new(
-              origin.rel_path,
-              request_alias_prefixes.join("__"),
-              origin.source_symbol_name,
-            ),
-          )
-        }
-        match assigned_name {
-          Some(name) =>
-            if name != origin.generated_symbol_name {
-              rename_map.set(origin.generated_symbol_name, name)
-            }
-          None => ()
-        }
-      }
-    }
-    let final_module_source = if !rename_map.is_empty() {
-      rewrite_wgsl_declarations_with_global_rename_map(
-        module_source, rename_map,
+    let final_name_plan = collect_wgsl_module_final_name_application_plan(
+      session, origin_start_index, request_alias_prefixes,
+    )
+    let final_module_source = if !final_name_plan.is_empty() {
+      rewrite_wgsl_declarations_with_binding_plan(
+        module_source,
+        final_name_plan.reference_rewrite_plan(),
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
     } else {
       module_source
     }
-    apply_wgsl_origin_renames(
-      session.source_origins,
-      origin_start_index,
-      rename_map,
-    )
+    final_name_plan.apply_to_origins(session.source_origins)
     if request.alias_name != "" {
       for i in origin_start_index..<session.source_origins.length() {
         let origin = session.source_origins[i]

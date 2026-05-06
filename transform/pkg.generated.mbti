@@ -31,7 +31,7 @@ pub fn normalize_wgsl_composed_declarations_with_binding_plan(String, WgslRefere
 
 pub fn normalize_wgsl_output_identifiers(String) -> String raise @parser.WgslParseError
 
-pub fn rewrite_wgsl_declarations_with_global_rename_map(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
+pub fn rewrite_wgsl_declarations_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_override_targets_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
 

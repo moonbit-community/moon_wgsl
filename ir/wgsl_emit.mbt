@@ -333,6 +333,19 @@ fn WgslIrEmitter::emit_statement(
       }
       out.write_string("\{pad}}\n")
     }
+    Switch(selector, cases) => {
+      out.write_string(
+        "\{pad}switch \{self.function_expression(function, selector)} {\n",
+      )
+      for case in cases {
+        out.write_string(
+          "\{wgsl_ir_indent(indent + 1)}\{wgsl_ir_switch_case_label(case.value)} {\n",
+        )
+        self.emit_block_statements(out, function, case.body, indent + 2)
+        out.write_string("\{wgsl_ir_indent(indent + 1)}}\n")
+      }
+      out.write_string("\{pad}}\n")
+    }
     Break => out.write_string("\{pad}break;\n")
     Continue => out.write_string("\{pad}continue;\n")
     Return(value) =>
@@ -361,6 +374,15 @@ fn WgslIrEmitter::emit_statement(
       out.write_string(");\n")
     }
     _ => raise WgslIrEmitError::Unsupported("statement kind")
+  }
+}
+
+///|
+fn wgsl_ir_switch_case_label(value : SwitchValue) -> String {
+  match value {
+    I32(value) => "case \{value}i"
+    U32(value) => "case \{value}u"
+    Default => "default"
   }
 }
 
