@@ -292,6 +292,7 @@ pub enum Expression {
   GlobalVariable(Handle)
   LocalVariable(Handle)
   Load(Handle)
+  AddressOf(Handle, Handle)
   AtomicCall(AtomicFunction, Array[Handle])
   ImageSample(Handle, Handle, SwizzleComponent?, Handle, Handle?, Handle?, SampleLevel, Handle?, Bool)
   ImageLoad(Handle, Handle, Handle?, Handle?, Handle?)

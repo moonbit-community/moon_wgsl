@@ -295,6 +295,7 @@ pub enum Expression {
   GlobalVariable(Handle)
   LocalVariable(Handle)
   Load(Handle)
+  AddressOf(Handle, Handle)
   AtomicCall(AtomicFunction, Array[Handle])
   ImageSample(
     Handle,

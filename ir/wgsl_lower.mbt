@@ -809,29 +809,53 @@ fn WgslIrLowerer::lower_local_declaration(
   scope : WgslIrFunctionScope,
   block : Block,
 ) -> Unit raise WgslIrLowerError {
+  let mut address_of_ty : Handle? = None
   let init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
-      Some(self.lower_function_expression_ref(expr_ref, function, scope))
+      match wgsl_ir_address_of_operand_ref(expr_ref) {
+        Some(target_ref) => {
+          let target = self.lower_function_lvalue_node(
+            target_ref, function, scope,
+          )
+          let pointer_ty = self.pointer_type_for_lvalue(function, target)
+          address_of_ty = Some(pointer_ty)
+          Some(
+            function.expressions.append(
+              Expression::AddressOf(pointer_ty, target),
+            ),
+          )
+        }
+        None =>
+          Some(self.lower_function_expression_ref(expr_ref, function, scope))
+      }
     None => None
   }
   let ty = match local_decl.ty_ref() {
     Some(ty_ref) => self.lower_type_ref(ty_ref)
     None =>
-      match init {
-        Some(init_handle) =>
-          match self.function_expression_type(function, init_handle) {
-            Some(inferred) => inferred
+      match address_of_ty {
+        Some(pointer_ty) => pointer_ty
+        None =>
+          match init {
+            Some(init_handle) =>
+              match self.address_of_expression_type(function, init_handle) {
+                Some(inferred) => inferred
+                None =>
+                  match self.function_expression_type(function, init_handle) {
+                    Some(inferred) => inferred
+                    None =>
+                      self.infer_local_type_from_initializer(
+                        local_decl.name().name(),
+                        local_decl.initializer_ref(),
+                      )
+                  }
+              }
             None =>
               self.infer_local_type_from_initializer(
                 local_decl.name().name(),
                 local_decl.initializer_ref(),
               )
           }
-        None =>
-          self.infer_local_type_from_initializer(
-            local_decl.name().name(),
-            local_decl.initializer_ref(),
-          )
       }
   }
   let handle = function.local_variables.append(LocalVariable::{
@@ -842,6 +866,45 @@ fn WgslIrLowerer::lower_local_declaration(
   })
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
+}
+
+///|
+fn WgslIrLowerer::address_of_expression_type(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  ignore(self)
+  match function.expressions.items.get(handle.index()) {
+    Some(Expression::AddressOf(ty, _)) => Some(ty)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_address_of_operand_ref(
+  expr_ref : @ast.WgslExprRef,
+) -> @ast.WgslExprNode? {
+  match expr_ref.root() {
+    Some(root) => wgsl_ir_address_of_operand_node(root)
+    None => None
+  }
+}
+
+///|
+fn wgsl_ir_address_of_operand_node(
+  node : @ast.WgslExprNode,
+) -> @ast.WgslExprNode? {
+  match node.kind() {
+    Group(inner) => wgsl_ir_address_of_operand_node(inner)
+    Unary(op, expr) =>
+      if op == @ast.WgslExprOperator::BitAnd {
+        Some(expr)
+      } else {
+        None
+      }
+    _ => None
+  }
 }
 
 ///|
@@ -1761,15 +1824,62 @@ fn WgslIrLowerer::infer_expression_type(
         None =>
           match callee.kind() {
             Identifier(ident) =>
-              self.lower_untemplated_constructor_type_from_ast(
-                ident.name(),
-                arguments,
-                name,
-              )
+              match wgsl_ir_math_function_from_name(ident.name()) {
+                Some(math_function) =>
+                  self.infer_math_expression_type(
+                    math_function, arguments, name,
+                  )
+                None =>
+                  self.lower_untemplated_constructor_type_from_ast(
+                    ident.name(),
+                    arguments,
+                    name,
+                  )
+              }
             _ => raise WgslIrLowerError::MissingType(name)
           }
       }
     _ => raise WgslIrLowerError::MissingType(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::infer_math_expression_type(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  arguments : Array[@ast.WgslExprNode],
+  name : String,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [first, .. rest] else {
+    raise WgslIrLowerError::MissingType(name)
+  }
+  match math_function {
+    Dot | Distance | Length | Determinant =>
+      match self.infer_expression_type(first, name) {
+        ty => self.scalar_type_from_composite_type(ty)
+      }
+    Modf | Frexp => self.infer_expression_type(first, name)
+    _ =>
+      match rest {
+        _ => self.infer_expression_type(first, name)
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::scalar_type_from_composite_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Handle {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(_, scalar) => self.scalar_type_handle(scalar)
+        Matrix(_, _, scalar) => self.scalar_type_handle(scalar)
+        _ => ty_handle
+      }
+    None => ty_handle
   }
 }
 
@@ -2449,8 +2559,19 @@ fn WgslIrLowerer::lower_function_lvalue_node(
             None => raise WgslIrLowerError::UnknownIdentifier(name.name())
           }
       }
+    Group(inner) => self.lower_function_lvalue_node(inner, function, scope)
+    Unary(op, expr) =>
+      if op == @ast.WgslExprOperator::Multiply {
+        self.lower_function_expression_node(expr, function, scope)
+      } else {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "unsupported lvalue shape",
+        )
+      }
     Member(base, member_name) => {
-      let base_handle = self.lower_function_lvalue_node(base, function, scope)
+      let base_handle = self.lower_function_member_lvalue_base(
+        base, function, scope,
+      )
       function.expressions.append(
         Expression::AccessIndex(
           base_handle,
@@ -2475,6 +2596,48 @@ fn WgslIrLowerer::lower_function_lvalue_node(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_member_lvalue_base(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match wgsl_ir_deref_operand(base) {
+    Some(operand) =>
+      self.lower_function_expression_node(operand, function, scope)
+    None => self.lower_function_lvalue_node(base, function, scope)
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_member_value_base(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match wgsl_ir_deref_operand(base) {
+    Some(operand) =>
+      self.lower_function_expression_node(operand, function, scope)
+    None => self.lower_function_expression_node(base, function, scope)
+  }
+}
+
+///|
+fn wgsl_ir_deref_operand(node : @ast.WgslExprNode) -> @ast.WgslExprNode? {
+  match node.kind() {
+    Group(inner) => wgsl_ir_deref_operand(inner)
+    Unary(op, expr) =>
+      if op == @ast.WgslExprOperator::Multiply {
+        Some(expr)
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_function_expression_node(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -2490,7 +2653,17 @@ fn WgslIrLowerer::lower_function_expression_node(
       self.lower_identifier_expression(name.name(), function, scope)
     Unary(op, expr) =>
       if op == @ast.WgslExprOperator::BitAnd {
-        self.lower_function_lvalue_node(expr, function, scope)
+        let target = self.lower_function_lvalue_node(expr, function, scope)
+        function.expressions.append(
+          Expression::AddressOf(
+            self.pointer_type_for_lvalue(function, target),
+            target,
+          ),
+        )
+      } else if op == @ast.WgslExprOperator::Multiply {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "standalone pointer dereference",
+        )
       } else {
         function.expressions.append(
           Expression::Unary(
@@ -2511,7 +2684,7 @@ fn WgslIrLowerer::lower_function_expression_node(
     Sequence([single]) =>
       self.lower_function_expression_node(single, function, scope)
     Member(base, member_name) => {
-      let base_handle = self.lower_function_expression_node(
+      let base_handle = self.lower_function_member_value_base(
         base, function, scope,
       )
       self.lower_member_expression(function, base_handle, member_name.name())
@@ -2932,7 +3105,10 @@ fn WgslIrLowerer::lower_composite_type_ref(
         TypeInner::BindingArray(self.lower_type_ref(element_ty), size),
       )
     }
-    _ => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+    _ =>
+      raise WgslIrLowerError::UnsupportedType(
+        "\{ty_ref.canonical_text()} before \{ty_ref.end()}",
+      )
   }
 }
 
@@ -3703,7 +3879,8 @@ fn WgslIrLowerer::member_index_for_expression(
 ) -> Int raise WgslIrLowerError {
   match self.function_expression_type(function, expression_handle) {
     Some(ty_handle) =>
-      match self.shader_module.types.get(ty_handle) {
+      match
+        self.shader_module.types.get(self.deref_pointer_type_handle(ty_handle)) {
         Some(ty) =>
           match ty.inner {
             Struct(members, _) =>
@@ -3719,6 +3896,95 @@ fn WgslIrLowerer::member_index_for_expression(
         None => wgsl_ir_member_index(member_name)
       }
     None => wgsl_ir_member_index(member_name)
+  }
+}
+
+///|
+fn WgslIrLowerer::deref_pointer_type_handle(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Handle {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Pointer(inner, _) => self.deref_pointer_type_handle(inner)
+        _ => ty_handle
+      }
+    None => ty_handle
+  }
+}
+
+///|
+fn WgslIrLowerer::pointer_type_for_lvalue(
+  self : WgslIrLowerer,
+  function : Function,
+  target : Handle,
+) -> Handle raise WgslIrLowerError {
+  guard self.function_expression_type(function, target) is Some(value_ty) else {
+    raise WgslIrLowerError::MissingType("address-of target")
+  }
+  let space = self.address_space_for_lvalue(function, target)
+  let key = "ptr<\{wgsl_ir_address_space_key(space)}, \{self.type_key(value_ty)}>"
+  let handle = self.shader_module.append_type(Type::{
+    name: Some(key),
+    inner: TypeInner::Pointer(value_ty, space),
+  })
+  self.type_cache.set(key, handle)
+  handle
+}
+
+///|
+fn WgslIrLowerer::address_space_for_lvalue(
+  self : WgslIrLowerer,
+  function : Function,
+  target : Handle,
+) -> AddressSpace {
+  match function.expressions.items.get(target.index()) {
+    Some(expression) =>
+      match expression {
+        LocalVariable(_) => AddressSpace::Function
+        GlobalVariable(handle) =>
+          match self.shader_module.global_variables.items.get(handle.index()) {
+            Some(global) => global.space
+            None => AddressSpace::Function
+          }
+        FunctionArgument(index) =>
+          match function.arguments.get(index) {
+            Some(argument) => self.address_space_from_pointer_type(argument.ty)
+            None => AddressSpace::Function
+          }
+        Access(base, _) | AccessIndex(base, _) =>
+          self.address_space_for_lvalue(function, base)
+        _ => AddressSpace::Function
+      }
+    None => AddressSpace::Function
+  }
+}
+
+///|
+fn WgslIrLowerer::address_space_from_pointer_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> AddressSpace {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Pointer(_, space) => space
+        _ => AddressSpace::Function
+      }
+    None => AddressSpace::Function
+  }
+}
+
+///|
+fn WgslIrLowerer::type_key(self : WgslIrLowerer, ty_handle : Handle) -> String {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.name {
+        Some(name) => name
+        None => "type#\{ty_handle.index()}"
+      }
+    None => "type#\{ty_handle.index()}"
   }
 }
 
@@ -3836,6 +4102,7 @@ fn WgslIrLowerer::function_expression_inner_type(
         None => None
       }
     Load(inner) => self.function_expression_type(function, inner)
+    Expression::AddressOf(ty, _) => Some(ty)
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
     AccessIndex(base, index) =>
       self.indexed_expression_type(function, base, Some(index))
@@ -4173,7 +4440,16 @@ fn WgslIrLowerer::indexed_expression_type(
   guard self.function_expression_type(function, base) is Some(base_ty) else {
     return None
   }
-  match self.shader_module.types.get(base_ty) {
+  self.indexed_type_from_type_handle(base_ty, index)
+}
+
+///|
+fn WgslIrLowerer::indexed_type_from_type_handle(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+  index : Int?,
+) -> Handle? {
+  match self.shader_module.types.get(ty_handle) {
     Some(ty) =>
       match ty.inner {
         Struct(members, _) =>
@@ -4187,7 +4463,7 @@ fn WgslIrLowerer::indexed_expression_type(
           }
         Vector(_, scalar) => Some(self.scalar_type_handle(scalar))
         Array(element, _, _) | BindingArray(element, _) => Some(element)
-        Pointer(inner, _) => Some(inner)
+        Pointer(inner, _) => self.indexed_type_from_type_handle(inner, index)
         _ => None
       }
     None => None
@@ -4562,6 +4838,34 @@ fn wgsl_ir_address_space_from_type_name(name : String) -> AddressSpace {
     "handle" => AddressSpace::Handle
     "immediate" => AddressSpace::Immediate
     _ => AddressSpace::Private
+  }
+}
+
+///|
+fn wgsl_ir_address_space_key(space : AddressSpace) -> String {
+  match space {
+    Function => "function"
+    Private => "private"
+    WorkGroup => "workgroup"
+    Uniform => "uniform"
+    Storage(access) => "storage,\{wgsl_ir_storage_access_key(access)}"
+    Handle => "handle"
+    Immediate => "immediate"
+    TaskPayload => "task_payload"
+    RayPayload => "ray_payload"
+    IncomingRayPayload => "incoming_ray_payload"
+  }
+}
+
+///|
+fn wgsl_ir_storage_access_key(access : StorageAccess) -> String {
+  if access.contains(StorageAccess::load()) &&
+    access.contains(StorageAccess::store()) {
+    "read_write"
+  } else if access.contains(StorageAccess::store()) {
+    "write"
+  } else {
+    "read"
   }
 }
 

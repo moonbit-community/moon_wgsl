@@ -291,6 +291,10 @@ fn WgslIrValidator::validate_global_expression(
     AccessIndex(base, _) => self.validate_global_expression_handle(base)
     GlobalVariable(handle) => self.require_global_variable(handle)
     Load(pointer) => self.validate_global_expression_handle(pointer)
+    AddressOf(ty, target) => {
+      self.require_type(ty)
+      self.validate_global_expression_handle(target)
+    }
     Unary(_, expr) => self.validate_global_expression_handle(expr)
     Binary(_, left, right) => {
       self.validate_global_expression_handle(left)
@@ -342,6 +346,10 @@ fn WgslIrValidator::validate_function_expression(
     GlobalVariable(handle) => self.require_global_variable(handle)
     LocalVariable(handle) => self.require_local_variable(function, handle)
     Load(pointer) => self.validate_function_expression_handle(function, pointer)
+    AddressOf(ty, target) => {
+      self.require_type(ty)
+      self.validate_function_expression_handle(function, target)
+    }
     Unary(_, expr) => self.validate_function_expression_handle(function, expr)
     Binary(_, left, right) => {
       self.validate_function_expression_handle(function, left)

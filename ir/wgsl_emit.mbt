@@ -356,17 +356,26 @@ fn WgslIrEmitter::emit_local_declaration(
     out.write_string(": \{self.type_name(local_var.ty)}")
   }
   match local_var.init {
-    Some(init) =>
-      if self.type_is_pointer(local_var.ty) {
+    Some(init) => {
+      let init_expr = self.function_expression(function, init)
+      if self.type_is_pointer(local_var.ty) &&
+        wgsl_ir_expression_text_needs_address(init_expr) &&
+        !self.expression_is_pointer(Some(function), init) {
         out.write_string(
           " = &\{self.function_pointer_expression(function, init)}",
         )
       } else {
-        out.write_string(" = \{self.function_expression(function, init)}")
+        out.write_string(" = \{init_expr}")
       }
+    }
     None => ()
   }
   out.write_string(";\n")
+}
+
+///|
+fn wgsl_ir_expression_text_needs_address(text : String) -> Bool {
+  text.length() == 0 || text[0:1] != "&"
 }
 
 ///|
@@ -621,6 +630,12 @@ fn WgslIrEmitter::emit_expression(
     GlobalVariable(handle) => self.global_variable_name(handle)
     LocalVariable(handle) => self.local_variable_name(function, handle)
     Load(pointer) => self.required_function_expression(function, pointer)
+    AddressOf(_, target) =>
+      match function {
+        Some(func) => "&\{self.function_pointer_expression(func, target)}"
+        None =>
+          raise WgslIrEmitError::Unsupported("global address-of expression")
+      }
     AtomicCall(atomic_function, arguments) =>
       self.atomic_call_expression(function, atomic_function, arguments)
     ImageSample(
@@ -938,7 +953,10 @@ fn WgslIrEmitter::member_name_for_expression(
 ) -> String raise WgslIrEmitError {
   match self.expression_type(function, base) {
     Some(ty_handle) =>
-      match self.shader_module.types.items.get(ty_handle.index()) {
+      match
+        self.shader_module.types.items.get(
+          self.deref_pointer_type_handle(ty_handle).index(),
+        ) {
         Some(ty) =>
           match ty.inner {
             Struct(members, _) =>
@@ -955,6 +973,21 @@ fn WgslIrEmitter::member_name_for_expression(
         None => wgsl_ir_swizzle_component(index)
       }
     None => wgsl_ir_swizzle_component(index)
+  }
+}
+
+///|
+fn WgslIrEmitter::deref_pointer_type_handle(
+  self : WgslIrEmitter,
+  ty_handle : Handle,
+) -> Handle {
+  match self.shader_module.types.items.get(ty_handle.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Pointer(inner, _) => self.deref_pointer_type_handle(inner)
+        _ => ty_handle
+      }
+    None => ty_handle
   }
 }
 
@@ -1009,6 +1042,7 @@ fn WgslIrEmitter::function_expression_inner_type(
         Some(local_variable) => Some(local_variable.ty)
         None => None
       }
+    AddressOf(ty, _) => Some(ty)
     GlobalVariable(handle) =>
       match self.shader_module.global_variables.items.get(handle.index()) {
         Some(global) => Some(global.ty)
@@ -1101,7 +1135,16 @@ fn WgslIrEmitter::indexed_expression_type(
   guard self.expression_type(function, base) is Some(base_ty) else {
     return None
   }
-  match self.shader_module.types.items.get(base_ty.index()) {
+  self.indexed_type_from_type_handle(base_ty, index)
+}
+
+///|
+fn WgslIrEmitter::indexed_type_from_type_handle(
+  self : WgslIrEmitter,
+  ty_handle : Handle,
+  index : Int?,
+) -> Handle? {
+  match self.shader_module.types.items.get(ty_handle.index()) {
     Some(ty) =>
       match ty.inner {
         Struct(members, _) =>
@@ -1115,7 +1158,7 @@ fn WgslIrEmitter::indexed_expression_type(
           }
         Vector(_, scalar) => self.find_vector_scalar_type(scalar)
         Array(element, _, _) | BindingArray(element, _) => Some(element)
-        Pointer(inner, _) => Some(inner)
+        Pointer(inner, _) => self.indexed_type_from_type_handle(inner, index)
         _ => None
       }
     None => None

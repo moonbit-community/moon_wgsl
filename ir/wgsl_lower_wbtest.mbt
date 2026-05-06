@@ -119,6 +119,36 @@ test "WGSL AST lowerer preserves compound assignment semantics in IR" {
 }
 
 ///|
+test "WGSL AST lowerer supports pointer dereference member lvalues" {
+  let source =
+    #|struct PbrInput {
+    #|  value: u32,
+    #|}
+    #|
+    #|fn apply_decals(pbr_input: ptr<function, PbrInput>) {
+    #|  (*pbr_input).value = (*pbr_input).value + 1u;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) u32 {
+    #|  var pbr_input: PbrInput;
+    #|  apply_decals(&pbr_input);
+    #|  return pbr_input.value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("pbr_input.value = (pbr_input.value + 1u);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("apply_decals(&pbr_input);"), content="true")
+}
+
+///|
 test "WGSL AST lowerer supports function call expressions" {
   let source =
     #|fn helper() -> u32 {

@@ -121,7 +121,10 @@ fn main {
       composer.compose_wgsl(entry, options)
     }
   } catch {
-    err => abort("failed to compose WGSL: \{err.message()}")
+    err => {
+      println("failed to compose WGSL: \{err.message()}")
+      abort("failed to compose WGSL")
+    }
   }
   match args.output {
     Some(path) =>

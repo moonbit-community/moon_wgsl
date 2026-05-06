@@ -28,17 +28,33 @@ echo "== WGSL validation: upstream compute export =="
 emit_case upstream-compute "$tmpdir/upstream_compute.wgsl"
 validate_wgsl "$tmpdir/upstream_compute.wgsl"
 
+echo "== WGSL validation: upstream compute IR export =="
+emit_case upstream-compute-ir "$tmpdir/upstream_compute_ir.wgsl"
+validate_wgsl "$tmpdir/upstream_compute_ir.wgsl"
+
 echo "== WGSL validation: issue 8 alias binding compose =="
 emit_case bevy-issue8 "$tmpdir/bevy_issue8.wgsl"
 validate_wgsl "$tmpdir/bevy_issue8.wgsl"
+
+echo "== WGSL validation: issue 8 alias binding IR compose =="
+emit_case bevy-issue8-ir "$tmpdir/bevy_issue8_ir.wgsl"
+validate_wgsl "$tmpdir/bevy_issue8_ir.wgsl"
 
 echo "== WGSL validation: issue 9 imported type identity =="
 emit_case issue9-type-identity "$tmpdir/issue9_type_identity.wgsl"
 validate_wgsl "$tmpdir/issue9_type_identity.wgsl"
 
+echo "== WGSL validation: issue 9 imported type identity IR compose =="
+emit_case issue9-type-identity-ir "$tmpdir/issue9_type_identity_ir.wgsl"
+validate_wgsl "$tmpdir/issue9_type_identity_ir.wgsl"
+
 echo "== WGSL validation: issue 13 nested alias global identity =="
 emit_case issue13-nested-alias-global "$tmpdir/issue13_nested_alias_global.wgsl"
 validate_wgsl "$tmpdir/issue13_nested_alias_global.wgsl"
+
+echo "== WGSL validation: issue 13 nested alias global identity IR compose =="
+emit_case issue13-nested-alias-global-ir "$tmpdir/issue13_nested_alias_global_ir.wgsl"
+validate_wgsl "$tmpdir/issue13_nested_alias_global_ir.wgsl"
 
 echo "== WGSL validation: Bevy PBR functions compose =="
 emit_case bevy-pbr-functions "$tmpdir/bevy_pbr_functions.wgsl"

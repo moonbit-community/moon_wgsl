@@ -91,6 +91,28 @@ fn validation_upstream_compute_source() -> String {
 }
 
 ///|
+fn validation_upstream_compute_ir_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source_tree(
+    "testdata/upstream_compose/compute_test",
+    @common.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected upstream compute fixture registration success")
+  }
+  let output = @export.export_wgsl_with_options_ir(
+    composer,
+    "compute_test.wgsl",
+    validation_compose_options(validation_empty_defines()),
+    { root_items: ["run_test"] },
+  ) catch {
+    err =>
+      abort("expected upstream compute IR export success: \{err.message()}")
+  }
+  output.source
+}
+
+///|
 fn validation_bevy_issue8_source() -> String {
   let composer = @compose.Composer::default()
   composer.register_source(
@@ -124,6 +146,39 @@ fn validation_bevy_issue8_source() -> String {
 }
 
 ///|
+fn validation_bevy_issue8_ir_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "struct ClusteredLights { value: u32 }\n" +
+    "@group(0) @binding(0) var<storage, read> clustered_lights: ClusteredLights;\n",
+  )
+  composer.register_source(
+    "pbr_lighting.wgsl",
+    "#define_import_path bevy_pbr::pbr_lighting\n" +
+    "#import bevy_pbr::mesh_view_bindings as view_bindings\n" +
+    "fn read_clustered_light() -> u32 {\n" +
+    "  return view_bindings::clustered_lights.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#import bevy_pbr::pbr_lighting as lighting\n" +
+    "@fragment\n" +
+    "fn fragment_main() -> @location(0) u32 {\n" +
+    "  return lighting::read_clustered_light();\n" +
+    "}\n",
+  )
+  composer.compose_wgsl_ir(
+    "root.wgsl",
+    validation_compose_options(validation_empty_defines()),
+  ) catch {
+    err => abort("expected issue 8 IR compose success: \{err.message()}")
+  }
+}
+
+///|
 fn validation_bevy_pbr_functions_source() -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
@@ -141,6 +196,27 @@ fn validation_bevy_pbr_functions_source() -> String {
   }) catch {
     err =>
       abort("expected Bevy PBR functions compose success: \{err.message()}")
+  }
+}
+
+///|
+fn validation_bevy_pbr_functions_ir_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source_tree(
+    "testdata/bevy_wgsl",
+    @common.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected Bevy fixture registration success")
+  }
+  composer.compose_wgsl_ir("bevy_pbr/src/render/pbr_functions.wgsl", {
+    defines: validation_bool_defines(validation_bevy_forward_defines()),
+    value_defines: validation_bevy_value_defines(),
+    redirects: [],
+    additional_imports: [],
+  }) catch {
+    err =>
+      abort("expected Bevy PBR functions IR compose success: \{err.message()}")
   }
 }
 
@@ -196,6 +272,57 @@ fn validation_issue9_type_identity_source() -> String {
 }
 
 ///|
+fn validation_issue9_type_identity_ir_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "pbr_types.wgsl",
+    "#define_import_path bevy_pbr::pbr_types\n" +
+    "struct PbrInput { value: u32 }\n" +
+    "fn pbr_input_new() -> PbrInput {\n" +
+    "  var input: PbrInput;\n" +
+    "  input.value = 1u;\n" +
+    "  return input;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr_fragment.wgsl",
+    "#define_import_path bevy_pbr::pbr_fragment\n" +
+    "#import bevy_pbr::pbr_types as pbr_types\n" +
+    "fn pbr_input_from_standard_material() -> pbr_types::PbrInput {\n" +
+    "  return pbr_types::pbr_input_new();\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "clustered.wgsl",
+    "#define_import_path bevy_pbr::decal::clustered\n" +
+    "#import bevy_pbr::pbr_types::PbrInput\n" +
+    "fn apply_decals(pbr_input: ptr<function, PbrInput>) {\n" +
+    "  (*pbr_input).value = (*pbr_input).value + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr.wgsl",
+    "#import bevy_pbr::{\n" +
+    "  pbr_types,\n" +
+    "  pbr_fragment::pbr_input_from_standard_material,\n" +
+    "  decal::clustered::apply_decals,\n" +
+    "}\n" +
+    "@fragment\n" +
+    "fn fragment() -> @location(0) u32 {\n" +
+    "  var pbr_input = pbr_input_from_standard_material();\n" +
+    "  apply_decals(&pbr_input);\n" +
+    "  return pbr_input.value;\n" +
+    "}\n",
+  )
+  composer.compose_wgsl_ir(
+    "pbr.wgsl",
+    validation_compose_options(validation_empty_defines()),
+  ) catch {
+    err => abort("expected issue 9 IR compose success: \{err.message()}")
+  }
+}
+
+///|
 fn validation_issue13_nested_alias_global_source() -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
@@ -242,11 +369,57 @@ fn validation_issue13_nested_alias_global_source() -> String {
 }
 
 ///|
+fn validation_issue13_nested_alias_global_ir_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source(
+    "bevy_pbr/src/render/mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "struct View { value: f32 }\n" +
+    "@group(0) @binding(0) var<uniform> view: View;\n",
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/shadows.wgsl",
+    "#define_import_path bevy_pbr::shadows\n" +
+    "#import bevy_pbr::mesh_view_bindings as view_bindings\n" +
+    "fn shadow_value() -> f32 {\n" +
+    "  return view_bindings::view.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/pbr_functions.wgsl",
+    "#define_import_path bevy_pbr::pbr_functions\n" +
+    "#import bevy_pbr::{\n" +
+    "  mesh_view_bindings as view_bindings,\n" +
+    "  shadows,\n" +
+    "}\n" +
+    "fn pbr_value() -> f32 {\n" +
+    "  return view_bindings::view.value + shadows::shadow_value();\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/pbr.wgsl",
+    "#define_import_path bevy_pbr::pbr\n" +
+    "#import bevy_pbr::pbr_functions::pbr_value\n" +
+    "@fragment\n" +
+    "fn fragment() -> @location(0) f32 {\n" +
+    "  return pbr_value();\n" +
+    "}\n",
+  )
+  composer.compose_wgsl_ir(
+    "bevy_pbr/src/render/pbr.wgsl",
+    validation_compose_options(validation_empty_defines()),
+  ) catch {
+    err => abort("expected issue 13 IR compose success: \{err.message()}")
+  }
+}
+
+///|
 fn validation_case_arg() -> String {
   let args = @env.args()
   if args.length() == 0 {
     abort(
-      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity|issue13-nested-alias-global",
+      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-compute-ir|bevy-issue8|bevy-issue8-ir|bevy-pbr-functions|bevy-pbr-functions-ir|issue9-type-identity|issue9-type-identity-ir|issue13-nested-alias-global|issue13-nested-alias-global-ir",
     )
   }
   args[args.length() - 1]
@@ -257,14 +430,20 @@ fn main {
   let source = match validation_case_arg() {
     "writer-boundary" => validation_writer_boundary_source()
     "upstream-compute" => validation_upstream_compute_source()
+    "upstream-compute-ir" => validation_upstream_compute_ir_source()
     "bevy-issue8" => validation_bevy_issue8_source()
+    "bevy-issue8-ir" => validation_bevy_issue8_ir_source()
     "bevy-pbr-functions" => validation_bevy_pbr_functions_source()
+    "bevy-pbr-functions-ir" => validation_bevy_pbr_functions_ir_source()
     "issue9-type-identity" => validation_issue9_type_identity_source()
+    "issue9-type-identity-ir" => validation_issue9_type_identity_ir_source()
     "issue13-nested-alias-global" =>
       validation_issue13_nested_alias_global_source()
+    "issue13-nested-alias-global-ir" =>
+      validation_issue13_nested_alias_global_ir_source()
     _ =>
       abort(
-        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity|issue13-nested-alias-global",
+        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-compute-ir|bevy-issue8|bevy-issue8-ir|bevy-pbr-functions|bevy-pbr-functions-ir|issue9-type-identity|issue9-type-identity-ir|issue13-nested-alias-global|issue13-nested-alias-global-ir",
       )
   }
   println(source)
