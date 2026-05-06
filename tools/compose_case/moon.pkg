@@ -1,0 +1,11 @@
+import {
+  "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/compose",
+  "moonbitlang/core/env",
+  "moonbitlang/core/hashmap",
+  "moonbitlang/x/fs",
+}
+
+options(
+  "is-main": true,
+)

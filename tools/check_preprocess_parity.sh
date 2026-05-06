@@ -14,13 +14,15 @@ oracle() {
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin naga_oil_oracle -- "$@"
 }
 
-diff_normalized() {
+diff_exact() {
   local expected="$1"
   local actual="$2"
   local label="$3"
-  perl -pe 's/\r$//' "$expected" > "$tmpdir/$label.expected"
-  perl -pe 's/\r$//' "$actual" > "$tmpdir/$label.actual"
-  diff -u "$tmpdir/$label.expected" "$tmpdir/$label.actual"
+  if LC_ALL=C grep -q $'\r' "$expected"; then
+    printf 'expected fixture %s contains CR bytes; byte-exact parity fixtures must match oracle output bytes\n' "$label" >&2
+    exit 1
+  fi
+  diff -u "$expected" "$actual"
 }
 
 assert_contains() {
@@ -97,7 +99,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/simple \
   --entry top.wgsl \
   --output "$tmpdir/simple_compose.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/simple_compose.txt \
   "$tmpdir/simple_compose.wgsl" \
   simple_compose
@@ -108,7 +110,7 @@ oracle \
   --entry top.wgsl \
   --additional-import plugin \
   --output "$tmpdir/additional_import.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/additional_import.txt \
   "$tmpdir/additional_import.wgsl" \
   additional_import
@@ -123,7 +125,7 @@ oracle \
   --entry top.wgsl \
   "${big_shaderdef_args[@]}" \
   --output "$tmpdir/big_shaderdefs.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/big_shaderdefs.txt \
   "$tmpdir/big_shaderdefs.wgsl" \
   big_shaderdefs
@@ -134,7 +136,7 @@ oracle \
   --entry top.wgsl \
   --def USE_A \
   --output "$tmpdir/conditional_import_a.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/conditional_import_a.txt \
   "$tmpdir/conditional_import_a.wgsl" \
   conditional_import_a
@@ -144,7 +146,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/conditional_import \
   --entry top.wgsl \
   --output "$tmpdir/conditional_import_b.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/conditional_import_b.txt \
   "$tmpdir/conditional_import_b.wgsl" \
   conditional_import_b
@@ -158,7 +160,7 @@ if oracle \
   echo "expected oracle conditional missing import failure, got success" >&2
   exit 1
 fi
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/conditional_missing_import.txt \
   "$tmpdir/conditional_missing_import.txt" \
   conditional_missing_import
@@ -172,7 +174,7 @@ if oracle \
   echo "expected oracle conditional nested missing import failure, got success" >&2
   exit 1
 fi
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/conditional_missing_import_nested.txt \
   "$tmpdir/conditional_missing_import_nested.txt" \
   conditional_missing_import_nested
@@ -182,7 +184,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/dup_import \
   --entry top.wgsl \
   --output "$tmpdir/dup_import.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/dup_import.txt \
   "$tmpdir/dup_import.wgsl" \
   dup_import
@@ -192,7 +194,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/dup_struct_import \
   --entry top.wgsl \
   --output "$tmpdir/dup_struct_import.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/dup_struct_import.txt \
   "$tmpdir/dup_struct_import.wgsl" \
   dup_struct_import
@@ -202,7 +204,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/const_in_decl \
   --entry top.wgsl \
   --output "$tmpdir/import_in_decl.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/import_in_decl.txt \
   "$tmpdir/import_in_decl.wgsl" \
   import_in_decl
@@ -212,7 +214,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/item_import \
   --entry top.wgsl \
   --output "$tmpdir/item_import.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/item_import_test.txt \
   "$tmpdir/item_import.wgsl" \
   item_import
@@ -222,7 +224,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/item_sub_point \
   --entry top.wgsl \
   --output "$tmpdir/item_sub_point.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/item_sub_point.txt \
   "$tmpdir/item_sub_point.wgsl" \
   item_sub_point
@@ -232,7 +234,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/quoted_dup \
   --entry top.wgsl \
   --output "$tmpdir/quoted_dup.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/test_quoted_import_dup_name.txt \
   "$tmpdir/quoted_dup.wgsl" \
   quoted_dup
@@ -242,7 +244,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/use_shared_global \
   --entry top.wgsl \
   --output "$tmpdir/use_shared_global.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/use_shared_global.txt \
   "$tmpdir/use_shared_global.wgsl" \
   use_shared_global
@@ -252,7 +254,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/call_entrypoint \
   --entry top.wgsl \
   --output "$tmpdir/wgsl_call_entrypoint.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_entrypoint.txt \
   "$tmpdir/wgsl_call_entrypoint.wgsl" \
   wgsl_call_entrypoint
@@ -262,7 +264,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/glsl \
   --entry top.wgsl \
   --output "$tmpdir/wgsl_call_glsl.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_glsl.txt \
   "$tmpdir/wgsl_call_glsl.wgsl" \
   wgsl_call_glsl
@@ -273,7 +275,7 @@ oracle \
   --entry top.glsl \
   --shader-type glsl-vertex \
   --output "$tmpdir/glsl_call_wgsl.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/glsl_call_wgsl.txt \
   "$tmpdir/glsl_call_wgsl.wgsl" \
   glsl_call_wgsl
@@ -285,7 +287,7 @@ oracle \
   --shader-type glsl-fragment \
   --module consts.glsl \
   --output "$tmpdir/glsl_const_import.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/glsl_const_import.txt \
   "$tmpdir/glsl_const_import.wgsl" \
   glsl_const_import
@@ -296,7 +298,7 @@ oracle \
   --entry top.wgsl \
   --module consts.glsl \
   --output "$tmpdir/glsl_wgsl_const_import.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/glsl_wgsl_const_import.txt \
   "$tmpdir/glsl_wgsl_const_import.wgsl" \
   glsl_wgsl_const_import
@@ -308,7 +310,7 @@ oracle \
   --shader-type glsl-fragment \
   --module consts.wgsl \
   --output "$tmpdir/wgsl_glsl_const_import.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_glsl_const_import.txt \
   "$tmpdir/wgsl_glsl_const_import.wgsl" \
   wgsl_glsl_const_import
@@ -326,7 +328,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/problematic_expressions \
   --entry top.wgsl \
   --output "$tmpdir/problematic_expressions.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/problematic_expressions.txt \
   "$tmpdir/problematic_expressions.wgsl" \
   problematic_expressions
@@ -336,7 +338,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/atomics \
   --entry top.wgsl \
   --output "$tmpdir/atomics.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/atomics.txt \
   "$tmpdir/atomics.wgsl" \
   atomics
@@ -346,7 +348,7 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/invalid_identifiers \
   --entry top_valid.wgsl \
   --output "$tmpdir/bad_identifiers.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/bad_identifiers.txt \
   "$tmpdir/bad_identifiers.wgsl" \
   bad_identifiers
@@ -360,7 +362,7 @@ if oracle \
   echo "expected oracle invalid override failure, got success" >&2
   exit 1
 fi
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/invalid_override_base.txt \
   "$tmpdir/invalid_override_base.txt" \
   invalid_override_base
@@ -375,7 +377,7 @@ if oracle \
   echo "expected oracle missing import failure, got success" >&2
   exit 1
 fi
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/missing_import.txt \
   "$tmpdir/missing_import.txt" \
   missing_import
@@ -386,7 +388,7 @@ oracle \
   --entry blending.wgsl \
   --capability dual-source-blending \
   --output "$tmpdir/wgsl_dual_source_blending.wgsl"
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_dual_source_blending.txt \
   "$tmpdir/wgsl_dual_source_blending.wgsl" \
   wgsl_dual_source_blending
@@ -426,7 +428,7 @@ if oracle \
   echo "expected oracle parse diagnostic failure, got success" >&2
   exit 1
 fi
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/err_parse.txt \
   "$tmpdir/err_parse.txt" \
   err_parse
@@ -441,7 +443,7 @@ if oracle \
   echo "expected oracle validation diagnostic failure, got success" >&2
   exit 1
 fi
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/err_validation_1.txt \
   "$tmpdir/err_validation_1.txt" \
   err_validation_1
@@ -457,7 +459,7 @@ if oracle \
   echo "expected oracle wrapped validation diagnostic failure, got success" >&2
   exit 1
 fi
-diff_normalized \
+diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/err_validation_2.txt \
   "$tmpdir/err_validation_2.txt" \
   err_validation_2
