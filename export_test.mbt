@@ -171,6 +171,40 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
 }
 
 ///|
+test "naga_oil: export_wgsl_ir emits through IR before tree-shaking" {
+  register_export_test_shaders()
+  let output = @export.export_wgsl_with_options_ir(
+    export_test_composer(),
+    "shaders/effects/main.wgsl",
+    export_test_compose_options(export_test_empty_defines(), []),
+    { root_items: ["shade"] },
+  ) catch {
+    err => abort("expected IR export success: \{err.message()}")
+  }
+  debug_inspect(output.source.contains("struct SharedParams"), content="true")
+  debug_inspect(output.source.contains("struct SharedVertex"), content="true")
+  debug_inspect(output.source.contains("fn build_color"), content="true")
+  debug_inspect(output.source.contains("fn shade"), content="true")
+  debug_inspect(output.source.contains("unused_helper"), content="false")
+  debug_inspect(output.source.contains("#import"), content="false")
+  debug_inspect(output.source_catalog.length(), content="4")
+  debug_inspect(output.source_origins.length(), content="4")
+  debug_inspect(output.source_map.length(), content="4")
+  debug_inspect(output.diagnostics.length(), content="0")
+
+  let mapped_paths : Array[String] = []
+  for entry in output.source_map {
+    mapped_paths.push(entry.rel_path)
+  }
+  mapped_paths.sort()
+  debug_inspect(
+    mapped_paths.join(","),
+    content="\"shaders/effects/main.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl,shaders/shared/common.wgsl\"",
+  )
+  clear_export_test_registry()
+}
+
+///|
 test "naga_oil: export rejects invalid struct member identifiers before emission" {
   register_invalid_struct_member_export_test_shaders()
   let mut message = ""

@@ -242,12 +242,32 @@ fn compose_wgsl_source_via_ir(source : String) -> String raise ComposerError {
 }
 
 ///|
+pub fn Composer::prepare_wgsl_source_ir(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> PreparedWgslSource raise ComposerError {
+  let prepared = self.prepare_wgsl_source(rel, options)
+  let ir_source = compose_wgsl_source_via_ir(prepared.source)
+  let source_files : Array[WgslSourceFile] = [
+    { rel_path: normalize_shader_rel_path(rel), source: ir_source },
+  ]
+  PreparedWgslSource::new(
+    ir_source,
+    source_files,
+    build_prepared_wgsl_source_catalog(source_files.copy()),
+    prepared.source_origins,
+    prepared.diagnostics,
+  )
+}
+
+///|
 pub fn Composer::compose_wgsl_ir(
   self : Composer,
   rel : String,
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
-  compose_wgsl_source_via_ir(self.compose_wgsl(rel, options))
+  self.prepare_wgsl_source_ir(rel, options).source
 }
 
 ///|

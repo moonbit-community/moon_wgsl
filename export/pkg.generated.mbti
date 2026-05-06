@@ -9,6 +9,8 @@ import {
 // Values
 pub fn export_wgsl_with_options(@compose.Composer, String, @common.WgslComposeOptions, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
 
+pub fn export_wgsl_with_options_ir(@compose.Composer, String, @common.WgslComposeOptions, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
+
 // Errors
 
 // Types and methods
