@@ -38,9 +38,6 @@ using @ast {
 }
 
 ///|
-using @common {type WgslImportTarget}
-
-///|
 using @directive_syntax {
   parse_wgsl_directive_line,
   parse_wgsl_directive_line_at,
@@ -52,9 +49,7 @@ using @lex {
   replace_comments,
   replace_comments_naga_oil,
   naga_oil_raw_import_brace_balance_next,
-  tokenize,
   tokenize_wgsl,
-  utf8_byte_length,
   wgsl_blankspace_code_point,
   wgsl_regex_trim_whitespace,
   wgsl_regex_word_text,

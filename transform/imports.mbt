@@ -47,7 +47,7 @@ using @common {
 }
 
 ///|
-using @parser {
+using @import_syntax {
   type ParseImportsError,
   parse_wgsl_import_spec_is_empty_or_final_semicolon,
   parse_wgsl_import_targets,

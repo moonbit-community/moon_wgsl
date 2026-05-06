@@ -7,6 +7,7 @@ import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/directive",
   "Milky2018/moon_wgsl/directive_syntax",
+  "Milky2018/moon_wgsl/import_syntax",
   "Milky2018/moon_wgsl/parser",
   "Milky2018/moon_wgsl/lex",
   "moonbitlang/core/hashmap",

@@ -3,6 +3,7 @@ package "Milky2018/moon_wgsl/transform"
 
 import {
   "Milky2018/moon_wgsl/common",
+  "Milky2018/moon_wgsl/import_syntax",
   "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/hashmap",
 }
@@ -62,7 +63,7 @@ pub fn WgslEmittedDeclaration::name(Self) -> String
 pub struct WgslImportSubstitutionState {
   // private fields
 }
-pub fn WgslImportSubstitutionState::declare_imports(Self, String) -> Unit raise @parser.ParseImportsError
+pub fn WgslImportSubstitutionState::declare_imports(Self, String) -> Unit raise @import_syntax.ParseImportsError
 pub fn WgslImportSubstitutionState::default() -> Self
 pub fn WgslImportSubstitutionState::rewrite_source(Self, String, Int, Array[@common.ImportDefWithOffset], Bool) -> String raise WgslImportSubstitutionError
 

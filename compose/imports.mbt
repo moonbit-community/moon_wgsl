@@ -52,11 +52,12 @@ using @resolver {
 using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|
-using @parser {
-  type WgslParseError,
+using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
+
+///|
+using @import_syntax {
   parse_wgsl_import_spec_is_empty_or_final_semicolon,
   parse_wgsl_import_targets,
-  parse_wgsl_translation_unit_strict,
 }
 
 ///|

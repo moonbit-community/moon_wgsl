@@ -3,21 +3,12 @@ package "Milky2018/moon_wgsl/parser"
 
 import {
   "Milky2018/moon_wgsl/ast",
-  "Milky2018/moon_wgsl/common",
 }
 
 // Values
-pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
-
-pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
-
 pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit raise WgslParseError
 
 // Errors
-pub(all) suberror ParseImportsError {
-  Parse(String, Int)
-}
-
 pub suberror WgslParseError {
   Parse(String, Int)
   UnparsedDeclaration(String, Int)

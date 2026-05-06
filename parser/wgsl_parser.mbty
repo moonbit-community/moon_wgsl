@@ -2,7 +2,6 @@
 %derive<Debug> Token
 %derive<Debug> ParseError
 %start raw_top_level_items
-%start import_targets
 %start decl_head
 %start type_ref
 %start template_list
@@ -17,7 +16,6 @@
 
 %token<WgslRawTopLevelItem> ITEM
 %token<@ast.WgslStatement> STMT
-%token<String> IDENT
 %token<@ast.WgslTypeAtom> TYPE_ATOM
 %token<@ast.WgslIdent> ARG_NAME
 %token<@ast.WgslTypeRef> ARG_TYPE
@@ -43,7 +41,6 @@
 %token<@ast.WgslIdent> KW_DIAGNOSTIC
 %token<(String, Int, Int)> DIRECTIVE_TAIL
 %token<String> SOURCE_TEXT
-%token AS "as"
 %token<Int> ARROW "->"
 %token LPAREN "("
 %token RPAREN ")"
@@ -118,67 +115,6 @@ items -> Array[WgslRawTopLevelItem]
       items.push($2)
       items
     }
-  ;
-
-import_targets -> Array[@common.WgslImportTarget]
-  : target_list semis EOF { $1 }
-  | module_path=IDENT targets=target_list semis EOF {
-      let out : Array[@common.WgslImportTarget] = []
-      for target in targets {
-        out.push(@common.WgslImportTarget::{
-          raw_path: module_path + "::" + target.raw_path,
-          alias_name: target.alias_name,
-        })
-      }
-      out
-    }
-  ;
-
-semis -> Unit
-  : { () }
-  | semis ";" { () }
-  ;
-
-target_list -> Array[@common.WgslImportTarget]
-  : target {
-      $1
-    }
-  | target_list "," target {
-      let targets = $1
-      for target in $3 {
-        targets.push(target)
-      }
-      targets
-    }
-  | target_list "," {
-      $1
-    }
-  ;
-
-target -> Array[@common.WgslImportTarget]
-  : path=IDENT alias_name=alias {
-      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
-    }
-  | module_path=IDENT "{" targets=target_list "}" {
-      let out : Array[@common.WgslImportTarget] = []
-      for target in targets {
-        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
-          ""
-        } else {
-          "::"
-        }
-        out.push(@common.WgslImportTarget::{
-          raw_path: module_path + sep + target.raw_path,
-          alias_name: target.alias_name,
-        })
-      }
-      out
-    }
-  ;
-
-alias -> String
-  : { "" }
-  | "as" name=IDENT { name }
   ;
 
 directive_tail -> (String, Int, Int)

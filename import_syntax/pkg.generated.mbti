@@ -1,0 +1,22 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl/import_syntax"
+
+import {
+  "Milky2018/moon_wgsl/common",
+}
+
+// Values
+pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
+
+pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
+
+// Errors
+pub(all) suberror ParseImportsError {
+  Parse(String, Int)
+}
+
+// Types and methods
+
+// Type aliases
+
+// Traits

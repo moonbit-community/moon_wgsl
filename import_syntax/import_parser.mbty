@@ -1,0 +1,75 @@
+%position<Int>
+%derive<Debug> Token
+%derive<Debug> ParseError
+%start import_targets
+
+%token<String> IDENT
+%token AS "as"
+%token<Int> LBRACE "{"
+%token<Int> RBRACE "}"
+%token COMMA ","
+%token SEMI ";"
+%token EOF
+
+%%
+
+import_targets -> Array[@common.WgslImportTarget]
+  : target_list semis EOF { $1 }
+  | module_path=IDENT targets=target_list semis EOF {
+      let out : Array[@common.WgslImportTarget] = []
+      for target in targets {
+        out.push(@common.WgslImportTarget::{
+          raw_path: module_path + "::" + target.raw_path,
+          alias_name: target.alias_name,
+        })
+      }
+      out
+    }
+  ;
+
+semis -> Unit
+  : { () }
+  | semis ";" { () }
+  ;
+
+target_list -> Array[@common.WgslImportTarget]
+  : target {
+      $1
+    }
+  | target_list "," target {
+      let targets = $1
+      for target in $3 {
+        targets.push(target)
+      }
+      targets
+    }
+  | target_list "," {
+      $1
+    }
+  ;
+
+target -> Array[@common.WgslImportTarget]
+  : path=IDENT alias_name=alias {
+      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
+    }
+  | module_path=IDENT "{" targets=target_list "}" {
+      let out : Array[@common.WgslImportTarget] = []
+      for target in targets {
+        let sep = if module_path.has_suffix("::") || target.raw_path == "" {
+          ""
+        } else {
+          "::"
+        }
+        out.push(@common.WgslImportTarget::{
+          raw_path: module_path + sep + target.raw_path,
+          alias_name: target.alias_name,
+        })
+      }
+      out
+    }
+  ;
+
+alias -> String
+  : { "" }
+  | "as" name=IDENT { name }
+  ;
