@@ -63,8 +63,10 @@ using @parser {
 using @directive {
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
-  parse_glsl_version_directive,
   parse_wgsl_directive_scan_items,
 }
+
+///|
+using @directive_syntax {parse_glsl_version_directive}
 
 ///|

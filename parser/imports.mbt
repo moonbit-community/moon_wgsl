@@ -41,7 +41,10 @@ using @ast {
 using @common {type WgslImportTarget}
 
 ///|
-using @directive {parse_wgsl_directive_line, parse_wgsl_directive_line_at}
+using @directive_syntax {
+  parse_wgsl_directive_line,
+  parse_wgsl_directive_line_at,
+}
 
 ///|
 using @lex {

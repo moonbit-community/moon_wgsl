@@ -1,9 +1,10 @@
 ///|
-using @ast {
-  type WgslDirective,
-  type WgslDirectiveKind,
-  type WgslDirectiveTail,
-  type WgslIdent,
+using @ast {type WgslDirective, type WgslDirectiveKind}
+
+///|
+using @directive_syntax {
+  parse_glsl_version_directive,
+  parse_wgsl_directive_line_at,
 }
 
 ///|
