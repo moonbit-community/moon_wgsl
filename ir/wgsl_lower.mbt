@@ -99,6 +99,12 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
   ignore(self.intern_type("u32", TypeInner::Scalar(Scalar::new(Uint, 4))))
   ignore(self.intern_type("f32", TypeInner::Scalar(Scalar::new(Float, 4))))
   ignore(self.intern_type("f16", TypeInner::Scalar(Scalar::new(Float, 2))))
+  ignore(
+    self.intern_type(
+      "__abstract_int",
+      TypeInner::Scalar(Scalar::new(AbstractInt, 8)),
+    ),
+  )
 }
 
 ///|
@@ -250,10 +256,14 @@ fn WgslIrLowerer::lower_constant(
   self : WgslIrLowerer,
   constant : @ast.WgslConst,
 ) -> Unit raise WgslIrLowerError {
-  guard constant.ty_ref() is Some(ty_ref) else {
-    raise WgslIrLowerError::MissingType(constant.name().name())
+  let ty = match constant.ty_ref() {
+    Some(ty_ref) => self.lower_type_ref(ty_ref)
+    None =>
+      self.infer_local_type_from_initializer(
+        constant.name().name(),
+        constant.initializer_ref(),
+      )
   }
-  let ty = self.lower_type_ref(ty_ref)
   let init = match constant.initializer_ref() {
     Some(expr) => self.lower_global_expression_ref(expr)
     None =>
@@ -272,13 +282,18 @@ fn WgslIrLowerer::lower_override(
   self : WgslIrLowerer,
   override_decl : @ast.WgslOverride,
 ) -> Unit raise WgslIrLowerError {
-  guard override_decl.ty_ref() is Some(ty_ref) else {
-    raise WgslIrLowerError::MissingType(override_decl.name().name())
+  let ty = match override_decl.ty_ref() {
+    Some(ty_ref) => self.lower_type_ref(ty_ref)
+    None =>
+      self.infer_local_type_from_initializer(
+        override_decl.name().name(),
+        override_decl.initializer_ref(),
+      )
   }
   let handle = self.shader_module.append_override(Override::{
     name: Some(override_decl.name().name()),
     id: wgsl_ir_id_from_attributes(override_decl.attributes()),
-    ty: self.lower_type_ref(ty_ref),
+    ty,
     init: match override_decl.initializer_ref() {
       Some(expr) => Some(self.lower_global_expression_ref(expr))
       None => None
@@ -465,6 +480,13 @@ fn WgslIrLowerer::lower_statement(
       }
       guard rhs is Some(rhs_ref) else {
         raise WgslIrLowerError::UnsupportedStatement("assignment without rhs")
+      }
+      if wgsl_ir_expr_ref_is_phony(lhs_ref) {
+        let rhs_value = self.lower_function_expression_ref(
+          rhs_ref, function, scope,
+        )
+        block.push(Statement::Emit(HandleRange::new(rhs_value, rhs_value)))
+        return
       }
       let target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
       let rhs_value = self.lower_function_expression_ref(
@@ -684,6 +706,15 @@ fn WgslIrLowerer::lower_for_header_statement(
   }
   match wgsl_ir_expr_tokens_assignment(tokens) {
     Some((op, lhs_tokens, rhs_tokens)) => {
+      if wgsl_ir_expr_tokens_are_phony(lhs_tokens) {
+        let rhs_value = self.lower_function_expression_node(
+          wgsl_ir_expr_node_from_tokens(rhs_tokens),
+          function,
+          scope,
+        )
+        block.push(Statement::Emit(HandleRange::new(rhs_value, rhs_value)))
+        return
+      }
       let target = self.lower_function_lvalue_node(
         wgsl_ir_expr_node_from_tokens(lhs_tokens),
         function,
@@ -1628,13 +1659,68 @@ fn WgslIrLowerer::infer_expression_type(
     Literal(token) =>
       match token.kind() {
         BoolLiteral(_) => self.lower_builtin_type_name("bool")
-        IntLiteral(_) => self.lower_builtin_type_name("i32")
+        IntLiteral(_) =>
+          if wgsl_ir_literal_has_suffix(token.text(), "i") {
+            self.lower_builtin_type_name("i32")
+          } else {
+            self.lower_builtin_type_name("__abstract_int")
+          }
         UintLiteral(_) => self.lower_builtin_type_name("u32")
         FloatLiteral => self.lower_builtin_type_name("f32")
         _ => raise WgslIrLowerError::MissingType(name)
       }
+    Identifier(identifier) =>
+      self.infer_named_expression_type(identifier.name(), name)
     Group(inner) => self.infer_expression_type(inner, name)
+    Binary(_, left, _) => self.infer_expression_type(left, name)
+    Call(callee, arguments) =>
+      match self.lower_templated_callee_type(callee) {
+        Some(ty) => ty
+        None =>
+          match callee.kind() {
+            Identifier(ident) =>
+              self.lower_untemplated_constructor_type_from_ast(
+                ident.name(),
+                arguments,
+                name,
+              )
+            _ => raise WgslIrLowerError::MissingType(name)
+          }
+      }
     _ => raise WgslIrLowerError::MissingType(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::infer_named_expression_type(
+  self : WgslIrLowerer,
+  referenced_name : String,
+  diagnostic_name : String,
+) -> Handle raise WgslIrLowerError {
+  match self.constant_names.get(referenced_name) {
+    Some(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => constant.ty
+        None => raise WgslIrLowerError::MissingType(diagnostic_name)
+      }
+    None =>
+      match self.override_names.get(referenced_name) {
+        Some(handle) =>
+          match self.shader_module.overrides.items.get(handle.index()) {
+            Some(override_) => override_.ty
+            None => raise WgslIrLowerError::MissingType(diagnostic_name)
+          }
+        None =>
+          match self.global_names.get(referenced_name) {
+            Some(handle) =>
+              match
+                self.shader_module.global_variables.items.get(handle.index()) {
+                Some(global) => global.ty
+                None => raise WgslIrLowerError::MissingType(diagnostic_name)
+              }
+            None => raise WgslIrLowerError::MissingType(diagnostic_name)
+          }
+      }
   }
 }
 
@@ -2165,9 +2251,10 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression(
             Some(math_function) =>
               self.lower_global_math_call(math_function, arguments)
             None => {
-              let ty = self.lower_type_name_with_expression_arguments(
+              let ty = self.lower_untemplated_constructor_type_from_ast(
                 name.name(),
                 arguments,
+                name.name(),
               )
               Expression::Compose(
                 ty,
@@ -2176,9 +2263,17 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression(
             }
           }
         _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "non-identifier global call expression",
-          )
+          match self.lower_templated_callee_type(callee) {
+            Some(ty) =>
+              Expression::Compose(
+                ty,
+                self.lower_global_expression_arguments(arguments),
+              )
+            None =>
+              raise WgslIrLowerError::UnsupportedExpression(
+                "non-identifier global call expression",
+              )
+          }
       }
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
@@ -2312,12 +2407,16 @@ fn WgslIrLowerer::lower_function_expression_node(
     Identifier(name) =>
       self.lower_identifier_expression(name.name(), function, scope)
     Unary(op, expr) =>
-      function.expressions.append(
-        Expression::Unary(
-          wgsl_ir_unary_operator(op),
-          self.lower_function_expression_node(expr, function, scope),
-        ),
-      )
+      if op == @ast.WgslExprOperator::BitAnd {
+        self.lower_function_lvalue_node(expr, function, scope)
+      } else {
+        function.expressions.append(
+          Expression::Unary(
+            wgsl_ir_unary_operator(op),
+            self.lower_function_expression_node(expr, function, scope),
+          ),
+        )
+      }
     Binary(op, left, right) =>
       function.expressions.append(
         Expression::Binary(
@@ -2333,16 +2432,7 @@ fn WgslIrLowerer::lower_function_expression_node(
       let base_handle = self.lower_function_expression_node(
         base, function, scope,
       )
-      function.expressions.append(
-        Expression::AccessIndex(
-          base_handle,
-          self.member_index_for_expression(
-            function,
-            base_handle,
-            member_name.name(),
-          ),
-        ),
-      )
+      self.lower_member_expression(function, base_handle, member_name.name())
     }
     Index(base, index) => {
       let base_handle = self.lower_function_expression_node(
@@ -2382,26 +2472,38 @@ fn WgslIrLowerer::lower_function_expression_node(
                     ) {
                     Some(handle) => handle
                     None => {
-                      let ty = self.lower_type_name_with_expression_arguments(
+                      let lowered_arguments = self.lower_function_expression_arguments(
+                        arguments, function, scope,
+                      )
+                      let ty = self.lower_untemplated_constructor_type_from_handles(
                         name.name(),
                         arguments,
+                        lowered_arguments,
+                        function,
                       )
                       function.expressions.append(
-                        Expression::Compose(
-                          ty,
-                          self.lower_function_expression_arguments(
-                            arguments, function, scope,
-                          ),
-                        ),
+                        Expression::Compose(ty, lowered_arguments),
                       )
                     }
                   }
               }
           }
         _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "non-identifier call expression",
-          )
+          match self.lower_templated_callee_type(callee) {
+            Some(ty) =>
+              function.expressions.append(
+                Expression::Compose(
+                  ty,
+                  self.lower_function_expression_arguments(
+                    arguments, function, scope,
+                  ),
+                ),
+              )
+            None =>
+              raise WgslIrLowerError::UnsupportedExpression(
+                "non-identifier call expression",
+              )
+          }
       }
     _ =>
       raise WgslIrLowerError::UnsupportedExpression("unlowered expression node")
@@ -2497,6 +2599,30 @@ fn WgslIrLowerer::lower_function_math_call(
     _ => None
   }
   function.expressions.append(Expression::Math(math_function, a, b, c, d))
+}
+
+///|
+fn wgsl_ir_expr_ref_is_phony(expr_ref : @ast.WgslExprRef) -> Bool {
+  match expr_ref.root() {
+    Some(root) =>
+      match root.kind() {
+        Identifier(name) => name.name() == "_"
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_tokens_are_phony(tokens : Array[@ast.WgslExprToken]) -> Bool {
+  match tokens {
+    [token] =>
+      match token.kind() {
+        Identifier => token.text() == "_"
+        _ => false
+      }
+    _ => false
+  }
 }
 
 ///|
@@ -2740,6 +2866,234 @@ fn WgslIrLowerer::scalar_from_type_ref(
 }
 
 ///|
+fn WgslIrLowerer::lower_templated_callee_type(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+) -> Handle? raise WgslIrLowerError {
+  match callee.kind() {
+    Template(base, template_arguments) =>
+      match base.kind() {
+        Identifier(name) => {
+          let atom = @ast.WgslTypeAtom::new(
+            @ast.WgslTypeAtomKind::Identifier,
+            name.name(),
+            name.start(),
+            name.end(),
+          )
+          let ty_ref = @ast.WgslTypeRef::new_with_template_arguments(
+            atom,
+            template_arguments,
+            callee.start(),
+            callee.end(),
+          )
+          Some(self.lower_type_ref(ty_ref))
+        }
+        _ =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "template call callee must be a type identifier",
+          )
+      }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_untemplated_constructor_type_from_ast(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+) -> Handle raise WgslIrLowerError {
+  match self.type_cache.get(name) {
+    Some(handle) => handle
+    None =>
+      match wgsl_ir_builtin_vector_alias(name) {
+        Some(inner) => self.intern_type(name, inner)
+        None =>
+          match wgsl_ir_builtin_matrix_alias(name) {
+            Some(inner) => self.intern_type(name, inner)
+            None =>
+              match wgsl_ir_builtin_scalar_alias(name) {
+                Some(inner) => self.intern_type(name, inner)
+                None =>
+                  self.lower_generic_constructor_type_from_ast(
+                    name, arguments, diagnostic_name,
+                  )
+              }
+          }
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_generic_constructor_type_from_ast(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+) -> Handle raise WgslIrLowerError {
+  match name {
+    "vec2" | "vec3" | "vec4" => {
+      let scalar = self.constructor_scalar_from_ast_arguments(
+        arguments, diagnostic_name,
+      )
+      self.intern_type(
+        "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+        TypeInner::Vector(wgsl_ir_vector_size_from_name(name), scalar),
+      )
+    }
+    "mat2x2"
+    | "mat2x3"
+    | "mat2x4"
+    | "mat3x2"
+    | "mat3x3"
+    | "mat3x4"
+    | "mat4x2"
+    | "mat4x3"
+    | "mat4x4" => {
+      let scalar = self.constructor_scalar_from_ast_arguments(
+        arguments, diagnostic_name,
+      )
+      let (columns, rows) = wgsl_ir_matrix_size_from_name(name)
+      self.intern_type(
+        "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+        TypeInner::Matrix(columns, rows, scalar),
+      )
+    }
+    _ => raise WgslIrLowerError::UnsupportedType(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::constructor_scalar_from_ast_arguments(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+) -> Scalar raise WgslIrLowerError {
+  guard wgsl_ir_flatten_expression_arguments(arguments) is [first, ..] else {
+    raise WgslIrLowerError::MissingType(diagnostic_name)
+  }
+  let ty = self.infer_expression_type(first, diagnostic_name)
+  wgsl_ir_concrete_constructor_scalar(
+    self.scalar_from_type_handle(ty, diagnostic_name),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_untemplated_constructor_type_from_handles(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  lowered_arguments : Array[Handle],
+  function : Function,
+) -> Handle raise WgslIrLowerError {
+  match self.type_cache.get(name) {
+    Some(handle) => handle
+    None =>
+      match wgsl_ir_builtin_vector_alias(name) {
+        Some(inner) => self.intern_type(name, inner)
+        None =>
+          match wgsl_ir_builtin_matrix_alias(name) {
+            Some(inner) => self.intern_type(name, inner)
+            None =>
+              match wgsl_ir_builtin_scalar_alias(name) {
+                Some(inner) => self.intern_type(name, inner)
+                None =>
+                  self.lower_generic_constructor_type_from_handles(
+                    name, arguments, lowered_arguments, function,
+                  )
+              }
+          }
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_generic_constructor_type_from_handles(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  lowered_arguments : Array[Handle],
+  function : Function,
+) -> Handle raise WgslIrLowerError {
+  match name {
+    "vec2" | "vec3" | "vec4" => {
+      let scalar = self.constructor_scalar_from_handles(
+        lowered_arguments, function, name,
+      )
+      self.intern_type(
+        "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+        TypeInner::Vector(wgsl_ir_vector_size_from_name(name), scalar),
+      )
+    }
+    "mat2x2"
+    | "mat2x3"
+    | "mat2x4"
+    | "mat3x2"
+    | "mat3x3"
+    | "mat3x4"
+    | "mat4x2"
+    | "mat4x3"
+    | "mat4x4" => {
+      let scalar = self.constructor_scalar_from_handles(
+        lowered_arguments, function, name,
+      )
+      let (columns, rows) = wgsl_ir_matrix_size_from_name(name)
+      self.intern_type(
+        "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+        TypeInner::Matrix(columns, rows, scalar),
+      )
+    }
+    _ => self.lower_type_name_with_expression_arguments(name, arguments)
+  }
+}
+
+///|
+fn WgslIrLowerer::constructor_scalar_from_handles(
+  self : WgslIrLowerer,
+  lowered_arguments : Array[Handle],
+  function : Function,
+  diagnostic_name : String,
+) -> Scalar raise WgslIrLowerError {
+  guard lowered_arguments is [first, ..] else {
+    raise WgslIrLowerError::MissingType(diagnostic_name)
+  }
+  guard self.function_expression_type(function, first) is Some(ty) else {
+    raise WgslIrLowerError::MissingType(diagnostic_name)
+  }
+  wgsl_ir_concrete_constructor_scalar(
+    self.scalar_from_type_handle(ty, diagnostic_name),
+  )
+}
+
+///|
+fn WgslIrLowerer::scalar_from_type_handle(
+  self : WgslIrLowerer,
+  ty : Handle,
+  diagnostic_name : String,
+) -> Scalar raise WgslIrLowerError {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) => scalar
+        Vector(_, scalar) => scalar
+        Matrix(_, _, scalar) => scalar
+        _ => raise WgslIrLowerError::MissingType(diagnostic_name)
+      }
+    None => raise WgslIrLowerError::MissingType(diagnostic_name)
+  }
+}
+
+///|
+fn wgsl_ir_concrete_constructor_scalar(scalar : Scalar) -> Scalar {
+  match scalar.kind {
+    AbstractInt => Scalar::new(Sint, 4)
+    AbstractFloat => Scalar::new(Float, 4)
+    _ => scalar
+  }
+}
+
+///|
 priv struct WgslIrLayout {
   align : Int
   size : Int
@@ -2968,7 +3322,12 @@ fn wgsl_ir_literal_from_token(
 ) -> Literal raise WgslIrLowerError {
   match token.kind() {
     BoolLiteral(value) => Literal::Bool(value)
-    IntLiteral(value) => Literal::I32(value)
+    IntLiteral(value) =>
+      if wgsl_ir_literal_has_suffix(token.text(), "i") {
+        Literal::I32(value)
+      } else {
+        Literal::AbstractInt(wgsl_ir_int64_literal_from_text(token.text()))
+      }
     UintLiteral(value) => {
       let parsed : UInt = @strconv.from_str("\{value}") catch {
         _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
@@ -2984,6 +3343,66 @@ fn wgsl_ir_literal_from_token(
     }
     _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
   }
+}
+
+///|
+fn wgsl_ir_literal_has_suffix(text : String, lower_suffix : String) -> Bool {
+  if text.length() == 0 {
+    return false
+  }
+  let last = text[text.length() - 1:].to_owned().to_lower()
+  last == lower_suffix
+}
+
+///|
+fn wgsl_ir_int64_literal_from_text(
+  text : String,
+) -> Int64 raise WgslIrLowerError {
+  let mut end = text.length()
+  if end > 0 {
+    let last = text.code_unit_at(end - 1).to_int()
+    if last == 105 || last == 73 {
+      end = end - 1
+    }
+  }
+  guard end > 0 else { raise WgslIrLowerError::UnsupportedExpression(text) }
+  let mut value : Int64 = 0
+  if end > 2 &&
+    text.code_unit_at(0).to_int() == 48 &&
+    (
+      text.code_unit_at(1).to_int() == 120 ||
+      text.code_unit_at(1).to_int() == 88
+    ) {
+    for i in 2..<end {
+      match wgsl_ir_hex_digit_value(text.code_unit_at(i).to_int()) {
+        Some(digit) => value = value * 16 + Int64::from_int(digit)
+        None => raise WgslIrLowerError::UnsupportedExpression(text)
+      }
+    }
+    return value
+  }
+  for i in 0..<end {
+    let code = text.code_unit_at(i).to_int()
+    if code < 48 || code > 57 {
+      raise WgslIrLowerError::UnsupportedExpression(text)
+    }
+    value = value * 10 + Int64::from_int(code - 48)
+  }
+  value
+}
+
+///|
+fn wgsl_ir_hex_digit_value(code : Int) -> Int? {
+  if code >= 48 && code <= 57 {
+    return Some(code - 48)
+  }
+  if code >= 65 && code <= 70 {
+    return Some(code - 65 + 10)
+  }
+  if code >= 97 && code <= 102 {
+    return Some(code - 97 + 10)
+  }
+  None
 }
 
 ///|
@@ -3111,6 +3530,74 @@ fn WgslIrLowerer::member_index_for_expression(
 }
 
 ///|
+fn WgslIrLowerer::lower_member_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  base_handle : Handle,
+  member_name : String,
+) -> Handle raise WgslIrLowerError {
+  match self.function_expression_type(function, base_handle) {
+    Some(ty_handle) =>
+      match self.shader_module.types.get(ty_handle) {
+        Some(ty) =>
+          match ty.inner {
+            Vector(_, _) =>
+              match wgsl_ir_swizzle_components(member_name) {
+                Some(components) =>
+                  if components.length() == 1 {
+                    function.expressions.append(
+                      Expression::AccessIndex(
+                        base_handle,
+                        wgsl_ir_gather_component_index(components[0]),
+                      ),
+                    )
+                  } else {
+                    function.expressions.append(
+                      Expression::Swizzle(
+                        wgsl_ir_vector_size_from_component_count(
+                          components.length(),
+                        ),
+                        base_handle,
+                        components,
+                      ),
+                    )
+                  }
+                None =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "invalid vector swizzle: \{member_name}",
+                  )
+              }
+            _ =>
+              function.expressions.append(
+                Expression::AccessIndex(
+                  base_handle,
+                  self.member_index_for_expression(
+                    function, base_handle, member_name,
+                  ),
+                ),
+              )
+          }
+        None =>
+          function.expressions.append(
+            Expression::AccessIndex(
+              base_handle,
+              self.member_index_for_expression(
+                function, base_handle, member_name,
+              ),
+            ),
+          )
+      }
+    None =>
+      function.expressions.append(
+        Expression::AccessIndex(
+          base_handle,
+          self.member_index_for_expression(function, base_handle, member_name),
+        ),
+      )
+  }
+}
+
+///|
 fn WgslIrLowerer::function_expression_type(
   self : WgslIrLowerer,
   function : Function,
@@ -3160,6 +3647,7 @@ fn WgslIrLowerer::function_expression_inner_type(
     AccessIndex(base, index) =>
       self.indexed_expression_type(function, base, Some(index))
     Access(base, _) => self.indexed_expression_type(function, base, None)
+    Swizzle(size, base, _) => self.swizzle_expression_type(function, base, size)
     Unary(_, inner) => self.function_expression_type(function, inner)
     Binary(_, left, _) => self.function_expression_type(function, left)
     FunctionCall(handle, _) =>
@@ -3179,6 +3667,32 @@ fn WgslIrLowerer::function_expression_inner_type(
     ImageQuery(_, _) => self.type_cache.get("u32")
     Literal(literal) => self.literal_type(literal)
     _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::swizzle_expression_type(
+  self : WgslIrLowerer,
+  function : Function,
+  base : Handle,
+  size : VectorSize,
+) -> Handle? {
+  guard self.function_expression_type(function, base) is Some(base_ty) else {
+    return None
+  }
+  match self.shader_module.types.get(base_ty) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(_, scalar) =>
+          Some(
+            self.intern_type(
+              "vec\{size.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+              TypeInner::Vector(size, scalar),
+            ),
+          )
+        _ => None
+      }
+    None => None
   }
 }
 
@@ -3270,6 +3784,7 @@ fn WgslIrLowerer::literal_type(
   match literal {
     Bool(_) => self.type_cache.get("bool")
     I32(_) => self.type_cache.get("i32")
+    AbstractInt(_) => self.type_cache.get("__abstract_int")
     U32(_) => self.type_cache.get("u32")
     F32(_) | AbstractFloat(_) => self.type_cache.get("f32")
     _ => None
@@ -3397,6 +3912,33 @@ fn wgsl_ir_member_index(name : String) -> Int raise WgslIrLowerError {
       raise WgslIrLowerError::UnsupportedExpression(
         "member access requires resolved struct member index: \{name}",
       )
+  }
+}
+
+///|
+fn wgsl_ir_swizzle_components(name : String) -> Array[SwizzleComponent]? {
+  if name.length() == 0 || name.length() > 4 {
+    return None
+  }
+  let components : Array[SwizzleComponent] = []
+  for i in 0..<name.length() {
+    match name.code_unit_at(i).to_int() {
+      120 | 114 => components.push(SwizzleComponent::X)
+      121 | 103 => components.push(SwizzleComponent::Y)
+      122 | 98 => components.push(SwizzleComponent::Z)
+      119 | 97 => components.push(SwizzleComponent::W)
+      _ => return None
+    }
+  }
+  Some(components)
+}
+
+///|
+fn wgsl_ir_vector_size_from_component_count(count : Int) -> VectorSize {
+  match count {
+    2 => Bi
+    3 => Tri
+    _ => Quad
   }
 }
 

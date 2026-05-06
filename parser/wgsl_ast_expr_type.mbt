@@ -15,11 +15,33 @@ fn wgsl_expr_ascii_digit(code : Int) -> Bool {
 }
 
 ///|
+fn wgsl_expr_ascii_hex_digit_value(code : Int) -> Int? {
+  if code >= 48 && code <= 57 {
+    return Some(code - 48)
+  }
+  if code >= 65 && code <= 70 {
+    return Some(code - 65 + 10)
+  }
+  if code >= 97 && code <= 102 {
+    return Some(code - 97 + 10)
+  }
+  None
+}
+
+///|
 fn wgsl_expr_ascii_identifier_code(code : Int) -> Bool {
   (code >= 65 && code <= 90) ||
   (code >= 97 && code <= 122) ||
   (code >= 48 && code <= 57) ||
   code == 95
+}
+
+///|
+fn wgsl_expr_token_starts_numeric_fraction(token : WgslToken) -> Bool {
+  match token.punctuation_code() {
+    Some(code) => wgsl_expr_ascii_digit(code)
+    None => token.number_text() != None
+  }
 }
 
 ///|
@@ -46,14 +68,34 @@ fn wgsl_expr_number_token_end(tokens : Array[WgslToken], start : Int) -> Int {
 ///|
 fn parse_wgsl_uint_literal_token(text : String) -> Int? {
   let mut end = text.length()
+  let mut has_suffix = false
   if end > 0 {
     let last = text.code_unit_at(end - 1).to_int()
     if last == 117 || last == 85 {
+      has_suffix = true
       end = end - 1
     }
   }
+  if !has_suffix {
+    return None
+  }
   if end <= 0 {
     return None
+  }
+  if end > 2 &&
+    text.code_unit_at(0).to_int() == 48 &&
+    (
+      text.code_unit_at(1).to_int() == 120 ||
+      text.code_unit_at(1).to_int() == 88
+    ) {
+    let mut value = 0
+    for i in 2..<end {
+      match wgsl_expr_ascii_hex_digit_value(text.code_unit_at(i).to_int()) {
+        Some(digit) => value = value * 16 + digit
+        None => return None
+      }
+    }
+    return Some(value)
   }
   let mut value = 0
   for i in 0..<end {
@@ -77,6 +119,21 @@ fn parse_wgsl_int_literal_token(text : String) -> Int? {
   }
   if end <= 0 {
     return None
+  }
+  if end > 2 &&
+    text.code_unit_at(0).to_int() == 48 &&
+    (
+      text.code_unit_at(1).to_int() == 120 ||
+      text.code_unit_at(1).to_int() == 88
+    ) {
+    let mut value = 0
+    for i in 2..<end {
+      match wgsl_expr_ascii_hex_digit_value(text.code_unit_at(i).to_int()) {
+        Some(digit) => value = value * 16 + digit
+        None => return None
+      }
+    }
+    return Some(value)
   }
   let mut value = 0
   for i in 0..<end {
@@ -158,6 +215,31 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
     }
     match token.punctuation_code() {
       Some(code) => {
+        if code == 46 &&
+          i + 1 < tokens.length() &&
+          wgsl_expr_token_starts_numeric_fraction(tokens[i + 1]) {
+          let pos = token.pos()
+          let end_index = match tokens[i + 1].number_text() {
+            Some(_) => i + 2
+            None => wgsl_expr_number_token_end(tokens, i)
+          }
+          let end_pos = if end_index > i {
+            tokens[end_index - 1].end()
+          } else {
+            tokens[i].end()
+          }
+          let token_text = text[pos:end_pos].to_owned()
+          expr_tokens.push(
+            WgslExprToken::new(
+              WgslExprTokenKind::FloatLiteral,
+              token_text,
+              base + pos,
+              base + end_pos,
+            ),
+          )
+          i = end_index
+          continue
+        }
         if wgsl_expr_ascii_digit(code) {
           let pos = token.pos()
           let end_index = wgsl_expr_number_token_end(tokens, i)

@@ -55,7 +55,11 @@ fn main {
   }
   if args.mode == "parse" {
     ignore(@parser.parse_wgsl_translation_unit_strict(source)) catch {
-      error => abort(error.message())
+      error => {
+        let message = error.message()
+        println(message)
+        abort(message)
+      }
     }
     match args.output {
       Some(path) =>
@@ -68,10 +72,18 @@ fn main {
   }
   guard args.mode == "ir" else { abort(ir_roundtrip_usage()) }
   let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
-    error => abort(error.message())
+    error => {
+      let message = error.message()
+      println(message)
+      abort(message)
+    }
   }
   let emitted = @ir.emit_wgsl_module_from_ir(module_) catch {
-    error => abort(error.message())
+    error => {
+      let message = error.message()
+      println(message)
+      abort(message)
+    }
   }
   match args.output {
     Some(path) =>

@@ -406,3 +406,68 @@ test "WGSL AST lowerer lowers textureLoad arguments from texture type" {
   debug_inspect(emitted.contains("textureNumSamples(ms_tex)"), content="true")
   debug_inspect(emitted.contains("textureNumLayers(arr_tex)"), content="true")
 }
+
+///|
+test "WGSL AST lowerer supports official constructor and swizzle forms" {
+  let source =
+    #|@fragment
+    #|fn main() -> @location(0) vec4<f32> {
+    #|  var v: vec3<i32> = vec3(1, 2, 3);
+    #|  var w: vec4<i32> = vec4(10);
+    #|  v *= w.xyz;
+    #|  return vec4<f32>(.4, .2, .3, .1);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("vec3<i32>(1, 2, 3)"), content="true")
+  debug_inspect(emitted.contains("v = (v * w.xyz);"), content="true")
+  debug_inspect(
+    emitted.contains("return vec4<f32>(0.4, 0.2, 0.3, 0.1);"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer supports phony assignment and address-of lvalues" {
+  let source =
+    #|struct S {
+    #|  x: array<u32>,
+    #|}
+    #|@group(0) @binding(0) var<storage> v: S;
+    #|@group(0) @binding(1) var<uniform> a: vec4f;
+    #|
+    #|fn foo() {
+    #|  _ = a;
+    #|  let tmp_ptr: ptr<storage, array<u32>> = &v.x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("_ = a;"), content="true")
+  debug_inspect(
+    emitted.contains("var tmp_ptr: ptr<storage, array<u32>> = &v.x;"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer supports abstract hex integer constants" {
+  let source =
+    #|const lhs = 0xfffff0000;
+    #|const res = lhs << 4u;
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("const lhs = 68719411200;"), content="true")
+  debug_inspect(emitted.contains("const res = (lhs << 4u);"), content="true")
+}

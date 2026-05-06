@@ -564,7 +564,7 @@ test "WGSL expression refs expose token and literal AST" {
   guard override_decl.attributes()[1].arguments_ref() is Some(binding_args) else {
     abort("expected binding args")
   }
-  debug_inspect(binding_args.tokens()[0].kind(), content="UintLiteral(12)")
+  debug_inspect(binding_args.tokens()[0].kind(), content="IntLiteral(12)")
   guard override_decl.attributes()[2].arguments_ref() is Some(id_args) else {
     abort("expected id args")
   }

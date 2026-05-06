@@ -126,9 +126,15 @@ fn WgslIrEmitter::emit_constant(
   guard constant.name is Some(name) else {
     raise WgslIrEmitError::MissingName("constant")
   }
-  out.write_string(
-    "const \{name}: \{self.type_name(constant.ty)} = \{self.global_expression(constant.init)};\n",
-  )
+  if self.type_is_abstract_scalar(constant.ty) {
+    out.write_string(
+      "const \{name} = \{self.global_expression(constant.init)};\n",
+    )
+  } else {
+    out.write_string(
+      "const \{name}: \{self.type_name(constant.ty)} = \{self.global_expression(constant.init)};\n",
+    )
+  }
 }
 
 ///|
@@ -175,6 +181,37 @@ fn WgslIrEmitter::emit_global_variable(
     None => ()
   }
   out.write_string(";\n")
+}
+
+///|
+fn WgslIrEmitter::type_is_pointer(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.types.get(handle) {
+    Some(ty) =>
+      match ty.inner {
+        Pointer(_, _) | ValuePointer(_, _, _) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::type_is_abstract_scalar(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.types.get(handle) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) =>
+          scalar.kind == AbstractInt || scalar.kind == AbstractFloat
+        _ => false
+      }
+    None => false
+  }
 }
 
 ///|
@@ -263,7 +300,13 @@ fn WgslIrEmitter::emit_function_locals(
     out.write_string("  var \{name}: \{self.type_name(local_var.ty)}")
     match local_var.init {
       Some(init) =>
-        out.write_string(" = \{self.function_expression(function, init)}")
+        if self.type_is_pointer(local_var.ty) {
+          out.write_string(
+            " = &\{self.function_pointer_expression(function, init)}",
+          )
+        } else {
+          out.write_string(" = \{self.function_expression(function, init)}")
+        }
       None => ()
     }
     out.write_string(";\n")
@@ -293,6 +336,12 @@ fn WgslIrEmitter::emit_statement(
 ) -> Unit raise WgslIrEmitError {
   let pad = wgsl_ir_indent(indent)
   match statement {
+    Emit(range) =>
+      for index in range.start.index()..<=range.end.index() {
+        out.write_string(
+          "\{pad}_ = \{self.function_expression(function, Handle::new(index))};\n",
+        )
+      }
     Block(child) => {
       out.write_string("\{pad}{\n")
       self.emit_block_statements(out, function, child, indent + 1)
@@ -480,6 +529,8 @@ fn WgslIrEmitter::emit_expression(
       "\{self.required_function_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
       "\{self.required_function_expression(function, base)}.\{self.member_name_for_expression(function, base, index)}"
+    Swizzle(_, base, components) =>
+      "\{self.required_function_expression(function, base)}.\{self.swizzle_components(components)}"
     FunctionArgument(index) => self.function_argument_name(function, index)
     GlobalVariable(handle) => self.global_variable_name(handle)
     LocalVariable(handle) => self.local_variable_name(function, handle)
@@ -784,6 +835,19 @@ fn WgslIrEmitter::member_name_for_expression(
 }
 
 ///|
+fn WgslIrEmitter::swizzle_components(
+  self : WgslIrEmitter,
+  components : Array[SwizzleComponent],
+) -> String {
+  ignore(self)
+  let out = StringBuilder::new()
+  for component in components {
+    out.write_string(wgsl_ir_swizzle_component_name(component))
+  }
+  out.to_string()
+}
+
+///|
 fn WgslIrEmitter::expression_type(
   self : WgslIrEmitter,
   function : Function?,
@@ -841,6 +905,8 @@ fn WgslIrEmitter::function_expression_inner_type(
     AccessIndex(base, index) =>
       self.indexed_expression_type(Some(function), base, Some(index))
     Access(base, _) => self.indexed_expression_type(Some(function), base, None)
+    Swizzle(size, base, _) =>
+      self.swizzle_expression_type(Some(function), base, size)
     Unary(_, inner) => self.expression_type(Some(function), inner)
     Binary(_, left, _) => self.expression_type(Some(function), left)
     FunctionCall(handle, _) =>
@@ -883,6 +949,7 @@ fn WgslIrEmitter::global_expression_inner_type(
     AccessIndex(base, index) =>
       self.indexed_expression_type(None, base, Some(index))
     Access(base, _) => self.indexed_expression_type(None, base, None)
+    Swizzle(size, base, _) => self.swizzle_expression_type(None, base, size)
     Unary(_, inner) => self.expression_type(None, inner)
     Binary(_, left, _) => self.expression_type(None, left)
     _ => None
@@ -911,12 +978,62 @@ fn WgslIrEmitter::indexed_expression_type(
               }
             None => None
           }
+        Vector(_, scalar) => self.find_vector_scalar_type(scalar)
         Array(element, _, _) | BindingArray(element, _) => Some(element)
         Pointer(inner, _) => Some(inner)
         _ => None
       }
     None => None
   }
+}
+
+///|
+fn WgslIrEmitter::swizzle_expression_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+  size : VectorSize,
+) -> Handle? {
+  guard self.expression_type(function, base) is Some(base_ty) else {
+    return None
+  }
+  match self.shader_module.types.get(base_ty) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(_, scalar) => self.find_vector_type(size, scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::find_vector_scalar_type(
+  self : WgslIrEmitter,
+  scalar : Scalar,
+) -> Handle? {
+  let scalar_inner = TypeInner::Scalar(scalar)
+  for i in 0..<self.shader_module.types.items.length() {
+    if self.shader_module.types.items[i].inner == scalar_inner {
+      return Some(Handle::new(i))
+    }
+  }
+  None
+}
+
+///|
+fn WgslIrEmitter::find_vector_type(
+  self : WgslIrEmitter,
+  size : VectorSize,
+  scalar : Scalar,
+) -> Handle? {
+  let vector_inner = TypeInner::Vector(size, scalar)
+  for i in 0..<self.shader_module.types.items.length() {
+    if self.shader_module.types.items[i].inner == vector_inner {
+      return Some(Handle::new(i))
+    }
+  }
+  None
 }
 
 ///|
@@ -927,10 +1044,7 @@ fn WgslIrEmitter::required_function_expression(
 ) -> String raise WgslIrEmitError {
   match function {
     Some(value) => self.function_expression(value, handle)
-    None =>
-      raise WgslIrEmitError::Unsupported(
-        "function expression outside function arena",
-      )
+    None => self.global_expression(handle)
   }
 }
 
@@ -1554,6 +1668,16 @@ fn wgsl_ir_gather_component_index(component : SwizzleComponent) -> Int {
     Y => 1
     Z => 2
     W => 3
+  }
+}
+
+///|
+fn wgsl_ir_swizzle_component_name(component : SwizzleComponent) -> String {
+  match component {
+    X => "x"
+    Y => "y"
+    Z => "z"
+    W => "w"
   }
 }
 
