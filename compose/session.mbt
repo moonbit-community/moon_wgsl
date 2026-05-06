@@ -451,6 +451,7 @@ fn WgslComposeSession::record_alias_final_name(
   identity : WgslAliasSymbolIdentity,
   generated_name : String,
 ) -> Unit {
+  self.final_names.canonical_set(identity.symbol, generated_name)
   self.final_names.alias_set(identity, generated_name)
   self.symbol_graph.record_reachable_symbol(identity.symbol)
 }

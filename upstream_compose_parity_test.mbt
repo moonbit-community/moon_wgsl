@@ -1533,6 +1533,67 @@ test "github issue 9: item imported struct preserves canonical type identity" {
 }
 
 ///|
+test "github issue 12: transitive tonemapping type identity is reused" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "view.wgsl",
+    "#define_import_path bevy_render::view\n" +
+    "struct ColorGrading { exposure: f32 }\n" +
+    "struct View { color_grading: ColorGrading }\n",
+  )
+  composer.register_source(
+    "mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "#import bevy_render::view::View\n" +
+    "@group(0) @binding(0) var<uniform> view: View;\n",
+  )
+  composer.register_source(
+    "tonemapping.wgsl",
+    "#define_import_path bevy_core_pipeline::tonemapping\n" +
+    "#import bevy_render::view::ColorGrading\n" +
+    "fn tone_mapping(in_wgsl: vec4<f32>, in_color_grading: ColorGrading) -> vec4<f32> {\n" +
+    "  return in_wgsl;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr_functions.wgsl",
+    "#define_import_path bevy_pbr::pbr_functions\n" +
+    "#import bevy_pbr::mesh_view_bindings as view_bindings\n" +
+    "#import bevy_core_pipeline::tonemapping::tone_mapping\n" +
+    "fn post_light(output_color: vec4<f32>) -> vec4<f32> {\n" +
+    "  return tone_mapping(output_color, view_bindings::view.color_grading);\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr.wgsl",
+    "#import bevy_pbr::pbr_functions as pbr_functions\n" +
+    "fn root(color: vec4<f32>) -> vec4<f32> {\n" +
+    "  return pbr_functions::post_light(color);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "pbr.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err => abort("expected issue 12 compose success: \{err.message()}")
+  }
+  debug_inspect(
+    source.contains("struct pbr_functions__view_bindings__ColorGrading"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains(
+      "in_color_grading: pbr_functions__view_bindings__ColorGrading",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("in_color_grading: ColorGrading"),
+    content="false",
+  )
+}
+
+///|
 test "github issue 6: transitive nested module alias rewrites imported binding types" {
   let composer = @compose.Composer::default()
   composer.register_source(

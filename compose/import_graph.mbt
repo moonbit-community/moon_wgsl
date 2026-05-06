@@ -369,20 +369,6 @@ fn Composer::compose_wgsl_import_requests(
         let (from_name, to_name) = entry
         rename_map.set(from_name, to_name)
       }
-      if request.alias_name != "" {
-        for entry in rename_map.iter() {
-          let (original_name, generated_name) = entry
-          bindings.push(
-            WgslComposeBinding::for_alias_symbol(
-              request.rel_path,
-              request.alias_name,
-              original_name,
-              generated_name,
-              QualifiedAliasBinding,
-            ),
-          )
-        }
-      }
       rewrite_wgsl_declarations_with_global_rename_map(
         module_source, request_rename_map,
       ) catch {
@@ -396,6 +382,36 @@ fn Composer::compose_wgsl_import_requests(
       origin_start_index,
       rename_map,
     )
+    if request.alias_name != "" {
+      for i in origin_start_index..<session.source_origins.length() {
+        let origin = session.source_origins[i]
+        if origin.rel_path != "" &&
+          origin.source_symbol_name != "" &&
+          origin.generated_symbol_name != "" {
+          bindings.push(
+            WgslComposeBinding::for_alias_symbol(
+              origin.rel_path,
+              request.alias_name,
+              origin.source_symbol_name,
+              origin.generated_symbol_name,
+              QualifiedAliasBinding,
+            ),
+          )
+        }
+      }
+      for entry in rename_map.iter() {
+        let (original_name, generated_name) = entry
+        bindings.push(
+          WgslComposeBinding::for_alias_symbol(
+            request.rel_path,
+            request.alias_name,
+            original_name,
+            generated_name,
+            QualifiedAliasBinding,
+          ),
+        )
+      }
+    }
     for i in origin_start_index..<session.source_origins.length() {
       let origin = session.source_origins[i]
       if origin.rel_path != "" &&
