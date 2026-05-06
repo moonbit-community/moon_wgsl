@@ -136,6 +136,20 @@ function addCase(rel, line, localIndex, wgsl) {
   return localIndex;
 }
 
+function standaloneWgslFromObject(code, objectText) {
+  let wgsl = code;
+  if (/\bf16\s*:\s*true\b/.test(objectText) && !/\benable\s+f16\s*;/.test(wgsl)) {
+    wgsl = `enable f16;\n${wgsl}`;
+  }
+  if (
+    /@blend_src\s*\(/.test(wgsl) &&
+    !/\benable\s+dual_source_blending\s*;/.test(wgsl)
+  ) {
+    wgsl = `enable dual_source_blending;\n${wgsl}`;
+  }
+  return wgsl;
+}
+
 for (const file of walk(validationRoot).sort()) {
   const source = readFileSync(file, "utf8");
   const rel = path.relative(ctsRoot, file);
@@ -195,7 +209,7 @@ for (const file of walk(validationRoot).sort()) {
       rel,
       lineForIndex(source, match.index),
       localIndex,
-      literalText(literal),
+      standaloneWgslFromObject(literalText(literal), objectText),
     );
   }
 }

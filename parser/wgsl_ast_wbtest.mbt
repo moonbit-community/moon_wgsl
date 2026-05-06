@@ -332,6 +332,26 @@ test "WGSL type refs normalize template spacing structurally" {
 }
 
 ///|
+test "WGSL type refs ignore comments around template delimiters" {
+  let source =
+    #|alias Atomic = atomic
+    #|  /* comment */
+    #|  <i32>;
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data()
+    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+    abort("expected type alias payload")
+  }
+  guard alias_decl.ty_ref() is Some(ty) else {
+    abort("expected alias type ref")
+  }
+  debug_inspect(ty.name(), content="\"atomic\"")
+  debug_inspect(ty.canonical_text(), content="\"atomic<i32>\"")
+  debug_inspect(ty.arguments()[0].canonical_text(), content="\"i32\"")
+}
+
+///|
 test "WGSL type refs accept Pattern_White_Space blankspace" {
   let source = "alias Values = array\u{000C}<vec4\u{200E}<f32>\u{2029}, 4>;\n"
   let unit = parse_wgsl_translation_unit_for_test(source)

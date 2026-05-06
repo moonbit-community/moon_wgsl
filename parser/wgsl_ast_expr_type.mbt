@@ -1194,10 +1194,11 @@ fn wgsl_trim_fragment_bounds(
 
 ///|
 fn parse_wgsl_type_ref_text(text : String, base : Int) -> WgslTypeRef? {
+  let cleaned = replace_comments(text)
   let (trimmed, local_start, _) = wgsl_trim_fragment_bounds(
-    text,
+    cleaned,
     0,
-    text.length(),
+    cleaned.length(),
   )
   if trimmed == "" {
     return None

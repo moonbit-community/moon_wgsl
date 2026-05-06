@@ -8,7 +8,7 @@ cts_ref="${WGSL_CTS_REF:-3b327ebc44f11212fd3872972a6dd394634fb9e3}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
 allowlist="$repo_root/testdata/gpuweb_cts_ir_allowlist.txt"
 min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-100}"
-min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-80}"
+min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-95}"
 
 if [[ ! -d "$cts_root/.git" ]]; then
   mkdir -p "$(dirname "$cts_root")"
@@ -63,10 +63,23 @@ while IFS= read -r id; do
   fi
   emitted="$tmpdir/$id.ir.wgsl"
   moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >/dev/null
+  validate_args=()
+  if grep -q 'enable f16' "$emitted" || grep -q 'f16' "$emitted" || grep -q 'vec[234]h' "$emitted" || grep -q 'mat[234]x[234]h' "$emitted"; then
+    validate_args+=(--capability f16)
+  fi
+  if grep -q 'enable subgroups' "$emitted"; then
+    validate_args+=(--capability subgroups)
+  fi
+  if grep -q '@blend_src' "$emitted"; then
+    validate_args+=(--capability dual-source-blending)
+  fi
   if grep -q 'texture_external' "$emitted"; then
-    cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- --capability texture-external "$emitted" >/dev/null
-  else
+    validate_args+=(--capability texture-external)
+  fi
+  if ((${#validate_args[@]} == 0)); then
     cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$emitted" >/dev/null
+  else
+    cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${validate_args[@]}" "$emitted" >/dev/null
   fi
   ir_count=$((ir_count + 1))
 done < "$allowlist"
