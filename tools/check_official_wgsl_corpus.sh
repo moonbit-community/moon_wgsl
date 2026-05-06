@@ -7,6 +7,7 @@ cd "$repo_root"
 cts_ref="${WGSL_CTS_REF:-3b327ebc44f11212fd3872972a6dd394634fb9e3}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
 allowlist="$repo_root/testdata/gpuweb_cts_ir_allowlist.txt"
+min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-100}"
 
 if [[ ! -d "$cts_root/.git" ]]; then
   mkdir -p "$(dirname "$cts_root")"
@@ -30,6 +31,10 @@ node tools/extract_gpuweb_cts_static_wgsl.mjs "$cts_root" "$cases_dir" "$manifes
 case_count="$(find "$cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
 if [[ "$case_count" == "0" ]]; then
   echo "official WGSL CTS extractor produced no static valid WGSL cases" >&2
+  exit 1
+fi
+if ((case_count < min_parse_cases)); then
+  echo "official WGSL CTS extractor produced only $case_count static valid WGSL cases; expected at least $min_parse_cases" >&2
   exit 1
 fi
 
