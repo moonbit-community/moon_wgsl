@@ -306,6 +306,13 @@ fn WgslLiveAliasBindingPlan::symbol_redirects(
 }
 
 ///|
+fn WgslLiveAliasBindingPlan::redirect_map(
+  self : WgslLiveAliasBindingPlan,
+) -> @hashmap.HashMap[String, String] {
+  build_wgsl_symbol_redirect_map(self.symbol_redirects())
+}
+
+///|
 fn WgslScopedAliasRedirectSet::new() -> WgslScopedAliasRedirectSet {
   WgslScopedAliasRedirectSet::{ redirects: [], keys: @hashset.HashSet::new() }
 }
