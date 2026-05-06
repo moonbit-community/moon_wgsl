@@ -132,6 +132,15 @@ pub fn FunctionArena::append(self : FunctionArena, item : Function) -> Handle {
 }
 
 ///|
+pub fn FunctionArena::set(
+  self : FunctionArena,
+  handle : Handle,
+  item : Function,
+) -> Unit {
+  self.items[handle.index()] = item
+}
+
+///|
 pub(all) struct DiagnosticFilterArena {
   items : Array[DiagnosticFilterNode]
 } derive(Eq, Debug)

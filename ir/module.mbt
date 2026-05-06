@@ -67,6 +67,15 @@ pub fn Module::append_function(self : Module, function : Function) -> Handle {
 }
 
 ///|
+pub fn Module::set_function(
+  self : Module,
+  handle : Handle,
+  function : Function,
+) -> Unit {
+  self.functions.set(handle, function)
+}
+
+///|
 pub fn Module::append_entry_point(
   self : Module,
   entry_point : EntryPoint,

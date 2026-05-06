@@ -2,12 +2,25 @@
 package "Milky2018/moon_wgsl/ir"
 
 import {
+  "Milky2018/moon_wgsl/ast",
   "moonbitlang/core/debug",
 }
 
 // Values
+pub fn lower_wgsl_translation_unit_to_ir(@ast.WgslTranslationUnit) -> Module raise WgslIrLowerError
+
+pub fn parse_wgsl_module_to_ir(String) -> Module raise WgslIrLowerError
 
 // Errors
+pub suberror WgslIrLowerError {
+  Parse(String)
+  MissingType(String)
+  UnsupportedType(String)
+  UnsupportedExpression(String)
+  UnsupportedStatement(String)
+  UnknownIdentifier(String)
+}
+pub fn WgslIrLowerError::message(Self) -> String
 
 // Types and methods
 pub enum AddressSpace {
@@ -303,6 +316,7 @@ pub(all) struct FunctionArena {
 } derive(Eq, @debug.Debug)
 pub fn FunctionArena::append(Self, Function) -> Handle
 pub fn FunctionArena::new() -> Self
+pub fn FunctionArena::set(Self, Handle, Function) -> Unit
 
 pub(all) struct FunctionArgument {
   name : String?
@@ -536,6 +550,7 @@ pub fn Module::append_global_variable(Self, GlobalVariable) -> Handle
 pub fn Module::append_override(Self, Override) -> Handle
 pub fn Module::append_type(Self, Type) -> Handle
 pub fn Module::new() -> Self
+pub fn Module::set_function(Self, Handle, Function) -> Unit
 
 pub(all) struct NamedExpression {
   handle : Handle
