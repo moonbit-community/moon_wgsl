@@ -128,15 +128,76 @@ fn collect_wgsl_module_final_name_application_plan(
 }
 
 ///|
+fn wgsl_redirect_direct_target(
+  redirects : Array[WgslSymbolRedirect],
+  name : String,
+) -> String? {
+  let mut target : String? = None
+  for redirect in redirects {
+    let from_name = redirect.from_name.trim().to_owned()
+    let to_name = redirect.to_name.trim().to_owned()
+    if from_name == name && to_name != "" && from_name != to_name {
+      target = Some(to_name)
+    }
+  }
+  target
+}
+
+///|
+fn wgsl_redirect_final_target(
+  redirects : Array[WgslSymbolRedirect],
+  from_name : String,
+) -> String? {
+  let seen : Array[String] = []
+  let mut current = from_name
+  let mut target : String? = None
+  while true {
+    if seen.contains(current) {
+      break
+    }
+    seen.push(current)
+    match wgsl_redirect_direct_target(redirects, current) {
+      Some(next) => {
+        target = Some(next)
+        current = next
+      }
+      None => break
+    }
+  }
+  target
+}
+
+///|
+fn build_wgsl_redirect_reference_plan(
+  redirects : Array[WgslSymbolRedirect],
+) -> WgslReferenceRewritePlan {
+  let plan = WgslReferenceRewritePlan::new()
+  for redirect in redirects {
+    let from_name = redirect.from_name.trim().to_owned()
+    if from_name == "" {
+      continue
+    }
+    match wgsl_redirect_final_target(redirects, from_name) {
+      Some(to_name) =>
+        if to_name != "" && to_name != from_name {
+          plan.add(from_name, to_name)
+        }
+      None => ()
+    }
+  }
+  plan
+}
+
+///|
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
 ) -> WgslPreparedComposeSource raise ComposerError {
   record_wgsl_redirect_matches(source, session)
-  let redirect_map = build_wgsl_symbol_redirect_map(session.redirects)
-  let redirected_source = rewrite_wgsl_references_with_rename_map(
-    source, redirect_map,
+  let redirect_plan = build_wgsl_redirect_reference_plan(session.redirects)
+  let redirected_source = rewrite_wgsl_references_with_binding_plan(
+    source, redirect_plan,
   ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }

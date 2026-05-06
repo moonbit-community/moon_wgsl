@@ -7,6 +7,13 @@ priv enum WgslComposeSourceEmissionKind {
 }
 
 ///|
+priv struct WgslPreIrComposedSource {
+  source : String
+  source_origins : Array[WgslSourceOriginEntry]
+  diagnostics : Array[WgslDiagnostic]
+}
+
+///|
 fn compose_emit_scanned_item(
   kind : WgslComposeSourceEmissionKind,
   item : WgslDirectiveScanItem,
@@ -200,26 +207,21 @@ fn collect_wgsl_unused_redirect_diagnostics(
 }
 
 ///|
-fn Composer::prepare_wgsl_source_legacy(
+fn Composer::compose_wgsl_pre_ir_source(
   self : Composer,
   rel : String,
   options : WgslComposeOptions,
-) -> PreparedWgslSource raise ComposerError {
+) -> WgslPreIrComposedSource raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
   let composed = strip_wgsl_virtual_functions(
     self.load_root_wgsl_preprocessed_into_session(rel, session),
   )
   let prepared_source = finalize_wgsl_output_source(composed)
-  let source_files : Array[WgslSourceFile] = [
-    { rel_path: normalize_shader_rel_path(rel), source: prepared_source },
-  ]
-  PreparedWgslSource::new(
-    prepared_source,
-    source_files,
-    build_prepared_wgsl_source_catalog(source_files.copy()),
-    session.source_origins.copy(),
-    collect_wgsl_unused_redirect_diagnostics(session),
-  )
+  WgslPreIrComposedSource::{
+    source: prepared_source,
+    source_origins: session.source_origins.copy(),
+    diagnostics: collect_wgsl_unused_redirect_diagnostics(session),
+  }
 }
 
 ///|
@@ -238,8 +240,8 @@ pub fn Composer::prepare_wgsl_source(
   rel : String,
   options : WgslComposeOptions,
 ) -> PreparedWgslSource raise ComposerError {
-  let prepared = self.prepare_wgsl_source_legacy(rel, options)
-  let ir_source = compose_wgsl_source_via_ir(prepared.source)
+  let pre_ir = self.compose_wgsl_pre_ir_source(rel, options)
+  let ir_source = compose_wgsl_source_via_ir(pre_ir.source)
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: ir_source },
   ]
@@ -247,8 +249,8 @@ pub fn Composer::prepare_wgsl_source(
     ir_source,
     source_files,
     build_prepared_wgsl_source_catalog(source_files.copy()),
-    prepared.source_origins,
-    prepared.diagnostics,
+    pre_ir.source_origins,
+    pre_ir.diagnostics,
   )
 }
 

@@ -3,7 +3,6 @@ using @transform {
   type WgslReferenceRewritePlan,
   type WgslEmittedDeclaration,
   type WgslModuleItemExtraction,
-  build_wgsl_symbol_redirect_map,
   collect_wgsl_named_declarations_strict,
   collect_wgsl_source_catalog_declarations_strict,
   extract_wgsl_module_item_origins_strict,
@@ -12,7 +11,6 @@ using @transform {
   normalize_wgsl_composed_declarations_with_binding_plan,
   rewrite_wgsl_declarations_with_binding_plan,
   rewrite_wgsl_references_with_binding_plan,
-  rewrite_wgsl_references_with_rename_map,
 }
 
 ///|
