@@ -183,6 +183,7 @@ priv struct WgslComposeSession {
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
   final_names : WgslFinalNameTables
+  symbol_graph : WgslComposeSymbolGraph
   semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
   active_rel_paths : Array[String]
   source_origins : Array[WgslSourceOriginEntry]

@@ -272,6 +272,7 @@ fn Composer::compose_wgsl_import_requests(
 ) -> String raise ComposerError {
   let mut merged = ""
   for request in requests {
+    session.symbol_graph.record_request_edges(current_rel_path, request)
     let full_module_key = wgsl_full_module_visit_key(
       request.rel_path,
       request.alias_name,
@@ -470,6 +471,10 @@ fn Composer::compose_wgsl_import_requests(
           WgslSymbolIdentity::new(request.rel_path, declaration_name),
           declaration_name,
         )
+        session.symbol_graph.record_symbol(
+          WgslSymbolIdentity::new(request.rel_path, declaration_name),
+          declaration_name,
+        )
       }
     } else {
       for entry in rename_map.iter() {
@@ -480,6 +485,10 @@ fn Composer::compose_wgsl_import_requests(
             request.alias_name,
             from_name,
           ),
+          to_name,
+        )
+        session.symbol_graph.record_symbol(
+          WgslSymbolIdentity::new(request.rel_path, from_name),
           to_name,
         )
       }

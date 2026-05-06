@@ -72,6 +72,7 @@ fn Composer::new_wgsl_compose_session(
     redirect_match_counts: @hashmap.HashMap::new(),
     visited: @hashmap.HashMap::new(),
     final_names: WgslFinalNameTables::new(),
+    symbol_graph: WgslComposeSymbolGraph::new(),
     semantic_facts: @hashmap.HashMap::new(),
     active_rel_paths: [],
     source_origins: [],
