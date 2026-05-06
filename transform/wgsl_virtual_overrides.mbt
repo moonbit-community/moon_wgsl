@@ -101,7 +101,21 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
 ) -> String raise WgslParseError {
-  if alias_redirect_map.is_empty() {
+  let plan = WgslReferenceRewritePlan::new()
+  for entry in alias_redirect_map.iter() {
+    let (from_name, to_name) = entry
+    plan.add(from_name, to_name)
+  }
+  rewrite_wgsl_override_targets_with_binding_plan(source, plan)
+}
+
+///|
+pub fn rewrite_wgsl_override_targets_with_binding_plan(
+  source : String,
+  plan : WgslReferenceRewritePlan,
+) -> String raise WgslParseError {
+  let rename_plan = plan.reference_rename_plan()
+  if rename_plan.is_empty() {
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
@@ -124,7 +138,7 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
       out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
-    let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
+    let target = wgsl_binding_plan_redirect_target(raw_target, plan)
     if target != raw_target {
       nodes.push(
         WgslTokenReplacement::new(
@@ -137,14 +151,6 @@ pub fn rewrite_wgsl_override_targets_with_redirects(
     out = out + emit_wgsl_token_stream_canonical(block.tokens, nodes)
   }
   out
-}
-
-///|
-pub fn rewrite_wgsl_override_targets_with_binding_plan(
-  source : String,
-  plan : WgslReferenceRewritePlan,
-) -> String raise WgslParseError {
-  rewrite_wgsl_override_targets_with_redirects(source, plan.redirect_map())
 }
 
 ///|
@@ -266,23 +272,46 @@ fn rewrite_wgsl_override_fn_block(
 }
 
 ///|
-fn wgsl_alias_redirect_target(
+fn wgsl_binding_plan_redirect_target(
   target : String,
-  alias_redirect_map : @hashmap.HashMap[String, String],
+  plan : WgslReferenceRewritePlan,
 ) -> String {
   if split_last_identifier(target) is None {
     return target
   }
-  match alias_redirect_map.get(target) {
+  match plan.target_for_reference(target) {
     Some(redirected) => redirected
     None => wgsl_flatten_path_identifier(target)
   }
 }
 
 ///|
+fn build_wgsl_reference_rewrite_plan_from_map(
+  alias_redirect_map : @hashmap.HashMap[String, String],
+) -> WgslReferenceRewritePlan {
+  let plan = WgslReferenceRewritePlan::new()
+  for entry in alias_redirect_map.iter() {
+    let (from_name, to_name) = entry
+    plan.add(from_name, to_name)
+  }
+  plan
+}
+
+///|
 fn apply_wgsl_virtual_overrides_checked(
   source : String,
   alias_redirect_map : @hashmap.HashMap[String, String],
+) -> WgslVirtualOverrideOutput raise WgslParseError {
+  apply_wgsl_virtual_overrides_checked_with_binding_plan(
+    source,
+    build_wgsl_reference_rewrite_plan_from_map(alias_redirect_map),
+  )
+}
+
+///|
+fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
+  source : String,
+  plan : WgslReferenceRewritePlan,
 ) -> WgslVirtualOverrideOutput raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let virtual_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
@@ -298,7 +327,7 @@ fn apply_wgsl_virtual_overrides_checked(
       Some(function) if function.qualifier() ==
         Some(WgslFunctionQualifier::Override) => {
         let raw_target = function.name().name()
-        let target = wgsl_alias_redirect_target(raw_target, alias_redirect_map)
+        let target = wgsl_binding_plan_redirect_target(raw_target, plan)
         if !virtual_names.contains(target) {
           return WgslVirtualOverrideOutput::{
             source,
@@ -387,7 +416,15 @@ pub fn apply_wgsl_virtual_overrides_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
 ) -> String raise WgslVirtualOverrideError {
-  apply_wgsl_virtual_overrides(source, plan.redirect_map())
+  let output = apply_wgsl_virtual_overrides_checked_with_binding_plan(
+    source, plan,
+  ) catch {
+    error => raise wgsl_virtual_override_error_from_parse(error)
+  }
+  match output.invalid_override {
+    Some(name) => raise WgslVirtualOverrideError::InvalidOverride(name)
+    None => output.source
+  }
 }
 
 ///|

@@ -5,44 +5,6 @@ priv struct WgslPreparedComposeSource {
 }
 
 ///|
-fn record_wgsl_nested_flattened_item_names(
-  session : WgslComposeSession,
-  declarations : Array[WgslEmittedDeclaration],
-) -> Unit {
-  for declaration in declarations {
-    let generated_name = declaration.name()
-    if generated_name == "" {
-      continue
-    }
-    if !declaration.is_type_declaration() {
-      continue
-    }
-    for entry in session.modules.iter() {
-      let (module_path, rel_path) = entry
-      let module_alias_name = wgsl_semantic_import_default_alias(module_path)
-      if module_alias_name == "" {
-        continue
-      }
-      let marker = "__\{module_alias_name}__"
-      let mut saw_marker = false
-      let mut item_name = ""
-      for part in generated_name.split(marker) {
-        if saw_marker {
-          item_name = part.to_owned()
-        }
-        saw_marker = true
-      }
-      if item_name != "" {
-        session.record_canonical_final_name_if_absent(
-          WgslSymbolIdentity::new(rel_path, item_name),
-          generated_name,
-        )
-      }
-    }
-  }
-}
-
-///|
 fn prepare_wgsl_compose_source(
   source : String,
   session : WgslComposeSession,
@@ -462,7 +424,6 @@ fn Composer::compose_wgsl_import_requests(
     )
     let final_declarations = final_facts.declarations
     if rename_map.is_empty() {
-      record_wgsl_nested_flattened_item_names(session, final_declarations)
       for declaration in final_declarations {
         let declaration_name = declaration.name()
         session.record_canonical_final_name(

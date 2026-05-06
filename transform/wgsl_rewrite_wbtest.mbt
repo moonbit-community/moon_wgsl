@@ -46,3 +46,16 @@ test "naga_oil wb: reference rewrite plan carries symbol identity" {
   )
   debug_inspect(rewritten.contains("lighting::build_shadow"), content="false")
 }
+
+///|
+test "naga_oil wb: identity rewrite plan does not collapse ambiguous bindings" {
+  let plan = WgslReferenceRewritePlan::new()
+  plan.add_symbol_binding("a.wgsl", "Shared", "Shared", "a__Shared")
+  plan.add_symbol_binding("b.wgsl", "Shared", "Shared", "b__Shared")
+  let rewritten = rewrite_wgsl_references_with_binding_plan(
+    "fn shade(value: Shared) -> Shared {\n  return value;\n}\n", plan,
+  )
+  debug_inspect(rewritten.contains("Shared"), content="true")
+  debug_inspect(rewritten.contains("a__Shared"), content="false")
+  debug_inspect(rewritten.contains("b__Shared"), content="false")
+}

@@ -25,6 +25,8 @@ priv struct WgslRenameRule {
   from_name : String
   to_name : String
   kind : WgslRenameRuleKind
+  rel_path : String
+  original_name : String
 }
 
 ///|
@@ -34,10 +36,10 @@ priv struct WgslRenamePlan {
 
 ///|
 priv struct WgslRenameMaps {
-  global_declaration_redirects : @hashmap.HashMap[String, String]
-  reference_redirects : @hashmap.HashMap[String, String]
-  function_body_reference_redirects : @hashmap.HashMap[String, String]
-  function_local_redirects : @hashmap.HashMap[String, String]
+  global_declaration_rules : Array[WgslRenameRule]
+  reference_rules : Array[WgslRenameRule]
+  function_body_reference_rules : Array[WgslRenameRule]
+  function_local_rules : Array[WgslRenameRule]
 }
 
 ///|
@@ -103,27 +105,6 @@ pub fn WgslReferenceRewritePlan::add(
 }
 
 ///|
-fn WgslReferenceRewritePlan::redirect_map(
-  self : WgslReferenceRewritePlan,
-) -> @hashmap.HashMap[String, String] {
-  build_wgsl_symbol_redirect_map(self.symbol_redirects())
-}
-
-///|
-fn WgslReferenceRewritePlan::symbol_redirects(
-  self : WgslReferenceRewritePlan,
-) -> Array[WgslSymbolRedirect] {
-  let redirects : Array[WgslSymbolRedirect] = []
-  for binding in self.bindings {
-    redirects.push(WgslSymbolRedirect::{
-      from_name: binding.from_name,
-      to_name: binding.to_name,
-    })
-  }
-  redirects
-}
-
-///|
 fn WgslRenamePlan::empty() -> WgslRenamePlan {
   WgslRenamePlan::{ rules: [] }
 }
@@ -140,12 +121,30 @@ fn WgslRenamePlan::add(
   to_name : String,
   kind : WgslRenameRuleKind,
 ) -> Unit {
+  self.add_symbol_binding("", "", from_name, to_name, kind)
+}
+
+///|
+fn WgslRenamePlan::add_symbol_binding(
+  self : WgslRenamePlan,
+  rel_path : String,
+  original_name : String,
+  from_name : String,
+  to_name : String,
+  kind : WgslRenameRuleKind,
+) -> Unit {
   let from_name = from_name.trim().to_owned()
   let to_name = to_name.trim().to_owned()
   if from_name == "" || to_name == "" || from_name == to_name {
     return
   }
-  self.rules.push(WgslRenameRule::{ from_name, to_name, kind })
+  self.rules.push(WgslRenameRule::{
+    from_name,
+    to_name,
+    kind,
+    rel_path,
+    original_name,
+  })
 }
 
 ///|
@@ -188,40 +187,103 @@ fn build_wgsl_reference_rename_plan_from_redirect_map(
 }
 
 ///|
+fn WgslReferenceRewritePlan::reference_rename_plan(
+  self : WgslReferenceRewritePlan,
+) -> WgslRenamePlan {
+  let plan = WgslRenamePlan::empty()
+  for binding in self.bindings {
+    plan.add_symbol_binding(
+      binding.rel_path,
+      binding.original_name,
+      binding.from_name,
+      binding.to_name,
+      ReferencesOnly,
+    )
+  }
+  plan
+}
+
+///|
+fn WgslReferenceRewritePlan::target_for_reference(
+  self : WgslReferenceRewritePlan,
+  from_name : String,
+) -> String? {
+  let mut target : String? = None
+  for binding in self.bindings {
+    if binding.from_name != from_name {
+      continue
+    }
+    match target {
+      Some(existing) if existing != binding.to_name => return None
+      Some(_) => ()
+      None => target = Some(binding.to_name)
+    }
+  }
+  target
+}
+
+///|
 fn build_wgsl_rename_maps(plan : WgslRenamePlan) -> WgslRenameMaps {
-  let global_declaration_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let reference_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let function_body_reference_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let function_local_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let global_declaration_rules : Array[WgslRenameRule] = []
+  let reference_rules : Array[WgslRenameRule] = []
+  let function_body_reference_rules : Array[WgslRenameRule] = []
+  let function_local_rules : Array[WgslRenameRule] = []
   for rule in plan.rules {
     match rule.kind {
       GlobalDeclarationAndReferences => {
-        global_declaration_redirects.set(rule.from_name, rule.to_name)
-        reference_redirects.set(rule.from_name, rule.to_name)
+        global_declaration_rules.push(rule)
+        reference_rules.push(rule)
       }
-      ReferencesOnly => reference_redirects.set(rule.from_name, rule.to_name)
-      FunctionBodyReferencesOnly =>
-        function_body_reference_redirects.set(rule.from_name, rule.to_name)
-      FunctionLocal =>
-        function_local_redirects.set(rule.from_name, rule.to_name)
+      ReferencesOnly => reference_rules.push(rule)
+      FunctionBodyReferencesOnly => function_body_reference_rules.push(rule)
+      FunctionLocal => function_local_rules.push(rule)
     }
   }
   WgslRenameMaps::{
-    global_declaration_redirects,
-    reference_redirects,
-    function_body_reference_redirects,
-    function_local_redirects,
+    global_declaration_rules,
+    reference_rules,
+    function_body_reference_rules,
+    function_local_rules,
   }
+}
+
+///|
+fn wgsl_rename_rules_target(
+  rules : Array[WgslRenameRule],
+  from_name : String,
+) -> String? {
+  let mut target : String? = None
+  let mut identity_key : String? = None
+  for rule in rules {
+    if rule.from_name != from_name {
+      continue
+    }
+    let current_identity_key = "\{rule.rel_path}|\{rule.original_name}"
+    match target {
+      Some(existing) if existing != rule.to_name =>
+        match identity_key {
+          Some(existing_identity_key) if existing_identity_key ==
+            current_identity_key => return Some(rule.to_name)
+          _ => return None
+        }
+      Some(_) => ()
+      None => {
+        target = Some(rule.to_name)
+        identity_key = Some(current_identity_key)
+      }
+    }
+  }
+  target
 }
 
 ///|
 fn collect_wgsl_rewrite_nodes_from_identifiers(
   identifiers : Array[WgslIdent],
-  redirect_map : @hashmap.HashMap[String, String],
+  rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   for identifier in identifiers {
-    match redirect_map.get(identifier.name()) {
+    match wgsl_rename_rules_target(rules, identifier.name()) {
       Some(replacement) =>
         nodes.push(
           WgslTokenReplacement::new(
@@ -238,14 +300,14 @@ fn collect_wgsl_rewrite_nodes_from_identifiers(
 ///|
 fn collect_wgsl_rewrite_nodes_from_expr_ref(
   expr_ref : WgslExprRef?,
-  redirect_map : @hashmap.HashMap[String, String],
+  rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   match expr_ref {
     Some(expr) =>
       collect_wgsl_rewrite_nodes_from_identifiers(
         expr.identifiers(),
-        redirect_map,
+        rules,
         nodes,
       )
     None => ()
@@ -255,14 +317,14 @@ fn collect_wgsl_rewrite_nodes_from_expr_ref(
 ///|
 fn collect_wgsl_rewrite_nodes_from_type_ref(
   ty_ref : WgslTypeRef?,
-  redirect_map : @hashmap.HashMap[String, String],
+  rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   match ty_ref {
     Some(ty) => {
       match ty.atom().identifier() {
         Some(identifier) =>
-          match redirect_map.get(identifier.name()) {
+          match wgsl_rename_rules_target(rules, identifier.name()) {
             Some(replacement) =>
               nodes.push(
                 WgslTokenReplacement::new(
@@ -276,11 +338,7 @@ fn collect_wgsl_rewrite_nodes_from_type_ref(
         None => ()
       }
       for argument in ty.arguments() {
-        collect_wgsl_rewrite_nodes_from_type_ref(
-          Some(argument),
-          redirect_map,
-          nodes,
-        )
+        collect_wgsl_rewrite_nodes_from_type_ref(Some(argument), rules, nodes)
       }
     }
     None => ()
@@ -288,27 +346,21 @@ fn collect_wgsl_rewrite_nodes_from_type_ref(
 }
 
 ///|
-fn copy_wgsl_redirect_map(
-  redirect_map : @hashmap.HashMap[String, String],
-) -> @hashmap.HashMap[String, String] {
-  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for entry in redirect_map.iter() {
-    let (from_name, to_name) = entry
-    copied.set(from_name, to_name)
-  }
-  copied
-}
-
-///|
 fn collect_wgsl_local_binding_rewrite_node(
   binding : WgslLocalDeclaration,
-  source_redirects : @hashmap.HashMap[String, String],
-  active_redirects : @hashmap.HashMap[String, String],
+  source_rules : Array[WgslRenameRule],
+  active_rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
-  match source_redirects.get(binding.name().name()) {
+  match wgsl_rename_rules_target(source_rules, binding.name().name()) {
     Some(replacement) => {
-      active_redirects.set(binding.name().name(), replacement)
+      active_rules.push(WgslRenameRule::{
+        from_name: binding.name().name(),
+        to_name: replacement,
+        kind: FunctionLocal,
+        rel_path: "",
+        original_name: "",
+      })
       nodes.push(
         WgslTokenReplacement::new(
           binding.name().start(),
@@ -324,36 +376,32 @@ fn collect_wgsl_local_binding_rewrite_node(
 ///|
 fn collect_wgsl_statement_local_rewrite_nodes(
   statement : WgslStatement,
-  active_redirects : @hashmap.HashMap[String, String],
-  source_redirects : @hashmap.HashMap[String, String],
+  active_rules : Array[WgslRenameRule],
+  source_rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
-  let block_redirects = copy_wgsl_redirect_map(active_redirects)
+  let block_rules = active_rules.copy()
   for binding in statement.local_bindings() {
     collect_wgsl_rewrite_nodes_from_type_ref(
       binding.ty_ref(),
-      block_redirects,
+      block_rules,
       nodes,
     )
     collect_wgsl_rewrite_nodes_from_expr_ref(
       binding.initializer_ref(),
-      block_redirects,
+      block_rules,
       nodes,
     )
     collect_wgsl_local_binding_rewrite_node(
-      binding, source_redirects, block_redirects, nodes,
+      binding, source_rules, block_rules, nodes,
     )
   }
   for expr_ref in statement.expression_refs() {
-    collect_wgsl_rewrite_nodes_from_expr_ref(
-      Some(expr_ref),
-      block_redirects,
-      nodes,
-    )
+    collect_wgsl_rewrite_nodes_from_expr_ref(Some(expr_ref), block_rules, nodes)
   }
   for block in statement.blocks() {
     collect_wgsl_block_local_rewrite_nodes(
-      block, block_redirects, source_redirects, nodes,
+      block, block_rules, source_rules, nodes,
     )
   }
 }
@@ -361,19 +409,25 @@ fn collect_wgsl_statement_local_rewrite_nodes(
 ///|
 fn collect_wgsl_block_local_rewrite_nodes(
   block : WgslBlock,
-  inherited_redirects : @hashmap.HashMap[String, String],
-  source_redirects : @hashmap.HashMap[String, String],
+  inherited_rules : Array[WgslRenameRule],
+  source_rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
-  let active_redirects = copy_wgsl_redirect_map(inherited_redirects)
+  let active_rules = inherited_rules.copy()
   for statement in block.statements() {
     collect_wgsl_statement_local_rewrite_nodes(
-      statement, active_redirects, source_redirects, nodes,
+      statement, active_rules, source_rules, nodes,
     )
     for binding in statement.exported_local_bindings() {
-      match source_redirects.get(binding.name().name()) {
+      match wgsl_rename_rules_target(source_rules, binding.name().name()) {
         Some(replacement) =>
-          active_redirects.set(binding.name().name(), replacement)
+          active_rules.push(WgslRenameRule::{
+            from_name: binding.name().name(),
+            to_name: replacement,
+            kind: FunctionLocal,
+            rel_path: "",
+            original_name: "",
+          })
         None => ()
       }
     }
@@ -383,16 +437,22 @@ fn collect_wgsl_block_local_rewrite_nodes(
 ///|
 fn collect_wgsl_function_local_rewrite_nodes(
   data : WgslGlobalDeclData,
-  redirect_map : @hashmap.HashMap[String, String],
+  rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   match data {
     WgslGlobalDeclData::Function(function) => {
-      let active_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+      let active_rules : Array[WgslRenameRule] = []
       for argument in function.arguments() {
-        match redirect_map.get(argument.name().name()) {
+        match wgsl_rename_rules_target(rules, argument.name().name()) {
           Some(replacement) => {
-            active_redirects.set(argument.name().name(), replacement)
+            active_rules.push(WgslRenameRule::{
+              from_name: argument.name().name(),
+              to_name: replacement,
+              kind: FunctionLocal,
+              rel_path: "",
+              original_name: "",
+            })
             nodes.push(
               WgslTokenReplacement::new(
                 argument.name().start(),
@@ -406,8 +466,8 @@ fn collect_wgsl_function_local_rewrite_nodes(
       }
       collect_wgsl_block_local_rewrite_nodes(
         function.body(),
-        active_redirects,
-        redirect_map,
+        active_rules,
+        rules,
         nodes,
       )
     }
@@ -418,16 +478,14 @@ fn collect_wgsl_function_local_rewrite_nodes(
 ///|
 fn collect_wgsl_function_body_reference_rewrite_nodes(
   data : WgslGlobalDeclData,
-  redirect_map : @hashmap.HashMap[String, String],
+  rules : Array[WgslRenameRule],
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   match data {
     WgslGlobalDeclData::Function(function) => {
       let identifiers : Array[WgslIdent] = []
       collect_wgsl_function_body_identifier_nodes(function, identifiers)
-      collect_wgsl_rewrite_nodes_from_identifiers(
-        identifiers, redirect_map, nodes,
-      )
+      collect_wgsl_rewrite_nodes_from_identifiers(identifiers, rules, nodes)
     }
     _ => ()
   }
@@ -443,24 +501,24 @@ fn collect_wgsl_block_rewrite_nodes(
   collect_wgsl_decl_global_declared_identifier_nodes(data, identifiers)
   collect_wgsl_rewrite_nodes_from_identifiers(
     identifiers,
-    maps.global_declaration_redirects,
+    maps.global_declaration_rules,
     nodes,
   )
   identifiers.clear()
   collect_wgsl_decl_identifier_nodes(data, identifiers)
   collect_wgsl_rewrite_nodes_from_identifiers(
     identifiers,
-    maps.reference_redirects,
+    maps.reference_rules,
     nodes,
   )
   collect_wgsl_function_body_reference_rewrite_nodes(
     data,
-    maps.function_body_reference_redirects,
+    maps.function_body_reference_rules,
     nodes,
   )
   collect_wgsl_function_local_rewrite_nodes(
     data,
-    maps.function_local_redirects,
+    maps.function_local_rules,
     nodes,
   )
 }
@@ -556,5 +614,8 @@ pub fn rewrite_wgsl_references_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
 ) -> String raise WgslParseError {
-  rewrite_wgsl_references_with_rename_map(source, plan.redirect_map())
+  rewrite_wgsl_declarations_with_rename_plan(
+    source,
+    plan.reference_rename_plan(),
+  )
 }
