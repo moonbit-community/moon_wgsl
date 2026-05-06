@@ -8,8 +8,8 @@ test "virtual override base detection does not collapse namespace suffixes" {
     #|  return other::func();
     #|}
     #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let output = apply_wgsl_virtual_overrides(source, redirects)
+  let plan = WgslReferenceRewritePlan::new()
+  let output = apply_wgsl_virtual_overrides_with_binding_plan(source, plan)
   debug_inspect(output.contains("__virtual_base"), content="false")
   debug_inspect(output.contains("return other::func();"), content="true")
 }
@@ -26,9 +26,9 @@ test "virtual override base rewrite uses AST scope for local shadows" {
     #|  return value + mod__inner;
     #|}
     #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  redirects.set("mod::inner", "mod__inner")
-  let output = apply_wgsl_virtual_overrides(source, redirects)
+  let plan = WgslReferenceRewritePlan::new()
+  plan.add("mod::inner", "mod__inner")
+  let output = apply_wgsl_virtual_overrides_with_binding_plan(source, plan)
   debug_inspect(
     output.contains("fn mod__inner__virtual_base() -> f32"),
     content="true",

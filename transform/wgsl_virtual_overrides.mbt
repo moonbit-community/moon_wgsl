@@ -97,19 +97,6 @@ pub fn wgsl_source_contains_virtual_directive(
 }
 
 ///|
-pub fn rewrite_wgsl_override_targets_with_redirects(
-  source : String,
-  alias_redirect_map : @hashmap.HashMap[String, String],
-) -> String raise WgslParseError {
-  let plan = WgslReferenceRewritePlan::new()
-  for entry in alias_redirect_map.iter() {
-    let (from_name, to_name) = entry
-    plan.add(from_name, to_name)
-  }
-  rewrite_wgsl_override_targets_with_binding_plan(source, plan)
-}
-
-///|
 pub fn rewrite_wgsl_override_targets_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
@@ -286,29 +273,6 @@ fn wgsl_binding_plan_redirect_target(
 }
 
 ///|
-fn build_wgsl_reference_rewrite_plan_from_map(
-  alias_redirect_map : @hashmap.HashMap[String, String],
-) -> WgslReferenceRewritePlan {
-  let plan = WgslReferenceRewritePlan::new()
-  for entry in alias_redirect_map.iter() {
-    let (from_name, to_name) = entry
-    plan.add(from_name, to_name)
-  }
-  plan
-}
-
-///|
-fn apply_wgsl_virtual_overrides_checked(
-  source : String,
-  alias_redirect_map : @hashmap.HashMap[String, String],
-) -> WgslVirtualOverrideOutput raise WgslParseError {
-  apply_wgsl_virtual_overrides_checked_with_binding_plan(
-    source,
-    build_wgsl_reference_rewrite_plan_from_map(alias_redirect_map),
-  )
-}
-
-///|
 fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
@@ -395,20 +359,6 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
     out = out + emit_wgsl_graph_block_canonical(block)
   }
   WgslVirtualOverrideOutput::{ source: out, invalid_override: None }
-}
-
-///|
-pub fn apply_wgsl_virtual_overrides(
-  source : String,
-  alias_redirect_map : @hashmap.HashMap[String, String],
-) -> String raise WgslVirtualOverrideError {
-  let output = apply_wgsl_virtual_overrides_checked(source, alias_redirect_map) catch {
-    error => raise wgsl_virtual_override_error_from_parse(error)
-  }
-  match output.invalid_override {
-    Some(name) => raise WgslVirtualOverrideError::InvalidOverride(name)
-    None => output.source
-  }
 }
 
 ///|

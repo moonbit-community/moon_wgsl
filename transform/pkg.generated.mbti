@@ -5,12 +5,9 @@ import {
   "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/import_syntax",
   "Milky2018/moon_wgsl/parser",
-  "moonbitlang/core/hashmap",
 }
 
 // Values
-pub fn apply_wgsl_virtual_overrides(String, @hashmap.HashMap[String, String]) -> String raise WgslVirtualOverrideError
-
 pub fn apply_wgsl_virtual_overrides_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise WgslVirtualOverrideError
 
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
@@ -32,8 +29,6 @@ pub fn normalize_wgsl_output_identifiers(String) -> String raise @parser.WgslPar
 pub fn rewrite_wgsl_declarations_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_override_targets_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
-
-pub fn rewrite_wgsl_override_targets_with_redirects(String, @hashmap.HashMap[String, String]) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_references_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
 
