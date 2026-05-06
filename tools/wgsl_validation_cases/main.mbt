@@ -196,11 +196,57 @@ fn validation_issue9_type_identity_source() -> String {
 }
 
 ///|
+fn validation_issue13_nested_alias_global_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source(
+    "bevy_pbr/src/render/mesh_view_bindings.wgsl",
+    "#define_import_path bevy_pbr::mesh_view_bindings\n" +
+    "struct View { value: f32 }\n" +
+    "@group(0) @binding(0) var<uniform> view: View;\n",
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/shadows.wgsl",
+    "#define_import_path bevy_pbr::shadows\n" +
+    "#import bevy_pbr::mesh_view_bindings as view_bindings\n" +
+    "fn shadow_value() -> f32 {\n" +
+    "  return view_bindings::view.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/pbr_functions.wgsl",
+    "#define_import_path bevy_pbr::pbr_functions\n" +
+    "#import bevy_pbr::{\n" +
+    "  mesh_view_bindings as view_bindings,\n" +
+    "  shadows,\n" +
+    "}\n" +
+    "fn pbr_value() -> f32 {\n" +
+    "  return view_bindings::view.value + shadows::shadow_value();\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/pbr.wgsl",
+    "#define_import_path bevy_pbr::pbr\n" +
+    "#import bevy_pbr::pbr_functions::pbr_value\n" +
+    "@fragment\n" +
+    "fn fragment() -> @location(0) f32 {\n" +
+    "  return pbr_value();\n" +
+    "}\n",
+  )
+  composer.compose_wgsl(
+    "bevy_pbr/src/render/pbr.wgsl",
+    validation_compose_options(validation_empty_defines()),
+  ) catch {
+    err => abort("expected issue 13 compose success: \{err.message()}")
+  }
+}
+
+///|
 fn validation_case_arg() -> String {
   let args = @env.args()
   if args.length() == 0 {
     abort(
-      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity",
+      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity|issue13-nested-alias-global",
     )
   }
   args[args.length() - 1]
@@ -214,9 +260,11 @@ fn main {
     "bevy-issue8" => validation_bevy_issue8_source()
     "bevy-pbr-functions" => validation_bevy_pbr_functions_source()
     "issue9-type-identity" => validation_issue9_type_identity_source()
+    "issue13-nested-alias-global" =>
+      validation_issue13_nested_alias_global_source()
     _ =>
       abort(
-        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity",
+        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|bevy-issue8|bevy-pbr-functions|issue9-type-identity|issue13-nested-alias-global",
       )
   }
   println(source)

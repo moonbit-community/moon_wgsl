@@ -500,32 +500,54 @@ fn collect_wgsl_live_binding_plan(
       declared_names.set(declaration_name, true)
     }
   }
+  let identity_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  for binding in bindings.bindings {
+    let to_name = binding.to_name.trim().to_owned()
+    if to_name == "" || !declared_names.contains(to_name) {
+      continue
+    }
+    match binding.identity {
+      Some(identity) => {
+        let key = identity.key()
+        if !identity_targets.contains(key) {
+          identity_targets.set(key, to_name)
+        }
+      }
+      None => ()
+    }
+  }
   let plan = WgslLiveBindingPlan::new()
   let seen_binding_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
   for binding in bindings.bindings {
-    let from_name = binding.from_name.trim().to_owned()
     let to_name = binding.to_name.trim().to_owned()
-    let binding_key = wgsl_compose_binding_key(binding)
+    let resolved_to_name = if declared_names.contains(to_name) {
+      to_name
+    } else {
+      match binding.identity {
+        Some(identity) =>
+          match identity_targets.get(identity.key()) {
+            Some(target) => target
+            None => to_name
+          }
+        None => to_name
+      }
+    }
+    let resolved_binding = if resolved_to_name == to_name {
+      binding
+    } else {
+      binding.with_to_name(resolved_to_name)
+    }
+    let binding_key = wgsl_compose_binding_key(resolved_binding)
     if seen_binding_keys.contains(binding_key) {
       continue
     }
     seen_binding_keys.add(binding_key)
-    let source_contains_cached_alias = if binding.scope ==
-      CachedQualifiedAliasBinding {
-      wgsl_semantic_reference_path_set_contains(
-        facts.reference_paths,
-        from_name,
-      )
-    } else {
-      false
-    }
-    if to_name != "" &&
+    if resolved_to_name != "" &&
       (
-        declared_names.contains(to_name) ||
-        binding.scope == UnqualifiedItemBinding ||
-        source_contains_cached_alias
+        declared_names.contains(resolved_to_name) ||
+        binding.scope == UnqualifiedItemBinding
       ) {
-      plan.push(binding)
+      plan.push(resolved_binding)
     }
   }
   plan

@@ -36,6 +36,10 @@ echo "== WGSL validation: issue 9 imported type identity =="
 emit_case issue9-type-identity "$tmpdir/issue9_type_identity.wgsl"
 validate_wgsl "$tmpdir/issue9_type_identity.wgsl"
 
+echo "== WGSL validation: issue 13 nested alias global identity =="
+emit_case issue13-nested-alias-global "$tmpdir/issue13_nested_alias_global.wgsl"
+validate_wgsl "$tmpdir/issue13_nested_alias_global.wgsl"
+
 echo "== WGSL validation: Bevy PBR functions compose =="
 emit_case bevy-pbr-functions "$tmpdir/bevy_pbr_functions.wgsl"
 validate_wgsl "$tmpdir/bevy_pbr_functions.wgsl"

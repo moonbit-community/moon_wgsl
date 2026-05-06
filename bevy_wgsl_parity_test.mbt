@@ -115,6 +115,10 @@ test "naga_oil parity: Bevy PBR fragment resolves aliased clustered lights" {
     source.contains("view_bindings__clustered_lights"),
     content="true",
   )
+  debug_inspect(
+    source.contains("shadows__view_bindings__view"),
+    content="false",
+  )
   debug_inspect(source.contains("vec3<f32 >="), content="false")
   debug_inspect(
     source.contains("var output: vec3<f32> = world_normal"),
@@ -286,6 +290,78 @@ test "issue 11: Bevy PBR point-light flag uses emitted symbol name" {
     ),
     content="true",
   )
+}
+
+///|
+test "issue 13: nested alias global references use emitted symbol identity" {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source(
+    "bevy_pbr/src/render/mesh_view_bindings.wgsl",
+    (
+      #|#define_import_path bevy_pbr::mesh_view_bindings
+      #|struct View {
+      #|  value: f32,
+      #|}
+      #|@group(0) @binding(0) var<uniform> view: View;
+      #|
+    ),
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/shadows.wgsl",
+    (
+      #|#define_import_path bevy_pbr::shadows
+      #|#import bevy_pbr::mesh_view_bindings as view_bindings
+      #|fn shadow_value() -> f32 {
+      #|  return view_bindings::view.value;
+      #|}
+      #|
+    ),
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/pbr_functions.wgsl",
+    (
+      #|#define_import_path bevy_pbr::pbr_functions
+      #|#import bevy_pbr::{
+      #|  mesh_view_bindings as view_bindings,
+      #|  shadows,
+      #|}
+      #|fn pbr_value() -> f32 {
+      #|  return view_bindings::view.value + shadows::shadow_value();
+      #|}
+      #|
+    ),
+  )
+  composer.register_source(
+    "bevy_pbr/src/render/pbr.wgsl",
+    (
+      #|#define_import_path bevy_pbr::pbr
+      #|#import bevy_pbr::pbr_functions::pbr_value
+      #|fn fragment() -> f32 {
+      #|  return pbr_value();
+      #|}
+      #|
+    ),
+  )
+  let source = composer.compose_wgsl("bevy_pbr/src/render/pbr.wgsl", {
+    defines: empty_bool_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
+    redirects: [],
+    additional_imports: [],
+  }) catch {
+    err =>
+      abort("expected issue 13 nested alias compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("view_bindings::view"), content="false")
+  debug_inspect(
+    source.contains("shadows__view_bindings__view"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("var<uniform> view_bindings__view"),
+    content="true",
+  )
+  debug_inspect(source.contains("view_bindings__view.value"), content="true")
 }
 
 ///|

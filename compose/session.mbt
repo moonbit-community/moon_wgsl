@@ -391,6 +391,20 @@ fn WgslComposeBinding::as_unqualified_binding(
 }
 
 ///|
+fn WgslComposeBinding::with_to_name(
+  self : WgslComposeBinding,
+  to_name : String,
+) -> WgslComposeBinding {
+  WgslComposeBinding::new(
+    self.from_name,
+    to_name,
+    self.scope,
+    self.identity,
+    self.alias_name,
+  )
+}
+
+///|
 fn WgslComposeBindingSet::push(
   self : WgslComposeBindingSet,
   binding : WgslComposeBinding,
