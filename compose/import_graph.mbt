@@ -298,19 +298,13 @@ fn Composer::compose_wgsl_import_requests(
       let mut resolved_requested_items = 0
       for requested_item in request.requested_items {
         match
-          find_wgsl_visible_alias_imported_item_name(
+          find_wgsl_visible_alias_imported_item_binding(
             alias_redirects,
             request.module_path,
             requested_item,
           ) {
-          Some(imported_name) => {
-            alias_redirects.push(WgslScopedAliasRedirect::{
-              redirect: WgslSymbolRedirect::{
-                from_name: requested_item,
-                to_name: imported_name,
-              },
-              scope: UnqualifiedItemBinding,
-            })
+          Some(binding) => {
+            alias_redirects.push(binding)
             resolved_requested_items = resolved_requested_items + 1
           }
           None =>
@@ -321,13 +315,14 @@ fn Composer::compose_wgsl_import_requests(
                 requested_item,
               ) {
               Some(imported_name) => {
-                alias_redirects.push(WgslScopedAliasRedirect::{
-                  redirect: WgslSymbolRedirect::{
-                    from_name: requested_item,
-                    to_name: imported_name,
-                  },
-                  scope: UnqualifiedItemBinding,
-                })
+                alias_redirects.push(
+                  WgslScopedAliasRedirect::for_unqualified_symbol(
+                    request.rel_path,
+                    requested_item,
+                    imported_name,
+                    UnqualifiedItemBinding,
+                  ),
+                )
                 resolved_requested_items = resolved_requested_items + 1
               }
               None => ()
@@ -408,19 +403,19 @@ fn Composer::compose_wgsl_import_requests(
         let (from_name, to_name) = entry
         rename_map.set(from_name, to_name)
       }
-      let collected_redirects : Array[WgslSymbolRedirect] = []
       if request.alias_name != "" {
-        collect_wgsl_semantic_import_alias_redirects(
-          request.alias_name,
-          rename_map,
-          collected_redirects,
-        )
-      }
-      for redirect in collected_redirects {
-        alias_redirects.push(WgslScopedAliasRedirect::{
-          redirect,
-          scope: QualifiedAliasReference,
-        })
+        for entry in rename_map.iter() {
+          let (original_name, generated_name) = entry
+          alias_redirects.push(
+            WgslScopedAliasRedirect::for_alias_symbol(
+              request.rel_path,
+              request.alias_name,
+              original_name,
+              generated_name,
+              QualifiedAliasReference,
+            ),
+          )
+        }
       }
       rewrite_wgsl_declarations_with_global_rename_map(
         module_source, request_rename_map,

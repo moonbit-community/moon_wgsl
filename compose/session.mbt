@@ -251,6 +251,8 @@ priv enum WgslAliasRedirectScope {
 priv struct WgslScopedAliasRedirect {
   redirect : WgslSymbolRedirect
   scope : WgslAliasRedirectScope
+  identity : WgslSymbolIdentity?
+  alias_name : String
 }
 
 ///|
@@ -280,7 +282,68 @@ fn wgsl_scoped_alias_redirect_key(
   let redirect = scoped_redirect.redirect
   let from_name = redirect.from_name.trim().to_owned()
   let to_name = redirect.to_name.trim().to_owned()
-  "\{wgsl_alias_redirect_scope_key(scoped_redirect.scope)}|\{from_name}|\{to_name}"
+  let identity_key = match scoped_redirect.identity {
+    Some(identity) => identity.key()
+    None => ""
+  }
+  "\{wgsl_alias_redirect_scope_key(scoped_redirect.scope)}|\{from_name}|\{to_name}|\{scoped_redirect.alias_name}|\{identity_key}"
+}
+
+///|
+fn WgslScopedAliasRedirect::new(
+  redirect : WgslSymbolRedirect,
+  scope : WgslAliasRedirectScope,
+  identity : WgslSymbolIdentity?,
+  alias_name : String,
+) -> WgslScopedAliasRedirect {
+  WgslScopedAliasRedirect::{ redirect, scope, identity, alias_name }
+}
+
+///|
+fn WgslScopedAliasRedirect::for_alias_symbol(
+  rel_path : String,
+  alias_name : String,
+  original_name : String,
+  generated_name : String,
+  scope : WgslAliasRedirectScope,
+) -> WgslScopedAliasRedirect {
+  WgslScopedAliasRedirect::new(
+    WgslSymbolRedirect::{
+      from_name: "\{alias_name}::\{original_name}",
+      to_name: generated_name,
+    },
+    scope,
+    Some(WgslSymbolIdentity::new(rel_path, original_name)),
+    alias_name,
+  )
+}
+
+///|
+fn WgslScopedAliasRedirect::for_unqualified_symbol(
+  rel_path : String,
+  original_name : String,
+  generated_name : String,
+  scope : WgslAliasRedirectScope,
+) -> WgslScopedAliasRedirect {
+  WgslScopedAliasRedirect::new(
+    WgslSymbolRedirect::{ from_name: original_name, to_name: generated_name },
+    scope,
+    Some(WgslSymbolIdentity::new(rel_path, original_name)),
+    "",
+  )
+}
+
+///|
+fn WgslScopedAliasRedirect::as_unqualified_binding(
+  self : WgslScopedAliasRedirect,
+  from_name : String,
+) -> WgslScopedAliasRedirect {
+  WgslScopedAliasRedirect::new(
+    WgslSymbolRedirect::{ from_name, to_name: self.redirect.to_name },
+    UnqualifiedItemBinding,
+    self.identity,
+    self.alias_name,
+  )
 }
 
 ///|

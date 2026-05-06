@@ -576,18 +576,3 @@ fn build_wgsl_semantic_import_rename_map(
 }
 
 ///|
-fn collect_wgsl_semantic_import_alias_redirects(
-  alias_name : String,
-  rename_map : @hashmap.HashMap[String, String],
-  redirects : Array[WgslSymbolRedirect],
-) -> Unit {
-  for entry in rename_map.iter() {
-    let (from_name, to_name) = entry
-    redirects.push(WgslSymbolRedirect::{
-      from_name: "\{alias_name}::\{from_name}",
-      to_name,
-    })
-  }
-}
-
-///|
