@@ -558,21 +558,3 @@ fn build_wgsl_semantic_import_target_plans(
 }
 
 ///|
-fn build_wgsl_semantic_import_rename_map(
-  source : String,
-  alias_name : String,
-) -> @hashmap.HashMap[String, String] raise WgslParseError {
-  let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let alias_prefix = wgsl_semantic_import_alias_prefix(alias_name)
-  for declaration in parse_wgsl_translation_unit_strict(source).declarations() {
-    if declaration.name() != "" {
-      rename_map.set(
-        declaration.name(),
-        "\{alias_prefix}__\{declaration.name()}",
-      )
-    }
-  }
-  rename_map
-}
-
-///|

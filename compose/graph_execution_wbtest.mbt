@@ -52,6 +52,7 @@ test "compose graph execution plans reachability before emission" {
     WgslComposeBindingSet::new(),
     true,
     true,
+    [],
   ) catch {
     error => abort(error.message())
   }

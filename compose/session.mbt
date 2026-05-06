@@ -156,16 +156,10 @@ fn WgslFinalNameTables::canonical_set(
   generated_name : String,
 ) -> Unit {
   let key = identity.key()
-  self.canonical.set(key, generated_name)
-  for i in 0..<self.canonical_entries.length() {
-    if self.canonical_entries[i].identity.key() == key {
-      self.canonical_entries[i] = WgslCanonicalFinalNameEntry::{
-        identity,
-        generated_name,
-      }
-      return
-    }
+  if self.canonical.contains(key) {
+    return
   }
+  self.canonical.set(key, generated_name)
   self.canonical_entries.push(WgslCanonicalFinalNameEntry::{
     identity,
     generated_name,
@@ -201,16 +195,10 @@ fn WgslFinalNameTables::alias_set(
   generated_name : String,
 ) -> Unit {
   let key = identity.key()
-  self.alias_scoped.set(key, generated_name)
-  for i in 0..<self.alias_entries.length() {
-    if self.alias_entries[i].identity.key() == key {
-      self.alias_entries[i] = WgslAliasFinalNameEntry::{
-        identity,
-        generated_name,
-      }
-      return
-    }
+  if self.alias_scoped.contains(key) {
+    return
   }
+  self.alias_scoped.set(key, generated_name)
   self.alias_entries.push(WgslAliasFinalNameEntry::{ identity, generated_name })
 }
 
@@ -251,6 +239,7 @@ priv struct WgslComposeSession {
   graph_planned_requests : @hashmap.HashMap[String, Bool]
   graph_planning_rel_paths : Array[String]
   mut graph_execution_complete : Bool
+  assigned_final_names : WgslFinalNameTables
   final_names : WgslFinalNameTables
   symbol_graph : WgslComposeSymbolGraph
   semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
@@ -435,6 +424,35 @@ fn WgslComposeSession::record_canonical_final_name(
 }
 
 ///|
+fn WgslComposeSession::assign_canonical_final_name(
+  self : WgslComposeSession,
+  identity : WgslSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  self.assigned_final_names.canonical_set(identity, generated_name)
+  self.symbol_graph.record_reachable_symbol(identity)
+}
+
+///|
+fn WgslComposeSession::assigned_canonical_final_name(
+  self : WgslComposeSession,
+  identity : WgslSymbolIdentity,
+) -> String? {
+  self.assigned_final_names.canonical_get(identity)
+}
+
+///|
+fn WgslComposeSession::assign_alias_final_name(
+  self : WgslComposeSession,
+  identity : WgslAliasSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  self.assigned_final_names.canonical_set(identity.symbol, generated_name)
+  self.assigned_final_names.alias_set(identity, generated_name)
+  self.symbol_graph.record_reachable_symbol(identity.symbol)
+}
+
+///|
 fn WgslComposeSession::record_canonical_final_name_if_absent(
   self : WgslComposeSession,
   identity : WgslSymbolIdentity,
@@ -451,7 +469,6 @@ fn WgslComposeSession::record_alias_final_name(
   identity : WgslAliasSymbolIdentity,
   generated_name : String,
 ) -> Unit {
-  self.final_names.canonical_set(identity.symbol, generated_name)
   self.final_names.alias_set(identity, generated_name)
   self.symbol_graph.record_reachable_symbol(identity.symbol)
 }

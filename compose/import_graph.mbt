@@ -231,6 +231,7 @@ fn Composer::compose_wgsl_import_requests(
   bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
+  alias_prefixes : Array[String],
 ) -> String raise ComposerError {
   let mut merged = ""
   for request in requests {
@@ -239,9 +240,16 @@ fn Composer::compose_wgsl_import_requests(
         "internal compose graph is missing planned request \{wgsl_import_request_visit_key(current_rel_path, request)}",
       )
     }
+    let request_alias_prefixes = alias_prefixes.copy()
+    if request.alias_name != "" {
+      request_alias_prefixes.push(
+        wgsl_semantic_import_alias_prefix(request.alias_name),
+      )
+    }
+    let request_alias_scope = request_alias_prefixes.join("__")
     let full_module_key = wgsl_full_module_visit_key(
       request.rel_path,
-      request.alias_name,
+      request_alias_scope,
     )
     if wgsl_path_stack_contains(session.active_rel_paths, request.rel_path) {
       raise ComposerError::ImportCycle(
@@ -254,6 +262,7 @@ fn Composer::compose_wgsl_import_requests(
           session,
           request.rel_path,
           request.alias_name,
+          request_alias_scope,
           bindings,
         )
         |> ignore
@@ -275,23 +284,35 @@ fn Composer::compose_wgsl_import_requests(
           }
           None =>
             match
-              find_wgsl_cached_imported_item_name(
-                session,
+              find_wgsl_visible_identity_imported_item_binding(
+                bindings,
                 request.rel_path,
                 requested_item,
               ) {
-              Some(imported_name) => {
-                bindings.push(
-                  WgslComposeBinding::for_unqualified_symbol(
-                    request.rel_path,
-                    requested_item,
-                    imported_name,
-                    UnqualifiedItemBinding,
-                  ),
-                )
+              Some(binding) => {
+                bindings.push(binding)
                 resolved_requested_items = resolved_requested_items + 1
               }
-              None => ()
+              None =>
+                match
+                  find_wgsl_cached_imported_item_name(
+                    session,
+                    request.rel_path,
+                    requested_item,
+                  ) {
+                  Some(imported_name) => {
+                    bindings.push(
+                      WgslComposeBinding::for_unqualified_symbol(
+                        request.rel_path,
+                        requested_item,
+                        imported_name,
+                        UnqualifiedItemBinding,
+                      ),
+                    )
+                    resolved_requested_items = resolved_requested_items + 1
+                  }
+                  None => ()
+                }
             }
         }
       }
@@ -317,6 +338,7 @@ fn Composer::compose_wgsl_import_requests(
         bindings,
         false,
         true,
+        request_alias_prefixes,
       )
     } else {
       let import_defs = self.active_compose_defs_for_rel_path(
@@ -347,30 +369,46 @@ fn Composer::compose_wgsl_import_requests(
         bindings,
         false,
         false,
+        request_alias_prefixes,
       )
     }
     session.active_rel_paths.pop() |> ignore
     if module_source == "" {
       continue
     }
-    let rename_alias = if request.alias_name != "" {
-      request.alias_name
-    } else {
-      ""
-    }
     let rename_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-    let final_module_source = if rename_alias != "" {
-      let request_rename_map = build_wgsl_semantic_import_rename_map(
-        module_source, rename_alias,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
+    for i in origin_start_index..<session.source_origins.length() {
+      let origin = session.source_origins[i]
+      if origin.rel_path != "" &&
+        origin.source_symbol_name != "" &&
+        origin.generated_symbol_name != "" {
+        let identity = WgslSymbolIdentity::new(
+          origin.rel_path,
+          origin.source_symbol_name,
+        )
+        let assigned_name = if request_alias_prefixes.length() == 0 {
+          session.assigned_canonical_final_name(identity)
+        } else {
+          session.assigned_final_names.alias_get(
+            WgslAliasSymbolIdentity::new(
+              origin.rel_path,
+              request_alias_prefixes.join("__"),
+              origin.source_symbol_name,
+            ),
+          )
+        }
+        match assigned_name {
+          Some(name) =>
+            if name != origin.generated_symbol_name {
+              rename_map.set(origin.generated_symbol_name, name)
+            }
+          None => ()
+        }
       }
-      for entry in request_rename_map.iter() {
-        let (from_name, to_name) = entry
-        rename_map.set(from_name, to_name)
-      }
+    }
+    let final_module_source = if !rename_map.is_empty() {
       rewrite_wgsl_declarations_with_global_rename_map(
-        module_source, request_rename_map,
+        module_source, rename_map,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
@@ -385,7 +423,7 @@ fn Composer::compose_wgsl_import_requests(
     if request.alias_name != "" {
       for i in origin_start_index..<session.source_origins.length() {
         let origin = session.source_origins[i]
-        if origin.rel_path != "" &&
+        if origin.rel_path == request.rel_path &&
           origin.source_symbol_name != "" &&
           origin.generated_symbol_name != "" {
           bindings.push(
@@ -399,17 +437,21 @@ fn Composer::compose_wgsl_import_requests(
           )
         }
       }
-      for entry in rename_map.iter() {
-        let (original_name, generated_name) = entry
-        bindings.push(
-          WgslComposeBinding::for_alias_symbol(
-            request.rel_path,
-            request.alias_name,
-            original_name,
-            generated_name,
-            QualifiedAliasBinding,
-          ),
-        )
+    } else if !request.import_full_module {
+      for i in origin_start_index..<session.source_origins.length() {
+        let origin = session.source_origins[i]
+        if origin.rel_path == request.rel_path &&
+          origin.source_symbol_name != "" &&
+          origin.generated_symbol_name != "" {
+          bindings.push(
+            WgslComposeBinding::for_unqualified_symbol(
+              origin.rel_path,
+              origin.source_symbol_name,
+              origin.generated_symbol_name,
+              UnqualifiedItemBinding,
+            ),
+          )
+        }
       }
     }
     for i in origin_start_index..<session.source_origins.length() {
@@ -422,10 +464,10 @@ fn Composer::compose_wgsl_import_requests(
             WgslSymbolIdentity::new(origin.rel_path, origin.source_symbol_name),
             origin.generated_symbol_name,
           )
-        } else {
+        } else if origin.rel_path == request.rel_path {
           let identity = WgslAliasSymbolIdentity::new(
             origin.rel_path,
-            request.alias_name,
+            request_alias_scope,
             origin.source_symbol_name,
           )
           session.record_alias_final_name_if_absent(
@@ -433,31 +475,6 @@ fn Composer::compose_wgsl_import_requests(
             origin.generated_symbol_name,
           )
         }
-      }
-    }
-    let final_facts = collect_wgsl_compose_semantic_facts(
-      session, final_module_source,
-    )
-    let final_declarations = final_facts.declarations
-    if rename_map.is_empty() {
-      for declaration in final_declarations {
-        let declaration_name = declaration.name()
-        session.record_canonical_final_name(
-          WgslSymbolIdentity::new(request.rel_path, declaration_name),
-          declaration_name,
-        )
-      }
-    } else {
-      for entry in rename_map.iter() {
-        let (from_name, to_name) = entry
-        session.record_alias_final_name(
-          WgslAliasSymbolIdentity::new(
-            request.rel_path,
-            request.alias_name,
-            from_name,
-          ),
-          to_name,
-        )
       }
     }
     if request.import_full_module {

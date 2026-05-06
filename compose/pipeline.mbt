@@ -44,6 +44,7 @@ fn Composer::compose_wgsl_scanned_item(
   bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
+  alias_prefixes : Array[String],
 ) -> String raise ComposerError {
   match item.kind() {
     WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
@@ -56,7 +57,7 @@ fn Composer::compose_wgsl_scanned_item(
         active_defs,
       )
       self.compose_wgsl_import_requests(
-        current_rel_path, requests, bindings, session, active_defs,
+        current_rel_path, requests, bindings, session, active_defs, alias_prefixes,
       )
     }
     WgslDirectiveScanItemKind::Directive(directive) =>
@@ -81,6 +82,7 @@ fn Composer::preprocess_wgsl_source_with_path(
   inherited_bindings : WgslComposeBindingSet,
   apply_virtual_overrides : Bool,
   record_current_origins : Bool,
+  alias_prefixes : Array[String],
 ) -> String raise ComposerError {
   let active_defs = self.active_compose_defs_for_rel_path(
     current_rel_path, session, inherited_defs,
@@ -104,7 +106,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     active_defs,
   )
   let implicit_imports = self.compose_wgsl_import_requests(
-    current_rel_path, implicit_requests, bindings, session, active_defs,
+    current_rel_path, implicit_requests, bindings, session, active_defs, alias_prefixes,
   )
   merged = merged + implicit_imports
   for
@@ -120,6 +122,7 @@ fn Composer::preprocess_wgsl_source_with_path(
         bindings,
         session,
         active_defs,
+        alias_prefixes,
       )
   }
   finalize_wgsl_composed_source(
@@ -161,6 +164,7 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
     WgslComposeBindingSet::new(),
     true,
     true,
+    [],
   )
   session.active_rel_paths.pop() |> ignore
   composed
@@ -248,6 +252,7 @@ pub fn Composer::compose_wgsl_source(
       WgslComposeBindingSet::new(),
       true,
       false,
+      [],
     ),
   )
   finalize_wgsl_output_source(composed)

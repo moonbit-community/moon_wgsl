@@ -80,11 +80,12 @@ fn merge_wgsl_source_local_shader_defs(
 fn collect_wgsl_cached_import_bindings(
   session : WgslComposeSession,
   rel_path : String,
-  alias_name : String,
+  source_alias_name : String,
+  final_alias_scope : String,
   bindings : WgslComposeBindingSet,
 ) -> Int {
   let mut count = 0
-  if alias_name == "" {
+  if source_alias_name == "" {
     for entry in session.final_names.canonical_entries_for_rel_path(rel_path) {
       bindings.push(
         WgslComposeBinding::for_unqualified_symbol(
@@ -98,11 +99,13 @@ fn collect_wgsl_cached_import_bindings(
     }
   } else {
     for
-      entry in session.final_names.alias_entries_for_scope(rel_path, alias_name) {
+      entry in session.final_names.alias_entries_for_scope(
+        rel_path, final_alias_scope,
+      ) {
       bindings.push(
         WgslComposeBinding::for_alias_symbol(
           entry.identity.symbol.rel_path,
-          alias_name,
+          source_alias_name,
           entry.identity.symbol.original_name,
           entry.generated_name,
           CachedQualifiedAliasBinding,
@@ -142,6 +145,28 @@ fn find_wgsl_visible_alias_imported_item_binding(
     }
   }
   None
+}
+
+///|
+fn find_wgsl_visible_identity_imported_item_binding(
+  bindings : WgslComposeBindingSet,
+  rel_path : String,
+  item_name : String,
+) -> WgslComposeBinding? {
+  let identity_key = WgslSymbolIdentity::new(rel_path, item_name).key()
+  let mut found : WgslComposeBinding? = None
+  for binding in bindings.bindings {
+    guard binding.identity is Some(identity) else { continue }
+    if identity.key() != identity_key {
+      continue
+    }
+    match found {
+      Some(existing) if existing.to_name != binding.to_name => return None
+      Some(_) => ()
+      None => found = Some(binding.as_unqualified_binding(item_name))
+    }
+  }
+  found
 }
 
 ///|

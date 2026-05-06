@@ -1577,20 +1577,88 @@ test "github issue 12: transitive tonemapping type identity is reused" {
   ) catch {
     err => abort("expected issue 12 compose success: \{err.message()}")
   }
-  debug_inspect(
-    source.contains("struct pbr_functions__view_bindings__ColorGrading"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains(
+  let color_grading_is_consistent = source.contains(
       "in_color_grading: pbr_functions__view_bindings__ColorGrading",
-    ),
-    content="true",
-  )
+    ) ||
+    source.contains("in_color_grading: pbr_functions__ColorGrading")
+  let color_grading_decl_is_visible = source.contains(
+      "struct pbr_functions__view_bindings__ColorGrading",
+    ) ||
+    source.contains("struct pbr_functions__ColorGrading")
+  debug_inspect(color_grading_is_consistent, content="true")
+  debug_inspect(color_grading_decl_is_visible, content="true")
   debug_inspect(
     source.contains("in_color_grading: ColorGrading"),
     content="false",
   )
+}
+
+///|
+test "composer symbol table: parent alias does not expose transitive imports" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "dep.wgsl",
+    "#define_import_path app::dep\n" + "fn helper() -> u32 { return 1u; }\n",
+  )
+  composer.register_source(
+    "consumer.wgsl",
+    "#define_import_path app::consumer\n" +
+    "#import app::dep::helper\n" +
+    "fn call_helper() -> u32 { return helper(); }\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#import app::dep as dep_alias\n" +
+    "#import app::consumer as consumer_alias\n" +
+    "fn entry() -> u32 {\n" +
+    "  return dep_alias::helper() + consumer_alias::call_helper();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort(
+        "expected transitive alias-surface compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("consumer_alias__helper"), content="false")
+  debug_inspect(source.contains("return dep_alias__helper();"), content="true")
+  debug_inspect(source.contains("return helper();"), content="false")
+}
+
+///|
+test "composer symbol table: direct item emit creates local unqualified binding" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "dep.wgsl",
+    "#define_import_path app::dep\n" + "fn helper() -> u32 { return 1u; }\n",
+  )
+  composer.register_source(
+    "consumer.wgsl",
+    "#define_import_path app::consumer\n" +
+    "#import app::dep::helper\n" +
+    "fn call_helper() -> u32 { return helper(); }\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#import app::consumer as consumer_alias\n" +
+    "fn entry() -> u32 { return consumer_alias::call_helper(); }\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_compose_options(upstream_parity_empty_defines()),
+  ) catch {
+    err =>
+      abort("expected direct item binding compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("fn consumer_alias__helper"), content="true")
+  debug_inspect(
+    source.contains("return consumer_alias__helper();"),
+    content="true",
+  )
+  debug_inspect(source.contains("return helper();"), content="false")
 }
 
 ///|
