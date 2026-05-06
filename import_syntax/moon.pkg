@@ -3,3 +3,13 @@ import {
   "Milky2018/moon_wgsl/lex",
   "moonbitlang/core/list",
 }
+
+options(
+  "pre-build": [
+    {
+      "command": "$mod_dir/.mooncakes/moonbitlang/yacc/moonyacc $input --input-mode array -o $output && moonfmt -w $output",
+      "input": "import_parser.mbty",
+      "output": "import_generated_parser.mbt",
+    },
+  ],
+)

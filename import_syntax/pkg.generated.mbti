@@ -3,19 +3,49 @@ package "Milky2018/moon_wgsl/import_syntax"
 
 import {
   "Milky2018/moon_wgsl/common",
+  "moonbitlang/core/debug",
 }
 
 // Values
+pub fn import_targets(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@common.WgslImportTarget] raise ParseError
+
 pub fn parse_wgsl_import_spec_is_empty_or_final_semicolon(String) -> Bool
 
 pub fn parse_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit raise ParseImportsError
 
 // Errors
+pub suberror ParseError {
+  UnexpectedToken(Token, (Int, Int), Array[TokenKind])
+  UnexpectedEndOfInput(Int, Array[TokenKind])
+} derive(@debug.Debug)
+
 pub(all) suberror ParseImportsError {
   Parse(String, Int)
 }
 
 // Types and methods
+pub(all) enum Token {
+  IDENT(String)
+  AS
+  LBRACE(Int)
+  RBRACE(Int)
+  COMMA
+  SEMI
+  EOF
+} derive(@debug.Debug)
+pub fn Token::kind(Self) -> TokenKind
+
+pub(all) enum TokenKind {
+  TK_IDENT
+  TK_AS
+  TK_LBRACE
+  TK_RBRACE
+  TK_COMMA
+  TK_SEMI
+  TK_EOF
+}
+pub impl Show for TokenKind
+pub impl @debug.Debug for TokenKind
 
 // Type aliases
 

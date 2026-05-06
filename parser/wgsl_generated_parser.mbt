@@ -1,5 +1,5 @@
 ///|
-priv enum Token {
+pub(all) enum Token {
   ITEM(WgslRawTopLevelItem)
   STMT(@ast.WgslStatement)
   TYPE_ATOM(@ast.WgslTypeAtom)
@@ -42,7 +42,52 @@ priv enum Token {
 } derive(Debug)
 
 ///|
-priv enum TokenKind {
+pub fn Token::kind(self : Token) -> TokenKind {
+  match self {
+    ITEM(_) => TK_ITEM
+    STMT(_) => TK_STMT
+    TYPE_ATOM(_) => TK_TYPE_ATOM
+    ARG_NAME(_) => TK_ARG_NAME
+    ARG_TYPE(_) => TK_ARG_TYPE
+    MEMBER_NAME(_) => TK_MEMBER_NAME
+    MEMBER_TYPE(_) => TK_MEMBER_TYPE
+    DECL_TYPE(_) => TK_DECL_TYPE
+    INIT_EXPR(_) => TK_INIT_EXPR
+    EXPR_REF(_) => TK_EXPR_REF
+    AT(_) => TK_AT
+    ATTR_NAME(_) => TK_ATTR_NAME
+    ATTR_ARGS(_) => TK_ATTR_ARGS
+    KW_VIRTUAL(_) => TK_KW_VIRTUAL
+    KW_OVERRIDE(_) => TK_KW_OVERRIDE
+    KW_FN(_) => TK_KW_FN
+    KW_VAR(_) => TK_KW_VAR
+    KW_STRUCT(_) => TK_KW_STRUCT
+    KW_CONST(_) => TK_KW_CONST
+    KW_CONST_ASSERT(_) => TK_KW_CONST_ASSERT
+    KW_ALIAS(_) => TK_KW_ALIAS
+    KW_TYPE(_) => TK_KW_TYPE
+    KW_ENABLE(_) => TK_KW_ENABLE
+    KW_REQUIRES(_) => TK_KW_REQUIRES
+    KW_DIAGNOSTIC(_) => TK_KW_DIAGNOSTIC
+    DIRECTIVE_TAIL(_) => TK_DIRECTIVE_TAIL
+    SOURCE_TEXT(_) => TK_SOURCE_TEXT
+    ARROW(_) => TK_ARROW
+    LPAREN => TK_LPAREN
+    RPAREN => TK_RPAREN
+    LBRACE(_) => TK_LBRACE
+    RBRACE(_) => TK_RBRACE
+    COLON => TK_COLON
+    EQUAL => TK_EQUAL
+    TYPE_LT(_) => TK_TYPE_LT
+    TYPE_GT(_) => TK_TYPE_GT
+    COMMA => TK_COMMA
+    SEMI => TK_SEMI
+    EOF => TK_EOF
+  }
+}
+
+///|
+pub(all) enum TokenKind {
   TK_ITEM
   TK_STMT
   TK_TYPE_ATOM
@@ -85,7 +130,54 @@ priv enum TokenKind {
 }
 
 ///|
-impl Debug for TokenKind with to_repr(self) {
+pub impl Show for TokenKind with output(self, logger) {
+  logger.write_string(
+    match self {
+      TK_ITEM => "ITEM"
+      TK_STMT => "STMT"
+      TK_TYPE_ATOM => "TYPE_ATOM"
+      TK_ARG_NAME => "ARG_NAME"
+      TK_ARG_TYPE => "ARG_TYPE"
+      TK_MEMBER_NAME => "MEMBER_NAME"
+      TK_MEMBER_TYPE => "MEMBER_TYPE"
+      TK_DECL_TYPE => "DECL_TYPE"
+      TK_INIT_EXPR => "INIT_EXPR"
+      TK_EXPR_REF => "EXPR_REF"
+      TK_AT => "\"@\""
+      TK_ATTR_NAME => "ATTR_NAME"
+      TK_ATTR_ARGS => "ATTR_ARGS"
+      TK_KW_VIRTUAL => "KW_VIRTUAL"
+      TK_KW_OVERRIDE => "KW_OVERRIDE"
+      TK_KW_FN => "KW_FN"
+      TK_KW_VAR => "KW_VAR"
+      TK_KW_STRUCT => "KW_STRUCT"
+      TK_KW_CONST => "KW_CONST"
+      TK_KW_CONST_ASSERT => "KW_CONST_ASSERT"
+      TK_KW_ALIAS => "KW_ALIAS"
+      TK_KW_TYPE => "KW_TYPE"
+      TK_KW_ENABLE => "KW_ENABLE"
+      TK_KW_REQUIRES => "KW_REQUIRES"
+      TK_KW_DIAGNOSTIC => "KW_DIAGNOSTIC"
+      TK_DIRECTIVE_TAIL => "DIRECTIVE_TAIL"
+      TK_SOURCE_TEXT => "SOURCE_TEXT"
+      TK_ARROW => "\"->\""
+      TK_LPAREN => "\"(\""
+      TK_RPAREN => "\")\""
+      TK_LBRACE => "\"{\""
+      TK_RBRACE => "\"}\""
+      TK_COLON => "\":\""
+      TK_EQUAL => "\"=\""
+      TK_TYPE_LT => "\"<\""
+      TK_TYPE_GT => "\">\""
+      TK_COMMA => "\",\""
+      TK_SEMI => "\";\""
+      TK_EOF => "EOF"
+    },
+  )
+}
+
+///|
+pub impl Debug for TokenKind with to_repr(self) {
   match self {
     TK_ITEM => to_repr("ITEM")
     TK_STMT => to_repr("STMT")
@@ -130,7 +222,7 @@ impl Debug for TokenKind with to_repr(self) {
 }
 
 ///|
-priv suberror ParseError {
+pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(Debug)
@@ -3426,7 +3518,7 @@ fn error(
 }
 
 ///|
-fn raw_top_level_items(
+pub fn raw_top_level_items(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> Array[WgslRawTopLevelItem] raise ParseError {
@@ -3442,7 +3534,7 @@ fn raw_top_level_items(
 }
 
 ///|
-fn decl_head(
+pub fn decl_head(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> WgslDeclHead raise ParseError {
@@ -3458,7 +3550,7 @@ fn decl_head(
 }
 
 ///|
-fn type_ref(
+pub fn type_ref(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> @ast.WgslTypeRef raise ParseError {
@@ -3474,7 +3566,7 @@ fn type_ref(
 }
 
 ///|
-fn template_list(
+pub fn template_list(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> Array[@ast.WgslTypeRef] raise ParseError {
@@ -3490,7 +3582,7 @@ fn template_list(
 }
 
 ///|
-fn function_args(
+pub fn function_args(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> Array[@ast.WgslFunctionArgument] raise ParseError {
@@ -3506,7 +3598,7 @@ fn function_args(
 }
 
 ///|
-fn function_result(
+pub fn function_result(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> @ast.WgslFunctionResult? raise ParseError {
@@ -3522,7 +3614,7 @@ fn function_result(
 }
 
 ///|
-fn struct_members(
+pub fn struct_members(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> Array[@ast.WgslStructMember] raise ParseError {
@@ -3538,7 +3630,7 @@ fn struct_members(
 }
 
 ///|
-fn typed_initializer_tail(
+pub fn typed_initializer_tail(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> (@ast.WgslTypeRef?, @ast.WgslExprRef?) raise ParseError {
@@ -3554,7 +3646,7 @@ fn typed_initializer_tail(
 }
 
 ///|
-fn type_alias_tail(
+pub fn type_alias_tail(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> @ast.WgslTypeRef raise ParseError {
@@ -3570,7 +3662,7 @@ fn type_alias_tail(
 }
 
 ///|
-fn source_directive(
+pub fn source_directive(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> @ast.WgslDirective raise ParseError {
@@ -3586,7 +3678,7 @@ fn source_directive(
 }
 
 ///|
-fn const_assert_expr(
+pub fn const_assert_expr(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> @ast.WgslExprRef raise ParseError {
@@ -3602,7 +3694,7 @@ fn const_assert_expr(
 }
 
 ///|
-fn block(
+pub fn block(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> @ast.WgslBlock raise ParseError {

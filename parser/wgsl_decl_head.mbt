@@ -1,5 +1,5 @@
 ///|
-priv enum WgslDeclHeadKind {
+pub(all) enum WgslDeclHeadKind {
   Function
   GlobalVariable
   Struct
@@ -12,7 +12,7 @@ priv enum WgslDeclHeadKind {
 }
 
 ///|
-priv struct WgslDeclHead {
+pub struct WgslDeclHead {
   kind : WgslDeclHeadKind
   attributes : Array[WgslAttribute]
   keyword : WgslIdent?

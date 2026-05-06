@@ -1,5 +1,5 @@
 ///|
-priv enum WgslRawTopLevelKind {
+pub(all) enum WgslRawTopLevelKind {
   Trivia
   Import
   DefineImportPath
@@ -9,7 +9,7 @@ priv enum WgslRawTopLevelKind {
 } derive(Debug)
 
 ///|
-priv struct WgslRawTopLevelItem {
+pub struct WgslRawTopLevelItem {
   kind : WgslRawTopLevelKind
   text : String
   start : Int

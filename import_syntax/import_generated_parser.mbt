@@ -1,5 +1,5 @@
 ///|
-priv enum Token {
+pub(all) enum Token {
   IDENT(String)
   AS
   LBRACE(Int)
@@ -10,7 +10,20 @@ priv enum Token {
 } derive(Debug)
 
 ///|
-priv enum TokenKind {
+pub fn Token::kind(self : Token) -> TokenKind {
+  match self {
+    IDENT(_) => TK_IDENT
+    AS => TK_AS
+    LBRACE(_) => TK_LBRACE
+    RBRACE(_) => TK_RBRACE
+    COMMA => TK_COMMA
+    SEMI => TK_SEMI
+    EOF => TK_EOF
+  }
+}
+
+///|
+pub(all) enum TokenKind {
   TK_IDENT
   TK_AS
   TK_LBRACE
@@ -21,7 +34,22 @@ priv enum TokenKind {
 }
 
 ///|
-impl Debug for TokenKind with to_repr(self) {
+pub impl Show for TokenKind with output(self, logger) {
+  logger.write_string(
+    match self {
+      TK_IDENT => "IDENT"
+      TK_AS => "\"as\""
+      TK_LBRACE => "\"{\""
+      TK_RBRACE => "\"}\""
+      TK_COMMA => "\",\""
+      TK_SEMI => "\";\""
+      TK_EOF => "EOF"
+    },
+  )
+}
+
+///|
+pub impl Debug for TokenKind with to_repr(self) {
   match self {
     TK_IDENT => to_repr("IDENT")
     TK_AS => to_repr("as")
@@ -34,7 +62,7 @@ impl Debug for TokenKind with to_repr(self) {
 }
 
 ///|
-priv suberror ParseError {
+pub suberror ParseError {
   UnexpectedToken(Token, (Int, Int), Array[TokenKind])
   UnexpectedEndOfInput(Int, Array[TokenKind])
 } derive(Debug)
@@ -711,7 +739,7 @@ fn error(
 }
 
 ///|
-fn import_targets(
+pub fn import_targets(
   tokens : Array[(Token, Int, Int)],
   initial_pos? : Int,
 ) -> Array[@common.WgslImportTarget] raise ParseError {
