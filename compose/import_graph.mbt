@@ -491,10 +491,10 @@ fn Composer::compose_wgsl_import_requests(
 }
 
 ///|
-fn collect_wgsl_live_alias_redirects(
+fn collect_wgsl_live_alias_binding_plan(
   facts : WgslComposeSemanticFacts,
   alias_redirects : WgslScopedAliasRedirectSet,
-) -> Array[WgslSymbolRedirect] {
+) -> WgslLiveAliasBindingPlan {
   let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   for declaration in facts.declarations {
     let declaration_name = declaration.name()
@@ -502,7 +502,7 @@ fn collect_wgsl_live_alias_redirects(
       declared_names.set(declaration_name, true)
     }
   }
-  let live_redirects : Array[WgslSymbolRedirect] = []
+  let plan = WgslLiveAliasBindingPlan::new()
   let seen_redirect_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
   for scoped_redirect in alias_redirects.redirects {
     let redirect = scoped_redirect.redirect
@@ -528,10 +528,10 @@ fn collect_wgsl_live_alias_redirects(
         scoped_redirect.scope == UnqualifiedItemBinding ||
         source_contains_cached_alias
       ) {
-      live_redirects.push(redirect)
+      plan.push(scoped_redirect)
     }
   }
-  live_redirects
+  plan
 }
 
 ///|
@@ -551,9 +551,10 @@ fn finalize_wgsl_composed_source(
     alias_redirects
   }
   let out_facts = collect_wgsl_compose_semantic_facts(session, out)
-  let live_alias_redirects = collect_wgsl_live_alias_redirects(
+  let live_alias_bindings = collect_wgsl_live_alias_binding_plan(
     out_facts, effective_alias_redirects,
   )
+  let live_alias_redirects = live_alias_bindings.symbol_redirects()
   let alias_redirect_map = build_wgsl_symbol_redirect_map(live_alias_redirects)
   if apply_virtual_overrides {
     out = apply_wgsl_virtual_overrides(out, alias_redirect_map)

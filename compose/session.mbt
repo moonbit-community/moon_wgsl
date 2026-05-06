@@ -277,6 +277,35 @@ priv struct WgslScopedAliasRedirectSet {
 }
 
 ///|
+priv struct WgslLiveAliasBindingPlan {
+  bindings : Array[WgslScopedAliasRedirect]
+}
+
+///|
+fn WgslLiveAliasBindingPlan::new() -> WgslLiveAliasBindingPlan {
+  WgslLiveAliasBindingPlan::{ bindings: [] }
+}
+
+///|
+fn WgslLiveAliasBindingPlan::push(
+  self : WgslLiveAliasBindingPlan,
+  binding : WgslScopedAliasRedirect,
+) -> Unit {
+  self.bindings.push(binding)
+}
+
+///|
+fn WgslLiveAliasBindingPlan::symbol_redirects(
+  self : WgslLiveAliasBindingPlan,
+) -> Array[WgslSymbolRedirect] {
+  let redirects : Array[WgslSymbolRedirect] = []
+  for binding in self.bindings {
+    redirects.push(binding.redirect)
+  }
+  redirects
+}
+
+///|
 fn WgslScopedAliasRedirectSet::new() -> WgslScopedAliasRedirectSet {
   WgslScopedAliasRedirectSet::{ redirects: [], keys: @hashset.HashSet::new() }
 }
