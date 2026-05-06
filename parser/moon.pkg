@@ -4,13 +4,3 @@ import {
   "Milky2018/moon_wgsl/lex",
   "moonbitlang/core/list",
 }
-
-options(
-  "pre-build": [
-    {
-      "command": "bash $mod_dir/tools/generate_private_wgsl_parser.sh $input $output",
-      "input": "wgsl_parser.mbty",
-      "output": "wgsl_generated_parser.mbt",
-    },
-  ],
-)
