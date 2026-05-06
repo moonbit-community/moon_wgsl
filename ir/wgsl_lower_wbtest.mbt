@@ -65,7 +65,10 @@ test "WGSL AST lowerer uses stable function handles for calls" {
     #|  helper(1u);
     #|}
   let module_ = parse_wgsl_module_to_ir(source) catch {
-    error => abort(error.message())
+    error => {
+      debug_inspect(error.message())
+      abort(error.message())
+    }
   }
   debug_inspect(module_.functions.items.length(), content="1")
   debug_inspect(module_.entry_points.length(), content="1")
@@ -136,4 +139,31 @@ test "WGSL AST lowerer supports function call expressions" {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("var value: u32 = helper();"), content="true")
+}
+
+///|
+test "WGSL AST lowerer supports builtin math call expressions" {
+  let source =
+    #|@compute
+    #|fn main() {
+    #|  var value: u32 = min(4u, 8u);
+    #|  value = clamp(value, 1u, 9u);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => {
+      println(error.message())
+      abort(error.message())
+    }
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var value: u32 = min(4u, 8u);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("value = clamp(value, 1u, 9u);"),
+    content="true",
+  )
 }

@@ -1,6 +1,6 @@
 ///|
 priv struct WgslComposeIrSymbol {
-  identity : WgslSymbolIdentity
+  identity : WgslIrSymbolIdentity
   final_name : String
   declared : Bool
 }
@@ -45,7 +45,7 @@ fn WgslComposeSemanticIr::record_declared_name(
 ///|
 fn WgslComposeSemanticIr::record_symbol(
   self : WgslComposeSemanticIr,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
   final_name : String,
   declared : Bool,
 ) -> Unit {
@@ -143,7 +143,7 @@ fn WgslComposeSemanticIr::from_facts_and_bindings(
 ///|
 fn WgslComposeSemanticIr::symbol_target_is_declared(
   self : WgslComposeSemanticIr,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> Bool {
   let final_name = final_name.trim().to_owned()

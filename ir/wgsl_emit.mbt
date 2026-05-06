@@ -457,6 +457,8 @@ fn WgslIrEmitter::emit_expression(
       "(\{self.required_function_expression(function, left)} \{self.binary_operator(op)} \{self.required_function_expression(function, right)})"
     FunctionCall(handle, arguments) =>
       "\{self.function_name(handle)}(\{self.expression_list(arguments, function)})"
+    Math(math_function, a, b, c, d) =>
+      "\{self.math_function_name(math_function)}(\{self.math_argument_list(a, b, c, d, function)})"
     CallResult(handle) => self.function_name(handle)
     _ => raise WgslIrEmitError::Unsupported("expression kind")
   }
@@ -495,6 +497,31 @@ fn WgslIrEmitter::expression_list(
     }
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::math_argument_list(
+  self : WgslIrEmitter,
+  a : Handle,
+  b : Handle?,
+  c : Handle?,
+  d : Handle?,
+  function : Function?,
+) -> String raise WgslIrEmitError {
+  let handles : Array[Handle] = [a]
+  match b {
+    Some(value) => handles.push(value)
+    None => ()
+  }
+  match c {
+    Some(value) => handles.push(value)
+    None => ()
+  }
+  match d {
+    Some(value) => handles.push(value)
+    None => ()
+  }
+  self.expression_list(handles, function)
 }
 
 ///|
@@ -942,6 +969,64 @@ fn WgslIrEmitter::binary_operator(
     LogicalOr => "||"
     ShiftLeft => "<<"
     ShiftRight => ">>"
+  }
+}
+
+///|
+fn WgslIrEmitter::math_function_name(
+  self : WgslIrEmitter,
+  math_function : MathFunction,
+) -> String raise WgslIrEmitError {
+  ignore(self)
+  match math_function {
+    Abs => "abs"
+    Min => "min"
+    Max => "max"
+    Clamp => "clamp"
+    Saturate => "saturate"
+    Cos => "cos"
+    Sin => "sin"
+    Tan => "tan"
+    Acos => "acos"
+    Asin => "asin"
+    Atan => "atan"
+    Atan2 => "atan2"
+    Ceil => "ceil"
+    Floor => "floor"
+    Round => "round"
+    Fract => "fract"
+    Trunc => "trunc"
+    Exp => "exp"
+    Exp2 => "exp2"
+    Log => "log"
+    Log2 => "log2"
+    Pow => "pow"
+    Dot => "dot"
+    Cross => "cross"
+    Distance => "distance"
+    Length => "length"
+    Normalize => "normalize"
+    FaceForward => "faceForward"
+    Reflect => "reflect"
+    Refract => "refract"
+    Sign => "sign"
+    Fma => "fma"
+    Mix => "mix"
+    Step => "step"
+    SmoothStep => "smoothstep"
+    Sqrt => "sqrt"
+    InverseSqrt => "inverseSqrt"
+    Transpose => "transpose"
+    Determinant => "determinant"
+    CountTrailingZeros => "countTrailingZeros"
+    CountLeadingZeros => "countLeadingZeros"
+    CountOneBits => "countOneBits"
+    ReverseBits => "reverseBits"
+    ExtractBits => "extractBits"
+    InsertBits => "insertBits"
+    FirstTrailingBit => "firstTrailingBit"
+    FirstLeadingBit => "firstLeadingBit"
+    _ => raise WgslIrEmitError::Unsupported("math function")
   }
 }
 

@@ -17,7 +17,7 @@ priv struct WgslComposeImportEdge {
 
 ///|
 priv struct WgslComposeSymbolNode {
-  identity : WgslSymbolIdentity
+  identity : WgslIrSymbolIdentity
 }
 
 ///|
@@ -59,7 +59,7 @@ fn WgslComposeImportEdge::key(self : WgslComposeImportEdge) -> String {
 ///|
 fn WgslComposeSymbolGraph::record_symbol(
   self : WgslComposeSymbolGraph,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
 ) -> Unit {
   let key = identity.key()
   if self.symbol_keys.contains(key) {
@@ -90,7 +90,7 @@ fn WgslComposeSymbolGraph::record_import_edge(
 ///|
 fn WgslComposeSymbolGraph::mark_reachable(
   self : WgslComposeSymbolGraph,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
 ) -> Unit {
   self.reachable_symbol_keys.add(identity.key())
 }
@@ -98,7 +98,7 @@ fn WgslComposeSymbolGraph::mark_reachable(
 ///|
 fn WgslComposeSymbolGraph::record_reachable_symbol(
   self : WgslComposeSymbolGraph,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
 ) -> Unit {
   self.record_symbol(identity)
   self.mark_reachable(identity)
@@ -125,7 +125,7 @@ fn WgslComposeSymbolGraph::record_request_edges(
     })
   }
   for item_name in request.requested_items {
-    let identity = WgslSymbolIdentity::new(request.rel_path, item_name)
+    let identity = WgslIrSymbolIdentity::new(request.rel_path, item_name)
     self.mark_reachable(identity)
     self.record_import_edge(WgslComposeImportEdge::{
       importer_rel_path,

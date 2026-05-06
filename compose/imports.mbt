@@ -57,6 +57,13 @@ using @ast {type WgslDirective, type WgslDirectiveKind}
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 
 ///|
+using @ir {
+  type WgslIrAliasSymbolIdentity,
+  type WgslIrFinalNameTable,
+  type WgslIrSymbolIdentity,
+}
+
+///|
 using @import_syntax {
   parse_wgsl_import_spec_is_empty_or_final_semicolon,
   parse_wgsl_import_targets,

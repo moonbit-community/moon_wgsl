@@ -617,18 +617,25 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression(
         self.lower_global_expression_node(right),
       )
     Group(expr) => self.lower_expression_node_to_global_expression(expr)
+    Sequence([single]) =>
+      self.lower_expression_node_to_global_expression(single)
     Call(callee, arguments) =>
       match callee.kind() {
-        Identifier(name) => {
-          let ty = self.lower_type_name_with_expression_arguments(
-            name.name(),
-            arguments,
-          )
-          Expression::Compose(
-            ty,
-            self.lower_global_expression_arguments(arguments),
-          )
-        }
+        Identifier(name) =>
+          match wgsl_ir_math_function_from_name(name.name()) {
+            Some(math_function) =>
+              self.lower_global_math_call(math_function, arguments)
+            None => {
+              let ty = self.lower_type_name_with_expression_arguments(
+                name.name(),
+                arguments,
+              )
+              Expression::Compose(
+                ty,
+                self.lower_global_expression_arguments(arguments),
+              )
+            }
+          }
         _ =>
           raise WgslIrLowerError::UnsupportedExpression(
             "non-identifier global call expression",
@@ -647,10 +654,38 @@ fn WgslIrLowerer::lower_global_expression_arguments(
   arguments : Array[@ast.WgslExprNode],
 ) -> Array[Handle] raise WgslIrLowerError {
   let handles : Array[Handle] = []
-  for argument in arguments {
+  for argument in wgsl_ir_flatten_expression_arguments(arguments) {
     handles.push(self.lower_global_expression_node(argument))
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_global_math_call(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  arguments : Array[@ast.WgslExprNode],
+) -> Expression raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [first, .. rest] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "math call requires at least one argument",
+    )
+  }
+  let a = self.lower_global_expression_node(first)
+  let b = match rest {
+    [value, ..] => Some(self.lower_global_expression_node(value))
+    [] => None
+  }
+  let c = match rest {
+    [_, value, ..] => Some(self.lower_global_expression_node(value))
+    _ => None
+  }
+  let d = match rest {
+    [_, _, value, ..] => Some(self.lower_global_expression_node(value))
+    _ => None
+  }
+  Expression::Math(math_function, a, b, c, d)
 }
 
 ///|
@@ -749,6 +784,8 @@ fn WgslIrLowerer::lower_function_expression_node(
         ),
       )
     Group(expr) => self.lower_function_expression_node(expr, function, scope)
+    Sequence([single]) =>
+      self.lower_function_expression_node(single, function, scope)
     Member(base, member_name) => {
       let base_handle = self.lower_function_expression_node(
         base, function, scope,
@@ -782,20 +819,27 @@ fn WgslIrLowerer::lower_function_expression_node(
                   ),
                 ),
               )
-            None => {
-              let ty = self.lower_type_name_with_expression_arguments(
-                name.name(),
-                arguments,
-              )
-              function.expressions.append(
-                Expression::Compose(
-                  ty,
-                  self.lower_function_expression_arguments(
-                    arguments, function, scope,
-                  ),
-                ),
-              )
-            }
+            None =>
+              match wgsl_ir_math_function_from_name(name.name()) {
+                Some(math_function) =>
+                  self.lower_function_math_call(
+                    math_function, arguments, function, scope,
+                  )
+                None => {
+                  let ty = self.lower_type_name_with_expression_arguments(
+                    name.name(),
+                    arguments,
+                  )
+                  function.expressions.append(
+                    Expression::Compose(
+                      ty,
+                      self.lower_function_expression_arguments(
+                        arguments, function, scope,
+                      ),
+                    ),
+                  )
+                }
+              }
           }
         _ =>
           raise WgslIrLowerError::UnsupportedExpression(
@@ -859,10 +903,57 @@ fn WgslIrLowerer::lower_function_expression_arguments(
   scope : WgslIrFunctionScope,
 ) -> Array[Handle] raise WgslIrLowerError {
   let handles : Array[Handle] = []
-  for argument in arguments {
+  for argument in wgsl_ir_flatten_expression_arguments(arguments) {
     handles.push(self.lower_function_expression_node(argument, function, scope))
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_function_math_call(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [first, .. rest] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "math call requires at least one argument",
+    )
+  }
+  let a = self.lower_function_expression_node(first, function, scope)
+  let b = match rest {
+    [value, ..] =>
+      Some(self.lower_function_expression_node(value, function, scope))
+    [] => None
+  }
+  let c = match rest {
+    [_, value, ..] =>
+      Some(self.lower_function_expression_node(value, function, scope))
+    _ => None
+  }
+  let d = match rest {
+    [_, _, value, ..] =>
+      Some(self.lower_function_expression_node(value, function, scope))
+    _ => None
+  }
+  function.expressions.append(Expression::Math(math_function, a, b, c, d))
+}
+
+///|
+fn wgsl_ir_flatten_expression_arguments(
+  arguments : Array[@ast.WgslExprNode],
+) -> Array[@ast.WgslExprNode] {
+  match arguments {
+    [single] =>
+      match single.kind() {
+        Sequence(items) => items
+        _ => arguments
+      }
+    _ => arguments
+  }
 }
 
 ///|
@@ -1218,6 +1309,60 @@ fn wgsl_ir_builtin_matrix_alias(name : String) -> TypeInner? {
     "mat4x2h" => Some(TypeInner::Matrix(Quad, Bi, Scalar::new(Float, 2)))
     "mat4x3h" => Some(TypeInner::Matrix(Quad, Tri, Scalar::new(Float, 2)))
     "mat4x4h" => Some(TypeInner::Matrix(Quad, Quad, Scalar::new(Float, 2)))
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
+  match name {
+    "abs" => Some(Abs)
+    "min" => Some(Min)
+    "max" => Some(Max)
+    "clamp" => Some(Clamp)
+    "saturate" => Some(Saturate)
+    "cos" => Some(Cos)
+    "sin" => Some(Sin)
+    "tan" => Some(Tan)
+    "acos" => Some(Acos)
+    "asin" => Some(Asin)
+    "atan" => Some(Atan)
+    "atan2" => Some(Atan2)
+    "ceil" => Some(Ceil)
+    "floor" => Some(Floor)
+    "round" => Some(Round)
+    "fract" => Some(Fract)
+    "trunc" => Some(Trunc)
+    "exp" => Some(Exp)
+    "exp2" => Some(Exp2)
+    "log" => Some(Log)
+    "log2" => Some(Log2)
+    "pow" => Some(Pow)
+    "dot" => Some(Dot)
+    "cross" => Some(Cross)
+    "distance" => Some(Distance)
+    "length" => Some(Length)
+    "normalize" => Some(Normalize)
+    "faceForward" => Some(FaceForward)
+    "reflect" => Some(Reflect)
+    "refract" => Some(Refract)
+    "sign" => Some(Sign)
+    "fma" => Some(Fma)
+    "mix" => Some(Mix)
+    "step" => Some(Step)
+    "smoothstep" => Some(SmoothStep)
+    "sqrt" => Some(Sqrt)
+    "inverseSqrt" => Some(InverseSqrt)
+    "transpose" => Some(Transpose)
+    "determinant" => Some(Determinant)
+    "countTrailingZeros" => Some(CountTrailingZeros)
+    "countLeadingZeros" => Some(CountLeadingZeros)
+    "countOneBits" => Some(CountOneBits)
+    "reverseBits" => Some(ReverseBits)
+    "extractBits" => Some(ExtractBits)
+    "insertBits" => Some(InsertBits)
+    "firstTrailingBit" => Some(FirstTrailingBit)
+    "firstLeadingBit" => Some(FirstLeadingBit)
     _ => None
   }
 }

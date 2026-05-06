@@ -132,8 +132,8 @@ priv struct WgslComposeSession {
   graph_planned_requests : @hashmap.HashMap[String, Bool]
   graph_planning_rel_paths : Array[String]
   mut graph_execution_complete : Bool
-  assigned_final_names : WgslFinalNameTables
-  final_names : WgslFinalNameTables
+  assigned_final_names : WgslIrFinalNameTable
+  final_names : WgslIrFinalNameTable
   symbol_graph : WgslComposeSymbolGraph
   semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
   active_rel_paths : Array[String]
@@ -152,7 +152,7 @@ priv struct WgslComposeBinding {
   from_name : String
   to_name : String
   scope : WgslComposeBindingScope
-  identity : WgslSymbolIdentity?
+  identity : WgslIrSymbolIdentity?
   alias_name : String
 }
 
@@ -189,8 +189,8 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
     match binding.identity {
       Some(identity) =>
         plan.add_symbol_binding(
-          identity.rel_path,
-          identity.original_name,
+          identity.rel_path(),
+          identity.original_name(),
           binding.from_name,
           binding.to_name,
         )
@@ -230,7 +230,7 @@ fn WgslComposeBinding::new(
   from_name : String,
   to_name : String,
   scope : WgslComposeBindingScope,
-  identity : WgslSymbolIdentity?,
+  identity : WgslIrSymbolIdentity?,
   alias_name : String,
 ) -> WgslComposeBinding {
   WgslComposeBinding::{ from_name, to_name, scope, identity, alias_name }
@@ -248,7 +248,7 @@ fn WgslComposeBinding::for_alias_symbol(
     "\{alias_name}::\{original_name}",
     final_name,
     scope,
-    Some(WgslSymbolIdentity::new(rel_path, original_name)),
+    Some(WgslIrSymbolIdentity::new(rel_path, original_name)),
     alias_name,
   )
 }
@@ -264,7 +264,7 @@ fn WgslComposeBinding::for_unqualified_symbol(
     original_name,
     final_name,
     scope,
-    Some(WgslSymbolIdentity::new(rel_path, original_name)),
+    Some(WgslIrSymbolIdentity::new(rel_path, original_name)),
     "",
   )
 }
@@ -323,7 +323,7 @@ fn WgslComposeBindingSet::extend(
 ///|
 fn WgslComposeSession::record_canonical_final_name(
   self : WgslComposeSession,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> Unit {
   self.final_names.canonical_set(identity, final_name)
@@ -333,7 +333,7 @@ fn WgslComposeSession::record_canonical_final_name(
 ///|
 fn WgslComposeSession::assign_canonical_final_name(
   self : WgslComposeSession,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> Unit {
   self.assigned_final_names.canonical_set(identity, final_name)
@@ -343,7 +343,7 @@ fn WgslComposeSession::assign_canonical_final_name(
 ///|
 fn WgslComposeSession::assigned_canonical_final_name(
   self : WgslComposeSession,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
 ) -> String? {
   self.assigned_final_names.canonical_get(identity)
 }
@@ -351,18 +351,18 @@ fn WgslComposeSession::assigned_canonical_final_name(
 ///|
 fn WgslComposeSession::assign_alias_final_name(
   self : WgslComposeSession,
-  identity : WgslAliasSymbolIdentity,
+  identity : WgslIrAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
-  self.assigned_final_names.canonical_set(identity.symbol, final_name)
+  self.assigned_final_names.canonical_set(identity.symbol(), final_name)
   self.assigned_final_names.alias_set(identity, final_name)
-  self.symbol_graph.record_reachable_symbol(identity.symbol)
+  self.symbol_graph.record_reachable_symbol(identity.symbol())
 }
 
 ///|
 fn WgslComposeSession::record_canonical_final_name_if_absent(
   self : WgslComposeSession,
-  identity : WgslSymbolIdentity,
+  identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> Unit {
   if self.final_names.canonical_get(identity) is None {
@@ -373,17 +373,17 @@ fn WgslComposeSession::record_canonical_final_name_if_absent(
 ///|
 fn WgslComposeSession::record_alias_final_name(
   self : WgslComposeSession,
-  identity : WgslAliasSymbolIdentity,
+  identity : WgslIrAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
   self.final_names.alias_set(identity, final_name)
-  self.symbol_graph.record_reachable_symbol(identity.symbol)
+  self.symbol_graph.record_reachable_symbol(identity.symbol())
 }
 
 ///|
 fn WgslComposeSession::record_alias_final_name_if_absent(
   self : WgslComposeSession,
-  identity : WgslAliasSymbolIdentity,
+  identity : WgslIrAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
   if self.final_names.alias_get(identity) is None {

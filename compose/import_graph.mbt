@@ -382,7 +382,7 @@ fn Composer::compose_wgsl_import_requests(
       if origin.rel_path != "" &&
         origin.source_symbol_name != "" &&
         origin.generated_symbol_name != "" {
-        let identity = WgslSymbolIdentity::new(
+        let identity = WgslIrSymbolIdentity::new(
           origin.rel_path,
           origin.source_symbol_name,
         )
@@ -390,7 +390,7 @@ fn Composer::compose_wgsl_import_requests(
           session.assigned_canonical_final_name(identity)
         } else {
           session.assigned_final_names.alias_get(
-            WgslAliasSymbolIdentity::new(
+            WgslIrAliasSymbolIdentity::new(
               origin.rel_path,
               request_alias_prefixes.join("__"),
               origin.source_symbol_name,
@@ -461,11 +461,14 @@ fn Composer::compose_wgsl_import_requests(
         origin.generated_symbol_name != "" {
         if request.alias_name == "" {
           session.record_canonical_final_name_if_absent(
-            WgslSymbolIdentity::new(origin.rel_path, origin.source_symbol_name),
+            WgslIrSymbolIdentity::new(
+              origin.rel_path,
+              origin.source_symbol_name,
+            ),
             origin.generated_symbol_name,
           )
         } else if origin.rel_path == request.rel_path {
-          let identity = WgslAliasSymbolIdentity::new(
+          let identity = WgslIrAliasSymbolIdentity::new(
             origin.rel_path,
             request_alias_scope,
             origin.source_symbol_name,

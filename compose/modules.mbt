@@ -89,9 +89,9 @@ fn collect_wgsl_cached_import_bindings(
     for entry in session.final_names.canonical_entries_for_rel_path(rel_path) {
       bindings.push(
         WgslComposeBinding::for_unqualified_symbol(
-          entry.identity.rel_path,
-          entry.identity.original_name,
-          entry.final_name,
+          entry.identity().rel_path(),
+          entry.identity().original_name(),
+          entry.final_name(),
           UnqualifiedItemBinding,
         ),
       )
@@ -104,10 +104,10 @@ fn collect_wgsl_cached_import_bindings(
       ) {
       bindings.push(
         WgslComposeBinding::for_alias_symbol(
-          entry.identity.symbol.rel_path,
+          entry.identity().symbol().rel_path(),
           source_alias_name,
-          entry.identity.symbol.original_name,
-          entry.final_name,
+          entry.identity().symbol().original_name(),
+          entry.final_name(),
           CachedQualifiedAliasBinding,
         ),
       )
@@ -124,7 +124,7 @@ fn find_wgsl_cached_imported_item_name(
   item_name : String,
 ) -> String? {
   session.final_names.canonical_get(
-    WgslSymbolIdentity::new(rel_path, item_name),
+    WgslIrSymbolIdentity::new(rel_path, item_name),
   )
 }
 
@@ -153,7 +153,7 @@ fn find_wgsl_visible_identity_imported_item_binding(
   rel_path : String,
   item_name : String,
 ) -> WgslComposeBinding? {
-  let identity_key = WgslSymbolIdentity::new(rel_path, item_name).key()
+  let identity_key = WgslIrSymbolIdentity::new(rel_path, item_name).key()
   let mut found : WgslComposeBinding? = None
   for binding in bindings.bindings {
     guard binding.identity is Some(identity) else { continue }

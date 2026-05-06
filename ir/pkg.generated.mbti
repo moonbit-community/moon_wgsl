@@ -873,6 +873,46 @@ pub enum VectorSize {
 } derive(Eq, @debug.Debug)
 pub fn VectorSize::width(Self) -> Int
 
+pub struct WgslIrAliasFinalNameEntry {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrAliasFinalNameEntry::final_name(Self) -> String
+pub fn WgslIrAliasFinalNameEntry::identity(Self) -> WgslIrAliasSymbolIdentity
+
+pub struct WgslIrAliasSymbolIdentity {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrAliasSymbolIdentity::alias_name(Self) -> String
+pub fn WgslIrAliasSymbolIdentity::key(Self) -> String
+pub fn WgslIrAliasSymbolIdentity::new(String, String, String) -> Self
+pub fn WgslIrAliasSymbolIdentity::symbol(Self) -> WgslIrSymbolIdentity
+
+pub struct WgslIrCanonicalFinalNameEntry {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrCanonicalFinalNameEntry::final_name(Self) -> String
+pub fn WgslIrCanonicalFinalNameEntry::identity(Self) -> WgslIrSymbolIdentity
+
+pub struct WgslIrFinalNameTable {
+  // private fields
+}
+pub fn WgslIrFinalNameTable::alias_entries_for_scope(Self, String, String) -> Array[WgslIrAliasFinalNameEntry]
+pub fn WgslIrFinalNameTable::alias_get(Self, WgslIrAliasSymbolIdentity) -> String?
+pub fn WgslIrFinalNameTable::alias_set(Self, WgslIrAliasSymbolIdentity, String) -> Unit
+pub fn WgslIrFinalNameTable::canonical_entries_for_rel_path(Self, String) -> Array[WgslIrCanonicalFinalNameEntry]
+pub fn WgslIrFinalNameTable::canonical_entry_count(Self) -> Int
+pub fn WgslIrFinalNameTable::canonical_get(Self, WgslIrSymbolIdentity) -> String?
+pub fn WgslIrFinalNameTable::canonical_set(Self, WgslIrSymbolIdentity, String) -> Unit
+pub fn WgslIrFinalNameTable::new() -> Self
+
+pub struct WgslIrSymbolIdentity {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrSymbolIdentity::key(Self) -> String
+pub fn WgslIrSymbolIdentity::new(String, String) -> Self
+pub fn WgslIrSymbolIdentity::original_name(Self) -> String
+pub fn WgslIrSymbolIdentity::rel_path(Self) -> String
+
 // Type aliases
 
 // Traits
