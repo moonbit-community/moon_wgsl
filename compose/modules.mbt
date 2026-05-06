@@ -101,7 +101,7 @@ fn collect_wgsl_cached_import_redirects(
     } else {
       CachedQualifiedAliasReference
     }
-    redirects.push(WgslScopedAliasRedirect::{
+    push_wgsl_scoped_alias_redirect_unique(redirects, WgslScopedAliasRedirect::{
       redirect: WgslSymbolRedirect::{ from_name, to_name: imported_name },
       scope,
     })

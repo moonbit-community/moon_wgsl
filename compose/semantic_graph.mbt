@@ -108,6 +108,30 @@ fn collect_wgsl_semantic_reference_paths(
 }
 
 ///|
+fn collect_wgsl_semantic_reference_path_set(
+  source : String,
+) -> @hashset.HashSet[String] raise WgslParseError {
+  let paths : Array[WgslSemanticReferencePath] = []
+  collect_wgsl_semantic_reference_paths(source, paths)
+  let path_set : @hashset.HashSet[String] = @hashset.HashSet::new()
+  for path in paths {
+    path_set.add(path.text)
+  }
+  path_set
+}
+
+///|
+fn wgsl_semantic_reference_path_set_contains(
+  reference_paths : @hashset.HashSet[String],
+  reference_path : String,
+) -> Bool {
+  match wgsl_semantic_reference_path_from_identifier(reference_path) {
+    Some(expected) => reference_paths.contains(expected.text)
+    None => false
+  }
+}
+
+///|
 fn wgsl_semantic_requested_item_name(
   raw_path : String,
   module_path : String,

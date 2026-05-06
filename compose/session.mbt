@@ -120,6 +120,7 @@ priv struct WgslComposeSession {
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
   composed_alias_redirects : Array[WgslScopedAliasRedirect]
+  composed_alias_redirect_keys : @hashset.HashSet[String]
   additional_imports : Array[ImportDefinition]
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
@@ -139,6 +140,52 @@ priv enum WgslAliasRedirectScope {
 priv struct WgslScopedAliasRedirect {
   redirect : WgslSymbolRedirect
   scope : WgslAliasRedirectScope
+}
+
+///|
+fn wgsl_alias_redirect_scope_key(scope : WgslAliasRedirectScope) -> String {
+  match scope {
+    QualifiedAliasReference => "qualified"
+    CachedQualifiedAliasReference => "cached"
+    UnqualifiedItemBinding => "unqualified"
+  }
+}
+
+///|
+fn wgsl_scoped_alias_redirect_key(
+  scoped_redirect : WgslScopedAliasRedirect,
+) -> String {
+  let redirect = scoped_redirect.redirect
+  let from_name = redirect.from_name.trim().to_owned()
+  let to_name = redirect.to_name.trim().to_owned()
+  "\{wgsl_alias_redirect_scope_key(scoped_redirect.scope)}|\{from_name}|\{to_name}"
+}
+
+///|
+fn push_wgsl_scoped_alias_redirect_unique(
+  redirects : Array[WgslScopedAliasRedirect],
+  scoped_redirect : WgslScopedAliasRedirect,
+) -> Unit {
+  let key = wgsl_scoped_alias_redirect_key(scoped_redirect)
+  for existing in redirects {
+    if wgsl_scoped_alias_redirect_key(existing) == key {
+      return
+    }
+  }
+  redirects.push(scoped_redirect)
+}
+
+///|
+fn push_wgsl_session_alias_redirect_unique(
+  session : WgslComposeSession,
+  scoped_redirect : WgslScopedAliasRedirect,
+) -> Unit {
+  let key = wgsl_scoped_alias_redirect_key(scoped_redirect)
+  if session.composed_alias_redirect_keys.contains(key) {
+    return
+  }
+  session.composed_alias_redirect_keys.add(key)
+  session.composed_alias_redirects.push(scoped_redirect)
 }
 
 ///|

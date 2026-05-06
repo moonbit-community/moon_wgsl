@@ -153,14 +153,17 @@ fn Composer::build_wgsl_import_requests_from_targets(
       }
     }
     if !import_full_module {
+      let active_reference_paths = collect_wgsl_semantic_reference_path_set(
+        active_scan_source,
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
       let used_requested_items : Array[String] = []
       for requested_item in requested_items {
         let item_is_live = if target_plan.explicit_item_binding {
-          wgsl_semantic_source_contains_reference_path(
-            active_scan_source, requested_item,
-          ) catch {
-            error => raise composer_error_from_wgsl_parse_error(error)
-          }
+          wgsl_semantic_reference_path_set_contains(
+            active_reference_paths, requested_item,
+          )
         } else {
           true
         }
@@ -280,7 +283,7 @@ fn Composer::compose_wgsl_import_requests(
             requested_item,
           ) {
           Some(imported_name) => {
-            alias_redirects.push(WgslScopedAliasRedirect::{
+            push_wgsl_scoped_alias_redirect_unique(alias_redirects, WgslScopedAliasRedirect::{
               redirect: WgslSymbolRedirect::{
                 from_name: requested_item,
                 to_name: imported_name,
@@ -297,7 +300,7 @@ fn Composer::compose_wgsl_import_requests(
                 requested_item,
               ) {
               Some(imported_name) => {
-                alias_redirects.push(WgslScopedAliasRedirect::{
+                push_wgsl_scoped_alias_redirect_unique(alias_redirects, WgslScopedAliasRedirect::{
                   redirect: WgslSymbolRedirect::{
                     from_name: requested_item,
                     to_name: imported_name,
@@ -393,7 +396,7 @@ fn Composer::compose_wgsl_import_requests(
         )
       }
       for redirect in collected_redirects {
-        alias_redirects.push(WgslScopedAliasRedirect::{
+        push_wgsl_scoped_alias_redirect_unique(alias_redirects, WgslScopedAliasRedirect::{
           redirect,
           scope: QualifiedAliasReference,
         })
@@ -484,14 +487,22 @@ fn collect_wgsl_live_alias_redirects(
     }
   }
   let live_redirects : Array[WgslSymbolRedirect] = []
+  let seen_redirect_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
+  let reference_paths = collect_wgsl_semantic_reference_path_set(source) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
   for scoped_redirect in alias_redirects {
     let redirect = scoped_redirect.redirect
+    let from_name = redirect.from_name.trim().to_owned()
     let to_name = redirect.to_name.trim().to_owned()
+    let redirect_key = wgsl_scoped_alias_redirect_key(scoped_redirect)
+    if seen_redirect_keys.contains(redirect_key) {
+      continue
+    }
+    seen_redirect_keys.add(redirect_key)
     let source_contains_cached_alias = if scoped_redirect.scope ==
       CachedQualifiedAliasReference {
-      wgsl_semantic_source_contains_reference_path(source, redirect.from_name) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
+      wgsl_semantic_reference_path_set_contains(reference_paths, from_name)
     } else {
       false
     }
@@ -518,7 +529,7 @@ fn finalize_wgsl_composed_source(
   let mut out = apply_wgsl_ifdefs_strict_for_compose(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
   for redirect in alias_redirects {
-    session.composed_alias_redirects.push(redirect)
+    push_wgsl_session_alias_redirect_unique(session, redirect)
   }
   let effective_alias_redirects = if apply_virtual_overrides {
     session.composed_alias_redirects

@@ -193,6 +193,66 @@ test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live"
 }
 
 ///|
+fn issue10_alias_redirect_stress_module(declaration_count : Int) -> String {
+  let mut source = "#define_import_path stress::many\n"
+  for i in 0..<declaration_count {
+    source = source + "const item_\{i}: u32 = \{i}u;\n"
+  }
+  source
+}
+
+///|
+fn issue10_alias_redirect_stress_root(import_count : Int) -> String {
+  let mut source = ""
+  for _ in 0..<import_count {
+    source = source + "#import stress::many as many\n"
+  }
+  source +
+  (
+    #|fn entry() -> u32 {
+    #|  return many::item_0;
+    #|}
+    #|
+  )
+}
+
+///|
+test "issue 10: cached alias redirect stress compose completes" {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source(
+    "stress/many.wgsl",
+    issue10_alias_redirect_stress_module(120),
+  )
+  composer.register_source(
+    "stress/root.wgsl",
+    issue10_alias_redirect_stress_root(80),
+  )
+  let source = composer.compose_wgsl("stress/root.wgsl", {
+    defines: empty_bool_defines(),
+    value_defines: @common.default_wgsl_value_defines(),
+    redirects: [],
+    additional_imports: [],
+  }) catch {
+    err =>
+      abort("expected issue 10 alias redirect stress success: \{err.message()}")
+  }
+  debug_inspect(source.contains("many::item_0"), content="false")
+  debug_inspect(source.contains("many__item_0"), content="true")
+  debug_inspect(source.contains("fn entry() -> u32"), content="true")
+}
+
+///|
+test "issue 10: Bevy PBR forward fragment compose completes" {
+  let source = bevy_parity_compose(
+    "bevy_pbr/src/render/pbr.wgsl",
+    bevy_parity_forward_defines(),
+  )
+  debug_inspect(source.contains("fn fragment"), content="true")
+  debug_inspect(source.contains("view_bindings::"), content="false")
+}
+
+///|
 test "naga_oil parity: prepared Bevy catalog resolves alias-qualified bindings" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
