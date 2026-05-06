@@ -452,7 +452,9 @@ test "WGSL AST lowerer supports phony assignment and address-of lvalues" {
   }
   debug_inspect(emitted.contains("_ = a;"), content="true")
   debug_inspect(
-    emitted.contains("let tmp_ptr: ptr<storage, array<u32>> = &v.x;"),
+    emitted.contains(
+      "let tmp_ptr: ptr<storage, array<u32>, read_write> = &v.x;",
+    ),
     content="true",
   )
 }

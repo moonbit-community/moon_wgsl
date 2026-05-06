@@ -1141,7 +1141,11 @@ fn WgslIrEmitter::type_inner_name(
       "mat\{columns.width()}x\{rows.width()}<\{self.scalar_name(scalar)}>"
     Atomic(scalar) => "atomic<\{self.scalar_name(scalar)}>"
     Pointer(base, space) =>
-      "ptr<\{self.address_space_name(space)}, \{self.type_name(base)}>"
+      match space {
+        Storage(access) =>
+          "ptr<storage, \{self.type_name(base)}, \{self.storage_access_name(access)}>"
+        _ => "ptr<\{self.address_space_name(space)}, \{self.type_name(base)}>"
+      }
     Array(base, size, _) =>
       match size {
         Constant(value) => "array<\{self.type_name(base)}, \{value}>"
