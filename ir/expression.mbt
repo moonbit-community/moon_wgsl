@@ -299,6 +299,7 @@ pub enum Expression {
   ImageQuery(Handle, ImageQuery)
   Unary(UnaryOperator, Handle)
   Binary(BinaryOperator, Handle, Handle)
+  FunctionCall(Handle, Array[Handle])
   Select(Handle, Handle, Handle)
   Derivative(DerivativeAxis, DerivativeControl, Handle)
   Relational(RelationalFunction, Handle)

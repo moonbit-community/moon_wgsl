@@ -1,0 +1,9 @@
+import {
+  "Milky2018/moon_wgsl/ir",
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+}
+
+options(
+  "is-main": true,
+)

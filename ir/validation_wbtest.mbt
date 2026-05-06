@@ -65,3 +65,30 @@ test "IR validator rejects invalid function call handles" {
   }
   debug_inspect(message, content="\"invalid IR function handle: 42\"")
 }
+
+///|
+test "IR validator rejects invalid function-call expression handles" {
+  let module_ = Module::new()
+  let function = Function::new(Some("main"))
+  ignore(
+    function.expressions.append(Expression::FunctionCall(Handle::new(42), [])),
+  )
+  module_.append_entry_point(EntryPoint::{
+    name: "main",
+    stage: Compute,
+    early_depth_test: None,
+    workgroup_size: [1, 1, 1],
+    workgroup_size_overrides: None,
+    function,
+    mesh_info: None,
+    task_payload: None,
+    incoming_ray_payload: None,
+  })
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(message, content="\"invalid IR function handle: 42\"")
+}

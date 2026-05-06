@@ -455,6 +455,8 @@ fn WgslIrEmitter::emit_expression(
       "\{self.unary_operator(op)}\{self.required_function_expression(function, expr)}"
     Binary(op, left, right) =>
       "(\{self.required_function_expression(function, left)} \{self.binary_operator(op)} \{self.required_function_expression(function, right)})"
+    FunctionCall(handle, arguments) =>
+      "\{self.function_name(handle)}(\{self.expression_list(arguments, function)})"
     CallResult(handle) => self.function_name(handle)
     _ => raise WgslIrEmitError::Unsupported("expression kind")
   }

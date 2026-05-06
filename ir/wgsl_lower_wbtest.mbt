@@ -119,7 +119,7 @@ test "WGSL AST lowerer preserves compound assignment semantics in IR" {
 }
 
 ///|
-test "WGSL AST lowerer rejects function call expressions until result calls are modeled" {
+test "WGSL AST lowerer supports function call expressions" {
   let source =
     #|fn helper() -> u32 {
     #|  return 1u;
@@ -129,14 +129,11 @@ test "WGSL AST lowerer rejects function call expressions until result calls are 
     #|fn main() {
     #|  var value: u32 = helper();
     #|}
-  let message = try {
-    ignore(parse_wgsl_module_to_ir(source))
-    "ok"
-  } catch {
-    error => error.message()
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
   }
-  debug_inspect(
-    message,
-    content="\"unsupported WGSL expression: function call expression requires statement-result lowering\"",
-  )
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var value: u32 = helper();"), content="true")
 }

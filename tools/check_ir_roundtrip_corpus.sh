@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+tmpdir="$(mktemp -d)"
+cleanup() {
+  rm -rf "$tmpdir"
+}
+trap cleanup EXIT
+
+validate_wgsl() {
+  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$@"
+}
+
+roundtrip_case() {
+  local label="$1"
+  local input="$2"
+  local output="$tmpdir/${label}.wgsl"
+  echo "== IR roundtrip corpus: ${label} =="
+  moon run tools/ir_roundtrip -- --input "$input" --output "$output"
+  validate_wgsl "$output"
+}
+
+compose_roundtrip_case() {
+  local label="$1"
+  local fixture_root="$2"
+  local entry="$3"
+  local composed="$tmpdir/${label}.composed.wgsl"
+  local output="$tmpdir/${label}.ir.wgsl"
+  echo "== Compose -> IR roundtrip corpus: ${label} =="
+  moon run tools/compose_case -- \
+    --fixture-root "$fixture_root" \
+    --entry "$entry" \
+    --output "$composed"
+  moon run tools/ir_roundtrip -- --input "$composed" --output "$output"
+  validate_wgsl "$output"
+}
+
+roundtrip_case "simple-compute" "testdata/ir_corpus/simple_compute.wgsl"
+compose_roundtrip_case \
+  "simple-compose-compute" \
+  "testdata/ir_corpus/compose" \
+  "top.wgsl"
+
+echo "IR roundtrip corpus gate passed"

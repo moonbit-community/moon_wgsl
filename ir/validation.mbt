@@ -295,6 +295,12 @@ fn WgslIrValidator::validate_global_expression(
       self.validate_global_expression_handle(left)
       self.validate_global_expression_handle(right)
     }
+    FunctionCall(handle, arguments) => {
+      self.require_function(handle)
+      for argument in arguments {
+        self.validate_global_expression_handle(argument)
+      }
+    }
     Select(condition, accept, reject) => {
       self.validate_global_expression_handle(condition)
       self.validate_global_expression_handle(accept)
@@ -339,6 +345,12 @@ fn WgslIrValidator::validate_function_expression(
     Binary(_, left, right) => {
       self.validate_function_expression_handle(function, left)
       self.validate_function_expression_handle(function, right)
+    }
+    FunctionCall(handle, arguments) => {
+      self.require_function(handle)
+      for argument in arguments {
+        self.validate_function_expression_handle(function, argument)
+      }
     }
     Select(condition, accept, reject) => {
       self.validate_function_expression_handle(function, condition)

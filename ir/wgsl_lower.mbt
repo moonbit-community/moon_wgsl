@@ -773,9 +773,14 @@ fn WgslIrLowerer::lower_function_expression_node(
       match callee.kind() {
         Identifier(name) =>
           match self.function_names.get(name.name()) {
-            Some(_) =>
-              raise WgslIrLowerError::UnsupportedExpression(
-                "function call expression requires statement-result lowering",
+            Some(handle) =>
+              function.expressions.append(
+                Expression::FunctionCall(
+                  handle,
+                  self.lower_function_expression_arguments(
+                    arguments, function, scope,
+                  ),
+                ),
               )
             None => {
               let ty = self.lower_type_name_with_expression_arguments(

@@ -91,7 +91,7 @@ fn collect_wgsl_cached_import_bindings(
         WgslComposeBinding::for_unqualified_symbol(
           entry.identity.rel_path,
           entry.identity.original_name,
-          entry.generated_name,
+          entry.final_name,
           UnqualifiedItemBinding,
         ),
       )
@@ -107,7 +107,7 @@ fn collect_wgsl_cached_import_bindings(
           entry.identity.symbol.rel_path,
           source_alias_name,
           entry.identity.symbol.original_name,
-          entry.generated_name,
+          entry.final_name,
           CachedQualifiedAliasBinding,
         ),
       )
