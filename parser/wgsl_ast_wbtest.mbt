@@ -1489,3 +1489,101 @@ test "WGSL parser classifies official loop continuing and switch clauses" {
   debug_inspect(switch_body.statements()[0].kind(), content="Case")
   debug_inspect(switch_body.statements()[1].kind(), content="DefaultCase")
 }
+
+///|
+test "WGSL parser structures assignment update and call statements" {
+  let source =
+    #|fn work(value: u32) {
+    #|}
+    #|fn main() {
+    #|  var value: u32 = 0u;
+    #|  value = value + 1u;
+    #|  value += 2u;
+    #|  value <<= 1u;
+    #|  value++;
+    #|  value--;
+    #|  work(value);
+    #|  _ = value;
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[1].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected main function")
+  }
+  let statements = function.body().statements()
+  debug_inspect(statements[1].kind(), content="Assignment")
+  debug_inspect(statements[2].kind(), content="Assignment")
+  debug_inspect(statements[3].kind(), content="Assignment")
+  debug_inspect(statements[4].kind(), content="Increment")
+  debug_inspect(statements[5].kind(), content="Decrement")
+  debug_inspect(statements[6].kind(), content="FunctionCall")
+  debug_inspect(statements[7].kind(), content="Assignment")
+  guard statements[1].payload()
+    is WgslStatementPayload::Assignment(assign_op, assign_lhs, assign_rhs) else {
+    abort("expected plain assignment payload")
+  }
+  debug_inspect(assign_op, content="\"=\"")
+  guard assign_lhs is Some(lhs) else { abort("expected assignment lhs") }
+  guard assign_rhs is Some(rhs) else { abort("expected assignment rhs") }
+  debug_inspect(wgsl_expr_ref_source_text(source, lhs), content="\"value\"")
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, rhs),
+    content="\"value + 1u\"",
+  )
+  guard statements[2].payload()
+    is WgslStatementPayload::Assignment(compound_op, _, _) else {
+    abort("expected compound assignment payload")
+  }
+  debug_inspect(compound_op, content="\"+=\"")
+  guard statements[3].payload()
+    is WgslStatementPayload::Assignment(shift_op, _, _) else {
+    abort("expected shift assignment payload")
+  }
+  debug_inspect(shift_op, content="\"<<=\"")
+  guard statements[4].payload()
+    is WgslStatementPayload::Increment(increment_target) else {
+    abort("expected increment payload")
+  }
+  guard increment_target is Some(increment_expr) else {
+    abort("expected increment target")
+  }
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, increment_expr),
+    content="\"value\"",
+  )
+  guard statements[5].payload()
+    is WgslStatementPayload::Decrement(decrement_target) else {
+    abort("expected decrement payload")
+  }
+  guard decrement_target is Some(decrement_expr) else {
+    abort("expected decrement target")
+  }
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, decrement_expr),
+    content="\"value\"",
+  )
+  guard statements[6].payload() is WgslStatementPayload::FunctionCall(call_expr) else {
+    abort("expected function call payload")
+  }
+  guard call_expr is Some(call_ref) else { abort("expected call expression") }
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, call_ref),
+    content="\"work(value)\"",
+  )
+  match call_ref.root() {
+    Some(root) =>
+      match root.kind() {
+        WgslExprNodeKind::Call(_, arguments) =>
+          debug_inspect(arguments.length(), content="1")
+        _ => abort("expected parsed call root")
+      }
+    None => abort("expected parsed call root")
+  }
+  guard statements[7].payload()
+    is WgslStatementPayload::Assignment(phony_op, phony_lhs, _) else {
+    abort("expected phony assignment payload")
+  }
+  debug_inspect(phony_op, content="\"=\"")
+  guard phony_lhs is Some(phony_expr) else { abort("expected phony lhs") }
+  debug_inspect(wgsl_expr_ref_source_text(source, phony_expr), content="\"_\"")
+}

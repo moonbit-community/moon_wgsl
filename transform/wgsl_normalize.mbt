@@ -110,6 +110,10 @@ fn wgsl_statement_kind_key(kind : WgslStatementKind) -> String {
     Discard => "discard"
     ConstAssert => "const_assert"
     Compound => "compound"
+    Assignment => "assignment"
+    Increment => "increment"
+    Decrement => "decrement"
+    FunctionCall => "function_call"
     Expression => "expression"
   }
 }

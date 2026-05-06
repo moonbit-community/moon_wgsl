@@ -139,6 +139,111 @@ fn wgsl_statement_is_local_decl(first_identifier : String?) -> Bool {
 }
 
 ///|
+fn wgsl_statement_assignment_operator_at(
+  tokens : Array[WgslToken],
+  index : Int,
+) -> (String, Int)? {
+  guard index >= 0 && index < tokens.length() else { return None }
+  match tokens[index].operator_text() {
+    Some(op) =>
+      if op == "+=" ||
+        op == "-=" ||
+        op == "*=" ||
+        op == "/=" ||
+        op == "%=" ||
+        op == "&=" ||
+        op == "|=" ||
+        op == "^=" {
+        return Some((op, 1))
+      } else if op == "<<" &&
+        index + 1 < tokens.length() &&
+        tokens[index + 1].is_punctuation(61) {
+        return Some(("<<=", 2))
+      } else if op == ">>" &&
+        index + 1 < tokens.length() &&
+        tokens[index + 1].is_punctuation(61) {
+        return Some((">>=", 2))
+      }
+    None => ()
+  }
+  if tokens[index].is_punctuation(61) {
+    Some(("=", 1))
+  } else {
+    None
+  }
+}
+
+///|
+fn wgsl_statement_assignment_operator(
+  tokens : Array[WgslToken],
+) -> (Int, String, Int)? {
+  let depth = WgslTokenDepth::new()
+  for i in 0..<tokens.length() {
+    if depth.at_top() {
+      match wgsl_statement_assignment_operator_at(tokens, i) {
+        Some((text, consumed)) => return Some((i, text, consumed))
+        None => ()
+      }
+    }
+    depth.observe_statement_token(tokens[i])
+  }
+  None
+}
+
+///|
+fn wgsl_statement_is_update(
+  tokens : Array[WgslToken],
+  operator : String,
+) -> Bool {
+  guard tokens.length() > 1 else { return false }
+  match tokens[tokens.length() - 1].operator_text() {
+    Some(text) if text == operator => {
+      let depth = WgslTokenDepth::new()
+      for i in 0..<(tokens.length() - 1) {
+        depth.observe_statement_token(tokens[i])
+      }
+      depth.at_top()
+    }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_statement_is_function_call_tokens(tokens : Array[WgslToken]) -> Bool {
+  guard tokens.length() >= 3 else { return false }
+  guard tokens[tokens.length() - 1].is_punctuation(41) else { return false }
+  let depth = WgslTokenDepth::new()
+  for i in 0..<tokens.length() {
+    if depth.at_top() && tokens[i].is_punctuation(40) {
+      let close_index = wgsl_statement_delimited_end(tokens, i, 40, 41)
+      return close_index == tokens.length() - 1 && i > 0
+    }
+    depth.observe_statement_token(tokens[i])
+  }
+  false
+}
+
+///|
+fn wgsl_statement_expression_kind_from_tokens(
+  tokens : Array[WgslToken],
+) -> WgslStatementKind {
+  match wgsl_statement_assignment_operator(tokens) {
+    Some(_) => return WgslStatementKind::Assignment
+    None => ()
+  }
+  if wgsl_statement_is_update(tokens, "++") {
+    return WgslStatementKind::Increment
+  }
+  if wgsl_statement_is_update(tokens, "--") {
+    return WgslStatementKind::Decrement
+  }
+  if wgsl_statement_is_function_call_tokens(tokens) {
+    return WgslStatementKind::FunctionCall
+  }
+  WgslStatementKind::Expression
+}
+
+///|
 fn wgsl_statement_kind_from_tokens(
   first_identifier : String?,
   tokens : Array[WgslToken],
@@ -159,12 +264,12 @@ fn wgsl_statement_kind_from_tokens(
     Some("continue") => WgslStatementKind::Continue
     Some("discard") => WgslStatementKind::Discard
     Some("const_assert") => WgslStatementKind::ConstAssert
-    Some(_) => WgslStatementKind::Expression
+    Some(_) => wgsl_statement_expression_kind_from_tokens(tokens)
     None =>
       match tokens {
         [token, ..] if token.is_punctuation(123) => WgslStatementKind::Compound
         [] => WgslStatementKind::Empty
-        _ => WgslStatementKind::Expression
+        _ => wgsl_statement_expression_kind_from_tokens(tokens)
       }
   }
 }
@@ -747,6 +852,56 @@ fn collect_wgsl_statement_expression_refs(
       }
       return
     }
+    Assignment => {
+      match wgsl_statement_assignment_operator(tokens) {
+        Some((op_index, _, consumed)) => {
+          wgsl_statement_push_expr_ref(
+            owner,
+            tokens,
+            0,
+            op_index,
+            WgslStatementExpressionRole::AssignmentLhs,
+            expression_refs,
+            expressions,
+          )
+          wgsl_statement_push_expr_ref(
+            owner,
+            tokens,
+            op_index + consumed,
+            tokens.length(),
+            WgslStatementExpressionRole::AssignmentRhs,
+            expression_refs,
+            expressions,
+          )
+        }
+        None => ()
+      }
+      return
+    }
+    Increment | Decrement => {
+      wgsl_statement_push_expr_ref(
+        owner,
+        tokens,
+        0,
+        tokens.length() - 1,
+        WgslStatementExpressionRole::UpdateTarget,
+        expression_refs,
+        expressions,
+      )
+      return
+    }
+    FunctionCall => {
+      wgsl_statement_push_expr_ref(
+        owner,
+        tokens,
+        0,
+        tokens.length(),
+        WgslStatementExpressionRole::FunctionCallValue,
+        expression_refs,
+        expressions,
+      )
+      return
+    }
     Expression => {
       match tokens {
         [token, ..] if token.is_identifier("case") => {
@@ -823,6 +978,7 @@ fn wgsl_statement_first_expression_by_role(
 fn wgsl_statement_payload_from_ast(
   kind : WgslStatementKind,
   first_identifier : String?,
+  assignment_operator : String?,
   local_bindings : Array[WgslLocalDeclaration],
   expressions : Array[WgslStatementExpression],
 ) -> WgslStatementPayload {
@@ -885,6 +1041,42 @@ fn wgsl_statement_payload_from_ast(
         ),
       )
     DefaultCase => DefaultCase
+    Assignment =>
+      Assignment(
+        match assignment_operator {
+          Some(text) => text
+          None => ""
+        },
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::AssignmentLhs,
+        ),
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::AssignmentRhs,
+        ),
+      )
+    Increment =>
+      Increment(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::UpdateTarget,
+        ),
+      )
+    Decrement =>
+      Decrement(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::UpdateTarget,
+        ),
+      )
+    FunctionCall =>
+      FunctionCall(
+        wgsl_statement_first_expression_by_role(
+          expressions,
+          WgslStatementExpressionRole::FunctionCallValue,
+        ),
+      )
     Expression =>
       match first_identifier {
         Some("case") =>
@@ -1025,8 +1217,13 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     collect_wgsl_statement_expression_refs(
       self, scope_tokens, kind, expression_refs, expressions,
     )
+    let assignment_operator = match
+      wgsl_statement_assignment_operator(scope_tokens) {
+      Some((_, text, _)) => Some(text)
+      None => None
+    }
     let payload = wgsl_statement_payload_from_ast(
-      kind, body_first_identifier, local_bindings, expressions,
+      kind, body_first_identifier, assignment_operator, local_bindings, expressions,
     )
     let blocks = self.collect_statement_blocks(tokens)
     Some(

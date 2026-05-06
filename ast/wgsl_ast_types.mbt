@@ -699,6 +699,10 @@ pub(all) enum WgslStatementKind {
   Discard
   ConstAssert
   Compound
+  Assignment
+  Increment
+  Decrement
+  FunctionCall
   Expression
 } derive(Eq, Debug)
 
@@ -771,6 +775,10 @@ pub(all) enum WgslStatementExpressionRole {
   CaseSelector
   BreakIf
   ConstAssertValue
+  AssignmentLhs
+  AssignmentRhs
+  UpdateTarget
+  FunctionCallValue
   ExpressionValue
 } derive(Eq, Debug)
 
@@ -819,6 +827,10 @@ pub(all) enum WgslStatementPayload {
   Compound
   Case(WgslExprRef?)
   DefaultCase
+  Assignment(String, WgslExprRef?, WgslExprRef?)
+  Increment(WgslExprRef?)
+  Decrement(WgslExprRef?)
+  FunctionCall(WgslExprRef?)
   Expression(WgslExprRef?)
 } derive(Debug)
 
