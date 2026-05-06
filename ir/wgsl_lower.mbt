@@ -231,7 +231,8 @@ fn WgslIrLowerer::lower_global_variable(
   }
   let ty = self.lower_type_ref(ty_ref)
   let init = match global.initializer_ref() {
-    Some(expr) => Some(self.lower_global_expression_ref(expr))
+    Some(expr) =>
+      Some(self.lower_global_expression_ref_with_expected(expr, Some(ty)))
     None => None
   }
   let handle = self.shader_module.append_global_variable(GlobalVariable::{
@@ -272,8 +273,12 @@ fn WgslIrLowerer::lower_constant(
   self : WgslIrLowerer,
   constant : @ast.WgslConst,
 ) -> Unit raise WgslIrLowerError {
-  let ty = match constant.ty_ref() {
-    Some(ty_ref) => self.lower_type_ref(ty_ref)
+  let explicit_ty = match constant.ty_ref() {
+    Some(ty_ref) => Some(self.lower_type_ref(ty_ref))
+    None => None
+  }
+  let ty = match explicit_ty {
+    Some(ty) => ty
     None =>
       self.infer_local_type_from_initializer(
         constant.name().name(),
@@ -281,7 +286,8 @@ fn WgslIrLowerer::lower_constant(
       )
   }
   let init = match constant.initializer_ref() {
-    Some(expr) => self.lower_global_expression_ref(expr)
+    Some(expr) =>
+      self.lower_global_expression_ref_with_expected(expr, explicit_ty)
     None =>
       self.shader_module.append_global_expression(Expression::ZeroValue(ty))
   }
@@ -298,8 +304,12 @@ fn WgslIrLowerer::lower_override(
   self : WgslIrLowerer,
   override_decl : @ast.WgslOverride,
 ) -> Unit raise WgslIrLowerError {
-  let ty = match override_decl.ty_ref() {
-    Some(ty_ref) => self.lower_type_ref(ty_ref)
+  let explicit_ty = match override_decl.ty_ref() {
+    Some(ty_ref) => Some(self.lower_type_ref(ty_ref))
+    None => None
+  }
+  let ty = match explicit_ty {
+    Some(ty) => ty
     None =>
       self.infer_local_type_from_initializer(
         override_decl.name().name(),
@@ -311,7 +321,8 @@ fn WgslIrLowerer::lower_override(
     id: wgsl_ir_id_from_attributes(override_decl.attributes()),
     ty,
     init: match override_decl.initializer_ref() {
-      Some(expr) => Some(self.lower_global_expression_ref(expr))
+      Some(expr) =>
+        Some(self.lower_global_expression_ref_with_expected(expr, explicit_ty))
       None => None
     },
   })
@@ -809,6 +820,10 @@ fn WgslIrLowerer::lower_local_declaration(
   scope : WgslIrFunctionScope,
   block : Block,
 ) -> Unit raise WgslIrLowerError {
+  let explicit_ty = match local_decl.ty_ref() {
+    Some(ty_ref) => Some(self.lower_type_ref(ty_ref))
+    None => None
+  }
   let mut address_of_ty : Handle? = None
   let init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
@@ -826,12 +841,16 @@ fn WgslIrLowerer::lower_local_declaration(
           )
         }
         None =>
-          Some(self.lower_function_expression_ref(expr_ref, function, scope))
+          Some(
+            self.lower_function_expression_ref_with_expected(
+              expr_ref, function, scope, explicit_ty,
+            ),
+          )
       }
     None => None
   }
-  let ty = match local_decl.ty_ref() {
-    Some(ty_ref) => self.lower_type_ref(ty_ref)
+  let ty = match explicit_ty {
+    Some(ty) => ty
     None =>
       match address_of_ty {
         Some(pointer_ty) => pointer_ty
@@ -1817,28 +1836,89 @@ fn WgslIrLowerer::infer_expression_type(
     Identifier(identifier) =>
       self.infer_named_expression_type(identifier.name(), name)
     Group(inner) => self.infer_expression_type(inner, name)
-    Binary(_, left, _) => self.infer_expression_type(left, name)
-    Call(callee, arguments) =>
-      match self.lower_templated_callee_type(callee) {
-        Some(ty) => ty
-        None =>
-          match callee.kind() {
-            Identifier(ident) =>
-              match wgsl_ir_math_function_from_name(ident.name()) {
-                Some(math_function) =>
-                  self.infer_math_expression_type(
-                    math_function, arguments, name,
-                  )
-                None =>
-                  self.lower_untemplated_constructor_type_from_ast(
-                    ident.name(),
-                    arguments,
-                    name,
-                  )
-              }
-            _ => raise WgslIrLowerError::MissingType(name)
+    Binary(op, left, right) =>
+      match self.infer_expression_type(left, name) {
+        left_ty =>
+          match self.infer_expression_type(right, name) {
+            right_ty =>
+              self.binary_expression_result_type(
+                wgsl_ir_binary_operator(op),
+                left_ty,
+                right_ty,
+              )
           }
       }
+    Call(callee, arguments) =>
+      match self.lower_bitcast_callee_type(callee) {
+        Some(ty) => ty
+        None =>
+          match self.lower_templated_callee_type(callee) {
+            Some(ty) => ty
+            None =>
+              match callee.kind() {
+                Identifier(ident) =>
+                  if ident.name() == "select" {
+                    self.infer_select_expression_type(arguments, name)
+                  } else {
+                    match wgsl_ir_relational_function_from_name(ident.name()) {
+                      Some(relational_function) =>
+                        self.infer_relational_expression_type(
+                          relational_function, arguments, name,
+                        )
+                      None =>
+                        match wgsl_ir_math_function_from_name(ident.name()) {
+                          Some(math_function) =>
+                            self.infer_math_expression_type(
+                              math_function, arguments, name,
+                            )
+                          None =>
+                            self.lower_untemplated_constructor_type_from_ast(
+                              ident.name(),
+                              arguments,
+                              name,
+                            )
+                        }
+                    }
+                  }
+                _ => raise WgslIrLowerError::MissingType(name)
+              }
+          }
+      }
+    _ => raise WgslIrLowerError::MissingType(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_bitcast_callee_type(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+) -> Handle? raise WgslIrLowerError {
+  match callee.kind() {
+    Template(base, template_arguments) =>
+      match base.kind() {
+        Identifier(name) if name.name() == "bitcast" =>
+          match template_arguments {
+            [Type(ty_ref)] => Some(self.lower_type_ref(ty_ref))
+            _ =>
+              raise WgslIrLowerError::UnsupportedExpression(
+                "bitcast expects exactly one type template argument",
+              )
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::infer_select_expression_type(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  name : String,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  match arguments {
+    [reject, _, _] => self.infer_expression_type(reject, name)
     _ => raise WgslIrLowerError::MissingType(name)
   }
 }
@@ -1863,6 +1943,26 @@ fn WgslIrLowerer::infer_math_expression_type(
     _ =>
       match rest {
         _ => self.infer_expression_type(first, name)
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::infer_relational_expression_type(
+  self : WgslIrLowerer,
+  relational_function : RelationalFunction,
+  arguments : Array[@ast.WgslExprNode],
+  name : String,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [first, ..] else {
+    raise WgslIrLowerError::MissingType(name)
+  }
+  match relational_function {
+    All | Any => self.scalar_type_handle(Scalar::new(Bool, 1))
+    IsNan | IsInf =>
+      match self.infer_expression_type(first, name) {
+        ty => self.boolean_result_type(ty, ty)
       }
   }
 }
@@ -2386,10 +2486,19 @@ fn WgslIrLowerer::lower_global_expression_ref(
   self : WgslIrLowerer,
   expr_ref : @ast.WgslExprRef,
 ) -> Handle raise WgslIrLowerError {
+  self.lower_global_expression_ref_with_expected(expr_ref, None)
+}
+
+///|
+fn WgslIrLowerer::lower_global_expression_ref_with_expected(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
   guard expr_ref.root() is Some(root) else {
     raise WgslIrLowerError::UnsupportedExpression("empty global expression")
   }
-  self.lower_global_expression_node(root)
+  self.lower_global_expression_node_with_expected(root, expected_ty)
 }
 
 ///|
@@ -2397,15 +2506,27 @@ fn WgslIrLowerer::lower_global_expression_node(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
 ) -> Handle raise WgslIrLowerError {
+  self.lower_global_expression_node_with_expected(node, None)
+}
+
+///|
+fn WgslIrLowerer::lower_global_expression_node_with_expected(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
   self.shader_module.append_global_expression(
-    self.lower_expression_node_to_global_expression(node),
+    self.lower_expression_node_to_global_expression_with_expected(
+      node, expected_ty,
+    ),
   )
 }
 
 ///|
-fn WgslIrLowerer::lower_expression_node_to_global_expression(
+fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
+  expected_ty : Handle?,
 ) -> Expression raise WgslIrLowerError {
   match node.kind() {
     Literal(token) => Expression::Literal(wgsl_ir_literal_from_token(token))
@@ -2433,38 +2554,71 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression(
         self.lower_global_expression_node(left),
         self.lower_global_expression_node(right),
       )
-    Group(expr) => self.lower_expression_node_to_global_expression(expr)
+    Group(expr) =>
+      self.lower_expression_node_to_global_expression_with_expected(
+        expr, expected_ty,
+      )
     Sequence([single]) =>
-      self.lower_expression_node_to_global_expression(single)
+      self.lower_expression_node_to_global_expression_with_expected(
+        single, expected_ty,
+      )
     Call(callee, arguments) =>
-      match callee.kind() {
-        Identifier(name) =>
-          match wgsl_ir_math_function_from_name(name.name()) {
-            Some(math_function) =>
-              self.lower_global_math_call(math_function, arguments)
-            None => {
-              let ty = self.lower_untemplated_constructor_type_from_ast(
-                name.name(),
-                arguments,
-                name.name(),
-              )
-              Expression::Compose(
-                ty,
-                self.lower_global_expression_arguments(arguments),
-              )
-            }
-          }
-        _ =>
-          match self.lower_templated_callee_type(callee) {
-            Some(ty) =>
-              Expression::Compose(
-                ty,
-                self.lower_global_expression_arguments(arguments),
-              )
-            None =>
-              raise WgslIrLowerError::UnsupportedExpression(
-                "non-identifier global call expression",
-              )
+      match self.lower_bitcast_callee_type(callee) {
+        Some(ty) => self.lower_global_bitcast_call(ty, arguments)
+        None =>
+          match callee.kind() {
+            Identifier(name) =>
+              if name.name() == "select" {
+                self.lower_global_select_call(arguments)
+              } else {
+                match wgsl_ir_math_function_from_name(name.name()) {
+                  Some(math_function) =>
+                    self.lower_global_math_call(math_function, arguments)
+                  None =>
+                    match wgsl_ir_relational_function_from_name(name.name()) {
+                      Some(relational_function) =>
+                        self.lower_global_relational_call(
+                          relational_function, arguments,
+                        )
+                      None =>
+                        if name.name() == "array" {
+                          self.lower_global_array_constructor_call(
+                            expected_ty, arguments,
+                          )
+                        } else {
+                          let ty = match
+                            self.expected_constructor_type(
+                              name.name(),
+                              expected_ty,
+                            ) {
+                            Some(ty) => ty
+                            None =>
+                              self.lower_untemplated_constructor_type_from_ast(
+                                name.name(),
+                                arguments,
+                                name.name(),
+                              )
+                          }
+                          Expression::Compose(
+                            ty,
+                            self.lower_global_expression_arguments(arguments),
+                          )
+                        }
+                    }
+                }
+              }
+            _ =>
+              match self.lower_templated_callee_type(callee) {
+                Some(ty) =>
+                  Expression::Compose(
+                    ty,
+                    self.lower_global_expression_arguments(arguments),
+                  )
+                None =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "non-identifier global call expression: \{wgsl_ir_expr_node_shape(callee)}",
+                  )
+              }
           }
       }
     _ =>
@@ -2475,13 +2629,78 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression(
 }
 
 ///|
+fn WgslIrLowerer::lower_global_select_call(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+) -> Expression raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [reject, accept, condition] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "select expects three arguments",
+    )
+  }
+  Expression::Select(
+    self.lower_global_expression_node(condition),
+    self.lower_global_expression_node(accept),
+    self.lower_global_expression_node(reject),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_global_bitcast_call(
+  self : WgslIrLowerer,
+  ty : Handle,
+  arguments : Array[@ast.WgslExprNode],
+) -> Expression raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [expr] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "bitcast expects one argument",
+    )
+  }
+  Expression::Bitcast(ty, self.lower_global_expression_node(expr))
+}
+
+///|
+fn WgslIrLowerer::lower_global_array_constructor_call(
+  self : WgslIrLowerer,
+  expected_ty : Handle?,
+  arguments : Array[@ast.WgslExprNode],
+) -> Expression raise WgslIrLowerError {
+  guard expected_ty is Some(ty) else {
+    raise WgslIrLowerError::UnsupportedType("array")
+  }
+  guard self.array_element_type(ty) is Some(element_ty) else {
+    raise WgslIrLowerError::UnsupportedType("array")
+  }
+  Expression::Compose(
+    ty,
+    self.lower_global_expression_arguments_with_expected(
+      arguments,
+      Some(element_ty),
+    ),
+  )
+}
+
+///|
 fn WgslIrLowerer::lower_global_expression_arguments(
   self : WgslIrLowerer,
   arguments : Array[@ast.WgslExprNode],
 ) -> Array[Handle] raise WgslIrLowerError {
+  self.lower_global_expression_arguments_with_expected(arguments, None)
+}
+
+///|
+fn WgslIrLowerer::lower_global_expression_arguments_with_expected(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  expected_ty : Handle?,
+) -> Array[Handle] raise WgslIrLowerError {
   let handles : Array[Handle] = []
   for argument in wgsl_ir_flatten_expression_arguments(arguments) {
-    handles.push(self.lower_global_expression_node(argument))
+    handles.push(
+      self.lower_global_expression_node_with_expected(argument, expected_ty),
+    )
   }
   handles
 }
@@ -2515,16 +2734,52 @@ fn WgslIrLowerer::lower_global_math_call(
 }
 
 ///|
+fn WgslIrLowerer::lower_global_relational_call(
+  self : WgslIrLowerer,
+  relational_function : RelationalFunction,
+  arguments : Array[@ast.WgslExprNode],
+) -> Expression raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [expr] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "\{wgsl_ir_relational_function_name(relational_function)} expects one argument",
+    )
+  }
+  Expression::Relational(
+    relational_function,
+    self.lower_global_expression_node(expr),
+  )
+}
+
+///|
 fn WgslIrLowerer::lower_function_expression_ref(
   self : WgslIrLowerer,
   expr_ref : @ast.WgslExprRef,
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
+  self.lower_function_expression_ref_with_expected(
+    expr_ref,
+    function,
+    scope,
+    None,
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_expression_ref_with_expected(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
   guard expr_ref.root() is Some(root) else {
     raise WgslIrLowerError::UnsupportedExpression("empty function expression")
   }
-  self.lower_function_expression_node(root, function, scope)
+  self.lower_function_expression_node_with_expected(
+    root, function, scope, expected_ty,
+  )
 }
 
 ///|
@@ -2644,6 +2899,17 @@ fn WgslIrLowerer::lower_function_expression_node(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
+  self.lower_function_expression_node_with_expected(node, function, scope, None)
+}
+
+///|
+fn WgslIrLowerer::lower_function_expression_node_with_expected(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
   match node.kind() {
     Literal(token) =>
       function.expressions.append(
@@ -2680,9 +2946,14 @@ fn WgslIrLowerer::lower_function_expression_node(
           self.lower_function_expression_node(right, function, scope),
         ),
       )
-    Group(expr) => self.lower_function_expression_node(expr, function, scope)
+    Group(expr) =>
+      self.lower_function_expression_node_with_expected(
+        expr, function, scope, expected_ty,
+      )
     Sequence([single]) =>
-      self.lower_function_expression_node(single, function, scope)
+      self.lower_function_expression_node_with_expected(
+        single, function, scope, expected_ty,
+      )
     Member(base, member_name) => {
       let base_handle = self.lower_function_member_value_base(
         base, function, scope,
@@ -2699,72 +2970,106 @@ fn WgslIrLowerer::lower_function_expression_node(
       function.expressions.append(Expression::Access(base_handle, index_handle))
     }
     Call(callee, arguments) =>
-      match callee.kind() {
-        Identifier(name) =>
-          match self.function_names.get(name.name()) {
-            Some(handle) =>
-              function.expressions.append(
-                Expression::FunctionCall(
-                  handle,
-                  self.lower_function_expression_arguments(
-                    arguments, function, scope,
-                  ),
-                ),
-              )
-            None =>
-              match wgsl_ir_math_function_from_name(name.name()) {
-                Some(math_function) =>
-                  self.lower_function_math_call(
-                    math_function, arguments, function, scope,
+      match self.lower_bitcast_callee_type(callee) {
+        Some(ty) =>
+          self.lower_function_bitcast_call(ty, arguments, function, scope)
+        None =>
+          match callee.kind() {
+            Identifier(name) =>
+              match self.function_names.get(name.name()) {
+                Some(handle) =>
+                  function.expressions.append(
+                    Expression::FunctionCall(
+                      handle,
+                      self.lower_function_expression_arguments(
+                        arguments, function, scope,
+                      ),
+                    ),
                   )
                 None =>
-                  match wgsl_ir_atomic_function_from_name(name.name()) {
-                    Some(atomic_function) =>
-                      self.lower_function_atomic_call(
-                        atomic_function, arguments, function, scope,
+                  match wgsl_ir_math_function_from_name(name.name()) {
+                    Some(math_function) =>
+                      self.lower_function_math_call(
+                        math_function, arguments, function, scope,
                       )
                     None =>
-                      match
-                        self.lower_texture_expression_call(
-                          name.name(),
-                          arguments,
-                          function,
-                          scope,
-                        ) {
-                        Some(handle) => handle
-                        None => {
-                          let lowered_arguments = self.lower_function_expression_arguments(
-                            arguments, function, scope,
+                      match wgsl_ir_relational_function_from_name(name.name()) {
+                        Some(relational_function) =>
+                          self.lower_function_relational_call(
+                            relational_function, arguments, function, scope,
                           )
-                          let ty = self.lower_untemplated_constructor_type_from_handles(
-                            name.name(),
-                            arguments,
-                            lowered_arguments,
-                            function,
-                          )
-                          function.expressions.append(
-                            Expression::Compose(ty, lowered_arguments),
-                          )
-                        }
+                        None =>
+                          if name.name() == "select" {
+                            self.lower_function_select_call(
+                              arguments, function, scope,
+                            )
+                          } else {
+                            match
+                              wgsl_ir_atomic_function_from_name(name.name()) {
+                              Some(atomic_function) =>
+                                self.lower_function_atomic_call(
+                                  atomic_function, arguments, function, scope,
+                                )
+                              None =>
+                                match
+                                  self.lower_texture_expression_call(
+                                    name.name(),
+                                    arguments,
+                                    function,
+                                    scope,
+                                  ) {
+                                  Some(handle) => handle
+                                  None =>
+                                    if name.name() == "array" {
+                                      self.lower_function_array_constructor_call(
+                                        expected_ty, arguments, function, scope,
+                                      )
+                                    } else {
+                                      let lowered_arguments = self.lower_function_expression_arguments(
+                                        arguments, function, scope,
+                                      )
+                                      let ty = match
+                                        self.expected_constructor_type(
+                                          name.name(),
+                                          expected_ty,
+                                        ) {
+                                        Some(ty) => ty
+                                        None =>
+                                          self.lower_untemplated_constructor_type_from_handles(
+                                            name.name(),
+                                            arguments,
+                                            lowered_arguments,
+                                            function,
+                                          )
+                                      }
+                                      function.expressions.append(
+                                        Expression::Compose(
+                                          ty, lowered_arguments,
+                                        ),
+                                      )
+                                    }
+                                }
+                            }
+                          }
                       }
                   }
               }
-          }
-        _ =>
-          match self.lower_templated_callee_type(callee) {
-            Some(ty) =>
-              function.expressions.append(
-                Expression::Compose(
-                  ty,
-                  self.lower_function_expression_arguments(
-                    arguments, function, scope,
-                  ),
-                ),
-              )
-            None =>
-              raise WgslIrLowerError::UnsupportedExpression(
-                "non-identifier call expression",
-              )
+            _ =>
+              match self.lower_templated_callee_type(callee) {
+                Some(ty) =>
+                  function.expressions.append(
+                    Expression::Compose(
+                      ty,
+                      self.lower_function_expression_arguments(
+                        arguments, function, scope,
+                      ),
+                    ),
+                  )
+                None =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "non-identifier call expression: \{wgsl_ir_expr_node_shape(callee)}",
+                  )
+              }
           }
       }
     _ =>
@@ -2823,11 +3128,58 @@ fn WgslIrLowerer::lower_function_expression_arguments(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Array[Handle] raise WgslIrLowerError {
+  self.lower_function_expression_arguments_with_expected(
+    arguments,
+    function,
+    scope,
+    None,
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_expression_arguments_with_expected(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Array[Handle] raise WgslIrLowerError {
   let handles : Array[Handle] = []
   for argument in wgsl_ir_flatten_expression_arguments(arguments) {
-    handles.push(self.lower_function_expression_node(argument, function, scope))
+    handles.push(
+      self.lower_function_expression_node_with_expected(
+        argument, function, scope, expected_ty,
+      ),
+    )
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_function_array_constructor_call(
+  self : WgslIrLowerer,
+  expected_ty : Handle?,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  guard expected_ty is Some(ty) else {
+    raise WgslIrLowerError::UnsupportedType("array")
+  }
+  guard self.array_element_type(ty) is Some(element_ty) else {
+    raise WgslIrLowerError::UnsupportedType("array")
+  }
+  function.expressions.append(
+    Expression::Compose(
+      ty,
+      self.lower_function_expression_arguments_with_expected(
+        arguments,
+        function,
+        scope,
+        Some(element_ty),
+      ),
+    ),
+  )
 }
 
 ///|
@@ -2861,6 +3213,72 @@ fn WgslIrLowerer::lower_function_math_call(
     _ => None
   }
   function.expressions.append(Expression::Math(math_function, a, b, c, d))
+}
+
+///|
+fn WgslIrLowerer::lower_function_relational_call(
+  self : WgslIrLowerer,
+  relational_function : RelationalFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [expr] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "\{wgsl_ir_relational_function_name(relational_function)} expects one argument",
+    )
+  }
+  function.expressions.append(
+    Expression::Relational(
+      relational_function,
+      self.lower_function_expression_node(expr, function, scope),
+    ),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_select_call(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [reject, accept, condition] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "select expects three arguments",
+    )
+  }
+  function.expressions.append(
+    Expression::Select(
+      self.lower_function_expression_node(condition, function, scope),
+      self.lower_function_expression_node(accept, function, scope),
+      self.lower_function_expression_node(reject, function, scope),
+    ),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_bitcast_call(
+  self : WgslIrLowerer,
+  ty : Handle,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [expr] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "bitcast expects one argument",
+    )
+  }
+  function.expressions.append(
+    Expression::Bitcast(
+      ty,
+      self.lower_function_expression_node(expr, function, scope),
+    ),
+  )
 }
 
 ///|
@@ -2925,6 +3343,27 @@ fn wgsl_ir_flatten_expression_arguments(
         _ => arguments
       }
     _ => arguments
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_shape(node : @ast.WgslExprNode) -> String {
+  match node.kind() {
+    Identifier(name) => "identifier \{name.name()}"
+    Literal(token) => "literal \{token.text()}"
+    Token(token) => "token \{token.text()}"
+    Unary(op, inner) => "unary \{op.text()}(\{wgsl_ir_expr_node_shape(inner)})"
+    Binary(op, left, right) =>
+      "binary \{op.text()}(\{wgsl_ir_expr_node_shape(left)}, \{wgsl_ir_expr_node_shape(right)})"
+    Call(callee, _) => "call(\{wgsl_ir_expr_node_shape(callee)})"
+    Template(base, _) => "template(\{wgsl_ir_expr_node_shape(base)})"
+    PathAccess(base, segment) =>
+      "path(\{wgsl_ir_expr_node_shape(base)}::\{segment.name()})"
+    Member(base, segment) =>
+      "member(\{wgsl_ir_expr_node_shape(base)}.\{segment.name()})"
+    Index(base, _) => "index(\{wgsl_ir_expr_node_shape(base)})"
+    Group(inner) => "group(\{wgsl_ir_expr_node_shape(inner)})"
+    Sequence(items) => "sequence(\{items.length()})"
   }
 }
 
@@ -3133,7 +3572,7 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
   ty_ref : @ast.WgslTypeRef,
 ) -> ArraySize {
   let name = ty_ref.name()
-  let literal : Int? = Some(@strconv.from_str(name)) catch { _ => None }
+  let literal = wgsl_ir_array_size_literal_from_type_name(name)
   match literal {
     Some(value) => ArraySize::Constant(value)
     None =>
@@ -3155,6 +3594,23 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
             None => ArraySize::Dynamic
           }
       }
+  }
+}
+
+///|
+fn wgsl_ir_array_size_literal_from_type_name(name : String) -> Int? {
+  let text = if name.length() > 0 {
+    let suffix = name[name.length() - 1:]
+    if suffix == "u" || suffix == "i" {
+      name[:name.length() - 1]
+    } else {
+      name
+    }
+  } else {
+    name
+  }
+  Some(@strconv.from_str(text)) catch {
+    _ => None
   }
 }
 
@@ -3613,6 +4069,29 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
 }
 
 ///|
+fn wgsl_ir_relational_function_from_name(name : String) -> RelationalFunction? {
+  match name {
+    "all" => Some(All)
+    "any" => Some(Any)
+    "isNan" => Some(IsNan)
+    "isInf" => Some(IsInf)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_relational_function_name(
+  relational_function : RelationalFunction,
+) -> String {
+  match relational_function {
+    All => "all"
+    Any => "any"
+    IsNan => "isNan"
+    IsInf => "isInf"
+  }
+}
+
+///|
 fn wgsl_ir_atomic_function_from_name(name : String) -> AtomicFunction? {
   match name {
     "atomicLoad" => Some(Load)
@@ -3942,7 +4421,12 @@ fn WgslIrLowerer::address_space_for_lvalue(
   match function.expressions.items.get(target.index()) {
     Some(expression) =>
       match expression {
-        LocalVariable(_) => AddressSpace::Function
+        LocalVariable(handle) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_variable) =>
+              self.address_space_from_pointer_type(local_variable.ty)
+            None => AddressSpace::Function
+          }
         GlobalVariable(handle) =>
           match self.shader_module.global_variables.items.get(handle.index()) {
             Some(global) => global.space
@@ -3955,6 +4439,7 @@ fn WgslIrLowerer::address_space_for_lvalue(
           }
         Access(base, _) | AccessIndex(base, _) =>
           self.address_space_for_lvalue(function, base)
+        Load(inner) => self.address_space_for_lvalue(function, inner)
         _ => AddressSpace::Function
       }
     None => AddressSpace::Function
@@ -4109,7 +4594,22 @@ fn WgslIrLowerer::function_expression_inner_type(
     Access(base, _) => self.indexed_expression_type(function, base, None)
     Swizzle(size, base, _) => self.swizzle_expression_type(function, base, size)
     Unary(_, inner) => self.function_expression_type(function, inner)
-    Binary(_, left, _) => self.function_expression_type(function, left)
+    Binary(op, left, right) =>
+      match self.function_expression_type(function, left) {
+        Some(left_ty) =>
+          match self.function_expression_type(function, right) {
+            Some(right_ty) =>
+              Some(self.binary_expression_result_type(op, left_ty, right_ty))
+            None => Some(left_ty)
+          }
+        None => self.function_expression_type(function, right)
+      }
+    Select(_, accept, reject) =>
+      match self.function_expression_type(function, accept) {
+        Some(ty) => Some(ty)
+        None => self.function_expression_type(function, reject)
+      }
+    Bitcast(ty, _) => Some(ty)
     FunctionCall(handle, _) =>
       match self.shader_module.functions.items.get(handle.index()) {
         Some(callee) =>
@@ -4121,6 +4621,10 @@ fn WgslIrLowerer::function_expression_inner_type(
       }
     Math(math_function, a, _, _, _) =>
       self.math_expression_result_type(function, math_function, a)
+    Relational(relational_function, expr) =>
+      self.relational_expression_result_type(
+        function, relational_function, expr,
+      )
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(function, atomic_function, arguments)
     ImageSample(image, _, gather, _, _, _, _, depth_ref, _) =>
@@ -4146,7 +4650,162 @@ fn WgslIrLowerer::math_expression_result_type(
   match math_function {
     Modf => self.predeclared_modf_result_type(input_ty)
     Frexp => self.predeclared_frexp_result_type(input_ty)
+    Dot | Distance | Length | Determinant =>
+      Some(self.scalar_type_from_composite_type(input_ty))
     _ => Some(input_ty)
+  }
+}
+
+///|
+fn WgslIrLowerer::relational_expression_result_type(
+  self : WgslIrLowerer,
+  function : Function,
+  relational_function : RelationalFunction,
+  argument : Handle,
+) -> Handle? {
+  match relational_function {
+    All | Any => Some(self.scalar_type_handle(Scalar::new(Bool, 1)))
+    IsNan | IsInf =>
+      match self.function_expression_type(function, argument) {
+        Some(input_ty) => Some(self.boolean_result_type(input_ty, input_ty))
+        None => None
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::binary_expression_result_type(
+  self : WgslIrLowerer,
+  op : BinaryOperator,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle {
+  if wgsl_ir_binary_operator_is_comparison(op) {
+    return self.boolean_result_type(left_ty, right_ty)
+  }
+  if op == BinaryOperator::Multiply {
+    match self.matrix_vector_multiply_result_type(left_ty, right_ty) {
+      Some(ty) => return ty
+      None => ()
+    }
+  }
+  if self.type_is_scalar(left_ty) && !self.type_is_scalar(right_ty) {
+    return right_ty
+  }
+  if !self.type_is_scalar(left_ty) && self.type_is_scalar(right_ty) {
+    return left_ty
+  }
+  left_ty
+}
+
+///|
+fn WgslIrLowerer::matrix_vector_multiply_result_type(
+  self : WgslIrLowerer,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(left_ty) {
+    Some(left) =>
+      match left.inner {
+        Matrix(_, rows, scalar) =>
+          match self.shader_module.types.get(right_ty) {
+            Some(right) =>
+              match right.inner {
+                Vector(_, _) => Some(self.vector_type_handle(rows, scalar))
+                _ => None
+              }
+            None => None
+          }
+        Vector(_, scalar) =>
+          match self.shader_module.types.get(right_ty) {
+            Some(right) =>
+              match right.inner {
+                Matrix(columns, _, _) =>
+                  Some(self.vector_type_handle(columns, scalar))
+                _ => None
+              }
+            None => None
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::vector_type_handle(
+  self : WgslIrLowerer,
+  size : VectorSize,
+  scalar : Scalar,
+) -> Handle {
+  self.intern_type(
+    "vec\{size.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+    TypeInner::Vector(size, scalar),
+  )
+}
+
+///|
+fn WgslIrLowerer::boolean_result_type(
+  self : WgslIrLowerer,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle {
+  match self.vector_size_from_type(left_ty) {
+    Some(size) => self.boolean_vector_type(size)
+    None =>
+      match self.vector_size_from_type(right_ty) {
+        Some(size) => self.boolean_vector_type(size)
+        None => self.scalar_type_handle(Scalar::new(Bool, 1))
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::boolean_vector_type(
+  self : WgslIrLowerer,
+  size : VectorSize,
+) -> Handle {
+  self.intern_type(
+    "vec\{size.width()}<bool>",
+    TypeInner::Vector(size, Scalar::new(Bool, 1)),
+  )
+}
+
+///|
+fn WgslIrLowerer::type_is_scalar(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(_) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::vector_size_from_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> VectorSize? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(size, _) => Some(size)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn wgsl_ir_binary_operator_is_comparison(op : BinaryOperator) -> Bool {
+  match op {
+    Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => true
+    _ => false
   }
 }
 
@@ -4462,8 +5121,58 @@ fn WgslIrLowerer::indexed_type_from_type_handle(
             None => None
           }
         Vector(_, scalar) => Some(self.scalar_type_handle(scalar))
+        Matrix(_, rows, scalar) => Some(self.vector_type_handle(rows, scalar))
         Array(element, _, _) | BindingArray(element, _) => Some(element)
         Pointer(inner, _) => self.indexed_type_from_type_handle(inner, index)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::array_element_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Array(element, _, _) | BindingArray(element, _) => Some(element)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::expected_constructor_type(
+  self : WgslIrLowerer,
+  name : String,
+  expected_ty : Handle?,
+) -> Handle? {
+  guard expected_ty is Some(ty_handle) else { return None }
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) =>
+          if name == wgsl_ir_scalar_name(scalar.kind, scalar.width) {
+            Some(ty_handle)
+          } else {
+            None
+          }
+        Vector(size, _) =>
+          if name == "vec\{size.width()}" {
+            Some(ty_handle)
+          } else {
+            None
+          }
+        Matrix(columns, rows, _) =>
+          if name == "mat\{columns.width()}x\{rows.width()}" {
+            Some(ty_handle)
+          } else {
+            None
+          }
         _ => None
       }
     None => None

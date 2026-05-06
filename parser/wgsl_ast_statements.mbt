@@ -635,6 +635,19 @@ fn wgsl_statement_collect_condition_expr(
   if tokens[expr_start].is_punctuation(40) {
     let close_index = wgsl_statement_delimited_end(tokens, expr_start, 40, 41)
     if close_index > expr_start {
+      let else_index = wgsl_statement_top_level_identifier_index(
+        tokens,
+        close_index + 1,
+        tokens.length(),
+        "else",
+      )
+      let expr_end = if else_index >= 0 { else_index } else { tokens.length() }
+      if close_index + 1 < expr_end {
+        wgsl_statement_push_expr_ref(
+          owner, tokens, expr_start, expr_end, role, expression_refs, expressions,
+        )
+        return expr_end
+      }
       wgsl_statement_push_expr_ref(
         owner,
         tokens,

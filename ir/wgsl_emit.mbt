@@ -345,10 +345,7 @@ fn WgslIrEmitter::emit_local_declaration(
     None =>
       raise WgslIrEmitError::MissingHandle("local variable \{handle.index()}")
   }
-  let name = match local_var.name {
-    Some(value) => value
-    None => "local\{handle.index()}"
-  }
+  let name = self.local_variable_name(Some(function), handle)
   out.write_string(
     "\{wgsl_ir_indent(indent)}\{self.local_variable_keyword(local_var.kind)} \{name}",
   )
@@ -663,10 +660,16 @@ fn WgslIrEmitter::emit_expression(
       "\{self.unary_operator(op)}\{self.required_function_expression(function, expr)}"
     Binary(op, left, right) =>
       "(\{self.required_function_expression(function, left)} \{self.binary_operator(op)} \{self.required_function_expression(function, right)})"
+    Select(condition, accept, reject) =>
+      "select(\{self.required_function_expression(function, reject)}, \{self.required_function_expression(function, accept)}, \{self.required_function_expression(function, condition)})"
+    Bitcast(ty, expr) =>
+      "bitcast<\{self.type_name(ty)}>(\{self.required_function_expression(function, expr)})"
     FunctionCall(handle, arguments) =>
       "\{self.function_name(handle)}(\{self.expression_list(arguments, function)})"
     Math(math_function, a, b, c, d) =>
       "\{self.math_function_name(math_function)}(\{self.math_argument_list(a, b, c, d, function)})"
+    Relational(relational_function, expr) =>
+      "\{self.relational_function_name(relational_function)}(\{self.required_function_expression(function, expr)})"
     CallResult(handle) => self.function_name(handle)
     _ => raise WgslIrEmitError::Unsupported("expression kind")
   }
@@ -1066,7 +1069,22 @@ fn WgslIrEmitter::function_expression_inner_type(
     Swizzle(size, base, _) =>
       self.swizzle_expression_type(Some(function), base, size)
     Unary(_, inner) => self.expression_type(Some(function), inner)
-    Binary(_, left, _) => self.expression_type(Some(function), left)
+    Binary(op, left, right) =>
+      match self.expression_type(Some(function), left) {
+        Some(left_ty) =>
+          match self.expression_type(Some(function), right) {
+            Some(right_ty) =>
+              self.binary_expression_result_type(op, left_ty, right_ty)
+            None => Some(left_ty)
+          }
+        None => self.expression_type(Some(function), right)
+      }
+    Select(_, accept, reject) =>
+      match self.expression_type(Some(function), accept) {
+        Some(ty) => Some(ty)
+        None => self.expression_type(Some(function), reject)
+      }
+    Bitcast(ty, _) => Some(ty)
     FunctionCall(handle, _) =>
       match self.shader_module.functions.items.get(handle.index()) {
         Some(callee) =>
@@ -1078,6 +1096,12 @@ fn WgslIrEmitter::function_expression_inner_type(
       }
     Math(math_function, a, _, _, _) =>
       self.math_expression_result_type(Some(function), math_function, a)
+    Relational(relational_function, expr) =>
+      self.relational_expression_result_type(
+        Some(function),
+        relational_function,
+        expr,
+      )
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(
         Some(function),
@@ -1116,9 +1140,26 @@ fn WgslIrEmitter::global_expression_inner_type(
     Access(base, _) => self.indexed_expression_type(None, base, None)
     Swizzle(size, base, _) => self.swizzle_expression_type(None, base, size)
     Unary(_, inner) => self.expression_type(None, inner)
-    Binary(_, left, _) => self.expression_type(None, left)
+    Binary(op, left, right) =>
+      match self.expression_type(None, left) {
+        Some(left_ty) =>
+          match self.expression_type(None, right) {
+            Some(right_ty) =>
+              self.binary_expression_result_type(op, left_ty, right_ty)
+            None => Some(left_ty)
+          }
+        None => self.expression_type(None, right)
+      }
+    Select(_, accept, reject) =>
+      match self.expression_type(None, accept) {
+        Some(ty) => Some(ty)
+        None => self.expression_type(None, reject)
+      }
+    Bitcast(ty, _) => Some(ty)
     Math(math_function, a, _, _, _) =>
       self.math_expression_result_type(None, math_function, a)
+    Relational(relational_function, expr) =>
+      self.relational_expression_result_type(None, relational_function, expr)
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(None, atomic_function, arguments)
     _ => None
@@ -1157,6 +1198,7 @@ fn WgslIrEmitter::indexed_type_from_type_handle(
             None => None
           }
         Vector(_, scalar) => self.find_vector_scalar_type(scalar)
+        Matrix(_, rows, scalar) => self.find_vector_type(rows, scalar)
         Array(element, _, _) | BindingArray(element, _) => Some(element)
         Pointer(inner, _) => self.indexed_type_from_type_handle(inner, index)
         _ => None
@@ -1227,8 +1269,161 @@ fn WgslIrEmitter::math_expression_result_type(
   match math_function {
     Modf | Frexp =>
       self.predeclared_numeric_result_type(input_ty, math_function)
+    Dot | Distance | Length | Determinant =>
+      self.scalar_type_from_composite_type(input_ty)
     _ => Some(input_ty)
   }
+}
+
+///|
+fn WgslIrEmitter::scalar_type_from_composite_type(
+  self : WgslIrEmitter,
+  ty_handle : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(_, scalar) | Matrix(_, _, scalar) =>
+          self.find_scalar_type(scalar)
+        _ => Some(ty_handle)
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::relational_expression_result_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  relational_function : RelationalFunction,
+  argument : Handle,
+) -> Handle? {
+  match relational_function {
+    All | Any => self.find_scalar_type(Scalar::new(Bool, 1))
+    IsNan | IsInf =>
+      match self.expression_type(function, argument) {
+        Some(input_ty) => self.boolean_result_type(input_ty, input_ty)
+        None => None
+      }
+  }
+}
+
+///|
+fn WgslIrEmitter::binary_expression_result_type(
+  self : WgslIrEmitter,
+  op : BinaryOperator,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle? {
+  if wgsl_ir_binary_operator_is_comparison(op) {
+    return self.boolean_result_type(left_ty, right_ty)
+  }
+  if op == BinaryOperator::Multiply {
+    match self.matrix_vector_multiply_result_type(left_ty, right_ty) {
+      Some(ty) => return Some(ty)
+      None => ()
+    }
+  }
+  if self.type_is_scalar(left_ty) && !self.type_is_scalar(right_ty) {
+    return Some(right_ty)
+  }
+  if !self.type_is_scalar(left_ty) && self.type_is_scalar(right_ty) {
+    return Some(left_ty)
+  }
+  Some(left_ty)
+}
+
+///|
+fn WgslIrEmitter::matrix_vector_multiply_result_type(
+  self : WgslIrEmitter,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(left_ty) {
+    Some(left) =>
+      match left.inner {
+        Matrix(_, rows, scalar) =>
+          match self.shader_module.types.get(right_ty) {
+            Some(right) =>
+              match right.inner {
+                Vector(_, _) => self.find_vector_type(rows, scalar)
+                _ => None
+              }
+            None => None
+          }
+        Vector(_, scalar) =>
+          match self.shader_module.types.get(right_ty) {
+            Some(right) =>
+              match right.inner {
+                Matrix(columns, _, _) => self.find_vector_type(columns, scalar)
+                _ => None
+              }
+            None => None
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::boolean_result_type(
+  self : WgslIrEmitter,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle? {
+  match self.vector_size_from_type(left_ty) {
+    Some(size) => self.find_vector_type(size, Scalar::new(Bool, 1))
+    None =>
+      match self.vector_size_from_type(right_ty) {
+        Some(size) => self.find_vector_type(size, Scalar::new(Bool, 1))
+        None => self.find_scalar_type(Scalar::new(Bool, 1))
+      }
+  }
+}
+
+///|
+fn WgslIrEmitter::type_is_scalar(
+  self : WgslIrEmitter,
+  ty_handle : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(_) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::vector_size_from_type(
+  self : WgslIrEmitter,
+  ty_handle : Handle,
+) -> VectorSize? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(size, _) => Some(size)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::find_scalar_type(
+  self : WgslIrEmitter,
+  scalar : Scalar,
+) -> Handle? {
+  let scalar_inner = TypeInner::Scalar(scalar)
+  for i in 0..<self.shader_module.types.items.length() {
+    if self.shader_module.types.items[i].inner == scalar_inner {
+      return Some(Handle::new(i))
+    }
+  }
+  None
 }
 
 ///|
@@ -1788,14 +1983,57 @@ fn WgslIrEmitter::local_variable_name(
     raise WgslIrEmitError::Unsupported("local variable outside function")
   }
   match func.local_variables.items.get(handle.index()) {
-    Some(local_var) =>
-      match local_var.name {
-        Some(name) => name
-        None => "local\{handle.index()}"
+    Some(local_var) => {
+      let base_name = self.local_variable_base_name(local_var, handle)
+      if self.local_variable_name_needs_suffix(func, handle, base_name) {
+        "\{base_name}_\{handle.index()}"
+      } else {
+        base_name
       }
+    }
     None =>
       raise WgslIrEmitError::MissingHandle("local variable \{handle.index()}")
   }
+}
+
+///|
+fn WgslIrEmitter::local_variable_base_name(
+  self : WgslIrEmitter,
+  local_var : LocalVariable,
+  handle : Handle,
+) -> String {
+  ignore(self)
+  match local_var.name {
+    Some(name) => name
+    None => "local\{handle.index()}"
+  }
+}
+
+///|
+fn WgslIrEmitter::local_variable_name_needs_suffix(
+  self : WgslIrEmitter,
+  function : Function,
+  handle : Handle,
+  base_name : String,
+) -> Bool {
+  for argument in function.arguments {
+    if argument.name == Some(base_name) {
+      return true
+    }
+  }
+  for index in 0..<function.local_variables.items.length() {
+    if index == handle.index() {
+      return false
+    }
+    if self.local_variable_base_name(
+        function.local_variables.items[index],
+        Handle::new(index),
+      ) ==
+      base_name {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -1898,6 +2136,20 @@ fn WgslIrEmitter::math_function_name(
     FirstTrailingBit => "firstTrailingBit"
     FirstLeadingBit => "firstLeadingBit"
     _ => raise WgslIrEmitError::Unsupported("math function")
+  }
+}
+
+///|
+fn WgslIrEmitter::relational_function_name(
+  self : WgslIrEmitter,
+  relational_function : RelationalFunction,
+) -> String {
+  ignore(self)
+  match relational_function {
+    All => "all"
+    Any => "any"
+    IsNan => "isNan"
+    IsInf => "isInf"
   }
 }
 

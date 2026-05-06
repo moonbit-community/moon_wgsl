@@ -314,6 +314,7 @@ pub enum Expression {
   Binary(BinaryOperator, Handle, Handle)
   FunctionCall(Handle, Array[Handle])
   Select(Handle, Handle, Handle)
+  Bitcast(Handle, Handle)
   Derivative(DerivativeAxis, DerivativeControl, Handle)
   Relational(RelationalFunction, Handle)
   Math(MathFunction, Handle, Handle?, Handle?, Handle?)

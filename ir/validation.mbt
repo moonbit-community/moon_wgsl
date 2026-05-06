@@ -311,7 +311,9 @@ fn WgslIrValidator::validate_global_expression(
       self.validate_global_expression_handle(accept)
       self.validate_global_expression_handle(reject)
     }
+    Bitcast(_, expr) => self.validate_global_expression_handle(expr)
     As(expr, _, _) => self.validate_global_expression_handle(expr)
+    Relational(_, expr) => self.validate_global_expression_handle(expr)
     Literal(_) => ()
     _ => ()
   }
@@ -442,6 +444,7 @@ fn WgslIrValidator::validate_function_expression(
       for argument in arguments {
         self.validate_function_expression_handle(function, argument)
       }
+    Bitcast(_, expr) => self.validate_function_expression_handle(function, expr)
     As(expr, _, _) => self.validate_function_expression_handle(function, expr)
     CallResult(handle) => self.require_function(handle)
     AtomicResult(handle, _) =>

@@ -951,6 +951,50 @@ test "WGSL expression parser structures template elaborated calls" {
 }
 
 ///|
+test "WGSL expression parser binds postfix calls inside unary operands" {
+  let source =
+    #|fn demo(a: vec3<f32>, b: vec3<f32>) -> vec3<f32> {
+    #|  return -cross(a, b);
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let expr = function.body().statements()[0].expression_refs()[0]
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, expr),
+    content="\"-cross(a, b)\"",
+  )
+  match expr.root() {
+    Some(root) =>
+      match root.kind() {
+        WgslExprNodeKind::Unary(op, rhs) => {
+          debug_inspect(op.text(), content="\"-\"")
+          match rhs.kind() {
+            WgslExprNodeKind::Call(callee, args) => {
+              debug_inspect(args.length(), content="1")
+              match args[0].kind() {
+                WgslExprNodeKind::Sequence(items) =>
+                  debug_inspect(items.length(), content="2")
+                _ => abort("expected call argument sequence")
+              }
+              match callee.kind() {
+                WgslExprNodeKind::Identifier(ident) =>
+                  debug_inspect(ident.name(), content="\"cross\"")
+                _ => abort("expected call callee identifier")
+              }
+            }
+            _ => abort("expected unary operand call")
+          }
+        }
+        _ => abort("expected unary root")
+      }
+    None => abort("expected expression root")
+  }
+}
+
+///|
 test "WGSL global declaration identifier collection excludes locals" {
   let source =
     #|alias Alias = vec4<f32>;

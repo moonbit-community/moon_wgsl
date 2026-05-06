@@ -60,4 +60,8 @@ echo "== WGSL validation: Bevy PBR functions compose =="
 emit_case bevy-pbr-functions "$tmpdir/bevy_pbr_functions.wgsl"
 validate_wgsl "$tmpdir/bevy_pbr_functions.wgsl"
 
+echo "== WGSL validation: Bevy PBR functions IR compose =="
+emit_case bevy-pbr-functions-ir "$tmpdir/bevy_pbr_functions_ir.wgsl"
+validate_wgsl "$tmpdir/bevy_pbr_functions_ir.wgsl"
+
 echo "WGSL validation gate passed"

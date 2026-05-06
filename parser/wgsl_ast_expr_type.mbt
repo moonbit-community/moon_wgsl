@@ -468,7 +468,7 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
         | WgslExprTokenKind::Punctuation(126) => {
           self.index = self.index + 1
           let rhs = match self.parse_prefix() {
-            Some(node) => node
+            Some(node) => self.parse_postfix(node)
             None =>
               return Some(
                 self.make_node(

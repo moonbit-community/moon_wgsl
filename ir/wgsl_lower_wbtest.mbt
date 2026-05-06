@@ -149,6 +149,237 @@ test "WGSL AST lowerer supports pointer dereference member lvalues" {
 }
 
 ///|
+test "WGSL AST lowerer preserves address space through local pointer lvalues" {
+  let source =
+    #|struct Cascade {
+    #|  value: f32,
+    #|}
+    #|struct Light {
+    #|  cascades: array<Cascade, 4>,
+    #|}
+    #|@group(0) @binding(0) var<uniform> lights: array<Light, 1>;
+    #|
+    #|fn f() -> f32 {
+    #|  let light: ptr<uniform, Light> = &lights[0];
+    #|  let cascade = &(*light).cascades[0];
+    #|  return cascade.value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let cascade: ptr<uniform, Cascade>"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer infers scalar-vector binary local types" {
+  let source =
+    #|fn f(perceptual_roughness: f32, NdotV: f32) -> vec2<f32> {
+    #|  let c0 = vec4<f32>(-1.0, -0.0275, -0.572, 0.022);
+    #|  let c1 = vec4<f32>(1.0, 0.0425, 1.04, -0.04);
+    #|  let r = perceptual_roughness * c0 + c1;
+    #|  let a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    #|  let f_ab_epsilon = 0.00005;
+    #|  return max(vec2<f32>(-1.04, 1.04) * a004 + r.zw, vec2<f32>(f_ab_epsilon));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let r: vec4<f32>"), content="true")
+  debug_inspect(emitted.contains("let a004: f32"), content="true")
+  debug_inspect(emitted.contains("r.zw"), content="true")
+}
+
+///|
+test "WGSL AST lowerer infers scalar result math builtin local types" {
+  let source =
+    #|fn f(v1: vec3<f32>, v2: vec3<f32>) -> f32 {
+    #|  let x = dot(v1, v2);
+    #|  return x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let x: f32 = dot(v1, v2);"), content="true")
+}
+
+///|
+test "WGSL AST lowerer infers matrix-vector multiply local types" {
+  let source =
+    #|fn f(m: mat4x4<f32>, p: vec4<f32>) -> vec3<f32> {
+    #|  let clip = m * p;
+    #|  return clip.xyz;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let clip: vec4<f32>"), content="true")
+  debug_inspect(emitted.contains("clip.xyz"), content="true")
+}
+
+///|
+test "WGSL AST lowerer infers matrix index local types" {
+  let source =
+    #|fn f(TBN: mat3x3<f32>) -> vec3<f32> {
+    #|  var T = TBN[0];
+    #|  return T;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var T: vec3<f32> = TBN[0];"), content="true")
+}
+
+///|
+test "WGSL IR emitter disambiguates repeated local names" {
+  let source =
+    #|fn f() -> u32 {
+    #|  var i: u32 = 0u;
+    #|  i = i + 1u;
+    #|  var i: u32 = 2u;
+    #|  return i;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var i: u32 = 0u;"), content="true")
+  debug_inspect(emitted.contains("var i_1: u32 = 2u;"), content="true")
+  debug_inspect(emitted.contains("return i_1;"), content="true")
+}
+
+///|
+test "WGSL AST lowerer lowers relational builtin expressions through IR" {
+  let source =
+    #|fn f(v: vec3<f32>) -> bool {
+    #|  return any(v > vec3<f32>(1.0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("return any("), content="true")
+}
+
+///|
+test "WGSL statement parser keeps condition tails after grouped operands" {
+  let source =
+    #|const FLAG: u32 = 1u;
+    #|fn f(flags: u32) -> u32 {
+    #|  var value: u32 = 0u;
+    #|  if (flags & FLAG) != 0u {
+    #|    value = 1u;
+    #|  }
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("if (((flags & FLAG) != 0u))"), content="true")
+}
+
+///|
+test "WGSL AST lowerer lowers select expressions through IR" {
+  let source =
+    #|fn f(reject: vec4<f32>, accept: vec4<f32>, condition: bool) -> vec4<f32> {
+    #|  let value = select(reject, accept, condition);
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let value: vec4<f32>"), content="true")
+  debug_inspect(
+    emitted.contains("select(reject, accept, condition)"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer lowers bitcast expressions through IR" {
+  let source =
+    #|fn f(value: f32) -> u32 {
+    #|  return bitcast<u32>(value);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("bitcast<u32>(value)"), content="true")
+}
+
+///|
+test "WGSL AST lowerer binds context-typed array constructors" {
+  let source =
+    #|const offsets: array<vec2<f32>, 2> = array(vec2(0.125, -0.375), vec2(-0.125, 0.375));
+    #|
+    #|fn f() {
+    #|  let local: array<vec2<f32>, 2> = array(vec2(0.0), vec2(1.0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("array<vec2<f32>, 2>(vec2<f32>(0.125, -0.375)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let local: array<vec2<f32>, 2> = array<vec2<f32>, 2>"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer preserves suffixed array size literals" {
+  let source =
+    #|struct Light {
+    #|  values: array<vec4<f32>, 10u>,
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("values: array<vec4<f32>, 10>"),
+    content="true",
+  )
+}
+
+///|
 test "WGSL AST lowerer supports function call expressions" {
   let source =
     #|fn helper() -> u32 {
