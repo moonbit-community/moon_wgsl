@@ -9,7 +9,9 @@ struct Options {
 }
 
 fn usage() -> ! {
-    eprintln!("usage: wgsl_validate [--capability ray-query|dual-source-blending] <file.wgsl>...");
+    eprintln!(
+        "usage: wgsl_validate [--capability ray-query|dual-source-blending|texture-external] <file.wgsl>..."
+    );
     std::process::exit(2);
 }
 
@@ -25,6 +27,9 @@ fn parse_options() -> Options {
                     "ray-query" => capabilities |= naga::valid::Capabilities::RAY_QUERY,
                     "dual-source-blending" => {
                         capabilities |= naga::valid::Capabilities::DUAL_SOURCE_BLENDING
+                    }
+                    "texture-external" => {
+                        capabilities |= naga::valid::Capabilities::TEXTURE_EXTERNAL
                     }
                     _ => usage(),
                 }

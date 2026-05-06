@@ -57,7 +57,11 @@ while IFS= read -r id; do
   fi
   emitted="$tmpdir/$id.ir.wgsl"
   moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >/dev/null
-  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$emitted" >/dev/null
+  if grep -q 'texture_external' "$emitted"; then
+    cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- --capability texture-external "$emitted" >/dev/null
+  else
+    cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$emitted" >/dev/null
+  fi
   ir_count=$((ir_count + 1))
 done < "$allowlist"
 
