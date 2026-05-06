@@ -85,10 +85,7 @@ fn collect_wgsl_cached_import_redirects(
 ) -> Int {
   let mut count = 0
   if alias_name == "" {
-    for entry in session.final_names.canonical_entries {
-      if entry.identity.rel_path != rel_path {
-        continue
-      }
+    for entry in session.final_names.canonical_entries_for_rel_path(rel_path) {
       redirects.push(
         WgslScopedAliasRedirect::for_unqualified_symbol(
           entry.identity.rel_path,
@@ -100,11 +97,8 @@ fn collect_wgsl_cached_import_redirects(
       count = count + 1
     }
   } else {
-    for entry in session.final_names.alias_entries {
-      if entry.identity.alias_name != alias_name ||
-        entry.identity.symbol.rel_path != rel_path {
-        continue
-      }
+    for
+      entry in session.final_names.alias_entries_for_scope(rel_path, alias_name) {
       redirects.push(
         WgslScopedAliasRedirect::for_alias_symbol(
           entry.identity.symbol.rel_path,

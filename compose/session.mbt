@@ -193,6 +193,20 @@ fn WgslFinalNameTables::canonical_get(
 }
 
 ///|
+fn WgslFinalNameTables::canonical_entries_for_rel_path(
+  self : WgslFinalNameTables,
+  rel_path : String,
+) -> Array[WgslCanonicalFinalNameEntry] {
+  let entries : Array[WgslCanonicalFinalNameEntry] = []
+  for entry in self.canonical_entries {
+    if entry.identity.rel_path == rel_path {
+      entries.push(entry)
+    }
+  }
+  entries
+}
+
+///|
 fn WgslFinalNameTables::alias_set(
   self : WgslFinalNameTables,
   identity : WgslAliasSymbolIdentity,
@@ -221,6 +235,22 @@ fn WgslFinalNameTables::alias_set_if_absent(
   if !self.alias_scoped.contains(identity.key()) {
     self.alias_set(identity, generated_name)
   }
+}
+
+///|
+fn WgslFinalNameTables::alias_entries_for_scope(
+  self : WgslFinalNameTables,
+  rel_path : String,
+  alias_name : String,
+) -> Array[WgslAliasFinalNameEntry] {
+  let entries : Array[WgslAliasFinalNameEntry] = []
+  for entry in self.alias_entries {
+    if entry.identity.alias_name == alias_name &&
+      entry.identity.symbol.rel_path == rel_path {
+      entries.push(entry)
+    }
+  }
+  entries
 }
 
 ///|
