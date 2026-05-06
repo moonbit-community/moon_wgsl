@@ -1589,6 +1589,16 @@ test "WGSL parser classifies official loop continuing and switch clauses" {
   debug_inspect(function.body().statements()[2].kind(), content="Switch")
   let switch_body = function.body().statements()[2].blocks()[0]
   debug_inspect(switch_body.statements()[0].kind(), content="Case")
+  guard switch_body.statements()[0].payload()
+    is WgslStatementPayload::Case(selectors) else {
+    abort("expected case selector payload")
+  }
+  debug_inspect(
+    selectors.map(fn(expr) { wgsl_expr_ref_source_text(source, expr) }),
+    content=(
+      #|["0u", "1u"]
+    ),
+  )
   debug_inspect(switch_body.statements()[1].kind(), content="DefaultCase")
 }
 

@@ -548,6 +548,33 @@ fn wgsl_statement_push_expr_ref(
 }
 
 ///|
+fn wgsl_statement_push_comma_expr_refs(
+  owner : WgslDeclParser,
+  tokens : Array[WgslToken],
+  start : Int,
+  end_ : Int,
+  role : WgslStatementExpressionRole,
+  expression_refs : Array[WgslExprRef],
+  expressions : Array[WgslStatementExpression],
+) -> Unit {
+  guard start >= 0 && end_ > start && end_ <= tokens.length() else { return }
+  let depth = WgslTokenDepth::new()
+  let mut item_start = start
+  for i in start..<end_ {
+    if depth.at_top() && tokens[i].is_punctuation(44) {
+      wgsl_statement_push_expr_ref(
+        owner, tokens, item_start, i, role, expression_refs, expressions,
+      )
+      item_start = i + 1
+    }
+    depth.observe_statement_token(tokens[i])
+  }
+  wgsl_statement_push_expr_ref(
+    owner, tokens, item_start, end_, role, expression_refs, expressions,
+  )
+}
+
+///|
 fn WgslDeclParser::expr_ref_from_token_range(
   self : WgslDeclParser,
   tokens : Array[WgslToken],
@@ -805,7 +832,7 @@ fn collect_wgsl_statement_expression_refs(
         } else if tokens[i].is_identifier("case") {
           let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
           let expr_end = if colon >= 0 { colon } else { tokens.length() }
-          wgsl_statement_push_expr_ref(
+          wgsl_statement_push_comma_expr_refs(
             owner,
             tokens,
             i + 1,
@@ -836,7 +863,7 @@ fn collect_wgsl_statement_expression_refs(
         } else if tokens[i].is_identifier("case") {
           let colon = wgsl_statement_top_level_token_index(tokens, i + 1, 58)
           let expr_end = if colon >= 0 { colon } else { tokens.length() }
-          wgsl_statement_push_expr_ref(
+          wgsl_statement_push_comma_expr_refs(
             owner,
             tokens,
             i + 1,
@@ -907,7 +934,7 @@ fn collect_wgsl_statement_expression_refs(
         [token, ..] if token.is_identifier("case") => {
           let colon = wgsl_statement_top_level_token_index(tokens, 1, 58)
           let expr_end = if colon >= 0 { colon } else { tokens.length() }
-          wgsl_statement_push_expr_ref(
+          wgsl_statement_push_comma_expr_refs(
             owner,
             tokens,
             1,
@@ -936,7 +963,7 @@ fn collect_wgsl_statement_expression_refs(
     Case => {
       let colon = wgsl_statement_top_level_token_index(tokens, 1, 58)
       let expr_end = if colon >= 0 { colon } else { tokens.length() }
-      wgsl_statement_push_expr_ref(
+      wgsl_statement_push_comma_expr_refs(
         owner,
         tokens,
         1,
@@ -972,6 +999,20 @@ fn wgsl_statement_first_expression_by_role(
     }
   }
   None
+}
+
+///|
+fn wgsl_statement_expressions_by_role(
+  expressions : Array[WgslStatementExpression],
+  role : WgslStatementExpressionRole,
+) -> Array[WgslExprRef] {
+  let refs : Array[WgslExprRef] = []
+  for expression in expressions {
+    if expression.role() == role {
+      refs.push(expression.expression())
+    }
+  }
+  refs
 }
 
 ///|
@@ -1035,7 +1076,7 @@ fn wgsl_statement_payload_from_ast(
     Compound => Compound
     Case =>
       Case(
-        wgsl_statement_first_expression_by_role(
+        wgsl_statement_expressions_by_role(
           expressions,
           WgslStatementExpressionRole::CaseSelector,
         ),
@@ -1081,7 +1122,7 @@ fn wgsl_statement_payload_from_ast(
       match first_identifier {
         Some("case") =>
           Case(
-            wgsl_statement_first_expression_by_role(
+            wgsl_statement_expressions_by_role(
               expressions,
               WgslStatementExpressionRole::CaseSelector,
             ),

@@ -829,7 +829,7 @@ pub(all) enum WgslStatementPayload {
   Discard
   ConstAssert(WgslExprRef?)
   Compound
-  Case(WgslExprRef?)
+  Case(Array[WgslExprRef])
   DefaultCase
   Assignment(String, WgslExprRef?, WgslExprRef?)
   Increment(WgslExprRef?)
