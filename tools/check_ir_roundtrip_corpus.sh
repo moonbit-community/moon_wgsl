@@ -52,5 +52,29 @@ compose_roundtrip_case \
   "simple-compose-compute" \
   "testdata/ir_corpus/compose" \
   "top.wgsl"
+compose_roundtrip_case \
+  "upstream-simple-compose" \
+  "testdata/upstream_compose/simple" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-item-import-compose" \
+  "testdata/upstream_compose/item_import" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-dup-import-compose" \
+  "testdata/upstream_compose/dup_import" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-dup-struct-import-compose" \
+  "testdata/upstream_compose/dup_struct_import" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-conditional-import-compose" \
+  "testdata/upstream_compose/conditional_import" \
+  "top.wgsl"
+compose_roundtrip_case \
+  "upstream-shared-global-compose" \
+  "testdata/upstream_compose/use_shared_global" \
+  "top.wgsl"
 
 echo "IR roundtrip corpus gate passed"
