@@ -173,18 +173,6 @@ fn WgslFinalNameTables::canonical_set(
 }
 
 ///|
-fn WgslFinalNameTables::canonical_set_if_absent(
-  self : WgslFinalNameTables,
-  identity : WgslSymbolIdentity,
-  generated_name : String,
-) -> Unit {
-  let key = identity.key()
-  if !self.canonical.contains(key) {
-    self.canonical_set(identity, generated_name)
-  }
-}
-
-///|
 fn WgslFinalNameTables::canonical_get(
   self : WgslFinalNameTables,
   identity : WgslSymbolIdentity,
@@ -227,14 +215,11 @@ fn WgslFinalNameTables::alias_set(
 }
 
 ///|
-fn WgslFinalNameTables::alias_set_if_absent(
+fn WgslFinalNameTables::alias_get(
   self : WgslFinalNameTables,
   identity : WgslAliasSymbolIdentity,
-  generated_name : String,
-) -> Unit {
-  if !self.alias_scoped.contains(identity.key()) {
-    self.alias_set(identity, generated_name)
-  }
+) -> String? {
+  self.alias_scoped.get(identity.key())
 }
 
 ///|
@@ -396,6 +381,48 @@ fn WgslScopedAliasRedirectSet::extend(
 ) -> Unit {
   for redirect in other.redirects {
     self.push(redirect)
+  }
+}
+
+///|
+fn WgslComposeSession::record_canonical_final_name(
+  self : WgslComposeSession,
+  identity : WgslSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  self.final_names.canonical_set(identity, generated_name)
+  self.symbol_graph.record_reachable_symbol(identity)
+}
+
+///|
+fn WgslComposeSession::record_canonical_final_name_if_absent(
+  self : WgslComposeSession,
+  identity : WgslSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  if self.final_names.canonical_get(identity) is None {
+    self.record_canonical_final_name(identity, generated_name)
+  }
+}
+
+///|
+fn WgslComposeSession::record_alias_final_name(
+  self : WgslComposeSession,
+  identity : WgslAliasSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  self.final_names.alias_set(identity, generated_name)
+  self.symbol_graph.record_reachable_symbol(identity.symbol)
+}
+
+///|
+fn WgslComposeSession::record_alias_final_name_if_absent(
+  self : WgslComposeSession,
+  identity : WgslAliasSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  if self.final_names.alias_get(identity) is None {
+    self.record_alias_final_name(identity, generated_name)
   }
 }
 

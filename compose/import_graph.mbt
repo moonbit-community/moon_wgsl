@@ -33,7 +33,7 @@ fn record_wgsl_nested_flattened_item_names(
         saw_marker = true
       }
       if item_name != "" {
-        session.final_names.canonical_set_if_absent(
+        session.record_canonical_final_name_if_absent(
           WgslSymbolIdentity::new(rel_path, item_name),
           generated_name,
         )
@@ -436,7 +436,7 @@ fn Composer::compose_wgsl_import_requests(
         origin.source_symbol_name != "" &&
         origin.generated_symbol_name != "" {
         if request.alias_name == "" {
-          session.final_names.canonical_set_if_absent(
+          session.record_canonical_final_name_if_absent(
             WgslSymbolIdentity::new(origin.rel_path, origin.source_symbol_name),
             origin.generated_symbol_name,
           )
@@ -446,7 +446,7 @@ fn Composer::compose_wgsl_import_requests(
             request.alias_name,
             origin.source_symbol_name,
           )
-          session.final_names.alias_set_if_absent(
+          session.record_alias_final_name_if_absent(
             identity,
             origin.generated_symbol_name,
           )
@@ -461,27 +461,21 @@ fn Composer::compose_wgsl_import_requests(
       record_wgsl_nested_flattened_item_names(session, final_declarations)
       for declaration in final_declarations {
         let declaration_name = declaration.name()
-        session.final_names.canonical_set(
+        session.record_canonical_final_name(
           WgslSymbolIdentity::new(request.rel_path, declaration_name),
           declaration_name,
-        )
-        session.symbol_graph.record_reachable_symbol(
-          WgslSymbolIdentity::new(request.rel_path, declaration_name),
         )
       }
     } else {
       for entry in rename_map.iter() {
         let (from_name, to_name) = entry
-        session.final_names.alias_set(
+        session.record_alias_final_name(
           WgslAliasSymbolIdentity::new(
             request.rel_path,
             request.alias_name,
             from_name,
           ),
           to_name,
-        )
-        session.symbol_graph.record_reachable_symbol(
-          WgslSymbolIdentity::new(request.rel_path, from_name),
         )
       }
     }
