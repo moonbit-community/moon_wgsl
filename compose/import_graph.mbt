@@ -471,7 +471,7 @@ fn Composer::compose_wgsl_import_requests(
           WgslSymbolIdentity::new(request.rel_path, declaration_name),
           declaration_name,
         )
-        session.symbol_graph.record_symbol(
+        session.symbol_graph.record_reachable_symbol(
           WgslSymbolIdentity::new(request.rel_path, declaration_name),
           declaration_name,
         )
@@ -487,7 +487,7 @@ fn Composer::compose_wgsl_import_requests(
           ),
           to_name,
         )
-        session.symbol_graph.record_symbol(
+        session.symbol_graph.record_reachable_symbol(
           WgslSymbolIdentity::new(request.rel_path, from_name),
           to_name,
         )

@@ -98,6 +98,16 @@ fn WgslComposeSymbolGraph::mark_reachable(
 }
 
 ///|
+fn WgslComposeSymbolGraph::record_reachable_symbol(
+  self : WgslComposeSymbolGraph,
+  identity : WgslSymbolIdentity,
+  generated_name : String,
+) -> Unit {
+  self.record_symbol(identity, generated_name)
+  self.mark_reachable(identity)
+}
+
+///|
 fn WgslComposeSymbolGraph::record_request_edges(
   self : WgslComposeSymbolGraph,
   importer_rel_path : String,
