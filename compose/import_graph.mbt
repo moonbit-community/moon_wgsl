@@ -493,64 +493,7 @@ fn collect_wgsl_live_binding_plan(
   facts : WgslComposeSemanticFacts,
   bindings : WgslComposeBindingSet,
 ) -> WgslLiveBindingPlan {
-  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  for declaration in facts.declarations {
-    let declaration_name = declaration.name()
-    if declaration_name != "" {
-      declared_names.set(declaration_name, true)
-    }
-  }
-  let identity_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  for binding in bindings.bindings {
-    let to_name = binding.to_name.trim().to_owned()
-    if to_name == "" || !declared_names.contains(to_name) {
-      continue
-    }
-    match binding.identity {
-      Some(identity) => {
-        let key = identity.key()
-        if !identity_targets.contains(key) {
-          identity_targets.set(key, to_name)
-        }
-      }
-      None => ()
-    }
-  }
-  let plan = WgslLiveBindingPlan::new()
-  let seen_binding_keys : @hashset.HashSet[String] = @hashset.HashSet::new()
-  for binding in bindings.bindings {
-    let to_name = binding.to_name.trim().to_owned()
-    let resolved_to_name = if declared_names.contains(to_name) {
-      to_name
-    } else {
-      match binding.identity {
-        Some(identity) =>
-          match identity_targets.get(identity.key()) {
-            Some(target) => target
-            None => to_name
-          }
-        None => to_name
-      }
-    }
-    let resolved_binding = if resolved_to_name == to_name {
-      binding
-    } else {
-      binding.with_to_name(resolved_to_name)
-    }
-    let binding_key = wgsl_compose_binding_key(resolved_binding)
-    if seen_binding_keys.contains(binding_key) {
-      continue
-    }
-    seen_binding_keys.add(binding_key)
-    if resolved_to_name != "" &&
-      (
-        declared_names.contains(resolved_to_name) ||
-        binding.scope == UnqualifiedItemBinding
-      ) {
-      plan.push(resolved_binding)
-    }
-  }
-  plan
+  WgslComposeSemanticIr::from_facts_and_bindings(facts, bindings).live_binding_plan()
 }
 
 ///|
