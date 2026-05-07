@@ -158,6 +158,24 @@ test "WGSL AST lowerer materializes global binding accesses inside return constr
 }
 
 ///|
+test "WGSL AST lowerer indexes addressable bindings without preloading base arrays" {
+  let source =
+    #|var<private> values: array<u32, 1>;
+    #|
+    #|fn f() -> f32 {
+    #|  return f32(values[0]);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e2: u32 = values[0];"), content="true")
+  debug_inspect(emitted.contains("return f32(_e2);"), content="true")
+}
+
+///|
 test "WGSL AST lowerer materializes direct global binding returns" {
   let source =
     #|var<private> value: f32 = 0f;
@@ -191,7 +209,8 @@ test "WGSL AST lowerer concretizes abstract local var storage types" {
   }
   debug_inspect(emitted.contains("var x: f32 = 0f;"), content="true")
   debug_inspect(emitted.contains("x = 1f;"), content="true")
-  debug_inspect(emitted.contains(": f32 = x;"), content="true")
+  debug_inspect(emitted.contains("let _e3: f32 = x;"), content="true")
+  debug_inspect(emitted.contains("return _e3;"), content="true")
 }
 
 ///|

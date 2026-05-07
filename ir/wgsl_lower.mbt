@@ -36,6 +36,8 @@ priv struct WgslIrFunctionScope {
   arguments : @hashmap.HashMap[String, Int]
   locals : @hashmap.HashMap[String, Handle]
   local_constants : @hashmap.HashMap[String, Handle]
+  local_pointer_expressions : @hashmap.HashMap[String, Handle]
+  global_pointer_expressions : @hashmap.HashMap[String, Handle]
   mut temporary_index : Int
 }
 
@@ -51,7 +53,47 @@ fn WgslIrFunctionScope::new() -> WgslIrFunctionScope {
     arguments: @hashmap.HashMap::new(),
     locals: @hashmap.HashMap::new(),
     local_constants: @hashmap.HashMap::new(),
+    local_pointer_expressions: @hashmap.HashMap::new(),
+    global_pointer_expressions: @hashmap.HashMap::new(),
     temporary_index: 0,
+  }
+}
+
+///|
+fn WgslIrFunctionScope::local_pointer_expression(
+  self : WgslIrFunctionScope,
+  name : String,
+  local_handle : Handle,
+  function : Function,
+) -> Handle {
+  match self.local_pointer_expressions.get(name) {
+    Some(handle) => handle
+    None => {
+      let handle = function.expressions.append(
+        Expression::LocalVariable(local_handle),
+      )
+      self.local_pointer_expressions.set(name, handle)
+      handle
+    }
+  }
+}
+
+///|
+fn WgslIrFunctionScope::global_pointer_expression(
+  self : WgslIrFunctionScope,
+  name : String,
+  global_handle : Handle,
+  function : Function,
+) -> Handle {
+  match self.global_pointer_expressions.get(name) {
+    Some(handle) => handle
+    None => {
+      let handle = function.expressions.append(
+        Expression::GlobalVariable(global_handle),
+      )
+      self.global_pointer_expressions.set(name, handle)
+      handle
+    }
   }
 }
 
@@ -1314,6 +1356,7 @@ fn WgslIrLowerer::lower_local_declaration(
     init,
   })
   ignore(scope.local_constants.remove(local_decl.name().name()))
+  ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
 }
@@ -3925,13 +3968,11 @@ fn WgslIrLowerer::lower_function_lvalue_node(
         None =>
           match scope.locals.get(name.name()) {
             Some(handle) =>
-              function.expressions.append(Expression::LocalVariable(handle))
+              scope.local_pointer_expression(name.name(), handle, function)
             None =>
               match self.global_names.get(name.name()) {
                 Some(handle) =>
-                  function.expressions.append(
-                    Expression::GlobalVariable(handle),
-                  )
+                  scope.global_pointer_expression(name.name(), handle, function)
                 None => raise WgslIrLowerError::UnknownIdentifier(name.name())
               }
           }
@@ -4083,7 +4124,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       self.lower_member_expression(function, base_handle, member_name.name())
     }
     Index(base, index) => {
-      let base_handle = self.lower_function_expression_node(
+      let base_handle = self.lower_function_index_value_base(
         base, function, scope,
       )
       let index_handle = self.lower_function_expression_node(
@@ -4227,7 +4268,7 @@ fn WgslIrLowerer::lower_identifier_expression(
             Some(handle) =>
               function.expressions.append(
                 Expression::Load(
-                  function.expressions.append(Expression::LocalVariable(handle)),
+                  scope.local_pointer_expression(name, handle, function),
                 ),
               )
             None =>
@@ -4243,8 +4284,8 @@ fn WgslIrLowerer::lower_identifier_expression(
                         Some(handle) =>
                           function.expressions.append(
                             Expression::Load(
-                              function.expressions.append(
-                                Expression::GlobalVariable(handle),
+                              scope.global_pointer_expression(
+                                name, handle, function,
                               ),
                             ),
                           )
@@ -4254,6 +4295,38 @@ fn WgslIrLowerer::lower_identifier_expression(
               }
           }
       }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_index_value_base(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  if self.function_index_base_is_addressable(base, scope) {
+    self.lower_function_lvalue_node(base, function, scope)
+  } else {
+    self.lower_function_expression_node(base, function, scope)
+  }
+}
+
+///|
+fn WgslIrLowerer::function_index_base_is_addressable(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match base.kind() {
+    Group(inner) => self.function_index_base_is_addressable(inner, scope)
+    Identifier(name) =>
+      scope.locals.get(name.name()) is Some(_) ||
+      self.global_names.get(name.name()) is Some(_)
+    Index(inner, _) | Member(inner, _) =>
+      self.function_index_base_is_addressable(inner, scope)
+    Unary(op, _) => op == @ast.WgslExprOperator::Multiply
+    _ => false
   }
 }
 

@@ -72,6 +72,30 @@ check_case \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/conditional_import_b.txt
 
+big_shaderdef_args=()
+for i in $(seq 1 67); do
+  big_shaderdef_args+=(--def "a$i")
+done
+
+check_case \
+  big_shaderdefs \
+  testdata/naga_oil_upstream/compose_tests/big_shaderdefs \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/big_shaderdefs.txt \
+  "${big_shaderdef_args[@]}"
+
+check_case \
+  dup_struct_import \
+  testdata/naga_oil_upstream/compose_tests/dup_struct_import \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/dup_struct_import.txt
+
+check_case \
+  import_in_decl \
+  testdata/naga_oil_upstream/compose_tests/const_in_decl \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/import_in_decl.txt
+
 check_case \
   quoted_dup \
   testdata/naga_oil_upstream/compose_tests/quoted_dup \
