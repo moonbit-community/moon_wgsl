@@ -85,11 +85,19 @@ Parity is tracked with explicit gates:
    manifest exactly once and verifies that byte/error rows are connected to
    their concrete gates.
 
-7. CI parity gate.
+7. Manifest-driven WGSL corpus matrix.
+   `tools/check_wgsl_corpus_matrix.sh` reads
+   `testdata/wgsl_corpus_manifest.tsv` and runs each case through declared
+   stages: compose, parse, Naga validation, IR roundtrip, and Naga validation of
+   emitted IR WGSL. This matrix is the expansion point for real shader coverage
+   across static files, compose fixture roots, and generated downstream
+   regressions.
+
+8. CI parity gate.
    `tools/check_preprocess_parity.sh` runs the local preprocessing parity suite
    and pinned-oracle comparisons. The GitHub Actions `check` workflow runs the
-   byte parity, error parity, inventory, preprocess parity, validation, and
-   wgpu runtime gates after the normal MoonBit test matrix.
+   byte parity, error parity, inventory, preprocess parity, WGSL corpus matrix,
+   validation, and wgpu runtime gates after the normal MoonBit test matrix.
 
 There is no source-level compatibility mode for import-only entry points. If a
 root shader only imports items and never references them, composition

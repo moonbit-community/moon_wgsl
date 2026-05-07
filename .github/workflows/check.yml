@@ -90,6 +90,11 @@ jobs:
           ulimit -s 8176
           bash tools/check_wgsl_validation.sh
 
+      - name: WGSL corpus matrix
+        run: |
+          ulimit -s 8176
+          bash tools/check_wgsl_corpus_matrix.sh
+
       - name: wgpu runtime validation
         run: |
           ulimit -s 8176

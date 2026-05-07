@@ -45,6 +45,22 @@ if ! rg -n 'roundtrip_and_validate_wgsl "\$tmpdir/mgstudio_mesh3d_forward\.wgsl"
   fail "WGSL validation gate must IR-roundtrip MGStudio mesh3d forward"
 fi
 
+if [[ ! -f testdata/wgsl_corpus_manifest.tsv ]]; then
+  fail "WGSL corpus coverage must be driven by a manifest"
+fi
+
+if ! rg -n 'bash tools/check_wgsl_corpus_matrix\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must run the manifest-driven WGSL corpus matrix"
+fi
+
+if ! rg -n 'generated-bevy-pbr-forward' testdata/wgsl_corpus_manifest.tsv >/dev/null; then
+  fail "WGSL corpus matrix must include full Bevy PBR forward"
+fi
+
+if ! rg -n 'generated-mgstudio-mesh3d-forward' testdata/wgsl_corpus_manifest.tsv >/dev/null; then
+  fail "WGSL corpus matrix must include MGStudio mesh3d forward"
+fi
+
 if ! rg -n 'bash tools/check_wgpu_validation\.sh' .github/workflows/check.yml >/dev/null; then
   fail "CI must run native wgpu runtime validation"
 fi
