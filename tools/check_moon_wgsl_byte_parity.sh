@@ -14,11 +14,13 @@ moon_compose_ir() {
   local fixture_root="$1"
   local entry="$2"
   local output="$3"
+  shift 3
   moon run tools/compose_case -- \
     --fixture-root "$fixture_root" \
     --entry "$entry" \
     --ir \
-    --output "$output"
+    --output "$output" \
+    "$@"
 }
 
 diff_exact() {
@@ -37,10 +39,11 @@ check_case() {
   local fixture_root="$2"
   local entry="$3"
   local expected="$4"
+  shift 4
   local actual="$tmpdir/$label.wgsl"
 
   echo "== moon_wgsl byte parity: $label =="
-  moon_compose_ir "$fixture_root" "$entry" "$actual"
+  moon_compose_ir "$fixture_root" "$entry" "$actual" "$@"
   diff_exact "$expected" "$actual" "$label"
 }
 
@@ -55,3 +58,22 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/use_shared_global \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/use_shared_global.txt
+
+check_case \
+  conditional_import_a \
+  testdata/naga_oil_upstream/compose_tests/conditional_import \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/conditional_import_a.txt \
+  --def USE_A
+
+check_case \
+  conditional_import_b \
+  testdata/naga_oil_upstream/compose_tests/conditional_import \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/conditional_import_b.txt
+
+check_case \
+  quoted_dup \
+  testdata/naga_oil_upstream/compose_tests/quoted_dup \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/test_quoted_import_dup_name.txt

@@ -1417,10 +1417,249 @@ fn WgslIrLowerer::materialize_return_expression_if_needed(
   block : Block,
   value : Handle,
 ) -> Handle raise WgslIrLowerError {
-  if self.function_expression_can_return_directly(function, value) {
-    value
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_can_return_directly(function, normalized) {
+    normalized
   } else {
-    self.materialize_function_expression(function, scope, block, value)
+    self.materialize_function_expression(function, scope, block, normalized)
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_return_subexpressions(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(value.index()) {
+    Some(Compose(ty, components)) => {
+      let lowered : Array[Handle] = []
+      let mut changed = false
+      for component in components {
+        let lowered_component = self.materialize_nested_return_argument(
+          function, scope, block, component,
+        )
+        if lowered_component != component {
+          changed = true
+        }
+        lowered.push(lowered_component)
+      }
+      if changed {
+        function.expressions.append(Expression::Compose(ty, lowered))
+      } else {
+        value
+      }
+    }
+    Some(Binary(op, left, right)) => {
+      let lowered_left = self.materialize_nested_return_argument(
+        function, scope, block, left,
+      )
+      let lowered_right = self.materialize_nested_return_argument(
+        function, scope, block, right,
+      )
+      if lowered_left != left || lowered_right != right {
+        function.expressions.append(
+          Expression::Binary(op, lowered_left, lowered_right),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Access(base, index)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      let lowered_index = self.materialize_return_subexpressions(
+        function, scope, block, index,
+      )
+      if lowered_base != base || lowered_index != index {
+        function.expressions.append(
+          Expression::Access(lowered_base, lowered_index),
+        )
+      } else {
+        value
+      }
+    }
+    Some(AccessIndex(base, index)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      if lowered_base != base {
+        function.expressions.append(
+          Expression::AccessIndex(lowered_base, index),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Swizzle(size, base, pattern)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      if lowered_base != base {
+        function.expressions.append(
+          Expression::Swizzle(size, lowered_base, pattern),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Unary(op, inner)) => {
+      let lowered_inner = self.materialize_return_subexpressions(
+        function, scope, block, inner,
+      )
+      if lowered_inner != inner {
+        function.expressions.append(Expression::Unary(op, lowered_inner))
+      } else {
+        value
+      }
+    }
+    Some(Bitcast(ty, inner)) => {
+      let lowered_inner = self.materialize_nested_return_argument(
+        function, scope, block, inner,
+      )
+      if lowered_inner != inner {
+        function.expressions.append(Expression::Bitcast(ty, lowered_inner))
+      } else {
+        value
+      }
+    }
+    _ => value
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_nested_return_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_nested_value(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_nested_access_base(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_access_base(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  let should_materialize = match function.expressions.items.get(value.index()) {
+    Some(FunctionCall(_, _))
+    | Some(AtomicCall(_, _))
+    | Some(ImageSample(_, _, _, _, _, _, _, _, _))
+    | Some(ImageLoad(_, _, _, _, _))
+    | Some(ImageQuery(_, _)) => true
+    Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
+      self.function_expression_reads_global_binding(function, value)
+    _ => false
+  }
+  should_materialize &&
+  self.function_expression_can_materialize_to_let(function, value)
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_materialize_as_access_base(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match function.expressions.items.get(value.index()) {
+    Some(FunctionCall(_, _))
+    | Some(AtomicCall(_, _))
+    | Some(ImageSample(_, _, _, _, _, _, _, _, _))
+    | Some(ImageLoad(_, _, _, _, _))
+    | Some(ImageQuery(_, _)) => true
+    _ =>
+      self.function_expression_should_materialize_as_nested_value(
+        function, value,
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_reads_global_binding(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match function.expressions.items.get(value.index()) {
+    Some(GlobalVariable(_)) => true
+    Some(Load(inner)) =>
+      self.function_expression_reads_global_binding(function, inner)
+    Some(Access(base, index)) =>
+      self.function_expression_reads_global_binding(function, base) ||
+      self.function_expression_reads_global_binding(function, index)
+    Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
+      self.function_expression_reads_global_binding(function, base)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_can_materialize_to_let(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match self.function_expression_type(function, value) {
+    Some(ty) => self.type_can_materialize_to_local_let(ty)
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::type_can_materialize_to_local_let(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Array(_, Dynamic, _)
+        | BindingArray(_, _)
+        | Image(_, _, _)
+        | Sampler(_)
+        | AccelerationStructure(_)
+        | RayQuery(_)
+        | Atomic(_) => false
+        _ => true
+      }
+    None => false
   }
 }
 
@@ -1434,6 +1673,8 @@ fn WgslIrLowerer::function_expression_can_return_directly(
     Some(expression) =>
       match expression {
         Literal(_)
+        | Constant(_)
+        | Override(_)
         | FunctionArgument(_)
         | Binary(_, _, _)
         | Compose(_, _)
@@ -4495,7 +4736,10 @@ fn WgslIrLowerer::lower_type_template_array_size(
     Expression(expr) =>
       match wgsl_ir_int_literal_from_expr_ref(expr) {
         Some(value) => ArraySize::Constant(value)
-        None => ArraySize::Pending(self.lower_global_expression_ref(expr))
+        None => {
+          let handle = self.lower_global_expression_ref(expr)
+          self.lower_constant_array_size_expression(handle)
+        }
       }
     Type(ty_ref) => self.lower_type_template_array_size_type_ref(ty_ref)
   }
@@ -4505,7 +4749,7 @@ fn WgslIrLowerer::lower_type_template_array_size(
 fn WgslIrLowerer::lower_type_template_array_size_type_ref(
   self : WgslIrLowerer,
   ty_ref : @ast.WgslTypeRef,
-) -> ArraySize {
+) -> ArraySize raise WgslIrLowerError {
   let name = ty_ref.name()
   let literal = wgsl_ir_array_size_literal_from_type_name(name)
   match literal {
@@ -4513,11 +4757,7 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
     None =>
       match self.constant_names.get(name) {
         Some(handle) =>
-          ArraySize::Pending(
-            self.shader_module.append_global_expression(
-              Expression::Constant(handle),
-            ),
-          )
+          self.lower_constant_array_size_from_constant_handle(handle)
         None =>
           match self.override_names.get(name) {
             Some(handle) =>
@@ -4529,6 +4769,41 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
             None => ArraySize::Dynamic
           }
       }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_constant_array_size_from_constant_handle(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> ArraySize raise WgslIrLowerError {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) => self.lower_constant_array_size_expression(constant.init)
+    None =>
+      raise WgslIrLowerError::UnsupportedType(
+        "array size references missing constant",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_constant_array_size_expression(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> ArraySize raise WgslIrLowerError {
+  let evaluated = Some(self.eval_global_integer_expression(handle)) catch {
+    _ => None
+  }
+  match evaluated {
+    Some((value, _)) => {
+      if value < 0 {
+        raise WgslIrLowerError::UnsupportedType(
+          "array size must be non-negative",
+        )
+      }
+      ArraySize::Constant(value)
+    }
+    None => ArraySize::Pending(handle)
   }
 }
 

@@ -121,6 +121,61 @@ test "WGSL AST lowerer preserves compound assignment semantics in IR" {
 }
 
 ///|
+test "WGSL AST lowerer returns imported constants without synthetic temporaries" {
+  let source =
+    #|const VALUE: u32 = 1u;
+    #|
+    #|fn f() -> u32 {
+    #|  return VALUE;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("return VALUE;"), content="true")
+  debug_inspect(emitted.contains("let _e0: u32 = VALUE;"), content="false")
+}
+
+///|
+test "WGSL AST lowerer materializes global binding accesses inside return constructors" {
+  let source =
+    #|const SIZE: u32 = 1u;
+    #|var<private> values: array<u32, SIZE>;
+    #|
+    #|fn f() -> f32 {
+    #|  return f32(values[0]);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(": u32 = values[0];"), content="true")
+  debug_inspect(emitted.contains("return f32(_e"), content="true")
+}
+
+///|
+test "WGSL AST lowerer materializes direct global binding returns" {
+  let source =
+    #|var<private> value: f32 = 0f;
+    #|
+    #|fn f() -> f32 {
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e1: f32 = value;"), content="true")
+  debug_inspect(emitted.contains("return _e1;"), content="true")
+}
+
+///|
 test "WGSL AST lowerer supports pointer dereference member lvalues" {
   let source =
     #|struct PbrInput {
@@ -833,7 +888,7 @@ test "WGSL AST lowerer resolves forward override types" {
 }
 
 ///|
-test "WGSL AST lowerer preserves constant-backed array sizes" {
+test "WGSL AST lowerer folds constant-backed array sizes" {
   let source =
     #|const COUNT: u32 = 4u;
     #|var<private> data: array<u32, COUNT>;
@@ -847,7 +902,7 @@ test "WGSL AST lowerer preserves constant-backed array sizes" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("array<u32, COUNT>"), content="true")
+  debug_inspect(emitted.contains("array<u32, 4>"), content="true")
 }
 
 ///|
