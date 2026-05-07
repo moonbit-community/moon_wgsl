@@ -52,7 +52,9 @@ using @lex {
   naga_oil_raw_import_brace_balance_next,
   tokenize_wgsl,
   wgsl_blankspace_code_point,
+  wgsl_identifier_text,
+  wgsl_line_end,
+  wgsl_line_start,
   wgsl_regex_trim_whitespace,
-  wgsl_regex_word_text,
   wgsl_trim_blankspace,
 }

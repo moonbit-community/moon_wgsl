@@ -94,7 +94,10 @@ pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)
   Literal(WgslExprToken)
   Token(WgslExprToken)
+  ShaderDefTemplate(String)
   Unary(WgslExprOperator, WgslExprNode)
+  PostfixUpdate(String, WgslExprNode)
+  Assignment(String, WgslExprNode, WgslExprNode)
   Binary(WgslExprOperator, WgslExprNode, WgslExprNode)
   Call(WgslExprNode, Array[WgslExprNode])
   Template(WgslExprNode, Array[WgslTypeArgument])
@@ -148,6 +151,7 @@ pub struct WgslExprToken {
 pub fn WgslExprToken::WgslExprToken(WgslExprTokenKind, String, Int, Int) -> Self
 pub fn WgslExprToken::end(Self) -> Int
 pub fn WgslExprToken::kind(Self) -> WgslExprTokenKind
+pub fn WgslExprToken::numeric_literal(Self) -> WgslNumericLiteral?
 pub fn WgslExprToken::start(Self) -> Int
 pub fn WgslExprToken::text(Self) -> String
 
@@ -274,6 +278,36 @@ pub(all) enum WgslLocalDeclarationKind {
   Const
 } derive(Eq, @debug.Debug)
 
+pub(all) struct WgslNumericLiteral {
+  raw_text : String
+  base : WgslNumericLiteralBase
+  suffix : WgslNumericLiteralSuffix
+  category : WgslNumericLiteralCategory
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WgslNumericLiteralBase {
+  Decimal
+  Hexadecimal
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WgslNumericLiteralCategory {
+  AbstractIntLiteral
+  I32Literal
+  U32Literal
+  AbstractFloatLiteral
+  F32Literal
+  F16Literal
+  InvalidNumericLiteral
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WgslNumericLiteralSuffix {
+  NoSuffix
+  I32Suffix
+  U32Suffix
+  F32Suffix
+  F16Suffix
+} derive(Eq, @debug.Debug)
+
 pub struct WgslOverride {
   // private fields
 } derive(@debug.Debug)
@@ -286,12 +320,13 @@ pub fn WgslOverride::ty_ref(Self) -> WgslTypeRef?
 pub struct WgslStatement {
   // private fields
 } derive(@debug.Debug)
-pub fn WgslStatement::WgslStatement(WgslStatementKind, Array[WgslAttribute], WgslStatementPayload, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression]) -> Self
+pub fn WgslStatement::WgslStatement(WgslStatementKind, Array[WgslAttribute], WgslStatementPayload, Array[WgslBlock], Array[WgslLocalDeclaration], Array[WgslLocalDeclaration], Array[WgslExprRef], Array[WgslStatementExpression], Bool) -> Self
 pub fn WgslStatement::attributes(Self) -> Array[WgslAttribute]
 pub fn WgslStatement::blocks(Self) -> Array[WgslBlock]
 pub fn WgslStatement::exported_local_bindings(Self) -> Array[WgslLocalDeclaration]
 pub fn WgslStatement::expression_refs(Self) -> Array[WgslExprRef]
 pub fn WgslStatement::expressions(Self) -> Array[WgslStatementExpression]
+pub fn WgslStatement::has_invalid_expression(Self) -> Bool
 pub fn WgslStatement::kind(Self) -> WgslStatementKind
 pub fn WgslStatement::local_bindings(Self) -> Array[WgslLocalDeclaration]
 pub fn WgslStatement::payload(Self) -> WgslStatementPayload

@@ -197,6 +197,18 @@ pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(
 }
 
 ///|
+pub fn WgslSourceOriginEntry::generated_symbol_name(
+  self : WgslSourceOriginEntry,
+) -> String {
+  self.generated_symbol_name
+}
+
+///|
+pub fn WgslSourceOriginEntry::rel_path(self : WgslSourceOriginEntry) -> String {
+  self.rel_path
+}
+
+///|
 pub struct PreparedWgslSource {
   source : String
   source_files : Array[WgslSourceFile]

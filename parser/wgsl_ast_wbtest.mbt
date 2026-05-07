@@ -130,6 +130,61 @@ test "strict WGSL translation unit rejects invalid numeric literals" {
 }
 
 ///|
+test "WGSL numeric literal tokens expose raw descriptor" {
+  let source =
+    #|const A = 3221225472u;
+    #|const B = 0x10i;
+    #|const C = 1.0h;
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Const(a) else {
+    abort("expected const A")
+  }
+  guard a.initializer_ref() is Some(a_init) else { abort("expected init A") }
+  guard a_init.tokens()[0].numeric_literal() is Some(a_literal) else {
+    abort("expected numeric descriptor")
+  }
+  debug_inspect(a_literal.raw_text, content="\"3221225472u\"")
+  debug_inspect(a_literal.base, content="Decimal")
+  debug_inspect(a_literal.suffix, content="U32Suffix")
+  debug_inspect(a_literal.category, content="U32Literal")
+  guard unit.declarations()[1].data() is WgslGlobalDeclData::Const(b) else {
+    abort("expected const B")
+  }
+  guard b.initializer_ref() is Some(b_init) else { abort("expected init B") }
+  guard b_init.tokens()[0].numeric_literal() is Some(b_literal) else {
+    abort("expected numeric descriptor")
+  }
+  debug_inspect(b_literal.base, content="Hexadecimal")
+  debug_inspect(b_literal.suffix, content="I32Suffix")
+  debug_inspect(b_literal.category, content="I32Literal")
+  guard unit.declarations()[2].data() is WgslGlobalDeclData::Const(c) else {
+    abort("expected const C")
+  }
+  guard c.initializer_ref() is Some(c_init) else { abort("expected init C") }
+  guard c_init.tokens()[0].numeric_literal() is Some(c_literal) else {
+    abort("expected numeric descriptor")
+  }
+  debug_inspect(c_literal.suffix, content="F16Suffix")
+  debug_inspect(c_literal.category, content="F16Literal")
+}
+
+///|
+test "strict WGSL translation unit rejects expression token fallbacks" {
+  let sources = [
+    "const A = @;\n", "const_assert(@);\n", "fn f() { return *; }\n",
+  ]
+  for source in sources {
+    let mut failed = false
+    ignore(parse_wgsl_translation_unit_strict(source)) catch {
+      _ => failed = true
+    }
+    guard failed is true else {
+      abort("expected malformed expression to fail strict parsing: \{source}")
+    }
+  }
+}
+
+///|
 test "strict WGSL translation unit rejects official global const without initializer" {
   let source =
     #|const VALUE: u32;

@@ -274,6 +274,40 @@ pub(all) enum WgslExprTokenKind {
 } derive(Debug)
 
 ///|
+pub(all) enum WgslNumericLiteralBase {
+  Decimal
+  Hexadecimal
+} derive(Eq, Debug)
+
+///|
+pub(all) enum WgslNumericLiteralSuffix {
+  NoSuffix
+  I32Suffix
+  U32Suffix
+  F32Suffix
+  F16Suffix
+} derive(Eq, Debug)
+
+///|
+pub(all) enum WgslNumericLiteralCategory {
+  AbstractIntLiteral
+  I32Literal
+  U32Literal
+  AbstractFloatLiteral
+  F32Literal
+  F16Literal
+  InvalidNumericLiteral
+} derive(Eq, Debug)
+
+///|
+pub(all) struct WgslNumericLiteral {
+  raw_text : String
+  base : WgslNumericLiteralBase
+  suffix : WgslNumericLiteralSuffix
+  category : WgslNumericLiteralCategory
+} derive(Eq, Debug)
+
+///|
 pub struct WgslExprToken {
   priv kind : WgslExprTokenKind
   priv text : String
@@ -312,11 +346,88 @@ pub fn WgslExprToken::end(self : WgslExprToken) -> Int {
 }
 
 ///|
+fn wgsl_numeric_literal_base_from_text(text : String) -> WgslNumericLiteralBase {
+  if text.length() >= 2 &&
+    text.code_unit_at(0).to_int() == 48 &&
+    (
+      text.code_unit_at(1).to_int() == 120 ||
+      text.code_unit_at(1).to_int() == 88
+    ) {
+    Hexadecimal
+  } else {
+    Decimal
+  }
+}
+
+///|
+fn wgsl_numeric_literal_suffix_from_text(
+  text : String,
+  kind : WgslExprTokenKind,
+) -> WgslNumericLiteralSuffix {
+  guard text.length() > 0 else { return NoSuffix }
+  let last = text[text.length() - 1:].to_owned().to_lower()
+  match kind {
+    UintLiteral(_) => U32Suffix
+    IntLiteral(_) => if last == "i" { I32Suffix } else { NoSuffix }
+    FloatLiteral =>
+      match last {
+        "f" => F32Suffix
+        "h" => F16Suffix
+        _ => NoSuffix
+      }
+    _ => NoSuffix
+  }
+}
+
+///|
+fn wgsl_numeric_literal_category_from_token(
+  text : String,
+  kind : WgslExprTokenKind,
+) -> WgslNumericLiteralCategory {
+  let suffix = wgsl_numeric_literal_suffix_from_text(text, kind)
+  match kind {
+    UintLiteral(_) => U32Literal
+    IntLiteral(_) =>
+      match suffix {
+        I32Suffix => I32Literal
+        _ => AbstractIntLiteral
+      }
+    FloatLiteral =>
+      match suffix {
+        F32Suffix => F32Literal
+        F16Suffix => F16Literal
+        _ => AbstractFloatLiteral
+      }
+    InvalidNumericLiteral => WgslNumericLiteralCategory::InvalidNumericLiteral
+    _ => InvalidNumericLiteral
+  }
+}
+
+///|
+pub fn WgslExprToken::numeric_literal(
+  self : WgslExprToken,
+) -> WgslNumericLiteral? {
+  match self.kind {
+    UintLiteral(_) | IntLiteral(_) | FloatLiteral | InvalidNumericLiteral =>
+      Some(WgslNumericLiteral::{
+        raw_text: self.text,
+        base: wgsl_numeric_literal_base_from_text(self.text),
+        suffix: wgsl_numeric_literal_suffix_from_text(self.text, self.kind),
+        category: wgsl_numeric_literal_category_from_token(self.text, self.kind),
+      })
+    _ => None
+  }
+}
+
+///|
 pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)
   Literal(WgslExprToken)
   Token(WgslExprToken)
+  ShaderDefTemplate(String)
   Unary(WgslExprOperator, WgslExprNode)
+  PostfixUpdate(String, WgslExprNode)
+  Assignment(String, WgslExprNode, WgslExprNode)
   Binary(WgslExprOperator, WgslExprNode, WgslExprNode)
   Call(WgslExprNode, Array[WgslExprNode])
   Template(WgslExprNode, Array[WgslTypeArgument])
@@ -863,6 +974,7 @@ pub struct WgslStatement {
   priv exported_local_bindings : Array[WgslLocalDeclaration]
   priv expression_refs : Array[WgslExprRef]
   priv expressions : Array[WgslStatementExpression]
+  priv invalid_expression : Bool
 } derive(Debug)
 
 ///|
@@ -875,6 +987,7 @@ pub fn WgslStatement::WgslStatement(
   exported_local_bindings : Array[WgslLocalDeclaration],
   expression_refs : Array[WgslExprRef],
   expressions : Array[WgslStatementExpression],
+  invalid_expression : Bool,
 ) -> WgslStatement {
   WgslStatement::{
     kind,
@@ -885,6 +998,7 @@ pub fn WgslStatement::WgslStatement(
     exported_local_bindings,
     expression_refs,
     expressions,
+    invalid_expression,
   }
 }
 
@@ -934,6 +1048,11 @@ pub fn WgslStatement::expressions(
   self : WgslStatement,
 ) -> Array[WgslStatementExpression] {
   self.expressions.copy()
+}
+
+///|
+pub fn WgslStatement::has_invalid_expression(self : WgslStatement) -> Bool {
+  self.invalid_expression
 }
 
 ///|

@@ -84,8 +84,39 @@ fn parse_wgsl_raw_global_decl_strict(
   match declaration.kind() {
     WgslGlobalDeclKind::Unknown =>
       raise WgslParseError::UnparsedDeclaration(item.text, item.start)
-    _ => declaration
+    _ =>
+      match declaration.data() {
+        WgslGlobalDeclData::Function(function) =>
+          if wgsl_function_has_invalid_statement_expression(function) {
+            raise WgslParseError::UnparsedDeclaration(item.text, item.start)
+          } else {
+            declaration
+          }
+        _ => declaration
+      }
   }
+}
+
+///|
+fn wgsl_function_has_invalid_statement_expression(
+  function : WgslFunction,
+) -> Bool {
+  wgsl_block_has_invalid_statement_expression(function.body())
+}
+
+///|
+fn wgsl_block_has_invalid_statement_expression(block : WgslBlock) -> Bool {
+  for statement in block.statements() {
+    if statement.has_invalid_expression() {
+      return true
+    }
+    for child in statement.blocks() {
+      if wgsl_block_has_invalid_statement_expression(child) {
+        return true
+      }
+    }
+  }
+  false
 }
 
 ///|

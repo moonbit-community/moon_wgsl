@@ -546,6 +546,37 @@ fn WgslExprNodeParser::binary_operator_at(
 }
 
 ///|
+fn WgslExprNodeParser::assignment_operator_at(
+  self : WgslExprNodeParser,
+) -> (String, Int)? {
+  guard self.index < self.tokens.length() else { return None }
+  let first = self.tokens[self.index]
+  match first.kind() {
+    WgslExprTokenKind::Punctuation(61) => Some(("=", 1))
+    WgslExprTokenKind::Operator(WgslExprOperator::Unknown(op)) =>
+      match op {
+        "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" => Some((op, 1))
+        _ => None
+      }
+    WgslExprTokenKind::Operator(WgslExprOperator::ShiftLeft) =>
+      if self.index + 1 < self.tokens.length() &&
+        wgsl_expr_token_is_punct(self.tokens[self.index + 1], 61) {
+        Some(("<<=", 2))
+      } else {
+        None
+      }
+    WgslExprTokenKind::Operator(WgslExprOperator::ShiftRight) =>
+      if self.index + 1 < self.tokens.length() &&
+        wgsl_expr_token_is_punct(self.tokens[self.index + 1], 61) {
+        Some((">>=", 2))
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
 fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? {
   match self.peek() {
     Some(token) =>
@@ -601,6 +632,45 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
               ),
               token.start(),
               token.end(),
+            ),
+          )
+        }
+        WgslExprTokenKind::Punctuation(35) => {
+          let start = token.start()
+          self.index = self.index + 1
+          let end_ = match self.peek() {
+            Some(open) if wgsl_expr_token_is_punct(open, 123) => {
+              self.index = self.index + 1
+              while !self.at_end() {
+                match self.peek() {
+                  Some(close) if wgsl_expr_token_is_punct(close, 125) => {
+                    self.index = self.index + 1
+                    break
+                  }
+                  Some(_) => self.index = self.index + 1
+                  None => break
+                }
+              }
+              match self.tokens.get(self.index - 1) {
+                Some(last) => last.end()
+                None => token.end()
+              }
+            }
+            Some(name_token) if name_token.kind()
+              is WgslExprTokenKind::Identifier => {
+              self.index = self.index + 1
+              name_token.end()
+            }
+            _ => token.end()
+          }
+          Some(
+            self.make_node(
+              WgslExprNodeKind::ShaderDefTemplate(
+                self.source_text[start - self.source_start:end_ -
+                self.source_start].to_owned(),
+              ),
+              start,
+              end_,
             ),
           )
         }
@@ -745,6 +815,22 @@ fn WgslExprNodeParser::parse_postfix(
         )
         continue
       }
+      Some(token) =>
+        match token.kind() {
+          WgslExprTokenKind::Operator(WgslExprOperator::Unknown(op)) =>
+            if op == "++" || op == "--" {
+              self.index = self.index + 1
+              node = self.make_node(
+                WgslExprNodeKind::PostfixUpdate(op, node),
+                node.start(),
+                token.end(),
+              )
+              continue
+            } else {
+              return node
+            }
+          _ => return node
+        }
       _ => return node
     }
   }
@@ -780,6 +866,23 @@ fn WgslExprNodeParser::parse_expression(
       lhs.start(),
       rhs.end(),
     )
+  }
+  if min_precedence == 0 {
+    match self.assignment_operator_at() {
+      Some((op, consumed)) => {
+        self.index = self.index + consumed
+        match self.parse_expression(0) {
+          Some(rhs) =>
+            lhs = self.make_node(
+              WgslExprNodeKind::Assignment(op, lhs, rhs),
+              lhs.start(),
+              rhs.end(),
+            )
+          None => ()
+        }
+      }
+      None => ()
+    }
   }
   Some(lhs)
 }
@@ -848,6 +951,67 @@ fn parse_wgsl_expr_node(
 }
 
 ///|
+fn wgsl_expr_node_contains_token_fallback(node : WgslExprNode) -> Bool {
+  match node.kind() {
+    Token(_) => true
+    ShaderDefTemplate(_) => false
+    Unary(_, rhs) => wgsl_expr_node_contains_token_fallback(rhs)
+    PostfixUpdate(_, expr) => wgsl_expr_node_contains_token_fallback(expr)
+    Assignment(_, lhs, rhs) =>
+      wgsl_expr_node_contains_token_fallback(lhs) ||
+      wgsl_expr_node_contains_token_fallback(rhs)
+    Binary(_, lhs, rhs) =>
+      wgsl_expr_node_contains_token_fallback(lhs) ||
+      wgsl_expr_node_contains_token_fallback(rhs)
+    Group(inner) => wgsl_expr_node_contains_token_fallback(inner)
+    Call(callee, arguments) => {
+      if wgsl_expr_node_contains_token_fallback(callee) {
+        return true
+      }
+      for argument in arguments {
+        if wgsl_expr_node_contains_token_fallback(argument) {
+          return true
+        }
+      }
+      false
+    }
+    Template(base, arguments) => {
+      if wgsl_expr_node_contains_token_fallback(base) {
+        return true
+      }
+      for argument in arguments {
+        match argument {
+          Expression(expr) =>
+            match expr.root() {
+              Some(root) =>
+                if wgsl_expr_node_contains_token_fallback(root) {
+                  return true
+                }
+              None => ()
+            }
+          Type(_) => ()
+        }
+      }
+      false
+    }
+    PathAccess(base, _) => wgsl_expr_node_contains_token_fallback(base)
+    Member(base, _) => wgsl_expr_node_contains_token_fallback(base)
+    Index(base, index) =>
+      wgsl_expr_node_contains_token_fallback(base) ||
+      wgsl_expr_node_contains_token_fallback(index)
+    Sequence(items) => {
+      for item in items {
+        if wgsl_expr_node_contains_token_fallback(item) {
+          return true
+        }
+      }
+      false
+    }
+    Literal(_) | Identifier(_) => false
+  }
+}
+
+///|
 fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   let (trimmed, local_start, local_end) = wgsl_trim_fragment_bounds(
     text,
@@ -872,6 +1036,10 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     }
   }
   let root = parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens)
+  match root {
+    Some(node) if wgsl_expr_node_contains_token_fallback(node) => return None
+    _ => ()
+  }
   Some(
     WgslExprRef(
       expr_tokens,
@@ -1324,7 +1492,7 @@ fn wgsl_type_atom_is_identifier_path(text : String) -> Bool {
   let parts = text.split("::")
   for part in parts {
     let segment = part.to_owned()
-    if segment == "" || !wgsl_regex_word_text(segment) {
+    if !wgsl_identifier_text(segment) {
       return false
     }
   }

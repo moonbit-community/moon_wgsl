@@ -16,11 +16,16 @@
 fn preprocess_blank_text(text : String) -> String {
   let mut out = ""
   let mut line_start = 0
-  for i in 0..<text.length() {
-    if text.code_unit_at(i).to_int() == 10 {
+  let mut i = 0
+  while i < text.length() {
+    let width = wgsl_line_break_width(text, i)
+    if width > 0 {
       out = out + spaces(utf8_byte_length(text[line_start:i].to_owned()))
-      out = out + "\n"
-      line_start = i + 1
+      out = out + text[i:i + width].to_owned()
+      i = i + width
+      line_start = i
+    } else {
+      i = i + 1
     }
   }
   if line_start < text.length() {
@@ -122,14 +127,7 @@ fn preprocess_check_scope_directive(
 
 ///|
 fn preprocess_source_line_text_end(text : String, line_start : Int) -> Int {
-  let mut i = line_start
-  while i < text.length() {
-    if text.code_unit_at(i).to_int() == 10 {
-      return i
-    }
-    i = i + 1
-  }
-  text.length()
+  wgsl_line_text_end(text, line_start)
 }
 
 ///|

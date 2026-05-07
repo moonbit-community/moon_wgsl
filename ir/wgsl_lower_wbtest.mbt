@@ -1180,6 +1180,37 @@ test "WGSL AST lowerer preserves u32 literals above signed int range" {
 }
 
 ///|
+test "WGSL AST lowerer preserves large u32 const switch selectors" {
+  let source =
+    #|const MASK: u32 = 3221225472u;
+    #|
+    #|fn choose(value: u32) -> u32 {
+    #|  switch value {
+    #|    case MASK: {
+    #|      return 1u;
+    #|    }
+    #|    default {
+    #|      return 0u;
+    #|    }
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  match module_.functions.items[0].body.statements[0] {
+    Switch(_, cases) => {
+      debug_inspect(cases[0].value, content="U32(3221225472)")
+      debug_inspect(cases[1].value, content="Default")
+    }
+    _ => abort("expected switch statement")
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("case 3221225472u {"), content="true")
+}
+
+///|
 test "WGSL AST lowerer preserves abstract composite constructors" {
   let source =
     #|const vector = vec2(0xffffffffff, 0xfffffffff0);

@@ -28,6 +28,20 @@ pub fn utf8_byte_length(String) -> Int
 
 pub fn wgsl_blankspace_code_point(Int) -> Bool
 
+pub fn wgsl_identifier_continue_code_point(Int) -> Bool
+
+pub fn wgsl_identifier_start_code_point(Int) -> Bool
+
+pub fn wgsl_identifier_text(String) -> Bool
+
+pub fn wgsl_line_break_width(String, Int) -> Int
+
+pub fn wgsl_line_end(String, Int) -> Int
+
+pub fn wgsl_line_start(String, Int) -> Int
+
+pub fn wgsl_line_text_end(String, Int) -> Int
+
 pub fn wgsl_regex_skip_whitespace(String, Int) -> Int
 
 pub fn wgsl_regex_trim_whitespace(String) -> String

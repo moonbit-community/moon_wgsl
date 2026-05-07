@@ -202,8 +202,7 @@ fn tokenizer_operator_pair_text(lhs : Int, rhs : Int) -> String? {
 ///|
 fn tokenizer_identifier_start(code : Int, wgsl_blankspace : Bool) -> Bool {
   if wgsl_blankspace {
-    code == 95 || // '_'
-    wgsl_xid_start_code_point(code)
+    wgsl_identifier_start_code_point(code)
   } else {
     wgsl_xid_start_code_point(code)
   }
@@ -212,7 +211,7 @@ fn tokenizer_identifier_start(code : Int, wgsl_blankspace : Bool) -> Bool {
 ///|
 fn tokenizer_identifier_continue(code : Int, wgsl_blankspace : Bool) -> Bool {
   if wgsl_blankspace {
-    tokenizer_identifier_start(code, true) || (code >= 48 && code <= 57)
+    wgsl_identifier_continue_code_point(code)
   } else {
     wgsl_xid_continue_code_point(code)
   }

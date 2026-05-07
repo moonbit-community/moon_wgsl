@@ -21,26 +21,12 @@ fn top_level_span_has_text(source : String, start : Int, end_ : Int) -> Bool {
 
 ///|
 fn top_level_line_start(source : String, pos : Int) -> Int {
-  let mut i = pos
-  while i > 0 {
-    if source.code_unit_at(i - 1).to_int() == 10 {
-      return i
-    }
-    i = i - 1
-  }
-  0
+  wgsl_line_start(source, pos)
 }
 
 ///|
 fn top_level_line_end(source : String, pos : Int) -> Int {
-  let mut i = pos
-  while i < source.length() {
-    if source.code_unit_at(i).to_int() == 10 {
-      return i + 1
-    }
-    i = i + 1
-  }
-  source.length()
+  wgsl_line_end(source, pos)
 }
 
 ///|

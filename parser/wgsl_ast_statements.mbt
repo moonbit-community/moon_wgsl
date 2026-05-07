@@ -1060,6 +1060,73 @@ fn wgsl_statement_first_expression_by_role(
 }
 
 ///|
+fn wgsl_statement_has_expression_role(
+  expressions : Array[WgslStatementExpression],
+  role : WgslStatementExpressionRole,
+) -> Bool {
+  wgsl_statement_first_expression_by_role(expressions, role) is Some(_)
+}
+
+///|
+fn wgsl_statement_has_invalid_expression(
+  kind : WgslStatementKind,
+  tokens : Array[WgslToken],
+  expressions : Array[WgslStatementExpression],
+) -> Bool {
+  for token in tokens {
+    if token.is_punctuation(35) {
+      return false
+    }
+  }
+  match kind {
+    Return =>
+      tokens.length() > 1 &&
+      !wgsl_statement_has_expression_role(
+        expressions,
+        WgslStatementExpressionRole::ReturnValue,
+      )
+    ConstAssert =>
+      tokens.length() > 1 &&
+      !wgsl_statement_has_expression_role(
+        expressions,
+        WgslStatementExpressionRole::ConstAssertValue,
+      )
+    FunctionCall =>
+      !wgsl_statement_has_expression_role(
+        expressions,
+        WgslStatementExpressionRole::FunctionCallValue,
+      )
+    Expression =>
+      match tokens {
+        [token, ..] if token.is_punctuation(35) => false
+        [token, ..] if token.is_identifier("case") ||
+          token.is_identifier("default") => false
+        [] => false
+        _ =>
+          !wgsl_statement_has_expression_role(
+            expressions,
+            WgslStatementExpressionRole::ExpressionValue,
+          )
+      }
+    Increment | Decrement =>
+      !wgsl_statement_has_expression_role(
+        expressions,
+        WgslStatementExpressionRole::UpdateTarget,
+      )
+    Assignment =>
+      !wgsl_statement_has_expression_role(
+        expressions,
+        WgslStatementExpressionRole::AssignmentLhs,
+      ) ||
+      !wgsl_statement_has_expression_role(
+        expressions,
+        WgslStatementExpressionRole::AssignmentRhs,
+      )
+    _ => false
+  }
+}
+
+///|
 fn wgsl_statement_payload_from_ast(
   kind : WgslStatementKind,
   first_identifier : String?,
@@ -1310,11 +1377,14 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       kind, body_first_identifier, assignment_operator, local_bindings, case_selectors,
       expressions,
     )
+    let invalid_expression = wgsl_statement_has_invalid_expression(
+      kind, scope_tokens, expressions,
+    )
     let blocks = self.collect_statement_blocks(tokens)
     Some(
       WgslStatement(
         kind, attributes, payload, blocks, local_bindings, exported_local_bindings,
-        expression_refs, expressions,
+        expression_refs, expressions, invalid_expression,
       ),
     )
   }

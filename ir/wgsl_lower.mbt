@@ -29,6 +29,7 @@ priv struct WgslIrLowerer {
   constant_names : @hashmap.HashMap[String, Handle]
   override_names : @hashmap.HashMap[String, Handle]
   referenced_names : @hashset.HashSet[String]
+  generated_import_function_names : @hashset.HashSet[String]
 }
 
 ///|
@@ -137,6 +138,7 @@ fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
     constant_names: @hashmap.HashMap([]),
     override_names: @hashmap.HashMap([]),
     referenced_names: @hashset.HashSet([]),
+    generated_import_function_names: @hashset.HashSet([]),
   }
 }
 
@@ -149,17 +151,38 @@ fn wgsl_ir_parse_error_message(error : @parser.WgslParseError) -> String {
 pub fn parse_wgsl_module_to_ir(
   source : String,
 ) -> Module raise WgslIrLowerError {
+  parse_wgsl_module_to_ir_with_generated_imports(source, [])
+}
+
+///|
+pub fn parse_wgsl_module_to_ir_with_generated_imports(
+  source : String,
+  generated_import_names : Array[String],
+) -> Module raise WgslIrLowerError {
   let unit = @parser.parse_wgsl_translation_unit_strict(source) catch {
     error => raise WgslIrLowerError::Parse(wgsl_ir_parse_error_message(error))
   }
-  lower_wgsl_translation_unit_to_ir(unit)
+  lower_wgsl_translation_unit_to_ir_with_generated_imports(
+    unit, generated_import_names,
+  )
 }
 
 ///|
 pub fn lower_wgsl_translation_unit_to_ir(
   unit : @ast.WgslTranslationUnit,
 ) -> Module raise WgslIrLowerError {
+  lower_wgsl_translation_unit_to_ir_with_generated_imports(unit, [])
+}
+
+///|
+pub fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
+  unit : @ast.WgslTranslationUnit,
+  generated_import_names : Array[String],
+) -> Module raise WgslIrLowerError {
   let lowerer = WgslIrLowerer()
+  for name in generated_import_names {
+    lowerer.generated_import_function_names.add(name)
+  }
   lowerer.register_prelude_types()
   for declaration in unit.declarations() {
     lowerer.record_referenced_names(declaration)
@@ -361,7 +384,7 @@ fn WgslIrLowerer::predeclare_function_declaration(
   }
   let placeholder = Function::{
     name: Some(function.name().name()),
-    generated_import: wgsl_ir_function_name_is_generated_import(
+    generated_import: self.generated_import_function_names.contains(
       function.name().name(),
     ),
     arguments: [],
@@ -374,11 +397,6 @@ fn WgslIrLowerer::predeclare_function_declaration(
   }
   let handle = self.shader_module.append_function(placeholder)
   self.function_names.set(function.name().name(), handle)
-}
-
-///|
-fn wgsl_ir_function_name_is_generated_import(name : String) -> Bool {
-  name.contains("X_naga_oil_")
 }
 
 ///|
@@ -885,7 +903,7 @@ fn WgslIrLowerer::lower_function(
 ) -> Function raise WgslIrLowerError {
   let ir_function = Function::{
     name: Some(function.name().name()),
-    generated_import: wgsl_ir_function_name_is_generated_import(
+    generated_import: self.generated_import_function_names.contains(
       function.name().name(),
     ),
     arguments: [],
@@ -1438,20 +1456,8 @@ fn WgslIrLowerer::switch_value_from_constant(
   handle : Handle,
 ) -> SwitchValue raise WgslIrLowerError {
   match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) => {
-      let (value, unsigned) = self.eval_global_integer_expression(constant.init)
-      if unsigned {
-        let parsed : UInt = @strconv.from_str("\{value}") catch {
-          _ =>
-            raise WgslIrLowerError::UnsupportedExpression(
-              "switch case const selector is outside u32 range",
-            )
-        }
-        SwitchValue::U32(parsed)
-      } else {
-        SwitchValue::I32(value)
-      }
-    }
+    Some(constant) =>
+      self.eval_global_integer_expression(constant.init).to_switch_value()
     None =>
       raise WgslIrLowerError::UnsupportedExpression(
         "switch case selector references missing const",
@@ -1463,7 +1469,7 @@ fn WgslIrLowerer::switch_value_from_constant(
 fn WgslIrLowerer::eval_global_integer_expression(
   self : WgslIrLowerer,
   handle : Handle,
-) -> (Int, Bool) raise WgslIrLowerError {
+) -> WgslIrIntegerValue raise WgslIrLowerError {
   match self.shader_module.global_expressions.items.get(handle.index()) {
     Some(expression) => self.eval_global_integer_expression_inner(expression)
     None =>
@@ -1477,11 +1483,11 @@ fn WgslIrLowerer::eval_global_integer_expression(
 fn WgslIrLowerer::eval_global_integer_expression_inner(
   self : WgslIrLowerer,
   expression : Expression,
-) -> (Int, Bool) raise WgslIrLowerError {
+) -> WgslIrIntegerValue raise WgslIrLowerError {
   match expression {
-    Literal(Literal::I32(value)) => (value, false)
-    Literal(Literal::U32(value)) => (value.reinterpret_as_int(), true)
-    Literal(Literal::AbstractInt(value)) => (value.to_int(), false)
+    Literal(Literal::I32(value)) => WgslIrIntegerValue::Signed(value)
+    Literal(Literal::U32(value)) => WgslIrIntegerValue::Unsigned(value)
+    Literal(Literal::AbstractInt(value)) => WgslIrIntegerValue::Abstract(value)
     Constant(handle) =>
       match self.shader_module.constants.items.get(handle.index()) {
         Some(constant) => self.eval_global_integer_expression(constant.init)
@@ -1491,50 +1497,36 @@ fn WgslIrLowerer::eval_global_integer_expression_inner(
           )
       }
     Binary(op, left, right) => {
-      let (left_value, left_unsigned) = self.eval_global_integer_expression(
-        left,
+      let left_value = self.eval_global_integer_expression(left)
+      let right_value = self.eval_global_integer_expression(right)
+      wgsl_ir_eval_integer_binary(op, left_value, right_value)
+    }
+    Math(MathFunction::Min, a, Some(b), None, None) =>
+      wgsl_ir_eval_integer_min(
+        self.eval_global_integer_expression(a),
+        self.eval_global_integer_expression(b),
       )
-      let (right_value, right_unsigned) = self.eval_global_integer_expression(
-        right,
+    Math(MathFunction::Max, a, Some(b), None, None) =>
+      wgsl_ir_eval_integer_max(
+        self.eval_global_integer_expression(a),
+        self.eval_global_integer_expression(b),
       )
-      (
-        wgsl_ir_eval_integer_binary(op, left_value, right_value),
-        left_unsigned || right_unsigned,
+    Math(MathFunction::Clamp, value, Some(low), Some(high), None) =>
+      wgsl_ir_eval_integer_clamp(
+        self.eval_global_integer_expression(value),
+        self.eval_global_integer_expression(low),
+        self.eval_global_integer_expression(high),
       )
-    }
-    Math(MathFunction::Min, a, Some(b), None, None) => {
-      let (a_value, a_unsigned) = self.eval_global_integer_expression(a)
-      let (b_value, b_unsigned) = self.eval_global_integer_expression(b)
-      let value = if a_value < b_value { a_value } else { b_value }
-      (value, a_unsigned || b_unsigned)
-    }
-    Math(MathFunction::Max, a, Some(b), None, None) => {
-      let (a_value, a_unsigned) = self.eval_global_integer_expression(a)
-      let (b_value, b_unsigned) = self.eval_global_integer_expression(b)
-      let value = if a_value > b_value { a_value } else { b_value }
-      (value, a_unsigned || b_unsigned)
-    }
-    Math(MathFunction::Clamp, value, Some(low), Some(high), None) => {
-      let (value, value_unsigned) = self.eval_global_integer_expression(value)
-      let (low, low_unsigned) = self.eval_global_integer_expression(low)
-      let (high, high_unsigned) = self.eval_global_integer_expression(high)
-      let clamped = if value < low {
-        low
-      } else if value > high {
-        high
-      } else {
-        value
-      }
-      (clamped, value_unsigned || low_unsigned || high_unsigned)
-    }
     Unary(UnaryOperator::Negate, inner) => {
-      let (value, _) = self.eval_global_integer_expression(inner)
-      (-value, false)
+      let value = self.eval_global_integer_expression(inner).to_signed_int()
+      WgslIrIntegerValue::Signed(-value)
     }
-    Unary(UnaryOperator::BitwiseNot, inner) => {
-      let (value, unsigned) = self.eval_global_integer_expression(inner)
-      (value.lnot(), unsigned)
-    }
+    Unary(UnaryOperator::BitwiseNot, inner) =>
+      match self.eval_global_integer_expression(inner) {
+        Unsigned(value) => WgslIrIntegerValue::Unsigned(value.lnot())
+        Signed(value) => WgslIrIntegerValue::Signed(value.lnot())
+        Abstract(value) => WgslIrIntegerValue::Abstract(value.lnot())
+      }
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
         "switch case const selector must initialize to an integer expression",
@@ -1543,27 +1535,177 @@ fn WgslIrLowerer::eval_global_integer_expression_inner(
 }
 
 ///|
+priv enum WgslIrIntegerValue {
+  Signed(Int)
+  Unsigned(UInt)
+  Abstract(Int64)
+}
+
+///|
+fn WgslIrIntegerValue::is_unsigned(self : WgslIrIntegerValue) -> Bool {
+  match self {
+    Unsigned(_) => true
+    Signed(_) | Abstract(_) => false
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_switch_value(
+  self : WgslIrIntegerValue,
+) -> SwitchValue {
+  match self {
+    Unsigned(value) => SwitchValue::U32(value)
+    Signed(value) => SwitchValue::I32(value)
+    Abstract(value) => SwitchValue::I32(value.to_int())
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_signed_int(
+  self : WgslIrIntegerValue,
+) -> Int raise WgslIrLowerError {
+  match self {
+    Signed(value) => value
+    Abstract(value) => value.to_int()
+    Unsigned(value) =>
+      match wgsl_ir_uint_literal_to_small_int(value) {
+        Some(value) => value
+        None =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "integer expression is outside signed int range",
+          )
+      }
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_unsigned(
+  self : WgslIrIntegerValue,
+) -> UInt raise WgslIrLowerError {
+  match self {
+    Unsigned(value) => value
+    Signed(value) => wgsl_ir_non_negative_int_to_uint(value)
+    Abstract(value) => {
+      let as_int = value.to_int()
+      wgsl_ir_non_negative_int_to_uint(as_int)
+    }
+  }
+}
+
+///|
+fn wgsl_ir_non_negative_int_to_uint(value : Int) -> UInt raise WgslIrLowerError {
+  if value < 0 {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "unsigned integer expression contains a negative operand",
+    )
+  }
+  @strconv.from_str("\{value}") catch {
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "integer expression is outside unsigned int range",
+      )
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_non_negative_int(
+  self : WgslIrIntegerValue,
+) -> Int raise WgslIrLowerError {
+  let value = self.to_signed_int()
+  if value < 0 {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "integer expression must be non-negative",
+    )
+  }
+  value
+}
+
+///|
 fn wgsl_ir_eval_integer_binary(
   op : BinaryOperator,
-  left : Int,
-  right : Int,
-) -> Int raise WgslIrLowerError {
+  left : WgslIrIntegerValue,
+  right : WgslIrIntegerValue,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  if left.is_unsigned() || right.is_unsigned() {
+    let left = left.to_unsigned()
+    let right_value = right.to_unsigned()
+    let right_shift = WgslIrIntegerValue::Unsigned(right_value).to_non_negative_int()
+    return match op {
+      Add => Unsigned(left + right_value)
+      Subtract => Unsigned(left - right_value)
+      Multiply => Unsigned(left * right_value)
+      Divide => Unsigned(left / right_value)
+      Modulo => Unsigned(left % right_value)
+      And => Unsigned(left & right_value)
+      ExclusiveOr => Unsigned(left ^ right_value)
+      InclusiveOr => Unsigned(left | right_value)
+      ShiftLeft => Unsigned(left << right_shift)
+      ShiftRight => Unsigned(left >> right_shift)
+      _ =>
+        raise WgslIrLowerError::UnsupportedExpression(
+          "switch case const selector uses non-integer binary operator",
+        )
+    }
+  }
+  let left = left.to_signed_int()
+  let right = right.to_signed_int()
   match op {
-    Add => left + right
-    Subtract => left - right
-    Multiply => left * right
-    Divide => left / right
-    Modulo => left % right
-    And => left & right
-    ExclusiveOr => left ^ right
-    InclusiveOr => left | right
-    ShiftLeft => left << right
-    ShiftRight => left >> right
+    Add => Signed(left + right)
+    Subtract => Signed(left - right)
+    Multiply => Signed(left * right)
+    Divide => Signed(left / right)
+    Modulo => Signed(left % right)
+    And => Signed(left & right)
+    ExclusiveOr => Signed(left ^ right)
+    InclusiveOr => Signed(left | right)
+    ShiftLeft => Signed(left << right)
+    ShiftRight => Signed(left >> right)
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
         "switch case const selector uses non-integer binary operator",
       )
   }
+}
+
+///|
+fn wgsl_ir_eval_integer_min(
+  left : WgslIrIntegerValue,
+  right : WgslIrIntegerValue,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  if left.is_unsigned() || right.is_unsigned() {
+    let left = left.to_unsigned()
+    let right = right.to_unsigned()
+    Unsigned(if left < right { left } else { right })
+  } else {
+    let left = left.to_signed_int()
+    let right = right.to_signed_int()
+    Signed(if left < right { left } else { right })
+  }
+}
+
+///|
+fn wgsl_ir_eval_integer_max(
+  left : WgslIrIntegerValue,
+  right : WgslIrIntegerValue,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  if left.is_unsigned() || right.is_unsigned() {
+    let left = left.to_unsigned()
+    let right = right.to_unsigned()
+    Unsigned(if left > right { left } else { right })
+  } else {
+    let left = left.to_signed_int()
+    let right = right.to_signed_int()
+    Signed(if left > right { left } else { right })
+  }
+}
+
+///|
+fn wgsl_ir_eval_integer_clamp(
+  value : WgslIrIntegerValue,
+  low : WgslIrIntegerValue,
+  high : WgslIrIntegerValue,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  wgsl_ir_eval_integer_min(wgsl_ir_eval_integer_max(value, low), high)
 }
 
 ///|
@@ -5064,8 +5206,20 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           self.literal_from_token_with_expected(token, expected_ty),
         ),
       )
+    ShaderDefTemplate(text) =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "shader-def template expression requires preprocessing: \{text}",
+      )
     Identifier(name) =>
       self.lower_identifier_expression(name.name(), function, scope)
+    PostfixUpdate(_, _) =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "update expression outside statement context",
+      )
+    Assignment(_, _, _) =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "assignment expression outside statement context",
+      )
     Unary(op, expr) =>
       if op == @ast.WgslExprOperator::BitAnd {
         let target = self.lower_function_lvalue_node(expr, function, scope)
@@ -5815,7 +5969,12 @@ fn wgsl_ir_expr_node_shape(node : @ast.WgslExprNode) -> String {
     Identifier(name) => "identifier \{name.name()}"
     Literal(token) => "literal \{token.text()}"
     Token(token) => "token \{token.text()}"
+    ShaderDefTemplate(text) => "shader-def template \{text}"
     Unary(op, inner) => "unary \{op.text()}(\{wgsl_ir_expr_node_shape(inner)})"
+    PostfixUpdate(op, inner) =>
+      "postfix \{op}(\{wgsl_ir_expr_node_shape(inner)})"
+    Assignment(op, left, right) =>
+      "assignment \{op}(\{wgsl_ir_expr_node_shape(left)}, \{wgsl_ir_expr_node_shape(right)})"
     Binary(op, left, right) =>
       "binary \{op.text()}(\{wgsl_ir_expr_node_shape(left)}, \{wgsl_ir_expr_node_shape(right)})"
     Call(callee, _) => "call(\{wgsl_ir_expr_node_shape(callee)})"
@@ -6097,14 +6256,7 @@ fn WgslIrLowerer::lower_constant_array_size_expression(
     _ => None
   }
   match evaluated {
-    Some((value, _)) => {
-      if value < 0 {
-        raise WgslIrLowerError::UnsupportedType(
-          "array size must be non-negative",
-        )
-      }
-      ArraySize::Constant(value)
-    }
+    Some(value) => ArraySize::Constant(value.to_non_negative_int())
     None => ArraySize::Pending(handle)
   }
 }
@@ -6524,15 +6676,8 @@ fn WgslIrLowerer::array_size_layout_count(
   match size {
     Constant(value) => value
     Dynamic => 1
-    Pending(handle) => {
-      let (value, _) = self.eval_global_integer_expression(handle)
-      if value < 0 {
-        raise WgslIrLowerError::UnsupportedType(
-          "array size must be non-negative",
-        )
-      }
-      value
-    }
+    Pending(handle) =>
+      self.eval_global_integer_expression(handle).to_non_negative_int()
   }
 }
 
@@ -8748,7 +8893,7 @@ fn WgslIrLowerer::workgroup_size_dimension_from_node(
     _ => None
   }
   match evaluated {
-    Some((value, _)) => (value, None)
+    Some(value) => (value.to_non_negative_int(), None)
     None =>
       if self.global_expression_references_override(handle) {
         (1, Some(handle))

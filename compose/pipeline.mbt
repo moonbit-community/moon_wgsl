@@ -10,6 +10,7 @@ priv enum WgslComposeSourceEmissionKind {
 priv struct WgslResolvedComposeSource {
   source : String
   source_origins : Array[WgslSourceOriginEntry]
+  virtual_override_generated_names : Array[String]
   diagnostics : Array[WgslDiagnostic]
 }
 
@@ -220,13 +221,64 @@ fn Composer::resolve_wgsl_compose_source(
   WgslResolvedComposeSource::{
     source: prepared_source,
     source_origins: session.source_origins.copy(),
+    virtual_override_generated_names: wgsl_virtual_override_generated_import_names(
+      session,
+    ),
     diagnostics: collect_wgsl_unused_redirect_diagnostics(session),
   }
 }
 
 ///|
-fn compose_wgsl_source_via_ir(source : String) -> String raise ComposerError {
-  let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
+fn wgsl_generated_import_names_from_origins(
+  origins : Array[WgslSourceOriginEntry],
+  root_rel_path : String,
+  virtual_override_generated_names : Array[String],
+) -> Array[String] {
+  let seen = @hashset.HashSet([])
+  let names : Array[String] = []
+  for name in virtual_override_generated_names {
+    if !seen.contains(name) {
+      seen.add(name)
+      names.push(name)
+    }
+  }
+  for origin in origins {
+    if origin.rel_path() == root_rel_path {
+      continue
+    }
+    let name = origin.generated_symbol_name()
+    if !seen.contains(name) {
+      seen.add(name)
+      names.push(name)
+    }
+  }
+  names
+}
+
+///|
+fn wgsl_virtual_override_generated_import_names(
+  session : WgslComposeSession,
+) -> Array[String] {
+  let names : Array[String] = []
+  for binding in session.virtual_override_final_names {
+    names.push(binding.override_name)
+  }
+  names
+}
+
+///|
+fn compose_wgsl_source_via_ir(
+  source : String,
+  source_origins : Array[WgslSourceOriginEntry],
+  root_rel_path : String,
+  virtual_override_generated_names : Array[String],
+) -> String raise ComposerError {
+  let module_ = @ir.parse_wgsl_module_to_ir_with_generated_imports(
+    source,
+    wgsl_generated_import_names_from_origins(
+      source_origins, root_rel_path, virtual_override_generated_names,
+    ),
+  ) catch {
     error => raise ComposerError::InvalidIr(error.message())
   }
   @ir.emit_wgsl_module_from_ir(module_) catch {
@@ -241,7 +293,12 @@ pub fn Composer::prepare_wgsl_source(
   options : WgslComposeOptions,
 ) -> PreparedWgslSource raise ComposerError {
   let resolved = self.resolve_wgsl_compose_source(rel, options)
-  let ir_source = compose_wgsl_source_via_ir(resolved.source)
+  let ir_source = compose_wgsl_source_via_ir(
+    resolved.source,
+    resolved.source_origins,
+    normalize_shader_rel_path(rel),
+    resolved.virtual_override_generated_names,
+  )
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: ir_source },
   ]
@@ -287,5 +344,10 @@ pub fn Composer::compose_wgsl_source(
       [],
     ),
   )
-  compose_wgsl_source_via_ir(finalize_wgsl_output_source(composed))
+  compose_wgsl_source_via_ir(
+    finalize_wgsl_output_source(composed),
+    session.source_origins.copy(),
+    "",
+    wgsl_virtual_override_generated_import_names(session),
+  )
 }

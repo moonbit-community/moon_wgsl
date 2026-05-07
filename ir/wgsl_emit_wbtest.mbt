@@ -24,6 +24,8 @@ test "IR emitter prints WGSL lowered from AST without source writeback" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
+  debug_inspect(module_.functions.items[0].generated_import, content="false")
+  debug_inspect(module_.functions.items[1].generated_import, content="false")
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
@@ -83,6 +85,44 @@ test "IR emitter prints global and function const_asserts from IR" {
     emitted.contains("  const_assert (VALUE > 0u);"),
     content="true",
   )
+}
+
+///|
+test "IR lowerer does not infer generated import provenance from names" {
+  let source =
+    #|fn firstX_naga_oil_mod_XABCDX(value: u32) -> u32 {
+    #|  return value;
+    #|}
+    #|
+    #|fn secondX_naga_oil_mod_XABCDX(value: u32) -> u32 {
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("value_"), content="false")
+}
+
+///|
+test "IR lowerer accepts explicit generated import provenance" {
+  let source =
+    #|fn firstX_naga_oil_mod_XABCDX(value: u32) -> u32 {
+    #|  return value;
+    #|}
+    #|
+    #|fn secondX_naga_oil_mod_XABCDX(value: u32) -> u32 {
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
+    "firstX_naga_oil_mod_XABCDX", "secondX_naga_oil_mod_XABCDX",
+  ]) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(module_.functions.items[0].generated_import, content="true")
+  debug_inspect(module_.functions.items[1].generated_import, content="true")
 }
 
 ///|

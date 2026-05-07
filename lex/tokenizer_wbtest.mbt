@@ -58,6 +58,19 @@ test "WGSL tokenizer emits numeric literals as semantic tokens" {
 }
 
 ///|
+test "WGSL identifier policy is centralized" {
+  debug_inspect(wgsl_identifier_text("_valid123"), content="true")
+  debug_inspect(wgsl_identifier_text("__"), content="true")
+  debug_inspect(wgsl_identifier_text("123bad"), content="false")
+  debug_inspect(wgsl_identifier_text("bad💡"), content="false")
+  let tokens = tokenize_wgsl("_valid123 __ 123bad bad💡", false)
+  debug_inspect(tokens[0].identifier_text(), content="Some(\"_valid123\")")
+  debug_inspect(tokens[1].identifier_text(), content="Some(\"__\")")
+  debug_inspect(tokens[2].number_text(), content="Some(\"123bad\")")
+  debug_inspect(tokens[4].punctuation_code(), content="Some(128161)")
+}
+
+///|
 test "WGSL tokenizer emits adjacent compound operators only" {
   let tokens = tokenize_wgsl(
     "a >= b; c > = d; fn f() -> u32 { i++; j--; return 1u; }", false,

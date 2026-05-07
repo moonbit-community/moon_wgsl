@@ -13,6 +13,7 @@ using @ast {type WgslDirective, type WgslDirectiveKind}
 using @lex {
   source_lines,
   trim_trailing_semicolons,
+  wgsl_line_text_end,
   wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,

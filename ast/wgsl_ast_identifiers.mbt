@@ -40,9 +40,15 @@ fn collect_wgsl_expr_node_identifier_nodes(
       if !wgsl_name_list_contains(active_local_names, ident.name()) {
         nodes.push(ident)
       }
-    Literal(_) | Token(_) => ()
+    Literal(_) | Token(_) | ShaderDefTemplate(_) => ()
     Unary(_, expr) =>
       collect_wgsl_expr_node_identifier_nodes(expr, active_local_names, nodes)
+    PostfixUpdate(_, expr) =>
+      collect_wgsl_expr_node_identifier_nodes(expr, active_local_names, nodes)
+    Assignment(_, lhs, rhs) => {
+      collect_wgsl_expr_node_identifier_nodes(lhs, active_local_names, nodes)
+      collect_wgsl_expr_node_identifier_nodes(rhs, active_local_names, nodes)
+    }
     Binary(_, lhs, rhs) => {
       collect_wgsl_expr_node_identifier_nodes(lhs, active_local_names, nodes)
       collect_wgsl_expr_node_identifier_nodes(rhs, active_local_names, nodes)

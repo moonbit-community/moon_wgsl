@@ -12,7 +12,13 @@ using @transform {type WgslImportSubstitutionState}
 using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|
-using @lex {spaces, trim_trailing_semicolons, utf8_byte_length}
+using @lex {
+  spaces,
+  trim_trailing_semicolons,
+  utf8_byte_length,
+  wgsl_line_break_width,
+  wgsl_line_text_end,
+}
 
 ///|
 using @directive {

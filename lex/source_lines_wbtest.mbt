@@ -21,3 +21,15 @@ test "split source lines keeps trailing fragment without newline" {
   debug_inspect(lines[0], content="\"ab\"")
   debug_inspect(lines[1], content="\"c\"")
 }
+
+///|
+test "WGSL line break helpers cover official line terminators" {
+  let source = "a\r\nb\u{85}c\u{2028}d\u{2029}e"
+  debug_inspect(wgsl_line_start(source, 3), content="3")
+  debug_inspect(wgsl_line_text_end(source, 3), content="4")
+  debug_inspect(wgsl_line_end(source, 3), content="5")
+  debug_inspect(wgsl_line_text_end(source, 5), content="6")
+  debug_inspect(wgsl_line_end(source, 5), content="7")
+  debug_inspect(wgsl_line_text_end(source, 7), content="8")
+  debug_inspect(wgsl_line_end(source, 7), content="9")
+}

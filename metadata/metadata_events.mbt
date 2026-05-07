@@ -80,14 +80,7 @@ fn metadata_shader_def_comparison_def(expression : String) -> String? {
 
 ///|
 fn metadata_source_line_text_end(text : String, line_start : Int) -> Int {
-  let mut i = line_start
-  while i < text.length() {
-    if text.code_unit_at(i).to_int() == 10 {
-      return i
-    }
-    i = i + 1
-  }
-  text.length()
+  wgsl_line_text_end(text, line_start)
 }
 
 ///|
