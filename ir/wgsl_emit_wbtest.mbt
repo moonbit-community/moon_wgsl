@@ -43,6 +43,22 @@ test "IR emitter prints WGSL lowered from AST without source writeback" {
 }
 
 ///|
+test "IR emitter mirrors naga entry-point stage attribute spacing" {
+  let source =
+    #|@fragment
+    #|fn fragment() -> @location(0) f32 {
+    #|  return 1.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("@fragment \nfn fragment"), content="true")
+}
+
+///|
 test "IR emitter fails on invalid handles instead of inventing output" {
   let module_ = Module::new()
   let constant = Constant::{

@@ -1298,6 +1298,7 @@ fn WgslIrLowerer::lower_local_declaration(
           }
       }
   }
+  let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
   let lowered_name = if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
     match init {
       Some(init_handle) => wgsl_ir_expression_temporary_name(init_handle)
@@ -1315,6 +1316,64 @@ fn WgslIrLowerer::lower_local_declaration(
   ignore(scope.local_constants.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
+}
+
+///|
+fn WgslIrLowerer::local_declaration_storage_type(
+  self : WgslIrLowerer,
+  kind : @ast.WgslLocalDeclarationKind,
+  ty : Handle,
+) -> Handle {
+  match kind {
+    Var => self.concretize_abstract_storage_type(ty)
+    Let | Const => ty
+  }
+}
+
+///|
+fn WgslIrLowerer::concretize_abstract_storage_type(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Handle {
+  match self.shader_module.types.items.get(ty.index()) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) =>
+          match self.concretize_abstract_storage_scalar(scalar) {
+            Some(concrete) => self.scalar_type_handle(concrete)
+            None => ty
+          }
+        Vector(size, scalar) =>
+          match self.concretize_abstract_storage_scalar(scalar) {
+            Some(concrete) => self.vector_type_handle(size, concrete)
+            None => ty
+          }
+        Matrix(columns, rows, scalar) =>
+          match self.concretize_abstract_storage_scalar(scalar) {
+            Some(concrete) =>
+              self.intern_type(
+                "mat\{columns.width()}x\{rows.width()}<\{wgsl_ir_scalar_name(concrete.kind, concrete.width)}>",
+                TypeInner::Matrix(columns, rows, concrete),
+              )
+            None => ty
+          }
+        _ => ty
+      }
+    None => ty
+  }
+}
+
+///|
+fn WgslIrLowerer::concretize_abstract_storage_scalar(
+  self : WgslIrLowerer,
+  scalar : Scalar,
+) -> Scalar? {
+  ignore(self)
+  match scalar.kind {
+    AbstractInt => Some(Scalar::new(Sint, 4))
+    AbstractFloat => Some(Scalar::new(Float, 4))
+    _ => None
+  }
 }
 
 ///|

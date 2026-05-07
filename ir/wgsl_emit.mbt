@@ -311,6 +311,8 @@ fn WgslIrEmitter::emit_entry_point(
       [x] => out.write_string(" @workgroup_size(\{x}, 1, 1)")
       [] => out.write_string(" @workgroup_size(1, 1, 1)")
     }
+  } else {
+    out.write_string(" ")
   }
   out.write_string("\n")
   self.emit_function(out, entry_point.function, Some(entry_point.name))
@@ -441,8 +443,37 @@ fn WgslIrEmitter::emit_block_statements(
   block : Block,
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
+  let mut emitted_leading_var_declaration = false
+  let mut separated_leading_var_declarations = false
   for statement in block.statements {
+    if emitted_leading_var_declaration &&
+      !separated_leading_var_declarations &&
+      !self.statement_is_local_var_declaration(function, statement) {
+      out.write_string("\n")
+      separated_leading_var_declarations = true
+    }
     self.emit_statement(out, function, statement, indent)
+    if !separated_leading_var_declarations &&
+      self.statement_is_local_var_declaration(function, statement) {
+      emitted_leading_var_declaration = true
+    }
+  }
+}
+
+///|
+fn WgslIrEmitter::statement_is_local_var_declaration(
+  self : WgslIrEmitter,
+  function : Function,
+  statement : Statement,
+) -> Bool {
+  ignore(self)
+  match statement {
+    Declare(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_var) => local_var.kind == LocalVariableKind::Var
+        None => false
+      }
+    _ => false
   }
 }
 

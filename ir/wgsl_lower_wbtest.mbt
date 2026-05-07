@@ -176,6 +176,25 @@ test "WGSL AST lowerer materializes direct global binding returns" {
 }
 
 ///|
+test "WGSL AST lowerer concretizes abstract local var storage types" {
+  let source =
+    #|fn f() -> f32 {
+    #|  var x = 0.0;
+    #|  x = 1.0;
+    #|  return x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var x: f32 = 0f;"), content="true")
+  debug_inspect(emitted.contains("x = 1f;"), content="true")
+  debug_inspect(emitted.contains(": f32 = x;"), content="true")
+}
+
+///|
 test "WGSL AST lowerer supports pointer dereference member lvalues" {
   let source =
     #|struct PbrInput {
