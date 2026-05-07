@@ -1028,6 +1028,73 @@ test "WGSL expression parser binds postfix calls inside unary operands" {
 }
 
 ///|
+test "WGSL statement parser keeps nested if condition separate from block" {
+  let source =
+    #|fn clip(L: array<vec3<f32>, 4>) {
+    #|  for (var i: u32 = 0u; i < 4u; i = i + 1u) {
+    #|    let a: vec3<f32> = L[i];
+    #|    let b: vec3<f32> = L[(i + 1u) % 4u];
+    #|    if ((a.z >= 0f) != (b.z >= 0f)) {
+    #|      let t: f32 = a.z / (a.z - b.z);
+    #|    }
+    #|  }
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let for_stmt = function.body().statements()[0]
+  let if_stmt = for_stmt.blocks()[0].statements()[2]
+  let expr = if_stmt.expression_refs()[0]
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, expr),
+    content="\"(a.z >= 0f) != (b.z >= 0f)\"",
+  )
+  match expr.root() {
+    Some(root) =>
+      match root.kind() {
+        WgslExprNodeKind::Binary(op, _, _) =>
+          debug_inspect(op.text(), content="\"!=\"")
+        _ => abort("expected binary condition root")
+      }
+    None => abort("expected condition root")
+  }
+}
+
+///|
+test "WGSL statement parser attaches continuing only to loop statements" {
+  let source =
+    #|fn demo() {
+    #|  var i: i32 = 0i;
+    #|  loop {
+    #|    if ((i >= 0i) != (i < 4i)) {
+    #|      i = i + 1i;
+    #|    }
+    #|    continuing {
+    #|      i = i + 1i;
+    #|    }
+    #|  }
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let loop_stmt = function.body().statements()[1]
+  let loop_body = loop_stmt.blocks()[0]
+  let if_stmt = loop_body.statements()[0]
+  debug_inspect(loop_stmt.blocks().length(), content="1")
+  debug_inspect(if_stmt.blocks().length(), content="1")
+  debug_inspect(loop_body.statements()[1].kind(), content="Continuing")
+  let expr = if_stmt.expression_refs()[0]
+  debug_inspect(
+    wgsl_expr_ref_source_text(source, expr),
+    content="\"(i >= 0i) != (i < 4i)\"",
+  )
+}
+
+///|
 test "WGSL global declaration identifier collection excludes locals" {
   let source =
     #|alias Alias = vec4<f32>;

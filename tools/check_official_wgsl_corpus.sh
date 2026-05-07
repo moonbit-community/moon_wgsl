@@ -4,9 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-cts_ref="${WGSL_CTS_REF:-3b327ebc44f11212fd3872972a6dd394634fb9e3}"
+cts_ref="${WGSL_CTS_REF:-main}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
-allowlist="$repo_root/testdata/gpuweb_cts_ir_allowlist.txt"
 blocked_by_oracle="$repo_root/testdata/gpuweb_cts_ir_blocked_by_oracle.txt"
 min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-114}"
 min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-111}"
@@ -48,37 +47,28 @@ while IFS= read -r case_file; do
 done < <(find "$cases_dir" -name '*.wgsl' -type f | sort)
 
 echo "== GPUWeb CTS WGSL IR corpus =="
-if [[ ! -f "$allowlist" ]]; then
-  echo "missing IR allowlist: $allowlist" >&2
-  exit 1
-fi
 if [[ ! -f "$blocked_by_oracle" ]]; then
   echo "missing IR blocked-by-oracle manifest: $blocked_by_oracle" >&2
   exit 1
 fi
 extracted_ids="$tmpdir/extracted.ids"
-covered_ids="$tmpdir/covered.ids"
+oracle_blocked_ids="$tmpdir/oracle-blocked.ids"
 find "$cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$extracted_ids"
-{
-  grep -v -E '^($|#)' "$allowlist"
-  grep -v -E '^($|#)' "$blocked_by_oracle"
-} | sort > "$covered_ids"
-if ! diff -u "$extracted_ids" "$covered_ids"; then
-  echo "official WGSL CTS IR coverage manifests do not exactly cover extracted static valid cases" >&2
-  exit 1
-fi
+grep -v -E '^($|#)' "$blocked_by_oracle" | sort > "$oracle_blocked_ids"
 ir_count=0
+oracle_blocked_count=0
 while IFS= read -r id; do
-  [[ "$id" == "" || "$id" == \#* ]] && continue
   case_file="$cases_dir/$id.wgsl"
   if [[ ! -f "$case_file" ]]; then
-    echo "official WGSL CTS IR allowlist id not found in extracted manifest: $id" >&2
-    echo "current extracted manifest:" >&2
-    sed -n '1,120p' "$manifest" >&2
-    exit 1
+    continue
   fi
   emitted="$tmpdir/$id.ir.wgsl"
   moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >/dev/null
+  moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/reparse.out" >/dev/null
+  if grep -Fxq "$id" "$oracle_blocked_ids"; then
+    oracle_blocked_count=$((oracle_blocked_count + 1))
+    continue
+  fi
   validate_args=()
   if grep -q 'enable f16' "$emitted" || grep -q 'f16' "$emitted" || grep -q 'vec[234]h' "$emitted" || grep -q 'mat[234]x[234]h' "$emitted"; then
     validate_args+=(--capability f16)
@@ -98,31 +88,24 @@ while IFS= read -r id; do
     cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${validate_args[@]}" "$emitted" >/dev/null
   fi
   ir_count=$((ir_count + 1))
-done < "$allowlist"
+done < "$extracted_ids"
 
-oracle_blocked_count=0
 while IFS= read -r id; do
-  [[ "$id" == "" || "$id" == \#* ]] && continue
-  case_file="$cases_dir/$id.wgsl"
-  if [[ ! -f "$case_file" ]]; then
+  if [[ ! -f "$cases_dir/$id.wgsl" ]]; then
     echo "official WGSL CTS oracle-blocked id not found in extracted manifest: $id" >&2
     echo "current extracted manifest:" >&2
-    sed -n '1,120p' "$manifest" >&2
+    sed -n '1,160p' "$manifest" >&2
     exit 1
   fi
-  emitted="$tmpdir/$id.ir.wgsl"
-  moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >/dev/null
-  moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/blocked-parse.out" >/dev/null
-  oracle_blocked_count=$((oracle_blocked_count + 1))
-done < "$blocked_by_oracle"
+done < "$oracle_blocked_ids"
 
 if ((ir_count == 0)); then
-  echo "official WGSL CTS IR allowlist is empty" >&2
+  echo "official WGSL CTS validated IR corpus is empty" >&2
   exit 1
 fi
 if ((ir_count < min_ir_cases)); then
-  echo "official WGSL CTS IR allowlist contains only $ir_count case(s); expected at least $min_ir_cases" >&2
+  echo "official WGSL CTS validated IR corpus contains only $ir_count case(s); expected at least $min_ir_cases" >&2
   exit 1
 fi
 
-echo "official WGSL CTS corpus gate passed: parsed $case_count case(s), IR-roundtripped and naga-validated $ir_count allowlisted case(s), IR-roundtripped $oracle_blocked_count oracle-blocked case(s)"
+echo "official WGSL CTS corpus gate passed: parsed and IR-roundtripped $case_count case(s), naga-validated $ir_count case(s), IR-roundtripped $oracle_blocked_count oracle-blocked case(s)"

@@ -37,6 +37,7 @@ priv struct WgslIrFunctionScope {
   locals : @hashmap.HashMap[String, Handle]
   local_constants : @hashmap.HashMap[String, Handle]
   local_pointer_expressions : @hashmap.HashMap[String, Handle]
+  argument_pointer_expressions : @hashmap.HashMap[String, Handle]
   global_pointer_expressions : @hashmap.HashMap[String, Handle]
   mut temporary_index : Int
 }
@@ -54,6 +55,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     locals: @hashmap.HashMap([]),
     local_constants: @hashmap.HashMap([]),
     local_pointer_expressions: @hashmap.HashMap([]),
+    argument_pointer_expressions: @hashmap.HashMap([]),
     global_pointer_expressions: @hashmap.HashMap([]),
     temporary_index: 0,
   }
@@ -92,6 +94,25 @@ fn WgslIrFunctionScope::global_pointer_expression(
         Expression::GlobalVariable(global_handle),
       )
       self.global_pointer_expressions.set(name, handle)
+      handle
+    }
+  }
+}
+
+///|
+fn WgslIrFunctionScope::argument_pointer_expression(
+  self : WgslIrFunctionScope,
+  name : String,
+  argument_index : Int,
+  function : Function,
+) -> Handle {
+  match self.argument_pointer_expressions.get(name) {
+    Some(handle) => handle
+    None => {
+      let handle = function.expressions.append(
+        Expression::FunctionArgument(argument_index),
+      )
+      self.argument_pointer_expressions.set(name, handle)
       handle
     }
   }
@@ -860,7 +881,24 @@ fn WgslIrLowerer::lower_function(
       }
     None => None
   }
-  let body = self.lower_block(function.body(), ir_function, scope)
+  let body = self.lower_block(function.body(), ir_function, scope) catch {
+    error =>
+      match error {
+        UnknownIdentifier(name) =>
+          raise WgslIrLowerError::UnknownIdentifier(
+            "\{name} in function \{function.name().name()} with args \{wgsl_ir_function_argument_names(function)}",
+          )
+        UnsupportedExpression(message) =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "\{message} in function \{function.name().name()}",
+          )
+        UnsupportedStatement(message) =>
+          raise WgslIrLowerError::UnsupportedStatement(
+            "\{message} in function \{function.name().name()}",
+          )
+        _ => raise error
+      }
+  }
   if result == None && !wgsl_ir_block_ends_with_return(body) {
     body.push(Statement::Return(None))
   }
@@ -874,6 +912,15 @@ fn WgslIrLowerer::lower_function(
     body,
     diagnostic_filter_leaf: ir_function.diagnostic_filter_leaf,
   }
+}
+
+///|
+fn wgsl_ir_function_argument_names(function : @ast.WgslFunction) -> String {
+  let names : Array[String] = []
+  for argument in function.arguments() {
+    names.push(argument.name().name())
+  }
+  names.join(",")
 }
 
 ///|
@@ -971,15 +1018,9 @@ fn WgslIrLowerer::lower_statement(
       block.push(Statement::Loop(body, continuing, None))
     }
     Loop => {
-      let body = match statement.blocks() {
-        [body_block, ..] => self.lower_block(body_block, function, scope)
-        [] => Block::Block()
-      }
-      let continuing = match statement.blocks() {
-        [_, continuing_block, ..] =>
-          self.lower_block(continuing_block, function, scope)
-        _ => Block::Block()
-      }
+      let (body, continuing) = self.lower_loop_blocks(
+        statement, function, scope,
+      )
       block.push(Statement::Loop(body, continuing, None))
     }
     Break(_) => block.push(Statement::Break)
@@ -1090,6 +1131,44 @@ fn WgslIrLowerer::lower_statement(
         "structured statement not yet representable by this WGSL IR lowerer",
       )
   }
+}
+
+///|
+fn WgslIrLowerer::lower_loop_blocks(
+  self : WgslIrLowerer,
+  statement : @ast.WgslStatement,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> (Block, Block) raise WgslIrLowerError {
+  let body = Block::Block()
+  let mut continuing = Block::Block()
+  match statement.blocks() {
+    [body_block, ..] => {
+      let mut saw_continuing = false
+      for child in body_block.statements() {
+        match child.kind() {
+          Continuing => {
+            saw_continuing = true
+            continuing = match child.blocks() {
+              [continuing_block, ..] =>
+                self.lower_block(continuing_block, function, scope)
+              [] => Block::Block()
+            }
+          }
+          _ =>
+            if !saw_continuing {
+              self.lower_statement(child, function, scope, body)
+            } else {
+              raise WgslIrLowerError::UnsupportedStatement(
+                "statement after continuing in loop",
+              )
+            }
+        }
+      }
+    }
+    [] => ()
+  }
+  (body, continuing)
 }
 
 ///|
@@ -4734,7 +4813,22 @@ fn WgslIrLowerer::lower_function_expression_ref_with_expected(
   }
   self.lower_function_expression_node_with_expected(
     root, function, scope, expected_ty,
-  )
+  ) catch {
+    UnsupportedExpression(message) =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "\{message} at \{expr_ref.start()}..\{expr_ref.end()}: \{wgsl_ir_expr_ref_token_text(expr_ref)}",
+      )
+    error => raise error
+  }
+}
+
+///|
+fn wgsl_ir_expr_ref_token_text(expr_ref : @ast.WgslExprRef) -> String {
+  let parts : Array[String] = []
+  for token in expr_ref.tokens() {
+    parts.push(token.text())
+  }
+  parts.join(" ")
 }
 
 ///|
@@ -4748,6 +4842,26 @@ fn WgslIrLowerer::lower_function_lvalue_ref(
     raise WgslIrLowerError::UnsupportedExpression("empty lvalue")
   }
   self.lower_function_lvalue_node(root, function, scope)
+}
+
+///|
+fn WgslIrLowerer::function_argument_is_pointer(
+  self : WgslIrLowerer,
+  function : Function,
+  index : Int,
+) -> Bool {
+  match function.arguments.get(index) {
+    Some(argument) =>
+      match self.shader_module.types.get(argument.ty) {
+        Some(type_) =>
+          match type_.inner {
+            Pointer(_, _) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
+  }
 }
 
 ///|
@@ -4769,10 +4883,30 @@ fn WgslIrLowerer::lower_function_lvalue_node(
             Some(handle) =>
               scope.local_pointer_expression(name.name(), handle, function)
             None =>
-              match self.global_names.get(name.name()) {
-                Some(handle) =>
-                  scope.global_pointer_expression(name.name(), handle, function)
-                None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+              match scope.arguments.get(name.name()) {
+                Some(index) =>
+                  if self.function_argument_is_pointer(function, index) {
+                    scope.argument_pointer_expression(
+                      name.name(),
+                      index,
+                      function,
+                    )
+                  } else {
+                    raise WgslIrLowerError::UnsupportedExpression(
+                      "function argument is not assignable",
+                    )
+                  }
+                None =>
+                  match self.global_names.get(name.name()) {
+                    Some(handle) =>
+                      scope.global_pointer_expression(
+                        name.name(),
+                        handle,
+                        function,
+                      )
+                    None =>
+                      raise WgslIrLowerError::UnknownIdentifier(name.name())
+                  }
               }
           }
       }
@@ -4944,7 +5078,9 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         callee, arguments, function, scope, expected_ty,
       )
     _ =>
-      raise WgslIrLowerError::UnsupportedExpression("unlowered expression node")
+      raise WgslIrLowerError::UnsupportedExpression(
+        "unlowered expression node: \{wgsl_ir_expr_node_shape(node)}",
+      )
   }
 }
 
@@ -5627,7 +5763,18 @@ fn wgsl_ir_expr_node_shape(node : @ast.WgslExprNode) -> String {
       "member(\{wgsl_ir_expr_node_shape(base)}.\{segment.name()})"
     Index(base, _) => "index(\{wgsl_ir_expr_node_shape(base)})"
     Group(inner) => "group(\{wgsl_ir_expr_node_shape(inner)})"
-    Sequence(items) => "sequence(\{items.length()})"
+    Sequence(items) => {
+      let parts : Array[String] = []
+      let limit = if items.length() < 4 { items.length() } else { 4 }
+      for i in 0..<limit {
+        parts.push(wgsl_ir_expr_node_shape(items[i]))
+      }
+      if items.length() > limit {
+        parts.push("...")
+      }
+      let text = parts.join(", ")
+      "sequence(\{items.length()}: \{text})"
+    }
   }
 }
 

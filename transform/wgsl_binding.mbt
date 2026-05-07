@@ -111,15 +111,6 @@ pub fn WgslReferenceRewritePlan::add_symbol_binding(
 }
 
 ///|
-pub fn WgslReferenceRewritePlan::add(
-  self : WgslReferenceRewritePlan,
-  from_name : String,
-  to_name : String,
-) -> Unit {
-  self.add_symbol_binding("", "", from_name, to_name)
-}
-
-///|
 pub fn WgslReferenceRewritePlan::add_virtual_override_binding(
   self : WgslReferenceRewritePlan,
   raw_target_name : String,

@@ -47,7 +47,7 @@ test "compose semantic IR resolves undeclared alias target through emitted ident
       "view_bindings",
       "view",
       "shadows__view_bindings__view",
-      CachedQualifiedAliasBinding,
+      QualifiedAliasBinding,
     ),
   )
   let plan = WgslComposeSemanticIr::from_facts_and_bindings(
@@ -93,7 +93,7 @@ test "compose semantic IR preserves declared alias-scope target" {
       "view_bindings",
       "view",
       "shadows__view_bindings__view",
-      CachedQualifiedAliasBinding,
+      QualifiedAliasBinding,
     ),
   )
   let plan = WgslComposeSemanticIr::from_facts_and_bindings(

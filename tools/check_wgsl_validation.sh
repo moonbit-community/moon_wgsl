@@ -20,6 +20,14 @@ validate_wgsl() {
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$@"
 }
 
+roundtrip_and_validate_wgsl() {
+  local input="$1"
+  shift
+  local output="$tmpdir/$(basename "$input" .wgsl).ir.wgsl"
+  moon run tools/ir_roundtrip -- --input "$input" --output "$output" >/dev/null
+  validate_wgsl "$@" "$output"
+}
+
 echo "== WGSL validation: writer token boundaries =="
 emit_case writer-boundary "$tmpdir/writer_boundary.wgsl"
 validate_wgsl "$tmpdir/writer_boundary.wgsl"
@@ -51,6 +59,17 @@ validate_wgsl "$tmpdir/storage_array_length_ir.wgsl"
 echo "== WGSL validation: Bevy PBR functions compose =="
 emit_case bevy-pbr-functions "$tmpdir/bevy_pbr_functions.wgsl"
 validate_wgsl "$tmpdir/bevy_pbr_functions.wgsl"
+roundtrip_and_validate_wgsl "$tmpdir/bevy_pbr_functions.wgsl"
+
+echo "== WGSL validation: Bevy PBR forward compose =="
+emit_case bevy-pbr-forward "$tmpdir/bevy_pbr_forward.wgsl"
+validate_wgsl "$tmpdir/bevy_pbr_forward.wgsl"
+roundtrip_and_validate_wgsl "$tmpdir/bevy_pbr_forward.wgsl"
+
+echo "== WGSL validation: MGStudio mesh3d forward compose =="
+emit_case mgstudio-mesh3d-forward "$tmpdir/mgstudio_mesh3d_forward.wgsl"
+validate_wgsl "$tmpdir/mgstudio_mesh3d_forward.wgsl"
+roundtrip_and_validate_wgsl "$tmpdir/mgstudio_mesh3d_forward.wgsl"
 
 echo "== WGSL validation: upstream raycast compose =="
 emit_case upstream-raycast "$tmpdir/upstream_raycast.wgsl"

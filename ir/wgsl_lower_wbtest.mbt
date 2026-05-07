@@ -203,7 +203,7 @@ test "WGSL AST lowerer rejects unresolved expression identifiers" {
   }
   debug_inspect(
     result,
-    content="\"unknown WGSL identifier in IR lowering: missing_name\"",
+    content="\"unknown WGSL identifier in IR lowering: missing_name in function main with args \"",
   )
 }
 
@@ -662,7 +662,7 @@ test "WGSL AST lowerer rejects runtime local const initializers" {
   }
   debug_inspect(
     message,
-    content="\"unsupported WGSL expression: local const initializer is not a const expression\"",
+    content="\"unsupported WGSL expression: local const initializer is not a const expression in function main\"",
   )
 }
 

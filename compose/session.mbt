@@ -144,7 +144,6 @@ priv struct WgslComposeSession {
 ///|
 priv enum WgslComposeBindingScope {
   QualifiedAliasBinding
-  CachedQualifiedAliasBinding
   UnqualifiedItemBinding
 } derive(Eq)
 
@@ -203,7 +202,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
           binding.from_name,
           binding.to_name,
         )
-      None => plan.add(binding.from_name, binding.to_name)
+      None => ()
     }
   }
   for binding in session.virtual_override_final_names {
@@ -225,7 +224,6 @@ fn WgslComposeBindingSet::WgslComposeBindingSet() -> WgslComposeBindingSet {
 fn wgsl_compose_binding_scope_key(scope : WgslComposeBindingScope) -> String {
   match scope {
     QualifiedAliasBinding => "qualified"
-    CachedQualifiedAliasBinding => "cached"
     UnqualifiedItemBinding => "unqualified"
   }
 }
@@ -319,10 +317,22 @@ fn WgslComposeBindingSet::push(
   binding : WgslComposeBinding,
 ) -> Unit {
   if binding.alias_name != "" && binding.scope != UnqualifiedItemBinding {
+    let binding_identity_key = match binding.identity {
+      Some(identity) => identity.key()
+      None => ""
+    }
     for existing in self.bindings {
       if existing.scope == binding.scope &&
         existing.alias_name == binding.alias_name &&
         existing.from_name == binding.from_name {
+        let existing_identity_key = match existing.identity {
+          Some(identity) => identity.key()
+          None => ""
+        }
+        if existing_identity_key != "" &&
+          existing_identity_key == binding_identity_key {
+          continue
+        }
         return
       }
     }

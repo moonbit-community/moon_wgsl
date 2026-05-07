@@ -109,7 +109,7 @@ fn collect_wgsl_cached_import_bindings(
           source_alias_name,
           entry.identity().symbol().original_name(),
           entry.final_name(),
-          CachedQualifiedAliasBinding,
+          QualifiedAliasBinding,
         ),
       )
       count = count + 1

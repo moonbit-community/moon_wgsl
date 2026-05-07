@@ -683,6 +683,19 @@ fn wgsl_statement_collect_condition_expr(
   if tokens[expr_start].is_punctuation(40) {
     let close_index = wgsl_statement_delimited_end(tokens, expr_start, 40, 41)
     if close_index > expr_start {
+      if close_index + 1 < tokens.length() &&
+        tokens[close_index + 1].is_punctuation(123) {
+        wgsl_statement_push_expr_ref(
+          owner,
+          tokens,
+          expr_start + 1,
+          close_index,
+          role,
+          expression_refs,
+          expressions,
+        )
+        return close_index + 1
+      }
       let expr_end = wgsl_statement_control_expression_end(tokens, expr_start)
       if close_index + 1 < expr_end {
         wgsl_statement_push_expr_ref(
@@ -1016,10 +1029,19 @@ fn collect_wgsl_statement_expression_refs(
 ///|
 fn wgsl_statement_view_continues_after_block(
   view : ArrayView[WgslToken],
+  first_identifier : String?,
 ) -> Bool {
-  match view {
-    [token, ..] if token.is_identifier("else") => true
-    [token, ..] if token.is_identifier("continuing") => true
+  match first_identifier {
+    Some("if") =>
+      match view {
+        [token, ..] if token.is_identifier("else") => true
+        _ => false
+      }
+    Some("loop") =>
+      match view {
+        [token, ..] if token.is_identifier("continuing") => true
+        _ => false
+      }
     _ => false
   }
 }
@@ -1224,7 +1246,10 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
         record_token(token)
         self.update_view(rest)
         if depth.at_top() && token.is_punctuation(125) {
-          if wgsl_statement_view_continues_after_block(self.view()) {
+          if wgsl_statement_view_continues_after_block(
+              self.view(),
+              first_identifier,
+            ) {
             continue
           }
           break
