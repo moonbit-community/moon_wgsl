@@ -2068,8 +2068,8 @@ fn wgsl_ir_local_variable_initializes_side_effecting_expression(
   match local_var.init {
     Some(init) =>
       match function.expressions.items.get(init.index()) {
-        Some(AtomicCall(function_, _)) =>
-          match function_ {
+        Some(AtomicCall(atomic_function, _)) =>
+          match atomic_function {
             Load
             | Add
             | Subtract
@@ -2445,8 +2445,8 @@ fn WgslIrLowerer::function_expression_is_side_effecting(
   match value {
     Some(handle) =>
       match function.expressions.items.get(handle.index()) {
-        Some(AtomicCall(function_, _)) =>
-          match function_ {
+        Some(AtomicCall(atomic_function, _)) =>
+          match atomic_function {
             Load
             | Add
             | Subtract

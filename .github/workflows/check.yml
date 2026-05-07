@@ -7,6 +7,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   check:
     strategy:
@@ -18,38 +21,86 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - name: install
+      - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
 
-      - name: moon version
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            tools/naga_oil_oracle/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('tools/naga_oil_oracle/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Tool versions
         run: |
           moon version --all
+          node --version
+          cargo --version
 
-      - name: moon check
+      - name: Moon package update
         run: |
           moon update
-          moon check --deny-warn
 
-      - name: moon info
+      - name: Moon check
+        run: |
+          moon check --target all --deny-warn
+
+      - name: Moon info is committed
         run: |
           moon info --target all
           git diff --exit-code
 
-      - name: format diff
+      - name: Moon format is committed
         run: |
           moon fmt
           git diff --exit-code
 
-      - name: Set ulimit
+      - name: Moon test
         run: |
           ulimit -s 8176
-
-      - name: moon test
-        run: |
           moon test --target all
 
-      - name: preprocess parity oracle
+      - name: Architecture guardrails
         run: |
+          bash tools/check_architecture_guardrails.sh
+
+      - name: IR roundtrip corpus
+        run: |
+          ulimit -s 8176
+          bash tools/check_ir_roundtrip_corpus.sh
+
+      - name: WGSL validation corpus
+        run: |
+          ulimit -s 8176
+          bash tools/check_wgsl_validation.sh
+
+      - name: Moon WGSL byte parity
+        run: |
+          ulimit -s 8176
+          bash tools/check_moon_wgsl_byte_parity.sh
+
+      - name: Naga Oil preprocess parity
+        run: |
+          ulimit -s 8176
           bash tools/check_preprocess_parity.sh
+
+      - name: Official GPUWeb WGSL CTS corpus
+        env:
+          WGSL_CTS_REF: 3b327ebc44f11212fd3872972a6dd394634fb9e3
+        run: |
+          ulimit -s 8176
+          bash tools/check_official_wgsl_corpus.sh
