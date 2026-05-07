@@ -11,14 +11,14 @@ priv struct IrRoundtripArgs {
 }
 
 ///|
-fn IrRoundtripArgs::new() -> IrRoundtripArgs {
+fn IrRoundtripArgs::IrRoundtripArgs() -> IrRoundtripArgs {
   { input: None, output: None, mode: "ir" }
 }
 
 ///|
 fn parse_ir_roundtrip_args() -> IrRoundtripArgs {
   let args = @env.args()
-  let parsed = IrRoundtripArgs::new()
+  let parsed = IrRoundtripArgs()
   let mut index = 1
   while index < args.length() {
     match args[index] {

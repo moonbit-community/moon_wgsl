@@ -23,7 +23,7 @@ pub struct WgslDirectiveTail {
 } derive(Debug)
 
 ///|
-pub fn WgslDirectiveTail::new(
+pub fn WgslDirectiveTail::WgslDirectiveTail(
   text : String,
   start : Int,
   end : Int,
@@ -67,7 +67,7 @@ pub struct WgslDirective {
 } derive(Debug)
 
 ///|
-pub fn WgslDirective::new(
+pub fn WgslDirective::WgslDirective(
   kind : WgslDirectiveKind,
   name : WgslIdent,
   tail : WgslDirectiveTail,
@@ -145,7 +145,7 @@ pub struct WgslIdent {
 } derive(Debug)
 
 ///|
-pub fn WgslIdent::new(name : String, start : Int, end : Int) -> WgslIdent {
+pub fn WgslIdent::WgslIdent(name : String, start : Int, end : Int) -> WgslIdent {
   WgslIdent::{ name, start, end }
 }
 
@@ -281,7 +281,7 @@ pub struct WgslExprToken {
 } derive(Debug)
 
 ///|
-pub fn WgslExprToken::new(
+pub fn WgslExprToken::WgslExprToken(
   kind : WgslExprTokenKind,
   text : String,
   start : Int,
@@ -334,7 +334,7 @@ pub struct WgslExprNode {
 } derive(Debug)
 
 ///|
-pub fn WgslExprNode::new(
+pub fn WgslExprNode::WgslExprNode(
   kind : WgslExprNodeKind,
   start : Int,
   end : Int,
@@ -367,7 +367,7 @@ pub struct WgslExprRef {
 } derive(Debug)
 
 ///|
-pub fn WgslExprRef::new(
+pub fn WgslExprRef::WgslExprRef(
   tokens : Array[WgslExprToken],
   identifiers : Array[WgslIdent],
   root : WgslExprNode?,
@@ -411,7 +411,7 @@ pub struct WgslAttribute {
 } derive(Debug)
 
 ///|
-pub fn WgslAttribute::new(
+pub fn WgslAttribute::WgslAttribute(
   name : WgslIdent,
   start : Int,
   end : Int,
@@ -462,7 +462,7 @@ pub(all) enum WgslTypeArgument {
 } derive(Debug)
 
 ///|
-pub fn WgslTypeAtom::new(
+pub fn WgslTypeAtom::WgslTypeAtom(
   kind : WgslTypeAtomKind,
   text : String,
   start : Int,
@@ -494,7 +494,7 @@ pub fn WgslTypeAtom::end(self : WgslTypeAtom) -> Int {
 ///|
 pub fn WgslTypeAtom::identifier(self : WgslTypeAtom) -> WgslIdent? {
   match self.kind {
-    Identifier => Some(WgslIdent::new(self.text, self.start, self.end))
+    Identifier => Some(WgslIdent(self.text, self.start, self.end))
     Numeric | Unknown => None
   }
 }
@@ -509,7 +509,7 @@ pub struct WgslTypeRef {
 } derive(Debug)
 
 ///|
-pub fn WgslTypeRef::new(
+pub fn WgslTypeRef::WgslTypeRef(
   atom : WgslTypeAtom,
   arguments : Array[WgslTypeRef],
   start : Int,
@@ -603,7 +603,7 @@ pub struct WgslFunctionArgument {
 } derive(Debug)
 
 ///|
-pub fn WgslFunctionArgument::new(
+pub fn WgslFunctionArgument::WgslFunctionArgument(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
   start : Int,
@@ -651,7 +651,7 @@ pub struct WgslFunctionResult {
 } derive(Debug)
 
 ///|
-pub fn WgslFunctionResult::new(
+pub fn WgslFunctionResult::WgslFunctionResult(
   attributes : Array[WgslAttribute],
   start : Int,
   end : Int,
@@ -724,7 +724,7 @@ pub struct WgslLocalDeclaration {
 } derive(Debug)
 
 ///|
-pub fn WgslLocalDeclaration::new(
+pub fn WgslLocalDeclaration::WgslLocalDeclaration(
   kind : WgslLocalDeclarationKind,
   name : WgslIdent,
   template_list : Array[WgslTypeRef],
@@ -793,7 +793,7 @@ pub struct WgslStatementExpression {
 } derive(Debug)
 
 ///|
-pub fn WgslStatementExpression::new(
+pub fn WgslStatementExpression::WgslStatementExpression(
   role : WgslStatementExpressionRole,
   expression : WgslExprRef,
 ) -> WgslStatementExpression {
@@ -851,7 +851,7 @@ pub struct WgslStatement {
 } derive(Debug)
 
 ///|
-pub fn WgslStatement::new(
+pub fn WgslStatement::WgslStatement(
   kind : WgslStatementKind,
   attributes : Array[WgslAttribute],
   payload : WgslStatementPayload,
@@ -929,7 +929,7 @@ pub struct WgslBlock {
 } derive(Debug)
 
 ///|
-pub fn WgslBlock::new(
+pub fn WgslBlock::WgslBlock(
   start : Int,
   end : Int,
   statements : Array[WgslStatement],
@@ -974,7 +974,7 @@ pub struct WgslFunction {
 } derive(Debug)
 
 ///|
-pub fn WgslFunction::new(
+pub fn WgslFunction::WgslFunction(
   attributes : Array[WgslAttribute],
   qualifier : WgslFunctionQualifier?,
   qualifier_start : Int?,
@@ -1071,7 +1071,7 @@ pub struct WgslStructMember {
 } derive(Debug)
 
 ///|
-pub fn WgslStructMember::new(
+pub fn WgslStructMember::WgslStructMember(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
   start : Int,
@@ -1116,7 +1116,7 @@ pub struct WgslStruct {
 } derive(Debug)
 
 ///|
-pub fn WgslStruct::new(
+pub fn WgslStruct::WgslStruct(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
   members : Array[WgslStructMember],
@@ -1149,7 +1149,7 @@ pub struct WgslGlobalVariable {
 } derive(Debug)
 
 ///|
-pub fn WgslGlobalVariable::new(
+pub fn WgslGlobalVariable::WgslGlobalVariable(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
   template_list : Array[WgslTypeRef],
@@ -1204,7 +1204,7 @@ pub struct WgslConst {
 } derive(Debug)
 
 ///|
-pub fn WgslConst::new(
+pub fn WgslConst::WgslConst(
   name : WgslIdent,
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
@@ -1236,7 +1236,7 @@ pub struct WgslOverride {
 } derive(Debug)
 
 ///|
-pub fn WgslOverride::new(
+pub fn WgslOverride::WgslOverride(
   attributes : Array[WgslAttribute],
   name : WgslIdent,
   ty_ref : WgslTypeRef?,
@@ -1272,7 +1272,7 @@ pub struct WgslTypeAlias {
 } derive(Debug)
 
 ///|
-pub fn WgslTypeAlias::new(
+pub fn WgslTypeAlias::WgslTypeAlias(
   name : WgslIdent,
   ty_ref : WgslTypeRef?,
 ) -> WgslTypeAlias {
@@ -1312,7 +1312,7 @@ pub struct WgslGlobalDecl {
 } derive(Debug)
 
 ///|
-pub fn WgslGlobalDecl::new(
+pub fn WgslGlobalDecl::WgslGlobalDecl(
   kind : WgslGlobalDeclKind,
   data : WgslGlobalDeclData,
   start : Int,
@@ -1352,7 +1352,7 @@ pub struct WgslTranslationUnit {
 } derive(Debug)
 
 ///|
-pub fn WgslTranslationUnit::new(
+pub fn WgslTranslationUnit::WgslTranslationUnit(
   declarations : Array[WgslGlobalDecl],
 ) -> WgslTranslationUnit {
   WgslTranslationUnit::{ declarations, }

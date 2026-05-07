@@ -6,7 +6,7 @@ pub struct WgslTemplateConstReference {
 } derive(Debug)
 
 ///|
-fn WgslTemplateConstReference::new(
+fn WgslTemplateConstReference::WgslTemplateConstReference(
   name : String,
   start : Int,
   end : Int,
@@ -115,7 +115,7 @@ pub fn parse_wgsl_template_const_references(
         let name = source[body_start:tokens[j].pos()].to_owned()
         if wgsl_regex_word_text(name) {
           references.push(
-            WgslTemplateConstReference::new(name, start, tokens[j].end()),
+            WgslTemplateConstReference(name, start, tokens[j].end()),
           )
         }
         i = j + 1
@@ -130,7 +130,7 @@ pub fn parse_wgsl_template_const_references(
         match longest_wgsl_template_const_prefix(text, value_defines) {
           Some(name) => {
             references.push(
-              WgslTemplateConstReference::new(name, start, pos + name.length()),
+              WgslTemplateConstReference(name, start, pos + name.length()),
             )
             i = i + 2
           }

@@ -28,6 +28,6 @@ pub fn ComposableModuleDescriptor::default() -> ComposableModuleDescriptor {
     file_path: "",
     as_name: None,
     additional_imports: [],
-    shader_defs: @hashmap.HashMap::new(),
+    shader_defs: @hashmap.HashMap([]),
   }
 }

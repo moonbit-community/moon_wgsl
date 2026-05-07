@@ -2,7 +2,7 @@
 fn copy_shader_def_values(
   defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> @hashmap.HashMap[String, ShaderDefValue] {
-  let copied : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap::new()
+  let copied : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([])
   for entry in defs.iter() {
     let (name, value) = entry
     copied.set(name, value)
@@ -67,7 +67,7 @@ fn prepend_wgsl_additional_imports(
 fn copy_bool_defs(
   defs : @hashmap.HashMap[String, Bool],
 ) -> @hashmap.HashMap[String, Bool] {
-  let copied : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let copied : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for entry in defs.iter() {
     let (name, value) = entry
     copied.set(name, value)
@@ -79,7 +79,7 @@ fn copy_bool_defs(
 fn copy_int_defs(
   defs : @hashmap.HashMap[String, Int],
 ) -> @hashmap.HashMap[String, Int] {
-  let copied : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
+  let copied : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
   for entry in defs.iter() {
     let (name, value) = entry
     copied.set(name, value)
@@ -176,7 +176,7 @@ priv struct WgslLiveBindingPlan {
 }
 
 ///|
-fn WgslLiveBindingPlan::new() -> WgslLiveBindingPlan {
+fn WgslLiveBindingPlan::WgslLiveBindingPlan() -> WgslLiveBindingPlan {
   WgslLiveBindingPlan::{ bindings: [] }
 }
 
@@ -193,7 +193,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
   self : WgslLiveBindingPlan,
   session : WgslComposeSession,
 ) -> WgslReferenceRewritePlan {
-  let plan = WgslReferenceRewritePlan::new()
+  let plan = WgslReferenceRewritePlan()
   for binding in self.bindings {
     match binding.identity {
       Some(identity) =>
@@ -217,8 +217,8 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
 }
 
 ///|
-fn WgslComposeBindingSet::new() -> WgslComposeBindingSet {
-  WgslComposeBindingSet::{ bindings: [], keys: @hashset.HashSet::new() }
+fn WgslComposeBindingSet::WgslComposeBindingSet() -> WgslComposeBindingSet {
+  WgslComposeBindingSet::{ bindings: [], keys: @hashset.HashSet([]) }
 }
 
 ///|
@@ -242,7 +242,7 @@ fn wgsl_compose_binding_key(binding : WgslComposeBinding) -> String {
 }
 
 ///|
-fn WgslComposeBinding::new(
+fn WgslComposeBinding::WgslComposeBinding(
   from_name : String,
   to_name : String,
   scope : WgslComposeBindingScope,
@@ -260,11 +260,11 @@ fn WgslComposeBinding::for_alias_symbol(
   final_name : String,
   scope : WgslComposeBindingScope,
 ) -> WgslComposeBinding {
-  WgslComposeBinding::new(
+  WgslComposeBinding(
     "\{alias_name}::\{original_name}",
     final_name,
     scope,
-    Some(WgslIrSymbolIdentity::new(rel_path, original_name)),
+    Some(WgslIrSymbolIdentity(rel_path, original_name)),
     alias_name,
   )
 }
@@ -276,11 +276,11 @@ fn WgslComposeBinding::for_unqualified_symbol(
   final_name : String,
   scope : WgslComposeBindingScope,
 ) -> WgslComposeBinding {
-  WgslComposeBinding::new(
+  WgslComposeBinding(
     original_name,
     final_name,
     scope,
-    Some(WgslIrSymbolIdentity::new(rel_path, original_name)),
+    Some(WgslIrSymbolIdentity(rel_path, original_name)),
     "",
   )
 }
@@ -290,7 +290,7 @@ fn WgslComposeBinding::as_unqualified_binding(
   self : WgslComposeBinding,
   from_name : String,
 ) -> WgslComposeBinding {
-  WgslComposeBinding::new(
+  WgslComposeBinding(
     from_name,
     self.to_name,
     UnqualifiedItemBinding,
@@ -304,7 +304,7 @@ fn WgslComposeBinding::with_to_name(
   self : WgslComposeBinding,
   to_name : String,
 ) -> WgslComposeBinding {
-  WgslComposeBinding::new(
+  WgslComposeBinding(
     self.from_name,
     to_name,
     self.scope,

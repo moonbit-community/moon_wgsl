@@ -180,7 +180,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           _ => WgslExprTokenKind::Identifier
         }
         expr_tokens.push(
-          WgslExprToken::new(
+          WgslExprToken(
             kind,
             name,
             absolute_start,
@@ -190,7 +190,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
         if !wgsl_expr_identifier_has_access_prefix(tokens, i) &&
           kind is WgslExprTokenKind::Identifier {
           identifiers.push(
-            WgslIdent::new(name, absolute_start, absolute_start + name.length()),
+            WgslIdent(name, absolute_start, absolute_start + name.length()),
           )
         }
         i = i + 1
@@ -201,7 +201,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
     match token.number_text() {
       Some(token_text) => {
         expr_tokens.push(
-          WgslExprToken::new(
+          WgslExprToken(
             wgsl_expr_number_token_kind(token_text),
             token_text,
             base + token.pos(),
@@ -230,7 +230,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           }
           let token_text = text[pos:end_pos].to_owned()
           expr_tokens.push(
-            WgslExprToken::new(
+            WgslExprToken(
               WgslExprTokenKind::FloatLiteral,
               token_text,
               base + pos,
@@ -250,7 +250,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           }
           let token_text = text[pos:end_pos].to_owned()
           expr_tokens.push(
-            WgslExprToken::new(
+            WgslExprToken(
               wgsl_expr_number_token_kind(token_text),
               token_text,
               base + pos,
@@ -262,7 +262,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
         }
         let pos = token.pos()
         expr_tokens.push(
-          WgslExprToken::new(
+          WgslExprToken(
             WgslExprTokenKind::Punctuation(code),
             text[pos:tokens[i].end()].to_owned(),
             base + pos,
@@ -277,7 +277,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
     match token.operator_text() {
       Some(operator) => {
         expr_tokens.push(
-          WgslExprToken::new(
+          WgslExprToken(
             WgslExprTokenKind::Operator(WgslExprOperator::from_text(operator)),
             operator,
             base + token.pos(),
@@ -306,7 +306,7 @@ priv struct WgslExprNodeParser {
 }
 
 ///|
-fn WgslExprNodeParser::new(
+fn WgslExprNodeParser::WgslExprNodeParser(
   source_text : String,
   source_start : Int,
   tokens : Array[WgslExprToken],
@@ -336,7 +336,7 @@ fn WgslExprNodeParser::make_node(
   end_ : Int,
 ) -> WgslExprNode {
   ignore(self)
-  WgslExprNode::new(kind, start, end_)
+  WgslExprNode(kind, start, end_)
 }
 
 ///|
@@ -507,7 +507,7 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
           Some(
             self.make_node(
               WgslExprNodeKind::Identifier(
-                WgslIdent::new(token.text(), token.start(), token.end()),
+                WgslIdent(token.text(), token.start(), token.end()),
               ),
               token.start(),
               token.end(),
@@ -596,7 +596,7 @@ fn WgslExprNodeParser::parse_postfix(
             node = self.make_node(
               WgslExprNodeKind::Member(
                 node,
-                WgslIdent::new(
+                WgslIdent(
                   member_token.text(),
                   member_token.start(),
                   member_token.end(),
@@ -621,7 +621,7 @@ fn WgslExprNodeParser::parse_postfix(
             node = self.make_node(
               WgslExprNodeKind::PathAccess(
                 node,
-                WgslIdent::new(
+                WgslIdent(
                   segment_token.text(),
                   segment_token.start(),
                   segment_token.end(),
@@ -753,8 +753,7 @@ fn parse_wgsl_expr_node(
     return None
   }
   Some(
-    WgslExprNodeParser::new(source_text, base, tokens).parse_sequence_until_any([],
-    ),
+    WgslExprNodeParser(source_text, base, tokens).parse_sequence_until_any([]),
   )
 }
 
@@ -778,7 +777,7 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   )
   let root = parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens)
   Some(
-    WgslExprRef::new(
+    WgslExprRef(
       expr_tokens,
       identifiers,
       root,
@@ -827,7 +826,7 @@ priv struct WgslTokenDepth {
 }
 
 ///|
-fn WgslTokenDepth::new() -> WgslTokenDepth {
+fn WgslTokenDepth::WgslTokenDepth() -> WgslTokenDepth {
   WgslTokenDepth::{ paren: 0, angle: 0, bracket: 0, brace: 0 }
 }
 
@@ -974,7 +973,7 @@ fn WgslDeclParser::consume_ident_node(self : WgslDeclParser) -> WgslIdent? {
     [token, .. rest] if token.identifier_text() is Some(name) => {
       let pos = token.pos()
       self.update_view(rest)
-      Some(WgslIdent::new(name, pos, pos + name.length()))
+      Some(WgslIdent(name, pos, pos + name.length()))
     }
     _ => None
   }
@@ -1048,7 +1047,7 @@ fn WgslDeclParser::consume_path_ident_node(self : WgslDeclParser) -> WgslIdent? 
       _ => break
     }
   }
-  Some(WgslIdent::new(name, first.start(), end))
+  Some(WgslIdent(name, first.start(), end))
 }
 
 ///|
@@ -1067,7 +1066,7 @@ fn WgslDeclParser::push_attribute_tokens(
         tokens.push(
           (
             Token::ATTR_NAME(
-              WgslIdent::new(name, name_pos, name_pos + name.length()),
+              WgslIdent(name, name_pos, name_pos + name.length()),
             ),
             name_pos,
             name_pos + name.length(),
@@ -1135,7 +1134,7 @@ fn WgslDeclParser::collect_until_top_level_fragment_with_mode(
     }
     end_pos = token.end()
   }
-  let depth = WgslTokenDepth::new()
+  let depth = WgslTokenDepth()
   while true {
     match self.view() {
       [token, ..] if depth.at_top() &&
@@ -1449,7 +1448,7 @@ fn tokenize_wgsl_type_ref(
           tokens.push(
             (
               Token::TYPE_ATOM(
-                WgslTypeAtom::new(
+                WgslTypeAtom(
                   wgsl_type_atom_kind(atom_text),
                   atom_text,
                   atom_start,
@@ -1535,7 +1534,7 @@ fn tokenize_wgsl_type_ref(
     tokens.push(
       (
         Token::TYPE_ATOM(
-          WgslTypeAtom::new(
+          WgslTypeAtom(
             wgsl_type_atom_kind(text),
             text,
             absolute_start,

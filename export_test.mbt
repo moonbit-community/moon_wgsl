@@ -14,11 +14,11 @@
 
 ///|
 fn export_test_empty_defines() -> @hashmap.HashMap[String, Bool] {
-  @hashmap.HashMap::new()
+  @hashmap.HashMap([])
 }
 
 ///|
-let export_test_registry_ref : @ref.Ref[@compose.Composer] = Ref::new(
+let export_test_registry_ref : @ref.Ref[@compose.Composer] = Ref(
   @compose.Composer::default(),
 )
 

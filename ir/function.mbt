@@ -65,7 +65,7 @@ pub(all) struct Block {
 } derive(Eq, Debug)
 
 ///|
-pub fn Block::new() -> Block {
+pub fn Block::Block() -> Block {
   Block::{ statements: [] }
 }
 
@@ -106,15 +106,15 @@ pub(all) struct Function {
 } derive(Eq, Debug)
 
 ///|
-pub fn Function::new(name : String?) -> Function {
+pub fn Function::Function(name : String?) -> Function {
   Function::{
     name,
     arguments: [],
     result: None,
-    local_variables: LocalVariableArena::new(),
-    expressions: ExpressionArena::new(),
+    local_variables: LocalVariableArena(),
+    expressions: ExpressionArena(),
     named_expressions: [],
-    body: Block::new(),
+    body: Block::Block(),
     diagnostic_filter_leaf: None,
   }
 }

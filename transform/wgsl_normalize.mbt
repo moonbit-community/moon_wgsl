@@ -247,7 +247,7 @@ fn dedupe_wgsl_duplicate_declarations(
 ) -> String raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
   let mut deduped = ""
-  let emitted_blocks : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let emitted_blocks : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   for import_block in graph.import_blocks {
     deduped = deduped + emit_wgsl_graph_block_canonical(import_block)
   }
@@ -289,9 +289,10 @@ fn build_wgsl_unique_alias_suffix_rename_plan(
   alias_redirects : Array[WgslSymbolRedirect],
 ) -> WgslRenamePlan raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
-  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
+  )
+  let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for block in graph.declaration_blocks {
     if block.name() != "" {
       declared_names.set(block.name(), true)
@@ -362,9 +363,10 @@ fn build_wgsl_unique_alias_suffix_rename_plan_from_binding_plan(
   binding_plan : WgslReferenceRewritePlan,
 ) -> WgslRenamePlan raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
-  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let declared_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let candidate_redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
+  )
+  let ambiguous_suffixes : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for block in graph.declaration_blocks {
     if block.name() != "" {
       declared_names.set(block.name(), true)
@@ -436,9 +438,9 @@ fn dedupe_wgsl_duplicate_resource_bindings(
   source : String,
 ) -> String raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
-  let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let duplicate_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
+  let duplicate_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   for block in graph.declaration_blocks {
     guard wgsl_global_binding_info(block) is Some(info) else { continue }
     let key = "\{info.group}:\{info.binding}"

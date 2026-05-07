@@ -128,7 +128,9 @@ priv struct WgslTopLevelParser {
 }
 
 ///|
-fn WgslTopLevelParser::new(source : String) -> WgslTopLevelParser {
+fn WgslTopLevelParser::WgslTopLevelParser(
+  source : String,
+) -> WgslTopLevelParser {
   let cleaned = replace_comments(source)
   WgslTopLevelParser::{
     source,
@@ -224,7 +226,7 @@ fn WgslTopLevelParser::parse_declaration_item(
   } else {
     first_token_pos
   }
-  let depth = WgslTokenDepth::new()
+  let depth = WgslTokenDepth()
   let mut saw_brace = false
   let mut item_end = first_token_pos
   let mut previous_significant : WgslToken? = None
@@ -313,5 +315,5 @@ fn WgslTopLevelParser::parse_items(
 
 ///|
 fn parse_wgsl_top_level_items(source : String) -> Array[WgslRawTopLevelItem] {
-  WgslTopLevelParser::new(source).parse_items()
+  WgslTopLevelParser(source).parse_items()
 }

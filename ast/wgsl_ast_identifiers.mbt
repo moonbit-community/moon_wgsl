@@ -75,7 +75,7 @@ fn collect_wgsl_expr_node_identifier_nodes(
         "\{base_path}::\{segment.name()}"
       }
       if !wgsl_name_list_contains(active_local_names, full_name) {
-        nodes.push(WgslIdent::new(full_name, base.start(), segment.end()))
+        nodes.push(WgslIdent(full_name, base.start(), segment.end()))
       }
     }
     Member(base, _) =>

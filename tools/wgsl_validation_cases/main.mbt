@@ -14,14 +14,14 @@
 
 ///|
 fn validation_empty_defines() -> @hashmap.HashMap[String, Bool] {
-  @hashmap.HashMap::new()
+  @hashmap.HashMap([])
 }
 
 ///|
 fn validation_bool_defines(
   names : Array[String],
 ) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for name in names {
     defines.set(name, true)
   }

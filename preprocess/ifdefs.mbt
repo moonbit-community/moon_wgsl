@@ -24,7 +24,7 @@ pub fn apply_wgsl_ifdefs_strict(
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String raise PreprocessError {
   let mut out = ""
-  let scope = Scope::new()
+  let scope = Scope()
   let import_state = WgslImportSubstitutionState::default()
   for item in parse_wgsl_directive_scan_items(source) {
     let offset = item.start()

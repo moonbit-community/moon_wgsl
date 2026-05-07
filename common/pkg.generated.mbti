@@ -26,17 +26,17 @@ pub struct DiagnosticDirective {
   severity : String
   rule : String
 } derive(Eq, @debug.Debug)
-pub fn DiagnosticDirective::new(String, String) -> Self
+pub fn DiagnosticDirective::DiagnosticDirective(String, String) -> Self
 
 pub struct EnableDirective {
   extensions : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn EnableDirective::new(Array[String]) -> Self
+pub fn EnableDirective::EnableDirective(Array[String]) -> Self
 
 pub struct ImportDefWithOffset {
   definition : ImportDefinition
 } derive(Eq, @debug.Debug)
-pub fn ImportDefWithOffset::new(ImportDefinition) -> Self
+pub fn ImportDefWithOffset::ImportDefWithOffset(ImportDefinition) -> Self
 
 pub(all) struct ImportDefinition {
   import_path : String
@@ -50,13 +50,13 @@ pub struct PreparedWgslSource {
   source_origins : Array[WgslSourceOriginEntry]
   diagnostics : Array[WgslDiagnostic]
 }
-pub fn PreparedWgslSource::new(String, Array[WgslSourceFile], Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslDiagnostic]) -> Self
+pub fn PreparedWgslSource::PreparedWgslSource(String, Array[WgslSourceFile], Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslDiagnostic]) -> Self
 
 pub struct PreprocessOutput {
   preprocessed_source : String
   imports : Array[ImportDefWithOffset]
 }
-pub fn PreprocessOutput::new(String, Array[ImportDefWithOffset]) -> Self
+pub fn PreprocessOutput::PreprocessOutput(String, Array[ImportDefWithOffset]) -> Self
 
 pub struct PreprocessorMetaData {
   name : String?
@@ -66,12 +66,12 @@ pub struct PreprocessorMetaData {
   wgsl_directives : WgslDirectives
   cleaned_source : String
 }
-pub fn PreprocessorMetaData::new(String?, Array[ImportDefWithOffset], @hashmap.HashMap[String, ShaderDefValue], @hashset.HashSet[String], WgslDirectives, String) -> Self
+pub fn PreprocessorMetaData::PreprocessorMetaData(String?, Array[ImportDefWithOffset], @hashmap.HashMap[String, ShaderDefValue], @hashset.HashSet[String], WgslDirectives, String) -> Self
 
 pub struct RequiresDirective {
   extensions : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn RequiresDirective::new(Array[String]) -> Self
+pub fn RequiresDirective::RequiresDirective(Array[String]) -> Self
 
 pub(all) enum ShaderDefValue {
   Bool(Bool)
@@ -94,7 +94,7 @@ pub struct WgslDiagnostic {
   rel_path : String?
   symbol_name : String?
 } derive(Eq, @debug.Debug)
-pub fn WgslDiagnostic::new(WgslDiagnosticSeverity, String, String?, String?) -> Self
+pub fn WgslDiagnostic::WgslDiagnostic(WgslDiagnosticSeverity, String, String?, String?) -> Self
 
 pub(all) enum WgslDiagnosticSeverity {
   Warn
@@ -121,7 +121,7 @@ pub struct WgslExportOutput {
   source_map : Array[WgslSourceMapEntry]
   diagnostics : Array[WgslDiagnostic]
 } derive(Eq, @debug.Debug)
-pub fn WgslExportOutput::new(String, Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslSourceMapEntry], Array[WgslDiagnostic]) -> Self
+pub fn WgslExportOutput::WgslExportOutput(String, Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslSourceMapEntry], Array[WgslDiagnostic]) -> Self
 
 pub(all) struct WgslImportTarget {
   raw_path : String
@@ -131,9 +131,9 @@ pub(all) struct WgslImportTarget {
 pub struct WgslResolvedImportModule {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn WgslResolvedImportModule::WgslResolvedImportModule(String, String) -> Self
 pub fn WgslResolvedImportModule::is_empty(Self) -> Bool
 pub fn WgslResolvedImportModule::module_path(Self) -> String
-pub fn WgslResolvedImportModule::new(String, String) -> Self
 pub fn WgslResolvedImportModule::rel_path(Self) -> String
 
 pub struct WgslSourceCatalogEntry {
@@ -142,7 +142,7 @@ pub struct WgslSourceCatalogEntry {
   source_start : Int
   source_end : Int
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceCatalogEntry::new(String, String, Int, Int) -> Self
+pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(String, String, Int, Int) -> Self
 
 pub(all) struct WgslSourceFile {
   rel_path : String
@@ -153,7 +153,7 @@ pub struct WgslSourceMapEntry {
   rel_path : String
   symbol_name : String?
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceMapEntry::new(String, String?) -> Self
+pub fn WgslSourceMapEntry::WgslSourceMapEntry(String, String?) -> Self
 
 pub struct WgslSourceOriginEntry {
   generated_symbol_name : String
@@ -162,7 +162,7 @@ pub struct WgslSourceOriginEntry {
   source_start : Int
   source_end : Int
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceOriginEntry::new(String, String, String, Int, Int) -> Self
+pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, Int, Int) -> Self
 
 pub(all) struct WgslSourceScanOptions {
   recursive : Bool

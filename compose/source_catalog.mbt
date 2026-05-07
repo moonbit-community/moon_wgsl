@@ -33,7 +33,7 @@ fn build_prepared_wgsl_source_catalog(
     }
     for declaration in declarations {
       catalog_entries.push(
-        WgslSourceCatalogEntry::new(
+        WgslSourceCatalogEntry(
           source_file.rel_path,
           declaration.name(),
           declaration.generated_start(),
@@ -59,7 +59,7 @@ fn push_wgsl_source_origin(
     return
   }
   session.source_origins.push(
-    WgslSourceOriginEntry::new(
+    WgslSourceOriginEntry(
       generated_symbol_name, rel_path, source_symbol_name, source_start, source_end,
     ),
   )

@@ -19,7 +19,7 @@ fn semantic_ir_facts(source : String) -> WgslComposeSemanticFacts {
   }
   WgslComposeSemanticFacts::{
     declarations,
-    reference_paths: @hashset.HashSet::new(),
+    reference_paths: @hashset.HashSet([]),
   }
 }
 
@@ -31,7 +31,7 @@ test "compose semantic IR resolves undeclared alias target through emitted ident
     #|}
     #|var<private> view_bindings__view: view_bindings__View;
     #|
-  let bindings = WgslComposeBindingSet::new()
+  let bindings = WgslComposeBindingSet()
   bindings.push(
     WgslComposeBinding::for_alias_symbol(
       "mesh_view_bindings.wgsl",
@@ -77,7 +77,7 @@ test "compose semantic IR preserves declared alias-scope target" {
     #|var<private> view_bindings__view: view_bindings__View;
     #|var<private> shadows__view_bindings__view: view_bindings__View;
     #|
-  let bindings = WgslComposeBindingSet::new()
+  let bindings = WgslComposeBindingSet()
   bindings.push(
     WgslComposeBinding::for_alias_symbol(
       "mesh_view_bindings.wgsl",

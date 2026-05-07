@@ -137,7 +137,7 @@ pub(all) struct Scalar {
 } derive(Eq, Debug)
 
 ///|
-pub fn Scalar::new(kind : ScalarKind, width : Int) -> Scalar {
+pub fn Scalar::Scalar(kind : ScalarKind, width : Int) -> Scalar {
   Scalar::{ kind, width }
 }
 
@@ -283,7 +283,7 @@ pub(all) struct SpecialTypes {
 } derive(Eq, Debug)
 
 ///|
-pub fn SpecialTypes::new() -> SpecialTypes {
+pub fn SpecialTypes::SpecialTypes() -> SpecialTypes {
   SpecialTypes::{
     ray_desc: None,
     ray_intersection: None,

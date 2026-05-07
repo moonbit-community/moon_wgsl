@@ -9,8 +9,8 @@ fn try_get_preprocessor_metadata(
 
   let import_state = WgslImportSubstitutionState::default()
   let used_imports : Array[ImportDefWithOffset] = []
-  let defines : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap::new()
-  let effective_defs : @hashset.HashSet[String] = @hashset.HashSet::new()
+  let defines : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([])
+  let effective_defs : @hashset.HashSet[String] = @hashset.HashSet([])
   let mut name : String? = None
 
   for
@@ -67,7 +67,7 @@ fn try_get_preprocessor_metadata(
     cleaned_for_directives, import_state, used_imports,
   )
 
-  PreprocessorMetaData::new(
+  PreprocessorMetaData(
     name, used_imports, defines, effective_defs, wgsl_directives, cleaned_for_directives,
   )
 }

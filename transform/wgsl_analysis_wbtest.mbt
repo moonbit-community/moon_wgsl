@@ -339,7 +339,7 @@ test "rename plan global rules do not rewrite function parameter locals" {
     #|  return in.instance_index;
     #|}
     #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   redirects.set("Input", "mesh__Input")
   redirects.set("read_instance", "mesh__read_instance")
   let rewritten = rewrite_wgsl_declarations_with_rename_plan(
@@ -439,7 +439,7 @@ test "rename plan reference rules rewrite recursively scoped blocks" {
     #|  return 0u;
     #|}
     #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   redirects.set("helper", "renamed_helper")
   let rewritten = rewrite_wgsl_declarations_with_rename_plan(
     source,
@@ -484,7 +484,7 @@ test "rename plan reference rules do not rewrite statement keywords" {
     #|  return 0u;
     #|}
     #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   redirects.set("if", "if_renamed")
   redirects.set("return", "return_renamed")
   redirects.set("let", "let_renamed")

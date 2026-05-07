@@ -62,7 +62,7 @@ pub struct WgslIrLinkGraph {
 }
 
 ///|
-pub fn WgslIrSymbolIdentity::new(
+pub fn WgslIrSymbolIdentity::WgslIrSymbolIdentity(
   rel_path : String,
   original_name : String,
 ) -> WgslIrSymbolIdentity {
@@ -87,14 +87,14 @@ pub fn WgslIrSymbolIdentity::original_name(
 }
 
 ///|
-pub fn WgslIrAliasSymbolIdentity::new(
+pub fn WgslIrAliasSymbolIdentity::WgslIrAliasSymbolIdentity(
   rel_path : String,
   alias_name : String,
   original_name : String,
 ) -> WgslIrAliasSymbolIdentity {
   WgslIrAliasSymbolIdentity::{
     alias_name,
-    symbol: WgslIrSymbolIdentity::new(rel_path, original_name),
+    symbol: WgslIrSymbolIdentity(rel_path, original_name),
   }
 }
 
@@ -148,10 +148,10 @@ pub fn WgslIrAliasFinalNameEntry::final_name(
 }
 
 ///|
-pub fn WgslIrFinalNameTable::new() -> WgslIrFinalNameTable {
+pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> WgslIrFinalNameTable {
   WgslIrFinalNameTable::{
-    canonical: @hashmap.HashMap::new(),
-    alias_scoped: @hashmap.HashMap::new(),
+    canonical: @hashmap.HashMap([]),
+    alias_scoped: @hashmap.HashMap([]),
     canonical_entries: [],
     alias_entries: [],
   }
@@ -249,7 +249,7 @@ pub fn WgslIrSymbolNode::identity(
 }
 
 ///|
-pub fn WgslIrImportEdge::new(
+pub fn WgslIrImportEdge::WgslIrImportEdge(
   importer_rel_path : String,
   target_rel_path : String,
   module_path : String,
@@ -282,13 +282,13 @@ pub fn WgslIrImportEdgeKind::key(self : WgslIrImportEdgeKind) -> String {
 }
 
 ///|
-pub fn WgslIrLinkGraph::new() -> WgslIrLinkGraph {
+pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> WgslIrLinkGraph {
   WgslIrLinkGraph::{
-    symbol_keys: @hashset.HashSet::new(),
+    symbol_keys: @hashset.HashSet([]),
     symbol_nodes: [],
-    import_edge_keys: @hashset.HashSet::new(),
+    import_edge_keys: @hashset.HashSet([]),
     import_edges: [],
-    reachable_symbol_keys: @hashset.HashSet::new(),
+    reachable_symbol_keys: @hashset.HashSet([]),
   }
 }
 
@@ -346,7 +346,7 @@ pub fn WgslIrLinkGraph::record_import(
   kind : WgslIrImportEdgeKind,
 ) -> Unit {
   self.record_import_edge(
-    WgslIrImportEdge::new(
+    WgslIrImportEdge(
       importer_rel_path, target_rel_path, module_path, alias_name, item_name, kind,
     ),
   )

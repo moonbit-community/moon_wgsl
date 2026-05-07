@@ -2,7 +2,7 @@
 fn copy_wgsl_source_registry_map(
   source_registry : @hashmap.HashMap[String, String],
 ) -> @hashmap.HashMap[String, String] {
-  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   for entry in source_registry.iter() {
     let (rel_path, source) = entry
     copied.set(rel_path, source)
@@ -14,7 +14,7 @@ fn copy_wgsl_source_registry_map(
 fn copy_wgsl_import_module_map(
   module_paths : @hashmap.HashMap[String, String],
 ) -> @hashmap.HashMap[String, String] {
-  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   for entry in module_paths.iter() {
     let (module_path, rel_path) = entry
     copied.set(module_path, rel_path)
@@ -91,9 +91,7 @@ fn push_wgsl_registry_diagnostic(
   rel_path : String?,
   symbol_name : String?,
 ) -> Unit {
-  diagnostics.push(
-    WgslDiagnostic::new(severity, message, rel_path, symbol_name),
-  )
+  diagnostics.push(WgslDiagnostic(severity, message, rel_path, symbol_name))
 }
 
 ///|
@@ -113,8 +111,10 @@ fn analyze_source_files_against(
   files : Array[WgslSourceFile],
   diagnostics : Array[WgslDiagnostic],
 ) -> Unit {
-  let batch_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let batch_module_to_rel : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let batch_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
+  )
+  let batch_module_to_rel : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
+  )
 
   for source_file in files {
     let normalized_rel = normalize_shader_rel_path(source_file.rel_path)

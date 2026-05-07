@@ -19,7 +19,7 @@ fn record_wgsl_import_request_link_edges(
     )
   }
   for item_name in request.requested_items {
-    let identity = WgslIrSymbolIdentity::new(request.rel_path, item_name)
+    let identity = WgslIrSymbolIdentity(request.rel_path, item_name)
     link_graph.mark_reachable(identity)
     link_graph.record_import(
       importer_rel_path,

@@ -93,7 +93,8 @@ declarations from the output, and substitute shader-definition values.
 ```mbt check
 ///|
 test "README: preprocess single shader" {
-  let defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap::new()
+  let defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap([],
+  )
   defs.set("TEXTURE", @common.ShaderDefValue::Bool(true))
 
   let source = "#ifdef TEXTURE\nvar sprite_texture: texture_2d<f32>;\n#else\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
@@ -125,7 +126,7 @@ for module resolution and composition.
 ///|
 test "README: compose registered modules" {
   let composer : @compose.Composer = @compose.Composer::default()
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   let redirects : Array[@common.WgslSymbolRedirect] = []
   composer.clear_sources()
 
@@ -167,7 +168,7 @@ between them. Composer instances own the registry used by composition.
 ///|
 test "README: bulk registry and relative imports" {
   let composer : @compose.Composer = @compose.Composer::default()
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   let redirects : Array[@common.WgslSymbolRedirect] = []
   let files : Array[@common.WgslSourceFile] = [
     {
@@ -243,7 +244,7 @@ Scanned `rel_path` values are relative to the scan root, so scanning
 ///|
 test "README: scan source tree" {
   let composer : @compose.Composer = @compose.Composer::default()
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   let redirects : Array[@common.WgslSymbolRedirect] = []
   let scan_options : @common.WgslSourceScanOptions = {
     recursive: true,
@@ -301,7 +302,7 @@ plus diagnostics.
 ///|
 test "README: export single WGSL file" {
   let composer : @compose.Composer = @compose.Composer::default()
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   let redirects : Array[@common.WgslSymbolRedirect] = []
   let files : Array[@common.WgslSourceFile] = [
     {
@@ -351,7 +352,7 @@ raw source files.
 ///|
 test "README: build source catalog" {
   let composer : @compose.Composer = @compose.Composer::default()
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   let redirects : Array[@common.WgslSymbolRedirect] = []
   let files : Array[@common.WgslSourceFile] = [
     {
@@ -392,7 +393,7 @@ another during composition/export without depending on Naga IR.
 ///|
 test "README: symbol redirects" {
   let composer : @compose.Composer = @compose.Composer::default()
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   let redirects : Array[@common.WgslSymbolRedirect] = [
     { from_name: "build_shadow", to_name: "build_color" },
   ]

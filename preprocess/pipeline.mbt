@@ -108,7 +108,7 @@ pub fn Preprocessor::preprocess(
 ) -> PreprocessOutput raise PreprocessError {
   let import_state = WgslImportSubstitutionState::default()
   let used_imports : Array[ImportDefWithOffset] = []
-  let scope = Scope::new()
+  let scope = Scope()
   let mut final_string = ""
   for item in parse_wgsl_directive_scan_items(source) {
     final_string = final_string +
@@ -118,5 +118,5 @@ pub fn Preprocessor::preprocess(
   }
 
   scope.finish(utf8_byte_length(source))
-  PreprocessOutput::new(final_string, used_imports)
+  PreprocessOutput(final_string, used_imports)
 }

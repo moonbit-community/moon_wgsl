@@ -94,10 +94,10 @@ pub fn parse_wgsl_directive_line_at(
   } else {
     source_start + tail_end
   }
-  WgslDirective::new(
+  WgslDirective(
     wgsl_directive_line_kind(name),
-    WgslIdent::new(name, absolute_name_start, absolute_name_end),
-    WgslDirectiveTail::new(
+    WgslIdent(name, absolute_name_start, absolute_name_end),
+    WgslDirectiveTail(
       tail,
       absolute_tail_start,
       absolute_tail_end,

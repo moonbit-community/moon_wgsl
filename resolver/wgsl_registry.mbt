@@ -21,8 +21,8 @@ pub struct WgslSourceRegistry {
 ///|
 pub fn WgslSourceRegistry::default() -> WgslSourceRegistry {
   WgslSourceRegistry::{
-    rel_to_source_ref: Ref::new(@hashmap.HashMap::new()),
-    module_to_rel_ref: Ref::new(@hashmap.HashMap::new()),
+    rel_to_source_ref: Ref(@hashmap.HashMap([])),
+    module_to_rel_ref: Ref(@hashmap.HashMap([])),
   }
 }
 

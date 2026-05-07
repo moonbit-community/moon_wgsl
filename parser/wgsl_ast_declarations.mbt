@@ -38,7 +38,7 @@ fn WgslDeclParser::parse_function(
   }
   let body = self.parse_block_checked() catch { _ => return None }
   Some(
-    WgslFunction::new(
+    WgslFunction(
       attributes,
       qualifier,
       qualifier_start,
@@ -65,11 +65,7 @@ fn WgslDeclParser::consume_leading_attributes(
       break
     }
     guard view_tokens[1].identifier_text() is Some(name_text) else { break }
-    let name = WgslIdent::new(
-      name_text,
-      view_tokens[1].pos(),
-      view_tokens[1].end(),
-    )
+    let name = WgslIdent(name_text, view_tokens[1].pos(), view_tokens[1].end())
     let mut consumed = 2
     let mut end_ = name.end()
     let mut arguments_ref : WgslExprRef? = None
@@ -84,7 +80,7 @@ fn WgslDeclParser::consume_leading_attributes(
       }
     }
     attributes.push(
-      WgslAttribute::new(name, view_tokens[0].pos(), end_, arguments_ref),
+      WgslAttribute(name, view_tokens[0].pos(), end_, arguments_ref),
     )
     self.drop_tokens(consumed)
   }
@@ -231,7 +227,7 @@ fn WgslDeclParser::parse_struct(
     None => return None
   }
   let members = self.parse_struct_members_checked() catch { _ => return None }
-  Some(WgslStruct::new(attributes, name, members))
+  Some(WgslStruct(attributes, name, members))
 }
 
 ///|
@@ -248,7 +244,7 @@ fn WgslDeclParser::parse_global_variable(
     _ => return None
   }
   Some(
-    WgslGlobalVariable::new(
+    WgslGlobalVariable(
       attributes,
       name,
       template_list,
@@ -340,7 +336,7 @@ fn WgslDeclParser::parse_const(self : WgslDeclParser) -> WgslConst? {
     _ => return None
   }
   guard tail.initializer_ref is Some(_) else { return None }
-  Some(WgslConst::new(name, tail.ty_ref, tail.initializer_ref))
+  Some(WgslConst(name, tail.ty_ref, tail.initializer_ref))
 }
 
 ///|
@@ -355,7 +351,7 @@ fn WgslDeclParser::parse_override(
   let tail = self.parse_typed_initializer_tail_checked() catch {
     _ => return None
   }
-  Some(WgslOverride::new(attributes, name, tail.ty_ref, tail.initializer_ref))
+  Some(WgslOverride(attributes, name, tail.ty_ref, tail.initializer_ref))
 }
 
 ///|
@@ -365,7 +361,7 @@ fn WgslDeclParser::parse_type_alias(self : WgslDeclParser) -> WgslTypeAlias? {
     None => return None
   }
   match self.parse_type_alias_tail() {
-    Some(ty_ref) => Some(WgslTypeAlias::new(name, Some(ty_ref)))
+    Some(ty_ref) => Some(WgslTypeAlias(name, Some(ty_ref)))
     None => None
   }
 }
@@ -486,7 +482,7 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
     match view {
       [token, .. rest] if token.identifier_text() is Some(name) => {
         let pos = token.pos()
-        let ident = WgslIdent::new(name, pos, pos + name.length())
+        let ident = WgslIdent(name, pos, pos + name.length())
         match self.decl_head_token(ident) {
           Some(token) => tokens.push((token, ident.start(), ident.end()))
           None => ()

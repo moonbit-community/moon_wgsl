@@ -21,7 +21,7 @@ pub(all) struct Handle {
 } derive(Eq, Debug)
 
 ///|
-pub fn Handle::new(index : Int) -> Handle {
+pub fn Handle::Handle(index : Int) -> Handle {
   Handle::{ index, }
 }
 
@@ -37,7 +37,7 @@ pub(all) struct HandleRange {
 } derive(Eq, Debug)
 
 ///|
-pub fn HandleRange::new(start : Handle, end : Handle) -> HandleRange {
+pub fn HandleRange::HandleRange(start : Handle, end : Handle) -> HandleRange {
   HandleRange::{ start, end }
 }
 

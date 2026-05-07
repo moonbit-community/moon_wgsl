@@ -84,10 +84,10 @@ pub fn WgslModuleItemOrigin::source_start(Self) -> Int
 pub struct WgslReferenceRewritePlan {
   // private fields
 }
+pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> Self
 pub fn WgslReferenceRewritePlan::add(Self, String, String) -> Unit
 pub fn WgslReferenceRewritePlan::add_symbol_binding(Self, String, String, String, String) -> Unit
 pub fn WgslReferenceRewritePlan::add_virtual_override_binding(Self, String, String, String) -> Unit
-pub fn WgslReferenceRewritePlan::new() -> Self
 
 pub struct WgslTreeShakenSource {
   // private fields

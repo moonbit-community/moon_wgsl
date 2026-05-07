@@ -63,7 +63,7 @@ raw_top_level_items -> Array[WgslRawTopLevelItem]
 
 block -> @ast.WgslBlock
   : open=LBRACE statements close=RBRACE EOF {
-      @ast.WgslBlock::new(open, close + 1, $2)
+      @ast.WgslBlock(open, close + 1, $2)
     }
   ;
 
@@ -92,7 +92,7 @@ attribute -> @ast.WgslAttribute
         Some(value) => value
         None => name.end()
       }
-      @ast.WgslAttribute::new(
+      @ast.WgslAttribute(
         name,
         at,
         end,
@@ -296,7 +296,7 @@ function_args -> Array[@ast.WgslFunctionArgument]
 
 function_result -> @ast.WgslFunctionResult?
   : arrow=ARROW attrs=attributes ty=ARG_TYPE EOF {
-      Some(@ast.WgslFunctionResult::new(attrs, arrow, ty.end(), Some(ty)))
+      Some(@ast.WgslFunctionResult(attrs, arrow, ty.end(), Some(ty)))
     }
   ;
 
@@ -320,7 +320,7 @@ struct_member_list -> Array[@ast.WgslStructMember]
 struct_member -> @ast.WgslStructMember
   : attrs=attributes name=MEMBER_NAME ":" ty=MEMBER_TYPE {
       let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
-      @ast.WgslStructMember::new(
+      @ast.WgslStructMember(
         attrs,
         name,
         start,
@@ -352,10 +352,10 @@ source_directive -> @ast.WgslDirective
       let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       let has_required_separator = tail != "" && tail_start > keyword.end()
-      @ast.WgslDirective::new(
+      @ast.WgslDirective(
         @ast.WgslDirectiveKind::Enable,
         keyword,
-        @ast.WgslDirectiveTail::new(
+        @ast.WgslDirectiveTail(
           tail,
           tail_start,
           tail_end,
@@ -370,10 +370,10 @@ source_directive -> @ast.WgslDirective
       let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       let has_required_separator = tail != "" && tail_start > keyword.end()
-      @ast.WgslDirective::new(
+      @ast.WgslDirective(
         @ast.WgslDirectiveKind::Requires,
         keyword,
-        @ast.WgslDirectiveTail::new(
+        @ast.WgslDirectiveTail(
           tail,
           tail_start,
           tail_end,
@@ -388,10 +388,10 @@ source_directive -> @ast.WgslDirective
       let tail_start = if tail == "" { keyword.end() } else { raw_tail_start }
       let tail_end = if tail == "" { keyword.end() } else { raw_tail_end }
       let has_required_separator = tail != "" && tail_start > keyword.end()
-      @ast.WgslDirective::new(
+      @ast.WgslDirective(
         @ast.WgslDirectiveKind::Diagnostic,
         keyword,
-        @ast.WgslDirectiveTail::new(
+        @ast.WgslDirectiveTail(
           tail,
           tail_start,
           tail_end,
@@ -441,7 +441,7 @@ function_arg_list -> Array[@ast.WgslFunctionArgument]
 function_arg -> @ast.WgslFunctionArgument
   : attrs=attributes name=ARG_NAME ":" ty=ARG_TYPE {
       let start = if attrs.length() > 0 { attrs[0].start() } else { name.start() }
-      @ast.WgslFunctionArgument::new(
+      @ast.WgslFunctionArgument(
         attrs,
         name,
         start,
@@ -499,7 +499,7 @@ fn wgsl_type_ref_from_atom(
   arguments : Array[@ast.WgslTypeRef],
   end_ : Int,
 ) -> @ast.WgslTypeRef {
-  @ast.WgslTypeRef::new(atom, arguments, atom.start(), end_.max(atom.end()))
+  @ast.WgslTypeRef(atom, arguments, atom.start(), end_.max(atom.end()))
 }
 
 fn wgsl_type_ref_from_template_arguments(

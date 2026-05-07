@@ -204,11 +204,11 @@ fn wgsl_reachable_declaration_map(
   declaration_blocks : Array[WgslGraphBlock],
   root_items : Array[String],
 ) -> (@hashmap.HashMap[String, Bool], Array[String]) {
-  let included_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let included_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   let declarations : Array[WgslGlobalDecl] = []
   for block in declaration_blocks {
     declarations.push(
-      WgslGlobalDecl::new(
+      WgslGlobalDecl(
         WgslGlobalDeclKind::Unknown,
         block.data,
         block.start,

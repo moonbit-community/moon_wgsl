@@ -51,7 +51,7 @@ test "compose graph execution plans reachability before emission" {
   debug_inspect(session.link_graph.import_edge_count(), content="1")
   debug_inspect(
     session.link_graph.contains_reachable_symbol(
-      WgslIrSymbolIdentity::new("dep.wgsl", "dep_fn"),
+      WgslIrSymbolIdentity("dep.wgsl", "dep_fn"),
     ),
     content="true",
   )
@@ -61,7 +61,7 @@ test "compose graph execution plans reachability before emission" {
     source,
     session,
     None,
-    WgslComposeBindingSet::new(),
+    WgslComposeBindingSet(),
     true,
     true,
     [],
@@ -71,7 +71,7 @@ test "compose graph execution plans reachability before emission" {
   debug_inspect(output.contains("fn dep_fn"), content="true")
   debug_inspect(
     session.final_names.canonical_get(
-      WgslIrSymbolIdentity::new("dep.wgsl", "dep_fn"),
+      WgslIrSymbolIdentity("dep.wgsl", "dep_fn"),
     )
     is Some(_),
     content="true",

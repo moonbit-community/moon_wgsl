@@ -14,7 +14,7 @@
 
 ///|
 fn bevy_parity_defines(names : Array[String]) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for name in names {
     defines.set(name, true)
   }

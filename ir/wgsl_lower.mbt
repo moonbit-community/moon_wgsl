@@ -48,13 +48,13 @@ priv struct WgslIrExprTokenParser {
 }
 
 ///|
-fn WgslIrFunctionScope::new() -> WgslIrFunctionScope {
+fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
   WgslIrFunctionScope::{
-    arguments: @hashmap.HashMap::new(),
-    locals: @hashmap.HashMap::new(),
-    local_constants: @hashmap.HashMap::new(),
-    local_pointer_expressions: @hashmap.HashMap::new(),
-    global_pointer_expressions: @hashmap.HashMap::new(),
+    arguments: @hashmap.HashMap([]),
+    locals: @hashmap.HashMap([]),
+    local_constants: @hashmap.HashMap([]),
+    local_pointer_expressions: @hashmap.HashMap([]),
+    global_pointer_expressions: @hashmap.HashMap([]),
     temporary_index: 0,
   }
 }
@@ -107,15 +107,15 @@ fn WgslIrFunctionScope::next_temporary_name(
 }
 
 ///|
-fn WgslIrLowerer::new() -> WgslIrLowerer {
+fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
   WgslIrLowerer::{
-    shader_module: Module::new(),
-    type_cache: @hashmap.HashMap::new(),
-    function_names: @hashmap.HashMap::new(),
-    global_names: @hashmap.HashMap::new(),
-    constant_names: @hashmap.HashMap::new(),
-    override_names: @hashmap.HashMap::new(),
-    referenced_names: @hashset.HashSet::new(),
+    shader_module: Module(),
+    type_cache: @hashmap.HashMap([]),
+    function_names: @hashmap.HashMap([]),
+    global_names: @hashmap.HashMap([]),
+    constant_names: @hashmap.HashMap([]),
+    override_names: @hashmap.HashMap([]),
+    referenced_names: @hashset.HashSet([]),
   }
 }
 
@@ -138,7 +138,7 @@ pub fn parse_wgsl_module_to_ir(
 pub fn lower_wgsl_translation_unit_to_ir(
   unit : @ast.WgslTranslationUnit,
 ) -> Module raise WgslIrLowerError {
-  let lowerer = WgslIrLowerer::new()
+  let lowerer = WgslIrLowerer()
   lowerer.register_prelude_types()
   for declaration in unit.declarations() {
     lowerer.record_referenced_names(declaration)
@@ -173,18 +173,24 @@ fn WgslIrLowerer::record_referenced_names(
 
 ///|
 fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
-  ignore(self.intern_type("bool", TypeInner::Scalar(Scalar::new(Bool, 1))))
-  ignore(self.intern_type("i32", TypeInner::Scalar(Scalar::new(Sint, 4))))
-  let u32_ty = self.intern_type("u32", TypeInner::Scalar(Scalar::new(Uint, 4)))
-  let f32_ty = self.intern_type("f32", TypeInner::Scalar(Scalar::new(Float, 4)))
-  ignore(self.intern_type("f16", TypeInner::Scalar(Scalar::new(Float, 2))))
+  ignore(self.intern_type("bool", TypeInner::Scalar(Scalar::Scalar(Bool, 1))))
+  ignore(self.intern_type("i32", TypeInner::Scalar(Scalar::Scalar(Sint, 4))))
+  let u32_ty = self.intern_type(
+    "u32",
+    TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+  )
+  let f32_ty = self.intern_type(
+    "f32",
+    TypeInner::Scalar(Scalar::Scalar(Float, 4)),
+  )
+  ignore(self.intern_type("f16", TypeInner::Scalar(Scalar::Scalar(Float, 2))))
   let vec2_f32_ty = self.intern_type(
     "vec2<f32>",
-    TypeInner::Vector(Bi, Scalar::new(Float, 4)),
+    TypeInner::Vector(Bi, Scalar::Scalar(Float, 4)),
   )
   let vec3_f32_ty = self.intern_type(
     "vec3<f32>",
-    TypeInner::Vector(Tri, Scalar::new(Float, 4)),
+    TypeInner::Vector(Tri, Scalar::Scalar(Float, 4)),
   )
   ignore(
     self.intern_type(
@@ -223,13 +229,13 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
   ignore(
     self.intern_type(
       "__abstract_int",
-      TypeInner::Scalar(Scalar::new(AbstractInt, 8)),
+      TypeInner::Scalar(Scalar::Scalar(AbstractInt, 8)),
     ),
   )
   ignore(
     self.intern_type(
       "__abstract_float",
-      TypeInner::Scalar(Scalar::new(AbstractFloat, 8)),
+      TypeInner::Scalar(Scalar::Scalar(AbstractFloat, 8)),
     ),
   )
 }
@@ -329,10 +335,10 @@ fn WgslIrLowerer::predeclare_function_declaration(
     name: Some(function.name().name()),
     arguments: [],
     result,
-    local_variables: LocalVariableArena::new(),
-    expressions: ExpressionArena::new(),
+    local_variables: LocalVariableArena(),
+    expressions: ExpressionArena(),
     named_expressions: [],
-    body: Block::new(),
+    body: Block::Block(),
     diagnostic_filter_leaf: None,
   }
   let handle = self.shader_module.append_function(placeholder)
@@ -676,7 +682,7 @@ fn WgslIrLowerer::resolve_ambient_global_function_parameters(
   self : WgslIrLowerer,
 ) -> Unit {
   for index in 0..<self.shader_module.functions.items.length() {
-    let handle = Handle::new(index)
+    let handle = Handle::Handle(index)
     guard self.function_is_called_only_without_arguments(handle) else {
       continue
     }
@@ -775,7 +781,7 @@ fn WgslIrLowerer::function_without_ambient_global_arguments(
   function : Function,
   global_handles : Array[Handle],
 ) -> Function {
-  let expressions = ExpressionArena::new()
+  let expressions = ExpressionArena()
   for expression in function.expressions.items {
     expressions.items.push(
       self.rewrite_ambient_global_function_expression(
@@ -817,8 +823,8 @@ fn WgslIrLowerer::lower_function(
   self : WgslIrLowerer,
   function : @ast.WgslFunction,
 ) -> Function raise WgslIrLowerError {
-  let ir_function = Function::new(Some(function.name().name()))
-  let scope = WgslIrFunctionScope::new()
+  let ir_function = Function::Function(Some(function.name().name()))
+  let scope = WgslIrFunctionScope()
   let mut index = 0
   for argument in function.arguments() {
     guard argument.ty_ref() is Some(ty_ref) else {
@@ -875,7 +881,7 @@ fn WgslIrLowerer::lower_block(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Block raise WgslIrLowerError {
-  let ir_block = Block::new()
+  let ir_block = Block::Block()
   for statement in block.statements() {
     self.lower_statement(statement, function, scope, ir_block)
   }
@@ -927,11 +933,11 @@ fn WgslIrLowerer::lower_statement(
       )
       let then_block = match statement.blocks() {
         [then_child, ..] => self.lower_block(then_child, function, scope)
-        [] => Block::new()
+        [] => Block::Block()
       }
       let else_block = match statement.blocks() {
         [_, else_child, ..] => self.lower_block(else_child, function, scope)
-        _ => Block::new()
+        _ => Block::Block()
       }
       block.push(Statement::If(condition_handle, then_block, else_block))
     }
@@ -944,11 +950,11 @@ fn WgslIrLowerer::lower_statement(
       )
       let body = match statement.blocks() {
         [body_block, ..] => self.lower_block(body_block, function, scope)
-        [] => Block::new()
+        [] => Block::Block()
       }
-      let continuing = Block::new()
+      let continuing = Block::Block()
       continuing.push(
-        Statement::If(cond, Block::new(), Block::{
+        Statement::If(cond, Block::Block(), Block::{
           statements: [Statement::Break],
         }),
       )
@@ -957,12 +963,12 @@ fn WgslIrLowerer::lower_statement(
     Loop => {
       let body = match statement.blocks() {
         [body_block, ..] => self.lower_block(body_block, function, scope)
-        [] => Block::new()
+        [] => Block::Block()
       }
       let continuing = match statement.blocks() {
         [_, continuing_block, ..] =>
           self.lower_block(continuing_block, function, scope)
-        _ => Block::new()
+        _ => Block::Block()
       }
       block.push(Statement::Loop(body, continuing, None))
     }
@@ -985,7 +991,7 @@ fn WgslIrLowerer::lower_statement(
         let rhs_value = self.lower_function_expression_ref(
           rhs_ref, function, scope,
         )
-        block.push(Statement::Emit(HandleRange::new(rhs_value, rhs_value)))
+        block.push(Statement::Emit(HandleRange(rhs_value, rhs_value)))
         return
       }
       let target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
@@ -1036,7 +1042,7 @@ fn WgslIrLowerer::lower_statement(
             let handle = self.lower_function_expression_ref(
               expr_ref, function, scope,
             )
-            block.push(Statement::Emit(HandleRange::new(handle, handle)))
+            block.push(Statement::Emit(HandleRange(handle, handle)))
           }
         None => ()
       }
@@ -1144,7 +1150,7 @@ fn WgslIrLowerer::lower_for_statement(
       self.lower_for_header_statement(expr.expression(), function, scope, block)
     }
   }
-  let loop_body = Block::new()
+  let loop_body = Block::Block()
   match
     wgsl_ir_for_expression_by_role(
       expressions,
@@ -1161,7 +1167,7 @@ fn WgslIrLowerer::lower_for_statement(
         Statement::If(
           not_condition,
           Block::{ statements: [Statement::Break] },
-          Block::new(),
+          Block::Block(),
         ),
       )
     }
@@ -1176,7 +1182,7 @@ fn WgslIrLowerer::lower_for_statement(
     }
     [] => ()
   }
-  let continuing = Block::new()
+  let continuing = Block::Block()
   for expr in expressions {
     if expr.role() == @ast.WgslStatementExpressionRole::ForUpdate {
       self.lower_for_header_statement(
@@ -1216,7 +1222,7 @@ fn WgslIrLowerer::lower_switch_cases(
       Case(selectors) => {
         let body = match statement.blocks() {
           [case_block, ..] => self.lower_block(case_block, function, scope)
-          [] => Block::new()
+          [] => Block::Block()
         }
         for selector in selectors {
           let selector_handle = self.lower_function_expression_ref(
@@ -1234,7 +1240,7 @@ fn WgslIrLowerer::lower_switch_cases(
       DefaultCase => {
         let body = match statement.blocks() {
           [case_block, ..] => self.lower_block(case_block, function, scope)
-          [] => Block::new()
+          [] => Block::Block()
         }
         cases.push(SwitchCase::{ value: Default, body, fall_through: false })
       }
@@ -1510,7 +1516,7 @@ fn WgslIrLowerer::lower_for_header_statement(
           function,
           scope,
         )
-        block.push(Statement::Emit(HandleRange::new(rhs_value, rhs_value)))
+        block.push(Statement::Emit(HandleRange(rhs_value, rhs_value)))
         return
       }
       let target = self.lower_function_lvalue_node(
@@ -1741,8 +1747,8 @@ fn WgslIrLowerer::concretize_abstract_storage_scalar(
 ) -> Scalar? {
   ignore(self)
   match scalar.kind {
-    AbstractInt => Some(Scalar::new(Sint, 4))
-    AbstractFloat => Some(Scalar::new(Float, 4))
+    AbstractInt => Some(Scalar::Scalar(Sint, 4))
+    AbstractFloat => Some(Scalar::Scalar(Float, 4))
     _ => None
   }
 }
@@ -1774,11 +1780,11 @@ fn wgsl_ir_function_expression_semantic_index(
   for index in 0..<handle.index() {
     if wgsl_ir_function_expression_is_synthetic_local_reference(
         function,
-        Handle::new(index),
+        Handle::Handle(index),
       ) ||
       wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
         function,
-        Handle::new(index),
+        Handle::Handle(index),
       ) {
       skipped += 1
     }
@@ -2693,7 +2699,7 @@ fn WgslIrLowerer::lower_call_statement(
               let handle = self.lower_function_atomic_call(
                 atomic_function, arguments, function, scope,
               )
-              block.push(Statement::Emit(HandleRange::new(handle, handle)))
+              block.push(Statement::Emit(HandleRange(handle, handle)))
             }
             None =>
               match self.function_names.get(name.name()) {
@@ -3824,7 +3830,7 @@ fn WgslIrLowerer::infer_relational_expression_type(
     raise WgslIrLowerError::MissingType(name)
   }
   match relational_function {
-    All | Any => self.scalar_type_handle(Scalar::new(Bool, 1))
+    All | Any => self.scalar_type_handle(Scalar::Scalar(Bool, 1))
     IsNan | IsInf =>
       match self.infer_expression_type(first, name) {
         ty => self.boolean_result_type(ty, ty)
@@ -3901,7 +3907,7 @@ priv struct WgslIrExprTokenDepth {
 }
 
 ///|
-fn WgslIrExprTokenDepth::new() -> WgslIrExprTokenDepth {
+fn WgslIrExprTokenDepth::WgslIrExprTokenDepth() -> WgslIrExprTokenDepth {
   WgslIrExprTokenDepth::{ paren: 0, angle: 0, bracket: 0, brace: 0 }
 }
 
@@ -3943,7 +3949,7 @@ fn WgslIrExprTokenDepth::observe(
 fn wgsl_ir_expr_tokens_assignment(
   tokens : Array[@ast.WgslExprToken],
 ) -> (String, Array[@ast.WgslExprToken], Array[@ast.WgslExprToken])? {
-  let depth = WgslIrExprTokenDepth::new()
+  let depth = WgslIrExprTokenDepth()
   for i in 0..<tokens.length() {
     if depth.at_top() {
       match wgsl_ir_expr_assignment_at(tokens, i) {
@@ -4083,7 +4089,7 @@ fn wgsl_ir_expr_make_node(
   start : Int,
   end_ : Int,
 ) -> @ast.WgslExprNode {
-  @ast.WgslExprNode::new(kind, start, end_)
+  @ast.WgslExprNode(kind, start, end_)
 }
 
 ///|
@@ -4131,7 +4137,7 @@ fn WgslIrExprTokenParser::parse_prefix(
           Some(
             wgsl_ir_expr_make_node(
               @ast.WgslExprNodeKind::Identifier(
-                @ast.WgslIdent::new(token.text(), token.start(), token.end()),
+                @ast.WgslIdent(token.text(), token.start(), token.end()),
               ),
               token.start(),
               token.end(),
@@ -4251,7 +4257,7 @@ fn WgslIrExprTokenParser::parse_postfix(
             node = wgsl_ir_expr_make_node(
               @ast.WgslExprNodeKind::Member(
                 node,
-                @ast.WgslIdent::new(
+                @ast.WgslIdent(
                   member_token.text(),
                   member_token.start(),
                   member_token.end(),
@@ -5772,11 +5778,11 @@ fn WgslIrLowerer::scalar_from_type_ref(
   ty_ref : @ast.WgslTypeRef,
 ) -> Scalar raise WgslIrLowerError {
   match ty_ref.name() {
-    "bool" => Scalar::new(Bool, 1)
-    "i32" => Scalar::new(Sint, 4)
-    "u32" => Scalar::new(Uint, 4)
-    "f32" => Scalar::new(Float, 4)
-    "f16" => Scalar::new(Float, 2)
+    "bool" => Scalar::Scalar(Bool, 1)
+    "i32" => Scalar::Scalar(Sint, 4)
+    "u32" => Scalar::Scalar(Uint, 4)
+    "f32" => Scalar::Scalar(Float, 4)
+    "f16" => Scalar::Scalar(Float, 2)
     _ => {
       let handle = self.lower_type_ref(ty_ref)
       match self.shader_module.types.get(handle) {
@@ -5801,7 +5807,7 @@ fn WgslIrLowerer::lower_templated_callee_type(
     Template(base, template_arguments) =>
       match base.kind() {
         Identifier(name) => {
-          let atom = @ast.WgslTypeAtom::new(
+          let atom = @ast.WgslTypeAtom(
             @ast.WgslTypeAtomKind::Identifier,
             name.name(),
             name.start(),
@@ -6259,11 +6265,11 @@ fn WgslIrLowerer::lower_type_name_with_expression_arguments(
 ///|
 fn wgsl_ir_builtin_scalar_alias(name : String) -> TypeInner? {
   match name {
-    "bool" => Some(TypeInner::Scalar(Scalar::new(Bool, 1)))
-    "i32" => Some(TypeInner::Scalar(Scalar::new(Sint, 4)))
-    "u32" => Some(TypeInner::Scalar(Scalar::new(Uint, 4)))
-    "f32" => Some(TypeInner::Scalar(Scalar::new(Float, 4)))
-    "f16" => Some(TypeInner::Scalar(Scalar::new(Float, 2)))
+    "bool" => Some(TypeInner::Scalar(Scalar::Scalar(Bool, 1)))
+    "i32" => Some(TypeInner::Scalar(Scalar::Scalar(Sint, 4)))
+    "u32" => Some(TypeInner::Scalar(Scalar::Scalar(Uint, 4)))
+    "f32" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 4)))
+    "f16" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 2)))
     _ => None
   }
 }
@@ -6271,18 +6277,18 @@ fn wgsl_ir_builtin_scalar_alias(name : String) -> TypeInner? {
 ///|
 fn wgsl_ir_builtin_vector_alias(name : String) -> TypeInner? {
   match name {
-    "vec2f" => Some(TypeInner::Vector(Bi, Scalar::new(Float, 4)))
-    "vec3f" => Some(TypeInner::Vector(Tri, Scalar::new(Float, 4)))
-    "vec4f" => Some(TypeInner::Vector(Quad, Scalar::new(Float, 4)))
-    "vec2h" => Some(TypeInner::Vector(Bi, Scalar::new(Float, 2)))
-    "vec3h" => Some(TypeInner::Vector(Tri, Scalar::new(Float, 2)))
-    "vec4h" => Some(TypeInner::Vector(Quad, Scalar::new(Float, 2)))
-    "vec2i" => Some(TypeInner::Vector(Bi, Scalar::new(Sint, 4)))
-    "vec3i" => Some(TypeInner::Vector(Tri, Scalar::new(Sint, 4)))
-    "vec4i" => Some(TypeInner::Vector(Quad, Scalar::new(Sint, 4)))
-    "vec2u" => Some(TypeInner::Vector(Bi, Scalar::new(Uint, 4)))
-    "vec3u" => Some(TypeInner::Vector(Tri, Scalar::new(Uint, 4)))
-    "vec4u" => Some(TypeInner::Vector(Quad, Scalar::new(Uint, 4)))
+    "vec2f" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Float, 4)))
+    "vec3f" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Float, 4)))
+    "vec4f" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Float, 4)))
+    "vec2h" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Float, 2)))
+    "vec3h" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Float, 2)))
+    "vec4h" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Float, 2)))
+    "vec2i" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Sint, 4)))
+    "vec3i" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Sint, 4)))
+    "vec4i" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Sint, 4)))
+    "vec2u" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Uint, 4)))
+    "vec3u" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Uint, 4)))
+    "vec4u" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Uint, 4)))
     _ => None
   }
 }
@@ -6290,24 +6296,24 @@ fn wgsl_ir_builtin_vector_alias(name : String) -> TypeInner? {
 ///|
 fn wgsl_ir_builtin_matrix_alias(name : String) -> TypeInner? {
   match name {
-    "mat2x2f" => Some(TypeInner::Matrix(Bi, Bi, Scalar::new(Float, 4)))
-    "mat2x3f" => Some(TypeInner::Matrix(Bi, Tri, Scalar::new(Float, 4)))
-    "mat2x4f" => Some(TypeInner::Matrix(Bi, Quad, Scalar::new(Float, 4)))
-    "mat3x2f" => Some(TypeInner::Matrix(Tri, Bi, Scalar::new(Float, 4)))
-    "mat3x3f" => Some(TypeInner::Matrix(Tri, Tri, Scalar::new(Float, 4)))
-    "mat3x4f" => Some(TypeInner::Matrix(Tri, Quad, Scalar::new(Float, 4)))
-    "mat4x2f" => Some(TypeInner::Matrix(Quad, Bi, Scalar::new(Float, 4)))
-    "mat4x3f" => Some(TypeInner::Matrix(Quad, Tri, Scalar::new(Float, 4)))
-    "mat4x4f" => Some(TypeInner::Matrix(Quad, Quad, Scalar::new(Float, 4)))
-    "mat2x2h" => Some(TypeInner::Matrix(Bi, Bi, Scalar::new(Float, 2)))
-    "mat2x3h" => Some(TypeInner::Matrix(Bi, Tri, Scalar::new(Float, 2)))
-    "mat2x4h" => Some(TypeInner::Matrix(Bi, Quad, Scalar::new(Float, 2)))
-    "mat3x2h" => Some(TypeInner::Matrix(Tri, Bi, Scalar::new(Float, 2)))
-    "mat3x3h" => Some(TypeInner::Matrix(Tri, Tri, Scalar::new(Float, 2)))
-    "mat3x4h" => Some(TypeInner::Matrix(Tri, Quad, Scalar::new(Float, 2)))
-    "mat4x2h" => Some(TypeInner::Matrix(Quad, Bi, Scalar::new(Float, 2)))
-    "mat4x3h" => Some(TypeInner::Matrix(Quad, Tri, Scalar::new(Float, 2)))
-    "mat4x4h" => Some(TypeInner::Matrix(Quad, Quad, Scalar::new(Float, 2)))
+    "mat2x2f" => Some(TypeInner::Matrix(Bi, Bi, Scalar::Scalar(Float, 4)))
+    "mat2x3f" => Some(TypeInner::Matrix(Bi, Tri, Scalar::Scalar(Float, 4)))
+    "mat2x4f" => Some(TypeInner::Matrix(Bi, Quad, Scalar::Scalar(Float, 4)))
+    "mat3x2f" => Some(TypeInner::Matrix(Tri, Bi, Scalar::Scalar(Float, 4)))
+    "mat3x3f" => Some(TypeInner::Matrix(Tri, Tri, Scalar::Scalar(Float, 4)))
+    "mat3x4f" => Some(TypeInner::Matrix(Tri, Quad, Scalar::Scalar(Float, 4)))
+    "mat4x2f" => Some(TypeInner::Matrix(Quad, Bi, Scalar::Scalar(Float, 4)))
+    "mat4x3f" => Some(TypeInner::Matrix(Quad, Tri, Scalar::Scalar(Float, 4)))
+    "mat4x4f" => Some(TypeInner::Matrix(Quad, Quad, Scalar::Scalar(Float, 4)))
+    "mat2x2h" => Some(TypeInner::Matrix(Bi, Bi, Scalar::Scalar(Float, 2)))
+    "mat2x3h" => Some(TypeInner::Matrix(Bi, Tri, Scalar::Scalar(Float, 2)))
+    "mat2x4h" => Some(TypeInner::Matrix(Bi, Quad, Scalar::Scalar(Float, 2)))
+    "mat3x2h" => Some(TypeInner::Matrix(Tri, Bi, Scalar::Scalar(Float, 2)))
+    "mat3x3h" => Some(TypeInner::Matrix(Tri, Tri, Scalar::Scalar(Float, 2)))
+    "mat3x4h" => Some(TypeInner::Matrix(Tri, Quad, Scalar::Scalar(Float, 2)))
+    "mat4x2h" => Some(TypeInner::Matrix(Quad, Bi, Scalar::Scalar(Float, 2)))
+    "mat4x3h" => Some(TypeInner::Matrix(Quad, Tri, Scalar::Scalar(Float, 2)))
+    "mat4x4h" => Some(TypeInner::Matrix(Quad, Quad, Scalar::Scalar(Float, 2)))
     _ => None
   }
 }
@@ -7025,7 +7031,7 @@ fn WgslIrLowerer::relational_expression_result_type(
   argument : Handle,
 ) -> Handle? {
   match relational_function {
-    All | Any => Some(self.scalar_type_handle(Scalar::new(Bool, 1)))
+    All | Any => Some(self.scalar_type_handle(Scalar::Scalar(Bool, 1)))
     IsNan | IsInf =>
       match self.function_expression_type(function, argument) {
         Some(input_ty) => Some(self.boolean_result_type(input_ty, input_ty))
@@ -7116,7 +7122,7 @@ fn WgslIrLowerer::boolean_result_type(
     None =>
       match self.vector_size_from_type(right_ty) {
         Some(size) => self.boolean_vector_type(size)
-        None => self.scalar_type_handle(Scalar::new(Bool, 1))
+        None => self.scalar_type_handle(Scalar::Scalar(Bool, 1))
       }
   }
 }
@@ -7128,7 +7134,7 @@ fn WgslIrLowerer::boolean_vector_type(
 ) -> Handle {
   self.intern_type(
     "vec\{size.width()}<bool>",
-    TypeInner::Vector(size, Scalar::new(Bool, 1)),
+    TypeInner::Vector(size, Scalar::Scalar(Bool, 1)),
   )
 }
 
@@ -7295,7 +7301,7 @@ fn WgslIrLowerer::predeclared_type_inner(
   match predeclared {
     AtomicCompareExchangeWeakResult(scalar) => {
       let value_ty = self.scalar_type_handle(scalar)
-      let bool_ty = self.scalar_type_handle(Scalar::new(Bool, 1))
+      let bool_ty = self.scalar_type_handle(Scalar::Scalar(Bool, 1))
       let value_layout = WgslIrLayout::{
         align: scalar.width,
         size: scalar.width,
@@ -7355,7 +7361,7 @@ fn WgslIrLowerer::predeclared_type_inner(
     }
     FrexpResult(size, scalar) => {
       let fract_ty = self.numeric_value_type_handle(size, scalar)
-      let exponent_scalar = Scalar::new(Sint, 4)
+      let exponent_scalar = Scalar::Scalar(Sint, 4)
       let exponent_ty = self.numeric_value_type_handle(size, exponent_scalar)
       let fract_layout = wgsl_ir_numeric_value_layout(size, scalar)
       let exponent_layout = wgsl_ir_numeric_value_layout(size, exponent_scalar)
@@ -7475,7 +7481,7 @@ fn WgslIrLowerer::image_expression_result_type(
           Some(
             self.intern_type(
               "vec4<\{wgsl_ir_scalar_name(kind, 4)}>",
-              TypeInner::Vector(Quad, Scalar::new(kind, 4)),
+              TypeInner::Vector(Quad, Scalar::Scalar(kind, 4)),
             ),
           )
         Image(_, _, Depth(_)) =>
@@ -7483,7 +7489,7 @@ fn WgslIrLowerer::image_expression_result_type(
             Some(
               self.intern_type(
                 "vec4<f32>",
-                TypeInner::Vector(Quad, Scalar::new(Float, 4)),
+                TypeInner::Vector(Quad, Scalar::Scalar(Float, 4)),
               ),
             )
           } else if depth_ref != None {
@@ -7496,7 +7502,7 @@ fn WgslIrLowerer::image_expression_result_type(
           Some(
             self.intern_type(
               "vec4<\{wgsl_ir_scalar_name(kind, 4)}>",
-              TypeInner::Vector(Quad, Scalar::new(kind, 4)),
+              TypeInner::Vector(Quad, Scalar::Scalar(kind, 4)),
             ),
           )
         }
@@ -7529,7 +7535,7 @@ fn WgslIrLowerer::image_dimension_size_type(
   self : WgslIrLowerer,
   dimension : ImageDimension,
 ) -> Handle {
-  let u32_scalar = Scalar::new(Uint, 4)
+  let u32_scalar = Scalar::Scalar(Uint, 4)
   match dimension {
     D1 => self.scalar_type_handle(u32_scalar)
     D2 | Cube => self.numeric_value_type_handle(Some(Bi), u32_scalar)

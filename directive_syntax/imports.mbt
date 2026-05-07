@@ -1,10 +1,5 @@
 ///|
-using @ast {
-  type WgslDirective,
-  type WgslDirectiveKind,
-  type WgslDirectiveTail,
-  type WgslIdent,
-}
+using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|
 using @lex {

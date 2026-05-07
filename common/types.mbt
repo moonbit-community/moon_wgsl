@@ -40,7 +40,7 @@ pub struct ImportDefWithOffset {
 } derive(Eq, Debug)
 
 ///|
-pub fn ImportDefWithOffset::new(
+pub fn ImportDefWithOffset::ImportDefWithOffset(
   definition : ImportDefinition,
 ) -> ImportDefWithOffset {
   ImportDefWithOffset::{ definition, }
@@ -52,7 +52,9 @@ pub struct EnableDirective {
 } derive(Eq, Debug)
 
 ///|
-pub fn EnableDirective::new(extensions : Array[String]) -> EnableDirective {
+pub fn EnableDirective::EnableDirective(
+  extensions : Array[String],
+) -> EnableDirective {
   EnableDirective::{ extensions, }
 }
 
@@ -62,7 +64,9 @@ pub struct RequiresDirective {
 } derive(Eq, Debug)
 
 ///|
-pub fn RequiresDirective::new(extensions : Array[String]) -> RequiresDirective {
+pub fn RequiresDirective::RequiresDirective(
+  extensions : Array[String],
+) -> RequiresDirective {
   RequiresDirective::{ extensions, }
 }
 
@@ -73,7 +77,7 @@ pub struct DiagnosticDirective {
 } derive(Eq, Debug)
 
 ///|
-pub fn DiagnosticDirective::new(
+pub fn DiagnosticDirective::DiagnosticDirective(
   severity : String,
   rule : String,
 ) -> DiagnosticDirective {
@@ -106,7 +110,7 @@ pub struct PreprocessOutput {
 }
 
 ///|
-pub fn PreprocessOutput::new(
+pub fn PreprocessOutput::PreprocessOutput(
   preprocessed_source : String,
   imports : Array[ImportDefWithOffset],
 ) -> PreprocessOutput {
@@ -124,7 +128,7 @@ pub struct PreprocessorMetaData {
 }
 
 ///|
-pub fn PreprocessorMetaData::new(
+pub fn PreprocessorMetaData::PreprocessorMetaData(
   name : String?,
   imports : Array[ImportDefWithOffset],
   defines : @hashmap.HashMap[String, ShaderDefValue],
@@ -157,7 +161,7 @@ pub struct WgslSourceCatalogEntry {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslSourceCatalogEntry::new(
+pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(
   rel_path : String,
   symbol_name : String,
   source_start : Int,
@@ -176,7 +180,7 @@ pub struct WgslSourceOriginEntry {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslSourceOriginEntry::new(
+pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(
   generated_symbol_name : String,
   rel_path : String,
   source_symbol_name : String,
@@ -202,7 +206,7 @@ pub struct PreparedWgslSource {
 }
 
 ///|
-pub fn PreparedWgslSource::new(
+pub fn PreparedWgslSource::PreparedWgslSource(
   source : String,
   source_files : Array[WgslSourceFile],
   source_catalog : Array[WgslSourceCatalogEntry],
@@ -249,7 +253,7 @@ pub struct WgslDiagnostic {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslDiagnostic::new(
+pub fn WgslDiagnostic::WgslDiagnostic(
   severity : WgslDiagnosticSeverity,
   message : String,
   rel_path : String?,
@@ -275,7 +279,7 @@ pub(all) struct WgslComposeOptions {
 ///|
 pub fn WgslComposeOptions::default() -> WgslComposeOptions {
   WgslComposeOptions::{
-    defines: @hashmap.HashMap::new(),
+    defines: @hashmap.HashMap([]),
     value_defines: default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
@@ -284,7 +288,7 @@ pub fn WgslComposeOptions::default() -> WgslComposeOptions {
 
 ///|
 pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int] {
-  let defines : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
   defines.set("AVAILABLE_STORAGE_BUFFER_BINDINGS", 8)
   defines.set("MAX_DIRECTIONAL_LIGHTS", 10)
   defines.set("MAX_CASCADES_PER_LIGHT", 4)
@@ -304,7 +308,7 @@ pub struct WgslSourceMapEntry {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslSourceMapEntry::new(
+pub fn WgslSourceMapEntry::WgslSourceMapEntry(
   rel_path : String,
   symbol_name : String?,
 ) -> WgslSourceMapEntry {
@@ -326,7 +330,7 @@ pub struct WgslExportOutput {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslExportOutput::new(
+pub fn WgslExportOutput::WgslExportOutput(
   source : String,
   source_catalog : Array[WgslSourceCatalogEntry],
   source_origins : Array[WgslSourceOriginEntry],
@@ -355,7 +359,7 @@ pub struct WgslResolvedImportModule {
 } derive(Eq, Debug)
 
 ///|
-pub fn WgslResolvedImportModule::new(
+pub fn WgslResolvedImportModule::WgslResolvedImportModule(
   module_path : String,
   rel_path : String,
 ) -> WgslResolvedImportModule {

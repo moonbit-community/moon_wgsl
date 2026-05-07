@@ -33,7 +33,7 @@ fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
     WgslRawTopLevelKind::Trivia => WgslGlobalDeclKind::Trivia
     _ => wgsl_global_decl_kind_from_data(data)
   }
-  WgslGlobalDecl::new(kind, data, item.start, item.end)
+  WgslGlobalDecl(kind, data, item.start, item.end)
 }
 
 ///|
@@ -96,5 +96,5 @@ pub fn parse_wgsl_translation_unit_strict(
   for item in parse_wgsl_raw_top_level_items_strict(source) {
     declarations.push(parse_wgsl_raw_global_decl_strict(item))
   }
-  WgslTranslationUnit::new(declarations)
+  WgslTranslationUnit(declarations)
 }

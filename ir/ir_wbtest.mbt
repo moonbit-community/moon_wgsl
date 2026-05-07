@@ -14,10 +14,10 @@
 
 ///|
 test "Naga-style shader IR module stores handles into arenas" {
-  let shader_module = Module::new()
+  let shader_module = Module()
   let f32_ty = shader_module.append_type(Type::{
     name: Some("f32"),
-    inner: TypeInner::Scalar(Scalar::new(Float, 4)),
+    inner: TypeInner::Scalar(Scalar::Scalar(Float, 4)),
   })
   let literal = shader_module.append_global_expression(
     Expression::Literal(Literal::F32(1.0)),
@@ -41,12 +41,12 @@ test "Naga-style shader IR module stores handles into arenas" {
 
 ///|
 test "Naga-style shader IR represents function statements and entry points" {
-  let shader_module = Module::new()
+  let shader_module = Module()
   let bool_ty = shader_module.append_type(Type::{
     name: Some("bool"),
-    inner: TypeInner::Scalar(Scalar::new(Bool, 1)),
+    inner: TypeInner::Scalar(Scalar::Scalar(Bool, 1)),
   })
-  let function = Function::new(Some("main"))
+  let function = Function::Function(Some("main"))
   let condition = function.expressions.append(
     Expression::Literal(Literal::Bool(true)),
   )
@@ -54,7 +54,7 @@ test "Naga-style shader IR represents function statements and entry points" {
     Statement::If(
       condition,
       Block::{ statements: [Statement::Return(None)] },
-      Block::new(),
+      Block::Block(),
     ),
   )
   shader_module.append_entry_point(EntryPoint::{

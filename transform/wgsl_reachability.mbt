@@ -24,8 +24,8 @@ fn wgsl_analysis_string_list_push_unique(
 fn wgsl_analysis_declaration_name_map(
   declarations : Array[WgslGlobalDecl],
 ) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
-  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap::new()
+  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
   for i in 0..<declarations.length() {
     let decl = declarations[i]
     if decl.name() != "" {

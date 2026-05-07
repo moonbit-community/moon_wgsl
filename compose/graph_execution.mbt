@@ -138,7 +138,7 @@ fn record_wgsl_planned_final_names_from_extraction(
     return
   }
   for origin in extraction.origins() {
-    let identity = WgslIrSymbolIdentity::new(rel_path, origin.name())
+    let identity = WgslIrSymbolIdentity(rel_path, origin.name())
     let final_name = wgsl_compose_assigned_final_name(
       session.module_path_for_rel_path(rel_path),
       alias_prefixes,
@@ -148,7 +148,7 @@ fn record_wgsl_planned_final_names_from_extraction(
       session.assign_canonical_final_name(identity, final_name)
     } else {
       session.assign_alias_final_name(
-        WgslIrAliasSymbolIdentity::new(
+        WgslIrAliasSymbolIdentity(
           rel_path,
           alias_prefixes.join("__"),
           origin.name(),

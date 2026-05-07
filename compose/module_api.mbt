@@ -13,7 +13,7 @@ pub fn Composer::add_composable_module(
 
   let shader_defs = copy_shader_def_values(desc.shader_defs)
   let effective_defs = metadata.effective_defs.copy()
-  let all_imports : @hashset.HashSet[String] = @hashset.HashSet::new()
+  let all_imports : @hashset.HashSet[String] = @hashset.HashSet([])
   let additional_imports = copy_import_definitions(desc.additional_imports)
   let import_names : Array[String] = []
   for import_binding in metadata.imports {
@@ -61,7 +61,7 @@ pub fn Composer::add_composable_module(
     desc.source,
     additional_imports,
   )
-  let definition = ComposableModuleDefinition::new(
+  let definition = ComposableModuleDefinition(
     module_name,
     shader_defs,
     hashset_strings_to_array(effective_defs),

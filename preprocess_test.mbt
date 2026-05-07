@@ -14,7 +14,7 @@
 
 ///|
 fn empty_shader_defs() -> @hashmap.HashMap[String, @common.ShaderDefValue] {
-  @hashmap.HashMap::new()
+  @hashmap.HashMap([])
 }
 
 ///|

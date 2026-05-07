@@ -31,7 +31,6 @@ using @ast {
   type WgslStruct,
   type WgslStructMember,
   type WgslTranslationUnit,
-  type WgslTypeAtom,
   type WgslTypeAtomKind,
   type WgslTypeAlias,
   type WgslTypeArgument,

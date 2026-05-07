@@ -14,7 +14,7 @@ priv struct ComposeCaseArgs {
 }
 
 ///|
-fn ComposeCaseArgs::new() -> ComposeCaseArgs {
+fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
   {
     fixture_root: None,
     entry: None,
@@ -28,7 +28,7 @@ fn ComposeCaseArgs::new() -> ComposeCaseArgs {
 ///|
 fn parse_compose_case_args() -> ComposeCaseArgs {
   let args = @env.args()
-  let parsed = ComposeCaseArgs::new()
+  let parsed = ComposeCaseArgs()
   let mut index = 1
   while index < args.length() {
     match args[index] {
@@ -71,7 +71,7 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
 fn compose_case_bool_defines(
   names : Array[String],
 ) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for name in names {
     defines.set(name, true)
   }

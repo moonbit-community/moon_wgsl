@@ -21,14 +21,14 @@ test "IR validator accepts lowered WGSL module" {
 
 ///|
 test "IR validator rejects invalid type handles" {
-  let module_ = Module::new()
+  let module_ = Module()
   let init = module_.append_global_expression(
     Expression::Literal(Literal::I32(1)),
   )
   ignore(
     module_.append_constant(Constant::{
       name: Some("BAD"),
-      ty: Handle::new(99),
+      ty: Handle::Handle(99),
       init,
     }),
   )
@@ -43,9 +43,9 @@ test "IR validator rejects invalid type handles" {
 
 ///|
 test "IR validator rejects invalid function call handles" {
-  let module_ = Module::new()
-  let function = Function::new(Some("main"))
-  function.body.push(Statement::Call(Handle::new(42), [], None))
+  let module_ = Module()
+  let function = Function::Function(Some("main"))
+  function.body.push(Statement::Call(Handle::Handle(42), [], None))
   module_.append_entry_point(EntryPoint::{
     name: "main",
     stage: Compute,
@@ -68,10 +68,12 @@ test "IR validator rejects invalid function call handles" {
 
 ///|
 test "IR validator rejects invalid function-call expression handles" {
-  let module_ = Module::new()
-  let function = Function::new(Some("main"))
+  let module_ = Module()
+  let function = Function::Function(Some("main"))
   ignore(
-    function.expressions.append(Expression::FunctionCall(Handle::new(42), [])),
+    function.expressions.append(
+      Expression::FunctionCall(Handle::Handle(42), []),
+    ),
   )
   module_.append_entry_point(EntryPoint::{
     name: "main",

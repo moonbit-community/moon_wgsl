@@ -4,13 +4,13 @@ pub(all) struct TypeArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn TypeArena::new() -> TypeArena {
+pub fn TypeArena::TypeArena() -> TypeArena {
   TypeArena::{ items: [] }
 }
 
 ///|
 pub fn TypeArena::append(self : TypeArena, item : Type) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }
@@ -31,13 +31,13 @@ pub(all) struct ConstantArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn ConstantArena::new() -> ConstantArena {
+pub fn ConstantArena::ConstantArena() -> ConstantArena {
   ConstantArena::{ items: [] }
 }
 
 ///|
 pub fn ConstantArena::append(self : ConstantArena, item : Constant) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }
@@ -48,13 +48,13 @@ pub(all) struct OverrideArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn OverrideArena::new() -> OverrideArena {
+pub fn OverrideArena::OverrideArena() -> OverrideArena {
   OverrideArena::{ items: [] }
 }
 
 ///|
 pub fn OverrideArena::append(self : OverrideArena, item : Override) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }
@@ -74,7 +74,7 @@ pub(all) struct GlobalVariableArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn GlobalVariableArena::new() -> GlobalVariableArena {
+pub fn GlobalVariableArena::GlobalVariableArena() -> GlobalVariableArena {
   GlobalVariableArena::{ items: [] }
 }
 
@@ -83,7 +83,7 @@ pub fn GlobalVariableArena::append(
   self : GlobalVariableArena,
   item : GlobalVariable,
 ) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }
@@ -94,7 +94,7 @@ pub(all) struct LocalVariableArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn LocalVariableArena::new() -> LocalVariableArena {
+pub fn LocalVariableArena::LocalVariableArena() -> LocalVariableArena {
   LocalVariableArena::{ items: [] }
 }
 
@@ -103,7 +103,7 @@ pub fn LocalVariableArena::append(
   self : LocalVariableArena,
   item : LocalVariable,
 ) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }
@@ -114,7 +114,7 @@ pub(all) struct ExpressionArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn ExpressionArena::new() -> ExpressionArena {
+pub fn ExpressionArena::ExpressionArena() -> ExpressionArena {
   ExpressionArena::{ items: [] }
 }
 
@@ -123,7 +123,7 @@ pub fn ExpressionArena::append(
   self : ExpressionArena,
   item : Expression,
 ) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }
@@ -143,13 +143,13 @@ pub(all) struct FunctionArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn FunctionArena::new() -> FunctionArena {
+pub fn FunctionArena::FunctionArena() -> FunctionArena {
   FunctionArena::{ items: [] }
 }
 
 ///|
 pub fn FunctionArena::append(self : FunctionArena, item : Function) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }
@@ -169,7 +169,7 @@ pub(all) struct DiagnosticFilterArena {
 } derive(Eq, Debug)
 
 ///|
-pub fn DiagnosticFilterArena::new() -> DiagnosticFilterArena {
+pub fn DiagnosticFilterArena::DiagnosticFilterArena() -> DiagnosticFilterArena {
   DiagnosticFilterArena::{ items: [] }
 }
 
@@ -178,7 +178,7 @@ pub fn DiagnosticFilterArena::append(
   self : DiagnosticFilterArena,
   item : DiagnosticFilterNode,
 ) -> Handle {
-  let handle = Handle::new(self.items.length())
+  let handle = Handle::Handle(self.items.length())
   self.items.push(item)
   handle
 }

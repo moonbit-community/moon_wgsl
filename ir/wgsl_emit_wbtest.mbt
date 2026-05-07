@@ -60,11 +60,11 @@ test "IR emitter mirrors naga entry-point stage attribute spacing" {
 
 ///|
 test "IR emitter fails on invalid handles instead of inventing output" {
-  let module_ = Module::new()
+  let module_ = Module()
   let constant = Constant::{
     name: Some("BAD"),
-    ty: Handle::new(99),
-    init: Handle::new(0),
+    ty: Handle::Handle(99),
+    init: Handle::Handle(0),
   }
   ignore(module_.append_constant(constant))
   let message = try {

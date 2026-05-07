@@ -6,7 +6,7 @@ priv struct WgslTokenReplacement {
 }
 
 ///|
-fn WgslTokenReplacement::new(
+fn WgslTokenReplacement::WgslTokenReplacement(
   start : Int,
   end : Int,
   replacement : String,

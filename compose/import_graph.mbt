@@ -19,7 +19,7 @@ priv struct WgslModuleFinalNameApplicationPlan {
 }
 
 ///|
-fn WgslModuleFinalNameApplicationPlan::new() -> WgslModuleFinalNameApplicationPlan {
+fn WgslModuleFinalNameApplicationPlan::WgslModuleFinalNameApplicationPlan() -> WgslModuleFinalNameApplicationPlan {
   WgslModuleFinalNameApplicationPlan::{ entries: [] }
 }
 
@@ -53,7 +53,7 @@ fn WgslModuleFinalNameApplicationPlan::push(
 fn WgslModuleFinalNameApplicationPlan::reference_rewrite_plan(
   self : WgslModuleFinalNameApplicationPlan,
 ) -> WgslReferenceRewritePlan {
-  let plan = WgslReferenceRewritePlan::new()
+  let plan = WgslReferenceRewritePlan()
   for entry in self.entries {
     plan.add_symbol_binding(
       entry.rel_path,
@@ -72,7 +72,7 @@ fn WgslModuleFinalNameApplicationPlan::apply_to_origins(
 ) -> Unit {
   for entry in self.entries {
     let origin = origins[entry.origin_index]
-    origins[entry.origin_index] = WgslSourceOriginEntry::new(
+    origins[entry.origin_index] = WgslSourceOriginEntry(
       entry.final_name,
       origin.rel_path,
       origin.source_symbol_name,
@@ -93,7 +93,7 @@ fn WgslComposeSession::assigned_final_name_for_origin(
     origin.generated_symbol_name == "" {
     return None
   }
-  let identity = WgslIrSymbolIdentity::new(
+  let identity = WgslIrSymbolIdentity(
     origin.rel_path,
     origin.source_symbol_name,
   )
@@ -101,7 +101,7 @@ fn WgslComposeSession::assigned_final_name_for_origin(
     self.assigned_canonical_final_name(identity)
   } else {
     self.assigned_final_names.alias_get(
-      WgslIrAliasSymbolIdentity::new(
+      WgslIrAliasSymbolIdentity(
         origin.rel_path,
         alias_prefixes.join("__"),
         origin.source_symbol_name,
@@ -116,7 +116,7 @@ fn collect_wgsl_module_final_name_application_plan(
   start_index : Int,
   alias_prefixes : Array[String],
 ) -> WgslModuleFinalNameApplicationPlan {
-  let plan = WgslModuleFinalNameApplicationPlan::new()
+  let plan = WgslModuleFinalNameApplicationPlan()
   for i in start_index..<session.source_origins.length() {
     let origin = session.source_origins[i]
     match session.assigned_final_name_for_origin(origin, alias_prefixes) {
@@ -171,7 +171,7 @@ fn wgsl_redirect_final_target(
 fn build_wgsl_redirect_reference_plan(
   redirects : Array[WgslSymbolRedirect],
 ) -> WgslReferenceRewritePlan {
-  let plan = WgslReferenceRewritePlan::new()
+  let plan = WgslReferenceRewritePlan()
   for redirect in redirects {
     let from_name = redirect.from_name.trim().to_owned()
     if from_name == "" {
@@ -622,14 +622,11 @@ fn Composer::compose_wgsl_import_requests(
         origin.generated_symbol_name != "" {
         if request.alias_name == "" {
           session.record_canonical_final_name_if_absent(
-            WgslIrSymbolIdentity::new(
-              origin.rel_path,
-              origin.source_symbol_name,
-            ),
+            WgslIrSymbolIdentity(origin.rel_path, origin.source_symbol_name),
             origin.generated_symbol_name,
           )
         } else if origin.rel_path == request.rel_path {
-          let identity = WgslIrAliasSymbolIdentity::new(
+          let identity = WgslIrAliasSymbolIdentity(
             origin.rel_path,
             request_alias_scope,
             origin.source_symbol_name,

@@ -191,7 +191,7 @@ fn used_imports_record(
     used_imports[index].definition.items.push(item_name)
   } else {
     used_imports.push(
-      ImportDefWithOffset::new(ImportDefinition::{
+      ImportDefWithOffset(ImportDefinition::{
         import_path: module_path,
         items: [item_name],
       }),
@@ -266,7 +266,7 @@ fn substitute_identifiers(
       )
       if replacement != ident.name() {
         nodes.push(
-          WgslTokenReplacement::new(ident.start(), ident.end(), replacement),
+          WgslTokenReplacement(ident.start(), ident.end(), replacement),
         )
       }
     }

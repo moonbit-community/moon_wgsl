@@ -78,7 +78,7 @@ fn WgslVirtualOverrideRewriteBinding::key(
 }
 
 ///|
-pub fn WgslReferenceRewritePlan::new() -> WgslReferenceRewritePlan {
+pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> WgslReferenceRewritePlan {
   WgslReferenceRewritePlan::{ bindings: [], virtual_overrides: [] }
 }
 
@@ -352,7 +352,7 @@ fn collect_wgsl_rewrite_nodes_from_identifiers(
     match wgsl_rename_rules_target(rules, identifier.name()) {
       Some(replacement) =>
         nodes.push(
-          WgslTokenReplacement::new(
+          WgslTokenReplacement(
             identifier.start(),
             identifier.end(),
             replacement,
@@ -393,7 +393,7 @@ fn collect_wgsl_rewrite_nodes_from_type_ref(
           match wgsl_rename_rules_target(rules, identifier.name()) {
             Some(replacement) =>
               nodes.push(
-                WgslTokenReplacement::new(
+                WgslTokenReplacement(
                   identifier.start(),
                   identifier.end(),
                   replacement,
@@ -433,7 +433,7 @@ fn collect_wgsl_local_binding_rewrite_node(
         original_name: "",
       })
       nodes.push(
-        WgslTokenReplacement::new(
+        WgslTokenReplacement(
           binding.name().start(),
           binding.name().end(),
           replacement,
@@ -525,7 +525,7 @@ fn collect_wgsl_function_local_rewrite_nodes(
               original_name: "",
             })
             nodes.push(
-              WgslTokenReplacement::new(
+              WgslTokenReplacement(
                 argument.name().start(),
                 argument.name().end(),
                 replacement,

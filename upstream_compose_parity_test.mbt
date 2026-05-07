@@ -14,14 +14,14 @@
 
 ///|
 fn upstream_parity_empty_defines() -> @hashmap.HashMap[String, Bool] {
-  @hashmap.HashMap::new()
+  @hashmap.HashMap([])
 }
 
 ///|
 fn upstream_parity_bool_defines(
   names : Array[String],
 ) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for name in names {
     defines.set(name, true)
   }
@@ -32,7 +32,8 @@ fn upstream_parity_bool_defines(
 fn upstream_parity_shader_def_values(
   names : Array[String],
 ) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
-  let defines : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap::new()
+  let defines : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap([],
+  )
   for name in names {
     defines.set(name, @common.ShaderDefValue::Bool(true))
   }
@@ -96,7 +97,7 @@ fn upstream_parity_descriptor_effective_defs_source(
       file_path: "mod.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap::new(),
+      shader_defs: @hashmap.HashMap([]),
     }),
   ) catch {
     err => abort("expected mod registration success: \{err.message()}")

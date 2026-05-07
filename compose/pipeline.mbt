@@ -104,7 +104,7 @@ fn Composer::preprocess_wgsl_source_with_path(
     )
   }
   let mut merged = ""
-  let bindings = WgslComposeBindingSet::new()
+  let bindings = WgslComposeBindingSet()
   bindings.extend(inherited_bindings)
   let implicit_requests = self.build_wgsl_implicit_import_requests(
     current_rel_path,
@@ -168,7 +168,7 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
     root_source,
     session,
     None,
-    WgslComposeBindingSet::new(),
+    WgslComposeBindingSet(),
     true,
     true,
     [],
@@ -194,7 +194,7 @@ fn collect_wgsl_unused_redirect_diagnostics(
     }
     if !matched {
       diagnostics.push(
-        WgslDiagnostic::new(
+        WgslDiagnostic(
           WgslDiagnosticSeverity::Warn,
           "symbol redirect did not match any source identifier",
           None,
@@ -245,7 +245,7 @@ pub fn Composer::prepare_wgsl_source(
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: ir_source },
   ]
-  PreparedWgslSource::new(
+  PreparedWgslSource(
     ir_source,
     source_files,
     build_prepared_wgsl_source_catalog(source_files.copy()),
@@ -299,7 +299,7 @@ pub fn Composer::compose_wgsl_source(
       root_source,
       session,
       None,
-      WgslComposeBindingSet::new(),
+      WgslComposeBindingSet(),
       true,
       false,
       [],

@@ -15,7 +15,7 @@ struct WgslSourceDirectiveItem {
 } derive(Debug)
 
 ///|
-fn WgslSourceDirectiveItem::new(
+fn WgslSourceDirectiveItem::WgslSourceDirectiveItem(
   kind : WgslSourceDirectiveItemKind,
   line : String,
 ) -> WgslSourceDirectiveItem {
@@ -137,7 +137,7 @@ fn parse_wgsl_source_directive_item(line : String) -> WgslSourceDirectiveItem {
   } else {
     WgslSourceDirectiveItemKind::Source
   }
-  WgslSourceDirectiveItem::new(kind, line)
+  WgslSourceDirectiveItem(kind, line)
 }
 
 ///|

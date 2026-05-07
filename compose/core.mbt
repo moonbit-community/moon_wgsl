@@ -22,9 +22,9 @@ pub struct Composer {
 ///|
 pub fn Composer::default() -> Composer {
   Composer::{
-    module_sets: @hashmap.HashMap::new(),
+    module_sets: @hashmap.HashMap([]),
     registry: WgslSourceRegistry::default(),
-    composable_module_registry_paths: @hashmap.HashMap::new(),
+    composable_module_registry_paths: @hashmap.HashMap([]),
   }
 }
 

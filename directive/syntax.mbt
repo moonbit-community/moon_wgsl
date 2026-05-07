@@ -30,7 +30,7 @@ pub struct WgslShaderDefComparison {
 } derive(Debug)
 
 ///|
-fn WgslShaderDefComparison::new(
+fn WgslShaderDefComparison::WgslShaderDefComparison(
   def : String,
   operator : WgslShaderDefOperator,
   value : String,
@@ -173,7 +173,7 @@ pub fn parse_wgsl_shader_def_comparison(
     None
   } else {
     Some(
-      WgslShaderDefComparison::new(
+      WgslShaderDefComparison(
         def,
         WgslShaderDefOperator::from_text(operator),
         text[value_start:i].to_owned(),

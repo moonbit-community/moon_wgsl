@@ -7,7 +7,7 @@ pub struct WgslShaderDefReference {
 } derive(Debug)
 
 ///|
-fn WgslShaderDefReference::new(
+fn WgslShaderDefReference::WgslShaderDefReference(
   name : String,
   start : Int,
   end : Int,
@@ -70,7 +70,7 @@ fn parse_wgsl_shader_def_references_at(
         let name = line[body_start:k].to_owned()
         if wgsl_regex_word_text(name) {
           references.push(
-            WgslShaderDefReference::new(
+            WgslShaderDefReference(
               name,
               source_start + start,
               source_start + k + 1,
@@ -92,7 +92,7 @@ fn parse_wgsl_shader_def_references_at(
       }
       if name_end > name_start {
         references.push(
-          WgslShaderDefReference::new(
+          WgslShaderDefReference(
             line[name_start:name_end].to_owned(),
             source_start + start,
             source_start + name_end,

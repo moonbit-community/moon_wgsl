@@ -50,7 +50,7 @@ pub(all) struct DocComments {
 } derive(Eq, Debug)
 
 ///|
-pub fn DocComments::new() -> DocComments {
+pub fn DocComments::DocComments() -> DocComments {
   DocComments::{
     types: [],
     struct_members: [],

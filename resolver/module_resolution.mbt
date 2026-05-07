@@ -60,17 +60,17 @@ pub fn resolve_wgsl_import_module_in_registry(
       module_path = "\{module_path}::\{segments[i]}"
     }
     if modules.get(module_path) is Some(rel_path) {
-      return Some(WgslResolvedImportModule::new(module_path, rel_path))
+      return Some(WgslResolvedImportModule(module_path, rel_path))
     }
     let default_rel = wgsl_module_path_to_rel_path(module_path)
     if registry.registered_source(default_rel) is Some(_) {
-      return Some(WgslResolvedImportModule::new(module_path, default_rel))
+      return Some(WgslResolvedImportModule(module_path, default_rel))
     }
     let namespace_rel = wgsl_module_path_to_rel_path_namespace(module_path)
     if namespace_rel != "" &&
       namespace_rel != default_rel &&
       registry.registered_source(namespace_rel) is Some(_) {
-      return Some(WgslResolvedImportModule::new(module_path, namespace_rel))
+      return Some(WgslResolvedImportModule(module_path, namespace_rel))
     }
     segments.pop() |> ignore
   }

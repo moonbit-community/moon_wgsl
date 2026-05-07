@@ -147,7 +147,7 @@ pub fn rewrite_wgsl_override_targets_with_binding_plan(
     let target = wgsl_binding_plan_redirect_target(raw_target, plan)
     if target != raw_target {
       nodes.push(
-        WgslTokenReplacement::new(
+        WgslTokenReplacement(
           function.name().start(),
           function.name().end(),
           target,
@@ -196,7 +196,7 @@ fn collect_wgsl_virtual_fn_nodes(
 ) -> Unit {
   match (function.qualifier_start(), function.qualifier_end()) {
     (Some(start), Some(end_)) =>
-      nodes.push(WgslTokenReplacement::new(start, end_, ""))
+      nodes.push(WgslTokenReplacement(start, end_, ""))
     _ => ()
   }
 }
@@ -269,9 +269,9 @@ fn rewrite_wgsl_override_fn_block(
   }
   match (function.qualifier_start(), function.qualifier_end()) {
     (Some(start), Some(end_)) => {
-      nodes.push(WgslTokenReplacement::new(start, end_, ""))
+      nodes.push(WgslTokenReplacement(start, end_, ""))
       nodes.push(
-        WgslTokenReplacement::new(
+        WgslTokenReplacement(
           function.name().start(),
           function.name().end(),
           override_name,
@@ -333,12 +333,15 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   plan : WgslReferenceRewritePlan,
 ) -> WgslVirtualOverrideOutput raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
-  let virtual_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let override_base_names : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let override_body_references_base : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
-  let override_names : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let override_raw_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let virtual_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
+  let override_base_names : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
+  )
+  let override_body_references_base : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([],
+  )
+  let override_names : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
+  let override_raw_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
+  )
   for block in graph.declaration_blocks {
     if block.name() != "" && wgsl_graph_block_is_virtual_fn(block) {
       virtual_names.set(block.name(), true)
@@ -485,7 +488,7 @@ pub fn strip_wgsl_virtual_functions(
     return source
   }
   let mut out = ""
-  let emitted_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let emitted_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
   for import_block in graph.import_blocks {
     out = out + emit_wgsl_graph_block_canonical(import_block)
   }

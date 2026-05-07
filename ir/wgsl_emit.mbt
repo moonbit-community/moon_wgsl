@@ -417,7 +417,7 @@ fn WgslIrEmitter::emit_function_local_var_declarations(
 ) -> Unit raise WgslIrEmitError {
   let mut emitted = false
   for index in 0..<function.local_variables.items.length() {
-    let handle = Handle::new(index)
+    let handle = Handle::Handle(index)
     match function.local_variables.items.get(index) {
       Some(local_var) =>
         if local_var.kind == LocalVariableKind::Var && local_var.init == None {
@@ -565,7 +565,7 @@ fn WgslIrEmitter::emit_statement(
       self.emit_local_declaration(out, function, handle, indent)
     Emit(range) =>
       for index in range.start.index()..<=range.end.index() {
-        let handle = Handle::new(index)
+        let handle = Handle::Handle(index)
         let expr = self.function_expression(function, handle)
         if self.expression_type(Some(function), handle) == None {
           out.write_string("\{pad}\{expr};\n")
@@ -1338,7 +1338,7 @@ fn WgslIrEmitter::type_handle_named(
 ) -> Handle? {
   for index in 0..<self.shader_module.types.items.length() {
     match self.shader_module.types.items[index].name {
-      Some(existing) if existing == name => return Some(Handle::new(index))
+      Some(existing) if existing == name => return Some(Handle::Handle(index))
       _ => ()
     }
   }
@@ -1526,7 +1526,7 @@ fn WgslIrEmitter::find_vector_scalar_type(
   let scalar_inner = TypeInner::Scalar(scalar)
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == scalar_inner {
-      return Some(Handle::new(i))
+      return Some(Handle::Handle(i))
     }
   }
   None
@@ -1541,7 +1541,7 @@ fn WgslIrEmitter::find_vector_type(
   let vector_inner = TypeInner::Vector(size, scalar)
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == vector_inner {
-      return Some(Handle::new(i))
+      return Some(Handle::Handle(i))
     }
   }
   None
@@ -1590,7 +1590,7 @@ fn WgslIrEmitter::relational_expression_result_type(
   argument : Handle,
 ) -> Handle? {
   match relational_function {
-    All | Any => self.find_scalar_type(Scalar::new(Bool, 1))
+    All | Any => self.find_scalar_type(Scalar::Scalar(Bool, 1))
     IsNan | IsInf =>
       match self.expression_type(function, argument) {
         Some(input_ty) => self.boolean_result_type(input_ty, input_ty)
@@ -1664,11 +1664,11 @@ fn WgslIrEmitter::boolean_result_type(
   right_ty : Handle,
 ) -> Handle? {
   match self.vector_size_from_type(left_ty) {
-    Some(size) => self.find_vector_type(size, Scalar::new(Bool, 1))
+    Some(size) => self.find_vector_type(size, Scalar::Scalar(Bool, 1))
     None =>
       match self.vector_size_from_type(right_ty) {
-        Some(size) => self.find_vector_type(size, Scalar::new(Bool, 1))
-        None => self.find_scalar_type(Scalar::new(Bool, 1))
+        Some(size) => self.find_vector_type(size, Scalar::Scalar(Bool, 1))
+        None => self.find_scalar_type(Scalar::Scalar(Bool, 1))
       }
   }
 }
@@ -1711,7 +1711,7 @@ fn WgslIrEmitter::find_scalar_type(
   let scalar_inner = TypeInner::Scalar(scalar)
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == scalar_inner {
-      return Some(Handle::new(i))
+      return Some(Handle::Handle(i))
     }
   }
   None
@@ -2581,7 +2581,7 @@ fn WgslIrEmitter::local_variable_name_needs_suffix(
     }
     if self.local_variable_base_name(
         function.local_variables.items[index],
-        Handle::new(index),
+        Handle::Handle(index),
       ) ==
       base_name {
       return true

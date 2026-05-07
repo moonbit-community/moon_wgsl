@@ -120,7 +120,7 @@ pub enum Binding {
 pub(all) struct Block {
   statements : Array[Statement]
 } derive(Eq, @debug.Debug)
-pub fn Block::new() -> Self
+pub fn Block::Block() -> Self
 pub fn Block::push(Self, Statement) -> Unit
 
 pub enum BuiltIn {
@@ -196,8 +196,8 @@ pub(all) struct Constant {
 pub(all) struct ConstantArena {
   items : Array[Constant]
 } derive(Eq, @debug.Debug)
+pub fn ConstantArena::ConstantArena() -> Self
 pub fn ConstantArena::append(Self, Constant) -> Handle
-pub fn ConstantArena::new() -> Self
 
 pub(all) struct CooperativeData {
   pointer : Handle
@@ -236,8 +236,8 @@ pub(all) struct DiagnosticFilter {
 pub(all) struct DiagnosticFilterArena {
   items : Array[DiagnosticFilterNode]
 } derive(Eq, @debug.Debug)
+pub fn DiagnosticFilterArena::DiagnosticFilterArena() -> Self
 pub fn DiagnosticFilterArena::append(Self, DiagnosticFilterNode) -> Handle
-pub fn DiagnosticFilterArena::new() -> Self
 
 pub(all) struct DiagnosticFilterNode {
   inner : DiagnosticFilter
@@ -259,7 +259,7 @@ pub(all) struct DocComments {
   global_variables : Array[(Handle, Array[String])]
   module_comments : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn DocComments::new() -> Self
+pub fn DocComments::DocComments() -> Self
 
 pub enum EarlyDepthTest {
   Force
@@ -327,8 +327,8 @@ pub enum Expression {
 pub(all) struct ExpressionArena {
   items : Array[Expression]
 } derive(Eq, @debug.Debug)
+pub fn ExpressionArena::ExpressionArena() -> Self
 pub fn ExpressionArena::append(Self, Expression) -> Handle
-pub fn ExpressionArena::new() -> Self
 
 pub enum FilterableTriggeringRule {
   Standard(StandardFilterableTriggeringRule)
@@ -346,13 +346,13 @@ pub(all) struct Function {
   body : Block
   diagnostic_filter_leaf : Handle?
 } derive(Eq, @debug.Debug)
-pub fn Function::new(String?) -> Self
+pub fn Function::Function(String?) -> Self
 
 pub(all) struct FunctionArena {
   items : Array[Function]
 } derive(Eq, @debug.Debug)
+pub fn FunctionArena::FunctionArena() -> Self
 pub fn FunctionArena::append(Self, Function) -> Handle
-pub fn FunctionArena::new() -> Self
 pub fn FunctionArena::set(Self, Handle, Function) -> Unit
 
 pub(all) struct FunctionArgument {
@@ -389,20 +389,20 @@ pub(all) struct GlobalVariable {
 pub(all) struct GlobalVariableArena {
   items : Array[GlobalVariable]
 } derive(Eq, @debug.Debug)
+pub fn GlobalVariableArena::GlobalVariableArena() -> Self
 pub fn GlobalVariableArena::append(Self, GlobalVariable) -> Handle
-pub fn GlobalVariableArena::new() -> Self
 
 pub(all) struct Handle {
   index : Int
 } derive(Eq, @debug.Debug)
+pub fn Handle::Handle(Int) -> Self
 pub fn Handle::index(Self) -> Int
-pub fn Handle::new(Int) -> Self
 
 pub(all) struct HandleRange {
   start : Handle
   end : Handle
 } derive(Eq, @debug.Debug)
-pub fn HandleRange::new(Handle, Handle) -> Self
+pub fn HandleRange::HandleRange(Handle, Handle) -> Self
 
 pub enum ImageClass {
   Sampled(ScalarKind, Bool)
@@ -457,8 +457,8 @@ pub(all) struct LocalVariable {
 pub(all) struct LocalVariableArena {
   items : Array[LocalVariable]
 } derive(Eq, @debug.Debug)
+pub fn LocalVariableArena::LocalVariableArena() -> Self
 pub fn LocalVariableArena::append(Self, LocalVariable) -> Handle
-pub fn LocalVariableArena::new() -> Self
 
 pub enum LocalVariableKind {
   Var
@@ -586,6 +586,7 @@ pub(all) struct Module {
   diagnostic_filter_leaf : Handle?
   doc_comments : DocComments?
 } derive(Eq, @debug.Debug)
+pub fn Module::Module() -> Self
 pub fn Module::append_constant(Self, Constant) -> Handle
 pub fn Module::append_directive(Self, String) -> Unit
 pub fn Module::append_entry_point(Self, EntryPoint) -> Unit
@@ -594,7 +595,6 @@ pub fn Module::append_global_expression(Self, Expression) -> Handle
 pub fn Module::append_global_variable(Self, GlobalVariable) -> Handle
 pub fn Module::append_override(Self, Override) -> Handle
 pub fn Module::append_type(Self, Type) -> Handle
-pub fn Module::new() -> Self
 pub fn Module::set_function(Self, Handle, Function) -> Unit
 pub fn Module::set_override(Self, Handle, Override) -> Unit
 
@@ -613,8 +613,8 @@ pub(all) struct Override {
 pub(all) struct OverrideArena {
   items : Array[Override]
 } derive(Eq, @debug.Debug)
+pub fn OverrideArena::OverrideArena() -> Self
 pub fn OverrideArena::append(Self, Override) -> Handle
-pub fn OverrideArena::new() -> Self
 pub fn OverrideArena::set(Self, Handle, Override) -> Unit
 
 pub enum PredeclaredType {
@@ -690,7 +690,7 @@ pub(all) struct Scalar {
   kind : ScalarKind
   width : Int
 } derive(Eq, @debug.Debug)
-pub fn Scalar::new(ScalarKind, Int) -> Self
+pub fn Scalar::Scalar(ScalarKind, Int) -> Self
 
 pub enum ScalarKind {
   Sint
@@ -728,7 +728,7 @@ pub(all) struct SpecialTypes {
   external_texture_transfer_function : Handle?
   predeclared_types : Array[(PredeclaredType, Handle)]
 } derive(Eq, @debug.Debug)
-pub fn SpecialTypes::new() -> Self
+pub fn SpecialTypes::SpecialTypes() -> Self
 
 pub enum StandardFilterableTriggeringRule {
   DerivativeUniformity
@@ -861,9 +861,9 @@ pub(all) struct Type {
 pub(all) struct TypeArena {
   items : Array[Type]
 } derive(Eq, @debug.Debug)
+pub fn TypeArena::TypeArena() -> Self
 pub fn TypeArena::append(Self, Type) -> Handle
 pub fn TypeArena::get(Self, Handle) -> Type?
-pub fn TypeArena::new() -> Self
 pub fn TypeArena::set(Self, Handle, Type) -> Unit
 
 pub enum TypeInner {
@@ -906,9 +906,9 @@ pub fn WgslIrAliasFinalNameEntry::identity(Self) -> WgslIrAliasSymbolIdentity
 pub struct WgslIrAliasSymbolIdentity {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn WgslIrAliasSymbolIdentity::WgslIrAliasSymbolIdentity(String, String, String) -> Self
 pub fn WgslIrAliasSymbolIdentity::alias_name(Self) -> String
 pub fn WgslIrAliasSymbolIdentity::key(Self) -> String
-pub fn WgslIrAliasSymbolIdentity::new(String, String, String) -> Self
 pub fn WgslIrAliasSymbolIdentity::symbol(Self) -> WgslIrSymbolIdentity
 
 pub struct WgslIrCanonicalFinalNameEntry {
@@ -920,6 +920,7 @@ pub fn WgslIrCanonicalFinalNameEntry::identity(Self) -> WgslIrSymbolIdentity
 pub struct WgslIrFinalNameTable {
   // private fields
 }
+pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> Self
 pub fn WgslIrFinalNameTable::alias_entries_for_scope(Self, String, String) -> Array[WgslIrAliasFinalNameEntry]
 pub fn WgslIrFinalNameTable::alias_get(Self, WgslIrAliasSymbolIdentity) -> String?
 pub fn WgslIrFinalNameTable::alias_set(Self, WgslIrAliasSymbolIdentity, String) -> Unit
@@ -927,13 +928,12 @@ pub fn WgslIrFinalNameTable::canonical_entries_for_rel_path(Self, String) -> Arr
 pub fn WgslIrFinalNameTable::canonical_entry_count(Self) -> Int
 pub fn WgslIrFinalNameTable::canonical_get(Self, WgslIrSymbolIdentity) -> String?
 pub fn WgslIrFinalNameTable::canonical_set(Self, WgslIrSymbolIdentity, String) -> Unit
-pub fn WgslIrFinalNameTable::new() -> Self
 
 pub struct WgslIrImportEdge {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn WgslIrImportEdge::WgslIrImportEdge(String, String, String, String, String, WgslIrImportEdgeKind) -> Self
 pub fn WgslIrImportEdge::key(Self) -> String
-pub fn WgslIrImportEdge::new(String, String, String, String, String, WgslIrImportEdgeKind) -> Self
 
 pub(all) enum WgslIrImportEdgeKind {
   FullModule
@@ -945,10 +945,10 @@ pub fn WgslIrImportEdgeKind::key(Self) -> String
 pub struct WgslIrLinkGraph {
   // private fields
 }
+pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> Self
 pub fn WgslIrLinkGraph::contains_reachable_symbol(Self, WgslIrSymbolIdentity) -> Bool
 pub fn WgslIrLinkGraph::import_edge_count(Self) -> Int
 pub fn WgslIrLinkGraph::mark_reachable(Self, WgslIrSymbolIdentity) -> Unit
-pub fn WgslIrLinkGraph::new() -> Self
 pub fn WgslIrLinkGraph::record_import(Self, String, String, String, String, String, WgslIrImportEdgeKind) -> Unit
 pub fn WgslIrLinkGraph::record_import_edge(Self, WgslIrImportEdge) -> Unit
 pub fn WgslIrLinkGraph::record_reachable_symbol(Self, WgslIrSymbolIdentity) -> Unit
@@ -957,8 +957,8 @@ pub fn WgslIrLinkGraph::record_symbol(Self, WgslIrSymbolIdentity) -> Unit
 pub struct WgslIrSymbolIdentity {
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn WgslIrSymbolIdentity::WgslIrSymbolIdentity(String, String) -> Self
 pub fn WgslIrSymbolIdentity::key(Self) -> String
-pub fn WgslIrSymbolIdentity::new(String, String) -> Self
 pub fn WgslIrSymbolIdentity::original_name(Self) -> String
 pub fn WgslIrSymbolIdentity::rel_path(Self) -> String
 

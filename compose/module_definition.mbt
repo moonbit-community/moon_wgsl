@@ -21,7 +21,7 @@ pub struct ComposableModuleDefinition {
 }
 
 ///|
-fn ComposableModuleDefinition::new(
+fn ComposableModuleDefinition::ComposableModuleDefinition(
   name : String,
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   effective_defs : Array[String],

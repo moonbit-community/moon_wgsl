@@ -15,18 +15,18 @@ pub(all) struct Module {
 } derive(Eq, Debug)
 
 ///|
-pub fn Module::new() -> Module {
+pub fn Module::Module() -> Module {
   Module::{
     directives: [],
-    types: TypeArena::new(),
-    special_types: SpecialTypes::new(),
-    constants: ConstantArena::new(),
-    overrides: OverrideArena::new(),
-    global_variables: GlobalVariableArena::new(),
-    global_expressions: ExpressionArena::new(),
-    functions: FunctionArena::new(),
+    types: TypeArena(),
+    special_types: SpecialTypes(),
+    constants: ConstantArena(),
+    overrides: OverrideArena(),
+    global_variables: GlobalVariableArena(),
+    global_expressions: ExpressionArena(),
+    functions: FunctionArena(),
     entry_points: [],
-    diagnostic_filters: DiagnosticFilterArena::new(),
+    diagnostic_filters: DiagnosticFilterArena(),
     diagnostic_filter_leaf: None,
     doc_comments: None,
   }

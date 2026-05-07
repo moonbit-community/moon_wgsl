@@ -113,7 +113,7 @@ fn collect_wgsl_semantic_reference_path_set(
 ) -> @hashset.HashSet[String] raise WgslParseError {
   let paths : Array[WgslSemanticReferencePath] = []
   collect_wgsl_semantic_reference_paths(source, paths)
-  let path_set : @hashset.HashSet[String] = @hashset.HashSet::new()
+  let path_set : @hashset.HashSet[String] = @hashset.HashSet([])
   for path in paths {
     path_set.add(path.text)
   }
@@ -314,14 +314,14 @@ fn resolve_wgsl_semantic_import_module(
         }
       None => import_path
     }
-    return Some(WgslResolvedImportModule::new(module_path, rel_path))
+    return Some(WgslResolvedImportModule(module_path, rel_path))
   }
   if split_last_identifier(import_path) is Some((module_path, _)) {
     if resolve_wgsl_import_file_path_from_registry(
         registry, importer_rel_path, module_path,
       )
       is Some(rel_path) {
-      return Some(WgslResolvedImportModule::new(module_path, rel_path))
+      return Some(WgslResolvedImportModule(module_path, rel_path))
     }
   }
   resolve_wgsl_import_module_in_registry(registry, import_path, modules)
@@ -418,7 +418,7 @@ fn wgsl_semantic_collect_default_alias_plan_items(
 ///|
 fn unresolved_wgsl_semantic_import_target_plan() -> WgslSemanticImportTargetPlan {
   WgslSemanticImportTargetPlan::{
-    resolved_module: WgslResolvedImportModule::new("", ""),
+    resolved_module: WgslResolvedImportModule("", ""),
     module_alias: "",
     requested_items: [],
     import_full_module: false,

@@ -1,10 +1,7 @@
 ///|
 using @common {
-  type DiagnosticDirective,
-  type EnableDirective,
   type ImportDefWithOffset,
   type PreprocessorMetaData,
-  type RequiresDirective,
   type ShaderDefValue,
   type WgslDirectives,
 }

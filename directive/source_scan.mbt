@@ -13,7 +13,7 @@ pub struct WgslDirectiveScanSource {
 } derive(Debug)
 
 ///|
-fn WgslDirectiveScanSource::new(
+fn WgslDirectiveScanSource::WgslDirectiveScanSource(
   start : Int,
   original_text : String,
   cleaned_text : String,
@@ -54,7 +54,7 @@ priv struct WgslDirectiveScanLine {
 }
 
 ///|
-fn WgslDirectiveScanItem::new(
+fn WgslDirectiveScanItem::WgslDirectiveScanItem(
   kind : WgslDirectiveScanItemKind,
   start : Int,
   original_text : String,
@@ -62,7 +62,7 @@ fn WgslDirectiveScanItem::new(
 ) -> WgslDirectiveScanItem {
   WgslDirectiveScanItem::{
     kind,
-    source: WgslDirectiveScanSource::new(start, original_text, cleaned_text),
+    source: WgslDirectiveScanSource(start, original_text, cleaned_text),
   }
 }
 
@@ -181,12 +181,7 @@ fn wgsl_directive_scan_push_item(
     _ => raw_kind
   }
   items.push(
-    WgslDirectiveScanItem::new(
-      kind,
-      lines[start].start,
-      original_text,
-      cleaned_text,
-    ),
+    WgslDirectiveScanItem(kind, lines[start].start, original_text, cleaned_text),
   )
 }
 

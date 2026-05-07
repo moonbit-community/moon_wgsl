@@ -45,7 +45,7 @@ priv struct Scope {
 }
 
 ///|
-fn Scope::new() -> Scope {
+fn Scope::Scope() -> Scope {
   Scope::{ levels: [ScopeLevel::Active] }
 }
 

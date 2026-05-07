@@ -34,16 +34,15 @@ fn push_wgsl_diagnostic(
   rel_path : String?,
   symbol_name : String?,
 ) -> Unit {
-  diagnostics.push(
-    WgslDiagnostic::new(severity, message, rel_path, symbol_name),
-  )
+  diagnostics.push(WgslDiagnostic(severity, message, rel_path, symbol_name))
 }
 
 ///|
 fn build_wgsl_source_catalog_index(
   catalog_entries : Array[WgslSourceCatalogEntry],
 ) -> @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] {
-  let catalog : @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] = @hashmap.HashMap::new()
+  let catalog : @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] = @hashmap.HashMap([],
+  )
   for entry in catalog_entries {
     if catalog.get(entry.symbol_name) is Some(entries) {
       entries.push(entry)
@@ -58,7 +57,8 @@ fn build_wgsl_source_catalog_index(
 fn build_wgsl_source_origin_index(
   origin_entries : Array[WgslSourceOriginEntry],
 ) -> @hashmap.HashMap[String, Array[WgslSourceOriginEntry]] {
-  let origins : @hashmap.HashMap[String, Array[WgslSourceOriginEntry]] = @hashmap.HashMap::new()
+  let origins : @hashmap.HashMap[String, Array[WgslSourceOriginEntry]] = @hashmap.HashMap([],
+  )
   for entry in origin_entries {
     if origins.get(entry.generated_symbol_name) is Some(entries) {
       entries.push(entry)
@@ -161,20 +161,17 @@ fn serialize_wgsl_export_output(
     if match_wgsl_source_origin_entry(origins, declaration, diagnostics)
       is Some(origin) {
       source_map.push(
-        WgslSourceMapEntry::new(
-          origin.rel_path,
-          Some(origin.source_symbol_name),
-        ),
+        WgslSourceMapEntry(origin.rel_path, Some(origin.source_symbol_name)),
       )
     } else if match_wgsl_source_catalog_entry(catalog, declaration, diagnostics)
       is Some(entry) {
       source_map.push(
-        WgslSourceMapEntry::new(entry.rel_path, Some(declaration.name())),
+        WgslSourceMapEntry(entry.rel_path, Some(declaration.name())),
       )
     }
   }
 
-  WgslExportOutput::new(
+  WgslExportOutput(
     tree_shaken.source(),
     source_catalog,
     source_origins,

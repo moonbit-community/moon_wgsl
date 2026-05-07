@@ -20,7 +20,8 @@ fn Composer::active_compose_defs_for_rel_path(
   session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
 ) -> WgslActiveComposeDefs {
-  let shader_defs : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap::new()
+  let shader_defs : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([],
+  )
   let (defines, value_defines) = match inherited_defs {
     Some(parent_defs) => {
       for entry in parent_defs.shader_defs.iter() {
@@ -123,9 +124,7 @@ fn find_wgsl_cached_imported_item_name(
   rel_path : String,
   item_name : String,
 ) -> String? {
-  session.final_names.canonical_get(
-    WgslIrSymbolIdentity::new(rel_path, item_name),
-  )
+  session.final_names.canonical_get(WgslIrSymbolIdentity(rel_path, item_name))
 }
 
 ///|
@@ -153,7 +152,7 @@ fn find_wgsl_visible_identity_imported_item_binding(
   rel_path : String,
   item_name : String,
 ) -> WgslComposeBinding? {
-  let identity_key = WgslIrSymbolIdentity::new(rel_path, item_name).key()
+  let identity_key = WgslIrSymbolIdentity(rel_path, item_name).key()
   let mut found : WgslComposeBinding? = None
   for binding in bindings.bindings {
     guard binding.identity is Some(identity) else { continue }
