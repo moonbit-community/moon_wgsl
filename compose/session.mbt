@@ -196,12 +196,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
   for binding in self.bindings {
     match binding.identity {
       Some(identity) =>
-        plan.add_symbol_binding(
-          identity.rel_path(),
-          identity.original_name(),
-          binding.from_name,
-          binding.to_name,
-        )
+        plan.add_symbol_binding(identity, binding.from_name, binding.to_name)
       None => ()
     }
   }

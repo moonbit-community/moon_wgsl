@@ -2,7 +2,9 @@
 test "naga_oil wb: AST-scoped symbol redirects rewrite references but keep declarations" {
   let plan = WgslReferenceRewritePlan()
   plan.add_symbol_binding(
-    "local.wgsl", "build_shadow", "build_shadow", "build_color",
+    WgslIrSymbolIdentity("local.wgsl", "build_shadow"),
+    "build_shadow",
+    "build_color",
   )
   let rewritten = rewrite_wgsl_declarations_with_rename_plan(
     "fn shade() -> f32 {\n  return build_shadow();\n}\nfn build_shadow() -> f32 {\n  return 1.0;\n}\n",
@@ -17,7 +19,9 @@ test "naga_oil wb: AST-scoped symbol redirects rewrite references but keep decla
 test "naga_oil wb: AST-scoped symbol redirects ignore nested local shadows" {
   let plan = WgslReferenceRewritePlan()
   plan.add_symbol_binding(
-    "local.wgsl", "build_shadow", "build_shadow", "build_color",
+    WgslIrSymbolIdentity("local.wgsl", "build_shadow"),
+    "build_shadow",
+    "build_color",
   )
   let rewritten = rewrite_wgsl_declarations_with_rename_plan(
     "fn shade(arg: u32) -> u32 {\n  if (arg > 0u) {\n    let build_shadow = arg;\n    return build_shadow;\n  }\n  for (var i: u32 = 0u; i < arg; i = i + 1u) {\n    continue;\n  }\n  return arg;\n}\nfn build_shadow() -> u32 {\n  return 1u;\n}\n",
@@ -33,7 +37,9 @@ test "naga_oil wb: AST-scoped symbol redirects ignore nested local shadows" {
 test "naga_oil wb: reference rewrite plan carries symbol identity" {
   let plan = WgslReferenceRewritePlan()
   plan.add_symbol_binding(
-    "lighting.wgsl", "build_shadow", "lighting::build_shadow", "lighting__build_shadow",
+    WgslIrSymbolIdentity("lighting.wgsl", "build_shadow"),
+    "lighting::build_shadow",
+    "lighting__build_shadow",
   )
   let rewritten = rewrite_wgsl_references_with_binding_plan(
     "fn shade() -> f32 {\n  return lighting::build_shadow();\n}\n", plan,
@@ -48,8 +54,16 @@ test "naga_oil wb: reference rewrite plan carries symbol identity" {
 ///|
 test "naga_oil wb: identity rewrite plan does not collapse ambiguous bindings" {
   let plan = WgslReferenceRewritePlan()
-  plan.add_symbol_binding("a.wgsl", "Shared", "Shared", "a__Shared")
-  plan.add_symbol_binding("b.wgsl", "Shared", "Shared", "b__Shared")
+  plan.add_symbol_binding(
+    WgslIrSymbolIdentity("a.wgsl", "Shared"),
+    "Shared",
+    "a__Shared",
+  )
+  plan.add_symbol_binding(
+    WgslIrSymbolIdentity("b.wgsl", "Shared"),
+    "Shared",
+    "b__Shared",
+  )
   let rewritten = rewrite_wgsl_references_with_binding_plan(
     "fn shade(value: Shared) -> Shared {\n  return value;\n}\n", plan,
   )

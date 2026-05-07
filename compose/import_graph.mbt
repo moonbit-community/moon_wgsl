@@ -56,8 +56,7 @@ fn WgslModuleFinalNameApplicationPlan::reference_rewrite_plan(
   let plan = WgslReferenceRewritePlan()
   for entry in self.entries {
     plan.add_symbol_binding(
-      entry.rel_path,
-      entry.original_name,
+      WgslIrSymbolIdentity(entry.rel_path, entry.original_name),
       entry.current_name,
       entry.final_name,
     )
@@ -180,7 +179,11 @@ fn build_wgsl_redirect_reference_plan(
     match wgsl_redirect_final_target(redirects, from_name) {
       Some(to_name) =>
         if to_name != "" && to_name != from_name {
-          plan.add_symbol_binding("", "", from_name, to_name)
+          plan.add_symbol_binding(
+            WgslIrSymbolIdentity("", from_name),
+            from_name,
+            to_name,
+          )
         }
       None => ()
     }

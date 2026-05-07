@@ -26,6 +26,9 @@ using @ast {
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 
 ///|
+using @ir {type WgslIrSymbolIdentity}
+
+///|
 using @lex {
   type WgslToken,
   split_last_identifier,

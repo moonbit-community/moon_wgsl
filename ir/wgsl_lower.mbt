@@ -5077,9 +5077,21 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       self.lower_function_call_expression(
         callee, arguments, function, scope, expected_ty,
       )
-    _ =>
+    Token(token) =>
       raise WgslIrLowerError::UnsupportedExpression(
-        "unlowered expression node: \{wgsl_ir_expr_node_shape(node)}",
+        "standalone token expression: \{token.text()}",
+      )
+    Template(base, _) =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "standalone template expression: \{wgsl_ir_expr_node_shape(base)}",
+      )
+    PathAccess(_, _) =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "unresolved qualified path expression: \{wgsl_ir_expr_node_shape(node)}",
+      )
+    Sequence(items) =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "expression sequence with \{items.length()} item(s) outside argument context: \{wgsl_ir_expr_node_shape(node)}",
       )
   }
 }

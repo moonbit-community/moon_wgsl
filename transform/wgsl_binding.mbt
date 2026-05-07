@@ -25,8 +25,7 @@ priv struct WgslRenameRule {
   from_name : String
   to_name : String
   kind : WgslRenameRuleKind
-  rel_path : String
-  original_name : String
+  identity : WgslIrSymbolIdentity?
 }
 
 ///|
@@ -52,8 +51,7 @@ pub struct WgslReferenceRewritePlan {
 priv struct WgslReferenceRewriteBinding {
   from_name : String
   to_name : String
-  rel_path : String
-  original_name : String
+  identity : WgslIrSymbolIdentity
 }
 
 ///|
@@ -67,7 +65,7 @@ priv struct WgslVirtualOverrideRewriteBinding {
 fn WgslReferenceRewriteBinding::key(
   self : WgslReferenceRewriteBinding,
 ) -> String {
-  "\{self.rel_path}|\{self.original_name}|\{self.from_name}|\{self.to_name}"
+  "\{self.identity.key()}|\{self.from_name}|\{self.to_name}"
 }
 
 ///|
@@ -85,8 +83,7 @@ pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> WgslReferenceRewr
 ///|
 pub fn WgslReferenceRewritePlan::add_symbol_binding(
   self : WgslReferenceRewritePlan,
-  rel_path : String,
-  original_name : String,
+  identity : WgslIrSymbolIdentity,
   from_name : String,
   to_name : String,
 ) -> Unit {
@@ -95,12 +92,7 @@ pub fn WgslReferenceRewritePlan::add_symbol_binding(
   if from_name == "" || to_name == "" || from_name == to_name {
     return
   }
-  let binding = WgslReferenceRewriteBinding::{
-    from_name,
-    to_name,
-    rel_path,
-    original_name,
-  }
+  let binding = WgslReferenceRewriteBinding::{ from_name, to_name, identity }
   let key = binding.key()
   for existing in self.bindings {
     if existing.key() == key {
@@ -154,14 +146,13 @@ fn WgslRenamePlan::add(
   to_name : String,
   kind : WgslRenameRuleKind,
 ) -> Unit {
-  self.add_symbol_binding("", "", from_name, to_name, kind)
+  self.add_symbol_binding(None, from_name, to_name, kind)
 }
 
 ///|
 fn WgslRenamePlan::add_symbol_binding(
   self : WgslRenamePlan,
-  rel_path : String,
-  original_name : String,
+  identity : WgslIrSymbolIdentity?,
   from_name : String,
   to_name : String,
   kind : WgslRenameRuleKind,
@@ -171,13 +162,7 @@ fn WgslRenamePlan::add_symbol_binding(
   if from_name == "" || to_name == "" || from_name == to_name {
     return
   }
-  self.rules.push(WgslRenameRule::{
-    from_name,
-    to_name,
-    kind,
-    rel_path,
-    original_name,
-  })
+  self.rules.push(WgslRenameRule::{ from_name, to_name, kind, identity })
 }
 
 ///|
@@ -209,8 +194,7 @@ fn WgslReferenceRewritePlan::reference_rename_plan(
   let plan = WgslRenamePlan::empty()
   for binding in self.bindings {
     plan.add_symbol_binding(
-      binding.rel_path,
-      binding.original_name,
+      Some(binding.identity),
       binding.from_name,
       binding.to_name,
       ReferencesOnly,
@@ -226,8 +210,7 @@ fn WgslReferenceRewritePlan::global_declaration_rename_plan(
   let plan = WgslRenamePlan::empty()
   for binding in self.bindings {
     plan.add_symbol_binding(
-      binding.rel_path,
-      binding.original_name,
+      Some(binding.identity),
       binding.from_name,
       binding.to_name,
       GlobalDeclarationAndReferences,
@@ -315,7 +298,10 @@ fn wgsl_rename_rules_target(
     if rule.from_name != from_name {
       continue
     }
-    let current_identity_key = "\{rule.rel_path}|\{rule.original_name}"
+    let current_identity_key = match rule.identity {
+      Some(identity) => identity.key()
+      None => ""
+    }
     match target {
       Some(existing) if existing != rule.to_name =>
         match identity_key {
@@ -420,8 +406,7 @@ fn collect_wgsl_local_binding_rewrite_node(
         from_name: binding.name().name(),
         to_name: replacement,
         kind: FunctionLocal,
-        rel_path: "",
-        original_name: "",
+        identity: None,
       })
       nodes.push(
         WgslTokenReplacement(
@@ -487,8 +472,7 @@ fn collect_wgsl_block_local_rewrite_nodes(
             from_name: binding.name().name(),
             to_name: replacement,
             kind: FunctionLocal,
-            rel_path: "",
-            original_name: "",
+            identity: None,
           })
         None => ()
       }
@@ -512,8 +496,7 @@ fn collect_wgsl_function_local_rewrite_nodes(
               from_name: argument.name().name(),
               to_name: replacement,
               kind: FunctionLocal,
-              rel_path: "",
-              original_name: "",
+              identity: None,
             })
             nodes.push(
               WgslTokenReplacement(
