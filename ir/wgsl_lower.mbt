@@ -1754,7 +1754,15 @@ fn WgslIrLowerer::function_expression_temporary_name(
   handle : Handle,
 ) -> String {
   ignore(self)
-  "_e\{wgsl_ir_function_expression_semantic_index(function, handle)}"
+  let index = wgsl_ir_function_expression_semantic_index(function, handle)
+  let index = if wgsl_ir_function_expression_is_adjacent_materialized_load_after_local_snapshot(
+      function, handle,
+    ) {
+    index - 1
+  } else {
+    index
+  }
+  "_e\{index}"
 }
 
 ///|
@@ -1767,11 +1775,120 @@ fn wgsl_ir_function_expression_semantic_index(
     if wgsl_ir_function_expression_is_synthetic_local_reference(
         function,
         Handle::new(index),
+      ) ||
+      wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
+        function,
+        Handle::new(index),
       ) {
       skipped += 1
     }
   }
   handle.index() - skipped
+}
+
+///|
+fn wgsl_ir_function_expression_is_adjacent_materialized_load_after_local_snapshot(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  if handle.index() == 0 {
+    return false
+  }
+  guard function.expressions.items.get(handle.index()) is Some(Load(_)) else {
+    return false
+  }
+  guard function.expressions.items.get(handle.index() - 1)
+    is Some(LocalVariable(local_handle)) else {
+    return false
+  }
+  guard function.local_variables.items.get(local_handle.index())
+    is Some(local_var) else {
+    return false
+  }
+  guard local_var.kind == Let else { return false }
+  guard local_var.name is Some(name) else { return false }
+  guard name.length() >= 2 && name[0:2] == "_e" else { return false }
+  match local_var.init {
+    Some(init) =>
+      match function.expressions.items.get(init.index()) {
+        Some(Load(_)) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  wgsl_ir_function_expression_is_atomic_compare_exchange_result_projection(
+    function, handle,
+  ) ||
+  wgsl_ir_function_expression_is_atomic_compare_exchange_old_value_base_load(
+    function, handle,
+  )
+}
+
+///|
+fn wgsl_ir_function_expression_is_atomic_compare_exchange_result_projection(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(AccessIndex(base, _)) =>
+      match function.expressions.items.get(base.index()) {
+        Some(Load(inner)) =>
+          wgsl_ir_function_expression_is_atomic_compare_exchange_result_ref(
+            function, inner,
+          )
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_atomic_compare_exchange_old_value_base_load(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  guard function.expressions.items.get(handle.index()) is Some(Load(inner)) else {
+    return false
+  }
+  guard wgsl_ir_function_expression_is_atomic_compare_exchange_result_ref(
+    function, inner,
+  ) else {
+    return false
+  }
+  match function.expressions.items.get(handle.index() + 1) {
+    Some(AccessIndex(base, 0)) => base == handle
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_atomic_compare_exchange_result_ref(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          match local_var.init {
+            Some(init) =>
+              match function.expressions.items.get(init.index()) {
+                Some(AtomicCall(CompareExchangeWeak, _)) => true
+                _ => false
+              }
+            None => false
+          }
+        None => false
+      }
+    _ => false
+  }
 }
 
 ///|
