@@ -58,56 +58,6 @@ assert_contains() {
   fi
 }
 
-assert_expected_coverage() {
-  local label
-  local uncovered=()
-  for expected in testdata/naga_oil_upstream/compose_tests/expected/*.txt; do
-    label="$(basename "$expected" .txt)"
-    case "$label" in
-      additional_import | \
-      atomics | \
-      bad_identifiers | \
-      big_shaderdefs | \
-      conditional_import_a | \
-      conditional_import_b | \
-      conditional_missing_import | \
-      conditional_missing_import_nested | \
-      dup_import | \
-      dup_struct_import | \
-      err_parse | \
-      err_validation_1 | \
-      err_validation_2 | \
-      glsl_call_wgsl | \
-      glsl_const_import | \
-      glsl_wgsl_const_import | \
-      import_in_decl | \
-      invalid_override_base | \
-      item_import_test | \
-      item_sub_point | \
-      missing_import | \
-      override_top | \
-      problematic_expressions | \
-      simple_compose | \
-      test_quoted_import_dup_name | \
-      use_shared_global | \
-      wgsl_call_entrypoint | \
-      wgsl_call_glsl | \
-      wgsl_dual_source_blending | \
-      wgsl_glsl_const_import)
-        ;;
-      diagnostic_filters)
-        ;;
-      *)
-        uncovered+=("$label")
-        ;;
-    esac
-  done
-  if ((${#uncovered[@]} > 0)); then
-    printf 'unclassified naga_oil expected fixture(s): %s\n' "${uncovered[*]}" >&2
-    exit 1
-  fi
-}
-
 echo "== moon_wgsl source-level preprocessing parity tests =="
 moon test \
   preprocess_test.mbt \
@@ -495,8 +445,11 @@ diff_exact \
   "$tmpdir/err_validation_2.txt" \
   err_validation_2
 
+echo "== moon_wgsl source-level error parity =="
+tools/check_moon_wgsl_error_parity.sh
+
 echo "== naga_oil oracle: expected fixture coverage inventory =="
-assert_expected_coverage
+tools/check_naga_oil_parity_inventory.sh
 
 tools/check_wgsl_validation.sh
 

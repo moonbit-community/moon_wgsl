@@ -1,13 +1,15 @@
 # naga_oil Preprocessing Parity
 
-Last updated: 2026-04-30
+Last updated: 2026-05-07
 
 ## Scope
 
 `moon_wgsl` targets `naga_oil` preprocessing and source-level composition
-compatibility. The compatibility target is intentionally narrower than all of
-`naga_oil`: it does not include Naga IR generation, Naga validation, GLSL
-frontends, WGSL writer byte-for-byte output, or runtime shader execution.
+compatibility for WGSL, with an explicit parity boundary for functionality that
+belongs to Naga itself. The current gate distinguishes four classes instead of
+mixing them in shell control flow: moon_wgsl byte parity, moon_wgsl semantic
+parity, moon_wgsl source-level error parity, and oracle-only Naga frontend /
+diagnostic parity.
 
 The preprocessing target is:
 
@@ -15,22 +17,30 @@ The preprocessing target is:
   resolution, alias rewriting, declaration dependency expansion, diagnostic
   directive preservation, and single-file WGSL export behavior in the MoonBit
   core.
-- Keep every known source-level delta covered by MoonBit tests.
+- Keep every mirrored upstream expected fixture classified in
+  `testdata/naga_oil_upstream/compose_tests/parity_manifest.tsv`.
+- Byte-diff every deterministic WGSL compose output that is stable after the
+  MoonBit IR pipeline, and record explicit exceptions when exact byte parity is
+  intentionally not the gate.
+- Gate source-level composer errors locally, while exact Naga parser,
+  validator, GLSL frontend, and Naga-writer diagnostics stay pinned by the Rust
+  oracle.
 - Use the pinned `naga_oil` oracle only as a differential reference and CI
   guardrail, not as a runtime dependency of the MoonBit library.
 
 ## Current Status
 
-As of current `main` after `Milky2018/moon_wgsl 0.6.2`, there are no known
-open source-level preprocessing gaps. Release `0.5.0` covers the historical
-GitHub #2/#3/#5/#6 failures and the original GitHub #7 duplicate-binding /
-root-local `#define` regressions. The later GitHub #7 `identifier: in`
-regression and later AST dependency-analysis cleanup are covered by `0.6.0`.
+As of current `main`, there are no known open WGSL source-level preprocessing
+gaps in the mirrored upstream compose corpus. Deterministic WGSL outputs are
+byte-gated through `tools/check_moon_wgsl_byte_parity.sh`; source-level error
+shapes are gated through `tools/check_moon_wgsl_error_parity.sh`; every mirrored
+expected fixture is classified by the manifest and audited by
+`tools/check_naga_oil_parity_inventory.sh`.
 
-Downstream consumers such as `mgstudio` should use `0.6.0` or current `main`,
-then rerun their own shader-pipeline tests to confirm integration. That
-verification is downstream runtime scope; this repository gates the
-preprocessing output.
+Downstream consumers such as `mgstudio` should use current `main` or the latest
+published release, then rerun their shader-pipeline tests. Runtime pipeline
+layout compatibility is covered in this repository only through the isolated
+native `tools/wgpu_validation` subproject, not as a root module dependency.
 
 ## Upstream References
 
@@ -41,7 +51,7 @@ preprocessing output.
 
 ## Compatibility Gates
 
-Parity is tracked with three increasingly strict gates:
+Parity is tracked with explicit gates:
 
 1. Local source-level parity tests.
    `upstream_compose_parity_test.mbt` contains MoonBit ports of upstream
@@ -52,19 +62,34 @@ Parity is tracked with three increasingly strict gates:
    `testdata/bevy_wgsl` and checks that import-only roots tree-shake to empty
    output like upstream `naga_oil`.
 
-3. Upstream oracle.
+3. Moon WGSL byte parity.
+   `tools/check_moon_wgsl_byte_parity.sh` composes deterministic upstream WGSL
+   fixtures through moon_wgsl and byte-diffs the emitted WGSL against the
+   mirrored upstream expected files. Documented exceptions must be represented
+   as manifest rows and guarded by validation.
+
+4. Moon WGSL source-level error parity.
+   `tools/check_moon_wgsl_error_parity.sh` runs moon_wgsl against upstream
+   source-level failure cases and asserts stable diagnostic shape for missing
+   imports and invalid virtual overrides.
+
+5. Upstream oracle.
    `tools/naga_oil_oracle` is a Rust harness pinned to the upstream commit
    above. It composes WGSL and GLSL fixture trees through real `naga_oil` and
    compares every deterministic upstream compose output or diagnostic that can
    be emitted by the pinned oracle.
 
-4. CI parity gate.
+6. Fixture inventory gate.
+   `tools/check_naga_oil_parity_inventory.sh` requires every file in
+   `testdata/naga_oil_upstream/compose_tests/expected` to be classified by the
+   manifest exactly once and verifies that byte/error rows are connected to
+   their concrete gates.
+
+7. CI parity gate.
    `tools/check_preprocess_parity.sh` runs the local preprocessing parity suite
-   and pinned-oracle comparisons. The script also audits the upstream expected
-   fixture inventory so newly mirrored expected files must be either diffed by
-   the gate or explicitly classified as outside the MoonBit preprocessing
-   boundary. The GitHub Actions `check` workflow runs this script after the
-   normal MoonBit test matrix.
+   and pinned-oracle comparisons. The GitHub Actions `check` workflow runs the
+   byte parity, error parity, inventory, preprocess parity, validation, and
+   wgpu runtime gates after the normal MoonBit test matrix.
 
 There is no source-level compatibility mode for import-only entry points. If a
 root shader only imports items and never references them, composition
@@ -94,7 +119,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 | `problematic_expressions`, `problematic_expressions/` | Covered | Local dependency analysis includes the expression forms that previously broke source-level tree-shaking, including same-name local initializer callees such as Bevy PBR `let point_light = point_light(...)`. |
 | `test_atomics`, `atomics/` | Covered | Atomic declarations/usages are covered by source-level declaration dependency tests. |
 | `test_modf`, `modf/` | Covered | Builtin-return usage is covered at source-text dependency level. |
-| `test_diagnostic_filters`, `diagnostic_filters/` | Source-level failure-covered / oracle failure-guarded | The pinned upstream test is marked `should_panic` in `naga_oil` because diagnostic-filter validation/output emission is not supported there yet. MoonBit now treats the mirrored unsupported `diagnostic(warning, ...)` fixture as a compose failure, and the stale expected writer output is excluded from byte diffing while the parity gate explicitly asserts the current upstream diagnostic failure. |
+| `test_diagnostic_filters`, `diagnostic_filters/` | Semantic local gate / oracle failure-guarded | The pinned upstream test is marked `should_panic` in `naga_oil` because diagnostic-filter validation/output emission is not supported there yet. The stale expected writer output is classified in the manifest as semantic rather than byte parity, while the oracle gate explicitly asserts the current upstream validation failure. |
 | `effective_defs`, `effective_defs/` | Covered | Descriptor-level shader defs now propagate through imported module branches, including the upstream bool-false `#ifdef` semantics and all eight branch combinations. |
 | `wgsl_dual_source_blending`, `dual_source_blending/` | Covered + oracle-diffed | Dual-source blending attributes are preserved as source text and pinned oracle output is diffed with `DUAL_SOURCE_BLENDING` enabled. |
 | `missing_import_in_module`, `missing_import_in_shader` | Covered + oracle-diffed | Local errors cover source-level missing imports; pinned oracle emits upstream-identical missing-import diagnostics when exact Naga wording is required. |
@@ -167,9 +192,10 @@ tree-shakes them away, matching upstream `naga_oil`.
    package instead of expanding the syntax public API.
 
 10. The Naga boundary must stay explicit.
-   Preprocessing and source-level WGSL composition belong in MoonBit. Naga IR,
-   validation, GLSL, writer byte parity, and runtime execution remain outside
-   this package's core scope.
+   Preprocessing and source-level WGSL composition belong in MoonBit. Exact
+   Naga parser/validator diagnostics, GLSL frontend behavior, and Naga-specific
+   writer quirks are oracle-only unless the manifest explicitly classifies a
+   WGSL fixture as moon_wgsl byte or semantic parity.
 
 ## Downstream Verification
 

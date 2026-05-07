@@ -49,6 +49,18 @@ if ! rg -n 'bash tools/check_wgpu_validation\.sh' .github/workflows/check.yml >/
   fail "CI must run native wgpu runtime validation"
 fi
 
+if [[ ! -f testdata/naga_oil_upstream/compose_tests/parity_manifest.tsv ]]; then
+  fail "naga_oil expected fixtures must be classified by a parity manifest"
+fi
+
+if ! rg -n 'bash tools/check_naga_oil_parity_inventory\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must run the naga_oil parity inventory gate"
+fi
+
+if ! rg -n 'bash tools/check_moon_wgsl_error_parity\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must run moon_wgsl source-level error parity"
+fi
+
 if ! rg -n 'compute-storage-read' tools/check_wgpu_validation.sh tools/wgpu_validation \
   --glob '!tools/wgpu_validation/_build/**' \
   --glob '!tools/wgpu_validation/.mooncakes/**' >/dev/null; then

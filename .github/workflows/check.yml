@@ -100,6 +100,15 @@ jobs:
           ulimit -s 8176
           bash tools/check_moon_wgsl_byte_parity.sh
 
+      - name: Moon WGSL error parity
+        run: |
+          ulimit -s 8176
+          bash tools/check_moon_wgsl_error_parity.sh
+
+      - name: Naga Oil parity inventory
+        run: |
+          bash tools/check_naga_oil_parity_inventory.sh
+
       - name: Naga Oil preprocess parity
         run: |
           ulimit -s 8176

@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--additional-import PATH] [--output FILE]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--additional-import PATH] [--output FILE] [--expect-error --error-output FILE]"
 }
 
 ///|
@@ -10,6 +10,8 @@ priv struct ComposeCaseArgs {
   defines : Array[String]
   additional_imports : Array[String]
   mut output : String?
+  mut expect_error : Bool
+  mut error_output : String?
 }
 
 ///|
@@ -20,6 +22,8 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     defines: [],
     additional_imports: [],
     output: None,
+    expect_error: false,
+    error_output: None,
   }
 }
 
@@ -55,10 +59,30 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
         parsed.output = Some(args[index + 1])
         index = index + 2
       }
+      "--expect-error" => {
+        parsed.expect_error = true
+        index = index + 1
+      }
+      "--error-output" => {
+        guard index + 1 < args.length() else { abort(compose_case_usage()) }
+        parsed.error_output = Some(args[index + 1])
+        index = index + 2
+      }
       _ => abort(compose_case_usage())
     }
   }
   parsed
+}
+
+///|
+fn write_compose_case_output(path : String?, text : String) -> Unit {
+  match path {
+    Some(path) =>
+      @fs.write_string_to_file(path, text) catch {
+        _ => abort("failed to write output")
+      }
+    None => println(text)
+  }
 }
 
 ///|
@@ -109,16 +133,18 @@ fn main {
     additional_imports: compose_case_additional_imports(args.additional_imports),
   }
   let output = composer.compose_wgsl(entry, options) catch {
-    err => {
-      println("failed to compose WGSL: \{err.message()}")
-      abort("failed to compose WGSL")
-    }
-  }
-  match args.output {
-    Some(path) =>
-      @fs.write_string_to_file(path, output) catch {
-        _ => abort("failed to write output")
+    err =>
+      if args.expect_error {
+        write_compose_case_output(args.error_output, err.message())
+        return
+      } else {
+        println("failed to compose WGSL: \{err.message()}")
+        abort("failed to compose WGSL")
       }
-    None => println(output)
+  }
+  if args.expect_error {
+    write_compose_case_output(args.error_output, "UNEXPECTED_SUCCESS")
+  } else {
+    write_compose_case_output(args.output, output)
   }
 }
