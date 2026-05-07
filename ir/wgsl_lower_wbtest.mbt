@@ -729,7 +729,7 @@ test "WGSL AST lowerer lowers for loops into IR loops" {
   debug_inspect(emitted.contains("var i: u32 = 0u;"), content="true")
   debug_inspect(emitted.contains("loop {"), content="true")
   debug_inspect(emitted.contains("if (!(i < 4u)) {"), content="true")
-  debug_inspect(emitted.contains("i = (i + 1);"), content="true")
+  debug_inspect(emitted.contains("i = (i + 1u);"), content="true")
   debug_inspect(emitted.contains("sum = (_e"), content="true")
   debug_inspect(emitted.contains("+ 2u);"), content="true")
 }
@@ -767,6 +767,8 @@ test "WGSL AST lowerer supports basic texture calls" {
     #|@group(0) @binding(1)
     #|var samp: sampler;
     #|@group(0) @binding(2)
+    #|var arr_tex: texture_2d_array<f32>;
+    #|@group(0) @binding(3)
     #|var out_tex: texture_storage_2d<rgba8unorm, write>;
     #|
     #|@compute
@@ -774,6 +776,8 @@ test "WGSL AST lowerer supports basic texture calls" {
     #|  var uv: vec2f = vec2f(0.5, 0.25);
     #|  var color = textureSampleLevel(tex, samp, uv, 0.0);
     #|  var dims: u32 = textureDimensions(tex).x;
+    #|  let arr_dims = textureDimensions(arr_tex);
+    #|  var shadow_map_size: vec2f = vec2f(arr_dims);
     #|  textureStore(out_tex, vec2u(0u, 0u), color);
     #|}
   let module_ = parse_wgsl_module_to_ir(source) catch {
@@ -787,6 +791,14 @@ test "WGSL AST lowerer supports basic texture calls" {
     content="true",
   )
   debug_inspect(emitted.contains("textureDimensions(tex).x"), content="true")
+  debug_inspect(
+    emitted.contains(": vec2<u32> = textureDimensions(arr_tex);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("shadow_map_size: vec2<f32> = vec2<f32>(_e"),
+    content="true",
+  )
   debug_inspect(emitted.contains("textureStore(out_tex"), content="true")
 }
 
@@ -1057,6 +1069,30 @@ test "WGSL AST lowerer supports modf predeclared result members" {
   debug_inspect(emitted.contains("modf(x);"), content="true")
   debug_inspect(emitted.contains(".fract"), content="true")
   debug_inspect(emitted.contains(".whole"), content="true")
+}
+
+///|
+test "WGSL AST lowerer materializes sampled vector before local swizzle" {
+  let source =
+    #|@group(0) @binding(0) var image: texture_2d<f32>;
+    #|@group(0) @binding(1) var s: sampler;
+    #|
+    #|fn main() -> f32 {
+    #|  let x = textureSample(image, s, vec2<f32>(0.0)).r;
+    #|  return x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let x: f32 = _e") && emitted.contains(".x;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("vec4<f32> = textureSample"), content="true")
+  debug_inspect(emitted.contains("let x: f32 = textureSample"), content="false")
 }
 
 ///|

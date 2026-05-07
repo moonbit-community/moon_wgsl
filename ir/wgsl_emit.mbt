@@ -215,7 +215,7 @@ fn WgslIrEmitter::emit_global_variable(
   match global.binding {
     Some(binding) =>
       out.write_string(
-        "@group(\{binding.group}) @binding(\{binding.binding})\n",
+        "@group(\{binding.group}) @binding(\{binding.binding}) \n",
       )
     None => ()
   }
@@ -733,7 +733,7 @@ fn WgslIrEmitter::emit_expression(
     Override(handle) => self.override_name(handle)
     ZeroValue(ty) => "\{self.type_name(ty)}()"
     Compose(ty, components) =>
-      "\{self.compose_constructor_name(ty)}(\{self.expression_list(components, function)})"
+      "\{self.compose_constructor_name_for_components(ty, components, function)}(\{self.expression_list(components, function)})"
     Access(base, index) =>
       "\{self.required_function_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
@@ -1252,6 +1252,8 @@ fn WgslIrEmitter::function_expression_inner_type(
         atomic_function,
         arguments,
       )
+    ImageQuery(image, query) =>
+      self.image_query_expression_result_type(Some(function), image, query)
     RayQueryGetIntersection(_, _) => self.type_handle_named("RayIntersection")
     RayQueryProceedResult => self.type_handle_named("bool")
     _ => None
@@ -1322,7 +1324,47 @@ fn WgslIrEmitter::global_expression_inner_type(
       self.relational_expression_result_type(None, relational_function, expr)
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(None, atomic_function, arguments)
+    ImageQuery(image, query) =>
+      self.image_query_expression_result_type(None, image, query)
     _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::image_query_expression_result_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  image : Handle,
+  query : ImageQuery,
+) -> Handle? {
+  match query {
+    Size(_) =>
+      match self.expression_type(function, image) {
+        Some(image_ty) =>
+          match self.shader_module.types.items.get(image_ty.index()) {
+            Some(ty) =>
+              match ty.inner {
+                Image(dimension, _, _) =>
+                  self.image_dimension_size_type_handle(dimension)
+                _ => None
+              }
+            None => None
+          }
+        None => None
+      }
+    NumLevels | NumLayers | NumSamples => self.type_handle_named("u32")
+  }
+}
+
+///|
+fn WgslIrEmitter::image_dimension_size_type_handle(
+  self : WgslIrEmitter,
+  dimension : ImageDimension,
+) -> Handle? {
+  match dimension {
+    D1 => self.type_handle_named("u32")
+    D2 | Cube => self.type_handle_named("vec2<u32>")
+    D3 => self.type_handle_named("vec3<u32>")
   }
 }
 
@@ -1783,6 +1825,51 @@ fn WgslIrEmitter::compose_constructor_name(
 }
 
 ///|
+fn WgslIrEmitter::compose_constructor_name_for_components(
+  self : WgslIrEmitter,
+  handle : Handle,
+  components : Array[Handle],
+  function : Function?,
+) -> String raise WgslIrEmitError {
+  if components.length() == 1 {
+    match self.shader_module.types.items.get(handle.index()) {
+      Some(type_) =>
+        match type_.inner {
+          Vector(size, scalar) =>
+            if self.expression_is_scalar_type(function, components[0], scalar) {
+              return "vec\{size.width()}"
+            }
+          _ => ()
+        }
+      None => raise WgslIrEmitError::MissingHandle("type \{handle.index()}")
+    }
+  }
+  self.compose_constructor_name(handle)
+}
+
+///|
+fn WgslIrEmitter::expression_is_scalar_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+  scalar : Scalar,
+) -> Bool {
+  match self.expression_type(function, handle) {
+    Some(ty_handle) =>
+      match self.shader_module.types.items.get(ty_handle.index()) {
+        Some(type_) =>
+          match type_.inner {
+            Scalar(value) =>
+              value.kind == scalar.kind && value.width == scalar.width
+            _ => false
+          }
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
 fn WgslIrEmitter::type_inner_name(
   self : WgslIrEmitter,
   inner : TypeInner,
@@ -2068,7 +2155,7 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
     U32(value) => "\{value}u"
-    I32(value) => "\{value}"
+    I32(value) => "\{value}i"
     U64(value) => "\{value}u"
     I64(value) => "\{value}"
     Bool(value) => if value { "true" } else { "false" }

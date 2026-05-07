@@ -1352,7 +1352,7 @@ fn WgslIrLowerer::lower_for_header_statement(
         function,
         scope,
       )
-      wgsl_ir_lower_update_handle(target, function, block, increment)
+      self.lower_update_handle(target, function, block, increment)
       return
     }
     None => ()
@@ -1422,7 +1422,8 @@ fn WgslIrLowerer::lower_local_declaration(
     None => None
   }
   let mut address_of_ty : Handle? = None
-  let init = match local_decl.initializer_ref() {
+  let mut preserve_source_let_name = false
+  let mut init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
       match wgsl_ir_address_of_operand_ref(expr_ref) {
         Some(target_ref) => {
@@ -1445,6 +1446,20 @@ fn WgslIrLowerer::lower_local_declaration(
           )
       }
     None => None
+  }
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
+    match init {
+      Some(init_handle) => {
+        let materialized = self.materialize_return_subexpressions(
+          function, scope, block, init_handle,
+        )
+        if materialized != init_handle {
+          init = Some(materialized)
+          preserve_source_let_name = true
+        }
+      }
+      None => ()
+    }
   }
   let ty = match explicit_ty {
     Some(ty) => ty
@@ -1476,9 +1491,13 @@ fn WgslIrLowerer::lower_local_declaration(
   }
   let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
   let lowered_name = if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
-    match init {
-      Some(init_handle) => wgsl_ir_expression_temporary_name(init_handle)
-      None => scope.next_temporary_name()
+    if preserve_source_let_name {
+      local_decl.name().name()
+    } else {
+      match init {
+        Some(init_handle) => wgsl_ir_expression_temporary_name(init_handle)
+        None => scope.next_temporary_name()
+      }
     }
   } else {
     local_decl.name().name()
@@ -3159,18 +3178,21 @@ fn WgslIrLowerer::lower_update_statement(
     raise WgslIrLowerError::UnsupportedStatement("update without target")
   }
   let pointer = self.lower_function_lvalue_ref(target_ref, function, scope)
-  wgsl_ir_lower_update_handle(pointer, function, block, increment)
+  self.lower_update_handle(pointer, function, block, increment)
 }
 
 ///|
-fn wgsl_ir_lower_update_handle(
+fn WgslIrLowerer::lower_update_handle(
+  self : WgslIrLowerer,
   pointer : Handle,
   function : Function,
   block : Block,
   increment : Bool,
 ) -> Unit {
   let loaded = function.expressions.append(Expression::Load(pointer))
-  let one = function.expressions.append(Expression::Literal(Literal::I32(1)))
+  let one = function.expressions.append(
+    Expression::Literal(self.update_unit_literal(function, pointer)),
+  )
   let op = if increment {
     BinaryOperator::Add
   } else {
@@ -3178,6 +3200,32 @@ fn wgsl_ir_lower_update_handle(
   }
   let value = function.expressions.append(Expression::Binary(op, loaded, one))
   block.push(Statement::Store(pointer, value))
+}
+
+///|
+fn WgslIrLowerer::update_unit_literal(
+  self : WgslIrLowerer,
+  function : Function,
+  pointer : Handle,
+) -> Literal {
+  guard self.function_expression_type(function, pointer) is Some(pointer_ty) else {
+    return Literal::I32(1)
+  }
+  let value_ty = self.deref_pointer_type_handle(pointer_ty)
+  match self.shader_module.types.get(value_ty) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) =>
+          match scalar.kind {
+            Uint => Literal::U32(1)
+            Sint => Literal::I32(1)
+            AbstractInt => Literal::AbstractInt(1)
+            _ => Literal::I32(1)
+          }
+        _ => Literal::I32(1)
+      }
+    None => Literal::I32(1)
+  }
 }
 
 ///|
@@ -6387,7 +6435,8 @@ fn WgslIrLowerer::function_expression_inner_type(
       self.image_expression_result_type(function, image, gather, depth_ref)
     ImageLoad(image, _, _, _, _) =>
       self.image_expression_result_type(function, image, None, None)
-    ImageQuery(_, _) => self.type_cache.get("u32")
+    ImageQuery(image, query) =>
+      self.image_query_expression_result_type(function, image, query)
     RayQueryGetIntersection(_, _) => self.type_cache.get("RayIntersection")
     RayQueryProceedResult => self.type_cache.get("bool")
     Literal(literal) => self.literal_type(literal)
@@ -6900,6 +6949,37 @@ fn WgslIrLowerer::image_expression_result_type(
         _ => None
       }
     None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::image_query_expression_result_type(
+  self : WgslIrLowerer,
+  function : Function,
+  image : Handle,
+  query : ImageQuery,
+) -> Handle? {
+  match query {
+    Size(_) =>
+      match self.image_expression_inner(function, image) {
+        Some((dimension, _, _)) =>
+          Some(self.image_dimension_size_type(dimension))
+        None => None
+      }
+    NumLevels | NumLayers | NumSamples => self.type_cache.get("u32")
+  }
+}
+
+///|
+fn WgslIrLowerer::image_dimension_size_type(
+  self : WgslIrLowerer,
+  dimension : ImageDimension,
+) -> Handle {
+  let u32_scalar = Scalar::new(Uint, 4)
+  match dimension {
+    D1 => self.scalar_type_handle(u32_scalar)
+    D2 | Cube => self.numeric_value_type_handle(Some(Bi), u32_scalar)
+    D3 => self.numeric_value_type_handle(Some(Tri), u32_scalar)
   }
 }
 
