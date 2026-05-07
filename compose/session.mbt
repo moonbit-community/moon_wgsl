@@ -134,6 +134,7 @@ priv struct WgslComposeSession {
   mut graph_execution_complete : Bool
   assigned_final_names : WgslIrFinalNameTable
   final_names : WgslIrFinalNameTable
+  virtual_override_final_names : Array[WgslVirtualOverrideFinalNameBinding]
   link_graph : WgslIrLinkGraph
   semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
   active_rel_paths : Array[String]
@@ -163,6 +164,13 @@ priv struct WgslComposeBindingSet {
 }
 
 ///|
+priv struct WgslVirtualOverrideFinalNameBinding {
+  raw_target_name : String
+  target_name : String
+  override_name : String
+}
+
+///|
 priv struct WgslLiveBindingPlan {
   bindings : Array[WgslComposeBinding]
 }
@@ -183,6 +191,7 @@ fn WgslLiveBindingPlan::push(
 ///|
 fn WgslLiveBindingPlan::reference_rewrite_plan(
   self : WgslLiveBindingPlan,
+  session : WgslComposeSession,
 ) -> WgslReferenceRewritePlan {
   let plan = WgslReferenceRewritePlan::new()
   for binding in self.bindings {
@@ -196,6 +205,13 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
         )
       None => plan.add(binding.from_name, binding.to_name)
     }
+  }
+  for binding in session.virtual_override_final_names {
+    plan.add_virtual_override_binding(
+      binding.raw_target_name,
+      binding.target_name,
+      binding.override_name,
+    )
   }
   plan
 }
@@ -327,6 +343,34 @@ fn WgslComposeBindingSet::extend(
   for binding in other.bindings {
     self.push(binding)
   }
+}
+
+///|
+fn WgslVirtualOverrideFinalNameBinding::key(
+  self : WgslVirtualOverrideFinalNameBinding,
+) -> String {
+  "\{self.raw_target_name}|\{self.target_name}|\{self.override_name}"
+}
+
+///|
+fn WgslComposeSession::record_virtual_override_final_name(
+  self : WgslComposeSession,
+  raw_target_name : String,
+  target_name : String,
+  override_name : String,
+) -> Unit {
+  let binding = WgslVirtualOverrideFinalNameBinding::{
+    raw_target_name,
+    target_name,
+    override_name,
+  }
+  let key = binding.key()
+  for existing in self.virtual_override_final_names {
+    if existing.key() == key {
+      return
+    }
+  }
+  self.virtual_override_final_names.push(binding)
 }
 
 ///|

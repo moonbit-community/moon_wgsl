@@ -61,6 +61,17 @@ fn wgsl_compose_assigned_final_name(
 }
 
 ///|
+fn WgslComposeSession::module_rel_path_for_module_path(
+  self : WgslComposeSession,
+  module_path : String,
+) -> String {
+  match self.modules.get(module_path) {
+    Some(rel_path) => rel_path
+    None => ""
+  }
+}
+
+///|
 fn WgslComposeSession::module_path_for_rel_path(
   self : WgslComposeSession,
   rel_path : String,
@@ -73,6 +84,47 @@ fn WgslComposeSession::module_path_for_rel_path(
     }
   }
   ""
+}
+
+///|
+fn record_wgsl_virtual_override_final_names_from_source(
+  session : WgslComposeSession,
+  rel_path : String,
+  source : String,
+) -> Unit {
+  let composing_root = session.graph_planning_rel_paths.length() <= 1 &&
+    session.active_rel_paths.length() <= 1
+  let override_module_path = if composing_root {
+    ""
+  } else {
+    session.module_path_for_rel_path(rel_path)
+  }
+  let targets = collect_wgsl_virtual_override_targets_strict(source) catch {
+    _ => return
+  }
+  for raw_target in targets {
+    let (target_module_path, original_name) = match
+      split_last_identifier(raw_target) {
+      Some((module_path, name)) => (module_path, name)
+      None => (override_module_path, raw_target)
+    }
+    if original_name == "" {
+      continue
+    }
+    if target_module_path != "" &&
+      session.module_rel_path_for_module_path(target_module_path) == "" {
+      continue
+    }
+    let target_name = wgsl_naga_oil_decorated_final_name(
+      target_module_path, original_name,
+    )
+    let override_name = wgsl_naga_oil_virtual_override_final_name(
+      target_module_path, override_module_path, original_name,
+    )
+    session.record_virtual_override_final_name(
+      raw_target, target_name, override_name,
+    )
+  }
 }
 
 ///|
@@ -114,6 +166,9 @@ fn record_wgsl_planned_final_names_from_source(
   source : String,
   alias_prefixes : Array[String],
 ) -> Unit {
+  record_wgsl_virtual_override_final_names_from_source(
+    session, rel_path, source,
+  )
   let extraction = extract_wgsl_module_item_origins_strict(source, []) catch {
     _ => return
   }

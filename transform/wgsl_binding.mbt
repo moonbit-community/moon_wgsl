@@ -45,6 +45,7 @@ priv struct WgslRenameMaps {
 ///|
 pub struct WgslReferenceRewritePlan {
   priv bindings : Array[WgslReferenceRewriteBinding]
+  priv virtual_overrides : Array[WgslVirtualOverrideRewriteBinding]
 }
 
 ///|
@@ -56,6 +57,13 @@ priv struct WgslReferenceRewriteBinding {
 }
 
 ///|
+priv struct WgslVirtualOverrideRewriteBinding {
+  raw_target_name : String
+  target_name : String
+  override_name : String
+}
+
+///|
 fn WgslReferenceRewriteBinding::key(
   self : WgslReferenceRewriteBinding,
 ) -> String {
@@ -63,8 +71,15 @@ fn WgslReferenceRewriteBinding::key(
 }
 
 ///|
+fn WgslVirtualOverrideRewriteBinding::key(
+  self : WgslVirtualOverrideRewriteBinding,
+) -> String {
+  "\{self.raw_target_name}|\{self.target_name}|\{self.override_name}"
+}
+
+///|
 pub fn WgslReferenceRewritePlan::new() -> WgslReferenceRewritePlan {
-  WgslReferenceRewritePlan::{ bindings: [] }
+  WgslReferenceRewritePlan::{ bindings: [], virtual_overrides: [] }
 }
 
 ///|
@@ -102,6 +117,33 @@ pub fn WgslReferenceRewritePlan::add(
   to_name : String,
 ) -> Unit {
   self.add_symbol_binding("", "", from_name, to_name)
+}
+
+///|
+pub fn WgslReferenceRewritePlan::add_virtual_override_binding(
+  self : WgslReferenceRewritePlan,
+  raw_target_name : String,
+  target_name : String,
+  override_name : String,
+) -> Unit {
+  let raw_target_name = raw_target_name.trim().to_owned()
+  let target_name = target_name.trim().to_owned()
+  let override_name = override_name.trim().to_owned()
+  if raw_target_name == "" || target_name == "" || override_name == "" {
+    return
+  }
+  let binding = WgslVirtualOverrideRewriteBinding::{
+    raw_target_name,
+    target_name,
+    override_name,
+  }
+  let key = binding.key()
+  for existing in self.virtual_overrides {
+    if existing.key() == key {
+      return
+    }
+  }
+  self.virtual_overrides.push(binding)
 }
 
 ///|
@@ -220,6 +262,30 @@ fn WgslReferenceRewritePlan::target_for_reference(
     }
   }
   target
+}
+
+///|
+fn WgslReferenceRewritePlan::virtual_override_name_for_target(
+  self : WgslReferenceRewritePlan,
+  raw_target_name : String,
+  target_name : String,
+) -> String? {
+  let mut override_name : String? = None
+  for binding in self.virtual_overrides {
+    if binding.raw_target_name != raw_target_name &&
+      binding.target_name != target_name {
+      continue
+    }
+    if binding.target_name != target_name {
+      continue
+    }
+    match override_name {
+      Some(existing) if existing != binding.override_name => return None
+      Some(_) => ()
+      None => override_name = Some(binding.override_name)
+    }
+  }
+  override_name
 }
 
 ///|

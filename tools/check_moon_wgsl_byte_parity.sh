@@ -85,6 +85,13 @@ check_case \
   "${big_shaderdef_args[@]}"
 
 check_case \
+  additional_import \
+  testdata/naga_oil_upstream/compose_tests/add_imports \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/additional_import.txt \
+  --additional-import plugin
+
+check_case \
   dup_struct_import \
   testdata/naga_oil_upstream/compose_tests/dup_struct_import \
   top.wgsl \

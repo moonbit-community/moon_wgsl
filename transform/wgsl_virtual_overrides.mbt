@@ -97,6 +97,25 @@ pub fn wgsl_source_contains_virtual_directive(
 }
 
 ///|
+pub fn collect_wgsl_virtual_override_targets_strict(
+  source : String,
+) -> Array[String] raise WgslParseError {
+  let targets : Array[String] = []
+  let graph = build_wgsl_declaration_graph(source)
+  for block in graph.declaration_blocks {
+    match wgsl_graph_block_function(block) {
+      Some(function) if function.qualifier() ==
+        Some(WgslFunctionQualifier::Override) =>
+        if function.name().name() != "" {
+          targets.push(function.name().name())
+        }
+      _ => ()
+    }
+  }
+  targets
+}
+
+///|
 pub fn rewrite_wgsl_override_targets_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
@@ -199,11 +218,16 @@ fn rewrite_wgsl_virtual_base_block(
   target_name : String,
   base_name : String,
 ) -> String {
-  let plan = WgslRenamePlan::empty()
-  plan.add(target_name, base_name, GlobalDeclarationAndReferences)
-  let maps = build_wgsl_rename_maps(plan)
   let nodes : Array[WgslTokenReplacement] = []
-  collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
+  if target_name != base_name {
+    let plan = WgslRenamePlan::empty()
+    plan.add(target_name, base_name, GlobalDeclarationAndReferences)
+    collect_wgsl_block_rewrite_nodes(
+      block.data,
+      build_wgsl_rename_maps(plan),
+      nodes,
+    )
+  }
   collect_wgsl_virtual_fn_nodes(function, nodes)
   emit_wgsl_token_stream_canonical(block.tokens, nodes)
 }
@@ -227,6 +251,7 @@ fn rewrite_wgsl_override_fn_block(
   block : WgslGraphBlock,
   function : WgslFunction,
   target_name : String,
+  override_name : String,
   raw_target : String,
   base_name : String?,
 ) -> String {
@@ -249,12 +274,42 @@ fn rewrite_wgsl_override_fn_block(
         WgslTokenReplacement::new(
           function.name().start(),
           function.name().end(),
-          target_name,
+          override_name,
         ),
       )
       emit_wgsl_token_stream_canonical(block.tokens, nodes)
     }
     _ => emit_wgsl_token_stream_canonical(block.tokens, nodes)
+  }
+}
+
+///|
+fn rewrite_wgsl_virtual_dispatch_block(
+  block : WgslGraphBlock,
+  override_names : @hashmap.HashMap[String, String],
+  override_raw_targets : @hashmap.HashMap[String, String],
+) -> String {
+  let plan = WgslRenamePlan::empty()
+  for entry in override_names.iter() {
+    let (target_name, override_name) = entry
+    if target_name != override_name {
+      plan.add(target_name, override_name, ReferencesOnly)
+      match override_raw_targets.get(target_name) {
+        Some(raw_target) => plan.add(raw_target, override_name, ReferencesOnly)
+        None => ()
+      }
+    }
+  }
+  if plan.is_empty() {
+    emit_wgsl_graph_block_canonical(block)
+  } else {
+    let nodes : Array[WgslTokenReplacement] = []
+    collect_wgsl_block_rewrite_nodes(
+      block.data,
+      build_wgsl_rename_maps(plan),
+      nodes,
+    )
+    emit_wgsl_token_stream_canonical(block.tokens, nodes)
   }
 }
 
@@ -280,7 +335,9 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   let graph = build_wgsl_declaration_graph(source)
   let virtual_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
-  let override_needs_base : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
+  let override_base_names : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let override_names : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let override_raw_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for block in graph.declaration_blocks {
     if block.name() != "" && wgsl_graph_block_is_virtual_fn(block) {
       virtual_names.set(block.name(), true)
@@ -301,16 +358,28 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
         let needs_base = wgsl_override_body_references_target(
           function, raw_target, target,
         )
-        override_needs_base.set(target, needs_base)
-        let base_name = if needs_base {
+        let override_name = match
+          plan.virtual_override_name_for_target(raw_target, target) {
+          Some(name) => name
+          None => target
+        }
+        let base_name = if override_name != target {
+          Some(target)
+        } else if needs_base {
           Some(wgsl_virtual_base_name(target))
         } else {
           None
         }
+        match base_name {
+          Some(base) => override_base_names.set(target, base)
+          None => ()
+        }
+        override_names.set(target, override_name)
+        override_raw_targets.set(target, raw_target)
         overrides.set(
           target,
           rewrite_wgsl_override_fn_block(
-            block, function, target, raw_target, base_name,
+            block, function, target, override_name, raw_target, base_name,
           ),
         )
       }
@@ -335,18 +404,16 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
         function.qualifier() == Some(WgslFunctionQualifier::Virtual) => {
         match overrides.get(block.name()) {
           Some(override_block) => {
-            let needs_base = match override_needs_base.get(block.name()) {
-              Some(value) => value
-              None => false
-            }
-            if needs_base {
-              out = out +
-                rewrite_wgsl_virtual_base_block(
-                  block,
-                  function,
-                  block.name(),
-                  wgsl_virtual_base_name(block.name()),
-                )
+            match override_base_names.get(block.name()) {
+              Some(base_name) =>
+                out = out +
+                  rewrite_wgsl_virtual_base_block(
+                    block,
+                    function,
+                    block.name(),
+                    base_name,
+                  )
+              None => ()
             }
             out = out + override_block
           }
@@ -356,7 +423,15 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
       }
       _ => ()
     }
-    out = out + emit_wgsl_graph_block_canonical(block)
+    if overrides.get(block.name()) is Some(_) ||
+      override_names.get(block.name()) is Some(_) {
+      out = out + emit_wgsl_graph_block_canonical(block)
+    } else {
+      out = out +
+        rewrite_wgsl_virtual_dispatch_block(
+          block, override_names, override_raw_targets,
+        )
+    }
   }
   WgslVirtualOverrideOutput::{ source: out, invalid_override: None }
 }

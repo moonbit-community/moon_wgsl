@@ -43,6 +43,11 @@ fn wgsl_naga_oil_module_decoration(module_path : String) -> String {
 }
 
 ///|
+fn wgsl_naga_oil_virtual_decoration(module_path : String) -> String {
+  "X_naga_oil_vrt_X\{wgsl_naga_oil_base32_nopad(module_path)}X"
+}
+
+///|
 fn wgsl_naga_oil_decorated_final_name(
   module_path : String,
   original_name : String,
@@ -51,5 +56,23 @@ fn wgsl_naga_oil_decorated_final_name(
     original_name
   } else {
     "\{original_name}\{wgsl_naga_oil_module_decoration(module_path)}"
+  }
+}
+
+///|
+fn wgsl_naga_oil_virtual_override_final_name(
+  target_module_path : String,
+  override_module_path : String,
+  original_name : String,
+) -> String {
+  let virtual_name = if target_module_path == "" {
+    original_name
+  } else {
+    "\{original_name}\{wgsl_naga_oil_virtual_decoration(target_module_path)}"
+  }
+  if override_module_path == "" {
+    virtual_name
+  } else {
+    "\{virtual_name}\{wgsl_naga_oil_module_decoration(override_module_path)}"
   }
 }

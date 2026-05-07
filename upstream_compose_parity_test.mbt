@@ -746,7 +746,8 @@ test "naga_oil upstream: virtual function override replaces imported body" {
   debug_inspect(source.contains("override fn"), content="false")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("(arg * 3f)"), content="true")
-  debug_inspect(source.contains("(arg * 2f)"), content="false")
+  debug_inspect(source.contains("(arg * 2f)"), content="true")
+  debug_inspect(source.contains("X_naga_oil_vrt_X"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
@@ -762,7 +763,8 @@ test "naga_oil upstream: transitive virtual override replaces imported body" {
   debug_inspect(source.contains("override fn"), content="false")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("(arg * 3f)"), content="true")
-  debug_inspect(source.contains("(arg * 2f)"), content="false")
+  debug_inspect(source.contains("(arg * 2f)"), content="true")
+  debug_inspect(source.contains("X_naga_oil_vrt_X"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
@@ -803,7 +805,7 @@ test "naga_oil upstream: invalid override reports non-virtual target" {
     err => message = err.message()
   }
   debug_inspect(message.contains("override is invalid"), content="true")
-  debug_inspect(message.contains("mod::outer"), content="true")
+  debug_inspect(message.contains("outerX_naga_oil_mod_X"), content="true")
 }
 
 ///|

@@ -680,14 +680,17 @@ fn finalize_wgsl_composed_source(
   let live_bindings = collect_wgsl_live_binding_plan(
     out_facts, effective_bindings,
   )
-  let rewrite_plan = live_bindings.reference_rewrite_plan()
+  let rewrite_plan = live_bindings.reference_rewrite_plan(session)
   if apply_virtual_overrides {
+    out = rewrite_wgsl_references_with_binding_plan(out, rewrite_plan) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
     out = apply_wgsl_virtual_overrides_with_binding_plan(out, rewrite_plan)
   } else {
     out = rewrite_wgsl_override_targets_with_binding_plan(out, rewrite_plan)
-  }
-  out = rewrite_wgsl_references_with_binding_plan(out, rewrite_plan) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
+    out = rewrite_wgsl_references_with_binding_plan(out, rewrite_plan) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
   }
   if !apply_virtual_overrides {
     validate_wgsl_translation_unit_strict(out)
