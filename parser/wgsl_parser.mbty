@@ -2,7 +2,6 @@
 %derive<Debug> Token
 %derive<Debug> ParseError
 %start raw_top_level_items
-%start decl_head
 %start type_ref
 %start template_list
 %start function_args
@@ -28,15 +27,6 @@
 %token<Int> AT "@"
 %token<@ast.WgslIdent> ATTR_NAME
 %token<(@ast.WgslExprRef?, Int)> ATTR_ARGS
-%token<@ast.WgslIdent> KW_VIRTUAL
-%token<@ast.WgslIdent> KW_OVERRIDE
-%token<@ast.WgslIdent> KW_FN
-%token<@ast.WgslIdent> KW_VAR
-%token<@ast.WgslIdent> KW_STRUCT
-%token<@ast.WgslIdent> KW_CONST
-%token<@ast.WgslIdent> KW_CONST_ASSERT
-%token<@ast.WgslIdent> KW_ALIAS
-%token<@ast.WgslIdent> KW_TYPE
 %token<@ast.WgslIdent> KW_ENABLE
 %token<@ast.WgslIdent> KW_REQUIRES
 %token<@ast.WgslIdent> KW_DIAGNOSTIC
@@ -121,168 +111,6 @@ items -> Array[WgslRawTopLevelItem]
 directive_tail -> (String, Int, Int)
   : { ("", 0, 0) }
   | DIRECTIVE_TAIL { $1 }
-  ;
-
-decl_head -> WgslDeclHead
-  : attrs=attributes KW_VIRTUAL fn_kw=KW_FN EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::Function,
-        attributes: attrs,
-        keyword: Some(fn_kw),
-        qualifier: Some(@ast.WgslFunctionQualifier::Virtual),
-        qualifier_start: Some($2.start()),
-        qualifier_end: Some($2.end()),
-        fn_keyword: Some(fn_kw),
-        consumed: 2,
-      }
-    }
-  | attrs=attributes KW_OVERRIDE fn_kw=KW_FN EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::Function,
-        attributes: attrs,
-        keyword: Some(fn_kw),
-        qualifier: Some(@ast.WgslFunctionQualifier::Override),
-        qualifier_start: Some($2.start()),
-        qualifier_end: Some($2.end()),
-        fn_keyword: Some(fn_kw),
-        consumed: 2,
-      }
-    }
-  | attrs=attributes keyword=KW_FN EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::Function,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: Some(keyword),
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_OVERRIDE EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::Override,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_VAR EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::GlobalVariable,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_STRUCT EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::Struct,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_CONST EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::Const,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_CONST_ASSERT EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::ConstAssert,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_ALIAS EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::TypeAlias,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_TYPE EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::TypeAlias,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_ENABLE EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::SourceDirective,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_REQUIRES EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::SourceDirective,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes keyword=KW_DIAGNOSTIC EOF {
-      WgslDeclHead::{
-        kind: WgslDeclHeadKind::SourceDirective,
-        attributes: attrs,
-        keyword: Some(keyword),
-        qualifier: None,
-        qualifier_start: None,
-        qualifier_end: None,
-        fn_keyword: None,
-        consumed: 1,
-      }
-    }
-  | attrs=attributes EOF {
-      WgslDeclHead::raw(attrs)
-    }
   ;
 
 type_ref -> @ast.WgslTypeRef

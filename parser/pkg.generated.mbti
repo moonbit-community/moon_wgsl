@@ -11,8 +11,6 @@ pub fn block(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslBlock rai
 
 pub fn const_assert_expr(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslExprRef raise ParseError
 
-pub fn decl_head(Array[(Token, Int, Int)], initial_pos? : Int) -> WgslDeclHead raise ParseError
-
 pub fn function_args(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslFunctionArgument] raise ParseError
 
 pub fn function_result(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslFunctionResult? raise ParseError
@@ -61,15 +59,6 @@ pub(all) enum Token {
   AT(Int)
   ATTR_NAME(@ast.WgslIdent)
   ATTR_ARGS((@ast.WgslExprRef?, Int))
-  KW_VIRTUAL(@ast.WgslIdent)
-  KW_OVERRIDE(@ast.WgslIdent)
-  KW_FN(@ast.WgslIdent)
-  KW_VAR(@ast.WgslIdent)
-  KW_STRUCT(@ast.WgslIdent)
-  KW_CONST(@ast.WgslIdent)
-  KW_CONST_ASSERT(@ast.WgslIdent)
-  KW_ALIAS(@ast.WgslIdent)
-  KW_TYPE(@ast.WgslIdent)
   KW_ENABLE(@ast.WgslIdent)
   KW_REQUIRES(@ast.WgslIdent)
   KW_DIAGNOSTIC(@ast.WgslIdent)
@@ -105,15 +94,6 @@ pub(all) enum TokenKind {
   TK_AT
   TK_ATTR_NAME
   TK_ATTR_ARGS
-  TK_KW_VIRTUAL
-  TK_KW_OVERRIDE
-  TK_KW_FN
-  TK_KW_VAR
-  TK_KW_STRUCT
-  TK_KW_CONST
-  TK_KW_CONST_ASSERT
-  TK_KW_ALIAS
-  TK_KW_TYPE
   TK_KW_ENABLE
   TK_KW_REQUIRES
   TK_KW_DIAGNOSTIC

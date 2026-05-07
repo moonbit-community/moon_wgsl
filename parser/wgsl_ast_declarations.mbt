@@ -451,20 +451,11 @@ fn WgslDeclParser::parse_const_assert_checked(
 }
 
 ///|
-fn WgslDeclParser::decl_head_token(
+fn WgslDeclParser::source_directive_token(
   _self : WgslDeclParser,
   ident : WgslIdent,
 ) -> Token? {
   match ident.name() {
-    "virtual" => Some(Token::KW_VIRTUAL(ident))
-    "override" => Some(Token::KW_OVERRIDE(ident))
-    "fn" => Some(Token::KW_FN(ident))
-    "var" => Some(Token::KW_VAR(ident))
-    "struct" => Some(Token::KW_STRUCT(ident))
-    "const" => Some(Token::KW_CONST(ident))
-    "const_assert" => Some(Token::KW_CONST_ASSERT(ident))
-    "alias" => Some(Token::KW_ALIAS(ident))
-    "type" => Some(Token::KW_TYPE(ident))
     "enable" => Some(Token::KW_ENABLE(ident))
     "requires" => Some(Token::KW_REQUIRES(ident))
     "diagnostic" => Some(Token::KW_DIAGNOSTIC(ident))
@@ -474,32 +465,78 @@ fn WgslDeclParser::decl_head_token(
 
 ///|
 fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
-  let tokens : Array[(Token, Int, Int)] = []
-  self.push_attribute_tokens(tokens)
-  let mut view = self.view()
-  let mut emitted = 0
-  while emitted < 2 {
-    match view {
-      [token, .. rest] if token.identifier_text() is Some(name) => {
-        let pos = token.pos()
-        let ident = WgslIdent(name, pos, pos + name.length())
-        match self.decl_head_token(ident) {
-          Some(token) => tokens.push((token, ident.start(), ident.end()))
-          None => ()
+  let attributes = self.consume_leading_attributes()
+  match self.view() {
+    [first, second, ..] if first.identifier_text() is Some(first_name) &&
+      second.identifier_text() is Some(second_name) => {
+      let first_ident = WgslIdent(first_name, first.pos(), first.end())
+      let second_ident = WgslIdent(second_name, second.pos(), second.end())
+      if first_name == "virtual" && second_name == "fn" {
+        self.drop_tokens(2)
+        return WgslDeclHead::{
+          kind: Function,
+          attributes,
+          keyword: Some(second_ident),
+          qualifier: Some(WgslFunctionQualifier::Virtual),
+          qualifier_start: Some(first_ident.start()),
+          qualifier_end: Some(first_ident.end()),
+          fn_keyword: Some(second_ident),
+          consumed: 0,
         }
-        view = rest
-        emitted = emitted + 1
-        continue
       }
-      _ => break
+      if first_name == "override" && second_name == "fn" {
+        self.drop_tokens(2)
+        return WgslDeclHead::{
+          kind: Function,
+          attributes,
+          keyword: Some(second_ident),
+          qualifier: Some(WgslFunctionQualifier::Override),
+          qualifier_start: Some(first_ident.start()),
+          qualifier_end: Some(first_ident.end()),
+          fn_keyword: Some(second_ident),
+          consumed: 0,
+        }
+      }
     }
+    _ => ()
   }
-  tokens.push(
-    (Token::EOF, self.source_text.length(), self.source_text.length()),
-  )
-  let head = decl_head(tokens) catch { _ => WgslDeclHead::raw([]) }
-  self.drop_tokens(head.consumed)
-  head
+  match self.view() {
+    [token, ..] if token.identifier_text() is Some(name) => {
+      let ident = WgslIdent(name, token.pos(), token.end())
+      let kind = match name {
+        "fn" => Function
+        "override" => Override
+        "var" => GlobalVariable
+        "struct" => Struct
+        "const" => Const
+        "const_assert" => ConstAssert
+        "alias" | "type" => TypeAlias
+        "enable" | "requires" | "diagnostic" => SourceDirective
+        _ => Raw
+      }
+      match kind {
+        Raw => ()
+        _ => {
+          self.drop_tokens(1)
+          return WgslDeclHead::{
+            kind,
+            attributes,
+            keyword: Some(ident),
+            qualifier: None,
+            qualifier_start: None,
+            qualifier_end: None,
+            fn_keyword: match kind {
+              Function => Some(ident)
+              _ => None
+            },
+            consumed: 0,
+          }
+        }
+      }
+    }
+    _ => ()
+  }
+  WgslDeclHead::raw(attributes)
 }
 
 ///|
@@ -556,7 +593,7 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
     SourceDirective =>
       match head.keyword {
         Some(keyword) =>
-          match self.decl_head_token(keyword) {
+          match self.source_directive_token(keyword) {
             Some(token) =>
               match self.parse_source_directive(keyword, token) {
                 Some(value) => WgslGlobalDeclData::Directive(value)
