@@ -1159,6 +1159,27 @@ test "WGSL AST lowerer supports abstract hex integer constants" {
 }
 
 ///|
+test "WGSL AST lowerer preserves u32 literals above signed int range" {
+  let source =
+    #|const MASK: u32 = 3221225472u;
+    #|
+    #|fn main() -> u32 {
+    #|  return 3221225472u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("const MASK: u32 = 3221225472u;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return 3221225472u;"), content="true")
+}
+
+///|
 test "WGSL AST lowerer preserves abstract composite constructors" {
   let source =
     #|const vector = vec2(0xffffffffff, 0xfffffffff0);

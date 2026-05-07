@@ -6883,12 +6883,7 @@ fn wgsl_ir_literal_from_token(
       } else {
         Literal::AbstractInt(wgsl_ir_int64_literal_from_text(token.text()))
       }
-    UintLiteral(value) => {
-      let parsed : UInt = @strconv.from_str("\{value}") catch {
-        _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
-      }
-      Literal::U32(parsed)
-    }
+    UintLiteral(value) => Literal::U32(value)
     FloatLiteral => {
       if wgsl_ir_literal_has_suffix(token.text(), "h") {
         let h_text = wgsl_ir_literal_without_suffix(token.text())
@@ -6995,13 +6990,23 @@ fn wgsl_ir_float_literal_text(text : String) -> String {
 }
 
 ///|
+fn wgsl_ir_uint_literal_to_small_int(value : UInt) -> Int? {
+  if value <= (2147483647 : Int).reinterpret_as_uint() {
+    Some(value.reinterpret_as_int())
+  } else {
+    None
+  }
+}
+
+///|
 fn wgsl_ir_int_literal_from_expr_ref(expr_ref : @ast.WgslExprRef) -> Int? {
   match expr_ref.root() {
     Some(node) =>
       match node.kind() {
         Literal(token) =>
           match token.kind() {
-            IntLiteral(value) | UintLiteral(value) => Some(value)
+            IntLiteral(value) => Some(value)
+            UintLiteral(value) => wgsl_ir_uint_literal_to_small_int(value)
             _ => None
           }
         _ => None
@@ -8211,8 +8216,19 @@ fn wgsl_ir_gather_component_from_node(
   match node.kind() {
     Literal(token) =>
       match token.kind() {
-        IntLiteral(value) | UintLiteral(value) =>
+        IntLiteral(value) =>
           match value {
+            0 => SwizzleComponent::X
+            1 => SwizzleComponent::Y
+            2 => SwizzleComponent::Z
+            3 => SwizzleComponent::W
+            _ =>
+              raise WgslIrLowerError::UnsupportedExpression(
+                "textureGather component must be 0, 1, 2, or 3",
+              )
+          }
+        UintLiteral(value) =>
+          match value.reinterpret_as_int() {
             0 => SwizzleComponent::X
             1 => SwizzleComponent::Y
             2 => SwizzleComponent::Z
@@ -8239,7 +8255,8 @@ fn wgsl_ir_expr_node_is_gather_component(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Literal(token) =>
       match token.kind() {
-        IntLiteral(value) | UintLiteral(value) => value >= 0 && value <= 3
+        IntLiteral(value) => value >= 0 && value <= 3
+        UintLiteral(value) => value <= (3 : Int).reinterpret_as_uint()
         _ => false
       }
     _ => false

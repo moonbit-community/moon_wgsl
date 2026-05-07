@@ -8,6 +8,7 @@ ir-advanced-texture-fragment	file	testdata/ir_corpus/advanced_texture_fragment.w
 ir-texture-load-queries-compute	file	testdata/ir_corpus/texture_load_queries_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: textureLoad and texture query builtins.
 ir-workgroup-override-compute	file	testdata/ir_corpus/workgroup_override_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: override constants in workgroup attributes.
 ir-const-assert-compute	file	testdata/ir_corpus/const_assert_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: top-level and function const_assert preservation.
+ir-large-u32-literal	file	testdata/ir_corpus/large_u32_literal.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: legal u32 literals above signed i32 range.
 ir-builtin-functions-fragment	file	testdata/ir_corpus/builtin_functions_fragment.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: builtin function expression lowering.
 ir-packed-integer-builtins-compute	file	testdata/ir_corpus/packed_integer_builtins_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: packed integer builtin calls.
 compose-local-simple	compose	testdata/ir_corpus/compose	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Local compose fixture through compose, parse, validation, IR, and emitted validation.

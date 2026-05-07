@@ -66,7 +66,7 @@ fn wgsl_expr_number_token_end(tokens : Array[WgslToken], start : Int) -> Int {
 }
 
 ///|
-fn parse_wgsl_uint_literal_token(text : String) -> Int? {
+fn parse_wgsl_uint_literal_token(text : String) -> UInt? {
   let mut end = text.length()
   let mut has_suffix = false
   if end > 0 {
@@ -88,22 +88,22 @@ fn parse_wgsl_uint_literal_token(text : String) -> Int? {
       text.code_unit_at(1).to_int() == 120 ||
       text.code_unit_at(1).to_int() == 88
     ) {
-    let mut value = 0
+    let mut value : UInt = 0
     for i in 2..<end {
       match wgsl_expr_ascii_hex_digit_value(text.code_unit_at(i).to_int()) {
-        Some(digit) => value = value * 16 + digit
+        Some(digit) => value = value * 16 + (digit : Int).reinterpret_as_uint()
         None => return None
       }
     }
     return Some(value)
   }
-  let mut value = 0
+  let mut value : UInt = 0
   for i in 0..<end {
     let code = text.code_unit_at(i).to_int()
     if !wgsl_expr_ascii_digit(code) {
       return None
     }
-    value = value * 10 + (code - 48)
+    value = value * 10 + (code - 48 : Int).reinterpret_as_uint()
   }
   Some(value)
 }

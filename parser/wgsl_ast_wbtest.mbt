@@ -609,6 +609,24 @@ test "WGSL expression refs expose token and literal AST" {
 }
 
 ///|
+test "WGSL expression refs preserve large u32 literals as unsigned" {
+  let source =
+    #|const MASK: u32 = 3221225472u;
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Const(const_decl) else {
+    abort("expected const")
+  }
+  guard const_decl.initializer_ref() is Some(initializer) else {
+    abort("expected initializer")
+  }
+  debug_inspect(
+    initializer.tokens()[0].kind(),
+    content="UintLiteral(3221225472)",
+  )
+}
+
+///|
 test "WGSL typed initializer tails are parsed by grammar" {
   let source =
     #|var<private> cache: u32 = FACTOR;

@@ -264,7 +264,7 @@ pub fn WgslExprOperator::binary_precedence(self : WgslExprOperator) -> Int {
 pub(all) enum WgslExprTokenKind {
   Identifier
   BoolLiteral(Bool)
-  UintLiteral(Int)
+  UintLiteral(UInt)
   IntLiteral(Int)
   FloatLiteral
   Operator(WgslExprOperator)

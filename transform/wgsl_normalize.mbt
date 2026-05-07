@@ -385,13 +385,23 @@ fn build_wgsl_unique_alias_suffix_rename_plan_from_binding_plan(
 }
 
 ///|
+fn wgsl_normalize_uint_literal_to_small_int(value : UInt) -> Int? {
+  if value <= (2147483647 : Int).reinterpret_as_uint() {
+    Some(value.reinterpret_as_int())
+  } else {
+    None
+  }
+}
+
+///|
 fn wgsl_expr_ref_single_uint_value(expr_ref : WgslExprRef?) -> Int? {
   match expr_ref {
     Some(expr) => {
       let tokens = expr.tokens()
       if tokens.length() == 1 {
         match tokens[0].kind() {
-          UintLiteral(value) | IntLiteral(value) => Some(value)
+          UintLiteral(value) => wgsl_normalize_uint_literal_to_small_int(value)
+          IntLiteral(value) => Some(value)
           _ => None
         }
       } else {
