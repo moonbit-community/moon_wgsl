@@ -57,6 +57,9 @@ fn WgslIrValidator::validate_module(
     self.require_type(constant.ty)
     self.validate_global_expression_handle(constant.init)
   }
+  for condition in self.shader_module.const_asserts {
+    self.validate_global_expression_handle(condition)
+  }
   for override_ in self.shader_module.overrides.items {
     self.require_type(override_.ty)
     match override_.init {
@@ -199,6 +202,8 @@ fn WgslIrValidator::validate_statement(
           self.validate_function_expression_handle(function, handle)
         None => ()
       }
+    ConstAssert(condition) =>
+      self.validate_function_expression_handle(function, condition)
     Store(pointer, value) => {
       self.validate_function_expression_handle(function, pointer)
       self.validate_function_expression_handle(function, value)

@@ -59,6 +59,33 @@ test "IR emitter mirrors naga entry-point stage attribute spacing" {
 }
 
 ///|
+test "IR emitter prints global and function const_asserts from IR" {
+  let source =
+    #|const VALUE: u32 = 1u;
+    #|const_assert VALUE == 1u;
+    #|
+    #|fn helper() {
+    #|  const_assert VALUE > 0u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  ignore(
+    @parser.parse_wgsl_translation_unit_strict(emitted) catch {
+      error => abort(error.message())
+    },
+  )
+  debug_inspect(emitted.contains("const_assert (VALUE == 1u);"), content="true")
+  debug_inspect(
+    emitted.contains("  const_assert (VALUE > 0u);"),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter prints official builtin names and workgroup override expressions" {
   let source =
     #|enable subgroups;

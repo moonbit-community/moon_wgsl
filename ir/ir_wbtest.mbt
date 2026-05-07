@@ -27,6 +27,7 @@ test "Naga-style shader IR module stores handles into arenas" {
     ty: f32_ty,
     init: literal,
   })
+  shader_module.append_const_assert(literal)
   let global_expr = shader_module.append_global_expression(
     Expression::Constant(constant),
   )
@@ -36,6 +37,7 @@ test "Naga-style shader IR module stores handles into arenas" {
   debug_inspect(global_expr.index(), content="1")
   debug_inspect(shader_module.types.items.length(), content="1")
   debug_inspect(shader_module.constants.items.length(), content="1")
+  debug_inspect(shader_module.const_asserts.length(), content="1")
   debug_inspect(shader_module.global_expressions.items.length(), content="2")
 }
 

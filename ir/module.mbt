@@ -4,6 +4,7 @@ pub(all) struct Module {
   types : TypeArena
   special_types : SpecialTypes
   constants : ConstantArena
+  const_asserts : Array[Handle]
   overrides : OverrideArena
   global_variables : GlobalVariableArena
   global_expressions : ExpressionArena
@@ -21,6 +22,7 @@ pub fn Module::Module() -> Module {
     types: TypeArena(),
     special_types: SpecialTypes(),
     constants: ConstantArena(),
+    const_asserts: [],
     overrides: OverrideArena(),
     global_variables: GlobalVariableArena(),
     global_expressions: ExpressionArena(),
@@ -58,6 +60,11 @@ pub fn Module::append_global_expression(
 ///|
 pub fn Module::append_constant(self : Module, constant : Constant) -> Handle {
   self.constants.append(constant)
+}
+
+///|
+pub fn Module::append_const_assert(self : Module, condition : Handle) -> Unit {
+  self.const_asserts.push(condition)
 }
 
 ///|

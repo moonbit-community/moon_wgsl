@@ -75,6 +75,28 @@ test "WGSL AST lowerer preserves const and override workgroup sizes in IR" {
 }
 
 ///|
+test "WGSL AST lowerer preserves global and function const_asserts in IR" {
+  let source =
+    #|const VALUE: u32 = 1u;
+    #|const_assert VALUE == 1u;
+    #|
+    #|fn helper() {
+    #|  const_assert VALUE > 0u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(module_.const_asserts.length(), content="1")
+  guard module_.functions.items.length() == 1 else {
+    abort("expected one helper function")
+  }
+  match module_.functions.items[0].body.statements[0] {
+    ConstAssert(_) => ()
+    _ => abort("expected function const_assert statement")
+  }
+}
+
+///|
 test "WGSL AST lowerer maps official IO builtins into IR bindings" {
   let source =
     #|enable subgroups;
@@ -225,7 +247,7 @@ test "WGSL AST lowerer returns imported constants without synthetic temporaries"
 ///|
 test "WGSL AST lowerer folds const float arithmetic" {
   let source =
-    #|const PI: f32 = 3.1;
+    #|const PI = 3.1;
     #|
     #|fn f() -> f32 {
     #|  return PI * 2.0;

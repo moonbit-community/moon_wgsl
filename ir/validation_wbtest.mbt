@@ -67,6 +67,19 @@ test "IR validator rejects invalid function call handles" {
 }
 
 ///|
+test "IR validator rejects invalid const_assert handles" {
+  let module_ = Module()
+  module_.append_const_assert(Handle::Handle(42))
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(message, content="\"invalid IR global expression handle: 42\"")
+}
+
+///|
 test "IR validator rejects invalid function-call expression handles" {
   let module_ = Module()
   let function = Function::Function(Some("main"))

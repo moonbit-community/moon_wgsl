@@ -38,6 +38,7 @@ pub enum Statement {
   Continue
   Return(Handle?)
   Kill
+  ConstAssert(Handle)
   ControlBarrier(Barrier)
   MemoryBarrier(Barrier)
   Store(Handle, Handle)

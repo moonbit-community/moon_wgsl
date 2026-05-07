@@ -577,6 +577,7 @@ pub(all) struct Module {
   types : TypeArena
   special_types : SpecialTypes
   constants : ConstantArena
+  const_asserts : Array[Handle]
   overrides : OverrideArena
   global_variables : GlobalVariableArena
   global_expressions : ExpressionArena
@@ -587,6 +588,7 @@ pub(all) struct Module {
   doc_comments : DocComments?
 } derive(Eq, @debug.Debug)
 pub fn Module::Module() -> Self
+pub fn Module::append_const_assert(Self, Handle) -> Unit
 pub fn Module::append_constant(Self, Constant) -> Handle
 pub fn Module::append_directive(Self, String) -> Unit
 pub fn Module::append_entry_point(Self, EntryPoint) -> Unit
@@ -745,6 +747,7 @@ pub enum Statement {
   Continue
   Return(Handle?)
   Kill
+  ConstAssert(Handle)
   ControlBarrier(Barrier)
   MemoryBarrier(Barrier)
   Store(Handle, Handle)

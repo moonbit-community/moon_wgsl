@@ -21,13 +21,17 @@ pub fn emit_wgsl_module_from_ir(
   validate_wgsl_ir_module(shader_module) catch {
     error => raise WgslIrEmitError::Unsupported(error.message())
   }
-  let emitter = WgslIrEmitter::{ shader_module, }
+  let emitter = WgslIrEmitter::{
+    shader_module,
+    preserve_abstract_float_literals: false,
+  }
   emitter.emit_module()
 }
 
 ///|
 priv struct WgslIrEmitter {
   shader_module : Module
+  preserve_abstract_float_literals : Bool
 }
 
 ///|
@@ -66,6 +70,16 @@ fn WgslIrEmitter::emit_module(
     needs_blank = true
     last_item_is_entry_point = false
     emitted_constant = true
+  }
+  let mut emitted_const_assert = false
+  for condition in self.shader_module.const_asserts {
+    if needs_blank && !emitted_const_assert {
+      out.write_string("\n")
+    }
+    self.emit_global_const_assert(out, condition)
+    needs_blank = true
+    last_item_is_entry_point = false
+    emitted_const_assert = true
   }
   let mut emitted_override = false
   for index in 0..<self.shader_module.overrides.items.length() {
@@ -115,6 +129,27 @@ fn WgslIrEmitter::emit_module(
     out.write_string("\n")
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::emit_global_const_assert(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  condition : Handle,
+) -> Unit raise WgslIrEmitError {
+  out.write_string(
+    "const_assert \{self.abstract_float_global_expression(condition)};\n",
+  )
+}
+
+///|
+fn WgslIrEmitter::with_preserved_abstract_float_literals(
+  self : WgslIrEmitter,
+) -> WgslIrEmitter {
+  WgslIrEmitter::{
+    shader_module: self.shader_module,
+    preserve_abstract_float_literals: true,
+  }
 }
 
 ///|
@@ -172,7 +207,7 @@ fn WgslIrEmitter::emit_constant(
   }
   if self.type_contains_abstract_scalar(constant.ty) {
     out.write_string(
-      "const \{name} = \{self.global_expression(constant.init)};\n",
+      "const \{name} = \{self.abstract_float_global_expression(constant.init)};\n",
     )
   } else {
     out.write_string(
@@ -658,6 +693,10 @@ fn WgslIrEmitter::emit_statement(
         None => out.write_string("\{pad}return;\n")
       }
     Kill => out.write_string("\{pad}discard;\n")
+    ConstAssert(condition) =>
+      out.write_string(
+        "\{pad}const_assert \{self.abstract_float_function_expression(function, condition)};\n",
+      )
     Store(pointer, value) =>
       out.write_string(
         "\{pad}\{self.function_pointer_expression(function, pointer)} = \{self.function_expression(function, value)};\n",
@@ -768,6 +807,14 @@ fn WgslIrEmitter::global_expression(
 }
 
 ///|
+fn WgslIrEmitter::abstract_float_global_expression(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> String raise WgslIrEmitError {
+  self.with_preserved_abstract_float_literals().global_expression(handle)
+}
+
+///|
 fn WgslIrEmitter::function_expression(
   self : WgslIrEmitter,
   function : Function,
@@ -781,6 +828,17 @@ fn WgslIrEmitter::function_expression(
       )
   }
   self.emit_expression(expression, Some(function))
+}
+
+///|
+fn WgslIrEmitter::abstract_float_function_expression(
+  self : WgslIrEmitter,
+  function : Function,
+  handle : Handle,
+) -> String raise WgslIrEmitError {
+  self
+  .with_preserved_abstract_float_literals()
+  .function_expression(function, handle)
 }
 
 ///|
@@ -2361,10 +2419,9 @@ fn WgslIrEmitter::sampling_name(
 
 ///|
 fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
-  ignore(self)
   match literal {
-    F64(value) => wgsl_ir_emit_float_literal_text("\{value}")
-    F32(value) => wgsl_ir_emit_float_literal_text("\{value}")
+    F64(value) => wgsl_ir_emit_concrete_float_literal_text("\{value}")
+    F32(value) => wgsl_ir_emit_concrete_float_literal_text("\{value}")
     F16Bits(value) => "\{value}h"
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
@@ -2374,24 +2431,37 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
     I64(value) => "\{value}"
     Bool(value) => if value { "true" } else { "false" }
     AbstractInt(value) => "\{value}"
-    AbstractFloat(value) => wgsl_ir_emit_float_literal_text("\{value}")
+    AbstractFloat(value) =>
+      if self.preserve_abstract_float_literals {
+        wgsl_ir_emit_abstract_float_literal_text("\{value}")
+      } else {
+        wgsl_ir_emit_concrete_float_literal_text("\{value}")
+      }
   }
 }
 
 ///|
-fn wgsl_ir_emit_float_literal_text(text : String) -> String {
-  let normalized = if text.contains(".") ||
-    text.contains("e") ||
-    text.contains("E") {
+fn wgsl_ir_emit_normalized_float_literal_text(text : String) -> String {
+  if text.contains(".") || text.contains("e") || text.contains("E") {
     text
   } else {
     "\{text}.0"
   }
+}
+
+///|
+fn wgsl_ir_emit_concrete_float_literal_text(text : String) -> String {
+  let normalized = wgsl_ir_emit_normalized_float_literal_text(text)
   if normalized.has_suffix(".0") {
     "\{normalized[0:normalized.length() - 2]}f"
   } else {
     "\{normalized}f"
   }
+}
+
+///|
+fn wgsl_ir_emit_abstract_float_literal_text(text : String) -> String {
+  wgsl_ir_emit_normalized_float_literal_text(text)
 }
 
 ///|

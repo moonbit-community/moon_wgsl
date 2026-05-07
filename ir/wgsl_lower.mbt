@@ -399,6 +399,7 @@ fn WgslIrLowerer::lower_global_declaration(
     TypeAlias(alias_decl) => self.lower_type_alias(alias_decl)
     GlobalVariable(global) => self.lower_global_variable(global)
     Const(constant) => self.lower_constant(constant)
+    ConstAssert(expr) => self.lower_global_const_assert(expr)
     Override(override_decl) => self.lower_override(override_decl)
     Function(function) => self.lower_function_declaration(function)
     Directive(directive) => self.lower_source_directive(directive)
@@ -568,6 +569,14 @@ fn WgslIrLowerer::lower_constant(
     init,
   })
   self.constant_names.set(constant.name().name(), handle)
+}
+
+///|
+fn WgslIrLowerer::lower_global_const_assert(
+  self : WgslIrLowerer,
+  expr : @ast.WgslExprRef,
+) -> Unit raise WgslIrLowerError {
+  self.shader_module.append_const_assert(self.lower_global_expression_ref(expr))
 }
 
 ///|
@@ -1047,7 +1056,18 @@ fn WgslIrLowerer::lower_statement(
           }
         None => ()
       }
-    ConstAssert(_) => ()
+    ConstAssert(expr) => {
+      guard expr is Some(expr_ref) else {
+        raise WgslIrLowerError::UnsupportedStatement(
+          "const_assert without expression",
+        )
+      }
+      block.push(
+        Statement::ConstAssert(
+          self.lower_function_expression_ref(expr_ref, function, scope),
+        ),
+      )
+    }
     For(expressions) =>
       self.lower_for_statement(statement, expressions, function, scope, block)
     Switch(selector) => {
@@ -4472,6 +4492,18 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
       self.lower_expression_node_to_global_expression_with_expected(
         single, expected_ty,
       )
+    Member(base, member_name) => {
+      let base_handle = self.lower_global_expression_node(base)
+      Expression::AccessIndex(
+        base_handle,
+        self.member_index_for_global_expression(base_handle, member_name.name()),
+      )
+    }
+    Index(base, index) =>
+      Expression::Access(
+        self.lower_global_expression_node(base),
+        self.lower_global_expression_node(index),
+      )
     Call(callee, arguments) =>
       match self.lower_bitcast_callee_type(callee) {
         Some(ty) => self.lower_global_bitcast_call(ty, arguments)
@@ -6907,6 +6939,112 @@ fn WgslIrLowerer::member_index_for_expression(
         None => wgsl_ir_member_index(member_name)
       }
     None => wgsl_ir_member_index(member_name)
+  }
+}
+
+///|
+fn WgslIrLowerer::member_index_for_global_expression(
+  self : WgslIrLowerer,
+  expression_handle : Handle,
+  member_name : String,
+) -> Int raise WgslIrLowerError {
+  match self.global_expression_type(expression_handle) {
+    Some(ty_handle) =>
+      match
+        self.shader_module.types.get(self.deref_pointer_type_handle(ty_handle)) {
+        Some(ty) =>
+          match ty.inner {
+            Struct(members, _) | PredeclaredStruct(members, _) =>
+              match wgsl_ir_struct_member_index(members, member_name) {
+                Some(index) => index
+                None =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "unknown struct member \{member_name}",
+                  )
+              }
+            _ => wgsl_ir_member_index(member_name)
+          }
+        None => wgsl_ir_member_index(member_name)
+      }
+    None => wgsl_ir_member_index(member_name)
+  }
+}
+
+///|
+fn WgslIrLowerer::global_expression_type(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Handle? {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) => self.global_expression_inner_type(expression)
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::global_expression_inner_type(
+  self : WgslIrLowerer,
+  expression : Expression,
+) -> Handle? {
+  match expression {
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => Some(constant.ty)
+        None => None
+      }
+    Override(handle) =>
+      match self.shader_module.overrides.items.get(handle.index()) {
+        Some(override_) => Some(override_.ty)
+        None => None
+      }
+    GlobalVariable(handle) =>
+      match self.shader_module.global_variables.items.get(handle.index()) {
+        Some(global) => Some(global.ty)
+        None => None
+      }
+    Compose(ty, _) | ZeroValue(ty) => Some(ty)
+    AccessIndex(base, index) =>
+      match self.global_expression_type(base) {
+        Some(ty) => self.indexed_type_from_type_handle(ty, Some(index))
+        None => None
+      }
+    Access(base, _) =>
+      match self.global_expression_type(base) {
+        Some(ty) => self.indexed_type_from_type_handle(ty, None)
+        None => None
+      }
+    Swizzle(_, _, _) => None
+    Literal(literal) => self.literal_type(literal)
+    Unary(_, inner) => self.global_expression_type(inner)
+    Binary(op, left, right) =>
+      match self.global_expression_type(left) {
+        Some(left_ty) =>
+          match self.global_expression_type(right) {
+            Some(right_ty) =>
+              Some(self.binary_expression_result_type(op, left_ty, right_ty))
+            None => Some(left_ty)
+          }
+        None => self.global_expression_type(right)
+      }
+    Select(_, accept, reject) =>
+      match self.global_expression_type(accept) {
+        Some(ty) => Some(ty)
+        None => self.global_expression_type(reject)
+      }
+    Bitcast(ty, _) => Some(ty)
+    Math(math_function, a, _, _, _) =>
+      self.math_expression_result_type(
+        Function::Function(None),
+        math_function,
+        a,
+      )
+    Relational(relational_function, expr) =>
+      self.relational_expression_result_type(
+        Function::Function(None),
+        relational_function,
+        expr,
+      )
+    _ => None
   }
 }
 

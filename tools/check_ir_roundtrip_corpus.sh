@@ -53,6 +53,8 @@ roundtrip_case "texture-load-queries-compute" \
   "testdata/ir_corpus/texture_load_queries_compute.wgsl"
 roundtrip_case "workgroup-override-compute" \
   "testdata/ir_corpus/workgroup_override_compute.wgsl"
+roundtrip_case "const-assert-compute" \
+  "testdata/ir_corpus/const_assert_compute.wgsl"
 roundtrip_case "builtin-functions-fragment" \
   "testdata/ir_corpus/builtin_functions_fragment.wgsl"
 roundtrip_case "packed-integer-builtins-compute" \
