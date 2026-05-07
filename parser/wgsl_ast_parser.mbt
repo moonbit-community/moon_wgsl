@@ -2,38 +2,10 @@
 fn parse_wgsl_declaration_data_at(
   text : String,
   source_start : Int,
-) -> WgslGlobalDeclData {
-  WgslDeclParser::new_at(text, source_start).parse_decl_data()
-}
-
-///|
-fn parse_wgsl_raw_global_decl(item : WgslRawTopLevelItem) -> WgslGlobalDecl {
-  let directive_text = replace_comments_naga_oil(item.text)
-  let data = match item.kind {
-    WgslRawTopLevelKind::DefineImportPath | WgslRawTopLevelKind::Define =>
-      match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) => WgslGlobalDeclData::Directive(directive)
-        None => WgslGlobalDeclData::Raw
-      }
-    WgslRawTopLevelKind::Import =>
-      match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) => WgslGlobalDeclData::Import(directive)
-        None => WgslGlobalDeclData::Raw
-      }
-    WgslRawTopLevelKind::Directive =>
-      match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) => WgslGlobalDeclData::Directive(directive)
-        None => WgslGlobalDeclData::Raw
-      }
-    WgslRawTopLevelKind::Declaration =>
-      parse_wgsl_declaration_data_at(item.text, item.start)
-    WgslRawTopLevelKind::Trivia => WgslGlobalDeclData::Raw
+) -> WgslGlobalDeclData raise WgslParseError {
+  WgslDeclParser::new_at(text, source_start).parse_decl_data_checked() catch {
+    _ => raise WgslParseError::UnparsedDeclaration(text, source_start)
   }
-  let kind = match item.kind {
-    WgslRawTopLevelKind::Trivia => WgslGlobalDeclKind::Trivia
-    _ => wgsl_global_decl_kind_from_data(data)
-  }
-  WgslGlobalDecl(kind, data, item.start, item.end)
 }
 
 ///|
@@ -80,20 +52,48 @@ fn parse_wgsl_raw_top_level_items_strict(
 fn parse_wgsl_raw_global_decl_strict(
   item : WgslRawTopLevelItem,
 ) -> WgslGlobalDecl raise WgslParseError {
-  let declaration = parse_wgsl_raw_global_decl(item)
-  match declaration.kind() {
-    WgslGlobalDeclKind::Unknown =>
-      raise WgslParseError::UnparsedDeclaration(item.text, item.start)
-    _ =>
-      match declaration.data() {
-        WgslGlobalDeclData::Function(function) =>
-          if wgsl_function_has_invalid_statement_expression(function) {
-            raise WgslParseError::UnparsedDeclaration(item.text, item.start)
-          } else {
-            declaration
-          }
-        _ => declaration
+  let directive_text = replace_comments_naga_oil(item.text)
+  let (kind, data) = match item.kind {
+    WgslRawTopLevelKind::DefineImportPath | WgslRawTopLevelKind::Define =>
+      match parse_wgsl_directive_line_at(directive_text, item.start) {
+        Some(directive) =>
+          (
+            WgslGlobalDeclKind::Directive,
+            WgslGlobalDeclData::Directive(directive),
+          )
+        None => raise WgslParseError::UnparsedDeclaration(item.text, item.start)
       }
+    WgslRawTopLevelKind::Import =>
+      match parse_wgsl_directive_line_at(directive_text, item.start) {
+        Some(directive) =>
+          (WgslGlobalDeclKind::Import, WgslGlobalDeclData::Import(directive))
+        None => raise WgslParseError::UnparsedDeclaration(item.text, item.start)
+      }
+    WgslRawTopLevelKind::Directive =>
+      match parse_wgsl_directive_line_at(directive_text, item.start) {
+        Some(directive) =>
+          (
+            WgslGlobalDeclKind::Directive,
+            WgslGlobalDeclData::Directive(directive),
+          )
+        None => raise WgslParseError::UnparsedDeclaration(item.text, item.start)
+      }
+    WgslRawTopLevelKind::Declaration => {
+      let data = parse_wgsl_declaration_data_at(item.text, item.start)
+      (wgsl_global_decl_kind_from_data(data), data)
+    }
+    WgslRawTopLevelKind::Trivia =>
+      (WgslGlobalDeclKind::Trivia, WgslGlobalDeclData::Raw)
+  }
+  let declaration = WgslGlobalDecl(kind, data, item.start, item.end)
+  match data {
+    WgslGlobalDeclData::Function(function) =>
+      if wgsl_function_has_invalid_statement_expression(function) {
+        raise WgslParseError::UnparsedDeclaration(item.text, item.start)
+      } else {
+        declaration
+      }
+    _ => declaration
   }
 }
 

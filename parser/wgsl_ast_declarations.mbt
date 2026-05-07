@@ -433,6 +433,11 @@ priv suberror WgslConstAssertParseError {
 }
 
 ///|
+priv suberror WgslDeclDataParseError {
+  UnparsedDeclaration
+}
+
+///|
 fn WgslDeclParser::parse_const_assert_checked(
   self : WgslDeclParser,
 ) -> WgslExprRef raise WgslConstAssertParseError {
@@ -540,7 +545,9 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
 }
 
 ///|
-fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData {
+fn WgslDeclParser::parse_decl_data_checked(
+  self : WgslDeclParser,
+) -> WgslGlobalDeclData raise WgslDeclDataParseError {
   let head = self.parse_decl_head()
   match head.kind {
     Function =>
@@ -555,40 +562,40 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
               fn_keyword,
             ) {
             Some(function) => WgslGlobalDeclData::Function(function)
-            None => WgslGlobalDeclData::Raw
+            None => raise WgslDeclDataParseError::UnparsedDeclaration
           }
-        None => WgslGlobalDeclData::Raw
+        None => raise WgslDeclDataParseError::UnparsedDeclaration
       }
     Override =>
       match self.parse_override(head.attributes) {
         Some(value) => WgslGlobalDeclData::Override(value)
-        None => WgslGlobalDeclData::Raw
+        None => raise WgslDeclDataParseError::UnparsedDeclaration
       }
     GlobalVariable =>
       match self.parse_global_variable(head.attributes) {
         Some(value) => WgslGlobalDeclData::GlobalVariable(value)
-        None => WgslGlobalDeclData::Raw
+        None => raise WgslDeclDataParseError::UnparsedDeclaration
       }
     Struct =>
       match self.parse_struct(head.attributes) {
         Some(value) => WgslGlobalDeclData::Struct(value)
-        None => WgslGlobalDeclData::Raw
+        None => raise WgslDeclDataParseError::UnparsedDeclaration
       }
     Const =>
       match self.parse_const() {
         Some(value) => WgslGlobalDeclData::Const(value)
-        None => WgslGlobalDeclData::Raw
+        None => raise WgslDeclDataParseError::UnparsedDeclaration
       }
     ConstAssert => {
       let value = self.parse_const_assert_checked() catch {
-        _ => return WgslGlobalDeclData::Raw
+        _ => raise WgslDeclDataParseError::UnparsedDeclaration
       }
       WgslGlobalDeclData::ConstAssert(value)
     }
     TypeAlias =>
       match self.parse_type_alias() {
         Some(value) => WgslGlobalDeclData::TypeAlias(value)
-        None => WgslGlobalDeclData::Raw
+        None => raise WgslDeclDataParseError::UnparsedDeclaration
       }
     SourceDirective =>
       match head.keyword {
@@ -597,13 +604,13 @@ fn WgslDeclParser::parse_decl_data(self : WgslDeclParser) -> WgslGlobalDeclData 
             Some(token) =>
               match self.parse_source_directive(keyword, token) {
                 Some(value) => WgslGlobalDeclData::Directive(value)
-                None => WgslGlobalDeclData::Raw
+                None => raise WgslDeclDataParseError::UnparsedDeclaration
               }
-            None => WgslGlobalDeclData::Raw
+            None => raise WgslDeclDataParseError::UnparsedDeclaration
           }
-        None => WgslGlobalDeclData::Raw
+        None => raise WgslDeclDataParseError::UnparsedDeclaration
       }
-    Raw => WgslGlobalDeclData::Raw
+    Raw => raise WgslDeclDataParseError::UnparsedDeclaration
   }
 }
 
