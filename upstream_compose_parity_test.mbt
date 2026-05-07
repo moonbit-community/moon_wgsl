@@ -433,7 +433,7 @@ test "naga_oil upstream: problematic texture sample expressions survive composit
     upstream_parity_empty_defines(),
   )
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
-  debug_inspect(source.contains("vec2<i32>(1, 1)"), content="true")
+  debug_inspect(source.contains("vec2<i32>(1i, 1i)"), content="true")
   debug_inspect(source.contains("mod::f"), content="false")
 }
 

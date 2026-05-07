@@ -1256,6 +1256,7 @@ fn WgslIrEmitter::function_expression_inner_type(
       self.image_query_expression_result_type(Some(function), image, query)
     RayQueryGetIntersection(_, _) => self.type_handle_named("RayIntersection")
     RayQueryProceedResult => self.type_handle_named("bool")
+    Literal(literal) => self.literal_type(literal)
     _ => None
   }
 }
@@ -1326,6 +1327,24 @@ fn WgslIrEmitter::global_expression_inner_type(
       self.atomic_expression_result_type(None, atomic_function, arguments)
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(None, image, query)
+    Literal(literal) => self.literal_type(literal)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::literal_type(
+  self : WgslIrEmitter,
+  literal : Literal,
+) -> Handle? {
+  match literal {
+    Bool(_) => self.type_handle_named("bool")
+    I32(_) => self.type_handle_named("i32")
+    AbstractInt(_) => self.type_handle_named("__abstract_int")
+    U32(_) => self.type_handle_named("u32")
+    F16Bits(_) => self.type_handle_named("f16")
+    F32(_) => self.type_handle_named("f32")
+    AbstractFloat(_) => self.type_handle_named("__abstract_float")
     _ => None
   }
 }
@@ -1860,12 +1879,29 @@ fn WgslIrEmitter::expression_is_scalar_type(
         Some(type_) =>
           match type_.inner {
             Scalar(value) =>
-              value.kind == scalar.kind && value.width == scalar.width
+              self.scalar_matches_constructor_component(value, scalar)
             _ => false
           }
         None => false
       }
     None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::scalar_matches_constructor_component(
+  self : WgslIrEmitter,
+  value : Scalar,
+  target : Scalar,
+) -> Bool {
+  ignore(self)
+  if value.kind == target.kind && value.width == target.width {
+    return true
+  }
+  match (value.kind, target.kind) {
+    (AbstractFloat, Float) => true
+    (AbstractInt, Sint) | (AbstractInt, Uint) => true
+    _ => false
   }
 }
 

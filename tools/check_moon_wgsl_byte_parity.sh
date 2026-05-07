@@ -138,3 +138,9 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/quoted_dup \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/test_quoted_import_dup_name.txt
+
+check_case \
+  problematic_expressions \
+  testdata/naga_oil_upstream/compose_tests/problematic_expressions \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/problematic_expressions.txt

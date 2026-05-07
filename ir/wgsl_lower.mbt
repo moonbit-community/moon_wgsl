@@ -1600,11 +1600,7 @@ fn WgslIrLowerer::materialize_function_expression(
   })
   ignore(scope)
   block.push(Statement::Declare(local_handle))
-  function.expressions.append(
-    Expression::Load(
-      function.expressions.append(Expression::LocalVariable(local_handle)),
-    ),
-  )
+  function.expressions.append(Expression::LocalVariable(local_handle))
 }
 
 ///|
@@ -3961,7 +3957,10 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
   expected_ty : Handle?,
 ) -> Expression raise WgslIrLowerError {
   match node.kind() {
-    Literal(token) => Expression::Literal(wgsl_ir_literal_from_token(token))
+    Literal(token) =>
+      Expression::Literal(
+        self.literal_from_token_with_expected(token, expected_ty),
+      )
     Identifier(name) =>
       match self.constant_names.get(name.name()) {
         Some(handle) => Expression::Constant(handle)
@@ -4044,7 +4043,7 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
                 Some(ty) =>
                   Expression::Compose(
                     ty,
-                    self.lower_global_expression_arguments(arguments),
+                    self.lower_global_constructor_arguments(ty, arguments),
                   )
                 None =>
                   raise WgslIrLowerError::UnsupportedExpression(
@@ -4136,6 +4135,18 @@ fn WgslIrLowerer::lower_global_expression_arguments_with_expected(
     )
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_global_constructor_arguments(
+  self : WgslIrLowerer,
+  ty : Handle,
+  arguments : Array[@ast.WgslExprNode],
+) -> Array[Handle] raise WgslIrLowerError {
+  self.lower_global_expression_arguments_with_expected(
+    arguments,
+    self.constructor_component_expected_type(ty),
+  )
 }
 
 ///|
@@ -4353,7 +4364,9 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
   match node.kind() {
     Literal(token) =>
       function.expressions.append(
-        Expression::Literal(wgsl_ir_literal_from_token(token)),
+        Expression::Literal(
+          self.literal_from_token_with_expected(token, expected_ty),
+        ),
       )
     Identifier(name) =>
       self.lower_identifier_expression(name.name(), function, scope)
@@ -4516,8 +4529,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                   function.expressions.append(
                     Expression::Compose(
                       ty,
-                      self.lower_function_expression_arguments(
-                        arguments, function, scope,
+                      self.lower_function_constructor_arguments(
+                        ty, arguments, function, scope,
                       ),
                     ),
                   )
@@ -4565,19 +4578,47 @@ fn WgslIrLowerer::lower_identifier_expression(
                     None =>
                       match self.global_names.get(name) {
                         Some(handle) =>
-                          function.expressions.append(
-                            Expression::Load(
-                              scope.global_pointer_expression(
-                                name, handle, function,
+                          if self.global_variable_is_handle_value(handle) {
+                            scope.global_pointer_expression(
+                              name, handle, function,
+                            )
+                          } else {
+                            function.expressions.append(
+                              Expression::Load(
+                                scope.global_pointer_expression(
+                                  name, handle, function,
+                                ),
                               ),
-                            ),
-                          )
+                            )
+                          }
                         None => raise WgslIrLowerError::UnknownIdentifier(name)
                       }
                   }
               }
           }
       }
+  }
+}
+
+///|
+fn WgslIrLowerer::global_variable_is_handle_value(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.global_variables.items.get(handle.index()) {
+    Some(global) =>
+      match self.shader_module.types.get(global.ty) {
+        Some(type_) =>
+          match type_.inner {
+            Image(_, _, _)
+            | Sampler(_)
+            | AccelerationStructure(_)
+            | RayQuery(_) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
   }
 }
 
@@ -4733,6 +4774,22 @@ fn WgslIrLowerer::lower_function_expression_arguments_with_expected(
     )
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_arguments(
+  self : WgslIrLowerer,
+  ty : Handle,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Array[Handle] raise WgslIrLowerError {
+  self.lower_function_expression_arguments_with_expected(
+    arguments,
+    function,
+    scope,
+    self.constructor_component_expected_type(ty),
+  )
 }
 
 ///|
@@ -5951,6 +6008,44 @@ fn wgsl_ir_matrix_size_from_name(name : String) -> (VectorSize, VectorSize) {
 }
 
 ///|
+fn WgslIrLowerer::literal_from_token_with_expected(
+  self : WgslIrLowerer,
+  token : @ast.WgslExprToken,
+  expected_ty : Handle?,
+) -> Literal raise WgslIrLowerError {
+  let literal = wgsl_ir_literal_from_token(token)
+  guard expected_ty is Some(ty_handle) else { return literal }
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) => wgsl_ir_contextualize_literal(literal, scalar)
+        _ => literal
+      }
+    None => literal
+  }
+}
+
+///|
+fn wgsl_ir_contextualize_literal(
+  literal : Literal,
+  scalar : Scalar,
+) -> Literal raise WgslIrLowerError {
+  match (literal, scalar.kind) {
+    (AbstractInt(value), Sint) => Literal::I32(value.to_int())
+    (AbstractInt(value), Uint) => {
+      let parsed : UInt = @strconv.from_str("\{value}") catch {
+        _ =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "unsigned literal \{value}",
+          )
+      }
+      Literal::U32(parsed)
+    }
+    _ => literal
+  }
+}
+
+///|
 fn wgsl_ir_literal_from_token(
   token : @ast.WgslExprToken,
 ) -> Literal raise WgslIrLowerError {
@@ -7067,6 +7162,21 @@ fn WgslIrLowerer::expected_constructor_type(
           } else {
             None
           }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::constructor_component_expected_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(_, scalar) => Some(self.scalar_type_handle(scalar))
         _ => None
       }
     None => None

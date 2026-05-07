@@ -961,11 +961,11 @@ test "naga_oil: composer applies root-local shader defines" {
     err => abort("expected root-local define compose success: \{err.message()}")
   }
   debug_inspect(
-    preprocessed.contains("const enabled: u32 = 2;"),
+    preprocessed.contains("const enabled: u32 = 2u;"),
     content="true",
   )
   debug_inspect(
-    preprocessed.contains("const selected: u32 = 2;"),
+    preprocessed.contains("const selected: u32 = 2u;"),
     content="true",
   )
   debug_inspect(
