@@ -100,6 +100,22 @@ while IFS= read -r id; do
   ir_count=$((ir_count + 1))
 done < "$allowlist"
 
+oracle_blocked_count=0
+while IFS= read -r id; do
+  [[ "$id" == "" || "$id" == \#* ]] && continue
+  case_file="$cases_dir/$id.wgsl"
+  if [[ ! -f "$case_file" ]]; then
+    echo "official WGSL CTS oracle-blocked id not found in extracted manifest: $id" >&2
+    echo "current extracted manifest:" >&2
+    sed -n '1,120p' "$manifest" >&2
+    exit 1
+  fi
+  emitted="$tmpdir/$id.ir.wgsl"
+  moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >/dev/null
+  moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/blocked-parse.out" >/dev/null
+  oracle_blocked_count=$((oracle_blocked_count + 1))
+done < "$blocked_by_oracle"
+
 if ((ir_count == 0)); then
   echo "official WGSL CTS IR allowlist is empty" >&2
   exit 1
@@ -109,4 +125,4 @@ if ((ir_count < min_ir_cases)); then
   exit 1
 fi
 
-echo "official WGSL CTS corpus gate passed: parsed $case_count case(s), IR-roundtripped $ir_count allowlisted case(s)"
+echo "official WGSL CTS corpus gate passed: parsed $case_count case(s), IR-roundtripped and naga-validated $ir_count allowlisted case(s), IR-roundtripped $oracle_blocked_count oracle-blocked case(s)"
