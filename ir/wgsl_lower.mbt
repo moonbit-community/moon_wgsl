@@ -144,7 +144,13 @@ pub fn lower_wgsl_translation_unit_to_ir(
     lowerer.record_referenced_names(declaration)
   }
   for declaration in unit.declarations() {
-    lowerer.predeclare_global_declaration(declaration)
+    lowerer.predeclare_global_type_declaration(declaration)
+  }
+  for declaration in unit.declarations() {
+    lowerer.predeclare_global_type_alias(declaration)
+  }
+  for declaration in unit.declarations() {
+    lowerer.predeclare_global_value_declaration(declaration)
   }
   for declaration in unit.declarations() {
     lowerer.lower_global_declaration(declaration)
@@ -252,12 +258,33 @@ fn WgslIrLowerer::intern_type(
 }
 
 ///|
-fn WgslIrLowerer::predeclare_global_declaration(
+fn WgslIrLowerer::predeclare_global_type_declaration(
+  self : WgslIrLowerer,
+  declaration : @ast.WgslGlobalDecl,
+) -> Unit {
+  match declaration.data() {
+    Struct(struct_decl) => self.predeclare_struct_declaration(struct_decl)
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_global_type_alias(
   self : WgslIrLowerer,
   declaration : @ast.WgslGlobalDecl,
 ) -> Unit raise WgslIrLowerError {
   match declaration.data() {
-    Struct(struct_decl) => self.predeclare_struct_declaration(struct_decl)
+    TypeAlias(alias_decl) => self.lower_type_alias(alias_decl)
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_global_value_declaration(
+  self : WgslIrLowerer,
+  declaration : @ast.WgslGlobalDecl,
+) -> Unit raise WgslIrLowerError {
+  match declaration.data() {
     Function(function) => self.predeclare_function_declaration(function)
     Override(override_decl) =>
       self.predeclare_override_declaration(override_decl)
@@ -1203,6 +1230,113 @@ fn wgsl_ir_eval_integer_binary(
 }
 
 ///|
+fn WgslIrLowerer::fold_function_constant_float_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Literal? {
+  match self.eval_function_float_expression(function, handle) {
+    Some(value) => Some(Literal::AbstractFloat(value))
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_function_float_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Double? {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.eval_function_float_expression_inner(function, expression)
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_function_float_expression_inner(
+  self : WgslIrLowerer,
+  function : Function,
+  expression : Expression,
+) -> Double? {
+  match expression {
+    Literal(Literal::AbstractFloat(value)) => Some(value)
+    Constant(handle) => self.eval_constant_float_expression(handle)
+    Binary(op, left, right) => {
+      guard self.eval_function_float_expression(function, left)
+        is Some(left_value) else {
+        return None
+      }
+      guard self.eval_function_float_expression(function, right)
+        is Some(right_value) else {
+        return None
+      }
+      wgsl_ir_eval_float_binary(op, left_value, right_value)
+    }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_constant_float_expression(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Double? {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) => self.eval_global_float_expression(constant.init)
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_global_float_expression(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Double? {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) => self.eval_global_float_expression_inner(expression)
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_global_float_expression_inner(
+  self : WgslIrLowerer,
+  expression : Expression,
+) -> Double? {
+  match expression {
+    Literal(Literal::AbstractFloat(value)) => Some(value)
+    Constant(handle) => self.eval_constant_float_expression(handle)
+    Binary(op, left, right) => {
+      guard self.eval_global_float_expression(left) is Some(left_value) else {
+        return None
+      }
+      guard self.eval_global_float_expression(right) is Some(right_value) else {
+        return None
+      }
+      wgsl_ir_eval_float_binary(op, left_value, right_value)
+    }
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_eval_float_binary(
+  op : BinaryOperator,
+  left : Double,
+  right : Double,
+) -> Double? {
+  match op {
+    Add => Some(left + right)
+    Subtract => Some(left - right)
+    Multiply => Some(left * right)
+    Divide => Some(left / right)
+    _ => None
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_for_header_statement(
   self : WgslIrLowerer,
   expr_ref : @ast.WgslExprRef,
@@ -1630,6 +1764,26 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         value
       }
     }
+    Some(FunctionCall(handle, arguments)) => {
+      let lowered : Array[Handle] = []
+      let mut changed = false
+      for argument in arguments {
+        let lowered_argument = self.materialize_nested_call_argument(
+          function, scope, block, argument,
+        )
+        if lowered_argument != argument {
+          changed = true
+        }
+        lowered.push(lowered_argument)
+      }
+      if changed {
+        function.expressions.set(
+          value,
+          Expression::FunctionCall(handle, lowered),
+        )
+      }
+      value
+    }
     _ => value
   }
 }
@@ -1675,6 +1829,26 @@ fn WgslIrLowerer::materialize_nested_access_base(
 }
 
 ///|
+fn WgslIrLowerer::materialize_nested_call_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_call_argument(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
 fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   self : WgslIrLowerer,
   function : Function,
@@ -1710,6 +1884,61 @@ fn WgslIrLowerer::function_expression_should_materialize_as_access_base(
       self.function_expression_should_materialize_as_nested_value(
         function, value,
       )
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_materialize_as_call_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  self.function_expression_is_var_pointer_load(function, value) &&
+  self.function_expression_has_composite_value_type(function, value) &&
+  self.function_expression_can_materialize_to_let(function, value)
+}
+
+///|
+fn WgslIrLowerer::function_expression_is_var_pointer_load(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  ignore(self)
+  match function.expressions.items.get(value.index()) {
+    Some(Load(pointer)) =>
+      match function.expressions.items.get(pointer.index()) {
+        Some(LocalVariable(handle)) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_variable) => local_variable.kind == Var
+            None => false
+          }
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_has_composite_value_type(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match self.function_expression_type(function, value) {
+    Some(ty) =>
+      match self.shader_module.types.get(ty) {
+        Some(type_) =>
+          match type_.inner {
+            Struct(_, _)
+            | PredeclaredStruct(_, _)
+            | Array(_, _, _)
+            | Matrix(_, _, _) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
   }
 }
 
@@ -4101,14 +4330,20 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           ),
         )
       }
-    Binary(op, left, right) =>
-      function.expressions.append(
+    Binary(op, left, right) => {
+      let handle = function.expressions.append(
         Expression::Binary(
           wgsl_ir_binary_operator(op),
           self.lower_function_expression_node(left, function, scope),
           self.lower_function_expression_node(right, function, scope),
         ),
       )
+      match self.fold_function_constant_float_expression(function, handle) {
+        Some(literal) =>
+          function.expressions.append(Expression::Literal(literal))
+        None => handle
+      }
+    }
     Group(expr) =>
       self.lower_function_expression_node_with_expected(
         expr, function, scope, expected_ty,
@@ -5674,7 +5909,9 @@ fn wgsl_ir_literal_from_token(
   match token.kind() {
     BoolLiteral(value) => Literal::Bool(value)
     IntLiteral(value) =>
-      if wgsl_ir_literal_has_suffix(token.text(), "i") {
+      if wgsl_ir_literal_has_suffix(token.text(), "h") {
+        Literal::F16Bits(value)
+      } else if wgsl_ir_literal_has_suffix(token.text(), "i") {
         Literal::I32(value)
       } else {
         Literal::AbstractInt(wgsl_ir_int64_literal_from_text(token.text()))
@@ -5686,6 +5923,13 @@ fn wgsl_ir_literal_from_token(
       Literal::U32(parsed)
     }
     FloatLiteral => {
+      if wgsl_ir_literal_has_suffix(token.text(), "h") {
+        let h_text = wgsl_ir_literal_without_suffix(token.text())
+        let value : Int = @strconv.from_str(h_text) catch {
+          _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
+        }
+        return Literal::F16Bits(value)
+      }
       let text = wgsl_ir_float_literal_text(token.text())
       let value : Double = @strconv.from_str(text) catch {
         _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
@@ -5703,6 +5947,15 @@ fn wgsl_ir_literal_has_suffix(text : String, lower_suffix : String) -> Bool {
   }
   let last = text[text.length() - 1:].to_owned().to_lower()
   last == lower_suffix
+}
+
+///|
+fn wgsl_ir_literal_without_suffix(text : String) -> String {
+  if text.length() == 0 {
+    text
+  } else {
+    text[0:text.length() - 1].to_owned()
+  }
 }
 
 ///|
@@ -6750,6 +7003,7 @@ fn WgslIrLowerer::literal_type(
     I32(_) => self.type_cache.get("i32")
     AbstractInt(_) => self.type_cache.get("__abstract_int")
     U32(_) => self.type_cache.get("u32")
+    F16Bits(_) => self.type_cache.get("f16")
     F32(_) => self.type_cache.get("f32")
     AbstractFloat(_) => self.type_cache.get("__abstract_float")
     _ => None

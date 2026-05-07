@@ -129,6 +129,15 @@ pub fn ExpressionArena::append(
 }
 
 ///|
+fn ExpressionArena::set(
+  self : ExpressionArena,
+  handle : Handle,
+  item : Expression,
+) -> Unit {
+  self.items[handle.index()] = item
+}
+
+///|
 pub(all) struct FunctionArena {
   items : Array[Function]
 } derive(Eq, Debug)

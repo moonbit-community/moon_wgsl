@@ -139,6 +139,38 @@ test "WGSL AST lowerer returns imported constants without synthetic temporaries"
 }
 
 ///|
+test "WGSL AST lowerer folds const float arithmetic" {
+  let source =
+    #|const PI: f32 = 3.1;
+    #|
+    #|fn f() -> f32 {
+    #|  return PI * 2.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("return 6.2f;"), content="true")
+  debug_inspect(emitted.contains("PI * 2f"), content="false")
+}
+
+///|
+test "WGSL AST lowerer preserves f16 literal suffixes" {
+  let source =
+    #|enable f16;
+    #|const x: f16 = 1h;
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("const x: f16 = 1h;"), content="true")
+}
+
+///|
 test "WGSL AST lowerer materializes global binding accesses inside return constructors" {
   let source =
     #|const SIZE: u32 = 1u;
@@ -191,6 +223,36 @@ test "WGSL AST lowerer materializes direct global binding returns" {
   }
   debug_inspect(emitted.contains("let _e1: f32 = value;"), content="true")
   debug_inspect(emitted.contains("return _e1;"), content="true")
+}
+
+///|
+test "WGSL AST lowerer materializes composite local loads before return calls" {
+  let source =
+    #|struct Frag {
+    #|  fragment: f32,
+    #|}
+    #|
+    #|fn fragment(f: Frag) -> f32 {
+    #|  return f.fragment * 2.0;
+    #|}
+    #|
+    #|fn main() -> f32 {
+    #|  var f: Frag;
+    #|  f.fragment = 3.0;
+    #|  return fragment(f);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e3: Frag = f;"), content="true")
+  debug_inspect(
+    emitted.contains("let _e4: f32 = fragment(_e3);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return _e4;"), content="true")
 }
 
 ///|

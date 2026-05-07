@@ -338,7 +338,7 @@ fn WgslIrEmitter::emit_function(
     if index > 0 {
       out.write_string(", ")
     }
-    self.emit_function_argument(out, function.arguments[index], index)
+    self.emit_function_argument(out, function, index)
   }
   out.write_string(")")
   match function.result {
@@ -358,14 +358,14 @@ fn WgslIrEmitter::emit_function(
 fn WgslIrEmitter::emit_function_argument(
   self : WgslIrEmitter,
   out : StringBuilder,
-  argument : FunctionArgument,
+  function : Function,
   index : Int,
 ) -> Unit raise WgslIrEmitError {
-  self.emit_binding_attribute_prefix(out, argument.binding)
-  let name = match argument.name {
-    Some(value) => value
-    None => "arg\{index}"
+  guard function.arguments.get(index) is Some(argument) else {
+    raise WgslIrEmitError::MissingHandle("function argument \{index}")
   }
+  self.emit_binding_attribute_prefix(out, argument.binding)
+  let name = self.function_argument_name(Some(function), index)
   out.write_string("\{name}: \{self.type_name(argument.ty)}")
 }
 
@@ -2149,18 +2149,88 @@ fn WgslIrEmitter::function_argument_name(
   function : Function?,
   index : Int,
 ) -> String raise WgslIrEmitError {
-  ignore(self)
   guard function is Some(func) else {
     raise WgslIrEmitError::Unsupported("function argument outside function")
   }
   match func.arguments.get(index) {
-    Some(argument) =>
-      match argument.name {
-        Some(name) => name
-        None => "arg\{index}"
+    Some(argument) => {
+      let base_name = self.function_argument_base_name(argument, index)
+      if self.function_argument_name_needs_suffix(func, index, base_name) {
+        "\{base_name}_1"
+      } else {
+        base_name
       }
+    }
     None => raise WgslIrEmitError::MissingHandle("function argument \{index}")
   }
+}
+
+///|
+fn WgslIrEmitter::function_argument_base_name(
+  self : WgslIrEmitter,
+  argument : FunctionArgument,
+  index : Int,
+) -> String {
+  ignore(self)
+  match argument.name {
+    Some(name) => name
+    None => "arg\{index}"
+  }
+}
+
+///|
+fn WgslIrEmitter::function_argument_name_needs_suffix(
+  self : WgslIrEmitter,
+  function : Function,
+  argument_index : Int,
+  base_name : String,
+) -> Bool {
+  if self.function_is_entry_point_name(function) {
+    return false
+  }
+  if !self.function_is_generated_import_function(function) {
+    return false
+  }
+  for index in 0..<argument_index {
+    if self.function_argument_base_name(function.arguments[index], index) ==
+      base_name {
+      return true
+    }
+  }
+  self.entry_point_function_uses_local_name(base_name)
+}
+
+///|
+fn WgslIrEmitter::function_is_generated_import_function(
+  self : WgslIrEmitter,
+  function : Function,
+) -> Bool {
+  ignore(self)
+  match function.name {
+    Some(name) => name.contains("X_naga_oil_")
+    None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::entry_point_function_uses_local_name(
+  self : WgslIrEmitter,
+  name : String,
+) -> Bool {
+  for entry_point in self.shader_module.entry_points {
+    for argument in entry_point.function.arguments {
+      if argument.name == Some(name) {
+        return true
+      }
+    }
+    for local_var in entry_point.function.local_variables.items {
+      match local_var.name {
+        Some(local_name) if local_name == name => return true
+        _ => ()
+      }
+    }
+  }
+  false
 }
 
 ///|

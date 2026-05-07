@@ -300,6 +300,13 @@ fn Composer::build_wgsl_import_requests_from_targets(
     )
     let mut module_alias = target_plan.module_alias
     let mut import_full_module = target_plan.import_full_module
+    if target_plan.alias_is_used &&
+      !target_plan.default_module_alias_candidate &&
+      requested_items.length() > 0 &&
+      !imports_for_override_side_effect &&
+      !imports_for_virtual_side_effect {
+      import_full_module = false
+    }
     if target_plan.default_module_alias_candidate {
       if !target_plan.alias_is_used &&
         !imports_for_override_side_effect &&

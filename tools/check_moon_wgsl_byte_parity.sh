@@ -91,6 +91,12 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/expected/dup_struct_import.txt
 
 check_case \
+  dup_import \
+  testdata/naga_oil_upstream/compose_tests/dup_import \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/dup_import.txt
+
+check_case \
   import_in_decl \
   testdata/naga_oil_upstream/compose_tests/const_in_decl \
   top.wgsl \

@@ -625,6 +625,14 @@ test "naga_oil upstream: entrypoint imports are renamed instead of shadowing loc
     upstream_parity_count_occurrences(output.source, "fn fragment("),
     content="1",
   )
+  debug_inspect(
+    output.source.contains("non_epX_naga_oil_mod_X"),
+    content="false",
+  )
+  debug_inspect(
+    output.source.contains("frag_coord_1: vec4<f32>"),
+    content="true",
+  )
   debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
 }
 
