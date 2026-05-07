@@ -876,6 +876,8 @@ fn WgslIrEmitter::emit_expression(
       "select(\{self.required_function_expression(function, reject)}, \{self.required_function_expression(function, accept)}, \{self.required_function_expression(function, condition)})"
     Bitcast(ty, expr) =>
       "bitcast<\{self.type_name(ty)}>(\{self.required_function_expression(function, expr)})"
+    Derivative(axis, control, expr) =>
+      "\{wgsl_ir_derivative_function_name(axis, control)}(\{self.required_function_expression(function, expr)})"
     FunctionCall(handle, arguments) =>
       "\{self.function_name(handle)}(\{self.expression_list(arguments, function)})"
     Math(math_function, a, b, c, d) =>
@@ -1412,6 +1414,7 @@ fn WgslIrEmitter::global_expression_inner_type(
         None => self.expression_type(None, reject)
       }
     Bitcast(ty, _) => Some(ty)
+    Derivative(_, _, expr) => self.expression_type(None, expr)
     Math(math_function, a, _, _, _) =>
       self.math_expression_result_type(None, math_function, a)
     Relational(relational_function, expr) =>
@@ -1584,6 +1587,23 @@ fn WgslIrEmitter::math_expression_result_type(
   match math_function {
     Modf | Frexp =>
       self.predeclared_numeric_result_type(input_ty, math_function)
+    Pack4x8snorm
+    | Pack4x8unorm
+    | Pack2x16snorm
+    | Pack2x16unorm
+    | Pack2x16float
+    | Pack4xI8
+    | Pack4xU8
+    | Pack4xI8Clamp
+    | Pack4xU8Clamp
+    | Dot4U8Packed => self.type_handle_named("u32")
+    Dot4I8Packed => self.type_handle_named("i32")
+    Unpack4x8snorm | Unpack4x8unorm =>
+      self.find_vector_type(Quad, Scalar::Scalar(Float, 4))
+    Unpack2x16snorm | Unpack2x16unorm | Unpack2x16float =>
+      self.find_vector_type(Bi, Scalar::Scalar(Float, 4))
+    Unpack4xI8 => self.find_vector_type(Quad, Scalar::Scalar(Sint, 4))
+    Unpack4xU8 => self.find_vector_type(Quad, Scalar::Scalar(Uint, 4))
     Dot | Distance | Length | Determinant =>
       self.scalar_type_from_composite_type(input_ty)
     _ => Some(input_ty)
@@ -2675,12 +2695,20 @@ fn WgslIrEmitter::math_function_name(
     Clamp => "clamp"
     Saturate => "saturate"
     Cos => "cos"
+    Cosh => "cosh"
     Sin => "sin"
+    Sinh => "sinh"
     Tan => "tan"
+    Tanh => "tanh"
     Acos => "acos"
+    Acosh => "acosh"
     Asin => "asin"
+    Asinh => "asinh"
     Atan => "atan"
+    Atanh => "atanh"
     Atan2 => "atan2"
+    Radians => "radians"
+    Degrees => "degrees"
     Ceil => "ceil"
     Floor => "floor"
     Round => "round"
@@ -2695,6 +2723,8 @@ fn WgslIrEmitter::math_function_name(
     Log2 => "log2"
     Pow => "pow"
     Dot => "dot"
+    Dot4I8Packed => "dot4I8Packed"
+    Dot4U8Packed => "dot4U8Packed"
     Cross => "cross"
     Distance => "distance"
     Length => "length"
@@ -2712,6 +2742,7 @@ fn WgslIrEmitter::math_function_name(
     Inverse => "inverse"
     Transpose => "transpose"
     Determinant => "determinant"
+    QuantizeToF16 => "quantizeToF16"
     CountTrailingZeros => "countTrailingZeros"
     CountLeadingZeros => "countLeadingZeros"
     CountOneBits => "countOneBits"
@@ -2720,7 +2751,41 @@ fn WgslIrEmitter::math_function_name(
     InsertBits => "insertBits"
     FirstTrailingBit => "firstTrailingBit"
     FirstLeadingBit => "firstLeadingBit"
+    Pack4x8snorm => "pack4x8snorm"
+    Pack4x8unorm => "pack4x8unorm"
+    Pack2x16snorm => "pack2x16snorm"
+    Pack2x16unorm => "pack2x16unorm"
+    Pack2x16float => "pack2x16float"
+    Pack4xI8 => "pack4xI8"
+    Pack4xU8 => "pack4xU8"
+    Pack4xI8Clamp => "pack4xI8Clamp"
+    Pack4xU8Clamp => "pack4xU8Clamp"
+    Unpack4x8snorm => "unpack4x8snorm"
+    Unpack4x8unorm => "unpack4x8unorm"
+    Unpack2x16snorm => "unpack2x16snorm"
+    Unpack2x16unorm => "unpack2x16unorm"
+    Unpack2x16float => "unpack2x16float"
+    Unpack4xI8 => "unpack4xI8"
+    Unpack4xU8 => "unpack4xU8"
     _ => raise WgslIrEmitError::Unsupported("math function")
+  }
+}
+
+///|
+fn wgsl_ir_derivative_function_name(
+  axis : DerivativeAxis,
+  control : DerivativeControl,
+) -> String {
+  match (axis, control) {
+    (X, DerivativeControl::None) => "dpdx"
+    (X, Coarse) => "dpdxCoarse"
+    (X, Fine) => "dpdxFine"
+    (Y, DerivativeControl::None) => "dpdy"
+    (Y, Coarse) => "dpdyCoarse"
+    (Y, Fine) => "dpdyFine"
+    (Width, DerivativeControl::None) => "fwidth"
+    (Width, Coarse) => "fwidthCoarse"
+    (Width, Fine) => "fwidthFine"
   }
 }
 

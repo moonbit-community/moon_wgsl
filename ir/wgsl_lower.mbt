@@ -4908,125 +4908,191 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       function.expressions.append(Expression::Access(base_handle, index_handle))
     }
     Call(callee, arguments) =>
-      match self.lower_bitcast_callee_type(callee) {
-        Some(ty) =>
-          self.lower_function_bitcast_call(ty, arguments, function, scope)
+      self.lower_function_call_expression(
+        callee, arguments, function, scope, expected_ty,
+      )
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression("unlowered expression node")
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_call_expression(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  match self.lower_bitcast_callee_type(callee) {
+    Some(ty) => self.lower_function_bitcast_call(ty, arguments, function, scope)
+    None =>
+      match callee.kind() {
+        Identifier(name) =>
+          self.lower_named_function_call_expression(
+            name.name(),
+            arguments,
+            function,
+            scope,
+            expected_ty,
+          )
+        _ =>
+          match self.lower_templated_callee_type(callee) {
+            Some(ty) =>
+              function.expressions.append(
+                Expression::Compose(
+                  ty,
+                  self.lower_function_constructor_arguments(
+                    ty, arguments, function, scope,
+                  ),
+                ),
+              )
+            None =>
+              raise WgslIrLowerError::UnsupportedExpression(
+                "non-identifier call expression: \{wgsl_ir_expr_node_shape(callee)}",
+              )
+          }
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_named_function_call_expression(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  match self.function_names.get(name) {
+    Some(handle) =>
+      function.expressions.append(
+        Expression::FunctionCall(
+          handle,
+          self.lower_function_expression_arguments(arguments, function, scope),
+        ),
+      )
+    None =>
+      match wgsl_ir_math_function_from_name(name) {
+        Some(math_function) =>
+          self.lower_function_math_call(
+            math_function, arguments, function, scope,
+          )
         None =>
-          match callee.kind() {
-            Identifier(name) =>
-              match self.function_names.get(name.name()) {
-                Some(handle) =>
-                  function.expressions.append(
-                    Expression::FunctionCall(
-                      handle,
-                      self.lower_function_expression_arguments(
-                        arguments, function, scope,
-                      ),
-                    ),
+          match wgsl_ir_derivative_function_from_name(name) {
+            Some((axis, control)) =>
+              self.lower_function_derivative_call(
+                axis, control, arguments, function, scope,
+              )
+            None =>
+              match wgsl_ir_relational_function_from_name(name) {
+                Some(relational_function) =>
+                  self.lower_function_relational_call(
+                    relational_function, arguments, function, scope,
                   )
                 None =>
-                  match wgsl_ir_math_function_from_name(name.name()) {
-                    Some(math_function) =>
-                      self.lower_function_math_call(
-                        math_function, arguments, function, scope,
-                      )
-                    None =>
-                      match wgsl_ir_relational_function_from_name(name.name()) {
-                        Some(relational_function) =>
-                          self.lower_function_relational_call(
-                            relational_function, arguments, function, scope,
-                          )
-                        None =>
-                          if name.name() == "select" {
-                            self.lower_function_select_call(
-                              arguments, function, scope,
-                            )
-                          } else {
-                            match
-                              wgsl_ir_atomic_function_from_name(name.name()) {
-                              Some(atomic_function) =>
-                                self.lower_function_atomic_call(
-                                  atomic_function, arguments, function, scope,
-                                )
-                              None =>
-                                match
-                                  self.lower_texture_expression_call(
-                                    name.name(),
-                                    arguments,
-                                    function,
-                                    scope,
-                                  ) {
-                                  Some(handle) => handle
-                                  None =>
-                                    match
-                                      self.lower_ray_query_expression_call(
-                                        name.name(),
-                                        arguments,
-                                        function,
-                                        scope,
-                                      ) {
-                                      Some(handle) => handle
-                                      None =>
-                                        if name.name() == "arrayLength" {
-                                          self.lower_function_array_length_call(
-                                            arguments, function, scope,
-                                          )
-                                        } else if name.name() == "array" {
-                                          self.lower_function_array_constructor_call(
-                                            expected_ty, arguments, function, scope,
-                                          )
-                                        } else {
-                                          let lowered_arguments = self.lower_function_expression_arguments(
-                                            arguments, function, scope,
-                                          )
-                                          let ty = match
-                                            self.expected_constructor_type(
-                                              name.name(),
-                                              expected_ty,
-                                            ) {
-                                            Some(ty) => ty
-                                            None =>
-                                              self.lower_untemplated_constructor_type_from_handles(
-                                                name.name(),
-                                                arguments,
-                                                lowered_arguments,
-                                                function,
-                                              )
-                                          }
-                                          function.expressions.append(
-                                            Expression::Compose(
-                                              ty, lowered_arguments,
-                                            ),
-                                          )
-                                        }
-                                    }
-                                }
-                            }
-                          }
-                      }
-                  }
-              }
-            _ =>
-              match self.lower_templated_callee_type(callee) {
-                Some(ty) =>
-                  function.expressions.append(
-                    Expression::Compose(
-                      ty,
-                      self.lower_function_constructor_arguments(
-                        ty, arguments, function, scope,
-                      ),
-                    ),
-                  )
-                None =>
-                  raise WgslIrLowerError::UnsupportedExpression(
-                    "non-identifier call expression: \{wgsl_ir_expr_node_shape(callee)}",
+                  self.lower_unclassified_named_function_call_expression(
+                    name, arguments, function, scope, expected_ty,
                   )
               }
           }
       }
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression("unlowered expression node")
   }
+}
+
+///|
+fn WgslIrLowerer::lower_unclassified_named_function_call_expression(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  if name == "select" {
+    self.lower_function_select_call(arguments, function, scope)
+  } else {
+    match wgsl_ir_atomic_function_from_name(name) {
+      Some(atomic_function) =>
+        self.lower_function_atomic_call(
+          atomic_function, arguments, function, scope,
+        )
+      None =>
+        match
+          self.lower_texture_expression_call(name, arguments, function, scope) {
+          Some(handle) => handle
+          None =>
+            match
+              self.lower_ray_query_expression_call(
+                name, arguments, function, scope,
+              ) {
+              Some(handle) => handle
+              None =>
+                if name == "arrayLength" {
+                  self.lower_function_array_length_call(
+                    arguments, function, scope,
+                  )
+                } else if name == "array" {
+                  self.lower_function_array_constructor_call(
+                    expected_ty, arguments, function, scope,
+                  )
+                } else {
+                  self.lower_function_constructor_call(
+                    name, arguments, function, scope, expected_ty,
+                  )
+                }
+            }
+        }
+    }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_call(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  let lowered_arguments = self.lower_function_expression_arguments(
+    arguments, function, scope,
+  )
+  let ty = match self.expected_constructor_type(name, expected_ty) {
+    Some(ty) => ty
+    None =>
+      self.lower_untemplated_constructor_type_from_handles(
+        name, arguments, lowered_arguments, function,
+      )
+  }
+  function.expressions.append(Expression::Compose(ty, lowered_arguments))
+}
+
+///|
+fn WgslIrLowerer::lower_function_derivative_call(
+  self : WgslIrLowerer,
+  axis : DerivativeAxis,
+  control : DerivativeControl,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [expr] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "derivative call expects one argument",
+    )
+  }
+  function.expressions.append(
+    Expression::Derivative(
+      axis,
+      control,
+      self.lower_function_expression_node(expr, function, scope),
+    ),
+  )
 }
 
 ///|
@@ -6384,12 +6450,20 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
     "clamp" => Some(Clamp)
     "saturate" => Some(Saturate)
     "cos" => Some(Cos)
+    "cosh" => Some(Cosh)
     "sin" => Some(Sin)
+    "sinh" => Some(Sinh)
     "tan" => Some(Tan)
+    "tanh" => Some(Tanh)
     "acos" => Some(Acos)
+    "acosh" => Some(Acosh)
     "asin" => Some(Asin)
+    "asinh" => Some(Asinh)
     "atan" => Some(Atan)
+    "atanh" => Some(Atanh)
     "atan2" => Some(Atan2)
+    "radians" => Some(Radians)
+    "degrees" => Some(Degrees)
     "ceil" => Some(Ceil)
     "floor" => Some(Floor)
     "round" => Some(Round)
@@ -6404,6 +6478,8 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
     "log2" => Some(Log2)
     "pow" => Some(Pow)
     "dot" => Some(Dot)
+    "dot4I8Packed" => Some(Dot4I8Packed)
+    "dot4U8Packed" => Some(Dot4U8Packed)
     "cross" => Some(Cross)
     "distance" => Some(Distance)
     "length" => Some(Length)
@@ -6421,6 +6497,7 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
     "inverse" => Some(Inverse)
     "transpose" => Some(Transpose)
     "determinant" => Some(Determinant)
+    "quantizeToF16" => Some(QuantizeToF16)
     "countTrailingZeros" => Some(CountTrailingZeros)
     "countLeadingZeros" => Some(CountLeadingZeros)
     "countOneBits" => Some(CountOneBits)
@@ -6429,6 +6506,40 @@ fn wgsl_ir_math_function_from_name(name : String) -> MathFunction? {
     "insertBits" => Some(InsertBits)
     "firstTrailingBit" => Some(FirstTrailingBit)
     "firstLeadingBit" => Some(FirstLeadingBit)
+    "pack4x8snorm" => Some(Pack4x8snorm)
+    "pack4x8unorm" => Some(Pack4x8unorm)
+    "pack2x16snorm" => Some(Pack2x16snorm)
+    "pack2x16unorm" => Some(Pack2x16unorm)
+    "pack2x16float" => Some(Pack2x16float)
+    "pack4xI8" => Some(Pack4xI8)
+    "pack4xU8" => Some(Pack4xU8)
+    "pack4xI8Clamp" => Some(Pack4xI8Clamp)
+    "pack4xU8Clamp" => Some(Pack4xU8Clamp)
+    "unpack4x8snorm" => Some(Unpack4x8snorm)
+    "unpack4x8unorm" => Some(Unpack4x8unorm)
+    "unpack2x16snorm" => Some(Unpack2x16snorm)
+    "unpack2x16unorm" => Some(Unpack2x16unorm)
+    "unpack2x16float" => Some(Unpack2x16float)
+    "unpack4xI8" => Some(Unpack4xI8)
+    "unpack4xU8" => Some(Unpack4xU8)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_derivative_function_from_name(
+  name : String,
+) -> (DerivativeAxis, DerivativeControl)? {
+  match name {
+    "dpdx" => Some((X, DerivativeControl::None))
+    "dpdxCoarse" => Some((X, Coarse))
+    "dpdxFine" => Some((X, Fine))
+    "dpdy" => Some((Y, DerivativeControl::None))
+    "dpdyCoarse" => Some((Y, Coarse))
+    "dpdyFine" => Some((Y, Fine))
+    "fwidth" => Some((Width, DerivativeControl::None))
+    "fwidthCoarse" => Some((Width, Coarse))
+    "fwidthFine" => Some((Width, Fine))
     _ => None
   }
 }
@@ -7040,6 +7151,7 @@ fn WgslIrLowerer::function_expression_inner_type(
           }
         None => None
       }
+    Derivative(_, _, expr) => self.function_expression_type(function, expr)
     Math(math_function, a, _, _, _) =>
       self.math_expression_result_type(function, math_function, a)
     Relational(relational_function, expr) =>
@@ -7075,6 +7187,23 @@ fn WgslIrLowerer::math_expression_result_type(
   match math_function {
     Modf => self.predeclared_modf_result_type(input_ty)
     Frexp => self.predeclared_frexp_result_type(input_ty)
+    Pack4x8snorm
+    | Pack4x8unorm
+    | Pack2x16snorm
+    | Pack2x16unorm
+    | Pack2x16float
+    | Pack4xI8
+    | Pack4xU8
+    | Pack4xI8Clamp
+    | Pack4xU8Clamp
+    | Dot4U8Packed => Some(self.scalar_type_handle(Scalar::Scalar(Uint, 4)))
+    Dot4I8Packed => Some(self.scalar_type_handle(Scalar::Scalar(Sint, 4)))
+    Unpack4x8snorm | Unpack4x8unorm =>
+      Some(self.vector_type_handle(Quad, Scalar::Scalar(Float, 4)))
+    Unpack2x16snorm | Unpack2x16unorm | Unpack2x16float =>
+      Some(self.vector_type_handle(Bi, Scalar::Scalar(Float, 4)))
+    Unpack4xI8 => Some(self.vector_type_handle(Quad, Scalar::Scalar(Sint, 4)))
+    Unpack4xU8 => Some(self.vector_type_handle(Quad, Scalar::Scalar(Uint, 4)))
     Dot | Distance | Length | Determinant =>
       Some(self.scalar_type_from_composite_type(input_ty))
     _ => Some(input_ty)
