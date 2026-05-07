@@ -121,6 +121,12 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_entrypoint.txt
 
 check_case \
+  wgsl_dual_source_blending \
+  testdata/naga_oil_upstream/compose_tests/dual_source_blending \
+  blending.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_dual_source_blending.txt
+
+check_case \
   quoted_dup \
   testdata/naga_oil_upstream/compose_tests/quoted_dup \
   top.wgsl \
