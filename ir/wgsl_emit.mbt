@@ -36,10 +36,12 @@ fn WgslIrEmitter::emit_module(
 ) -> String raise WgslIrEmitError {
   let out = StringBuilder::new()
   let mut needs_blank = false
+  let mut last_item_is_entry_point = false
   for directive in self.shader_module.directives {
     out.write_string(directive)
     out.write_string("\n")
     needs_blank = true
+    last_item_is_entry_point = false
   }
   for index in 0..<self.shader_module.types.items.length() {
     let ty = self.shader_module.types.items[index]
@@ -50,26 +52,34 @@ fn WgslIrEmitter::emit_module(
         }
         self.emit_struct_type(out, ty)
         needs_blank = true
+        last_item_is_entry_point = false
       }
       _ => ()
     }
   }
+  let mut emitted_constant = false
   for index in 0..<self.shader_module.constants.items.length() {
-    if needs_blank {
+    if needs_blank && !emitted_constant {
       out.write_string("\n")
     }
     self.emit_constant(out, self.shader_module.constants.items[index])
     needs_blank = true
+    last_item_is_entry_point = false
+    emitted_constant = true
   }
+  let mut emitted_override = false
   for index in 0..<self.shader_module.overrides.items.length() {
-    if needs_blank {
+    if needs_blank && !emitted_override {
       out.write_string("\n")
     }
     self.emit_override(out, self.shader_module.overrides.items[index])
     needs_blank = true
+    last_item_is_entry_point = false
+    emitted_override = true
   }
+  let mut emitted_global_variable = false
   for index in 0..<self.shader_module.global_variables.items.length() {
-    if needs_blank {
+    if needs_blank && !emitted_global_variable {
       out.write_string("\n")
     }
     self.emit_global_variable(
@@ -77,6 +87,8 @@ fn WgslIrEmitter::emit_module(
       self.shader_module.global_variables.items[index],
     )
     needs_blank = true
+    last_item_is_entry_point = false
+    emitted_global_variable = true
   }
   for index in 0..<self.shader_module.functions.items.length() {
     if self.function_is_entry_point_name(
@@ -89,6 +101,7 @@ fn WgslIrEmitter::emit_module(
     }
     self.emit_function(out, self.shader_module.functions.items[index], None)
     needs_blank = true
+    last_item_is_entry_point = false
   }
   for entry_point in self.shader_module.entry_points {
     if needs_blank {
@@ -96,8 +109,9 @@ fn WgslIrEmitter::emit_module(
     }
     self.emit_entry_point(out, entry_point)
     needs_blank = true
+    last_item_is_entry_point = true
   }
-  if needs_blank {
+  if needs_blank && !last_item_is_entry_point {
     out.write_string("\n")
   }
   out.to_string()

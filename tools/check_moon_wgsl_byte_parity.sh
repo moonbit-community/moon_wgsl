@@ -103,6 +103,24 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/expected/import_in_decl.txt
 
 check_case \
+  item_import \
+  testdata/naga_oil_upstream/compose_tests/item_import \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/item_import_test.txt
+
+check_case \
+  item_sub_point \
+  testdata/naga_oil_upstream/compose_tests/item_sub_point \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/item_sub_point.txt
+
+check_case \
+  wgsl_call_entrypoint \
+  testdata/naga_oil_upstream/compose_tests/call_entrypoint \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_entrypoint.txt
+
+check_case \
   quoted_dup \
   testdata/naga_oil_upstream/compose_tests/quoted_dup \
   top.wgsl \

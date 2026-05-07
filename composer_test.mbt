@@ -726,11 +726,11 @@ test "naga_oil: aliased module rewrite preserves function parameter locals" {
   }
   debug_inspect(preprocessed.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
-    preprocessed.contains("return in_wgsl.instance_index;"),
+    preprocessed.contains("return in.instance_index;"),
     content="true",
   )
   debug_inspect(
-    preprocessed.contains("return in.instance_index;"),
+    preprocessed.contains("return in_wgsl.instance_index;"),
     content="false",
   )
   debug_inspect(preprocessed.contains("mesh__in"), content="false")

@@ -829,7 +829,7 @@ test "naga_oil upstream: AST identifier policy handles invalid imported identifi
   )
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("fn fns__bad_("), content="false")
-  debug_inspect(source.contains("in_wgsl: f32"), content="true")
+  debug_inspect(source.contains("in: f32"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("globals__bad_: f32"), content="false")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
@@ -1477,8 +1477,8 @@ test "github issue 12: transitive tonemapping type identity is reused" {
     "tonemapping.wgsl",
     "#define_import_path bevy_core_pipeline::tonemapping\n" +
     "#import bevy_render::view::ColorGrading\n" +
-    "fn tone_mapping(in_wgsl: vec4<f32>, in_color_grading: ColorGrading) -> vec4<f32> {\n" +
-    "  return in_wgsl;\n" +
+    "fn tone_mapping(in: vec4<f32>, in_color_grading: ColorGrading) -> vec4<f32> {\n" +
+    "  return in;\n" +
     "}\n",
   )
   composer.register_source(

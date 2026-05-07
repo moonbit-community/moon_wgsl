@@ -16,17 +16,17 @@
 test "identifier policy normalizes reserved local bindings through AST scopes" {
   let source =
     #|fn fragment(value: f32) -> f32 {
-    #|  let in = value + 1.0;
-    #|  return in;
+    #|  let class = value + 1.0;
+    #|  return class;
     #|}
     #|
   let rewritten = normalize_wgsl_output_identifiers(source)
   debug_inspect(
-    rewritten.contains("let in_wgsl = value + 1.0;"),
+    rewritten.contains("let class_wgsl = value + 1.0;"),
     content="true",
   )
-  debug_inspect(rewritten.contains("return in_wgsl;"), content="true")
-  debug_inspect(rewritten.contains("return in;"), content="false")
+  debug_inspect(rewritten.contains("return class_wgsl;"), content="true")
+  debug_inspect(rewritten.contains("return class;"), content="false")
 }
 
 ///|
@@ -51,17 +51,17 @@ test "identifier policy normalizes nested local bindings through AST scopes" {
   let source =
     #|fn fragment(value: f32) -> f32 {
     #|  if (value > 0.0) {
-    #|    let in = value + 1.0;
-    #|    return in;
+    #|    let class = value + 1.0;
+    #|    return class;
     #|  }
     #|  return value;
     #|}
     #|
   let rewritten = normalize_wgsl_output_identifiers(source)
   debug_inspect(
-    rewritten.contains("let in_wgsl = value + 1.0;"),
+    rewritten.contains("let class_wgsl = value + 1.0;"),
     content="true",
   )
-  debug_inspect(rewritten.contains("return in_wgsl;"), content="true")
-  debug_inspect(rewritten.contains("return in;"), content="false")
+  debug_inspect(rewritten.contains("return class_wgsl;"), content="true")
+  debug_inspect(rewritten.contains("return class;"), content="false")
 }

@@ -154,7 +154,6 @@ fn wgsl_identifier_is_reserved(ident : String) -> Bool {
   ident == "implements" ||
   ident == "import" ||
   ident == "inline" ||
-  ident == "in" ||
   ident == "inout" ||
   ident == "instanceof" ||
   ident == "interface" ||
