@@ -41,6 +41,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
             tools/naga_oil_oracle/target
+            tools/wgpu_validation/.mooncakes/Milky2018/wgpu_mbt/src/c/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('tools/naga_oil_oracle/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
@@ -54,6 +55,7 @@ jobs:
       - name: Moon package update
         run: |
           moon update
+          moon -C tools/wgpu_validation update
 
       - name: Moon check
         run: |
@@ -87,6 +89,11 @@ jobs:
         run: |
           ulimit -s 8176
           bash tools/check_wgsl_validation.sh
+
+      - name: wgpu runtime validation
+        run: |
+          ulimit -s 8176
+          bash tools/check_wgpu_validation.sh
 
       - name: Moon WGSL byte parity
         run: |

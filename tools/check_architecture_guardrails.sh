@@ -45,6 +45,16 @@ if ! rg -n 'roundtrip_and_validate_wgsl "\$tmpdir/mgstudio_mesh3d_forward\.wgsl"
   fail "WGSL validation gate must IR-roundtrip MGStudio mesh3d forward"
 fi
 
+if ! rg -n 'bash tools/check_wgpu_validation\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must run native wgpu runtime validation"
+fi
+
+if ! rg -n 'compute-storage-read' tools/check_wgpu_validation.sh tools/wgpu_validation \
+  --glob '!tools/wgpu_validation/_build/**' \
+  --glob '!tools/wgpu_validation/.mooncakes/**' >/dev/null; then
+  fail "wgpu validation must include explicit read-only storage layout coverage"
+fi
+
 if ! rg -n 'moon run tools/ir_roundtrip -- --input "\$case_file" --output "\$emitted"' tools/check_official_wgsl_corpus.sh >/dev/null; then
   fail "official WGSL CTS gate must lower every extracted case through IR"
 fi

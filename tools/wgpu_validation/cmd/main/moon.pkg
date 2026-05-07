@@ -1,0 +1,11 @@
+import {
+  "Milky2018/wgpu_mbt" @wgpu,
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}
+
+options(
+  "is-main": true,
+  targets: { "main.mbt": [ "native" ] },
+)

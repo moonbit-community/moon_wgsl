@@ -15,5 +15,8 @@
     "wgsl",
     "shader"
   ],
+  "exclude": [
+    "tools/wgpu_validation"
+  ],
   "description": "WGSL preprocess and composer utilities aligned with naga_oil."
 }
