@@ -40,7 +40,7 @@ fn collect_wgsl_expr_node_identifier_nodes(
       if !wgsl_name_list_contains(active_local_names, ident.name()) {
         nodes.push(ident)
       }
-    Literal(_) | Token(_) | ShaderDefTemplate(_) => ()
+    Literal(_) | ShaderDefTemplate(_) => ()
     Unary(_, expr) =>
       collect_wgsl_expr_node_identifier_nodes(expr, active_local_names, nodes)
     PostfixUpdate(_, expr) =>

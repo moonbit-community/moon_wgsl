@@ -169,7 +169,7 @@ test "WGSL numeric literal tokens expose raw descriptor" {
 }
 
 ///|
-test "strict WGSL translation unit rejects expression token fallbacks" {
+test "strict WGSL translation unit rejects malformed expression tokens" {
   let sources = [
     "const A = @;\n", "const_assert(@);\n", "fn f() { return *; }\n",
   ]

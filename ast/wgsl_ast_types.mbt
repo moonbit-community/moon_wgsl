@@ -356,7 +356,6 @@ pub fn WgslExprToken::numeric_literal(
 pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)
   Literal(WgslExprToken)
-  Token(WgslExprToken)
   ShaderDefTemplate(String)
   Unary(WgslExprOperator, WgslExprNode)
   PostfixUpdate(String, WgslExprNode)

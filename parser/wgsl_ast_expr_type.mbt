@@ -414,6 +414,7 @@ priv struct WgslExprNodeParser {
   source_start : Int
   tokens : Array[WgslExprToken]
   mut index : Int
+  mut failed : Bool
 }
 
 ///|
@@ -422,7 +423,13 @@ fn WgslExprNodeParser::WgslExprNodeParser(
   source_start : Int,
   tokens : Array[WgslExprToken],
 ) -> WgslExprNodeParser {
-  WgslExprNodeParser::{ source_text, source_start, tokens, index: 0 }
+  WgslExprNodeParser::{
+    source_text,
+    source_start,
+    tokens,
+    index: 0,
+    failed: false,
+  }
 }
 
 ///|
@@ -611,14 +618,10 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
           self.index = self.index + 1
           let rhs = match self.parse_prefix() {
             Some(node) => self.parse_postfix(node)
-            None =>
-              return Some(
-                self.make_node(
-                  WgslExprNodeKind::Token(token),
-                  token.start(),
-                  token.end(),
-                ),
-              )
+            None => {
+              self.failed = true
+              return None
+            }
           }
           Some(
             self.make_node(
@@ -708,13 +711,8 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
         }
         _ => {
           self.index = self.index + 1
-          Some(
-            self.make_node(
-              WgslExprNodeKind::Token(token),
-              token.start(),
-              token.end(),
-            ),
-          )
+          self.failed = true
+          None
         }
       }
     None => None
@@ -878,7 +876,10 @@ fn WgslExprNodeParser::parse_expression(
     self.index = self.index + consumed
     let rhs = match self.parse_expression(precedence + 1) {
       Some(value) => value
-      None => break
+      None => {
+        self.failed = true
+        break
+      }
     }
     lhs = self.make_node(
       WgslExprNodeKind::Binary(op, lhs, rhs),
@@ -897,7 +898,7 @@ fn WgslExprNodeParser::parse_expression(
               lhs.start(),
               rhs.end(),
             )
-          None => ()
+          None => self.failed = true
         }
       }
       None => ()
@@ -920,7 +921,10 @@ fn WgslExprNodeParser::parse_sequence_until_any(
     }
     match self.parse_expression(0) {
       Some(node) => nodes.push(node)
-      None => break
+      None => {
+        self.failed = true
+        break
+      }
     }
     if self.consume_punct(44) {
       continue
@@ -964,69 +968,12 @@ fn parse_wgsl_expr_node(
   if tokens.length() == 0 {
     return None
   }
-  Some(
-    WgslExprNodeParser(source_text, base, tokens).parse_sequence_until_any([]),
-  )
-}
-
-///|
-fn wgsl_expr_node_contains_token_fallback(node : WgslExprNode) -> Bool {
-  match node.kind() {
-    Token(_) => true
-    ShaderDefTemplate(_) => false
-    Unary(_, rhs) => wgsl_expr_node_contains_token_fallback(rhs)
-    PostfixUpdate(_, expr) => wgsl_expr_node_contains_token_fallback(expr)
-    Assignment(_, lhs, rhs) =>
-      wgsl_expr_node_contains_token_fallback(lhs) ||
-      wgsl_expr_node_contains_token_fallback(rhs)
-    Binary(_, lhs, rhs) =>
-      wgsl_expr_node_contains_token_fallback(lhs) ||
-      wgsl_expr_node_contains_token_fallback(rhs)
-    Group(inner) => wgsl_expr_node_contains_token_fallback(inner)
-    Call(callee, arguments) => {
-      if wgsl_expr_node_contains_token_fallback(callee) {
-        return true
-      }
-      for argument in arguments {
-        if wgsl_expr_node_contains_token_fallback(argument) {
-          return true
-        }
-      }
-      false
-    }
-    Template(base, arguments) => {
-      if wgsl_expr_node_contains_token_fallback(base) {
-        return true
-      }
-      for argument in arguments {
-        match argument {
-          Expression(expr) =>
-            match expr.root() {
-              Some(root) =>
-                if wgsl_expr_node_contains_token_fallback(root) {
-                  return true
-                }
-              None => ()
-            }
-          Type(_) => ()
-        }
-      }
-      false
-    }
-    PathAccess(base, _) => wgsl_expr_node_contains_token_fallback(base)
-    Member(base, _) => wgsl_expr_node_contains_token_fallback(base)
-    Index(base, index) =>
-      wgsl_expr_node_contains_token_fallback(base) ||
-      wgsl_expr_node_contains_token_fallback(index)
-    Sequence(items) => {
-      for item in items {
-        if wgsl_expr_node_contains_token_fallback(item) {
-          return true
-        }
-      }
-      false
-    }
-    Literal(_) | Identifier(_) => false
+  let parser = WgslExprNodeParser(source_text, base, tokens)
+  let node = parser.parse_sequence_until_any([])
+  if parser.failed || !parser.at_end() {
+    None
+  } else {
+    Some(node)
   }
 }
 
@@ -1057,10 +1004,10 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
       _ => ()
     }
   }
-  let root = parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens)
-  match root {
-    Some(node) if wgsl_expr_node_contains_token_fallback(node) => return None
-    _ => ()
+  let root = match
+    parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens) {
+    Some(node) => Some(node)
+    None => return None
   }
   Some(
     WgslExprRef(

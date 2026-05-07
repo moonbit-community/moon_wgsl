@@ -93,7 +93,6 @@ pub fn WgslExprNode::start(Self) -> Int
 pub(all) enum WgslExprNodeKind {
   Identifier(WgslIdent)
   Literal(WgslExprToken)
-  Token(WgslExprToken)
   ShaderDefTemplate(String)
   Unary(WgslExprOperator, WgslExprNode)
   PostfixUpdate(String, WgslExprNode)

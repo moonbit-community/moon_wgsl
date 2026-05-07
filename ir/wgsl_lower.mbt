@@ -63,7 +63,12 @@ priv struct WgslIrLowerer {
   function_names : @hashmap.HashMap[String, Handle]
   global_names : @hashmap.HashMap[String, Handle]
   constant_names : @hashmap.HashMap[String, Handle]
+  constant_declarations : @hashmap.HashMap[String, @ast.WgslConst]
+  constant_type_cache : @hashmap.HashMap[String, Handle]
+  constant_type_inference_stack : @hashset.HashSet[String]
   override_names : @hashmap.HashMap[String, Handle]
+  override_declarations : @hashmap.HashMap[String, @ast.WgslOverride]
+  override_type_inference_stack : @hashset.HashSet[String]
   referenced_names : @hashset.HashSet[String]
   generated_import_provenance : @hashmap.HashMap[
     String,
@@ -86,6 +91,7 @@ priv struct WgslIrFunctionScope {
 priv struct WgslIrExprTokenParser {
   tokens : Array[@ast.WgslExprToken]
   mut index : Int
+  mut failed : Bool
 }
 
 ///|
@@ -175,7 +181,12 @@ fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
     function_names: @hashmap.HashMap([]),
     global_names: @hashmap.HashMap([]),
     constant_names: @hashmap.HashMap([]),
+    constant_declarations: @hashmap.HashMap([]),
+    constant_type_cache: @hashmap.HashMap([]),
+    constant_type_inference_stack: @hashset.HashSet([]),
     override_names: @hashmap.HashMap([]),
+    override_declarations: @hashmap.HashMap([]),
+    override_type_inference_stack: @hashset.HashSet([]),
     referenced_names: @hashset.HashSet([]),
     generated_import_provenance: @hashmap.HashMap([]),
   }
@@ -230,6 +241,9 @@ pub fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
     lowerer.record_referenced_names(declaration)
   }
   for declaration in unit.declarations() {
+    lowerer.record_override_declaration(declaration)
+  }
+  for declaration in unit.declarations() {
     lowerer.predeclare_global_type_declaration(declaration)
   }
   for declaration in unit.declarations() {
@@ -243,6 +257,20 @@ pub fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   }
   lowerer.resolve_ambient_global_function_parameters()
   lowerer.shader_module
+}
+
+///|
+fn WgslIrLowerer::record_override_declaration(
+  self : WgslIrLowerer,
+  declaration : @ast.WgslGlobalDecl,
+) -> Unit {
+  match declaration.data() {
+    Const(constant) =>
+      self.constant_declarations.set(constant.name().name(), constant)
+    Override(override_decl) =>
+      self.override_declarations.set(override_decl.name().name(), override_decl)
+    _ => ()
+  }
 }
 
 ///|
@@ -454,44 +482,30 @@ fn WgslIrLowerer::predeclare_override_declaration(
   self : WgslIrLowerer,
   override_decl : @ast.WgslOverride,
 ) -> Unit raise WgslIrLowerError {
+  let name = override_decl.name().name()
+  if self.override_names.contains(name) {
+    return
+  }
+  if self.override_type_inference_stack.contains(name) {
+    raise WgslIrLowerError::MissingType(name)
+  }
+  self.override_type_inference_stack.add(name)
   let ty = match override_decl.ty_ref() {
     Some(ty_ref) => self.lower_type_ref(ty_ref)
-    None => self.predeclared_override_fallback_type(override_decl)
+    None =>
+      self.infer_local_type_from_initializer(
+        name,
+        override_decl.initializer_ref(),
+      )
   }
   let handle = self.shader_module.append_override(Override::{
-    name: Some(override_decl.name().name()),
+    name: Some(name),
     id: wgsl_ir_id_from_attributes(override_decl.attributes()),
     ty,
     init: None,
   })
-  self.override_names.set(override_decl.name().name(), handle)
-}
-
-///|
-fn WgslIrLowerer::predeclared_override_fallback_type(
-  self : WgslIrLowerer,
-  override_decl : @ast.WgslOverride,
-) -> Handle raise WgslIrLowerError {
-  match override_decl.initializer_ref() {
-    Some(expr_ref) =>
-      match expr_ref.root() {
-        Some(root) =>
-          match root.kind() {
-            Literal(token) =>
-              match token.kind() {
-                BoolLiteral(_) => self.lower_builtin_type_name("bool")
-                NumericLiteral(literal) =>
-                  self.lower_builtin_type_name(
-                    wgsl_ir_numeric_literal_default_type_name(literal),
-                  )
-                _ => self.lower_builtin_type_name("__abstract_int")
-              }
-            _ => self.lower_builtin_type_name("__abstract_int")
-          }
-        None => self.lower_builtin_type_name("__abstract_int")
-      }
-    None => self.lower_builtin_type_name("__abstract_int")
-  }
+  self.override_names.set(name, handle)
+  ignore(self.override_type_inference_stack.remove(name))
 }
 
 ///|
@@ -4062,6 +4076,30 @@ fn WgslIrLowerer::infer_local_type_from_initializer(
 }
 
 ///|
+fn WgslIrLowerer::infer_constant_declaration_type(
+  self : WgslIrLowerer,
+  constant : @ast.WgslConst,
+) -> Handle raise WgslIrLowerError {
+  let name = constant.name().name()
+  match self.constant_type_cache.get(name) {
+    Some(ty) => return ty
+    None => ()
+  }
+  if self.constant_type_inference_stack.contains(name) {
+    raise WgslIrLowerError::MissingType(name)
+  }
+  self.constant_type_inference_stack.add(name)
+  let ty = match constant.ty_ref() {
+    Some(ty_ref) => self.lower_type_ref(ty_ref)
+    None =>
+      self.infer_local_type_from_initializer(name, constant.initializer_ref())
+  }
+  self.constant_type_cache.set(name, ty)
+  ignore(self.constant_type_inference_stack.remove(name))
+  ty
+}
+
+///|
 fn WgslIrLowerer::infer_expression_type(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -4242,12 +4280,41 @@ fn WgslIrLowerer::infer_named_expression_type(
         None => raise WgslIrLowerError::MissingType(diagnostic_name)
       }
     None =>
-      match self.override_names.get(referenced_name) {
-        Some(handle) =>
-          match self.shader_module.overrides.items.get(handle.index()) {
-            Some(override_) => override_.ty
+      match self.constant_declarations.get(referenced_name) {
+        Some(constant) => self.infer_constant_declaration_type(constant)
+        None =>
+          self.infer_non_constant_named_expression_type(
+            referenced_name, diagnostic_name,
+          )
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::infer_non_constant_named_expression_type(
+  self : WgslIrLowerer,
+  referenced_name : String,
+  diagnostic_name : String,
+) -> Handle raise WgslIrLowerError {
+  match self.override_names.get(referenced_name) {
+    Some(handle) =>
+      match self.shader_module.overrides.items.get(handle.index()) {
+        Some(override_) => override_.ty
+        None => raise WgslIrLowerError::MissingType(diagnostic_name)
+      }
+    None =>
+      match self.override_declarations.get(referenced_name) {
+        Some(override_decl) => {
+          self.predeclare_override_declaration(override_decl)
+          match self.override_names.get(referenced_name) {
+            Some(handle) =>
+              match self.shader_module.overrides.items.get(handle.index()) {
+                Some(override_) => override_.ty
+                None => raise WgslIrLowerError::MissingType(diagnostic_name)
+              }
             None => raise WgslIrLowerError::MissingType(diagnostic_name)
           }
+        }
         None =>
           match self.global_names.get(referenced_name) {
             Some(handle) =>
@@ -4422,9 +4489,16 @@ fn wgsl_ir_expr_node_from_tokens(
   guard tokens.length() > 0 else {
     raise WgslIrLowerError::UnsupportedExpression("empty expression token list")
   }
-  let parser = WgslIrExprTokenParser::{ tokens, index: 0 }
+  let parser = WgslIrExprTokenParser::{ tokens, index: 0, failed: false }
   match parser.parse_expression(0) {
-    Some(node) => node
+    Some(node) =>
+      if parser.failed || !parser.at_end() {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "failed to parse expression token list",
+        )
+      } else {
+        node
+      }
     None =>
       raise WgslIrLowerError::UnsupportedExpression(
         "failed to parse expression token list",
@@ -4489,7 +4563,10 @@ fn WgslIrExprTokenParser::parse_expression(
     self.index = self.index + consumed
     let rhs = match self.parse_expression(precedence + 1) {
       Some(value) => value
-      None => break
+      None => {
+        self.failed = true
+        break
+      }
     }
     lhs = wgsl_ir_expr_make_node(
       @ast.WgslExprNodeKind::Binary(op, lhs, rhs),
@@ -4538,14 +4615,10 @@ fn WgslIrExprTokenParser::parse_prefix(
           self.index = self.index + 1
           let rhs = match self.parse_prefix() {
             Some(node) => node
-            None =>
-              return Some(
-                wgsl_ir_expr_make_node(
-                  @ast.WgslExprNodeKind::Token(token),
-                  token.start(),
-                  token.end(),
-                ),
-              )
+            None => {
+              self.failed = true
+              return None
+            }
           }
           Some(
             wgsl_ir_expr_make_node(
@@ -4579,13 +4652,8 @@ fn WgslIrExprTokenParser::parse_prefix(
         }
         _ => {
           self.index = self.index + 1
-          Some(
-            wgsl_ir_expr_make_node(
-              @ast.WgslExprNodeKind::Token(token),
-              token.start(),
-              token.end(),
-            ),
-          )
+          self.failed = true
+          None
         }
       }
     None => None
@@ -4683,7 +4751,10 @@ fn WgslIrExprTokenParser::parse_sequence_until_any(
     }
     match self.parse_expression(0) {
       Some(node) => nodes.push(node)
-      None => break
+      None => {
+        self.failed = true
+        break
+      }
     }
     if self.consume_punctuation(44) {
       continue
@@ -5328,10 +5399,6 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
     Call(callee, arguments) =>
       self.lower_function_call_expression(
         callee, arguments, function, scope, expected_ty,
-      )
-    Token(token) =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "standalone token expression: \{token.text()}",
       )
     Template(base, _) =>
       raise WgslIrLowerError::UnsupportedExpression(
@@ -6015,7 +6082,6 @@ fn wgsl_ir_expr_node_shape(node : @ast.WgslExprNode) -> String {
   match node.kind() {
     Identifier(name) => "identifier \{name.name()}"
     Literal(token) => "literal \{token.text()}"
-    Token(token) => "token \{token.text()}"
     ShaderDefTemplate(text) => "shader-def template \{text}"
     Unary(op, inner) => "unary \{op.text()}(\{wgsl_ir_expr_node_shape(inner)})"
     PostfixUpdate(op, inner) =>
