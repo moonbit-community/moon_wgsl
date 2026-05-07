@@ -155,6 +155,7 @@ pub fn lower_wgsl_translation_unit_to_ir(
   for declaration in unit.declarations() {
     lowerer.lower_global_declaration(declaration)
   }
+  lowerer.resolve_ambient_global_function_parameters()
   lowerer.shader_module
 }
 
@@ -667,6 +668,147 @@ fn wgsl_ir_strip_function_io_bindings(function : Function) -> Function {
     named_expressions: function.named_expressions,
     body: function.body,
     diagnostic_filter_leaf: function.diagnostic_filter_leaf,
+  }
+}
+
+///|
+fn WgslIrLowerer::resolve_ambient_global_function_parameters(
+  self : WgslIrLowerer,
+) -> Unit {
+  for index in 0..<self.shader_module.functions.items.length() {
+    let handle = Handle::new(index)
+    guard self.function_is_called_only_without_arguments(handle) else {
+      continue
+    }
+    guard self.shader_module.functions.items.get(index) is Some(function) else {
+      continue
+    }
+    match self.ambient_global_arguments_for_function(function) {
+      Some(global_handles) => {
+        let rewritten = self.function_without_ambient_global_arguments(
+          function, global_handles,
+        )
+        self.shader_module.set_function(handle, rewritten)
+      }
+      None => ()
+    }
+  }
+}
+
+///|
+fn WgslIrLowerer::function_is_called_only_without_arguments(
+  self : WgslIrLowerer,
+  target : Handle,
+) -> Bool {
+  let mut has_call = false
+  let mut has_non_empty_call = false
+  for function in self.shader_module.functions.items {
+    let (function_has_call, function_has_non_empty_call) = self.function_call_argument_shape(
+      function, target,
+    )
+    has_call = has_call || function_has_call
+    has_non_empty_call = has_non_empty_call || function_has_non_empty_call
+  }
+  for entry_point in self.shader_module.entry_points {
+    let (function_has_call, function_has_non_empty_call) = self.function_call_argument_shape(
+      entry_point.function,
+      target,
+    )
+    has_call = has_call || function_has_call
+    has_non_empty_call = has_non_empty_call || function_has_non_empty_call
+  }
+  has_call && !has_non_empty_call
+}
+
+///|
+fn WgslIrLowerer::function_call_argument_shape(
+  self : WgslIrLowerer,
+  function : Function,
+  target : Handle,
+) -> (Bool, Bool) {
+  ignore(self)
+  let mut has_call = false
+  let mut has_non_empty_call = false
+  for expression in function.expressions.items {
+    match expression {
+      FunctionCall(handle, arguments) =>
+        if handle == target {
+          has_call = true
+          if !arguments.is_empty() {
+            has_non_empty_call = true
+          }
+        }
+      _ => ()
+    }
+  }
+  (has_call, has_non_empty_call)
+}
+
+///|
+fn WgslIrLowerer::ambient_global_arguments_for_function(
+  self : WgslIrLowerer,
+  function : Function,
+) -> Array[Handle]? {
+  if function.arguments.is_empty() {
+    return None
+  }
+  let globals : Array[Handle] = []
+  for argument in function.arguments {
+    guard argument.binding == None else { return None }
+    guard argument.name is Some(name) else { return None }
+    guard self.global_names.get(name) is Some(global_handle) else {
+      return None
+    }
+    guard self.shader_module.global_variables.items.get(global_handle.index())
+      is Some(global) else {
+      return None
+    }
+    guard global.ty == argument.ty else { return None }
+    globals.push(global_handle)
+  }
+  Some(globals)
+}
+
+///|
+fn WgslIrLowerer::function_without_ambient_global_arguments(
+  self : WgslIrLowerer,
+  function : Function,
+  global_handles : Array[Handle],
+) -> Function {
+  let expressions = ExpressionArena::new()
+  for expression in function.expressions.items {
+    expressions.items.push(
+      self.rewrite_ambient_global_function_expression(
+        expression, global_handles,
+      ),
+    )
+  }
+  Function::{
+    name: function.name,
+    arguments: [],
+    result: function.result,
+    local_variables: function.local_variables,
+    expressions,
+    named_expressions: function.named_expressions,
+    body: function.body,
+    diagnostic_filter_leaf: function.diagnostic_filter_leaf,
+  }
+}
+
+///|
+fn WgslIrLowerer::rewrite_ambient_global_function_expression(
+  self : WgslIrLowerer,
+  expression : Expression,
+  global_handles : Array[Handle],
+) -> Expression {
+  ignore(self)
+  match expression {
+    FunctionArgument(index) =>
+      match global_handles.get(index) {
+        Some(global_handle) => GlobalVariable(global_handle)
+        None => FunctionArgument(index)
+      }
+    _ => expression
   }
 }
 

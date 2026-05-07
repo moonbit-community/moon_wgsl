@@ -32,6 +32,10 @@ echo "== WGSL validation: upstream compute IR export =="
 emit_case upstream-compute-ir "$tmpdir/upstream_compute_ir.wgsl"
 validate_wgsl "$tmpdir/upstream_compute_ir.wgsl"
 
+echo "== WGSL validation: upstream diagnostic filters compose =="
+emit_case upstream-diagnostic-filters "$tmpdir/upstream_diagnostic_filters.wgsl"
+validate_wgsl "$tmpdir/upstream_diagnostic_filters.wgsl"
+
 echo "== WGSL validation: issue 8 alias binding compose =="
 emit_case bevy-issue8 "$tmpdir/bevy_issue8.wgsl"
 validate_wgsl "$tmpdir/bevy_issue8.wgsl"

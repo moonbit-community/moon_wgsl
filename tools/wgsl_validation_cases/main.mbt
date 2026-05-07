@@ -113,6 +113,25 @@ fn validation_upstream_compute_ir_source() -> String {
 }
 
 ///|
+fn validation_upstream_diagnostic_filters_source() -> String {
+  let composer = @compose.Composer::default()
+  composer.clear_sources()
+  composer.register_source_tree(
+    "testdata/upstream_compose/diagnostic_filters",
+    @common.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected diagnostic filters fixture registration success")
+  }
+  composer.compose_wgsl_ir(
+    "top.wgsl",
+    validation_compose_options(validation_empty_defines()),
+  ) catch {
+    err =>
+      abort("expected diagnostic filters IR compose success: \{err.message()}")
+  }
+}
+
+///|
 fn validation_bevy_issue8_source() -> String {
   let composer = @compose.Composer::default()
   composer.register_source(
@@ -456,7 +475,7 @@ fn validation_case_arg() -> String {
   let args = @env.args()
   if args.length() == 0 {
     abort(
-      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-compute-ir|bevy-issue8|bevy-issue8-ir|bevy-pbr-functions|bevy-pbr-functions-ir|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue9-type-identity-ir|issue13-nested-alias-global|issue13-nested-alias-global-ir",
+      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-compute-ir|upstream-diagnostic-filters|bevy-issue8|bevy-issue8-ir|bevy-pbr-functions|bevy-pbr-functions-ir|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue9-type-identity-ir|issue13-nested-alias-global|issue13-nested-alias-global-ir",
     )
   }
   args[args.length() - 1]
@@ -468,6 +487,8 @@ fn main {
     "writer-boundary" => validation_writer_boundary_source()
     "upstream-compute" => validation_upstream_compute_source()
     "upstream-compute-ir" => validation_upstream_compute_ir_source()
+    "upstream-diagnostic-filters" =>
+      validation_upstream_diagnostic_filters_source()
     "bevy-issue8" => validation_bevy_issue8_source()
     "bevy-issue8-ir" => validation_bevy_issue8_ir_source()
     "bevy-pbr-functions" => validation_bevy_pbr_functions_source()
@@ -483,7 +504,7 @@ fn main {
       validation_issue13_nested_alias_global_ir_source()
     _ =>
       abort(
-        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-compute-ir|bevy-issue8|bevy-issue8-ir|bevy-pbr-functions|bevy-pbr-functions-ir|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue9-type-identity-ir|issue13-nested-alias-global|issue13-nested-alias-global-ir",
+        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-compute-ir|upstream-diagnostic-filters|bevy-issue8|bevy-issue8-ir|bevy-pbr-functions|bevy-pbr-functions-ir|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue9-type-identity-ir|issue13-nested-alias-global|issue13-nested-alias-global-ir",
       )
   }
   println(source)

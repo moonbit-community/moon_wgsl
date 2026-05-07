@@ -86,6 +86,10 @@ compose_roundtrip_case \
   "testdata/upstream_compose/use_shared_global" \
   "top.wgsl"
 compose_roundtrip_case \
+  "upstream-diagnostic-filters-compose" \
+  "testdata/upstream_compose/diagnostic_filters" \
+  "top.wgsl"
+compose_roundtrip_case \
   "upstream-atomics-compose" \
   "testdata/upstream_compose/atomics" \
   "top.wgsl"

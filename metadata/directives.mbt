@@ -130,12 +130,13 @@ fn extract_wgsl_directives(
         WgslSourceDirectiveItemKind::Diagnostic(severity, rule) => {
           if severity != "off" &&
             severity != "info" &&
+            severity != "warning" &&
             severity != "warn" &&
             severity != "error" {
             raise MetadataError::InvalidWgslDirective(
               trimmed,
               line_index,
-              "Invalid severity '\{severity}'. Must be one of: off, info, warn, error",
+              "Invalid severity '\{severity}'. Must be one of: off, info, warning, warn, error",
             )
           }
           cleaned_lines.push("")

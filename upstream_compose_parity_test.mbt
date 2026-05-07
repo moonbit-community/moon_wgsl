@@ -637,24 +637,24 @@ test "naga_oil upstream: entrypoint imports are renamed instead of shadowing loc
 }
 
 ///|
-test "naga_oil upstream: unsupported diagnostic filter severity reports compose failure" {
-  let mut error_message : String? = None
-  ignore(
-    upstream_parity_composer("diagnostic_filters").compose_wgsl(
-      "top.wgsl",
-      upstream_parity_empty_compose_options(),
-    ),
+test "naga_oil upstream: diagnostic filters bind ambient globals" {
+  let source = upstream_parity_composer("diagnostic_filters").compose_wgsl(
+    "top.wgsl",
+    upstream_parity_empty_compose_options(),
   ) catch {
-    err => error_message = Some(err.message())
+    err => abort("expected diagnostic-filter compose success: \{err.message()}")
   }
-  match error_message {
-    Some(message) =>
-      debug_inspect(
-        message.contains("Invalid severity 'warning'"),
-        content="true",
-      )
-    None => abort("expected diagnostic-filter compose failure")
-  }
+  debug_inspect(
+    source.contains("diagnostic(warning, derivative_uniformity);"),
+    content="true",
+  )
+  debug_inspect(source.contains("fn diagnostic_test"), content="true")
+  debug_inspect(
+    source.contains("diagnostic_testX_naga_oil_mod_XMZUWY5DFOJZQX()"),
+    content="true",
+  )
+  debug_inspect(source.contains("textureSample(tex, s"), content="true")
+  debug_inspect(source.contains("ro_buffer[0]"), content="true")
 }
 
 ///|
