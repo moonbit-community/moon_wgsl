@@ -286,20 +286,6 @@ fn WgslIrEmitter::type_inner_contains_abstract_scalar(
 }
 
 ///|
-fn WgslIrEmitter::type_is_predeclared_result(
-  self : WgslIrEmitter,
-  handle : Handle,
-) -> Bool {
-  for item in self.shader_module.special_types.predeclared_types {
-    let (_, existing) = item
-    if existing == handle {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn WgslIrEmitter::expression_is_pointer(
   self : WgslIrEmitter,
   function : Function?,
@@ -364,6 +350,7 @@ fn WgslIrEmitter::emit_function(
     None => ()
   }
   out.write_string(" {\n")
+  self.emit_function_local_var_declarations(out, function, 1)
   self.emit_block_statements(out, function, function.body, 1)
   out.write_string("}\n")
 }
@@ -422,6 +409,30 @@ fn WgslIrEmitter::emit_local_declaration(
 }
 
 ///|
+fn WgslIrEmitter::emit_function_local_var_declarations(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  function : Function,
+  indent : Int,
+) -> Unit raise WgslIrEmitError {
+  let mut emitted = false
+  for index in 0..<function.local_variables.items.length() {
+    let handle = Handle::new(index)
+    match function.local_variables.items.get(index) {
+      Some(local_var) =>
+        if local_var.kind == LocalVariableKind::Var && local_var.init == None {
+          self.emit_local_declaration(out, function, handle, indent)
+          emitted = true
+        }
+      _ => ()
+    }
+  }
+  if emitted && self.block_has_non_var_statement(function, function.body) {
+    out.write_string("\n")
+  }
+}
+
+///|
 fn wgsl_ir_expression_text_needs_address(text : String) -> Bool {
   text.length() == 0 || text[0:1] != "&"
 }
@@ -450,6 +461,20 @@ fn WgslIrEmitter::local_variable_needs_type_annotation(
 }
 
 ///|
+fn WgslIrEmitter::type_is_predeclared_result(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Bool {
+  for item in self.shader_module.special_types.predeclared_types {
+    let (_, existing) = item
+    if existing == handle {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn WgslIrEmitter::emit_block_statements(
   self : WgslIrEmitter,
   out : StringBuilder,
@@ -460,15 +485,18 @@ fn WgslIrEmitter::emit_block_statements(
   let mut emitted_leading_var_declaration = false
   let mut separated_leading_var_declarations = false
   for statement in block.statements {
+    if self.statement_is_local_var_declaration(function, statement) {
+      continue
+    }
     if emitted_leading_var_declaration &&
       !separated_leading_var_declarations &&
-      !self.statement_is_local_var_declaration(function, statement) {
+      !self.statement_is_any_local_var_declaration(function, statement) {
       out.write_string("\n")
       separated_leading_var_declarations = true
     }
     self.emit_statement(out, function, statement, indent)
     if !separated_leading_var_declarations &&
-      self.statement_is_local_var_declaration(function, statement) {
+      self.statement_is_any_local_var_declaration(function, statement) {
       emitted_leading_var_declaration = true
     }
   }
@@ -484,11 +512,43 @@ fn WgslIrEmitter::statement_is_local_var_declaration(
   match statement {
     Declare(handle) =>
       match function.local_variables.items.get(handle.index()) {
+        Some(local_var) =>
+          local_var.kind == LocalVariableKind::Var && local_var.init == None
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrEmitter::statement_is_any_local_var_declaration(
+  self : WgslIrEmitter,
+  function : Function,
+  statement : Statement,
+) -> Bool {
+  ignore(self)
+  match statement {
+    Declare(handle) =>
+      match function.local_variables.items.get(handle.index()) {
         Some(local_var) => local_var.kind == LocalVariableKind::Var
         None => false
       }
     _ => false
   }
+}
+
+///|
+fn WgslIrEmitter::block_has_non_var_statement(
+  self : WgslIrEmitter,
+  function : Function,
+  block : Block,
+) -> Bool {
+  for statement in block.statements {
+    if !self.statement_is_local_var_declaration(function, statement) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -520,7 +580,7 @@ fn WgslIrEmitter::emit_statement(
     }
     If(condition, accept, reject) => {
       out.write_string(
-        "\{pad}if (\{self.function_expression(function, condition)}) {\n",
+        "\{pad}if \{self.function_expression(function, condition)} {\n",
       )
       self.emit_block_statements(out, function, accept, indent + 1)
       out.write_string("\{pad}}")
@@ -909,8 +969,9 @@ fn WgslIrEmitter::atomic_call_expression(
     raise WgslIrEmitError::Unsupported("atomic call without pointer")
   }
   let out = StringBuilder::new()
+  let pointer_text = self.atomic_pointer_expression(function, pointer)
   out.write_string(
-    "\{self.atomic_function_name(atomic_function)}(\{self.atomic_pointer_expression(function, pointer)}",
+    "\{self.atomic_function_name(atomic_function)}(\{wgsl_ir_atomic_pointer_argument_text(pointer_text)}",
   )
   for argument in rest {
     out.write_string(
@@ -919,6 +980,15 @@ fn WgslIrEmitter::atomic_call_expression(
   }
   out.write_string(")")
   out.to_string()
+}
+
+///|
+fn wgsl_ir_atomic_pointer_argument_text(text : String) -> String {
+  if text.length() > 0 && text[0:1] == "&" {
+    "(\{text})"
+  } else {
+    text
+  }
 }
 
 ///|
@@ -1818,8 +1888,65 @@ fn WgslIrEmitter::type_name(
         Struct(_, _) | PredeclaredStruct(_, _) => name
         _ => self.type_inner_name(ty.inner)
       }
-    None => self.type_inner_name(ty.inner)
+    None =>
+      match self.predeclared_result_type_name(handle) {
+        Some(name) => name
+        None => self.type_inner_name(ty.inner)
+      }
   }
+}
+
+///|
+fn WgslIrEmitter::predeclared_result_type_name(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> String? {
+  for item in self.shader_module.special_types.predeclared_types {
+    let (predeclared, existing) = item
+    if existing == handle {
+      return Some(wgsl_ir_predeclared_result_type_name(predeclared))
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_ir_predeclared_result_type_name(
+  predeclared : PredeclaredType,
+) -> String {
+  match predeclared {
+    AtomicCompareExchangeWeakResult(scalar) =>
+      "_atomic_compare_exchange_result_\{wgsl_ir_predeclared_scalar_name(scalar)}_"
+    ModfResult(size, scalar) =>
+      "_modf_result_\{wgsl_ir_predeclared_numeric_name(size, scalar)}_"
+    FrexpResult(size, scalar) =>
+      "_frexp_result_\{wgsl_ir_predeclared_numeric_name(size, scalar)}_"
+  }
+}
+
+///|
+fn wgsl_ir_predeclared_numeric_name(
+  size : VectorSize?,
+  scalar : Scalar,
+) -> String {
+  match size {
+    Some(vector_size) =>
+      "Vec\{vector_size.width()}_\{wgsl_ir_predeclared_scalar_name(scalar)}"
+    None => wgsl_ir_predeclared_scalar_name(scalar)
+  }
+}
+
+///|
+fn wgsl_ir_predeclared_scalar_name(scalar : Scalar) -> String {
+  let kind = match scalar.kind {
+    Sint => "Sint"
+    Uint => "Uint"
+    Float => "Float"
+    Bool => "Bool"
+    AbstractInt => "AbstractInt"
+    AbstractFloat => "AbstractFloat"
+  }
+  "\{kind}_\{scalar.width}"
 }
 
 ///|

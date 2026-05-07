@@ -451,7 +451,7 @@ test "WGSL statement parser keeps condition tails after grouped operands" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("if (((flags & FLAG) != 0u))"), content="true")
+  debug_inspect(emitted.contains("if ((flags & FLAG) != 0u)"), content="true")
 }
 
 ///|
@@ -728,7 +728,7 @@ test "WGSL AST lowerer lowers for loops into IR loops" {
   }
   debug_inspect(emitted.contains("var i: u32 = 0u;"), content="true")
   debug_inspect(emitted.contains("loop {"), content="true")
-  debug_inspect(emitted.contains("if (!(i < 4u)) {"), content="true")
+  debug_inspect(emitted.contains("if !(i < 4u) {"), content="true")
   debug_inspect(emitted.contains("i = (i + 1u);"), content="true")
   debug_inspect(emitted.contains("sum = (_e"), content="true")
   debug_inspect(emitted.contains("+ 2u);"), content="true")
@@ -1018,7 +1018,7 @@ test "WGSL AST lowerer folds constant-backed array sizes" {
 }
 
 ///|
-test "WGSL AST lowerer preserves local declaration order around atomics" {
+test "WGSL AST lowerer materializes atomic side effects through IR" {
   let source =
     #|var<workgroup> atom: atomic<u32>;
     #|
@@ -1038,16 +1038,22 @@ test "WGSL AST lowerer preserves local declaration order around atomics" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  let store_index = emitted.find("atomicStore(&atom, 1u);")
-  let load_index = emitted.find("var y: u32 = atomicLoad(&atom);")
+  let var_index = emitted.find("var y: u32;")
+  let store_index = emitted.find("atomicStore((&atom), 1u);")
+  let load_index = emitted.find("let _e3: u32 = atomicLoad((&atom));")
   debug_inspect(store_index != None, content="true")
-  let load_after_store = match (store_index, load_index) {
+  let materialized_after_store = match (store_index, load_index) {
     (Some(store), Some(load)) => load > store
     _ => false
   }
-  debug_inspect(load_after_store, content="true")
+  let var_hoisted_before_store = match (var_index, store_index) {
+    (Some(var_), Some(store)) => var_ < store
+    _ => false
+  }
+  debug_inspect(var_hoisted_before_store, content="true")
+  debug_inspect(materialized_after_store, content="true")
   debug_inspect(
-    emitted.contains("atomicCompareExchangeWeak(&atom, 12u, 0u)"),
+    emitted.contains("atomicCompareExchangeWeak((&atom), 12u, 0u)"),
     content="true",
   )
   debug_inspect(emitted.contains(".old_value"), content="true")

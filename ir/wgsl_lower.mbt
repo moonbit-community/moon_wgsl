@@ -858,6 +858,9 @@ fn WgslIrLowerer::lower_statement(
           let rhs_value = self.lower_function_expression_ref(
             rhs_ref, function, scope,
           )
+          let rhs_value = self.materialize_side_effecting_expression(
+            function, scope, block, rhs_value,
+          )
           function.expressions.append(
             Expression::Binary(binary_op, materialized_target, rhs_value),
           )
@@ -1495,7 +1498,8 @@ fn WgslIrLowerer::lower_local_declaration(
       local_decl.name().name()
     } else {
       match init {
-        Some(init_handle) => wgsl_ir_expression_temporary_name(init_handle)
+        Some(init_handle) =>
+          self.function_expression_temporary_name(function, init_handle)
         None => scope.next_temporary_name()
       }
     }
@@ -1506,12 +1510,41 @@ fn WgslIrLowerer::lower_local_declaration(
     name: Some(lowered_name),
     kind: wgsl_ir_local_variable_kind(local_decl.kind()),
     ty,
-    init,
+    init: if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+      self.function_expression_is_side_effecting(function, init) {
+      None
+    } else {
+      init
+    },
   })
   ignore(scope.local_constants.remove(local_decl.name().name()))
   ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
+    match init {
+      Some(init_handle) =>
+        if self.function_expression_is_side_effecting(
+            function,
+            Some(init_handle),
+          ) {
+          let materialized = self.materialize_side_effecting_expression(
+            function, scope, block, init_handle,
+          )
+          block.push(
+            Statement::Store(
+              scope.local_pointer_expression(
+                local_decl.name().name(),
+                handle,
+                function,
+              ),
+              materialized,
+            ),
+          )
+        }
+      _ => ()
+    }
+  }
 }
 
 ///|
@@ -1573,8 +1606,86 @@ fn WgslIrLowerer::concretize_abstract_storage_scalar(
 }
 
 ///|
-fn wgsl_ir_expression_temporary_name(handle : Handle) -> String {
-  "_e\{handle.index()}"
+fn WgslIrLowerer::function_expression_temporary_name(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> String {
+  ignore(self)
+  "_e\{wgsl_ir_function_expression_semantic_index(function, handle)}"
+}
+
+///|
+fn wgsl_ir_function_expression_semantic_index(
+  function : Function,
+  handle : Handle,
+) -> Int {
+  let mut skipped = 0
+  for index in 0..<handle.index() {
+    if wgsl_ir_function_expression_is_synthetic_local_reference(
+        function,
+        Handle::new(index),
+      ) {
+      skipped += 1
+    }
+  }
+  handle.index() - skipped
+}
+
+///|
+fn wgsl_ir_function_expression_is_synthetic_local_reference(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          if local_var.kind != Let {
+            false
+          } else {
+            match local_var.name {
+              Some(name) =>
+                name.length() >= 2 &&
+                name[0:2] == "_e" &&
+                wgsl_ir_local_variable_initializes_side_effecting_expression(
+                  function, local_var,
+                )
+              None => false
+            }
+          }
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_local_variable_initializes_side_effecting_expression(
+  function : Function,
+  local_var : LocalVariable,
+) -> Bool {
+  match local_var.init {
+    Some(init) =>
+      match function.expressions.items.get(init.index()) {
+        Some(AtomicCall(function_, _)) =>
+          match function_ {
+            Load
+            | Add
+            | Subtract
+            | And
+            | ExclusiveOr
+            | InclusiveOr
+            | Min
+            | Max
+            | Exchange
+            | CompareExchangeWeak => true
+            Store => false
+          }
+        _ => false
+      }
+    None => false
+  }
 }
 
 ///|
@@ -1589,11 +1700,11 @@ fn WgslIrLowerer::materialize_function_expression(
     Some(ty) => ty
     None =>
       raise WgslIrLowerError::MissingType(
-        "\{wgsl_ir_expression_temporary_name(value)}: \{wgsl_ir_function_expression_debug(function, value)}",
+        "\{self.function_expression_temporary_name(function, value)}: \{wgsl_ir_function_expression_debug(function, value)}",
       )
   }
   let local_handle = function.local_variables.append(LocalVariable::{
-    name: Some(wgsl_ir_expression_temporary_name(value)),
+    name: Some(self.function_expression_temporary_name(function, value)),
     kind: Let,
     ty,
     init: Some(value),
@@ -1691,7 +1802,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered : Array[Handle] = []
       let mut changed = false
       for component in components {
-        let lowered_component = self.materialize_nested_return_argument(
+        let lowered_component = self.materialize_nested_constructor_argument(
           function, scope, block, component,
         )
         if lowered_component != component {
@@ -1799,6 +1910,26 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       }
       value
     }
+    Some(AtomicCall(atomic_function, arguments)) => {
+      let lowered : Array[Handle] = []
+      let mut changed = false
+      for argument in arguments {
+        let lowered_argument = self.materialize_nested_call_argument(
+          function, scope, block, argument,
+        )
+        if lowered_argument != argument {
+          changed = true
+        }
+        lowered.push(lowered_argument)
+      }
+      if changed {
+        function.expressions.set(
+          value,
+          Expression::AtomicCall(atomic_function, lowered),
+        )
+      }
+      value
+    }
     _ => value
   }
 }
@@ -1864,6 +1995,77 @@ fn WgslIrLowerer::materialize_nested_call_argument(
 }
 
 ///|
+fn WgslIrLowerer::materialize_nested_constructor_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_nested_value(
+      function, normalized,
+    ) ||
+    self.function_expression_should_materialize_as_call_argument(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_side_effecting_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_is_side_effecting(function, Some(normalized)) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_is_side_effecting(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle?,
+) -> Bool {
+  ignore(self)
+  match value {
+    Some(handle) =>
+      match function.expressions.items.get(handle.index()) {
+        Some(AtomicCall(function_, _)) =>
+          match function_ {
+            Load
+            | Add
+            | Subtract
+            | And
+            | ExclusiveOr
+            | InclusiveOr
+            | Min
+            | Max
+            | Exchange
+            | CompareExchangeWeak => true
+            Store => false
+          }
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
 fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   self : WgslIrLowerer,
   function : Function,
@@ -1909,7 +2111,6 @@ fn WgslIrLowerer::function_expression_should_materialize_as_call_argument(
   value : Handle,
 ) -> Bool {
   self.function_expression_is_var_pointer_load(function, value) &&
-  self.function_expression_has_composite_value_type(function, value) &&
   self.function_expression_can_materialize_to_let(function, value)
 }
 
@@ -1931,29 +2132,6 @@ fn WgslIrLowerer::function_expression_is_var_pointer_load(
         _ => false
       }
     _ => false
-  }
-}
-
-///|
-fn WgslIrLowerer::function_expression_has_composite_value_type(
-  self : WgslIrLowerer,
-  function : Function,
-  value : Handle,
-) -> Bool {
-  match self.function_expression_type(function, value) {
-    Some(ty) =>
-      match self.shader_module.types.get(ty) {
-        Some(type_) =>
-          match type_.inner {
-            Struct(_, _)
-            | PredeclaredStruct(_, _)
-            | Array(_, _, _)
-            | Matrix(_, _, _) => true
-            _ => false
-          }
-        None => false
-      }
-    None => false
   }
 }
 
@@ -4946,10 +5124,32 @@ fn WgslIrLowerer::lower_function_atomic_call(
     )
   }
   let handles : Array[Handle] = []
-  for argument in arguments {
-    handles.push(self.lower_function_expression_node(argument, function, scope))
+  for index in 0..<arguments.length() {
+    let argument = arguments[index]
+    if index == 0 {
+      handles.push(
+        self.lower_atomic_pointer_argument(argument, function, scope),
+      )
+    } else {
+      handles.push(
+        self.lower_function_expression_node(argument, function, scope),
+      )
+    }
   }
   function.expressions.append(Expression::AtomicCall(atomic_function, handles))
+}
+
+///|
+fn WgslIrLowerer::lower_atomic_pointer_argument(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match wgsl_ir_address_of_operand_node(argument) {
+    Some(target) => self.lower_function_lvalue_node(target, function, scope)
+    None => self.lower_function_expression_node(argument, function, scope)
+  }
 }
 
 ///|
