@@ -13,6 +13,7 @@ using @ast {
   type WgslIdent,
   type WgslLocalDeclaration,
   type WgslLocalDeclarationKind,
+  type WgslNumericLiteral,
   type WgslStatement,
   type WgslStatementKind,
   type WgslTypeRef,

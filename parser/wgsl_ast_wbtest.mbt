@@ -664,11 +664,35 @@ test "WGSL expression refs expose token and literal AST" {
   guard override_decl.attributes()[0].arguments_ref() is Some(group_args) else {
     abort("expected group args")
   }
-  debug_inspect(group_args.tokens()[0].kind(), content="UintLiteral(0)")
+  debug_inspect(
+    group_args.tokens()[0].kind(),
+    content=(
+      #|NumericLiteral(
+      #|  {
+      #|    raw_text: "0u",
+      #|    base: Decimal,
+      #|    suffix: U32Suffix,
+      #|    category: U32Literal,
+      #|  },
+      #|)
+    ),
+  )
   guard override_decl.attributes()[1].arguments_ref() is Some(binding_args) else {
     abort("expected binding args")
   }
-  debug_inspect(binding_args.tokens()[0].kind(), content="IntLiteral(12)")
+  debug_inspect(
+    binding_args.tokens()[0].kind(),
+    content=(
+      #|NumericLiteral(
+      #|  {
+      #|    raw_text: "12",
+      #|    base: Decimal,
+      #|    suffix: NoSuffix,
+      #|    category: AbstractIntLiteral,
+      #|  },
+      #|)
+    ),
+  )
   guard override_decl.attributes()[2].arguments_ref() is Some(id_args) else {
     abort("expected id args")
   }
@@ -693,7 +717,16 @@ test "WGSL expression refs preserve large u32 literals as unsigned" {
   }
   debug_inspect(
     initializer.tokens()[0].kind(),
-    content="UintLiteral(3221225472)",
+    content=(
+      #|NumericLiteral(
+      #|  {
+      #|    raw_text: "3221225472u",
+      #|    base: Decimal,
+      #|    suffix: U32Suffix,
+      #|    category: U32Literal,
+      #|  },
+      #|)
+    ),
   )
 }
 
@@ -968,7 +1001,21 @@ test "WGSL expression refs expose structured expression root" {
       #|              end: 80,
       #|            },
       #|            {
-      #|              kind: Literal({ kind: FloatLiteral, text: "1.0", start: 83, end: 86 }),
+      #|              kind: Literal(
+      #|                {
+      #|                  kind: NumericLiteral(
+      #|                    {
+      #|                      raw_text: "1.0",
+      #|                      base: Decimal,
+      #|                      suffix: NoSuffix,
+      #|                      category: AbstractFloatLiteral,
+      #|                    },
+      #|                  ),
+      #|                  text: "1.0",
+      #|                  start: 83,
+      #|                  end: 86,
+      #|                },
+      #|              ),
       #|              start: 83,
       #|              end: 86,
       #|            },
@@ -1018,7 +1065,21 @@ test "WGSL expression parser uses lexer compound operator tokens" {
       #|    end: 49,
       #|  },
       #|  {
-      #|    kind: Literal({ kind: FloatLiteral, text: "1.0", start: 53, end: 56 }),
+      #|    kind: Literal(
+      #|      {
+      #|        kind: NumericLiteral(
+      #|          {
+      #|            raw_text: "1.0",
+      #|            base: Decimal,
+      #|            suffix: NoSuffix,
+      #|            category: AbstractFloatLiteral,
+      #|          },
+      #|        ),
+      #|        text: "1.0",
+      #|        start: 53,
+      #|        end: 56,
+      #|      },
+      #|    ),
       #|    start: 53,
       #|    end: 56,
       #|  },

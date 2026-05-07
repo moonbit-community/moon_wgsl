@@ -21,6 +21,42 @@ pub fn WgslIrLowerError::message(self : WgslIrLowerError) -> String {
 }
 
 ///|
+pub(all) enum WgslIrGeneratedImportProvenanceKind {
+  ImportedSourceSymbol
+  VirtualOverrideSymbol
+} derive(Eq, Debug)
+
+///|
+pub(all) struct WgslIrGeneratedImportProvenance {
+  generated_symbol_name : String
+  rel_path : String
+  source_symbol_name : String
+  kind : WgslIrGeneratedImportProvenanceKind
+} derive(Eq, Debug)
+
+///|
+pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
+  generated_symbol_name : String,
+  rel_path : String,
+  source_symbol_name : String,
+  kind : WgslIrGeneratedImportProvenanceKind,
+) -> WgslIrGeneratedImportProvenance {
+  WgslIrGeneratedImportProvenance::{
+    generated_symbol_name,
+    rel_path,
+    source_symbol_name,
+    kind,
+  }
+}
+
+///|
+pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(
+  self : WgslIrGeneratedImportProvenance,
+) -> String {
+  self.generated_symbol_name
+}
+
+///|
 priv struct WgslIrLowerer {
   shader_module : Module
   type_cache : @hashmap.HashMap[String, Handle]
@@ -29,7 +65,10 @@ priv struct WgslIrLowerer {
   constant_names : @hashmap.HashMap[String, Handle]
   override_names : @hashmap.HashMap[String, Handle]
   referenced_names : @hashset.HashSet[String]
-  generated_import_function_names : @hashset.HashSet[String]
+  generated_import_provenance : @hashmap.HashMap[
+    String,
+    WgslIrGeneratedImportProvenance,
+  ]
 }
 
 ///|
@@ -138,7 +177,7 @@ fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
     constant_names: @hashmap.HashMap([]),
     override_names: @hashmap.HashMap([]),
     referenced_names: @hashset.HashSet([]),
-    generated_import_function_names: @hashset.HashSet([]),
+    generated_import_provenance: @hashmap.HashMap([]),
   }
 }
 
@@ -157,13 +196,13 @@ pub fn parse_wgsl_module_to_ir(
 ///|
 pub fn parse_wgsl_module_to_ir_with_generated_imports(
   source : String,
-  generated_import_names : Array[String],
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrLowerError {
   let unit = @parser.parse_wgsl_translation_unit_strict(source) catch {
     error => raise WgslIrLowerError::Parse(wgsl_ir_parse_error_message(error))
   }
   lower_wgsl_translation_unit_to_ir_with_generated_imports(
-    unit, generated_import_names,
+    unit, generated_import_provenance,
   )
 }
 
@@ -177,11 +216,14 @@ pub fn lower_wgsl_translation_unit_to_ir(
 ///|
 pub fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   unit : @ast.WgslTranslationUnit,
-  generated_import_names : Array[String],
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrLowerError {
   let lowerer = WgslIrLowerer()
-  for name in generated_import_names {
-    lowerer.generated_import_function_names.add(name)
+  for entry in generated_import_provenance {
+    lowerer.generated_import_provenance.set(
+      entry.generated_symbol_name(),
+      entry,
+    )
   }
   lowerer.register_prelude_types()
   for declaration in unit.declarations() {
@@ -384,7 +426,7 @@ fn WgslIrLowerer::predeclare_function_declaration(
   }
   let placeholder = Function::{
     name: Some(function.name().name()),
-    generated_import: self.generated_import_function_names.contains(
+    generated_import: self.function_has_generated_import_provenance(
       function.name().name(),
     ),
     arguments: [],
@@ -397,6 +439,14 @@ fn WgslIrLowerer::predeclare_function_declaration(
   }
   let handle = self.shader_module.append_function(placeholder)
   self.function_names.set(function.name().name(), handle)
+}
+
+///|
+fn WgslIrLowerer::function_has_generated_import_provenance(
+  self : WgslIrLowerer,
+  name : String,
+) -> Bool {
+  self.generated_import_provenance.get(name) != None
 }
 
 ///|
@@ -430,9 +480,10 @@ fn WgslIrLowerer::predeclared_override_fallback_type(
             Literal(token) =>
               match token.kind() {
                 BoolLiteral(_) => self.lower_builtin_type_name("bool")
-                IntLiteral(_) => self.lower_builtin_type_name("__abstract_int")
-                UintLiteral(_) => self.lower_builtin_type_name("u32")
-                FloatLiteral => self.lower_builtin_type_name("__abstract_float")
+                NumericLiteral(literal) =>
+                  self.lower_builtin_type_name(
+                    wgsl_ir_numeric_literal_default_type_name(literal),
+                  )
                 _ => self.lower_builtin_type_name("__abstract_int")
               }
             _ => self.lower_builtin_type_name("__abstract_int")
@@ -903,7 +954,7 @@ fn WgslIrLowerer::lower_function(
 ) -> Function raise WgslIrLowerError {
   let ir_function = Function::{
     name: Some(function.name().name()),
-    generated_import: self.generated_import_function_names.contains(
+    generated_import: self.function_has_generated_import_provenance(
       function.name().name(),
     ),
     arguments: [],
@@ -4020,14 +4071,10 @@ fn WgslIrLowerer::infer_expression_type(
     Literal(token) =>
       match token.kind() {
         BoolLiteral(_) => self.lower_builtin_type_name("bool")
-        IntLiteral(_) =>
-          if wgsl_ir_literal_has_suffix(token.text(), "i") {
-            self.lower_builtin_type_name("i32")
-          } else {
-            self.lower_builtin_type_name("__abstract_int")
-          }
-        UintLiteral(_) => self.lower_builtin_type_name("u32")
-        FloatLiteral => self.lower_builtin_type_name("__abstract_float")
+        NumericLiteral(literal) =>
+          self.lower_builtin_type_name(
+            wgsl_ir_numeric_literal_default_type_name(literal),
+          )
         _ => raise WgslIrLowerError::MissingType(name)
       }
     Identifier(identifier) =>
@@ -4472,7 +4519,7 @@ fn WgslIrExprTokenParser::parse_prefix(
             ),
           )
         }
-        BoolLiteral(_) | UintLiteral(_) | IntLiteral(_) | FloatLiteral => {
+        BoolLiteral(_) | NumericLiteral(_) => {
           self.index = self.index + 1
           Some(
             wgsl_ir_expr_make_node(
@@ -7071,48 +7118,113 @@ fn wgsl_ir_literal_from_token(
 ) -> Literal raise WgslIrLowerError {
   match token.kind() {
     BoolLiteral(value) => Literal::Bool(value)
-    IntLiteral(value) =>
-      if wgsl_ir_literal_has_suffix(token.text(), "h") {
-        Literal::F16Bits(value)
-      } else if wgsl_ir_literal_has_suffix(token.text(), "i") {
-        Literal::I32(value)
-      } else {
-        Literal::AbstractInt(wgsl_ir_int64_literal_from_text(token.text()))
-      }
-    UintLiteral(value) => Literal::U32(value)
-    FloatLiteral => {
-      if wgsl_ir_literal_has_suffix(token.text(), "h") {
-        let h_text = wgsl_ir_literal_without_suffix(token.text())
-        let value : Int = @strconv.from_str(h_text) catch {
-          _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
+    NumericLiteral(literal) =>
+      match literal.category {
+        AbstractIntLiteral =>
+          Literal::AbstractInt(
+            wgsl_ir_int64_literal_from_text(literal.raw_text),
+          )
+        I32Literal =>
+          Literal::I32(wgsl_ir_i32_literal_from_numeric_literal(literal))
+        U32Literal =>
+          Literal::U32(wgsl_ir_u32_literal_from_numeric_literal(literal))
+        AbstractFloatLiteral => {
+          let text = wgsl_ir_float_literal_text(literal.raw_text)
+          let value : Double = @strconv.from_str(text) catch {
+            _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+          }
+          Literal::AbstractFloat(value)
         }
-        return Literal::F16Bits(value)
+        F32Literal => {
+          let text = wgsl_ir_float_literal_text(literal.raw_text)
+          let value : Double = @strconv.from_str(text) catch {
+            _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+          }
+          Literal::F32(Float::from_double(value))
+        }
+        F16Literal => {
+          let h_text = wgsl_ir_literal_without_suffix(literal.raw_text)
+          let value : Int = @strconv.from_str(h_text) catch {
+            _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+          }
+          Literal::F16Bits(value)
+        }
+        InvalidNumericLiteral =>
+          raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
       }
-      let text = wgsl_ir_float_literal_text(token.text())
-      let value : Double = @strconv.from_str(text) catch {
-        _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
-      }
-      Literal::AbstractFloat(value)
-    }
     _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
   }
 }
 
 ///|
-fn wgsl_ir_literal_has_suffix(text : String, lower_suffix : String) -> Bool {
-  if text.length() == 0 {
-    return false
+fn wgsl_ir_i32_literal_from_numeric_literal(
+  literal : @ast.WgslNumericLiteral,
+) -> Int raise WgslIrLowerError {
+  let value = wgsl_ir_int64_literal_from_text(literal.raw_text)
+  let max = Int64::from_int(2147483647)
+  if value > max {
+    raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
   }
-  let last = text[text.length() - 1:].to_owned().to_lower()
-  last == lower_suffix
+  value.to_int()
+}
+
+///|
+fn wgsl_ir_u32_literal_from_numeric_literal(
+  literal : @ast.WgslNumericLiteral,
+) -> UInt raise WgslIrLowerError {
+  let value = wgsl_ir_int64_literal_from_text(literal.raw_text)
+  let max : Int64 = @strconv.from_str("4294967295") catch {
+    _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+  }
+  if value > max {
+    raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+  }
+  @strconv.from_str("\{value}") catch {
+    _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+  }
+}
+
+///|
+fn wgsl_ir_numeric_literal_default_type_name(
+  literal : @ast.WgslNumericLiteral,
+) -> String {
+  match literal.category {
+    I32Literal => "i32"
+    U32Literal => "u32"
+    F32Literal => "f32"
+    F16Literal => "f16"
+    AbstractFloatLiteral => "__abstract_float"
+    AbstractIntLiteral | InvalidNumericLiteral => "__abstract_int"
+  }
+}
+
+///|
+fn wgsl_ir_literal_suffix_length(text : String) -> Int {
+  if text.length() == 0 {
+    return 0
+  }
+  let last = text.code_unit_at(text.length() - 1).to_int()
+  if last == 105 ||
+    last == 73 ||
+    last == 117 ||
+    last == 85 ||
+    last == 102 ||
+    last == 70 ||
+    last == 104 ||
+    last == 72 {
+    1
+  } else {
+    0
+  }
 }
 
 ///|
 fn wgsl_ir_literal_without_suffix(text : String) -> String {
-  if text.length() == 0 {
+  let suffix_length = wgsl_ir_literal_suffix_length(text)
+  if suffix_length == 0 {
     text
   } else {
-    text[0:text.length() - 1].to_owned()
+    text[0:text.length() - suffix_length].to_owned()
   }
 }
 
@@ -7120,23 +7232,18 @@ fn wgsl_ir_literal_without_suffix(text : String) -> String {
 fn wgsl_ir_int64_literal_from_text(
   text : String,
 ) -> Int64 raise WgslIrLowerError {
-  let mut end = text.length()
-  if end > 0 {
-    let last = text.code_unit_at(end - 1).to_int()
-    if last == 105 || last == 73 {
-      end = end - 1
-    }
-  }
+  let body = wgsl_ir_integer_literal_without_suffix(text)
+  let end = body.length()
   guard end > 0 else { raise WgslIrLowerError::UnsupportedExpression(text) }
   let mut value : Int64 = 0
   if end > 2 &&
-    text.code_unit_at(0).to_int() == 48 &&
+    body.code_unit_at(0).to_int() == 48 &&
     (
-      text.code_unit_at(1).to_int() == 120 ||
-      text.code_unit_at(1).to_int() == 88
+      body.code_unit_at(1).to_int() == 120 ||
+      body.code_unit_at(1).to_int() == 88
     ) {
     for i in 2..<end {
-      match wgsl_ir_hex_digit_value(text.code_unit_at(i).to_int()) {
+      match wgsl_ir_hex_digit_value(body.code_unit_at(i).to_int()) {
         Some(digit) => value = value * 16 + Int64::from_int(digit)
         None => raise WgslIrLowerError::UnsupportedExpression(text)
       }
@@ -7144,13 +7251,26 @@ fn wgsl_ir_int64_literal_from_text(
     return value
   }
   for i in 0..<end {
-    let code = text.code_unit_at(i).to_int()
+    let code = body.code_unit_at(i).to_int()
     if code < 48 || code > 57 {
       raise WgslIrLowerError::UnsupportedExpression(text)
     }
     value = value * 10 + Int64::from_int(code - 48)
   }
   value
+}
+
+///|
+fn wgsl_ir_integer_literal_without_suffix(text : String) -> String {
+  if text.length() == 0 {
+    return text
+  }
+  let last = text.code_unit_at(text.length() - 1).to_int()
+  if last == 105 || last == 73 || last == 117 || last == 85 {
+    text[0:text.length() - 1].to_owned()
+  } else {
+    text
+  }
 }
 
 ///|
@@ -7195,14 +7315,33 @@ fn wgsl_ir_uint_literal_to_small_int(value : UInt) -> Int? {
 }
 
 ///|
+fn wgsl_ir_numeric_literal_to_small_int(
+  literal : @ast.WgslNumericLiteral,
+) -> Int? {
+  match literal.category {
+    AbstractIntLiteral | I32Literal | U32Literal => {
+      let value = wgsl_ir_int64_literal_from_text(literal.raw_text) catch {
+        _ => return None
+      }
+      if value <= Int64::from_int(2147483647) {
+        Some(value.to_int())
+      } else {
+        None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
 fn wgsl_ir_int_literal_from_expr_ref(expr_ref : @ast.WgslExprRef) -> Int? {
   match expr_ref.root() {
     Some(node) =>
       match node.kind() {
         Literal(token) =>
           match token.kind() {
-            IntLiteral(value) => Some(value)
-            UintLiteral(value) => wgsl_ir_uint_literal_to_small_int(value)
+            NumericLiteral(literal) =>
+              wgsl_ir_numeric_literal_to_small_int(literal)
             _ => None
           }
         _ => None
@@ -8424,26 +8563,22 @@ fn wgsl_ir_gather_component_from_node(
   match node.kind() {
     Literal(token) =>
       match token.kind() {
-        IntLiteral(value) =>
-          match value {
-            0 => SwizzleComponent::X
-            1 => SwizzleComponent::Y
-            2 => SwizzleComponent::Z
-            3 => SwizzleComponent::W
-            _ =>
+        NumericLiteral(literal) =>
+          match wgsl_ir_numeric_literal_to_small_int(literal) {
+            Some(value) =>
+              match value {
+                0 => SwizzleComponent::X
+                1 => SwizzleComponent::Y
+                2 => SwizzleComponent::Z
+                3 => SwizzleComponent::W
+                _ =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "textureGather component must be 0, 1, 2, or 3",
+                  )
+              }
+            None =>
               raise WgslIrLowerError::UnsupportedExpression(
-                "textureGather component must be 0, 1, 2, or 3",
-              )
-          }
-        UintLiteral(value) =>
-          match value.reinterpret_as_int() {
-            0 => SwizzleComponent::X
-            1 => SwizzleComponent::Y
-            2 => SwizzleComponent::Z
-            3 => SwizzleComponent::W
-            _ =>
-              raise WgslIrLowerError::UnsupportedExpression(
-                "textureGather component must be 0, 1, 2, or 3",
+                "textureGather component must be an integer literal",
               )
           }
         _ =>
@@ -8463,8 +8598,15 @@ fn wgsl_ir_expr_node_is_gather_component(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Literal(token) =>
       match token.kind() {
-        IntLiteral(value) => value >= 0 && value <= 3
-        UintLiteral(value) => value <= (3 : Int).reinterpret_as_uint()
+        NumericLiteral(literal) =>
+          match wgsl_ir_numeric_literal_to_small_int(literal) {
+            Some(value) =>
+              match value {
+                0 | 1 | 2 | 3 => true
+                _ => false
+              }
+            None => false
+          }
         _ => false
       }
     _ => false

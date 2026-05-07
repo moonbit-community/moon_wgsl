@@ -158,10 +158,7 @@ pub fn WgslExprToken::text(Self) -> String
 pub(all) enum WgslExprTokenKind {
   Identifier
   BoolLiteral(Bool)
-  UintLiteral(UInt)
-  IntLiteral(Int)
-  FloatLiteral
-  InvalidNumericLiteral
+  NumericLiteral(WgslNumericLiteral)
   Operator(WgslExprOperator)
   Punctuation(Int)
   Unknown

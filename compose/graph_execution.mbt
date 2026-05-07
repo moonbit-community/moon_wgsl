@@ -121,8 +121,13 @@ fn record_wgsl_virtual_override_final_names_from_source(
     let override_name = wgsl_naga_oil_virtual_override_final_name(
       target_module_path, override_module_path, original_name,
     )
+    let target_rel_path = if target_module_path == "" {
+      rel_path
+    } else {
+      session.module_rel_path_for_module_path(target_module_path)
+    }
     session.record_virtual_override_final_name(
-      raw_target, target_name, override_name,
+      raw_target, target_rel_path, target_name, override_name,
     )
   }
 }

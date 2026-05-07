@@ -165,6 +165,7 @@ pub struct WgslSourceOriginEntry {
 pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, Int, Int) -> Self
 pub fn WgslSourceOriginEntry::generated_symbol_name(Self) -> String
 pub fn WgslSourceOriginEntry::rel_path(Self) -> String
+pub fn WgslSourceOriginEntry::source_symbol_name(Self) -> String
 
 pub(all) struct WgslSourceScanOptions {
   recursive : Bool

@@ -117,7 +117,18 @@ test "IR lowerer accepts explicit generated import provenance" {
     #|  return value;
     #|}
   let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    "firstX_naga_oil_mod_XABCDX", "secondX_naga_oil_mod_XABCDX",
+    WgslIrGeneratedImportProvenance(
+      "firstX_naga_oil_mod_XABCDX",
+      "imports/first.wgsl",
+      "first",
+      WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+    ),
+    WgslIrGeneratedImportProvenance(
+      "secondX_naga_oil_mod_XABCDX",
+      "imports/second.wgsl",
+      "second",
+      WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+    ),
   ]) catch {
     error => abort(error.message())
   }

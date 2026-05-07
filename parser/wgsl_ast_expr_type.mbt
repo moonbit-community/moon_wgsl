@@ -66,7 +66,62 @@ fn wgsl_expr_number_token_end(tokens : Array[WgslToken], start : Int) -> Int {
 }
 
 ///|
-fn parse_wgsl_uint_literal_token(text : String) -> UInt? {
+fn wgsl_expr_numeric_literal_base(text : String) -> WgslNumericLiteralBase {
+  if text.length() >= 2 &&
+    text.code_unit_at(0).to_int() == 48 &&
+    (
+      text.code_unit_at(1).to_int() == 120 ||
+      text.code_unit_at(1).to_int() == 88
+    ) {
+    WgslNumericLiteralBase::Hexadecimal
+  } else {
+    WgslNumericLiteralBase::Decimal
+  }
+}
+
+///|
+fn wgsl_expr_numeric_literal_suffix(
+  category : WgslNumericLiteralCategory,
+) -> WgslNumericLiteralSuffix {
+  match category {
+    I32Literal => WgslNumericLiteralSuffix::I32Suffix
+    U32Literal => WgslNumericLiteralSuffix::U32Suffix
+    F32Literal => WgslNumericLiteralSuffix::F32Suffix
+    F16Literal => WgslNumericLiteralSuffix::F16Suffix
+    _ => WgslNumericLiteralSuffix::NoSuffix
+  }
+}
+
+///|
+fn wgsl_expr_integer_body_is_valid(text : String, end : Int) -> Bool {
+  if end <= 0 {
+    return false
+  }
+  if end > 2 &&
+    text.code_unit_at(0).to_int() == 48 &&
+    (
+      text.code_unit_at(1).to_int() == 120 ||
+      text.code_unit_at(1).to_int() == 88
+    ) {
+    guard end > 2 else { return false }
+    for i in 2..<end {
+      match wgsl_expr_ascii_hex_digit_value(text.code_unit_at(i).to_int()) {
+        Some(_) => ()
+        None => return false
+      }
+    }
+    return true
+  }
+  for i in 0..<end {
+    if !wgsl_expr_ascii_digit(text.code_unit_at(i).to_int()) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn wgsl_expr_uint_literal_token_is_valid(text : String) -> Bool {
   let mut end = text.length()
   let mut has_suffix = false
   if end > 0 {
@@ -77,39 +132,13 @@ fn parse_wgsl_uint_literal_token(text : String) -> UInt? {
     }
   }
   if !has_suffix {
-    return None
+    return false
   }
-  if end <= 0 {
-    return None
-  }
-  if end > 2 &&
-    text.code_unit_at(0).to_int() == 48 &&
-    (
-      text.code_unit_at(1).to_int() == 120 ||
-      text.code_unit_at(1).to_int() == 88
-    ) {
-    let mut value : UInt = 0
-    for i in 2..<end {
-      match wgsl_expr_ascii_hex_digit_value(text.code_unit_at(i).to_int()) {
-        Some(digit) => value = value * 16 + (digit : Int).reinterpret_as_uint()
-        None => return None
-      }
-    }
-    return Some(value)
-  }
-  let mut value : UInt = 0
-  for i in 0..<end {
-    let code = text.code_unit_at(i).to_int()
-    if !wgsl_expr_ascii_digit(code) {
-      return None
-    }
-    value = value * 10 + (code - 48 : Int).reinterpret_as_uint()
-  }
-  Some(value)
+  wgsl_expr_integer_body_is_valid(text, end)
 }
 
 ///|
-fn parse_wgsl_int_literal_token(text : String) -> Int? {
+fn wgsl_expr_int_literal_token_is_valid(text : String) -> Bool {
   let mut end = text.length()
   if end > 0 {
     let last = text.code_unit_at(end - 1).to_int()
@@ -117,33 +146,7 @@ fn parse_wgsl_int_literal_token(text : String) -> Int? {
       end = end - 1
     }
   }
-  if end <= 0 {
-    return None
-  }
-  if end > 2 &&
-    text.code_unit_at(0).to_int() == 48 &&
-    (
-      text.code_unit_at(1).to_int() == 120 ||
-      text.code_unit_at(1).to_int() == 88
-    ) {
-    let mut value = 0
-    for i in 2..<end {
-      match wgsl_expr_ascii_hex_digit_value(text.code_unit_at(i).to_int()) {
-        Some(digit) => value = value * 16 + digit
-        None => return None
-      }
-    }
-    return Some(value)
-  }
-  let mut value = 0
-  for i in 0..<end {
-    let code = text.code_unit_at(i).to_int()
-    if !wgsl_expr_ascii_digit(code) {
-      return None
-    }
-    value = value * 10 + (code - 48)
-  }
-  Some(value)
+  wgsl_expr_integer_body_is_valid(text, end)
 }
 
 ///|
@@ -234,19 +237,37 @@ fn wgsl_expr_float_literal_token_is_valid(text : String) -> Bool {
 
 ///|
 fn wgsl_expr_number_token_kind(text : String) -> WgslExprTokenKind {
-  match parse_wgsl_uint_literal_token(text) {
-    Some(value) => return WgslExprTokenKind::UintLiteral(value)
-    None => ()
-  }
-  match parse_wgsl_int_literal_token(text) {
-    Some(value) => return WgslExprTokenKind::IntLiteral(value)
-    None => ()
-  }
-  if wgsl_expr_float_literal_token_is_valid(text) {
-    WgslExprTokenKind::FloatLiteral
+  let category = if wgsl_expr_uint_literal_token_is_valid(text) {
+    WgslNumericLiteralCategory::U32Literal
+  } else if wgsl_expr_int_literal_token_is_valid(text) {
+    if text.length() > 0 &&
+      (
+        text.code_unit_at(text.length() - 1).to_int() == 105 ||
+        text.code_unit_at(text.length() - 1).to_int() == 73
+      ) {
+      WgslNumericLiteralCategory::I32Literal
+    } else {
+      WgslNumericLiteralCategory::AbstractIntLiteral
+    }
+  } else if wgsl_expr_float_literal_token_is_valid(text) {
+    if text.length() > 0 {
+      match text[text.length() - 1:].to_owned().to_lower() {
+        "f" => WgslNumericLiteralCategory::F32Literal
+        "h" => WgslNumericLiteralCategory::F16Literal
+        _ => WgslNumericLiteralCategory::AbstractFloatLiteral
+      }
+    } else {
+      WgslNumericLiteralCategory::AbstractFloatLiteral
+    }
   } else {
-    WgslExprTokenKind::InvalidNumericLiteral
+    WgslNumericLiteralCategory::InvalidNumericLiteral
   }
+  WgslExprTokenKind::NumericLiteral(WgslNumericLiteral::{
+    raw_text: text,
+    base: wgsl_expr_numeric_literal_base(text),
+    suffix: wgsl_expr_numeric_literal_suffix(category),
+    category,
+  })
 }
 
 ///|
@@ -321,7 +342,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           let token_text = text[pos:end_pos].to_owned()
           expr_tokens.push(
             WgslExprToken(
-              WgslExprTokenKind::FloatLiteral,
+              wgsl_expr_number_token_kind(token_text),
               token_text,
               base + pos,
               base + end_pos,
@@ -675,9 +696,7 @@ fn WgslExprNodeParser::parse_prefix(self : WgslExprNodeParser) -> WgslExprNode? 
           )
         }
         WgslExprTokenKind::BoolLiteral(_)
-        | WgslExprTokenKind::UintLiteral(_)
-        | WgslExprTokenKind::IntLiteral(_)
-        | WgslExprTokenKind::FloatLiteral => {
+        | WgslExprTokenKind::NumericLiteral(_) => {
           self.index = self.index + 1
           Some(
             self.make_node(
@@ -1031,7 +1050,10 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
   )
   for token in expr_tokens {
     match token.kind() {
-      WgslExprTokenKind::InvalidNumericLiteral => return None
+      WgslExprTokenKind::NumericLiteral(literal) =>
+        if literal.category == WgslNumericLiteralCategory::InvalidNumericLiteral {
+          return None
+        }
       _ => ()
     }
   }

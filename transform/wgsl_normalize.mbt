@@ -52,14 +52,44 @@ fn wgsl_attributes_key(attributes : Array[WgslAttribute]) -> String {
 }
 
 ///|
+fn wgsl_numeric_literal_base_key(literal : WgslNumericLiteral) -> String {
+  match literal.base {
+    Decimal => "decimal"
+    Hexadecimal => "hexadecimal"
+  }
+}
+
+///|
+fn wgsl_numeric_literal_suffix_key(literal : WgslNumericLiteral) -> String {
+  match literal.suffix {
+    NoSuffix => "none"
+    I32Suffix => "i32"
+    U32Suffix => "u32"
+    F32Suffix => "f32"
+    F16Suffix => "f16"
+  }
+}
+
+///|
+fn wgsl_numeric_literal_category_key(literal : WgslNumericLiteral) -> String {
+  match literal.category {
+    AbstractIntLiteral => "abstract-int"
+    I32Literal => "i32"
+    U32Literal => "u32"
+    AbstractFloatLiteral => "abstract-float"
+    F32Literal => "f32"
+    F16Literal => "f16"
+    InvalidNumericLiteral => "invalid"
+  }
+}
+
+///|
 fn wgsl_expr_token_key(token : WgslExprToken) -> String {
   match token.kind() {
     Identifier => "id:\{token.text()}"
     BoolLiteral(value) => "bool:\{value}"
-    UintLiteral(value) => "uint:\{value}"
-    IntLiteral(value) => "int:\{value}"
-    FloatLiteral => "float:\{token.text()}"
-    InvalidNumericLiteral => "invalid-number:\{token.text()}"
+    NumericLiteral(literal) =>
+      "number:\{wgsl_numeric_literal_category_key(literal)}:\{wgsl_numeric_literal_base_key(literal)}:\{wgsl_numeric_literal_suffix_key(literal)}:\{literal.raw_text}"
     Operator(op) => "op:\{op.text()}"
     Punctuation(code) => "punct:\{code}"
     Unknown => "unknown:\{token.text()}"
@@ -386,11 +416,80 @@ fn build_wgsl_unique_alias_suffix_rename_plan_from_binding_plan(
 }
 
 ///|
-fn wgsl_normalize_uint_literal_to_small_int(value : UInt) -> Int? {
-  if value <= (2147483647 : Int).reinterpret_as_uint() {
-    Some(value.reinterpret_as_int())
-  } else {
-    None
+fn wgsl_normalize_hex_digit_value(code : Int) -> Int? {
+  if code >= 48 && code <= 57 {
+    return Some(code - 48)
+  }
+  if code >= 65 && code <= 70 {
+    return Some(code - 65 + 10)
+  }
+  if code >= 97 && code <= 102 {
+    return Some(code - 97 + 10)
+  }
+  None
+}
+
+///|
+fn wgsl_normalize_numeric_literal_body_text(
+  literal : WgslNumericLiteral,
+) -> String {
+  match literal.suffix {
+    NoSuffix => literal.raw_text
+    _ =>
+      if literal.raw_text.length() == 0 {
+        literal.raw_text
+      } else {
+        literal.raw_text[:literal.raw_text.length() - 1].to_owned()
+      }
+  }
+}
+
+///|
+fn wgsl_normalize_integer_literal_to_small_int(
+  literal : WgslNumericLiteral,
+) -> Int? {
+  let text = wgsl_normalize_numeric_literal_body_text(literal)
+  let mut value = 0
+  match literal.base {
+    Hexadecimal => {
+      guard text.length() > 2 else { return None }
+      for i in 2..<text.length() {
+        match wgsl_normalize_hex_digit_value(text.code_unit_at(i).to_int()) {
+          Some(digit) => {
+            if value > (2147483647 - digit) / 16 {
+              return None
+            }
+            value = value * 16 + digit
+          }
+          None => return None
+        }
+      }
+      Some(value)
+    }
+    Decimal => {
+      guard text.length() > 0 else { return None }
+      for i in 0..<text.length() {
+        let code = text.code_unit_at(i).to_int()
+        guard code >= 48 && code <= 57 else { return None }
+        let digit = code - 48
+        if value > (2147483647 - digit) / 10 {
+          return None
+        }
+        value = value * 10 + digit
+      }
+      Some(value)
+    }
+  }
+}
+
+///|
+fn wgsl_normalize_numeric_literal_to_small_int(
+  literal : WgslNumericLiteral,
+) -> Int? {
+  match literal.category {
+    AbstractIntLiteral | I32Literal | U32Literal =>
+      wgsl_normalize_integer_literal_to_small_int(literal)
+    _ => None
   }
 }
 
@@ -401,8 +500,8 @@ fn wgsl_expr_ref_single_uint_value(expr_ref : WgslExprRef?) -> Int? {
       let tokens = expr.tokens()
       if tokens.length() == 1 {
         match tokens[0].kind() {
-          UintLiteral(value) => wgsl_normalize_uint_literal_to_small_int(value)
-          IntLiteral(value) => Some(value)
+          NumericLiteral(literal) =>
+            wgsl_normalize_numeric_literal_to_small_int(literal)
           _ => None
         }
       } else {

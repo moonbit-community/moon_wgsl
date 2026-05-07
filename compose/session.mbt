@@ -165,6 +165,7 @@ priv struct WgslComposeBindingSet {
 ///|
 priv struct WgslVirtualOverrideFinalNameBinding {
   raw_target_name : String
+  rel_path : String
   target_name : String
   override_name : String
 }
@@ -390,18 +391,20 @@ fn WgslComposeBindingSet::first_conflict(
 fn WgslVirtualOverrideFinalNameBinding::key(
   self : WgslVirtualOverrideFinalNameBinding,
 ) -> String {
-  "\{self.raw_target_name}|\{self.target_name}|\{self.override_name}"
+  "\{self.raw_target_name}|\{self.rel_path}|\{self.target_name}|\{self.override_name}"
 }
 
 ///|
 fn WgslComposeSession::record_virtual_override_final_name(
   self : WgslComposeSession,
   raw_target_name : String,
+  rel_path : String,
   target_name : String,
   override_name : String,
 ) -> Unit {
   let binding = WgslVirtualOverrideFinalNameBinding::{
     raw_target_name,
+    rel_path,
     target_name,
     override_name,
   }

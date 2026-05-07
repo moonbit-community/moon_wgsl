@@ -264,10 +264,7 @@ pub fn WgslExprOperator::binary_precedence(self : WgslExprOperator) -> Int {
 pub(all) enum WgslExprTokenKind {
   Identifier
   BoolLiteral(Bool)
-  UintLiteral(UInt)
-  IntLiteral(Int)
-  FloatLiteral
-  InvalidNumericLiteral
+  NumericLiteral(WgslNumericLiteral)
   Operator(WgslExprOperator)
   Punctuation(Int)
   Unknown
@@ -346,75 +343,11 @@ pub fn WgslExprToken::end(self : WgslExprToken) -> Int {
 }
 
 ///|
-fn wgsl_numeric_literal_base_from_text(text : String) -> WgslNumericLiteralBase {
-  if text.length() >= 2 &&
-    text.code_unit_at(0).to_int() == 48 &&
-    (
-      text.code_unit_at(1).to_int() == 120 ||
-      text.code_unit_at(1).to_int() == 88
-    ) {
-    Hexadecimal
-  } else {
-    Decimal
-  }
-}
-
-///|
-fn wgsl_numeric_literal_suffix_from_text(
-  text : String,
-  kind : WgslExprTokenKind,
-) -> WgslNumericLiteralSuffix {
-  guard text.length() > 0 else { return NoSuffix }
-  let last = text[text.length() - 1:].to_owned().to_lower()
-  match kind {
-    UintLiteral(_) => U32Suffix
-    IntLiteral(_) => if last == "i" { I32Suffix } else { NoSuffix }
-    FloatLiteral =>
-      match last {
-        "f" => F32Suffix
-        "h" => F16Suffix
-        _ => NoSuffix
-      }
-    _ => NoSuffix
-  }
-}
-
-///|
-fn wgsl_numeric_literal_category_from_token(
-  text : String,
-  kind : WgslExprTokenKind,
-) -> WgslNumericLiteralCategory {
-  let suffix = wgsl_numeric_literal_suffix_from_text(text, kind)
-  match kind {
-    UintLiteral(_) => U32Literal
-    IntLiteral(_) =>
-      match suffix {
-        I32Suffix => I32Literal
-        _ => AbstractIntLiteral
-      }
-    FloatLiteral =>
-      match suffix {
-        F32Suffix => F32Literal
-        F16Suffix => F16Literal
-        _ => AbstractFloatLiteral
-      }
-    InvalidNumericLiteral => WgslNumericLiteralCategory::InvalidNumericLiteral
-    _ => InvalidNumericLiteral
-  }
-}
-
-///|
 pub fn WgslExprToken::numeric_literal(
   self : WgslExprToken,
 ) -> WgslNumericLiteral? {
   match self.kind {
-    UintLiteral(_) | IntLiteral(_) | FloatLiteral | InvalidNumericLiteral =>
-      Some(WgslNumericLiteral::{
-        raw_text: self.text,
-        base: wgsl_numeric_literal_base_from_text(self.text),
-        suffix: wgsl_numeric_literal_suffix_from_text(self.text, self.kind),
-        category: wgsl_numeric_literal_category_from_token(self.text, self.kind),
-      })
+    NumericLiteral(literal) => Some(literal)
     _ => None
   }
 }
