@@ -92,6 +92,12 @@ check_case \
   --additional-import plugin
 
 check_case \
+  override_top \
+  testdata/naga_oil_upstream/compose_tests/overrides \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/override_top.txt
+
+check_case \
   dup_struct_import \
   testdata/naga_oil_upstream/compose_tests/dup_struct_import \
   top.wgsl \

@@ -64,6 +64,7 @@ assert_expected_coverage() {
       item_import_test | \
       item_sub_point | \
       missing_import | \
+      override_top | \
       problematic_expressions | \
       simple_compose | \
       test_quoted_import_dup_name | \
@@ -342,6 +343,16 @@ diff_exact \
   testdata/naga_oil_upstream/compose_tests/expected/atomics.txt \
   "$tmpdir/atomics.wgsl" \
   atomics
+
+echo "== naga_oil oracle: override top =="
+oracle \
+  --fixture-root testdata/naga_oil_upstream/compose_tests/overrides \
+  --entry top.wgsl \
+  --output "$tmpdir/override_top.wgsl"
+diff_exact \
+  testdata/naga_oil_upstream/compose_tests/expected/override_top.txt \
+  "$tmpdir/override_top.wgsl" \
+  override_top
 
 echo "== naga_oil oracle: invalid identifiers =="
 oracle \

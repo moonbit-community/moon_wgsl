@@ -336,6 +336,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   let virtual_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let override_base_names : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
+  let override_body_references_base : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::new()
   let override_names : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   let override_raw_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap::new()
   for block in graph.declaration_blocks {
@@ -358,6 +359,9 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
         let needs_base = wgsl_override_body_references_target(
           function, raw_target, target,
         )
+        if needs_base {
+          override_body_references_base.set(target, true)
+        }
         let override_name = match
           plan.virtual_override_name_for_target(raw_target, target) {
           Some(name) => name
@@ -404,18 +408,31 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
         function.qualifier() == Some(WgslFunctionQualifier::Virtual) => {
         match overrides.get(block.name()) {
           Some(override_block) => {
-            match override_base_names.get(block.name()) {
+            let base_block = match override_base_names.get(block.name()) {
               Some(base_name) =>
-                out = out +
+                Some(
                   rewrite_wgsl_virtual_base_block(
                     block,
                     function,
                     block.name(),
                     base_name,
-                  )
-              None => ()
+                  ),
+                )
+              None => None
             }
-            out = out + override_block
+            if override_body_references_base.get(block.name()) == Some(true) {
+              match base_block {
+                Some(base) => out = out + base
+                None => ()
+              }
+              out = out + override_block
+            } else {
+              out = out + override_block
+              match base_block {
+                Some(base) => out = out + base
+                None => ()
+              }
+            }
           }
           None => out = out + rewrite_wgsl_virtual_fn_block(block, function)
         }

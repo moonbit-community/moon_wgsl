@@ -2461,7 +2461,36 @@ fn WgslIrEmitter::function_argument_name_needs_suffix(
       return true
     }
   }
+  if self.previous_generated_import_function_uses_argument_name(
+      function, base_name,
+    ) {
+    return true
+  }
   self.entry_point_function_uses_local_name(base_name)
+}
+
+///|
+fn WgslIrEmitter::previous_generated_import_function_uses_argument_name(
+  self : WgslIrEmitter,
+  function : Function,
+  base_name : String,
+) -> Bool {
+  guard function.name is Some(current_name) else { return false }
+  for sibling in self.shader_module.functions.items {
+    match sibling.name {
+      Some(name) if name == current_name => return false
+      _ => ()
+    }
+    if self.function_is_generated_import_function(sibling) {
+      for index in 0..<sibling.arguments.length() {
+        if self.function_argument_base_name(sibling.arguments[index], index) ==
+          base_name {
+          return true
+        }
+      }
+    }
+  }
+  false
 }
 
 ///|
