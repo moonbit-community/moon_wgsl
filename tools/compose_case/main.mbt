@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--additional-import PATH] [--ir]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--additional-import PATH] [--output FILE]"
 }
 
 ///|
@@ -10,7 +10,6 @@ priv struct ComposeCaseArgs {
   defines : Array[String]
   additional_imports : Array[String]
   mut output : String?
-  mut ir : Bool
 }
 
 ///|
@@ -21,7 +20,6 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     defines: [],
     additional_imports: [],
     output: None,
-    ir: false,
   }
 }
 
@@ -56,10 +54,6 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
         guard index + 1 < args.length() else { abort(compose_case_usage()) }
         parsed.output = Some(args[index + 1])
         index = index + 2
-      }
-      "--ir" => {
-        parsed.ir = true
-        index = index + 1
       }
       _ => abort(compose_case_usage())
     }
@@ -114,13 +108,7 @@ fn main {
     redirects: [],
     additional_imports: compose_case_additional_imports(args.additional_imports),
   }
-  let output = try {
-    if args.ir {
-      composer.compose_wgsl_ir(entry, options)
-    } else {
-      composer.compose_wgsl(entry, options)
-    }
-  } catch {
+  let output = composer.compose_wgsl(entry, options) catch {
     err => {
       println("failed to compose WGSL: \{err.message()}")
       abort("failed to compose WGSL")

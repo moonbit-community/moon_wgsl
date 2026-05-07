@@ -521,7 +521,7 @@ fn Composer::compose_wgsl_import_requests(
     let origin_start_index = session.source_origins.length()
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
-      self.preprocess_wgsl_source_with_path(
+      self.resolve_wgsl_source_with_path(
         request.rel_path,
         raw_source,
         session,
@@ -552,7 +552,7 @@ fn Composer::compose_wgsl_import_requests(
         request.rel_path,
         extraction,
       )
-      self.preprocess_wgsl_source_with_path(
+      self.resolve_wgsl_source_with_path(
         request.rel_path,
         extraction.source(),
         session,

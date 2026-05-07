@@ -48,13 +48,10 @@ pub struct Composer {
 pub fn Composer::add_composable_module(Self, @common.ComposableModuleDescriptor) -> ComposableModuleDefinition raise ComposerError
 pub fn Composer::clear_sources(Self) -> Unit
 pub fn Composer::compose_wgsl(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
-pub fn Composer::compose_wgsl_ir(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_source(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
-pub fn Composer::compose_wgsl_source_ir(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::contains_module(Self, String) -> Bool
 pub fn Composer::default() -> Self
 pub fn Composer::prepare_wgsl_source(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
-pub fn Composer::prepare_wgsl_source_ir(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
 pub fn Composer::register_source(Self, String, String) -> Unit
 pub fn Composer::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
 pub fn Composer::register_source_tree(Self, String, @common.WgslSourceScanOptions) -> Unit raise @fs.IOError

@@ -204,28 +204,3 @@ pub fn export_wgsl_with_options(
   }
   output
 }
-
-///|
-pub fn export_wgsl_with_options_ir(
-  composer : Composer,
-  rel : String,
-  compose_options : WgslComposeOptions,
-  export_options : WgslExportOptions,
-) -> WgslExportOutput raise ComposerError {
-  let prepared = composer.prepare_wgsl_source_ir(rel, compose_options)
-  let tree_shaken = emit_wgsl_tree_shaken_source_strict(
-    prepared.source,
-    export_options.root_items,
-  ) catch {
-    error => raise export_composer_error_from_wgsl_parse_error(error)
-  }
-  let output = serialize_wgsl_export_output(
-    tree_shaken,
-    prepared.source_catalog,
-    prepared.source_origins,
-  )
-  for diagnostic in prepared.diagnostics {
-    output.diagnostics.push(diagnostic)
-  }
-  output
-}

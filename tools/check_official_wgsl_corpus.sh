@@ -7,8 +7,9 @@ cd "$repo_root"
 cts_ref="${WGSL_CTS_REF:-3b327ebc44f11212fd3872972a6dd394634fb9e3}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
 allowlist="$repo_root/testdata/gpuweb_cts_ir_allowlist.txt"
-min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-100}"
-min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-110}"
+blocked_by_oracle="$repo_root/testdata/gpuweb_cts_ir_blocked_by_oracle.txt"
+min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-114}"
+min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-111}"
 
 if [[ ! -d "$cts_root/.git" ]]; then
   mkdir -p "$(dirname "$cts_root")"
@@ -49,6 +50,21 @@ done < <(find "$cases_dir" -name '*.wgsl' -type f | sort)
 echo "== GPUWeb CTS WGSL IR corpus =="
 if [[ ! -f "$allowlist" ]]; then
   echo "missing IR allowlist: $allowlist" >&2
+  exit 1
+fi
+if [[ ! -f "$blocked_by_oracle" ]]; then
+  echo "missing IR blocked-by-oracle manifest: $blocked_by_oracle" >&2
+  exit 1
+fi
+extracted_ids="$tmpdir/extracted.ids"
+covered_ids="$tmpdir/covered.ids"
+find "$cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$extracted_ids"
+{
+  grep -v -E '^($|#)' "$allowlist"
+  grep -v -E '^($|#)' "$blocked_by_oracle"
+} | sort > "$covered_ids"
+if ! diff -u "$extracted_ids" "$covered_ids"; then
+  echo "official WGSL CTS IR coverage manifests do not exactly cover extracted static valid cases" >&2
   exit 1
 fi
 ir_count=0

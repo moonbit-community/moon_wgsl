@@ -7,7 +7,7 @@ priv enum WgslComposeSourceEmissionKind {
 }
 
 ///|
-priv struct WgslPreIrComposedSource {
+priv struct WgslResolvedComposeSource {
   source : String
   source_origins : Array[WgslSourceOriginEntry]
   diagnostics : Array[WgslDiagnostic]
@@ -80,7 +80,7 @@ fn Composer::compose_wgsl_scanned_item(
 }
 
 ///|
-fn Composer::preprocess_wgsl_source_with_path(
+fn Composer::resolve_wgsl_source_with_path(
   self : Composer,
   current_rel_path : String,
   source : String,
@@ -138,7 +138,7 @@ fn Composer::preprocess_wgsl_source_with_path(
 }
 
 ///|
-fn Composer::load_root_wgsl_preprocessed_into_session(
+fn Composer::resolve_root_wgsl_source_into_session(
   self : Composer,
   rel : String,
   session : WgslComposeSession,
@@ -163,7 +163,7 @@ fn Composer::load_root_wgsl_preprocessed_into_session(
   )
   session.visited.set(normalized_rel, true)
   session.active_rel_paths.push(normalized_rel)
-  let composed = self.preprocess_wgsl_source_with_path(
+  let composed = self.resolve_wgsl_source_with_path(
     normalized_rel,
     root_source,
     session,
@@ -207,17 +207,17 @@ fn collect_wgsl_unused_redirect_diagnostics(
 }
 
 ///|
-fn Composer::compose_wgsl_pre_ir_source(
+fn Composer::resolve_wgsl_compose_source(
   self : Composer,
   rel : String,
   options : WgslComposeOptions,
-) -> WgslPreIrComposedSource raise ComposerError {
+) -> WgslResolvedComposeSource raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
   let composed = strip_wgsl_virtual_functions(
-    self.load_root_wgsl_preprocessed_into_session(rel, session),
+    self.resolve_root_wgsl_source_into_session(rel, session),
   )
   let prepared_source = finalize_wgsl_output_source(composed)
-  WgslPreIrComposedSource::{
+  WgslResolvedComposeSource::{
     source: prepared_source,
     source_origins: session.source_origins.copy(),
     diagnostics: collect_wgsl_unused_redirect_diagnostics(session),
@@ -240,8 +240,8 @@ pub fn Composer::prepare_wgsl_source(
   rel : String,
   options : WgslComposeOptions,
 ) -> PreparedWgslSource raise ComposerError {
-  let pre_ir = self.compose_wgsl_pre_ir_source(rel, options)
-  let ir_source = compose_wgsl_source_via_ir(pre_ir.source)
+  let resolved = self.resolve_wgsl_compose_source(rel, options)
+  let ir_source = compose_wgsl_source_via_ir(resolved.source)
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: ir_source },
   ]
@@ -249,18 +249,9 @@ pub fn Composer::prepare_wgsl_source(
     ir_source,
     source_files,
     build_prepared_wgsl_source_catalog(source_files.copy()),
-    pre_ir.source_origins,
-    pre_ir.diagnostics,
+    resolved.source_origins,
+    resolved.diagnostics,
   )
-}
-
-///|
-pub fn Composer::prepare_wgsl_source_ir(
-  self : Composer,
-  rel : String,
-  options : WgslComposeOptions,
-) -> PreparedWgslSource raise ComposerError {
-  self.prepare_wgsl_source(rel, options)
 }
 
 ///|
@@ -270,15 +261,6 @@ pub fn Composer::compose_wgsl(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   self.prepare_wgsl_source(rel, options).source
-}
-
-///|
-pub fn Composer::compose_wgsl_ir(
-  self : Composer,
-  rel : String,
-  options : WgslComposeOptions,
-) -> String raise ComposerError {
-  self.compose_wgsl(rel, options)
 }
 
 ///|
@@ -294,7 +276,7 @@ pub fn Composer::compose_wgsl_source(
   )
   self.complete_wgsl_compose_graph_execution("", root_source, session, None)
   let composed = strip_wgsl_virtual_functions(
-    self.preprocess_wgsl_source_with_path(
+    self.resolve_wgsl_source_with_path(
       "",
       root_source,
       session,
@@ -307,14 +289,3 @@ pub fn Composer::compose_wgsl_source(
   )
   compose_wgsl_source_via_ir(finalize_wgsl_output_source(composed))
 }
-
-///|
-pub fn Composer::compose_wgsl_source_ir(
-  self : Composer,
-  source : String,
-  options : WgslComposeOptions,
-) -> String raise ComposerError {
-  self.compose_wgsl_source(source, options)
-}
-
-///|

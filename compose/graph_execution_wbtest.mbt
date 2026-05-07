@@ -56,7 +56,7 @@ test "compose graph execution plans reachability before emission" {
     content="true",
   )
   debug_inspect(session.final_names.canonical_entry_count(), content="0")
-  let output = composer.preprocess_wgsl_source_with_path(
+  let output = composer.resolve_wgsl_source_with_path(
     "root.wgsl",
     source,
     session,
@@ -103,10 +103,7 @@ test "composer exposes IR-backed compose output" {
     #|}
     #|
   composer.register_source("top.wgsl", top_source)
-  let emitted = composer.compose_wgsl_ir(
-    "top.wgsl",
-    WgslComposeOptions::default(),
-  ) catch {
+  let emitted = composer.compose_wgsl("top.wgsl", WgslComposeOptions::default()) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("#import"), content="false")

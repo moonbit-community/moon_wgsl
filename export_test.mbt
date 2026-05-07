@@ -173,7 +173,7 @@ test "naga_oil: export_wgsl emits a single tree-shaken WGSL file with source map
 ///|
 test "naga_oil: export_wgsl_ir emits through IR before tree-shaking" {
   register_export_test_shaders()
-  let output = @export.export_wgsl_with_options_ir(
+  let output = @export.export_wgsl_with_options(
     export_test_composer(),
     "shaders/effects/main.wgsl",
     export_test_compose_options(export_test_empty_defines(), []),

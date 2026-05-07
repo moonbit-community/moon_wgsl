@@ -1,0 +1,6 @@
+# GPUWeb CTS static valid WGSL cases parsed by moon_wgsl but not IR-validation
+# gated because the pinned local naga validation oracle currently rejects the
+# required subgroup capability path.
+src_webgpu_shader_validation_parse_enable_spec_ts_009_e3b77589d365
+src_webgpu_shader_validation_parse_enable_spec_ts_010_70feccb96528
+src_webgpu_shader_validation_parse_enable_spec_ts_011_d46d9ba78d74

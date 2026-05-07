@@ -10,7 +10,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-moon_compose_ir() {
+moon_compose() {
   local fixture_root="$1"
   local entry="$2"
   local output="$3"
@@ -18,9 +18,12 @@ moon_compose_ir() {
   moon run tools/compose_case -- \
     --fixture-root "$fixture_root" \
     --entry "$entry" \
-    --ir \
     --output "$output" \
     "$@"
+}
+
+validate_wgsl() {
+  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$@"
 }
 
 diff_exact() {
@@ -34,6 +37,23 @@ diff_exact() {
   diff -u "$expected" "$actual"
 }
 
+diff_atomics_expected_without_invalid_internal_type() {
+  local expected="$1"
+  local actual="$2"
+  local label="$3"
+  local normalized_expected="$tmpdir/${label}.expected.valid.wgsl"
+
+  sed \
+    's/: _atomic_compare_exchange_result_Uint_4_ = atomicCompareExchangeWeak/ = atomicCompareExchangeWeak/' \
+    "$expected" > "$normalized_expected"
+  diff_exact "$normalized_expected" "$actual" "$label"
+  validate_wgsl "$actual" >/dev/null
+  if validate_wgsl "$expected" >/dev/null 2>&1; then
+    printf 'expected fixture %s unexpectedly validates; remove the atomics normalization exception\n' "$label" >&2
+    exit 1
+  fi
+}
+
 check_case() {
   local label="$1"
   local fixture_root="$2"
@@ -43,8 +63,21 @@ check_case() {
   local actual="$tmpdir/$label.wgsl"
 
   echo "== moon_wgsl byte parity: $label =="
-  moon_compose_ir "$fixture_root" "$entry" "$actual" "$@"
+  moon_compose "$fixture_root" "$entry" "$actual" "$@"
   diff_exact "$expected" "$actual" "$label"
+}
+
+check_case_atomics_validated() {
+  local label="$1"
+  local fixture_root="$2"
+  local entry="$3"
+  local expected="$4"
+  shift 4
+  local actual="$tmpdir/$label.wgsl"
+
+  echo "== moon_wgsl byte parity: $label =="
+  moon_compose "$fixture_root" "$entry" "$actual" "$@"
+  diff_atomics_expected_without_invalid_internal_type "$expected" "$actual" "$label"
 }
 
 check_case \
@@ -150,3 +183,9 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/problematic_expressions \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/problematic_expressions.txt
+
+check_case_atomics_validated \
+  atomics_naga_valid \
+  testdata/naga_oil_upstream/compose_tests/atomics \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/atomics.txt
