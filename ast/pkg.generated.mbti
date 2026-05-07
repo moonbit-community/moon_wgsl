@@ -34,6 +34,12 @@ pub fn WgslBlock::end(Self) -> Int
 pub fn WgslBlock::start(Self) -> Int
 pub fn WgslBlock::statements(Self) -> Array[WgslStatement]
 
+pub(all) enum WgslCaseSelector {
+  DefaultSelector
+  ExpressionSelector(WgslExprRef)
+} derive(@debug.Debug)
+pub fn WgslCaseSelector::expression(Self) -> WgslExprRef?
+
 pub struct WgslConst {
   // private fields
 } derive(@debug.Debug)
@@ -352,7 +358,7 @@ pub(all) enum WgslStatementPayload {
   Discard
   ConstAssert(WgslExprRef?)
   Compound
-  Case(Array[WgslExprRef])
+  Case(Array[WgslCaseSelector])
   DefaultCase
   Assignment(String, WgslExprRef?, WgslExprRef?)
   Increment(WgslExprRef?)

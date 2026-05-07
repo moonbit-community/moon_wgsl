@@ -815,6 +815,20 @@ pub fn WgslStatementExpression::expression(
 }
 
 ///|
+pub(all) enum WgslCaseSelector {
+  DefaultSelector
+  ExpressionSelector(WgslExprRef)
+} derive(Debug)
+
+///|
+pub fn WgslCaseSelector::expression(self : WgslCaseSelector) -> WgslExprRef? {
+  match self {
+    DefaultSelector => None
+    ExpressionSelector(expr) => Some(expr)
+  }
+}
+
+///|
 pub(all) enum WgslStatementPayload {
   Empty
   LocalDeclaration(Array[WgslLocalDeclaration])
@@ -829,7 +843,7 @@ pub(all) enum WgslStatementPayload {
   Discard
   ConstAssert(WgslExprRef?)
   Compound
-  Case(Array[WgslExprRef])
+  Case(Array[WgslCaseSelector])
   DefaultCase
   Assignment(String, WgslExprRef?, WgslExprRef?)
   Increment(WgslExprRef?)

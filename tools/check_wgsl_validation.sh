@@ -44,6 +44,10 @@ echo "== WGSL validation: issue 13 nested alias global identity =="
 emit_case issue13-nested-alias-global "$tmpdir/issue13_nested_alias_global.wgsl"
 validate_wgsl "$tmpdir/issue13_nested_alias_global.wgsl"
 
+echo "== WGSL validation: storage access and arrayLength IR =="
+emit_case storage-array-length-ir "$tmpdir/storage_array_length_ir.wgsl"
+validate_wgsl "$tmpdir/storage_array_length_ir.wgsl"
+
 echo "== WGSL validation: Bevy PBR functions compose =="
 emit_case bevy-pbr-functions "$tmpdir/bevy_pbr_functions.wgsl"
 validate_wgsl "$tmpdir/bevy_pbr_functions.wgsl"

@@ -1225,16 +1225,26 @@ fn WgslIrLowerer::lower_switch_cases(
           [] => Block::Block()
         }
         for selector in selectors {
-          let selector_handle = self.lower_function_expression_ref(
-            selector, function, scope,
-          )
-          cases.push(SwitchCase::{
-            value: wgsl_ir_switch_value_from_expression(
-              self, function, selector_handle,
-            ),
-            body,
-            fall_through: false,
-          })
+          match selector {
+            DefaultSelector =>
+              cases.push(SwitchCase::{
+                value: Default,
+                body,
+                fall_through: false,
+              })
+            ExpressionSelector(expr) => {
+              let selector_handle = self.lower_function_expression_ref(
+                expr, function, scope,
+              )
+              cases.push(SwitchCase::{
+                value: wgsl_ir_switch_value_from_expression(
+                  self, function, selector_handle,
+                ),
+                body,
+                fall_through: false,
+              })
+            }
+          }
         }
       }
       DefaultCase => {
@@ -4931,7 +4941,11 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                                       ) {
                                       Some(handle) => handle
                                       None =>
-                                        if name.name() == "array" {
+                                        if name.name() == "arrayLength" {
+                                          self.lower_function_array_length_call(
+                                            arguments, function, scope,
+                                          )
+                                        } else if name.name() == "array" {
                                           self.lower_function_array_constructor_call(
                                             expected_ty, arguments, function, scope,
                                           )
@@ -5267,6 +5281,23 @@ fn WgslIrLowerer::lower_function_array_constructor_call(
     None => lowered_arguments
   }
   function.expressions.append(Expression::Compose(ty, components))
+}
+
+///|
+fn WgslIrLowerer::lower_function_array_length_call(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [argument] else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "arrayLength expects one argument",
+    )
+  }
+  let pointer = self.lower_atomic_pointer_argument(argument, function, scope)
+  function.expressions.append(Expression::ArrayLength(pointer))
 }
 
 ///|
@@ -6997,6 +7028,7 @@ fn WgslIrLowerer::function_expression_inner_type(
       self.image_expression_result_type(function, image, None, None)
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(function, image, query)
+    ArrayLength(_) => self.type_cache.get("u32")
     RayQueryGetIntersection(_, _) => self.type_cache.get("RayIntersection")
     RayQueryProceedResult => self.type_cache.get("bool")
     Literal(literal) => self.literal_type(literal)
@@ -8005,10 +8037,7 @@ fn wgsl_ir_address_space_from_template_list(
               AddressSpace::Storage(
                 wgsl_ir_storage_access_from_name(access.name()),
               )
-            [] =>
-              AddressSpace::Storage(
-                StorageAccess::load().union(StorageAccess::store()),
-              )
+            [] => AddressSpace::Storage(StorageAccess::load())
           }
         other => wgsl_ir_address_space_from_type_name(other)
       }
@@ -8023,8 +8052,7 @@ fn wgsl_ir_address_space_from_type_name(name : String) -> AddressSpace {
     "private" => AddressSpace::Private
     "workgroup" => AddressSpace::WorkGroup
     "uniform" => AddressSpace::Uniform
-    "storage" =>
-      AddressSpace::Storage(StorageAccess::load().union(StorageAccess::store()))
+    "storage" => AddressSpace::Storage(StorageAccess::load())
     "handle" => AddressSpace::Handle
     "immediate" => AddressSpace::Immediate
     _ => AddressSpace::Private

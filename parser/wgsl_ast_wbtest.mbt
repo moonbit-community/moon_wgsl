@@ -11,9 +11,21 @@ fn wgsl_expr_ref_source_text(source : String, expr : WgslExprRef) -> String {
 }
 
 ///|
+fn wgsl_case_selector_snapshot(
+  source : String,
+  selector : WgslCaseSelector,
+) -> String {
+  match selector {
+    DefaultSelector => "default"
+    ExpressionSelector(expr) => wgsl_expr_ref_source_text(source, expr)
+  }
+}
+
+///|
 test "WGSL translation unit classifies top-level declarations" {
   let source =
     #|#define_import_path demo::module
+    #|;
     #|#import demo::shared::Value
     #|struct Value {
     #|  x: u32,
@@ -25,23 +37,24 @@ test "WGSL translation unit classifies top-level declarations" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  debug_inspect(unit.declarations().length(), content="6")
+  debug_inspect(unit.declarations().length(), content="7")
   debug_inspect(unit.declarations()[0].kind(), content="Directive")
-  debug_inspect(unit.declarations()[1].kind(), content="Import")
+  debug_inspect(unit.declarations()[1].kind(), content="Trivia")
+  debug_inspect(unit.declarations()[2].kind(), content="Import")
   guard unit.declarations()[0].data()
     is WgslGlobalDeclData::Directive(module_directive) else {
     abort("expected directive payload")
   }
   debug_inspect(module_directive.kind(), content="DefineImportPath")
-  guard unit.declarations()[1].data()
+  guard unit.declarations()[2].data()
     is WgslGlobalDeclData::Import(import_directive) else {
     abort("expected import payload")
   }
   debug_inspect(import_directive.kind(), content="Import")
-  debug_inspect(unit.declarations()[2].kind(), content="Struct")
-  debug_inspect(unit.declarations()[3].kind(), content="GlobalVariable")
-  debug_inspect(unit.declarations()[4].kind(), content="ConstAssert")
-  guard unit.declarations()[4].data()
+  debug_inspect(unit.declarations()[3].kind(), content="Struct")
+  debug_inspect(unit.declarations()[4].kind(), content="GlobalVariable")
+  debug_inspect(unit.declarations()[5].kind(), content="ConstAssert")
+  guard unit.declarations()[5].data()
     is WgslGlobalDeclData::ConstAssert(assert_expr) else {
     abort("expected const assert payload")
   }
@@ -49,8 +62,8 @@ test "WGSL translation unit classifies top-level declarations" {
     wgsl_expr_ref_source_text(source, assert_expr),
     content="\"(1 == 1)\"",
   )
-  debug_inspect(unit.declarations()[5].kind(), content="Function")
-  debug_inspect(unit.declarations()[5].name(), content="\"fragment\"")
+  debug_inspect(unit.declarations()[6].kind(), content="Function")
+  debug_inspect(unit.declarations()[6].name(), content="\"fragment\"")
 }
 
 ///|
@@ -1615,6 +1628,14 @@ test "WGSL parser accepts official directives and statement attributes" {
     first_statement.attributes()[0].name().name(),
     content="\"diagnostic\"",
   )
+  match first_statement.payload() {
+    If(Some(condition)) =>
+      debug_inspect(
+        wgsl_expr_ref_source_text(source, condition),
+        content="\"gid.x > 0u\"",
+      )
+    _ => abort("expected if condition")
+  }
 }
 
 ///|
@@ -1658,12 +1679,54 @@ test "WGSL parser classifies official loop continuing and switch clauses" {
     abort("expected case selector payload")
   }
   debug_inspect(
-    selectors.map(fn(expr) { wgsl_expr_ref_source_text(source, expr) }),
+    selectors.map(fn(selector) { wgsl_case_selector_snapshot(source, selector) }),
     content=(
       #|["0u", "1u"]
     ),
   )
   debug_inspect(switch_body.statements()[1].kind(), content="DefaultCase")
+}
+
+///|
+test "WGSL parser models default as a case selector" {
+  let source =
+    #|fn main(value: u32) {
+    #|  switch value @diagnostic(off, derivative_uniformity) {
+    #|    case 0u, default, : {
+    #|      return;
+    #|    }
+    #|  }
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function")
+  }
+  match function.body().statements()[0].payload() {
+    Switch(Some(selector)) =>
+      debug_inspect(
+        wgsl_expr_ref_source_text(source, selector),
+        content="\"value\"",
+      )
+    _ => abort("expected switch selector")
+  }
+  let switch_body = function.body().statements()[0].blocks()[0]
+  let case_statement = switch_body.statements()[0]
+  guard case_statement.payload() is WgslStatementPayload::Case(selectors) else {
+    abort("expected case payload")
+  }
+  debug_inspect(
+    selectors.map(fn(selector) { wgsl_case_selector_snapshot(source, selector) }),
+    content=(
+      #|["0u", "default"]
+    ),
+  )
+  debug_inspect(
+    case_statement.expressions().map(fn(item) { item.role() }),
+    content=(
+      #|[CaseSelector]
+    ),
+  )
 }
 
 ///|

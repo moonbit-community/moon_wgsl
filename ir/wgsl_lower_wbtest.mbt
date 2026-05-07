@@ -706,6 +706,36 @@ test "WGSL AST lowerer supports switch statements" {
 }
 
 ///|
+test "WGSL AST lowerer preserves default case selectors" {
+  let source =
+    #|@compute
+    #|fn main() {
+    #|  var value: u32 = 0u;
+    #|  switch value {
+    #|    case 0u, default, : {
+    #|      value = value + 1u;
+    #|    }
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  match module_.entry_points[0].function.body.statements[1] {
+    Switch(_, cases) => {
+      debug_inspect(cases.length(), content="2")
+      debug_inspect(cases[0].value, content="U32(0)")
+      debug_inspect(cases[1].value, content="Default")
+    }
+    _ => abort("expected switch statement")
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("case 0u {"), content="true")
+  debug_inspect(emitted.contains("default {"), content="true")
+}
+
+///|
 test "WGSL AST lowerer lowers for loops into IR loops" {
   let source =
     #|@compute
@@ -943,7 +973,66 @@ test "WGSL AST lowerer supports phony assignment and address-of lvalues" {
   }
   debug_inspect(emitted.contains("_ = a;"), content="true")
   debug_inspect(
-    emitted.contains(": ptr<storage, array<u32>, read_write> = &v.x;"),
+    emitted.contains(": ptr<storage, array<u32>, read> = &v.x;"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer preserves storage access defaults" {
+  let source =
+    #|struct S {
+    #|  x: u32,
+    #|}
+    #|@group(2) @binding(0) var<storage> read_only: S;
+    #|@group(2) @binding(1) var<storage, read_write> writable: S;
+    #|@compute
+    #|fn main() {
+    #|  _ = read_only.x;
+    #|  writable.x = read_only.x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    module_.global_variables.items[0].space,
+    content="Storage({ bits: 1 })",
+  )
+  debug_inspect(
+    module_.global_variables.items[1].space,
+    content="Storage({ bits: 3 })",
+  )
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var<storage, read> read_only: S;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("var<storage, read_write> writable: S;"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer supports arrayLength on storage runtime arrays" {
+  let source =
+    #|@group(0) @binding(0) var<storage> values: array<u32>;
+    #|@compute
+    #|fn main(@builtin(global_invocation_id) id: vec3u) {
+    #|  if id.x >= arrayLength(&values) {
+    #|    return;
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("if (id.x >= arrayLength(&values))"),
     content="true",
   )
 }

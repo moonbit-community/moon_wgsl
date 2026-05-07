@@ -298,11 +298,33 @@ fn validation_issue13_nested_alias_global_source() -> String {
 }
 
 ///|
+fn validation_storage_array_length_ir_source() -> String {
+  let source =
+    #|@group(2) @binding(0) var<storage> values: array<u32>;
+    #|@group(2) @binding(1) var<storage, read_write> output: array<u32>;
+    #|@compute
+    #|fn main(@builtin(global_invocation_id) id: vec3u) {
+    #|  if id.x >= arrayLength(&values) {
+    #|    return;
+    #|  }
+    #|  output[id.x] = values[id.x];
+    #|}
+  let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
+    err =>
+      abort("expected storage arrayLength IR parse success: \{err.message()}")
+  }
+  @ir.emit_wgsl_module_from_ir(module_) catch {
+    err =>
+      abort("expected storage arrayLength IR emit success: \{err.message()}")
+  }
+}
+
+///|
 fn validation_case_arg() -> String {
   let args = @env.args()
   if args.length() == 0 {
     abort(
-      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global",
+      "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global|storage-array-length-ir",
     )
   }
   args[args.length() - 1]
@@ -323,9 +345,10 @@ fn main {
     "issue9-type-identity" => validation_issue9_type_identity_source()
     "issue13-nested-alias-global" =>
       validation_issue13_nested_alias_global_source()
+    "storage-array-length-ir" => validation_storage_array_length_ir_source()
     _ =>
       abort(
-        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global",
+        "usage: moon run tools/wgsl_validation_cases -- writer-boundary|upstream-compute|upstream-diagnostic-filters|bevy-issue8|bevy-pbr-functions|upstream-raycast|upstream-dual-source-blending|issue9-type-identity|issue13-nested-alias-global|storage-array-length-ir",
       )
   }
   println(source)

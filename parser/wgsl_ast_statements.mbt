@@ -575,6 +575,52 @@ fn wgsl_statement_push_comma_expr_refs(
 }
 
 ///|
+fn wgsl_statement_case_selectors_from_tokens(
+  owner : WgslDeclParser,
+  tokens : Array[WgslToken],
+  start : Int,
+  end_ : Int,
+  expression_refs : Array[WgslExprRef],
+  expressions : Array[WgslStatementExpression],
+) -> Array[WgslCaseSelector] {
+  let selectors : Array[WgslCaseSelector] = []
+  guard start >= 0 && end_ > start && end_ <= tokens.length() else {
+    return selectors
+  }
+  let depth = WgslTokenDepth()
+  let mut item_start = start
+  fn push_selector(item_end : Int) -> Unit {
+    guard item_end > item_start else { return }
+    if item_start + 1 == item_end && tokens[item_start].is_identifier("default") {
+      selectors.push(WgslCaseSelector::DefaultSelector)
+      return
+    }
+    match owner.expr_ref_from_token_range(tokens, item_start, item_end) {
+      Some(expr) => {
+        expression_refs.push(expr)
+        expressions.push(
+          WgslStatementExpression(
+            WgslStatementExpressionRole::CaseSelector,
+            expr,
+          ),
+        )
+        selectors.push(WgslCaseSelector::ExpressionSelector(expr))
+      }
+      None => ()
+    }
+  }
+  for i in start..<end_ {
+    if depth.at_top() && tokens[i].is_punctuation(44) {
+      push_selector(i)
+      item_start = i + 1
+    }
+    depth.observe_statement_token(tokens[i])
+  }
+  push_selector(end_)
+  selectors
+}
+
+///|
 fn WgslDeclParser::expr_ref_from_token_range(
   self : WgslDeclParser,
   tokens : Array[WgslToken],
@@ -587,24 +633,6 @@ fn WgslDeclParser::expr_ref_from_token_range(
   let expr_start = tokens[start].pos()
   let expr_end = tokens[end_ - 1].end()
   parse_wgsl_expr_ref_text(self.slice(expr_start, expr_end), expr_start)
-}
-
-///|
-fn wgsl_statement_top_level_identifier_index(
-  tokens : Array[WgslToken],
-  start : Int,
-  end_ : Int,
-  ident : String,
-) -> Int {
-  let depth = WgslTokenDepth()
-  let limit = if end_ < tokens.length() { end_ } else { tokens.length() }
-  for i in start..<limit {
-    if depth.at_top() && tokens[i].is_identifier(ident) {
-      return i
-    }
-    depth.observe_statement_token(tokens[i])
-  }
-  -1
 }
 
 ///|
@@ -622,6 +650,26 @@ fn wgsl_statement_starts_with_local_binding(
 }
 
 ///|
+fn wgsl_statement_control_expression_end(
+  tokens : Array[WgslToken],
+  start : Int,
+) -> Int {
+  let depth = WgslTokenDepth()
+  for i in start..<tokens.length() {
+    if depth.at_top() &&
+      (
+        tokens[i].is_punctuation(123) ||
+        tokens[i].is_punctuation(64) ||
+        tokens[i].is_identifier("else")
+      ) {
+      return i
+    }
+    depth.observe_statement_token(tokens[i])
+  }
+  tokens.length()
+}
+
+///|
 fn wgsl_statement_collect_condition_expr(
   owner : WgslDeclParser,
   tokens : Array[WgslToken],
@@ -635,13 +683,7 @@ fn wgsl_statement_collect_condition_expr(
   if tokens[expr_start].is_punctuation(40) {
     let close_index = wgsl_statement_delimited_end(tokens, expr_start, 40, 41)
     if close_index > expr_start {
-      let else_index = wgsl_statement_top_level_identifier_index(
-        tokens,
-        close_index + 1,
-        tokens.length(),
-        "else",
-      )
-      let expr_end = if else_index >= 0 { else_index } else { tokens.length() }
+      let expr_end = wgsl_statement_control_expression_end(tokens, expr_start)
       if close_index + 1 < expr_end {
         wgsl_statement_push_expr_ref(
           owner, tokens, expr_start, expr_end, role, expression_refs, expressions,
@@ -661,13 +703,7 @@ fn wgsl_statement_collect_condition_expr(
     }
     expr_start
   } else {
-    let else_index = wgsl_statement_top_level_identifier_index(
-      tokens,
-      expr_start,
-      tokens.length(),
-      "else",
-    )
-    let expr_end = if else_index >= 0 { else_index } else { tokens.length() }
+    let expr_end = wgsl_statement_control_expression_end(tokens, expr_start)
     wgsl_statement_push_expr_ref(
       owner, tokens, expr_start, expr_end, role, expression_refs, expressions,
     )
@@ -973,20 +1009,7 @@ fn collect_wgsl_statement_expression_refs(
       return
     }
     Loop => return
-    Case => {
-      let colon = wgsl_statement_top_level_token_index(tokens, 1, 58)
-      let expr_end = if colon >= 0 { colon } else { tokens.length() }
-      wgsl_statement_push_comma_expr_refs(
-        owner,
-        tokens,
-        1,
-        expr_end,
-        WgslStatementExpressionRole::CaseSelector,
-        expression_refs,
-        expressions,
-      )
-      return
-    }
+    Case => return
   }
 }
 
@@ -1015,25 +1038,12 @@ fn wgsl_statement_first_expression_by_role(
 }
 
 ///|
-fn wgsl_statement_expressions_by_role(
-  expressions : Array[WgslStatementExpression],
-  role : WgslStatementExpressionRole,
-) -> Array[WgslExprRef] {
-  let refs : Array[WgslExprRef] = []
-  for expression in expressions {
-    if expression.role() == role {
-      refs.push(expression.expression())
-    }
-  }
-  refs
-}
-
-///|
 fn wgsl_statement_payload_from_ast(
   kind : WgslStatementKind,
   first_identifier : String?,
   assignment_operator : String?,
   local_bindings : Array[WgslLocalDeclaration],
+  case_selectors : Array[WgslCaseSelector],
   expressions : Array[WgslStatementExpression],
 ) -> WgslStatementPayload {
   match kind {
@@ -1087,13 +1097,7 @@ fn wgsl_statement_payload_from_ast(
         ),
       )
     Compound => Compound
-    Case =>
-      Case(
-        wgsl_statement_expressions_by_role(
-          expressions,
-          WgslStatementExpressionRole::CaseSelector,
-        ),
-      )
+    Case => Case(case_selectors)
     DefaultCase => DefaultCase
     Assignment =>
       Assignment(
@@ -1133,13 +1137,7 @@ fn wgsl_statement_payload_from_ast(
       )
     Expression =>
       match first_identifier {
-        Some("case") =>
-          Case(
-            wgsl_statement_expressions_by_role(
-              expressions,
-              WgslStatementExpressionRole::CaseSelector,
-            ),
-          )
+        Some("case") => Case(case_selectors)
         Some("default") => DefaultCase
         _ =>
           Expression(
@@ -1269,13 +1267,23 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     collect_wgsl_statement_expression_refs(
       self, scope_tokens, kind, expression_refs, expressions,
     )
+    let case_selectors = if kind == WgslStatementKind::Case {
+      let colon = wgsl_statement_top_level_token_index(scope_tokens, 1, 58)
+      let selector_end = if colon >= 0 { colon } else { scope_tokens.length() }
+      wgsl_statement_case_selectors_from_tokens(
+        self, scope_tokens, 1, selector_end, expression_refs, expressions,
+      )
+    } else {
+      []
+    }
     let assignment_operator = match
       wgsl_statement_assignment_operator(scope_tokens) {
       Some((_, text, _)) => Some(text)
       None => None
     }
     let payload = wgsl_statement_payload_from_ast(
-      kind, body_first_identifier, assignment_operator, local_bindings, expressions,
+      kind, body_first_identifier, assignment_operator, local_bindings, case_selectors,
+      expressions,
     )
     let blocks = self.collect_statement_blocks(tokens)
     Some(

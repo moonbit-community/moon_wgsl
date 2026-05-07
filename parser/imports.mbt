@@ -20,6 +20,7 @@ using @ast {
   type WgslGlobalDeclKind,
   type WgslGlobalVariable,
   type WgslIdent,
+  type WgslCaseSelector,
   type WgslLocalDeclaration,
   type WgslLocalDeclarationKind,
   type WgslOverride,

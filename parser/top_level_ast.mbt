@@ -296,6 +296,19 @@ fn WgslTopLevelParser::parse_items(
     }
     let token = self.tokens[self.index]
     let token_pos = token.pos()
+    if token.is_punctuation(59) {
+      self.flush_trivia_until(items, token_pos)
+      top_level_push_span_item(
+        items,
+        self.source,
+        WgslRawTopLevelKind::Trivia,
+        token_pos,
+        token.end(),
+      )
+      self.index = self.index + 1
+      self.pending_start = token.end()
+      continue
+    }
     if token.is_punctuation(35) {
       let line_end = top_level_line_end(self.source, token_pos)
       let cleaned_line = self.cleaned[token_pos:line_end].to_owned()

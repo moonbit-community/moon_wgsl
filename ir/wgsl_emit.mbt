@@ -833,6 +833,8 @@ fn WgslIrEmitter::emit_expression(
       )
     ImageQuery(image, query) =>
       self.image_query_expression(function, image, query)
+    ArrayLength(pointer) =>
+      "arrayLength(\{self.atomic_pointer_expression(function, pointer)})"
     RayQueryInitialize(query, acceleration, ray_desc) =>
       "rayQueryInitialize(\{self.required_function_expression(function, query)}, \{self.required_function_expression(function, acceleration)}, \{self.required_function_expression(function, ray_desc)})"
     RayQueryProceed(query) =>
@@ -1397,6 +1399,7 @@ fn WgslIrEmitter::global_expression_inner_type(
       self.atomic_expression_result_type(None, atomic_function, arguments)
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(None, image, query)
+    ArrayLength(_) => self.type_handle_named("u32")
     Literal(literal) => self.literal_type(literal)
     _ => None
   }
