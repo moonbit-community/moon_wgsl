@@ -13,6 +13,16 @@
 // limitations under the License.
 
 ///|
+test "composer uses naga_oil module decoration for planned imported names" {
+  debug_inspect(wgsl_naga_oil_base32_nopad("inc"), content="\"NFXGG\"")
+  debug_inspect(wgsl_naga_oil_base32_nopad("mod"), content="\"NVXWI\"")
+  debug_inspect(
+    wgsl_naga_oil_decorated_final_name("inc", "hello"),
+    content="\"helloX_naga_oil_mod_XNFXGGX\"",
+  )
+}
+
+///|
 test "compose graph execution plans reachability before emission" {
   let composer = Composer::default()
   let dep_source =

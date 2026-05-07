@@ -46,15 +46,33 @@ fn WgslComposeSession::graph_full_module_is_planned(
 
 ///|
 fn wgsl_compose_assigned_final_name(
+  module_path : String,
   alias_prefixes : Array[String],
   original_name : String,
 ) -> String {
-  if alias_prefixes.length() == 0 {
+  if module_path != "" {
+    wgsl_naga_oil_decorated_final_name(module_path, original_name)
+  } else if alias_prefixes.length() == 0 {
     original_name
   } else {
     let prefix = alias_prefixes.join("__")
     "\{prefix}__\{original_name}"
   }
+}
+
+///|
+fn WgslComposeSession::module_path_for_rel_path(
+  self : WgslComposeSession,
+  rel_path : String,
+) -> String {
+  let normalized_rel = normalize_shader_rel_path(rel_path)
+  for entry in self.modules.iter() {
+    let (module_path, module_rel_path) = entry
+    if normalize_shader_rel_path(module_rel_path) == normalized_rel {
+      return module_path
+    }
+  }
+  ""
 }
 
 ///|
@@ -70,6 +88,7 @@ fn record_wgsl_planned_final_names_from_extraction(
   for origin in extraction.origins() {
     let identity = WgslIrSymbolIdentity::new(rel_path, origin.name())
     let final_name = wgsl_compose_assigned_final_name(
+      session.module_path_for_rel_path(rel_path),
       alias_prefixes,
       origin.name(),
     )

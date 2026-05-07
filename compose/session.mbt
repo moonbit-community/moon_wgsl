@@ -302,6 +302,15 @@ fn WgslComposeBindingSet::push(
   self : WgslComposeBindingSet,
   binding : WgslComposeBinding,
 ) -> Unit {
+  if binding.alias_name != "" && binding.scope != UnqualifiedItemBinding {
+    for existing in self.bindings {
+      if existing.scope == binding.scope &&
+        existing.alias_name == binding.alias_name &&
+        existing.from_name == binding.from_name {
+        return
+      }
+    }
+  }
   let key = wgsl_compose_binding_key(binding)
   if self.keys.contains(key) {
     return

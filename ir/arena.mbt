@@ -16,6 +16,11 @@ pub fn TypeArena::append(self : TypeArena, item : Type) -> Handle {
 }
 
 ///|
+pub fn TypeArena::set(self : TypeArena, handle : Handle, item : Type) -> Unit {
+  self.items[handle.index()] = item
+}
+
+///|
 pub fn TypeArena::get(self : TypeArena, handle : Handle) -> Type? {
   self.items.get(handle.index())
 }

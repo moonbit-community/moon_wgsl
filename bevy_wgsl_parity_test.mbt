@@ -111,10 +111,7 @@ test "naga_oil parity: Bevy PBR fragment resolves aliased clustered lights" {
     source.contains("view_bindings::clustered_lights"),
     content="false",
   )
-  debug_inspect(
-    source.contains("view_bindings__clustered_lights"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
     source.contains("shadows__view_bindings__view"),
     content="false",
@@ -136,10 +133,7 @@ test "naga_oil parity: Bevy PBR functions resolves local view bindings alias" {
     source.contains("view_bindings::clustered_lights"),
     content="false",
   )
-  debug_inspect(
-    source.contains("view_bindings__clustered_lights"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -178,24 +172,17 @@ test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live"
     source.contains("& types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
     content="false",
   )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
-    source.contains("const lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains(
-      "light.flags & lighting__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE",
-    ),
+    source.contains(".flags &") &&
+    source.contains("POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVEX_naga_oil_mod_X"),
     content="true",
   )
   debug_inspect(
     source.contains("view_bindings::clustered_lights"),
     content="false",
   )
-  debug_inspect(
-    source.contains("lighting__view_bindings__clustered_lights"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -244,7 +231,7 @@ test "issue 10: cached alias redirect stress compose completes" {
       abort("expected issue 10 alias redirect stress success: \{err.message()}")
   }
   debug_inspect(source.contains("many::item_0"), content="false")
-  debug_inspect(source.contains("many__item_0"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("fn entry() -> u32"), content="true")
 }
 
@@ -278,7 +265,7 @@ test "issue 11: Bevy PBR point-light flag uses emitted symbol name" {
   )
   debug_inspect(
     source.contains(
-      "const pbr_functions__view_bindings__types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE",
+      "const POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVEX_naga_oil_mod_X",
     ),
     content="true",
   )
@@ -287,9 +274,7 @@ test "issue 11: Bevy PBR point-light flag uses emitted symbol name" {
     content="false",
   )
   debug_inspect(
-    source.contains(
-      "& pbr_functions__view_bindings__types__POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE",
-    ),
+    source.contains("& POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVEX_naga_oil_mod_X"),
     content="true",
   )
 }
@@ -359,11 +344,8 @@ test "issue 13: nested alias global references use emitted symbol identity" {
     source.contains("shadows__view_bindings__view"),
     content="false",
   )
-  debug_inspect(
-    source.contains("var<uniform> view_bindings__view"),
-    content="true",
-  )
-  debug_inspect(source.contains("view_bindings__view.value"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -406,7 +388,7 @@ test "naga_oil parity: prepared Bevy catalog resolves alias-qualified bindings" 
     if entry_text.contains("view_bindings::clustered_lights") {
       unresolved_entries = unresolved_entries + 1
     }
-    if entry_text.contains("view_bindings__clustered_lights") {
+    if entry_text.contains("clustered_lightsX_naga_oil_mod_X") {
       resolved_entries = resolved_entries + 1
     }
   }

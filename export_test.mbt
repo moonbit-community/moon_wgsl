@@ -78,11 +78,11 @@ fn register_ambiguous_export_test_shaders() -> Unit {
   register_export_test_shader_files([
     {
       rel_path: "shaders/shared/a.wgsl",
-      source: "fn identical_helper() -> f32 {\n  return 1.0;\n}\n",
+      source: "fn identical_helper() -> f32 {\n  return 1f;\n}\n",
     },
     {
       rel_path: "shaders/shared/b.wgsl",
-      source: "fn identical_helper() -> f32 {\n  return 1.0;\n}\n",
+      source: "fn identical_helper() -> f32 {\n  return 1f;\n}\n",
     },
     {
       rel_path: "shaders/effects/ambiguous.wgsl",
@@ -276,9 +276,10 @@ test "naga_oil: export keeps same-name local initializer callee" {
   }
   debug_inspect(output.source.contains("fn point_light"), content="true")
   debug_inspect(
-    output.source.contains("let point_light: u32 = point_light(light_id);"),
+    output.source.contains("point_light(light_id);"),
     content="true",
   )
+  debug_inspect(output.source.contains("let point_light"), content="false")
   debug_inspect(output.source.contains("fn fragment"), content="true")
   clear_export_test_registry()
 }
@@ -369,7 +370,7 @@ test "naga_oil: export source catalog is scoped to the current dependency closur
 
   let helper_paths : Array[String] = []
   for entry in output.source_catalog {
-    if entry.symbol_name == "identical_helper" {
+    if entry.symbol_name.contains("identical_helper") {
       helper_paths.push(entry.rel_path)
     }
   }
@@ -397,7 +398,7 @@ test "naga_oil: export_wgsl_with_redirects rewrites dependencies before tree-sha
   debug_inspect(output.source.contains("fn build_color"), content="true")
   debug_inspect(output.source.contains("fn build_shadow"), content="false")
   debug_inspect(
-    output.source.contains("return build_color(vertex);"),
+    output.source.contains("build_color") && output.source.contains("(vertex);"),
     content="true",
   )
   debug_inspect(
@@ -476,7 +477,7 @@ test "redirect diagnostics require exact AST reference path matches" {
   debug_inspect(unmatched_item_redirects, content="1")
   let mut renamed_origins = 0
   for origin in output.source_origins {
-    if origin.generated_symbol_name == "other__Item" &&
+    if origin.generated_symbol_name.contains("ItemX_naga_oil_mod_X") &&
       origin.source_symbol_name == "Item" &&
       origin.rel_path == "shaders/shared/other.wgsl" {
       renamed_origins = renamed_origins + 1

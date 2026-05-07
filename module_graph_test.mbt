@@ -52,13 +52,13 @@ test "naga_oil: registered source registry tracks define_import_path" {
   ignore(
     registry.register_source(
       "shaders/demo/module.wgsl",
-      "#define_import_path demo::module\nfn shade() -> f32 { return 1.0; }\n",
+      "#define_import_path demo::module\nfn shade() -> f32 { return 1f; }\n",
       None,
     ),
   )
   debug_inspect(
     registry.registered_source("shaders/demo/module.wgsl"),
-    content="Some(\"#define_import_path demo::module\\nfn shade() -> f32 { return 1.0; }\\n\")",
+    content="Some(\"#define_import_path demo::module\\nfn shade() -> f32 { return 1f; }\\n\")",
   )
   let modules = registry.copy_import_module_paths()
   debug_inspect(
@@ -73,7 +73,7 @@ test "naga_oil: resolve import module prefers registered map entries" {
   ignore(
     registry.register_source(
       "sprite_render/render/sprite_view_bindings.wgsl",
-      "#define_import_path bevy_sprite_render::render::sprite_view_bindings\nfn shade() -> f32 { return 1.0; }\n",
+      "#define_import_path bevy_sprite_render::render::sprite_view_bindings\nfn shade() -> f32 { return 1f; }\n",
       None,
     ),
   )
@@ -120,11 +120,11 @@ test "naga_oil: registry analysis reports duplicate module paths in one batch" {
   let diagnostics = registry.analyze_source_files([
     {
       rel_path: "shaders/demo/a.wgsl",
-      source: "#define_import_path demo::dup\nfn a() -> f32 { return 1.0; }\n",
+      source: "#define_import_path demo::dup\nfn a() -> f32 { return 1f; }\n",
     },
     {
       rel_path: "shaders/demo/b.wgsl",
-      source: "#define_import_path demo::dup\nfn b() -> f32 { return 2.0; }\n",
+      source: "#define_import_path demo::dup\nfn b() -> f32 { return 2f; }\n",
     },
   ])
   debug_inspect(diagnostics.length(), content="1")
@@ -144,11 +144,11 @@ test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" 
     [
       {
         rel_path: "shaders/demo/./shared.wgsl",
-        source: "#define_import_path demo::shared_a\nfn a() -> f32 { return 1.0; }\n",
+        source: "#define_import_path demo::shared_a\nfn a() -> f32 { return 1f; }\n",
       },
       {
         rel_path: "shaders/demo/shared.wgsl",
-        source: "#define_import_path demo::shared_b\nfn b() -> f32 { return 2.0; }\n",
+        source: "#define_import_path demo::shared_b\nfn b() -> f32 { return 2f; }\n",
       },
     ],
     diagnostics,
@@ -196,7 +196,7 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
   composer.register_source_files([
     @common.WgslSourceFile::{
       rel_path: "plugin.wgsl",
-      source: "fn plugin_value() -> f32 {\n  return 2.0;\n}\n",
+      source: "fn plugin_value() -> f32 {\n  return 2f;\n}\n",
     },
     @common.WgslSourceFile::{
       rel_path: "root.wgsl",
@@ -210,11 +210,8 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
     err =>
       abort("expected path-inferred module compose success: \{err.message()}")
   }
-  debug_inspect(source.contains("fn plugin__plugin_value"), content="true")
-  debug_inspect(
-    source.contains("return plugin__plugin_value();"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|

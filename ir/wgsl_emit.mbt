@@ -97,6 +97,9 @@ fn WgslIrEmitter::emit_module(
     self.emit_entry_point(out, entry_point)
     needs_blank = true
   }
+  if needs_blank {
+    out.write_string("\n")
+  }
   out.to_string()
 }
 
@@ -133,7 +136,7 @@ fn WgslIrEmitter::emit_struct_type(
   }
   out.write_string("struct \{name} {\n")
   for struct_member in members {
-    out.write_string("  ")
+    out.write_string("    ")
     self.emit_binding_attribute_prefix(out, struct_member.binding)
     let member_name = match struct_member.name {
       Some(value) => value
@@ -2031,10 +2034,17 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
 
 ///|
 fn wgsl_ir_emit_float_literal_text(text : String) -> String {
-  if text.contains(".") || text.contains("e") || text.contains("E") {
+  let normalized = if text.contains(".") ||
+    text.contains("e") ||
+    text.contains("E") {
     text
   } else {
     "\{text}.0"
+  }
+  if normalized.has_suffix(".0") {
+    "\{normalized[0:normalized.length() - 2]}f"
+  } else {
+    "\{normalized}f"
   }
 }
 
@@ -2410,7 +2420,7 @@ fn wgsl_ir_swizzle_component_name(component : SwizzleComponent) -> String {
 fn wgsl_ir_indent(count : Int) -> String {
   let out = StringBuilder::new()
   for _ in 0..<count {
-    out.write_string("  ")
+    out.write_string("    ")
   }
   out.to_string()
 }

@@ -46,7 +46,7 @@ test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
   let base_definition = composer_test_add_or_abort(
     composer,
     composer_test_descriptor(
-      "#define_import_path test::base\nfn base_value() -> f32 {\n  return 1.0;\n}\n",
+      "#define_import_path test::base\nfn base_value() -> f32 {\n  return 1f;\n}\n",
       "tests/base.wgsl", base_shader_defs,
     ),
   )
@@ -83,7 +83,7 @@ test "naga_oil: composer remove_composable_module removes dependent modules" {
     composer_test_add_or_abort(
       composer,
       composer_test_descriptor(
-        "#define_import_path test::base\nfn base_value() -> f32 {\n  return 1.0;\n}\n",
+        "#define_import_path test::base\nfn base_value() -> f32 {\n  return 1f;\n}\n",
         "tests/base_remove.wgsl",
         @hashmap.HashMap::new(),
       ),
@@ -113,7 +113,7 @@ test "naga_oil: composer rejects modules without an import path name" {
   ignore(
     composer.add_composable_module(
       composer_test_descriptor(
-        "fn shade() -> f32 {\n  return 1.0;\n}\n",
+        "fn shade() -> f32 {\n  return 1f;\n}\n",
         "tests/no_name.wgsl",
         @hashmap.HashMap::new(),
       ),
@@ -134,7 +134,7 @@ test "naga_oil: composer rejects modules without an import path name" {
 test "naga_oil: add_composable_module resolves imports from the composer registry" {
   let composer = @compose.Composer::default()
   composer.register_source(
-    "tests/plain_shared.wgsl", "#define_import_path test::plain\nfn plain_value() -> f32 {\n  return 2.0;\n}\n",
+    "tests/plain_shared.wgsl", "#define_import_path test::plain\nfn plain_value() -> f32 {\n  return 2f;\n}\n",
   )
 
   let child_definition = composer_test_add_or_abort(
@@ -162,5 +162,8 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
 
   debug_inspect(composed.contains("fn plain_value"), content="true")
   debug_inspect(composed.contains("fn child_value"), content="true")
-  debug_inspect(composed.contains("return plain_value();"), content="true")
+  debug_inspect(
+    composed.contains("plain_valueX_naga_oil_mod_X"),
+    content="true",
+  )
 }

@@ -864,6 +864,7 @@ pub(all) struct TypeArena {
 pub fn TypeArena::append(Self, Type) -> Handle
 pub fn TypeArena::get(Self, Handle) -> Type?
 pub fn TypeArena::new() -> Self
+pub fn TypeArena::set(Self, Handle, Type) -> Unit
 
 pub enum TypeInner {
   Scalar(Scalar)

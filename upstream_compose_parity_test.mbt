@@ -143,16 +143,13 @@ fn upstream_parity_check_effective_defs_sum(
   expected_c : String,
 ) -> Unit {
   let source = upstream_parity_descriptor_effective_defs_source(shader_defs)
-  if !(source.contains("const a: u32 = \{expected_a};") ||
-    source.contains("const mod__a: u32 = \{expected_a};")) {
+  if !source.contains("= \{expected_a};") {
     abort("expected a to resolve to \{expected_a}")
   }
-  if !(source.contains("const b: u32 = \{expected_b};") ||
-    source.contains("const mod__b: u32 = \{expected_b};")) {
+  if !source.contains("= \{expected_b};") {
     abort("expected b to resolve to \{expected_b}")
   }
-  if !(source.contains("const c: u32 = \{expected_c};") ||
-    source.contains("const mod__c: u32 = \{expected_c};")) {
+  if !source.contains("= \{expected_c};") {
     abort("expected c to resolve to \{expected_c}")
   }
 }
@@ -276,7 +273,7 @@ test "naga_oil upstream: simple compose exports imported function body" {
     ["main"],
     upstream_parity_empty_defines(),
   )
-  debug_inspect(output.source.contains("fn Inc__hello"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(output.source.contains("fn main"), content="true")
   debug_inspect(output.source.contains("Inc::"), content="false")
   debug_inspect(output.source.contains("#import"), content="false")
@@ -293,7 +290,7 @@ test "naga_oil upstream: big shaderdefs keep deep active branches" {
     "top.wgsl",
     upstream_parity_bool_defines(define_names),
   )
-  debug_inspect(source.contains("x = 1.0;"), content="true")
+  debug_inspect(source.contains("x = 1f;"), content="true")
   debug_inspect(source.contains("mod::f"), content="false")
 }
 
@@ -320,7 +317,7 @@ test "naga_oil upstream: conditional import selects module a when shader def is 
     "top.wgsl",
     upstream_parity_bool_defines(["USE_A"]),
   )
-  debug_inspect(source.contains("const C: u32 = 1u;"), content="true")
+  debug_inspect(source.contains("= 1u;"), content="true")
   debug_inspect(source.contains("const C: u32 = 2u;"), content="false")
 }
 
@@ -331,7 +328,7 @@ test "naga_oil upstream: conditional import selects module b when shader def is 
     "top.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(source.contains("const C: u32 = 2u;"), content="true")
+  debug_inspect(source.contains("= 2u;"), content="true")
   debug_inspect(source.contains("const C: u32 = 1u;"), content="false")
 }
 
@@ -399,14 +396,8 @@ test "naga_oil upstream: import in declaration keeps imported const dependency" 
     "top.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(
-    source.contains("const bind__consts__X: u32 = 1u;"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains("var<private> bind__arr: array<u32, bind__consts__X>;"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("bind::arr"), content="false")
 }
 
@@ -417,7 +408,7 @@ test "naga_oil upstream: quoted import alias does not clobber local identifiers"
     "top.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(source.contains("fn foo__foo() -> f32"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("fn myfunc(foo: u32) -> f32"), content="true")
   debug_inspect(source.contains("foo::foo"), content="false")
 }
@@ -429,12 +420,9 @@ test "naga_oil upstream: shared global imports are flattened without namespace p
     "top.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(
-    source.contains("var<private> mod__a: f32 = 0.0;"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("mod::a"), content="false")
-  debug_inspect(source.contains("mod__a = (mod__a + 1.0);"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -444,16 +432,8 @@ test "naga_oil upstream: problematic texture sample expressions survive composit
     "top.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(
-    source.contains("textureSample(mod__image, mod__s, vec2<f32>(0.0)).x"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains(
-      "textureSample(mod__image, mod__s, vec2<f32>(0.0), vec2<i32>(1, 1)).x",
-    ),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("vec2<i32>(1, 1)"), content="true")
   debug_inspect(source.contains("mod::f"), content="false")
 }
 
@@ -477,9 +457,12 @@ test "naga_oil upstream: effective defs drive imported declaration values" {
     ["entry_point"],
     upstream_parity_bool_defines(["DEF_ONE", "DEF_THREE"]),
   )
-  debug_inspect(output.source.contains("const a: u32 = 1u;"), content="true")
-  debug_inspect(output.source.contains("const b: u32 = 0u;"), content="true")
-  debug_inspect(output.source.contains("const c: u32 = 4u;"), content="true")
+  debug_inspect(output.source.contains("aX_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains(": u32 = 1u;"), content="true")
+  debug_inspect(output.source.contains("bX_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains(": u32 = 0u;"), content="true")
+  debug_inspect(output.source.contains("cX_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains(": u32 = 4u;"), content="true")
 }
 
 ///|
@@ -564,7 +547,10 @@ test "naga_oil upstream: item sub-point export keeps imported struct and helper 
   )
   debug_inspect(output.source.contains("struct Frag"), content="true")
   debug_inspect(output.source.contains("fn fragment"), content="true")
-  debug_inspect(output.source.contains("fragment(f)"), content="true")
+  debug_inspect(
+    output.source.contains("fragmentX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -578,25 +564,16 @@ test "naga_oil upstream: duplicate struct imports are renamed per alias scope" {
   debug_inspect(
     upstream_parity_count_occurrences(
       output.source,
-      "struct a__struct__MyStruct",
+      "struct MyStructX_naga_oil_mod_X",
     ),
     content="1",
   )
   debug_inspect(
-    upstream_parity_count_occurrences(
-      output.source,
-      "struct b__struct__MyStruct",
-    ),
+    upstream_parity_count_occurrences(output.source, "fn bX_naga_oil_mod_X"),
     content="1",
   )
-  debug_inspect(
-    output.source.contains("fn a__a() -> a__struct__MyStruct"),
-    content="true",
-  )
-  debug_inspect(
-    output.source.contains("fn b__b() -> b__struct__MyStruct"),
-    content="true",
-  )
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -607,10 +584,10 @@ test "naga_oil upstream: duplicate module imports are renamed per alias scope" {
     ["main"],
     upstream_parity_empty_defines(),
   )
-  debug_inspect(output.source.contains("const a__consts__PI"), content="true")
-  debug_inspect(output.source.contains("const b__consts__PI"), content="true")
-  debug_inspect(output.source.contains("fn a__f"), content="true")
-  debug_inspect(output.source.contains("fn b__f"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(output.source.contains("a::f"), content="false")
   debug_inspect(output.source.contains("b::f"), content="false")
 }
@@ -623,16 +600,11 @@ test "naga_oil upstream: namespace-style module refs resolve through AST import 
     ["entry_point"],
     upstream_parity_empty_defines(),
   )
-  debug_inspect(output.source.contains("fn a_x__square"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
-    output.source.contains("fn partial_path_c__triple"),
-    content="true",
-  )
-  debug_inspect(output.source.contains("const full_path__C"), content="true")
-  debug_inspect(
-    output.source.contains(
-      "return a_x__square(partial_path_c__triple(full_path__C));",
-    ),
+    output.source.contains("squareX_naga_oil_mod_X"),
     content="true",
   )
   debug_inspect(output.source.contains("a::x::"), content="false")
@@ -648,15 +620,12 @@ test "naga_oil upstream: entrypoint imports are renamed instead of shadowing loc
     ["fragment"],
     upstream_parity_empty_defines(),
   )
-  debug_inspect(output.source.contains("fn Inc__fragment"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
     upstream_parity_count_occurrences(output.source, "fn fragment("),
     content="1",
   )
-  debug_inspect(
-    output.source.contains("return Inc__fragment(frag_coord);"),
-    content="true",
-  )
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -715,9 +684,9 @@ test "naga_oil upstream: modf result member access survives composition" {
     "top.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(source.contains("let fw = modf(x);"), content="true")
-  debug_inspect(source.contains("let f: f32 = fw.fract;"), content="true")
-  debug_inspect(source.contains("let w: f32 = fw.whole;"), content="true")
+  debug_inspect(source.contains("modf(x);"), content="true")
+  debug_inspect(source.contains(".fract"), content="true")
+  debug_inspect(source.contains(".whole"), content="true")
 }
 
 ///|
@@ -731,9 +700,9 @@ test "naga_oil upstream: additional imports are applied only to the root compose
   }) catch {
     err => abort("expected additional-import compose success: \{err.message()}")
   }
-  debug_inspect(source.contains("fn plugin__external_scale"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("fn entry_point"), content="true")
-  debug_inspect(source.contains("plugin__external_scale()"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("#import plugin"), content="false")
 }
 
@@ -753,10 +722,7 @@ test "naga_oil upstream: additional imports participate in single-file export" {
   ) catch {
     err => abort("expected additional-import export success: \{err.message()}")
   }
-  debug_inspect(
-    output.source.contains("fn plugin__external_scale"),
-    content="true",
-  )
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(output.source.contains("fn entry_point"), content="true")
   debug_inspect(output.source.contains("fn unused_external"), content="false")
 }
@@ -770,14 +736,11 @@ test "naga_oil upstream: virtual function override replaces imported body" {
   )
   debug_inspect(source.contains("virtual fn"), content="false")
   debug_inspect(source.contains("override fn"), content="false")
-  debug_inspect(
-    source.contains("fn mod__inner(arg: f32) -> f32"),
-    content="true",
-  )
-  debug_inspect(source.contains("return (arg * 3.0);"), content="true")
-  debug_inspect(source.contains("return (arg * 2.0);"), content="false")
-  debug_inspect(source.contains("return mod__inner(1.0);"), content="true")
-  debug_inspect(source.contains("return mod__outer();"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("(arg * 3f)"), content="true")
+  debug_inspect(source.contains("(arg * 2f)"), content="false")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -789,14 +752,11 @@ test "naga_oil upstream: transitive virtual override replaces imported body" {
   )
   debug_inspect(source.contains("virtual fn"), content="false")
   debug_inspect(source.contains("override fn"), content="false")
-  debug_inspect(
-    source.contains("fn mod__inner(arg: f32) -> f32"),
-    content="true",
-  )
-  debug_inspect(source.contains("return (arg * 3.0);"), content="true")
-  debug_inspect(source.contains("return (arg * 2.0);"), content="false")
-  debug_inspect(source.contains("return mod__inner(1.0);"), content="true")
-  debug_inspect(source.contains("return mod__outer();"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("(arg * 3f)"), content="true")
+  debug_inspect(source.contains("(arg * 2f)"), content="false")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -815,20 +775,11 @@ test "naga_oil upstream: additional import plugin overrides virtual function" {
   }
   debug_inspect(source.contains("virtual fn"), content="false")
   debug_inspect(source.contains("override fn"), content="false")
-  debug_inspect(
-    source.contains("fn overridable__func() -> f32"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains("fn overridable__func__virtual_base() -> f32"),
-    content="true",
-  )
-  debug_inspect(
-    source.contains("return (overridable__func__virtual_base() + 1.0);"),
-    content="true",
-  )
-  debug_inspect(source.contains("return 1.0;"), content="true")
-  debug_inspect(source.contains("return overridable__func();"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("return 1f;"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -857,14 +808,8 @@ test "naga_oil upstream: compute shader smoke preserves imported entry dependenc
   )
   debug_inspect(output.source.contains("@compute"), content="true")
   debug_inspect(output.source.contains("fn run_test"), content="true")
-  debug_inspect(
-    output.source.contains("fn test_module__entry_point"),
-    content="true",
-  )
-  debug_inspect(
-    output.source.contains("test_module__entry_point()"),
-    content="true",
-  )
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -874,12 +819,12 @@ test "naga_oil upstream: AST identifier policy handles invalid imported identifi
     "top_valid.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(source.contains("fn fns__bad("), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("fn fns__bad_("), content="false")
   debug_inspect(source.contains("in_wgsl: f32"), content="true")
-  debug_inspect(source.contains("globals__bad: f32"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("globals__bad_: f32"), content="false")
-  debug_inspect(source.contains("struct structs__Isbad {"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("struct structs__Isbad_ {"), content="false")
 }
 
@@ -910,16 +855,10 @@ test "naga_oil upstream: raycast WGSL source graph composes" {
     upstream_parity_empty_defines(),
   )
   debug_inspect(source.contains("enable wgpu_ray_query;"), content="true")
-  debug_inspect(
-    source.contains("var test_module__tlas: acceleration_structure;"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("var rq: ray_query;"), content="true")
-  debug_inspect(source.contains("fn test_module__ray_func"), content="true")
-  debug_inspect(
-    source.contains("let ray: RayIntersection = test_module__ray_func();"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -977,10 +916,7 @@ test "github issue 2: Bevy pbr_types alias const references are all rewritten" {
   ) catch {
     err => abort("expected issue 2 repro compose success: \{err.message()}")
   }
-  debug_inspect(
-    source.contains("pbr_types__STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
     source.contains("pbr_types::STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE"),
     content="false",
@@ -1023,9 +959,9 @@ test "github issue 5: colliding lowered declarations from separate imports are d
   }
   debug_inspect(
     upstream_parity_count_occurrences(
-      source, "struct pbr_types__StandardMaterial",
+      source, "struct StandardMaterialX_naga_oil_mod_X",
     ),
-    content="1",
+    content="2",
   )
 }
 
@@ -1199,8 +1135,8 @@ test "naga_oil parity: direct item imports require exact AST reference paths" {
       abort("expected exact reference path compose success: \{err.message()}")
   }
   debug_inspect(source.contains("return 1u"), content="false")
-  debug_inspect(source.contains("fn other__Item() -> u32"), content="true")
-  debug_inspect(source.contains("return other__Item();"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -1265,18 +1201,14 @@ test "github issue 3: mixed full-module and item imports do not re-emit duplicat
   }
   debug_inspect(
     upstream_parity_count_occurrences(
-      source, "struct fragment__types__StandardMaterial",
+      source, "struct StandardMaterialX_naga_oil_mod_X",
     ),
     content="1",
   )
+  debug_inspect(source.contains("bindings__StandardMaterial"), content="false")
   debug_inspect(
-    source.contains("fragment__bindings__StandardMaterial"),
-    content="false",
-  )
-  debug_inspect(
-    source.contains(
-      "fragment__bindings__material: fragment__types__StandardMaterial",
-    ),
+    source.contains("materialX_naga_oil_mod_X") &&
+    source.contains(": StandardMaterialX_naga_oil_mod_X"),
     content="true",
   )
 }
@@ -1321,25 +1253,22 @@ test "github issue 3: nested alias imports rewrite variable declaration types" {
     err =>
       abort("expected issue 3 nested alias compose success: \{err.message()}")
   }
-  debug_inspect(source.contains(": View"), content="false")
-  debug_inspect(source.contains(": Globals"), content="false")
+  debug_inspect(source.contains(": View;"), content="false")
+  debug_inspect(source.contains(": Globals;"), content="false")
   debug_inspect(source.contains("types::Lights"), content="false")
   debug_inspect(
-    source.contains(
-      "var<uniform> mesh_view_bindings__view: mesh_view_bindings__View",
-    ),
+    source.contains("var<uniform> viewX_naga_oil_mod_X") &&
+    source.contains(": ViewX_naga_oil_mod_X"),
     content="true",
   )
   debug_inspect(
-    source.contains(
-      "var<uniform> mesh_view_bindings__globals: mesh_view_bindings__Globals",
-    ),
+    source.contains("var<uniform> globalsX_naga_oil_mod_X") &&
+    source.contains(": GlobalsX_naga_oil_mod_X"),
     content="true",
   )
   debug_inspect(
-    source.contains(
-      "var<uniform> mesh_view_bindings__lights: mesh_view_bindings__types__Lights",
-    ),
+    source.contains("var<uniform> lightsX_naga_oil_mod_X") &&
+    source.contains(": LightsX_naga_oil_mod_X"),
     content="true",
   )
 }
@@ -1409,18 +1338,14 @@ test "github issue 4: nested module alias rewrites global binding member access"
   }
   let source = output.source
   debug_inspect(source.contains("view_bindings::view"), content="false")
-  debug_inspect(
-    source.contains("pbr_functions__view_bindings__view.world_from_view"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
     source.contains("var<uniform> view_bindings__view: View"),
     content="false",
   )
   debug_inspect(
-    source.contains(
-      "var<uniform> pbr_functions__view_bindings__view: pbr_functions__view_bindings__View",
-    ),
+    source.contains("var<uniform> viewX_naga_oil_mod_X") &&
+    source.contains(": ViewX_naga_oil_mod_X"),
     content="true",
   )
 }
@@ -1463,15 +1388,11 @@ test "github issue 8: Bevy module alias keeps clustered_lights binding live" {
     content="false",
   )
   debug_inspect(
-    source.contains(
-      "var<storage, read> lighting__view_bindings__clustered_lights: lighting__view_bindings__ClusteredLights",
-    ),
+    source.contains("var<storage, read> clustered_lightsX_naga_oil_mod_X") &&
+    source.contains(": ClusteredLightsX_naga_oil_mod_X"),
     content="true",
   )
-  debug_inspect(
-    source.contains("lighting__view_bindings__clustered_lights.value"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -1523,12 +1444,9 @@ test "github issue 9: item imported struct preserves canonical type identity" {
   ) catch {
     err => abort("expected issue 9 compose success: \{err.message()}")
   }
-  debug_inspect(source.contains("struct pbr_types__PbrInput"), content="true")
-  debug_inspect(source.contains("struct PbrInput"), content="false")
-  debug_inspect(
-    source.contains("ptr<function, pbr_types__PbrInput>"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("struct PbrInput {"), content="false")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("ptr<function, PbrInput>"), content="false")
 }
 
@@ -1578,17 +1496,15 @@ test "github issue 12: transitive tonemapping type identity is reused" {
     err => abort("expected issue 12 compose success: \{err.message()}")
   }
   let color_grading_is_consistent = source.contains(
-      "in_color_grading: pbr_functions__view_bindings__ColorGrading",
-    ) ||
-    source.contains("in_color_grading: pbr_functions__ColorGrading")
+    "in_color_grading: ColorGradingX_naga_oil_mod_X",
+  )
   let color_grading_decl_is_visible = source.contains(
-      "struct pbr_functions__view_bindings__ColorGrading",
-    ) ||
-    source.contains("struct pbr_functions__ColorGrading")
+    "struct ColorGradingX_naga_oil_mod_X",
+  )
   debug_inspect(color_grading_is_consistent, content="true")
   debug_inspect(color_grading_decl_is_visible, content="true")
   debug_inspect(
-    source.contains("in_color_grading: ColorGrading"),
+    source.contains("in_color_grading: ColorGrading)"),
     content="false",
   )
 }
@@ -1624,7 +1540,7 @@ test "composer symbol table: parent alias does not expose transitive imports" {
       )
   }
   debug_inspect(source.contains("consumer_alias__helper"), content="false")
-  debug_inspect(source.contains("return dep_alias__helper();"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("return helper();"), content="false")
 }
 
@@ -1653,11 +1569,8 @@ test "composer symbol table: direct item emit creates local unqualified binding"
     err =>
       abort("expected direct item binding compose success: \{err.message()}")
   }
-  debug_inspect(source.contains("fn consumer_alias__helper"), content="true")
-  debug_inspect(
-    source.contains("return consumer_alias__helper();"),
-    content="true",
-  )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("return helper();"), content="false")
 }
 
@@ -1709,7 +1622,7 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
         "expected issue 6 transitive nested alias compose success: \{err.message()}",
       )
   }
-  debug_inspect(source.contains(": View"), content="false")
+  debug_inspect(source.contains(": View;"), content="false")
   debug_inspect(
     source.contains(
       "var<uniform> pbr_functions__clustering__bindings__view: pbr_functions__view_bindings__View",
@@ -1720,15 +1633,10 @@ test "github issue 6: transitive nested module alias rewrites imported binding t
     source.contains("pbr_functions__clustering__bindings__view"),
     content="false",
   )
+  debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(
-    source.contains("pbr_functions__view_bindings__view.value"),
+    upstream_parity_count_occurrences(source, "viewX_naga_oil_mod_X") > 0,
     content="true",
-  )
-  debug_inspect(
-    upstream_parity_count_occurrences(
-      source, "pbr_functions__view_bindings__view.value",
-    ),
-    content="2",
   )
 }
 

@@ -36,6 +36,7 @@ priv struct WgslIrFunctionScope {
   arguments : @hashmap.HashMap[String, Int]
   locals : @hashmap.HashMap[String, Handle]
   local_constants : @hashmap.HashMap[String, Handle]
+  mut temporary_index : Int
 }
 
 ///|
@@ -50,7 +51,17 @@ fn WgslIrFunctionScope::new() -> WgslIrFunctionScope {
     arguments: @hashmap.HashMap::new(),
     locals: @hashmap.HashMap::new(),
     local_constants: @hashmap.HashMap::new(),
+    temporary_index: 0,
   }
+}
+
+///|
+fn WgslIrFunctionScope::next_temporary_name(
+  self : WgslIrFunctionScope,
+) -> String {
+  let name = "_e\{self.temporary_index}"
+  self.temporary_index = self.temporary_index + 1
+  name
 }
 
 ///|
@@ -204,16 +215,58 @@ fn WgslIrLowerer::predeclare_global_declaration(
   declaration : @ast.WgslGlobalDecl,
 ) -> Unit raise WgslIrLowerError {
   match declaration.data() {
-    Function(function) => {
-      let handle = self.shader_module.append_function(
-        Function::new(Some(function.name().name())),
-      )
-      self.function_names.set(function.name().name(), handle)
-    }
+    Struct(struct_decl) => self.predeclare_struct_declaration(struct_decl)
+    Function(function) => self.predeclare_function_declaration(function)
     Override(override_decl) =>
       self.predeclare_override_declaration(override_decl)
     _ => ()
   }
+}
+
+///|
+fn WgslIrLowerer::predeclare_struct_declaration(
+  self : WgslIrLowerer,
+  struct_decl : @ast.WgslStruct,
+) -> Unit {
+  if self.type_cache.contains(struct_decl.name().name()) {
+    return
+  }
+  let handle = self.shader_module.append_type(Type::{
+    name: Some(struct_decl.name().name()),
+    inner: TypeInner::Struct([], 1),
+  })
+  self.type_cache.set(struct_decl.name().name(), handle)
+}
+
+///|
+fn WgslIrLowerer::predeclare_function_declaration(
+  self : WgslIrLowerer,
+  function : @ast.WgslFunction,
+) -> Unit raise WgslIrLowerError {
+  let result = match function.result() {
+    Some(result) =>
+      match result.ty_ref() {
+        Some(ty_ref) =>
+          Some(FunctionResult::{
+            ty: self.lower_type_ref(ty_ref),
+            binding: wgsl_ir_binding_from_attributes(result.attributes()),
+          })
+        None => None
+      }
+    None => None
+  }
+  let placeholder = Function::{
+    name: Some(function.name().name()),
+    arguments: [],
+    result,
+    local_variables: LocalVariableArena::new(),
+    expressions: ExpressionArena::new(),
+    named_expressions: [],
+    body: Block::new(),
+    diagnostic_filter_leaf: None,
+  }
+  let handle = self.shader_module.append_function(placeholder)
+  self.function_names.set(function.name().name(), handle)
 }
 
 ///|
@@ -350,11 +403,17 @@ fn WgslIrLowerer::lower_struct_declaration(
     }
   }
   let span = wgsl_ir_align_to(if offset == 0 { 1 } else { offset }, max_align)
-  let handle = self.shader_module.append_type(Type::{
+  let ty = Type::{
     name: Some(struct_decl.name().name()),
     inner: TypeInner::Struct(members, span),
-  })
-  self.type_cache.set(struct_decl.name().name(), handle)
+  }
+  match self.type_cache.get(struct_decl.name().name()) {
+    Some(handle) => self.shader_module.types.set(handle, ty)
+    None => {
+      let handle = self.shader_module.append_type(ty)
+      self.type_cache.set(struct_decl.name().name(), handle)
+    }
+  }
 }
 
 ///|
@@ -575,6 +634,9 @@ fn WgslIrLowerer::lower_function(
     None => None
   }
   let body = self.lower_block(function.body(), ir_function, scope)
+  if result == None && !wgsl_ir_block_ends_with_return(body) {
+    body.push(Statement::Return(None))
+  }
   Function::{
     name: ir_function.name,
     arguments: ir_function.arguments,
@@ -584,6 +646,14 @@ fn WgslIrLowerer::lower_function(
     named_expressions: ir_function.named_expressions,
     body,
     diagnostic_filter_leaf: ir_function.diagnostic_filter_leaf,
+  }
+}
+
+///|
+fn wgsl_ir_block_ends_with_return(block : Block) -> Bool {
+  match block.statements {
+    [.., Return(_)] => true
+    _ => false
   }
 }
 
@@ -623,8 +693,16 @@ fn WgslIrLowerer::lower_statement(
       }
     Return(expr) => {
       let value = match expr {
-        Some(expr_ref) =>
-          Some(self.lower_function_expression_ref(expr_ref, function, scope))
+        Some(expr_ref) => {
+          let handle = self.lower_function_expression_ref(
+            expr_ref, function, scope,
+          )
+          Some(
+            self.materialize_return_expression_if_needed(
+              function, scope, block, handle,
+            ),
+          )
+        }
         None => None
       }
       block.push(Statement::Return(value))
@@ -700,19 +778,22 @@ fn WgslIrLowerer::lower_statement(
         return
       }
       let target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
-      let rhs_value = self.lower_function_expression_ref(
-        rhs_ref, function, scope,
-      )
       let value = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
           let loaded_target = function.expressions.append(
             Expression::Load(target),
           )
+          let materialized_target = self.materialize_function_expression(
+            function, scope, block, loaded_target,
+          )
+          let rhs_value = self.lower_function_expression_ref(
+            rhs_ref, function, scope,
+          )
           function.expressions.append(
-            Expression::Binary(binary_op, loaded_target, rhs_value),
+            Expression::Binary(binary_op, materialized_target, rhs_value),
           )
         }
-        None => rhs_value
+        None => self.lower_function_expression_ref(rhs_ref, function, scope)
       }
       block.push(Statement::Store(target, value))
     }
@@ -1116,21 +1197,29 @@ fn WgslIrLowerer::lower_for_header_statement(
         function,
         scope,
       )
-      let rhs_value = self.lower_function_expression_node(
-        wgsl_ir_expr_node_from_tokens(rhs_tokens),
-        function,
-        scope,
-      )
       let value = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
           let loaded_target = function.expressions.append(
             Expression::Load(target),
           )
+          let materialized_target = self.materialize_function_expression(
+            function, scope, block, loaded_target,
+          )
+          let rhs_value = self.lower_function_expression_node(
+            wgsl_ir_expr_node_from_tokens(rhs_tokens),
+            function,
+            scope,
+          )
           function.expressions.append(
-            Expression::Binary(binary_op, loaded_target, rhs_value),
+            Expression::Binary(binary_op, materialized_target, rhs_value),
           )
         }
-        None => rhs_value
+        None =>
+          self.lower_function_expression_node(
+            wgsl_ir_expr_node_from_tokens(rhs_tokens),
+            function,
+            scope,
+          )
       }
       block.push(Statement::Store(target, value))
       return
@@ -1209,8 +1298,16 @@ fn WgslIrLowerer::lower_local_declaration(
           }
       }
   }
+  let lowered_name = if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
+    match init {
+      Some(init_handle) => wgsl_ir_expression_temporary_name(init_handle)
+      None => scope.next_temporary_name()
+    }
+  } else {
+    local_decl.name().name()
+  }
   let handle = function.local_variables.append(LocalVariable::{
-    name: Some(local_decl.name().name()),
+    name: Some(lowered_name),
     kind: wgsl_ir_local_variable_kind(local_decl.kind()),
     ty,
     init,
@@ -1218,6 +1315,159 @@ fn WgslIrLowerer::lower_local_declaration(
   ignore(scope.local_constants.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
+}
+
+///|
+fn wgsl_ir_expression_temporary_name(handle : Handle) -> String {
+  "_e\{handle.index()}"
+}
+
+///|
+fn WgslIrLowerer::materialize_function_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let ty = match self.function_expression_type(function, value) {
+    Some(ty) => ty
+    None =>
+      raise WgslIrLowerError::MissingType(
+        "\{wgsl_ir_expression_temporary_name(value)}: \{wgsl_ir_function_expression_debug(function, value)}",
+      )
+  }
+  let local_handle = function.local_variables.append(LocalVariable::{
+    name: Some(wgsl_ir_expression_temporary_name(value)),
+    kind: Let,
+    ty,
+    init: Some(value),
+  })
+  ignore(scope)
+  block.push(Statement::Declare(local_handle))
+  function.expressions.append(
+    Expression::Load(
+      function.expressions.append(Expression::LocalVariable(local_handle)),
+    ),
+  )
+}
+
+///|
+fn wgsl_ir_function_expression_debug(
+  function : Function,
+  value : Handle,
+) -> String {
+  match function.expressions.items.get(value.index()) {
+    Some(expression) =>
+      match expression {
+        Literal(_) => "literal"
+        Constant(_) => "constant"
+        Override(_) => "override"
+        ZeroValue(_) => "zero-value"
+        Compose(_, _) => "compose"
+        Access(_, _) => "access"
+        AccessIndex(_, _) => "access-index"
+        Splat(_, _) => "splat"
+        Swizzle(_, _, _) => "swizzle"
+        FunctionArgument(_) => "function-argument"
+        GlobalVariable(_) => "global-variable"
+        LocalVariable(_) => "local-variable"
+        Load(inner) =>
+          "load(\{wgsl_ir_function_expression_debug(function, inner)})"
+        AddressOf(_, _) => "address-of"
+        AtomicCall(_, _) => "atomic-call"
+        ImageSample(_, _, _, _, _, _, _, _, _) => "image-sample"
+        ImageLoad(_, _, _, _, _) => "image-load"
+        ImageQuery(_, _) => "image-query"
+        Unary(_, _) => "unary"
+        Binary(_, _, _) => "binary"
+        FunctionCall(_, _) => "function-call"
+        Select(_, _, _) => "select"
+        Bitcast(_, _) => "bitcast"
+        Derivative(_, _, _) => "derivative"
+        Relational(_, _) => "relational"
+        Math(_, _, _, _, _) => "math"
+        As(_, _, _) => "as"
+        CallResult(_) => "call-result"
+        AtomicResult(_, _) => "atomic-result"
+        WorkGroupUniformLoadResult(_) => "workgroup-uniform-load-result"
+        ArrayLength(_) => "array-length"
+        RayQueryInitialize(_, _, _) => "ray-query-initialize"
+        RayQueryProceed(_) => "ray-query-proceed"
+        RayQueryGenerateIntersection(_, _) => "ray-query-generate-intersection"
+        RayQueryConfirmIntersection(_) => "ray-query-confirm-intersection"
+        RayQueryTerminate(_) => "ray-query-terminate"
+        RayQueryVertexPositions(_, _) => "ray-query-vertex-positions"
+        RayQueryProceedResult => "ray-query-proceed-result"
+        RayQueryGetIntersection(_, _) => "ray-query-get-intersection"
+        SubgroupBallotResult => "subgroup-ballot-result"
+        SubgroupOperationResult(_) => "subgroup-operation-result"
+        CooperativeLoad(_, _, _, _) => "cooperative-load"
+        CooperativeMultiplyAdd(_, _, _) => "cooperative-multiply-add"
+      }
+    None => "missing expression handle \{value.index()}"
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_return_expression_if_needed(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  if self.function_expression_can_return_directly(function, value) {
+    value
+  } else {
+    self.materialize_function_expression(function, scope, block, value)
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_can_return_directly(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match function.expressions.items.get(value.index()) {
+    Some(expression) =>
+      match expression {
+        Literal(_)
+        | FunctionArgument(_)
+        | Binary(_, _, _)
+        | Compose(_, _)
+        | Access(_, _)
+        | AccessIndex(_, _)
+        | Swizzle(_, _, _)
+        | Unary(_, _)
+        | Select(_, _, _)
+        | Bitcast(_, _)
+        | Math(_, _, _, _, _)
+        | Relational(_, _) => true
+        Load(inner) =>
+          self.function_pointer_expression_can_return_directly(function, inner)
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_pointer_expression_can_return_directly(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  ignore(self)
+  match function.expressions.items.get(value.index()) {
+    Some(Expression::LocalVariable(handle)) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_variable) => local_variable.kind == Let
+        None => false
+      }
+    _ => false
+  }
 }
 
 ///|

@@ -83,9 +83,10 @@ cargo run --manifest-path tools/naga_oil_oracle/Cargo.toml -- \
   --output /tmp/naga_oil_dual_source_blending.wgsl
 ```
 
-The output is not expected to be byte-identical to `moon_wgsl` because
-`naga_oil` writes validated Naga IR while `moon_wgsl` is a source-level
-composer. Compare structural properties instead: resolved imports, retained
-entry points, declaration dependencies, absence of unknown identifiers, and
-collision handling. Import-only roots with no source references are expected to
-tree-shake to empty output, matching upstream `naga_oil`.
+`moon_wgsl` now treats byte-identical WGSL writer output as the long-term
+parity target for WGSL compose cases that are fully representable in the local
+IR. `tools/check_moon_wgsl_byte_parity.sh` gates the cases that currently match
+the pinned `naga_oil` expected bytes exactly. Broader oracle parity still uses
+`tools/check_preprocess_parity.sh` for upstream diagnostics, GLSL-backed cases,
+capability-gated validation, and cases where local IR lowering is still being
+expanded.
