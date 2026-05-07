@@ -97,6 +97,7 @@ pub(all) struct NamedExpression {
 ///|
 pub(all) struct Function {
   name : String?
+  generated_import : Bool
   arguments : Array[FunctionArgument]
   result : FunctionResult?
   local_variables : LocalVariableArena
@@ -110,6 +111,7 @@ pub(all) struct Function {
 pub fn Function::Function(name : String?) -> Function {
   Function::{
     name,
+    generated_import: false,
     arguments: [],
     result: None,
     local_variables: LocalVariableArena(),

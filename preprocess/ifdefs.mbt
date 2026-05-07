@@ -1,14 +1,14 @@
 ///|
 pub fn apply_wgsl_template_consts(
   source : String,
-  value_defines : @hashmap.HashMap[String, Int],
+  value_defines : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String {
   let mut out = ""
   let mut copy_start = 0
   for reference in parse_wgsl_template_const_references(source, value_defines) {
     if value_defines.get(reference.name()) is Some(value) {
       out = out + source[copy_start:reference.start()].to_owned()
-      out = out + value.to_string()
+      out = out + value.value_as_string()
       copy_start = reference.end()
     }
   }

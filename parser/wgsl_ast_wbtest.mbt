@@ -114,6 +114,22 @@ test "strict WGSL translation unit rejects malformed typed initializer tails" {
 }
 
 ///|
+test "strict WGSL translation unit rejects invalid numeric literals" {
+  let sources = ["const A = 1foo;\n", "const A = 0x;\n", "const A = 1e+;\n"]
+  for source in sources {
+    let mut failed = false
+    ignore(parse_wgsl_translation_unit_strict(source)) catch {
+      _ => failed = true
+    }
+    guard failed is true else {
+      abort(
+        "expected invalid numeric literal to fail strict parsing: \{source}",
+      )
+    }
+  }
+}
+
+///|
 test "strict WGSL translation unit rejects official global const without initializer" {
   let source =
     #|const VALUE: u32;

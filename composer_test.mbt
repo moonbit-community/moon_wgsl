@@ -427,7 +427,7 @@ test "naga_oil: composer local registry can compose without test registry state"
 ///|
 test "issue 5: template constants handle non-BMP source text" {
   let value_defines = @common.default_wgsl_value_defines()
-  value_defines.set("CUSTOM_LIMIT", 42)
+  value_defines.set("CUSTOM_LIMIT", @common.ShaderDefValue::Int(42))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     "// 😀 before a braced template const\nconst A: u32 = #{CUSTOM_LIMIT}u;\n// 😃 before a bare template const\nconst B: u32 = #CUSTOM_LIMITu;\n",
     {
@@ -441,6 +441,35 @@ test "issue 5: template constants handle non-BMP source text" {
   }
   debug_inspect(preprocessed.contains("const A: u32 = 42u;"), content="true")
   debug_inspect(preprocessed.contains("const B: u32 = 42u;"), content="true")
+}
+
+///|
+test "template constants preserve large unsigned shader-def values" {
+  let value_defines = @common.default_wgsl_value_defines()
+  value_defines.set("LARGE_COUNT", @common.ShaderDefValue::UInt(3221225472U))
+  let preprocessed = @compose.Composer::default().compose_wgsl_source(
+    "const A: u32 = #LARGE_COUNTu;\nconst B: u32 = #{LARGE_COUNT}u;\n",
+    {
+      defines: empty_bool_defines(),
+      value_defines,
+      redirects: [],
+      additional_imports: [],
+    },
+  ) catch {
+    err =>
+      abort(
+        "expected large unsigned template compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    preprocessed.contains("const A: u32 = 3221225472u;"),
+    content="true",
+  )
+  debug_inspect(
+    preprocessed.contains("const B: u32 = 3221225472u;"),
+    content="true",
+  )
+  debug_inspect(preprocessed.contains("-1073741824"), content="false")
 }
 
 ///|
@@ -859,7 +888,7 @@ test "naga_oil: composer rejects unsigned-suffix if comparison values" {
     "invalid_uint_if.wgsl", "#if COUNT == 1u\nconst active: u32 = 1u;\n#endif\n",
   )
   let options = composer_test_compose_options(empty_bool_defines(), [])
-  options.value_defines.set("COUNT", 1)
+  options.value_defines.set("COUNT", @common.ShaderDefValue::Int(1))
   ignore(composer.compose_wgsl("invalid_uint_if.wgsl", options)) catch {
     err => {
       debug_inspect(

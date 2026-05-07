@@ -23,6 +23,7 @@ pub(all) suberror ComposerError {
   GlslInvalidVersion
   InvalidWgslDirective(String, String)
   InvalidIr(String)
+  AmbiguousImportBinding(String)
   UnknownShaderDef(String)
   UnknownShaderDefOperator(String)
   InvalidShaderDefComparisonValue(String, String, String)

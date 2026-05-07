@@ -30,7 +30,7 @@ fn Composer::active_compose_defs_for_rel_path(
       }
       (
         copy_bool_defs(parent_defs.defines),
-        copy_int_defs(parent_defs.value_defines),
+        copy_value_defs(parent_defs.value_defines),
       )
     }
     None => {
@@ -40,9 +40,9 @@ fn Composer::active_compose_defs_for_rel_path(
       }
       for entry in session.value_defines.iter() {
         let (name, value) = entry
-        shader_defs.set(name, ShaderDefValue::Int(value))
+        shader_defs.set(name, value)
       }
-      (copy_bool_defs(session.defines), copy_int_defs(session.value_defines))
+      (copy_bool_defs(session.defines), copy_value_defs(session.value_defines))
     }
   }
   if self.composable_module_definition_for_rel_path(rel_path)

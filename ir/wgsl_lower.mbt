@@ -263,7 +263,14 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
 
 ///|
 fn wgsl_ir_synthetic_struct_member(name : String, ty : Handle) -> StructMember {
-  StructMember::{ name: Some(name), ty, binding: None, offset: 0 }
+  StructMember::{
+    name: Some(name),
+    ty,
+    binding: None,
+    offset: 0,
+    size: None,
+    align: None,
+  }
 }
 
 ///|
@@ -354,6 +361,9 @@ fn WgslIrLowerer::predeclare_function_declaration(
   }
   let placeholder = Function::{
     name: Some(function.name().name()),
+    generated_import: wgsl_ir_function_name_is_generated_import(
+      function.name().name(),
+    ),
     arguments: [],
     result,
     local_variables: LocalVariableArena(),
@@ -364,6 +374,11 @@ fn WgslIrLowerer::predeclare_function_declaration(
   }
   let handle = self.shader_module.append_function(placeholder)
   self.function_names.set(function.name().name(), handle)
+}
+
+///|
+fn wgsl_ir_function_name_is_generated_import(name : String) -> Bool {
+  name.contains("X_naga_oil_")
 }
 
 ///|
@@ -494,6 +509,18 @@ fn WgslIrLowerer::lower_struct_declaration(
       ty,
       binding: wgsl_ir_binding_from_attributes(struct_member.attributes()),
       offset,
+      size: if wgsl_ir_attribute_named(struct_member.attributes(), "size")
+        is Some(_) {
+        Some(member_size)
+      } else {
+        None
+      },
+      align: if wgsl_ir_attribute_named(struct_member.attributes(), "align")
+        is Some(_) {
+        Some(member_align)
+      } else {
+        None
+      },
     })
     offset = offset + member_size
     if member_align > max_align {
@@ -698,6 +725,7 @@ fn wgsl_ir_strip_function_io_bindings(function : Function) -> Function {
   }
   Function::{
     name: function.name,
+    generated_import: function.generated_import,
     arguments,
     result,
     local_variables: function.local_variables,
@@ -822,6 +850,7 @@ fn WgslIrLowerer::function_without_ambient_global_arguments(
   }
   Function::{
     name: function.name,
+    generated_import: function.generated_import,
     arguments: [],
     result: function.result,
     local_variables: function.local_variables,
@@ -854,7 +883,19 @@ fn WgslIrLowerer::lower_function(
   self : WgslIrLowerer,
   function : @ast.WgslFunction,
 ) -> Function raise WgslIrLowerError {
-  let ir_function = Function::Function(Some(function.name().name()))
+  let ir_function = Function::{
+    name: Some(function.name().name()),
+    generated_import: wgsl_ir_function_name_is_generated_import(
+      function.name().name(),
+    ),
+    arguments: [],
+    result: None,
+    local_variables: LocalVariableArena(),
+    expressions: ExpressionArena(),
+    named_expressions: [],
+    body: Block::Block(),
+    diagnostic_filter_leaf: None,
+  }
   let scope = WgslIrFunctionScope()
   let mut index = 0
   for argument in function.arguments() {
@@ -904,6 +945,7 @@ fn WgslIrLowerer::lower_function(
   }
   Function::{
     name: ir_function.name,
+    generated_import: ir_function.generated_import,
     arguments: ir_function.arguments,
     result,
     local_variables: ir_function.local_variables,
@@ -1005,17 +1047,26 @@ fn WgslIrLowerer::lower_statement(
       let cond = self.lower_function_expression_ref(
         condition_ref, function, scope,
       )
-      let body = match statement.blocks() {
+      let lowered_body = match statement.blocks() {
         [body_block, ..] => self.lower_block(body_block, function, scope)
         [] => Block::Block()
       }
-      let continuing = Block::Block()
-      continuing.push(
+      let body_statements : Array[Statement] = []
+      body_statements.push(
         Statement::If(cond, Block::Block(), Block::{
           statements: [Statement::Break],
         }),
       )
-      block.push(Statement::Loop(body, continuing, None))
+      for body_statement in lowered_body.statements {
+        body_statements.push(body_statement)
+      }
+      block.push(
+        Statement::Loop(
+          Block::{ statements: body_statements },
+          Block::Block(),
+          None,
+        ),
+      )
     }
     Loop => {
       let (body, continuing) = self.lower_loop_blocks(
@@ -7811,12 +7862,16 @@ fn WgslIrLowerer::predeclared_type_inner(
             ty: value_ty,
             binding: None,
             offset: 0,
+            size: None,
+            align: None,
           },
           StructMember::{
             name: Some("exchanged"),
             ty: bool_ty,
             binding: None,
             offset: exchanged_offset,
+            size: None,
+            align: None,
           },
         ],
         span,
@@ -7837,12 +7892,16 @@ fn WgslIrLowerer::predeclared_type_inner(
             ty: value_ty,
             binding: None,
             offset: 0,
+            size: None,
+            align: None,
           },
           StructMember::{
             name: Some("whole"),
             ty: value_ty,
             binding: None,
             offset: whole_offset,
+            size: None,
+            align: None,
           },
         ],
         span,
@@ -7874,12 +7933,16 @@ fn WgslIrLowerer::predeclared_type_inner(
             ty: fract_ty,
             binding: None,
             offset: 0,
+            size: None,
+            align: None,
           },
           StructMember::{
             name: Some("exp"),
             ty: exponent_ty,
             binding: None,
             offset: exponent_offset,
+            size: None,
+            align: None,
           },
         ],
         span,

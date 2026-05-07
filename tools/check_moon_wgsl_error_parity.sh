@@ -10,6 +10,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [[ "${1:-}" == "--list" ]]; then
+  cat <<'LABELS'
+conditional_missing_import
+conditional_missing_import_nested
+invalid_override_base
+missing_import
+LABELS
+  exit 0
+fi
+
 moon_compose_error() {
   local label="$1"
   local fixture_root="$2"

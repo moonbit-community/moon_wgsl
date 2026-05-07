@@ -147,6 +147,92 @@ fn parse_wgsl_int_literal_token(text : String) -> Int? {
 }
 
 ///|
+fn wgsl_expr_ascii_alpha(code : Int) -> Bool {
+  (code >= 65 && code <= 90) || (code >= 97 && code <= 122)
+}
+
+///|
+fn wgsl_expr_float_literal_token_is_valid(text : String) -> Bool {
+  if text.length() == 0 {
+    return false
+  }
+  let mut end = text.length()
+  let last = text.code_unit_at(end - 1).to_int()
+  if last == 102 || last == 70 || last == 104 || last == 72 {
+    end = end - 1
+  }
+  if end <= 0 {
+    return false
+  }
+  let last_body = text.code_unit_at(end - 1).to_int()
+  if last_body == 43 ||
+    last_body == 45 ||
+    last_body == 69 ||
+    last_body == 80 ||
+    last_body == 101 ||
+    last_body == 112 {
+    return false
+  }
+  if end > 2 &&
+    text.code_unit_at(0).to_int() == 48 &&
+    (
+      text.code_unit_at(1).to_int() == 120 ||
+      text.code_unit_at(1).to_int() == 88
+    ) {
+    let mut has_hex_digit = false
+    let mut has_exponent = false
+    for i in 2..<end {
+      let code = text.code_unit_at(i).to_int()
+      if wgsl_expr_ascii_hex_digit_value(code) != None {
+        has_hex_digit = true
+        continue
+      }
+      if code == 46 {
+        continue
+      }
+      if code == 80 || code == 112 {
+        has_exponent = true
+        continue
+      }
+      if (code == 43 || code == 45) && i > 2 {
+        let previous = text.code_unit_at(i - 1).to_int()
+        if previous == 80 || previous == 112 {
+          continue
+        }
+      }
+      return false
+    }
+    return has_hex_digit && has_exponent
+  }
+  let mut has_float_marker = false
+  for i in 0..<end {
+    let code = text.code_unit_at(i).to_int()
+    if wgsl_expr_ascii_digit(code) {
+      continue
+    }
+    if code == 46 {
+      has_float_marker = true
+      continue
+    }
+    if code == 69 || code == 101 {
+      has_float_marker = true
+      continue
+    }
+    if (code == 43 || code == 45) && i > 0 {
+      let previous = text.code_unit_at(i - 1).to_int()
+      if previous == 69 || previous == 101 {
+        continue
+      }
+    }
+    if wgsl_expr_ascii_alpha(code) {
+      return false
+    }
+    return false
+  }
+  has_float_marker || last == 102 || last == 70 || last == 104 || last == 72
+}
+
+///|
 fn wgsl_expr_number_token_kind(text : String) -> WgslExprTokenKind {
   match parse_wgsl_uint_literal_token(text) {
     Some(value) => return WgslExprTokenKind::UintLiteral(value)
@@ -156,7 +242,11 @@ fn wgsl_expr_number_token_kind(text : String) -> WgslExprTokenKind {
     Some(value) => return WgslExprTokenKind::IntLiteral(value)
     None => ()
   }
-  WgslExprTokenKind::FloatLiteral
+  if wgsl_expr_float_literal_token_is_valid(text) {
+    WgslExprTokenKind::FloatLiteral
+  } else {
+    WgslExprTokenKind::InvalidNumericLiteral
+  }
 }
 
 ///|
@@ -775,6 +865,12 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
     expr_tokens,
     identifiers,
   )
+  for token in expr_tokens {
+    match token.kind() {
+      WgslExprTokenKind::InvalidNumericLiteral => return None
+      _ => ()
+    }
+  }
   let root = parse_wgsl_expr_node(trimmed, base + local_start, expr_tokens)
   Some(
     WgslExprRef(

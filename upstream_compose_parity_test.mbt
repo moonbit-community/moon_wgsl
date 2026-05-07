@@ -965,21 +965,25 @@ test "github issue 5: colliding lowered declarations from separate imports are d
     "  return material.flags;\n" +
     "}\n",
   )
-  let source = composer.compose_wgsl(
-    "entry.wgsl",
-    upstream_parity_compose_options(upstream_parity_empty_defines()),
-  ) catch {
-    err =>
-      abort(
-        "expected issue 5 colliding declaration compose success: \{err.message()}",
-      )
-  }
-  debug_inspect(
-    upstream_parity_count_occurrences(
-      source, "struct StandardMaterialX_naga_oil_mod_X",
+  ignore(
+    composer.compose_wgsl(
+      "entry.wgsl",
+      upstream_parity_compose_options(upstream_parity_empty_defines()),
     ),
-    content="2",
-  )
+  ) catch {
+    err => {
+      debug_inspect(
+        err.message().contains("ambiguous shader import binding"),
+        content="true",
+      )
+      debug_inspect(
+        err.message().contains("pbr_types::StandardMaterial"),
+        content="true",
+      )
+      return
+    }
+  }
+  abort("expected colliding same-alias imports to report ambiguity")
 }
 
 ///|

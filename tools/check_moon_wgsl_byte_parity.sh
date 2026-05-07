@@ -10,6 +10,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [[ "${1:-}" == "--list" ]]; then
+  cat <<'LABELS'
+additional_import
+atomics
+big_shaderdefs
+conditional_import_a
+conditional_import_b
+dup_import
+dup_struct_import
+import_in_decl
+item_import_test
+item_sub_point
+override_top
+problematic_expressions
+simple_compose
+test_quoted_import_dup_name
+use_shared_global
+wgsl_call_entrypoint
+wgsl_dual_source_blending
+LABELS
+  exit 0
+fi
+
 moon_compose() {
   local fixture_root="$1"
   local entry="$2"
@@ -149,7 +172,7 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/expected/import_in_decl.txt
 
 check_case \
-  item_import \
+  item_import_test \
   testdata/naga_oil_upstream/compose_tests/item_import \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/item_import_test.txt
@@ -173,7 +196,7 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_dual_source_blending.txt
 
 check_case \
-  quoted_dup \
+  test_quoted_import_dup_name \
   testdata/naga_oil_upstream/compose_tests/quoted_dup \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/test_quoted_import_dup_name.txt
@@ -185,7 +208,7 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/expected/problematic_expressions.txt
 
 check_case_atomics_validated \
-  atomics_naga_valid \
+  atomics \
   testdata/naga_oil_upstream/compose_tests/atomics \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/atomics.txt

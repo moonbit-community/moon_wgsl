@@ -271,7 +271,7 @@ pub(all) struct WgslSymbolRedirect {
 ///|
 pub(all) struct WgslComposeOptions {
   defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, Int]
+  value_defines : @hashmap.HashMap[String, ShaderDefValue]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
 } derive(Eq, Debug)
@@ -287,17 +287,20 @@ pub fn WgslComposeOptions::default() -> WgslComposeOptions {
 }
 
 ///|
-pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int] {
-  let defines : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
-  defines.set("AVAILABLE_STORAGE_BUFFER_BINDINGS", 8)
-  defines.set("MAX_DIRECTIONAL_LIGHTS", 10)
-  defines.set("MAX_CASCADES_PER_LIGHT", 4)
-  defines.set("MAX_RECT_LIGHTS", 4)
-  defines.set("MATERIAL_BIND_GROUP", 3)
-  defines.set("SORTED_FRAGMENT_MAX_COUNT", 8)
-  defines.set("WORLD_CACHE_SIZE", 1048576)
-  defines.set("PER_OBJECT_BUFFER_BATCH_SIZE", 1)
-  defines.set("SCREEN_SPACE_SPECULAR_TRANSMISSION_BLUR_TAPS", 8)
+pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, ShaderDefValue] {
+  let defines : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([])
+  defines.set("AVAILABLE_STORAGE_BUFFER_BINDINGS", ShaderDefValue::Int(8))
+  defines.set("MAX_DIRECTIONAL_LIGHTS", ShaderDefValue::Int(10))
+  defines.set("MAX_CASCADES_PER_LIGHT", ShaderDefValue::Int(4))
+  defines.set("MAX_RECT_LIGHTS", ShaderDefValue::Int(4))
+  defines.set("MATERIAL_BIND_GROUP", ShaderDefValue::Int(3))
+  defines.set("SORTED_FRAGMENT_MAX_COUNT", ShaderDefValue::Int(8))
+  defines.set("WORLD_CACHE_SIZE", ShaderDefValue::Int(1048576))
+  defines.set("PER_OBJECT_BUFFER_BATCH_SIZE", ShaderDefValue::Int(1))
+  defines.set(
+    "SCREEN_SPACE_SPECULAR_TRANSMISSION_BLUR_TAPS",
+    ShaderDefValue::Int(8),
+  )
   defines
 }
 

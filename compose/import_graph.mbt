@@ -670,7 +670,15 @@ fn finalize_wgsl_composed_source(
 ) -> String raise ComposerError {
   let mut out = apply_wgsl_ifdefs_strict_for_compose(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
+  match bindings.first_conflict() {
+    Some(message) => raise ComposerError::AmbiguousImportBinding(message)
+    None => ()
+  }
   session.composed_bindings.extend(bindings)
+  match session.composed_bindings.first_conflict() {
+    Some(message) => raise ComposerError::AmbiguousImportBinding(message)
+    None => ()
+  }
   let effective_bindings = if apply_virtual_overrides {
     session.composed_bindings
   } else {

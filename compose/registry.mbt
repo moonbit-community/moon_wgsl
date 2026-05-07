@@ -63,7 +63,7 @@ fn Composer::new_wgsl_compose_session(
 ) -> WgslComposeSession {
   WgslComposeSession::{
     defines: copy_bool_defs(options.defines),
-    value_defines: copy_int_defs(options.value_defines),
+    value_defines: copy_value_defs(options.value_defines),
     modules: self.registry.copy_import_module_paths(),
     redirects: options.redirects.copy(),
     composed_bindings: WgslComposeBindingSet(),

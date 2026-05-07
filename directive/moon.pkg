@@ -1,4 +1,5 @@
 import {
+  "Milky2018/moon_wgsl/common",
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/directive_syntax",
   "Milky2018/moon_wgsl/lex",

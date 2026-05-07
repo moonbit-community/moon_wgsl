@@ -41,7 +41,10 @@ fn validation_compose_options(
 }
 
 ///|
-fn validation_bevy_value_defines() -> @hashmap.HashMap[String, Int] {
+fn validation_bevy_value_defines() -> @hashmap.HashMap[
+  String,
+  @common.ShaderDefValue,
+] {
   let value_defines = @common.default_wgsl_value_defines()
   value_defines.remove("PER_OBJECT_BUFFER_BATCH_SIZE")
   value_defines

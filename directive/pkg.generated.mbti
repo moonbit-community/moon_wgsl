@@ -3,6 +3,7 @@ package "Milky2018/moon_wgsl/directive"
 
 import {
   "Milky2018/moon_wgsl/ast",
+  "Milky2018/moon_wgsl/common",
   "moonbitlang/core/debug",
   "moonbitlang/core/hashmap",
 }
@@ -16,7 +17,7 @@ pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?
 
 pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
 
-pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, Int]) -> Array[WgslTemplateConstReference]
+pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> Array[WgslTemplateConstReference]
 
 pub fn wgsl_effective_directive_kind(@ast.WgslDirective) -> @ast.WgslDirectiveKind
 

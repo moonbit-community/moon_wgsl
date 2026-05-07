@@ -338,6 +338,7 @@ pub enum FilterableTriggeringRule {
 
 pub(all) struct Function {
   name : String?
+  generated_import : Bool
   arguments : Array[FunctionArgument]
   result : FunctionResult?
   local_variables : LocalVariableArena
@@ -823,6 +824,8 @@ pub(all) struct StructMember {
   ty : Handle
   binding : Binding?
   offset : Int
+  size : Int?
+  align : Int?
 } derive(Eq, @debug.Debug)
 
 pub enum SubgroupOperation {

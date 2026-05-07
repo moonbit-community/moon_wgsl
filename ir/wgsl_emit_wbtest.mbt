@@ -86,6 +86,59 @@ test "IR emitter prints global and function const_asserts from IR" {
 }
 
 ///|
+test "IR emitter preserves struct member layout attributes" {
+  let source =
+    #|struct Layout {
+    #|  @size(16) @align(16) value: f32,
+    #|  next: vec4f,
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  ignore(
+    @parser.parse_wgsl_translation_unit_strict(emitted) catch {
+      error => abort(error.message())
+    },
+  )
+  debug_inspect(
+    emitted.contains("@size(16) @align(16) value: f32"),
+    content="true",
+  )
+}
+
+///|
+test "IR lowerer emits while as loop with leading condition guard" {
+  let source =
+    #|fn helper() {
+    #|  var x: u32 = 0u;
+    #|  while (x > 1u) {
+    #|    x = x + 1u;
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  ignore(
+    @parser.parse_wgsl_translation_unit_strict(emitted) catch {
+      error => abort(error.message())
+    },
+  )
+  debug_inspect(emitted.contains("loop {"), content="true")
+  debug_inspect(emitted.contains("if (x > 1u) {"), content="true")
+  debug_inspect(
+    emitted.contains("} else {\n            break;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("continuing {"), content="false")
+}
+
+///|
 test "IR emitter prints official builtin names and workgroup override expressions" {
   let source =
     #|enable subgroups;

@@ -9,7 +9,7 @@ import {
 // Values
 pub fn apply_wgsl_ifdefs_strict(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> String raise PreprocessError
 
-pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, Int]) -> String
+pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> String
 
 // Errors
 pub suberror PreprocessError {

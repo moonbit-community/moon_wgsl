@@ -64,7 +64,7 @@ fn wgsl_template_const_name_boundary(text : String, name : String) -> Bool {
 ///|
 fn longest_wgsl_template_const_prefix(
   text : String,
-  value_defines : @hashmap.HashMap[String, Int],
+  value_defines : @hashmap.HashMap[String, ShaderDefValue],
 ) -> String? {
   let mut best = ""
   for entry in value_defines.iter() {
@@ -85,7 +85,7 @@ fn longest_wgsl_template_const_prefix(
 ///|
 pub fn parse_wgsl_template_const_references(
   source : String,
-  value_defines : @hashmap.HashMap[String, Int],
+  value_defines : @hashmap.HashMap[String, ShaderDefValue],
 ) -> Array[WgslTemplateConstReference] {
   let references : Array[WgslTemplateConstReference] = []
   let tokens = tokenize(source, true)

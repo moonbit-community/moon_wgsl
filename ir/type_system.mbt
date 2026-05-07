@@ -238,6 +238,8 @@ pub(all) struct StructMember {
   ty : Handle
   binding : Binding?
   offset : Int
+  size : Int?
+  align : Int?
 } derive(Eq, Debug)
 
 ///|

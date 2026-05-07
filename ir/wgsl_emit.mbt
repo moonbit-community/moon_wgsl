@@ -186,6 +186,7 @@ fn WgslIrEmitter::emit_struct_type(
   out.write_string("struct \{name} {\n")
   for struct_member in members {
     out.write_string("    ")
+    self.emit_struct_member_layout_attribute_prefix(out, struct_member)
     self.emit_binding_attribute_prefix(out, struct_member.binding)
     let member_name = match struct_member.name {
       Some(value) => value
@@ -194,6 +195,23 @@ fn WgslIrEmitter::emit_struct_type(
     out.write_string("\{member_name}: \{self.type_name(struct_member.ty)},\n")
   }
   out.write_string("}\n")
+}
+
+///|
+fn WgslIrEmitter::emit_struct_member_layout_attribute_prefix(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  struct_member : StructMember,
+) -> Unit {
+  ignore(self)
+  match struct_member.size {
+    Some(size) => out.write_string("@size(\{size}) ")
+    None => ()
+  }
+  match struct_member.align {
+    Some(align) => out.write_string("@align(\{align}) ")
+    None => ()
+  }
 }
 
 ///|
@@ -2620,10 +2638,7 @@ fn WgslIrEmitter::function_is_generated_import_function(
   function : Function,
 ) -> Bool {
   ignore(self)
-  match function.name {
-    Some(name) => name.contains("X_naga_oil_")
-    None => false
-  }
+  function.generated_import
 }
 
 ///|

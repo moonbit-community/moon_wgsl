@@ -1,4 +1,7 @@
 ///|
+using @common {type ShaderDefValue}
+
+///|
 using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|

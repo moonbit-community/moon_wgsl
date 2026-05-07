@@ -8,7 +8,7 @@ import {
 }
 
 // Values
-pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, Int]
+pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, ShaderDefValue]
 
 // Errors
 
@@ -82,7 +82,7 @@ pub fn ShaderDefValue::value_as_string(Self) -> String
 
 pub(all) struct WgslComposeOptions {
   defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, Int]
+  value_defines : @hashmap.HashMap[String, ShaderDefValue]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
 } derive(Eq, @debug.Debug)

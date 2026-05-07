@@ -22,7 +22,10 @@ fn bevy_parity_defines(names : Array[String]) -> @hashmap.HashMap[String, Bool] 
 }
 
 ///|
-fn bevy_parity_value_defines() -> @hashmap.HashMap[String, Int] {
+fn bevy_parity_value_defines() -> @hashmap.HashMap[
+  String,
+  @common.ShaderDefValue,
+] {
   let value_defines = @common.default_wgsl_value_defines()
   value_defines.remove("PER_OBJECT_BUFFER_BATCH_SIZE")
   value_defines

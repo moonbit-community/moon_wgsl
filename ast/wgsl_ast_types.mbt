@@ -267,6 +267,7 @@ pub(all) enum WgslExprTokenKind {
   UintLiteral(UInt)
   IntLiteral(Int)
   FloatLiteral
+  InvalidNumericLiteral
   Operator(WgslExprOperator)
   Punctuation(Int)
   Unknown

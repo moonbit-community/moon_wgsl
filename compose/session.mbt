@@ -76,10 +76,10 @@ fn copy_bool_defs(
 }
 
 ///|
-fn copy_int_defs(
-  defs : @hashmap.HashMap[String, Int],
-) -> @hashmap.HashMap[String, Int] {
-  let copied : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+fn copy_value_defs(
+  defs : @hashmap.HashMap[String, ShaderDefValue],
+) -> @hashmap.HashMap[String, ShaderDefValue] {
+  let copied : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([])
   for entry in defs.iter() {
     let (name, value) = entry
     copied.set(name, value)
@@ -90,7 +90,7 @@ fn copy_int_defs(
 ///|
 fn merge_shader_def_value_into_compose_defs(
   defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, Int],
+  value_defines : @hashmap.HashMap[String, ShaderDefValue],
   shader_defs : @hashmap.HashMap[String, ShaderDefValue],
   name : String,
   value : ShaderDefValue,
@@ -98,8 +98,7 @@ fn merge_shader_def_value_into_compose_defs(
   shader_defs.set(name, value)
   match value {
     Bool(flag) => defines.set(name, flag)
-    Int(int_value) => value_defines.set(name, int_value)
-    UInt(uint_value) => value_defines.set(name, uint_value.reinterpret_as_int())
+    Int(_) | UInt(_) => value_defines.set(name, value)
   }
 }
 
@@ -122,7 +121,7 @@ priv struct WgslComposeSemanticFacts {
 ///|
 priv struct WgslComposeSession {
   defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, Int]
+  value_defines : @hashmap.HashMap[String, ShaderDefValue]
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
   composed_bindings : WgslComposeBindingSet
@@ -160,6 +159,7 @@ priv struct WgslComposeBinding {
 priv struct WgslComposeBindingSet {
   bindings : Array[WgslComposeBinding]
   keys : @hashset.HashSet[String]
+  conflicts : Array[String]
 }
 
 ///|
@@ -212,7 +212,11 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
 
 ///|
 fn WgslComposeBindingSet::WgslComposeBindingSet() -> WgslComposeBindingSet {
-  WgslComposeBindingSet::{ bindings: [], keys: @hashset.HashSet([]) }
+  WgslComposeBindingSet::{
+    bindings: [],
+    keys: @hashset.HashSet([]),
+    conflicts: [],
+  }
 }
 
 ///|
@@ -232,6 +236,22 @@ fn wgsl_compose_binding_key(binding : WgslComposeBinding) -> String {
     None => ""
   }
   "\{wgsl_compose_binding_scope_key(binding.scope)}|\{from_name}|\{to_name}|\{binding.alias_name}|\{identity_key}"
+}
+
+///|
+fn wgsl_compose_binding_conflict_message(
+  existing : WgslComposeBinding,
+  binding : WgslComposeBinding,
+) -> String {
+  let existing_identity = match existing.identity {
+    Some(identity) => identity.key()
+    None => "<none>"
+  }
+  let binding_identity = match binding.identity {
+    Some(identity) => identity.key()
+    None => "<none>"
+  }
+  "\{binding.from_name} in alias scope \{binding.alias_name}: \{existing_identity} conflicts with \{binding_identity}"
 }
 
 ///|
@@ -328,6 +348,9 @@ fn WgslComposeBindingSet::push(
           existing_identity_key == binding_identity_key {
           continue
         }
+        self.conflicts.push(
+          wgsl_compose_binding_conflict_message(existing, binding),
+        )
         return
       }
     }
@@ -345,8 +368,21 @@ fn WgslComposeBindingSet::extend(
   self : WgslComposeBindingSet,
   other : WgslComposeBindingSet,
 ) -> Unit {
+  for conflict in other.conflicts {
+    self.conflicts.push(conflict)
+  }
   for binding in other.bindings {
     self.push(binding)
+  }
+}
+
+///|
+fn WgslComposeBindingSet::first_conflict(
+  self : WgslComposeBindingSet,
+) -> String? {
+  match self.conflicts {
+    [message, ..] => Some(message)
+    [] => None
   }
 }
 
@@ -452,7 +488,7 @@ fn WgslComposeSession::record_alias_final_name_if_absent(
 ///|
 priv struct WgslActiveComposeDefs {
   defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, Int]
+  value_defines : @hashmap.HashMap[String, ShaderDefValue]
   shader_defs : @hashmap.HashMap[String, ShaderDefValue]
 }
 

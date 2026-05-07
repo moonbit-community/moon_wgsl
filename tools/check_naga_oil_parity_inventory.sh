@@ -24,6 +24,10 @@ rows="$tmpdir/manifest_rows.tsv"
 manifest_labels="$tmpdir/manifest_labels.txt"
 manifest_expected="$tmpdir/manifest_expected.txt"
 actual_expected="$tmpdir/actual_expected.txt"
+manifest_byte_labels="$tmpdir/manifest_byte_labels.txt"
+manifest_error_labels="$tmpdir/manifest_error_labels.txt"
+executed_byte_labels="$tmpdir/executed_byte_labels.txt"
+executed_error_labels="$tmpdir/executed_error_labels.txt"
 
 awk -F '\t' '
   NF == 0 { next }
@@ -35,6 +39,10 @@ awk -F '\t' '
 
 cut -f1 "$rows" | sort > "$manifest_labels"
 cut -f2 "$rows" | sort > "$manifest_expected"
+awk -F '\t' '$3 == "byte" || $3 == "byte-exception" { print $1 }' "$rows" | sort > "$manifest_byte_labels"
+awk -F '\t' '$3 == "error" { print $1 }' "$rows" | sort > "$manifest_error_labels"
+tools/check_moon_wgsl_byte_parity.sh --list | sort > "$executed_byte_labels"
+tools/check_moon_wgsl_error_parity.sh --list | sort > "$executed_error_labels"
 
 duplicate_labels="$(uniq -d "$manifest_labels" | tr '\n' ' ')"
 [[ -z "$duplicate_labels" ]] || fail "duplicate manifest label(s): $duplicate_labels"
@@ -49,6 +57,18 @@ missing_classification="$(comm -23 "$actual_expected" "$manifest_expected" | tr 
 
 extra_classification="$(comm -13 "$actual_expected" "$manifest_expected" | tr '\n' ' ')"
 [[ -z "$extra_classification" ]] || fail "manifest classifies non-inventory file(s): $extra_classification"
+
+missing_byte_execution="$(comm -23 "$manifest_byte_labels" "$executed_byte_labels" | tr '\n' ' ')"
+[[ -z "$missing_byte_execution" ]] || fail "byte-gated manifest row(s) are not executed: $missing_byte_execution"
+
+extra_byte_execution="$(comm -13 "$manifest_byte_labels" "$executed_byte_labels" | tr '\n' ' ')"
+[[ -z "$extra_byte_execution" ]] || fail "byte parity script executes row(s) not declared in manifest: $extra_byte_execution"
+
+missing_error_execution="$(comm -23 "$manifest_error_labels" "$executed_error_labels" | tr '\n' ' ')"
+[[ -z "$missing_error_execution" ]] || fail "error-gated manifest row(s) are not executed: $missing_error_execution"
+
+extra_error_execution="$(comm -13 "$manifest_error_labels" "$executed_error_labels" | tr '\n' ' ')"
+[[ -z "$extra_error_execution" ]] || fail "error parity script executes row(s) not declared in manifest: $extra_error_execution"
 
 while IFS=$'\t' read -r label expected moon_gate oracle_gate notes; do
   [[ -n "${expected:-}" ]] || fail "row $label has empty expected path"
@@ -73,15 +93,7 @@ while IFS=$'\t' read -r label expected moon_gate oracle_gate notes; do
   esac
 
   case "$moon_gate" in
-    byte | byte-exception)
-      if ! rg -F "$expected" tools/check_moon_wgsl_byte_parity.sh >/dev/null; then
-        fail "byte-gated row $label is missing from tools/check_moon_wgsl_byte_parity.sh"
-      fi
-      ;;
-    error)
-      if ! rg -F "$label" tools/check_moon_wgsl_error_parity.sh >/dev/null; then
-        fail "error-gated row $label is missing from tools/check_moon_wgsl_error_parity.sh"
-      fi
+    byte | byte-exception | error)
       ;;
     semantic | oracle-only)
       [[ -n "${notes:-}" ]] || fail "classified row $label needs an explicit note"
