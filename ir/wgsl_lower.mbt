@@ -631,16 +631,17 @@ fn WgslIrLowerer::lower_function_declaration(
   match stage {
     Some(stage) =>
       if !self.referenced_names.contains(function.name().name()) {
+        let (workgroup_size, workgroup_size_overrides) = self.workgroup_size_from_attributes(
+          function.attributes(),
+        )
         self.shader_module.append_entry_point(EntryPoint::{
           name: function.name().name(),
           stage,
           early_depth_test: wgsl_ir_early_depth_test_from_attributes(
             function.attributes(),
           ),
-          workgroup_size: wgsl_ir_workgroup_size_from_attributes(
-            function.attributes(),
-          ),
-          workgroup_size_overrides: None,
+          workgroup_size,
+          workgroup_size_overrides,
           function: ir_function,
           mesh_info: None,
           task_payload: None,
@@ -1350,6 +1351,31 @@ fn WgslIrLowerer::eval_global_integer_expression_inner(
         wgsl_ir_eval_integer_binary(op, left_value, right_value),
         left_unsigned || right_unsigned,
       )
+    }
+    Math(MathFunction::Min, a, Some(b), None, None) => {
+      let (a_value, a_unsigned) = self.eval_global_integer_expression(a)
+      let (b_value, b_unsigned) = self.eval_global_integer_expression(b)
+      let value = if a_value < b_value { a_value } else { b_value }
+      (value, a_unsigned || b_unsigned)
+    }
+    Math(MathFunction::Max, a, Some(b), None, None) => {
+      let (a_value, a_unsigned) = self.eval_global_integer_expression(a)
+      let (b_value, b_unsigned) = self.eval_global_integer_expression(b)
+      let value = if a_value > b_value { a_value } else { b_value }
+      (value, a_unsigned || b_unsigned)
+    }
+    Math(MathFunction::Clamp, value, Some(low), Some(high), None) => {
+      let (value, value_unsigned) = self.eval_global_integer_expression(value)
+      let (low, low_unsigned) = self.eval_global_integer_expression(low)
+      let (high, high_unsigned) = self.eval_global_integer_expression(high)
+      let clamped = if value < low {
+        low
+      } else if value > high {
+        high
+      } else {
+        value
+      }
+      (clamped, value_unsigned || low_unsigned || high_unsigned)
     }
     Unary(UnaryOperator::Negate, inner) => {
       let (value, _) = self.eval_global_integer_expression(inner)
@@ -7933,6 +7959,9 @@ fn wgsl_ir_blend_src_from_attributes(
 fn wgsl_ir_builtin_from_name(name : String) -> BuiltIn raise WgslIrLowerError {
   match name {
     "position" => BuiltIn::Position(false)
+    "view_index" => BuiltIn::ViewIndex
+    "clip_distances" => BuiltIn::ClipDistances
+    "primitive_index" => BuiltIn::PrimitiveIndex
     "vertex_index" => BuiltIn::VertexIndex
     "instance_index" => BuiltIn::InstanceIndex
     "front_facing" => BuiltIn::FrontFacing
@@ -7944,6 +7973,10 @@ fn wgsl_ir_builtin_from_name(name : String) -> BuiltIn raise WgslIrLowerError {
     "local_invocation_index" => BuiltIn::LocalInvocationIndex
     "workgroup_id" => BuiltIn::WorkGroupId
     "num_workgroups" => BuiltIn::NumWorkGroups
+    "num_subgroups" => BuiltIn::NumSubgroups
+    "subgroup_id" => BuiltIn::SubgroupId
+    "subgroup_size" => BuiltIn::SubgroupSize
+    "subgroup_invocation_id" => BuiltIn::SubgroupInvocationId
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
         "unknown builtin attribute: \{name}",
@@ -8151,31 +8184,247 @@ fn wgsl_ir_early_depth_test_from_attributes(
 }
 
 ///|
-fn wgsl_ir_workgroup_size_from_attributes(
+fn WgslIrLowerer::workgroup_size_from_attributes(
+  self : WgslIrLowerer,
   attributes : Array[@ast.WgslAttribute],
-) -> Array[Int] {
+) -> (Array[Int], Array[Handle?]?) raise WgslIrLowerError {
   match wgsl_ir_attribute_named(attributes, "workgroup_size") {
     Some(attribute) =>
       match attribute.arguments_ref() {
         Some(expr_ref) => {
-          let values : Array[Int] = []
-          for token in expr_ref.tokens() {
-            match token.kind() {
-              IntLiteral(value) | UintLiteral(value) => values.push(value)
-              _ => ()
+          let nodes = match expr_ref.root() {
+            Some(root) => wgsl_ir_flatten_workgroup_size_arguments(root)
+            None => []
+          }
+          let values : Array[Int] = [1, 1, 1]
+          let overrides : Array[Handle?] = [None, None, None]
+          for i in 0..<3 {
+            match nodes.get(i) {
+              Some(node) => {
+                let (value, override_handle) = self.workgroup_size_dimension_from_node(
+                  node,
+                )
+                values[i] = value
+                overrides[i] = override_handle
+              }
+              None => ()
             }
           }
-          match values {
-            [] => [1, 1, 1]
-            [x] => [x, 1, 1]
-            [x, y] => [x, y, 1]
-            [x, y, z, ..] => [x, y, z]
+          if wgsl_ir_optional_handle_array_is_empty(overrides) {
+            (values, None)
+          } else {
+            (values, Some(overrides))
           }
         }
-        None => [1, 1, 1]
+        None => ([1, 1, 1], None)
       }
-    None => [1, 1, 1]
+    None => ([1, 1, 1], None)
   }
+}
+
+///|
+fn wgsl_ir_flatten_workgroup_size_arguments(
+  root : @ast.WgslExprNode,
+) -> Array[@ast.WgslExprNode] {
+  match root.kind() {
+    Sequence(items) => items
+    _ => [root]
+  }
+}
+
+///|
+fn WgslIrLowerer::workgroup_size_dimension_from_node(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> (Int, Handle?) raise WgslIrLowerError {
+  let handle = self.lower_global_expression_node(node)
+  let evaluated = Some(self.eval_global_integer_expression(handle)) catch {
+    _ => None
+  }
+  match evaluated {
+    Some((value, _)) => (value, None)
+    None =>
+      if self.global_expression_references_override(handle) {
+        (1, Some(handle))
+      } else {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "workgroup_size dimension must be a const or override integer expression",
+        )
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::global_expression_references_override(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.global_expression_inner_references_override(expression)
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::global_expression_inner_references_override(
+  self : WgslIrLowerer,
+  expression : Expression,
+) -> Bool {
+  match expression {
+    Override(_) => true
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) =>
+          self.global_expression_references_override(constant.init)
+        None => false
+      }
+    Compose(_, components)
+    | AtomicCall(_, components)
+    | FunctionCall(_, components) =>
+      wgsl_ir_global_expression_list_references_override(self, components)
+    Access(base, index) | Binary(_, base, index) =>
+      self.global_expression_references_override(base) ||
+      self.global_expression_references_override(index)
+    AccessIndex(base, _)
+    | Splat(_, base)
+    | Swizzle(_, base, _)
+    | Load(base)
+    | Unary(_, base)
+    | Bitcast(_, base)
+    | Derivative(_, _, base)
+    | Relational(_, base)
+    | As(base, _, _)
+    | CallResult(base)
+    | AtomicResult(base, _)
+    | WorkGroupUniformLoadResult(base)
+    | ArrayLength(base)
+    | RayQueryProceed(base)
+    | RayQueryConfirmIntersection(base)
+    | RayQueryTerminate(base)
+    | RayQueryVertexPositions(base, _)
+    | RayQueryGetIntersection(base, _)
+    | SubgroupOperationResult(base) =>
+      self.global_expression_references_override(base)
+    AddressOf(_, target) => self.global_expression_references_override(target)
+    RayQueryGenerateIntersection(base, intersection_t) =>
+      self.global_expression_references_override(base) ||
+      self.global_expression_references_override(intersection_t)
+    RayQueryInitialize(query, acceleration, ray_desc) =>
+      self.global_expression_references_override(query) ||
+      self.global_expression_references_override(acceleration) ||
+      self.global_expression_references_override(ray_desc)
+    CooperativeMultiplyAdd(a, b, c) =>
+      self.global_expression_references_override(a) ||
+      self.global_expression_references_override(b) ||
+      self.global_expression_references_override(c)
+    ImageLoad(image, coordinate, array_index, sample, level) =>
+      self.global_expression_references_override(image) ||
+      self.global_expression_references_override(coordinate) ||
+      wgsl_ir_optional_global_expression_references_override(self, array_index) ||
+      wgsl_ir_optional_global_expression_references_override(self, sample) ||
+      wgsl_ir_optional_global_expression_references_override(self, level)
+    ImageQuery(image, query) =>
+      self.global_expression_references_override(image) ||
+      wgsl_ir_image_query_references_override(self, query)
+    ImageSample(
+      image,
+      sampler,
+      _,
+      coordinate,
+      array_index,
+      offset,
+      level,
+      depth_ref,
+      _
+    ) =>
+      self.global_expression_references_override(image) ||
+      self.global_expression_references_override(sampler) ||
+      self.global_expression_references_override(coordinate) ||
+      wgsl_ir_optional_global_expression_references_override(self, array_index) ||
+      wgsl_ir_optional_global_expression_references_override(self, offset) ||
+      wgsl_ir_sample_level_references_override(self, level) ||
+      wgsl_ir_optional_global_expression_references_override(self, depth_ref)
+    Select(condition, accept, reject) =>
+      self.global_expression_references_override(condition) ||
+      self.global_expression_references_override(accept) ||
+      self.global_expression_references_override(reject)
+    Math(_, a, b, c, d) =>
+      self.global_expression_references_override(a) ||
+      wgsl_ir_optional_global_expression_references_override(self, b) ||
+      wgsl_ir_optional_global_expression_references_override(self, c) ||
+      wgsl_ir_optional_global_expression_references_override(self, d)
+    Literal(_)
+    | ZeroValue(_)
+    | FunctionArgument(_)
+    | GlobalVariable(_)
+    | LocalVariable(_)
+    | RayQueryProceedResult
+    | SubgroupBallotResult
+    | CooperativeLoad(_, _, _, _) => false
+  }
+}
+
+///|
+fn wgsl_ir_global_expression_list_references_override(
+  lowerer : WgslIrLowerer,
+  handles : Array[Handle],
+) -> Bool {
+  for handle in handles {
+    if lowerer.global_expression_references_override(handle) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_optional_global_expression_references_override(
+  lowerer : WgslIrLowerer,
+  handle : Handle?,
+) -> Bool {
+  match handle {
+    Some(handle) => lowerer.global_expression_references_override(handle)
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_sample_level_references_override(
+  lowerer : WgslIrLowerer,
+  level : SampleLevel,
+) -> Bool {
+  match level {
+    Exact(handle) | Bias(handle) =>
+      lowerer.global_expression_references_override(handle)
+    Zero => false
+    Gradient(x, y) =>
+      lowerer.global_expression_references_override(x) ||
+      lowerer.global_expression_references_override(y)
+    Auto => false
+  }
+}
+
+///|
+fn wgsl_ir_image_query_references_override(
+  lowerer : WgslIrLowerer,
+  query : ImageQuery,
+) -> Bool {
+  match query {
+    Size(level) =>
+      wgsl_ir_optional_global_expression_references_override(lowerer, level)
+    NumLevels | NumLayers | NumSamples => false
+  }
+}
+
+///|
+fn wgsl_ir_optional_handle_array_is_empty(handles : Array[Handle?]) -> Bool {
+  for handle in handles {
+    if handle != None {
+      return false
+    }
+  }
+  true
 }
 
 ///|

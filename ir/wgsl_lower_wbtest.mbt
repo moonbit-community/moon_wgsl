@@ -54,6 +54,90 @@ test "WGSL AST lowers declarations, bindings, and entry point metadata into IR" 
 }
 
 ///|
+test "WGSL AST lowerer preserves const and override workgroup sizes in IR" {
+  let source =
+    #|const WIDTH: u32 = max(1u, 4u - 1u);
+    #|@id(7) override HEIGHT: u32 = 8u;
+    #|
+    #|@compute @workgroup_size(WIDTH, HEIGHT, 1)
+    #|fn main() {
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(module_.entry_points[0].workgroup_size, content="[3, 1, 1]")
+  guard module_.entry_points[0].workgroup_size_overrides is Some(overrides) else {
+    abort("expected workgroup_size override handles")
+  }
+  debug_inspect(overrides[0], content="None")
+  debug_inspect(overrides[1] != None, content="true")
+  debug_inspect(overrides[2], content="None")
+}
+
+///|
+test "WGSL AST lowerer maps official IO builtins into IR bindings" {
+  let source =
+    #|enable subgroups;
+    #|enable clip_distances;
+    #|
+    #|@vertex
+    #|fn vertex(
+    #|  @builtin(vertex_index) vertex_index: u32,
+    #|  @builtin(instance_index) instance_index: u32,
+    #|  @builtin(view_index) view_index: u32,
+    #|  @builtin(clip_distances) clip_distances: array<f32, 1>,
+    #|) -> @builtin(position) vec4f {
+    #|  return vec4f(f32(vertex_index + instance_index + view_index) + clip_distances[0], 0.0, 0.0, 1.0);
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment(
+    #|  @builtin(position) position: vec4f,
+    #|  @builtin(front_facing) front_facing: bool,
+    #|  @builtin(primitive_index) primitive_index: u32,
+    #|  @builtin(sample_index) sample_index: u32,
+    #|  @builtin(sample_mask) sample_mask: u32,
+    #|) -> @builtin(frag_depth) f32 {
+    #|  return position.z + f32(primitive_index + sample_index + sample_mask) + select(0.0, 1.0, front_facing);
+    #|}
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn compute(
+    #|  @builtin(global_invocation_id) global_id: vec3u,
+    #|  @builtin(local_invocation_id) local_id: vec3u,
+    #|  @builtin(local_invocation_index) local_index: u32,
+    #|  @builtin(workgroup_id) workgroup_id: vec3u,
+    #|  @builtin(num_workgroups) num_workgroups: vec3u,
+    #|  @builtin(num_subgroups) num_subgroups: u32,
+    #|  @builtin(subgroup_id) subgroup_id: u32,
+    #|  @builtin(subgroup_size) subgroup_size: u32,
+    #|  @builtin(subgroup_invocation_id) subgroup_invocation_id: u32,
+    #|) {
+    #|  let _sum = global_id.x + local_id.x + local_index + workgroup_id.x + num_workgroups.x + num_subgroups + subgroup_id + subgroup_size + subgroup_invocation_id;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(module_.entry_points.length(), content="3")
+  debug_inspect(
+    module_.entry_points[0].function.arguments[2].binding,
+    content="Some(BuiltIn(ViewIndex))",
+  )
+  debug_inspect(
+    module_.entry_points[0].function.arguments[3].binding,
+    content="Some(BuiltIn(ClipDistances))",
+  )
+  debug_inspect(
+    module_.entry_points[1].function.arguments[2].binding,
+    content="Some(BuiltIn(PrimitiveIndex))",
+  )
+  debug_inspect(
+    module_.entry_points[2].function.arguments[8].binding,
+    content="Some(BuiltIn(SubgroupInvocationId))",
+  )
+}
+
+///|
 test "WGSL AST lowerer uses stable function handles for calls" {
   let source =
     #|fn helper(x: u32) -> u32 {

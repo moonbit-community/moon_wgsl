@@ -305,17 +305,38 @@ fn WgslIrEmitter::emit_entry_point(
 ) -> Unit raise WgslIrEmitError {
   out.write_string(self.stage_attribute(entry_point.stage))
   if entry_point.stage == Compute {
-    match entry_point.workgroup_size {
-      [x, y, z, ..] => out.write_string(" @workgroup_size(\{x}, \{y}, \{z})")
-      [x, y] => out.write_string(" @workgroup_size(\{x}, \{y}, 1)")
-      [x] => out.write_string(" @workgroup_size(\{x}, 1, 1)")
-      [] => out.write_string(" @workgroup_size(1, 1, 1)")
-    }
+    out.write_string(" @workgroup_size(")
+    out.write_string(self.workgroup_size_component(entry_point, 0))
+    out.write_string(", ")
+    out.write_string(self.workgroup_size_component(entry_point, 1))
+    out.write_string(", ")
+    out.write_string(self.workgroup_size_component(entry_point, 2))
+    out.write_string(")")
   } else {
     out.write_string(" ")
   }
   out.write_string("\n")
   self.emit_function(out, entry_point.function, Some(entry_point.name))
+}
+
+///|
+fn WgslIrEmitter::workgroup_size_component(
+  self : WgslIrEmitter,
+  entry_point : EntryPoint,
+  index : Int,
+) -> String raise WgslIrEmitError {
+  match entry_point.workgroup_size_overrides {
+    Some(overrides) =>
+      match overrides.get(index) {
+        Some(Some(handle)) => return self.global_expression(handle)
+        _ => ()
+      }
+    None => ()
+  }
+  match entry_point.workgroup_size.get(index) {
+    Some(value) => "\{value}"
+    None => "1"
+  }
 }
 
 ///|
@@ -2267,6 +2288,9 @@ fn WgslIrEmitter::builtin_name(
   ignore(self)
   match builtin {
     Position(_) => "position"
+    ViewIndex => "view_index"
+    ClipDistances => "clip_distances"
+    PrimitiveIndex => "primitive_index"
     VertexIndex => "vertex_index"
     InstanceIndex => "instance_index"
     FrontFacing => "front_facing"
@@ -2278,6 +2302,10 @@ fn WgslIrEmitter::builtin_name(
     LocalInvocationIndex => "local_invocation_index"
     WorkGroupId => "workgroup_id"
     NumWorkGroups => "num_workgroups"
+    NumSubgroups => "num_subgroups"
+    SubgroupId => "subgroup_id"
+    SubgroupSize => "subgroup_size"
+    SubgroupInvocationId => "subgroup_invocation_id"
     _ => raise WgslIrEmitError::Unsupported("builtin")
   }
 }

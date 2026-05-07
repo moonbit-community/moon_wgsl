@@ -59,6 +59,46 @@ test "IR emitter mirrors naga entry-point stage attribute spacing" {
 }
 
 ///|
+test "IR emitter prints official builtin names and workgroup override expressions" {
+  let source =
+    #|enable subgroups;
+    #|
+    #|const WIDTH: u32 = 4u;
+    #|@id(0) override HEIGHT: u32 = 8u;
+    #|
+    #|@compute @workgroup_size(WIDTH, HEIGHT, 1)
+    #|fn main(
+    #|  @builtin(global_invocation_id) global_id: vec3u,
+    #|  @builtin(subgroup_invocation_id) subgroup_invocation_id: u32,
+    #|) {
+    #|  let value = global_id.x + subgroup_invocation_id;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  ignore(
+    @parser.parse_wgsl_translation_unit_strict(emitted) catch {
+      error => abort(error.message())
+    },
+  )
+  debug_inspect(
+    emitted.contains("@compute @workgroup_size(4, HEIGHT, 1)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("@builtin(global_invocation_id)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("@builtin(subgroup_invocation_id)"),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter fails on invalid handles instead of inventing output" {
   let module_ = Module()
   let constant = Constant::{
