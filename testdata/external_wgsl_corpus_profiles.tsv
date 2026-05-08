@@ -43,3 +43,4 @@ webgpu-samples	sample/cornell/radiosity.wgsl	-	-	-	-	-	sample/cornell/common.wgs
 webgpu-samples	sample/cornell/rasterizer.wgsl	-	-	-	-	-	sample/cornell/common.wgsl	-	Cornell sample rasterizer shader exactly as TypeScript builds it by appending common.wgsl.
 webgpu-samples	sample/cornell/raytracer.wgsl	-	-	-	-	-	sample/cornell/common.wgsl	-	Cornell sample raytracer shader exactly as TypeScript builds it by appending common.wgsl.
 webgpu-samples	sample/cornell/tonemapper.wgsl	-	-	-	-	-	sample/cornell/common.wgsl	{OUTPUT_FORMAT}=bgra8unorm	Cornell sample tonemapper shader with a representative preferred-canvas storage format.
+webgpu-samples	sample/skinnedMesh/gltf.wgsl	-	-	-	-	profile://webgpu-samples/skinned_mesh_vertex_input.wgsl	-	-	Skinned mesh sample shader exactly as TypeScript builds it by prefixing the generated VertexInput struct for the whale GLB layout.

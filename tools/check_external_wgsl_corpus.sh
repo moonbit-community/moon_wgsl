@@ -151,6 +151,9 @@ append_profile_sources() {
   for rel_source in "${source_list[@]}"; do
     [[ -n "$rel_source" ]] || continue
     local source_path="$checkout/$rel_source"
+    if [[ "$rel_source" == profile://* ]]; then
+      source_path="$repo_root/testdata/external_wgsl_profile_sources/${rel_source#profile://}"
+    fi
     if [[ ! -f "$source_path" ]]; then
       printf 'profile_source_missing\tprofile source fragment not found: %s\n' "$rel_source" > "$reason_output"
       return 1
