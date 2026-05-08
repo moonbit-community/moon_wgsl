@@ -475,10 +475,7 @@ test "template constants preserve large unsigned shader-def values" {
 ///|
 test "template constants support raw double-hash WGSL token placeholders" {
   let value_defines = @common.default_wgsl_value_defines()
-  value_defines.set(
-    "TEXTURE_FORMAT",
-    @common.ShaderDefValue::Raw("rgba8unorm"),
-  )
+  value_defines.set("TEXTURE_FORMAT", @common.ShaderDefValue::Raw("rgba8unorm"))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     "@group(0) @binding(0) var out_tex: texture_storage_2d<##TEXTURE_FORMAT##, write>;\n",
     {
@@ -488,7 +485,8 @@ test "template constants support raw double-hash WGSL token placeholders" {
       additional_imports: [],
     },
   ) catch {
-    err => abort("expected raw template token compose success: \{err.message()}")
+    err =>
+      abort("expected raw template token compose success: \{err.message()}")
   }
   debug_inspect(
     preprocessed.contains("texture_storage_2d<rgba8unorm, write>"),

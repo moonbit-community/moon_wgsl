@@ -13,9 +13,7 @@
 // limitations under the License.
 
 ///|
-// Identifier normalization is part of semantic analysis. Compose validates
-// unsupported struct members here instead of running a final text-emission pass.
-fn wgsl_identifier_is_reserved(ident : String) -> Bool {
+fn wgsl_ir_identifier_is_reserved(ident : String) -> Bool {
   if ident == "" {
     return false
   }
@@ -242,7 +240,7 @@ fn wgsl_identifier_is_reserved(ident : String) -> Bool {
 }
 
 ///|
-fn wgsl_identifier_ends_with_digit(ident : String) -> Bool {
+fn wgsl_ir_identifier_ends_with_digit(ident : String) -> Bool {
   if ident == "" {
     return false
   }
@@ -259,7 +257,7 @@ fn wgsl_identifier_ends_with_digit(ident : String) -> Bool {
 }
 
 ///|
-fn sanitize_wgsl_identifier(ident : String) -> String {
+fn sanitize_wgsl_ir_identifier(ident : String) -> String {
   let had_trailing_separator = ident.has_suffix("_")
   let mut out = ident
   while out.has_suffix("_") {
@@ -274,115 +272,10 @@ fn sanitize_wgsl_identifier(ident : String) -> String {
   if out.has_prefix("_naga") {
     out = "gen_\{out}"
   }
-  if wgsl_identifier_is_reserved(out) {
+  if wgsl_ir_identifier_is_reserved(out) {
     out = "\{out}_wgsl"
-  } else if had_trailing_separator && wgsl_identifier_ends_with_digit(out) {
+  } else if had_trailing_separator && wgsl_ir_identifier_ends_with_digit(out) {
     out = "\{out}_"
   }
   out
-}
-
-///|
-fn wgsl_identifier_requires_substitution(ident : String) -> Bool {
-  ident != "" && sanitize_wgsl_identifier(ident) != ident
-}
-
-///|
-fn collect_wgsl_function_local_name_sanitizer(
-  name : String,
-  plan : WgslRenamePlan,
-) -> Unit {
-  if wgsl_identifier_requires_substitution(name) {
-    plan.add(name, sanitize_wgsl_identifier(name), FunctionLocal)
-  }
-}
-
-///|
-fn collect_wgsl_statement_local_sanitizers(
-  statement : WgslStatement,
-  plan : WgslRenamePlan,
-) -> Unit {
-  for binding in statement.local_bindings() {
-    collect_wgsl_function_local_name_sanitizer(binding.name().name(), plan)
-  }
-  for block in statement.blocks() {
-    collect_wgsl_block_local_sanitizers(block, plan)
-  }
-}
-
-///|
-fn collect_wgsl_block_local_sanitizers(
-  block : WgslBlock,
-  plan : WgslRenamePlan,
-) -> Unit {
-  for statement in block.statements() {
-    collect_wgsl_statement_local_sanitizers(statement, plan)
-  }
-}
-
-///|
-fn collect_wgsl_function_local_sanitizers(
-  data : WgslGlobalDeclData,
-  plan : WgslRenamePlan,
-) -> Unit {
-  match data {
-    WgslGlobalDeclData::Function(function) => {
-      for argument in function.arguments() {
-        collect_wgsl_function_local_name_sanitizer(argument.name().name(), plan)
-      }
-      collect_wgsl_block_local_sanitizers(function.body(), plan)
-    }
-    _ => ()
-  }
-}
-
-///|
-pub fn normalize_wgsl_output_identifiers(
-  source : String,
-) -> String raise WgslParseError {
-  let graph = build_wgsl_declaration_graph(source)
-  let plan = WgslRenamePlan::empty()
-  for block in graph.declaration_blocks {
-    if wgsl_identifier_requires_substitution(block.name()) {
-      plan.add(
-        block.name(),
-        sanitize_wgsl_identifier(block.name()),
-        GlobalDeclarationAndReferences,
-      )
-    }
-    collect_wgsl_function_local_sanitizers(block.data, plan)
-  }
-  if plan.is_empty() {
-    source
-  } else {
-    rewrite_wgsl_declarations_with_rename_plan(source, plan)
-  }
-}
-
-///|
-pub fn invalid_wgsl_struct_member_identifier(
-  source : String,
-) -> String? raise WgslParseError {
-  let graph = build_wgsl_declaration_graph(source)
-  for block in graph.declaration_blocks {
-    match block.data {
-      WgslGlobalDeclData::Struct(struct_decl) =>
-        for struct_member in struct_decl.members() {
-          let mut allows_identifier_substitution = false
-          for attr in struct_member.attributes() {
-            if attr.name().name() == "blend_src" {
-              allows_identifier_substitution = true
-              break
-            }
-          }
-          if !allows_identifier_substitution &&
-            struct_member.name().name() != "" &&
-            wgsl_identifier_requires_substitution(struct_member.name().name()) {
-            return Some(struct_member.name().name())
-          }
-        }
-      _ => ()
-    }
-  }
-  None
 }

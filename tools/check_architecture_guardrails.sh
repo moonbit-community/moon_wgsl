@@ -218,6 +218,53 @@ if ! rg -n 'validate_wgsl_ir_module\(shader_module\)' ir/wgsl_emit.mbt >/dev/nul
   fail "WGSL IR emission must run internal IR validation before writing source"
 fi
 
+if rg -n 'pub (fn (parse_wgsl_module_to_ir|parse_wgsl_module_to_ir_with_generated_imports|lower_wgsl_translation_unit_to_ir|lower_wgsl_translation_unit_to_ir_with_generated_imports|emit_wgsl_module_from_ir|emit_wgsl_module_from_ir_roots)|suberror WgslIr(Lower|Emit)Error)' ir \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "raw WGSL IR lower/emit APIs must remain internal; public callers must use the validated IR pipeline"
+fi
+
+if rg -n 'parse_wgsl_module_to_ir|lower_wgsl_translation_unit_to_ir|emit_wgsl_module_from_ir|WgslIr(Lower|Emit)Error|WgslIrEmitFilter|sanitize_wgsl_ir_identifier' ir/pkg.generated.mbti >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "IR public interface must only expose validated pipeline entrypoints, not raw lower/emit internals"
+fi
+
+if ! rg -n 'roundtrip_wgsl_source_via_ir_with_generated_imports' compose/pipeline.mbt >/dev/null; then
+  fail "compose final WGSL output must enter the unified IR roundtrip pipeline"
+fi
+
+if ! rg -n 'validate_wgsl_ir_module\(reparsed\)' ir/wgsl_pipeline.mbt >/dev/null; then
+  fail "unified IR pipeline must validate emitted WGSL after reparsing it into IR"
+fi
+
+if rg -n 'normalize_wgsl_output_identifiers|normalize_wgsl_composed_declarations_with_binding_plan|unresolved_wgsl_semantic_namespace_reference' compose \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose finalization must not use source-level semantic normalization or namespace scans"
+fi
+
+if rg -n 'emit_wgsl_tree_shaken_source_strict' export --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "export tree shaking must use IR reachability, not source-level declaration extraction"
+fi
+
+if rg -n 'pub fn (emit_wgsl_tree_shaken_source_strict|normalize_wgsl_output_identifiers|invalid_wgsl_struct_member_identifier|normalize_wgsl_composed_declarations|normalize_wgsl_composed_declarations_with_binding_plan)|pub struct WgslTreeShakenSource' transform \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "transform must not expose source-level WGSL semantic rewrite/tree-shake APIs"
+fi
+
+if rg -n 'emit_wgsl_tree_shaken_source_strict|normalize_wgsl_output_identifiers|invalid_wgsl_struct_member_identifier|normalize_wgsl_composed_declarations|WgslTreeShakenSource' transform/pkg.generated.mbti >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "transform public interface must not expose source-level WGSL semantic rewrite/tree-shake APIs"
+fi
+
+if rg -n 'parse_wgsl_module_to_ir|emit_wgsl_module_from_ir' tools/ir_roundtrip tools/wgsl_validation_cases \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WGSL validation tools must use the unified IR roundtrip pipeline"
+fi
+
 if [[ -f testdata/external_wgsl_corpus_skips.tsv ]]; then
   fail "external WGSL corpus must not use a skipped-file manifest"
 fi

@@ -51,7 +51,10 @@ test "tree-shaken extraction preserves multiline grouped imports" {
     error => abort(error.message())
   }
   debug_inspect(extracted.source().contains("#import"), content="true")
-  debug_inspect(extracted.source().contains("helpers as helpers"), content="true")
+  debug_inspect(
+    extracted.source().contains("helpers as helpers"),
+    content="true",
+  )
   debug_inspect(extracted.source().contains("fn helper_user"), content="true")
   debug_inspect(extracted.source().contains("fn entry"), content="true")
 }
@@ -70,8 +73,8 @@ test "same-line attributed declarations stay reachable" {
     #|  return 1u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["fragment"]).source
-  debug_inspect(extracted.contains("@fragment fn fragment"), content="true")
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["fragment"])
+  debug_inspect(extracted.contains("fn fragment"), content="true")
   debug_inspect(extracted.contains("struct Output"), content="true")
   debug_inspect(extracted.contains("fn helper"), content="false")
 }
@@ -85,7 +88,7 @@ test "declaration graph keeps dependencies from AST initializers" {
     #|  return VALUE;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["use_value"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["use_value"])
   debug_inspect(extracted.contains("const BASE"), content="true")
   debug_inspect(extracted.contains("const VALUE"), content="true")
   debug_inspect(extracted.contains("fn use_value"), content="true")
@@ -109,9 +112,9 @@ test "declaration graph keeps dependencies from AST type refs" {
     #|  return 1u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["make_output"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["make_output"])
   debug_inspect(extracted.contains("struct Item"), content="true")
-  debug_inspect(extracted.contains("alias Items"), content="true")
+  debug_inspect(extracted.contains("values: array<Item, 4>"), content="true")
   debug_inspect(extracted.contains("struct Output"), content="true")
   debug_inspect(extracted.contains("fn make_output"), content="true")
   debug_inspect(extracted.contains("fn unused"), content="false")
@@ -136,7 +139,7 @@ test "declaration graph does not keep globals shadowed by function locals" {
     #|  return local;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = extract_wgsl_module_item_origins_strict(source, ["entry"]).source()
   debug_inspect(extracted.contains("const local"), content="false")
   debug_inspect(extracted.contains("const arg"), content="false")
   debug_inspect(extracted.contains("const nested"), content="false")
@@ -156,7 +159,7 @@ test "declaration graph keeps globals referenced before local shadows" {
     #|  return value + helper;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -172,7 +175,7 @@ test "declaration graph keeps initializer callee with same local name" {
     #|  return point_light;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("fn point_light"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -188,7 +191,7 @@ test "declaration graph keeps local declaration type refs with same local name" 
     #|  return View.value;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("struct View"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -207,7 +210,7 @@ test "declaration graph keeps compound initializer callee before local scope" {
     #|  return 0u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -224,7 +227,7 @@ test "declaration graph keeps for initializer callee before loop local scope" {
     #|  return 0u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -241,7 +244,7 @@ test "declaration graph filters compound locals after declaration" {
     #|  return 0u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = extract_wgsl_module_item_origins_strict(source, ["entry"]).source()
   debug_inspect(extracted.contains("const helper"), content="false")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -256,7 +259,7 @@ test "declaration graph does not leak for header locals after loop" {
     #|  return i;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("const i"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -275,7 +278,7 @@ test "declaration graph does not leak nested compound locals to outer block" {
     #|  return 0u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("const helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -291,7 +294,7 @@ test "declaration graph does not leak nested local shadows" {
     #|  return nested;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("const nested"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -308,7 +311,7 @@ test "declaration graph ignores member access suffix dependencies" {
     #|  return selected;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("struct Item"), content="true")
   debug_inspect(extracted.contains("const selected"), content="true")
   debug_inspect(extracted.contains("const value"), content="false")
@@ -322,7 +325,7 @@ test "declaration graph does not resolve namespace suffix as local dependency" {
     #|  return module::helper();
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = extract_wgsl_module_item_origins_strict(source, ["entry"]).source()
   debug_inspect(extracted.contains("const helper"), content="false")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -343,7 +346,7 @@ test "declaration graph reads switch case expressions without keyword leaks" {
     #|  return 0u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("const SELECTED"), content="true")
   debug_inspect(extracted.contains("const case"), content="false")
   debug_inspect(extracted.contains("fn entry"), content="true")
@@ -361,7 +364,7 @@ test "declaration graph keeps break-if expression dependencies" {
     #|  }
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("const STOP"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
 }
@@ -551,98 +554,9 @@ test "declaration graph keeps dependencies from recursively scoped blocks" {
     #|  return 0u;
     #|}
     #|
-  let extracted = emit_wgsl_tree_shaken_source_strict(source, ["entry"]).source
+  let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("fn helper"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
-}
-
-///|
-test "normalizer dedupes duplicate declarations by AST structure" {
-  let source =
-    #|struct Shared {
-    #|  value: u32,
-    #|}
-    #|struct Shared { value : u32 }
-    #|fn entry(v: Shared) -> u32 {
-    #|  return v.value;
-    #|}
-    #|
-  let normalized = normalize_wgsl_composed_declarations(source, [])
-  debug_inspect(
-    normalized.contains("struct Shared {value: u32, }"),
-    content="true",
-  )
-  debug_inspect(normalized.contains("struct Shared { value"), content="false")
-  debug_inspect(normalized.contains("fn entry"), content="true")
-}
-
-///|
-test "normalizer preserves distinct resources even when binding slots collide" {
-  let source =
-    #|struct Globals { value: u32 }
-    #|@group(0u) @binding(1u) var<uniform> globals: Globals;
-    #|@group(0) @binding(1) var<uniform> globals_alias: Globals;
-    #|fn entry() -> u32 {
-    #|  return globals_alias.value;
-    #|}
-    #|
-  let normalized = normalize_wgsl_composed_declarations(source, [])
-  debug_inspect(normalized.contains("globals:"), content="true")
-  debug_inspect(normalized.contains("globals_alias:"), content="true")
-  debug_inspect(normalized.contains("return globals_alias.value;"), content="true")
-}
-
-///|
-test "normalizer suffix rewrites require explicit alias provenance" {
-  let source =
-    #|fn module__helper() -> u32 {
-    #|  return 1u;
-    #|}
-    #|fn entry() -> u32 {
-    #|  return helper();
-    #|}
-    #|
-  let untouched = normalize_wgsl_composed_declarations(source, [])
-  debug_inspect(untouched.contains("return helper();"), content="true")
-  let normalized = normalize_wgsl_composed_declarations(source, [
-    { from_name: "module::helper", to_name: "module__helper" },
-  ])
-  debug_inspect(normalized.contains("return module__helper();"), content="true")
-  debug_inspect(normalized.contains("return helper();"), content="false")
-}
-
-///|
-test "normalizer does not infer alias provenance from lowered declaration names" {
-  let source =
-    #|fn module__inner__helper() -> u32 {
-    #|  return 1u;
-    #|}
-    #|fn entry() -> u32 {
-    #|  return inner__helper();
-    #|}
-    #|
-  let normalized = normalize_wgsl_composed_declarations(source, [])
-  debug_inspect(normalized.contains("return inner__helper();"), content="true")
-  debug_inspect(
-    normalized.contains("return module__inner__helper();"),
-    content="false",
-  )
-}
-
-///|
-test "normalizer suffix rewrites ignore stale tree-shaken alias targets" {
-  let source =
-    #|const FLAG: u32 = 1u;
-    #|fn entry() -> u32 {
-    #|  return FLAG;
-    #|}
-    #|
-  let normalized = normalize_wgsl_composed_declarations(source, [
-    { from_name: "types::FLAG", to_name: "types__FLAG" },
-  ])
-  debug_inspect(normalized.contains("const FLAG: u32 = 1u;"), content="true")
-  debug_inspect(normalized.contains("return FLAG;"), content="true")
-  debug_inspect(normalized.contains("types__FLAG"), content="false")
 }
 
 ///|

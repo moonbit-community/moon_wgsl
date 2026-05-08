@@ -705,17 +705,6 @@ fn finalize_wgsl_composed_source(
     validate_wgsl_translation_unit_strict(out)
     return out
   }
-  out = normalize_wgsl_composed_declarations_with_binding_plan(
-    out, rewrite_plan,
-  ) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  let unresolved_namespace = unresolved_wgsl_semantic_namespace_reference(out) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  if unresolved_namespace is Some(path) {
-    raise ComposerError::FailedToResolveImport(path)
-  }
   validate_wgsl_translation_unit_strict(out)
   out
 }

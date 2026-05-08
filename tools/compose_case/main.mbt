@@ -124,9 +124,7 @@ fn compose_case_parse_value_define_value(
 ) -> @common.ShaderDefValue {
   let value = raw.trim().to_owned()
   if value.has_prefix("raw:") {
-    return @common.ShaderDefValue::Raw(
-      value[4:value.length()].to_owned(),
-    )
+    return @common.ShaderDefValue::Raw(value[4:value.length()].to_owned())
   }
   if value == "true" {
     return @common.ShaderDefValue::Bool(true)

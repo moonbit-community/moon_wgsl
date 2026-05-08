@@ -205,24 +205,18 @@ test "naga_oil: export_wgsl_ir emits through IR before tree-shaking" {
 }
 
 ///|
-test "naga_oil: export rejects invalid struct member identifiers before emission" {
+test "naga_oil: export sanitizes struct member identifiers in IR emission" {
   register_invalid_struct_member_export_test_shaders()
-  let mut message = ""
-  ignore(
-    @export.export_wgsl_with_options(
-      export_test_composer(),
-      "shaders/effects/invalid_member.wgsl",
-      export_test_compose_options(export_test_empty_defines(), []),
-      { root_items: ["main"] },
-    ),
+  let output = @export.export_wgsl_with_options(
+    export_test_composer(),
+    "shaders/effects/invalid_member.wgsl",
+    export_test_compose_options(export_test_empty_defines(), []),
+    { root_items: ["main"] },
   ) catch {
-    err => message = err.message()
+    err => abort("expected IR export success: \{err.message()}")
   }
-  debug_inspect(
-    message.contains("requires AST identifier normalization"),
-    content="true",
-  )
-  debug_inspect(message.contains("bad_"), content="true")
+  debug_inspect(output.source.contains("bad: vec3<f32>,"), content="true")
+  debug_inspect(output.source.contains("bad_: vec3<f32>,"), content="false")
   clear_export_test_registry()
 }
 
@@ -340,7 +334,7 @@ test "naga_oil: export_wgsl reports missing tree-shake roots as diagnostics" {
     content="Some(\"missing_entry\")",
   )
   debug_inspect(output.source.contains("unused_helper"), content="false")
-  debug_inspect(output.source.contains("fn build_color"), content="true")
+  debug_inspect(output.source.contains("fn build_color"), content="false")
   clear_export_test_registry()
 }
 

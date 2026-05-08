@@ -35,13 +35,6 @@ pub struct WgslEmittedDeclaration {
 }
 
 ///|
-pub struct WgslTreeShakenSource {
-  priv source : String
-  priv declarations : Array[WgslEmittedDeclaration]
-  priv missing_root_items : Array[String]
-}
-
-///|
 pub struct WgslModuleItemOrigin {
   priv name : String
   priv source_start : Int
@@ -78,25 +71,6 @@ pub fn WgslEmittedDeclaration::generated_end(
   self : WgslEmittedDeclaration,
 ) -> Int {
   self.generated_end
-}
-
-///|
-pub fn WgslTreeShakenSource::source(self : WgslTreeShakenSource) -> String {
-  self.source
-}
-
-///|
-pub fn WgslTreeShakenSource::declarations(
-  self : WgslTreeShakenSource,
-) -> Array[WgslEmittedDeclaration] {
-  self.declarations.copy()
-}
-
-///|
-pub fn WgslTreeShakenSource::missing_root_items(
-  self : WgslTreeShakenSource,
-) -> Array[String] {
-  self.missing_root_items.copy()
 }
 
 ///|
@@ -226,30 +200,19 @@ fn wgsl_reachable_declaration_map(
 }
 
 ///|
-fn emit_wgsl_tree_shaken_source_from_graph(
-  graph : WgslDeclarationGraph,
-  root_items : Array[String],
-) -> WgslTreeShakenSource {
-  let (included_names, missing_root_items) = wgsl_reachable_declaration_map(
-    graph.declaration_blocks,
-    root_items,
-  )
+pub fn collect_wgsl_named_declarations_strict(
+  source : String,
+) -> Array[WgslEmittedDeclaration] raise WgslParseError {
+  let graph = build_wgsl_declaration_graph_strict(source)
   let declarations : Array[WgslEmittedDeclaration] = []
-  let mut emitted_source = ""
   let mut generated_start = 0
-
   for import_block in graph.import_blocks {
-    let emitted_block = emit_wgsl_graph_block_canonical(import_block)
-    emitted_source = emitted_source + emitted_block
-    generated_start = generated_start + emitted_block.length()
+    generated_start = generated_start +
+      emit_wgsl_graph_block_canonical(import_block).length()
   }
   for block in graph.declaration_blocks {
-    if block.name() != "" && !included_names.contains(block.name()) {
-      continue
-    }
     let emitted_block = emit_wgsl_graph_block_canonical(block)
     let block_generated_start = generated_start
-    emitted_source = emitted_source + emitted_block
     generated_start = generated_start + emitted_block.length()
     if block.name() != "" {
       declarations.push(WgslEmittedDeclaration::{
@@ -260,30 +223,7 @@ fn emit_wgsl_tree_shaken_source_from_graph(
       })
     }
   }
-
-  WgslTreeShakenSource::{
-    source: emitted_source,
-    declarations,
-    missing_root_items,
-  }
-}
-
-///|
-pub fn emit_wgsl_tree_shaken_source_strict(
-  source : String,
-  root_items : Array[String],
-) -> WgslTreeShakenSource raise WgslParseError {
-  emit_wgsl_tree_shaken_source_from_graph(
-    build_wgsl_declaration_graph_strict(source),
-    root_items,
-  )
-}
-
-///|
-pub fn collect_wgsl_named_declarations_strict(
-  source : String,
-) -> Array[WgslEmittedDeclaration] raise WgslParseError {
-  emit_wgsl_tree_shaken_source_strict(source, []).declarations()
+  declarations
 }
 
 ///|

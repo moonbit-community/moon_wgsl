@@ -138,12 +138,14 @@ fn match_wgsl_source_origin_entry(
 
 ///|
 fn serialize_wgsl_export_output(
-  tree_shaken : WgslTreeShakenSource,
+  source : String,
+  declarations : Array[WgslEmittedDeclaration],
+  missing_root_items : Array[String],
   source_catalog : Array[WgslSourceCatalogEntry],
   source_origins : Array[WgslSourceOriginEntry],
 ) -> WgslExportOutput {
   let diagnostics : Array[WgslDiagnostic] = []
-  for missing_root in tree_shaken.missing_root_items() {
+  for missing_root in missing_root_items {
     push_wgsl_diagnostic(
       diagnostics,
       WgslDiagnosticSeverity::Warn,
@@ -156,7 +158,7 @@ fn serialize_wgsl_export_output(
   let origins = build_wgsl_source_origin_index(source_origins)
   let source_map : Array[WgslSourceMapEntry] = []
 
-  for declaration in tree_shaken.declarations() {
+  for declaration in declarations {
     if match_wgsl_source_origin_entry(origins, declaration, diagnostics)
       is Some(origin) {
       source_map.push(
@@ -171,12 +173,26 @@ fn serialize_wgsl_export_output(
   }
 
   WgslExportOutput(
-    tree_shaken.source(),
-    source_catalog,
-    source_origins,
-    source_map,
-    diagnostics,
+    source, source_catalog, source_origins, source_map, diagnostics,
   )
+}
+
+///|
+fn collect_missing_wgsl_export_roots(
+  declarations : Array[WgslEmittedDeclaration],
+  root_items : Array[String],
+) -> Array[String] {
+  let declared : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  for declaration in declarations {
+    declared.set(declaration.name(), true)
+  }
+  let missing : Array[String] = []
+  for root in root_items {
+    if !declared.contains(root) {
+      missing.push(root)
+    }
+  }
+  missing
 }
 
 ///|
@@ -187,14 +203,19 @@ pub fn export_wgsl_with_options(
   export_options : WgslExportOptions,
 ) -> WgslExportOutput raise ComposerError {
   let prepared = composer.prepare_wgsl_source(rel, compose_options)
-  let tree_shaken = emit_wgsl_tree_shaken_source_strict(
+  let tree_shaken_source = tree_shake_wgsl_source_via_ir(
     prepared.source,
     export_options.root_items,
   ) catch {
+    error => raise ComposerError::InvalidIr(error.message())
+  }
+  let declarations = collect_wgsl_named_declarations_strict(tree_shaken_source) catch {
     error => raise export_composer_error_from_wgsl_parse_error(error)
   }
   let output = serialize_wgsl_export_output(
-    tree_shaken,
+    tree_shaken_source,
+    declarations,
+    collect_missing_wgsl_export_roots(declarations, export_options.root_items),
     prepared.source_catalog,
     prepared.source_origins,
   )

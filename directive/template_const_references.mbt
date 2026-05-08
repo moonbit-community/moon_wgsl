@@ -108,11 +108,7 @@ pub fn parse_wgsl_template_const_references(
         Some(name) =>
           if value_defines.get(name) is Some(_) {
             references.push(
-              WgslTemplateConstReference(
-                name,
-                start,
-                tokens[i + 4].end(),
-              ),
+              WgslTemplateConstReference(name, start, tokens[i + 4].end()),
             )
             i = i + 5
             continue

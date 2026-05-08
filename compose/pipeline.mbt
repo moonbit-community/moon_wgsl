@@ -294,16 +294,22 @@ fn compose_wgsl_source_via_ir(
     @ir.WgslIrGeneratedImportProvenance,
   ],
 ) -> String raise ComposerError {
-  let module_ = @ir.parse_wgsl_module_to_ir_with_generated_imports(
+  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports(
     source,
     wgsl_generated_import_provenance_from_origins(
       source_origins, root_rel_path, virtual_override_generated_imports,
     ),
   ) catch {
-    error => raise ComposerError::InvalidIr(error.message())
-  }
-  @ir.emit_wgsl_module_from_ir(module_) catch {
-    error => raise ComposerError::InvalidIr(error.message())
+    error =>
+      match error {
+        @ir.WgslIrPipelineError::UnknownIdentifier(name) =>
+          if name.contains("::") {
+            raise ComposerError::FailedToResolveImport(name)
+          } else {
+            raise ComposerError::InvalidIr(error.message())
+          }
+        _ => raise ComposerError::InvalidIr(error.message())
+      }
   }
 }
 

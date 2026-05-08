@@ -286,20 +286,6 @@ fn wgsl_semantic_source_contains_reference_path(
 }
 
 ///|
-fn unresolved_wgsl_semantic_namespace_reference(
-  source : String,
-) -> String? raise WgslParseError {
-  let paths : Array[WgslSemanticReferencePath] = []
-  collect_wgsl_semantic_reference_paths(source, paths)
-  for path in paths {
-    if path.segments.length() > 1 {
-      return Some(path.text())
-    }
-  }
-  None
-}
-
-///|
 fn resolve_wgsl_semantic_import_module(
   importer_rel_path : String,
   import_path : String,

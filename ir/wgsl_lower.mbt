@@ -1,5 +1,5 @@
 ///|
-pub suberror WgslIrLowerError {
+priv suberror WgslIrLowerError {
   Parse(String)
   MissingType(String)
   UnsupportedType(String)
@@ -9,7 +9,7 @@ pub suberror WgslIrLowerError {
 }
 
 ///|
-pub fn WgslIrLowerError::message(self : WgslIrLowerError) -> String {
+fn WgslIrLowerError::message(self : WgslIrLowerError) -> String {
   match self {
     Parse(message) => message
     MissingType(name) => "missing WGSL type for \{name}"
@@ -255,14 +255,12 @@ fn wgsl_ir_parse_error_message(error : @parser.WgslParseError) -> String {
 }
 
 ///|
-pub fn parse_wgsl_module_to_ir(
-  source : String,
-) -> Module raise WgslIrLowerError {
+fn parse_wgsl_module_to_ir(source : String) -> Module raise WgslIrLowerError {
   parse_wgsl_module_to_ir_with_generated_imports(source, [])
 }
 
 ///|
-pub fn parse_wgsl_module_to_ir_with_generated_imports(
+fn parse_wgsl_module_to_ir_with_generated_imports(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrLowerError {
@@ -275,14 +273,7 @@ pub fn parse_wgsl_module_to_ir_with_generated_imports(
 }
 
 ///|
-pub fn lower_wgsl_translation_unit_to_ir(
-  unit : @ast.WgslTranslationUnit,
-) -> Module raise WgslIrLowerError {
-  lower_wgsl_translation_unit_to_ir_with_generated_imports(unit, [])
-}
-
-///|
-pub fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
+fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   unit : @ast.WgslTranslationUnit,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrLowerError {
@@ -523,6 +514,9 @@ fn WgslIrLowerer::predeclare_function_declaration(
   self : WgslIrLowerer,
   function : @ast.WgslFunction,
 ) -> Unit raise WgslIrLowerError {
+  if self.function_names.contains(function.name().name()) {
+    return
+  }
   let result = match function.result() {
     Some(result) =>
       match result.ty_ref() {
@@ -929,7 +923,8 @@ fn WgslIrLowerer::lower_function_declaration(
   }
   match stage {
     Some(stage) =>
-      if !self.referenced_names.contains(function.name().name()) {
+      if !self.referenced_names.contains(function.name().name()) &&
+        !self.entry_point_name_is_lowered(function.name().name()) {
         let (workgroup_size, workgroup_size_overrides) = self.workgroup_size_from_attributes(
           function.attributes(),
         )
@@ -949,6 +944,19 @@ fn WgslIrLowerer::lower_function_declaration(
       }
     None => ()
   }
+}
+
+///|
+fn WgslIrLowerer::entry_point_name_is_lowered(
+  self : WgslIrLowerer,
+  name : String,
+) -> Bool {
+  for entry_point in self.shader_module.entry_points {
+    if entry_point.name == name {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -1731,32 +1739,9 @@ fn wgsl_ir_switch_value_from_expression(
   let selector_is_unsigned = lowerer.switch_selector_is_unsigned(
     function, selector,
   )
-  match function.expressions.items.get(handle.index()) {
-    Some(Expression::Literal(Literal::I32(value))) =>
-      if selector_is_unsigned {
-        SwitchValue::U32(wgsl_ir_non_negative_int_to_uint(value))
-      } else {
-        SwitchValue::I32(value)
-      }
-    Some(Expression::Literal(Literal::U32(value))) =>
-      if selector_is_unsigned {
-        SwitchValue::U32(value)
-      } else {
-        SwitchValue::I32(WgslIrIntegerValue::Unsigned(value).to_signed_int())
-      }
-    Some(Expression::Literal(Literal::AbstractInt(value))) =>
-      if selector_is_unsigned {
-        SwitchValue::U32(WgslIrIntegerValue::Abstract(value).to_unsigned())
-      } else {
-        SwitchValue::I32(wgsl_ir_int64_to_i32(value))
-      }
-    Some(Expression::Constant(const_handle)) =>
-      lowerer.switch_value_from_constant(const_handle, selector_is_unsigned)
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "switch case selector must lower to an integer literal",
-      )
-  }
+  lowerer
+  .eval_function_integer_expression(function, handle)
+  .to_switch_value(selector_is_unsigned)
 }
 
 ///|
@@ -1776,24 +1761,6 @@ fn WgslIrLowerer::switch_selector_is_unsigned(
         None => false
       }
     None => false
-  }
-}
-
-///|
-fn WgslIrLowerer::switch_value_from_constant(
-  self : WgslIrLowerer,
-  handle : Handle,
-  selector_is_unsigned : Bool,
-) -> SwitchValue raise WgslIrLowerError {
-  match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) =>
-      self
-      .eval_global_integer_expression(constant.init)
-      .to_switch_value(selector_is_unsigned)
-    None =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "switch case selector references missing const",
-      )
   }
 }
 

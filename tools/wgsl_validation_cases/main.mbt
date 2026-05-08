@@ -326,13 +326,11 @@ fn validation_storage_array_length_ir_source() -> String {
     #|  }
     #|  output[id.x] = values[id.x];
     #|}
-  let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
+  @ir.roundtrip_wgsl_source_via_ir(source) catch {
     err =>
-      abort("expected storage arrayLength IR parse success: \{err.message()}")
-  }
-  @ir.emit_wgsl_module_from_ir(module_) catch {
-    err =>
-      abort("expected storage arrayLength IR emit success: \{err.message()}")
+      abort(
+        "expected storage arrayLength IR roundtrip success: \{err.message()}",
+      )
   }
 }
 

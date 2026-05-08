@@ -7,9 +7,6 @@ using @transform {
   collect_wgsl_source_catalog_declarations_strict,
   collect_wgsl_virtual_override_targets_strict,
   extract_wgsl_module_item_origins_strict,
-  invalid_wgsl_struct_member_identifier,
-  normalize_wgsl_output_identifiers,
-  normalize_wgsl_composed_declarations_with_binding_plan,
   rewrite_wgsl_declarations_with_binding_plan,
   rewrite_wgsl_references_with_binding_plan,
 }

@@ -45,6 +45,35 @@ test "IR emitter prints WGSL lowered from AST without source writeback" {
 }
 
 ///|
+test "IR pipeline owns output identifier sanitization" {
+  let source =
+    #|fn fragment(value: f32) -> f32 {
+    #|  var class: f32 = value;
+    #|  var _naga_tmp: f32 = class;
+    #|  class = class + _naga_tmp;
+    #|  return class;
+    #|}
+    #|
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var class_wgsl: f32 = value;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("var gen__naga_tmp: f32 = class_wgsl;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("class_wgsl = (class_wgsl + gen__naga_tmp);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return class;"), content="false")
+  debug_inspect(emitted.contains("return _naga_tmp;"), content="false")
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

@@ -14,14 +14,6 @@
 
 ///|
 fn finalize_wgsl_output_source(source : String) -> String raise ComposerError {
-  let invalid_identifier = invalid_wgsl_struct_member_identifier(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  match invalid_identifier {
-    Some(name) => raise ComposerError::InvalidStructMemberIdentifier(name)
-    None =>
-      normalize_wgsl_output_identifiers(source) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-  }
+  validate_wgsl_translation_unit_strict(source)
+  source
 }

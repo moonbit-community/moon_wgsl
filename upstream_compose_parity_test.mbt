@@ -857,11 +857,8 @@ test "naga_oil upstream: invalid struct member identifier reports compose failur
   ) catch {
     err => message = err.message()
   }
-  debug_inspect(
-    message.contains("requires AST identifier normalization"),
-    content="true",
-  )
-  debug_inspect(message.contains("bad_"), content="true")
+  debug_inspect(message.contains("invalid WGSL IR pipeline"), content="true")
+  debug_inspect(message.contains("unknown WGSL identifier"), content="true")
 }
 
 ///|
@@ -1688,8 +1685,7 @@ test "composer symbol table: partial import keeps alias-qualified type dependenc
   let composer = @compose.Composer::default()
   composer.register_source(
     "types.wgsl",
-    "#define_import_path app::types\n" +
-    "struct LightProbes { value: u32 }\n",
+    "#define_import_path app::types\n" + "struct LightProbes { value: u32 }\n",
   )
   composer.register_source(
     "bindings.wgsl",
@@ -1710,11 +1706,19 @@ test "composer symbol table: partial import keeps alias-qualified type dependenc
     upstream_parity_empty_compose_options(),
   ) catch {
     err =>
-      abort("expected alias-qualified type dependency compose success: \{err.message()}")
+      abort(
+        "expected alias-qualified type dependency compose success: \{err.message()}",
+      )
   }
   debug_inspect(source.contains("types::LightProbes"), content="false")
-  debug_inspect(source.contains("struct LightProbesX_naga_oil_mod_X"), content="true")
-  debug_inspect(source.contains("var<uniform> light_probesX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("struct LightProbesX_naga_oil_mod_X"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("var<uniform> light_probesX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -1722,8 +1726,7 @@ test "composer symbol table: nested full-module alias keeps transitive alias typ
   let composer = @compose.Composer::default()
   composer.register_source(
     "types.wgsl",
-    "#define_import_path app::types\n" +
-    "struct LightProbes { value: u32 }\n",
+    "#define_import_path app::types\n" + "struct LightProbes { value: u32 }\n",
   )
   composer.register_source(
     "bindings.wgsl",
@@ -1751,12 +1754,17 @@ test "composer symbol table: nested full-module alias keeps transitive alias typ
     upstream_parity_empty_compose_options(),
   ) catch {
     err =>
-      abort("expected nested alias type dependency compose success: \{err.message()}")
+      abort(
+        "expected nested alias type dependency compose success: \{err.message()}",
+      )
   }
   debug_inspect(source.contains("types::LightProbes"), content="false")
   debug_inspect(source.contains("bindings::light_probes"), content="false")
   debug_inspect(source.contains("clustered::read_clustered"), content="false")
-  debug_inspect(source.contains("struct LightProbesX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("struct LightProbesX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -1795,8 +1803,14 @@ test "composer symbol table: partial import keeps alias-qualified function depen
       )
   }
   debug_inspect(source.contains("helpers::pack_value"), content="false")
-  debug_inspect(source.contains("fn pack_valueX_naga_oil_mod_X"), content="true")
-  debug_inspect(source.contains("fn deferred_outputX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("fn pack_valueX_naga_oil_mod_X"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("fn deferred_outputX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -1811,8 +1825,7 @@ test "composer symbol table: grouped partial import keeps alias-qualified functi
   )
   composer.register_source(
     "extra.wgsl",
-    "#define_import_path app::extra\n" +
-    "const EXTRA: u32 = 1u;\n",
+    "#define_import_path app::extra\n" + "const EXTRA: u32 = 1u;\n",
   )
   composer.register_source(
     "functions.wgsl",
@@ -1840,7 +1853,10 @@ test "composer symbol table: grouped partial import keeps alias-qualified functi
       )
   }
   debug_inspect(source.contains("helpers::pack_value"), content="false")
-  debug_inspect(source.contains("fn pack_valueX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("fn pack_valueX_naga_oil_mod_X"),
+    content="true",
+  )
   debug_inspect(source.contains("const EXTRAX_naga_oil_mod_X"), content="true")
 }
 
@@ -1883,8 +1899,14 @@ test "composer symbol table: partial import keeps nested alias-qualified functio
       )
   }
   debug_inspect(source.contains("helpers::pack_value"), content="false")
-  debug_inspect(source.contains("fn pack_valueX_naga_oil_mod_X"), content="true")
-  debug_inspect(source.contains("fn build_valueX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("fn pack_valueX_naga_oil_mod_X"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("fn build_valueX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -1926,7 +1948,10 @@ test "composer symbol table: partial import keeps trailing-underscore alias depe
       )
   }
   debug_inspect(source.contains("helpers::pack_value_"), content="false")
-  debug_inspect(source.contains("fn pack_value_X_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("fn pack_value_X_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -1972,8 +1997,14 @@ test "composer symbol table: grouped long-path alias keeps trailing-underscore d
         "expected grouped long-path alias dependency compose success: \{err.message()}",
       )
   }
-  debug_inspect(source.contains("deferred_types::pack_unorm4x8_"), content="false")
-  debug_inspect(source.contains("fn pack_unorm4x8_X_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("deferred_types::pack_unorm4x8_"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("fn pack_unorm4x8_X_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -2003,9 +2034,7 @@ test "composer symbol table: local global shadows same-name unqualified import b
     upstream_parity_empty_compose_options(),
   ) catch {
     err =>
-      abort(
-        "expected local global shadowing compose success: \{err.message()}",
-      )
+      abort("expected local global shadowing compose success: \{err.message()}")
   }
   debug_inspect(source.contains("globals.time"), content="true")
   debug_inspect(source.contains("globalsX_naga_oil_mod_X"), content="true")
@@ -2053,8 +2082,7 @@ test "composer symbol table: alias partial module keeps alias-qualified global t
   let composer = @compose.Composer::default()
   composer.register_source(
     "types.wgsl",
-    "#define_import_path app::types\n" +
-    "struct Lights { value: u32 }\n",
+    "#define_import_path app::types\n" + "struct Lights { value: u32 }\n",
   )
   composer.register_source(
     "bindings.wgsl",
@@ -2090,7 +2118,10 @@ test "composer symbol table: alias partial module keeps alias-qualified global t
   debug_inspect(source.contains("types::Lights"), content="false")
   debug_inspect(source.contains("bindings::lights"), content="false")
   debug_inspect(source.contains("clustered::read_lights"), content="false")
-  debug_inspect(source.contains("struct LightsX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("struct LightsX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -2098,8 +2129,7 @@ test "composer symbol table: direct default import and nested alias share typed 
   let composer = @compose.Composer::default()
   composer.register_source(
     "types.wgsl",
-    "#define_import_path app::types\n" +
-    "struct Lights { value: u32 }\n",
+    "#define_import_path app::types\n" + "struct Lights { value: u32 }\n",
   )
   composer.register_source(
     "bindings.wgsl",
@@ -2136,7 +2166,10 @@ test "composer symbol table: direct default import and nested alias share typed 
   debug_inspect(source.contains("types::Lights"), content="false")
   debug_inspect(source.contains("bindings::lights"), content="false")
   debug_inspect(source.contains("clustered::read_lights"), content="false")
-  debug_inspect(source.contains("struct LightsX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("struct LightsX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -2199,8 +2232,14 @@ test "composer symbol table: transitive default alias keeps sibling alias type d
     source.contains("irradiance::irradiance_volume_light"),
     content="false",
   )
-  debug_inspect(source.contains("struct LightsX_naga_oil_mod_X"), content="true")
-  debug_inspect(source.contains("struct LightProbesX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("struct LightsX_naga_oil_mod_X"),
+    content="true",
+  )
+  debug_inspect(
+    source.contains("struct LightProbesX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -2226,12 +2265,13 @@ test "composer symbol table: unqualified item import rewrites item sharing modul
     upstream_parity_empty_compose_options(),
   ) catch {
     err =>
-      abort(
-        "expected same-leaf item import compose success: \{err.message()}",
-      )
+      abort("expected same-leaf item import compose success: \{err.message()}")
   }
   debug_inspect(source.contains("return irradiance_volume("), content="false")
-  debug_inspect(source.contains("fn irradiance_volumeX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("fn irradiance_volumeX_naga_oil_mod_X"),
+    content="true",
+  )
 }
 
 ///|
@@ -2267,11 +2307,11 @@ test "composer symbol table: imported module may use unqualified item sharing it
         "expected module-local same-alias unqualified item compose success: \{err.message()}",
       )
   }
+  debug_inspect(source.contains("return irradiance_volume;"), content="false")
   debug_inspect(
-    source.contains("return irradiance_volume;"),
-    content="false",
+    source.contains("const irradiance_volumeX_naga_oil_mod_X"),
+    content="true",
   )
-  debug_inspect(source.contains("const irradiance_volumeX_naga_oil_mod_X"), content="true")
 }
 
 ///|
@@ -2304,13 +2344,14 @@ test "composer symbol table: imported module rewrites unqualified resource shari
     upstream_parity_empty_compose_options(),
   ) catch {
     err =>
-      abort(
-        "expected same-alias resource compose success: \{err.message()}",
-      )
+      abort("expected same-alias resource compose success: \{err.message()}")
   }
   debug_inspect(
     source.contains("textureSampleLevel(irradiance_volume,"),
     content="false",
   )
-  debug_inspect(source.contains("var irradiance_volumeX_naga_oil_mod_X"), content="true")
+  debug_inspect(
+    source.contains("var irradiance_volumeX_naga_oil_mod_X"),
+    content="true",
+  )
 }

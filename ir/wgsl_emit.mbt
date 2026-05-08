@@ -1,12 +1,12 @@
 ///|
-pub suberror WgslIrEmitError {
+priv suberror WgslIrEmitError {
   MissingHandle(String)
   MissingName(String)
   Unsupported(String)
 }
 
 ///|
-pub fn WgslIrEmitError::message(self : WgslIrEmitError) -> String {
+fn WgslIrEmitError::message(self : WgslIrEmitError) -> String {
   match self {
     MissingHandle(message) => "missing IR handle: \{message}"
     MissingName(message) => "missing IR name: \{message}"
@@ -15,7 +15,7 @@ pub fn WgslIrEmitError::message(self : WgslIrEmitError) -> String {
 }
 
 ///|
-pub fn emit_wgsl_module_from_ir(
+fn emit_wgsl_module_from_ir(
   shader_module : Module,
 ) -> String raise WgslIrEmitError {
   validate_wgsl_ir_module(shader_module) catch {
@@ -24,6 +24,26 @@ pub fn emit_wgsl_module_from_ir(
   let emitter = WgslIrEmitter::{
     shader_module,
     preserve_abstract_float_literals: false,
+    filter: None,
+  }
+  emitter.emit_module()
+}
+
+///|
+fn emit_wgsl_module_from_ir_roots(
+  shader_module : Module,
+  root_items : Array[String],
+) -> String raise WgslIrEmitError {
+  if root_items.length() == 0 {
+    return emit_wgsl_module_from_ir(shader_module)
+  }
+  validate_wgsl_ir_module(shader_module) catch {
+    error => raise WgslIrEmitError::Unsupported(error.message())
+  }
+  let emitter = WgslIrEmitter::{
+    shader_module,
+    preserve_abstract_float_literals: false,
+    filter: Some(build_wgsl_ir_emit_filter(shader_module, root_items)),
   }
   emitter.emit_module()
 }
@@ -32,6 +52,7 @@ pub fn emit_wgsl_module_from_ir(
 priv struct WgslIrEmitter {
   shader_module : Module
   preserve_abstract_float_literals : Bool
+  filter : WgslIrEmitFilter?
 }
 
 ///|
@@ -48,6 +69,9 @@ fn WgslIrEmitter::emit_module(
     last_item_is_entry_point = false
   }
   for index in 0..<self.shader_module.types.items.length() {
+    if !self.should_emit_type(index) {
+      continue
+    }
     let ty = self.shader_module.types.items[index]
     match ty.inner {
       Struct(_, _) if ty.name != None => {
@@ -63,6 +87,9 @@ fn WgslIrEmitter::emit_module(
   }
   let mut emitted_constant = false
   for index in 0..<self.shader_module.constants.items.length() {
+    if !self.should_emit_constant(index) {
+      continue
+    }
     if needs_blank && !emitted_constant {
       out.write_string("\n")
     }
@@ -83,6 +110,9 @@ fn WgslIrEmitter::emit_module(
   }
   let mut emitted_override = false
   for index in 0..<self.shader_module.overrides.items.length() {
+    if !self.should_emit_override(index) {
+      continue
+    }
     if needs_blank && !emitted_override {
       out.write_string("\n")
     }
@@ -93,6 +123,9 @@ fn WgslIrEmitter::emit_module(
   }
   let mut emitted_global_variable = false
   for index in 0..<self.shader_module.global_variables.items.length() {
+    if !self.should_emit_global_variable(index) {
+      continue
+    }
     if needs_blank && !emitted_global_variable {
       out.write_string("\n")
     }
@@ -105,6 +138,9 @@ fn WgslIrEmitter::emit_module(
     emitted_global_variable = true
   }
   for index in 0..<self.shader_module.functions.items.length() {
+    if !self.should_emit_function(index) {
+      continue
+    }
     if self.function_is_entry_point_name(
         self.shader_module.functions.items[index],
       ) {
@@ -117,7 +153,11 @@ fn WgslIrEmitter::emit_module(
     needs_blank = true
     last_item_is_entry_point = false
   }
-  for entry_point in self.shader_module.entry_points {
+  for index in 0..<self.shader_module.entry_points.length() {
+    if !self.should_emit_entry_point(index) {
+      continue
+    }
+    let entry_point = self.shader_module.entry_points[index]
     if needs_blank {
       out.write_string("\n")
     }
@@ -129,6 +169,69 @@ fn WgslIrEmitter::emit_module(
     out.write_string("\n")
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::should_emit_type(self : WgslIrEmitter, index : Int) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_type(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrEmitter::should_emit_constant(
+  self : WgslIrEmitter,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_constant(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrEmitter::should_emit_override(
+  self : WgslIrEmitter,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_override(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrEmitter::should_emit_global_variable(
+  self : WgslIrEmitter,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_global_variable(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrEmitter::should_emit_function(
+  self : WgslIrEmitter,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_function(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrEmitter::should_emit_entry_point(
+  self : WgslIrEmitter,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_entry_point(index)
+    None => true
+  }
 }
 
 ///|
@@ -149,6 +252,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
   WgslIrEmitter::{
     shader_module: self.shader_module,
     preserve_abstract_float_literals: true,
+    filter: self.filter,
   }
 }
 
@@ -183,7 +287,7 @@ fn WgslIrEmitter::emit_struct_type(
       "non-struct type passed to struct emitter",
     )
   }
-  out.write_string("struct \{name} {\n")
+  out.write_string("struct \{sanitize_wgsl_ir_identifier(name)} {\n")
   for struct_member in members {
     out.write_string("    ")
     self.emit_struct_member_layout_attribute_prefix(out, struct_member)
@@ -192,7 +296,9 @@ fn WgslIrEmitter::emit_struct_type(
       Some(value) => value
       None => raise WgslIrEmitError::MissingName("struct member")
     }
-    out.write_string("\{member_name}: \{self.type_name(struct_member.ty)},\n")
+    out.write_string(
+      "\{sanitize_wgsl_ir_identifier(member_name)}: \{self.type_name(struct_member.ty)},\n",
+    )
   }
   out.write_string("}\n")
 }
@@ -225,11 +331,11 @@ fn WgslIrEmitter::emit_constant(
   }
   if self.type_contains_abstract_scalar(constant.ty) {
     out.write_string(
-      "const \{name} = \{self.abstract_float_global_expression(constant.init)};\n",
+      "const \{sanitize_wgsl_ir_identifier(name)} = \{self.abstract_float_global_expression(constant.init)};\n",
     )
   } else {
     out.write_string(
-      "const \{name}: \{self.type_name(constant.ty)} = \{self.global_expression(constant.init)};\n",
+      "const \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(constant.ty)} = \{self.global_expression(constant.init)};\n",
     )
   }
 }
@@ -248,9 +354,11 @@ fn WgslIrEmitter::emit_override(
     raise WgslIrEmitError::MissingName("override")
   }
   if self.type_contains_abstract_scalar(override_.ty) {
-    out.write_string("override \{name}")
+    out.write_string("override \{sanitize_wgsl_ir_identifier(name)}")
   } else {
-    out.write_string("override \{name}: \{self.type_name(override_.ty)}")
+    out.write_string(
+      "override \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(override_.ty)}",
+    )
   }
   match override_.init {
     Some(init) => out.write_string(" = \{self.global_expression(init)}")
@@ -276,7 +384,9 @@ fn WgslIrEmitter::emit_global_variable(
     raise WgslIrEmitError::MissingName("global variable")
   }
   let space = self.address_space_template(global.space)
-  out.write_string("var\{space} \{name}: \{self.type_name(global.ty)}")
+  out.write_string(
+    "var\{space} \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(global.ty)}",
+  )
   match global.init {
     Some(init) => out.write_string(" = \{self.global_expression(init)}")
     None => ()
@@ -400,10 +510,10 @@ fn WgslIrEmitter::emit_function(
   name_override : String?,
 ) -> Unit raise WgslIrEmitError {
   let name = match name_override {
-    Some(value) => value
+    Some(value) => sanitize_wgsl_ir_identifier(value)
     None =>
       match function.name {
-        Some(value) => value
+        Some(value) => sanitize_wgsl_ir_identifier(value)
         None => raise WgslIrEmitError::MissingName("function")
       }
   }
@@ -1445,7 +1555,7 @@ fn WgslIrEmitter::member_name_for_expression(
               match members.get(index) {
                 Some(struct_member) =>
                   match struct_member.name {
-                    Some(name) => name
+                    Some(name) => sanitize_wgsl_ir_identifier(name)
                     None => wgsl_ir_swizzle_component(index)
                   }
                 None => wgsl_ir_swizzle_component(index)
@@ -2323,12 +2433,13 @@ fn WgslIrEmitter::type_name(
     Some(name) =>
       match ty.inner {
         Scalar(_) => name
-        Struct(_, _) | PredeclaredStruct(_, _) => name
+        Struct(_, _) | PredeclaredStruct(_, _) =>
+          sanitize_wgsl_ir_identifier(name)
         _ => self.type_inner_name(ty.inner)
       }
     None =>
       match self.predeclared_result_type_name(handle) {
-        Some(name) => name
+        Some(name) => sanitize_wgsl_ir_identifier(name)
         None => self.type_inner_name(ty.inner)
       }
   }
@@ -2818,7 +2929,7 @@ fn WgslIrEmitter::constant_name(
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) =>
       match constant.name {
-        Some(name) => name
+        Some(name) => sanitize_wgsl_ir_identifier(name)
         None => raise WgslIrEmitError::MissingName("constant \{handle.index()}")
       }
     None => raise WgslIrEmitError::MissingHandle("constant \{handle.index()}")
@@ -2833,7 +2944,7 @@ fn WgslIrEmitter::override_name(
   match self.shader_module.overrides.items.get(handle.index()) {
     Some(override_) =>
       match override_.name {
-        Some(name) => name
+        Some(name) => sanitize_wgsl_ir_identifier(name)
         None => raise WgslIrEmitError::MissingName("override \{handle.index()}")
       }
     None => raise WgslIrEmitError::MissingHandle("override \{handle.index()}")
@@ -2848,7 +2959,7 @@ fn WgslIrEmitter::global_variable_name(
   match self.shader_module.global_variables.items.get(handle.index()) {
     Some(global) =>
       match global.name {
-        Some(name) => name
+        Some(name) => sanitize_wgsl_ir_identifier(name)
         None =>
           raise WgslIrEmitError::MissingName(
             "global variable \{handle.index()}",
@@ -2867,7 +2978,7 @@ fn WgslIrEmitter::function_name(
   match self.shader_module.functions.items.get(handle.index()) {
     Some(function) =>
       match function.name {
-        Some(name) => name
+        Some(name) => sanitize_wgsl_ir_identifier(name)
         None => raise WgslIrEmitError::MissingName("function \{handle.index()}")
       }
     None => raise WgslIrEmitError::MissingHandle("function \{handle.index()}")
@@ -2904,7 +3015,7 @@ fn WgslIrEmitter::function_argument_base_name(
 ) -> String {
   ignore(self)
   match argument.name {
-    Some(name) => name
+    Some(name) => sanitize_wgsl_ir_identifier(name)
     None => "arg\{index}"
   }
 }
@@ -2975,15 +3086,22 @@ fn WgslIrEmitter::entry_point_function_uses_local_name(
   name : String,
 ) -> Bool {
   for entry_point in self.shader_module.entry_points {
-    for argument in entry_point.function.arguments {
-      if argument.name == Some(name) {
+    for index in 0..<entry_point.function.arguments.length() {
+      if self.function_argument_base_name(
+          entry_point.function.arguments[index],
+          index,
+        ) ==
+        name {
         return true
       }
     }
-    for local_var in entry_point.function.local_variables.items {
-      match local_var.name {
-        Some(local_name) if local_name == name => return true
-        _ => ()
+    for index in 0..<entry_point.function.local_variables.items.length() {
+      if self.local_variable_base_name(
+          entry_point.function.local_variables.items[index],
+          Handle::Handle(index),
+        ) ==
+        name {
+        return true
       }
     }
   }
@@ -3022,7 +3140,7 @@ fn WgslIrEmitter::local_variable_base_name(
 ) -> String {
   ignore(self)
   match local_var.name {
-    Some(name) => name
+    Some(name) => sanitize_wgsl_ir_identifier(name)
     None => "local\{handle.index()}"
   }
 }
@@ -3034,8 +3152,9 @@ fn WgslIrEmitter::local_variable_name_needs_suffix(
   handle : Handle,
   base_name : String,
 ) -> Bool {
-  for argument in function.arguments {
-    if argument.name == Some(base_name) {
+  for index in 0..<function.arguments.length() {
+    if self.function_argument_base_name(function.arguments[index], index) ==
+      base_name {
       return true
     }
   }

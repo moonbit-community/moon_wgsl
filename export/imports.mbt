@@ -1,8 +1,7 @@
 ///|
 using @transform {
   type WgslEmittedDeclaration,
-  type WgslTreeShakenSource,
-  emit_wgsl_tree_shaken_source_strict,
+  collect_wgsl_named_declarations_strict,
 }
 
 ///|
@@ -22,5 +21,8 @@ using @compose {type Composer, type ComposerError}
 
 ///|
 using @parser {type WgslParseError}
+
+///|
+using @ir {tree_shake_wgsl_source_via_ir}
 
 ///|

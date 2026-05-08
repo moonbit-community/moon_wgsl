@@ -71,14 +71,7 @@ fn main {
     return
   }
   guard args.mode == "ir" else { abort(ir_roundtrip_usage()) }
-  let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
-    error => {
-      let message = error.message()
-      println(message)
-      abort(message)
-    }
-  }
-  let emitted = @ir.emit_wgsl_module_from_ir(module_) catch {
+  let emitted = @ir.roundtrip_wgsl_source_via_ir(source) catch {
     error => {
       let message = error.message()
       println(message)
