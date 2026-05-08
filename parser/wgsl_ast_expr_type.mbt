@@ -1084,20 +1084,63 @@ priv struct WgslTokenDepth {
   mut angle : Int
   mut bracket : Int
   mut brace : Int
+  mut source_template_pending_hash : Bool
+  mut source_template_brace : Int
 }
 
 ///|
 fn WgslTokenDepth::WgslTokenDepth() -> WgslTokenDepth {
-  WgslTokenDepth::{ paren: 0, angle: 0, bracket: 0, brace: 0 }
+  WgslTokenDepth::{
+    paren: 0,
+    angle: 0,
+    bracket: 0,
+    brace: 0,
+    source_template_pending_hash: false,
+    source_template_brace: 0,
+  }
 }
 
 ///|
 fn WgslTokenDepth::at_top(self : WgslTokenDepth) -> Bool {
-  self.paren == 0 && self.angle == 0 && self.bracket == 0 && self.brace == 0
+  self.paren == 0 &&
+  self.angle == 0 &&
+  self.bracket == 0 &&
+  self.brace == 0 &&
+  self.source_template_brace == 0
+}
+
+///|
+fn WgslTokenDepth::observe_source_template(
+  self : WgslTokenDepth,
+  token : WgslToken,
+) -> Bool {
+  if self.source_template_brace > 0 {
+    match token.punctuation_code() {
+      Some(123) => self.source_template_brace = self.source_template_brace + 1
+      Some(125) => self.source_template_brace = self.source_template_brace - 1
+      _ => ()
+    }
+    self.source_template_pending_hash = false
+    return true
+  }
+  if self.source_template_pending_hash && token.is_punctuation(123) {
+    self.source_template_brace = 1
+    self.source_template_pending_hash = false
+    return true
+  }
+  if token.is_punctuation(35) {
+    self.source_template_pending_hash = true
+  } else if !token.is_whitespace() {
+    self.source_template_pending_hash = false
+  }
+  false
 }
 
 ///|
 fn WgslTokenDepth::observe(self : WgslTokenDepth, token : WgslToken) -> Unit {
+  if self.observe_source_template(token) {
+    return
+  }
   match token.operator_text() {
     Some(">>") => {
       if self.angle >= 2 {
@@ -1127,6 +1170,9 @@ fn WgslTokenDepth::observe_statement_token(
   self : WgslTokenDepth,
   token : WgslToken,
 ) -> Unit {
+  if self.observe_source_template(token) {
+    return
+  }
   match token.punctuation_code() {
     Some(40) => self.paren = self.paren + 1
     Some(41) => self.paren = self.paren - 1

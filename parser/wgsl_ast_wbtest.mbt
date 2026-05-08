@@ -130,6 +130,37 @@ test "strict WGSL translation unit rejects invalid numeric literals" {
 }
 
 ///|
+test "strict WGSL translation unit rejects semicolonless simple statements" {
+  let sources = [
+    (
+      #|fn assignment_missing_semicolon() {
+      #|  var z = 0.0;
+      #|  z = 1.0
+      #|}
+    ),
+    (
+      #|fn return_missing_semicolon() -> u32 {
+      #|  return 1u
+      #|}
+    ),
+    (
+      #|fn call_missing_semicolon() {
+      #|  workgroupBarrier()
+      #|}
+    ),
+  ]
+  for source in sources {
+    let mut failed = false
+    ignore(parse_wgsl_translation_unit_strict(source)) catch {
+      _ => failed = true
+    }
+    guard failed is true else {
+      abort("expected missing statement semicolon to fail: \{source}")
+    }
+  }
+}
+
+///|
 test "WGSL numeric literal tokens expose raw descriptor" {
   let source =
     #|const A = 3221225472u;

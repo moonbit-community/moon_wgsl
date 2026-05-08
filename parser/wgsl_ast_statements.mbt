@@ -423,7 +423,11 @@ fn WgslDeclParser::collect_statement_blocks(
 ) -> Array[WgslBlock] {
   let blocks : Array[WgslBlock] = []
   let open_stack : Array[Int] = []
+  let source_template = WgslTokenDepth()
   for i in 0..<tokens.length() {
+    if source_template.observe_source_template(tokens[i]) {
+      continue
+    }
     if tokens[i].is_punctuation(123) {
       open_stack.push(i)
     } else if tokens[i].is_punctuation(125) {
@@ -453,12 +457,14 @@ fn collect_wgsl_statement_scope_tokens(
 ) -> Array[WgslToken] {
   let scope_tokens : Array[WgslToken] = []
   let mut block_depth = 0
+  let source_template = WgslTokenDepth()
   for token in tokens {
-    if token.is_punctuation(123) {
+    let source_template_token = source_template.observe_source_template(token)
+    if !source_template_token && token.is_punctuation(123) {
       block_depth = block_depth + 1
       continue
     }
-    if token.is_punctuation(125) && block_depth > 0 {
+    if !source_template_token && token.is_punctuation(125) && block_depth > 0 {
       block_depth = block_depth - 1
       continue
     }
@@ -1072,11 +1078,16 @@ fn wgsl_statement_has_invalid_expression(
   kind : WgslStatementKind,
   tokens : Array[WgslToken],
   expressions : Array[WgslStatementExpression],
+  missing_semicolon_at_statement_boundary : Bool,
 ) -> Bool {
   for token in tokens {
     if token.is_punctuation(35) {
       return false
     }
+  }
+  if wgsl_statement_requires_semicolon(kind, tokens) &&
+    missing_semicolon_at_statement_boundary {
+    return true
   }
   match kind {
     Return =>
@@ -1122,6 +1133,34 @@ fn wgsl_statement_has_invalid_expression(
         expressions,
         WgslStatementExpressionRole::AssignmentRhs,
       )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_statement_requires_semicolon(
+  kind : WgslStatementKind,
+  tokens : Array[WgslToken],
+) -> Bool {
+  match tokens {
+    [token, ..] if token.is_punctuation(35) => return false
+    [token, ..] if token.is_identifier("case") || token.is_identifier("default") =>
+      return false
+    [] => return false
+    _ => ()
+  }
+  match kind {
+    LocalDeclaration
+    | Return
+    | Break
+    | Continue
+    | Discard
+    | ConstAssert
+    | Assignment
+    | Increment
+    | Decrement
+    | FunctionCall
+    | Expression => true
     _ => false
   }
 }
@@ -1283,6 +1322,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   let mut first_identifier : String? = None
   let mut start_pos = -1
   let mut end_pos = -1
+  let mut missing_semicolon_at_statement_boundary = false
   let depth = WgslTokenDepth()
   fn record_span(start : Int, end_ : Int) -> Unit {
     if start_pos < 0 {
@@ -1295,7 +1335,12 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
   }
   while true {
     match self.view() {
-      [token, ..] if depth.at_top() && token.is_punctuation(125) => break
+      [token, ..] if depth.at_top() && token.is_punctuation(125) => {
+        if tokens.length() > 0 {
+          missing_semicolon_at_statement_boundary = true
+        }
+        break
+      }
       [token, .. rest] if depth.at_top() && token.is_punctuation(59) => {
         let pos = token.pos()
         record_span(pos, pos + 1)
@@ -1323,7 +1368,12 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
         }
         continue
       }
-      [] => break
+      [] => {
+        if tokens.length() > 0 {
+          missing_semicolon_at_statement_boundary = true
+        }
+        break
+      }
     }
   }
   if start_pos < 0 || end_pos < start_pos {
@@ -1378,7 +1428,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
       expressions,
     )
     let invalid_expression = wgsl_statement_has_invalid_expression(
-      kind, scope_tokens, expressions,
+      kind, scope_tokens, expressions, missing_semicolon_at_statement_boundary,
     )
     let blocks = self.collect_statement_blocks(tokens)
     Some(
