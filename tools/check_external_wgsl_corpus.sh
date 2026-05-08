@@ -39,6 +39,12 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'enable f16' "$source" || grep -q 'f16' "$source" || grep -q 'vec[234]h' "$source" || grep -q 'mat[234]x[234]h' "$source"; then
     validate_args+=(--capability f16)
   fi
+  if grep -q 'f64' "$source"; then
+    validate_args+=(--capability float64)
+  fi
+  if grep -Eq 'quantizeToF16|pack2x16float|unpack2x16float' "$source"; then
+    validate_args+=(--capability shader-float16-in-float32)
+  fi
   if grep -q 'enable subgroups' "$source" || grep -q 'subgroup' "$source"; then
     validate_args+=(--capability subgroups)
   fi

@@ -1,7 +1,6 @@
 # id	rel_path	reason	detail
 bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	compose_failed	Known upstream/profile mismatch: source imports bevy_pbr::light_probes while checked-out library defines bevy_pbr::light_probe.
 learn-wgpu	code/compute/src/filter.wgsl	raw_invalid_no_preprocessor	Expected invalid external source under standalone Naga validation; this file is not a preprocessing input.
-naga	tests/in/bits.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/in/dualsource.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/in/extra.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/in/multiview.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
@@ -13,8 +12,6 @@ naga	tests/in/shadow.wgsl	raw_invalid_no_preprocessor	Expected invalid or capabi
 naga	tests/in/skybox.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/800-out-of-bounds-panic.vert.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/896-push-constant.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
-naga	tests/out/wgsl/bits.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
-naga	tests/out/wgsl/bits_glsl.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/dualsource.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/expressions.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/extra.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
@@ -23,7 +20,6 @@ naga	tests/out/wgsl/math-functions.frag.wgsl	raw_invalid_no_preprocessor	Expecte
 naga	tests/out/wgsl/multiview.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/pointers.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/samplers.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
-naga	tests/out/wgsl/vector-functions.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 wgpu	examples/features/src/big_compute_buffers/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/mesh_shader/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/ray_cube_normals/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.

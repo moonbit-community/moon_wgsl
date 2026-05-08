@@ -47,6 +47,7 @@ fn wgsl_ir_contextualize_literal(
       Literal::U32(parsed)
     }
     (AbstractFloat(value), Float, 2) => Literal::F16(value)
+    (AbstractFloat(value), Float, 8) => Literal::F64(value)
     _ => literal
   }
 }

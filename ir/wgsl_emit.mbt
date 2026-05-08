@@ -1935,6 +1935,7 @@ fn WgslIrEmitter::literal_type(
     U32(_) => self.type_handle_named("u32")
     F16(_) => self.type_handle_named("f16")
     F32(_) => self.type_handle_named("f32")
+    F64(_) => self.type_handle_named("f64")
     AbstractFloat(_) => self.type_handle_named("__abstract_float")
     _ => None
   }
@@ -2798,7 +2799,14 @@ fn WgslIrEmitter::scalar_name(self : WgslIrEmitter, scalar : Scalar) -> String {
     Bool => "bool"
     Sint => if scalar.width == 8 { "i64" } else { "i32" }
     Uint => if scalar.width == 8 { "u64" } else { "u32" }
-    Float => if scalar.width == 2 { "f16" } else { "f32" }
+    Float =>
+      if scalar.width == 2 {
+        "f16"
+      } else if scalar.width == 8 {
+        "f64"
+      } else {
+        "f32"
+      }
     AbstractInt => "abstract-int"
     AbstractFloat => "abstract-float"
   }
@@ -2987,7 +2995,7 @@ fn WgslIrEmitter::sampling_name(
 ///|
 fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
   match literal {
-    F64(value) => wgsl_ir_emit_concrete_float_literal_text("\{value}")
+    F64(value) => wgsl_ir_emit_abstract_float_literal_text("\{value}")
     F32(value) => wgsl_ir_emit_concrete_float_literal_text("\{value}")
     F16(value) => wgsl_ir_emit_f16_literal_text("\{value}")
     U16(value) => "\{value}u"

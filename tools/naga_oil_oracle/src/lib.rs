@@ -1,4 +1,4 @@
-pub const WGSL_CAPABILITY_NAMES: &str = "ray-query|dual-source-blending|texture-external|texture-atomic|texture-int64-atomic|f16|shader-int64|subgroups|immediates|binding-arrays|primitive-index|shader-barycentrics|per-vertex|multiview|cooperative-matrix|mesh-shader|mesh-shader-point-topology";
+pub const WGSL_CAPABILITY_NAMES: &str = "ray-query|dual-source-blending|texture-external|texture-atomic|texture-int64-atomic|f16|float64|shader-int64|shader-float16-in-float32|subgroups|immediates|binding-arrays|primitive-index|shader-barycentrics|per-vertex|multiview|cooperative-matrix|mesh-shader|mesh-shader-point-topology";
 
 pub fn add_wgsl_capability(capabilities: &mut naga::valid::Capabilities, value: &str) -> bool {
     match value {
@@ -11,7 +11,11 @@ pub fn add_wgsl_capability(capabilities: &mut naga::valid::Capabilities, value: 
             *capabilities |= naga::valid::Capabilities::TEXTURE_INT64_ATOMIC;
         }
         "f16" => *capabilities |= naga::valid::Capabilities::SHADER_FLOAT16,
+        "float64" => *capabilities |= naga::valid::Capabilities::FLOAT64,
         "shader-int64" => *capabilities |= naga::valid::Capabilities::SHADER_INT64,
+        "shader-float16-in-float32" => {
+            *capabilities |= naga::valid::Capabilities::SHADER_FLOAT16_IN_FLOAT32
+        }
         "subgroups" => *capabilities |= naga::valid::Capabilities::SUBGROUP,
         "immediates" => *capabilities |= naga::valid::Capabilities::IMMEDIATES,
         "binding-arrays" => {

@@ -22,6 +22,7 @@ fn wgsl_ir_builtin_scalar_alias(name : String) -> TypeInner? {
     "u64" => Some(TypeInner::Scalar(Scalar::Scalar(Uint, 8)))
     "f32" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 4)))
     "f16" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 2)))
+    "f64" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 8)))
     _ => None
   }
 }

@@ -202,6 +202,7 @@ fn WgslIrLowerer::literal_type(
     U32(_) => self.type_cache.get("u32")
     F16(_) => self.type_cache.get("f16")
     F32(_) => self.type_cache.get("f32")
+    F64(_) => self.type_cache.get("f64")
     AbstractFloat(_) => self.type_cache.get("__abstract_float")
     _ => None
   }
@@ -216,7 +217,14 @@ fn WgslIrLowerer::scalar_type_handle(
     Bool => "bool"
     Sint => "i32"
     Uint => "u32"
-    Float => if scalar.width == 2 { "f16" } else { "f32" }
+    Float =>
+      if scalar.width == 2 {
+        "f16"
+      } else if scalar.width == 8 {
+        "f64"
+      } else {
+        "f32"
+      }
     AbstractInt => "__abstract_int"
     AbstractFloat => "__abstract_float"
   }
@@ -229,7 +237,7 @@ fn wgsl_ir_scalar_name(kind : ScalarKind, width : Int) -> String {
     Bool => "bool"
     Sint => if width == 8 { "i64" } else { "i32" }
     Uint => if width == 8 { "u64" } else { "u32" }
-    Float => if width == 2 { "f16" } else { "f32" }
+    Float => if width == 2 { "f16" } else if width == 8 { "f64" } else { "f32" }
     AbstractInt => "__abstract_int"
     AbstractFloat => "__abstract_float"
   }
