@@ -52,5 +52,3 @@ wgpu	tests/tests/wgpu-gpu/shader/compilation_messages/error_shader.wgsl	raw_inva
 wgpu	tests/tests/wgpu-gpu/shader/shader_test.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/shader_barycentric/barycentric.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/shader_primitive_index/primitive_index.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
-wgpu	tests/tests/wgpu-gpu/timestamp_normalization/shift_right_u96.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
-wgpu	tests/tests/wgpu-gpu/timestamp_normalization/u64_mul_u32.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.

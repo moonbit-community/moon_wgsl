@@ -111,6 +111,34 @@ lookup_external_corpus_profile() {
   ' "$profile_manifest"
 }
 
+materialize_profile_source_with_prefixes() {
+  local checkout="$1"
+  local source="$2"
+  local prefix_sources="$3"
+  local output="$4"
+  local reason_output="$5"
+
+  if [[ -z "$prefix_sources" || "$prefix_sources" == "-" ]]; then
+    printf '%s\n' "$source" > "$output"
+    return 0
+  fi
+
+  : > "$output"
+  IFS=',' read -r -a prefix_list <<< "$prefix_sources"
+  local prefix
+  for prefix in "${prefix_list[@]}"; do
+    [[ -n "$prefix" ]] || continue
+    local prefix_path="$checkout/$prefix"
+    if [[ ! -f "$prefix_path" ]]; then
+      printf 'profile_prefix_missing\tprofile prefix source not found: %s\n' "$prefix" > "$reason_output"
+      return 1
+    fi
+    cat "$prefix_path" >> "$output"
+    printf '\n' >> "$output"
+  done
+  cat "$source" >> "$output"
+}
+
 append_csv_compose_args() {
   local flag="$1"
   local csv="$2"
@@ -136,14 +164,28 @@ materialize_valid_external_wgsl_source() {
   local profile_value_defs="-"
   local profile_imports="-"
   local profile_capabilities="-"
+  local profile_prefix_sources="-"
   if [[ -n "$profile_line" ]]; then
-    IFS=$'\t' read -r _profile_id _profile_rel profile_defs profile_value_defs profile_imports profile_capabilities _profile_notes <<< "$profile_line"
+    IFS=$'\t' read -r _profile_id _profile_rel profile_defs profile_value_defs profile_imports profile_capabilities profile_prefix_sources _profile_notes <<< "$profile_line"
   fi
 
-  if validate_wgsl_with_detected_capabilities "$source" "$profile_capabilities" >/dev/null 2>"$tmpdir/$id.naga.err"; then
+  local profile_source="$source"
+  if [[ -n "$profile_prefix_sources" && "$profile_prefix_sources" != "-" ]]; then
+    profile_source="$tmpdir/$id.profile.$(basename "$source").wgsl"
+    if ! materialize_profile_source_with_prefixes "$checkout" "$source" "$profile_prefix_sources" "$profile_source" "$reason_output"; then
+      return 1
+    fi
+  fi
+
+  if validate_wgsl_with_detected_capabilities "$profile_source" "$profile_capabilities" >/dev/null 2>"$tmpdir/$id.naga.err"; then
     printf 'raw\n'
-    printf '%s\n' "$source" > "$output"
+    printf '%s\n' "$profile_source" > "$output"
     return 0
+  fi
+
+  if [[ "$profile_source" != "$source" ]]; then
+    printf 'profile_prefixed_invalid\t%s\n' "$(tr '\n' ' ' < "$tmpdir/$id.naga.err" | sed 's/[[:space:]]\{1,\}/ /g; s/[[:space:]]$//')" > "$reason_output"
+    return 1
   fi
 
   if ! source_contains_preprocessor_directive "$source" && [[ -z "$profile_line" ]]; then
