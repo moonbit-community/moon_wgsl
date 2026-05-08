@@ -25,7 +25,6 @@ priv struct WgslRenameRule {
   from_name : String
   to_name : String
   kind : WgslRenameRuleKind
-  identity : WgslIrSymbolIdentity?
 }
 
 ///|
@@ -146,55 +145,12 @@ fn WgslRenamePlan::add(
   to_name : String,
   kind : WgslRenameRuleKind,
 ) -> Unit {
-  self.add_symbol_binding(None, from_name, to_name, kind)
-}
-
-///|
-fn WgslRenamePlan::add_symbol_binding(
-  self : WgslRenamePlan,
-  identity : WgslIrSymbolIdentity?,
-  from_name : String,
-  to_name : String,
-  kind : WgslRenameRuleKind,
-) -> Unit {
   let from_name = from_name.trim().to_owned()
   let to_name = to_name.trim().to_owned()
   if from_name == "" || to_name == "" || from_name == to_name {
     return
   }
-  self.rules.push(WgslRenameRule::{ from_name, to_name, kind, identity })
-}
-
-///|
-fn WgslReferenceRewritePlan::reference_rename_plan(
-  self : WgslReferenceRewritePlan,
-) -> WgslRenamePlan {
-  let plan = WgslRenamePlan::empty()
-  for binding in self.bindings {
-    plan.add_symbol_binding(
-      Some(binding.identity),
-      binding.from_name,
-      binding.to_name,
-      ReferencesOnly,
-    )
-  }
-  plan
-}
-
-///|
-fn WgslReferenceRewritePlan::global_declaration_rename_plan(
-  self : WgslReferenceRewritePlan,
-) -> WgslRenamePlan {
-  let plan = WgslRenamePlan::empty()
-  for binding in self.bindings {
-    plan.add_symbol_binding(
-      Some(binding.identity),
-      binding.from_name,
-      binding.to_name,
-      GlobalDeclarationAndReferences,
-    )
-  }
-  plan
+  self.rules.push(WgslRenameRule::{ from_name, to_name, kind })
 }
 
 ///|
@@ -202,18 +158,17 @@ fn WgslReferenceRewritePlan::target_for_reference(
   self : WgslReferenceRewritePlan,
   from_name : String,
 ) -> String? {
-  let mut target : String? = None
-  for binding in self.bindings {
-    if binding.from_name != from_name {
-      continue
-    }
-    match target {
-      Some(existing) if existing != binding.to_name => return None
-      Some(_) => ()
-      None => target = Some(binding.to_name)
-    }
+  match wgsl_symbol_binding_for_reference(self.bindings, from_name) {
+    Some(binding) => Some(binding.to_name)
+    None => None
   }
-  target
+}
+
+///|
+fn WgslReferenceRewritePlan::has_symbol_bindings(
+  self : WgslReferenceRewritePlan,
+) -> Bool {
+  self.bindings.length() > 0
 }
 
 ///|
@@ -271,30 +226,66 @@ fn wgsl_rename_rules_target(
   from_name : String,
 ) -> String? {
   let mut target : String? = None
-  let mut identity_key : String? = None
   for rule in rules {
     if rule.from_name != from_name {
       continue
     }
-    let current_identity_key = match rule.identity {
-      Some(identity) => identity.key()
-      None => ""
-    }
     match target {
-      Some(existing) if existing != rule.to_name =>
-        match identity_key {
-          Some(existing_identity_key) if existing_identity_key ==
-            current_identity_key => return Some(rule.to_name)
-          _ => return None
-        }
+      Some(existing) if existing != rule.to_name => return None
       Some(_) => ()
-      None => {
-        target = Some(rule.to_name)
-        identity_key = Some(current_identity_key)
-      }
+      None => target = Some(rule.to_name)
     }
   }
   target
+}
+
+///|
+fn wgsl_symbol_binding_for_reference(
+  bindings : Array[WgslReferenceRewriteBinding],
+  from_name : String,
+) -> WgslReferenceRewriteBinding? {
+  let mut target : WgslReferenceRewriteBinding? = None
+  for binding in bindings {
+    if binding.from_name != from_name {
+      continue
+    }
+    let current_identity_key = binding.identity.key()
+    match target {
+      Some(existing) if existing.to_name != binding.to_name =>
+        if existing.identity.key() == current_identity_key {
+          target = Some(binding)
+        } else {
+          return None
+        }
+      Some(existing) =>
+        if existing.identity.key() != current_identity_key {
+          return None
+        }
+      None => target = Some(binding)
+    }
+  }
+  target
+}
+
+///|
+fn collect_wgsl_bound_rewrite_nodes_from_identifiers(
+  identifiers : Array[WgslIdent],
+  bindings : Array[WgslReferenceRewriteBinding],
+  nodes : Array[WgslTokenReplacement],
+) -> Unit {
+  for identifier in identifiers {
+    match wgsl_symbol_binding_for_reference(bindings, identifier.name()) {
+      Some(binding) =>
+        nodes.push(
+          WgslTokenReplacement(
+            identifier.start(),
+            identifier.end(),
+            binding.to_name,
+          ),
+        )
+      None => ()
+    }
+  }
 }
 
 ///|
@@ -384,7 +375,6 @@ fn collect_wgsl_local_binding_rewrite_node(
         from_name: binding.name().name(),
         to_name: replacement,
         kind: FunctionLocal,
-        identity: None,
       })
       nodes.push(
         WgslTokenReplacement(
@@ -450,7 +440,6 @@ fn collect_wgsl_block_local_rewrite_nodes(
             from_name: binding.name().name(),
             to_name: replacement,
             kind: FunctionLocal,
-            identity: None,
           })
         None => ()
       }
@@ -474,7 +463,6 @@ fn collect_wgsl_function_local_rewrite_nodes(
               from_name: argument.name().name(),
               to_name: replacement,
               kind: FunctionLocal,
-              identity: None,
             })
             nodes.push(
               WgslTokenReplacement(
@@ -547,6 +535,27 @@ fn collect_wgsl_block_rewrite_nodes(
 }
 
 ///|
+fn collect_wgsl_bound_block_rewrite_nodes(
+  data : WgslGlobalDeclData,
+  bindings : Array[WgslReferenceRewriteBinding],
+  rewrite_declarations : Bool,
+  nodes : Array[WgslTokenReplacement],
+) -> Unit {
+  let identifiers : Array[WgslIdent] = []
+  if rewrite_declarations {
+    collect_wgsl_decl_global_declared_identifier_nodes(data, identifiers)
+    collect_wgsl_bound_rewrite_nodes_from_identifiers(
+      identifiers, bindings, nodes,
+    )
+    identifiers.clear()
+  }
+  collect_wgsl_decl_identifier_nodes(data, identifiers)
+  collect_wgsl_bound_rewrite_nodes_from_identifiers(
+    identifiers, bindings, nodes,
+  )
+}
+
+///|
 fn wgsl_canonical_top_level_block_text(text : String) -> String {
   if text == "" || text.has_suffix("\n") {
     text
@@ -556,9 +565,10 @@ fn wgsl_canonical_top_level_block_text(text : String) -> String {
 }
 
 ///|
-fn rewrite_wgsl_graph_block_with_rename_maps(
+fn rewrite_wgsl_graph_block_with_binding_plan(
   block : WgslGraphBlock,
-  maps : WgslRenameMaps,
+  plan : WgslReferenceRewritePlan,
+  rewrite_declarations : Bool,
 ) -> String {
   let rewritten = match block.data {
     WgslGlobalDeclData::Raw =>
@@ -567,7 +577,12 @@ fn rewrite_wgsl_graph_block_with_rename_maps(
       emit_wgsl_token_stream_canonical(block.tokens, [])
     _ => {
       let nodes : Array[WgslTokenReplacement] = []
-      collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
+      collect_wgsl_bound_block_rewrite_nodes(
+        block.data,
+        plan.bindings,
+        rewrite_declarations,
+        nodes,
+      )
       emit_wgsl_token_stream_canonical(block.tokens, nodes)
     }
   }
@@ -591,34 +606,22 @@ fn emit_wgsl_graph_blocks_canonical(blocks : Array[WgslGraphBlock]) -> String {
 }
 
 ///|
-fn rewrite_wgsl_declarations_with_rename_plan(
+pub fn rewrite_wgsl_references_with_binding_plan(
   source : String,
-  plan : WgslRenamePlan,
+  plan : WgslReferenceRewritePlan,
 ) -> String raise WgslParseError {
-  if plan.is_empty() {
+  if !plan.has_symbol_bindings() {
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let maps = build_wgsl_rename_maps(plan)
   let mut out = ""
   for import_block in graph.import_blocks {
     out = out + emit_wgsl_graph_block_canonical(import_block)
   }
   for block in graph.declaration_blocks {
-    out = out + rewrite_wgsl_graph_block_with_rename_maps(block, maps)
+    out = out + rewrite_wgsl_graph_block_with_binding_plan(block, plan, false)
   }
   out
-}
-
-///|
-pub fn rewrite_wgsl_references_with_binding_plan(
-  source : String,
-  plan : WgslReferenceRewritePlan,
-) -> String raise WgslParseError {
-  rewrite_wgsl_declarations_with_rename_plan(
-    source,
-    plan.reference_rename_plan(),
-  )
 }
 
 ///|
@@ -626,8 +629,16 @@ pub fn rewrite_wgsl_declarations_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
 ) -> String raise WgslParseError {
-  rewrite_wgsl_declarations_with_rename_plan(
-    source,
-    plan.global_declaration_rename_plan(),
-  )
+  if !plan.has_symbol_bindings() {
+    return source
+  }
+  let graph = build_wgsl_declaration_graph(source)
+  let mut out = ""
+  for import_block in graph.import_blocks {
+    out = out + emit_wgsl_graph_block_canonical(import_block)
+  }
+  for block in graph.declaration_blocks {
+    out = out + rewrite_wgsl_graph_block_with_binding_plan(block, plan, true)
+  }
+  out
 }

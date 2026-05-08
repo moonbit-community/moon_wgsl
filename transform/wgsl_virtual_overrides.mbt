@@ -118,8 +118,7 @@ pub fn rewrite_wgsl_override_targets_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,
 ) -> String raise WgslParseError {
-  let rename_plan = plan.reference_rename_plan()
-  if rename_plan.is_empty() {
+  if !plan.has_symbol_bindings() {
     return source
   }
   let graph = build_wgsl_declaration_graph(source)

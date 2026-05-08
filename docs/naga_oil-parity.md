@@ -186,12 +186,15 @@ tree-shakes them away, matching upstream `naga_oil`.
    the origin graph describes where each final declaration came from.
 
 8. Rename and dependency analysis must be AST/token-driven.
-   All semantic rewrites must be expressed as `WgslRenamePlan` rules in
-   `analysis`: global declaration plus references, references only, or function
-   locals. Dependency analysis must consume parsed declaration identifiers
-   rather than raw declaration text. Composer, virtual overrides,
-   duplicate-binding cleanup, suffix lowering, and identifier normalization
-   must not reintroduce source-span copy-and-replace rewriting.
+   Composer import/name rewrites must stay symbol-binding-first: import
+   liveness selects stable `WgslIrSymbolIdentity` bindings, transform resolves
+   AST identifier nodes against that binding plan, and final names come from the
+   identity-backed table. `WgslRenamePlan` is only a package-private helper for
+   synthetic local/virtual rewrites and must not be the composer binding model.
+   Dependency analysis must consume parsed declaration identifiers rather than
+   raw declaration text. Composer, virtual overrides, duplicate-binding cleanup,
+   suffix lowering, and identifier normalization must not reintroduce
+   source-span copy-and-replace rewriting.
 
 9. Parser internals must stay narrow.
    Syntax should not expose debug-only statement classification, raw text spans,

@@ -140,6 +140,20 @@ fn register_cycle_test_shaders() -> Unit {
 }
 
 ///|
+fn register_unqualified_import_conflict_test_shaders() -> Unit {
+  clear_composer_test_registry()
+  register_composer_test_shader_source(
+    "shaders/a.wgsl", "#define_import_path demo::a\nstruct Shared {\n  value: u32,\n}\n",
+  )
+  register_composer_test_shader_source(
+    "shaders/b.wgsl", "#define_import_path demo::b\nstruct Shared {\n  value: u32,\n}\n",
+  )
+  register_composer_test_shader_source(
+    "shaders/root.wgsl", "#import demo::a::Shared\n#import demo::b::Shared\nfn entry(value: Shared) -> u32 {\n  return value.value;\n}\n",
+  )
+}
+
+///|
 test "naga_oil: composer preprocess supports multiline grouped imports" {
   register_grouped_import_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl_source(
@@ -1042,6 +1056,31 @@ test "naga_oil: composer reports import cycles explicitly" {
     message,
     content="Some(\"shader import cycle detected: shaders/cycle/a.wgsl -> shaders/cycle/b.wgsl -> shaders/cycle/a.wgsl\")",
   )
+  clear_composer_test_registry()
+}
+
+///|
+test "naga_oil: composer rejects unqualified import binding ambiguity" {
+  register_unqualified_import_conflict_test_shaders()
+  let mut message : String? = None
+  ignore(
+    composer_test_composer().compose_wgsl(
+      "shaders/root.wgsl",
+      composer_test_compose_options(empty_bool_defines(), []),
+    ),
+  ) catch {
+    err => message = Some(err.message())
+  }
+  guard message is Some(text) else {
+    abort("expected ambiguous unqualified import binding failure")
+  }
+  debug_inspect(
+    text.contains("ambiguous shader import binding"),
+    content="true",
+  )
+  debug_inspect(text.contains("Shared"), content="true")
+  debug_inspect(text.contains("shaders/a.wgsl"), content="true")
+  debug_inspect(text.contains("shaders/b.wgsl"), content="true")
   clear_composer_test_registry()
 }
 

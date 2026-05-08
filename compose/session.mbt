@@ -267,7 +267,12 @@ fn wgsl_compose_binding_conflict_message(
     Some(identity) => identity.key()
     None => "<none>"
   }
-  "\{binding.from_name} in alias scope \{binding.alias_name}: \{existing_identity} conflicts with \{binding_identity}"
+  let scope = if binding.alias_name == "" {
+    wgsl_compose_binding_scope_key(binding.scope)
+  } else {
+    "\{wgsl_compose_binding_scope_key(binding.scope)} alias \{binding.alias_name}"
+  }
+  "\{binding.from_name} in \{scope}: \{existing_identity} conflicts with \{binding_identity}"
 }
 
 ///|
@@ -347,28 +352,26 @@ fn WgslComposeBindingSet::push(
   self : WgslComposeBindingSet,
   binding : WgslComposeBinding,
 ) -> Unit {
-  if binding.alias_name != "" && binding.scope != UnqualifiedItemBinding {
-    let binding_identity_key = match binding.identity {
-      Some(identity) => identity.key()
-      None => ""
-    }
-    for existing in self.bindings {
-      if existing.scope == binding.scope &&
-        existing.alias_name == binding.alias_name &&
-        existing.from_name == binding.from_name {
-        let existing_identity_key = match existing.identity {
-          Some(identity) => identity.key()
-          None => ""
-        }
-        if existing_identity_key != "" &&
-          existing_identity_key == binding_identity_key {
-          continue
-        }
-        self.conflicts.push(
-          wgsl_compose_binding_conflict_message(existing, binding),
-        )
-        return
+  let binding_identity_key = match binding.identity {
+    Some(identity) => identity.key()
+    None => ""
+  }
+  for existing in self.bindings {
+    if existing.scope == binding.scope &&
+      existing.alias_name == binding.alias_name &&
+      existing.from_name == binding.from_name {
+      let existing_identity_key = match existing.identity {
+        Some(identity) => identity.key()
+        None => ""
       }
+      if existing_identity_key != "" &&
+        existing_identity_key == binding_identity_key {
+        continue
+      }
+      self.conflicts.push(
+        wgsl_compose_binding_conflict_message(existing, binding),
+      )
+      return
     }
   }
   let key = wgsl_compose_binding_key(binding)

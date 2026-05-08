@@ -12,6 +12,37 @@ fn wbtest_rename_plan_from_redirect_map(
 }
 
 ///|
+fn wbtest_rewrite_wgsl_declarations_with_rename_plan(
+  source : String,
+  plan : WgslRenamePlan,
+) -> String raise WgslParseError {
+  if plan.is_empty() {
+    return source
+  }
+  let graph = build_wgsl_declaration_graph(source)
+  let maps = build_wgsl_rename_maps(plan)
+  let mut out = ""
+  for import_block in graph.import_blocks {
+    out = out + emit_wgsl_graph_block_canonical(import_block)
+  }
+  for block in graph.declaration_blocks {
+    let rewritten = match block.data {
+      WgslGlobalDeclData::Raw =>
+        emit_wgsl_token_stream_canonical(block.tokens, [])
+      WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
+        emit_wgsl_token_stream_canonical(block.tokens, [])
+      _ => {
+        let nodes : Array[WgslTokenReplacement] = []
+        collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
+        emit_wgsl_token_stream_canonical(block.tokens, nodes)
+      }
+    }
+    out = out + wgsl_canonical_top_level_block_text(rewritten)
+  }
+  out
+}
+
+///|
 test "AST import stripping preserves non-import items" {
   let source =
     #|#define_import_path demo::shaders
@@ -382,7 +413,7 @@ test "rename plan global rules do not rewrite function parameter locals" {
   let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   redirects.set("Input", "mesh__Input")
   redirects.set("read_instance", "mesh__read_instance")
-  let rewritten = rewrite_wgsl_declarations_with_rename_plan(
+  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
     source,
     wbtest_rename_plan_from_redirect_map(
       redirects,
@@ -410,7 +441,9 @@ test "rename plan function-local rules rewrite parameter and body together" {
     #|
   let plan = WgslRenamePlan::empty()
   plan.add("in", "in_wgsl", FunctionLocal)
-  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
+  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
+    source, plan,
+  )
   debug_inspect(
     rewritten.contains("fn fragment(in_wgsl: Input)"),
     content="true",
@@ -435,7 +468,9 @@ test "rename plan emitter preserves separated generic close and assignment token
     #|
   let plan = WgslRenamePlan::empty()
   plan.add("world_normal", "renamed_world_normal", FunctionLocal)
-  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
+  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
+    source, plan,
+  )
   debug_inspect(rewritten.contains("vec3<f32 >="), content="false")
   debug_inspect(
     rewritten.contains("vec3<f32> = renamed_world_normal"),
@@ -457,7 +492,9 @@ test "rename plan function-local rules follow nested statement scopes" {
     #|
   let plan = WgslRenamePlan::empty()
   plan.add("item", "item_wgsl", FunctionLocal)
-  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
+  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
+    source, plan,
+  )
   debug_inspect(
     rewritten.contains("let item_wgsl = value + 1u;"),
     content="true",
@@ -481,7 +518,7 @@ test "rename plan reference rules rewrite recursively scoped blocks" {
     #|
   let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   redirects.set("helper", "renamed_helper")
-  let rewritten = rewrite_wgsl_declarations_with_rename_plan(
+  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
     source,
     wbtest_rename_plan_from_redirect_map(redirects, ReferencesOnly),
   )
@@ -502,7 +539,9 @@ test "rename plan function-body reference rules preserve override target heads" 
   let plan = WgslRenamePlan::empty()
   plan.add("mod::inner", "mod__inner__virtual_base", FunctionBodyReferencesOnly)
   plan.add("mod__inner", "mod__inner__virtual_base", FunctionBodyReferencesOnly)
-  let rewritten = rewrite_wgsl_declarations_with_rename_plan(source, plan)
+  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
+    source, plan,
+  )
   debug_inspect(rewritten.contains("override fn mod::inner()"), content="true")
   debug_inspect(
     rewritten.contains("let value = mod__inner__virtual_base();"),
@@ -528,7 +567,7 @@ test "rename plan reference rules do not rewrite statement keywords" {
   redirects.set("if", "if_renamed")
   redirects.set("return", "return_renamed")
   redirects.set("let", "let_renamed")
-  let rewritten = rewrite_wgsl_declarations_with_rename_plan(
+  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
     source,
     wbtest_rename_plan_from_redirect_map(redirects, ReferencesOnly),
   )

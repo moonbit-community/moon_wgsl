@@ -128,6 +128,18 @@ if rg -n 'WgslReferenceRewriteBinding \{[^}]*rel_path|WgslReferenceRewriteBindin
   fail "reference rewrite bindings must carry WgslIrSymbolIdentity directly"
 fi
 
+if rg -n 'reference_rename_plan|global_declaration_rename_plan' transform compose \
+  --glob '*.mbt' \
+  --glob '!*.mbti' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "identity-backed composer bindings must not be downgraded into rename plans"
+fi
+
+if rg -n 'identity : WgslIrSymbolIdentity\?' transform/wgsl_binding.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "plain rename rules must not carry optional identity as a pseudo binding model"
+fi
+
 if ! rg -n 'roundtrip_and_validate_wgsl "\$tmpdir/bevy_pbr_forward\.wgsl"' tools/check_wgsl_validation.sh >/dev/null; then
   fail "WGSL validation gate must IR-roundtrip full Bevy PBR forward"
 fi
