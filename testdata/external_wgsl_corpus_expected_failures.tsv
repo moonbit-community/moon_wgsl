@@ -30,7 +30,6 @@ wgpu	examples/features/src/ray_cube_normals/shader.wgsl	raw_invalid_no_preproces
 wgpu	examples/features/src/texture_arrays/indexing.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/texture_arrays/non_uniform_indexing.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/src/copy_texture_to_buffer.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
-wgpu	tests/tests/wgpu-gpu/image_atomics/image_64_atomics.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/mesh_shader/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/per_vertex/per_vertex.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/regression/issue_4485.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.

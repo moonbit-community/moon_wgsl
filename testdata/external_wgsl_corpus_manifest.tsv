@@ -1,6 +1,6 @@
 # id	repo	ref	sparse_paths	min_valid	min_composed	notes
 bevy	https://github.com/bevyengine/bevy.git	e903ce1a9c7d7008bab4fa3fbbeea298bae12e1b	crates/bevy_render/src,crates/bevy_core_pipeline/src,crates/bevy_pbr/src,crates/bevy_sprite_render/src,crates/bevy_ui_render/src,assets/shaders	158	149	Real Bevy engine WGSL shader libraries and examples, including naga-oil-style preprocessing.
-wgpu	https://github.com/gfx-rs/wgpu.git	04a7fe85d64187f05a8498266bc29419b2c5ca4b	examples,tests,wgpu-core/src/timestamp_normalization	69	0	Real wgpu examples and GPU tests.
+wgpu	https://github.com/gfx-rs/wgpu.git	04a7fe85d64187f05a8498266bc29419b2c5ca4b	examples,tests,wgpu-core/src/timestamp_normalization	70	0	Real wgpu examples and GPU tests.
 naga	https://github.com/gfx-rs/naga.git	d0f28c0b1a3c772e55e68db1c47eff5131cb6732	tests/in/wgsl,tests/out/wgsl	118	0	Naga's own WGSL input and writer output corpus.
 webgpu-samples	https://github.com/webgpu/webgpu-samples.git	f2e5ae73db8cbe2dd6b5a7b8cb80d911cf85b50b	sample	68	0	Canonical WebGPU sample shaders.
 learn-wgpu	https://github.com/sotrh/learn-wgpu.git	008df3c90188de56696560d248c56efbafe2dccb	code	50	0	Learn-wgpu tutorial and compute shader examples.
