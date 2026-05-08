@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use naga_oil_oracle::{add_wgsl_capability, WGSL_CAPABILITY_NAMES};
+use naga_oil_oracle::{add_wgsl_capability, normalize_wgsl_for_naga_parser, WGSL_CAPABILITY_NAMES};
 
 #[derive(Debug)]
 struct Options {
@@ -43,6 +43,7 @@ fn parse_options() -> Options {
 fn validate_file(path: &PathBuf, capabilities: naga::valid::Capabilities) -> Result<(), String> {
     let source = fs::read_to_string(path)
         .map_err(|err| format!("failed to read `{}`: {err}", path.display()))?;
+    let source = normalize_wgsl_for_naga_parser(&source, capabilities);
     let module = naga::front::wgsl::parse_str(&source)
         .map_err(|err| format!("WGSL parse failed for `{}`:\n{err}", path.display()))?;
     let mut validator =

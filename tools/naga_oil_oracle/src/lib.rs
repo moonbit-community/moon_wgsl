@@ -48,3 +48,44 @@ pub fn add_wgsl_capability(capabilities: &mut naga::valid::Capabilities, value: 
     }
     true
 }
+
+pub fn normalize_wgsl_for_naga_parser(
+    source: &str,
+    capabilities: naga::valid::Capabilities,
+) -> String {
+    let mut normalized = String::with_capacity(source.len());
+    for line in source.split_inclusive('\n') {
+        if parser_unsupported_enable_is_enabled(line.trim(), capabilities) {
+            if line.ends_with('\n') {
+                normalized.push('\n');
+            }
+        } else {
+            normalized.push_str(line);
+        }
+    }
+    normalized
+}
+
+fn parser_unsupported_enable_is_enabled(
+    trimmed_line: &str,
+    capabilities: naga::valid::Capabilities,
+) -> bool {
+    let Some(extension) = trimmed_line
+        .strip_prefix("enable ")
+        .and_then(|rest| rest.strip_suffix(';'))
+        .map(str::trim)
+    else {
+        return false;
+    };
+    match extension {
+        "wgpu_binding_array" => {
+            capabilities.contains(naga::valid::Capabilities::BUFFER_BINDING_ARRAY)
+                || capabilities
+                    .contains(naga::valid::Capabilities::TEXTURE_AND_SAMPLER_BINDING_ARRAY)
+                || capabilities.contains(naga::valid::Capabilities::STORAGE_TEXTURE_BINDING_ARRAY)
+                || capabilities.contains(naga::valid::Capabilities::STORAGE_BUFFER_BINDING_ARRAY)
+        }
+        "wgpu_per_vertex" => capabilities.contains(naga::valid::Capabilities::PER_VERTEX),
+        _ => false,
+    }
+}
