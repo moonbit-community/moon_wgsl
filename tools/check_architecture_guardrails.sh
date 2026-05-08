@@ -233,6 +233,25 @@ if ! rg -n 'roundtrip_wgsl_source_via_ir_with_generated_imports' compose/pipelin
   fail "compose final WGSL output must enter the unified IR roundtrip pipeline"
 fi
 
+session_fields="$(sed -n '/priv struct WgslComposeSession {/,/^}/p' compose/session.mbt)"
+if ! printf '%s\n' "$session_fields" | rg -n 'symbols : WgslComposeSymbolTable' >/dev/null; then
+  fail "compose session must own symbol/provenance facts through WgslComposeSymbolTable"
+fi
+if printf '%s\n' "$session_fields" | rg -n 'source_origins|assigned_final_names|final_names|virtual_override_final_names' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose session must not keep symbol/source-origin facts outside WgslComposeSymbolTable"
+fi
+
+resolved_fields="$(sed -n '/priv struct WgslResolvedComposeSource {/,/^}/p' compose/pipeline.mbt)"
+if printf '%s\n' "$resolved_fields" | rg -n 'source_origins|virtual_override_generated_imports' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "resolved compose output must carry the symbol table instead of duplicated provenance arrays"
+fi
+
+if ! rg -n 'WgslComposeSymbolTable::generated_import_provenance' compose/pipeline.mbt >/dev/null; then
+  fail "generated import provenance must derive from the compose symbol table"
+fi
+
 if ! rg -n 'validate_wgsl_ir_module\(reparsed\)' ir/wgsl_pipeline.mbt >/dev/null; then
   fail "unified IR pipeline must validate emitted WGSL after reparsing it into IR"
 fi

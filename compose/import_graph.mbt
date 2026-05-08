@@ -99,7 +99,7 @@ fn WgslComposeSession::assigned_final_name_for_origin(
   if alias_prefixes.length() == 0 {
     self.assigned_canonical_final_name(identity)
   } else {
-    self.assigned_final_names.alias_get(
+    self.symbols.assigned_final_names.alias_get(
       WgslIrAliasSymbolIdentity(
         origin.rel_path,
         alias_prefixes.join("__"),
@@ -116,8 +116,8 @@ fn collect_wgsl_module_final_name_application_plan(
   alias_prefixes : Array[String],
 ) -> WgslModuleFinalNameApplicationPlan {
   let plan = WgslModuleFinalNameApplicationPlan()
-  for i in start_index..<session.source_origins.length() {
-    let origin = session.source_origins[i]
+  for i in start_index..<session.symbols.source_origins.length() {
+    let origin = session.symbols.source_origins[i]
     match session.assigned_final_name_for_origin(origin, alias_prefixes) {
       Some(final_name) => plan.push(i, origin, final_name)
       None => ()
@@ -522,7 +522,7 @@ fn Composer::compose_wgsl_import_requests(
     }
     session.visited.set(visit_key, true)
     let raw_source = self.load_wgsl_source_required_raw(request.rel_path)
-    let origin_start_index = session.source_origins.length()
+    let origin_start_index = session.symbols.source_origins.length()
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
       self.resolve_wgsl_source_with_path(
@@ -584,10 +584,10 @@ fn Composer::compose_wgsl_import_requests(
     } else {
       module_source
     }
-    final_name_plan.apply_to_origins(session.source_origins)
+    final_name_plan.apply_to_origins(session.symbols.source_origins)
     if request.alias_name != "" {
-      for i in origin_start_index..<session.source_origins.length() {
-        let origin = session.source_origins[i]
+      for i in origin_start_index..<session.symbols.source_origins.length() {
+        let origin = session.symbols.source_origins[i]
         if origin.rel_path == request.rel_path &&
           origin.source_symbol_name != "" &&
           origin.generated_symbol_name != "" {
@@ -603,8 +603,8 @@ fn Composer::compose_wgsl_import_requests(
         }
       }
     } else if !request.import_full_module {
-      for i in origin_start_index..<session.source_origins.length() {
-        let origin = session.source_origins[i]
+      for i in origin_start_index..<session.symbols.source_origins.length() {
+        let origin = session.symbols.source_origins[i]
         if origin.rel_path == request.rel_path &&
           origin.source_symbol_name != "" &&
           origin.generated_symbol_name != "" {
@@ -619,8 +619,8 @@ fn Composer::compose_wgsl_import_requests(
         }
       }
     }
-    for i in origin_start_index..<session.source_origins.length() {
-      let origin = session.source_origins[i]
+    for i in origin_start_index..<session.symbols.source_origins.length() {
+      let origin = session.symbols.source_origins[i]
       if origin.rel_path != "" &&
         origin.source_symbol_name != "" &&
         origin.generated_symbol_name != "" {

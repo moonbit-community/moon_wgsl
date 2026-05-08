@@ -73,12 +73,9 @@ fn Composer::new_wgsl_compose_session(
     graph_planned_requests: @hashmap.HashMap([]),
     graph_planning_rel_paths: [],
     graph_execution_complete: false,
-    assigned_final_names: WgslIrFinalNameTable(),
-    final_names: WgslIrFinalNameTable(),
-    virtual_override_final_names: [],
+    symbols: WgslComposeSymbolTable(),
     link_graph: WgslIrLinkGraph(),
     semantic_facts: @hashmap.HashMap([]),
     active_rel_paths: [],
-    source_origins: [],
   }
 }

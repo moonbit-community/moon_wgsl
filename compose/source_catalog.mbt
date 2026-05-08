@@ -58,7 +58,7 @@ fn push_wgsl_source_origin(
   if generated_symbol_name == "" || rel_path == "" {
     return
   }
-  session.source_origins.push(
+  session.symbols.source_origins.push(
     WgslSourceOriginEntry(
       generated_symbol_name, rel_path, source_symbol_name, source_start, source_end,
     ),

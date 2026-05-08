@@ -87,7 +87,10 @@ fn collect_wgsl_cached_import_bindings(
 ) -> Int {
   let mut count = 0
   if source_alias_name == "" {
-    for entry in session.final_names.canonical_entries_for_rel_path(rel_path) {
+    for
+      entry in session.symbols.emitted_final_names.canonical_entries_for_rel_path(
+        rel_path,
+      ) {
       bindings.push(
         WgslComposeBinding::for_unqualified_symbol(
           entry.identity().rel_path(),
@@ -100,7 +103,7 @@ fn collect_wgsl_cached_import_bindings(
     }
   } else {
     for
-      entry in session.final_names.alias_entries_for_scope(
+      entry in session.symbols.emitted_final_names.alias_entries_for_scope(
         rel_path, final_alias_scope,
       ) {
       bindings.push(
@@ -124,7 +127,9 @@ fn find_wgsl_cached_imported_item_name(
   rel_path : String,
   item_name : String,
 ) -> String? {
-  session.final_names.canonical_get(WgslIrSymbolIdentity(rel_path, item_name))
+  session.symbols.emitted_final_names.canonical_get(
+    WgslIrSymbolIdentity(rel_path, item_name),
+  )
 }
 
 ///|

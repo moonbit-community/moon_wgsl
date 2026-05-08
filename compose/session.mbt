@@ -119,6 +119,14 @@ priv struct WgslComposeSemanticFacts {
 }
 
 ///|
+priv struct WgslComposeSymbolTable {
+  assigned_final_names : WgslIrFinalNameTable
+  emitted_final_names : WgslIrFinalNameTable
+  virtual_override_final_names : Array[WgslVirtualOverrideFinalNameBinding]
+  source_origins : Array[WgslSourceOriginEntry]
+}
+
+///|
 priv struct WgslComposeSession {
   defines : @hashmap.HashMap[String, Bool]
   value_defines : @hashmap.HashMap[String, ShaderDefValue]
@@ -131,13 +139,10 @@ priv struct WgslComposeSession {
   graph_planned_requests : @hashmap.HashMap[String, Bool]
   graph_planning_rel_paths : Array[String]
   mut graph_execution_complete : Bool
-  assigned_final_names : WgslIrFinalNameTable
-  final_names : WgslIrFinalNameTable
-  virtual_override_final_names : Array[WgslVirtualOverrideFinalNameBinding]
+  symbols : WgslComposeSymbolTable
   link_graph : WgslIrLinkGraph
   semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
   active_rel_paths : Array[String]
-  source_origins : Array[WgslSourceOriginEntry]
 }
 
 ///|
@@ -176,6 +181,16 @@ priv struct WgslLiveBindingPlan {
 }
 
 ///|
+fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
+  WgslComposeSymbolTable::{
+    assigned_final_names: WgslIrFinalNameTable(),
+    emitted_final_names: WgslIrFinalNameTable(),
+    virtual_override_final_names: [],
+    source_origins: [],
+  }
+}
+
+///|
 fn WgslLiveBindingPlan::WgslLiveBindingPlan() -> WgslLiveBindingPlan {
   WgslLiveBindingPlan::{ bindings: [] }
 }
@@ -201,7 +216,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
       None => ()
     }
   }
-  for binding in session.virtual_override_final_names {
+  for binding in session.symbols.virtual_override_final_names {
     plan.add_virtual_override_binding(
       binding.raw_target_name,
       binding.target_name,
@@ -409,12 +424,12 @@ fn WgslComposeSession::record_virtual_override_final_name(
     override_name,
   }
   let key = binding.key()
-  for existing in self.virtual_override_final_names {
+  for existing in self.symbols.virtual_override_final_names {
     if existing.key() == key {
       return
     }
   }
-  self.virtual_override_final_names.push(binding)
+  self.symbols.virtual_override_final_names.push(binding)
 }
 
 ///|
@@ -423,7 +438,7 @@ fn WgslComposeSession::record_canonical_final_name(
   identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> Unit {
-  self.final_names.canonical_set(identity, final_name)
+  self.symbols.emitted_final_names.canonical_set(identity, final_name)
   self.link_graph.record_reachable_symbol(identity)
 }
 
@@ -433,7 +448,7 @@ fn WgslComposeSession::assign_canonical_final_name(
   identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> Unit {
-  self.assigned_final_names.canonical_set(identity, final_name)
+  self.symbols.assigned_final_names.canonical_set(identity, final_name)
   self.link_graph.record_reachable_symbol(identity)
 }
 
@@ -442,7 +457,7 @@ fn WgslComposeSession::assigned_canonical_final_name(
   self : WgslComposeSession,
   identity : WgslIrSymbolIdentity,
 ) -> String? {
-  self.assigned_final_names.canonical_get(identity)
+  self.symbols.assigned_final_names.canonical_get(identity)
 }
 
 ///|
@@ -451,8 +466,8 @@ fn WgslComposeSession::assign_alias_final_name(
   identity : WgslIrAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
-  self.assigned_final_names.canonical_set(identity.symbol(), final_name)
-  self.assigned_final_names.alias_set(identity, final_name)
+  self.symbols.assigned_final_names.canonical_set(identity.symbol(), final_name)
+  self.symbols.assigned_final_names.alias_set(identity, final_name)
   self.link_graph.record_reachable_symbol(identity.symbol())
 }
 
@@ -462,7 +477,7 @@ fn WgslComposeSession::record_canonical_final_name_if_absent(
   identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> Unit {
-  if self.final_names.canonical_get(identity) is None {
+  if self.symbols.emitted_final_names.canonical_get(identity) is None {
     self.record_canonical_final_name(identity, final_name)
   }
 }
@@ -473,7 +488,7 @@ fn WgslComposeSession::record_alias_final_name(
   identity : WgslIrAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
-  self.final_names.alias_set(identity, final_name)
+  self.symbols.emitted_final_names.alias_set(identity, final_name)
   self.link_graph.record_reachable_symbol(identity.symbol())
 }
 
@@ -483,7 +498,7 @@ fn WgslComposeSession::record_alias_final_name_if_absent(
   identity : WgslIrAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
-  if self.final_names.alias_get(identity) is None {
+  if self.symbols.emitted_final_names.alias_get(identity) is None {
     self.record_alias_final_name(identity, final_name)
   }
 }

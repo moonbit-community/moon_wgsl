@@ -55,7 +55,10 @@ test "compose graph execution plans reachability before emission" {
     ),
     content="true",
   )
-  debug_inspect(session.final_names.canonical_entry_count(), content="0")
+  debug_inspect(
+    session.symbols.emitted_final_names.canonical_entry_count(),
+    content="0",
+  )
   let output = composer.resolve_wgsl_source_with_path(
     "root.wgsl",
     source,
@@ -70,7 +73,7 @@ test "compose graph execution plans reachability before emission" {
   }
   debug_inspect(output.contains("fn dep_fn"), content="true")
   debug_inspect(
-    session.final_names.canonical_get(
+    session.symbols.emitted_final_names.canonical_get(
       WgslIrSymbolIdentity("dep.wgsl", "dep_fn"),
     )
     is Some(_),

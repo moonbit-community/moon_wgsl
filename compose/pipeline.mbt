@@ -9,10 +9,7 @@ priv enum WgslComposeSourceEmissionKind {
 ///|
 priv struct WgslResolvedComposeSource {
   source : String
-  source_origins : Array[WgslSourceOriginEntry]
-  virtual_override_generated_imports : Array[
-    @ir.WgslIrGeneratedImportProvenance,
-  ]
+  symbols : WgslComposeSymbolTable
   diagnostics : Array[WgslDiagnostic]
 }
 
@@ -222,32 +219,33 @@ fn Composer::resolve_wgsl_compose_source(
   let prepared_source = finalize_wgsl_output_source(composed)
   WgslResolvedComposeSource::{
     source: prepared_source,
-    source_origins: session.source_origins.copy(),
-    virtual_override_generated_imports: wgsl_virtual_override_generated_import_provenance(
-      session,
-    ),
+    symbols: session.symbols,
     diagnostics: collect_wgsl_unused_redirect_diagnostics(session),
   }
 }
 
 ///|
-fn wgsl_generated_import_provenance_from_origins(
-  origins : Array[WgslSourceOriginEntry],
+fn WgslComposeSymbolTable::generated_import_provenance(
+  self : WgslComposeSymbolTable,
   root_rel_path : String,
-  virtual_override_generated_imports : Array[
-    @ir.WgslIrGeneratedImportProvenance,
-  ],
 ) -> Array[@ir.WgslIrGeneratedImportProvenance] {
   let seen = @hashset.HashSet([])
   let provenance : Array[@ir.WgslIrGeneratedImportProvenance] = []
-  for entry in virtual_override_generated_imports {
-    let name = entry.generated_symbol_name()
+  for binding in self.virtual_override_final_names {
+    let name = binding.override_name
     if !seen.contains(name) {
       seen.add(name)
-      provenance.push(entry)
+      provenance.push(
+        @ir.WgslIrGeneratedImportProvenance(
+          name,
+          binding.rel_path,
+          binding.target_name,
+          @ir.WgslIrGeneratedImportProvenanceKind::VirtualOverrideSymbol,
+        ),
+      )
     }
   }
-  for origin in origins {
+  for origin in self.source_origins {
     if origin.rel_path() == root_rel_path {
       continue
     }
@@ -268,37 +266,14 @@ fn wgsl_generated_import_provenance_from_origins(
 }
 
 ///|
-fn wgsl_virtual_override_generated_import_provenance(
-  session : WgslComposeSession,
-) -> Array[@ir.WgslIrGeneratedImportProvenance] {
-  let provenance : Array[@ir.WgslIrGeneratedImportProvenance] = []
-  for binding in session.virtual_override_final_names {
-    provenance.push(
-      @ir.WgslIrGeneratedImportProvenance(
-        binding.override_name,
-        binding.rel_path,
-        binding.target_name,
-        @ir.WgslIrGeneratedImportProvenanceKind::VirtualOverrideSymbol,
-      ),
-    )
-  }
-  provenance
-}
-
-///|
 fn compose_wgsl_source_via_ir(
   source : String,
-  source_origins : Array[WgslSourceOriginEntry],
+  symbols : WgslComposeSymbolTable,
   root_rel_path : String,
-  virtual_override_generated_imports : Array[
-    @ir.WgslIrGeneratedImportProvenance,
-  ],
 ) -> String raise ComposerError {
   @ir.roundtrip_wgsl_source_via_ir_with_generated_imports(
     source,
-    wgsl_generated_import_provenance_from_origins(
-      source_origins, root_rel_path, virtual_override_generated_imports,
-    ),
+    symbols.generated_import_provenance(root_rel_path),
   ) catch {
     error =>
       match error {
@@ -322,9 +297,8 @@ pub fn Composer::prepare_wgsl_source(
   let resolved = self.resolve_wgsl_compose_source(rel, options)
   let ir_source = compose_wgsl_source_via_ir(
     resolved.source,
-    resolved.source_origins,
+    resolved.symbols,
     normalize_shader_rel_path(rel),
-    resolved.virtual_override_generated_imports,
   )
   let source_files : Array[WgslSourceFile] = [
     { rel_path: normalize_shader_rel_path(rel), source: ir_source },
@@ -333,7 +307,7 @@ pub fn Composer::prepare_wgsl_source(
     ir_source,
     source_files,
     build_prepared_wgsl_source_catalog(source_files.copy()),
-    resolved.source_origins,
+    resolved.symbols.source_origins.copy(),
     resolved.diagnostics,
   )
 }
@@ -373,8 +347,7 @@ pub fn Composer::compose_wgsl_source(
   )
   compose_wgsl_source_via_ir(
     finalize_wgsl_output_source(composed),
-    session.source_origins.copy(),
+    session.symbols,
     "",
-    wgsl_virtual_override_generated_import_provenance(session),
   )
 }
