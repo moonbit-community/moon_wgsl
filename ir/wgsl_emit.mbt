@@ -1277,6 +1277,8 @@ fn WgslIrEmitter::emit_expression(
       "rayQueryConfirmIntersection(\{self.required_function_expression(function, query)})"
     RayQueryTerminate(query) =>
       "rayQueryTerminate(\{self.required_function_expression(function, query)})"
+    RayQueryVertexPositions(query, committed) =>
+      self.ray_query_vertex_positions_expression(function, query, committed)
     RayQueryGetIntersection(query, committed) =>
       self.ray_query_get_intersection_expression(function, query, committed)
     SubgroupCall(subgroup_function, arguments) =>
@@ -1647,6 +1649,21 @@ fn WgslIrEmitter::ray_query_get_intersection_expression(
 }
 
 ///|
+fn WgslIrEmitter::ray_query_vertex_positions_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  query : Handle,
+  committed : Bool,
+) -> String raise WgslIrEmitError {
+  let name = if committed {
+    "getCommittedHitVertexPositions"
+  } else {
+    "getCandidateHitVertexPositions"
+  }
+  "\{name}(\{self.required_function_expression(function, query)})"
+}
+
+///|
 fn WgslIrEmitter::member_name_for_expression(
   self : WgslIrEmitter,
   function : Function?,
@@ -1822,6 +1839,8 @@ fn WgslIrEmitter::function_expression_inner_type(
       self.image_expression_result_type(Some(function), image, None, None)
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(Some(function), image, query)
+    RayQueryVertexPositions(_, _) =>
+      self.shader_module.special_types.ray_vertex_return
     RayQueryGetIntersection(_, _) => self.type_handle_named("RayIntersection")
     RayQueryProceedResult => self.type_handle_named("bool")
     WorkGroupUniformLoad(pointer) =>
@@ -2764,8 +2783,18 @@ fn WgslIrEmitter::type_inner_name(
       } else {
         "sampler"
       }
-    AccelerationStructure(_) => "acceleration_structure"
-    RayQuery(_) => "ray_query"
+    AccelerationStructure(vertex_return) =>
+      if vertex_return {
+        "acceleration_structure<vertex_return>"
+      } else {
+        "acceleration_structure"
+      }
+    RayQuery(vertex_return) =>
+      if vertex_return {
+        "ray_query<vertex_return>"
+      } else {
+        "ray_query"
+      }
     BindingArray(base, size) =>
       match size {
         Constant(value) => "binding_array<\{self.type_name(base)}, \{value}>"

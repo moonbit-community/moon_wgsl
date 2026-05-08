@@ -278,7 +278,7 @@ pub enum PredeclaredType {
 pub(all) struct SpecialTypes {
   ray_desc : Handle?
   ray_intersection : Handle?
-  ray_vertex_return : Handle?
+  mut ray_vertex_return : Handle?
   external_texture_params : Handle?
   external_texture_transfer_function : Handle?
   predeclared_types : Array[(PredeclaredType, Handle)]

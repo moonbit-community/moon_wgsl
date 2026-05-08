@@ -106,6 +106,8 @@ rayQueryConfirmIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryConfi
 rayQueryGenerateIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGenerateIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
 rayQueryGetCandidateIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGetCandidateIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
 rayQueryGetCommittedIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGetCommittedIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+getCandidateHitVertexPositions	ray-query	ir-builtin-ray-query	naga-ir	getCandidateHitVertexPositions	Ray query vertex-return builtin covered by IR roundtrip and Naga validation.
+getCommittedHitVertexPositions	ray-query	ir-builtin-ray-query	naga-ir	getCommittedHitVertexPositions	Ray query vertex-return builtin covered by IR roundtrip and Naga validation.
 rayQueryInitialize	ray-query	ir-builtin-ray-query	naga-ir	rayQueryInitialize	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
 rayQueryProceed	ray-query	ir-builtin-ray-query	naga-ir	rayQueryProceed	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
 rayQueryTerminate	ray-query	ir-builtin-ray-query	naga-ir	rayQueryTerminate	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.

@@ -95,7 +95,7 @@ extract_lowerer_builtin_names() {
       if (match($0, /"[A-Za-z][A-Za-z0-9]*"/)) print substr($0, RSTART + 1, RLENGTH - 2)
     }
   ' ir/wgsl_lower_builtins.mbt
-  rg -o '"(texture[A-Za-z0-9]+|rayQuery[A-Za-z0-9]+|subgroup[A-Za-z0-9]+|quad[A-Za-z0-9]+|workgroupBarrier|storageBarrier|textureBarrier|arrayLength)"' \
+  rg -o '"(texture[A-Za-z0-9]+|rayQuery[A-Za-z0-9]+|get[A-Za-z0-9]+HitVertexPositions|subgroup[A-Za-z0-9]+|quad[A-Za-z0-9]+|workgroupBarrier|storageBarrier|textureBarrier|arrayLength)"' \
     ir/wgsl_lower.mbt | tr -d '"'
 }
 

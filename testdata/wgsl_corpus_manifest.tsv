@@ -14,7 +14,7 @@ ir-builtin-integer-compute	file	testdata/ir_corpus/builtin_integer_compute.wgsl	
 ir-builtin-atomic-barrier-compute	file	testdata/ir_corpus/builtin_atomic_barrier_compute.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official atomic and workgroup/storage/texture barrier builtin coverage.
 ir-builtin-subgroup-compute	file	testdata/ir_corpus/builtin_subgroup_compute.wgsl	-	-	-	subgroups	parse,naga,ir,naga-ir	Static IR corpus: subgroup and quad builtin coverage with subgroup capability.
 ir-builtin-oracle-blocked-fragment	file	testdata/ir_corpus/builtin_oracle_blocked_fragment.wgsl	-	-	-	-	parse,ir	Static IR corpus: lowerer-known builtin coverage where the pinned Naga oracle lacks matching capability support.
-ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-query	parse,naga,ir,naga-ir	Static IR corpus: full ray query builtin statement and expression coverage.
+ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-query,ray-hit-vertex-position	parse,naga,ir,naga-ir	Static IR corpus: full ray query builtin statement and expression coverage.
 ir-texture-atomic-compute	file	testdata/ir_corpus/texture_atomic_compute.wgsl	-	-	-	texture-atomic	parse,naga,ir,naga-ir	Static IR corpus: storage texture atomic builtin coverage.
 ir-texture-int64-atomic-compute	file	testdata/ir_corpus/texture_int64_atomic_compute.wgsl	-	-	-	texture-int64-atomic,shader-int64	parse,naga,ir,naga-ir	Static IR corpus: 64-bit storage texture atomic builtin coverage.
 ir-float64-vector-fragment	file	testdata/ir_corpus/float64_vector_fragment.wgsl	-	-	-	float64	parse,naga,ir,naga-ir	Static IR corpus: f64 scalar/vector type lowering and emission.

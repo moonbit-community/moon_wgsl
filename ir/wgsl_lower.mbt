@@ -380,6 +380,12 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
     "vec3<f32>",
     TypeInner::Vector(Tri, Scalar::Scalar(Float, 4)),
   )
+  self.shader_module.special_types.ray_vertex_return = Some(
+    self.intern_type(
+      "array<vec3<f32>, 3>",
+      TypeInner::Array(vec3_f32_ty, ArraySize::Constant(3), 16),
+    ),
+  )
   let mat4x3_f32_ty = self.intern_type(
     "mat4x3<f32>",
     TypeInner::Matrix(Quad, Tri, Scalar::Scalar(Float, 4)),
@@ -6640,6 +6646,28 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
         ),
       )
     }
+    "getCommittedHitVertexPositions" => {
+      guard arguments is [query] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryVertexPositions(
+            self.lower_function_expression_node(query, function, scope),
+            true,
+          ),
+        ),
+      )
+    }
+    "getCandidateHitVertexPositions" => {
+      guard arguments is [query] else { return None }
+      Some(
+        function.expressions.append(
+          Expression::RayQueryVertexPositions(
+            self.lower_function_expression_node(query, function, scope),
+            false,
+          ),
+        ),
+      )
+    }
     _ => None
   }
 }
@@ -7381,6 +7409,8 @@ fn WgslIrLowerer::function_expression_inner_type(
       self.image_query_expression_result_type(function, image, query)
     ArrayLength(_) => self.type_cache.get("u32")
     RayQueryGetIntersection(_, _) => self.type_cache.get("RayIntersection")
+    RayQueryVertexPositions(_, _) =>
+      self.shader_module.special_types.ray_vertex_return
     RayQueryProceedResult => self.type_cache.get("bool")
     WorkGroupUniformLoad(pointer) =>
       match self.function_expression_type(function, pointer) {

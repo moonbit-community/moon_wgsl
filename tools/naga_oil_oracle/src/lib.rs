@@ -1,8 +1,12 @@
-pub const WGSL_CAPABILITY_NAMES: &str = "ray-query|dual-source-blending|texture-external|texture-atomic|texture-int64-atomic|f16|float64|shader-int64|shader-float16-in-float32|subgroups|immediates|binding-arrays|primitive-index|shader-barycentrics|per-vertex|multiview|cooperative-matrix|mesh-shader|mesh-shader-point-topology";
+pub const WGSL_CAPABILITY_NAMES: &str = "ray-query|ray-hit-vertex-position|dual-source-blending|texture-external|texture-atomic|texture-int64-atomic|f16|float64|shader-int64|shader-float16-in-float32|subgroups|immediates|binding-arrays|primitive-index|shader-barycentrics|per-vertex|multiview|cooperative-matrix|mesh-shader|mesh-shader-point-topology";
 
 pub fn add_wgsl_capability(capabilities: &mut naga::valid::Capabilities, value: &str) -> bool {
     match value {
         "ray-query" => *capabilities |= naga::valid::Capabilities::RAY_QUERY,
+        "ray-hit-vertex-position" => {
+            *capabilities |= naga::valid::Capabilities::RAY_QUERY;
+            *capabilities |= naga::valid::Capabilities::RAY_HIT_VERTEX_POSITION;
+        }
         "dual-source-blending" => *capabilities |= naga::valid::Capabilities::DUAL_SOURCE_BLENDING,
         "texture-external" => *capabilities |= naga::valid::Capabilities::TEXTURE_EXTERNAL,
         "texture-atomic" => *capabilities |= naga::valid::Capabilities::TEXTURE_ATOMIC,

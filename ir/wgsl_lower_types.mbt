@@ -175,8 +175,17 @@ fn WgslIrLowerer::lower_composite_type_ref(
     "sampler" => self.intern_type(name, TypeInner::Sampler(false))
     "sampler_comparison" => self.intern_type(name, TypeInner::Sampler(true))
     "acceleration_structure" =>
-      self.intern_type(name, TypeInner::AccelerationStructure(false))
-    "ray_query" => self.intern_type(name, TypeInner::RayQuery(false))
+      self.intern_type(
+        ty_ref.canonical_text(),
+        TypeInner::AccelerationStructure(
+          wgsl_ir_type_ref_uses_vertex_return(ty_ref),
+        ),
+      )
+    "ray_query" =>
+      self.intern_type(
+        ty_ref.canonical_text(),
+        TypeInner::RayQuery(wgsl_ir_type_ref_uses_vertex_return(ty_ref)),
+      )
     "texture_1d"
     | "texture_2d"
     | "texture_2d_array"
@@ -467,6 +476,17 @@ fn wgsl_ir_array_size_literal_from_type_name(name : String) -> Int? {
   Some(@strconv.from_str(text)) catch {
     _ => None
   }
+}
+
+///|
+fn wgsl_ir_type_ref_uses_vertex_return(ty_ref : @ast.WgslTypeRef) -> Bool {
+  for argument in ty_ref.template_arguments() {
+    match argument {
+      Type(type_arg) if type_arg.name() == "vertex_return" => return true
+      _ => ()
+    }
+  }
+  false
 }
 
 ///|

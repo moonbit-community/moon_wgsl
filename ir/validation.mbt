@@ -1105,12 +1105,13 @@ fn WgslIrValidator::function_expression_inner_type(
         width.unwrap_or(4),
       )
     RayQueryGetIntersection(_, _) => self.find_type_by_name("RayIntersection")
+    RayQueryVertexPositions(_, _) =>
+      self.shader_module.special_types.ray_vertex_return
     RayQueryProceed(_) => self.find_scalar_type(Scalar::Scalar(Bool, 1))
     RayQueryInitialize(_, _, _)
     | RayQueryGenerateIntersection(_, _)
     | RayQueryConfirmIntersection(_)
-    | RayQueryTerminate(_)
-    | RayQueryVertexPositions(_, _) => None
+    | RayQueryTerminate(_) => None
   }
 }
 

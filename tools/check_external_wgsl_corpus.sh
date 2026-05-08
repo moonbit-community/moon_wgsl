@@ -66,6 +66,9 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'enable wgpu_ray_query' "$source" || grep -q 'rayQuery' "$source" || grep -q 'acceleration_structure' "$source"; then
     validate_args+=(--capability ray-query)
   fi
+  if grep -q 'enable wgpu_ray_query_vertex_return' "$source" || grep -q 'vertex_return' "$source" || grep -Eq 'get(Candidate|Committed)HitVertexPositions' "$source"; then
+    validate_args+=(--capability ray-hit-vertex-position)
+  fi
   if grep -q 'var<immediate>' "$source"; then
     validate_args+=(--capability immediates)
   fi
