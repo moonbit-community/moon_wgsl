@@ -1444,7 +1444,8 @@ fn WgslIrLowerer::lower_ray_query_statement_node(
       self.lower_ray_query_statement_node(inner, function, scope, block)
     Sequence([single]) =>
       self.lower_ray_query_statement_node(single, function, scope, block)
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       match callee.kind() {
         Identifier(name) =>
           self.lower_ray_query_statement_call(
@@ -1456,6 +1457,7 @@ fn WgslIrLowerer::lower_ray_query_statement_node(
           )
         _ => false
       }
+    }
     _ => false
   }
 }
@@ -3206,7 +3208,8 @@ fn WgslIrLowerer::lower_call_statement(
     raise WgslIrLowerError::UnsupportedExpression("empty function call")
   }
   match wgsl_ir_expr_call_node(root).kind() {
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       match callee.kind() {
         Identifier(name) =>
           match wgsl_ir_atomic_function_from_name(name.name()) {
@@ -3247,6 +3250,7 @@ fn WgslIrLowerer::lower_call_statement(
           }
         _ => ignore(self.lower_function_expression_node(root, function, scope))
       }
+    }
     _ => ignore(self.lower_function_expression_node(root, function, scope))
   }
 }
@@ -3268,6 +3272,13 @@ fn wgsl_ir_expr_call_node(node : @ast.WgslExprNode) -> @ast.WgslExprNode {
     Sequence([single]) => wgsl_ir_expr_call_node(single)
     _ => node
   }
+}
+
+///|
+fn wgsl_ir_call_arguments(
+  arguments : Array[@ast.WgslExprNode],
+) -> Array[@ast.WgslExprNode] {
+  wgsl_ir_flatten_expression_arguments(arguments)
 }
 
 ///|
@@ -4257,7 +4268,8 @@ fn WgslIrLowerer::infer_expression_type(
               )
           }
       }
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       match self.lower_bitcast_callee_type(callee) {
         Some(ty) => ty
         None =>
@@ -4295,6 +4307,7 @@ fn WgslIrLowerer::infer_expression_type(
               }
           }
       }
+    }
     _ => raise WgslIrLowerError::MissingType(name)
   }
 }
@@ -5021,7 +5034,8 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
         self.lower_global_expression_node(base),
         self.lower_global_expression_node(index),
       )
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       match self.lower_bitcast_callee_type(callee) {
         Some(ty) => self.lower_global_bitcast_call(ty, arguments)
         None =>
@@ -5080,6 +5094,7 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
               }
           }
       }
+    }
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
         "global expression kind is not constant-lowerable",
@@ -5553,6 +5568,7 @@ fn WgslIrLowerer::lower_function_call_expression(
   scope : WgslIrFunctionScope,
   expected_ty : Handle?,
 ) -> Handle raise WgslIrLowerError {
+  let arguments = wgsl_ir_call_arguments(arguments)
   match self.lower_bitcast_callee_type(callee) {
     Some(ty) => self.lower_function_bitcast_call(ty, arguments, function, scope)
     None =>

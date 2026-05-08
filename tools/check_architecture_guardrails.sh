@@ -63,6 +63,12 @@ if (( user_call_arg_sites < 2 )); then
   fail "expression-level and statement-level user function calls must share one argument-lowering path"
 fi
 
+call_arm_sites="$(rg -n 'Call\(callee, arguments\)' ir/wgsl_lower.mbt | wc -l | tr -d ' ')"
+normalized_call_arg_sites="$(rg -n 'wgsl_ir_call_arguments\(arguments\)' ir/wgsl_lower.mbt | wc -l | tr -d ' ')"
+if (( normalized_call_arg_sites < call_arm_sites )); then
+  fail "every AST call-lowering boundary must normalize call arguments before dispatch"
+fi
+
 if rg -n -U 'let values : Array\[Handle\] = \[\][\s\S]{0,400}Statement::Call' ir/wgsl_lower.mbt >"$matches_file"; then
   cat "$matches_file" >&2
   fail "statement-level user function calls must not manually lower raw call arguments"
