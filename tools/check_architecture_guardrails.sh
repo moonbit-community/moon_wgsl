@@ -58,6 +58,16 @@ if (( lowerer_lines > 8000 )); then
   fail "IR lowerer monolith is too large: ${lowerer_lines} lines"
 fi
 
+user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir/wgsl_lower.mbt | wc -l | tr -d ' ')"
+if (( user_call_arg_sites < 2 )); then
+  fail "expression-level and statement-level user function calls must share one argument-lowering path"
+fi
+
+if rg -n -U 'let values : Array\[Handle\] = \[\][\s\S]{0,400}Statement::Call' ir/wgsl_lower.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "statement-level user function calls must not manually lower raw call arguments"
+fi
+
 if rg -n 'WgslReferenceRewriteBinding \{[^}]*rel_path|WgslReferenceRewriteBinding \{[^}]*original_name' -U transform --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "reference rewrite bindings must carry WgslIrSymbolIdentity directly"

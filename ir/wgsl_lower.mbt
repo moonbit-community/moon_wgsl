@@ -3219,15 +3219,9 @@ fn WgslIrLowerer::lower_call_statement(
             None =>
               match self.function_names.get(name.name()) {
                 Some(handle) => {
-                  let values : Array[Handle] = []
-                  for
-                    argument in wgsl_ir_flatten_expression_arguments(arguments) {
-                    values.push(
-                      self.lower_function_expression_node(
-                        argument, function, scope,
-                      ),
-                    )
-                  }
+                  let values = self.lower_user_function_call_arguments(
+                    arguments, function, scope,
+                  )
                   block.push(Statement::Call(handle, values, None))
                 }
                 None =>
@@ -3255,6 +3249,16 @@ fn WgslIrLowerer::lower_call_statement(
       }
     _ => ignore(self.lower_function_expression_node(root, function, scope))
   }
+}
+
+///|
+fn WgslIrLowerer::lower_user_function_call_arguments(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Array[Handle] raise WgslIrLowerError {
+  self.lower_function_expression_arguments(arguments, function, scope)
 }
 
 ///|
@@ -5595,7 +5599,7 @@ fn WgslIrLowerer::lower_named_function_call_expression(
       function.expressions.append(
         Expression::FunctionCall(
           handle,
-          self.lower_function_expression_arguments(arguments, function, scope),
+          self.lower_user_function_call_arguments(arguments, function, scope),
         ),
       )
     None =>

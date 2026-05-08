@@ -822,13 +822,14 @@ test "WGSL AST lowerer rejects invalid struct layout attributes" {
 ///|
 test "WGSL AST lowerer supports function call expressions" {
   let source =
-    #|fn helper() -> u32 {
-    #|  return 1u;
+    #|fn helper(a: u32, b: u32, c: u32) -> u32 {
+    #|  return a + b + c;
     #|}
     #|
     #|@compute
     #|fn main() {
-    #|  var value: u32 = helper();
+    #|  let base = 1u;
+    #|  var value: u32 = helper(base, 2u, base + 2u);
     #|}
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
@@ -836,7 +837,7 @@ test "WGSL AST lowerer supports function call expressions" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("var value: u32 = helper();"), content="true")
+  debug_inspect(emitted.contains("helper(_e0, 2u, (_e0 + 2u))"), content="true")
 }
 
 ///|
