@@ -4327,6 +4327,12 @@ fn WgslIrLowerer::infer_expression_type(
     Identifier(identifier) =>
       self.infer_named_expression_type(identifier.name(), name)
     Group(inner) => self.infer_expression_type(inner, name)
+    Unary(op, inner) =>
+      match op {
+        Not => self.lower_builtin_type_name("bool")
+        Subtract | Complement => self.infer_expression_type(inner, name)
+        _ => raise WgslIrLowerError::MissingType(name)
+      }
     Binary(op, left, right) =>
       match self.infer_expression_type(left, name) {
         left_ty =>
@@ -5830,11 +5836,15 @@ fn WgslIrLowerer::lower_identifier_expression(
     None =>
       match scope.locals.get(name) {
         Some(handle) =>
-          function.expressions.append(
-            Expression::Load(
-              scope.local_pointer_expression(name, handle, function),
-            ),
-          )
+          if self.local_variable_is_handle_value(function, handle) {
+            scope.local_pointer_expression(name, handle, function)
+          } else {
+            function.expressions.append(
+              Expression::Load(
+                scope.local_pointer_expression(name, handle, function),
+              ),
+            )
+          }
         None =>
           match scope.arguments.get(name) {
             Some(index) =>
@@ -5869,6 +5879,26 @@ fn WgslIrLowerer::lower_identifier_expression(
               }
           }
       }
+  }
+}
+
+///|
+fn WgslIrLowerer::local_variable_is_handle_value(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.local_variables.items.get(handle.index()) {
+    Some(local_var) =>
+      match self.shader_module.types.get(local_var.ty) {
+        Some(type_) =>
+          match type_.inner {
+            Pointer(_, _) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
   }
 }
 

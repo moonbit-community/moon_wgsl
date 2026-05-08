@@ -8,3 +8,5 @@
 *storage access defaults*
 *multiple branch*
 *pointer dereference stores*
+*pointer-valued local references*
+*unary const switch selector*

@@ -125,6 +125,37 @@ fn main() {
 }
 WGSL
       ;;
+    local-pointer-value)
+      cat > "$output" <<'WGSL'
+fn inc(p: ptr<function, u32>) {
+  (*p) += 1u;
+}
+
+@compute @workgroup_size(1)
+fn main() {
+  var x: u32 = 1u;
+  let p = &x;
+  (*p) = (*p) + 1u;
+  inc(p);
+}
+WGSL
+      ;;
+    unary-const-switch)
+      cat > "$output" <<'WGSL'
+const NEG = -1;
+
+fn choose(value: i32) -> u32 {
+  switch value {
+    case NEG: {
+      return 1u;
+    }
+    default {
+      return 0u;
+    }
+  }
+}
+WGSL
+      ;;
     layout-abi-preservation)
       cat > "$output" <<'WGSL'
 struct Item {

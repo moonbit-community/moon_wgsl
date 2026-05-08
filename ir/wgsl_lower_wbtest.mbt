@@ -1292,6 +1292,31 @@ test "WGSL IR emitter preserves direct pointer dereference stores" {
 }
 
 ///|
+test "WGSL IR emitter preserves pointer-valued local references" {
+  let source =
+    #|fn inc(p: ptr<function, u32>) {
+    #|  (*p) += 1u;
+    #|}
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  var x: u32 = 1u;
+    #|  let p = &x;
+    #|  (*p) = (*p) + 1u;
+    #|  inc(p);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("*(_e"), content="true")
+  debug_inspect(emitted.contains("inc(_e"), content="true")
+  debug_inspect(emitted.contains("inc(*(_e"), content="false")
+}
+
+///|
 test "WGSL AST lowerer preserves storage access defaults" {
   let source =
     #|struct S {
@@ -1415,6 +1440,37 @@ test "WGSL AST lowerer preserves large u32 const switch selectors" {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("case 3221225472u {"), content="true")
+}
+
+///|
+test "WGSL AST lowerer infers unary const switch selector types" {
+  let source =
+    #|const NEG = -1;
+    #|
+    #|fn choose(value: i32) -> u32 {
+    #|  switch value {
+    #|    case NEG: {
+    #|      return 1u;
+    #|    }
+    #|    default {
+    #|      return 0u;
+    #|    }
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  match module_.functions.items[0].body.statements[0] {
+    Switch(_, cases) => {
+      debug_inspect(cases[0].value, content="I32(-1)")
+      debug_inspect(cases[1].value, content="Default")
+    }
+    _ => abort("expected switch statement")
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("case -1i {"), content="true")
 }
 
 ///|
