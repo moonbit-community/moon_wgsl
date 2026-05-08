@@ -267,6 +267,8 @@ test "WGSL AST lowerer preserves f16 literal suffixes" {
   let source =
     #|enable f16;
     #|const x: f16 = 1h;
+    #|const y: f16 = 1.5h;
+    #|const z: f16 = 2.0;
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
@@ -274,6 +276,8 @@ test "WGSL AST lowerer preserves f16 literal suffixes" {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("const x: f16 = 1h;"), content="true")
+  debug_inspect(emitted.contains("const y: f16 = 1.5h;"), content="true")
+  debug_inspect(emitted.contains("const z: f16 = 2h;"), content="true")
 }
 
 ///|

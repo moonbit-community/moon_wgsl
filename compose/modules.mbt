@@ -62,7 +62,7 @@ fn merge_wgsl_source_local_shader_defs(
   active_defs : WgslActiveComposeDefs,
   source : String,
 ) -> Unit raise ComposerError {
-  let metadata = get_preprocessor_metadata(source) catch {
+  let metadata = get_preprocessor_metadata(source, collect_import_uses=false) catch {
     error => raise composer_error_from_metadata_error(error)
   }
   for entry in metadata.defines.iter() {

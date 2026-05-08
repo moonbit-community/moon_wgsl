@@ -139,6 +139,25 @@ test "naga_oil: metadata parser records only used imports like upstream" {
 }
 
 ///|
+test "metadata import use collection rejects invalid WGSL instead of source fallback" {
+  ignore(
+    @metadata.get_preprocessor_metadata(
+      "#import bevy_render::view::View\nfn main(view: View) -> f32 {\n",
+    ) catch {
+      @metadata.MetadataError::ImportParseError(message, _) => {
+        inspect(
+          message.contains("declaration could not be parsed"),
+          content="true",
+        )
+        return
+      }
+      _ => abort("expected import parse error for invalid WGSL")
+    },
+  )
+  abort("expected metadata parse failure")
+}
+
+///|
 test "naga_oil: metadata parser keeps quoted path imports and duplicate item uses" {
   let imports = metadata_imports_or_abort(
     "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\nfn vertex(vertex: Vertex) -> VertexOutput {\n  var out : VertexOutput;\n  return out;\n}\n",

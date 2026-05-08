@@ -2,6 +2,7 @@
 fn try_get_preprocessor_metadata(
   source : String,
   allow_defines : Bool,
+  collect_import_uses : Bool,
 ) -> PreprocessorMetaData raise MetadataError {
   let (cleaned_for_directives, wgsl_directives) = extract_wgsl_directives(
     source,
@@ -63,9 +64,11 @@ fn try_get_preprocessor_metadata(
       WgslDirectiveScanItemKind::GlslVersion(_) => ()
     }
   }
-  metadata_collect_import_uses(
-    cleaned_for_directives, import_state, used_imports,
-  )
+  if collect_import_uses {
+    metadata_collect_import_uses(
+      cleaned_for_directives, import_state, used_imports,
+    )
+  }
 
   PreprocessorMetaData(
     name, used_imports, defines, effective_defs, wgsl_directives, cleaned_for_directives,
@@ -76,6 +79,7 @@ fn try_get_preprocessor_metadata(
 pub fn get_preprocessor_metadata(
   source : String,
   allow_defines? : Bool = true,
+  collect_import_uses? : Bool = true,
 ) -> PreprocessorMetaData raise MetadataError {
-  try_get_preprocessor_metadata(source, allow_defines)
+  try_get_preprocessor_metadata(source, allow_defines, collect_import_uses)
 }

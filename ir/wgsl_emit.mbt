@@ -1610,7 +1610,7 @@ fn WgslIrEmitter::literal_type(
     I32(_) => self.type_handle_named("i32")
     AbstractInt(_) => self.type_handle_named("__abstract_int")
     U32(_) => self.type_handle_named("u32")
-    F16Bits(_) => self.type_handle_named("f16")
+    F16(_) => self.type_handle_named("f16")
     F32(_) => self.type_handle_named("f32")
     AbstractFloat(_) => self.type_handle_named("__abstract_float")
     _ => None
@@ -2535,7 +2535,7 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
   match literal {
     F64(value) => wgsl_ir_emit_concrete_float_literal_text("\{value}")
     F32(value) => wgsl_ir_emit_concrete_float_literal_text("\{value}")
-    F16Bits(value) => "\{value}h"
+    F16(value) => wgsl_ir_emit_f16_literal_text("\{value}")
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
     U32(value) => "\{value}u"
@@ -2569,6 +2569,16 @@ fn wgsl_ir_emit_concrete_float_literal_text(text : String) -> String {
     "\{normalized[0:normalized.length() - 2]}f"
   } else {
     "\{normalized}f"
+  }
+}
+
+///|
+fn wgsl_ir_emit_f16_literal_text(text : String) -> String {
+  let normalized = wgsl_ir_emit_normalized_float_literal_text(text)
+  if normalized.has_suffix(".0") {
+    "\{normalized[0:normalized.length() - 2]}h"
+  } else {
+    "\{normalized}h"
   }
 }
 

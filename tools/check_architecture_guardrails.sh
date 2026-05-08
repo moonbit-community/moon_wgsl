@@ -22,6 +22,18 @@ if rg -n 'gpuweb_cts_ir_allowlist|allowlist=' tools testdata \
   fail "official WGSL CTS gate must be driven by extracted cases, not allowlist state"
 fi
 
+if rg -n 'InvalidWgslSyntax\([^)]*\) => source' \
+  metadata preprocess transform compose ir parser \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WGSL parse failures must not fall back to source text"
+fi
+
+if rg -n 'F16Bits|F16Literal => \{[[:space:]]*let .*: Int' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "f16 literals must use semantic float values, not integer bit placeholders"
+fi
+
 if rg -n 'CachedQualifiedAliasBinding' compose transform ir --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "cached alias bindings must not be a separate compose binding phase"

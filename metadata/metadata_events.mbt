@@ -115,7 +115,8 @@ fn metadata_collect_import_uses(
         raise MetadataError::ImportParseError(
           "Ambiguous import path for item", position,
         )
-      InvalidWgslSyntax(_, _) => source
+      InvalidWgslSyntax(message, position) =>
+        raise MetadataError::ImportParseError(message, position)
     },
   )
 }

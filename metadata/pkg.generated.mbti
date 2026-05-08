@@ -7,7 +7,7 @@ import {
 }
 
 // Values
-pub fn get_preprocessor_metadata(String, allow_defines? : Bool) -> @common.PreprocessorMetaData raise MetadataError
+pub fn get_preprocessor_metadata(String, allow_defines? : Bool, collect_import_uses? : Bool) -> @common.PreprocessorMetaData raise MetadataError
 
 pub fn wgsl_source_define_import_path(String) -> String?
 

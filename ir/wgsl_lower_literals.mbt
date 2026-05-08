@@ -35,9 +35,9 @@ fn wgsl_ir_contextualize_literal(
   literal : Literal,
   scalar : Scalar,
 ) -> Literal raise WgslIrLowerError {
-  match (literal, scalar.kind) {
-    (AbstractInt(value), Sint) => Literal::I32(value.to_int())
-    (AbstractInt(value), Uint) => {
+  match (literal, scalar.kind, scalar.width) {
+    (AbstractInt(value), Sint, _) => Literal::I32(value.to_int())
+    (AbstractInt(value), Uint, _) => {
       let parsed : UInt = @strconv.from_str("\{value}") catch {
         _ =>
           raise WgslIrLowerError::UnsupportedExpression(
@@ -46,6 +46,7 @@ fn wgsl_ir_contextualize_literal(
       }
       Literal::U32(parsed)
     }
+    (AbstractFloat(value), Float, 2) => Literal::F16(value)
     _ => literal
   }
 }
@@ -80,13 +81,7 @@ fn wgsl_ir_literal_from_token(
           }
           Literal::F32(Float::from_double(value))
         }
-        F16Literal => {
-          let h_text = wgsl_ir_literal_without_suffix(literal.raw_text)
-          let value : Int = @strconv.from_str(h_text) catch {
-            _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
-          }
-          Literal::F16Bits(value)
-        }
+        F16Literal => Literal::F16(wgsl_ir_float64_literal_from_text(literal))
         InvalidNumericLiteral =>
           raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
       }
@@ -123,6 +118,16 @@ fn wgsl_ir_u32_literal_from_numeric_literal(
 }
 
 ///|
+fn wgsl_ir_float64_literal_from_text(
+  literal : @ast.WgslNumericLiteral,
+) -> Double raise WgslIrLowerError {
+  let text = wgsl_ir_float_literal_text(literal.raw_text)
+  @strconv.from_str(text) catch {
+    _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+  }
+}
+
+///|
 fn wgsl_ir_numeric_literal_default_type_name(
   literal : @ast.WgslNumericLiteral,
 ) -> String {
@@ -133,36 +138,6 @@ fn wgsl_ir_numeric_literal_default_type_name(
     F16Literal => "f16"
     AbstractFloatLiteral => "__abstract_float"
     AbstractIntLiteral | InvalidNumericLiteral => "__abstract_int"
-  }
-}
-
-///|
-fn wgsl_ir_literal_suffix_length(text : String) -> Int {
-  if text.length() == 0 {
-    return 0
-  }
-  let last = text.code_unit_at(text.length() - 1).to_int()
-  if last == 105 ||
-    last == 73 ||
-    last == 117 ||
-    last == 85 ||
-    last == 102 ||
-    last == 70 ||
-    last == 104 ||
-    last == 72 {
-    1
-  } else {
-    0
-  }
-}
-
-///|
-fn wgsl_ir_literal_without_suffix(text : String) -> String {
-  let suffix_length = wgsl_ir_literal_suffix_length(text)
-  if suffix_length == 0 {
-    text
-  } else {
-    text[0:text.length() - suffix_length].to_owned()
   }
 }
 
