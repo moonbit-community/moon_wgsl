@@ -1,5 +1,5 @@
 ///|
-pub(all) enum WgslDeclHeadKind {
+priv enum WgslDeclHeadKind {
   Function
   GlobalVariable
   Struct
@@ -12,7 +12,7 @@ pub(all) enum WgslDeclHeadKind {
 }
 
 ///|
-pub struct WgslDeclHead {
+priv struct WgslDeclHead {
   kind : WgslDeclHeadKind
   attributes : Array[WgslAttribute]
   keyword : WgslIdent?
@@ -20,7 +20,6 @@ pub struct WgslDeclHead {
   qualifier_start : Int?
   qualifier_end : Int?
   fn_keyword : WgslIdent?
-  consumed : Int
 }
 
 ///|
@@ -33,6 +32,5 @@ fn WgslDeclHead::raw(attributes : Array[WgslAttribute]) -> WgslDeclHead {
     qualifier_start: None,
     qualifier_end: None,
     fn_keyword: None,
-    consumed: 0,
   }
 }

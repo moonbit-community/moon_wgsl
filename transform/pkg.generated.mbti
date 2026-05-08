@@ -49,7 +49,6 @@ pub suberror WgslImportSubstitutionError {
 
 pub suberror WgslVirtualOverrideError {
   InvalidOverride(String)
-  Parse(String, Int)
   UnparsedDeclaration(String, Int)
 }
 

@@ -17,8 +17,6 @@ pub fn function_result(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.Wgs
 
 pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit raise WgslParseError
 
-pub fn raw_top_level_items(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[WgslRawTopLevelItem] raise ParseError
-
 pub fn source_directive(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDirective raise ParseError
 
 pub fn struct_members(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast.WgslStructMember] raise ParseError
@@ -38,14 +36,12 @@ pub suberror ParseError {
 } derive(@debug.Debug)
 
 pub suberror WgslParseError {
-  Parse(String, Int)
   UnparsedDeclaration(String, Int)
 }
 pub fn WgslParseError::message(Self) -> String
 
 // Types and methods
 pub(all) enum Token {
-  ITEM(WgslRawTopLevelItem)
   STMT(@ast.WgslStatement)
   TYPE_ATOM(@ast.WgslTypeAtom)
   TYPE_ARGS((Array[@ast.WgslTypeArgument], Int))
@@ -80,7 +76,6 @@ pub(all) enum Token {
 pub fn Token::kind(Self) -> TokenKind
 
 pub(all) enum TokenKind {
-  TK_ITEM
   TK_STMT
   TK_TYPE_ATOM
   TK_TYPE_ARGS
@@ -114,45 +109,6 @@ pub(all) enum TokenKind {
 }
 pub impl Show for TokenKind
 pub impl @debug.Debug for TokenKind
-
-pub struct WgslDeclHead {
-  kind : WgslDeclHeadKind
-  attributes : Array[@ast.WgslAttribute]
-  keyword : @ast.WgslIdent?
-  qualifier : @ast.WgslFunctionQualifier?
-  qualifier_start : Int?
-  qualifier_end : Int?
-  fn_keyword : @ast.WgslIdent?
-  consumed : Int
-}
-
-pub(all) enum WgslDeclHeadKind {
-  Function
-  GlobalVariable
-  Struct
-  Const
-  Override
-  TypeAlias
-  ConstAssert
-  SourceDirective
-  Raw
-}
-
-pub struct WgslRawTopLevelItem {
-  kind : WgslRawTopLevelKind
-  text : String
-  start : Int
-  end : Int
-} derive(@debug.Debug)
-
-pub(all) enum WgslRawTopLevelKind {
-  Trivia
-  Import
-  DefineImportPath
-  Define
-  Directive
-  Declaration
-} derive(@debug.Debug)
 
 // Type aliases
 

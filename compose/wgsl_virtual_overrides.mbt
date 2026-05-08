@@ -37,8 +37,6 @@ fn apply_wgsl_virtual_overrides_with_binding_plan(
 ) -> String raise ComposerError {
   @transform.apply_wgsl_virtual_overrides_with_binding_plan(source, plan) catch {
     InvalidOverride(name) => raise ComposerError::InvalidOverride(name)
-    Parse(message, offset) =>
-      raise ComposerError::InvalidWgslSyntax(message, offset)
     UnparsedDeclaration(text, offset) =>
       raise ComposerError::InvalidWgslSyntax(
         "declaration could not be parsed: \{text}",

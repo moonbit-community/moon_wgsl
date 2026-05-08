@@ -32,6 +32,17 @@ if rg -n 'pub fn WgslReferenceRewritePlan::add\(' transform --glob '*.mbt' >"$ma
   fail "reference rewrite plans must not expose unscoped string-only bindings"
 fi
 
+if rg -n 'raw_top_level_items|Token::ITEM|%token<WgslRawTopLevelItem> ITEM' parser \
+  --glob '*.mbt' \
+  --glob '*.mbty' \
+  --glob '!top_level_ast.mbt' \
+  --glob '!top_level_ast_wbtest.mbt' \
+  --glob '!wgsl_raw_top_level.mbt' \
+  --glob '!wgsl_ast_parser.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "raw top-level item scanning must stay parser-owned, not a generated parser start"
+fi
+
 if rg -n 'WgslReferenceRewriteBinding \{[^}]*rel_path|WgslReferenceRewriteBinding \{[^}]*original_name' -U transform --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "reference rewrite bindings must carry WgslIrSymbolIdentity directly"

@@ -1,7 +1,6 @@
 %position<Int>
 %derive<Debug> Token
 %derive<Debug> ParseError
-%start raw_top_level_items
 %start type_ref
 %start template_list
 %start function_args
@@ -13,7 +12,6 @@
 %start const_assert_expr
 %start block
 
-%token<WgslRawTopLevelItem> ITEM
 %token<@ast.WgslStatement> STMT
 %token<@ast.WgslTypeAtom> TYPE_ATOM
 %token<(Array[@ast.WgslTypeArgument], Int)> TYPE_ARGS
@@ -46,10 +44,6 @@
 %token EOF
 
 %%
-
-raw_top_level_items -> Array[WgslRawTopLevelItem]
-  : items EOF { $1 }
-  ;
 
 block -> @ast.WgslBlock
   : open=LBRACE statements close=RBRACE EOF {
@@ -96,15 +90,6 @@ attribute_args -> (@ast.WgslExprRef?, Int?)
   | ATTR_ARGS {
       let (arguments_ref, end) = $1
       (arguments_ref, Some(end))
-    }
-  ;
-
-items -> Array[WgslRawTopLevelItem]
-  : { [] }
-  | items ITEM {
-      let items = $1
-      items.push($2)
-      items
     }
   ;
 

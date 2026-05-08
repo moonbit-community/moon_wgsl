@@ -283,8 +283,6 @@ fn substitute_identifiers_wgsl_parse_error(
   offset : Int,
 ) -> WgslImportSubstitutionError {
   match error {
-    Parse(message, parse_offset) =>
-      InvalidWgslSyntax(message, offset + parse_offset)
     UnparsedDeclaration(text, parse_offset) =>
       InvalidWgslSyntax(
         "declaration could not be parsed: \{text}",

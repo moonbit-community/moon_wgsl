@@ -138,7 +138,6 @@ fn composer_error_from_wgsl_parse_error(
   error : WgslParseError,
 ) -> ComposerError {
   match error {
-    Parse(message, offset) => InvalidWgslSyntax(message, offset)
     UnparsedDeclaration(text, offset) =>
       InvalidWgslSyntax("declaration could not be parsed: \{text}", offset)
   }

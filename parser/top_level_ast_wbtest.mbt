@@ -25,6 +25,11 @@ fn top_level_kind_snapshot(kind : WgslRawTopLevelKind) -> String {
 }
 
 ///|
+fn top_level_item_text(source : String, item : WgslRawTopLevelItem) -> String {
+  source[item.start:item.end].to_owned()
+}
+
+///|
 test "top-level AST classifies directives imports and declarations" {
   let source = "#define_import_path bevy_pbr::demo\n" +
     "#define TONEMAPPING_PASS\n" +
@@ -50,14 +55,26 @@ test "top-level AST classifies directives imports and declarations" {
   )
   debug_inspect(top_level_kind_snapshot(items[1].kind), content="\"Define\"")
   debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Import\"")
-  debug_inspect(items[2].text.contains("globals::Globals"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[2]).contains("globals::Globals"),
+    content="true",
+  )
   debug_inspect(
     top_level_kind_snapshot(items[3].kind),
     content="\"Declaration\"",
   )
-  debug_inspect(items[3].text.contains("var<uniform> view"), content="true")
-  debug_inspect(items[4].text.contains("struct Output"), content="true")
-  debug_inspect(items[5].text.contains("fn fragment"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[3]).contains("var<uniform> view"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[4]).contains("struct Output"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[5]).contains("fn fragment"),
+    content="true",
+  )
 }
 
 ///|
@@ -72,8 +89,14 @@ test "top-level AST ignores comments while finding block boundaries" {
     "}\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="2")
-  debug_inspect(items[0].text.contains("struct A"), content="true")
-  debug_inspect(items[1].text.contains("fn b"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[0]).contains("struct A"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[1]).contains("fn b"),
+    content="true",
+  )
 }
 
 ///|
@@ -85,8 +108,14 @@ test "top-level AST ignores quoted braces while finding boundaries" {
     "}\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="3")
-  debug_inspect(items[0].text.contains("const A"), content="true")
-  debug_inspect(items[1].text.contains("const B"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[0]).contains("const A"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[1]).contains("const B"),
+    content="true",
+  )
   debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Import\"")
 }
 
@@ -100,8 +129,14 @@ test "top-level AST preserves directive-adjacent trivia" {
   debug_inspect(top_level_kind_snapshot(items[0].kind), content="\"Trivia\"")
   debug_inspect(top_level_kind_snapshot(items[1].kind), content="\"Import\"")
   debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Trivia\"")
-  debug_inspect(items[0].text.contains("leading import note"), content="true")
-  debug_inspect(items[2].text.contains("trailing note"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[0]).contains("leading import note"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[2]).contains("trailing note"),
+    content="true",
+  )
 }
 
 ///|
@@ -139,9 +174,18 @@ test "top-level AST recognizes same-line attributed declarations" {
     top_level_kind_snapshot(items[0].kind),
     content="\"Declaration\"",
   )
-  debug_inspect(items[0].text.contains("fn fragment"), content="true")
-  debug_inspect(items[1].text.contains("var<uniform> view"), content="true")
-  debug_inspect(items[2].text.contains("override exposure"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[0]).contains("fn fragment"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[1]).contains("var<uniform> view"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[2]).contains("override exposure"),
+    content="true",
+  )
 }
 
 ///|
@@ -151,12 +195,30 @@ test "top-level AST splits adjacent declarations by token boundaries" {
     "struct S { value: u32, }; const D: u32 = C;\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="6")
-  debug_inspect(items[0].text.contains("const A"), content="true")
-  debug_inspect(items[1].text.contains("const B"), content="true")
-  debug_inspect(items[2].text.contains("fn make"), content="true")
-  debug_inspect(items[3].text.contains("const C"), content="true")
-  debug_inspect(items[4].text.contains("struct S"), content="true")
-  debug_inspect(items[5].text.contains("const D"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[0]).contains("const A"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[1]).contains("const B"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[2]).contains("fn make"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[3]).contains("const C"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[4]).contains("struct S"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[5]).contains("const D"),
+    content="true",
+  )
   debug_inspect(
     items.map(fn(item) { top_level_kind_snapshot(item.kind) }),
     content=(
@@ -179,8 +241,14 @@ test "top-level AST does not treat hash interpolation braces as block boundaries
     "const NEXT: u32 = 1u;\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="2")
-  debug_inspect(items[0].text.contains("var<uniform> mesh"), content="true")
-  debug_inspect(items[1].text.contains("const NEXT"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[0]).contains("var<uniform> mesh"),
+    content="true",
+  )
+  debug_inspect(
+    top_level_item_text(source, items[1]).contains("const NEXT"),
+    content="true",
+  )
 }
 
 ///|
@@ -190,5 +258,8 @@ test "top-level AST does not treat attribute arguments as declarations" {
     "}\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="1")
-  debug_inspect(items[0].text.contains("struct Output"), content="true")
+  debug_inspect(
+    top_level_item_text(source, items[0]).contains("struct Output"),
+    content="true",
+  )
 }

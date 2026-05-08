@@ -486,7 +486,6 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
           qualifier_start: Some(first_ident.start()),
           qualifier_end: Some(first_ident.end()),
           fn_keyword: Some(second_ident),
-          consumed: 0,
         }
       }
       if first_name == "override" && second_name == "fn" {
@@ -499,7 +498,6 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
           qualifier_start: Some(first_ident.start()),
           qualifier_end: Some(first_ident.end()),
           fn_keyword: Some(second_ident),
-          consumed: 0,
         }
       }
     }
@@ -534,7 +532,6 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
               Function => Some(ident)
               _ => None
             },
-            consumed: 0,
           }
         }
       }

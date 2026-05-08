@@ -21,7 +21,6 @@ priv struct WgslVirtualOverrideOutput {
 ///|
 pub suberror WgslVirtualOverrideError {
   InvalidOverride(String)
-  Parse(String, Int)
   UnparsedDeclaration(String, Int)
 }
 
@@ -30,7 +29,6 @@ fn wgsl_virtual_override_error_from_parse(
   error : WgslParseError,
 ) -> WgslVirtualOverrideError {
   match error {
-    Parse(message, offset) => WgslVirtualOverrideError::Parse(message, offset)
     UnparsedDeclaration(text, offset) =>
       WgslVirtualOverrideError::UnparsedDeclaration(text, offset)
   }

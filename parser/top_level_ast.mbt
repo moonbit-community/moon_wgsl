@@ -95,13 +95,11 @@ fn top_level_directive_item_kind(
 ///|
 fn top_level_push_span_item(
   items : Array[WgslRawTopLevelItem],
-  source : String,
   kind : WgslRawTopLevelKind,
   start : Int,
   end_ : Int,
 ) -> Unit {
-  let text = source[start:end_].to_owned()
-  items.push(WgslRawTopLevelItem::{ kind, text, start, end: end_ })
+  items.push(WgslRawTopLevelItem::{ kind, start, end: end_ })
 }
 
 ///|
@@ -147,7 +145,6 @@ fn WgslTopLevelParser::flush_trivia_until(
   if top_level_span_has_text(self.source, self.pending_start, end_) {
     top_level_push_span_item(
       items,
-      self.source,
       WgslRawTopLevelKind::Trivia,
       self.pending_start,
       end_,
@@ -188,7 +185,6 @@ fn WgslTopLevelParser::parse_directive_item(
   }
   top_level_push_span_item(
     items,
-    self.source,
     top_level_directive_item_kind(directive.kind()),
     item_start,
     item_end,
@@ -261,7 +257,6 @@ fn WgslTopLevelParser::parse_declaration_item(
   if top_level_span_has_text(self.source, item_start, item_end) {
     top_level_push_span_item(
       items,
-      self.source,
       WgslRawTopLevelKind::Declaration,
       item_start,
       item_end,
@@ -286,7 +281,6 @@ fn WgslTopLevelParser::parse_items(
       self.flush_trivia_until(items, token_pos)
       top_level_push_span_item(
         items,
-        self.source,
         WgslRawTopLevelKind::Trivia,
         token_pos,
         token.end(),
