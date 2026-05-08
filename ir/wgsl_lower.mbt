@@ -957,8 +957,13 @@ fn WgslIrLowerer::lower_function_declaration(
           workgroup_size,
           workgroup_size_overrides,
           function: ir_function,
-          mesh_info: None,
-          task_payload: None,
+          mesh_info: self.mesh_stage_info_from_attributes(
+            stage,
+            function.attributes(),
+          ),
+          task_payload: self.payload_variable_from_attributes(
+            function.attributes(),
+          ),
           incoming_ray_payload: None,
         })
       }

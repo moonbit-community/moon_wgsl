@@ -467,20 +467,50 @@ fn WgslIrEmitter::emit_entry_point(
   out : StringBuilder,
   entry_point : EntryPoint,
 ) -> Unit raise WgslIrEmitError {
-  out.write_string(self.stage_attribute(entry_point.stage))
-  if entry_point.stage == Compute {
-    out.write_string(" @workgroup_size(")
+  let multiline_attributes = entry_point.stage == Task ||
+    entry_point.stage == Mesh ||
+    entry_point.task_payload != None
+  match entry_point.stage {
+    Mesh =>
+      match entry_point.mesh_info {
+        Some(mesh_info) =>
+          out.write_string(
+            "@mesh(\{self.global_variable_name(mesh_info.output_variable)})",
+          )
+        None =>
+          raise WgslIrEmitError::Unsupported(
+            "mesh entry point without mesh output",
+          )
+      }
+    _ => out.write_string(self.stage_attribute(entry_point.stage))
+  }
+  match entry_point.task_payload {
+    Some(payload) =>
+      out.write_string("\n@payload(\{self.global_variable_name(payload)})")
+    None => ()
+  }
+  if wgsl_ir_stage_has_workgroup_size(entry_point.stage) {
+    if multiline_attributes {
+      out.write_string("\n@workgroup_size(")
+    } else {
+      out.write_string(" @workgroup_size(")
+    }
     out.write_string(self.workgroup_size_component(entry_point, 0))
     out.write_string(", ")
     out.write_string(self.workgroup_size_component(entry_point, 1))
     out.write_string(", ")
     out.write_string(self.workgroup_size_component(entry_point, 2))
     out.write_string(")")
-  } else {
+  } else if !multiline_attributes {
     out.write_string(" ")
   }
   out.write_string("\n")
   self.emit_function(out, entry_point.function, Some(entry_point.name))
+}
+
+///|
+fn wgsl_ir_stage_has_workgroup_size(stage : ShaderStage) -> Bool {
+  stage == Compute || stage == Task || stage == Mesh
 }
 
 ///|
@@ -2894,6 +2924,7 @@ fn WgslIrEmitter::stage_attribute(
   ignore(self)
   match stage {
     Vertex => "@vertex"
+    Task => "@task"
     Fragment => "@fragment"
     Compute => "@compute"
     _ => raise WgslIrEmitError::Unsupported("shader stage")
@@ -2909,7 +2940,10 @@ fn WgslIrEmitter::emit_binding_attribute_prefix(
   match binding {
     Some(BuiltIn(builtin)) =>
       out.write_string("@builtin(\{self.builtin_name(builtin)}) ")
-    Some(Location(location, interpolation, sampling, blend_src, _)) => {
+    Some(Location(location, interpolation, sampling, blend_src, per_primitive)) => {
+      if per_primitive {
+        out.write_string("@per_primitive ")
+      }
       out.write_string("@location(\{location}) ")
       match blend_src {
         Some(value) => out.write_string("@blend_src(\{value}) ")
@@ -2960,6 +2994,15 @@ fn WgslIrEmitter::builtin_name(
     SubgroupId => "subgroup_id"
     SubgroupSize => "subgroup_size"
     SubgroupInvocationId => "subgroup_invocation_id"
+    MeshTaskSize => "mesh_task_size"
+    CullPrimitive => "cull_primitive"
+    PointIndex => "point_index"
+    LineIndices => "line_indices"
+    TriangleIndices => "triangle_indices"
+    VertexCount => "vertex_count"
+    Vertices => "vertices"
+    PrimitiveCount => "primitive_count"
+    Primitives => "primitives"
     _ => raise WgslIrEmitError::Unsupported("builtin")
   }
 }

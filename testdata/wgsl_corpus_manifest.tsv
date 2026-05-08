@@ -18,6 +18,7 @@ ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-qu
 ir-texture-atomic-compute	file	testdata/ir_corpus/texture_atomic_compute.wgsl	-	-	-	texture-atomic	parse,naga,ir,naga-ir	Static IR corpus: storage texture atomic builtin coverage.
 ir-texture-int64-atomic-compute	file	testdata/ir_corpus/texture_int64_atomic_compute.wgsl	-	-	-	texture-int64-atomic,shader-int64	parse,naga,ir,naga-ir	Static IR corpus: 64-bit storage texture atomic builtin coverage.
 ir-float64-vector-fragment	file	testdata/ir_corpus/float64_vector_fragment.wgsl	-	-	-	float64	parse,naga,ir,naga-ir	Static IR corpus: f64 scalar/vector type lowering and emission.
+ir-mesh-shader	file	testdata/ir_corpus/mesh_shader.wgsl	-	-	-	mesh-shader	parse,naga,ir,naga-ir	Static IR corpus: wgpu mesh/task shader stage, payload, mesh output, per-primitive IO, and mesh builtins.
 ir-builtin-functions-fragment	file	testdata/ir_corpus/builtin_functions_fragment.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: builtin function expression lowering.
 ir-packed-integer-builtins-compute	file	testdata/ir_corpus/packed_integer_builtins_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: packed integer builtin calls.
 compose-local-simple	compose	testdata/ir_corpus/compose	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Local compose fixture through compose, parse, validation, IR, and emitted validation.

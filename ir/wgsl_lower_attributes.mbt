@@ -73,13 +73,23 @@ fn wgsl_ir_binding_from_attributes(
                   wgsl_ir_interpolation_from_attributes(attributes),
                   wgsl_ir_sampling_from_attributes(attributes),
                   wgsl_ir_blend_src_from_attributes(attributes),
-                  false,
+                  wgsl_ir_per_primitive_from_attributes(attributes),
                 ),
               )
             None => None
           }
         None => None
       }
+  }
+}
+
+///|
+fn wgsl_ir_per_primitive_from_attributes(
+  attributes : Array[@ast.WgslAttribute],
+) -> Bool {
+  match wgsl_ir_attribute_named(attributes, "per_primitive") {
+    Some(_) => true
+    None => false
   }
 }
 
@@ -117,6 +127,15 @@ fn wgsl_ir_builtin_from_name(name : String) -> BuiltIn raise WgslIrLowerError {
     "subgroup_id" => BuiltIn::SubgroupId
     "subgroup_size" => BuiltIn::SubgroupSize
     "subgroup_invocation_id" => BuiltIn::SubgroupInvocationId
+    "mesh_task_size" => BuiltIn::MeshTaskSize
+    "cull_primitive" => BuiltIn::CullPrimitive
+    "point_index" => BuiltIn::PointIndex
+    "line_indices" => BuiltIn::LineIndices
+    "triangle_indices" => BuiltIn::TriangleIndices
+    "vertex_count" => BuiltIn::VertexCount
+    "vertices" => BuiltIn::Vertices
+    "primitive_count" => BuiltIn::PrimitiveCount
+    "primitives" => BuiltIn::Primitives
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
         "unknown builtin attribute: \{name}",
@@ -138,6 +157,7 @@ fn wgsl_ir_interpolation_from_attributes(
                 "perspective" => Some(Interpolation::Perspective)
                 "linear" => Some(Interpolation::Linear)
                 "flat" => Some(Interpolation::Flat)
+                "per_vertex" => Some(Interpolation::PerVertex)
                 _ => None
               }
             [] => None
@@ -228,6 +248,9 @@ fn wgsl_ir_address_space_from_type_name(name : String) -> AddressSpace {
     "storage" => AddressSpace::Storage(StorageAccess::load())
     "handle" => AddressSpace::Handle
     "immediate" => AddressSpace::Immediate
+    "task_payload" => AddressSpace::TaskPayload
+    "ray_payload" => AddressSpace::RayPayload
+    "incoming_ray_payload" => AddressSpace::IncomingRayPayload
     _ => AddressSpace::Private
   }
 }
@@ -310,7 +333,15 @@ fn wgsl_ir_shader_stage_from_attributes(
         None =>
           match wgsl_ir_attribute_named(attributes, "compute") {
             Some(_) => Some(ShaderStage::Compute)
-            None => None
+            None =>
+              match wgsl_ir_attribute_named(attributes, "task") {
+                Some(_) => Some(ShaderStage::Task)
+                None =>
+                  match wgsl_ir_attribute_named(attributes, "mesh") {
+                    Some(_) => Some(ShaderStage::Mesh)
+                    None => None
+                  }
+              }
           }
       }
   }

@@ -87,6 +87,12 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'enable wgpu_cooperative_matrix' "$source" || grep -q 'coop_mat' "$source"; then
     validate_args+=(--capability cooperative-matrix)
   fi
+  if grep -q 'enable wgpu_mesh_shader' "$source" || grep -q '@mesh(' "$source" || grep -q '@task' "$source"; then
+    validate_args+=(--capability mesh-shader)
+  fi
+  if grep -q '@builtin(point_index)' "$source"; then
+    validate_args+=(--capability mesh-shader-point-topology)
+  fi
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${validate_args[@]+"${validate_args[@]}"}" "$source" >/dev/null
 }
 
