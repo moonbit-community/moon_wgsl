@@ -17,6 +17,7 @@ pub(all) enum ShaderDefValue {
   Bool(Bool)
   Int(Int)
   UInt(UInt)
+  Raw(String)
 } derive(Eq, Debug)
 
 ///|
@@ -25,6 +26,7 @@ pub fn ShaderDefValue::value_as_string(self : ShaderDefValue) -> String {
     Bool(value) => value.to_string()
     Int(value) => value.to_string()
     UInt(value) => value.to_string()
+    Raw(value) => value
   }
 }
 

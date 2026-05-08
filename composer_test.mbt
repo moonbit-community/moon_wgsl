@@ -473,6 +473,31 @@ test "template constants preserve large unsigned shader-def values" {
 }
 
 ///|
+test "template constants support raw double-hash WGSL token placeholders" {
+  let value_defines = @common.default_wgsl_value_defines()
+  value_defines.set(
+    "TEXTURE_FORMAT",
+    @common.ShaderDefValue::Raw("rgba8unorm"),
+  )
+  let preprocessed = @compose.Composer::default().compose_wgsl_source(
+    "@group(0) @binding(0) var out_tex: texture_storage_2d<##TEXTURE_FORMAT##, write>;\n",
+    {
+      defines: empty_bool_defines(),
+      value_defines,
+      redirects: [],
+      additional_imports: [],
+    },
+  ) catch {
+    err => abort("expected raw template token compose success: \{err.message()}")
+  }
+  debug_inspect(
+    preprocessed.contains("texture_storage_2d<rgba8unorm, write>"),
+    content="true",
+  )
+  debug_inspect(preprocessed.contains("##"), content="false")
+}
+
+///|
 test "naga_oil: add_composable_module feeds the composer compose path" {
   clear_composer_test_registry()
   let composer = @compose.Composer::default()

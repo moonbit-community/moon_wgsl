@@ -166,28 +166,6 @@ fn WgslRenamePlan::add_symbol_binding(
 }
 
 ///|
-fn WgslRenamePlan::add_redirect_map(
-  self : WgslRenamePlan,
-  redirect_map : @hashmap.HashMap[String, String],
-  kind : WgslRenameRuleKind,
-) -> Unit {
-  for entry in redirect_map.iter() {
-    let (from_name, to_name) = entry
-    self.add(from_name, to_name, kind)
-  }
-}
-
-///|
-fn build_wgsl_rename_plan_from_redirect_map(
-  redirect_map : @hashmap.HashMap[String, String],
-  kind : WgslRenameRuleKind,
-) -> WgslRenamePlan {
-  let plan = WgslRenamePlan::empty()
-  plan.add_redirect_map(redirect_map, kind)
-  plan
-}
-
-///|
 fn WgslReferenceRewritePlan::reference_rename_plan(
   self : WgslReferenceRewritePlan,
 ) -> WgslRenamePlan {

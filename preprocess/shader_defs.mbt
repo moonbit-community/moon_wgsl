@@ -135,6 +135,10 @@ fn eval_if_condition(
       }
       compare_uint_values(uint_value, parsed, operator, offset)
     }
+    ShaderDefValue::Raw(_) =>
+      raise PreprocessError::InvalidShaderDefComparisonValue(
+        def, value, "bool/int/uint", offset,
+      )
   }
 }
 

@@ -1,4 +1,17 @@
 ///|
+fn wbtest_rename_plan_from_redirect_map(
+  redirect_map : @hashmap.HashMap[String, String],
+  kind : WgslRenameRuleKind,
+) -> WgslRenamePlan {
+  let plan = WgslRenamePlan::empty()
+  for entry in redirect_map.iter() {
+    let (from_name, to_name) = entry
+    plan.add(from_name, to_name, kind)
+  }
+  plan
+}
+
+///|
 test "AST import stripping preserves non-import items" {
   let source =
     #|#define_import_path demo::shaders
@@ -368,7 +381,7 @@ test "rename plan global rules do not rewrite function parameter locals" {
   redirects.set("read_instance", "mesh__read_instance")
   let rewritten = rewrite_wgsl_declarations_with_rename_plan(
     source,
-    build_wgsl_rename_plan_from_redirect_map(
+    wbtest_rename_plan_from_redirect_map(
       redirects,
       GlobalDeclarationAndReferences,
     ),
@@ -467,7 +480,7 @@ test "rename plan reference rules rewrite recursively scoped blocks" {
   redirects.set("helper", "renamed_helper")
   let rewritten = rewrite_wgsl_declarations_with_rename_plan(
     source,
-    build_wgsl_rename_plan_from_redirect_map(redirects, ReferencesOnly),
+    wbtest_rename_plan_from_redirect_map(redirects, ReferencesOnly),
   )
   debug_inspect(rewritten.contains("fn helper()"), content="true")
   debug_inspect(rewritten.contains("return renamed_helper();"), content="true")
@@ -514,7 +527,7 @@ test "rename plan reference rules do not rewrite statement keywords" {
   redirects.set("let", "let_renamed")
   let rewritten = rewrite_wgsl_declarations_with_rename_plan(
     source,
-    build_wgsl_rename_plan_from_redirect_map(redirects, ReferencesOnly),
+    wbtest_rename_plan_from_redirect_map(redirects, ReferencesOnly),
   )
   debug_inspect(rewritten.contains("if (flag)"), content="true")
   debug_inspect(rewritten.contains("return 1u;"), content="true")
@@ -564,7 +577,7 @@ test "normalizer dedupes duplicate declarations by AST structure" {
 }
 
 ///|
-test "normalizer reads resource binding keys from expression and type AST" {
+test "normalizer preserves distinct resources even when binding slots collide" {
   let source =
     #|struct Globals { value: u32 }
     #|@group(0u) @binding(1u) var<uniform> globals: Globals;
@@ -574,8 +587,9 @@ test "normalizer reads resource binding keys from expression and type AST" {
     #|}
     #|
   let normalized = normalize_wgsl_composed_declarations(source, [])
-  debug_inspect(normalized.contains("globals_alias:"), content="false")
-  debug_inspect(normalized.contains("return globals.value;"), content="true")
+  debug_inspect(normalized.contains("globals:"), content="true")
+  debug_inspect(normalized.contains("globals_alias:"), content="true")
+  debug_inspect(normalized.contains("return globals_alias.value;"), content="true")
 }
 
 ///|

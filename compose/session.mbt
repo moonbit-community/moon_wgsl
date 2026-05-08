@@ -98,7 +98,7 @@ fn merge_shader_def_value_into_compose_defs(
   shader_defs.set(name, value)
   match value {
     Bool(flag) => defines.set(name, flag)
-    Int(_) | UInt(_) => value_defines.set(name, value)
+    Int(_) | UInt(_) | Raw(_) => value_defines.set(name, value)
   }
 }
 

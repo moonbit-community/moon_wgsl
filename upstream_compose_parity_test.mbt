@@ -2010,3 +2010,307 @@ test "composer symbol table: local global shadows same-name unqualified import b
   debug_inspect(source.contains("globals.time"), content="true")
   debug_inspect(source.contains("globalsX_naga_oil_mod_X"), content="true")
 }
+
+///|
+test "composer symbol table: default module alias rewrites qualified function reference" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "irradiance_volume.wgsl",
+    "#define_import_path app::irradiance_volume\n" +
+    "fn irradiance_volume_light(v: u32) -> u32 {\n" +
+    "  return v + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::irradiance_volume\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return irradiance_volume::irradiance_volume_light(3u);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected default module alias qualified function compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    source.contains("irradiance_volume::irradiance_volume_light"),
+    content="false",
+  )
+  debug_inspect(
+    source.contains("fn irradiance_volume_lightX_naga_oil_mod_X"),
+    content="true",
+  )
+}
+
+///|
+test "composer symbol table: alias partial module keeps alias-qualified global type dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "types.wgsl",
+    "#define_import_path app::types\n" +
+    "struct Lights { value: u32 }\n",
+  )
+  composer.register_source(
+    "bindings.wgsl",
+    "#define_import_path app::bindings\n" +
+    "#import app::types as types\n" +
+    "@group(0) @binding(0) var<uniform> lights: types::Lights;\n",
+  )
+  composer.register_source(
+    "clustered.wgsl",
+    "#define_import_path app::clustered\n" +
+    "#import app::bindings as bindings\n" +
+    "fn read_lights() -> u32 {\n" +
+    "  return bindings::lights.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::clustered\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return clustered::read_lights();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected alias partial module type dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("types::Lights"), content="false")
+  debug_inspect(source.contains("bindings::lights"), content="false")
+  debug_inspect(source.contains("clustered::read_lights"), content="false")
+  debug_inspect(source.contains("struct LightsX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: direct default import and nested alias share typed dependencies" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "types.wgsl",
+    "#define_import_path app::types\n" +
+    "struct Lights { value: u32 }\n",
+  )
+  composer.register_source(
+    "bindings.wgsl",
+    "#define_import_path app::bindings\n" +
+    "#import app::types as types\n" +
+    "@group(0) @binding(0) var<uniform> lights: types::Lights;\n",
+  )
+  composer.register_source(
+    "clustered.wgsl",
+    "#define_import_path app::clustered\n" +
+    "#import app::bindings as bindings\n" +
+    "fn read_lights() -> u32 {\n" +
+    "  return bindings::lights.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::bindings\n" +
+    "#import app::clustered\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return bindings::lights.value + clustered::read_lights();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected direct and nested alias dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("types::Lights"), content="false")
+  debug_inspect(source.contains("bindings::lights"), content="false")
+  debug_inspect(source.contains("clustered::read_lights"), content="false")
+  debug_inspect(source.contains("struct LightsX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: transitive default alias keeps sibling alias type dependencies" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "types.wgsl",
+    "#define_import_path app::types\n" +
+    "struct Lights { value: u32 }\n" +
+    "struct LightProbes { value: u32 }\n",
+  )
+  composer.register_source(
+    "bindings.wgsl",
+    "#define_import_path app::bindings\n" +
+    "#import app::types as types\n" +
+    "@group(0) @binding(0) var<uniform> lights: types::Lights;\n" +
+    "@group(0) @binding(1) var<uniform> light_probes: types::LightProbes;\n",
+  )
+  composer.register_source(
+    "clustered.wgsl",
+    "#define_import_path app::clustered\n" +
+    "#import app::bindings as bindings\n" +
+    "struct Ranges { first: u32 }\n" +
+    "fn read_lights() -> u32 {\n" +
+    "  return bindings::lights.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "irradiance.wgsl",
+    "#define_import_path app::irradiance\n" +
+    "#import app::clustered\n" +
+    "#import app::clustered::Ranges\n" +
+    "#import app::bindings::light_probes\n" +
+    "fn irradiance_volume_light(ranges: ptr<function, Ranges>) -> u32 {\n" +
+    "  return clustered::read_lights() + light_probes.value + (*ranges).first;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::irradiance\n" +
+    "fn fragment() -> u32 {\n" +
+    "  var ranges: Ranges;\n" +
+    "  return irradiance::irradiance_volume_light(&ranges);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected transitive default alias sibling dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("types::Lights"), content="false")
+  debug_inspect(source.contains("types::LightProbes"), content="false")
+  debug_inspect(source.contains("clustered::read_lights"), content="false")
+  debug_inspect(
+    source.contains("irradiance::irradiance_volume_light"),
+    content="false",
+  )
+  debug_inspect(source.contains("struct LightsX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("struct LightProbesX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: unqualified item import rewrites item sharing module leaf name" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "irradiance_volume.wgsl",
+    "#define_import_path app::irradiance_volume\n" +
+    "fn irradiance_volume(v: u32) -> u32 {\n" +
+    "  return v + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::irradiance_volume::irradiance_volume\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return irradiance_volume(1u);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected same-leaf item import compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("return irradiance_volume("), content="false")
+  debug_inspect(source.contains("fn irradiance_volumeX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: imported module may use unqualified item sharing its own module alias" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "bindings.wgsl",
+    "#define_import_path app::bindings\n" +
+    "const irradiance_volume: u32 = 7u;\n",
+  )
+  composer.register_source(
+    "irradiance_volume.wgsl",
+    "#define_import_path app::irradiance_volume\n" +
+    "#import app::bindings::irradiance_volume\n" +
+    "fn irradiance_volume_light() -> u32 {\n" +
+    "  return irradiance_volume;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::irradiance_volume\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return irradiance_volume::irradiance_volume_light();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected module-local same-alias unqualified item compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    source.contains("return irradiance_volume;"),
+    content="false",
+  )
+  debug_inspect(source.contains("const irradiance_volumeX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: imported module rewrites unqualified resource sharing module alias" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "bindings.wgsl",
+    "#define_import_path app::bindings\n" +
+    "@group(0) @binding(0) var irradiance_volume: texture_3d<f32>;\n" +
+    "@group(0) @binding(1) var irradiance_volume_sampler: sampler;\n",
+  )
+  composer.register_source(
+    "irradiance_volume.wgsl",
+    "#define_import_path app::irradiance_volume\n" +
+    "#import app::bindings::{irradiance_volume, irradiance_volume_sampler}\n" +
+    "fn irradiance_volume_light() -> vec4<f32> {\n" +
+    "  return textureSampleLevel(irradiance_volume, irradiance_volume_sampler, vec3<f32>(0.5), 0.0);\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::irradiance_volume\n" +
+    "fn fragment() -> vec4<f32> {\n" +
+    "  return irradiance_volume::irradiance_volume_light();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected same-alias resource compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(
+    source.contains("textureSampleLevel(irradiance_volume,"),
+    content="false",
+  )
+  debug_inspect(source.contains("var irradiance_volumeX_naga_oil_mod_X"), content="true")
+}

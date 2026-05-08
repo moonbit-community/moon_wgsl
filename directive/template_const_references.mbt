@@ -100,6 +100,26 @@ pub fn parse_wgsl_template_const_references(
       i = i + 1
       continue
     }
+    if i + 4 < tokens.length() &&
+      tokens[i + 1].is_punctuation(35) &&
+      tokens[i + 3].is_punctuation(35) &&
+      tokens[i + 4].is_punctuation(35) {
+      match tokens[i + 2].identifier_text() {
+        Some(name) =>
+          if value_defines.get(name) is Some(_) {
+            references.push(
+              WgslTemplateConstReference(
+                name,
+                start,
+                tokens[i + 4].end(),
+              ),
+            )
+            i = i + 5
+            continue
+          }
+        None => ()
+      }
+    }
     let next = tokens[i + 1]
     if next.is_punctuation(123) {
       let body_start = tokens[i + 1].end()

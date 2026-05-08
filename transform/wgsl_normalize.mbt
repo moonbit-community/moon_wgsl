@@ -13,13 +13,6 @@
 // limitations under the License.
 
 ///|
-priv struct WgslGlobalBindingInfo {
-  name : String
-  group : Int
-  binding : Int
-}
-
-///|
 fn wgsl_string_list_key(items : Array[String]) -> String {
   items.join("|")
 }
@@ -416,173 +409,6 @@ fn build_wgsl_unique_alias_suffix_rename_plan_from_binding_plan(
 }
 
 ///|
-fn wgsl_normalize_hex_digit_value(code : Int) -> Int? {
-  if code >= 48 && code <= 57 {
-    return Some(code - 48)
-  }
-  if code >= 65 && code <= 70 {
-    return Some(code - 65 + 10)
-  }
-  if code >= 97 && code <= 102 {
-    return Some(code - 97 + 10)
-  }
-  None
-}
-
-///|
-fn wgsl_normalize_numeric_literal_body_text(
-  literal : WgslNumericLiteral,
-) -> String {
-  match literal.suffix {
-    NoSuffix => literal.raw_text
-    _ =>
-      if literal.raw_text.length() == 0 {
-        literal.raw_text
-      } else {
-        literal.raw_text[:literal.raw_text.length() - 1].to_owned()
-      }
-  }
-}
-
-///|
-fn wgsl_normalize_integer_literal_to_small_int(
-  literal : WgslNumericLiteral,
-) -> Int? {
-  let text = wgsl_normalize_numeric_literal_body_text(literal)
-  let mut value = 0
-  match literal.base {
-    Hexadecimal => {
-      guard text.length() > 2 else { return None }
-      for i in 2..<text.length() {
-        match wgsl_normalize_hex_digit_value(text.code_unit_at(i).to_int()) {
-          Some(digit) => {
-            if value > (2147483647 - digit) / 16 {
-              return None
-            }
-            value = value * 16 + digit
-          }
-          None => return None
-        }
-      }
-      Some(value)
-    }
-    Decimal => {
-      guard text.length() > 0 else { return None }
-      for i in 0..<text.length() {
-        let code = text.code_unit_at(i).to_int()
-        guard code >= 48 && code <= 57 else { return None }
-        let digit = code - 48
-        if value > (2147483647 - digit) / 10 {
-          return None
-        }
-        value = value * 10 + digit
-      }
-      Some(value)
-    }
-  }
-}
-
-///|
-fn wgsl_normalize_numeric_literal_to_small_int(
-  literal : WgslNumericLiteral,
-) -> Int? {
-  match literal.category {
-    AbstractIntLiteral | I32Literal | U32Literal =>
-      wgsl_normalize_integer_literal_to_small_int(literal)
-    _ => None
-  }
-}
-
-///|
-fn wgsl_expr_ref_single_uint_value(expr_ref : WgslExprRef?) -> Int? {
-  match expr_ref {
-    Some(expr) => {
-      let tokens = expr.tokens()
-      if tokens.length() == 1 {
-        match tokens[0].kind() {
-          NumericLiteral(literal) =>
-            wgsl_normalize_numeric_literal_to_small_int(literal)
-          _ => None
-        }
-      } else {
-        None
-      }
-    }
-    None => None
-  }
-}
-
-///|
-fn wgsl_attribute_uint_value(
-  attributes : Array[WgslAttribute],
-  name : String,
-) -> Int? {
-  for attr in attributes {
-    if attr.name().name() == name {
-      return wgsl_expr_ref_single_uint_value(attr.arguments_ref())
-    }
-  }
-  None
-}
-
-///|
-fn wgsl_global_binding_info(block : WgslGraphBlock) -> WgslGlobalBindingInfo? {
-  match block.data {
-    WgslGlobalDeclData::GlobalVariable(global) => {
-      guard wgsl_attribute_uint_value(global.attributes(), "group")
-        is Some(group) else {
-        return None
-      }
-      guard wgsl_attribute_uint_value(global.attributes(), "binding")
-        is Some(binding) else {
-        return None
-      }
-      Some(WgslGlobalBindingInfo::{ name: global.name().name(), group, binding })
-    }
-    _ => None
-  }
-}
-
-///|
-fn dedupe_wgsl_duplicate_resource_bindings(
-  source : String,
-) -> String raise WgslParseError {
-  let graph = build_wgsl_declaration_graph(source)
-  let binding_owner : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
-  let duplicate_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
-  let redirect_map : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
-  for block in graph.declaration_blocks {
-    guard wgsl_global_binding_info(block) is Some(info) else { continue }
-    let key = "\{info.group}:\{info.binding}"
-    match binding_owner.get(key) {
-      Some(owner) =>
-        if info.name != owner {
-          duplicate_names.set(info.name, true)
-          redirect_map.set(info.name, owner)
-        }
-      None => binding_owner.set(key, info.name)
-    }
-  }
-  if redirect_map.is_empty() {
-    return source
-  }
-  let mut out = ""
-  for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
-  }
-  for block in graph.declaration_blocks {
-    if duplicate_names.contains(block.name()) {
-      continue
-    }
-    out = out + emit_wgsl_graph_block_canonical(block)
-  }
-  rewrite_wgsl_declarations_with_rename_plan(
-    out,
-    build_wgsl_rename_plan_from_redirect_map(redirect_map, ReferencesOnly),
-  )
-}
-
-///|
 pub fn normalize_wgsl_composed_declarations(
   source : String,
   alias_redirects : Array[WgslSymbolRedirect],
@@ -596,7 +422,7 @@ pub fn normalize_wgsl_composed_declarations(
   } else {
     rewrite_wgsl_declarations_with_rename_plan(deduped, suffix_plan)
   }
-  dedupe_wgsl_duplicate_resource_bindings(suffix_rewritten)
+  suffix_rewritten
 }
 
 ///|
@@ -613,5 +439,5 @@ pub fn normalize_wgsl_composed_declarations_with_binding_plan(
   } else {
     rewrite_wgsl_declarations_with_rename_plan(deduped, suffix_plan)
   }
-  dedupe_wgsl_duplicate_resource_bindings(suffix_rewritten)
+  suffix_rewritten
 }
