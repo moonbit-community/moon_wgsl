@@ -14,7 +14,6 @@ bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	compose_
 bevy	crates/bevy_pbr/src/ssr/raymarch.wgsl	compose_failed	Known compose dependency-resolution gap: transitive default-alias type dependency in Bevy PBR mesh view bindings remains unresolved.
 bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	compose_failed	Known compose dependency-resolution gap: transitive default-alias type dependency in Bevy PBR mesh view bindings remains unresolved.
 bevy	crates/bevy_ui_render/src/box_shadow.wgsl	compose_failed	Known UI profile/lowering gap: box shadow requires SHADOW_SAMPLES and exposes a non-constant global-expression lowering path.
-bevy	crates/bevy_ui_render/src/gradient.wgsl	compose_failed	Known compose dependency-resolution gap: partial import of Bevy color_operations loses transitive maths constants.
 learn-wgpu	code/compute/src/filter.wgsl	raw_invalid_no_preprocessor	Expected invalid external source under standalone Naga validation; this file is not a preprocessing input.
 naga	tests/in/binding-arrays.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/in/binding-buffer-arrays.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.

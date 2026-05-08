@@ -308,19 +308,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
     }
   }
   if matched_requested == 0 {
-    for block in graph.declaration_blocks {
-      if block.name() != "" {
-        origins.push(WgslModuleItemOrigin::{
-          name: block.name(),
-          source_start: block.start,
-          source_end: block.end,
-        })
-      }
-    }
-    return WgslModuleItemExtraction::{
-      source: emit_wgsl_graph_blocks_canonical(graph.declaration_blocks),
-      origins,
-    }
+    return WgslModuleItemExtraction::{ source: "", origins }
   }
   let mut out = ""
   for import_block in graph.import_blocks {

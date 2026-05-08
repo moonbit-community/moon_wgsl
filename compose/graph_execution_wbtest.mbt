@@ -113,3 +113,87 @@ test "composer exposes IR-backed compose output" {
   debug_inspect(emitted.contains("fn helper"), content="true")
   debug_inspect(emitted.contains("@compute @workgroup_size"), content="true")
 }
+
+///|
+test "composer resolves transitive partial-import constants before IR" {
+  let composer = Composer::default()
+  let maths_source =
+    #|#define_import_path test::maths
+    #|
+    #|const PI_2: f32 = 6.28318;
+    #|
+  composer.register_source("maths.wgsl", maths_source)
+  let color_source =
+    #|#define_import_path test::color
+    #|#import test::maths::{PI_2}
+    #|
+    #|fn oklch_to_linear_rgb(c: vec3<f32>) -> vec3<f32> {
+    #|  let hue = c.z * PI_2;
+    #|  return vec3(hue, c.x, c.y);
+    #|}
+    #|
+  composer.register_source("color.wgsl", color_source)
+  let root_source =
+    #|#import test::color::{
+    #|  oklch_to_linear_rgb,
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return vec4(oklch_to_linear_rgb(vec3(1.0, 0.5, 0.25)), 1.0);
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("PI_2 "), content="false")
+  debug_inspect(emitted.contains("oklch_to_linear_rgb"), content="true")
+}
+
+///|
+test "composer does not import a missing item shadowed by a local declaration" {
+  let composer = Composer::default()
+  let maths_source =
+    #|#define_import_path test::maths
+    #|
+    #|const PI_2: f32 = 6.28318;
+    #|
+  composer.register_source("maths.wgsl", maths_source)
+  let color_source =
+    #|#define_import_path test::color
+    #|#import test::maths::{PI_2}
+    #|
+    #|fn unrelated_color_path(c: vec3<f32>) -> vec3<f32> {
+    #|  let hue = c.z * PI_2;
+    #|  return vec3(hue, c.x, c.y);
+    #|}
+    #|
+  composer.register_source("color.wgsl", color_source)
+  let root_source =
+    #|#import test::color::{
+    #|  convert_to_linear_rgba,
+    #|}
+    #|
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return convert_to_linear_rgba(vec4(1.0));
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("unrelated_color_path"), content="false")
+  debug_inspect(emitted.contains("PI_2"), content="false")
+}

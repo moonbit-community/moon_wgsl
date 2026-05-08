@@ -350,7 +350,8 @@ fn Composer::build_wgsl_import_requests_from_targets(
           wgsl_semantic_reference_path_set_contains(
             active_facts.reference_paths,
             requested_item,
-          )
+          ) &&
+          !active_facts.declares(requested_item)
         } else {
           true
         }

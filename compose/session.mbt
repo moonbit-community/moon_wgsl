@@ -119,6 +119,23 @@ priv struct WgslComposeSemanticFacts {
 }
 
 ///|
+fn WgslComposeSemanticFacts::declares(
+  self : WgslComposeSemanticFacts,
+  name : String,
+) -> Bool {
+  let name = name.trim().to_owned()
+  if name == "" {
+    return false
+  }
+  for declaration in self.declarations {
+    if declaration.name() == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
 priv struct WgslComposeSymbolTable {
   assigned_final_names : WgslIrFinalNameTable
   emitted_final_names : WgslIrFinalNameTable
