@@ -54,6 +54,9 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'var<immediate>' "$source"; then
     validate_args+=(--capability immediates)
   fi
+  if grep -q 'binding_array' "$source"; then
+    validate_args+=(--capability binding-arrays)
+  fi
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${validate_args[@]+"${validate_args[@]}"}" "$source" >/dev/null
 }
 

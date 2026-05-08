@@ -33,7 +33,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability ray-query|dual-source-blending|texture-external] [--check-only] [--output <file>] [--error-output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability ray-query|dual-source-blending|texture-external|binding-arrays] [--check-only] [--output <file>] [--error-output <file>]"
     );
     std::process::exit(2);
 }
@@ -123,6 +123,11 @@ fn parse_options() -> Options {
                     }
                     "texture-external" => {
                         capabilities |= naga::valid::Capabilities::TEXTURE_EXTERNAL
+                    }
+                    "binding-arrays" => {
+                        capabilities |=
+                            naga::valid::Capabilities::TEXTURE_AND_SAMPLER_BINDING_ARRAY;
+                        capabilities |= naga::valid::Capabilities::TEXTURE_AND_SAMPLER_BINDING_ARRAY_NON_UNIFORM_INDEXING;
                     }
                     _ => usage(),
                 }

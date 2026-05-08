@@ -20,6 +20,30 @@ test "AST import stripping preserves non-import items" {
 }
 
 ///|
+test "tree-shaken extraction preserves multiline grouped imports" {
+  let source =
+    #|#define_import_path demo::functions
+    #|#import demo::{
+    #|  types::Input,
+    #|  helpers as helpers,
+    #|}
+    #|fn helper_user(in: Input) -> u32 {
+    #|  return helpers::pack_value_(in.value);
+    #|}
+    #|fn entry(in: Input) -> u32 {
+    #|  return helper_user(in);
+    #|}
+    #|
+  let extracted = extract_wgsl_module_item_origins_strict(source, ["entry"]) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(extracted.source().contains("#import"), content="true")
+  debug_inspect(extracted.source().contains("helpers as helpers"), content="true")
+  debug_inspect(extracted.source().contains("fn helper_user"), content="true")
+  debug_inspect(extracted.source().contains("fn entry"), content="true")
+}
+
+///|
 test "same-line attributed declarations stay reachable" {
   let source =
     #|struct Output {

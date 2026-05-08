@@ -1090,6 +1090,8 @@ test "WGSL AST lowerer supports basic texture calls" {
     #|var arr_tex: texture_2d_array<f32>;
     #|@group(0) @binding(3)
     #|var out_tex: texture_storage_2d<rgba8unorm, write>;
+    #|@group(0) @binding(4)
+    #|var tex_array: binding_array<texture_2d<f32>, 4>;
     #|
     #|@compute
     #|fn main() {
@@ -1120,6 +1122,11 @@ test "WGSL AST lowerer supports basic texture calls" {
     content="true",
   )
   debug_inspect(emitted.contains("textureStore(out_tex"), content="true")
+  debug_inspect(
+    emitted.contains("var tex_array: binding_array<texture_2d<f32>"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("var<private> tex_array"), content="false")
 }
 
 ///|

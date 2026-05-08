@@ -1682,3 +1682,331 @@ test "github issue 6: root local defines are stripped from final composed WGSL" 
   debug_inspect(source.contains("TONEMAPPING_PASS"), content="false")
   debug_inspect(source.contains("const enabled: u32 = 1u;"), content="true")
 }
+
+///|
+test "composer symbol table: partial import keeps alias-qualified type dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "types.wgsl",
+    "#define_import_path app::types\n" +
+    "struct LightProbes { value: u32 }\n",
+  )
+  composer.register_source(
+    "bindings.wgsl",
+    "#define_import_path app::bindings\n" +
+    "#import app::types as types\n" +
+    "@group(0) @binding(0) var<uniform> light_probes: types::LightProbes;\n",
+  )
+  composer.register_source(
+    "consumer.wgsl",
+    "#define_import_path app::consumer\n" +
+    "#import app::bindings::light_probes\n" +
+    "fn read_light_probes() -> u32 {\n" +
+    "  return light_probes.value;\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "consumer.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort("expected alias-qualified type dependency compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("types::LightProbes"), content="false")
+  debug_inspect(source.contains("struct LightProbesX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("var<uniform> light_probesX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: nested full-module alias keeps transitive alias type dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "types.wgsl",
+    "#define_import_path app::types\n" +
+    "struct LightProbes { value: u32 }\n",
+  )
+  composer.register_source(
+    "bindings.wgsl",
+    "#define_import_path app::bindings\n" +
+    "#import app::types as types\n" +
+    "@group(0) @binding(0) var<uniform> light_probes: types::LightProbes;\n",
+  )
+  composer.register_source(
+    "clustered.wgsl",
+    "#define_import_path app::clustered\n" +
+    "#import app::bindings\n" +
+    "fn read_clustered() -> u32 {\n" +
+    "  return bindings::light_probes.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#import app::clustered as clustered\n" +
+    "fn read_root() -> u32 {\n" +
+    "  return clustered::read_clustered();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort("expected nested alias type dependency compose success: \{err.message()}")
+  }
+  debug_inspect(source.contains("types::LightProbes"), content="false")
+  debug_inspect(source.contains("bindings::light_probes"), content="false")
+  debug_inspect(source.contains("clustered::read_clustered"), content="false")
+  debug_inspect(source.contains("struct LightProbesX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: partial import keeps alias-qualified function dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "helpers.wgsl",
+    "#define_import_path app::helpers\n" +
+    "fn pack_value(v: u32) -> u32 {\n" +
+    "  return v + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "functions.wgsl",
+    "#define_import_path app::functions\n" +
+    "#import app::helpers as helpers\n" +
+    "fn deferred_output(v: u32) -> u32 {\n" +
+    "  return helpers::pack_value(v);\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::functions::deferred_output\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return deferred_output(3u);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected alias-qualified function dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("helpers::pack_value"), content="false")
+  debug_inspect(source.contains("fn pack_valueX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("fn deferred_outputX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: grouped partial import keeps alias-qualified function dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "helpers.wgsl",
+    "#define_import_path app::helpers\n" +
+    "fn pack_value(v: u32) -> u32 {\n" +
+    "  return v + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "extra.wgsl",
+    "#define_import_path app::extra\n" +
+    "const EXTRA: u32 = 1u;\n",
+  )
+  composer.register_source(
+    "functions.wgsl",
+    "#define_import_path app::functions\n" +
+    "#import app::{helpers as helpers, extra::EXTRA}\n" +
+    "fn deferred_output(v: u32) -> u32 {\n" +
+    "  return helpers::pack_value(v) + EXTRA;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::functions::deferred_output\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return deferred_output(3u);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected grouped alias-qualified function dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("helpers::pack_value"), content="false")
+  debug_inspect(source.contains("fn pack_valueX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("const EXTRAX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: partial import keeps nested alias-qualified function dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "helpers.wgsl",
+    "#define_import_path app::helpers\n" +
+    "fn pack_value(v: u32) -> u32 {\n" +
+    "  return v + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "functions.wgsl",
+    "#define_import_path app::functions\n" +
+    "#import app::helpers as helpers\n" +
+    "fn build_value(v: u32) -> u32 {\n" +
+    "  return helpers::pack_value(v);\n" +
+    "}\n" +
+    "fn deferred_output(v: u32) -> u32 {\n" +
+    "  return build_value(v);\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::functions::deferred_output\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return deferred_output(3u);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected nested alias-qualified function dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("helpers::pack_value"), content="false")
+  debug_inspect(source.contains("fn pack_valueX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains("fn build_valueX_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: partial import keeps trailing-underscore alias dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "helpers.wgsl",
+    "#define_import_path app::helpers\n" +
+    "fn pack_value_(v: u32) -> u32 {\n" +
+    "  return v + 1u;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "functions.wgsl",
+    "#define_import_path app::functions\n" +
+    "#import app::helpers as helpers\n" +
+    "fn build_value(v: u32) -> u32 {\n" +
+    "  return helpers::pack_value_(v);\n" +
+    "}\n" +
+    "fn deferred_output(v: u32) -> u32 {\n" +
+    "  return build_value(v);\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::functions::deferred_output\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return deferred_output(3u);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected trailing-underscore alias dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("helpers::pack_value_"), content="false")
+  debug_inspect(source.contains("fn pack_value_X_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: grouped long-path alias keeps trailing-underscore dependency live" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "deferred_types.wgsl",
+    "#define_import_path app::pbr_deferred_types\n" +
+    "fn pack_unorm4x8_(v: vec4<f32>) -> u32 {\n" +
+    "  return u32(v.x);\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "pbr_types.wgsl",
+    "#define_import_path app::pbr_types\n" +
+    "struct PbrInput { value: vec4<f32> }\n",
+  )
+  composer.register_source(
+    "functions.wgsl",
+    "#define_import_path app::pbr_deferred_functions\n" +
+    "#import app:: {pbr_types::PbrInput, pbr_deferred_types as deferred_types, }\n" +
+    "fn deferred_gbuffer_from_pbr_input(in: PbrInput) -> u32 {\n" +
+    "  return deferred_types::pack_unorm4x8_(in.value);\n" +
+    "}\n" +
+    "fn deferred_output(in: PbrInput) -> u32 {\n" +
+    "  return deferred_gbuffer_from_pbr_input(in);\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::pbr_deferred_functions::deferred_output\n" +
+    "fn fragment(in: PbrInput) -> u32 {\n" +
+    "  return deferred_output(in);\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected grouped long-path alias dependency compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("deferred_types::pack_unorm4x8_"), content="false")
+  debug_inspect(source.contains("fn pack_unorm4x8_X_naga_oil_mod_X"), content="true")
+}
+
+///|
+test "composer symbol table: local global shadows same-name unqualified import binding" {
+  let composer = @compose.Composer::default()
+  composer.register_source(
+    "imported.wgsl",
+    "#define_import_path app::imported\n" +
+    "struct ImportedGlobals { value: u32 }\n" +
+    "@group(0) @binding(0) var<uniform> globals: ImportedGlobals;\n" +
+    "fn read_imported() -> u32 {\n" +
+    "  return globals.value;\n" +
+    "}\n",
+  )
+  composer.register_source(
+    "root.wgsl",
+    "#define_import_path app::root\n" +
+    "#import app::imported::read_imported\n" +
+    "struct LocalGlobals { time: u32 }\n" +
+    "@group(0) @binding(1) var<uniform> globals: LocalGlobals;\n" +
+    "fn fragment() -> u32 {\n" +
+    "  return globals.time + read_imported();\n" +
+    "}\n",
+  )
+  let source = composer.compose_wgsl(
+    "root.wgsl",
+    upstream_parity_empty_compose_options(),
+  ) catch {
+    err =>
+      abort(
+        "expected local global shadowing compose success: \{err.message()}",
+      )
+  }
+  debug_inspect(source.contains("globals.time"), content="true")
+  debug_inspect(source.contains("globalsX_naga_oil_mod_X"), content="true")
+}

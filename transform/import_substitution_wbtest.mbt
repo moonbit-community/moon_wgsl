@@ -79,6 +79,12 @@ test "naga_oil wb: parse_imports mirrors upstream import token suite" {
     content="\"d=a::b\\nc=a::c\"",
   )
   debug_inspect(
+    parse_imports_snapshot(
+      "#import bevy_pbr::{pbr_types::{PbrInput, pbr_input_new}, pbr_deferred_types as deferred_types}\n",
+    ),
+    content="\"PbrInput=bevy_pbr::pbr_types::PbrInput\\npbr_input_new=bevy_pbr::pbr_types::pbr_input_new\\ndeferred_types=bevy_pbr::pbr_deferred_types\"",
+  )
+  debug_inspect(
     parse_imports_snapshot("#import a::{b::{c, d}, e}\n"),
     content="\"c=a::b::c\\nd=a::b::d\\ne=a::e\"",
   )

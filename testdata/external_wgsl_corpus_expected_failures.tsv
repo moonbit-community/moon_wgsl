@@ -1,8 +1,5 @@
 # id	rel_path	reason	detail
-bevy	assets/shaders/custom_clustered_decal.wgsl	compose_failed	Known compose dependency-resolution gap: transitive default-alias type dependency in Bevy PBR mesh view bindings remains unresolved.
 bevy	assets/shaders/irradiance_volume_voxel_visualization.wgsl	compose_failed	Known compose dependency-resolution gap: transitive Bevy irradiance-volume module alias remains unresolved.
-bevy	assets/shaders/texture_binding_array.wgsl	compose_naga_invalid	Expected standalone validation failure: Bevy example requires binding-array feature context not represented by the standalone Naga validator profile yet.
-bevy	assets/shaders/water_material.wgsl	compose_failed	Known compose dependency-resolution gap: transitive deferred type alias dependency remains unresolved.
 bevy	crates/bevy_core_pipeline/src/mip_generation/downsample.wgsl	compose_failed	Known IR lowering gap: function-local result identifier in Bevy SPD helper is not resolved by the current lowerer.
 bevy	crates/bevy_core_pipeline/src/tonemapping/lut_bindings.wgsl	compose_naga_invalid	Expected standalone validation failure: shader library binding placeholders require concrete pipeline binding-index value defines.
 bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	compose_failed	Known upstream/profile mismatch: source imports bevy_pbr::light_probes while checked-out library defines bevy_pbr::light_probe.
@@ -35,8 +32,6 @@ naga	tests/in/shadow.wgsl	raw_invalid_no_preprocessor	Expected invalid or capabi
 naga	tests/in/skybox.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/800-out-of-bounds-panic.vert.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/896-push-constant.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
-naga	tests/out/wgsl/binding-arrays.dynamic.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
-naga	tests/out/wgsl/binding-arrays.static.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/binding-arrays.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/binding-buffer-arrays.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/bits.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.

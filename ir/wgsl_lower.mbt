@@ -782,14 +782,27 @@ fn WgslIrLowerer::global_address_space(
   if template_list.length() > 0 {
     return wgsl_ir_address_space_from_template_list(template_list)
   }
+  if self.global_type_uses_handle_address_space(ty) {
+    return Handle
+  }
+  Private
+}
+
+///|
+fn WgslIrLowerer::global_type_uses_handle_address_space(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
   match self.shader_module.types.get(ty) {
     Some(type_) =>
       match type_.inner {
         Image(_, _, _) | Sampler(_) | AccelerationStructure(_) | RayQuery(_) =>
-          Handle
-        _ => Private
+          true
+        BindingArray(element, _) =>
+          self.global_type_uses_handle_address_space(element)
+        _ => false
       }
-    None => Private
+    None => false
   }
 }
 
