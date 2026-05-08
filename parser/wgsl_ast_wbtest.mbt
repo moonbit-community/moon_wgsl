@@ -1156,12 +1156,7 @@ test "WGSL expression parser binds postfix calls inside unary operands" {
           debug_inspect(op.text(), content="\"-\"")
           match rhs.kind() {
             WgslExprNodeKind::Call(callee, args) => {
-              debug_inspect(args.length(), content="1")
-              match args[0].kind() {
-                WgslExprNodeKind::Sequence(items) =>
-                  debug_inspect(items.length(), content="2")
-                _ => abort("expected call argument sequence")
-              }
+              debug_inspect(args.length(), content="2")
               match callee.kind() {
                 WgslExprNodeKind::Identifier(ident) =>
                   debug_inspect(ident.name(), content="\"cross\"")
@@ -1958,7 +1953,7 @@ test "WGSL parser structures assignment update and call statements" {
     #|  value <<= 1u;
     #|  value++;
     #|  value--;
-    #|  work(value);
+    #|  work(value, 1u, value + 2u);
     #|  _ = value;
     #|}
     #|
@@ -2024,13 +2019,13 @@ test "WGSL parser structures assignment update and call statements" {
   guard call_expr is Some(call_ref) else { abort("expected call expression") }
   debug_inspect(
     wgsl_expr_ref_source_text(source, call_ref),
-    content="\"work(value)\"",
+    content="\"work(value, 1u, value + 2u)\"",
   )
   match call_ref.root() {
     Some(root) =>
       match root.kind() {
         WgslExprNodeKind::Call(_, arguments) =>
-          debug_inspect(arguments.length(), content="1")
+          debug_inspect(arguments.length(), content="3")
         _ => abort("expected parsed call root")
       }
     None => abort("expected parsed call root")

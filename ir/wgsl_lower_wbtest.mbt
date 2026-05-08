@@ -410,6 +410,92 @@ test "WGSL AST lowerer supports pointer dereference member lvalues" {
 }
 
 ///|
+test "WGSL AST lowerer respects nested lexical shadowing" {
+  let source =
+    #|@group(0) @binding(0) var<storage, read_write> buffer: array<u32, 4>;
+    #|
+    #|fn write_shadow(x: u32) {
+    #|  {
+    #|    var x = 30u;
+    #|    let y = 40u;
+    #|    buffer[0] = x;
+    #|    buffer[1] = y;
+    #|  }
+    #|  buffer[2] = x;
+    #|}
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  let y = 10u;
+    #|  {
+    #|    let y = 20u;
+    #|    buffer[3] = y;
+    #|  }
+    #|  write_shadow(y);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("buffer[0] = x_0;"), content="true")
+  debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
+  debug_inspect(emitted.contains("write_shadow(_e0);"), content="true")
+}
+
+///|
+test "WGSL AST lowerer preserves continuing break-if conditions" {
+  let source =
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  var counter = 0u;
+    #|  loop {
+    #|    continuing {
+    #|      counter += 1u;
+    #|      break if counter == 2u;
+    #|    }
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("break if (counter == 2u);"), content="true")
+}
+
+///|
+test "WGSL AST lowerer expands statement function call arguments" {
+  let source =
+    #|@group(0) @binding(0) var<storage, read_write> output: array<u32, 4>;
+    #|
+    #|fn write_values(a: u32, b: u32, c: u32, d: u32) {
+    #|  output[0] = a;
+    #|  output[1] = b;
+    #|  output[2] = c;
+    #|  output[3] = d;
+    #|}
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  let base = 1u;
+    #|  write_values(base, 2u, base + 2u, 4u);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("write_values(_e0, 2u, (_e0 + 2u), 4u);"),
+    content="true",
+  )
+}
+
+///|
 test "WGSL AST lowerer preserves address space through local pointer lvalues" {
   let source =
     #|struct Cascade {

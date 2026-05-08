@@ -755,7 +755,7 @@ fn WgslExprNodeParser::parse_postfix(
               break
             }
             _ => {
-              args.push(self.parse_sequence_until_any([44, 41]))
+              args.push(self.parse_argument_until_any([44, 41]))
               if self.consume_punct(44) {
                 continue
               }
@@ -905,6 +905,34 @@ fn WgslExprNodeParser::parse_expression(
     }
   }
   Some(lhs)
+}
+
+///|
+fn WgslExprNodeParser::parse_argument_until_any(
+  self : WgslExprNodeParser,
+  stop_codes : Array[Int],
+) -> WgslExprNode {
+  match self.peek() {
+    Some(token) if token.kind() is WgslExprTokenKind::Punctuation(code) &&
+      stop_codes.contains(code) =>
+      self.make_node(
+        WgslExprNodeKind::Sequence([]),
+        self.source_start,
+        self.source_start,
+      )
+    _ =>
+      match self.parse_expression(0) {
+        Some(node) => node
+        None => {
+          self.failed = true
+          self.make_node(
+            WgslExprNodeKind::Sequence([]),
+            self.source_start,
+            self.source_start,
+          )
+        }
+      }
+  }
 }
 
 ///|

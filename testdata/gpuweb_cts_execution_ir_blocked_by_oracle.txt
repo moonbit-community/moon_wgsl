@@ -1,0 +1,6 @@
+# Static GPUWeb CTS execution WGSL cases that parse and IR-roundtrip but are
+# rejected by the pinned Naga validator even though they are CTS execution
+# shaders. These remain parse/IR/reparse gated.
+src_webgpu_shader_execution_expression_call_user_ptr_params_spec_ts_001_e31e49a0f6e6
+src_webgpu_shader_execution_expression_call_user_ptr_params_spec_ts_002_cbd055549552
+src_webgpu_shader_execution_shader_io_fragment_builtins_spec_ts_002_199ae2e74b84

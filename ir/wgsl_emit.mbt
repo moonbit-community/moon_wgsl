@@ -879,6 +879,93 @@ fn WgslIrEmitter::function_pointer_expression(
 }
 
 ///|
+fn WgslIrEmitter::load_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  pointer : Handle,
+) -> String raise WgslIrEmitError {
+  let expression = self.required_function_expression(function, pointer)
+  if self.load_expression_requires_explicit_deref(function, pointer) {
+    "*(\{expression})"
+  } else {
+    expression
+  }
+}
+
+///|
+fn WgslIrEmitter::load_expression_requires_explicit_deref(
+  self : WgslIrEmitter,
+  function : Function?,
+  pointer : Handle,
+) -> Bool raise WgslIrEmitError {
+  let expression = match function {
+    Some(function) =>
+      match function.expressions.items.get(pointer.index()) {
+        Some(expression) => expression
+        None =>
+          raise WgslIrEmitError::MissingHandle(
+            "function load expression \{pointer.index()}",
+          )
+      }
+    None =>
+      match self.shader_module.global_expressions.items.get(pointer.index()) {
+        Some(expression) => expression
+        None =>
+          raise WgslIrEmitError::MissingHandle(
+            "global load expression \{pointer.index()}",
+          )
+      }
+  }
+  match expression {
+    Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) => false
+    Load(inner) => self.load_expression_requires_explicit_deref(function, inner)
+    _ =>
+      match self.expression_type(function, pointer) {
+        Some(ty) =>
+          match self.shader_module.types.items.get(ty.index()) {
+            Some(type_) =>
+              match type_.inner {
+                Pointer(_, _) => true
+                _ => false
+              }
+            None => false
+          }
+        None => false
+      }
+  }
+}
+
+///|
+fn WgslIrEmitter::access_base_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+) -> String raise WgslIrEmitError {
+  let expression = self.required_function_expression(function, base)
+  let needs_parens = match function {
+    Some(function) =>
+      match function.expressions.items.get(base.index()) {
+        Some(Load(inner)) =>
+          self.load_expression_requires_explicit_deref(Some(function), inner)
+        Some(Binary(_, _, _)) | Some(Select(_, _, _)) => true
+        _ => false
+      }
+    None =>
+      match self.shader_module.global_expressions.items.get(base.index()) {
+        Some(Load(inner)) =>
+          self.load_expression_requires_explicit_deref(None, inner)
+        Some(Binary(_, _, _)) | Some(Select(_, _, _)) => true
+        _ => false
+      }
+  }
+  if needs_parens {
+    "(\{expression})"
+  } else {
+    expression
+  }
+}
+
+///|
 fn WgslIrEmitter::emit_expression(
   self : WgslIrEmitter,
   expression : Expression,
@@ -892,15 +979,15 @@ fn WgslIrEmitter::emit_expression(
     Compose(ty, components) =>
       "\{self.compose_constructor_name_for_components(ty, components, function)}(\{self.expression_list(components, function)})"
     Access(base, index) =>
-      "\{self.required_function_expression(function, base)}[\{self.required_function_expression(function, index)}]"
+      "\{self.access_base_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
-      "\{self.required_function_expression(function, base)}.\{self.member_name_for_expression(function, base, index)}"
+      "\{self.access_base_expression(function, base)}.\{self.member_name_for_expression(function, base, index)}"
     Swizzle(_, base, components) =>
-      "\{self.required_function_expression(function, base)}.\{self.swizzle_components(components)}"
+      "\{self.access_base_expression(function, base)}.\{self.swizzle_components(components)}"
     FunctionArgument(index) => self.function_argument_name(function, index)
     GlobalVariable(handle) => self.global_variable_name(handle)
     LocalVariable(handle) => self.local_variable_name(function, handle)
-    Load(pointer) => self.required_function_expression(function, pointer)
+    Load(pointer) => self.load_expression(function, pointer)
     AddressOf(_, target) =>
       match function {
         Some(func) => "&\{self.function_pointer_expression(func, target)}"
@@ -1376,7 +1463,11 @@ fn WgslIrEmitter::function_expression_inner_type(
         Some(override_) => Some(override_.ty)
         None => None
       }
-    Load(inner) => self.expression_type(Some(function), inner)
+    Load(inner) =>
+      match self.expression_type(Some(function), inner) {
+        Some(ty) => Some(self.deref_pointer_type_handle(ty))
+        None => None
+      }
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
     AccessIndex(base, index) =>
       self.indexed_expression_type(Some(function), base, Some(index))
@@ -1467,7 +1558,11 @@ fn WgslIrEmitter::global_expression_inner_type(
         Some(global) => Some(global.ty)
         None => None
       }
-    Load(inner) => self.expression_type(None, inner)
+    Load(inner) =>
+      match self.expression_type(None, inner) {
+        Some(ty) => Some(self.deref_pointer_type_handle(ty))
+        None => None
+      }
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
     AccessIndex(base, index) =>
       self.indexed_expression_type(None, base, Some(index))
