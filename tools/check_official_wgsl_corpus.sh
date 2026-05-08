@@ -43,6 +43,9 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'texture_external' "$emitted"; then
     validate_args+=(--capability texture-external)
   fi
+  if grep -q 'var<immediate>' "$emitted"; then
+    validate_args+=(--capability immediates)
+  fi
   if ((${#validate_args[@]} == 0)); then
     cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "$emitted" >/dev/null
   else

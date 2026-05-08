@@ -1151,6 +1151,7 @@ test "WGSL AST lowerer uses texture type to lower advanced sampling arguments" {
     #|  let cmp0: f32 = textureSampleCompareLevel(depth_tex, cmp_samp, uv, 0.5, vec2i(0i, 0i));
     #|  color = color + textureGather(1u, tex, samp, uv, vec2i(0i, 0i));
     #|  color = color + textureGather(depth_tex, samp, uv, vec2i(0i, 0i));
+    #|  color = color + textureGather(0, depth_tex, samp, uv, vec2i(1i, 1i));
     #|  color = color + textureGatherCompare(depth_arr, cmp_samp, uv, 0u, 0.5, vec2i(0i, 0i));
     #|  return color + vec4f(f32(count) * 0.0 + cmp + cmp0);
     #|}
@@ -1177,11 +1178,67 @@ test "WGSL AST lowerer uses texture type to lower advanced sampling arguments" {
   )
   debug_inspect(emitted.contains("textureGather(1, tex, samp"), content="true")
   debug_inspect(
-    emitted.contains("textureGather(depth_tex, samp"),
+    emitted.contains("textureGather(0, depth_tex, samp"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("textureGather(0, depth_tex, samp") &&
+    emitted.contains("vec2<i32>(1i, 1i)"),
     content="true",
   )
   debug_inspect(
     emitted.contains("textureGatherCompare(depth_arr, cmp_samp"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL IR roundtrip preserves transpose matrix result shape" {
+  let source =
+    #|fn inverse_affine3(affine: mat4x3<f32>) -> mat4x3<f32> {
+    #|  return affine;
+    #|}
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  let world_from_local_affine_transpose: mat3x4<f32> = mat3x4<f32>();
+    #|  let inverse_transpose = transpose(inverse_affine3(transpose(world_from_local_affine_transpose)));
+    #|  _ = inverse_transpose;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(": mat3x4<f32> = transpose"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL IR lowerer resolves struct members declared after function use" {
+  let source =
+    #|@vertex
+    #|fn vs_main(@location(0) position: vec3<f32>) -> @builtin(position) vec4<f32> {
+    #|  return uniforms.vertex * vec4<f32>(position, 1.0);
+    #|}
+    #|
+    #|struct Uniforms {
+    #|  vertex: mat4x4<f32>,
+    #|};
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> uniforms: Uniforms;
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(": mat4x4<f32> = uniforms.vertex"),
     content="true",
   )
 }

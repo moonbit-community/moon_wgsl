@@ -1302,7 +1302,6 @@ fn WgslIrEmitter::image_gather_expression(
   offset : Handle?,
   depth_ref : Handle?,
 ) -> String raise WgslIrEmitError {
-  let depth = self.expression_is_depth_image(function, image)
   let callee = if depth_ref != None {
     "textureGatherCompare"
   } else {
@@ -1310,7 +1309,7 @@ fn WgslIrEmitter::image_gather_expression(
   }
   let out = StringBuilder::new()
   out.write_string("\{callee}(")
-  if !depth {
+  if depth_ref == None {
     out.write_string("\{wgsl_ir_gather_component_index(component)}, ")
   }
   out.write_string(
@@ -1425,26 +1424,6 @@ fn WgslIrEmitter::ray_query_get_intersection_expression(
     "rayQueryGetCandidateIntersection"
   }
   "\{name}(\{self.required_function_expression(function, query)})"
-}
-
-///|
-fn WgslIrEmitter::expression_is_depth_image(
-  self : WgslIrEmitter,
-  function : Function?,
-  handle : Handle,
-) -> Bool {
-  match self.expression_type(function, handle) {
-    Some(ty_handle) =>
-      match self.shader_module.types.get(ty_handle) {
-        Some(ty) =>
-          match ty.inner {
-            Image(_, _, Depth(_)) => true
-            _ => false
-          }
-        None => false
-      }
-    None => false
-  }
 }
 
 ///|
@@ -1982,7 +1961,24 @@ fn WgslIrEmitter::math_expression_result_type(
     Unpack4xU8 => self.find_vector_type(Quad, Scalar::Scalar(Uint, 4))
     Dot | Distance | Length | Determinant =>
       self.scalar_type_from_composite_type(input_ty)
+    Transpose => self.transpose_expression_result_type(input_ty)
     _ => Some(input_ty)
+  }
+}
+
+///|
+fn WgslIrEmitter::transpose_expression_result_type(
+  self : WgslIrEmitter,
+  input_ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(input_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Matrix(columns, rows, scalar) =>
+          self.find_matrix_type(rows, columns, scalar)
+        _ => None
+      }
+    None => None
   }
 }
 

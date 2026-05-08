@@ -307,6 +307,9 @@ pub fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
     lowerer.predeclare_global_type_alias(declaration)
   }
   for declaration in unit.declarations() {
+    lowerer.lower_global_type_body_declaration(declaration)
+  }
+  for declaration in unit.declarations() {
     lowerer.predeclare_global_value_declaration(declaration)
   }
   for declaration in unit.declarations() {
@@ -484,6 +487,18 @@ fn WgslIrLowerer::predeclare_global_value_declaration(
     GlobalVariable(global) => self.predeclare_global_variable(global)
     Override(override_decl) =>
       self.predeclare_override_declaration(override_decl)
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_global_type_body_declaration(
+  self : WgslIrLowerer,
+  declaration : @ast.WgslGlobalDecl,
+) -> Unit raise WgslIrLowerError {
+  match declaration.data() {
+    Struct(struct_decl) => self.lower_struct_declaration(struct_decl)
+    TypeAlias(alias_decl) => self.lower_type_alias(alias_decl)
     _ => ()
   }
 }
@@ -4217,18 +4232,34 @@ fn WgslIrLowerer::lower_image_gather_expression(
     scope,
   )
   let depth = self.image_expression_is_depth(function, probe_image)
+  let has_component = probe_image_index == 1
   let (component, image, sampler, coordinate, base_count) = if depth {
+    let (component, sampler_index, coordinate_index, base_count) = if has_component {
+      guard arguments.length() >= 4 else {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "textureGather with a component argument expects image, sampler, and coordinate arguments",
+        )
+      }
+      (
+        wgsl_ir_gather_component_from_node(arguments[0]),
+        2,
+        3,
+        4,
+      )
+    } else {
+      (SwizzleComponent::X, 1, 2, 3)
+    }
     let sampler = self.lower_function_expression_node(
-      arguments[1],
+      arguments[sampler_index],
       function,
       scope,
     )
     let coordinate = self.lower_function_expression_node(
-      arguments[2],
+      arguments[coordinate_index],
       function,
       scope,
     )
-    (Some(SwizzleComponent::X), probe_image, sampler, coordinate, 3)
+    (Some(component), probe_image, sampler, coordinate, base_count)
   } else {
     guard arguments.length() >= 4 else {
       raise WgslIrLowerError::UnsupportedExpression(
@@ -7311,7 +7342,24 @@ fn WgslIrLowerer::math_expression_result_type(
     Unpack4xU8 => Some(self.vector_type_handle(Quad, Scalar::Scalar(Uint, 4)))
     Dot | Distance | Length | Determinant =>
       Some(self.scalar_type_from_composite_type(input_ty))
+    Transpose => self.transpose_expression_result_type(input_ty)
     _ => Some(input_ty)
+  }
+}
+
+///|
+fn WgslIrLowerer::transpose_expression_result_type(
+  self : WgslIrLowerer,
+  input_ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(input_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Matrix(columns, rows, scalar) =>
+          Some(self.matrix_type_handle(rows, columns, scalar))
+        _ => None
+      }
+    None => None
   }
 }
 
