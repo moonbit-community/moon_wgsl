@@ -872,6 +872,8 @@ fn WgslIrEmitter::emit_statement(
       self.emit_ray_query_statement(
         out, function, query, query_function, indent,
       )
+    CooperativeStore(target, data) =>
+      self.emit_cooperative_store_statement(out, function, target, data, indent)
     _ => raise WgslIrEmitError::Unsupported("statement kind")
   }
 }
@@ -1248,6 +1250,10 @@ fn WgslIrEmitter::emit_expression(
       self.ray_query_get_intersection_expression(function, query, committed)
     SubgroupCall(subgroup_function, arguments) =>
       "\{wgsl_ir_emit_subgroup_function_name(subgroup_function)}(\{self.expression_list(arguments, function)})"
+    CooperativeLoad(columns, rows, role, data) =>
+      self.cooperative_load_expression(function, columns, rows, role, data)
+    CooperativeMultiplyAdd(a, b, c) =>
+      "coopMultiplyAdd(\{self.required_function_expression(function, a)}, \{self.required_function_expression(function, b)}, \{self.required_function_expression(function, c)})"
     WorkGroupUniformLoad(pointer) =>
       "workgroupUniformLoad(\{self.required_function_expression(function, pointer)})"
     Unary(op, expr) =>
@@ -1408,6 +1414,68 @@ fn WgslIrEmitter::atomic_pointer_expression(
     self.required_function_expression(function, pointer)
   } else {
     "&\{self.required_function_expression(function, pointer)}"
+  }
+}
+
+///|
+fn WgslIrEmitter::emit_cooperative_store_statement(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  function : Function,
+  target : Handle,
+  data : CooperativeData,
+  indent : Int,
+) -> Unit raise WgslIrEmitError {
+  let suffix = if data.row_major { "T" } else { "" }
+  out.write_string(
+    "\{wgsl_ir_indent(indent)}coopStore\{suffix}(\{self.function_expression(function, target)}, \{self.atomic_pointer_expression(Some(function), data.pointer)}, \{self.function_expression(function, data.stride)});\n",
+  )
+}
+
+///|
+fn WgslIrEmitter::cooperative_load_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  columns : CooperativeSize,
+  rows : CooperativeSize,
+  role : CooperativeRole,
+  data : CooperativeData,
+) -> String raise WgslIrEmitError {
+  let suffix = if data.row_major { "T" } else { "" }
+  let scalar = match self.cooperative_data_scalar(function, data) {
+    Some(scalar) => scalar
+    None =>
+      raise WgslIrEmitError::Unsupported("cooperative load pointer scalar type")
+  }
+  "coopLoad\{suffix}<coop_mat\{wgsl_ir_cooperative_size_name(columns)}x\{wgsl_ir_cooperative_size_name(rows)}<\{self.scalar_name(scalar)}, \{wgsl_ir_cooperative_role_name(role)}>>(\{self.atomic_pointer_expression(function, data.pointer)}, \{self.required_function_expression(function, data.stride)})"
+}
+
+///|
+fn WgslIrEmitter::cooperative_data_scalar(
+  self : WgslIrEmitter,
+  function : Function?,
+  data : CooperativeData,
+) -> Scalar? {
+  match self.expression_type(function, data.pointer) {
+    Some(ty) => self.cooperative_pointer_scalar(ty)
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::cooperative_pointer_scalar(
+  self : WgslIrEmitter,
+  ty : Handle,
+) -> Scalar? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(base, _) => self.cooperative_pointer_scalar(base)
+        ValuePointer(_, scalar, _) => Some(scalar)
+        Scalar(scalar) => Some(scalar)
+        _ => None
+      }
+    None => None
   }
 }
 
@@ -1730,6 +1798,13 @@ fn WgslIrEmitter::function_expression_inner_type(
         Some(ty) => Some(self.deref_pointer_type_handle(ty))
         None => None
       }
+    CooperativeLoad(columns, rows, role, data) =>
+      match self.cooperative_data_scalar(Some(function), data) {
+        Some(scalar) =>
+          self.cooperative_matrix_type_handle(columns, rows, scalar, role)
+        None => None
+      }
+    CooperativeMultiplyAdd(_, _, c) => self.expression_type(Some(function), c)
     SubgroupCall(subgroup_function, arguments) =>
       self.subgroup_expression_result_type(
         Some(function),
@@ -1739,6 +1814,34 @@ fn WgslIrEmitter::function_expression_inner_type(
     Literal(literal) => self.literal_type(literal)
     _ => None
   }
+}
+
+///|
+fn WgslIrEmitter::cooperative_matrix_type_handle(
+  self : WgslIrEmitter,
+  columns : CooperativeSize,
+  rows : CooperativeSize,
+  scalar : Scalar,
+  role : CooperativeRole,
+) -> Handle? {
+  for index in 0..<self.shader_module.types.items.length() {
+    match self.shader_module.types.items[index].inner {
+      CooperativeMatrix(
+        existing_columns,
+        existing_rows,
+        existing_scalar,
+        existing_role
+      ) =>
+        if existing_columns == columns &&
+          existing_rows == rows &&
+          existing_scalar == scalar &&
+          existing_role == role {
+          return Some(Handle::Handle(index))
+        }
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|
@@ -2602,6 +2705,8 @@ fn WgslIrEmitter::type_inner_name(
     Vector(size, scalar) => "vec\{size.width()}<\{self.scalar_name(scalar)}>"
     Matrix(columns, rows, scalar) =>
       "mat\{columns.width()}x\{rows.width()}<\{self.scalar_name(scalar)}>"
+    CooperativeMatrix(columns, rows, scalar, role) =>
+      "coop_mat\{wgsl_ir_cooperative_size_name(columns)}x\{wgsl_ir_cooperative_size_name(rows)}<\{self.scalar_name(scalar)}, \{wgsl_ir_cooperative_role_name(role)}>"
     Atomic(scalar) => "atomic<\{self.scalar_name(scalar)}>"
     Pointer(base, space) =>
       match space {

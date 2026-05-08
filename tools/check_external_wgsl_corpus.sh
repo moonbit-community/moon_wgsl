@@ -69,6 +69,12 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'enable wgpu_per_vertex' "$source" || grep -q '@interpolate(per_vertex' "$source"; then
     validate_args+=(--capability per-vertex)
   fi
+  if grep -q '@builtin(view_index)' "$source"; then
+    validate_args+=(--capability multiview)
+  fi
+  if grep -q 'enable wgpu_cooperative_matrix' "$source" || grep -q 'coop_mat' "$source"; then
+    validate_args+=(--capability cooperative-matrix)
+  fi
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${validate_args[@]+"${validate_args[@]}"}" "$source" >/dev/null
 }
 

@@ -1910,3 +1910,41 @@ test "WGSL IR lowerer preserves barycentric builtins" {
     content="true",
   )
 }
+
+///|
+test "WGSL IR lowerer roundtrips cooperative matrix builtins" {
+  let source =
+    #|enable wgpu_cooperative_matrix;
+    #|
+    #|@group(0) @binding(0) var<storage, read> a: array<f32>;
+    #|@group(0) @binding(1) var<storage, read> b: array<f32>;
+    #|@group(0) @binding(2) var<storage, read_write> c: array<f32>;
+    #|
+    #|@compute @workgroup_size(8, 8, 1)
+    #|fn main() {
+    #|  let stride = 8u;
+    #|  let a_tile = coopLoad<coop_mat8x8<f32, A>>(&a[0u], stride);
+    #|  let b_tile = coopLoad<coop_mat8x8<f32, B>>(&b[0u], stride);
+    #|  var c_tile = coopLoad<coop_mat8x8<f32, C>>(&c[0u], stride);
+    #|  c_tile = coopMultiplyAdd(a_tile, b_tile, c_tile);
+    #|  coopStore(c_tile, &c[0u], stride);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("coopLoad<coop_mat8x8<f32, A>>(&a[0u], _e0)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("coopMultiplyAdd(_e6, _e11, c_tile)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("coopStore(c_tile, &c[0u], _e0);"),
+    content="true",
+  )
+}

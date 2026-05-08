@@ -482,6 +482,13 @@ fn WgslIrValidator::validate_function_expression(
       for argument in arguments {
         self.validate_function_expression_handle(function, argument)
       }
+    CooperativeLoad(_, _, _, data) =>
+      self.validate_cooperative_data(function, data)
+    CooperativeMultiplyAdd(a, b, c) => {
+      self.validate_function_expression_handle(function, a)
+      self.validate_function_expression_handle(function, b)
+      self.validate_function_expression_handle(function, c)
+    }
     Splat(_, expr) => self.validate_function_expression_handle(function, expr)
     Swizzle(_, expr, _) =>
       self.validate_function_expression_handle(function, expr)

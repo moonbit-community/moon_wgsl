@@ -121,6 +121,15 @@ fn WgslIrLowerer::lower_composite_type_ref(
         TypeInner::Matrix(columns, rows, scalar),
       )
     }
+    "coop_mat8x8" | "coop_mat16x16" => {
+      let (columns, rows, scalar, role) = self.required_cooperative_matrix_type(
+        ty_ref,
+      )
+      self.intern_type(
+        ty_ref.canonical_text(),
+        TypeInner::CooperativeMatrix(columns, rows, scalar, role),
+      )
+    }
     "array" => {
       let args = ty_ref.template_arguments()
       guard args is [Type(element_ty), .. rest] else {
@@ -246,6 +255,75 @@ fn WgslIrLowerer::lower_composite_type_ref(
       raise WgslIrLowerError::UnsupportedType(
         "\{ty_ref.canonical_text()} before \{ty_ref.end()}",
       )
+  }
+}
+
+///|
+fn WgslIrLowerer::required_cooperative_matrix_type(
+  self : WgslIrLowerer,
+  ty_ref : @ast.WgslTypeRef,
+) -> (CooperativeSize, CooperativeSize, Scalar, CooperativeRole) raise WgslIrLowerError {
+  let (columns, rows) = match ty_ref.name() {
+    "coop_mat8x8" => (CooperativeSize::Eight, CooperativeSize::Eight)
+    "coop_mat16x16" => (CooperativeSize::Sixteen, CooperativeSize::Sixteen)
+    _ => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+  }
+  match ty_ref.template_arguments() {
+    [Type(scalar_ref), Type(role_ref)] =>
+      (
+        columns,
+        rows,
+        self.scalar_from_type_ref(scalar_ref),
+        wgsl_ir_cooperative_role_from_name(role_ref.name()),
+      )
+    _ => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+  }
+}
+
+///|
+fn WgslIrLowerer::cooperative_matrix_type_handle(
+  self : WgslIrLowerer,
+  columns : CooperativeSize,
+  rows : CooperativeSize,
+  scalar : Scalar,
+  role : CooperativeRole,
+) -> Handle {
+  let key = "coop_mat\{wgsl_ir_cooperative_size_name(columns)}x\{wgsl_ir_cooperative_size_name(rows)}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}, \{wgsl_ir_cooperative_role_name(role)}>"
+  self.intern_type(
+    key,
+    TypeInner::CooperativeMatrix(columns, rows, scalar, role),
+  )
+}
+
+///|
+fn wgsl_ir_cooperative_role_from_name(
+  name : String,
+) -> CooperativeRole raise WgslIrLowerError {
+  match name {
+    "A" => CooperativeRole::A
+    "B" => CooperativeRole::B
+    "C" => CooperativeRole::C
+    _ =>
+      raise WgslIrLowerError::UnsupportedType(
+        "unsupported cooperative matrix role: \{name}",
+      )
+  }
+}
+
+///|
+fn wgsl_ir_cooperative_role_name(role : CooperativeRole) -> String {
+  match role {
+    A => "A"
+    B => "B"
+    C => "C"
+  }
+}
+
+///|
+fn wgsl_ir_cooperative_size_name(size : CooperativeSize) -> String {
+  match size {
+    Eight => "8"
+    Sixteen => "16"
   }
 }
 

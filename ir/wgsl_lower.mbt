@@ -3072,6 +3072,8 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
+    | Some(CooperativeLoad(_, _, _, _))
+    | Some(CooperativeMultiplyAdd(_, _, _))
     | Some(ImageSample(_, _, _, _, _, _, _, _, _))
     | Some(ImageLoad(_, _, _, _, _))
     | Some(ImageQuery(_, _))
@@ -3226,7 +3228,9 @@ fn WgslIrLowerer::function_expression_can_return_directly(
         | Select(_, _, _)
         | Bitcast(_, _)
         | Math(_, _, _, _, _)
-        | Relational(_, _) => true
+        | Relational(_, _)
+        | CooperativeLoad(_, _, _, _)
+        | CooperativeMultiplyAdd(_, _, _) => true
         Load(inner) =>
           self.function_pointer_expression_can_return_directly(function, inner)
         _ => false
@@ -3476,6 +3480,13 @@ fn WgslIrLowerer::lower_call_statement(
                           block,
                         ) &&
                         !self.lower_texture_statement_call(
+                          name.name(),
+                          arguments,
+                          function,
+                          scope,
+                          block,
+                        ) &&
+                        !self.lower_cooperative_statement_call(
                           name.name(),
                           arguments,
                           function,
@@ -6070,33 +6081,41 @@ fn WgslIrLowerer::lower_function_call_expression(
   expected_ty : Handle?,
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_call_arguments(arguments)
-  match self.lower_bitcast_callee_type(callee) {
-    Some(ty) => self.lower_function_bitcast_call(ty, arguments, function, scope)
+  match
+    self.lower_templated_builtin_function_call(
+      callee, arguments, function, scope,
+    ) {
+    Some(handle) => handle
     None =>
-      match callee.kind() {
-        Identifier(name) =>
-          self.lower_named_function_call_expression(
-            name.name(),
-            arguments,
-            function,
-            scope,
-            expected_ty,
-          )
-        _ =>
-          match self.lower_templated_callee_type(callee) {
-            Some(ty) =>
-              function.expressions.append(
-                Expression::Compose(
-                  ty,
-                  self.lower_function_constructor_arguments(
-                    ty, arguments, function, scope,
-                  ),
-                ),
+      match self.lower_bitcast_callee_type(callee) {
+        Some(ty) =>
+          self.lower_function_bitcast_call(ty, arguments, function, scope)
+        None =>
+          match callee.kind() {
+            Identifier(name) =>
+              self.lower_named_function_call_expression(
+                name.name(),
+                arguments,
+                function,
+                scope,
+                expected_ty,
               )
-            None =>
-              raise WgslIrLowerError::UnsupportedExpression(
-                "non-identifier call expression: \{wgsl_ir_expr_node_shape(callee)}",
-              )
+            _ =>
+              match self.lower_templated_callee_type(callee) {
+                Some(ty) =>
+                  function.expressions.append(
+                    Expression::Compose(
+                      ty,
+                      self.lower_function_constructor_arguments(
+                        ty, arguments, function, scope,
+                      ),
+                    ),
+                  )
+                None =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "non-identifier call expression: \{wgsl_ir_expr_node_shape(callee)}",
+                  )
+              }
           }
       }
   }
@@ -6185,6 +6204,10 @@ fn WgslIrLowerer::lower_unclassified_named_function_call_expression(
                   None =>
                     if name == "arrayLength" {
                       self.lower_function_array_length_call(
+                        arguments, function, scope,
+                      )
+                    } else if name == "coopMultiplyAdd" {
+                      self.lower_function_cooperative_multiply_add_call(
                         arguments, function, scope,
                       )
                     } else if name == "workgroupUniformLoad" {
@@ -7341,6 +7364,14 @@ fn WgslIrLowerer::function_expression_inner_type(
         Some(ty) => Some(self.deref_pointer_type_handle(ty))
         None => None
       }
+    CooperativeLoad(columns, rows, role, data) =>
+      match self.cooperative_data_scalar(function, data) {
+        Some(scalar) =>
+          Some(self.cooperative_matrix_type_handle(columns, rows, scalar, role))
+        None => None
+      }
+    CooperativeMultiplyAdd(_, _, c) =>
+      self.function_expression_type(function, c)
     SubgroupCall(subgroup_function, arguments) =>
       self.subgroup_expression_result_type(
         function, subgroup_function, arguments,
