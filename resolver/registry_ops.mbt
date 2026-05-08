@@ -23,6 +23,17 @@ fn copy_wgsl_import_module_map(
 }
 
 ///|
+fn copy_wgsl_import_module_candidates_for_path(
+  module_candidates : @hashmap.HashMap[String, Array[String]],
+  module_path : String,
+) -> Array[String] {
+  match module_candidates.get(module_path.trim().to_owned()) {
+    Some(rel_paths) => rel_paths.copy()
+    None => []
+  }
+}
+
+///|
 fn wgsl_module_path_from_rel_path(rel_path : String) -> String? {
   let normalized_rel = normalize_shader_rel_path(rel_path)
   if normalized_rel == "" || !normalized_rel.has_suffix(".wgsl") {
@@ -52,15 +63,18 @@ fn wgsl_module_path_from_rel_path(rel_path : String) -> String? {
 fn clear_wgsl_source_registry(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],
+  module_candidates : @hashmap.HashMap[String, Array[String]],
 ) -> Unit {
   source_registry.clear()
   module_paths.clear()
+  module_candidates.clear()
 }
 
 ///|
 fn register_source_into(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],
+  module_candidates : @hashmap.HashMap[String, Array[String]],
   rel_path : String,
   source : String,
   explicit_module_path : String?,
@@ -70,6 +84,7 @@ fn register_source_into(
     return None
   }
   remove_module_paths_for_rel_path(module_paths, normalized_rel)
+  remove_module_candidates_for_rel_path(module_candidates, normalized_rel)
   source_registry.set(normalized_rel, source)
   let mut module_path : String? = explicit_module_path
   if module_path is None {
@@ -80,6 +95,7 @@ fn register_source_into(
   }
   if module_path is Some(path) && path != "" {
     module_paths.set(path, normalized_rel)
+    register_module_candidate_rel_path(module_candidates, path, normalized_rel)
   }
   Some(normalized_rel)
 }
@@ -98,6 +114,83 @@ fn remove_module_paths_for_rel_path(
   }
   for module_path in stale_modules {
     ignore(module_paths.remove(module_path))
+  }
+}
+
+///|
+fn remove_wgsl_import_module_candidate(
+  module_candidates : @hashmap.HashMap[String, Array[String]],
+  module_path : String,
+  rel_path : String,
+) -> Unit {
+  let normalized_rel = normalize_shader_rel_path(rel_path)
+  if normalized_rel == "" {
+    return
+  }
+  match module_candidates.get(module_path) {
+    Some(rel_paths) => {
+      let kept : Array[String] = []
+      for candidate_rel in rel_paths {
+        if normalize_shader_rel_path(candidate_rel) != normalized_rel {
+          kept.push(candidate_rel)
+        }
+      }
+      if kept.length() == 0 {
+        ignore(module_candidates.remove(module_path))
+      } else {
+        module_candidates.set(module_path, kept)
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn remove_module_candidates_for_rel_path(
+  module_candidates : @hashmap.HashMap[String, Array[String]],
+  rel_path : String,
+) -> Unit {
+  let normalized_rel = normalize_shader_rel_path(rel_path)
+  let module_paths_to_prune : Array[String] = []
+  for entry in module_candidates.iter() {
+    let (module_path, rel_paths) = entry
+    let kept : Array[String] = []
+    for candidate_rel in rel_paths {
+      if normalize_shader_rel_path(candidate_rel) != normalized_rel {
+        kept.push(candidate_rel)
+      }
+    }
+    if kept.length() == 0 {
+      module_paths_to_prune.push(module_path)
+    } else if kept.length() != rel_paths.length() {
+      module_candidates.set(module_path, kept)
+    }
+  }
+  for module_path in module_paths_to_prune {
+    ignore(module_candidates.remove(module_path))
+  }
+}
+
+///|
+fn register_module_candidate_rel_path(
+  module_candidates : @hashmap.HashMap[String, Array[String]],
+  module_path : String,
+  rel_path : String,
+) -> Unit {
+  let normalized_rel = normalize_shader_rel_path(rel_path)
+  if module_path == "" || normalized_rel == "" {
+    return
+  }
+  match module_candidates.get(module_path) {
+    Some(rel_paths) => {
+      for existing_rel in rel_paths {
+        if normalize_shader_rel_path(existing_rel) == normalized_rel {
+          return
+        }
+      }
+      rel_paths.push(normalized_rel)
+    }
+    None => module_candidates.set(module_path, [normalized_rel])
   }
 }
 
@@ -125,13 +218,10 @@ fn wgsl_diagnostics_has_error(diagnostics : Array[WgslDiagnostic]) -> Bool {
 ///|
 fn analyze_source_files_against(
   existing_rel_to_source : @hashmap.HashMap[String, String],
-  existing_modules : @hashmap.HashMap[String, String],
   files : Array[WgslSourceFile],
   diagnostics : Array[WgslDiagnostic],
 ) -> Unit {
   let batch_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
-  )
-  let batch_module_to_rel : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
   )
 
   for source_file in files {
@@ -170,42 +260,6 @@ fn analyze_source_files_against(
       }
     }
     batch_rel_to_source.set(normalized_rel, source_file.source)
-
-    let import_path = wgsl_source_define_import_path(source_file.source)
-    let module_path = match import_path {
-      Some(path) if path != "" => path
-      _ =>
-        match wgsl_module_path_from_rel_path(normalized_rel) {
-          Some(path) => path
-          None => continue
-        }
-    }
-    if module_path == "" {
-      continue
-    }
-
-    if batch_module_to_rel.get(module_path) is Some(existing_rel) {
-      if existing_rel != normalized_rel {
-        push_wgsl_registry_diagnostic(
-          diagnostics,
-          WgslDiagnosticSeverity::Error,
-          "multiple WGSL source files define the same #define_import_path in one batch",
-          Some(normalized_rel),
-          Some(module_path),
-        )
-      }
-    } else if existing_modules.get(module_path) is Some(existing_rel) {
-      if existing_rel != normalized_rel {
-        push_wgsl_registry_diagnostic(
-          diagnostics,
-          WgslDiagnosticSeverity::Error,
-          "bulk registry would overwrite an existing #define_import_path with a different rel_path",
-          Some(normalized_rel),
-          Some(module_path),
-        )
-      }
-    }
-    batch_module_to_rel.set(module_path, normalized_rel)
   }
 }
 
@@ -213,24 +267,25 @@ fn analyze_source_files_against(
 fn register_source_files_checked_into(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],
+  module_candidates : @hashmap.HashMap[String, Array[String]],
   files : Array[WgslSourceFile],
   diagnostics : Array[WgslDiagnostic],
 ) -> Unit {
   let existing_rel_to_source = copy_wgsl_source_registry_map(source_registry)
-  let existing_modules = copy_wgsl_import_module_map(module_paths)
-  analyze_source_files_against(
-    existing_rel_to_source, existing_modules, files, diagnostics,
-  )
+  analyze_source_files_against(existing_rel_to_source, files, diagnostics)
   if wgsl_diagnostics_has_error(diagnostics) {
     return
   }
-  register_source_files_into(source_registry, module_paths, files)
+  register_source_files_into(
+    source_registry, module_paths, module_candidates, files,
+  )
 }
 
 ///|
 fn register_source_files_into(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],
+  module_candidates : @hashmap.HashMap[String, Array[String]],
   files : Array[WgslSourceFile],
 ) -> Unit {
   for file in files {
@@ -238,6 +293,7 @@ fn register_source_files_into(
       register_source_into(
         source_registry,
         module_paths,
+        module_candidates,
         file.rel_path,
         file.source,
         None,

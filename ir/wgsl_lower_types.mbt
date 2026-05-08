@@ -410,7 +410,9 @@ fn WgslIrLowerer::scalar_from_type_ref(
   match ty_ref.name() {
     "bool" => Scalar::Scalar(Bool, 1)
     "i32" => Scalar::Scalar(Sint, 4)
+    "i64" => Scalar::Scalar(Sint, 8)
     "u32" => Scalar::Scalar(Uint, 4)
+    "u64" => Scalar::Scalar(Uint, 8)
     "f32" => Scalar::Scalar(Float, 4)
     "f16" => Scalar::Scalar(Float, 2)
     _ => {

@@ -845,6 +845,17 @@ fn WgslIrEmitter::emit_statement(
       }
       out.write_string(", \{self.function_expression(function, value)});\n")
     }
+    ImageAtomic(image, coordinate, array_index, atomic_function, value) => {
+      out.write_string(
+        "\{pad}\{self.texture_atomic_function_name(atomic_function)}(\{self.function_expression(function, image)}, \{self.function_expression(function, coordinate)}",
+      )
+      match array_index {
+        Some(index) =>
+          out.write_string(", \{self.function_expression(function, index)}")
+        None => ()
+      }
+      out.write_string(", \{self.function_expression(function, value)});\n")
+    }
     Call(function_handle, arguments, result) => {
       match result {
         Some(_) =>
@@ -1901,7 +1912,7 @@ fn WgslIrEmitter::image_expression_result_type(
         Image(_, _, Storage(format, _)) =>
           self.find_vector_type(
             Quad,
-            Scalar::Scalar(wgsl_ir_emit_storage_format_scalar_kind(format), 4),
+            wgsl_ir_emit_storage_format_scalar(format),
           )
         Image(_, _, External) =>
           self.find_vector_type(Quad, Scalar::Scalar(Float, 4))
@@ -2749,7 +2760,9 @@ fn WgslIrEmitter::storage_access_name(
   access : StorageAccess,
 ) -> String {
   ignore(self)
-  if access.contains(StorageAccess::load()) &&
+  if access.contains(StorageAccess::atomic_access()) {
+    "atomic"
+  } else if access.contains(StorageAccess::load()) &&
     access.contains(StorageAccess::store()) {
     "read_write"
   } else if access.contains(StorageAccess::store()) {
@@ -3357,6 +3370,24 @@ fn WgslIrEmitter::atomic_function_name(
 }
 
 ///|
+fn WgslIrEmitter::texture_atomic_function_name(
+  self : WgslIrEmitter,
+  atomic_function : AtomicFunction,
+) -> String raise WgslIrEmitError {
+  ignore(self)
+  match atomic_function {
+    Add => "textureAtomicAdd"
+    And => "textureAtomicAnd"
+    Max => "textureAtomicMax"
+    Min => "textureAtomicMin"
+    InclusiveOr => "textureAtomicOr"
+    ExclusiveOr => "textureAtomicXor"
+    _ =>
+      raise WgslIrEmitError::Unsupported("unsupported texture atomic function")
+  }
+}
+
+///|
 fn WgslIrEmitter::storage_format_name(
   self : WgslIrEmitter,
   format : StorageFormat,
@@ -3408,10 +3439,9 @@ fn WgslIrEmitter::storage_format_name(
 }
 
 ///|
-fn wgsl_ir_emit_storage_format_scalar_kind(
-  format : StorageFormat,
-) -> ScalarKind {
+fn wgsl_ir_emit_storage_format_scalar(format : StorageFormat) -> Scalar {
   match format {
+    R64Uint => Scalar::Scalar(Uint, 8)
     R8Uint
     | R16Uint
     | R32Uint
@@ -3419,10 +3449,9 @@ fn wgsl_ir_emit_storage_format_scalar_kind(
     | Rg16Uint
     | Rgba8Uint
     | Rgb10a2Uint
-    | R64Uint
     | Rg32Uint
     | Rgba16Uint
-    | Rgba32Uint => Uint
+    | Rgba32Uint => Scalar::Scalar(Uint, 4)
     R8Sint
     | R16Sint
     | R32Sint
@@ -3431,8 +3460,8 @@ fn wgsl_ir_emit_storage_format_scalar_kind(
     | Rgba8Sint
     | Rg32Sint
     | Rgba16Sint
-    | Rgba32Sint => Sint
-    _ => Float
+    | Rgba32Sint => Scalar::Scalar(Sint, 4)
+    _ => Scalar::Scalar(Float, 4)
   }
 }
 

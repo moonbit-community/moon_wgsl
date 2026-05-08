@@ -45,6 +45,9 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'texture_external' "$emitted"; then
     validate_args+=(--capability texture-external)
   fi
+  if grep -q 'textureAtomic' "$emitted" || grep -q 'texture_storage_.*atomic' "$emitted"; then
+    validate_args+=(--capability texture-atomic)
+  fi
   if grep -q 'var<immediate>' "$emitted"; then
     validate_args+=(--capability immediates)
   fi

@@ -33,7 +33,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability ray-query|dual-source-blending|texture-external|binding-arrays] [--check-only] [--output <file>] [--error-output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability ray-query|dual-source-blending|texture-external|texture-atomic|binding-arrays] [--check-only] [--output <file>] [--error-output <file>]"
     );
     std::process::exit(2);
 }
@@ -123,6 +123,9 @@ fn parse_options() -> Options {
                     }
                     "texture-external" => {
                         capabilities |= naga::valid::Capabilities::TEXTURE_EXTERNAL
+                    }
+                    "texture-atomic" => {
+                        capabilities |= naga::valid::Capabilities::TEXTURE_ATOMIC
                     }
                     "binding-arrays" => {
                         capabilities |=

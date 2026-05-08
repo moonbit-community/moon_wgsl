@@ -33,11 +33,11 @@ fn WgslIrLowerer::image_expression_result_type(
             self.type_cache.get("f32")
           }
         Image(_, _, Storage(format, _)) => {
-          let kind = wgsl_ir_storage_format_scalar_kind(format)
+          let scalar = wgsl_ir_storage_format_scalar(format)
           Some(
             self.intern_type(
-              "vec4<\{wgsl_ir_scalar_name(kind, 4)}>",
-              TypeInner::Vector(Quad, Scalar::Scalar(kind, 4)),
+              "vec4<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+              TypeInner::Vector(Quad, scalar),
             ),
           )
         }
@@ -227,8 +227,8 @@ fn WgslIrLowerer::scalar_type_handle(
 fn wgsl_ir_scalar_name(kind : ScalarKind, width : Int) -> String {
   match kind {
     Bool => "bool"
-    Sint => "i32"
-    Uint => "u32"
+    Sint => if width == 8 { "i64" } else { "i32" }
+    Uint => if width == 8 { "u64" } else { "u32" }
     Float => if width == 2 { "f16" } else { "f32" }
     AbstractInt => "__abstract_int"
     AbstractFloat => "__abstract_float"
@@ -236,8 +236,9 @@ fn wgsl_ir_scalar_name(kind : ScalarKind, width : Int) -> String {
 }
 
 ///|
-fn wgsl_ir_storage_format_scalar_kind(format : StorageFormat) -> ScalarKind {
+fn wgsl_ir_storage_format_scalar(format : StorageFormat) -> Scalar {
   match format {
+    R64Uint => Scalar::Scalar(Uint, 8)
     R8Uint
     | R16Uint
     | Rg8Uint
@@ -245,10 +246,9 @@ fn wgsl_ir_storage_format_scalar_kind(format : StorageFormat) -> ScalarKind {
     | Rg16Uint
     | Rgba8Uint
     | Rgb10a2Uint
-    | R64Uint
     | Rg32Uint
     | Rgba16Uint
-    | Rgba32Uint => Uint
+    | Rgba32Uint => Scalar::Scalar(Uint, 4)
     R8Sint
     | R16Sint
     | Rg8Sint
@@ -257,8 +257,8 @@ fn wgsl_ir_storage_format_scalar_kind(format : StorageFormat) -> ScalarKind {
     | Rgba8Sint
     | Rg32Sint
     | Rgba16Sint
-    | Rgba32Sint => Sint
-    _ => Float
+    | Rgba32Sint => Scalar::Scalar(Sint, 4)
+    _ => Scalar::Scalar(Float, 4)
   }
 }
 

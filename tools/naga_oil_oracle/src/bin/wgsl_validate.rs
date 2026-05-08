@@ -10,7 +10,7 @@ struct Options {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: wgsl_validate [--capability ray-query|dual-source-blending|texture-external|f16|subgroups|immediates|binding-arrays] <file.wgsl>..."
+        "usage: wgsl_validate [--capability ray-query|dual-source-blending|texture-external|texture-atomic|f16|subgroups|immediates|binding-arrays] <file.wgsl>..."
     );
     std::process::exit(2);
 }
@@ -30,6 +30,9 @@ fn parse_options() -> Options {
                     }
                     "texture-external" => {
                         capabilities |= naga::valid::Capabilities::TEXTURE_EXTERNAL
+                    }
+                    "texture-atomic" => {
+                        capabilities |= naga::valid::Capabilities::TEXTURE_ATOMIC
                     }
                     "f16" => capabilities |= naga::valid::Capabilities::SHADER_FLOAT16,
                     "subgroups" => capabilities |= naga::valid::Capabilities::SUBGROUP,

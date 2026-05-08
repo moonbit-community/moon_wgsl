@@ -15,6 +15,7 @@ ir-builtin-atomic-barrier-compute	file	testdata/ir_corpus/builtin_atomic_barrier
 ir-builtin-subgroup-compute	file	testdata/ir_corpus/builtin_subgroup_compute.wgsl	-	-	-	subgroups	parse,naga,ir,naga-ir	Static IR corpus: subgroup and quad builtin coverage with subgroup capability.
 ir-builtin-oracle-blocked-fragment	file	testdata/ir_corpus/builtin_oracle_blocked_fragment.wgsl	-	-	-	-	parse,ir	Static IR corpus: lowerer-known builtin coverage where the pinned Naga oracle lacks matching capability support.
 ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-query	parse,naga,ir,naga-ir	Static IR corpus: full ray query builtin statement and expression coverage.
+ir-texture-atomic-compute	file	testdata/ir_corpus/texture_atomic_compute.wgsl	-	-	-	texture-atomic	parse,naga,ir,naga-ir	Static IR corpus: storage texture atomic builtin coverage.
 ir-builtin-functions-fragment	file	testdata/ir_corpus/builtin_functions_fragment.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: builtin function expression lowering.
 ir-packed-integer-builtins-compute	file	testdata/ir_corpus/packed_integer_builtins_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: packed integer builtin calls.
 compose-local-simple	compose	testdata/ir_corpus/compose	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Local compose fixture through compose, parse, validation, IR, and emitted validation.

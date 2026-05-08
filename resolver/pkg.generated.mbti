@@ -29,6 +29,7 @@ pub struct WgslSourceRegistry {
   // private fields
 }
 pub fn WgslSourceRegistry::analyze_source_files(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
+pub fn WgslSourceRegistry::candidate_rel_paths_for_module_path(Self, String) -> Array[String]
 pub fn WgslSourceRegistry::clear(Self) -> Unit
 pub fn WgslSourceRegistry::copy_import_module_paths(Self) -> @hashmap.HashMap[String, String]
 pub fn WgslSourceRegistry::default() -> Self

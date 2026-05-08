@@ -343,10 +343,12 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
     TypeInner::Scalar(Scalar::Scalar(Bool, 1)),
   )
   ignore(self.intern_type("i32", TypeInner::Scalar(Scalar::Scalar(Sint, 4))))
+  ignore(self.intern_type("i64", TypeInner::Scalar(Scalar::Scalar(Sint, 8))))
   let u32_ty = self.intern_type(
     "u32",
     TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
   )
+  ignore(self.intern_type("u64", TypeInner::Scalar(Scalar::Scalar(Uint, 8))))
   let f32_ty = self.intern_type(
     "f32",
     TypeInner::Scalar(Scalar::Scalar(Float, 4)),
@@ -3659,6 +3661,22 @@ fn WgslIrLowerer::lower_texture_statement_call(
 ) -> Bool raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   match name {
+    "textureAtomicAdd"
+    | "textureAtomicAnd"
+    | "textureAtomicMax"
+    | "textureAtomicMin"
+    | "textureAtomicOr"
+    | "textureAtomicXor" => {
+      let atomic_function = match
+        wgsl_ir_texture_atomic_function_from_name(name) {
+        Some(function) => function
+        None => abort("unreachable texture atomic builtin")
+      }
+      self.lower_texture_atomic_statement(
+        name, atomic_function, arguments, function, scope, block,
+      )
+      true
+    }
     "textureStore" => {
       guard arguments.length() == 3 || arguments.length() == 4 else {
         raise WgslIrLowerError::UnsupportedExpression(
@@ -3695,6 +3713,71 @@ fn WgslIrLowerer::lower_texture_statement_call(
     }
     _ => false
   }
+}
+
+///|
+fn wgsl_ir_texture_atomic_function_from_name(name : String) -> AtomicFunction? {
+  match name {
+    "textureAtomicAdd" => Some(Add)
+    "textureAtomicAnd" => Some(And)
+    "textureAtomicMax" => Some(Max)
+    "textureAtomicMin" => Some(Min)
+    "textureAtomicOr" => Some(InclusiveOr)
+    "textureAtomicXor" => Some(ExclusiveOr)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_texture_atomic_statement(
+  self : WgslIrLowerer,
+  name : String,
+  atomic_function : AtomicFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Unit raise WgslIrLowerError {
+  guard arguments.length() == 3 || arguments.length() == 4 else {
+    raise WgslIrLowerError::UnsupportedExpression(
+      "\{name} expects 3 arguments for non-arrayed storage textures or 4 arguments for arrayed storage textures",
+    )
+  }
+  let image = self.lower_function_expression_node(arguments[0], function, scope)
+  let coordinate = self.lower_function_expression_node(
+    arguments[1],
+    function,
+    scope,
+  )
+  let arrayed = self.image_expression_is_arrayed(function, image)
+  let (array_index, value_index) = if arrayed {
+    guard arguments.length() == 4 else {
+      raise WgslIrLowerError::UnsupportedExpression(
+        "\{name} on arrayed storage texture expects array index",
+      )
+    }
+    (
+      Some(self.lower_function_expression_node(arguments[2], function, scope)),
+      3,
+    )
+  } else {
+    guard arguments.length() == 3 else {
+      raise WgslIrLowerError::UnsupportedExpression(
+        "\{name} on non-arrayed storage texture does not accept array index",
+      )
+    }
+    (None, 2)
+  }
+  let value = self.lower_function_expression_node(
+    arguments[value_index],
+    function,
+    scope,
+  )
+  block.push(
+    Statement::ImageAtomic(
+      image, coordinate, array_index, atomic_function, value,
+    ),
+  )
 }
 
 ///|

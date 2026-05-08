@@ -244,6 +244,106 @@ fn collect_wgsl_compose_semantic_facts(
 }
 
 ///|
+fn wgsl_item_extraction_contains_requested_item(
+  extraction : WgslModuleItemExtraction,
+  requested_item : String,
+) -> Bool {
+  for origin in extraction.origins() {
+    if origin.name() == requested_item {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_item_extraction_contains_all_requested_items(
+  extraction : WgslModuleItemExtraction,
+  requested_items : Array[String],
+) -> Bool {
+  for requested_item in requested_items {
+    if !wgsl_item_extraction_contains_requested_item(extraction, requested_item) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn wgsl_import_candidate_error_path(
+  module_path : String,
+  requested_items : Array[String],
+) -> String {
+  if requested_items.length() == 0 {
+    return module_path
+  }
+  let item_list = requested_items.join(",")
+  "\{module_path}::{\{item_list}}"
+}
+
+///|
+fn Composer::select_wgsl_import_candidate_rel_path(
+  self : Composer,
+  module_path : String,
+  default_rel_path : String,
+  requested_items : Array[String],
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> String raise ComposerError {
+  if requested_items.length() == 0 {
+    return default_rel_path
+  }
+  let candidate_rel_paths = self.registry.candidate_rel_paths_for_module_path(
+    module_path,
+  )
+  if candidate_rel_paths.length() == 0 {
+    return default_rel_path
+  }
+  let supporting_rel_paths : Array[String] = []
+  for candidate_rel_path in candidate_rel_paths {
+    let candidate_source = match
+      self.registry.registered_source(candidate_rel_path) {
+      Some(source) => source
+      None => raise ComposerError::MissingRegisteredSource(candidate_rel_path)
+    }
+    let candidate_defs = self.active_compose_defs_for_rel_path(
+      candidate_rel_path,
+      session,
+      Some(importer_defs),
+    )
+    let active_candidate_source = apply_wgsl_template_consts(
+      apply_wgsl_ifdefs_strict_for_compose(candidate_source, candidate_defs),
+      candidate_defs.value_defines,
+    )
+    let extraction = extract_wgsl_module_item_origins_strict(
+      active_candidate_source, requested_items,
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    if wgsl_item_extraction_contains_all_requested_items(
+        extraction, requested_items,
+      ) {
+      supporting_rel_paths.push(candidate_rel_path)
+    }
+  }
+  if supporting_rel_paths.length() == 1 {
+    return supporting_rel_paths[0]
+  }
+  if supporting_rel_paths.length() == 0 {
+    raise ComposerError::FailedToResolveImport(
+      wgsl_import_candidate_error_path(module_path, requested_items),
+    )
+  }
+  let import_path = wgsl_import_candidate_error_path(
+    module_path, requested_items,
+  )
+  let rel_path_list = supporting_rel_paths.join(", ")
+  raise ComposerError::AmbiguousImportBinding(
+    "multiple registered WGSL modules define \{import_path}: \{rel_path_list}",
+  )
+}
+
+///|
 fn Composer::build_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -289,16 +389,18 @@ fn Composer::build_wgsl_import_requests_from_targets(
   }
   for target_plan in target_plans.plans {
     let requested_items = target_plan.requested_items
-    let resolved_module = target_plan.resolved_module
-    let module_path = resolved_module.module_path()
+    let base_resolved_module = target_plan.resolved_module
+    let module_path = base_resolved_module.module_path()
     let import_source = match
-      self.registry.registered_source(resolved_module.rel_path()) {
+      self.registry.registered_source(base_resolved_module.rel_path()) {
       Some(source) => source
       None =>
-        raise ComposerError::MissingRegisteredSource(resolved_module.rel_path())
+        raise ComposerError::MissingRegisteredSource(
+          base_resolved_module.rel_path(),
+        )
     }
     let import_defs = self.active_compose_defs_for_rel_path(
-      resolved_module.rel_path(),
+      base_resolved_module.rel_path(),
       session,
       Some(importer_defs),
     )
@@ -372,6 +474,16 @@ fn Composer::build_wgsl_import_requests_from_targets(
         import_full_module = true
       }
     }
+    let selected_rel_path = self.select_wgsl_import_candidate_rel_path(
+      module_path,
+      base_resolved_module.rel_path(),
+      requested_items,
+      session,
+      importer_defs,
+    )
+    let resolved_module = WgslResolvedImportModule(
+      module_path, selected_rel_path,
+    )
     if find_wgsl_import_request_index(
         requests,
         module_path,

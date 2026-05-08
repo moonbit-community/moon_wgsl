@@ -16,6 +16,7 @@
 pub struct WgslSourceRegistry {
   priv rel_to_source_ref : Ref[@hashmap.HashMap[String, String]]
   priv module_to_rel_ref : Ref[@hashmap.HashMap[String, String]]
+  priv module_to_rels_ref : Ref[@hashmap.HashMap[String, Array[String]]]
 }
 
 ///|
@@ -23,6 +24,7 @@ pub fn WgslSourceRegistry::default() -> WgslSourceRegistry {
   WgslSourceRegistry::{
     rel_to_source_ref: Ref(@hashmap.HashMap([])),
     module_to_rel_ref: Ref(@hashmap.HashMap([])),
+    module_to_rels_ref: Ref(@hashmap.HashMap([])),
   }
 }
 
@@ -41,8 +43,19 @@ fn WgslSourceRegistry::module_paths(
 }
 
 ///|
+fn WgslSourceRegistry::module_path_candidates(
+  self : WgslSourceRegistry,
+) -> @hashmap.HashMap[String, Array[String]] {
+  self.module_to_rels_ref.val
+}
+
+///|
 pub fn WgslSourceRegistry::clear(self : WgslSourceRegistry) -> Unit {
-  clear_wgsl_source_registry(self.source_registry(), self.module_paths())
+  clear_wgsl_source_registry(
+    self.source_registry(),
+    self.module_paths(),
+    self.module_path_candidates(),
+  )
 }
 
 ///|
@@ -55,6 +68,7 @@ pub fn WgslSourceRegistry::register_source(
   register_source_into(
     self.source_registry(),
     self.module_paths(),
+    self.module_path_candidates(),
     rel_path,
     source,
     explicit_module_path,
@@ -69,7 +83,6 @@ pub fn WgslSourceRegistry::analyze_source_files(
   let diagnostics : Array[WgslDiagnostic] = []
   analyze_source_files_against(
     copy_wgsl_source_registry_map(self.source_registry()),
-    copy_wgsl_import_module_map(self.module_paths()),
     files,
     diagnostics,
   )
@@ -85,6 +98,7 @@ pub fn WgslSourceRegistry::register_source_files_checked(
   register_source_files_checked_into(
     self.source_registry(),
     self.module_paths(),
+    self.module_path_candidates(),
     files,
     diagnostics,
   )
@@ -95,7 +109,12 @@ pub fn WgslSourceRegistry::register_source_files(
   self : WgslSourceRegistry,
   files : Array[WgslSourceFile],
 ) -> Unit {
-  register_source_files_into(self.source_registry(), self.module_paths(), files)
+  register_source_files_into(
+    self.source_registry(),
+    self.module_paths(),
+    self.module_path_candidates(),
+    files,
+  )
 }
 
 ///|
@@ -114,6 +133,17 @@ pub fn WgslSourceRegistry::copy_import_module_paths(
 }
 
 ///|
+pub fn WgslSourceRegistry::candidate_rel_paths_for_module_path(
+  self : WgslSourceRegistry,
+  module_path : String,
+) -> Array[String] {
+  copy_wgsl_import_module_candidates_for_path(
+    self.module_path_candidates(),
+    module_path,
+  )
+}
+
+///|
 pub fn WgslSourceRegistry::remove_source_and_module(
   self : WgslSourceRegistry,
   rel_path : String,
@@ -121,4 +151,9 @@ pub fn WgslSourceRegistry::remove_source_and_module(
 ) -> Unit {
   ignore(self.source_registry().remove(rel_path))
   ignore(self.module_paths().remove(module_path))
+  remove_wgsl_import_module_candidate(
+    self.module_path_candidates(),
+    module_path,
+    rel_path,
+  )
 }

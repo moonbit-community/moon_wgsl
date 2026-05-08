@@ -248,7 +248,9 @@ fn wgsl_ir_address_space_key(space : AddressSpace) -> String {
 
 ///|
 fn wgsl_ir_storage_access_key(access : StorageAccess) -> String {
-  if access.contains(StorageAccess::load()) &&
+  if access.contains(StorageAccess::atomic_access()) {
+    "atomic"
+  } else if access.contains(StorageAccess::load()) &&
     access.contains(StorageAccess::store()) {
     "read_write"
   } else if access.contains(StorageAccess::store()) {
@@ -264,6 +266,7 @@ fn wgsl_ir_storage_access_from_name(name : String) -> StorageAccess {
     "read" => StorageAccess::load()
     "write" => StorageAccess::store()
     "read_write" => StorageAccess::load().union(StorageAccess::store())
+    "atomic" => StorageAccess::atomic_access()
     _ => StorageAccess::load()
   }
 }

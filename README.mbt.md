@@ -203,8 +203,11 @@ test "README: bulk registry and relative imports" {
 }
 ```
 
-If you want collision diagnostics before mutating the registry, use the checked
-path:
+Duplicate `#define_import_path` files are registered as module candidates, which
+lets real shader trees keep dummy fallback modules next to feature-specific
+implementations. The checked path still catches rel-path content collisions, but
+duplicate module paths are resolved later by active shader defs and requested
+symbols:
 
 ```mbt check
 ///|
@@ -224,11 +227,15 @@ test "README: checked bulk registry" {
   let diagnostics : Array[@common.WgslDiagnostic] = registry.analyze_source_files(
     files,
   )
-  debug_inspect(diagnostics.length(), content="1")
+  debug_inspect(diagnostics.length(), content="0")
 
   let checked_diagnostics : Array[@common.WgslDiagnostic] = []
   registry.register_source_files_checked(files, checked_diagnostics)
-  debug_inspect(checked_diagnostics.length(), content="1")
+  debug_inspect(checked_diagnostics.length(), content="0")
+  debug_inspect(
+    registry.candidate_rel_paths_for_module_path("demo::dup").length(),
+    content="2",
+  )
 }
 ```
 
@@ -273,7 +280,8 @@ test "README: scan source tree" {
 }
 ```
 
-If you want to preflight a tree before registration, use the checked scan path:
+If you want to preflight a tree before registration, use the checked scan path.
+Duplicate module paths are reported as candidate sets, not errors:
 
 ```mbt check
 ///|
@@ -286,7 +294,7 @@ test "README: checked tree scan" {
   }
 
   debug_inspect(files.length(), content="2")
-  debug_inspect(diagnostics.length(), content="1")
+  debug_inspect(diagnostics.length(), content="0")
 }
 ```
 

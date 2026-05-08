@@ -1571,6 +1571,39 @@ test "WGSL AST lowerer resolves forward override types" {
 }
 
 ///|
+test "WGSL AST lowerer supports storage texture atomics" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var image: texture_storage_2d<r32uint, atomic>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    #|  textureAtomicMax(image, id.xy, 1u);
+    #|  textureAtomicMin(image, id.xy, 2u);
+    #|  textureAtomicAdd(image, id.xy, 3u);
+    #|  textureAtomicAnd(image, id.xy, 4u);
+    #|  textureAtomicOr(image, id.xy, 5u);
+    #|  textureAtomicXor(image, id.xy, 6u);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("texture_storage_2d<r32uint, atomic>"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("textureAtomicMax(image"), content="true")
+  debug_inspect(emitted.contains("textureAtomicMin(image"), content="true")
+  debug_inspect(emitted.contains("textureAtomicAdd(image"), content="true")
+  debug_inspect(emitted.contains("textureAtomicAnd(image"), content="true")
+  debug_inspect(emitted.contains("textureAtomicOr(image"), content="true")
+  debug_inspect(emitted.contains("textureAtomicXor(image"), content="true")
+}
+
+///|
 test "WGSL AST lowerer folds constant-backed array sizes" {
   let source =
     #|const COUNT: u32 = 4u;
@@ -1814,6 +1847,24 @@ test "WGSL IR lowerer supports complete storage texture format names" {
     emitted.contains("texture_storage_2d<rg32float, read>"),
     content="true",
   )
+}
+
+///|
+test "WGSL IR lowerer infers r64uint textureLoad result as u64 vector" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_storage_2d<r64uint, read>;
+    #|
+    #|fn main(coords: vec2<u32>) -> u32 {
+    #|  let value = textureLoad(tex, coords);
+    #|  return u32(value.x);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("vec4<u64> = textureLoad"), content="true")
 }
 
 ///|

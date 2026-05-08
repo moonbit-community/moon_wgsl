@@ -127,6 +127,12 @@ textureSampleCompareLevel	texture	ir-advanced-texture-fragment	naga-ir	textureSa
 textureSampleGrad	texture	ir-advanced-texture-fragment	naga-ir	textureSampleGrad	Official texture builtin covered by IR roundtrip plus Naga validation.
 textureSampleLevel	texture	ir-advanced-texture-fragment	naga-ir	textureSampleLevel	Official texture builtin covered by IR roundtrip plus Naga validation.
 textureStore	texture	ir-texture-compute	naga-ir	textureStore	Official texture store builtin covered by IR roundtrip plus Naga validation.
+textureAtomicAdd	texture	ir-texture-atomic-compute	naga-ir	textureAtomicAdd	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
+textureAtomicAnd	texture	ir-texture-atomic-compute	naga-ir	textureAtomicAnd	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
+textureAtomicMax	texture	ir-texture-atomic-compute	naga-ir	textureAtomicMax	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
+textureAtomicMin	texture	ir-texture-atomic-compute	naga-ir	textureAtomicMin	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
+textureAtomicOr	texture	ir-texture-atomic-compute	naga-ir	textureAtomicOr	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
+textureAtomicXor	texture	ir-texture-atomic-compute	naga-ir	textureAtomicXor	Storage texture atomic builtin covered by IR roundtrip plus Naga validation with texture-atomic capability.
 workgroupBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	workgroupBarrier	Official control barrier builtin covered by IR roundtrip plus Naga validation.
 subgroupAdd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAdd	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
 subgroupAll	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAll	Subgroup vote builtin covered by IR roundtrip plus Naga validation with subgroup capability.

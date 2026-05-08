@@ -144,9 +144,9 @@ test "naga_oil: bulk source registration resolves relative quoted file paths" {
 }
 
 ///|
-test "naga_oil: registry analysis reports duplicate module paths in one batch" {
+test "naga_oil: registry analysis allows duplicate module path candidates" {
   let registry = @resolver.WgslSourceRegistry::default()
-  let diagnostics = registry.analyze_source_files([
+  let files : Array[@common.WgslSourceFile] = [
     {
       rel_path: "shaders/demo/a.wgsl",
       source: "#define_import_path demo::dup\nfn a() -> f32 { return 1f; }\n",
@@ -155,14 +155,14 @@ test "naga_oil: registry analysis reports duplicate module paths in one batch" {
       rel_path: "shaders/demo/b.wgsl",
       source: "#define_import_path demo::dup\nfn b() -> f32 { return 2f; }\n",
     },
-  ])
-  debug_inspect(diagnostics.length(), content="1")
-  debug_inspect(diagnostics[0].severity, content="Error")
-  debug_inspect(diagnostics[0].symbol_name, content="Some(\"demo::dup\")")
-  debug_inspect(
-    diagnostics[0].message,
-    content="\"multiple WGSL source files define the same #define_import_path in one batch\"",
-  )
+  ]
+  let diagnostics = registry.analyze_source_files(files)
+  debug_inspect(diagnostics.length(), content="0")
+  registry.register_source_files(files)
+  let candidates = registry.candidate_rel_paths_for_module_path("demo::dup")
+  debug_inspect(candidates.length(), content="2")
+  debug_inspect(candidates[0], content="\"shaders/demo/a.wgsl\"")
+  debug_inspect(candidates[1], content="\"shaders/demo/b.wgsl\"")
 }
 
 ///|
@@ -244,7 +244,7 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
 }
 
 ///|
-test "naga_oil: scan_wgsl_source_files_checked reports duplicate module paths" {
+test "naga_oil: scan_wgsl_source_files_checked allows duplicate module candidates" {
   let (files, diagnostics) = @resolver.scan_wgsl_source_files_checked(
     "testdata/wgsl_scan_dups",
     @common.WgslSourceScanOptions::default(),
@@ -252,7 +252,5 @@ test "naga_oil: scan_wgsl_source_files_checked reports duplicate module paths" {
     _ => abort("expected checked WGSL source scan success")
   }
   debug_inspect(files.length(), content="2")
-  debug_inspect(diagnostics.length(), content="1")
-  debug_inspect(diagnostics[0].severity, content="Error")
-  debug_inspect(diagnostics[0].symbol_name, content="Some(\"demo::dup\")")
+  debug_inspect(diagnostics.length(), content="0")
 }

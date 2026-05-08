@@ -48,6 +48,9 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'texture_external' "$source"; then
     validate_args+=(--capability texture-external)
   fi
+  if grep -q 'textureAtomic' "$source" || grep -q 'texture_storage_.*atomic' "$source"; then
+    validate_args+=(--capability texture-atomic)
+  fi
   if grep -q 'enable wgpu_ray_query' "$source" || grep -q 'rayQuery' "$source" || grep -q 'acceleration_structure' "$source"; then
     validate_args+=(--capability ray-query)
   fi

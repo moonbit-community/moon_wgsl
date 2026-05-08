@@ -17,7 +17,9 @@ fn wgsl_ir_builtin_scalar_alias(name : String) -> TypeInner? {
   match name {
     "bool" => Some(TypeInner::Scalar(Scalar::Scalar(Bool, 1)))
     "i32" => Some(TypeInner::Scalar(Scalar::Scalar(Sint, 4)))
+    "i64" => Some(TypeInner::Scalar(Scalar::Scalar(Sint, 8)))
     "u32" => Some(TypeInner::Scalar(Scalar::Scalar(Uint, 4)))
+    "u64" => Some(TypeInner::Scalar(Scalar::Scalar(Uint, 8)))
     "f32" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 4)))
     "f16" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 2)))
     _ => None

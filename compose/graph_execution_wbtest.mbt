@@ -115,6 +115,42 @@ test "composer exposes IR-backed compose output" {
 }
 
 ///|
+test "composer selects duplicate import-path candidate by active requested symbols" {
+  let composer = Composer::default()
+  let real_source =
+    #|#define_import_path test::candidate
+    #|
+    #|#ifdef USE_REAL
+    #|fn helper() -> u32 {
+    #|  return 7u;
+    #|}
+    #|#endif
+    #|
+  let dummy_source =
+    #|#define_import_path test::candidate
+    #|
+    #|// intentionally empty fallback candidate
+    #|
+  composer.register_source("real.wgsl", real_source)
+  composer.register_source("dummy.wgsl", dummy_source)
+  let root_source =
+    #|#import test::candidate::helper
+    #|
+    #|fn main() -> u32 {
+    #|  return helper();
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let options = WgslComposeOptions::default()
+  options.defines.set("USE_REAL", true)
+  let emitted = composer.compose_wgsl("root.wgsl", options) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("fn helper"), content="true")
+  debug_inspect(emitted.contains("return 7u"), content="true")
+}
+
+///|
 test "composer resolves transitive partial-import constants before IR" {
   let composer = Composer::default()
   let maths_source =

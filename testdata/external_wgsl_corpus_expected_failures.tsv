@@ -1,19 +1,5 @@
 # id	rel_path	reason	detail
-bevy	crates/bevy_core_pipeline/src/tonemapping/lut_bindings.wgsl	compose_naga_invalid	Expected standalone validation failure: shader library binding placeholders require concrete pipeline binding-index value defines.
 bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	compose_failed	Known upstream/profile mismatch: source imports bevy_pbr::light_probes while checked-out library defines bevy_pbr::light_probe.
-bevy	crates/bevy_pbr/src/decal/forward_decal.wgsl	compose_failed	Known profile/lowering gap: forward decal expects vertex-output instance_index under a concrete pipeline profile.
-bevy	crates/bevy_pbr/src/deferred/deferred_lighting.wgsl	compose_failed	Known compose dependency-resolution gap: transitive default-alias type dependency in Bevy PBR mesh view bindings remains unresolved.
-bevy	crates/bevy_pbr/src/light_probe/environment_map.wgsl	compose_failed	Known compose dependency-resolution gap: transitive default-alias type dependency in Bevy PBR mesh view bindings remains unresolved.
-bevy	crates/bevy_pbr/src/meshlet/cull_bvh.wgsl	compose_failed	Known meshlet profile gap: meshlet bindings are pipeline-owned resources not fully represented by the current profile matrix.
-bevy	crates/bevy_pbr/src/meshlet/cull_clusters.wgsl	compose_failed	Known meshlet profile gap: meshlet bindings are pipeline-owned resources not fully represented by the current profile matrix.
-bevy	crates/bevy_pbr/src/meshlet/cull_instances.wgsl	compose_failed	Known meshlet profile gap: meshlet depth-pyramid bindings are pipeline-owned resources not fully represented by the current profile matrix.
-bevy	crates/bevy_pbr/src/meshlet/meshlet_cull_shared.wgsl	compose_failed	Known meshlet profile gap: meshlet bindings are pipeline-owned resources not fully represented by the current profile matrix.
-bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	compose_failed	Known meshlet compose gap: imported resolve_vertex_output function is used as a type-level symbol in the current lowerer path.
-bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_hardware_raster.wgsl	compose_failed	Known meshlet profile gap: previous-raster-count bindings are pipeline-owned resources not fully represented by the current profile matrix.
-bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	compose_failed	Known meshlet profile gap: previous-raster-count bindings are pipeline-owned resources not fully represented by the current profile matrix.
-bevy	crates/bevy_pbr/src/ssr/raymarch.wgsl	compose_failed	Known compose dependency-resolution gap: transitive default-alias type dependency in Bevy PBR mesh view bindings remains unresolved.
-bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	compose_failed	Known compose dependency-resolution gap: transitive default-alias type dependency in Bevy PBR mesh view bindings remains unresolved.
-bevy	crates/bevy_ui_render/src/box_shadow.wgsl	compose_failed	Known UI profile/lowering gap: box shadow requires SHADOW_SAMPLES and exposes a non-constant global-expression lowering path.
 learn-wgpu	code/compute/src/filter.wgsl	raw_invalid_no_preprocessor	Expected invalid external source under standalone Naga validation; this file is not a preprocessing input.
 naga	tests/in/binding-arrays.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/in/binding-buffer-arrays.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
@@ -48,7 +34,6 @@ webgpu-samples	sample/cornell/raytracer.wgsl	raw_invalid_no_preprocessor	Expecte
 webgpu-samples	sample/cornell/tonemapper.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
 webgpu-samples	sample/primitivePicking/fragmentForwardRendering.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
 webgpu-samples	sample/skinnedMesh/gltf.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
-wgpu	examples/bug-repro/01_texture_atomic_bug/src/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/big_compute_buffers/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/cooperative_matrix/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/cooperative_matrix/shader_f16_16x16.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
@@ -58,7 +43,6 @@ wgpu	examples/features/src/ray_cube_normals/shader.wgsl	raw_invalid_no_preproces
 wgpu	examples/features/src/texture_arrays/indexing.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/texture_arrays/non_uniform_indexing.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/src/copy_texture_to_buffer.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
-wgpu	tests/tests/wgpu-gpu/image_atomics/image_32_atomics.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/image_atomics/image_64_atomics.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/mesh_shader/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/multiview/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
