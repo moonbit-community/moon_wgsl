@@ -1,0 +1,9 @@
+# id	capabilities	checks	notes
+vector-select-modf-frexp	-	-	Generated differential case: vector select plus predeclared modf/frexp result members in value position.
+integer-vector-builtins	-	-	Generated differential case: integer vector bit builtins through nested expression lowering.
+texture-optional-arguments	-	textureSampleBaseClampToEdge,textureDimensions,textureGather	Generated differential case: texture optional argument shapes, gather component, and dimensions level overload.
+atomic-barrier-statements	-	workgroupBarrier,storageBarrier,textureBarrier	Generated differential case: statement-only atomic and barrier builtins must survive IR emission.
+pointer-deref-store	-	*(p) =	Generated differential case: direct pointer dereference compound stores must not emit assignment to the pointer variable itself.
+layout-abi-preservation	-	@size(16),@align(16),var<storage, read>	Generated differential case: layout attributes and storage default access must survive IR emission.
+entry-io-preservation	-	@interpolate(flat),@interpolate(perspective, centroid),@builtin(position)	Generated differential case: entry point IO attributes must survive IR emission.
+ray-query-full	ray-query	rayQueryGenerateIntersection,rayQueryConfirmIntersection,rayQueryTerminate	Generated differential case: all ray-query statement and expression forms through IR and Naga capability validation.

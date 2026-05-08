@@ -104,6 +104,11 @@ jobs:
           ulimit -s 8176
           bash tools/check_wgsl_builtin_coverage.sh
 
+      - name: WGSL generated differential
+        run: |
+          ulimit -s 8176
+          bash tools/check_wgsl_differential_generated.sh
+
       - name: wgpu runtime validation
         run: |
           ulimit -s 8176

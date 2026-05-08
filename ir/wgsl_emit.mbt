@@ -721,7 +721,7 @@ fn WgslIrEmitter::emit_statement(
       self.emit_memory_barrier_statement(out, barrier, indent)
     Store(pointer, value) =>
       out.write_string(
-        "\{pad}\{self.function_pointer_expression(function, pointer)} = \{self.function_expression(function, value)};\n",
+        "\{pad}\{self.function_store_pointer_expression(function, pointer)} = \{self.function_expression(function, value)};\n",
       )
     ImageStore(image, coordinate, array_index, value) => {
       out.write_string(
@@ -751,6 +751,38 @@ fn WgslIrEmitter::emit_statement(
         out, function, query, query_function, indent,
       )
     _ => raise WgslIrEmitError::Unsupported("statement kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::function_store_pointer_expression(
+  self : WgslIrEmitter,
+  function : Function,
+  handle : Handle,
+) -> String raise WgslIrEmitError {
+  let expression = match function.expressions.items.get(handle.index()) {
+    Some(value) => value
+    None =>
+      raise WgslIrEmitError::MissingHandle(
+        "function store pointer expression \{handle.index()}",
+      )
+  }
+  let text = self.function_pointer_expression(function, handle)
+  match expression {
+    Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) => text
+    _ =>
+      match self.expression_type(Some(function), handle) {
+        Some(ty) =>
+          match self.shader_module.types.items.get(ty.index()) {
+            Some(type_) =>
+              match type_.inner {
+                Pointer(_, _) => "*(\{text})"
+                _ => text
+              }
+            None => text
+          }
+        None => text
+      }
   }
 }
 

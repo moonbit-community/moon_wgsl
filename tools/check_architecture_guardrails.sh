@@ -152,6 +152,14 @@ if ! rg -n 'bash tools/check_wgsl_builtin_coverage\.sh' .github/workflows/check.
   fail "CI must run the WGSL builtin coverage gate"
 fi
 
+if [[ ! -f testdata/wgsl_differential_generated_manifest.tsv ]]; then
+  fail "WGSL generated differential coverage must be driven by a manifest"
+fi
+
+if ! rg -n 'bash tools/check_wgsl_differential_generated\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must run the WGSL generated differential gate"
+fi
+
 if ! rg -n 'bash tools/check_moon_test_filters\.sh' .github/workflows/check.yml >/dev/null; then
   fail "CI must fail targeted moon test filters that match zero tests"
 fi

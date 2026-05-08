@@ -7,3 +7,4 @@
 *out-of-range abstract int*
 *storage access defaults*
 *multiple branch*
+*pointer dereference stores*

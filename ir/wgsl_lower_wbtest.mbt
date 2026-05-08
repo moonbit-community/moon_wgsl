@@ -1269,6 +1269,29 @@ test "WGSL AST lowerer supports phony assignment and address-of lvalues" {
 }
 
 ///|
+test "WGSL IR emitter preserves direct pointer dereference stores" {
+  let source =
+    #|var<private> global_value: u32;
+    #|
+    #|fn inc(p: ptr<private, u32>) {
+    #|  (*p) += 1u;
+    #|}
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  inc(&global_value);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("*(p) ="), content="true")
+  debug_inspect(emitted.contains("p ="), content="false")
+}
+
+///|
 test "WGSL AST lowerer preserves storage access defaults" {
   let source =
     #|struct S {
