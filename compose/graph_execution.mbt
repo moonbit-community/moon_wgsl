@@ -64,26 +64,23 @@ fn wgsl_compose_assigned_final_name(
 fn WgslComposeSession::module_rel_path_for_module_path(
   self : WgslComposeSession,
   module_path : String,
-) -> String {
-  match self.modules.get(module_path) {
-    Some(rel_path) => rel_path
-    None => ""
-  }
+) -> String? {
+  self.modules.get(module_path)
 }
 
 ///|
 fn WgslComposeSession::module_path_for_rel_path(
   self : WgslComposeSession,
   rel_path : String,
-) -> String {
+) -> String? {
   let normalized_rel = normalize_shader_rel_path(rel_path)
   for entry in self.modules.iter() {
     let (module_path, module_rel_path) = entry
     if normalize_shader_rel_path(module_rel_path) == normalized_rel {
-      return module_path
+      return Some(module_path)
     }
   }
-  ""
+  None
 }
 
 ///|
@@ -94,10 +91,9 @@ fn record_wgsl_virtual_override_final_names_from_source(
 ) -> Unit {
   let composing_root = session.graph_planning_rel_paths.length() <= 1 &&
     session.active_rel_paths.length() <= 1
-  let override_module_path = if composing_root {
-    ""
-  } else {
-    session.module_path_for_rel_path(rel_path)
+  let override_module_path = match session.module_path_for_rel_path(rel_path) {
+    Some(module_path) if !composing_root => module_path
+    _ => ""
   }
   let targets = collect_wgsl_virtual_override_targets_strict(source) catch {
     _ => return
@@ -111,9 +107,13 @@ fn record_wgsl_virtual_override_final_names_from_source(
     if original_name == "" {
       continue
     }
-    if target_module_path != "" &&
-      session.module_rel_path_for_module_path(target_module_path) == "" {
-      continue
+    let target_rel_path = if target_module_path == "" {
+      rel_path
+    } else {
+      match session.module_rel_path_for_module_path(target_module_path) {
+        Some(resolved_rel_path) => resolved_rel_path
+        None => continue
+      }
     }
     let target_name = wgsl_naga_oil_decorated_final_name(
       target_module_path, original_name,
@@ -121,11 +121,6 @@ fn record_wgsl_virtual_override_final_names_from_source(
     let override_name = wgsl_naga_oil_virtual_override_final_name(
       target_module_path, override_module_path, original_name,
     )
-    let target_rel_path = if target_module_path == "" {
-      rel_path
-    } else {
-      session.module_rel_path_for_module_path(target_module_path)
-    }
     session.record_virtual_override_final_name(
       raw_target, target_rel_path, target_name, override_name,
     )
@@ -144,8 +139,12 @@ fn record_wgsl_planned_final_names_from_extraction(
   }
   for origin in extraction.origins() {
     let identity = WgslIrSymbolIdentity(rel_path, origin.name())
+    let module_path = match session.module_path_for_rel_path(rel_path) {
+      Some(value) => value
+      None => ""
+    }
     let final_name = wgsl_compose_assigned_final_name(
-      session.module_path_for_rel_path(rel_path),
+      module_path,
       alias_prefixes,
       origin.name(),
     )

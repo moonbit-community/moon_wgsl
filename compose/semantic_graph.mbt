@@ -316,7 +316,7 @@ fn resolve_wgsl_semantic_import_module(
           Some(name) if name.trim() != "" => name.trim().to_owned()
           _ => import_path
         }
-      None => import_path
+      None => return None
     }
     return Some(WgslResolvedImportModule(module_path, rel_path))
   }

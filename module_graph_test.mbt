@@ -68,6 +68,35 @@ test "naga_oil: registered source registry tracks define_import_path" {
 }
 
 ///|
+test "registry source replacement removes stale module path entries" {
+  let registry = @resolver.WgslSourceRegistry::default()
+  ignore(
+    registry.register_source(
+      "shaders/demo/module.wgsl",
+      "#define_import_path demo::old\nfn old() {}\n",
+      None,
+    ),
+  )
+  ignore(
+    registry.register_source(
+      "shaders/demo/module.wgsl",
+      "#define_import_path demo::new\nfn new() {}\n",
+      None,
+    ),
+  )
+  let modules = registry.copy_import_module_paths()
+  debug_inspect(modules.get("demo::old"), content="None")
+  debug_inspect(
+    modules.get("demo::new"),
+    content="Some(\"shaders/demo/module.wgsl\")",
+  )
+  let resolved_old = @resolver.resolve_wgsl_import_module_in_registry(
+    registry, "demo::old::old", modules,
+  )
+  debug_inspect(resolved_old, content="None")
+}
+
+///|
 test "naga_oil: resolve import module prefers registered map entries" {
   let registry = @resolver.WgslSourceRegistry::default()
   ignore(

@@ -284,7 +284,8 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let import_source = match
       self.registry.registered_source(resolved_module.rel_path()) {
       Some(source) => source
-      None => ""
+      None =>
+        raise ComposerError::MissingRegisteredSource(resolved_module.rel_path())
     }
     let import_defs = self.active_compose_defs_for_rel_path(
       resolved_module.rel_path(),

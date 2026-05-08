@@ -97,6 +97,61 @@ test "WGSL AST lowerer preserves global and function const_asserts in IR" {
 }
 
 ///|
+test "WGSL AST lowerer preserves barrier statement calls in IR" {
+  let source =
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  workgroupBarrier();
+    #|  storageBarrier();
+    #|  textureBarrier();
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let statements = module_.entry_points[0].function.body.statements
+  match statements[0] {
+    ControlBarrier(barrier) =>
+      debug_inspect(barrier == Barrier::work_group(), content="true")
+    _ => abort("expected workgroup control barrier")
+  }
+  match statements[1] {
+    MemoryBarrier(barrier) =>
+      debug_inspect(barrier == Barrier::storage(), content="true")
+    _ => abort("expected storage memory barrier")
+  }
+  match statements[2] {
+    MemoryBarrier(barrier) =>
+      debug_inspect(barrier == Barrier::texture(), content="true")
+    _ => abort("expected texture memory barrier")
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("workgroupBarrier();"), content="true")
+  debug_inspect(emitted.contains("storageBarrier();"), content="true")
+  debug_inspect(emitted.contains("textureBarrier();"), content="true")
+}
+
+///|
+test "WGSL AST lowerer rejects barrier calls in value position" {
+  let source =
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  let value = workgroupBarrier();
+    #|}
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message.contains("barrier builtin has no value: workgroupBarrier"),
+    content="true",
+  )
+}
+
+///|
 test "WGSL AST lowerer maps official IO builtins into IR bindings" {
   let source =
     #|enable subgroups;
@@ -753,6 +808,44 @@ test "WGSL AST lowerer rejects runtime local const initializers" {
   debug_inspect(
     message,
     content="\"unsupported WGSL expression: local const initializer is not a const expression in function main\"",
+  )
+}
+
+///|
+test "WGSL AST lowerer rejects out-of-range abstract int contextualized to i32" {
+  let source =
+    #|const VALUE: i32 = 2147483648;
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"unsupported WGSL expression: i32 literal 2147483648\"",
+  )
+}
+
+///|
+test "WGSL AST lowerer rejects out-of-range abstract int switch selectors" {
+  let source =
+    #|const CASE = 2147483648;
+    #|fn main(value: i32) -> u32 {
+    #|  switch value {
+    #|    case CASE: { return 1u; }
+    #|    default: { return 0u; }
+    #|  }
+    #|}
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"unsupported WGSL expression: i32 literal 2147483648 in function main\"",
   )
 }
 

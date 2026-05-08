@@ -34,6 +34,27 @@ if rg -n 'F16Bits|F16Literal => \{[[:space:]]*let .*: Int' ir --glob '*.mbt' >"$
   fail "f16 literals must use semantic float values, not integer bit placeholders"
 fi
 
+if rg -n 'Abstract\(value\).*value\.to_int\(\)|SwitchValue::I32\(value\.to_int\(\)\)' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "abstract integer lowering must use checked i32/u32 conversion helpers"
+fi
+
+if rg -n -U 'registered_source\([^)]*\)[\s\S]{0,120}None => ""|registered_source\([^)]*\)[\s\S]{0,120}None => import_path' \
+  compose --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "resolved registered-source lookups must not fabricate empty or import-path fallback values"
+fi
+
+if rg -n 'module_rel_path_for_module_path\([^)]*\) == ""|module_path_for_rel_path\([^)]*\),|session\.module_path_for_rel_path\(rel_path\)[[:space:]]*$' \
+  compose --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose module path lookups must use Option, not empty-string sentinels"
+fi
+
+if ! rg -n 'remove_module_paths_for_rel_path\(module_paths, normalized_rel\)' resolver/registry_ops.mbt >/dev/null; then
+  fail "registry rel_path replacement must clear stale module-path mappings first"
+fi
+
 if rg -n 'CachedQualifiedAliasBinding' compose transform ir --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "cached alias bindings must not be a separate compose binding phase"
@@ -84,6 +105,22 @@ fi
 if rg -n -U 'let values : Array\[Handle\] = \[\][\s\S]{0,400}Statement::Call' ir/wgsl_lower.mbt >"$matches_file"; then
   cat "$matches_file" >&2
   fail "statement-level user function calls must not manually lower raw call arguments"
+fi
+
+if ! rg -n 'wgsl_ir_barrier_statement_from_call' ir/wgsl_lower.mbt >/dev/null; then
+  fail "barrier builtins must lower as IR barrier statements before expression fallback"
+fi
+
+if ! rg -n 'barrier builtin has no value' ir/wgsl_lower.mbt >/dev/null; then
+  fail "barrier builtins must be rejected explicitly in value position"
+fi
+
+if ! rg -n 'workgroupBarrier\(\);' ir/wgsl_emit.mbt >/dev/null; then
+  fail "IR emitter must preserve WGSL control barrier calls"
+fi
+
+if ! rg -n 'storageBarrier\(\);' ir/wgsl_emit.mbt >/dev/null; then
+  fail "IR emitter must preserve WGSL memory barrier calls"
 fi
 
 if rg -n 'WgslReferenceRewriteBinding \{[^}]*rel_path|WgslReferenceRewriteBinding \{[^}]*original_name' -U transform --glob '*.mbt' >"$matches_file"; then

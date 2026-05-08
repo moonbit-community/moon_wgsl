@@ -1629,7 +1629,7 @@ fn wgsl_ir_switch_value_from_expression(
     Some(Expression::Literal(Literal::I32(value))) => SwitchValue::I32(value)
     Some(Expression::Literal(Literal::U32(value))) => SwitchValue::U32(value)
     Some(Expression::Literal(Literal::AbstractInt(value))) =>
-      SwitchValue::I32(value.to_int())
+      SwitchValue::I32(wgsl_ir_int64_to_i32(value))
     Some(Expression::Constant(const_handle)) =>
       lowerer.switch_value_from_constant(const_handle)
     _ =>
@@ -1741,11 +1741,11 @@ fn WgslIrIntegerValue::is_unsigned(self : WgslIrIntegerValue) -> Bool {
 ///|
 fn WgslIrIntegerValue::to_switch_value(
   self : WgslIrIntegerValue,
-) -> SwitchValue {
+) -> SwitchValue raise WgslIrLowerError {
   match self {
     Unsigned(value) => SwitchValue::U32(value)
     Signed(value) => SwitchValue::I32(value)
-    Abstract(value) => SwitchValue::I32(value.to_int())
+    Abstract(value) => SwitchValue::I32(wgsl_ir_int64_to_i32(value))
   }
 }
 
@@ -1755,7 +1755,7 @@ fn WgslIrIntegerValue::to_signed_int(
 ) -> Int raise WgslIrLowerError {
   match self {
     Signed(value) => value
-    Abstract(value) => value.to_int()
+    Abstract(value) => wgsl_ir_int64_to_i32(value)
     Unsigned(value) =>
       match wgsl_ir_uint_literal_to_small_int(value) {
         Some(value) => value
@@ -1775,8 +1775,28 @@ fn WgslIrIntegerValue::to_unsigned(
     Unsigned(value) => value
     Signed(value) => wgsl_ir_non_negative_int_to_uint(value)
     Abstract(value) => {
-      let as_int = value.to_int()
-      wgsl_ir_non_negative_int_to_uint(as_int)
+      if value < Int64::from_int(0) {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "unsigned integer expression contains a negative operand",
+        )
+      }
+      let max : Int64 = @strconv.from_str("4294967295") catch {
+        _ =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "integer expression is outside unsigned int range",
+          )
+      }
+      if value > max {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "integer expression is outside unsigned int range",
+        )
+      }
+      @strconv.from_str("\{value}") catch {
+        _ =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "integer expression is outside unsigned int range",
+          )
+      }
     }
   }
 }
@@ -3212,39 +3232,45 @@ fn WgslIrLowerer::lower_call_statement(
       let arguments = wgsl_ir_call_arguments(arguments)
       match callee.kind() {
         Identifier(name) =>
-          match wgsl_ir_atomic_function_from_name(name.name()) {
-            Some(atomic_function) => {
-              let handle = self.lower_function_atomic_call(
-                atomic_function, arguments, function, scope,
-              )
-              block.push(Statement::Emit(HandleRange(handle, handle)))
-            }
+          match wgsl_ir_barrier_statement_from_call(name.name(), arguments) {
+            Some(statement) => block.push(statement)
             None =>
-              match self.function_names.get(name.name()) {
-                Some(handle) => {
-                  let values = self.lower_user_function_call_arguments(
-                    arguments, function, scope,
+              match wgsl_ir_atomic_function_from_name(name.name()) {
+                Some(atomic_function) => {
+                  let handle = self.lower_function_atomic_call(
+                    atomic_function, arguments, function, scope,
                   )
-                  block.push(Statement::Call(handle, values, None))
+                  block.push(Statement::Emit(HandleRange(handle, handle)))
                 }
                 None =>
-                  if !self.lower_ray_query_statement_call(
-                      name.name(),
-                      arguments,
-                      function,
-                      scope,
-                      block,
-                    ) &&
-                    !self.lower_texture_statement_call(
-                      name.name(),
-                      arguments,
-                      function,
-                      scope,
-                      block,
-                    ) {
-                    ignore(
-                      self.lower_function_expression_node(root, function, scope),
-                    )
+                  match self.function_names.get(name.name()) {
+                    Some(handle) => {
+                      let values = self.lower_user_function_call_arguments(
+                        arguments, function, scope,
+                      )
+                      block.push(Statement::Call(handle, values, None))
+                    }
+                    None =>
+                      if !self.lower_ray_query_statement_call(
+                          name.name(),
+                          arguments,
+                          function,
+                          scope,
+                          block,
+                        ) &&
+                        !self.lower_texture_statement_call(
+                          name.name(),
+                          arguments,
+                          function,
+                          scope,
+                          block,
+                        ) {
+                        ignore(
+                          self.lower_function_expression_node(
+                            root, function, scope,
+                          ),
+                        )
+                      }
                   }
               }
           }
@@ -3253,6 +3279,51 @@ fn WgslIrLowerer::lower_call_statement(
     }
     _ => ignore(self.lower_function_expression_node(root, function, scope))
   }
+}
+
+///|
+priv enum WgslIrBarrierBuiltin {
+  BarrierControl(Barrier)
+  BarrierMemory(Barrier)
+}
+
+///|
+fn wgsl_ir_barrier_builtin_from_name(name : String) -> WgslIrBarrierBuiltin? {
+  match name {
+    "workgroupBarrier" => Some(BarrierControl(Barrier::work_group()))
+    "storageBarrier" => Some(BarrierMemory(Barrier::storage()))
+    "textureBarrier" => Some(BarrierMemory(Barrier::texture()))
+    "subgroupBarrier" => Some(BarrierControl(Barrier::sub_group()))
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_barrier_statement_from_call(
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+) -> Statement? raise WgslIrLowerError {
+  match wgsl_ir_barrier_builtin_from_name(name) {
+    Some(barrier) => {
+      guard arguments.length() == 0 else {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "\{name} expects no arguments",
+        )
+      }
+      match barrier {
+        BarrierControl(barrier) => Some(Statement::ControlBarrier(barrier))
+        BarrierMemory(barrier) => Some(Statement::MemoryBarrier(barrier))
+      }
+    }
+    None => None
+  }
+}
+
+///|
+fn wgsl_ir_barrier_value_error(name : String) -> WgslIrLowerError {
+  WgslIrLowerError::UnsupportedExpression(
+    "barrier builtin has no value: \{name}",
+  )
 }
 
 ///|
@@ -4282,6 +4353,9 @@ fn WgslIrLowerer::infer_expression_type(
                     self.infer_select_expression_type(arguments, name)
                   } else if ident.name() == "array" {
                     self.infer_array_constructor_type_from_ast(arguments, name)
+                  } else if wgsl_ir_barrier_builtin_from_name(ident.name())
+                    is Some(_) {
+                    raise wgsl_ir_barrier_value_error(ident.name())
                   } else {
                     match wgsl_ir_relational_function_from_name(ident.name()) {
                       Some(relational_function) =>
@@ -5043,6 +5117,9 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
             Identifier(name) =>
               if name.name() == "select" {
                 self.lower_global_select_call(arguments)
+              } else if wgsl_ir_barrier_builtin_from_name(name.name())
+                is Some(_) {
+                raise wgsl_ir_barrier_value_error(name.name())
               } else {
                 match wgsl_ir_math_function_from_name(name.name()) {
                   Some(math_function) =>
@@ -5657,6 +5734,8 @@ fn WgslIrLowerer::lower_unclassified_named_function_call_expression(
 ) -> Handle raise WgslIrLowerError {
   if name == "select" {
     self.lower_function_select_call(arguments, function, scope)
+  } else if wgsl_ir_barrier_builtin_from_name(name) is Some(_) {
+    raise wgsl_ir_barrier_value_error(name)
   } else {
     match wgsl_ir_atomic_function_from_name(name) {
       Some(atomic_function) =>

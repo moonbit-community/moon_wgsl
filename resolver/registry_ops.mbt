@@ -69,6 +69,7 @@ fn register_source_into(
   if normalized_rel == "" {
     return None
   }
+  remove_module_paths_for_rel_path(module_paths, normalized_rel)
   source_registry.set(normalized_rel, source)
   let mut module_path : String? = explicit_module_path
   if module_path is None {
@@ -81,6 +82,23 @@ fn register_source_into(
     module_paths.set(path, normalized_rel)
   }
   Some(normalized_rel)
+}
+
+///|
+fn remove_module_paths_for_rel_path(
+  module_paths : @hashmap.HashMap[String, String],
+  rel_path : String,
+) -> Unit {
+  let stale_modules : Array[String] = []
+  for entry in module_paths.iter() {
+    let (module_path, module_rel_path) = entry
+    if normalize_shader_rel_path(module_rel_path) == rel_path {
+      stale_modules.push(module_path)
+    }
+  }
+  for module_path in stale_modules {
+    ignore(module_paths.remove(module_path))
+  }
 }
 
 ///|

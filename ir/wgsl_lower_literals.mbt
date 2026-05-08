@@ -36,7 +36,7 @@ fn wgsl_ir_contextualize_literal(
   scalar : Scalar,
 ) -> Literal raise WgslIrLowerError {
   match (literal, scalar.kind, scalar.width) {
-    (AbstractInt(value), Sint, _) => Literal::I32(value.to_int())
+    (AbstractInt(value), Sint, _) => Literal::I32(wgsl_ir_int64_to_i32(value))
     (AbstractInt(value), Uint, _) => {
       let parsed : UInt = @strconv.from_str("\{value}") catch {
         _ =>
@@ -94,9 +94,15 @@ fn wgsl_ir_i32_literal_from_numeric_literal(
   literal : @ast.WgslNumericLiteral,
 ) -> Int raise WgslIrLowerError {
   let value = wgsl_ir_int64_literal_from_text(literal.raw_text)
+  wgsl_ir_int64_to_i32(value)
+}
+
+///|
+fn wgsl_ir_int64_to_i32(value : Int64) -> Int raise WgslIrLowerError {
+  let min = Int64::from_int(-2147483648)
   let max = Int64::from_int(2147483647)
-  if value > max {
-    raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+  if value < min || value > max {
+    raise WgslIrLowerError::UnsupportedExpression("i32 literal \{value}")
   }
   value.to_int()
 }

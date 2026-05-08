@@ -715,6 +715,10 @@ fn WgslIrEmitter::emit_statement(
       out.write_string(
         "\{pad}const_assert \{self.abstract_float_function_expression(function, condition)};\n",
       )
+    ControlBarrier(barrier) =>
+      self.emit_control_barrier_statement(out, barrier, indent)
+    MemoryBarrier(barrier) =>
+      self.emit_memory_barrier_statement(out, barrier, indent)
     Store(pointer, value) =>
       out.write_string(
         "\{pad}\{self.function_pointer_expression(function, pointer)} = \{self.function_expression(function, value)};\n",
@@ -747,6 +751,42 @@ fn WgslIrEmitter::emit_statement(
         out, function, query, query_function, indent,
       )
     _ => raise WgslIrEmitError::Unsupported("statement kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::emit_control_barrier_statement(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  barrier : Barrier,
+  indent : Int,
+) -> Unit raise WgslIrEmitError {
+  let pad = wgsl_ir_indent(indent)
+  if barrier == Barrier::work_group() {
+    out.write_string("\{pad}workgroupBarrier();\n")
+  } else if barrier == Barrier::sub_group() {
+    out.write_string("\{pad}subgroupBarrier();\n")
+  } else {
+    ignore(self)
+    raise WgslIrEmitError::Unsupported("control barrier flags")
+  }
+}
+
+///|
+fn WgslIrEmitter::emit_memory_barrier_statement(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  barrier : Barrier,
+  indent : Int,
+) -> Unit raise WgslIrEmitError {
+  let pad = wgsl_ir_indent(indent)
+  if barrier == Barrier::storage() {
+    out.write_string("\{pad}storageBarrier();\n")
+  } else if barrier == Barrier::texture() {
+    out.write_string("\{pad}textureBarrier();\n")
+  } else {
+    ignore(self)
+    raise WgslIrEmitError::Unsupported("memory barrier flags")
   }
 }
 
