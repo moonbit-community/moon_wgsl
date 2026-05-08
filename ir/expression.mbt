@@ -266,6 +266,34 @@ pub enum SubgroupOperation {
 } derive(Eq, Debug)
 
 ///|
+pub enum SubgroupFunction {
+  Ballot
+  All
+  Any
+  Add
+  Mul
+  Max
+  Min
+  And
+  Or
+  Xor
+  ExclusiveAdd
+  ExclusiveMul
+  InclusiveAdd
+  InclusiveMul
+  BroadcastFirst
+  Broadcast
+  Shuffle
+  ShuffleDown
+  ShuffleUp
+  ShuffleXor
+  QuadBroadcast
+  QuadSwapX
+  QuadSwapY
+  QuadSwapDiagonal
+} derive(Eq, Debug)
+
+///|
 pub enum CollectiveOperation {
   Reduce
   InclusiveScan
@@ -321,6 +349,7 @@ pub enum Expression {
   CallResult(Handle)
   AtomicResult(Handle, Bool)
   WorkGroupUniformLoadResult(Handle)
+  WorkGroupUniformLoad(Handle)
   ArrayLength(Handle)
   RayQueryInitialize(Handle, Handle, Handle)
   RayQueryProceed(Handle)
@@ -330,6 +359,7 @@ pub enum Expression {
   RayQueryVertexPositions(Handle, Bool)
   RayQueryProceedResult
   RayQueryGetIntersection(Handle, Bool)
+  SubgroupCall(SubgroupFunction, Array[Handle])
   SubgroupBallotResult
   SubgroupOperationResult(Handle)
   CooperativeLoad(

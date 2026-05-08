@@ -95,7 +95,7 @@ extract_lowerer_builtin_names() {
       if (match($0, /"[A-Za-z][A-Za-z0-9]*"/)) print substr($0, RSTART + 1, RLENGTH - 2)
     }
   ' ir/wgsl_lower_builtins.mbt
-  rg -o '"(texture[A-Za-z0-9]+|rayQuery[A-Za-z0-9]+|workgroupBarrier|storageBarrier|textureBarrier|subgroupBarrier|arrayLength)"' \
+  rg -o '"(texture[A-Za-z0-9]+|rayQuery[A-Za-z0-9]+|subgroup[A-Za-z0-9]+|quad[A-Za-z0-9]+|workgroupBarrier|storageBarrier|textureBarrier|arrayLength)"' \
     ir/wgsl_lower.mbt | tr -d '"'
 }
 
@@ -171,7 +171,7 @@ done < "$coverage_rows"
 ((naga_ir_count > 0)) || fail "coverage manifest must include Naga-validated IR rows"
 ((ir_only_count > 0)) || fail "coverage manifest must explicitly track oracle-blocked IR-only rows"
 
-for required_category in numeric integer derivative relational atomic barrier texture storage ray-query; do
+for required_category in numeric integer derivative relational atomic barrier texture storage ray-query subgroup; do
   rg -Fx "$required_category" "$categories_file" >/dev/null ||
     fail "coverage manifest has no $required_category builtin category"
 done

@@ -755,7 +755,7 @@ test "WGSL AST lowerer binds context-typed array constructors" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("array<vec2<f32>, 2>(vec2<f32>(0.125f, -0.375f)"),
+    emitted.contains("array<vec2<f32>, 2>(vec2<f32>(0.125f, -(0.375f))"),
     content="true",
   )
   debug_inspect(
@@ -1048,7 +1048,7 @@ test "WGSL AST lowerer lowers for loops into IR loops" {
   }
   debug_inspect(emitted.contains("var i: u32 = 0u;"), content="true")
   debug_inspect(emitted.contains("loop {"), content="true")
-  debug_inspect(emitted.contains("if !(i < 4u) {"), content="true")
+  debug_inspect(emitted.contains("if !((i < 4u)) {"), content="true")
   debug_inspect(emitted.contains("i = (i + 1u);"), content="true")
   debug_inspect(emitted.contains("sum = (_e"), content="true")
   debug_inspect(emitted.contains("+ 2u);"), content="true")
@@ -1635,4 +1635,143 @@ test "WGSL AST lowerer makes referenced entry points callable helpers" {
     content="true",
   )
   debug_inspect(emitted.contains("imported(frag_coord);"), content="true")
+}
+
+///|
+test "WGSL IR lowerer resolves constants declared after functions" {
+  let source =
+    #|fn main(i: u32) -> f32 {
+    #|  return vertices[i];
+    #|}
+    #|
+    #|const vertices = array(1.0, 2.0, 3.0, 4.0);
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("const vertices = array(1.0, 2.0, 3.0, 4.0);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return vertices[i];"), content="true")
+}
+
+///|
+test "WGSL IR lowerer resolves forward constant references" {
+  let source =
+    #|const b = a + 1u;
+    #|const a = 41u;
+    #|
+    #|fn main() -> u32 {
+    #|  return b;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("const a: u32 = 41u;"), content="true")
+  debug_inspect(emitted.contains("const b: u32 = (a + 1u);"), content="true")
+  debug_inspect(emitted.contains("return b;"), content="true")
+}
+
+///|
+test "WGSL IR lowerer resolves Naga ray query predeclared constants" {
+  let source =
+    #|enable wgpu_ray_query;
+    #|
+    #|fn flag() -> u32 {
+    #|  if RAY_QUERY_INTERSECTION_AABB == RAY_QUERY_INTERSECTION_GENERATED {
+    #|    return RAY_FLAG_SKIP_AABBS;
+    #|  }
+    #|  return RAY_FLAG_NONE;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("if (3u == 2u) {"), content="true")
+  debug_inspect(emitted.contains("return 512u;"), content="true")
+  debug_inspect(emitted.contains("return 0u;"), content="true")
+}
+
+///|
+test "WGSL IR lowerer exposes complete Naga RayIntersection fields" {
+  let source =
+    #|enable wgpu_ray_query;
+    #|
+    #|fn transform(hit: RayIntersection) -> vec3<f32> {
+    #|  return (hit.object_to_world * vec4<f32>(0.0, 0.0, 0.0, 1.0)).xyz;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(".object_to_world"), content="true")
+  debug_inspect(emitted.contains("* vec4<f32>"), content="true")
+}
+
+///|
+test "WGSL IR lowerer supports external textureLoad without mip level" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_external;
+    #|
+    #|fn main(coords: vec2<u32>) -> vec4<f32> {
+    #|  return textureLoad(tex, coords);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("textureLoad(tex, coords);"), content="true")
+}
+
+///|
+test "WGSL IR lowerer supports complete storage texture format names" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_storage_2d<rg32float, read>;
+    #|
+    #|fn main(coords: vec2<u32>) -> vec4<f32> {
+    #|  return textureLoad(tex, coords);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("texture_storage_2d<rg32float, read>"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL IR emitter preserves phony must-use texture calls" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_storage_2d<rg32float, read>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  _ = textureLoad(tex, vec2u(0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("_ = textureLoad(tex, vec2(0));"),
+    content="true",
+  )
 }

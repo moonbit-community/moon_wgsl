@@ -12,6 +12,7 @@ ir-large-u32-literal	file	testdata/ir_corpus/large_u32_literal.wgsl	-	-	-	-	pars
 ir-builtin-numeric-fragment	file	testdata/ir_corpus/builtin_numeric_fragment.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official numeric, derivative, matrix, relational, and select builtin coverage.
 ir-builtin-integer-compute	file	testdata/ir_corpus/builtin_integer_compute.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official integer bit, packed integer, and packed normalization builtin coverage.
 ir-builtin-atomic-barrier-compute	file	testdata/ir_corpus/builtin_atomic_barrier_compute.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official atomic and workgroup/storage/texture barrier builtin coverage.
+ir-builtin-subgroup-compute	file	testdata/ir_corpus/builtin_subgroup_compute.wgsl	-	-	-	subgroups	parse,naga,ir,naga-ir	Static IR corpus: subgroup and quad builtin coverage with subgroup capability.
 ir-builtin-oracle-blocked-fragment	file	testdata/ir_corpus/builtin_oracle_blocked_fragment.wgsl	-	-	-	-	parse,ir	Static IR corpus: lowerer-known builtin coverage where the pinned Naga oracle lacks matching capability support.
 ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-query	parse,naga,ir,naga-ir	Static IR corpus: full ray query builtin statement and expression coverage.
 ir-builtin-functions-fragment	file	testdata/ir_corpus/builtin_functions_fragment.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: builtin function expression lowering.

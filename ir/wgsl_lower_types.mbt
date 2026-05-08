@@ -29,6 +29,45 @@ fn WgslIrLowerer::lower_type_ref(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_type_ref(
+  self : WgslIrLowerer,
+  ty_ref : @ast.WgslTypeRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  if ty_ref.name() == "array" {
+    self.lower_function_array_type_ref(ty_ref, function, scope)
+  } else {
+    self.lower_type_ref(ty_ref)
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_array_type_ref(
+  self : WgslIrLowerer,
+  ty_ref : @ast.WgslTypeRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let args = ty_ref.template_arguments()
+  guard args is [Type(element_ty), .. rest] else {
+    raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+  }
+  let element = self.lower_function_type_ref(element_ty, function, scope)
+  let size = match rest {
+    [size_arg, ..] =>
+      self.lower_function_type_template_array_size(size_arg, function, scope)
+    _ => ArraySize::Dynamic
+  }
+  let layout = self.type_layout(element)
+  let stride = wgsl_ir_align_to(layout.size, layout.align)
+  self.intern_type(
+    "array<\{self.type_cache_name(element)}, \{wgsl_ir_array_size_key(size)}>",
+    TypeInner::Array(element, size, stride),
+  )
+}
+
+///|
 fn WgslIrLowerer::lower_uncached_type_ref(
   self : WgslIrLowerer,
   ty_ref : @ast.WgslTypeRef,
@@ -101,10 +140,20 @@ fn WgslIrLowerer::lower_composite_type_ref(
     }
     "ptr" => {
       let args = ty_ref.template_arguments()
-      guard args is [Type(space_ref), Type(target_ref), ..] else {
+      guard args is [Type(space_ref), Type(target_ref), .. rest] else {
         raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
       }
-      let space = wgsl_ir_address_space_from_type_name(space_ref.name())
+      let space = if space_ref.name() == "storage" {
+        match rest {
+          [Type(access_ref), ..] =>
+            AddressSpace::Storage(
+              wgsl_ir_storage_access_from_name(access_ref.name()),
+            )
+          _ => AddressSpace::Storage(StorageAccess::load())
+        }
+      } else {
+        wgsl_ir_address_space_from_type_name(space_ref.name())
+      }
       self.intern_type(
         ty_ref.canonical_text(),
         TypeInner::Pointer(self.lower_type_ref(target_ref), space),
@@ -219,6 +268,49 @@ fn WgslIrLowerer::lower_type_template_array_size(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_type_template_array_size(
+  self : WgslIrLowerer,
+  argument : @ast.WgslTypeArgument,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> ArraySize raise WgslIrLowerError {
+  match argument {
+    Expression(expr) =>
+      match wgsl_ir_int_literal_from_expr_ref(expr) {
+        Some(value) => ArraySize::Constant(value)
+        None => {
+          let handle = self.lower_function_expression_ref(expr, function, scope)
+          self.lower_function_constant_array_size_expression(function, handle)
+        }
+      }
+    Type(ty_ref) =>
+      self.lower_function_type_template_array_size_type_ref(
+        ty_ref, function, scope,
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_type_template_array_size_type_ref(
+  self : WgslIrLowerer,
+  ty_ref : @ast.WgslTypeRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> ArraySize raise WgslIrLowerError {
+  let name = ty_ref.name()
+  let literal = wgsl_ir_array_size_literal_from_type_name(name)
+  match literal {
+    Some(value) => ArraySize::Constant(value)
+    None =>
+      match scope.local_constants.get(name) {
+        Some(handle) =>
+          self.lower_function_constant_array_size_expression(function, handle)
+        None => self.lower_type_template_array_size_type_ref(ty_ref)
+      }
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_type_template_array_size_type_ref(
   self : WgslIrLowerer,
   ty_ref : @ast.WgslTypeRef,
@@ -228,7 +320,7 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
   match literal {
     Some(value) => ArraySize::Constant(value)
     None =>
-      match self.constant_names.get(name) {
+      match self.ensure_constant_declaration_lowered(name) {
         Some(handle) =>
           self.lower_constant_array_size_from_constant_handle(handle)
         None =>
@@ -270,6 +362,15 @@ fn WgslIrLowerer::lower_constant_array_size_expression(
   match evaluated {
     Some(value) => ArraySize::Constant(value.to_non_negative_int())
     None => ArraySize::Pending(handle)
+  }
+}
+
+///|
+fn wgsl_ir_array_size_key(size : ArraySize) -> String {
+  match size {
+    Constant(value) => "\{value}"
+    Dynamic => ""
+    Pending(handle) => "expr#\{handle.index()}"
   }
 }
 

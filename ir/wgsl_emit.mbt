@@ -641,7 +641,8 @@ fn WgslIrEmitter::emit_statement(
       for index in range.start.index()..<=range.end.index() {
         let handle = Handle::Handle(index)
         let expr = self.function_expression(function, handle)
-        if self.expression_type(Some(function), handle) == None {
+        if self.expression_type(Some(function), handle) == None &&
+          !self.function_expression_requires_phony_assignment(function, handle) {
           out.write_string("\{pad}\{expr};\n")
         } else {
           out.write_string("\{pad}_ = \{expr};\n")
@@ -751,6 +752,27 @@ fn WgslIrEmitter::emit_statement(
         out, function, query, query_function, indent,
       )
     _ => raise WgslIrEmitError::Unsupported("statement kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::function_expression_requires_phony_assignment(
+  self : WgslIrEmitter,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  ignore(self)
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        ImageSample(_, _, _, _, _, _, _, _, _)
+        | ImageLoad(_, _, _, _, _)
+        | ImageQuery(_, _)
+        | WorkGroupUniformLoad(_)
+        | SubgroupCall(_, _) => true
+        _ => false
+      }
+    None => false
   }
 }
 
@@ -1103,8 +1125,12 @@ fn WgslIrEmitter::emit_expression(
       "rayQueryTerminate(\{self.required_function_expression(function, query)})"
     RayQueryGetIntersection(query, committed) =>
       self.ray_query_get_intersection_expression(function, query, committed)
+    SubgroupCall(subgroup_function, arguments) =>
+      "\{wgsl_ir_emit_subgroup_function_name(subgroup_function)}(\{self.expression_list(arguments, function)})"
+    WorkGroupUniformLoad(pointer) =>
+      "workgroupUniformLoad(\{self.required_function_expression(function, pointer)})"
     Unary(op, expr) =>
-      "\{self.unary_operator(op)}\{self.required_function_expression(function, expr)}"
+      "\{self.unary_operator(op)}(\{self.required_function_expression(function, expr)})"
     Binary(op, left, right) =>
       "(\{self.required_function_expression(function, left)} \{self.binary_operator(op)} \{self.required_function_expression(function, right)})"
     Select(condition, accept, reject) =>
@@ -1586,10 +1612,30 @@ fn WgslIrEmitter::function_expression_inner_type(
         atomic_function,
         arguments,
       )
+    ImageSample(image, _, gather, _, _, _, _, depth_ref, _) =>
+      self.image_expression_result_type(
+        Some(function),
+        image,
+        gather,
+        depth_ref,
+      )
+    ImageLoad(image, _, _, _, _) =>
+      self.image_expression_result_type(Some(function), image, None, None)
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(Some(function), image, query)
     RayQueryGetIntersection(_, _) => self.type_handle_named("RayIntersection")
     RayQueryProceedResult => self.type_handle_named("bool")
+    WorkGroupUniformLoad(pointer) =>
+      match self.expression_type(Some(function), pointer) {
+        Some(ty) => Some(self.deref_pointer_type_handle(ty))
+        None => None
+      }
+    SubgroupCall(subgroup_function, arguments) =>
+      self.subgroup_expression_result_type(
+        Some(function),
+        subgroup_function,
+        arguments,
+      )
     Literal(literal) => self.literal_type(literal)
     _ => None
   }
@@ -1667,6 +1713,8 @@ fn WgslIrEmitter::global_expression_inner_type(
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(None, image, query)
     ArrayLength(_) => self.type_handle_named("u32")
+    SubgroupCall(subgroup_function, arguments) =>
+      self.subgroup_expression_result_type(None, subgroup_function, arguments)
     Literal(literal) => self.literal_type(literal)
     _ => None
   }
@@ -1686,6 +1734,91 @@ fn WgslIrEmitter::literal_type(
     F32(_) => self.type_handle_named("f32")
     AbstractFloat(_) => self.type_handle_named("__abstract_float")
     _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::subgroup_expression_result_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  subgroup_function : SubgroupFunction,
+  arguments : Array[Handle],
+) -> Handle? {
+  match subgroup_function {
+    Ballot => self.find_vector_type(Quad, Scalar::Scalar(Uint, 4))
+    All | Any => self.type_handle_named("bool")
+    _ =>
+      match arguments.get(0) {
+        Some(first) => self.expression_type(function, first)
+        None => None
+      }
+  }
+}
+
+///|
+fn wgsl_ir_emit_subgroup_function_name(function : SubgroupFunction) -> String {
+  match function {
+    Ballot => "subgroupBallot"
+    All => "subgroupAll"
+    Any => "subgroupAny"
+    Add => "subgroupAdd"
+    Mul => "subgroupMul"
+    Max => "subgroupMax"
+    Min => "subgroupMin"
+    And => "subgroupAnd"
+    Or => "subgroupOr"
+    Xor => "subgroupXor"
+    ExclusiveAdd => "subgroupExclusiveAdd"
+    ExclusiveMul => "subgroupExclusiveMul"
+    InclusiveAdd => "subgroupInclusiveAdd"
+    InclusiveMul => "subgroupInclusiveMul"
+    BroadcastFirst => "subgroupBroadcastFirst"
+    Broadcast => "subgroupBroadcast"
+    Shuffle => "subgroupShuffle"
+    ShuffleDown => "subgroupShuffleDown"
+    ShuffleUp => "subgroupShuffleUp"
+    ShuffleXor => "subgroupShuffleXor"
+    QuadBroadcast => "quadBroadcast"
+    QuadSwapX => "quadSwapX"
+    QuadSwapY => "quadSwapY"
+    QuadSwapDiagonal => "quadSwapDiagonal"
+  }
+}
+
+///|
+fn WgslIrEmitter::image_expression_result_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  image : Handle,
+  gather : SwizzleComponent?,
+  depth_ref : Handle?,
+) -> Handle? {
+  guard self.expression_type(function, image) is Some(image_ty) else {
+    return None
+  }
+  match self.shader_module.types.items.get(image_ty.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Image(_, _, Sampled(kind, _)) =>
+          self.find_vector_type(Quad, Scalar::Scalar(kind, 4))
+        Image(_, _, Depth(_)) =>
+          if gather != None {
+            self.find_vector_type(Quad, Scalar::Scalar(Float, 4))
+          } else if depth_ref != None {
+            self.type_handle_named("f32")
+          } else {
+            self.type_handle_named("f32")
+          }
+        Image(_, _, Storage(format, _)) =>
+          self.find_vector_type(
+            Quad,
+            Scalar::Scalar(wgsl_ir_emit_storage_format_scalar_kind(format), 4),
+          )
+        Image(_, _, External) =>
+          self.find_vector_type(Quad, Scalar::Scalar(Float, 4))
+        _ => None
+      }
+    None => None
   }
 }
 
@@ -1920,11 +2053,17 @@ fn WgslIrEmitter::matrix_vector_multiply_result_type(
   match self.shader_module.types.get(left_ty) {
     Some(left) =>
       match left.inner {
-        Matrix(_, rows, scalar) =>
+        Matrix(left_columns, rows, scalar) =>
           match self.shader_module.types.get(right_ty) {
             Some(right) =>
               match right.inner {
                 Vector(_, _) => self.find_vector_type(rows, scalar)
+                Matrix(columns, right_rows, _) =>
+                  if right_rows == left_columns {
+                    self.find_matrix_type(columns, rows, scalar)
+                  } else {
+                    None
+                  }
                 _ => None
               }
             None => None
@@ -1942,6 +2081,22 @@ fn WgslIrEmitter::matrix_vector_multiply_result_type(
       }
     None => None
   }
+}
+
+///|
+fn WgslIrEmitter::find_matrix_type(
+  self : WgslIrEmitter,
+  columns : VectorSize,
+  rows : VectorSize,
+  scalar : Scalar,
+) -> Handle? {
+  let matrix_inner = TypeInner::Matrix(columns, rows, scalar)
+  for i in 0..<self.shader_module.types.items.length() {
+    if self.shader_module.types.items[i].inner == matrix_inner {
+      return Some(Handle::Handle(i))
+    }
+  }
+  None
 }
 
 ///|
@@ -3134,6 +3289,35 @@ fn WgslIrEmitter::storage_format_name(
     Rg16Snorm => "rg16snorm"
     Rgba16Unorm => "rgba16unorm"
     Rgba16Snorm => "rgba16snorm"
+  }
+}
+
+///|
+fn wgsl_ir_emit_storage_format_scalar_kind(
+  format : StorageFormat,
+) -> ScalarKind {
+  match format {
+    R8Uint
+    | R16Uint
+    | R32Uint
+    | Rg8Uint
+    | Rg16Uint
+    | Rgba8Uint
+    | Rgb10a2Uint
+    | R64Uint
+    | Rg32Uint
+    | Rgba16Uint
+    | Rgba32Uint => Uint
+    R8Sint
+    | R16Sint
+    | R32Sint
+    | Rg8Sint
+    | Rg16Sint
+    | Rgba8Sint
+    | Rg32Sint
+    | Rgba16Sint
+    | Rgba32Sint => Sint
+    _ => Float
   }
 }
 

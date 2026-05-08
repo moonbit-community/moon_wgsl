@@ -89,6 +89,15 @@ pub fn GlobalVariableArena::append(
 }
 
 ///|
+pub fn GlobalVariableArena::set(
+  self : GlobalVariableArena,
+  handle : Handle,
+  item : GlobalVariable,
+) -> Unit {
+  self.items[handle.index()] = item
+}
+
+///|
 pub(all) struct LocalVariableArena {
   items : Array[LocalVariable]
 } derive(Eq, Debug)

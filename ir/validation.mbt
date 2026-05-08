@@ -470,12 +470,18 @@ fn WgslIrValidator::validate_function_expression(
       self.validate_function_expression_handle(function, handle)
     WorkGroupUniformLoadResult(handle) =>
       self.validate_function_expression_handle(function, handle)
+    WorkGroupUniformLoad(handle) =>
+      self.validate_function_expression_handle(function, handle)
     ArrayLength(handle) =>
       self.validate_function_expression_handle(function, handle)
     Derivative(_, _, expr) =>
       self.validate_function_expression_handle(function, expr)
     Relational(_, expr) =>
       self.validate_function_expression_handle(function, expr)
+    SubgroupCall(_, arguments) =>
+      for argument in arguments {
+        self.validate_function_expression_handle(function, argument)
+      }
     Splat(_, expr) => self.validate_function_expression_handle(function, expr)
     Swizzle(_, expr, _) =>
       self.validate_function_expression_handle(function, expr)

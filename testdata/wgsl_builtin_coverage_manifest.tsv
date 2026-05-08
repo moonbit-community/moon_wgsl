@@ -128,3 +128,27 @@ textureSampleGrad	texture	ir-advanced-texture-fragment	naga-ir	textureSampleGrad
 textureSampleLevel	texture	ir-advanced-texture-fragment	naga-ir	textureSampleLevel	Official texture builtin covered by IR roundtrip plus Naga validation.
 textureStore	texture	ir-texture-compute	naga-ir	textureStore	Official texture store builtin covered by IR roundtrip plus Naga validation.
 workgroupBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	workgroupBarrier	Official control barrier builtin covered by IR roundtrip plus Naga validation.
+subgroupAdd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAdd	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupAll	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAll	Subgroup vote builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupAnd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAnd	Subgroup bitwise builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupAny	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupAny	Subgroup vote builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupBallot	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupBallot	Subgroup ballot builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupBroadcast	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupBroadcast	Subgroup gather builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupBroadcastFirst	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupBroadcastFirst	Subgroup gather builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupExclusiveAdd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupExclusiveAdd	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupExclusiveMul	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupExclusiveMul	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupInclusiveAdd	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupInclusiveAdd	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupInclusiveMul	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupInclusiveMul	Subgroup scan builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupMax	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupMax	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupMin	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupMin	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupMul	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupMul	Subgroup arithmetic builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupOr	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupOr	Subgroup bitwise builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupShuffle	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffle	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupShuffleDown	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffleDown	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupShuffleUp	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffleUp	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupShuffleXor	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupShuffleXor	Subgroup shuffle builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+subgroupXor	subgroup	ir-builtin-subgroup-compute	naga-ir	subgroupXor	Subgroup bitwise builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+quadBroadcast	subgroup	ir-builtin-subgroup-compute	naga-ir	quadBroadcast	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+quadSwapDiagonal	subgroup	ir-builtin-subgroup-compute	naga-ir	quadSwapDiagonal	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+quadSwapX	subgroup	ir-builtin-subgroup-compute	naga-ir	quadSwapX	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
+quadSwapY	subgroup	ir-builtin-subgroup-compute	naga-ir	quadSwapY	Quad subgroup builtin covered by IR roundtrip plus Naga validation with subgroup capability.
