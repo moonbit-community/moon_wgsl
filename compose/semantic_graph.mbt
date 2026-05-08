@@ -14,8 +14,12 @@
 
 ///|
 priv struct WgslSemanticReferencePath {
-  text : String
   segments : Array[String]
+}
+
+///|
+fn WgslSemanticReferencePath::text(self : WgslSemanticReferencePath) -> String {
+  self.segments.join("::")
 }
 
 ///|
@@ -86,7 +90,7 @@ fn wgsl_semantic_reference_path_from_identifier(
   if segments.length() == 0 {
     None
   } else {
-    Some(WgslSemanticReferencePath::{ text: segments.join("::"), segments })
+    Some(WgslSemanticReferencePath::{ segments, })
   }
 }
 
@@ -115,7 +119,7 @@ fn collect_wgsl_semantic_reference_path_set(
   collect_wgsl_semantic_reference_paths(source, paths)
   let path_set : @hashset.HashSet[String] = @hashset.HashSet([])
   for path in paths {
-    path_set.add(path.text)
+    path_set.add(path.text())
   }
   path_set
 }
@@ -126,7 +130,7 @@ fn wgsl_semantic_reference_path_set_contains(
   reference_path : String,
 ) -> Bool {
   match wgsl_semantic_reference_path_from_identifier(reference_path) {
-    Some(expected) => reference_paths.contains(expected.text)
+    Some(expected) => reference_paths.contains(expected.text())
     None => false
   }
 }
@@ -271,7 +275,7 @@ fn wgsl_semantic_source_contains_reference_path(
       let paths : Array[WgslSemanticReferencePath] = []
       collect_wgsl_semantic_reference_paths(source, paths)
       for path in paths {
-        if path.text == expected.text {
+        if path.text() == expected.text() {
           return true
         }
       }
@@ -289,7 +293,7 @@ fn unresolved_wgsl_semantic_namespace_reference(
   collect_wgsl_semantic_reference_paths(source, paths)
   for path in paths {
     if path.segments.length() > 1 {
-      return Some(path.text)
+      return Some(path.text())
     }
   }
   None
@@ -343,7 +347,7 @@ fn collect_wgsl_semantic_qualified_module_targets(
     }
     guard resolve_wgsl_semantic_import_module(
         current_rel_path,
-        path.text,
+        path.text(),
         registry,
         modules,
       )
@@ -351,7 +355,7 @@ fn collect_wgsl_semantic_qualified_module_targets(
       continue
     }
     let requested_item = wgsl_semantic_requested_item_name(
-      path.text,
+      path.text(),
       resolved_module.module_path(),
     )
     if requested_item == "" {

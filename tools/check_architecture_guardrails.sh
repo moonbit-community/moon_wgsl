@@ -48,6 +48,11 @@ if rg -n 'text : String' parser/wgsl_raw_top_level.mbt >"$matches_file"; then
   fail "raw top-level staging items must carry spans, not cached source text"
 fi
 
+if rg -n 'text : String' compose/semantic_graph.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "semantic reference paths must derive text from structured segments"
+fi
+
 lowerer_lines="$(wc -l < ir/wgsl_lower.mbt | tr -d ' ')"
 if (( lowerer_lines > 8000 )); then
   fail "IR lowerer monolith is too large: ${lowerer_lines} lines"
