@@ -158,6 +158,24 @@ if rg -n 'resolved_to_name|reference_paths : @hashset\.HashSet\[String\]' compos
   fail "compose semantic facts and live bindings must not flatten semantic objects into string-only phase state"
 fi
 
+if rg -n 'WgslSemanticReferencePath|to_transform_path|wgsl_compose_reference_path_required' compose transform \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose and transform must share common WgslReferencePath without conversion helpers or internal aborts"
+fi
+
+if rg -n 'struct WgslReferencePath' compose transform \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WgslReferencePath must have one definition in common"
+fi
+
+if rg -n 'wgsl_compose_binding_key|wgsl_compose_binding_scope_key' compose \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose binding keys must be typed key objects, not free string key helpers"
+fi
+
 if rg -n 'identity : WgslIrSymbolIdentity\?' transform/wgsl_binding.mbt >"$matches_file"; then
   cat "$matches_file" >&2
   fail "plain rename rules must not carry optional identity as a pseudo binding model"

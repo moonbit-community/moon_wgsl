@@ -129,6 +129,23 @@ pub(all) struct WgslImportTarget {
   alias_name : String
 } derive(Eq, @debug.Debug)
 
+pub struct WgslReferencePath {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslReferencePath::from_segments(Array[String]) -> Self?
+pub fn WgslReferencePath::from_text(String) -> Self?
+pub fn WgslReferencePath::matches(Self, Self) -> Bool
+pub fn WgslReferencePath::segments(Self) -> Array[String]
+pub fn WgslReferencePath::text(Self) -> String
+
+pub struct WgslReferencePathSet {
+  // private fields
+}
+pub fn WgslReferencePathSet::WgslReferencePathSet() -> Self
+pub fn WgslReferencePathSet::add(Self, WgslReferencePath) -> Unit
+pub fn WgslReferencePathSet::contains(Self, WgslReferencePath) -> Bool
+pub fn WgslReferencePathSet::paths(Self) -> Array[WgslReferencePath]
+
 pub struct WgslResolvedImportModule {
   // private fields
 } derive(Eq, @debug.Debug)

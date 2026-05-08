@@ -91,31 +91,39 @@ fn collect_wgsl_cached_import_bindings(
       entry in session.symbols.emitted_final_names.canonical_entries_for_rel_path(
         rel_path,
       ) {
-      bindings.push(
+      match
         WgslComposeBinding::for_unqualified_symbol(
           entry.identity().rel_path(),
           entry.identity().original_name(),
           entry.final_name(),
           UnqualifiedItemBinding,
-        ),
-      )
-      count = count + 1
+        ) {
+        Some(binding) => {
+          bindings.push(binding)
+          count = count + 1
+        }
+        None => ()
+      }
     }
   } else {
     for
       entry in session.symbols.emitted_final_names.alias_entries_for_scope(
         rel_path, final_alias_scope,
       ) {
-      bindings.push(
+      match
         WgslComposeBinding::for_alias_symbol(
           entry.identity().symbol().rel_path(),
           source_alias_name,
           entry.identity().symbol().original_name(),
           entry.final_name(),
           QualifiedAliasBinding,
-        ),
-      )
-      count = count + 1
+        ) {
+        Some(binding) => {
+          bindings.push(binding)
+          count = count + 1
+        }
+        None => ()
+      }
     }
   }
   count
@@ -142,12 +150,14 @@ fn find_wgsl_visible_alias_imported_item_binding(
   if default_alias == "" || item_name == "" {
     return None
   }
-  let reference_path = wgsl_compose_reference_path_required(
-    "\{default_alias}::\{item_name}",
-  )
+  let reference_path = match
+    WgslReferencePath::from_text("\{default_alias}::\{item_name}") {
+    Some(path) => path
+    None => return None
+  }
   for binding in bindings.bindings {
     if binding.reference_path.matches(reference_path) {
-      return Some(binding.as_unqualified_binding(item_name))
+      return binding.as_unqualified_binding(item_name)
     }
   }
   None
@@ -159,17 +169,23 @@ fn find_wgsl_visible_identity_imported_item_binding(
   rel_path : String,
   item_name : String,
 ) -> WgslComposeBinding? {
-  let identity_key = WgslIrSymbolIdentity(rel_path, item_name).key()
+  let identity_key = WgslComposeIrIdentityKey(
+    WgslIrSymbolIdentity(rel_path, item_name),
+  ).text()
   let mut found : WgslComposeBinding? = None
   for binding in bindings.bindings {
-    if binding.target.identity.key() != identity_key {
+    if WgslComposeIrIdentityKey(binding.target.identity).text() != identity_key {
       continue
     }
     match found {
       Some(existing) if existing.target.final_name != binding.target.final_name =>
         return None
       Some(_) => ()
-      None => found = Some(binding.as_unqualified_binding(item_name))
+      None =>
+        match binding.as_unqualified_binding(item_name) {
+          Some(unqualified_binding) => found = Some(unqualified_binding)
+          None => ()
+        }
     }
   }
   found

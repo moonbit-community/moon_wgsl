@@ -8,7 +8,7 @@ priv struct WgslPreparedComposeSource {
 priv struct WgslModuleFinalNameApplication {
   origin_index : Int
   identity : WgslIrSymbolIdentity
-  reference_path : WgslSemanticReferencePath
+  reference_path : WgslReferencePath
   final_name : String
 }
 
@@ -43,14 +43,16 @@ fn WgslModuleFinalNameApplicationPlan::push(
     origin.rel_path,
     origin.source_symbol_name,
   )
-  self.entries.push(WgslModuleFinalNameApplication::{
-    origin_index,
-    identity,
-    reference_path: wgsl_compose_reference_path_required(
-      origin.generated_symbol_name,
-    ),
-    final_name,
-  })
+  match WgslReferencePath::from_text(origin.generated_symbol_name) {
+    Some(reference_path) =>
+      self.entries.push(WgslModuleFinalNameApplication::{
+        origin_index,
+        identity,
+        reference_path,
+        final_name,
+      })
+    None => ()
+  }
 }
 
 ///|
@@ -59,15 +61,11 @@ fn WgslModuleFinalNameApplicationPlan::reference_rewrite_plan(
 ) -> WgslReferenceRewritePlan {
   let plan = WgslReferenceRewritePlan()
   for entry in self.entries {
-    match entry.reference_path.to_transform_path() {
-      Some(reference_path) =>
-        plan.add_symbol_reference_binding(
-          entry.identity,
-          reference_path,
-          entry.final_name,
-        )
-      None => ()
-    }
+    plan.add_symbol_reference_binding(
+      entry.identity,
+      entry.reference_path,
+      entry.final_name,
+    )
   }
   plan
 }
@@ -507,17 +505,20 @@ fn Composer::compose_wgsl_import_requests(
                     request.rel_path,
                     requested_item,
                   ) {
-                  Some(imported_name) => {
-                    bindings.push(
+                  Some(imported_name) =>
+                    match
                       WgslComposeBinding::for_unqualified_symbol(
                         request.rel_path,
                         requested_item,
                         imported_name,
                         UnqualifiedItemBinding,
-                      ),
-                    )
-                    resolved_requested_items = resolved_requested_items + 1
-                  }
+                      ) {
+                      Some(binding) => {
+                        bindings.push(binding)
+                        resolved_requested_items = resolved_requested_items + 1
+                      }
+                      None => ()
+                    }
                   None => ()
                 }
             }
@@ -603,15 +604,17 @@ fn Composer::compose_wgsl_import_requests(
         if origin.rel_path == request.rel_path &&
           origin.source_symbol_name != "" &&
           origin.generated_symbol_name != "" {
-          bindings.push(
+          match
             WgslComposeBinding::for_alias_symbol(
               origin.rel_path,
               request.alias_name,
               origin.source_symbol_name,
               origin.generated_symbol_name,
               QualifiedAliasBinding,
-            ),
-          )
+            ) {
+            Some(binding) => bindings.push(binding)
+            None => ()
+          }
         }
       }
     } else if !request.import_full_module {
@@ -620,14 +623,16 @@ fn Composer::compose_wgsl_import_requests(
         if origin.rel_path == request.rel_path &&
           origin.source_symbol_name != "" &&
           origin.generated_symbol_name != "" {
-          bindings.push(
+          match
             WgslComposeBinding::for_unqualified_symbol(
               origin.rel_path,
               origin.source_symbol_name,
               origin.generated_symbol_name,
               UnqualifiedItemBinding,
-            ),
-          )
+            ) {
+            Some(binding) => bindings.push(binding)
+            None => ()
+          }
         }
       }
     }

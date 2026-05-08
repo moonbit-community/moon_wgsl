@@ -377,6 +377,108 @@ pub(all) struct WgslImportTarget {
 } derive(Eq, Debug)
 
 ///|
+pub struct WgslReferencePath {
+  priv segments : Array[String]
+} derive(Eq, Debug)
+
+///|
+pub struct WgslReferencePathSet {
+  priv keys : @hashset.HashSet[String]
+  priv paths : Array[WgslReferencePath]
+}
+
+///|
+pub fn WgslReferencePath::from_segments(
+  segments : Array[String],
+) -> WgslReferencePath? {
+  let normalized : Array[String] = []
+  for segment in segments {
+    let segment = segment.trim().to_owned()
+    if segment == "" {
+      return None
+    }
+    normalized.push(segment)
+  }
+  if normalized.length() == 0 {
+    None
+  } else {
+    Some(WgslReferencePath::{ segments: normalized })
+  }
+}
+
+///|
+pub fn WgslReferencePath::from_text(text : String) -> WgslReferencePath? {
+  let segments : Array[String] = []
+  for raw_segment in text.trim().split("::") {
+    let segment = raw_segment.trim().to_owned()
+    if segment == "" {
+      return None
+    }
+    segments.push(segment)
+  }
+  WgslReferencePath::from_segments(segments)
+}
+
+///|
+pub fn WgslReferencePath::segments(self : WgslReferencePath) -> Array[String] {
+  self.segments.copy()
+}
+
+///|
+pub fn WgslReferencePath::text(self : WgslReferencePath) -> String {
+  self.segments.join("::")
+}
+
+///|
+pub fn WgslReferencePath::matches(
+  self : WgslReferencePath,
+  other : WgslReferencePath,
+) -> Bool {
+  if self.segments.length() != other.segments.length() {
+    return false
+  }
+  for i in 0..<self.segments.length() {
+    if self.segments[i] != other.segments[i] {
+      return false
+    }
+  }
+  true
+}
+
+///|
+pub fn WgslReferencePathSet::WgslReferencePathSet() -> WgslReferencePathSet {
+  WgslReferencePathSet::{ keys: @hashset.HashSet([]), paths: [] }
+}
+
+///|
+pub fn WgslReferencePathSet::add(
+  self : WgslReferencePathSet,
+  path : WgslReferencePath,
+) -> Unit {
+  let key = path.text()
+  if self.keys.contains(key) {
+    return
+  }
+  self.keys.add(key)
+  self.paths.push(path)
+}
+
+///|
+pub fn WgslReferencePathSet::contains(
+  self : WgslReferencePathSet,
+  path : WgslReferencePath,
+) -> Bool {
+  self.keys.contains(path.text())
+}
+
+///|
+pub fn WgslReferencePathSet::paths(
+  self : WgslReferencePathSet,
+) -> Array[WgslReferencePath] {
+  self.paths.copy()
+}
+
+///|
 pub struct WgslResolvedImportModule {
   priv module_path : String
   priv rel_path : String

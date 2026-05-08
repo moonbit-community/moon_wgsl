@@ -1,6 +1,5 @@
 ///|
 using @transform {
-  type WgslReferencePath,
   type WgslReferenceRewritePlan,
   type WgslEmittedDeclaration,
   type WgslModuleItemExtraction,
@@ -22,6 +21,8 @@ using @common {
   type WgslDiagnostic,
   type WgslDiagnosticSeverity,
   type WgslImportTarget,
+  type WgslReferencePath,
+  type WgslReferencePathSet,
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceOriginEntry,

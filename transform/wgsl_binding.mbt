@@ -47,11 +47,6 @@ pub struct WgslReferenceRewritePlan {
 }
 
 ///|
-pub struct WgslReferencePath {
-  priv segments : Array[String]
-} derive(Debug)
-
-///|
 priv struct WgslReferenceRewriteBinding {
   reference_path : WgslReferencePath
   final_name : String
@@ -82,59 +77,6 @@ fn WgslVirtualOverrideRewriteBinding::key(
 ///|
 pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> WgslReferenceRewritePlan {
   WgslReferenceRewritePlan::{ bindings: [], virtual_overrides: [] }
-}
-
-///|
-pub fn WgslReferencePath::from_segments(
-  segments : Array[String],
-) -> WgslReferencePath? {
-  let normalized : Array[String] = []
-  for segment in segments {
-    let segment = segment.trim().to_owned()
-    if segment == "" {
-      return None
-    }
-    normalized.push(segment)
-  }
-  if normalized.length() == 0 {
-    None
-  } else {
-    Some(WgslReferencePath::{ segments: normalized })
-  }
-}
-
-///|
-pub fn WgslReferencePath::from_text(text : String) -> WgslReferencePath? {
-  let segments : Array[String] = []
-  for raw_segment in text.trim().split("::") {
-    let segment = raw_segment.trim().to_owned()
-    if segment == "" {
-      return None
-    }
-    segments.push(segment)
-  }
-  WgslReferencePath::from_segments(segments)
-}
-
-///|
-pub fn WgslReferencePath::text(self : WgslReferencePath) -> String {
-  self.segments.join("::")
-}
-
-///|
-fn WgslReferencePath::matches(
-  self : WgslReferencePath,
-  other : WgslReferencePath,
-) -> Bool {
-  if self.segments.length() != other.segments.length() {
-    return false
-  }
-  for i in 0..<self.segments.length() {
-    if self.segments[i] != other.segments[i] {
-      return false
-    }
-  }
-  true
 }
 
 ///|

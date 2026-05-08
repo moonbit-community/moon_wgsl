@@ -13,71 +13,6 @@
 // limitations under the License.
 
 ///|
-priv struct WgslSemanticReferencePath {
-  segments : Array[String]
-}
-
-///|
-priv struct WgslSemanticReferencePathSet {
-  keys : @hashset.HashSet[String]
-  paths : Array[WgslSemanticReferencePath]
-}
-
-///|
-fn WgslSemanticReferencePathSet::WgslSemanticReferencePathSet() -> WgslSemanticReferencePathSet {
-  WgslSemanticReferencePathSet::{ keys: @hashset.HashSet([]), paths: [] }
-}
-
-///|
-fn WgslSemanticReferencePath::text(self : WgslSemanticReferencePath) -> String {
-  self.segments.join("::")
-}
-
-///|
-fn WgslSemanticReferencePath::matches(
-  self : WgslSemanticReferencePath,
-  other : WgslSemanticReferencePath,
-) -> Bool {
-  if self.segments.length() != other.segments.length() {
-    return false
-  }
-  for i in 0..<self.segments.length() {
-    if self.segments[i] != other.segments[i] {
-      return false
-    }
-  }
-  true
-}
-
-///|
-fn WgslSemanticReferencePath::to_transform_path(
-  self : WgslSemanticReferencePath,
-) -> WgslReferencePath? {
-  WgslReferencePath::from_segments(self.segments)
-}
-
-///|
-fn WgslSemanticReferencePathSet::add(
-  self : WgslSemanticReferencePathSet,
-  path : WgslSemanticReferencePath,
-) -> Unit {
-  let key = path.text()
-  if self.keys.contains(key) {
-    return
-  }
-  self.keys.add(key)
-  self.paths.push(path)
-}
-
-///|
-fn WgslSemanticReferencePathSet::contains(
-  self : WgslSemanticReferencePathSet,
-  path : WgslSemanticReferencePath,
-) -> Bool {
-  self.keys.contains(path.text())
-}
-
-///|
 priv struct WgslSemanticImportTargetPlan {
   resolved_module : WgslResolvedImportModule
   module_alias : String
@@ -140,19 +75,14 @@ fn wgsl_semantic_path_segments(path : String) -> Array[String] {
 ///|
 fn wgsl_semantic_reference_path_from_identifier(
   name : String,
-) -> WgslSemanticReferencePath? {
-  let segments = wgsl_semantic_path_segments(name)
-  if segments.length() == 0 {
-    None
-  } else {
-    Some(WgslSemanticReferencePath::{ segments, })
-  }
+) -> WgslReferencePath? {
+  WgslReferencePath::from_text(name)
 }
 
 ///|
 fn collect_wgsl_semantic_reference_paths(
   source : String,
-  paths : Array[WgslSemanticReferencePath],
+  paths : Array[WgslReferencePath],
 ) -> Unit raise WgslParseError {
   let nodes : Array[WgslIdent] = []
   for decl in parse_wgsl_translation_unit_strict(source).declarations() {
@@ -169,10 +99,10 @@ fn collect_wgsl_semantic_reference_paths(
 ///|
 fn collect_wgsl_semantic_reference_path_set(
   source : String,
-) -> WgslSemanticReferencePathSet raise WgslParseError {
-  let paths : Array[WgslSemanticReferencePath] = []
+) -> WgslReferencePathSet raise WgslParseError {
+  let paths : Array[WgslReferencePath] = []
   collect_wgsl_semantic_reference_paths(source, paths)
-  let path_set = WgslSemanticReferencePathSet()
+  let path_set = WgslReferencePathSet()
   for path in paths {
     path_set.add(path)
   }
@@ -181,7 +111,7 @@ fn collect_wgsl_semantic_reference_path_set(
 
 ///|
 fn wgsl_semantic_reference_path_set_contains(
-  reference_paths : WgslSemanticReferencePathSet,
+  reference_paths : WgslReferencePathSet,
   reference_path : String,
 ) -> Bool {
   match wgsl_semantic_reference_path_from_identifier(reference_path) {
@@ -269,22 +199,23 @@ fn wgsl_semantic_import_alias_prefix(alias_name : String) -> String {
 
 ///|
 fn wgsl_semantic_alias_requested_item_name(
-  reference_path : WgslSemanticReferencePath,
+  reference_path : WgslReferencePath,
   alias_name : String,
 ) -> String {
   let alias_segments = wgsl_semantic_path_segments(alias_name)
+  let reference_segments = reference_path.segments()
   if alias_segments.length() == 0 ||
-    reference_path.segments.length() <= alias_segments.length() {
+    reference_segments.length() <= alias_segments.length() {
     return ""
   }
   for i in 0..<alias_segments.length() {
-    if reference_path.segments[i] != alias_segments[i] {
+    if reference_segments[i] != alias_segments[i] {
       return ""
     }
   }
   let suffix : Array[String] = []
-  for i in alias_segments.length()..<reference_path.segments.length() {
-    suffix.push(reference_path.segments[i])
+  for i in alias_segments.length()..<reference_segments.length() {
+    suffix.push(reference_segments[i])
   }
   suffix.join("::")
 }
@@ -298,7 +229,7 @@ fn collect_wgsl_semantic_alias_requested_paths(
   if alias_name == "" {
     return
   }
-  let paths : Array[WgslSemanticReferencePath] = []
+  let paths : Array[WgslReferencePath] = []
   collect_wgsl_semantic_reference_paths(source, paths)
   for path in paths {
     let requested_item = wgsl_semantic_alias_requested_item_name(
@@ -327,7 +258,7 @@ fn wgsl_semantic_source_contains_reference_path(
 ) -> Bool raise WgslParseError {
   match wgsl_semantic_reference_path_from_identifier(reference_path) {
     Some(expected) => {
-      let paths : Array[WgslSemanticReferencePath] = []
+      let paths : Array[WgslReferencePath] = []
       collect_wgsl_semantic_reference_paths(source, paths)
       for path in paths {
         if path.text() == expected.text() {
@@ -380,10 +311,10 @@ fn collect_wgsl_semantic_qualified_module_targets(
   modules : @hashmap.HashMap[String, String],
   targets : Array[WgslImportTarget],
 ) -> Unit raise WgslParseError {
-  let paths : Array[WgslSemanticReferencePath] = []
+  let paths : Array[WgslReferencePath] = []
   collect_wgsl_semantic_reference_paths(source, paths)
   for path in paths {
-    if path.segments.length() < 3 {
+    if path.segments().length() < 3 {
       continue
     }
     guard resolve_wgsl_semantic_import_module(

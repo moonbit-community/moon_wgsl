@@ -19,7 +19,28 @@ fn semantic_ir_facts(source : String) -> WgslComposeSemanticFacts {
   }
   WgslComposeSemanticFacts::{
     declarations,
-    reference_paths: WgslSemanticReferencePathSet(),
+    reference_paths: WgslReferencePathSet(),
+  }
+}
+
+///|
+fn push_required_alias_binding(
+  bindings : WgslComposeBindingSet,
+  rel_path : String,
+  alias_name : String,
+  original_name : String,
+  final_name : String,
+) -> Unit {
+  match
+    WgslComposeBinding::for_alias_symbol(
+      rel_path,
+      alias_name,
+      original_name,
+      final_name,
+      QualifiedAliasBinding,
+    ) {
+    Some(binding) => bindings.push(binding)
+    None => abort("expected valid alias binding fixture")
   }
 }
 
@@ -32,23 +53,11 @@ test "compose semantic IR resolves undeclared alias target through emitted ident
     #|var<private> view_bindings__view: view_bindings__View;
     #|
   let bindings = WgslComposeBindingSet()
-  bindings.push(
-    WgslComposeBinding::for_alias_symbol(
-      "mesh_view_bindings.wgsl",
-      "view_bindings",
-      "view",
-      "view_bindings__view",
-      QualifiedAliasBinding,
-    ),
+  push_required_alias_binding(
+    bindings, "mesh_view_bindings.wgsl", "view_bindings", "view", "view_bindings__view",
   )
-  bindings.push(
-    WgslComposeBinding::for_alias_symbol(
-      "mesh_view_bindings.wgsl",
-      "view_bindings",
-      "view",
-      "shadows__view_bindings__view",
-      QualifiedAliasBinding,
-    ),
+  push_required_alias_binding(
+    bindings, "mesh_view_bindings.wgsl", "view_bindings", "view", "shadows__view_bindings__view",
   )
   let plan = WgslComposeSemanticIr::from_facts_and_bindings(
     semantic_ir_facts(source),
@@ -78,23 +87,11 @@ test "compose semantic IR preserves declared alias-scope target" {
     #|var<private> shadows__view_bindings__view: view_bindings__View;
     #|
   let bindings = WgslComposeBindingSet()
-  bindings.push(
-    WgslComposeBinding::for_alias_symbol(
-      "mesh_view_bindings.wgsl",
-      "view_bindings",
-      "view",
-      "view_bindings__view",
-      QualifiedAliasBinding,
-    ),
+  push_required_alias_binding(
+    bindings, "mesh_view_bindings.wgsl", "view_bindings", "view", "view_bindings__view",
   )
-  bindings.push(
-    WgslComposeBinding::for_alias_symbol(
-      "mesh_view_bindings.wgsl",
-      "view_bindings",
-      "view",
-      "shadows__view_bindings__view",
-      QualifiedAliasBinding,
-    ),
+  push_required_alias_binding(
+    bindings, "mesh_view_bindings.wgsl", "view_bindings", "view", "shadows__view_bindings__view",
   )
   let plan = WgslComposeSemanticIr::from_facts_and_bindings(
     semantic_ir_facts(source),
