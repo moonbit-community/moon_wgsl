@@ -27,11 +27,15 @@ test "virtual override base rewrite uses AST scope for local shadows" {
     #|}
     #|
   let plan = WgslReferenceRewritePlan()
-  plan.add_symbol_binding(
-    WgslIrSymbolIdentity("mod.wgsl", "inner"),
-    "mod::inner",
-    "mod__inner",
-  )
+  match WgslReferencePath::from_text("mod::inner") {
+    Some(reference_path) =>
+      plan.add_symbol_reference_binding(
+        WgslIrSymbolIdentity("mod.wgsl", "inner"),
+        reference_path,
+        "mod__inner",
+      )
+    None => abort("expected valid reference path")
+  }
   let output = apply_wgsl_virtual_overrides_with_binding_plan(source, plan)
   debug_inspect(
     output.contains("fn mod__inner__virtual_base() -> f32"),

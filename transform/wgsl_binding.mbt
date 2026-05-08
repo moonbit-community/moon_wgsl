@@ -47,9 +47,14 @@ pub struct WgslReferenceRewritePlan {
 }
 
 ///|
+pub struct WgslReferencePath {
+  priv segments : Array[String]
+} derive(Debug)
+
+///|
 priv struct WgslReferenceRewriteBinding {
-  from_name : String
-  to_name : String
+  reference_path : WgslReferencePath
+  final_name : String
   identity : WgslIrSymbolIdentity
 }
 
@@ -64,7 +69,7 @@ priv struct WgslVirtualOverrideRewriteBinding {
 fn WgslReferenceRewriteBinding::key(
   self : WgslReferenceRewriteBinding,
 ) -> String {
-  "\{self.identity.key()}|\{self.from_name}|\{self.to_name}"
+  "\{self.identity.key()}|\{self.reference_path.text()}|\{self.final_name}"
 }
 
 ///|
@@ -80,18 +85,74 @@ pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> WgslReferenceRewr
 }
 
 ///|
-pub fn WgslReferenceRewritePlan::add_symbol_binding(
+pub fn WgslReferencePath::from_segments(
+  segments : Array[String],
+) -> WgslReferencePath? {
+  let normalized : Array[String] = []
+  for segment in segments {
+    let segment = segment.trim().to_owned()
+    if segment == "" {
+      return None
+    }
+    normalized.push(segment)
+  }
+  if normalized.length() == 0 {
+    None
+  } else {
+    Some(WgslReferencePath::{ segments: normalized })
+  }
+}
+
+///|
+pub fn WgslReferencePath::from_text(text : String) -> WgslReferencePath? {
+  let segments : Array[String] = []
+  for raw_segment in text.trim().split("::") {
+    let segment = raw_segment.trim().to_owned()
+    if segment == "" {
+      return None
+    }
+    segments.push(segment)
+  }
+  WgslReferencePath::from_segments(segments)
+}
+
+///|
+pub fn WgslReferencePath::text(self : WgslReferencePath) -> String {
+  self.segments.join("::")
+}
+
+///|
+fn WgslReferencePath::matches(
+  self : WgslReferencePath,
+  other : WgslReferencePath,
+) -> Bool {
+  if self.segments.length() != other.segments.length() {
+    return false
+  }
+  for i in 0..<self.segments.length() {
+    if self.segments[i] != other.segments[i] {
+      return false
+    }
+  }
+  true
+}
+
+///|
+pub fn WgslReferenceRewritePlan::add_symbol_reference_binding(
   self : WgslReferenceRewritePlan,
   identity : WgslIrSymbolIdentity,
-  from_name : String,
-  to_name : String,
+  reference_path : WgslReferencePath,
+  final_name : String,
 ) -> Unit {
-  let from_name = from_name.trim().to_owned()
-  let to_name = to_name.trim().to_owned()
-  if from_name == "" || to_name == "" || from_name == to_name {
+  let final_name = final_name.trim().to_owned()
+  if final_name == "" || reference_path.text() == final_name {
     return
   }
-  let binding = WgslReferenceRewriteBinding::{ from_name, to_name, identity }
+  let binding = WgslReferenceRewriteBinding::{
+    reference_path,
+    final_name,
+    identity,
+  }
   let key = binding.key()
   for existing in self.bindings {
     if existing.key() == key {
@@ -158,8 +219,12 @@ fn WgslReferenceRewritePlan::target_for_reference(
   self : WgslReferenceRewritePlan,
   from_name : String,
 ) -> String? {
-  match wgsl_symbol_binding_for_reference(self.bindings, from_name) {
-    Some(binding) => Some(binding.to_name)
+  match WgslReferencePath::from_text(from_name) {
+    Some(reference_path) =>
+      match wgsl_symbol_binding_for_reference(self.bindings, reference_path) {
+        Some(binding) => Some(binding.final_name)
+        None => None
+      }
     None => None
   }
 }
@@ -242,16 +307,16 @@ fn wgsl_rename_rules_target(
 ///|
 fn wgsl_symbol_binding_for_reference(
   bindings : Array[WgslReferenceRewriteBinding],
-  from_name : String,
+  reference_path : WgslReferencePath,
 ) -> WgslReferenceRewriteBinding? {
   let mut target : WgslReferenceRewriteBinding? = None
   for binding in bindings {
-    if binding.from_name != from_name {
+    if !binding.reference_path.matches(reference_path) {
       continue
     }
     let current_identity_key = binding.identity.key()
     match target {
-      Some(existing) if existing.to_name != binding.to_name =>
+      Some(existing) if existing.final_name != binding.final_name =>
         if existing.identity.key() == current_identity_key {
           target = Some(binding)
         } else {
@@ -274,15 +339,19 @@ fn collect_wgsl_bound_rewrite_nodes_from_identifiers(
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   for identifier in identifiers {
-    match wgsl_symbol_binding_for_reference(bindings, identifier.name()) {
-      Some(binding) =>
-        nodes.push(
-          WgslTokenReplacement(
-            identifier.start(),
-            identifier.end(),
-            binding.to_name,
-          ),
-        )
+    match WgslReferencePath::from_text(identifier.name()) {
+      Some(reference_path) =>
+        match wgsl_symbol_binding_for_reference(bindings, reference_path) {
+          Some(binding) =>
+            nodes.push(
+              WgslTokenReplacement(
+                identifier.start(),
+                identifier.end(),
+                binding.final_name,
+              ),
+            )
+          None => ()
+        }
       None => ()
     }
   }

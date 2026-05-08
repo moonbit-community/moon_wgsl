@@ -142,9 +142,11 @@ fn find_wgsl_visible_alias_imported_item_binding(
   if default_alias == "" || item_name == "" {
     return None
   }
-  let from_name = "\{default_alias}::\{item_name}"
+  let reference_path = wgsl_compose_reference_path_required(
+    "\{default_alias}::\{item_name}",
+  )
   for binding in bindings.bindings {
-    if binding.from_name == from_name {
+    if binding.reference_path.matches(reference_path) {
       return Some(binding.as_unqualified_binding(item_name))
     }
   }
@@ -160,12 +162,12 @@ fn find_wgsl_visible_identity_imported_item_binding(
   let identity_key = WgslIrSymbolIdentity(rel_path, item_name).key()
   let mut found : WgslComposeBinding? = None
   for binding in bindings.bindings {
-    guard binding.identity is Some(identity) else { continue }
-    if identity.key() != identity_key {
+    if binding.target.identity.key() != identity_key {
       continue
     }
     match found {
-      Some(existing) if existing.to_name != binding.to_name => return None
+      Some(existing) if existing.target.final_name != binding.target.final_name =>
+        return None
       Some(_) => ()
       None => found = Some(binding.as_unqualified_binding(item_name))
     }

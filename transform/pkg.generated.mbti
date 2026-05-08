@@ -6,6 +6,7 @@ import {
   "Milky2018/moon_wgsl/import_syntax",
   "Milky2018/moon_wgsl/ir",
   "Milky2018/moon_wgsl/parser",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -71,11 +72,18 @@ pub fn WgslModuleItemOrigin::name(Self) -> String
 pub fn WgslModuleItemOrigin::source_end(Self) -> Int
 pub fn WgslModuleItemOrigin::source_start(Self) -> Int
 
+pub struct WgslReferencePath {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslReferencePath::from_segments(Array[String]) -> Self?
+pub fn WgslReferencePath::from_text(String) -> Self?
+pub fn WgslReferencePath::text(Self) -> String
+
 pub struct WgslReferenceRewritePlan {
   // private fields
 }
 pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> Self
-pub fn WgslReferenceRewritePlan::add_symbol_binding(Self, @ir.WgslIrSymbolIdentity, String, String) -> Unit
+pub fn WgslReferenceRewritePlan::add_symbol_reference_binding(Self, @ir.WgslIrSymbolIdentity, WgslReferencePath, String) -> Unit
 pub fn WgslReferenceRewritePlan::add_virtual_override_binding(Self, String, String, String) -> Unit
 
 // Type aliases

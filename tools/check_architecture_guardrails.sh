@@ -135,6 +135,29 @@ if rg -n 'reference_rename_plan|global_declaration_rename_plan' transform compos
   fail "identity-backed composer bindings must not be downgraded into rename plans"
 fi
 
+if rg -n 'add_symbol_binding' compose transform \
+  --glob '*.mbt' \
+  --glob '!*.mbti' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "symbol rewrite plans must receive structured reference paths, not string bindings"
+fi
+
+if rg -n 'from_name : String|to_name : String|identity : WgslIrSymbolIdentity\?' compose/session.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "cross-phase compose/transform bindings must preserve structured reference paths and non-optional symbol targets"
+fi
+
+if rg -n -U 'WgslReferenceRewriteBinding \{[^}]*from_name|WgslReferenceRewriteBinding \{[^}]*to_name' transform/wgsl_binding.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "transform reference rewrite bindings must carry WgslReferencePath plus final symbol target"
+fi
+
+if rg -n 'resolved_to_name|reference_paths : @hashset\.HashSet\[String\]' compose \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose semantic facts and live bindings must not flatten semantic objects into string-only phase state"
+fi
+
 if rg -n 'identity : WgslIrSymbolIdentity\?' transform/wgsl_binding.mbt >"$matches_file"; then
   cat "$matches_file" >&2
   fail "plain rename rules must not carry optional identity as a pseudo binding model"

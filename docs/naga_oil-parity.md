@@ -189,8 +189,11 @@ tree-shakes them away, matching upstream `naga_oil`.
    Composer import/name rewrites must stay symbol-binding-first: import
    liveness selects stable `WgslIrSymbolIdentity` bindings, transform resolves
    AST identifier nodes against that binding plan, and final names come from the
-   identity-backed table. `WgslRenamePlan` is only a package-private helper for
-   synthetic local/virtual rewrites and must not be the composer binding model.
+   identity-backed table. Phase boundaries must pass structured reference paths
+   and non-optional symbol targets rather than `from_name` / `to_name` strings
+   or `identity?` placeholders. `WgslRenamePlan` is only a package-private
+   helper for synthetic local/virtual rewrites and must not be the composer
+   binding model.
    Dependency analysis must consume parsed declaration identifiers rather than
    raw declaration text. Composer, virtual overrides, duplicate-binding cleanup,
    suffix lowering, and identifier normalization must not reintroduce

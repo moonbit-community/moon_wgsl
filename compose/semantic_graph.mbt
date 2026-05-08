@@ -18,8 +18,63 @@ priv struct WgslSemanticReferencePath {
 }
 
 ///|
+priv struct WgslSemanticReferencePathSet {
+  keys : @hashset.HashSet[String]
+  paths : Array[WgslSemanticReferencePath]
+}
+
+///|
+fn WgslSemanticReferencePathSet::WgslSemanticReferencePathSet() -> WgslSemanticReferencePathSet {
+  WgslSemanticReferencePathSet::{ keys: @hashset.HashSet([]), paths: [] }
+}
+
+///|
 fn WgslSemanticReferencePath::text(self : WgslSemanticReferencePath) -> String {
   self.segments.join("::")
+}
+
+///|
+fn WgslSemanticReferencePath::matches(
+  self : WgslSemanticReferencePath,
+  other : WgslSemanticReferencePath,
+) -> Bool {
+  if self.segments.length() != other.segments.length() {
+    return false
+  }
+  for i in 0..<self.segments.length() {
+    if self.segments[i] != other.segments[i] {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn WgslSemanticReferencePath::to_transform_path(
+  self : WgslSemanticReferencePath,
+) -> WgslReferencePath? {
+  WgslReferencePath::from_segments(self.segments)
+}
+
+///|
+fn WgslSemanticReferencePathSet::add(
+  self : WgslSemanticReferencePathSet,
+  path : WgslSemanticReferencePath,
+) -> Unit {
+  let key = path.text()
+  if self.keys.contains(key) {
+    return
+  }
+  self.keys.add(key)
+  self.paths.push(path)
+}
+
+///|
+fn WgslSemanticReferencePathSet::contains(
+  self : WgslSemanticReferencePathSet,
+  path : WgslSemanticReferencePath,
+) -> Bool {
+  self.keys.contains(path.text())
 }
 
 ///|
@@ -114,23 +169,23 @@ fn collect_wgsl_semantic_reference_paths(
 ///|
 fn collect_wgsl_semantic_reference_path_set(
   source : String,
-) -> @hashset.HashSet[String] raise WgslParseError {
+) -> WgslSemanticReferencePathSet raise WgslParseError {
   let paths : Array[WgslSemanticReferencePath] = []
   collect_wgsl_semantic_reference_paths(source, paths)
-  let path_set : @hashset.HashSet[String] = @hashset.HashSet([])
+  let path_set = WgslSemanticReferencePathSet()
   for path in paths {
-    path_set.add(path.text())
+    path_set.add(path)
   }
   path_set
 }
 
 ///|
 fn wgsl_semantic_reference_path_set_contains(
-  reference_paths : @hashset.HashSet[String],
+  reference_paths : WgslSemanticReferencePathSet,
   reference_path : String,
 ) -> Bool {
   match wgsl_semantic_reference_path_from_identifier(reference_path) {
-    Some(expected) => reference_paths.contains(expected.text())
+    Some(expected) => reference_paths.contains(expected)
     None => false
   }
 }

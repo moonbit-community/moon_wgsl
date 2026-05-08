@@ -19,7 +19,7 @@ fn semantic_ir_facts(source : String) -> WgslComposeSemanticFacts {
   }
   WgslComposeSemanticFacts::{
     declarations,
-    reference_paths: @hashset.HashSet([]),
+    reference_paths: WgslSemanticReferencePathSet(),
   }
 }
 
@@ -57,10 +57,10 @@ test "compose semantic IR resolves undeclared alias target through emitted ident
   let mut unresolved_alias_targets = 0
   let mut emitted_identity_targets = 0
   for binding in plan.bindings {
-    if binding.to_name == "shadows__view_bindings__view" {
+    if binding.target.final_name == "shadows__view_bindings__view" {
       unresolved_alias_targets = unresolved_alias_targets + 1
     }
-    if binding.to_name == "view_bindings__view" {
+    if binding.target.final_name == "view_bindings__view" {
       emitted_identity_targets = emitted_identity_targets + 1
     }
   }
@@ -102,7 +102,7 @@ test "compose semantic IR preserves declared alias-scope target" {
   ).live_binding_plan()
   let mut declared_alias_targets = 0
   for binding in plan.bindings {
-    if binding.to_name == "shadows__view_bindings__view" {
+    if binding.target.final_name == "shadows__view_bindings__view" {
       declared_alias_targets = declared_alias_targets + 1
     }
   }

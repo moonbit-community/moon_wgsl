@@ -115,7 +115,7 @@ fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] 
 ///|
 priv struct WgslComposeSemanticFacts {
   declarations : Array[WgslEmittedDeclaration]
-  reference_paths : @hashset.HashSet[String]
+  reference_paths : WgslSemanticReferencePathSet
 }
 
 ///|
@@ -153,11 +153,16 @@ priv enum WgslComposeBindingScope {
 
 ///|
 priv struct WgslComposeBinding {
-  from_name : String
-  to_name : String
+  reference_path : WgslSemanticReferencePath
+  target : WgslComposeSymbolTarget
   scope : WgslComposeBindingScope
-  identity : WgslIrSymbolIdentity?
   alias_name : String
+}
+
+///|
+priv struct WgslComposeSymbolTarget {
+  identity : WgslIrSymbolIdentity
+  final_name : String
 }
 
 ///|
@@ -177,7 +182,13 @@ priv struct WgslVirtualOverrideFinalNameBinding {
 
 ///|
 priv struct WgslLiveBindingPlan {
-  bindings : Array[WgslComposeBinding]
+  bindings : Array[WgslLiveSymbolBinding]
+}
+
+///|
+priv struct WgslLiveSymbolBinding {
+  reference_path : WgslSemanticReferencePath
+  target : WgslComposeSymbolTarget
 }
 
 ///|
@@ -198,7 +209,7 @@ fn WgslLiveBindingPlan::WgslLiveBindingPlan() -> WgslLiveBindingPlan {
 ///|
 fn WgslLiveBindingPlan::push(
   self : WgslLiveBindingPlan,
-  binding : WgslComposeBinding,
+  binding : WgslLiveSymbolBinding,
 ) -> Unit {
   self.bindings.push(binding)
 }
@@ -210,9 +221,13 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
 ) -> WgslReferenceRewritePlan {
   let plan = WgslReferenceRewritePlan()
   for binding in self.bindings {
-    match binding.identity {
-      Some(identity) =>
-        plan.add_symbol_binding(identity, binding.from_name, binding.to_name)
+    match binding.reference_path.to_transform_path() {
+      Some(reference_path) =>
+        plan.add_symbol_reference_binding(
+          binding.target.identity,
+          reference_path,
+          binding.target.final_name,
+        )
       None => ()
     }
   }
@@ -245,13 +260,7 @@ fn wgsl_compose_binding_scope_key(scope : WgslComposeBindingScope) -> String {
 
 ///|
 fn wgsl_compose_binding_key(binding : WgslComposeBinding) -> String {
-  let from_name = binding.from_name.trim().to_owned()
-  let to_name = binding.to_name.trim().to_owned()
-  let identity_key = match binding.identity {
-    Some(identity) => identity.key()
-    None => ""
-  }
-  "\{wgsl_compose_binding_scope_key(binding.scope)}|\{from_name}|\{to_name}|\{binding.alias_name}|\{identity_key}"
+  "\{wgsl_compose_binding_scope_key(binding.scope)}|\{binding.reference_path.text()}|\{binding.target.final_name}|\{binding.alias_name}|\{binding.target.identity.key()}"
 }
 
 ///|
@@ -259,31 +268,45 @@ fn wgsl_compose_binding_conflict_message(
   existing : WgslComposeBinding,
   binding : WgslComposeBinding,
 ) -> String {
-  let existing_identity = match existing.identity {
-    Some(identity) => identity.key()
-    None => "<none>"
-  }
-  let binding_identity = match binding.identity {
-    Some(identity) => identity.key()
-    None => "<none>"
-  }
+  let existing_identity = existing.target.identity.key()
+  let binding_identity = binding.target.identity.key()
   let scope = if binding.alias_name == "" {
     wgsl_compose_binding_scope_key(binding.scope)
   } else {
     "\{wgsl_compose_binding_scope_key(binding.scope)} alias \{binding.alias_name}"
   }
-  "\{binding.from_name} in \{scope}: \{existing_identity} conflicts with \{binding_identity}"
+  "\{binding.reference_path.text()} in \{scope}: \{existing_identity} conflicts with \{binding_identity}"
+}
+
+///|
+fn wgsl_compose_reference_path_required(
+  text : String,
+) -> WgslSemanticReferencePath {
+  match wgsl_semantic_reference_path_from_identifier(text) {
+    Some(path) => path
+    None => abort("internal invalid WGSL reference path: \{text}")
+  }
+}
+
+///|
+fn WgslComposeSymbolTarget::WgslComposeSymbolTarget(
+  identity : WgslIrSymbolIdentity,
+  final_name : String,
+) -> WgslComposeSymbolTarget {
+  WgslComposeSymbolTarget::{
+    identity,
+    final_name: final_name.trim().to_owned(),
+  }
 }
 
 ///|
 fn WgslComposeBinding::WgslComposeBinding(
-  from_name : String,
-  to_name : String,
+  reference_path : WgslSemanticReferencePath,
+  target : WgslComposeSymbolTarget,
   scope : WgslComposeBindingScope,
-  identity : WgslIrSymbolIdentity?,
   alias_name : String,
 ) -> WgslComposeBinding {
-  WgslComposeBinding::{ from_name, to_name, scope, identity, alias_name }
+  WgslComposeBinding::{ reference_path, target, scope, alias_name }
 }
 
 ///|
@@ -294,11 +317,11 @@ fn WgslComposeBinding::for_alias_symbol(
   final_name : String,
   scope : WgslComposeBindingScope,
 ) -> WgslComposeBinding {
+  let identity = WgslIrSymbolIdentity(rel_path, original_name)
   WgslComposeBinding(
-    "\{alias_name}::\{original_name}",
-    final_name,
+    wgsl_compose_reference_path_required("\{alias_name}::\{original_name}"),
+    WgslComposeSymbolTarget(identity, final_name),
     scope,
-    Some(WgslIrSymbolIdentity(rel_path, original_name)),
     alias_name,
   )
 }
@@ -310,11 +333,11 @@ fn WgslComposeBinding::for_unqualified_symbol(
   final_name : String,
   scope : WgslComposeBindingScope,
 ) -> WgslComposeBinding {
+  let identity = WgslIrSymbolIdentity(rel_path, original_name)
   WgslComposeBinding(
-    original_name,
-    final_name,
+    wgsl_compose_reference_path_required(original_name),
+    WgslComposeSymbolTarget(identity, final_name),
     scope,
-    Some(WgslIrSymbolIdentity(rel_path, original_name)),
     "",
   )
 }
@@ -322,29 +345,30 @@ fn WgslComposeBinding::for_unqualified_symbol(
 ///|
 fn WgslComposeBinding::as_unqualified_binding(
   self : WgslComposeBinding,
-  from_name : String,
+  reference_name : String,
 ) -> WgslComposeBinding {
   WgslComposeBinding(
-    from_name,
-    self.to_name,
+    wgsl_compose_reference_path_required(reference_name),
+    self.target,
     UnqualifiedItemBinding,
-    self.identity,
     self.alias_name,
   )
 }
 
 ///|
-fn WgslComposeBinding::with_to_name(
+fn WgslComposeBinding::with_target(
   self : WgslComposeBinding,
-  to_name : String,
+  target : WgslComposeSymbolTarget,
 ) -> WgslComposeBinding {
-  WgslComposeBinding(
-    self.from_name,
-    to_name,
-    self.scope,
-    self.identity,
-    self.alias_name,
-  )
+  WgslComposeBinding(self.reference_path, target, self.scope, self.alias_name)
+}
+
+///|
+fn WgslComposeBinding::to_live_binding(
+  self : WgslComposeBinding,
+  target : WgslComposeSymbolTarget,
+) -> WgslLiveSymbolBinding {
+  WgslLiveSymbolBinding::{ reference_path: self.reference_path, target }
 }
 
 ///|
@@ -352,20 +376,17 @@ fn WgslComposeBindingSet::push(
   self : WgslComposeBindingSet,
   binding : WgslComposeBinding,
 ) -> Unit {
-  let binding_identity_key = match binding.identity {
-    Some(identity) => identity.key()
-    None => ""
+  if binding.reference_path.segments.length() == 0 ||
+    binding.target.final_name == "" {
+    return
   }
+  let binding_identity_key = binding.target.identity.key()
   for existing in self.bindings {
     if existing.scope == binding.scope &&
       existing.alias_name == binding.alias_name &&
-      existing.from_name == binding.from_name {
-      let existing_identity_key = match existing.identity {
-        Some(identity) => identity.key()
-        None => ""
-      }
-      if existing_identity_key != "" &&
-        existing_identity_key == binding_identity_key {
+      existing.reference_path.matches(binding.reference_path) {
+      let existing_identity_key = existing.target.identity.key()
+      if existing_identity_key == binding_identity_key {
         continue
       }
       self.conflicts.push(

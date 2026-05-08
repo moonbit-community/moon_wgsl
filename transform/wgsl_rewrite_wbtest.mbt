@@ -1,7 +1,22 @@
 ///|
+fn wbtest_add_symbol_reference_binding(
+  plan : WgslReferenceRewritePlan,
+  identity : WgslIrSymbolIdentity,
+  reference_name : String,
+  final_name : String,
+) -> Unit {
+  match WgslReferencePath::from_text(reference_name) {
+    Some(reference_path) =>
+      plan.add_symbol_reference_binding(identity, reference_path, final_name)
+    None => abort("expected valid reference path")
+  }
+}
+
+///|
 test "naga_oil wb: AST-scoped symbol redirects rewrite references but keep declarations" {
   let plan = WgslReferenceRewritePlan()
-  plan.add_symbol_binding(
+  wbtest_add_symbol_reference_binding(
+    plan,
     WgslIrSymbolIdentity("local.wgsl", "build_shadow"),
     "build_shadow",
     "build_color",
@@ -18,7 +33,8 @@ test "naga_oil wb: AST-scoped symbol redirects rewrite references but keep decla
 ///|
 test "naga_oil wb: AST-scoped symbol redirects ignore nested local shadows" {
   let plan = WgslReferenceRewritePlan()
-  plan.add_symbol_binding(
+  wbtest_add_symbol_reference_binding(
+    plan,
     WgslIrSymbolIdentity("local.wgsl", "build_shadow"),
     "build_shadow",
     "build_color",
@@ -36,7 +52,8 @@ test "naga_oil wb: AST-scoped symbol redirects ignore nested local shadows" {
 ///|
 test "naga_oil wb: reference rewrite plan carries symbol identity" {
   let plan = WgslReferenceRewritePlan()
-  plan.add_symbol_binding(
+  wbtest_add_symbol_reference_binding(
+    plan,
     WgslIrSymbolIdentity("lighting.wgsl", "build_shadow"),
     "lighting::build_shadow",
     "lighting__build_shadow",
@@ -54,12 +71,14 @@ test "naga_oil wb: reference rewrite plan carries symbol identity" {
 ///|
 test "naga_oil wb: identity rewrite plan does not collapse ambiguous bindings" {
   let plan = WgslReferenceRewritePlan()
-  plan.add_symbol_binding(
+  wbtest_add_symbol_reference_binding(
+    plan,
     WgslIrSymbolIdentity("a.wgsl", "Shared"),
     "Shared",
     "a__Shared",
   )
-  plan.add_symbol_binding(
+  wbtest_add_symbol_reference_binding(
+    plan,
     WgslIrSymbolIdentity("b.wgsl", "Shared"),
     "Shared",
     "b__Shared",

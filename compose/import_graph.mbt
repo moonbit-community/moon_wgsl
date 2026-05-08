@@ -7,9 +7,8 @@ priv struct WgslPreparedComposeSource {
 ///|
 priv struct WgslModuleFinalNameApplication {
   origin_index : Int
-  rel_path : String
-  original_name : String
-  current_name : String
+  identity : WgslIrSymbolIdentity
+  reference_path : WgslSemanticReferencePath
   final_name : String
 }
 
@@ -40,11 +39,16 @@ fn WgslModuleFinalNameApplicationPlan::push(
   if final_name == "" || final_name == origin.generated_symbol_name {
     return
   }
+  let identity = WgslIrSymbolIdentity(
+    origin.rel_path,
+    origin.source_symbol_name,
+  )
   self.entries.push(WgslModuleFinalNameApplication::{
     origin_index,
-    rel_path: origin.rel_path,
-    original_name: origin.source_symbol_name,
-    current_name: origin.generated_symbol_name,
+    identity,
+    reference_path: wgsl_compose_reference_path_required(
+      origin.generated_symbol_name,
+    ),
     final_name,
   })
 }
@@ -55,11 +59,15 @@ fn WgslModuleFinalNameApplicationPlan::reference_rewrite_plan(
 ) -> WgslReferenceRewritePlan {
   let plan = WgslReferenceRewritePlan()
   for entry in self.entries {
-    plan.add_symbol_binding(
-      WgslIrSymbolIdentity(entry.rel_path, entry.original_name),
-      entry.current_name,
-      entry.final_name,
-    )
+    match entry.reference_path.to_transform_path() {
+      Some(reference_path) =>
+        plan.add_symbol_reference_binding(
+          entry.identity,
+          reference_path,
+          entry.final_name,
+        )
+      None => ()
+    }
   }
   plan
 }
@@ -179,11 +187,15 @@ fn build_wgsl_redirect_reference_plan(
     match wgsl_redirect_final_target(redirects, from_name) {
       Some(to_name) =>
         if to_name != "" && to_name != from_name {
-          plan.add_symbol_binding(
-            WgslIrSymbolIdentity("", from_name),
-            from_name,
-            to_name,
-          )
+          match WgslReferencePath::from_text(from_name) {
+            Some(reference_path) =>
+              plan.add_symbol_reference_binding(
+                WgslIrSymbolIdentity("", from_name),
+                reference_path,
+                to_name,
+              )
+            None => ()
+          }
         }
       None => ()
     }

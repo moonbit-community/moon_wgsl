@@ -1,5 +1,6 @@
 ///|
 using @transform {
+  type WgslReferencePath,
   type WgslReferenceRewritePlan,
   type WgslEmittedDeclaration,
   type WgslModuleItemExtraction,
