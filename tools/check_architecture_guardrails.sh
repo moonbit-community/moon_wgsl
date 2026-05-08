@@ -218,8 +218,16 @@ if ! rg -n 'validate_wgsl_ir_module\(shader_module\)' ir/wgsl_emit.mbt >/dev/nul
   fail "WGSL IR emission must run internal IR validation before writing source"
 fi
 
-if [[ ! -f testdata/external_wgsl_corpus_skips.tsv ]]; then
-  fail "external WGSL skipped files must be classified by a skip manifest"
+if [[ -f testdata/external_wgsl_corpus_skips.tsv ]]; then
+  fail "external WGSL corpus must not use a skipped-file manifest"
+fi
+
+if [[ ! -f testdata/external_wgsl_corpus_expected_failures.tsv ]]; then
+  fail "external WGSL non-materialized files must be classified by an expected-failure manifest"
+fi
+
+if ! rg -n 'skipped=0' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must report zero skipped files"
 fi
 
 if [[ ! -f testdata/external_wgsl_corpus_profiles.tsv ]]; then
@@ -238,8 +246,8 @@ if ! rg -n 'bash tools/check_external_wgsl_corpus\.sh' .github/workflows/check.y
   fail "CI must run the external real-project WGSL corpus gate"
 fi
 
-if ! rg -n 'diff -u "\$skip_expected_keys" "\$skip_actual_keys"' tools/check_external_wgsl_corpus.sh >/dev/null; then
-  fail "external WGSL corpus gate must fail unknown or stale skipped files"
+if ! rg -n 'diff -u "\$expected_failure_expected_keys" "\$expected_failure_actual_keys"' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must fail unknown or stale expected failures"
 fi
 
 echo "architecture guardrails passed"
