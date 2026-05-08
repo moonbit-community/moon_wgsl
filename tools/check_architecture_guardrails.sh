@@ -43,6 +43,16 @@ if rg -n 'raw_top_level_items|Token::ITEM|%token<WgslRawTopLevelItem> ITEM' pars
   fail "raw top-level item scanning must stay parser-owned, not a generated parser start"
 fi
 
+if rg -n 'text : String' parser/wgsl_raw_top_level.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "raw top-level staging items must carry spans, not cached source text"
+fi
+
+lowerer_lines="$(wc -l < ir/wgsl_lower.mbt | tr -d ' ')"
+if (( lowerer_lines > 8000 )); then
+  fail "IR lowerer monolith is too large: ${lowerer_lines} lines"
+fi
+
 if rg -n 'WgslReferenceRewriteBinding \{[^}]*rel_path|WgslReferenceRewriteBinding \{[^}]*original_name' -U transform --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "reference rewrite bindings must carry WgslIrSymbolIdentity directly"
