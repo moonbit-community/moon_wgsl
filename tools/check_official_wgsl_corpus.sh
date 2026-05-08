@@ -8,8 +8,10 @@ cts_ref="${WGSL_CTS_REF:-main}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
 blocked_by_oracle="$repo_root/testdata/gpuweb_cts_ir_blocked_by_oracle.txt"
 execution_blocked_by_oracle="$repo_root/testdata/gpuweb_cts_execution_ir_blocked_by_oracle.txt"
+invalid_accepted_by_oracle="$repo_root/testdata/gpuweb_cts_invalid_accepted_by_oracle.txt"
 min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-114}"
 min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-111}"
+min_invalid_cases="${WGSL_CTS_MIN_INVALID_CASES:-80}"
 min_execution_cases="${WGSL_CTS_MIN_EXECUTION_CASES:-28}"
 min_execution_ir_cases="${WGSL_CTS_MIN_EXECUTION_IR_CASES:-25}"
 
@@ -166,4 +168,43 @@ if ((execution_ir_count < min_execution_ir_cases)); then
   exit 1
 fi
 
-echo "official WGSL CTS corpus gate passed: validation cases=$case_count validation-naga=$ir_count validation-oracle-blocked=$oracle_blocked_count execution cases=$execution_case_count execution-naga=$execution_ir_count execution-oracle-blocked=$execution_oracle_blocked_count"
+echo "== GPUWeb CTS invalid WGSL rejection corpus =="
+invalid_cases_dir="$tmpdir/invalid-cases"
+invalid_manifest="$tmpdir/invalid-manifest.tsv"
+node tools/extract_gpuweb_cts_invalid_static_wgsl.mjs "$cts_root" "$invalid_cases_dir" "$invalid_manifest"
+invalid_case_count="$(find "$invalid_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+if ((invalid_case_count < min_invalid_cases)); then
+  echo "official WGSL CTS invalid extractor produced only $invalid_case_count static WGSL cases; expected at least $min_invalid_cases" >&2
+  exit 1
+fi
+if [[ ! -f "$invalid_accepted_by_oracle" ]]; then
+  echo "missing invalid accepted-by-oracle manifest: $invalid_accepted_by_oracle" >&2
+  exit 1
+fi
+invalid_expected_oracle_accepted_ids="$tmpdir/invalid-expected-oracle-accepted.ids"
+invalid_actual_oracle_accepted_ids="$tmpdir/invalid-actual-oracle-accepted.ids"
+grep -v -E '^($|#)' "$invalid_accepted_by_oracle" | sort > "$invalid_expected_oracle_accepted_ids"
+: > "$invalid_actual_oracle_accepted_ids"
+while IFS= read -r invalid_case_file; do
+  invalid_id="$(basename "$invalid_case_file" .wgsl)"
+  invalid_emitted="$tmpdir/$invalid_id.invalid.ir.wgsl"
+  if moon run tools/ir_roundtrip -- --input "$invalid_case_file" --output "$invalid_emitted" >/dev/null 2>"$tmpdir/$invalid_id.invalid-ir.stderr" &&
+     validate_wgsl_with_detected_capabilities "$invalid_emitted" >/dev/null 2>"$tmpdir/$invalid_id.invalid-naga.stderr"; then
+    if grep -Fxq "$invalid_id" "$invalid_expected_oracle_accepted_ids"; then
+      echo "$invalid_id" >> "$invalid_actual_oracle_accepted_ids"
+      continue
+    fi
+    echo "official WGSL CTS invalid case unexpectedly passed moon IR plus Naga validation: $invalid_id" >&2
+    sed -n '1,120p' "$invalid_case_file" >&2
+    exit 1
+  fi
+done < <(find "$invalid_cases_dir" -name '*.wgsl' -type f | sort)
+sort -o "$invalid_actual_oracle_accepted_ids" "$invalid_actual_oracle_accepted_ids"
+if ! diff -u "$invalid_expected_oracle_accepted_ids" "$invalid_actual_oracle_accepted_ids" >"$tmpdir/invalid-oracle-accepted.diff"; then
+  echo "official WGSL CTS invalid accepted-by-oracle manifest is out of date" >&2
+  sed -n '1,160p' "$tmpdir/invalid-oracle-accepted.diff" >&2
+  exit 1
+fi
+
+invalid_rejected_count=$((invalid_case_count - $(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ')))
+echo "official WGSL CTS corpus gate passed: validation cases=$case_count validation-naga=$ir_count validation-oracle-blocked=$oracle_blocked_count execution cases=$execution_case_count execution-naga=$execution_ir_count execution-oracle-blocked=$execution_oracle_blocked_count invalid-rejected=$invalid_rejected_count invalid-oracle-accepted=$(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ')"

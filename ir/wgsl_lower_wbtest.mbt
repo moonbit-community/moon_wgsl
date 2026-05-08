@@ -1211,10 +1211,7 @@ test "WGSL IR roundtrip preserves transpose matrix result shape" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(
-    emitted.contains(": mat3x4<f32> = transpose"),
-    content="true",
-  )
+  debug_inspect(emitted.contains(": mat3x4<f32> = transpose"), content="true")
 }
 
 ///|

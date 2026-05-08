@@ -139,3 +139,8 @@ jobs:
         run: |
           ulimit -s 8176
           bash tools/check_official_wgsl_corpus.sh
+
+      - name: External real-project WGSL corpus
+        run: |
+          ulimit -s 8176
+          bash tools/check_external_wgsl_corpus.sh

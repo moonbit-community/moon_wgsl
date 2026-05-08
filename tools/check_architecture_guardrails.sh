@@ -206,4 +206,28 @@ if ! rg -n 'moon run tools/ir_roundtrip -- --input "\$case_file" --output "\$emi
   fail "official WGSL CTS gate must lower every extracted case through IR"
 fi
 
+if ! rg -n 'extract_gpuweb_cts_invalid_static_wgsl\.mjs' tools/check_official_wgsl_corpus.sh >/dev/null; then
+  fail "official WGSL CTS gate must include invalid WGSL rejection coverage"
+fi
+
+if [[ ! -f testdata/gpuweb_cts_invalid_accepted_by_oracle.txt ]]; then
+  fail "official WGSL invalid oracle-accepted cases must be manifest-owned"
+fi
+
+if ! rg -n 'validate_wgsl_ir_module\(shader_module\)' ir/wgsl_emit.mbt >/dev/null; then
+  fail "WGSL IR emission must run internal IR validation before writing source"
+fi
+
+if [[ ! -f testdata/external_wgsl_corpus_skips.tsv ]]; then
+  fail "external WGSL skipped files must be classified by a skip manifest"
+fi
+
+if ! rg -n 'bash tools/check_external_wgsl_corpus\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must run the external real-project WGSL corpus gate"
+fi
+
+if ! rg -n 'diff -u "\$skip_expected_keys" "\$skip_actual_keys"' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must fail unknown or stale skipped files"
+fi
+
 echo "architecture guardrails passed"

@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifest.tsv}"
+skip_manifest="${EXTERNAL_WGSL_CORPUS_SKIP_MANIFEST:-testdata/external_wgsl_corpus_skips.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
 
 fail() {
@@ -13,6 +14,7 @@ fail() {
 }
 
 [[ -f "$manifest" ]] || fail "missing manifest: $manifest"
+[[ -f "$skip_manifest" ]] || fail "missing skip manifest: $skip_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -70,6 +72,13 @@ source_valid_count=0
 ir_valid_count=0
 skipped_count=0
 composed_valid_count=0
+skip_actual="$tmpdir/skips.actual.tsv"
+skip_expected="$tmpdir/skips.expected.tsv"
+skip_actual_keys="$tmpdir/skips.actual.keys.tsv"
+skip_expected_keys="$tmpdir/skips.expected.keys.tsv"
+: > "$skip_actual"
+
+{ grep -v -E '^($|#)' "$skip_manifest" || true; } | sort > "$skip_expected"
 
 source_contains_preprocessor_directive() {
   local source="$1"
@@ -81,6 +90,7 @@ materialize_valid_external_wgsl_source() {
   local checkout="$2"
   local source="$3"
   local output="$4"
+  local reason_output="$5"
 
   if validate_wgsl_with_detected_capabilities "$source" >/dev/null 2>"$tmpdir/$id.naga.err"; then
     printf 'raw\n'
@@ -89,6 +99,7 @@ materialize_valid_external_wgsl_source() {
   fi
 
   if ! source_contains_preprocessor_directive "$source"; then
+    printf 'raw_invalid_no_preprocessor\tNaga rejected raw source and the file has no naga-oil-style preprocessing directive\n' > "$reason_output"
     return 1
   fi
 
@@ -98,10 +109,16 @@ materialize_valid_external_wgsl_source() {
       --fixture-root "$checkout" \
       --entry "$rel_path" \
       --output "$composed" >"$tmpdir/$id.compose.stdout" 2>"$tmpdir/$id.compose.stderr"; then
+    printf 'compose_failed\t%s\n' "$(
+      { cat "$tmpdir/$id.compose.stdout"; cat "$tmpdir/$id.compose.stderr"; } |
+        tr '\n' ' ' |
+        sed 's/[[:space:]]\{1,\}/ /g; s/[[:space:]]$//'
+    )" > "$reason_output"
     return 1
   fi
 
   if ! validate_wgsl_with_detected_capabilities "$composed" >/dev/null 2>"$tmpdir/$id.compose-naga.err"; then
+    printf 'compose_naga_invalid\t%s\n' "$(tr '\n' ' ' < "$tmpdir/$id.compose-naga.err" | sed 's/[[:space:]]\{1,\}/ /g; s/[[:space:]]$//')" > "$reason_output"
     return 1
   fi
 
@@ -132,8 +149,15 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
   while IFS= read -r source; do
     file_count=$((file_count + 1))
     source_candidate_file="$tmpdir/$id.source-candidate"
-    if ! source_kind="$(materialize_valid_external_wgsl_source "$id" "$checkout" "$source" "$source_candidate_file")"; then
+    skip_reason_file="$tmpdir/$id.skip-reason"
+    rel_path="${source#$checkout/}"
+    if ! source_kind="$(materialize_valid_external_wgsl_source "$id" "$checkout" "$source" "$source_candidate_file" "$skip_reason_file")"; then
       skipped_count=$((skipped_count + 1))
+      if [[ ! -s "$skip_reason_file" ]]; then
+        printf 'unknown\tmaterialization failed without a recorded reason\n' > "$skip_reason_file"
+      fi
+      IFS=$'\t' read -r reason detail < "$skip_reason_file"
+      printf '%s\t%s\t%s\t%s\n' "$id" "$rel_path" "$reason" "${detail:-}" >> "$skip_actual"
       continue
     fi
     validated_source="$(cat "$source_candidate_file")"
@@ -177,6 +201,18 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
   ((repo_composed_count >= min_composed)) || fail "$id produced only $repo_composed_count composed source file(s); expected at least $min_composed"
   echo "external WGSL corpus $id passed: files=$repo_file_count source-valid=$repo_valid_count composed-valid=$repo_composed_count ir-valid=$repo_ir_count skipped=$((repo_file_count - repo_valid_count))"
 done < "$manifest"
+
+sort -o "$skip_actual" "$skip_actual"
+awk -F '\t' '{ print $1 "\t" $2 "\t" $3 }' "$skip_expected" | sort > "$skip_expected_keys"
+awk -F '\t' '{ print $1 "\t" $2 "\t" $3 }' "$skip_actual" | sort > "$skip_actual_keys"
+if ! diff -u "$skip_expected_keys" "$skip_actual_keys" >"$tmpdir/skips.diff"; then
+  echo "external WGSL corpus skipped-file manifest is out of date or incomplete" >&2
+  echo "Every skipped file must be classified explicitly in $skip_manifest." >&2
+  sed -n '1,200p' "$tmpdir/skips.diff" >&2
+  echo "Observed skipped-file details:" >&2
+  sed -n '1,200p' "$skip_actual" >&2
+  exit 1
+fi
 
 ((repo_count > 0)) || fail "manifest contains no repositories"
 ((source_valid_count > 0)) || fail "no Naga-valid external WGSL files were found"
