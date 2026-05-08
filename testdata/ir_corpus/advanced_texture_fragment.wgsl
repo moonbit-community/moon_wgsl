@@ -16,9 +16,11 @@ fn fragment() -> @location(0) vec4f {
   let uv: vec2f = vec2f(0.5, 0.25);
   let dx: vec2f = vec2f(0.01, 0.0);
   let dy: vec2f = vec2f(0.0, 0.01);
-  var color = textureSampleBias(tex, samp, uv, 0.25, vec2i(0i, 0i));
+  var color = textureSample(tex, samp, uv, vec2i(0i, 0i));
+  color = color + textureSampleBias(tex, samp, uv, 0.25, vec2i(0i, 0i));
   color = color + textureSampleGrad(tex, samp, uv, dx, dy, vec2i(0i, 0i));
   color = color + textureSampleLevel(tex_arr, samp, uv, 0u, 1.0, vec2i(0i, 0i));
+  color = color + textureSampleBaseClampToEdge(tex, samp, uv);
   let count: u32 = textureNumLevels(tex) + textureDimensions(tex).x;
   let cmp: f32 = textureSampleCompare(depth_tex, cmp_samp, uv, 0.5, vec2i(0i, 0i));
   let cmp0: f32 = textureSampleCompareLevel(depth_tex, cmp_samp, uv, 0.5, vec2i(0i, 0i));

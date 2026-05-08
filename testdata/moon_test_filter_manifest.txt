@@ -1,0 +1,9 @@
+# Glob filters that the project relies on for targeted local verification.
+# The guardrail fails if any filter stops matching at least one test.
+*barrier*
+*arrayLength*
+*large u32*
+*statement function call arguments*
+*out-of-range abstract int*
+*storage access defaults*
+*multiple branch*

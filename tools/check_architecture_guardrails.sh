@@ -144,6 +144,26 @@ if ! rg -n 'bash tools/check_wgsl_corpus_matrix\.sh' .github/workflows/check.yml
   fail "CI must run the manifest-driven WGSL corpus matrix"
 fi
 
+if [[ ! -f testdata/wgsl_builtin_coverage_manifest.tsv ]]; then
+  fail "WGSL builtin coverage must be driven by a manifest"
+fi
+
+if ! rg -n 'bash tools/check_wgsl_builtin_coverage\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must run the WGSL builtin coverage gate"
+fi
+
+if ! rg -n 'bash tools/check_moon_test_filters\.sh' .github/workflows/check.yml >/dev/null; then
+  fail "CI must fail targeted moon test filters that match zero tests"
+fi
+
+if ! rg -n 'ir-builtin-atomic-barrier-compute' testdata/wgsl_corpus_manifest.tsv >/dev/null; then
+  fail "WGSL corpus matrix must include explicit atomic and barrier builtin coverage"
+fi
+
+if ! rg -n 'ir-builtin-ray-query' testdata/wgsl_corpus_manifest.tsv >/dev/null; then
+  fail "WGSL corpus matrix must include explicit ray query builtin coverage"
+fi
+
 if ! rg -n 'generated-bevy-pbr-forward' testdata/wgsl_corpus_manifest.tsv >/dev/null; then
   fail "WGSL corpus matrix must include full Bevy PBR forward"
 fi

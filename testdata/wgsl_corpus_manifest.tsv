@@ -9,6 +9,11 @@ ir-texture-load-queries-compute	file	testdata/ir_corpus/texture_load_queries_com
 ir-workgroup-override-compute	file	testdata/ir_corpus/workgroup_override_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: override constants in workgroup attributes.
 ir-const-assert-compute	file	testdata/ir_corpus/const_assert_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: top-level and function const_assert preservation.
 ir-large-u32-literal	file	testdata/ir_corpus/large_u32_literal.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: legal u32 literals above signed i32 range.
+ir-builtin-numeric-fragment	file	testdata/ir_corpus/builtin_numeric_fragment.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official numeric, derivative, matrix, relational, and select builtin coverage.
+ir-builtin-integer-compute	file	testdata/ir_corpus/builtin_integer_compute.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official integer bit, packed integer, and packed normalization builtin coverage.
+ir-builtin-atomic-barrier-compute	file	testdata/ir_corpus/builtin_atomic_barrier_compute.wgsl	-	-	-	-	parse,naga,ir,naga-ir	Static IR corpus: official atomic and workgroup/storage/texture barrier builtin coverage.
+ir-builtin-oracle-blocked-fragment	file	testdata/ir_corpus/builtin_oracle_blocked_fragment.wgsl	-	-	-	-	parse,ir	Static IR corpus: lowerer-known builtin coverage where the pinned Naga oracle lacks matching capability support.
+ir-builtin-ray-query	file	testdata/ir_corpus/builtin_ray_query.wgsl	-	-	-	ray-query	parse,naga,ir,naga-ir	Static IR corpus: full ray query builtin statement and expression coverage.
 ir-builtin-functions-fragment	file	testdata/ir_corpus/builtin_functions_fragment.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: builtin function expression lowering.
 ir-packed-integer-builtins-compute	file	testdata/ir_corpus/packed_integer_builtins_compute.wgsl	-	-	-	-	ir,naga-ir	Static IR corpus: packed integer builtin calls.
 compose-local-simple	compose	testdata/ir_corpus/compose	top.wgsl	-	-	-	compose,parse,naga,ir,naga-ir	Local compose fixture through compose, parse, validation, IR, and emitted validation.
@@ -37,9 +42,9 @@ generated-upstream-diagnostic-filters	generated	upstream-diagnostic-filters	-	-	
 generated-bevy-issue8	generated	bevy-issue8	-	-	-	-	parse,naga	Generated validation case: historical issue 8 alias binding.
 generated-issue9-type-identity	generated	issue9-type-identity	-	-	-	-	parse,naga	Generated validation case: imported type identity preservation.
 generated-issue13-nested-alias-global	generated	issue13-nested-alias-global	-	-	-	-	parse,naga	Generated validation case: nested alias global identity.
-generated-storage-array-length-ir	generated	storage-array-length-ir	-	-	-	-	parse,naga	Generated validation case: storage access defaults and arrayLength IR.
+generated-storage-array-length-ir	generated	storage-array-length-ir	-	-	-	-	parse,naga,ir,naga-ir	Generated validation case: storage access defaults and arrayLength IR.
 generated-bevy-pbr-functions	generated	bevy-pbr-functions	-	-	-	-	parse,naga,ir,naga-ir	Generated real shader case: Bevy PBR functions through compose and IR.
 generated-bevy-pbr-forward	generated	bevy-pbr-forward	-	-	-	-	parse,naga,ir,naga-ir	Generated real shader case: full Bevy PBR forward fragment through compose and IR.
 generated-mgstudio-mesh3d-forward	generated	mgstudio-mesh3d-forward	-	-	-	-	parse,naga,ir,naga-ir	Generated real shader case: MGStudio mesh3d forward fragment through compose and IR.
-generated-upstream-raycast	generated	upstream-raycast	-	-	-	ray-query	parse,naga	Generated validation case: upstream ray query compose with capability.
+generated-upstream-raycast	generated	upstream-raycast	-	-	-	ray-query	parse,naga,ir,naga-ir	Generated validation case: upstream ray query compose with capability.
 generated-upstream-dual-source-blending	generated	upstream-dual-source-blending	-	-	-	dual-source-blending	parse,naga	Generated validation case: upstream dual-source blending with capability.

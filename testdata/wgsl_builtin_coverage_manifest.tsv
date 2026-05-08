@@ -1,0 +1,130 @@
+# builtin	category	corpus_id	required_stage	token	notes
+abs	numeric	ir-builtin-numeric-fragment	naga-ir	abs	Official numeric builtin covered by IR roundtrip plus Naga validation.
+acos	numeric	ir-builtin-numeric-fragment	naga-ir	acos	Official numeric builtin covered by IR roundtrip plus Naga validation.
+acosh	numeric	ir-builtin-numeric-fragment	naga-ir	acosh	Official numeric builtin covered by IR roundtrip plus Naga validation.
+all	relational	ir-builtin-numeric-fragment	naga-ir	all	Official relational builtin covered by IR roundtrip plus Naga validation.
+any	relational	ir-builtin-numeric-fragment	naga-ir	any	Official relational builtin covered by IR roundtrip plus Naga validation.
+asin	numeric	ir-builtin-numeric-fragment	naga-ir	asin	Official numeric builtin covered by IR roundtrip plus Naga validation.
+asinh	numeric	ir-builtin-numeric-fragment	naga-ir	asinh	Official numeric builtin covered by IR roundtrip plus Naga validation.
+atan	numeric	ir-builtin-numeric-fragment	naga-ir	atan	Official numeric builtin covered by IR roundtrip plus Naga validation.
+atan2	numeric	ir-builtin-numeric-fragment	naga-ir	atan2	Official numeric builtin covered by IR roundtrip plus Naga validation.
+atanh	numeric	ir-builtin-numeric-fragment	naga-ir	atanh	Official numeric builtin covered by IR roundtrip plus Naga validation.
+atomicAdd	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicAdd	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicAnd	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicAnd	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicCompareExchangeWeak	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicCompareExchangeWeak	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicExchange	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicExchange	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicLoad	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicLoad	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicMax	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicMax	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicMin	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicMin	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicOr	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicOr	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicStore	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicStore	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicSub	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicSub	Official atomic builtin covered by IR roundtrip plus Naga validation.
+atomicXor	atomic	ir-builtin-atomic-barrier-compute	naga-ir	atomicXor	Official atomic builtin covered by IR roundtrip plus Naga validation.
+ceil	numeric	ir-builtin-numeric-fragment	naga-ir	ceil	Official numeric builtin covered by IR roundtrip plus Naga validation.
+clamp	numeric	ir-builtin-numeric-fragment	naga-ir	clamp	Official numeric builtin covered by IR roundtrip plus Naga validation.
+cos	numeric	ir-builtin-numeric-fragment	naga-ir	cos	Official numeric builtin covered by IR roundtrip plus Naga validation.
+cosh	numeric	ir-builtin-numeric-fragment	naga-ir	cosh	Official numeric builtin covered by IR roundtrip plus Naga validation.
+countLeadingZeros	integer	ir-builtin-integer-compute	naga-ir	countLeadingZeros	Official integer builtin covered by IR roundtrip plus Naga validation.
+countOneBits	integer	ir-builtin-integer-compute	naga-ir	countOneBits	Official integer builtin covered by IR roundtrip plus Naga validation.
+countTrailingZeros	integer	ir-builtin-integer-compute	naga-ir	countTrailingZeros	Official integer builtin covered by IR roundtrip plus Naga validation.
+cross	numeric	ir-builtin-numeric-fragment	naga-ir	cross	Official numeric builtin covered by IR roundtrip plus Naga validation.
+degrees	numeric	ir-builtin-numeric-fragment	naga-ir	degrees	Official numeric builtin covered by IR roundtrip plus Naga validation.
+determinant	numeric	ir-builtin-numeric-fragment	naga-ir	determinant	Official matrix builtin covered by IR roundtrip plus Naga validation.
+distance	numeric	ir-builtin-numeric-fragment	naga-ir	distance	Official numeric builtin covered by IR roundtrip plus Naga validation.
+dot	numeric	ir-builtin-numeric-fragment	naga-ir	dot	Official numeric builtin covered by IR roundtrip plus Naga validation.
+dot4I8Packed	integer	ir-builtin-integer-compute	naga-ir	dot4I8Packed	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+dot4U8Packed	integer	ir-builtin-integer-compute	naga-ir	dot4U8Packed	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+dpdx	derivative	ir-builtin-numeric-fragment	naga-ir	dpdx	Official derivative builtin covered by IR roundtrip plus Naga validation.
+dpdxCoarse	derivative	ir-builtin-numeric-fragment	naga-ir	dpdxCoarse	Official derivative builtin covered by IR roundtrip plus Naga validation.
+dpdxFine	derivative	ir-builtin-numeric-fragment	naga-ir	dpdxFine	Official derivative builtin covered by IR roundtrip plus Naga validation.
+dpdy	derivative	ir-builtin-numeric-fragment	naga-ir	dpdy	Official derivative builtin covered by IR roundtrip plus Naga validation.
+dpdyCoarse	derivative	ir-builtin-numeric-fragment	naga-ir	dpdyCoarse	Official derivative builtin covered by IR roundtrip plus Naga validation.
+dpdyFine	derivative	ir-builtin-numeric-fragment	naga-ir	dpdyFine	Official derivative builtin covered by IR roundtrip plus Naga validation.
+exp	numeric	ir-builtin-numeric-fragment	naga-ir	exp	Official numeric builtin covered by IR roundtrip plus Naga validation.
+exp2	numeric	ir-builtin-numeric-fragment	naga-ir	exp2	Official numeric builtin covered by IR roundtrip plus Naga validation.
+extractBits	integer	ir-builtin-integer-compute	naga-ir	extractBits	Official integer builtin covered by IR roundtrip plus Naga validation.
+faceForward	numeric	ir-builtin-numeric-fragment	naga-ir	faceForward	Official numeric builtin covered by IR roundtrip plus Naga validation.
+firstLeadingBit	integer	ir-builtin-integer-compute	naga-ir	firstLeadingBit	Official integer builtin covered by IR roundtrip plus Naga validation.
+firstTrailingBit	integer	ir-builtin-integer-compute	naga-ir	firstTrailingBit	Official integer builtin covered by IR roundtrip plus Naga validation.
+floor	numeric	ir-builtin-numeric-fragment	naga-ir	floor	Official numeric builtin covered by IR roundtrip plus Naga validation.
+fma	numeric	ir-builtin-numeric-fragment	naga-ir	fma	Official numeric builtin covered by IR roundtrip plus Naga validation.
+fract	numeric	ir-builtin-numeric-fragment	naga-ir	fract	Official numeric builtin covered by IR roundtrip plus Naga validation.
+frexp	numeric	ir-builtin-numeric-fragment	naga-ir	frexp	Official numeric builtin covered by IR roundtrip plus Naga validation.
+fwidth	derivative	ir-builtin-numeric-fragment	naga-ir	fwidth	Official derivative builtin covered by IR roundtrip plus Naga validation.
+fwidthCoarse	derivative	ir-builtin-numeric-fragment	naga-ir	fwidthCoarse	Official derivative builtin covered by IR roundtrip plus Naga validation.
+fwidthFine	derivative	ir-builtin-numeric-fragment	naga-ir	fwidthFine	Official derivative builtin covered by IR roundtrip plus Naga validation.
+insertBits	integer	ir-builtin-integer-compute	naga-ir	insertBits	Official integer builtin covered by IR roundtrip plus Naga validation.
+inverse	numeric	ir-builtin-oracle-blocked-fragment	ir	inverse	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
+inverseSqrt	numeric	ir-builtin-numeric-fragment	naga-ir	inverseSqrt	Official numeric builtin covered by IR roundtrip plus Naga validation.
+isInf	relational	ir-builtin-oracle-blocked-fragment	ir	isInf	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
+isNan	relational	ir-builtin-oracle-blocked-fragment	ir	isNan	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
+ldexp	numeric	ir-builtin-numeric-fragment	naga-ir	ldexp	Official numeric builtin covered by IR roundtrip plus Naga validation.
+length	numeric	ir-builtin-numeric-fragment	naga-ir	length	Official numeric builtin covered by IR roundtrip plus Naga validation.
+log	numeric	ir-builtin-numeric-fragment	naga-ir	log	Official numeric builtin covered by IR roundtrip plus Naga validation.
+log2	numeric	ir-builtin-numeric-fragment	naga-ir	log2	Official numeric builtin covered by IR roundtrip plus Naga validation.
+max	numeric	ir-builtin-numeric-fragment	naga-ir	max	Official numeric builtin covered by IR roundtrip plus Naga validation.
+min	numeric	ir-builtin-numeric-fragment	naga-ir	min	Official numeric builtin covered by IR roundtrip plus Naga validation.
+mix	numeric	ir-builtin-numeric-fragment	naga-ir	mix	Official numeric builtin covered by IR roundtrip plus Naga validation.
+modf	numeric	ir-builtin-numeric-fragment	naga-ir	modf	Official numeric builtin covered by IR roundtrip plus Naga validation.
+normalize	numeric	ir-builtin-numeric-fragment	naga-ir	normalize	Official numeric builtin covered by IR roundtrip plus Naga validation.
+pack2x16float	integer	ir-builtin-oracle-blocked-fragment	ir	pack2x16float	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
+pack2x16snorm	integer	ir-builtin-integer-compute	naga-ir	pack2x16snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+pack2x16unorm	integer	ir-builtin-integer-compute	naga-ir	pack2x16unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+pack4x8snorm	integer	ir-builtin-integer-compute	naga-ir	pack4x8snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+pack4x8unorm	integer	ir-builtin-integer-compute	naga-ir	pack4x8unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+pack4xI8	integer	ir-builtin-integer-compute	naga-ir	pack4xI8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+pack4xI8Clamp	integer	ir-builtin-integer-compute	naga-ir	pack4xI8Clamp	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+pack4xU8	integer	ir-builtin-integer-compute	naga-ir	pack4xU8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+pack4xU8Clamp	integer	ir-builtin-integer-compute	naga-ir	pack4xU8Clamp	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+pow	numeric	ir-builtin-numeric-fragment	naga-ir	pow	Official numeric builtin covered by IR roundtrip plus Naga validation.
+quantizeToF16	numeric	ir-builtin-oracle-blocked-fragment	ir	quantizeToF16	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
+radians	numeric	ir-builtin-numeric-fragment	naga-ir	radians	Official numeric builtin covered by IR roundtrip plus Naga validation.
+reflect	numeric	ir-builtin-numeric-fragment	naga-ir	reflect	Official numeric builtin covered by IR roundtrip plus Naga validation.
+refract	numeric	ir-builtin-numeric-fragment	naga-ir	refract	Official numeric builtin covered by IR roundtrip plus Naga validation.
+reverseBits	integer	ir-builtin-integer-compute	naga-ir	reverseBits	Official integer builtin covered by IR roundtrip plus Naga validation.
+round	numeric	ir-builtin-numeric-fragment	naga-ir	round	Official numeric builtin covered by IR roundtrip plus Naga validation.
+saturate	numeric	ir-builtin-numeric-fragment	naga-ir	saturate	Official numeric builtin covered by IR roundtrip plus Naga validation.
+sign	numeric	ir-builtin-numeric-fragment	naga-ir	sign	Official numeric builtin covered by IR roundtrip plus Naga validation.
+sin	numeric	ir-builtin-numeric-fragment	naga-ir	sin	Official numeric builtin covered by IR roundtrip plus Naga validation.
+sinh	numeric	ir-builtin-numeric-fragment	naga-ir	sinh	Official numeric builtin covered by IR roundtrip plus Naga validation.
+smoothstep	numeric	ir-builtin-numeric-fragment	naga-ir	smoothstep	Official numeric builtin covered by IR roundtrip plus Naga validation.
+sqrt	numeric	ir-builtin-numeric-fragment	naga-ir	sqrt	Official numeric builtin covered by IR roundtrip plus Naga validation.
+step	numeric	ir-builtin-numeric-fragment	naga-ir	step	Official numeric builtin covered by IR roundtrip plus Naga validation.
+tan	numeric	ir-builtin-numeric-fragment	naga-ir	tan	Official numeric builtin covered by IR roundtrip plus Naga validation.
+tanh	numeric	ir-builtin-numeric-fragment	naga-ir	tanh	Official numeric builtin covered by IR roundtrip plus Naga validation.
+transpose	numeric	ir-builtin-numeric-fragment	naga-ir	transpose	Official matrix builtin covered by IR roundtrip plus Naga validation.
+trunc	numeric	ir-builtin-numeric-fragment	naga-ir	trunc	Official numeric builtin covered by IR roundtrip plus Naga validation.
+unpack2x16float	integer	ir-builtin-oracle-blocked-fragment	ir	unpack2x16float	Lowerer-known builtin covered by IR while pinned Naga validation lacks this capability.
+unpack2x16snorm	integer	ir-builtin-integer-compute	naga-ir	unpack2x16snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+unpack2x16unorm	integer	ir-builtin-integer-compute	naga-ir	unpack2x16unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+unpack4x8snorm	integer	ir-builtin-integer-compute	naga-ir	unpack4x8snorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+unpack4x8unorm	integer	ir-builtin-integer-compute	naga-ir	unpack4x8unorm	Official packed builtin covered by IR roundtrip plus Naga validation.
+unpack4xI8	integer	ir-builtin-integer-compute	naga-ir	unpack4xI8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+unpack4xU8	integer	ir-builtin-integer-compute	naga-ir	unpack4xU8	Official packed integer builtin covered by IR roundtrip plus Naga validation.
+arrayLength	storage	generated-storage-array-length-ir	naga-ir	arrayLength	Storage runtime-array builtin covered by IR roundtrip plus Naga validation.
+rayQueryConfirmIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryConfirmIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+rayQueryGenerateIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGenerateIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+rayQueryGetCandidateIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGetCandidateIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+rayQueryGetCommittedIntersection	ray-query	ir-builtin-ray-query	naga-ir	rayQueryGetCommittedIntersection	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+rayQueryInitialize	ray-query	ir-builtin-ray-query	naga-ir	rayQueryInitialize	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+rayQueryProceed	ray-query	ir-builtin-ray-query	naga-ir	rayQueryProceed	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+rayQueryTerminate	ray-query	ir-builtin-ray-query	naga-ir	rayQueryTerminate	Ray query builtin covered by generated upstream case, IR roundtrip, and Naga validation.
+storageBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	storageBarrier	Official memory barrier builtin covered by IR roundtrip plus Naga validation.
+subgroupBarrier	barrier	ir-builtin-oracle-blocked-fragment	ir	subgroupBarrier	Lowerer-known subgroup barrier covered by IR while pinned Naga validation lacks the needed capability.
+textureBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	textureBarrier	Official memory barrier builtin covered by IR roundtrip plus Naga validation.
+textureDimensions	texture	ir-advanced-texture-fragment	naga-ir	textureDimensions	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureGather	texture	ir-advanced-texture-fragment	naga-ir	textureGather	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureGatherCompare	texture	ir-advanced-texture-fragment	naga-ir	textureGatherCompare	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureLoad	texture	ir-texture-load-queries-compute	naga-ir	textureLoad	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureNumLayers	texture	ir-texture-load-queries-compute	naga-ir	textureNumLayers	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureNumLevels	texture	ir-advanced-texture-fragment	naga-ir	textureNumLevels	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureNumSamples	texture	ir-texture-load-queries-compute	naga-ir	textureNumSamples	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureSample	texture	ir-advanced-texture-fragment	naga-ir	textureSample	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureSampleBaseClampToEdge	texture	ir-advanced-texture-fragment	naga-ir	textureSampleBaseClampToEdge	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureSampleBias	texture	ir-advanced-texture-fragment	naga-ir	textureSampleBias	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureSampleCompare	texture	ir-advanced-texture-fragment	naga-ir	textureSampleCompare	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureSampleCompareLevel	texture	ir-advanced-texture-fragment	naga-ir	textureSampleCompareLevel	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureSampleGrad	texture	ir-advanced-texture-fragment	naga-ir	textureSampleGrad	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureSampleLevel	texture	ir-advanced-texture-fragment	naga-ir	textureSampleLevel	Official texture builtin covered by IR roundtrip plus Naga validation.
+textureStore	texture	ir-texture-compute	naga-ir	textureStore	Official texture store builtin covered by IR roundtrip plus Naga validation.
+workgroupBarrier	barrier	ir-builtin-atomic-barrier-compute	naga-ir	workgroupBarrier	Official control barrier builtin covered by IR roundtrip plus Naga validation.
