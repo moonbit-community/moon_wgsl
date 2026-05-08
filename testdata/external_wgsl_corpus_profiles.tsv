@@ -1,0 +1,19 @@
+# id	rel_path	bool_defs	value_defs	additional_imports	capabilities	notes
+bevy	assets/shaders/animate_shader.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/array_texture.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/bindless_material.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/custom_material.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/custom_material_2d.wgsl	VERTEX_UVS	-	-	-	Bevy sprite material profile with UV vertex output enabled.
+bevy	assets/shaders/custom_ui_material.wgsl	-	-	-	-	Bevy UI material profile requiring the bevy_ui shader root.
+bevy	assets/shaders/extended_material.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/extended_material_bindless.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/manual_material.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/screen_space_texture_material.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/show_depth_texture_material.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/single_mip_level.wgsl	VERTEX_UVS	-	-	-	Bevy sprite material profile with UV vertex output enabled.
+bevy	assets/shaders/texture_binding_array.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	assets/shaders/tonemapping_test_patterns.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD,TONEMAP_IN_SHADER	-	-	-	Bevy forward-material profile with shader-side tonemapping enabled.
+bevy	assets/shaders/water_material.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	crates/bevy_pbr/src/render/pbr.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	crates/bevy_pbr/src/render/pbr_fragment.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward-material profile used by the engine examples.
+bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	-	SLICE_COUNT=4,SAMPLES_PER_SLICE_SIDE=3	-	-	Bevy SSAO pipeline value defines supplied by the Rust render pipeline.

@@ -1,22 +1,12 @@
 # id	rel_path	reason	detail
-bevy	assets/shaders/animate_shader.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/array_texture.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/bindless_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	assets/shaders/custom_clustered_decal.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	assets/shaders/custom_gltf_2d.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/custom_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	assets/shaders/custom_material_2d.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	assets/shaders/custom_ui_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/extended_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/extended_material_bindless.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	assets/shaders/irradiance_volume_voxel_visualization.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/manual_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/screen_space_texture_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/show_depth_texture_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	assets/shaders/show_prepass.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	assets/shaders/single_mip_level.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/texture_binding_array.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	assets/shaders/tonemapping_test_patterns.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
+bevy	assets/shaders/texture_binding_array.wgsl	compose_naga_invalid	Composed source is rejected by Naga under the current standalone validator context.
 bevy	assets/shaders/water_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	crates/bevy_core_pipeline/src/mip_generation/downsample.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	crates/bevy_core_pipeline/src/tonemapping/lut_bindings.wgsl	compose_naga_invalid	Composed source is rejected by Naga under the current standalone validator context.
@@ -31,9 +21,6 @@ bevy	crates/bevy_pbr/src/meshlet/meshlet_cull_shared.wgsl	compose_failed	Compose
 bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_hardware_raster.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	crates/bevy_pbr/src/render/pbr.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	crates/bevy_pbr/src/render/pbr_fragment.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
-bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	crates/bevy_pbr/src/ssr/raymarch.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	compose_failed	Composer could not materialize a standalone shader under the current fixture/profile; this is tracked as a follow-up coverage item.
 learn-wgpu	code/compute/src/filter.wgsl	raw_invalid_no_preprocessor	External source is not standalone Naga-valid WGSL under the current validator context.

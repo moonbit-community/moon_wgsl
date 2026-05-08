@@ -6,6 +6,7 @@ cd "$repo_root"
 
 manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifest.tsv}"
 skip_manifest="${EXTERNAL_WGSL_CORPUS_SKIP_MANIFEST:-testdata/external_wgsl_corpus_skips.tsv}"
+profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
 
 fail() {
@@ -15,6 +16,7 @@ fail() {
 
 [[ -f "$manifest" ]] || fail "missing manifest: $manifest"
 [[ -f "$skip_manifest" ]] || fail "missing skip manifest: $skip_manifest"
+[[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -24,7 +26,16 @@ trap cleanup EXIT
 
 validate_wgsl_with_detected_capabilities() {
   local source="$1"
+  local extra_capabilities="${2:-}"
   local validate_args=()
+  if [[ -n "$extra_capabilities" && "$extra_capabilities" != "-" ]]; then
+    IFS=',' read -r -a capability_list <<< "$extra_capabilities"
+    local capability
+    for capability in "${capability_list[@]}"; do
+      [[ -n "$capability" ]] || continue
+      validate_args+=(--capability "$capability")
+    done
+  fi
   if grep -q 'enable f16' "$source" || grep -q 'f16' "$source" || grep -q 'vec[234]h' "$source" || grep -q 'mat[234]x[234]h' "$source"; then
     validate_args+=(--capability f16)
   fi
@@ -85,30 +96,65 @@ source_contains_preprocessor_directive() {
   grep -Eq '^[[:space:]]*#(import|define_import_path|if|ifdef|ifndef|else|elif|endif)' "$source"
 }
 
+lookup_external_corpus_profile() {
+  local id="$1"
+  local rel_path="$2"
+  awk -F '\t' -v id="$id" -v rel="$rel_path" '
+    $0 !~ /^($|#)/ && $1 == id && $2 == rel { print; found = 1; exit }
+    END { if (!found) exit 1 }
+  ' "$profile_manifest"
+}
+
+append_csv_compose_args() {
+  local flag="$1"
+  local csv="$2"
+  [[ -n "$csv" && "$csv" != "-" ]] || return 0
+  IFS=',' read -r -a values <<< "$csv"
+  local value
+  for value in "${values[@]}"; do
+    [[ -n "$value" ]] || continue
+    compose_args+=("$flag" "$value")
+  done
+}
+
 materialize_valid_external_wgsl_source() {
   local id="$1"
   local checkout="$2"
   local source="$3"
   local output="$4"
   local reason_output="$5"
+  local rel_path="${source#$checkout/}"
+  local profile_line=""
+  profile_line="$(lookup_external_corpus_profile "$id" "$rel_path" || true)"
+  local profile_defs="-"
+  local profile_value_defs="-"
+  local profile_imports="-"
+  local profile_capabilities="-"
+  if [[ -n "$profile_line" ]]; then
+    IFS=$'\t' read -r _profile_id _profile_rel profile_defs profile_value_defs profile_imports profile_capabilities _profile_notes <<< "$profile_line"
+  fi
 
-  if validate_wgsl_with_detected_capabilities "$source" >/dev/null 2>"$tmpdir/$id.naga.err"; then
+  if validate_wgsl_with_detected_capabilities "$source" "$profile_capabilities" >/dev/null 2>"$tmpdir/$id.naga.err"; then
     printf 'raw\n'
     printf '%s\n' "$source" > "$output"
     return 0
   fi
 
-  if ! source_contains_preprocessor_directive "$source"; then
+  if ! source_contains_preprocessor_directive "$source" && [[ -z "$profile_line" ]]; then
     printf 'raw_invalid_no_preprocessor\tNaga rejected raw source and the file has no naga-oil-style preprocessing directive\n' > "$reason_output"
     return 1
   fi
 
-  local rel_path="${source#$checkout/}"
   local composed="$tmpdir/$id.compose.$(basename "$source").wgsl"
-  if ! moon run tools/compose_case -- \
-      --fixture-root "$checkout" \
-      --entry "$rel_path" \
-      --output "$composed" >"$tmpdir/$id.compose.stdout" 2>"$tmpdir/$id.compose.stderr"; then
+  local -a compose_args=(
+    --fixture-root "$checkout"
+    --entry "$rel_path"
+    --output "$composed"
+  )
+  append_csv_compose_args "--def" "$profile_defs"
+  append_csv_compose_args "--value-def" "$profile_value_defs"
+  append_csv_compose_args "--additional-import" "$profile_imports"
+  if ! moon run tools/compose_case -- "${compose_args[@]}" >"$tmpdir/$id.compose.stdout" 2>"$tmpdir/$id.compose.stderr"; then
     printf 'compose_failed\t%s\n' "$(
       { cat "$tmpdir/$id.compose.stdout"; cat "$tmpdir/$id.compose.stderr"; } |
         tr '\n' ' ' |
@@ -117,7 +163,7 @@ materialize_valid_external_wgsl_source() {
     return 1
   fi
 
-  if ! validate_wgsl_with_detected_capabilities "$composed" >/dev/null 2>"$tmpdir/$id.compose-naga.err"; then
+  if ! validate_wgsl_with_detected_capabilities "$composed" "$profile_capabilities" >/dev/null 2>"$tmpdir/$id.compose-naga.err"; then
     printf 'compose_naga_invalid\t%s\n' "$(tr '\n' ' ' < "$tmpdir/$id.compose-naga.err" | sed 's/[[:space:]]\{1,\}/ /g; s/[[:space:]]$//')" > "$reason_output"
     return 1
   fi

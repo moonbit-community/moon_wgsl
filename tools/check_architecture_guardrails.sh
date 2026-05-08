@@ -222,6 +222,18 @@ if [[ ! -f testdata/external_wgsl_corpus_skips.tsv ]]; then
   fail "external WGSL skipped files must be classified by a skip manifest"
 fi
 
+if [[ ! -f testdata/external_wgsl_corpus_profiles.tsv ]]; then
+  fail "external WGSL corpus profiles must be manifest-owned"
+fi
+
+if ! rg -n 'EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must load explicit shader profiles"
+fi
+
+if ! rg -n -- '--value-def NAME=VALUE' tools/compose_case/main.mbt >/dev/null; then
+  fail "compose_case must support typed value defines for real pipeline profiles"
+fi
+
 if ! rg -n 'bash tools/check_external_wgsl_corpus\.sh' .github/workflows/check.yml >/dev/null; then
   fail "CI must run the external real-project WGSL corpus gate"
 fi
