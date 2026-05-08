@@ -342,6 +342,24 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
     "bool",
     TypeInner::Scalar(Scalar::Scalar(Bool, 1)),
   )
+  ignore(
+    self.intern_type(
+      "vec2<bool>",
+      TypeInner::Vector(Bi, Scalar::Scalar(Bool, 1)),
+    ),
+  )
+  ignore(
+    self.intern_type(
+      "vec3<bool>",
+      TypeInner::Vector(Tri, Scalar::Scalar(Bool, 1)),
+    ),
+  )
+  ignore(
+    self.intern_type(
+      "vec4<bool>",
+      TypeInner::Vector(Quad, Scalar::Scalar(Bool, 1)),
+    ),
+  )
   ignore(self.intern_type("i32", TypeInner::Scalar(Scalar::Scalar(Sint, 4))))
   ignore(self.intern_type("i64", TypeInner::Scalar(Scalar::Scalar(Sint, 8))))
   let u32_ty = self.intern_type(

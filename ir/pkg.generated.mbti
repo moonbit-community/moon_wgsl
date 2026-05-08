@@ -43,6 +43,13 @@ pub suberror WgslIrValidationError {
   InvalidFunctionExpressionHandle(Int)
   InvalidHandleRange(Int, Int)
   InvalidEntryPoint(String)
+  MissingExpressionType(Int, String)
+  InvalidConditionType(String, Int, String, String)
+  InvalidStoreTarget(Int)
+  InvalidReturnValue(String)
+  InvalidFunctionArgumentCount(String, Int, Int)
+  InvalidFunctionArgumentType(String, Int)
+  InvalidFunctionResult(String)
 }
 pub fn WgslIrValidationError::message(Self) -> String
 

@@ -37,13 +37,14 @@ fn emit_wgsl_module_from_ir_roots(
   if root_items.length() == 0 {
     return emit_wgsl_module_from_ir(shader_module)
   }
-  validate_wgsl_ir_module(shader_module) catch {
+  let filter = build_wgsl_ir_emit_filter(shader_module, root_items)
+  validate_wgsl_ir_module_with_filter(shader_module, filter) catch {
     error => raise WgslIrEmitError::Unsupported(error.message())
   }
   let emitter = WgslIrEmitter::{
     shader_module,
     preserve_abstract_float_literals: false,
-    filter: Some(build_wgsl_ir_emit_filter(shader_module, root_items)),
+    filter: Some(filter),
   }
   emitter.emit_module()
 }

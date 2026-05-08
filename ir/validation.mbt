@@ -10,6 +10,13 @@ pub suberror WgslIrValidationError {
   InvalidFunctionExpressionHandle(Int)
   InvalidHandleRange(Int, Int)
   InvalidEntryPoint(String)
+  MissingExpressionType(Int, String)
+  InvalidConditionType(String, Int, String, String)
+  InvalidStoreTarget(Int)
+  InvalidReturnValue(String)
+  InvalidFunctionArgumentCount(String, Int, Int)
+  InvalidFunctionArgumentType(String, Int)
+  InvalidFunctionResult(String)
 }
 
 ///|
@@ -30,6 +37,18 @@ pub fn WgslIrValidationError::message(self : WgslIrValidationError) -> String {
     InvalidHandleRange(start, end) =>
       "invalid IR handle range: \{start}..\{end}"
     InvalidEntryPoint(name) => "invalid IR entry point: \{name}"
+    MissingExpressionType(index, expression) =>
+      "missing IR expression type for handle: \{index} (\{expression})"
+    InvalidConditionType(function_name, index, expression, ty) =>
+      "invalid IR condition expression type in \{function_name} for handle: \{index} (\{expression}) with type \{ty}"
+    InvalidStoreTarget(index) =>
+      "invalid IR store target expression type for handle: \{index}"
+    InvalidReturnValue(name) => "invalid IR return value for function: \{name}"
+    InvalidFunctionArgumentCount(name, expected, actual) =>
+      "invalid IR function call argument count for \{name}: expected \{expected}, got \{actual}"
+    InvalidFunctionArgumentType(name, index) =>
+      "invalid IR function call argument type for \{name} at argument \{index}"
+    InvalidFunctionResult(name) => "invalid IR function call result for \{name}"
   }
 }
 
@@ -37,51 +56,80 @@ pub fn WgslIrValidationError::message(self : WgslIrValidationError) -> String {
 pub fn validate_wgsl_ir_module(
   shader_module : Module,
 ) -> Unit raise WgslIrValidationError {
-  let validator = WgslIrValidator::{ shader_module, }
+  let validator = WgslIrValidator::{ shader_module, filter: None }
+  validator.validate_module()
+}
+
+///|
+fn validate_wgsl_ir_module_with_filter(
+  shader_module : Module,
+  filter : WgslIrEmitFilter,
+) -> Unit raise WgslIrValidationError {
+  let validator = WgslIrValidator::{ shader_module, filter: Some(filter) }
   validator.validate_module()
 }
 
 ///|
 priv struct WgslIrValidator {
   shader_module : Module
+  filter : WgslIrEmitFilter?
 }
 
 ///|
 fn WgslIrValidator::validate_module(
   self : WgslIrValidator,
 ) -> Unit raise WgslIrValidationError {
-  for ty in self.shader_module.types.items {
-    self.validate_type_inner(ty.inner)
+  for index in 0..<self.shader_module.types.items.length() {
+    if self.should_validate_type(index) {
+      self.validate_type_inner(self.shader_module.types.items[index].inner)
+    }
   }
-  for constant in self.shader_module.constants.items {
-    self.require_type(constant.ty)
-    self.validate_global_expression_handle(constant.init)
+  for index in 0..<self.shader_module.constants.items.length() {
+    if self.should_validate_constant(index) {
+      let constant = self.shader_module.constants.items[index]
+      self.require_type(constant.ty)
+      self.validate_global_expression_handle(constant.init)
+    }
   }
   for condition in self.shader_module.const_asserts {
     self.validate_global_expression_handle(condition)
   }
-  for override_ in self.shader_module.overrides.items {
-    self.require_type(override_.ty)
-    match override_.init {
-      Some(init) => self.validate_global_expression_handle(init)
-      None => ()
+  for index in 0..<self.shader_module.overrides.items.length() {
+    if self.should_validate_override(index) {
+      let override_ = self.shader_module.overrides.items[index]
+      self.require_type(override_.ty)
+      match override_.init {
+        Some(init) => self.validate_global_expression_handle(init)
+        None => ()
+      }
     }
   }
-  for global in self.shader_module.global_variables.items {
-    self.require_type(global.ty)
-    match global.init {
-      Some(init) => self.validate_global_expression_handle(init)
-      None => ()
+  for index in 0..<self.shader_module.global_variables.items.length() {
+    if self.should_validate_global_variable(index) {
+      let global = self.shader_module.global_variables.items[index]
+      self.require_type(global.ty)
+      match global.init {
+        Some(init) => self.validate_global_expression_handle(init)
+        None => ()
+      }
     }
   }
-  for expression in self.shader_module.global_expressions.items {
-    self.validate_global_expression(expression)
+  for index in 0..<self.shader_module.global_expressions.items.length() {
+    if self.should_validate_global_expression(index) {
+      self.validate_global_expression(
+        self.shader_module.global_expressions.items[index],
+      )
+    }
   }
-  for function in self.shader_module.functions.items {
-    self.validate_function(function)
+  for index in 0..<self.shader_module.functions.items.length() {
+    if self.should_validate_function(index) {
+      self.validate_function(self.shader_module.functions.items[index])
+    }
   }
-  for entry_point in self.shader_module.entry_points {
-    self.validate_entry_point(entry_point)
+  for index in 0..<self.shader_module.entry_points.length() {
+    if self.should_validate_entry_point(index) {
+      self.validate_entry_point(self.shader_module.entry_points[index])
+    }
   }
 }
 
@@ -94,6 +142,84 @@ fn WgslIrValidator::validate_entry_point(
     raise WgslIrValidationError::InvalidEntryPoint(entry_point.name)
   }
   self.validate_function(entry_point.function)
+}
+
+///|
+fn WgslIrValidator::should_validate_type(
+  self : WgslIrValidator,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_type(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrValidator::should_validate_constant(
+  self : WgslIrValidator,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_constant(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrValidator::should_validate_override(
+  self : WgslIrValidator,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_override(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrValidator::should_validate_global_variable(
+  self : WgslIrValidator,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_global_variable(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrValidator::should_validate_global_expression(
+  self : WgslIrValidator,
+  index : Int,
+) -> Bool {
+  ignore(index)
+  match self.filter {
+    Some(_) => false
+    None => true
+  }
+}
+
+///|
+fn WgslIrValidator::should_validate_function(
+  self : WgslIrValidator,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_function(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrValidator::should_validate_entry_point(
+  self : WgslIrValidator,
+  index : Int,
+) -> Bool {
+  match self.filter {
+    Some(filter) => filter.contains_entry_point(index)
+    None => true
+  }
 }
 
 ///|
@@ -178,11 +304,13 @@ fn WgslIrValidator::validate_statement(
     Block(block) => self.validate_block(function, block)
     If(condition, accept, reject) => {
       self.validate_function_expression_handle(function, condition)
+      self.require_bool_condition(function, condition)
       self.validate_block(function, accept)
       self.validate_block(function, reject)
     }
     Switch(selector, cases) => {
       self.validate_function_expression_handle(function, selector)
+      self.require_integer_selector(function, selector)
       for case in cases {
         self.validate_block(function, case.body)
       }
@@ -191,22 +319,29 @@ fn WgslIrValidator::validate_statement(
       self.validate_block(function, body)
       self.validate_block(function, continuing)
       match break_if {
-        Some(condition) =>
+        Some(condition) => {
           self.validate_function_expression_handle(function, condition)
+          self.require_bool_condition(function, condition)
+        }
         None => ()
       }
     }
     Return(value) =>
       match value {
-        Some(handle) =>
+        Some(handle) => {
           self.validate_function_expression_handle(function, handle)
-        None => ()
+          self.require_return_value(function, handle)
+        }
+        None => self.require_void_return(function)
       }
-    ConstAssert(condition) =>
+    ConstAssert(condition) => {
       self.validate_function_expression_handle(function, condition)
+      self.require_bool_condition(function, condition)
+    }
     Store(pointer, value) => {
       self.validate_function_expression_handle(function, pointer)
       self.validate_function_expression_handle(function, value)
+      self.require_store(function, pointer, value)
     }
     ImageStore(image, coordinate, array_index, value) => {
       self.validate_function_expression_handle(function, image)
@@ -244,6 +379,7 @@ fn WgslIrValidator::validate_statement(
       for argument in arguments {
         self.validate_function_expression_handle(function, argument)
       }
+      self.require_call_signature(function, callee, arguments, result)
       match result {
         Some(handle) =>
           self.validate_function_expression_handle(function, handle)
@@ -310,11 +446,13 @@ fn WgslIrValidator::validate_global_expression(
       for argument in arguments {
         self.validate_global_expression_handle(argument)
       }
+      self.require_global_call_signature(handle, arguments)
     }
     Select(condition, accept, reject) => {
       self.validate_global_expression_handle(condition)
       self.validate_global_expression_handle(accept)
       self.validate_global_expression_handle(reject)
+      self.require_global_select_signature(condition, accept, reject)
     }
     Bitcast(_, expr) => self.validate_global_expression_handle(expr)
     As(expr, _, _) => self.validate_global_expression_handle(expr)
@@ -367,11 +505,13 @@ fn WgslIrValidator::validate_function_expression(
       for argument in arguments {
         self.validate_function_expression_handle(function, argument)
       }
+      self.require_call_signature(function, handle, arguments, None)
     }
     Select(condition, accept, reject) => {
       self.validate_function_expression_handle(function, condition)
       self.validate_function_expression_handle(function, accept)
       self.validate_function_expression_handle(function, reject)
+      self.require_select_signature(function, condition, accept, reject)
     }
     ImageSample(
       image,
@@ -533,6 +673,1352 @@ fn WgslIrValidator::validate_optional_function_expression(
   match handle {
     Some(value) => self.validate_function_expression_handle(function, value)
     None => ()
+  }
+}
+
+///|
+fn WgslIrValidator::missing_function_expression_type(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> WgslIrValidationError {
+  ignore(self)
+  let expression = match function.expressions.items.get(handle.index()) {
+    Some(value) => @debug.to_string(value)
+    None => "<invalid function expression handle>"
+  }
+  WgslIrValidationError::MissingExpressionType(handle.index(), expression)
+}
+
+///|
+fn WgslIrValidator::missing_global_expression_type(
+  self : WgslIrValidator,
+  handle : Handle,
+) -> WgslIrValidationError {
+  let expression = match
+    self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(value) => @debug.to_string(value)
+    None => "<invalid global expression handle>"
+  }
+  WgslIrValidationError::MissingExpressionType(handle.index(), expression)
+}
+
+///|
+fn WgslIrValidator::invalid_condition_type(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+  ty : Handle,
+) -> WgslIrValidationError {
+  let expression = match function.expressions.items.get(handle.index()) {
+    Some(value) => @debug.to_string(value)
+    None => "<invalid function expression handle>"
+  }
+  let ty_text = match self.shader_module.types.items.get(ty.index()) {
+    Some(value) => @debug.to_string(value)
+    None => "<invalid type handle>"
+  }
+  WgslIrValidationError::InvalidConditionType(
+    self.function_display_name(function),
+    handle.index(),
+    expression,
+    ty_text,
+  )
+}
+
+///|
+fn WgslIrValidator::require_bool_condition(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, handle) is Some(ty) else {
+    raise self.missing_function_expression_type(function, handle)
+  }
+  guard self.type_is_bool_scalar(ty) else {
+    raise self.invalid_condition_type(function, handle, ty)
+  }
+}
+
+///|
+fn WgslIrValidator::require_integer_selector(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, handle) is Some(ty) else {
+    raise self.missing_function_expression_type(function, handle)
+  }
+  guard self.type_is_integer_scalar(ty) else {
+    raise self.invalid_condition_type(function, handle, ty)
+  }
+}
+
+///|
+fn WgslIrValidator::require_return_value(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard function.result is Some(result) else {
+    raise WgslIrValidationError::InvalidReturnValue(
+      self.function_display_name(function),
+    )
+  }
+  guard self.function_expression_type(function, handle) is Some(actual) else {
+    raise self.missing_function_expression_type(function, handle)
+  }
+  guard self.type_assignable(result.ty, actual) else {
+    raise WgslIrValidationError::InvalidReturnValue(
+      self.function_display_name(function),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_void_return(
+  self : WgslIrValidator,
+  function : Function,
+) -> Unit raise WgslIrValidationError {
+  if function.result != None {
+    raise WgslIrValidationError::InvalidReturnValue(
+      self.function_display_name(function),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_store(
+  self : WgslIrValidator,
+  function : Function,
+  pointer : Handle,
+  value : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.store_target_value_type(function, pointer) is Some(value_ty) else {
+    raise WgslIrValidationError::InvalidStoreTarget(pointer.index())
+  }
+  guard self.function_expression_type(function, value) is Some(actual) else {
+    raise self.missing_function_expression_type(function, value)
+  }
+  guard self.type_assignable(value_ty, actual) else {
+    raise WgslIrValidationError::InvalidStoreTarget(pointer.index())
+  }
+}
+
+///|
+fn WgslIrValidator::require_call_signature(
+  self : WgslIrValidator,
+  function : Function,
+  callee : Handle,
+  arguments : Array[Handle],
+  result : Handle?,
+) -> Unit raise WgslIrValidationError {
+  let callee_function = match
+    self.shader_module.functions.items.get(callee.index()) {
+    Some(value) => value
+    None => return
+  }
+  let name = self.function_display_name(callee_function)
+  if arguments.length() != callee_function.arguments.length() {
+    raise WgslIrValidationError::InvalidFunctionArgumentCount(
+      name,
+      callee_function.arguments.length(),
+      arguments.length(),
+    )
+  }
+  for index in 0..<arguments.length() {
+    let argument = arguments[index]
+    guard self.function_expression_type(function, argument) is Some(actual) else {
+      raise self.missing_function_expression_type(function, argument)
+    }
+    guard self.type_assignable(callee_function.arguments[index].ty, actual) else {
+      raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
+    }
+  }
+  match (callee_function.result, result) {
+    (Some(expected), Some(actual_handle)) => {
+      guard self.function_expression_type(function, actual_handle)
+        is Some(actual) else {
+        raise self.missing_function_expression_type(function, actual_handle)
+      }
+      guard self.type_assignable(expected.ty, actual) else {
+        raise WgslIrValidationError::InvalidFunctionResult(name)
+      }
+    }
+    (None, None) => ()
+    (Some(_), None) => ()
+    (None, Some(_)) => raise WgslIrValidationError::InvalidFunctionResult(name)
+  }
+}
+
+///|
+fn WgslIrValidator::require_global_call_signature(
+  self : WgslIrValidator,
+  callee : Handle,
+  arguments : Array[Handle],
+) -> Unit raise WgslIrValidationError {
+  let callee_function = match
+    self.shader_module.functions.items.get(callee.index()) {
+    Some(value) => value
+    None => return
+  }
+  let name = self.function_display_name(callee_function)
+  if arguments.length() != callee_function.arguments.length() {
+    raise WgslIrValidationError::InvalidFunctionArgumentCount(
+      name,
+      callee_function.arguments.length(),
+      arguments.length(),
+    )
+  }
+  for index in 0..<arguments.length() {
+    let argument = arguments[index]
+    guard self.global_expression_type(argument) is Some(actual) else {
+      raise self.missing_global_expression_type(argument)
+    }
+    guard self.type_assignable(callee_function.arguments[index].ty, actual) else {
+      raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
+    }
+  }
+}
+
+///|
+fn WgslIrValidator::require_select_signature(
+  self : WgslIrValidator,
+  function : Function,
+  condition : Handle,
+  accept : Handle,
+  reject : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, condition) is Some(cond_ty) else {
+    raise self.missing_function_expression_type(function, condition)
+  }
+  guard self.function_expression_type(function, accept) is Some(accept_ty) else {
+    raise self.missing_function_expression_type(function, accept)
+  }
+  guard self.function_expression_type(function, reject) is Some(reject_ty) else {
+    raise self.missing_function_expression_type(function, reject)
+  }
+  guard self.types_are_select_compatible(accept_ty, reject_ty) else {
+    raise WgslIrValidationError::InvalidFunctionArgumentType("select", 1)
+  }
+  guard self.select_condition_type_matches_result(cond_ty, accept_ty) else {
+    raise self.invalid_condition_type(function, condition, cond_ty)
+  }
+}
+
+///|
+fn WgslIrValidator::require_global_select_signature(
+  self : WgslIrValidator,
+  condition : Handle,
+  accept : Handle,
+  reject : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.global_expression_type(condition) is Some(cond_ty) else {
+    raise self.missing_global_expression_type(condition)
+  }
+  guard self.global_expression_type(accept) is Some(accept_ty) else {
+    raise self.missing_global_expression_type(accept)
+  }
+  guard self.global_expression_type(reject) is Some(reject_ty) else {
+    raise self.missing_global_expression_type(reject)
+  }
+  guard self.types_are_select_compatible(accept_ty, reject_ty) else {
+    raise WgslIrValidationError::InvalidFunctionArgumentType("select", 1)
+  }
+  guard self.select_condition_type_matches_result(cond_ty, accept_ty) else {
+    let expression = match
+      self.shader_module.global_expressions.items.get(condition.index()) {
+      Some(value) => @debug.to_string(value)
+      None => "<invalid global expression handle>"
+    }
+    let ty_text = match self.shader_module.types.items.get(cond_ty.index()) {
+      Some(value) => @debug.to_string(value)
+      None => "<invalid type handle>"
+    }
+    raise WgslIrValidationError::InvalidConditionType(
+      "<global>",
+      condition.index(),
+      expression,
+      ty_text,
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::function_expression_type(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.function_expression_inner_type(function, expression)
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::store_target_value_type(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        FunctionArgument(_) | LocalVariable(_) | GlobalVariable(_) | Load(_) =>
+          match self.function_expression_inner_type(function, expression) {
+            Some(ty) =>
+              if self.type_is_pointer_like(ty) {
+                self.deref_type(ty)
+              } else {
+                Some(ty)
+              }
+            None => None
+          }
+        Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) =>
+          self.function_expression_inner_type(function, expression)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::function_expression_inner_type(
+  self : WgslIrValidator,
+  function : Function,
+  expression : Expression,
+) -> Handle? {
+  match expression {
+    FunctionArgument(index) =>
+      match function.arguments.get(index) {
+        Some(argument) => Some(argument.ty)
+        None => None
+      }
+    LocalVariable(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_variable) => Some(local_variable.ty)
+        None => None
+      }
+    GlobalVariable(handle) =>
+      match self.shader_module.global_variables.items.get(handle.index()) {
+        Some(global) => Some(global.ty)
+        None => None
+      }
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => Some(constant.ty)
+        None => None
+      }
+    Override(handle) =>
+      match self.shader_module.overrides.items.get(handle.index()) {
+        Some(override_) => Some(override_.ty)
+        None => None
+      }
+    Load(inner) =>
+      match self.function_expression_type(function, inner) {
+        Some(ty) => self.deref_type(ty)
+        None => None
+      }
+    AddressOf(ty, _) => Some(ty)
+    Compose(ty, _) | ZeroValue(ty) | Bitcast(ty, _) => Some(ty)
+    AccessIndex(base, index) =>
+      match self.function_expression_type(function, base) {
+        Some(base_ty) => self.indexed_type(base_ty, Some(index))
+        None => None
+      }
+    Access(base, _) =>
+      match self.function_expression_type(function, base) {
+        Some(base_ty) => self.indexed_type(base_ty, None)
+        None => None
+      }
+    Splat(size, inner) =>
+      match self.function_expression_type(function, inner) {
+        Some(ty) => self.vector_type_from_scalar_type(size, ty)
+        None => None
+      }
+    Swizzle(size, base, _) =>
+      match self.function_expression_type(function, base) {
+        Some(ty) => self.vector_or_scalar_swizzle_type(size, ty)
+        None => None
+      }
+    Unary(_, inner) => self.function_expression_type(function, inner)
+    Binary(op, left, right) =>
+      self.binary_result_type(
+        op,
+        self.function_expression_type(function, left),
+        self.function_expression_type(function, right),
+      )
+    FunctionCall(handle, _) | CallResult(handle) =>
+      self.function_result_type(handle)
+    Select(_, accept, reject) =>
+      match self.function_expression_type(function, accept) {
+        Some(ty) => Some(ty)
+        None => self.function_expression_type(function, reject)
+      }
+    Derivative(_, _, expr) => self.function_expression_type(function, expr)
+    Relational(relational_function, expr) =>
+      self.relational_result_type(
+        relational_function,
+        self.function_expression_type(function, expr),
+      )
+    Math(math_function, a, _, _, _) =>
+      self.math_result_type(
+        math_function,
+        self.function_expression_type(function, a),
+      )
+    AtomicCall(atomic_function, arguments) =>
+      self.atomic_result_type(function, atomic_function, arguments)
+    ImageSample(image, _, gather, _, _, _, _, depth_ref, _) =>
+      self.image_result_type(function, image, gather, depth_ref)
+    ImageLoad(image, _, _, _, _) =>
+      self.image_result_type(function, image, None, None)
+    ImageQuery(image, query) =>
+      self.image_query_result_type(function, image, query)
+    ArrayLength(_) => self.find_scalar_type(Scalar::Scalar(Uint, 4))
+    WorkGroupUniformLoad(pointer) | WorkGroupUniformLoadResult(pointer) =>
+      match self.function_expression_type(function, pointer) {
+        Some(ty) => self.deref_type(ty)
+        None => None
+      }
+    AtomicResult(handle, _) => self.function_expression_type(function, handle)
+    RayQueryProceedResult => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    SubgroupBallotResult => self.vector_type(Quad, Scalar::Scalar(Uint, 4))
+    SubgroupOperationResult(handle) =>
+      self.function_expression_type(function, handle)
+    SubgroupCall(subgroup_function, arguments) =>
+      self.subgroup_result_type(function, subgroup_function, arguments)
+    CooperativeLoad(columns, rows, role, data) =>
+      match self.cooperative_data_scalar(function, data) {
+        Some(scalar) =>
+          self.cooperative_matrix_type(columns, rows, scalar, role)
+        None => None
+      }
+    CooperativeMultiplyAdd(_, _, c) =>
+      self.function_expression_type(function, c)
+    Literal(literal) => self.literal_type(literal)
+    As(expr, kind, width) =>
+      self.as_result_type(
+        self.function_expression_type(function, expr),
+        kind,
+        width.unwrap_or(4),
+      )
+    RayQueryGetIntersection(_, _) => self.find_type_by_name("RayIntersection")
+    RayQueryProceed(_) => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    RayQueryInitialize(_, _, _)
+    | RayQueryGenerateIntersection(_, _)
+    | RayQueryConfirmIntersection(_)
+    | RayQueryTerminate(_)
+    | RayQueryVertexPositions(_, _) => None
+  }
+}
+
+///|
+fn WgslIrValidator::global_expression_type(
+  self : WgslIrValidator,
+  handle : Handle,
+) -> Handle? {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) => self.global_expression_inner_type(expression)
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::global_expression_inner_type(
+  self : WgslIrValidator,
+  expression : Expression,
+) -> Handle? {
+  match expression {
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => Some(constant.ty)
+        None => None
+      }
+    Override(handle) =>
+      match self.shader_module.overrides.items.get(handle.index()) {
+        Some(override_) => Some(override_.ty)
+        None => None
+      }
+    GlobalVariable(handle) =>
+      match self.shader_module.global_variables.items.get(handle.index()) {
+        Some(global) => Some(global.ty)
+        None => None
+      }
+    Load(inner) =>
+      match self.global_expression_type(inner) {
+        Some(ty) => self.deref_type(ty)
+        None => None
+      }
+    AddressOf(ty, _) => Some(ty)
+    Compose(ty, _) | ZeroValue(ty) | Bitcast(ty, _) => Some(ty)
+    AccessIndex(base, index) =>
+      match self.global_expression_type(base) {
+        Some(base_ty) => self.indexed_type(base_ty, Some(index))
+        None => None
+      }
+    Access(base, _) =>
+      match self.global_expression_type(base) {
+        Some(base_ty) => self.indexed_type(base_ty, None)
+        None => None
+      }
+    Unary(_, inner) => self.global_expression_type(inner)
+    Binary(op, left, right) =>
+      self.binary_result_type(
+        op,
+        self.global_expression_type(left),
+        self.global_expression_type(right),
+      )
+    FunctionCall(handle, _) => self.function_result_type(handle)
+    Select(_, accept, reject) =>
+      match self.global_expression_type(accept) {
+        Some(ty) => Some(ty)
+        None => self.global_expression_type(reject)
+      }
+    Relational(relational_function, expr) =>
+      self.relational_result_type(
+        relational_function,
+        self.global_expression_type(expr),
+      )
+    Literal(literal) => self.literal_type(literal)
+    As(expr, kind, width) =>
+      self.as_result_type(
+        self.global_expression_type(expr),
+        kind,
+        width.unwrap_or(4),
+      )
+    _ => None
+  }
+}
+
+///|
+fn WgslIrValidator::function_result_type(
+  self : WgslIrValidator,
+  handle : Handle,
+) -> Handle? {
+  match self.shader_module.functions.items.get(handle.index()) {
+    Some(function) =>
+      match function.result {
+        Some(result) => Some(result.ty)
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::literal_type(
+  self : WgslIrValidator,
+  literal : Literal,
+) -> Handle? {
+  match literal {
+    Bool(_) => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    I32(_) => self.find_scalar_type(Scalar::Scalar(Sint, 4))
+    U32(_) => self.find_scalar_type(Scalar::Scalar(Uint, 4))
+    I64(_) => self.find_scalar_type(Scalar::Scalar(Sint, 8))
+    U64(_) => self.find_scalar_type(Scalar::Scalar(Uint, 8))
+    I16(_) => self.find_scalar_type(Scalar::Scalar(Sint, 2))
+    U16(_) => self.find_scalar_type(Scalar::Scalar(Uint, 2))
+    F16(_) => self.find_scalar_type(Scalar::Scalar(Float, 2))
+    F32(_) => self.find_scalar_type(Scalar::Scalar(Float, 4))
+    F64(_) => self.find_scalar_type(Scalar::Scalar(Float, 8))
+    AbstractInt(_) => self.find_scalar_type(Scalar::Scalar(AbstractInt, 8))
+    AbstractFloat(_) => self.find_scalar_type(Scalar::Scalar(AbstractFloat, 8))
+  }
+}
+
+///|
+fn WgslIrValidator::indexed_type(
+  self : WgslIrValidator,
+  ty : Handle,
+  index : Int?,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Struct(members, _) | PredeclaredStruct(members, _) =>
+          match index {
+            Some(i) =>
+              match members.get(i) {
+                Some(struct_member) => Some(struct_member.ty)
+                None => None
+              }
+            None => None
+          }
+        Vector(_, scalar) => self.find_scalar_type(scalar)
+        Matrix(_, rows, scalar) => self.vector_type(rows, scalar)
+        Array(element, _, _) | BindingArray(element, _) => Some(element)
+        Pointer(base, _) => self.indexed_type(base, index)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::pointer_pointee_type(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(base, _) => Some(base)
+        ValuePointer(size, scalar, _) =>
+          match size {
+            Some(vector_size) => self.vector_type(vector_size, scalar)
+            None => self.find_scalar_type(scalar)
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::deref_type(self : WgslIrValidator, ty : Handle) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(base, _) => self.deref_type(base)
+        ValuePointer(size, scalar, _) =>
+          match size {
+            Some(vector_size) => self.vector_type(vector_size, scalar)
+            None => self.find_scalar_type(scalar)
+          }
+        _ => Some(ty)
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::vector_type_from_scalar_type(
+  self : WgslIrValidator,
+  size : VectorSize,
+  ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) => self.vector_type(size, scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::vector_or_scalar_swizzle_type(
+  self : WgslIrValidator,
+  size : VectorSize,
+  ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Vector(_, scalar) => self.vector_type(size, scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::binary_result_type(
+  self : WgslIrValidator,
+  op : BinaryOperator,
+  left : Handle?,
+  right : Handle?,
+) -> Handle? {
+  if wgsl_ir_validation_binary_operator_is_comparison(op) {
+    return self.boolean_result_type(left, right)
+  }
+  match (left, right) {
+    (Some(left_ty), Some(right_ty)) =>
+      if op == BinaryOperator::Multiply {
+        match self.matrix_vector_multiply_result_type(left_ty, right_ty) {
+          Some(ty) => Some(ty)
+          None => self.numeric_binary_fallback_type(left_ty, right_ty)
+        }
+      } else {
+        self.numeric_binary_fallback_type(left_ty, right_ty)
+      }
+    (Some(ty), None) | (None, Some(ty)) => Some(ty)
+    (None, None) => None
+  }
+}
+
+///|
+fn WgslIrValidator::numeric_binary_fallback_type(
+  self : WgslIrValidator,
+  left : Handle,
+  right : Handle,
+) -> Handle? {
+  if self.type_is_scalar(left) && !self.type_is_scalar(right) {
+    return Some(right)
+  }
+  if !self.type_is_scalar(left) && self.type_is_scalar(right) {
+    return Some(left)
+  }
+  Some(left)
+}
+
+///|
+fn WgslIrValidator::matrix_vector_multiply_result_type(
+  self : WgslIrValidator,
+  left : Handle,
+  right : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(left) {
+    Some(left_type) =>
+      match left_type.inner {
+        Matrix(left_columns, rows, scalar) =>
+          match self.shader_module.types.get(right) {
+            Some(right_type) =>
+              match right_type.inner {
+                Vector(_, _) => self.vector_type(rows, scalar)
+                Matrix(columns, right_rows, _) =>
+                  if right_rows == left_columns {
+                    self.matrix_type(columns, rows, scalar)
+                  } else {
+                    None
+                  }
+                _ => None
+              }
+            None => None
+          }
+        Vector(_, scalar) =>
+          match self.shader_module.types.get(right) {
+            Some(right_type) =>
+              match right_type.inner {
+                Matrix(columns, _, _) => self.vector_type(columns, scalar)
+                _ => None
+              }
+            None => None
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::boolean_result_type(
+  self : WgslIrValidator,
+  left : Handle?,
+  right : Handle?,
+) -> Handle? {
+  match left {
+    Some(ty) =>
+      match self.vector_size(ty) {
+        Some(size) => return self.vector_type(size, Scalar::Scalar(Bool, 1))
+        None => ()
+      }
+    None => ()
+  }
+  match right {
+    Some(ty) =>
+      match self.vector_size(ty) {
+        Some(size) => self.vector_type(size, Scalar::Scalar(Bool, 1))
+        None => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+      }
+    None => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+  }
+}
+
+///|
+fn WgslIrValidator::relational_result_type(
+  self : WgslIrValidator,
+  relational_function : RelationalFunction,
+  input : Handle?,
+) -> Handle? {
+  match relational_function {
+    All | Any => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    IsNan | IsInf => self.boolean_result_type(input, input)
+  }
+}
+
+///|
+fn WgslIrValidator::math_result_type(
+  self : WgslIrValidator,
+  math_function : MathFunction,
+  input : Handle?,
+) -> Handle? {
+  guard input is Some(input_ty) else { return None }
+  match math_function {
+    Pack4x8snorm
+    | Pack4x8unorm
+    | Pack2x16snorm
+    | Pack2x16unorm
+    | Pack2x16float
+    | Pack4xI8
+    | Pack4xU8
+    | Pack4xI8Clamp
+    | Pack4xU8Clamp
+    | Dot4U8Packed => self.find_scalar_type(Scalar::Scalar(Uint, 4))
+    Dot4I8Packed => self.find_scalar_type(Scalar::Scalar(Sint, 4))
+    Unpack4x8snorm | Unpack4x8unorm =>
+      self.vector_type(Quad, Scalar::Scalar(Float, 4))
+    Unpack2x16snorm | Unpack2x16unorm | Unpack2x16float =>
+      self.vector_type(Bi, Scalar::Scalar(Float, 4))
+    Unpack4xI8 => self.vector_type(Quad, Scalar::Scalar(Sint, 4))
+    Unpack4xU8 => self.vector_type(Quad, Scalar::Scalar(Uint, 4))
+    Dot | Distance | Length | Determinant =>
+      self.scalar_type_from_type(input_ty)
+    Transpose => self.transpose_type(input_ty)
+    _ => Some(input_ty)
+  }
+}
+
+///|
+fn WgslIrValidator::as_result_type(
+  self : WgslIrValidator,
+  input : Handle?,
+  kind : ScalarKind,
+  width : Int,
+) -> Handle? {
+  guard input is Some(input_ty) else { return None }
+  let scalar = Scalar::Scalar(kind, width)
+  match self.shader_module.types.get(input_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(_) => self.find_scalar_type(scalar)
+        Vector(size, _) => self.vector_type(size, scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::atomic_result_type(
+  self : WgslIrValidator,
+  function : Function,
+  atomic_function : AtomicFunction,
+  arguments : Array[Handle],
+) -> Handle? {
+  guard arguments is [pointer, ..] else { return None }
+  let scalar = match self.function_expression_type(function, pointer) {
+    Some(ty) => self.atomic_scalar_type(ty)
+    None => None
+  }
+  match atomic_function {
+    Store => None
+    CompareExchangeWeak =>
+      match scalar {
+        Some(value) => self.predeclared_atomic_compare_exchange_type(value)
+        None => None
+      }
+    _ =>
+      match scalar {
+        Some(value) => self.find_scalar_type(value)
+        None => None
+      }
+  }
+}
+
+///|
+fn WgslIrValidator::image_result_type(
+  self : WgslIrValidator,
+  function : Function,
+  image : Handle,
+  gather : SwizzleComponent?,
+  depth_ref : Handle?,
+) -> Handle? {
+  guard self.function_expression_type(function, image) is Some(image_ty) else {
+    return None
+  }
+  match self.shader_module.types.get(image_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, _, Sampled(kind, _)) =>
+          self.vector_type(Quad, Scalar::Scalar(kind, 4))
+        Image(_, _, Depth(_)) =>
+          if gather != None {
+            self.vector_type(Quad, Scalar::Scalar(Float, 4))
+          } else {
+            ignore(depth_ref)
+            self.find_scalar_type(Scalar::Scalar(Float, 4))
+          }
+        Image(_, _, Storage(format, _)) =>
+          self.vector_type(
+            Quad,
+            wgsl_ir_validation_storage_format_scalar(format),
+          )
+        Image(_, _, External) =>
+          self.vector_type(Quad, Scalar::Scalar(Float, 4))
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::image_query_result_type(
+  self : WgslIrValidator,
+  function : Function,
+  image : Handle,
+  query : ImageQuery,
+) -> Handle? {
+  match query {
+    Size(_) =>
+      match self.image_dimension(function, image) {
+        Some(D1) => self.find_scalar_type(Scalar::Scalar(Uint, 4))
+        Some(D2) | Some(Cube) => self.vector_type(Bi, Scalar::Scalar(Uint, 4))
+        Some(D3) => self.vector_type(Tri, Scalar::Scalar(Uint, 4))
+        None => None
+      }
+    NumLevels | NumLayers | NumSamples =>
+      self.find_scalar_type(Scalar::Scalar(Uint, 4))
+  }
+}
+
+///|
+fn WgslIrValidator::subgroup_result_type(
+  self : WgslIrValidator,
+  function : Function,
+  subgroup_function : SubgroupFunction,
+  arguments : Array[Handle],
+) -> Handle? {
+  match subgroup_function {
+    Ballot => self.vector_type(Quad, Scalar::Scalar(Uint, 4))
+    All | Any => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    _ =>
+      match arguments.get(0) {
+        Some(argument) => self.function_expression_type(function, argument)
+        None => None
+      }
+  }
+}
+
+///|
+fn WgslIrValidator::image_dimension(
+  self : WgslIrValidator,
+  function : Function,
+  image : Handle,
+) -> ImageDimension? {
+  guard self.function_expression_type(function, image) is Some(image_ty) else {
+    return None
+  }
+  match self.shader_module.types.get(image_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Image(dimension, _, _) => Some(dimension)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::cooperative_data_scalar(
+  self : WgslIrValidator,
+  function : Function,
+  data : CooperativeData,
+) -> Scalar? {
+  guard self.function_expression_type(function, data.pointer)
+    is Some(pointer_ty) else {
+    return None
+  }
+  match self.pointer_pointee_type(pointer_ty) {
+    Some(value_ty) => self.scalar_from_type(value_ty)
+    None => self.scalar_from_type(pointer_ty)
+  }
+}
+
+///|
+fn WgslIrValidator::atomic_scalar_type(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Scalar? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Atomic(scalar) => Some(scalar)
+        Pointer(base, _) => self.atomic_scalar_type(base)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::predeclared_atomic_compare_exchange_type(
+  self : WgslIrValidator,
+  scalar : Scalar,
+) -> Handle? {
+  for index in 0..<self.shader_module.types.items.length() {
+    let ty = self.shader_module.types.items[index]
+    match ty.inner {
+      PredeclaredStruct(_, _) =>
+        if ty.name ==
+          Some(
+            "atomic_compare_exchange_result_\{wgsl_ir_validation_scalar_name(scalar)}",
+          ) {
+          return Some(Handle::Handle(index))
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn WgslIrValidator::scalar_type_from_type(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(_) => Some(ty)
+        Vector(_, scalar) | Matrix(_, _, scalar) =>
+          self.find_scalar_type(scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::scalar_from_type(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Scalar? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) | Vector(_, scalar) | Matrix(_, _, scalar) =>
+          Some(scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::transpose_type(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Matrix(columns, rows, scalar) => self.matrix_type(rows, columns, scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::type_assignable(
+  self : WgslIrValidator,
+  expected : Handle,
+  actual : Handle,
+) -> Bool {
+  if expected == actual {
+    return true
+  }
+  match
+    (
+      self.shader_module.types.get(expected),
+      self.shader_module.types.get(actual),
+    ) {
+    (Some(expected_ty), Some(actual_ty)) =>
+      self.type_inner_assignable(expected_ty.inner, actual_ty.inner)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_inner_assignable(
+  self : WgslIrValidator,
+  expected : TypeInner,
+  actual : TypeInner,
+) -> Bool {
+  ignore(self)
+  if expected == actual {
+    return true
+  }
+  match (expected, actual) {
+    (Scalar(expected_scalar), Scalar(actual_scalar)) =>
+      wgsl_ir_validation_scalar_assignable(expected_scalar, actual_scalar)
+    (Vector(expected_size, expected_scalar), Vector(actual_size, actual_scalar)) =>
+      expected_size == actual_size &&
+      wgsl_ir_validation_scalar_assignable(expected_scalar, actual_scalar)
+    (
+      Matrix(expected_columns, expected_rows, expected_scalar),
+      Matrix(actual_columns, actual_rows, actual_scalar),
+    ) =>
+      expected_columns == actual_columns &&
+      expected_rows == actual_rows &&
+      wgsl_ir_validation_scalar_assignable(expected_scalar, actual_scalar)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrValidator::types_are_select_compatible(
+  self : WgslIrValidator,
+  accept : Handle,
+  reject : Handle,
+) -> Bool {
+  self.type_assignable(accept, reject) || self.type_assignable(reject, accept)
+}
+
+///|
+fn WgslIrValidator::select_condition_type_matches_result(
+  self : WgslIrValidator,
+  condition : Handle,
+  result : Handle,
+) -> Bool {
+  if self.type_is_bool_scalar(condition) {
+    return true
+  }
+  match self.type_bool_vector_size(condition) {
+    Some(condition_size) =>
+      match self.vector_size(result) {
+        Some(result_size) => condition_size == result_size
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_is_bool_scalar(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) => scalar.kind == Bool
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_bool_vector_size(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> VectorSize? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Vector(size, scalar) if scalar.kind == Bool => Some(size)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::type_is_integer_scalar(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) =>
+          scalar.kind == Sint ||
+          scalar.kind == Uint ||
+          scalar.kind == AbstractInt
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_is_scalar(self : WgslIrValidator, ty : Handle) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(_) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_is_pointer_like(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(_, _) | ValuePointer(_, _, _) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::vector_size(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> VectorSize? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Vector(size, _) => Some(size)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::find_type_by_name(
+  self : WgslIrValidator,
+  name : String,
+) -> Handle? {
+  for index in 0..<self.shader_module.types.items.length() {
+    let ty = self.shader_module.types.items[index]
+    if ty.name == Some(name) {
+      return Some(Handle::Handle(index))
+    }
+  }
+  None
+}
+
+///|
+fn WgslIrValidator::find_scalar_type(
+  self : WgslIrValidator,
+  scalar : Scalar,
+) -> Handle? {
+  self.find_type_inner(TypeInner::Scalar(scalar))
+}
+
+///|
+fn WgslIrValidator::vector_type(
+  self : WgslIrValidator,
+  size : VectorSize,
+  scalar : Scalar,
+) -> Handle? {
+  self.find_type_inner(TypeInner::Vector(size, scalar))
+}
+
+///|
+fn WgslIrValidator::matrix_type(
+  self : WgslIrValidator,
+  columns : VectorSize,
+  rows : VectorSize,
+  scalar : Scalar,
+) -> Handle? {
+  self.find_type_inner(TypeInner::Matrix(columns, rows, scalar))
+}
+
+///|
+fn WgslIrValidator::cooperative_matrix_type(
+  self : WgslIrValidator,
+  columns : CooperativeSize,
+  rows : CooperativeSize,
+  scalar : Scalar,
+  role : CooperativeRole,
+) -> Handle? {
+  self.find_type_inner(
+    TypeInner::CooperativeMatrix(columns, rows, scalar, role),
+  )
+}
+
+///|
+fn WgslIrValidator::find_type_inner(
+  self : WgslIrValidator,
+  inner : TypeInner,
+) -> Handle? {
+  for index in 0..<self.shader_module.types.items.length() {
+    if self.shader_module.types.items[index].inner == inner {
+      return Some(Handle::Handle(index))
+    }
+  }
+  None
+}
+
+///|
+fn WgslIrValidator::function_display_name(
+  self : WgslIrValidator,
+  function : Function,
+) -> String {
+  ignore(self)
+  match function.name {
+    Some(name) => name
+    None => "<anonymous>"
+  }
+}
+
+///|
+fn wgsl_ir_validation_binary_operator_is_comparison(
+  op : BinaryOperator,
+) -> Bool {
+  match op {
+    Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_validation_scalar_assignable(
+  expected : Scalar,
+  actual : Scalar,
+) -> Bool {
+  if expected == actual {
+    return true
+  }
+  match (expected.kind, actual.kind) {
+    (Sint, AbstractInt) | (Uint, AbstractInt) | (Float, AbstractFloat) => true
+    (Float, AbstractInt) => true
+    (AbstractFloat, AbstractInt) | (AbstractInt, AbstractFloat) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_validation_scalar_name(scalar : Scalar) -> String {
+  match scalar.kind {
+    Bool => "bool"
+    Sint => if scalar.width == 8 { "i64" } else { "i32" }
+    Uint => if scalar.width == 8 { "u64" } else { "u32" }
+    Float =>
+      if scalar.width == 2 {
+        "f16"
+      } else if scalar.width == 8 {
+        "f64"
+      } else {
+        "f32"
+      }
+    AbstractInt => "__abstract_int"
+    AbstractFloat => "__abstract_float"
+  }
+}
+
+///|
+fn wgsl_ir_validation_storage_format_scalar(format : StorageFormat) -> Scalar {
+  match format {
+    R64Uint => Scalar::Scalar(Uint, 8)
+    R8Uint
+    | R16Uint
+    | Rg8Uint
+    | R32Uint
+    | Rg16Uint
+    | Rgba8Uint
+    | Rgb10a2Uint
+    | Rg32Uint
+    | Rgba16Uint
+    | Rgba32Uint => Scalar::Scalar(Uint, 4)
+    R8Sint | R16Sint | Rg8Sint | R32Sint | Rg16Sint | Rgba8Sint | Rgba32Sint =>
+      Scalar::Scalar(Sint, 4)
+    _ => Scalar::Scalar(Float, 4)
   }
 }
 
