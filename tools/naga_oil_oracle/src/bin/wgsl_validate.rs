@@ -2,6 +2,8 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+use naga_oil_oracle::{add_wgsl_capability, WGSL_CAPABILITY_NAMES};
+
 #[derive(Debug)]
 struct Options {
     files: Vec<PathBuf>,
@@ -9,9 +11,7 @@ struct Options {
 }
 
 fn usage() -> ! {
-    eprintln!(
-        "usage: wgsl_validate [--capability ray-query|dual-source-blending|texture-external|texture-atomic|f16|subgroups|immediates|binding-arrays] <file.wgsl>..."
-    );
+    eprintln!("usage: wgsl_validate [--capability {WGSL_CAPABILITY_NAMES}] <file.wgsl>...");
     std::process::exit(2);
 }
 
@@ -23,26 +23,8 @@ fn parse_options() -> Options {
         match arg.as_str() {
             "--capability" => {
                 let Some(value) = args.next() else { usage() };
-                match value.as_str() {
-                    "ray-query" => capabilities |= naga::valid::Capabilities::RAY_QUERY,
-                    "dual-source-blending" => {
-                        capabilities |= naga::valid::Capabilities::DUAL_SOURCE_BLENDING
-                    }
-                    "texture-external" => {
-                        capabilities |= naga::valid::Capabilities::TEXTURE_EXTERNAL
-                    }
-                    "texture-atomic" => {
-                        capabilities |= naga::valid::Capabilities::TEXTURE_ATOMIC
-                    }
-                    "f16" => capabilities |= naga::valid::Capabilities::SHADER_FLOAT16,
-                    "subgroups" => capabilities |= naga::valid::Capabilities::SUBGROUP,
-                    "immediates" => capabilities |= naga::valid::Capabilities::IMMEDIATES,
-                    "binding-arrays" => {
-                        capabilities |=
-                            naga::valid::Capabilities::TEXTURE_AND_SAMPLER_BINDING_ARRAY;
-                        capabilities |= naga::valid::Capabilities::TEXTURE_AND_SAMPLER_BINDING_ARRAY_NON_UNIFORM_INDEXING;
-                    }
-                    _ => usage(),
+                if !add_wgsl_capability(&mut capabilities, &value) {
+                    usage();
                 }
             }
             _ if arg.starts_with('-') => usage(),

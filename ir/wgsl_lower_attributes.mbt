@@ -103,6 +103,8 @@ fn wgsl_ir_builtin_from_name(name : String) -> BuiltIn raise WgslIrLowerError {
     "vertex_index" => BuiltIn::VertexIndex
     "instance_index" => BuiltIn::InstanceIndex
     "front_facing" => BuiltIn::FrontFacing
+    "barycentric" => BuiltIn::Barycentric(true)
+    "barycentric_no_perspective" => BuiltIn::Barycentric(false)
     "frag_depth" => BuiltIn::FragDepth
     "sample_index" => BuiltIn::SampleIndex
     "sample_mask" => BuiltIn::SampleMask

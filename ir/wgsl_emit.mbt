@@ -2832,6 +2832,8 @@ fn WgslIrEmitter::builtin_name(
     VertexIndex => "vertex_index"
     InstanceIndex => "instance_index"
     FrontFacing => "front_facing"
+    Barycentric(true) => "barycentric"
+    Barycentric(false) => "barycentric_no_perspective"
     FragDepth => "frag_depth"
     SampleIndex => "sample_index"
     SampleMask => "sample_mask"

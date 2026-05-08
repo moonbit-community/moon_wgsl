@@ -1887,3 +1887,26 @@ test "WGSL IR emitter preserves phony must-use texture calls" {
     content="true",
   )
 }
+
+///|
+test "WGSL IR lowerer preserves barycentric builtins" {
+  let source =
+    #|@fragment
+    #|fn main(
+    #|  @builtin(barycentric) bary: vec3<f32>,
+    #|  @builtin(barycentric_no_perspective) no_perspective: vec3<f32>,
+    #|) -> @location(0) vec4<f32> {
+    #|  return vec4<f32>(bary + no_perspective, 1.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("@builtin(barycentric)"), content="true")
+  debug_inspect(
+    emitted.contains("@builtin(barycentric_no_perspective)"),
+    content="true",
+  )
+}

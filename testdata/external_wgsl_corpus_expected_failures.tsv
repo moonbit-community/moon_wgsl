@@ -28,11 +28,6 @@ naga	tests/out/wgsl/multiview.wgsl	raw_invalid_no_preprocessor	Expected invalid 
 naga	tests/out/wgsl/pointers.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/samplers.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/vector-functions.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
-webgpu-samples	sample/cornell/radiosity.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
-webgpu-samples	sample/cornell/rasterizer.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
-webgpu-samples	sample/cornell/raytracer.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
-webgpu-samples	sample/cornell/tonemapper.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
-webgpu-samples	sample/primitivePicking/fragmentForwardRendering.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
 webgpu-samples	sample/skinnedMesh/gltf.wgsl	raw_invalid_no_preprocessor	Expected invalid external sample fragment under standalone Naga validation.
 wgpu	examples/features/src/big_compute_buffers/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	examples/features/src/cooperative_matrix/shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
@@ -50,5 +45,3 @@ wgpu	tests/tests/wgpu-gpu/per_vertex/per_vertex.wgsl	raw_invalid_no_preprocessor
 wgpu	tests/tests/wgpu-gpu/regression/issue_4485.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/shader/compilation_messages/error_shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/shader/shader_test.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
-wgpu	tests/tests/wgpu-gpu/shader_barycentric/barycentric.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
-wgpu	tests/tests/wgpu-gpu/shader_primitive_index/primitive_index.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.

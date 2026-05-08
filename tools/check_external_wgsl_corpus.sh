@@ -60,6 +60,15 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'binding_array' "$source"; then
     validate_args+=(--capability binding-arrays)
   fi
+  if grep -q 'enable primitive_index' "$source" || grep -q '@builtin(primitive_index)' "$source"; then
+    validate_args+=(--capability primitive-index)
+  fi
+  if grep -q '@builtin(barycentric' "$source"; then
+    validate_args+=(--capability shader-barycentrics)
+  fi
+  if grep -q 'enable wgpu_per_vertex' "$source" || grep -q '@interpolate(per_vertex' "$source"; then
+    validate_args+=(--capability per-vertex)
+  fi
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${validate_args[@]+"${validate_args[@]}"}" "$source" >/dev/null
 }
 
@@ -111,32 +120,71 @@ lookup_external_corpus_profile() {
   ' "$profile_manifest"
 }
 
-materialize_profile_source_with_prefixes() {
+apply_profile_text_replacements() {
+  local replacements="$1"
+  local target="$2"
+
+  [[ -n "$replacements" && "$replacements" != "-" ]] || return 0
+  IFS=',' read -r -a replacement_list <<< "$replacements"
+  local replacement
+  for replacement in "${replacement_list[@]}"; do
+    [[ -n "$replacement" ]] || continue
+    if [[ "$replacement" != *=* ]]; then
+      printf 'invalid profile text replacement: %s\n' "$replacement" >&2
+      return 1
+    fi
+    local from="${replacement%%=*}"
+    local to="${replacement#*=}"
+    FROM="$from" TO="$to" perl -0pi -e 's/\Q$ENV{FROM}\E/$ENV{TO}/g' "$target"
+  done
+}
+
+append_profile_sources() {
+  local checkout="$1"
+  local sources="$2"
+  local output="$3"
+  local reason_output="$4"
+
+  [[ -n "$sources" && "$sources" != "-" ]] || return 0
+  IFS=',' read -r -a source_list <<< "$sources"
+  local rel_source
+  for rel_source in "${source_list[@]}"; do
+    [[ -n "$rel_source" ]] || continue
+    local source_path="$checkout/$rel_source"
+    if [[ ! -f "$source_path" ]]; then
+      printf 'profile_source_missing\tprofile source fragment not found: %s\n' "$rel_source" > "$reason_output"
+      return 1
+    fi
+    cat "$source_path" >> "$output"
+    printf '\n' >> "$output"
+  done
+}
+
+materialize_profile_source() {
   local checkout="$1"
   local source="$2"
   local prefix_sources="$3"
-  local output="$4"
-  local reason_output="$5"
+  local suffix_sources="$4"
+  local text_replacements="$5"
+  local output="$6"
+  local reason_output="$7"
 
-  if [[ -z "$prefix_sources" || "$prefix_sources" == "-" ]]; then
+  if [[ (-z "$prefix_sources" || "$prefix_sources" == "-") && (-z "$suffix_sources" || "$suffix_sources" == "-") && (-z "$text_replacements" || "$text_replacements" == "-") ]]; then
     printf '%s\n' "$source" > "$output"
     return 0
   fi
 
+  local source_body="$output.body"
+  cp "$source" "$source_body"
+  if ! apply_profile_text_replacements "$text_replacements" "$source_body"; then
+    printf 'profile_replacement_invalid\tinvalid profile text replacement\n' > "$reason_output"
+    return 1
+  fi
   : > "$output"
-  IFS=',' read -r -a prefix_list <<< "$prefix_sources"
-  local prefix
-  for prefix in "${prefix_list[@]}"; do
-    [[ -n "$prefix" ]] || continue
-    local prefix_path="$checkout/$prefix"
-    if [[ ! -f "$prefix_path" ]]; then
-      printf 'profile_prefix_missing\tprofile prefix source not found: %s\n' "$prefix" > "$reason_output"
-      return 1
-    fi
-    cat "$prefix_path" >> "$output"
-    printf '\n' >> "$output"
-  done
-  cat "$source" >> "$output"
+  append_profile_sources "$checkout" "$prefix_sources" "$output" "$reason_output" || return 1
+  cat "$source_body" >> "$output"
+  printf '\n' >> "$output"
+  append_profile_sources "$checkout" "$suffix_sources" "$output" "$reason_output" || return 1
 }
 
 append_csv_compose_args() {
@@ -165,14 +213,18 @@ materialize_valid_external_wgsl_source() {
   local profile_imports="-"
   local profile_capabilities="-"
   local profile_prefix_sources="-"
+  local profile_suffix_sources="-"
+  local profile_text_replacements="-"
   if [[ -n "$profile_line" ]]; then
-    IFS=$'\t' read -r _profile_id _profile_rel profile_defs profile_value_defs profile_imports profile_capabilities profile_prefix_sources _profile_notes <<< "$profile_line"
+    IFS=$'\t' read -r _profile_id _profile_rel profile_defs profile_value_defs profile_imports profile_capabilities profile_prefix_sources profile_suffix_sources profile_text_replacements _profile_notes <<< "$profile_line"
   fi
 
   local profile_source="$source"
-  if [[ -n "$profile_prefix_sources" && "$profile_prefix_sources" != "-" ]]; then
+  if [[ (-n "$profile_prefix_sources" && "$profile_prefix_sources" != "-") ||
+        (-n "$profile_suffix_sources" && "$profile_suffix_sources" != "-") ||
+        (-n "$profile_text_replacements" && "$profile_text_replacements" != "-") ]]; then
     profile_source="$tmpdir/$id.profile.$(basename "$source").wgsl"
-    if ! materialize_profile_source_with_prefixes "$checkout" "$source" "$profile_prefix_sources" "$profile_source" "$reason_output"; then
+    if ! materialize_profile_source "$checkout" "$source" "$profile_prefix_sources" "$profile_suffix_sources" "$profile_text_replacements" "$profile_source" "$reason_output"; then
       return 1
     fi
   fi
