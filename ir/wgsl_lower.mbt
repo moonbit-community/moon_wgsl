@@ -2460,7 +2460,7 @@ fn WgslIrLowerer::local_declaration_storage_type(
   self : WgslIrLowerer,
   kind : @ast.WgslLocalDeclarationKind,
   ty : Handle,
-) -> Handle {
+) -> Handle raise WgslIrLowerError {
   match kind {
     Var => self.concretize_abstract_storage_type(ty)
     Let | Const => ty
@@ -2471,7 +2471,7 @@ fn WgslIrLowerer::local_declaration_storage_type(
 fn WgslIrLowerer::concretize_abstract_storage_type(
   self : WgslIrLowerer,
   ty : Handle,
-) -> Handle {
+) -> Handle raise WgslIrLowerError {
   match self.shader_module.types.items.get(ty.index()) {
     Some(type_) =>
       match type_.inner {
@@ -2494,6 +2494,30 @@ fn WgslIrLowerer::concretize_abstract_storage_type(
               )
             None => ty
           }
+        Array(element, size, _) => {
+          let concrete_element = self.concretize_abstract_storage_type(element)
+          if concrete_element == element {
+            ty
+          } else {
+            let layout = self.type_layout(concrete_element)
+            let stride = wgsl_ir_align_to(layout.size, layout.align)
+            self.intern_type(
+              "array<\{self.type_key(concrete_element)}, \{wgsl_ir_array_size_key(size)}>",
+              TypeInner::Array(concrete_element, size, stride),
+            )
+          }
+        }
+        BindingArray(element, size) => {
+          let concrete_element = self.concretize_abstract_storage_type(element)
+          if concrete_element == element {
+            ty
+          } else {
+            self.intern_type(
+              "binding_array<\{self.type_key(concrete_element)}, \{wgsl_ir_array_size_key(size)}>",
+              TypeInner::BindingArray(concrete_element, size),
+            )
+          }
+        }
         _ => ty
       }
     None => ty
@@ -3496,7 +3520,7 @@ fn WgslIrLowerer::lower_call_statement(
                   match self.function_names.get(name.name()) {
                     Some(handle) => {
                       let values = self.lower_user_function_call_arguments(
-                        arguments, function, scope,
+                        handle, arguments, function, scope,
                       )
                       block.push(Statement::Call(handle, values, None))
                     }
@@ -3586,11 +3610,36 @@ fn wgsl_ir_barrier_value_error(name : String) -> WgslIrLowerError {
 ///|
 fn WgslIrLowerer::lower_user_function_call_arguments(
   self : WgslIrLowerer,
+  callee : Handle,
   arguments : Array[@ast.WgslExprNode],
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Array[Handle] raise WgslIrLowerError {
-  self.lower_function_expression_arguments(arguments, function, scope)
+  let flattened = wgsl_ir_flatten_expression_arguments(arguments)
+  let handles : Array[Handle] = []
+  let callee_function = match
+    self.shader_module.functions.items.get(callee.index()) {
+    Some(value) => value
+    None =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "invalid function call target",
+      )
+  }
+  for index in 0..<flattened.length() {
+    let expected_ty = match callee_function.arguments.get(index) {
+      Some(argument) => Some(argument.ty)
+      None => None
+    }
+    handles.push(
+      self.lower_function_expression_node_with_expected(
+        flattened[index],
+        function,
+        scope,
+        expected_ty,
+      ),
+    )
+  }
+  handles
 }
 
 ///|
@@ -6164,7 +6213,9 @@ fn WgslIrLowerer::lower_named_function_call_expression(
       function.expressions.append(
         Expression::FunctionCall(
           handle,
-          self.lower_user_function_call_arguments(arguments, function, scope),
+          self.lower_user_function_call_arguments(
+            handle, arguments, function, scope,
+          ),
         ),
       )
     None =>

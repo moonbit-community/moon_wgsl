@@ -244,6 +244,31 @@ test "WGSL AST lowerer uses stable function handles for calls" {
 }
 
 ///|
+test "WGSL AST lowerer uses callee parameter types for pointer call arguments" {
+  let source =
+    #|fn sum(f: ptr<function, i32>) -> i32 {
+    #|  return *f;
+    #|}
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  var F = array(0, 1000, 2000, 3000);
+    #|  _ = sum(&F[2]);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("array<i32, 4>"), content="true")
+  debug_inspect(emitted.contains("sum(&F[2])"), content="true")
+}
+
+///|
 test "WGSL AST lowerer rejects unresolved expression identifiers" {
   let source =
     #|@compute
