@@ -78,158 +78,6 @@ priv struct WgslIrLowerer {
 }
 
 ///|
-priv struct WgslIrFunctionScope {
-  arguments : @hashmap.HashMap[String, Int]
-  locals : @hashmap.HashMap[String, Handle]
-  local_constants : @hashmap.HashMap[String, Handle]
-  local_pointer_expressions : @hashmap.HashMap[String, Handle]
-  argument_pointer_expressions : @hashmap.HashMap[String, Handle]
-  global_pointer_expressions : @hashmap.HashMap[String, Handle]
-  mut temporary_index : Int
-}
-
-///|
-priv struct WgslIrExprTokenParser {
-  tokens : Array[@ast.WgslExprToken]
-  mut index : Int
-  mut failed : Bool
-}
-
-///|
-fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
-  WgslIrFunctionScope::{
-    arguments: @hashmap.HashMap([]),
-    locals: @hashmap.HashMap([]),
-    local_constants: @hashmap.HashMap([]),
-    local_pointer_expressions: @hashmap.HashMap([]),
-    argument_pointer_expressions: @hashmap.HashMap([]),
-    global_pointer_expressions: @hashmap.HashMap([]),
-    temporary_index: 0,
-  }
-}
-
-///|
-fn wgsl_ir_copy_string_int_map(
-  source : @hashmap.HashMap[String, Int],
-) -> @hashmap.HashMap[String, Int] {
-  let copied : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
-  for entry in source.iter() {
-    let (key, value) = entry
-    copied.set(key, value)
-  }
-  copied
-}
-
-///|
-fn wgsl_ir_copy_string_handle_map(
-  source : @hashmap.HashMap[String, Handle],
-) -> @hashmap.HashMap[String, Handle] {
-  let copied : @hashmap.HashMap[String, Handle] = @hashmap.HashMap([])
-  for entry in source.iter() {
-    let (key, value) = entry
-    copied.set(key, value)
-  }
-  copied
-}
-
-///|
-fn WgslIrFunctionScope::child(
-  self : WgslIrFunctionScope,
-) -> WgslIrFunctionScope {
-  WgslIrFunctionScope::{
-    arguments: wgsl_ir_copy_string_int_map(self.arguments),
-    locals: wgsl_ir_copy_string_handle_map(self.locals),
-    local_constants: wgsl_ir_copy_string_handle_map(self.local_constants),
-    local_pointer_expressions: wgsl_ir_copy_string_handle_map(
-      self.local_pointer_expressions,
-    ),
-    argument_pointer_expressions: wgsl_ir_copy_string_handle_map(
-      self.argument_pointer_expressions,
-    ),
-    global_pointer_expressions: wgsl_ir_copy_string_handle_map(
-      self.global_pointer_expressions,
-    ),
-    temporary_index: self.temporary_index,
-  }
-}
-
-///|
-fn WgslIrFunctionScope::sync_child_counters(
-  self : WgslIrFunctionScope,
-  child : WgslIrFunctionScope,
-) -> Unit {
-  if child.temporary_index > self.temporary_index {
-    self.temporary_index = child.temporary_index
-  }
-}
-
-///|
-fn WgslIrFunctionScope::local_pointer_expression(
-  self : WgslIrFunctionScope,
-  name : String,
-  local_handle : Handle,
-  function : Function,
-) -> Handle {
-  match self.local_pointer_expressions.get(name) {
-    Some(handle) => handle
-    None => {
-      let handle = function.expressions.append(
-        Expression::LocalVariable(local_handle),
-      )
-      self.local_pointer_expressions.set(name, handle)
-      handle
-    }
-  }
-}
-
-///|
-fn WgslIrFunctionScope::global_pointer_expression(
-  self : WgslIrFunctionScope,
-  name : String,
-  global_handle : Handle,
-  function : Function,
-) -> Handle {
-  match self.global_pointer_expressions.get(name) {
-    Some(handle) => handle
-    None => {
-      let handle = function.expressions.append(
-        Expression::GlobalVariable(global_handle),
-      )
-      self.global_pointer_expressions.set(name, handle)
-      handle
-    }
-  }
-}
-
-///|
-fn WgslIrFunctionScope::argument_pointer_expression(
-  self : WgslIrFunctionScope,
-  name : String,
-  argument_index : Int,
-  function : Function,
-) -> Handle {
-  match self.argument_pointer_expressions.get(name) {
-    Some(handle) => handle
-    None => {
-      let handle = function.expressions.append(
-        Expression::FunctionArgument(argument_index),
-      )
-      self.argument_pointer_expressions.set(name, handle)
-      handle
-    }
-  }
-}
-
-///|
-fn WgslIrFunctionScope::next_temporary_name(
-  self : WgslIrFunctionScope,
-) -> String {
-  let name = "_e\{self.temporary_index}"
-  self.temporary_index = self.temporary_index + 1
-  name
-}
-
-///|
 fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
   WgslIrLowerer::{
     shader_module: Module(),
@@ -2339,6 +2187,7 @@ fn WgslIrLowerer::lower_local_declaration(
   }
   let mut address_of_ty : Handle? = None
   let mut preserve_source_let_name = false
+  let initializer_expression_start = function.expressions.items.length()
   let mut init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
       match wgsl_ir_address_of_operand_ref(expr_ref) {
@@ -2366,10 +2215,31 @@ fn WgslIrLowerer::lower_local_declaration(
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
     match init {
       Some(init_handle) => {
+        if self.function_expression_is_const_expression(function, init_handle) {
+          ignore(scope.locals.remove(local_decl.name().name()))
+          ignore(
+            scope.local_pointer_expressions.remove(local_decl.name().name()),
+          )
+          scope.hide_temporary_name_indices(
+            initializer_expression_start,
+            function.expressions.items.length(),
+          )
+          scope.local_inline_lets.set(local_decl.name().name(), init_handle)
+          return
+        }
+        let materialization_expression_start = function.expressions.items.length()
         let materialized = self.materialize_return_subexpressions(
           function, scope, block, init_handle,
         )
         if materialized != init_handle {
+          match function.expressions.items.get(materialized.index()) {
+            Some(Binary(_, _, _)) =>
+              scope.hide_temporary_name_indices(
+                materialization_expression_start,
+                function.expressions.items.length(),
+              )
+            _ => ()
+          }
           init = Some(materialized)
           preserve_source_let_name = true
         }
@@ -2412,7 +2282,7 @@ fn WgslIrLowerer::lower_local_declaration(
     } else {
       match init {
         Some(init_handle) =>
-          self.function_expression_temporary_name(function, init_handle)
+          scope.function_expression_temporary_name(function, init_handle)
         None => scope.next_temporary_name()
       }
     }
@@ -2431,6 +2301,7 @@ fn WgslIrLowerer::lower_local_declaration(
     },
   })
   ignore(scope.local_constants.remove(local_decl.name().name()))
+  ignore(scope.local_inline_lets.remove(local_decl.name().name()))
   ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
@@ -2461,13 +2332,12 @@ fn WgslIrLowerer::lower_local_declaration(
 }
 
 ///|
-fn WgslIrLowerer::function_expression_temporary_name(
-  self : WgslIrLowerer,
+fn WgslIrFunctionScope::function_expression_temporary_name(
+  self : WgslIrFunctionScope,
   function : Function,
   handle : Handle,
 ) -> String {
-  ignore(self)
-  let index = wgsl_ir_function_expression_semantic_index(function, handle)
+  let index = self.wgsl_ir_function_expression_semantic_index(function, handle)
   let index = if wgsl_ir_function_expression_is_adjacent_materialized_load_after_local_snapshot(
       function, handle,
     ) {
@@ -2479,13 +2349,15 @@ fn WgslIrLowerer::function_expression_temporary_name(
 }
 
 ///|
-fn wgsl_ir_function_expression_semantic_index(
+fn WgslIrFunctionScope::wgsl_ir_function_expression_semantic_index(
+  self : WgslIrFunctionScope,
   function : Function,
   handle : Handle,
 ) -> Int {
   let mut skipped = 0
   for index in 0..<handle.index() {
-    if wgsl_ir_function_expression_is_synthetic_local_reference(
+    if self.hidden_temporary_name_indices.contains(index) ||
+      wgsl_ir_function_expression_is_synthetic_local_reference(
         function,
         Handle::Handle(index),
       ) ||
@@ -2672,11 +2544,11 @@ fn WgslIrLowerer::materialize_function_expression(
     Some(ty) => ty
     None =>
       raise WgslIrLowerError::MissingType(
-        "\{self.function_expression_temporary_name(function, value)}: \{wgsl_ir_function_expression_debug(function, value)}",
+        "\{scope.function_expression_temporary_name(function, value)}: \{wgsl_ir_function_expression_debug(function, value)}",
       )
   }
   let local_handle = function.local_variables.append(LocalVariable::{
-    name: Some(self.function_expression_temporary_name(function, value)),
+    name: Some(scope.function_expression_temporary_name(function, value)),
     kind: Let,
     ty,
     init: Some(value),
@@ -3054,8 +2926,11 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
     | Some(ImageLoad(_, _, _, _, _))
     | Some(ImageQuery(_, _))
     | Some(WorkGroupUniformLoad(_)) => true
-    Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
+    Some(Load(_)) =>
       self.function_expression_reads_global_binding(function, value)
+    Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
+      self.function_expression_reads_global_binding(function, value) ||
+      self.function_expression_reads_var_pointer_load(function, value)
     _ => false
   }
   should_materialize &&
@@ -3068,16 +2943,14 @@ fn WgslIrLowerer::function_expression_should_materialize_as_access_base(
   function : Function,
   value : Handle,
 ) -> Bool {
+  ignore(self)
   match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
     | Some(ImageSample(_, _, _, _, _, _, _, _, _))
     | Some(ImageLoad(_, _, _, _, _))
     | Some(ImageQuery(_, _)) => true
-    _ =>
-      self.function_expression_should_materialize_as_nested_value(
-        function, value,
-      )
+    _ => false
   }
 }
 
@@ -3127,6 +3000,31 @@ fn WgslIrLowerer::function_expression_reads_global_binding(
       self.function_expression_reads_global_binding(function, index)
     Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
       self.function_expression_reads_global_binding(function, base)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_reads_var_pointer_load(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match function.expressions.items.get(value.index()) {
+    Some(Load(pointer)) =>
+      match function.expressions.items.get(pointer.index()) {
+        Some(LocalVariable(handle)) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_variable) => local_variable.kind == Var
+            None => false
+          }
+        _ => false
+      }
+    Some(Access(base, index)) =>
+      self.function_expression_reads_var_pointer_load(function, base) ||
+      self.function_expression_reads_var_pointer_load(function, index)
+    Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
+      self.function_expression_reads_var_pointer_load(function, base)
     _ => false
   }
 }
@@ -3243,10 +3141,12 @@ fn WgslIrLowerer::lower_local_const_declaration(
     Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
     None => None
   }
+  let const_scope = scope.child()
+  const_scope.allow_local_inline_lets = false
   let init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
       self.lower_function_expression_ref_with_expected(
-        expr_ref, function, scope, explicit_ty,
+        expr_ref, function, const_scope, explicit_ty,
       )
     None => raise WgslIrLowerError::MissingType(local_decl.name().name())
   }
@@ -5838,44 +5738,47 @@ fn WgslIrLowerer::lower_function_lvalue_node(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   match node.kind() {
-    Identifier(name) =>
+    Identifier(name) => {
       match scope.local_constants.get(name.name()) {
         Some(_) =>
           raise WgslIrLowerError::UnsupportedExpression(
             "local const is not assignable",
           )
-        None =>
-          match scope.locals.get(name.name()) {
-            Some(handle) =>
-              scope.local_pointer_expression(name.name(), handle, function)
-            None =>
-              match scope.arguments.get(name.name()) {
-                Some(index) =>
-                  if self.function_argument_is_pointer(function, index) {
-                    scope.argument_pointer_expression(
-                      name.name(),
-                      index,
-                      function,
-                    )
-                  } else {
-                    raise WgslIrLowerError::UnsupportedExpression(
-                      "function argument is not assignable",
-                    )
-                  }
-                None =>
-                  match self.global_names.get(name.name()) {
-                    Some(handle) =>
-                      scope.global_pointer_expression(
-                        name.name(),
-                        handle,
-                        function,
-                      )
-                    None =>
-                      raise WgslIrLowerError::UnknownIdentifier(name.name())
-                  }
-              }
-          }
+        None => ()
       }
+      match scope.local_inline_lets.get(name.name()) {
+        Some(_) =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "local let is not assignable",
+          )
+        None => ()
+      }
+      match scope.locals.get(name.name()) {
+        Some(handle) =>
+          return scope.local_pointer_expression(name.name(), handle, function)
+        None => ()
+      }
+      match scope.arguments.get(name.name()) {
+        Some(index) =>
+          if self.function_argument_is_pointer(function, index) {
+            return scope.argument_pointer_expression(
+              name.name(),
+              index,
+              function,
+            )
+          } else {
+            raise WgslIrLowerError::UnsupportedExpression(
+              "function argument is not assignable",
+            )
+          }
+        None => ()
+      }
+      match self.global_names.get(name.name()) {
+        Some(handle) =>
+          scope.global_pointer_expression(name.name(), handle, function)
+        None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+      }
+    }
     Group(inner) => self.lower_function_lvalue_node(inner, function, scope)
     Unary(op, expr) =>
       if op == @ast.WgslExprOperator::Multiply {
@@ -6017,13 +5920,27 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
     Binary(op, left, right) => {
+      let expression_start = function.expressions.items.length()
+      let left_handle = self.lower_function_expression_node(
+        left, function, scope,
+      )
+      let right_handle = self.lower_function_expression_node(
+        right, function, scope,
+      )
       let handle = function.expressions.append(
         Expression::Binary(
           wgsl_ir_binary_operator(op),
-          self.lower_function_expression_node(left, function, scope),
-          self.lower_function_expression_node(right, function, scope),
+          left_handle,
+          right_handle,
         ),
       )
+      if scope.is_direct_local_inline_let_value(left_handle) ||
+        scope.is_direct_local_inline_let_value(right_handle) {
+        scope.hide_temporary_name_indices(
+          expression_start,
+          function.expressions.items.length(),
+        )
+      }
       match self.fold_function_constant_float_expression(function, handle) {
         Some(literal) =>
           function.expressions.append(Expression::Literal(literal))
@@ -6396,60 +6313,67 @@ fn WgslIrLowerer::lower_identifier_expression(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   match scope.local_constants.get(name) {
-    Some(handle) => handle
+    Some(handle) => return handle
+    None => ()
+  }
+  if scope.allow_local_inline_lets {
+    match scope.local_inline_lets.get(name) {
+      Some(handle) => return handle
+      None => ()
+    }
+  } else {
+    match scope.local_inline_lets.get(name) {
+      Some(_) =>
+        raise WgslIrLowerError::UnsupportedExpression(
+          "local let is not a const expression",
+        )
+      None => ()
+    }
+  }
+  match scope.locals.get(name) {
+    Some(handle) =>
+      if self.local_variable_is_handle_value(function, handle) {
+        return scope.local_pointer_expression(name, handle, function)
+      } else {
+        return function.expressions.append(
+          Expression::Load(
+            scope.local_pointer_expression(name, handle, function),
+          ),
+        )
+      }
+    None => ()
+  }
+  match scope.arguments.get(name) {
+    Some(index) =>
+      return function.expressions.append(Expression::FunctionArgument(index))
+    None => ()
+  }
+  match self.ensure_constant_declaration_lowered(name) {
+    Some(handle) =>
+      return function.expressions.append(Expression::Constant(handle))
+    None => ()
+  }
+  match self.override_names.get(name) {
+    Some(handle) =>
+      return function.expressions.append(Expression::Override(handle))
+    None => ()
+  }
+  match self.global_names.get(name) {
+    Some(handle) =>
+      if self.global_variable_is_handle_value(handle) {
+        scope.global_pointer_expression(name, handle, function)
+      } else {
+        function.expressions.append(
+          Expression::Load(
+            scope.global_pointer_expression(name, handle, function),
+          ),
+        )
+      }
     None =>
-      match scope.locals.get(name) {
-        Some(handle) =>
-          if self.local_variable_is_handle_value(function, handle) {
-            scope.local_pointer_expression(name, handle, function)
-          } else {
-            function.expressions.append(
-              Expression::Load(
-                scope.local_pointer_expression(name, handle, function),
-              ),
-            )
-          }
-        None =>
-          match scope.arguments.get(name) {
-            Some(index) =>
-              function.expressions.append(Expression::FunctionArgument(index))
-            None =>
-              match self.ensure_constant_declaration_lowered(name) {
-                Some(handle) =>
-                  function.expressions.append(Expression::Constant(handle))
-                None =>
-                  match self.override_names.get(name) {
-                    Some(handle) =>
-                      function.expressions.append(Expression::Override(handle))
-                    None =>
-                      match self.global_names.get(name) {
-                        Some(handle) =>
-                          if self.global_variable_is_handle_value(handle) {
-                            scope.global_pointer_expression(
-                              name, handle, function,
-                            )
-                          } else {
-                            function.expressions.append(
-                              Expression::Load(
-                                scope.global_pointer_expression(
-                                  name, handle, function,
-                                ),
-                              ),
-                            )
-                          }
-                        None =>
-                          match wgsl_ir_predeclared_u32_constant_literal(name) {
-                            Some(literal) =>
-                              function.expressions.append(
-                                Expression::Literal(literal),
-                              )
-                            None =>
-                              raise WgslIrLowerError::UnknownIdentifier(name)
-                          }
-                      }
-                  }
-              }
-          }
+      match wgsl_ir_predeclared_u32_constant_literal(name) {
+        Some(literal) =>
+          function.expressions.append(Expression::Literal(literal))
+        None => raise WgslIrLowerError::UnknownIdentifier(name)
       }
   }
 }

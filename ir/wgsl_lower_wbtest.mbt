@@ -554,7 +554,8 @@ test "WGSL AST lowerer respects nested lexical shadowing" {
   }
   debug_inspect(emitted.contains("buffer[0] = x_0;"), content="true")
   debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
-  debug_inspect(emitted.contains("write_shadow(_e0);"), content="true")
+  debug_inspect(emitted.contains("buffer[3] = 20u;"), content="true")
+  debug_inspect(emitted.contains("write_shadow(10u);"), content="true")
 }
 
 ///|
@@ -603,7 +604,7 @@ test "WGSL AST lowerer expands statement function call arguments" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("write_values(_e0, 2u, (_e0 + 2u), 4u);"),
+    emitted.contains("write_values(1u, 2u, (1u + 2u), 4u);"),
     content="true",
   )
 }
@@ -833,16 +834,13 @@ test "WGSL AST lowerer binds local consts as constant expressions" {
   }
   debug_inspect(
     module_.functions.items[0].local_variables.items.length(),
-    content="1",
+    content="0",
   )
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("const LOCAL"), content="false")
-  debug_inspect(
-    emitted.contains(": u32 = ((COUNT + 1u) + 2u);"),
-    content="true",
-  )
+  debug_inspect(emitted.contains("return ((COUNT + 1u) + 2u);"), content="true")
 }
 
 ///|
@@ -861,7 +859,7 @@ test "WGSL AST lowerer rejects runtime local const initializers" {
   }
   debug_inspect(
     message,
-    content="\"unsupported WGSL expression: local const initializer is not a const expression in function main\"",
+    content="\"unsupported WGSL expression: local let is not a const expression at 71..84: runtime_value in function main\"",
   )
 }
 
@@ -988,7 +986,7 @@ test "WGSL AST lowerer supports function call expressions" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("helper(_e0, 2u, (_e0 + 2u))"), content="true")
+  debug_inspect(emitted.contains("helper(1u, 2u, (1u + 2u))"), content="true")
 }
 
 ///|
@@ -1990,15 +1988,15 @@ test "WGSL IR lowerer roundtrips cooperative matrix builtins" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("coopLoad<coop_mat8x8<f32, A>>(&a[0u], _e0)"),
+    emitted.contains("coopLoad<coop_mat8x8<f32, A>>(&a[0u], 8u)"),
     content="true",
   )
   debug_inspect(
-    emitted.contains("coopMultiplyAdd(_e6, _e11, c_tile)"),
+    emitted.contains("coopMultiplyAdd(_e3, _e7, c_tile)"),
     content="true",
   )
   debug_inspect(
-    emitted.contains("coopStore(c_tile, &c[0u], _e0);"),
+    emitted.contains("coopStore(c_tile, &c[0u], 8u);"),
     content="true",
   )
 }

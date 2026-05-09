@@ -1,7 +1,7 @@
 # label	expected	moon_gate	oracle_gate	notes
 additional_import	testdata/naga_oil_upstream/compose_tests/expected/additional_import.txt	byte	oracle-byte	Root additional imports are byte-gated through moon_wgsl and the pinned naga_oil oracle.
 atomics	testdata/naga_oil_upstream/compose_tests/expected/atomics.txt	byte-exception	oracle-byte	The pinned upstream expected bytes contain an invalid internal atomic compare-exchange result type annotation; moon_wgsl diffs after that single normalization and validates the emitted WGSL.
-bad_identifiers	testdata/naga_oil_upstream/compose_tests/expected/bad_identifiers.txt	semantic	oracle-byte	moon_wgsl sanitizes the same declarations but IR emission canonicalizes temporary expressions differently from naga_oil's writer, so this is a semantic local gate plus exact oracle byte gate.
+bad_identifiers	testdata/naga_oil_upstream/compose_tests/expected/bad_identifiers.txt	byte	oracle-byte	Invalid/reserved identifier sanitization, local const-expression let inlining, global/member access materialization, and Naga-compatible temporary naming are byte-gated through moon_wgsl and the pinned oracle.
 big_shaderdefs	testdata/naga_oil_upstream/compose_tests/expected/big_shaderdefs.txt	byte	oracle-byte	Boolean shader-def branch expansion is byte-gated through moon_wgsl and the pinned oracle.
 conditional_import_a	testdata/naga_oil_upstream/compose_tests/expected/conditional_import_a.txt	byte	oracle-byte	Active conditional import branch A is byte-gated through moon_wgsl and the pinned oracle.
 conditional_import_b	testdata/naga_oil_upstream/compose_tests/expected/conditional_import_b.txt	byte	oracle-byte	Active conditional import branch B is byte-gated through moon_wgsl and the pinned oracle.

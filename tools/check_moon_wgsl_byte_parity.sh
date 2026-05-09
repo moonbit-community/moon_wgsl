@@ -14,6 +14,7 @@ if [[ "${1:-}" == "--list" ]]; then
   cat <<'LABELS'
 additional_import
 atomics
+bad_identifiers
 big_shaderdefs
 conditional_import_a
 conditional_import_b
@@ -206,6 +207,12 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/problematic_expressions \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/problematic_expressions.txt
+
+check_case \
+  bad_identifiers \
+  testdata/naga_oil_upstream/compose_tests/invalid_identifiers \
+  top_valid.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/bad_identifiers.txt
 
 check_case_atomics_validated \
   atomics \
