@@ -399,6 +399,17 @@ if [[ ! -f testdata/external_wgsl_corpus_profiles.tsv ]]; then
   fail "external WGSL corpus profiles must be manifest-owned"
 fi
 
+if rg -n 'min_valid|min_composed|>= min_valid|>= min_composed' \
+  testdata/external_wgsl_corpus_manifest.tsv \
+  tools/check_external_wgsl_corpus.sh >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "external WGSL corpus repository counts must be exact, not minimum thresholds"
+fi
+
+if ! rg -n 'expected_files.*expected_source_valid.*expected_composed_valid.*expected_invalid' testdata/external_wgsl_corpus_manifest.tsv >/dev/null; then
+  fail "external WGSL corpus manifest must own exact per-repository counts"
+fi
+
 if ! rg -n 'EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must load explicit shader profiles"
 fi

@@ -468,11 +468,15 @@ materialize_valid_external_wgsl_source() {
   printf '%s\n' "$profile_capabilities" > "$capabilities_output"
 }
 
-while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; do
+while IFS=$'\t' read -r id repo ref sparse_paths expected_files expected_source_valid expected_composed_valid expected_invalid notes; do
   [[ -n "${id:-}" ]] || continue
   [[ "$id" == \#* ]] && continue
   [[ "$id" == "id" ]] && continue
   [[ -n "${notes:-}" ]] || fail "manifest row $id must include notes"
+  [[ "$expected_files" =~ ^[0-9]+$ ]] || fail "manifest row $id must include an exact expected file count"
+  [[ "$expected_source_valid" =~ ^[0-9]+$ ]] || fail "manifest row $id must include an exact expected source-valid count"
+  [[ "$expected_composed_valid" =~ ^[0-9]+$ ]] || fail "manifest row $id must include an exact expected composed-valid count"
+  [[ "$expected_invalid" =~ ^[0-9]+$ ]] || fail "manifest row $id must include an exact expected-invalid count"
 
   echo "== External WGSL corpus: $id =="
   checkout="$(clone_or_update_repo "$id" "$repo" "$ref" "$sparse_paths")"
@@ -484,6 +488,7 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
   find "$checkout" -name '*.wgsl' -type f ! -name '*.expected.wgsl' | sort > "$repo_files"
   repo_file_count="$(wc -l < "$repo_files" | tr -d ' ')"
   ((repo_file_count > 0)) || fail "$id has no .wgsl files"
+  ((repo_file_count == expected_files)) || fail "$id produced $repo_file_count WGSL file(s); expected exactly $expected_files"
 
   repo_valid_count=0
   repo_ir_count=0
@@ -552,8 +557,9 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
     ir_valid_count=$((ir_valid_count + 1))
   done < "$repo_files"
 
-  ((repo_valid_count >= min_valid)) || fail "$id produced only $repo_valid_count Naga-valid source file(s); expected at least $min_valid"
-  ((repo_composed_count >= min_composed)) || fail "$id produced only $repo_composed_count composed source file(s); expected at least $min_composed"
+  ((repo_valid_count == expected_source_valid)) || fail "$id produced $repo_valid_count Naga-valid source file(s); expected exactly $expected_source_valid"
+  ((repo_composed_count == expected_composed_valid)) || fail "$id produced $repo_composed_count composed source file(s); expected exactly $expected_composed_valid"
+  ((repo_expected_invalid_count == expected_invalid)) || fail "$id produced $repo_expected_invalid_count expected-invalid source file(s); expected exactly $expected_invalid"
   echo "external WGSL corpus $id passed: files=$repo_file_count source-valid=$repo_valid_count composed-valid=$repo_composed_count ir-valid=$repo_ir_count expected-invalid=$repo_expected_invalid_count expected-failures=0 skipped=0"
 done < "$manifest"
 
