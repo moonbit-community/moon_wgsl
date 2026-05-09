@@ -1,5 +1,4 @@
 # id	rel_path	reason	detail
-bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	compose_failed	Known upstream/profile mismatch: source imports bevy_pbr::light_probes while checked-out library defines bevy_pbr::light_probe.
 learn-wgpu	code/compute/src/filter.wgsl	raw_invalid_no_preprocessor	Expected invalid external source under standalone Naga validation; this file is not a preprocessing input.
 naga	tests/in/dualsource.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/in/extra.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.

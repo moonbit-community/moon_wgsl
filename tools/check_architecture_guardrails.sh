@@ -341,8 +341,12 @@ if [[ -f testdata/external_wgsl_corpus_skips.tsv ]]; then
   fail "external WGSL corpus must not use a skipped-file manifest"
 fi
 
-if [[ ! -f testdata/external_wgsl_corpus_expected_failures.tsv ]]; then
-  fail "external WGSL non-materialized files must be classified by an expected-failure manifest"
+if [[ -f testdata/external_wgsl_corpus_expected_failures.tsv ]]; then
+  fail "external WGSL corpus must not retain an expected-failure manifest"
+fi
+
+if [[ ! -f testdata/external_wgsl_corpus_expected_invalid.tsv ]]; then
+  fail "external WGSL standalone-invalid files must be classified by an expected-invalid manifest"
 fi
 
 if ! rg -n 'skipped=0' tools/check_external_wgsl_corpus.sh >/dev/null; then
@@ -365,8 +369,12 @@ if ! rg -n 'bash tools/check_external_wgsl_corpus\.sh' .github/workflows/check.y
   fail "CI must run the external real-project WGSL corpus gate"
 fi
 
-if ! rg -n 'diff -u "\$expected_failure_expected_keys" "\$expected_failure_actual_keys"' tools/check_external_wgsl_corpus.sh >/dev/null; then
-  fail "external WGSL corpus gate must fail unknown or stale expected failures"
+if ! rg -n 'expected-failures=0' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must report zero expected failures"
+fi
+
+if ! rg -n 'diff -u "\$expected_invalid_expected_keys" "\$expected_invalid_actual_keys"' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must fail unknown or stale expected-invalid cases"
 fi
 
 echo "architecture guardrails passed"

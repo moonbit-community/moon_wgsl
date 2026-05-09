@@ -22,6 +22,7 @@ bevy	crates/bevy_core_pipeline/src/mip_generation/downsample.wgsl	COMBINE_BIND_G
 bevy	crates/bevy_core_pipeline/src/tonemapping/lut_bindings.wgsl	-	TONEMAPPING_LUT_TEXTURE_BINDING_INDEX=3,TONEMAPPING_LUT_SAMPLER_BINDING_INDEX=4	-	-	-	-	-	Bevy tonemapping LUT binding library profile with Rust-provided binding indices.
 bevy	crates/bevy_pbr/src/decal/forward_decal.wgsl	VERTEX_OUTPUT_INSTANCE_INDEX,VERTEX_TANGENTS,VERTEX_UVS_A,DEPTH_PREPASS	MATERIAL_BIND_GROUP=2	-	-	-	-	-	Bevy forward decal profile with forward vertex IO, depth prepass texture, and material bind group value.
 bevy	crates/bevy_pbr/src/deferred/deferred_lighting.wgsl	DEFERRED_PREPASS	-	-	-	-	-	-	Bevy deferred lighting profile with the deferred prepass texture binding enabled.
+bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	-	-	-	-	-	-	bevy_pbr::light_probes=bevy_pbr::light_probe	Bevy cluster raster source from this pinned checkout imports the historical plural module path; profile materialization mirrors the engine's resolved singular light_probe module path.
 bevy	crates/bevy_pbr/src/light_probe/environment_map.wgsl	ENVIRONMENT_MAP	-	-	-	-	-	-	Bevy environment-map profile with view environment-map bindings enabled.
 bevy	crates/bevy_pbr/src/meshlet/cull_bvh.wgsl	MESHLET_BVH_CULLING_PASS	-	-	immediates	-	-	-	Bevy meshlet BVH culling profile with immediate constants.
 bevy	crates/bevy_pbr/src/meshlet/cull_clusters.wgsl	MESHLET_CLUSTER_CULLING_PASS	-	-	immediates	-	-	-	Bevy meshlet cluster culling profile with immediate constants.
