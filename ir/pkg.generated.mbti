@@ -963,6 +963,7 @@ pub struct WgslIrFinalNameTable {
   // private fields
 }
 pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> Self
+pub fn WgslIrFinalNameTable::alias_entries(Self) -> Array[WgslIrAliasFinalNameEntry]
 pub fn WgslIrFinalNameTable::alias_entries_for_scope(Self, String, String) -> Array[WgslIrAliasFinalNameEntry]
 pub fn WgslIrFinalNameTable::alias_get(Self, WgslIrAliasSymbolIdentity) -> String?
 pub fn WgslIrFinalNameTable::alias_set(Self, WgslIrAliasSymbolIdentity, String) -> Unit

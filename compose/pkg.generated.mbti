@@ -49,6 +49,7 @@ pub struct Composer {
 pub fn Composer::add_composable_module(Self, @common.ComposableModuleDescriptor) -> ComposableModuleDefinition raise ComposerError
 pub fn Composer::clear_sources(Self) -> Unit
 pub fn Composer::compose_wgsl(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_before_ir(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_source(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::contains_module(Self, String) -> Bool
 pub fn Composer::default() -> Self
