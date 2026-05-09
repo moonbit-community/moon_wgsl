@@ -240,6 +240,21 @@ if ! rg -n 'bash tools/check_wgsl_corpus_matrix\.sh' .github/workflows/check.yml
   fail "CI must run the manifest-driven WGSL corpus matrix"
 fi
 
+if ! rg -n 'WGSL_CORPUS_EXPECTED_CASES|expected_case_count' tools/check_wgsl_corpus_matrix.sh >/dev/null; then
+  fail "WGSL corpus matrix must exact-gate its case count"
+fi
+
+if ! rg -n 'WGSL_CORPUS_EXPECTED_RUNTIME_VALID_COMPOSE_CASES|runtime-valid compose row has.*expected 1' tools/check_wgsl_corpus_matrix.sh >/dev/null; then
+  fail "WGSL corpus matrix must schema-check and exact-gate runtime-valid compose cases"
+fi
+
+if rg -n 'manifest row has.*expected 9|NF < 9|grep -v -E .*\$runtime_valid_compose_manifest' tools/check_wgsl_corpus_matrix.sh >"$matches_file"; then
+  if rg -n 'NF < 9|grep -v -E .*\$runtime_valid_compose_manifest' "$matches_file" >/dev/null; then
+    cat "$matches_file" >&2
+    fail "WGSL corpus matrix manifests must use exact schema checks instead of weak filtering"
+  fi
+fi
+
 if [[ ! -f testdata/wgsl_builtin_coverage_manifest.tsv ]]; then
   fail "WGSL builtin coverage must be driven by a manifest"
 fi

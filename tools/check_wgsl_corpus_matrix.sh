@@ -6,6 +6,13 @@ cd "$repo_root"
 
 manifest="${WGSL_CORPUS_MANIFEST:-testdata/wgsl_corpus_manifest.tsv}"
 runtime_valid_compose_manifest="${WGSL_CORPUS_RUNTIME_VALID_COMPOSE_MANIFEST:-testdata/wgsl_corpus_runtime_valid_compose.txt}"
+expected_case_count="${WGSL_CORPUS_EXPECTED_CASES:-54}"
+expected_parse_count="${WGSL_CORPUS_EXPECTED_PARSE_CASES:-43}"
+expected_naga_count="${WGSL_CORPUS_EXPECTED_NAGA_CASES:-42}"
+expected_ir_count="${WGSL_CORPUS_EXPECTED_IR_CASES:-47}"
+expected_naga_ir_count="${WGSL_CORPUS_EXPECTED_NAGA_IR_CASES:-46}"
+expected_compose_count="${WGSL_CORPUS_EXPECTED_COMPOSE_CASES:-20}"
+expected_runtime_valid_compose_count="${WGSL_CORPUS_EXPECTED_RUNTIME_VALID_COMPOSE_CASES:-1}"
 
 fail() {
   printf 'WGSL corpus matrix failed: %s\n' "$*" >&2
@@ -31,7 +38,7 @@ awk -F '\t' '
   $1 == "" { next }
   $1 ~ /^#/ { next }
   $1 == "id" { next }
-  NF < 9 {
+  NF != 9 {
     printf("manifest row has %d field(s), expected 9: %s\n", NF, $0) > "/dev/stderr"
     exit 1
   }
@@ -39,9 +46,26 @@ awk -F '\t' '
 ' "$manifest" > "$rows"
 
 cut -f1 "$rows" | sort > "$ids"
-grep -v -E '^($|#)' "$runtime_valid_compose_manifest" | sort > "$runtime_valid_compose_ids"
 duplicate_ids="$(uniq -d "$ids" | tr '\n' ' ')"
 [[ -z "$duplicate_ids" ]] || fail "duplicate manifest id(s): $duplicate_ids"
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  NF != 1 {
+    printf("runtime-valid compose row has %d field(s), expected 1: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  $1 == "" {
+    printf("runtime-valid compose row must include a corpus id: %s\n", $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 }
+' "$runtime_valid_compose_manifest" | sort > "$runtime_valid_compose_ids"
+duplicate_runtime_valid_ids="$(uniq -d "$runtime_valid_compose_ids" | tr '\n' ' ')"
+[[ -z "$duplicate_runtime_valid_ids" ]] ||
+  fail "duplicate runtime-valid compose id(s): $duplicate_runtime_valid_ids"
+runtime_valid_compose_count="$(wc -l < "$runtime_valid_compose_ids" | tr -d ' ')"
+((runtime_valid_compose_count == expected_runtime_valid_compose_count)) ||
+  fail "runtime-valid compose manifest contains $runtime_valid_compose_count id(s); expected exactly $expected_runtime_valid_compose_count"
 
 while IFS= read -r runtime_valid_id; do
   rg -Fx "$runtime_valid_id" "$ids" >/dev/null ||
@@ -162,6 +186,7 @@ materialize_source() {
 }
 
 case_count=0
+compose_count=0
 parse_count=0
 naga_count=0
 ir_count=0
@@ -187,6 +212,7 @@ while IFS=$'\t' read -r id kind input entry defines additional_imports capabilit
 
   if contains_csv "$stages" "compose"; then
     [[ "$kind" == "compose" ]] || fail "case $id requests compose stage but is not a compose case"
+    compose_count=$((compose_count + 1))
   fi
 
   if contains_csv "$stages" "parse"; then
@@ -210,9 +236,17 @@ while IFS=$'\t' read -r id kind input entry defines additional_imports capabilit
 done < "$rows"
 
 ((case_count > 0)) || fail "manifest contains no runnable cases"
-((parse_count > 0)) || fail "manifest contains no parse-stage cases"
-((naga_count > 0)) || fail "manifest contains no naga validation cases"
-((ir_count > 0)) || fail "manifest contains no IR roundtrip cases"
-((naga_ir_count > 0)) || fail "manifest contains no emitted-IR validation cases"
+((case_count == expected_case_count)) ||
+  fail "manifest contains $case_count runnable case(s); expected exactly $expected_case_count"
+((compose_count == expected_compose_count)) ||
+  fail "manifest contains $compose_count compose-stage case(s); expected exactly $expected_compose_count"
+((parse_count == expected_parse_count)) ||
+  fail "manifest contains $parse_count parse-stage case(s); expected exactly $expected_parse_count"
+((naga_count == expected_naga_count)) ||
+  fail "manifest contains $naga_count naga validation case(s); expected exactly $expected_naga_count"
+((ir_count == expected_ir_count)) ||
+  fail "manifest contains $ir_count IR roundtrip case(s); expected exactly $expected_ir_count"
+((naga_ir_count == expected_naga_ir_count)) ||
+  fail "manifest contains $naga_ir_count emitted-IR validation case(s); expected exactly $expected_naga_ir_count"
 
-echo "WGSL corpus matrix gate passed: cases=$case_count parse=$parse_count naga=$naga_count ir=$ir_count naga-ir=$naga_ir_count"
+echo "WGSL corpus matrix gate passed: cases=$case_count compose=$compose_count parse=$parse_count naga=$naga_count ir=$ir_count naga-ir=$naga_ir_count runtime-valid-compose=$runtime_valid_compose_count"
