@@ -8,6 +8,7 @@ manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifes
 expected_invalid_manifest="${EXTERNAL_WGSL_CORPUS_EXPECTED_INVALID_MANIFEST:-testdata/external_wgsl_corpus_expected_invalid.tsv}"
 expected_invalid_normalized_manifest="${EXTERNAL_WGSL_CORPUS_EXPECTED_INVALID_NORMALIZED_MANIFEST:-testdata/external_wgsl_corpus_expected_invalid_normalized_by_ir.tsv}"
 profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
+profile_mode_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MODE_MANIFEST:-testdata/external_wgsl_corpus_profile_modes.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
 
 fail() {
@@ -19,6 +20,7 @@ fail() {
 [[ -f "$expected_invalid_manifest" ]] || fail "missing expected-invalid manifest: $expected_invalid_manifest"
 [[ -f "$expected_invalid_normalized_manifest" ]] || fail "missing expected-invalid normalized-by-IR manifest: $expected_invalid_normalized_manifest"
 [[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
+[[ -f "$profile_mode_manifest" ]] || fail "missing profile mode manifest: $profile_mode_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -149,9 +151,14 @@ expected_invalid_normalized_actual_keys="$tmpdir/expected-invalid-normalized.act
 expected_invalid_normalized_expected_keys="$tmpdir/expected-invalid-normalized.expected.keys.tsv"
 profile_expected_keys="$tmpdir/profile.expected.keys.tsv"
 profile_used_keys="$tmpdir/profile.used.keys.tsv"
+profile_mode_actual="$tmpdir/profile-mode.actual.tsv"
+profile_mode_expected="$tmpdir/profile-mode.expected.tsv"
+profile_mode_actual_keys="$tmpdir/profile-mode.actual.keys.tsv"
+profile_mode_expected_keys="$tmpdir/profile-mode.expected.keys.tsv"
 : > "$expected_invalid_actual"
 : > "$expected_invalid_normalized_actual"
 : > "$profile_used_keys"
+: > "$profile_mode_actual"
 
 { grep -v -E '^($|#)' "$expected_invalid_manifest" || true; } | sort > "$expected_invalid_expected"
 { grep -v -E '^($|#)' "$expected_invalid_normalized_manifest" || true; } | sort > "$expected_invalid_normalized_expected"
@@ -166,6 +173,28 @@ awk -F '\t' '
 ' "$profile_manifest" | sort > "$profile_expected_keys"
 duplicate_profile_keys="$(uniq -d "$profile_expected_keys" | tr '\n' ' ')"
 [[ -z "$duplicate_profile_keys" ]] || fail "duplicate external WGSL profile row(s): $duplicate_profile_keys"
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  NF < 4 {
+    printf("profile mode manifest row has %d field(s), expected 4: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  $3 != "raw" && $3 != "compose" {
+    printf("profile mode must be raw or compose: %s\n", $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 "\t" $2 "\t" $3 }
+' "$profile_mode_manifest" | sort > "$profile_mode_expected"
+awk -F '\t' '{ print $1 "\t" $2 }' "$profile_mode_expected" | sort > "$profile_mode_expected_keys"
+duplicate_profile_mode_keys="$(uniq -d "$profile_mode_expected_keys" | tr '\n' ' ')"
+[[ -z "$duplicate_profile_mode_keys" ]] || fail "duplicate external WGSL profile mode row(s): $duplicate_profile_mode_keys"
+if ! diff -u "$profile_expected_keys" "$profile_mode_expected_keys" >"$tmpdir/profile-mode-coverage.diff"; then
+  echo "external WGSL corpus profile mode manifest does not match profile manifest" >&2
+  echo "Every profile row must have exactly one expected raw/compose execution mode." >&2
+  sed -n '1,200p' "$tmpdir/profile-mode-coverage.diff" >&2
+  exit 1
+fi
 
 source_contains_preprocessor_directive() {
   local source="$1"
@@ -488,6 +517,9 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
       repo_composed_count=$((repo_composed_count + 1))
       composed_valid_count=$((composed_valid_count + 1))
     fi
+    if lookup_external_corpus_profile "$id" "$rel_path" >/dev/null 2>&1; then
+      printf '%s\t%s\t%s\n' "$id" "$rel_path" "$source_kind" >> "$profile_mode_actual"
+    fi
 
     repo_valid_count=$((repo_valid_count + 1))
     source_valid_count=$((source_valid_count + 1))
@@ -554,6 +586,15 @@ if ! diff -u "$profile_expected_keys" "$profile_used_keys" >"$tmpdir/profile-cov
   echo "external WGSL corpus profile manifest has stale or unconsumed rows" >&2
   echo "Every profile row must match a concrete WGSL source file in the pinned external corpus." >&2
   sed -n '1,200p' "$tmpdir/profile-coverage.diff" >&2
+  exit 1
+fi
+
+sort -o "$profile_mode_actual" "$profile_mode_actual"
+awk -F '\t' '{ print $1 "\t" $2 "\t" $3 }' "$profile_mode_actual" | sort > "$profile_mode_actual_keys"
+if ! diff -u "$profile_mode_expected" "$profile_mode_actual_keys" >"$tmpdir/profile-mode.diff"; then
+  echo "external WGSL corpus profile execution modes changed" >&2
+  echo "Profiles must explicitly state whether they exercise raw WGSL validation or naga-oil compose." >&2
+  sed -n '1,200p' "$tmpdir/profile-mode.diff" >&2
   exit 1
 fi
 

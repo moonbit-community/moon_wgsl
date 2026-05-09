@@ -1,0 +1,50 @@
+# id	rel_path	mode	notes
+bevy	assets/shaders/animate_shader.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/array_texture.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/bindless_material.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/custom_material.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/custom_gltf_2d.wgsl	compose	Bevy sprite material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/custom_material_2d.wgsl	compose	Bevy sprite material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/custom_clustered_decal.wgsl	compose	Bevy clustered decal material must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/custom_ui_material.wgsl	compose	Bevy UI material must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/extended_material.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/extended_material_bindless.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/irradiance_volume_voxel_visualization.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/manual_material.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/screen_space_texture_material.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/show_depth_texture_material.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/show_prepass.wgsl	compose	Bevy prepass material must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/single_mip_level.wgsl	compose	Bevy sprite material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/texture_binding_array.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/tonemapping_test_patterns.wgsl	compose	Bevy material examples must exercise naga-oil compose, not raw WGSL validation.
+bevy	assets/shaders/water_material.wgsl	compose	Bevy deferred material must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_core_pipeline/src/mip_generation/downsample.wgsl	compose	Bevy template constants must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_core_pipeline/src/tonemapping/lut_bindings.wgsl	compose	Bevy binding-index template constants must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/decal/forward_decal.wgsl	compose	Bevy PBR shader libraries must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/deferred/deferred_lighting.wgsl	compose	Bevy PBR shader libraries must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	compose	Bevy import path rewrite profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/light_probe/environment_map.wgsl	compose	Bevy PBR shader libraries must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/meshlet/cull_bvh.wgsl	compose	Bevy meshlet immediate profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/meshlet/cull_clusters.wgsl	compose	Bevy meshlet immediate profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/meshlet/cull_instances.wgsl	compose	Bevy meshlet immediate profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/meshlet/meshlet_cull_shared.wgsl	compose	Bevy meshlet immediate profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	compose	Bevy meshlet material profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_hardware_raster.wgsl	compose	Bevy meshlet visibility profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	compose	Bevy meshlet visibility profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/render/pbr.wgsl	compose	Bevy PBR shader libraries must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/render/pbr_fragment.wgsl	compose	Bevy PBR shader libraries must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	compose	Bevy value-def profiles must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/ssr/raymarch.wgsl	compose	Bevy SSR shader libraries must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	compose	Bevy SSR shader libraries must exercise naga-oil compose, not raw WGSL validation.
+bevy	crates/bevy_ui_render/src/box_shadow.wgsl	compose	Bevy UI value-def profiles must exercise naga-oil compose, not raw WGSL validation.
+wgpu	wgpu-core/src/timestamp_normalization/timestamp_normalization.wgsl	raw	wgpu source-prefix profiles materialize the runtime WGSL before raw validation.
+wgpu	tests/src/copy_texture_to_buffer.wgsl	raw	wgpu text-replacement profiles materialize the generated WGSL before raw validation.
+wgpu	tests/tests/wgpu-gpu/shader/shader_test.wgsl	raw	wgpu text-replacement profiles materialize the generated WGSL before raw validation.
+wgpu	tests/tests/wgpu-gpu/timestamp_normalization/shift_right_u96.wgsl	raw	wgpu source-prefix profiles materialize the runtime WGSL before raw validation.
+wgpu	tests/tests/wgpu-gpu/timestamp_normalization/u64_mul_u32.wgsl	raw	wgpu source-prefix profiles materialize the runtime WGSL before raw validation.
+naga	tests/in/ray-query.wgsl	raw	Naga legacy ray-query input is materialized with the required enable directive before raw validation.
+webgpu-samples	sample/cornell/radiosity.wgsl	raw	webgpu-samples concatenate WGSL snippets before raw validation.
+webgpu-samples	sample/cornell/rasterizer.wgsl	raw	webgpu-samples concatenate WGSL snippets before raw validation.
+webgpu-samples	sample/cornell/raytracer.wgsl	raw	webgpu-samples concatenate WGSL snippets before raw validation.
+webgpu-samples	sample/cornell/tonemapper.wgsl	raw	webgpu-samples concatenate WGSL snippets before raw validation.
+webgpu-samples	sample/skinnedMesh/gltf.wgsl	raw	webgpu-samples generated struct profiles materialize runtime WGSL before raw validation.

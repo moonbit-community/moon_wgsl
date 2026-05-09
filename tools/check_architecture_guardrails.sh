@@ -407,6 +407,14 @@ if ! rg -n 'profile_expected_keys|profile_used_keys|profile-coverage\.diff' tool
   fail "external WGSL corpus profile manifest must be checked for stale or unconsumed rows"
 fi
 
+if [[ ! -f testdata/external_wgsl_corpus_profile_modes.tsv ]]; then
+  fail "external WGSL corpus profile execution modes must be manifest-owned"
+fi
+
+if ! rg -n 'profile_mode_expected|profile_mode_actual|profile-mode\.diff' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus profiles must gate raw vs compose execution modes"
+fi
+
 if ! rg -n 'blockDepth|lineComment' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus preprocessor classification must be comment-aware"
 fi
