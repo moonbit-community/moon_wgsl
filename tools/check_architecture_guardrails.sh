@@ -403,6 +403,10 @@ if ! rg -n 'EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST' tools/check_external_wgsl_cor
   fail "external WGSL corpus gate must load explicit shader profiles"
 fi
 
+if ! rg -n -F '#[[:space:]]*(import|define|define_import_path|if|ifdef|ifndef|else|elif|endif)\b' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must recognize naga-oil-style preprocessor directives, including spaced # directives and #define"
+fi
+
 if ! rg -n 'validated_capabilities=.*source_capabilities_file' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must carry profile capabilities into final emitted validation"
 fi

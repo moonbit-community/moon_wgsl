@@ -155,7 +155,7 @@ expected_invalid_normalized_expected_keys="$tmpdir/expected-invalid-normalized.e
 
 source_contains_preprocessor_directive() {
   local source="$1"
-  grep -Eq '^[[:space:]]*#(import|define_import_path|if|ifdef|ifndef|else|elif|endif)' "$source"
+  grep -Eq '^[[:space:]]*#[[:space:]]*(import|define|define_import_path|if|ifdef|ifndef|else|elif|endif)\b' "$source"
 }
 
 lookup_external_corpus_profile() {
