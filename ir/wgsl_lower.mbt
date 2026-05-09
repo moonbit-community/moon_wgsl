@@ -7507,6 +7507,12 @@ fn WgslIrLowerer::binary_expression_result_type(
       None => ()
     }
   }
+  if wgsl_ir_binary_operator_is_arithmetic(op) {
+    match self.numeric_binary_scalar_result_type(left_ty, right_ty) {
+      Some(ty) => return ty
+      None => ()
+    }
+  }
   if self.type_is_scalar(left_ty) && !self.type_is_scalar(right_ty) {
     return right_ty
   }

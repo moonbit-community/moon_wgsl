@@ -466,6 +466,35 @@ test "WGSL AST lowerer concretizes abstract local var storage types" {
 }
 
 ///|
+test "WGSL AST lowerer converts abstract numeric operands toward concrete floats" {
+  let source =
+    #|override kTextureBaseSize: f32;
+    #|override kViewportSize: f32;
+    #|
+    #|fn f(flange: f32) -> vec2f {
+    #|  let radius = (1 + 2 * flange) * kTextureBaseSize / kViewportSize;
+    #|  var positions = array(
+    #|    vec2(-radius, -radius), vec2(-radius, radius), vec2(radius, -radius),
+    #|    vec2(radius, -radius), vec2(-radius, radius), vec2(radius, radius),
+    #|  );
+    #|  return positions[0];
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var positions: array<vec2<f32>, 6>"),
+    content="true",
+  )
+}
+
+///|
 test "WGSL AST lowerer supports pointer dereference member lvalues" {
   let source =
     #|struct PbrInput {

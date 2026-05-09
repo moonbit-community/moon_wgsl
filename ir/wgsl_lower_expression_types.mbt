@@ -142,6 +142,71 @@ fn WgslIrLowerer::array_element_type(
 }
 
 ///|
+fn WgslIrLowerer::numeric_binary_scalar_result_type(
+  self : WgslIrLowerer,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle? {
+  guard self.scalar_from_numeric_type_handle(left_ty) is Some(left) else {
+    return None
+  }
+  guard self.scalar_from_numeric_type_handle(right_ty) is Some(right) else {
+    return None
+  }
+  if left.kind == AbstractInt {
+    match right.kind {
+      Sint | Uint | Float | AbstractFloat => return Some(right_ty)
+      AbstractInt => return Some(left_ty)
+      _ => ()
+    }
+  }
+  if left.kind == AbstractFloat {
+    match right.kind {
+      Float => return Some(right_ty)
+      AbstractInt | AbstractFloat => return Some(left_ty)
+      _ => ()
+    }
+  }
+  match right.kind {
+    AbstractInt => Some(left_ty)
+    AbstractFloat =>
+      match left.kind {
+        Float => Some(left_ty)
+        AbstractInt => Some(right_ty)
+        _ => Some(left_ty)
+      }
+    _ => Some(left_ty)
+  }
+}
+
+///|
+fn wgsl_ir_binary_operator_is_arithmetic(op : BinaryOperator) -> Bool {
+  match op {
+    Add | Subtract | Multiply | Divide | Modulo => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::scalar_from_numeric_type_handle(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Scalar? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) =>
+          match scalar.kind {
+            Sint | Uint | Float | AbstractInt | AbstractFloat => Some(scalar)
+            _ => None
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
 fn WgslIrLowerer::expected_constructor_type(
   self : WgslIrLowerer,
   name : String,
