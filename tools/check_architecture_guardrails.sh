@@ -407,6 +407,10 @@ if ! rg -n 'blockDepth|lineComment' tools/check_external_wgsl_corpus.sh >/dev/nu
   fail "external WGSL corpus preprocessor classification must be comment-aware"
 fi
 
+if ! rg -n 'check_preprocessor_directive_classifier' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus preprocessor classification must have synthetic self-tests"
+fi
+
 if ! rg -n -F '*(import|define|define_import_path|if|ifdef|ifndef|else|elif|endif)\b' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must recognize naga-oil-style preprocessor directives, including spaced # directives and #define"
 fi

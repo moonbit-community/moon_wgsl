@@ -211,6 +211,26 @@ process.exit(
 NODE
 }
 
+check_preprocessor_directive_classifier() {
+  local commented="$tmpdir/commented-directive.wgsl"
+  local block_prefixed="$tmpdir/block-prefixed-directive.wgsl"
+  local spaced_define="$tmpdir/spaced-define-directive.wgsl"
+  printf '// #import hidden::item\nfn main() {}\n' > "$commented"
+  printf '/* comment */ # import visible::item\nfn main() {}\n' > "$block_prefixed"
+  printf '# define FEATURE\nfn main() {}\n' > "$spaced_define"
+  if source_contains_preprocessor_directive "$commented"; then
+    fail "preprocessor directive classifier matched a line-commented directive"
+  fi
+  if ! source_contains_preprocessor_directive "$block_prefixed"; then
+    fail "preprocessor directive classifier missed a block-comment-prefixed import"
+  fi
+  if ! source_contains_preprocessor_directive "$spaced_define"; then
+    fail "preprocessor directive classifier missed a spaced #define"
+  fi
+}
+
+check_preprocessor_directive_classifier
+
 lookup_external_corpus_profile() {
   local id="$1"
   local rel_path="$2"
