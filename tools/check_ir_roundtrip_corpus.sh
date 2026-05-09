@@ -41,6 +41,14 @@ compose_roundtrip_case() {
   validate_wgsl "$output"
 }
 
+compose_runtime_valid_roundtrip_case() {
+  local label="$1"
+  local fixture_root="$2"
+  local entry="$3"
+  shift 3
+  compose_roundtrip_case "$label" "$fixture_root" "$entry" --runtime-valid "$@"
+}
+
 roundtrip_case "simple-compute" "testdata/ir_corpus/simple_compute.wgsl"
 roundtrip_case "switch-compute" "testdata/ir_corpus/switch_compute.wgsl"
 roundtrip_case "for-compute" "testdata/ir_corpus/for_compute.wgsl"
@@ -96,7 +104,7 @@ compose_roundtrip_case \
   "upstream-diagnostic-filters-compose" \
   "testdata/upstream_compose/diagnostic_filters" \
   "top.wgsl"
-compose_roundtrip_case \
+compose_runtime_valid_roundtrip_case \
   "upstream-atomics-compose" \
   "testdata/upstream_compose/atomics" \
   "top.wgsl"

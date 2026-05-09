@@ -61,6 +61,26 @@ validate_wgsl_with_detected_capabilities() {
   fi
 }
 
+print_case_failure() {
+  local stage="$1"
+  local id="$2"
+  local case_file="$3"
+  local stdout_file="$4"
+  local stderr_file="$5"
+  echo "official WGSL CTS $stage failed: $id" >&2
+  echo "case file: $case_file" >&2
+  if [[ -s "$stdout_file" ]]; then
+    echo "stdout:" >&2
+    sed -n '1,80p' "$stdout_file" >&2
+  fi
+  if [[ -s "$stderr_file" ]]; then
+    echo "stderr:" >&2
+    sed -n '1,80p' "$stderr_file" >&2
+  fi
+  echo "source:" >&2
+  sed -n '1,120p' "$case_file" >&2
+}
+
 cases_dir="$tmpdir/cases"
 manifest="$tmpdir/manifest.tsv"
 node tools/extract_gpuweb_cts_static_wgsl.mjs "$cts_root" "$cases_dir" "$manifest"
@@ -79,7 +99,11 @@ echo "== GPUWeb CTS WGSL parse corpus =="
 echo "CTS ref: $(git -C "$cts_root" rev-parse HEAD)"
 echo "static valid WGSL cases: $case_count"
 while IFS= read -r case_file; do
-  moon run tools/ir_roundtrip -- --mode parse --input "$case_file" --output "$tmpdir/parse.out" >/dev/null
+  id="$(basename "$case_file" .wgsl)"
+  if ! moon run tools/ir_roundtrip -- --mode parse --input "$case_file" --output "$tmpdir/parse.out" >"$tmpdir/$id.parse.stdout" 2>"$tmpdir/$id.parse.stderr"; then
+    print_case_failure "parse" "$id" "$case_file" "$tmpdir/$id.parse.stdout" "$tmpdir/$id.parse.stderr"
+    exit 1
+  fi
 done < <(find "$cases_dir" -name '*.wgsl' -type f | sort)
 
 echo "== GPUWeb CTS WGSL IR corpus =="
@@ -99,8 +123,14 @@ while IFS= read -r id; do
     continue
   fi
   emitted="$tmpdir/$id.ir.wgsl"
-  moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >/dev/null
-  moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/reparse.out" >/dev/null
+  if ! moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >"$tmpdir/$id.ir.stdout" 2>"$tmpdir/$id.ir.stderr"; then
+    print_case_failure "IR roundtrip" "$id" "$case_file" "$tmpdir/$id.ir.stdout" "$tmpdir/$id.ir.stderr"
+    exit 1
+  fi
+  if ! moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/reparse.out" >"$tmpdir/$id.reparse.stdout" 2>"$tmpdir/$id.reparse.stderr"; then
+    print_case_failure "IR reparse" "$id" "$emitted" "$tmpdir/$id.reparse.stdout" "$tmpdir/$id.reparse.stderr"
+    exit 1
+  fi
   if grep -Fxq "$id" "$oracle_blocked_ids"; then
     oracle_blocked_count=$((oracle_blocked_count + 1))
     continue
@@ -149,9 +179,18 @@ execution_oracle_blocked_count=0
 while IFS= read -r id; do
   case_file="$execution_cases_dir/$id.wgsl"
   emitted="$tmpdir/$id.execution.ir.wgsl"
-  moon run tools/ir_roundtrip -- --mode parse --input "$case_file" --output "$tmpdir/execution-parse.out" >/dev/null
-  moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >/dev/null
-  moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/execution-reparse.out" >/dev/null
+  if ! moon run tools/ir_roundtrip -- --mode parse --input "$case_file" --output "$tmpdir/execution-parse.out" >"$tmpdir/$id.execution-parse.stdout" 2>"$tmpdir/$id.execution-parse.stderr"; then
+    print_case_failure "execution parse" "$id" "$case_file" "$tmpdir/$id.execution-parse.stdout" "$tmpdir/$id.execution-parse.stderr"
+    exit 1
+  fi
+  if ! moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >"$tmpdir/$id.execution-ir.stdout" 2>"$tmpdir/$id.execution-ir.stderr"; then
+    print_case_failure "execution IR roundtrip" "$id" "$case_file" "$tmpdir/$id.execution-ir.stdout" "$tmpdir/$id.execution-ir.stderr"
+    exit 1
+  fi
+  if ! moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/execution-reparse.out" >"$tmpdir/$id.execution-reparse.stdout" 2>"$tmpdir/$id.execution-reparse.stderr"; then
+    print_case_failure "execution IR reparse" "$id" "$emitted" "$tmpdir/$id.execution-reparse.stdout" "$tmpdir/$id.execution-reparse.stderr"
+    exit 1
+  fi
   if grep -Fxq "$id" "$execution_oracle_blocked_ids"; then
     execution_oracle_blocked_count=$((execution_oracle_blocked_count + 1))
     continue

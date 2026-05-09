@@ -314,6 +314,7 @@ fn WgslIrLowerer::intern_type(
   match self.type_cache.get(key) {
     Some(handle) => handle
     None => {
+      self.ensure_type_dependencies(inner)
       let handle = self.shader_module.append_type(Type::{
         name: Some(key),
         inner,
@@ -321,6 +322,39 @@ fn WgslIrLowerer::intern_type(
       self.type_cache.set(key, handle)
       handle
     }
+  }
+}
+
+///|
+fn WgslIrLowerer::ensure_type_dependencies(
+  self : WgslIrLowerer,
+  inner : TypeInner,
+) -> Unit {
+  match inner {
+    Vector(_, scalar) => ignore(self.scalar_type_handle(scalar))
+    Matrix(_, rows, scalar) => ignore(self.vector_type_handle(rows, scalar))
+    CooperativeMatrix(_, _, scalar, _) =>
+      ignore(self.scalar_type_handle(scalar))
+    Pointer(base, _) => self.require_type_dependency(base)
+    Atomic(scalar) => ignore(self.scalar_type_handle(scalar))
+    Array(element, _, _) | BindingArray(element, _) =>
+      self.require_type_dependency(element)
+    Struct(members, _) | PredeclaredStruct(members, _) =>
+      for field in members {
+        self.require_type_dependency(field.ty)
+      }
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::require_type_dependency(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Unit {
+  if handle.index() < 0 ||
+    handle.index() >= self.shader_module.types.items.length() {
+    abort("internal IR type dependency is not interned")
   }
 }
 

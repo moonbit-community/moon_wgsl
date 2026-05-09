@@ -2189,3 +2189,23 @@ test "WGSL IR lowerer preserves else-if conditions as control flow" {
     content="false",
   )
 }
+
+///|
+test "WGSL IR lowerer materializes abstract matrix index result types" {
+  let source =
+    #|const idx = 0i;
+    #|const_assert mat2x2(1.11001100110011008404,1,1,1)[0i][0i] == 1.11001100110011008404;
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("mat2x2(1.11001100110011, 1, 1, 1)[0i][0i]"),
+    content="true",
+  )
+}

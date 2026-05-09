@@ -385,6 +385,10 @@ if rg -n -- '--runtime-valid' tools/check_moon_wgsl_byte_parity.sh >/dev/null &&
   fail "byte parity must use default upstream writer output; runtime-valid mode is allowed only for the atomics validation cross-check"
 fi
 
+if ! rg -n 'compose_runtime_valid_roundtrip_case' tools/check_ir_roundtrip_corpus.sh >/dev/null; then
+  fail "IR roundtrip validation must keep runtime-valid compose cases explicit"
+fi
+
 if ! rg -n 'compose_wgsl_runtime_valid' tools/wgsl_validation_cases/main.mbt >/dev/null; then
   fail "WGSL validation generators must use the explicit runtime-valid compose path"
 fi
