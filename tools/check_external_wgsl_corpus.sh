@@ -155,7 +155,60 @@ expected_invalid_normalized_expected_keys="$tmpdir/expected-invalid-normalized.e
 
 source_contains_preprocessor_directive() {
   local source="$1"
-  grep -Eq '^[[:space:]]*#[[:space:]]*(import|define|define_import_path|if|ifdef|ifndef|else|elif|endif)\b' "$source"
+  node - "$source" <<'NODE'
+const fs = require("node:fs");
+const source = fs.readFileSync(process.argv[2], "utf8");
+let cleaned = "";
+let i = 0;
+let blockDepth = 0;
+let lineComment = false;
+while (i < source.length) {
+  const ch = source[i];
+  const next = source[i + 1] ?? "";
+  if (lineComment) {
+    if (ch === "\n" || ch === "\r") {
+      lineComment = false;
+      cleaned += ch;
+    } else {
+      cleaned += " ";
+    }
+    i += 1;
+    continue;
+  }
+  if (blockDepth > 0) {
+    if (ch === "/" && next === "*") {
+      blockDepth += 1;
+      cleaned += "  ";
+      i += 2;
+    } else if (ch === "*" && next === "/") {
+      blockDepth -= 1;
+      cleaned += "  ";
+      i += 2;
+    } else {
+      cleaned += ch === "\n" || ch === "\r" ? ch : " ";
+      i += 1;
+    }
+    continue;
+  }
+  if (ch === "/" && next === "/") {
+    lineComment = true;
+    cleaned += "  ";
+    i += 2;
+  } else if (ch === "/" && next === "*") {
+    blockDepth = 1;
+    cleaned += "  ";
+    i += 2;
+  } else {
+    cleaned += ch;
+    i += 1;
+  }
+}
+process.exit(
+  /^[ \t]*#[ \t]*(import|define|define_import_path|if|ifdef|ifndef|else|elif|endif)\b/m.test(cleaned)
+    ? 0
+    : 1,
+);
+NODE
 }
 
 lookup_external_corpus_profile() {
