@@ -410,6 +410,18 @@ if ! rg -n 'expected_files.*expected_source_valid.*expected_composed_valid.*expe
   fail "external WGSL corpus manifest must own exact per-repository counts"
 fi
 
+if ! rg -n 'external corpus manifest row has.*expected 9' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus manifest must enforce exact TSV schema width"
+fi
+
+if ! rg -n 'expected-invalid manifest row has.*expected 4' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL expected-invalid manifest must enforce exact TSV schema width"
+fi
+
+if ! rg -n 'duplicate expected-invalid row' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL expected-invalid manifest must reject duplicate rows"
+fi
+
 if ! rg -n 'EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must load explicit shader profiles"
 fi

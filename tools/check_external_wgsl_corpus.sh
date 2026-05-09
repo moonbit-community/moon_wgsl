@@ -160,12 +160,56 @@ profile_mode_expected_keys="$tmpdir/profile-mode.expected.keys.tsv"
 : > "$profile_used_keys"
 : > "$profile_mode_actual"
 
-{ grep -v -E '^($|#)' "$expected_invalid_manifest" || true; } | sort > "$expected_invalid_expected"
-{ grep -v -E '^($|#)' "$expected_invalid_normalized_manifest" || true; } | sort > "$expected_invalid_normalized_expected"
 awk -F '\t' '
   $0 ~ /^($|#)/ { next }
   $1 == "id" { next }
-  NF < 10 {
+  NF != 9 {
+    printf("external corpus manifest row has %d field(s), expected 9: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 }
+' "$manifest" | sort > "$tmpdir/repo.ids"
+duplicate_repo_ids="$(uniq -d "$tmpdir/repo.ids" | tr '\n' ' ')"
+[[ -z "$duplicate_repo_ids" ]] || fail "duplicate external WGSL corpus repo row(s): $duplicate_repo_ids"
+
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  NF != 4 {
+    printf("expected-invalid manifest row has %d field(s), expected 4: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  $3 != "raw_invalid_no_preprocessor" {
+    printf("expected-invalid reason must be raw_invalid_no_preprocessor: %s\n", $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 "\t" $2 "\t" $3 "\t" $4 }
+' "$expected_invalid_manifest" | sort > "$expected_invalid_expected"
+awk -F '\t' '{ print $1 "\t" $2 "\t" $3 }' "$expected_invalid_expected" | sort > "$expected_invalid_expected_keys"
+duplicate_expected_invalid_keys="$(uniq -d "$expected_invalid_expected_keys" | tr '\n' ' ')"
+[[ -z "$duplicate_expected_invalid_keys" ]] || fail "duplicate expected-invalid row(s): $duplicate_expected_invalid_keys"
+
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  NF != 4 {
+    printf("expected-invalid normalized-by-IR manifest row has %d field(s), expected 4: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  $3 != "raw_invalid_no_preprocessor" {
+    printf("expected-invalid normalized-by-IR reason must be raw_invalid_no_preprocessor: %s\n", $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 "\t" $2 "\t" $3 "\t" $4 }
+' "$expected_invalid_normalized_manifest" | sort > "$expected_invalid_normalized_expected"
+awk -F '\t' '{ print $1 "\t" $2 "\t" $3 }' "$expected_invalid_normalized_expected" | sort > "$expected_invalid_normalized_expected_keys"
+duplicate_expected_invalid_normalized_keys="$(uniq -d "$expected_invalid_normalized_expected_keys" | tr '\n' ' ')"
+[[ -z "$duplicate_expected_invalid_normalized_keys" ]] || fail "duplicate expected-invalid normalized-by-IR row(s): $duplicate_expected_invalid_normalized_keys"
+
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  NF != 10 {
     printf("profile manifest row has %d field(s), expected 10: %s\n", NF, $0) > "/dev/stderr"
     exit 1
   }
@@ -176,7 +220,7 @@ duplicate_profile_keys="$(uniq -d "$profile_expected_keys" | tr '\n' ' ')"
 awk -F '\t' '
   $0 ~ /^($|#)/ { next }
   $1 == "id" { next }
-  NF < 4 {
+  NF != 4 {
     printf("profile mode manifest row has %d field(s), expected 4: %s\n", NF, $0) > "/dev/stderr"
     exit 1
   }
