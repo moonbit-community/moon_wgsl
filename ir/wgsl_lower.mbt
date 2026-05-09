@@ -694,7 +694,7 @@ fn WgslIrLowerer::global_address_space(
   self : WgslIrLowerer,
   template_list : Array[@ast.WgslTypeRef],
   ty : Handle,
-) -> AddressSpace {
+) -> AddressSpace raise WgslIrLowerError {
   if template_list.length() > 0 {
     return wgsl_ir_address_space_from_template_list(template_list)
   }

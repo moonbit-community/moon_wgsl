@@ -993,6 +993,44 @@ test "WGSL AST lowerer rejects invalid struct layout attributes" {
 }
 
 ///|
+test "WGSL AST lowerer rejects unknown global address spaces" {
+  let source =
+    #|struct PushConstants {
+    #|  multiplier: f32,
+    #|}
+    #|var<push_constant> pc: PushConstants;
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"unsupported WGSL type: unknown WGSL address space: push_constant\"",
+  )
+}
+
+///|
+test "WGSL AST lowerer rejects unknown storage access modes" {
+  let source =
+    #|struct Data {
+    #|  value: u32,
+    #|}
+    #|@group(0) @binding(0) var<storage, banana> data: Data;
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"unsupported WGSL type: unknown WGSL storage access: banana\"",
+  )
+}
+
+///|
 test "WGSL AST lowerer supports function call expressions" {
   let source =
     #|fn helper(a: u32, b: u32, c: u32) -> u32 {

@@ -39,6 +39,16 @@ if rg -n 'Abstract\(value\).*value\.to_int\(\)|SwitchValue::I32\(value\.to_int\(
   fail "abstract integer lowering must use checked i32/u32 conversion helpers"
 fi
 
+if rg -n '_ => AddressSpace::Private' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WGSL address-space lowering must reject unknown tokens instead of falling back"
+fi
+
+if rg -n -U 'fn wgsl_ir_storage_access_from_name[\s\S]*_ => StorageAccess::load\(\)' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WGSL storage-access lowering must reject unknown tokens instead of falling back"
+fi
+
 if rg -n -U 'registered_source\([^)]*\)[\s\S]{0,120}None => ""|registered_source\([^)]*\)[\s\S]{0,120}None => import_path' \
   compose --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
@@ -387,6 +397,10 @@ fi
 
 if ! rg -n 'EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must load explicit shader profiles"
+fi
+
+if ! rg -n 'validated_capabilities=.*source_capabilities_file' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must carry profile capabilities into final emitted validation"
 fi
 
 if ! rg -n -- '--value-def NAME=VALUE' tools/compose_case/main.mbt >/dev/null; then

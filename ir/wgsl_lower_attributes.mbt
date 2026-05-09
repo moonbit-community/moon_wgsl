@@ -220,7 +220,7 @@ fn wgsl_ir_resource_binding_from_attributes(
 ///|
 fn wgsl_ir_address_space_from_template_list(
   template_list : Array[@ast.WgslTypeRef],
-) -> AddressSpace {
+) -> AddressSpace raise WgslIrLowerError {
   match template_list {
     [space, .. rest] =>
       match space.name() {
@@ -239,7 +239,9 @@ fn wgsl_ir_address_space_from_template_list(
 }
 
 ///|
-fn wgsl_ir_address_space_from_type_name(name : String) -> AddressSpace {
+fn wgsl_ir_address_space_from_type_name(
+  name : String,
+) -> AddressSpace raise WgslIrLowerError {
   match name {
     "function" => AddressSpace::Function
     "private" => AddressSpace::Private
@@ -251,7 +253,10 @@ fn wgsl_ir_address_space_from_type_name(name : String) -> AddressSpace {
     "task_payload" => AddressSpace::TaskPayload
     "ray_payload" => AddressSpace::RayPayload
     "incoming_ray_payload" => AddressSpace::IncomingRayPayload
-    _ => AddressSpace::Private
+    _ =>
+      raise WgslIrLowerError::UnsupportedType(
+        "unknown WGSL address space: \{name}",
+      )
   }
 }
 
@@ -286,13 +291,18 @@ fn wgsl_ir_storage_access_key(access : StorageAccess) -> String {
 }
 
 ///|
-fn wgsl_ir_storage_access_from_name(name : String) -> StorageAccess {
+fn wgsl_ir_storage_access_from_name(
+  name : String,
+) -> StorageAccess raise WgslIrLowerError {
   match name {
     "read" => StorageAccess::load()
     "write" => StorageAccess::store()
     "read_write" => StorageAccess::load().union(StorageAccess::store())
     "atomic" => StorageAccess::atomic_access()
-    _ => StorageAccess::load()
+    _ =>
+      raise WgslIrLowerError::UnsupportedType(
+        "unknown WGSL storage access: \{name}",
+      )
   }
 }
 

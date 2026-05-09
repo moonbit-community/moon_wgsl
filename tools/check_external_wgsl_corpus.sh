@@ -254,6 +254,7 @@ materialize_valid_external_wgsl_source() {
   local source="$3"
   local output="$4"
   local reason_output="$5"
+  local capabilities_output="$6"
   local rel_path="${source#$checkout/}"
   local profile_line=""
   profile_line="$(lookup_external_corpus_profile "$id" "$rel_path" || true)"
@@ -281,6 +282,7 @@ materialize_valid_external_wgsl_source() {
   if validate_wgsl_with_detected_capabilities "$profile_source" "$profile_capabilities" >/dev/null 2>"$tmpdir/$id.naga.err"; then
     printf 'raw\n'
     printf '%s\n' "$profile_source" > "$output"
+    printf '%s\n' "$profile_capabilities" > "$capabilities_output"
     return 0
   fi
 
@@ -326,6 +328,7 @@ materialize_valid_external_wgsl_source() {
 
   printf 'compose\n'
   printf '%s\n' "$composed" > "$output"
+  printf '%s\n' "$profile_capabilities" > "$capabilities_output"
 }
 
 while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; do
@@ -353,8 +356,9 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
     file_count=$((file_count + 1))
     source_candidate_file="$tmpdir/$id.source-candidate"
     skip_reason_file="$tmpdir/$id.skip-reason"
+    source_capabilities_file="$tmpdir/$id.source-capabilities"
     rel_path="${source#$checkout/}"
-    if ! source_kind="$(materialize_valid_external_wgsl_source "$id" "$checkout" "$source" "$source_candidate_file" "$skip_reason_file")"; then
+    if ! source_kind="$(materialize_valid_external_wgsl_source "$id" "$checkout" "$source" "$source_candidate_file" "$skip_reason_file" "$source_capabilities_file")"; then
       if [[ ! -s "$skip_reason_file" ]]; then
         printf 'unknown\tmaterialization failed without a recorded reason\n' > "$skip_reason_file"
       fi
@@ -370,6 +374,7 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
       continue
     fi
     validated_source="$(cat "$source_candidate_file")"
+    validated_capabilities="$(cat "$source_capabilities_file")"
     if [[ "$source_kind" == "compose" ]]; then
       repo_composed_count=$((repo_composed_count + 1))
       composed_valid_count=$((composed_valid_count + 1))
@@ -397,7 +402,7 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
       sed -n '1,80p' "$tmpdir/$id.reparse.stderr" >&2
       exit 1
     fi
-    if ! validate_wgsl_with_detected_capabilities "$emitted" >"$tmpdir/$id.emit-naga.stdout" 2>"$tmpdir/$id.emit-naga.stderr"; then
+    if ! validate_wgsl_with_detected_capabilities "$emitted" "$validated_capabilities" >"$tmpdir/$id.emit-naga.stdout" 2>"$tmpdir/$id.emit-naga.stderr"; then
       echo "Naga validation failed for emitted external WGSL corpus $id: ${source#$checkout/}" >&2
       sed -n '1,120p' "$tmpdir/$id.emit-naga.stderr" >&2
       exit 1
