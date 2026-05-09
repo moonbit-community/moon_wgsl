@@ -29,6 +29,15 @@ if ! rg -n 'WGSL_CTS_EXPECTED_INVALID_ORACLE_ACCEPTED_CASES|expected_invalid_ora
   fail "official WGSL CTS gate must own exact invalid accepted-by-oracle counts"
 fi
 
+if ! rg -n 'load_official_cts_id_manifest' tools/check_official_wgsl_corpus.sh >/dev/null; then
+  fail "official WGSL CTS oracle manifest IDs must be loaded through a schema-checking helper"
+fi
+
+if rg -n 'grep -v -E .*\$.*(blocked_by_oracle|accepted_by_oracle)' tools/check_official_wgsl_corpus.sh >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "official WGSL CTS oracle manifests must reject malformed or duplicate IDs instead of raw grep filtering"
+fi
+
 if rg -n 'gpuweb_cts_ir_allowlist|allowlist=' tools testdata \
   --glob '!tools/check_architecture_guardrails.sh' \
   --glob '!testdata/bevy_wgsl/**' >"$matches_file"; then

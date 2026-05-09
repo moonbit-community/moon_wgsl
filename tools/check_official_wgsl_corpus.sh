@@ -91,6 +91,30 @@ print_case_failure() {
   sed -n '1,120p' "$case_file" >&2
 }
 
+load_official_cts_id_manifest() {
+  local path="$1"
+  local label="$2"
+  local output="$3"
+  local duplicate_ids
+  awk -F '\t' -v label="$label" '
+    $0 ~ /^($|#)/ { next }
+    NF != 1 {
+      printf("%s manifest row has %d field(s), expected 1: %s\n", label, NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    $1 !~ /^src_webgpu_shader_/ {
+      printf("%s manifest id has unexpected shape: %s\n", label, $1) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 }
+  ' "$path" | sort > "$output"
+  duplicate_ids="$(uniq -d "$output" | tr '\n' ' ')"
+  if [[ -n "$duplicate_ids" ]]; then
+    echo "$label manifest has duplicate id(s): $duplicate_ids" >&2
+    exit 1
+  fi
+}
+
 cases_dir="$tmpdir/cases"
 manifest="$tmpdir/manifest.tsv"
 node tools/extract_gpuweb_cts_static_wgsl.mjs "$cts_root" "$cases_dir" "$manifest"
@@ -124,7 +148,7 @@ fi
 extracted_ids="$tmpdir/extracted.ids"
 oracle_blocked_ids="$tmpdir/oracle-blocked.ids"
 find "$cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$extracted_ids"
-grep -v -E '^($|#)' "$blocked_by_oracle" | sort > "$oracle_blocked_ids"
+load_official_cts_id_manifest "$blocked_by_oracle" "static oracle-blocked" "$oracle_blocked_ids"
 ir_count=0
 oracle_blocked_count=0
 while IFS= read -r id; do
@@ -189,7 +213,7 @@ fi
 template_extracted_ids="$tmpdir/template-extracted.ids"
 template_oracle_blocked_ids="$tmpdir/template-oracle-blocked.ids"
 find "$template_cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$template_extracted_ids"
-grep -v -E '^($|#)' "$template_blocked_by_oracle" | sort > "$template_oracle_blocked_ids"
+load_official_cts_id_manifest "$template_blocked_by_oracle" "template oracle-blocked" "$template_oracle_blocked_ids"
 template_ir_count=0
 template_oracle_blocked_count=0
 while IFS= read -r id; do
@@ -249,7 +273,7 @@ fi
 execution_extracted_ids="$tmpdir/execution-extracted.ids"
 execution_oracle_blocked_ids="$tmpdir/execution-oracle-blocked.ids"
 find "$execution_cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$execution_extracted_ids"
-grep -v -E '^($|#)' "$execution_blocked_by_oracle" | sort > "$execution_oracle_blocked_ids"
+load_official_cts_id_manifest "$execution_blocked_by_oracle" "execution oracle-blocked" "$execution_oracle_blocked_ids"
 execution_ir_count=0
 execution_oracle_blocked_count=0
 while IFS= read -r id; do
@@ -308,7 +332,7 @@ if [[ ! -f "$invalid_accepted_by_oracle" ]]; then
 fi
 invalid_expected_oracle_accepted_ids="$tmpdir/invalid-expected-oracle-accepted.ids"
 invalid_actual_oracle_accepted_ids="$tmpdir/invalid-actual-oracle-accepted.ids"
-grep -v -E '^($|#)' "$invalid_accepted_by_oracle" | sort > "$invalid_expected_oracle_accepted_ids"
+load_official_cts_id_manifest "$invalid_accepted_by_oracle" "invalid accepted-by-oracle" "$invalid_expected_oracle_accepted_ids"
 : > "$invalid_actual_oracle_accepted_ids"
 while IFS= read -r invalid_case_file; do
   invalid_id="$(basename "$invalid_case_file" .wgsl)"
@@ -347,7 +371,7 @@ if [[ ! -f "$template_invalid_accepted_by_oracle" ]]; then
 fi
 template_invalid_expected_oracle_accepted_ids="$tmpdir/template-invalid-expected-oracle-accepted.ids"
 template_invalid_actual_oracle_accepted_ids="$tmpdir/template-invalid-actual-oracle-accepted.ids"
-grep -v -E '^($|#)' "$template_invalid_accepted_by_oracle" | sort > "$template_invalid_expected_oracle_accepted_ids"
+load_official_cts_id_manifest "$template_invalid_accepted_by_oracle" "template invalid accepted-by-oracle" "$template_invalid_expected_oracle_accepted_ids"
 : > "$template_invalid_actual_oracle_accepted_ids"
 while IFS= read -r invalid_case_file; do
   invalid_id="$(basename "$invalid_case_file" .wgsl)"
