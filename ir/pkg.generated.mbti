@@ -54,6 +54,10 @@ pub suberror WgslIrValidationError {
   InvalidFunctionArgumentCount(String, Int, Int)
   InvalidFunctionArgumentType(String, Int)
   InvalidFunctionResult(String)
+  InvalidType(String)
+  InvalidGlobalVariable(String)
+  InvalidExpression(String, Int)
+  InvalidStatement(String)
 }
 pub fn WgslIrValidationError::message(Self) -> String
 

@@ -17,6 +17,10 @@ pub suberror WgslIrValidationError {
   InvalidFunctionArgumentCount(String, Int, Int)
   InvalidFunctionArgumentType(String, Int)
   InvalidFunctionResult(String)
+  InvalidType(String)
+  InvalidGlobalVariable(String)
+  InvalidExpression(String, Int)
+  InvalidStatement(String)
 }
 
 ///|
@@ -49,6 +53,11 @@ pub fn WgslIrValidationError::message(self : WgslIrValidationError) -> String {
     InvalidFunctionArgumentType(name, index) =>
       "invalid IR function call argument type for \{name} at argument \{index}"
     InvalidFunctionResult(name) => "invalid IR function call result for \{name}"
+    InvalidType(message) => "invalid IR type: \{message}"
+    InvalidGlobalVariable(message) => "invalid IR global variable: \{message}"
+    InvalidExpression(message, index) =>
+      "invalid IR expression for handle \{index}: \{message}"
+    InvalidStatement(message) => "invalid IR statement: \{message}"
   }
 }
 
@@ -73,6 +82,12 @@ fn validate_wgsl_ir_module_with_filter(
 priv struct WgslIrValidator {
   shader_module : Module
   filter : WgslIrEmitFilter?
+}
+
+///|
+priv struct WgslIrValidationLayout {
+  align : Int
+  size : Int
 }
 
 ///|
@@ -107,11 +122,7 @@ fn WgslIrValidator::validate_module(
   for index in 0..<self.shader_module.global_variables.items.length() {
     if self.should_validate_global_variable(index) {
       let global = self.shader_module.global_variables.items[index]
-      self.require_type(global.ty)
-      match global.init {
-        Some(init) => self.validate_global_expression_handle(init)
-        None => ()
-      }
+      self.validate_global_variable(global)
     }
   }
   for index in 0..<self.shader_module.global_expressions.items.length() {
@@ -228,19 +239,26 @@ fn WgslIrValidator::validate_type_inner(
   inner : TypeInner,
 ) -> Unit raise WgslIrValidationError {
   match inner {
-    Pointer(base, _) => self.require_type(base)
-    Array(base, size, _) => {
+    Pointer(base, space) => {
+      self.require_type(base)
+      self.validate_pointer_address_space(space)
+    }
+    ValuePointer(_, _, space) => self.validate_pointer_address_space(space)
+    Array(base, size, stride) => {
       self.require_type(base)
       self.validate_array_size(size)
+      self.validate_array_stride(base, stride)
     }
     BindingArray(base, size) => {
       self.require_type(base)
       self.validate_array_size(size)
     }
-    Struct(members, _) | PredeclaredStruct(members, _) =>
+    Struct(members, span) => self.validate_struct_layout(members, span)
+    PredeclaredStruct(members, _) =>
       for struct_member in members {
         self.require_type(struct_member.ty)
       }
+    Atomic(scalar) => self.validate_atomic_scalar(scalar)
     _ => ()
   }
 }
@@ -253,6 +271,211 @@ fn WgslIrValidator::validate_array_size(
   match size {
     Pending(handle) => self.validate_global_expression_handle(handle)
     Constant(_) | Dynamic => ()
+  }
+}
+
+///|
+fn WgslIrValidator::validate_global_variable(
+  self : WgslIrValidator,
+  global : GlobalVariable,
+) -> Unit raise WgslIrValidationError {
+  self.require_type(global.ty)
+  self.validate_global_address_space(global)
+  match global.binding {
+    Some(binding) => {
+      if binding.group < 0 || binding.binding < 0 {
+        raise WgslIrValidationError::InvalidGlobalVariable(
+          "negative resource binding",
+        )
+      }
+      if !self.global_address_space_accepts_resource_binding(global.space) {
+        raise WgslIrValidationError::InvalidGlobalVariable(
+          "resource binding on non-resource address space",
+        )
+      }
+    }
+    None => ()
+  }
+  match global.init {
+    Some(init) => {
+      if !self.global_address_space_accepts_initializer(global.space) {
+        raise WgslIrValidationError::InvalidGlobalVariable(
+          "initializer on non-initializable address space",
+        )
+      }
+      self.validate_global_expression_handle(init)
+    }
+    None => ()
+  }
+}
+
+///|
+fn WgslIrValidator::validate_global_address_space(
+  self : WgslIrValidator,
+  global : GlobalVariable,
+) -> Unit raise WgslIrValidationError {
+  match global.space {
+    Handle =>
+      if !self.type_is_handle_resource(global.ty) {
+        raise WgslIrValidationError::InvalidGlobalVariable(
+          "handle address space requires handle resource type",
+        )
+      }
+    Storage(access) =>
+      if access == StorageAccess::empty() {
+        raise WgslIrValidationError::InvalidGlobalVariable(
+          "storage address space has empty access",
+        )
+      }
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrValidator::global_address_space_accepts_resource_binding(
+  self : WgslIrValidator,
+  space : AddressSpace,
+) -> Bool {
+  ignore(self)
+  match space {
+    Uniform | Storage(_) | Handle => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrValidator::global_address_space_accepts_initializer(
+  self : WgslIrValidator,
+  space : AddressSpace,
+) -> Bool {
+  ignore(self)
+  match space {
+    Private => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrValidator::validate_pointer_address_space(
+  self : WgslIrValidator,
+  space : AddressSpace,
+) -> Unit raise WgslIrValidationError {
+  ignore(self)
+  match space {
+    Function
+    | Private
+    | WorkGroup
+    | Uniform
+    | Storage(_)
+    | TaskPayload
+    | RayPayload
+    | IncomingRayPayload => ()
+    Handle | Immediate =>
+      raise WgslIrValidationError::InvalidType(
+        "pointer uses non-addressable address space",
+      )
+  }
+}
+
+///|
+fn WgslIrValidator::validate_atomic_scalar(
+  self : WgslIrValidator,
+  scalar : Scalar,
+) -> Unit raise WgslIrValidationError {
+  ignore(self)
+  if !(scalar.kind == Sint || scalar.kind == Uint) || scalar.width != 4 {
+    raise WgslIrValidationError::InvalidType(
+      "atomic type must use i32 or u32 scalar",
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::validate_array_stride(
+  self : WgslIrValidator,
+  base : Handle,
+  stride : Int,
+) -> Unit raise WgslIrValidationError {
+  if stride <= 0 {
+    raise WgslIrValidationError::InvalidType("array stride must be positive")
+  }
+  let layout = self.type_layout(base)
+  if stride < layout.size {
+    raise WgslIrValidationError::InvalidType(
+      "array stride is smaller than element size",
+    )
+  }
+  if stride % layout.align != 0 {
+    raise WgslIrValidationError::InvalidType(
+      "array stride is not aligned to element alignment",
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::validate_struct_layout(
+  self : WgslIrValidator,
+  members : Array[StructMember],
+  span : Int,
+) -> Unit raise WgslIrValidationError {
+  if span <= 0 {
+    raise WgslIrValidationError::InvalidType("struct span must be positive")
+  }
+  let mut end = 0
+  let mut max_align = 1
+  for index in 0..<members.length() {
+    let struct_member = members[index]
+    self.require_type(struct_member.ty)
+    if self.type_is_runtime_array(struct_member.ty) &&
+      index != members.length() - 1 {
+      raise WgslIrValidationError::InvalidType(
+        "runtime array is only valid as the last struct member",
+      )
+    }
+    let layout = self.type_layout(struct_member.ty)
+    let member_align = match struct_member.align {
+      Some(value) => value
+      None => layout.align
+    }
+    if !wgsl_ir_validation_is_power_of_two(member_align) ||
+      member_align < layout.align {
+      raise WgslIrValidationError::InvalidType(
+        "struct member alignment is invalid",
+      )
+    }
+    let member_size = match struct_member.size {
+      Some(value) => value
+      None => layout.size
+    }
+    if member_size < layout.size {
+      raise WgslIrValidationError::InvalidType(
+        "struct member size is smaller than type size",
+      )
+    }
+    if struct_member.offset < end {
+      raise WgslIrValidationError::InvalidType(
+        "struct member offset overlaps previous member",
+      )
+    }
+    if struct_member.offset % member_align != 0 {
+      raise WgslIrValidationError::InvalidType(
+        "struct member offset is not aligned",
+      )
+    }
+    end = struct_member.offset + member_size
+    if member_align > max_align {
+      max_align = member_align
+    }
+  }
+  if span < end {
+    raise WgslIrValidationError::InvalidType(
+      "struct span is smaller than member range",
+    )
+  }
+  if span % max_align != 0 {
+    raise WgslIrValidationError::InvalidType(
+      "struct span is not aligned to struct alignment",
+    )
   }
 }
 
@@ -351,8 +574,9 @@ fn WgslIrValidator::validate_statement(
         None => ()
       }
       self.validate_function_expression_handle(function, value)
+      self.require_image_store_signature(function, image, value)
     }
-    Atomic(pointer, _, value, compare) => {
+    Atomic(pointer, atomic_function, value, compare) => {
       self.validate_function_expression_handle(function, pointer)
       self.validate_function_expression_handle(function, value)
       match compare {
@@ -360,8 +584,11 @@ fn WgslIrValidator::validate_statement(
           self.validate_function_expression_handle(function, handle)
         None => ()
       }
+      self.require_atomic_statement_signature(
+        function, pointer, atomic_function, value, compare,
+      )
     }
-    ImageAtomic(image, coordinate, array_index, _, value) => {
+    ImageAtomic(image, coordinate, array_index, atomic_function, value) => {
       self.validate_function_expression_handle(function, image)
       self.validate_function_expression_handle(function, coordinate)
       match array_index {
@@ -369,10 +596,14 @@ fn WgslIrValidator::validate_statement(
         None => ()
       }
       self.validate_function_expression_handle(function, value)
+      self.require_image_atomic_signature(
+        function, image, atomic_function, value,
+      )
     }
     WorkGroupUniformLoad(pointer, result) => {
       self.validate_function_expression_handle(function, pointer)
       self.validate_function_expression_handle(function, result)
+      self.require_workgroup_uniform_load_signature(function, pointer, result)
     }
     Call(callee, arguments, result) => {
       self.require_function(callee)
@@ -396,14 +627,17 @@ fn WgslIrValidator::validate_statement(
           self.validate_function_expression_handle(function, handle)
         None => ()
       }
+      self.require_subgroup_ballot_signature(function, value, result)
     }
     SubgroupGather(_, value, result) => {
       self.validate_function_expression_handle(function, value)
       self.validate_function_expression_handle(function, result)
+      self.require_matching_statement_result(function, value, result)
     }
     SubgroupCollectiveOperation(_, _, value, result) => {
       self.validate_function_expression_handle(function, value)
       self.validate_function_expression_handle(function, result)
+      self.require_matching_statement_result(function, value, result)
     }
     CooperativeStore(_, data) => self.validate_cooperative_data(function, data)
     Break | Continue | Kill | ControlBarrier(_) | MemoryBarrier(_) => ()
@@ -424,17 +658,23 @@ fn WgslIrValidator::validate_global_expression(
       for component in components {
         self.validate_global_expression_handle(component)
       }
+      self.require_global_compose_signature(ty, components)
     }
     Access(base, index) => {
       self.validate_global_expression_handle(base)
       self.validate_global_expression_handle(index)
+      self.require_global_access_signature(base, index)
     }
-    AccessIndex(base, _) => self.validate_global_expression_handle(base)
+    AccessIndex(base, index) => {
+      self.validate_global_expression_handle(base)
+      self.require_global_access_index_signature(base, index)
+    }
     GlobalVariable(handle) => self.require_global_variable(handle)
     Load(pointer) => self.validate_global_expression_handle(pointer)
     AddressOf(ty, target) => {
       self.require_type(ty)
       self.validate_global_expression_handle(target)
+      self.require_global_address_of_signature(ty, target)
     }
     Unary(_, expr) => self.validate_global_expression_handle(expr)
     Binary(_, left, right) => {
@@ -454,8 +694,14 @@ fn WgslIrValidator::validate_global_expression(
       self.validate_global_expression_handle(reject)
       self.require_global_select_signature(condition, accept, reject)
     }
-    Bitcast(_, expr) => self.validate_global_expression_handle(expr)
-    As(expr, _, _) => self.validate_global_expression_handle(expr)
+    Bitcast(ty, expr) => {
+      self.require_type(ty)
+      self.validate_global_expression_handle(expr)
+    }
+    As(expr, kind, width) => {
+      self.validate_global_expression_handle(expr)
+      self.require_as_width(kind, width)
+    }
     Relational(_, expr) => self.validate_global_expression_handle(expr)
     Literal(_) => ()
     _ => ()
@@ -477,13 +723,17 @@ fn WgslIrValidator::validate_function_expression(
       for component in components {
         self.validate_function_expression_handle(function, component)
       }
+      self.require_function_compose_signature(function, ty, components)
     }
     Access(base, index) => {
       self.validate_function_expression_handle(function, base)
       self.validate_function_expression_handle(function, index)
+      self.require_function_access_signature(function, base, index)
     }
-    AccessIndex(base, _) =>
+    AccessIndex(base, index) => {
       self.validate_function_expression_handle(function, base)
+      self.require_function_access_index_signature(function, base, index)
+    }
     FunctionArgument(index) =>
       if index < 0 || index >= function.arguments.length() {
         raise WgslIrValidationError::InvalidFunctionExpressionHandle(index)
@@ -494,6 +744,7 @@ fn WgslIrValidator::validate_function_expression(
     AddressOf(ty, target) => {
       self.require_type(ty)
       self.validate_function_expression_handle(function, target)
+      self.require_function_address_of_signature(function, ty, target)
     }
     Unary(_, expr) => self.validate_function_expression_handle(function, expr)
     Binary(_, left, right) => {
@@ -599,12 +850,20 @@ fn WgslIrValidator::validate_function_expression(
       self.validate_optional_function_expression(function, c)
       self.validate_optional_function_expression(function, d)
     }
-    AtomicCall(_, arguments) =>
+    AtomicCall(atomic_function, arguments) => {
       for argument in arguments {
         self.validate_function_expression_handle(function, argument)
       }
-    Bitcast(_, expr) => self.validate_function_expression_handle(function, expr)
-    As(expr, _, _) => self.validate_function_expression_handle(function, expr)
+      self.require_atomic_call_signature(function, atomic_function, arguments)
+    }
+    Bitcast(ty, expr) => {
+      self.require_type(ty)
+      self.validate_function_expression_handle(function, expr)
+    }
+    As(expr, kind, width) => {
+      self.validate_function_expression_handle(function, expr)
+      self.require_as_width(kind, width)
+    }
     CallResult(handle) => self.require_function(handle)
     AtomicResult(handle, _) =>
       self.validate_function_expression_handle(function, handle)
@@ -612,8 +871,10 @@ fn WgslIrValidator::validate_function_expression(
       self.validate_function_expression_handle(function, handle)
     WorkGroupUniformLoad(handle) =>
       self.validate_function_expression_handle(function, handle)
-    ArrayLength(handle) =>
+    ArrayLength(handle) => {
       self.validate_function_expression_handle(function, handle)
+      self.require_array_length_argument(function, handle)
+    }
     Derivative(_, _, expr) =>
       self.validate_function_expression_handle(function, expr)
     Relational(_, expr) =>
@@ -630,8 +891,10 @@ fn WgslIrValidator::validate_function_expression(
       self.validate_function_expression_handle(function, c)
     }
     Splat(_, expr) => self.validate_function_expression_handle(function, expr)
-    Swizzle(_, expr, _) =>
+    Swizzle(size, expr, components) => {
       self.validate_function_expression_handle(function, expr)
+      self.require_swizzle_signature(function, size, expr, components)
+    }
     Literal(_) => ()
     _ => ()
   }
@@ -765,13 +1028,14 @@ fn WgslIrValidator::require_return_value(
       self.function_display_name(function),
     )
   }
-  guard self.function_expression_type(function, handle) is Some(actual) else {
-    raise self.missing_function_expression_type(function, handle)
-  }
-  guard self.type_assignable(result.ty, actual) else {
-    raise WgslIrValidationError::InvalidReturnValue(
-      self.function_display_name(function),
-    )
+  match self.function_expression_type(function, handle) {
+    Some(actual) =>
+      if !self.type_assignable(result.ty, actual) {
+        raise WgslIrValidationError::InvalidReturnValue(
+          self.function_display_name(function),
+        )
+      }
+    None => ()
   }
 }
 
@@ -797,11 +1061,394 @@ fn WgslIrValidator::require_store(
   guard self.store_target_value_type(function, pointer) is Some(value_ty) else {
     raise WgslIrValidationError::InvalidStoreTarget(pointer.index())
   }
-  guard self.function_expression_type(function, value) is Some(actual) else {
-    raise self.missing_function_expression_type(function, value)
+  match self.function_expression_type(function, value) {
+    Some(actual) =>
+      if !self.type_assignable(value_ty, actual) {
+        raise WgslIrValidationError::InvalidStoreTarget(pointer.index())
+      }
+    None => ()
   }
-  guard self.type_assignable(value_ty, actual) else {
-    raise WgslIrValidationError::InvalidStoreTarget(pointer.index())
+}
+
+///|
+fn WgslIrValidator::require_function_compose_signature(
+  self : WgslIrValidator,
+  function : Function,
+  ty : Handle,
+  components : Array[Handle],
+) -> Unit raise WgslIrValidationError {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(_) =>
+          if components.length() != 1 {
+            raise WgslIrValidationError::InvalidExpression(
+              "scalar constructor component count mismatch",
+              ty.index(),
+            )
+          }
+        Vector(size, _) =>
+          self.require_composite_component_capacity(
+            function,
+            components,
+            size.width(),
+            ty.index(),
+          )
+        Matrix(columns, rows, _) =>
+          self.require_composite_component_capacity(
+            function,
+            components,
+            columns.width() * rows.width(),
+            ty.index(),
+          )
+        Struct(members, _) | PredeclaredStruct(members, _) =>
+          if components.length() != members.length() {
+            raise WgslIrValidationError::InvalidExpression(
+              "struct constructor component count mismatch",
+              ty.index(),
+            )
+          }
+        Array(_, Constant(count), _) | BindingArray(_, Constant(count)) =>
+          if components.length() != count {
+            raise WgslIrValidationError::InvalidExpression(
+              "array constructor component count mismatch",
+              ty.index(),
+            )
+          }
+        Array(_, Dynamic, _) | BindingArray(_, Dynamic) =>
+          raise WgslIrValidationError::InvalidExpression(
+            "runtime array constructor is not valid",
+            ty.index(),
+          )
+        _ => ()
+      }
+    None => ()
+  }
+}
+
+///|
+fn WgslIrValidator::require_global_compose_signature(
+  self : WgslIrValidator,
+  ty : Handle,
+  components : Array[Handle],
+) -> Unit raise WgslIrValidationError {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(_) =>
+          if components.length() != 1 {
+            raise WgslIrValidationError::InvalidExpression(
+              "scalar constructor component count mismatch",
+              ty.index(),
+            )
+          }
+        Vector(size, _) =>
+          self.require_global_composite_component_capacity(
+            components,
+            size.width(),
+            ty.index(),
+          )
+        Matrix(columns, rows, _) =>
+          self.require_global_composite_component_capacity(
+            components,
+            columns.width() * rows.width(),
+            ty.index(),
+          )
+        Struct(members, _) | PredeclaredStruct(members, _) =>
+          if components.length() != members.length() {
+            raise WgslIrValidationError::InvalidExpression(
+              "struct constructor component count mismatch",
+              ty.index(),
+            )
+          }
+        Array(_, Constant(count), _) | BindingArray(_, Constant(count)) =>
+          if components.length() != count {
+            raise WgslIrValidationError::InvalidExpression(
+              "array constructor component count mismatch",
+              ty.index(),
+            )
+          }
+        Array(_, Dynamic, _) | BindingArray(_, Dynamic) =>
+          raise WgslIrValidationError::InvalidExpression(
+            "runtime array constructor is not valid",
+            ty.index(),
+          )
+        _ => ()
+      }
+    None => ()
+  }
+}
+
+///|
+fn WgslIrValidator::require_composite_component_capacity(
+  self : WgslIrValidator,
+  function : Function,
+  components : Array[Handle],
+  expected_lanes : Int,
+  expression_index : Int,
+) -> Unit raise WgslIrValidationError {
+  if components.length() == 0 {
+    return
+  }
+  let mut lanes = 0
+  for component in components {
+    match self.function_expression_lane_count(function, component) {
+      Some(count) => lanes += count
+      None => raise self.missing_function_expression_type(function, component)
+    }
+  }
+  if lanes != expected_lanes && !(components.length() == 1 && lanes == 1) {
+    raise WgslIrValidationError::InvalidExpression(
+      "vector constructor lane count mismatch", expression_index,
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::function_expression_lane_count(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Int? {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        Swizzle(size, _, _) | Splat(size, _) => Some(size.width())
+        Compose(ty, _) | ZeroValue(ty) =>
+          match self.shader_module.types.get(ty) {
+            Some(_) => Some(self.type_lane_count(ty))
+            None => None
+          }
+        Literal(_) => Some(1)
+        _ =>
+          match self.function_expression_type(function, handle) {
+            Some(ty) => Some(self.type_lane_count(ty))
+            None => None
+          }
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::global_expression_lane_count(
+  self : WgslIrValidator,
+  handle : Handle,
+) -> Int? {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        Swizzle(size, _, _) | Splat(size, _) => Some(size.width())
+        Compose(ty, _) | ZeroValue(ty) =>
+          match self.shader_module.types.get(ty) {
+            Some(_) => Some(self.type_lane_count(ty))
+            None => None
+          }
+        Literal(_) => Some(1)
+        _ =>
+          match self.global_expression_type(handle) {
+            Some(ty) => Some(self.type_lane_count(ty))
+            None => None
+          }
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::require_global_composite_component_capacity(
+  self : WgslIrValidator,
+  components : Array[Handle],
+  expected_lanes : Int,
+  expression_index : Int,
+) -> Unit raise WgslIrValidationError {
+  if components.length() == 0 {
+    return
+  }
+  let mut lanes = 0
+  for component in components {
+    match self.global_expression_lane_count(component) {
+      Some(count) => lanes += count
+      None => {
+        guard self.global_expression_type(component) is Some(_) else {
+          raise self.missing_global_expression_type(component)
+        }
+      }
+    }
+  }
+  if lanes != expected_lanes && !(components.length() == 1 && lanes == 1) {
+    raise WgslIrValidationError::InvalidExpression(
+      "vector constructor lane count mismatch", expression_index,
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_function_access_signature(
+  self : WgslIrValidator,
+  function : Function,
+  base : Handle,
+  index : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, base) is Some(base_ty) else {
+    raise self.missing_function_expression_type(function, base)
+  }
+  guard self.dynamic_indexed_type(base_ty) is Some(_) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "dynamic access base is not indexable",
+      base.index(),
+    )
+  }
+  guard self.function_expression_type(function, index) is Some(index_ty) else {
+    raise self.missing_function_expression_type(function, index)
+  }
+  if !self.type_is_integer_scalar(index_ty) {
+    raise WgslIrValidationError::InvalidExpression(
+      "dynamic access index is not an integer scalar",
+      index.index(),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_global_access_signature(
+  self : WgslIrValidator,
+  base : Handle,
+  index : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.global_expression_type(base) is Some(base_ty) else {
+    raise self.missing_global_expression_type(base)
+  }
+  guard self.dynamic_indexed_type(base_ty) is Some(_) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "dynamic access base is not indexable",
+      base.index(),
+    )
+  }
+  guard self.global_expression_type(index) is Some(index_ty) else {
+    raise self.missing_global_expression_type(index)
+  }
+  if !self.type_is_integer_scalar(index_ty) {
+    raise WgslIrValidationError::InvalidExpression(
+      "dynamic access index is not an integer scalar",
+      index.index(),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_function_access_index_signature(
+  self : WgslIrValidator,
+  function : Function,
+  base : Handle,
+  index : Int,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, base) is Some(base_ty) else {
+    raise self.missing_function_expression_type(function, base)
+  }
+  guard self.indexed_type(base_ty, Some(index)) is Some(_) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "constant access index is out of range or not indexable",
+      base.index(),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_global_access_index_signature(
+  self : WgslIrValidator,
+  base : Handle,
+  index : Int,
+) -> Unit raise WgslIrValidationError {
+  guard self.global_expression_type(base) is Some(base_ty) else {
+    raise self.missing_global_expression_type(base)
+  }
+  guard self.indexed_type(base_ty, Some(index)) is Some(_) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "constant access index is out of range or not indexable",
+      base.index(),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_function_address_of_signature(
+  self : WgslIrValidator,
+  function : Function,
+  ty : Handle,
+  target : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.expression_is_addressable(function, target) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of target is not addressable",
+      target.index(),
+    )
+  }
+  guard self.pointer_pointee_type(ty) is Some(pointee) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of result type is not pointer-like",
+      target.index(),
+    )
+  }
+  guard self.store_target_value_type(function, target) is Some(target_ty) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of target has no value type",
+      target.index(),
+    )
+  }
+  if !self.type_assignable(pointee, target_ty) {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of result pointee type does not match target",
+      target.index(),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_global_address_of_signature(
+  self : WgslIrValidator,
+  ty : Handle,
+  target : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.global_expression_is_addressable(target) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of target is not addressable",
+      target.index(),
+    )
+  }
+  guard self.pointer_pointee_type(ty) is Some(pointee) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of result type is not pointer-like",
+      target.index(),
+    )
+  }
+  guard self.global_expression_value_type(target) is Some(target_ty) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of target has no value type",
+      target.index(),
+    )
+  }
+  if !self.type_assignable(pointee, target_ty) {
+    raise WgslIrValidationError::InvalidExpression(
+      "address-of result pointee type does not match target",
+      target.index(),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_as_width(
+  self : WgslIrValidator,
+  kind : ScalarKind,
+  width : Int?,
+) -> Unit raise WgslIrValidationError {
+  ignore(self)
+  match width {
+    Some(value) =>
+      if !wgsl_ir_validation_scalar_width_is_valid(kind, value) {
+        raise WgslIrValidationError::InvalidType("invalid scalar cast width")
+      }
+    None => ()
   }
 }
 
@@ -828,23 +1475,23 @@ fn WgslIrValidator::require_call_signature(
   }
   for index in 0..<arguments.length() {
     let argument = arguments[index]
-    guard self.function_expression_type(function, argument) is Some(actual) else {
-      raise self.missing_function_expression_type(function, argument)
-    }
-    guard self.type_assignable(callee_function.arguments[index].ty, actual) else {
-      raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
+    match self.function_expression_type(function, argument) {
+      Some(actual) =>
+        if !self.type_assignable(callee_function.arguments[index].ty, actual) {
+          raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
+        }
+      None => ()
     }
   }
   match (callee_function.result, result) {
-    (Some(expected), Some(actual_handle)) => {
-      guard self.function_expression_type(function, actual_handle)
-        is Some(actual) else {
-        raise self.missing_function_expression_type(function, actual_handle)
+    (Some(expected), Some(actual_handle)) =>
+      match self.function_expression_type(function, actual_handle) {
+        Some(actual) =>
+          if !self.type_assignable(expected.ty, actual) {
+            raise WgslIrValidationError::InvalidFunctionResult(name)
+          }
+        None => ()
       }
-      guard self.type_assignable(expected.ty, actual) else {
-        raise WgslIrValidationError::InvalidFunctionResult(name)
-      }
-    }
     (None, None) => ()
     (Some(_), None) => ()
     (None, Some(_)) => raise WgslIrValidationError::InvalidFunctionResult(name)
@@ -872,11 +1519,12 @@ fn WgslIrValidator::require_global_call_signature(
   }
   for index in 0..<arguments.length() {
     let argument = arguments[index]
-    guard self.global_expression_type(argument) is Some(actual) else {
-      raise self.missing_global_expression_type(argument)
-    }
-    guard self.type_assignable(callee_function.arguments[index].ty, actual) else {
-      raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
+    match self.global_expression_type(argument) {
+      Some(actual) =>
+        if !self.type_assignable(callee_function.arguments[index].ty, actual) {
+          raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
+        }
+      None => ()
     }
   }
 }
@@ -945,6 +1593,321 @@ fn WgslIrValidator::require_global_select_signature(
 }
 
 ///|
+fn WgslIrValidator::require_image_store_signature(
+  self : WgslIrValidator,
+  function : Function,
+  image : Handle,
+  value : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, image) is Some(image_ty) else {
+    raise self.missing_function_expression_type(function, image)
+  }
+  let scalar = match self.shader_module.types.get(image_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, _, Storage(format, access)) =>
+          if access.contains(StorageAccess::store()) {
+            Some(wgsl_ir_validation_storage_format_scalar(format))
+          } else {
+            None
+          }
+        _ => None
+      }
+    None => None
+  }
+  guard scalar is Some(value_scalar) else {
+    raise WgslIrValidationError::InvalidStatement(
+      "imageStore target is not a writable storage texture",
+    )
+  }
+  guard self.function_expression_type(function, value) is Some(actual) else {
+    raise self.missing_function_expression_type(function, value)
+  }
+  guard self.vector_type(Quad, value_scalar) is Some(expected) else {
+    raise WgslIrValidationError::InvalidStatement(
+      "imageStore value has unsupported storage format",
+    )
+  }
+  if !self.type_assignable(expected, actual) {
+    raise WgslIrValidationError::InvalidStatement(
+      "imageStore value type does not match storage texture format",
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_image_atomic_signature(
+  self : WgslIrValidator,
+  function : Function,
+  image : Handle,
+  atomic_function : AtomicFunction,
+  value : Handle,
+) -> Unit raise WgslIrValidationError {
+  ignore(atomic_function)
+  guard self.function_expression_type(function, image) is Some(image_ty) else {
+    raise self.missing_function_expression_type(function, image)
+  }
+  let scalar = match self.shader_module.types.get(image_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, _, Storage(format, access)) =>
+          if access.contains(StorageAccess::atomic_access()) {
+            Some(wgsl_ir_validation_storage_format_scalar(format))
+          } else {
+            None
+          }
+        _ => None
+      }
+    None => None
+  }
+  guard scalar is Some(expected_scalar) else {
+    raise WgslIrValidationError::InvalidStatement(
+      "image atomic target is not an atomic storage texture",
+    )
+  }
+  guard self.function_expression_type(function, value) is Some(actual) else {
+    raise self.missing_function_expression_type(function, value)
+  }
+  guard self.find_scalar_type(expected_scalar) is Some(expected) else {
+    raise WgslIrValidationError::InvalidStatement(
+      "image atomic value has unsupported storage format",
+    )
+  }
+  if !self.type_assignable(expected, actual) {
+    raise WgslIrValidationError::InvalidStatement(
+      "image atomic value type does not match storage texture format",
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_atomic_statement_signature(
+  self : WgslIrValidator,
+  function : Function,
+  pointer : Handle,
+  atomic_function : AtomicFunction,
+  value : Handle,
+  compare : Handle?,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, pointer) is Some(pointer_ty) else {
+    raise self.missing_function_expression_type(function, pointer)
+  }
+  guard self.atomic_scalar_type(pointer_ty) is Some(scalar) else {
+    raise WgslIrValidationError::InvalidStatement(
+      "atomic statement target is not atomic",
+    )
+  }
+  guard self.find_scalar_type(scalar) is Some(expected) else {
+    raise WgslIrValidationError::InvalidStatement(
+      "atomic statement scalar type is unavailable",
+    )
+  }
+  guard self.function_expression_type(function, value) is Some(actual) else {
+    raise self.missing_function_expression_type(function, value)
+  }
+  if !self.type_assignable(expected, actual) {
+    raise WgslIrValidationError::InvalidStatement(
+      "atomic statement value type mismatch",
+    )
+  }
+  match (atomic_function, compare) {
+    (CompareExchangeWeak, Some(compare_handle)) => {
+      guard self.function_expression_type(function, compare_handle)
+        is Some(compare_ty) else {
+        raise self.missing_function_expression_type(function, compare_handle)
+      }
+      if !self.type_assignable(expected, compare_ty) {
+        raise WgslIrValidationError::InvalidStatement(
+          "atomic compare value type mismatch",
+        )
+      }
+    }
+    (CompareExchangeWeak, None) =>
+      raise WgslIrValidationError::InvalidStatement(
+        "atomic compare-exchange requires compare value",
+      )
+    (_, Some(_)) =>
+      raise WgslIrValidationError::InvalidStatement(
+        "atomic compare value is only valid for compare-exchange",
+      )
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrValidator::require_atomic_call_signature(
+  self : WgslIrValidator,
+  function : Function,
+  atomic_function : AtomicFunction,
+  arguments : Array[Handle],
+) -> Unit raise WgslIrValidationError {
+  let expected_count = match atomic_function {
+    Load => 1
+    Store => 2
+    CompareExchangeWeak => 3
+    _ => 2
+  }
+  if arguments.length() != expected_count {
+    raise WgslIrValidationError::InvalidFunctionArgumentCount(
+      "atomic",
+      expected_count,
+      arguments.length(),
+    )
+  }
+  guard arguments.get(0) is Some(pointer) else { return }
+  guard self.function_expression_type(function, pointer) is Some(pointer_ty) else {
+    raise self.missing_function_expression_type(function, pointer)
+  }
+  guard self.atomic_scalar_type(pointer_ty) is Some(scalar) else {
+    raise WgslIrValidationError::InvalidFunctionArgumentType("atomic", 0)
+  }
+  guard self.find_scalar_type(scalar) is Some(expected) else { return }
+  for index in 1..<arguments.length() {
+    let argument = arguments[index]
+    guard self.function_expression_type(function, argument) is Some(actual) else {
+      raise self.missing_function_expression_type(function, argument)
+    }
+    if !self.type_assignable(expected, actual) {
+      raise WgslIrValidationError::InvalidFunctionArgumentType("atomic", index)
+    }
+  }
+}
+
+///|
+fn WgslIrValidator::require_workgroup_uniform_load_signature(
+  self : WgslIrValidator,
+  function : Function,
+  pointer : Handle,
+  result : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, pointer) is Some(pointer_ty) else {
+    raise self.missing_function_expression_type(function, pointer)
+  }
+  if self.pointer_address_space(pointer_ty) != Some(AddressSpace::WorkGroup) {
+    raise WgslIrValidationError::InvalidStatement(
+      "workgroupUniformLoad pointer is not in workgroup address space",
+    )
+  }
+  guard self.deref_type(pointer_ty) is Some(expected) else {
+    raise WgslIrValidationError::InvalidStatement(
+      "workgroupUniformLoad pointer has no value type",
+    )
+  }
+  guard self.function_expression_type(function, result) is Some(actual) else {
+    raise self.missing_function_expression_type(function, result)
+  }
+  if !self.type_assignable(expected, actual) {
+    raise WgslIrValidationError::InvalidStatement(
+      "workgroupUniformLoad result type mismatch",
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_subgroup_ballot_signature(
+  self : WgslIrValidator,
+  function : Function,
+  value : Handle,
+  result : Handle?,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, value) is Some(value_ty) else {
+    raise self.missing_function_expression_type(function, value)
+  }
+  if !self.type_is_bool_scalar(value_ty) {
+    raise WgslIrValidationError::InvalidStatement(
+      "subgroupBallot value is not bool",
+    )
+  }
+  match result {
+    Some(handle) => {
+      guard self.function_expression_type(function, handle) is Some(actual) else {
+        raise self.missing_function_expression_type(function, handle)
+      }
+      guard self.vector_type(Quad, Scalar::Scalar(Uint, 4)) is Some(expected) else {
+        return
+      }
+      if !self.type_assignable(expected, actual) {
+        raise WgslIrValidationError::InvalidStatement(
+          "subgroupBallot result type mismatch",
+        )
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn WgslIrValidator::require_matching_statement_result(
+  self : WgslIrValidator,
+  function : Function,
+  value : Handle,
+  result : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, value) is Some(expected) else {
+    raise self.missing_function_expression_type(function, value)
+  }
+  guard self.function_expression_type(function, result) is Some(actual) else {
+    raise self.missing_function_expression_type(function, result)
+  }
+  if !self.type_assignable(expected, actual) {
+    raise WgslIrValidationError::InvalidStatement(
+      "statement result type mismatch",
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_array_length_argument(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Unit raise WgslIrValidationError {
+  guard self.function_expression_type(function, handle) is Some(ty) else {
+    raise self.missing_function_expression_type(function, handle)
+  }
+  if !self.pointer_targets_runtime_array(ty) &&
+    !self.type_or_struct_tail_is_runtime_array(ty) {
+    raise WgslIrValidationError::InvalidExpression(
+      "arrayLength argument does not point at a runtime array",
+      handle.index(),
+    )
+  }
+}
+
+///|
+fn WgslIrValidator::require_swizzle_signature(
+  self : WgslIrValidator,
+  function : Function,
+  size : VectorSize,
+  expr : Handle,
+  components : Array[SwizzleComponent],
+) -> Unit raise WgslIrValidationError {
+  if components.length() != size.width() {
+    raise WgslIrValidationError::InvalidExpression(
+      "swizzle component count does not match result size",
+      expr.index(),
+    )
+  }
+  guard self.function_expression_type(function, expr) is Some(ty) else {
+    return
+  }
+  guard self.vector_size(ty) is Some(base_size) else {
+    raise WgslIrValidationError::InvalidExpression(
+      "swizzle base is not a vector",
+      expr.index(),
+    )
+  }
+  for component in components {
+    if wgsl_ir_validation_swizzle_index(component) >= base_size.width() {
+      raise WgslIrValidationError::InvalidExpression(
+        "swizzle component is out of range",
+        expr.index(),
+      )
+    }
+  }
+}
+
+///|
 fn WgslIrValidator::function_expression_type(
   self : WgslIrValidator,
   function : Function,
@@ -966,18 +1929,58 @@ fn WgslIrValidator::store_target_value_type(
   match function.expressions.items.get(handle.index()) {
     Some(expression) =>
       match expression {
-        FunctionArgument(_) | LocalVariable(_) | GlobalVariable(_) | Load(_) =>
+        FunctionArgument(_) =>
           match self.function_expression_inner_type(function, expression) {
             Some(ty) =>
-              if self.type_is_pointer_like(ty) {
+              if self.type_is_pointer_like(ty) &&
+                self.pointer_type_is_writable(ty) {
                 self.deref_type(ty)
               } else {
-                Some(ty)
+                None
+              }
+            None => None
+          }
+        LocalVariable(local_handle) =>
+          match function.local_variables.items.get(local_handle.index()) {
+            Some(local_variable) =>
+              if self.type_is_pointer_like(local_variable.ty) &&
+                self.pointer_type_is_writable(local_variable.ty) {
+                self.deref_type(local_variable.ty)
+              } else {
+                match local_variable.kind {
+                  Var => Some(local_variable.ty)
+                  Let => None
+                }
+              }
+            None => None
+          }
+        GlobalVariable(global) =>
+          match self.shader_module.global_variables.items.get(global.index()) {
+            Some(variable) =>
+              if self.global_address_space_is_writable(variable.space) {
+                Some(variable.ty)
+              } else {
+                None
+              }
+            None => None
+          }
+        Load(inner) =>
+          match self.function_expression_type(function, inner) {
+            Some(ty) =>
+              if self.type_is_pointer_like(ty) &&
+                self.pointer_type_is_writable(ty) {
+                self.deref_type(ty)
+              } else {
+                None
               }
             None => None
           }
         Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) =>
-          self.function_expression_inner_type(function, expression)
+          if self.expression_is_addressable(function, handle) {
+            self.function_expression_inner_type(function, expression)
+          } else {
+            None
+          }
         _ => None
       }
     None => None
@@ -1247,13 +2250,63 @@ fn WgslIrValidator::indexed_type(
               }
             None => None
           }
-        Vector(_, scalar) => self.find_scalar_type(scalar)
-        Matrix(_, rows, scalar) => self.vector_type(rows, scalar)
-        Array(element, _, _) | BindingArray(element, _) => Some(element)
+        Vector(size, scalar) =>
+          if self.constant_index_is_in_bounds(index, size.width()) {
+            self.find_scalar_type(scalar)
+          } else {
+            None
+          }
+        Matrix(columns, rows, scalar) =>
+          if self.constant_index_is_in_bounds(index, columns.width()) {
+            self.vector_type(rows, scalar)
+          } else {
+            None
+          }
+        Array(element, size, _) | BindingArray(element, size) =>
+          if self.array_index_is_in_bounds(index, size) {
+            Some(element)
+          } else {
+            None
+          }
         Pointer(base, _) => self.indexed_type(base, index)
         _ => None
       }
     None => None
+  }
+}
+
+///|
+fn WgslIrValidator::dynamic_indexed_type(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Handle? {
+  self.indexed_type(ty, None)
+}
+
+///|
+fn WgslIrValidator::constant_index_is_in_bounds(
+  self : WgslIrValidator,
+  index : Int?,
+  count : Int,
+) -> Bool {
+  ignore(self)
+  match index {
+    Some(value) => value >= 0 && value < count
+    None => true
+  }
+}
+
+///|
+fn WgslIrValidator::array_index_is_in_bounds(
+  self : WgslIrValidator,
+  index : Int?,
+  size : ArraySize,
+) -> Bool {
+  ignore(self)
+  match (index, size) {
+    (Some(value), Constant(count)) => value >= 0 && value < count
+    (Some(value), _) => value >= 0
+    (None, _) => true
   }
 }
 
@@ -1271,6 +2324,132 @@ fn WgslIrValidator::pointer_pointee_type(
             Some(vector_size) => self.vector_type(vector_size, scalar)
             None => self.find_scalar_type(scalar)
           }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::pointer_address_space(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> AddressSpace? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(_, space) | ValuePointer(_, _, space) => Some(space)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::pointer_type_is_writable(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.pointer_address_space(ty) {
+    Some(space) => self.global_address_space_is_writable(space)
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::global_address_space_is_writable(
+  self : WgslIrValidator,
+  space : AddressSpace,
+) -> Bool {
+  ignore(self)
+  match space {
+    Function | Private | WorkGroup | TaskPayload | RayPayload => true
+    Storage(access) =>
+      access.contains(StorageAccess::store()) ||
+      access.contains(StorageAccess::atomic_access())
+    _ => false
+  }
+}
+
+///|
+fn WgslIrValidator::expression_is_addressable(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        FunctionArgument(_) =>
+          match self.function_expression_inner_type(function, expression) {
+            Some(ty) => self.type_is_pointer_like(ty)
+            None => false
+          }
+        LocalVariable(local_handle) =>
+          match function.local_variables.items.get(local_handle.index()) {
+            Some(local_variable) =>
+              local_variable.kind == Var ||
+              self.type_is_pointer_like(local_variable.ty)
+            None => false
+          }
+        GlobalVariable(global) =>
+          self.shader_module.global_variables.items.get(global.index()) != None
+        Load(inner) =>
+          match self.function_expression_type(function, inner) {
+            Some(ty) => self.type_is_pointer_like(ty)
+            None => false
+          }
+        Access(base, _) | AccessIndex(base, _) | Swizzle(_, base, _) =>
+          self.expression_is_addressable(function, base)
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::global_expression_is_addressable(
+  self : WgslIrValidator,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        GlobalVariable(global) =>
+          self.shader_module.global_variables.items.get(global.index()) != None
+        Load(inner) =>
+          match self.global_expression_type(inner) {
+            Some(ty) => self.type_is_pointer_like(ty)
+            None => false
+          }
+        Access(base, _) | AccessIndex(base, _) =>
+          self.global_expression_is_addressable(base)
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::global_expression_value_type(
+  self : WgslIrValidator,
+  handle : Handle,
+) -> Handle? {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        GlobalVariable(global) =>
+          match self.shader_module.global_variables.items.get(global.index()) {
+            Some(variable) => Some(variable.ty)
+            None => None
+          }
+        Load(inner) =>
+          match self.global_expression_type(inner) {
+            Some(ty) => self.deref_type(ty)
+            None => None
+          }
+        Access(_, _) | AccessIndex(_, _) =>
+          self.global_expression_inner_type(expression)
         _ => None
       }
     None => None
@@ -1880,6 +3059,174 @@ fn WgslIrValidator::vector_size(
 }
 
 ///|
+fn WgslIrValidator::type_lane_count(self : WgslIrValidator, ty : Handle) -> Int {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Vector(size, _) => size.width()
+        Matrix(columns, rows, _) => columns.width() * rows.width()
+        _ => 1
+      }
+    None => 1
+  }
+}
+
+///|
+fn WgslIrValidator::type_is_handle_resource(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, _, _) | Sampler(_) | AccelerationStructure(_) | RayQuery(_) =>
+          true
+        BindingArray(element, _) => self.type_is_handle_resource(element)
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_is_runtime_array(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Array(_, Dynamic, _) | BindingArray(_, Dynamic) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::pointer_targets_runtime_array(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(base, _) => self.type_or_struct_tail_is_runtime_array(base)
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_or_struct_tail_is_runtime_array(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Array(_, Dynamic, _) => true
+        Struct(members, _) | PredeclaredStruct(members, _) =>
+          match members.last() {
+            Some(struct_member) => self.type_is_runtime_array(struct_member.ty)
+            None => false
+          }
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrValidator::type_layout(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> WgslIrValidationLayout raise WgslIrValidationError {
+  match self.shader_module.types.get(ty) {
+    Some(type_) => self.type_inner_layout(type_.inner)
+    None => raise WgslIrValidationError::InvalidTypeHandle(ty.index())
+  }
+}
+
+///|
+fn WgslIrValidator::type_inner_layout(
+  self : WgslIrValidator,
+  inner : TypeInner,
+) -> WgslIrValidationLayout raise WgslIrValidationError {
+  match inner {
+    Scalar(scalar) | Atomic(scalar) =>
+      WgslIrValidationLayout::{ align: scalar.width, size: scalar.width }
+    Vector(size, scalar) => {
+      let lanes = size.width()
+      let raw_size = lanes * scalar.width
+      WgslIrValidationLayout::{
+        align: if lanes == 3 {
+          4 * scalar.width
+        } else {
+          raw_size
+        },
+        size: raw_size,
+      }
+    }
+    Matrix(columns, rows, scalar) => {
+      let row_lanes = rows.width()
+      let column_align = if row_lanes == 3 {
+        4 * scalar.width
+      } else {
+        row_lanes * scalar.width
+      }
+      let column_size = wgsl_ir_validation_align_to(
+        row_lanes * scalar.width,
+        column_align,
+      )
+      WgslIrValidationLayout::{
+        align: column_align,
+        size: column_size * columns.width(),
+      }
+    }
+    Array(base, size, stride) => {
+      let count = match size {
+        Constant(value) => value
+        Dynamic | Pending(_) => 1
+      }
+      WgslIrValidationLayout::{
+        align: self.type_layout(base).align,
+        size: count * stride,
+      }
+    }
+    Struct(members, span) | PredeclaredStruct(members, span) => {
+      let mut align = 1
+      for struct_member in members {
+        let member_layout = self.type_layout(struct_member.ty)
+        let member_align = match struct_member.align {
+          Some(value) => value
+          None => member_layout.align
+        }
+        if member_align > align {
+          align = member_align
+        }
+      }
+      WgslIrValidationLayout::{ align, size: span }
+    }
+    Pointer(_, _) | ValuePointer(_, _, _) =>
+      WgslIrValidationLayout::{ align: 1, size: 4 }
+    Image(_, _, _)
+    | Sampler(_)
+    | AccelerationStructure(_)
+    | RayQuery(_)
+    | BindingArray(_, _) => WgslIrValidationLayout::{ align: 1, size: 0 }
+    CooperativeMatrix(columns, rows, scalar, _) =>
+      WgslIrValidationLayout::{
+        align: scalar.width,
+        size: wgsl_ir_validation_cooperative_size_width(columns) *
+        wgsl_ir_validation_cooperative_size_width(rows) *
+        scalar.width,
+      }
+  }
+}
+
+///|
 fn WgslIrValidator::find_type_by_name(
   self : WgslIrValidator,
   name : String,
@@ -2020,6 +3367,50 @@ fn wgsl_ir_validation_storage_format_scalar(format : StorageFormat) -> Scalar {
     R8Sint | R16Sint | Rg8Sint | R32Sint | Rg16Sint | Rgba8Sint | Rgba32Sint =>
       Scalar::Scalar(Sint, 4)
     _ => Scalar::Scalar(Float, 4)
+  }
+}
+
+///|
+fn wgsl_ir_validation_scalar_width_is_valid(
+  kind : ScalarKind,
+  width : Int,
+) -> Bool {
+  match kind {
+    Bool => width == 1
+    Sint | Uint | Float => width == 2 || width == 4 || width == 8
+    AbstractInt | AbstractFloat => width == 8
+  }
+}
+
+///|
+fn wgsl_ir_validation_swizzle_index(component : SwizzleComponent) -> Int {
+  match component {
+    X => 0
+    Y => 1
+    Z => 2
+    W => 3
+  }
+}
+
+///|
+fn wgsl_ir_validation_is_power_of_two(value : Int) -> Bool {
+  value > 0 && (value & (value - 1)) == 0
+}
+
+///|
+fn wgsl_ir_validation_align_to(value : Int, align : Int) -> Int {
+  if align <= 1 {
+    value
+  } else {
+    (value + align - 1) / align * align
+  }
+}
+
+///|
+fn wgsl_ir_validation_cooperative_size_width(size : CooperativeSize) -> Int {
+  match size {
+    Eight => 8
+    Sixteen => 16
   }
 }
 

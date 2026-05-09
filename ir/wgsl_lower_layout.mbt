@@ -99,6 +99,35 @@ fn WgslIrLowerer::array_size_layout_count(
 }
 
 ///|
+fn WgslIrLowerer::refresh_dependent_type_layouts(
+  self : WgslIrLowerer,
+) -> Unit raise WgslIrLowerError {
+  for _ in 0..<self.shader_module.types.items.length() {
+    let mut changed = false
+    for index in 0..<self.shader_module.types.items.length() {
+      let ty = self.shader_module.types.items[index]
+      match ty.inner {
+        Array(element, size, stride) => {
+          let layout = self.type_layout(element)
+          let refreshed_stride = wgsl_ir_align_to(layout.size, layout.align)
+          if refreshed_stride != stride {
+            self.shader_module.types.set(Handle::Handle(index), Type::{
+              name: ty.name,
+              inner: TypeInner::Array(element, size, refreshed_stride),
+            })
+            changed = true
+          }
+        }
+        _ => ()
+      }
+    }
+    if !changed {
+      return
+    }
+  }
+}
+
+///|
 fn wgsl_ir_struct_member_size(
   attributes : Array[@ast.WgslAttribute],
   layout : WgslIrLayout,

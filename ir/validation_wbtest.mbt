@@ -20,6 +20,24 @@ test "IR validator accepts lowered WGSL module" {
 }
 
 ///|
+test "IR validator accepts immediate globals" {
+  let source =
+    #|struct Constants { max_mip_level: u32 }
+    #|var<immediate> constants: Constants;
+    #|
+    #|@compute
+    #|fn main() {
+    #|  _ = constants.max_mip_level;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
 test "IR validator rejects invalid type handles" {
   let module_ = Module()
   let init = module_.append_global_expression(
@@ -295,6 +313,185 @@ test "IR validator rejects mismatched vector select masks" {
   debug_inspect(
     message,
     content="\"invalid IR condition expression type in select_mask for handle: 0 (ZeroValue({ index: 1 })) with type {\\n  name: Some(\\\"vec3<bool>\\\"),\\n  inner: Vector(Tri, { kind: Bool, width: 1 }),\\n}\"",
+  )
+}
+
+///|
+test "IR validator rejects resource binding on private globals" {
+  let module_ = Module()
+  let f32_ty = module_.append_type(Type::{
+    name: Some("f32"),
+    inner: TypeInner::Scalar(Scalar::Scalar(Float, 4)),
+  })
+  ignore(
+    module_.append_global_variable(GlobalVariable::{
+      name: Some("value"),
+      space: Private,
+      binding: Some(ResourceBinding::{ group: 0, binding: 0 }),
+      ty: f32_ty,
+      init: None,
+      memory_decorations: MemoryDecorations::empty(),
+    }),
+  )
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"invalid IR global variable: resource binding on non-resource address space\"",
+  )
+}
+
+///|
+test "IR validator rejects writes through read-only storage globals" {
+  let module_ = Module()
+  let u32_ty = module_.append_type(Type::{
+    name: Some("u32"),
+    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+  })
+  let global = module_.append_global_variable(GlobalVariable::{
+    name: Some("buffer"),
+    space: Storage(StorageAccess::load()),
+    binding: Some(ResourceBinding::{ group: 0, binding: 0 }),
+    ty: u32_ty,
+    init: None,
+    memory_decorations: MemoryDecorations::empty(),
+  })
+  let function = Function::Function(Some("main"))
+  let target = function.expressions.append(Expression::GlobalVariable(global))
+  let value = function.expressions.append(Expression::Literal(Literal::U32(1)))
+  function.body.push(Statement::Store(target, value))
+  module_.append_entry_point(validation_test_entry_point(function))
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"invalid IR store target expression type for handle: 0\"",
+  )
+}
+
+///|
+test "IR validator rejects out-of-range constant access" {
+  let module_ = Module()
+  let vec2_ty = module_.append_type(Type::{
+    name: Some("vec2<u32>"),
+    inner: TypeInner::Vector(Bi, Scalar::Scalar(Uint, 4)),
+  })
+  let function = Function::Function(Some("main"))
+  let base = function.expressions.append(Expression::ZeroValue(vec2_ty))
+  ignore(function.expressions.append(Expression::AccessIndex(base, 2)))
+  module_.append_entry_point(validation_test_entry_point(function))
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"invalid IR expression for handle 0: constant access index is out of range or not indexable\"",
+  )
+}
+
+///|
+test "IR validator rejects invalid struct member layout" {
+  let module_ = Module()
+  let f32_ty = module_.append_type(Type::{
+    name: Some("f32"),
+    inner: TypeInner::Scalar(Scalar::Scalar(Float, 4)),
+  })
+  ignore(
+    module_.append_type(Type::{
+      name: Some("Bad"),
+      inner: TypeInner::Struct(
+        [
+          StructMember::{
+            name: Some("value"),
+            ty: f32_ty,
+            binding: None,
+            offset: 1,
+            size: None,
+            align: None,
+          },
+        ],
+        8,
+      ),
+    }),
+  )
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"invalid IR type: struct member offset is not aligned\"",
+  )
+}
+
+///|
+test "IR validator rejects arrayLength on fixed arrays" {
+  let module_ = Module()
+  let u32_ty = module_.append_type(Type::{
+    name: Some("u32"),
+    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+  })
+  let array_ty = module_.append_type(Type::{
+    name: Some("array<u32, 4>"),
+    inner: TypeInner::Array(u32_ty, Constant(4), 4),
+  })
+  let function = Function::Function(Some("main"))
+  let base = function.expressions.append(Expression::ZeroValue(array_ty))
+  ignore(function.expressions.append(Expression::ArrayLength(base)))
+  module_.append_entry_point(validation_test_entry_point(function))
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"invalid IR expression for handle 0: arrayLength argument does not point at a runtime array\"",
+  )
+}
+
+///|
+test "IR validator rejects address-of non-addressable expressions" {
+  let module_ = Module()
+  let u32_ty = module_.append_type(Type::{
+    name: Some("u32"),
+    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+  })
+  let pointer_ty = module_.append_type(Type::{
+    name: Some("ptr<function, u32>"),
+    inner: TypeInner::Pointer(u32_ty, Function),
+  })
+  let function = Function::Function(Some("main"))
+  let literal = function.expressions.append(
+    Expression::Literal(Literal::U32(1)),
+  )
+  ignore(
+    function.expressions.append(Expression::AddressOf(pointer_ty, literal)),
+  )
+  module_.append_entry_point(validation_test_entry_point(function))
+  let message = try {
+    validate_wgsl_ir_module(module_)
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(
+    message,
+    content="\"invalid IR expression for handle 0: address-of target is not addressable\"",
   )
 }
 

@@ -151,6 +151,7 @@ fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   for declaration in unit.declarations() {
     lowerer.lower_global_type_body_declaration(declaration)
   }
+  lowerer.refresh_dependent_type_layouts()
   for declaration in unit.declarations() {
     lowerer.predeclare_global_value_declaration(declaration)
   }
