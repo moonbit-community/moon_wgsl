@@ -56,14 +56,17 @@ pub(all) suberror ComposerError {
 pub fn ComposerError::message(self : ComposerError) -> String {
   match self {
     FailedToResolveImport(import_path) =>
-      "failed to resolve shader import: \{import_path}"
+      match wgsl_required_import_name_from_error(import_path) {
+        Some(name) => "error: required import '\{name}' not found"
+        None => "failed to resolve shader import: \{import_path}"
+      }
     ImportCycle(cycle) => "shader import cycle detected: \{cycle}"
     InvalidStructMemberIdentifier(name) =>
       "composable module identifier requires AST identifier normalization: \{name}"
     InvalidWgslSyntax(message, offset) =>
       "invalid WGSL syntax at \{offset}: \{message}"
     InvalidOverride(name) =>
-      "override is invalid because target is not virtual: \{name}"
+      "error: override is invalid as `\{name}` is not virtual (this error can be disabled with feature 'override_any')"
     MissingRegisteredSource(rel) => "missing registered WGSL source: \{rel}"
     MissingPreparedSourceDefs(rel) =>
       "missing prepared shader defs for WGSL source: \{rel}"
@@ -87,4 +90,38 @@ pub fn ComposerError::message(self : ComposerError) -> String {
     TooManyEndIfs => "too many #endif directives"
     NotEnoughEndIfs => "not enough #endif directives"
   }
+}
+
+///|
+fn wgsl_required_import_name_from_error(import_path : String) -> String? {
+  let (path, from_reference) = match
+    import_path.split(" in function ").collect() {
+    [head, ..] => (head.to_owned().trim().to_owned(), true)
+    _ => (import_path.trim().to_owned(), false)
+  }
+  if path == "" {
+    return None
+  }
+  let name = if from_reference {
+    match path.split("::").collect() {
+      [head, ..] => head.to_owned()
+      _ => path
+    }
+  } else {
+    path
+  }
+  if name == "" {
+    return None
+  }
+  for index in 0..<name.length() {
+    let code = name[index]
+    let valid = (code >= 97 && code <= 122) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 48 && code <= 57) ||
+      code == 95
+    if !valid {
+      return None
+    }
+  }
+  Some(name)
 }

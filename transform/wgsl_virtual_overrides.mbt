@@ -380,9 +380,13 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
           None => raw_target
         }
         if !virtual_names.contains(target) {
+          let invalid_target_name = match split_last_identifier(raw_target) {
+            Some((_, name)) => name
+            None => raw_target
+          }
           return WgslVirtualOverrideOutput::{
             source,
-            invalid_override: Some(target),
+            invalid_override: Some(invalid_target_name),
           }
         }
         let needs_base = wgsl_override_body_references_target(

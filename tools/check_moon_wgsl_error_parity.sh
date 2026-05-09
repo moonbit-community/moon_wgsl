@@ -52,32 +52,48 @@ assert_error_contains() {
   fi
 }
 
+assert_error_first_line_exact() {
+  local label="$1"
+  local expected="$2"
+  local output="$tmpdir/$label.txt"
+  local expected_line="$tmpdir/$label.expected.first"
+  local actual_line="$tmpdir/$label.actual.first"
+
+  printf '%s\n' "$(sed -n '1p' "$expected")" > "$expected_line"
+  printf '%s\n' "$(sed -n '1p' "$output")" > "$actual_line"
+  diff -u "$expected_line" "$actual_line"
+}
+
 moon_compose_error \
   conditional_missing_import \
   testdata/naga_oil_upstream/compose_tests/conditional_import_fail \
   top.wgsl
-assert_error_contains conditional_missing_import "failed to resolve shader import"
-assert_error_contains conditional_missing_import "b::C"
+assert_error_first_line_exact \
+  conditional_missing_import \
+  testdata/naga_oil_upstream/compose_tests/expected/conditional_missing_import.txt
 
 moon_compose_error \
   conditional_missing_import_nested \
   testdata/naga_oil_upstream/compose_tests/conditional_import_fail \
   top_nested.wgsl
-assert_error_contains conditional_missing_import_nested "failed to resolve shader import"
-assert_error_contains conditional_missing_import_nested "b::C"
+assert_error_first_line_exact \
+  conditional_missing_import_nested \
+  testdata/naga_oil_upstream/compose_tests/expected/conditional_missing_import_nested.txt
 
 moon_compose_error \
   missing_import \
   testdata/naga_oil_upstream/compose_tests/error_test \
   include.wgsl
-assert_error_contains missing_import "failed to resolve shader import"
-assert_error_contains missing_import "missing"
+assert_error_first_line_exact \
+  missing_import \
+  testdata/naga_oil_upstream/compose_tests/expected/missing_import.txt
 
 moon_compose_error \
   invalid_override_base \
   testdata/naga_oil_upstream/compose_tests/overrides \
   top_invalid.wgsl
-assert_error_contains invalid_override_base "override is invalid"
-assert_error_contains invalid_override_base "target is not virtual"
+assert_error_first_line_exact \
+  invalid_override_base \
+  testdata/naga_oil_upstream/compose_tests/expected/invalid_override_base.txt
 
 echo "moon_wgsl error parity passed"

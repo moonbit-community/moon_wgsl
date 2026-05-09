@@ -346,7 +346,7 @@ test "naga_oil upstream: missing conditional import reports a compose failure" {
     err => message = err.message()
   }
   debug_inspect(
-    message.contains("failed to resolve shader import"),
+    message.contains("required import 'b' not found"),
     content="true",
   )
   debug_inspect(message.contains("b"), content="true")
@@ -365,7 +365,7 @@ test "naga_oil upstream: nested missing conditional import reports a compose fai
     err => message = err.message()
   }
   debug_inspect(
-    message.contains("failed to resolve shader import"),
+    message.contains("required import 'b' not found"),
     content="true",
   )
   debug_inspect(message.contains("b"), content="true")
@@ -384,7 +384,7 @@ test "naga_oil upstream: missing import in shader source reports a compose failu
     err => message = err.message()
   }
   debug_inspect(
-    message.contains("failed to resolve shader import"),
+    message.contains("required import 'missing' not found"),
     content="true",
   )
   debug_inspect(message.contains("missing"), content="true")
@@ -812,7 +812,7 @@ test "naga_oil upstream: invalid override reports non-virtual target" {
     err => message = err.message()
   }
   debug_inspect(message.contains("override is invalid"), content="true")
-  debug_inspect(message.contains("outerX_naga_oil_mod_X"), content="true")
+  debug_inspect(message.contains("`outer` is not virtual"), content="true")
 }
 
 ///|
