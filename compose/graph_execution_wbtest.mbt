@@ -191,6 +191,128 @@ test "composer resolves transitive partial-import constants before IR" {
 }
 
 ///|
+test "composer rewrites imported module-local alias type references" {
+  let composer = Composer::default()
+  let types_source =
+    #|#define_import_path test::types
+    #|
+    #|struct Lights {
+    #|  value: u32,
+    #|}
+    #|
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|#import test::types as types
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> lights: types::Lights;
+    #|
+  let root_source =
+    #|#import test::bindings::{lights}
+    #|
+    #|fn main() -> u32 {
+    #|  return lights.value;
+    #|}
+    #|
+  composer.register_source("types.wgsl", types_source)
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("types::Lights"), content="false")
+  debug_inspect(emitted.contains("LightsX_naga_oil_mod"), content="true")
+}
+
+///|
+test "composer preserves cached module-local alias bindings per importer" {
+  let composer = Composer::default()
+  let types_source =
+    #|#define_import_path test::types
+    #|
+    #|struct Lights {
+    #|  value: u32,
+    #|}
+    #|
+  let a_source =
+    #|#define_import_path test::a
+    #|#import test::types as types
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> a_lights: types::Lights;
+    #|
+  let b_source =
+    #|#define_import_path test::b
+    #|#import test::types as types
+    #|
+    #|@group(0) @binding(1)
+    #|var<uniform> b_lights: types::Lights;
+    #|
+  let root_source =
+    #|#import test::{a::a_lights, b::b_lights}
+    #|
+    #|fn main() -> u32 {
+    #|  return a_lights.value + b_lights.value;
+    #|}
+    #|
+  composer.register_source("types.wgsl", types_source)
+  composer.register_source("a.wgsl", a_source)
+  composer.register_source("b.wgsl", b_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("types::Lights"), content="false")
+  debug_inspect(emitted.contains("a_lights"), content="true")
+  debug_inspect(emitted.contains("b_lights"), content="true")
+}
+
+///|
+test "composer creates alias bindings when canonical module was cached first" {
+  let composer = Composer::default()
+  let types_source =
+    #|#define_import_path test::types
+    #|
+    #|struct Lights {
+    #|  value: u32,
+    #|}
+    #|
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|#import test::types as types
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> lights: types::Lights;
+    #|
+  let root_source =
+    #|#import test::{
+    #|  types,
+    #|  bindings::lights,
+    #|}
+    #|
+    #|fn main() -> u32 {
+    #|  return lights.value;
+    #|}
+    #|
+  composer.register_source("types.wgsl", types_source)
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("types::Lights"), content="false")
+}
+
+///|
 test "composer does not import a missing item shadowed by a local declaration" {
   let composer = Composer::default()
   let maths_source =

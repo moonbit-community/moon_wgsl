@@ -19,7 +19,6 @@ priv struct WgslSemanticImportTargetPlan {
   requested_items : Array[String]
   import_full_module : Bool
   keep_requested_items : Bool
-  explicit_item_binding : Bool
   default_module_alias_candidate : Bool
   alias_is_used : Bool
 }
@@ -93,30 +92,6 @@ fn collect_wgsl_semantic_reference_paths(
       Some(path) => paths.push(path)
       None => ()
     }
-  }
-}
-
-///|
-fn collect_wgsl_semantic_reference_path_set(
-  source : String,
-) -> WgslReferencePathSet raise WgslParseError {
-  let paths : Array[WgslReferencePath] = []
-  collect_wgsl_semantic_reference_paths(source, paths)
-  let path_set = WgslReferencePathSet()
-  for path in paths {
-    path_set.add(path)
-  }
-  path_set
-}
-
-///|
-fn wgsl_semantic_reference_path_set_contains(
-  reference_paths : WgslReferencePathSet,
-  reference_path : String,
-) -> Bool {
-  match wgsl_semantic_reference_path_from_identifier(reference_path) {
-    Some(expected) => reference_paths.contains(expected)
-    None => false
   }
 }
 
@@ -399,7 +374,6 @@ fn unresolved_wgsl_semantic_import_target_plan() -> WgslSemanticImportTargetPlan
     requested_items: [],
     import_full_module: false,
     keep_requested_items: false,
-    explicit_item_binding: false,
     default_module_alias_candidate: false,
     alias_is_used: false,
   }
@@ -458,7 +432,6 @@ fn build_wgsl_semantic_import_target_plan(
   }
   let mut import_full_module = resolved_module.module_path() == target.raw_path
   let mut keep_requested_items = false
-  let mut explicit_item_binding = false
   let mut default_module_alias_candidate = false
   let mut alias_is_used = false
   if target.alias_name != "" {
@@ -476,7 +449,6 @@ fn build_wgsl_semantic_import_target_plan(
   } else if resolved_module.module_path() != target.raw_path {
     import_full_module = false
     keep_requested_items = true
-    explicit_item_binding = true
     let requested_item = wgsl_semantic_requested_item_name(
       target.raw_path,
       resolved_module.module_path(),
@@ -493,7 +465,6 @@ fn build_wgsl_semantic_import_target_plan(
     requested_items,
     import_full_module,
     keep_requested_items,
-    explicit_item_binding,
     default_module_alias_candidate,
     alias_is_used,
   })

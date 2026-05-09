@@ -125,6 +125,27 @@ fn collect_wgsl_cached_import_bindings(
         None => ()
       }
     }
+    if count == 0 {
+      for
+        entry in session.symbols.emitted_final_names.canonical_entries_for_rel_path(
+          rel_path,
+        ) {
+        match
+          WgslComposeBinding::for_alias_symbol(
+            entry.identity().rel_path(),
+            source_alias_name,
+            entry.identity().original_name(),
+            entry.final_name(),
+            QualifiedAliasBinding,
+          ) {
+          Some(binding) => {
+            bindings.push(binding)
+            count = count + 1
+          }
+          None => ()
+        }
+      }
+    }
   }
   count
 }

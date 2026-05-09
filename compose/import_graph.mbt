@@ -233,10 +233,7 @@ fn collect_wgsl_compose_semantic_facts(
       let declarations = collect_wgsl_named_declarations_strict(source) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
-      let reference_paths = collect_wgsl_semantic_reference_path_set(source) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-      let facts = WgslComposeSemanticFacts::{ declarations, reference_paths }
+      let facts = WgslComposeSemanticFacts::{ declarations, }
       session.semantic_facts.set(source, facts)
       facts
     }
@@ -250,6 +247,19 @@ fn wgsl_item_extraction_contains_requested_item(
 ) -> Bool {
   for origin in extraction.origins() {
     if origin.name() == requested_item {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_requested_items_contains(
+  requested_items : Array[String],
+  item_name : String,
+) -> Bool {
+  for requested_item in requested_items {
+    if requested_item == item_name {
       return true
     }
   }
@@ -330,9 +340,7 @@ fn Composer::select_wgsl_import_candidate_rel_path(
     return supporting_rel_paths[0]
   }
   if supporting_rel_paths.length() == 0 {
-    raise ComposerError::FailedToResolveImport(
-      wgsl_import_candidate_error_path(module_path, requested_items),
-    )
+    return default_rel_path
   }
   let import_path = wgsl_import_candidate_error_path(
     module_path, requested_items,
@@ -443,27 +451,32 @@ fn Composer::build_wgsl_import_requests_from_targets(
       }
     }
     if !import_full_module {
-      let active_facts = collect_wgsl_compose_semantic_facts(
-        session, active_scan_source,
-      )
-      let used_requested_items : Array[String] = []
-      for requested_item in requested_items {
-        let item_is_live = if target_plan.explicit_item_binding {
-          wgsl_semantic_reference_path_set_contains(
-            active_facts.reference_paths,
-            requested_item,
-          ) &&
-          !active_facts.declares(requested_item)
-        } else {
-          true
+      if target_plan.keep_requested_items && requested_items.length() > 0 {
+        let live_requested_items : Array[String] = []
+        for requested_item in requested_items {
+          let requested_item_is_live = wgsl_semantic_source_contains_reference_path(
+            active_scan_source, requested_item,
+          ) catch {
+            error => raise composer_error_from_wgsl_parse_error(error)
+          }
+          let leaf_item_is_live = match
+            split_last_wgsl_semantic_path(requested_item) {
+            Some((_, leaf_name)) =>
+              wgsl_semantic_source_contains_reference_path(
+                active_scan_source, leaf_name,
+              ) catch {
+                error => raise composer_error_from_wgsl_parse_error(error)
+              }
+            None => false
+          }
+          if requested_item_is_live || leaf_item_is_live {
+            live_requested_items.push(requested_item)
+          }
         }
-        if item_is_live {
-          used_requested_items.push(requested_item)
+        requested_items.clear()
+        for requested_item in live_requested_items {
+          requested_items.push(requested_item)
         }
-      }
-      requested_items.clear()
-      for requested_item in used_requested_items {
-        requested_items.push(requested_item)
       }
       if requested_items.length() == 0 &&
         !imports_for_override_side_effect &&
@@ -546,6 +559,7 @@ fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   requests : Array[WgslImportRequest],
+  importer_scan_source : String,
   bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
@@ -558,17 +572,12 @@ fn Composer::compose_wgsl_import_requests(
         "internal compose graph is missing planned request \{wgsl_import_request_visit_key(current_rel_path, request)}",
       )
     }
-    let request_alias_prefixes = alias_prefixes.copy()
-    if request.alias_name != "" {
-      request_alias_prefixes.push(
-        wgsl_semantic_import_alias_prefix(request.alias_name),
-      )
+    let request_alias_scope = if request.alias_name != "" {
+      wgsl_semantic_import_alias_prefix(request.alias_name)
+    } else {
+      ""
     }
-    let request_alias_scope = request_alias_prefixes.join("__")
-    let full_module_key = wgsl_full_module_visit_key(
-      request.rel_path,
-      request_alias_scope,
-    )
+    let full_module_key = wgsl_full_module_visit_key(request.rel_path, "")
     if wgsl_path_stack_contains(session.active_rel_paths, request.rel_path) {
       raise ComposerError::ImportCycle(
         wgsl_import_cycle_string(session.active_rel_paths, request.rel_path),
@@ -587,8 +596,8 @@ fn Composer::compose_wgsl_import_requests(
         continue
       }
     }
+    let emission_requested_items : Array[String] = []
     if !request.import_full_module && request.alias_name == "" {
-      let mut resolved_requested_items = 0
       for requested_item in request.requested_items {
         match
           find_wgsl_visible_alias_imported_item_binding(
@@ -596,10 +605,7 @@ fn Composer::compose_wgsl_import_requests(
             request.module_path,
             requested_item,
           ) {
-          Some(binding) => {
-            bindings.push(binding)
-            resolved_requested_items = resolved_requested_items + 1
-          }
+          Some(binding) => bindings.push(binding)
           None =>
             match
               find_wgsl_visible_identity_imported_item_binding(
@@ -607,10 +613,7 @@ fn Composer::compose_wgsl_import_requests(
                 request.rel_path,
                 requested_item,
               ) {
-              Some(binding) => {
-                bindings.push(binding)
-                resolved_requested_items = resolved_requested_items + 1
-              }
+              Some(binding) => bindings.push(binding)
               None =>
                 match
                   find_wgsl_cached_imported_item_name(
@@ -626,20 +629,21 @@ fn Composer::compose_wgsl_import_requests(
                         imported_name,
                         UnqualifiedItemBinding,
                       ) {
-                      Some(binding) => {
-                        bindings.push(binding)
-                        resolved_requested_items = resolved_requested_items + 1
-                      }
-                      None => ()
+                      Some(binding) => bindings.push(binding)
+                      None => emission_requested_items.push(requested_item)
                     }
-                  None => ()
+                  None => emission_requested_items.push(requested_item)
                 }
             }
         }
       }
       if request.requested_items.length() > 0 &&
-        resolved_requested_items == request.requested_items.length() {
+        emission_requested_items.length() == 0 {
         continue
+      }
+    } else {
+      for requested_item in request.requested_items {
+        emission_requested_items.push(requested_item)
       }
     }
     let visit_key = wgsl_import_request_visit_key(current_rel_path, request)
@@ -659,7 +663,7 @@ fn Composer::compose_wgsl_import_requests(
         bindings,
         false,
         true,
-        request_alias_prefixes,
+        alias_prefixes,
       )
     } else {
       let import_defs = self.active_compose_defs_for_rel_path(
@@ -672,8 +676,7 @@ fn Composer::compose_wgsl_import_requests(
         import_defs.value_defines,
       )
       let extraction = extract_wgsl_module_item_origins_strict(
-        prepared_source,
-        request.requested_items,
+        prepared_source, emission_requested_items,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
@@ -690,7 +693,7 @@ fn Composer::compose_wgsl_import_requests(
         bindings,
         false,
         false,
-        request_alias_prefixes,
+        alias_prefixes,
       )
     }
     session.active_rel_paths.pop() |> ignore
@@ -698,7 +701,7 @@ fn Composer::compose_wgsl_import_requests(
       continue
     }
     let final_name_plan = collect_wgsl_module_final_name_application_plan(
-      session, origin_start_index, request_alias_prefixes,
+      session, origin_start_index, alias_prefixes,
     )
     let final_module_source = if !final_name_plan.is_empty() {
       rewrite_wgsl_declarations_with_binding_plan(
@@ -725,7 +728,10 @@ fn Composer::compose_wgsl_import_requests(
               origin.generated_symbol_name,
               QualifiedAliasBinding,
             ) {
-            Some(binding) => bindings.push(binding)
+            Some(binding) => {
+              bindings.push(binding)
+              session.global_alias_bindings.push(binding)
+            }
             None => ()
           }
         }
@@ -733,9 +739,21 @@ fn Composer::compose_wgsl_import_requests(
     } else if !request.import_full_module {
       for i in origin_start_index..<session.symbols.source_origins.length() {
         let origin = session.symbols.source_origins[i]
-        if origin.rel_path == request.rel_path &&
-          origin.source_symbol_name != "" &&
-          origin.generated_symbol_name != "" {
+        if origin.source_symbol_name != "" && origin.generated_symbol_name != "" {
+          let directly_requested = origin.rel_path == request.rel_path &&
+            wgsl_requested_items_contains(
+              emission_requested_items,
+              origin.source_symbol_name,
+            )
+          let referenced_by_importer = wgsl_semantic_source_contains_reference_path(
+            importer_scan_source,
+            origin.source_symbol_name,
+          ) catch {
+            error => raise composer_error_from_wgsl_parse_error(error)
+          }
+          if !directly_requested && !referenced_by_importer {
+            continue
+          }
           match
             WgslComposeBinding::for_unqualified_symbol(
               origin.rel_path,
@@ -747,6 +765,31 @@ fn Composer::compose_wgsl_import_requests(
             None => ()
           }
         }
+      }
+    }
+    for i in origin_start_index..<session.symbols.source_origins.length() {
+      let origin = session.symbols.source_origins[i]
+      if origin.source_symbol_name == "" || origin.generated_symbol_name == "" {
+        continue
+      }
+      let referenced_by_importer = wgsl_semantic_source_contains_reference_path(
+        importer_scan_source,
+        origin.source_symbol_name,
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+      if !referenced_by_importer {
+        continue
+      }
+      match
+        WgslComposeBinding::for_unqualified_symbol(
+          origin.rel_path,
+          origin.source_symbol_name,
+          origin.generated_symbol_name,
+          UnqualifiedItemBinding,
+        ) {
+        Some(binding) => bindings.push(binding)
+        None => ()
       }
     }
     for i in origin_start_index..<session.symbols.source_origins.length() {
@@ -792,6 +835,36 @@ fn collect_wgsl_live_binding_plan(
 }
 
 ///|
+fn collect_wgsl_effective_reference_bindings(
+  session : WgslComposeSession,
+  bindings : WgslComposeBindingSet,
+) -> WgslComposeBindingSet {
+  let effective = WgslComposeBindingSet()
+  for binding in bindings.bindings {
+    effective.push(binding)
+  }
+  for binding in session.global_alias_bindings.bindings {
+    effective.push(binding)
+  }
+  for entry in session.symbols.emitted_final_names.alias_entries() {
+    let identity = entry.identity()
+    let symbol = identity.symbol()
+    match
+      WgslComposeBinding::for_alias_symbol(
+        symbol.rel_path(),
+        identity.alias_name(),
+        symbol.original_name(),
+        entry.final_name(),
+        QualifiedAliasBinding,
+      ) {
+      Some(binding) => effective.push(binding)
+      None => ()
+    }
+  }
+  effective
+}
+
+///|
 fn finalize_wgsl_composed_source(
   merged : String,
   bindings : WgslComposeBindingSet,
@@ -805,17 +878,10 @@ fn finalize_wgsl_composed_source(
     Some(message) => raise ComposerError::AmbiguousImportBinding(message)
     None => ()
   }
-  session.composed_bindings.extend(bindings)
-  match session.composed_bindings.first_conflict() {
-    Some(message) => raise ComposerError::AmbiguousImportBinding(message)
-    None => ()
-  }
-  let effective_bindings = if apply_virtual_overrides {
-    session.composed_bindings
-  } else {
-    bindings
-  }
   let out_facts = collect_wgsl_compose_semantic_facts(session, out)
+  let effective_bindings = collect_wgsl_effective_reference_bindings(
+    session, bindings,
+  )
   let live_bindings = collect_wgsl_live_binding_plan(
     out_facts, effective_bindings,
   )

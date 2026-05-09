@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--expect-error --error-output FILE]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--expect-error --error-output FILE]"
 }
 
 ///|
@@ -11,6 +11,7 @@ priv struct ComposeCaseArgs {
   value_defines : Array[String]
   additional_imports : Array[String]
   mut output : String?
+  mut pre_ir : Bool
   mut expect_error : Bool
   mut error_output : String?
 }
@@ -24,6 +25,7 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     value_defines: [],
     additional_imports: [],
     output: None,
+    pre_ir: false,
     expect_error: false,
     error_output: None,
   }
@@ -65,6 +67,10 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
         guard index + 1 < args.length() else { abort(compose_case_usage()) }
         parsed.output = Some(args[index + 1])
         index = index + 2
+      }
+      "--pre-ir" => {
+        parsed.pre_ir = true
+        index = index + 1
       }
       "--expect-error" => {
         parsed.expect_error = true
@@ -196,7 +202,13 @@ fn main {
     redirects: [],
     additional_imports: compose_case_additional_imports(args.additional_imports),
   }
-  let output = composer.compose_wgsl(entry, options) catch {
+  let output = try {
+    if args.pre_ir {
+      composer.compose_wgsl_before_ir(entry, options)
+    } else {
+      composer.compose_wgsl(entry, options)
+    }
+  } catch {
     err =>
       if args.expect_error {
         write_compose_case_output(args.error_output, err.message())

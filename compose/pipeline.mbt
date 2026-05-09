@@ -64,7 +64,8 @@ fn Composer::compose_wgsl_scanned_item(
         active_defs,
       )
       self.compose_wgsl_import_requests(
-        current_rel_path, requests, bindings, session, active_defs, alias_prefixes,
+        current_rel_path, requests, active_scan_source, bindings, session, active_defs,
+        alias_prefixes,
       )
     }
     WgslDirectiveScanItemKind::Directive(directive) =>
@@ -86,7 +87,7 @@ fn Composer::resolve_wgsl_source_with_path(
   source : String,
   session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
-  inherited_bindings : WgslComposeBindingSet,
+  _inherited_bindings : WgslComposeBindingSet,
   apply_virtual_overrides : Bool,
   record_current_origins : Bool,
   alias_prefixes : Array[String],
@@ -105,7 +106,6 @@ fn Composer::resolve_wgsl_source_with_path(
   }
   let mut merged = ""
   let bindings = WgslComposeBindingSet()
-  bindings.extend(inherited_bindings)
   let implicit_requests = self.build_wgsl_implicit_import_requests(
     current_rel_path,
     prepared.active_scan_source,
@@ -113,7 +113,13 @@ fn Composer::resolve_wgsl_source_with_path(
     active_defs,
   )
   let implicit_imports = self.compose_wgsl_import_requests(
-    current_rel_path, implicit_requests, bindings, session, active_defs, alias_prefixes,
+    current_rel_path,
+    implicit_requests,
+    prepared.active_scan_source,
+    bindings,
+    session,
+    active_defs,
+    alias_prefixes,
   )
   merged = merged + implicit_imports
   for
@@ -286,6 +292,15 @@ fn compose_wgsl_source_via_ir(
         _ => raise ComposerError::InvalidIr(error.message())
       }
   }
+}
+
+///|
+pub fn Composer::compose_wgsl_before_ir(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  self.resolve_wgsl_compose_source(rel, options).source
 }
 
 ///|

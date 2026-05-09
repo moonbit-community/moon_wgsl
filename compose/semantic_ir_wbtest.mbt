@@ -17,10 +17,7 @@ fn semantic_ir_facts(source : String) -> WgslComposeSemanticFacts {
   let declarations = collect_wgsl_named_declarations_strict(source) catch {
     _ => abort("expected semantic IR fixture parse success")
   }
-  WgslComposeSemanticFacts::{
-    declarations,
-    reference_paths: WgslReferencePathSet(),
-  }
+  WgslComposeSemanticFacts::{ declarations, }
 }
 
 ///|

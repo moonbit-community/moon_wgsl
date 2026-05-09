@@ -242,6 +242,13 @@ pub fn WgslIrFinalNameTable::alias_entries_for_scope(
 }
 
 ///|
+pub fn WgslIrFinalNameTable::alias_entries(
+  self : WgslIrFinalNameTable,
+) -> Array[WgslIrAliasFinalNameEntry] {
+  self.alias_entries.copy()
+}
+
+///|
 pub fn WgslIrSymbolNode::identity(
   self : WgslIrSymbolNode,
 ) -> WgslIrSymbolIdentity {

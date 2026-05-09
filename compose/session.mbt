@@ -115,24 +115,6 @@ fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] 
 ///|
 priv struct WgslComposeSemanticFacts {
   declarations : Array[WgslEmittedDeclaration]
-  reference_paths : WgslReferencePathSet
-}
-
-///|
-fn WgslComposeSemanticFacts::declares(
-  self : WgslComposeSemanticFacts,
-  name : String,
-) -> Bool {
-  let name = name.trim().to_owned()
-  if name == "" {
-    return false
-  }
-  for declaration in self.declarations {
-    if declaration.name() == name {
-      return true
-    }
-  }
-  false
 }
 
 ///|
@@ -149,8 +131,8 @@ priv struct WgslComposeSession {
   value_defines : @hashmap.HashMap[String, ShaderDefValue]
   modules : @hashmap.HashMap[String, String]
   redirects : Array[WgslSymbolRedirect]
-  composed_bindings : WgslComposeBindingSet
   additional_imports : Array[ImportDefinition]
+  global_alias_bindings : WgslComposeBindingSet
   redirect_match_counts : @hashmap.HashMap[String, Int]
   visited : @hashmap.HashMap[String, Bool]
   graph_planned_requests : @hashmap.HashMap[String, Bool]
@@ -444,19 +426,6 @@ fn WgslComposeBindingSet::push(
   }
   self.keys.add(key)
   self.bindings.push(binding)
-}
-
-///|
-fn WgslComposeBindingSet::extend(
-  self : WgslComposeBindingSet,
-  other : WgslComposeBindingSet,
-) -> Unit {
-  for conflict in other.conflicts {
-    self.conflicts.push(conflict)
-  }
-  for binding in other.bindings {
-    self.push(binding)
-  }
 }
 
 ///|

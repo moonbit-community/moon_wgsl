@@ -382,12 +382,6 @@ pub struct WgslReferencePath {
 } derive(Eq, Debug)
 
 ///|
-pub struct WgslReferencePathSet {
-  priv keys : @hashset.HashSet[String]
-  priv paths : Array[WgslReferencePath]
-}
-
-///|
 pub fn WgslReferencePath::from_segments(
   segments : Array[String],
 ) -> WgslReferencePath? {
@@ -443,39 +437,6 @@ pub fn WgslReferencePath::matches(
     }
   }
   true
-}
-
-///|
-pub fn WgslReferencePathSet::WgslReferencePathSet() -> WgslReferencePathSet {
-  WgslReferencePathSet::{ keys: @hashset.HashSet([]), paths: [] }
-}
-
-///|
-pub fn WgslReferencePathSet::add(
-  self : WgslReferencePathSet,
-  path : WgslReferencePath,
-) -> Unit {
-  let key = path.text()
-  if self.keys.contains(key) {
-    return
-  }
-  self.keys.add(key)
-  self.paths.push(path)
-}
-
-///|
-pub fn WgslReferencePathSet::contains(
-  self : WgslReferencePathSet,
-  path : WgslReferencePath,
-) -> Bool {
-  self.keys.contains(path.text())
-}
-
-///|
-pub fn WgslReferencePathSet::paths(
-  self : WgslReferencePathSet,
-) -> Array[WgslReferencePath] {
-  self.paths.copy()
 }
 
 ///|

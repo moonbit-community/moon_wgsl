@@ -22,7 +22,6 @@ using @common {
   type WgslDiagnosticSeverity,
   type WgslImportTarget,
   type WgslReferencePath,
-  type WgslReferencePathSet,
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceOriginEntry,

@@ -259,7 +259,8 @@ fn WgslComposeSemanticIr::live_binding_plan(
           resolved_binding,
           ir_binding.target.final_name,
         ) ||
-        ir_binding.binding.scope == UnqualifiedItemBinding
+        ir_binding.binding.scope == UnqualifiedItemBinding ||
+        ir_binding.binding.scope == QualifiedAliasBinding
       ) {
       plan.push(
         resolved_binding.to_live_binding(
