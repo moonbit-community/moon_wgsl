@@ -147,11 +147,25 @@ expected_invalid_normalized_actual="$tmpdir/expected-invalid-normalized.actual.t
 expected_invalid_normalized_expected="$tmpdir/expected-invalid-normalized.expected.tsv"
 expected_invalid_normalized_actual_keys="$tmpdir/expected-invalid-normalized.actual.keys.tsv"
 expected_invalid_normalized_expected_keys="$tmpdir/expected-invalid-normalized.expected.keys.tsv"
+profile_expected_keys="$tmpdir/profile.expected.keys.tsv"
+profile_used_keys="$tmpdir/profile.used.keys.tsv"
 : > "$expected_invalid_actual"
 : > "$expected_invalid_normalized_actual"
+: > "$profile_used_keys"
 
 { grep -v -E '^($|#)' "$expected_invalid_manifest" || true; } | sort > "$expected_invalid_expected"
 { grep -v -E '^($|#)' "$expected_invalid_normalized_manifest" || true; } | sort > "$expected_invalid_normalized_expected"
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  NF < 10 {
+    printf("profile manifest row has %d field(s), expected 10: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 "\t" $2 }
+' "$profile_manifest" | sort > "$profile_expected_keys"
+duplicate_profile_keys="$(uniq -d "$profile_expected_keys" | tr '\n' ' ')"
+[[ -z "$duplicate_profile_keys" ]] || fail "duplicate external WGSL profile row(s): $duplicate_profile_keys"
 
 source_contains_preprocessor_directive() {
   local source="$1"
@@ -360,6 +374,7 @@ materialize_valid_external_wgsl_source() {
   local profile_text_replacements="-"
   if [[ -n "$profile_line" ]]; then
     IFS=$'\t' read -r _profile_id _profile_rel profile_defs profile_value_defs profile_imports profile_capabilities profile_prefix_sources profile_suffix_sources profile_text_replacements _profile_notes <<< "$profile_line"
+    printf '%s\t%s\n' "$id" "$rel_path" >> "$profile_used_keys"
   fi
 
   local profile_source="$source"
@@ -531,6 +546,14 @@ if ! diff -u "$expected_invalid_normalized_expected_keys" "$expected_invalid_nor
   sed -n '1,200p' "$tmpdir/expected-invalid-normalized.diff" >&2
   echo "Observed normalized expected-invalid details:" >&2
   sed -n '1,200p' "$expected_invalid_normalized_actual" >&2
+  exit 1
+fi
+
+sort -o "$profile_used_keys" "$profile_used_keys"
+if ! diff -u "$profile_expected_keys" "$profile_used_keys" >"$tmpdir/profile-coverage.diff"; then
+  echo "external WGSL corpus profile manifest has stale or unconsumed rows" >&2
+  echo "Every profile row must match a concrete WGSL source file in the pinned external corpus." >&2
+  sed -n '1,200p' "$tmpdir/profile-coverage.diff" >&2
   exit 1
 fi
 

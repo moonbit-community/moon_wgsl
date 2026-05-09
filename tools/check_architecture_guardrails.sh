@@ -403,6 +403,10 @@ if ! rg -n 'EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST' tools/check_external_wgsl_cor
   fail "external WGSL corpus gate must load explicit shader profiles"
 fi
 
+if ! rg -n 'profile_expected_keys|profile_used_keys|profile-coverage\.diff' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus profile manifest must be checked for stale or unconsumed rows"
+fi
+
 if ! rg -n 'blockDepth|lineComment' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus preprocessor classification must be comment-aware"
 fi
