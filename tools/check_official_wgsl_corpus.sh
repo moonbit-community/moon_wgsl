@@ -4,21 +4,26 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-cts_ref="${WGSL_CTS_REF:-main}"
+cts_ref="${WGSL_CTS_REF:-3b327ebc44f11212fd3872972a6dd394634fb9e3}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
 blocked_by_oracle="$repo_root/testdata/gpuweb_cts_ir_blocked_by_oracle.txt"
 template_blocked_by_oracle="$repo_root/testdata/gpuweb_cts_template_ir_blocked_by_oracle.txt"
 execution_blocked_by_oracle="$repo_root/testdata/gpuweb_cts_execution_ir_blocked_by_oracle.txt"
 invalid_accepted_by_oracle="$repo_root/testdata/gpuweb_cts_invalid_accepted_by_oracle.txt"
 template_invalid_accepted_by_oracle="$repo_root/testdata/gpuweb_cts_template_invalid_accepted_by_oracle.txt"
-min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-114}"
-min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-111}"
-min_template_valid_cases="${WGSL_CTS_MIN_TEMPLATE_VALID_CASES:-99}"
-min_template_ir_cases="${WGSL_CTS_MIN_TEMPLATE_IR_CASES:-97}"
-min_invalid_cases="${WGSL_CTS_MIN_INVALID_CASES:-80}"
-min_template_invalid_cases="${WGSL_CTS_MIN_TEMPLATE_INVALID_CASES:-57}"
-min_execution_cases="${WGSL_CTS_MIN_EXECUTION_CASES:-28}"
-min_execution_ir_cases="${WGSL_CTS_MIN_EXECUTION_IR_CASES:-25}"
+expected_parse_cases="${WGSL_CTS_EXPECTED_PARSE_CASES:-114}"
+expected_ir_cases="${WGSL_CTS_EXPECTED_IR_CASES:-111}"
+expected_oracle_blocked_cases="${WGSL_CTS_EXPECTED_ORACLE_BLOCKED_CASES:-3}"
+expected_template_valid_cases="${WGSL_CTS_EXPECTED_TEMPLATE_VALID_CASES:-99}"
+expected_template_ir_cases="${WGSL_CTS_EXPECTED_TEMPLATE_IR_CASES:-97}"
+expected_template_oracle_blocked_cases="${WGSL_CTS_EXPECTED_TEMPLATE_ORACLE_BLOCKED_CASES:-2}"
+expected_invalid_cases="${WGSL_CTS_EXPECTED_INVALID_CASES:-87}"
+expected_invalid_oracle_accepted_cases="${WGSL_CTS_EXPECTED_INVALID_ORACLE_ACCEPTED_CASES:-21}"
+expected_template_invalid_cases="${WGSL_CTS_EXPECTED_TEMPLATE_INVALID_CASES:-57}"
+expected_template_invalid_oracle_accepted_cases="${WGSL_CTS_EXPECTED_TEMPLATE_INVALID_ORACLE_ACCEPTED_CASES:-16}"
+expected_execution_cases="${WGSL_CTS_EXPECTED_EXECUTION_CASES:-28}"
+expected_execution_ir_cases="${WGSL_CTS_EXPECTED_EXECUTION_IR_CASES:-25}"
+expected_execution_oracle_blocked_cases="${WGSL_CTS_EXPECTED_EXECUTION_ORACLE_BLOCKED_CASES:-3}"
 
 if [[ ! -d "$cts_root/.git" ]]; then
   mkdir -p "$(dirname "$cts_root")"
@@ -95,8 +100,8 @@ if [[ "$case_count" == "0" ]]; then
   echo "official WGSL CTS extractor produced no static valid WGSL cases" >&2
   exit 1
 fi
-if ((case_count < min_parse_cases)); then
-  echo "official WGSL CTS extractor produced only $case_count static valid WGSL cases; expected at least $min_parse_cases" >&2
+if ((case_count != expected_parse_cases)); then
+  echo "official WGSL CTS extractor produced $case_count static valid WGSL cases; expected exactly $expected_parse_cases" >&2
   exit 1
 fi
 
@@ -157,8 +162,12 @@ if ((ir_count == 0)); then
   echo "official WGSL CTS validated IR corpus is empty" >&2
   exit 1
 fi
-if ((ir_count < min_ir_cases)); then
-  echo "official WGSL CTS validated IR corpus contains only $ir_count case(s); expected at least $min_ir_cases" >&2
+if ((ir_count != expected_ir_cases)); then
+  echo "official WGSL CTS validated IR corpus contains $ir_count case(s); expected exactly $expected_ir_cases" >&2
+  exit 1
+fi
+if ((oracle_blocked_count != expected_oracle_blocked_cases)); then
+  echo "official WGSL CTS oracle-blocked corpus contains $oracle_blocked_count case(s); expected exactly $expected_oracle_blocked_cases" >&2
   exit 1
 fi
 
@@ -169,8 +178,8 @@ template_manifest="$tmpdir/template-manifest.tsv"
 template_invalid_manifest="$tmpdir/template-invalid-manifest.tsv"
 node tools/extract_gpuweb_cts_template_wgsl.mjs "$cts_root" "$template_cases_dir" "$template_manifest" "$template_invalid_cases_dir" "$template_invalid_manifest"
 template_case_count="$(find "$template_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
-if ((template_case_count < min_template_valid_cases)); then
-  echo "official WGSL CTS template extractor produced only $template_case_count valid WGSL cases; expected at least $min_template_valid_cases" >&2
+if ((template_case_count != expected_template_valid_cases)); then
+  echo "official WGSL CTS template extractor produced $template_case_count valid WGSL cases; expected exactly $expected_template_valid_cases" >&2
   exit 1
 fi
 if [[ ! -f "$template_blocked_by_oracle" ]]; then
@@ -215,8 +224,12 @@ while IFS= read -r id; do
   fi
 done < "$template_oracle_blocked_ids"
 
-if ((template_ir_count < min_template_ir_cases)); then
-  echo "official WGSL CTS template validated IR corpus contains only $template_ir_count case(s); expected at least $min_template_ir_cases" >&2
+if ((template_ir_count != expected_template_ir_cases)); then
+  echo "official WGSL CTS template validated IR corpus contains $template_ir_count case(s); expected exactly $expected_template_ir_cases" >&2
+  exit 1
+fi
+if ((template_oracle_blocked_count != expected_template_oracle_blocked_cases)); then
+  echo "official WGSL CTS template oracle-blocked corpus contains $template_oracle_blocked_count case(s); expected exactly $expected_template_oracle_blocked_cases" >&2
   exit 1
 fi
 
@@ -225,8 +238,8 @@ execution_cases_dir="$tmpdir/execution-cases"
 execution_manifest="$tmpdir/execution-manifest.tsv"
 node tools/extract_gpuweb_cts_execution_static_wgsl.mjs "$cts_root" "$execution_cases_dir" "$execution_manifest"
 execution_case_count="$(find "$execution_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
-if ((execution_case_count < min_execution_cases)); then
-  echo "official WGSL CTS execution extractor produced only $execution_case_count static WGSL cases; expected at least $min_execution_cases" >&2
+if ((execution_case_count != expected_execution_cases)); then
+  echo "official WGSL CTS execution extractor produced $execution_case_count static WGSL cases; expected exactly $expected_execution_cases" >&2
   exit 1
 fi
 if [[ ! -f "$execution_blocked_by_oracle" ]]; then
@@ -271,8 +284,12 @@ while IFS= read -r id; do
   fi
 done < "$execution_oracle_blocked_ids"
 
-if ((execution_ir_count < min_execution_ir_cases)); then
-  echo "official WGSL CTS execution validated IR corpus contains only $execution_ir_count case(s); expected at least $min_execution_ir_cases" >&2
+if ((execution_ir_count != expected_execution_ir_cases)); then
+  echo "official WGSL CTS execution validated IR corpus contains $execution_ir_count case(s); expected exactly $expected_execution_ir_cases" >&2
+  exit 1
+fi
+if ((execution_oracle_blocked_count != expected_execution_oracle_blocked_cases)); then
+  echo "official WGSL CTS execution oracle-blocked corpus contains $execution_oracle_blocked_count case(s); expected exactly $expected_execution_oracle_blocked_cases" >&2
   exit 1
 fi
 
@@ -281,8 +298,8 @@ invalid_cases_dir="$tmpdir/invalid-cases"
 invalid_manifest="$tmpdir/invalid-manifest.tsv"
 node tools/extract_gpuweb_cts_invalid_static_wgsl.mjs "$cts_root" "$invalid_cases_dir" "$invalid_manifest"
 invalid_case_count="$(find "$invalid_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
-if ((invalid_case_count < min_invalid_cases)); then
-  echo "official WGSL CTS invalid extractor produced only $invalid_case_count static WGSL cases; expected at least $min_invalid_cases" >&2
+if ((invalid_case_count != expected_invalid_cases)); then
+  echo "official WGSL CTS invalid extractor produced $invalid_case_count static WGSL cases; expected exactly $expected_invalid_cases" >&2
   exit 1
 fi
 if [[ ! -f "$invalid_accepted_by_oracle" ]]; then
@@ -308,6 +325,11 @@ while IFS= read -r invalid_case_file; do
   fi
 done < <(find "$invalid_cases_dir" -name '*.wgsl' -type f | sort)
 sort -o "$invalid_actual_oracle_accepted_ids" "$invalid_actual_oracle_accepted_ids"
+invalid_oracle_accepted_count="$(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ')"
+if ((invalid_oracle_accepted_count != expected_invalid_oracle_accepted_cases)); then
+  echo "official WGSL CTS invalid oracle-accepted count is $invalid_oracle_accepted_count; expected exactly $expected_invalid_oracle_accepted_cases" >&2
+  exit 1
+fi
 if ! diff -u "$invalid_expected_oracle_accepted_ids" "$invalid_actual_oracle_accepted_ids" >"$tmpdir/invalid-oracle-accepted.diff"; then
   echo "official WGSL CTS invalid accepted-by-oracle manifest is out of date" >&2
   sed -n '1,160p' "$tmpdir/invalid-oracle-accepted.diff" >&2
@@ -315,8 +337,8 @@ if ! diff -u "$invalid_expected_oracle_accepted_ids" "$invalid_actual_oracle_acc
 fi
 
 template_invalid_case_count="$(find "$template_invalid_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
-if ((template_invalid_case_count < min_template_invalid_cases)); then
-  echo "official WGSL CTS template invalid extractor produced only $template_invalid_case_count WGSL cases; expected at least $min_template_invalid_cases" >&2
+if ((template_invalid_case_count != expected_template_invalid_cases)); then
+  echo "official WGSL CTS template invalid extractor produced $template_invalid_case_count WGSL cases; expected exactly $expected_template_invalid_cases" >&2
   exit 1
 fi
 if [[ ! -f "$template_invalid_accepted_by_oracle" ]]; then
@@ -342,12 +364,17 @@ while IFS= read -r invalid_case_file; do
   fi
 done < <(find "$template_invalid_cases_dir" -name '*.wgsl' -type f | sort)
 sort -o "$template_invalid_actual_oracle_accepted_ids" "$template_invalid_actual_oracle_accepted_ids"
+template_invalid_oracle_accepted_count="$(wc -l < "$template_invalid_actual_oracle_accepted_ids" | tr -d ' ')"
+if ((template_invalid_oracle_accepted_count != expected_template_invalid_oracle_accepted_cases)); then
+  echo "official WGSL CTS template invalid oracle-accepted count is $template_invalid_oracle_accepted_count; expected exactly $expected_template_invalid_oracle_accepted_cases" >&2
+  exit 1
+fi
 if ! diff -u "$template_invalid_expected_oracle_accepted_ids" "$template_invalid_actual_oracle_accepted_ids" >"$tmpdir/template-invalid-oracle-accepted.diff"; then
   echo "official WGSL CTS template invalid accepted-by-oracle manifest is out of date" >&2
   sed -n '1,160p' "$tmpdir/template-invalid-oracle-accepted.diff" >&2
   exit 1
 fi
 
-invalid_rejected_count=$((invalid_case_count - $(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ')))
-template_invalid_rejected_count=$((template_invalid_case_count - $(wc -l < "$template_invalid_actual_oracle_accepted_ids" | tr -d ' ')))
-echo "official WGSL CTS corpus gate passed: validation cases=$case_count validation-naga=$ir_count validation-oracle-blocked=$oracle_blocked_count template-validation cases=$template_case_count template-validation-naga=$template_ir_count template-validation-oracle-blocked=$template_oracle_blocked_count execution cases=$execution_case_count execution-naga=$execution_ir_count execution-oracle-blocked=$execution_oracle_blocked_count invalid-rejected=$invalid_rejected_count invalid-oracle-accepted=$(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ') template-invalid-rejected=$template_invalid_rejected_count template-invalid-oracle-accepted=$(wc -l < "$template_invalid_actual_oracle_accepted_ids" | tr -d ' ')"
+invalid_rejected_count=$((invalid_case_count - invalid_oracle_accepted_count))
+template_invalid_rejected_count=$((template_invalid_case_count - template_invalid_oracle_accepted_count))
+echo "official WGSL CTS corpus gate passed: validation cases=$case_count validation-naga=$ir_count validation-oracle-blocked=$oracle_blocked_count template-validation cases=$template_case_count template-validation-naga=$template_ir_count template-validation-oracle-blocked=$template_oracle_blocked_count execution cases=$execution_case_count execution-naga=$execution_ir_count execution-oracle-blocked=$execution_oracle_blocked_count invalid-rejected=$invalid_rejected_count invalid-oracle-accepted=$invalid_oracle_accepted_count template-invalid-rejected=$template_invalid_rejected_count template-invalid-oracle-accepted=$template_invalid_oracle_accepted_count"

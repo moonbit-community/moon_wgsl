@@ -15,6 +15,20 @@ if [[ -e testdata/gpuweb_cts_ir_allowlist.txt ]]; then
   fail "official WGSL CTS IR coverage must not use a handwritten allowlist"
 fi
 
+if rg -n 'WGSL_CTS_REF:-main|WGSL_CTS_MIN_|min_parse_cases|min_ir_cases|min_template|min_execution|min_invalid|expected at least|contains only|produced only' \
+  tools/check_official_wgsl_corpus.sh >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "official WGSL CTS gate must use a pinned ref and exact counts, not moving-main or minimum thresholds"
+fi
+
+if ! rg -n 'WGSL_CTS_EXPECTED_PARSE_CASES|expected_parse_cases' tools/check_official_wgsl_corpus.sh >/dev/null; then
+  fail "official WGSL CTS gate must own exact static valid counts"
+fi
+
+if ! rg -n 'WGSL_CTS_EXPECTED_INVALID_ORACLE_ACCEPTED_CASES|expected_invalid_oracle_accepted_cases' tools/check_official_wgsl_corpus.sh >/dev/null; then
+  fail "official WGSL CTS gate must own exact invalid accepted-by-oracle counts"
+fi
+
 if rg -n 'gpuweb_cts_ir_allowlist|allowlist=' tools testdata \
   --glob '!tools/check_architecture_guardrails.sh' \
   --glob '!testdata/bevy_wgsl/**' >"$matches_file"; then
