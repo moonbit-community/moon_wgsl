@@ -358,8 +358,6 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   let override_base_names : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
   )
-  let override_body_references_base : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([],
-  )
   let override_names : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   let override_raw_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
   )
@@ -394,9 +392,6 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
           [raw_target, original_raw_target],
           target,
         )
-        if needs_base {
-          override_body_references_base.set(target, true)
-        }
         let override_name = match
           plan.virtual_override_name_for_target(original_raw_target, target) {
           Some(name) => name
@@ -456,19 +451,11 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
                 )
               None => None
             }
-            if override_body_references_base.get(block.name()) == Some(true) {
-              match base_block {
-                Some(base) => out = out + base
-                None => ()
-              }
-              out = out + override_block
-            } else {
-              out = out + override_block
-              match base_block {
-                Some(base) => out = out + base
-                None => ()
-              }
+            match base_block {
+              Some(base) => out = out + base
+              None => ()
             }
+            out = out + override_block
           }
           None => out = out + rewrite_wgsl_virtual_fn_block(block, function)
         }

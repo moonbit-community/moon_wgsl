@@ -1,6 +1,6 @@
 # naga_oil Preprocessing Parity
 
-Last updated: 2026-05-07
+Last updated: 2026-05-09
 
 ## Scope
 
@@ -19,9 +19,10 @@ The preprocessing target is:
   core.
 - Keep every mirrored upstream expected fixture classified in
   `testdata/naga_oil_upstream/compose_tests/parity_manifest.tsv`.
-- Byte-diff every deterministic WGSL compose output that is stable after the
-  MoonBit IR pipeline, and record explicit exceptions when exact byte parity is
-  intentionally not the gate.
+- Byte-diff every deterministic WGSL compose output through an explicit
+  naga-oil writer parity profile, while separately validating the default
+  runtime WGSL output when upstream writer bytes exercise a non-runtime writer
+  form.
 - Gate source-level composer errors locally, while exact Naga parser,
   validator, GLSL frontend, and Naga-writer diagnostics stay pinned by the Rust
   oracle.
@@ -65,8 +66,9 @@ Parity is tracked with explicit gates:
 3. Moon WGSL byte parity.
    `tools/check_moon_wgsl_byte_parity.sh` composes deterministic upstream WGSL
    fixtures through moon_wgsl and byte-diffs the emitted WGSL against the
-   mirrored upstream expected files. Documented exceptions must be represented
-   as manifest rows and guarded by validation.
+   mirrored upstream expected files. The atomics fixture also validates the
+   default runtime compose output so byte parity with upstream writer output
+   cannot hide invalid runtime WGSL.
 
 4. Moon WGSL source-level error parity.
    `tools/check_moon_wgsl_error_parity.sh` runs moon_wgsl against upstream

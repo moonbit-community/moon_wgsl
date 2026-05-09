@@ -78,6 +78,15 @@ pub fn emit_validated_wgsl_source_from_ir(
 }
 
 ///|
+pub fn emit_naga_oil_writer_compatible_wgsl_source_from_ir(
+  module_ : Module,
+) -> String raise WgslIrPipelineError {
+  emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => raise WgslIrPipelineError::Emit(error.message())
+  }
+}
+
+///|
 pub fn emit_validated_wgsl_source_from_ir_roots(
   module_ : Module,
   root_items : Array[String],
@@ -107,6 +116,18 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> String raise WgslIrPipelineError {
   emit_validated_wgsl_source_from_ir(
+    lower_validated_wgsl_source_to_ir_with_generated_imports(
+      source, generated_import_provenance,
+    ),
+  )
+}
+
+///|
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+  source : String,
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+) -> String raise WgslIrPipelineError {
+  emit_naga_oil_writer_compatible_wgsl_source_from_ir(
     lower_validated_wgsl_source_to_ir_with_generated_imports(
       source, generated_import_provenance,
     ),

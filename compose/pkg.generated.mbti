@@ -50,6 +50,7 @@ pub fn Composer::add_composable_module(Self, @common.ComposableModuleDescriptor)
 pub fn Composer::clear_sources(Self) -> Unit
 pub fn Composer::compose_wgsl(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_before_ir(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_for_naga_oil_writer_parity(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_source(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::contains_module(Self, String) -> Bool
 pub fn Composer::default() -> Self

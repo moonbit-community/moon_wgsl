@@ -295,6 +295,29 @@ fn compose_wgsl_source_via_ir(
 }
 
 ///|
+fn compose_wgsl_source_via_naga_oil_writer_compatible_ir(
+  source : String,
+  symbols : WgslComposeSymbolTable,
+  root_rel_path : String,
+) -> String raise ComposerError {
+  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    symbols.generated_import_provenance(root_rel_path),
+  ) catch {
+    error =>
+      match error {
+        @ir.WgslIrPipelineError::UnknownIdentifier(name) =>
+          if name.contains("::") {
+            raise ComposerError::FailedToResolveImport(name)
+          } else {
+            raise ComposerError::InvalidIr(error.message())
+          }
+        _ => raise ComposerError::InvalidIr(error.message())
+      }
+  }
+}
+
+///|
 pub fn Composer::compose_wgsl_before_ir(
   self : Composer,
   rel : String,
@@ -334,6 +357,20 @@ pub fn Composer::compose_wgsl(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   self.prepare_wgsl_source(rel, options).source
+}
+
+///|
+pub fn Composer::compose_wgsl_for_naga_oil_writer_parity(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  let resolved = self.resolve_wgsl_compose_source(rel, options)
+  compose_wgsl_source_via_naga_oil_writer_compatible_ir(
+    resolved.source,
+    resolved.symbols,
+    normalize_shader_rel_path(rel),
+  )
 }
 
 ///|

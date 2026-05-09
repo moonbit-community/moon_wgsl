@@ -1,6 +1,6 @@
 # label	expected	moon_gate	oracle_gate	notes
 additional_import	testdata/naga_oil_upstream/compose_tests/expected/additional_import.txt	byte	oracle-byte	Root additional imports are byte-gated through moon_wgsl and the pinned naga_oil oracle.
-atomics	testdata/naga_oil_upstream/compose_tests/expected/atomics.txt	byte-exception	oracle-byte	The pinned upstream expected bytes contain an invalid internal atomic compare-exchange result type annotation; moon_wgsl diffs after that single normalization and validates the emitted WGSL.
+atomics	testdata/naga_oil_upstream/compose_tests/expected/atomics.txt	byte	oracle-byte	Atomic builtins are byte-gated through the explicit naga-oil writer parity profile, while the default runtime compose path is separately validated as WGSL.
 bad_identifiers	testdata/naga_oil_upstream/compose_tests/expected/bad_identifiers.txt	byte	oracle-byte	Invalid/reserved identifier sanitization, local const-expression let inlining, global/member access materialization, and Naga-compatible temporary naming are byte-gated through moon_wgsl and the pinned oracle.
 big_shaderdefs	testdata/naga_oil_upstream/compose_tests/expected/big_shaderdefs.txt	byte	oracle-byte	Boolean shader-def branch expansion is byte-gated through moon_wgsl and the pinned oracle.
 conditional_import_a	testdata/naga_oil_upstream/compose_tests/expected/conditional_import_a.txt	byte	oracle-byte	Active conditional import branch A is byte-gated through moon_wgsl and the pinned oracle.
@@ -21,7 +21,7 @@ invalid_override_base	testdata/naga_oil_upstream/compose_tests/expected/invalid_
 item_import_test	testdata/naga_oil_upstream/compose_tests/expected/item_import_test.txt	byte	oracle-byte	Explicit item imports are byte-gated through moon_wgsl and the pinned oracle.
 item_sub_point	testdata/naga_oil_upstream/compose_tests/expected/item_sub_point.txt	byte	oracle-byte	Nested item imports are byte-gated through moon_wgsl and the pinned oracle.
 missing_import	testdata/naga_oil_upstream/compose_tests/expected/missing_import.txt	error	oracle-error	moon_wgsl gates the source-level missing-import diagnostic headline against upstream; the oracle gates exact upstream diagnostic bytes.
-override_top	testdata/naga_oil_upstream/compose_tests/expected/override_top.txt	byte	oracle-byte-exception	moon_wgsl byte output is deterministic; the pinned oracle can swap equivalent override helper order, so the oracle gate accepts only that documented ordering exception.
+override_top	testdata/naga_oil_upstream/compose_tests/expected/override_top.txt	byte	oracle-byte	Virtual override helper ordering is byte-gated through moon_wgsl and the pinned oracle.
 problematic_expressions	testdata/naga_oil_upstream/compose_tests/expected/problematic_expressions.txt	byte	oracle-byte	Expression dependency expansion is byte-gated through moon_wgsl and the pinned oracle.
 simple_compose	testdata/naga_oil_upstream/compose_tests/expected/simple_compose.txt	byte	oracle-byte	Basic composition is byte-gated through moon_wgsl and the pinned oracle.
 test_quoted_import_dup_name	testdata/naga_oil_upstream/compose_tests/expected/test_quoted_import_dup_name.txt	byte	oracle-byte	Quoted duplicate import names are byte-gated through moon_wgsl and the pinned oracle.

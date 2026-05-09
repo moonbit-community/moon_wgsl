@@ -1,9 +1,9 @@
-fn innerX_naga_oil_vrt_XNVXWIX(arg: f32) -> f32 {
-    return (arg * 3f);
+fn innerX_naga_oil_mod_XNVXWIX(arg: f32) -> f32 {
+    return (arg * 2f);
 }
 
-fn innerX_naga_oil_mod_XNVXWIX(arg_1: f32) -> f32 {
-    return (arg_1 * 2f);
+fn innerX_naga_oil_vrt_XNVXWIX(arg_1: f32) -> f32 {
+    return (arg_1 * 3f);
 }
 
 fn outerX_naga_oil_mod_XNVXWIX() -> f32 {

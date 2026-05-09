@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--expect-error --error-output FILE]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--naga-oil-writer-parity] [--expect-error --error-output FILE]"
 }
 
 ///|
@@ -12,6 +12,7 @@ priv struct ComposeCaseArgs {
   additional_imports : Array[String]
   mut output : String?
   mut pre_ir : Bool
+  mut naga_oil_writer_parity : Bool
   mut expect_error : Bool
   mut error_output : String?
 }
@@ -26,6 +27,7 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     additional_imports: [],
     output: None,
     pre_ir: false,
+    naga_oil_writer_parity: false,
     expect_error: false,
     error_output: None,
   }
@@ -70,6 +72,10 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
       }
       "--pre-ir" => {
         parsed.pre_ir = true
+        index = index + 1
+      }
+      "--naga-oil-writer-parity" => {
+        parsed.naga_oil_writer_parity = true
         index = index + 1
       }
       "--expect-error" => {
@@ -205,6 +211,8 @@ fn main {
   let output = try {
     if args.pre_ir {
       composer.compose_wgsl_before_ir(entry, options)
+    } else if args.naga_oil_writer_parity {
+      composer.compose_wgsl_for_naga_oil_writer_parity(entry, options)
     } else {
       composer.compose_wgsl(entry, options)
     }

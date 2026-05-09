@@ -39,7 +39,7 @@ awk -F '\t' '
 
 cut -f1 "$rows" | sort > "$manifest_labels"
 cut -f2 "$rows" | sort > "$manifest_expected"
-awk -F '\t' '$3 == "byte" || $3 == "byte-exception" { print $1 }' "$rows" | sort > "$manifest_byte_labels"
+awk -F '\t' '$3 == "byte" { print $1 }' "$rows" | sort > "$manifest_byte_labels"
 awk -F '\t' '$3 == "error" { print $1 }' "$rows" | sort > "$manifest_error_labels"
 tools/check_moon_wgsl_byte_parity.sh --list | sort > "$executed_byte_labels"
 tools/check_moon_wgsl_error_parity.sh --list | sort > "$executed_error_labels"
@@ -77,7 +77,7 @@ while IFS=$'\t' read -r label expected moon_gate oracle_gate notes; do
   [[ -f "$expected" ]] || fail "row $label points to missing expected file: $expected"
 
   case "$moon_gate" in
-    byte | byte-exception | semantic | error | oracle-only)
+    byte | semantic | error | oracle-only)
       ;;
     *)
       fail "row $label has unknown moon gate: $moon_gate"
@@ -85,7 +85,7 @@ while IFS=$'\t' read -r label expected moon_gate oracle_gate notes; do
   esac
 
   case "$oracle_gate" in
-    oracle-byte | oracle-byte-exception | oracle-error)
+    oracle-byte | oracle-error)
       ;;
     *)
       fail "row $label has unknown oracle gate: $oracle_gate"
@@ -93,16 +93,12 @@ while IFS=$'\t' read -r label expected moon_gate oracle_gate notes; do
   esac
 
   case "$moon_gate" in
-    byte | byte-exception | error)
+    byte | error)
       ;;
     semantic | oracle-only)
       [[ -n "${notes:-}" ]] || fail "classified row $label needs an explicit note"
       ;;
   esac
-
-  if [[ "$moon_gate" == "byte-exception" || "$oracle_gate" == *"exception"* ]]; then
-    [[ -n "${notes:-}" ]] || fail "exception row $label needs an explicit note"
-  fi
 
   if ! rg -F "$expected" tools/check_preprocess_parity.sh >/dev/null && \
      ! rg -F "$label" tools/check_preprocess_parity.sh >/dev/null; then

@@ -42,6 +42,7 @@ moon_compose() {
   moon run tools/compose_case -- \
     --fixture-root "$fixture_root" \
     --entry "$entry" \
+    --naga-oil-writer-parity \
     --output "$output" \
     "$@"
 }
@@ -61,23 +62,6 @@ diff_exact() {
   diff -u "$expected" "$actual"
 }
 
-diff_atomics_expected_without_invalid_internal_type() {
-  local expected="$1"
-  local actual="$2"
-  local label="$3"
-  local normalized_expected="$tmpdir/${label}.expected.valid.wgsl"
-
-  sed \
-    's/: _atomic_compare_exchange_result_Uint_4_ = atomicCompareExchangeWeak/ = atomicCompareExchangeWeak/' \
-    "$expected" > "$normalized_expected"
-  diff_exact "$normalized_expected" "$actual" "$label"
-  validate_wgsl "$actual" >/dev/null
-  if validate_wgsl "$expected" >/dev/null 2>&1; then
-    printf 'expected fixture %s unexpectedly validates; remove the atomics normalization exception\n' "$label" >&2
-    exit 1
-  fi
-}
-
 check_case() {
   local label="$1"
   local fixture_root="$2"
@@ -91,17 +75,20 @@ check_case() {
   diff_exact "$expected" "$actual" "$label"
 }
 
-check_case_atomics_validated() {
+check_runtime_valid_case() {
   local label="$1"
   local fixture_root="$2"
   local entry="$3"
-  local expected="$4"
-  shift 4
+  shift 3
   local actual="$tmpdir/$label.wgsl"
 
-  echo "== moon_wgsl byte parity: $label =="
-  moon_compose "$fixture_root" "$entry" "$actual" "$@"
-  diff_atomics_expected_without_invalid_internal_type "$expected" "$actual" "$label"
+  echo "== moon_wgsl runtime-valid compose: $label =="
+  moon run tools/compose_case -- \
+    --fixture-root "$fixture_root" \
+    --entry "$entry" \
+    --output "$actual" \
+    "$@"
+  validate_wgsl "$actual" >/dev/null
 }
 
 check_case \
@@ -214,8 +201,13 @@ check_case \
   top_valid.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/bad_identifiers.txt
 
-check_case_atomics_validated \
+check_case \
   atomics \
   testdata/naga_oil_upstream/compose_tests/atomics \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/atomics.txt
+
+check_runtime_valid_case \
+  atomics \
+  testdata/naga_oil_upstream/compose_tests/atomics \
+  top.wgsl

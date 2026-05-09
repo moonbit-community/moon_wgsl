@@ -18,14 +18,31 @@ fn WgslIrEmitError::message(self : WgslIrEmitError) -> String {
 fn emit_wgsl_module_from_ir(
   shader_module : Module,
 ) -> String raise WgslIrEmitError {
+  emit_wgsl_module_from_ir_with_options(
+    shader_module,
+    WgslIrEmitOptions::valid_wgsl(),
+  )
+}
+
+///|
+fn emit_wgsl_module_from_ir_naga_oil_writer_compatible(
+  shader_module : Module,
+) -> String raise WgslIrEmitError {
+  emit_wgsl_module_from_ir_with_options(
+    shader_module,
+    WgslIrEmitOptions::naga_oil_writer_compatible(),
+  )
+}
+
+///|
+fn emit_wgsl_module_from_ir_with_options(
+  shader_module : Module,
+  options : WgslIrEmitOptions,
+) -> String raise WgslIrEmitError {
   validate_wgsl_ir_module(shader_module) catch {
     error => raise WgslIrEmitError::Unsupported(error.message())
   }
-  let emitter = WgslIrEmitter::{
-    shader_module,
-    preserve_abstract_float_literals: false,
-    filter: None,
-  }
+  let emitter = WgslIrEmitter::{ shader_module, options, filter: None }
   emitter.emit_module()
 }
 
@@ -43,16 +60,38 @@ fn emit_wgsl_module_from_ir_roots(
   }
   let emitter = WgslIrEmitter::{
     shader_module,
-    preserve_abstract_float_literals: false,
+    options: WgslIrEmitOptions::valid_wgsl(),
     filter: Some(filter),
   }
   emitter.emit_module()
 }
 
 ///|
+priv struct WgslIrEmitOptions {
+  preserve_abstract_float_literals : Bool
+  annotate_atomic_compare_exchange_result_locals : Bool
+}
+
+///|
+fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
+  WgslIrEmitOptions::{
+    preserve_abstract_float_literals: false,
+    annotate_atomic_compare_exchange_result_locals: false,
+  }
+}
+
+///|
+fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
+  WgslIrEmitOptions::{
+    preserve_abstract_float_literals: false,
+    annotate_atomic_compare_exchange_result_locals: true,
+  }
+}
+
+///|
 priv struct WgslIrEmitter {
   shader_module : Module
-  preserve_abstract_float_literals : Bool
+  options : WgslIrEmitOptions
   filter : WgslIrEmitFilter?
 }
 
@@ -252,7 +291,10 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
 ) -> WgslIrEmitter {
   WgslIrEmitter::{
     shader_module: self.shader_module,
-    preserve_abstract_float_literals: true,
+    options: WgslIrEmitOptions::{
+      preserve_abstract_float_literals: true,
+      annotate_atomic_compare_exchange_result_locals: self.options.annotate_atomic_compare_exchange_result_locals,
+    },
     filter: self.filter,
   }
 }
@@ -672,7 +714,28 @@ fn WgslIrEmitter::local_variable_needs_type_annotation(
   if self.type_contains_abstract_scalar(local_var.ty) {
     return false
   }
+  if self.options.annotate_atomic_compare_exchange_result_locals &&
+    self.type_is_atomic_compare_exchange_result(local_var.ty) {
+    return true
+  }
   !self.type_is_predeclared_result(local_var.ty)
+}
+
+///|
+fn WgslIrEmitter::type_is_atomic_compare_exchange_result(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Bool {
+  for item in self.shader_module.special_types.predeclared_types {
+    let (predeclared, existing) = item
+    if existing == handle {
+      match predeclared {
+        AtomicCompareExchangeWeakResult(_) => return true
+        _ => return false
+      }
+    }
+  }
+  false
 }
 
 ///|
@@ -3080,7 +3143,7 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
     Bool(value) => if value { "true" } else { "false" }
     AbstractInt(value) => "\{value}"
     AbstractFloat(value) =>
-      if self.preserve_abstract_float_literals {
+      if self.options.preserve_abstract_float_literals {
         wgsl_ir_emit_abstract_float_literal_text("\{value}")
       } else {
         wgsl_ir_emit_concrete_float_literal_text("\{value}")

@@ -365,6 +365,18 @@ if ! rg -n -- '--value-def NAME=VALUE' tools/compose_case/main.mbt >/dev/null; t
   fail "compose_case must support typed value defines for real pipeline profiles"
 fi
 
+if rg -n 'byte-exception|oracle-byte-exception|exception row|normalization exception' \
+  testdata/naga_oil_upstream/compose_tests/parity_manifest.tsv \
+  tools/check_moon_wgsl_byte_parity.sh \
+  tools/check_naga_oil_parity_inventory.sh >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "naga_oil byte parity gates must not use exception or normalization classes"
+fi
+
+if ! rg -n -- '--naga-oil-writer-parity' tools/check_moon_wgsl_byte_parity.sh >/dev/null; then
+  fail "byte parity must use the explicit naga-oil writer parity profile"
+fi
+
 if ! rg -n 'bash tools/check_external_wgsl_corpus\.sh' .github/workflows/check.yml >/dev/null; then
   fail "CI must run the external real-project WGSL corpus gate"
 fi
