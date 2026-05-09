@@ -1,0 +1,7 @@
+# id	rel_path	bool_defs	value_defs	additional_imports	capabilities	notes
+bevy	crates/bevy_pbr/src/render/pbr.wgsl	VERTEX_POSITIONS,VERTEX_NORMALS,VERTEX_UVS,VERTEX_UVS_A,VERTEX_COLORS,VERTEX_OUTPUT_INSTANCE_INDEX,MAY_DISCARD	-	-	-	Bevy forward PBR entry that previously exposed import/name-resolution drift.
+bevy	crates/bevy_pbr/src/decal/forward_decal.wgsl	VERTEX_OUTPUT_INSTANCE_INDEX,VERTEX_TANGENTS,VERTEX_UVS_A,DEPTH_PREPASS	MATERIAL_BIND_GROUP=2	-	-	Bevy forward decal profile with a non-default material bind group value.
+bevy	crates/bevy_pbr/src/deferred/deferred_lighting.wgsl	DEFERRED_PREPASS	-	-	-	Bevy deferred lighting profile with prepass imports enabled.
+bevy	crates/bevy_pbr/src/light_probe/environment_map.wgsl	ENVIRONMENT_MAP	-	-	-	Bevy environment-map profile with view environment bindings enabled.
+bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	DEPTH_PREPASS,DEFERRED_PREPASS,SCREEN_SPACE_REFLECTIONS	-	-	-	Bevy screen-space reflection profile with depth and deferred imports.
+bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	-	SLICE_COUNT=4,SAMPLES_PER_SLICE_SIDE=3	-	-	Bevy SSAO profile with Rust-provided numeric shader defs.

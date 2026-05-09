@@ -1484,6 +1484,46 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
 }
 
 ///|
+test "WGSL statement AST preserves else-if conditions structurally" {
+  let source =
+    #|fn demo(arg: u32) -> u32 {
+    #|  if arg == 0u {
+    #|    return 0u;
+    #|  } else if arg == 1u || arg == 2u {
+    #|    return 1u;
+    #|  } else {
+    #|    return 3u;
+    #|  }
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function")
+  }
+  let statement = function.body().statements()[0]
+  debug_inspect(statement.kind(), content="If")
+  debug_inspect(statement.blocks().length(), content="3")
+  debug_inspect(
+    statement
+    .expressions()
+    .filter(fn(expr) { expr.role() == WgslStatementExpressionRole::Condition })
+    .map(fn(expr) { wgsl_expr_ref_source_text(source, expr.expression()) }),
+    content=(
+      #|["arg == 0u", "arg == 1u || arg == 2u"]
+    ),
+  )
+  debug_inspect(
+    statement
+    .blocks()
+    .map(fn(block) { block.statements()[0].expression_refs()[0] })
+    .map(fn(expr) { wgsl_expr_ref_source_text(source, expr) }),
+    content=(
+      #|["0u", "1u", "3u"]
+    ),
+  )
+}
+
+///|
 test "WGSL source directives parse as directive AST nodes" {
   let source =
     #|enable f16, subgroups;

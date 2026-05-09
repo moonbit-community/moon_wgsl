@@ -1326,15 +1326,20 @@ fn WgslIrLowerer::lower_statement(
       let condition_handle = self.lower_function_expression_ref(
         condition_ref, function, scope,
       )
+      let condition_refs = wgsl_ir_statement_condition_refs(
+        statement.expressions(),
+      )
+      guard condition_refs.length() > 0 else {
+        raise WgslIrLowerError::UnsupportedStatement("if without condition")
+      }
+      let blocks = statement.blocks()
       let then_block = match statement.blocks() {
         [then_child, ..] => self.lower_child_block(then_child, function, scope)
         [] => Block::Block()
       }
-      let else_block = match statement.blocks() {
-        [_, else_child, ..] =>
-          self.lower_child_block(else_child, function, scope)
-        _ => Block::Block()
-      }
+      let else_block = self.lower_if_reject_chain(
+        blocks, condition_refs, 1, function, scope,
+      )
       block.push(Statement::If(condition_handle, then_block, else_block))
     }
     While(condition) => {

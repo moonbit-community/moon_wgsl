@@ -128,6 +128,11 @@ jobs:
           ulimit -s 8176
           bash tools/check_moon_wgsl_byte_parity.sh
 
+      - name: External naga-oil compose parity
+        run: |
+          ulimit -s 8176
+          bash tools/check_external_naga_oil_compose_parity.sh
+
       - name: Moon WGSL error parity
         run: |
           ulimit -s 8176
