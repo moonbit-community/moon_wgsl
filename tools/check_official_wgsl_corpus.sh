@@ -115,11 +115,61 @@ load_official_cts_id_manifest() {
   fi
 }
 
+load_official_cts_extracted_manifest() {
+  local manifest_path="$1"
+  local cases_dir="$2"
+  local label="$3"
+  local output="$4"
+  local file_ids="$output.files"
+  local duplicate_ids
+  awk -F '\t' -v label="$label" '
+    $0 ~ /^($|#)/ { next }
+    NF != 5 {
+      printf("%s extracted manifest row has %d field(s), expected 5: %s\n", label, NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    $1 !~ /^src_webgpu_shader_/ {
+      printf("%s extracted manifest id has unexpected shape: %s\n", label, $1) > "/dev/stderr"
+      exit 1
+    }
+    $2 !~ /^src\/webgpu\/shader\// {
+      printf("%s extracted manifest path has unexpected shape: %s\n", label, $2) > "/dev/stderr"
+      exit 1
+    }
+    $3 !~ /^[0-9]+$/ {
+      printf("%s extracted manifest line is not numeric: %s\n", label, $0) > "/dev/stderr"
+      exit 1
+    }
+    $4 !~ /^[0-9a-f]{64}$/ {
+      printf("%s extracted manifest sha256 is invalid: %s\n", label, $0) > "/dev/stderr"
+      exit 1
+    }
+    $5 !~ /^[0-9]+$/ {
+      printf("%s extracted manifest byte count is not numeric: %s\n", label, $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 }
+  ' "$manifest_path" | sort > "$output"
+  duplicate_ids="$(uniq -d "$output" | tr '\n' ' ')"
+  if [[ -n "$duplicate_ids" ]]; then
+    echo "$label extracted manifest has duplicate id(s): $duplicate_ids" >&2
+    exit 1
+  fi
+  find "$cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$file_ids"
+  if ! diff -u "$output" "$file_ids" >"$tmpdir/$label-extracted-manifest.diff"; then
+    echo "official WGSL CTS $label extracted manifest does not match generated WGSL files" >&2
+    sed -n '1,160p' "$tmpdir/$label-extracted-manifest.diff" >&2
+    exit 1
+  fi
+}
+
 cases_dir="$tmpdir/cases"
 manifest="$tmpdir/manifest.tsv"
 node tools/extract_gpuweb_cts_static_wgsl.mjs "$cts_root" "$cases_dir" "$manifest"
+extracted_ids="$tmpdir/extracted.ids"
+load_official_cts_extracted_manifest "$manifest" "$cases_dir" "static-valid" "$extracted_ids"
 
-case_count="$(find "$cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+case_count="$(wc -l < "$extracted_ids" | tr -d ' ')"
 if [[ "$case_count" == "0" ]]; then
   echo "official WGSL CTS extractor produced no static valid WGSL cases" >&2
   exit 1
@@ -145,9 +195,7 @@ if [[ ! -f "$blocked_by_oracle" ]]; then
   echo "missing IR blocked-by-oracle manifest: $blocked_by_oracle" >&2
   exit 1
 fi
-extracted_ids="$tmpdir/extracted.ids"
 oracle_blocked_ids="$tmpdir/oracle-blocked.ids"
-find "$cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$extracted_ids"
 load_official_cts_id_manifest "$blocked_by_oracle" "static oracle-blocked" "$oracle_blocked_ids"
 ir_count=0
 oracle_blocked_count=0
@@ -201,7 +249,9 @@ template_invalid_cases_dir="$tmpdir/template-invalid-cases"
 template_manifest="$tmpdir/template-manifest.tsv"
 template_invalid_manifest="$tmpdir/template-invalid-manifest.tsv"
 node tools/extract_gpuweb_cts_template_wgsl.mjs "$cts_root" "$template_cases_dir" "$template_manifest" "$template_invalid_cases_dir" "$template_invalid_manifest"
-template_case_count="$(find "$template_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+template_extracted_ids="$tmpdir/template-extracted.ids"
+load_official_cts_extracted_manifest "$template_manifest" "$template_cases_dir" "template-valid" "$template_extracted_ids"
+template_case_count="$(wc -l < "$template_extracted_ids" | tr -d ' ')"
 if ((template_case_count != expected_template_valid_cases)); then
   echo "official WGSL CTS template extractor produced $template_case_count valid WGSL cases; expected exactly $expected_template_valid_cases" >&2
   exit 1
@@ -210,9 +260,7 @@ if [[ ! -f "$template_blocked_by_oracle" ]]; then
   echo "missing template IR blocked-by-oracle manifest: $template_blocked_by_oracle" >&2
   exit 1
 fi
-template_extracted_ids="$tmpdir/template-extracted.ids"
 template_oracle_blocked_ids="$tmpdir/template-oracle-blocked.ids"
-find "$template_cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$template_extracted_ids"
 load_official_cts_id_manifest "$template_blocked_by_oracle" "template oracle-blocked" "$template_oracle_blocked_ids"
 template_ir_count=0
 template_oracle_blocked_count=0
@@ -261,7 +309,9 @@ echo "== GPUWeb CTS WGSL execution IR corpus =="
 execution_cases_dir="$tmpdir/execution-cases"
 execution_manifest="$tmpdir/execution-manifest.tsv"
 node tools/extract_gpuweb_cts_execution_static_wgsl.mjs "$cts_root" "$execution_cases_dir" "$execution_manifest"
-execution_case_count="$(find "$execution_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+execution_extracted_ids="$tmpdir/execution-extracted.ids"
+load_official_cts_extracted_manifest "$execution_manifest" "$execution_cases_dir" "execution-valid" "$execution_extracted_ids"
+execution_case_count="$(wc -l < "$execution_extracted_ids" | tr -d ' ')"
 if ((execution_case_count != expected_execution_cases)); then
   echo "official WGSL CTS execution extractor produced $execution_case_count static WGSL cases; expected exactly $expected_execution_cases" >&2
   exit 1
@@ -270,9 +320,7 @@ if [[ ! -f "$execution_blocked_by_oracle" ]]; then
   echo "missing execution IR blocked-by-oracle manifest: $execution_blocked_by_oracle" >&2
   exit 1
 fi
-execution_extracted_ids="$tmpdir/execution-extracted.ids"
 execution_oracle_blocked_ids="$tmpdir/execution-oracle-blocked.ids"
-find "$execution_cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$execution_extracted_ids"
 load_official_cts_id_manifest "$execution_blocked_by_oracle" "execution oracle-blocked" "$execution_oracle_blocked_ids"
 execution_ir_count=0
 execution_oracle_blocked_count=0
@@ -321,7 +369,9 @@ echo "== GPUWeb CTS invalid WGSL rejection corpus =="
 invalid_cases_dir="$tmpdir/invalid-cases"
 invalid_manifest="$tmpdir/invalid-manifest.tsv"
 node tools/extract_gpuweb_cts_invalid_static_wgsl.mjs "$cts_root" "$invalid_cases_dir" "$invalid_manifest"
-invalid_case_count="$(find "$invalid_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+invalid_extracted_ids="$tmpdir/invalid-extracted.ids"
+load_official_cts_extracted_manifest "$invalid_manifest" "$invalid_cases_dir" "static-invalid" "$invalid_extracted_ids"
+invalid_case_count="$(wc -l < "$invalid_extracted_ids" | tr -d ' ')"
 if ((invalid_case_count != expected_invalid_cases)); then
   echo "official WGSL CTS invalid extractor produced $invalid_case_count static WGSL cases; expected exactly $expected_invalid_cases" >&2
   exit 1
@@ -347,7 +397,11 @@ while IFS= read -r invalid_case_file; do
     sed -n '1,120p' "$invalid_case_file" >&2
     exit 1
   fi
-done < <(find "$invalid_cases_dir" -name '*.wgsl' -type f | sort)
+done < <(
+  while IFS= read -r invalid_id; do
+    printf '%s/%s.wgsl\n' "$invalid_cases_dir" "$invalid_id"
+  done < "$invalid_extracted_ids"
+)
 sort -o "$invalid_actual_oracle_accepted_ids" "$invalid_actual_oracle_accepted_ids"
 invalid_oracle_accepted_count="$(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ')"
 if ((invalid_oracle_accepted_count != expected_invalid_oracle_accepted_cases)); then
@@ -360,7 +414,9 @@ if ! diff -u "$invalid_expected_oracle_accepted_ids" "$invalid_actual_oracle_acc
   exit 1
 fi
 
-template_invalid_case_count="$(find "$template_invalid_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+template_invalid_extracted_ids="$tmpdir/template-invalid-extracted.ids"
+load_official_cts_extracted_manifest "$template_invalid_manifest" "$template_invalid_cases_dir" "template-invalid" "$template_invalid_extracted_ids"
+template_invalid_case_count="$(wc -l < "$template_invalid_extracted_ids" | tr -d ' ')"
 if ((template_invalid_case_count != expected_template_invalid_cases)); then
   echo "official WGSL CTS template invalid extractor produced $template_invalid_case_count WGSL cases; expected exactly $expected_template_invalid_cases" >&2
   exit 1
@@ -386,7 +442,11 @@ while IFS= read -r invalid_case_file; do
     sed -n '1,120p' "$invalid_case_file" >&2
     exit 1
   fi
-done < <(find "$template_invalid_cases_dir" -name '*.wgsl' -type f | sort)
+done < <(
+  while IFS= read -r invalid_id; do
+    printf '%s/%s.wgsl\n' "$template_invalid_cases_dir" "$invalid_id"
+  done < "$template_invalid_extracted_ids"
+)
 sort -o "$template_invalid_actual_oracle_accepted_ids" "$template_invalid_actual_oracle_accepted_ids"
 template_invalid_oracle_accepted_count="$(wc -l < "$template_invalid_actual_oracle_accepted_ids" | tr -d ' ')"
 if ((template_invalid_oracle_accepted_count != expected_template_invalid_oracle_accepted_cases)); then

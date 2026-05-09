@@ -33,6 +33,16 @@ if ! rg -n 'load_official_cts_id_manifest' tools/check_official_wgsl_corpus.sh >
   fail "official WGSL CTS oracle manifest IDs must be loaded through a schema-checking helper"
 fi
 
+if ! rg -n 'load_official_cts_extracted_manifest' tools/check_official_wgsl_corpus.sh >/dev/null; then
+  fail "official WGSL CTS extractor manifests must be schema-checked against generated WGSL files"
+fi
+
+if rg -n 'find "\$.*cases_dir" -name .*wc -l|find "\$.*cases_dir" -name .* -exec basename' tools/check_official_wgsl_corpus.sh |
+  rg -v 'file_ids' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "official WGSL CTS case IDs must come from validated extractor manifests, not raw file scans"
+fi
+
 if rg -n 'grep -v -E .*\$.*(blocked_by_oracle|accepted_by_oracle)' tools/check_official_wgsl_corpus.sh >"$matches_file"; then
   cat "$matches_file" >&2
   fail "official WGSL CTS oracle manifests must reject malformed or duplicate IDs instead of raw grep filtering"
