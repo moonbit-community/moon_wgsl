@@ -2109,3 +2109,24 @@ test "WGSL parser structures assignment update and call statements" {
   guard phony_lhs is Some(phony_expr) else { abort("expected phony lhs") }
   debug_inspect(wgsl_expr_ref_source_text(source, phony_expr), content="\"_\"")
 }
+
+///|
+test "WGSL identifier collection exposes qualified function calls" {
+  let source =
+    #|fn entry_point() -> f32 {
+    #|  return overridable::func(1.0, 2.0);
+    #|}
+    #|
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let nodes : Array[WgslIdent] = []
+  @ast.collect_wgsl_function_body_identifier_nodes(function, nodes)
+  debug_inspect(
+    nodes.map(fn(node) { node.name() }),
+    content=(
+      #|["overridable::func"]
+    ),
+  )
+}

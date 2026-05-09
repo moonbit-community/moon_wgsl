@@ -157,6 +157,15 @@ fn WgslGraphBlock::is_type_declaration(self : WgslGraphBlock) -> Bool {
 }
 
 ///|
+fn WgslGraphBlock::is_symbol_origin(self : WgslGraphBlock) -> Bool {
+  match self.data {
+    WgslGlobalDeclData::Function(function) =>
+      function.qualifier() != Some(WgslFunctionQualifier::Override)
+    _ => self.name() != ""
+  }
+}
+
+///|
 fn build_wgsl_declaration_graph(
   source : String,
 ) -> WgslDeclarationGraph raise WgslParseError {
@@ -214,7 +223,7 @@ pub fn collect_wgsl_named_declarations_strict(
     let emitted_block = emit_wgsl_graph_block_canonical(block)
     let block_generated_start = generated_start
     generated_start = generated_start + emitted_block.length()
-    if block.name() != "" {
+    if block.is_symbol_origin() {
       declarations.push(WgslEmittedDeclaration::{
         name: block.name(),
         is_type_declaration: block.is_type_declaration(),
@@ -284,7 +293,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
   let origins : Array[WgslModuleItemOrigin] = []
   if requested_items.length() == 0 {
     for block in graph.declaration_blocks {
-      if block.name() != "" {
+      if block.is_symbol_origin() {
         origins.push(WgslModuleItemOrigin::{
           name: block.name(),
           source_start: block.start,
@@ -317,7 +326,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
   for block in graph.declaration_blocks {
     if block.name() == "" || included_names.contains(block.name()) {
       out = out + emit_wgsl_graph_block_canonical(block)
-      if block.name() != "" {
+      if block.is_symbol_origin() {
         origins.push(WgslModuleItemOrigin::{
           name: block.name(),
           source_start: block.start,

@@ -237,6 +237,15 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
     )
   }
   for binding in session.symbols.virtual_override_final_names {
+    match WgslReferencePath::from_text(binding.raw_target_name) {
+      Some(reference_path) =>
+        plan.add_symbol_reference_binding(
+          WgslIrSymbolIdentity(binding.rel_path, binding.raw_target_name),
+          reference_path,
+          binding.target_name,
+        )
+      None => ()
+    }
     plan.add_virtual_override_binding(
       binding.raw_target_name,
       binding.target_name,

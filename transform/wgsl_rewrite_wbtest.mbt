@@ -69,6 +69,25 @@ test "naga_oil wb: reference rewrite plan carries symbol identity" {
 }
 
 ///|
+test "naga_oil wb: unqualified bindings do not rewrite qualified references" {
+  let plan = WgslReferenceRewritePlan()
+  wbtest_add_symbol_reference_binding(
+    plan,
+    WgslIrSymbolIdentity("overridable.wgsl", "func"),
+    "func",
+    "funcX",
+  )
+  let rewritten = rewrite_wgsl_references_with_binding_plan(
+    "fn shade() -> f32 {\n  return overridable::func();\n}\n", plan,
+  )
+  debug_inspect(
+    rewritten.contains("return overridable::func();"),
+    content="true",
+  )
+  debug_inspect(rewritten.contains("overridable::funcX"), content="false")
+}
+
+///|
 test "naga_oil wb: identity rewrite plan does not collapse ambiguous bindings" {
   let plan = WgslReferenceRewritePlan()
   wbtest_add_symbol_reference_binding(

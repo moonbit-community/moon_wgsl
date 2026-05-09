@@ -71,6 +71,24 @@ fn wgsl_token_replacement(
 }
 
 ///|
+fn wgsl_token_replacement_starting_at(
+  token : WgslToken,
+  replacements : Array[WgslTokenReplacement],
+) -> WgslTokenReplacement? {
+  let mut matched : WgslTokenReplacement? = None
+  for replacement in replacements {
+    if replacement.start != token.pos() || replacement.end < token.end() {
+      continue
+    }
+    match matched {
+      Some(existing) if existing.end >= replacement.end => ()
+      _ => matched = Some(replacement)
+    }
+  }
+  matched
+}
+
+///|
 fn wgsl_token_is_wordlike(text : String) -> Bool {
   if text == "" {
     return false
@@ -176,10 +194,21 @@ fn emit_wgsl_token_stream_canonical(
 ) -> String {
   let mut out = ""
   let mut previous = ""
+  let mut skip_until = -1
   for token in tokens {
-    let text = match wgsl_token_replacement(token, replacements) {
-      Some(replacement) => replacement
-      None => wgsl_token_text(token)
+    if token.pos() < skip_until {
+      continue
+    }
+    let text = match wgsl_token_replacement_starting_at(token, replacements) {
+      Some(replacement) => {
+        skip_until = replacement.end
+        replacement.replacement
+      }
+      None =>
+        match wgsl_token_replacement(token, replacements) {
+          Some(replacement) => replacement
+          None => wgsl_token_text(token)
+        }
     }
     if text == "" {
       continue

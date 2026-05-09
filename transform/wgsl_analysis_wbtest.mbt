@@ -16,7 +16,7 @@ fn wbtest_rewrite_wgsl_declarations_with_rename_plan(
   source : String,
   plan : WgslRenamePlan,
 ) -> String raise WgslParseError {
-  if plan.is_empty() {
+  if plan.rules.length() == 0 {
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
@@ -40,6 +40,26 @@ fn wbtest_rewrite_wgsl_declarations_with_rename_plan(
     out = out + wgsl_canonical_top_level_block_text(rewritten)
   }
   out
+}
+
+///|
+fn wbtest_reference_plan_from_redirect_map(
+  redirect_map : @hashmap.HashMap[String, String],
+) -> WgslReferenceRewritePlan {
+  let plan = WgslReferenceRewritePlan()
+  for entry in redirect_map.iter() {
+    let (from_name, to_name) = entry
+    match WgslReferencePath::from_text(from_name) {
+      Some(reference_path) =>
+        plan.add_symbol_reference_binding(
+          WgslIrSymbolIdentity("wbtest.wgsl", from_name),
+          reference_path,
+          to_name,
+        )
+      None => ()
+    }
+  }
+  plan
 }
 
 ///|
@@ -518,9 +538,9 @@ test "rename plan reference rules rewrite recursively scoped blocks" {
     #|
   let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
   redirects.set("helper", "renamed_helper")
-  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
+  let rewritten = rewrite_wgsl_references_with_binding_plan(
     source,
-    wbtest_rename_plan_from_redirect_map(redirects, ReferencesOnly),
+    wbtest_reference_plan_from_redirect_map(redirects),
   )
   debug_inspect(rewritten.contains("fn helper()"), content="true")
   debug_inspect(rewritten.contains("return renamed_helper();"), content="true")
@@ -567,9 +587,9 @@ test "rename plan reference rules do not rewrite statement keywords" {
   redirects.set("if", "if_renamed")
   redirects.set("return", "return_renamed")
   redirects.set("let", "let_renamed")
-  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
+  let rewritten = rewrite_wgsl_references_with_binding_plan(
     source,
-    wbtest_rename_plan_from_redirect_map(redirects, ReferencesOnly),
+    wbtest_reference_plan_from_redirect_map(redirects),
   )
   debug_inspect(rewritten.contains("if (flag)"), content="true")
   debug_inspect(rewritten.contains("return 1u;"), content="true")

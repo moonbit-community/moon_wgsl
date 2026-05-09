@@ -159,14 +159,19 @@ pub fn rewrite_wgsl_override_targets_with_binding_plan(
 ///|
 fn wgsl_override_body_references_target(
   function : WgslFunction,
-  raw_target : String,
+  raw_targets : Array[String],
   target_name : String,
 ) -> Bool {
   let identifiers : Array[WgslIdent] = []
   collect_wgsl_function_body_identifier_nodes(function, identifiers)
   for ident in identifiers {
-    if ident.name() == raw_target || ident.name() == target_name {
+    if ident.name() == target_name {
       return true
+    }
+    for raw_target in raw_targets {
+      if ident.name() == raw_target {
+        return true
+      }
     }
   }
   false
@@ -234,12 +239,14 @@ fn collect_wgsl_override_body_reference_nodes(
   data : WgslGlobalDeclData,
   target_name : String,
   raw_target : String,
+  original_raw_target : String,
   base_name : String,
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   let plan = WgslRenamePlan::empty()
   plan.add(target_name, base_name, FunctionBodyReferencesOnly)
   plan.add(raw_target, base_name, FunctionBodyReferencesOnly)
+  plan.add(original_raw_target, base_name, FunctionBodyReferencesOnly)
   collect_wgsl_block_rewrite_nodes(data, build_wgsl_rename_maps(plan), nodes)
 }
 
@@ -250,6 +257,7 @@ fn rewrite_wgsl_override_fn_block(
   target_name : String,
   override_name : String,
   raw_target : String,
+  original_raw_target : String,
   base_name : String?,
 ) -> String {
   let nodes : Array[WgslTokenReplacement] = []
@@ -259,6 +267,7 @@ fn rewrite_wgsl_override_fn_block(
         block.data,
         target_name,
         raw_target,
+        original_raw_target,
         base,
         nodes,
       )
@@ -286,27 +295,38 @@ fn rewrite_wgsl_virtual_dispatch_block(
   override_names : @hashmap.HashMap[String, String],
   override_raw_targets : @hashmap.HashMap[String, String],
 ) -> String {
-  let plan = WgslRenamePlan::empty()
+  let plan = WgslReferenceRewritePlan()
   for entry in override_names.iter() {
     let (target_name, override_name) = entry
     if target_name != override_name {
-      plan.add(target_name, override_name, ReferencesOnly)
+      match WgslReferencePath::from_text(target_name) {
+        Some(reference_path) =>
+          plan.add_symbol_reference_binding(
+            WgslIrSymbolIdentity("", target_name),
+            reference_path,
+            override_name,
+          )
+        None => ()
+      }
       match override_raw_targets.get(target_name) {
-        Some(raw_target) => plan.add(raw_target, override_name, ReferencesOnly)
+        Some(raw_target) =>
+          match WgslReferencePath::from_text(raw_target) {
+            Some(reference_path) =>
+              plan.add_symbol_reference_binding(
+                WgslIrSymbolIdentity("", raw_target),
+                reference_path,
+                override_name,
+              )
+            None => ()
+          }
         None => ()
       }
     }
   }
-  if plan.is_empty() {
+  if !plan.has_symbol_bindings() {
     emit_wgsl_graph_block_canonical(block)
   } else {
-    let nodes : Array[WgslTokenReplacement] = []
-    collect_wgsl_block_rewrite_nodes(
-      block.data,
-      build_wgsl_rename_maps(plan),
-      nodes,
-    )
-    emit_wgsl_token_stream_canonical(block.tokens, nodes)
+    rewrite_wgsl_graph_block_with_binding_plan(block, plan, false)
   }
 }
 
@@ -317,6 +337,10 @@ fn wgsl_binding_plan_redirect_target(
 ) -> String {
   if split_last_identifier(target) is None {
     return target
+  }
+  match plan.virtual_target_name_for_raw_target(target) {
+    Some(virtual_target) => return virtual_target
+    None => ()
   }
   match plan.target_for_reference(target) {
     Some(redirected) => redirected
@@ -350,20 +374,27 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
         Some(WgslFunctionQualifier::Override) => {
         let raw_target = function.name().name()
         let target = wgsl_binding_plan_redirect_target(raw_target, plan)
+        let original_raw_target = match
+          plan.virtual_raw_target_name_for_target(target) {
+          Some(original) => original
+          None => raw_target
+        }
         if !virtual_names.contains(target) {
           return WgslVirtualOverrideOutput::{
             source,
-            invalid_override: Some(raw_target),
+            invalid_override: Some(target),
           }
         }
         let needs_base = wgsl_override_body_references_target(
-          function, raw_target, target,
+          function,
+          [raw_target, original_raw_target],
+          target,
         )
         if needs_base {
           override_body_references_base.set(target, true)
         }
         let override_name = match
-          plan.virtual_override_name_for_target(raw_target, target) {
+          plan.virtual_override_name_for_target(original_raw_target, target) {
           Some(name) => name
           None => target
         }
@@ -379,11 +410,12 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
           None => ()
         }
         override_names.set(target, override_name)
-        override_raw_targets.set(target, raw_target)
+        override_raw_targets.set(target, original_raw_target)
         overrides.set(
           target,
           rewrite_wgsl_override_fn_block(
-            block, function, target, override_name, raw_target, base_name,
+            block, function, target, override_name, raw_target, original_raw_target,
+            base_name,
           ),
         )
       }

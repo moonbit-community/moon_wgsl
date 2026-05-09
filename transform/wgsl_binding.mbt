@@ -15,7 +15,6 @@
 ///|
 priv enum WgslRenameRuleKind {
   GlobalDeclarationAndReferences
-  ReferencesOnly
   FunctionBodyReferencesOnly
   FunctionLocal
 }
@@ -137,11 +136,6 @@ fn WgslRenamePlan::empty() -> WgslRenamePlan {
 }
 
 ///|
-fn WgslRenamePlan::is_empty(self : WgslRenamePlan) -> Bool {
-  self.rules.length() == 0
-}
-
-///|
 fn WgslRenamePlan::add(
   self : WgslRenamePlan,
   from_name : String,
@@ -203,6 +197,44 @@ fn WgslReferenceRewritePlan::virtual_override_name_for_target(
 }
 
 ///|
+fn WgslReferenceRewritePlan::virtual_target_name_for_raw_target(
+  self : WgslReferenceRewritePlan,
+  raw_target_name : String,
+) -> String? {
+  let mut target_name : String? = None
+  for binding in self.virtual_overrides {
+    if binding.raw_target_name != raw_target_name {
+      continue
+    }
+    match target_name {
+      Some(existing) if existing != binding.target_name => return None
+      Some(_) => ()
+      None => target_name = Some(binding.target_name)
+    }
+  }
+  target_name
+}
+
+///|
+fn WgslReferenceRewritePlan::virtual_raw_target_name_for_target(
+  self : WgslReferenceRewritePlan,
+  target_name : String,
+) -> String? {
+  let mut raw_target_name : String? = None
+  for binding in self.virtual_overrides {
+    if binding.target_name != target_name {
+      continue
+    }
+    match raw_target_name {
+      Some(existing) if existing != binding.raw_target_name => return None
+      Some(_) => ()
+      None => raw_target_name = Some(binding.raw_target_name)
+    }
+  }
+  raw_target_name
+}
+
+///|
 fn build_wgsl_rename_maps(plan : WgslRenamePlan) -> WgslRenameMaps {
   let global_declaration_rules : Array[WgslRenameRule] = []
   let reference_rules : Array[WgslRenameRule] = []
@@ -214,7 +246,6 @@ fn build_wgsl_rename_maps(plan : WgslRenamePlan) -> WgslRenameMaps {
         global_declaration_rules.push(rule)
         reference_rules.push(rule)
       }
-      ReferencesOnly => reference_rules.push(rule)
       FunctionBodyReferencesOnly => function_body_reference_rules.push(rule)
       FunctionLocal => function_local_rules.push(rule)
     }
