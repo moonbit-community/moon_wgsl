@@ -34,10 +34,14 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install ripgrep
+      - name: Install CI runtime packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y ripgrep
+          sudo apt-get install -y \
+            libvulkan1 \
+            mesa-vulkan-drivers \
+            ripgrep \
+            vulkan-tools
 
       - name: Cache Cargo
         uses: actions/cache@v4
