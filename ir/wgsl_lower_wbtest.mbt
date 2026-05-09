@@ -2209,3 +2209,17 @@ test "WGSL IR lowerer materializes abstract matrix index result types" {
     content="true",
   )
 }
+
+///|
+test "WGSL IR lowerer accepts override expressions in module array aliases" {
+  let source =
+    #|override x = 1;
+    #|alias T = array<u32, x + 1>;
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(module_.overrides.items.length(), content="1")
+}

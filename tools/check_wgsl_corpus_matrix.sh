@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 manifest="${WGSL_CORPUS_MANIFEST:-testdata/wgsl_corpus_manifest.tsv}"
+runtime_valid_compose_manifest="${WGSL_CORPUS_RUNTIME_VALID_COMPOSE_MANIFEST:-testdata/wgsl_corpus_runtime_valid_compose.txt}"
 
 fail() {
   printf 'WGSL corpus matrix failed: %s\n' "$*" >&2
@@ -12,6 +13,8 @@ fail() {
 }
 
 [[ -f "$manifest" ]] || fail "missing manifest: $manifest"
+[[ -f "$runtime_valid_compose_manifest" ]] ||
+  fail "missing runtime-valid compose manifest: $runtime_valid_compose_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -21,6 +24,7 @@ trap cleanup EXIT
 
 rows="$tmpdir/rows.tsv"
 ids="$tmpdir/ids.txt"
+runtime_valid_compose_ids="$tmpdir/runtime-valid-compose.ids"
 
 awk -F '\t' '
   NF == 0 { next }
@@ -35,8 +39,14 @@ awk -F '\t' '
 ' "$manifest" > "$rows"
 
 cut -f1 "$rows" | sort > "$ids"
+grep -v -E '^($|#)' "$runtime_valid_compose_manifest" | sort > "$runtime_valid_compose_ids"
 duplicate_ids="$(uniq -d "$ids" | tr '\n' ' ')"
 [[ -z "$duplicate_ids" ]] || fail "duplicate manifest id(s): $duplicate_ids"
+
+while IFS= read -r runtime_valid_id; do
+  rg -Fx "$runtime_valid_id" "$ids" >/dev/null ||
+    fail "runtime-valid compose id is not present in corpus manifest: $runtime_valid_id"
+done < "$runtime_valid_compose_ids"
 
 contains_csv() {
   local csv="$1"
@@ -134,6 +144,9 @@ materialize_source() {
           [[ -n "$item" ]] || continue
           args+=("--additional-import" "$item")
         done
+      fi
+      if rg -Fx "$id" "$runtime_valid_compose_ids" >/dev/null; then
+        args+=("--runtime-valid")
       fi
       moon run tools/compose_case -- \
         --fixture-root "$input" \

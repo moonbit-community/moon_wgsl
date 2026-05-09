@@ -209,8 +209,24 @@ if [[ ! -f testdata/wgsl_differential_generated_manifest.tsv ]]; then
   fail "WGSL generated differential coverage must be driven by a manifest"
 fi
 
+if [[ ! -f tools/generate_wgsl_differential_case.mjs ]]; then
+  fail "WGSL generated differential source catalog must be owned by the deterministic generator"
+fi
+
+if ! rg -n 'node "\$generator" --list' tools/check_wgsl_differential_generated.sh >/dev/null; then
+  fail "WGSL generated differential gate must compare manifest case ids against the generator catalog"
+fi
+
 if ! rg -n 'bash tools/check_wgsl_differential_generated\.sh' .github/workflows/check.yml >/dev/null; then
   fail "CI must run the WGSL generated differential gate"
+fi
+
+if [[ ! -f testdata/wgsl_corpus_runtime_valid_compose.txt ]]; then
+  fail "WGSL corpus matrix runtime-valid compose cases must be manifest-owned"
+fi
+
+if ! rg -n 'WGSL_CORPUS_RUNTIME_VALID_COMPOSE_MANIFEST' tools/check_wgsl_corpus_matrix.sh >/dev/null; then
+  fail "WGSL corpus matrix must load explicit runtime-valid compose cases"
 fi
 
 if ! rg -n 'bash tools/check_moon_test_filters\.sh' .github/workflows/check.yml >/dev/null; then
@@ -263,8 +279,20 @@ if ! rg -n 'extract_gpuweb_cts_invalid_static_wgsl\.mjs' tools/check_official_wg
   fail "official WGSL CTS gate must include invalid WGSL rejection coverage"
 fi
 
+if ! rg -n 'extract_gpuweb_cts_template_wgsl\.mjs' tools/check_official_wgsl_corpus.sh >/dev/null; then
+  fail "official WGSL CTS gate must include template-generated WGSL coverage"
+fi
+
 if [[ ! -f testdata/gpuweb_cts_invalid_accepted_by_oracle.txt ]]; then
   fail "official WGSL invalid oracle-accepted cases must be manifest-owned"
+fi
+
+if [[ ! -f testdata/gpuweb_cts_template_ir_blocked_by_oracle.txt ]]; then
+  fail "official WGSL template IR oracle-blocked cases must be manifest-owned"
+fi
+
+if [[ ! -f testdata/gpuweb_cts_template_invalid_accepted_by_oracle.txt ]]; then
+  fail "official WGSL template invalid oracle-accepted cases must be manifest-owned"
 fi
 
 if ! rg -n 'validate_wgsl_ir_module\(shader_module\)' ir/wgsl_emit.mbt >/dev/null; then

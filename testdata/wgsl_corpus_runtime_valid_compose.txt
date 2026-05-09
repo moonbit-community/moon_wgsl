@@ -1,0 +1,3 @@
+# Compose cases whose source is validated and IR-roundtripped through the
+# runtime-valid writer rather than the byte-parity writer.
+upstream-atomics-compose

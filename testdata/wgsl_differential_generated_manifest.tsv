@@ -1,11 +1,17 @@
-# id	capabilities	checks	notes
-vector-select-modf-frexp	-	-	Generated differential case: vector select plus predeclared modf/frexp result members in value position.
-integer-vector-builtins	-	-	Generated differential case: integer vector bit builtins through nested expression lowering.
-texture-optional-arguments	-	textureSampleBaseClampToEdge,textureDimensions,textureGather	Generated differential case: texture optional argument shapes, gather component, and dimensions level overload.
-atomic-barrier-statements	-	workgroupBarrier,storageBarrier,textureBarrier	Generated differential case: statement-only atomic and barrier builtins must survive IR emission.
-pointer-deref-store	-	*(p) =	Generated differential case: direct pointer dereference compound stores must not emit assignment to the pointer variable itself.
-local-pointer-value	-	inc(_e,*(_e	Generated differential case: pointer-valued locals must be passed and stored as pointer values, not auto-loaded pointees.
-unary-const-switch	-	case -1i	Generated differential case: unary abstract-int constants used as switch selectors must infer and roundtrip.
-layout-abi-preservation	-	@size(16),@align(16),var<storage, read>	Generated differential case: layout attributes and storage default access must survive IR emission.
-entry-io-preservation	-	@interpolate(flat),@interpolate(perspective, centroid),@builtin(position)	Generated differential case: entry point IO attributes must survive IR emission.
-ray-query-full	ray-query	rayQueryGenerateIntersection,rayQueryConfirmIntersection,rayQueryTerminate	Generated differential case: all ray-query statement and expression forms through IR and Naga capability validation.
+# id	category	capabilities	checks	notes
+abstract-composite-access	type	-	mat2x2,array<vec2<f32>, 3>	Generated differential case: abstract matrix and array composite access must materialize derived IR result types.
+atomic-barrier-statements	statement	-	workgroupBarrier,storageBarrier,textureBarrier	Generated differential case: statement-only atomic and barrier builtins must survive IR emission.
+entry-io-preservation	entry	-	@interpolate(flat),@interpolate(perspective, centroid),@builtin(position)	Generated differential case: entry point IO attributes must survive IR emission.
+function-call-boundaries	statement	-	sink(_e	Generated differential case: expression and statement user-function calls must share the same multi-argument lowering path.
+integer-vector-builtins	builtin	-	-	Generated differential case: integer vector bit builtins through nested expression lowering.
+layout-abi-preservation	layout	-	@size(16),@align(16),var<storage, read>	Generated differential case: layout attributes and storage default access must survive IR emission.
+local-pointer-value	pointer	-	inc(_e,*(_e	Generated differential case: pointer-valued locals must be passed and stored as pointer values, not auto-loaded pointees.
+nested-lvalue-writeback	pointer	-	outer.inner.values[1u].z,bump_z(&outer.inner.values[1u])	Generated differential case: nested access lvalues and address-of member chains must preserve writeback targets.
+numeric-literal-boundaries	literal	-	3221225472u,4278255360u,2147483647i	Generated differential case: u32 and i32 numeric boundary literals must remain typed, not flattened through signed integers.
+pointer-deref-store	pointer	-	*(p) =	Generated differential case: direct pointer dereference compound stores must not emit assignment to the pointer variable itself.
+ray-query-full	resource	ray-query	rayQueryGenerateIntersection,rayQueryConfirmIntersection,rayQueryTerminate	Generated differential case: all ray-query statement and expression forms through IR and Naga capability validation.
+scoped-control-flow	control-flow	-	break if,switch	Generated differential case: nested for/loop/continuing/switch/else-if control flow must survive IR emission.
+storage-texture-atomics	resource	texture-atomic	texture_storage_2d<r32uint, atomic>,textureAtomicAdd,textureAtomicMax	Generated differential case: storage texture atomic operations must remain typed and capability-validated.
+texture-optional-arguments	resource	-	textureSampleBaseClampToEdge,textureDimensions,textureGather	Generated differential case: texture optional argument shapes, gather component, and dimensions level overload.
+unary-const-switch	literal	-	case -1i	Generated differential case: unary abstract-int constants used as switch selectors must infer and roundtrip.
+vector-select-modf-frexp	expression	-	-	Generated differential case: vector select plus predeclared modf/frexp result members in value position.

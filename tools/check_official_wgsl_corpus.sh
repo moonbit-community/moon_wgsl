@@ -7,11 +7,16 @@ cd "$repo_root"
 cts_ref="${WGSL_CTS_REF:-main}"
 cts_root="${WGSL_CTS_ROOT:-$repo_root/.moon_wgsl_cache/gpuweb_cts}"
 blocked_by_oracle="$repo_root/testdata/gpuweb_cts_ir_blocked_by_oracle.txt"
+template_blocked_by_oracle="$repo_root/testdata/gpuweb_cts_template_ir_blocked_by_oracle.txt"
 execution_blocked_by_oracle="$repo_root/testdata/gpuweb_cts_execution_ir_blocked_by_oracle.txt"
 invalid_accepted_by_oracle="$repo_root/testdata/gpuweb_cts_invalid_accepted_by_oracle.txt"
+template_invalid_accepted_by_oracle="$repo_root/testdata/gpuweb_cts_template_invalid_accepted_by_oracle.txt"
 min_parse_cases="${WGSL_CTS_MIN_PARSE_CASES:-114}"
 min_ir_cases="${WGSL_CTS_MIN_IR_CASES:-111}"
+min_template_valid_cases="${WGSL_CTS_MIN_TEMPLATE_VALID_CASES:-99}"
+min_template_ir_cases="${WGSL_CTS_MIN_TEMPLATE_IR_CASES:-97}"
 min_invalid_cases="${WGSL_CTS_MIN_INVALID_CASES:-80}"
+min_template_invalid_cases="${WGSL_CTS_MIN_TEMPLATE_INVALID_CASES:-57}"
 min_execution_cases="${WGSL_CTS_MIN_EXECUTION_CASES:-28}"
 min_execution_ir_cases="${WGSL_CTS_MIN_EXECUTION_IR_CASES:-25}"
 
@@ -157,6 +162,64 @@ if ((ir_count < min_ir_cases)); then
   exit 1
 fi
 
+echo "== GPUWeb CTS template WGSL corpus =="
+template_cases_dir="$tmpdir/template-cases"
+template_invalid_cases_dir="$tmpdir/template-invalid-cases"
+template_manifest="$tmpdir/template-manifest.tsv"
+template_invalid_manifest="$tmpdir/template-invalid-manifest.tsv"
+node tools/extract_gpuweb_cts_template_wgsl.mjs "$cts_root" "$template_cases_dir" "$template_manifest" "$template_invalid_cases_dir" "$template_invalid_manifest"
+template_case_count="$(find "$template_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+if ((template_case_count < min_template_valid_cases)); then
+  echo "official WGSL CTS template extractor produced only $template_case_count valid WGSL cases; expected at least $min_template_valid_cases" >&2
+  exit 1
+fi
+if [[ ! -f "$template_blocked_by_oracle" ]]; then
+  echo "missing template IR blocked-by-oracle manifest: $template_blocked_by_oracle" >&2
+  exit 1
+fi
+template_extracted_ids="$tmpdir/template-extracted.ids"
+template_oracle_blocked_ids="$tmpdir/template-oracle-blocked.ids"
+find "$template_cases_dir" -name '*.wgsl' -type f -exec basename {} .wgsl \; | sort > "$template_extracted_ids"
+grep -v -E '^($|#)' "$template_blocked_by_oracle" | sort > "$template_oracle_blocked_ids"
+template_ir_count=0
+template_oracle_blocked_count=0
+while IFS= read -r id; do
+  case_file="$template_cases_dir/$id.wgsl"
+  emitted="$tmpdir/$id.template.ir.wgsl"
+  if ! moon run tools/ir_roundtrip -- --mode parse --input "$case_file" --output "$tmpdir/template-parse.out" >"$tmpdir/$id.template-parse.stdout" 2>"$tmpdir/$id.template-parse.stderr"; then
+    print_case_failure "template parse" "$id" "$case_file" "$tmpdir/$id.template-parse.stdout" "$tmpdir/$id.template-parse.stderr"
+    exit 1
+  fi
+  if ! moon run tools/ir_roundtrip -- --input "$case_file" --output "$emitted" >"$tmpdir/$id.template-ir.stdout" 2>"$tmpdir/$id.template-ir.stderr"; then
+    print_case_failure "template IR roundtrip" "$id" "$case_file" "$tmpdir/$id.template-ir.stdout" "$tmpdir/$id.template-ir.stderr"
+    exit 1
+  fi
+  if ! moon run tools/ir_roundtrip -- --mode parse --input "$emitted" --output "$tmpdir/template-reparse.out" >"$tmpdir/$id.template-reparse.stdout" 2>"$tmpdir/$id.template-reparse.stderr"; then
+    print_case_failure "template IR reparse" "$id" "$emitted" "$tmpdir/$id.template-reparse.stdout" "$tmpdir/$id.template-reparse.stderr"
+    exit 1
+  fi
+  if grep -Fxq "$id" "$template_oracle_blocked_ids"; then
+    template_oracle_blocked_count=$((template_oracle_blocked_count + 1))
+    continue
+  fi
+  validate_wgsl_with_detected_capabilities "$emitted"
+  template_ir_count=$((template_ir_count + 1))
+done < "$template_extracted_ids"
+
+while IFS= read -r id; do
+  if [[ ! -f "$template_cases_dir/$id.wgsl" ]]; then
+    echo "official WGSL CTS template oracle-blocked id not found in extracted manifest: $id" >&2
+    echo "current template extracted manifest:" >&2
+    sed -n '1,160p' "$template_manifest" >&2
+    exit 1
+  fi
+done < "$template_oracle_blocked_ids"
+
+if ((template_ir_count < min_template_ir_cases)); then
+  echo "official WGSL CTS template validated IR corpus contains only $template_ir_count case(s); expected at least $min_template_ir_cases" >&2
+  exit 1
+fi
+
 echo "== GPUWeb CTS WGSL execution IR corpus =="
 execution_cases_dir="$tmpdir/execution-cases"
 execution_manifest="$tmpdir/execution-manifest.tsv"
@@ -251,5 +314,40 @@ if ! diff -u "$invalid_expected_oracle_accepted_ids" "$invalid_actual_oracle_acc
   exit 1
 fi
 
+template_invalid_case_count="$(find "$template_invalid_cases_dir" -name '*.wgsl' -type f | wc -l | tr -d ' ')"
+if ((template_invalid_case_count < min_template_invalid_cases)); then
+  echo "official WGSL CTS template invalid extractor produced only $template_invalid_case_count WGSL cases; expected at least $min_template_invalid_cases" >&2
+  exit 1
+fi
+if [[ ! -f "$template_invalid_accepted_by_oracle" ]]; then
+  echo "missing template invalid accepted-by-oracle manifest: $template_invalid_accepted_by_oracle" >&2
+  exit 1
+fi
+template_invalid_expected_oracle_accepted_ids="$tmpdir/template-invalid-expected-oracle-accepted.ids"
+template_invalid_actual_oracle_accepted_ids="$tmpdir/template-invalid-actual-oracle-accepted.ids"
+grep -v -E '^($|#)' "$template_invalid_accepted_by_oracle" | sort > "$template_invalid_expected_oracle_accepted_ids"
+: > "$template_invalid_actual_oracle_accepted_ids"
+while IFS= read -r invalid_case_file; do
+  invalid_id="$(basename "$invalid_case_file" .wgsl)"
+  invalid_emitted="$tmpdir/$invalid_id.template-invalid.ir.wgsl"
+  if moon run tools/ir_roundtrip -- --input "$invalid_case_file" --output "$invalid_emitted" >/dev/null 2>"$tmpdir/$invalid_id.template-invalid-ir.stderr" &&
+     validate_wgsl_with_detected_capabilities "$invalid_emitted" >/dev/null 2>"$tmpdir/$invalid_id.template-invalid-naga.stderr"; then
+    if grep -Fxq "$invalid_id" "$template_invalid_expected_oracle_accepted_ids"; then
+      echo "$invalid_id" >> "$template_invalid_actual_oracle_accepted_ids"
+      continue
+    fi
+    echo "official WGSL CTS template invalid case unexpectedly passed moon IR plus Naga validation: $invalid_id" >&2
+    sed -n '1,120p' "$invalid_case_file" >&2
+    exit 1
+  fi
+done < <(find "$template_invalid_cases_dir" -name '*.wgsl' -type f | sort)
+sort -o "$template_invalid_actual_oracle_accepted_ids" "$template_invalid_actual_oracle_accepted_ids"
+if ! diff -u "$template_invalid_expected_oracle_accepted_ids" "$template_invalid_actual_oracle_accepted_ids" >"$tmpdir/template-invalid-oracle-accepted.diff"; then
+  echo "official WGSL CTS template invalid accepted-by-oracle manifest is out of date" >&2
+  sed -n '1,160p' "$tmpdir/template-invalid-oracle-accepted.diff" >&2
+  exit 1
+fi
+
 invalid_rejected_count=$((invalid_case_count - $(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ')))
-echo "official WGSL CTS corpus gate passed: validation cases=$case_count validation-naga=$ir_count validation-oracle-blocked=$oracle_blocked_count execution cases=$execution_case_count execution-naga=$execution_ir_count execution-oracle-blocked=$execution_oracle_blocked_count invalid-rejected=$invalid_rejected_count invalid-oracle-accepted=$(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ')"
+template_invalid_rejected_count=$((template_invalid_case_count - $(wc -l < "$template_invalid_actual_oracle_accepted_ids" | tr -d ' ')))
+echo "official WGSL CTS corpus gate passed: validation cases=$case_count validation-naga=$ir_count validation-oracle-blocked=$oracle_blocked_count template-validation cases=$template_case_count template-validation-naga=$template_ir_count template-validation-oracle-blocked=$template_oracle_blocked_count execution cases=$execution_case_count execution-naga=$execution_ir_count execution-oracle-blocked=$execution_oracle_blocked_count invalid-rejected=$invalid_rejected_count invalid-oracle-accepted=$(wc -l < "$invalid_actual_oracle_accepted_ids" | tr -d ' ') template-invalid-rejected=$template_invalid_rejected_count template-invalid-oracle-accepted=$(wc -l < "$template_invalid_actual_oracle_accepted_ids" | tr -d ' ')"

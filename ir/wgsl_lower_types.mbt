@@ -411,7 +411,7 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
         Some(handle) =>
           self.lower_constant_array_size_from_constant_handle(handle)
         None =>
-          match self.override_names.get(name) {
+          match self.ensure_override_declaration_predeclared(name) {
             Some(handle) =>
               ArraySize::Pending(
                 self.shader_module.append_global_expression(

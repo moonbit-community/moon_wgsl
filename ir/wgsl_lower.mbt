@@ -780,6 +780,24 @@ fn WgslIrLowerer::ensure_constant_declaration_lowered(
 }
 
 ///|
+fn WgslIrLowerer::ensure_override_declaration_predeclared(
+  self : WgslIrLowerer,
+  name : String,
+) -> Handle? raise WgslIrLowerError {
+  match self.override_names.get(name) {
+    Some(handle) => Some(handle)
+    None =>
+      match self.override_declarations.get(name) {
+        Some(override_decl) => {
+          self.predeclare_override_declaration(override_decl)
+          self.override_names.get(name)
+        }
+        None => None
+      }
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_global_const_assert(
   self : WgslIrLowerer,
   expr : @ast.WgslExprRef,
@@ -4888,7 +4906,7 @@ fn WgslIrLowerer::global_identifier_expression(
   match self.ensure_constant_declaration_lowered(name.name()) {
     Some(handle) => Expression::Constant(handle)
     None =>
-      match self.override_names.get(name.name()) {
+      match self.ensure_override_declaration_predeclared(name.name()) {
         Some(handle) => Expression::Override(handle)
         None =>
           match self.global_names.get(name.name()) {
@@ -6404,7 +6422,7 @@ fn WgslIrLowerer::lower_identifier_expression(
       return function.expressions.append(Expression::Constant(handle))
     None => ()
   }
-  match self.override_names.get(name) {
+  match self.ensure_override_declaration_predeclared(name) {
     Some(handle) =>
       return function.expressions.append(Expression::Override(handle))
     None => ()
