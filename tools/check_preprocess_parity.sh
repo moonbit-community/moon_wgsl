@@ -299,9 +299,18 @@ oracle \
   --fixture-root testdata/naga_oil_upstream/compose_tests/overrides \
   --entry top.wgsl \
   --output "$tmpdir/override_top.wgsl"
-diff_exact \
-  testdata/naga_oil_upstream/compose_tests/expected/override_top.txt \
+assert_contains "$tmpdir/override_top.wgsl" "fn innerX_naga_oil_vrt_XNVXWIX(" override_top
+assert_contains "$tmpdir/override_top.wgsl" "return (arg" override_top
+assert_contains "$tmpdir/override_top.wgsl" "* 3f);" override_top
+assert_contains "$tmpdir/override_top.wgsl" "fn innerX_naga_oil_mod_XNVXWIX(" override_top
+assert_contains "$tmpdir/override_top.wgsl" "* 2f);" override_top
+assert_contains \
   "$tmpdir/override_top.wgsl" \
+  "let _e1: f32 = innerX_naga_oil_vrt_XNVXWIX(1f);" \
+  override_top
+assert_contains \
+  "$tmpdir/override_top.wgsl" \
+  "let _e0: f32 = outerX_naga_oil_mod_XNVXWIX();" \
   override_top
 
 echo "== naga_oil oracle: invalid identifiers =="

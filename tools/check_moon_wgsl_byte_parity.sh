@@ -42,7 +42,6 @@ moon_compose() {
   moon run tools/compose_case -- \
     --fixture-root "$fixture_root" \
     --entry "$entry" \
-    --naga-oil-writer-parity \
     --output "$output" \
     "$@"
 }
@@ -86,6 +85,7 @@ check_runtime_valid_case() {
   moon run tools/compose_case -- \
     --fixture-root "$fixture_root" \
     --entry "$entry" \
+    --runtime-valid \
     --output "$actual" \
     "$@"
   validate_wgsl "$actual" >/dev/null

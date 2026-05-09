@@ -333,6 +333,30 @@ pub fn Composer::prepare_wgsl_source(
   options : WgslComposeOptions,
 ) -> PreparedWgslSource raise ComposerError {
   let resolved = self.resolve_wgsl_compose_source(rel, options)
+  let ir_source = compose_wgsl_source_via_naga_oil_writer_compatible_ir(
+    resolved.source,
+    resolved.symbols,
+    normalize_shader_rel_path(rel),
+  )
+  let source_files : Array[WgslSourceFile] = [
+    { rel_path: normalize_shader_rel_path(rel), source: ir_source },
+  ]
+  PreparedWgslSource(
+    ir_source,
+    source_files,
+    build_prepared_wgsl_source_catalog(source_files.copy()),
+    resolved.symbols.source_origins.copy(),
+    resolved.diagnostics,
+  )
+}
+
+///|
+pub fn Composer::prepare_wgsl_source_runtime_valid(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> PreparedWgslSource raise ComposerError {
+  let resolved = self.resolve_wgsl_compose_source(rel, options)
   let ir_source = compose_wgsl_source_via_ir(
     resolved.source,
     resolved.symbols,
@@ -357,6 +381,15 @@ pub fn Composer::compose_wgsl(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   self.prepare_wgsl_source(rel, options).source
+}
+
+///|
+pub fn Composer::compose_wgsl_runtime_valid(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  self.prepare_wgsl_source_runtime_valid(rel, options).source
 }
 
 ///|

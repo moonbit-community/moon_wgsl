@@ -51,10 +51,12 @@ pub fn Composer::clear_sources(Self) -> Unit
 pub fn Composer::compose_wgsl(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_before_ir(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_for_naga_oil_writer_parity(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_runtime_valid(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::compose_wgsl_source(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
 pub fn Composer::contains_module(Self, String) -> Bool
 pub fn Composer::default() -> Self
 pub fn Composer::prepare_wgsl_source(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
+pub fn Composer::prepare_wgsl_source_runtime_valid(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
 pub fn Composer::register_source(Self, String, String) -> Unit
 pub fn Composer::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
 pub fn Composer::register_source_tree(Self, String, @common.WgslSourceScanOptions) -> Unit raise @fs.IOError

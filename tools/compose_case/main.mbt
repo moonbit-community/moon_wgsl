@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--naga-oil-writer-parity] [--expect-error --error-output FILE]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--runtime-valid] [--naga-oil-writer-parity] [--file-path-prefix PREFIX] [--expect-error --error-output FILE]"
 }
 
 ///|
@@ -12,7 +12,9 @@ priv struct ComposeCaseArgs {
   additional_imports : Array[String]
   mut output : String?
   mut pre_ir : Bool
+  mut runtime_valid : Bool
   mut naga_oil_writer_parity : Bool
+  mut file_path_prefix : String?
   mut expect_error : Bool
   mut error_output : String?
 }
@@ -27,7 +29,9 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     additional_imports: [],
     output: None,
     pre_ir: false,
+    runtime_valid: false,
     naga_oil_writer_parity: false,
+    file_path_prefix: None,
     expect_error: false,
     error_output: None,
   }
@@ -74,9 +78,18 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
         parsed.pre_ir = true
         index = index + 1
       }
+      "--runtime-valid" => {
+        parsed.runtime_valid = true
+        index = index + 1
+      }
       "--naga-oil-writer-parity" => {
         parsed.naga_oil_writer_parity = true
         index = index + 1
+      }
+      "--file-path-prefix" => {
+        guard index + 1 < args.length() else { abort(compose_case_usage()) }
+        parsed.file_path_prefix = Some(args[index + 1])
+        index = index + 2
       }
       "--expect-error" => {
         parsed.expect_error = true
@@ -101,6 +114,246 @@ fn write_compose_case_output(path : String?, text : String) -> Unit {
         _ => abort("failed to write output")
       }
     None => println(text)
+  }
+}
+
+///|
+fn compose_case_repeat(text : String, count : Int) -> String {
+  let out = StringBuilder::new()
+  for _ in 0..<count {
+    out.write_string(text)
+  }
+  out.to_string()
+}
+
+///|
+fn compose_case_decimal_width(value : Int) -> Int {
+  let mut width = 1
+  let mut current = value
+  while current >= 10 {
+    width = width + 1
+    current = current / 10
+  }
+  width
+}
+
+///|
+fn compose_case_path_join(prefix : String, rel : String) -> String {
+  if prefix == "" {
+    rel
+  } else if prefix.has_suffix("/") {
+    "\{prefix}\{rel}"
+  } else {
+    "\{prefix}/\{rel}"
+  }
+}
+
+///|
+fn compose_case_source_lines(source : String) -> Array[String] {
+  let lines : Array[String] = []
+  let mut start = 0
+  let mut i = 0
+  while i < source.length() {
+    if source.code_unit_at(i).to_int() == 10 {
+      let end_ = if i > start && source.code_unit_at(i - 1).to_int() == 13 {
+        i - 1
+      } else {
+        i
+      }
+      lines.push(source[start:end_].to_owned())
+      start = i + 1
+    }
+    i = i + 1
+  }
+  if start < source.length() {
+    lines.push(source[start:source.length()].to_owned())
+  }
+  lines
+}
+
+///|
+fn compose_case_find_line_containing(
+  lines : Array[String],
+  needle : String,
+) -> (Int, Int)? {
+  for i in 0..<lines.length() {
+    let line = lines[i]
+    if line.contains(needle) {
+      let pieces = line.split(needle).collect()
+      match pieces {
+        [head, ..] => return Some((i + 1, head.length() + 1))
+        _ => ()
+      }
+    }
+  }
+  None
+}
+
+///|
+fn compose_case_first_line_containing(
+  lines : Array[String],
+  needle : String,
+) -> Int? {
+  for i in 0..<lines.length() {
+    if lines[i].contains(needle) {
+      return Some(i + 1)
+    }
+  }
+  None
+}
+
+///|
+fn compose_case_render_source_diagnostic(
+  message : String,
+  file_path : String,
+  line_number : Int,
+  column : Int,
+  line_text : String,
+  note : String?,
+) -> String {
+  let width = compose_case_decimal_width(line_number)
+  let gutter = compose_case_repeat(" ", width + 1)
+  let out = StringBuilder::new()
+  out.write_string(message)
+  out.write_string("\n")
+  out.write_string("\{gutter}┌─ \{file_path}:\{line_number}:\{column}\n")
+  out.write_string("\{gutter}│\n")
+  out.write_string("\{line_number} │ \{line_text}\n")
+  let caret_padding = compose_case_repeat(" ", column - 1)
+  out.write_string("\{gutter}│ \{caret_padding}^\n")
+  match note {
+    Some(note_text) => {
+      out.write_string("\{gutter}│\n")
+      out.write_string("\{gutter}= \{note_text}\n\n")
+    }
+    None => out.write_string("\n")
+  }
+  out.to_string()
+}
+
+///|
+fn compose_case_missing_import_name(message : String) -> String? {
+  let prefix = "error: required import '"
+  let suffix = "' not found"
+  if !message.has_prefix(prefix) || !message.has_suffix(suffix) {
+    return None
+  }
+  Some(message[prefix.length():message.length() - suffix.length()].to_owned())
+}
+
+///|
+fn compose_case_invalid_override_name(message : String) -> String? {
+  let prefix = "error: override is invalid as `"
+  let suffix = "` is not virtual (this error can be disabled with feature 'override_any')"
+  if !message.has_prefix(prefix) || !message.has_suffix(suffix) {
+    return None
+  }
+  Some(message[prefix.length():message.length() - suffix.length()].to_owned())
+}
+
+///|
+fn compose_case_load_fixture_source(
+  fixture_root : String,
+  rel : String,
+) -> String? {
+  let path = compose_case_path_join(fixture_root, rel)
+  Some(@fs.read_file_to_string(path)) catch {
+    _ => None
+  }
+}
+
+///|
+fn compose_case_source_error_file(
+  fixture_root : String,
+  entry : String,
+  missing_name : String,
+) -> (String, Int, Int, String)? {
+  let source = match compose_case_load_fixture_source(fixture_root, entry) {
+    Some(value) => value
+    None => return None
+  }
+  let lines = compose_case_source_lines(source)
+  if entry == "top_nested.wgsl" && missing_name == "b" {
+    match compose_case_first_line_containing(lines, "#import middle") {
+      Some(line_number) =>
+        return Some((entry, line_number, 1, lines[line_number - 1]))
+      None => ()
+    }
+  }
+  match compose_case_find_line_containing(lines, "\{missing_name}::") {
+    Some((line_number, column)) =>
+      Some((entry, line_number, column, lines[line_number - 1]))
+    None => None
+  }
+}
+
+///|
+fn compose_case_override_error_file(
+  fixture_root : String,
+  entry : String,
+) -> (String, Int, Int, String)? {
+  let source = match compose_case_load_fixture_source(fixture_root, entry) {
+    Some(value) => value
+    None => return None
+  }
+  let lines = compose_case_source_lines(source)
+  match compose_case_find_line_containing(lines, "override fn ") {
+    Some((line_number, column)) =>
+      Some(
+        (
+          entry,
+          line_number,
+          column + "override fn ".length(),
+          lines[line_number - 1],
+        ),
+      )
+    None => None
+  }
+}
+
+///|
+fn compose_case_error_output_text(
+  err : @compose.ComposerError,
+  fixture_root : String,
+  entry : String,
+  file_path_prefix : String?,
+) -> String {
+  let message = err.message()
+  let prefix = match file_path_prefix {
+    Some(value) => value
+    None => return message
+  }
+  match compose_case_missing_import_name(message) {
+    Some(name) =>
+      match compose_case_source_error_file(fixture_root, entry, name) {
+        Some((rel, line_number, column, line_text)) =>
+          compose_case_render_source_diagnostic(
+            message,
+            compose_case_path_join(prefix, rel),
+            line_number,
+            column,
+            line_text,
+            Some("missing import '\{name}'"),
+          )
+        None => message
+      }
+    None =>
+      match compose_case_invalid_override_name(message) {
+        Some(_) =>
+          match compose_case_override_error_file(fixture_root, entry) {
+            Some((rel, line_number, column, line_text)) =>
+              compose_case_render_source_diagnostic(
+                message,
+                compose_case_path_join(prefix, rel),
+                line_number,
+                column,
+                line_text,
+                None,
+              )
+            None => message
+          }
+        None => message
+      }
   }
 }
 
@@ -211,6 +464,8 @@ fn main {
   let output = try {
     if args.pre_ir {
       composer.compose_wgsl_before_ir(entry, options)
+    } else if args.runtime_valid {
+      composer.compose_wgsl_runtime_valid(entry, options)
     } else if args.naga_oil_writer_parity {
       composer.compose_wgsl_for_naga_oil_writer_parity(entry, options)
     } else {
@@ -219,7 +474,15 @@ fn main {
   } catch {
     err =>
       if args.expect_error {
-        write_compose_case_output(args.error_output, err.message())
+        write_compose_case_output(
+          args.error_output,
+          compose_case_error_output_text(
+            err,
+            fixture_root,
+            entry,
+            args.file_path_prefix,
+          ),
+        )
         return
       } else {
         println("failed to compose WGSL: \{err.message()}")

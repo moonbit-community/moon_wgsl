@@ -373,8 +373,20 @@ if rg -n 'byte-exception|oracle-byte-exception|exception row|normalization excep
   fail "naga_oil byte parity gates must not use exception or normalization classes"
 fi
 
-if ! rg -n -- '--naga-oil-writer-parity' tools/check_moon_wgsl_byte_parity.sh >/dev/null; then
-  fail "byte parity must use the explicit naga-oil writer parity profile"
+if rg -n 'headline|first-line|first line' \
+  testdata/naga_oil_upstream/compose_tests/parity_manifest.tsv \
+  tools/check_moon_wgsl_error_parity.sh >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "naga_oil parity gates must not use diagnostic-headline classes"
+fi
+
+if rg -n -- '--runtime-valid' tools/check_moon_wgsl_byte_parity.sh >/dev/null && \
+  ! rg -n 'check_runtime_valid_case' tools/check_moon_wgsl_byte_parity.sh >/dev/null; then
+  fail "byte parity must use default upstream writer output; runtime-valid mode is allowed only for the atomics validation cross-check"
+fi
+
+if ! rg -n 'compose_wgsl_runtime_valid' tools/wgsl_validation_cases/main.mbt >/dev/null; then
+  fail "WGSL validation generators must use the explicit runtime-valid compose path"
 fi
 
 if ! rg -n 'bash tools/check_external_wgsl_corpus\.sh' .github/workflows/check.yml >/dev/null; then

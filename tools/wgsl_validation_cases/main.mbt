@@ -103,7 +103,7 @@ fn validation_upstream_diagnostic_filters_source() -> String {
   ) catch {
     _ => abort("expected diagnostic filters fixture registration success")
   }
-  composer.compose_wgsl(
+  composer.compose_wgsl_runtime_valid(
     "top.wgsl",
     validation_compose_options(validation_empty_defines()),
   ) catch {
@@ -137,7 +137,7 @@ fn validation_bevy_issue8_source() -> String {
     "  return lighting::read_clustered_light();\n" +
     "}\n",
   )
-  composer.compose_wgsl(
+  composer.compose_wgsl_runtime_valid(
     "root.wgsl",
     validation_compose_options(validation_empty_defines()),
   ) catch {
@@ -170,7 +170,7 @@ fn validation_bevy_source(entry : String) -> String {
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
-  composer.compose_wgsl(entry, {
+  composer.compose_wgsl_runtime_valid(entry, {
     defines: validation_bool_defines(validation_bevy_forward_defines()),
     value_defines: validation_bevy_value_defines(),
     redirects: [],
@@ -190,7 +190,7 @@ fn validation_upstream_raycast_source() -> String {
   ) catch {
     _ => abort("expected upstream raycast fixture registration success")
   }
-  composer.compose_wgsl(
+  composer.compose_wgsl_runtime_valid(
     "top.wgsl",
     validation_compose_options(validation_empty_defines()),
   ) catch {
@@ -208,7 +208,7 @@ fn validation_upstream_dual_source_blending_source() -> String {
   ) catch {
     _ => abort("expected upstream dual-source fixture registration success")
   }
-  composer.compose_wgsl(
+  composer.compose_wgsl_runtime_valid(
     "blending.wgsl",
     validation_compose_options(validation_empty_defines()),
   ) catch {
@@ -260,7 +260,7 @@ fn validation_issue9_type_identity_source() -> String {
     "  return pbr_input.value;\n" +
     "}\n",
   )
-  composer.compose_wgsl(
+  composer.compose_wgsl_runtime_valid(
     "pbr.wgsl",
     validation_compose_options(validation_empty_defines()),
   ) catch {
@@ -306,7 +306,7 @@ fn validation_issue13_nested_alias_global_source() -> String {
     "  return pbr_value();\n" +
     "}\n",
   )
-  composer.compose_wgsl(
+  composer.compose_wgsl_runtime_valid(
     "bevy_pbr/src/render/pbr.wgsl",
     validation_compose_options(validation_empty_defines()),
   ) catch {
