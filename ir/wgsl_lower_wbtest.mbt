@@ -1680,6 +1680,134 @@ test "WGSL AST lowerer supports storage texture atomics" {
 }
 
 ///|
+test "WGSL AST lowerer permits textureStore on atomic storage textures" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var image: texture_storage_2d<r32uint, atomic>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    #|  textureStore(image, id.xy, vec4<u32>(0u));
+    #|  textureAtomicMax(image, id.xy, 1u);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("textureStore(image"), content="true")
+  debug_inspect(emitted.contains("textureAtomicMax(image"), content="true")
+}
+
+///|
+test "WGSL AST lowerer materializes storage texture load result types" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var out_tex: texture_storage_2d<rgba32float, write>;
+    #|
+    #|@group(0) @binding(1)
+    #|var in_tex: texture_storage_2d<r32float, read>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  textureStore(out_tex, vec2u(0), textureLoad(in_tex, vec2u(0)));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("textureLoad(in_tex"), content="true")
+}
+
+///|
+test "WGSL AST lowerer accepts fixed array zero constructors" {
+  let source =
+    #|fn main() {
+    #|  var values = array<array<f32, 10>, 5>();
+    #|  values[4][9] = 1.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
+test "WGSL AST lowerer accepts scalar and struct zero constructors" {
+  let source =
+    #|struct Foo {
+    #|  a: vec4<f32>,
+    #|  b: i32,
+    #|}
+    #|
+    #|const cz0 = bool();
+    #|const cz1 = i32();
+    #|const cz2 = u32();
+    #|const cz3 = f32();
+    #|const cz4 = Foo();
+    #|
+    #|fn main() {
+    #|  let zvc0 = bool();
+    #|  let zvc1 = i32();
+    #|  let zvc2 = u32();
+    #|  let zvc3 = f32();
+    #|  let zvc4 = Foo();
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
+test "WGSL AST lowerer validates modf and frexp result member access" {
+  let source =
+    #|fn main() {
+    #|  let modf_scalar = modf(1.5).whole;
+    #|  let modf_vector = modf(vec4(1.5, 1.5, 1.5, 1.5)).fract.x;
+    #|  let frexp_scalar: i32 = frexp(1.5).exp;
+    #|  let frexp_vector: i32 = frexp(vec4(1.5, 1.5, 1.5, 1.5)).exp.x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
+test "WGSL AST lowerer validates address-of read-only storage globals" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var<storage, read> values: array<f32>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  _ = &values;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
 test "WGSL AST lowerer folds constant-backed array sizes" {
   let source =
     #|const COUNT: u32 = 4u;

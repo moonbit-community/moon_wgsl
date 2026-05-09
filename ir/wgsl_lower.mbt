@@ -4408,6 +4408,7 @@ fn WgslIrLowerer::lower_image_load_expression(
       Some(self.lower_function_expression_node(arguments[2], function, scope)),
     )
   }
+  ignore(self.image_expression_result_type(function, image, None, None))
   function.expressions.append(
     Expression::ImageLoad(image, coordinate, array_index, sample, level),
   )

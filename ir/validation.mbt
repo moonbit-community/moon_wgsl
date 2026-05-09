@@ -1089,7 +1089,7 @@ fn WgslIrValidator::require_function_compose_signature(
     Some(type_) =>
       match type_.inner {
         Scalar(_) =>
-          if components.length() != 1 {
+          if components.length() != 0 && components.length() != 1 {
             raise WgslIrValidationError::InvalidExpression(
               "scalar constructor component count mismatch",
               ty.index(),
@@ -1110,14 +1110,14 @@ fn WgslIrValidator::require_function_compose_signature(
             ty.index(),
           )
         Struct(members, _) | PredeclaredStruct(members, _) =>
-          if components.length() != members.length() {
+          if components.length() != 0 && components.length() != members.length() {
             raise WgslIrValidationError::InvalidExpression(
               "struct constructor component count mismatch",
               ty.index(),
             )
           }
         Array(_, Constant(count), _) | BindingArray(_, Constant(count)) =>
-          if components.length() != count {
+          if components.length() != 0 && components.length() != count {
             raise WgslIrValidationError::InvalidExpression(
               "array constructor component count mismatch",
               ty.index(),
@@ -1144,7 +1144,7 @@ fn WgslIrValidator::require_global_compose_signature(
     Some(type_) =>
       match type_.inner {
         Scalar(_) =>
-          if components.length() != 1 {
+          if components.length() != 0 && components.length() != 1 {
             raise WgslIrValidationError::InvalidExpression(
               "scalar constructor component count mismatch",
               ty.index(),
@@ -1163,14 +1163,14 @@ fn WgslIrValidator::require_global_compose_signature(
             ty.index(),
           )
         Struct(members, _) | PredeclaredStruct(members, _) =>
-          if components.length() != members.length() {
+          if components.length() != 0 && components.length() != members.length() {
             raise WgslIrValidationError::InvalidExpression(
               "struct constructor component count mismatch",
               ty.index(),
             )
           }
         Array(_, Constant(count), _) | BindingArray(_, Constant(count)) =>
-          if components.length() != count {
+          if components.length() != 0 && components.length() != count {
             raise WgslIrValidationError::InvalidExpression(
               "array constructor component count mismatch",
               ty.index(),
@@ -1398,7 +1398,7 @@ fn WgslIrValidator::require_function_address_of_signature(
       target.index(),
     )
   }
-  guard self.store_target_value_type(function, target) is Some(target_ty) else {
+  guard self.function_expression_value_type(function, target) is Some(target_ty) else {
     raise WgslIrValidationError::InvalidExpression(
       "address-of target has no value type",
       target.index(),
@@ -1614,7 +1614,8 @@ fn WgslIrValidator::require_image_store_signature(
     Some(type_) =>
       match type_.inner {
         Image(_, _, Storage(format, access)) =>
-          if access.contains(StorageAccess::store()) {
+          if access.contains(StorageAccess::store()) ||
+            access.contains(StorageAccess::atomic_access()) {
             Some(wgsl_ir_validation_storage_format_scalar(format))
           } else {
             None
@@ -1977,6 +1978,63 @@ fn WgslIrValidator::store_target_value_type(
             Some(ty) =>
               if self.type_is_pointer_like(ty) &&
                 self.pointer_type_is_writable(ty) {
+                self.deref_type(ty)
+              } else {
+                None
+              }
+            None => None
+          }
+        Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) =>
+          if self.expression_is_addressable(function, handle) {
+            self.function_expression_inner_type(function, expression)
+          } else {
+            None
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::function_expression_value_type(
+  self : WgslIrValidator,
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        FunctionArgument(_) =>
+          match self.function_expression_inner_type(function, expression) {
+            Some(ty) =>
+              if self.type_is_pointer_like(ty) {
+                self.deref_type(ty)
+              } else {
+                None
+              }
+            None => None
+          }
+        LocalVariable(local_handle) =>
+          match function.local_variables.items.get(local_handle.index()) {
+            Some(local_variable) =>
+              if local_variable.kind == Var ||
+                self.type_is_pointer_like(local_variable.ty) {
+                Some(local_variable.ty)
+              } else {
+                None
+              }
+            None => None
+          }
+        GlobalVariable(global) =>
+          match self.shader_module.global_variables.items.get(global.index()) {
+            Some(variable) => Some(variable.ty)
+            None => None
+          }
+        Load(inner) =>
+          match self.function_expression_type(function, inner) {
+            Some(ty) =>
+              if self.type_is_pointer_like(ty) {
                 self.deref_type(ty)
               } else {
                 None
@@ -2636,6 +2694,8 @@ fn WgslIrValidator::math_result_type(
 ) -> Handle? {
   guard input is Some(input_ty) else { return None }
   match math_function {
+    Modf => self.predeclared_numeric_result_type(input_ty, false)
+    Frexp => self.predeclared_numeric_result_type(input_ty, true)
     Pack4x8snorm
     | Pack4x8unorm
     | Pack2x16snorm
@@ -2658,6 +2718,47 @@ fn WgslIrValidator::math_result_type(
     Transpose => self.transpose_type(input_ty)
     _ => Some(input_ty)
   }
+}
+
+///|
+fn WgslIrValidator::predeclared_numeric_result_type(
+  self : WgslIrValidator,
+  input_ty : Handle,
+  frexp : Bool,
+) -> Handle? {
+  match self.shader_module.types.get(input_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) =>
+          if frexp {
+            self.predeclared_type_handle(FrexpResult(None, scalar))
+          } else {
+            self.predeclared_type_handle(ModfResult(None, scalar))
+          }
+        Vector(size, scalar) =>
+          if frexp {
+            self.predeclared_type_handle(FrexpResult(Some(size), scalar))
+          } else {
+            self.predeclared_type_handle(ModfResult(Some(size), scalar))
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::predeclared_type_handle(
+  self : WgslIrValidator,
+  predeclared : PredeclaredType,
+) -> Handle? {
+  for item in self.shader_module.special_types.predeclared_types {
+    let (existing, handle) = item
+    if existing == predeclared {
+      return Some(handle)
+    }
+  }
+  None
 }
 
 ///|
