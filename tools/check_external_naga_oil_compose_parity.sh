@@ -7,6 +7,7 @@ cd "$repo_root"
 manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_MANIFEST:-testdata/external_naga_oil_compose_parity.tsv}"
 repo_manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifest.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
+expected_case_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES:-6}"
 
 fail() {
   printf 'external naga-oil compose parity gate failed: %s\n' "$*" >&2
@@ -48,6 +49,40 @@ lookup_repo_row() {
     $0 !~ /^($|#)/ && $1 == id { print; found = 1; exit }
     END { if (!found) exit 1 }
   ' "$repo_manifest"
+}
+
+validate_manifest_schemas() {
+  local parity_keys="$tmpdir/parity.keys"
+  local repo_ids="$tmpdir/repo.ids"
+  local duplicate_keys
+  local duplicate_repo_ids
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    NF != 7 {
+      printf("external naga-oil compose parity row has %d field(s), expected 7: %s\n", NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    $1 == "" || $2 == "" || $7 == "" {
+      printf("external naga-oil compose parity row must include id, rel_path, and notes: %s\n", $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 "\t" $2 }
+  ' "$manifest" | sort > "$parity_keys"
+  duplicate_keys="$(uniq -d "$parity_keys" | tr '\n' ' ')"
+  [[ -z "$duplicate_keys" ]] || fail "duplicate external naga-oil compose parity row(s): $duplicate_keys"
+
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    NF != 9 {
+      printf("external WGSL corpus repo row has %d field(s), expected 9: %s\n", NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 }
+  ' "$repo_manifest" | sort > "$repo_ids"
+  duplicate_repo_ids="$(uniq -d "$repo_ids" | tr '\n' ' ')"
+  [[ -z "$duplicate_repo_ids" ]] || fail "duplicate external WGSL corpus repo row(s): $duplicate_repo_ids"
 }
 
 append_moon_bool_defs() {
@@ -158,6 +193,7 @@ compare_fingerprints() {
 }
 
 case_count=0
+validate_manifest_schemas
 while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capabilities notes; do
   [[ -n "${id:-}" ]] || continue
   [[ "$id" == \#* ]] && continue
@@ -165,7 +201,7 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   [[ -n "${notes:-}" ]] || fail "manifest row $id/$rel_path must include notes"
 
   repo_line="$(lookup_repo_row "$id")" || fail "repo $id is not present in $repo_manifest"
-  IFS=$'\t' read -r _repo_id repo ref sparse_paths _min_valid _min_composed _repo_notes <<< "$repo_line"
+  IFS=$'\t' read -r _repo_id repo ref sparse_paths _expected_files _expected_source_valid _expected_composed_valid _expected_invalid _repo_notes <<< "$repo_line"
   checkout="$(clone_or_update_repo "$id" "$repo" "$ref" "$sparse_paths")"
   actual_ref="$(git -C "$checkout" rev-parse HEAD)"
   [[ "$actual_ref" == "$ref" ]] || fail "$id checked out $actual_ref, expected $ref"
@@ -209,5 +245,6 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
 done < "$manifest"
 
 ((case_count > 0)) || fail "manifest contains no parity cases"
+((case_count == expected_case_count)) || fail "manifest contains $case_count parity case(s); expected exactly $expected_case_count"
 
 echo "external naga-oil compose parity gate passed: cases=$case_count"

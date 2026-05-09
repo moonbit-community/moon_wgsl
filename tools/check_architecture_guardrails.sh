@@ -523,6 +523,19 @@ if ! rg -n 'bash tools/check_external_wgsl_corpus\.sh' .github/workflows/check.y
   fail "CI must run the external real-project WGSL corpus gate"
 fi
 
+if rg -n '_min_valid|_min_composed|min_valid|min_composed' tools/check_external_naga_oil_compose_parity.sh >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "external naga-oil compose parity must consume the exact-count external repo manifest schema"
+fi
+
+if ! rg -n 'external naga-oil compose parity row has.*expected 7' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity manifest must enforce exact TSV schema width"
+fi
+
+if ! rg -n 'EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES|expected_case_count' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity gate must exact-gate its manifest case count"
+fi
+
 if ! rg -n 'expected-failures=0' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must report zero expected failures"
 fi
