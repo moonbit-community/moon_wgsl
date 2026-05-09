@@ -387,6 +387,10 @@ if [[ ! -f testdata/external_wgsl_corpus_expected_invalid.tsv ]]; then
   fail "external WGSL standalone-invalid files must be classified by an expected-invalid manifest"
 fi
 
+if [[ ! -f testdata/external_wgsl_corpus_expected_invalid_normalized_by_ir.tsv ]]; then
+  fail "external WGSL expected-invalid IR-normalized cases must be manifest-owned"
+fi
+
 if ! rg -n 'skipped=0' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must report zero skipped files"
 fi
@@ -445,6 +449,10 @@ fi
 
 if ! rg -n 'diff -u "\$expected_invalid_expected_keys" "\$expected_invalid_actual_keys"' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must fail unknown or stale expected-invalid cases"
+fi
+
+if ! rg -n 'diff -u "\$expected_invalid_normalized_expected_keys" "\$expected_invalid_normalized_actual_keys"' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must fail unknown or stale expected-invalid IR-normalized cases"
 fi
 
 echo "architecture guardrails passed"

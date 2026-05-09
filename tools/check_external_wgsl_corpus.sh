@@ -6,6 +6,7 @@ cd "$repo_root"
 
 manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifest.tsv}"
 expected_invalid_manifest="${EXTERNAL_WGSL_CORPUS_EXPECTED_INVALID_MANIFEST:-testdata/external_wgsl_corpus_expected_invalid.tsv}"
+expected_invalid_normalized_manifest="${EXTERNAL_WGSL_CORPUS_EXPECTED_INVALID_NORMALIZED_MANIFEST:-testdata/external_wgsl_corpus_expected_invalid_normalized_by_ir.tsv}"
 profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
 
@@ -16,6 +17,7 @@ fail() {
 
 [[ -f "$manifest" ]] || fail "missing manifest: $manifest"
 [[ -f "$expected_invalid_manifest" ]] || fail "missing expected-invalid manifest: $expected_invalid_manifest"
+[[ -f "$expected_invalid_normalized_manifest" ]] || fail "missing expected-invalid normalized-by-IR manifest: $expected_invalid_normalized_manifest"
 [[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
 
 tmpdir="$(mktemp -d)"
@@ -99,6 +101,18 @@ validate_wgsl_with_detected_capabilities() {
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_validate -- "${validate_args[@]+"${validate_args[@]}"}" "$source" >/dev/null
 }
 
+record_expected_invalid_normalization_if_any() {
+  local id="$1"
+  local rel_path="$2"
+  local source="$3"
+  local reason="$4"
+  local emitted="$tmpdir/$id.expected-invalid.$(basename "$source").ir.wgsl"
+  if moon run tools/ir_roundtrip -- --input "$source" --output "$emitted" >/dev/null 2>"$tmpdir/$id.expected-invalid-ir.stderr" &&
+     validate_wgsl_with_detected_capabilities "$emitted" >/dev/null 2>"$tmpdir/$id.expected-invalid-naga.stderr"; then
+    printf '%s\t%s\t%s\t%s\n' "$id" "$rel_path" "$reason" "moon IR currently normalizes this expected-invalid external fixture into Naga-valid WGSL" >> "$expected_invalid_normalized_actual"
+  fi
+}
+
 clone_or_update_repo() {
   local id="$1"
   local repo="$2"
@@ -129,9 +143,15 @@ expected_invalid_actual="$tmpdir/expected-invalid.actual.tsv"
 expected_invalid_expected="$tmpdir/expected-invalid.expected.tsv"
 expected_invalid_actual_keys="$tmpdir/expected-invalid.actual.keys.tsv"
 expected_invalid_expected_keys="$tmpdir/expected-invalid.expected.keys.tsv"
+expected_invalid_normalized_actual="$tmpdir/expected-invalid-normalized.actual.tsv"
+expected_invalid_normalized_expected="$tmpdir/expected-invalid-normalized.expected.tsv"
+expected_invalid_normalized_actual_keys="$tmpdir/expected-invalid-normalized.actual.keys.tsv"
+expected_invalid_normalized_expected_keys="$tmpdir/expected-invalid-normalized.expected.keys.tsv"
 : > "$expected_invalid_actual"
+: > "$expected_invalid_normalized_actual"
 
 { grep -v -E '^($|#)' "$expected_invalid_manifest" || true; } | sort > "$expected_invalid_expected"
+{ grep -v -E '^($|#)' "$expected_invalid_normalized_manifest" || true; } | sort > "$expected_invalid_normalized_expected"
 
 source_contains_preprocessor_directive() {
   local source="$1"
@@ -371,6 +391,7 @@ while IFS=$'\t' read -r id repo ref sparse_paths min_valid min_composed notes; d
       expected_invalid_count=$((expected_invalid_count + 1))
       repo_expected_invalid_count=$((repo_expected_invalid_count + 1))
       printf '%s\t%s\t%s\t%s\n' "$id" "$rel_path" "$reason" "${detail:-}" >> "$expected_invalid_actual"
+      record_expected_invalid_normalization_if_any "$id" "$rel_path" "$source" "$reason"
       continue
     fi
     validated_source="$(cat "$source_candidate_file")"
@@ -425,6 +446,18 @@ if ! diff -u "$expected_invalid_expected_keys" "$expected_invalid_actual_keys" >
   sed -n '1,200p' "$tmpdir/expected-invalid.diff" >&2
   echo "Observed expected-invalid details:" >&2
   sed -n '1,200p' "$expected_invalid_actual" >&2
+  exit 1
+fi
+
+sort -o "$expected_invalid_normalized_actual" "$expected_invalid_normalized_actual"
+awk -F '\t' '{ print $1 "\t" $2 "\t" $3 }' "$expected_invalid_normalized_expected" | sort > "$expected_invalid_normalized_expected_keys"
+awk -F '\t' '{ print $1 "\t" $2 "\t" $3 }' "$expected_invalid_normalized_actual" | sort > "$expected_invalid_normalized_actual_keys"
+if ! diff -u "$expected_invalid_normalized_expected_keys" "$expected_invalid_normalized_actual_keys" >"$tmpdir/expected-invalid-normalized.diff"; then
+  echo "external WGSL corpus expected-invalid normalized-by-IR manifest is out of date or incomplete" >&2
+  echo "Every expected-invalid file that moon IR normalizes into Naga-valid WGSL must be classified explicitly in $expected_invalid_normalized_manifest." >&2
+  sed -n '1,200p' "$tmpdir/expected-invalid-normalized.diff" >&2
+  echo "Observed normalized expected-invalid details:" >&2
+  sed -n '1,200p' "$expected_invalid_normalized_actual" >&2
   exit 1
 fi
 

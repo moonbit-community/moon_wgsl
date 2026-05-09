@@ -1,0 +1,2 @@
+# id	rel_path	reason	detail
+naga	tests/out/wgsl/math-functions.frag.wgsl	raw_invalid_no_preprocessor	Historical Naga writer fixture rejected by the pinned Naga validator because abstract float builtin operands remain uncontextualized; moon_wgsl IR contextualizes and emits Naga-valid WGSL.
