@@ -14,6 +14,9 @@ if [[ "${1:-}" == "--list" ]]; then
   cat <<'LABELS'
 conditional_missing_import
 conditional_missing_import_nested
+err_parse
+err_validation_1
+err_validation_2
 invalid_override_base
 missing_import
 LABELS
@@ -26,6 +29,7 @@ moon_compose_error() {
   local entry="$3"
   local file_path_prefix="$4"
   local output="$tmpdir/$label.txt"
+  shift 4
 
   echo "== moon_wgsl error parity: $label =="
   moon run tools/compose_case -- \
@@ -33,7 +37,8 @@ moon_compose_error() {
     --entry "$entry" \
     --file-path-prefix "$file_path_prefix" \
     --expect-error \
-    --error-output "$output"
+    --error-output "$output" \
+    "$@"
 
   if grep -Fq "UNEXPECTED_SUCCESS" "$output"; then
     printf 'expected %s to fail, but compose succeeded\n' "$label" >&2
@@ -83,5 +88,36 @@ moon_compose_error \
 assert_error_exact \
   invalid_override_base \
   testdata/naga_oil_upstream/compose_tests/expected/invalid_override_base.txt
+
+moon_compose_error \
+  err_parse \
+  testdata/naga_oil_upstream/compose_tests/error_test \
+  wgsl_parse_err.wgsl \
+  tests/error_test \
+  --entry-only
+assert_error_exact \
+  err_parse \
+  testdata/naga_oil_upstream/compose_tests/expected/err_parse.txt
+
+moon_compose_error \
+  err_validation_1 \
+  testdata/naga_oil_upstream/compose_tests/error_test \
+  wgsl_valid_err.wgsl \
+  tests/error_test \
+  --entry-only
+assert_error_exact \
+  err_validation_1 \
+  testdata/naga_oil_upstream/compose_tests/expected/err_validation_1.txt
+
+moon_compose_error \
+  err_validation_2 \
+  testdata/naga_oil_upstream/compose_tests/error_test \
+  wgsl_valid_wrap.wgsl \
+  tests/error_test \
+  --module wgsl_valid_err.wgsl \
+  --additional-import valid_inc
+assert_error_exact \
+  err_validation_2 \
+  testdata/naga_oil_upstream/compose_tests/expected/err_validation_2.txt
 
 echo "moon_wgsl error parity passed"

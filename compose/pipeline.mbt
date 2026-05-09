@@ -247,6 +247,7 @@ fn WgslComposeSymbolTable::generated_import_provenance(
           binding.rel_path,
           binding.target_name,
           @ir.WgslIrGeneratedImportProvenanceKind::VirtualOverrideSymbol,
+          false,
         ),
       )
     }
@@ -264,6 +265,8 @@ fn WgslComposeSymbolTable::generated_import_provenance(
           origin.rel_path(),
           origin.source_symbol_name(),
           @ir.WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+          root_rel_path.has_suffix(".glsl") ||
+          origin.rel_path().has_suffix(".glsl"),
         ),
       )
     }

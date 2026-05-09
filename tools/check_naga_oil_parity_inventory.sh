@@ -77,7 +77,7 @@ while IFS=$'\t' read -r label expected moon_gate oracle_gate notes; do
   [[ -f "$expected" ]] || fail "row $label points to missing expected file: $expected"
 
   case "$moon_gate" in
-    byte | semantic | error | oracle-only)
+    byte | semantic | error)
       ;;
     *)
       fail "row $label has unknown moon gate: $moon_gate"
@@ -95,7 +95,7 @@ while IFS=$'\t' read -r label expected moon_gate oracle_gate notes; do
   case "$moon_gate" in
     byte | error)
       ;;
-    semantic | oracle-only)
+    semantic)
       [[ -n "${notes:-}" ]] || fail "classified row $label needs an explicit note"
       ;;
   esac

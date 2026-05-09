@@ -151,12 +151,14 @@ test "IR lowerer accepts explicit generated import provenance" {
       "imports/first.wgsl",
       "first",
       WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+      false,
     ),
     WgslIrGeneratedImportProvenance(
       "secondX_naga_oil_mod_XABCDX",
       "imports/second.wgsl",
       "second",
       WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+      false,
     ),
   ]) catch {
     error => abort(error.message())
@@ -263,6 +265,8 @@ test "IR emitter fails on invalid handles instead of inventing output" {
   let module_ = Module()
   let constant = Constant::{
     name: Some("BAD"),
+    generated_import: false,
+    inline_value: false,
     ty: Handle::Handle(99),
     init: Handle::Handle(0),
   }

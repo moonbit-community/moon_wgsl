@@ -267,6 +267,11 @@ fn wgsl_requested_items_contains(
 }
 
 ///|
+fn wgsl_import_rel_path_is_glsl_frontend(rel_path : String) -> Bool {
+  normalize_shader_rel_path(rel_path).has_suffix(".glsl")
+}
+
+///|
 fn wgsl_item_extraction_contains_all_requested_items(
   extraction : WgslModuleItemExtraction,
   requested_items : Array[String],
@@ -423,6 +428,9 @@ fn Composer::build_wgsl_import_requests_from_targets(
       active_import_source,
     )
     let mut module_alias = target_plan.module_alias
+    let glsl_frontend_import = wgsl_import_rel_path_is_glsl_frontend(
+      base_resolved_module.rel_path(),
+    )
     let mut import_full_module = target_plan.import_full_module
     if target_plan.alias_is_used &&
       !target_plan.default_module_alias_candidate &&
@@ -486,6 +494,9 @@ fn Composer::build_wgsl_import_requests_from_targets(
       if imports_for_override_side_effect || imports_for_virtual_side_effect {
         import_full_module = true
       }
+    }
+    if glsl_frontend_import {
+      import_full_module = true
     }
     let selected_rel_path = self.select_wgsl_import_candidate_rel_path(
       module_path,

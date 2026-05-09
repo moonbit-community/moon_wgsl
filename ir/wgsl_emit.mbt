@@ -70,6 +70,7 @@ fn emit_wgsl_module_from_ir_roots(
 priv struct WgslIrEmitOptions {
   preserve_abstract_float_literals : Bool
   annotate_atomic_compare_exchange_result_locals : Bool
+  inline_generated_import_constants : Bool
 }
 
 ///|
@@ -77,6 +78,7 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
   WgslIrEmitOptions::{
     preserve_abstract_float_literals: false,
     annotate_atomic_compare_exchange_result_locals: false,
+    inline_generated_import_constants: false,
   }
 }
 
@@ -85,6 +87,7 @@ fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
   WgslIrEmitOptions::{
     preserve_abstract_float_literals: false,
     annotate_atomic_compare_exchange_result_locals: true,
+    inline_generated_import_constants: true,
   }
 }
 
@@ -294,6 +297,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
     options: WgslIrEmitOptions::{
       preserve_abstract_float_literals: true,
       annotate_atomic_compare_exchange_result_locals: self.options.annotate_atomic_compare_exchange_result_locals,
+      inline_generated_import_constants: self.options.inline_generated_import_constants,
     },
     filter: self.filter,
   }
@@ -1284,7 +1288,7 @@ fn WgslIrEmitter::emit_expression(
 ) -> String raise WgslIrEmitError {
   match expression {
     Literal(literal) => self.literal(literal)
-    Constant(handle) => self.constant_name(handle)
+    Constant(handle) => self.constant_expression(handle)
     Override(handle) => self.override_name(handle)
     ZeroValue(ty) => "\{self.type_name(ty)}()"
     Compose(ty, components) =>
@@ -2754,6 +2758,18 @@ fn WgslIrEmitter::compose_constructor_name_for_components(
   components : Array[Handle],
   function : Function?,
 ) -> String raise WgslIrEmitError {
+  if self.options.inline_generated_import_constants &&
+    self.compose_components_include_generated_import_constant(
+      components, function,
+    ) {
+    match
+      self.generated_import_constant_scalar_constructor_name(
+        handle, components, function,
+      ) {
+      Some(name) => return name
+      None => return self.type_name(handle)
+    }
+  }
   if components.length() == 1 {
     match self.shader_module.types.items.get(handle.index()) {
       Some(type_) =>
@@ -2768,6 +2784,85 @@ fn WgslIrEmitter::compose_constructor_name_for_components(
     }
   }
   self.compose_constructor_name(handle)
+}
+
+///|
+fn WgslIrEmitter::compose_components_include_generated_import_constant(
+  self : WgslIrEmitter,
+  components : Array[Handle],
+  function : Function?,
+) -> Bool {
+  for component in components {
+    let expression = match function {
+      Some(func) =>
+        match func.expressions.items.get(component.index()) {
+          Some(value) => value
+          None => continue
+        }
+      None =>
+        match
+          self.shader_module.global_expressions.items.get(component.index()) {
+          Some(value) => value
+          None => continue
+        }
+    }
+    match expression {
+      Constant(handle) =>
+        match self.shader_module.constants.items.get(handle.index()) {
+          Some(constant) if constant.inline_value => return true
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn WgslIrEmitter::generated_import_constant_scalar_constructor_name(
+  self : WgslIrEmitter,
+  handle : Handle,
+  components : Array[Handle],
+  function : Function?,
+) -> String? {
+  let mut scalar : Scalar? = None
+  for component in components {
+    let expression = match function {
+      Some(func) =>
+        match func.expressions.items.get(component.index()) {
+          Some(value) => value
+          None => continue
+        }
+      None =>
+        match
+          self.shader_module.global_expressions.items.get(component.index()) {
+          Some(value) => value
+          None => continue
+        }
+    }
+    match expression {
+      Constant(constant_handle) =>
+        match self.shader_module.constants.items.get(constant_handle.index()) {
+          Some(constant) if constant.inline_value =>
+            match self.shader_module.types.items.get(constant.ty.index()) {
+              Some({ inner: Scalar(value), .. }) => scalar = Some(value)
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  guard scalar is Some(concrete_scalar) else { return None }
+  match self.shader_module.types.items.get(handle.index()) {
+    Some({ inner: Vector(size, _), .. }) =>
+      Some("vec\{size.width()}<\{self.scalar_name(concrete_scalar)}>")
+    Some({ inner: Matrix(columns, rows, _), .. }) =>
+      Some(
+        "mat\{columns.width()}x\{rows.width()}<\{self.scalar_name(concrete_scalar)}>",
+      )
+    _ => None
+  }
 }
 
 ///|
@@ -3195,6 +3290,22 @@ fn WgslIrEmitter::constant_name(
       match constant.name {
         Some(name) => sanitize_wgsl_ir_identifier(name)
         None => raise WgslIrEmitError::MissingName("constant \{handle.index()}")
+      }
+    None => raise WgslIrEmitError::MissingHandle("constant \{handle.index()}")
+  }
+}
+
+///|
+fn WgslIrEmitter::constant_expression(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> String raise WgslIrEmitError {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) =>
+      if self.options.inline_generated_import_constants && constant.inline_value {
+        self.global_expression(constant.init)
+      } else {
+        self.constant_name(handle)
       }
     None => raise WgslIrEmitError::MissingHandle("constant \{handle.index()}")
   }

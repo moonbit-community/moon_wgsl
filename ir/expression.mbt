@@ -25,6 +25,8 @@ pub(all) struct Override {
 ///|
 pub(all) struct Constant {
   name : String?
+  generated_import : Bool
+  inline_value : Bool
   ty : Handle
   init : Handle
 } derive(Eq, Debug)

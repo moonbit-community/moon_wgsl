@@ -28,6 +28,8 @@ test "IR validator rejects invalid type handles" {
   ignore(
     module_.append_constant(Constant::{
       name: Some("BAD"),
+      generated_import: false,
+      inline_value: false,
       ty: Handle::Handle(99),
       init,
     }),

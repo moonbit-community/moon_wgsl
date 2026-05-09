@@ -199,6 +199,8 @@ pub enum ConservativeDepth {
 
 pub(all) struct Constant {
   name : String?
+  generated_import : Bool
+  inline_value : Bool
   ty : Handle
   init : Handle
 } derive(Eq, @debug.Debug)
@@ -981,8 +983,9 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   rel_path : String
   source_symbol_name : String
   kind : WgslIrGeneratedImportProvenanceKind
+  inline_value : Bool
 } derive(Eq, @debug.Debug)
-pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind) -> Self
+pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool) -> Self
 pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(Self) -> String
 
 pub(all) enum WgslIrGeneratedImportProvenanceKind {

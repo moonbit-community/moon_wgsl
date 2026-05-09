@@ -32,6 +32,7 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   rel_path : String
   source_symbol_name : String
   kind : WgslIrGeneratedImportProvenanceKind
+  inline_value : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -40,12 +41,14 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
   rel_path : String,
   source_symbol_name : String,
   kind : WgslIrGeneratedImportProvenanceKind,
+  inline_value : Bool,
 ) -> WgslIrGeneratedImportProvenance {
   WgslIrGeneratedImportProvenance::{
     generated_symbol_name,
     rel_path,
     source_symbol_name,
     kind,
+    inline_value,
   }
 }
 
@@ -457,6 +460,17 @@ fn WgslIrLowerer::function_has_generated_import_provenance(
 }
 
 ///|
+fn WgslIrLowerer::constant_should_inline_generated_import_value(
+  self : WgslIrLowerer,
+  name : String,
+) -> Bool {
+  match self.generated_import_provenance.get(name) {
+    Some(provenance) => provenance.inline_value
+    None => false
+  }
+}
+
+///|
 fn WgslIrLowerer::predeclare_override_declaration(
   self : WgslIrLowerer,
   override_decl : @ast.WgslOverride,
@@ -704,6 +718,8 @@ fn WgslIrLowerer::lower_constant(
   }
   let handle = self.shader_module.append_constant(Constant::{
     name: Some(name),
+    generated_import: self.function_has_generated_import_provenance(name),
+    inline_value: self.constant_should_inline_generated_import_value(name),
     ty,
     init,
   })

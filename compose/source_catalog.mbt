@@ -75,6 +75,10 @@ fn record_wgsl_source_origins_from_source(
     _ => return
   }
   for origin in extraction.origins() {
+    if normalize_shader_rel_path(rel_path).has_suffix(".glsl") &&
+      origin.name() == "global" {
+      continue
+    }
     push_wgsl_source_origin(
       session,
       origin.name(),
@@ -93,6 +97,10 @@ fn record_wgsl_source_origins_from_extraction(
   extraction : WgslModuleItemExtraction,
 ) -> Unit {
   for origin in extraction.origins() {
+    if normalize_shader_rel_path(rel_path).has_suffix(".glsl") &&
+      origin.name() == "global" {
+      continue
+    }
     push_wgsl_source_origin(
       session,
       origin.name(),

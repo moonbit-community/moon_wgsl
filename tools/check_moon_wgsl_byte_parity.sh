@@ -20,6 +20,9 @@ conditional_import_a
 conditional_import_b
 dup_import
 dup_struct_import
+glsl_call_wgsl
+glsl_const_import
+glsl_wgsl_const_import
 import_in_decl
 item_import_test
 item_sub_point
@@ -29,7 +32,9 @@ simple_compose
 test_quoted_import_dup_name
 use_shared_global
 wgsl_call_entrypoint
+wgsl_call_glsl
 wgsl_dual_source_blending
+wgsl_glsl_const_import
 LABELS
   exit 0
 fi
@@ -176,6 +181,42 @@ check_case \
   testdata/naga_oil_upstream/compose_tests/call_entrypoint \
   top.wgsl \
   testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_entrypoint.txt
+
+check_case \
+  wgsl_call_glsl \
+  testdata/naga_oil_upstream/compose_tests/glsl \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_call_glsl.txt
+
+check_case \
+  glsl_call_wgsl \
+  testdata/naga_oil_upstream/compose_tests/glsl \
+  top.glsl \
+  testdata/naga_oil_upstream/compose_tests/expected/glsl_call_wgsl.txt \
+  --shader-type glsl-vertex
+
+check_case \
+  glsl_const_import \
+  testdata/naga_oil_upstream/compose_tests/glsl_const_import \
+  top.glsl \
+  testdata/naga_oil_upstream/compose_tests/expected/glsl_const_import.txt \
+  --shader-type glsl-fragment \
+  --module consts.glsl
+
+check_case \
+  glsl_wgsl_const_import \
+  testdata/naga_oil_upstream/compose_tests/glsl_const_import \
+  top.wgsl \
+  testdata/naga_oil_upstream/compose_tests/expected/glsl_wgsl_const_import.txt \
+  --module consts.glsl
+
+check_case \
+  wgsl_glsl_const_import \
+  testdata/naga_oil_upstream/compose_tests/glsl_const_import \
+  top.glsl \
+  testdata/naga_oil_upstream/compose_tests/expected/wgsl_glsl_const_import.txt \
+  --shader-type glsl-fragment \
+  --module consts.wgsl
 
 check_case \
   wgsl_dual_source_blending \
