@@ -97,6 +97,30 @@ test "WGSL AST lowerer preserves global and function const_asserts in IR" {
 }
 
 ///|
+test "WGSL AST lowerer refreshes aggregate layouts after forward type bodies" {
+  let source =
+    #|struct Parent {
+    #|  children: array<Child, 4>,
+    #|  tail: vec2<u32>,
+    #|}
+    #|
+    #|struct Child {
+    #|  a: vec4<f32>,
+    #|  b: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<storage, read> parents: array<Parent>;
+    #|
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
 test "WGSL AST lowerer preserves barrier statement calls in IR" {
   let source =
     #|@compute @workgroup_size(1)

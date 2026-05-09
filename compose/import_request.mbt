@@ -65,6 +65,16 @@ fn wgsl_import_request_visit_key(
 }
 
 ///|
+fn wgsl_import_request_item_visit_key(
+  importer_rel_path : String,
+  request : WgslImportRequest,
+  item : String,
+) -> String {
+  let explicit = if request.keep_requested_items { "explicit" } else { "item" }
+  "\{importer_rel_path}=>\{request.rel_path}|\{request.alias_name}|\{explicit}|\{item}"
+}
+
+///|
 fn wgsl_full_module_visit_key(rel_path : String, alias_name : String) -> String {
   "\{rel_path}|\{alias_name}|*"
 }

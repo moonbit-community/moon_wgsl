@@ -118,6 +118,18 @@ fn WgslIrLowerer::refresh_dependent_type_layouts(
             changed = true
           }
         }
+        Struct(members, span) =>
+          match self.refresh_struct_layout(members) {
+            Some((refreshed_members, refreshed_span)) =>
+              if refreshed_members != members || refreshed_span != span {
+                self.shader_module.types.set(Handle::Handle(index), Type::{
+                  name: ty.name,
+                  inner: TypeInner::Struct(refreshed_members, refreshed_span),
+                })
+                changed = true
+              }
+            None => ()
+          }
         _ => ()
       }
     }
@@ -125,6 +137,51 @@ fn WgslIrLowerer::refresh_dependent_type_layouts(
       return
     }
   }
+}
+
+///|
+fn WgslIrLowerer::refresh_struct_layout(
+  self : WgslIrLowerer,
+  members : Array[StructMember],
+) -> (Array[StructMember], Int)? raise WgslIrLowerError {
+  let refreshed : Array[StructMember] = []
+  let mut offset = 0
+  let mut max_align = 1
+  for struct_member in members {
+    let layout = self.type_layout(struct_member.ty)
+    let member_size = match struct_member.size {
+      Some(size) => if size < layout.size { return None } else { size }
+      None => layout.size
+    }
+    let member_align = match struct_member.align {
+      Some(align) =>
+        if !wgsl_ir_is_power_of_two(align) || align < layout.align {
+          return None
+        } else {
+          align
+        }
+      None => layout.align
+    }
+    offset = wgsl_ir_align_to(offset, member_align)
+    refreshed.push(StructMember::{
+      name: struct_member.name,
+      ty: struct_member.ty,
+      binding: struct_member.binding,
+      offset,
+      size: struct_member.size,
+      align: struct_member.align,
+    })
+    offset = offset + member_size
+    if member_align > max_align {
+      max_align = member_align
+    }
+  }
+  Some(
+    (
+      refreshed,
+      wgsl_ir_align_to(if offset == 0 { 1 } else { offset }, max_align),
+    ),
+  )
 }
 
 ///|

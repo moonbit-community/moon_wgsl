@@ -313,6 +313,67 @@ test "composer creates alias bindings when canonical module was cached first" {
 }
 
 ///|
+test "composer graph planned item supersets cover cached execution subsets" {
+  let composer = Composer::default()
+  let types_source =
+    #|#define_import_path test::types
+    #|
+    #|struct Atmosphere {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct AtmosphereSettings {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct AtmosphereTransforms {
+    #|  value: u32,
+    #|}
+    #|
+  let view_source =
+    #|#define_import_path test::view
+    #|
+    #|struct View {
+    #|  exposure: f32,
+    #|}
+    #|
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|#import test::view::View
+    #|#import test::types::{Atmosphere, AtmosphereSettings, AtmosphereTransforms}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> settings: AtmosphereSettings;
+    #|
+    #|@group(0) @binding(1)
+    #|var<uniform> view: View;
+    #|
+  let root_source =
+    #|#import test::types::AtmosphereSettings
+    #|#import test::bindings::{settings, view}
+    #|
+    #|fn main() -> f32 {
+    #|  return f32(settings.value) + view.exposure;
+    #|}
+    #|
+  composer.register_source("types.wgsl", types_source)
+  composer.register_source("view.wgsl", view_source)
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("types::AtmosphereSettings"), content="false")
+  debug_inspect(
+    emitted.contains("AtmosphereSettingsX_naga_oil_mod"),
+    content="true",
+  )
+}
+
+///|
 test "composer does not import a missing item shadowed by a local declaration" {
   let composer = Composer::default()
   let maths_source =

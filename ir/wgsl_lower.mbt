@@ -508,8 +508,7 @@ fn WgslIrLowerer::lower_global_declaration(
   declaration : @ast.WgslGlobalDecl,
 ) -> Unit raise WgslIrLowerError {
   match declaration.data() {
-    Struct(struct_decl) => self.lower_struct_declaration(struct_decl)
-    TypeAlias(alias_decl) => self.lower_type_alias(alias_decl)
+    Struct(_) | TypeAlias(_) => ()
     GlobalVariable(global) => self.lower_global_variable(global)
     Const(constant) => self.lower_constant(constant)
     ConstAssert(expr) => self.lower_global_const_assert(expr)

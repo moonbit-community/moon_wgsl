@@ -401,13 +401,21 @@ fn WgslIrValidator::validate_array_stride(
   }
   let layout = self.type_layout(base)
   if stride < layout.size {
+    let element_text = match self.shader_module.types.items.get(base.index()) {
+      Some(value) => @debug.to_string(value)
+      None => "<invalid type handle>"
+    }
     raise WgslIrValidationError::InvalidType(
-      "array stride is smaller than element size",
+      "array stride is smaller than element size: stride=\{stride}, element_size=\{layout.size}, element_type=\{base.index()} \{element_text}",
     )
   }
   if stride % layout.align != 0 {
+    let element_text = match self.shader_module.types.items.get(base.index()) {
+      Some(value) => @debug.to_string(value)
+      None => "<invalid type handle>"
+    }
     raise WgslIrValidationError::InvalidType(
-      "array stride is not aligned to element alignment",
+      "array stride is not aligned to element alignment: stride=\{stride}, element_align=\{layout.align}, element_type=\{base.index()} \{element_text}",
     )
   }
 }

@@ -8,6 +8,14 @@ fn WgslComposeSession::record_graph_planned_request(
     wgsl_import_request_visit_key(importer_rel_path, request),
     true,
   )
+  if !request.import_full_module {
+    for item in request.requested_items {
+      self.graph_planned_requests.set(
+        wgsl_import_request_item_visit_key(importer_rel_path, request, item),
+        true,
+      )
+    }
+  }
 }
 
 ///|
@@ -16,9 +24,25 @@ fn WgslComposeSession::graph_request_is_planned(
   importer_rel_path : String,
   request : WgslImportRequest,
 ) -> Bool {
-  self.graph_planned_requests.contains(
-    wgsl_import_request_visit_key(importer_rel_path, request),
-  )
+  if self.graph_planned_requests.contains(
+      wgsl_import_request_visit_key(importer_rel_path, request),
+    ) {
+    return true
+  }
+  if request.import_full_module {
+    return false
+  }
+  if request.requested_items.length() == 0 {
+    return false
+  }
+  for item in request.requested_items {
+    if !self.graph_planned_requests.contains(
+        wgsl_import_request_item_visit_key(importer_rel_path, request, item),
+      ) {
+      return false
+    }
+  }
+  true
 }
 
 ///|
