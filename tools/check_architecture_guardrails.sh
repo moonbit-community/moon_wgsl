@@ -159,9 +159,28 @@ if rg -n 'text : String' compose/semantic_graph.mbt >"$matches_file"; then
 fi
 
 required_ir_split_files=(
+  ir/wgsl_lower_core.mbt
+  ir/wgsl_lower_globals.mbt
+  ir/wgsl_lower_functions.mbt
+  ir/wgsl_lower_updates.mbt
+  ir/wgsl_lower_type_inference.mbt
+  ir/wgsl_lower_expr_parser.mbt
+  ir/wgsl_lower_global_expressions.mbt
+  ir/wgsl_lower_function_expressions.mbt
+  ir/wgsl_lower_calls.mbt
+  ir/wgsl_lower_expression_results.mbt
+  ir/wgsl_lower_expression_types.mbt
   ir/wgsl_lower_const_eval.mbt
   ir/wgsl_lower_materialization.mbt
   ir/wgsl_lower_statements.mbt
+  ir/wgsl_emit_writer_policy.mbt
+  ir/wgsl_emit_module.mbt
+  ir/wgsl_emit_declarations.mbt
+  ir/wgsl_emit_functions.mbt
+  ir/wgsl_emit_types.mbt
+  ir/wgsl_emit_attributes_literals.mbt
+  ir/wgsl_emit_names.mbt
+  ir/wgsl_emit_builtins.mbt
   ir/wgsl_emit_expressions.mbt
   ir/wgsl_emit_statements.mbt
 )
@@ -171,14 +190,53 @@ for split_file in "${required_ir_split_files[@]}"; do
   fi
 done
 
-lowerer_lines="$(wc -l < ir/wgsl_lower.mbt | tr -d ' ')"
-if (( lowerer_lines > 6000 )); then
-  fail "IR lowerer monolith is too large: ${lowerer_lines} lines"
+if [[ -f ir/wgsl_lower.mbt ]]; then
+  fail "IR lowerer monolith must not be reintroduced as ir/wgsl_lower.mbt"
+fi
+
+for split_file in ir/wgsl_lower_*.mbt; do
+  if [[ "$split_file" == *_wbtest.mbt ]]; then
+    continue
+  fi
+  split_lines="$(wc -l < "$split_file" | tr -d ' ')"
+  if (( split_lines > 1500 )); then
+    fail "IR lowerer split file is too large: ${split_file} has ${split_lines} lines"
+  fi
+done
+
+if ! rg -n 'parse_wgsl_module_to_ir' ir/wgsl_lower_core.mbt >/dev/null; then
+  fail "IR lowerer core must own the module lowering entrypoint"
+fi
+
+if ! rg -n 'lower_global_expression_ref' ir/wgsl_lower_global_expressions.mbt >/dev/null; then
+  fail "IR lowerer global expression lowering must stay in its own split file"
+fi
+
+if ! rg -n 'lower_function_expression_ref' ir/wgsl_lower_function_expressions.mbt >/dev/null; then
+  fail "IR lowerer function expression lowering must stay in its own split file"
 fi
 
 emitter_lines="$(wc -l < ir/wgsl_emit.mbt | tr -d ' ')"
-if (( emitter_lines > 2200 )); then
-  fail "IR emitter monolith is too large: ${emitter_lines} lines"
+if (( emitter_lines > 250 )); then
+  fail "IR emitter core must stay as entrypoint wiring only: ${emitter_lines} lines"
+fi
+
+for split_file in ir/wgsl_emit_*.mbt; do
+  if [[ "$split_file" == *_wbtest.mbt ]]; then
+    continue
+  fi
+  split_lines="$(wc -l < "$split_file" | tr -d ' ')"
+  if (( split_lines > 1700 )); then
+    fail "IR emitter split file is too large: ${split_file} has ${split_lines} lines"
+  fi
+done
+
+if ! rg -n 'priv struct WgslIrEmitOptions' ir/wgsl_emit_writer_policy.mbt >/dev/null; then
+  fail "IR emitter writer policy must own WgslIrEmitOptions"
+fi
+
+if rg -n 'priv struct WgslIrEmitOptions|fn WgslIrEmitOptions::naga_oil_writer_compatible' ir/wgsl_emit.mbt ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "IR emitter core/module ordering must not own writer policy"
 fi
 
 user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir --glob '*.mbt' | wc -l | tr -d ' ')"
@@ -458,6 +516,7 @@ if [[ -f compose/import_graph.mbt ]]; then
 fi
 
 required_compose_stage_files=(
+  compose/stage_objects.mbt
   compose/final_name_plan.mbt
   compose/source_preparation.mbt
   compose/import_request_builder.mbt
@@ -469,6 +528,31 @@ for stage_file in "${required_compose_stage_files[@]}"; do
     fail "compose graph/rewrite responsibilities must stay staged: missing ${stage_file}"
   fi
 done
+
+if ! rg -n 'priv struct WgslImportGraphBuilder|priv struct WgslReachabilityPlan|priv struct WgslFinalNameAllocator|priv struct WgslComposeEmitter' compose/stage_objects.mbt >/dev/null; then
+  fail "compose stage objects must explicitly model import graph, reachability, final-name allocation, and emission stages"
+fi
+
+if ! rg -n 'WgslImportGraphBuilder\(self, session\)\.complete_execution' compose/pipeline.mbt >/dev/null; then
+  fail "compose pipeline must enter graph execution through WgslImportGraphBuilder"
+fi
+
+if ! rg -n 'WgslReachabilityPlan\(facts, bindings\)\.live_binding_plan' compose/finalize.mbt >/dev/null; then
+  fail "compose finalization must enter live binding through WgslReachabilityPlan"
+fi
+
+if ! rg -n 'WgslFinalNameAllocator\(' compose/import_request_execution.mbt >/dev/null; then
+  fail "compose import emission must allocate final names through WgslFinalNameAllocator"
+fi
+
+if ! rg -n 'WgslComposeEmitter\(self, session\)\.emit_source_with_path|WgslComposeEmitter\(self, session\)\.emit_root' compose/pipeline.mbt compose/import_request_execution.mbt >/dev/null; then
+  fail "compose source assembly must enter emission through WgslComposeEmitter"
+fi
+
+if rg -n 'fn Composer::(resolve_wgsl_source_with_path|resolve_root_wgsl_source_into_session|plan_wgsl_compose_graph_with_path|plan_wgsl_import_request_batch)' compose --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose graph planning and source emission internals must live on explicit stage objects, not Composer methods"
+fi
 
 if ! rg -n 'WgslComposeSymbolTable::generated_import_provenance' compose/pipeline.mbt >/dev/null; then
   fail "generated import provenance must derive from the compose symbol table"
@@ -493,6 +577,12 @@ if rg -n 'pub fn (emit_wgsl_tree_shaken_source_strict|normalize_wgsl_output_iden
   --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "transform must not expose source-level WGSL semantic rewrite/tree-shake APIs"
+fi
+
+if rg -n 'WgslRenamePlan|WgslRenameRule|WgslRenameMaps|build_wgsl_rename_maps|collect_wgsl_block_rewrite_nodes|target_for_reference' transform \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "transform must not own name-first semantic rename policy"
 fi
 
 required_transform_rewrite_files=(

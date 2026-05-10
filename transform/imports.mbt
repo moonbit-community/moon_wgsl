@@ -1,17 +1,12 @@
 ///|
 using @ast {
-  type WgslBlock,
   type WgslDirectiveKind,
-  type WgslExprRef,
   type WgslFunction,
   type WgslFunctionQualifier,
   type WgslGlobalDecl,
   type WgslGlobalDeclData,
   type WgslGlobalDeclKind,
   type WgslIdent,
-  type WgslLocalDeclaration,
-  type WgslStatement,
-  type WgslTypeRef,
 }
 
 ///|

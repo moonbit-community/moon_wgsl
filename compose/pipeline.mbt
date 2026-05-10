@@ -81,43 +81,44 @@ fn Composer::compose_wgsl_scanned_item(
 }
 
 ///|
-fn Composer::resolve_wgsl_source_with_path(
-  self : Composer,
+fn WgslComposeEmitter::emit_source_with_path(
+  self : WgslComposeEmitter,
   current_rel_path : String,
   source : String,
-  session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
   _inherited_bindings : WgslComposeBindingSet,
   apply_virtual_overrides : Bool,
   record_current_origins : Bool,
   alias_prefixes : Array[String],
 ) -> String raise ComposerError {
-  let active_defs = self.active_compose_defs_for_rel_path(
-    current_rel_path, session, inherited_defs,
+  let active_defs = self.composer.active_compose_defs_for_rel_path(
+    current_rel_path,
+    self.session,
+    inherited_defs,
   )
   merge_wgsl_source_local_shader_defs(active_defs, source)
-  let prepared = prepare_wgsl_compose_source(source, session, active_defs)
+  let prepared = prepare_wgsl_compose_source(source, self.session, active_defs)
   if record_current_origins {
     record_wgsl_source_origins_from_source(
-      session,
+      self.session,
       current_rel_path,
       prepared.active_source,
     )
   }
   let mut merged = ""
   let bindings = WgslComposeBindingSet()
-  let implicit_requests = self.build_wgsl_implicit_import_requests(
+  let implicit_requests = self.composer.build_wgsl_implicit_import_requests(
     current_rel_path,
     prepared.active_scan_source,
-    session,
+    self.session,
     active_defs,
   )
-  let implicit_imports = self.compose_wgsl_import_requests(
+  let implicit_imports = self.composer.compose_wgsl_import_requests(
     current_rel_path,
     implicit_requests,
     prepared.active_scan_source,
     bindings,
-    session,
+    self.session,
     active_defs,
     alias_prefixes,
   )
@@ -128,58 +129,59 @@ fn Composer::resolve_wgsl_source_with_path(
       include_glsl_version=false,
     ) {
     merged = merged +
-      self.compose_wgsl_scanned_item(
+      self.composer.compose_wgsl_scanned_item(
         current_rel_path,
         item,
         prepared.active_scan_source,
         bindings,
-        session,
+        self.session,
         active_defs,
         alias_prefixes,
       )
   }
   finalize_wgsl_composed_source(
-    merged, bindings, active_defs, session, apply_virtual_overrides,
+    merged,
+    bindings,
+    active_defs,
+    self.session,
+    apply_virtual_overrides,
   )
 }
 
 ///|
-fn Composer::resolve_root_wgsl_source_into_session(
-  self : Composer,
+fn WgslComposeEmitter::emit_root(
+  self : WgslComposeEmitter,
   rel : String,
-  session : WgslComposeSession,
 ) -> String raise ComposerError {
   let normalized_rel = normalize_shader_rel_path(rel)
   if normalized_rel == "" {
     return ""
   }
-  if session.visited.contains(normalized_rel) {
+  if self.session.visited.contains(normalized_rel) {
     return ""
   }
-  let source = self.load_wgsl_source_required_raw(normalized_rel)
+  let source = self.composer.load_wgsl_source_required_raw(normalized_rel)
   let root_source = prepend_wgsl_additional_imports(
     source,
-    session.additional_imports,
+    self.session.additional_imports,
   )
-  self.complete_wgsl_compose_graph_execution(
+  WgslImportGraphBuilder(self.composer, self.session).complete_execution(
     normalized_rel,
     root_source,
-    session,
     None,
   )
-  session.visited.set(normalized_rel, true)
-  session.active_rel_paths.push(normalized_rel)
-  let composed = self.resolve_wgsl_source_with_path(
+  self.session.visited.set(normalized_rel, true)
+  self.session.active_rel_paths.push(normalized_rel)
+  let composed = self.emit_source_with_path(
     normalized_rel,
     root_source,
-    session,
     None,
     WgslComposeBindingSet(),
     true,
     true,
     [],
   )
-  session.active_rel_paths.pop() |> ignore
+  self.session.active_rel_paths.pop() |> ignore
   composed
 }
 
@@ -213,21 +215,27 @@ fn collect_wgsl_unused_redirect_diagnostics(
 }
 
 ///|
+fn WgslComposeEmitter::resolve_compose_source(
+  self : WgslComposeEmitter,
+  rel : String,
+) -> WgslResolvedComposeSource raise ComposerError {
+  let composed = strip_wgsl_virtual_functions(self.emit_root(rel))
+  let prepared_source = finalize_wgsl_output_source(composed)
+  WgslResolvedComposeSource::{
+    source: prepared_source,
+    symbols: self.session.symbols,
+    diagnostics: collect_wgsl_unused_redirect_diagnostics(self.session),
+  }
+}
+
+///|
 fn Composer::resolve_wgsl_compose_source(
   self : Composer,
   rel : String,
   options : WgslComposeOptions,
 ) -> WgslResolvedComposeSource raise ComposerError {
   let session = self.new_wgsl_compose_session(options)
-  let composed = strip_wgsl_virtual_functions(
-    self.resolve_root_wgsl_source_into_session(rel, session),
-  )
-  let prepared_source = finalize_wgsl_output_source(composed)
-  WgslResolvedComposeSource::{
-    source: prepared_source,
-    symbols: session.symbols,
-    diagnostics: collect_wgsl_unused_redirect_diagnostics(session),
-  }
+  WgslComposeEmitter(self, session).resolve_compose_source(rel)
 }
 
 ///|
@@ -420,12 +428,15 @@ pub fn Composer::compose_wgsl_source(
     source,
     session.additional_imports,
   )
-  self.complete_wgsl_compose_graph_execution("", root_source, session, None)
+  WgslImportGraphBuilder(self, session).complete_execution(
+    "",
+    root_source,
+    None,
+  )
   let composed = strip_wgsl_virtual_functions(
-    self.resolve_wgsl_source_with_path(
+    WgslComposeEmitter(self, session).emit_source_with_path(
       "",
       root_source,
-      session,
       None,
       WgslComposeBindingSet(),
       true,

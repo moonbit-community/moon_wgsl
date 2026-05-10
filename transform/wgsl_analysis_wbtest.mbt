@@ -1,48 +1,4 @@
 ///|
-fn wbtest_rename_plan_from_redirect_map(
-  redirect_map : @hashmap.HashMap[String, String],
-  kind : WgslRenameRuleKind,
-) -> WgslRenamePlan {
-  let plan = WgslRenamePlan::empty()
-  for entry in redirect_map.iter() {
-    let (from_name, to_name) = entry
-    plan.add(from_name, to_name, kind)
-  }
-  plan
-}
-
-///|
-fn wbtest_rewrite_wgsl_declarations_with_rename_plan(
-  source : String,
-  plan : WgslRenamePlan,
-) -> String raise WgslParseError {
-  if plan.rules.length() == 0 {
-    return source
-  }
-  let graph = build_wgsl_declaration_graph(source)
-  let maps = build_wgsl_rename_maps(plan)
-  let mut out = ""
-  for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
-  }
-  for block in graph.declaration_blocks {
-    let rewritten = match block.data {
-      WgslGlobalDeclData::Raw =>
-        emit_wgsl_token_stream_canonical(block.tokens, [])
-      WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
-        emit_wgsl_token_stream_canonical(block.tokens, [])
-      _ => {
-        let nodes : Array[WgslTokenReplacement] = []
-        collect_wgsl_block_rewrite_nodes(block.data, maps, nodes)
-        emit_wgsl_token_stream_canonical(block.tokens, nodes)
-      }
-    }
-    out = out + wgsl_canonical_top_level_block_text(rewritten)
-  }
-  out
-}
-
-///|
 fn wbtest_reference_plan_from_redirect_map(
   redirect_map : @hashmap.HashMap[String, String],
 ) -> WgslReferenceRewritePlan {
@@ -421,110 +377,7 @@ test "declaration graph keeps break-if expression dependencies" {
 }
 
 ///|
-test "rename plan global rules do not rewrite function parameter locals" {
-  let source =
-    #|struct Input {
-    #|  instance_index: u32,
-    #|}
-    #|fn read_instance(in: Input) -> u32 {
-    #|  return in.instance_index;
-    #|}
-    #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
-  redirects.set("Input", "mesh__Input")
-  redirects.set("read_instance", "mesh__read_instance")
-  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
-    source,
-    wbtest_rename_plan_from_redirect_map(
-      redirects,
-      GlobalDeclarationAndReferences,
-    ),
-  )
-  debug_inspect(rewritten.contains("struct mesh__Input"), content="true")
-  debug_inspect(
-    rewritten.contains("fn mesh__read_instance(in: mesh__Input)"),
-    content="true",
-  )
-  debug_inspect(rewritten.contains("return in.instance_index;"), content="true")
-  debug_inspect(rewritten.contains("mesh__in"), content="false")
-}
-
-///|
-test "rename plan function-local rules rewrite parameter and body together" {
-  let source =
-    #|struct Input {
-    #|  rgb: vec3<f32>,
-    #|}
-    #|fn fragment(in: Input) -> vec3<f32> {
-    #|  return max(in.rgb, vec3(0.0));
-    #|}
-    #|
-  let plan = WgslRenamePlan::empty()
-  plan.add("in", "in_wgsl", FunctionLocal)
-  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
-    source, plan,
-  )
-  debug_inspect(
-    rewritten.contains("fn fragment(in_wgsl: Input)"),
-    content="true",
-  )
-  debug_inspect(
-    rewritten.contains("return max(in_wgsl.rgb, vec3(0.0));"),
-    content="true",
-  )
-  debug_inspect(rewritten.contains("return max(in.rgb"), content="false")
-}
-
-///|
-test "rename plan emitter preserves separated generic close and assignment tokens" {
-  let source =
-    #|fn prepare_world_normal(world_normal: vec3<f32>) -> vec3<f32> {
-    #|  var output: vec3<f32> = world_normal;
-    #|  if (output.x >= 1.0) {
-    #|    return output;
-    #|  }
-    #|  return world_normal;
-    #|}
-    #|
-  let plan = WgslRenamePlan::empty()
-  plan.add("world_normal", "renamed_world_normal", FunctionLocal)
-  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
-    source, plan,
-  )
-  debug_inspect(rewritten.contains("vec3<f32 >="), content="false")
-  debug_inspect(
-    rewritten.contains("vec3<f32> = renamed_world_normal"),
-    content="true",
-  )
-  debug_inspect(rewritten.contains("output.x >= 1.0"), content="true")
-}
-
-///|
-test "rename plan function-local rules follow nested statement scopes" {
-  let source =
-    #|fn fragment(value: u32) -> u32 {
-    #|  if (value > 0u) {
-    #|    let item = value + 1u;
-    #|    return item;
-    #|  }
-    #|  return value;
-    #|}
-    #|
-  let plan = WgslRenamePlan::empty()
-  plan.add("item", "item_wgsl", FunctionLocal)
-  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
-    source, plan,
-  )
-  debug_inspect(
-    rewritten.contains("let item_wgsl = value + 1u;"),
-    content="true",
-  )
-  debug_inspect(rewritten.contains("return item_wgsl;"), content="true")
-  debug_inspect(rewritten.contains("let item ="), content="false")
-}
-
-///|
-test "rename plan reference rules rewrite recursively scoped blocks" {
+test "binding plan reference rules rewrite recursively scoped blocks" {
   let source =
     #|fn helper() -> u32 {
     #|  return 1u;
@@ -548,33 +401,7 @@ test "rename plan reference rules rewrite recursively scoped blocks" {
 }
 
 ///|
-test "rename plan function-body reference rules preserve override target heads" {
-  let source =
-    #|override fn mod::inner() -> f32 {
-    #|  let value = mod::inner();
-    #|  let mod__inner = 2.0;
-    #|  return value + mod__inner;
-    #|}
-    #|
-  let plan = WgslRenamePlan::empty()
-  plan.add("mod::inner", "mod__inner__virtual_base", FunctionBodyReferencesOnly)
-  plan.add("mod__inner", "mod__inner__virtual_base", FunctionBodyReferencesOnly)
-  let rewritten = wbtest_rewrite_wgsl_declarations_with_rename_plan(
-    source, plan,
-  )
-  debug_inspect(rewritten.contains("override fn mod::inner()"), content="true")
-  debug_inspect(
-    rewritten.contains("let value = mod__inner__virtual_base();"),
-    content="true",
-  )
-  debug_inspect(
-    rewritten.contains("return value + mod__inner;"),
-    content="true",
-  )
-}
-
-///|
-test "rename plan reference rules do not rewrite statement keywords" {
+test "binding plan reference rules do not rewrite statement keywords" {
   let source =
     #|fn entry(flag: bool) -> u32 {
     #|  if (flag) {

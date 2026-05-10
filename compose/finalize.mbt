@@ -3,7 +3,7 @@ fn collect_wgsl_live_binding_plan(
   facts : WgslComposeSemanticFacts,
   bindings : WgslComposeBindingSet,
 ) -> WgslLiveBindingPlan {
-  WgslComposeSemanticIr::from_facts_and_bindings(facts, bindings).live_binding_plan()
+  WgslReachabilityPlan(facts, bindings).live_binding_plan()
 }
 
 ///|

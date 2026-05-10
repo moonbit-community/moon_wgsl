@@ -99,10 +99,9 @@ fn Composer::compose_wgsl_import_requests(
     let origin_start_index = session.symbols.source_origins.length()
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
-      self.resolve_wgsl_source_with_path(
+      WgslComposeEmitter(self, session).emit_source_with_path(
         request.rel_path,
         raw_source,
-        session,
         Some(importer_defs),
         bindings,
         false,
@@ -129,10 +128,9 @@ fn Composer::compose_wgsl_import_requests(
         request.rel_path,
         extraction,
       )
-      self.resolve_wgsl_source_with_path(
+      WgslComposeEmitter(self, session).emit_source_with_path(
         request.rel_path,
         extraction.source(),
-        session,
         Some(importer_defs),
         bindings,
         false,
@@ -144,8 +142,8 @@ fn Composer::compose_wgsl_import_requests(
     if module_source == "" {
       continue
     }
-    let final_name_plan = collect_wgsl_module_final_name_application_plan(
-      session, origin_start_index, alias_prefixes,
+    let final_name_plan = WgslFinalNameAllocator(session, alias_prefixes).application_plan(
+      origin_start_index,
     )
     let final_module_source = if !final_name_plan.is_empty() {
       rewrite_wgsl_declarations_with_binding_plan(

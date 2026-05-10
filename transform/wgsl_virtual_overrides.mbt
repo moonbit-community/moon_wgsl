@@ -214,6 +214,26 @@ fn rewrite_wgsl_virtual_fn_block(
 }
 
 ///|
+fn add_wgsl_virtual_rewrite_binding(
+  plan : WgslReferenceRewritePlan,
+  from_name : String,
+  to_name : String,
+) -> Unit {
+  if from_name == to_name {
+    return
+  }
+  match WgslReferencePath::from_text(from_name) {
+    Some(reference_path) =>
+      plan.add_symbol_reference_binding(
+        WgslIrSymbolIdentity("", from_name),
+        reference_path,
+        to_name,
+      )
+    None => ()
+  }
+}
+
+///|
 fn rewrite_wgsl_virtual_base_block(
   block : WgslGraphBlock,
   function : WgslFunction,
@@ -222,11 +242,12 @@ fn rewrite_wgsl_virtual_base_block(
 ) -> String {
   let nodes : Array[WgslTokenReplacement] = []
   if target_name != base_name {
-    let plan = WgslRenamePlan::empty()
-    plan.add(target_name, base_name, GlobalDeclarationAndReferences)
-    collect_wgsl_block_rewrite_nodes(
+    let plan = WgslReferenceRewritePlan()
+    add_wgsl_virtual_rewrite_binding(plan, target_name, base_name)
+    collect_wgsl_bound_block_rewrite_nodes(
       block.data,
-      build_wgsl_rename_maps(plan),
+      plan.bindings,
+      true,
       nodes,
     )
   }
@@ -243,11 +264,11 @@ fn collect_wgsl_override_body_reference_nodes(
   base_name : String,
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
-  let plan = WgslRenamePlan::empty()
-  plan.add(target_name, base_name, FunctionBodyReferencesOnly)
-  plan.add(raw_target, base_name, FunctionBodyReferencesOnly)
-  plan.add(original_raw_target, base_name, FunctionBodyReferencesOnly)
-  collect_wgsl_block_rewrite_nodes(data, build_wgsl_rename_maps(plan), nodes)
+  let plan = WgslReferenceRewritePlan()
+  add_wgsl_virtual_rewrite_binding(plan, target_name, base_name)
+  add_wgsl_virtual_rewrite_binding(plan, raw_target, base_name)
+  add_wgsl_virtual_rewrite_binding(plan, original_raw_target, base_name)
+  collect_wgsl_function_body_bound_rewrite_nodes(data, plan.bindings, nodes)
 }
 
 ///|
@@ -342,8 +363,12 @@ fn wgsl_binding_plan_redirect_target(
     Some(virtual_target) => return virtual_target
     None => ()
   }
-  match plan.target_for_reference(target) {
-    Some(redirected) => redirected
+  match WgslReferencePath::from_text(target) {
+    Some(reference_path) =>
+      match plan.final_name_for_reference_path(reference_path) {
+        Some(redirected) => redirected
+        None => wgsl_flatten_path_identifier(target)
+      }
     None => wgsl_flatten_path_identifier(target)
   }
 }

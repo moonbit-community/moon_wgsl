@@ -13,33 +13,6 @@
 // limitations under the License.
 
 ///|
-priv enum WgslRenameRuleKind {
-  GlobalDeclarationAndReferences
-  FunctionBodyReferencesOnly
-  FunctionLocal
-}
-
-///|
-priv struct WgslRenameRule {
-  from_name : String
-  to_name : String
-  kind : WgslRenameRuleKind
-}
-
-///|
-priv struct WgslRenamePlan {
-  rules : Array[WgslRenameRule]
-}
-
-///|
-priv struct WgslRenameMaps {
-  global_declaration_rules : Array[WgslRenameRule]
-  reference_rules : Array[WgslRenameRule]
-  function_body_reference_rules : Array[WgslRenameRule]
-  function_local_rules : Array[WgslRenameRule]
-}
-
-///|
 pub struct WgslReferenceRewritePlan {
   priv bindings : Array[WgslReferenceRewriteBinding]
   priv virtual_overrides : Array[WgslVirtualOverrideRewriteBinding]
@@ -131,45 +104,21 @@ pub fn WgslReferenceRewritePlan::add_virtual_override_binding(
 }
 
 ///|
-fn WgslRenamePlan::empty() -> WgslRenamePlan {
-  WgslRenamePlan::{ rules: [] }
-}
-
-///|
-fn WgslRenamePlan::add(
-  self : WgslRenamePlan,
-  from_name : String,
-  to_name : String,
-  kind : WgslRenameRuleKind,
-) -> Unit {
-  let from_name = from_name.trim().to_owned()
-  let to_name = to_name.trim().to_owned()
-  if from_name == "" || to_name == "" || from_name == to_name {
-    return
-  }
-  self.rules.push(WgslRenameRule::{ from_name, to_name, kind })
-}
-
-///|
-fn WgslReferenceRewritePlan::target_for_reference(
-  self : WgslReferenceRewritePlan,
-  from_name : String,
-) -> String? {
-  match WgslReferencePath::from_text(from_name) {
-    Some(reference_path) =>
-      match wgsl_symbol_binding_for_reference(self.bindings, reference_path) {
-        Some(binding) => Some(binding.final_name)
-        None => None
-      }
-    None => None
-  }
-}
-
-///|
 fn WgslReferenceRewritePlan::has_symbol_bindings(
   self : WgslReferenceRewritePlan,
 ) -> Bool {
   self.bindings.length() > 0
+}
+
+///|
+fn WgslReferenceRewritePlan::final_name_for_reference_path(
+  self : WgslReferenceRewritePlan,
+  reference_path : WgslReferencePath,
+) -> String? {
+  match wgsl_symbol_binding_for_reference(self.bindings, reference_path) {
+    Some(binding) => Some(binding.final_name)
+    None => None
+  }
 }
 
 ///|
@@ -232,49 +181,6 @@ fn WgslReferenceRewritePlan::virtual_raw_target_name_for_target(
     }
   }
   raw_target_name
-}
-
-///|
-fn build_wgsl_rename_maps(plan : WgslRenamePlan) -> WgslRenameMaps {
-  let global_declaration_rules : Array[WgslRenameRule] = []
-  let reference_rules : Array[WgslRenameRule] = []
-  let function_body_reference_rules : Array[WgslRenameRule] = []
-  let function_local_rules : Array[WgslRenameRule] = []
-  for rule in plan.rules {
-    match rule.kind {
-      GlobalDeclarationAndReferences => {
-        global_declaration_rules.push(rule)
-        reference_rules.push(rule)
-      }
-      FunctionBodyReferencesOnly => function_body_reference_rules.push(rule)
-      FunctionLocal => function_local_rules.push(rule)
-    }
-  }
-  WgslRenameMaps::{
-    global_declaration_rules,
-    reference_rules,
-    function_body_reference_rules,
-    function_local_rules,
-  }
-}
-
-///|
-fn wgsl_rename_rules_target(
-  rules : Array[WgslRenameRule],
-  from_name : String,
-) -> String? {
-  let mut target : String? = None
-  for rule in rules {
-    if rule.from_name != from_name {
-      continue
-    }
-    match target {
-      Some(existing) if existing != rule.to_name => return None
-      Some(_) => ()
-      None => target = Some(rule.to_name)
-    }
-  }
-  target
 }
 
 ///|

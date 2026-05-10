@@ -39,10 +39,9 @@ test "compose graph execution plans reachability before emission" {
     #|  return dep_fn();
     #|}
     #|
-  composer.complete_wgsl_compose_graph_execution(
+  WgslImportGraphBuilder(composer, session).complete_execution(
     "root.wgsl",
     source,
-    session,
     None,
   ) catch {
     error => abort(error.message())
@@ -59,10 +58,9 @@ test "compose graph execution plans reachability before emission" {
     session.symbols.emitted_final_names.canonical_entry_count(),
     content="0",
   )
-  let output = composer.resolve_wgsl_source_with_path(
+  let output = WgslComposeEmitter(composer, session).emit_source_with_path(
     "root.wgsl",
     source,
-    session,
     None,
     WgslComposeBindingSet(),
     true,
