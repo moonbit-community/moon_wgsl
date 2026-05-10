@@ -6,20 +6,6 @@ import {
 }
 
 // Values
-pub fn emit_naga_oil_writer_compatible_wgsl_source_from_ir(Module) -> String raise WgslIrPipelineError
-
-pub fn emit_naga_oil_writer_compatible_wgsl_source_from_ir_entry_roots(Module) -> String raise WgslIrPipelineError
-
-pub fn emit_validated_wgsl_source_from_ir(Module) -> String raise WgslIrPipelineError
-
-pub fn emit_validated_wgsl_source_from_ir_entry_roots(Module) -> String raise WgslIrPipelineError
-
-pub fn emit_validated_wgsl_source_from_ir_roots(Module, Array[String]) -> String raise WgslIrPipelineError
-
-pub fn lower_validated_wgsl_source_to_ir(String) -> Module raise WgslIrPipelineError
-
-pub fn lower_validated_wgsl_source_to_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> Module raise WgslIrPipelineError
-
 pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslIrPipelineError
 
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
@@ -32,8 +18,6 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compa
 
 pub fn tree_shake_wgsl_source_via_ir(String, Array[String]) -> String raise WgslIrPipelineError
 
-pub fn validate_wgsl_ir_module(Module) -> Unit raise WgslIrValidationError
-
 // Errors
 pub suberror WgslIrPipelineError {
   Lower(String)
@@ -43,31 +27,6 @@ pub suberror WgslIrPipelineError {
   Reparse(String)
 }
 pub fn WgslIrPipelineError::message(Self) -> String
-
-pub suberror WgslIrValidationError {
-  InvalidTypeHandle(Int)
-  InvalidConstantHandle(Int)
-  InvalidOverrideHandle(Int)
-  InvalidGlobalVariableHandle(Int)
-  InvalidGlobalExpressionHandle(Int)
-  InvalidFunctionHandle(Int)
-  InvalidLocalVariableHandle(Int)
-  InvalidFunctionExpressionHandle(Int)
-  InvalidHandleRange(Int, Int)
-  InvalidEntryPoint(String)
-  MissingExpressionType(Int, String)
-  InvalidConditionType(String, Int, String, String)
-  InvalidStoreTarget(Int)
-  InvalidReturnValue(String)
-  InvalidFunctionArgumentCount(String, Int, Int)
-  InvalidFunctionArgumentType(String, Int)
-  InvalidFunctionResult(String)
-  InvalidType(String)
-  InvalidGlobalVariable(String)
-  InvalidExpression(String, Int)
-  InvalidStatement(String)
-}
-pub fn WgslIrValidationError::message(Self) -> String
 
 // Types and methods
 pub enum AddressSpace {

@@ -34,14 +34,14 @@ pub fn WgslIrPipelineError::message(self : WgslIrPipelineError) -> String {
 }
 
 ///|
-pub fn lower_validated_wgsl_source_to_ir(
+fn lower_validated_wgsl_source_to_ir(
   source : String,
 ) -> Module raise WgslIrPipelineError {
   lower_validated_wgsl_source_to_ir_with_generated_imports(source, [])
 }
 
 ///|
-pub fn lower_validated_wgsl_source_to_ir_with_generated_imports(
+fn lower_validated_wgsl_source_to_ir_with_generated_imports(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrPipelineError {
@@ -62,7 +62,7 @@ pub fn lower_validated_wgsl_source_to_ir_with_generated_imports(
 }
 
 ///|
-pub fn emit_validated_wgsl_source_from_ir(
+fn emit_validated_wgsl_source_from_ir(
   module_ : Module,
 ) -> String raise WgslIrPipelineError {
   let source = emit_wgsl_module_from_ir(module_) catch {
@@ -78,7 +78,7 @@ pub fn emit_validated_wgsl_source_from_ir(
 }
 
 ///|
-pub fn emit_naga_oil_writer_compatible_wgsl_source_from_ir(
+fn emit_naga_oil_writer_compatible_wgsl_source_from_ir(
   module_ : Module,
 ) -> String raise WgslIrPipelineError {
   emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
@@ -96,7 +96,7 @@ fn wgsl_ir_entry_point_root_items(module_ : Module) -> Array[String] {
 }
 
 ///|
-pub fn emit_validated_wgsl_source_from_ir_roots(
+fn emit_validated_wgsl_source_from_ir_roots(
   module_ : Module,
   root_items : Array[String],
 ) -> String raise WgslIrPipelineError {
@@ -113,7 +113,7 @@ pub fn emit_validated_wgsl_source_from_ir_roots(
 }
 
 ///|
-pub fn emit_validated_wgsl_source_from_ir_entry_roots(
+fn emit_validated_wgsl_source_from_ir_entry_roots(
   module_ : Module,
 ) -> String raise WgslIrPipelineError {
   let roots = wgsl_ir_entry_point_root_items(module_)
@@ -125,7 +125,7 @@ pub fn emit_validated_wgsl_source_from_ir_entry_roots(
 }
 
 ///|
-pub fn emit_naga_oil_writer_compatible_wgsl_source_from_ir_entry_roots(
+fn emit_naga_oil_writer_compatible_wgsl_source_from_ir_entry_roots(
   module_ : Module,
 ) -> String raise WgslIrPipelineError {
   let roots = wgsl_ir_entry_point_root_items(module_)

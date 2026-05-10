@@ -182,7 +182,16 @@ required_ir_split_files=(
   ir/wgsl_emit_names.mbt
   ir/wgsl_emit_builtins.mbt
   ir/wgsl_emit_expressions.mbt
+  ir/wgsl_emit_expression_types.mbt
   ir/wgsl_emit_statements.mbt
+  ir/validation.mbt
+  ir/validation_types.mbt
+  ir/validation_statements.mbt
+  ir/validation_expressions.mbt
+  ir/validation_signatures.mbt
+  ir/validation_expression_types.mbt
+  ir/validation_layout.mbt
+  ir/validation_handles.mbt
 )
 for split_file in "${required_ir_split_files[@]}"; do
   if [[ ! -f "$split_file" ]]; then
@@ -193,6 +202,38 @@ done
 if [[ -f ir/wgsl_lower.mbt ]]; then
   fail "IR lowerer monolith must not be reintroduced as ir/wgsl_lower.mbt"
 fi
+
+if [[ -f parser/wgsl_ast_expr_type.mbt ]]; then
+  fail "parser expression/type monolith must stay split; parser/wgsl_ast_expr_type.mbt must not be reintroduced"
+fi
+
+required_parser_split_files=(
+  parser/wgsl_expr_tokens.mbt
+  parser/wgsl_expr_node_parser.mbt
+  parser/wgsl_decl_fragment_parser.mbt
+  parser/wgsl_type_ref_parser.mbt
+)
+for parser_split_file in "${required_parser_split_files[@]}"; do
+  if [[ ! -f "$parser_split_file" ]]; then
+    fail "parser expression/type responsibilities must stay split: missing ${parser_split_file}"
+  fi
+done
+
+while IFS= read -r source_file; do
+  source_lines="$(wc -l < "$source_file" | tr -d ' ')"
+  if (( source_lines > 1600 )); then
+    fail "hand-written source file is too large: ${source_file} has ${source_lines} lines"
+  fi
+done < <(
+  find ast common compose directive export import_syntax ir lex metadata parser preprocess resolver transform \
+    -name '*.mbt' \
+    ! -name '*_wbtest.mbt' \
+    ! -name '*_test.mbt' \
+    ! -name '*generated*.mbt' \
+    ! -name 'xid.mbt' \
+    ! -name 'regex_word.mbt' \
+    -print
+)
 
 for split_file in ir/wgsl_lower_*.mbt; do
   if [[ "$split_file" == *_wbtest.mbt ]]; then
@@ -487,7 +528,7 @@ if rg -n 'pub (fn (parse_wgsl_module_to_ir|parse_wgsl_module_to_ir_with_generate
   fail "raw WGSL IR lower/emit APIs must remain internal; public callers must use the validated IR pipeline"
 fi
 
-if rg -n 'parse_wgsl_module_to_ir|lower_wgsl_translation_unit_to_ir|emit_wgsl_module_from_ir|WgslIr(Lower|Emit)Error|WgslIrEmitFilter|sanitize_wgsl_ir_identifier' ir/pkg.generated.mbti >"$matches_file"; then
+if rg -n 'parse_wgsl_module_to_ir|lower_wgsl_translation_unit_to_ir|lower_validated_wgsl_source_to_ir|emit_validated_wgsl_source_from_ir|emit_wgsl_module_from_ir|WgslIr(Lower|Emit)Error|WgslIrEmitFilter|sanitize_wgsl_ir_identifier' ir/pkg.generated.mbti >"$matches_file"; then
   cat "$matches_file" >&2
   fail "IR public interface must only expose validated pipeline entrypoints, not raw lower/emit internals"
 fi
