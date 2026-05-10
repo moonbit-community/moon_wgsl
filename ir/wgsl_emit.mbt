@@ -51,18 +51,27 @@ fn emit_wgsl_module_from_ir_roots(
   shader_module : Module,
   root_items : Array[String],
 ) -> String raise WgslIrEmitError {
+  emit_wgsl_module_from_ir_with_options_and_roots(
+    shader_module,
+    WgslIrEmitOptions::valid_wgsl(),
+    root_items,
+  )
+}
+
+///|
+fn emit_wgsl_module_from_ir_with_options_and_roots(
+  shader_module : Module,
+  options : WgslIrEmitOptions,
+  root_items : Array[String],
+) -> String raise WgslIrEmitError {
   if root_items.length() == 0 {
-    return emit_wgsl_module_from_ir(shader_module)
+    return emit_wgsl_module_from_ir_with_options(shader_module, options)
   }
   let filter = build_wgsl_ir_emit_filter(shader_module, root_items)
   validate_wgsl_ir_module_with_filter(shader_module, filter) catch {
     error => raise WgslIrEmitError::Unsupported(error.message())
   }
-  let emitter = WgslIrEmitter::{
-    shader_module,
-    options: WgslIrEmitOptions::valid_wgsl(),
-    filter: Some(filter),
-  }
+  let emitter = WgslIrEmitter::{ shader_module, options, filter: Some(filter) }
   emitter.emit_module()
 }
 

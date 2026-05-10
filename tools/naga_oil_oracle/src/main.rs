@@ -155,6 +155,7 @@ fn normalize_rel_path(path: &Path) -> String {
 }
 
 fn display_file_path(prefix: &str, rel_path: &str) -> String {
+    let rel_path = rel_path.strip_prefix("assets/").unwrap_or(rel_path);
     if prefix.is_empty() {
         rel_path.to_owned()
     } else {
@@ -213,12 +214,22 @@ fn inferred_module_path(rel_path: &str) -> Option<String> {
     let without_ext = rel_path
         .strip_suffix(".wgsl")
         .or_else(|| rel_path.strip_suffix(".glsl"))?;
-    let without_prefix = without_ext.strip_prefix("shaders/").unwrap_or(without_ext);
+    let without_prefix = without_ext
+        .strip_prefix("assets/shaders/")
+        .or_else(|| without_ext.strip_prefix("shaders/"))
+        .unwrap_or(without_ext);
     let segments = without_prefix
         .split('/')
         .filter(|segment| !segment.trim().is_empty())
         .collect::<Vec<_>>();
     (!segments.is_empty()).then(|| segments.join("::"))
+}
+
+fn inferred_composable_module_name(rel_path: &str, file_path_prefix: &str) -> Option<String> {
+    if rel_path.starts_with("assets/shaders/") {
+        return Some(format!("\"{}\"", display_file_path(file_path_prefix, rel_path)));
+    }
+    inferred_module_path(rel_path)
 }
 
 fn add_modules_until_fixed_point(
@@ -237,7 +248,9 @@ fn add_modules_until_fixed_point(
             .filter_map(|(index, file)| {
                 let is_named_additional = inferred_module_path(&file.rel_path)
                     .is_some_and(|module| additional_imports.iter().any(|item| item == &module));
-                (has_import_path(&file.source) || is_named_additional).then_some(index)
+                let is_bevy_asset_shader = file.rel_path.starts_with("assets/shaders/");
+                (has_import_path(&file.source) || is_named_additional || is_bevy_asset_shader)
+                    .then_some(index)
             })
             .collect()
     } else {
@@ -264,7 +277,7 @@ fn add_modules_until_fixed_point(
             let as_name = if has_import_path(&file.source) {
                 None
             } else {
-                inferred_module_path(&file.rel_path)
+                inferred_composable_module_name(&file.rel_path, file_path_prefix)
             };
             let result = composer.add_composable_module(ComposableModuleDescriptor {
                 source: &file.source,

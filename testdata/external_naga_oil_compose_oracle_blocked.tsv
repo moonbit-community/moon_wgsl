@@ -1,0 +1,2 @@
+# id	rel_path	reason
+bevy	assets/shaders/custom_clustered_decal.wgsl	Pinned upstream naga-oil/Naga writer panics while composing this profile, so moon_wgsl still composes it through the external corpus gate but upstream differential parity cannot compare writer output at this pinned oracle version.

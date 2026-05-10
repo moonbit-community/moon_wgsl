@@ -280,7 +280,7 @@ fn compose_wgsl_source_via_ir(
   symbols : WgslComposeSymbolTable,
   root_rel_path : String,
 ) -> String raise ComposerError {
-  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports(
+  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots(
     source,
     symbols.generated_import_provenance(root_rel_path),
   ) catch {
@@ -303,7 +303,7 @@ fn compose_wgsl_source_via_naga_oil_writer_compatible_ir(
   symbols : WgslComposeSymbolTable,
   root_rel_path : String,
 ) -> String raise ComposerError {
-  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible_entry_roots(
     source,
     symbols.generated_import_provenance(root_rel_path),
   ) catch {

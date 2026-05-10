@@ -5,9 +5,14 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_MANIFEST:-testdata/external_naga_oil_compose_parity.tsv}"
+oracle_blocked_manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_ORACLE_BLOCKED_MANIFEST:-testdata/external_naga_oil_compose_oracle_blocked.tsv}"
+writer_drift_manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_WRITER_DRIFT_MANIFEST:-testdata/external_naga_oil_compose_writer_drift.tsv}"
+byte_drift_manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_BYTE_DRIFT_MANIFEST:-testdata/external_naga_oil_compose_byte_drift.tsv}"
 repo_manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifest.tsv}"
+profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
-expected_case_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES:-6}"
+expected_case_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES:-150}"
+expected_oracle_blocked_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_ORACLE_BLOCKED_CASES:-1}"
 
 fail() {
   printf 'external naga-oil compose parity gate failed: %s\n' "$*" >&2
@@ -15,7 +20,11 @@ fail() {
 }
 
 [[ -f "$manifest" ]] || fail "missing manifest: $manifest"
+[[ -f "$oracle_blocked_manifest" ]] || fail "missing oracle-blocked manifest: $oracle_blocked_manifest"
+[[ -f "$writer_drift_manifest" ]] || fail "missing writer-drift manifest: $writer_drift_manifest"
+[[ -f "$byte_drift_manifest" ]] || fail "missing byte-drift manifest: $byte_drift_manifest"
 [[ -f "$repo_manifest" ]] || fail "missing repo manifest: $repo_manifest"
+[[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -51,10 +60,26 @@ lookup_repo_row() {
   ' "$repo_manifest"
 }
 
+lookup_external_corpus_profile() {
+  local id="$1"
+  local rel_path="$2"
+  awk -F '\t' -v id="$id" -v rel="$rel_path" '
+    $0 !~ /^($|#)/ && $1 == id && $2 == rel { print; found = 1; exit }
+    END { if (!found) exit 1 }
+  ' "$profile_manifest"
+}
+
 validate_manifest_schemas() {
   local parity_keys="$tmpdir/parity.keys"
+  local compose_source_keys="$tmpdir/compose-source.keys"
+  local oracle_blocked_keys="$tmpdir/oracle-blocked.keys"
+  local writer_drift_keys="$tmpdir/writer-drift.keys"
+  local byte_drift_keys="$tmpdir/byte-drift.keys"
   local repo_ids="$tmpdir/repo.ids"
   local duplicate_keys
+  local duplicate_oracle_blocked_keys
+  local duplicate_writer_drift_keys
+  local duplicate_byte_drift_keys
   local duplicate_repo_ids
   awk -F '\t' '
     $0 ~ /^($|#)/ { next }
@@ -75,6 +100,77 @@ validate_manifest_schemas() {
   awk -F '\t' '
     $0 ~ /^($|#)/ { next }
     $1 == "id" { next }
+    NF != 3 {
+      printf("external naga-oil oracle-blocked row has %d field(s), expected 3: %s\n", NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    $1 == "" || $2 == "" || $3 == "" {
+      printf("external naga-oil oracle-blocked row must include id, rel_path, and reason: %s\n", $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 "\t" $2 }
+  ' "$oracle_blocked_manifest" | sort > "$oracle_blocked_keys"
+  duplicate_oracle_blocked_keys="$(uniq -d "$oracle_blocked_keys" | tr '\n' ' ')"
+  [[ -z "$duplicate_oracle_blocked_keys" ]] || fail "duplicate external naga-oil oracle-blocked row(s): $duplicate_oracle_blocked_keys"
+  oracle_blocked_manifest_count="$(wc -l < "$oracle_blocked_keys" | tr -d ' ')"
+  ((oracle_blocked_manifest_count == expected_oracle_blocked_count)) ||
+    fail "oracle-blocked manifest contains $oracle_blocked_manifest_count case(s); expected exactly $expected_oracle_blocked_count"
+
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    NF != 3 {
+      printf("external compose source row has %d field(s), expected 3: %s\n", NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 "\t" $2 }
+  ' testdata/external_wgsl_corpus_compose_sources.tsv | sort > "$compose_source_keys"
+  if ! diff -u "$compose_source_keys" "$parity_keys" >"$tmpdir/compose-source-parity.diff"; then
+    echo "external naga-oil compose parity manifest must match the compose source inventory" >&2
+    sed -n '1,200p' "$tmpdir/compose-source-parity.diff" >&2
+    exit 1
+  fi
+  if comm -23 "$oracle_blocked_keys" "$parity_keys" | grep . >"$tmpdir/oracle-blocked-stale"; then
+    echo "external naga-oil oracle-blocked manifest has rows absent from parity manifest" >&2
+    sed -n '1,200p' "$tmpdir/oracle-blocked-stale" >&2
+    exit 1
+  fi
+
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    NF != 5 {
+      printf("external naga-oil writer-drift row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    $1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" {
+      printf("external naga-oil writer-drift row must include id, rel_path, hash, class, and reason: %s\n", $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 "\t" $2 "\t" $3 }
+  ' "$writer_drift_manifest" | sort > "$writer_drift_keys"
+  duplicate_writer_drift_keys="$(awk -F '\t' '{ print $1 "\t" $2 }' "$writer_drift_keys" | uniq -d | tr '\n' ' ')"
+  [[ -z "$duplicate_writer_drift_keys" ]] || fail "duplicate external naga-oil writer-drift row(s): $duplicate_writer_drift_keys"
+
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    NF != 5 {
+      printf("external naga-oil byte-drift row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    $1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" {
+      printf("external naga-oil byte-drift row must include id, rel_path, hash, class, and reason: %s\n", $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 "\t" $2 "\t" $3 }
+  ' "$byte_drift_manifest" | sort > "$byte_drift_keys"
+  duplicate_byte_drift_keys="$(awk -F '\t' '{ print $1 "\t" $2 }' "$byte_drift_keys" | uniq -d | tr '\n' ' ')"
+  [[ -z "$duplicate_byte_drift_keys" ]] || fail "duplicate external naga-oil byte-drift row(s): $duplicate_byte_drift_keys"
+
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
     NF != 9 {
       printf("external WGSL corpus repo row has %d field(s), expected 9: %s\n", NF, $0) > "/dev/stderr"
       exit 1
@@ -83,6 +179,15 @@ validate_manifest_schemas() {
   ' "$repo_manifest" | sort > "$repo_ids"
   duplicate_repo_ids="$(uniq -d "$repo_ids" | tr '\n' ' ')"
   [[ -z "$duplicate_repo_ids" ]] || fail "duplicate external WGSL corpus repo row(s): $duplicate_repo_ids"
+}
+
+is_oracle_blocked_case() {
+  local id="$1"
+  local rel_path="$2"
+  awk -F '\t' -v id="$id" -v rel="$rel_path" '
+    $0 !~ /^($|#)/ && $1 == id && $2 == rel { found = 1; exit }
+    END { exit found ? 0 : 1 }
+  ' "$oracle_blocked_manifest"
 }
 
 append_moon_bool_defs() {
@@ -163,6 +268,84 @@ materialize_raw_template_value_defs() {
   printf '%s\n' "$overlay"
 }
 
+apply_profile_text_replacements() {
+  local replacements="$1"
+  local target="$2"
+
+  [[ -n "$replacements" && "$replacements" != "-" ]] || return 0
+  IFS=',' read -r -a replacement_list <<< "$replacements"
+  local replacement
+  for replacement in "${replacement_list[@]}"; do
+    [[ -n "$replacement" ]] || continue
+    [[ "$replacement" == *=* ]] || fail "invalid profile text replacement: $replacement"
+    local from="${replacement%%=*}"
+    local to="${replacement#*=}"
+    FROM="$from" TO="$to" perl -0pi -e 's/\Q$ENV{FROM}\E/$ENV{TO}/g' "$target"
+  done
+}
+
+append_profile_sources_to_file() {
+  local root="$1"
+  local sources="$2"
+  local output="$3"
+
+  [[ -n "$sources" && "$sources" != "-" ]] || return 0
+  IFS=',' read -r -a source_list <<< "$sources"
+  local rel_source
+  for rel_source in "${source_list[@]}"; do
+    [[ -n "$rel_source" ]] || continue
+    local source_path="$root/$rel_source"
+    if [[ "$rel_source" == profile://* ]]; then
+      source_path="$repo_root/testdata/external_wgsl_profile_sources/${rel_source#profile://}"
+    fi
+    [[ -f "$source_path" ]] || fail "profile source fragment not found: $rel_source"
+    cat "$source_path" >> "$output"
+    printf '\n' >> "$output"
+  done
+}
+
+materialize_profile_source_overlay() {
+  local checkout="$1"
+  local id="$2"
+  local rel_path="$3"
+  local label="$4"
+  local profile_line
+  profile_line="$(lookup_external_corpus_profile "$id" "$rel_path" || true)"
+  [[ -n "$profile_line" ]] || {
+    printf '%s\n' "$checkout"
+    return 0
+  }
+
+  local _profile_id _profile_rel _profile_defs _profile_value_defs _profile_imports _profile_capabilities
+  local profile_prefix_sources profile_suffix_sources profile_text_replacements _profile_notes
+  IFS=$'\t' read -r _profile_id _profile_rel _profile_defs _profile_value_defs _profile_imports _profile_capabilities profile_prefix_sources profile_suffix_sources profile_text_replacements _profile_notes <<< "$profile_line"
+  if [[ (-z "$profile_prefix_sources" || "$profile_prefix_sources" == "-") &&
+        (-z "$profile_suffix_sources" || "$profile_suffix_sources" == "-") &&
+        (-z "$profile_text_replacements" || "$profile_text_replacements" == "-") ]]; then
+    printf '%s\n' "$checkout"
+    return 0
+  fi
+
+  local overlay="$tmpdir/$label.profile-overlay"
+  mkdir -p "$overlay"
+  cp -R "$checkout/." "$overlay/"
+  rm -rf "$overlay/.git"
+  local target="$overlay/$rel_path"
+  [[ -f "$target" ]] || fail "profile overlay entry not found: $rel_path"
+  apply_profile_text_replacements "$profile_text_replacements" "$target"
+  if [[ (-n "$profile_prefix_sources" && "$profile_prefix_sources" != "-") ||
+        (-n "$profile_suffix_sources" && "$profile_suffix_sources" != "-") ]]; then
+    local body="$target.profile-body"
+    cp "$target" "$body"
+    : > "$target"
+    append_profile_sources_to_file "$overlay" "$profile_prefix_sources" "$target"
+    cat "$body" >> "$target"
+    printf '\n' >> "$target"
+    append_profile_sources_to_file "$overlay" "$profile_suffix_sources" "$target"
+  fi
+  printf '%s\n' "$overlay"
+}
+
 append_imports() {
   local csv="$1"
   [[ -n "$csv" && "$csv" != "-" ]] || return 0
@@ -185,6 +368,30 @@ append_capabilities() {
     oracle_args+=(--capability "$value")
     fingerprint_args+=(--capability "$value")
   done
+}
+
+append_detected_capabilities() {
+  local source="$1"
+  if grep -q 'var<immediate>' "$source"; then
+    oracle_args+=(--capability immediates)
+    fingerprint_args+=(--capability immediates)
+  fi
+  if grep -q 'enable subgroups' "$source" || grep -q 'subgroup' "$source"; then
+    oracle_args+=(--capability subgroups)
+    fingerprint_args+=(--capability subgroups)
+  fi
+  if grep -q 'textureAtomic' "$source" || grep -q 'texture_storage_.*atomic' "$source"; then
+    oracle_args+=(--capability texture-atomic)
+    fingerprint_args+=(--capability texture-atomic)
+  fi
+  if grep -q '@builtin(view_index)' "$source"; then
+    oracle_args+=(--capability multiview)
+    fingerprint_args+=(--capability multiview)
+  fi
+  if grep -q '@builtin(barycentric' "$source"; then
+    oracle_args+=(--capability shader-barycentrics)
+    fingerprint_args+=(--capability shader-barycentrics)
+  fi
 }
 
 append_bevy_default_oracle_defs() {
@@ -211,6 +418,20 @@ fingerprint_wgsl() {
   cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_interface_fingerprint -- "${fingerprint_args[@]+"${fingerprint_args[@]}"}" --input "$1" --output "$2"
 }
 
+writer_fingerprint_wgsl() {
+  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin wgsl_writer_fingerprint -- --input "$1" --output "$2"
+}
+
+diff_hash() {
+  local expected="$1"
+  local actual="$2"
+  local diff_file="$3"
+  if diff -u --label expected --label actual "$expected" "$actual" >"$diff_file"; then
+    return 1
+  fi
+  shasum -a 256 "$diff_file" | awk '{ print $1 }'
+}
+
 compare_fingerprints() {
   local oracle_fingerprint="$1"
   local moon_fingerprint="$2"
@@ -220,13 +441,13 @@ compare_fingerprints() {
   local moon_non_entries="$tmpdir/$label.moon.non-entries"
   local moon_extra="$tmpdir/$label.moon.extra"
 
-  grep $'^entry\t' "$oracle_fingerprint" | sort > "$oracle_entries" || true
-  grep $'^entry\t' "$moon_fingerprint" | sort > "$moon_entries" || true
+  grep $'^entry\t' "$oracle_fingerprint" | sed '/^$/d' | sort > "$oracle_entries" || true
+  grep $'^entry\t' "$moon_fingerprint" | sed '/^$/d' | sort > "$moon_entries" || true
   if ! diff -u "$oracle_entries" "$moon_entries"; then
     fail "Naga IR entry-point fingerprint differs for $label"
   fi
 
-  grep -v $'^entry\t' "$moon_fingerprint" | sort > "$moon_non_entries" || true
+  grep -v $'^entry\t' "$moon_fingerprint" | sed '/^$/d' | sort > "$moon_non_entries" || true
   comm -23 "$moon_non_entries" "$oracle_fingerprint" > "$moon_extra"
   if [[ -s "$moon_extra" ]]; then
     echo "moon_wgsl emitted pipeline-interface items that are absent from upstream naga-oil for $label:" >&2
@@ -236,6 +457,21 @@ compare_fingerprints() {
 }
 
 case_count=0
+comparable_count=0
+oracle_blocked_count=0
+writer_exact_count=0
+writer_drift_count=0
+byte_exact_count=0
+byte_drift_count=0
+oracle_blocked_actual="$tmpdir/oracle-blocked.actual"
+oracle_blocked_expected="$tmpdir/oracle-blocked.expected"
+writer_drift_actual="$tmpdir/writer-drift.actual"
+writer_drift_expected="$tmpdir/writer-drift.expected"
+byte_drift_actual="$tmpdir/byte-drift.actual"
+byte_drift_expected="$tmpdir/byte-drift.expected"
+: > "$oracle_blocked_actual"
+: > "$writer_drift_actual"
+: > "$byte_drift_actual"
 cached_repo_id=""
 cached_checkout=""
 cached_repo=""
@@ -266,11 +502,14 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
 
   case_count=$((case_count + 1))
   label="$id.$case_count.$(basename "$rel_path" .wgsl)"
-  compose_root="$(materialize_raw_template_value_defs "$checkout" "$rel_path" "$value_defs" "$label")"
+  profile_root="$(materialize_profile_source_overlay "$checkout" "$id" "$rel_path" "$label")"
+  compose_root="$(materialize_raw_template_value_defs "$profile_root" "$rel_path" "$value_defs" "$label")"
   moon_output="$tmpdir/$label.moon.wgsl"
   oracle_output="$tmpdir/$label.oracle.wgsl"
   moon_fingerprint="$tmpdir/$label.moon.interface.txt"
   oracle_fingerprint="$tmpdir/$label.oracle.interface.txt"
+  moon_writer_fingerprint="$tmpdir/$label.moon.writer.txt"
+  oracle_writer_fingerprint="$tmpdir/$label.oracle.writer.txt"
 
   echo "== External naga-oil compose parity: $id $rel_path =="
   moon_args=(--fixture-root "$compose_root" --entry "$rel_path" --output "$moon_output")
@@ -286,6 +525,7 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   append_oracle_defs "$value_defs"
   append_imports "$additional_imports"
   append_capabilities "$capabilities"
+  append_detected_capabilities "$compose_root/$rel_path"
 
   if ! moon_compose >"$tmpdir/$label.moon.stdout" 2>"$tmpdir/$label.moon.stderr"; then
     sed -n '1,120p' "$tmpdir/$label.moon.stdout" >&2
@@ -293,16 +533,78 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
     fail "moon compose failed for $id/$rel_path"
   fi
   if ! oracle_compose >"$tmpdir/$label.oracle.stdout" 2>"$tmpdir/$label.oracle.stderr"; then
+    if is_oracle_blocked_case "$id" "$rel_path"; then
+      printf '%s\t%s\n' "$id" "$rel_path" >> "$oracle_blocked_actual"
+      oracle_blocked_count=$((oracle_blocked_count + 1))
+      continue
+    fi
     sed -n '1,120p' "$tmpdir/$label.oracle.stdout" >&2
     sed -n '1,120p' "$tmpdir/$label.oracle.stderr" >&2
     fail "naga-oil oracle compose failed for $id/$rel_path"
   fi
+  if is_oracle_blocked_case "$id" "$rel_path"; then
+    fail "oracle-blocked case unexpectedly composed successfully: $id/$rel_path"
+  fi
   fingerprint_wgsl "$moon_output" "$moon_fingerprint"
   fingerprint_wgsl "$oracle_output" "$oracle_fingerprint"
   compare_fingerprints "$oracle_fingerprint" "$moon_fingerprint" "$label"
+  writer_fingerprint_wgsl "$moon_output" "$moon_writer_fingerprint"
+  writer_fingerprint_wgsl "$oracle_output" "$oracle_writer_fingerprint"
+  writer_diff="$tmpdir/$label.writer.diff"
+  if writer_hash="$(diff_hash "$oracle_writer_fingerprint" "$moon_writer_fingerprint" "$writer_diff")"; then
+    printf '%s\t%s\t%s\n' "$id" "$rel_path" "$writer_hash" >> "$writer_drift_actual"
+    writer_drift_count=$((writer_drift_count + 1))
+  else
+    writer_exact_count=$((writer_exact_count + 1))
+  fi
+  byte_diff="$tmpdir/$label.byte.diff"
+  if byte_hash="$(diff_hash "$oracle_output" "$moon_output" "$byte_diff")"; then
+    printf '%s\t%s\t%s\n' "$id" "$rel_path" "$byte_hash" >> "$byte_drift_actual"
+    byte_drift_count=$((byte_drift_count + 1))
+  else
+    byte_exact_count=$((byte_exact_count + 1))
+  fi
+  comparable_count=$((comparable_count + 1))
 done < "$manifest"
 
 ((case_count > 0)) || fail "manifest contains no parity cases"
 ((case_count == expected_case_count)) || fail "manifest contains $case_count parity case(s); expected exactly $expected_case_count"
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  { print $1 "\t" $2 }
+' "$oracle_blocked_manifest" | sort > "$oracle_blocked_expected"
+sort -o "$oracle_blocked_actual" "$oracle_blocked_actual"
+if ! diff -u "$oracle_blocked_expected" "$oracle_blocked_actual" >"$tmpdir/oracle-blocked.diff"; then
+  echo "external naga-oil oracle-blocked manifest does not match observed oracle failures" >&2
+  sed -n '1,200p' "$tmpdir/oracle-blocked.diff" >&2
+  exit 1
+fi
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  { print $1 "\t" $2 "\t" $3 }
+' "$writer_drift_manifest" | sort > "$writer_drift_expected"
+sort -o "$writer_drift_actual" "$writer_drift_actual"
+if ! diff -u "$writer_drift_expected" "$writer_drift_actual" >"$tmpdir/writer-drift.diff"; then
+  echo "external naga-oil writer/order/name drift manifest does not match observed fingerprint diffs" >&2
+  sed -n '1,200p' "$tmpdir/writer-drift.diff" >&2
+  echo "Observed writer drift rows:" >&2
+  sed -n '1,240p' "$writer_drift_actual" >&2
+  exit 1
+fi
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  { print $1 "\t" $2 "\t" $3 }
+' "$byte_drift_manifest" | sort > "$byte_drift_expected"
+sort -o "$byte_drift_actual" "$byte_drift_actual"
+if ! diff -u "$byte_drift_expected" "$byte_drift_actual" >"$tmpdir/byte-drift.diff"; then
+  echo "external naga-oil byte-drift manifest does not match observed byte diffs" >&2
+  sed -n '1,200p' "$tmpdir/byte-drift.diff" >&2
+  echo "Observed byte drift rows:" >&2
+  sed -n '1,240p' "$byte_drift_actual" >&2
+  exit 1
+fi
 
-echo "external naga-oil compose parity gate passed: cases=$case_count"
+echo "external naga-oil compose parity gate passed: cases=$case_count comparable=$comparable_count oracle-blocked=$oracle_blocked_count writer-exact=$writer_exact_count writer-drift=$writer_drift_count byte-exact=$byte_exact_count byte-drift=$byte_drift_count"

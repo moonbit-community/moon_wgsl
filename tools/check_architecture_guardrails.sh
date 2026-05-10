@@ -559,6 +559,58 @@ if ! rg -n 'EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES|expected_case_count'
   fail "external naga-oil compose parity gate must exact-gate its manifest case count"
 fi
 
+if ! rg -n 'expected_case_count="\$\{EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES:-150\}"' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity must default to the full 150-case Bevy compose-source inventory"
+fi
+
+if [[ ! -f testdata/external_naga_oil_compose_oracle_blocked.tsv ]]; then
+  fail "external naga-oil compose parity oracle-blocked cases must be manifest-owned"
+fi
+
+if [[ ! -f testdata/external_naga_oil_compose_writer_drift.tsv ]]; then
+  fail "external naga-oil compose parity writer/order/name drift must be manifest-owned"
+fi
+
+if [[ ! -f testdata/external_naga_oil_compose_byte_drift.tsv ]]; then
+  fail "external naga-oil compose parity byte drift must be manifest-owned"
+fi
+
+external_compose_case_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_parity.tsv)"
+if (( external_compose_case_count != 150 )); then
+  fail "external naga-oil compose parity manifest must contain the full 150-case inventory, got ${external_compose_case_count}"
+fi
+
+external_oracle_blocked_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_oracle_blocked.tsv)"
+if (( external_oracle_blocked_count != 1 )); then
+  fail "external naga-oil compose parity oracle-blocked manifest must contain exactly one pinned-upstream blocked case, got ${external_oracle_blocked_count}"
+fi
+
+external_writer_drift_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_writer_drift.tsv)"
+if (( external_writer_drift_count != 94 )); then
+  fail "external naga-oil compose parity writer drift manifest must exact-gate the observed 94 writer/order/name drifts, got ${external_writer_drift_count}"
+fi
+
+external_byte_drift_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_byte_drift.tsv)"
+if (( external_byte_drift_count != 124 )); then
+  fail "external naga-oil compose parity byte drift manifest must exact-gate the observed 124 byte-output drifts, got ${external_byte_drift_count}"
+fi
+
+if [[ ! -f tools/naga_oil_oracle/src/bin/wgsl_writer_fingerprint.rs ]]; then
+  fail "external naga-oil compose parity must own a writer/order/name fingerprint tool"
+fi
+
+if ! rg -n 'wgsl_writer_fingerprint' tools/check_external_naga_oil_compose_parity.sh tools/naga_oil_oracle/src/bin/wgsl_writer_fingerprint.rs >/dev/null; then
+  fail "external naga-oil compose parity must execute the writer/order/name fingerprint tool"
+fi
+
+if ! rg -n 'writer-drift\.diff|byte-drift\.diff|compose-source-parity\.diff|materialize_profile_source_overlay|append_detected_capabilities' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity must exact-gate full inventory coverage, profile overlays, detected capabilities, and drift manifests"
+fi
+
+if ! rg -n 'diff -u --label expected --label actual' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity drift hashes must be independent of temporary diff paths"
+fi
+
 if ! rg -n 'materialize_raw_template_value_defs|raw-overlay' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
   fail "external naga-oil compose parity must materialize raw template value defs before comparing with the upstream oracle"
 fi

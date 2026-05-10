@@ -73,10 +73,10 @@ fn main() {
         }
     }
     for (_, global) in module.global_variables.iter() {
-        if let Some(name) = &global.name {
+        if let Some(binding) = &global.binding {
             lines.push(format!(
-                "global\t{name}\tspace={:?}\tbinding={:?}",
-                global.space, global.binding
+                "global-binding\tgroup={}\tbinding={}\tspace={:?}",
+                binding.group, binding.binding, global.space
             ));
         }
     }
