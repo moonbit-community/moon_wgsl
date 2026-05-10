@@ -486,6 +486,14 @@ if ! rg -n 'profile_mode_expected|profile_mode_actual|profile-mode\.diff' tools/
   fail "external WGSL corpus profiles must gate raw vs compose execution modes"
 fi
 
+if [[ ! -f testdata/external_wgsl_corpus_compose_sources.tsv ]]; then
+  fail "external WGSL corpus compose sources must be manifest-owned"
+fi
+
+if ! rg -n 'compose_source_expected|compose_source_actual|compose-source\.diff' tools/check_external_wgsl_corpus.sh >/dev/null; then
+  fail "external WGSL corpus gate must exact-gate the concrete compose source files"
+fi
+
 if ! rg -n 'blockDepth|lineComment' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus preprocessor classification must be comment-aware"
 fi

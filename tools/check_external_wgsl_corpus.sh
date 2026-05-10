@@ -9,6 +9,7 @@ expected_invalid_manifest="${EXTERNAL_WGSL_CORPUS_EXPECTED_INVALID_MANIFEST:-tes
 expected_invalid_normalized_manifest="${EXTERNAL_WGSL_CORPUS_EXPECTED_INVALID_NORMALIZED_MANIFEST:-testdata/external_wgsl_corpus_expected_invalid_normalized_by_ir.tsv}"
 profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
 profile_mode_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MODE_MANIFEST:-testdata/external_wgsl_corpus_profile_modes.tsv}"
+compose_source_manifest="${EXTERNAL_WGSL_CORPUS_COMPOSE_SOURCE_MANIFEST:-testdata/external_wgsl_corpus_compose_sources.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
 
 fail() {
@@ -21,6 +22,7 @@ fail() {
 [[ -f "$expected_invalid_normalized_manifest" ]] || fail "missing expected-invalid normalized-by-IR manifest: $expected_invalid_normalized_manifest"
 [[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
 [[ -f "$profile_mode_manifest" ]] || fail "missing profile mode manifest: $profile_mode_manifest"
+[[ -f "$compose_source_manifest" ]] || fail "missing compose source manifest: $compose_source_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -155,10 +157,13 @@ profile_mode_actual="$tmpdir/profile-mode.actual.tsv"
 profile_mode_expected="$tmpdir/profile-mode.expected.tsv"
 profile_mode_actual_keys="$tmpdir/profile-mode.actual.keys.tsv"
 profile_mode_expected_keys="$tmpdir/profile-mode.expected.keys.tsv"
+compose_source_actual="$tmpdir/compose-source.actual.tsv"
+compose_source_expected="$tmpdir/compose-source.expected.tsv"
 : > "$expected_invalid_actual"
 : > "$expected_invalid_normalized_actual"
 : > "$profile_used_keys"
 : > "$profile_mode_actual"
+: > "$compose_source_actual"
 
 awk -F '\t' '
   $0 ~ /^($|#)/ { next }
@@ -239,6 +244,17 @@ if ! diff -u "$profile_expected_keys" "$profile_mode_expected_keys" >"$tmpdir/pr
   sed -n '1,200p' "$tmpdir/profile-mode-coverage.diff" >&2
   exit 1
 fi
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  NF != 3 {
+    printf("compose source manifest row has %d field(s), expected 3: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 "\t" $2 }
+' "$compose_source_manifest" | sort > "$compose_source_expected"
+duplicate_compose_source_keys="$(uniq -d "$compose_source_expected" | tr '\n' ' ')"
+[[ -z "$duplicate_compose_source_keys" ]] || fail "duplicate external WGSL compose source row(s): $duplicate_compose_source_keys"
 
 source_contains_preprocessor_directive() {
   local source="$1"
@@ -563,6 +579,7 @@ while IFS=$'\t' read -r id repo ref sparse_paths expected_files expected_source_
     validated_source="$(cat "$source_candidate_file")"
     validated_capabilities="$(cat "$source_capabilities_file")"
     if [[ "$source_kind" == "compose" ]]; then
+      printf '%s\t%s\n' "$id" "$rel_path" >> "$compose_source_actual"
       repo_composed_count=$((repo_composed_count + 1))
       composed_valid_count=$((composed_valid_count + 1))
     fi
@@ -645,6 +662,14 @@ if ! diff -u "$profile_mode_expected" "$profile_mode_actual_keys" >"$tmpdir/prof
   echo "external WGSL corpus profile execution modes changed" >&2
   echo "Profiles must explicitly state whether they exercise raw WGSL validation or naga-oil compose." >&2
   sed -n '1,200p' "$tmpdir/profile-mode.diff" >&2
+  exit 1
+fi
+
+sort -o "$compose_source_actual" "$compose_source_actual"
+if ! diff -u "$compose_source_expected" "$compose_source_actual" >"$tmpdir/compose-source.diff"; then
+  echo "external WGSL corpus compose source manifest changed" >&2
+  echo "Every source file that exercises naga-oil compose must be classified explicitly in $compose_source_manifest." >&2
+  sed -n '1,200p' "$tmpdir/compose-source.diff" >&2
   exit 1
 fi
 
