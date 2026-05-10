@@ -17,6 +17,8 @@ pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?
 
 pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
 
+pub fn parse_wgsl_source_directive_items(String) -> Array[WgslSourceDirectiveItem]
+
 pub fn parse_wgsl_template_const_references(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> Array[WgslTemplateConstReference]
 
 pub fn wgsl_effective_directive_kind(@ast.WgslDirective) -> @ast.WgslDirectiveKind
@@ -73,6 +75,21 @@ pub fn WgslShaderDefReference::end(Self) -> Int
 pub fn WgslShaderDefReference::is_delimited(Self) -> Bool
 pub fn WgslShaderDefReference::name(Self) -> String
 pub fn WgslShaderDefReference::start(Self) -> Int
+
+pub struct WgslSourceDirectiveItem {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslSourceDirectiveItem::kind(Self) -> WgslSourceDirectiveItemKind
+pub fn WgslSourceDirectiveItem::line(Self) -> String
+
+pub(all) enum WgslSourceDirectiveItemKind {
+  Trivia
+  Enable(String)
+  Requires(String)
+  Diagnostic(String, String)
+  PrefixCandidate
+  Source
+} derive(Eq, @debug.Debug)
 
 pub struct WgslTemplateConstReference {
   // private fields

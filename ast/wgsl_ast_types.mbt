@@ -1398,6 +1398,19 @@ pub fn WgslGlobalDecl::data(self : WgslGlobalDecl) -> WgslGlobalDeclData {
 }
 
 ///|
+fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
+  match data {
+    Function(function) => function.name().name()
+    GlobalVariable(global) => global.name().name()
+    Const(value) => value.name().name()
+    Override(value) => value.name().name()
+    Struct(value) => value.name().name()
+    TypeAlias(value) => value.name().name()
+    Directive(_) | Import(_) | ConstAssert(_) | Raw => ""
+  }
+}
+
+///|
 pub fn WgslGlobalDecl::name(self : WgslGlobalDecl) -> String {
   wgsl_decl_data_name(self.data)
 }

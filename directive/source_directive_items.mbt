@@ -1,5 +1,5 @@
 ///|
-enum WgslSourceDirectiveItemKind {
+pub(all) enum WgslSourceDirectiveItemKind {
   Trivia
   Enable(String)
   Requires(String)
@@ -9,9 +9,9 @@ enum WgslSourceDirectiveItemKind {
 } derive(Debug, Eq)
 
 ///|
-struct WgslSourceDirectiveItem {
-  kind : WgslSourceDirectiveItemKind
-  line : String
+pub struct WgslSourceDirectiveItem {
+  priv kind : WgslSourceDirectiveItemKind
+  priv line : String
 } derive(Debug)
 
 ///|
@@ -20,6 +20,18 @@ fn WgslSourceDirectiveItem::WgslSourceDirectiveItem(
   line : String,
 ) -> WgslSourceDirectiveItem {
   WgslSourceDirectiveItem::{ kind, line }
+}
+
+///|
+pub fn WgslSourceDirectiveItem::kind(
+  self : WgslSourceDirectiveItem,
+) -> WgslSourceDirectiveItemKind {
+  self.kind
+}
+
+///|
+pub fn WgslSourceDirectiveItem::line(self : WgslSourceDirectiveItem) -> String {
+  self.line
 }
 
 ///|
@@ -141,12 +153,43 @@ fn parse_wgsl_source_directive_item(line : String) -> WgslSourceDirectiveItem {
 }
 
 ///|
-fn parse_wgsl_source_directive_items(
+fn wgsl_source_directive_item_from_scan_directive(
+  item : WgslDirectiveScanItem,
+  directive : WgslDirective,
+) -> WgslSourceDirectiveItem {
+  let line = item.source().original_text()
+  let tail = wgsl_effective_directive_tail(directive)
+  let kind = match wgsl_effective_directive_kind(directive) {
+    WgslDirectiveKind::Enable => WgslSourceDirectiveItemKind::Enable(tail)
+    WgslDirectiveKind::Requires => WgslSourceDirectiveItemKind::Requires(tail)
+    WgslDirectiveKind::Diagnostic =>
+      match wgsl_source_diagnostic_tail(item.source().cleaned_text()) {
+        Some((severity, rule)) =>
+          WgslSourceDirectiveItemKind::Diagnostic(severity, rule)
+        None => WgslSourceDirectiveItemKind::PrefixCandidate
+      }
+    _ => WgslSourceDirectiveItemKind::Source
+  }
+  WgslSourceDirectiveItem(kind, line)
+}
+
+///|
+pub fn parse_wgsl_source_directive_items(
   source : String,
 ) -> Array[WgslSourceDirectiveItem] {
   let items : Array[WgslSourceDirectiveItem] = []
-  for line in source_lines(source) {
-    items.push(parse_wgsl_source_directive_item(line))
+  for
+    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+    match item.kind() {
+      WgslDirectiveScanItemKind::Directive(directive) =>
+        items.push(
+          wgsl_source_directive_item_from_scan_directive(item, directive),
+        )
+      _ =>
+        for line in source_lines(item.source().original_text()) {
+          items.push(parse_wgsl_source_directive_item(line))
+        }
+    }
   }
   items
 }

@@ -5,6 +5,10 @@ import {
   "moonbitlang/core/list",
 }
 
+import {
+  "Milky2018/moon_wgsl/ast_analysis",
+} for "wbtest"
+
 options(
   "pre-build": [
     {

@@ -8,7 +8,11 @@ import {
 // Values
 pub fn emit_naga_oil_writer_compatible_wgsl_source_from_ir(Module) -> String raise WgslIrPipelineError
 
+pub fn emit_naga_oil_writer_compatible_wgsl_source_from_ir_entry_roots(Module) -> String raise WgslIrPipelineError
+
 pub fn emit_validated_wgsl_source_from_ir(Module) -> String raise WgslIrPipelineError
+
+pub fn emit_validated_wgsl_source_from_ir_entry_roots(Module) -> String raise WgslIrPipelineError
 
 pub fn emit_validated_wgsl_source_from_ir_roots(Module, Array[String]) -> String raise WgslIrPipelineError
 
@@ -20,7 +24,11 @@ pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslIrPipelineError
 
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
 
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
 
 pub fn tree_shake_wgsl_source_via_ir(String, Array[String]) -> String raise WgslIrPipelineError
 

@@ -5,6 +5,7 @@ import {
   "Milky2018/moon_wgsl/preprocess",
   "Milky2018/moon_wgsl/resolver",
   "Milky2018/moon_wgsl/ast",
+  "Milky2018/moon_wgsl/ast_analysis",
   "Milky2018/moon_wgsl/directive",
   "Milky2018/moon_wgsl/directive_syntax",
   "Milky2018/moon_wgsl/import_syntax",

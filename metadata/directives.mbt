@@ -89,10 +89,10 @@ fn extract_wgsl_directives(
   let mut in_directive_section = true
   let mut line_index = 0
   for item in parse_wgsl_source_directive_items(source) {
-    let line = item.line
+    let line = item.line()
     let trimmed = wgsl_regex_trim_whitespace(line)
 
-    match item.kind {
+    match item.kind() {
       WgslSourceDirectiveItemKind::Trivia => {
         cleaned_lines.push(line)
         line_index = line_index + 1
@@ -102,7 +102,7 @@ fn extract_wgsl_directives(
     }
 
     if in_directive_section {
-      match item.kind {
+      match item.kind() {
         WgslSourceDirectiveItemKind::Enable(body) => {
           let extensions = split_extensions(body)
           if extensions.is_empty() {

@@ -34,32 +34,6 @@ fn copy_wgsl_import_module_candidates_for_path(
 }
 
 ///|
-fn wgsl_module_path_from_rel_path(rel_path : String) -> String? {
-  let normalized_rel = normalize_shader_rel_path(rel_path)
-  if normalized_rel == "" || !normalized_rel.has_suffix(".wgsl") {
-    return None
-  }
-  let without_extension = normalized_rel[:normalized_rel.length() - 5].to_owned()
-  let trimmed_prefix = if without_extension.has_prefix("shaders/") {
-    without_extension[8:without_extension.length()].to_owned()
-  } else {
-    without_extension
-  }
-  let segments : Array[String] = []
-  for segment in trimmed_prefix.split("/") {
-    let text = segment.to_owned().trim().to_owned()
-    if text != "" {
-      segments.push(text)
-    }
-  }
-  if segments.length() == 0 {
-    None
-  } else {
-    Some(segments.join("::"))
-  }
-}
-
-///|
 fn clear_wgsl_source_registry(
   source_registry : @hashmap.HashMap[String, String],
   module_paths : @hashmap.HashMap[String, String],

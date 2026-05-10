@@ -3,7 +3,6 @@ package "Milky2018/moon_wgsl/metadata"
 
 import {
   "Milky2018/moon_wgsl/common",
-  "moonbitlang/core/debug",
 }
 
 // Values
@@ -19,9 +18,6 @@ pub suberror MetadataError {
 }
 
 // Types and methods
-type WgslSourceDirectiveItem derive(@debug.Debug)
-
-type WgslSourceDirectiveItemKind derive(Eq, @debug.Debug)
 
 // Type aliases
 

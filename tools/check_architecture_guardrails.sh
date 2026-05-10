@@ -98,6 +98,16 @@ if ! rg -n 'remove_module_paths_for_rel_path\(module_paths, normalized_rel\)' re
   fail "registry rel_path replacement must clear stale module-path mappings first"
 fi
 
+if [[ ! -f resolver/module_path_policy.mbt ]]; then
+  fail "resolver module path inference/defaulting policy must have a single owner"
+fi
+
+if rg -n 'fn wgsl_module_path_from_rel_path|fn wgsl_module_path_to_rel_path|default_shader_rel_path_for_module_path' \
+  resolver/registry_ops.mbt resolver/module_resolution.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "resolver module path inference/defaulting policy must stay in resolver/module_path_policy.mbt"
+fi
+
 if rg -n 'CachedQualifiedAliasBinding' compose transform ir --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "cached alias bindings must not be a separate compose binding phase"
@@ -124,45 +134,94 @@ if rg -n 'text : String' parser/wgsl_raw_top_level.mbt >"$matches_file"; then
   fail "raw top-level staging items must carry spans, not cached source text"
 fi
 
+if rg -n '^pub fn ' parser/pkg.generated.mbti |
+  rg -v 'pub fn (Token::kind|WgslParseError::message|parse_wgsl_translation_unit_strict|type_ref|template_list|function_args|function_result|struct_members|typed_initializer_tail|type_alias_tail|source_directive|const_assert_expr|block)\(' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "parser public API must stay pinned to the translation-unit facade plus unavoidable direct MoonYacc start functions"
+fi
+
+if rg -n '^pub\(all\) enum ' parser/pkg.generated.mbti |
+  rg -v 'pub\(all\) enum (Token|TokenKind)' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "parser must not expose additional generated public enum surfaces"
+fi
+
+if [[ ! -f ast_analysis/wgsl_ast_identifiers.mbt ]]; then
+  fail "AST semantic identifier collection must live outside the syntax-only ast package"
+fi
+
+if rg -n 'collect_wgsl_.*identifier_nodes' ast \
+  --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "AST package must not own semantic identifier collection helpers"
+fi
+
+if find metadata -maxdepth 1 -name 'source_directive_items*.mbt' | rg . >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "source-level WGSL directive item parsing must be owned by the directive package, not metadata"
+fi
+
+if [[ ! -f directive/source_directive_items.mbt ]]; then
+  fail "directive package must own source-level WGSL directive item parsing"
+fi
+
 if rg -n 'text : String' compose/semantic_graph.mbt >"$matches_file"; then
   cat "$matches_file" >&2
   fail "semantic reference paths must derive text from structured segments"
 fi
 
+required_ir_split_files=(
+  ir/wgsl_lower_const_eval.mbt
+  ir/wgsl_lower_materialization.mbt
+  ir/wgsl_lower_statements.mbt
+  ir/wgsl_emit_expressions.mbt
+  ir/wgsl_emit_statements.mbt
+)
+for split_file in "${required_ir_split_files[@]}"; do
+  if [[ ! -f "$split_file" ]]; then
+    fail "IR lower/emit responsibilities must stay split: missing ${split_file}"
+  fi
+done
+
 lowerer_lines="$(wc -l < ir/wgsl_lower.mbt | tr -d ' ')"
-if (( lowerer_lines > 8000 )); then
+if (( lowerer_lines > 6000 )); then
   fail "IR lowerer monolith is too large: ${lowerer_lines} lines"
 fi
 
-user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir/wgsl_lower.mbt | wc -l | tr -d ' ')"
+emitter_lines="$(wc -l < ir/wgsl_emit.mbt | tr -d ' ')"
+if (( emitter_lines > 2200 )); then
+  fail "IR emitter monolith is too large: ${emitter_lines} lines"
+fi
+
+user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir --glob '*.mbt' | wc -l | tr -d ' ')"
 if (( user_call_arg_sites < 2 )); then
   fail "expression-level and statement-level user function calls must share one argument-lowering path"
 fi
 
-call_arm_sites="$(rg -n 'Call\(callee, arguments\)' ir/wgsl_lower.mbt | wc -l | tr -d ' ')"
-normalized_call_arg_sites="$(rg -n 'wgsl_ir_call_arguments\(arguments\)' ir/wgsl_lower.mbt | wc -l | tr -d ' ')"
+call_arm_sites="$(rg -n 'Call\(callee, arguments\)' ir --glob '*.mbt' | wc -l | tr -d ' ')"
+normalized_call_arg_sites="$(rg -n 'wgsl_ir_call_arguments\(arguments\)' ir --glob '*.mbt' | wc -l | tr -d ' ')"
 if (( normalized_call_arg_sites < call_arm_sites )); then
   fail "every AST call-lowering boundary must normalize call arguments before dispatch"
 fi
 
-if rg -n -U 'let values : Array\[Handle\] = \[\][\s\S]{0,400}Statement::Call' ir/wgsl_lower.mbt >"$matches_file"; then
+if rg -n -U 'let values : Array\[Handle\] = \[\][\s\S]{0,400}Statement::Call' ir --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "statement-level user function calls must not manually lower raw call arguments"
 fi
 
-if ! rg -n 'wgsl_ir_barrier_statement_from_call' ir/wgsl_lower.mbt >/dev/null; then
+if ! rg -n 'wgsl_ir_barrier_statement_from_call' ir --glob '*.mbt' >/dev/null; then
   fail "barrier builtins must lower as IR barrier statements before expression fallback"
 fi
 
-if ! rg -n 'barrier builtin has no value' ir/wgsl_lower.mbt >/dev/null; then
+if ! rg -n 'barrier builtin has no value' ir --glob '*.mbt' >/dev/null; then
   fail "barrier builtins must be rejected explicitly in value position"
 fi
 
-if ! rg -n 'workgroupBarrier\(\);' ir/wgsl_emit.mbt >/dev/null; then
+if ! rg -n 'workgroupBarrier\(\);' ir --glob '*.mbt' >/dev/null; then
   fail "IR emitter must preserve WGSL control barrier calls"
 fi
 
-if ! rg -n 'storageBarrier\(\);' ir/wgsl_emit.mbt >/dev/null; then
+if ! rg -n 'storageBarrier\(\);' ir --glob '*.mbt' >/dev/null; then
   fail "IR emitter must preserve WGSL memory barrier calls"
 fi
 
@@ -189,6 +248,25 @@ if rg -n 'from_name : String|to_name : String|identity : WgslIrSymbolIdentity\?'
   cat "$matches_file" >&2
   fail "cross-phase compose/transform bindings must preserve structured reference paths and non-optional symbol targets"
 fi
+
+if [[ -f common/types.mbt ]]; then
+  fail "common DTO ownership must stay split by domain, not collapse back into common/types.mbt"
+fi
+
+required_common_domain_files=(
+  common/shader_defs.mbt
+  common/import_types.mbt
+  common/directive_types.mbt
+  common/preprocess_types.mbt
+  common/source_types.mbt
+  common/diagnostic_types.mbt
+  common/compose_export_types.mbt
+)
+for common_file in "${required_common_domain_files[@]}"; do
+  if [[ ! -f "$common_file" ]]; then
+    fail "common DTO ownership split is missing ${common_file}"
+  fi
+done
 
 if rg -n -U 'WgslReferenceRewriteBinding \{[^}]*from_name|WgslReferenceRewriteBinding \{[^}]*to_name' transform/wgsl_binding.mbt >"$matches_file"; then
   cat "$matches_file" >&2
@@ -387,6 +465,23 @@ if printf '%s\n' "$resolved_fields" | rg -n 'source_origins|virtual_override_gen
   fail "resolved compose output must carry the symbol table instead of duplicated provenance arrays"
 fi
 
+if [[ -f compose/import_graph.mbt ]]; then
+  fail "compose import graph stages must not collapse back into compose/import_graph.mbt"
+fi
+
+required_compose_stage_files=(
+  compose/final_name_plan.mbt
+  compose/source_preparation.mbt
+  compose/import_request_builder.mbt
+  compose/import_request_execution.mbt
+  compose/finalize.mbt
+)
+for stage_file in "${required_compose_stage_files[@]}"; do
+  if [[ ! -f "$stage_file" ]]; then
+    fail "compose graph/rewrite responsibilities must stay staged: missing ${stage_file}"
+  fi
+done
+
 if ! rg -n 'WgslComposeSymbolTable::generated_import_provenance' compose/pipeline.mbt >/dev/null; then
   fail "generated import provenance must derive from the compose symbol table"
 fi
@@ -410,6 +505,22 @@ if rg -n 'pub fn (emit_wgsl_tree_shaken_source_strict|normalize_wgsl_output_iden
   --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "transform must not expose source-level WGSL semantic rewrite/tree-shake APIs"
+fi
+
+required_transform_rewrite_files=(
+  transform/rewrite_plan.mbt
+  transform/rewrite_collectors.mbt
+  transform/wgsl_binding.mbt
+)
+for rewrite_file in "${required_transform_rewrite_files[@]}"; do
+  if [[ ! -f "$rewrite_file" ]]; then
+    fail "transform rewrite backend must keep plan, collector, and facade responsibilities split: missing ${rewrite_file}"
+  fi
+done
+
+transform_binding_lines="$(wc -l < transform/wgsl_binding.mbt | tr -d ' ')"
+if (( transform_binding_lines > 140 )); then
+  fail "transform WGSL binding facade must not absorb rewrite-plan or AST-collector policy: ${transform_binding_lines} lines"
 fi
 
 if rg -n 'emit_wgsl_tree_shaken_source_strict|normalize_wgsl_output_identifiers|invalid_wgsl_struct_member_identifier|normalize_wgsl_composed_declarations|WgslTreeShakenSource' transform/pkg.generated.mbti >"$matches_file"; then

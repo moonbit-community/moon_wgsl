@@ -817,7 +817,7 @@ test "WGSL identifier collection exposes source spans" {
   let unit = parse_wgsl_translation_unit_for_test(source)
   let nodes : Array[WgslIdent] = []
   for decl in unit.declarations() {
-    @ast.collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
+    @ast_analysis.collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
   }
   debug_inspect(nodes[0].name(), content="\"vec4\"")
   debug_inspect(nodes[0].start(), content="14")
@@ -837,7 +837,7 @@ test "WGSL type identifier collection ignores numeric type atoms" {
   let unit = parse_wgsl_translation_unit_for_test(source)
   let nodes : Array[WgslIdent] = []
   for decl in unit.declarations() {
-    @ast.collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
+    @ast_analysis.collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
   }
   debug_inspect(
     nodes.map(fn(node) { node.name() }),
@@ -1282,7 +1282,10 @@ test "WGSL global declaration identifier collection excludes locals" {
   let unit = parse_wgsl_translation_unit_for_test(source)
   let nodes : Array[WgslIdent] = []
   for decl in unit.declarations() {
-    @ast.collect_wgsl_decl_global_declared_identifier_nodes(decl.data(), nodes)
+    @ast_analysis.collect_wgsl_decl_global_declared_identifier_nodes(
+      decl.data(),
+      nodes,
+    )
   }
   debug_inspect(
     nodes.map(fn(node) { node.name() }),
@@ -1308,7 +1311,7 @@ test "WGSL declaration identifier collection excludes function locals" {
     abort("expected function payload")
   }
   let nodes : Array[WgslIdent] = []
-  @ast.collect_wgsl_decl_identifier_nodes(
+  @ast_analysis.collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::Function(function),
     nodes,
   )
@@ -1423,7 +1426,7 @@ test "WGSL statement AST records nested and loop local declarations" {
     content="[]",
   )
   let nodes : Array[WgslIdent] = []
-  @ast.collect_wgsl_decl_identifier_nodes(
+  @ast_analysis.collect_wgsl_decl_identifier_nodes(
     WgslGlobalDeclData::Function(function),
     nodes,
   )
@@ -2122,7 +2125,7 @@ test "WGSL identifier collection exposes qualified function calls" {
     abort("expected function payload")
   }
   let nodes : Array[WgslIdent] = []
-  @ast.collect_wgsl_function_body_identifier_nodes(function, nodes)
+  @ast_analysis.collect_wgsl_function_body_identifier_nodes(function, nodes)
   debug_inspect(
     nodes.map(fn(node) { node.name() }),
     content=(

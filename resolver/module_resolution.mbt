@@ -1,47 +1,4 @@
 ///|
-fn wgsl_module_path_to_rel_path(module_path : String) -> String {
-  let mut rel = "shaders/"
-  let mut first = true
-  for seg in module_path.split("::") {
-    let text = seg.to_owned()
-    if text == "" {
-      continue
-    }
-    if first {
-      first = false
-    } else {
-      rel = "\{rel}/"
-    }
-    rel = "\{rel}\{text}"
-  }
-  "\{rel}.wgsl"
-}
-
-///|
-fn wgsl_module_path_to_rel_path_namespace(module_path : String) -> String {
-  let segments : Array[String] = []
-  for seg in module_path.split("::") {
-    let text = seg.to_owned().trim().to_owned()
-    if text != "" {
-      segments.push(text)
-    }
-  }
-  if segments.length() == 0 {
-    return ""
-  }
-  let mut rel = "shaders/\{segments[0]}"
-  for i in 1..<segments.length() {
-    rel = "\{rel}/\{segments[i]}"
-  }
-  "\{rel}.wgsl"
-}
-
-///|
-pub fn default_shader_rel_path_for_module_path(module_path : String) -> String {
-  wgsl_module_path_to_rel_path_namespace(module_path)
-}
-
-///|
 pub fn resolve_wgsl_import_module_in_registry(
   registry : WgslSourceRegistry,
   import_path : String,

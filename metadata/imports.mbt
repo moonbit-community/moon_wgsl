@@ -11,10 +11,8 @@ using @ast {type WgslDirective, type WgslDirectiveKind}
 
 ///|
 using @lex {
-  source_lines,
   trim_trailing_semicolons,
   wgsl_line_text_end,
-  wgsl_regex_skip_whitespace,
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,
   wgsl_regex_whitespace_width,
@@ -25,10 +23,12 @@ using @lex {
 using @directive {
   type WgslDirectiveScanItem,
   type WgslDirectiveScanItemKind,
+  type WgslSourceDirectiveItemKind,
   parse_wgsl_directive_identifier,
   parse_wgsl_directive_scan_items,
   parse_wgsl_shader_def_comparison,
   parse_wgsl_shader_def_references,
+  parse_wgsl_source_directive_items,
   wgsl_required_space_word_tail,
   wgsl_effective_directive_kind,
   wgsl_effective_directive_tail,

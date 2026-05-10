@@ -1,5 +1,8 @@
 ///|
-using @ast {type WgslIdent, collect_wgsl_decl_identifier_nodes}
+using @ast {type WgslIdent}
+
+///|
+using @ast_analysis {collect_wgsl_decl_identifier_nodes}
 
 ///|
 using @common {type WgslResolvedImportModule}
