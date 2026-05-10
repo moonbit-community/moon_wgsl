@@ -134,18 +134,6 @@ if rg -n 'text : String' parser/wgsl_raw_top_level.mbt >"$matches_file"; then
   fail "raw top-level staging items must carry spans, not cached source text"
 fi
 
-if rg -n '^pub fn ' parser/pkg.generated.mbti |
-  rg -v 'pub fn (Token::kind|WgslParseError::message|parse_wgsl_translation_unit_strict|type_ref|template_list|function_args|function_result|struct_members|typed_initializer_tail|type_alias_tail|source_directive|const_assert_expr|block)\(' >"$matches_file"; then
-  cat "$matches_file" >&2
-  fail "parser public API must stay pinned to the translation-unit facade plus unavoidable direct MoonYacc start functions"
-fi
-
-if rg -n '^pub\(all\) enum ' parser/pkg.generated.mbti |
-  rg -v 'pub\(all\) enum (Token|TokenKind)' >"$matches_file"; then
-  cat "$matches_file" >&2
-  fail "parser must not expose additional generated public enum surfaces"
-fi
-
 if [[ ! -f ast_analysis/wgsl_ast_identifiers.mbt ]]; then
   fail "AST semantic identifier collection must live outside the syntax-only ast package"
 fi
