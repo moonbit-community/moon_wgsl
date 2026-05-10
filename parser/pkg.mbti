@@ -1,0 +1,20 @@
+package "Milky2018/moon_wgsl/parser"
+
+import {
+  "Milky2018/moon_wgsl/ast",
+}
+
+// Values
+pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit raise WgslParseError
+
+// Errors
+pub suberror WgslParseError {
+  UnparsedDeclaration(String, Int)
+}
+pub fn WgslParseError::message(Self) -> String
+
+// Types and methods
+
+// Type aliases
+
+// Traits

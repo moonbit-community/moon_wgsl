@@ -1,0 +1,98 @@
+package "Milky2018/moon_wgsl/ir"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn tree_shake_wgsl_source_via_ir(String, Array[String]) -> String raise WgslIrPipelineError
+
+// Errors
+pub suberror WgslIrPipelineError {
+  Lower(String)
+  UnknownIdentifier(String)
+  Emit(String)
+  Validate(String)
+  Reparse(String)
+}
+pub fn WgslIrPipelineError::message(Self) -> String
+
+// Types and methods
+pub struct WgslIrAliasFinalNameEntry {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrAliasFinalNameEntry::final_name(Self) -> String
+pub fn WgslIrAliasFinalNameEntry::identity(Self) -> WgslIrAliasSymbolIdentity
+
+pub struct WgslIrAliasSymbolIdentity {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrAliasSymbolIdentity::WgslIrAliasSymbolIdentity(String, String, String) -> Self
+pub fn WgslIrAliasSymbolIdentity::alias_name(Self) -> String
+pub fn WgslIrAliasSymbolIdentity::key(Self) -> String
+pub fn WgslIrAliasSymbolIdentity::symbol(Self) -> WgslIrSymbolIdentity
+
+pub struct WgslIrCanonicalFinalNameEntry {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrCanonicalFinalNameEntry::final_name(Self) -> String
+pub fn WgslIrCanonicalFinalNameEntry::identity(Self) -> WgslIrSymbolIdentity
+
+pub struct WgslIrFinalNameTable {
+  // private fields
+}
+pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> Self
+pub fn WgslIrFinalNameTable::alias_entries(Self) -> Array[WgslIrAliasFinalNameEntry]
+pub fn WgslIrFinalNameTable::alias_entries_for_scope(Self, String, String) -> Array[WgslIrAliasFinalNameEntry]
+pub fn WgslIrFinalNameTable::alias_get(Self, WgslIrAliasSymbolIdentity) -> String?
+pub fn WgslIrFinalNameTable::alias_set(Self, WgslIrAliasSymbolIdentity, String) -> Unit
+pub fn WgslIrFinalNameTable::canonical_entries_for_rel_path(Self, String) -> Array[WgslIrCanonicalFinalNameEntry]
+pub fn WgslIrFinalNameTable::canonical_entry_count(Self) -> Int
+pub fn WgslIrFinalNameTable::canonical_get(Self, WgslIrSymbolIdentity) -> String?
+pub fn WgslIrFinalNameTable::canonical_set(Self, WgslIrSymbolIdentity, String) -> Unit
+
+pub struct WgslIrGeneratedImportProvenance {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool) -> Self
+pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(Self) -> String
+
+pub(all) enum WgslIrGeneratedImportProvenanceKind {
+  ImportedSourceSymbol
+  VirtualOverrideSymbol
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WgslIrImportEdgeKind {
+  FullModule
+  AliasModule
+  ItemBinding
+} derive(Eq, @debug.Debug)
+
+pub struct WgslIrLinkGraph {
+  // private fields
+}
+pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> Self
+pub fn WgslIrLinkGraph::contains_reachable_symbol(Self, WgslIrSymbolIdentity) -> Bool
+pub fn WgslIrLinkGraph::import_edge_count(Self) -> Int
+pub fn WgslIrLinkGraph::mark_reachable(Self, WgslIrSymbolIdentity) -> Unit
+pub fn WgslIrLinkGraph::record_import(Self, String, String, String, String, String, WgslIrImportEdgeKind) -> Unit
+pub fn WgslIrLinkGraph::record_reachable_symbol(Self, WgslIrSymbolIdentity) -> Unit
+pub fn WgslIrLinkGraph::record_symbol(Self, WgslIrSymbolIdentity) -> Unit
+
+pub struct WgslIrSymbolIdentity {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrSymbolIdentity::WgslIrSymbolIdentity(String, String) -> Self
+pub fn WgslIrSymbolIdentity::key(Self) -> String
+pub fn WgslIrSymbolIdentity::original_name(Self) -> String
+pub fn WgslIrSymbolIdentity::rel_path(Self) -> String

@@ -207,6 +207,15 @@ if [[ -f parser/wgsl_ast_expr_type.mbt ]]; then
   fail "parser expression/type monolith must stay split; parser/wgsl_ast_expr_type.mbt must not be reintroduced"
 fi
 
+if [[ ! -f parser/pkg.mbti ]]; then
+  fail "parser package must own an explicit public interface whitelist in parser/pkg.mbti"
+fi
+
+if rg -n 'pub (fn (block|const_assert_expr|function_args|function_result|source_directive|struct_members|template_list|type_alias_tail|type_ref|typed_initializer_tail)|suberror ParseError|.*enum Token|.*enum TokenKind)' parser/pkg.mbti >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "parser public interface must not expose moonyacc-generated rule entrypoints or tokens"
+fi
+
 required_parser_split_files=(
   parser/wgsl_expr_tokens.mbt
   parser/wgsl_expr_node_parser.mbt
@@ -233,6 +242,16 @@ done < <(
     ! -name 'xid.mbt' \
     ! -name 'regex_word.mbt' \
     -print
+)
+
+while IFS= read -r source_file; do
+  source_lines="$(wc -l < "$source_file" | tr -d ' ')"
+  if (( source_lines > 1600 )); then
+    fail "tracked hand-written MoonBit file is too large: ${source_file} has ${source_lines} lines"
+  fi
+done < <(
+  git ls-files '*.mbt' |
+    rg -v '(^|/)([^/]*generated[^/]*\.mbt|xid\.mbt|regex_word\.mbt)$'
 )
 
 for split_file in ir/wgsl_lower_*.mbt; do
@@ -522,10 +541,29 @@ if ! rg -n 'validate_wgsl_ir_module\(shader_module\)' ir/wgsl_emit.mbt >/dev/nul
   fail "WGSL IR emission must run internal IR validation before writing source"
 fi
 
+if [[ ! -f ir/pkg.mbti ]]; then
+  fail "IR package must own an explicit public interface whitelist in ir/pkg.mbti"
+fi
+
+if rg -n 'pub (struct|enum|typealias) (Module|ModuleInfo|EntryPoint|Function|FunctionArgument|FunctionResult|Statement|Block|Expression|Literal|Type|TypeInner|Scalar|VectorSize|AddressSpace|StorageAccess|Binding|BuiltIn|Handle|ExpressionArena|TypeArena|FunctionArena|ConstantArena|DiagnosticFilterArena|GlobalVariable|LocalVariable|Override|Constant|StructMember|ImageClass|ImageDimension|StorageFormat|WgslIrEmitter|WgslIrLowerer|WgslIrValidator)' ir/pkg.mbti >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "IR public interface must not expose internal IR model, arenas, handles, lowerer, emitter, or validator types"
+fi
+
+if rg -n 'pub\(all\) struct WgslIrGeneratedImportProvenance|pub (struct|fn WgslIrImportEdge::) WgslIrImportEdge|WgslIrSymbolNode|record_import_edge' ir/pkg.mbti >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "IR public symbol-linking surface must expose only opaque compose contracts, not graph internals or provenance fields"
+fi
+
 if rg -n 'pub (fn (parse_wgsl_module_to_ir|parse_wgsl_module_to_ir_with_generated_imports|lower_wgsl_translation_unit_to_ir|lower_wgsl_translation_unit_to_ir_with_generated_imports|emit_wgsl_module_from_ir|emit_wgsl_module_from_ir_roots)|suberror WgslIr(Lower|Emit)Error)' ir \
   --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "raw WGSL IR lower/emit APIs must remain internal; public callers must use the validated IR pipeline"
+fi
+
+if rg -n 'parse_wgsl_module_to_ir|lower_wgsl_translation_unit_to_ir|lower_validated_wgsl_source_to_ir|emit_validated_wgsl_source_from_ir|emit_wgsl_module_from_ir|WgslIr(Lower|Emit)Error|WgslIrEmitFilter|sanitize_wgsl_ir_identifier' ir/pkg.mbti >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "IR explicit public interface must only expose validated pipeline entrypoints, not raw lower/emit internals"
 fi
 
 if rg -n 'parse_wgsl_module_to_ir|lower_wgsl_translation_unit_to_ir|lower_validated_wgsl_source_to_ir|emit_validated_wgsl_source_from_ir|emit_wgsl_module_from_ir|WgslIr(Lower|Emit)Error|WgslIrEmitFilter|sanitize_wgsl_ir_identifier' ir/pkg.generated.mbti >"$matches_file"; then
