@@ -899,4 +899,23 @@ if ! rg -n 'diff -u "\$expected_invalid_normalized_expected_keys" "\$expected_in
   fail "external WGSL corpus gate must fail unknown or stale expected-invalid IR-normalized cases"
 fi
 
+if rg -n 'Milky2018/moon_wgsl/transform' metadata/moon.pkg preprocess/moon.pkg >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "metadata and preprocess must not depend on transform; import substitution owns preprocessing import rewrites"
+fi
+
+if rg -n 'WgslImportSubstitution(State|Error)|import_syntax' transform/pkg.generated.mbti transform/moon.pkg >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "transform public API must not expose preprocessing import substitution contracts"
+fi
+
+if [[ ! -f import_substitution/pkg.mbti || ! -f source_rewrite/pkg.mbti || ! -f transform/pkg.mbti ]]; then
+  fail "import substitution, source rewrite, and transform packages must own explicit public interface whitelists"
+fi
+
+if rg -n 'WgslImportSubstitution(State|Error)|WgslTokenReplacement|emit_wgsl_|tokenize_wgsl_|import_syntax' transform/pkg.mbti >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "transform explicit public interface must not expose preprocessing or source rewrite backend contracts"
+fi
+
 echo "architecture guardrails passed"

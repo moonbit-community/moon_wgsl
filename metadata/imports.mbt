@@ -36,4 +36,4 @@ using @directive {
 }
 
 ///|
-using @transform {type WgslImportSubstitutionState}
+using @import_substitution {type WgslImportSubstitutionState}

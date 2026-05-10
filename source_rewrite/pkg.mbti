@@ -1,0 +1,24 @@
+package "Milky2018/moon_wgsl/source_rewrite"
+
+import {
+  "Milky2018/moon_wgsl/lex",
+}
+
+// Values
+pub fn emit_wgsl_source_tokens_canonical(String, Array[WgslTokenReplacement]) -> String
+
+pub fn emit_wgsl_token_stream_canonical(Array[@lex.WgslToken], Array[WgslTokenReplacement]) -> String
+
+pub fn tokenize_wgsl_absolute_fragment(String, Int, Int) -> Array[@lex.WgslToken]
+
+// Errors
+
+// Types and methods
+pub struct WgslTokenReplacement {
+  // private fields
+}
+pub fn WgslTokenReplacement::WgslTokenReplacement(Int, Int, String) -> Self
+
+// Type aliases
+
+// Traits
