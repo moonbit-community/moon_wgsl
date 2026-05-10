@@ -559,6 +559,14 @@ if ! rg -n 'EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES|expected_case_count'
   fail "external naga-oil compose parity gate must exact-gate its manifest case count"
 fi
 
+if ! rg -n 'materialize_raw_template_value_defs|raw-overlay' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity must materialize raw template value defs before comparing with the upstream oracle"
+fi
+
+if ! rg -n 'cached_repo_id|cached_checkout' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity must cache repository checkouts so full-inventory gates can scale"
+fi
+
 if ! rg -n 'expected-failures=0' tools/check_external_wgsl_corpus.sh >/dev/null; then
   fail "external WGSL corpus gate must report zero expected failures"
 fi

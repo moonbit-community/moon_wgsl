@@ -103,7 +103,7 @@ append_moon_value_defs() {
   local value
   for value in "${values[@]}"; do
     [[ -n "$value" ]] || continue
-    [[ "$value" != *=raw:* ]] || fail "raw template value defs are not supported by the naga-oil parity manifest: $value"
+    [[ "$value" != *=raw:* ]] || continue
     moon_args+=(--value-def "$value")
   done
 }
@@ -115,9 +115,52 @@ append_oracle_defs() {
   local value
   for value in "${values[@]}"; do
     [[ -n "$value" ]] || continue
-    [[ "$value" != *=raw:* ]] || fail "raw template value defs are not supported by the naga-oil parity manifest: $value"
+    [[ "$value" != *=raw:* ]] || continue
     oracle_args+=(--def "$value")
   done
+}
+
+materialize_raw_template_value_defs() {
+  local checkout="$1"
+  local rel_path="$2"
+  local value_defs="$3"
+  local label="$4"
+  local overlay="$checkout"
+
+  [[ -n "$value_defs" && "$value_defs" != "-" ]] || {
+    printf '%s\n' "$checkout"
+    return 0
+  }
+
+  IFS=',' read -r -a values <<< "$value_defs"
+  local raw_values=()
+  local value
+  for value in "${values[@]}"; do
+    [[ -n "$value" ]] || continue
+    [[ "$value" == *=raw:* ]] || continue
+    raw_values+=("$value")
+  done
+
+  if (( ${#raw_values[@]} == 0 )); then
+    printf '%s\n' "$checkout"
+    return 0
+  fi
+
+  overlay="$tmpdir/$label.raw-overlay"
+  mkdir -p "$overlay"
+  cp -R "$checkout/." "$overlay/"
+  rm -rf "$overlay/.git"
+  local target="$overlay/$rel_path"
+  [[ -f "$target" ]] || fail "raw template overlay entry not found: $rel_path"
+
+  for value in "${raw_values[@]}"; do
+    local name="${value%%=*}"
+    local raw="${value#*=raw:}"
+    [[ -n "$name" ]] || fail "raw template value-def has empty name: $value"
+    FROM="##${name}##" TO="$raw" perl -0pi -e 's/\Q$ENV{FROM}\E/$ENV{TO}/g' "$target"
+  done
+
+  printf '%s\n' "$overlay"
 }
 
 append_imports() {
@@ -193,6 +236,11 @@ compare_fingerprints() {
 }
 
 case_count=0
+cached_repo_id=""
+cached_checkout=""
+cached_repo=""
+cached_ref=""
+cached_sparse_paths=""
 validate_manifest_schemas
 while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capabilities notes; do
   [[ -n "${id:-}" ]] || continue
@@ -202,21 +250,31 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
 
   repo_line="$(lookup_repo_row "$id")" || fail "repo $id is not present in $repo_manifest"
   IFS=$'\t' read -r _repo_id repo ref sparse_paths _expected_files _expected_source_valid _expected_composed_valid _expected_invalid _repo_notes <<< "$repo_line"
-  checkout="$(clone_or_update_repo "$id" "$repo" "$ref" "$sparse_paths")"
-  actual_ref="$(git -C "$checkout" rev-parse HEAD)"
-  [[ "$actual_ref" == "$ref" ]] || fail "$id checked out $actual_ref, expected $ref"
+  if [[ "$cached_repo_id" == "$id" && "$cached_repo" == "$repo" && "$cached_ref" == "$ref" && "$cached_sparse_paths" == "$sparse_paths" ]]; then
+    checkout="$cached_checkout"
+  else
+    checkout="$(clone_or_update_repo "$id" "$repo" "$ref" "$sparse_paths")"
+    actual_ref="$(git -C "$checkout" rev-parse HEAD)"
+    [[ "$actual_ref" == "$ref" ]] || fail "$id checked out $actual_ref, expected $ref"
+    cached_repo_id="$id"
+    cached_repo="$repo"
+    cached_ref="$ref"
+    cached_sparse_paths="$sparse_paths"
+    cached_checkout="$checkout"
+  fi
   [[ -f "$checkout/$rel_path" ]] || fail "entry not found: $id/$rel_path"
 
   case_count=$((case_count + 1))
   label="$id.$case_count.$(basename "$rel_path" .wgsl)"
+  compose_root="$(materialize_raw_template_value_defs "$checkout" "$rel_path" "$value_defs" "$label")"
   moon_output="$tmpdir/$label.moon.wgsl"
   oracle_output="$tmpdir/$label.oracle.wgsl"
   moon_fingerprint="$tmpdir/$label.moon.interface.txt"
   oracle_fingerprint="$tmpdir/$label.oracle.interface.txt"
 
   echo "== External naga-oil compose parity: $id $rel_path =="
-  moon_args=(--fixture-root "$checkout" --entry "$rel_path" --output "$moon_output")
-  oracle_args=(--fixture-root "$checkout" --entry "$rel_path" --output "$oracle_output")
+  moon_args=(--fixture-root "$compose_root" --entry "$rel_path" --output "$moon_output")
+  oracle_args=(--fixture-root "$compose_root" --entry "$rel_path" --output "$oracle_output")
   fingerprint_args=()
 
   if [[ "$id" == "bevy" ]]; then
