@@ -1,12 +1,14 @@
 # moon_wgsl
 
-`Milky2018/moon_wgsl` is a MoonBit library for WGSL preprocessing, import
-analysis, and shader composition.
+`Milky2018/moon_wgsl` is a MoonBit library for WGSL preprocessing, AST parsing,
+IR-backed validation, import analysis, and shader composition.
 
-The public surface follows `naga_oil` concepts while keeping preprocessing and
-composition multi-backend. Import the focused subpackage you need, such as `@common`,
-`@ast`, `@parser`, `@directive`, `@metadata`, `@preprocess`, `@resolver`,
-`@transform`, `@compose`, or `@export`:
+The public surface follows `naga_oil` concepts while keeping preprocessing,
+composition, and validation multi-backend. Import the focused subpackage you
+need. Most applications use `@common`, `@metadata`, `@preprocess`, `@resolver`,
+`@compose`, and `@export`; lower-level tools can use `@ast`, `@parser`, `@ir`,
+`@ast_analysis`, `@directive`, `@directive_syntax`, `@import_syntax`,
+`@import_substitution`, `@source_rewrite`, or `@transform`:
 
 ```mbt check
 ///|
@@ -18,7 +20,7 @@ test "README: common package surface" {
 
 ## What This Library Provides
 
-`moon_wgsl` focuses on three related tasks:
+`moon_wgsl` focuses on these related tasks:
 
 - Parse shader metadata such as `#define_import_path`, `#define`, used imports,
   and top-level WGSL directives.
@@ -26,6 +28,10 @@ test "README: common package surface" {
   substitution.
 - Compose WGSL modules by resolving `#import` directives from a registered
   in-memory source registry.
+- Parse WGSL into a structured AST and lower composed output through an
+  IR-backed validation and emission pipeline.
+- Exercise `naga_oil` compatibility with upstream-style compose parity cases
+  and external WGSL corpus gates.
 
 The library is intended for projects that want `naga_oil`-style shader module
 composition in MoonBit without introducing a separate CLI step.
@@ -33,7 +39,8 @@ composition in MoonBit without introducing a separate CLI step.
 ## Highlights
 
 - Supports `#ifdef`, `#ifndef`, `#if`, `#else if`, `#else`, and `#endif`.
-- Supports shader definition values of type `Bool`, `Int`, and `UInt`.
+- Supports shader definition values of type `Bool`, `Int`, `UInt`, and raw WGSL
+  text values.
 - Parses grouped imports such as
   `#import bevy_render::{view::View, maths::{PI_2, powsafe}}`.
 - Supports import aliases such as `#import bevy_render::maths as maths`.
@@ -50,7 +57,10 @@ composition in MoonBit without introducing a separate CLI step.
 - Resolves composable modules from registered WGSL source strings.
 - Exports single-file WGSL with declaration-level tree-shaking, an explicit
   source catalog, source-map entries, and diagnostics.
-- Supports AST-scoped symbol redirects during composition and export.
+- Supports AST-scoped, symbol-identity-backed redirects during composition and
+  export.
+- Routes composed output through an explicit IR pipeline before returning
+  runtime-oriented WGSL.
 
 ## Core Concepts
 
@@ -488,6 +498,28 @@ Main public entry points:
 - `export_wgsl_with_options`
   Produces single-file WGSL from `WgslComposeOptions` without depending on
   compose session internals.
+- `@parser.parse_wgsl_translation_unit_strict`
+  Parses WGSL into the public AST model for analysis and tooling.
+- `@ir.roundtrip_wgsl_source_via_ir`
+  Runs WGSL through the validated IR pipeline for parser/lowerer/emitter
+  verification.
+
+Lower-level public packages:
+
+- `@ast` and `@ast_analysis`
+  Provide the WGSL syntax model and identifier/path collection helpers.
+- `@directive` and `@directive_syntax`
+  Parse naga-oil-style preprocessing directives and WGSL directive syntax.
+- `@import_syntax`
+  Parses structured `#import` declarations.
+- `@import_substitution`
+  Owns preprocessing import substitution state; `metadata` and `preprocess`
+  depend on this package instead of `transform`.
+- `@source_rewrite`
+  Provides the small span/token rewrite backend used by higher-level packages.
+- `@transform`
+  Contains AST-scoped declaration/reference rewrite helpers and virtual override
+  support. It does not own preprocessing import substitution.
 
 Important public data structures:
 
@@ -513,10 +545,15 @@ Important public data structures:
 
 For the full exported surface, see the generated subpackage interfaces:
 `common/pkg.generated.mbti`, `ast/pkg.generated.mbti`,
-`parser/pkg.generated.mbti`, `directive/pkg.generated.mbti`,
-`metadata/pkg.generated.mbti`, `preprocess/pkg.generated.mbti`,
-`resolver/pkg.generated.mbti`, `transform/pkg.generated.mbti`,
+`ast_analysis/pkg.generated.mbti`, `parser/pkg.generated.mbti`,
+`directive/pkg.generated.mbti`, `directive_syntax/pkg.generated.mbti`,
+`import_syntax/pkg.generated.mbti`, `metadata/pkg.generated.mbti`,
+`preprocess/pkg.generated.mbti`, `resolver/pkg.generated.mbti`,
 `compose/pkg.generated.mbti`, and `export/pkg.generated.mbti`.
+
+Packages with intentionally constrained public interfaces also carry explicit
+interface files: `ir/pkg.mbti`, `parser/pkg.mbti`, `transform/pkg.mbti`,
+`import_substitution/pkg.mbti`, and `source_rewrite/pkg.mbti`.
 
 ## Behavior Notes
 
@@ -537,9 +574,9 @@ For the full exported surface, see the generated subpackage interfaces:
   source for the current compose/export result and builds `source_map` from the
   separate `source_origins` declaration graph instead of rebuilding a catalog
   from raw registered files.
-- Source-level redirects are token-based and intentionally skip declaration
-  heads, field accesses (`.`), and attributes (`@...`); they are intended for
-  imported helper/type names rather than locally shadowed identifiers.
+- Compose/export redirects are planned from AST-scoped references and stable
+  symbol identities, then applied through a constrained source rewrite backend.
+  The backend is an implementation detail, not the semantic source of truth.
 
 ## Development
 
@@ -560,8 +597,11 @@ The repository currently includes tests for:
 - conditional preprocessing semantics
 - module registration and import resolution
 - recursive composition behavior
-- AST-scoped symbol redirects during composition/export
+- AST-scoped, symbol-identity-backed redirects during composition/export
 - single-file WGSL export with tree-shaking and diagnostics
+- WGSL AST/parser coverage
+- validated IR roundtrip coverage
+- external WGSL corpus and `naga_oil` compose parity gates
 
 ## Compatibility Goal
 
