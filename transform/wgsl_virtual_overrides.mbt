@@ -313,8 +313,8 @@ fn rewrite_wgsl_override_fn_block(
 ///|
 fn rewrite_wgsl_virtual_dispatch_block(
   block : WgslGraphBlock,
-  override_names : @hashmap.HashMap[String, String],
-  override_raw_targets : @hashmap.HashMap[String, String],
+  override_names : Map[String, String],
+  override_raw_targets : Map[String, String],
 ) -> String {
   let plan = WgslReferenceRewritePlan()
   for entry in override_names.iter() {
@@ -379,16 +379,14 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   plan : WgslReferenceRewritePlan,
 ) -> WgslVirtualOverrideOutput raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
-  let virtual_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
-  let overrides : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
-  let override_base_names : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
-  )
-  let override_names : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
-  let override_raw_targets : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
-  )
+  let virtual_names : @set.Set[String] = @set.Set([])
+  let overrides : Map[String, String] = Map([])
+  let override_base_names : Map[String, String] = Map([])
+  let override_names : Map[String, String] = Map([])
+  let override_raw_targets : Map[String, String] = Map([])
   for block in graph.declaration_blocks {
     if block.name() != "" && wgsl_graph_block_is_virtual_fn(block) {
-      virtual_names.set(block.name(), true)
+      virtual_names.add(block.name())
     }
   }
   for block in graph.declaration_blocks {
@@ -533,7 +531,7 @@ pub fn strip_wgsl_virtual_functions(
     return source
   }
   let mut out = ""
-  let emitted_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let emitted_names : @set.Set[String] = @set.Set([])
   for import_block in graph.import_blocks {
     out = out + emit_wgsl_graph_block_canonical(import_block)
   }
@@ -551,7 +549,7 @@ pub fn strip_wgsl_virtual_functions(
       out = out + emit_wgsl_graph_block_canonical(block)
     }
     if block.name() != "" {
-      emitted_names.set(block.name(), true)
+      emitted_names.add(block.name())
     }
   }
   out

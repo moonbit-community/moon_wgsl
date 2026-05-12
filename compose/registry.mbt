@@ -68,14 +68,14 @@ fn Composer::new_wgsl_compose_session(
     redirects: options.redirects.copy(),
     additional_imports: copy_import_definitions(options.additional_imports),
     global_alias_bindings: WgslComposeBindingSet(),
-    redirect_match_counts: @hashmap.HashMap([]),
-    visited: @hashmap.HashMap([]),
-    graph_planned_requests: @hashmap.HashMap([]),
+    redirect_match_counts: Map([]),
+    visited: @set.Set([]),
+    graph_planned_requests: @set.Set([]),
     graph_planning_rel_paths: [],
     graph_execution_complete: false,
     symbols: WgslComposeSymbolTable(),
     link_graph: WgslIrLinkGraph(),
-    semantic_facts: @hashmap.HashMap([]),
+    semantic_facts: Map([]),
     active_rel_paths: [],
   }
 }

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-fn bevy_parity_defines(names : Array[String]) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+fn bevy_parity_defines(names : Array[String]) -> Map[String, Bool] {
+  let defines : Map[String, Bool] = Map([])
   for name in names {
     defines.set(name, true)
   }
@@ -22,10 +22,7 @@ fn bevy_parity_defines(names : Array[String]) -> @hashmap.HashMap[String, Bool] 
 }
 
 ///|
-fn bevy_parity_value_defines() -> @hashmap.HashMap[
-  String,
-  @common.ShaderDefValue,
-] {
+fn bevy_parity_value_defines() -> Map[String, @common.ShaderDefValue] {
   let value_defines = @common.default_wgsl_value_defines()
   value_defines.remove("PER_OBJECT_BUFFER_BATCH_SIZE")
   value_defines

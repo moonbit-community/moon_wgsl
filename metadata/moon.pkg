@@ -5,7 +5,6 @@ import {
   "Milky2018/moon_wgsl/ast",
   "Milky2018/moon_wgsl/lex",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/hashmap",
-  "moonbitlang/core/hashset",
+  "moonbitlang/core/set",
   "moonbitlang/core/string",
 }

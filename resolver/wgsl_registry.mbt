@@ -14,38 +14,38 @@
 
 ///|
 pub struct WgslSourceRegistry {
-  priv rel_to_source_ref : Ref[@hashmap.HashMap[String, String]]
-  priv module_to_rel_ref : Ref[@hashmap.HashMap[String, String]]
-  priv module_to_rels_ref : Ref[@hashmap.HashMap[String, Array[String]]]
+  priv rel_to_source_ref : Ref[Map[String, String]]
+  priv module_to_rel_ref : Ref[Map[String, String]]
+  priv module_to_rels_ref : Ref[Map[String, Array[String]]]
 }
 
 ///|
 pub fn WgslSourceRegistry::default() -> WgslSourceRegistry {
   WgslSourceRegistry::{
-    rel_to_source_ref: Ref(@hashmap.HashMap([])),
-    module_to_rel_ref: Ref(@hashmap.HashMap([])),
-    module_to_rels_ref: Ref(@hashmap.HashMap([])),
+    rel_to_source_ref: Ref(Map([])),
+    module_to_rel_ref: Ref(Map([])),
+    module_to_rels_ref: Ref(Map([])),
   }
 }
 
 ///|
 fn WgslSourceRegistry::source_registry(
   self : WgslSourceRegistry,
-) -> @hashmap.HashMap[String, String] {
+) -> Map[String, String] {
   self.rel_to_source_ref.val
 }
 
 ///|
 fn WgslSourceRegistry::module_paths(
   self : WgslSourceRegistry,
-) -> @hashmap.HashMap[String, String] {
+) -> Map[String, String] {
   self.module_to_rel_ref.val
 }
 
 ///|
 fn WgslSourceRegistry::module_path_candidates(
   self : WgslSourceRegistry,
-) -> @hashmap.HashMap[String, Array[String]] {
+) -> Map[String, Array[String]] {
   self.module_to_rels_ref.val
 }
 
@@ -128,7 +128,7 @@ pub fn WgslSourceRegistry::registered_source(
 ///|
 pub fn WgslSourceRegistry::copy_import_module_paths(
   self : WgslSourceRegistry,
-) -> @hashmap.HashMap[String, String] {
+) -> Map[String, String] {
   copy_wgsl_import_module_map(self.module_paths())
 }
 

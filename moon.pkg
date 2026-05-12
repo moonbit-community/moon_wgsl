@@ -7,8 +7,7 @@ import {
   "Milky2018/moon_wgsl/resolver",
   "moonbitlang/core/ref",
   "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/hashmap",
-  "moonbitlang/core/hashset",
+  "moonbitlang/core/set",
   "moonbitlang/core/string",
 } for "test"
 

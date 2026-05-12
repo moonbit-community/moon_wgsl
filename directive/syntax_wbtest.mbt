@@ -80,8 +80,7 @@ test "WGSL shader-def reference parser accepts delimited names without trimming"
 
 ///|
 test "WGSL template const reference parser preserves naga-oil boundaries" {
-  let value_defines : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap([],
-  )
+  let value_defines : Map[String, @common.ShaderDefValue] = Map([])
   value_defines.set("VALUE", @common.ShaderDefValue::Int(1))
   value_defines.set("VALUE_LONG", @common.ShaderDefValue::Int(2))
   let references = parse_wgsl_template_const_references(

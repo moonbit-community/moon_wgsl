@@ -16,8 +16,8 @@ pub fn PreprocessOutput::PreprocessOutput(
 pub struct PreprocessorMetaData {
   name : String?
   imports : Array[ImportDefWithOffset]
-  defines : @hashmap.HashMap[String, ShaderDefValue]
-  effective_defs : @hashset.HashSet[String]
+  defines : Map[String, ShaderDefValue]
+  effective_defs : @set.Set[String]
   wgsl_directives : WgslDirectives
   cleaned_source : String
 }
@@ -26,8 +26,8 @@ pub struct PreprocessorMetaData {
 pub fn PreprocessorMetaData::PreprocessorMetaData(
   name : String?,
   imports : Array[ImportDefWithOffset],
-  defines : @hashmap.HashMap[String, ShaderDefValue],
-  effective_defs : @hashset.HashSet[String],
+  defines : Map[String, ShaderDefValue],
+  effective_defs : @set.Set[String],
   wgsl_directives : WgslDirectives,
   cleaned_source : String,
 ) -> PreprocessorMetaData {

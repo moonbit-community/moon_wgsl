@@ -14,7 +14,7 @@ fn parse_bool_text(text : String) -> Bool? {
 
 ///|
 fn check_if_operator_scope(
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   expression : String,
   scope : Scope?,
   offset : Int,
@@ -98,7 +98,7 @@ fn compare_uint_values(
 
 ///|
 fn eval_if_condition(
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   def : String,
   operator : WgslShaderDefOperator,
   value : String,
@@ -145,7 +145,7 @@ fn eval_if_condition(
 ///|
 fn replace_shader_defs_in_line(
   line : String,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
 ) -> String {
   let references = parse_wgsl_shader_def_references(line)
   let mut output = line

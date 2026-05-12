@@ -1,7 +1,7 @@
 ///|
 pub fn apply_wgsl_template_consts(
   source : String,
-  value_defines : @hashmap.HashMap[String, ShaderDefValue],
+  value_defines : Map[String, ShaderDefValue],
 ) -> String {
   let mut out = ""
   let mut copy_start = 0
@@ -21,7 +21,7 @@ pub fn apply_wgsl_template_consts(
 ///|
 pub fn apply_wgsl_ifdefs_strict(
   source : String,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
 ) -> String raise PreprocessError {
   let mut out = ""
   let scope = Scope()

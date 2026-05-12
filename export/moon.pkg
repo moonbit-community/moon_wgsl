@@ -4,5 +4,5 @@ import {
   "Milky2018/moon_wgsl/compose",
   "Milky2018/moon_wgsl/ir",
   "Milky2018/moon_wgsl/parser",
-  "moonbitlang/core/hashmap",
+  "moonbitlang/core/set",
 }

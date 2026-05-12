@@ -53,12 +53,10 @@ test "README: compose registered modules" {
   composer.clear_sources()
 
   composer.register_source(
-    "maths.wgsl",
-    "#define_import_path demo::maths\nconst TWO: f32 = 2.0;\n",
+    "maths.wgsl", "#define_import_path demo::maths\nconst TWO: f32 = 2.0;\n",
   )
   composer.register_source(
-    "main.wgsl",
-    "#import demo::maths::TWO\nfn scale(x: f32) -> f32 {\n  return x * TWO;\n}\n",
+    "main.wgsl", "#import demo::maths::TWO\nfn scale(x: f32) -> f32 {\n  return x * TWO;\n}\n",
   )
 
   let options : @common.WgslComposeOptions = @common.WgslComposeOptions::default()
@@ -79,7 +77,7 @@ shader-definition substitution for a single source string.
 ```mbt check
 ///|
 test "README: preprocess one shader" {
-  let defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap([])
+  let defs : Map[String, @common.ShaderDefValue] = Map([])
   defs.set("TEXTURE", @common.ShaderDefValue::Bool(true))
 
   let source = "#ifdef TEXTURE\nvar sprite_texture: texture_2d<f32>;\n#else\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
@@ -122,21 +120,16 @@ test "README: export single file" {
   let composer : @compose.Composer = @compose.Composer::default()
   composer.clear_sources()
   composer.register_source(
-    "shared.wgsl",
-    "#define_import_path demo::shared\nstruct Value {\n  x: f32,\n}\nfn read(value: Value) -> f32 {\n  return value.x;\n}\n",
+    "shared.wgsl", "#define_import_path demo::shared\nstruct Value {\n  x: f32,\n}\nfn read(value: Value) -> f32 {\n  return value.x;\n}\n",
   )
   composer.register_source(
-    "main.wgsl",
-    "#import demo::shared::{Value, read}\nfn shade(value: Value) -> f32 {\n  return read(value);\n}\n",
+    "main.wgsl", "#import demo::shared::{Value, read}\nfn shade(value: Value) -> f32 {\n  return read(value);\n}\n",
   )
 
   let compose_options : @common.WgslComposeOptions = @common.WgslComposeOptions::default()
   let export_options : @common.WgslExportOptions = { root_items: ["shade"] }
   let output = @export.export_wgsl_with_options(
-    composer,
-    "main.wgsl",
-    compose_options,
-    export_options,
+    composer, "main.wgsl", compose_options, export_options,
   ) catch {
     err => abort(err.message())
   }

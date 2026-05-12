@@ -24,8 +24,8 @@ pub struct WgslIrAliasFinalNameEntry {
 
 ///|
 pub struct WgslIrFinalNameTable {
-  priv canonical : @hashmap.HashMap[String, String]
-  priv alias_scoped : @hashmap.HashMap[String, String]
+  priv canonical : Map[String, String]
+  priv alias_scoped : Map[String, String]
   priv canonical_entries : Array[WgslIrCanonicalFinalNameEntry]
   priv alias_entries : Array[WgslIrAliasFinalNameEntry]
 }
@@ -54,11 +54,11 @@ pub struct WgslIrSymbolNode {
 
 ///|
 pub struct WgslIrLinkGraph {
-  priv symbol_keys : @hashset.HashSet[String]
+  priv symbol_keys : @set.Set[String]
   priv symbol_nodes : Array[WgslIrSymbolNode]
-  priv import_edge_keys : @hashset.HashSet[String]
+  priv import_edge_keys : @set.Set[String]
   priv import_edges : Array[WgslIrImportEdge]
-  priv reachable_symbol_keys : @hashset.HashSet[String]
+  priv reachable_symbol_keys : @set.Set[String]
 }
 
 ///|
@@ -150,8 +150,8 @@ pub fn WgslIrAliasFinalNameEntry::final_name(
 ///|
 pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> WgslIrFinalNameTable {
   WgslIrFinalNameTable::{
-    canonical: @hashmap.HashMap([]),
-    alias_scoped: @hashmap.HashMap([]),
+    canonical: Map([]),
+    alias_scoped: Map([]),
     canonical_entries: [],
     alias_entries: [],
   }
@@ -291,11 +291,11 @@ pub fn WgslIrImportEdgeKind::key(self : WgslIrImportEdgeKind) -> String {
 ///|
 pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> WgslIrLinkGraph {
   WgslIrLinkGraph::{
-    symbol_keys: @hashset.HashSet([]),
+    symbol_keys: @set.Set([]),
     symbol_nodes: [],
-    import_edge_keys: @hashset.HashSet([]),
+    import_edge_keys: @set.Set([]),
     import_edges: [],
-    reachable_symbol_keys: @hashset.HashSet([]),
+    reachable_symbol_keys: @set.Set([]),
   }
 }
 

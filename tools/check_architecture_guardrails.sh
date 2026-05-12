@@ -379,10 +379,23 @@ if rg -n -U 'WgslReferenceRewriteBinding \{[^}]*from_name|WgslReferenceRewriteBi
   fail "transform reference rewrite bindings must carry WgslReferencePath plus final symbol target"
 fi
 
-if rg -n 'resolved_to_name|reference_paths : @hashset\.HashSet\[String\]' compose \
+if rg -n 'resolved_to_name|reference_paths : @set\.Set\[String\]' compose \
   --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "compose semantic facts and live bindings must not flatten semantic objects into string-only phase state"
+fi
+
+if rg -n '@hashmap|@hashset|HashMap\[|HashSet\[' . \
+  --glob '*.mbt' \
+  --glob '*.mbti' \
+  --glob '*.mbt.md' \
+  --glob 'moon.pkg' \
+  --glob '!_build/**' \
+  --glob '!.mooncakes/**' \
+  --glob '!tools/wgpu_validation/_build/**' \
+  --glob '!tools/wgpu_validation/.mooncakes/**' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "use builtin Map for maps and @set.Set for sets instead of @hashmap.HashMap or @hashset.HashSet"
 fi
 
 if rg -n 'WgslSemanticReferencePath|to_transform_path|wgsl_compose_reference_path_required' compose transform \

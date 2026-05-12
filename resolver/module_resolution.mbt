@@ -2,7 +2,7 @@
 pub fn resolve_wgsl_import_module_in_registry(
   registry : WgslSourceRegistry,
   import_path : String,
-  modules : @hashmap.HashMap[String, String],
+  modules : Map[String, String],
 ) -> WgslResolvedImportModule? {
   let segments : Array[String] = []
   for seg in import_path.split("::") {

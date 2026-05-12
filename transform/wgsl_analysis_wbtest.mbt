@@ -1,6 +1,6 @@
 ///|
 fn wbtest_reference_plan_from_redirect_map(
-  redirect_map : @hashmap.HashMap[String, String],
+  redirect_map : Map[String, String],
 ) -> WgslReferenceRewritePlan {
   let plan = WgslReferenceRewritePlan()
   for entry in redirect_map.iter() {
@@ -389,7 +389,7 @@ test "binding plan reference rules rewrite recursively scoped blocks" {
     #|  return 0u;
     #|}
     #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
+  let redirects : Map[String, String] = Map([])
   redirects.set("helper", "renamed_helper")
   let rewritten = rewrite_wgsl_references_with_binding_plan(
     source,
@@ -410,7 +410,7 @@ test "binding plan reference rules do not rewrite statement keywords" {
     #|  return 0u;
     #|}
     #|
-  let redirects : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
+  let redirects : Map[String, String] = Map([])
   redirects.set("if", "if_renamed")
   redirects.set("return", "return_renamed")
   redirects.set("let", "let_renamed")

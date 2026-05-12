@@ -170,7 +170,7 @@ fn WgslComposeEmitter::emit_root(
     root_source,
     None,
   )
-  self.session.visited.set(normalized_rel, true)
+  self.session.visited.add(normalized_rel)
   self.session.active_rel_paths.push(normalized_rel)
   let composed = self.emit_source_with_path(
     normalized_rel,
@@ -243,7 +243,7 @@ fn WgslComposeSymbolTable::generated_import_provenance(
   self : WgslComposeSymbolTable,
   root_rel_path : String,
 ) -> Array[@ir.WgslIrGeneratedImportProvenance] {
-  let seen = @hashset.HashSet([])
+  let seen = @set.Set([])
   let provenance : Array[@ir.WgslIrGeneratedImportProvenance] = []
   for binding in self.virtual_override_final_names {
     let name = binding.override_name

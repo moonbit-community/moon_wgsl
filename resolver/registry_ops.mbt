@@ -1,8 +1,8 @@
 ///|
 fn copy_wgsl_source_registry_map(
-  source_registry : @hashmap.HashMap[String, String],
-) -> @hashmap.HashMap[String, String] {
-  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
+  source_registry : Map[String, String],
+) -> Map[String, String] {
+  let copied : Map[String, String] = Map([])
   for entry in source_registry.iter() {
     let (rel_path, source) = entry
     copied.set(rel_path, source)
@@ -12,9 +12,9 @@ fn copy_wgsl_source_registry_map(
 
 ///|
 fn copy_wgsl_import_module_map(
-  module_paths : @hashmap.HashMap[String, String],
-) -> @hashmap.HashMap[String, String] {
-  let copied : @hashmap.HashMap[String, String] = @hashmap.HashMap([])
+  module_paths : Map[String, String],
+) -> Map[String, String] {
+  let copied : Map[String, String] = Map([])
   for entry in module_paths.iter() {
     let (module_path, rel_path) = entry
     copied.set(module_path, rel_path)
@@ -24,7 +24,7 @@ fn copy_wgsl_import_module_map(
 
 ///|
 fn copy_wgsl_import_module_candidates_for_path(
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  module_candidates : Map[String, Array[String]],
   module_path : String,
 ) -> Array[String] {
   match module_candidates.get(module_path.trim().to_owned()) {
@@ -35,9 +35,9 @@ fn copy_wgsl_import_module_candidates_for_path(
 
 ///|
 fn clear_wgsl_source_registry(
-  source_registry : @hashmap.HashMap[String, String],
-  module_paths : @hashmap.HashMap[String, String],
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  source_registry : Map[String, String],
+  module_paths : Map[String, String],
+  module_candidates : Map[String, Array[String]],
 ) -> Unit {
   source_registry.clear()
   module_paths.clear()
@@ -46,9 +46,9 @@ fn clear_wgsl_source_registry(
 
 ///|
 fn register_source_into(
-  source_registry : @hashmap.HashMap[String, String],
-  module_paths : @hashmap.HashMap[String, String],
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  source_registry : Map[String, String],
+  module_paths : Map[String, String],
+  module_candidates : Map[String, Array[String]],
   rel_path : String,
   source : String,
   explicit_module_path : String?,
@@ -76,7 +76,7 @@ fn register_source_into(
 
 ///|
 fn remove_module_paths_for_rel_path(
-  module_paths : @hashmap.HashMap[String, String],
+  module_paths : Map[String, String],
   rel_path : String,
 ) -> Unit {
   let stale_modules : Array[String] = []
@@ -93,7 +93,7 @@ fn remove_module_paths_for_rel_path(
 
 ///|
 fn remove_wgsl_import_module_candidate(
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  module_candidates : Map[String, Array[String]],
   module_path : String,
   rel_path : String,
 ) -> Unit {
@@ -121,7 +121,7 @@ fn remove_wgsl_import_module_candidate(
 
 ///|
 fn remove_module_candidates_for_rel_path(
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  module_candidates : Map[String, Array[String]],
   rel_path : String,
 ) -> Unit {
   let normalized_rel = normalize_shader_rel_path(rel_path)
@@ -147,7 +147,7 @@ fn remove_module_candidates_for_rel_path(
 
 ///|
 fn register_module_candidate_rel_path(
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  module_candidates : Map[String, Array[String]],
   module_path : String,
   rel_path : String,
 ) -> Unit {
@@ -191,12 +191,11 @@ fn wgsl_diagnostics_has_error(diagnostics : Array[WgslDiagnostic]) -> Bool {
 
 ///|
 fn analyze_source_files_against(
-  existing_rel_to_source : @hashmap.HashMap[String, String],
+  existing_rel_to_source : Map[String, String],
   files : Array[WgslSourceFile],
   diagnostics : Array[WgslDiagnostic],
 ) -> Unit {
-  let batch_rel_to_source : @hashmap.HashMap[String, String] = @hashmap.HashMap([],
-  )
+  let batch_rel_to_source : Map[String, String] = Map([])
 
   for source_file in files {
     let normalized_rel = normalize_shader_rel_path(source_file.rel_path)
@@ -239,9 +238,9 @@ fn analyze_source_files_against(
 
 ///|
 fn register_source_files_checked_into(
-  source_registry : @hashmap.HashMap[String, String],
-  module_paths : @hashmap.HashMap[String, String],
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  source_registry : Map[String, String],
+  module_paths : Map[String, String],
+  module_candidates : Map[String, Array[String]],
   files : Array[WgslSourceFile],
   diagnostics : Array[WgslDiagnostic],
 ) -> Unit {
@@ -257,9 +256,9 @@ fn register_source_files_checked_into(
 
 ///|
 fn register_source_files_into(
-  source_registry : @hashmap.HashMap[String, String],
-  module_paths : @hashmap.HashMap[String, String],
-  module_candidates : @hashmap.HashMap[String, Array[String]],
+  source_registry : Map[String, String],
+  module_paths : Map[String, String],
+  module_candidates : Map[String, Array[String]],
   files : Array[WgslSourceFile],
 ) -> Unit {
   for file in files {
@@ -278,7 +277,7 @@ fn register_source_files_into(
 
 ///|
 fn registered_source_from_registry(
-  source_registry : @hashmap.HashMap[String, String],
+  source_registry : Map[String, String],
   rel_path : String,
 ) -> String? {
   let normalized_rel = normalize_shader_rel_path(rel_path)

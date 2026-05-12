@@ -1,7 +1,7 @@
 ///|
 fn preprocess_emit_pipeline_item(
   item : WgslDirectiveScanItem,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
   scope : Scope,
@@ -104,7 +104,7 @@ fn preprocess_emit_pipeline_item(
 pub fn Preprocessor::preprocess(
   _self : Preprocessor,
   source : String,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
 ) -> PreprocessOutput raise PreprocessError {
   let import_state = WgslImportSubstitutionState::default()
   let used_imports : Array[ImportDefWithOffset] = []

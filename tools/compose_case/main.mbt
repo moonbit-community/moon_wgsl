@@ -502,10 +502,8 @@ fn compose_case_naga_style_error_output(
 }
 
 ///|
-fn compose_case_bool_defines(
-  names : Array[String],
-) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+fn compose_case_bool_defines(names : Array[String]) -> Map[String, Bool] {
+  let defines : Map[String, Bool] = Map([])
   for name in names {
     defines.set(name, true)
   }
@@ -557,7 +555,7 @@ fn compose_case_parse_value_define_value(
 ///|
 fn compose_case_value_defines(
   entries : Array[String],
-) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
+) -> Map[String, @common.ShaderDefValue] {
   let values = @common.default_wgsl_value_defines()
   for entry in entries {
     let (name, raw_value) = compose_case_split_value_define(entry)

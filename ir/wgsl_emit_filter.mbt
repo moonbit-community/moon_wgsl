@@ -14,23 +14,23 @@
 
 ///|
 priv struct WgslIrEmitFilter {
-  types : @hashmap.HashMap[String, Bool]
-  constants : @hashmap.HashMap[String, Bool]
-  overrides : @hashmap.HashMap[String, Bool]
-  global_variables : @hashmap.HashMap[String, Bool]
-  functions : @hashmap.HashMap[String, Bool]
-  entry_points : @hashmap.HashMap[String, Bool]
+  types : @set.Set[String]
+  constants : @set.Set[String]
+  overrides : @set.Set[String]
+  global_variables : @set.Set[String]
+  functions : @set.Set[String]
+  entry_points : @set.Set[String]
 }
 
 ///|
 fn WgslIrEmitFilter::WgslIrEmitFilter() -> WgslIrEmitFilter {
   WgslIrEmitFilter::{
-    types: @hashmap.HashMap([]),
-    constants: @hashmap.HashMap([]),
-    overrides: @hashmap.HashMap([]),
-    global_variables: @hashmap.HashMap([]),
-    functions: @hashmap.HashMap([]),
-    entry_points: @hashmap.HashMap([]),
+    types: @set.Set([]),
+    constants: @set.Set([]),
+    overrides: @set.Set([]),
+    global_variables: @set.Set([]),
+    functions: @set.Set([]),
+    entry_points: @set.Set([]),
   }
 }
 
@@ -40,26 +40,17 @@ fn wgsl_ir_emit_filter_key(index : Int) -> String {
 }
 
 ///|
-fn wgsl_ir_emit_filter_contains(
-  items : @hashmap.HashMap[String, Bool],
-  index : Int,
-) -> Bool {
-  match items.get(wgsl_ir_emit_filter_key(index)) {
-    Some(value) => value
-    None => false
-  }
+fn wgsl_ir_emit_filter_contains(items : @set.Set[String], index : Int) -> Bool {
+  items.contains(wgsl_ir_emit_filter_key(index))
 }
 
 ///|
-fn wgsl_ir_emit_filter_mark(
-  items : @hashmap.HashMap[String, Bool],
-  index : Int,
-) -> Bool {
+fn wgsl_ir_emit_filter_mark(items : @set.Set[String], index : Int) -> Bool {
   let key = wgsl_ir_emit_filter_key(index)
   if items.contains(key) {
     return false
   }
-  items.set(key, true)
+  items.add(key)
   true
 }
 

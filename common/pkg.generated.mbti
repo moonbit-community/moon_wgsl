@@ -3,12 +3,11 @@ package "Milky2018/moon_wgsl/common"
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/hashmap",
-  "moonbitlang/core/hashset",
+  "moonbitlang/core/set",
 }
 
 // Values
-pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, ShaderDefValue]
+pub fn default_wgsl_value_defines() -> Map[String, ShaderDefValue]
 
 // Errors
 
@@ -18,7 +17,7 @@ pub(all) struct ComposableModuleDescriptor {
   file_path : String
   as_name : String?
   additional_imports : Array[ImportDefinition]
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  shader_defs : Map[String, ShaderDefValue]
 } derive(Eq, @debug.Debug)
 pub fn ComposableModuleDescriptor::default() -> Self
 
@@ -61,12 +60,12 @@ pub fn PreprocessOutput::PreprocessOutput(String, Array[ImportDefWithOffset]) ->
 pub struct PreprocessorMetaData {
   name : String?
   imports : Array[ImportDefWithOffset]
-  defines : @hashmap.HashMap[String, ShaderDefValue]
-  effective_defs : @hashset.HashSet[String]
+  defines : Map[String, ShaderDefValue]
+  effective_defs : @set.Set[String]
   wgsl_directives : WgslDirectives
   cleaned_source : String
 }
-pub fn PreprocessorMetaData::PreprocessorMetaData(String?, Array[ImportDefWithOffset], @hashmap.HashMap[String, ShaderDefValue], @hashset.HashSet[String], WgslDirectives, String) -> Self
+pub fn PreprocessorMetaData::PreprocessorMetaData(String?, Array[ImportDefWithOffset], Map[String, ShaderDefValue], @set.Set[String], WgslDirectives, String) -> Self
 
 pub struct RequiresDirective {
   extensions : Array[String]
@@ -82,8 +81,8 @@ pub(all) enum ShaderDefValue {
 pub fn ShaderDefValue::value_as_string(Self) -> String
 
 pub(all) struct WgslComposeOptions {
-  defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, ShaderDefValue]
+  defines : Map[String, Bool]
+  value_defines : Map[String, ShaderDefValue]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
 } derive(Eq, @debug.Debug)

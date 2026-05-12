@@ -13,15 +13,15 @@
 // limitations under the License.
 
 ///|
-fn empty_shader_defs() -> @hashmap.HashMap[String, @common.ShaderDefValue] {
-  @hashmap.HashMap([])
+fn empty_shader_defs() -> Map[String, @common.ShaderDefValue] {
+  Map([])
 }
 
 ///|
 fn bool_shader_def(
   name : String,
   value : Bool,
-) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
+) -> Map[String, @common.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
   shader_defs.set(name, @common.ShaderDefValue::Bool(value))
   shader_defs
@@ -31,7 +31,7 @@ fn bool_shader_def(
 fn int_shader_def(
   name : String,
   value : Int,
-) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
+) -> Map[String, @common.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
   shader_defs.set(name, @common.ShaderDefValue::Int(value))
   shader_defs
@@ -40,7 +40,7 @@ fn int_shader_def(
 ///|
 fn preprocess_without_ascii_whitespace(
   source : String,
-  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
+  shader_defs : Map[String, @common.ShaderDefValue],
 ) -> String {
   let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,

@@ -94,7 +94,7 @@ fn Composer::compose_wgsl_import_requests(
     if session.visited.contains(visit_key) {
       continue
     }
-    session.visited.set(visit_key, true)
+    session.visited.add(visit_key)
     let raw_source = self.load_wgsl_source_required_raw(request.rel_path)
     let origin_start_index = session.symbols.source_origins.length()
     session.active_rel_paths.push(request.rel_path)
@@ -258,7 +258,7 @@ fn Composer::compose_wgsl_import_requests(
       }
     }
     if request.import_full_module {
-      session.visited.set(full_module_key, true)
+      session.visited.add(full_module_key)
     }
     merged = "\{merged}\{final_module_source}"
     if !merged.has_suffix("\n") {

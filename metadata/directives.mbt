@@ -13,7 +13,7 @@ fn split_extensions(raw : String) -> Array[String] {
 ///|
 fn collect_effective_def_names(
   line : String,
-  effective_defs : @hashset.HashSet[String],
+  effective_defs : @set.Set[String],
 ) -> Unit {
   for reference in parse_wgsl_shader_def_references(line) {
     effective_defs.add(reference.name())

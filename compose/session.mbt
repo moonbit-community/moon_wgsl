@@ -1,8 +1,8 @@
 ///|
 fn copy_shader_def_values(
-  defs : @hashmap.HashMap[String, ShaderDefValue],
-) -> @hashmap.HashMap[String, ShaderDefValue] {
-  let copied : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([])
+  defs : Map[String, ShaderDefValue],
+) -> Map[String, ShaderDefValue] {
+  let copied : Map[String, ShaderDefValue] = Map([])
   for entry in defs.iter() {
     let (name, value) = entry
     copied.set(name, value)
@@ -64,10 +64,8 @@ fn prepend_wgsl_additional_imports(
 }
 
 ///|
-fn copy_bool_defs(
-  defs : @hashmap.HashMap[String, Bool],
-) -> @hashmap.HashMap[String, Bool] {
-  let copied : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+fn copy_bool_defs(defs : Map[String, Bool]) -> Map[String, Bool] {
+  let copied : Map[String, Bool] = Map([])
   for entry in defs.iter() {
     let (name, value) = entry
     copied.set(name, value)
@@ -77,9 +75,9 @@ fn copy_bool_defs(
 
 ///|
 fn copy_value_defs(
-  defs : @hashmap.HashMap[String, ShaderDefValue],
-) -> @hashmap.HashMap[String, ShaderDefValue] {
-  let copied : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([])
+  defs : Map[String, ShaderDefValue],
+) -> Map[String, ShaderDefValue] {
+  let copied : Map[String, ShaderDefValue] = Map([])
   for entry in defs.iter() {
     let (name, value) = entry
     copied.set(name, value)
@@ -89,9 +87,9 @@ fn copy_value_defs(
 
 ///|
 fn merge_shader_def_value_into_compose_defs(
-  defines : @hashmap.HashMap[String, Bool],
-  value_defines : @hashmap.HashMap[String, ShaderDefValue],
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  defines : Map[String, Bool],
+  value_defines : Map[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   name : String,
   value : ShaderDefValue,
 ) -> Unit {
@@ -103,7 +101,7 @@ fn merge_shader_def_value_into_compose_defs(
 }
 
 ///|
-fn hashset_strings_to_array(values : @hashset.HashSet[String]) -> Array[String] {
+fn set_strings_to_array(values : @set.Set[String]) -> Array[String] {
   let out : Array[String] = []
   for value in values.iter() {
     out.push(value)
@@ -127,20 +125,20 @@ priv struct WgslComposeSymbolTable {
 
 ///|
 priv struct WgslComposeSession {
-  defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, ShaderDefValue]
-  modules : @hashmap.HashMap[String, String]
+  defines : Map[String, Bool]
+  value_defines : Map[String, ShaderDefValue]
+  modules : Map[String, String]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
   global_alias_bindings : WgslComposeBindingSet
-  redirect_match_counts : @hashmap.HashMap[String, Int]
-  visited : @hashmap.HashMap[String, Bool]
-  graph_planned_requests : @hashmap.HashMap[String, Bool]
+  redirect_match_counts : Map[String, Int]
+  visited : @set.Set[String]
+  graph_planned_requests : @set.Set[String]
   graph_planning_rel_paths : Array[String]
   mut graph_execution_complete : Bool
   symbols : WgslComposeSymbolTable
   link_graph : WgslIrLinkGraph
-  semantic_facts : @hashmap.HashMap[String, WgslComposeSemanticFacts]
+  semantic_facts : Map[String, WgslComposeSemanticFacts]
   active_rel_paths : Array[String]
 }
 
@@ -167,7 +165,7 @@ priv struct WgslComposeSymbolTarget {
 ///|
 priv struct WgslComposeBindingSet {
   bindings : Array[WgslComposeBinding]
-  keys : @hashset.HashSet[String]
+  keys : @set.Set[String]
   conflicts : Array[String]
 }
 
@@ -257,11 +255,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
 
 ///|
 fn WgslComposeBindingSet::WgslComposeBindingSet() -> WgslComposeBindingSet {
-  WgslComposeBindingSet::{
-    bindings: [],
-    keys: @hashset.HashSet([]),
-    conflicts: [],
-  }
+  WgslComposeBindingSet::{ bindings: [], keys: @set.Set([]), conflicts: [] }
 }
 
 ///|
@@ -559,9 +553,9 @@ fn WgslComposeSession::record_alias_final_name_if_absent(
 
 ///|
 priv struct WgslActiveComposeDefs {
-  defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, ShaderDefValue]
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  defines : Map[String, Bool]
+  value_defines : Map[String, ShaderDefValue]
+  shader_defs : Map[String, ShaderDefValue]
 }
 
 ///|

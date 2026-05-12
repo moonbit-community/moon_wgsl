@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-fn empty_bool_defines() -> @hashmap.HashMap[String, Bool] {
-  @hashmap.HashMap([])
+fn empty_bool_defines() -> Map[String, Bool] {
+  Map([])
 }
 
 ///|
@@ -34,7 +34,7 @@ fn composer_test_composer() -> @compose.Composer {
 
 ///|
 fn composer_test_compose_options(
-  defines : @hashmap.HashMap[String, Bool],
+  defines : Map[String, Bool],
   redirects : Array[@common.WgslSymbolRedirect],
 ) -> @common.WgslComposeOptions {
   {
@@ -284,7 +284,7 @@ test "naga_oil: composer item imports keep dependent view declarations" {
 ///|
 test "naga_oil: composer drops preprocess previous-view imports outside active branches" {
   register_mesh_preprocess_branch_test_shaders()
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let defines : Map[String, Bool] = Map([])
   defines.set("WRITE_INDIRECT_PARAMETERS_METADATA", true)
   defines.set("INDIRECT", true)
   defines.set("FRUSTUM_CULLING", true)
@@ -520,7 +520,7 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
       file_path: "shaders/demo/maths.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected maths module registration success: \{err.message()}")
@@ -531,7 +531,7 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
       file_path: "shaders/demo/main.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected main module registration success: \{err.message()}")
@@ -563,7 +563,7 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
       file_path: "shaders/demo/maths.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected maths module registration success: \{err.message()}")
@@ -574,7 +574,7 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
       file_path: "shaders/demo/main.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected main module registration success: \{err.message()}")
@@ -648,7 +648,7 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
       file_path: "shaders/demo/plugin.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err =>
@@ -660,7 +660,7 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
       file_path: "shaders/demo/main.wgsl",
       as_name: None,
       additional_imports: [{ import_path: "plugin", items: [] }],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected main module registration success: \{err.message()}")
@@ -1088,8 +1088,7 @@ test "naga_oil: composer rejects unqualified import binding ambiguity" {
 test "naga_oil: source catalog uses per-module strict shader defs" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  let module_defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap([],
-  )
+  let module_defs : Map[String, @common.ShaderDefValue] = Map([])
   module_defs.set("MODULE_FLAG", @common.ShaderDefValue::Bool(false))
   ignore(
     composer.add_composable_module({
@@ -1135,7 +1134,7 @@ test "naga_oil: composable modules reject local define directives" {
       file_path: "shaders/bad/module.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err => {

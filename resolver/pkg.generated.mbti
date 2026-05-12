@@ -3,7 +3,6 @@ package "Milky2018/moon_wgsl/resolver"
 
 import {
   "Milky2018/moon_wgsl/common",
-  "moonbitlang/core/hashmap",
   "moonbitlang/x/fs",
 }
 
@@ -16,7 +15,7 @@ pub fn normalize_shader_rel_path(String) -> String
 
 pub fn resolve_wgsl_import_file_path_from_registry(WgslSourceRegistry, String, String) -> String?
 
-pub fn resolve_wgsl_import_module_in_registry(WgslSourceRegistry, String, @hashmap.HashMap[String, String]) -> @common.WgslResolvedImportModule?
+pub fn resolve_wgsl_import_module_in_registry(WgslSourceRegistry, String, Map[String, String]) -> @common.WgslResolvedImportModule?
 
 pub fn scan_wgsl_source_files(String, @common.WgslSourceScanOptions) -> Array[@common.WgslSourceFile] raise @fs.IOError
 
@@ -31,7 +30,7 @@ pub struct WgslSourceRegistry {
 pub fn WgslSourceRegistry::analyze_source_files(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
 pub fn WgslSourceRegistry::candidate_rel_paths_for_module_path(Self, String) -> Array[String]
 pub fn WgslSourceRegistry::clear(Self) -> Unit
-pub fn WgslSourceRegistry::copy_import_module_paths(Self) -> @hashmap.HashMap[String, String]
+pub fn WgslSourceRegistry::copy_import_module_paths(Self) -> Map[String, String]
 pub fn WgslSourceRegistry::default() -> Self
 pub fn WgslSourceRegistry::register_source(Self, String, String, String?) -> String?
 pub fn WgslSourceRegistry::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit

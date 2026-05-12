@@ -37,7 +37,7 @@ fn preprocess_blank_text(text : String) -> String {
 
 ///|
 fn preprocess_check_scope_directive(
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   directive : WgslDirective,
   scope : Scope?,
   offset : Int,
@@ -133,7 +133,7 @@ fn preprocess_source_line_text_end(text : String, line_start : Int) -> Int {
 ///|
 fn preprocess_replace_shader_defs_in_text(
   text : String,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
 ) -> String {
   let mut out = ""
   let mut line_start = 0
@@ -207,7 +207,7 @@ priv enum WgslPreprocessEmissionKind {
 fn preprocess_emit_scanned_item(
   kind : WgslPreprocessEmissionKind,
   item : WgslDirectiveScanItem,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {
@@ -225,7 +225,7 @@ fn preprocess_emit_scanned_item(
 ///|
 fn preprocess_rewrite_source_item(
   item : WgslDirectiveScanItem,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   import_state : WgslImportSubstitutionState,
   used_imports : Array[ImportDefWithOffset],
 ) -> String raise PreprocessError {

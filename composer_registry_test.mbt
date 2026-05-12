@@ -16,7 +16,7 @@
 fn composer_test_descriptor(
   source : String,
   file_path : String,
-  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
+  shader_defs : Map[String, @common.ShaderDefValue],
 ) -> @common.ComposableModuleDescriptor {
   @common.ComposableModuleDescriptor::{
     source,
@@ -40,8 +40,7 @@ fn composer_test_add_or_abort(
 ///|
 test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
   let composer = @compose.Composer::default()
-  let base_shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap([],
-  )
+  let base_shader_defs : Map[String, @common.ShaderDefValue] = Map([])
   base_shader_defs.set("BASE_DEF", @common.ShaderDefValue::Bool(true))
 
   let base_definition = composer_test_add_or_abort(
@@ -59,7 +58,7 @@ test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
     composer_test_descriptor(
       "#define_import_path test::child\n#import test::base::base_value\n#ifdef USE_CHILD\nfn child_value() -> f32 {\n  return base_value();\n}\n#else\nfn child_value() -> f32 {\n  return 0.0;\n}\n#endif\n",
       "tests/child.wgsl",
-      @hashmap.HashMap([]),
+      Map([]),
     ),
   )
 
@@ -86,7 +85,7 @@ test "naga_oil: composer remove_composable_module removes dependent modules" {
       composer_test_descriptor(
         "#define_import_path test::base\nfn base_value() -> f32 {\n  return 1f;\n}\n",
         "tests/base_remove.wgsl",
-        @hashmap.HashMap([]),
+        Map([]),
       ),
     ),
   )
@@ -96,7 +95,7 @@ test "naga_oil: composer remove_composable_module removes dependent modules" {
       composer_test_descriptor(
         "#define_import_path test::child\n#import test::base::base_value\nfn child_value() -> f32 {\n  return base_value();\n}\n",
         "tests/child_remove.wgsl",
-        @hashmap.HashMap([]),
+        Map([]),
       ),
     ),
   )
@@ -116,7 +115,7 @@ test "naga_oil: composer rejects modules without an import path name" {
       composer_test_descriptor(
         "fn shade() -> f32 {\n  return 1f;\n}\n",
         "tests/no_name.wgsl",
-        @hashmap.HashMap([]),
+        Map([]),
       ),
     ),
   ) catch {
@@ -143,14 +142,14 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
     composer_test_descriptor(
       "#define_import_path test::child\n#import test::plain::plain_value\nfn child_value() -> f32 {\n  return plain_value();\n}\n",
       "tests/child_against_registry.wgsl",
-      @hashmap.HashMap([]),
+      Map([]),
     ),
   )
 
   debug_inspect(child_definition.imports_module("test::plain"), content="true")
 
   let composed = composer.compose_wgsl("tests/child_against_registry.wgsl", {
-    defines: @hashmap.HashMap([]),
+    defines: Map([]),
     value_defines: @common.default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],

@@ -14,17 +14,17 @@
 
 ///|
 pub struct Composer {
-  priv module_sets : @hashmap.HashMap[String, ComposableModuleDefinition]
+  priv module_sets : Map[String, ComposableModuleDefinition]
   priv registry : WgslSourceRegistry
-  priv composable_module_registry_paths : @hashmap.HashMap[String, String]
+  priv composable_module_registry_paths : Map[String, String]
 }
 
 ///|
 pub fn Composer::default() -> Composer {
   Composer::{
-    module_sets: @hashmap.HashMap([]),
+    module_sets: Map([]),
     registry: WgslSourceRegistry::default(),
-    composable_module_registry_paths: @hashmap.HashMap([]),
+    composable_module_registry_paths: Map([]),
   }
 }
 

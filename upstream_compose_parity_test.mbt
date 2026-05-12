@@ -13,15 +13,13 @@
 // limitations under the License.
 
 ///|
-fn upstream_parity_empty_defines() -> @hashmap.HashMap[String, Bool] {
-  @hashmap.HashMap([])
+fn upstream_parity_empty_defines() -> Map[String, Bool] {
+  Map([])
 }
 
 ///|
-fn upstream_parity_bool_defines(
-  names : Array[String],
-) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+fn upstream_parity_bool_defines(names : Array[String]) -> Map[String, Bool] {
+  let defines : Map[String, Bool] = Map([])
   for name in names {
     defines.set(name, true)
   }
@@ -31,9 +29,8 @@ fn upstream_parity_bool_defines(
 ///|
 fn upstream_parity_shader_def_values(
   names : Array[String],
-) -> @hashmap.HashMap[String, @common.ShaderDefValue] {
-  let defines : @hashmap.HashMap[String, @common.ShaderDefValue] = @hashmap.HashMap([],
-  )
+) -> Map[String, @common.ShaderDefValue] {
+  let defines : Map[String, @common.ShaderDefValue] = Map([])
   for name in names {
     defines.set(name, @common.ShaderDefValue::Bool(true))
   }
@@ -42,7 +39,7 @@ fn upstream_parity_shader_def_values(
 
 ///|
 fn upstream_parity_compose_options(
-  defines : @hashmap.HashMap[String, Bool],
+  defines : Map[String, Bool],
 ) -> @common.WgslComposeOptions {
   {
     defines,
@@ -72,7 +69,7 @@ fn upstream_parity_composer(case_name : String) -> @compose.Composer {
 
 ///|
 fn upstream_parity_descriptor_effective_defs_source(
-  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
+  shader_defs : Map[String, @common.ShaderDefValue],
 ) -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
@@ -97,7 +94,7 @@ fn upstream_parity_descriptor_effective_defs_source(
       file_path: "mod.wgsl",
       as_name: None,
       additional_imports: [],
-      shader_defs: @hashmap.HashMap([]),
+      shader_defs: Map([]),
     }),
   ) catch {
     err => abort("expected mod registration success: \{err.message()}")
@@ -138,7 +135,7 @@ fn upstream_parity_descriptor_effective_defs_source(
 
 ///|
 fn upstream_parity_check_effective_defs_sum(
-  shader_defs : @hashmap.HashMap[String, @common.ShaderDefValue],
+  shader_defs : Map[String, @common.ShaderDefValue],
   expected_a : String,
   expected_b : String,
   expected_c : String,
@@ -200,7 +197,7 @@ fn upstream_mirror_composer(case_name : String) -> @compose.Composer {
 fn upstream_mirror_compose_case(
   case_name : String,
   rel_path : String,
-  defines : @hashmap.HashMap[String, Bool],
+  defines : Map[String, Bool],
 ) -> String {
   upstream_mirror_composer(case_name).compose_wgsl(
     rel_path,
@@ -217,7 +214,7 @@ fn upstream_mirror_compose_case(
 fn upstream_parity_compose_case(
   case_name : String,
   rel_path : String,
-  defines : @hashmap.HashMap[String, Bool],
+  defines : Map[String, Bool],
 ) -> String {
   upstream_parity_composer(case_name).compose_wgsl(
     rel_path,
@@ -235,7 +232,7 @@ fn upstream_parity_export_case(
   case_name : String,
   rel_path : String,
   root_items : Array[String],
-  defines : @hashmap.HashMap[String, Bool],
+  defines : Map[String, Bool],
 ) -> @common.WgslExportOutput {
   @export.export_wgsl_with_options(
     upstream_parity_composer(case_name),

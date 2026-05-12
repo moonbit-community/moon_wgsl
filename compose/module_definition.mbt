@@ -15,17 +15,17 @@
 ///|
 pub struct ComposableModuleDefinition {
   priv name : String
-  priv shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  priv shader_defs : Map[String, ShaderDefValue]
   priv effective_defs : Array[String]
-  priv all_imports : @hashset.HashSet[String]
+  priv all_imports : @set.Set[String]
 }
 
 ///|
 fn ComposableModuleDefinition::ComposableModuleDefinition(
   name : String,
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue],
+  shader_defs : Map[String, ShaderDefValue],
   effective_defs : Array[String],
-  all_imports : @hashset.HashSet[String],
+  all_imports : @set.Set[String],
 ) -> ComposableModuleDefinition {
   ComposableModuleDefinition::{ name, shader_defs, effective_defs, all_imports }
 }

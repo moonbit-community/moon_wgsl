@@ -39,9 +39,8 @@ fn push_wgsl_diagnostic(
 ///|
 fn build_wgsl_source_catalog_index(
   catalog_entries : Array[WgslSourceCatalogEntry],
-) -> @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] {
-  let catalog : @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]] = @hashmap.HashMap([],
-  )
+) -> Map[String, Array[WgslSourceCatalogEntry]] {
+  let catalog : Map[String, Array[WgslSourceCatalogEntry]] = Map([])
   for entry in catalog_entries {
     if catalog.get(entry.symbol_name) is Some(entries) {
       entries.push(entry)
@@ -55,9 +54,8 @@ fn build_wgsl_source_catalog_index(
 ///|
 fn build_wgsl_source_origin_index(
   origin_entries : Array[WgslSourceOriginEntry],
-) -> @hashmap.HashMap[String, Array[WgslSourceOriginEntry]] {
-  let origins : @hashmap.HashMap[String, Array[WgslSourceOriginEntry]] = @hashmap.HashMap([],
-  )
+) -> Map[String, Array[WgslSourceOriginEntry]] {
+  let origins : Map[String, Array[WgslSourceOriginEntry]] = Map([])
   for entry in origin_entries {
     if origins.get(entry.generated_symbol_name) is Some(entries) {
       entries.push(entry)
@@ -70,7 +68,7 @@ fn build_wgsl_source_origin_index(
 
 ///|
 fn match_wgsl_source_catalog_entry(
-  catalog : @hashmap.HashMap[String, Array[WgslSourceCatalogEntry]],
+  catalog : Map[String, Array[WgslSourceCatalogEntry]],
   declaration : WgslEmittedDeclaration,
   diagnostics : Array[WgslDiagnostic],
 ) -> WgslSourceCatalogEntry? {
@@ -109,7 +107,7 @@ fn match_wgsl_source_catalog_entry(
 
 ///|
 fn match_wgsl_source_origin_entry(
-  origins : @hashmap.HashMap[String, Array[WgslSourceOriginEntry]],
+  origins : Map[String, Array[WgslSourceOriginEntry]],
   declaration : WgslEmittedDeclaration,
   diagnostics : Array[WgslDiagnostic],
 ) -> WgslSourceOriginEntry? {
@@ -182,9 +180,9 @@ fn collect_missing_wgsl_export_roots(
   declarations : Array[WgslEmittedDeclaration],
   root_items : Array[String],
 ) -> Array[String] {
-  let declared : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+  let declared : @set.Set[String] = @set.Set([])
   for declaration in declarations {
-    declared.set(declaration.name(), true)
+    declared.add(declaration.name())
   }
   let missing : Array[String] = []
   for root in root_items {

@@ -3,13 +3,12 @@ package "Milky2018/moon_wgsl/preprocess"
 
 import {
   "Milky2018/moon_wgsl/common",
-  "moonbitlang/core/hashmap",
 }
 
 // Values
-pub fn apply_wgsl_ifdefs_strict(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> String raise PreprocessError
+pub fn apply_wgsl_ifdefs_strict(String, Map[String, @common.ShaderDefValue]) -> String raise PreprocessError
 
-pub fn apply_wgsl_template_consts(String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> String
+pub fn apply_wgsl_template_consts(String, Map[String, @common.ShaderDefValue]) -> String
 
 // Errors
 pub suberror PreprocessError {
@@ -27,7 +26,7 @@ pub suberror PreprocessError {
 pub struct Preprocessor {
 }
 pub fn Preprocessor::default() -> Self
-pub fn Preprocessor::preprocess(Self, String, @hashmap.HashMap[String, @common.ShaderDefValue]) -> @common.PreprocessOutput raise PreprocessError
+pub fn Preprocessor::preprocess(Self, String, Map[String, @common.ShaderDefValue]) -> @common.PreprocessOutput raise PreprocessError
 
 // Type aliases
 

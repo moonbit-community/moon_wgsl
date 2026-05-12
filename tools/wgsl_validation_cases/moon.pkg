@@ -4,7 +4,6 @@ import {
   "Milky2018/moon_wgsl/export",
   "Milky2018/moon_wgsl/ir",
   "moonbitlang/core/env",
-  "moonbitlang/core/hashmap",
 }
 
 options(

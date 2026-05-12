@@ -1,13 +1,13 @@
 ///|
 priv struct WgslIrFunctionScope {
-  arguments : @hashmap.HashMap[String, Int]
-  locals : @hashmap.HashMap[String, Handle]
-  local_constants : @hashmap.HashMap[String, Handle]
-  local_inline_lets : @hashmap.HashMap[String, Handle]
-  local_pointer_expressions : @hashmap.HashMap[String, Handle]
-  argument_pointer_expressions : @hashmap.HashMap[String, Handle]
-  global_pointer_expressions : @hashmap.HashMap[String, Handle]
-  hidden_temporary_name_indices : @hashset.HashSet[Int]
+  arguments : Map[String, Int]
+  locals : Map[String, Handle]
+  local_constants : Map[String, Handle]
+  local_inline_lets : Map[String, Handle]
+  local_pointer_expressions : Map[String, Handle]
+  argument_pointer_expressions : Map[String, Handle]
+  global_pointer_expressions : Map[String, Handle]
+  hidden_temporary_name_indices : @set.Set[Int]
   mut allow_local_inline_lets : Bool
   mut temporary_index : Int
 }
@@ -22,24 +22,22 @@ priv struct WgslIrExprTokenParser {
 ///|
 fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
   WgslIrFunctionScope::{
-    arguments: @hashmap.HashMap([]),
-    locals: @hashmap.HashMap([]),
-    local_constants: @hashmap.HashMap([]),
-    local_inline_lets: @hashmap.HashMap([]),
-    local_pointer_expressions: @hashmap.HashMap([]),
-    argument_pointer_expressions: @hashmap.HashMap([]),
-    global_pointer_expressions: @hashmap.HashMap([]),
-    hidden_temporary_name_indices: @hashset.HashSet([]),
+    arguments: Map([]),
+    locals: Map([]),
+    local_constants: Map([]),
+    local_inline_lets: Map([]),
+    local_pointer_expressions: Map([]),
+    argument_pointer_expressions: Map([]),
+    global_pointer_expressions: Map([]),
+    hidden_temporary_name_indices: @set.Set([]),
     allow_local_inline_lets: true,
     temporary_index: 0,
   }
 }
 
 ///|
-fn wgsl_ir_copy_string_int_map(
-  source : @hashmap.HashMap[String, Int],
-) -> @hashmap.HashMap[String, Int] {
-  let copied : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+fn wgsl_ir_copy_string_int_map(source : Map[String, Int]) -> Map[String, Int] {
+  let copied : Map[String, Int] = Map([])
   for entry in source.iter() {
     let (key, value) = entry
     copied.set(key, value)
@@ -49,9 +47,9 @@ fn wgsl_ir_copy_string_int_map(
 
 ///|
 fn wgsl_ir_copy_string_handle_map(
-  source : @hashmap.HashMap[String, Handle],
-) -> @hashmap.HashMap[String, Handle] {
-  let copied : @hashmap.HashMap[String, Handle] = @hashmap.HashMap([])
+  source : Map[String, Handle],
+) -> Map[String, Handle] {
+  let copied : Map[String, Handle] = Map([])
   for entry in source.iter() {
     let (key, value) = entry
     copied.set(key, value)
@@ -60,10 +58,8 @@ fn wgsl_ir_copy_string_handle_map(
 }
 
 ///|
-fn wgsl_ir_copy_int_set(
-  source : @hashset.HashSet[Int],
-) -> @hashset.HashSet[Int] {
-  let copied : @hashset.HashSet[Int] = @hashset.HashSet([])
+fn wgsl_ir_copy_int_set(source : @set.Set[Int]) -> @set.Set[Int] {
+  let copied : @set.Set[Int] = @set.Set([])
   for value in source.iter() {
     copied.add(value)
   }

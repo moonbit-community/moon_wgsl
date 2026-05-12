@@ -6,8 +6,8 @@ pub(all) struct WgslSymbolRedirect {
 
 ///|
 pub(all) struct WgslComposeOptions {
-  defines : @hashmap.HashMap[String, Bool]
-  value_defines : @hashmap.HashMap[String, ShaderDefValue]
+  defines : Map[String, Bool]
+  value_defines : Map[String, ShaderDefValue]
   redirects : Array[WgslSymbolRedirect]
   additional_imports : Array[ImportDefinition]
 } derive(Eq, Debug)
@@ -15,7 +15,7 @@ pub(all) struct WgslComposeOptions {
 ///|
 pub fn WgslComposeOptions::default() -> WgslComposeOptions {
   WgslComposeOptions::{
-    defines: @hashmap.HashMap([]),
+    defines: Map([]),
     value_defines: default_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
@@ -23,8 +23,8 @@ pub fn WgslComposeOptions::default() -> WgslComposeOptions {
 }
 
 ///|
-pub fn default_wgsl_value_defines() -> @hashmap.HashMap[String, ShaderDefValue] {
-  let defines : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([])
+pub fn default_wgsl_value_defines() -> Map[String, ShaderDefValue] {
+  let defines : Map[String, ShaderDefValue] = Map([])
   defines.set("AVAILABLE_STORAGE_BUFFER_BINDINGS", ShaderDefValue::Int(8))
   defines.set("MAX_DIRECTIONAL_LIGHTS", ShaderDefValue::Int(10))
   defines.set("MAX_CASCADES_PER_LIGHT", ShaderDefValue::Int(4))

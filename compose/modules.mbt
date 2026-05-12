@@ -20,8 +20,7 @@ fn Composer::active_compose_defs_for_rel_path(
   session : WgslComposeSession,
   inherited_defs : WgslActiveComposeDefs?,
 ) -> WgslActiveComposeDefs {
-  let shader_defs : @hashmap.HashMap[String, ShaderDefValue] = @hashmap.HashMap([],
-  )
+  let shader_defs : Map[String, ShaderDefValue] = Map([])
   let (defines, value_defines) = match inherited_defs {
     Some(parent_defs) => {
       for entry in parent_defs.shader_defs.iter() {

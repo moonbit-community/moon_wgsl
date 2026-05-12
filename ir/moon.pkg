@@ -3,8 +3,7 @@ import {
   "Milky2018/moon_wgsl/ast_analysis",
   "Milky2018/moon_wgsl/parser",
   "moonbitlang/core/debug",
-  "moonbitlang/core/hashmap",
-  "moonbitlang/core/hashset",
+  "moonbitlang/core/set",
   "moonbitlang/core/strconv",
 }
 

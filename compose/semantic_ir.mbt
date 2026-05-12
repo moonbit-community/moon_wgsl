@@ -23,10 +23,10 @@ priv struct WgslComposeIrIdentityKey {
 
 ///|
 priv struct WgslComposeSemanticIr {
-  declared_names : @hashmap.HashMap[String, Bool]
-  symbol_keys : @hashset.HashSet[String]
+  declared_names : @set.Set[String]
+  symbol_keys : @set.Set[String]
   symbols : Array[WgslComposeIrSymbol]
-  emitted_final_name_by_identity : @hashmap.HashMap[String, String]
+  emitted_final_name_by_identity : Map[String, String]
   reference_bindings : Array[WgslComposeIrReferenceBinding]
 }
 
@@ -61,10 +61,10 @@ fn WgslComposeIrIdentityKey::text(self : WgslComposeIrIdentityKey) -> String {
 ///|
 fn WgslComposeSemanticIr::WgslComposeSemanticIr() -> WgslComposeSemanticIr {
   WgslComposeSemanticIr::{
-    declared_names: @hashmap.HashMap([]),
-    symbol_keys: @hashset.HashSet([]),
+    declared_names: @set.Set([]),
+    symbol_keys: @set.Set([]),
     symbols: [],
-    emitted_final_name_by_identity: @hashmap.HashMap([]),
+    emitted_final_name_by_identity: Map([]),
     reference_bindings: [],
   }
 }
@@ -76,7 +76,7 @@ fn WgslComposeSemanticIr::record_declared_name(
 ) -> Unit {
   let name = name.trim().to_owned()
   if name != "" {
-    self.declared_names.set(name, true)
+    self.declared_names.add(name)
   }
 }
 
@@ -229,7 +229,7 @@ fn WgslComposeSemanticIr::live_binding_plan(
   self : WgslComposeSemanticIr,
 ) -> WgslLiveBindingPlan {
   let plan = WgslLiveBindingPlan()
-  let seen_binding_keys : @hashset.HashSet[String] = @hashset.HashSet([])
+  let seen_binding_keys : @set.Set[String] = @set.Set([])
   for ir_binding in self.reference_bindings {
     let resolved_binding = if ir_binding.target.final_name ==
       ir_binding.binding.target.final_name.trim().to_owned() {

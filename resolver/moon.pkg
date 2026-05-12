@@ -3,7 +3,6 @@ import {
   "Milky2018/moon_wgsl/import_syntax",
   "Milky2018/moon_wgsl/metadata",
   "Milky2018/moon_wgsl/lex",
-  "moonbitlang/core/hashmap",
   "moonbitlang/core/ref",
   "moonbitlang/x/fs",
 }

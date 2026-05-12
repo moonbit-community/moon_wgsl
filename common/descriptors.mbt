@@ -18,7 +18,7 @@ pub(all) struct ComposableModuleDescriptor {
   file_path : String
   as_name : String?
   additional_imports : Array[ImportDefinition]
-  shader_defs : @hashmap.HashMap[String, ShaderDefValue]
+  shader_defs : Map[String, ShaderDefValue]
 } derive(Eq, Debug)
 
 ///|
@@ -28,6 +28,6 @@ pub fn ComposableModuleDescriptor::default() -> ComposableModuleDescriptor {
     file_path: "",
     as_name: None,
     additional_imports: [],
-    shader_defs: @hashmap.HashMap([]),
+    shader_defs: Map([]),
   }
 }

@@ -3,7 +3,6 @@ import {
   "Milky2018/moon_wgsl/compose",
   "Milky2018/moon_wgsl/resolver",
   "moonbitlang/core/env",
-  "moonbitlang/core/hashmap",
   "moonbitlang/core/string",
   "moonbitlang/x/fs",
 }

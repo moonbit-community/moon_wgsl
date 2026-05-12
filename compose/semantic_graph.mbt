@@ -251,7 +251,7 @@ fn resolve_wgsl_semantic_import_module(
   importer_rel_path : String,
   import_path : String,
   registry : WgslSourceRegistry,
-  modules : @hashmap.HashMap[String, String],
+  modules : Map[String, String],
 ) -> WgslResolvedImportModule? {
   if resolve_wgsl_import_file_path_from_registry(
       registry, importer_rel_path, import_path,
@@ -283,7 +283,7 @@ fn collect_wgsl_semantic_qualified_module_targets(
   source : String,
   current_rel_path : String,
   registry : WgslSourceRegistry,
-  modules : @hashmap.HashMap[String, String],
+  modules : Map[String, String],
   targets : Array[WgslImportTarget],
 ) -> Unit raise WgslParseError {
   let paths : Array[WgslReferencePath] = []
@@ -385,7 +385,7 @@ fn build_wgsl_semantic_import_target_plan(
   current_rel_path : String,
   target : WgslImportTarget,
   registry : WgslSourceRegistry,
-  modules : @hashmap.HashMap[String, String],
+  modules : Map[String, String],
   pending_targets : Array[WgslImportTarget],
 ) -> WgslSemanticImportTargetPlan? raise WgslParseError {
   let requested_items : Array[String] = []
@@ -476,7 +476,7 @@ fn build_wgsl_semantic_import_target_plans(
   current_rel_path : String,
   initial_targets : Array[WgslImportTarget],
   registry : WgslSourceRegistry,
-  modules : @hashmap.HashMap[String, String],
+  modules : Map[String, String],
 ) -> WgslSemanticImportTargetPlans raise WgslParseError {
   let pending_targets : Array[WgslImportTarget] = []
   for target in initial_targets {

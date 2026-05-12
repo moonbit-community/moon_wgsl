@@ -186,8 +186,8 @@ fn build_wgsl_declaration_graph_strict(
 fn wgsl_reachable_declaration_map(
   declaration_blocks : Array[WgslGraphBlock],
   root_items : Array[String],
-) -> (@hashmap.HashMap[String, Bool], Array[String]) {
-  let included_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+) -> (@set.Set[String], Array[String]) {
+  let included_names : @set.Set[String] = @set.Set([])
   let declarations : Array[WgslGlobalDecl] = []
   for block in declaration_blocks {
     declarations.push(
@@ -203,7 +203,7 @@ fn wgsl_reachable_declaration_map(
     declarations, root_items,
   )
   for name in reachable.included_names {
-    included_names.set(name, true)
+    included_names.add(name)
   }
   (included_names, reachable.missing_root_items)
 }

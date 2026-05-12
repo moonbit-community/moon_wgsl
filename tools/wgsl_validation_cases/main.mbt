@@ -13,15 +13,13 @@
 // limitations under the License.
 
 ///|
-fn validation_empty_defines() -> @hashmap.HashMap[String, Bool] {
-  @hashmap.HashMap([])
+fn validation_empty_defines() -> Map[String, Bool] {
+  Map([])
 }
 
 ///|
-fn validation_bool_defines(
-  names : Array[String],
-) -> @hashmap.HashMap[String, Bool] {
-  let defines : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
+fn validation_bool_defines(names : Array[String]) -> Map[String, Bool] {
+  let defines : Map[String, Bool] = Map([])
   for name in names {
     defines.set(name, true)
   }
@@ -30,7 +28,7 @@ fn validation_bool_defines(
 
 ///|
 fn validation_compose_options(
-  defines : @hashmap.HashMap[String, Bool],
+  defines : Map[String, Bool],
 ) -> @common.WgslComposeOptions {
   {
     defines,
@@ -41,10 +39,7 @@ fn validation_compose_options(
 }
 
 ///|
-fn validation_bevy_value_defines() -> @hashmap.HashMap[
-  String,
-  @common.ShaderDefValue,
-] {
+fn validation_bevy_value_defines() -> Map[String, @common.ShaderDefValue] {
   let value_defines = @common.default_wgsl_value_defines()
   value_defines.remove("PER_OBJECT_BUFFER_BATCH_SIZE")
   value_defines

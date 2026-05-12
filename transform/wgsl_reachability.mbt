@@ -23,13 +23,13 @@ fn wgsl_analysis_string_list_push_unique(
 ///|
 fn wgsl_analysis_declaration_name_map(
   declarations : Array[WgslGlobalDecl],
-) -> (@hashmap.HashMap[String, Bool], @hashmap.HashMap[String, Int]) {
-  let declaration_names : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([])
-  let declaration_indexes : @hashmap.HashMap[String, Int] = @hashmap.HashMap([])
+) -> (@set.Set[String], Map[String, Int]) {
+  let declaration_names : @set.Set[String] = @set.Set([])
+  let declaration_indexes : Map[String, Int] = Map([])
   for i in 0..<declarations.length() {
     let decl = declarations[i]
     if decl.name() != "" {
-      declaration_names.set(decl.name(), true)
+      declaration_names.add(decl.name())
       declaration_indexes.set(decl.name(), i)
     }
   }
@@ -40,7 +40,7 @@ fn wgsl_analysis_declaration_name_map(
 fn wgsl_analysis_collect_identifier_dependencies(
   identifiers : Array[WgslIdent],
   self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
+  declaration_names : @set.Set[String],
   dependencies : Array[String],
 ) -> Unit {
   for identifier in identifiers {
@@ -56,7 +56,7 @@ fn wgsl_analysis_collect_identifier_dependencies(
 fn wgsl_analysis_collect_declaration_dependencies(
   declaration_data : WgslGlobalDeclData,
   self_name : String,
-  declaration_names : @hashmap.HashMap[String, Bool],
+  declaration_names : @set.Set[String],
   dependencies : Array[String],
 ) -> Unit {
   match declaration_data {

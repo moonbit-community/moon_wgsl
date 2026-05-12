@@ -86,7 +86,7 @@ fn metadata_source_line_text_end(text : String, line_start : Int) -> Int {
 ///|
 fn metadata_collect_source_item(
   item : WgslDirectiveScanItem,
-  effective_defs : @hashset.HashSet[String],
+  effective_defs : @set.Set[String],
 ) -> Unit {
   let mut line_start = 0
   let cleaned_text = item.source().cleaned_text()

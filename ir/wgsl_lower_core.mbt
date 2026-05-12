@@ -62,41 +62,38 @@ pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(
 ///|
 priv struct WgslIrLowerer {
   shader_module : Module
-  type_cache : @hashmap.HashMap[String, Handle]
-  function_names : @hashmap.HashMap[String, Handle]
-  global_names : @hashmap.HashMap[String, Handle]
-  constant_names : @hashmap.HashMap[String, Handle]
-  constant_declarations : @hashmap.HashMap[String, @ast.WgslConst]
-  constant_type_cache : @hashmap.HashMap[String, Handle]
-  constant_type_inference_stack : @hashset.HashSet[String]
-  constant_lowering_stack : @hashset.HashSet[String]
-  override_names : @hashmap.HashMap[String, Handle]
-  override_declarations : @hashmap.HashMap[String, @ast.WgslOverride]
-  override_type_inference_stack : @hashset.HashSet[String]
-  referenced_names : @hashset.HashSet[String]
-  generated_import_provenance : @hashmap.HashMap[
-    String,
-    WgslIrGeneratedImportProvenance,
-  ]
+  type_cache : Map[String, Handle]
+  function_names : Map[String, Handle]
+  global_names : Map[String, Handle]
+  constant_names : Map[String, Handle]
+  constant_declarations : Map[String, @ast.WgslConst]
+  constant_type_cache : Map[String, Handle]
+  constant_type_inference_stack : @set.Set[String]
+  constant_lowering_stack : @set.Set[String]
+  override_names : Map[String, Handle]
+  override_declarations : Map[String, @ast.WgslOverride]
+  override_type_inference_stack : @set.Set[String]
+  referenced_names : @set.Set[String]
+  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
 }
 
 ///|
 fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
   WgslIrLowerer::{
     shader_module: Module(),
-    type_cache: @hashmap.HashMap([]),
-    function_names: @hashmap.HashMap([]),
-    global_names: @hashmap.HashMap([]),
-    constant_names: @hashmap.HashMap([]),
-    constant_declarations: @hashmap.HashMap([]),
-    constant_type_cache: @hashmap.HashMap([]),
-    constant_type_inference_stack: @hashset.HashSet([]),
-    constant_lowering_stack: @hashset.HashSet([]),
-    override_names: @hashmap.HashMap([]),
-    override_declarations: @hashmap.HashMap([]),
-    override_type_inference_stack: @hashset.HashSet([]),
-    referenced_names: @hashset.HashSet([]),
-    generated_import_provenance: @hashmap.HashMap([]),
+    type_cache: Map([]),
+    function_names: Map([]),
+    global_names: Map([]),
+    constant_names: Map([]),
+    constant_declarations: Map([]),
+    constant_type_cache: Map([]),
+    constant_type_inference_stack: @set.Set([]),
+    constant_lowering_stack: @set.Set([]),
+    override_names: Map([]),
+    override_declarations: Map([]),
+    override_type_inference_stack: @set.Set([]),
+    referenced_names: @set.Set([]),
+    generated_import_provenance: Map([]),
   }
 }
 

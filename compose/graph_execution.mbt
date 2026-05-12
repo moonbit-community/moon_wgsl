@@ -4,15 +4,13 @@ fn WgslComposeSession::record_graph_planned_request(
   importer_rel_path : String,
   request : WgslImportRequest,
 ) -> Unit {
-  self.graph_planned_requests.set(
+  self.graph_planned_requests.add(
     wgsl_import_request_visit_key(importer_rel_path, request),
-    true,
   )
   if !request.import_full_module {
     for item in request.requested_items {
-      self.graph_planned_requests.set(
+      self.graph_planned_requests.add(
         wgsl_import_request_item_visit_key(importer_rel_path, request, item),
-        true,
       )
     }
   }
@@ -51,9 +49,8 @@ fn WgslComposeSession::record_graph_planned_full_module(
   rel_path : String,
   alias_name : String,
 ) -> Unit {
-  self.graph_planned_requests.set(
+  self.graph_planned_requests.add(
     wgsl_full_module_visit_key(rel_path, alias_name),
-    true,
   )
 }
 

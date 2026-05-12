@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-fn export_test_empty_defines() -> @hashmap.HashMap[String, Bool] {
-  @hashmap.HashMap([])
+fn export_test_empty_defines() -> Map[String, Bool] {
+  Map([])
 }
 
 ///|
@@ -46,7 +46,7 @@ fn registered_export_test_shader_source(path : String) -> String? {
 
 ///|
 fn export_test_compose_options(
-  defines : @hashmap.HashMap[String, Bool],
+  defines : Map[String, Bool],
   redirects : Array[@common.WgslSymbolRedirect],
 ) -> @common.WgslComposeOptions {
   {
