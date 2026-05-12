@@ -17,7 +17,8 @@
   ],
   "exclude": [
     "testdata",
-    "tools/naga_oil_oracle"
+    "tools/naga_oil_oracle",
+    "tools/remotion_preprocess_demo"
   ],
   "description": "WGSL preprocess and composer utilities aligned with naga_oil."
 }

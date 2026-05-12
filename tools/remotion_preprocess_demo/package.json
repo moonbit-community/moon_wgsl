@@ -1,0 +1,22 @@
+{
+  "name": "moon-wgsl-preprocess-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "remotion studio src/index.tsx",
+    "render": "remotion render src/index.tsx PreprocessDemo out/preprocess-demo.mp4",
+    "still": "remotion still src/index.tsx PreprocessDemo out/preprocess-demo.png --frame=240"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.362",
+    "remotion": "^4.0.362",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}
