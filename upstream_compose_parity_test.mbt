@@ -445,11 +445,11 @@ test "naga_oil upstream: atomic builtins survive module composition" {
   debug_inspect(source.contains("atomicCompareExchangeWeak"), content="true")
   debug_inspect(source.contains("atomicExchange"), content="true")
   debug_inspect(
-    source.contains("let _e26: u32 = y;\n    let _e28: u32 = atomicExchange"),
+    source.contains("let _e26_: u32 = y;\n    let _e28_: u32 = atomicExchange"),
     content="true",
   )
-  debug_inspect(source.contains("let _e35: u32 = y;"), content="true")
-  debug_inspect(source.contains("return f32(_e38);"), content="true")
+  debug_inspect(source.contains("let _e36_: u32 = y;"), content="true")
+  debug_inspect(source.contains("return f32(_e39_);"), content="true")
   debug_inspect(source.contains("test_module::entry_point"), content="false")
 }
 
@@ -634,7 +634,7 @@ test "naga_oil upstream: entrypoint imports are renamed instead of shadowing loc
     content="false",
   )
   debug_inspect(
-    output.source.contains("frag_coord_1: vec4<f32>"),
+    output.source.contains("fragmentX_naga_oil_mod_X"),
     content="true",
   )
   debug_inspect(output.source.contains("X_naga_oil_mod_X"), content="true")

@@ -42,7 +42,14 @@ fn emit_wgsl_module_from_ir_with_options(
   validate_wgsl_ir_module(shader_module) catch {
     error => raise WgslIrEmitError::Unsupported(error.message())
   }
-  let emitter = WgslIrEmitter::{ shader_module, options, filter: None }
+  let names = build_wgsl_ir_emit_name_table(shader_module)
+  let emitter = WgslIrEmitter::{
+    shader_module,
+    options,
+    filter: None,
+    names,
+    current_function_origin: None,
+  }
   emitter.emit_module()
 }
 
@@ -71,7 +78,14 @@ fn emit_wgsl_module_from_ir_with_options_and_roots(
   validate_wgsl_ir_module_with_filter(shader_module, filter) catch {
     error => raise WgslIrEmitError::Unsupported(error.message())
   }
-  let emitter = WgslIrEmitter::{ shader_module, options, filter: Some(filter) }
+  let names = build_wgsl_ir_emit_name_table(shader_module)
+  let emitter = WgslIrEmitter::{
+    shader_module,
+    options,
+    filter: Some(filter),
+    names,
+    current_function_origin: None,
+  }
   emitter.emit_module()
 }
 
@@ -80,4 +94,6 @@ priv struct WgslIrEmitter {
   shader_module : Module
   options : WgslIrEmitOptions
   filter : WgslIrEmitFilter?
+  names : WgslIrEmitNameTable
+  current_function_origin : WgslIrEmitFunctionOrigin?
 }

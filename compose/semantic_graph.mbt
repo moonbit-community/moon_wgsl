@@ -649,6 +649,9 @@ fn build_wgsl_semantic_import_target_plans(
       None => ()
     }
   }
+  if unresolved_targets.length() > 0 {
+    return WgslSemanticImportTargetPlans::{ plans, unresolved_targets }
+  }
   let ordered_plans = wgsl_semantic_order_import_target_plans_by_reference(
     source, plans,
   )

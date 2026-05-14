@@ -21,7 +21,7 @@ fn WgslIrEmitter::emit_module(
         if needs_blank {
           out.write_string("\n")
         }
-        self.emit_struct_type(out, ty)
+        self.emit_struct_type(out, Handle::Handle(index), ty)
         needs_blank = true
         last_item_is_entry_point = false
       }
@@ -36,7 +36,11 @@ fn WgslIrEmitter::emit_module(
     if needs_blank && !emitted_constant {
       out.write_string("\n")
     }
-    self.emit_constant(out, self.shader_module.constants.items[index])
+    self.emit_constant(
+      out,
+      Handle::Handle(index),
+      self.shader_module.constants.items[index],
+    )
     needs_blank = true
     last_item_is_entry_point = false
     emitted_constant = true
@@ -59,7 +63,11 @@ fn WgslIrEmitter::emit_module(
     if needs_blank && !emitted_override {
       out.write_string("\n")
     }
-    self.emit_override(out, self.shader_module.overrides.items[index])
+    self.emit_override(
+      out,
+      Handle::Handle(index),
+      self.shader_module.overrides.items[index],
+    )
     needs_blank = true
     last_item_is_entry_point = false
     emitted_override = true
@@ -74,6 +82,7 @@ fn WgslIrEmitter::emit_module(
     }
     self.emit_global_variable(
       out,
+      Handle::Handle(index),
       self.shader_module.global_variables.items[index],
     )
     needs_blank = true
@@ -92,7 +101,11 @@ fn WgslIrEmitter::emit_module(
     if needs_blank {
       out.write_string("\n")
     }
-    self.emit_function(out, self.shader_module.functions.items[index], None)
+    self.emit_function(
+      out,
+      self.shader_module.functions.items[index],
+      UserFunction(index),
+    )
     needs_blank = true
     last_item_is_entry_point = false
   }
@@ -104,7 +117,7 @@ fn WgslIrEmitter::emit_module(
     if needs_blank {
       out.write_string("\n")
     }
-    self.emit_entry_point(out, entry_point)
+    self.emit_entry_point(out, entry_point, index)
     needs_blank = true
     last_item_is_entry_point = true
   }

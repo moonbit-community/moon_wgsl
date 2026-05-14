@@ -2,6 +2,7 @@
 fn WgslIrEmitter::emit_struct_type(
   self : WgslIrEmitter,
   out : StringBuilder,
+  handle : Handle,
   ty : Type,
 ) -> Unit raise WgslIrEmitError {
   guard ty.name is Some(name) else {
@@ -12,18 +13,20 @@ fn WgslIrEmitter::emit_struct_type(
       "non-struct type passed to struct emitter",
     )
   }
-  out.write_string("struct \{sanitize_wgsl_ir_identifier(name)} {\n")
-  for struct_member in members {
+  ignore(name)
+  let type_name = self.required_emit_name(
+    wgsl_ir_emit_name_key("type", handle.index()),
+  )
+  out.write_string("struct \{type_name} {\n")
+  for member_index in 0..<members.length() {
+    let struct_member = members[member_index]
     out.write_string("    ")
     self.emit_struct_member_layout_attribute_prefix(out, struct_member)
     self.emit_binding_attribute_prefix(out, struct_member.binding)
-    let member_name = match struct_member.name {
-      Some(value) => value
-      None => raise WgslIrEmitError::MissingName("struct member")
-    }
-    out.write_string(
-      "\{sanitize_wgsl_ir_identifier(member_name)}: \{self.type_name(struct_member.ty)},\n",
+    let member_name = self.required_emit_name(
+      wgsl_ir_emit_name_key2("member", handle.index(), member_index),
     )
+    out.write_string("\{member_name}: \{self.type_name(struct_member.ty)},\n")
   }
   out.write_string("}\n")
 }
@@ -49,22 +52,25 @@ fn WgslIrEmitter::emit_struct_member_layout_attribute_prefix(
 fn WgslIrEmitter::emit_constant(
   self : WgslIrEmitter,
   out : StringBuilder,
+  handle : Handle,
   constant : Constant,
 ) -> Unit raise WgslIrEmitError {
   guard constant.name is Some(name) else {
     raise WgslIrEmitError::MissingName("constant")
   }
+  ignore(name)
+  let generated_name = self.constant_name(handle)
   if self.type_contains_abstract_scalar(constant.ty) {
     out.write_string(
-      "const \{sanitize_wgsl_ir_identifier(name)} = \{self.abstract_float_global_expression(constant.init)};\n",
+      "const \{generated_name} = \{self.abstract_float_global_expression(constant.init)};\n",
     )
   } else if self.folded_constant_expression(constant) is Some(value) {
     out.write_string(
-      "const \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(constant.ty)} = \{value};\n",
+      "const \{generated_name}: \{self.type_name(constant.ty)} = \{value};\n",
     )
   } else {
     out.write_string(
-      "const \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(constant.ty)} = \{self.global_expression(constant.init)};\n",
+      "const \{generated_name}: \{self.type_name(constant.ty)} = \{self.global_expression(constant.init)};\n",
     )
   }
 }
@@ -73,6 +79,7 @@ fn WgslIrEmitter::emit_constant(
 fn WgslIrEmitter::emit_override(
   self : WgslIrEmitter,
   out : StringBuilder,
+  handle : Handle,
   override_ : Override,
 ) -> Unit raise WgslIrEmitError {
   match override_.id {
@@ -82,11 +89,13 @@ fn WgslIrEmitter::emit_override(
   guard override_.name is Some(name) else {
     raise WgslIrEmitError::MissingName("override")
   }
+  ignore(name)
+  let generated_name = self.override_name(handle)
   if self.type_contains_abstract_scalar(override_.ty) {
-    out.write_string("override \{sanitize_wgsl_ir_identifier(name)}")
+    out.write_string("override \{generated_name}")
   } else {
     out.write_string(
-      "override \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(override_.ty)}",
+      "override \{generated_name}: \{self.type_name(override_.ty)}",
     )
   }
   match override_.init {
@@ -100,6 +109,7 @@ fn WgslIrEmitter::emit_override(
 fn WgslIrEmitter::emit_global_variable(
   self : WgslIrEmitter,
   out : StringBuilder,
+  handle : Handle,
   global : GlobalVariable,
 ) -> Unit raise WgslIrEmitError {
   match global.binding {
@@ -112,9 +122,11 @@ fn WgslIrEmitter::emit_global_variable(
   guard global.name is Some(name) else {
     raise WgslIrEmitError::MissingName("global variable")
   }
+  ignore(name)
+  let generated_name = self.global_variable_name(handle)
   let space = self.address_space_template(global.space)
   out.write_string(
-    "var\{space} \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(global.ty)}",
+    "var\{space} \{generated_name}: \{self.type_name(global.ty)}",
   )
   match global.init {
     Some(init) => out.write_string(" = \{self.global_expression(init)}")

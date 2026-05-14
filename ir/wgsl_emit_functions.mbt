@@ -3,6 +3,7 @@ fn WgslIrEmitter::emit_entry_point(
   self : WgslIrEmitter,
   out : StringBuilder,
   entry_point : EntryPoint,
+  index : Int,
 ) -> Unit raise WgslIrEmitError {
   let multiline_attributes = entry_point.stage == Task ||
     entry_point.stage == Mesh ||
@@ -42,7 +43,7 @@ fn WgslIrEmitter::emit_entry_point(
     out.write_string(" ")
   }
   out.write_string("\n")
-  self.emit_function(out, entry_point.function, Some(entry_point.name))
+  self.emit_function(out, entry_point.function, EntryPointFunction(index))
 }
 
 ///|
@@ -75,35 +76,34 @@ fn WgslIrEmitter::emit_function(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
-  name_override : String?,
+  origin : WgslIrEmitFunctionOrigin,
 ) -> Unit raise WgslIrEmitError {
-  let name = match name_override {
-    Some(value) => sanitize_wgsl_ir_identifier(value)
-    None =>
-      match function.name {
-        Some(value) => sanitize_wgsl_ir_identifier(value)
-        None => raise WgslIrEmitError::MissingName("function")
-      }
+  let emitter = self.with_function_origin(origin)
+  let name = match origin {
+    UserFunction(index) =>
+      emitter.required_emit_name(wgsl_ir_emit_name_key("fn", index))
+    EntryPointFunction(index) =>
+      emitter.required_emit_name(wgsl_ir_emit_name_key("ep", index))
   }
   out.write_string("fn \{name}(")
   for index in 0..<function.arguments.length() {
     if index > 0 {
       out.write_string(", ")
     }
-    self.emit_function_argument(out, function, index)
+    emitter.emit_function_argument(out, function, index)
   }
   out.write_string(")")
   match function.result {
     Some(result) => {
       out.write_string(" -> ")
-      self.emit_binding_attribute_prefix(out, result.binding)
-      out.write_string(self.type_name(result.ty))
+      emitter.emit_binding_attribute_prefix(out, result.binding)
+      out.write_string(emitter.type_name(result.ty))
     }
     None => ()
   }
   out.write_string(" {\n")
-  self.emit_function_local_var_declarations(out, function, 1)
-  self.emit_block_statements(out, function, function.body, 1)
+  emitter.emit_function_local_var_declarations(out, function, 1)
+  emitter.emit_block_statements(out, function, function.body, 1)
   out.write_string("}\n")
 }
 

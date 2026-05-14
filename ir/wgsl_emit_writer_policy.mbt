@@ -43,5 +43,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
       expand_matrix_scalar_constructors: self.options.expand_matrix_scalar_constructors,
     },
     filter: self.filter,
+    names: self.names,
+    current_function_origin: self.current_function_origin,
   }
 }

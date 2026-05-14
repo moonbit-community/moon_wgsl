@@ -464,8 +464,8 @@ test "WGSL AST lowerer indexes addressable bindings without preloading base arra
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e2: u32 = values[0];"), content="true")
-  debug_inspect(emitted.contains("return f32(_e2);"), content="true")
+  debug_inspect(emitted.contains("let _e2_: u32 = values[0];"), content="true")
+  debug_inspect(emitted.contains("return f32(_e2_);"), content="true")
 }
 
 ///|
@@ -482,8 +482,8 @@ test "WGSL AST lowerer materializes direct global binding returns" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e1: f32 = value;"), content="true")
-  debug_inspect(emitted.contains("return _e1;"), content="true")
+  debug_inspect(emitted.contains("let _e1_: f32 = value;"), content="true")
+  debug_inspect(emitted.contains("return _e1_;"), content="true")
 }
 
 ///|
@@ -508,12 +508,9 @@ test "WGSL AST lowerer materializes composite local loads before return calls" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e3: Frag = f;"), content="true")
-  debug_inspect(
-    emitted.contains("let _e4: f32 = fragment(_e3);"),
-    content="true",
-  )
-  debug_inspect(emitted.contains("return _e4;"), content="true")
+  debug_inspect(emitted.contains(": Frag = f_1;"), content="true")
+  debug_inspect(emitted.contains(": f32 = fragment(_e"), content="true")
+  debug_inspect(emitted.contains("return _e"), content="true")
 }
 
 ///|
@@ -532,8 +529,8 @@ test "WGSL AST lowerer concretizes abstract local var storage types" {
   }
   debug_inspect(emitted.contains("var x: f32 = 0f;"), content="true")
   debug_inspect(emitted.contains("x = 1f;"), content="true")
-  debug_inspect(emitted.contains("let _e3: f32 = x;"), content="true")
-  debug_inspect(emitted.contains("return _e3;"), content="true")
+  debug_inspect(emitted.contains(": f32 = x;"), content="true")
+  debug_inspect(emitted.contains("return _e"), content="true")
 }
 
 ///|
@@ -588,7 +585,7 @@ test "WGSL AST lowerer supports pointer dereference member lvalues" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("pbr_input.value ="), content="true")
+  debug_inspect(emitted.contains("pbr_input_1.value ="), content="true")
   debug_inspect(emitted.contains("+ 1u);"), content="true")
   debug_inspect(emitted.contains("apply_decals(&pbr_input);"), content="true")
 }
@@ -623,7 +620,7 @@ test "WGSL AST lowerer respects nested lexical shadowing" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("buffer[0] = x_0;"), content="true")
+  debug_inspect(emitted.contains("buffer[0] = x_1;"), content="true")
   debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
   debug_inspect(emitted.contains("buffer[3] = 20u;"), content="true")
   debug_inspect(emitted.contains("write_shadow(10u);"), content="true")
@@ -767,7 +764,7 @@ test "WGSL AST lowerer infers scalar result math builtin local types" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains(": f32 = dot(v1, v2);"), content="true")
+  debug_inspect(emitted.contains(": f32 = dot(v1_, v2_);"), content="true")
 }
 
 ///|

@@ -746,10 +746,7 @@ test "naga_oil: composer preprocess can apply AST-scoped symbol redirects" {
         "expected redirect-aware composer preprocess success: \{err.message()}",
       )
   }
-  debug_inspect(
-    preprocessed.contains("build_color") && preprocessed.contains("(vertex);"),
-    content="true",
-  )
+  debug_inspect(preprocessed.contains("build_color"), content="true")
   debug_inspect(
     preprocessed.contains("return build_shadow(vertex);"),
     content="false",

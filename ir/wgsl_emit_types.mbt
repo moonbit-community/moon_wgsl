@@ -78,7 +78,7 @@ fn WgslIrEmitter::type_name(
       match ty.inner {
         Scalar(_) => name
         Struct(_, _) | PredeclaredStruct(_, _) =>
-          sanitize_wgsl_ir_identifier(name)
+          self.required_emit_name(wgsl_ir_emit_name_key("type", handle.index()))
         _ => self.type_inner_name(ty.inner)
       }
     None =>

@@ -57,16 +57,13 @@ test "IR pipeline owns output identifier sanitization" {
   let emitted = roundtrip_wgsl_source_via_ir(source) catch {
     error => abort(error.message())
   }
+  debug_inspect(emitted.contains("var class_: f32 = value;"), content="true")
   debug_inspect(
-    emitted.contains("var class_wgsl: f32 = value;"),
+    emitted.contains("var gen__naga_tmp: f32 = class_;"),
     content="true",
   )
   debug_inspect(
-    emitted.contains("var gen__naga_tmp: f32 = class_wgsl;"),
-    content="true",
-  )
-  debug_inspect(
-    emitted.contains("class_wgsl = (class_wgsl + gen__naga_tmp);"),
+    emitted.contains("class_ = (class_ + gen__naga_tmp);"),
     content="true",
   )
   debug_inspect(emitted.contains("return class;"), content="false")
@@ -132,7 +129,9 @@ test "IR lowerer does not infer generated import provenance from names" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("value_"), content="false")
+  debug_inspect(module_.functions.items[0].generated_import, content="false")
+  debug_inspect(module_.functions.items[1].generated_import, content="false")
+  debug_inspect(emitted.contains("value_1"), content="true")
 }
 
 ///|

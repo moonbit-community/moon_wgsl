@@ -585,7 +585,7 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
   }
   let var_index = emitted.find("var y: u32;")
   let store_index = emitted.find("atomicStore((&atom), 1u);")
-  let load_index = emitted.find("let _e3: u32 = atomicLoad((&atom));")
+  let load_index = emitted.find("let _e3_: u32 = atomicLoad((&atom));")
   debug_inspect(store_index != None, content="true")
   let materialized_after_store = match (store_index, load_index) {
     (Some(store), Some(load)) => load > store
@@ -666,7 +666,7 @@ test "WGSL AST lowerer makes referenced entry points callable helpers" {
   }
   debug_inspect(module_.entry_points.length(), content="1")
   debug_inspect(
-    emitted.contains("fn imported(frag_coord: vec4<f32>) -> vec4<f32>"),
+    emitted.contains("fn imported(frag_coord_1: vec4<f32>) -> vec4<f32>"),
     content="true",
   )
   debug_inspect(emitted.contains("imported(frag_coord);"), content="true")

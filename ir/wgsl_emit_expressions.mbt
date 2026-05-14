@@ -715,26 +715,28 @@ fn WgslIrEmitter::member_name_for_expression(
   index : Int,
 ) -> String raise WgslIrEmitError {
   match self.expression_type(function, base) {
-    Some(ty_handle) =>
-      match
-        self.shader_module.types.items.get(
-          self.deref_pointer_type_handle(ty_handle).index(),
-        ) {
+    Some(ty_handle) => {
+      let base_type_handle = self.deref_pointer_type_handle(ty_handle)
+      match self.shader_module.types.items.get(base_type_handle.index()) {
         Some(ty) =>
           match ty.inner {
             Struct(members, _) | PredeclaredStruct(members, _) =>
               match members.get(index) {
-                Some(struct_member) =>
-                  match struct_member.name {
-                    Some(name) => sanitize_wgsl_ir_identifier(name)
-                    None => wgsl_ir_swizzle_component(index)
-                  }
+                Some(_) =>
+                  self.required_emit_name(
+                    wgsl_ir_emit_name_key2(
+                      "member",
+                      base_type_handle.index(),
+                      index,
+                    ),
+                  )
                 None => wgsl_ir_swizzle_component(index)
               }
             _ => wgsl_ir_swizzle_component(index)
           }
         None => wgsl_ir_swizzle_component(index)
       }
+    }
     None => wgsl_ir_swizzle_component(index)
   }
 }
