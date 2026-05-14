@@ -928,6 +928,30 @@ test "WGSL IR lowerer preserves else-if conditions as control flow" {
 }
 
 ///|
+test "WGSL IR lowerer materializes short-circuit return expressions as control flow" {
+  let source =
+    #|fn enabled(flags: u32, mask: u32) -> bool {
+    #|  return (flags & mask) != 0u;
+    #|}
+    #|
+    #|fn active(flags: u32, value: u32) -> bool {
+    #|  return (enabled(flags, 1u) && value == 1u) || (enabled(flags, 2u) && value == 2u);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var local: bool;"), content="true")
+  debug_inspect(emitted.contains("if !("), content="true")
+  debug_inspect(
+    emitted.contains("return ((enabled(flags, 1u) && (value == 1u))"),
+    content="false",
+  )
+}
+
+///|
 test "WGSL IR lowerer materializes abstract matrix index result types" {
   let source =
     #|const idx = 0i;

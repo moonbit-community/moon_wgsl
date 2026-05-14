@@ -330,6 +330,11 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       }
     }
     Some(Binary(op, left, right)) => {
+      if wgsl_ir_binary_operator_is_short_circuit(op) {
+        return self.materialize_short_circuit_expression(
+          function, scope, block, value,
+        )
+      }
       let lowered_left = self.materialize_nested_return_argument(
         function, scope, block, left,
       )
@@ -656,6 +661,170 @@ fn WgslIrLowerer::materialize_return_subexpressions(
 }
 
 ///|
+fn WgslIrLowerer::materialize_short_circuit_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  guard function.expressions.items.get(value.index())
+    is Some(Binary(op, left, right)) else {
+    return value
+  }
+  guard wgsl_ir_binary_operator_is_short_circuit(op) else { return value }
+  let ty = match self.function_expression_type(function, value) {
+    Some(ty) => ty
+    None =>
+      raise WgslIrLowerError::MissingType(
+        "\{scope.function_expression_temporary_name(function, value)}: short-circuit boolean expression",
+      )
+  }
+  let mut result_ptr : Handle? = None
+  match op {
+    LogicalAnd => {
+      let condition = self.materialize_short_circuit_condition(
+        function, scope, block, left,
+      )
+      let local_ptr = self.append_short_circuit_result_local(
+        function, block, ty,
+      )
+      result_ptr = Some(local_ptr)
+      let accept = Block::Block()
+      let reject = Block::Block()
+      let right_value = self.materialize_short_circuit_branch_value(
+        function, scope, accept, right,
+      )
+      accept.push(Statement::Store(local_ptr, right_value))
+      reject.push(
+        Statement::Store(
+          local_ptr,
+          function.expressions.append(Expression::Literal(Bool(false))),
+        ),
+      )
+      block.push(Statement::If(condition, accept, reject))
+    }
+    LogicalOr => {
+      let condition = self.materialize_short_circuit_condition(
+        function, scope, block, left,
+      )
+      let inverted = function.expressions.append(
+        Expression::Unary(UnaryOperator::LogicalNot, condition),
+      )
+      let local_ptr = self.append_short_circuit_result_local(
+        function, block, ty,
+      )
+      result_ptr = Some(local_ptr)
+      let accept = Block::Block()
+      let reject = Block::Block()
+      let right_value = self.materialize_short_circuit_branch_value(
+        function, scope, accept, right,
+      )
+      accept.push(Statement::Store(local_ptr, right_value))
+      reject.push(
+        Statement::Store(
+          local_ptr,
+          function.expressions.append(Expression::Literal(Bool(true))),
+        ),
+      )
+      block.push(Statement::If(inverted, accept, reject))
+    }
+    _ => ()
+  }
+  match result_ptr {
+    Some(local_ptr) => function.expressions.append(Expression::Load(local_ptr))
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "short-circuit result local was not emitted",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::append_short_circuit_result_local(
+  self : WgslIrLowerer,
+  function : Function,
+  block : Block,
+  ty : Handle,
+) -> Handle {
+  ignore(self)
+  let local_handle = function.local_variables.append(LocalVariable::{
+    name: Some("local"),
+    kind: Var,
+    ty,
+    init: None,
+  })
+  block.push(Statement::Declare(local_handle))
+  function.expressions.append(Expression::LocalVariable(local_handle))
+}
+
+///|
+fn WgslIrLowerer::materialize_short_circuit_condition(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(value.index()) {
+    Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) => {
+      let lowered = self.materialize_short_circuit_expression(
+        function, scope, block, value,
+      )
+      if self.function_expression_should_materialize_as_nested_value(
+          function, lowered,
+        ) {
+        self.materialize_function_expression(function, scope, block, lowered)
+      } else {
+        lowered
+      }
+    }
+    _ => {
+      let normalized = self.materialize_return_subexpressions(
+        function, scope, block, value,
+      )
+      if self.function_expression_should_materialize_as_nested_value(
+          function, normalized,
+        ) {
+        self.materialize_function_expression(function, scope, block, normalized)
+      } else {
+        normalized
+      }
+    }
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_short_circuit_branch_value(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(value.index()) {
+    Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) => {
+      let lowered = self.materialize_short_circuit_expression(
+        function, scope, block, value,
+      )
+      if self.function_expression_should_materialize_as_nested_value(
+          function, lowered,
+        ) {
+        self.materialize_function_expression(function, scope, block, lowered)
+      } else {
+        lowered
+      }
+    }
+    _ => self.materialize_store_value_if_needed(function, scope, block, value)
+  }
+}
+
+///|
+fn wgsl_ir_binary_operator_is_short_circuit(op : BinaryOperator) -> Bool {
+  op == LogicalAnd || op == LogicalOr
+}
+
+///|
 fn WgslIrLowerer::materialize_sample_level(
   self : WgslIrLowerer,
   function : Function,
@@ -921,7 +1090,8 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
     | Some(ImageQuery(_, _))
     | Some(WorkGroupUniformLoad(_)) => true
     Some(Load(_)) =>
-      self.function_expression_reads_global_binding(function, value)
+      self.function_expression_reads_global_binding(function, value) ||
+      self.function_expression_reads_var_pointer_load(function, value)
     Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
       self.function_expression_reads_global_binding(function, value) ||
       self.function_expression_reads_var_pointer_load(function, value)
