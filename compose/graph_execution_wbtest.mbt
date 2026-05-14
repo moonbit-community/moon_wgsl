@@ -373,6 +373,58 @@ test "composer graph planned item supersets cover cached execution subsets" {
 }
 
 ///|
+test "composer orders imports across directives by source references" {
+  let composer = Composer::default()
+  let late_source =
+    #|#define_import_path test::late
+    #|
+    #|struct Late {
+    #|  value: u32,
+    #|}
+    #|
+  let early_source =
+    #|#define_import_path test::early
+    #|
+    #|struct Early {
+    #|  value: u32,
+    #|}
+    #|
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|#import test::late::Late
+    #|#import test::early::Early
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> early: Early;
+    #|@group(0) @binding(1)
+    #|var<uniform> late: Late;
+    #|
+  let root_source =
+    #|#import test::bindings::{early, late}
+    #|
+    #|fn main() -> u32 {
+    #|  return early.value + late.value;
+    #|}
+    #|
+  composer.register_source("late.wgsl", late_source)
+  composer.register_source("early.wgsl", early_source)
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("struct Early"), content="true")
+  debug_inspect(emitted.contains("struct Late"), content="true")
+  debug_inspect(
+    emitted.split("struct Early").collect()[0].contains("struct Late"),
+    content="false",
+  )
+}
+
+///|
 test "composer does not import a missing item shadowed by a local declaration" {
   let composer = Composer::default()
   let maths_source =

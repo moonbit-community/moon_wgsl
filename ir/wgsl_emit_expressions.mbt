@@ -166,8 +166,7 @@ fn WgslIrEmitter::emit_expression(
     Constant(handle) => self.constant_expression(handle)
     Override(handle) => self.override_name(handle)
     ZeroValue(ty) => "\{self.type_name(ty)}()"
-    Compose(ty, components) =>
-      "\{self.compose_constructor_name_for_components(ty, components, function)}(\{self.expression_list(components, function)})"
+    Compose(ty, components) => self.compose_expression(ty, components, function)
     Access(base, index) =>
       "\{self.access_base_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
@@ -249,6 +248,69 @@ fn WgslIrEmitter::emit_expression(
     CallResult(handle) => self.function_name(handle)
     _ => raise WgslIrEmitError::Unsupported("expression kind")
   }
+}
+
+///|
+fn WgslIrEmitter::compose_expression(
+  self : WgslIrEmitter,
+  ty : Handle,
+  components : Array[Handle],
+  function : Function?,
+) -> String raise WgslIrEmitError {
+  "\{self.compose_constructor_name_for_components(ty, components, function)}(\{self.compose_component_list(ty, components, function)})"
+}
+
+///|
+fn WgslIrEmitter::compose_component_list(
+  self : WgslIrEmitter,
+  ty : Handle,
+  components : Array[Handle],
+  function : Function?,
+) -> String raise WgslIrEmitError {
+  match self.matrix_scalar_component_list(ty, components, function) {
+    Some(value) => value
+    None => self.expression_list(components, function)
+  }
+}
+
+///|
+fn WgslIrEmitter::matrix_scalar_component_list(
+  self : WgslIrEmitter,
+  ty : Handle,
+  components : Array[Handle],
+  function : Function?,
+) -> String? raise WgslIrEmitError {
+  if !self.options.expand_matrix_scalar_constructors {
+    return None
+  }
+  guard self.shader_module.types.items.get(ty.index()) is Some(matrix_ty) else {
+    raise WgslIrEmitError::MissingHandle("type \{ty.index()}")
+  }
+  guard matrix_ty.inner is Matrix(columns, rows, scalar) else { return None }
+  let columns_len = columns.width()
+  let rows_len = rows.width()
+  if components.length() != columns_len * rows_len {
+    return None
+  }
+  for component in components {
+    if !self.expression_is_scalar_type(function, component, scalar) {
+      return None
+    }
+  }
+  let out = StringBuilder::new()
+  for column_index in 0..<columns_len {
+    if column_index > 0 {
+      out.write_string(", ")
+    }
+    let column_components : Array[Handle] = []
+    for row_index in 0..<rows_len {
+      column_components.push(components[column_index * rows_len + row_index])
+    }
+    out.write_string(
+      "vec\{rows_len}<\{self.scalar_name(scalar)}>(\{self.expression_list(column_components, function)})",
+    )
+  }
+  Some(out.to_string())
 }
 
 ///|

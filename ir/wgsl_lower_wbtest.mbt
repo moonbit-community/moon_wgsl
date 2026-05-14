@@ -388,6 +388,32 @@ test "WGSL IR writer emits Naga-style f32 literal spelling" {
 }
 
 ///|
+test "WGSL IR lowerer materializes global reads inside math arguments" {
+  let source =
+    #|struct Globals {
+    #|  time: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> globals: Globals;
+    #|
+    #|fn f() -> f32 {
+    #|  let value = sin(globals.time * 2.0);
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e"), content="true")
+  debug_inspect(emitted.contains("globals.time;"), content="true")
+  debug_inspect(emitted.contains("sin((_e"), content="true")
+  debug_inspect(emitted.contains("sin((globals.time"), content="false")
+}
+
+///|
 test "WGSL AST lowerer preserves f16 literal suffixes" {
   let source =
     #|enable f16;
@@ -652,6 +678,33 @@ test "WGSL AST lowerer expands statement function call arguments" {
     emitted.contains("write_values(1u, 2u, (1u + 2u), 4u);"),
     content="true",
   )
+}
+
+///|
+test "WGSL IR lowerer materializes function calls before assignment stores" {
+  let source =
+    #|struct Item {
+    #|  value: vec4<f32>,
+    #|}
+    #|
+    #|fn make_item() -> Item {
+    #|  return Item(vec4<f32>(1f));
+    #|}
+    #|
+    #|fn make() -> Item {
+    #|  var item: Item;
+    #|  item = make_item();
+    #|  return item;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e"), content="true")
+  debug_inspect(emitted.contains("make_item();\n    item = _e"), content="true")
+  debug_inspect(emitted.contains("item = make_item();"), content="false")
 }
 
 ///|

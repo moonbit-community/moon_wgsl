@@ -169,7 +169,14 @@ fn WgslIrLowerer::lower_statement(
             Expression::Binary(binary_op, materialized_target, rhs_value),
           )
         }
-        None => self.lower_function_expression_ref(rhs_ref, function, scope)
+        None => {
+          let rhs_value = self.lower_function_expression_ref(
+            rhs_ref, function, scope,
+          )
+          self.materialize_store_value_if_needed(
+            function, scope, block, rhs_value,
+          )
+        }
       }
       block.push(Statement::Store(target, value))
     }
@@ -633,7 +640,9 @@ fn WgslIrLowerer::lower_local_declaration(
         if self.function_expression_is_const_expression(function, init_handle) &&
           self.function_expression_has_scalar_type(function, init_handle) {
           ignore(scope.locals.remove(local_decl.name().name()))
-          ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
+          ignore(
+            scope.local_pointer_expressions.remove(local_decl.name().name()),
+          )
           scope.local_constants.set(local_decl.name().name(), init_handle)
           return
         }

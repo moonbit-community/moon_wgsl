@@ -202,7 +202,11 @@ fn wgsl_ir_round_fixed_decimal_text(text : String, precision : Int) -> String? {
   } else {
     0
   }
-  let carry = if next_digit >= 5 { Int64::from_int(1) } else { Int64::from_int(0) }
+  let carry = if next_digit >= 5 {
+    Int64::from_int(1)
+  } else {
+    Int64::from_int(0)
+  }
   let scaled = integer * scale + frac + carry
   let abs_text = wgsl_ir_scaled_fixed_decimal_text(scaled, precision)
   if negative && scaled != Int64::from_int(0) {

@@ -84,15 +84,43 @@ fn collect_wgsl_semantic_reference_paths(
   paths : Array[WgslReferencePath],
 ) -> Unit raise WgslParseError {
   let nodes : Array[WgslIdent] = []
-  for decl in parse_wgsl_translation_unit_strict(source).declarations() {
-    collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
-  }
+  collect_wgsl_semantic_reference_identifier_nodes(source, nodes)
   for node in nodes {
     match wgsl_semantic_reference_path_from_identifier(node.name()) {
       Some(path) => paths.push(path)
       None => ()
     }
   }
+}
+
+///|
+fn collect_wgsl_semantic_reference_identifier_nodes(
+  source : String,
+  nodes : Array[WgslIdent],
+) -> Unit raise WgslParseError {
+  for decl in parse_wgsl_translation_unit_strict(source).declarations() {
+    collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
+  }
+}
+
+///|
+fn wgsl_semantic_source_declares_global_name(
+  source : String,
+  name : String,
+) -> Bool raise WgslParseError {
+  let declared_nodes : Array[WgslIdent] = []
+  for decl in parse_wgsl_translation_unit_strict(source).declarations() {
+    @ast_analysis.collect_wgsl_decl_global_declared_identifier_nodes(
+      decl.data(),
+      declared_nodes,
+    )
+  }
+  for node in declared_nodes {
+    if node.name() == name {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -233,6 +261,10 @@ fn wgsl_semantic_source_contains_reference_path(
 ) -> Bool raise WgslParseError {
   match wgsl_semantic_reference_path_from_identifier(reference_path) {
     Some(expected) => {
+      if expected.segments().length() == 1 &&
+        wgsl_semantic_source_declares_global_name(source, expected.text()) {
+        return false
+      }
       let paths : Array[WgslReferencePath] = []
       collect_wgsl_semantic_reference_paths(source, paths)
       for path in paths {
@@ -244,6 +276,122 @@ fn wgsl_semantic_source_contains_reference_path(
     }
     None => false
   }
+}
+
+///|
+fn wgsl_semantic_reference_nodes_first_start(
+  nodes : Array[WgslIdent],
+  reference_path : String,
+) -> Int? {
+  match wgsl_semantic_reference_path_from_identifier(reference_path) {
+    Some(expected) => {
+      for node in nodes {
+        match wgsl_semantic_reference_path_from_identifier(node.name()) {
+          Some(path) if path.text() == expected.text() =>
+            return Some(node.start())
+          _ => ()
+        }
+      }
+      None
+    }
+    None => None
+  }
+}
+
+///|
+fn wgsl_semantic_import_order_consider_path(
+  nodes : Array[WgslIdent],
+  reference_path : String,
+  current_best : Int,
+) -> Int {
+  match wgsl_semantic_reference_nodes_first_start(nodes, reference_path) {
+    Some(start) if current_best < 0 || start < current_best => start
+    _ => current_best
+  }
+}
+
+///|
+fn wgsl_semantic_import_target_plan_order_key(
+  nodes : Array[WgslIdent],
+  plan : WgslSemanticImportTargetPlan,
+  fallback : Int,
+) -> Int {
+  let mut best = -1
+  if plan.requested_items.length() == 0 {
+    if plan.module_alias != "" {
+      best = wgsl_semantic_import_order_consider_path(
+        nodes,
+        plan.module_alias,
+        best,
+      )
+    }
+    best = wgsl_semantic_import_order_consider_path(
+      nodes,
+      plan.resolved_module.module_path(),
+      best,
+    )
+  } else {
+    for requested_item in plan.requested_items {
+      best = wgsl_semantic_import_order_consider_path(
+        nodes, requested_item, best,
+      )
+      if plan.module_alias != "" {
+        best = wgsl_semantic_import_order_consider_path(
+          nodes,
+          "\{plan.module_alias}::\{requested_item}",
+          best,
+        )
+      }
+      match split_last_wgsl_semantic_path(requested_item) {
+        Some((_, leaf_name)) =>
+          best = wgsl_semantic_import_order_consider_path(
+            nodes, leaf_name, best,
+          )
+        None => ()
+      }
+    }
+  }
+  if best < 0 {
+    fallback
+  } else {
+    best
+  }
+}
+
+///|
+fn wgsl_semantic_order_import_target_plans_by_reference(
+  source : String,
+  plans : Array[WgslSemanticImportTargetPlan],
+) -> Array[WgslSemanticImportTargetPlan] raise WgslParseError {
+  let nodes : Array[WgslIdent] = []
+  collect_wgsl_semantic_reference_identifier_nodes(source, nodes)
+  let ordered : Array[WgslSemanticImportTargetPlan] = []
+  let picked : @set.Set[Int] = @set.Set([])
+  let fallback_base = source.length() + 1
+  while ordered.length() < plans.length() {
+    let mut best_index = -1
+    let mut best_key = 0
+    for i in 0..<plans.length() {
+      if picked.contains(i) {
+        continue
+      }
+      let key = wgsl_semantic_import_target_plan_order_key(
+        nodes,
+        plans[i],
+        fallback_base + i,
+      )
+      if best_index < 0 || key < best_key {
+        best_index = i
+        best_key = key
+      }
+    }
+    if best_index < 0 {
+      return ordered
+    }
+    picked.add(best_index)
+    ordered.push(plans[best_index])
+  }
+  ordered
 }
 
 ///|
@@ -501,7 +649,10 @@ fn build_wgsl_semantic_import_target_plans(
       None => ()
     }
   }
-  WgslSemanticImportTargetPlans::{ plans, unresolved_targets }
+  let ordered_plans = wgsl_semantic_order_import_target_plans_by_reference(
+    source, plans,
+  )
+  WgslSemanticImportTargetPlans::{ plans: ordered_plans, unresolved_targets }
 }
 
 ///|

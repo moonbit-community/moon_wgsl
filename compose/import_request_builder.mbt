@@ -135,6 +135,45 @@ fn Composer::build_wgsl_import_requests(
 }
 
 ///|
+fn collect_wgsl_import_targets_from_source_directives(
+  source : String,
+  targets : Array[WgslImportTarget],
+) -> Unit raise ComposerError {
+  for
+    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+    match item.kind() {
+      WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
+        WgslDirectiveKind::Import =>
+        if !parse_wgsl_import_spec_is_empty_or_final_semicolon(
+            import_directive.tail(),
+          ) {
+          parse_wgsl_import_targets(import_directive.tail(), "", targets) catch {
+            Parse(message, _) =>
+              raise ComposerError::FailedToResolveImport(message)
+          }
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn Composer::build_wgsl_import_requests_from_source_directives(
+  self : Composer,
+  current_rel_path : String,
+  active_source : String,
+  active_scan_source : String,
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Array[WgslImportRequest] raise ComposerError {
+  let targets : Array[WgslImportTarget] = []
+  collect_wgsl_import_targets_from_source_directives(active_source, targets)
+  self.build_wgsl_import_requests_from_targets(
+    current_rel_path, targets, active_scan_source, session, importer_defs,
+  )
+}
+
+///|
 fn Composer::build_wgsl_declared_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -154,6 +193,21 @@ fn Composer::build_wgsl_declared_import_requests(
 }
 
 ///|
+fn Composer::build_wgsl_declared_import_requests_from_source_directives(
+  self : Composer,
+  current_rel_path : String,
+  active_source : String,
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Array[WgslImportRequest] raise ComposerError {
+  let targets : Array[WgslImportTarget] = []
+  collect_wgsl_import_targets_from_source_directives(active_source, targets)
+  self.build_wgsl_declared_import_requests_from_targets(
+    current_rel_path, targets, session, importer_defs,
+  )
+}
+
+///|
 fn Composer::build_wgsl_declared_import_requests_from_targets(
   self : Composer,
   current_rel_path : String,
@@ -163,8 +217,7 @@ fn Composer::build_wgsl_declared_import_requests_from_targets(
 ) -> Array[WgslImportRequest] raise ComposerError {
   let requests : Array[WgslImportRequest] = []
   for target in targets {
-    guard
-      resolve_wgsl_semantic_import_module(
+    guard resolve_wgsl_semantic_import_module(
         current_rel_path,
         target.raw_path,
         self.registry,
@@ -198,10 +251,7 @@ fn Composer::build_wgsl_declared_import_requests_from_targets(
       importer_defs,
     )
     if find_wgsl_import_request_index(
-        requests,
-        module_path,
-        selected_rel_path,
-        module_alias,
+        requests, module_path, selected_rel_path, module_alias,
       )
       is Some(request_index) {
       let request = requests[request_index]

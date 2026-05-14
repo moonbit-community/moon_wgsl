@@ -182,3 +182,59 @@ test "semantic import target plan expands nested module aliases" {
   debug_inspect(plans.plans[0].module_alias, content="\"pbr::bindings\"")
   debug_inspect(plans.plans[0].requested_items.join(","), content="\"view\"")
 }
+
+///|
+test "semantic import target plans follow first AST reference order" {
+  let registry = WgslSourceRegistry::default()
+  ignore(
+    registry.register_source(
+      "late.wgsl",
+      "#define_import_path test::late\n",
+      None,
+    ),
+  )
+  ignore(
+    registry.register_source(
+      "early.wgsl",
+      "#define_import_path test::early\n",
+      None,
+    ),
+  )
+  let targets = [
+    WgslImportTarget::{ raw_path: "test::late::late_value", alias_name: "" },
+    WgslImportTarget::{ raw_path: "test::early::EarlyType", alias_name: "" },
+  ]
+  let source =
+    #|#import test::{late::late_value, early::EarlyType}
+    #|
+    #|fn read(input: EarlyType) -> u32 {
+    #|  return late_value + input.value;
+    #|}
+    #|
+  let plans = build_wgsl_semantic_import_target_plans(
+    source,
+    "root.wgsl",
+    targets,
+    registry,
+    registry.copy_import_module_paths(),
+  ) catch {
+    _ => abort("expected semantic import target planning to parse valid WGSL")
+  }
+  debug_inspect(plans.plans.length(), content="2")
+  debug_inspect(
+    plans.plans[0].resolved_module.rel_path(),
+    content="\"early.wgsl\"",
+  )
+  debug_inspect(
+    plans.plans[0].requested_items.join(","),
+    content="\"EarlyType\"",
+  )
+  debug_inspect(
+    plans.plans[1].resolved_module.rel_path(),
+    content="\"late.wgsl\"",
+  )
+  debug_inspect(
+    plans.plans[1].requested_items.join(","),
+    content="\"late_value\"",
+  )
+}

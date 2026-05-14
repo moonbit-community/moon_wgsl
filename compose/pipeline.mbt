@@ -27,7 +27,8 @@ fn compose_emit_scanned_item(
 ///|
 fn drop_wgsl_import_directives_from_compose_source(source : String) -> String {
   let mut out = ""
-  for item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+  for
+    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
     match item.kind() {
       WgslDirectiveScanItemKind::Directive(directive) if directive.kind() ==
         WgslDirectiveKind::Import => ()
@@ -147,22 +148,57 @@ fn WgslComposeEmitter::emit_source_with_path(
     alias_prefixes,
   )
   merged = merged + implicit_imports
+  let explicit_requests = if declared_imports {
+    self.composer.build_wgsl_declared_import_requests_from_source_directives(
+      current_rel_path,
+      prepared.active_source,
+      self.session,
+      active_defs,
+    )
+  } else {
+    self.composer.build_wgsl_import_requests_from_source_directives(
+      current_rel_path,
+      prepared.active_source,
+      prepared.active_scan_source,
+      self.session,
+      active_defs,
+    )
+  }
+  let mut explicit_imports_emitted = false
   for
     item in parse_wgsl_directive_scan_items(
       prepared.active_source,
       include_glsl_version=false,
     ) {
-    merged = merged +
-      self.composer.compose_wgsl_scanned_item(
-        current_rel_path,
-        item,
-        prepared.active_scan_source,
-        bindings,
-        self.session,
-        active_defs,
-        alias_prefixes,
-        declared_imports,
-      )
+    match item.kind() {
+      WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
+        WgslDirectiveKind::Import =>
+        if !explicit_imports_emitted {
+          explicit_imports_emitted = true
+          merged = merged +
+            self.composer.compose_wgsl_import_requests(
+              current_rel_path,
+              explicit_requests,
+              prepared.active_scan_source,
+              bindings,
+              self.session,
+              active_defs,
+              alias_prefixes,
+            )
+        }
+      _ =>
+        merged = merged +
+          self.composer.compose_wgsl_scanned_item(
+            current_rel_path,
+            item,
+            prepared.active_scan_source,
+            bindings,
+            self.session,
+            active_defs,
+            alias_prefixes,
+            declared_imports,
+          )
+    }
   }
   finalize_wgsl_composed_source(
     merged,

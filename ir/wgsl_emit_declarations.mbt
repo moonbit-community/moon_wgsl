@@ -58,6 +58,10 @@ fn WgslIrEmitter::emit_constant(
     out.write_string(
       "const \{sanitize_wgsl_ir_identifier(name)} = \{self.abstract_float_global_expression(constant.init)};\n",
     )
+  } else if self.folded_constant_expression(constant) is Some(value) {
+    out.write_string(
+      "const \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(constant.ty)} = \{value};\n",
+    )
   } else {
     out.write_string(
       "const \{sanitize_wgsl_ir_identifier(name)}: \{self.type_name(constant.ty)} = \{self.global_expression(constant.init)};\n",

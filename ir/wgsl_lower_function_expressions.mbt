@@ -782,10 +782,10 @@ fn WgslIrLowerer::function_index_base_is_addressable(
             None => false
           }
         None =>
-        match scope.arguments.get(name.name()) {
-          Some(index) => self.function_argument_is_pointer(function, index)
-          None => self.global_names.get(name.name()) is Some(_)
-        }
+          match scope.arguments.get(name.name()) {
+            Some(index) => self.function_argument_is_pointer(function, index)
+            None => self.global_names.get(name.name()) is Some(_)
+          }
       }
     Index(inner, _) | Member(inner, _) =>
       self.function_index_base_is_addressable(inner, function, scope)

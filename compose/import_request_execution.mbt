@@ -120,7 +120,8 @@ fn Composer::compose_wgsl_import_requests(
         raw_source, session, import_defs,
       )
       let extraction = extract_wgsl_module_item_origins_strict(
-        prepared.active_source, emission_requested_items,
+        prepared.active_source,
+        emission_requested_items,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
@@ -129,35 +130,24 @@ fn Composer::compose_wgsl_import_requests(
         request.rel_path,
         extraction,
       )
-      let mut imported_prefix = ""
-      for item in parse_wgsl_directive_scan_items(
+      let requests = self.build_wgsl_import_requests_from_source_directives(
+        request.rel_path,
         prepared.active_source,
-        include_glsl_version=false,
-      ) {
-        match item.kind() {
-          WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
-            WgslDirectiveKind::Import => {
-            let requests = self.build_wgsl_import_requests(
-              request.rel_path,
-              import_directive.tail(),
-              prepared.active_scan_source,
-              session,
-              import_defs,
-            )
-            imported_prefix = imported_prefix + self.compose_wgsl_import_requests(
-              request.rel_path,
-              requests,
-              prepared.active_scan_source,
-              bindings,
-              session,
-              import_defs,
-              alias_prefixes,
-            )
-          }
-          _ => ()
-        }
-      }
-      imported_prefix + WgslComposeEmitter(self, session).emit_source_with_path(
+        prepared.active_scan_source,
+        session,
+        import_defs,
+      )
+      let imported_prefix = self.compose_wgsl_import_requests(
+        request.rel_path,
+        requests,
+        prepared.active_scan_source,
+        bindings,
+        session,
+        import_defs,
+        alias_prefixes,
+      )
+      imported_prefix +
+      WgslComposeEmitter(self, session).emit_source_with_path(
         request.rel_path,
         drop_wgsl_import_directives_from_compose_source(extraction.source()),
         Some(importer_defs),

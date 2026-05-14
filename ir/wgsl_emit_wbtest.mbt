@@ -282,3 +282,55 @@ test "IR emitter fails on invalid handles instead of inventing output" {
     content="\"unsupported IR emission: invalid IR type handle: 99\"",
   )
 }
+
+///|
+test "naga-oil writer policy folds typed integer global constants" {
+  let source =
+    #|const A: u32 = 1u << 29u;
+    #|const B: u32 = A | (1u << 30u);
+    #|const C: i32 = -1i;
+    #|
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let valid = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(valid.contains("const A: u32 = (1u << 29u);"), content="true")
+  debug_inspect(naga_oil.contains("const A: u32 = 536870912u;"), content="true")
+  debug_inspect(
+    naga_oil.contains("const B: u32 = 1610612736u;"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("const C: i32 = -1i;"), content="true")
+}
+
+///|
+test "naga-oil writer policy expands scalar matrix constructors into columns" {
+  let source =
+    #|fn helper() -> mat3x3<f32> {
+    #|  return mat3x3<f32>(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let valid = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    valid.contains("mat3x3<f32>(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f)"),
+    content="true",
+  )
+  debug_inspect(
+    naga_oil.contains(
+      "mat3x3<f32>(vec3<f32>(1f, 0f, 0f), vec3<f32>(0f, 1f, 0f), vec3<f32>(0f, 0f, 1f))",
+    ),
+    content="true",
+  )
+}

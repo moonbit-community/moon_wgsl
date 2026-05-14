@@ -403,6 +403,60 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         value
       }
     }
+    Some(Derivative(axis, control, expr)) => {
+      let lowered = self.materialize_nested_call_argument(
+        function, scope, block, expr,
+      )
+      if lowered != expr {
+        function.expressions.append(
+          Expression::Derivative(axis, control, lowered),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Relational(relational_function, expr)) => {
+      let lowered = self.materialize_nested_call_argument(
+        function, scope, block, expr,
+      )
+      if lowered != expr {
+        function.expressions.append(
+          Expression::Relational(relational_function, lowered),
+        )
+      } else {
+        value
+      }
+    }
+    Some(As(expr, kind, width)) => {
+      let lowered = self.materialize_nested_call_argument(
+        function, scope, block, expr,
+      )
+      if lowered != expr {
+        function.expressions.append(Expression::As(lowered, kind, width))
+      } else {
+        value
+      }
+    }
+    Some(Select(condition, accept, reject)) => {
+      let lowered_condition = self.materialize_nested_call_argument(
+        function, scope, block, condition,
+      )
+      let lowered_accept = self.materialize_nested_call_argument(
+        function, scope, block, accept,
+      )
+      let lowered_reject = self.materialize_nested_call_argument(
+        function, scope, block, reject,
+      )
+      if lowered_condition != condition ||
+        lowered_accept != accept ||
+        lowered_reject != reject {
+        function.expressions.append(
+          Expression::Select(lowered_condition, lowered_accept, lowered_reject),
+        )
+      } else {
+        value
+      }
+    }
     Some(FunctionCall(handle, arguments)) => {
       let lowered : Array[Handle] = []
       let mut changed = false
@@ -422,6 +476,87 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         )
       }
       value
+    }
+    Some(
+      ImageSample(
+        image,
+        sampler,
+        gather,
+        coordinate,
+        array_index,
+        offset,
+        level,
+        depth_ref,
+        clamp_to_edge
+      )
+    ) => {
+      let lowered_coordinate = self.materialize_nested_call_argument(
+        function, scope, block, coordinate,
+      )
+      let lowered_array_index = self.materialize_optional_nested_call_argument(
+        function, scope, block, array_index,
+      )
+      let lowered_offset = self.materialize_optional_nested_call_argument(
+        function, scope, block, offset,
+      )
+      let lowered_level = self.materialize_sample_level(
+        function, scope, block, level,
+      )
+      let lowered_depth_ref = self.materialize_optional_nested_call_argument(
+        function, scope, block, depth_ref,
+      )
+      if lowered_coordinate != coordinate ||
+        lowered_array_index != array_index ||
+        lowered_offset != offset ||
+        lowered_level != level ||
+        lowered_depth_ref != depth_ref {
+        function.expressions.append(
+          Expression::ImageSample(
+            image, sampler, gather, lowered_coordinate, lowered_array_index, lowered_offset,
+            lowered_level, lowered_depth_ref, clamp_to_edge,
+          ),
+        )
+      } else {
+        value
+      }
+    }
+    Some(ImageLoad(image, coordinate, array_index, sample, level)) => {
+      let lowered_coordinate = self.materialize_nested_call_argument(
+        function, scope, block, coordinate,
+      )
+      let lowered_array_index = self.materialize_optional_nested_call_argument(
+        function, scope, block, array_index,
+      )
+      let lowered_sample = self.materialize_optional_nested_call_argument(
+        function, scope, block, sample,
+      )
+      let lowered_level = self.materialize_optional_nested_call_argument(
+        function, scope, block, level,
+      )
+      if lowered_coordinate != coordinate ||
+        lowered_array_index != array_index ||
+        lowered_sample != sample ||
+        lowered_level != level {
+        function.expressions.append(
+          Expression::ImageLoad(
+            image, lowered_coordinate, lowered_array_index, lowered_sample, lowered_level,
+          ),
+        )
+      } else {
+        value
+      }
+    }
+    Some(ImageQuery(image, query)) => {
+      let lowered_query = self.materialize_image_query(
+        function, scope, block, query,
+      )
+      if lowered_query != query {
+        function.expressions.append(
+          Expression::ImageQuery(image, lowered_query),
+        )
+      } else {
+        value
+      }
     }
     Some(AtomicCall(atomic_function, arguments)) => {
       let lowered : Array[Handle] = []
@@ -443,7 +578,162 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       }
       value
     }
+    Some(Math(math_function, a, b, c, d)) => {
+      let lowered_a = self.materialize_nested_call_argument(
+        function, scope, block, a,
+      )
+      let lowered_b = self.materialize_optional_nested_call_argument(
+        function, scope, block, b,
+      )
+      let lowered_c = self.materialize_optional_nested_call_argument(
+        function, scope, block, c,
+      )
+      let lowered_d = self.materialize_optional_nested_call_argument(
+        function, scope, block, d,
+      )
+      if lowered_a != a || lowered_b != b || lowered_c != c || lowered_d != d {
+        function.expressions.append(
+          Expression::Math(
+            math_function, lowered_a, lowered_b, lowered_c, lowered_d,
+          ),
+        )
+      } else {
+        value
+      }
+    }
+    Some(SubgroupCall(subgroup_function, arguments)) => {
+      let lowered : Array[Handle] = []
+      let mut changed = false
+      for argument in arguments {
+        let lowered_argument = self.materialize_nested_call_argument(
+          function, scope, block, argument,
+        )
+        if lowered_argument != argument {
+          changed = true
+        }
+        lowered.push(lowered_argument)
+      }
+      if changed {
+        function.expressions.append(
+          Expression::SubgroupCall(subgroup_function, lowered),
+        )
+      } else {
+        value
+      }
+    }
+    Some(CooperativeLoad(columns, rows, role, data)) => {
+      let lowered_data = self.materialize_cooperative_data(
+        function, scope, block, data,
+      )
+      if lowered_data != data {
+        function.expressions.append(
+          Expression::CooperativeLoad(columns, rows, role, lowered_data),
+        )
+      } else {
+        value
+      }
+    }
+    Some(CooperativeMultiplyAdd(a, b, c)) => {
+      let lowered_a = self.materialize_nested_call_argument(
+        function, scope, block, a,
+      )
+      let lowered_b = self.materialize_nested_call_argument(
+        function, scope, block, b,
+      )
+      let lowered_c = self.materialize_nested_call_argument(
+        function, scope, block, c,
+      )
+      if lowered_a != a || lowered_b != b || lowered_c != c {
+        function.expressions.append(
+          Expression::CooperativeMultiplyAdd(lowered_a, lowered_b, lowered_c),
+        )
+      } else {
+        value
+      }
+    }
     _ => value
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_sample_level(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  level : SampleLevel,
+) -> SampleLevel raise WgslIrLowerError {
+  match level {
+    Exact(handle) =>
+      Exact(
+        self.materialize_nested_call_argument(function, scope, block, handle),
+      )
+    Bias(handle) =>
+      Bias(
+        self.materialize_nested_call_argument(function, scope, block, handle),
+      )
+    Gradient(x, y) =>
+      Gradient(
+        self.materialize_nested_call_argument(function, scope, block, x),
+        self.materialize_nested_call_argument(function, scope, block, y),
+      )
+    Auto | Zero => level
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_image_query(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  query : ImageQuery,
+) -> ImageQuery raise WgslIrLowerError {
+  match query {
+    Size(level) =>
+      Size(
+        self.materialize_optional_nested_call_argument(
+          function, scope, block, level,
+        ),
+      )
+    NumLevels | NumLayers | NumSamples => query
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_cooperative_data(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  data : CooperativeData,
+) -> CooperativeData raise WgslIrLowerError {
+  CooperativeData::{
+    pointer: data.pointer,
+    stride: self.materialize_nested_call_argument(
+      function,
+      scope,
+      block,
+      data.stride,
+    ),
+    row_major: data.row_major,
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_optional_nested_call_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle?,
+) -> Handle? raise WgslIrLowerError {
+  match value {
+    Some(handle) =>
+      Some(
+        self.materialize_nested_call_argument(function, scope, block, handle),
+      )
+    None => None
   }
 }
 
@@ -549,6 +839,24 @@ fn WgslIrLowerer::materialize_side_effecting_expression(
 }
 
 ///|
+fn WgslIrLowerer::materialize_store_value_if_needed(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  if self.function_expression_should_materialize_as_store_value(function, value) {
+    let normalized = self.materialize_return_subexpressions(
+      function, scope, block, value,
+    )
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    value
+  }
+}
+
+///|
 fn WgslIrLowerer::function_expression_is_side_effecting(
   self : WgslIrLowerer,
   function : Function,
@@ -576,6 +884,25 @@ fn WgslIrLowerer::function_expression_is_side_effecting(
       }
     None => false
   }
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  let should_materialize = match function.expressions.items.get(value.index()) {
+    Some(FunctionCall(_, _))
+    | Some(AtomicCall(_, _))
+    | Some(ImageSample(_, _, _, _, _, _, _, _, _))
+    | Some(ImageLoad(_, _, _, _, _))
+    | Some(ImageQuery(_, _))
+    | Some(WorkGroupUniformLoad(_)) => true
+    _ => false
+  }
+  should_materialize &&
+  self.function_expression_can_materialize_to_let(function, value)
 }
 
 ///|
