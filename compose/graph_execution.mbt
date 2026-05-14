@@ -209,6 +209,7 @@ fn WgslImportGraphBuilder::plan_with_path(
   source : String,
   inherited_defs : WgslActiveComposeDefs?,
   alias_prefixes : Array[String],
+  declared_imports : Bool,
 ) -> Unit raise ComposerError {
   let active_defs = self.composer.active_compose_defs_for_rel_path(
     current_rel_path,
@@ -240,13 +241,22 @@ fn WgslImportGraphBuilder::plan_with_path(
     match item.kind() {
       WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
         WgslDirectiveKind::Import => {
-        let requests = self.composer.build_wgsl_import_requests(
-          current_rel_path,
-          import_directive.tail(),
-          prepared.active_scan_source,
-          self.session,
-          active_defs,
-        )
+        let requests = if declared_imports {
+          self.composer.build_wgsl_declared_import_requests(
+            current_rel_path,
+            import_directive.tail(),
+            self.session,
+            active_defs,
+          )
+        } else {
+          self.composer.build_wgsl_import_requests(
+            current_rel_path,
+            import_directive.tail(),
+            prepared.active_scan_source,
+            self.session,
+            active_defs,
+          )
+        }
         self.plan_import_request_batch(
           current_rel_path, requests, active_defs, alias_prefixes,
         )
@@ -315,6 +325,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         raw_source,
         Some(importer_defs),
         request_alias_prefixes,
+        false,
       )
     } else {
       let import_defs = self.composer.active_compose_defs_for_rel_path(
@@ -322,12 +333,12 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         self.session,
         Some(importer_defs),
       )
-      let prepared_source = apply_wgsl_template_consts(
-        apply_wgsl_ifdefs_strict_for_compose(raw_source, import_defs),
-        import_defs.value_defines,
+      merge_wgsl_source_local_shader_defs(import_defs, raw_source)
+      let prepared = prepare_wgsl_compose_source(
+        raw_source, self.session, import_defs,
       )
       let extraction = extract_wgsl_module_item_origins_strict(
-        prepared_source,
+        prepared.active_source,
         request.requested_items,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
@@ -338,11 +349,33 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         request_alias_prefixes,
         extraction,
       )
+      for item in parse_wgsl_directive_scan_items(
+        prepared.active_source,
+        include_glsl_version=false,
+      ) {
+        match item.kind() {
+          WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
+            WgslDirectiveKind::Import => {
+            let requests = self.composer.build_wgsl_import_requests(
+              request.rel_path,
+              import_directive.tail(),
+              prepared.active_scan_source,
+              self.session,
+              import_defs,
+            )
+            self.plan_import_request_batch(
+              request.rel_path, requests, import_defs, request_alias_prefixes,
+            )
+          }
+          _ => ()
+        }
+      }
       self.plan_with_path(
         request.rel_path,
-        extraction.source(),
+        drop_wgsl_import_directives_from_compose_source(extraction.source()),
         Some(importer_defs),
         request_alias_prefixes,
+        false,
       )
     }
     self.session.graph_planning_rel_paths.pop() |> ignore
@@ -360,7 +393,7 @@ fn WgslImportGraphBuilder::complete_execution(
     return
   }
   self.session.graph_planning_rel_paths.push(current_rel_path)
-  self.plan_with_path(current_rel_path, source, inherited_defs, [])
+  self.plan_with_path(current_rel_path, source, inherited_defs, [], false)
   self.session.graph_planning_rel_paths.pop() |> ignore
   self.session.graph_execution_complete = true
 }

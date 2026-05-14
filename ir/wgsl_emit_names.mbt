@@ -214,10 +214,9 @@ fn WgslIrEmitter::local_variable_name(
   match func.local_variables.items.get(handle.index()) {
     Some(local_var) => {
       let base_name = self.local_variable_base_name(local_var, handle)
-      if self.local_variable_name_needs_suffix(func, handle, base_name) {
-        "\{base_name}_\{handle.index()}"
-      } else {
-        base_name
+      match self.local_variable_suffix_index(func, handle, base_name) {
+        Some(suffix) => "\{base_name}_\{suffix}"
+        None => base_name
       }
     }
     None =>
@@ -232,36 +231,47 @@ fn WgslIrEmitter::local_variable_base_name(
   handle : Handle,
 ) -> String {
   ignore(self)
-  match local_var.name {
+  let name = match local_var.name {
     Some(name) => sanitize_wgsl_ir_identifier(name)
     None => "local\{handle.index()}"
+  }
+  if !name.has_prefix("_e") && wgsl_ir_identifier_ends_with_digit(name) {
+    "\{name}_"
+  } else {
+    name
   }
 }
 
 ///|
-fn WgslIrEmitter::local_variable_name_needs_suffix(
+fn WgslIrEmitter::local_variable_suffix_index(
   self : WgslIrEmitter,
   function : Function,
   handle : Handle,
   base_name : String,
-) -> Bool {
+) -> Int? {
+  let mut suffix = 0
+  let mut needs_suffix = false
   for index in 0..<function.arguments.length() {
     if self.function_argument_base_name(function.arguments[index], index) ==
       base_name {
-      return true
+      needs_suffix = true
     }
   }
   for index in 0..<function.local_variables.items.length() {
     if index == handle.index() {
-      return false
+      if needs_suffix {
+        return Some(suffix)
+      }
+      return None
     }
     if self.local_variable_base_name(
         function.local_variables.items[index],
         Handle::Handle(index),
       ) ==
       base_name {
-      return true
+      needs_suffix = true
+      suffix += 1
     }
   }
-  false
+  None
 }

@@ -13,6 +13,8 @@ profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgs
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
 expected_case_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES:-150}"
 expected_oracle_blocked_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_ORACLE_BLOCKED_CASES:-1}"
+allow_known_drift="${MOON_WGSL_ALLOW_KNOWN_DRIFT:-0}"
+failure_dir="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_FAILURE_DIR:-_build/parity/external_naga_oil_compose}"
 
 fail() {
   printf 'external naga-oil compose parity gate failed: %s\n' "$*" >&2
@@ -21,8 +23,10 @@ fail() {
 
 [[ -f "$manifest" ]] || fail "missing manifest: $manifest"
 [[ -f "$oracle_blocked_manifest" ]] || fail "missing oracle-blocked manifest: $oracle_blocked_manifest"
-[[ -f "$writer_drift_manifest" ]] || fail "missing writer-drift manifest: $writer_drift_manifest"
-[[ -f "$byte_drift_manifest" ]] || fail "missing byte-drift manifest: $byte_drift_manifest"
+if [[ "$allow_known_drift" == "1" ]]; then
+  [[ -f "$writer_drift_manifest" ]] || fail "missing writer-drift manifest: $writer_drift_manifest"
+  [[ -f "$byte_drift_manifest" ]] || fail "missing byte-drift manifest: $byte_drift_manifest"
+fi
 [[ -f "$repo_manifest" ]] || fail "missing repo manifest: $repo_manifest"
 [[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
 
@@ -136,37 +140,39 @@ validate_manifest_schemas() {
     exit 1
   fi
 
-  awk -F '\t' '
-    $0 ~ /^($|#)/ { next }
-    $1 == "id" { next }
-    NF != 5 {
-      printf("external naga-oil writer-drift row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
-      exit 1
-    }
-    $1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" {
-      printf("external naga-oil writer-drift row must include id, rel_path, hash, class, and reason: %s\n", $0) > "/dev/stderr"
-      exit 1
-    }
-    { print $1 "\t" $2 "\t" $3 }
-  ' "$writer_drift_manifest" | sort > "$writer_drift_keys"
-  duplicate_writer_drift_keys="$(awk -F '\t' '{ print $1 "\t" $2 }' "$writer_drift_keys" | uniq -d | tr '\n' ' ')"
-  [[ -z "$duplicate_writer_drift_keys" ]] || fail "duplicate external naga-oil writer-drift row(s): $duplicate_writer_drift_keys"
+  if [[ "$allow_known_drift" == "1" ]]; then
+    awk -F '\t' '
+      $0 ~ /^($|#)/ { next }
+      $1 == "id" { next }
+      NF != 5 {
+        printf("external naga-oil writer-drift row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
+        exit 1
+      }
+      $1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" {
+        printf("external naga-oil writer-drift row must include id, rel_path, hash, class, and reason: %s\n", $0) > "/dev/stderr"
+        exit 1
+      }
+      { print $1 "\t" $2 "\t" $3 }
+    ' "$writer_drift_manifest" | sort > "$writer_drift_keys"
+    duplicate_writer_drift_keys="$(awk -F '\t' '{ print $1 "\t" $2 }' "$writer_drift_keys" | uniq -d | tr '\n' ' ')"
+    [[ -z "$duplicate_writer_drift_keys" ]] || fail "duplicate external naga-oil writer-drift row(s): $duplicate_writer_drift_keys"
 
-  awk -F '\t' '
-    $0 ~ /^($|#)/ { next }
-    $1 == "id" { next }
-    NF != 5 {
-      printf("external naga-oil byte-drift row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
-      exit 1
-    }
-    $1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" {
-      printf("external naga-oil byte-drift row must include id, rel_path, hash, class, and reason: %s\n", $0) > "/dev/stderr"
-      exit 1
-    }
-    { print $1 "\t" $2 "\t" $3 }
-  ' "$byte_drift_manifest" | sort > "$byte_drift_keys"
-  duplicate_byte_drift_keys="$(awk -F '\t' '{ print $1 "\t" $2 }' "$byte_drift_keys" | uniq -d | tr '\n' ' ')"
-  [[ -z "$duplicate_byte_drift_keys" ]] || fail "duplicate external naga-oil byte-drift row(s): $duplicate_byte_drift_keys"
+    awk -F '\t' '
+      $0 ~ /^($|#)/ { next }
+      $1 == "id" { next }
+      NF != 5 {
+        printf("external naga-oil byte-drift row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
+        exit 1
+      }
+      $1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" {
+        printf("external naga-oil byte-drift row must include id, rel_path, hash, class, and reason: %s\n", $0) > "/dev/stderr"
+        exit 1
+      }
+      { print $1 "\t" $2 "\t" $3 }
+    ' "$byte_drift_manifest" | sort > "$byte_drift_keys"
+    duplicate_byte_drift_keys="$(awk -F '\t' '{ print $1 "\t" $2 }' "$byte_drift_keys" | uniq -d | tr '\n' ' ')"
+    [[ -z "$duplicate_byte_drift_keys" ]] || fail "duplicate external naga-oil byte-drift row(s): $duplicate_byte_drift_keys"
+  fi
 
   awk -F '\t' '
     $0 ~ /^($|#)/ { next }
@@ -394,7 +400,16 @@ append_detected_capabilities() {
   fi
 }
 
-append_bevy_default_oracle_defs() {
+append_bevy_default_defs() {
+  moon_args+=(--value-def AVAILABLE_STORAGE_BUFFER_BINDINGS=8)
+  moon_args+=(--value-def MAX_DIRECTIONAL_LIGHTS=10)
+  moon_args+=(--value-def MAX_CASCADES_PER_LIGHT=4)
+  moon_args+=(--value-def MAX_RECT_LIGHTS=4)
+  moon_args+=(--value-def MATERIAL_BIND_GROUP=3)
+  moon_args+=(--value-def SORTED_FRAGMENT_MAX_COUNT=8)
+  moon_args+=(--value-def WORLD_CACHE_SIZE=1048576)
+  moon_args+=(--value-def PER_OBJECT_BUFFER_BATCH_SIZE=1)
+  moon_args+=(--value-def SCREEN_SPACE_SPECULAR_TRANSMISSION_BLUR_TAPS=8)
   oracle_args+=(--def AVAILABLE_STORAGE_BUFFER_BINDINGS=8)
   oracle_args+=(--def MAX_DIRECTIONAL_LIGHTS=10)
   oracle_args+=(--def MAX_CASCADES_PER_LIGHT=4)
@@ -472,6 +487,10 @@ byte_drift_expected="$tmpdir/byte-drift.expected"
 : > "$oracle_blocked_actual"
 : > "$writer_drift_actual"
 : > "$byte_drift_actual"
+if [[ "$allow_known_drift" != "1" ]]; then
+  rm -rf "$failure_dir"
+  mkdir -p "$failure_dir/diffs"
+fi
 cached_repo_id=""
 cached_checkout=""
 cached_repo=""
@@ -517,7 +536,7 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   fingerprint_args=()
 
   if [[ "$id" == "bevy" ]]; then
-    append_bevy_default_oracle_defs
+    append_bevy_default_defs
   fi
   append_moon_bool_defs "$bool_defs"
   append_oracle_defs "$bool_defs"
@@ -553,6 +572,9 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   writer_diff="$tmpdir/$label.writer.diff"
   if writer_hash="$(diff_hash "$oracle_writer_fingerprint" "$moon_writer_fingerprint" "$writer_diff")"; then
     printf '%s\t%s\t%s\n' "$id" "$rel_path" "$writer_hash" >> "$writer_drift_actual"
+    if [[ "$allow_known_drift" != "1" ]]; then
+      cp "$writer_diff" "$failure_dir/diffs/$label.writer.diff"
+    fi
     writer_drift_count=$((writer_drift_count + 1))
   else
     writer_exact_count=$((writer_exact_count + 1))
@@ -560,6 +582,9 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   byte_diff="$tmpdir/$label.byte.diff"
   if byte_hash="$(diff_hash "$oracle_output" "$moon_output" "$byte_diff")"; then
     printf '%s\t%s\t%s\n' "$id" "$rel_path" "$byte_hash" >> "$byte_drift_actual"
+    if [[ "$allow_known_drift" != "1" ]]; then
+      cp "$byte_diff" "$failure_dir/diffs/$label.byte.diff"
+    fi
     byte_drift_count=$((byte_drift_count + 1))
   else
     byte_exact_count=$((byte_exact_count + 1))
@@ -580,31 +605,57 @@ if ! diff -u "$oracle_blocked_expected" "$oracle_blocked_actual" >"$tmpdir/oracl
   sed -n '1,200p' "$tmpdir/oracle-blocked.diff" >&2
   exit 1
 fi
-awk -F '\t' '
-  $0 ~ /^($|#)/ { next }
-  $1 == "id" { next }
-  { print $1 "\t" $2 "\t" $3 }
-' "$writer_drift_manifest" | sort > "$writer_drift_expected"
 sort -o "$writer_drift_actual" "$writer_drift_actual"
-if ! diff -u "$writer_drift_expected" "$writer_drift_actual" >"$tmpdir/writer-drift.diff"; then
-  echo "external naga-oil writer/order/name drift manifest does not match observed fingerprint diffs" >&2
-  sed -n '1,200p' "$tmpdir/writer-drift.diff" >&2
-  echo "Observed writer drift rows:" >&2
-  sed -n '1,240p' "$writer_drift_actual" >&2
-  exit 1
-fi
-awk -F '\t' '
-  $0 ~ /^($|#)/ { next }
-  $1 == "id" { next }
-  { print $1 "\t" $2 "\t" $3 }
-' "$byte_drift_manifest" | sort > "$byte_drift_expected"
 sort -o "$byte_drift_actual" "$byte_drift_actual"
-if ! diff -u "$byte_drift_expected" "$byte_drift_actual" >"$tmpdir/byte-drift.diff"; then
-  echo "external naga-oil byte-drift manifest does not match observed byte diffs" >&2
-  sed -n '1,200p' "$tmpdir/byte-drift.diff" >&2
-  echo "Observed byte drift rows:" >&2
-  sed -n '1,240p' "$byte_drift_actual" >&2
+
+if [[ "$allow_known_drift" == "1" ]]; then
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    { print $1 "\t" $2 "\t" $3 }
+  ' "$writer_drift_manifest" | sort > "$writer_drift_expected"
+  if ! diff -u "$writer_drift_expected" "$writer_drift_actual" >"$tmpdir/writer-drift.diff"; then
+    echo "external naga-oil writer/order/name drift manifest does not match observed fingerprint diffs" >&2
+    sed -n '1,200p' "$tmpdir/writer-drift.diff" >&2
+    echo "Observed writer drift rows:" >&2
+    sed -n '1,240p' "$writer_drift_actual" >&2
+    exit 1
+  fi
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    { print $1 "\t" $2 "\t" $3 }
+  ' "$byte_drift_manifest" | sort > "$byte_drift_expected"
+  if ! diff -u "$byte_drift_expected" "$byte_drift_actual" >"$tmpdir/byte-drift.diff"; then
+    echo "external naga-oil byte-drift manifest does not match observed byte diffs" >&2
+    sed -n '1,200p' "$tmpdir/byte-drift.diff" >&2
+    echo "Observed byte drift rows:" >&2
+    sed -n '1,240p' "$byte_drift_actual" >&2
+    exit 1
+  fi
+  echo "external naga-oil compose parity gate passed with known drift allowed: cases=$case_count comparable=$comparable_count oracle-blocked=$oracle_blocked_count writer-exact=$writer_exact_count writer-drift=$writer_drift_count byte-exact=$byte_exact_count byte-drift=$byte_drift_count"
+  exit 0
+fi
+
+if ((writer_drift_count != 0 || byte_drift_count != 0)); then
+  writer_failure_report="$failure_dir/writer_failures.tsv"
+  byte_failure_report="$failure_dir/byte_failures.tsv"
+  {
+    printf 'id\trel_path\thash\tclass\treason\n'
+    awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\twriter-fingerprint-drift\tstrict-byte-parity-failure" }' "$writer_drift_actual"
+  } > "$writer_failure_report"
+  {
+    printf 'id\trel_path\thash\tclass\treason\n'
+    awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\tbyte-output-drift\tstrict-byte-parity-failure" }' "$byte_drift_actual"
+  } > "$byte_failure_report"
+  echo "external naga-oil compose strict byte parity failed" >&2
+  echo "writer/order/name failures: $writer_drift_count" >&2
+  sed -n '1,80p' "$writer_failure_report" >&2
+  echo "byte-output failures: $byte_drift_count" >&2
+  sed -n '1,80p' "$byte_failure_report" >&2
+  echo "failure reports written to: $failure_dir" >&2
+  echo "set MOON_WGSL_ALLOW_KNOWN_DRIFT=1 only for legacy drift-manifest compatibility checks" >&2
   exit 1
 fi
 
-echo "external naga-oil compose parity gate passed: cases=$case_count comparable=$comparable_count oracle-blocked=$oracle_blocked_count writer-exact=$writer_exact_count writer-drift=$writer_drift_count byte-exact=$byte_exact_count byte-drift=$byte_drift_count"
+echo "external naga-oil compose strict byte parity gate passed: cases=$case_count comparable=$comparable_count oracle-blocked=$oracle_blocked_count writer-exact=$writer_exact_count byte-exact=$byte_exact_count"

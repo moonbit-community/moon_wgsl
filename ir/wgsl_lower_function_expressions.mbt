@@ -93,16 +93,19 @@ fn WgslIrLowerer::lower_function_lvalue_node(
           )
         None => ()
       }
-      match scope.local_inline_lets.get(name.name()) {
-        Some(_) =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "local let is not assignable",
-          )
-        None => ()
-      }
       match scope.locals.get(name.name()) {
-        Some(handle) =>
+        Some(handle) => {
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_var) =>
+              if local_var.kind == Let {
+                raise WgslIrLowerError::UnsupportedExpression(
+                  "local let is not assignable",
+                )
+              }
+            None => ()
+          }
           return scope.local_pointer_expression(name.name(), handle, function)
+        }
         None => ()
       }
       match scope.arguments.get(name.name()) {
@@ -267,7 +270,6 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
     Binary(op, left, right) => {
-      let expression_start = function.expressions.items.length()
       let left_handle = self.lower_function_expression_node(
         left, function, scope,
       )
@@ -281,13 +283,6 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           right_handle,
         ),
       )
-      if scope.is_direct_local_inline_let_value(left_handle) ||
-        scope.is_direct_local_inline_let_value(right_handle) {
-        scope.hide_temporary_name_indices(
-          expression_start,
-          function.expressions.items.length(),
-        )
-      }
       match self.fold_function_constant_float_expression(function, handle) {
         Some(literal) =>
           function.expressions.append(Expression::Literal(literal))
@@ -663,20 +658,6 @@ fn WgslIrLowerer::lower_identifier_expression(
     Some(handle) => return handle
     None => ()
   }
-  if scope.allow_local_inline_lets {
-    match scope.local_inline_lets.get(name) {
-      Some(handle) => return handle
-      None => ()
-    }
-  } else {
-    match scope.local_inline_lets.get(name) {
-      Some(_) =>
-        raise WgslIrLowerError::UnsupportedExpression(
-          "local let is not a const expression",
-        )
-      None => ()
-    }
-  }
   match scope.locals.get(name) {
     Some(handle) =>
       if self.local_variable_is_handle_value(function, handle) {
@@ -792,9 +773,15 @@ fn WgslIrLowerer::function_index_base_is_addressable(
     Group(inner) =>
       self.function_index_base_is_addressable(inner, function, scope)
     Identifier(name) =>
-      if scope.locals.get(name.name()) is Some(_) {
-        true
-      } else {
+      match scope.locals.get(name.name()) {
+        Some(handle) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_var) =>
+              local_var.kind == Var ||
+              self.local_variable_is_handle_value(function, handle)
+            None => false
+          }
+        None =>
         match scope.arguments.get(name.name()) {
           Some(index) => self.function_argument_is_pointer(function, index)
           None => self.global_names.get(name.name()) is Some(_)

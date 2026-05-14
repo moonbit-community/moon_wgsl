@@ -603,8 +603,6 @@ fn WgslIrLowerer::lower_local_declaration(
     None => None
   }
   let mut address_of_ty : Handle? = None
-  let mut preserve_source_let_name = false
-  let initializer_expression_start = function.expressions.items.length()
   let mut init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
       match wgsl_ir_address_of_operand_ref(expr_ref) {
@@ -632,18 +630,6 @@ fn WgslIrLowerer::lower_local_declaration(
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
     match init {
       Some(init_handle) => {
-        if self.function_expression_is_const_expression(function, init_handle) {
-          ignore(scope.locals.remove(local_decl.name().name()))
-          ignore(
-            scope.local_pointer_expressions.remove(local_decl.name().name()),
-          )
-          scope.hide_temporary_name_indices(
-            initializer_expression_start,
-            function.expressions.items.length(),
-          )
-          scope.local_inline_lets.set(local_decl.name().name(), init_handle)
-          return
-        }
         let materialization_expression_start = function.expressions.items.length()
         let materialized = self.materialize_return_subexpressions(
           function, scope, block, init_handle,
@@ -658,7 +644,6 @@ fn WgslIrLowerer::lower_local_declaration(
             _ => ()
           }
           init = Some(materialized)
-          preserve_source_let_name = true
         }
       }
       None => ()
@@ -694,15 +679,7 @@ fn WgslIrLowerer::lower_local_declaration(
   }
   let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
   let lowered_name = if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
-    if preserve_source_let_name {
-      local_decl.name().name()
-    } else {
-      match init {
-        Some(init_handle) =>
-          scope.function_expression_temporary_name(function, init_handle)
-        None => scope.next_temporary_name()
-      }
-    }
+    local_decl.name().name()
   } else {
     local_decl.name().name()
   }
@@ -718,7 +695,6 @@ fn WgslIrLowerer::lower_local_declaration(
     },
   })
   ignore(scope.local_constants.remove(local_decl.name().name()))
-  ignore(scope.local_inline_lets.remove(local_decl.name().name()))
   ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   block.push(Statement::Declare(handle))
@@ -759,12 +735,10 @@ fn WgslIrLowerer::lower_local_const_declaration(
     Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
     None => None
   }
-  let const_scope = scope.child()
-  const_scope.allow_local_inline_lets = false
   let init = match local_decl.initializer_ref() {
     Some(expr_ref) =>
       self.lower_function_expression_ref_with_expected(
-        expr_ref, function, const_scope, explicit_ty,
+        expr_ref, function, scope, explicit_ty,
       )
     None => raise WgslIrLowerError::MissingType(local_decl.name().name())
   }

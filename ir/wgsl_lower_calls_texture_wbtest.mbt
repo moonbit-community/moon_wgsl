@@ -106,13 +106,13 @@ test "WGSL AST lowerer binds local consts as constant expressions" {
   }
   debug_inspect(
     module_.functions.items[0].local_variables.items.length(),
-    content="0",
+    content="1",
   )
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("const LOCAL"), content="false")
-  debug_inspect(emitted.contains("return ((COUNT + 1u) + 2u);"), content="true")
+  debug_inspect(emitted.contains("return value;"), content="true")
 }
 
 ///|
@@ -131,7 +131,7 @@ test "WGSL AST lowerer rejects runtime local const initializers" {
   }
   debug_inspect(
     message,
-    content="\"unsupported WGSL expression: local let is not a const expression at 71..84: runtime_value in function main\"",
+    content="\"unsupported WGSL expression: local const initializer is not a const expression in function main\"",
   )
 }
 
@@ -296,7 +296,7 @@ test "WGSL AST lowerer supports function call expressions" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("helper(1u, 2u, (1u + 2u))"), content="true")
+  debug_inspect(emitted.contains("helper(base, 2u, (base + 2u))"), content="true")
 }
 
 ///|
@@ -480,7 +480,7 @@ test "WGSL AST lowerer supports basic texture calls" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("shadow_map_size: vec2<f32> = vec2<f32>(_e"),
+    emitted.contains("shadow_map_size: vec2<f32> = vec2<f32>(arr_dims);"),
     content="true",
   )
   debug_inspect(emitted.contains("textureStore(out_tex"), content="true")

@@ -25,6 +25,19 @@ fn compose_emit_scanned_item(
 }
 
 ///|
+fn drop_wgsl_import_directives_from_compose_source(source : String) -> String {
+  let mut out = ""
+  for item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+    match item.kind() {
+      WgslDirectiveScanItemKind::Directive(directive) if directive.kind() ==
+        WgslDirectiveKind::Import => ()
+      _ => out = out + item.source().original_text()
+    }
+  }
+  out
+}
+
+///|
 fn wgsl_compose_directive_emission_kind(
   item : WgslDirectiveScanItem,
   directive : WgslDirective,
@@ -52,17 +65,27 @@ fn Composer::compose_wgsl_scanned_item(
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
   alias_prefixes : Array[String],
+  declared_imports : Bool,
 ) -> String raise ComposerError {
   match item.kind() {
     WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
       WgslDirectiveKind::Import => {
-      let requests = self.build_wgsl_import_requests(
-        current_rel_path,
-        import_directive.tail(),
-        active_scan_source,
-        session,
-        active_defs,
-      )
+      let requests = if declared_imports {
+        self.build_wgsl_declared_import_requests(
+          current_rel_path,
+          import_directive.tail(),
+          session,
+          active_defs,
+        )
+      } else {
+        self.build_wgsl_import_requests(
+          current_rel_path,
+          import_directive.tail(),
+          active_scan_source,
+          session,
+          active_defs,
+        )
+      }
       self.compose_wgsl_import_requests(
         current_rel_path, requests, active_scan_source, bindings, session, active_defs,
         alias_prefixes,
@@ -90,6 +113,7 @@ fn WgslComposeEmitter::emit_source_with_path(
   apply_virtual_overrides : Bool,
   record_current_origins : Bool,
   alias_prefixes : Array[String],
+  declared_imports : Bool,
 ) -> String raise ComposerError {
   let active_defs = self.composer.active_compose_defs_for_rel_path(
     current_rel_path,
@@ -137,6 +161,7 @@ fn WgslComposeEmitter::emit_source_with_path(
         self.session,
         active_defs,
         alias_prefixes,
+        declared_imports,
       )
   }
   finalize_wgsl_composed_source(
@@ -180,6 +205,7 @@ fn WgslComposeEmitter::emit_root(
     true,
     true,
     [],
+    false,
   )
   self.session.active_rel_paths.pop() |> ignore
   composed
@@ -311,7 +337,7 @@ fn compose_wgsl_source_via_naga_oil_writer_compatible_ir(
   symbols : WgslComposeSymbolTable,
   root_rel_path : String,
 ) -> String raise ComposerError {
-  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible_entry_roots(
+  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
     source,
     symbols.generated_import_provenance(root_rel_path),
   ) catch {
@@ -442,6 +468,7 @@ pub fn Composer::compose_wgsl_source(
       true,
       false,
       [],
+      false,
     ),
   )
   compose_wgsl_source_via_ir(

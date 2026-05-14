@@ -3,13 +3,10 @@ priv struct WgslIrFunctionScope {
   arguments : Map[String, Int]
   locals : Map[String, Handle]
   local_constants : Map[String, Handle]
-  local_inline_lets : Map[String, Handle]
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
   hidden_temporary_name_indices : @set.Set[Int]
-  mut allow_local_inline_lets : Bool
-  mut temporary_index : Int
 }
 
 ///|
@@ -25,13 +22,10 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     arguments: Map([]),
     locals: Map([]),
     local_constants: Map([]),
-    local_inline_lets: Map([]),
     local_pointer_expressions: Map([]),
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
     hidden_temporary_name_indices: @set.Set([]),
-    allow_local_inline_lets: true,
-    temporary_index: 0,
   }
 }
 
@@ -74,7 +68,6 @@ fn WgslIrFunctionScope::child(
     arguments: wgsl_ir_copy_string_int_map(self.arguments),
     locals: wgsl_ir_copy_string_handle_map(self.locals),
     local_constants: wgsl_ir_copy_string_handle_map(self.local_constants),
-    local_inline_lets: wgsl_ir_copy_string_handle_map(self.local_inline_lets),
     local_pointer_expressions: wgsl_ir_copy_string_handle_map(
       self.local_pointer_expressions,
     ),
@@ -87,8 +80,6 @@ fn WgslIrFunctionScope::child(
     hidden_temporary_name_indices: wgsl_ir_copy_int_set(
       self.hidden_temporary_name_indices,
     ),
-    allow_local_inline_lets: self.allow_local_inline_lets,
-    temporary_index: self.temporary_index,
   }
 }
 
@@ -97,9 +88,8 @@ fn WgslIrFunctionScope::sync_child_counters(
   self : WgslIrFunctionScope,
   child : WgslIrFunctionScope,
 ) -> Unit {
-  if child.temporary_index > self.temporary_index {
-    self.temporary_index = child.temporary_index
-  }
+  ignore(self)
+  ignore(child)
 }
 
 ///|
@@ -160,15 +150,6 @@ fn WgslIrFunctionScope::argument_pointer_expression(
 }
 
 ///|
-fn WgslIrFunctionScope::next_temporary_name(
-  self : WgslIrFunctionScope,
-) -> String {
-  let name = "_e\{self.temporary_index}"
-  self.temporary_index = self.temporary_index + 1
-  name
-}
-
-///|
 fn WgslIrFunctionScope::hide_temporary_name_indices(
   self : WgslIrFunctionScope,
   start : Int,
@@ -180,15 +161,3 @@ fn WgslIrFunctionScope::hide_temporary_name_indices(
 }
 
 ///|
-fn WgslIrFunctionScope::is_direct_local_inline_let_value(
-  self : WgslIrFunctionScope,
-  handle : Handle,
-) -> Bool {
-  for entry in self.local_inline_lets.iter() {
-    let (_, value) = entry
-    if value == handle {
-      return true
-    }
-  }
-  false
-}

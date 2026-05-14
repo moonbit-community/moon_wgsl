@@ -3,7 +3,7 @@ fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   requests : Array[WgslImportRequest],
-  importer_scan_source : String,
+  _importer_scan_source : String,
   bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
@@ -107,6 +107,7 @@ fn Composer::compose_wgsl_import_requests(
         false,
         true,
         alias_prefixes,
+        false,
       )
     } else {
       let import_defs = self.active_compose_defs_for_rel_path(
@@ -114,12 +115,12 @@ fn Composer::compose_wgsl_import_requests(
         session,
         Some(importer_defs),
       )
-      let prepared_source = apply_wgsl_template_consts(
-        apply_wgsl_ifdefs_strict_for_compose(raw_source, import_defs),
-        import_defs.value_defines,
+      merge_wgsl_source_local_shader_defs(import_defs, raw_source)
+      let prepared = prepare_wgsl_compose_source(
+        raw_source, session, import_defs,
       )
       let extraction = extract_wgsl_module_item_origins_strict(
-        prepared_source, emission_requested_items,
+        prepared.active_source, emission_requested_items,
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
@@ -128,14 +129,43 @@ fn Composer::compose_wgsl_import_requests(
         request.rel_path,
         extraction,
       )
-      WgslComposeEmitter(self, session).emit_source_with_path(
+      let mut imported_prefix = ""
+      for item in parse_wgsl_directive_scan_items(
+        prepared.active_source,
+        include_glsl_version=false,
+      ) {
+        match item.kind() {
+          WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
+            WgslDirectiveKind::Import => {
+            let requests = self.build_wgsl_import_requests(
+              request.rel_path,
+              import_directive.tail(),
+              prepared.active_scan_source,
+              session,
+              import_defs,
+            )
+            imported_prefix = imported_prefix + self.compose_wgsl_import_requests(
+              request.rel_path,
+              requests,
+              prepared.active_scan_source,
+              bindings,
+              session,
+              import_defs,
+              alias_prefixes,
+            )
+          }
+          _ => ()
+        }
+      }
+      imported_prefix + WgslComposeEmitter(self, session).emit_source_with_path(
         request.rel_path,
-        extraction.source(),
+        drop_wgsl_import_directives_from_compose_source(extraction.source()),
         Some(importer_defs),
         bindings,
         false,
         false,
         alias_prefixes,
+        false,
       )
     }
     session.active_rel_paths.pop() |> ignore
@@ -187,13 +217,7 @@ fn Composer::compose_wgsl_import_requests(
               emission_requested_items,
               origin.source_symbol_name,
             )
-          let referenced_by_importer = wgsl_semantic_source_contains_reference_path(
-            importer_scan_source,
-            origin.source_symbol_name,
-          ) catch {
-            error => raise composer_error_from_wgsl_parse_error(error)
-          }
-          if !directly_requested && !referenced_by_importer {
+          if !directly_requested {
             continue
           }
           match
@@ -207,31 +231,6 @@ fn Composer::compose_wgsl_import_requests(
             None => ()
           }
         }
-      }
-    }
-    for i in origin_start_index..<session.symbols.source_origins.length() {
-      let origin = session.symbols.source_origins[i]
-      if origin.source_symbol_name == "" || origin.generated_symbol_name == "" {
-        continue
-      }
-      let referenced_by_importer = wgsl_semantic_source_contains_reference_path(
-        importer_scan_source,
-        origin.source_symbol_name,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-      if !referenced_by_importer {
-        continue
-      }
-      match
-        WgslComposeBinding::for_unqualified_symbol(
-          origin.rel_path,
-          origin.source_symbol_name,
-          origin.generated_symbol_name,
-          UnqualifiedItemBinding,
-        ) {
-        Some(binding) => bindings.push(binding)
-        None => ()
       }
     }
     for i in origin_start_index..<session.symbols.source_origins.length() {

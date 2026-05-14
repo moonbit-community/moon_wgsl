@@ -578,8 +578,8 @@ test "WGSL AST lowerer respects nested lexical shadowing" {
   }
   debug_inspect(emitted.contains("buffer[0] = x_0;"), content="true")
   debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
-  debug_inspect(emitted.contains("buffer[3] = 20u;"), content="true")
-  debug_inspect(emitted.contains("write_shadow(10u);"), content="true")
+  debug_inspect(emitted.contains("buffer[3] = y_1;"), content="true")
+  debug_inspect(emitted.contains("write_shadow(y);"), content="true")
 }
 
 ///|
@@ -628,7 +628,7 @@ test "WGSL AST lowerer expands statement function call arguments" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("write_values(1u, 2u, (1u + 2u), 4u);"),
+    emitted.contains("write_values(base, 2u, (base + 2u), 4u);"),
     content="true",
   )
 }

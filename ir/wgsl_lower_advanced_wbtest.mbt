@@ -185,9 +185,9 @@ test "WGSL IR emitter preserves pointer-valued local references" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("*(_e"), content="true")
-  debug_inspect(emitted.contains("inc(_e"), content="true")
-  debug_inspect(emitted.contains("inc(*(_e"), content="false")
+  debug_inspect(emitted.contains("*(p)"), content="true")
+  debug_inspect(emitted.contains("inc(p)"), content="true")
+  debug_inspect(emitted.contains("inc(*(p)"), content="false")
 }
 
 ///|
@@ -877,15 +877,15 @@ test "WGSL IR lowerer roundtrips cooperative matrix builtins" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("coopLoad<coop_mat8x8<f32, A>>(&a[0u], 8u)"),
+    emitted.contains("coopLoad<coop_mat8x8<f32, A>>(&a[0u], stride)"),
     content="true",
   )
   debug_inspect(
-    emitted.contains("coopMultiplyAdd(_e3, _e7, c_tile)"),
+    emitted.contains("coopMultiplyAdd(a_tile, b_tile, c_tile)"),
     content="true",
   )
   debug_inspect(
-    emitted.contains("coopStore(c_tile, &c[0u], 8u);"),
+    emitted.contains("coopStore(c_tile, &c[0u], stride);"),
     content="true",
   )
 }
