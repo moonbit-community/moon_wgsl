@@ -367,6 +367,27 @@ test "WGSL AST lowerer folds const float arithmetic" {
 }
 
 ///|
+test "WGSL IR writer emits Naga-style f32 literal spelling" {
+  let source =
+    #|fn f() -> f32 {
+    #|  return 0.3963377774;
+    #|}
+    #|
+    #|fn g() -> f32 {
+    #|  return -1.2684380046;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("return 0.39633778f;"), content="true")
+  debug_inspect(emitted.contains("return -1.268438f;"), content="true")
+  debug_inspect(emitted.contains("-(1.268438"), content="false")
+}
+
+///|
 test "WGSL AST lowerer preserves f16 literal suffixes" {
   let source =
     #|enable f16;
@@ -578,8 +599,8 @@ test "WGSL AST lowerer respects nested lexical shadowing" {
   }
   debug_inspect(emitted.contains("buffer[0] = x_0;"), content="true")
   debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
-  debug_inspect(emitted.contains("buffer[3] = y_1;"), content="true")
-  debug_inspect(emitted.contains("write_shadow(y);"), content="true")
+  debug_inspect(emitted.contains("buffer[3] = 20u;"), content="true")
+  debug_inspect(emitted.contains("write_shadow(10u);"), content="true")
 }
 
 ///|
@@ -628,7 +649,7 @@ test "WGSL AST lowerer expands statement function call arguments" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("write_values(base, 2u, (base + 2u), 4u);"),
+    emitted.contains("write_values(1u, 2u, (1u + 2u), 4u);"),
     content="true",
   )
 }

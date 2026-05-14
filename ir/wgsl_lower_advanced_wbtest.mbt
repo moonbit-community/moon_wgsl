@@ -877,7 +877,7 @@ test "WGSL IR lowerer roundtrips cooperative matrix builtins" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("coopLoad<coop_mat8x8<f32, A>>(&a[0u], stride)"),
+    emitted.contains("coopLoad<coop_mat8x8<f32, A>>(&a[0u], 8u)"),
     content="true",
   )
   debug_inspect(
@@ -885,7 +885,7 @@ test "WGSL IR lowerer roundtrips cooperative matrix builtins" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("coopStore(c_tile, &c[0u], stride);"),
+    emitted.contains("coopStore(c_tile, &c[0u], 8u);"),
     content="true",
   )
 }

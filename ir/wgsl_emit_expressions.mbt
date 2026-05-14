@@ -231,8 +231,7 @@ fn WgslIrEmitter::emit_expression(
       "coopMultiplyAdd(\{self.required_function_expression(function, a)}, \{self.required_function_expression(function, b)}, \{self.required_function_expression(function, c)})"
     WorkGroupUniformLoad(pointer) =>
       "workgroupUniformLoad(\{self.required_function_expression(function, pointer)})"
-    Unary(op, expr) =>
-      "\{self.unary_operator(op)}(\{self.required_function_expression(function, expr)})"
+    Unary(op, expr) => self.unary_expression(function, op, expr)
     Binary(op, left, right) =>
       "(\{self.required_function_expression(function, left)} \{self.binary_operator(op)} \{self.required_function_expression(function, right)})"
     Select(condition, accept, reject) =>
@@ -249,6 +248,47 @@ fn WgslIrEmitter::emit_expression(
       "\{self.relational_function_name(relational_function)}(\{self.required_function_expression(function, expr)})"
     CallResult(handle) => self.function_name(handle)
     _ => raise WgslIrEmitError::Unsupported("expression kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::unary_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  op : UnaryOperator,
+  expr : Handle,
+) -> String raise WgslIrEmitError {
+  let inner = self.required_expression(function, expr)
+  match (op, inner) {
+    (Negate, Literal(literal)) => "-\{self.literal(literal)}"
+    _ =>
+      "\{self.unary_operator(op)}(\{self.required_function_expression(function, expr)})"
+  }
+}
+
+///|
+fn WgslIrEmitter::required_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Expression raise WgslIrEmitError {
+  match function {
+    Some(function) =>
+      match function.expressions.items.get(handle.index()) {
+        Some(expression) => expression
+        None =>
+          raise WgslIrEmitError::MissingHandle(
+            "function expression \{handle.index()}",
+          )
+      }
+    None =>
+      match self.shader_module.global_expressions.items.get(handle.index()) {
+        Some(expression) => expression
+        None =>
+          raise WgslIrEmitError::MissingHandle(
+            "global expression \{handle.index()}",
+          )
+      }
   }
 }
 

@@ -82,7 +82,7 @@ test "WGSL AST lowerer binds context-typed array constructors" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("array<vec2<f32>, 2>(vec2<f32>(0.125f, -(0.375f))"),
+    emitted.contains("array<vec2<f32>, 2>(vec2<f32>(0.125f, -0.375f)"),
     content="true",
   )
   debug_inspect(
@@ -106,20 +106,19 @@ test "WGSL AST lowerer binds local consts as constant expressions" {
   }
   debug_inspect(
     module_.functions.items[0].local_variables.items.length(),
-    content="1",
+    content="0",
   )
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("const LOCAL"), content="false")
-  debug_inspect(emitted.contains("return value;"), content="true")
+  debug_inspect(emitted.contains("let value"), content="false")
 }
 
 ///|
 test "WGSL AST lowerer rejects runtime local const initializers" {
   let source =
-    #|fn main() -> u32 {
-    #|  let runtime_value: u32 = 1u;
+    #|fn main(runtime_value: u32) -> u32 {
     #|  const LOCAL: u32 = runtime_value;
     #|  return LOCAL;
     #|}
@@ -296,7 +295,7 @@ test "WGSL AST lowerer supports function call expressions" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("helper(base, 2u, (base + 2u))"), content="true")
+  debug_inspect(emitted.contains("helper(1u, 2u, (1u + 2u))"), content="true")
 }
 
 ///|

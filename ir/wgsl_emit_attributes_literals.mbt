@@ -122,7 +122,7 @@ fn WgslIrEmitter::sampling_name(
 fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
   match literal {
     F64(value) => wgsl_ir_emit_abstract_float_literal_text("\{value}")
-    F32(value) => wgsl_ir_emit_concrete_float_literal_text("\{value}")
+    F32(value) => wgsl_ir_emit_f32_literal(value)
     F16(value) => wgsl_ir_emit_f16_literal_text("\{value}")
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
@@ -136,9 +136,147 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
       if self.options.preserve_abstract_float_literals {
         wgsl_ir_emit_abstract_float_literal_text("\{value}")
       } else {
-        wgsl_ir_emit_concrete_float_literal_text("\{value}")
+        wgsl_ir_emit_f32_literal(Float::from_double(value))
       }
   }
+}
+
+///|
+fn wgsl_ir_emit_f32_literal(value : Float) -> String {
+  wgsl_ir_emit_concrete_float_literal_text(
+    wgsl_ir_shortest_f32_literal_text(value),
+  )
+}
+
+///|
+fn wgsl_ir_shortest_f32_literal_text(value : Float) -> String {
+  let original = "\{value}"
+  if original.contains("e") || original.contains("E") {
+    return original
+  }
+  guard original.contains(".") else { return original }
+  for precision in 0..<13 {
+    match wgsl_ir_round_fixed_decimal_text(original, precision) {
+      Some(candidate) =>
+        if wgsl_ir_f32_literal_round_trips(value, candidate) {
+          return candidate
+        }
+      None => ()
+    }
+  }
+  original
+}
+
+///|
+fn wgsl_ir_f32_literal_round_trips(value : Float, text : String) -> Bool {
+  let parsed : Double = @strconv.from_str(text) catch { _ => return false }
+  Float::from_double(parsed) == value
+}
+
+///|
+fn wgsl_ir_round_fixed_decimal_text(text : String, precision : Int) -> String? {
+  let dot = wgsl_ir_find_ascii_char(text, 46)
+  guard dot >= 0 else { return None }
+  let negative = text.has_prefix("-")
+  let body_start = if negative { 1 } else { 0 }
+  let int_part = text[body_start:dot].to_owned()
+  let frac_part = text[dot + 1:text.length()].to_owned()
+  if int_part.length() + precision > 18 {
+    return None
+  }
+  let integer = match wgsl_ir_parse_unsigned_decimal_int64(int_part) {
+    Some(value) => value
+    None => return None
+  }
+  let scale = wgsl_ir_pow10_int64(precision)
+  let frac = match wgsl_ir_parse_fraction_prefix_int64(frac_part, precision) {
+    Some(value) => value
+    None => return None
+  }
+  let next_digit = if precision < frac_part.length() {
+    let code = frac_part.code_unit_at(precision).to_int()
+    if code < 48 || code > 57 {
+      return None
+    }
+    code - 48
+  } else {
+    0
+  }
+  let carry = if next_digit >= 5 { Int64::from_int(1) } else { Int64::from_int(0) }
+  let scaled = integer * scale + frac + carry
+  let abs_text = wgsl_ir_scaled_fixed_decimal_text(scaled, precision)
+  if negative && scaled != Int64::from_int(0) {
+    Some("-\{abs_text}")
+  } else {
+    Some(abs_text)
+  }
+}
+
+///|
+fn wgsl_ir_find_ascii_char(text : String, code : Int) -> Int {
+  for index in 0..<text.length() {
+    if text.code_unit_at(index).to_int() == code {
+      return index
+    }
+  }
+  -1
+}
+
+///|
+fn wgsl_ir_parse_unsigned_decimal_int64(text : String) -> Int64? {
+  if text.length() == 0 {
+    return Some(Int64::from_int(0))
+  }
+  let mut value : Int64 = 0
+  for index in 0..<text.length() {
+    let code = text.code_unit_at(index).to_int()
+    if code < 48 || code > 57 {
+      return None
+    }
+    value = value * 10 + Int64::from_int(code - 48)
+  }
+  Some(value)
+}
+
+///|
+fn wgsl_ir_parse_fraction_prefix_int64(
+  text : String,
+  precision : Int,
+) -> Int64? {
+  let mut value : Int64 = 0
+  for index in 0..<precision {
+    value = value * 10
+    if index < text.length() {
+      let code = text.code_unit_at(index).to_int()
+      if code < 48 || code > 57 {
+        return None
+      }
+      value = value + Int64::from_int(code - 48)
+    }
+  }
+  Some(value)
+}
+
+///|
+fn wgsl_ir_pow10_int64(power : Int) -> Int64 {
+  let mut value : Int64 = 1
+  for _ in 0..<power {
+    value = value * 10
+  }
+  value
+}
+
+///|
+fn wgsl_ir_scaled_fixed_decimal_text(value : Int64, precision : Int) -> String {
+  if precision == 0 {
+    return "\{value}"
+  }
+  let mut digits = "\{value}"
+  while digits.length() <= precision {
+    digits = "0\{digits}"
+  }
+  let split = digits.length() - precision
+  "\{digits[0:split]}.\{digits[split:digits.length()]}"
 }
 
 ///|

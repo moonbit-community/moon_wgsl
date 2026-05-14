@@ -630,6 +630,13 @@ fn WgslIrLowerer::lower_local_declaration(
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
     match init {
       Some(init_handle) => {
+        if self.function_expression_is_const_expression(function, init_handle) &&
+          self.function_expression_has_scalar_type(function, init_handle) {
+          ignore(scope.locals.remove(local_decl.name().name()))
+          ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
+          scope.local_constants.set(local_decl.name().name(), init_handle)
+          return
+        }
         let materialization_expression_start = function.expressions.items.length()
         let materialized = self.materialize_return_subexpressions(
           function, scope, block, init_handle,
@@ -749,6 +756,26 @@ fn WgslIrLowerer::lower_local_const_declaration(
   }
   ignore(scope.locals.remove(local_decl.name().name()))
   scope.local_constants.set(local_decl.name().name(), init)
+}
+
+///|
+fn WgslIrLowerer::function_expression_has_scalar_type(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match self.function_expression_type(function, handle) {
+    Some(ty_handle) =>
+      match self.shader_module.types.get(ty_handle) {
+        Some(type_) =>
+          match type_.inner {
+            Scalar(_) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
+  }
 }
 
 ///|
