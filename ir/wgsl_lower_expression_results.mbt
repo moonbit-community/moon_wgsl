@@ -98,6 +98,11 @@ fn WgslIrLowerer::global_expression_inner_type(
         Some(ty) => self.indexed_type_from_type_handle(ty, None)
         None => None
       }
+    Splat(size, inner) =>
+      match self.global_expression_type(inner) {
+        Some(ty) => self.vector_type_from_scalar_type_handle(size, ty)
+        None => None
+      }
     Swizzle(_, _, _) => None
     Literal(literal) => self.literal_type(literal)
     Unary(_, inner) => self.global_expression_type(inner)
@@ -351,6 +356,11 @@ fn WgslIrLowerer::function_expression_inner_type(
     AccessIndex(base, index) =>
       self.indexed_expression_type(function, base, Some(index))
     Access(base, _) => self.indexed_expression_type(function, base, None)
+    Splat(size, inner) =>
+      match self.function_expression_type(function, inner) {
+        Some(ty) => self.vector_type_from_scalar_type_handle(size, ty)
+        None => None
+      }
     Swizzle(size, base, _) => self.swizzle_expression_type(function, base, size)
     Unary(_, inner) => self.function_expression_type(function, inner)
     Binary(op, left, right) =>
@@ -589,6 +599,19 @@ fn WgslIrLowerer::vector_type_handle(
     "vec\{size.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
     TypeInner::Vector(size, scalar),
   )
+}
+
+///|
+fn WgslIrLowerer::vector_type_from_scalar_type_handle(
+  self : WgslIrLowerer,
+  size : VectorSize,
+  ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some({ inner: Scalar(scalar), .. }) =>
+      Some(self.vector_type_handle(size, scalar))
+    _ => None
+  }
 }
 
 ///|

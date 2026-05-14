@@ -276,12 +276,12 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let right_handle = self.lower_function_expression_node(
         right, function, scope,
       )
+      let binary_op = wgsl_ir_binary_operator(op)
+      let (left_handle, right_handle) = self.normalize_function_binary_operands(
+        function, binary_op, left_handle, right_handle,
+      )
       let handle = function.expressions.append(
-        Expression::Binary(
-          wgsl_ir_binary_operator(op),
-          left_handle,
-          right_handle,
-        ),
+        Expression::Binary(binary_op, left_handle, right_handle),
       )
       match self.fold_function_constant_float_expression(function, handle) {
         Some(literal) =>
@@ -328,6 +328,35 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       raise WgslIrLowerError::UnsupportedExpression(
         "expression sequence with \{items.length()} item(s) outside argument context: \{wgsl_ir_expr_node_shape(node)}",
       )
+  }
+}
+
+///|
+fn WgslIrLowerer::normalize_function_binary_operands(
+  self : WgslIrLowerer,
+  function : Function,
+  op : BinaryOperator,
+  left : Handle,
+  right : Handle,
+) -> (Handle, Handle) {
+  guard wgsl_ir_binary_operator_requires_vector_splat(op) else {
+    return (left, right)
+  }
+  guard self.function_expression_type(function, left) is Some(left_ty) else {
+    return (left, right)
+  }
+  guard self.function_expression_type(function, right) is Some(right_ty) else {
+    return (left, right)
+  }
+  match self.vector_size_from_type(left_ty) {
+    Some(size) if self.type_is_scalar(right_ty) =>
+      (left, function.expressions.append(Expression::Splat(size, right)))
+    _ =>
+      match self.vector_size_from_type(right_ty) {
+        Some(size) if self.type_is_scalar(left_ty) =>
+          (function.expressions.append(Expression::Splat(size, left)), right)
+        _ => (left, right)
+      }
   }
 }
 

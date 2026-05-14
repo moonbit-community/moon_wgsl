@@ -61,6 +61,11 @@ fn WgslIrEmitter::function_expression_inner_type(
     AccessIndex(base, index) =>
       self.indexed_expression_type(Some(function), base, Some(index))
     Access(base, _) => self.indexed_expression_type(Some(function), base, None)
+    Splat(size, inner) =>
+      match self.expression_type(Some(function), inner) {
+        Some(ty) => self.vector_type_from_scalar_type(size, ty)
+        None => None
+      }
     Swizzle(size, base, _) =>
       self.swizzle_expression_type(Some(function), base, size)
     Unary(_, inner) => self.expression_type(Some(function), inner)
@@ -477,6 +482,18 @@ fn WgslIrEmitter::find_vector_type(
     }
   }
   None
+}
+
+///|
+fn WgslIrEmitter::vector_type_from_scalar_type(
+  self : WgslIrEmitter,
+  size : VectorSize,
+  ty : Handle,
+) -> Handle? {
+  match self.shader_module.types.get(ty) {
+    Some({ inner: Scalar(scalar), .. }) => self.find_vector_type(size, scalar)
+    _ => None
+  }
 }
 
 ///|

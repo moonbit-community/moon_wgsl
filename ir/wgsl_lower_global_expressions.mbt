@@ -56,12 +56,15 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
         wgsl_ir_unary_operator(op),
         self.lower_global_expression_node(expr),
       )
-    Binary(op, left, right) =>
-      Expression::Binary(
-        wgsl_ir_binary_operator(op),
-        self.lower_global_expression_node(left),
-        self.lower_global_expression_node(right),
+    Binary(op, left, right) => {
+      let binary_op = wgsl_ir_binary_operator(op)
+      let left_handle = self.lower_global_expression_node(left)
+      let right_handle = self.lower_global_expression_node(right)
+      let (left_handle, right_handle) = self.normalize_global_binary_operands(
+        binary_op, left_handle, right_handle,
       )
+      Expression::Binary(binary_op, left_handle, right_handle)
+    }
     Group(expr) =>
       self.lower_expression_node_to_global_expression_with_expected(
         expr, expected_ty,
@@ -150,6 +153,44 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
       raise WgslIrLowerError::UnsupportedExpression(
         "global expression kind is not constant-lowerable",
       )
+  }
+}
+
+///|
+fn WgslIrLowerer::normalize_global_binary_operands(
+  self : WgslIrLowerer,
+  op : BinaryOperator,
+  left : Handle,
+  right : Handle,
+) -> (Handle, Handle) {
+  guard wgsl_ir_binary_operator_requires_vector_splat(op) else {
+    return (left, right)
+  }
+  guard self.global_expression_type(left) is Some(left_ty) else {
+    return (left, right)
+  }
+  guard self.global_expression_type(right) is Some(right_ty) else {
+    return (left, right)
+  }
+  match self.vector_size_from_type(left_ty) {
+    Some(size) if self.type_is_scalar(right_ty) =>
+      (
+        left,
+        self.shader_module.global_expressions.append(
+          Expression::Splat(size, right),
+        ),
+      )
+    _ =>
+      match self.vector_size_from_type(right_ty) {
+        Some(size) if self.type_is_scalar(left_ty) =>
+          (
+            self.shader_module.global_expressions.append(
+              Expression::Splat(size, left),
+            ),
+            right,
+          )
+        _ => (left, right)
+      }
   }
 }
 

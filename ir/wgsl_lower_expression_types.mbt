@@ -188,6 +188,14 @@ fn wgsl_ir_binary_operator_is_arithmetic(op : BinaryOperator) -> Bool {
 }
 
 ///|
+fn wgsl_ir_binary_operator_requires_vector_splat(op : BinaryOperator) -> Bool {
+  match op {
+    Add | Subtract | Divide | Modulo => true
+    _ => false
+  }
+}
+
+///|
 fn WgslIrLowerer::scalar_from_numeric_type_handle(
   self : WgslIrLowerer,
   ty_handle : Handle,

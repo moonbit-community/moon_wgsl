@@ -307,6 +307,28 @@ test "naga-oil writer policy folds typed integer global constants" {
 }
 
 ///|
+test "naga-oil writer policy folds typed float global constants" {
+  let source =
+    #|const PI: f32 = 3.1415927;
+    #|const TAU: f32 = 2.0 * PI;
+    #|
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let valid = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(valid.contains("const TAU: f32 = (2f * PI);"), content="true")
+  debug_inspect(
+    naga_oil.contains("const TAU: f32 = 6.2831855f;"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer policy expands scalar matrix constructors into columns" {
   let source =
     #|fn helper() -> mat3x3<f32> {

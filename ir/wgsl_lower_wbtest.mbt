@@ -779,6 +779,37 @@ test "WGSL AST lowerer infers scalar-vector binary local types" {
 }
 
 ///|
+test "WGSL AST lowerer splats scalar operands for vector binary expressions" {
+  let source =
+    #|fn f(v: vec3<f32>, s: f32) -> vec3<f32> {
+    #|  let a = v - s;
+    #|  let b = s + v;
+    #|  let c = v / s;
+    #|  let d = v * s;
+    #|  return a + b + c + d;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let a: vec3<f32> = (v - vec3(s));"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let b: vec3<f32> = (vec3(s) + v);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let c: vec3<f32> = (v / vec3(s));"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let d: vec3<f32> = (v * s);"), content="true")
+}
+
+///|
 test "WGSL AST lowerer infers scalar result math builtin local types" {
   let source =
     #|fn f(v1: vec3<f32>, v2: vec3<f32>) -> f32 {

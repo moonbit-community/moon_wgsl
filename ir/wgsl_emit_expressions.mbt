@@ -167,6 +167,8 @@ fn WgslIrEmitter::emit_expression(
     Override(handle) => self.override_name(handle)
     ZeroValue(ty) => "\{self.type_name(ty)}()"
     Compose(ty, components) => self.compose_expression(ty, components, function)
+    Splat(size, inner) =>
+      "vec\{size.width()}(\{self.required_function_expression(function, inner)})"
     Access(base, index) =>
       "\{self.access_base_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>

@@ -10,15 +10,28 @@ fn WgslIrEmitter::folded_constant_expression(
   self : WgslIrEmitter,
   constant : Constant,
 ) -> String? {
-  if !self.options.fold_integer_constant_expressions {
+  if !self.options.fold_numeric_constant_expressions {
     return None
   }
-  guard self.constant_type_integer_kind(constant) is Some(kind) else {
-    return None
+  match self.constant_type_integer_kind(constant) {
+    Some(kind) =>
+      match
+        self.eval_global_integer_expression_for_emit(
+          constant.init,
+          @set.Set([]),
+        ) {
+        Some(value) => return self.integer_value_literal_for_kind(value, kind)
+        None => ()
+      }
+    None => ()
   }
-  match
-    self.eval_global_integer_expression_for_emit(constant.init, @set.Set([])) {
-    Some(value) => self.integer_value_literal_for_kind(value, kind)
+  match self.constant_type_float_width(constant) {
+    Some(width) =>
+      match
+        self.eval_global_float_expression_for_emit(constant.init, @set.Set([])) {
+        Some(value) => self.float_value_literal_for_width(value, width)
+        None => None
+      }
     None => None
   }
 }
@@ -34,6 +47,25 @@ fn WgslIrEmitter::constant_type_integer_kind(
         Scalar(scalar) =>
           match scalar.kind {
             Sint | Uint | AbstractInt => Some(scalar.kind)
+            _ => None
+          }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::constant_type_float_width(
+  self : WgslIrEmitter,
+  constant : Constant,
+) -> Int? {
+  match self.shader_module.types.items.get(constant.ty.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) =>
+          match scalar.kind {
+            Float | AbstractFloat => Some(scalar.width)
             _ => None
           }
         _ => None
@@ -68,6 +100,104 @@ fn WgslIrEmitter::integer_value_literal_for_kind(
       }
     _ => None
   }
+}
+
+///|
+fn WgslIrEmitter::float_value_literal_for_width(
+  self : WgslIrEmitter,
+  value : Double,
+  width : Int,
+) -> String? {
+  ignore(self)
+  match width {
+    2 => Some(wgsl_ir_emit_f16_literal_text("\{value}"))
+    4 => Some(wgsl_ir_emit_f32_literal(Float::from_double(value)))
+    8 => Some(wgsl_ir_emit_abstract_float_literal_text("\{value}"))
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_global_float_expression_for_emit(
+  self : WgslIrEmitter,
+  handle : Handle,
+  visiting_constants : @set.Set[Int],
+) -> Double? {
+  match self.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.eval_global_float_expression_inner_for_emit(
+        expression, visiting_constants,
+      )
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_global_float_expression_inner_for_emit(
+  self : WgslIrEmitter,
+  expression : Expression,
+  visiting_constants : @set.Set[Int],
+) -> Double? {
+  match expression {
+    Literal(Literal::F32(value)) => wgsl_ir_emit_f32_to_double(value)
+    Literal(Literal::F16(value))
+    | Literal(Literal::F64(value))
+    | Literal(Literal::AbstractFloat(value)) => Some(value)
+    Constant(handle) =>
+      self.eval_constant_float_expression_for_emit(handle, visiting_constants)
+    Unary(UnaryOperator::Negate, inner) => {
+      guard self.eval_global_float_expression_for_emit(
+          inner, visiting_constants,
+        )
+        is Some(value) else {
+        return None
+      }
+      Some(-value)
+    }
+    Binary(op, left, right) => {
+      guard self.eval_global_float_expression_for_emit(left, visiting_constants)
+        is Some(left_value) else {
+        return None
+      }
+      guard self.eval_global_float_expression_for_emit(
+          right, visiting_constants,
+        )
+        is Some(right_value) else {
+        return None
+      }
+      wgsl_ir_emit_eval_float_binary(op, left_value, right_value)
+    }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_constant_float_expression_for_emit(
+  self : WgslIrEmitter,
+  handle : Handle,
+  visiting_constants : @set.Set[Int],
+) -> Double? {
+  let index = handle.index()
+  if visiting_constants.contains(index) {
+    return None
+  }
+  match self.shader_module.constants.items.get(index) {
+    Some(constant) => {
+      visiting_constants.add(index)
+      let result = self.eval_global_float_expression_for_emit(
+        constant.init,
+        visiting_constants,
+      )
+      ignore(visiting_constants.remove(index))
+      result
+    }
+    None => None
+  }
+}
+
+///|
+fn wgsl_ir_emit_f32_to_double(value : Float) -> Double? {
+  Some(value.to_double())
 }
 
 ///|
@@ -296,6 +426,21 @@ fn wgsl_ir_emit_eval_integer_binary(
     InclusiveOr => Some(Signed(left | right))
     ShiftLeft => Some(Signed(left << right))
     ShiftRight => Some(Signed(left >> right))
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_emit_eval_float_binary(
+  op : BinaryOperator,
+  left : Double,
+  right : Double,
+) -> Double? {
+  match op {
+    Add => Some(left + right)
+    Subtract => Some(left - right)
+    Multiply => Some(left * right)
+    Divide => Some(left / right)
     _ => None
   }
 }
