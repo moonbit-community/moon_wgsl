@@ -220,10 +220,7 @@ fn WgslIrEmitIntegerValue::to_signed_int(self : WgslIrEmitIntegerValue) -> Int? 
     Abstract(value) =>
       if value >= Int64::from_int(-2147483648) &&
         value <= Int64::from_int(2147483647) {
-        let parsed : Int = @strconv.from_str("\{value}") catch {
-          _ => return None
-        }
-        Some(parsed)
+        Some(value.to_int())
       } else {
         None
       }
@@ -245,8 +242,7 @@ fn wgsl_ir_emit_non_negative_int_to_uint(value : Int) -> UInt? {
   if value < 0 {
     return None
   }
-  let parsed : UInt = @strconv.from_str("\{value}") catch { _ => return None }
-  Some(parsed)
+  Some(value.reinterpret_as_uint())
 }
 
 ///|
@@ -254,12 +250,10 @@ fn wgsl_ir_emit_non_negative_int64_to_uint(value : Int64) -> UInt? {
   if value < Int64::from_int(0) {
     return None
   }
-  let max : Int64 = @strconv.from_str("4294967295") catch { _ => return None }
-  if value > max {
+  if value > 4294967295L {
     return None
   }
-  let parsed : UInt = @strconv.from_str("\{value}") catch { _ => return None }
-  Some(parsed)
+  Some(value.reinterpret_as_uint64().to_uint())
 }
 
 ///|

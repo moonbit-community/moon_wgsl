@@ -241,23 +241,12 @@ fn WgslIrIntegerValue::to_unsigned(
           "unsigned integer expression contains a negative operand",
         )
       }
-      let max : Int64 = @strconv.from_str("4294967295") catch {
-        _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "integer expression is outside unsigned int range",
-          )
-      }
-      if value > max {
+      if value > 4294967295L {
         raise WgslIrLowerError::UnsupportedExpression(
           "integer expression is outside unsigned int range",
         )
       }
-      @strconv.from_str("\{value}") catch {
-        _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "integer expression is outside unsigned int range",
-          )
-      }
+      value.reinterpret_as_uint64().to_uint()
     }
   }
 }
@@ -269,12 +258,7 @@ fn wgsl_ir_non_negative_int_to_uint(value : Int) -> UInt raise WgslIrLowerError 
       "unsigned integer expression contains a negative operand",
     )
   }
-  @strconv.from_str("\{value}") catch {
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "integer expression is outside unsigned int range",
-      )
-  }
+  value.reinterpret_as_uint()
 }
 
 ///|

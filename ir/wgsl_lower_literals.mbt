@@ -37,15 +37,8 @@ fn wgsl_ir_contextualize_literal(
 ) -> Literal raise WgslIrLowerError {
   match (literal, scalar.kind, scalar.width) {
     (AbstractInt(value), Sint, _) => Literal::I32(wgsl_ir_int64_to_i32(value))
-    (AbstractInt(value), Uint, _) => {
-      let parsed : UInt = @strconv.from_str("\{value}") catch {
-        _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "unsigned literal \{value}",
-          )
-      }
-      Literal::U32(parsed)
-    }
+    (AbstractInt(value), Uint, _) =>
+      Literal::U32(wgsl_ir_int64_to_u32(value, "unsigned literal \{value}"))
     (AbstractFloat(value), Float, 2) => Literal::F16(value)
     (AbstractFloat(value), Float, 8) => Literal::F64(value)
     _ => literal
@@ -113,15 +106,21 @@ fn wgsl_ir_u32_literal_from_numeric_literal(
   literal : @ast.WgslNumericLiteral,
 ) -> UInt raise WgslIrLowerError {
   let value = wgsl_ir_int64_literal_from_text(literal.raw_text)
-  let max : Int64 = @strconv.from_str("4294967295") catch {
-    _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+  wgsl_ir_int64_to_u32(value, literal.raw_text)
+}
+
+///|
+fn wgsl_ir_int64_to_u32(
+  value : Int64,
+  source : String,
+) -> UInt raise WgslIrLowerError {
+  if value < Int64::from_int(0) {
+    raise WgslIrLowerError::UnsupportedExpression(source)
   }
-  if value > max {
-    raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+  if value > 4294967295L {
+    raise WgslIrLowerError::UnsupportedExpression(source)
   }
-  @strconv.from_str("\{value}") catch {
-    _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
-  }
+  value.reinterpret_as_uint64().to_uint()
 }
 
 ///|
