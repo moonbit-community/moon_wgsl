@@ -198,13 +198,21 @@ fn WgslIrEmitter::emit_statement(
     }
     Call(function_handle, arguments, result) => {
       match result {
-        Some(_) =>
-          raise WgslIrEmitError::Unsupported(
-            "call statement with result handle",
+        Some(result_handle) => {
+          let ty = match self.expression_type(Some(function), result_handle) {
+            Some(value) => value
+            None =>
+              raise WgslIrEmitError::MissingHandle(
+                "call result type \{result_handle.index()}",
+              )
+          }
+          out.write_string(
+            "\{pad}let \{self.function_expression_baked_name(result_handle)}: \{self.type_name(ty)} = ",
           )
-        None => ()
+        }
+        None => out.write_string(pad)
       }
-      out.write_string("\{pad}\{self.function_name(function_handle)}(")
+      out.write_string("\{self.function_name(function_handle)}(")
       self.emit_function_call_arguments(out, function, arguments)
       out.write_string(");\n")
     }

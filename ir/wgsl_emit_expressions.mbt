@@ -35,6 +35,10 @@ fn WgslIrEmitter::function_expression(
         "function expression \{handle.index()}",
       )
   }
+  match expression {
+    CallResult(_) => return self.function_expression_baked_name(handle)
+    _ => ()
+  }
   self.emit_expression(expression, Some(function))
 }
 
@@ -247,7 +251,7 @@ fn WgslIrEmitter::emit_expression(
       "\{self.math_function_name(math_function)}(\{self.math_argument_list(a, b, c, d, function)})"
     Relational(relational_function, expr) =>
       "\{self.relational_function_name(relational_function)}(\{self.required_function_expression(function, expr)})"
-    CallResult(handle) => self.function_name(handle)
+    CallResult(_) => raise WgslIrEmitError::Unsupported("raw call result")
     _ => raise WgslIrEmitError::Unsupported("expression kind")
   }
 }

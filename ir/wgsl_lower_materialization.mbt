@@ -207,6 +207,14 @@ fn WgslIrLowerer::materialize_function_expression(
   block : Block,
   value : Handle,
 ) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(value.index()) {
+    Some(FunctionCall(function_handle, arguments)) => {
+      function.expressions.set(value, Expression::CallResult(function_handle))
+      block.push(Statement::Call(function_handle, arguments, Some(value)))
+      return value
+    }
+    _ => ()
+  }
   let ty = match self.function_expression_type(function, value) {
     Some(ty) => ty
     None =>
@@ -958,6 +966,12 @@ fn WgslIrLowerer::materialize_nested_call_argument(
     function, scope, block, value,
   )
   if self.function_expression_should_materialize_as_call_argument(
+      function, normalized,
+    ) ||
+    self.function_expression_should_materialize_as_nested_value(
+      function, normalized,
+    ) ||
+    self.function_expression_should_materialize_as_store_value(
       function, normalized,
     ) {
     self.materialize_function_expression(function, scope, block, normalized)

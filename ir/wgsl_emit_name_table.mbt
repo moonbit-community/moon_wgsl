@@ -191,6 +191,16 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
         ),
       )
     }
+    for expr_index in 0..<ep.function.expressions.items.length() {
+      match ep.function.expressions.items.get(expr_index) {
+        Some(CallResult(_)) =>
+          table.names.set(
+            wgsl_ir_emit_name_key2("ep_expr", ep_index, expr_index),
+            temp_namer.call("_e\{expr_index}"),
+          )
+        _ => ()
+      }
+    }
   }
   for fn_index in 0..<module_.functions.items.length() {
     let function = module_.functions.items[fn_index]
@@ -214,6 +224,16 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
           "local",
         ),
       )
+    }
+    for expr_index in 0..<function.expressions.items.length() {
+      match function.expressions.items.get(expr_index) {
+        Some(CallResult(_)) =>
+          table.names.set(
+            wgsl_ir_emit_name_key2("fn_expr", fn_index, expr_index),
+            temp_namer.call("_e\{expr_index}"),
+          )
+        _ => ()
+      }
     }
   }
   for index in 0..<module_.global_variables.items.length() {

@@ -379,7 +379,7 @@ fn WgslIrLowerer::function_expression_inner_type(
         None => self.function_expression_type(function, reject)
       }
     Bitcast(ty, _) => Some(ty)
-    FunctionCall(handle, _) =>
+    FunctionCall(handle, _) | CallResult(handle) =>
       match self.shader_module.functions.items.get(handle.index()) {
         Some(callee) =>
           match callee.result {

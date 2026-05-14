@@ -661,6 +661,26 @@ fn WgslIrLowerer::lower_local_declaration(
           }
           init = Some(materialized)
         }
+        match init {
+          Some(normalized) =>
+            if self.function_expression_should_materialize_as_store_value(
+                function, normalized,
+              ) {
+              let materialized_value = self.materialize_function_expression(
+                function, scope, block, normalized,
+              )
+              ignore(scope.locals.remove(local_decl.name().name()))
+              ignore(
+                scope.local_pointer_expressions.remove(local_decl.name().name()),
+              )
+              scope.local_constants.set(
+                local_decl.name().name(),
+                materialized_value,
+              )
+              return
+            }
+          _ => ()
+        }
       }
       None => ()
     }

@@ -160,7 +160,86 @@ fn WgslIrLowerer::function_call_argument_shape(
       _ => ()
     }
   }
+  let (body_has_call, body_has_non_empty_call) = self.block_call_argument_shape(
+    function.body,
+    target,
+  )
+  has_call = has_call || body_has_call
+  has_non_empty_call = has_non_empty_call || body_has_non_empty_call
   (has_call, has_non_empty_call)
+}
+
+///|
+fn WgslIrLowerer::block_call_argument_shape(
+  self : WgslIrLowerer,
+  block : Block,
+  target : Handle,
+) -> (Bool, Bool) {
+  let mut has_call = false
+  let mut has_non_empty_call = false
+  for statement in block.statements {
+    let (statement_has_call, statement_has_non_empty_call) = self.statement_call_argument_shape(
+      statement, target,
+    )
+    has_call = has_call || statement_has_call
+    has_non_empty_call = has_non_empty_call || statement_has_non_empty_call
+  }
+  (has_call, has_non_empty_call)
+}
+
+///|
+fn WgslIrLowerer::statement_call_argument_shape(
+  self : WgslIrLowerer,
+  statement : Statement,
+  target : Handle,
+) -> (Bool, Bool) {
+  match statement {
+    Call(handle, arguments, _) =>
+      if handle == target {
+        (true, !arguments.is_empty())
+      } else {
+        (false, false)
+      }
+    Block(block) => self.block_call_argument_shape(block, target)
+    If(_, accept, reject) => {
+      let (accept_has_call, accept_has_non_empty_call) = self.block_call_argument_shape(
+        accept, target,
+      )
+      let (reject_has_call, reject_has_non_empty_call) = self.block_call_argument_shape(
+        reject, target,
+      )
+      (
+        accept_has_call || reject_has_call,
+        accept_has_non_empty_call || reject_has_non_empty_call,
+      )
+    }
+    Switch(_, cases) => {
+      let mut has_call = false
+      let mut has_non_empty_call = false
+      for case in cases {
+        let (case_has_call, case_has_non_empty_call) = self.block_call_argument_shape(
+          case.body,
+          target,
+        )
+        has_call = has_call || case_has_call
+        has_non_empty_call = has_non_empty_call || case_has_non_empty_call
+      }
+      (has_call, has_non_empty_call)
+    }
+    Loop(body, continuing, _) => {
+      let (body_has_call, body_has_non_empty_call) = self.block_call_argument_shape(
+        body, target,
+      )
+      let (continuing_has_call, continuing_has_non_empty_call) = self.block_call_argument_shape(
+        continuing, target,
+      )
+      (
+        body_has_call || continuing_has_call,
+        body_has_non_empty_call || continuing_has_non_empty_call,
+      )
+    }
+    _ => (false, false)
+  }
 }
 
 ///|

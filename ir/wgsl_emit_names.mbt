@@ -113,3 +113,24 @@ fn WgslIrEmitter::local_variable_name(
       )
   }
 }
+
+///|
+fn WgslIrEmitter::function_expression_baked_name(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> String raise WgslIrEmitError {
+  match self.current_function_origin {
+    Some(UserFunction(function_index)) =>
+      self.required_emit_name(
+        wgsl_ir_emit_name_key2("fn_expr", function_index, handle.index()),
+      )
+    Some(EntryPointFunction(entry_point_index)) =>
+      self.required_emit_name(
+        wgsl_ir_emit_name_key2("ep_expr", entry_point_index, handle.index()),
+      )
+    None =>
+      raise WgslIrEmitError::Unsupported(
+        "function expression without emitter function origin",
+      )
+  }
+}

@@ -701,8 +701,7 @@ fn WgslIrLowerer::lower_identifier_expression(
     None => ()
   }
   match scope.arguments.get(name) {
-    Some(index) =>
-      return function.expressions.append(Expression::FunctionArgument(index))
+    Some(index) => return scope.argument_expression(name, index, function)
     None => ()
   }
   match self.ensure_constant_declaration_lowered(name) {

@@ -1,6 +1,7 @@
 ///|
 priv struct WgslIrFunctionScope {
   arguments : Map[String, Int]
+  argument_expressions : Map[String, Handle]
   locals : Map[String, Handle]
   local_constants : Map[String, Handle]
   local_pointer_expressions : Map[String, Handle]
@@ -20,6 +21,7 @@ priv struct WgslIrExprTokenParser {
 fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
   WgslIrFunctionScope::{
     arguments: Map([]),
+    argument_expressions: Map([]),
     locals: Map([]),
     local_constants: Map([]),
     local_pointer_expressions: Map([]),
@@ -66,6 +68,9 @@ fn WgslIrFunctionScope::child(
 ) -> WgslIrFunctionScope {
   WgslIrFunctionScope::{
     arguments: wgsl_ir_copy_string_int_map(self.arguments),
+    argument_expressions: wgsl_ir_copy_string_handle_map(
+      self.argument_expressions,
+    ),
     locals: wgsl_ir_copy_string_handle_map(self.locals),
     local_constants: wgsl_ir_copy_string_handle_map(self.local_constants),
     local_pointer_expressions: wgsl_ir_copy_string_handle_map(
@@ -90,6 +95,25 @@ fn WgslIrFunctionScope::sync_child_counters(
 ) -> Unit {
   ignore(self)
   ignore(child)
+}
+
+///|
+fn WgslIrFunctionScope::argument_expression(
+  self : WgslIrFunctionScope,
+  name : String,
+  index : Int,
+  function : Function,
+) -> Handle {
+  match self.argument_expressions.get(name) {
+    Some(handle) => handle
+    None => {
+      let handle = function.expressions.append(
+        Expression::FunctionArgument(index),
+      )
+      self.argument_expressions.set(name, handle)
+      handle
+    }
+  }
 }
 
 ///|

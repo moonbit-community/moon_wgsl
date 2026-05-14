@@ -85,7 +85,7 @@ fn WgslIrEmitter::function_expression_inner_type(
         None => self.expression_type(Some(function), reject)
       }
     Bitcast(ty, _) => Some(ty)
-    FunctionCall(handle, _) =>
+    FunctionCall(handle, _) | CallResult(handle) =>
       match self.shader_module.functions.items.get(handle.index()) {
         Some(callee) =>
           match callee.result {

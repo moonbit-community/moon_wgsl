@@ -102,23 +102,38 @@ fn WgslIrLowerer::infer_expression_type(
                     is Some(_) {
                     raise wgsl_ir_barrier_value_error(ident.name())
                   } else {
-                    match wgsl_ir_relational_function_from_name(ident.name()) {
-                      Some(relational_function) =>
-                        self.infer_relational_expression_type(
-                          relational_function, arguments, name,
-                        )
+                    match self.function_names.get(ident.name()) {
+                      Some(handle) =>
+                        match
+                          self.shader_module.functions.items.get(handle.index()) {
+                          Some(function) =>
+                            match function.result {
+                              Some(result) => result.ty
+                              None => raise WgslIrLowerError::MissingType(name)
+                            }
+                          None => raise WgslIrLowerError::MissingType(name)
+                        }
                       None =>
-                        match wgsl_ir_math_function_from_name(ident.name()) {
-                          Some(math_function) =>
-                            self.infer_math_expression_type(
-                              math_function, arguments, name,
+                        match
+                          wgsl_ir_relational_function_from_name(ident.name()) {
+                          Some(relational_function) =>
+                            self.infer_relational_expression_type(
+                              relational_function, arguments, name,
                             )
                           None =>
-                            self.lower_untemplated_constructor_type_from_ast(
-                              ident.name(),
-                              arguments,
-                              name,
-                            )
+                            match
+                              wgsl_ir_math_function_from_name(ident.name()) {
+                              Some(math_function) =>
+                                self.infer_math_expression_type(
+                                  math_function, arguments, name,
+                                )
+                              None =>
+                                self.lower_untemplated_constructor_type_from_ast(
+                                  ident.name(),
+                                  arguments,
+                                  name,
+                                )
+                            }
                         }
                     }
                   }

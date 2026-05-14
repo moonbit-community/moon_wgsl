@@ -732,6 +732,31 @@ test "WGSL IR lowerer materializes function calls before assignment stores" {
 }
 
 ///|
+test "WGSL IR lowerer materializes user function call let values" {
+  let source =
+    #|fn value(x: f32) -> f32 {
+    #|  return x;
+    #|}
+    #|
+    #|fn f(a: f32, b: f32) -> f32 {
+    #|  let direct = value(a);
+    #|  let nested = select(0f, 1f, value(b) > direct);
+    #|  return direct + nested;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let direct"), content="false")
+  debug_inspect(emitted.contains("value(a);"), content="true")
+  debug_inspect(emitted.contains("value(b);"), content="true")
+  debug_inspect(emitted.contains("let _e"), content="true")
+  debug_inspect(emitted.contains("value(b) >"), content="false")
+}
+
+///|
 test "WGSL AST lowerer preserves address space through local pointer lvalues" {
   let source =
     #|struct Cascade {

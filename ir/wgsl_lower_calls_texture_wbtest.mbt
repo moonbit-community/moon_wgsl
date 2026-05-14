@@ -488,7 +488,7 @@ test "WGSL AST lowerer supports basic texture calls" {
     content="false",
   )
   debug_inspect(
-    emitted.contains("shadow_map_size = vec2<f32>(arr_dims);"),
+    emitted.contains("shadow_map_size = vec2<f32>(_e"),
     content="true",
   )
   debug_inspect(emitted.contains("textureStore(out_tex"), content="true")

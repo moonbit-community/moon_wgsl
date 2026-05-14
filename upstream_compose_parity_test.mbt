@@ -448,7 +448,7 @@ test "naga_oil upstream: atomic builtins survive module composition" {
     source.contains("let _e26: u32 = y;\n    let _e28: u32 = atomicExchange"),
     content="true",
   )
-  debug_inspect(source.contains("let _e36: u32 = y;"), content="true")
+  debug_inspect(source.contains("let _e35: u32 = y;"), content="true")
   debug_inspect(source.contains("return f32(_e39);"), content="true")
   debug_inspect(source.contains("test_module::entry_point"), content="false")
 }
