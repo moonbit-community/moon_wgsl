@@ -881,7 +881,7 @@ test "WGSL IR lowerer roundtrips cooperative matrix builtins" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("coopMultiplyAdd(a_tile, b_tile, c_tile)"),
+    emitted.contains("coopMultiplyAdd(a_tile, b_tile, _e"),
     content="true",
   )
   debug_inspect(

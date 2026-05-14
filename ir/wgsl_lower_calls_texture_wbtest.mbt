@@ -317,7 +317,7 @@ test "WGSL AST lowerer supports builtin math call expressions" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("value = clamp(value, 1u, 9u);"),
+    emitted.contains("value = clamp(_e") && emitted.contains(", 1u, 9u);"),
     content="true",
   )
 }
@@ -471,15 +471,24 @@ test "WGSL AST lowerer supports basic texture calls" {
   }
   debug_inspect(
     emitted.contains("textureSampleLevel(tex, samp, uv, 0f)"),
+    content="false",
+  )
+  debug_inspect(
+    emitted.contains("textureSampleLevel(tex, samp, _e"),
     content="true",
   )
-  debug_inspect(emitted.contains("textureDimensions(tex).x"), content="true")
+  debug_inspect(emitted.contains("textureDimensions(tex).x"), content="false")
+  debug_inspect(emitted.contains("dims = _e"), content="true")
   debug_inspect(
     emitted.contains(": vec2<u32> = textureDimensions(arr_tex);"),
     content="true",
   )
   debug_inspect(
     emitted.contains("shadow_map_size: vec2<f32> = vec2<f32>(arr_dims);"),
+    content="false",
+  )
+  debug_inspect(
+    emitted.contains("shadow_map_size = vec2<f32>(arr_dims);"),
     content="true",
   )
   debug_inspect(emitted.contains("textureStore(out_tex"), content="true")

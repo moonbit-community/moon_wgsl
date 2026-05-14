@@ -117,9 +117,11 @@ test "naga_oil parity: Bevy PBR fragment resolves aliased clustered lights" {
     content="false",
   )
   debug_inspect(source.contains("vec3<f32 >="), content="false")
+  debug_inspect(source.contains("var output: vec3<f32>;"), content="true")
+  debug_inspect(source.contains("output = world_normal"), content="true")
   debug_inspect(
     source.contains("var output: vec3<f32> = world_normal"),
-    content="true",
+    content="false",
   )
 }
 

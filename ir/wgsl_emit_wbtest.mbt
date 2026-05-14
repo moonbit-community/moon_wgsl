@@ -57,13 +57,12 @@ test "IR pipeline owns output identifier sanitization" {
   let emitted = roundtrip_wgsl_source_via_ir(source) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("var class_: f32 = value;"), content="true")
+  debug_inspect(emitted.contains("var class_: f32;"), content="true")
+  debug_inspect(emitted.contains("class_ = value;"), content="true")
+  debug_inspect(emitted.contains("var gen__naga_tmp: f32;"), content="true")
+  debug_inspect(emitted.contains("gen__naga_tmp = class_;"), content="true")
   debug_inspect(
-    emitted.contains("var gen__naga_tmp: f32 = class_;"),
-    content="true",
-  )
-  debug_inspect(
-    emitted.contains("class_ = (class_ + gen__naga_tmp);"),
+    emitted.contains("class_ = (_e") && emitted.contains(" + _e"),
     content="true",
   )
   debug_inspect(emitted.contains("return class;"), content="false")

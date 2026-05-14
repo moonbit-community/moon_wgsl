@@ -1015,13 +1015,15 @@ fn WgslIrLowerer::materialize_store_value_if_needed(
   block : Block,
   value : Handle,
 ) -> Handle raise WgslIrLowerError {
-  if self.function_expression_should_materialize_as_store_value(function, value) {
-    let normalized = self.materialize_return_subexpressions(
-      function, scope, block, value,
-    )
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_store_value(
+      function, normalized,
+    ) {
     self.materialize_function_expression(function, scope, block, normalized)
   } else {
-    value
+    normalized
   }
 }
 
@@ -1134,17 +1136,30 @@ fn WgslIrLowerer::function_expression_is_var_pointer_load(
   function : Function,
   value : Handle,
 ) -> Bool {
-  ignore(self)
   match function.expressions.items.get(value.index()) {
     Some(Load(pointer)) =>
-      match function.expressions.items.get(pointer.index()) {
-        Some(LocalVariable(handle)) =>
-          match function.local_variables.items.get(handle.index()) {
-            Some(local_variable) => local_variable.kind == Var
-            None => false
-          }
-        _ => false
+      self.function_pointer_expression_is_var_pointer(function, pointer)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_pointer_expression_is_var_pointer(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match function.expressions.items.get(value.index()) {
+    Some(LocalVariable(handle)) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_variable) => local_variable.kind == Var
+        None => false
       }
+    Some(Access(base, index)) =>
+      self.function_pointer_expression_is_var_pointer(function, base) ||
+      self.function_expression_reads_var_pointer_load(function, index)
+    Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
+      self.function_pointer_expression_is_var_pointer(function, base)
     _ => false
   }
 }
@@ -1176,14 +1191,7 @@ fn WgslIrLowerer::function_expression_reads_var_pointer_load(
 ) -> Bool {
   match function.expressions.items.get(value.index()) {
     Some(Load(pointer)) =>
-      match function.expressions.items.get(pointer.index()) {
-        Some(LocalVariable(handle)) =>
-          match function.local_variables.items.get(handle.index()) {
-            Some(local_variable) => local_variable.kind == Var
-            None => false
-          }
-        _ => false
-      }
+      self.function_pointer_expression_is_var_pointer(function, pointer)
     Some(Access(base, index)) =>
       self.function_expression_reads_var_pointer_load(function, base) ||
       self.function_expression_reads_var_pointer_load(function, index)

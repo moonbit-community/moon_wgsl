@@ -699,13 +699,26 @@ fn WgslIrLowerer::lower_local_declaration(
   } else {
     local_decl.name().name()
   }
+  let var_init_in_declaration = if local_decl.kind() ==
+    @ast.WgslLocalDeclarationKind::Var {
+    match init {
+      Some(init_handle) =>
+        self.function_expression_is_const_expression(function, init_handle)
+      None => false
+    }
+  } else {
+    false
+  }
   let handle = function.local_variables.append(LocalVariable::{
     name: Some(lowered_name),
     kind: wgsl_ir_local_variable_kind(local_decl.kind()),
     ty,
-    init: if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
-      self.function_expression_is_side_effecting(function, init) {
-      None
+    init: if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
+      if var_init_in_declaration {
+        init
+      } else {
+        None
+      }
     } else {
       init
     },
@@ -717,11 +730,8 @@ fn WgslIrLowerer::lower_local_declaration(
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
     match init {
       Some(init_handle) =>
-        if self.function_expression_is_side_effecting(
-            function,
-            Some(init_handle),
-          ) {
-          let materialized = self.materialize_side_effecting_expression(
+        if !var_init_in_declaration {
+          let materialized = self.materialize_store_value_if_needed(
             function, scope, block, init_handle,
           )
           block.push(

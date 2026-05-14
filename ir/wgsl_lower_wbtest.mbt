@@ -45,11 +45,11 @@ test "WGSL AST lowers declarations, bindings, and entry point metadata into IR" 
   )
   debug_inspect(
     module_.entry_points[0].function.local_variables.items.length(),
-    content="1",
+    content="2",
   )
   debug_inspect(
     module_.entry_points[0].function.body.statements.length(),
-    content="3",
+    content="4",
   )
 }
 
@@ -591,6 +591,33 @@ test "WGSL AST lowerer supports pointer dereference member lvalues" {
 }
 
 ///|
+test "WGSL AST lowerer materializes mutable member reads before stores" {
+  let source =
+    #|struct S {
+    #|  x: f32,
+    #|  y: f32,
+    #|}
+    #|
+    #|fn f(v: f32) -> f32 {
+    #|  var r: S;
+    #|  r.x = r.x - max(v, 1.0);
+    #|  return r.x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(": f32 = r.x;") &&
+    emitted.contains("r.x = (_e") &&
+    emitted.contains(" - max(v, 1f));"),
+    content="true",
+  )
+}
+
+///|
 test "WGSL AST lowerer respects nested lexical shadowing" {
   let source =
     #|@group(0) @binding(0) var<storage, read_write> buffer: array<u32, 4>;
@@ -797,7 +824,27 @@ test "WGSL AST lowerer infers matrix index local types" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("var T: vec3<f32> = TBN[0];"), content="true")
+  debug_inspect(emitted.contains("var T: vec3<f32>;"), content="true")
+  debug_inspect(emitted.contains("T = TBN[0];"), content="true")
+  debug_inspect(emitted.contains("var T: vec3<f32> = TBN[0];"), content="false")
+}
+
+///|
+test "WGSL AST lowerer splits runtime var initializers like Naga writer" {
+  let source =
+    #|fn f(radius: vec4<f32>) -> vec4<f32> {
+    #|  var r = radius;
+    #|  return r;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var r: vec4<f32>;"), content="true")
+  debug_inspect(emitted.contains("r = radius;"), content="true")
+  debug_inspect(emitted.contains("var r: vec4<f32> = radius;"), content="false")
 }
 
 ///|
