@@ -464,8 +464,8 @@ test "WGSL AST lowerer indexes addressable bindings without preloading base arra
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e2_: u32 = values[0];"), content="true")
-  debug_inspect(emitted.contains("return f32(_e2_);"), content="true")
+  debug_inspect(emitted.contains("let _e2: u32 = values[0];"), content="true")
+  debug_inspect(emitted.contains("return f32(_e2);"), content="true")
 }
 
 ///|
@@ -482,8 +482,8 @@ test "WGSL AST lowerer materializes direct global binding returns" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e1_: f32 = value;"), content="true")
-  debug_inspect(emitted.contains("return _e1_;"), content="true")
+  debug_inspect(emitted.contains("let _e1: f32 = value;"), content="true")
+  debug_inspect(emitted.contains("return _e1;"), content="true")
 }
 
 ///|

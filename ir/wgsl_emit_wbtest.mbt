@@ -70,6 +70,30 @@ test "IR pipeline owns output identifier sanitization" {
 }
 
 ///|
+test "IR emitter resets Naga expression temporary names per function" {
+  let source =
+    #|fn f(x: u32) -> u32 {
+    #|  var a = x;
+    #|  a = a + 1u;
+    #|  return a;
+    #|}
+    #|
+    #|fn g(x: u32) -> u32 {
+    #|  var a = x;
+    #|  a = a + 2u;
+    #|  return a;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("fn g(x_1: u32)"), content="true")
+  debug_inspect(emitted.contains("let _e2: u32 = a;"), content="true")
+  debug_inspect(emitted.contains("let _e2: u32 = a_1;"), content="true")
+  debug_inspect(emitted.contains("_e2_1"), content="false")
+  debug_inspect(emitted.contains("_e2_"), content="false")
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

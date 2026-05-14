@@ -44,7 +44,10 @@ fn WgslIrNagaNamer::call(self : WgslIrNagaNamer, raw : String) -> String {
     }
     None => {
       self.unique.set(base, 0)
-      if wgsl_ir_identifier_ends_with_digit(base) ||
+      if (
+          !wgsl_ir_identifier_is_naga_expression_temporary(base) &&
+          wgsl_ir_identifier_ends_with_digit(base)
+        ) ||
         wgsl_ir_identifier_is_reserved(base) {
         "\{base}_"
       } else {
@@ -90,6 +93,44 @@ fn sanitize_wgsl_ir_naga_identifier_base(raw : String) -> String {
 ///|
 fn wgsl_ir_ascii_is_digit(code : Int) -> Bool {
   code >= 48 && code <= 57
+}
+
+///|
+fn wgsl_ir_identifier_is_naga_expression_temporary(name : String) -> Bool {
+  guard name.length() > 2 && name[0:2] == "_e" else { return false }
+  for i in 2..<name.length() {
+    if !wgsl_ir_ascii_is_digit(name.code_unit_at(i).to_int()) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn WgslIrNagaNamer::local_call(
+  self : WgslIrNagaNamer,
+  temp_namer : WgslIrNagaNamer,
+  raw : String,
+) -> String {
+  let base = sanitize_wgsl_ir_naga_identifier_base(raw)
+  if wgsl_ir_identifier_is_naga_expression_temporary(base) {
+    temp_namer.call(base)
+  } else {
+    self.call(raw)
+  }
+}
+
+///|
+fn WgslIrNagaNamer::local_call_or(
+  self : WgslIrNagaNamer,
+  temp_namer : WgslIrNagaNamer,
+  name : String?,
+  fallback : String,
+) -> String {
+  match name {
+    Some(value) => self.local_call(temp_namer, value)
+    None => self.local_call(temp_namer, fallback)
+  }
 }
 
 ///|
@@ -139,10 +180,12 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
         namer.call_or(ep.function.arguments[arg_index].name, "param"),
       )
     }
+    let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
     for local_index in 0..<ep.function.local_variables.items.length() {
       table.names.set(
         wgsl_ir_emit_name_key2("ep_local", ep_index, local_index),
-        namer.call_or(
+        namer.local_call_or(
+          temp_namer,
           ep.function.local_variables.items[local_index].name,
           "local",
         ),
@@ -161,10 +204,15 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
         namer.call_or(function.arguments[arg_index].name, "param"),
       )
     }
+    let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
     for local_index in 0..<function.local_variables.items.length() {
       table.names.set(
         wgsl_ir_emit_name_key2("fn_local", fn_index, local_index),
-        namer.call_or(function.local_variables.items[local_index].name, "local"),
+        namer.local_call_or(
+          temp_namer,
+          function.local_variables.items[local_index].name,
+          "local",
+        ),
       )
     }
   }
