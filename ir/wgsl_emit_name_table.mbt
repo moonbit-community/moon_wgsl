@@ -278,8 +278,8 @@ fn wgsl_ir_emit_call_result_expression_index(
     if wgsl_ir_function_expression_is_synthetic_local_reference(
         function, expression_handle,
       ) ||
-      wgsl_ir_function_expression_is_function_argument_reference(
-        function, expression_handle,
+      wgsl_ir_function_expression_is_unmaterialized_function_argument_reference(
+        function, expression_handle, handle,
       ) ||
       wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
         function, expression_handle,
@@ -288,17 +288,6 @@ fn wgsl_ir_emit_call_result_expression_index(
     }
   }
   handle.index() - skipped
-}
-
-///|
-fn wgsl_ir_function_expression_is_function_argument_reference(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  match function.expressions.items.get(handle.index()) {
-    Some(FunctionArgument(_)) => true
-    _ => false
-  }
 }
 
 ///|

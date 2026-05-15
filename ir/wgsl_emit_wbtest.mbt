@@ -705,3 +705,61 @@ test "naga-oil writer policy expands scalar matrix constructors into columns" {
     content="true",
   )
 }
+
+///|
+test "IR emitter matches Naga temp slots around nested call arguments" {
+  let source =
+    #|struct View { clip_from_world: mat4x4<f32>, }
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|fn affine3_to_square(affine: mat3x4<f32>) -> mat4x4<f32> {
+    #|  return transpose(mat4x4<f32>(affine[0], affine[1], affine[2], vec4<f32>(0.0, 0.0, 0.0, 1.0)));
+    #|}
+    #|struct VertexInput {
+    #|  @builtin(vertex_index) index: u32,
+    #|  @location(0) i_model_transpose_col0: vec4<f32>,
+    #|  @location(1) i_model_transpose_col1: vec4<f32>,
+    #|  @location(2) i_model_transpose_col2: vec4<f32>,
+    #|  @location(3) i_color: vec4<f32>,
+    #|  @location(4) i_uv_offset_scale: vec4<f32>,
+    #|}
+    #|struct VertexOutput {
+    #|  @builtin(position) clip_position: vec4<f32>,
+    #|  @location(0) uv: vec2<f32>,
+    #|  @location(1) @interpolate(flat) color: vec4<f32>,
+    #|}
+    #|@vertex fn vertex(in: VertexInput) -> VertexOutput {
+    #|  var out: VertexOutput;
+    #|  let vertex_position = vec3<f32>(f32(in.index & 0x1u), f32((in.index & 0x2u) >> 1u), 0.0);
+    #|  out.clip_position = view.clip_from_world * affine3_to_square(mat3x4<f32>(in.i_model_transpose_col0, in.i_model_transpose_col1, in.i_model_transpose_col2)) * vec4<f32>(vertex_position, 1.0);
+    #|  out.uv = vec2<f32>(vertex_position.xy) * in.i_uv_offset_scale.zw + in.i_uv_offset_scale.xy;
+    #|  out.color = in.i_color;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "let _e22: mat4x4<f32> = affine3_to_square(mat3x4<f32>(in.i_model_transpose_col0_, in.i_model_transpose_col1_, in.i_model_transpose_col2_));",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "out.clip_position = ((_e17 * _e22) * vec4<f32>(vertex_position, 1f));",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e38: VertexOutput = out;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e21: mat4x4<f32>"), content="false")
+  debug_inspect(
+    emitted.contains("let _e39: VertexOutput = out;"),
+    content="false",
+  )
+}

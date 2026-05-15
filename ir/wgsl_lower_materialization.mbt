@@ -28,6 +28,10 @@ fn WgslIrFunctionScope::wgsl_ir_function_expression_semantic_index(
         function,
         Handle::Handle(index),
       ) ||
+      wgsl_ir_function_expression_is_statement_call_result(
+        function,
+        Handle::Handle(index),
+      ) ||
       wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
         function,
         Handle::Handle(index),
@@ -36,6 +40,17 @@ fn WgslIrFunctionScope::wgsl_ir_function_expression_semantic_index(
     }
   }
   handle.index() - skipped
+}
+
+///|
+fn wgsl_ir_function_expression_is_statement_call_result(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(CallResult(_)) => true
+    _ => false
+  }
 }
 
 ///|
