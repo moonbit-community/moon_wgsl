@@ -49,5 +49,6 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
     filter: self.filter,
     names: self.names,
     current_function_origin: self.current_function_origin,
+    baked_function_expressions: self.baked_function_expressions,
   }
 }

@@ -49,6 +49,7 @@ fn emit_wgsl_module_from_ir_with_options(
     filter: None,
     names,
     current_function_origin: None,
+    baked_function_expressions: Map([]),
   }
   emitter.emit_module()
 }
@@ -85,6 +86,7 @@ fn emit_wgsl_module_from_ir_with_options_and_roots(
     filter: Some(filter),
     names,
     current_function_origin: None,
+    baked_function_expressions: Map([]),
   }
   emitter.emit_module()
 }
@@ -96,4 +98,5 @@ priv struct WgslIrEmitter {
   filter : WgslIrEmitFilter?
   names : WgslIrEmitNameTable
   current_function_origin : WgslIrEmitFunctionOrigin?
+  baked_function_expressions : Map[String, String]
 }

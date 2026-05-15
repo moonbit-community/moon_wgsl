@@ -242,6 +242,34 @@ test "IR emitter counts projected materialized temporaries like Naga" {
 }
 
 ///|
+test "IR emitter reuses baked child expression names without shifting parent handles" {
+  let source =
+    #|struct VertexOutput { @location(0) uv: vec2<f32>, }
+    #|@group(3) @binding(0) var<uniform> mip_level: u32;
+    #|@group(3) @binding(1) var base_color_texture: texture_2d<f32>;
+    #|@group(3) @binding(2) var base_color_sampler: sampler;
+    #|@fragment fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
+    #|  return textureSampleLevel(base_color_texture, base_color_sampler, mesh.uv, f32(mip_level));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e5: u32 = mip_level;"), content="true")
+  debug_inspect(
+    emitted.contains(
+      "let _e7: vec4<f32> = textureSampleLevel(base_color_texture, base_color_sampler, mesh.uv, f32(_e5));",
+    ),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return _e7;"), content="true")
+  debug_inspect(emitted.contains("let _e10: vec4<f32>"), content="false")
+  debug_inspect(emitted.contains("f32(mip_level)"), content="false")
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

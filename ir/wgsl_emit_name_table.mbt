@@ -287,5 +287,47 @@ fn WgslIrEmitter::with_function_origin(
     filter: self.filter,
     names: self.names,
     current_function_origin: Some(origin),
+    baked_function_expressions: Map([]),
+  }
+}
+
+///|
+fn wgsl_ir_emit_baked_function_expression_key(
+  origin : WgslIrEmitFunctionOrigin,
+  handle : Handle,
+) -> String {
+  match origin {
+    UserFunction(index) => "function:\{index}:\{handle.index()}"
+    EntryPointFunction(index) => "entry-point:\{index}:\{handle.index()}"
+  }
+}
+
+///|
+fn WgslIrEmitter::baked_function_expression_name(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> String? {
+  match self.current_function_origin {
+    Some(origin) =>
+      self.baked_function_expressions.get(
+        wgsl_ir_emit_baked_function_expression_key(origin, handle),
+      )
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::record_baked_function_expression(
+  self : WgslIrEmitter,
+  handle : Handle,
+  name : String,
+) -> Unit {
+  match self.current_function_origin {
+    Some(origin) =>
+      self.baked_function_expressions.set(
+        wgsl_ir_emit_baked_function_expression_key(origin, handle),
+        name,
+      )
+    None => ()
   }
 }

@@ -35,6 +35,10 @@ fn WgslIrEmitter::function_expression(
         "function expression \{handle.index()}",
       )
   }
+  match self.baked_function_expression_name(handle) {
+    Some(name) => return name
+    None => ()
+  }
   match expression {
     CallResult(_) => return self.function_expression_baked_name(handle)
     _ => ()

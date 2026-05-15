@@ -158,6 +158,12 @@ fn WgslIrEmitter::emit_local_declaration(
     None => ()
   }
   out.write_string(";\n")
+  if local_var.generated_temporary {
+    match local_var.init {
+      Some(init) => self.record_baked_function_expression(init, name)
+      None => ()
+    }
+  }
 }
 
 ///|

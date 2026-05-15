@@ -340,10 +340,13 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         let lowered_component = self.materialize_nested_constructor_argument(
           function, scope, block, component,
         )
-        if lowered_component != component {
+        let parent_component = wgsl_ir_parent_expression_operand(
+          function, component, lowered_component,
+        )
+        if parent_component != component {
           changed = true
         }
-        lowered.push(lowered_component)
+        lowered.push(parent_component)
       }
       if changed {
         function.expressions.append(Expression::Compose(ty, lowered))
@@ -363,9 +366,15 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_right = self.materialize_nested_return_argument(
         function, scope, block, right,
       )
-      if lowered_left != left || lowered_right != right {
+      let parent_left = wgsl_ir_parent_expression_operand(
+        function, left, lowered_left,
+      )
+      let parent_right = wgsl_ir_parent_expression_operand(
+        function, right, lowered_right,
+      )
+      if parent_left != left || parent_right != right {
         function.expressions.append(
-          Expression::Binary(op, lowered_left, lowered_right),
+          Expression::Binary(op, parent_left, parent_right),
         )
       } else {
         value
@@ -378,15 +387,21 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_index = self.materialize_return_subexpressions(
         function, scope, block, index,
       )
-      if lowered_base != base || lowered_index != index {
-        if lowered_base != base &&
-          wgsl_ir_function_expression_is_generated_temporary_reference(
-            function, lowered_base,
-          ) {
-          scope.record_projected_temporary_expression()
-        }
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      let parent_index = wgsl_ir_parent_expression_operand(
+        function, index, lowered_index,
+      )
+      if lowered_base != base &&
+        wgsl_ir_function_expression_is_generated_temporary_reference(
+          function, lowered_base,
+        ) {
+        scope.record_projected_temporary_expression()
+      }
+      if parent_base != base || parent_index != index {
         function.expressions.append(
-          Expression::Access(lowered_base, lowered_index),
+          Expression::Access(parent_base, parent_index),
         )
       } else {
         value
@@ -396,15 +411,17 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_base = self.materialize_nested_access_base(
         function, scope, block, base,
       )
-      if lowered_base != base {
-        if wgsl_ir_function_expression_is_generated_temporary_reference(
-            function, lowered_base,
-          ) {
-          scope.record_projected_temporary_expression()
-        }
-        function.expressions.append(
-          Expression::AccessIndex(lowered_base, index),
-        )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if lowered_base != base &&
+        wgsl_ir_function_expression_is_generated_temporary_reference(
+          function, lowered_base,
+        ) {
+        scope.record_projected_temporary_expression()
+      }
+      if parent_base != base {
+        function.expressions.append(Expression::AccessIndex(parent_base, index))
       } else {
         value
       }
@@ -413,14 +430,18 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_base = self.materialize_nested_access_base(
         function, scope, block, base,
       )
-      if lowered_base != base {
-        if wgsl_ir_function_expression_is_generated_temporary_reference(
-            function, lowered_base,
-          ) {
-          scope.record_projected_temporary_expression()
-        }
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if lowered_base != base &&
+        wgsl_ir_function_expression_is_generated_temporary_reference(
+          function, lowered_base,
+        ) {
+        scope.record_projected_temporary_expression()
+      }
+      if parent_base != base {
         function.expressions.append(
-          Expression::Swizzle(size, lowered_base, pattern),
+          Expression::Swizzle(size, parent_base, pattern),
         )
       } else {
         value
@@ -430,8 +451,11 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_inner = self.materialize_return_subexpressions(
         function, scope, block, inner,
       )
-      if lowered_inner != inner {
-        function.expressions.append(Expression::Unary(op, lowered_inner))
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Expression::Unary(op, parent_inner))
       } else {
         value
       }
@@ -440,8 +464,11 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_inner = self.materialize_nested_return_argument(
         function, scope, block, inner,
       )
-      if lowered_inner != inner {
-        function.expressions.append(Expression::Bitcast(ty, lowered_inner))
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Expression::Bitcast(ty, parent_inner))
       } else {
         value
       }
@@ -450,9 +477,10 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered = self.materialize_nested_call_argument(
         function, scope, block, expr,
       )
-      if lowered != expr {
+      let parent = wgsl_ir_parent_expression_operand(function, expr, lowered)
+      if parent != expr {
         function.expressions.append(
-          Expression::Derivative(axis, control, lowered),
+          Expression::Derivative(axis, control, parent),
         )
       } else {
         value
@@ -462,9 +490,10 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered = self.materialize_nested_call_argument(
         function, scope, block, expr,
       )
-      if lowered != expr {
+      let parent = wgsl_ir_parent_expression_operand(function, expr, lowered)
+      if parent != expr {
         function.expressions.append(
-          Expression::Relational(relational_function, lowered),
+          Expression::Relational(relational_function, parent),
         )
       } else {
         value
@@ -474,8 +503,9 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered = self.materialize_nested_call_argument(
         function, scope, block, expr,
       )
-      if lowered != expr {
-        function.expressions.append(Expression::As(lowered, kind, width))
+      let parent = wgsl_ir_parent_expression_operand(function, expr, lowered)
+      if parent != expr {
+        function.expressions.append(Expression::As(parent, kind, width))
       } else {
         value
       }
@@ -490,11 +520,20 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_reject = self.materialize_nested_call_argument(
         function, scope, block, reject,
       )
-      if lowered_condition != condition ||
-        lowered_accept != accept ||
-        lowered_reject != reject {
+      let parent_condition = wgsl_ir_parent_expression_operand(
+        function, condition, lowered_condition,
+      )
+      let parent_accept = wgsl_ir_parent_expression_operand(
+        function, accept, lowered_accept,
+      )
+      let parent_reject = wgsl_ir_parent_expression_operand(
+        function, reject, lowered_reject,
+      )
+      if parent_condition != condition ||
+        parent_accept != accept ||
+        parent_reject != reject {
         function.expressions.append(
-          Expression::Select(lowered_condition, lowered_accept, lowered_reject),
+          Expression::Select(parent_condition, parent_accept, parent_reject),
         )
       } else {
         value
@@ -507,10 +546,13 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         let lowered_argument = self.materialize_nested_call_argument(
           function, scope, block, argument,
         )
-        if lowered_argument != argument {
+        let parent_argument = wgsl_ir_parent_expression_operand(
+          function, argument, lowered_argument,
+        )
+        if parent_argument != argument {
           changed = true
         }
-        lowered.push(lowered_argument)
+        lowered.push(parent_argument)
       }
       if changed {
         function.expressions.set(
@@ -548,15 +590,30 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_depth_ref = self.materialize_optional_nested_call_argument(
         function, scope, block, depth_ref,
       )
-      if lowered_coordinate != coordinate ||
-        lowered_array_index != array_index ||
-        lowered_offset != offset ||
-        lowered_level != level ||
-        lowered_depth_ref != depth_ref {
+      let parent_coordinate = wgsl_ir_parent_expression_operand(
+        function, coordinate, lowered_coordinate,
+      )
+      let parent_array_index = wgsl_ir_parent_optional_expression_operand(
+        function, array_index, lowered_array_index,
+      )
+      let parent_offset = wgsl_ir_parent_optional_expression_operand(
+        function, offset, lowered_offset,
+      )
+      let parent_level = wgsl_ir_parent_sample_level_operand(
+        function, level, lowered_level,
+      )
+      let parent_depth_ref = wgsl_ir_parent_optional_expression_operand(
+        function, depth_ref, lowered_depth_ref,
+      )
+      if parent_coordinate != coordinate ||
+        parent_array_index != array_index ||
+        parent_offset != offset ||
+        parent_level != level ||
+        parent_depth_ref != depth_ref {
         function.expressions.append(
           Expression::ImageSample(
-            image, sampler, gather, lowered_coordinate, lowered_array_index, lowered_offset,
-            lowered_level, lowered_depth_ref, clamp_to_edge,
+            image, sampler, gather, parent_coordinate, parent_array_index, parent_offset,
+            parent_level, parent_depth_ref, clamp_to_edge,
           ),
         )
       } else {
@@ -576,13 +633,25 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_level = self.materialize_optional_nested_call_argument(
         function, scope, block, level,
       )
-      if lowered_coordinate != coordinate ||
-        lowered_array_index != array_index ||
-        lowered_sample != sample ||
-        lowered_level != level {
+      let parent_coordinate = wgsl_ir_parent_expression_operand(
+        function, coordinate, lowered_coordinate,
+      )
+      let parent_array_index = wgsl_ir_parent_optional_expression_operand(
+        function, array_index, lowered_array_index,
+      )
+      let parent_sample = wgsl_ir_parent_optional_expression_operand(
+        function, sample, lowered_sample,
+      )
+      let parent_level = wgsl_ir_parent_optional_expression_operand(
+        function, level, lowered_level,
+      )
+      if parent_coordinate != coordinate ||
+        parent_array_index != array_index ||
+        parent_sample != sample ||
+        parent_level != level {
         function.expressions.append(
           Expression::ImageLoad(
-            image, lowered_coordinate, lowered_array_index, lowered_sample, lowered_level,
+            image, parent_coordinate, parent_array_index, parent_sample, parent_level,
           ),
         )
       } else {
@@ -608,10 +677,13 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         let lowered_argument = self.materialize_nested_call_argument(
           function, scope, block, argument,
         )
-        if lowered_argument != argument {
+        let parent_argument = wgsl_ir_parent_expression_operand(
+          function, argument, lowered_argument,
+        )
+        if parent_argument != argument {
           changed = true
         }
-        lowered.push(lowered_argument)
+        lowered.push(parent_argument)
       }
       if changed {
         function.expressions.set(
@@ -634,10 +706,20 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_d = self.materialize_optional_nested_call_argument(
         function, scope, block, d,
       )
-      if lowered_a != a || lowered_b != b || lowered_c != c || lowered_d != d {
+      let parent_a = wgsl_ir_parent_expression_operand(function, a, lowered_a)
+      let parent_b = wgsl_ir_parent_optional_expression_operand(
+        function, b, lowered_b,
+      )
+      let parent_c = wgsl_ir_parent_optional_expression_operand(
+        function, c, lowered_c,
+      )
+      let parent_d = wgsl_ir_parent_optional_expression_operand(
+        function, d, lowered_d,
+      )
+      if parent_a != a || parent_b != b || parent_c != c || parent_d != d {
         function.expressions.append(
           Expression::Math(
-            math_function, lowered_a, lowered_b, lowered_c, lowered_d,
+            math_function, parent_a, parent_b, parent_c, parent_d,
           ),
         )
       } else {
@@ -651,10 +733,13 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         let lowered_argument = self.materialize_nested_call_argument(
           function, scope, block, argument,
         )
-        if lowered_argument != argument {
+        let parent_argument = wgsl_ir_parent_expression_operand(
+          function, argument, lowered_argument,
+        )
+        if parent_argument != argument {
           changed = true
         }
-        lowered.push(lowered_argument)
+        lowered.push(parent_argument)
       }
       if changed {
         function.expressions.append(
@@ -686,9 +771,12 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_c = self.materialize_nested_call_argument(
         function, scope, block, c,
       )
-      if lowered_a != a || lowered_b != b || lowered_c != c {
+      let parent_a = wgsl_ir_parent_expression_operand(function, a, lowered_a)
+      let parent_b = wgsl_ir_parent_expression_operand(function, b, lowered_b)
+      let parent_c = wgsl_ir_parent_expression_operand(function, c, lowered_c)
+      if parent_a != a || parent_b != b || parent_c != c {
         function.expressions.append(
-          Expression::CooperativeMultiplyAdd(lowered_a, lowered_b, lowered_c),
+          Expression::CooperativeMultiplyAdd(parent_a, parent_b, parent_c),
         )
       } else {
         value
