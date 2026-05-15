@@ -776,8 +776,8 @@ fn WgslIrLowerer::local_declaration_storage_type(
   ty : Handle,
 ) -> Handle raise WgslIrLowerError {
   match kind {
-    Var => self.concretize_abstract_storage_type(ty)
-    Let | Const => ty
+    Var | Let => self.concretize_abstract_storage_type(ty)
+    Const => ty
   }
 }
 

@@ -5,6 +5,7 @@ priv struct WgslIrEmitOptions {
   inline_generated_import_constants : Bool
   fold_numeric_constant_expressions : Bool
   expand_matrix_scalar_constructors : Bool
+  annotate_all_local_types : Bool
 }
 
 ///|
@@ -15,6 +16,7 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
     inline_generated_import_constants: false,
     fold_numeric_constant_expressions: false,
     expand_matrix_scalar_constructors: false,
+    annotate_all_local_types: false,
   }
 }
 
@@ -26,6 +28,7 @@ fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
     inline_generated_import_constants: true,
     fold_numeric_constant_expressions: true,
     expand_matrix_scalar_constructors: true,
+    annotate_all_local_types: true,
   }
 }
 
@@ -41,6 +44,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
       inline_generated_import_constants: self.options.inline_generated_import_constants,
       fold_numeric_constant_expressions: self.options.fold_numeric_constant_expressions,
       expand_matrix_scalar_constructors: self.options.expand_matrix_scalar_constructors,
+      annotate_all_local_types: self.options.annotate_all_local_types,
     },
     filter: self.filter,
     names: self.names,
