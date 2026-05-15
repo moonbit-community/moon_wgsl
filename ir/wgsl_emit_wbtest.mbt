@@ -270,6 +270,47 @@ test "IR emitter reuses baked child expression names without shifting parent han
 }
 
 ///|
+test "IR emitter numbers call results without local-reference handle drift" {
+  let source =
+    #|struct VertexOutput { @location(0) uv: vec2<f32>, }
+    #|struct Globals { time: f32, }
+    #|@group(0) @binding(0) var<uniform> globals: Globals;
+    #|
+    #|fn oklab_to_linear_srgb(c: vec3<f32>) -> vec3<f32> {
+    #|  return c;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    #|  let speed = 2.0;
+    #|  let t_1 = sin(globals.time * speed) * 0.5 + 0.5;
+    #|  let t_2 = cos(globals.time * speed);
+    #|  let distance_to_center = distance(in.uv, vec2<f32>(0.5)) * 1.4;
+    #|  let red = vec3<f32>(0.627955, 0.224863, 0.125846);
+    #|  let green = vec3<f32>(0.86644, -0.233887, 0.179498);
+    #|  let blue = vec3<f32>(0.701674, 0.274566, -0.169156);
+    #|  let white = vec3<f32>(1.0, 0.0, 0.0);
+    #|  let mixed = mix(mix(red, blue, t_1), mix(green, white, t_2), distance_to_center);
+    #|  return vec4<f32>(oklab_to_linear_srgb(mixed), 1.0);
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e41: vec3<f32> = oklab_to_linear_srgb(mixed);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e50: vec3<f32> = oklab_to_linear_srgb(mixed);"),
+    content="false",
+  )
+  debug_inspect(emitted.contains("return vec4<f32>(_e41, 1f);"), content="true")
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

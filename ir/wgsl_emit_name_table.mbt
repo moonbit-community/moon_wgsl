@@ -193,11 +193,16 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
     }
     for expr_index in 0..<ep.function.expressions.items.length() {
       match ep.function.expressions.items.get(expr_index) {
-        Some(CallResult(_)) =>
+        Some(CallResult(_)) => {
+          let semantic_index = wgsl_ir_emit_call_result_expression_index(
+            ep.function,
+            Handle::Handle(expr_index),
+          )
           table.names.set(
             wgsl_ir_emit_name_key2("ep_expr", ep_index, expr_index),
-            temp_namer.call("_e\{expr_index}"),
+            temp_namer.call("_e\{semantic_index}"),
           )
+        }
         _ => ()
       }
     }
@@ -227,11 +232,16 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
     }
     for expr_index in 0..<function.expressions.items.length() {
       match function.expressions.items.get(expr_index) {
-        Some(CallResult(_)) =>
+        Some(CallResult(_)) => {
+          let semantic_index = wgsl_ir_emit_call_result_expression_index(
+            function,
+            Handle::Handle(expr_index),
+          )
           table.names.set(
             wgsl_ir_emit_name_key2("fn_expr", fn_index, expr_index),
-            temp_namer.call("_e\{expr_index}"),
+            temp_namer.call("_e\{semantic_index}"),
           )
+        }
         _ => ()
       }
     }
@@ -255,6 +265,40 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
     )
   }
   table
+}
+
+///|
+fn wgsl_ir_emit_call_result_expression_index(
+  function : Function,
+  handle : Handle,
+) -> Int {
+  let mut skipped = 0
+  for index in 0..<handle.index() {
+    let expression_handle = Handle::Handle(index)
+    if wgsl_ir_function_expression_is_synthetic_local_reference(
+        function, expression_handle,
+      ) ||
+      wgsl_ir_function_expression_is_function_argument_reference(
+        function, expression_handle,
+      ) ||
+      wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
+        function, expression_handle,
+      ) {
+      skipped += 1
+    }
+  }
+  handle.index() - skipped
+}
+
+///|
+fn wgsl_ir_function_expression_is_function_argument_reference(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(FunctionArgument(_)) => true
+    _ => false
+  }
 }
 
 ///|
