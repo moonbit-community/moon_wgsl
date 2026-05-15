@@ -612,6 +612,32 @@ test "naga-oil writer policy folds typed float global constants" {
 }
 
 ///|
+test "naga-oil writer policy folds scalar float constructors from integer literals" {
+  let source =
+    #|fn pack(depth: f32, alpha: f32) -> u32 {
+    #|  let depth_bits = u32(saturate(depth) * f32(0xFFFFFFu) + 0.5);
+    #|  let alpha_bits = u32(saturate(alpha) * f32(0xFFu) + 0.5);
+    #|  return (depth_bits << 8u) | alpha_bits;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let valid = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(valid.contains("f32(16777215u)"), content="true")
+  debug_inspect(
+    naga_oil.contains("saturate(depth) * 16777215f"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("saturate(alpha) * 255f"), content="true")
+  debug_inspect(naga_oil.contains("f32(16777215u)"), content="false")
+}
+
+///|
 test "naga-oil writer policy expands scalar matrix constructors into columns" {
   let source =
     #|fn helper() -> mat3x3<f32> {

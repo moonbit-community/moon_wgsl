@@ -267,7 +267,73 @@ fn WgslIrEmitter::compose_expression(
   components : Array[Handle],
   function : Function?,
 ) -> String raise WgslIrEmitError {
+  match self.folded_scalar_constructor_expression(ty, components, function) {
+    Some(value) => return value
+    None => ()
+  }
   "\{self.compose_constructor_name_for_components(ty, components, function)}(\{self.compose_component_list(ty, components, function)})"
+}
+
+///|
+fn WgslIrEmitter::folded_scalar_constructor_expression(
+  self : WgslIrEmitter,
+  ty : Handle,
+  components : Array[Handle],
+  function : Function?,
+) -> String? raise WgslIrEmitError {
+  if !self.options.fold_numeric_constant_expressions || components.length() != 1 {
+    return None
+  }
+  guard self.shader_module.types.items.get(ty.index()) is Some(type_) else {
+    raise WgslIrEmitError::MissingHandle("type \{ty.index()}")
+  }
+  guard type_.inner is Scalar(target) else { return None }
+  guard target.kind == Float else { return None }
+  let expression = self.required_expression(function, components[0])
+  match expression {
+    Literal(literal) =>
+      match wgsl_ir_float_value_from_numeric_literal(literal) {
+        Some(value) => self.float_value_literal_for_width(value, target.width)
+        None => None
+      }
+    Constant(handle) =>
+      match self.eval_constant_float_expression_for_emit(handle, @set.Set([])) {
+        Some(value) => self.float_value_literal_for_width(value, target.width)
+        None =>
+          match
+            self.eval_constant_integer_expression_for_emit(handle, @set.Set([])) {
+            Some(value) =>
+              match value.to_double() {
+                Some(value) =>
+                  self.float_value_literal_for_width(value, target.width)
+                None => None
+              }
+            None => None
+          }
+      }
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_float_value_from_numeric_literal(literal : Literal) -> Double? {
+  match literal {
+    F16(value) | F64(value) | AbstractFloat(value) => Some(value)
+    F32(value) => Some(value.to_double())
+    I32(value) => Some(Double::from_int(value))
+    U32(value) => Some(value.to_double())
+    AbstractInt(value) => Some(value.to_double())
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitIntegerValue::to_double(self : WgslIrEmitIntegerValue) -> Double? {
+  match self {
+    Signed(value) => Some(Double::from_int(value))
+    Unsigned(value) => Some(value.to_double())
+    Abstract(value) => Some(value.to_double())
+  }
 }
 
 ///|
