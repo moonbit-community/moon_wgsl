@@ -33,6 +33,9 @@ test "compose graph execution plans reachability before emission" {
     #|
   composer.register_source("dep.wgsl", dep_source)
   let session = composer.new_wgsl_compose_session(WgslComposeOptions::default())
+  session.symbols.source_origins.push(
+    WgslSourceOriginEntry("PIX_naga_oil_mod_X", "maths.wgsl", "PI", 0, 0),
+  )
   let source =
     #|#import dep::dep_fn
     #|fn root() -> u32 {
@@ -179,7 +182,7 @@ test "composer resolves transitive partial-import constants before IR" {
     #|}
     #|
   composer.register_source("root.wgsl", root_source)
-  let emitted = composer.compose_wgsl(
+  let emitted = composer.compose_wgsl_before_ir(
     "root.wgsl",
     WgslComposeOptions::default(),
   ) catch {
@@ -187,6 +190,112 @@ test "composer resolves transitive partial-import constants before IR" {
   }
   debug_inspect(emitted.contains("PI_2 "), content="false")
   debug_inspect(emitted.contains("oklch_to_linear_rgb"), content="true")
+}
+
+///|
+test "item extraction keeps import directives for selected module slices" {
+  let color_source =
+    #|#define_import_path test::color
+    #|#import test::maths::{PI_2,FRAC_PI_3}
+    #|
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_item_origins_strict(color_source, [
+    "convert_to_linear_rgba",
+  ]) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(extracted.source().contains("#import"), content="true")
+  debug_inspect(extracted.source().contains("PI_2"), content="true")
+  debug_inspect(extracted.source().contains("FRAC_PI_3"), content="true")
+}
+
+///|
+test "item slice import request builder keeps explicit nested items" {
+  let composer = Composer::default()
+  let maths_source =
+    #|#define_import_path test::maths
+    #|const PI: f32 = 3.14159;
+    #|const PI_2: f32 = 6.28318;
+    #|const FRAC_PI_3: f32 = 1.04719;
+    #|
+  composer.register_source("maths.wgsl", maths_source)
+  let color_source =
+    #|#define_import_path test::color
+    #|#import test::maths::{PI_2,FRAC_PI_3}
+    #|
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+  composer.register_source("color.wgsl", color_source)
+  let session = composer.new_wgsl_compose_session(WgslComposeOptions::default())
+  let defs = composer.active_compose_defs_for_rel_path(
+    "color.wgsl",
+    session,
+    None,
+  )
+  let extracted = extract_wgsl_module_item_origins_strict(color_source, [
+    "convert_to_linear_rgba",
+  ]) catch {
+    error => abort(error.message())
+  }
+  let requests = composer.build_wgsl_import_requests_from_emitted_item_slice(
+    "color.wgsl",
+    extracted.source(),
+    session,
+    defs,
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(requests.length(), content="1")
+  debug_inspect(
+    requests[0].requested_items.join(","),
+    content="\"PI_2,FRAC_PI_3\"",
+  )
+}
+
+///|
+test "composer keeps explicit nested import declarations from selected item modules" {
+  let composer = Composer::default()
+  let maths_source =
+    #|#define_import_path test::maths
+    #|const PI: f32 = 3.14159;
+    #|const PI_2: f32 = 6.28318;
+    #|const FRAC_PI_3: f32 = 1.04719;
+    #|
+  composer.register_source("maths.wgsl", maths_source)
+  let color_source =
+    #|#define_import_path test::color
+    #|#import test::maths::{PI_2,FRAC_PI_3}
+    #|
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+  composer.register_source("color.wgsl", color_source)
+  let root_source =
+    #|#import test::color::convert_to_linear_rgba
+    #|#import test::maths::PI
+    #|
+    #|const TAU: f32 = 2.0 * PI;
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return convert_to_linear_rgba(vec4(1.0));
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("PI_2X_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("FRAC_PI_3X_naga_oil_mod"), content="true")
 }
 
 ///|

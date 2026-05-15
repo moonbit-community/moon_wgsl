@@ -333,32 +333,34 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
-      record_wgsl_planned_final_names_from_extraction(
-        self.session,
-        request.rel_path,
-        request_alias_prefixes,
-        extraction,
-      )
-      let requests = self.composer.build_wgsl_import_requests_from_source_directives(
-        request.rel_path,
-        prepared.active_source,
-        prepared.active_scan_source,
-        self.session,
-        import_defs,
-      )
-      self.plan_import_request_batch(
-        request.rel_path,
-        requests,
-        import_defs,
-        request_alias_prefixes,
-      )
-      self.plan_with_path(
-        request.rel_path,
-        drop_wgsl_import_directives_from_compose_source(extraction.source()),
-        Some(importer_defs),
-        request_alias_prefixes,
-        false,
-      )
+      let extracted_source = extraction.source()
+      if extracted_source != "" {
+        record_wgsl_planned_final_names_from_extraction(
+          self.session,
+          request.rel_path,
+          request_alias_prefixes,
+          extraction,
+        )
+        let requests = self.composer.build_wgsl_import_requests_from_emitted_item_slice(
+          request.rel_path,
+          extracted_source,
+          self.session,
+          import_defs,
+        )
+        self.plan_import_request_batch(
+          request.rel_path,
+          requests,
+          import_defs,
+          request_alias_prefixes,
+        )
+        self.plan_with_path(
+          request.rel_path,
+          drop_wgsl_import_directives_from_compose_source(extracted_source),
+          Some(importer_defs),
+          request_alias_prefixes,
+          false,
+        )
+      }
     }
     self.session.graph_planning_rel_paths.pop() |> ignore
   }

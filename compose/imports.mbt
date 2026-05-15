@@ -48,7 +48,7 @@ using @resolver {
 }
 
 ///|
-using @ast {type WgslDirective, type WgslDirectiveKind}
+using @ast {type WgslDirective, type WgslDirectiveKind, type WgslGlobalDeclData}
 
 ///|
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}

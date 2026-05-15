@@ -56,3 +56,21 @@ test "WGSL import parser classifies empty import specs" {
 }
 
 ///|
+test "WGSL import parser expands grouped item imports" {
+  let targets : Array[WgslImportTarget] = []
+  parse_wgsl_import_targets(
+    "bevy_render::maths::{PI_2,PI,FRAC_PI_3}", "", targets,
+  ) catch {
+    Parse(message, _) => abort(message)
+  }
+  let rendered : Array[String] = []
+  for target in targets {
+    rendered.push("\{target.raw_path} as \{target.alias_name}")
+  }
+  debug_inspect(
+    rendered.join("|"),
+    content="\"bevy_render::maths::PI_2 as |bevy_render::maths::PI as |bevy_render::maths::FRAC_PI_3 as \"",
+  )
+}
+
+///|

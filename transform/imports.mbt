@@ -21,6 +21,12 @@ using @ast_analysis {
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 
 ///|
+using @directive {
+  type WgslDirectiveScanItemKind,
+  parse_wgsl_directive_scan_items,
+}
+
+///|
 using @ir {type WgslIrSymbolIdentity}
 
 ///|

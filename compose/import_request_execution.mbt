@@ -125,38 +125,42 @@ fn Composer::compose_wgsl_import_requests(
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
-      record_wgsl_source_origins_from_extraction(
-        session,
-        request.rel_path,
-        extraction,
-      )
-      let requests = self.build_wgsl_import_requests_from_source_directives(
-        request.rel_path,
-        prepared.active_source,
-        prepared.active_scan_source,
-        session,
-        import_defs,
-      )
-      let imported_prefix = self.compose_wgsl_import_requests(
-        request.rel_path,
-        requests,
-        prepared.active_scan_source,
-        bindings,
-        session,
-        import_defs,
-        alias_prefixes,
-      )
-      imported_prefix +
-      WgslComposeEmitter(self, session).emit_source_with_path(
-        request.rel_path,
-        drop_wgsl_import_directives_from_compose_source(extraction.source()),
-        Some(importer_defs),
-        bindings,
-        false,
-        false,
-        alias_prefixes,
-        false,
-      )
+      let extracted_source = extraction.source()
+      if extracted_source == "" {
+        ""
+      } else {
+        record_wgsl_source_origins_from_extraction(
+          session,
+          request.rel_path,
+          extraction,
+        )
+        let requests = self.build_wgsl_import_requests_from_emitted_item_slice(
+          request.rel_path,
+          extracted_source,
+          session,
+          import_defs,
+        )
+        let imported_prefix = self.compose_wgsl_import_requests(
+          request.rel_path,
+          requests,
+          extracted_source,
+          bindings,
+          session,
+          import_defs,
+          alias_prefixes,
+        )
+        imported_prefix +
+        WgslComposeEmitter(self, session).emit_source_with_path(
+          request.rel_path,
+          drop_wgsl_import_directives_from_compose_source(extracted_source),
+          Some(importer_defs),
+          bindings,
+          false,
+          false,
+          alias_prefixes,
+          false,
+        )
+      }
     }
     session.active_rel_paths.pop() |> ignore
     if module_source == "" {

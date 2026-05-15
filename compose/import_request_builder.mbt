@@ -55,6 +55,26 @@ fn wgsl_import_candidate_error_path(
 }
 
 ///|
+fn wgsl_source_declares_const_like_item(
+  source : String,
+  item_name : String,
+) -> Bool raise ComposerError {
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  for decl in unit.declarations() {
+    if decl.name() == item_name {
+      match decl.data() {
+        WgslGlobalDeclData::Const(_) | WgslGlobalDeclData::Override(_) =>
+          return true
+        _ => return false
+      }
+    }
+  }
+  false
+}
+
+///|
 fn Composer::select_wgsl_import_candidate_rel_path(
   self : Composer,
   module_path : String,
@@ -130,7 +150,7 @@ fn Composer::build_wgsl_import_requests(
     }
   }
   self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, active_scan_source, session, importer_defs,
+    current_rel_path, targets, active_scan_source, session, importer_defs, true,
   )
 }
 
@@ -169,7 +189,22 @@ fn Composer::build_wgsl_import_requests_from_source_directives(
   let targets : Array[WgslImportTarget] = []
   collect_wgsl_import_targets_from_source_directives(active_source, targets)
   self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, active_scan_source, session, importer_defs,
+    current_rel_path, targets, active_scan_source, session, importer_defs, true,
+  )
+}
+
+///|
+fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
+  self : Composer,
+  current_rel_path : String,
+  active_source : String,
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Array[WgslImportRequest] raise ComposerError {
+  let targets : Array[WgslImportTarget] = []
+  collect_wgsl_import_targets_from_source_directives(active_source, targets)
+  self.build_wgsl_import_requests_from_targets(
+    current_rel_path, targets, active_source, session, importer_defs, false,
   )
 }
 
@@ -289,6 +324,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
   active_scan_source : String,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
+  prune_requested_items_by_active_usage : Bool,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let requests : Array[WgslImportRequest] = []
   let target_plans = build_wgsl_semantic_import_target_plans(
@@ -384,6 +420,11 @@ fn Composer::build_wgsl_import_requests_from_targets(
           }
           if requested_item_is_live || leaf_item_is_live {
             live_requested_items.push(requested_item)
+          } else if !prune_requested_items_by_active_usage &&
+            wgsl_source_declares_const_like_item(
+              active_import_source, requested_item,
+            ) {
+            live_requested_items.push(requested_item)
           }
         }
         requested_items.clear()
@@ -467,5 +508,6 @@ fn Composer::build_wgsl_implicit_import_requests(
   }
   self.build_wgsl_import_requests_from_targets(
     current_rel_path, qualified_targets, active_scan_source, session, importer_defs,
+    true,
   )
 }

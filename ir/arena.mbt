@@ -43,6 +43,15 @@ pub fn ConstantArena::append(self : ConstantArena, item : Constant) -> Handle {
 }
 
 ///|
+fn constant_arena_set(
+  arena : ConstantArena,
+  handle : Handle,
+  item : Constant,
+) -> Unit {
+  arena.items[handle.index()] = item
+}
+
+///|
 pub(all) struct OverrideArena {
   items : Array[Override]
 } derive(Eq, Debug)

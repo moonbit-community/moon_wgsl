@@ -384,20 +384,30 @@ fn WgslIrLowerer::lower_constant(
     None =>
       self.infer_local_type_from_initializer(name, constant.initializer_ref())
   }
+  let placeholder_init = self.shader_module.append_global_expression(
+    Expression::ZeroValue(ty),
+  )
+  let handle = self.shader_module.append_constant(Constant::{
+    name: Some(name),
+    generated_import: self.function_has_generated_import_provenance(name),
+    inline_value: self.constant_should_inline_generated_import_value(name),
+    ty,
+    init: placeholder_init,
+  })
+  self.constant_names.set(name, handle)
   let init = match constant.initializer_ref() {
     Some(expr) =>
       self.lower_global_expression_ref_with_expected(expr, explicit_ty)
     None =>
       self.shader_module.append_global_expression(Expression::ZeroValue(ty))
   }
-  let handle = self.shader_module.append_constant(Constant::{
+  module_set_constant(self.shader_module, handle, Constant::{
     name: Some(name),
     generated_import: self.function_has_generated_import_provenance(name),
     inline_value: self.constant_should_inline_generated_import_value(name),
     ty,
     init,
   })
-  self.constant_names.set(name, handle)
   ignore(self.constant_lowering_stack.remove(name))
 }
 
@@ -406,6 +416,9 @@ fn WgslIrLowerer::ensure_constant_declaration_lowered(
   self : WgslIrLowerer,
   name : String,
 ) -> Handle? raise WgslIrLowerError {
+  if self.constant_lowering_stack.contains(name) {
+    raise WgslIrLowerError::MissingType(name)
+  }
   match self.constant_names.get(name) {
     Some(handle) => Some(handle)
     None =>

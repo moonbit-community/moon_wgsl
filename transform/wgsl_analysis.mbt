@@ -129,7 +129,9 @@ fn build_wgsl_declaration_graph_from_unit(
       WgslGlobalDeclKind::Directive =>
         match decl.data() {
           WgslGlobalDeclData::Directive(directive) =>
-            if directive.kind() == WgslDirectiveKind::Enable ||
+            if directive.kind() == WgslDirectiveKind::Import {
+              import_blocks.push(graph_block)
+            } else if directive.kind() == WgslDirectiveKind::Enable ||
               directive.kind() == WgslDirectiveKind::Requires ||
               directive.kind() == WgslDirectiveKind::Diagnostic {
               declaration_blocks.push(graph_block)
@@ -183,10 +185,35 @@ fn build_wgsl_declaration_graph_strict(
 }
 
 ///|
+fn emit_wgsl_import_blocks_for_item_extraction(
+  source : String,
+  graph : WgslDeclarationGraph,
+) -> String {
+  let imported_starts : @set.Set[Int] = @set.Set([])
+  let mut out = ""
+  for import_block in graph.import_blocks {
+    imported_starts.add(import_block.start)
+    out = out + emit_wgsl_graph_block_canonical(import_block)
+  }
+  for
+    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+    match item.kind() {
+      WgslDirectiveScanItemKind::Directive(directive) if directive.kind() ==
+        WgslDirectiveKind::Import =>
+        if !imported_starts.contains(item.start()) {
+          out = out + item.source().original_text()
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
 fn wgsl_reachable_declaration_map(
   declaration_blocks : Array[WgslGraphBlock],
   root_items : Array[String],
-) -> (@set.Set[String], Array[String]) {
+) -> (@set.Set[String], Array[String], Array[String]) {
   let included_names : @set.Set[String] = @set.Set([])
   let declarations : Array[WgslGlobalDecl] = []
   for block in declaration_blocks {
@@ -205,7 +232,134 @@ fn wgsl_reachable_declaration_map(
   for name in reachable.included_names {
     included_names.add(name)
   }
-  (included_names, reachable.missing_root_items)
+  (included_names, reachable.included_names, reachable.missing_root_items)
+}
+
+///|
+fn wgsl_declaration_graph_block_named(
+  declaration_blocks : Array[WgslGraphBlock],
+  name : String,
+) -> WgslGraphBlock? {
+  for block in declaration_blocks {
+    if block.name() == name {
+      return Some(block)
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_graph_block_is_const_like(block : WgslGraphBlock) -> Bool {
+  match block.data {
+    WgslGlobalDeclData::Const(_) | WgslGlobalDeclData::Override(_) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_graph_order_push_unique(
+  ordered : Array[String],
+  emitted : @set.Set[String],
+  name : String,
+) -> Unit {
+  if name == "" || emitted.contains(name) {
+    return
+  }
+  emitted.add(name)
+  ordered.push(name)
+}
+
+///|
+fn wgsl_graph_block_dependencies_in_ast_order(
+  block : WgslGraphBlock,
+  declaration_names : @set.Set[String],
+) -> Array[String] {
+  let dependencies : Array[String] = []
+  let self_name = block.name()
+  let identifiers : Array[WgslIdent] = []
+  collect_wgsl_decl_identifier_nodes(block.data, identifiers)
+  wgsl_analysis_collect_identifier_dependencies(
+    identifiers, self_name, declaration_names, dependencies,
+  )
+  dependencies
+}
+
+///|
+fn wgsl_declaration_graph_visit_import_order(
+  declaration_blocks : Array[WgslGraphBlock],
+  declaration_names : @set.Set[String],
+  name : String,
+  visiting : @set.Set[String],
+  emitted : @set.Set[String],
+  ordered : Array[String],
+) -> Unit {
+  if name == "" || emitted.contains(name) || visiting.contains(name) {
+    return
+  }
+  guard wgsl_declaration_graph_block_named(declaration_blocks, name)
+    is Some(block) else {
+    return
+  }
+  visiting.add(name)
+  let dependencies = wgsl_graph_block_dependencies_in_ast_order(
+    block, declaration_names,
+  )
+  if wgsl_graph_block_is_const_like(block) {
+    wgsl_graph_order_push_unique(ordered, emitted, name)
+    for dependency in dependencies {
+      wgsl_declaration_graph_visit_import_order(
+        declaration_blocks, declaration_names, dependency, visiting, emitted, ordered,
+      )
+    }
+  } else {
+    for dependency in dependencies {
+      wgsl_declaration_graph_visit_import_order(
+        declaration_blocks, declaration_names, dependency, visiting, emitted, ordered,
+      )
+    }
+    wgsl_graph_order_push_unique(ordered, emitted, name)
+  }
+  ignore(visiting.remove(name))
+}
+
+///|
+fn wgsl_declaration_graph_reachable_import_order(
+  declaration_blocks : Array[WgslGraphBlock],
+  requested_items : Array[String],
+  included_names : @set.Set[String],
+) -> Array[String] {
+  let ordered : Array[String] = []
+  let emitted : @set.Set[String] = @set.Set([])
+  let visiting : @set.Set[String] = @set.Set([])
+  let declaration_names : @set.Set[String] = @set.Set([])
+  for block in declaration_blocks {
+    if block.name() != "" {
+      declaration_names.add(block.name())
+    }
+  }
+  for block in declaration_blocks {
+    let name = block.name()
+    if included_names.contains(name) && requested_items.contains(name) {
+      wgsl_declaration_graph_visit_import_order(
+        declaration_blocks, declaration_names, name, visiting, emitted, ordered,
+      )
+    }
+  }
+  for requested_item in requested_items {
+    if included_names.contains(requested_item) {
+      wgsl_declaration_graph_visit_import_order(
+        declaration_blocks, declaration_names, requested_item, visiting, emitted,
+        ordered,
+      )
+    }
+  }
+  for block in declaration_blocks {
+    let name = block.name()
+    if included_names.contains(name) {
+      wgsl_graph_order_push_unique(ordered, emitted, name)
+    }
+  }
+  ordered
 }
 
 ///|
@@ -286,7 +440,7 @@ pub fn collect_wgsl_source_catalog_declarations_strict(
 
 ///|
 fn extract_wgsl_module_item_extraction_from_graph(
-  _source : String,
+  source : String,
   graph : WgslDeclarationGraph,
   requested_items : Array[String],
 ) -> WgslModuleItemExtraction {
@@ -306,7 +460,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
       origins,
     }
   }
-  let (included_names, _) = wgsl_reachable_declaration_map(
+  let (included_names, _, _) = wgsl_reachable_declaration_map(
     graph.declaration_blocks,
     requested_items,
   )
@@ -319,12 +473,9 @@ fn extract_wgsl_module_item_extraction_from_graph(
   if matched_requested == 0 {
     return WgslModuleItemExtraction::{ source: "", origins }
   }
-  let mut out = ""
-  for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
-  }
+  let mut out = emit_wgsl_import_blocks_for_item_extraction(source, graph)
   for block in graph.declaration_blocks {
-    if block.name() == "" || included_names.contains(block.name()) {
+    if block.name() == "" {
       out = out + emit_wgsl_graph_block_canonical(block)
       if block.is_symbol_origin() {
         origins.push(WgslModuleItemOrigin::{
@@ -333,6 +484,26 @@ fn extract_wgsl_module_item_extraction_from_graph(
           source_end: block.end,
         })
       }
+    }
+  }
+  let reachable_order = wgsl_declaration_graph_reachable_import_order(
+    graph.declaration_blocks,
+    requested_items,
+    included_names,
+  )
+  for name in reachable_order {
+    guard wgsl_declaration_graph_block_named(graph.declaration_blocks, name)
+      is Some(block) else {
+      continue
+    }
+    guard included_names.contains(block.name()) else { continue }
+    out = out + emit_wgsl_graph_block_canonical(block)
+    if block.is_symbol_origin() {
+      origins.push(WgslModuleItemOrigin::{
+        name: block.name(),
+        source_start: block.start,
+        source_end: block.end,
+      })
     }
   }
   WgslModuleItemExtraction::{ source: out, origins }

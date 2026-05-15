@@ -63,6 +63,15 @@ pub fn Module::append_constant(self : Module, constant : Constant) -> Handle {
 }
 
 ///|
+fn module_set_constant(
+  shader_module : Module,
+  handle : Handle,
+  constant : Constant,
+) -> Unit {
+  constant_arena_set(shader_module.constants, handle, constant)
+}
+
+///|
 pub fn Module::append_const_assert(self : Module, condition : Handle) -> Unit {
   self.const_asserts.push(condition)
 }
