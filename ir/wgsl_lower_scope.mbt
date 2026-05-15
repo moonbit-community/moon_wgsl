@@ -192,8 +192,9 @@ fn WgslIrFunctionScope::hide_temporary_name_indices(
 ///|
 fn WgslIrFunctionScope::record_projected_temporary_expression(
   self : WgslIrFunctionScope,
+  slots : Int,
 ) -> Unit {
-  self.projected_temporary_name_offset += 2
+  self.projected_temporary_name_offset += slots
 }
 
 ///|

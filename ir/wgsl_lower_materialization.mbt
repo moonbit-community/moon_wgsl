@@ -397,7 +397,9 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         wgsl_ir_function_expression_is_generated_temporary_reference(
           function, lowered_base,
         ) {
-        scope.record_projected_temporary_expression()
+        scope.record_projected_temporary_expression(
+          wgsl_ir_projected_temporary_expression_slots(function, lowered_base),
+        )
       }
       if parent_base != base || parent_index != index {
         function.expressions.append(
@@ -418,7 +420,9 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         wgsl_ir_function_expression_is_generated_temporary_reference(
           function, lowered_base,
         ) {
-        scope.record_projected_temporary_expression()
+        scope.record_projected_temporary_expression(
+          wgsl_ir_projected_temporary_expression_slots(function, lowered_base),
+        )
       }
       if parent_base != base {
         function.expressions.append(Expression::AccessIndex(parent_base, index))
@@ -437,7 +441,9 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         wgsl_ir_function_expression_is_generated_temporary_reference(
           function, lowered_base,
         ) {
-        scope.record_projected_temporary_expression()
+        scope.record_projected_temporary_expression(
+          wgsl_ir_projected_temporary_expression_slots(function, lowered_base),
+        )
       }
       if parent_base != base {
         function.expressions.append(
