@@ -125,6 +125,33 @@ test "IR emitter preserves f32 negative zero spelling" {
 }
 
 ///|
+test "IR lowerer materializes global member return values like Naga" {
+  let source =
+    #|struct Push {
+    #|  color: vec4<f32>,
+    #|}
+    #|
+    #|var<private> push_constants: Push;
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return push_constants.color;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e2: vec4<f32> = push_constants.color;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return _e2;"), content="true")
+  debug_inspect(
+    emitted.contains("return push_constants.color;"),
+    content="false",
+  )
+}
+
+///|
 test "IR emitter prints global and function const_asserts from IR" {
   let source =
     #|const VALUE: u32 = 1u;

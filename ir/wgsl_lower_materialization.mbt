@@ -303,7 +303,11 @@ fn WgslIrLowerer::materialize_return_expression_if_needed(
   let normalized = self.materialize_return_subexpressions(
     function, scope, block, value,
   )
-  if self.function_expression_can_return_directly(function, normalized) {
+  if self.function_expression_should_materialize_as_nested_value(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else if self.function_expression_can_return_directly(function, normalized) {
     normalized
   } else {
     self.materialize_function_expression(function, scope, block, normalized)
