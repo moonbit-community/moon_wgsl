@@ -31,6 +31,42 @@ fn WgslIrLowerer::literal_from_token_with_expected(
 }
 
 ///|
+fn WgslIrLowerer::contextualize_function_literal_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+  expected_ty : Handle,
+) -> Unit raise WgslIrLowerError {
+  guard function.expressions.items.get(handle.index()) is Some(Literal(literal)) else {
+    return
+  }
+  match self.scalar_for_literal_context_type(expected_ty) {
+    Some(scalar) =>
+      function.expressions.set(
+        handle,
+        Expression::Literal(wgsl_ir_contextualize_literal(literal, scalar)),
+      )
+    None => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::scalar_for_literal_context_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Scalar? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Scalar(scalar) => Some(scalar)
+        Vector(_, scalar) => Some(scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
 fn wgsl_ir_contextualize_literal(
   literal : Literal,
   scalar : Scalar,

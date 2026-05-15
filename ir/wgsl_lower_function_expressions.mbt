@@ -1059,28 +1059,97 @@ fn WgslIrLowerer::lower_function_math_call(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
-  guard arguments is [first, .. rest] else {
+  guard arguments.length() > 0 else {
     raise WgslIrLowerError::UnsupportedExpression(
       "math call requires at least one argument",
     )
   }
-  let a = self.lower_function_expression_node(first, function, scope)
+  let handles : Array[Handle] = []
+  for argument in arguments {
+    handles.push(self.lower_function_expression_node(argument, function, scope))
+  }
+  self.contextualize_homogeneous_math_arguments(
+    math_function, function, handles,
+  )
+  guard handles is [a, .. rest] else {
+    abort("math call argument guard already checked")
+  }
   let b = match rest {
-    [value, ..] =>
-      Some(self.lower_function_expression_node(value, function, scope))
+    [value, ..] => Some(value)
     [] => None
   }
   let c = match rest {
-    [_, value, ..] =>
-      Some(self.lower_function_expression_node(value, function, scope))
+    [_, value, ..] => Some(value)
     _ => None
   }
   let d = match rest {
-    [_, _, value, ..] =>
-      Some(self.lower_function_expression_node(value, function, scope))
+    [_, _, value, ..] => Some(value)
     _ => None
   }
   function.expressions.append(Expression::Math(math_function, a, b, c, d))
+}
+
+///|
+fn WgslIrLowerer::contextualize_homogeneous_math_arguments(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  function : Function,
+  handles : Array[Handle],
+) -> Unit raise WgslIrLowerError {
+  guard wgsl_ir_math_function_has_homogeneous_arguments(math_function) else {
+    return
+  }
+  guard self.concrete_math_argument_type(function, handles) is Some(expected_ty) else {
+    return
+  }
+  for handle in handles {
+    self.contextualize_function_literal_expression(
+      function, handle, expected_ty,
+    )
+  }
+}
+
+///|
+fn wgsl_ir_math_function_has_homogeneous_arguments(
+  math_function : MathFunction,
+) -> Bool {
+  match math_function {
+    Min | Max | Clamp => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::concrete_math_argument_type(
+  self : WgslIrLowerer,
+  function : Function,
+  handles : Array[Handle],
+) -> Handle? {
+  for handle in handles {
+    match self.function_expression_type(function, handle) {
+      Some(ty) =>
+        if self.type_is_concrete_numeric_literal_context(ty) {
+          return Some(ty)
+        }
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+fn WgslIrLowerer::type_is_concrete_numeric_literal_context(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.scalar_for_literal_context_type(ty) {
+    Some(scalar) =>
+      match scalar.kind {
+        Sint | Uint | Float => true
+        _ => false
+      }
+    None => false
+  }
 }
 
 ///|

@@ -605,6 +605,21 @@ fn WgslIrLowerer::lower_texture_trailing_args(
 }
 
 ///|
+fn WgslIrLowerer::lower_texture_mip_level_argument(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  self.lower_function_expression_node_with_expected(
+    argument,
+    function,
+    scope,
+    Some(self.scalar_type_handle(Scalar::Scalar(Sint, 4))),
+  )
+}
+
+///|
 fn WgslIrLowerer::image_expression_is_arrayed(
   self : WgslIrLowerer,
   function : Function,
@@ -1105,7 +1120,9 @@ fn WgslIrLowerer::lower_image_load_expression(
       (
         Some(self.lower_function_expression_node(arguments[2], function, scope)),
         no_handle,
-        Some(self.lower_function_expression_node(arguments[3], function, scope)),
+        Some(
+          self.lower_texture_mip_level_argument(arguments[3], function, scope),
+        ),
       )
     }
   } else if storage || external {
@@ -1124,7 +1141,7 @@ fn WgslIrLowerer::lower_image_load_expression(
     (
       no_handle,
       no_handle,
-      Some(self.lower_function_expression_node(arguments[2], function, scope)),
+      Some(self.lower_texture_mip_level_argument(arguments[2], function, scope)),
     )
   }
   ignore(self.image_expression_result_type(function, image, None, None))
@@ -1148,7 +1165,7 @@ fn WgslIrLowerer::lower_image_query_expression(
   }
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let level = if arguments.length() == 2 {
-    Some(self.lower_function_expression_node(arguments[1], function, scope))
+    Some(self.lower_texture_mip_level_argument(arguments[1], function, scope))
   } else {
     None
   }

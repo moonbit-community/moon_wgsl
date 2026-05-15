@@ -92,6 +92,50 @@ test "WGSL AST lowerer lowers textureLoad arguments from texture type" {
 }
 
 ///|
+test "WGSL AST lowerer contextualizes texture mip levels as i32" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var depth_tex: texture_depth_2d;
+    #|@group(0) @binding(1)
+    #|var color_tex: texture_2d<f32>;
+    #|
+    #|fn read_depth(coords: vec2<i32>) -> f32 {
+    #|  let dims = textureDimensions(color_tex, 0);
+    #|  let value = textureLoad(depth_tex, coords, 0);
+    #|  return value + f32(dims.x) * 0.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("textureDimensions(color_tex, 0i)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("textureLoad(depth_tex, coords, 0i)"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL AST lowerer contextualizes homogeneous math literal arguments" {
+  let source =
+    #|fn choose(value: f32) -> i32 {
+    #|  return max(0, i32(ceil(value)));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("max(0i, i32(ceil(value)))"), content="true")
+}
+
+///|
 test "WGSL AST lowerer supports official constructor and swizzle forms" {
   let source =
     #|@fragment
