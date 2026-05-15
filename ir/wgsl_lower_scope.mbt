@@ -8,6 +8,7 @@ priv struct WgslIrFunctionScope {
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
   hidden_temporary_name_indices : @set.Set[Int]
+  mut projected_temporary_name_offset : Int
 }
 
 ///|
@@ -28,6 +29,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
     hidden_temporary_name_indices: @set.Set([]),
+    projected_temporary_name_offset: 0,
   }
 }
 
@@ -85,6 +87,7 @@ fn WgslIrFunctionScope::child(
     hidden_temporary_name_indices: wgsl_ir_copy_int_set(
       self.hidden_temporary_name_indices,
     ),
+    projected_temporary_name_offset: self.projected_temporary_name_offset,
   }
 }
 
@@ -93,8 +96,10 @@ fn WgslIrFunctionScope::sync_child_counters(
   self : WgslIrFunctionScope,
   child : WgslIrFunctionScope,
 ) -> Unit {
-  ignore(self)
-  ignore(child)
+  if child.projected_temporary_name_offset >
+    self.projected_temporary_name_offset {
+    self.projected_temporary_name_offset = child.projected_temporary_name_offset
+  }
 }
 
 ///|
@@ -182,6 +187,13 @@ fn WgslIrFunctionScope::hide_temporary_name_indices(
   for index in start..<end {
     self.hidden_temporary_name_indices.add(index)
   }
+}
+
+///|
+fn WgslIrFunctionScope::record_projected_temporary_expression(
+  self : WgslIrFunctionScope,
+) -> Unit {
+  self.projected_temporary_name_offset += 2
 }
 
 ///|

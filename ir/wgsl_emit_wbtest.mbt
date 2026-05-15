@@ -186,6 +186,62 @@ test "IR lowerer preserves direct value-call let initializers" {
 }
 
 ///|
+test "IR emitter counts projected materialized temporaries like Naga" {
+  let source =
+    #|struct FullscreenVertexOutput {
+    #|  @builtin(position) position: vec4<f32>,
+    #|  @location(0) uv: vec2<f32>,
+    #|}
+    #|
+    #|struct FullScreenEffect {
+    #|  intensity: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var screen_texture: texture_2d<f32>;
+    #|@group(0) @binding(1) var texture_sampler: sampler;
+    #|@group(0) @binding(2) var<uniform> settings: FullScreenEffect;
+    #|
+    #|@fragment
+    #|fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
+    #|  let offset_strength = settings.intensity;
+    #|  return vec4<f32>(
+    #|    textureSample(screen_texture, texture_sampler, in.uv + vec2<f32>(offset_strength, -offset_strength)).r,
+    #|    textureSample(screen_texture, texture_sampler, in.uv + vec2<f32>(-offset_strength, 0.0)).g,
+    #|    textureSample(screen_texture, texture_sampler, in.uv + vec2<f32>(0.0, offset_strength)).b,
+    #|    1.0,
+    #|  );
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "let _e10: vec4<f32> = textureSample(screen_texture, texture_sampler, (in.uv + vec2<f32>(offset_strength, -(offset_strength))));",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "let _e19: vec4<f32> = textureSample(screen_texture, texture_sampler, (in.uv + vec2<f32>(-(offset_strength), 0f)));",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "let _e27: vec4<f32> = textureSample(screen_texture, texture_sampler, (in.uv + vec2<f32>(0f, offset_strength)));",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("return vec4<f32>(_e10.x, _e19.y, _e27.z, 1f);"),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

@@ -12,7 +12,7 @@ fn WgslIrFunctionScope::function_expression_temporary_name(
   } else {
     index
   }
-  "_e\{index}"
+  "_e\{index + self.projected_temporary_name_offset}"
 }
 
 ///|
@@ -167,6 +167,21 @@ fn wgsl_ir_function_expression_is_synthetic_local_reference(
               None => false
             }
           }
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_generated_temporary_reference(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) => local_var.generated_temporary
         None => false
       }
     _ => false
@@ -364,6 +379,12 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, scope, block, index,
       )
       if lowered_base != base || lowered_index != index {
+        if lowered_base != base &&
+          wgsl_ir_function_expression_is_generated_temporary_reference(
+            function, lowered_base,
+          ) {
+          scope.record_projected_temporary_expression()
+        }
         function.expressions.append(
           Expression::Access(lowered_base, lowered_index),
         )
@@ -376,6 +397,11 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, scope, block, base,
       )
       if lowered_base != base {
+        if wgsl_ir_function_expression_is_generated_temporary_reference(
+            function, lowered_base,
+          ) {
+          scope.record_projected_temporary_expression()
+        }
         function.expressions.append(
           Expression::AccessIndex(lowered_base, index),
         )
@@ -388,6 +414,11 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, scope, block, base,
       )
       if lowered_base != base {
+        if wgsl_ir_function_expression_is_generated_temporary_reference(
+            function, lowered_base,
+          ) {
+          scope.record_projected_temporary_expression()
+        }
         function.expressions.append(
           Expression::Swizzle(size, lowered_base, pattern),
         )
