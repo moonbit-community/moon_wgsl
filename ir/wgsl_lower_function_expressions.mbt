@@ -261,6 +261,29 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             self.lower_function_expression_node(expr, function, scope),
           ),
         )
+      } else if op == @ast.WgslExprOperator::Subtract {
+        match expr.kind() {
+          Literal(token) =>
+            match
+              self.negated_literal_from_token_with_expected(token, expected_ty) {
+              Some(literal) =>
+                function.expressions.append(Expression::Literal(literal))
+              None =>
+                function.expressions.append(
+                  Expression::Unary(
+                    wgsl_ir_unary_operator(op),
+                    self.lower_function_expression_node(expr, function, scope),
+                  ),
+                )
+            }
+          _ =>
+            function.expressions.append(
+              Expression::Unary(
+                wgsl_ir_unary_operator(op),
+                self.lower_function_expression_node(expr, function, scope),
+              ),
+            )
+        }
       } else {
         function.expressions.append(
           Expression::Unary(
@@ -689,14 +712,19 @@ fn WgslIrLowerer::lower_identifier_expression(
   }
   match scope.locals.get(name) {
     Some(handle) =>
-      if self.local_variable_is_handle_value(function, handle) {
-        return scope.local_pointer_expression(name, handle, function)
-      } else {
-        return function.expressions.append(
-          Expression::Load(
-            scope.local_pointer_expression(name, handle, function),
-          ),
-        )
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_var) =>
+          if local_var.kind == Let ||
+            self.local_variable_is_handle_value(function, handle) {
+            return scope.local_pointer_expression(name, handle, function)
+          } else {
+            return function.expressions.append(
+              Expression::Load(
+                scope.local_pointer_expression(name, handle, function),
+              ),
+            )
+          }
+        None => raise WgslIrLowerError::UnknownIdentifier(name)
       }
     None => ()
   }

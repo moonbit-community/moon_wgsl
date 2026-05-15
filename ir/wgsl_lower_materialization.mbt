@@ -157,11 +157,13 @@ fn wgsl_ir_function_expression_is_synthetic_local_reference(
           } else {
             match local_var.name {
               Some(name) =>
-                name.length() >= 2 &&
-                name[0:2] == "_e" &&
-                wgsl_ir_local_variable_initializes_side_effecting_expression(
-                  function, local_var,
-                )
+                if local_var.generated_temporary {
+                  wgsl_ir_local_variable_initializes_materialized_value_call(
+                    function, local_var,
+                  )
+                } else {
+                  !(name.length() >= 2 && name[0:2] == "_e")
+                }
               None => false
             }
           }
@@ -172,27 +174,19 @@ fn wgsl_ir_function_expression_is_synthetic_local_reference(
 }
 
 ///|
-fn wgsl_ir_local_variable_initializes_side_effecting_expression(
+fn wgsl_ir_local_variable_initializes_materialized_value_call(
   function : Function,
   local_var : LocalVariable,
 ) -> Bool {
   match local_var.init {
     Some(init) =>
       match function.expressions.items.get(init.index()) {
-        Some(AtomicCall(atomic_function, _)) =>
-          match atomic_function {
-            Load
-            | Add
-            | Subtract
-            | And
-            | ExclusiveOr
-            | InclusiveOr
-            | Min
-            | Max
-            | Exchange
-            | CompareExchangeWeak => true
-            Store => false
-          }
+        Some(FunctionCall(_, _))
+        | Some(AtomicCall(_, _))
+        | Some(ImageSample(_, _, _, _, _, _, _, _, _))
+        | Some(ImageLoad(_, _, _, _, _))
+        | Some(ImageQuery(_, _))
+        | Some(WorkGroupUniformLoad(_)) => true
         _ => false
       }
     None => false
@@ -225,6 +219,7 @@ fn WgslIrLowerer::materialize_function_expression(
   let local_handle = function.local_variables.append(LocalVariable::{
     name: Some(scope.function_expression_temporary_name(function, value)),
     kind: Let,
+    generated_temporary: true,
     ty,
     init: Some(value),
   })
@@ -763,6 +758,7 @@ fn WgslIrLowerer::append_short_circuit_result_local(
   let local_handle = function.local_variables.append(LocalVariable::{
     name: Some("local"),
     kind: Var,
+    generated_temporary: false,
     ty,
     init: None,
   })

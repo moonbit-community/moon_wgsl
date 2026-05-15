@@ -94,6 +94,57 @@ test "IR emitter resets Naga expression temporary names per function" {
 }
 
 ///|
+test "IR emitter numbers materialized temporaries like Naga" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_2d<f32>;
+    #|@group(0) @binding(1) var samp: sampler;
+    #|
+    #|fn blit(uv: vec2<f32>) -> vec4<f32> {
+    #|  var color = textureSample(tex, samp, uv);
+    #|  return color;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e3: vec4<f32> = textureSample(tex, samp, uv);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e5: vec4<f32> = color;"), content="true")
+  debug_inspect(
+    emitted.contains("let _e6: vec4<f32> = color;"),
+    content="false",
+  )
+}
+
+///|
+test "IR emitter skips immutable let references in Naga temporary numbering" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_cube<f32>;
+    #|@group(0) @binding(1) var samp: sampler;
+    #|
+    #|fn sample_cube(pos: vec4<f32>) -> vec4<f32> {
+    #|  let direction: vec3<f32> = (pos.xyz * vec3<f32>(1f, 1f, -1f));
+    #|  return textureSample(tex, samp, direction);
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "let _e9: vec4<f32> = textureSample(tex, samp, direction);",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "let _e12: vec4<f32> = textureSample(tex, samp, direction);",
+    ),
+    content="false",
+  )
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

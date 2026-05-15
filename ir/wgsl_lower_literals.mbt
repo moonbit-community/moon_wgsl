@@ -51,6 +51,32 @@ fn WgslIrLowerer::contextualize_function_literal_expression(
 }
 
 ///|
+fn WgslIrLowerer::negated_literal_from_token_with_expected(
+  self : WgslIrLowerer,
+  token : @ast.WgslExprToken,
+  expected_ty : Handle?,
+) -> Literal? raise WgslIrLowerError {
+  wgsl_ir_negate_literal(
+    self.literal_from_token_with_expected(token, expected_ty),
+  )
+}
+
+///|
+fn wgsl_ir_negate_literal(literal : Literal) -> Literal? {
+  match literal {
+    F64(value) => Some(Literal::F64(-value))
+    F32(value) => Some(Literal::F32(Float::from_double(-value.to_double())))
+    F16(value) => Some(Literal::F16(-value))
+    I16(value) => Some(Literal::I16(-value))
+    I32(value) => Some(Literal::I32(-value))
+    I64(value) => Some(Literal::I64(-value))
+    AbstractInt(value) => Some(Literal::AbstractInt(-value))
+    AbstractFloat(value) => Some(Literal::AbstractFloat(-value))
+    _ => None
+  }
+}
+
+///|
 fn WgslIrLowerer::scalar_for_literal_context_type(
   self : WgslIrLowerer,
   ty_handle : Handle,

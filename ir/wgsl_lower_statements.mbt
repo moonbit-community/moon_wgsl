@@ -732,6 +732,7 @@ fn WgslIrLowerer::lower_local_declaration(
   let handle = function.local_variables.append(LocalVariable::{
     name: Some(lowered_name),
     kind: wgsl_ir_local_variable_kind(local_decl.kind()),
+    generated_temporary: false,
     ty,
     init: if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
       if var_init_in_declaration {

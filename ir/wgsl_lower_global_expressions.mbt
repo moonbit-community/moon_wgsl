@@ -52,10 +52,30 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
       )
     Identifier(name) => self.global_identifier_expression(name)
     Unary(op, expr) =>
-      Expression::Unary(
-        wgsl_ir_unary_operator(op),
-        self.lower_global_expression_node(expr),
-      )
+      if op == @ast.WgslExprOperator::Subtract {
+        match expr.kind() {
+          Literal(token) =>
+            match
+              self.negated_literal_from_token_with_expected(token, expected_ty) {
+              Some(literal) => Expression::Literal(literal)
+              None =>
+                Expression::Unary(
+                  wgsl_ir_unary_operator(op),
+                  self.lower_global_expression_node(expr),
+                )
+            }
+          _ =>
+            Expression::Unary(
+              wgsl_ir_unary_operator(op),
+              self.lower_global_expression_node(expr),
+            )
+        }
+      } else {
+        Expression::Unary(
+          wgsl_ir_unary_operator(op),
+          self.lower_global_expression_node(expr),
+        )
+      }
     Binary(op, left, right) => {
       let binary_op = wgsl_ir_binary_operator(op)
       let left_handle = self.lower_global_expression_node(left)

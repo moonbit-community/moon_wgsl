@@ -57,6 +57,7 @@ pub enum LocalVariableKind {
 pub(all) struct LocalVariable {
   name : String?
   kind : LocalVariableKind
+  generated_temporary : Bool
   ty : Handle
   init : Handle?
 } derive(Eq, Debug)
