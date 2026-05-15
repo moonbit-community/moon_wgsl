@@ -178,6 +178,7 @@ fn WgslIrLowerer::lower_statement(
           )
         }
       }
+      wgsl_ir_record_store_value_temporary_references(function, value)
       block.push(Statement::Store(target, value))
     }
     Increment(target) =>
@@ -585,6 +586,7 @@ fn WgslIrLowerer::lower_for_header_statement(
             scope,
           )
       }
+      wgsl_ir_record_store_value_temporary_references(function, value)
       block.push(Statement::Store(target, value))
       return
     }
@@ -733,6 +735,7 @@ fn WgslIrLowerer::lower_local_declaration(
     name: Some(lowered_name),
     kind: wgsl_ir_local_variable_kind(local_decl.kind()),
     generated_temporary: false,
+    generated_temporary_store_value_reference: false,
     ty,
     init: if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
       if var_init_in_declaration {
@@ -754,6 +757,9 @@ fn WgslIrLowerer::lower_local_declaration(
         if !var_init_in_declaration {
           let materialized = self.materialize_store_value_if_needed(
             function, scope, block, init_handle,
+          )
+          wgsl_ir_record_store_value_temporary_references(
+            function, materialized,
           )
           block.push(
             Statement::Store(

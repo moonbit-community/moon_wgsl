@@ -173,9 +173,13 @@ fn wgsl_ir_function_expression_is_synthetic_local_reference(
             match local_var.name {
               Some(name) =>
                 if local_var.generated_temporary {
-                  wgsl_ir_local_variable_initializes_materialized_value_call(
-                    function, local_var,
-                  )
+                  if wgsl_ir_local_variable_initializes_materialized_value_call(
+                      function, local_var,
+                    ) {
+                    true
+                  } else {
+                    local_var.generated_temporary_store_value_reference
+                  }
                 } else {
                   !(name.length() >= 2 && name[0:2] == "_e")
                 }
@@ -250,6 +254,7 @@ fn WgslIrLowerer::materialize_function_expression(
     name: Some(scope.function_expression_temporary_name(function, value)),
     kind: Let,
     generated_temporary: true,
+    generated_temporary_store_value_reference: false,
     ty,
     init: Some(value),
   })
@@ -899,6 +904,7 @@ fn WgslIrLowerer::append_short_circuit_result_local(
     name: Some("local"),
     kind: Var,
     generated_temporary: false,
+    generated_temporary_store_value_reference: false,
     ty,
     init: None,
   })

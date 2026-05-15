@@ -763,3 +763,53 @@ test "IR emitter matches Naga temp slots around nested call arguments" {
     content="false",
   )
 }
+
+///|
+test "IR emitter ignores materialized temporary locals in Naga arena order" {
+  let source =
+    #|struct View {
+    #|  clip_from_world: mat4x4<f32>,
+    #|}
+    #|
+    #|struct UiVertexOutput {
+    #|  @builtin(position) position: vec4<f32>,
+    #|  @location(0) uv: vec2<f32>,
+    #|  @location(1) size: vec2<f32>,
+    #|  @location(2) border_widths: vec4<f32>,
+    #|  @location(3) border_radius: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|
+    #|@vertex
+    #|fn vertex(
+    #|  @location(0) vertex_position: vec3<f32>,
+    #|  @location(1) vertex_uv: vec2<f32>,
+    #|  @location(2) size: vec2<f32>,
+    #|  @location(3) border_widths: vec4<f32>,
+    #|  @location(4) border_radius: vec4<f32>,
+    #|) -> UiVertexOutput {
+    #|  var out: UiVertexOutput;
+    #|  out.uv = vertex_uv;
+    #|  out.position = view.clip_from_world * vec4<f32>(vertex_position, 1.0);
+    #|  out.size = size;
+    #|  out.border_widths = border_widths;
+    #|  out.border_radius = border_radius;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e17: UiVertexOutput = out;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return _e17;"), content="true")
+  debug_inspect(
+    emitted.contains("let _e18: UiVertexOutput = out;"),
+    content="false",
+  )
+}

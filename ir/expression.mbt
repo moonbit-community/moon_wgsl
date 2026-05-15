@@ -58,6 +58,7 @@ pub(all) struct LocalVariable {
   name : String?
   kind : LocalVariableKind
   generated_temporary : Bool
+  mut generated_temporary_store_value_reference : Bool
   ty : Handle
   init : Handle?
 } derive(Eq, Debug)

@@ -122,19 +122,6 @@ fn WgslIrFunctionScope::argument_expression(
 }
 
 ///|
-fn WgslIrFunctionScope::predeclare_argument_expression(
-  self : WgslIrFunctionScope,
-  name : String,
-  index : Int,
-  function : Function,
-) -> Handle {
-  let handle = function.expressions.append(Expression::FunctionArgument(index))
-  self.argument_expressions.set(name, handle)
-  self.argument_pointer_expressions.set(name, handle)
-  handle
-}
-
-///|
 fn WgslIrFunctionScope::local_pointer_expression(
   self : WgslIrFunctionScope,
   name : String,
