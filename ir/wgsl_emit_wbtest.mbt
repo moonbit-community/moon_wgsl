@@ -242,6 +242,48 @@ test "IR emitter counts projected materialized temporaries like Naga" {
 }
 
 ///|
+test "IR emitter does not shift later temporaries after projected textureLoad" {
+  let source =
+    #|struct FullscreenVertexOutput {
+    #|  @builtin(position) position: vec4<f32>,
+    #|}
+    #|
+    #|struct FragmentOutput {
+    #|  @builtin(frag_depth) frag_depth: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var material_id_texture: texture_2d<u32>;
+    #|
+    #|@fragment
+    #|fn fragment(in: FullscreenVertexOutput) -> FragmentOutput {
+    #|  var out: FragmentOutput;
+    #|  out.frag_depth = f32(textureLoad(material_id_texture, vec2<i32>(in.position.xy), 0).x) / 255.0;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "let _e8: vec4<u32> = textureLoad(material_id_texture, vec2<i32>(in.position.xy), 0i);",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e13: FragmentOutput = out;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e15: FragmentOutput = out;"),
+    content="false",
+  )
+}
+
+///|
 test "IR emitter reuses baked child expression names without shifting parent handles" {
   let source =
     #|struct VertexOutput { @location(0) uv: vec2<f32>, }

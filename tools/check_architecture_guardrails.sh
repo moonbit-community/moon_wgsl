@@ -859,8 +859,8 @@ if (( external_writer_drift_count != 72 )); then
 fi
 
 external_byte_drift_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_byte_drift.tsv)"
-if (( external_byte_drift_count != 102 )); then
-  fail "external naga-oil compose parity byte drift manifest must exact-gate the observed 102 byte-output drifts, got ${external_byte_drift_count}"
+if (( external_byte_drift_count != 100 )); then
+  fail "external naga-oil compose parity byte drift manifest must exact-gate the observed 100 byte-output drifts, got ${external_byte_drift_count}"
 fi
 
 if [[ ! -f tools/naga_oil_oracle/src/bin/wgsl_writer_fingerprint.rs ]]; then

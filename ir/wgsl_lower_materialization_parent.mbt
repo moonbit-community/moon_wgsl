@@ -86,6 +86,7 @@ fn wgsl_ir_projected_temporary_expression_slots(
             Some(init) =>
               match function.expressions.items.get(init.index()) {
                 Some(ImageQuery(_, _)) => 1
+                Some(ImageLoad(_, _, _, _, _)) => 0
                 _ => 2
               }
             None => 2
