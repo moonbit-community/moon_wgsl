@@ -854,13 +854,13 @@ if (( external_oracle_blocked_count != 1 )); then
 fi
 
 external_writer_drift_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_writer_drift.tsv)"
-if (( external_writer_drift_count != 94 )); then
-  fail "external naga-oil compose parity writer drift manifest must exact-gate the observed 94 writer/order/name drifts, got ${external_writer_drift_count}"
+if (( external_writer_drift_count != 78 )); then
+  fail "external naga-oil compose parity writer drift manifest must exact-gate the observed 78 writer/order/name drifts, got ${external_writer_drift_count}"
 fi
 
 external_byte_drift_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_byte_drift.tsv)"
-if (( external_byte_drift_count != 124 )); then
-  fail "external naga-oil compose parity byte drift manifest must exact-gate the observed 124 byte-output drifts, got ${external_byte_drift_count}"
+if (( external_byte_drift_count != 117 )); then
+  fail "external naga-oil compose parity byte drift manifest must exact-gate the observed 117 byte-output drifts, got ${external_byte_drift_count}"
 fi
 
 if [[ ! -f tools/naga_oil_oracle/src/bin/wgsl_writer_fingerprint.rs ]]; then

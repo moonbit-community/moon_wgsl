@@ -24,6 +24,7 @@ priv struct WgslComposeIrIdentityKey {
 ///|
 priv struct WgslComposeSemanticIr {
   declared_names : @set.Set[String]
+  reference_path_keys : @set.Set[String]
   symbol_keys : @set.Set[String]
   symbols : Array[WgslComposeIrSymbol]
   emitted_final_name_by_identity : Map[String, String]
@@ -62,6 +63,7 @@ fn WgslComposeIrIdentityKey::text(self : WgslComposeIrIdentityKey) -> String {
 fn WgslComposeSemanticIr::WgslComposeSemanticIr() -> WgslComposeSemanticIr {
   WgslComposeSemanticIr::{
     declared_names: @set.Set([]),
+    reference_path_keys: @set.Set([]),
     symbol_keys: @set.Set([]),
     symbols: [],
     emitted_final_name_by_identity: Map([]),
@@ -77,6 +79,16 @@ fn WgslComposeSemanticIr::record_declared_name(
   let name = name.trim().to_owned()
   if name != "" {
     self.declared_names.add(name)
+  }
+}
+
+///|
+fn WgslComposeSemanticIr::record_reference_path(
+  self : WgslComposeSemanticIr,
+  path : WgslReferencePath,
+) -> Unit {
+  if path.segments().length() > 0 {
+    self.reference_path_keys.add(path.text())
   }
 }
 
@@ -169,6 +181,9 @@ fn WgslComposeSemanticIr::from_facts_and_bindings(
   for declaration in facts.declarations {
     ir.record_declared_name(declaration.name())
   }
+  for reference in facts.references {
+    ir.record_reference_path(reference)
+  }
   for binding in bindings.bindings {
     ir.record_emitted_symbol_target(binding)
   }
@@ -176,6 +191,14 @@ fn WgslComposeSemanticIr::from_facts_and_bindings(
     ir.record_reference_binding(binding)
   }
   ir
+}
+
+///|
+fn WgslComposeSemanticIr::binding_is_referenced(
+  self : WgslComposeSemanticIr,
+  binding : WgslComposeBinding,
+) -> Bool {
+  self.reference_path_keys.contains(binding.reference_path.text())
 }
 
 ///|
@@ -247,6 +270,9 @@ fn WgslComposeSemanticIr::live_binding_plan(
       continue
     }
     seen_binding_keys.add(binding_key)
+    if !self.binding_is_referenced(resolved_binding) {
+      continue
+    }
     if self.binding_is_shadowed_by_local_declaration(
         resolved_binding,
         ir_binding.target.final_name,

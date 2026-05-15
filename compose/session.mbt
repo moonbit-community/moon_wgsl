@@ -113,6 +113,7 @@ fn set_strings_to_array(values : @set.Set[String]) -> Array[String] {
 ///|
 priv struct WgslComposeSemanticFacts {
   declarations : Array[WgslEmittedDeclaration]
+  references : Array[WgslReferencePath]
 }
 
 ///|
@@ -166,7 +167,6 @@ priv struct WgslComposeSymbolTarget {
 priv struct WgslComposeBindingSet {
   bindings : Array[WgslComposeBinding]
   keys : @set.Set[String]
-  conflicts : Array[String]
 }
 
 ///|
@@ -196,6 +196,8 @@ priv struct WgslLiveBindingPlan {
 priv struct WgslLiveSymbolBinding {
   reference_path : WgslReferencePath
   target : WgslComposeSymbolTarget
+  scope : WgslComposeBindingScope
+  alias_name : String
 }
 
 ///|
@@ -219,6 +221,44 @@ fn WgslLiveBindingPlan::push(
   binding : WgslLiveSymbolBinding,
 ) -> Unit {
   self.bindings.push(binding)
+}
+
+///|
+fn wgsl_live_binding_conflict_message(
+  existing : WgslLiveSymbolBinding,
+  binding : WgslLiveSymbolBinding,
+) -> String {
+  let existing_identity = WgslComposeIrIdentityKey(existing.target.identity).text()
+  let binding_identity = WgslComposeIrIdentityKey(binding.target.identity).text()
+  let scope = if binding.alias_name == "" {
+    binding.scope.label()
+  } else {
+    "\{binding.scope.label()} alias \{binding.alias_name}"
+  }
+  "\{binding.reference_path.text()} in \{scope}: \{existing_identity} -> \{existing.target.final_name} conflicts with \{binding_identity} -> \{binding.target.final_name}"
+}
+
+///|
+fn WgslLiveBindingPlan::first_conflict(self : WgslLiveBindingPlan) -> String? {
+  for i in 0..<self.bindings.length() {
+    let existing = self.bindings[i]
+    for j in (i + 1)..<self.bindings.length() {
+      let binding = self.bindings[j]
+      if existing.scope == binding.scope &&
+        existing.alias_name == binding.alias_name &&
+        existing.reference_path.matches(binding.reference_path) {
+        let existing_identity = WgslComposeIrIdentityKey(
+          existing.target.identity,
+        ).text()
+        let binding_identity = WgslComposeIrIdentityKey(binding.target.identity).text()
+        if existing_identity != binding_identity ||
+          existing.target.final_name != binding.target.final_name {
+          return Some(wgsl_live_binding_conflict_message(existing, binding))
+        }
+      }
+    }
+  }
+  None
 }
 
 ///|
@@ -255,7 +295,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
 
 ///|
 fn WgslComposeBindingSet::WgslComposeBindingSet() -> WgslComposeBindingSet {
-  WgslComposeBindingSet::{ bindings: [], keys: @set.Set([]), conflicts: [] }
+  WgslComposeBindingSet::{ bindings: [], keys: @set.Set([]) }
 }
 
 ///|
@@ -279,21 +319,6 @@ fn WgslComposeBindingKey::WgslComposeBindingKey(
 ///|
 fn WgslComposeBindingKey::text(self : WgslComposeBindingKey) -> String {
   self.text
-}
-
-///|
-fn wgsl_compose_binding_conflict_message(
-  existing : WgslComposeBinding,
-  binding : WgslComposeBinding,
-) -> String {
-  let existing_identity = WgslComposeIrIdentityKey(existing.target.identity).text()
-  let binding_identity = WgslComposeIrIdentityKey(binding.target.identity).text()
-  let scope = if binding.alias_name == "" {
-    binding.scope.label()
-  } else {
-    "\{binding.scope.label()} alias \{binding.alias_name}"
-  }
-  "\{binding.reference_path.text()} in \{scope}: \{existing_identity} conflicts with \{binding_identity}"
 }
 
 ///|
@@ -394,7 +419,12 @@ fn WgslComposeBinding::to_live_binding(
   self : WgslComposeBinding,
   target : WgslComposeSymbolTarget,
 ) -> WgslLiveSymbolBinding {
-  WgslLiveSymbolBinding::{ reference_path: self.reference_path, target }
+  WgslLiveSymbolBinding::{
+    reference_path: self.reference_path,
+    target,
+    scope: self.scope,
+    alias_name: self.alias_name,
+  }
 }
 
 ///|
@@ -406,39 +436,12 @@ fn WgslComposeBindingSet::push(
     binding.target.final_name == "" {
     return
   }
-  let binding_identity_key = WgslComposeIrIdentityKey(binding.target.identity).text()
-  for existing in self.bindings {
-    if existing.scope == binding.scope &&
-      existing.alias_name == binding.alias_name &&
-      existing.reference_path.matches(binding.reference_path) {
-      let existing_identity_key = WgslComposeIrIdentityKey(
-        existing.target.identity,
-      ).text()
-      if existing_identity_key == binding_identity_key {
-        continue
-      }
-      self.conflicts.push(
-        wgsl_compose_binding_conflict_message(existing, binding),
-      )
-      return
-    }
-  }
   let key = WgslComposeBindingKey(binding).text()
   if self.keys.contains(key) {
     return
   }
   self.keys.add(key)
   self.bindings.push(binding)
-}
-
-///|
-fn WgslComposeBindingSet::first_conflict(
-  self : WgslComposeBindingSet,
-) -> String? {
-  match self.conflicts {
-    [message, ..] => Some(message)
-    [] => None
-  }
 }
 
 ///|

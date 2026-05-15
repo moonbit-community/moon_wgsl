@@ -105,7 +105,11 @@ fn collect_wgsl_compose_semantic_facts(
       let declarations = collect_wgsl_named_declarations_strict(source) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
-      let facts = WgslComposeSemanticFacts::{ declarations, }
+      let references : Array[WgslReferencePath] = []
+      collect_wgsl_semantic_reference_paths(source, references) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+      let facts = WgslComposeSemanticFacts::{ declarations, references }
       session.semantic_facts.set(source, facts)
       facts
     }

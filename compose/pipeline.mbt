@@ -110,7 +110,7 @@ fn WgslComposeEmitter::emit_source_with_path(
   current_rel_path : String,
   source : String,
   inherited_defs : WgslActiveComposeDefs?,
-  _inherited_bindings : WgslComposeBindingSet,
+  inherited_bindings : WgslComposeBindingSet,
   apply_virtual_overrides : Bool,
   record_current_origins : Bool,
   alias_prefixes : Array[String],
@@ -132,6 +132,9 @@ fn WgslComposeEmitter::emit_source_with_path(
   }
   let mut merged = ""
   let bindings = WgslComposeBindingSet()
+  for binding in inherited_bindings.bindings {
+    bindings.push(binding)
+  }
   let implicit_requests = self.composer.build_wgsl_implicit_import_requests(
     current_rel_path,
     prepared.active_scan_source,

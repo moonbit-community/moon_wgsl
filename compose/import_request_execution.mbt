@@ -3,7 +3,7 @@ fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   requests : Array[WgslImportRequest],
-  _importer_scan_source : String,
+  importer_scan_source : String,
   bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
@@ -140,26 +140,39 @@ fn Composer::compose_wgsl_import_requests(
           session,
           import_defs,
         )
+        let item_bindings = WgslComposeBindingSet()
         let imported_prefix = self.compose_wgsl_import_requests(
           request.rel_path,
           requests,
           extracted_source,
-          bindings,
+          item_bindings,
           session,
           import_defs,
           alias_prefixes,
         )
-        imported_prefix +
-        WgslComposeEmitter(self, session).emit_source_with_path(
-          request.rel_path,
-          drop_wgsl_import_directives_from_compose_source(extracted_source),
-          Some(importer_defs),
-          bindings,
-          false,
-          false,
-          alias_prefixes,
-          false,
-        )
+        let emitted_slice = imported_prefix +
+          WgslComposeEmitter(self, session).emit_source_with_path(
+            request.rel_path,
+            drop_wgsl_import_directives_from_compose_source(extracted_source),
+            Some(importer_defs),
+            item_bindings,
+            false,
+            false,
+            alias_prefixes,
+            false,
+          )
+        for binding in item_bindings.bindings {
+          let referenced_by_importer = wgsl_semantic_source_contains_reference_path(
+            importer_scan_source,
+            binding.reference_path.text(),
+          ) catch {
+            error => raise composer_error_from_wgsl_parse_error(error)
+          }
+          if referenced_by_importer {
+            bindings.push(binding)
+          }
+        }
+        emitted_slice
       }
     }
     session.active_rel_paths.pop() |> ignore

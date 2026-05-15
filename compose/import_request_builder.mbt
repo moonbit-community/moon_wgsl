@@ -55,7 +55,7 @@ fn wgsl_import_candidate_error_path(
 }
 
 ///|
-fn wgsl_source_declares_const_like_item(
+fn wgsl_source_declares_non_resource_dependency_item(
   source : String,
   item_name : String,
 ) -> Bool raise ComposerError {
@@ -65,8 +65,10 @@ fn wgsl_source_declares_const_like_item(
   for decl in unit.declarations() {
     if decl.name() == item_name {
       match decl.data() {
-        WgslGlobalDeclData::Const(_) | WgslGlobalDeclData::Override(_) =>
-          return true
+        WgslGlobalDeclData::Struct(_)
+        | WgslGlobalDeclData::TypeAlias(_)
+        | WgslGlobalDeclData::Const(_)
+        | WgslGlobalDeclData::Override(_) => return true
         _ => return false
       }
     }
@@ -421,7 +423,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
           if requested_item_is_live || leaf_item_is_live {
             live_requested_items.push(requested_item)
           } else if !prune_requested_items_by_active_usage &&
-            wgsl_source_declares_const_like_item(
+            wgsl_source_declares_non_resource_dependency_item(
               active_import_source, requested_item,
             ) {
             live_requested_items.push(requested_item)

@@ -17,7 +17,11 @@ fn semantic_ir_facts(source : String) -> WgslComposeSemanticFacts {
   let declarations = collect_wgsl_named_declarations_strict(source) catch {
     _ => abort("expected semantic IR fixture parse success")
   }
-  WgslComposeSemanticFacts::{ declarations, }
+  let references : Array[WgslReferencePath] = []
+  collect_wgsl_semantic_reference_paths(source, references) catch {
+    _ => abort("expected semantic IR fixture reference parse success")
+  }
+  WgslComposeSemanticFacts::{ declarations, references }
 }
 
 ///|
@@ -48,6 +52,9 @@ test "compose semantic IR resolves undeclared alias target through emitted ident
     #|  value: f32,
     #|}
     #|var<private> view_bindings__view: view_bindings__View;
+    #|fn use_alias() -> f32 {
+    #|  return view_bindings::view.value;
+    #|}
     #|
   let bindings = WgslComposeBindingSet()
   push_required_alias_binding(
@@ -82,6 +89,9 @@ test "compose semantic IR preserves declared alias-scope target" {
     #|}
     #|var<private> view_bindings__view: view_bindings__View;
     #|var<private> shadows__view_bindings__view: view_bindings__View;
+    #|fn use_alias() -> f32 {
+    #|  return view_bindings::view.value;
+    #|}
     #|
   let bindings = WgslComposeBindingSet()
   push_required_alias_binding(

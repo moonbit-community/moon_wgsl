@@ -299,6 +299,52 @@ test "composer keeps explicit nested import declarations from selected item modu
 }
 
 ///|
+test "composer preserves selected item module-level imports before live conflicts" {
+  let composer = Composer::default()
+  let view_source =
+    #|#define_import_path test::view
+    #|
+    #|struct View {
+    #|  exposure: f32,
+    #|}
+    #|
+  let globals_source =
+    #|#define_import_path test::globals
+    #|
+    #|struct Globals {
+    #|  time: f32,
+    #|}
+    #|
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|#import test::{view::View, globals::Globals}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> globals: Globals;
+    #|
+  let root_source =
+    #|#import test::bindings::globals
+    #|
+    #|fn main() -> f32 {
+    #|  return globals.time;
+    #|}
+    #|
+  composer.register_source("view.wgsl", view_source)
+  composer.register_source("globals.wgsl", globals_source)
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("ViewX_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("GlobalsX_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("test::view::View"), content="false")
+}
+
+///|
 test "composer rewrites imported module-local alias type references" {
   let composer = Composer::default()
   let types_source =
