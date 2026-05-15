@@ -1291,6 +1291,11 @@ fn WgslIrLowerer::function_expression_can_return_directly(
         | Relational(_, _)
         | CooperativeLoad(_, _, _, _)
         | CooperativeMultiplyAdd(_, _, _) => true
+        LocalVariable(local_handle) =>
+          match function.local_variables.items.get(local_handle.index()) {
+            Some(local_variable) => local_variable.kind == Let
+            None => false
+          }
         Load(inner) =>
           self.function_pointer_expression_can_return_directly(function, inner)
         _ => false

@@ -145,6 +145,47 @@ test "IR emitter skips immutable let references in Naga temporary numbering" {
 }
 
 ///|
+test "IR lowerer preserves direct value-call let initializers" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_2d<f32>;
+    #|@group(0) @binding(1) var samp: sampler;
+    #|
+    #|fn dims() -> vec2<u32> {
+    #|  let dim = textureDimensions(tex);
+    #|  return dim;
+    #|}
+    #|
+    #|fn sample(uv: vec2<f32>) -> vec4<f32> {
+    #|  let color = textureSample(tex, samp, uv);
+    #|  return color;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let dim: vec2<u32> = textureDimensions(tex);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let color: vec4<f32> = textureSample(tex, samp, uv);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e1: vec2<u32> = textureDimensions"),
+    content="false",
+  )
+  debug_inspect(
+    emitted.contains("let _e3: vec4<f32> = textureSample"),
+    content="false",
+  )
+  debug_inspect(emitted.contains("return color;"), content="true")
+  debug_inspect(emitted.contains("let _e"), content="false")
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment
