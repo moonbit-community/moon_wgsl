@@ -110,6 +110,21 @@ test "IR emitter mirrors naga entry-point stage attribute spacing" {
 }
 
 ///|
+test "IR emitter preserves f32 negative zero spelling" {
+  let source =
+    #|const NEG_ZERO: f32 = -0.0;
+    #|const OFFSET: vec2<f32> = vec2<f32>(0.125, -0.0);
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("const NEG_ZERO: f32 = -0f;"), content="true")
+  debug_inspect(emitted.contains("vec2<f32>(0.125f, -0f)"), content="true")
+}
+
+///|
 test "IR emitter prints global and function const_asserts from IR" {
   let source =
     #|const VALUE: u32 = 1u;

@@ -143,9 +143,17 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
 
 ///|
 fn wgsl_ir_emit_f32_literal(value : Float) -> String {
+  if wgsl_ir_f32_is_negative_zero(value) {
+    return "-0f"
+  }
   wgsl_ir_emit_concrete_float_literal_text(
     wgsl_ir_shortest_f32_literal_text(value),
   )
+}
+
+///|
+fn wgsl_ir_f32_is_negative_zero(value : Float) -> Bool {
+  value == Float::from_int(0) && value.reinterpret_as_int() < 0
 }
 
 ///|
