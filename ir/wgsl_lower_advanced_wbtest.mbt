@@ -217,10 +217,7 @@ test "WGSL AST lowerer preserves storage access defaults" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(
-    emitted.contains("var<storage, read> read_only: S;"),
-    content="true",
-  )
+  debug_inspect(emitted.contains("var<storage> read_only: S;"), content="true")
   debug_inspect(
     emitted.contains("var<storage, read_write> writable: S;"),
     content="true",

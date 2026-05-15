@@ -543,7 +543,7 @@ test "github issue 8: Bevy module alias keeps clustered_lights binding live" {
     content="false",
   )
   debug_inspect(
-    source.contains("var<storage, read> clustered_lightsX_naga_oil_mod_X") &&
+    source.contains("var<storage> clustered_lightsX_naga_oil_mod_X") &&
     source.contains(": ClusteredLightsX_naga_oil_mod_X"),
     content="true",
   )

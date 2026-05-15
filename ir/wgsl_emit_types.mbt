@@ -467,7 +467,12 @@ fn WgslIrEmitter::address_space_template(
     Private => "<private>"
     WorkGroup => "<workgroup>"
     Uniform => "<uniform>"
-    Storage(access) => "<storage, \{self.storage_access_name(access)}>"
+    Storage(access) =>
+      if access == StorageAccess::load() {
+        "<storage>"
+      } else {
+        "<storage, \{self.storage_access_name(access)}>"
+      }
     Handle => ""
     Function => "<function>"
     Immediate => "<immediate>"
