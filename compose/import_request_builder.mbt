@@ -199,15 +199,94 @@ fn Composer::build_wgsl_import_requests_from_source_directives(
 fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
   self : Composer,
   current_rel_path : String,
-  active_source : String,
+  directive_source : String,
+  dependency_scan_source : String,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let targets : Array[WgslImportTarget] = []
-  collect_wgsl_import_targets_from_source_directives(active_source, targets)
-  self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, active_source, session, importer_defs, false,
+  collect_wgsl_import_targets_from_source_directives(directive_source, targets)
+  let requests = self.build_wgsl_import_requests_from_targets(
+    current_rel_path, targets, directive_source, session, importer_defs, false,
   )
+  if dependency_scan_source != directive_source {
+    let dependency_requests = self.build_wgsl_import_requests_from_targets(
+      current_rel_path, targets, dependency_scan_source, session, importer_defs,
+      false,
+    )
+    self.merge_wgsl_non_resource_dependency_requests(
+      requests, dependency_requests, session, importer_defs,
+    )
+  }
+  requests
+}
+
+///|
+fn Composer::merge_wgsl_non_resource_dependency_requests(
+  self : Composer,
+  requests : Array[WgslImportRequest],
+  dependency_requests : Array[WgslImportRequest],
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Unit raise ComposerError {
+  for dependency_request in dependency_requests {
+    if dependency_request.requested_items.length() == 0 {
+      continue
+    }
+    let import_source = match
+      self.registry.registered_source(dependency_request.rel_path) {
+      Some(source) => source
+      None =>
+        raise ComposerError::MissingRegisteredSource(
+          dependency_request.rel_path,
+        )
+    }
+    let import_defs = self.active_compose_defs_for_rel_path(
+      dependency_request.rel_path,
+      session,
+      Some(importer_defs),
+    )
+    let active_import_source = apply_wgsl_template_consts(
+      apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
+      import_defs.value_defines,
+    )
+    let filtered_items : Array[String] = []
+    for requested_item in dependency_request.requested_items {
+      if wgsl_source_declares_non_resource_dependency_item(
+          active_import_source, requested_item,
+        ) {
+        composer_string_list_push_unique(filtered_items, requested_item)
+      }
+    }
+    if filtered_items.length() == 0 {
+      continue
+    }
+    if find_wgsl_import_request_index(
+        requests,
+        dependency_request.module_path,
+        dependency_request.rel_path,
+        dependency_request.alias_name,
+      )
+      is Some(request_index) {
+      let request = requests[request_index]
+      request.keep_requested_items = true
+      for requested_item in filtered_items {
+        composer_string_list_push_unique(
+          request.requested_items,
+          requested_item,
+        )
+      }
+    } else {
+      requests.push(WgslImportRequest::{
+        module_path: dependency_request.module_path,
+        rel_path: dependency_request.rel_path,
+        import_full_module: false,
+        keep_requested_items: true,
+        requested_items: filtered_items,
+        alias_name: dependency_request.alias_name,
+      })
+    }
+  }
 }
 
 ///|

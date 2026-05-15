@@ -137,6 +137,7 @@ fn Composer::compose_wgsl_import_requests(
         let requests = self.build_wgsl_import_requests_from_emitted_item_slice(
           request.rel_path,
           extracted_source,
+          prepared.active_source,
           session,
           import_defs,
         )

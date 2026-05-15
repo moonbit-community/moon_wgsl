@@ -245,6 +245,7 @@ test "item slice import request builder keeps explicit nested items" {
   let requests = composer.build_wgsl_import_requests_from_emitted_item_slice(
     "color.wgsl",
     extracted.source(),
+    color_source,
     session,
     defs,
   ) catch {
@@ -342,6 +343,51 @@ test "composer preserves selected item module-level imports before live conflict
   debug_inspect(emitted.contains("ViewX_naga_oil_mod"), content="true")
   debug_inspect(emitted.contains("GlobalsX_naga_oil_mod"), content="true")
   debug_inspect(emitted.contains("test::view::View"), content="false")
+}
+
+///|
+test "composer scans full selected item module for alias type dependencies" {
+  let composer = Composer::default()
+  let types_source =
+    #|#define_import_path test::types
+    #|
+    #|struct Direct {
+    #|  time: f32,
+    #|}
+    #|
+    #|struct UsedBySibling {
+    #|  value: u32,
+    #|}
+    #|
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|#import test::types as types
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> globals: types::Direct;
+    #|
+    #|@group(0) @binding(1)
+    #|var<uniform> sibling: types::UsedBySibling;
+    #|
+  let root_source =
+    #|#import test::bindings::globals
+    #|
+    #|fn main() -> f32 {
+    #|  return globals.time;
+    #|}
+    #|
+  composer.register_source("types.wgsl", types_source)
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("DirectX_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("UsedBySiblingX_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("siblingX_naga_oil_mod"), content="false")
 }
 
 ///|

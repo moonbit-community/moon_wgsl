@@ -344,6 +344,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         let requests = self.composer.build_wgsl_import_requests_from_emitted_item_slice(
           request.rel_path,
           extracted_source,
+          prepared.active_source,
           self.session,
           import_defs,
         )
