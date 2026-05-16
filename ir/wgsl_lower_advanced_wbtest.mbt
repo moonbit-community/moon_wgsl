@@ -151,7 +151,7 @@ test "WGSL AST lowerer supports official constructor and swizzle forms" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("vec3<i32>(1, 2, 3)"), content="true")
+  debug_inspect(emitted.contains("vec3<i32>(1i, 2i, 3i)"), content="true")
   debug_inspect(emitted.contains("v = (_e"), content="true")
   debug_inspect(emitted.contains("* w.xyz);"), content="true")
   debug_inspect(

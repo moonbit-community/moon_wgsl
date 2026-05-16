@@ -182,7 +182,8 @@ fn WgslIrEmitter::emit_function_local_var_declarations(
     let handle = Handle::Handle(index)
     match function.local_variables.items.get(index) {
       Some(local_var) =>
-        if local_var.kind == LocalVariableKind::Var && local_var.init == None {
+        if local_var.kind == LocalVariableKind::Var &&
+          !local_var.generated_temporary {
           self.emit_local_declaration(out, function, handle, indent)
           emitted = true
         }

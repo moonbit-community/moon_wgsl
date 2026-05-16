@@ -562,6 +562,34 @@ test "IR lowerer emits while as loop with leading condition guard" {
 }
 
 ///|
+test "IR emitter hoists function var declarations before local let statements" {
+  let source =
+    #|fn helper(limit: i32) -> f32 {
+    #|  let start = vec2<f32>(1.0, 2.0);
+    #|  var value: f32 = 0.0;
+    #|  for (var i = 0; i < limit; i++) {
+    #|    value += start.x;
+    #|  }
+    #|  return value;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      (
+        #|fn helper(limit: i32) -> f32 {
+        #|    var value: f32 = 0f;
+        #|    var i: i32 = 0i;
+        #|
+        #|    let start: vec2<f32> = vec2<f32>(1f, 2f);
+      ),
+    ),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter prints official builtin names and workgroup override expressions" {
   let source =
     #|enable subgroups;

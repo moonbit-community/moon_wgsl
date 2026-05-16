@@ -37,7 +37,8 @@ fn WgslIrEmitter::statement_is_local_var_declaration(
     Declare(handle) =>
       match function.local_variables.items.get(handle.index()) {
         Some(local_var) =>
-          local_var.kind == LocalVariableKind::Var && local_var.init == None
+          local_var.kind == LocalVariableKind::Var &&
+          !local_var.generated_temporary
         None => false
       }
     _ => false

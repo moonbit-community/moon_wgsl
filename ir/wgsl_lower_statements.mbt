@@ -724,6 +724,11 @@ fn WgslIrLowerer::lower_local_declaration(
       }
   }
   let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
+  match init {
+    Some(init_handle) =>
+      self.contextualize_function_expression_for_type(function, init_handle, ty)
+    None => ()
+  }
   let lowered_name = if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
     local_decl.name().name()
   } else {
