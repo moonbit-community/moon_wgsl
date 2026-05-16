@@ -8,7 +8,6 @@ priv struct WgslIrEmitOptions {
   contextualize_numeric_literals : Bool
   annotate_all_local_types : Bool
   emit_implicit_flat_interpolation : Bool
-  emit_bracketed_composite_access_index : Bool
   compact_storage_texture_type_arguments : Bool
 }
 
@@ -23,7 +22,6 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
     contextualize_numeric_literals: false,
     annotate_all_local_types: false,
     emit_implicit_flat_interpolation: false,
-    emit_bracketed_composite_access_index: false,
     compact_storage_texture_type_arguments: false,
   }
 }
@@ -39,7 +37,6 @@ fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
     contextualize_numeric_literals: true,
     annotate_all_local_types: true,
     emit_implicit_flat_interpolation: true,
-    emit_bracketed_composite_access_index: true,
     compact_storage_texture_type_arguments: true,
   }
 }
@@ -59,7 +56,6 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
       contextualize_numeric_literals: self.options.contextualize_numeric_literals,
       annotate_all_local_types: self.options.annotate_all_local_types,
       emit_implicit_flat_interpolation: self.options.emit_implicit_flat_interpolation,
-      emit_bracketed_composite_access_index: self.options.emit_bracketed_composite_access_index,
       compact_storage_texture_type_arguments: self.options.compact_storage_texture_type_arguments,
     },
     filter: self.filter,

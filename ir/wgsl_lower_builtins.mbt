@@ -256,6 +256,16 @@ fn wgsl_ir_vector_size_from_name(name : String) -> VectorSize {
 }
 
 ///|
+fn wgsl_ir_vector_size_from_constructor_name(name : String) -> VectorSize? {
+  match name {
+    "vec2" => Some(Bi)
+    "vec3" => Some(Tri)
+    "vec4" => Some(Quad)
+    _ => None
+  }
+}
+
+///|
 fn wgsl_ir_matrix_size_from_name(name : String) -> (VectorSize, VectorSize) {
   match name {
     "mat2x2" => (Bi, Bi)

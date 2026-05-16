@@ -1178,12 +1178,13 @@ fn WgslIrEmitter::ray_query_vertex_positions_expression(
 }
 
 ///|
-fn WgslIrEmitter::member_name_for_expression(
+fn WgslIrEmitter::access_index_expression(
   self : WgslIrEmitter,
   function : Function?,
   base : Handle,
   index : Int,
-) -> String? raise WgslIrEmitError {
+) -> String raise WgslIrEmitError {
+  let base_expression = self.access_base_expression(function, base)
   match self.expression_type(function, base) {
     Some(ty_handle) => {
       let base_type_handle = self.deref_pointer_type_handle(ty_handle)
@@ -1192,43 +1193,42 @@ fn WgslIrEmitter::member_name_for_expression(
           match ty.inner {
             Struct(members, _) | PredeclaredStruct(members, _) =>
               match members.get(index) {
-                Some(_) =>
-                  Some(
-                    self.required_emit_name(
-                      wgsl_ir_emit_name_key2(
-                        "member",
-                        base_type_handle.index(),
-                        index,
-                      ),
+                Some(_) => {
+                  let member_name = self.required_emit_name(
+                    wgsl_ir_emit_name_key2(
+                      "member",
+                      base_type_handle.index(),
+                      index,
                     ),
                   )
-                None => Some(wgsl_ir_swizzle_component(index))
+                  "\{base_expression}.\{member_name}"
+                }
+                None =>
+                  raise WgslIrEmitError::Unsupported(
+                    "struct member index \{index}",
+                  )
               }
+            Vector(_, _) =>
+              "\{base_expression}.\{wgsl_ir_swizzle_component(index)}"
+            Matrix(_, _, _)
+            | Array(_, _, _)
+            | BindingArray(_, _)
+            | ValuePointer(_, _, _) => "\{base_expression}[\{index}]"
             _ =>
-              if self.options.emit_bracketed_composite_access_index {
-                None
-              } else {
-                Some(wgsl_ir_swizzle_component(index))
-              }
+              raise WgslIrEmitError::Unsupported(
+                "access-index base type \{base_type_handle.index()}",
+              )
           }
-        None => Some(wgsl_ir_swizzle_component(index))
+        None =>
+          raise WgslIrEmitError::MissingHandle(
+            "access-index base type \{base_type_handle.index()}",
+          )
       }
     }
-    None => Some(wgsl_ir_swizzle_component(index))
-  }
-}
-
-///|
-fn WgslIrEmitter::access_index_expression(
-  self : WgslIrEmitter,
-  function : Function?,
-  base : Handle,
-  index : Int,
-) -> String raise WgslIrEmitError {
-  let base_expression = self.access_base_expression(function, base)
-  match self.member_name_for_expression(function, base, index) {
-    Some(member_name) => "\{base_expression}.\{member_name}"
-    None => "\{base_expression}[\{index}]"
+    None =>
+      raise WgslIrEmitError::Unsupported(
+        "access-index expression without base type",
+      )
   }
 }
 

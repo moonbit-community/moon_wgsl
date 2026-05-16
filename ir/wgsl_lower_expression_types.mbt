@@ -249,6 +249,30 @@ fn WgslIrLowerer::expected_constructor_type(
 }
 
 ///|
+fn WgslIrLowerer::contextualized_component_constructor_type(
+  self : WgslIrLowerer,
+  name : String,
+  actual_ty : Handle,
+  expected_ty : Handle?,
+) -> Handle? {
+  guard expected_ty is Some(expected_handle) else { return None }
+  guard wgsl_ir_vector_size_from_constructor_name(name) is Some(size) else {
+    return None
+  }
+  guard self.shader_module.types.get(expected_handle) is Some(expected) else {
+    return None
+  }
+  match expected.inner {
+    Scalar(scalar) =>
+      self.contextualized_constructor_type(
+        actual_ty,
+        self.vector_type_handle(size, scalar),
+      )
+    _ => None
+  }
+}
+
+///|
 fn WgslIrLowerer::constructor_component_expected_type(
   self : WgslIrLowerer,
   ty_handle : Handle,

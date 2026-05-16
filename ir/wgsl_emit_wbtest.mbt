@@ -254,7 +254,7 @@ test "IR emitter counts projected materialized temporaries like Naga" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("return vec4<f32>(_e10[0], _e19[1], _e27[2], 1f);"),
+    emitted.contains("return vec4<f32>(_e10.x, _e19.y, _e27.z, 1f);"),
     content="true",
   )
 }
@@ -817,7 +817,7 @@ test "naga-oil writer policy emits implicit flat interpolation for integer locat
 }
 
 ///|
-test "naga-oil writer policy emits bracketed composite access indices" {
+test "naga-oil writer policy emits vector AccessIndex as swizzle" {
   let source =
     #|fn read_z(m: mat4x4<f32>) -> f32 {
     #|  return m[0].z;
@@ -828,7 +828,7 @@ test "naga-oil writer policy emits bracketed composite access indices" {
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(naga_oil.contains("return m[0][2];"), content="true")
+  debug_inspect(naga_oil.contains("return m[0].z;"), content="true")
 }
 
 ///|
@@ -844,6 +844,78 @@ test "naga-oil writer policy compacts storage texture type arguments" {
   }
   debug_inspect(
     naga_oil.contains("texture_storage_2d<rgba8unorm,write>"),
+    content="true",
+  )
+}
+
+///|
+test "naga-oil writer policy contextualizes nested vector constructors" {
+  let source =
+    #|fn clip_space() -> vec4<f32> {
+    #|  return vec4<f32>(vec2(2.0, -2.0), 1.0, 1.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("vec4<f32>(vec2<f32>(2f, -2f), 1f, 1f)"),
+    content="true",
+  )
+}
+
+///|
+test "naga-oil writer policy contextualizes same-shaped binary constructors" {
+  let source =
+    #|fn flip(value: vec3<f32>) -> vec3<f32> {
+    #|  return value * vec3(1.0, 1.0, -1.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("(value * vec3<f32>(1f, 1f, -1f))"),
+    content="true",
+  )
+}
+
+///|
+test "naga-oil writer policy preserves abstract shift counts" {
+  let source =
+    #|fn high_bit_mask(bits: u32) -> u32 {
+    #|  return bitcast<u32>(bitcast<i32>(bits) >> 31) | 0x80000000u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains(">> 31)"), content="true")
+  debug_inspect(naga_oil.contains(">> 31i)"), content="false")
+}
+
+///|
+test "naga-oil writer policy preserves concrete nested vector conversions" {
+  let source =
+    #|fn triangle_uv(vertex_index: u32) -> vec2<f32> {
+    #|  return vec2<f32>(vec2(vertex_index >> 1u, vertex_index & 1u)) * 2.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains(
+      "vec2<f32>(vec2<u32>((vertex_index >> 1u), (vertex_index & 1u)))",
+    ),
     content="true",
   )
 }

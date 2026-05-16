@@ -361,14 +361,17 @@ fn WgslIrLowerer::normalize_function_binary_operands(
   op : BinaryOperator,
   left : Handle,
   right : Handle,
-) -> (Handle, Handle) {
-  guard wgsl_ir_binary_operator_requires_vector_splat(op) else {
-    return (left, right)
-  }
+) -> (Handle, Handle) raise WgslIrLowerError {
   guard self.function_expression_type(function, left) is Some(left_ty) else {
     return (left, right)
   }
   guard self.function_expression_type(function, right) is Some(right_ty) else {
+    return (left, right)
+  }
+  self.contextualize_function_binary_operand_pair(
+    function, op, left, left_ty, right, right_ty,
+  )
+  guard wgsl_ir_binary_operator_requires_vector_splat(op) else {
     return (left, right)
   }
   match self.vector_size_from_type(left_ty) {
@@ -380,6 +383,41 @@ fn WgslIrLowerer::normalize_function_binary_operands(
           (function.expressions.append(Expression::Splat(size, left)), right)
         _ => (left, right)
       }
+  }
+}
+
+///|
+fn WgslIrLowerer::contextualize_function_binary_operand_pair(
+  self : WgslIrLowerer,
+  function : Function,
+  op : BinaryOperator,
+  left : Handle,
+  left_ty : Handle,
+  right : Handle,
+  right_ty : Handle,
+) -> Unit raise WgslIrLowerError {
+  if wgsl_ir_binary_operator_has_asymmetric_integer_context(op) {
+    return
+  }
+  match self.contextualized_constructor_type(right_ty, left_ty) {
+    Some(_) =>
+      self.contextualize_function_expression_for_type(function, right, left_ty)
+    None => ()
+  }
+  match self.contextualized_constructor_type(left_ty, right_ty) {
+    Some(_) =>
+      self.contextualize_function_expression_for_type(function, left, right_ty)
+    None => ()
+  }
+}
+
+///|
+fn wgsl_ir_binary_operator_has_asymmetric_integer_context(
+  op : BinaryOperator,
+) -> Bool {
+  match op {
+    ShiftLeft | ShiftRight => true
+    _ => false
   }
 }
 
@@ -672,7 +710,17 @@ fn WgslIrLowerer::lower_function_constructor_call(
         name, arguments, lowered_arguments, function,
       )
   }
-  function.expressions.append(Expression::Compose(ty, lowered_arguments))
+  let handle = function.expressions.append(
+    Expression::Compose(ty, lowered_arguments),
+  )
+  match self.contextualized_component_constructor_type(name, ty, expected_ty) {
+    Some(target_ty) =>
+      self.contextualize_function_constructor_expression(
+        function, handle, ty, lowered_arguments, target_ty,
+      )
+    None => ()
+  }
+  handle
 }
 
 ///|
