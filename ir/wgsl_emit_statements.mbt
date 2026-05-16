@@ -213,7 +213,9 @@ fn WgslIrEmitter::emit_statement(
         None => out.write_string(pad)
       }
       out.write_string("\{self.function_name(function_handle)}(")
-      self.emit_function_call_arguments(out, function, arguments)
+      self.emit_function_call_arguments(
+        out, function, function_handle, arguments,
+      )
       out.write_string(");\n")
     }
     RayQuery(query, query_function) =>
@@ -363,12 +365,32 @@ fn WgslIrEmitter::emit_function_call_arguments(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
+  callee : Handle,
   arguments : Array[Handle],
 ) -> Unit raise WgslIrEmitError {
+  let callee_function = self.shader_module.functions.items.get(callee.index())
   for index in 0..<arguments.length() {
     if index > 0 {
       out.write_string(", ")
     }
-    out.write_string(self.function_expression(function, arguments[index]))
+    let scalar_context = if self.options.contextualize_numeric_literals {
+      match callee_function {
+        Some(callee_function) =>
+          match callee_function.arguments.get(index) {
+            Some(argument) => self.type_scalar(argument.ty)
+            None => None
+          }
+        None => None
+      }
+    } else {
+      None
+    }
+    out.write_string(
+      self.contextual_argument_expression(
+        Some(function),
+        arguments[index],
+        scalar_context,
+      ),
+    )
   }
 }

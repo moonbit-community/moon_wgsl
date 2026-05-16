@@ -246,13 +246,13 @@ fn WgslIrEmitter::emit_expression(
     Unary(op, expr) => self.unary_expression(function, op, expr)
     Binary(op, left, right) => self.binary_expression(function, op, left, right)
     Select(condition, accept, reject) =>
-      "select(\{self.required_function_expression(function, reject)}, \{self.required_function_expression(function, accept)}, \{self.required_function_expression(function, condition)})"
+      self.select_expression(function, condition, accept, reject)
     Bitcast(ty, expr) =>
       "bitcast<\{self.type_name(ty)}>(\{self.required_function_expression(function, expr)})"
     Derivative(axis, control, expr) =>
       "\{wgsl_ir_derivative_function_name(axis, control)}(\{self.required_function_expression(function, expr)})"
     FunctionCall(handle, arguments) =>
-      "\{self.function_name(handle)}(\{self.expression_list(arguments, function)})"
+      "\{self.function_name(handle)}(\{self.function_call_argument_list(handle, arguments, function)})"
     Math(math_function, a, b, c, d) =>
       "\{self.math_function_name(math_function)}(\{self.math_argument_list(a, b, c, d, function)})"
     Relational(relational_function, expr) =>
@@ -298,6 +298,124 @@ fn wgsl_ir_binary_operator_uses_integer_bits(op : BinaryOperator) -> Bool {
 }
 
 ///|
+fn WgslIrEmitter::select_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  condition : Handle,
+  accept : Handle,
+  reject : Handle,
+) -> String raise WgslIrEmitError {
+  let scalar_context = if self.options.contextualize_numeric_literals {
+    self.select_scalar_context(function, accept, reject)
+  } else {
+    None
+  }
+  let reject_text = self.contextual_argument_expression(
+    function, reject, scalar_context,
+  )
+  let accept_text = self.contextual_argument_expression(
+    function, accept, scalar_context,
+  )
+  let condition_text = self.required_function_expression(function, condition)
+  "select(\{reject_text}, \{accept_text}, \{condition_text})"
+}
+
+///|
+fn WgslIrEmitter::select_scalar_context(
+  self : WgslIrEmitter,
+  function : Function?,
+  accept : Handle,
+  reject : Handle,
+) -> Scalar? {
+  let accept_scalar = self.expression_scalar(function, accept)
+  let reject_scalar = self.expression_scalar(function, reject)
+  match (accept_scalar, reject_scalar) {
+    (Some(scalar), _) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+      Some(scalar)
+    (_, Some(scalar)) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+      Some(scalar)
+    (Some(left), Some(right)) if wgsl_ir_select_abstract_operands_are_float(
+        left.kind,
+        right.kind,
+      ) => Some(Scalar::Scalar(Float, 4))
+    (Some(scalar), _) => Some(scalar)
+    (_, Some(scalar)) => Some(scalar)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_select_abstract_operands_are_float(
+  left : ScalarKind,
+  right : ScalarKind,
+) -> Bool {
+  (left == AbstractFloat && right == AbstractInt) ||
+  (left == AbstractInt && right == AbstractFloat) ||
+  (left == AbstractFloat && right == AbstractFloat)
+}
+
+///|
+fn wgsl_ir_scalar_kind_is_abstract(kind : ScalarKind) -> Bool {
+  match kind {
+    AbstractInt | AbstractFloat => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrEmitter::function_call_argument_list(
+  self : WgslIrEmitter,
+  callee : Handle,
+  arguments : Array[Handle],
+  function : Function?,
+) -> String raise WgslIrEmitError {
+  let out = StringBuilder::new()
+  let callee_function = self.shader_module.functions.items.get(callee.index())
+  for i in 0..<arguments.length() {
+    if i > 0 {
+      out.write_string(", ")
+    }
+    let scalar_context = if self.options.contextualize_numeric_literals {
+      match callee_function {
+        Some(callee_function) =>
+          match callee_function.arguments.get(i) {
+            Some(argument) => self.type_scalar(argument.ty)
+            None => None
+          }
+        None => None
+      }
+    } else {
+      None
+    }
+    out.write_string(
+      self.contextual_argument_expression(
+        function,
+        arguments[i],
+        scalar_context,
+      ),
+    )
+  }
+  out.to_string()
+}
+
+///|
+fn WgslIrEmitter::contextual_argument_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  argument : Handle,
+  scalar_context : Scalar?,
+) -> String raise WgslIrEmitError {
+  match scalar_context {
+    Some(scalar) =>
+      match self.contextual_scalar_literal(function, argument, scalar) {
+        Some(value) => value
+        None => self.required_function_expression(function, argument)
+      }
+    None => self.required_function_expression(function, argument)
+  }
+}
+
+///|
 fn WgslIrEmitter::contextual_unsigned_integer_literal(
   self : WgslIrEmitter,
   function : Function?,
@@ -329,15 +447,31 @@ fn WgslIrEmitter::expression_scalar_kind(
   function : Function?,
   handle : Handle,
 ) -> ScalarKind? {
+  match self.expression_scalar(function, handle) {
+    Some(scalar) => Some(scalar.kind)
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_scalar(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Scalar? {
   match self.expression_type(function, handle) {
-    Some(ty_handle) =>
-      match self.shader_module.types.items.get(ty_handle.index()) {
-        Some(type_) =>
-          match type_.inner {
-            Scalar(scalar) => Some(scalar.kind)
-            _ => None
-          }
-        None => None
+    Some(ty_handle) => self.type_scalar(ty_handle)
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::type_scalar(self : WgslIrEmitter, ty : Handle) -> Scalar? {
+  match self.shader_module.types.items.get(ty.index()) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) => Some(scalar)
+        _ => None
       }
     None => None
   }
@@ -430,7 +564,7 @@ fn WgslIrEmitter::compose_component_list(
     Some(value) => value
     None => {
       let out = StringBuilder::new()
-      let scalar_context = if self.options.contextualize_constructor_integer_literals {
+      let scalar_context = if self.options.contextualize_numeric_literals {
         self.compose_component_scalar_context(ty, components, function)
       } else {
         None
@@ -458,19 +592,19 @@ fn WgslIrEmitter::compose_component_scalar_context(
   ty : Handle,
   components : Array[Handle],
   function : Function?,
-) -> ScalarKind? {
+) -> Scalar? {
   guard self.shader_module.types.items.get(ty.index()) is Some(type_) else {
     return None
   }
   match type_.inner {
-    Scalar(scalar) => Some(scalar.kind)
+    Scalar(scalar) => Some(scalar)
     Vector(_, scalar) => {
       for component in components {
         if !self.expression_is_scalar_type(function, component, scalar) {
           return None
         }
       }
-      Some(scalar.kind)
+      Some(scalar)
     }
     _ => None
   }
@@ -481,11 +615,11 @@ fn WgslIrEmitter::compose_component_expression(
   self : WgslIrEmitter,
   function : Function?,
   component : Handle,
-  scalar_context : ScalarKind?,
+  scalar_context : Scalar?,
 ) -> String raise WgslIrEmitError {
   match scalar_context {
-    Some(kind) =>
-      match self.contextual_integer_literal(function, component, kind) {
+    Some(scalar) =>
+      match self.contextual_scalar_literal(function, component, scalar) {
         Some(value) => value
         None => self.required_function_expression(function, component)
       }
@@ -494,23 +628,67 @@ fn WgslIrEmitter::compose_component_expression(
 }
 
 ///|
-fn WgslIrEmitter::contextual_integer_literal(
+fn WgslIrEmitter::contextual_scalar_literal(
   self : WgslIrEmitter,
   function : Function?,
   operand : Handle,
-  kind : ScalarKind,
-) -> String? {
+  scalar : Scalar,
+) -> String? raise WgslIrEmitError {
   let expression = match function {
     Some(function) => function.expressions.items.get(operand.index())
     None => self.shader_module.global_expressions.items.get(operand.index())
   }
   match expression {
-    Some(Literal(literal)) =>
+    Some(Literal(literal)) => self.literal_for_scalar_context(literal, scalar)
+    Some(Unary(UnaryOperator::Negate, inner)) =>
+      match self.required_expression(function, inner) {
+        Literal(literal) =>
+          match wgsl_ir_negate_literal(literal) {
+            Some(negated) => self.literal_for_scalar_context(negated, scalar)
+            None => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::literal_for_scalar_context(
+  self : WgslIrEmitter,
+  literal : Literal,
+  scalar : Scalar,
+) -> String? {
+  match scalar.kind {
+    Float | AbstractFloat =>
+      match wgsl_ir_float_value_from_numeric_literal(literal) {
+        Some(value) => self.float_value_literal_for_width(value, scalar.width)
+        None => None
+      }
+    Uint =>
       match literal {
         AbstractInt(value) =>
-          self.integer_value_literal_for_kind(Abstract(value), kind)
-        I32(value) => self.integer_value_literal_for_kind(Signed(value), kind)
-        U32(value) => self.integer_value_literal_for_kind(Unsigned(value), kind)
+          self.integer_value_literal_for_kind(Abstract(value), Uint)
+        U32(value) => self.integer_value_literal_for_kind(Unsigned(value), Uint)
+        I32(value) => self.integer_value_literal_for_kind(Signed(value), Uint)
+        _ => None
+      }
+    Sint =>
+      match literal {
+        AbstractInt(value) =>
+          self.integer_value_literal_for_kind(Abstract(value), Sint)
+        I32(value) => self.integer_value_literal_for_kind(Signed(value), Sint)
+        U32(value) => self.integer_value_literal_for_kind(Unsigned(value), Sint)
+        _ => None
+      }
+    AbstractInt =>
+      match literal {
+        AbstractInt(value) =>
+          self.integer_value_literal_for_kind(Abstract(value), AbstractInt)
+        I32(value) =>
+          self.integer_value_literal_for_kind(Signed(value), AbstractInt)
+        U32(value) =>
+          self.integer_value_literal_for_kind(Unsigned(value), AbstractInt)
         _ => None
       }
     _ => None
