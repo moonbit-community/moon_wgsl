@@ -48,7 +48,8 @@ fn WgslIrNagaNamer::call(self : WgslIrNagaNamer, raw : String) -> String {
           !wgsl_ir_identifier_is_naga_expression_temporary(base) &&
           wgsl_ir_identifier_ends_with_digit(base)
         ) ||
-        wgsl_ir_identifier_is_reserved(base) {
+        wgsl_ir_identifier_is_reserved(base) ||
+        wgsl_ir_identifier_is_builtin_function(base) {
         "\{base}_"
       } else {
         base

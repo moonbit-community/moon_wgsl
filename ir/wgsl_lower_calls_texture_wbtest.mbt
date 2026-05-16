@@ -403,13 +403,17 @@ test "WGSL AST lowerer lowers for loops into IR loops" {
     error => abort(error.message())
   }
   let function = module_.entry_points[0].function
-  debug_inspect(function.local_variables.items.length(), content="5")
+  debug_inspect(function.local_variables.items.length(), content="7")
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("var i: u32 = 0u;"), content="true")
   debug_inspect(emitted.contains("loop {"), content="true")
-  debug_inspect(emitted.contains("if !((i < 4u)) {"), content="true")
+  debug_inspect(emitted.contains("if (_e3 < 4u) {"), content="true")
+  debug_inspect(
+    emitted.contains("} else {\n            break;"),
+    content="true",
+  )
   debug_inspect(emitted.contains("i = (i + 1u);"), content="true")
   debug_inspect(emitted.contains("sum = (_e"), content="true")
   debug_inspect(emitted.contains("+ 2u);"), content="true")

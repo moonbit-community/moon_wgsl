@@ -590,6 +590,23 @@ test "IR emitter hoists function var declarations before local let statements" {
 }
 
 ///|
+test "IR emitter allocates local names around WGSL builtin functions like Naga" {
+  let source =
+    #|fn helper(value: f32) -> f32 {
+    #|  let step = value + 1.0;
+    #|  return step;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let step_: f32 = (value + 1f);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return step_;"), content="true")
+}
+
+///|
 test "IR emitter prints official builtin names and workgroup override expressions" {
   let source =
     #|enable subgroups;

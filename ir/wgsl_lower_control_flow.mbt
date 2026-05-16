@@ -94,6 +94,36 @@ fn WgslIrLowerer::materialize_control_flow_condition_if_needed(
 }
 
 ///|
+fn WgslIrLowerer::materialize_for_loop_condition_if_needed(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(value.index()) {
+    Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) =>
+      return self.materialize_short_circuit_condition(
+        function, scope, block, value,
+      )
+    _ => ()
+  }
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_control_flow_condition(
+      function, normalized,
+    ) ||
+    self.function_expression_should_materialize_as_call_argument(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
 fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
   self : WgslIrLowerer,
   function : Function,
