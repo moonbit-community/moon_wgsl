@@ -11,7 +11,7 @@ fn WgslIrLowerer::lower_update_statement(
     raise WgslIrLowerError::UnsupportedStatement("update without target")
   }
   let pointer = self.lower_function_lvalue_ref(target_ref, function, scope)
-  self.lower_update_handle(pointer, function, block, increment)
+  self.lower_update_handle(pointer, function, scope, block, increment)
 }
 
 ///|
@@ -19,10 +19,14 @@ fn WgslIrLowerer::lower_update_handle(
   self : WgslIrLowerer,
   pointer : Handle,
   function : Function,
+  scope : WgslIrFunctionScope,
   block : Block,
   increment : Bool,
-) -> Unit {
+) -> Unit raise WgslIrLowerError {
   let loaded = function.expressions.append(Expression::Load(pointer))
+  let loaded = self.materialize_function_expression(
+    function, scope, block, loaded,
+  )
   let one = function.expressions.append(
     Expression::Literal(self.update_unit_literal(function, pointer)),
   )

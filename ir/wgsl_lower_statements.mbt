@@ -437,8 +437,8 @@ fn WgslIrLowerer::lower_for_statement(
   match statement.blocks() {
     [body_block, ..] => {
       let body = self.lower_child_block(body_block, function, loop_scope)
-      for body_statement in body.statements {
-        loop_body.push(body_statement)
+      if body.statements.length() > 0 {
+        loop_body.push(Statement::Block(body))
       }
     }
     [] => ()
@@ -544,7 +544,7 @@ fn WgslIrLowerer::lower_for_header_statement(
         function,
         scope,
       )
-      self.lower_update_handle(target, function, block, increment)
+      self.lower_update_handle(target, function, scope, block, increment)
       return
     }
     None => ()
