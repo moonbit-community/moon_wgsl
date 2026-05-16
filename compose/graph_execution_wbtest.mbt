@@ -36,8 +36,7 @@ test "composer preserves quoted file import path identity for final names" {
     #|}
     #|
   composer.register_source(
-    "assets/shaders/custom_material_import.wgsl",
-    imported_source,
+    "assets/shaders/custom_material_import.wgsl", imported_source,
   )
   composer.register_source("assets/shaders/custom_material.wgsl", root_source)
   let emitted = composer.compose_wgsl_before_ir(

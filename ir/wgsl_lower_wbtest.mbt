@@ -587,10 +587,7 @@ test "WGSL AST lowerer supports pointer dereference member lvalues" {
   }
   debug_inspect(emitted.contains("pbr_input.value ="), content="true")
   debug_inspect(emitted.contains("+ 1u);"), content="true")
-  debug_inspect(
-    emitted.contains("apply_decals(&pbr_input_1);"),
-    content="true",
-  )
+  debug_inspect(emitted.contains("apply_decals(&pbr_input_1);"), content="true")
 }
 
 ///|
@@ -904,6 +901,83 @@ test "WGSL AST lowerer splits runtime var initializers like Naga writer" {
   debug_inspect(emitted.contains("var r: vec4<f32>;"), content="true")
   debug_inspect(emitted.contains("r = radius;"), content="true")
   debug_inspect(emitted.contains("var r: vec4<f32> = radius;"), content="false")
+}
+
+///|
+test "WGSL AST lowerer materializes function-call if conditions" {
+  let source =
+    #|fn enabled(flags: u32, mask: u32) -> bool {
+    #|  return (flags & mask) != 0u;
+    #|}
+    #|
+    #|fn f(flags: u32) -> u32 {
+    #|  if enabled(flags, 1u) {
+    #|    return 1u;
+    #|  }
+    #|  return 0u;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e") && emitted.contains(": bool = enabled("),
+    content="true",
+  )
+  debug_inspect(emitted.contains("if enabled("), content="false")
+}
+
+///|
+test "WGSL AST lowerer materializes function-call else-if conditions" {
+  let source =
+    #|fn enabled(flags: u32, mask: u32) -> bool {
+    #|  return (flags & mask) != 0u;
+    #|}
+    #|
+    #|fn f(flags: u32) -> u32 {
+    #|  if enabled(flags, 1u) {
+    #|    return 1u;
+    #|  } else if enabled(flags, 2u) {
+    #|    return 2u;
+    #|  }
+    #|  return 0u;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e") && emitted.contains(": bool = enabled("),
+    content="true",
+  )
+  debug_inspect(emitted.contains("if enabled("), content="false")
+}
+
+///|
+test "WGSL AST lowerer materializes function-call while conditions inside loop" {
+  let source =
+    #|fn enabled(flags: u32, mask: u32) -> bool {
+    #|  return (flags & mask) != 0u;
+    #|}
+    #|
+    #|fn f(flags: u32) -> u32 {
+    #|  var value = flags;
+    #|  while enabled(value, 1u) {
+    #|    value = value - 1u;
+    #|  }
+    #|  return value;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  let loop_offset = emitted.find("loop {")
+  let let_offset = emitted.find("let _e")
+  debug_inspect(
+    match (loop_offset, let_offset) {
+      (Some(loop_pos), Some(let_pos)) => let_pos > loop_pos
+      _ => false
+    },
+    content="true",
+  )
+  debug_inspect(emitted.contains("while enabled("), content="false")
 }
 
 ///|

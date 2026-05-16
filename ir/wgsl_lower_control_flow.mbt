@@ -50,6 +50,10 @@ fn WgslIrLowerer::lower_if_reject_chain(
     function,
     scope,
   )
+  let block = Block::Block()
+  let condition_handle = self.materialize_control_flow_condition_if_needed(
+    function, scope, block, condition_handle,
+  )
   let accept = self.lower_child_block(blocks[condition_index], function, scope)
   let reject = self.lower_if_reject_chain(
     blocks,
@@ -58,5 +62,6 @@ fn WgslIrLowerer::lower_if_reject_chain(
     function,
     scope,
   )
-  Block::{ statements: [Statement::If(condition_handle, accept, reject)] }
+  block.push(Statement::If(condition_handle, accept, reject))
+  block
 }

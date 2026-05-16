@@ -313,8 +313,7 @@ fn WgslIrEmitter::contextual_unsigned_integer_literal(
       match literal {
         AbstractInt(value) =>
           self.integer_value_literal_for_kind(Abstract(value), Uint)
-        U32(value) =>
-          self.integer_value_literal_for_kind(Unsigned(value), Uint)
+        U32(value) => self.integer_value_literal_for_kind(Unsigned(value), Uint)
         _ => None
       }
     _ => None

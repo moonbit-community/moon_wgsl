@@ -78,6 +78,9 @@ fn WgslIrLowerer::lower_statement(
       let condition_handle = self.lower_function_expression_ref(
         condition_ref, function, scope,
       )
+      let condition_handle = self.materialize_control_flow_condition_if_needed(
+        function, scope, block, condition_handle,
+      )
       let condition_refs = wgsl_ir_statement_condition_refs(
         statement.expressions(),
       )
@@ -106,6 +109,10 @@ fn WgslIrLowerer::lower_statement(
         [] => Block::Block()
       }
       let body_statements : Array[Statement] = []
+      let guard_block = Block::{ statements: body_statements }
+      let cond = self.materialize_control_flow_condition_if_needed(
+        function, scope, guard_block, cond,
+      )
       body_statements.push(
         Statement::If(cond, Block::Block(), Block::{
           statements: [Statement::Break],
@@ -114,13 +121,7 @@ fn WgslIrLowerer::lower_statement(
       for body_statement in lowered_body.statements {
         body_statements.push(body_statement)
       }
-      block.push(
-        Statement::Loop(
-          Block::{ statements: body_statements },
-          Block::Block(),
-          None,
-        ),
-      )
+      block.push(Statement::Loop(guard_block, Block::Block(), None))
     }
     Loop => {
       let (body, continuing, break_if) = self.lower_loop_blocks(
@@ -417,6 +418,9 @@ fn WgslIrLowerer::lower_for_statement(
     Some(condition_ref) => {
       let condition = self.lower_function_expression_ref(
         condition_ref, function, loop_scope,
+      )
+      let condition = self.materialize_control_flow_condition_if_needed(
+        function, loop_scope, loop_body, condition,
       )
       let not_condition = function.expressions.append(
         Expression::Unary(UnaryOperator::LogicalNot, condition),

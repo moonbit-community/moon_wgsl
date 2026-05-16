@@ -79,8 +79,8 @@ fn wgsl_source_declares_non_resource_dependency_item(
   for decl in unit.declarations() {
     if decl.name() == item_name {
       match decl.data() {
-        WgslGlobalDeclData::Struct(_)
-        | WgslGlobalDeclData::TypeAlias(_) => return true
+        WgslGlobalDeclData::Struct(_) | WgslGlobalDeclData::TypeAlias(_) =>
+          return true
         WgslGlobalDeclData::Const(_)
         | WgslGlobalDeclData::Override(_)
         | WgslGlobalDeclData::Function(_) =>
@@ -231,8 +231,7 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
       false,
     )
     self.merge_wgsl_non_resource_dependency_requests(
-      requests, dependency_requests, dependency_scan_source, session,
-      importer_defs,
+      requests, dependency_requests, dependency_scan_source, session, importer_defs,
     )
   }
   requests
@@ -338,7 +337,8 @@ fn Composer::filtered_wgsl_non_resource_dependency_items(
       None => false
     }
     if wgsl_source_declares_non_resource_dependency_item(
-        active_import_source, requested_item,
+        active_import_source,
+        requested_item,
         requested_item_is_referenced || leaf_item_is_referenced,
       ) {
       composer_string_list_push_unique(filtered_items, requested_item)
