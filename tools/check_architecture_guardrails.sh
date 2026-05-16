@@ -853,14 +853,12 @@ if (( external_oracle_blocked_count != 1 )); then
   fail "external naga-oil compose parity oracle-blocked manifest must contain exactly one pinned-upstream blocked case, got ${external_oracle_blocked_count}"
 fi
 
-external_writer_drift_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_writer_drift.tsv)"
-if (( external_writer_drift_count != 65 )); then
-  fail "external naga-oil compose parity writer drift manifest must exact-gate the observed 65 writer/order/name drifts, got ${external_writer_drift_count}"
+if ! rg -n 'diff -u "\$writer_drift_expected" "\$writer_drift_actual"' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity writer drift manifest must be exact-gated against observed writer drift rows"
 fi
 
-external_byte_drift_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_byte_drift.tsv)"
-if (( external_byte_drift_count != 95 )); then
-  fail "external naga-oil compose parity byte drift manifest must exact-gate the observed 95 byte-output drifts, got ${external_byte_drift_count}"
+if ! rg -n 'diff -u "\$byte_drift_expected" "\$byte_drift_actual"' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity byte drift manifest must be exact-gated against observed byte drift rows"
 fi
 
 if [[ ! -f tools/naga_oil_oracle/src/bin/wgsl_writer_fingerprint.rs ]]; then

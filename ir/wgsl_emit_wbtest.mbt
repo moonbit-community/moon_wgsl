@@ -254,7 +254,7 @@ test "IR emitter counts projected materialized temporaries like Naga" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("return vec4<f32>(_e10.x, _e19.y, _e27.z, 1f);"),
+    emitted.contains("return vec4<f32>(_e10[0], _e19[1], _e27[2], 1f);"),
     content="true",
   )
 }
@@ -813,6 +813,38 @@ test "naga-oil writer policy emits implicit flat interpolation for integer locat
   debug_inspect(
     naga_oil.contains("@location(1) @interpolate(flat) color"),
     content="false",
+  )
+}
+
+///|
+test "naga-oil writer policy emits bracketed composite access indices" {
+  let source =
+    #|fn read_z(m: mat4x4<f32>) -> f32 {
+    #|  return m[0].z;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("return m[0][2];"), content="true")
+}
+
+///|
+test "naga-oil writer policy compacts storage texture type arguments" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var image: texture_storage_2d<rgba8unorm, write>;
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("texture_storage_2d<rgba8unorm,write>"),
+    content="true",
   )
 }
 

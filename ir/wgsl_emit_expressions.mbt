@@ -182,7 +182,7 @@ fn WgslIrEmitter::emit_expression(
     Access(base, index) =>
       "\{self.access_base_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
-      "\{self.access_base_expression(function, base)}.\{self.member_name_for_expression(function, base, index)}"
+      self.access_index_expression(function, base, index)
     Swizzle(_, base, components) =>
       "\{self.access_base_expression(function, base)}.\{self.swizzle_components(components)}"
     FunctionArgument(index) => self.function_argument_name(function, index)
@@ -1183,7 +1183,7 @@ fn WgslIrEmitter::member_name_for_expression(
   function : Function?,
   base : Handle,
   index : Int,
-) -> String raise WgslIrEmitError {
+) -> String? raise WgslIrEmitError {
   match self.expression_type(function, base) {
     Some(ty_handle) => {
       let base_type_handle = self.deref_pointer_type_handle(ty_handle)
@@ -1193,21 +1193,42 @@ fn WgslIrEmitter::member_name_for_expression(
             Struct(members, _) | PredeclaredStruct(members, _) =>
               match members.get(index) {
                 Some(_) =>
-                  self.required_emit_name(
-                    wgsl_ir_emit_name_key2(
-                      "member",
-                      base_type_handle.index(),
-                      index,
+                  Some(
+                    self.required_emit_name(
+                      wgsl_ir_emit_name_key2(
+                        "member",
+                        base_type_handle.index(),
+                        index,
+                      ),
                     ),
                   )
-                None => wgsl_ir_swizzle_component(index)
+                None => Some(wgsl_ir_swizzle_component(index))
               }
-            _ => wgsl_ir_swizzle_component(index)
+            _ =>
+              if self.options.emit_bracketed_composite_access_index {
+                None
+              } else {
+                Some(wgsl_ir_swizzle_component(index))
+              }
           }
-        None => wgsl_ir_swizzle_component(index)
+        None => Some(wgsl_ir_swizzle_component(index))
       }
     }
-    None => wgsl_ir_swizzle_component(index)
+    None => Some(wgsl_ir_swizzle_component(index))
+  }
+}
+
+///|
+fn WgslIrEmitter::access_index_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+  index : Int,
+) -> String raise WgslIrEmitError {
+  let base_expression = self.access_base_expression(function, base)
+  match self.member_name_for_expression(function, base, index) {
+    Some(member_name) => "\{base_expression}.\{member_name}"
+    None => "\{base_expression}[\{index}]"
   }
 }
 
