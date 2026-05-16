@@ -29,6 +29,7 @@ fn WgslIrLowerer::lower_function_declaration(
         )
         self.shader_module.append_entry_point(EntryPoint::{
           name: function.name().name(),
+          source_start: function.fn_start(),
           stage,
           early_depth_test: wgsl_ir_early_depth_test_from_attributes(
             function.attributes(),
@@ -79,6 +80,7 @@ fn wgsl_ir_strip_function_io_bindings(function : Function) -> Function {
   }
   Function::{
     name: function.name,
+    source_start: function.source_start,
     generated_import: function.generated_import,
     arguments,
     result,
@@ -283,6 +285,7 @@ fn WgslIrLowerer::function_without_ambient_global_arguments(
   }
   Function::{
     name: function.name,
+    source_start: function.source_start,
     generated_import: function.generated_import,
     arguments: [],
     result: function.result,
@@ -330,6 +333,7 @@ fn WgslIrLowerer::lower_function(
   }
   let ir_function = Function::{
     name: Some(function.name().name()),
+    source_start: function.fn_start(),
     generated_import: self.function_has_generated_import_provenance(
       function.name().name(),
     ),
@@ -378,6 +382,7 @@ fn WgslIrLowerer::lower_function(
   }
   Function::{
     name: ir_function.name,
+    source_start: ir_function.source_start,
     generated_import: ir_function.generated_import,
     arguments: ir_function.arguments,
     result,

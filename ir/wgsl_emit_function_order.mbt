@@ -80,12 +80,31 @@ fn WgslIrEmitter::naga_reachable_function_order(
 ) -> Array[Int] {
   let order : Array[Int] = []
   for entry_point in self.shader_module.entry_points {
+    self.push_naga_source_prefix_before_entry(order, entry_point)
     let direct = wgsl_ir_collect_block_function_calls(entry_point.function)
     for function_index in direct {
       self.push_naga_function_with_dependencies(order, function_index)
     }
   }
   order
+}
+
+///|
+fn WgslIrEmitter::push_naga_source_prefix_before_entry(
+  self : WgslIrEmitter,
+  order : Array[Int],
+  entry_point : EntryPoint,
+) -> Unit {
+  guard entry_point.source_start >= 0 else { return }
+  for index in 0..<self.shader_module.functions.items.length() {
+    let function = self.shader_module.functions.items[index]
+    if function.source_start >= 0 &&
+      function.source_start < entry_point.source_start &&
+      !function.generated_import &&
+      self.function_order_should_include(index, order) {
+      order.push(index)
+    }
+  }
 }
 
 ///|

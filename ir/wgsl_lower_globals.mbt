@@ -83,6 +83,7 @@ fn WgslIrLowerer::predeclare_function_declaration(
   }
   let placeholder = Function::{
     name: Some(function.name().name()),
+    source_start: function.fn_start(),
     generated_import: self.function_has_generated_import_provenance(
       function.name().name(),
     ),

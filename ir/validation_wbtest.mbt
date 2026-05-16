@@ -68,6 +68,7 @@ test "IR validator rejects invalid function call handles" {
   function.body.push(Statement::Call(Handle::Handle(42), [], None))
   module_.append_entry_point(EntryPoint::{
     name: "main",
+    source_start: -1,
     stage: Compute,
     early_depth_test: None,
     workgroup_size: [1, 1, 1],
@@ -110,6 +111,7 @@ test "IR validator rejects invalid function-call expression handles" {
   )
   module_.append_entry_point(EntryPoint::{
     name: "main",
+    source_start: -1,
     stage: Compute,
     early_depth_test: None,
     workgroup_size: [1, 1, 1],
@@ -499,6 +501,7 @@ test "IR validator rejects address-of non-addressable expressions" {
 fn validation_test_entry_point(function : Function) -> EntryPoint {
   EntryPoint::{
     name: "main",
+    source_start: -1,
     stage: Compute,
     early_depth_test: None,
     workgroup_size: [1, 1, 1],

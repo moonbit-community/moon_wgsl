@@ -251,6 +251,7 @@ pub enum EarlyDepthTest {
 
 pub(all) struct EntryPoint {
   name : String
+  source_start : Int
   stage : ShaderStage
   early_depth_test : EarlyDepthTest?
   workgroup_size : Array[Int]
@@ -323,6 +324,7 @@ pub enum FilterableTriggeringRule {
 
 pub(all) struct Function {
   name : String?
+  source_start : Int
   generated_import : Bool
   arguments : Array[FunctionArgument]
   result : FunctionResult?

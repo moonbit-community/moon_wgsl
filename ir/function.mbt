@@ -97,6 +97,7 @@ pub(all) struct NamedExpression {
 ///|
 pub(all) struct Function {
   name : String?
+  source_start : Int
   generated_import : Bool
   arguments : Array[FunctionArgument]
   result : FunctionResult?
@@ -111,6 +112,7 @@ pub(all) struct Function {
 pub fn Function::Function(name : String?) -> Function {
   Function::{
     name,
+    source_start: -1,
     generated_import: false,
     arguments: [],
     result: None,
@@ -125,6 +127,7 @@ pub fn Function::Function(name : String?) -> Function {
 ///|
 pub(all) struct EntryPoint {
   name : String
+  source_start : Int
   stage : ShaderStage
   early_depth_test : EarlyDepthTest?
   workgroup_size : Array[Int]

@@ -618,6 +618,41 @@ test "naga-oil writer orders generated imports before root reachability helpers"
 }
 
 ///|
+test "naga-oil writer preserves pre-entry source helper prefix" {
+  let source =
+    #|fn unused_before_entry() -> f32 {
+    #|  return 0f;
+    #|}
+    #|
+    #|fn used_by_entry() -> f32 {
+    #|  return 1f;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return vec4<f32>(used_by_entry());
+    #|}
+    #|
+    #|fn unused_after_entry() -> f32 {
+    #|  return 2f;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn unused_before_entry", "fn used_by_entry"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn used_by_entry", "fn unused_after_entry"),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter preserves struct member layout attributes" {
   let source =
     #|struct Layout {

@@ -63,6 +63,7 @@ test "Naga-style shader IR represents function statements and entry points" {
   )
   shader_module.append_entry_point(EntryPoint::{
     name: "main",
+    source_start: -1,
     stage: Compute,
     early_depth_test: None,
     workgroup_size: [1, 1, 1],
