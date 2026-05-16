@@ -231,23 +231,6 @@ fn WgslComposeSemanticIr::binding_target_is_declared(
 }
 
 ///|
-fn WgslComposeSemanticIr::binding_is_shadowed_by_local_declaration(
-  self : WgslComposeSemanticIr,
-  binding : WgslComposeBinding,
-  final_name : String,
-) -> Bool {
-  if binding.scope != UnqualifiedItemBinding {
-    return false
-  }
-  let reference_name = binding.reference_path.text()
-  let final_name = final_name.trim().to_owned()
-  reference_name != "" &&
-  final_name != "" &&
-  reference_name != final_name &&
-  self.declared_names.contains(reference_name)
-}
-
-///|
 fn WgslComposeSemanticIr::live_binding_plan(
   self : WgslComposeSemanticIr,
 ) -> WgslLiveBindingPlan {
@@ -271,12 +254,6 @@ fn WgslComposeSemanticIr::live_binding_plan(
     }
     seen_binding_keys.add(binding_key)
     if !self.binding_is_referenced(resolved_binding) {
-      continue
-    }
-    if self.binding_is_shadowed_by_local_declaration(
-        resolved_binding,
-        ir_binding.target.final_name,
-      ) {
       continue
     }
     if ir_binding.target.final_name != "" &&

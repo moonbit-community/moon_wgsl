@@ -98,6 +98,26 @@ test "semantic reference matcher distinguishes qualified suffixes" {
 }
 
 ///|
+test "semantic reference matcher keeps same-name global declaration references" {
+  let source =
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|fn shade(color: vec4<f32>) -> vec4<f32> {
+    #|  return convert_to_linear_rgba(color);
+    #|}
+    #|
+  debug_inspect(
+    wgsl_semantic_source_contains_reference_path(
+      source, "convert_to_linear_rgba",
+    ) catch {
+      _ => abort("expected semantic matcher to parse valid WGSL")
+    },
+    content="true",
+  )
+}
+
+///|
 test "semantic reference matcher ignores struct member names" {
   let source =
     #|fn entry(input: Input) -> f32 {

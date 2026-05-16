@@ -112,3 +112,53 @@ test "compose semantic IR preserves declared alias-scope target" {
   }
   debug_inspect(declared_alias_targets > 0, content="true")
 }
+
+///|
+fn push_required_unqualified_binding(
+  bindings : WgslComposeBindingSet,
+  rel_path : String,
+  original_name : String,
+  final_name : String,
+) -> Unit {
+  match
+    WgslComposeBinding::for_unqualified_symbol(
+      rel_path,
+      original_name,
+      final_name,
+      UnqualifiedItemBinding,
+    ) {
+    Some(binding) => bindings.push(binding)
+    None => abort("expected valid unqualified binding fixture")
+  }
+}
+
+///|
+test "compose semantic IR keeps explicit import binding when root declares same name" {
+  let source =
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|fn shade(color: vec4<f32>) -> vec4<f32> {
+    #|  return convert_to_linear_rgba(color);
+    #|}
+    #|fn convert_to_linear_rgbaX_naga_oil_mod_IMPORT(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+  let bindings = WgslComposeBindingSet()
+  push_required_unqualified_binding(
+    bindings, "color_operations.wgsl", "convert_to_linear_rgba", "convert_to_linear_rgbaX_naga_oil_mod_IMPORT",
+  )
+  let plan = WgslComposeSemanticIr::from_facts_and_bindings(
+    semantic_ir_facts(source),
+    bindings,
+  ).live_binding_plan()
+  let mut imported_targets = 0
+  for binding in plan.bindings {
+    if binding.target.final_name ==
+      "convert_to_linear_rgbaX_naga_oil_mod_IMPORT" {
+      imported_targets = imported_targets + 1
+    }
+  }
+  debug_inspect(imported_targets, content="1")
+}

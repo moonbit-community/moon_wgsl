@@ -752,3 +752,43 @@ test "composer does not import a missing item shadowed by a local declaration" {
   debug_inspect(emitted.contains("unrelated_color_path"), content="false")
   debug_inspect(emitted.contains("PI_2"), content="false")
 }
+
+///|
+test "composer keeps explicit imported item when local declaration has same name" {
+  let composer = Composer::default()
+  let color_source =
+    #|#define_import_path test::color
+    #|
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return vec4(color.rgb, color.a);
+    #|}
+    #|
+  composer.register_source("color.wgsl", color_source)
+  let root_source =
+    #|#import test::color::convert_to_linear_rgba
+    #|
+    #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment(color: vec4<f32>) -> @location(0) vec4<f32> {
+    #|  return convert_to_linear_rgba(color);
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("fn convert_to_linear_rgbaX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("= convert_to_linear_rgbaX_naga_oil_mod"),
+    content="true",
+  )
+}
