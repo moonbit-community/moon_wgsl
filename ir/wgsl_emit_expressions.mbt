@@ -178,8 +178,7 @@ fn WgslIrEmitter::emit_expression(
     Override(handle) => self.override_name(handle)
     ZeroValue(ty) => "\{self.type_name(ty)}()"
     Compose(ty, components) => self.compose_expression(ty, components, function)
-    Splat(size, inner) =>
-      "vec\{size.width()}(\{self.required_function_expression(function, inner)})"
+    Splat(size, inner) => self.splat_expression(function, size, inner)
     Access(base, index) =>
       "\{self.access_base_expression(function, base)}[\{self.required_function_expression(function, index)}]"
     AccessIndex(base, index) =>
@@ -254,7 +253,7 @@ fn WgslIrEmitter::emit_expression(
     FunctionCall(handle, arguments) =>
       "\{self.function_name(handle)}(\{self.function_call_argument_list(handle, arguments, function)})"
     Math(math_function, a, b, c, d) =>
-      "\{self.math_function_name(math_function)}(\{self.math_argument_list(a, b, c, d, function)})"
+      "\{self.math_function_name(math_function)}(\{self.math_argument_list(math_function, a, b, c, d, function)})"
     Relational(relational_function, expr) =>
       "\{self.relational_function_name(relational_function)}(\{self.required_function_expression(function, expr)})"
     CallResult(_) => raise WgslIrEmitError::Unsupported("raw call result")
@@ -327,8 +326,8 @@ fn WgslIrEmitter::select_scalar_context(
   accept : Handle,
   reject : Handle,
 ) -> Scalar? {
-  let accept_scalar = self.expression_scalar(function, accept)
-  let reject_scalar = self.expression_scalar(function, reject)
+  let accept_scalar = self.expression_component_scalar(function, accept)
+  let reject_scalar = self.expression_component_scalar(function, reject)
   match (accept_scalar, reject_scalar) {
     (Some(scalar), _) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
       Some(scalar)
@@ -379,7 +378,7 @@ fn WgslIrEmitter::function_call_argument_list(
       match callee_function {
         Some(callee_function) =>
           match callee_function.arguments.get(i) {
-            Some(argument) => self.type_scalar(argument.ty)
+            Some(argument) => self.type_component_scalar(argument.ty)
             None => None
           }
         None => None
@@ -447,34 +446,49 @@ fn WgslIrEmitter::expression_scalar_kind(
   function : Function?,
   handle : Handle,
 ) -> ScalarKind? {
-  match self.expression_scalar(function, handle) {
+  match self.expression_component_scalar(function, handle) {
     Some(scalar) => Some(scalar.kind)
     None => None
   }
 }
 
 ///|
-fn WgslIrEmitter::expression_scalar(
+fn WgslIrEmitter::expression_component_scalar(
   self : WgslIrEmitter,
   function : Function?,
   handle : Handle,
 ) -> Scalar? {
   match self.expression_type(function, handle) {
-    Some(ty_handle) => self.type_scalar(ty_handle)
+    Some(ty_handle) => self.type_component_scalar(ty_handle)
     None => None
   }
 }
 
 ///|
-fn WgslIrEmitter::type_scalar(self : WgslIrEmitter, ty : Handle) -> Scalar? {
+fn WgslIrEmitter::type_component_scalar(
+  self : WgslIrEmitter,
+  ty : Handle,
+) -> Scalar? {
   match self.shader_module.types.items.get(ty.index()) {
     Some(type_) =>
       match type_.inner {
-        Scalar(scalar) => Some(scalar)
+        Scalar(scalar) | Vector(_, scalar) | Matrix(_, _, scalar) =>
+          Some(scalar)
         _ => None
       }
     None => None
   }
+}
+
+///|
+fn WgslIrEmitter::splat_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  size : VectorSize,
+  inner : Handle,
+) -> String raise WgslIrEmitError {
+  let value = self.required_function_expression(function, inner)
+  "vec\{size.width()}(\{value})"
 }
 
 ///|
@@ -649,6 +663,29 @@ fn WgslIrEmitter::contextual_scalar_literal(
           }
         _ => None
       }
+    Some(Splat(size, inner)) =>
+      match self.contextual_scalar_literal(function, inner, scalar) {
+        Some(value) => Some("vec\{size.width()}(\{value})")
+        None => None
+      }
+    Some(Compose(ty, components)) => {
+      let out = StringBuilder::new()
+      for i in 0..<components.length() {
+        if i > 0 {
+          out.write_string(", ")
+        }
+        out.write_string(
+          self.contextual_argument_expression(
+            function,
+            components[i],
+            Some(scalar),
+          ),
+        )
+      }
+      Some(
+        "\{self.compose_constructor_name_for_components(ty, components, function)}(\{out.to_string()})",
+      )
+    }
     _ => None
   }
 }
@@ -1237,6 +1274,7 @@ fn WgslIrEmitter::expression_list(
 ///|
 fn WgslIrEmitter::math_argument_list(
   self : WgslIrEmitter,
+  math_function : MathFunction,
   a : Handle,
   b : Handle?,
   c : Handle?,
@@ -1256,5 +1294,66 @@ fn WgslIrEmitter::math_argument_list(
     Some(value) => handles.push(value)
     None => ()
   }
-  self.expression_list(handles, function)
+  let scalar_context = if self.options.contextualize_numeric_literals {
+    self.math_argument_scalar_context(math_function, handles, function)
+  } else {
+    None
+  }
+  let out = StringBuilder::new()
+  for index in 0..<handles.length() {
+    if index > 0 {
+      out.write_string(", ")
+    }
+    out.write_string(
+      self.contextual_argument_expression(
+        function,
+        handles[index],
+        scalar_context,
+      ),
+    )
+  }
+  out.to_string()
+}
+
+///|
+fn WgslIrEmitter::math_argument_scalar_context(
+  self : WgslIrEmitter,
+  math_function : MathFunction,
+  arguments : Array[Handle],
+  function : Function?,
+) -> Scalar? {
+  if !wgsl_ir_math_function_uses_uniform_numeric_argument_context(math_function) {
+    return None
+  }
+  for argument in arguments {
+    match self.expression_component_scalar(function, argument) {
+      Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+        return Some(scalar)
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_ir_math_function_uses_uniform_numeric_argument_context(
+  math_function : MathFunction,
+) -> Bool {
+  match math_function {
+    Min
+    | Max
+    | Clamp
+    | Step
+    | SmoothStep
+    | Mix
+    | Dot
+    | Distance
+    | Reflect
+    | FaceForward
+    | Refract
+    | Fma
+    | Pow
+    | Atan2 => true
+    _ => false
+  }
 }

@@ -377,7 +377,7 @@ fn WgslIrEmitter::emit_function_call_arguments(
       match callee_function {
         Some(callee_function) =>
           match callee_function.arguments.get(index) {
-            Some(argument) => self.type_scalar(argument.ty)
+            Some(argument) => self.type_component_scalar(argument.ty)
             None => None
           }
         None => None
