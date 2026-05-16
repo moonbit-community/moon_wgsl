@@ -100,7 +100,14 @@ fn WgslIrEmitter::push_naga_function_with_dependencies(
   let dependencies : Array[Int] = []
   self.collect_naga_transitive_function_dependencies(index, dependencies)
   for dependency_index in 0..<self.shader_module.functions.items.length() {
-    if dependencies.contains(dependency_index) {
+    if dependency_index < index && dependencies.contains(dependency_index) {
+      self.push_naga_function_with_dependencies(order, dependency_index)
+    }
+  }
+  let function = self.shader_module.functions.items[index]
+  let direct = wgsl_ir_collect_block_function_calls(function)
+  for dependency_index in direct {
+    if dependency_index > index {
       self.push_naga_function_with_dependencies(order, dependency_index)
     }
   }
