@@ -37,6 +37,49 @@ fn WgslIrLowerer::contextualize_function_literal_expression(
   handle : Handle,
   expected_ty : Handle,
 ) -> Unit raise WgslIrLowerError {
+  self.contextualize_function_expression_for_type(function, handle, expected_ty)
+}
+
+///|
+fn WgslIrLowerer::contextualize_function_expression_for_type(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+  expected_ty : Handle,
+) -> Unit raise WgslIrLowerError {
+  match function.expressions.items.get(handle.index()) {
+    Some(Literal(_)) =>
+      self.contextualize_function_literal_handle(function, handle, expected_ty)
+    Some(Unary(UnaryOperator::Negate, inner)) =>
+      self.contextualize_function_expression_for_type(
+        function, inner, expected_ty,
+      )
+    Some(Compose(actual_ty, components)) =>
+      self.contextualize_function_constructor_expression(
+        function, handle, actual_ty, components, expected_ty,
+      )
+    Some(Splat(_, inner)) =>
+      match self.constructor_component_expected_type(expected_ty) {
+        Some(component_ty) =>
+          self.contextualize_function_expression_for_type(
+            function, inner, component_ty,
+          )
+        None =>
+          self.contextualize_function_expression_for_type(
+            function, inner, expected_ty,
+          )
+      }
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::contextualize_function_literal_handle(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+  expected_ty : Handle,
+) -> Unit raise WgslIrLowerError {
   guard function.expressions.items.get(handle.index()) is Some(Literal(literal)) else {
     return
   }
@@ -47,6 +90,94 @@ fn WgslIrLowerer::contextualize_function_literal_expression(
         Expression::Literal(wgsl_ir_contextualize_literal(literal, scalar)),
       )
     None => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::contextualize_function_constructor_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+  actual_ty : Handle,
+  components : Array[Handle],
+  expected_ty : Handle,
+) -> Unit raise WgslIrLowerError {
+  let target_ty = match
+    self.contextualized_constructor_type(actual_ty, expected_ty) {
+    Some(value) => value
+    None => actual_ty
+  }
+  match self.constructor_component_expected_type(target_ty) {
+    Some(component_ty) =>
+      for component in components {
+        self.contextualize_function_expression_for_type(
+          function, component, component_ty,
+        )
+      }
+    None => ()
+  }
+  if target_ty != actual_ty {
+    function.expressions.set(handle, Expression::Compose(target_ty, components))
+  }
+}
+
+///|
+fn WgslIrLowerer::contextualized_constructor_type(
+  self : WgslIrLowerer,
+  actual_ty : Handle,
+  expected_ty : Handle,
+) -> Handle? {
+  guard self.type_is_concrete_numeric_literal_context(expected_ty) else {
+    return None
+  }
+  guard self.shader_module.types.get(actual_ty) is Some(actual) else {
+    return None
+  }
+  guard self.shader_module.types.get(expected_ty) is Some(expected) else {
+    return None
+  }
+  if !self.type_inner_has_matching_constructor_shape(
+      actual.inner,
+      expected.inner,
+    ) {
+    return None
+  }
+  if self.type_inner_contains_abstract_numeric(actual.inner) {
+    Some(expected_ty)
+  } else {
+    None
+  }
+}
+
+///|
+fn WgslIrLowerer::type_inner_has_matching_constructor_shape(
+  self : WgslIrLowerer,
+  actual : TypeInner,
+  expected : TypeInner,
+) -> Bool {
+  ignore(self)
+  match (actual, expected) {
+    (Scalar(_), Scalar(_)) => true
+    (Vector(actual_size, _), Vector(expected_size, _)) =>
+      actual_size == expected_size
+    (
+      Matrix(actual_columns, actual_rows, _),
+      Matrix(expected_columns, expected_rows, _),
+    ) => actual_columns == expected_columns && actual_rows == expected_rows
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::type_inner_contains_abstract_numeric(
+  self : WgslIrLowerer,
+  inner : TypeInner,
+) -> Bool {
+  ignore(self)
+  match inner {
+    Scalar(scalar) | Vector(_, scalar) | Matrix(_, _, scalar) =>
+      scalar.kind == AbstractInt || scalar.kind == AbstractFloat
+    _ => false
   }
 }
 

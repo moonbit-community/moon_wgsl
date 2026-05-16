@@ -18,6 +18,7 @@ fn WgslIrEmitter::emit_binding_attribute_prefix(
   self : WgslIrEmitter,
   out : StringBuilder,
   binding : Binding?,
+  ty : Handle?,
 ) -> Unit raise WgslIrEmitError {
   match binding {
     Some(BuiltIn(builtin)) =>
@@ -41,10 +42,28 @@ fn WgslIrEmitter::emit_binding_attribute_prefix(
           }
           out.write_string(") ")
         }
-        None => ()
+        None =>
+          if self.binding_type_uses_implicit_flat_interpolation(ty) {
+            out.write_string("@interpolate(flat) ")
+          }
       }
     }
     None => ()
+  }
+}
+
+///|
+fn WgslIrEmitter::binding_type_uses_implicit_flat_interpolation(
+  self : WgslIrEmitter,
+  ty : Handle?,
+) -> Bool {
+  if !self.options.emit_implicit_flat_interpolation {
+    return false
+  }
+  guard ty is Some(ty_handle) else { return false }
+  match self.type_component_scalar(ty_handle) {
+    Some({ kind: Sint | Uint, .. }) => true
+    _ => false
   }
 }
 

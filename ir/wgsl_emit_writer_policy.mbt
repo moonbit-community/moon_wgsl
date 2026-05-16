@@ -7,6 +7,7 @@ priv struct WgslIrEmitOptions {
   expand_matrix_scalar_constructors : Bool
   contextualize_numeric_literals : Bool
   annotate_all_local_types : Bool
+  emit_implicit_flat_interpolation : Bool
 }
 
 ///|
@@ -19,6 +20,7 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
     expand_matrix_scalar_constructors: false,
     contextualize_numeric_literals: false,
     annotate_all_local_types: false,
+    emit_implicit_flat_interpolation: false,
   }
 }
 
@@ -32,6 +34,7 @@ fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
     expand_matrix_scalar_constructors: true,
     contextualize_numeric_literals: true,
     annotate_all_local_types: true,
+    emit_implicit_flat_interpolation: true,
   }
 }
 
@@ -49,6 +52,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
       expand_matrix_scalar_constructors: self.options.expand_matrix_scalar_constructors,
       contextualize_numeric_literals: self.options.contextualize_numeric_literals,
       annotate_all_local_types: self.options.annotate_all_local_types,
+      emit_implicit_flat_interpolation: self.options.emit_implicit_flat_interpolation,
     },
     filter: self.filter,
     names: self.names,

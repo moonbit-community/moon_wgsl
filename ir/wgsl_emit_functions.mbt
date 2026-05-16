@@ -96,7 +96,11 @@ fn WgslIrEmitter::emit_function(
   match function.result {
     Some(result) => {
       out.write_string(" -> ")
-      emitter.emit_binding_attribute_prefix(out, result.binding)
+      emitter.emit_binding_attribute_prefix(
+        out,
+        result.binding,
+        Some(result.ty),
+      )
       out.write_string(emitter.type_name(result.ty))
     }
     None => ()
@@ -117,7 +121,7 @@ fn WgslIrEmitter::emit_function_argument(
   guard function.arguments.get(index) is Some(argument) else {
     raise WgslIrEmitError::MissingHandle("function argument \{index}")
   }
-  self.emit_binding_attribute_prefix(out, argument.binding)
+  self.emit_binding_attribute_prefix(out, argument.binding, Some(argument.ty))
   let name = self.function_argument_name(Some(function), index)
   out.write_string("\{name}: \{self.type_name(argument.ty)}")
 }

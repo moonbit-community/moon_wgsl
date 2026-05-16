@@ -22,7 +22,11 @@ fn WgslIrEmitter::emit_struct_type(
     let struct_member = members[member_index]
     out.write_string("    ")
     self.emit_struct_member_layout_attribute_prefix(out, struct_member)
-    self.emit_binding_attribute_prefix(out, struct_member.binding)
+    self.emit_binding_attribute_prefix(
+      out,
+      struct_member.binding,
+      Some(struct_member.ty),
+    )
     let member_name = self.required_emit_name(
       wgsl_ir_emit_name_key2("member", handle.index(), member_index),
     )

@@ -1142,7 +1142,20 @@ fn wgsl_ir_math_function_has_homogeneous_arguments(
   math_function : MathFunction,
 ) -> Bool {
   match math_function {
-    Min | Max | Clamp => true
+    Min
+    | Max
+    | Clamp
+    | Step
+    | SmoothStep
+    | Mix
+    | Dot
+    | Distance
+    | Reflect
+    | FaceForward
+    | Refract
+    | Fma
+    | Pow
+    | Atan2 => true
     _ => false
   }
 }
