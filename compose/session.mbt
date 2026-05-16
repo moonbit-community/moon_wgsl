@@ -121,6 +121,7 @@ priv struct WgslComposeSymbolTable {
   assigned_final_names : WgslIrFinalNameTable
   emitted_final_names : WgslIrFinalNameTable
   virtual_override_final_names : Array[WgslVirtualOverrideFinalNameBinding]
+  local_import_final_names : Array[WgslLocalImportFinalNameBinding]
   source_origins : Array[WgslSourceOriginEntry]
 }
 
@@ -183,7 +184,19 @@ priv struct WgslVirtualOverrideFinalNameBinding {
 }
 
 ///|
+priv struct WgslLocalImportFinalNameBinding {
+  rel_path : String
+  source_name : String
+  final_name : String
+}
+
+///|
 priv struct WgslVirtualOverrideFinalNameKey {
+  text : String
+}
+
+///|
+priv struct WgslLocalImportFinalNameKey {
   text : String
 }
 
@@ -206,6 +219,7 @@ fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
     assigned_final_names: WgslIrFinalNameTable(),
     emitted_final_names: WgslIrFinalNameTable(),
     virtual_override_final_names: [],
+    local_import_final_names: [],
     source_origins: [],
   }
 }
@@ -461,6 +475,22 @@ fn WgslVirtualOverrideFinalNameKey::text(
 }
 
 ///|
+fn WgslLocalImportFinalNameKey::WgslLocalImportFinalNameKey(
+  binding : WgslLocalImportFinalNameBinding,
+) -> WgslLocalImportFinalNameKey {
+  WgslLocalImportFinalNameKey::{
+    text: "\{binding.rel_path}|\{binding.source_name}|\{binding.final_name}",
+  }
+}
+
+///|
+fn WgslLocalImportFinalNameKey::text(
+  self : WgslLocalImportFinalNameKey,
+) -> String {
+  self.text
+}
+
+///|
 fn WgslComposeSession::record_virtual_override_final_name(
   self : WgslComposeSession,
   raw_target_name : String,
@@ -481,6 +511,36 @@ fn WgslComposeSession::record_virtual_override_final_name(
     }
   }
   self.symbols.virtual_override_final_names.push(binding)
+}
+
+///|
+fn WgslComposeSession::record_local_import_final_name(
+  self : WgslComposeSession,
+  rel_path : String,
+  source_name : String,
+  final_name : String,
+) -> Unit {
+  let rel_path = normalize_shader_rel_path(rel_path)
+  let source_name = source_name.trim().to_owned()
+  let final_name = final_name.trim().to_owned()
+  if rel_path == "" ||
+    source_name == "" ||
+    final_name == "" ||
+    source_name == final_name {
+    return
+  }
+  let binding = WgslLocalImportFinalNameBinding::{
+    rel_path,
+    source_name,
+    final_name,
+  }
+  let key = WgslLocalImportFinalNameKey(binding).text()
+  for existing in self.symbols.local_import_final_names {
+    if WgslLocalImportFinalNameKey(existing).text() == key {
+      return
+    }
+  }
+  self.symbols.local_import_final_names.push(binding)
 }
 
 ///|

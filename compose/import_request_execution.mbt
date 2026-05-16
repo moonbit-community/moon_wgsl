@@ -125,6 +125,10 @@ fn Composer::compose_wgsl_import_requests(
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
+      record_wgsl_missing_item_local_import_final_names(
+        current_rel_path, request, importer_scan_source, emission_requested_items,
+        extraction, session,
+      )
       let extracted_source = extraction.source()
       if extracted_source == "" {
         ""
@@ -273,4 +277,41 @@ fn Composer::compose_wgsl_import_requests(
     }
   }
   merged
+}
+
+///|
+fn record_wgsl_missing_item_local_import_final_names(
+  current_rel_path : String,
+  request : WgslImportRequest,
+  importer_scan_source : String,
+  emission_requested_items : Array[String],
+  extraction : WgslModuleItemExtraction,
+  session : WgslComposeSession,
+) -> Unit raise ComposerError {
+  for requested_item in emission_requested_items {
+    if wgsl_item_extraction_contains_requested_item(extraction, requested_item) {
+      continue
+    }
+    let declares_local = wgsl_semantic_source_declares_global_name(
+      importer_scan_source, requested_item,
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    if !declares_local {
+      continue
+    }
+    let references_local = wgsl_semantic_source_contains_reference_path(
+      importer_scan_source, requested_item,
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    if !references_local {
+      continue
+    }
+    session.record_local_import_final_name(
+      current_rel_path,
+      requested_item,
+      wgsl_naga_oil_decorated_final_name(request.module_path, requested_item),
+    )
+  }
 }

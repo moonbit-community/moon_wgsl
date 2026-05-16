@@ -37,6 +37,25 @@ fn collect_wgsl_effective_reference_bindings(
 }
 
 ///|
+fn collect_wgsl_local_import_final_name_rewrite_plan(
+  session : WgslComposeSession,
+) -> WgslReferenceRewritePlan {
+  let plan = WgslReferenceRewritePlan()
+  for binding in session.symbols.local_import_final_names {
+    match WgslReferencePath::from_text(binding.source_name) {
+      Some(reference_path) =>
+        plan.add_symbol_reference_binding(
+          WgslIrSymbolIdentity(binding.rel_path, binding.source_name),
+          reference_path,
+          binding.final_name,
+        )
+      None => ()
+    }
+  }
+  plan
+}
+
+///|
 fn finalize_wgsl_composed_source(
   merged : String,
   bindings : WgslComposeBindingSet,
@@ -46,6 +65,12 @@ fn finalize_wgsl_composed_source(
 ) -> String raise ComposerError {
   let mut out = apply_wgsl_ifdefs_strict_for_compose(merged, active_defs)
   out = apply_wgsl_template_consts(out, active_defs.value_defines)
+  out = rewrite_wgsl_declarations_with_binding_plan(
+    out,
+    collect_wgsl_local_import_final_name_rewrite_plan(session),
+  ) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
   let out_facts = collect_wgsl_compose_semantic_facts(session, out)
   let effective_bindings = collect_wgsl_effective_reference_bindings(
     session, bindings,

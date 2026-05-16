@@ -104,6 +104,26 @@ fn collect_wgsl_semantic_reference_identifier_nodes(
 }
 
 ///|
+fn wgsl_semantic_source_declares_global_name(
+  source : String,
+  name : String,
+) -> Bool raise WgslParseError {
+  let declared_nodes : Array[WgslIdent] = []
+  for decl in parse_wgsl_translation_unit_strict(source).declarations() {
+    @ast_analysis.collect_wgsl_decl_global_declared_identifier_nodes(
+      decl.data(),
+      declared_nodes,
+    )
+  }
+  for node in declared_nodes {
+    if node.name() == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn wgsl_semantic_requested_item_name(
   raw_path : String,
   module_path : String,
