@@ -372,6 +372,34 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
           request_alias_prefixes,
           false,
         )
+      } else {
+        let targets : Array[WgslImportTarget] = []
+        collect_wgsl_import_targets_from_source_directives(
+          prepared.active_source,
+          targets,
+        )
+        let dependency_requests = self.composer.build_wgsl_import_requests_from_targets(
+          request.rel_path,
+          targets,
+          prepared.active_source,
+          self.session,
+          import_defs,
+          false,
+        )
+        let requests : Array[WgslImportRequest] = []
+        self.composer.merge_wgsl_non_resource_dependency_requests(
+          requests,
+          dependency_requests,
+          prepared.active_source,
+          self.session,
+          import_defs,
+        )
+        self.plan_import_request_batch(
+          request.rel_path,
+          requests,
+          import_defs,
+          request_alias_prefixes,
+        )
       }
     }
     self.session.graph_planning_rel_paths.pop() |> ignore

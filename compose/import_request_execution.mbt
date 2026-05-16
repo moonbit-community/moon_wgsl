@@ -125,13 +125,23 @@ fn Composer::compose_wgsl_import_requests(
       ) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
-      record_wgsl_missing_item_local_import_final_names(
+      let has_missing_local_fallback = record_wgsl_missing_item_local_import_final_names(
         current_rel_path, request, importer_scan_source, emission_requested_items,
         extraction, session,
       )
       let extracted_source = extraction.source()
       if extracted_source == "" {
-        ""
+        if has_missing_local_fallback {
+          self.compose_wgsl_missing_item_local_dependency_imports(
+            request.rel_path,
+            prepared.active_source,
+            session,
+            import_defs,
+            alias_prefixes,
+          )
+        } else {
+          ""
+        }
       } else {
         record_wgsl_source_origins_from_extraction(
           session,
@@ -287,7 +297,8 @@ fn record_wgsl_missing_item_local_import_final_names(
   emission_requested_items : Array[String],
   extraction : WgslModuleItemExtraction,
   session : WgslComposeSession,
-) -> Unit raise ComposerError {
+) -> Bool raise ComposerError {
+  let mut recorded = false
   for requested_item in emission_requested_items {
     if wgsl_item_extraction_contains_requested_item(extraction, requested_item) {
       continue
@@ -313,5 +324,44 @@ fn record_wgsl_missing_item_local_import_final_names(
       requested_item,
       wgsl_naga_oil_decorated_final_name(request.module_path, requested_item),
     )
+    recorded = true
   }
+  recorded
+}
+
+///|
+fn Composer::compose_wgsl_missing_item_local_dependency_imports(
+  self : Composer,
+  current_rel_path : String,
+  dependency_scan_source : String,
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+  alias_prefixes : Array[String],
+) -> String raise ComposerError {
+  let targets : Array[WgslImportTarget] = []
+  collect_wgsl_import_targets_from_source_directives(
+    dependency_scan_source, targets,
+  )
+  if targets.length() == 0 {
+    return ""
+  }
+  let dependency_requests = self.build_wgsl_import_requests_from_targets(
+    current_rel_path, targets, dependency_scan_source, session, importer_defs, false,
+  )
+  let requests : Array[WgslImportRequest] = []
+  self.merge_wgsl_non_resource_dependency_requests(
+    requests, dependency_requests, dependency_scan_source, session, importer_defs,
+  )
+  if requests.length() == 0 {
+    return ""
+  }
+  self.compose_wgsl_import_requests(
+    current_rel_path,
+    requests,
+    dependency_scan_source,
+    WgslComposeBindingSet(),
+    session,
+    importer_defs,
+    alias_prefixes,
+  )
 }

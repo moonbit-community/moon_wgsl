@@ -63,4 +63,4 @@ bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	11abab49ce7268b2ac2a1b489c98acd2d306620fe6
 bevy	crates/bevy_pbr/src/transmission/transmission.wgsl	79662c7478a400f0f3e9609ac9e30c9e4a37a56e7a60fe9895250890ebdda24e	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/volumetric_fog/volumetric_fog.wgsl	98a4d1ed9a9065381e227ab84c50c0c27a93e2683b59e5d36628a2d314103166	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_sprite_render/src/sprite_mesh/sprite_material.wgsl	fa878c522ee75229629b09fe24800ac32a207ae9208b14ef136b374d0b2f6460	writer-fingerprint-drift	strict-byte-parity-failure
-bevy	crates/bevy_ui_render/src/gradient.wgsl	355e226a5755506c0c360925c56447086d07e284926c931f2aa1b5b527afc19b	writer-fingerprint-drift	strict-byte-parity-failure
+bevy	crates/bevy_ui_render/src/gradient.wgsl	ee0cc622ed9cf3ac15fb6594b02d8b213e910d04f0c9868d76b9d4ff3eb37bd7	writer-fingerprint-drift	strict-byte-parity-failure

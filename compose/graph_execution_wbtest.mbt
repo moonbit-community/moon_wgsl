@@ -750,7 +750,7 @@ test "composer does not import a missing item shadowed by a local declaration" {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("unrelated_color_path"), content="false")
-  debug_inspect(emitted.contains("PI_2"), content="false")
+  debug_inspect(emitted.contains("PI_2X_naga_oil_mod"), content="true")
   debug_inspect(
     emitted.contains("fn convert_to_linear_rgbaX_naga_oil_mod"),
     content="true",
