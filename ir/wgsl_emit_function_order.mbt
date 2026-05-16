@@ -17,9 +17,6 @@ fn WgslIrEmitter::function_emission_order(self : WgslIrEmitter) -> Array[Int] {
   if !self.options.order_functions_by_naga_reachability {
     return self.source_ordered_function_indices()
   }
-  if !self.module_has_generated_import_functions() {
-    return self.source_ordered_function_indices()
-  }
   let order = self.naga_generated_import_function_order()
   let reachable = self.naga_reachable_function_order()
   for index in reachable {
@@ -33,18 +30,6 @@ fn WgslIrEmitter::function_emission_order(self : WgslIrEmitter) -> Array[Int] {
     }
   }
   order
-}
-
-///|
-fn WgslIrEmitter::module_has_generated_import_functions(
-  self : WgslIrEmitter,
-) -> Bool {
-  for function in self.shader_module.functions.items {
-    if function.generated_import {
-      return true
-    }
-  }
-  false
 }
 
 ///|
@@ -112,8 +97,8 @@ fn WgslIrEmitter::push_naga_function_with_dependencies(
   if !self.function_order_should_include(index, order) {
     return
   }
-  let function = self.shader_module.functions.items[index]
-  let dependencies = wgsl_ir_collect_block_function_calls(function)
+  let dependencies : Array[Int] = []
+  self.collect_naga_transitive_function_dependencies(index, dependencies)
   for dependency_index in 0..<self.shader_module.functions.items.length() {
     if dependencies.contains(dependency_index) {
       self.push_naga_function_with_dependencies(order, dependency_index)
@@ -121,6 +106,30 @@ fn WgslIrEmitter::push_naga_function_with_dependencies(
   }
   if self.function_order_should_include(index, order) {
     order.push(index)
+  }
+}
+
+///|
+fn WgslIrEmitter::collect_naga_transitive_function_dependencies(
+  self : WgslIrEmitter,
+  index : Int,
+  dependencies : Array[Int],
+) -> Unit {
+  if !self.function_order_should_include(index, []) {
+    return
+  }
+  let function = self.shader_module.functions.items[index]
+  let direct = wgsl_ir_collect_block_function_calls(function)
+  for dependency in direct {
+    if dependency == index {
+      continue
+    }
+    if !dependencies.contains(dependency) {
+      dependencies.push(dependency)
+      self.collect_naga_transitive_function_dependencies(
+        dependency, dependencies,
+      )
+    }
   }
 }
 
