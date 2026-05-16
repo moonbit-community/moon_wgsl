@@ -89,15 +89,7 @@ fn WgslIrEmitter::emit_module(
     last_item_is_entry_point = false
     emitted_global_variable = true
   }
-  for index in 0..<self.shader_module.functions.items.length() {
-    if !self.should_emit_function(index) {
-      continue
-    }
-    if self.function_is_entry_point_name(
-        self.shader_module.functions.items[index],
-      ) {
-      continue
-    }
+  for index in self.function_emission_order() {
     if needs_blank {
       out.write_string("\n")
     }

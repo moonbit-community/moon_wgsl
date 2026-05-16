@@ -509,6 +509,115 @@ test "IR lowerer accepts explicit generated import provenance" {
 }
 
 ///|
+fn wgsl_emit_test_before(text : String, left : String, right : String) -> Bool {
+  let parts : Array[StringView] = text.split(left).collect()
+  if parts.length() < 2 {
+    return false
+  }
+  parts[1].contains(right)
+}
+
+///|
+test "naga-oil writer orders generated imports before root reachability helpers" {
+  let source =
+    #|fn importedX_naga_oil_mod_XABCDX() -> f32 {
+    #|  return 1f;
+    #|}
+    #|
+    #|fn enabled(flags: u32, mask: u32) -> bool {
+    #|  return (flags & mask) != 0u;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  if enabled(1u, 1u) {
+    #|    return vec4<f32>(radial_distance());
+    #|  } else if enabled(2u, 1u) {
+    #|    return vec4<f32>(conic_distance());
+    #|  }
+    #|  return vec4<f32>(linear_distance() + interpolate_gradient());
+    #|}
+    #|
+    #|fn rem_euclid() -> f32 {
+    #|  return 0f;
+    #|}
+    #|
+    #|fn linear_distance() -> f32 {
+    #|  return 3f;
+    #|}
+    #|
+    #|fn radial_distance() -> f32 {
+    #|  return 1f;
+    #|}
+    #|
+    #|fn conic_distance() -> f32 {
+    #|  return 2f;
+    #|}
+    #|
+    #|fn mix_colors() -> f32 {
+    #|  return 4f;
+    #|}
+    #|
+    #|fn convert_to_linear_rgba(value: f32) -> f32 {
+    #|  return value;
+    #|}
+    #|
+    #|fn interpolate_gradient() -> f32 {
+    #|  return convert_to_linear_rgba(mix_colors());
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [
+      WgslIrGeneratedImportProvenance(
+        "importedX_naga_oil_mod_XABCDX",
+        "imports/imported.wgsl",
+        "imported",
+        WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(
+      emitted, "fn importedX_naga_oil_mod_XABCDX", "fn enabled",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn enabled", "fn radial_distance"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn radial_distance", "fn conic_distance"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn conic_distance", "fn linear_distance"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn linear_distance", "fn mix_colors"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn mix_colors", "fn convert_to_linear_rgba"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(
+      emitted, "fn convert_to_linear_rgba", "fn interpolate_gradient",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn interpolate_gradient", "fn rem_euclid"),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter preserves struct member layout attributes" {
   let source =
     #|struct Layout {
