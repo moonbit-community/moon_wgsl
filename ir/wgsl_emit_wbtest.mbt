@@ -937,6 +937,26 @@ test "naga-oil writer policy contextualizes return constructors" {
 }
 
 ///|
+test "naga-oil writer policy folds constant sqrt calls" {
+  let source =
+    #|const PI: f32 = 3.14159265358979323846;
+    #|fn gaussian_scale(blur: f32) -> vec2<f32> {
+    #|  return vec2(sqrt(2.0 * PI), sqrt(0.5) / blur);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("vec2<f32>(2.5066283f, (0.70710677f / blur))"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("sqrt(0.5f)"), content="false")
+}
+
+///|
 test "naga-oil writer policy expands scalar matrix constructors into columns" {
   let source =
     #|fn helper() -> mat3x3<f32> {

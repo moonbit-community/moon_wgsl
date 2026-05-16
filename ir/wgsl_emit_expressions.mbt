@@ -253,11 +253,77 @@ fn WgslIrEmitter::emit_expression(
     FunctionCall(handle, arguments) =>
       "\{self.function_name(handle)}(\{self.function_call_argument_list(handle, arguments, function)})"
     Math(math_function, a, b, c, d) =>
-      "\{self.math_function_name(math_function)}(\{self.math_argument_list(math_function, a, b, c, d, function)})"
+      self.math_expression(function, math_function, a, b, c, d)
     Relational(relational_function, expr) =>
       "\{self.relational_function_name(relational_function)}(\{self.required_function_expression(function, expr)})"
     CallResult(_) => raise WgslIrEmitError::Unsupported("raw call result")
     _ => raise WgslIrEmitError::Unsupported("expression kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::math_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  math_function : MathFunction,
+  a : Handle,
+  b : Handle?,
+  c : Handle?,
+  d : Handle?,
+) -> String raise WgslIrEmitError {
+  match self.folded_float_math_expression(function, math_function, a, b, c, d) {
+    Some(value) => value
+    None =>
+      "\{self.math_function_name(math_function)}(\{self.math_argument_list(math_function, a, b, c, d, function)})"
+  }
+}
+
+///|
+fn WgslIrEmitter::folded_float_math_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  math_function : MathFunction,
+  a : Handle,
+  b : Handle?,
+  c : Handle?,
+  d : Handle?,
+) -> String? raise WgslIrEmitError {
+  guard self.options.fold_numeric_constant_expressions else { return None }
+  guard b == None && c == None && d == None else { return None }
+  guard math_function == MathFunction::Sqrt else { return None }
+  match self.eval_float_expression_for_writer(function, a) {
+    Some(value) => self.float_value_literal_for_width(value.sqrt(), 4)
+    None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_float_expression_for_writer(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Double? raise WgslIrEmitError {
+  match self.required_expression(function, handle) {
+    Literal(literal) => wgsl_ir_float_value_from_numeric_literal(literal)
+    Constant(constant) =>
+      self.eval_constant_float_expression_for_emit(constant, @set.Set([]))
+    Unary(UnaryOperator::Negate, inner) =>
+      match self.eval_float_expression_for_writer(function, inner) {
+        Some(value) => Some(-value)
+        None => None
+      }
+    Binary(op, left, right) => {
+      guard self.eval_float_expression_for_writer(function, left)
+        is Some(left_value) else {
+        return None
+      }
+      guard self.eval_float_expression_for_writer(function, right)
+        is Some(right_value) else {
+        return None
+      }
+      wgsl_ir_emit_eval_float_binary(op, left_value, right_value)
+    }
+    _ => None
   }
 }
 
