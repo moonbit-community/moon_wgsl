@@ -241,8 +241,7 @@ fn WgslIrEmitter::emit_expression(
     WorkGroupUniformLoad(pointer) =>
       "workgroupUniformLoad(\{self.required_function_expression(function, pointer)})"
     Unary(op, expr) => self.unary_expression(function, op, expr)
-    Binary(op, left, right) =>
-      "(\{self.required_function_expression(function, left)} \{self.binary_operator(op)} \{self.required_function_expression(function, right)})"
+    Binary(op, left, right) => self.binary_expression(function, op, left, right)
     Select(condition, accept, reject) =>
       "select(\{self.required_function_expression(function, reject)}, \{self.required_function_expression(function, accept)}, \{self.required_function_expression(function, condition)})"
     Bitcast(ty, expr) =>
@@ -257,6 +256,88 @@ fn WgslIrEmitter::emit_expression(
       "\{self.relational_function_name(relational_function)}(\{self.required_function_expression(function, expr)})"
     CallResult(_) => raise WgslIrEmitError::Unsupported("raw call result")
     _ => raise WgslIrEmitError::Unsupported("expression kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::binary_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  op : BinaryOperator,
+  left : Handle,
+  right : Handle,
+) -> String raise WgslIrEmitError {
+  let left_text = self.binary_operand_expression(function, op, left, right)
+  let right_text = self.binary_operand_expression(function, op, right, left)
+  "(\{left_text} \{self.binary_operator(op)} \{right_text})"
+}
+
+///|
+fn WgslIrEmitter::binary_operand_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  op : BinaryOperator,
+  operand : Handle,
+  sibling : Handle,
+) -> String raise WgslIrEmitError {
+  match self.contextual_unsigned_integer_literal(function, operand, sibling) {
+    Some(text) if wgsl_ir_binary_operator_uses_integer_bits(op) => text
+    _ => self.required_function_expression(function, operand)
+  }
+}
+
+///|
+fn wgsl_ir_binary_operator_uses_integer_bits(op : BinaryOperator) -> Bool {
+  match op {
+    And | ExclusiveOr | InclusiveOr | ShiftLeft | ShiftRight => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrEmitter::contextual_unsigned_integer_literal(
+  self : WgslIrEmitter,
+  function : Function?,
+  operand : Handle,
+  sibling : Handle,
+) -> String? {
+  guard self.expression_scalar_kind(function, sibling) is Some(Uint) else {
+    return None
+  }
+  let expression = match function {
+    Some(function) => function.expressions.items.get(operand.index())
+    None => self.shader_module.global_expressions.items.get(operand.index())
+  }
+  match expression {
+    Some(Literal(literal)) =>
+      match literal {
+        AbstractInt(value) =>
+          self.integer_value_literal_for_kind(Abstract(value), Uint)
+        U32(value) =>
+          self.integer_value_literal_for_kind(Unsigned(value), Uint)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_scalar_kind(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> ScalarKind? {
+  match self.expression_type(function, handle) {
+    Some(ty_handle) =>
+      match self.shader_module.types.items.get(ty_handle.index()) {
+        Some(type_) =>
+          match type_.inner {
+            Scalar(scalar) => Some(scalar.kind)
+            _ => None
+          }
+        None => None
+      }
+    None => None
   }
 }
 
