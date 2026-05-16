@@ -71,6 +71,7 @@ fn wgsl_translation_unit_has_import_directive(
 fn wgsl_source_declares_non_resource_dependency_item(
   source : String,
   item_name : String,
+  referenced : Bool,
 ) -> Bool raise ComposerError {
   let unit = parse_wgsl_translation_unit_strict(source) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
@@ -79,11 +80,11 @@ fn wgsl_source_declares_non_resource_dependency_item(
     if decl.name() == item_name {
       match decl.data() {
         WgslGlobalDeclData::Struct(_)
-        | WgslGlobalDeclData::TypeAlias(_)
-        | WgslGlobalDeclData::Const(_)
+        | WgslGlobalDeclData::TypeAlias(_) => return true
+        WgslGlobalDeclData::Const(_)
         | WgslGlobalDeclData::Override(_)
         | WgslGlobalDeclData::Function(_) =>
-          return !wgsl_translation_unit_has_import_directive(unit)
+          return referenced && !wgsl_translation_unit_has_import_directive(unit)
         _ => return false
       }
     }
@@ -222,7 +223,7 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
   let targets : Array[WgslImportTarget] = []
   collect_wgsl_import_targets_from_source_directives(directive_source, targets)
   let requests = self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, directive_source, session, importer_defs, false,
+    current_rel_path, targets, directive_source, session, importer_defs, true,
   )
   if dependency_scan_source != directive_source {
     let dependency_requests = self.build_wgsl_import_requests_from_targets(
@@ -230,7 +231,8 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
       false,
     )
     self.merge_wgsl_non_resource_dependency_requests(
-      requests, dependency_requests, session, importer_defs,
+      requests, dependency_requests, dependency_scan_source, session,
+      importer_defs,
     )
   }
   requests
@@ -241,6 +243,7 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
   self : Composer,
   requests : Array[WgslImportRequest],
   dependency_requests : Array[WgslImportRequest],
+  dependency_scan_source : String,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Unit raise ComposerError {
@@ -248,7 +251,7 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
   let ordered_base_indexes : @set.Set[Int] = @set.Set([])
   for dependency_request in dependency_requests {
     let filtered_items = self.filtered_wgsl_non_resource_dependency_items(
-      dependency_request, session, importer_defs,
+      dependency_request, dependency_scan_source, session, importer_defs,
     )
     if find_wgsl_import_request_index(
         requests,
@@ -295,6 +298,7 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
 fn Composer::filtered_wgsl_non_resource_dependency_items(
   self : Composer,
   dependency_request : WgslImportRequest,
+  dependency_scan_source : String,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[String] raise ComposerError {
@@ -318,8 +322,24 @@ fn Composer::filtered_wgsl_non_resource_dependency_items(
     import_defs.value_defines,
   )
   for requested_item in dependency_request.requested_items {
+    let requested_item_is_referenced = wgsl_semantic_source_contains_reference_path(
+      dependency_scan_source, requested_item,
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    let leaf_item_is_referenced = match
+      split_last_wgsl_semantic_path(requested_item) {
+      Some((_, leaf_name)) =>
+        wgsl_semantic_source_contains_reference_path(
+          dependency_scan_source, leaf_name,
+        ) catch {
+          error => raise composer_error_from_wgsl_parse_error(error)
+        }
+      None => false
+    }
     if wgsl_source_declares_non_resource_dependency_item(
         active_import_source, requested_item,
+        requested_item_is_referenced || leaf_item_is_referenced,
       ) {
       composer_string_list_push_unique(filtered_items, requested_item)
     }
@@ -541,7 +561,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
             live_requested_items.push(requested_item)
           } else if !prune_requested_items_by_active_usage &&
             wgsl_source_declares_non_resource_dependency_item(
-              active_import_source, requested_item,
+              active_import_source, requested_item, false,
             ) {
             live_requested_items.push(requested_item)
           }

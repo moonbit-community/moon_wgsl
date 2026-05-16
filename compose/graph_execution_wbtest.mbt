@@ -245,7 +245,7 @@ test "item extraction keeps import directives for selected module slices" {
 }
 
 ///|
-test "item slice import request builder keeps explicit nested items" {
+test "item slice import request builder prunes unreferenced explicit nested items" {
   let composer = Composer::default()
   let maths_source =
     #|#define_import_path test::maths
@@ -286,15 +286,11 @@ test "item slice import request builder keeps explicit nested items" {
   ) catch {
     error => abort(error.message())
   }
-  debug_inspect(requests.length(), content="1")
-  debug_inspect(
-    requests[0].requested_items.join(","),
-    content="\"PI_2,FRAC_PI_3,helper\"",
-  )
+  debug_inspect(requests.length(), content="0")
 }
 
 ///|
-test "composer keeps explicit nested import declarations from selected item modules" {
+test "composer prunes unreferenced nested import declarations from selected item modules" {
   let composer = Composer::default()
   let maths_source =
     #|#define_import_path test::maths
@@ -333,9 +329,9 @@ test "composer keeps explicit nested import declarations from selected item modu
   ) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("PI_2X_naga_oil_mod"), content="true")
-  debug_inspect(emitted.contains("FRAC_PI_3X_naga_oil_mod"), content="true")
-  debug_inspect(emitted.contains("fn helperX_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("PI_2X_naga_oil_mod"), content="false")
+  debug_inspect(emitted.contains("FRAC_PI_3X_naga_oil_mod"), content="false")
+  debug_inspect(emitted.contains("fn helperX_naga_oil_mod"), content="false")
 }
 
 ///|
