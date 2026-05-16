@@ -952,16 +952,21 @@ test "WGSL IR lowerer preserves else-if conditions as control flow" {
   guard statements[1] is Statement::If(_, _, reject) else {
     abort("expected outer if")
   }
-  guard reject.statements[0] is Statement::If(_, _, _) else {
+  let mut saw_nested_if = false
+  for statement in reject.statements {
+    match statement {
+      Statement::If(_, _, _) => saw_nested_if = true
+      _ => ()
+    }
+  }
+  if !saw_nested_if {
     abort("expected nested else-if")
   }
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(
-    emitted.contains("if ((value == 1u) || (value == 2u)) {"),
-    content="true",
-  )
+  debug_inspect(emitted.contains("var local: bool;"), content="true")
+  debug_inspect(emitted.contains("if ((value == 1u) ||"), content="false")
   debug_inspect(
     emitted.contains("} else {\n        result = 1u;"),
     content="false",

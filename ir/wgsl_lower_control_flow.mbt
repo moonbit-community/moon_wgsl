@@ -65,3 +65,41 @@ fn WgslIrLowerer::lower_if_reject_chain(
   block.push(Statement::If(condition_handle, accept, reject))
   block
 }
+
+///|
+fn WgslIrLowerer::materialize_control_flow_condition_if_needed(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(value.index()) {
+    Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) =>
+      return self.materialize_short_circuit_condition(
+        function, scope, block, value,
+      )
+    _ => ()
+  }
+  if self.function_expression_should_materialize_as_control_flow_condition(
+      function, value,
+    ) {
+    return self.materialize_function_expression(function, scope, block, value)
+  }
+  value
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_materialize_as_control_flow_condition(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  ignore(self)
+  match function.expressions.items.get(value.index()) {
+    Some(FunctionCall(_, _))
+    | Some(AtomicCall(_, _))
+    | Some(WorkGroupUniformLoad(_)) => true
+    _ => false
+  }
+}

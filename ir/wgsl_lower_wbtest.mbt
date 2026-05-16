@@ -981,6 +981,22 @@ test "WGSL AST lowerer materializes function-call while conditions inside loop" 
 }
 
 ///|
+test "WGSL AST lowerer materializes short-circuit if conditions" {
+  let source =
+    #|fn f(value: f32) -> u32 {
+    #|  if 0.0 <= value && value < 1.0 {
+    #|    return 1u;
+    #|  }
+    #|  return 0u;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var local: bool;"), content="true")
+  debug_inspect(emitted.contains("if ((0f <= value) &&"), content="false")
+}
+
+///|
 test "WGSL IR emitter disambiguates repeated local names" {
   let source =
     #|fn f() -> u32 {
