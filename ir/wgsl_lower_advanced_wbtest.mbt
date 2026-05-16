@@ -285,7 +285,7 @@ test "WGSL AST lowerer supports arrayLength on storage runtime arrays" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("if (id.x >= arrayLength(&values))"),
+    emitted.contains("if (id.x >= arrayLength((&values)))"),
     content="true",
   )
 }

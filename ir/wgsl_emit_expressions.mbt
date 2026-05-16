@@ -217,7 +217,7 @@ fn WgslIrEmitter::emit_expression(
     ImageQuery(image, query) =>
       self.image_query_expression(function, image, query)
     ArrayLength(pointer) =>
-      "arrayLength(\{self.atomic_pointer_expression(function, pointer)})"
+      "arrayLength(\{self.pointer_builtin_argument_expression(function, pointer)})"
     RayQueryInitialize(query, acceleration, ray_desc) =>
       "rayQueryInitialize(\{self.required_function_expression(function, query)}, \{self.required_function_expression(function, acceleration)}, \{self.required_function_expression(function, ray_desc)})"
     RayQueryProceed(query) =>
@@ -615,9 +615,9 @@ fn WgslIrEmitter::atomic_call_expression(
     raise WgslIrEmitError::Unsupported("atomic call without pointer")
   }
   let out = StringBuilder::new()
-  let pointer_text = self.atomic_pointer_expression(function, pointer)
+  let pointer_text = self.pointer_builtin_argument_expression(function, pointer)
   out.write_string(
-    "\{self.atomic_function_name(atomic_function)}(\{wgsl_ir_atomic_pointer_argument_text(pointer_text)}",
+    "\{self.atomic_function_name(atomic_function)}(\{pointer_text}",
   )
   for argument in rest {
     out.write_string(
@@ -629,7 +629,7 @@ fn WgslIrEmitter::atomic_call_expression(
 }
 
 ///|
-fn wgsl_ir_atomic_pointer_argument_text(text : String) -> String {
+fn wgsl_ir_pointer_builtin_argument_text(text : String) -> String {
   if text.length() > 0 && text[0:1] == "&" {
     "(\{text})"
   } else {
@@ -638,7 +638,18 @@ fn wgsl_ir_atomic_pointer_argument_text(text : String) -> String {
 }
 
 ///|
-fn WgslIrEmitter::atomic_pointer_expression(
+fn WgslIrEmitter::pointer_builtin_argument_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  pointer : Handle,
+) -> String raise WgslIrEmitError {
+  wgsl_ir_pointer_builtin_argument_text(
+    self.pointer_expression(function, pointer),
+  )
+}
+
+///|
+fn WgslIrEmitter::pointer_expression(
   self : WgslIrEmitter,
   function : Function?,
   pointer : Handle,
@@ -661,7 +672,7 @@ fn WgslIrEmitter::emit_cooperative_store_statement(
 ) -> Unit raise WgslIrEmitError {
   let suffix = if data.row_major { "T" } else { "" }
   out.write_string(
-    "\{wgsl_ir_indent(indent)}coopStore\{suffix}(\{self.function_expression(function, target)}, \{self.atomic_pointer_expression(Some(function), data.pointer)}, \{self.function_expression(function, data.stride)});\n",
+    "\{wgsl_ir_indent(indent)}coopStore\{suffix}(\{self.function_expression(function, target)}, \{self.pointer_expression(Some(function), data.pointer)}, \{self.function_expression(function, data.stride)});\n",
   )
 }
 
@@ -680,7 +691,7 @@ fn WgslIrEmitter::cooperative_load_expression(
     None =>
       raise WgslIrEmitError::Unsupported("cooperative load pointer scalar type")
   }
-  "coopLoad\{suffix}<coop_mat\{wgsl_ir_cooperative_size_name(columns)}x\{wgsl_ir_cooperative_size_name(rows)}<\{self.scalar_name(scalar)}, \{wgsl_ir_cooperative_role_name(role)}>>(\{self.atomic_pointer_expression(function, data.pointer)}, \{self.required_function_expression(function, data.stride)})"
+  "coopLoad\{suffix}<coop_mat\{wgsl_ir_cooperative_size_name(columns)}x\{wgsl_ir_cooperative_size_name(rows)}<\{self.scalar_name(scalar)}, \{wgsl_ir_cooperative_role_name(role)}>>(\{self.pointer_expression(function, data.pointer)}, \{self.required_function_expression(function, data.stride)})"
 }
 
 ///|
