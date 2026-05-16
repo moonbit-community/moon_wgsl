@@ -94,6 +94,24 @@ test "IR emitter resets Naga expression temporary names per function" {
 }
 
 ///|
+test "IR emitter allocates function signature names before body locals" {
+  let source =
+    #|fn a(in_x: f32) -> f32 {
+    #|  let x = abs(in_x);
+    #|  return x;
+    #|}
+    #|
+    #|fn b(x: f32) -> f32 {
+    #|  return x;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("fn b(x: f32)"), content="true")
+  debug_inspect(emitted.contains("let x_1: f32 = abs(in_x);"), content="true")
+}
+
+///|
 test "IR emitter numbers materialized temporaries like Naga" {
   let source =
     #|@group(0) @binding(0) var tex: texture_2d<f32>;

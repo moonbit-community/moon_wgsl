@@ -180,6 +180,40 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
         namer.call_or(ep.function.arguments[arg_index].name, "param"),
       )
     }
+  }
+  for fn_index in 0..<module_.functions.items.length() {
+    let function = module_.functions.items[fn_index]
+    table.names.set(
+      wgsl_ir_emit_name_key("fn", fn_index),
+      namer.call_or(function.name, "function"),
+    )
+    for arg_index in 0..<function.arguments.length() {
+      table.names.set(
+        wgsl_ir_emit_name_key2("fn_arg", fn_index, arg_index),
+        namer.call_or(function.arguments[arg_index].name, "param"),
+      )
+    }
+  }
+  for index in 0..<module_.global_variables.items.length() {
+    table.names.set(
+      wgsl_ir_emit_name_key("global", index),
+      namer.call_or(module_.global_variables.items[index].name, "global"),
+    )
+  }
+  for index in 0..<module_.constants.items.length() {
+    table.names.set(
+      wgsl_ir_emit_name_key("const", index),
+      namer.call_or(module_.constants.items[index].name, "const"),
+    )
+  }
+  for index in 0..<module_.overrides.items.length() {
+    table.names.set(
+      wgsl_ir_emit_name_key("override", index),
+      namer.call_or(module_.overrides.items[index].name, "override"),
+    )
+  }
+  for ep_index in 0..<module_.entry_points.length() {
+    let ep = module_.entry_points[ep_index]
     let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
     for local_index in 0..<ep.function.local_variables.items.length() {
       table.names.set(
@@ -209,16 +243,6 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
   }
   for fn_index in 0..<module_.functions.items.length() {
     let function = module_.functions.items[fn_index]
-    table.names.set(
-      wgsl_ir_emit_name_key("fn", fn_index),
-      namer.call_or(function.name, "function"),
-    )
-    for arg_index in 0..<function.arguments.length() {
-      table.names.set(
-        wgsl_ir_emit_name_key2("fn_arg", fn_index, arg_index),
-        namer.call_or(function.arguments[arg_index].name, "param"),
-      )
-    }
     let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
     for local_index in 0..<function.local_variables.items.length() {
       table.names.set(
@@ -245,24 +269,6 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
         _ => ()
       }
     }
-  }
-  for index in 0..<module_.global_variables.items.length() {
-    table.names.set(
-      wgsl_ir_emit_name_key("global", index),
-      namer.call_or(module_.global_variables.items[index].name, "global"),
-    )
-  }
-  for index in 0..<module_.constants.items.length() {
-    table.names.set(
-      wgsl_ir_emit_name_key("const", index),
-      namer.call_or(module_.constants.items[index].name, "const"),
-    )
-  }
-  for index in 0..<module_.overrides.items.length() {
-    table.names.set(
-      wgsl_ir_emit_name_key("override", index),
-      namer.call_or(module_.overrides.items[index].name, "override"),
-    )
   }
   table
 }

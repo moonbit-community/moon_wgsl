@@ -229,8 +229,8 @@ test "WGSL IR emitter preserves pointer-valued local references" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("*(p)"), content="true")
-  debug_inspect(emitted.contains("inc(p)"), content="true")
+  debug_inspect(emitted.contains("*(p_1)"), content="true")
+  debug_inspect(emitted.contains("inc(p_1)"), content="true")
   debug_inspect(emitted.contains("inc(*(p)"), content="false")
 }
 
