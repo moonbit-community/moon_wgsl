@@ -921,6 +921,22 @@ test "naga-oil writer policy preserves concrete nested vector conversions" {
 }
 
 ///|
+test "naga-oil writer policy contextualizes return constructors" {
+  let source =
+    #|fn transparent() -> vec4<f32> {
+    #|  return vec4(0.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("return vec4(0f);"), content="true")
+  debug_inspect(naga_oil.contains("return vec4(0.0);"), content="false")
+}
+
+///|
 test "naga-oil writer policy expands scalar matrix constructors into columns" {
   let source =
     #|fn helper() -> mat3x3<f32> {

@@ -316,13 +316,25 @@ fn WgslIrLowerer::lower_function(
   self : WgslIrLowerer,
   function : @ast.WgslFunction,
 ) -> Function raise WgslIrLowerError {
+  let result = match function.result() {
+    Some(result) =>
+      match result.ty_ref() {
+        Some(ty_ref) =>
+          Some(FunctionResult::{
+            ty: self.lower_type_ref(ty_ref),
+            binding: wgsl_ir_binding_from_attributes(result.attributes()),
+          })
+        None => None
+      }
+    None => None
+  }
   let ir_function = Function::{
     name: Some(function.name().name()),
     generated_import: self.function_has_generated_import_provenance(
       function.name().name(),
     ),
     arguments: [],
-    result: None,
+    result,
     local_variables: LocalVariableArena(),
     expressions: ExpressionArena(),
     named_expressions: [],
@@ -342,18 +354,6 @@ fn WgslIrLowerer::lower_function(
     })
     scope.arguments.set(argument.name().name(), index)
     index = index + 1
-  }
-  let result = match function.result() {
-    Some(result) =>
-      match result.ty_ref() {
-        Some(ty_ref) =>
-          Some(FunctionResult::{
-            ty: self.lower_type_ref(ty_ref),
-            binding: wgsl_ir_binding_from_attributes(result.attributes()),
-          })
-        None => None
-      }
-    None => None
   }
   let body = self.lower_block(function.body(), ir_function, scope) catch {
     error =>

@@ -58,8 +58,12 @@ fn WgslIrLowerer::lower_statement(
     Return(expr) => {
       let value = match expr {
         Some(expr_ref) => {
-          let handle = self.lower_function_expression_ref(
-            expr_ref, function, scope,
+          let expected_ty = match function.result {
+            Some(result) => Some(result.ty)
+            None => None
+          }
+          let handle = self.lower_function_expression_ref_with_expected(
+            expr_ref, function, scope, expected_ty,
           )
           Some(
             self.materialize_return_expression_if_needed(
