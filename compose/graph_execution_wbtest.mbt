@@ -23,6 +23,38 @@ test "composer uses naga_oil module decoration for planned imported names" {
 }
 
 ///|
+test "composer preserves quoted file import path identity for final names" {
+  let composer = Composer::default()
+  let imported_source =
+    #|const COLOR_MULTIPLIER: vec4<f32> = vec4<f32>(1.0);
+    #|
+  let root_source =
+    #|#import "shaders/custom_material_import.wgsl"::COLOR_MULTIPLIER
+    #|
+    #|fn fragment() -> vec4<f32> {
+    #|  return COLOR_MULTIPLIER;
+    #|}
+    #|
+  composer.register_source(
+    "assets/shaders/custom_material_import.wgsl",
+    imported_source,
+  )
+  composer.register_source("assets/shaders/custom_material.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "assets/shaders/custom_material.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "COLOR_MULTIPLIERX_naga_oil_mod_XEJZWQYLEMVZHGL3DOVZXI33NL5WWC5DFOJUWC3C7NFWXA33SOQXHOZ3TNQRAX",
+    ),
+    content="true",
+  )
+}
+
+///|
 test "compose graph execution plans reachability before emission" {
   let composer = Composer::default()
   let dep_source =

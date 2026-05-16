@@ -152,6 +152,7 @@ fn record_wgsl_virtual_override_final_names_from_source(
 fn record_wgsl_planned_final_names_from_extraction(
   session : WgslComposeSession,
   rel_path : String,
+  module_path_override : String?,
   alias_prefixes : Array[String],
   extraction : WgslModuleItemExtraction,
 ) -> Unit {
@@ -160,9 +161,13 @@ fn record_wgsl_planned_final_names_from_extraction(
   }
   for origin in extraction.origins() {
     let identity = WgslIrSymbolIdentity(rel_path, origin.name())
-    let module_path = match session.module_path_for_rel_path(rel_path) {
+    let module_path = match module_path_override {
       Some(value) => value
-      None => ""
+      None =>
+        match session.module_path_for_rel_path(rel_path) {
+          Some(value) => value
+          None => ""
+        }
     }
     let final_name = wgsl_compose_assigned_final_name(
       module_path,
@@ -188,6 +193,7 @@ fn record_wgsl_planned_final_names_from_extraction(
 fn record_wgsl_planned_final_names_from_source(
   session : WgslComposeSession,
   rel_path : String,
+  module_path_override : String?,
   source : String,
   alias_prefixes : Array[String],
 ) -> Unit {
@@ -198,7 +204,7 @@ fn record_wgsl_planned_final_names_from_source(
     _ => return
   }
   record_wgsl_planned_final_names_from_extraction(
-    session, rel_path, alias_prefixes, extraction,
+    session, rel_path, module_path_override, alias_prefixes, extraction,
   )
 }
 
@@ -206,6 +212,7 @@ fn record_wgsl_planned_final_names_from_source(
 fn WgslImportGraphBuilder::plan_with_path(
   self : WgslImportGraphBuilder,
   current_rel_path : String,
+  current_module_path : String?,
   source : String,
   inherited_defs : WgslActiveComposeDefs?,
   alias_prefixes : Array[String],
@@ -221,6 +228,7 @@ fn WgslImportGraphBuilder::plan_with_path(
   record_wgsl_planned_final_names_from_source(
     self.session,
     current_rel_path,
+    current_module_path,
     prepared.active_source,
     alias_prefixes,
   )
@@ -310,6 +318,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
     if request.import_full_module {
       self.plan_with_path(
         request.rel_path,
+        Some(request.module_path),
         raw_source,
         Some(importer_defs),
         request_alias_prefixes,
@@ -338,6 +347,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         record_wgsl_planned_final_names_from_extraction(
           self.session,
           request.rel_path,
+          Some(request.module_path),
           request_alias_prefixes,
           extraction,
         )
@@ -356,6 +366,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         )
         self.plan_with_path(
           request.rel_path,
+          Some(request.module_path),
           drop_wgsl_import_directives_from_compose_source(extracted_source),
           Some(importer_defs),
           request_alias_prefixes,
@@ -378,7 +389,7 @@ fn WgslImportGraphBuilder::complete_execution(
     return
   }
   self.session.graph_planning_rel_paths.push(current_rel_path)
-  self.plan_with_path(current_rel_path, source, inherited_defs, [], false)
+  self.plan_with_path(current_rel_path, None, source, inherited_defs, [], false)
   self.session.graph_planning_rel_paths.pop() |> ignore
   self.session.graph_execution_complete = true
 }
