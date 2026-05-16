@@ -220,11 +220,14 @@ test "item slice import request builder keeps explicit nested items" {
     #|const PI: f32 = 3.14159;
     #|const PI_2: f32 = 6.28318;
     #|const FRAC_PI_3: f32 = 1.04719;
+    #|fn helper() -> f32 {
+    #|  return PI_2;
+    #|}
     #|
   composer.register_source("maths.wgsl", maths_source)
   let color_source =
     #|#define_import_path test::color
-    #|#import test::maths::{PI_2,FRAC_PI_3}
+    #|#import test::maths::{PI_2,FRAC_PI_3,helper}
     #|
     #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
     #|  return color;
@@ -254,7 +257,7 @@ test "item slice import request builder keeps explicit nested items" {
   debug_inspect(requests.length(), content="1")
   debug_inspect(
     requests[0].requested_items.join(","),
-    content="\"PI_2,FRAC_PI_3\"",
+    content="\"PI_2,FRAC_PI_3,helper\"",
   )
 }
 
@@ -266,11 +269,14 @@ test "composer keeps explicit nested import declarations from selected item modu
     #|const PI: f32 = 3.14159;
     #|const PI_2: f32 = 6.28318;
     #|const FRAC_PI_3: f32 = 1.04719;
+    #|fn helper() -> f32 {
+    #|  return PI_2;
+    #|}
     #|
   composer.register_source("maths.wgsl", maths_source)
   let color_source =
     #|#define_import_path test::color
-    #|#import test::maths::{PI_2,FRAC_PI_3}
+    #|#import test::maths::{PI_2,FRAC_PI_3,helper}
     #|
     #|fn convert_to_linear_rgba(color: vec4<f32>) -> vec4<f32> {
     #|  return color;
@@ -297,6 +303,57 @@ test "composer keeps explicit nested import declarations from selected item modu
   }
   debug_inspect(emitted.contains("PI_2X_naga_oil_mod"), content="true")
   debug_inspect(emitted.contains("FRAC_PI_3X_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("fn helperX_naga_oil_mod"), content="true")
+}
+
+///|
+test "composer does not promote nested function imports with their own import graph" {
+  let composer = Composer::default()
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|
+    #|struct Resource {
+    #|  value: u32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> resource: Resource;
+    #|
+  let helpers_source =
+    #|#define_import_path test::helpers
+    #|#import test::bindings::resource
+    #|
+    #|fn helper() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+  let selected_source =
+    #|#define_import_path test::selected
+    #|#import test::helpers::helper
+    #|
+    #|fn selected() -> u32 {
+    #|  return 2u;
+    #|}
+    #|
+  let root_source =
+    #|#import test::selected::selected
+    #|
+    #|fn main() -> u32 {
+    #|  return selected();
+    #|}
+    #|
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("helpers.wgsl", helpers_source)
+  composer.register_source("selected.wgsl", selected_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("fn helperX_naga_oil_mod"), content="false")
+  debug_inspect(emitted.contains("@group(0) @binding(0)"), content="false")
 }
 
 ///|

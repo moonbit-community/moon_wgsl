@@ -55,6 +55,19 @@ fn wgsl_import_candidate_error_path(
 }
 
 ///|
+fn wgsl_translation_unit_has_import_directive(
+  unit : @ast.WgslTranslationUnit,
+) -> Bool {
+  for decl in unit.declarations() {
+    match decl.data() {
+      WgslGlobalDeclData::Import(_) => return true
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
 fn wgsl_source_declares_non_resource_dependency_item(
   source : String,
   item_name : String,
@@ -68,7 +81,9 @@ fn wgsl_source_declares_non_resource_dependency_item(
         WgslGlobalDeclData::Struct(_)
         | WgslGlobalDeclData::TypeAlias(_)
         | WgslGlobalDeclData::Const(_)
-        | WgslGlobalDeclData::Override(_) => return true
+        | WgslGlobalDeclData::Override(_)
+        | WgslGlobalDeclData::Function(_) =>
+          return !wgsl_translation_unit_has_import_directive(unit)
         _ => return false
       }
     }
