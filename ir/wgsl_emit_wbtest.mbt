@@ -957,6 +957,28 @@ test "naga-oil writer policy folds constant sqrt calls" {
 }
 
 ///|
+test "naga-oil writer policy materializes binding access in control-flow conditions" {
+  let source =
+    #|@group(0) @binding(0) var<uniform> slider: vec4<f32>;
+    #|
+    #|fn choose(value: f32) -> f32 {
+    #|  if value < slider.x {
+    #|    return slider.y;
+    #|  }
+    #|  return 0.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains(": f32 = slider.x;"), content="true")
+  debug_inspect(naga_oil.contains("if (value < _e"), content="true")
+  debug_inspect(naga_oil.contains("if (value < slider.x)"), content="false")
+}
+
+///|
 test "naga-oil writer policy expands scalar matrix constructors into columns" {
   let source =
     #|fn helper() -> mat3x3<f32> {

@@ -81,12 +81,275 @@ fn WgslIrLowerer::materialize_control_flow_condition_if_needed(
       )
     _ => ()
   }
+  let normalized = self.materialize_control_flow_condition_subexpressions(
+    function, scope, block, value,
+  )
   if self.function_expression_should_materialize_as_control_flow_condition(
-      function, value,
+      function, normalized,
     ) {
-    return self.materialize_function_expression(function, scope, block, value)
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
   }
-  value
+}
+
+///|
+fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(value.index()) {
+    Some(Binary(op, left, right)) => {
+      let lowered_left = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, left,
+      )
+      let lowered_right = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, right,
+      )
+      let parent_left = wgsl_ir_parent_expression_operand(
+        function, left, lowered_left,
+      )
+      let parent_right = wgsl_ir_parent_expression_operand(
+        function, right, lowered_right,
+      )
+      if parent_left != left || parent_right != right {
+        function.expressions.append(
+          Expression::Binary(op, parent_left, parent_right),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Unary(op, inner)) => {
+      let lowered_inner = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, inner,
+      )
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Expression::Unary(op, parent_inner))
+      } else {
+        value
+      }
+    }
+    Some(Access(base, index)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      let lowered_index = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, index,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      let parent_index = wgsl_ir_parent_expression_operand(
+        function, index, lowered_index,
+      )
+      if parent_base != base || parent_index != index {
+        function.expressions.append(
+          Expression::Access(parent_base, parent_index),
+        )
+      } else {
+        value
+      }
+    }
+    Some(AccessIndex(base, index)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if parent_base != base {
+        function.expressions.append(Expression::AccessIndex(parent_base, index))
+      } else {
+        value
+      }
+    }
+    Some(Swizzle(size, base, pattern)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if parent_base != base {
+        function.expressions.append(
+          Expression::Swizzle(size, parent_base, pattern),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Select(condition, accept, reject)) => {
+      let lowered_condition = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, condition,
+      )
+      let lowered_accept = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, accept,
+      )
+      let lowered_reject = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, reject,
+      )
+      let parent_condition = wgsl_ir_parent_expression_operand(
+        function, condition, lowered_condition,
+      )
+      let parent_accept = wgsl_ir_parent_expression_operand(
+        function, accept, lowered_accept,
+      )
+      let parent_reject = wgsl_ir_parent_expression_operand(
+        function, reject, lowered_reject,
+      )
+      if parent_condition != condition ||
+        parent_accept != accept ||
+        parent_reject != reject {
+        function.expressions.append(
+          Expression::Select(parent_condition, parent_accept, parent_reject),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Bitcast(ty, inner)) => {
+      let lowered_inner = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, inner,
+      )
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Expression::Bitcast(ty, parent_inner))
+      } else {
+        value
+      }
+    }
+    Some(Relational(relational_function, argument)) => {
+      let lowered_argument = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, argument,
+      )
+      let parent_argument = wgsl_ir_parent_expression_operand(
+        function, argument, lowered_argument,
+      )
+      if parent_argument != argument {
+        function.expressions.append(
+          Expression::Relational(relational_function, parent_argument),
+        )
+      } else {
+        value
+      }
+    }
+    Some(Math(math_function, a, b, c, d)) => {
+      let lowered_a = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, a,
+      )
+      let lowered_b = self.materialize_optional_nested_control_flow_condition_argument(
+        function, scope, block, b,
+      )
+      let lowered_c = self.materialize_optional_nested_control_flow_condition_argument(
+        function, scope, block, c,
+      )
+      let lowered_d = self.materialize_optional_nested_control_flow_condition_argument(
+        function, scope, block, d,
+      )
+      let parent_a = wgsl_ir_parent_expression_operand(function, a, lowered_a)
+      let parent_b = wgsl_ir_parent_optional_expression_operand(
+        function, b, lowered_b,
+      )
+      let parent_c = wgsl_ir_parent_optional_expression_operand(
+        function, c, lowered_c,
+      )
+      let parent_d = wgsl_ir_parent_optional_expression_operand(
+        function, d, lowered_d,
+      )
+      if parent_a != a || parent_b != b || parent_c != c || parent_d != d {
+        function.expressions.append(
+          Expression::Math(
+            math_function, parent_a, parent_b, parent_c, parent_d,
+          ),
+        )
+      } else {
+        value
+      }
+    }
+    Some(As(inner, kind, width)) => {
+      let lowered_inner = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, inner,
+      )
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Expression::As(parent_inner, kind, width))
+      } else {
+        value
+      }
+    }
+    Some(FunctionCall(handle, args)) => {
+      let lowered : Array[Handle] = []
+      let mut changed = false
+      for arg in args {
+        let lowered_arg = self.materialize_nested_call_argument(
+          function, scope, block, arg,
+        )
+        let parent_arg = wgsl_ir_parent_expression_operand(
+          function, arg, lowered_arg,
+        )
+        if parent_arg != arg {
+          changed = true
+        }
+        lowered.push(parent_arg)
+      }
+      if changed {
+        function.expressions.append(Expression::FunctionCall(handle, lowered))
+      } else {
+        value
+      }
+    }
+    _ => value
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_nested_control_flow_condition_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_control_flow_condition_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_control_flow_condition(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_optional_nested_control_flow_condition_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle?,
+) -> Handle? raise WgslIrLowerError {
+  match value {
+    Some(handle) =>
+      Some(
+        self.materialize_nested_control_flow_condition_argument(
+          function, scope, block, handle,
+        ),
+      )
+    None => None
+  }
 }
 
 ///|
@@ -95,11 +358,17 @@ fn WgslIrLowerer::function_expression_should_materialize_as_control_flow_conditi
   function : Function,
   value : Handle,
 ) -> Bool {
-  ignore(self)
-  match function.expressions.items.get(value.index()) {
+  let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
     | Some(WorkGroupUniformLoad(_)) => true
+    Some(Load(_))
+    | Some(Access(_, _))
+    | Some(AccessIndex(_, _))
+    | Some(Swizzle(_, _, _)) =>
+      self.function_expression_reads_global_binding(function, value)
     _ => false
   }
+  should_materialize &&
+  self.function_expression_can_materialize_to_let(function, value)
 }
