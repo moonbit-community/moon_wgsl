@@ -307,5 +307,6 @@ Last updated: 2026-05-15
 - `WGSL-282`: Retain imported module declarations according to pinned `naga_oil` module construction, using structured graph/IR data only.
 - `WGSL-283`: Replace moon_wgsl compatibility writer policy with pinned-Naga-compatible writer behavior.
   - Latest: pointer-valued builtin arguments now share the Naga-style `(&expr)` spelling policy across atomic calls and `arrayLength`, removing the `arrayLength(&x)` vs `arrayLength((&x))` writer-policy split.
+  - Latest: member/index access through pointer-typed expression bases now emits Naga-style explicit `(*ptr)` dereference spelling, and the naga-oil writer profile contextualizes integer constructor arguments so concrete integer constructors preserve `u`/`i` suffixes instead of leaking abstract integer spelling.
 - `WGSL-284`: Add byte-level diagnostic parity for compose/preprocess failures.
 - `WGSL-254`: Continue expanding real-project WGSL corpora and profile shapes beyond the current five-repository gate while keeping `skipped=0`, `expected-failures=0`, manifest-owned expected-invalid classifications, manifest-owned raw-vs-compose profile execution modes, exact per-repository corpus counts, and strict TSV schema validation.

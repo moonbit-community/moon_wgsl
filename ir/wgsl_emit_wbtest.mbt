@@ -714,6 +714,24 @@ test "naga-oil writer policy emits unsigned bit masks in u32 context" {
 }
 
 ///|
+test "naga-oil writer policy contextualizes integer constructor literals" {
+  let source =
+    #|const MASK: vec4<u32> = vec4<u32>(167905280, 101581836, 151063299, 84739855);
+    #|const OFFSET: vec2<i32> = vec2<i32>(1, 0);
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("vec4<u32>(167905280u, 101581836u"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("vec2<i32>(1i, 0i)"), content="true")
+}
+
+///|
 test "naga-oil writer policy expands scalar matrix constructors into columns" {
   let source =
     #|fn helper() -> mat3x3<f32> {

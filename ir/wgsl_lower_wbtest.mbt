@@ -585,7 +585,7 @@ test "WGSL AST lowerer supports pointer dereference member lvalues" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("pbr_input.value ="), content="true")
+  debug_inspect(emitted.contains("(*pbr_input).value ="), content="true")
   debug_inspect(emitted.contains("+ 1u);"), content="true")
   debug_inspect(emitted.contains("apply_decals(&pbr_input_1);"), content="true")
 }
@@ -779,6 +779,25 @@ test "WGSL AST lowerer preserves address space through local pointer lvalues" {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains(": ptr<uniform, Cascade>"), content="true")
+}
+
+///|
+test "WGSL IR emitter uses explicit pointer dereference for member access" {
+  let source =
+    #|struct S {
+    #|  value: u32,
+    #|}
+    #|fn read_s(p: ptr<function, S>) -> u32 {
+    #|  return (*p).value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("return (*p).value;"), content="true")
+  debug_inspect(emitted.contains("return p.value;"), content="false")
 }
 
 ///|

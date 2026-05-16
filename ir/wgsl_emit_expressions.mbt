@@ -140,6 +140,9 @@ fn WgslIrEmitter::access_base_expression(
   base : Handle,
 ) -> String raise WgslIrEmitError {
   let expression = self.required_function_expression(function, base)
+  if self.expression_is_pointer(function, base) {
+    return "(*\{expression})"
+  }
   let needs_parens = match function {
     Some(function) =>
       match function.expressions.items.get(base.index()) {
@@ -425,7 +428,92 @@ fn WgslIrEmitter::compose_component_list(
 ) -> String raise WgslIrEmitError {
   match self.matrix_scalar_component_list(ty, components, function) {
     Some(value) => value
-    None => self.expression_list(components, function)
+    None => {
+      let out = StringBuilder::new()
+      let scalar_context = if self.options.contextualize_constructor_integer_literals {
+        self.compose_component_scalar_context(ty, components, function)
+      } else {
+        None
+      }
+      for i in 0..<components.length() {
+        if i > 0 {
+          out.write_string(", ")
+        }
+        out.write_string(
+          self.compose_component_expression(
+            function,
+            components[i],
+            scalar_context,
+          ),
+        )
+      }
+      out.to_string()
+    }
+  }
+}
+
+///|
+fn WgslIrEmitter::compose_component_scalar_context(
+  self : WgslIrEmitter,
+  ty : Handle,
+  components : Array[Handle],
+  function : Function?,
+) -> ScalarKind? {
+  guard self.shader_module.types.items.get(ty.index()) is Some(type_) else {
+    return None
+  }
+  match type_.inner {
+    Scalar(scalar) => Some(scalar.kind)
+    Vector(_, scalar) => {
+      for component in components {
+        if !self.expression_is_scalar_type(function, component, scalar) {
+          return None
+        }
+      }
+      Some(scalar.kind)
+    }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::compose_component_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  component : Handle,
+  scalar_context : ScalarKind?,
+) -> String raise WgslIrEmitError {
+  match scalar_context {
+    Some(kind) =>
+      match self.contextual_integer_literal(function, component, kind) {
+        Some(value) => value
+        None => self.required_function_expression(function, component)
+      }
+    None => self.required_function_expression(function, component)
+  }
+}
+
+///|
+fn WgslIrEmitter::contextual_integer_literal(
+  self : WgslIrEmitter,
+  function : Function?,
+  operand : Handle,
+  kind : ScalarKind,
+) -> String? {
+  let expression = match function {
+    Some(function) => function.expressions.items.get(operand.index())
+    None => self.shader_module.global_expressions.items.get(operand.index())
+  }
+  match expression {
+    Some(Literal(literal)) =>
+      match literal {
+        AbstractInt(value) =>
+          self.integer_value_literal_for_kind(Abstract(value), kind)
+        I32(value) => self.integer_value_literal_for_kind(Signed(value), kind)
+        U32(value) => self.integer_value_literal_for_kind(Unsigned(value), kind)
+        _ => None
+      }
+    _ => None
   }
 }
 
