@@ -107,7 +107,7 @@ fn Composer::compose_wgsl_import_requests(
         false,
         true,
         alias_prefixes,
-        false,
+        true,
       )
     } else {
       let import_defs = self.active_compose_defs_for_rel_path(

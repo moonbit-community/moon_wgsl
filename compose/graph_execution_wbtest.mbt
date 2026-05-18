@@ -491,6 +491,71 @@ test "composer preserves selected item full-module import side effects" {
 }
 
 ///|
+fn compose_test_before(text : String, left : String, right : String) -> Bool {
+  let parts : Array[StringView] = text.split(left).collect()
+  if parts.length() < 2 {
+    return false
+  }
+  parts[1].contains(right)
+}
+
+///|
+test "composer emits full-module selected item dependencies before module body" {
+  let composer = Composer::default()
+  let transforms_source =
+    #|#define_import_path test::transforms
+    #|
+    #|fn position_world_to_clip(value: vec3<f32>) -> vec4<f32> {
+    #|  return vec4(value, 1.0);
+    #|}
+    #|
+  let mesh_functions_source =
+    #|#define_import_path test::mesh_functions
+    #|#import test::{
+    #|  transforms::position_world_to_clip
+    #|}
+    #|
+    #|fn get_world_from_local(instance_index: u32) -> mat4x4<f32> {
+    #|  return mat4x4<f32>();
+    #|}
+    #|
+    #|fn mesh_position_local_to_world(world_from_local: mat4x4<f32>, vertex_position: vec4<f32>) -> vec4<f32> {
+    #|  return world_from_local * vertex_position;
+    #|}
+    #|
+    #|fn mesh_position_local_to_clip(world_from_local: mat4x4<f32>, vertex_position: vec4<f32>) -> vec4<f32> {
+    #|  let world_position = mesh_position_local_to_world(world_from_local, vertex_position);
+    #|  return position_world_to_clip(world_position.xyz);
+    #|}
+    #|
+  let root_source =
+    #|#import test::{mesh_functions, transforms::position_world_to_clip}
+    #|
+    #|@vertex
+    #|fn vertex(@builtin(instance_index) instance_index: u32) -> @builtin(position) vec4<f32> {
+    #|  let world_from_local = mesh_functions::get_world_from_local(instance_index);
+    #|  let world_position = mesh_functions::mesh_position_local_to_world(world_from_local, vec4(1.0));
+    #|  return position_world_to_clip(world_position.xyz);
+    #|}
+    #|
+  composer.register_source("transforms.wgsl", transforms_source)
+  composer.register_source("mesh_functions.wgsl", mesh_functions_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    compose_test_before(
+      emitted, "fn position_world_to_clipX_naga_oil_mod", "fn get_world_from_localX_naga_oil_mod",
+    ),
+    content="true",
+  )
+}
+
+///|
 test "composer does not retain unused selected-slice helper full-module imports" {
   let composer = Composer::default()
   let helper_source =

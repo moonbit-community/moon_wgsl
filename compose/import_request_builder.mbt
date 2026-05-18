@@ -794,7 +794,161 @@ fn Composer::build_wgsl_import_requests_from_targets(
       })
     }
   }
-  requests
+  self.order_wgsl_import_requests_by_declared_dependencies(
+    requests, session, importer_defs,
+  )
+}
+
+///|
+fn wgsl_import_request_contains_item(
+  request : WgslImportRequest,
+  item : String,
+) -> Bool {
+  for requested_item in request.requested_items {
+    if requested_item == item {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_import_request_satisfies_dependency(
+  candidate : WgslImportRequest,
+  dependency : WgslImportRequest,
+) -> Bool {
+  if candidate.module_path != dependency.module_path ||
+    candidate.rel_path != dependency.rel_path ||
+    candidate.alias_name != dependency.alias_name {
+    return false
+  }
+  if dependency.import_full_module {
+    return candidate.import_full_module
+  }
+  if candidate.import_full_module {
+    return true
+  }
+  if dependency.requested_items.length() == 0 {
+    return false
+  }
+  for requested_item in dependency.requested_items {
+    if !wgsl_import_request_contains_item(candidate, requested_item) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn wgsl_import_request_declared_dependency_indexes(
+  requests : Array[WgslImportRequest],
+  request_index : Int,
+  declared_dependencies : Array[WgslImportRequest],
+) -> Array[Int] {
+  let indexes : Array[Int] = []
+  for dependency in declared_dependencies {
+    for i in 0..<requests.length() {
+      if i == request_index {
+        continue
+      }
+      if wgsl_import_request_satisfies_dependency(requests[i], dependency) {
+        if !indexes.contains(i) {
+          indexes.push(i)
+        }
+      }
+    }
+  }
+  indexes
+}
+
+///|
+fn Composer::declared_dependency_requests_for_import_request(
+  self : Composer,
+  request : WgslImportRequest,
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Array[WgslImportRequest] raise ComposerError {
+  if !request.import_full_module {
+    return []
+  }
+  let import_source = match self.registry.registered_source(request.rel_path) {
+    Some(source) => source
+    None => raise ComposerError::MissingRegisteredSource(request.rel_path)
+  }
+  let import_defs = self.active_compose_defs_for_rel_path(
+    request.rel_path,
+    session,
+    Some(importer_defs),
+  )
+  let active_import_source = apply_wgsl_template_consts(
+    apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
+    import_defs.value_defines,
+  )
+  self.build_wgsl_declared_import_requests_from_source_directives(
+    request.rel_path,
+    active_import_source,
+    session,
+    import_defs,
+  )
+}
+
+///|
+fn push_wgsl_import_request_with_declared_dependencies(
+  requests : Array[WgslImportRequest],
+  dependency_indexes : Array[Array[Int]],
+  index : Int,
+  visiting : @set.Set[Int],
+  emitted : @set.Set[Int],
+  ordered : Array[WgslImportRequest],
+) -> Unit {
+  if emitted.contains(index) {
+    return
+  }
+  if visiting.contains(index) {
+    return
+  }
+  visiting.add(index)
+  for dependency_index in dependency_indexes[index] {
+    push_wgsl_import_request_with_declared_dependencies(
+      requests, dependency_indexes, dependency_index, visiting, emitted, ordered,
+    )
+  }
+  visiting.remove(index)
+  if !emitted.contains(index) {
+    emitted.add(index)
+    ordered.push(requests[index])
+  }
+}
+
+///|
+fn Composer::order_wgsl_import_requests_by_declared_dependencies(
+  self : Composer,
+  requests : Array[WgslImportRequest],
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Array[WgslImportRequest] raise ComposerError {
+  let dependency_indexes : Array[Array[Int]] = []
+  for i in 0..<requests.length() {
+    let declared_dependencies = self.declared_dependency_requests_for_import_request(
+      requests[i],
+      session,
+      importer_defs,
+    )
+    dependency_indexes.push(
+      wgsl_import_request_declared_dependency_indexes(
+        requests, i, declared_dependencies,
+      ),
+    )
+  }
+  let ordered : Array[WgslImportRequest] = []
+  let visiting : @set.Set[Int] = @set.Set([])
+  let emitted : @set.Set[Int] = @set.Set([])
+  for i in 0..<requests.length() {
+    push_wgsl_import_request_with_declared_dependencies(
+      requests, dependency_indexes, i, visiting, emitted, ordered,
+    )
+  }
+  ordered
 }
 
 ///|

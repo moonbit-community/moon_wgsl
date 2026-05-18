@@ -322,7 +322,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         raw_source,
         Some(importer_defs),
         request_alias_prefixes,
-        false,
+        true,
       )
     } else {
       let import_defs = self.composer.active_compose_defs_for_rel_path(
