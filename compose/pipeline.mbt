@@ -39,6 +39,20 @@ fn drop_wgsl_import_directives_from_compose_source(source : String) -> String {
 }
 
 ///|
+fn wgsl_compose_scan_has_import_directive(
+  items : Array[WgslDirectiveScanItem],
+) -> Bool {
+  for item in items {
+    match item.kind() {
+      WgslDirectiveScanItemKind::Directive(directive) if directive.kind() ==
+        WgslDirectiveKind::Import => return true
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
 fn wgsl_compose_directive_emission_kind(
   item : WgslDirectiveScanItem,
   directive : WgslDirective,
@@ -150,7 +164,6 @@ fn WgslComposeEmitter::emit_source_with_path(
     active_defs,
     alias_prefixes,
   )
-  merged = merged + implicit_imports
   let explicit_requests = if declared_imports {
     self.composer.build_wgsl_declared_import_requests_from_source_directives(
       current_rel_path,
@@ -168,14 +181,18 @@ fn WgslComposeEmitter::emit_source_with_path(
     )
   }
   let mut explicit_imports_emitted = false
-  for
-    item in parse_wgsl_directive_scan_items(
-      prepared.active_source,
-      include_glsl_version=false,
-    ) {
+  let mut implicit_imports_emitted = false
+  let scan_items = parse_wgsl_directive_scan_items(
+    prepared.active_source,
+    include_glsl_version=false,
+  )
+  let has_import_directive = wgsl_compose_scan_has_import_directive(scan_items)
+  let mut saw_import_directive = false
+  for item in scan_items {
     match item.kind() {
       WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
-        WgslDirectiveKind::Import =>
+        WgslDirectiveKind::Import => {
+        saw_import_directive = true
         if !explicit_imports_emitted {
           explicit_imports_emitted = true
           merged = merged +
@@ -189,7 +206,13 @@ fn WgslComposeEmitter::emit_source_with_path(
               alias_prefixes,
             )
         }
-      _ =>
+      }
+      _ => {
+        if !implicit_imports_emitted &&
+          (!has_import_directive || saw_import_directive) {
+          implicit_imports_emitted = true
+          merged = merged + implicit_imports
+        }
         merged = merged +
           self.composer.compose_wgsl_scanned_item(
             current_rel_path,
@@ -201,7 +224,11 @@ fn WgslComposeEmitter::emit_source_with_path(
             alias_prefixes,
             declared_imports,
           )
+      }
     }
+  }
+  if !implicit_imports_emitted {
+    merged = merged + implicit_imports
   }
   finalize_wgsl_composed_source(
     merged,

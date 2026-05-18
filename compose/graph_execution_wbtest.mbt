@@ -943,6 +943,98 @@ test "composer orders imports across directives by source references" {
 }
 
 ///|
+test "composer orders direct item imports by root global type references" {
+  let composer = Composer::default()
+  let view_source =
+    #|#define_import_path test::view
+    #|
+    #|struct ColorGrading {
+    #|  value: f32,
+    #|}
+    #|
+    #|struct View {
+    #|  color_grading: ColorGrading,
+    #|}
+    #|
+  let oit_source =
+    #|#define_import_path test::mesh_view_types
+    #|
+    #|struct OitFragmentNode {
+    #|  next: u32,
+    #|}
+    #|
+  let root_source =
+    #|#import test::view::View
+    #|#import test::mesh_view_types::OitFragmentNode
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> view: View;
+    #|@group(0) @binding(1)
+    #|var<storage, read> nodes: array<OitFragmentNode>;
+    #|
+    #|fn main() -> u32 {
+    #|  return nodes[0].next + u32(view.color_grading.value);
+    #|}
+    #|
+  composer.register_source("view.wgsl", view_source)
+  composer.register_source("mesh_view_types.wgsl", oit_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    compose_test_before(
+      emitted, "struct ColorGradingX_naga_oil_mod", "struct OitFragmentNodeX_naga_oil_mod",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    compose_test_before(
+      emitted, "struct ViewX_naga_oil_mod", "struct OitFragmentNodeX_naga_oil_mod",
+    ),
+    content="true",
+  )
+}
+
+///|
+test "composer emits implicit qualified imports before source without import directives" {
+  let composer = Composer::default()
+  let view_source =
+    #|#define_import_path test::view
+    #|
+    #|struct View {
+    #|  value: f32,
+    #|}
+    #|
+  let root_source =
+    #|@group(0) @binding(0)
+    #|var<uniform> view: test::view::View;
+    #|
+    #|fn main() -> f32 {
+    #|  return view.value;
+    #|}
+    #|
+  composer.register_source("view.wgsl", view_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    compose_test_before(
+      emitted, "struct ViewX_naga_oil_mod", "@group(0) @binding(0)",
+    ),
+    content="true",
+  )
+  debug_inspect(emitted.contains("test::view::View"), content="false")
+}
+
+///|
 test "import request declared-dependency ordering is applied in place" {
   let composer = Composer::default()
   let types_source =
