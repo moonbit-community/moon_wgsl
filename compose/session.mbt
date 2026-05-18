@@ -139,7 +139,6 @@ priv struct WgslComposeSession {
   graph_planned_requests : @set.Set[String]
   graph_planning_rel_paths : Array[String]
   mut graph_execution_complete : Bool
-  occupied_resource_bindings : @set.Set[String]
   symbols : WgslComposeSymbolTable
   link_graph : WgslIrLinkGraph
   semantic_facts : Map[String, WgslComposeSemanticFacts]
@@ -472,6 +471,37 @@ fn WgslComposeBindingSet::push(
   }
   self.keys.add(key)
   self.bindings.push(binding)
+}
+
+///|
+fn WgslComposeBindingSet::has_unqualified_local_name(
+  self : WgslComposeBindingSet,
+  name : String,
+) -> Bool {
+  for binding in self.bindings {
+    if binding.scope == UnqualifiedItemBinding &&
+      binding.alias_name == "" &&
+      binding.reference_path.text() == name &&
+      binding.target.final_name == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn WgslComposeBindingSet::has_unqualified_reference_name(
+  self : WgslComposeBindingSet,
+  name : String,
+) -> Bool {
+  for binding in self.bindings {
+    if binding.scope == UnqualifiedItemBinding &&
+      binding.alias_name == "" &&
+      binding.reference_path.text() == name {
+      return true
+    }
+  }
+  false
 }
 
 ///|

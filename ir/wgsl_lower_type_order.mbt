@@ -26,6 +26,7 @@ fn wgsl_ir_struct_predeclare_order(
   declarations : Array[@ast.WgslGlobalDecl],
 ) -> Array[@ast.WgslGlobalDecl] {
   let struct_names = @set.Set([])
+  let entry_names = @set.Set([])
   let first_uses : Map[String, Int] = Map([])
   let entries : Array[WgslStructPredeclareEntry] = []
   for declaration in declarations {
@@ -33,6 +34,10 @@ fn wgsl_ir_struct_predeclare_order(
       Struct(struct_decl) => {
         let name = struct_decl.name().name()
         struct_names.add(name)
+        if entry_names.contains(name) {
+          continue
+        }
+        entry_names.add(name)
         first_uses.set(name, declaration.start())
         entries.push(WgslStructPredeclareEntry::{
           declaration,

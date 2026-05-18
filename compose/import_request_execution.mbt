@@ -49,7 +49,10 @@ fn Composer::compose_wgsl_import_requests(
             request.module_path,
             requested_item,
           ) {
-          Some(binding) => bindings.push(binding)
+          Some(binding) =>
+            push_wgsl_unqualified_import_binding_respecting_locals(
+              bindings, binding,
+            )
           None =>
             match
               find_wgsl_visible_identity_imported_item_binding(
@@ -57,7 +60,10 @@ fn Composer::compose_wgsl_import_requests(
                 request.rel_path,
                 requested_item,
               ) {
-              Some(binding) => bindings.push(binding)
+              Some(binding) =>
+                push_wgsl_unqualified_import_binding_respecting_locals(
+                  bindings, binding,
+                )
               None =>
                 match
                   find_wgsl_cached_imported_item_name(
@@ -74,7 +80,9 @@ fn Composer::compose_wgsl_import_requests(
                         UnqualifiedItemBinding,
                       ) {
                       Some(binding) => {
-                        bindings.push(binding)
+                        push_wgsl_unqualified_import_binding_respecting_locals(
+                          bindings, binding,
+                        )
                         if !session.visited.contains(
                             wgsl_imported_item_emission_key(
                               request.rel_path,
@@ -176,6 +184,9 @@ fn Composer::compose_wgsl_import_requests(
           import_defs,
         )
         let item_bindings = WgslComposeBindingSet()
+        seed_wgsl_local_declaration_bindings(
+          item_bindings, current_rel_path, importer_scan_source,
+        )
         let imported_prefix = self.compose_wgsl_import_requests(
           request.rel_path,
           requests,
@@ -204,7 +215,9 @@ fn Composer::compose_wgsl_import_requests(
             error => raise composer_error_from_wgsl_parse_error(error)
           }
           if referenced_by_importer {
-            bindings.push(binding)
+            push_wgsl_unqualified_import_binding_respecting_locals(
+              bindings, binding,
+            )
           }
         }
         emitted_slice
@@ -281,6 +294,9 @@ fn Composer::compose_wgsl_import_requests(
           if !directly_requested {
             continue
           }
+          if bindings.has_unqualified_local_name(origin.source_symbol_name) {
+            continue
+          }
           match
             WgslComposeBinding::for_unqualified_symbol(
               origin.rel_path,
@@ -340,6 +356,51 @@ fn Composer::compose_wgsl_import_requests(
     }
   }
   merged
+}
+
+///|
+fn seed_wgsl_local_declaration_bindings(
+  bindings : WgslComposeBindingSet,
+  rel_path : String,
+  source : String,
+) -> Unit raise ComposerError {
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  for declaration in unit.declarations() {
+    match declaration.data() {
+      WgslGlobalDeclData::GlobalVariable(_) => ()
+      _ => continue
+    }
+    let name = declaration.name()
+    if name == "" {
+      continue
+    }
+    match
+      WgslComposeBinding::for_unqualified_symbol(
+        rel_path,
+        name,
+        name,
+        UnqualifiedItemBinding,
+      ) {
+      Some(binding) => bindings.push(binding)
+      None => ()
+    }
+  }
+}
+
+///|
+fn push_wgsl_unqualified_import_binding_respecting_locals(
+  bindings : WgslComposeBindingSet,
+  binding : WgslComposeBinding,
+) -> Unit {
+  let reference_name = binding.reference_path.text()
+  if binding.scope == UnqualifiedItemBinding &&
+    binding.target.final_name != reference_name &&
+    bindings.has_unqualified_reference_name(reference_name) {
+    return
+  }
+  bindings.push(binding)
 }
 
 ///|

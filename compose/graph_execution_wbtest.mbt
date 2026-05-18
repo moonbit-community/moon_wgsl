@@ -1224,12 +1224,9 @@ test "direct leaf imports feed naga-oil local spelling even when semantically sh
     emitted.contains(
       "var<private> meshX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX_1",
     ),
-    content="true",
+    content="false",
   )
-  debug_inspect(
-    emitted.contains("fn fragment(meshX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX"),
-    content="true",
-  )
+  debug_inspect(emitted.contains("fn fragment(mesh: Out"), content="true")
 }
 
 ///|
@@ -1347,7 +1344,7 @@ test "selected dependency modules retain alias-qualified resource side effects" 
 }
 
 ///|
-test "alias-qualified resource side effects respect occupied bindings" {
+test "alias-qualified resource side effects follow naga-oil writer retention before runtime validation" {
   let composer = Composer::default()
   composer.clear_sources()
   let bindings_source =
@@ -1408,7 +1405,7 @@ test "alias-qualified resource side effects respect occupied bindings" {
   )
   debug_inspect(
     emitted.contains("var<storage> clustered_lightsX_naga_oil_mod"),
-    content="false",
+    content="true",
   )
   debug_inspect(
     emitted.contains("var<storage> local_clustered_lights"),

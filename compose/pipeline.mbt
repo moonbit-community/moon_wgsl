@@ -144,7 +144,6 @@ fn WgslComposeEmitter::emit_source_with_path(
       prepared.active_source,
     )
   }
-  self.session.record_wgsl_source_resource_bindings(prepared.active_source)
   let mut merged = ""
   let bindings = WgslComposeBindingSet()
   for binding in inherited_bindings.bindings {
