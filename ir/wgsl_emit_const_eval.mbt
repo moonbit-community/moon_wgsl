@@ -196,6 +196,18 @@ fn WgslIrEmitter::eval_constant_float_expression_for_emit(
 }
 
 ///|
+fn WgslIrEmitter::eval_constant_float_expression_for_writer(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Double? {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) if self.should_inline_constant_expression(constant) =>
+      self.eval_global_float_expression_for_emit(constant.init, @set.Set([]))
+    _ => None
+  }
+}
+
+///|
 fn wgsl_ir_emit_f32_to_double(value : Float) -> Double? {
   Some(value.to_double())
 }
@@ -332,6 +344,100 @@ fn WgslIrEmitter::eval_constant_integer_expression_for_emit(
       result
     }
     None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_constant_integer_expression_for_writer(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> WgslIrEmitIntegerValue? {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) if self.should_inline_constant_expression(constant) =>
+      self.eval_global_integer_expression_for_emit(constant.init, @set.Set([]))
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_integer_expression_for_writer(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> WgslIrEmitIntegerValue? raise WgslIrEmitError {
+  match self.required_expression(function, handle) {
+    Literal(Literal::I32(value)) => Some(Signed(value))
+    Literal(Literal::U32(value)) => Some(Unsigned(value))
+    Literal(Literal::AbstractInt(value)) => Some(Abstract(value))
+    Constant(handle) => self.eval_constant_integer_expression_for_writer(handle)
+    Unary(UnaryOperator::Negate, inner) => {
+      guard self.eval_integer_expression_for_writer(function, inner)
+        is Some(value) else {
+        return None
+      }
+      match value.to_signed_int() {
+        Some(value) => Some(Signed(-value))
+        None => None
+      }
+    }
+    Unary(UnaryOperator::BitwiseNot, inner) =>
+      match self.eval_integer_expression_for_writer(function, inner) {
+        Some(Unsigned(value)) => Some(Unsigned(value.lnot()))
+        Some(Signed(value)) => Some(Signed(value.lnot()))
+        Some(Abstract(value)) => Some(Abstract(value.lnot()))
+        None => None
+      }
+    Binary(op, left, right) => {
+      guard self.eval_integer_expression_for_writer(function, left)
+        is Some(left_value) else {
+        return None
+      }
+      guard self.eval_integer_expression_for_writer(function, right)
+        is Some(right_value) else {
+        return None
+      }
+      wgsl_ir_emit_eval_integer_binary(op, left_value, right_value)
+    }
+    Math(MathFunction::Min, a, Some(b), None, None) => {
+      guard self.eval_integer_expression_for_writer(function, a)
+        is Some(a_value) else {
+        return None
+      }
+      guard self.eval_integer_expression_for_writer(function, b)
+        is Some(b_value) else {
+        return None
+      }
+      wgsl_ir_emit_eval_integer_min(a_value, b_value)
+    }
+    Math(MathFunction::Max, a, Some(b), None, None) => {
+      guard self.eval_integer_expression_for_writer(function, a)
+        is Some(a_value) else {
+        return None
+      }
+      guard self.eval_integer_expression_for_writer(function, b)
+        is Some(b_value) else {
+        return None
+      }
+      wgsl_ir_emit_eval_integer_max(a_value, b_value)
+    }
+    Math(MathFunction::Clamp, value, Some(low), Some(high), None) => {
+      guard self.eval_integer_expression_for_writer(function, value)
+        is Some(value) else {
+        return None
+      }
+      guard self.eval_integer_expression_for_writer(function, low) is Some(low) else {
+        return None
+      }
+      guard self.eval_integer_expression_for_writer(function, high)
+        is Some(high) else {
+        return None
+      }
+      match wgsl_ir_emit_eval_integer_max(value, low) {
+        Some(value) => wgsl_ir_emit_eval_integer_min(value, high)
+        None => None
+      }
+    }
+    _ => None
   }
 }
 

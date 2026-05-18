@@ -94,8 +94,15 @@ fn WgslIrEmitter::function_expression_inner_type(
           }
         None => None
       }
-    Math(math_function, a, _, _, _) =>
-      self.math_expression_result_type(Some(function), math_function, a)
+    Math(math_function, a, b, c, d) =>
+      self.math_expression_result_type(
+        Some(function),
+        math_function,
+        a,
+        b,
+        c,
+        d,
+      )
     Relational(relational_function, expr) =>
       self.relational_expression_result_type(
         Some(function),
@@ -237,8 +244,8 @@ fn WgslIrEmitter::global_expression_inner_type(
       }
     Bitcast(ty, _) => Some(ty)
     Derivative(_, _, expr) => self.expression_type(None, expr)
-    Math(math_function, a, _, _, _) =>
-      self.math_expression_result_type(None, math_function, a)
+    Math(math_function, a, b, c, d) =>
+      self.math_expression_result_type(None, math_function, a, b, c, d)
     Relational(relational_function, expr) =>
       self.relational_expression_result_type(None, relational_function, expr)
     AtomicCall(atomic_function, arguments) =>
@@ -502,9 +509,37 @@ fn WgslIrEmitter::math_expression_result_type(
   function : Function?,
   math_function : MathFunction,
   argument : Handle,
+  b : Handle?,
+  c : Handle?,
+  d : Handle?,
 ) -> Handle? {
   guard self.expression_type(function, argument) is Some(input_ty) else {
     return None
+  }
+  if wgsl_ir_math_function_uses_uniform_numeric_argument_context(math_function) {
+    let arguments : Array[Handle] = [argument]
+    match b {
+      Some(value) => arguments.push(value)
+      None => ()
+    }
+    match c {
+      Some(value) => arguments.push(value)
+      None => ()
+    }
+    match d {
+      Some(value) => arguments.push(value)
+      None => ()
+    }
+    for value in arguments {
+      match self.expression_component_scalar(function, value) {
+        Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+          match self.expression_type(function, value) {
+            Some(ty) => return Some(ty)
+            None => ()
+          }
+        _ => ()
+      }
+    }
   }
   match math_function {
     Modf | Frexp =>

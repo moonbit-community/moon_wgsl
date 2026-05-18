@@ -306,7 +306,13 @@ fn WgslIrEmitter::eval_float_expression_for_writer(
   match self.required_expression(function, handle) {
     Literal(literal) => wgsl_ir_float_value_from_numeric_literal(literal)
     Constant(constant) =>
-      self.eval_constant_float_expression_for_emit(constant, @set.Set([]))
+      self.eval_constant_float_expression_for_writer(constant)
+    Compose(ty, [component]) =>
+      match self.shader_module.types.items.get(ty.index()) {
+        Some({ inner: Scalar({ kind: Float, .. }), .. }) =>
+          self.eval_float_expression_for_writer(function, component)
+        _ => None
+      }
     Unary(UnaryOperator::Negate, inner) =>
       match self.eval_float_expression_for_writer(function, inner) {
         Some(value) => Some(-value)
@@ -335,8 +341,12 @@ fn WgslIrEmitter::binary_expression(
   left : Handle,
   right : Handle,
 ) -> String raise WgslIrEmitError {
-  let left_text = self.binary_operand_expression(function, op, left, right)
-  let right_text = self.binary_operand_expression(function, op, right, left)
+  let left_text = self.binary_operand_expression(
+    function, op, left, right, false,
+  )
+  let right_text = self.binary_operand_expression(
+    function, op, right, left, true,
+  )
   "(\{left_text} \{self.binary_operator(op)} \{right_text})"
 }
 
@@ -347,17 +357,46 @@ fn WgslIrEmitter::binary_operand_expression(
   op : BinaryOperator,
   operand : Handle,
   sibling : Handle,
+  is_right_operand : Bool,
 ) -> String raise WgslIrEmitError {
-  match self.contextual_unsigned_integer_literal(function, operand, sibling) {
-    Some(text) if wgsl_ir_binary_operator_uses_integer_bits(op) => text
-    _ => self.required_function_expression(function, operand)
+  if is_right_operand && (op == ShiftLeft || op == ShiftRight) {
+    return self.required_function_expression(function, operand)
   }
+  if wgsl_ir_binary_operator_uses_numeric_argument_context(op) &&
+    self.options.contextualize_numeric_literals {
+    match self.expression_component_scalar(function, sibling) {
+      Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+        match self.contextual_scalar_literal(function, operand, scalar) {
+          Some(text) => return text
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  self.required_function_expression(function, operand)
 }
 
 ///|
-fn wgsl_ir_binary_operator_uses_integer_bits(op : BinaryOperator) -> Bool {
+fn wgsl_ir_binary_operator_uses_numeric_argument_context(
+  op : BinaryOperator,
+) -> Bool {
   match op {
-    And | ExclusiveOr | InclusiveOr | ShiftLeft | ShiftRight => true
+    Add
+    | Subtract
+    | Multiply
+    | Divide
+    | Modulo
+    | Equal
+    | NotEqual
+    | Less
+    | LessEqual
+    | Greater
+    | GreaterEqual
+    | And
+    | ExclusiveOr
+    | InclusiveOr
+    | ShiftLeft
+    | ShiftRight => true
     _ => false
   }
 }
@@ -481,44 +520,6 @@ fn WgslIrEmitter::contextual_argument_expression(
 }
 
 ///|
-fn WgslIrEmitter::contextual_unsigned_integer_literal(
-  self : WgslIrEmitter,
-  function : Function?,
-  operand : Handle,
-  sibling : Handle,
-) -> String? {
-  guard self.expression_scalar_kind(function, sibling) is Some(Uint) else {
-    return None
-  }
-  let expression = match function {
-    Some(function) => function.expressions.items.get(operand.index())
-    None => self.shader_module.global_expressions.items.get(operand.index())
-  }
-  match expression {
-    Some(Literal(literal)) =>
-      match literal {
-        AbstractInt(value) =>
-          self.integer_value_literal_for_kind(Abstract(value), Uint)
-        U32(value) => self.integer_value_literal_for_kind(Unsigned(value), Uint)
-        _ => None
-      }
-    _ => None
-  }
-}
-
-///|
-fn WgslIrEmitter::expression_scalar_kind(
-  self : WgslIrEmitter,
-  function : Function?,
-  handle : Handle,
-) -> ScalarKind? {
-  match self.expression_component_scalar(function, handle) {
-    Some(scalar) => Some(scalar.kind)
-    None => None
-  }
-}
-
-///|
 fn WgslIrEmitter::expression_component_scalar(
   self : WgslIrEmitter,
   function : Function?,
@@ -594,11 +595,10 @@ fn WgslIrEmitter::folded_scalar_constructor_expression(
         None => None
       }
     Constant(handle) =>
-      match self.eval_constant_float_expression_for_emit(handle, @set.Set([])) {
+      match self.eval_constant_float_expression_for_writer(handle) {
         Some(value) => self.float_value_literal_for_width(value, target.width)
         None =>
-          match
-            self.eval_constant_integer_expression_for_emit(handle, @set.Set([])) {
+          match self.eval_constant_integer_expression_for_writer(handle) {
             Some(value) =>
               match value.to_double() {
                 Some(value) =>
@@ -714,6 +714,12 @@ fn WgslIrEmitter::contextual_scalar_literal(
   operand : Handle,
   scalar : Scalar,
 ) -> String? raise WgslIrEmitError {
+  if self.options.fold_numeric_constant_expressions {
+    match self.folded_expression_for_scalar_context(function, operand, scalar) {
+      Some(value) => return Some(value)
+      None => ()
+    }
+  }
   let expression = match function {
     Some(function) => function.expressions.items.get(operand.index())
     None => self.shader_module.global_expressions.items.get(operand.index())
@@ -752,6 +758,38 @@ fn WgslIrEmitter::contextual_scalar_literal(
         "\{self.compose_constructor_name_for_components(ty, components, function)}(\{out.to_string()})",
       )
     }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::folded_expression_for_scalar_context(
+  self : WgslIrEmitter,
+  function : Function?,
+  operand : Handle,
+  scalar : Scalar,
+) -> String? raise WgslIrEmitError {
+  match scalar.kind {
+    Float | AbstractFloat =>
+      match self.eval_float_expression_for_writer(function, operand) {
+        Some(value) => self.float_value_literal_for_width(value, scalar.width)
+        None => None
+      }
+    Uint =>
+      match self.eval_integer_expression_for_writer(function, operand) {
+        Some(value) => self.integer_value_literal_for_kind(value, Uint)
+        None => None
+      }
+    Sint =>
+      match self.eval_integer_expression_for_writer(function, operand) {
+        Some(value) => self.integer_value_literal_for_kind(value, Sint)
+        None => None
+      }
+    AbstractInt =>
+      match self.eval_integer_expression_for_writer(function, operand) {
+        Some(value) => self.integer_value_literal_for_kind(value, AbstractInt)
+        None => None
+      }
     _ => None
   }
 }

@@ -30,6 +30,10 @@ fn WgslIrEmitter::should_inline_constant_expression(
   self : WgslIrEmitter,
   constant : Constant,
 ) -> Bool {
+  if self.options.fold_numeric_constant_expressions &&
+    self.type_contains_abstract_scalar(constant.ty) {
+    return true
+  }
   self.options.inline_generated_import_constants &&
   (
     constant.inline_value ||
