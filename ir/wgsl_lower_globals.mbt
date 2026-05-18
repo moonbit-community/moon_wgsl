@@ -164,6 +164,7 @@ fn WgslIrLowerer::predeclare_constant_declaration(
     name: Some(name),
     generated_import: self.function_has_generated_import_provenance(name),
     inline_value: self.constant_should_inline_generated_import_value(name),
+    source_start: constant.name().start(),
     ty,
     init: placeholder_init,
   })
@@ -426,6 +427,7 @@ fn WgslIrLowerer::lower_constant(
         name: Some(name),
         generated_import: self.function_has_generated_import_provenance(name),
         inline_value: self.constant_should_inline_generated_import_value(name),
+        source_start: constant.name().start(),
         ty,
         init: placeholder_init,
       })
@@ -443,6 +445,7 @@ fn WgslIrLowerer::lower_constant(
     name: Some(name),
     generated_import: self.function_has_generated_import_provenance(name),
     inline_value: self.constant_should_inline_generated_import_value(name),
+    source_start: constant.name().start(),
     ty,
     init,
   })

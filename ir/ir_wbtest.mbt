@@ -26,6 +26,7 @@ test "Naga-style shader IR module stores handles into arenas" {
     name: Some("ONE"),
     generated_import: false,
     inline_value: false,
+    source_start: -1,
     ty: f32_ty,
     init: literal,
   })

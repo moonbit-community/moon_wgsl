@@ -27,6 +27,7 @@ pub(all) struct Constant {
   name : String?
   generated_import : Bool
   inline_value : Bool
+  source_start : Int
   ty : Handle
   init : Handle
 } derive(Eq, Debug)

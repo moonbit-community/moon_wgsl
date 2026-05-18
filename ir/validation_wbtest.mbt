@@ -48,6 +48,7 @@ test "IR validator rejects invalid type handles" {
       name: Some("BAD"),
       generated_import: false,
       inline_value: false,
+      source_start: -1,
       ty: Handle::Handle(99),
       init,
     }),
