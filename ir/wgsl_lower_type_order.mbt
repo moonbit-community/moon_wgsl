@@ -18,6 +18,7 @@ priv struct WgslStructPredeclareEntry {
   name : String
   source_start : Int
   first_use : Int
+  dependencies : Array[String]
 }
 
 ///|
@@ -38,6 +39,7 @@ fn wgsl_ir_struct_predeclare_order(
           name,
           source_start: declaration.start(),
           first_use: declaration.start(),
+          dependencies: [],
         })
       }
       _ => ()
@@ -55,11 +57,19 @@ fn wgsl_ir_struct_predeclare_order(
       name: entry.name,
       source_start: entry.source_start,
       first_use: first_uses.get(entry.name).unwrap_or(entry.source_start),
+      dependencies: wgsl_ir_collect_decl_struct_type_dependencies(
+        entry.declaration,
+        entry.name,
+        struct_names,
+      ),
     })
   }
   ordered.sort_by(wgsl_ir_compare_struct_predeclare_entries)
+  let dependency_ordered = wgsl_ir_order_struct_predeclare_entries_by_dependencies(
+    ordered,
+  )
   let declarations_out : Array[@ast.WgslGlobalDecl] = []
-  for entry in ordered {
+  for entry in dependency_ordered {
     declarations_out.push(entry.declaration)
   }
   declarations_out
@@ -79,6 +89,109 @@ fn wgsl_ir_compare_struct_predeclare_entries(
     return source_compare
   }
   String::compare(lhs.name, rhs.name)
+}
+
+///|
+fn wgsl_ir_order_struct_predeclare_entries_by_dependencies(
+  entries : Array[WgslStructPredeclareEntry],
+) -> Array[WgslStructPredeclareEntry] {
+  let index_by_name : Map[String, Int] = Map([])
+  for i in 0..<entries.length() {
+    index_by_name.set(entries[i].name, i)
+  }
+  let ordered : Array[WgslStructPredeclareEntry] = []
+  let visiting : @set.Set[Int] = @set.Set([])
+  let emitted : @set.Set[Int] = @set.Set([])
+  for i in 0..<entries.length() {
+    wgsl_ir_push_struct_predeclare_entry_with_dependencies(
+      entries, index_by_name, i, visiting, emitted, ordered,
+    )
+  }
+  ordered
+}
+
+///|
+fn wgsl_ir_push_struct_predeclare_entry_with_dependencies(
+  entries : Array[WgslStructPredeclareEntry],
+  index_by_name : Map[String, Int],
+  index : Int,
+  visiting : @set.Set[Int],
+  emitted : @set.Set[Int],
+  ordered : Array[WgslStructPredeclareEntry],
+) -> Unit {
+  if emitted.contains(index) || visiting.contains(index) {
+    return
+  }
+  visiting.add(index)
+  for dependency in entries[index].dependencies {
+    match index_by_name.get(dependency) {
+      Some(dependency_index) if dependency_index != index =>
+        wgsl_ir_push_struct_predeclare_entry_with_dependencies(
+          entries, index_by_name, dependency_index, visiting, emitted, ordered,
+        )
+      _ => ()
+    }
+  }
+  ignore(visiting.remove(index))
+  if !emitted.contains(index) {
+    emitted.add(index)
+    ordered.push(entries[index])
+  }
+}
+
+///|
+fn wgsl_ir_collect_decl_struct_type_dependencies(
+  declaration : @ast.WgslGlobalDecl,
+  owner_name : String,
+  struct_names : @set.Set[String],
+) -> Array[String] {
+  let dependencies : Array[String] = []
+  match declaration.data() {
+    Struct(struct_decl) =>
+      for field in struct_decl.members() {
+        match field.ty_ref() {
+          Some(ty_ref) =>
+            wgsl_ir_collect_struct_type_ref_dependency(
+              ty_ref, owner_name, struct_names, dependencies,
+            )
+          None => ()
+        }
+      }
+    _ => ()
+  }
+  dependencies
+}
+
+///|
+fn wgsl_ir_push_unique_struct_dependency(
+  dependencies : Array[String],
+  dependency : String,
+) -> Unit {
+  if !dependencies.contains(dependency) {
+    dependencies.push(dependency)
+  }
+}
+
+///|
+fn wgsl_ir_collect_struct_type_ref_dependency(
+  ty_ref : @ast.WgslTypeRef,
+  owner_name : String,
+  struct_names : @set.Set[String],
+  dependencies : Array[String],
+) -> Unit {
+  let name = ty_ref.name()
+  if name != owner_name && struct_names.contains(name) {
+    wgsl_ir_push_unique_struct_dependency(dependencies, name)
+  }
+  for argument in ty_ref.template_arguments() {
+    match argument {
+      Type(inner) =>
+        wgsl_ir_collect_struct_type_ref_dependency(
+          inner, owner_name, struct_names, dependencies,
+        )
+      Expression(_) => ()
+    }
+  }
 }
 
 ///|

@@ -943,6 +943,59 @@ test "composer orders imports across directives by source references" {
 }
 
 ///|
+test "import request declared-dependency ordering is applied in place" {
+  let composer = Composer::default()
+  let types_source =
+    #|#define_import_path test::types
+    #|
+    #|struct View {
+    #|  value: u32,
+    #|}
+    #|
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|#import test::types
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> view: test::types::View;
+    #|
+  composer.register_source("types.wgsl", types_source)
+  composer.register_source("bindings.wgsl", bindings_source)
+  let session = composer.new_wgsl_compose_session(WgslComposeOptions::default())
+  let defs = composer.active_compose_defs_for_rel_path(
+    "root.wgsl",
+    session,
+    None,
+  )
+  let requests = [
+    WgslImportRequest::{
+      module_path: "test::bindings",
+      rel_path: "bindings.wgsl",
+      import_full_module: true,
+      keep_requested_items: false,
+      requested_items: [],
+      alias_name: "",
+    },
+    WgslImportRequest::{
+      module_path: "test::types",
+      rel_path: "types.wgsl",
+      import_full_module: true,
+      keep_requested_items: false,
+      requested_items: [],
+      alias_name: "types",
+    },
+  ]
+  let ordered = composer.order_wgsl_import_requests_by_declared_dependencies(
+    requests, session, defs,
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(ordered[0].rel_path, content="\"types.wgsl\"")
+  debug_inspect(requests[0].rel_path, content="\"types.wgsl\"")
+  debug_inspect(ordered[1].rel_path, content="\"bindings.wgsl\"")
+}
+
+///|
 test "composer does not import a missing item shadowed by a local declaration" {
   let composer = Composer::default()
   let maths_source =

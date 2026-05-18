@@ -734,6 +734,38 @@ test "IR lowerer orders forward-referenced structs like Naga" {
 }
 
 ///|
+test "IR lowerer orders struct field dependencies before owners" {
+  let source =
+    #|struct BvhNode {
+    #|  aabbs: array<MeshletAabbErrorOffset, 8>,
+    #|}
+    #|
+    #|struct Meshlet {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct MeshletAabbErrorOffset {
+    #|  center_and_error: vec4<f32>,
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(
+      emitted, "struct MeshletAabbErrorOffset", "struct BvhNode",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "struct BvhNode", "struct Meshlet"),
+    content="true",
+  )
+}
+
+///|
 test "IR lowerer emits while as loop with leading condition guard" {
   let source =
     #|fn helper() {

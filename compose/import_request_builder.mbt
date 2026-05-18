@@ -938,7 +938,11 @@ fn Composer::order_wgsl_import_requests_by_declared_dependencies(
       requests, dependency_indexes, i, visiting, emitted, ordered,
     )
   }
-  ordered
+  requests.clear()
+  for request in ordered {
+    requests.push(request)
+  }
+  requests
 }
 
 ///|
