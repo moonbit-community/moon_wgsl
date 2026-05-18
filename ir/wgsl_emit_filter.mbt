@@ -389,7 +389,7 @@ fn WgslIrEmitFilter::mark_statement(
   match statement {
     Emit(range) => {
       let mut index = range.start.index()
-      while index < range.end.index() {
+      while index <= range.end.index() {
         self.mark_function_expression(
           shader_module,
           function,

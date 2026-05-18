@@ -10,7 +10,6 @@ bevy	crates/bevy_pbr/src/atmosphere/multiscattering_lut.wgsl	98f4fb6eb758ca28c3e
 bevy	crates/bevy_pbr/src/atmosphere/render_sky.wgsl	e8da32ea770fca62e43b1b09b69abe1d760e2d0615343c03bff7def0c95c097f	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/atmosphere/sky_view_lut.wgsl	cb25e480a70a4679c6846659eaaaaa953054c243463cf3bec9e2572f658b7993	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/atmosphere/transmittance_lut.wgsl	b407e613a174aa58bb2f0b5e50c3b86ddcf2c6ddfdf477a81393ed9da8e19362	writer-fingerprint-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/cluster/cluster_z_slice.wgsl	a64432ee5bf0683c07ab5b87a2cc38e32fae243a0f4839f3a64167de4b4ff195	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/decal/forward_decal.wgsl	a5fb8b058c6dac70d7436721eaa6a4166e58e96cc9b45d1acc9110c07da3323b	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/deferred/deferred_lighting.wgsl	e9ca00c98a2aef48dccb34f728e773e2721f48bec9bd384fa6f2c768c074c1e9	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/deferred/pbr_deferred_functions.wgsl	f902013e3701bad962c4e320b8741ec311ebc43afa90b9ca6eec974ac2c38788	writer-fingerprint-drift	strict-byte-parity-failure

@@ -714,6 +714,71 @@ test "naga-oil writer preserves pre-entry source helper prefix" {
 }
 
 ///|
+test "naga-oil writer orders pre-entry helper dependencies before callers" {
+  let source =
+    #|fn caller(value: f32) -> f32 {
+    #|  return dependency(value);
+    #|}
+    #|
+    #|fn dependency(value: f32) -> f32 {
+    #|  return value;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return vec4<f32>(caller(1f));
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn dependency", "fn caller"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn caller", "fn fragment"),
+    content="true",
+  )
+}
+
+///|
+test "naga-oil writer orders atomic argument function dependencies before callers" {
+  let source =
+    #|var<workgroup> counter: atomic<u32>;
+    #|
+    #|fn caller() {
+    #|  atomicMax(&counter, helper(1u));
+    #|}
+    #|
+    #|fn helper(value: u32) -> u32 {
+    #|  return value;
+    #|}
+    #|
+    #|@compute
+    #|@workgroup_size(1)
+    #|fn entry() {
+    #|  caller();
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn helper", "fn caller"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn caller", "fn entry"),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter preserves struct member layout attributes" {
   let source =
     #|struct Layout {

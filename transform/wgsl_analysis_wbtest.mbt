@@ -19,6 +19,19 @@ fn wbtest_reference_plan_from_redirect_map(
 }
 
 ///|
+fn wgsl_analysis_text_before(
+  text : String,
+  left : String,
+  right : String,
+) -> Bool {
+  let parts : Array[StringView] = text.split(left).collect()
+  if parts.length() < 2 {
+    return false
+  }
+  parts[1].contains(right)
+}
+
+///|
 test "AST import stripping preserves non-import items" {
   let source =
     #|#define_import_path demo::shaders
@@ -374,6 +387,63 @@ test "declaration graph keeps break-if expression dependencies" {
   let extracted = @ir.tree_shake_wgsl_source_via_ir(source, ["entry"])
   debug_inspect(extracted.contains("const STOP"), content="true")
   debug_inspect(extracted.contains("fn entry"), content="true")
+}
+
+///|
+test "declaration graph orders statement-call argument dependencies before callers" {
+  let source =
+    #|fn caller() {
+    #|  sink(helper(1u), 2u);
+    #|}
+    #|fn sink(value: u32, other: u32) {
+    #|}
+    #|fn helper(value: u32) -> u32 {
+    #|  return value;
+    #|}
+    #|fn entry() {
+    #|  caller();
+    #|}
+    #|
+  let extracted = extract_wgsl_module_item_origins_strict(source, ["entry"]).source()
+  debug_inspect(
+    wgsl_analysis_text_before(extracted, "fn helper", "fn caller"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_analysis_text_before(extracted, "fn sink", "fn caller"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_analysis_text_before(extracted, "fn caller", "fn entry"),
+    content="true",
+  )
+}
+
+///|
+test "declaration graph orders atomic-call argument dependencies before callers" {
+  let source =
+    #|var<workgroup> counter: atomic<u32>;
+    #|fn caller() {
+    #|  atomicMax(&counter, helper(1u));
+    #|}
+    #|fn helper(value: u32) -> u32 {
+    #|  return value;
+    #|}
+    #|@compute
+    #|@workgroup_size(1)
+    #|fn entry() {
+    #|  caller();
+    #|}
+    #|
+  let extracted = extract_wgsl_module_item_origins_strict(source, ["entry"]).source()
+  debug_inspect(
+    wgsl_analysis_text_before(extracted, "fn helper", "fn caller"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_analysis_text_before(extracted, "fn caller", "fn entry"),
+    content="true",
+  )
 }
 
 ///|

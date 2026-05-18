@@ -30,7 +30,7 @@ fn WgslIrValidator::validate_function_expression_range(
   ignore(self)
   if range.start.index() < 0 ||
     range.end.index() < range.start.index() ||
-    range.end.index() > function.expressions.items.length() {
+    range.end.index() >= function.expressions.items.length() {
     raise WgslIrValidationError::InvalidHandleRange(
       range.start.index(),
       range.end.index(),

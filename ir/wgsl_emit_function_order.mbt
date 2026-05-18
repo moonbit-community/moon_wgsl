@@ -102,7 +102,7 @@ fn WgslIrEmitter::push_naga_source_prefix_before_entry(
       function.source_start < entry_point.source_start &&
       !function.generated_import &&
       self.function_order_should_include(index, order) {
-      order.push(index)
+      self.push_naga_reachable_function_with_dependencies(order, index)
     }
   }
 }
@@ -227,7 +227,7 @@ fn wgsl_ir_collect_function_calls_from_statement(
   match statement {
     Emit(range) => {
       let mut index = range.start.index()
-      while index < range.end.index() {
+      while index <= range.end.index() {
         wgsl_ir_collect_function_calls_from_expression(
           function,
           Handle::Handle(index),
