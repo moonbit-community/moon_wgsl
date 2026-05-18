@@ -430,6 +430,174 @@ test "composer preserves selected item module-level imports before live conflict
 }
 
 ///|
+test "composer preserves selected item full-module import side effects" {
+  let composer = Composer::default()
+  let prepass_source =
+    #|#define_import_path test::prepass
+    #|
+    #|struct PreviousViewUniforms {
+    #|  value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(2)
+    #|var<uniform> previous_view_uniforms: PreviousViewUniforms;
+    #|
+  let transforms_source =
+    #|#define_import_path test::transforms
+    #|#import test::prepass
+    #|
+    #|fn position_world_to_clip(value: vec3<f32>) -> vec4<f32> {
+    #|  return vec4(value, 1.0);
+    #|}
+    #|
+    #|fn previous_world_to_clip(value: vec3<f32>) -> vec4<f32> {
+    #|  return vec4(value, prepass::previous_view_uniforms.value);
+    #|}
+    #|
+  let root_source =
+    #|#import test::transforms::position_world_to_clip
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return position_world_to_clip(vec3(1.0));
+    #|}
+    #|
+  let extracted = extract_wgsl_module_item_origins_strict(transforms_source, [
+    "position_world_to_clip",
+  ]) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    extracted.source().contains("#import test::prepass"),
+    content="true",
+  )
+  composer.register_source("prepass.wgsl", prepass_source)
+  composer.register_source("transforms.wgsl", transforms_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("PreviousViewUniformsX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("previous_view_uniformsX_naga_oil_mod"),
+    content="true",
+  )
+}
+
+///|
+test "composer does not retain unused selected-slice helper full-module imports" {
+  let composer = Composer::default()
+  let helper_source =
+    #|#define_import_path test::helper
+    #|
+    #|fn helper() -> u32 {
+    #|  return missing_resource;
+    #|}
+    #|
+  let selected_source =
+    #|#define_import_path test::selected
+    #|#import test::helper
+    #|
+    #|fn selected() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+  let root_source =
+    #|#import test::selected::selected
+    #|
+    #|fn main() -> u32 {
+    #|  return selected();
+    #|}
+    #|
+  composer.register_source("helper.wgsl", helper_source)
+  composer.register_source("selected.wgsl", selected_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("fn helperX_naga_oil_mod"), content="false")
+  debug_inspect(emitted.contains("missing_resource"), content="false")
+}
+
+///|
+test "composer preserves unreferenced full-module import after referenced alias import" {
+  let composer = Composer::default()
+  let base_source =
+    #|#define_import_path test
+    #|
+  let view_source =
+    #|#define_import_path test::view
+    #|
+    #|struct View {
+    #|  value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> view: View;
+    #|
+  let prepass_source =
+    #|#define_import_path test::prepass
+    #|
+    #|struct PreviousViewUniforms {
+    #|  value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(2)
+    #|var<uniform> previous_view_uniforms: PreviousViewUniforms;
+    #|
+  let transforms_source =
+    #|#define_import_path test::transforms
+    #|#import test::view as view_bindings
+    #|#import test::prepass
+    #|
+    #|fn position_world_to_clip(value: vec3<f32>) -> vec4<f32> {
+    #|  return vec4(value, view_bindings::view.value);
+    #|}
+    #|
+    #|fn previous_world_to_clip(value: vec3<f32>) -> vec4<f32> {
+    #|  return vec4(value, prepass::previous_view_uniforms.value);
+    #|}
+    #|
+  let root_source =
+    #|#import test::transforms::position_world_to_clip
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return position_world_to_clip(vec3(1.0));
+    #|}
+    #|
+  composer.register_source("base.wgsl", base_source)
+  composer.register_source("view.wgsl", view_source)
+  composer.register_source("prepass.wgsl", prepass_source)
+  composer.register_source("transforms.wgsl", transforms_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("ViewX_naga_oil_mod"), content="true")
+  debug_inspect(
+    emitted.contains("PreviousViewUniformsX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("previous_view_uniformsX_naga_oil_mod"),
+    content="true",
+  )
+}
+
+///|
 test "composer scans full selected item module for alias type dependencies" {
   let composer = Composer::default()
   let types_source =

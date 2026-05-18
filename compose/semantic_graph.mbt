@@ -411,6 +411,10 @@ fn resolve_wgsl_semantic_import_module(
     }
     return Some(WgslResolvedImportModule(module_path, rel_path))
   }
+  match resolve_wgsl_import_module_in_registry(registry, import_path, modules) {
+    Some(resolved_module) => return Some(resolved_module)
+    None => ()
+  }
   if split_last_identifier(import_path) is Some((module_path, _)) {
     if resolve_wgsl_import_file_path_from_registry(
         registry, importer_rel_path, module_path,
@@ -419,7 +423,7 @@ fn resolve_wgsl_semantic_import_module(
       return Some(WgslResolvedImportModule(module_path, rel_path))
     }
   }
-  resolve_wgsl_import_module_in_registry(registry, import_path, modules)
+  None
 }
 
 ///|

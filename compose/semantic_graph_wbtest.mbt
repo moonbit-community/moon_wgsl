@@ -204,6 +204,43 @@ test "semantic import target plan expands nested module aliases" {
 }
 
 ///|
+test "semantic import target plan prefers exact nested module over base item split" {
+  let registry = WgslSourceRegistry::default()
+  ignore(
+    registry.register_source("pbr.wgsl", "#define_import_path bevy_pbr\n", None),
+  )
+  ignore(
+    registry.register_source(
+      "prepass_bindings.wgsl",
+      "#define_import_path bevy_pbr::prepass_bindings\n" +
+      "struct PreviousViewUniforms { value: f32 }\n" +
+      "var<uniform> previous_view_uniforms: PreviousViewUniforms;\n",
+      None,
+    ),
+  )
+  let targets = [
+    WgslImportTarget::{ raw_path: "bevy_pbr::prepass_bindings", alias_name: "" },
+  ]
+  let plans = build_wgsl_semantic_import_target_plans(
+    "",
+    "root.wgsl",
+    targets,
+    registry,
+    registry.copy_import_module_paths(),
+  ) catch {
+    _ => abort("expected semantic import target planning to parse valid WGSL")
+  }
+  debug_inspect(plans.unresolved_targets.length(), content="0")
+  debug_inspect(plans.plans.length(), content="1")
+  debug_inspect(
+    plans.plans[0].resolved_module.module_path(),
+    content="\"bevy_pbr::prepass_bindings\"",
+  )
+  debug_inspect(plans.plans[0].import_full_module, content="true")
+  debug_inspect(plans.plans[0].requested_items.length(), content="0")
+}
+
+///|
 test "semantic import target plans follow first AST reference order" {
   let registry = WgslSourceRegistry::default()
   ignore(
