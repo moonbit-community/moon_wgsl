@@ -26,7 +26,7 @@ fn WgslIrEmitter::function_emission_order(self : WgslIrEmitter) -> Array[Int] {
   }
   for index in 0..<self.shader_module.functions.items.length() {
     if self.function_order_should_include(index, order) {
-      order.push(index)
+      self.push_naga_function_with_dependencies(order, index)
     }
   }
   order
@@ -83,7 +83,7 @@ fn WgslIrEmitter::naga_reachable_function_order(
     self.push_naga_source_prefix_before_entry(order, entry_point)
     let direct = wgsl_ir_collect_block_function_calls(entry_point.function)
     for function_index in direct {
-      self.push_naga_function_with_dependencies(order, function_index)
+      self.push_naga_reachable_function_with_dependencies(order, function_index)
     }
   }
   order
@@ -113,6 +113,16 @@ fn WgslIrEmitter::push_naga_function_with_dependencies(
   order : Array[Int],
   index : Int,
 ) -> Unit {
+  let visiting : Array[Int] = []
+  self.push_naga_function_with_dependencies_inner(order, visiting, index)
+}
+
+///|
+fn WgslIrEmitter::push_naga_reachable_function_with_dependencies(
+  self : WgslIrEmitter,
+  order : Array[Int],
+  index : Int,
+) -> Unit {
   if !self.function_order_should_include(index, order) {
     return
   }
@@ -120,14 +130,18 @@ fn WgslIrEmitter::push_naga_function_with_dependencies(
   self.collect_naga_transitive_function_dependencies(index, dependencies)
   for dependency_index in 0..<self.shader_module.functions.items.length() {
     if dependency_index < index && dependencies.contains(dependency_index) {
-      self.push_naga_function_with_dependencies(order, dependency_index)
+      self.push_naga_reachable_function_with_dependencies(
+        order, dependency_index,
+      )
     }
   }
   let function = self.shader_module.functions.items[index]
   let direct = wgsl_ir_collect_block_function_calls(function)
   for dependency_index in direct {
     if dependency_index > index {
-      self.push_naga_function_with_dependencies(order, dependency_index)
+      self.push_naga_reachable_function_with_dependencies(
+        order, dependency_index,
+      )
     }
   }
   if self.function_order_should_include(index, order) {
@@ -156,6 +170,33 @@ fn WgslIrEmitter::collect_naga_transitive_function_dependencies(
         dependency, dependencies,
       )
     }
+  }
+}
+
+///|
+fn WgslIrEmitter::push_naga_function_with_dependencies_inner(
+  self : WgslIrEmitter,
+  order : Array[Int],
+  visiting : Array[Int],
+  index : Int,
+) -> Unit {
+  if !self.function_order_should_include(index, order) ||
+    visiting.contains(index) {
+    return
+  }
+  visiting.push(index)
+  let function = self.shader_module.functions.items[index]
+  let direct = wgsl_ir_collect_block_function_calls(function)
+  for dependency_index in direct {
+    if dependency_index != index {
+      self.push_naga_function_with_dependencies_inner(
+        order, visiting, dependency_index,
+      )
+    }
+  }
+  visiting.pop() |> ignore
+  if self.function_order_should_include(index, order) {
+    order.push(index)
   }
 }
 

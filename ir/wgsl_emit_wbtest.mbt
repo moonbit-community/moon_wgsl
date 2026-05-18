@@ -618,6 +618,28 @@ test "naga-oil writer orders generated imports before root reachability helpers"
 }
 
 ///|
+test "naga-oil writer emits function dependencies before callers" {
+  let source =
+    #|fn caller(value: f32) -> f32 {
+    #|  return dependency(value) + 1.0;
+    #|}
+    #|
+    #|fn dependency(value: f32) -> f32 {
+    #|  return value;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn dependency", "fn caller"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer preserves pre-entry source helper prefix" {
   let source =
     #|fn unused_before_entry() -> f32 {
