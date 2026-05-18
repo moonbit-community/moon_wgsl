@@ -699,6 +699,41 @@ test "IR emitter preserves struct member layout attributes" {
 }
 
 ///|
+test "IR lowerer orders forward-referenced structs like Naga" {
+  let source =
+    #|struct Root {
+    #|  value: u32,
+    #|}
+    #|
+    #|fn helper(value: ptr<function, LaterB>, other: ptr<function, LaterA>) -> LaterA {
+    #|  var out: LaterA;
+    #|  return out;
+    #|}
+    #|
+    #|struct LaterA {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct LaterB {
+    #|  value: u32,
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "struct Root", "struct LaterB"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "struct LaterB", "struct LaterA"),
+    content="true",
+  )
+}
+
+///|
 test "IR lowerer emits while as loop with leading condition guard" {
   let source =
     #|fn helper() {
