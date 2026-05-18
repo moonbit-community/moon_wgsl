@@ -1512,3 +1512,36 @@ test "IR emitter ignores materialized temporary locals in Naga arena order" {
     content="false",
   )
 }
+
+///|
+test "naga-oil writer profile suppresses source directives like Naga writer" {
+  let source =
+    #|enable dual_source_blending;
+    #|
+    #|struct Out {
+    #|  @location(0) @blend_src(0) a: vec4<f32>,
+    #|  @location(0) @blend_src(1) b: vec4<f32>,
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> Out {
+    #|  return Out(vec4<f32>(0.0), vec4<f32>(1.0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let runtime = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let parity = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    runtime.contains("enable dual_source_blending;"),
+    content="true",
+  )
+  debug_inspect(
+    parity.contains("enable dual_source_blending;"),
+    content="false",
+  )
+}

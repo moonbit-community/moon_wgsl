@@ -10,6 +10,7 @@ priv struct WgslIrEmitOptions {
   emit_implicit_flat_interpolation : Bool
   compact_storage_texture_type_arguments : Bool
   order_functions_by_naga_reachability : Bool
+  emit_source_directives : Bool
 }
 
 ///|
@@ -25,6 +26,7 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
     emit_implicit_flat_interpolation: false,
     compact_storage_texture_type_arguments: false,
     order_functions_by_naga_reachability: false,
+    emit_source_directives: true,
   }
 }
 
@@ -41,6 +43,7 @@ fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
     emit_implicit_flat_interpolation: true,
     compact_storage_texture_type_arguments: true,
     order_functions_by_naga_reachability: true,
+    emit_source_directives: false,
   }
 }
 
@@ -61,6 +64,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
       emit_implicit_flat_interpolation: self.options.emit_implicit_flat_interpolation,
       compact_storage_texture_type_arguments: self.options.compact_storage_texture_type_arguments,
       order_functions_by_naga_reachability: self.options.order_functions_by_naga_reachability,
+      emit_source_directives: self.options.emit_source_directives,
     },
     filter: self.filter,
     names: self.names,
