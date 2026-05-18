@@ -28,6 +28,7 @@ fn WgslIrLowerer::predeclare_global_value_declaration(
   match declaration.data() {
     Function(function) => self.predeclare_function_declaration(function)
     GlobalVariable(global) => self.predeclare_global_variable(global)
+    Const(constant) => self.predeclare_constant_declaration(constant)
     Override(override_decl) =>
       self.predeclare_override_declaration(override_decl)
     _ => ()
@@ -144,6 +145,29 @@ fn WgslIrLowerer::constant_should_inline_generated_import_value(
     Some(provenance) => provenance.inline_value
     None => false
   }
+}
+
+///|
+fn WgslIrLowerer::predeclare_constant_declaration(
+  self : WgslIrLowerer,
+  constant : @ast.WgslConst,
+) -> Unit raise WgslIrLowerError {
+  let name = constant.name().name()
+  if self.constant_names.contains(name) {
+    return
+  }
+  let ty = self.infer_constant_declaration_type(constant)
+  let placeholder_init = self.shader_module.append_global_expression(
+    Expression::ZeroValue(ty),
+  )
+  let handle = self.shader_module.append_constant(Constant::{
+    name: Some(name),
+    generated_import: self.function_has_generated_import_provenance(name),
+    inline_value: self.constant_should_inline_generated_import_value(name),
+    ty,
+    init: placeholder_init,
+  })
+  self.constant_names.set(name, handle)
 }
 
 ///|
@@ -369,7 +393,7 @@ fn WgslIrLowerer::lower_constant(
   constant : @ast.WgslConst,
 ) -> Unit raise WgslIrLowerError {
   let name = constant.name().name()
-  if self.constant_names.contains(name) {
+  if self.lowered_constants.contains(name) {
     return
   }
   if self.constant_lowering_stack.contains(name) {
@@ -380,22 +404,35 @@ fn WgslIrLowerer::lower_constant(
     Some(ty_ref) => Some(self.lower_type_ref(ty_ref))
     None => None
   }
-  let ty = match explicit_ty {
-    Some(ty) => ty
-    None =>
-      self.infer_local_type_from_initializer(name, constant.initializer_ref())
+  let (handle, ty) = match self.constant_names.get(name) {
+    Some(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(existing) => (handle, existing.ty)
+        None => raise WgslIrLowerError::MissingType(name)
+      }
+    None => {
+      let ty = match explicit_ty {
+        Some(ty) => ty
+        None =>
+          self.infer_local_type_from_initializer(
+            name,
+            constant.initializer_ref(),
+          )
+      }
+      let placeholder_init = self.shader_module.append_global_expression(
+        Expression::ZeroValue(ty),
+      )
+      let handle = self.shader_module.append_constant(Constant::{
+        name: Some(name),
+        generated_import: self.function_has_generated_import_provenance(name),
+        inline_value: self.constant_should_inline_generated_import_value(name),
+        ty,
+        init: placeholder_init,
+      })
+      self.constant_names.set(name, handle)
+      (handle, ty)
+    }
   }
-  let placeholder_init = self.shader_module.append_global_expression(
-    Expression::ZeroValue(ty),
-  )
-  let handle = self.shader_module.append_constant(Constant::{
-    name: Some(name),
-    generated_import: self.function_has_generated_import_provenance(name),
-    inline_value: self.constant_should_inline_generated_import_value(name),
-    ty,
-    init: placeholder_init,
-  })
-  self.constant_names.set(name, handle)
   let init = match constant.initializer_ref() {
     Some(expr) =>
       self.lower_global_expression_ref_with_expected(expr, explicit_ty)
@@ -409,6 +446,7 @@ fn WgslIrLowerer::lower_constant(
     ty,
     init,
   })
+  self.lowered_constants.add(name)
   ignore(self.constant_lowering_stack.remove(name))
 }
 
@@ -421,7 +459,18 @@ fn WgslIrLowerer::ensure_constant_declaration_lowered(
     raise WgslIrLowerError::MissingType(name)
   }
   match self.constant_names.get(name) {
-    Some(handle) => Some(handle)
+    Some(handle) =>
+      if self.lowered_constants.contains(name) {
+        Some(handle)
+      } else {
+        match self.constant_declarations.get(name) {
+          Some(constant) => {
+            self.lower_constant(constant)
+            Some(handle)
+          }
+          None => Some(handle)
+        }
+      }
     None =>
       match self.constant_declarations.get(name) {
         Some(constant) => {

@@ -132,6 +132,11 @@ fn WgslIrEmitter::should_emit_constant(
   self : WgslIrEmitter,
   index : Int,
 ) -> Bool {
+  match self.shader_module.constants.items.get(index) {
+    Some(constant) if self.should_inline_constant_expression(constant) =>
+      return false
+    _ => ()
+  }
   match self.filter {
     Some(filter) => filter.contains_constant(index)
     None => true

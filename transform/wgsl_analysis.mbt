@@ -323,6 +323,61 @@ fn wgsl_declaration_graph_visit_import_order(
 }
 
 ///|
+fn wgsl_graph_const_like_source_order(
+  declaration_blocks : Array[WgslGraphBlock],
+  included_names : @set.Set[String],
+) -> Array[String] {
+  let ordered : Array[String] = []
+  for block in declaration_blocks {
+    if included_names.contains(block.name()) &&
+      wgsl_graph_block_is_const_like(block) {
+      ordered.push(block.name())
+    }
+  }
+  ordered
+}
+
+///|
+fn wgsl_declaration_graph_normalize_const_like_order(
+  ordered : Array[String],
+  declaration_blocks : Array[WgslGraphBlock],
+  included_names : @set.Set[String],
+) -> Array[String] {
+  let source_order = wgsl_graph_const_like_source_order(
+    declaration_blocks, included_names,
+  )
+  if source_order.length() < 2 {
+    return ordered
+  }
+  let const_like_emitted : @set.Set[String] = @set.Set([])
+  for name in ordered {
+    match wgsl_declaration_graph_block_named(declaration_blocks, name) {
+      Some(block) if wgsl_graph_block_is_const_like(block) =>
+        const_like_emitted.add(name)
+      _ => ()
+    }
+  }
+  let const_like_names : Array[String] = []
+  for name in source_order {
+    if const_like_emitted.contains(name) {
+      const_like_names.push(name)
+    }
+  }
+  let normalized : Array[String] = []
+  let mut const_index = 0
+  for name in ordered {
+    match wgsl_declaration_graph_block_named(declaration_blocks, name) {
+      Some(block) if wgsl_graph_block_is_const_like(block) => {
+        normalized.push(const_like_names[const_index])
+        const_index = const_index + 1
+      }
+      _ => normalized.push(name)
+    }
+  }
+  normalized
+}
+
+///|
 fn wgsl_declaration_graph_reachable_import_order(
   declaration_blocks : Array[WgslGraphBlock],
   requested_items : Array[String],
@@ -359,7 +414,9 @@ fn wgsl_declaration_graph_reachable_import_order(
       wgsl_graph_order_push_unique(ordered, emitted, name)
     }
   }
-  ordered
+  wgsl_declaration_graph_normalize_const_like_order(
+    ordered, declaration_blocks, included_names,
+  )
 }
 
 ///|

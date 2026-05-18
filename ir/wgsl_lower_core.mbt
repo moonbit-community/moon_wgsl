@@ -70,6 +70,7 @@ priv struct WgslIrLowerer {
   constant_type_cache : Map[String, Handle]
   constant_type_inference_stack : @set.Set[String]
   constant_lowering_stack : @set.Set[String]
+  lowered_constants : @set.Set[String]
   override_names : Map[String, Handle]
   override_declarations : Map[String, @ast.WgslOverride]
   override_type_inference_stack : @set.Set[String]
@@ -89,6 +90,7 @@ fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
     constant_type_cache: Map([]),
     constant_type_inference_stack: @set.Set([]),
     constant_lowering_stack: @set.Set([]),
+    lowered_constants: @set.Set([]),
     override_names: Map([]),
     override_declarations: Map([]),
     override_type_inference_stack: @set.Set([]),

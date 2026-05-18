@@ -16,12 +16,38 @@ fn WgslIrEmitter::constant_expression(
 ) -> String raise WgslIrEmitError {
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) =>
-      if self.options.inline_generated_import_constants && constant.inline_value {
+      if self.should_inline_constant_expression(constant) {
         self.global_expression(constant.init)
       } else {
         self.constant_name(handle)
       }
     None => raise WgslIrEmitError::MissingHandle("constant \{handle.index()}")
+  }
+}
+
+///|
+fn WgslIrEmitter::should_inline_constant_expression(
+  self : WgslIrEmitter,
+  constant : Constant,
+) -> Bool {
+  self.options.inline_generated_import_constants &&
+  (
+    constant.inline_value ||
+    (
+      constant.generated_import &&
+      self.constant_has_naga_inline_only_type(constant)
+    )
+  )
+}
+
+///|
+fn WgslIrEmitter::constant_has_naga_inline_only_type(
+  self : WgslIrEmitter,
+  constant : Constant,
+) -> Bool {
+  match self.shader_module.types.items.get(constant.ty.index()) {
+    Some({ inner: Array(_, _, _), .. }) => true
+    _ => false
   }
 }
 

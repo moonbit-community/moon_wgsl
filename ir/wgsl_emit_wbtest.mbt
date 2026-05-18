@@ -918,6 +918,47 @@ test "naga-oil writer policy folds typed float global constants" {
 }
 
 ///|
+test "naga-oil writer policy inlines array constants like Naga writer" {
+  let source =
+    #|const POINTS: array<vec2<f32>, 2> = array(vec2(0.125, -0.375), vec2(-0.125, 0.375));
+    #|const SCALE: f32 = 0.5;
+    #|fn sample(index: u32) -> vec2<f32> {
+    #|  return POINTS[index] * SCALE;
+    #|}
+  let root_module = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
+    WgslIrGeneratedImportProvenance(
+      "POINTS",
+      "imports/constants.wgsl",
+      "POINTS",
+      WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+      false,
+    ),
+  ]) catch {
+    error => abort(error.message())
+  }
+  let root_naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(
+    root_module,
+  ) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(root_naga_oil.contains("const POINTS:"), content="true")
+  debug_inspect(naga_oil.contains("const POINTS:"), content="false")
+  debug_inspect(naga_oil.contains("const SCALE: f32 = 0.5f;"), content="true")
+  debug_inspect(
+    naga_oil.contains(
+      "array<vec2<f32>, 2>(vec2<f32>(0.125f, -0.375f), vec2<f32>(-0.125f, 0.375f))[index]",
+    ),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer policy folds scalar float constructors from integer literals" {
   let source =
     #|fn pack(depth: f32, alpha: f32) -> u32 {
