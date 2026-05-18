@@ -9,6 +9,7 @@ priv struct WgslIrFunctionScope {
   global_pointer_expressions : Map[String, Handle]
   hidden_temporary_name_indices : @set.Set[Int]
   mut projected_temporary_name_offset : Int
+  mut allow_generated_import_local_spelling : Bool
 }
 
 ///|
@@ -30,6 +31,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     global_pointer_expressions: Map([]),
     hidden_temporary_name_indices: @set.Set([]),
     projected_temporary_name_offset: 0,
+    allow_generated_import_local_spelling: true,
   }
 }
 
@@ -88,6 +90,7 @@ fn WgslIrFunctionScope::child(
       self.hidden_temporary_name_indices,
     ),
     projected_temporary_name_offset: self.projected_temporary_name_offset,
+    allow_generated_import_local_spelling: self.allow_generated_import_local_spelling,
   }
 }
 

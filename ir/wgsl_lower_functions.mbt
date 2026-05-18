@@ -345,7 +345,17 @@ fn WgslIrLowerer::lower_function(
     body: Block::Block(),
     diagnostic_filter_leaf: None,
   }
+  let function_stage = wgsl_ir_shader_stage_from_attributes(
+    function.attributes(),
+  )
+  let referenced_stage_function = match function_stage {
+    Some(_) => self.referenced_names.contains(function.name().name())
+    None => false
+  }
   let scope = WgslIrFunctionScope()
+  scope.allow_generated_import_local_spelling = function_stage == None ||
+    referenced_stage_function ||
+    ir_function.generated_import
   let mut index = 0
   for argument in function.arguments() {
     guard argument.ty_ref() is Some(ty_ref) else {
@@ -353,7 +363,10 @@ fn WgslIrLowerer::lower_function(
     }
     ir_function.arguments.push(FunctionArgument::{
       name: Some(
-        self.naga_oil_generated_import_local_spelling(argument.name().name()),
+        self.naga_oil_generated_import_local_spelling_for_scope(
+          argument.name().name(),
+          scope,
+        ),
       ),
       ty: self.lower_type_ref(ty_ref),
       binding: wgsl_ir_binding_from_attributes(argument.attributes()),

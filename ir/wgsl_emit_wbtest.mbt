@@ -1054,6 +1054,13 @@ test "generated import provenance supplies naga-oil local spelling collisions" {
         false,
         local_spelling=true,
       ),
+      WgslIrGeneratedImportProvenance(
+        "read_source",
+        "imports/source.wgsl",
+        "read_source",
+        WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+        false,
+      ),
     ],
   ) catch {
     error => abort(error.message())

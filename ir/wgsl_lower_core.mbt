@@ -220,6 +220,19 @@ fn WgslIrLowerer::naga_oil_generated_import_local_spelling(
 }
 
 ///|
+fn WgslIrLowerer::naga_oil_generated_import_local_spelling_for_scope(
+  self : WgslIrLowerer,
+  source_name : String,
+  scope : WgslIrFunctionScope,
+) -> String {
+  if scope.allow_generated_import_local_spelling {
+    self.naga_oil_generated_import_local_spelling(source_name)
+  } else {
+    source_name
+  }
+}
+
+///|
 fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
   let bool_ty = self.intern_type(
     "bool",
