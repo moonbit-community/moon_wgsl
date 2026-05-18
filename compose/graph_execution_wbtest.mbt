@@ -1233,6 +1233,57 @@ test "direct leaf imports feed naga-oil local spelling even when semantically sh
 }
 
 ///|
+test "nested leaf imports feed naga-oil local spelling in imported module" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let root_source =
+    #|#import test::functions::read_global
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) f32 {
+    #|  return read_global();
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let functions_source =
+    #|#define_import_path test::functions
+    #|#import test::bindings::mesh
+    #|
+    #|fn read_mesh(mesh: f32) -> f32 {
+    #|  return mesh;
+    #|}
+    #|
+    #|fn read_global() -> f32 {
+    #|  return read_mesh(mesh);
+    #|}
+    #|
+  composer.register_source("functions.wgsl", functions_source)
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|var<private> mesh: f32;
+    #|
+  composer.register_source("bindings.wgsl", bindings_source)
+  let emitted = composer.compose_wgsl_for_naga_oil_writer_parity(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "var<private> meshX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX_1",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "fn read_meshX_naga_oil_mod_XORSXG5B2HJTHK3TDORUW63TTX(meshX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX: f32",
+    ),
+    content="true",
+  )
+}
+
+///|
 test "selected dependency modules retain alias-qualified resource side effects" {
   let composer = Composer::default()
   composer.clear_sources()

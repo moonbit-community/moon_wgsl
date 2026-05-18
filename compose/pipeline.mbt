@@ -369,7 +369,6 @@ fn WgslComposeSymbolTable::generated_import_provenance(
           root_rel_path.has_suffix(".glsl") ||
           origin.rel_path().has_suffix(".glsl"),
           local_spelling=self.generated_import_has_local_spelling(
-            root_rel_path,
             origin.rel_path(),
             origin.source_symbol_name(),
             name,
@@ -384,16 +383,13 @@ fn WgslComposeSymbolTable::generated_import_provenance(
 ///|
 fn WgslComposeSymbolTable::generated_import_has_local_spelling(
   self : WgslComposeSymbolTable,
-  root_rel_path : String,
   symbol_rel_path : String,
   source_name : String,
   final_name : String,
 ) -> Bool {
-  let root_rel_path = normalize_shader_rel_path(root_rel_path)
   let symbol_rel_path = normalize_shader_rel_path(symbol_rel_path)
   for binding in self.local_spelling_final_names {
-    if binding.visible_rel_path == root_rel_path &&
-      binding.symbol_rel_path == symbol_rel_path &&
+    if binding.symbol_rel_path == symbol_rel_path &&
       binding.source_name == source_name &&
       (binding.final_name == "" || binding.final_name == final_name) {
       return true
