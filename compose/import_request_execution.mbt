@@ -73,7 +73,18 @@ fn Composer::compose_wgsl_import_requests(
                         imported_name,
                         UnqualifiedItemBinding,
                       ) {
-                      Some(binding) => bindings.push(binding)
+                      Some(binding) => {
+                        bindings.push(binding)
+                        if !session.visited.contains(
+                            wgsl_imported_item_emission_key(
+                              request.rel_path,
+                              requested_item,
+                            ),
+                          ) &&
+                          !session.visited.contains(full_module_key) {
+                          emission_requested_items.push(requested_item)
+                        }
+                      }
                       None => emission_requested_items.push(requested_item)
                     }
                   None => emission_requested_items.push(requested_item)
@@ -95,6 +106,7 @@ fn Composer::compose_wgsl_import_requests(
       continue
     }
     session.visited.add(visit_key)
+    let emitted_selected_items : Array[String] = []
     let raw_source = self.load_wgsl_source_required_raw(request.rel_path)
     let origin_start_index = session.symbols.source_origins.length()
     session.active_rel_paths.push(request.rel_path)
@@ -143,6 +155,14 @@ fn Composer::compose_wgsl_import_requests(
           ""
         }
       } else {
+        for origin in extraction.origins() {
+          if origin.name() != "" {
+            composer_string_list_push_unique(
+              emitted_selected_items,
+              origin.name(),
+            )
+          }
+        }
         record_wgsl_source_origins_from_extraction(
           session,
           request.rel_path,
@@ -280,6 +300,12 @@ fn Composer::compose_wgsl_import_requests(
     }
     if request.import_full_module {
       session.visited.add(full_module_key)
+    } else {
+      for requested_item in emitted_selected_items {
+        session.visited.add(
+          wgsl_imported_item_emission_key(request.rel_path, requested_item),
+        )
+      }
     }
     merged = "\{merged}\{final_module_source}"
     if !merged.has_suffix("\n") {

@@ -80,6 +80,11 @@ fn wgsl_full_module_visit_key(rel_path : String, alias_name : String) -> String 
 }
 
 ///|
+fn wgsl_imported_item_emission_key(rel_path : String, item : String) -> String {
+  "\{rel_path}|item|\{item}"
+}
+
+///|
 fn wgsl_path_stack_contains(paths : Array[String], rel_path : String) -> Bool {
   paths.contains(rel_path)
 }

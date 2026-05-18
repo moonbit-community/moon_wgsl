@@ -55,19 +55,6 @@ fn wgsl_import_candidate_error_path(
 }
 
 ///|
-fn wgsl_translation_unit_has_import_directive(
-  unit : @ast.WgslTranslationUnit,
-) -> Bool {
-  for decl in unit.declarations() {
-    match decl.data() {
-      WgslGlobalDeclData::Import(_) => return true
-      _ => ()
-    }
-  }
-  false
-}
-
-///|
 fn wgsl_source_declares_non_resource_dependency_item(
   source : String,
   item_name : String,
@@ -83,8 +70,7 @@ fn wgsl_source_declares_non_resource_dependency_item(
           return true
         WgslGlobalDeclData::Const(_)
         | WgslGlobalDeclData::Override(_)
-        | WgslGlobalDeclData::Function(_) =>
-          return referenced && !wgsl_translation_unit_has_import_directive(unit)
+        | WgslGlobalDeclData::Function(_) => return referenced
         _ => return false
       }
     }
@@ -320,12 +306,16 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
     current_rel_path, targets, directive_source, session, importer_defs, true,
   )
   if dependency_scan_source != directive_source {
+    let dependency_targets : Array[WgslImportTarget] = []
+    collect_wgsl_import_targets_from_source_directives(
+      dependency_scan_source, dependency_targets,
+    )
     let side_effect_targets : Array[WgslImportTarget] = []
     collect_wgsl_single_target_import_targets_from_source_directives(
-      directive_source, side_effect_targets,
+      dependency_scan_source, side_effect_targets,
     )
     let dependency_requests = self.build_wgsl_import_requests_from_targets(
-      current_rel_path, targets, dependency_scan_source, session, importer_defs,
+      current_rel_path, dependency_targets, dependency_scan_source, session, importer_defs,
       false,
     )
     let declared_dependency_requests = self.build_wgsl_declared_import_requests_from_targets(
