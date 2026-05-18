@@ -11,7 +11,7 @@ fn WgslIrEmitter::emit_module(
     needs_blank = true
     last_item_is_entry_point = false
   }
-  for index in 0..<self.shader_module.types.items.length() {
+  for index in self.type_emission_order() {
     if !self.should_emit_type(index) {
       continue
     }
@@ -29,7 +29,7 @@ fn WgslIrEmitter::emit_module(
     }
   }
   let mut emitted_constant = false
-  for index in 0..<self.shader_module.constants.items.length() {
+  for index in self.constant_emission_order() {
     if !self.should_emit_constant(index) {
       continue
     }
@@ -56,7 +56,7 @@ fn WgslIrEmitter::emit_module(
     emitted_const_assert = true
   }
   let mut emitted_override = false
-  for index in 0..<self.shader_module.overrides.items.length() {
+  for index in self.override_emission_order() {
     if !self.should_emit_override(index) {
       continue
     }
@@ -73,7 +73,7 @@ fn WgslIrEmitter::emit_module(
     emitted_override = true
   }
   let mut emitted_global_variable = false
-  for index in 0..<self.shader_module.global_variables.items.length() {
+  for index in self.global_variable_emission_order() {
     if !self.should_emit_global_variable(index) {
       continue
     }
@@ -117,6 +117,84 @@ fn WgslIrEmitter::emit_module(
     out.write_string("\n")
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::type_emission_order(self : WgslIrEmitter) -> Array[Int] {
+  match self.filter {
+    Some(filter) => filter.type_order
+    None => self.default_type_emission_order()
+  }
+}
+
+///|
+fn WgslIrEmitter::constant_emission_order(self : WgslIrEmitter) -> Array[Int] {
+  match self.filter {
+    Some(filter) => filter.constant_order
+    None => self.default_constant_emission_order()
+  }
+}
+
+///|
+fn WgslIrEmitter::override_emission_order(self : WgslIrEmitter) -> Array[Int] {
+  match self.filter {
+    Some(filter) => filter.override_order
+    None => self.default_override_emission_order()
+  }
+}
+
+///|
+fn WgslIrEmitter::global_variable_emission_order(
+  self : WgslIrEmitter,
+) -> Array[Int] {
+  match self.filter {
+    Some(filter) => filter.global_variable_order
+    None => self.default_global_variable_emission_order()
+  }
+}
+
+///|
+fn WgslIrEmitter::default_type_emission_order(
+  self : WgslIrEmitter,
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for index in 0..<self.shader_module.types.items.length() {
+    order.push(index)
+  }
+  order
+}
+
+///|
+fn WgslIrEmitter::default_constant_emission_order(
+  self : WgslIrEmitter,
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for index in 0..<self.shader_module.constants.items.length() {
+    order.push(index)
+  }
+  order
+}
+
+///|
+fn WgslIrEmitter::default_override_emission_order(
+  self : WgslIrEmitter,
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for index in 0..<self.shader_module.overrides.items.length() {
+    order.push(index)
+  }
+  order
+}
+
+///|
+fn WgslIrEmitter::default_global_variable_emission_order(
+  self : WgslIrEmitter,
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for index in 0..<self.shader_module.global_variables.items.length() {
+    order.push(index)
+  }
+  order
 }
 
 ///|

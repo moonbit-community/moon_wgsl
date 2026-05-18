@@ -15,9 +15,13 @@
 ///|
 priv struct WgslIrEmitFilter {
   types : @set.Set[String]
+  type_order : Array[Int]
   constants : @set.Set[String]
+  constant_order : Array[Int]
   overrides : @set.Set[String]
+  override_order : Array[Int]
   global_variables : @set.Set[String]
+  global_variable_order : Array[Int]
   functions : @set.Set[String]
   entry_points : @set.Set[String]
 }
@@ -26,9 +30,13 @@ priv struct WgslIrEmitFilter {
 fn WgslIrEmitFilter::WgslIrEmitFilter() -> WgslIrEmitFilter {
   WgslIrEmitFilter::{
     types: @set.Set([]),
+    type_order: [],
     constants: @set.Set([]),
+    constant_order: [],
     overrides: @set.Set([]),
+    override_order: [],
     global_variables: @set.Set([]),
+    global_variable_order: [],
     functions: @set.Set([]),
     entry_points: @set.Set([]),
   }
@@ -172,7 +180,10 @@ fn WgslIrEmitFilter::mark_type(
     return
   }
   match shader_module.types.items.get(handle.index()) {
-    Some(ty) => self.mark_type_inner(shader_module, ty.inner)
+    Some(ty) => {
+      self.mark_type_inner(shader_module, ty.inner)
+      self.type_order.push(handle.index())
+    }
     None => ()
   }
 }
@@ -210,6 +221,7 @@ fn WgslIrEmitFilter::mark_constant(
   if !wgsl_ir_emit_filter_mark(self.constants, handle.index()) {
     return
   }
+  self.constant_order.push(handle.index())
   match shader_module.constants.items.get(handle.index()) {
     Some(constant) => {
       self.mark_type(shader_module, constant.ty)
@@ -228,6 +240,7 @@ fn WgslIrEmitFilter::mark_override(
   if !wgsl_ir_emit_filter_mark(self.overrides, handle.index()) {
     return
   }
+  self.override_order.push(handle.index())
   match shader_module.overrides.items.get(handle.index()) {
     Some(override_) => {
       self.mark_type(shader_module, override_.ty)
@@ -249,6 +262,7 @@ fn WgslIrEmitFilter::mark_global_variable(
   if !wgsl_ir_emit_filter_mark(self.global_variables, handle.index()) {
     return
   }
+  self.global_variable_order.push(handle.index())
   match shader_module.global_variables.items.get(handle.index()) {
     Some(global) => {
       self.mark_type(shader_module, global.ty)

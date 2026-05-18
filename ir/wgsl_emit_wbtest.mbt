@@ -518,6 +518,45 @@ fn wgsl_emit_test_before(text : String, left : String, right : String) -> Bool {
 }
 
 ///|
+test "root filtered Naga writer emits constants in reachability mark order" {
+  let source =
+    #|const LEFT: u32 = 1u;
+    #|const RIGHT: u32 = 2u;
+    #|const ANY: u32 = LEFT + RIGHT;
+    #|
+    #|fn enabled(flags: u32, mask: u32) -> bool {
+    #|  return (flags & mask) != 0u;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  if enabled(3u, ANY) {
+    #|    return vec4<f32>(1f);
+    #|  }
+    #|  return vec4<f32>(0f);
+    #|}
+    #|
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_with_options_and_roots(
+    module_,
+    WgslIrEmitOptions::naga_oil_writer_compatible(),
+    ["fragment"],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "const ANY", "const LEFT"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "const LEFT", "const RIGHT"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer orders generated imports before root reachability helpers" {
   let source =
     #|fn importedX_naga_oil_mod_XABCDX() -> f32 {
