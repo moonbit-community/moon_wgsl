@@ -360,6 +360,30 @@ fn WgslIrEmitter::eval_constant_integer_expression_for_writer(
 }
 
 ///|
+fn WgslIrEmitter::eval_constant_float_expression_for_constructor(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Double? {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) =>
+      self.eval_global_float_expression_for_emit(constant.init, @set.Set([]))
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_constant_integer_expression_for_constructor(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> WgslIrEmitIntegerValue? {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) =>
+      self.eval_global_integer_expression_for_emit(constant.init, @set.Set([]))
+    _ => None
+  }
+}
+
+///|
 fn WgslIrEmitter::eval_integer_expression_for_writer(
   self : WgslIrEmitter,
   function : Function?,

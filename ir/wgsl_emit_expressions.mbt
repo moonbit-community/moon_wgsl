@@ -595,10 +595,10 @@ fn WgslIrEmitter::folded_scalar_constructor_expression(
         None => None
       }
     Constant(handle) =>
-      match self.eval_constant_float_expression_for_writer(handle) {
+      match self.eval_constant_float_expression_for_constructor(handle) {
         Some(value) => self.float_value_literal_for_width(value, target.width)
         None =>
-          match self.eval_constant_integer_expression_for_writer(handle) {
+          match self.eval_constant_integer_expression_for_constructor(handle) {
             Some(value) =>
               match value.to_double() {
                 Some(value) =>
@@ -741,6 +741,11 @@ fn WgslIrEmitter::contextual_scalar_literal(
         None => None
       }
     Some(Compose(ty, components)) => {
+      match
+        self.folded_scalar_constructor_expression(ty, components, function) {
+        Some(value) => return Some(value)
+        None => ()
+      }
       let out = StringBuilder::new()
       for i in 0..<components.length() {
         if i > 0 {

@@ -1171,6 +1171,28 @@ test "naga-oil writer policy folds scalar float constructors from integer litera
 }
 
 ///|
+test "naga-oil writer policy folds scalar constructors from retained constants" {
+  let source =
+    #|const SAMPLES: i32 = 4;
+    #|fn step_size(start: f32, end: f32) -> f32 {
+    #|  return (end - start) / f32(SAMPLES);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let valid = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(valid.contains("f32(SAMPLES)"), content="true")
+  debug_inspect(naga_oil.contains("f32(SAMPLES)"), content="false")
+  debug_inspect(naga_oil.contains("(end - start) / 4f"), content="true")
+  debug_inspect(naga_oil.contains("const SAMPLES: i32 = 4i;"), content="true")
+}
+
+///|
 test "naga-oil writer policy emits unsigned bit masks in u32 context" {
   let source =
     #|fn copysign(a: f32, b: f32) -> f32 {
