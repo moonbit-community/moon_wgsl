@@ -354,7 +354,7 @@ test "WGSL AST lowerer preserves large u32 const switch selectors" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("case 3221225472u {"), content="true")
+  debug_inspect(emitted.contains("case 3221225472u: {"), content="true")
 }
 
 ///|
@@ -385,7 +385,7 @@ test "WGSL AST lowerer infers unary const switch selector types" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("case -1i {"), content="true")
+  debug_inspect(emitted.contains("case -1i: {"), content="true")
 }
 
 ///|

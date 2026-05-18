@@ -145,7 +145,7 @@ fn WgslIrEmitter::emit_statement(
       )
       for case in cases {
         out.write_string(
-          "\{wgsl_ir_indent(indent + 1)}\{wgsl_ir_switch_case_label(case.value)} {\n",
+          "\{wgsl_ir_indent(indent + 1)}\{wgsl_ir_switch_case_label(case.value)}: {\n",
         )
         self.emit_block_statements(out, function, case.body, indent + 2)
         out.write_string("\{wgsl_ir_indent(indent + 1)}}\n")
