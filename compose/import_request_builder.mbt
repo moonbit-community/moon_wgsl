@@ -95,9 +95,148 @@ fn wgsl_global_variable_has_resource_binding(
 }
 
 ///|
+fn wgsl_compose_parse_decimal_u32(text : String) -> Int? {
+  guard text.length() > 0 else { return None }
+  let mut value = 0
+  for i in 0..<text.length() {
+    let code = text.code_unit_at(i).to_int()
+    guard code >= 48 && code <= 57 else { return None }
+    value = value * 10 + (code - 48)
+  }
+  Some(value)
+}
+
+///|
+fn wgsl_compose_hex_digit_value(code : Int) -> Int? {
+  if code >= 48 && code <= 57 {
+    Some(code - 48)
+  } else if code >= 65 && code <= 70 {
+    Some(code - 55)
+  } else if code >= 97 && code <= 102 {
+    Some(code - 87)
+  } else {
+    None
+  }
+}
+
+///|
+fn wgsl_compose_parse_hex_u32(text : String) -> Int? {
+  guard text.length() > 2 else { return None }
+  guard text.code_unit_at(0).to_int() == 48 else { return None }
+  let marker = text.code_unit_at(1).to_int()
+  guard marker == 120 || marker == 88 else { return None }
+  let mut value = 0
+  for i in 2..<text.length() {
+    match wgsl_compose_hex_digit_value(text.code_unit_at(i).to_int()) {
+      Some(digit) => value = value * 16 + digit
+      None => return None
+    }
+  }
+  Some(value)
+}
+
+///|
+fn wgsl_compose_attribute_literal_int_value(
+  literal : @ast.WgslNumericLiteral,
+) -> Int? {
+  match literal.category {
+    AbstractIntLiteral | I32Literal | U32Literal =>
+      match literal.base {
+        Decimal => wgsl_compose_parse_decimal_u32(literal.raw_text)
+        Hexadecimal => wgsl_compose_parse_hex_u32(literal.raw_text)
+      }
+    _ => None
+  }
+}
+
+///|
+fn wgsl_compose_attribute_int_value(attribute : @ast.WgslAttribute) -> Int? {
+  match attribute.arguments_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(node) =>
+          match node.kind() {
+            Literal(token) =>
+              match token.kind() {
+                NumericLiteral(literal) =>
+                  wgsl_compose_attribute_literal_int_value(literal)
+                _ => None
+              }
+            _ => None
+          }
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+fn wgsl_compose_attribute_named(
+  attributes : Array[@ast.WgslAttribute],
+  name : String,
+) -> @ast.WgslAttribute? {
+  for attribute in attributes {
+    if attribute.name().name() == name {
+      return Some(attribute)
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_compose_resource_binding_key(group : Int, binding : Int) -> String {
+  "\{group}:\{binding}"
+}
+
+///|
+fn wgsl_global_variable_resource_binding_key(
+  global : @ast.WgslGlobalVariable,
+) -> String? {
+  let attributes = global.attributes()
+  match wgsl_compose_attribute_named(attributes, "group") {
+    Some(group_attribute) =>
+      match wgsl_compose_attribute_named(attributes, "binding") {
+        Some(binding_attribute) =>
+          match
+            (
+              wgsl_compose_attribute_int_value(group_attribute),
+              wgsl_compose_attribute_int_value(binding_attribute),
+            ) {
+            (Some(group), Some(binding)) =>
+              Some(wgsl_compose_resource_binding_key(group, binding))
+            _ => None
+          }
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslComposeSession::record_wgsl_source_resource_bindings(
+  self : WgslComposeSession,
+  source : String,
+) -> Unit raise ComposerError {
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  for decl in unit.declarations() {
+    match decl.data() {
+      WgslGlobalDeclData::GlobalVariable(global) =>
+        match wgsl_global_variable_resource_binding_key(global) {
+          Some(key) => self.occupied_resource_bindings.add(key)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
 fn collect_wgsl_resource_side_effect_items(
   source : String,
   candidate_items : Array[String],
+  occupied_resource_bindings : @set.Set[String],
 ) -> Array[String] raise ComposerError {
   let unit = parse_wgsl_translation_unit_strict(source) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
@@ -108,12 +247,52 @@ fn collect_wgsl_resource_side_effect_items(
       WgslGlobalDeclData::GlobalVariable(global) =>
         if wgsl_global_variable_has_resource_binding(global) &&
           wgsl_requested_items_contains(candidate_items, global.name().name()) {
-          composer_string_list_push_unique(items, global.name().name())
+          match wgsl_global_variable_resource_binding_key(global) {
+            Some(key) if occupied_resource_bindings.contains(key) => ()
+            _ => composer_string_list_push_unique(items, global.name().name())
+          }
         }
       _ => ()
     }
   }
   items
+}
+
+///|
+fn merge_wgsl_resource_side_effect_request(
+  requests : Array[WgslImportRequest],
+  source_request : WgslImportRequest,
+  side_effect_items : Array[String],
+) -> Unit {
+  if side_effect_items.length() == 0 {
+    return
+  }
+  match
+    find_wgsl_import_request_index(
+      requests,
+      source_request.module_path,
+      source_request.rel_path,
+      "",
+    ) {
+    Some(request_index) => {
+      let request = requests[request_index]
+      request.keep_requested_items = true
+      for item in side_effect_items {
+        composer_string_list_push_unique(request.requested_items, item)
+        composer_string_list_push_unique(request.declared_items, item)
+      }
+    }
+    None =>
+      requests.push(WgslImportRequest::{
+        module_path: source_request.module_path,
+        rel_path: source_request.rel_path,
+        import_full_module: false,
+        keep_requested_items: true,
+        requested_items: wgsl_import_request_copy_items(side_effect_items),
+        declared_items: wgsl_import_request_copy_items(side_effect_items),
+        alias_name: "",
+      })
+  }
 }
 
 ///|
@@ -137,7 +316,11 @@ fn Composer::collect_wgsl_declared_full_module_side_effect_items(
     apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
     import_defs.value_defines,
   )
-  collect_wgsl_resource_side_effect_items(active_import_source, candidate_items)
+  collect_wgsl_resource_side_effect_items(
+    active_import_source,
+    candidate_items,
+    session.occupied_resource_bindings,
+  )
 }
 
 ///|
@@ -380,6 +563,20 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
             })
         }
       }
+    }
+    for dependency_request in dependency_requests {
+      if dependency_request.requested_items.length() == 0 {
+        continue
+      }
+      let side_effect_items = self.collect_wgsl_declared_full_module_side_effect_items(
+        dependency_request,
+        dependency_request.requested_items,
+        session,
+        importer_defs,
+      )
+      merge_wgsl_resource_side_effect_request(
+        requests, dependency_request, side_effect_items,
+      )
     }
     self.merge_wgsl_non_resource_dependency_requests(
       requests, dependency_requests, dependency_scan_source, session, importer_defs,

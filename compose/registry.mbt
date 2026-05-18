@@ -73,6 +73,7 @@ fn Composer::new_wgsl_compose_session(
     graph_planned_requests: @set.Set([]),
     graph_planning_rel_paths: [],
     graph_execution_complete: false,
+    occupied_resource_bindings: @set.Set([]),
     symbols: WgslComposeSymbolTable(),
     link_graph: WgslIrLinkGraph(),
     semantic_facts: Map([]),

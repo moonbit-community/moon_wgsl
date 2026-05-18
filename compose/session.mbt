@@ -139,6 +139,7 @@ priv struct WgslComposeSession {
   graph_planned_requests : @set.Set[String]
   graph_planning_rel_paths : Array[String]
   mut graph_execution_complete : Bool
+  occupied_resource_bindings : @set.Set[String]
   symbols : WgslComposeSymbolTable
   link_graph : WgslIrLinkGraph
   semantic_facts : Map[String, WgslComposeSemanticFacts]

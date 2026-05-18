@@ -1231,3 +1231,136 @@ test "direct leaf imports feed naga-oil local spelling even when semantically sh
     content="true",
   )
 }
+
+///|
+test "selected dependency modules retain alias-qualified resource side effects" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|
+    #|struct Lights {
+    #|  value: f32,
+    #|}
+    #|
+    #|struct ClusteredLights {
+    #|  value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(1)
+    #|var<uniform> lights: Lights;
+    #|
+    #|@group(0) @binding(8)
+    #|var<storage> clustered_lights: ClusteredLights;
+    #|
+  let lighting_source =
+    #|#define_import_path test::lighting
+    #|#import test::bindings as view_bindings
+    #|
+    #|fn selected() -> f32 {
+    #|  return view_bindings::lights.value;
+    #|}
+    #|
+    #|fn unselected_side_effect_reference() -> f32 {
+    #|  return view_bindings::clustered_lights.value;
+    #|}
+    #|
+  let root_source =
+    #|#import test::lighting::selected
+    #|
+    #|fn main() -> f32 {
+    #|  return selected();
+    #|}
+    #|
+  composer.register_source("bindings.wgsl", bindings_source)
+  composer.register_source("lighting.wgsl", lighting_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var<uniform> lightsX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("var<storage> clustered_lightsX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("fn unselected_side_effect_referenceX_naga_oil_mod"),
+    content="false",
+  )
+}
+
+///|
+test "alias-qualified resource side effects respect occupied bindings" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let bindings_source =
+    #|#define_import_path collision::bindings
+    #|
+    #|struct Lights {
+    #|  value: f32,
+    #|}
+    #|
+    #|struct ClusteredLights {
+    #|  value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(1)
+    #|var<uniform> lights: Lights;
+    #|
+    #|@group(0) @binding(8)
+    #|var<storage> clustered_lights: ClusteredLights;
+    #|
+  let lighting_source =
+    #|#define_import_path collision::lighting
+    #|#import collision::bindings as view_bindings
+    #|
+    #|fn selected() -> f32 {
+    #|  return view_bindings::lights.value;
+    #|}
+    #|
+    #|fn unselected_side_effect_reference() -> f32 {
+    #|  return view_bindings::clustered_lights.value;
+    #|}
+    #|
+  let root_source =
+    #|#import collision::lighting::selected
+    #|
+    #|struct LocalClusteredLights {
+    #|  value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(8)
+    #|var<storage> local_clustered_lights: LocalClusteredLights;
+    #|
+    #|fn main() -> f32 {
+    #|  return selected() + local_clustered_lights.value;
+    #|}
+    #|
+  composer.register_source("collision_bindings.wgsl", bindings_source)
+  composer.register_source("collision_lighting.wgsl", lighting_source)
+  composer.register_source("collision_root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "collision_root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var<uniform> lightsX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("var<storage> clustered_lightsX_naga_oil_mod"),
+    content="false",
+  )
+  debug_inspect(
+    emitted.contains("var<storage> local_clustered_lights"),
+    content="true",
+  )
+}
