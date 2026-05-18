@@ -377,6 +377,24 @@ test "declaration graph keeps break-if expression dependencies" {
 }
 
 ///|
+test "declaration graph imports direct const arguments before callee dependencies" {
+  let source =
+    #|const SCALE: f32 = 0.003;
+    #|const TEMPORAL_SCALE: f32 = 0.5;
+    #|fn jittered() -> f32 {
+    #|  return TEMPORAL_SCALE;
+    #|}
+    #|fn entry() -> f32 {
+    #|  return jittered() + SCALE;
+    #|}
+    #|
+  let extracted = extract_wgsl_module_item_origins_strict(source, ["entry"]).source()
+  let expected =
+    #|"const SCALE: f32 = 0.003;\nconst TEMPORAL_SCALE: f32 = 0.5;\nfn jittered() -> f32 {return TEMPORAL_SCALE;\n}\nfn entry() -> f32 {return jittered() + SCALE;\n}\n"
+  debug_inspect(extracted, content=expected)
+}
+
+///|
 test "binding plan reference rules rewrite recursively scoped blocks" {
   let source =
     #|fn helper() -> u32 {

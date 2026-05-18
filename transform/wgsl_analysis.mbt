@@ -272,6 +272,7 @@ fn wgsl_graph_order_push_unique(
 ///|
 fn wgsl_graph_block_dependencies_in_ast_order(
   block : WgslGraphBlock,
+  declaration_blocks : Array[WgslGraphBlock],
   declaration_names : @set.Set[String],
 ) -> Array[String] {
   let dependencies : Array[String] = []
@@ -281,7 +282,25 @@ fn wgsl_graph_block_dependencies_in_ast_order(
   wgsl_analysis_collect_identifier_dependencies(
     identifiers, self_name, declaration_names, dependencies,
   )
-  dependencies
+  if wgsl_graph_block_is_const_like(block) {
+    return dependencies
+  }
+  let ordered : Array[String] = []
+  for dependency in dependencies {
+    match wgsl_declaration_graph_block_named(declaration_blocks, dependency) {
+      Some(dependency_block) if wgsl_graph_block_is_const_like(dependency_block) =>
+        wgsl_analysis_string_list_push_unique(ordered, dependency)
+      _ => ()
+    }
+  }
+  for dependency in dependencies {
+    match wgsl_declaration_graph_block_named(declaration_blocks, dependency) {
+      Some(dependency_block) if wgsl_graph_block_is_const_like(dependency_block) =>
+        ()
+      _ => wgsl_analysis_string_list_push_unique(ordered, dependency)
+    }
+  }
+  return ordered
 }
 
 ///|
@@ -302,7 +321,7 @@ fn wgsl_declaration_graph_visit_import_order(
   }
   visiting.add(name)
   let dependencies = wgsl_graph_block_dependencies_in_ast_order(
-    block, declaration_names,
+    block, declaration_blocks, declaration_names,
   )
   if wgsl_graph_block_is_const_like(block) {
     wgsl_graph_order_push_unique(ordered, emitted, name)
@@ -320,61 +339,6 @@ fn wgsl_declaration_graph_visit_import_order(
     wgsl_graph_order_push_unique(ordered, emitted, name)
   }
   ignore(visiting.remove(name))
-}
-
-///|
-fn wgsl_graph_const_like_source_order(
-  declaration_blocks : Array[WgslGraphBlock],
-  included_names : @set.Set[String],
-) -> Array[String] {
-  let ordered : Array[String] = []
-  for block in declaration_blocks {
-    if included_names.contains(block.name()) &&
-      wgsl_graph_block_is_const_like(block) {
-      ordered.push(block.name())
-    }
-  }
-  ordered
-}
-
-///|
-fn wgsl_declaration_graph_normalize_const_like_order(
-  ordered : Array[String],
-  declaration_blocks : Array[WgslGraphBlock],
-  included_names : @set.Set[String],
-) -> Array[String] {
-  let source_order = wgsl_graph_const_like_source_order(
-    declaration_blocks, included_names,
-  )
-  if source_order.length() < 2 {
-    return ordered
-  }
-  let const_like_emitted : @set.Set[String] = @set.Set([])
-  for name in ordered {
-    match wgsl_declaration_graph_block_named(declaration_blocks, name) {
-      Some(block) if wgsl_graph_block_is_const_like(block) =>
-        const_like_emitted.add(name)
-      _ => ()
-    }
-  }
-  let const_like_names : Array[String] = []
-  for name in source_order {
-    if const_like_emitted.contains(name) {
-      const_like_names.push(name)
-    }
-  }
-  let normalized : Array[String] = []
-  let mut const_index = 0
-  for name in ordered {
-    match wgsl_declaration_graph_block_named(declaration_blocks, name) {
-      Some(block) if wgsl_graph_block_is_const_like(block) => {
-        normalized.push(const_like_names[const_index])
-        const_index = const_index + 1
-      }
-      _ => normalized.push(name)
-    }
-  }
-  normalized
 }
 
 ///|
@@ -414,9 +378,7 @@ fn wgsl_declaration_graph_reachable_import_order(
       wgsl_graph_order_push_unique(ordered, emitted, name)
     }
   }
-  wgsl_declaration_graph_normalize_const_like_order(
-    ordered, declaration_blocks, included_names,
-  )
+  ordered
 }
 
 ///|
