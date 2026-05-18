@@ -74,3 +74,21 @@ test "WGSL import parser expands grouped item imports" {
 }
 
 ///|
+test "WGSL import parser expands nested grouped item imports as leaf targets" {
+  let targets : Array[WgslImportTarget] = []
+  parse_wgsl_import_targets(
+    "bevy_pbr::{mesh_bindings::mesh, mesh_functions}", "", targets,
+  ) catch {
+    Parse(message, _) => abort(message)
+  }
+  let rendered : Array[String] = []
+  for target in targets {
+    rendered.push("\{target.raw_path} as \{target.alias_name}")
+  }
+  debug_inspect(
+    rendered.join("|"),
+    content="\"bevy_pbr::mesh_bindings::mesh as |bevy_pbr::mesh_functions as \"",
+  )
+}
+
+///|

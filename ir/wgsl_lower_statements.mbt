@@ -724,11 +724,9 @@ fn WgslIrLowerer::lower_local_declaration(
       self.contextualize_function_expression_for_type(function, init_handle, ty)
     None => ()
   }
-  let lowered_name = if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
-    local_decl.name().name()
-  } else {
-    local_decl.name().name()
-  }
+  let lowered_name = self.naga_oil_generated_import_local_spelling(
+    local_decl.name().name(),
+  )
   let var_init_in_declaration = if local_decl.kind() ==
     @ast.WgslLocalDeclarationKind::Var {
     match init {

@@ -974,6 +974,7 @@ test "import request declared-dependency ordering is applied in place" {
       import_full_module: true,
       keep_requested_items: false,
       requested_items: [],
+      declared_items: [],
       alias_name: "",
     },
     WgslImportRequest::{
@@ -982,6 +983,7 @@ test "import request declared-dependency ordering is applied in place" {
       import_full_module: true,
       keep_requested_items: false,
       requested_items: [],
+      declared_items: [],
       alias_name: "types",
     },
   ]
@@ -1083,6 +1085,57 @@ test "composer decorates local declaration that satisfies missing explicit impor
   )
   debug_inspect(
     emitted.contains("= convert_to_linear_rgbaX_naga_oil_mod"),
+    content="true",
+  )
+}
+
+///|
+test "direct leaf imports feed naga-oil local spelling even when semantically shadowed" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let root_source =
+    #|#import test::bindings::mesh
+    #|
+    #|struct Out {
+    #|  color: f32,
+    #|}
+    #|
+    #|fn read_mesh() -> f32 {
+    #|  return mesh.value;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment(mesh: Out) -> @location(0) f32 {
+    #|  return 1.0;
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|struct Mesh {
+    #|  value: f32,
+    #|}
+    #|var<private> mesh: Mesh;
+    #|
+  composer.register_source("bindings.wgsl", bindings_source)
+  let emitted = composer.compose_wgsl_for_naga_oil_writer_parity(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var<private> meshX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "var<private> meshX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX_1",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("fn fragment(meshX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX"),
     content="true",
   )
 }

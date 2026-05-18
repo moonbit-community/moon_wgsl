@@ -19,6 +19,7 @@ priv struct WgslImportRequest {
   mut import_full_module : Bool
   mut keep_requested_items : Bool
   requested_items : Array[String]
+  declared_items : Array[String]
   alias_name : String
 }
 
@@ -38,6 +39,15 @@ fn find_wgsl_import_request_index(
     }
   }
   None
+}
+
+///|
+fn wgsl_import_request_copy_items(items : Array[String]) -> Array[String] {
+  let copied : Array[String] = []
+  for item in items {
+    copied.push(item)
+  }
+  copied
 }
 
 ///|

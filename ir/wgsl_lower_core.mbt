@@ -33,6 +33,7 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   source_symbol_name : String
   kind : WgslIrGeneratedImportProvenanceKind
   inline_value : Bool
+  local_spelling : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -42,6 +43,7 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
   source_symbol_name : String,
   kind : WgslIrGeneratedImportProvenanceKind,
   inline_value : Bool,
+  local_spelling? : Bool = false,
 ) -> WgslIrGeneratedImportProvenance {
   WgslIrGeneratedImportProvenance::{
     generated_symbol_name,
@@ -49,6 +51,7 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
     source_symbol_name,
     kind,
     inline_value,
+    local_spelling,
   }
 }
 
@@ -187,6 +190,32 @@ fn WgslIrLowerer::record_referenced_names(
   )
   for identifier in identifiers {
     self.referenced_names.add(identifier.name())
+  }
+}
+
+///|
+fn WgslIrLowerer::naga_oil_generated_import_local_spelling(
+  self : WgslIrLowerer,
+  source_name : String,
+) -> String {
+  let mut target : String? = None
+  for entry in self.generated_import_provenance.iter() {
+    let (_, provenance) = entry
+    if provenance.kind != ImportedSourceSymbol ||
+      !provenance.local_spelling ||
+      provenance.source_symbol_name != source_name {
+      continue
+    }
+    match target {
+      Some(existing) if existing != provenance.generated_symbol_name =>
+        return source_name
+      Some(_) => ()
+      None => target = Some(provenance.generated_symbol_name)
+    }
+  }
+  match target {
+    Some(value) => value
+    None => source_name
   }
 }
 

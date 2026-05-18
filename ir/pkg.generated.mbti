@@ -959,8 +959,9 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   source_symbol_name : String
   kind : WgslIrGeneratedImportProvenanceKind
   inline_value : Bool
+  local_spelling : Bool
 } derive(Eq, @debug.Debug)
-pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool) -> Self
+pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool, local_spelling? : Bool) -> Self
 pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(Self) -> String
 
 pub(all) enum WgslIrGeneratedImportProvenanceKind {

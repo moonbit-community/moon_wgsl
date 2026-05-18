@@ -352,7 +352,9 @@ fn WgslIrLowerer::lower_function(
       raise WgslIrLowerError::MissingType(argument.name().name())
     }
     ir_function.arguments.push(FunctionArgument::{
-      name: Some(argument.name().name()),
+      name: Some(
+        self.naga_oil_generated_import_local_spelling(argument.name().name()),
+      ),
       ty: self.lower_type_ref(ty_ref),
       binding: wgsl_ir_binding_from_attributes(argument.attributes()),
     })

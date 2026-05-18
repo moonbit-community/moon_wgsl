@@ -184,6 +184,9 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
   }
   for fn_index in 0..<module_.functions.items.length() {
     let function = module_.functions.items[fn_index]
+    if wgsl_ir_name_table_function_is_entry_point(function, module_) {
+      continue
+    }
     table.names.set(
       wgsl_ir_emit_name_key("fn", fn_index),
       namer.call_or(function.name, "function"),
@@ -244,6 +247,9 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
   }
   for fn_index in 0..<module_.functions.items.length() {
     let function = module_.functions.items[fn_index]
+    if wgsl_ir_name_table_function_is_entry_point(function, module_) {
+      continue
+    }
     let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
     for local_index in 0..<function.local_variables.items.length() {
       table.names.set(
@@ -272,6 +278,23 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
     }
   }
   table
+}
+
+///|
+fn wgsl_ir_name_table_function_is_entry_point(
+  function : Function,
+  module_ : Module,
+) -> Bool {
+  match function.name {
+    Some(name) =>
+      for entry_point in module_.entry_points {
+        if entry_point.name == name {
+          return true
+        }
+      }
+    None => ()
+  }
+  false
 }
 
 ///|

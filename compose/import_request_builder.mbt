@@ -359,6 +359,12 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
                 side_effect_item,
               )
             }
+            for declared_item in declared_request.declared_items {
+              composer_string_list_push_unique(
+                request.declared_items,
+                declared_item,
+              )
+            }
           }
           None =>
             requests.push(WgslImportRequest::{
@@ -367,6 +373,9 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
               import_full_module: false,
               keep_requested_items: true,
               requested_items: side_effect_items,
+              declared_items: wgsl_import_request_copy_items(
+                declared_request.declared_items,
+              ),
               alias_name: declared_request.alias_name,
             })
         }
@@ -430,6 +439,9 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
           requested_item,
         )
       }
+      for declared_item in dependency_request.declared_items {
+        composer_string_list_push_unique(request.declared_items, declared_item)
+      }
       ordered_requests.push(request)
     } else if filtered_items.length() > 0 {
       ordered_requests.push(WgslImportRequest::{
@@ -438,6 +450,9 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
         import_full_module: false,
         keep_requested_items: true,
         requested_items: filtered_items,
+        declared_items: wgsl_import_request_copy_items(
+          dependency_request.declared_items,
+        ),
         alias_name: dependency_request.alias_name,
       })
     }
@@ -600,6 +615,7 @@ fn Composer::build_wgsl_declared_import_requests_from_targets(
           request.requested_items,
           requested_item,
         )
+        composer_string_list_push_unique(request.declared_items, requested_item)
       }
     } else {
       requests.push(WgslImportRequest::{
@@ -608,6 +624,7 @@ fn Composer::build_wgsl_declared_import_requests_from_targets(
         import_full_module,
         keep_requested_items: requested_items.length() > 0,
         requested_items,
+        declared_items: wgsl_import_request_copy_items(requested_items),
         alias_name: module_alias,
       })
     }
@@ -626,6 +643,9 @@ fn Composer::build_wgsl_import_requests_from_targets(
   prune_requested_items_by_active_usage : Bool,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let requests : Array[WgslImportRequest] = []
+  self.record_declared_leaf_import_local_spelling(
+    current_rel_path, targets, session, importer_defs,
+  )
   let target_plans = build_wgsl_semantic_import_target_plans(
     active_scan_source,
     current_rel_path,
@@ -642,6 +662,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
   }
   for target_plan in target_plans.plans {
     let requested_items = target_plan.requested_items
+    let declared_items = wgsl_import_request_copy_items(requested_items)
     let base_resolved_module = target_plan.resolved_module
     let module_path = base_resolved_module.module_path()
     let import_source = match
@@ -750,6 +771,13 @@ fn Composer::build_wgsl_import_requests_from_targets(
       session,
       importer_defs,
     )
+    if module_alias == "" {
+      for declared_item in declared_items {
+        session.record_local_spelling_final_name(
+          current_rel_path, selected_rel_path, declared_item, "",
+        )
+      }
+    }
     let resolved_module = WgslResolvedImportModule(
       module_path, selected_rel_path,
     )
@@ -773,6 +801,9 @@ fn Composer::build_wgsl_import_requests_from_targets(
           requested_item,
         )
       }
+      for declared_item in declared_items {
+        composer_string_list_push_unique(request.declared_items, declared_item)
+      }
     } else {
       requests.push(WgslImportRequest::{
         module_path,
@@ -780,6 +811,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
         import_full_module,
         keep_requested_items: target_plan.keep_requested_items,
         requested_items,
+        declared_items,
         alias_name: module_alias,
       })
     }
@@ -787,6 +819,48 @@ fn Composer::build_wgsl_import_requests_from_targets(
   self.order_wgsl_import_requests_by_declared_dependencies(
     requests, session, importer_defs,
   )
+}
+
+///|
+fn Composer::record_declared_leaf_import_local_spelling(
+  self : Composer,
+  current_rel_path : String,
+  targets : Array[WgslImportTarget],
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Unit raise ComposerError {
+  for target in targets {
+    if target.alias_name != "" {
+      continue
+    }
+    guard resolve_wgsl_semantic_import_module(
+        current_rel_path,
+        target.raw_path,
+        self.registry,
+        session.modules,
+      )
+      is Some(base_resolved_module) else {
+      continue
+    }
+    let module_path = base_resolved_module.module_path()
+    let requested_item = wgsl_semantic_requested_item_name(
+      target.raw_path,
+      module_path,
+    )
+    if requested_item == "" {
+      continue
+    }
+    let selected_rel_path = self.select_wgsl_import_candidate_rel_path(
+      module_path,
+      base_resolved_module.rel_path(),
+      [requested_item],
+      session,
+      importer_defs,
+    )
+    session.record_local_spelling_final_name(
+      current_rel_path, selected_rel_path, requested_item, "",
+    )
+  }
 }
 
 ///|

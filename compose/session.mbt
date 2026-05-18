@@ -122,6 +122,7 @@ priv struct WgslComposeSymbolTable {
   emitted_final_names : WgslIrFinalNameTable
   virtual_override_final_names : Array[WgslVirtualOverrideFinalNameBinding]
   local_import_final_names : Array[WgslLocalImportFinalNameBinding]
+  local_spelling_final_names : Array[WgslLocalSpellingFinalNameBinding]
   source_origins : Array[WgslSourceOriginEntry]
 }
 
@@ -191,12 +192,25 @@ priv struct WgslLocalImportFinalNameBinding {
 }
 
 ///|
+priv struct WgslLocalSpellingFinalNameBinding {
+  visible_rel_path : String
+  symbol_rel_path : String
+  source_name : String
+  final_name : String
+}
+
+///|
 priv struct WgslVirtualOverrideFinalNameKey {
   text : String
 }
 
 ///|
 priv struct WgslLocalImportFinalNameKey {
+  text : String
+}
+
+///|
+priv struct WgslLocalSpellingFinalNameKey {
   text : String
 }
 
@@ -220,6 +234,7 @@ fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
     emitted_final_names: WgslIrFinalNameTable(),
     virtual_override_final_names: [],
     local_import_final_names: [],
+    local_spelling_final_names: [],
     source_origins: [],
   }
 }
@@ -491,6 +506,22 @@ fn WgslLocalImportFinalNameKey::text(
 }
 
 ///|
+fn WgslLocalSpellingFinalNameKey::WgslLocalSpellingFinalNameKey(
+  binding : WgslLocalSpellingFinalNameBinding,
+) -> WgslLocalSpellingFinalNameKey {
+  WgslLocalSpellingFinalNameKey::{
+    text: "\{binding.visible_rel_path}|\{binding.symbol_rel_path}|\{binding.source_name}|\{binding.final_name}",
+  }
+}
+
+///|
+fn WgslLocalSpellingFinalNameKey::text(
+  self : WgslLocalSpellingFinalNameKey,
+) -> String {
+  self.text
+}
+
+///|
 fn WgslComposeSession::record_virtual_override_final_name(
   self : WgslComposeSession,
   raw_target_name : String,
@@ -541,6 +572,39 @@ fn WgslComposeSession::record_local_import_final_name(
     }
   }
   self.symbols.local_import_final_names.push(binding)
+}
+
+///|
+fn WgslComposeSession::record_local_spelling_final_name(
+  self : WgslComposeSession,
+  visible_rel_path : String,
+  symbol_rel_path : String,
+  source_name : String,
+  final_name : String,
+) -> Unit {
+  let visible_rel_path = normalize_shader_rel_path(visible_rel_path)
+  let symbol_rel_path = normalize_shader_rel_path(symbol_rel_path)
+  let source_name = source_name.trim().to_owned()
+  let final_name = final_name.trim().to_owned()
+  if visible_rel_path == "" ||
+    symbol_rel_path == "" ||
+    source_name == "" ||
+    source_name == final_name {
+    return
+  }
+  let binding = WgslLocalSpellingFinalNameBinding::{
+    visible_rel_path,
+    symbol_rel_path,
+    source_name,
+    final_name,
+  }
+  let key = WgslLocalSpellingFinalNameKey(binding).text()
+  for existing in self.symbols.local_spelling_final_names {
+    if WgslLocalSpellingFinalNameKey(existing).text() == key {
+      return
+    }
+  }
+  self.symbols.local_spelling_final_names.push(binding)
 }
 
 ///|

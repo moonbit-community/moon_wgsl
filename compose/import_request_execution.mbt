@@ -228,6 +228,25 @@ fn Composer::compose_wgsl_import_requests(
       module_source
     }
     final_name_plan.apply_to_origins(session.symbols.source_origins)
+    if request.alias_name == "" {
+      for i in origin_start_index..<session.symbols.source_origins.length() {
+        let origin = session.symbols.source_origins[i]
+        if origin.rel_path == request.rel_path &&
+          origin.source_symbol_name != "" &&
+          origin.generated_symbol_name != "" &&
+          wgsl_requested_items_contains(
+            request.declared_items,
+            origin.source_symbol_name,
+          ) {
+          session.record_local_spelling_final_name(
+            current_rel_path,
+            origin.rel_path,
+            origin.source_symbol_name,
+            origin.generated_symbol_name,
+          )
+        }
+      }
+    }
     if request.alias_name != "" {
       for i in origin_start_index..<session.symbols.source_origins.length() {
         let origin = session.symbols.source_origins[i]
@@ -269,7 +288,15 @@ fn Composer::compose_wgsl_import_requests(
               origin.generated_symbol_name,
               UnqualifiedItemBinding,
             ) {
-            Some(binding) => bindings.push(binding)
+            Some(binding) => {
+              bindings.push(binding)
+              session.record_local_spelling_final_name(
+                current_rel_path,
+                origin.rel_path,
+                origin.source_symbol_name,
+                origin.generated_symbol_name,
+              )
+            }
             None => ()
           }
         }
