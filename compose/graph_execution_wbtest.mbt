@@ -1364,3 +1364,49 @@ test "alias-qualified resource side effects respect occupied bindings" {
     content="true",
   )
 }
+
+///|
+test "selected dependency modules retain alias-qualified const side effects" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let constants_source =
+    #|#define_import_path sidefx::constants
+    #|
+    #|const USED: u32 = 1u;
+    #|const SIDE_EFFECT: u32 = 2u;
+    #|
+  let helpers_source =
+    #|#define_import_path sidefx::helpers
+    #|#import sidefx::constants as constants
+    #|
+    #|fn selected() -> u32 {
+    #|  return constants::USED;
+    #|}
+    #|
+    #|fn unselected() -> u32 {
+    #|  return constants::SIDE_EFFECT;
+    #|}
+    #|
+  let root_source =
+    #|#import sidefx::helpers as helpers
+    #|
+    #|fn main() -> u32 {
+    #|  return helpers::selected();
+    #|}
+    #|
+  composer.register_source("sidefx_constants.wgsl", constants_source)
+  composer.register_source("sidefx_helpers.wgsl", helpers_source)
+  composer.register_source("sidefx_root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "sidefx_root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("USEDX_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("SIDE_EFFECTX_naga_oil_mod"), content="true")
+  debug_inspect(
+    emitted.contains("fn unselectedX_naga_oil_mod"),
+    content="false",
+  )
+}

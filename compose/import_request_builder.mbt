@@ -79,6 +79,26 @@ fn wgsl_source_declares_non_resource_dependency_item(
 }
 
 ///|
+fn wgsl_source_declares_const_side_effect_item(
+  source : String,
+  item_name : String,
+) -> Bool raise ComposerError {
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  for decl in unit.declarations() {
+    if decl.name() == item_name {
+      match decl.data() {
+        WgslGlobalDeclData::Const(_) | WgslGlobalDeclData::Override(_) =>
+          return true
+        _ => return false
+      }
+    }
+  }
+  false
+}
+
+///|
 fn wgsl_global_variable_has_resource_binding(
   global : @ast.WgslGlobalVariable,
 ) -> Bool {
@@ -259,6 +279,20 @@ fn collect_wgsl_resource_side_effect_items(
 }
 
 ///|
+fn collect_wgsl_const_side_effect_items(
+  source : String,
+  candidate_items : Array[String],
+) -> Array[String] raise ComposerError {
+  let items : Array[String] = []
+  for candidate_item in candidate_items {
+    if wgsl_source_declares_const_side_effect_item(source, candidate_item) {
+      composer_string_list_push_unique(items, candidate_item)
+    }
+  }
+  items
+}
+
+///|
 fn merge_wgsl_resource_side_effect_request(
   requests : Array[WgslImportRequest],
   source_request : WgslImportRequest,
@@ -293,6 +327,100 @@ fn merge_wgsl_resource_side_effect_request(
         alias_name: "",
       })
   }
+}
+
+///|
+fn merge_wgsl_const_side_effect_request(
+  requests : Array[WgslImportRequest],
+  source_request : WgslImportRequest,
+  side_effect_items : Array[String],
+) -> Unit {
+  if side_effect_items.length() == 0 {
+    return
+  }
+  match
+    find_wgsl_import_request_index(
+      requests,
+      source_request.module_path,
+      source_request.rel_path,
+      source_request.alias_name,
+    ) {
+    Some(request_index) => {
+      let request = requests[request_index]
+      request.keep_requested_items = true
+      for item in side_effect_items {
+        composer_string_list_push_unique(request.requested_items, item)
+        composer_string_list_push_unique(request.declared_items, item)
+      }
+    }
+    None =>
+      requests.push(WgslImportRequest::{
+        module_path: source_request.module_path,
+        rel_path: source_request.rel_path,
+        import_full_module: false,
+        keep_requested_items: true,
+        requested_items: wgsl_import_request_copy_items(side_effect_items),
+        declared_items: wgsl_import_request_copy_items(side_effect_items),
+        alias_name: source_request.alias_name,
+      })
+  }
+}
+
+///|
+fn widen_wgsl_dependency_requests_with_alias_side_effects(
+  dependency_requests : Array[WgslImportRequest],
+  dependency_scan_source : String,
+) -> Unit raise ComposerError {
+  for dependency_request in dependency_requests {
+    if dependency_request.alias_name == "" {
+      continue
+    }
+    let alias_requested_paths : Array[String] = []
+    collect_wgsl_semantic_alias_requested_paths(
+      dependency_scan_source,
+      dependency_request.alias_name,
+      alias_requested_paths,
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    for requested_path in alias_requested_paths {
+      if split_last_wgsl_semantic_path(requested_path) is Some(_) {
+        continue
+      }
+      composer_string_list_push_unique(
+        dependency_request.requested_items,
+        requested_path,
+      )
+      composer_string_list_push_unique(
+        dependency_request.declared_items,
+        requested_path,
+      )
+    }
+  }
+}
+
+///|
+fn Composer::collect_wgsl_declared_const_side_effect_items(
+  self : Composer,
+  request : WgslImportRequest,
+  candidate_items : Array[String],
+  session : WgslComposeSession,
+  importer_defs : WgslActiveComposeDefs,
+) -> Array[String] raise ComposerError {
+  let import_source = match self.registry.registered_source(request.rel_path) {
+    Some(source) => source
+    None => raise ComposerError::MissingRegisteredSource(request.rel_path)
+  }
+  let import_defs = self.active_compose_defs_for_rel_path(
+    request.rel_path,
+    session,
+    Some(importer_defs),
+  )
+  let active_import_source = apply_wgsl_template_consts(
+    apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
+    import_defs.value_defines,
+  )
+  collect_wgsl_const_side_effect_items(active_import_source, candidate_items)
 }
 
 ///|
@@ -501,6 +629,9 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
       current_rel_path, dependency_targets, dependency_scan_source, session, importer_defs,
       false,
     )
+    widen_wgsl_dependency_requests_with_alias_side_effects(
+      dependency_requests, dependency_scan_source,
+    )
     let declared_dependency_requests = self.build_wgsl_declared_import_requests_from_targets(
       current_rel_path, side_effect_targets, session, importer_defs,
     )
@@ -568,6 +699,15 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
       if dependency_request.requested_items.length() == 0 {
         continue
       }
+      let const_side_effect_items = self.collect_wgsl_declared_const_side_effect_items(
+        dependency_request,
+        dependency_request.requested_items,
+        session,
+        importer_defs,
+      )
+      merge_wgsl_const_side_effect_request(
+        requests, dependency_request, const_side_effect_items,
+      )
       let side_effect_items = self.collect_wgsl_declared_full_module_side_effect_items(
         dependency_request,
         dependency_request.requested_items,
