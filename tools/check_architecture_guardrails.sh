@@ -173,6 +173,7 @@ required_ir_split_files=(
   ir/wgsl_lower_const_eval.mbt
   ir/wgsl_lower_materialization.mbt
   ir/wgsl_lower_statements.mbt
+  ir/wgsl_emit_byte_plan.mbt
   ir/wgsl_emit_writer_policy.mbt
   ir/wgsl_emit_runtime_writer.mbt
   ir/wgsl_emit_naga_oil_writer.mbt
@@ -306,6 +307,14 @@ fi
 
 if ! rg -n 'priv enum WgslIrWriterBackendKind' ir/wgsl_emit_writer_policy.mbt >/dev/null; then
   fail "WGSL writer policy must be keyed by explicit writer backend kind"
+fi
+
+if ! rg -n 'priv struct WgslIrWriterBytePlan' ir/wgsl_emit_byte_plan.mbt >/dev/null; then
+  fail "WGSL byte-level writer choices must be represented by an explicit byte plan"
+fi
+
+if ! rg -n 'emit_trailing_blank_after_module' ir/wgsl_emit_writer_policy.mbt ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "WGSL module trailing byte policy must be routed through the writer byte plan"
 fi
 
 if rg -n 'annotate_atomic_compare_exchange_result_locals : Bool|inline_generated_import_constants : Bool|fold_numeric_constant_expressions : Bool|expand_matrix_scalar_constructors : Bool|contextualize_numeric_literals : Bool|annotate_all_local_types : Bool|emit_implicit_flat_interpolation : Bool|compact_storage_texture_type_arguments : Bool|emit_source_directives : Bool' ir/wgsl_emit_writer_policy.mbt >/dev/null; then

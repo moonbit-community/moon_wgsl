@@ -7,6 +7,7 @@ priv enum WgslIrWriterBackendKind {
 ///|
 priv struct WgslIrEmitOptions {
   backend : WgslIrWriterBackendKind
+  byte_plan : WgslIrWriterBytePlan
   preserve_abstract_float_literals : Bool
 }
 
@@ -14,6 +15,7 @@ priv struct WgslIrEmitOptions {
 fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
   WgslIrEmitOptions::{
     backend: RuntimeWriter,
+    byte_plan: WgslIrWriterBytePlan::runtime_writer(),
     preserve_abstract_float_literals: false,
   }
 }
@@ -22,6 +24,7 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
 fn WgslIrEmitOptions::naga_oil_writer_backend() -> WgslIrEmitOptions {
   WgslIrEmitOptions::{
     backend: NagaOilWriter,
+    byte_plan: WgslIrWriterBytePlan::naga_oil_writer(),
     preserve_abstract_float_literals: false,
   }
 }
@@ -115,10 +118,15 @@ fn WgslIrEmitOptions::compact_storage_texture_type_arguments(
 
 ///|
 fn WgslIrEmitOptions::emit_source_directives(self : WgslIrEmitOptions) -> Bool {
-  match self.backend {
-    RuntimeWriter => true
-    NagaOilWriter => false
-  }
+  self.byte_plan.should_emit_source_directives()
+}
+
+///|
+fn WgslIrEmitOptions::emit_trailing_blank_after_module(
+  self : WgslIrEmitOptions,
+  last_item_is_entry_point : Bool,
+) -> Bool {
+  self.byte_plan.should_emit_trailing_blank(last_item_is_entry_point)
 }
 
 ///|
@@ -129,6 +137,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::{
       backend: self.options.backend,
+      byte_plan: self.options.byte_plan,
       preserve_abstract_float_literals: true,
     },
     filter: self.filter,

@@ -112,7 +112,8 @@ fn WgslIrEmitter::emit_module(
     needs_blank = true
     last_item_is_entry_point = true
   }
-  if needs_blank && !last_item_is_entry_point {
+  if needs_blank &&
+    self.options.emit_trailing_blank_after_module(last_item_is_entry_point) {
     out.write_string("\n")
   }
   out.to_string()
