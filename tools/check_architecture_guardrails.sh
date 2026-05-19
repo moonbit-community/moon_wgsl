@@ -313,6 +313,10 @@ if ! rg -n 'priv struct WgslIrWriterBytePlan' ir/wgsl_emit_byte_plan.mbt >/dev/n
   fail "WGSL byte-level writer choices must be represented by an explicit byte plan"
 fi
 
+if ! rg -n 'WgslIrImplicitFlatInterpolationBytePolicy|WgslIrStorageTextureTypeBytePolicy|storage_texture_type_separator' ir/wgsl_emit_byte_plan.mbt >/dev/null; then
+  fail "WGSL byte plan must own token-level interpolation and storage-texture formatting policy"
+fi
+
 if ! rg -n 'emit_trailing_blank_after_module' ir/wgsl_emit_writer_policy.mbt ir/wgsl_emit_module.mbt >/dev/null; then
   fail "WGSL module trailing byte policy must be routed through the writer byte plan"
 fi

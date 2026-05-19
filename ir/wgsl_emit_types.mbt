@@ -398,11 +398,7 @@ fn WgslIrEmitter::image_type_name(
     }
     External => "texture_external"
     Storage(format, access) => {
-      let separator = if self.options.compact_storage_texture_type_arguments() {
-        ","
-      } else {
-        ", "
-      }
+      let separator = self.options.storage_texture_type_argument_separator()
       "texture_storage_\{self.image_dimension_suffix(dimension, arrayed)}<\{self.storage_format_name(format)}\{separator}\{self.storage_access_name(access)}>"
     }
   }

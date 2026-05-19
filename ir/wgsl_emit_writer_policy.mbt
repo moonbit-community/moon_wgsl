@@ -100,20 +100,14 @@ fn WgslIrEmitOptions::annotate_all_local_types(
 fn WgslIrEmitOptions::emit_implicit_flat_interpolation(
   self : WgslIrEmitOptions,
 ) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+  self.byte_plan.should_emit_implicit_flat_interpolation()
 }
 
 ///|
-fn WgslIrEmitOptions::compact_storage_texture_type_arguments(
+fn WgslIrEmitOptions::storage_texture_type_argument_separator(
   self : WgslIrEmitOptions,
-) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+) -> String {
+  self.byte_plan.storage_texture_type_separator()
 }
 
 ///|

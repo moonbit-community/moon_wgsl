@@ -25,9 +25,23 @@ priv enum WgslIrTrailingBlankBytePolicy {
 }
 
 ///|
+priv enum WgslIrImplicitFlatInterpolationBytePolicy {
+  EmitImplicitFlatInterpolation
+  SuppressImplicitFlatInterpolation
+}
+
+///|
+priv enum WgslIrStorageTextureTypeBytePolicy {
+  CompactStorageTextureTypeArguments
+  SpacedStorageTextureTypeArguments
+}
+
+///|
 priv struct WgslIrWriterBytePlan {
   source_directives : WgslIrSourceDirectiveBytePolicy
   trailing_blank : WgslIrTrailingBlankBytePolicy
+  implicit_flat_interpolation : WgslIrImplicitFlatInterpolationBytePolicy
+  storage_texture_type_arguments : WgslIrStorageTextureTypeBytePolicy
 }
 
 ///|
@@ -35,6 +49,8 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
   WgslIrWriterBytePlan::{
     source_directives: EmitSourceDirectives,
     trailing_blank: SuppressTrailingBlankAfterEntryPoint,
+    implicit_flat_interpolation: SuppressImplicitFlatInterpolation,
+    storage_texture_type_arguments: SpacedStorageTextureTypeArguments,
   }
 }
 
@@ -43,6 +59,8 @@ fn WgslIrWriterBytePlan::naga_oil_writer() -> WgslIrWriterBytePlan {
   WgslIrWriterBytePlan::{
     source_directives: SuppressSourceDirectives,
     trailing_blank: SuppressTrailingBlankAfterEntryPoint,
+    implicit_flat_interpolation: EmitImplicitFlatInterpolation,
+    storage_texture_type_arguments: CompactStorageTextureTypeArguments,
   }
 }
 
@@ -64,5 +82,25 @@ fn WgslIrWriterBytePlan::should_emit_trailing_blank(
   match self.trailing_blank {
     KeepTrailingBlankAfterDeclarations => true
     SuppressTrailingBlankAfterEntryPoint => !last_item_is_entry_point
+  }
+}
+
+///|
+fn WgslIrWriterBytePlan::should_emit_implicit_flat_interpolation(
+  self : WgslIrWriterBytePlan,
+) -> Bool {
+  match self.implicit_flat_interpolation {
+    EmitImplicitFlatInterpolation => true
+    SuppressImplicitFlatInterpolation => false
+  }
+}
+
+///|
+fn WgslIrWriterBytePlan::storage_texture_type_separator(
+  self : WgslIrWriterBytePlan,
+) -> String {
+  match self.storage_texture_type_arguments {
+    CompactStorageTextureTypeArguments => ","
+    SpacedStorageTextureTypeArguments => ", "
   }
 }
