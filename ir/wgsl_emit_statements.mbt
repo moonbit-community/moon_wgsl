@@ -63,20 +63,6 @@ fn WgslIrEmitter::statement_is_any_local_var_declaration(
 }
 
 ///|
-fn WgslIrEmitter::block_has_non_var_statement(
-  self : WgslIrEmitter,
-  function : Function,
-  block : Block,
-) -> Bool {
-  for statement in block.statements {
-    if !self.statement_is_local_var_declaration(function, statement) {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn WgslIrEmitter::emit_statement(
   self : WgslIrEmitter,
   out : StringBuilder,

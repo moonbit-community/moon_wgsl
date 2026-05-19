@@ -41,6 +41,8 @@ fn wgsl_ir_emit_local_name_key(
 ///|
 priv struct WgslIrNagaFunctionBodyPlan {
   materialized_expressions : @set.Set[Int]
+  local_variable_declarations : Array[Int]
+  has_body_after_hoisted_declarations : Bool
 }
 
 ///|
@@ -49,6 +51,12 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
 ) -> WgslIrNagaFunctionBodyPlan {
   WgslIrNagaFunctionBodyPlan::{
     materialized_expressions: wgsl_ir_function_materialized_expression_indices(
+      function,
+    ),
+    local_variable_declarations: wgsl_ir_naga_function_body_local_declarations(
+      function,
+    ),
+    has_body_after_hoisted_declarations: wgsl_ir_naga_function_body_has_non_hoisted_statement(
       function,
     ),
   }
@@ -69,6 +77,70 @@ fn WgslIrNagaFunctionBodyPlan::temporary_index(
   handle : Handle,
 ) -> Int {
   wgsl_ir_emit_expression_temporary_index(function, self, handle)
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::local_declaration_order(
+  self : WgslIrNagaFunctionBodyPlan,
+) -> Array[Int] {
+  self.local_variable_declarations
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::needs_blank_after_local_declarations(
+  self : WgslIrNagaFunctionBodyPlan,
+) -> Bool {
+  self.local_variable_declarations.length() > 0 &&
+  self.has_body_after_hoisted_declarations
+}
+
+///|
+fn wgsl_ir_naga_function_body_local_declarations(
+  function : Function,
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for index in 0..<function.local_variables.items.length() {
+    match function.local_variables.items.get(index) {
+      Some(local_var) =>
+        if local_var.kind == LocalVariableKind::Var &&
+          !local_var.generated_temporary {
+          order.push(index)
+        }
+      None => ()
+    }
+  }
+  order
+}
+
+///|
+fn wgsl_ir_naga_function_body_has_non_hoisted_statement(
+  function : Function,
+) -> Bool {
+  for statement in function.body.statements {
+    if !wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
+        function, statement,
+      ) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
+  function : Function,
+  statement : Statement,
+) -> Bool {
+  match statement {
+    Declare(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_var) =>
+          local_var.kind == LocalVariableKind::Var &&
+          !local_var.generated_temporary
+        None => false
+      }
+    _ => false
+  }
 }
 
 ///|

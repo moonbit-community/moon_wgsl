@@ -106,7 +106,8 @@ fn WgslIrEmitter::emit_function(
     None => ()
   }
   out.write_string(" {\n")
-  emitter.emit_function_local_var_declarations(out, function, 1)
+  let body_plan = WgslIrNagaFunctionBodyPlan::from_function(function)
+  emitter.emit_function_local_var_declarations(out, function, body_plan, 1)
   emitter.emit_block_statements(out, function, function.body, 1)
   out.write_string("}\n")
 }
@@ -189,22 +190,13 @@ fn WgslIrEmitter::emit_function_local_var_declarations(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
-  let mut emitted = false
-  for index in 0..<function.local_variables.items.length() {
-    let handle = Handle::Handle(index)
-    match function.local_variables.items.get(index) {
-      Some(local_var) =>
-        if local_var.kind == LocalVariableKind::Var &&
-          !local_var.generated_temporary {
-          self.emit_local_declaration(out, function, handle, indent)
-          emitted = true
-        }
-      _ => ()
-    }
+  for index in body_plan.local_declaration_order() {
+    self.emit_local_declaration(out, function, Handle::Handle(index), indent)
   }
-  if emitted && self.block_has_non_var_statement(function, function.body) {
+  if body_plan.needs_blank_after_local_declarations() {
     out.write_string("\n")
   }
 }
