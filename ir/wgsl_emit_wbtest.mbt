@@ -1193,6 +1193,24 @@ test "naga-oil writer policy folds scalar constructors from retained constants" 
 }
 
 ///|
+test "naga-oil writer policy keeps parent expressions around normalized local constants" {
+  let source =
+    #|fn neutral(max_channel: f32) -> f32 {
+    #|  const start_compression: f32 = 0.8 - 0.04;
+    #|  let d = 1.0 - start_compression;
+    #|  return 1.0 - d * d / (max_channel + d - start_compression);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("0.24f * 0.24f"), content="true")
+  debug_inspect(naga_oil.contains("0.0576f"), content="false")
+}
+
+///|
 test "naga-oil writer policy emits unsigned bit masks in u32 context" {
   let source =
     #|fn copysign(a: f32, b: f32) -> f32 {

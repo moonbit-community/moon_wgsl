@@ -375,6 +375,22 @@ fn WgslIrLowerer::fold_function_constant_float_expression(
 }
 
 ///|
+fn WgslIrLowerer::normalized_local_constant_initializer(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Handle {
+  match function.expressions.items.get(handle.index()) {
+    Some(Expression::Literal(_)) => return handle
+    _ => ()
+  }
+  match self.fold_function_constant_float_expression(function, handle) {
+    Some(literal) => function.expressions.append(Expression::Literal(literal))
+    None => handle
+  }
+}
+
+///|
 fn WgslIrLowerer::eval_function_float_expression(
   self : WgslIrLowerer,
   function : Function,

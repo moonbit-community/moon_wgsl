@@ -365,7 +365,7 @@ fn WgslIrEmitter::eval_constant_float_expression_for_constructor(
   handle : Handle,
 ) -> Double? {
   match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) =>
+    Some(constant) if !constant.generated_import =>
       self.eval_global_float_expression_for_emit(constant.init, @set.Set([]))
     _ => None
   }
@@ -377,9 +377,179 @@ fn WgslIrEmitter::eval_constant_integer_expression_for_constructor(
   handle : Handle,
 ) -> WgslIrEmitIntegerValue? {
   match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) =>
+    Some(constant) if !constant.generated_import =>
       self.eval_global_integer_expression_for_emit(constant.init, @set.Set([]))
     _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_float_expression_with_retained_constants(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Double? raise WgslIrEmitError {
+  if !self.expression_tree_contains_constant_reference(function, handle) {
+    return None
+  }
+  self.eval_float_expression_with_retained_constants_inner(function, handle)
+}
+
+///|
+fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Double? raise WgslIrEmitError {
+  match self.required_expression(function, handle) {
+    Literal(literal) => wgsl_ir_float_value_from_numeric_literal(literal)
+    Constant(constant) =>
+      match self.eval_constant_float_expression_for_constructor(constant) {
+        Some(value) => Some(value)
+        None =>
+          match
+            self.eval_constant_integer_expression_for_constructor(constant) {
+            Some(value) => value.to_double()
+            None => None
+          }
+      }
+    Compose(ty, [component]) =>
+      match self.shader_module.types.items.get(ty.index()) {
+        Some({ inner: Scalar({ kind: Float | AbstractFloat, .. }), .. }) =>
+          self.eval_float_expression_with_retained_constants_inner(
+            function, component,
+          )
+        _ => None
+      }
+    Unary(UnaryOperator::Negate, inner) =>
+      match
+        self.eval_float_expression_with_retained_constants_inner(
+          function, inner,
+        ) {
+        Some(value) => Some(-value)
+        None => None
+      }
+    Binary(op, left, right) => {
+      guard self.eval_float_expression_with_retained_constants_inner(
+          function, left,
+        )
+        is Some(left_value) else {
+        return None
+      }
+      guard self.eval_float_expression_with_retained_constants_inner(
+          function, right,
+        )
+        is Some(right_value) else {
+        return None
+      }
+      wgsl_ir_emit_eval_float_binary(op, left_value, right_value)
+    }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_tree_contains_constant_reference(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Bool {
+  match self.optional_expression(function, handle) {
+    Some(expression) =>
+      self.expression_contains_constant_reference(function, expression)
+    None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_contains_constant_reference(
+  self : WgslIrEmitter,
+  function : Function?,
+  expression : Expression,
+) -> Bool {
+  match expression {
+    Constant(_) => true
+    Literal(_)
+    | Override(_)
+    | FunctionArgument(_)
+    | GlobalVariable(_)
+    | LocalVariable(_)
+    | Load(_)
+    | AddressOf(_, _)
+    | ZeroValue(_)
+    | FunctionCall(_, _)
+    | AtomicCall(_, _)
+    | ImageSample(_, _, _, _, _, _, _, _, _)
+    | ImageLoad(_, _, _, _, _)
+    | ImageQuery(_, _)
+    | CallResult(_)
+    | AtomicResult(_, _)
+    | WorkGroupUniformLoadResult(_)
+    | WorkGroupUniformLoad(_)
+    | ArrayLength(_)
+    | RayQueryInitialize(_, _, _)
+    | RayQueryProceed(_)
+    | RayQueryGenerateIntersection(_, _)
+    | RayQueryConfirmIntersection(_)
+    | RayQueryTerminate(_)
+    | RayQueryVertexPositions(_, _)
+    | RayQueryProceedResult
+    | RayQueryGetIntersection(_, _)
+    | SubgroupCall(_, _)
+    | SubgroupBallotResult
+    | SubgroupOperationResult(_)
+    | CooperativeLoad(_, _, _, _)
+    | CooperativeMultiplyAdd(_, _, _) => false
+    Unary(_, inner)
+    | Bitcast(_, inner)
+    | Relational(_, inner)
+    | As(inner, _, _)
+    | Splat(_, inner)
+    | Swizzle(_, inner, _)
+    | AccessIndex(inner, _)
+    | Derivative(_, _, inner) =>
+      self.expression_tree_contains_constant_reference(function, inner)
+    Access(base, index) | Binary(_, base, index) =>
+      self.expression_tree_contains_constant_reference(function, base) ||
+      self.expression_tree_contains_constant_reference(function, index)
+    Select(left, right, condition) =>
+      self.expression_tree_contains_constant_reference(function, left) ||
+      self.expression_tree_contains_constant_reference(function, right) ||
+      self.expression_tree_contains_constant_reference(function, condition)
+    Compose(_, components) =>
+      self.expression_list_contains_constant_reference(function, components)
+    Math(_, first, second, third, fourth) =>
+      self.expression_tree_contains_constant_reference(function, first) ||
+      self.optional_expression_contains_constant_reference(function, second) ||
+      self.optional_expression_contains_constant_reference(function, third) ||
+      self.optional_expression_contains_constant_reference(function, fourth)
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_list_contains_constant_reference(
+  self : WgslIrEmitter,
+  function : Function?,
+  expressions : Array[Handle],
+) -> Bool {
+  for expression in expressions {
+    if self.expression_tree_contains_constant_reference(function, expression) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn WgslIrEmitter::optional_expression_contains_constant_reference(
+  self : WgslIrEmitter,
+  function : Function?,
+  expression : Handle?,
+) -> Bool {
+  match expression {
+    Some(expression) =>
+      self.expression_tree_contains_constant_reference(function, expression)
+    None => false
   }
 }
 

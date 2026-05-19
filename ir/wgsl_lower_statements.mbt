@@ -644,6 +644,9 @@ fn WgslIrLowerer::lower_local_declaration(
       Some(init_handle) => {
         if self.function_expression_is_const_expression(function, init_handle) &&
           self.function_expression_has_scalar_type(function, init_handle) {
+          let init_handle = self.normalized_local_constant_initializer(
+            function, init_handle,
+          )
           ignore(scope.locals.remove(local_decl.name().name()))
           ignore(
             scope.local_pointer_expressions.remove(local_decl.name().name()),
@@ -822,6 +825,7 @@ fn WgslIrLowerer::lower_local_const_declaration(
       "local const initializer is not a const expression",
     )
   }
+  let init = self.normalized_local_constant_initializer(function, init)
   ignore(scope.locals.remove(local_decl.name().name()))
   scope.local_constants.set(local_decl.name().name(), init)
 }

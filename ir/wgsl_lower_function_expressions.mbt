@@ -306,11 +306,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let handle = function.expressions.append(
         Expression::Binary(binary_op, left_handle, right_handle),
       )
-      match self.fold_function_constant_float_expression(function, handle) {
-        Some(literal) =>
-          function.expressions.append(Expression::Literal(literal))
-        None => handle
-      }
+      handle
     }
     Group(expr) =>
       self.lower_function_expression_node_with_expected(

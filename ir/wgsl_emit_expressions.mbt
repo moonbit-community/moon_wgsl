@@ -291,9 +291,13 @@ fn WgslIrEmitter::folded_float_math_expression(
   guard self.options.fold_numeric_constant_expressions else { return None }
   guard b == None && c == None && d == None else { return None }
   guard math_function == MathFunction::Sqrt else { return None }
-  match self.eval_float_expression_for_writer(function, a) {
+  match self.eval_float_expression_with_retained_constants(function, a) {
     Some(value) => self.float_value_literal_for_width(value.sqrt(), 4)
-    None => None
+    None =>
+      match self.eval_float_expression_for_writer(function, a) {
+        Some(value) => self.float_value_literal_for_width(value.sqrt(), 4)
+        None => None
+      }
   }
 }
 
@@ -608,7 +612,15 @@ fn WgslIrEmitter::folded_scalar_constructor_expression(
             None => None
           }
       }
-    _ => None
+    _ =>
+      match
+        self.eval_float_expression_with_retained_constants(
+          function,
+          components[0],
+        ) {
+        Some(value) => self.float_value_literal_for_width(value, target.width)
+        None => None
+      }
   }
 }
 
@@ -776,7 +788,8 @@ fn WgslIrEmitter::folded_expression_for_scalar_context(
 ) -> String? raise WgslIrEmitError {
   match scalar.kind {
     Float | AbstractFloat =>
-      match self.eval_float_expression_for_writer(function, operand) {
+      match
+        self.eval_float_expression_with_retained_constants(function, operand) {
         Some(value) => self.float_value_literal_for_width(value, scalar.width)
         None => None
       }
@@ -919,6 +932,18 @@ fn WgslIrEmitter::required_expression(
             "global expression \{handle.index()}",
           )
       }
+  }
+}
+
+///|
+fn WgslIrEmitter::optional_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Expression? {
+  match function {
+    Some(function) => function.expressions.items.get(handle.index())
+    None => self.shader_module.global_expressions.items.get(handle.index())
   }
 }
 

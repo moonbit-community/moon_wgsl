@@ -349,7 +349,7 @@ test "WGSL AST lowerer returns imported constants without synthetic temporaries"
 }
 
 ///|
-test "WGSL AST lowerer folds const float arithmetic" {
+test "WGSL AST lowerer preserves global const float arithmetic for writer policy" {
   let source =
     #|const PI = 3.1;
     #|
@@ -362,8 +362,8 @@ test "WGSL AST lowerer folds const float arithmetic" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("return 6.2f;"), content="true")
-  debug_inspect(emitted.contains("PI * 2f"), content="false")
+  debug_inspect(emitted.contains("return (PI * 2f);"), content="true")
+  debug_inspect(emitted.contains("return 6.2f;"), content="false")
 }
 
 ///|
