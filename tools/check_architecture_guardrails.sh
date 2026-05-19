@@ -349,6 +349,10 @@ if ! rg -n 'priv struct WgslIrNagaWriterArena' ir/wgsl_naga_compat_declarations.
   fail "Naga writer module must own an explicit writer arena, not bare declaration lists"
 fi
 
+if ! rg -n 'priv struct WgslIrNagaWriterTypeSlot|priv struct WgslIrNagaWriterConstantSlot|priv struct WgslIrNagaWriterGlobalVariableSlot|priv struct WgslIrNagaWriterFunctionSlot' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
+  fail "Naga writer arena must contain typed declaration slots, not only source-index arrays"
+fi
+
 if ! rg -n 'type_handles|constant_handles|override_handles|global_variable_handles|function_handles' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
   fail "Naga writer arena must materialize source-handle to Naga-handle maps"
 fi

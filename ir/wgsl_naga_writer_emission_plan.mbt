@@ -28,21 +28,90 @@ fn WgslIrNagaCompatPlanner::writer_emission_plan(
   arena : WgslIrNagaWriterArena,
 ) -> WgslIrNagaWriterEmissionPlan {
   WgslIrNagaWriterEmissionPlan::{
-    types: wgsl_ir_naga_compat_source_order_from_slots(arena.declarations.types),
-    constants: wgsl_ir_naga_compat_source_order_from_slots(
-      arena.declarations.constants,
+    types: wgsl_ir_naga_type_slot_source_order(arena.types),
+    constants: wgsl_ir_naga_constant_slot_source_order(arena.constants),
+    overrides: wgsl_ir_naga_override_slot_source_order(arena.overrides),
+    global_variables: wgsl_ir_naga_global_variable_slot_source_order(
+      arena.global_variables,
     ),
-    overrides: wgsl_ir_naga_compat_source_order_from_slots(
-      arena.declarations.overrides,
-    ),
-    global_variables: wgsl_ir_naga_compat_source_order_from_slots(
-      arena.declarations.global_variables,
-    ),
-    functions: wgsl_ir_naga_compat_source_order_from_slots(
-      arena.declarations.functions,
-    ),
+    functions: wgsl_ir_naga_function_slot_source_order(arena.functions),
     entry_points: self.entry_point_order(),
   }
+}
+
+///|
+fn wgsl_ir_naga_type_slot_source_order(
+  slots : Array[WgslIrNagaWriterTypeSlot],
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for slot in slots {
+    if slot.naga_index != order.length() {
+      abort("invalid Naga writer type slot order")
+    }
+    ignore(slot.item)
+    order.push(slot.source_index)
+  }
+  order
+}
+
+///|
+fn wgsl_ir_naga_constant_slot_source_order(
+  slots : Array[WgslIrNagaWriterConstantSlot],
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for slot in slots {
+    if slot.naga_index != order.length() {
+      abort("invalid Naga writer constant slot order")
+    }
+    ignore(slot.item)
+    order.push(slot.source_index)
+  }
+  order
+}
+
+///|
+fn wgsl_ir_naga_override_slot_source_order(
+  slots : Array[WgslIrNagaWriterOverrideSlot],
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for slot in slots {
+    if slot.naga_index != order.length() {
+      abort("invalid Naga writer override slot order")
+    }
+    ignore(slot.item)
+    order.push(slot.source_index)
+  }
+  order
+}
+
+///|
+fn wgsl_ir_naga_global_variable_slot_source_order(
+  slots : Array[WgslIrNagaWriterGlobalVariableSlot],
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for slot in slots {
+    if slot.naga_index != order.length() {
+      abort("invalid Naga writer global-variable slot order")
+    }
+    ignore(slot.item)
+    order.push(slot.source_index)
+  }
+  order
+}
+
+///|
+fn wgsl_ir_naga_function_slot_source_order(
+  slots : Array[WgslIrNagaWriterFunctionSlot],
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for slot in slots {
+    if slot.naga_index != order.length() {
+      abort("invalid Naga writer function slot order")
+    }
+    ignore(slot.item)
+    order.push(slot.source_index)
+  }
+  order
 }
 
 ///|
