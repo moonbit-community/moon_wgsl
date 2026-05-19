@@ -177,6 +177,7 @@ required_ir_split_files=(
   ir/wgsl_emit_runtime_writer.mbt
   ir/wgsl_emit_naga_oil_writer.mbt
   ir/wgsl_naga_writer_module.mbt
+  ir/wgsl_naga_writer_emission_plan.mbt
   ir/wgsl_emit_final_name_plan.mbt
   ir/wgsl_emit_module.mbt
   ir/wgsl_emit_declarations.mbt
@@ -341,6 +342,14 @@ fi
 
 if ! rg -n 'type_handles|constant_handles|override_handles|global_variable_handles|function_handles' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
   fail "Naga writer arena must materialize source-handle to Naga-handle maps"
+fi
+
+if ! rg -n 'priv struct WgslIrNagaWriterEmissionPlan' ir/wgsl_naga_writer_emission_plan.mbt >/dev/null; then
+  fail "Naga writer module must own an explicit declaration and entry-point emission plan"
+fi
+
+if ! rg -n 'module_\.entry_point_order\(\)' ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "Naga writer entry-point emission order must come from writer module emission plan"
 fi
 
 if ! rg -n 'contains_type_declaration|contains_constant_declaration|contains_global_variable_declaration|contains_function_declaration' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then

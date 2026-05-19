@@ -103,10 +103,7 @@ fn WgslIrEmitter::emit_module(
     needs_blank = true
     last_item_is_entry_point = false
   }
-  for index in 0..<self.shader_module.entry_points.length() {
-    if !self.should_emit_entry_point(index) {
-      continue
-    }
+  for index in self.entry_point_emission_order() {
     let entry_point = self.shader_module.entry_points[index]
     if needs_blank {
       out.write_string("\n")
@@ -119,6 +116,23 @@ fn WgslIrEmitter::emit_module(
     out.write_string("\n")
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::entry_point_emission_order(
+  self : WgslIrEmitter,
+) -> Array[Int] {
+  match self.naga_writer_module {
+    Some(module_) => return module_.entry_point_order()
+    None => ()
+  }
+  let order : Array[Int] = []
+  for index in 0..<self.shader_module.entry_points.length() {
+    if self.should_emit_entry_point(index) {
+      order.push(index)
+    }
+  }
+  order
 }
 
 ///|

@@ -17,6 +17,7 @@ priv struct WgslIrNagaWriterModule {
   shader_module : Module
   filter : WgslIrEmitFilter?
   arena : WgslIrNagaWriterArena
+  emission : WgslIrNagaWriterEmissionPlan
   mut names : WgslIrFinalNamePlan
 }
 
@@ -35,23 +36,14 @@ fn build_wgsl_ir_naga_writer_module(
     shader_module, root_items,
   )
   let planner = WgslIrNagaCompatPlanner::{ shader_module, filter }
+  let arena = planner.writer_arena()
   let view = WgslIrNagaWriterModule::{
     shader_module,
     filter,
-    arena: planner.writer_arena(),
+    arena,
+    emission: planner.writer_emission_plan(arena),
     names: WgslIrFinalNamePlan::empty(),
   }
   view.names = build_wgsl_ir_naga_writer_final_name_plan(view)
   view
-}
-
-///|
-fn WgslIrNagaWriterModule::should_emit_entry_point(
-  self : WgslIrNagaWriterModule,
-  index : Int,
-) -> Bool {
-  match self.filter {
-    Some(filter) => filter.contains_entry_point(index)
-    None => true
-  }
 }

@@ -148,43 +148,6 @@ fn WgslIrNagaCompatPlanner::global_variable_order(
 }
 
 ///|
-fn WgslIrNagaWriterModule::type_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.types)
-}
-
-///|
-fn WgslIrNagaWriterModule::constant_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.constants)
-}
-
-///|
-fn WgslIrNagaWriterModule::override_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.overrides)
-}
-
-///|
-fn WgslIrNagaWriterModule::global_variable_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(
-    self.arena.declarations.global_variables,
-  )
-}
-
-///|
-fn WgslIrNagaWriterModule::function_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.functions)
-}
-
-///|
 fn WgslIrNagaWriterModule::contains_type_declaration(
   self : WgslIrNagaWriterModule,
   index : Int,
