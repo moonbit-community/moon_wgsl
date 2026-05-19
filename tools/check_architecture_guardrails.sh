@@ -369,6 +369,14 @@ if ! rg -n 'module_\.entry_point_order\(\)' ir/wgsl_emit_module.mbt >/dev/null; 
   fail "Naga writer entry-point emission order must come from writer module emission plan"
 fi
 
+if ! rg -n 'emit_naga_writer_module' ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "Naga writer emission must use a dedicated slot-backed module emission path"
+fi
+
+if ! rg -n 'module_\.type_slots\(\)|module_\.constant_slots\(\)|module_\.global_variable_slots\(\)|module_\.function_slots\(\)' ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "Naga writer module emission must consume typed writer slots instead of source-index order lists"
+fi
+
 if ! rg -n 'contains_type_declaration|contains_constant_declaration|contains_global_variable_declaration|contains_function_declaration' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
   fail "Naga writer module declaration membership must come from declaration arena slots"
 fi

@@ -2,6 +2,10 @@
 fn WgslIrEmitter::emit_module(
   self : WgslIrEmitter,
 ) -> String raise WgslIrEmitError {
+  match self.naga_writer_module {
+    Some(module_) => return self.emit_naga_writer_module(module_)
+    None => ()
+  }
   let out = StringBuilder::new()
   let mut needs_blank = false
   let mut last_item_is_entry_point = false
@@ -104,6 +108,103 @@ fn WgslIrEmitter::emit_module(
     last_item_is_entry_point = false
   }
   for index in self.entry_point_emission_order() {
+    let entry_point = self.shader_module.entry_points[index]
+    if needs_blank {
+      out.write_string("\n")
+    }
+    self.emit_entry_point(out, entry_point, index)
+    needs_blank = true
+    last_item_is_entry_point = true
+  }
+  if needs_blank &&
+    self.options.emit_trailing_blank_after_module(last_item_is_entry_point) {
+    out.write_string("\n")
+  }
+  out.to_string()
+}
+
+///|
+fn WgslIrEmitter::emit_naga_writer_module(
+  self : WgslIrEmitter,
+  module_ : WgslIrNagaWriterModule,
+) -> String raise WgslIrEmitError {
+  let out = StringBuilder::new()
+  let mut needs_blank = false
+  let mut last_item_is_entry_point = false
+  if self.options.emit_source_directives() {
+    for directive in self.shader_module.directives {
+      out.write_string(directive)
+      out.write_string("\n")
+      needs_blank = true
+      last_item_is_entry_point = false
+    }
+  }
+  for slot in module_.type_slots() {
+    let ty = slot.item
+    match ty.inner {
+      Struct(_, _) if ty.name != None => {
+        if needs_blank {
+          out.write_string("\n")
+        }
+        self.emit_struct_type(out, Handle::Handle(slot.source_index), ty)
+        needs_blank = true
+        last_item_is_entry_point = false
+      }
+      _ => ()
+    }
+  }
+  let mut emitted_constant = false
+  for slot in module_.constant_slots() {
+    if self.should_inline_constant_expression(slot.item) {
+      continue
+    }
+    if needs_blank && !emitted_constant {
+      out.write_string("\n")
+    }
+    self.emit_constant(out, Handle::Handle(slot.source_index), slot.item)
+    needs_blank = true
+    last_item_is_entry_point = false
+    emitted_constant = true
+  }
+  let mut emitted_const_assert = false
+  for condition in self.shader_module.const_asserts {
+    if needs_blank && !emitted_const_assert {
+      out.write_string("\n")
+    }
+    self.emit_global_const_assert(out, condition)
+    needs_blank = true
+    last_item_is_entry_point = false
+    emitted_const_assert = true
+  }
+  let mut emitted_override = false
+  for slot in module_.override_slots() {
+    if needs_blank && !emitted_override {
+      out.write_string("\n")
+    }
+    self.emit_override(out, Handle::Handle(slot.source_index), slot.item)
+    needs_blank = true
+    last_item_is_entry_point = false
+    emitted_override = true
+  }
+  let mut emitted_global_variable = false
+  for slot in module_.global_variable_slots() {
+    if needs_blank && !emitted_global_variable {
+      out.write_string("\n")
+    }
+    self.emit_global_variable(out, Handle::Handle(slot.source_index), slot.item)
+    needs_blank = true
+    last_item_is_entry_point = false
+    emitted_global_variable = true
+  }
+  for slot in module_.function_slots() {
+    if needs_blank {
+      out.write_string("\n")
+    }
+    self.emit_function(out, slot.item, UserFunction(slot.source_index))
+    needs_blank = true
+    last_item_is_entry_point = false
+  }
+  for index in module_.entry_point_order() {
     let entry_point = self.shader_module.entry_points[index]
     if needs_blank {
       out.write_string("\n")

@@ -14,11 +14,11 @@
 
 ///|
 priv struct WgslIrNagaWriterEmissionPlan {
-  types : Array[Int]
-  constants : Array[Int]
-  overrides : Array[Int]
-  global_variables : Array[Int]
-  functions : Array[Int]
+  types : Array[WgslIrNagaWriterTypeSlot]
+  constants : Array[WgslIrNagaWriterConstantSlot]
+  overrides : Array[WgslIrNagaWriterOverrideSlot]
+  global_variables : Array[WgslIrNagaWriterGlobalVariableSlot]
+  functions : Array[WgslIrNagaWriterFunctionSlot]
   entry_points : Array[Int]
 }
 
@@ -28,13 +28,11 @@ fn WgslIrNagaCompatPlanner::writer_emission_plan(
   arena : WgslIrNagaWriterArena,
 ) -> WgslIrNagaWriterEmissionPlan {
   WgslIrNagaWriterEmissionPlan::{
-    types: wgsl_ir_naga_type_slot_source_order(arena.types),
-    constants: wgsl_ir_naga_constant_slot_source_order(arena.constants),
-    overrides: wgsl_ir_naga_override_slot_source_order(arena.overrides),
-    global_variables: wgsl_ir_naga_global_variable_slot_source_order(
-      arena.global_variables,
-    ),
-    functions: wgsl_ir_naga_function_slot_source_order(arena.functions),
+    types: arena.types,
+    constants: arena.constants,
+    overrides: arena.overrides,
+    global_variables: arena.global_variables,
+    functions: arena.functions,
     entry_points: self.entry_point_order(),
   }
 }
@@ -135,35 +133,35 @@ fn WgslIrNagaCompatPlanner::entry_point_order(
 fn WgslIrNagaWriterModule::type_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  self.emission.types
+  wgsl_ir_naga_type_slot_source_order(self.emission.types)
 }
 
 ///|
 fn WgslIrNagaWriterModule::constant_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  self.emission.constants
+  wgsl_ir_naga_constant_slot_source_order(self.emission.constants)
 }
 
 ///|
 fn WgslIrNagaWriterModule::override_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  self.emission.overrides
+  wgsl_ir_naga_override_slot_source_order(self.emission.overrides)
 }
 
 ///|
 fn WgslIrNagaWriterModule::global_variable_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  self.emission.global_variables
+  wgsl_ir_naga_global_variable_slot_source_order(self.emission.global_variables)
 }
 
 ///|
 fn WgslIrNagaWriterModule::function_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  self.emission.functions
+  wgsl_ir_naga_function_slot_source_order(self.emission.functions)
 }
 
 ///|
@@ -171,6 +169,41 @@ fn WgslIrNagaWriterModule::entry_point_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
   self.emission.entry_points
+}
+
+///|
+fn WgslIrNagaWriterModule::type_slots(
+  self : WgslIrNagaWriterModule,
+) -> Array[WgslIrNagaWriterTypeSlot] {
+  self.emission.types
+}
+
+///|
+fn WgslIrNagaWriterModule::constant_slots(
+  self : WgslIrNagaWriterModule,
+) -> Array[WgslIrNagaWriterConstantSlot] {
+  self.emission.constants
+}
+
+///|
+fn WgslIrNagaWriterModule::override_slots(
+  self : WgslIrNagaWriterModule,
+) -> Array[WgslIrNagaWriterOverrideSlot] {
+  self.emission.overrides
+}
+
+///|
+fn WgslIrNagaWriterModule::global_variable_slots(
+  self : WgslIrNagaWriterModule,
+) -> Array[WgslIrNagaWriterGlobalVariableSlot] {
+  self.emission.global_variables
+}
+
+///|
+fn WgslIrNagaWriterModule::function_slots(
+  self : WgslIrNagaWriterModule,
+) -> Array[WgslIrNagaWriterFunctionSlot] {
+  self.emission.functions
 }
 
 ///|
