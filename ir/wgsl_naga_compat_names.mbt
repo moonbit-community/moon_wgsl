@@ -135,32 +135,11 @@ fn WgslIrNagaCompatView::allocate_entry_point_body_names(
   ep_index : Int,
 ) -> Unit {
   let ep = self.shader_module.entry_points[ep_index]
-  let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
-  for local_index in 0..<ep.function.local_variables.items.length() {
-    table.names.set(
-      wgsl_ir_emit_name_key2("ep_local", ep_index, local_index),
-      namer.local_call_or(
-        temp_namer,
-        ep.function.local_variables.items[local_index].name,
-        "local",
-      ),
-    )
-  }
-  for expr_index in 0..<ep.function.expressions.items.length() {
-    match ep.function.expressions.items.get(expr_index) {
-      Some(CallResult(_)) => {
-        let semantic_index = wgsl_ir_emit_call_result_expression_index(
-          ep.function,
-          Handle::Handle(expr_index),
-        )
-        table.names.set(
-          wgsl_ir_emit_name_key2("ep_expr", ep_index, expr_index),
-          temp_namer.call("_e\{semantic_index}"),
-        )
-      }
-      _ => ()
-    }
-  }
+  table.allocate_function_body_names_from_arena(
+    EntryPointFunction(ep_index),
+    ep.function,
+    namer,
+  )
 }
 
 ///|
@@ -171,30 +150,9 @@ fn WgslIrNagaCompatView::allocate_function_body_names(
   fn_index : Int,
 ) -> Unit {
   let function = self.shader_module.functions.items[fn_index]
-  let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
-  for local_index in 0..<function.local_variables.items.length() {
-    table.names.set(
-      wgsl_ir_emit_name_key2("fn_local", fn_index, local_index),
-      namer.local_call_or(
-        temp_namer,
-        function.local_variables.items[local_index].name,
-        "local",
-      ),
-    )
-  }
-  for expr_index in 0..<function.expressions.items.length() {
-    match function.expressions.items.get(expr_index) {
-      Some(CallResult(_)) => {
-        let semantic_index = wgsl_ir_emit_call_result_expression_index(
-          function,
-          Handle::Handle(expr_index),
-        )
-        table.names.set(
-          wgsl_ir_emit_name_key2("fn_expr", fn_index, expr_index),
-          temp_namer.call("_e\{semantic_index}"),
-        )
-      }
-      _ => ()
-    }
-  }
+  table.allocate_function_body_names_from_arena(
+    UserFunction(fn_index),
+    function,
+    namer,
+  )
 }

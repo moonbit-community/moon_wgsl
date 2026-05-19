@@ -7,8 +7,6 @@ priv struct WgslIrFunctionScope {
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
-  hidden_temporary_name_indices : @set.Set[Int]
-  mut projected_temporary_name_offset : Int
   mut allow_generated_import_local_spelling : Bool
 }
 
@@ -29,8 +27,6 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     local_pointer_expressions: Map([]),
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
-    hidden_temporary_name_indices: @set.Set([]),
-    projected_temporary_name_offset: 0,
     allow_generated_import_local_spelling: true,
   }
 }
@@ -58,15 +54,6 @@ fn wgsl_ir_copy_string_handle_map(
 }
 
 ///|
-fn wgsl_ir_copy_int_set(source : @set.Set[Int]) -> @set.Set[Int] {
-  let copied : @set.Set[Int] = @set.Set([])
-  for value in source.iter() {
-    copied.add(value)
-  }
-  copied
-}
-
-///|
 fn WgslIrFunctionScope::child(
   self : WgslIrFunctionScope,
 ) -> WgslIrFunctionScope {
@@ -86,22 +73,7 @@ fn WgslIrFunctionScope::child(
     global_pointer_expressions: wgsl_ir_copy_string_handle_map(
       self.global_pointer_expressions,
     ),
-    hidden_temporary_name_indices: wgsl_ir_copy_int_set(
-      self.hidden_temporary_name_indices,
-    ),
-    projected_temporary_name_offset: self.projected_temporary_name_offset,
     allow_generated_import_local_spelling: self.allow_generated_import_local_spelling,
-  }
-}
-
-///|
-fn WgslIrFunctionScope::sync_child_counters(
-  self : WgslIrFunctionScope,
-  child : WgslIrFunctionScope,
-) -> Unit {
-  if child.projected_temporary_name_offset >
-    self.projected_temporary_name_offset {
-    self.projected_temporary_name_offset = child.projected_temporary_name_offset
   }
 }
 
@@ -178,24 +150,3 @@ fn WgslIrFunctionScope::argument_pointer_expression(
     }
   }
 }
-
-///|
-fn WgslIrFunctionScope::hide_temporary_name_indices(
-  self : WgslIrFunctionScope,
-  start : Int,
-  end : Int,
-) -> Unit {
-  for index in start..<end {
-    self.hidden_temporary_name_indices.add(index)
-  }
-}
-
-///|
-fn WgslIrFunctionScope::record_projected_temporary_expression(
-  self : WgslIrFunctionScope,
-  slots : Int,
-) -> Unit {
-  self.projected_temporary_name_offset += slots
-}
-
-///|

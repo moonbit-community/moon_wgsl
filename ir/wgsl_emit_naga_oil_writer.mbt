@@ -51,6 +51,5 @@ fn WgslIrNagaOilWriterBackend::emitter(
     naga_compat_view: Some(self.view),
     names: self.view.names,
     current_function_origin: None,
-    baked_function_expressions: Map([]),
   }
 }

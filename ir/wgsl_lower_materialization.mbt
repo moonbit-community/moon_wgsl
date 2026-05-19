@@ -1,91 +1,4 @@
 ///|
-fn WgslIrFunctionScope::function_expression_temporary_name(
-  self : WgslIrFunctionScope,
-  function : Function,
-  handle : Handle,
-) -> String {
-  let index = self.wgsl_ir_function_expression_semantic_index(function, handle)
-  let index = if wgsl_ir_function_expression_is_adjacent_materialized_load_after_local_snapshot(
-      function, handle,
-    ) {
-    index - 1
-  } else {
-    index
-  }
-  "_e\{index + self.projected_temporary_name_offset}"
-}
-
-///|
-fn WgslIrFunctionScope::wgsl_ir_function_expression_semantic_index(
-  self : WgslIrFunctionScope,
-  function : Function,
-  handle : Handle,
-) -> Int {
-  let mut skipped = 0
-  for index in 0..<handle.index() {
-    if self.hidden_temporary_name_indices.contains(index) ||
-      wgsl_ir_function_expression_is_synthetic_local_reference(
-        function,
-        Handle::Handle(index),
-      ) ||
-      wgsl_ir_function_expression_is_statement_call_result(
-        function,
-        Handle::Handle(index),
-      ) ||
-      wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
-        function,
-        Handle::Handle(index),
-      ) {
-      skipped += 1
-    }
-  }
-  handle.index() - skipped
-}
-
-///|
-fn wgsl_ir_function_expression_is_statement_call_result(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  match function.expressions.items.get(handle.index()) {
-    Some(CallResult(_)) => true
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_function_expression_is_adjacent_materialized_load_after_local_snapshot(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  if handle.index() == 0 {
-    return false
-  }
-  guard function.expressions.items.get(handle.index()) is Some(Load(_)) else {
-    return false
-  }
-  guard function.expressions.items.get(handle.index() - 1)
-    is Some(LocalVariable(local_handle)) else {
-    return false
-  }
-  guard function.local_variables.items.get(local_handle.index())
-    is Some(local_var) else {
-    return false
-  }
-  guard local_var.kind == Let else { return false }
-  guard local_var.name is Some(name) else { return false }
-  guard name.length() >= 2 && name[0:2] == "_e" else { return false }
-  match local_var.init {
-    Some(init) =>
-      match function.expressions.items.get(init.index()) {
-        Some(Load(_)) => true
-        _ => false
-      }
-    None => false
-  }
-}
-
-///|
 fn wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
   function : Function,
   handle : Handle,
@@ -169,22 +82,16 @@ fn wgsl_ir_function_expression_is_synthetic_local_reference(
         Some(local_var) =>
           if local_var.kind != Let {
             false
-          } else {
-            match local_var.name {
-              Some(name) =>
-                if local_var.generated_temporary {
-                  if wgsl_ir_local_variable_initializes_materialized_value_call(
-                      function, local_var,
-                    ) {
-                    true
-                  } else {
-                    local_var.generated_temporary_store_value_reference
-                  }
-                } else {
-                  !(name.length() >= 2 && name[0:2] == "_e")
-                }
-              None => false
+          } else if local_var.generated_temporary {
+            if wgsl_ir_local_variable_initializes_materialized_value_call(
+                function, local_var,
+              ) {
+              true
+            } else {
+              local_var.generated_temporary_store_value_reference
             }
+          } else {
+            true
           }
         None => false
       }
@@ -247,11 +154,11 @@ fn WgslIrLowerer::materialize_function_expression(
     Some(ty) => ty
     None =>
       raise WgslIrLowerError::MissingType(
-        "\{scope.function_expression_temporary_name(function, value)}: \{wgsl_ir_function_expression_debug(function, value)}",
+        "materialized expression \{value.index()}: \{wgsl_ir_function_expression_debug(function, value)}",
       )
   }
   let local_handle = function.local_variables.append(LocalVariable::{
-    name: Some(scope.function_expression_temporary_name(function, value)),
+    name: None,
     kind: Let,
     generated_temporary: true,
     generated_temporary_store_value_reference: false,
@@ -413,14 +320,6 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let parent_index = wgsl_ir_parent_expression_operand(
         function, index, lowered_index,
       )
-      if lowered_base != base &&
-        wgsl_ir_function_expression_is_generated_temporary_reference(
-          function, lowered_base,
-        ) {
-        scope.record_projected_temporary_expression(
-          wgsl_ir_projected_temporary_expression_slots(function, lowered_base),
-        )
-      }
       if parent_base != base || parent_index != index {
         function.expressions.append(
           Expression::Access(parent_base, parent_index),
@@ -436,14 +335,6 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let parent_base = wgsl_ir_parent_expression_operand(
         function, base, lowered_base,
       )
-      if lowered_base != base &&
-        wgsl_ir_function_expression_is_generated_temporary_reference(
-          function, lowered_base,
-        ) {
-        scope.record_projected_temporary_expression(
-          wgsl_ir_projected_temporary_expression_slots(function, lowered_base),
-        )
-      }
       if parent_base != base {
         function.expressions.append(Expression::AccessIndex(parent_base, index))
       } else {
@@ -457,14 +348,6 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let parent_base = wgsl_ir_parent_expression_operand(
         function, base, lowered_base,
       )
-      if lowered_base != base &&
-        wgsl_ir_function_expression_is_generated_temporary_reference(
-          function, lowered_base,
-        ) {
-        scope.record_projected_temporary_expression(
-          wgsl_ir_projected_temporary_expression_slots(function, lowered_base),
-        )
-      }
       if parent_base != base {
         function.expressions.append(
           Expression::Swizzle(size, parent_base, pattern),
@@ -829,7 +712,7 @@ fn WgslIrLowerer::materialize_short_circuit_expression(
     Some(ty) => ty
     None =>
       raise WgslIrLowerError::MissingType(
-        "\{scope.function_expression_temporary_name(function, value)}: short-circuit boolean expression",
+        "materialized short-circuit expression \{value.index()}: boolean expression",
       )
   }
   let mut result_ptr : Handle? = None

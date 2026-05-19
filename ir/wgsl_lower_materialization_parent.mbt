@@ -72,27 +72,3 @@ fn wgsl_ir_parent_sample_level_operand(
     _ => lowered
   }
 }
-
-///|
-fn wgsl_ir_projected_temporary_expression_slots(
-  function : Function,
-  handle : Handle,
-) -> Int {
-  match function.expressions.items.get(handle.index()) {
-    Some(LocalVariable(local_handle)) =>
-      match function.local_variables.items.get(local_handle.index()) {
-        Some(local_var) =>
-          match local_var.init {
-            Some(init) =>
-              match function.expressions.items.get(init.index()) {
-                Some(ImageQuery(_, _)) => 1
-                Some(ImageLoad(_, _, _, _, _)) => 0
-                _ => 2
-              }
-            None => 2
-          }
-        None => 2
-      }
-    _ => 2
-  }
-}

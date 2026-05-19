@@ -208,7 +208,7 @@ fn WgslIrEmitter::emit_statement(
               )
           }
           out.write_string(
-            "\{pad}let \{self.function_expression_baked_name(result_handle)}: \{self.type_name(ty)} = ",
+            "\{pad}let \{self.function_expression_temporary_name(result_handle)}: \{self.type_name(ty)} = ",
           )
         }
         None => out.write_string(pad)

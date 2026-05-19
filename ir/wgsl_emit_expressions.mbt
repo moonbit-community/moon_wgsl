@@ -28,6 +28,19 @@ fn WgslIrEmitter::function_expression(
   function : Function,
   handle : Handle,
 ) -> String raise WgslIrEmitError {
+  match self.optional_function_expression_temporary_name(handle) {
+    Some(name) => return name
+    None => ()
+  }
+  self.function_expression_inline(function, handle)
+}
+
+///|
+fn WgslIrEmitter::function_expression_inline(
+  self : WgslIrEmitter,
+  function : Function,
+  handle : Handle,
+) -> String raise WgslIrEmitError {
   let expression = match function.expressions.items.get(handle.index()) {
     Some(value) => value
     None =>
@@ -35,15 +48,13 @@ fn WgslIrEmitter::function_expression(
         "function expression \{handle.index()}",
       )
   }
-  match self.baked_function_expression_name(handle) {
-    Some(name) => return name
-    None => ()
-  }
   match expression {
-    CallResult(_) => return self.function_expression_baked_name(handle)
-    _ => ()
+    CallResult(_) =>
+      raise WgslIrEmitError::Unsupported(
+        "raw call result \{handle.index()} without arena temporary name",
+      )
+    _ => self.emit_expression(expression, Some(function))
   }
-  self.emit_expression(expression, Some(function))
 }
 
 ///|

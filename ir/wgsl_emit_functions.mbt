@@ -139,6 +139,9 @@ fn WgslIrEmitter::emit_local_declaration(
     None =>
       raise WgslIrEmitError::MissingHandle("local variable \{handle.index()}")
   }
+  if wgsl_ir_local_variable_is_generated_call_result_alias(function, local_var) {
+    return
+  }
   let name = self.local_variable_name(Some(function), handle)
   out.write_string(
     "\{wgsl_ir_indent(indent)}\{self.local_variable_keyword(local_var.kind)} \{name}",
@@ -148,7 +151,11 @@ fn WgslIrEmitter::emit_local_declaration(
   }
   match local_var.init {
     Some(init) => {
-      let init_expr = self.function_expression(function, init)
+      let init_expr = if local_var.generated_temporary {
+        self.function_expression_inline(function, init)
+      } else {
+        self.function_expression(function, init)
+      }
       if self.type_is_pointer(local_var.ty) &&
         wgsl_ir_expression_text_needs_address(init_expr) &&
         !self.expression_is_pointer(Some(function), init) {
@@ -162,11 +169,18 @@ fn WgslIrEmitter::emit_local_declaration(
     None => ()
   }
   out.write_string(";\n")
-  if local_var.generated_temporary {
-    match local_var.init {
-      Some(init) => self.record_baked_function_expression(init, name)
-      None => ()
-    }
+}
+
+///|
+fn wgsl_ir_local_variable_is_generated_call_result_alias(
+  function : Function,
+  local_var : LocalVariable,
+) -> Bool {
+  guard local_var.generated_temporary else { return false }
+  guard local_var.init is Some(init) else { return false }
+  match function.expressions.items.get(init.index()) {
+    Some(CallResult(_)) => true
+    _ => false
   }
 }
 

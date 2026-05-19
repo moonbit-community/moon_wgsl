@@ -51,6 +51,5 @@ fn WgslIrRuntimeWriterBackend::emitter(
     naga_compat_view: None,
     names: build_wgsl_ir_emit_name_table(self.shader_module),
     current_function_origin: None,
-    baked_function_expressions: Map([]),
   }
 }

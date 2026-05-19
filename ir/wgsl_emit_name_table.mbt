@@ -223,64 +223,22 @@ fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
   }
   for ep_index in 0..<module_.entry_points.length() {
     let ep = module_.entry_points[ep_index]
-    let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
-    for local_index in 0..<ep.function.local_variables.items.length() {
-      table.names.set(
-        wgsl_ir_emit_name_key2("ep_local", ep_index, local_index),
-        namer.local_call_or(
-          temp_namer,
-          ep.function.local_variables.items[local_index].name,
-          "local",
-        ),
-      )
-    }
-    for expr_index in 0..<ep.function.expressions.items.length() {
-      match ep.function.expressions.items.get(expr_index) {
-        Some(CallResult(_)) => {
-          let semantic_index = wgsl_ir_emit_call_result_expression_index(
-            ep.function,
-            Handle::Handle(expr_index),
-          )
-          table.names.set(
-            wgsl_ir_emit_name_key2("ep_expr", ep_index, expr_index),
-            temp_namer.call("_e\{semantic_index}"),
-          )
-        }
-        _ => ()
-      }
-    }
+    table.allocate_function_body_names_from_arena(
+      EntryPointFunction(ep_index),
+      ep.function,
+      namer,
+    )
   }
   for fn_index in 0..<module_.functions.items.length() {
     let function = module_.functions.items[fn_index]
     if wgsl_ir_name_table_function_is_entry_point(function, module_) {
       continue
     }
-    let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
-    for local_index in 0..<function.local_variables.items.length() {
-      table.names.set(
-        wgsl_ir_emit_name_key2("fn_local", fn_index, local_index),
-        namer.local_call_or(
-          temp_namer,
-          function.local_variables.items[local_index].name,
-          "local",
-        ),
-      )
-    }
-    for expr_index in 0..<function.expressions.items.length() {
-      match function.expressions.items.get(expr_index) {
-        Some(CallResult(_)) => {
-          let semantic_index = wgsl_ir_emit_call_result_expression_index(
-            function,
-            Handle::Handle(expr_index),
-          )
-          table.names.set(
-            wgsl_ir_emit_name_key2("fn_expr", fn_index, expr_index),
-            temp_namer.call("_e\{semantic_index}"),
-          )
-        }
-        _ => ()
-      }
-    }
+    table.allocate_function_body_names_from_arena(
+      UserFunction(fn_index),
+      function,
+      namer,
+    )
   }
   table
 }
@@ -300,29 +258,6 @@ fn wgsl_ir_name_table_function_is_entry_point(
     None => ()
   }
   false
-}
-
-///|
-fn wgsl_ir_emit_call_result_expression_index(
-  function : Function,
-  handle : Handle,
-) -> Int {
-  let mut skipped = 0
-  for index in 0..<handle.index() {
-    let expression_handle = Handle::Handle(index)
-    if wgsl_ir_function_expression_is_synthetic_local_reference(
-        function, expression_handle,
-      ) ||
-      wgsl_ir_function_expression_is_unmaterialized_function_argument_reference(
-        function, expression_handle, handle,
-      ) ||
-      wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
-        function, expression_handle,
-      ) {
-      skipped += 1
-    }
-  }
-  handle.index() - skipped
 }
 
 ///|
@@ -356,47 +291,5 @@ fn WgslIrEmitter::with_function_origin(
     naga_compat_view: self.naga_compat_view,
     names: self.names,
     current_function_origin: Some(origin),
-    baked_function_expressions: Map([]),
-  }
-}
-
-///|
-fn wgsl_ir_emit_baked_function_expression_key(
-  origin : WgslIrEmitFunctionOrigin,
-  handle : Handle,
-) -> String {
-  match origin {
-    UserFunction(index) => "function:\{index}:\{handle.index()}"
-    EntryPointFunction(index) => "entry-point:\{index}:\{handle.index()}"
-  }
-}
-
-///|
-fn WgslIrEmitter::baked_function_expression_name(
-  self : WgslIrEmitter,
-  handle : Handle,
-) -> String? {
-  match self.current_function_origin {
-    Some(origin) =>
-      self.baked_function_expressions.get(
-        wgsl_ir_emit_baked_function_expression_key(origin, handle),
-      )
-    None => None
-  }
-}
-
-///|
-fn WgslIrEmitter::record_baked_function_expression(
-  self : WgslIrEmitter,
-  handle : Handle,
-  name : String,
-) -> Unit {
-  match self.current_function_origin {
-    Some(origin) =>
-      self.baked_function_expressions.set(
-        wgsl_ir_emit_baked_function_expression_key(origin, handle),
-        name,
-      )
-    None => ()
   }
 }

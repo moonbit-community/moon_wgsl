@@ -576,6 +576,20 @@ if ! rg -n 'naga_compat_view: Some\(self\.view\)' ir/wgsl_emit_naga_oil_writer.m
   fail "naga-oil WGSL writer backend must emit through the Naga-compatible module view"
 fi
 
+if [[ ! -f ir/wgsl_emit_expression_temp_plan.mbt ]]; then
+  fail "WGSL expression temporary naming must be owned by the writer arena temp plan"
+fi
+
+if ! rg -n 'allocate_function_body_names_from_arena' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
+  fail "WGSL function body names must be allocated from expression arena provenance"
+fi
+
+if rg -n 'WgslIrFunctionScope::function_expression_temporary_name|scope\.function_expression_temporary_name|baked_function_expressions|record_baked_function_expression|projected_temporary_name_offset|hidden_temporary_name_indices|hide_temporary_name_indices|record_projected_temporary_expression' \
+  ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "expression temporary names must not be assigned by lowering scope counters or emitter baked-name writeback"
+fi
+
 if [[ ! -f ir/pkg.mbti ]]; then
   fail "IR package must own an explicit public interface whitelist in ir/pkg.mbti"
 fi

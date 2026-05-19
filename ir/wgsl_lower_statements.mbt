@@ -29,7 +29,6 @@ fn WgslIrLowerer::lower_child_block(
 ) -> Block raise WgslIrLowerError {
   let child_scope = scope.child()
   let lowered = self.lower_block(block, function, child_scope)
-  scope.sync_child_counters(child_scope)
   lowered
 }
 
@@ -279,7 +278,6 @@ fn WgslIrLowerer::lower_loop_blocks(
                 )
                 continuing = result.0
                 break_if = result.1
-                child_scope.sync_child_counters(continuing_scope)
               }
               [] => continuing = Block::Block()
             }
@@ -294,7 +292,6 @@ fn WgslIrLowerer::lower_loop_blocks(
             }
         }
       }
-      scope.sync_child_counters(child_scope)
     }
     [] => ()
   }
@@ -454,7 +451,6 @@ fn WgslIrLowerer::lower_for_statement(
       )
     }
   }
-  scope.sync_child_counters(loop_scope)
   block.push(Statement::Loop(loop_body, continuing, None))
 }
 
@@ -654,19 +650,10 @@ fn WgslIrLowerer::lower_local_declaration(
           scope.local_constants.set(local_decl.name().name(), init_handle)
           return
         }
-        let materialization_expression_start = function.expressions.items.length()
         let materialized = self.materialize_return_subexpressions(
           function, scope, block, init_handle,
         )
         if materialized != init_handle {
-          match function.expressions.items.get(materialized.index()) {
-            Some(Binary(_, _, _)) =>
-              scope.hide_temporary_name_indices(
-                materialization_expression_start,
-                function.expressions.items.length(),
-              )
-            _ => ()
-          }
           init = Some(materialized)
         }
         match init {

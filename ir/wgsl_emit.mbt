@@ -52,5 +52,4 @@ priv struct WgslIrEmitter {
   naga_compat_view : WgslIrNagaCompatView?
   names : WgslIrEmitNameTable
   current_function_origin : WgslIrEmitFunctionOrigin?
-  baked_function_expressions : Map[String, String]
 }

@@ -66,6 +66,5 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
     naga_compat_view: self.naga_compat_view,
     names: self.names,
     current_function_origin: self.current_function_origin,
-    baked_function_expressions: self.baked_function_expressions,
   }
 }

@@ -145,7 +145,7 @@ fn WgslIrEmitter::local_variable_name(
 }
 
 ///|
-fn WgslIrEmitter::function_expression_baked_name(
+fn WgslIrEmitter::function_expression_temporary_name(
   self : WgslIrEmitter,
   handle : Handle,
 ) -> String raise WgslIrEmitError {
@@ -162,5 +162,17 @@ fn WgslIrEmitter::function_expression_baked_name(
       raise WgslIrEmitError::Unsupported(
         "function expression without emitter function origin",
       )
+  }
+}
+
+///|
+fn WgslIrEmitter::optional_function_expression_temporary_name(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> String? {
+  match self.current_function_origin {
+    Some(origin) =>
+      self.names.get(wgsl_ir_emit_expression_temporary_name_key(origin, handle))
+    None => None
   }
 }
