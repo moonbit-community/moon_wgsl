@@ -80,16 +80,17 @@ fn WgslIrEmitter::integer_value_literal_for_kind(
   value : WgslIrEmitIntegerValue,
   kind : ScalarKind,
 ) -> String? {
-  ignore(self)
+  let numeric_policy = self.options.numeric_literal_policy()
   match kind {
     Uint =>
       match value.to_unsigned() {
-        Some(value) => Some("\{value}u")
+        Some(value) =>
+          Some(wgsl_ir_emit_unsigned_literal(value, numeric_policy))
         None => None
       }
     Sint =>
       match value.to_signed_int() {
-        Some(value) => Some("\{value}i")
+        Some(value) => Some(wgsl_ir_emit_signed_literal(value, numeric_policy))
         None => None
       }
     AbstractInt =>
@@ -108,12 +109,35 @@ fn WgslIrEmitter::float_value_literal_for_width(
   value : Double,
   width : Int,
 ) -> String? {
-  ignore(self)
+  let numeric_policy = self.options.numeric_literal_policy()
   match width {
     2 => Some(wgsl_ir_emit_f16_literal_text("\{value}"))
-    4 => Some(wgsl_ir_emit_f32_literal(Float::from_double(value)))
+    4 =>
+      Some(wgsl_ir_emit_f32_literal(Float::from_double(value), numeric_policy))
     8 => Some(wgsl_ir_emit_abstract_float_literal_text("\{value}"))
     _ => None
+  }
+}
+
+///|
+fn wgsl_ir_emit_unsigned_literal(
+  value : UInt,
+  policy : WgslIrNumericLiteralBytePolicy,
+) -> String {
+  match policy {
+    NagaCompatibleNumericLiteralSpelling | RuntimeNumericLiteralSpelling =>
+      "\{value}u"
+  }
+}
+
+///|
+fn wgsl_ir_emit_signed_literal(
+  value : Int,
+  policy : WgslIrNumericLiteralBytePolicy,
+) -> String {
+  match policy {
+    NagaCompatibleNumericLiteralSpelling | RuntimeNumericLiteralSpelling =>
+      "\{value}i"
   }
 }
 

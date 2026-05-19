@@ -139,14 +139,15 @@ fn WgslIrEmitter::sampling_name(
 
 ///|
 fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
+  let numeric_policy = self.options.numeric_literal_policy()
   match literal {
     F64(value) => wgsl_ir_emit_abstract_float_literal_text("\{value}")
-    F32(value) => wgsl_ir_emit_f32_literal(value)
+    F32(value) => wgsl_ir_emit_f32_literal(value, numeric_policy)
     F16(value) => wgsl_ir_emit_f16_literal_text("\{value}")
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
-    U32(value) => "\{value}u"
-    I32(value) => "\{value}i"
+    U32(value) => wgsl_ir_emit_unsigned_literal(value, numeric_policy)
+    I32(value) => wgsl_ir_emit_signed_literal(value, numeric_policy)
     U64(value) => "\{value}u"
     I64(value) => "\{value}"
     Bool(value) => if value { "true" } else { "false" }
@@ -155,19 +156,25 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
       if self.options.preserve_abstract_float_literals() {
         wgsl_ir_emit_abstract_float_literal_text("\{value}")
       } else {
-        wgsl_ir_emit_f32_literal(Float::from_double(value))
+        wgsl_ir_emit_f32_literal(Float::from_double(value), numeric_policy)
       }
   }
 }
 
 ///|
-fn wgsl_ir_emit_f32_literal(value : Float) -> String {
+fn wgsl_ir_emit_f32_literal(
+  value : Float,
+  policy : WgslIrNumericLiteralBytePolicy,
+) -> String {
   if wgsl_ir_f32_is_negative_zero(value) {
     return "-0f"
   }
-  wgsl_ir_emit_concrete_float_literal_text(
-    wgsl_ir_shortest_f32_literal_text(value),
-  )
+  match policy {
+    NagaCompatibleNumericLiteralSpelling | RuntimeNumericLiteralSpelling =>
+      wgsl_ir_emit_concrete_float_literal_text(
+        wgsl_ir_shortest_f32_literal_text(value),
+      )
+  }
 }
 
 ///|

@@ -37,11 +37,32 @@ priv enum WgslIrStorageTextureTypeBytePolicy {
 }
 
 ///|
+priv enum WgslIrLocalTypeAnnotationBytePolicy {
+  AnnotateConcreteLocalTypes
+  ElideInferredConcreteLocalTypes
+}
+
+///|
+priv enum WgslIrAtomicResultLocalAnnotationBytePolicy {
+  AnnotateAtomicCompareExchangeResultLocals
+  FollowLocalTypeAnnotationPolicy
+}
+
+///|
+priv enum WgslIrNumericLiteralBytePolicy {
+  NagaCompatibleNumericLiteralSpelling
+  RuntimeNumericLiteralSpelling
+}
+
+///|
 priv struct WgslIrWriterBytePlan {
   source_directives : WgslIrSourceDirectiveBytePolicy
   trailing_blank : WgslIrTrailingBlankBytePolicy
   implicit_flat_interpolation : WgslIrImplicitFlatInterpolationBytePolicy
   storage_texture_type_arguments : WgslIrStorageTextureTypeBytePolicy
+  local_type_annotations : WgslIrLocalTypeAnnotationBytePolicy
+  atomic_result_local_annotations : WgslIrAtomicResultLocalAnnotationBytePolicy
+  numeric_literals : WgslIrNumericLiteralBytePolicy
 }
 
 ///|
@@ -51,6 +72,9 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
     trailing_blank: SuppressTrailingBlankAfterEntryPoint,
     implicit_flat_interpolation: SuppressImplicitFlatInterpolation,
     storage_texture_type_arguments: SpacedStorageTextureTypeArguments,
+    local_type_annotations: ElideInferredConcreteLocalTypes,
+    atomic_result_local_annotations: FollowLocalTypeAnnotationPolicy,
+    numeric_literals: RuntimeNumericLiteralSpelling,
   }
 }
 
@@ -61,6 +85,9 @@ fn WgslIrWriterBytePlan::naga_oil_writer() -> WgslIrWriterBytePlan {
     trailing_blank: SuppressTrailingBlankAfterEntryPoint,
     implicit_flat_interpolation: EmitImplicitFlatInterpolation,
     storage_texture_type_arguments: CompactStorageTextureTypeArguments,
+    local_type_annotations: AnnotateConcreteLocalTypes,
+    atomic_result_local_annotations: AnnotateAtomicCompareExchangeResultLocals,
+    numeric_literals: NagaCompatibleNumericLiteralSpelling,
   }
 }
 
@@ -103,4 +130,31 @@ fn WgslIrWriterBytePlan::storage_texture_type_separator(
     CompactStorageTextureTypeArguments => ","
     SpacedStorageTextureTypeArguments => ", "
   }
+}
+
+///|
+fn WgslIrWriterBytePlan::should_annotate_all_local_types(
+  self : WgslIrWriterBytePlan,
+) -> Bool {
+  match self.local_type_annotations {
+    AnnotateConcreteLocalTypes => true
+    ElideInferredConcreteLocalTypes => false
+  }
+}
+
+///|
+fn WgslIrWriterBytePlan::should_annotate_atomic_compare_exchange_result_locals(
+  self : WgslIrWriterBytePlan,
+) -> Bool {
+  match self.atomic_result_local_annotations {
+    AnnotateAtomicCompareExchangeResultLocals => true
+    FollowLocalTypeAnnotationPolicy => false
+  }
+}
+
+///|
+fn WgslIrWriterBytePlan::numeric_literal_policy(
+  self : WgslIrWriterBytePlan,
+) -> WgslIrNumericLiteralBytePolicy {
+  self.numeric_literals
 }

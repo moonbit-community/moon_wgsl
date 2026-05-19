@@ -317,6 +317,10 @@ if ! rg -n 'WgslIrImplicitFlatInterpolationBytePolicy|WgslIrStorageTextureTypeBy
   fail "WGSL byte plan must own token-level interpolation and storage-texture formatting policy"
 fi
 
+if ! rg -n 'WgslIrLocalTypeAnnotationBytePolicy|WgslIrAtomicResultLocalAnnotationBytePolicy|WgslIrNumericLiteralBytePolicy' ir/wgsl_emit_byte_plan.mbt >/dev/null; then
+  fail "WGSL byte plan must own local type-annotation and numeric literal token policy"
+fi
+
 if ! rg -n 'emit_trailing_blank_after_module' ir/wgsl_emit_writer_policy.mbt ir/wgsl_emit_module.mbt >/dev/null; then
   fail "WGSL module trailing byte policy must be routed through the writer byte plan"
 fi

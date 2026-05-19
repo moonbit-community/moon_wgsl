@@ -40,10 +40,7 @@ fn WgslIrEmitOptions::preserve_abstract_float_literals(
 fn WgslIrEmitOptions::annotate_atomic_compare_exchange_result_locals(
   self : WgslIrEmitOptions,
 ) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+  self.byte_plan.should_annotate_atomic_compare_exchange_result_locals()
 }
 
 ///|
@@ -90,10 +87,14 @@ fn WgslIrEmitOptions::contextualize_numeric_literals(
 fn WgslIrEmitOptions::annotate_all_local_types(
   self : WgslIrEmitOptions,
 ) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+  self.byte_plan.should_annotate_all_local_types()
+}
+
+///|
+fn WgslIrEmitOptions::numeric_literal_policy(
+  self : WgslIrEmitOptions,
+) -> WgslIrNumericLiteralBytePolicy {
+  self.byte_plan.numeric_literal_policy()
 }
 
 ///|
