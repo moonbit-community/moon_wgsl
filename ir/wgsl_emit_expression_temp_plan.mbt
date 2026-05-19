@@ -39,15 +39,49 @@ fn wgsl_ir_emit_local_name_key(
 }
 
 ///|
+priv struct WgslIrNagaFunctionBodyPlan {
+  materialized_expressions : @set.Set[Int]
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::from_function(
+  function : Function,
+) -> WgslIrNagaFunctionBodyPlan {
+  WgslIrNagaFunctionBodyPlan::{
+    materialized_expressions: wgsl_ir_function_materialized_expression_indices(
+      function,
+    ),
+  }
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::contains_materialized_expression(
+  self : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> Bool {
+  self.materialized_expressions.contains(handle.index())
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::temporary_index(
+  self : WgslIrNagaFunctionBodyPlan,
+  function : Function,
+  handle : Handle,
+) -> Int {
+  wgsl_ir_emit_expression_temporary_index(function, self, handle)
+}
+
+///|
 fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
   namer : WgslIrNagaNamer,
 ) -> Unit {
+  let body_plan = WgslIrNagaFunctionBodyPlan::from_function(function)
   let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
   self.allocate_function_expression_temporary_names(
-    origin, function, temp_namer,
+    origin, function, body_plan, temp_namer,
   )
   for local_index in 0..<function.local_variables.items.length() {
     let local_handle = Handle::Handle(local_index)
@@ -76,17 +110,15 @@ fn WgslIrFinalNamePlan::allocate_function_expression_temporary_names(
   self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   temp_namer : WgslIrNagaNamer,
 ) -> Unit {
-  let materialized = wgsl_ir_function_materialized_expression_indices(function)
   for expr_index in 0..<function.expressions.items.length() {
-    if materialized.contains(expr_index) {
-      let handle = Handle::Handle(expr_index)
+    let handle = Handle::Handle(expr_index)
+    if body_plan.contains_materialized_expression(handle) {
       let key = wgsl_ir_emit_expression_temporary_name_key(origin, handle)
       if self.names.get(key) == None {
-        let semantic_index = wgsl_ir_emit_expression_temporary_index(
-          function, handle,
-        )
+        let semantic_index = body_plan.temporary_index(function, handle)
         self.names.set(key, temp_namer.call("_e\{semantic_index}"))
       }
     }
@@ -160,10 +192,10 @@ fn wgsl_ir_collect_statement_materialized_expression_indices(
 ///|
 fn wgsl_ir_emit_expression_temporary_index(
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   handle : Handle,
 ) -> Int {
   let mut skipped = 0
-  let materialized = wgsl_ir_function_materialized_expression_indices(function)
   let current_is_call_result = match
     function.expressions.items.get(handle.index()) {
     Some(CallResult(_)) => true
@@ -199,7 +231,7 @@ fn wgsl_ir_emit_expression_temporary_index(
     base_index
   }
   base_index +
-  wgsl_ir_emit_projected_temporary_slot_offset(function, materialized, handle)
+  wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
 }
 
 ///|
@@ -216,12 +248,12 @@ fn wgsl_ir_emit_expression_is_call_result(
 ///|
 fn wgsl_ir_emit_projected_temporary_slot_offset(
   function : Function,
-  materialized : @set.Set[Int],
+  body_plan : WgslIrNagaFunctionBodyPlan,
   limit : Handle,
 ) -> Int {
   let mut offset = 0
   for index in 0..<limit.index() {
-    if materialized.contains(index) &&
+    if body_plan.contains_materialized_expression(Handle::Handle(index)) &&
       wgsl_ir_emit_materialized_expression_has_projected_use_before(
         function,
         Handle::Handle(index),

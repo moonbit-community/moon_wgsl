@@ -613,6 +613,14 @@ if ! rg -n 'allocate_function_body_names_from_arena' ir/wgsl_emit_expression_tem
   fail "WGSL function body names must be allocated from expression arena provenance"
 fi
 
+if ! rg -n 'priv struct WgslIrNagaFunctionBodyPlan' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
+  fail "WGSL Naga temporary planning must be represented as a function-body arena plan"
+fi
+
+if ! rg -n 'contains_materialized_expression|temporary_index' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
+  fail "WGSL function-body arena plan must own materialized expression membership and temp index calculation"
+fi
+
 if rg -n 'WgslIrFunctionScope::function_expression_temporary_name|scope\.function_expression_temporary_name|baked_function_expressions|record_baked_function_expression|projected_temporary_name_offset|hidden_temporary_name_indices|hide_temporary_name_indices|record_projected_temporary_expression' \
   ir --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
