@@ -174,6 +174,8 @@ required_ir_split_files=(
   ir/wgsl_lower_materialization.mbt
   ir/wgsl_lower_statements.mbt
   ir/wgsl_emit_writer_policy.mbt
+  ir/wgsl_emit_runtime_writer.mbt
+  ir/wgsl_emit_naga_oil_writer.mbt
   ir/wgsl_emit_module.mbt
   ir/wgsl_emit_declarations.mbt
   ir/wgsl_emit_functions.mbt
@@ -537,8 +539,12 @@ if [[ ! -f testdata/gpuweb_cts_template_invalid_accepted_by_oracle.txt ]]; then
   fail "official WGSL template invalid oracle-accepted cases must be manifest-owned"
 fi
 
-if ! rg -n 'validate_wgsl_ir_module\(shader_module\)' ir/wgsl_emit.mbt >/dev/null; then
-  fail "WGSL IR emission must run internal IR validation before writing source"
+if ! rg -n 'validate_wgsl_ir_module\(self\.shader_module\)' ir/wgsl_emit_runtime_writer.mbt >/dev/null; then
+  fail "runtime WGSL writer backend must run internal IR validation before writing source"
+fi
+
+if ! rg -n 'validate_wgsl_ir_module\(self\.shader_module\)' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
+  fail "naga-oil WGSL writer backend must run internal IR validation before writing source"
 fi
 
 if [[ ! -f ir/pkg.mbti ]]; then

@@ -132,10 +132,8 @@ fn emit_naga_oil_writer_compatible_wgsl_source_from_ir_entry_roots(
   if roots.length() == 0 {
     emit_naga_oil_writer_compatible_wgsl_source_from_ir(module_)
   } else {
-    let source = emit_wgsl_module_from_ir_with_options_and_roots(
-      module_,
-      WgslIrEmitOptions::naga_oil_writer_compatible(),
-      roots,
+    let source = emit_wgsl_module_from_ir_naga_oil_writer_compatible_roots(
+      module_, roots,
     ) catch {
       error => raise WgslIrPipelineError::Emit(error.message())
     }

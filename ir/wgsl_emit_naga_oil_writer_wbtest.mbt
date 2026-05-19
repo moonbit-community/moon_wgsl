@@ -1,0 +1,140 @@
+///|
+test "IR emitter matches Naga temp slots around nested call arguments" {
+  let source =
+    #|struct View { clip_from_world: mat4x4<f32>, }
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|fn affine3_to_square(affine: mat3x4<f32>) -> mat4x4<f32> {
+    #|  return transpose(mat4x4<f32>(affine[0], affine[1], affine[2], vec4<f32>(0.0, 0.0, 0.0, 1.0)));
+    #|}
+    #|struct VertexInput {
+    #|  @builtin(vertex_index) index: u32,
+    #|  @location(0) i_model_transpose_col0: vec4<f32>,
+    #|  @location(1) i_model_transpose_col1: vec4<f32>,
+    #|  @location(2) i_model_transpose_col2: vec4<f32>,
+    #|  @location(3) i_color: vec4<f32>,
+    #|  @location(4) i_uv_offset_scale: vec4<f32>,
+    #|}
+    #|struct VertexOutput {
+    #|  @builtin(position) clip_position: vec4<f32>,
+    #|  @location(0) uv: vec2<f32>,
+    #|  @location(1) @interpolate(flat) color: vec4<f32>,
+    #|}
+    #|@vertex fn vertex(in: VertexInput) -> VertexOutput {
+    #|  var out: VertexOutput;
+    #|  let vertex_position = vec3<f32>(f32(in.index & 0x1u), f32((in.index & 0x2u) >> 1u), 0.0);
+    #|  out.clip_position = view.clip_from_world * affine3_to_square(mat3x4<f32>(in.i_model_transpose_col0, in.i_model_transpose_col1, in.i_model_transpose_col2)) * vec4<f32>(vertex_position, 1.0);
+    #|  out.uv = vec2<f32>(vertex_position.xy) * in.i_uv_offset_scale.zw + in.i_uv_offset_scale.xy;
+    #|  out.color = in.i_color;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "let _e22: mat4x4<f32> = affine3_to_square(mat3x4<f32>(in.i_model_transpose_col0_, in.i_model_transpose_col1_, in.i_model_transpose_col2_));",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "out.clip_position = ((_e17 * _e22) * vec4<f32>(vertex_position, 1f));",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e38: VertexOutput = out;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e21: mat4x4<f32>"), content="false")
+  debug_inspect(
+    emitted.contains("let _e39: VertexOutput = out;"),
+    content="false",
+  )
+}
+
+///|
+test "IR emitter ignores materialized temporary locals in Naga arena order" {
+  let source =
+    #|struct View {
+    #|  clip_from_world: mat4x4<f32>,
+    #|}
+    #|
+    #|struct UiVertexOutput {
+    #|  @builtin(position) position: vec4<f32>,
+    #|  @location(0) uv: vec2<f32>,
+    #|  @location(1) size: vec2<f32>,
+    #|  @location(2) border_widths: vec4<f32>,
+    #|  @location(3) border_radius: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|
+    #|@vertex
+    #|fn vertex(
+    #|  @location(0) vertex_position: vec3<f32>,
+    #|  @location(1) vertex_uv: vec2<f32>,
+    #|  @location(2) size: vec2<f32>,
+    #|  @location(3) border_widths: vec4<f32>,
+    #|  @location(4) border_radius: vec4<f32>,
+    #|) -> UiVertexOutput {
+    #|  var out: UiVertexOutput;
+    #|  out.uv = vertex_uv;
+    #|  out.position = view.clip_from_world * vec4<f32>(vertex_position, 1.0);
+    #|  out.size = size;
+    #|  out.border_widths = border_widths;
+    #|  out.border_radius = border_radius;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e17: UiVertexOutput = out;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return _e17;"), content="true")
+  debug_inspect(
+    emitted.contains("let _e18: UiVertexOutput = out;"),
+    content="false",
+  )
+}
+
+///|
+test "naga-oil writer profile suppresses source directives like Naga writer" {
+  let source =
+    #|enable dual_source_blending;
+    #|
+    #|struct Out {
+    #|  @location(0) @blend_src(0) a: vec4<f32>,
+    #|  @location(0) @blend_src(1) b: vec4<f32>,
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> Out {
+    #|  return Out(vec4<f32>(0.0), vec4<f32>(1.0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let runtime = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let parity = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    runtime.contains("enable dual_source_blending;"),
+    content="true",
+  )
+  debug_inspect(
+    parity.contains("enable dual_source_blending;"),
+    content="false",
+  )
+}

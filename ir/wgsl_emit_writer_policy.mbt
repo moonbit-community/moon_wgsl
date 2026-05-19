@@ -31,7 +31,7 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
 }
 
 ///|
-fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
+fn WgslIrEmitOptions::naga_oil_writer_backend() -> WgslIrEmitOptions {
   WgslIrEmitOptions::{
     preserve_abstract_float_literals: false,
     annotate_atomic_compare_exchange_result_locals: true,

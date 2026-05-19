@@ -19,10 +19,9 @@ The preprocessing target is:
   core.
 - Keep every mirrored upstream expected fixture classified in
   `testdata/naga_oil_upstream/compose_tests/parity_manifest.tsv`.
-- Byte-diff every deterministic WGSL compose output through an explicit
-  naga-oil writer parity profile, while separately validating the default
-  runtime WGSL output when upstream writer bytes exercise a non-runtime writer
-  form.
+- Byte-diff every deterministic WGSL compose output through the independent
+  naga-oil writer backend, while separately validating the default runtime
+  WGSL backend when upstream writer bytes exercise a non-runtime writer form.
 - Gate source-level composer errors locally, including the mirrored Naga-style
   parser/validator diagnostics and deterministic GLSL frontend compose outputs
   that appear in the upstream fixture set.

@@ -123,6 +123,18 @@ fn build_wgsl_ir_emit_filter(
 }
 
 ///|
+fn wgsl_ir_emit_filter_from_optional_roots(
+  shader_module : Module,
+  root_items : Array[String]?,
+) -> WgslIrEmitFilter? {
+  match root_items {
+    Some(root_items) if root_items.length() > 0 =>
+      Some(build_wgsl_ir_emit_filter(shader_module, root_items))
+    _ => None
+  }
+}
+
+///|
 fn WgslIrEmitFilter::mark_root_name(
   self : WgslIrEmitFilter,
   shader_module : Module,
