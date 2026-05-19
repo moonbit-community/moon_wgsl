@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv struct WgslIrNagaCompatView {
+priv struct WgslIrNagaWriterModule {
   shader_module : Module
   filter : WgslIrEmitFilter?
   declarations : WgslIrNagaCompatDeclarationArena
@@ -27,27 +27,27 @@ priv struct WgslIrNagaCompatPlanner {
 }
 
 ///|
-fn build_wgsl_ir_naga_compat_view(
+fn build_wgsl_ir_naga_writer_module(
   shader_module : Module,
   root_items : Array[String]?,
-) -> WgslIrNagaCompatView {
+) -> WgslIrNagaWriterModule {
   let filter = wgsl_ir_emit_filter_from_optional_roots(
     shader_module, root_items,
   )
   let planner = WgslIrNagaCompatPlanner::{ shader_module, filter }
-  let view = WgslIrNagaCompatView::{
+  let view = WgslIrNagaWriterModule::{
     shader_module,
     filter,
     declarations: planner.declaration_arena(),
     names: WgslIrEmitNameTable::empty(),
   }
-  view.names = build_wgsl_ir_emit_name_table_for_naga_compat_view(view)
+  view.names = build_wgsl_ir_emit_name_table_for_naga_writer_module(view)
   view
 }
 
 ///|
-fn WgslIrNagaCompatView::should_emit_entry_point(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::should_emit_entry_point(
+  self : WgslIrNagaWriterModule,
   index : Int,
 ) -> Bool {
   match self.filter {

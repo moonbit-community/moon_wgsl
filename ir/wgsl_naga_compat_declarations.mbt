@@ -121,27 +121,29 @@ fn WgslIrNagaCompatPlanner::global_variable_order(
 }
 
 ///|
-fn WgslIrNagaCompatView::type_order(self : WgslIrNagaCompatView) -> Array[Int] {
+fn WgslIrNagaWriterModule::type_order(
+  self : WgslIrNagaWriterModule,
+) -> Array[Int] {
   wgsl_ir_naga_compat_source_order_from_slots(self.declarations.types)
 }
 
 ///|
-fn WgslIrNagaCompatView::constant_order(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::constant_order(
+  self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
   wgsl_ir_naga_compat_source_order_from_slots(self.declarations.constants)
 }
 
 ///|
-fn WgslIrNagaCompatView::override_order(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::override_order(
+  self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
   wgsl_ir_naga_compat_source_order_from_slots(self.declarations.overrides)
 }
 
 ///|
-fn WgslIrNagaCompatView::global_variable_order(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::global_variable_order(
+  self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
   wgsl_ir_naga_compat_source_order_from_slots(
     self.declarations.global_variables,
@@ -149,8 +151,8 @@ fn WgslIrNagaCompatView::global_variable_order(
 }
 
 ///|
-fn WgslIrNagaCompatView::function_order(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::function_order(
+  self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
   wgsl_ir_naga_compat_source_order_from_slots(self.declarations.functions)
 }

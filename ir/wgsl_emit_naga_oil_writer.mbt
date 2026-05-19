@@ -1,7 +1,7 @@
 ///|
 priv struct WgslIrNagaOilWriterBackend {
   shader_module : Module
-  view : WgslIrNagaCompatView
+  view : WgslIrNagaWriterModule
 }
 
 ///|
@@ -11,7 +11,7 @@ fn emit_wgsl_module_with_naga_oil_writer_backend(
 ) -> String raise WgslIrEmitError {
   let backend = WgslIrNagaOilWriterBackend::{
     shader_module,
-    view: build_wgsl_ir_naga_compat_view(shader_module, root_items),
+    view: build_wgsl_ir_naga_writer_module(shader_module, root_items),
   }
   backend.emit()
 }
@@ -48,7 +48,7 @@ fn WgslIrNagaOilWriterBackend::emitter(
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::naga_oil_writer_backend(),
     filter: self.view.filter,
-    naga_compat_view: Some(self.view),
+    naga_writer_module: Some(self.view),
     names: self.view.names,
     current_function_origin: None,
   }

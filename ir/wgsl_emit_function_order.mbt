@@ -14,7 +14,7 @@
 
 ///|
 fn WgslIrEmitter::function_emission_order(self : WgslIrEmitter) -> Array[Int] {
-  match self.naga_compat_view {
+  match self.naga_writer_module {
     Some(view) => view.function_order()
     None => self.source_ordered_function_indices()
   }

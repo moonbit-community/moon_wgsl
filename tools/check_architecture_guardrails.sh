@@ -176,7 +176,7 @@ required_ir_split_files=(
   ir/wgsl_emit_writer_policy.mbt
   ir/wgsl_emit_runtime_writer.mbt
   ir/wgsl_emit_naga_oil_writer.mbt
-  ir/wgsl_naga_compat_view.mbt
+  ir/wgsl_naga_writer_module.mbt
   ir/wgsl_emit_module.mbt
   ir/wgsl_emit_declarations.mbt
   ir/wgsl_emit_functions.mbt
@@ -310,11 +310,11 @@ if ! rg -n 'fn wgsl_ir_collect_block_function_calls' ir/wgsl_naga_compat_depende
   fail "Naga-compatible dependency layer must own function body traversal"
 fi
 
-if rg -n 'build_wgsl_ir_emit_name_table_for_naga_compat_view' ir/wgsl_emit_name_table.mbt >/dev/null; then
+if rg -n 'build_wgsl_ir_emit_name_table_for_naga_writer_module' ir/wgsl_emit_name_table.mbt >/dev/null; then
   fail "Naga-compatible final name allocation must not live in the generic emitter name table"
 fi
 
-if ! rg -n 'build_wgsl_ir_emit_name_table_for_naga_compat_view' ir/wgsl_naga_compat_names.mbt >/dev/null; then
+if ! rg -n 'build_wgsl_ir_emit_name_table_for_naga_writer_module' ir/wgsl_naga_compat_names.mbt >/dev/null; then
   fail "Naga-compatible name layer must own final name allocation"
 fi
 
@@ -568,11 +568,11 @@ if ! rg -n 'validate_wgsl_ir_module\(self\.shader_module\)' ir/wgsl_emit_naga_oi
   fail "naga-oil WGSL writer backend must run internal IR validation before writing source"
 fi
 
-if ! rg -n 'build_wgsl_ir_naga_compat_view\(' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
+if ! rg -n 'build_wgsl_ir_naga_writer_module\(' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
   fail "naga-oil WGSL writer backend must build a Naga-compatible module view before emission"
 fi
 
-if ! rg -n 'naga_compat_view: Some\(self\.view\)' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
+if ! rg -n 'naga_writer_module: Some\(self\.view\)' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
   fail "naga-oil WGSL writer backend must emit through the Naga-compatible module view"
 fi
 

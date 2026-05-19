@@ -13,8 +13,8 @@
 // limitations under the License.
 
 ///|
-fn build_wgsl_ir_emit_name_table_for_naga_compat_view(
-  view : WgslIrNagaCompatView,
+fn build_wgsl_ir_emit_name_table_for_naga_writer_module(
+  view : WgslIrNagaWriterModule,
 ) -> WgslIrEmitNameTable {
   let module_ = view.shader_module
   let table = WgslIrEmitNameTable::empty()
@@ -60,8 +60,8 @@ fn build_wgsl_ir_emit_name_table_for_naga_compat_view(
 }
 
 ///|
-fn WgslIrNagaCompatView::allocate_type_name(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::allocate_type_name(
+  self : WgslIrNagaWriterModule,
   table : WgslIrEmitNameTable,
   namer : WgslIrNagaNamer,
   index : Int,
@@ -91,8 +91,8 @@ fn WgslIrNagaCompatView::allocate_type_name(
 }
 
 ///|
-fn WgslIrNagaCompatView::allocate_entry_point_signature_names(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::allocate_entry_point_signature_names(
+  self : WgslIrNagaWriterModule,
   table : WgslIrEmitNameTable,
   namer : WgslIrNagaNamer,
   ep_index : Int,
@@ -108,8 +108,8 @@ fn WgslIrNagaCompatView::allocate_entry_point_signature_names(
 }
 
 ///|
-fn WgslIrNagaCompatView::allocate_function_signature_names(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::allocate_function_signature_names(
+  self : WgslIrNagaWriterModule,
   table : WgslIrEmitNameTable,
   namer : WgslIrNagaNamer,
   fn_index : Int,
@@ -128,8 +128,8 @@ fn WgslIrNagaCompatView::allocate_function_signature_names(
 }
 
 ///|
-fn WgslIrNagaCompatView::allocate_entry_point_body_names(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
+  self : WgslIrNagaWriterModule,
   table : WgslIrEmitNameTable,
   namer : WgslIrNagaNamer,
   ep_index : Int,
@@ -143,8 +143,8 @@ fn WgslIrNagaCompatView::allocate_entry_point_body_names(
 }
 
 ///|
-fn WgslIrNagaCompatView::allocate_function_body_names(
-  self : WgslIrNagaCompatView,
+fn WgslIrNagaWriterModule::allocate_function_body_names(
+  self : WgslIrNagaWriterModule,
   table : WgslIrEmitNameTable,
   namer : WgslIrNagaNamer,
   fn_index : Int,

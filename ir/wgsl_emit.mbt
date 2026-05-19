@@ -49,7 +49,7 @@ priv struct WgslIrEmitter {
   shader_module : Module
   options : WgslIrEmitOptions
   filter : WgslIrEmitFilter?
-  naga_compat_view : WgslIrNagaCompatView?
+  naga_writer_module : WgslIrNagaWriterModule?
   names : WgslIrEmitNameTable
   current_function_origin : WgslIrEmitFunctionOrigin?
 }

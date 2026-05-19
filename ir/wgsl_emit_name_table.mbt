@@ -288,7 +288,7 @@ fn WgslIrEmitter::with_function_origin(
     shader_module: self.shader_module,
     options: self.options,
     filter: self.filter,
-    naga_compat_view: self.naga_compat_view,
+    naga_writer_module: self.naga_writer_module,
     names: self.names,
     current_function_origin: Some(origin),
   }
