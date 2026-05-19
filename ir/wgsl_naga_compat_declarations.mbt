@@ -158,6 +158,58 @@ fn WgslIrNagaWriterModule::function_order(
 }
 
 ///|
+fn WgslIrNagaWriterModule::contains_type_declaration(
+  self : WgslIrNagaWriterModule,
+  index : Int,
+) -> Bool {
+  wgsl_ir_naga_compat_slots_contain_source_index(self.declarations.types, index)
+}
+
+///|
+fn WgslIrNagaWriterModule::contains_constant_declaration(
+  self : WgslIrNagaWriterModule,
+  index : Int,
+) -> Bool {
+  wgsl_ir_naga_compat_slots_contain_source_index(
+    self.declarations.constants,
+    index,
+  )
+}
+
+///|
+fn WgslIrNagaWriterModule::contains_override_declaration(
+  self : WgslIrNagaWriterModule,
+  index : Int,
+) -> Bool {
+  wgsl_ir_naga_compat_slots_contain_source_index(
+    self.declarations.overrides,
+    index,
+  )
+}
+
+///|
+fn WgslIrNagaWriterModule::contains_global_variable_declaration(
+  self : WgslIrNagaWriterModule,
+  index : Int,
+) -> Bool {
+  wgsl_ir_naga_compat_slots_contain_source_index(
+    self.declarations.global_variables,
+    index,
+  )
+}
+
+///|
+fn WgslIrNagaWriterModule::contains_function_declaration(
+  self : WgslIrNagaWriterModule,
+  index : Int,
+) -> Bool {
+  wgsl_ir_naga_compat_slots_contain_source_index(
+    self.declarations.functions,
+    index,
+  )
+}
+
+///|
 fn wgsl_ir_naga_compat_declaration_slots(
   source_order : Array[Int],
 ) -> Array[WgslIrNagaCompatDeclarationSlot] {
@@ -183,6 +235,19 @@ fn wgsl_ir_naga_compat_source_order_from_slots(
     order.push(slot.source_index)
   }
   order
+}
+
+///|
+fn wgsl_ir_naga_compat_slots_contain_source_index(
+  slots : Array[WgslIrNagaCompatDeclarationSlot],
+  index : Int,
+) -> Bool {
+  for slot in slots {
+    if slot.source_index == index {
+      return true
+    }
+  }
+  false
 }
 
 ///|

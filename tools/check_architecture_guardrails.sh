@@ -322,6 +322,14 @@ if ! rg -n 'priv struct WgslIrNagaCompatDeclarationArena' ir/wgsl_naga_compat_de
   fail "Naga-compatible declaration layer must own declaration arena slots"
 fi
 
+if ! rg -n 'contains_type_declaration|contains_constant_declaration|contains_global_variable_declaration|contains_function_declaration' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
+  fail "Naga writer module declaration membership must come from declaration arena slots"
+fi
+
+if ! rg -n 'module_\.contains_type_declaration|module_\.contains_constant_declaration|module_\.contains_global_variable_declaration|module_\.contains_function_declaration' ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "Naga writer emission must consult declaration arena membership instead of generic filter membership"
+fi
+
 user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir --glob '*.mbt' | wc -l | tr -d ' ')"
 if (( user_call_arg_sites < 2 )); then
   fail "expression-level and statement-level user function calls must share one argument-lowering path"

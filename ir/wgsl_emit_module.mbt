@@ -217,6 +217,10 @@ fn WgslIrEmitter::default_global_variable_emission_order(
 
 ///|
 fn WgslIrEmitter::should_emit_type(self : WgslIrEmitter, index : Int) -> Bool {
+  match self.naga_writer_module {
+    Some(module_) => return module_.contains_type_declaration(index)
+    None => ()
+  }
   match self.filter {
     Some(filter) => filter.contains_type(index)
     None => true
@@ -233,6 +237,10 @@ fn WgslIrEmitter::should_emit_constant(
       return false
     _ => ()
   }
+  match self.naga_writer_module {
+    Some(module_) => return module_.contains_constant_declaration(index)
+    None => ()
+  }
   match self.filter {
     Some(filter) => filter.contains_constant(index)
     None => true
@@ -244,6 +252,10 @@ fn WgslIrEmitter::should_emit_override(
   self : WgslIrEmitter,
   index : Int,
 ) -> Bool {
+  match self.naga_writer_module {
+    Some(module_) => return module_.contains_override_declaration(index)
+    None => ()
+  }
   match self.filter {
     Some(filter) => filter.contains_override(index)
     None => true
@@ -255,6 +267,10 @@ fn WgslIrEmitter::should_emit_global_variable(
   self : WgslIrEmitter,
   index : Int,
 ) -> Bool {
+  match self.naga_writer_module {
+    Some(module_) => return module_.contains_global_variable_declaration(index)
+    None => ()
+  }
   match self.filter {
     Some(filter) => filter.contains_global_variable(index)
     None => true
@@ -266,6 +282,10 @@ fn WgslIrEmitter::should_emit_function(
   self : WgslIrEmitter,
   index : Int,
 ) -> Bool {
+  match self.naga_writer_module {
+    Some(module_) => return module_.contains_function_declaration(index)
+    None => ()
+  }
   match self.filter {
     Some(filter) => filter.contains_function(index)
     None => true
