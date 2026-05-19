@@ -49,6 +49,7 @@ priv struct WgslIrEmitter {
   shader_module : Module
   options : WgslIrEmitOptions
   filter : WgslIrEmitFilter?
+  naga_compat_view : WgslIrNagaCompatView?
   names : WgslIrEmitNameTable
   current_function_origin : WgslIrEmitFunctionOrigin?
   baked_function_expressions : Map[String, String]

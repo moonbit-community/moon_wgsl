@@ -14,6 +14,10 @@
 
 ///|
 fn WgslIrEmitter::function_emission_order(self : WgslIrEmitter) -> Array[Int] {
+  match self.naga_compat_view {
+    Some(view) => return view.function_order
+    None => ()
+  }
   if !self.options.order_functions_by_naga_reachability {
     return self.source_ordered_function_indices()
   }

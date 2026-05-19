@@ -1,7 +1,7 @@
 ///|
 priv struct WgslIrNagaOilWriterBackend {
   shader_module : Module
-  filter : WgslIrEmitFilter?
+  view : WgslIrNagaCompatView
 }
 
 ///|
@@ -11,7 +11,7 @@ fn emit_wgsl_module_with_naga_oil_writer_backend(
 ) -> String raise WgslIrEmitError {
   let backend = WgslIrNagaOilWriterBackend::{
     shader_module,
-    filter: wgsl_ir_emit_filter_from_optional_roots(shader_module, root_items),
+    view: build_wgsl_ir_naga_compat_view(shader_module, root_items),
   }
   backend.emit()
 }
@@ -28,7 +28,7 @@ fn WgslIrNagaOilWriterBackend::emit(
 fn WgslIrNagaOilWriterBackend::validate(
   self : WgslIrNagaOilWriterBackend,
 ) -> Unit raise WgslIrEmitError {
-  match self.filter {
+  match self.view.filter {
     Some(filter) =>
       validate_wgsl_ir_module_with_filter(self.shader_module, filter) catch {
         error => raise WgslIrEmitError::Unsupported(error.message())
@@ -47,8 +47,9 @@ fn WgslIrNagaOilWriterBackend::emitter(
   WgslIrEmitter::{
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::naga_oil_writer_backend(),
-    filter: self.filter,
-    names: build_wgsl_ir_emit_name_table(self.shader_module),
+    filter: self.view.filter,
+    naga_compat_view: Some(self.view),
+    names: self.view.names,
     current_function_origin: None,
     baked_function_expressions: Map([]),
   }

@@ -48,6 +48,7 @@ fn WgslIrRuntimeWriterBackend::emitter(
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::valid_wgsl(),
     filter: self.filter,
+    naga_compat_view: None,
     names: build_wgsl_ir_emit_name_table(self.shader_module),
     current_function_origin: None,
     baked_function_expressions: Map([]),

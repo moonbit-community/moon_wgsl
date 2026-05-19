@@ -176,6 +176,7 @@ required_ir_split_files=(
   ir/wgsl_emit_writer_policy.mbt
   ir/wgsl_emit_runtime_writer.mbt
   ir/wgsl_emit_naga_oil_writer.mbt
+  ir/wgsl_naga_compat_view.mbt
   ir/wgsl_emit_module.mbt
   ir/wgsl_emit_declarations.mbt
   ir/wgsl_emit_functions.mbt
@@ -545,6 +546,14 @@ fi
 
 if ! rg -n 'validate_wgsl_ir_module\(self\.shader_module\)' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
   fail "naga-oil WGSL writer backend must run internal IR validation before writing source"
+fi
+
+if ! rg -n 'build_wgsl_ir_naga_compat_view\(' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
+  fail "naga-oil WGSL writer backend must build a Naga-compatible module view before emission"
+fi
+
+if ! rg -n 'naga_compat_view: Some\(self\.view\)' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
+  fail "naga-oil WGSL writer backend must emit through the Naga-compatible module view"
 fi
 
 if [[ ! -f ir/pkg.mbti ]]; then
