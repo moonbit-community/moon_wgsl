@@ -19,11 +19,8 @@ priv struct WgslIrNagaWriterArena {
   overrides : Array[WgslIrNagaWriterOverrideSlot]
   global_variables : Array[WgslIrNagaWriterGlobalVariableSlot]
   functions : Array[WgslIrNagaWriterFunctionSlot]
-  type_handles : Map[Int, Int]
-  constant_handles : Map[Int, Int]
-  override_handles : Map[Int, Int]
-  global_variable_handles : Map[Int, Int]
-  function_handles : Map[Int, Int]
+  entry_points : Array[WgslIrNagaWriterEntryPointSlot]
+  const_asserts : Array[WgslIrNagaWriterConstAssertSlot]
 }
 
 ///|
@@ -59,6 +56,22 @@ priv struct WgslIrNagaWriterFunctionSlot {
   source_index : Int
   naga_index : Int
   item : Function
+  body_plan : WgslIrNagaFunctionBodyPlan
+}
+
+///|
+priv struct WgslIrNagaWriterEntryPointSlot {
+  source_index : Int
+  naga_index : Int
+  item : EntryPoint
+  body_plan : WgslIrNagaFunctionBodyPlan
+}
+
+///|
+priv struct WgslIrNagaWriterConstAssertSlot {
+  source_index : Int
+  naga_index : Int
+  condition : Handle
 }
 
 ///|
@@ -88,19 +101,41 @@ fn WgslIrNagaCompatPlanner::writer_arena(
     declarations.global_variables,
   )
   let functions = self.function_slots(declarations.functions)
+  let entry_points = self.entry_point_slots()
+  let const_asserts = self.const_assert_slots()
   WgslIrNagaWriterArena::{
     types,
     constants,
     overrides,
     global_variables,
     functions,
-    type_handles: wgsl_ir_naga_type_slot_handle_map(types),
-    constant_handles: wgsl_ir_naga_constant_slot_handle_map(constants),
-    override_handles: wgsl_ir_naga_override_slot_handle_map(overrides),
-    global_variable_handles: wgsl_ir_naga_global_variable_slot_handle_map(
-      global_variables,
-    ),
-    function_handles: wgsl_ir_naga_function_slot_handle_map(functions),
+    entry_points,
+    const_asserts,
+  }
+}
+
+///|
+fn WgslIrNagaCompatPlanner::runtime_writer_arena(
+  self : WgslIrNagaCompatPlanner,
+) -> WgslIrNagaWriterArena {
+  let declarations = self.runtime_declaration_arena()
+  let types = self.type_slots(declarations.types)
+  let constants = self.constant_slots(declarations.constants)
+  let overrides = self.override_slots(declarations.overrides)
+  let global_variables = self.global_variable_slots(
+    declarations.global_variables,
+  )
+  let functions = self.function_slots(declarations.functions)
+  let entry_points = self.entry_point_slots()
+  let const_asserts = self.const_assert_slots()
+  WgslIrNagaWriterArena::{
+    types,
+    constants,
+    overrides,
+    global_variables,
+    functions,
+    entry_points,
+    const_asserts,
   }
 }
 
@@ -175,10 +210,44 @@ fn WgslIrNagaCompatPlanner::function_slots(
 ) -> Array[WgslIrNagaWriterFunctionSlot] {
   let slots : Array[WgslIrNagaWriterFunctionSlot] = []
   for slot in declarations {
+    let item = self.shader_module.functions.items[slot.source_index]
     slots.push(WgslIrNagaWriterFunctionSlot::{
       source_index: slot.source_index,
       naga_index: slot.naga_index,
-      item: self.shader_module.functions.items[slot.source_index],
+      item,
+      body_plan: WgslIrNagaFunctionBodyPlan::from_function(item),
+    })
+  }
+  slots
+}
+
+///|
+fn WgslIrNagaCompatPlanner::entry_point_slots(
+  self : WgslIrNagaCompatPlanner,
+) -> Array[WgslIrNagaWriterEntryPointSlot] {
+  let slots : Array[WgslIrNagaWriterEntryPointSlot] = []
+  for source_index in self.entry_point_order() {
+    let item = self.shader_module.entry_points[source_index]
+    slots.push(WgslIrNagaWriterEntryPointSlot::{
+      source_index,
+      naga_index: slots.length(),
+      item,
+      body_plan: WgslIrNagaFunctionBodyPlan::from_function(item.function),
+    })
+  }
+  slots
+}
+
+///|
+fn WgslIrNagaCompatPlanner::const_assert_slots(
+  self : WgslIrNagaCompatPlanner,
+) -> Array[WgslIrNagaWriterConstAssertSlot] {
+  let slots : Array[WgslIrNagaWriterConstAssertSlot] = []
+  for source_index in 0..<self.shader_module.const_asserts.length() {
+    slots.push(WgslIrNagaWriterConstAssertSlot::{
+      source_index,
+      naga_index: slots.length(),
+      condition: self.shader_module.const_asserts[source_index],
     })
   }
   slots
@@ -196,6 +265,23 @@ fn WgslIrNagaCompatPlanner::declaration_arena(
       self.global_variable_order(),
     ),
     functions: wgsl_ir_naga_compat_declaration_slots(self.function_order()),
+  }
+}
+
+///|
+fn WgslIrNagaCompatPlanner::runtime_declaration_arena(
+  self : WgslIrNagaCompatPlanner,
+) -> WgslIrNagaCompatDeclarationArena {
+  WgslIrNagaCompatDeclarationArena::{
+    types: wgsl_ir_naga_compat_declaration_slots(self.type_order()),
+    constants: wgsl_ir_naga_compat_declaration_slots(self.constant_order()),
+    overrides: wgsl_ir_naga_compat_declaration_slots(self.override_order()),
+    global_variables: wgsl_ir_naga_compat_declaration_slots(
+      self.global_variable_order(),
+    ),
+    functions: wgsl_ir_naga_compat_declaration_slots(
+      self.runtime_function_order(),
+    ),
   }
 }
 
@@ -278,43 +364,35 @@ fn WgslIrNagaCompatPlanner::global_variable_order(
 }
 
 ///|
-fn WgslIrNagaWriterModule::contains_type_declaration(
-  self : WgslIrNagaWriterModule,
-  index : Int,
-) -> Bool {
-  self.arena.type_handles.get(index) != None
+fn WgslIrNagaCompatPlanner::runtime_function_order(
+  self : WgslIrNagaCompatPlanner,
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for index in 0..<self.shader_module.functions.items.length() {
+    if self.runtime_function_order_should_include(index, order) {
+      order.push(index)
+    }
+  }
+  order
 }
 
 ///|
-fn WgslIrNagaWriterModule::contains_constant_declaration(
-  self : WgslIrNagaWriterModule,
+fn WgslIrNagaCompatPlanner::runtime_function_order_should_include(
+  self : WgslIrNagaCompatPlanner,
   index : Int,
+  emitted : Array[Int],
 ) -> Bool {
-  self.arena.constant_handles.get(index) != None
-}
-
-///|
-fn WgslIrNagaWriterModule::contains_override_declaration(
-  self : WgslIrNagaWriterModule,
-  index : Int,
-) -> Bool {
-  self.arena.override_handles.get(index) != None
-}
-
-///|
-fn WgslIrNagaWriterModule::contains_global_variable_declaration(
-  self : WgslIrNagaWriterModule,
-  index : Int,
-) -> Bool {
-  self.arena.global_variable_handles.get(index) != None
-}
-
-///|
-fn WgslIrNagaWriterModule::contains_function_declaration(
-  self : WgslIrNagaWriterModule,
-  index : Int,
-) -> Bool {
-  self.arena.function_handles.get(index) != None
+  if emitted.contains(index) {
+    return false
+  }
+  match self.filter {
+    Some(filter) => if !filter.contains_function(index) { return false }
+    None => ()
+  }
+  !wgsl_ir_function_is_entry_point_name(
+    self.shader_module.functions.items[index],
+    self.shader_module,
+  )
 }
 
 ///|
@@ -329,61 +407,6 @@ fn wgsl_ir_naga_compat_declaration_slots(
     })
   }
   slots
-}
-
-///|
-fn wgsl_ir_naga_type_slot_handle_map(
-  slots : Array[WgslIrNagaWriterTypeSlot],
-) -> Map[Int, Int] {
-  let handles : Map[Int, Int] = Map([])
-  for slot in slots {
-    handles.set(slot.source_index, slot.naga_index)
-  }
-  handles
-}
-
-///|
-fn wgsl_ir_naga_constant_slot_handle_map(
-  slots : Array[WgslIrNagaWriterConstantSlot],
-) -> Map[Int, Int] {
-  let handles : Map[Int, Int] = Map([])
-  for slot in slots {
-    handles.set(slot.source_index, slot.naga_index)
-  }
-  handles
-}
-
-///|
-fn wgsl_ir_naga_override_slot_handle_map(
-  slots : Array[WgslIrNagaWriterOverrideSlot],
-) -> Map[Int, Int] {
-  let handles : Map[Int, Int] = Map([])
-  for slot in slots {
-    handles.set(slot.source_index, slot.naga_index)
-  }
-  handles
-}
-
-///|
-fn wgsl_ir_naga_global_variable_slot_handle_map(
-  slots : Array[WgslIrNagaWriterGlobalVariableSlot],
-) -> Map[Int, Int] {
-  let handles : Map[Int, Int] = Map([])
-  for slot in slots {
-    handles.set(slot.source_index, slot.naga_index)
-  }
-  handles
-}
-
-///|
-fn wgsl_ir_naga_function_slot_handle_map(
-  slots : Array[WgslIrNagaWriterFunctionSlot],
-) -> Map[Int, Int] {
-  let handles : Map[Int, Int] = Map([])
-  for slot in slots {
-    handles.set(slot.source_index, slot.naga_index)
-  }
-  handles
 }
 
 ///|

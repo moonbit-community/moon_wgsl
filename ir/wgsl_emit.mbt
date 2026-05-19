@@ -48,8 +48,7 @@ fn emit_wgsl_module_from_ir_naga_oil_writer_compatible_roots(
 priv struct WgslIrEmitter {
   shader_module : Module
   options : WgslIrEmitOptions
-  filter : WgslIrEmitFilter?
-  naga_writer_module : WgslIrNagaWriterModule?
+  writer_module : WgslIrNagaWriterModule
   names : WgslIrFinalNamePlan
   current_function_origin : WgslIrEmitFunctionOrigin?
 }

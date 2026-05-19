@@ -19,7 +19,8 @@ priv struct WgslIrNagaWriterEmissionPlan {
   overrides : Array[WgslIrNagaWriterOverrideSlot]
   global_variables : Array[WgslIrNagaWriterGlobalVariableSlot]
   functions : Array[WgslIrNagaWriterFunctionSlot]
-  entry_points : Array[Int]
+  entry_points : Array[WgslIrNagaWriterEntryPointSlot]
+  const_asserts : Array[WgslIrNagaWriterConstAssertSlot]
 }
 
 ///|
@@ -27,13 +28,15 @@ fn WgslIrNagaCompatPlanner::writer_emission_plan(
   self : WgslIrNagaCompatPlanner,
   arena : WgslIrNagaWriterArena,
 ) -> WgslIrNagaWriterEmissionPlan {
+  ignore(self)
   WgslIrNagaWriterEmissionPlan::{
     types: arena.types,
     constants: arena.constants,
     overrides: arena.overrides,
     global_variables: arena.global_variables,
     functions: arena.functions,
-    entry_points: self.entry_point_order(),
+    entry_points: arena.entry_points,
+    const_asserts: arena.const_asserts,
   }
 }
 
@@ -113,6 +116,21 @@ fn wgsl_ir_naga_function_slot_source_order(
 }
 
 ///|
+fn wgsl_ir_naga_entry_point_slot_source_order(
+  slots : Array[WgslIrNagaWriterEntryPointSlot],
+) -> Array[Int] {
+  let order : Array[Int] = []
+  for slot in slots {
+    if slot.naga_index != order.length() {
+      abort("invalid Naga writer entry-point slot order")
+    }
+    ignore(slot.item)
+    order.push(slot.source_index)
+  }
+  order
+}
+
+///|
 fn WgslIrNagaCompatPlanner::entry_point_order(
   self : WgslIrNagaCompatPlanner,
 ) -> Array[Int] {
@@ -168,7 +186,7 @@ fn WgslIrNagaWriterModule::function_order(
 fn WgslIrNagaWriterModule::entry_point_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  self.emission.entry_points
+  wgsl_ir_naga_entry_point_slot_source_order(self.emission.entry_points)
 }
 
 ///|
@@ -207,9 +225,31 @@ fn WgslIrNagaWriterModule::function_slots(
 }
 
 ///|
+fn WgslIrNagaWriterModule::entry_point_slots(
+  self : WgslIrNagaWriterModule,
+) -> Array[WgslIrNagaWriterEntryPointSlot] {
+  self.emission.entry_points
+}
+
+///|
+fn WgslIrNagaWriterModule::const_assert_slots(
+  self : WgslIrNagaWriterModule,
+) -> Array[WgslIrNagaWriterConstAssertSlot] {
+  let slots : Array[WgslIrNagaWriterConstAssertSlot] = []
+  for slot in self.emission.const_asserts {
+    if slot.naga_index != slots.length() {
+      abort("invalid writer const-assert slot order")
+    }
+    ignore(slot.source_index)
+    slots.push(slot)
+  }
+  slots
+}
+
+///|
 fn WgslIrNagaWriterModule::should_emit_entry_point(
   self : WgslIrNagaWriterModule,
   index : Int,
 ) -> Bool {
-  self.emission.entry_points.contains(index)
+  self.entry_point_order().contains(index)
 }

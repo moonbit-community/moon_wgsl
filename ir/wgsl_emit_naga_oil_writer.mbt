@@ -47,8 +47,7 @@ fn WgslIrNagaOilWriterBackend::emitter(
   WgslIrEmitter::{
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::naga_oil_writer_backend(),
-    filter: self.view.filter,
-    naga_writer_module: Some(self.view),
+    writer_module: self.view,
     names: self.view.names,
     current_function_origin: None,
   }

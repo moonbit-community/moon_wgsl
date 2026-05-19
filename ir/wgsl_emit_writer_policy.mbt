@@ -135,8 +135,7 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
       byte_plan: self.options.byte_plan,
       preserve_abstract_float_literals: true,
     },
-    filter: self.filter,
-    naga_writer_module: self.naga_writer_module,
+    writer_module: self.writer_module,
     names: self.names,
     current_function_origin: self.current_function_origin,
   }

@@ -1,7 +1,7 @@
 ///|
 priv struct WgslIrRuntimeWriterBackend {
   shader_module : Module
-  filter : WgslIrEmitFilter?
+  view : WgslIrNagaWriterModule
 }
 
 ///|
@@ -9,10 +9,8 @@ fn emit_wgsl_module_with_runtime_writer_backend(
   shader_module : Module,
   root_items : Array[String]?,
 ) -> String raise WgslIrEmitError {
-  let backend = WgslIrRuntimeWriterBackend::{
-    shader_module,
-    filter: wgsl_ir_emit_filter_from_optional_roots(shader_module, root_items),
-  }
+  let view = build_wgsl_ir_runtime_writer_module(shader_module, root_items)
+  let backend = WgslIrRuntimeWriterBackend::{ shader_module, view }
   backend.emit()
 }
 
@@ -28,7 +26,7 @@ fn WgslIrRuntimeWriterBackend::emit(
 fn WgslIrRuntimeWriterBackend::validate(
   self : WgslIrRuntimeWriterBackend,
 ) -> Unit raise WgslIrEmitError {
-  match self.filter {
+  match self.view.filter {
     Some(filter) =>
       validate_wgsl_ir_module_with_filter(self.shader_module, filter) catch {
         error => raise WgslIrEmitError::Unsupported(error.message())
@@ -47,9 +45,8 @@ fn WgslIrRuntimeWriterBackend::emitter(
   WgslIrEmitter::{
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::valid_wgsl(),
-    filter: self.filter,
-    naga_writer_module: None,
-    names: build_wgsl_ir_runtime_final_name_plan(self.shader_module),
+    writer_module: self.view,
+    names: self.view.names,
     current_function_origin: None,
   }
 }

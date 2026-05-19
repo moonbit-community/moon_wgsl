@@ -361,32 +361,30 @@ if ! rg -n 'priv struct WgslIrNagaWriterTypeSlot|priv struct WgslIrNagaWriterCon
   fail "Naga writer arena must contain typed declaration slots, not only source-index arrays"
 fi
 
-if ! rg -n 'type_handles|constant_handles|override_handles|global_variable_handles|function_handles' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
-  fail "Naga writer arena must materialize source-handle to Naga-handle maps"
-fi
-
 if ! rg -n 'priv struct WgslIrNagaWriterEmissionPlan' ir/wgsl_naga_writer_emission_plan.mbt >/dev/null; then
   fail "Naga writer module must own an explicit declaration and entry-point emission plan"
 fi
 
-if ! rg -n 'module_\.entry_point_order\(\)' ir/wgsl_emit_module.mbt >/dev/null; then
-  fail "Naga writer entry-point emission order must come from writer module emission plan"
+if ! rg -n 'module_\.entry_point_slots\(\)' ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "writer entry-point emission must consume writer module entry-point slots"
 fi
 
-if ! rg -n 'emit_naga_writer_module' ir/wgsl_emit_module.mbt >/dev/null; then
-  fail "Naga writer emission must use a dedicated slot-backed module emission path"
+if rg -n 'type_emission_order|constant_emission_order|override_emission_order|global_variable_emission_order|entry_point_emission_order|function_emission_order' ir/wgsl_emit_*.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WGSL emission must use writer module slots instead of emitter-owned raw IR order helpers"
 fi
 
 if ! rg -n 'module_\.type_slots\(\)|module_\.constant_slots\(\)|module_\.global_variable_slots\(\)|module_\.function_slots\(\)' ir/wgsl_emit_module.mbt >/dev/null; then
   fail "Naga writer module emission must consume typed writer slots instead of source-index order lists"
 fi
 
-if ! rg -n 'contains_type_declaration|contains_constant_declaration|contains_global_variable_declaration|contains_function_declaration' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
-  fail "Naga writer module declaration membership must come from declaration arena slots"
+if ! rg -n 'WgslIrNagaWriterEntryPointSlot|WgslIrNagaWriterConstAssertSlot' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
+  fail "writer module must own entry-point and const-assert slots instead of raw module scans"
 fi
 
-if ! rg -n 'module_\.contains_type_declaration|module_\.contains_constant_declaration|module_\.contains_global_variable_declaration|module_\.contains_function_declaration' ir/wgsl_emit_module.mbt >/dev/null; then
-  fail "Naga writer emission must consult declaration arena membership instead of generic filter membership"
+if rg -n 'filter : WgslIrEmitFilter\?|naga_writer_module :' ir/wgsl_emit.mbt ir/wgsl_emit_*.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "generic WGSL emitter must carry only the writer module, not raw filter or optional Naga writer state"
 fi
 
 user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir --glob '*.mbt' | wc -l | tr -d ' ')"
@@ -639,8 +637,12 @@ if ! rg -n 'build_wgsl_ir_naga_writer_module\(' ir/wgsl_emit_naga_oil_writer.mbt
   fail "naga-oil WGSL writer backend must build a Naga-compatible module view before emission"
 fi
 
-if ! rg -n 'naga_writer_module: Some\(self\.view\)' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
+if ! rg -n 'writer_module: self\.view' ir/wgsl_emit_naga_oil_writer.mbt >/dev/null; then
   fail "naga-oil WGSL writer backend must emit through the Naga-compatible module view"
+fi
+
+if ! rg -n 'build_wgsl_ir_runtime_writer_module\(' ir/wgsl_emit_runtime_writer.mbt >/dev/null; then
+  fail "runtime WGSL writer backend must build a writer module before emission"
 fi
 
 if [[ ! -f ir/wgsl_emit_expression_temp_plan.mbt ]]; then
@@ -665,6 +667,15 @@ fi
 
 if ! rg -n 'priv struct WgslIrNagaStatementPlanItem|fn WgslIrNagaFunctionBodyPlan::statement_plan' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
   fail "WGSL function statement emission must be planned by the function-body arena plan"
+fi
+
+if ! rg -n 'body_plan : WgslIrNagaFunctionBodyPlan' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
+  fail "writer function and entry-point slots must carry the precomputed function-body plan"
+fi
+
+if rg -n 'WgslIrNagaFunctionBodyPlan::from_function\(function\)' ir/wgsl_emit_functions.mbt ir/wgsl_emit_statements.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "function emission must consume body plans from writer slots instead of rebuilding them from raw IR"
 fi
 
 if rg -n 'statement_is_local_var_declaration|statement_is_any_local_var_declaration' ir/wgsl_emit_statements.mbt >/dev/null; then

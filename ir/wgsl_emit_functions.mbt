@@ -3,6 +3,7 @@ fn WgslIrEmitter::emit_entry_point(
   self : WgslIrEmitter,
   out : StringBuilder,
   entry_point : EntryPoint,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   index : Int,
 ) -> Unit raise WgslIrEmitError {
   let multiline_attributes = entry_point.stage == Task ||
@@ -43,7 +44,12 @@ fn WgslIrEmitter::emit_entry_point(
     out.write_string(" ")
   }
   out.write_string("\n")
-  self.emit_function(out, entry_point.function, EntryPointFunction(index))
+  self.emit_function(
+    out,
+    entry_point.function,
+    body_plan,
+    EntryPointFunction(index),
+  )
 }
 
 ///|
@@ -76,6 +82,7 @@ fn WgslIrEmitter::emit_function(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   origin : WgslIrEmitFunctionOrigin,
 ) -> Unit raise WgslIrEmitError {
   let emitter = self.with_function_origin(origin)
@@ -106,7 +113,6 @@ fn WgslIrEmitter::emit_function(
     None => ()
   }
   out.write_string(" {\n")
-  let body_plan = WgslIrNagaFunctionBodyPlan::from_function(function)
   emitter.emit_function_local_var_declarations(out, function, body_plan, 1)
   emitter.emit_block_statements(out, function, body_plan, function.body, 1)
   out.write_string("}\n")
