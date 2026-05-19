@@ -108,7 +108,7 @@ fn WgslIrEmitter::emit_function(
   out.write_string(" {\n")
   let body_plan = WgslIrNagaFunctionBodyPlan::from_function(function)
   emitter.emit_function_local_var_declarations(out, function, body_plan, 1)
-  emitter.emit_block_statements(out, function, function.body, 1)
+  emitter.emit_block_statements(out, function, body_plan, function.body, 1)
   out.write_string("}\n")
 }
 

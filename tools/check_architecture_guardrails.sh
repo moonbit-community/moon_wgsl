@@ -659,6 +659,14 @@ if ! rg -n 'local_declaration_order|needs_blank_after_local_declarations' ir/wgs
   fail "WGSL function local declaration order must be owned by the function-body arena plan"
 fi
 
+if ! rg -n 'priv struct WgslIrNagaStatementPlanItem|fn WgslIrNagaFunctionBodyPlan::statement_plan' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
+  fail "WGSL function statement emission must be planned by the function-body arena plan"
+fi
+
+if rg -n 'statement_is_local_var_declaration|statement_is_any_local_var_declaration' ir/wgsl_emit_statements.mbt >/dev/null; then
+  fail "statement emitter must consume body-plan statement items instead of owning local declaration scanning"
+fi
+
 if rg -n 'WgslIrFunctionScope::function_expression_temporary_name|scope\.function_expression_temporary_name|baked_function_expressions|record_baked_function_expression|projected_temporary_name_offset|hidden_temporary_name_indices|hide_temporary_name_indices|record_projected_temporary_expression' \
   ir --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2

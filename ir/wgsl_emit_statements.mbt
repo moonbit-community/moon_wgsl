@@ -3,62 +3,18 @@ fn WgslIrEmitter::emit_block_statements(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   block : Block,
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
-  let mut emitted_leading_var_declaration = false
-  let mut separated_leading_var_declarations = false
-  for statement in block.statements {
-    if self.statement_is_local_var_declaration(function, statement) {
+  for item in body_plan.statement_plan(function, block) {
+    if item.skip {
       continue
     }
-    if emitted_leading_var_declaration &&
-      !separated_leading_var_declarations &&
-      !self.statement_is_any_local_var_declaration(function, statement) {
+    if item.blank_before {
       out.write_string("\n")
-      separated_leading_var_declarations = true
     }
-    self.emit_statement(out, function, statement, indent)
-    if !separated_leading_var_declarations &&
-      self.statement_is_any_local_var_declaration(function, statement) {
-      emitted_leading_var_declaration = true
-    }
-  }
-}
-
-///|
-fn WgslIrEmitter::statement_is_local_var_declaration(
-  self : WgslIrEmitter,
-  function : Function,
-  statement : Statement,
-) -> Bool {
-  ignore(self)
-  match statement {
-    Declare(handle) =>
-      match function.local_variables.items.get(handle.index()) {
-        Some(local_var) =>
-          local_var.kind == LocalVariableKind::Var &&
-          !local_var.generated_temporary
-        None => false
-      }
-    _ => false
-  }
-}
-
-///|
-fn WgslIrEmitter::statement_is_any_local_var_declaration(
-  self : WgslIrEmitter,
-  function : Function,
-  statement : Statement,
-) -> Bool {
-  ignore(self)
-  match statement {
-    Declare(handle) =>
-      match function.local_variables.items.get(handle.index()) {
-        Some(local_var) => local_var.kind == LocalVariableKind::Var
-        None => false
-      }
-    _ => false
+    self.emit_statement(out, function, body_plan, item.statement, indent)
   }
 }
 
@@ -67,6 +23,7 @@ fn WgslIrEmitter::emit_statement(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   statement : Statement,
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
@@ -87,33 +44,39 @@ fn WgslIrEmitter::emit_statement(
       }
     Block(child) => {
       out.write_string("\{pad}{\n")
-      self.emit_block_statements(out, function, child, indent + 1)
+      self.emit_block_statements(out, function, body_plan, child, indent + 1)
       out.write_string("\{pad}}\n")
     }
     If(condition, accept, reject) => {
       out.write_string(
         "\{pad}if \{self.function_expression(function, condition)} {\n",
       )
-      self.emit_block_statements(out, function, accept, indent + 1)
+      self.emit_block_statements(out, function, body_plan, accept, indent + 1)
       out.write_string("\{pad}}")
       if reject.statements.is_empty() {
         out.write_string("\n")
       } else {
         out.write_string(" else {\n")
-        self.emit_block_statements(out, function, reject, indent + 1)
+        self.emit_block_statements(out, function, body_plan, reject, indent + 1)
         out.write_string("\{pad}}\n")
       }
     }
     Loop(body, continuing, break_if) => {
       out.write_string("\{pad}loop {\n")
-      self.emit_block_statements(out, function, body, indent + 1)
+      self.emit_block_statements(out, function, body_plan, body, indent + 1)
       let has_break_if = match break_if {
         Some(_) => true
         None => false
       }
       if !continuing.statements.is_empty() || has_break_if {
         out.write_string("\{wgsl_ir_indent(indent + 1)}continuing {\n")
-        self.emit_block_statements(out, function, continuing, indent + 2)
+        self.emit_block_statements(
+          out,
+          function,
+          body_plan,
+          continuing,
+          indent + 2,
+        )
         match break_if {
           Some(condition) =>
             out.write_string(
@@ -133,7 +96,13 @@ fn WgslIrEmitter::emit_statement(
         out.write_string(
           "\{wgsl_ir_indent(indent + 1)}\{wgsl_ir_switch_case_label(case.value)}: {\n",
         )
-        self.emit_block_statements(out, function, case.body, indent + 2)
+        self.emit_block_statements(
+          out,
+          function,
+          body_plan,
+          case.body,
+          indent + 2,
+        )
         out.write_string("\{wgsl_ir_indent(indent + 1)}}\n")
       }
       out.write_string("\{pad}}\n")

@@ -46,6 +46,13 @@ priv struct WgslIrNagaFunctionBodyPlan {
 }
 
 ///|
+priv struct WgslIrNagaStatementPlanItem {
+  statement : Statement
+  skip : Bool
+  blank_before : Bool
+}
+
+///|
 fn WgslIrNagaFunctionBodyPlan::from_function(
   function : Function,
 ) -> WgslIrNagaFunctionBodyPlan {
@@ -95,6 +102,38 @@ fn WgslIrNagaFunctionBodyPlan::needs_blank_after_local_declarations(
 }
 
 ///|
+fn WgslIrNagaFunctionBodyPlan::statement_plan(
+  self : WgslIrNagaFunctionBodyPlan,
+  function : Function,
+  block : Block,
+) -> Array[WgslIrNagaStatementPlanItem] {
+  ignore(self)
+  let plan : Array[WgslIrNagaStatementPlanItem] = []
+  let mut emitted_leading_var_declaration = false
+  let mut separated_leading_var_declarations = false
+  for statement in block.statements {
+    let skip = wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
+      function, statement,
+    )
+    let mut blank_before = false
+    if !skip {
+      if emitted_leading_var_declaration &&
+        !separated_leading_var_declarations &&
+        !wgsl_ir_statement_is_any_local_var_declaration(function, statement) {
+        blank_before = true
+        separated_leading_var_declarations = true
+      }
+      if !separated_leading_var_declarations &&
+        wgsl_ir_statement_is_any_local_var_declaration(function, statement) {
+        emitted_leading_var_declaration = true
+      }
+    }
+    plan.push(WgslIrNagaStatementPlanItem::{ statement, skip, blank_before })
+  }
+  plan
+}
+
+///|
 fn wgsl_ir_naga_function_body_local_declarations(
   function : Function,
 ) -> Array[Int] {
@@ -124,6 +163,21 @@ fn wgsl_ir_naga_function_body_has_non_hoisted_statement(
     }
   }
   false
+}
+
+///|
+fn wgsl_ir_statement_is_any_local_var_declaration(
+  function : Function,
+  statement : Statement,
+) -> Bool {
+  match statement {
+    Declare(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_var) => local_var.kind == LocalVariableKind::Var
+        None => false
+      }
+    _ => false
+  }
 }
 
 ///|
