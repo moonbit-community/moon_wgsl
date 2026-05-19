@@ -30,31 +30,66 @@ count_manifest_rows() {
 writer_count="$(count_manifest_rows "$writer_manifest")"
 byte_count="$(count_manifest_rows "$byte_manifest")"
 
+mkdir -p _build
+expected_keys="$(mktemp "${TMPDIR:-/tmp}/moon_wgsl_drift_expected.XXXXXX")"
+actual_keys="$(mktemp "${TMPDIR:-/tmp}/moon_wgsl_drift_actual.XXXXXX")"
+counts_file="$(mktemp "${TMPDIR:-/tmp}/moon_wgsl_drift_counts.XXXXXX")"
+trap 'rm -f "$expected_keys" "$actual_keys" "$counts_file"' EXIT
+
+{
+  awk -F '\t' -v manifest="writer-drift" '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    { print manifest "\t" $1 "\t" $2 }
+  ' "$writer_manifest"
+  awk -F '\t' -v manifest="byte-drift" '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    { print manifest "\t" $1 "\t" $2 }
+  ' "$byte_manifest"
+} | sort > "$expected_keys"
+
 awk -F '\t' '
   $0 ~ /^($|#)/ { next }
   NR == 1 && $1 == "manifest" { next }
-  NF != 5 {
-    printf("drift taxonomy row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
+  NF != 6 {
+    printf("drift taxonomy row has %d field(s), expected 6: %s\n", NF, $0) > "/dev/stderr"
     exit 1
   }
   $1 != "writer-drift" && $1 != "byte-drift" {
     printf("unknown drift taxonomy manifest kind: %s\n", $1) > "/dev/stderr"
     exit 1
   }
-  $2 == "" || $3 == "" || $4 == "" || $5 == "" {
-    printf("drift taxonomy row must include category, expected_count, tracker, and reason: %s\n", $0) > "/dev/stderr"
+  $2 == "" || $3 == "" || $4 == "" || $5 == "" || $6 == "" {
+    printf("drift taxonomy row must include manifest, id, rel_path, category, tracker, and reason: %s\n", $0) > "/dev/stderr"
     exit 1
   }
-  $3 !~ /^[0-9]+$/ {
-    printf("drift taxonomy expected_count must be numeric: %s\n", $0) > "/dev/stderr"
+  $5 !~ /^WGSL-[0-9]+$/ {
+    printf("drift taxonomy tracker must be a WGSL issue id: %s\n", $0) > "/dev/stderr"
     exit 1
   }
-  { counts[$1] += $3 }
+  {
+    key = $1 "\t" $2 "\t" $3
+    if (seen[key]++) {
+      printf("duplicate drift taxonomy row for %s\n", key) > "/dev/stderr"
+      exit 1
+    }
+    counts[$1] += 1
+    print key
+  }
   END {
     print "writer-drift\t" (counts["writer-drift"] + 0)
     print "byte-drift\t" (counts["byte-drift"] + 0)
   }
-' "$taxonomy" > _build/drift-taxonomy-counts.actual
+' "$taxonomy" > "$counts_file"
+
+awk -F '\t' 'NF == 3 { print $0 }' "$counts_file" | sort > "$actual_keys"
+awk -F '\t' 'NF == 2 { print $0 }' "$counts_file" > _build/drift-taxonomy-counts.actual
+
+if ! diff -u "$expected_keys" "$actual_keys" > _build/drift-taxonomy-keys.diff; then
+  cat _build/drift-taxonomy-keys.diff >&2
+  fail "drift taxonomy rows must exactly match writer and byte drift manifest cases"
+fi
 
 taxonomy_writer_count="$(awk -F '\t' '$1 == "writer-drift" { print $2 }' _build/drift-taxonomy-counts.actual)"
 taxonomy_byte_count="$(awk -F '\t' '$1 == "byte-drift" { print $2 }' _build/drift-taxonomy-counts.actual)"
