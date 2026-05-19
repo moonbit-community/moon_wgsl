@@ -299,7 +299,7 @@ fn WgslIrEmitter::folded_float_math_expression(
   c : Handle?,
   d : Handle?,
 ) -> String? raise WgslIrEmitError {
-  guard self.options.fold_numeric_constant_expressions else { return None }
+  guard self.options.fold_numeric_constant_expressions() else { return None }
   guard b == None && c == None && d == None else { return None }
   guard math_function == MathFunction::Sqrt else { return None }
   match self.eval_float_expression_with_retained_constants(function, a) {
@@ -378,7 +378,7 @@ fn WgslIrEmitter::binary_operand_expression(
     return self.required_function_expression(function, operand)
   }
   if wgsl_ir_binary_operator_uses_numeric_argument_context(op) &&
-    self.options.contextualize_numeric_literals {
+    self.options.contextualize_numeric_literals() {
     match self.expression_component_scalar(function, sibling) {
       Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
         match self.contextual_scalar_literal(function, operand, scalar) {
@@ -424,7 +424,7 @@ fn WgslIrEmitter::select_expression(
   accept : Handle,
   reject : Handle,
 ) -> String raise WgslIrEmitError {
-  let scalar_context = if self.options.contextualize_numeric_literals {
+  let scalar_context = if self.options.contextualize_numeric_literals() {
     self.select_scalar_context(function, accept, reject)
   } else {
     None
@@ -494,7 +494,7 @@ fn WgslIrEmitter::function_call_argument_list(
     if i > 0 {
       out.write_string(", ")
     }
-    let scalar_context = if self.options.contextualize_numeric_literals {
+    let scalar_context = if self.options.contextualize_numeric_literals() {
       match callee_function {
         Some(callee_function) =>
           match callee_function.arguments.get(i) {
@@ -594,7 +594,8 @@ fn WgslIrEmitter::folded_scalar_constructor_expression(
   components : Array[Handle],
   function : Function?,
 ) -> String? raise WgslIrEmitError {
-  if !self.options.fold_numeric_constant_expressions || components.length() != 1 {
+  if !self.options.fold_numeric_constant_expressions() ||
+    components.length() != 1 {
     return None
   }
   guard self.shader_module.types.items.get(ty.index()) is Some(type_) else {
@@ -667,7 +668,7 @@ fn WgslIrEmitter::compose_component_list(
     Some(value) => value
     None => {
       let out = StringBuilder::new()
-      let scalar_context = if self.options.contextualize_numeric_literals {
+      let scalar_context = if self.options.contextualize_numeric_literals() {
         self.compose_component_scalar_context(ty, components, function)
       } else {
         None
@@ -737,7 +738,7 @@ fn WgslIrEmitter::contextual_scalar_literal(
   operand : Handle,
   scalar : Scalar,
 ) -> String? raise WgslIrEmitError {
-  if self.options.fold_numeric_constant_expressions {
+  if self.options.fold_numeric_constant_expressions() {
     match self.folded_expression_for_scalar_context(function, operand, scalar) {
       Some(value) => return Some(value)
       None => ()
@@ -872,7 +873,7 @@ fn WgslIrEmitter::matrix_scalar_component_list(
   components : Array[Handle],
   function : Function?,
 ) -> String? raise WgslIrEmitError {
-  if !self.options.expand_matrix_scalar_constructors {
+  if !self.options.expand_matrix_scalar_constructors() {
     return None
   }
   guard self.shader_module.types.items.get(ty.index()) is Some(matrix_ty) else {
@@ -1460,7 +1461,7 @@ fn WgslIrEmitter::math_argument_list(
     Some(value) => handles.push(value)
     None => ()
   }
-  let scalar_context = if self.options.contextualize_numeric_literals {
+  let scalar_context = if self.options.contextualize_numeric_literals() {
     self.math_argument_scalar_context(math_function, handles, function)
   } else {
     None

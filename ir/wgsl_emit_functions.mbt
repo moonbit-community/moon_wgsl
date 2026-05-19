@@ -234,10 +234,10 @@ fn WgslIrEmitter::local_variable_needs_type_annotation(
   if self.type_contains_abstract_scalar(local_var.ty) {
     return false
   }
-  if self.options.annotate_all_local_types {
+  if self.options.annotate_all_local_types() {
     return true
   }
-  if self.options.annotate_atomic_compare_exchange_result_locals &&
+  if self.options.annotate_atomic_compare_exchange_result_locals() &&
     self.type_is_atomic_compare_exchange_result(local_var.ty) {
     return true
   }

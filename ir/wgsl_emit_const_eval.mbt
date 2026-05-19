@@ -10,7 +10,7 @@ fn WgslIrEmitter::folded_constant_expression(
   self : WgslIrEmitter,
   constant : Constant,
 ) -> String? {
-  if !self.options.fold_numeric_constant_expressions {
+  if !self.options.fold_numeric_constant_expressions() {
     return None
   }
   match self.constant_type_integer_kind(constant) {

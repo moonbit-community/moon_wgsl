@@ -5,7 +5,7 @@ fn WgslIrEmitter::emit_module(
   let out = StringBuilder::new()
   let mut needs_blank = false
   let mut last_item_is_entry_point = false
-  if self.options.emit_source_directives {
+  if self.options.emit_source_directives() {
     for directive in self.shader_module.directives {
       out.write_string(directive)
       out.write_string("\n")

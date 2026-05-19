@@ -170,7 +170,7 @@ fn WgslIrEmitter::compose_constructor_name_for_components(
   components : Array[Handle],
   function : Function?,
 ) -> String raise WgslIrEmitError {
-  if self.options.inline_generated_import_constants &&
+  if self.options.inline_generated_import_constants() &&
     self.compose_components_include_generated_import_constant(
       components, function,
     ) {
@@ -398,7 +398,7 @@ fn WgslIrEmitter::image_type_name(
     }
     External => "texture_external"
     Storage(format, access) => {
-      let separator = if self.options.compact_storage_texture_type_arguments {
+      let separator = if self.options.compact_storage_texture_type_arguments() {
         ","
       } else {
         ", "

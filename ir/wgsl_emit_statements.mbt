@@ -374,7 +374,7 @@ fn WgslIrEmitter::emit_function_call_arguments(
     if index > 0 {
       out.write_string(", ")
     }
-    let scalar_context = if self.options.contextualize_numeric_literals {
+    let scalar_context = if self.options.contextualize_numeric_literals() {
       match callee_function {
         Some(callee_function) =>
           match callee_function.arguments.get(index) {

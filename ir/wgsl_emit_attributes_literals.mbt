@@ -57,7 +57,7 @@ fn WgslIrEmitter::binding_type_uses_implicit_flat_interpolation(
   self : WgslIrEmitter,
   ty : Handle?,
 ) -> Bool {
-  if !self.options.emit_implicit_flat_interpolation {
+  if !self.options.emit_implicit_flat_interpolation() {
     return false
   }
   guard ty is Some(ty_handle) else { return false }
@@ -152,7 +152,7 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
     Bool(value) => if value { "true" } else { "false" }
     AbstractInt(value) => "\{value}"
     AbstractFloat(value) =>
-      if self.options.preserve_abstract_float_literals {
+      if self.options.preserve_abstract_float_literals() {
         wgsl_ir_emit_abstract_float_literal_text("\{value}")
       } else {
         wgsl_ir_emit_f32_literal(Float::from_double(value))
