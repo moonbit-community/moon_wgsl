@@ -1,0 +1,3 @@
+manifest	category	expected_count	tracker	reason
+writer-drift	naga-writer-view	25	WGSL-283	remaining writer/order/name drift must be fixed by extending the typed Naga writer arena, emission plan, and function body plan rather than by case-local emitter patches
+byte-drift	byte-policy	95	WGSL-281	remaining byte-output drift must be fixed by extending the byte plan and upstream-compatible token/formatting policy rather than by accepting hash churn

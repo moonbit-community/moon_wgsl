@@ -959,6 +959,14 @@ if [[ ! -f testdata/external_naga_oil_compose_byte_drift.tsv ]]; then
   fail "external naga-oil compose parity byte drift must be manifest-owned"
 fi
 
+if [[ ! -f testdata/external_naga_oil_compose_drift_taxonomy.tsv ]]; then
+  fail "external naga-oil compose drift must be classified into architecture burn-down categories"
+fi
+
+if [[ ! -x tools/check_external_naga_oil_drift_taxonomy.sh ]]; then
+  fail "external naga-oil compose drift taxonomy gate must be executable"
+fi
+
 external_compose_case_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_parity.tsv)"
 if (( external_compose_case_count != 150 )); then
   fail "external naga-oil compose parity manifest must contain the full 150-case inventory, got ${external_compose_case_count}"
