@@ -13,11 +13,11 @@
 // limitations under the License.
 
 ///|
-fn build_wgsl_ir_emit_name_table_for_naga_writer_module(
+fn build_wgsl_ir_naga_writer_final_name_plan(
   view : WgslIrNagaWriterModule,
-) -> WgslIrEmitNameTable {
+) -> WgslIrFinalNamePlan {
   let module_ = view.shader_module
-  let table = WgslIrEmitNameTable::empty()
+  let table = WgslIrFinalNamePlan::empty()
   let namer = WgslIrNagaNamer::WgslIrNagaNamer()
   for index in view.type_order() {
     view.allocate_type_name(table, namer, index)
@@ -62,7 +62,7 @@ fn build_wgsl_ir_emit_name_table_for_naga_writer_module(
 ///|
 fn WgslIrNagaWriterModule::allocate_type_name(
   self : WgslIrNagaWriterModule,
-  table : WgslIrEmitNameTable,
+  table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
   index : Int,
 ) -> Unit {
@@ -93,7 +93,7 @@ fn WgslIrNagaWriterModule::allocate_type_name(
 ///|
 fn WgslIrNagaWriterModule::allocate_entry_point_signature_names(
   self : WgslIrNagaWriterModule,
-  table : WgslIrEmitNameTable,
+  table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
   ep_index : Int,
 ) -> Unit {
@@ -110,7 +110,7 @@ fn WgslIrNagaWriterModule::allocate_entry_point_signature_names(
 ///|
 fn WgslIrNagaWriterModule::allocate_function_signature_names(
   self : WgslIrNagaWriterModule,
-  table : WgslIrEmitNameTable,
+  table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
   fn_index : Int,
 ) -> Unit {
@@ -130,7 +130,7 @@ fn WgslIrNagaWriterModule::allocate_function_signature_names(
 ///|
 fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
   self : WgslIrNagaWriterModule,
-  table : WgslIrEmitNameTable,
+  table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
   ep_index : Int,
 ) -> Unit {
@@ -145,7 +145,7 @@ fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
 ///|
 fn WgslIrNagaWriterModule::allocate_function_body_names(
   self : WgslIrNagaWriterModule,
-  table : WgslIrEmitNameTable,
+  table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
   fn_index : Int,
 ) -> Unit {

@@ -50,6 +50,6 @@ priv struct WgslIrEmitter {
   options : WgslIrEmitOptions
   filter : WgslIrEmitFilter?
   naga_writer_module : WgslIrNagaWriterModule?
-  names : WgslIrEmitNameTable
+  names : WgslIrFinalNamePlan
   current_function_origin : WgslIrEmitFunctionOrigin?
 }

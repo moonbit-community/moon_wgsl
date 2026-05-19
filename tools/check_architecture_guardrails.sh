@@ -177,6 +177,7 @@ required_ir_split_files=(
   ir/wgsl_emit_runtime_writer.mbt
   ir/wgsl_emit_naga_oil_writer.mbt
   ir/wgsl_naga_writer_module.mbt
+  ir/wgsl_emit_final_name_plan.mbt
   ir/wgsl_emit_module.mbt
   ir/wgsl_emit_declarations.mbt
   ir/wgsl_emit_functions.mbt
@@ -310,11 +311,15 @@ if ! rg -n 'fn wgsl_ir_collect_block_function_calls' ir/wgsl_naga_compat_depende
   fail "Naga-compatible dependency layer must own function body traversal"
 fi
 
-if rg -n 'build_wgsl_ir_emit_name_table_for_naga_writer_module' ir/wgsl_emit_name_table.mbt >/dev/null; then
-  fail "Naga-compatible final name allocation must not live in the generic emitter name table"
+if [[ -f ir/wgsl_emit_name_table.mbt ]]; then
+  fail "final name planning must live in ir/wgsl_emit_final_name_plan.mbt, not the old name-table file"
 fi
 
-if ! rg -n 'build_wgsl_ir_emit_name_table_for_naga_writer_module' ir/wgsl_naga_compat_names.mbt >/dev/null; then
+if rg -n 'build_wgsl_ir_naga_writer_final_name_plan' ir/wgsl_emit_final_name_plan.mbt >/dev/null; then
+  fail "Naga-compatible final name allocation must not live in the runtime final-name plan"
+fi
+
+if ! rg -n 'build_wgsl_ir_naga_writer_final_name_plan' ir/wgsl_naga_compat_names.mbt >/dev/null; then
   fail "Naga-compatible name layer must own final name allocation"
 fi
 

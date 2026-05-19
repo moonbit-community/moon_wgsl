@@ -49,7 +49,7 @@ fn WgslIrRuntimeWriterBackend::emitter(
     options: WgslIrEmitOptions::valid_wgsl(),
     filter: self.filter,
     naga_writer_module: None,
-    names: build_wgsl_ir_emit_name_table(self.shader_module),
+    names: build_wgsl_ir_runtime_final_name_plan(self.shader_module),
     current_function_origin: None,
   }
 }

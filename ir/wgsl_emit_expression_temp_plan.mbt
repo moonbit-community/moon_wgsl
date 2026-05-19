@@ -39,8 +39,8 @@ fn wgsl_ir_emit_local_name_key(
 }
 
 ///|
-fn WgslIrEmitNameTable::allocate_function_body_names_from_arena(
-  self : WgslIrEmitNameTable,
+fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
+  self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
   namer : WgslIrNagaNamer,
@@ -72,8 +72,8 @@ fn WgslIrEmitNameTable::allocate_function_body_names_from_arena(
 }
 
 ///|
-fn WgslIrEmitNameTable::allocate_function_expression_temporary_names(
-  self : WgslIrEmitNameTable,
+fn WgslIrFinalNamePlan::allocate_function_expression_temporary_names(
+  self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
   temp_namer : WgslIrNagaNamer,

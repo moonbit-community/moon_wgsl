@@ -13,13 +13,13 @@
 // limitations under the License.
 
 ///|
-priv struct WgslIrEmitNameTable {
+priv struct WgslIrFinalNamePlan {
   names : Map[String, String]
 }
 
 ///|
-fn WgslIrEmitNameTable::empty() -> WgslIrEmitNameTable {
-  WgslIrEmitNameTable::{ names: Map([]) }
+fn WgslIrFinalNamePlan::empty() -> WgslIrFinalNamePlan {
+  WgslIrFinalNamePlan::{ names: Map([]) }
 }
 
 ///|
@@ -150,8 +150,10 @@ fn wgsl_ir_emit_name_key2(kind : String, a : Int, b : Int) -> String {
 }
 
 ///|
-fn build_wgsl_ir_emit_name_table(module_ : Module) -> WgslIrEmitNameTable {
-  let table = WgslIrEmitNameTable::{ names: Map([]) }
+fn build_wgsl_ir_runtime_final_name_plan(
+  module_ : Module,
+) -> WgslIrFinalNamePlan {
+  let table = WgslIrFinalNamePlan::{ names: Map([]) }
   let namer = WgslIrNagaNamer::WgslIrNagaNamer()
   for index in 0..<module_.types.items.length() {
     let ty = module_.types.items[index]
@@ -261,8 +263,8 @@ fn wgsl_ir_name_table_function_is_entry_point(
 }
 
 ///|
-fn WgslIrEmitNameTable::get(
-  self : WgslIrEmitNameTable,
+fn WgslIrFinalNamePlan::get(
+  self : WgslIrFinalNamePlan,
   key : String,
 ) -> String? {
   self.names.get(key)
