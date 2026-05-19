@@ -302,6 +302,22 @@ if rg -n 'priv struct WgslIrEmitOptions|fn WgslIrEmitOptions::naga_oil_writer_co
   fail "IR emitter core/module ordering must not own writer policy"
 fi
 
+if rg -n 'order_functions_by_naga_reachability|push_naga|naga_reachable|collect_naga|naga_generated_import' ir/wgsl_emit_*.mbt >/dev/null; then
+  fail "Naga function ordering must live in the Naga-compatible module view, not emitter options or emitter helpers"
+fi
+
+if ! rg -n 'fn wgsl_ir_collect_block_function_calls' ir/wgsl_naga_compat_view.mbt >/dev/null; then
+  fail "Naga-compatible module view must own function body dependency traversal"
+fi
+
+if rg -n 'build_wgsl_ir_emit_name_table_for_naga_compat_view' ir/wgsl_emit_name_table.mbt >/dev/null; then
+  fail "Naga-compatible final name allocation must live in the Naga-compatible module view"
+fi
+
+if ! rg -n 'build_wgsl_ir_emit_name_table_for_naga_compat_view' ir/wgsl_naga_compat_view.mbt >/dev/null; then
+  fail "Naga-compatible module view must own final name allocation"
+fi
+
 user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir --glob '*.mbt' | wc -l | tr -d ' ')"
 if (( user_call_arg_sites < 2 )); then
   fail "expression-level and statement-level user function calls must share one argument-lowering path"

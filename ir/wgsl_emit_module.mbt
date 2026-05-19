@@ -124,7 +124,7 @@ fn WgslIrEmitter::emit_module(
 ///|
 fn WgslIrEmitter::type_emission_order(self : WgslIrEmitter) -> Array[Int] {
   match self.naga_compat_view {
-    Some(view) => return view.type_order
+    Some(view) => return view.type_order()
     None => ()
   }
   match self.filter {
@@ -136,7 +136,7 @@ fn WgslIrEmitter::type_emission_order(self : WgslIrEmitter) -> Array[Int] {
 ///|
 fn WgslIrEmitter::constant_emission_order(self : WgslIrEmitter) -> Array[Int] {
   match self.naga_compat_view {
-    Some(view) => return view.constant_order
+    Some(view) => return view.constant_order()
     None => ()
   }
   match self.filter {
@@ -148,7 +148,7 @@ fn WgslIrEmitter::constant_emission_order(self : WgslIrEmitter) -> Array[Int] {
 ///|
 fn WgslIrEmitter::override_emission_order(self : WgslIrEmitter) -> Array[Int] {
   match self.naga_compat_view {
-    Some(view) => return view.override_order
+    Some(view) => return view.override_order()
     None => ()
   }
   match self.filter {
@@ -162,7 +162,7 @@ fn WgslIrEmitter::global_variable_emission_order(
   self : WgslIrEmitter,
 ) -> Array[Int] {
   match self.naga_compat_view {
-    Some(view) => return view.global_variable_order
+    Some(view) => return view.global_variable_order()
     None => ()
   }
   match self.filter {
