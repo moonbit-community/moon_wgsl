@@ -1,0 +1,200 @@
+// Copyright 2026 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+fn build_wgsl_ir_emit_name_table_for_naga_compat_view(
+  view : WgslIrNagaCompatView,
+) -> WgslIrEmitNameTable {
+  let module_ = view.shader_module
+  let table = WgslIrEmitNameTable::empty()
+  let namer = WgslIrNagaNamer::WgslIrNagaNamer()
+  for index in view.type_order() {
+    view.allocate_type_name(table, namer, index)
+  }
+  for ep_index in 0..<module_.entry_points.length() {
+    if view.should_emit_entry_point(ep_index) {
+      view.allocate_entry_point_signature_names(table, namer, ep_index)
+    }
+  }
+  for fn_index in view.function_order() {
+    view.allocate_function_signature_names(table, namer, fn_index)
+  }
+  for index in view.global_variable_order() {
+    table.names.set(
+      wgsl_ir_emit_name_key("global", index),
+      namer.call_or(module_.global_variables.items[index].name, "global"),
+    )
+  }
+  for index in view.constant_order() {
+    table.names.set(
+      wgsl_ir_emit_name_key("const", index),
+      namer.call_or(module_.constants.items[index].name, "const"),
+    )
+  }
+  for index in view.override_order() {
+    table.names.set(
+      wgsl_ir_emit_name_key("override", index),
+      namer.call_or(module_.overrides.items[index].name, "override"),
+    )
+  }
+  for ep_index in 0..<module_.entry_points.length() {
+    if view.should_emit_entry_point(ep_index) {
+      view.allocate_entry_point_body_names(table, namer, ep_index)
+    }
+  }
+  for fn_index in view.function_order() {
+    view.allocate_function_body_names(table, namer, fn_index)
+  }
+  table
+}
+
+///|
+fn WgslIrNagaCompatView::allocate_type_name(
+  self : WgslIrNagaCompatView,
+  table : WgslIrEmitNameTable,
+  namer : WgslIrNagaNamer,
+  index : Int,
+) -> Unit {
+  let ty = self.shader_module.types.items[index]
+  let raw = match ty.name {
+    Some(name) => name
+    None => "type"
+  }
+  table.names.set(wgsl_ir_emit_name_key("type", index), namer.call(raw))
+  match ty.inner {
+    Struct(members, _) | PredeclaredStruct(members, _) => {
+      let member_namer = WgslIrNagaNamer::WgslIrNagaNamer()
+      for member_index in 0..<members.length() {
+        let raw = match members[member_index].name {
+          Some(name) => name
+          None => "member"
+        }
+        table.names.set(
+          wgsl_ir_emit_name_key2("member", index, member_index),
+          member_namer.call(raw),
+        )
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrNagaCompatView::allocate_entry_point_signature_names(
+  self : WgslIrNagaCompatView,
+  table : WgslIrEmitNameTable,
+  namer : WgslIrNagaNamer,
+  ep_index : Int,
+) -> Unit {
+  let ep = self.shader_module.entry_points[ep_index]
+  table.names.set(wgsl_ir_emit_name_key("ep", ep_index), namer.call(ep.name))
+  for arg_index in 0..<ep.function.arguments.length() {
+    table.names.set(
+      wgsl_ir_emit_name_key2("ep_arg", ep_index, arg_index),
+      namer.call_or(ep.function.arguments[arg_index].name, "param"),
+    )
+  }
+}
+
+///|
+fn WgslIrNagaCompatView::allocate_function_signature_names(
+  self : WgslIrNagaCompatView,
+  table : WgslIrEmitNameTable,
+  namer : WgslIrNagaNamer,
+  fn_index : Int,
+) -> Unit {
+  let function = self.shader_module.functions.items[fn_index]
+  table.names.set(
+    wgsl_ir_emit_name_key("fn", fn_index),
+    namer.call_or(function.name, "function"),
+  )
+  for arg_index in 0..<function.arguments.length() {
+    table.names.set(
+      wgsl_ir_emit_name_key2("fn_arg", fn_index, arg_index),
+      namer.call_or(function.arguments[arg_index].name, "param"),
+    )
+  }
+}
+
+///|
+fn WgslIrNagaCompatView::allocate_entry_point_body_names(
+  self : WgslIrNagaCompatView,
+  table : WgslIrEmitNameTable,
+  namer : WgslIrNagaNamer,
+  ep_index : Int,
+) -> Unit {
+  let ep = self.shader_module.entry_points[ep_index]
+  let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
+  for local_index in 0..<ep.function.local_variables.items.length() {
+    table.names.set(
+      wgsl_ir_emit_name_key2("ep_local", ep_index, local_index),
+      namer.local_call_or(
+        temp_namer,
+        ep.function.local_variables.items[local_index].name,
+        "local",
+      ),
+    )
+  }
+  for expr_index in 0..<ep.function.expressions.items.length() {
+    match ep.function.expressions.items.get(expr_index) {
+      Some(CallResult(_)) => {
+        let semantic_index = wgsl_ir_emit_call_result_expression_index(
+          ep.function,
+          Handle::Handle(expr_index),
+        )
+        table.names.set(
+          wgsl_ir_emit_name_key2("ep_expr", ep_index, expr_index),
+          temp_namer.call("_e\{semantic_index}"),
+        )
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn WgslIrNagaCompatView::allocate_function_body_names(
+  self : WgslIrNagaCompatView,
+  table : WgslIrEmitNameTable,
+  namer : WgslIrNagaNamer,
+  fn_index : Int,
+) -> Unit {
+  let function = self.shader_module.functions.items[fn_index]
+  let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
+  for local_index in 0..<function.local_variables.items.length() {
+    table.names.set(
+      wgsl_ir_emit_name_key2("fn_local", fn_index, local_index),
+      namer.local_call_or(
+        temp_namer,
+        function.local_variables.items[local_index].name,
+        "local",
+      ),
+    )
+  }
+  for expr_index in 0..<function.expressions.items.length() {
+    match function.expressions.items.get(expr_index) {
+      Some(CallResult(_)) => {
+        let semantic_index = wgsl_ir_emit_call_result_expression_index(
+          function,
+          Handle::Handle(expr_index),
+        )
+        table.names.set(
+          wgsl_ir_emit_name_key2("fn_expr", fn_index, expr_index),
+          temp_namer.call("_e\{semantic_index}"),
+        )
+      }
+      _ => ()
+    }
+  }
+}

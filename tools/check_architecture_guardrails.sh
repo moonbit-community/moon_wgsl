@@ -306,16 +306,20 @@ if rg -n 'order_functions_by_naga_reachability|push_naga|naga_reachable|collect_
   fail "Naga function ordering must live in the Naga-compatible module view, not emitter options or emitter helpers"
 fi
 
-if ! rg -n 'fn wgsl_ir_collect_block_function_calls' ir/wgsl_naga_compat_view.mbt >/dev/null; then
-  fail "Naga-compatible module view must own function body dependency traversal"
+if ! rg -n 'fn wgsl_ir_collect_block_function_calls' ir/wgsl_naga_compat_dependencies.mbt >/dev/null; then
+  fail "Naga-compatible dependency layer must own function body traversal"
 fi
 
 if rg -n 'build_wgsl_ir_emit_name_table_for_naga_compat_view' ir/wgsl_emit_name_table.mbt >/dev/null; then
-  fail "Naga-compatible final name allocation must live in the Naga-compatible module view"
+  fail "Naga-compatible final name allocation must not live in the generic emitter name table"
 fi
 
-if ! rg -n 'build_wgsl_ir_emit_name_table_for_naga_compat_view' ir/wgsl_naga_compat_view.mbt >/dev/null; then
-  fail "Naga-compatible module view must own final name allocation"
+if ! rg -n 'build_wgsl_ir_emit_name_table_for_naga_compat_view' ir/wgsl_naga_compat_names.mbt >/dev/null; then
+  fail "Naga-compatible name layer must own final name allocation"
+fi
+
+if ! rg -n 'priv struct WgslIrNagaCompatDeclarationArena' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
+  fail "Naga-compatible declaration layer must own declaration arena slots"
 fi
 
 user_call_arg_sites="$(rg -n 'self\.lower_user_function_call_arguments' ir --glob '*.mbt' | wc -l | tr -d ' ')"

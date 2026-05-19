@@ -518,7 +518,7 @@ fn wgsl_emit_test_before(text : String, left : String, right : String) -> Bool {
 }
 
 ///|
-test "root filtered Naga writer emits constants in reachability mark order" {
+test "root filtered Naga writer emits constants in arena order" {
   let source =
     #|const LEFT: u32 = 1u;
     #|const RIGHT: u32 = 2u;
@@ -546,11 +546,11 @@ test "root filtered Naga writer emits constants in reachability mark order" {
     error => abort(error.message())
   }
   debug_inspect(
-    wgsl_emit_test_before(emitted, "const ANY", "const LEFT"),
+    wgsl_emit_test_before(emitted, "const LEFT", "const RIGHT"),
     content="true",
   )
   debug_inspect(
-    wgsl_emit_test_before(emitted, "const LEFT", "const RIGHT"),
+    wgsl_emit_test_before(emitted, "const RIGHT", "const ANY"),
     content="true",
   )
 }
