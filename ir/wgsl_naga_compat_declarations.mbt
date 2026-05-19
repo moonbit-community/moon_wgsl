@@ -13,6 +13,16 @@
 // limitations under the License.
 
 ///|
+priv struct WgslIrNagaWriterArena {
+  declarations : WgslIrNagaCompatDeclarationArena
+  type_handles : Map[Int, Int]
+  constant_handles : Map[Int, Int]
+  override_handles : Map[Int, Int]
+  global_variable_handles : Map[Int, Int]
+  function_handles : Map[Int, Int]
+}
+
+///|
 priv struct WgslIrNagaCompatDeclarationArena {
   types : Array[WgslIrNagaCompatDeclarationSlot]
   constants : Array[WgslIrNagaCompatDeclarationSlot]
@@ -25,6 +35,23 @@ priv struct WgslIrNagaCompatDeclarationArena {
 priv struct WgslIrNagaCompatDeclarationSlot {
   source_index : Int
   naga_index : Int
+}
+
+///|
+fn WgslIrNagaCompatPlanner::writer_arena(
+  self : WgslIrNagaCompatPlanner,
+) -> WgslIrNagaWriterArena {
+  let declarations = self.declaration_arena()
+  WgslIrNagaWriterArena::{
+    declarations,
+    type_handles: wgsl_ir_naga_compat_handle_map(declarations.types),
+    constant_handles: wgsl_ir_naga_compat_handle_map(declarations.constants),
+    override_handles: wgsl_ir_naga_compat_handle_map(declarations.overrides),
+    global_variable_handles: wgsl_ir_naga_compat_handle_map(
+      declarations.global_variables,
+    ),
+    function_handles: wgsl_ir_naga_compat_handle_map(declarations.functions),
+  }
 }
 
 ///|
@@ -124,21 +151,21 @@ fn WgslIrNagaCompatPlanner::global_variable_order(
 fn WgslIrNagaWriterModule::type_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.declarations.types)
+  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.types)
 }
 
 ///|
 fn WgslIrNagaWriterModule::constant_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.declarations.constants)
+  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.constants)
 }
 
 ///|
 fn WgslIrNagaWriterModule::override_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.declarations.overrides)
+  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.overrides)
 }
 
 ///|
@@ -146,7 +173,7 @@ fn WgslIrNagaWriterModule::global_variable_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
   wgsl_ir_naga_compat_source_order_from_slots(
-    self.declarations.global_variables,
+    self.arena.declarations.global_variables,
   )
 }
 
@@ -154,7 +181,7 @@ fn WgslIrNagaWriterModule::global_variable_order(
 fn WgslIrNagaWriterModule::function_order(
   self : WgslIrNagaWriterModule,
 ) -> Array[Int] {
-  wgsl_ir_naga_compat_source_order_from_slots(self.declarations.functions)
+  wgsl_ir_naga_compat_source_order_from_slots(self.arena.declarations.functions)
 }
 
 ///|
@@ -162,7 +189,7 @@ fn WgslIrNagaWriterModule::contains_type_declaration(
   self : WgslIrNagaWriterModule,
   index : Int,
 ) -> Bool {
-  wgsl_ir_naga_compat_slots_contain_source_index(self.declarations.types, index)
+  self.arena.type_handles.get(index) != None
 }
 
 ///|
@@ -170,10 +197,7 @@ fn WgslIrNagaWriterModule::contains_constant_declaration(
   self : WgslIrNagaWriterModule,
   index : Int,
 ) -> Bool {
-  wgsl_ir_naga_compat_slots_contain_source_index(
-    self.declarations.constants,
-    index,
-  )
+  self.arena.constant_handles.get(index) != None
 }
 
 ///|
@@ -181,10 +205,7 @@ fn WgslIrNagaWriterModule::contains_override_declaration(
   self : WgslIrNagaWriterModule,
   index : Int,
 ) -> Bool {
-  wgsl_ir_naga_compat_slots_contain_source_index(
-    self.declarations.overrides,
-    index,
-  )
+  self.arena.override_handles.get(index) != None
 }
 
 ///|
@@ -192,10 +213,7 @@ fn WgslIrNagaWriterModule::contains_global_variable_declaration(
   self : WgslIrNagaWriterModule,
   index : Int,
 ) -> Bool {
-  wgsl_ir_naga_compat_slots_contain_source_index(
-    self.declarations.global_variables,
-    index,
-  )
+  self.arena.global_variable_handles.get(index) != None
 }
 
 ///|
@@ -203,10 +221,7 @@ fn WgslIrNagaWriterModule::contains_function_declaration(
   self : WgslIrNagaWriterModule,
   index : Int,
 ) -> Bool {
-  wgsl_ir_naga_compat_slots_contain_source_index(
-    self.declarations.functions,
-    index,
-  )
+  self.arena.function_handles.get(index) != None
 }
 
 ///|
@@ -238,16 +253,14 @@ fn wgsl_ir_naga_compat_source_order_from_slots(
 }
 
 ///|
-fn wgsl_ir_naga_compat_slots_contain_source_index(
+fn wgsl_ir_naga_compat_handle_map(
   slots : Array[WgslIrNagaCompatDeclarationSlot],
-  index : Int,
-) -> Bool {
+) -> Map[Int, Int] {
+  let handles : Map[Int, Int] = Map([])
   for slot in slots {
-    if slot.source_index == index {
-      return true
-    }
+    handles.set(slot.source_index, slot.naga_index)
   }
-  false
+  handles
 }
 
 ///|
