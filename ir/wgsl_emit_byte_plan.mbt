@@ -55,6 +55,12 @@ priv enum WgslIrNumericLiteralBytePolicy {
 }
 
 ///|
+priv enum WgslIrEntryPointAttributeLineBytePolicy {
+  EmitTrailingSpaceAfterEntryPointAttributes
+  SuppressTrailingSpaceAfterEntryPointAttributes
+}
+
+///|
 priv struct WgslIrWriterBytePlan {
   source_directives : WgslIrSourceDirectiveBytePolicy
   trailing_blank : WgslIrTrailingBlankBytePolicy
@@ -63,6 +69,7 @@ priv struct WgslIrWriterBytePlan {
   local_type_annotations : WgslIrLocalTypeAnnotationBytePolicy
   atomic_result_local_annotations : WgslIrAtomicResultLocalAnnotationBytePolicy
   numeric_literals : WgslIrNumericLiteralBytePolicy
+  entry_point_attribute_line : WgslIrEntryPointAttributeLineBytePolicy
 }
 
 ///|
@@ -75,6 +82,7 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
     local_type_annotations: ElideInferredConcreteLocalTypes,
     atomic_result_local_annotations: FollowLocalTypeAnnotationPolicy,
     numeric_literals: RuntimeNumericLiteralSpelling,
+    entry_point_attribute_line: SuppressTrailingSpaceAfterEntryPointAttributes,
   }
 }
 
@@ -88,6 +96,7 @@ fn WgslIrWriterBytePlan::naga_oil_writer() -> WgslIrWriterBytePlan {
     local_type_annotations: AnnotateConcreteLocalTypes,
     atomic_result_local_annotations: AnnotateAtomicCompareExchangeResultLocals,
     numeric_literals: NagaCompatibleNumericLiteralSpelling,
+    entry_point_attribute_line: EmitTrailingSpaceAfterEntryPointAttributes,
   }
 }
 
@@ -157,4 +166,14 @@ fn WgslIrWriterBytePlan::numeric_literal_policy(
   self : WgslIrWriterBytePlan,
 ) -> WgslIrNumericLiteralBytePolicy {
   self.numeric_literals
+}
+
+///|
+fn WgslIrWriterBytePlan::should_emit_trailing_space_after_entry_point_attributes(
+  self : WgslIrWriterBytePlan,
+) -> Bool {
+  match self.entry_point_attribute_line {
+    EmitTrailingSpaceAfterEntryPointAttributes => true
+    SuppressTrailingSpaceAfterEntryPointAttributes => false
+  }
 }

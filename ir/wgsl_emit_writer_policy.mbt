@@ -107,6 +107,13 @@ fn WgslIrEmitOptions::emit_trailing_blank_after_module(
 }
 
 ///|
+fn WgslIrEmitOptions::emit_trailing_space_after_entry_point_attributes(
+  self : WgslIrEmitOptions,
+) -> Bool {
+  self.byte_plan.should_emit_trailing_space_after_entry_point_attributes()
+}
+
+///|
 fn WgslIrEmitter::with_preserved_abstract_float_literals(
   self : WgslIrEmitter,
 ) -> WgslIrEmitter {

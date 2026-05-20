@@ -43,6 +43,11 @@ fn WgslIrEmitter::emit_entry_point(
   } else if !multiline_attributes {
     out.write_string(" ")
   }
+  if wgsl_ir_stage_has_workgroup_size(entry_point.stage) &&
+    !multiline_attributes &&
+    self.options.emit_trailing_space_after_entry_point_attributes() {
+    out.write_string(" ")
+  }
   out.write_string("\n")
   self.emit_function(
     out,
