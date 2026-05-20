@@ -339,6 +339,12 @@ fn wgsl_ir_emit_expression_temporary_index(
         )
       ) ||
       (
+        current_is_call_result &&
+        wgsl_ir_function_expression_is_unmaterialized_call_result_projection_argument(
+          function, expression_handle, handle,
+        )
+      ) ||
+      (
         !current_is_call_result &&
         wgsl_ir_emit_expression_is_call_result(function, expression_handle)
       ) ||
@@ -347,6 +353,11 @@ fn wgsl_ir_emit_expression_temporary_index(
       ) {
       skipped += 1
     }
+  }
+  let local_store_offset = if current_is_call_result {
+    0
+  } else {
+    wgsl_ir_emit_local_var_store_value_slot_offset(function, body_plan, handle)
   }
   let base_index = handle.index() - skipped
   let base_index = if wgsl_ir_emit_expression_is_adjacent_materialized_load_after_generated_snapshot(
@@ -358,8 +369,80 @@ fn wgsl_ir_emit_expression_temporary_index(
   }
   base_index +
   wgsl_ir_emit_implicit_naga_load_slot_offset(function, body_plan, handle) +
-  wgsl_ir_emit_local_var_store_value_slot_offset(function, body_plan, handle) +
+  local_store_offset +
   wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
+}
+
+///|
+fn wgsl_ir_function_expression_is_unmaterialized_call_result_projection_argument(
+  function : Function,
+  handle : Handle,
+  result : Handle,
+) -> Bool {
+  wgsl_ir_function_expression_is_projection_of_generated_temporary(
+    function, handle,
+  ) &&
+  wgsl_ir_function_call_result_uses_direct_argument(
+    function.body,
+    handle,
+    result,
+  )
+}
+
+///|
+fn wgsl_ir_function_call_result_uses_direct_argument(
+  block : Block,
+  argument : Handle,
+  result : Handle,
+) -> Bool {
+  for statement in block.statements {
+    match statement {
+      Call(_, arguments, Some(call_result)) =>
+        if call_result == result {
+          for item in arguments {
+            if item == argument {
+              return true
+            }
+          }
+        }
+      Block(child) =>
+        if wgsl_ir_function_call_result_uses_direct_argument(
+            child, argument, result,
+          ) {
+          return true
+        }
+      If(_, accept, reject) =>
+        if wgsl_ir_function_call_result_uses_direct_argument(
+            accept, argument, result,
+          ) ||
+          wgsl_ir_function_call_result_uses_direct_argument(
+            reject, argument, result,
+          ) {
+          return true
+        }
+      Switch(_, cases) =>
+        for case in cases {
+          if wgsl_ir_function_call_result_uses_direct_argument(
+              case.body,
+              argument,
+              result,
+            ) {
+            return true
+          }
+        }
+      Loop(body, continuing, _) =>
+        if wgsl_ir_function_call_result_uses_direct_argument(
+            body, argument, result,
+          ) ||
+          wgsl_ir_function_call_result_uses_direct_argument(
+            continuing, argument, result,
+          ) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
 }
 
 ///|
@@ -553,15 +636,13 @@ fn wgsl_ir_emit_projected_temporary_slot_offset(
 ) -> Int {
   let mut offset = 0
   for index in 0..<limit.index() {
-    if body_plan.contains_materialized_expression(Handle::Handle(index)) &&
+    let handle = Handle::Handle(index)
+    if body_plan.contains_materialized_expression(handle) &&
       wgsl_ir_emit_materialized_expression_has_projected_use_before(
-        function,
-        Handle::Handle(index),
-        limit,
+        function, handle, limit,
       ) {
       offset += wgsl_ir_emit_projected_temporary_expression_slots(
-        function,
-        Handle::Handle(index),
+        function, handle,
       )
     }
   }
@@ -591,6 +672,10 @@ fn wgsl_ir_emit_projected_temporary_expression_slots(
   handle : Handle,
 ) -> Int {
   match function.expressions.items.get(handle.index()) {
+    Some(Load(_))
+    | Some(Access(_, _))
+    | Some(AccessIndex(_, _))
+    | Some(Swizzle(_, _, _)) => 0
     Some(ImageQuery(_, _)) => 1
     Some(ImageLoad(_, _, _, _, _)) => 0
     Some(AtomicCall(CompareExchangeWeak, _)) => 1

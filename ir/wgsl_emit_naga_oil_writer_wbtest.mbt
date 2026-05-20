@@ -239,3 +239,69 @@ test "naga-oil writer allocates entry body names before helper signatures" {
     content="false",
   )
 }
+
+///|
+test "naga-oil writer materializes var field before swizzle projection" {
+  let source =
+    #|struct Out {
+    #|  world_position: vec4<f32>,
+    #|}
+    #|
+    #|fn position_world_to_clip(world_position: vec3<f32>) -> vec4<f32> {
+    #|  return vec4<f32>(world_position, 1.0);
+    #|}
+    #|
+    #|@vertex
+    #|fn vertex() -> @builtin(position) vec4<f32> {
+    #|  var out: Out;
+    #|  out.world_position = vec4<f32>(1.0, 2.0, 3.0, 1.0);
+    #|  return position_world_to_clip(out.world_position.xyz);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e8: vec4<f32> = out.world_position;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e9: vec4<f32> = position_world_to_clip(_e8.xyz);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(": vec3<f32> = out.world_position.xyz;"),
+    content="false",
+  )
+}
+
+///|
+test "naga-oil writer materializes global field before swizzle projection" {
+  let source =
+    #|struct Lights {
+    #|  ambient_color: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> lights: Lights;
+    #|
+    #|fn ambient() -> vec3<f32> {
+    #|  return lights.ambient_color.xyz;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e2: vec4<f32> = lights.ambient_color;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return _e2.xyz;"), content="true")
+  debug_inspect(
+    emitted.contains(": vec3<f32> = lights.ambient_color.xyz;"),
+    content="false",
+  )
+}

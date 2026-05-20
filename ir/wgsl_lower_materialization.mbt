@@ -105,6 +105,10 @@ fn wgsl_ir_function_expression_is_generated_temporary_reference(
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
+    Some(Load(inner)) =>
+      wgsl_ir_function_expression_is_generated_temporary_reference(
+        function, inner,
+      )
     Some(LocalVariable(local_handle)) =>
       match function.local_variables.items.get(local_handle.index()) {
         Some(local_var) => local_var.generated_temporary
@@ -342,7 +346,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       }
     }
     Some(Swizzle(size, base, pattern)) => {
-      let lowered_base = self.materialize_nested_access_base(
+      let lowered_base = self.materialize_nested_swizzle_base(
         function, scope, block, base,
       )
       let parent_base = wgsl_ir_parent_expression_operand(
@@ -984,6 +988,23 @@ fn WgslIrLowerer::materialize_nested_access_base(
 }
 
 ///|
+fn WgslIrLowerer::materialize_nested_swizzle_base(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  if self.function_expression_should_materialize_projection_base_value(
+      function, value,
+    ) {
+    self.materialize_function_expression(function, scope, block, value)
+  } else {
+    self.materialize_nested_access_base(function, scope, block, value)
+  }
+}
+
+///|
 fn WgslIrLowerer::materialize_nested_call_argument(
   self : WgslIrLowerer,
   function : Function,
@@ -994,6 +1015,11 @@ fn WgslIrLowerer::materialize_nested_call_argument(
   let normalized = self.materialize_return_subexpressions(
     function, scope, block, value,
   )
+  if wgsl_ir_function_expression_is_projection_of_generated_temporary(
+      function, normalized,
+    ) {
+    return normalized
+  }
   if self.function_expression_should_materialize_as_call_argument(
       function, normalized,
     ) ||
@@ -1125,6 +1151,11 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_is_projection_of_generated_temporary(
+      function, value,
+    ) {
+    return false
+  }
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
@@ -1137,13 +1168,52 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
     Some(Load(_)) =>
       self.function_expression_reads_global_binding(function, value) ||
       self.function_expression_reads_var_pointer_load(function, value)
-    Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
-      self.function_expression_reads_global_binding(function, value) ||
-      self.function_expression_reads_var_pointer_load(function, value)
+    Some(Access(base, _))
+    | Some(AccessIndex(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      !wgsl_ir_function_expression_is_generated_temporary_reference(
+        function, base,
+      ) &&
+      (
+        self.function_expression_reads_global_binding(function, value) ||
+        self.function_expression_reads_var_pointer_load(function, value)
+      )
     _ => false
   }
   should_materialize &&
   self.function_expression_can_materialize_to_let(function, value)
+}
+
+///|
+fn wgsl_ir_function_expression_is_projection_of_generated_temporary(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Access(base, _))
+    | Some(AccessIndex(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      wgsl_ir_function_expression_is_generated_temporary_reference(
+        function, base,
+      ) ||
+      wgsl_ir_function_expression_has_generated_temporary_snapshot(
+        function, base,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_has_generated_temporary_snapshot(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  for local_var in function.local_variables.items {
+    if local_var.generated_temporary && local_var.init == Some(handle) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -1153,7 +1223,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_access_base(
   value : Handle,
 ) -> Bool {
   ignore(self)
-  match function.expressions.items.get(value.index()) {
+  let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
     | Some(ImageSample(_, _, _, _, _, _, _, _, _))
@@ -1161,6 +1231,26 @@ fn WgslIrLowerer::function_expression_should_materialize_as_access_base(
     | Some(ImageQuery(_, _)) => true
     _ => false
   }
+  should_materialize
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_materialize_projection_base_value(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  let should_materialize = match function.expressions.items.get(value.index()) {
+    Some(Load(_))
+    | Some(Access(_, _))
+    | Some(AccessIndex(_, _))
+    | Some(Swizzle(_, _, _)) =>
+      self.function_expression_reads_global_binding(function, value) ||
+      self.function_expression_reads_var_pointer_load(function, value)
+    _ => false
+  }
+  should_materialize &&
+  self.function_expression_can_materialize_to_let(function, value)
 }
 
 ///|
@@ -1169,6 +1259,11 @@ fn WgslIrLowerer::function_expression_should_materialize_as_call_argument(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_is_projection_of_generated_temporary(
+      function, value,
+    ) {
+    return false
+  }
   self.function_expression_is_var_pointer_load(function, value) &&
   self.function_expression_can_materialize_to_let(function, value)
 }
