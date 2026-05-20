@@ -448,17 +448,20 @@ fn wgsl_ir_numeric_literal_to_small_int(
 ///|
 fn wgsl_ir_int_literal_from_expr_ref(expr_ref : @ast.WgslExprRef) -> Int? {
   match expr_ref.root() {
-    Some(node) =>
-      match node.kind() {
-        Literal(token) =>
-          match token.kind() {
-            NumericLiteral(literal) =>
-              wgsl_ir_numeric_literal_to_small_int(literal)
-            _ => None
-          }
+    Some(node) => wgsl_ir_int_literal_from_expr_node(node)
+    None => None
+  }
+}
+
+///|
+fn wgsl_ir_int_literal_from_expr_node(node : @ast.WgslExprNode) -> Int? {
+  match node.kind() {
+    Literal(token) =>
+      match token.kind() {
+        NumericLiteral(literal) => wgsl_ir_numeric_literal_to_small_int(literal)
         _ => None
       }
-    None => None
+    _ => None
   }
 }
 

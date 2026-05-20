@@ -155,10 +155,9 @@ fn WgslIrLowerer::lower_function_lvalue_node(
     }
     Index(base, index) => {
       let base_handle = self.lower_function_lvalue_node(base, function, scope)
-      let index_handle = self.lower_function_expression_node(
-        index, function, scope,
+      self.lower_function_static_or_dynamic_index(
+        base_handle, index, function, scope,
       )
-      function.expressions.append(Expression::Access(base_handle, index_handle))
     }
     _ =>
       raise WgslIrLowerError::UnsupportedExpression("unsupported lvalue shape")
@@ -326,10 +325,9 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let base_handle = self.lower_function_index_value_base(
         base, function, scope,
       )
-      let index_handle = self.lower_function_expression_node(
-        index, function, scope,
+      self.lower_function_static_or_dynamic_index(
+        base_handle, index, function, scope,
       )
-      function.expressions.append(Expression::Access(base_handle, index_handle))
     }
     Call(callee, arguments) =>
       self.lower_function_call_expression(
@@ -394,6 +392,23 @@ fn WgslIrLowerer::contextualize_function_binary_operand_pair(
 ) -> Unit raise WgslIrLowerError {
   if wgsl_ir_binary_operator_has_asymmetric_integer_context(op) {
     return
+  }
+  if op == BinaryOperator::Multiply {
+    match self.matrix_multiply_operand_context(left_ty, right_ty) {
+      Some((left_expected, right_expected)) => {
+        match left_expected {
+          Some(ty) =>
+            self.contextualize_function_expression_for_type(function, left, ty)
+          None => ()
+        }
+        match right_expected {
+          Some(ty) =>
+            self.contextualize_function_expression_for_type(function, right, ty)
+          None => ()
+        }
+      }
+      None => ()
+    }
   }
   match self.contextualized_constructor_type(right_ty, left_ty) {
     Some(_) =>
