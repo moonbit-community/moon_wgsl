@@ -429,6 +429,38 @@ test "IR lowerer materializes global member return values like Naga" {
 }
 
 ///|
+test "IR emitter counts Naga implicit load slot after dynamic pointer member access" {
+  let source =
+    #|struct Mesh {
+    #|  world_from_local: mat3x4<f32>,
+    #|}
+    #|
+    #|var<private> mesh: array<Mesh, 1>;
+    #|
+    #|fn affine3_to_square(value: mat3x4<f32>) -> mat4x4<f32> {
+    #|  return mat4x4<f32>(value[0], value[1], value[2], vec4<f32>(0.0, 0.0, 0.0, 1.0));
+    #|}
+    #|
+    #|fn get_world_from_local(instance_index: u32) -> mat4x4<f32> {
+    #|  return affine3_to_square(mesh[instance_index].world_from_local);
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "let _e4: mat3x4<f32> = mesh[instance_index].world_from_local;",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e5: mat4x4<f32> = affine3_to_square(_e4);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e3: mat3x4<f32>"), content="false")
+}
+
+///|
 test "IR emitter prints global and function const_asserts from IR" {
   let source =
     #|const VALUE: u32 = 1u;

@@ -357,6 +357,7 @@ fn wgsl_ir_emit_expression_temporary_index(
     base_index
   }
   base_index +
+  wgsl_ir_emit_implicit_naga_load_slot_offset(function, body_plan, handle) +
   wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
 }
 
@@ -367,6 +368,48 @@ fn wgsl_ir_emit_expression_is_call_result(
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
     Some(CallResult(_)) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_implicit_naga_load_slot_offset(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  limit : Handle,
+) -> Int {
+  let mut offset = 0
+  for index in 0..<=limit.index() {
+    let handle = Handle::Handle(index)
+    if body_plan.contains_materialized_expression(handle) &&
+      wgsl_ir_emit_expression_has_implicit_naga_load_slot(function, handle) {
+      offset += 1
+    }
+  }
+  offset
+}
+
+///|
+fn wgsl_ir_emit_expression_has_implicit_naga_load_slot(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(AccessIndex(base, _)) =>
+      wgsl_ir_emit_expression_is_dynamic_pointer_access(function, base)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_expression_is_dynamic_pointer_access(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Access(_, _)) => true
+    Some(AccessIndex(base, _)) =>
+      wgsl_ir_emit_expression_is_dynamic_pointer_access(function, base)
     _ => false
   }
 }
