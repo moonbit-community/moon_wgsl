@@ -358,6 +358,7 @@ fn wgsl_ir_emit_expression_temporary_index(
   }
   base_index +
   wgsl_ir_emit_implicit_naga_load_slot_offset(function, body_plan, handle) +
+  wgsl_ir_emit_local_var_store_value_slot_offset(function, body_plan, handle) +
   wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
 }
 
@@ -410,6 +411,136 @@ fn wgsl_ir_emit_expression_is_dynamic_pointer_access(
     Some(Access(_, _)) => true
     Some(AccessIndex(base, _)) =>
       wgsl_ir_emit_expression_is_dynamic_pointer_access(function, base)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_local_var_store_value_slot_offset(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  limit : Handle,
+) -> Int {
+  wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+    function,
+    body_plan,
+    function.body,
+    limit,
+  )
+}
+
+///|
+fn wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  block : Block,
+  limit : Handle,
+) -> Int {
+  let mut offset = 0
+  for statement in block.statements {
+    offset += wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
+      function, body_plan, statement, limit,
+    )
+  }
+  offset
+}
+
+///|
+fn wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  statement : Statement,
+  limit : Handle,
+) -> Int {
+  match statement {
+    Store(pointer, value) =>
+      if pointer.index() < limit.index() &&
+        value.index() < limit.index() &&
+        wgsl_ir_emit_store_pointer_is_direct_user_local(function, pointer) &&
+        wgsl_ir_emit_store_value_is_materialized_user_call_result(
+          function, body_plan, value,
+        ) {
+        1
+      } else {
+        0
+      }
+    Block(child) =>
+      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+        function, body_plan, child, limit,
+      )
+    If(_, accept, reject) =>
+      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+        function, body_plan, accept, limit,
+      ) +
+      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+        function, body_plan, reject, limit,
+      )
+    Switch(_, cases) => {
+      let mut offset = 0
+      for case in cases {
+        offset += wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+          function,
+          body_plan,
+          case.body,
+          limit,
+        )
+      }
+      offset
+    }
+    Loop(body, continuing, _) =>
+      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+        function, body_plan, body, limit,
+      ) +
+      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
+        function, body_plan, continuing, limit,
+      )
+    _ => 0
+  }
+}
+
+///|
+fn wgsl_ir_emit_store_pointer_is_direct_user_local(
+  function : Function,
+  pointer : Handle,
+) -> Bool {
+  match function.expressions.items.get(pointer.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          local_var.kind == LocalVariableKind::Var &&
+          !local_var.generated_temporary
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_store_value_is_materialized_user_call_result(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  value : Handle,
+) -> Bool {
+  if body_plan.contains_materialized_expression(value) &&
+    wgsl_ir_emit_expression_is_call_result(function, value) {
+    return true
+  }
+  match function.expressions.items.get(value.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          if local_var.generated_temporary {
+            match local_var.init {
+              Some(init) =>
+                body_plan.contains_materialized_expression(init) &&
+                wgsl_ir_emit_expression_is_call_result(function, init)
+              None => false
+            }
+          } else {
+            false
+          }
+        None => false
+      }
     _ => false
   }
 }

@@ -107,6 +107,69 @@ test "IR emitter ignores materialized temporary locals in Naga arena order" {
 }
 
 ///|
+test "IR emitter counts direct local stores of materialized temporary values in Naga arena order" {
+  let source =
+    #|struct Out {
+    #|  value: mat4x4<f32>,
+    #|}
+    #|
+    #|fn make_value(i: u32) -> mat4x4<f32> {
+    #|  return mat4x4<f32>();
+    #|}
+    #|
+    #|fn vertex(i: u32) -> Out {
+    #|  var out: Out;
+    #|  var world: mat4x4<f32>;
+    #|
+    #|  let value = make_value(i);
+    #|  world = value;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e1: mat4x4<f32> = make_value(i_1);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("world = _e1;"), content="true")
+  debug_inspect(emitted.contains("let _e4: Out = out;"), content="true")
+  debug_inspect(emitted.contains("return _e4;"), content="true")
+  debug_inspect(emitted.contains("let _e3: Out = out;"), content="false")
+}
+
+///|
+test "IR emitter does not count texture store as extra Naga arena slot" {
+  let source =
+    #|@group(0) @binding(0) var tex: texture_2d<f32>;
+    #|@group(0) @binding(1) var samp: sampler;
+    #|
+    #|fn fragment(uv: vec2<f32>) -> vec4<f32> {
+    #|  var color = textureSample(tex, samp, uv);
+    #|  return color;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e3: vec4<f32> = textureSample(tex, samp, uv);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e5: vec4<f32> = color;"), content="true")
+  debug_inspect(emitted.contains("return _e5;"), content="true")
+  debug_inspect(
+    emitted.contains("let _e6: vec4<f32> = color;"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer profile suppresses source directives like Naga writer" {
   let source =
     #|enable dual_source_blending;
