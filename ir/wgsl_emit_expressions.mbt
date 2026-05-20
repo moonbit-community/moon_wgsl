@@ -313,42 +313,6 @@ fn WgslIrEmitter::folded_float_math_expression(
 }
 
 ///|
-fn WgslIrEmitter::eval_float_expression_for_writer(
-  self : WgslIrEmitter,
-  function : Function?,
-  handle : Handle,
-) -> Double? raise WgslIrEmitError {
-  match self.required_expression(function, handle) {
-    Literal(literal) => wgsl_ir_float_value_from_numeric_literal(literal)
-    Constant(constant) =>
-      self.eval_constant_float_expression_for_writer(constant)
-    Compose(ty, [component]) =>
-      match self.shader_module.types.items.get(ty.index()) {
-        Some({ inner: Scalar({ kind: Float, .. }), .. }) =>
-          self.eval_float_expression_for_writer(function, component)
-        _ => None
-      }
-    Unary(UnaryOperator::Negate, inner) =>
-      match self.eval_float_expression_for_writer(function, inner) {
-        Some(value) => Some(-value)
-        None => None
-      }
-    Binary(op, left, right) => {
-      guard self.eval_float_expression_for_writer(function, left)
-        is Some(left_value) else {
-        return None
-      }
-      guard self.eval_float_expression_for_writer(function, right)
-        is Some(right_value) else {
-        return None
-      }
-      wgsl_ir_emit_eval_float_binary(op, left_value, right_value)
-    }
-    _ => None
-  }
-}
-
-///|
 fn WgslIrEmitter::binary_expression(
   self : WgslIrEmitter,
   function : Function?,
@@ -569,7 +533,11 @@ fn WgslIrEmitter::splat_expression(
   size : VectorSize,
   inner : Handle,
 ) -> String raise WgslIrEmitError {
-  let value = self.required_function_expression(function, inner)
+  let value = match
+    self.constructor_component_folded_expression(function, inner) {
+    Some(value) => value
+    None => self.required_function_expression(function, inner)
+  }
   "vec\{size.width()}(\{value})"
 }
 
@@ -585,76 +553,6 @@ fn WgslIrEmitter::compose_expression(
     None => ()
   }
   "\{self.compose_constructor_name_for_components(ty, components, function)}(\{self.compose_component_list(ty, components, function)})"
-}
-
-///|
-fn WgslIrEmitter::folded_scalar_constructor_expression(
-  self : WgslIrEmitter,
-  ty : Handle,
-  components : Array[Handle],
-  function : Function?,
-) -> String? raise WgslIrEmitError {
-  if !self.options.fold_numeric_constant_expressions() ||
-    components.length() != 1 {
-    return None
-  }
-  guard self.shader_module.types.items.get(ty.index()) is Some(type_) else {
-    raise WgslIrEmitError::MissingHandle("type \{ty.index()}")
-  }
-  guard type_.inner is Scalar(target) else { return None }
-  guard target.kind == Float else { return None }
-  let expression = self.required_expression(function, components[0])
-  match expression {
-    Literal(literal) =>
-      match wgsl_ir_float_value_from_numeric_literal(literal) {
-        Some(value) => self.float_value_literal_for_width(value, target.width)
-        None => None
-      }
-    Constant(handle) =>
-      match self.eval_constant_float_expression_for_constructor(handle) {
-        Some(value) => self.float_value_literal_for_width(value, target.width)
-        None =>
-          match self.eval_constant_integer_expression_for_constructor(handle) {
-            Some(value) =>
-              match value.to_double() {
-                Some(value) =>
-                  self.float_value_literal_for_width(value, target.width)
-                None => None
-              }
-            None => None
-          }
-      }
-    _ =>
-      match
-        self.eval_float_expression_with_retained_constants(
-          function,
-          components[0],
-        ) {
-        Some(value) => self.float_value_literal_for_width(value, target.width)
-        None => None
-      }
-  }
-}
-
-///|
-fn wgsl_ir_float_value_from_numeric_literal(literal : Literal) -> Double? {
-  match literal {
-    F16(value) | F64(value) | AbstractFloat(value) => Some(value)
-    F32(value) => Some(value.to_double())
-    I32(value) => Some(Double::from_int(value))
-    U32(value) => Some(value.to_double())
-    AbstractInt(value) => Some(value.to_double())
-    _ => None
-  }
-}
-
-///|
-fn WgslIrEmitIntegerValue::to_double(self : WgslIrEmitIntegerValue) -> Double? {
-  match self {
-    Signed(value) => Some(Double::from_int(value))
-    Unsigned(value) => Some(value.to_double())
-    Abstract(value) => Some(value.to_double())
-  }
 }
 
 ///|
@@ -687,47 +585,6 @@ fn WgslIrEmitter::compose_component_list(
       }
       out.to_string()
     }
-  }
-}
-
-///|
-fn WgslIrEmitter::compose_component_scalar_context(
-  self : WgslIrEmitter,
-  ty : Handle,
-  components : Array[Handle],
-  function : Function?,
-) -> Scalar? {
-  guard self.shader_module.types.items.get(ty.index()) is Some(type_) else {
-    return None
-  }
-  match type_.inner {
-    Scalar(scalar) => Some(scalar)
-    Vector(_, scalar) => {
-      for component in components {
-        if !self.expression_is_scalar_type(function, component, scalar) {
-          return None
-        }
-      }
-      Some(scalar)
-    }
-    _ => None
-  }
-}
-
-///|
-fn WgslIrEmitter::compose_component_expression(
-  self : WgslIrEmitter,
-  function : Function?,
-  component : Handle,
-  scalar_context : Scalar?,
-) -> String raise WgslIrEmitError {
-  match scalar_context {
-    Some(scalar) =>
-      match self.contextual_scalar_literal(function, component, scalar) {
-        Some(value) => value
-        None => self.required_function_expression(function, component)
-      }
-    None => self.required_function_expression(function, component)
   }
 }
 
@@ -776,7 +633,7 @@ fn WgslIrEmitter::contextual_scalar_literal(
           out.write_string(", ")
         }
         out.write_string(
-          self.contextual_argument_expression(
+          self.compose_component_expression(
             function,
             components[i],
             Some(scalar),
