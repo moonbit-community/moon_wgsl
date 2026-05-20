@@ -159,14 +159,12 @@ fn WgslIrEmitter::access_base_expression(
       match function.expressions.items.get(base.index()) {
         Some(Load(inner)) =>
           self.load_expression_requires_explicit_deref(Some(function), inner)
-        Some(Binary(_, _, _)) | Some(Select(_, _, _)) => true
         _ => false
       }
     None =>
       match self.shader_module.global_expressions.items.get(base.index()) {
         Some(Load(inner)) =>
           self.load_expression_requires_explicit_deref(None, inner)
-        Some(Binary(_, _, _)) | Some(Select(_, _, _)) => true
         _ => false
       }
   }

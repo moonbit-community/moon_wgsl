@@ -35,3 +35,22 @@ test "naga-oil writer policy preserves typed vector constructors in matrix multi
   )
   debug_inspect(naga_oil.contains("m * vec4(0f, 0f, z, 1f)"), content="false")
 }
+
+///|
+test "naga-oil writer policy avoids duplicate parentheses around projection bases" {
+  let source =
+    #|fn project(m: mat4x4<f32>, position: vec3<f32>) -> vec3<f32> {
+    #|  return (m * vec4<f32>(position, 1f)).xyz;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("return (m * vec4<f32>(position, 1f)).xyz;"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("((m * vec4"), content="false")
+}
