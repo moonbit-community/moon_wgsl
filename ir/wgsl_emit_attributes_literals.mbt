@@ -186,6 +186,10 @@ fn wgsl_ir_f32_is_negative_zero(value : Float) -> Bool {
 fn wgsl_ir_shortest_f32_literal_text(value : Float) -> String {
   let original = "\{value}"
   if original.contains("e") || original.contains("E") {
+    match wgsl_ir_shortest_fixed_f32_literal_text(value, original) {
+      Some(fixed) => return fixed
+      None => ()
+    }
     return original
   }
   guard original.contains(".") else { return original }
@@ -199,6 +203,96 @@ fn wgsl_ir_shortest_f32_literal_text(value : Float) -> String {
     }
   }
   original
+}
+
+///|
+fn wgsl_ir_shortest_fixed_f32_literal_text(
+  value : Float,
+  scientific : String,
+) -> String? {
+  guard wgsl_ir_scientific_decimal_text(scientific) is Some(decimal) else {
+    return None
+  }
+  let dot = wgsl_ir_find_ascii_char(decimal, 46)
+  guard dot >= 0 else { return None }
+  for precision in 0..<19 {
+    match wgsl_ir_round_fixed_decimal_text(decimal, precision) {
+      Some(candidate) =>
+        if candidate != "0" &&
+          candidate != "-0" &&
+          wgsl_ir_f32_literal_round_trips(value, candidate) {
+          return Some(candidate)
+        }
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_ir_scientific_decimal_text(text : String) -> String? {
+  let exp_index = wgsl_ir_find_scientific_exponent_index(text)
+  guard exp_index >= 0 else { return None }
+  let mantissa = text[0:exp_index].to_owned()
+  let exponent_text = text[exp_index + 1:text.length()].to_owned()
+  let exponent : Int = @strconv.from_str(exponent_text) catch {
+    _ => return None
+  }
+  let negative = mantissa.has_prefix("-")
+  let mantissa_body = if negative {
+    mantissa[1:mantissa.length()].to_owned()
+  } else {
+    mantissa
+  }
+  let dot = wgsl_ir_find_ascii_char(mantissa_body, 46)
+  let decimal_pos = if dot >= 0 { dot } else { mantissa_body.length() }
+  let digits = wgsl_ir_decimal_digits_without_dot(mantissa_body)
+  guard digits.length() > 0 else { return None }
+  let shifted_decimal_pos = decimal_pos + exponent
+  let unsigned = if shifted_decimal_pos <= 0 {
+    "0.\{wgsl_ir_repeat_ascii_zero(-shifted_decimal_pos)}\{digits}"
+  } else if shifted_decimal_pos >= digits.length() {
+    "\{digits}\{wgsl_ir_repeat_ascii_zero(shifted_decimal_pos - digits.length())}.0"
+  } else {
+    "\{digits[0:shifted_decimal_pos]}.\{digits[shifted_decimal_pos:digits.length()]}"
+  }
+  if negative {
+    Some("-\{unsigned}")
+  } else {
+    Some(unsigned)
+  }
+}
+
+///|
+fn wgsl_ir_find_scientific_exponent_index(text : String) -> Int {
+  for index in 0..<text.length() {
+    let code = text.code_unit_at(index).to_int()
+    if code == 101 || code == 69 {
+      return index
+    }
+  }
+  -1
+}
+
+///|
+fn wgsl_ir_decimal_digits_without_dot(text : String) -> String {
+  let out = StringBuilder::new()
+  for index in 0..<text.length() {
+    let code = text.code_unit_at(index).to_int()
+    if code >= 48 && code <= 57 {
+      out.write_string(text[index:index + 1].to_owned())
+    }
+  }
+  out.to_string()
+}
+
+///|
+fn wgsl_ir_repeat_ascii_zero(count : Int) -> String {
+  let out = StringBuilder::new()
+  for _ in 0..<count {
+    out.write_string("0")
+  }
+  out.to_string()
 }
 
 ///|
