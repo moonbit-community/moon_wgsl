@@ -189,7 +189,7 @@ fn WgslIrEmitter::emit_expression(
     Compose(ty, components) => self.compose_expression(ty, components, function)
     Splat(size, inner) => self.splat_expression(function, size, inner)
     Access(base, index) =>
-      "\{self.access_base_expression(function, base)}[\{self.required_function_expression(function, index)}]"
+      "\{self.access_base_expression(function, base)}[\{self.access_index_operand_expression(function, index)}]"
     AccessIndex(base, index) =>
       self.access_index_expression(function, base, index)
     Swizzle(_, base, components) =>
@@ -1249,6 +1249,45 @@ fn WgslIrEmitter::access_index_expression(
       raise WgslIrEmitError::Unsupported(
         "access-index expression without base type",
       )
+  }
+}
+
+///|
+fn WgslIrEmitter::access_index_operand_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  index : Handle,
+) -> String raise WgslIrEmitError {
+  if self.options.fold_numeric_constant_expressions() {
+    match self.eval_integer_expression_for_access_index(function, index) {
+      Some(value) =>
+        match value.to_unsigned() {
+          Some(value) => return "\{value}"
+          None => ()
+        }
+      None => ()
+    }
+  }
+  self.required_function_expression(function, index)
+}
+
+///|
+fn WgslIrEmitter::eval_integer_expression_for_access_index(
+  self : WgslIrEmitter,
+  function : Function?,
+  index : Handle,
+) -> WgslIrEmitIntegerValue? raise WgslIrEmitError {
+  match self.required_expression(function, index) {
+    Constant(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) =>
+          self.eval_global_integer_expression_for_emit(
+            constant.init,
+            @set.Set([]),
+          )
+        None => None
+      }
+    _ => self.eval_integer_expression_for_writer(function, index)
   }
 }
 

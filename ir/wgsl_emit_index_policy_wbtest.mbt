@@ -54,3 +54,33 @@ test "naga-oil writer policy avoids duplicate parentheses around projection base
   )
   debug_inspect(naga_oil.contains("((m * vec4"), content="false")
 }
+
+///|
+test "naga-oil writer policy folds integer constants in access index context" {
+  let source =
+    #|const LAYER_BASE: u32 = 0u;
+    #|struct Layer {
+    #|  roughness: f32,
+    #|}
+    #|struct Input {
+    #|  layers: array<Layer, 2>,
+    #|}
+    #|fn roughness(input: Input) -> f32 {
+    #|  return input.layers[LAYER_BASE].roughness;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let valid = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    valid.contains("input.layers[LAYER_BASE].roughness"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("input.layers[0].roughness"), content="true")
+  debug_inspect(naga_oil.contains("input.layers[LAYER_BASE]"), content="false")
+}
