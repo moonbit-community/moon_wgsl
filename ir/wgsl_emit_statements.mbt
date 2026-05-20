@@ -128,7 +128,7 @@ fn WgslIrEmitter::emit_statement(
       self.emit_memory_barrier_statement(out, barrier, indent)
     Store(pointer, value) =>
       out.write_string(
-        "\{pad}\{self.function_store_pointer_expression(function, pointer)} = \{self.function_expression(function, value)};\n",
+        "\{pad}\{self.function_store_pointer_expression(function, pointer)} = \{self.function_store_value_expression(function, pointer, value)};\n",
       )
     ImageStore(image, coordinate, array_index, value) => {
       out.write_string(
@@ -181,6 +181,38 @@ fn WgslIrEmitter::emit_statement(
     CooperativeStore(target, data) =>
       self.emit_cooperative_store_statement(out, function, target, data, indent)
     _ => raise WgslIrEmitError::Unsupported("statement kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::function_store_value_expression(
+  self : WgslIrEmitter,
+  function : Function,
+  pointer : Handle,
+  value : Handle,
+) -> String raise WgslIrEmitError {
+  let scalar_context = if self.options.contextualize_numeric_literals() {
+    match self.expression_type(Some(function), pointer) {
+      Some(pointer_ty) => {
+        let value_ty = self.deref_pointer_type_handle(pointer_ty)
+        self.store_scalar_context_from_value_type(value_ty)
+      }
+      None => None
+    }
+  } else {
+    None
+  }
+  self.contextual_argument_expression(Some(function), value, scalar_context)
+}
+
+///|
+fn WgslIrEmitter::store_scalar_context_from_value_type(
+  self : WgslIrEmitter,
+  value_ty : Handle,
+) -> Scalar? {
+  match self.shader_module.types.items.get(value_ty.index()) {
+    Some({ inner: Scalar(scalar), .. }) => Some(scalar)
+    _ => None
   }
 }
 
