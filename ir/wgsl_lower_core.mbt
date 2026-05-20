@@ -34,6 +34,7 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   kind : WgslIrGeneratedImportProvenanceKind
   inline_value : Bool
   local_spelling : Bool
+  root_local_spelling : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -44,6 +45,7 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
   kind : WgslIrGeneratedImportProvenanceKind,
   inline_value : Bool,
   local_spelling? : Bool = false,
+  root_local_spelling? : Bool = false,
 ) -> WgslIrGeneratedImportProvenance {
   WgslIrGeneratedImportProvenance::{
     generated_symbol_name,
@@ -52,6 +54,7 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
     kind,
     inline_value,
     local_spelling,
+    root_local_spelling,
   }
 }
 
@@ -220,15 +223,43 @@ fn WgslIrLowerer::naga_oil_generated_import_local_spelling(
 }
 
 ///|
+fn WgslIrLowerer::naga_oil_generated_import_root_local_spelling(
+  self : WgslIrLowerer,
+  source_name : String,
+) -> String {
+  let mut target : String? = None
+  for entry in self.generated_import_provenance.iter() {
+    let (_, provenance) = entry
+    if provenance.kind != ImportedSourceSymbol ||
+      !provenance.root_local_spelling ||
+      provenance.source_symbol_name != source_name {
+      continue
+    }
+    match target {
+      Some(existing) if existing != provenance.generated_symbol_name =>
+        return source_name
+      Some(_) => ()
+      None => target = Some(provenance.generated_symbol_name)
+    }
+  }
+  match target {
+    Some(value) => value
+    None => source_name
+  }
+}
+
+///|
 fn WgslIrLowerer::naga_oil_generated_import_local_spelling_for_scope(
   self : WgslIrLowerer,
   source_name : String,
   scope : WgslIrFunctionScope,
 ) -> String {
-  if scope.allow_generated_import_local_spelling {
-    self.naga_oil_generated_import_local_spelling(source_name)
-  } else {
-    source_name
+  match scope.generated_import_local_spelling {
+    AllGeneratedImportLocalSpelling =>
+      self.naga_oil_generated_import_local_spelling(source_name)
+    RootGeneratedImportLocalSpelling =>
+      self.naga_oil_generated_import_root_local_spelling(source_name)
+    NoGeneratedImportLocalSpelling => source_name
   }
 }
 

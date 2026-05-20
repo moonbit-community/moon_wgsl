@@ -1182,7 +1182,7 @@ test "composer decorates local declaration that satisfies missing explicit impor
 }
 
 ///|
-test "direct leaf imports feed naga-oil local spelling even when semantically shadowed" {
+test "direct leaf imports reserve root-visible naga-oil local spelling" {
   let composer = Composer::default()
   composer.clear_sources()
   let root_source =
@@ -1224,9 +1224,9 @@ test "direct leaf imports feed naga-oil local spelling even when semantically sh
     emitted.contains(
       "var<private> meshX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX_1",
     ),
-    content="false",
+    content="true",
   )
-  debug_inspect(emitted.contains("fn fragment(mesh: Out"), content="true")
+  debug_inspect(emitted.contains("fn fragment(mesh: Out"), content="false")
 }
 
 ///|

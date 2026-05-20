@@ -1144,6 +1144,54 @@ test "generated import provenance supplies naga-oil local spelling collisions" {
 }
 
 ///|
+test "generated import provenance supplies naga-oil local spelling for entry point arguments" {
+  let source =
+    #|struct Imported {
+    #|  value: f32,
+    #|}
+    #|
+    #|struct VertexOutput {
+    #|  @location(0) value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> sourceX_naga_oil_mod_XABCDX: Imported;
+    #|
+    #|@fragment
+    #|fn fragment(source: VertexOutput) -> @location(0) vec4<f32> {
+    #|  return vec4<f32>(source.value, 0.0, 0.0, 1.0);
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [
+      WgslIrGeneratedImportProvenance(
+        "sourceX_naga_oil_mod_XABCDX",
+        "imports/source.wgsl",
+        "source",
+        WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+        false,
+        local_spelling=true,
+        root_local_spelling=true,
+      ),
+    ],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var<uniform> sourceX_naga_oil_mod_XABCDX_1: Imported;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("fn fragment(sourceX_naga_oil_mod_XABCDX: VertexOutput)"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("return vec4<f32>(sourceX_naga_oil_mod_XABCDX.value"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer policy folds scalar float constructors from integer literals" {
   let source =
     #|fn pack(depth: f32, alpha: f32) -> u32 {

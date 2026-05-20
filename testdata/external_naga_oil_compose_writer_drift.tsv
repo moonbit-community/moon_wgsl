@@ -19,7 +19,6 @@ bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	b1f62bce9797a120ad1d
 bevy	crates/bevy_pbr/src/meshlet/resolve_render_targets.wgsl	51a6c38e76422cd8bb577cd2fb1be77a8d806eab39408fc0f3d85757f8a11bab	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_hardware_raster.wgsl	0fa1bb4c8182f0065e3e68943dd9325b70cd1b4d793ad5e9cf093754fb497508	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	ebd99c0845326e45b681f3c4d5a202eb7f806d8afc2eec2c65b1a431a212a292	writer-fingerprint-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/render/mesh.wgsl	e4ab77682bc5c674b7ada424a299aae694fb17d0e19a5035289f7e8bd47a55ce	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/render/pbr.wgsl	2229c364bff4020bab614c19a4a4fbbfc7d98362949fd83c3e8abbd56e45fd58	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/render/pbr_fragment.wgsl	1d2f478c6fb294da803115a3bf3a661082b8586c7db771b8e1e55d5250b8e288	writer-fingerprint-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	1bb24e98be10288c9f56e6fa9f2c1cf6739bf10d316ff77b8f5dfe9b810a2b83	writer-fingerprint-drift	strict-byte-parity-failure

@@ -372,6 +372,12 @@ fn WgslComposeSymbolTable::generated_import_provenance(
             origin.source_symbol_name(),
             name,
           ),
+          root_local_spelling=self.generated_import_has_local_spelling_visible(
+            root_rel_path,
+            origin.rel_path(),
+            origin.source_symbol_name(),
+            name,
+          ),
         ),
       )
     }
@@ -389,6 +395,27 @@ fn WgslComposeSymbolTable::generated_import_has_local_spelling(
   let symbol_rel_path = normalize_shader_rel_path(symbol_rel_path)
   for binding in self.local_spelling_final_names {
     if binding.symbol_rel_path == symbol_rel_path &&
+      binding.source_name == source_name &&
+      (binding.final_name == "" || binding.final_name == final_name) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn WgslComposeSymbolTable::generated_import_has_local_spelling_visible(
+  self : WgslComposeSymbolTable,
+  visible_rel_path : String,
+  symbol_rel_path : String,
+  source_name : String,
+  final_name : String,
+) -> Bool {
+  let visible_rel_path = normalize_shader_rel_path(visible_rel_path)
+  let symbol_rel_path = normalize_shader_rel_path(symbol_rel_path)
+  for binding in self.local_spelling_final_names {
+    if binding.visible_rel_path == visible_rel_path &&
+      binding.symbol_rel_path == symbol_rel_path &&
       binding.source_name == source_name &&
       (binding.final_name == "" || binding.final_name == final_name) {
       return true

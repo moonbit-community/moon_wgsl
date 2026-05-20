@@ -1,4 +1,13 @@
 ///|
+
+///|
+priv enum WgslIrGeneratedImportLocalSpellingMode {
+  AllGeneratedImportLocalSpelling
+  RootGeneratedImportLocalSpelling
+  NoGeneratedImportLocalSpelling
+}
+
+///|
 priv struct WgslIrFunctionScope {
   arguments : Map[String, Int]
   argument_expressions : Map[String, Handle]
@@ -7,7 +16,7 @@ priv struct WgslIrFunctionScope {
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
-  mut allow_generated_import_local_spelling : Bool
+  mut generated_import_local_spelling : WgslIrGeneratedImportLocalSpellingMode
 }
 
 ///|
@@ -27,7 +36,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     local_pointer_expressions: Map([]),
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
-    allow_generated_import_local_spelling: true,
+    generated_import_local_spelling: AllGeneratedImportLocalSpelling,
   }
 }
 
@@ -73,7 +82,7 @@ fn WgslIrFunctionScope::child(
     global_pointer_expressions: wgsl_ir_copy_string_handle_map(
       self.global_pointer_expressions,
     ),
-    allow_generated_import_local_spelling: self.allow_generated_import_local_spelling,
+    generated_import_local_spelling: self.generated_import_local_spelling,
   }
 }
 

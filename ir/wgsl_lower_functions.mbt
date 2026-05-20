@@ -345,6 +345,7 @@ fn WgslIrLowerer::lower_function(
     body: Block::Block(),
     diagnostic_filter_leaf: None,
   }
+  let scope = WgslIrFunctionScope()
   let function_stage = wgsl_ir_shader_stage_from_attributes(
     function.attributes(),
   )
@@ -352,10 +353,13 @@ fn WgslIrLowerer::lower_function(
     Some(_) => self.referenced_names.contains(function.name().name())
     None => false
   }
-  let scope = WgslIrFunctionScope()
-  scope.allow_generated_import_local_spelling = function_stage == None ||
+  scope.generated_import_local_spelling = if function_stage == None ||
     referenced_stage_function ||
-    ir_function.generated_import
+    ir_function.generated_import {
+    AllGeneratedImportLocalSpelling
+  } else {
+    RootGeneratedImportLocalSpelling
+  }
   let mut index = 0
   for argument in function.arguments() {
     guard argument.ty_ref() is Some(ty_ref) else {
