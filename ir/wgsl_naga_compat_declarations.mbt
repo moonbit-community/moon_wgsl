@@ -14,6 +14,7 @@
 
 ///|
 priv struct WgslIrNagaWriterArena {
+  directives : Array[String]
   types : Array[WgslIrNagaWriterTypeSlot]
   constants : Array[WgslIrNagaWriterConstantSlot]
   overrides : Array[WgslIrNagaWriterOverrideSlot]
@@ -95,6 +96,7 @@ fn WgslIrNagaCompatPlanner::writer_arena(
   let entry_points = self.entry_point_slots()
   let const_asserts = self.const_assert_slots()
   WgslIrNagaWriterArena::{
+    directives: self.shader_module.directives,
     types,
     constants,
     overrides,
@@ -120,6 +122,7 @@ fn WgslIrNagaCompatPlanner::runtime_writer_arena(
   let entry_points = self.entry_point_slots()
   let const_asserts = self.const_assert_slots()
   WgslIrNagaWriterArena::{
+    directives: self.shader_module.directives,
     types,
     constants,
     overrides,

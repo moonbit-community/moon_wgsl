@@ -14,6 +14,7 @@
 
 ///|
 priv struct WgslIrNagaWriterEmissionPlan {
+  directives : Array[String]
   types : Array[WgslIrNagaWriterTypeSlot]
   constants : Array[WgslIrNagaWriterConstantSlot]
   overrides : Array[WgslIrNagaWriterOverrideSlot]
@@ -30,6 +31,7 @@ fn WgslIrNagaCompatPlanner::writer_emission_plan(
 ) -> WgslIrNagaWriterEmissionPlan {
   ignore(self)
   WgslIrNagaWriterEmissionPlan::{
+    directives: arena.directives,
     types: arena.types,
     constants: arena.constants,
     overrides: arena.overrides,
@@ -38,6 +40,13 @@ fn WgslIrNagaCompatPlanner::writer_emission_plan(
     entry_points: arena.entry_points,
     const_asserts: arena.const_asserts,
   }
+}
+
+///|
+fn WgslIrNagaWriterModule::source_directives(
+  self : WgslIrNagaWriterModule,
+) -> Array[String] {
+  self.emission.directives
 }
 
 ///|

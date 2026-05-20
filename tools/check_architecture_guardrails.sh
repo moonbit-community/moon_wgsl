@@ -400,6 +400,15 @@ if ! rg -n 'module_\.type_slots\(\)|module_\.constant_slots\(\)|module_\.global_
   fail "Naga writer module emission must consume typed writer slots instead of source-index order lists"
 fi
 
+if ! rg -n 'module_\.source_directives\(\)' ir/wgsl_emit_module.mbt >/dev/null; then
+  fail "WGSL module directive emission must consume writer module source directives"
+fi
+
+if rg -n 'self\.shader_module\.directives' ir/wgsl_emit_module.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WGSL module emission must not read raw module directives after the writer view is built"
+fi
+
 if ! rg -n 'WgslIrNagaWriterEntryPointSlot|WgslIrNagaWriterConstAssertSlot' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
   fail "writer module must own entry-point and const-assert slots instead of raw module scans"
 fi
