@@ -201,3 +201,41 @@ test "naga-oil writer profile suppresses source directives like Naga writer" {
     content="false",
   )
 }
+
+///|
+test "naga-oil writer allocates entry body names before helper signatures" {
+  let source =
+    #|fn helper(world_from_local: mat4x4<f32>, vertex_position: vec4<f32>) -> vec4<f32> {
+    #|  return world_from_local * vertex_position;
+    #|}
+    #|
+    #|@vertex
+    #|fn vertex() -> @builtin(position) vec4<f32> {
+    #|  var world_from_local: mat4x4<f32> = mat4x4<f32>();
+    #|  return helper(world_from_local, vec4<f32>(0.0, 0.0, 0.0, 1.0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "fn helper(world_from_local_1: mat4x4<f32>, vertex_position: vec4<f32>) -> vec4<f32> {",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("return (world_from_local_1 * vertex_position);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("var world_from_local: mat4x4<f32> = mat4x4<f32>();"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("var world_from_local_1: mat4x4<f32>"),
+    content="false",
+  )
+}

@@ -24,6 +24,9 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
   for slot in view.entry_point_slots() {
     view.allocate_entry_point_signature_names(table, namer, slot)
   }
+  for slot in view.entry_point_slots() {
+    view.allocate_entry_point_body_names(table, namer, slot)
+  }
   for slot in view.function_slots() {
     view.allocate_function_signature_names(table, namer, slot)
   }
@@ -44,9 +47,6 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
       wgsl_ir_emit_name_key("override", slot.source_index),
       namer.call_or(slot.item.name, "override"),
     )
-  }
-  for slot in view.entry_point_slots() {
-    view.allocate_entry_point_body_names(table, namer, slot)
   }
   for slot in view.function_slots() {
     view.allocate_function_body_names(table, namer, slot)

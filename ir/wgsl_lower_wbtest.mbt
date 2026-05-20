@@ -585,9 +585,9 @@ test "WGSL AST lowerer supports pointer dereference member lvalues" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("(*pbr_input).value ="), content="true")
+  debug_inspect(emitted.contains("(*pbr_input_1).value ="), content="true")
   debug_inspect(emitted.contains("+ 1u);"), content="true")
-  debug_inspect(emitted.contains("apply_decals(&pbr_input_1);"), content="true")
+  debug_inspect(emitted.contains("apply_decals(&pbr_input);"), content="true")
 }
 
 ///|
