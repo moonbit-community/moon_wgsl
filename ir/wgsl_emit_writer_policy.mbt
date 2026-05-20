@@ -1,30 +1,24 @@
 ///|
-priv enum WgslIrWriterBackendKind {
-  RuntimeWriter
-  NagaOilWriter
-}
-
-///|
 priv struct WgslIrEmitOptions {
-  backend : WgslIrWriterBackendKind
   byte_plan : WgslIrWriterBytePlan
+  semantic_plan : WgslIrWriterSemanticPlan
   preserve_abstract_float_literals : Bool
 }
 
 ///|
 fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
   WgslIrEmitOptions::{
-    backend: RuntimeWriter,
     byte_plan: WgslIrWriterBytePlan::runtime_writer(),
+    semantic_plan: WgslIrWriterSemanticPlan::runtime_writer(),
     preserve_abstract_float_literals: false,
   }
 }
 
 ///|
-fn WgslIrEmitOptions::naga_oil_writer_backend() -> WgslIrEmitOptions {
+fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
   WgslIrEmitOptions::{
-    backend: NagaOilWriter,
     byte_plan: WgslIrWriterBytePlan::naga_oil_writer(),
+    semantic_plan: WgslIrWriterSemanticPlan::naga_oil_writer(),
     preserve_abstract_float_literals: false,
   }
 }
@@ -47,40 +41,28 @@ fn WgslIrEmitOptions::annotate_atomic_compare_exchange_result_locals(
 fn WgslIrEmitOptions::inline_generated_import_constants(
   self : WgslIrEmitOptions,
 ) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+  self.semantic_plan.should_inline_generated_import_constants()
 }
 
 ///|
 fn WgslIrEmitOptions::fold_numeric_constant_expressions(
   self : WgslIrEmitOptions,
 ) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+  self.semantic_plan.should_fold_numeric_constant_expressions()
 }
 
 ///|
 fn WgslIrEmitOptions::expand_matrix_scalar_constructors(
   self : WgslIrEmitOptions,
 ) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+  self.semantic_plan.should_expand_matrix_scalar_constructors()
 }
 
 ///|
 fn WgslIrEmitOptions::contextualize_numeric_literals(
   self : WgslIrEmitOptions,
 ) -> Bool {
-  match self.backend {
-    NagaOilWriter => true
-    RuntimeWriter => false
-  }
+  self.semantic_plan.should_contextualize_numeric_literals()
 }
 
 ///|
@@ -131,8 +113,8 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
   WgslIrEmitter::{
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::{
-      backend: self.options.backend,
       byte_plan: self.options.byte_plan,
+      semantic_plan: self.options.semantic_plan,
       preserve_abstract_float_literals: true,
     },
     writer_module: self.writer_module,

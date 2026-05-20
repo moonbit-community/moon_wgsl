@@ -174,6 +174,7 @@ required_ir_split_files=(
   ir/wgsl_lower_materialization.mbt
   ir/wgsl_lower_statements.mbt
   ir/wgsl_emit_byte_plan.mbt
+  ir/wgsl_emit_semantic_plan.mbt
   ir/wgsl_emit_writer_policy.mbt
   ir/wgsl_emit_runtime_writer.mbt
   ir/wgsl_emit_naga_oil_writer.mbt
@@ -305,8 +306,8 @@ if rg -n 'priv struct WgslIrEmitOptions|fn WgslIrEmitOptions::naga_oil_writer_co
   fail "IR emitter core/module ordering must not own writer policy"
 fi
 
-if ! rg -n 'priv enum WgslIrWriterBackendKind' ir/wgsl_emit_writer_policy.mbt >/dev/null; then
-  fail "WGSL writer policy must be keyed by explicit writer backend kind"
+if ! rg -n 'priv struct WgslIrWriterSemanticPlan' ir/wgsl_emit_semantic_plan.mbt >/dev/null; then
+  fail "WGSL semantic writer choices must be represented by an explicit semantic plan"
 fi
 
 if ! rg -n 'priv struct WgslIrWriterBytePlan' ir/wgsl_emit_byte_plan.mbt >/dev/null; then
@@ -327,6 +328,15 @@ fi
 
 if rg -n 'annotate_atomic_compare_exchange_result_locals : Bool|inline_generated_import_constants : Bool|fold_numeric_constant_expressions : Bool|expand_matrix_scalar_constructors : Bool|contextualize_numeric_literals : Bool|annotate_all_local_types : Bool|emit_implicit_flat_interpolation : Bool|compact_storage_texture_type_arguments : Bool|emit_source_directives : Bool' ir/wgsl_emit_writer_policy.mbt >/dev/null; then
   fail "writer backends must not be represented as a loose boolean option matrix"
+fi
+
+if rg -n 'WgslIrWriterBackendKind|backend :' ir/wgsl_emit_writer_policy.mbt >/dev/null; then
+  fail "writer semantic policy must be an explicit plan, not an implicit backend switch"
+fi
+
+if rg -n 'match self\.backend' ir/wgsl_emit_*.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "writer behavior must dispatch through byte/semantic plans, not backend-name matches"
 fi
 
 if rg -n 'order_functions_by_naga_reachability|push_naga|naga_reachable|collect_naga|naga_generated_import' ir/wgsl_emit_*.mbt >/dev/null; then

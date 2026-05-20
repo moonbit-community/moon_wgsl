@@ -11,6 +11,7 @@ Last updated: 2026-05-18
 
 ## Latest Progress
 
+- 2026-05-20: Writer semantic behavior is now an explicit `WgslIrWriterSemanticPlan`, separate from byte/token formatting policy. `WgslIrEmitOptions` no longer stores a backend enum or derives expression-folding/import-constant/literal-context behavior from backend-name matches.
 - 2026-05-20: `WGSL-283` final-name allocation now consumes writer declaration slots and precomputed function-body plans. Runtime and naga-oil writer paths share the same slot-backed final-name plan, and `WgslIrNagaWriterModule` no longer carries the raw IR module or exposes source-index order helpers after the writer arena is built.
 
 ## Issues
