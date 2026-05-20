@@ -332,7 +332,12 @@ fn WgslIrEmitter::type_inner_name(
     Pointer(base, space) =>
       match space {
         Storage(access) =>
-          "ptr<storage, \{self.type_name(base)}, \{self.storage_access_name(access)}>"
+          if access == StorageAccess::load() &&
+            self.options.elide_storage_pointer_read_access() {
+            "ptr<storage, \{self.type_name(base)}>"
+          } else {
+            "ptr<storage, \{self.type_name(base)}, \{self.storage_access_name(access)}>"
+          }
         _ => "ptr<\{self.address_space_name(space)}, \{self.type_name(base)}>"
       }
     Array(base, size, _) =>
