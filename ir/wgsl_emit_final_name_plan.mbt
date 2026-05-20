@@ -40,6 +40,20 @@ fn WgslIrNagaNamer::WgslIrNagaNamer() -> WgslIrNagaNamer {
 
 ///|
 fn WgslIrNagaNamer::call(self : WgslIrNagaNamer, raw : String) -> String {
+  self.call_with_builtin_policy(raw, true)
+}
+
+///|
+fn WgslIrNagaNamer::member_call(self : WgslIrNagaNamer, raw : String) -> String {
+  self.call_with_builtin_policy(raw, false)
+}
+
+///|
+fn WgslIrNagaNamer::call_with_builtin_policy(
+  self : WgslIrNagaNamer,
+  raw : String,
+  reserve_builtin_functions : Bool,
+) -> String {
   let base = sanitize_wgsl_ir_naga_identifier_base(raw)
   match self.unique.get(base) {
     Some(count) => {
@@ -53,14 +67,30 @@ fn WgslIrNagaNamer::call(self : WgslIrNagaNamer, raw : String) -> String {
           !wgsl_ir_identifier_is_naga_expression_temporary(base) &&
           wgsl_ir_identifier_ends_with_digit(base)
         ) ||
-        wgsl_ir_identifier_is_reserved(base) ||
-        wgsl_ir_identifier_is_builtin_function(base) {
+        self.should_reserve_identifier(base, reserve_builtin_functions) ||
+        (
+          reserve_builtin_functions &&
+          wgsl_ir_identifier_is_builtin_function(base)
+        ) {
         "\{base}_"
       } else {
         base
       }
     }
   }
+}
+
+///|
+fn WgslIrNagaNamer::should_reserve_identifier(
+  self : WgslIrNagaNamer,
+  base : String,
+  reserve_builtin_functions : Bool,
+) -> Bool {
+  ignore(self)
+  if !wgsl_ir_identifier_is_reserved(base) {
+    return false
+  }
+  reserve_builtin_functions || !wgsl_ir_identifier_is_builtin_function(base)
 }
 
 ///|

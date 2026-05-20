@@ -81,7 +81,7 @@ fn WgslIrNagaWriterModule::allocate_type_name(
         }
         table.names.set(
           wgsl_ir_emit_name_key2("member", slot.source_index, member_index),
-          member_namer.call(raw),
+          member_namer.member_call(raw),
         )
       }
     }
