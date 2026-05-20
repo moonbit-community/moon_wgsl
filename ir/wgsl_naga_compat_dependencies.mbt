@@ -277,6 +277,7 @@ fn wgsl_ir_collect_function_calls_from_statement(
           wgsl_ir_collect_function_calls_from_expression(function, expr, calls)
         None => ()
       }
+    ImplicitReturn => ()
     ConstAssert(expr) =>
       wgsl_ir_collect_function_calls_from_expression(function, expr, calls)
     Store(pointer, value) => {

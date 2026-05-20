@@ -397,7 +397,7 @@ fn WgslIrLowerer::lower_function(
       }
   }
   if result == None && !wgsl_ir_block_ends_with_return(body) {
-    body.push(Statement::Return(None))
+    body.push(Statement::ImplicitReturn)
   }
   Function::{
     name: ir_function.name,

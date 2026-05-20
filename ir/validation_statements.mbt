@@ -76,6 +76,7 @@ fn WgslIrValidator::validate_statement(
         }
         None => self.require_void_return(function)
       }
+    ImplicitReturn => self.require_void_return(function)
     ConstAssert(condition) => {
       self.validate_function_expression_handle(function, condition)
       self.require_bool_condition(function, condition)

@@ -37,6 +37,7 @@ pub enum Statement {
   Break
   Continue
   Return(Handle?)
+  ImplicitReturn
   Kill
   ConstAssert(Handle)
   ControlBarrier(Barrier)

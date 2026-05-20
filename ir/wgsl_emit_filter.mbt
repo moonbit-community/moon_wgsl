@@ -510,6 +510,7 @@ fn WgslIrEmitFilter::mark_statement(
     Declare(_)
     | Break
     | Continue
+    | ImplicitReturn
     | Kill
     | ControlBarrier(_)
     | MemoryBarrier(_)

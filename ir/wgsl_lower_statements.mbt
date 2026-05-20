@@ -1,7 +1,7 @@
 ///|
 fn wgsl_ir_block_ends_with_return(block : Block) -> Bool {
   match block.statements {
-    [.., Return(_)] => true
+    [.., Return(_)] | [.., ImplicitReturn] => true
     _ => false
   }
 }

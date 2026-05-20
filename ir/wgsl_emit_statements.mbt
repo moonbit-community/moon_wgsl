@@ -7,14 +7,57 @@ fn WgslIrEmitter::emit_block_statements(
   block : Block,
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
-  for item in body_plan.statement_plan(function, block) {
+  let plan = body_plan.statement_plan(function, block)
+  let mut index = 0
+  while index < plan.length() {
+    let item = plan[index]
     if item.skip {
+      index = index + 1
       continue
     }
     if item.blank_before {
       out.write_string("\n")
     }
-    self.emit_statement(out, function, body_plan, item.statement, indent)
+    let consumed_next = self.emit_statement_with_following_context(
+      out,
+      function,
+      body_plan,
+      item.statement,
+      plan.get(index + 1),
+      indent,
+    )
+    index = if consumed_next { index + 2 } else { index + 1 }
+  }
+}
+
+///|
+fn WgslIrEmitter::emit_statement_with_following_context(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  statement : Statement,
+  following : WgslIrNagaStatementPlanItem?,
+  indent : Int,
+) -> Bool raise WgslIrEmitError {
+  match (statement, following) {
+    (
+      Switch(selector, cases),
+      Some({ statement: ImplicitReturn, skip: false, .. }),
+    ) =>
+      if wgsl_ir_switch_can_absorb_implicit_return(cases) {
+        self.emit_switch_statement(
+          out, function, body_plan, selector, cases, true, indent,
+        )
+        true
+      } else {
+        self.emit_statement(out, function, body_plan, statement, indent)
+        false
+      }
+    _ => {
+      self.emit_statement(out, function, body_plan, statement, indent)
+      false
+    }
   }
 }
 
@@ -88,25 +131,10 @@ fn WgslIrEmitter::emit_statement(
       }
       out.write_string("\{pad}}\n")
     }
-    Switch(selector, cases) => {
-      out.write_string(
-        "\{pad}switch \{self.function_expression(function, selector)} {\n",
+    Switch(selector, cases) =>
+      self.emit_switch_statement(
+        out, function, body_plan, selector, cases, false, indent,
       )
-      for case in cases {
-        out.write_string(
-          "\{wgsl_ir_indent(indent + 1)}\{wgsl_ir_switch_case_label(case.value)}: {\n",
-        )
-        self.emit_block_statements(
-          out,
-          function,
-          body_plan,
-          case.body,
-          indent + 2,
-        )
-        out.write_string("\{wgsl_ir_indent(indent + 1)}}\n")
-      }
-      out.write_string("\{pad}}\n")
-    }
     Break => out.write_string("\{pad}break;\n")
     Continue => out.write_string("\{pad}continue;\n")
     Return(value) =>
@@ -117,6 +145,7 @@ fn WgslIrEmitter::emit_statement(
           )
         None => out.write_string("\{pad}return;\n")
       }
+    ImplicitReturn => out.write_string("\{pad}return;\n")
     Kill => out.write_string("\{pad}discard;\n")
     ConstAssert(condition) =>
       out.write_string(
@@ -235,6 +264,49 @@ fn WgslIrEmitter::function_expression_requires_phony_assignment(
       }
     None => false
   }
+}
+
+///|
+fn WgslIrEmitter::emit_switch_statement(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  selector : Handle,
+  cases : Array[SwitchCase],
+  absorb_implicit_return : Bool,
+  indent : Int,
+) -> Unit raise WgslIrEmitError {
+  let pad = wgsl_ir_indent(indent)
+  out.write_string(
+    "\{pad}switch \{self.function_expression(function, selector)} {\n",
+  )
+  for case in cases {
+    out.write_string(
+      "\{wgsl_ir_indent(indent + 1)}\{wgsl_ir_switch_case_label(case.value)}: {\n",
+    )
+    self.emit_block_statements(out, function, body_plan, case.body, indent + 2)
+    if absorb_implicit_return && !wgsl_ir_block_ends_with_return(case.body) {
+      out.write_string("\{wgsl_ir_indent(indent + 2)}return;\n")
+    }
+    out.write_string("\{wgsl_ir_indent(indent + 1)}}\n")
+  }
+  out.write_string("\{pad}}\n")
+}
+
+///|
+fn wgsl_ir_switch_can_absorb_implicit_return(cases : Array[SwitchCase]) -> Bool {
+  let mut has_default = false
+  for case in cases {
+    if case.fall_through {
+      return false
+    }
+    match case.value {
+      Default => has_default = true
+      _ => ()
+    }
+  }
+  has_default
 }
 
 ///|
