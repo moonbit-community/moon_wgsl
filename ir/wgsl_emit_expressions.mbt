@@ -343,16 +343,35 @@ fn WgslIrEmitter::binary_operand_expression(
   }
   if wgsl_ir_binary_operator_uses_numeric_argument_context(op) &&
     self.options.contextualize_numeric_literals() {
-    match self.expression_component_scalar(function, sibling) {
-      Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+    match self.binary_operand_scalar_context(function, operand, sibling) {
+      Some(scalar) =>
         match self.contextual_scalar_literal(function, operand, scalar) {
           Some(text) => return text
           None => ()
         }
-      _ => ()
+      None => ()
     }
   }
   self.required_function_expression(function, operand)
+}
+
+///|
+fn WgslIrEmitter::binary_operand_scalar_context(
+  self : WgslIrEmitter,
+  function : Function?,
+  operand : Handle,
+  sibling : Handle,
+) -> Scalar? {
+  match self.expression_component_scalar(function, sibling) {
+    Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+      return Some(scalar)
+    _ => ()
+  }
+  match self.expression_component_scalar(function, operand) {
+    Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+      Some(scalar)
+    _ => None
+  }
 }
 
 ///|

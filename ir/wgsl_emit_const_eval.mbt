@@ -428,7 +428,7 @@ fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
   match self.required_expression(function, handle) {
     Literal(literal) => wgsl_ir_float_value_from_numeric_literal(literal)
     Constant(constant) =>
-      match self.eval_constant_float_expression_for_constructor(constant) {
+      match self.eval_constant_float_expression_for_retained_context(constant) {
         Some(value) => Some(value)
         None =>
           match
@@ -469,6 +469,18 @@ fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
       wgsl_ir_emit_eval_float_binary(op, left_value, right_value)
     }
     _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::eval_constant_float_expression_for_retained_context(
+  self : WgslIrEmitter,
+  handle : Handle,
+) -> Double? {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) =>
+      self.eval_global_float_expression_for_emit(constant.init, @set.Set([]))
+    None => None
   }
 }
 
