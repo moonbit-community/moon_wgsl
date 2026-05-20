@@ -9,6 +9,10 @@ Last updated: 2026-05-18
 - `BLOCKED`: blocked by platform/public API limitations or external dependency constraints
 - `DONE`: fixed and verified locally
 
+## Latest Progress
+
+- 2026-05-20: `WGSL-283` final-name allocation now consumes writer declaration slots and precomputed function-body plans. Runtime and naga-oil writer paths share the same slot-backed final-name plan, and `WgslIrNagaWriterModule` no longer carries the raw IR module or exposes source-index order helpers after the writer arena is built.
+
 ## Issues
 
 | ID | Source | Problem | Status | Notes |

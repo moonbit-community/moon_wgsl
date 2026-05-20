@@ -202,9 +202,9 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   namer : WgslIrNagaNamer,
 ) -> Unit {
-  let body_plan = WgslIrNagaFunctionBodyPlan::from_function(function)
   let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
   self.allocate_function_expression_temporary_names(
     origin, function, body_plan, temp_namer,

@@ -14,7 +14,6 @@
 
 ///|
 priv struct WgslIrNagaWriterModule {
-  shader_module : Module
   filter : WgslIrEmitFilter?
   emission : WgslIrNagaWriterEmissionPlan
   mut names : WgslIrFinalNamePlan
@@ -37,7 +36,6 @@ fn build_wgsl_ir_naga_writer_module(
   let planner = WgslIrNagaCompatPlanner::{ shader_module, filter }
   let arena = planner.writer_arena()
   let view = WgslIrNagaWriterModule::{
-    shader_module,
     filter,
     emission: planner.writer_emission_plan(arena),
     names: WgslIrFinalNamePlan::empty(),
@@ -57,10 +55,10 @@ fn build_wgsl_ir_runtime_writer_module(
   let planner = WgslIrNagaCompatPlanner::{ shader_module, filter }
   let arena = planner.runtime_writer_arena()
   let view = WgslIrNagaWriterModule::{
-    shader_module,
     filter,
     emission: planner.writer_emission_plan(arena),
-    names: build_wgsl_ir_runtime_final_name_plan(shader_module),
+    names: WgslIrFinalNamePlan::empty(),
   }
+  view.names = build_wgsl_ir_naga_writer_final_name_plan(view)
   view
 }

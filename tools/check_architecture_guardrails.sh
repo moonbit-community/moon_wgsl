@@ -365,6 +365,18 @@ if ! rg -n 'priv struct WgslIrNagaWriterEmissionPlan' ir/wgsl_naga_writer_emissi
   fail "Naga writer module must own an explicit declaration and entry-point emission plan"
 fi
 
+writer_module_fields="$(sed -n '/priv struct WgslIrNagaWriterModule {/,/^}/p' ir/wgsl_naga_writer_module.mbt)"
+if printf '%s\n' "$writer_module_fields" | rg -n 'shader_module' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "Naga writer module must not carry the raw IR module after the writer arena has been built"
+fi
+
+if rg -n 'fn WgslIrNagaWriterModule::(type_order|constant_order|override_order|global_variable_order|function_order|entry_point_order|should_emit_entry_point)' \
+  ir/wgsl_naga_writer_emission_plan.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "Naga writer module must expose typed slots, not source-index order helpers"
+fi
+
 if ! rg -n 'module_\.entry_point_slots\(\)' ir/wgsl_emit_module.mbt >/dev/null; then
   fail "writer entry-point emission must consume writer module entry-point slots"
 fi
@@ -676,6 +688,16 @@ fi
 if rg -n 'WgslIrNagaFunctionBodyPlan::from_function\(function\)' ir/wgsl_emit_functions.mbt ir/wgsl_emit_statements.mbt >"$matches_file"; then
   cat "$matches_file" >&2
   fail "function emission must consume body plans from writer slots instead of rebuilding them from raw IR"
+fi
+
+if rg -n 'WgslIrNagaFunctionBodyPlan::from_function\(function\)' ir/wgsl_naga_compat_names.mbt ir/wgsl_emit_final_name_plan.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "final-name allocation must consume body plans from writer slots instead of rebuilding them from raw IR"
+fi
+
+if rg -n 'build_wgsl_ir_runtime_final_name_plan' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "runtime and naga-oil writers must share the writer-slot final-name plan"
 fi
 
 if rg -n 'statement_is_local_var_declaration|statement_is_any_local_var_declaration' ir/wgsl_emit_statements.mbt >/dev/null; then

@@ -16,45 +16,40 @@
 fn build_wgsl_ir_naga_writer_final_name_plan(
   view : WgslIrNagaWriterModule,
 ) -> WgslIrFinalNamePlan {
-  let module_ = view.shader_module
   let table = WgslIrFinalNamePlan::empty()
   let namer = WgslIrNagaNamer::WgslIrNagaNamer()
-  for index in view.type_order() {
-    view.allocate_type_name(table, namer, index)
+  for slot in view.type_slots() {
+    view.allocate_type_name(table, namer, slot)
   }
-  for ep_index in 0..<module_.entry_points.length() {
-    if view.should_emit_entry_point(ep_index) {
-      view.allocate_entry_point_signature_names(table, namer, ep_index)
-    }
+  for slot in view.entry_point_slots() {
+    view.allocate_entry_point_signature_names(table, namer, slot)
   }
-  for fn_index in view.function_order() {
-    view.allocate_function_signature_names(table, namer, fn_index)
+  for slot in view.function_slots() {
+    view.allocate_function_signature_names(table, namer, slot)
   }
-  for index in view.global_variable_order() {
+  for slot in view.global_variable_slots() {
     table.names.set(
-      wgsl_ir_emit_name_key("global", index),
-      namer.call_or(module_.global_variables.items[index].name, "global"),
+      wgsl_ir_emit_name_key("global", slot.source_index),
+      namer.call_or(slot.item.name, "global"),
     )
   }
-  for index in view.constant_order() {
+  for slot in view.constant_slots() {
     table.names.set(
-      wgsl_ir_emit_name_key("const", index),
-      namer.call_or(module_.constants.items[index].name, "const"),
+      wgsl_ir_emit_name_key("const", slot.source_index),
+      namer.call_or(slot.item.name, "const"),
     )
   }
-  for index in view.override_order() {
+  for slot in view.override_slots() {
     table.names.set(
-      wgsl_ir_emit_name_key("override", index),
-      namer.call_or(module_.overrides.items[index].name, "override"),
+      wgsl_ir_emit_name_key("override", slot.source_index),
+      namer.call_or(slot.item.name, "override"),
     )
   }
-  for ep_index in 0..<module_.entry_points.length() {
-    if view.should_emit_entry_point(ep_index) {
-      view.allocate_entry_point_body_names(table, namer, ep_index)
-    }
+  for slot in view.entry_point_slots() {
+    view.allocate_entry_point_body_names(table, namer, slot)
   }
-  for fn_index in view.function_order() {
-    view.allocate_function_body_names(table, namer, fn_index)
+  for slot in view.function_slots() {
+    view.allocate_function_body_names(table, namer, slot)
   }
   table
 }
@@ -64,14 +59,18 @@ fn WgslIrNagaWriterModule::allocate_type_name(
   self : WgslIrNagaWriterModule,
   table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
-  index : Int,
+  slot : WgslIrNagaWriterTypeSlot,
 ) -> Unit {
-  let ty = self.shader_module.types.items[index]
+  ignore(self)
+  let ty = slot.item
   let raw = match ty.name {
     Some(name) => name
     None => "type"
   }
-  table.names.set(wgsl_ir_emit_name_key("type", index), namer.call(raw))
+  table.names.set(
+    wgsl_ir_emit_name_key("type", slot.source_index),
+    namer.call(raw),
+  )
   match ty.inner {
     Struct(members, _) | PredeclaredStruct(members, _) => {
       let member_namer = WgslIrNagaNamer::WgslIrNagaNamer()
@@ -81,7 +80,7 @@ fn WgslIrNagaWriterModule::allocate_type_name(
           None => "member"
         }
         table.names.set(
-          wgsl_ir_emit_name_key2("member", index, member_index),
+          wgsl_ir_emit_name_key2("member", slot.source_index, member_index),
           member_namer.call(raw),
         )
       }
@@ -95,13 +94,17 @@ fn WgslIrNagaWriterModule::allocate_entry_point_signature_names(
   self : WgslIrNagaWriterModule,
   table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
-  ep_index : Int,
+  slot : WgslIrNagaWriterEntryPointSlot,
 ) -> Unit {
-  let ep = self.shader_module.entry_points[ep_index]
-  table.names.set(wgsl_ir_emit_name_key("ep", ep_index), namer.call(ep.name))
+  ignore(self)
+  let ep = slot.item
+  table.names.set(
+    wgsl_ir_emit_name_key("ep", slot.source_index),
+    namer.call(ep.name),
+  )
   for arg_index in 0..<ep.function.arguments.length() {
     table.names.set(
-      wgsl_ir_emit_name_key2("ep_arg", ep_index, arg_index),
+      wgsl_ir_emit_name_key2("ep_arg", slot.source_index, arg_index),
       namer.call_or(ep.function.arguments[arg_index].name, "param"),
     )
   }
@@ -112,16 +115,17 @@ fn WgslIrNagaWriterModule::allocate_function_signature_names(
   self : WgslIrNagaWriterModule,
   table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
-  fn_index : Int,
+  slot : WgslIrNagaWriterFunctionSlot,
 ) -> Unit {
-  let function = self.shader_module.functions.items[fn_index]
+  ignore(self)
+  let function = slot.item
   table.names.set(
-    wgsl_ir_emit_name_key("fn", fn_index),
+    wgsl_ir_emit_name_key("fn", slot.source_index),
     namer.call_or(function.name, "function"),
   )
   for arg_index in 0..<function.arguments.length() {
     table.names.set(
-      wgsl_ir_emit_name_key2("fn_arg", fn_index, arg_index),
+      wgsl_ir_emit_name_key2("fn_arg", slot.source_index, arg_index),
       namer.call_or(function.arguments[arg_index].name, "param"),
     )
   }
@@ -132,12 +136,14 @@ fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
   self : WgslIrNagaWriterModule,
   table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
-  ep_index : Int,
+  slot : WgslIrNagaWriterEntryPointSlot,
 ) -> Unit {
-  let ep = self.shader_module.entry_points[ep_index]
+  ignore(self)
+  let ep = slot.item
   table.allocate_function_body_names_from_arena(
-    EntryPointFunction(ep_index),
+    EntryPointFunction(slot.source_index),
     ep.function,
+    slot.body_plan,
     namer,
   )
 }
@@ -147,12 +153,14 @@ fn WgslIrNagaWriterModule::allocate_function_body_names(
   self : WgslIrNagaWriterModule,
   table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
-  fn_index : Int,
+  slot : WgslIrNagaWriterFunctionSlot,
 ) -> Unit {
-  let function = self.shader_module.functions.items[fn_index]
+  ignore(self)
+  let function = slot.item
   table.allocate_function_body_names_from_arena(
-    UserFunction(fn_index),
+    UserFunction(slot.source_index),
     function,
+    slot.body_plan,
     namer,
   )
 }

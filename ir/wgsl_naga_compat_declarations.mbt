@@ -26,35 +26,30 @@ priv struct WgslIrNagaWriterArena {
 ///|
 priv struct WgslIrNagaWriterTypeSlot {
   source_index : Int
-  naga_index : Int
   item : Type
 }
 
 ///|
 priv struct WgslIrNagaWriterConstantSlot {
   source_index : Int
-  naga_index : Int
   item : Constant
 }
 
 ///|
 priv struct WgslIrNagaWriterOverrideSlot {
   source_index : Int
-  naga_index : Int
   item : Override
 }
 
 ///|
 priv struct WgslIrNagaWriterGlobalVariableSlot {
   source_index : Int
-  naga_index : Int
   item : GlobalVariable
 }
 
 ///|
 priv struct WgslIrNagaWriterFunctionSlot {
   source_index : Int
-  naga_index : Int
   item : Function
   body_plan : WgslIrNagaFunctionBodyPlan
 }
@@ -62,15 +57,12 @@ priv struct WgslIrNagaWriterFunctionSlot {
 ///|
 priv struct WgslIrNagaWriterEntryPointSlot {
   source_index : Int
-  naga_index : Int
   item : EntryPoint
   body_plan : WgslIrNagaFunctionBodyPlan
 }
 
 ///|
 priv struct WgslIrNagaWriterConstAssertSlot {
-  source_index : Int
-  naga_index : Int
   condition : Handle
 }
 
@@ -86,7 +78,6 @@ priv struct WgslIrNagaCompatDeclarationArena {
 ///|
 priv struct WgslIrNagaCompatDeclarationSlot {
   source_index : Int
-  naga_index : Int
 }
 
 ///|
@@ -148,7 +139,6 @@ fn WgslIrNagaCompatPlanner::type_slots(
   for slot in declarations {
     slots.push(WgslIrNagaWriterTypeSlot::{
       source_index: slot.source_index,
-      naga_index: slot.naga_index,
       item: self.shader_module.types.items[slot.source_index],
     })
   }
@@ -164,7 +154,6 @@ fn WgslIrNagaCompatPlanner::constant_slots(
   for slot in declarations {
     slots.push(WgslIrNagaWriterConstantSlot::{
       source_index: slot.source_index,
-      naga_index: slot.naga_index,
       item: self.shader_module.constants.items[slot.source_index],
     })
   }
@@ -180,7 +169,6 @@ fn WgslIrNagaCompatPlanner::override_slots(
   for slot in declarations {
     slots.push(WgslIrNagaWriterOverrideSlot::{
       source_index: slot.source_index,
-      naga_index: slot.naga_index,
       item: self.shader_module.overrides.items[slot.source_index],
     })
   }
@@ -196,7 +184,6 @@ fn WgslIrNagaCompatPlanner::global_variable_slots(
   for slot in declarations {
     slots.push(WgslIrNagaWriterGlobalVariableSlot::{
       source_index: slot.source_index,
-      naga_index: slot.naga_index,
       item: self.shader_module.global_variables.items[slot.source_index],
     })
   }
@@ -213,7 +200,6 @@ fn WgslIrNagaCompatPlanner::function_slots(
     let item = self.shader_module.functions.items[slot.source_index]
     slots.push(WgslIrNagaWriterFunctionSlot::{
       source_index: slot.source_index,
-      naga_index: slot.naga_index,
       item,
       body_plan: WgslIrNagaFunctionBodyPlan::from_function(item),
     })
@@ -230,7 +216,6 @@ fn WgslIrNagaCompatPlanner::entry_point_slots(
     let item = self.shader_module.entry_points[source_index]
     slots.push(WgslIrNagaWriterEntryPointSlot::{
       source_index,
-      naga_index: slots.length(),
       item,
       body_plan: WgslIrNagaFunctionBodyPlan::from_function(item.function),
     })
@@ -245,8 +230,6 @@ fn WgslIrNagaCompatPlanner::const_assert_slots(
   let slots : Array[WgslIrNagaWriterConstAssertSlot] = []
   for source_index in 0..<self.shader_module.const_asserts.length() {
     slots.push(WgslIrNagaWriterConstAssertSlot::{
-      source_index,
-      naga_index: slots.length(),
       condition: self.shader_module.const_asserts[source_index],
     })
   }
@@ -400,11 +383,8 @@ fn wgsl_ir_naga_compat_declaration_slots(
   source_order : Array[Int],
 ) -> Array[WgslIrNagaCompatDeclarationSlot] {
   let slots : Array[WgslIrNagaCompatDeclarationSlot] = []
-  for naga_index in 0..<source_order.length() {
-    slots.push(WgslIrNagaCompatDeclarationSlot::{
-      source_index: source_order[naga_index],
-      naga_index,
-    })
+  for source_index in source_order {
+    slots.push(WgslIrNagaCompatDeclarationSlot::{ source_index, })
   }
   slots
 }

@@ -41,96 +41,6 @@ fn WgslIrNagaCompatPlanner::writer_emission_plan(
 }
 
 ///|
-fn wgsl_ir_naga_type_slot_source_order(
-  slots : Array[WgslIrNagaWriterTypeSlot],
-) -> Array[Int] {
-  let order : Array[Int] = []
-  for slot in slots {
-    if slot.naga_index != order.length() {
-      abort("invalid Naga writer type slot order")
-    }
-    ignore(slot.item)
-    order.push(slot.source_index)
-  }
-  order
-}
-
-///|
-fn wgsl_ir_naga_constant_slot_source_order(
-  slots : Array[WgslIrNagaWriterConstantSlot],
-) -> Array[Int] {
-  let order : Array[Int] = []
-  for slot in slots {
-    if slot.naga_index != order.length() {
-      abort("invalid Naga writer constant slot order")
-    }
-    ignore(slot.item)
-    order.push(slot.source_index)
-  }
-  order
-}
-
-///|
-fn wgsl_ir_naga_override_slot_source_order(
-  slots : Array[WgslIrNagaWriterOverrideSlot],
-) -> Array[Int] {
-  let order : Array[Int] = []
-  for slot in slots {
-    if slot.naga_index != order.length() {
-      abort("invalid Naga writer override slot order")
-    }
-    ignore(slot.item)
-    order.push(slot.source_index)
-  }
-  order
-}
-
-///|
-fn wgsl_ir_naga_global_variable_slot_source_order(
-  slots : Array[WgslIrNagaWriterGlobalVariableSlot],
-) -> Array[Int] {
-  let order : Array[Int] = []
-  for slot in slots {
-    if slot.naga_index != order.length() {
-      abort("invalid Naga writer global-variable slot order")
-    }
-    ignore(slot.item)
-    order.push(slot.source_index)
-  }
-  order
-}
-
-///|
-fn wgsl_ir_naga_function_slot_source_order(
-  slots : Array[WgslIrNagaWriterFunctionSlot],
-) -> Array[Int] {
-  let order : Array[Int] = []
-  for slot in slots {
-    if slot.naga_index != order.length() {
-      abort("invalid Naga writer function slot order")
-    }
-    ignore(slot.item)
-    order.push(slot.source_index)
-  }
-  order
-}
-
-///|
-fn wgsl_ir_naga_entry_point_slot_source_order(
-  slots : Array[WgslIrNagaWriterEntryPointSlot],
-) -> Array[Int] {
-  let order : Array[Int] = []
-  for slot in slots {
-    if slot.naga_index != order.length() {
-      abort("invalid Naga writer entry-point slot order")
-    }
-    ignore(slot.item)
-    order.push(slot.source_index)
-  }
-  order
-}
-
-///|
 fn WgslIrNagaCompatPlanner::entry_point_order(
   self : WgslIrNagaCompatPlanner,
 ) -> Array[Int] {
@@ -145,48 +55,6 @@ fn WgslIrNagaCompatPlanner::entry_point_order(
     }
   }
   order
-}
-
-///|
-fn WgslIrNagaWriterModule::type_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_type_slot_source_order(self.emission.types)
-}
-
-///|
-fn WgslIrNagaWriterModule::constant_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_constant_slot_source_order(self.emission.constants)
-}
-
-///|
-fn WgslIrNagaWriterModule::override_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_override_slot_source_order(self.emission.overrides)
-}
-
-///|
-fn WgslIrNagaWriterModule::global_variable_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_global_variable_slot_source_order(self.emission.global_variables)
-}
-
-///|
-fn WgslIrNagaWriterModule::function_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_function_slot_source_order(self.emission.functions)
-}
-
-///|
-fn WgslIrNagaWriterModule::entry_point_order(
-  self : WgslIrNagaWriterModule,
-) -> Array[Int] {
-  wgsl_ir_naga_entry_point_slot_source_order(self.emission.entry_points)
 }
 
 ///|
@@ -235,21 +103,5 @@ fn WgslIrNagaWriterModule::entry_point_slots(
 fn WgslIrNagaWriterModule::const_assert_slots(
   self : WgslIrNagaWriterModule,
 ) -> Array[WgslIrNagaWriterConstAssertSlot] {
-  let slots : Array[WgslIrNagaWriterConstAssertSlot] = []
-  for slot in self.emission.const_asserts {
-    if slot.naga_index != slots.length() {
-      abort("invalid writer const-assert slot order")
-    }
-    ignore(slot.source_index)
-    slots.push(slot)
-  }
-  slots
-}
-
-///|
-fn WgslIrNagaWriterModule::should_emit_entry_point(
-  self : WgslIrNagaWriterModule,
-  index : Int,
-) -> Bool {
-  self.entry_point_order().contains(index)
+  self.emission.const_asserts
 }
