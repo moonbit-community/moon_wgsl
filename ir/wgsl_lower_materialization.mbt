@@ -1139,6 +1139,11 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
     | Some(ImageLoad(_, _, _, _, _))
     | Some(ImageQuery(_, _))
     | Some(WorkGroupUniformLoad(_)) => true
+    Some(Load(_))
+    | Some(Access(_, _))
+    | Some(AccessIndex(_, _))
+    | Some(Swizzle(_, _, _)) =>
+      self.function_expression_reads_global_binding(function, value)
     _ => false
   }
   should_materialize &&

@@ -154,7 +154,10 @@ fn WgslIrLowerer::lower_statement(
         block.push(Statement::Emit(HandleRange(rhs_value, rhs_value)))
         return
       }
-      let target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
+      let raw_target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
+      let target = self.materialize_store_pointer_if_needed(
+        function, scope, block, raw_target,
+      )
       let value = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
           let loaded_target = function.expressions.append(
@@ -556,10 +559,13 @@ fn WgslIrLowerer::lower_for_header_statement(
         block.push(Statement::Emit(HandleRange(rhs_value, rhs_value)))
         return
       }
-      let target = self.lower_function_lvalue_node(
+      let raw_target = self.lower_function_lvalue_node(
         wgsl_ir_expr_node_from_tokens(lhs_tokens),
         function,
         scope,
+      )
+      let target = self.materialize_store_pointer_if_needed(
+        function, scope, block, raw_target,
       )
       let value = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
@@ -578,12 +584,16 @@ fn WgslIrLowerer::lower_for_header_statement(
             Expression::Binary(binary_op, materialized_target, rhs_value),
           )
         }
-        None =>
-          self.lower_function_expression_node(
+        None => {
+          let rhs_value = self.lower_function_expression_node(
             wgsl_ir_expr_node_from_tokens(rhs_tokens),
             function,
             scope,
           )
+          self.materialize_store_value_if_needed(
+            function, scope, block, rhs_value,
+          )
+        }
       }
       wgsl_ir_record_store_value_temporary_references(function, value)
       block.push(Statement::Store(target, value))
