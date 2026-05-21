@@ -1158,6 +1158,34 @@ test "naga-oil writer policy inlines array constants like Naga writer" {
 }
 
 ///|
+test "naga-oil writer policy folds static generated array constant indexes" {
+  let source =
+    #|const POINTS: array<vec2<f32>, 2> = array(vec2(0.125, -0.375), vec2(-0.125, 0.375));
+    #|fn sample() -> vec2<f32> {
+    #|  return POINTS[0] * 0.5;
+    #|}
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
+    WgslIrGeneratedImportProvenance(
+      "POINTS",
+      "imports/constants.wgsl",
+      "POINTS",
+      WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+      false,
+    ),
+  ]) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("return (vec2<f32>(0.125f, -0.375f) * 0.5f);"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("array<vec2<f32>, 2>("), content="false")
+}
+
+///|
 test "generated import provenance supplies naga-oil local spelling collisions" {
   let source =
     #|struct Imported {

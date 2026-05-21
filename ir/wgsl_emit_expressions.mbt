@@ -189,7 +189,14 @@ fn WgslIrEmitter::emit_expression(
     Compose(ty, components) => self.compose_expression(ty, components, function)
     Splat(size, inner) => self.splat_expression(function, size, inner)
     Access(base, index) =>
-      "\{self.access_base_expression(function, base)}[\{self.access_index_operand_expression(function, index)}]"
+      match
+        self.folded_static_constant_array_access_by_index_expression(
+          function, base, index,
+        ) {
+        Some(value) => value
+        None =>
+          "\{self.access_base_expression(function, base)}[\{self.access_index_operand_expression(function, index)}]"
+      }
     AccessIndex(base, index) =>
       self.access_index_expression(function, base, index)
     Swizzle(_, base, components) =>
@@ -1216,6 +1223,10 @@ fn WgslIrEmitter::access_index_expression(
   base : Handle,
   index : Int,
 ) -> String raise WgslIrEmitError {
+  match self.folded_static_constant_array_access(function, base, index) {
+    Some(value) => return value
+    None => ()
+  }
   let base_expression = self.access_base_expression(function, base)
   match self.expression_type(function, base) {
     Some(ty_handle) => {
@@ -1262,6 +1273,84 @@ fn WgslIrEmitter::access_index_expression(
         "access-index expression without base type",
       )
   }
+}
+
+///|
+fn WgslIrEmitter::folded_static_constant_array_access(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+  index : Int,
+) -> String? raise WgslIrEmitError {
+  guard self.options.fold_numeric_constant_expressions() else { return None }
+  guard index >= 0 else { return None }
+  match self.required_expression(function, base) {
+    Compose(ty, components) =>
+      self.folded_static_array_constructor_access(
+        function, ty, components, index,
+      )
+    Constant(constant_handle) =>
+      self.folded_static_constant_array_constructor_access(
+        constant_handle, index,
+      )
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::folded_static_constant_array_constructor_access(
+  self : WgslIrEmitter,
+  constant_handle : Handle,
+  index : Int,
+) -> String? raise WgslIrEmitError {
+  guard self.shader_module.constants.items.get(constant_handle.index())
+    is Some(constant) else {
+    raise WgslIrEmitError::MissingHandle("constant \{constant_handle.index()}")
+  }
+  guard self.should_inline_constant_expression(constant) else { return None }
+  guard self.shader_module.global_expressions.items.get(constant.init.index())
+    is Some(Compose(ty, components)) else {
+    return None
+  }
+  self.folded_static_array_constructor_access(None, ty, components, index)
+}
+
+///|
+fn WgslIrEmitter::folded_static_array_constructor_access(
+  self : WgslIrEmitter,
+  function : Function?,
+  ty : Handle,
+  components : Array[Handle],
+  index : Int,
+) -> String? raise WgslIrEmitError {
+  guard self.shader_module.types.items.get(ty.index())
+    is Some({ inner: Array(_, _, _), .. }) else {
+    return None
+  }
+  match components.get(index) {
+    Some(component) =>
+      Some(self.required_function_expression(function, component))
+    None =>
+      raise WgslIrEmitError::Unsupported(
+        "constant array index \{index} out of bounds",
+      )
+  }
+}
+
+///|
+fn WgslIrEmitter::folded_static_constant_array_access_by_index_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+  index : Handle,
+) -> String? raise WgslIrEmitError {
+  guard self.options.fold_numeric_constant_expressions() else { return None }
+  guard self.eval_integer_expression_for_access_index(function, index)
+    is Some(value) else {
+    return None
+  }
+  guard value.to_signed_int() is Some(static_index) else { return None }
+  self.folded_static_constant_array_access(function, base, static_index)
 }
 
 ///|
