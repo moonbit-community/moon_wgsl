@@ -86,3 +86,28 @@ test "naga-oil writer policy retains direct generated import scalar constant ope
   )
   debug_inspect(naga_oil.contains("(3.1415927f - value)"), content="false")
 }
+
+///|
+test "naga-oil writer follows Naga f32 negative-zero spelling state" {
+  let source =
+    #|const A: f32 = -0.0000;
+    #|const B: f32 = 0.0000;
+    #|const C = vec2<f32>(0.1250, 0.0000);
+    #|
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("const A: f32 = -0f;"), content="true")
+  debug_inspect(naga_oil.contains("const B: f32 = -0f;"), content="true")
+  debug_inspect(
+    naga_oil.contains("const C: vec2<f32> = vec2<f32>(0.125f, -0f);"),
+    content="true",
+  )
+  let runtime = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(runtime.contains("const B: f32 = 0f;"), content="true")
+}

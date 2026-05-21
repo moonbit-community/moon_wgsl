@@ -41,6 +41,7 @@ fn WgslIrEmitter::emit_module(
     last_item_is_entry_point = false
     emitted_constant = true
   }
+  self.naga_compatible_negative_zero_seen = false
   let mut emitted_const_assert = false
   for slot in module_.const_assert_slots() {
     if needs_blank && !emitted_const_assert {

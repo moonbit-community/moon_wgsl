@@ -51,4 +51,5 @@ priv struct WgslIrEmitter {
   writer_module : WgslIrNagaWriterModule
   names : WgslIrFinalNamePlan
   current_function_origin : WgslIrEmitFunctionOrigin?
+  mut naga_compatible_negative_zero_seen : Bool
 }

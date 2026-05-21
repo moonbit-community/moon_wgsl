@@ -142,7 +142,7 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
   let numeric_policy = self.options.numeric_literal_policy()
   match literal {
     F64(value) => wgsl_ir_emit_abstract_float_literal_text("\{value}")
-    F32(value) => wgsl_ir_emit_f32_literal(value, numeric_policy)
+    F32(value) => self.f32_literal(value, numeric_policy)
     F16(value) => wgsl_ir_emit_f16_literal_text("\{value}")
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
@@ -175,6 +175,28 @@ fn wgsl_ir_emit_f32_literal(
         wgsl_ir_shortest_f32_literal_text(value),
       )
   }
+}
+
+///|
+fn WgslIrEmitter::f32_literal(
+  self : WgslIrEmitter,
+  value : Float,
+  policy : WgslIrNumericLiteralBytePolicy,
+) -> String {
+  match policy {
+    NagaCompatibleNumericLiteralSpelling =>
+      if value == Float::from_int(0) {
+        if wgsl_ir_f32_is_negative_zero(value) {
+          self.naga_compatible_negative_zero_seen = true
+          return "-0f"
+        }
+        if self.naga_compatible_negative_zero_seen {
+          return "-0f"
+        }
+      }
+    RuntimeNumericLiteralSpelling => ()
+  }
+  wgsl_ir_emit_f32_literal(value, policy)
 }
 
 ///|

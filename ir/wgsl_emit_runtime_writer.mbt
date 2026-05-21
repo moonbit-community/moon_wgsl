@@ -48,5 +48,6 @@ fn WgslIrRuntimeWriterBackend::emitter(
     writer_module: self.view,
     names: self.view.names,
     current_function_origin: None,
+    naga_compatible_negative_zero_seen: false,
   }
 }

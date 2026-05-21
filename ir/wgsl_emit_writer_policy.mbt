@@ -134,5 +134,6 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
     writer_module: self.writer_module,
     names: self.names,
     current_function_origin: self.current_function_origin,
+    naga_compatible_negative_zero_seen: self.naga_compatible_negative_zero_seen,
   }
 }

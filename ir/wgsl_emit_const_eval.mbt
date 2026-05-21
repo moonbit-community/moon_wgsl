@@ -112,8 +112,7 @@ fn WgslIrEmitter::float_value_literal_for_width(
   let numeric_policy = self.options.numeric_literal_policy()
   match width {
     2 => Some(wgsl_ir_emit_f16_literal_text("\{value}"))
-    4 =>
-      Some(wgsl_ir_emit_f32_literal(Float::from_double(value), numeric_policy))
+    4 => Some(self.f32_literal(Float::from_double(value), numeric_policy))
     8 => Some(wgsl_ir_emit_abstract_float_literal_text("\{value}"))
     _ => None
   }

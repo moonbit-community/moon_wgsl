@@ -209,5 +209,6 @@ fn WgslIrEmitter::with_function_origin(
     writer_module: self.writer_module,
     names: self.names,
     current_function_origin: Some(origin),
+    naga_compatible_negative_zero_seen: self.naga_compatible_negative_zero_seen,
   }
 }
