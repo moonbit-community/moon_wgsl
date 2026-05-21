@@ -130,17 +130,21 @@ fn WgslIrFunctionScope::global_pointer_expression(
   name : String,
   global_handle : Handle,
   function : Function,
+  cache : Bool,
 ) -> Handle {
-  match self.global_pointer_expressions.get(name) {
-    Some(handle) => handle
-    None => {
-      let handle = function.expressions.append(
-        Expression::GlobalVariable(global_handle),
-      )
-      self.global_pointer_expressions.set(name, handle)
-      handle
+  if cache {
+    match self.global_pointer_expressions.get(name) {
+      Some(handle) => return handle
+      None => {
+        let handle = function.expressions.append(
+          Expression::GlobalVariable(global_handle),
+        )
+        self.global_pointer_expressions.set(name, handle)
+        return handle
+      }
     }
   }
+  function.expressions.append(Expression::GlobalVariable(global_handle))
 }
 
 ///|

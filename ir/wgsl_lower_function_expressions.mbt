@@ -125,7 +125,12 @@ fn WgslIrLowerer::lower_function_lvalue_node(
       }
       match self.global_names.get(name.name()) {
         Some(handle) =>
-          scope.global_pointer_expression(name.name(), handle, function)
+          scope.global_pointer_expression(
+            name.name(),
+            handle,
+            function,
+            self.global_variable_reuses_pointer_expression(handle),
+          )
         None => raise WgslIrLowerError::UnknownIdentifier(name.name())
       }
     }
@@ -804,11 +809,16 @@ fn WgslIrLowerer::lower_identifier_expression(
   match self.global_names.get(name) {
     Some(handle) =>
       if self.global_variable_is_handle_value(handle) {
-        scope.global_pointer_expression(name, handle, function)
+        scope.global_pointer_expression(name, handle, function, true)
       } else {
         function.expressions.append(
           Expression::Load(
-            scope.global_pointer_expression(name, handle, function),
+            scope.global_pointer_expression(
+              name,
+              handle,
+              function,
+              self.global_variable_reuses_pointer_expression(handle),
+            ),
           ),
         )
       }
@@ -858,6 +868,21 @@ fn WgslIrLowerer::global_variable_is_handle_value(
             _ => false
           }
         None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::global_variable_reuses_pointer_expression(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.global_variables.items.get(handle.index()) {
+    Some(global) =>
+      match global.space {
+        Storage(_) => self.global_variable_is_handle_value(handle)
+        _ => true
       }
     None => false
   }

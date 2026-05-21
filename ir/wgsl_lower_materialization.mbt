@@ -1059,24 +1059,6 @@ fn WgslIrLowerer::materialize_nested_constructor_argument(
 }
 
 ///|
-fn WgslIrLowerer::materialize_side_effecting_expression(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  value : Handle,
-) -> Handle raise WgslIrLowerError {
-  let normalized = self.materialize_return_subexpressions(
-    function, scope, block, value,
-  )
-  if self.function_expression_is_side_effecting(function, Some(normalized)) {
-    self.materialize_function_expression(function, scope, block, normalized)
-  } else {
-    normalized
-  }
-}
-
-///|
 fn WgslIrLowerer::materialize_store_value_if_needed(
   self : WgslIrLowerer,
   function : Function,
@@ -1097,29 +1079,37 @@ fn WgslIrLowerer::materialize_store_value_if_needed(
 }
 
 ///|
-fn WgslIrLowerer::function_expression_is_side_effecting(
+fn WgslIrLowerer::compound_assignment_target_value(
   self : WgslIrLowerer,
   function : Function,
-  value : Handle?,
+  target : Handle,
+) -> Handle {
+  let direct_projection = match function.expressions.items.get(target.index()) {
+    Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
+      true
+    _ => false
+  }
+  if direct_projection {
+    match self.function_expression_type(function, target) {
+      Some(ty) =>
+        if !self.lowerer_type_is_pointer(ty) {
+          return target
+        }
+      None => return target
+    }
+  }
+  function.expressions.append(Expression::Load(target))
+}
+
+///|
+fn WgslIrLowerer::lowerer_type_is_pointer(
+  self : WgslIrLowerer,
+  ty : Handle,
 ) -> Bool {
-  ignore(self)
-  match value {
-    Some(handle) =>
-      match function.expressions.items.get(handle.index()) {
-        Some(AtomicCall(atomic_function, _)) =>
-          match atomic_function {
-            Load
-            | Add
-            | Subtract
-            | And
-            | ExclusiveOr
-            | InclusiveOr
-            | Min
-            | Max
-            | Exchange
-            | CompareExchangeWeak => true
-            Store => false
-          }
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(_, _) | ValuePointer(_, _, _) => true
         _ => false
       }
     None => false

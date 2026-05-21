@@ -618,6 +618,35 @@ test "WGSL AST lowerer materializes mutable member reads before stores" {
 }
 
 ///|
+test "WGSL AST lowerer materializes compound assignment storage RHS reads" {
+  let source =
+    #|struct Args {
+    #|  x: u32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<storage, read_write> counters: array<u32, 2>;
+    #|@group(0) @binding(1) var<storage, read_write> args: Args;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  counters[0] += args.x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e2: u32 = counters[0];") &&
+    emitted.contains("let _e5: u32 = args.x;") &&
+    emitted.contains("counters[0] = (_e2 + _e5);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("counters[0] = (_e3 + args.x);"), content="false")
+}
+
+///|
 test "WGSL AST lowerer respects nested lexical shadowing" {
   let source =
     #|@group(0) @binding(0) var<storage, read_write> buffer: array<u32, 4>;

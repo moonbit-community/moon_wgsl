@@ -160,16 +160,16 @@ fn WgslIrLowerer::lower_statement(
       )
       let value = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
-          let loaded_target = function.expressions.append(
-            Expression::Load(target),
+          let target_value = self.compound_assignment_target_value(
+            function, target,
           )
           let materialized_target = self.materialize_function_expression(
-            function, scope, block, loaded_target,
+            function, scope, block, target_value,
           )
           let rhs_value = self.lower_function_expression_ref(
             rhs_ref, function, scope,
           )
-          let rhs_value = self.materialize_side_effecting_expression(
+          let rhs_value = self.materialize_store_value_if_needed(
             function, scope, block, rhs_value,
           )
           function.expressions.append(
@@ -569,16 +569,19 @@ fn WgslIrLowerer::lower_for_header_statement(
       )
       let value = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
-          let loaded_target = function.expressions.append(
-            Expression::Load(target),
+          let target_value = self.compound_assignment_target_value(
+            function, target,
           )
           let materialized_target = self.materialize_function_expression(
-            function, scope, block, loaded_target,
+            function, scope, block, target_value,
           )
           let rhs_value = self.lower_function_expression_node(
             wgsl_ir_expr_node_from_tokens(rhs_tokens),
             function,
             scope,
+          )
+          let rhs_value = self.materialize_store_value_if_needed(
+            function, scope, block, rhs_value,
           )
           function.expressions.append(
             Expression::Binary(binary_op, materialized_target, rhs_value),
