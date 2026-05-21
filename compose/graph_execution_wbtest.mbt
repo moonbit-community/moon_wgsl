@@ -556,6 +556,56 @@ test "composer emits full-module selected item dependencies before module body" 
 }
 
 ///|
+test "alias selected import reuses already emitted sibling item" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let dep_source =
+    #|#define_import_path test::dep
+    #|
+    #|fn needed() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+    #|fn other() -> u32 {
+    #|  return 2u;
+    #|}
+    #|
+  let selected_source =
+    #|#define_import_path test::selected
+    #|#import test::dep
+    #|
+    #|fn selected() -> u32 {
+    #|  return dep::needed();
+    #|}
+    #|
+  let root_source =
+    #|#import test::{
+    #|  dep::needed,
+    #|  selected::selected,
+    #|  dep::other,
+    #|}
+    #|
+    #|fn main() -> u32 {
+    #|  return selected() + other();
+    #|}
+    #|
+  composer.register_source("dep.wgsl", dep_source)
+  composer.register_source("selected.wgsl", selected_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.split("fn neededX_naga_oil_mod").collect().length(),
+    content="2",
+  )
+  debug_inspect(emitted.contains("fn selectedX_naga_oil_mod"), content="true")
+}
+
+///|
 test "composer does not retain unused selected-slice helper full-module imports" {
   let composer = Composer::default()
   let helper_source =

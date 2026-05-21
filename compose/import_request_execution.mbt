@@ -104,6 +104,44 @@ fn Composer::compose_wgsl_import_requests(
         emission_requested_items.length() == 0 {
         continue
       }
+    } else if !request.import_full_module {
+      for requested_item in request.requested_items {
+        match
+          find_wgsl_cached_imported_item_name(
+            session,
+            request.rel_path,
+            requested_item,
+          ) {
+          Some(imported_name) =>
+            match
+              WgslComposeBinding::for_alias_symbol(
+                request.rel_path,
+                request.alias_name,
+                requested_item,
+                imported_name,
+                QualifiedAliasBinding,
+              ) {
+              Some(binding) => {
+                bindings.push(binding)
+                if !session.visited.contains(
+                    wgsl_imported_item_emission_key(
+                      request.rel_path,
+                      requested_item,
+                    ),
+                  ) &&
+                  !session.visited.contains(full_module_key) {
+                  emission_requested_items.push(requested_item)
+                }
+              }
+              None => emission_requested_items.push(requested_item)
+            }
+          None => emission_requested_items.push(requested_item)
+        }
+      }
+      if request.requested_items.length() > 0 &&
+        emission_requested_items.length() == 0 {
+        continue
+      }
     } else {
       for requested_item in request.requested_items {
         emission_requested_items.push(requested_item)
