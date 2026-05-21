@@ -674,10 +674,22 @@ fn WgslIrEmitter::folded_expression_for_scalar_context(
 ) -> String? raise WgslIrEmitError {
   match scalar.kind {
     Float | AbstractFloat =>
-      match
-        self.eval_float_expression_with_retained_constants(function, operand) {
-        Some(value) => self.float_value_literal_for_width(value, scalar.width)
-        None => None
+      match self.required_expression(function, operand) {
+        Constant(handle) =>
+          match self.eval_constant_float_expression_for_writer(handle) {
+            Some(value) =>
+              self.float_value_literal_for_width(value, scalar.width)
+            None => None
+          }
+        _ =>
+          match
+            self.eval_float_expression_with_retained_constants(
+              function, operand,
+            ) {
+            Some(value) =>
+              self.float_value_literal_for_width(value, scalar.width)
+            None => None
+          }
       }
     Uint =>
       match self.eval_integer_expression_for_writer(function, operand) {
