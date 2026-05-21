@@ -1,0 +1,44 @@
+///|
+test "naga-oil writer policy contextualizes vector splat literals" {
+  let source =
+    #|fn clamp_vec(value: vec2<f32>, flag: vec2<bool>) -> vec2<f32> {
+    #|  let a = max(value, vec2(0.0));
+    #|  let b = max(vec2(0.0), value);
+    #|  return select(vec2(-1.0), vec2(1.0), flag) + a + b;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("max(value, vec2(0f))"), content="true")
+  debug_inspect(naga_oil.contains("max(vec2(0f), value)"), content="true")
+  debug_inspect(
+    naga_oil.contains("select(vec2(-1f), vec2(1f), flag)"),
+    content="true",
+  )
+}
+
+///|
+test "naga-oil writer policy emits inferred vector splat constructors" {
+  let source =
+    #|fn screen_space_dither(frag_coord: vec2<f32>) -> vec3<f32> {
+    #|  var dither: vec3<f32>;
+    #|  dither = vec3(dot(vec2<f32>(171f, 231f), frag_coord)).xxx;
+    #|  return dither;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains(
+      "dither = vec3(dot(vec2<f32>(171f, 231f), frag_coord)).xxx;",
+    ),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("vec3<f32>(dot("), content="false")
+}

@@ -516,6 +516,11 @@ fn WgslIrEmitter::math_expression_result_type(
   guard self.expression_type(function, argument) is Some(input_ty) else {
     return None
   }
+  match math_function {
+    Dot | Distance | Length | Determinant =>
+      return self.scalar_type_from_composite_type(input_ty)
+    _ => ()
+  }
   if wgsl_ir_math_function_uses_uniform_numeric_argument_context(math_function) {
     let arguments : Array[Handle] = [argument]
     match b {
@@ -561,8 +566,6 @@ fn WgslIrEmitter::math_expression_result_type(
       self.find_vector_type(Bi, Scalar::Scalar(Float, 4))
     Unpack4xI8 => self.find_vector_type(Quad, Scalar::Scalar(Sint, 4))
     Unpack4xU8 => self.find_vector_type(Quad, Scalar::Scalar(Uint, 4))
-    Dot | Distance | Length | Determinant =>
-      self.scalar_type_from_composite_type(input_ty)
     Transpose => self.transpose_expression_result_type(input_ty)
     _ => Some(input_ty)
   }
