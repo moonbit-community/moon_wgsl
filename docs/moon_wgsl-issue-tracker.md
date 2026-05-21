@@ -1,6 +1,6 @@
 # moon_wgsl Issue Tracker
 
-Last updated: 2026-05-18
+Last updated: 2026-05-21
 
 ## Status Legend
 
@@ -11,6 +11,7 @@ Last updated: 2026-05-18
 
 ## Latest Progress
 
+- 2026-05-21: WGSL-283 investigation rejected two tempting local fixes for generated import declaration order. Treating generated struct first-use as a global phase model fixed the Bevy `cull_bvh` type-order slice but expanded writer drift from 24 to 59 cases. Treating directly declared import spelling as a generated-function arena root likewise expanded writer drift to 44 cases. Conclusion: import-local spelling is not the same fact as Naga's module arena root. The next WGSL-283 work must construct an explicit upstream-style module arena/root-order model instead of deriving writer order from import request visibility.
 - 2026-05-20: Module-level source directives now live in the writer arena/emission plan. `emit_module` consumes `WgslIrNagaWriterModule::source_directives()` instead of reading raw `Module.directives` after the writer view has been built.
 - 2026-05-20: Writer semantic behavior is now an explicit `WgslIrWriterSemanticPlan`, separate from byte/token formatting policy. `WgslIrEmitOptions` no longer stores a backend enum or derives expression-folding/import-constant/literal-context behavior from backend-name matches.
 - 2026-05-20: `WGSL-283` final-name allocation now consumes writer declaration slots and precomputed function-body plans. Runtime and naga-oil writer paths share the same slot-backed final-name plan, and `WgslIrNagaWriterModule` no longer carries the raw IR module or exposes source-index order helpers after the writer arena is built.
