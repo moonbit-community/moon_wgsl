@@ -1486,7 +1486,7 @@ fn WgslIrEmitter::math_argument_list(
       out.write_string(", ")
     }
     out.write_string(
-      self.contextual_argument_expression(
+      self.contextual_math_argument_expression(
         function,
         handles[index],
         scalar_context,
@@ -1494,6 +1494,39 @@ fn WgslIrEmitter::math_argument_list(
     )
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::contextual_math_argument_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  argument : Handle,
+  scalar_context : Scalar?,
+) -> String raise WgslIrEmitError {
+  match scalar_context {
+    Some(scalar) => {
+      match self.contextual_scalar_literal(function, argument, scalar) {
+        Some(value) => return value
+        None => ()
+      }
+      if self.options.fold_numeric_constant_expressions() {
+        match scalar.kind {
+          Float | AbstractFloat =>
+            match self.eval_float_expression_for_writer(function, argument) {
+              Some(value) =>
+                match self.float_value_literal_for_width(value, scalar.width) {
+                  Some(text) => return text
+                  None => ()
+                }
+              None => ()
+            }
+          _ => ()
+        }
+      }
+      self.required_function_expression(function, argument)
+    }
+    None => self.required_function_expression(function, argument)
+  }
 }
 
 ///|
