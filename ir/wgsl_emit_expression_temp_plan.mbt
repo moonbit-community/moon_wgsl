@@ -1238,6 +1238,9 @@ fn wgsl_ir_emit_projected_temporary_slot_offset(
     if body_plan.contains_materialized_expression(handle) &&
       wgsl_ir_emit_materialized_expression_has_projected_use_before(
         function, handle, limit,
+      ) &&
+      !wgsl_ir_emit_projected_materialized_expression_is_current_call_argument(
+        function, handle, limit,
       ) {
       offset += wgsl_ir_emit_projected_temporary_expression_slots(
         function, handle,
@@ -1245,6 +1248,87 @@ fn wgsl_ir_emit_projected_temporary_slot_offset(
     }
   }
   offset
+}
+
+///|
+fn wgsl_ir_emit_projected_materialized_expression_is_current_call_argument(
+  function : Function,
+  materialized : Handle,
+  limit : Handle,
+) -> Bool {
+  match function.expressions.items.get(limit.index()) {
+    Some(CallResult(_)) =>
+      wgsl_ir_function_call_result_has_argument_projection_containing(
+        function,
+        function.body,
+        materialized,
+        limit,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_call_result_has_argument_projection_containing(
+  function : Function,
+  block : Block,
+  handle : Handle,
+  result : Handle,
+) -> Bool {
+  for statement in block.statements {
+    match statement {
+      Call(_, arguments, Some(call_result)) =>
+        if call_result == result {
+          for argument in arguments {
+            if wgsl_ir_function_expression_is_projection_graph_node(
+                function, argument,
+              ) &&
+              wgsl_ir_function_expression_graph_contains(
+                function, argument, handle,
+              ) {
+              return true
+            }
+          }
+        }
+      Block(child) =>
+        if wgsl_ir_function_call_result_has_argument_projection_containing(
+            function, child, handle, result,
+          ) {
+          return true
+        }
+      If(_, accept, reject) =>
+        if wgsl_ir_function_call_result_has_argument_projection_containing(
+            function, accept, handle, result,
+          ) ||
+          wgsl_ir_function_call_result_has_argument_projection_containing(
+            function, reject, handle, result,
+          ) {
+          return true
+        }
+      Switch(_, cases) =>
+        for case in cases {
+          if wgsl_ir_function_call_result_has_argument_projection_containing(
+              function,
+              case.body,
+              handle,
+              result,
+            ) {
+            return true
+          }
+        }
+      Loop(body, continuing, _) =>
+        if wgsl_ir_function_call_result_has_argument_projection_containing(
+            function, body, handle, result,
+          ) ||
+          wgsl_ir_function_call_result_has_argument_projection_containing(
+            function, continuing, handle, result,
+          ) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
 }
 
 ///|

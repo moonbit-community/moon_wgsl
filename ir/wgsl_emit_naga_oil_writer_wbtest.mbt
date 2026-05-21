@@ -469,3 +469,31 @@ test "naga-oil writer materializes mutable store pointer index" {
   debug_inspect(emitted.contains("].value = 2u;"), content="true")
   debug_inspect(emitted.contains("output[index].value = 2u;"), content="false")
 }
+
+///|
+test "naga-oil writer absorbs projected call-result argument slots" {
+  let source =
+    #|fn local_to_world(vertex_position: vec4<f32>) -> vec4<f32> {
+    #|  return vertex_position;
+    #|}
+    #|
+    #|fn world_to_clip(world_position: vec3<f32>) -> vec4<f32> {
+    #|  return vec4<f32>(world_position, 1.0);
+    #|}
+    #|
+    #|fn local_to_clip(vertex_position: vec4<f32>) -> vec4<f32> {
+    #|  let world = local_to_world(vertex_position);
+    #|  return world_to_clip(world.xyz);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e3: vec4<f32> = world_to_clip(_e1.xyz);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e5: vec4<f32>"), content="false")
+}
