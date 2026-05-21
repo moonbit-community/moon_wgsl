@@ -71,12 +71,36 @@ fn WgslIrLowerer::materialize_store_pointer_index_if_needed(
     is Some(FunctionArgument(_)) {
     return normalized
   }
+  if wgsl_ir_function_expression_is_store_pointer_index_local_reference(
+      function, normalized,
+    ) {
+    return normalized
+  }
   if self.function_expression_can_materialize_to_let(function, normalized) {
     self.materialize_function_expression_snapshot(
       function, scope, block, normalized,
     )
   } else {
     normalized
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_store_pointer_index_local_reference(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Load(inner)) =>
+      wgsl_ir_function_expression_is_store_pointer_index_local_reference(
+        function, inner,
+      )
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) => local_var.kind == Let
+        None => false
+      }
+    _ => false
   }
 }
 

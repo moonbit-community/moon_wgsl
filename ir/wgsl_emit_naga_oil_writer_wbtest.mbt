@@ -408,7 +408,7 @@ test "naga-oil writer materializes global field before swizzle projection" {
 }
 
 ///|
-test "naga-oil writer materializes dynamic store pointer index and storage rhs" {
+test "naga-oil writer inlines local store pointer index and materializes storage rhs" {
   let source =
     #|struct Input {
     #|  value: u32,
@@ -433,9 +433,8 @@ test "naga-oil writer materializes dynamic store pointer index and storage rhs" 
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains(": u32 = index;") &&
-    emitted.contains("output[_e") &&
-    emitted.contains("].value = _e"),
+    emitted.contains("let _e8: u32 = input[index].value;") &&
+    emitted.contains("output[index].value = _e8;"),
     content="true",
   )
   debug_inspect(emitted.contains(": u32 = input[index].value;"), content="true")
@@ -443,4 +442,30 @@ test "naga-oil writer materializes dynamic store pointer index and storage rhs" 
     emitted.contains("output[index].value = input[index].value;"),
     content="false",
   )
+}
+
+///|
+test "naga-oil writer materializes mutable store pointer index" {
+  let source =
+    #|struct Output {
+    #|  value: u32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<storage, read_write> output: array<Output>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  var index: u32 = 1u;
+    #|  output[index].value = 2u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(": u32 = index;"), content="true")
+  debug_inspect(emitted.contains("output[_e"), content="true")
+  debug_inspect(emitted.contains("].value = 2u;"), content="true")
+  debug_inspect(emitted.contains("output[index].value = 2u;"), content="false")
 }
