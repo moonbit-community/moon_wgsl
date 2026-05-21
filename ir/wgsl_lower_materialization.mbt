@@ -424,14 +424,14 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       }
     }
     Some(Select(condition, accept, reject)) => {
-      let lowered_condition = self.materialize_nested_call_argument(
-        function, scope, block, condition,
+      let lowered_reject = self.materialize_nested_call_argument(
+        function, scope, block, reject,
       )
       let lowered_accept = self.materialize_nested_call_argument(
         function, scope, block, accept,
       )
-      let lowered_reject = self.materialize_nested_call_argument(
-        function, scope, block, reject,
+      let lowered_condition = self.materialize_nested_call_argument(
+        function, scope, block, condition,
       )
       let parent_condition = wgsl_ir_parent_expression_operand(
         function, condition, lowered_condition,

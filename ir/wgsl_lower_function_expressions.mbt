@@ -1312,13 +1312,12 @@ fn WgslIrLowerer::lower_function_select_call(
       "select expects three arguments",
     )
   }
-  function.expressions.append(
-    Expression::Select(
-      self.lower_function_expression_node(condition, function, scope),
-      self.lower_function_expression_node(accept, function, scope),
-      self.lower_function_expression_node(reject, function, scope),
-    ),
+  let reject = self.lower_function_expression_node(reject, function, scope)
+  let accept = self.lower_function_expression_node(accept, function, scope)
+  let condition = self.lower_function_expression_node(
+    condition, function, scope,
   )
+  function.expressions.append(Expression::Select(condition, accept, reject))
 }
 
 ///|

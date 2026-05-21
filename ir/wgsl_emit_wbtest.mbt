@@ -1427,6 +1427,33 @@ test "naga-oil writer policy contextualizes vector splat literals" {
 }
 
 ///|
+test "naga-oil writer policy lowers select operands in source order" {
+  let source =
+    #|const PI: f32 = 3.141592653589793;
+    #|const HALF_PI: f32 = 1.57079632679;
+    #|
+    #|fn fast_acos(in_x: f32) -> f32 {
+    #|  let x = abs(in_x);
+    #|  var res = -0.156583 * x + HALF_PI;
+    #|  res *= sqrt(1.0 - x);
+    #|  return select(PI - res, res, in_x >= 0.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains(
+      "let _e13: f32 = res;\n    let _e15: f32 = res;\n    return select((PI - _e13), _e15, (in_x >= 0f));",
+    ),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("select((PI - _e15), _e13"), content="false")
+}
+
+///|
 test "naga-oil writer policy binds abstract vector constructors from math siblings" {
   let source =
     #|fn shade(color: vec4<f32>, d: f32) -> vec4<f32> {
