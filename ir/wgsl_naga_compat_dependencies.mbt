@@ -322,7 +322,6 @@ fn wgsl_ir_collect_function_calls_from_statement(
       wgsl_ir_collect_function_calls_from_expression(function, result, calls)
     }
     Call(callee, arguments, result) => {
-      wgsl_ir_push_function_call(calls, callee.index())
       for argument in arguments {
         wgsl_ir_collect_function_calls_from_expression(
           function, argument, calls,
@@ -333,6 +332,7 @@ fn wgsl_ir_collect_function_calls_from_statement(
           wgsl_ir_collect_function_calls_from_expression(function, expr, calls)
         None => ()
       }
+      wgsl_ir_push_function_call(calls, callee.index())
     }
     RayQuery(query, _) =>
       wgsl_ir_collect_function_calls_from_expression(function, query, calls)
@@ -434,12 +434,12 @@ fn wgsl_ir_collect_function_calls_from_expression_inner(
         )
       }
     FunctionCall(target, arguments) => {
-      wgsl_ir_push_function_call(calls, target.index())
       for argument in arguments {
         wgsl_ir_collect_function_calls_from_expression(
           function, argument, calls,
         )
       }
+      wgsl_ir_push_function_call(calls, target.index())
     }
     Select(condition, accept, reject) => {
       wgsl_ir_collect_function_calls_from_expression(function, condition, calls)

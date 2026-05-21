@@ -810,6 +810,37 @@ test "naga-oil writer orders atomic argument function dependencies before caller
 }
 
 ///|
+test "naga-oil writer orders nested call argument dependencies before outer callees" {
+  let source =
+    #|@fragment
+    #|fn fragment() -> @location(0) vec4<f32> {
+    #|  return vec4<f32>(outer(inner(vec2<f32>(1f, 2f))), 0f, 1f);
+    #|}
+    #|
+    #|fn outer(value: vec2<f32>) -> vec2<f32> {
+    #|  return value;
+    #|}
+    #|
+    #|fn inner(value: vec2<f32>) -> vec2<f32> {
+    #|  return value;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn inner", "fn outer"),
+    content="true",
+  )
+  debug_inspect(
+    wgsl_emit_test_before(emitted, "fn outer", "fn fragment"),
+    content="true",
+  )
+}
+
+///|
 test "IR emitter preserves struct member layout attributes" {
   let source =
     #|struct Layout {
