@@ -147,7 +147,11 @@ fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   for declaration in unit.declarations() {
     lowerer.record_override_declaration(declaration)
   }
-  for declaration in wgsl_ir_struct_predeclare_order(unit.declarations()) {
+  for
+    declaration in wgsl_ir_struct_predeclare_order(
+      unit.declarations(),
+      lowerer.generated_import_provenance,
+    ) {
     lowerer.predeclare_global_type_declaration(declaration)
   }
   for declaration in unit.declarations() {
