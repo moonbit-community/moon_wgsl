@@ -279,6 +279,7 @@ fn wgsl_graph_block_dependencies_in_ast_order(
   let self_name = block.name()
   let identifiers : Array[WgslIdent] = []
   collect_wgsl_decl_identifier_nodes(block.data, identifiers)
+  wgsl_graph_sort_identifier_nodes_by_source(identifiers)
   wgsl_analysis_collect_identifier_dependencies(
     identifiers, self_name, declaration_names, dependencies,
   )
@@ -301,6 +302,21 @@ fn wgsl_graph_block_dependencies_in_ast_order(
     }
   }
   return ordered
+}
+
+///|
+fn wgsl_graph_sort_identifier_nodes_by_source(nodes : Array[WgslIdent]) -> Unit {
+  nodes.sort_by(fn(lhs, rhs) {
+    let start_compare = lhs.start() - rhs.start()
+    if start_compare != 0 {
+      return start_compare
+    }
+    let end_compare = lhs.end() - rhs.end()
+    if end_compare != 0 {
+      return end_compare
+    }
+    String::compare(lhs.name(), rhs.name())
+  })
 }
 
 ///|

@@ -101,6 +101,24 @@ fn collect_wgsl_semantic_reference_identifier_nodes(
   for decl in parse_wgsl_translation_unit_strict(source).declarations() {
     collect_wgsl_decl_identifier_nodes(decl.data(), nodes)
   }
+  sort_wgsl_semantic_identifier_nodes_by_source(nodes)
+}
+
+///|
+fn sort_wgsl_semantic_identifier_nodes_by_source(
+  nodes : Array[WgslIdent],
+) -> Unit {
+  nodes.sort_by(fn(lhs, rhs) {
+    let start_compare = lhs.start() - rhs.start()
+    if start_compare != 0 {
+      return start_compare
+    }
+    let end_compare = lhs.end() - rhs.end()
+    if end_compare != 0 {
+      return end_compare
+    }
+    String::compare(lhs.name(), rhs.name())
+  })
 }
 
 ///|
