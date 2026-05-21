@@ -1091,10 +1091,7 @@ fn WgslIrLowerer::compound_assignment_target_value(
   }
   if direct_projection {
     match self.function_expression_type(function, target) {
-      Some(ty) =>
-        if !self.lowerer_type_is_pointer(ty) {
-          return target
-        }
+      Some(ty) => if !self.lowerer_type_is_pointer(ty) { return target }
       None => return target
     }
   }

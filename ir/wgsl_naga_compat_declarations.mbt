@@ -204,7 +204,10 @@ fn WgslIrNagaCompatPlanner::function_slots(
     slots.push(WgslIrNagaWriterFunctionSlot::{
       source_index: slot.source_index,
       item,
-      body_plan: WgslIrNagaFunctionBodyPlan::from_function(item),
+      body_plan: WgslIrNagaFunctionBodyPlan::from_function(
+        self.shader_module,
+        item,
+      ),
     })
   }
   slots
@@ -220,7 +223,10 @@ fn WgslIrNagaCompatPlanner::entry_point_slots(
     slots.push(WgslIrNagaWriterEntryPointSlot::{
       source_index,
       item,
-      body_plan: WgslIrNagaFunctionBodyPlan::from_function(item.function),
+      body_plan: WgslIrNagaFunctionBodyPlan::from_function(
+        self.shader_module,
+        item.function,
+      ),
     })
   }
   slots

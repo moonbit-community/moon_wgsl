@@ -643,7 +643,10 @@ test "WGSL AST lowerer materializes compound assignment storage RHS reads" {
     emitted.contains("counters[0] = (_e2 + _e5);"),
     content="true",
   )
-  debug_inspect(emitted.contains("counters[0] = (_e3 + args.x);"), content="false")
+  debug_inspect(
+    emitted.contains("counters[0] = (_e3 + args.x);"),
+    content="false",
+  )
 }
 
 ///|

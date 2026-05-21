@@ -43,6 +43,8 @@ priv struct WgslIrNagaFunctionBodyPlan {
   materialized_expressions : @set.Set[Int]
   local_variable_declarations : Array[Int]
   has_body_after_hoisted_declarations : Bool
+  implicit_expression_slots_before : Array[Int]
+  struct_value_store_pointers : @set.Set[Int]
 }
 
 ///|
@@ -54,6 +56,7 @@ priv struct WgslIrNagaStatementPlanItem {
 
 ///|
 fn WgslIrNagaFunctionBodyPlan::from_function(
+  shader_module : Module,
   function : Function,
 ) -> WgslIrNagaFunctionBodyPlan {
   WgslIrNagaFunctionBodyPlan::{
@@ -65,6 +68,12 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
     ),
     has_body_after_hoisted_declarations: wgsl_ir_naga_function_body_has_non_hoisted_statement(
       function,
+    ),
+    implicit_expression_slots_before: wgsl_ir_naga_function_implicit_expression_slots_before(
+      shader_module, function,
+    ),
+    struct_value_store_pointers: wgsl_ir_naga_function_struct_value_store_pointer_indices(
+      shader_module, function,
     ),
   }
 }
@@ -84,6 +93,25 @@ fn WgslIrNagaFunctionBodyPlan::temporary_index(
   handle : Handle,
 ) -> Int {
   wgsl_ir_emit_expression_temporary_index(function, self, handle)
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::implicit_expression_slot_offset(
+  self : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> Int {
+  match self.implicit_expression_slots_before.get(handle.index()) {
+    Some(value) => value
+    None => 0
+  }
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::contains_struct_value_store_pointer(
+  self : WgslIrNagaFunctionBodyPlan,
+  pointer : Handle,
+) -> Bool {
+  self.struct_value_store_pointers.contains(pointer.index())
 }
 
 ///|
@@ -368,9 +396,180 @@ fn wgsl_ir_emit_expression_temporary_index(
     base_index
   }
   base_index +
+  body_plan.implicit_expression_slot_offset(handle) +
   wgsl_ir_emit_implicit_naga_load_slot_offset(function, body_plan, handle) +
   local_store_offset +
   wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
+}
+
+///|
+fn wgsl_ir_naga_function_implicit_expression_slots_before(
+  shader_module : Module,
+  function : Function,
+) -> Array[Int] {
+  let offsets : Array[Int] = []
+  let mut offset = 0
+  for index in 0..<function.expressions.items.length() {
+    offsets.push(offset)
+    match function.expressions.items.get(index) {
+      Some(Compose(ty, components)) =>
+        offset += wgsl_ir_naga_compose_implicit_expression_slots(
+          shader_module, ty, components,
+        )
+      _ => ()
+    }
+  }
+  offsets
+}
+
+///|
+fn wgsl_ir_naga_compose_implicit_expression_slots(
+  shader_module : Module,
+  ty : Handle,
+  components : Array[Handle],
+) -> Int {
+  match shader_module.types.items.get(ty.index()) {
+    Some(type_) =>
+      match type_.inner {
+        Matrix(columns, rows, _) =>
+          if components.length() == columns.width() * rows.width() {
+            columns.width()
+          } else {
+            0
+          }
+        _ => 0
+      }
+    None => 0
+  }
+}
+
+///|
+fn wgsl_ir_naga_function_struct_value_store_pointer_indices(
+  shader_module : Module,
+  function : Function,
+) -> @set.Set[Int] {
+  let pointers : @set.Set[Int] = @set.Set([])
+  wgsl_ir_collect_struct_value_store_pointer_indices(
+    shader_module,
+    function,
+    function.body,
+    pointers,
+  )
+  pointers
+}
+
+///|
+fn wgsl_ir_collect_struct_value_store_pointer_indices(
+  shader_module : Module,
+  function : Function,
+  block : Block,
+  pointers : @set.Set[Int],
+) -> Unit {
+  for statement in block.statements {
+    match statement {
+      Store(pointer, _) =>
+        if wgsl_ir_naga_function_pointer_value_is_struct(
+            shader_module, function, pointer,
+          ) {
+          pointers.add(pointer.index())
+        }
+      Block(child) =>
+        wgsl_ir_collect_struct_value_store_pointer_indices(
+          shader_module, function, child, pointers,
+        )
+      If(_, accept, reject) => {
+        wgsl_ir_collect_struct_value_store_pointer_indices(
+          shader_module, function, accept, pointers,
+        )
+        wgsl_ir_collect_struct_value_store_pointer_indices(
+          shader_module, function, reject, pointers,
+        )
+      }
+      Switch(_, cases) =>
+        for case in cases {
+          wgsl_ir_collect_struct_value_store_pointer_indices(
+            shader_module,
+            function,
+            case.body,
+            pointers,
+          )
+        }
+      Loop(body, continuing, _) => {
+        wgsl_ir_collect_struct_value_store_pointer_indices(
+          shader_module, function, body, pointers,
+        )
+        wgsl_ir_collect_struct_value_store_pointer_indices(
+          shader_module, function, continuing, pointers,
+        )
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn wgsl_ir_naga_function_pointer_value_is_struct(
+  shader_module : Module,
+  function : Function,
+  pointer : Handle,
+) -> Bool {
+  match
+    wgsl_ir_naga_function_expression_value_type(
+      shader_module, function, pointer,
+    ) {
+    Some(ty) =>
+      match shader_module.types.items.get(ty.index()) {
+        Some(type_) =>
+          match type_.inner {
+            Struct(_, _) | PredeclaredStruct(_, _) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_naga_function_expression_value_type(
+  shader_module : Module,
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  match function.expressions.items.get(handle.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) => Some(local_var.ty)
+        None => None
+      }
+    Some(FunctionArgument(index)) =>
+      match function.arguments.get(index) {
+        Some(argument) => Some(argument.ty)
+        None => None
+      }
+    Some(Load(inner)) =>
+      wgsl_ir_naga_function_expression_value_type(
+        shader_module, function, inner,
+      )
+    Some(AccessIndex(base, member_index)) =>
+      match
+        wgsl_ir_naga_function_expression_value_type(
+          shader_module, function, base,
+        ) {
+        Some(base_ty) =>
+          match shader_module.types.items.get(base_ty.index()) {
+            Some({ inner: Struct(members, _), .. })
+            | Some({ inner: PredeclaredStruct(members, _), .. }) =>
+              match members.get(member_index) {
+                Some(field) => Some(field.ty)
+                None => None
+              }
+            _ => None
+          }
+        None => None
+      }
+    _ => None
+  }
 }
 
 ///|
@@ -539,7 +738,9 @@ fn wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
     Store(pointer, value) =>
       if pointer.index() < limit.index() &&
         value.index() < limit.index() &&
-        wgsl_ir_emit_store_pointer_is_direct_user_local(function, pointer) &&
+        wgsl_ir_emit_store_pointer_is_user_local_slot_countable(
+          function, body_plan, pointer,
+        ) &&
         wgsl_ir_emit_store_value_is_materialized_user_call_result(
           function, body_plan, value,
         ) {
@@ -582,6 +783,19 @@ fn wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
 }
 
 ///|
+fn wgsl_ir_emit_store_pointer_is_user_local_slot_countable(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  pointer : Handle,
+) -> Bool {
+  if wgsl_ir_emit_store_pointer_is_direct_user_local(function, pointer) {
+    return true
+  }
+  wgsl_ir_emit_store_pointer_is_rooted_user_local(function, pointer) &&
+  body_plan.contains_struct_value_store_pointer(pointer)
+}
+
+///|
 fn wgsl_ir_emit_store_pointer_is_direct_user_local(
   function : Function,
   pointer : Handle,
@@ -594,6 +808,25 @@ fn wgsl_ir_emit_store_pointer_is_direct_user_local(
           !local_var.generated_temporary
         None => false
       }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_store_pointer_is_rooted_user_local(
+  function : Function,
+  pointer : Handle,
+) -> Bool {
+  if wgsl_ir_emit_store_pointer_is_direct_user_local(function, pointer) {
+    return true
+  }
+  match function.expressions.items.get(pointer.index()) {
+    Some(Load(base)) =>
+      wgsl_ir_emit_store_pointer_is_rooted_user_local(function, base)
+    Some(Access(base, _))
+    | Some(AccessIndex(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      wgsl_ir_emit_store_pointer_is_rooted_user_local(function, base)
     _ => false
   }
 }

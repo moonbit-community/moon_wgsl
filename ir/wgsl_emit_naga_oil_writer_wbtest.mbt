@@ -142,6 +142,107 @@ test "IR emitter counts direct local stores of materialized temporary values in 
 }
 
 ///|
+test "IR emitter counts local member stores of materialized temporary values in Naga arena order" {
+  let source =
+    #|struct Inner {
+    #|  value: mat4x4<f32>,
+    #|}
+    #|
+    #|struct Out {
+    #|  inner: Inner,
+    #|}
+    #|
+    #|fn make_value() -> Inner {
+    #|  return Inner();
+    #|}
+    #|
+    #|fn vertex() -> Out {
+    #|  var out: Out;
+    #|  let value = make_value();
+    #|  out.inner = value;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e0: Inner = make_value();"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("out.inner = _e0;"), content="true")
+  debug_inspect(emitted.contains("let _e3: Out = out;"), content="true")
+  debug_inspect(emitted.contains("return _e3;"), content="true")
+  debug_inspect(emitted.contains("let _e2: Out = out;"), content="false")
+}
+
+///|
+test "IR emitter does not overcount member stores when the same member is loaded" {
+  let source =
+    #|struct Inner {
+    #|  value: mat4x4<f32>,
+    #|}
+    #|
+    #|struct Out {
+    #|  inner: Inner,
+    #|}
+    #|
+    #|fn make_value() -> Inner {
+    #|  return Inner();
+    #|}
+    #|
+    #|fn vertex() -> Out {
+    #|  var out: Out;
+    #|  let value = make_value();
+    #|  out.inner = value;
+    #|  let copied = out.inner;
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e0: Inner = make_value();"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let copied: Inner = out.inner;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e5: Out = out;"), content="true")
+  debug_inspect(emitted.contains("return _e5;"), content="true")
+  debug_inspect(emitted.contains("let _e6: Out = out;"), content="false")
+}
+
+///|
+test "IR emitter counts implicit matrix scalar constructor columns in Naga arena order" {
+  let source =
+    #|struct S {
+    #|  m: mat3x3<f32>,
+    #|}
+    #|
+    #|fn f() -> S {
+    #|  var s: S;
+    #|  s.m = mat3x3<f32>(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+    #|  return s;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e15: S = s;"), content="true")
+  debug_inspect(emitted.contains("return _e15;"), content="true")
+  debug_inspect(emitted.contains("let _e12: S = s;"), content="false")
+}
+
+///|
 test "IR emitter does not count texture store as extra Naga arena slot" {
   let source =
     #|@group(0) @binding(0) var tex: texture_2d<f32>;
