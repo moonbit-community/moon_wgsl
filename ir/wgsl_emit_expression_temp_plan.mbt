@@ -373,6 +373,12 @@ fn wgsl_ir_emit_expression_temporary_index(
         )
       ) ||
       (
+        current_is_call_result &&
+        wgsl_ir_function_expression_is_absorbed_store_projected_call_argument_base(
+          function, body_plan, expression_handle, handle,
+        )
+      ) ||
+      (
         !current_is_call_result &&
         wgsl_ir_emit_expression_is_call_result(function, expression_handle)
       ) ||
@@ -582,6 +588,7 @@ fn wgsl_ir_function_expression_is_unmaterialized_call_result_projection_argument
     function, handle,
   ) &&
   wgsl_ir_function_call_result_uses_direct_argument(
+    function,
     function.body,
     handle,
     result,
@@ -590,6 +597,7 @@ fn wgsl_ir_function_expression_is_unmaterialized_call_result_projection_argument
 
 ///|
 fn wgsl_ir_function_call_result_uses_direct_argument(
+  function : Function,
   block : Block,
   argument : Handle,
   result : Handle,
@@ -606,22 +614,23 @@ fn wgsl_ir_function_call_result_uses_direct_argument(
         }
       Block(child) =>
         if wgsl_ir_function_call_result_uses_direct_argument(
-            child, argument, result,
+            function, child, argument, result,
           ) {
           return true
         }
       If(_, accept, reject) =>
         if wgsl_ir_function_call_result_uses_direct_argument(
-            accept, argument, result,
+            function, accept, argument, result,
           ) ||
           wgsl_ir_function_call_result_uses_direct_argument(
-            reject, argument, result,
+            function, reject, argument, result,
           ) {
           return true
         }
       Switch(_, cases) =>
         for case in cases {
           if wgsl_ir_function_call_result_uses_direct_argument(
+              function,
               case.body,
               argument,
               result,
@@ -631,10 +640,221 @@ fn wgsl_ir_function_call_result_uses_direct_argument(
         }
       Loop(body, continuing, _) =>
         if wgsl_ir_function_call_result_uses_direct_argument(
-            body, argument, result,
+            function, body, argument, result,
           ) ||
           wgsl_ir_function_call_result_uses_direct_argument(
-            continuing, argument, result,
+            function, continuing, argument, result,
+          ) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_function_expression_is_absorbed_store_projected_call_argument_base(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+  result : Handle,
+) -> Bool {
+  !body_plan.contains_materialized_expression(handle) &&
+  wgsl_ir_function_expression_is_projection_graph_node(function, handle) &&
+  wgsl_ir_function_call_result_is_store_value(function.body, result) &&
+  wgsl_ir_function_call_result_has_projected_argument_containing(
+    function,
+    function.body,
+    handle,
+    result,
+  ) &&
+  wgsl_ir_function_call_result_has_absorbed_direct_local_store(
+    function, body_plan, result,
+  )
+}
+
+///|
+fn wgsl_ir_function_call_result_has_absorbed_direct_local_store(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  result : Handle,
+) -> Bool {
+  wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+    function,
+    body_plan,
+    function.body,
+    result,
+  )
+}
+
+///|
+fn wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  block : Block,
+  result : Handle,
+) -> Bool {
+  for statement in block.statements {
+    if wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_statement(
+        function, body_plan, statement, result,
+      ) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_statement(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  statement : Statement,
+  result : Handle,
+) -> Bool {
+  match statement {
+    Store(pointer, _) =>
+      pointer.index() < result.index() &&
+      wgsl_ir_emit_direct_local_store_slot_is_absorbed_by_call_argument_materialization(
+        function, body_plan, pointer, result,
+      )
+    Block(child) =>
+      wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+        function, body_plan, child, result,
+      )
+    If(_, accept, reject) =>
+      wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+        function, body_plan, accept, result,
+      ) ||
+      wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+        function, body_plan, reject, result,
+      )
+    Switch(_, cases) => {
+      for case in cases {
+        if wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+            function,
+            body_plan,
+            case.body,
+            result,
+          ) {
+          return true
+        }
+      }
+      false
+    }
+    Loop(body, continuing, _) =>
+      wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+        function, body_plan, body, result,
+      ) ||
+      wgsl_ir_function_call_result_has_absorbed_direct_local_store_in_block(
+        function, body_plan, continuing, result,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_call_result_is_store_value(
+  block : Block,
+  result : Handle,
+) -> Bool {
+  for statement in block.statements {
+    match statement {
+      Store(_, value) => if value == result { return true }
+      Block(child) =>
+        if wgsl_ir_function_call_result_is_store_value(child, result) {
+          return true
+        }
+      If(_, accept, reject) =>
+        if wgsl_ir_function_call_result_is_store_value(accept, result) ||
+          wgsl_ir_function_call_result_is_store_value(reject, result) {
+          return true
+        }
+      Switch(_, cases) =>
+        for case in cases {
+          if wgsl_ir_function_call_result_is_store_value(case.body, result) {
+            return true
+          }
+        }
+      Loop(body, continuing, _) =>
+        if wgsl_ir_function_call_result_is_store_value(body, result) ||
+          wgsl_ir_function_call_result_is_store_value(continuing, result) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_function_expression_is_projection_graph_node(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Load(_))
+    | Some(Access(_, _))
+    | Some(AccessIndex(_, _))
+    | Some(Swizzle(_, _, _)) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_call_result_has_projected_argument_containing(
+  function : Function,
+  block : Block,
+  handle : Handle,
+  result : Handle,
+) -> Bool {
+  for statement in block.statements {
+    match statement {
+      Call(_, arguments, Some(call_result)) =>
+        if call_result == result {
+          for argument in arguments {
+            if wgsl_ir_function_expression_is_projection_of_generated_temporary(
+                function, argument,
+              ) &&
+              wgsl_ir_function_expression_graph_contains(
+                function, argument, handle,
+              ) {
+              return true
+            }
+          }
+        }
+      Block(child) =>
+        if wgsl_ir_function_call_result_has_projected_argument_containing(
+            function, child, handle, result,
+          ) {
+          return true
+        }
+      If(_, accept, reject) =>
+        if wgsl_ir_function_call_result_has_projected_argument_containing(
+            function, accept, handle, result,
+          ) ||
+          wgsl_ir_function_call_result_has_projected_argument_containing(
+            function, reject, handle, result,
+          ) {
+          return true
+        }
+      Switch(_, cases) =>
+        for case in cases {
+          if wgsl_ir_function_call_result_has_projected_argument_containing(
+              function,
+              case.body,
+              handle,
+              result,
+            ) {
+            return true
+          }
+        }
+      Loop(body, continuing, _) =>
+        if wgsl_ir_function_call_result_has_projected_argument_containing(
+            function, body, handle, result,
+          ) ||
+          wgsl_ir_function_call_result_has_projected_argument_containing(
+            function, continuing, handle, result,
           ) {
           return true
         }
@@ -741,6 +961,9 @@ fn wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
         wgsl_ir_emit_store_pointer_is_user_local_slot_countable(
           function, body_plan, pointer,
         ) &&
+        !wgsl_ir_emit_direct_local_store_slot_is_absorbed_by_call_argument_materialization(
+          function, body_plan, pointer, limit,
+        ) &&
         wgsl_ir_emit_store_value_is_materialized_user_call_result(
           function, body_plan, value,
         ) {
@@ -780,6 +1003,148 @@ fn wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
       )
     _ => 0
   }
+}
+
+///|
+fn wgsl_ir_emit_direct_local_store_slot_is_absorbed_by_call_argument_materialization(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  pointer : Handle,
+  limit : Handle,
+) -> Bool {
+  guard wgsl_ir_emit_store_pointer_is_direct_user_local(function, pointer) else {
+    return false
+  }
+  wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+    function,
+    body_plan,
+    function.body,
+    pointer,
+    limit,
+  )
+}
+
+///|
+fn wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  block : Block,
+  pointer : Handle,
+  limit : Handle,
+) -> Bool {
+  for statement in block.statements {
+    if wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_statement(
+        function, body_plan, statement, pointer, limit,
+      ) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_statement(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  statement : Statement,
+  pointer : Handle,
+  limit : Handle,
+) -> Bool {
+  match statement {
+    Call(_, arguments, Some(result)) => {
+      if result.index() < limit.index() &&
+        wgsl_ir_emit_call_arguments_contain_pointer(
+          function, arguments, pointer,
+        ) &&
+        wgsl_ir_emit_call_arguments_have_independent_materialized_subgraph(
+          function, body_plan, arguments, pointer,
+        ) {
+        return true
+      }
+      false
+    }
+    Block(child) =>
+      wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+        function, body_plan, child, pointer, limit,
+      )
+    If(_, accept, reject) =>
+      wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+        function, body_plan, accept, pointer, limit,
+      ) ||
+      wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+        function, body_plan, reject, pointer, limit,
+      )
+    Switch(_, cases) => {
+      for case in cases {
+        if wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+            function,
+            body_plan,
+            case.body,
+            pointer,
+            limit,
+          ) {
+          return true
+        }
+      }
+      false
+    }
+    Loop(body, continuing, _) =>
+      wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+        function, body_plan, body, pointer, limit,
+      ) ||
+      wgsl_ir_emit_direct_local_store_slot_is_absorbed_in_block(
+        function, body_plan, continuing, pointer, limit,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_call_arguments_contain_pointer(
+  function : Function,
+  arguments : Array[Handle],
+  pointer : Handle,
+) -> Bool {
+  for argument in arguments {
+    if wgsl_ir_function_expression_graph_contains(function, argument, pointer) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_emit_call_arguments_have_independent_materialized_subgraph(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  arguments : Array[Handle],
+  pointer : Handle,
+) -> Bool {
+  for argument in arguments {
+    if !wgsl_ir_function_expression_graph_contains(function, argument, pointer) &&
+      wgsl_ir_emit_expression_graph_contains_materialized_handle(
+        function, body_plan, argument,
+      ) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_emit_expression_graph_contains_materialized_handle(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  root : Handle,
+) -> Bool {
+  for index in 0..<function.expressions.items.length() {
+    let handle = Handle::Handle(index)
+    if body_plan.contains_materialized_expression(handle) &&
+      wgsl_ir_function_expression_graph_contains(function, root, handle) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
