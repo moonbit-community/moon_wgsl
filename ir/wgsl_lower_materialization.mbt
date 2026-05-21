@@ -361,7 +361,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       }
     }
     Some(Unary(op, inner)) => {
-      let lowered_inner = self.materialize_return_subexpressions(
+      let lowered_inner = self.materialize_nested_return_argument(
         function, scope, block, inner,
       )
       let parent_inner = wgsl_ir_parent_expression_operand(

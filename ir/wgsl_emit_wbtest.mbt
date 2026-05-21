@@ -1454,6 +1454,24 @@ test "naga-oil writer policy lowers select operands in source order" {
 }
 
 ///|
+test "naga-oil writer policy materializes unary select loads" {
+  let source =
+    #|fn f(y: f32) -> f32 {
+    #|  var t3 = y;
+    #|  t3 = select(-t3, t3, y > 0.0);
+    #|  return t3;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("select(-(_e"), content="true")
+  debug_inspect(naga_oil.contains("select(-(t3_)"), content="false")
+}
+
+///|
 test "naga-oil writer policy binds abstract vector constructors from math siblings" {
   let source =
     #|fn shade(color: vec4<f32>, d: f32) -> vec4<f32> {
