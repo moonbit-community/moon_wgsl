@@ -253,8 +253,38 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
     }
     match local_name {
       Some(name) =>
-        self.names.set(wgsl_ir_emit_local_name_key(origin, local_handle), name)
+        if self.names.get(wgsl_ir_emit_local_name_key(origin, local_handle)) ==
+          None {
+          self.names.set(
+            wgsl_ir_emit_local_name_key(origin, local_handle),
+            name,
+          )
+        }
       None => ()
+    }
+  }
+}
+
+///|
+fn WgslIrFinalNamePlan::reserve_function_var_local_names_from_arena(
+  self : WgslIrFinalNamePlan,
+  origin : WgslIrEmitFunctionOrigin,
+  function : Function,
+  namer : WgslIrNagaNamer,
+) -> Unit {
+  let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
+  for local_index in 0..<function.local_variables.items.length() {
+    let local_handle = Handle::Handle(local_index)
+    let local_var = function.local_variables.items[local_index]
+    if local_var.kind == LocalVariableKind::Var &&
+      !local_var.generated_temporary {
+      let key = wgsl_ir_emit_local_name_key(origin, local_handle)
+      if self.names.get(key) == None {
+        self.names.set(
+          key,
+          namer.local_call_or(temp_namer, local_var.name, "local"),
+        )
+      }
     }
   }
 }

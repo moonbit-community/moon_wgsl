@@ -30,6 +30,9 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
   for slot in view.function_slots() {
     view.allocate_function_signature_names(table, namer, slot)
   }
+  for slot in view.function_slots() {
+    view.reserve_function_var_local_names(table, namer, slot)
+  }
   for slot in view.global_variable_slots() {
     table.names.set(
       wgsl_ir_emit_name_key("global", slot.source_index),
@@ -161,6 +164,21 @@ fn WgslIrNagaWriterModule::allocate_function_body_names(
     UserFunction(slot.source_index),
     function,
     slot.body_plan,
+    namer,
+  )
+}
+
+///|
+fn WgslIrNagaWriterModule::reserve_function_var_local_names(
+  self : WgslIrNagaWriterModule,
+  table : WgslIrFinalNamePlan,
+  namer : WgslIrNagaNamer,
+  slot : WgslIrNagaWriterFunctionSlot,
+) -> Unit {
+  ignore(self)
+  table.reserve_function_var_local_names_from_arena(
+    UserFunction(slot.source_index),
+    slot.item,
     namer,
   )
 }
