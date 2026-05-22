@@ -88,7 +88,7 @@ fn WgslIrNagaDerivedModuleBuilder::append_remaining(
   for index in 0..<self.planner.shader_module.global_variables.items.length() {
     self.import_global(index)
   }
-  for index in 0..<self.planner.shader_module.functions.items.length() {
+  for index in self.planner.function_order() {
     self.import_function(index)
   }
 }
@@ -195,7 +195,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_type(
   self : WgslIrNagaDerivedModuleBuilder,
   index : Int,
 ) -> Unit {
-  if self.seen_types.contains(index) {
+  if self.seen_types.contains(index) || !self.should_emit_type(index) {
     return
   }
   match self.planner.shader_module.types.items.get(index) {
@@ -260,7 +260,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_constant(
   self : WgslIrNagaDerivedModuleBuilder,
   index : Int,
 ) -> Unit {
-  if self.seen_constants.contains(index) {
+  if self.seen_constants.contains(index) || !self.should_emit_constant(index) {
     return
   }
   match self.planner.shader_module.constants.items.get(index) {
@@ -279,7 +279,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_override(
   self : WgslIrNagaDerivedModuleBuilder,
   index : Int,
 ) -> Unit {
-  if self.seen_overrides.contains(index) {
+  if self.seen_overrides.contains(index) || !self.should_emit_override(index) {
     return
   }
   match self.planner.shader_module.overrides.items.get(index) {
@@ -301,7 +301,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_global(
   self : WgslIrNagaDerivedModuleBuilder,
   index : Int,
 ) -> Unit {
-  if self.seen_globals.contains(index) {
+  if self.seen_globals.contains(index) || !self.should_emit_global(index) {
     return
   }
   match self.planner.shader_module.global_variables.items.get(index) {
@@ -329,6 +329,50 @@ fn WgslIrNagaDerivedModuleBuilder::import_function(
   }
   let visiting : Array[Int] = []
   self.import_function_inner(index, visiting)
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::should_emit_type(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
+) -> Bool {
+  match self.planner.filter {
+    Some(filter) => filter.contains_type(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::should_emit_constant(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
+) -> Bool {
+  match self.planner.filter {
+    Some(filter) => filter.contains_constant(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::should_emit_override(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
+) -> Bool {
+  match self.planner.filter {
+    Some(filter) => filter.contains_override(index)
+    None => true
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::should_emit_global(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
+) -> Bool {
+  match self.planner.filter {
+    Some(filter) => filter.contains_global_variable(index)
+    None => true
+  }
 }
 
 ///|
