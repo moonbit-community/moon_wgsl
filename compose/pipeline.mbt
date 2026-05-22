@@ -352,6 +352,7 @@ fn WgslComposeSymbolTable::generated_import_provenance(
       )
     }
   }
+  let mut import_sequence = 0
   for origin in self.source_origins {
     if origin.rel_path() == root_rel_path {
       continue
@@ -378,9 +379,13 @@ fn WgslComposeSymbolTable::generated_import_provenance(
             origin.source_symbol_name(),
             name,
           ),
+          import_sequence~,
+          source_start=origin.source_start,
+          source_end=origin.source_end,
         ),
       )
     }
+    import_sequence = import_sequence + 1
   }
   provenance
 }

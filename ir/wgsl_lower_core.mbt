@@ -35,6 +35,9 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   inline_value : Bool
   local_spelling : Bool
   root_local_spelling : Bool
+  import_sequence : Int
+  source_start : Int
+  source_end : Int
 } derive(Eq, Debug)
 
 ///|
@@ -46,6 +49,9 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
   inline_value : Bool,
   local_spelling? : Bool = false,
   root_local_spelling? : Bool = false,
+  import_sequence? : Int = -1,
+  source_start? : Int = -1,
+  source_end? : Int = -1,
 ) -> WgslIrGeneratedImportProvenance {
   WgslIrGeneratedImportProvenance::{
     generated_symbol_name,
@@ -55,6 +61,9 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
     inline_value,
     local_spelling,
     root_local_spelling,
+    import_sequence,
+    source_start,
+    source_end,
   }
 }
 
@@ -136,6 +145,10 @@ fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   let lowerer = WgslIrLowerer()
   for entry in generated_import_provenance {
     lowerer.generated_import_provenance.set(
+      entry.generated_symbol_name(),
+      entry,
+    )
+    lowerer.shader_module.generated_import_provenance.set(
       entry.generated_symbol_name(),
       entry,
     )

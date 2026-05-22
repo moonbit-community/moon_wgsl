@@ -112,6 +112,16 @@ test "compose graph execution plans reachability before emission" {
     is Some(_),
     content="true",
   )
+  let provenance = session.symbols.generated_import_provenance("root.wgsl")
+  let mut dep_index = -1
+  for i in 0..<provenance.length() {
+    if provenance[i].source_symbol_name == "dep_fn" {
+      dep_index = i
+    }
+  }
+  debug_inspect(dep_index >= 0, content="true")
+  debug_inspect(provenance[dep_index].import_sequence >= 0, content="true")
+  debug_inspect(provenance[dep_index].source_start >= 0, content="true")
 }
 
 ///|

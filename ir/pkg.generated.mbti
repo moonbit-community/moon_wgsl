@@ -575,6 +575,7 @@ pub(all) struct Module {
   global_expressions : ExpressionArena
   functions : FunctionArena
   entry_points : Array[EntryPoint]
+  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
   diagnostic_filters : DiagnosticFilterArena
   diagnostic_filter_leaf : Handle?
   doc_comments : DocComments?
@@ -963,8 +964,11 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   inline_value : Bool
   local_spelling : Bool
   root_local_spelling : Bool
+  import_sequence : Int
+  source_start : Int
+  source_end : Int
 } derive(Eq, @debug.Debug)
-pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool) -> Self
+pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool, import_sequence? : Int, source_start? : Int, source_end? : Int) -> Self
 pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(Self) -> String
 
 pub(all) enum WgslIrGeneratedImportProvenanceKind {
