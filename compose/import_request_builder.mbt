@@ -67,7 +67,7 @@ fn wgsl_source_declares_non_resource_dependency_item(
     if decl.name() == item_name {
       match decl.data() {
         WgslGlobalDeclData::Struct(_) | WgslGlobalDeclData::TypeAlias(_) =>
-          return true
+          return referenced
         WgslGlobalDeclData::Const(_)
         | WgslGlobalDeclData::Override(_)
         | WgslGlobalDeclData::Function(_) => return referenced
@@ -702,10 +702,22 @@ fn Composer::filtered_wgsl_non_resource_dependency_items(
         }
       None => false
     }
+    let alias_item_is_referenced = if dependency_request.alias_name == "" {
+      false
+    } else {
+      wgsl_semantic_source_contains_reference_path(
+        dependency_scan_source,
+        "\{dependency_request.alias_name}::\{requested_item}",
+      ) catch {
+        error => raise composer_error_from_wgsl_parse_error(error)
+      }
+    }
     if wgsl_source_declares_non_resource_dependency_item(
         active_import_source,
         requested_item,
-        requested_item_is_referenced || leaf_item_is_referenced,
+        requested_item_is_referenced ||
+        leaf_item_is_referenced ||
+        alias_item_is_referenced,
       ) {
       composer_string_list_push_unique(filtered_items, requested_item)
     }

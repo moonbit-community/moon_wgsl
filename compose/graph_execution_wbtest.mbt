@@ -447,7 +447,7 @@ test "composer preserves selected item module-level imports before live conflict
   ) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("ViewX_naga_oil_mod"), content="true")
+  debug_inspect(emitted.contains("ViewX_naga_oil_mod"), content="false")
   debug_inspect(emitted.contains("GlobalsX_naga_oil_mod"), content="true")
   debug_inspect(emitted.contains("test::view::View"), content="false")
 }
