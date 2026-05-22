@@ -550,6 +550,12 @@ fn wgsl_ir_emit_expression_temporary_index(
         )
       ) ||
       (
+        current_is_call_result &&
+        wgsl_ir_function_expression_is_inline_naga_operand_slot_for_call_result(
+          function, expression_handle, handle,
+        )
+      ) ||
+      (
         !current_is_call_result &&
         wgsl_ir_emit_expression_is_call_result(function, expression_handle)
       ) ||

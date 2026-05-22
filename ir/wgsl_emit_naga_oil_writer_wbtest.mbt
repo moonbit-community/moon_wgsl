@@ -526,6 +526,39 @@ test "naga-oil writer elides local aliases of materialized temporaries" {
 }
 
 ///|
+test "naga-oil writer excludes inline operands before call-result temp slots" {
+  let source =
+    #|const SCALE: f32 = 6.2831853;
+    #|
+    #|fn rand_f(state: ptr<function, u32>) -> f32 {
+    #|  *state = *state + 1u;
+    #|  return f32(*state);
+    #|}
+    #|
+    #|fn sample(rng: ptr<function, u32>) -> vec2<f32> {
+    #|  let a = 1.0 - 2.0 * rand_f(rng);
+    #|  let b = SCALE * rand_f(rng);
+    #|  return vec2<f32>(a, b);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e1: f32 = rand_f(rng);"), content="true")
+  debug_inspect(emitted.contains("let _e6: f32 = rand_f(rng);"), content="true")
+  debug_inspect(
+    emitted.contains("let _e3: f32 = rand_f(rng);"),
+    content="false",
+  )
+  debug_inspect(
+    emitted.contains("let _e8: f32 = rand_f(rng);"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer absorbs projected call-result argument slots" {
   let source =
     #|fn local_to_world(vertex_position: vec4<f32>) -> vec4<f32> {
