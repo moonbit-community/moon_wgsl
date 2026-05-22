@@ -45,8 +45,21 @@ fn lower_validated_wgsl_source_to_ir_with_generated_imports(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrPipelineError {
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(
-    source, generated_import_provenance,
+  lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    generated_import_provenance,
+    [],
+  )
+}
+
+///|
+fn lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+  source : String,
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[WgslIrImportArenaEvent],
+) -> Module raise WgslIrPipelineError {
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source, generated_import_provenance, import_arena_events,
   ) catch {
     error =>
       match error {
@@ -171,9 +184,22 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> String raise WgslIrPipelineError {
+  roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(
+    source,
+    generated_import_provenance,
+    [],
+  )
+}
+
+///|
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(
+  source : String,
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[WgslIrImportArenaEvent],
+) -> String raise WgslIrPipelineError {
   emit_validated_wgsl_source_from_ir_entry_roots(
-    lower_validated_wgsl_source_to_ir_with_generated_imports(
-      source, generated_import_provenance,
+    lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+      source, generated_import_provenance, import_arena_events,
     ),
   )
 }
@@ -183,9 +209,22 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compa
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> String raise WgslIrPipelineError {
+  roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_naga_oil_writer_compatible(
+    source,
+    generated_import_provenance,
+    [],
+  )
+}
+
+///|
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_naga_oil_writer_compatible(
+  source : String,
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[WgslIrImportArenaEvent],
+) -> String raise WgslIrPipelineError {
   emit_naga_oil_writer_compatible_wgsl_source_from_ir(
-    lower_validated_wgsl_source_to_ir_with_generated_imports(
-      source, generated_import_provenance,
+    lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+      source, generated_import_provenance, import_arena_events,
     ),
   )
 }
@@ -195,9 +234,22 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compa
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> String raise WgslIrPipelineError {
+  roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_naga_oil_writer_compatible_entry_roots(
+    source,
+    generated_import_provenance,
+    [],
+  )
+}
+
+///|
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_naga_oil_writer_compatible_entry_roots(
+  source : String,
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[WgslIrImportArenaEvent],
+) -> String raise WgslIrPipelineError {
   emit_naga_oil_writer_compatible_wgsl_source_from_ir_entry_roots(
-    lower_validated_wgsl_source_to_ir_with_generated_imports(
-      source, generated_import_provenance,
+    lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+      source, generated_import_provenance, import_arena_events,
     ),
   )
 }

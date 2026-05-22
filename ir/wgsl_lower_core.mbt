@@ -129,11 +129,24 @@ fn parse_wgsl_module_to_ir_with_generated_imports(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrLowerError {
+  parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    generated_import_provenance,
+    [],
+  )
+}
+
+///|
+fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  source : String,
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[WgslIrImportArenaEvent],
+) -> Module raise WgslIrLowerError {
   let unit = @parser.parse_wgsl_translation_unit_strict(source) catch {
     error => raise WgslIrLowerError::Parse(wgsl_ir_parse_error_message(error))
   }
   lower_wgsl_translation_unit_to_ir_with_generated_imports(
-    unit, generated_import_provenance,
+    unit, generated_import_provenance, import_arena_events,
   )
 }
 
@@ -141,8 +154,12 @@ fn parse_wgsl_module_to_ir_with_generated_imports(
 fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   unit : @ast.WgslTranslationUnit,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[WgslIrImportArenaEvent],
 ) -> Module raise WgslIrLowerError {
   let lowerer = WgslIrLowerer()
+  for event in import_arena_events {
+    lowerer.shader_module.import_arena_events.push(event)
+  }
   for entry in generated_import_provenance {
     lowerer.generated_import_provenance.set(
       entry.generated_symbol_name(),
