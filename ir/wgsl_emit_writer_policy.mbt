@@ -121,6 +121,14 @@ fn WgslIrEmitOptions::elide_storage_pointer_read_access(
 }
 
 ///|
+fn WgslIrEmitOptions::pointer_dereference_text(
+  self : WgslIrEmitOptions,
+  expression : String,
+) -> String {
+  self.byte_plan.pointer_dereference_text(expression)
+}
+
+///|
 fn WgslIrEmitter::with_preserved_abstract_float_literals(
   self : WgslIrEmitter,
 ) -> WgslIrEmitter {

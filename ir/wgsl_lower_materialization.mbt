@@ -1285,12 +1285,33 @@ fn WgslIrLowerer::function_pointer_expression_is_var_pointer(
         Some(local_variable) => local_variable.kind == Var
         None => false
       }
+    Some(FunctionArgument(index)) =>
+      match function.arguments.get(index) {
+        Some(argument) =>
+          self.function_argument_type_is_function_pointer(argument.ty)
+        None => false
+      }
     Some(Access(base, index)) =>
       self.function_pointer_expression_is_var_pointer(function, base) ||
       self.function_expression_reads_var_pointer_load(function, index)
     Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
       self.function_pointer_expression_is_var_pointer(function, base)
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_argument_type_is_function_pointer(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(_, Function) | ValuePointer(_, _, Function) => true
+        _ => false
+      }
+    None => false
   }
 }
 

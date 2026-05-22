@@ -67,6 +67,12 @@ priv enum WgslIrStoragePointerAccessBytePolicy {
 }
 
 ///|
+priv enum WgslIrPointerDereferenceBytePolicy {
+  PrefixPointerDereference
+  ParenthesizedPointerDereference
+}
+
+///|
 priv struct WgslIrWriterBytePlan {
   source_directives : WgslIrSourceDirectiveBytePolicy
   trailing_blank : WgslIrTrailingBlankBytePolicy
@@ -77,6 +83,7 @@ priv struct WgslIrWriterBytePlan {
   numeric_literals : WgslIrNumericLiteralBytePolicy
   entry_point_attribute_line : WgslIrEntryPointAttributeLineBytePolicy
   storage_pointer_access : WgslIrStoragePointerAccessBytePolicy
+  pointer_dereference : WgslIrPointerDereferenceBytePolicy
 }
 
 ///|
@@ -91,6 +98,7 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
     numeric_literals: RuntimeNumericLiteralSpelling,
     entry_point_attribute_line: SuppressTrailingSpaceAfterEntryPointAttributes,
     storage_pointer_access: EmitStoragePointerReadAccess,
+    pointer_dereference: PrefixPointerDereference,
   }
 }
 
@@ -106,6 +114,7 @@ fn WgslIrWriterBytePlan::naga_oil_writer() -> WgslIrWriterBytePlan {
     numeric_literals: NagaCompatibleNumericLiteralSpelling,
     entry_point_attribute_line: EmitTrailingSpaceAfterEntryPointAttributes,
     storage_pointer_access: ElideStoragePointerReadAccess,
+    pointer_dereference: ParenthesizedPointerDereference,
   }
 }
 
@@ -194,5 +203,16 @@ fn WgslIrWriterBytePlan::should_elide_storage_pointer_read_access(
   match self.storage_pointer_access {
     EmitStoragePointerReadAccess => false
     ElideStoragePointerReadAccess => true
+  }
+}
+
+///|
+fn WgslIrWriterBytePlan::pointer_dereference_text(
+  self : WgslIrWriterBytePlan,
+  expression : String,
+) -> String {
+  match self.pointer_dereference {
+    PrefixPointerDereference => "*(\{expression})"
+    ParenthesizedPointerDereference => "(*\{expression})"
   }
 }

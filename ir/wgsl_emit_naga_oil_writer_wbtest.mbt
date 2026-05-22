@@ -471,6 +471,31 @@ test "naga-oil writer materializes mutable store pointer index" {
 }
 
 ///|
+test "naga-oil writer materializes function pointer loads" {
+  let source =
+    #|fn rand_u(state: ptr<function, u32>) -> u32 {
+    #|  *state = *state * 747796405u + 2891336453u;
+    #|  let word = ((*state >> ((*state >> 28u) + 4u)) ^ *state) * 277803737u;
+    #|  return (word >> 22u) ^ word;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e1: u32 = (*state);"), content="true")
+  debug_inspect(
+    emitted.contains("(*state) = ((_e1 * 747796405u) + 2891336453u);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let _e6: u32 = (*state);"), content="true")
+  debug_inspect(emitted.contains("let _e7: u32 = (*state);"), content="true")
+  debug_inspect(emitted.contains("let _e13: u32 = (*state);"), content="true")
+  debug_inspect(emitted.contains("*(state) * 747796405u"), content="false")
+}
+
+///|
 test "naga-oil writer absorbs projected call-result argument slots" {
   let source =
     #|fn local_to_world(vertex_position: vec4<f32>) -> vec4<f32> {

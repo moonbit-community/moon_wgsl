@@ -95,7 +95,7 @@ fn WgslIrEmitter::load_expression(
 ) -> String raise WgslIrEmitError {
   let expression = self.required_function_expression(function, pointer)
   if self.load_expression_requires_explicit_deref(function, pointer) {
-    "*(\{expression})"
+    self.options.pointer_dereference_text(expression)
   } else {
     expression
   }

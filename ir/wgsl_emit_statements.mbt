@@ -331,7 +331,7 @@ fn WgslIrEmitter::function_store_pointer_expression(
           match self.shader_module.types.items.get(ty.index()) {
             Some(type_) =>
               match type_.inner {
-                Pointer(_, _) => "*(\{text})"
+                Pointer(_, _) => self.options.pointer_dereference_text(text)
                 _ => text
               }
             None => text

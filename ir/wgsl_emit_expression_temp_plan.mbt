@@ -1425,6 +1425,9 @@ fn wgsl_ir_emit_expression_is_adjacent_materialized_load_after_generated_snapsho
     return false
   }
   guard local_var.generated_temporary else { return false }
+  guard !local_var.generated_temporary_store_value_reference else {
+    return false
+  }
   match local_var.init {
     Some(init) =>
       match function.expressions.items.get(init.index()) {
