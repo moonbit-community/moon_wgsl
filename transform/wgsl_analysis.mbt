@@ -282,6 +282,21 @@ fn wgsl_graph_block_is_const_like(block : WgslGraphBlock) -> Bool {
 }
 
 ///|
+fn wgsl_graph_block_matches_arena_category(
+  block : WgslGraphBlock,
+  category : WgslSourceOriginKind,
+) -> Bool {
+  match category {
+    Type => block.source_origin_kind() == Type
+    Constant => block.source_origin_kind() == Constant
+    Override => block.source_origin_kind() == Override
+    GlobalVariable => block.source_origin_kind() == GlobalVariable
+    Function => block.source_origin_kind() == Function
+    Other => block.source_origin_kind() == Other
+  }
+}
+
+///|
 fn wgsl_graph_order_push_unique(
   ordered : Array[String],
   emitted : @set.Set[String],
@@ -397,20 +412,23 @@ fn wgsl_declaration_graph_reachable_import_order(
       declaration_names.add(block.name())
     }
   }
-  for block in declaration_blocks {
-    let name = block.name()
-    if included_names.contains(name) && requested_items.contains(name) {
-      wgsl_declaration_graph_visit_import_order(
-        declaration_blocks, declaration_names, name, visiting, emitted, ordered,
-      )
-    }
-  }
-  for requested_item in requested_items {
-    if included_names.contains(requested_item) {
-      wgsl_declaration_graph_visit_import_order(
-        declaration_blocks, declaration_names, requested_item, visiting, emitted,
-        ordered,
-      )
+  for
+    category in [
+      WgslSourceOriginKind::Type,
+      WgslSourceOriginKind::Constant,
+      WgslSourceOriginKind::Override,
+      WgslSourceOriginKind::GlobalVariable,
+      WgslSourceOriginKind::Function,
+    ] {
+    for block in declaration_blocks {
+      let name = block.name()
+      if included_names.contains(name) &&
+        requested_items.contains(name) &&
+        wgsl_graph_block_matches_arena_category(block, category) {
+        wgsl_declaration_graph_visit_import_order(
+          declaration_blocks, declaration_names, name, visiting, emitted, ordered,
+        )
+      }
     }
   }
   for block in declaration_blocks {

@@ -52,12 +52,61 @@ fn WgslIrNagaCompatPlanner::derived_module_view(
     seen_functions: @set.Set([]),
   }
   for event in self.shader_module.import_arena_events {
-    for symbol in event.generated_symbols() {
-      builder.import_symbol(symbol)
-    }
+    builder.import_event(event)
   }
   builder.append_remaining()
   builder.view
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_event(
+  self : WgslIrNagaDerivedModuleBuilder,
+  event : WgslIrImportArenaEvent,
+) -> Unit {
+  let symbols = event.generated_symbols()
+  let item_names = event.item_names()
+  match event.kind() {
+    ItemBinding => {
+      self.import_event_symbols_by_kind(symbols, Some(item_names), Type)
+      self.import_event_symbols_by_kind(symbols, Some(item_names), Constant)
+      self.import_event_symbols_by_kind(symbols, Some(item_names), Override)
+      self.import_event_symbols_by_kind(
+        symbols,
+        Some(item_names),
+        GlobalVariable,
+      )
+      self.import_event_symbols_by_kind(symbols, Some(item_names), Function)
+    }
+    FullModule | AliasModule => {
+      self.import_event_symbols_by_kind(symbols, None, Type)
+      self.import_event_symbols_by_kind(symbols, None, Constant)
+      self.import_event_symbols_by_kind(symbols, None, Override)
+      self.import_event_symbols_by_kind(symbols, None, GlobalVariable)
+      self.import_event_symbols_by_kind(symbols, None, Function)
+    }
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_event_symbols_by_kind(
+  self : WgslIrNagaDerivedModuleBuilder,
+  symbols : Array[WgslIrImportArenaSymbol],
+  item_names : Array[String]?,
+  kind : WgslIrDeclarationKind,
+) -> Unit {
+  for symbol in symbols {
+    if symbol.kind() != kind {
+      continue
+    }
+    match item_names {
+      Some(names) =>
+        if !names.contains(symbol.source_symbol_name()) {
+          continue
+        }
+      None => ()
+    }
+    self.import_symbol(symbol)
+  }
 }
 
 ///|

@@ -234,3 +234,74 @@ test "Naga derived module view consumes typed arena symbol records" {
     content="Some(\"SharedName\")",
   )
 }
+
+///|
+test "Naga derived module view filters selected items through category loops" {
+  let source =
+    #|struct FunctionArgType {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct DirectType {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct GlobalType {
+    #|  value: u32,
+    #|}
+    #|
+    #|var<private> direct_global: GlobalType;
+    #|
+    #|fn direct_function(value: FunctionArgType) -> u32 {
+    #|  return value.value;
+    #|}
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    ["DirectType", "direct_global", "direct_function"],
+    WgslIrImportEdgeKind::ItemBinding,
+    [
+      WgslIrImportArenaSymbol(Function, "direct_function", "direct_function"),
+      WgslIrImportArenaSymbol(Type, "FunctionArgType", "FunctionArgType"),
+      WgslIrImportArenaSymbol(Type, "DirectType", "DirectType"),
+      WgslIrImportArenaSymbol(Type, "GlobalType", "GlobalType"),
+      WgslIrImportArenaSymbol(GlobalVariable, "direct_global", "direct_global"),
+    ],
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let view = planner.derived_module_view()
+  debug_inspect(
+    module_.types.items[view.types[1]].name,
+    content="Some(\"DirectType\")",
+  )
+  debug_inspect(
+    module_.types.items[view.types[2]].name,
+    content="Some(\"GlobalType\")",
+  )
+  debug_inspect(
+    module_.types.items[view.types[3]].name,
+    content="Some(\"FunctionArgType\")",
+  )
+  debug_inspect(
+    module_.global_variables.items[view.global_variables[0]].name,
+    content="Some(\"direct_global\")",
+  )
+  debug_inspect(
+    module_.functions.items[view.functions[0]].name,
+    content="Some(\"direct_function\")",
+  )
+}

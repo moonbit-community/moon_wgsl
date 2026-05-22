@@ -997,6 +997,8 @@ pub struct WgslIrImportArenaEvent {
 pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(Int, String, String, String, String, Array[String], WgslIrImportEdgeKind, Array[WgslIrImportArenaSymbol]) -> Self
 pub fn WgslIrImportArenaEvent::generated_symbol_names(Self) -> Array[String]
 pub fn WgslIrImportArenaEvent::generated_symbols(Self) -> Array[WgslIrImportArenaSymbol]
+pub fn WgslIrImportArenaEvent::item_names(Self) -> Array[String]
+pub fn WgslIrImportArenaEvent::kind(Self) -> WgslIrImportEdgeKind
 pub fn WgslIrImportArenaEvent::sequence(Self) -> Int
 pub fn WgslIrImportArenaEvent::target_rel_path(Self) -> String
 

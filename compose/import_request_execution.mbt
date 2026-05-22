@@ -294,7 +294,20 @@ fn Composer::compose_wgsl_import_requests(
     }
     final_name_plan.apply_to_origins(session.symbols.source_origins)
     let event_generated_symbols : Array[@ir.WgslIrImportArenaSymbol] = []
-    let event_item_names : Array[String] = []
+    let event_item_names = if request.import_full_module {
+      let names : Array[String] = []
+      for i in origin_start_index..<session.symbols.source_origins.length() {
+        let origin = session.symbols.source_origins[i]
+        if origin.rel_path == request.rel_path &&
+          origin.source_symbol_name != "" &&
+          origin.generated_symbol_name != "" {
+          composer_string_list_push_unique(names, origin.source_symbol_name)
+        }
+      }
+      names
+    } else {
+      wgsl_import_request_copy_items(emission_requested_items)
+    }
     for i in origin_start_index..<session.symbols.source_origins.length() {
       let origin = session.symbols.source_origins[i]
       if origin.rel_path == request.rel_path &&
@@ -310,7 +323,6 @@ fn Composer::compose_wgsl_import_requests(
             )
           None => ()
         }
-        event_item_names.push(origin.source_symbol_name)
       }
     }
     let event_kind = if request.import_full_module {

@@ -374,6 +374,20 @@ pub fn WgslIrImportArenaEvent::target_rel_path(
 }
 
 ///|
+pub fn WgslIrImportArenaEvent::item_names(
+  self : WgslIrImportArenaEvent,
+) -> Array[String] {
+  self.item_names.copy()
+}
+
+///|
+pub fn WgslIrImportArenaEvent::kind(
+  self : WgslIrImportArenaEvent,
+) -> WgslIrImportEdgeKind {
+  self.kind
+}
+
+///|
 pub fn WgslIrImportArenaEvent::generated_symbol_names(
   self : WgslIrImportArenaEvent,
 ) -> Array[String] {
