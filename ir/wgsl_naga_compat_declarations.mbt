@@ -249,12 +249,13 @@ fn WgslIrNagaCompatPlanner::const_assert_slots(
 fn WgslIrNagaCompatPlanner::declaration_arena(
   self : WgslIrNagaCompatPlanner,
 ) -> WgslIrNagaCompatDeclarationArena {
+  let derived = self.derived_module_view()
   WgslIrNagaCompatDeclarationArena::{
     types: wgsl_ir_naga_compat_declaration_slots(self.type_order()),
     constants: wgsl_ir_naga_compat_declaration_slots(self.constant_order()),
     overrides: wgsl_ir_naga_compat_declaration_slots(self.override_order()),
     global_variables: wgsl_ir_naga_compat_declaration_slots(
-      self.global_variable_order(),
+      derived.global_variables,
     ),
     functions: wgsl_ir_naga_compat_declaration_slots(self.function_order()),
   }
@@ -264,12 +265,13 @@ fn WgslIrNagaCompatPlanner::declaration_arena(
 fn WgslIrNagaCompatPlanner::runtime_declaration_arena(
   self : WgslIrNagaCompatPlanner,
 ) -> WgslIrNagaCompatDeclarationArena {
+  let derived = self.derived_module_view()
   WgslIrNagaCompatDeclarationArena::{
     types: wgsl_ir_naga_compat_declaration_slots(self.type_order()),
     constants: wgsl_ir_naga_compat_declaration_slots(self.constant_order()),
     overrides: wgsl_ir_naga_compat_declaration_slots(self.override_order()),
     global_variables: wgsl_ir_naga_compat_declaration_slots(
-      self.global_variable_order(),
+      derived.global_variables,
     ),
     functions: wgsl_ir_naga_compat_declaration_slots(
       self.runtime_function_order(),
@@ -331,27 +333,6 @@ fn WgslIrNagaCompatPlanner::override_order(
     }
     None =>
       wgsl_ir_source_order_indices(self.shader_module.overrides.items.length())
-  }
-}
-
-///|
-fn WgslIrNagaCompatPlanner::global_variable_order(
-  self : WgslIrNagaCompatPlanner,
-) -> Array[Int] {
-  match self.filter {
-    Some(filter) => {
-      let order : Array[Int] = []
-      for index in 0..<self.shader_module.global_variables.items.length() {
-        if filter.contains_global_variable(index) {
-          order.push(index)
-        }
-      }
-      order
-    }
-    None =>
-      wgsl_ir_source_order_indices(
-        self.shader_module.global_variables.items.length(),
-      )
   }
 }
 
