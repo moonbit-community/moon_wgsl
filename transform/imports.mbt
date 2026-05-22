@@ -36,7 +36,7 @@ using @lex {type WgslToken, split_last_identifier}
 using @ast {type WgslTranslationUnit}
 
 ///|
-using @common {type WgslReferencePath}
+using @common {type WgslReferencePath, type WgslSourceOriginKind}
 
 ///|
 using @source_rewrite {

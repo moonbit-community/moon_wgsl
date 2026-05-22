@@ -52,8 +52,8 @@ fn WgslIrNagaCompatPlanner::derived_module_view(
     seen_functions: @set.Set([]),
   }
   for event in self.shader_module.import_arena_events {
-    for generated_symbol_name in event.generated_symbol_names() {
-      builder.import_named_symbol(generated_symbol_name)
+    for symbol in event.generated_symbols() {
+      builder.import_symbol(symbol)
     }
   }
   builder.append_remaining()
@@ -61,15 +61,18 @@ fn WgslIrNagaCompatPlanner::derived_module_view(
 }
 
 ///|
-fn WgslIrNagaDerivedModuleBuilder::import_named_symbol(
+fn WgslIrNagaDerivedModuleBuilder::import_symbol(
   self : WgslIrNagaDerivedModuleBuilder,
-  name : String,
+  symbol : WgslIrImportArenaSymbol,
 ) -> Unit {
-  self.import_named_type_if_present(name)
-  self.import_named_constant_if_present(name)
-  self.import_named_override_if_present(name)
-  self.import_named_global_if_present(name)
-  self.import_named_function_if_present(name)
+  let name = symbol.generated_symbol_name()
+  match symbol.kind() {
+    Type => self.import_named_type_if_present(name)
+    Constant => self.import_named_constant_if_present(name)
+    Override => self.import_named_override_if_present(name)
+    GlobalVariable => self.import_named_global_if_present(name)
+    Function => self.import_named_function_if_present(name)
+  }
 }
 
 ///|

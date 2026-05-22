@@ -37,6 +37,16 @@ test "Naga derived module view follows import arena events before root declarati
   let symbols = [
     "ImportedType", "imported_const", "imported_global", "imported_fn",
   ]
+  let event_symbols = [
+    WgslIrImportArenaSymbol(Type, "ImportedType", "ImportedType"),
+    WgslIrImportArenaSymbol(Constant, "imported_const", "imported_const"),
+    WgslIrImportArenaSymbol(
+      GlobalVariable,
+      "imported_global",
+      "imported_global",
+    ),
+    WgslIrImportArenaSymbol(Function, "imported_fn", "imported_fn"),
+  ]
   let event = WgslIrImportArenaEvent(
     0,
     "root.wgsl",
@@ -45,7 +55,7 @@ test "Naga derived module view follows import arena events before root declarati
     "",
     symbols,
     WgslIrImportEdgeKind::ItemBinding,
-    symbols,
+    event_symbols,
   )
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
     source,
@@ -99,7 +109,13 @@ test "Naga derived module view imports global type dependencies as arena side ef
     "",
     ["imported_global"],
     WgslIrImportEdgeKind::ItemBinding,
-    ["imported_global"],
+    [
+      WgslIrImportArenaSymbol(
+        GlobalVariable,
+        "imported_global",
+        "imported_global",
+      ),
+    ],
   )
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
     source,
@@ -146,7 +162,7 @@ test "Naga derived module view imports called functions before imported caller" 
     "",
     ["imported_fn"],
     WgslIrImportEdgeKind::ItemBinding,
-    ["imported_fn"],
+    [WgslIrImportArenaSymbol(Function, "imported_fn", "imported_fn")],
   )
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
     source,
@@ -167,5 +183,54 @@ test "Naga derived module view imports called functions before imported caller" 
   debug_inspect(
     module_.functions.items[view.functions[1]].name,
     content="Some(\"imported_fn\")",
+  )
+}
+
+///|
+test "Naga derived module view consumes typed arena symbol records" {
+  let source =
+    #|struct SharedName {
+    #|  value: u32,
+    #|}
+    #|
+    #|fn SharedName() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    ["SharedName"],
+    WgslIrImportEdgeKind::ItemBinding,
+    [WgslIrImportArenaSymbol(Function, "SharedName", "SharedName")],
+  )
+  let recorded_symbols = event.generated_symbols()
+  debug_inspect(recorded_symbols[0].kind(), content="Function")
+  debug_inspect(
+    recorded_symbols[0].source_symbol_name(),
+    content="\"SharedName\"",
+  )
+  debug_inspect(
+    recorded_symbols[0].generated_symbol_name(),
+    content="\"SharedName\"",
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let view = planner.derived_module_view()
+  debug_inspect(
+    module_.functions.items[view.functions[0]].name,
+    content="Some(\"SharedName\")",
   )
 }

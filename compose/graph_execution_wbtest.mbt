@@ -65,7 +65,14 @@ test "compose graph execution plans reachability before emission" {
   composer.register_source("dep.wgsl", dep_source)
   let session = composer.new_wgsl_compose_session(WgslComposeOptions::default())
   session.symbols.source_origins.push(
-    WgslSourceOriginEntry("PIX_naga_oil_mod_X", "maths.wgsl", "PI", 0, 0),
+    WgslSourceOriginEntry(
+      "PIX_naga_oil_mod_X",
+      "maths.wgsl",
+      "PI",
+      WgslSourceOriginKind::Constant,
+      0,
+      0,
+    ),
   )
   let source =
     #|#import dep::dep_fn

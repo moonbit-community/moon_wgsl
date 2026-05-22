@@ -38,6 +38,15 @@ pub(all) enum WgslIrImportEdgeKind {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum WgslIrDeclarationKind {
+  Type
+  Constant
+  Override
+  GlobalVariable
+  Function
+} derive(Eq, Debug)
+
+///|
 pub struct WgslIrImportEdge {
   priv importer_rel_path : String
   priv target_rel_path : String
@@ -45,6 +54,13 @@ pub struct WgslIrImportEdge {
   priv alias_name : String
   priv item_name : String
   priv kind : WgslIrImportEdgeKind
+} derive(Eq, Debug)
+
+///|
+pub struct WgslIrImportArenaSymbol {
+  priv kind : WgslIrDeclarationKind
+  priv source_symbol_name : String
+  priv generated_symbol_name : String
 } derive(Eq, Debug)
 
 ///|
@@ -56,7 +72,7 @@ pub struct WgslIrImportArenaEvent {
   priv alias_name : String
   priv item_names : Array[String]
   priv kind : WgslIrImportEdgeKind
-  priv generated_symbol_names : Array[String]
+  priv generated_symbols : Array[WgslIrImportArenaSymbol]
 } derive(Eq, Debug)
 
 ///|
@@ -293,6 +309,36 @@ pub fn WgslIrImportEdge::key(self : WgslIrImportEdge) -> String {
 }
 
 ///|
+pub fn WgslIrImportArenaSymbol::WgslIrImportArenaSymbol(
+  kind : WgslIrDeclarationKind,
+  source_symbol_name : String,
+  generated_symbol_name : String,
+) -> WgslIrImportArenaSymbol {
+  WgslIrImportArenaSymbol::{ kind, source_symbol_name, generated_symbol_name }
+}
+
+///|
+pub fn WgslIrImportArenaSymbol::kind(
+  self : WgslIrImportArenaSymbol,
+) -> WgslIrDeclarationKind {
+  self.kind
+}
+
+///|
+pub fn WgslIrImportArenaSymbol::source_symbol_name(
+  self : WgslIrImportArenaSymbol,
+) -> String {
+  self.source_symbol_name
+}
+
+///|
+pub fn WgslIrImportArenaSymbol::generated_symbol_name(
+  self : WgslIrImportArenaSymbol,
+) -> String {
+  self.generated_symbol_name
+}
+
+///|
 pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(
   sequence : Int,
   importer_rel_path : String,
@@ -301,7 +347,7 @@ pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(
   alias_name : String,
   item_names : Array[String],
   kind : WgslIrImportEdgeKind,
-  generated_symbol_names : Array[String],
+  generated_symbols : Array[WgslIrImportArenaSymbol],
 ) -> WgslIrImportArenaEvent {
   WgslIrImportArenaEvent::{
     sequence,
@@ -311,7 +357,7 @@ pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(
     alias_name,
     item_names,
     kind,
-    generated_symbol_names,
+    generated_symbols,
   }
 }
 
@@ -331,7 +377,18 @@ pub fn WgslIrImportArenaEvent::target_rel_path(
 pub fn WgslIrImportArenaEvent::generated_symbol_names(
   self : WgslIrImportArenaEvent,
 ) -> Array[String] {
-  self.generated_symbol_names.copy()
+  let names : Array[String] = []
+  for symbol in self.generated_symbols {
+    names.push(symbol.generated_symbol_name)
+  }
+  names
+}
+
+///|
+pub fn WgslIrImportArenaEvent::generated_symbols(
+  self : WgslIrImportArenaEvent,
+) -> Array[WgslIrImportArenaSymbol] {
+  self.generated_symbols.copy()
 }
 
 ///|
@@ -429,7 +486,7 @@ pub fn WgslIrLinkGraph::record_import_arena_event(
   alias_name : String,
   item_names : Array[String],
   kind : WgslIrImportEdgeKind,
-  generated_symbol_names : Array[String],
+  generated_symbols : Array[WgslIrImportArenaSymbol],
 ) -> Unit {
   self.import_arena_events.push(
     WgslIrImportArenaEvent(
@@ -440,7 +497,7 @@ pub fn WgslIrLinkGraph::record_import_arena_event(
       alias_name,
       item_names.copy(),
       kind,
-      generated_symbol_names.copy(),
+      generated_symbols.copy(),
     ),
   )
 }

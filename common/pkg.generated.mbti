@@ -168,13 +168,24 @@ pub struct WgslSourceOriginEntry {
   generated_symbol_name : String
   rel_path : String
   source_symbol_name : String
+  kind : WgslSourceOriginKind
   source_start : Int
   source_end : Int
 } derive(Eq, @debug.Debug)
-pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, Int, Int) -> Self
+pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, WgslSourceOriginKind, Int, Int) -> Self
 pub fn WgslSourceOriginEntry::generated_symbol_name(Self) -> String
+pub fn WgslSourceOriginEntry::kind(Self) -> WgslSourceOriginKind
 pub fn WgslSourceOriginEntry::rel_path(Self) -> String
 pub fn WgslSourceOriginEntry::source_symbol_name(Self) -> String
+
+pub(all) enum WgslSourceOriginKind {
+  Type
+  Constant
+  Override
+  GlobalVariable
+  Function
+  Other
+} derive(Eq, @debug.Debug)
 
 pub(all) struct WgslSourceScanOptions {
   recursive : Bool

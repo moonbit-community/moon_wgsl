@@ -25,6 +25,7 @@ using @common {
   type WgslSourceCatalogEntry,
   type WgslSourceFile,
   type WgslSourceOriginEntry,
+  type WgslSourceOriginKind,
   type WgslSourceScanOptions,
   type WgslSymbolRedirect,
 }

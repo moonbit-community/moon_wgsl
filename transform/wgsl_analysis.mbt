@@ -37,6 +37,7 @@ pub struct WgslEmittedDeclaration {
 ///|
 pub struct WgslModuleItemOrigin {
   priv name : String
+  priv kind : WgslSourceOriginKind
   priv source_start : Int
   priv source_end : Int
 }
@@ -76,6 +77,13 @@ pub fn WgslEmittedDeclaration::generated_end(
 ///|
 pub fn WgslModuleItemOrigin::name(self : WgslModuleItemOrigin) -> String {
   self.name
+}
+
+///|
+pub fn WgslModuleItemOrigin::kind(
+  self : WgslModuleItemOrigin,
+) -> WgslSourceOriginKind {
+  self.kind
 }
 
 ///|
@@ -155,6 +163,23 @@ fn WgslGraphBlock::is_type_declaration(self : WgslGraphBlock) -> Bool {
   match self.data {
     WgslGlobalDeclData::Struct(_) | WgslGlobalDeclData::TypeAlias(_) => true
     _ => false
+  }
+}
+
+///|
+fn WgslGraphBlock::source_origin_kind(
+  self : WgslGraphBlock,
+) -> WgslSourceOriginKind {
+  match self.data {
+    WgslGlobalDeclData::Struct(_) | WgslGlobalDeclData::TypeAlias(_) => Type
+    WgslGlobalDeclData::Const(_) => Constant
+    WgslGlobalDeclData::Override(_) => Override
+    WgslGlobalDeclData::GlobalVariable(_) => GlobalVariable
+    WgslGlobalDeclData::Function(_) => Function
+    WgslGlobalDeclData::Directive(_)
+    | WgslGlobalDeclData::Import(_)
+    | WgslGlobalDeclData::ConstAssert(_)
+    | WgslGlobalDeclData::Raw => Other
   }
 }
 
@@ -485,6 +510,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
       if block.is_symbol_origin() {
         origins.push(WgslModuleItemOrigin::{
           name: block.name(),
+          kind: block.source_origin_kind(),
           source_start: block.start,
           source_end: block.end,
         })
@@ -515,6 +541,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
       if block.is_symbol_origin() {
         origins.push(WgslModuleItemOrigin::{
           name: block.name(),
+          kind: block.source_origin_kind(),
           source_start: block.start,
           source_end: block.end,
         })
@@ -536,6 +563,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
     if block.is_symbol_origin() {
       origins.push(WgslModuleItemOrigin::{
         name: block.name(),
+        kind: block.source_origin_kind(),
         source_start: block.start,
         source_end: block.end,
       })

@@ -75,6 +75,7 @@ fn WgslModuleFinalNameApplicationPlan::apply_to_origins(
       entry.final_name,
       origin.rel_path,
       origin.source_symbol_name,
+      origin.kind,
       origin.source_start,
       origin.source_end,
     )

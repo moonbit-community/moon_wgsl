@@ -1,4 +1,18 @@
 ///|
+fn wgsl_source_origin_kind_to_ir_declaration_kind(
+  kind : WgslSourceOriginKind,
+) -> @ir.WgslIrDeclarationKind? {
+  match kind {
+    Type => Some(@ir.WgslIrDeclarationKind::Type)
+    Constant => Some(@ir.WgslIrDeclarationKind::Constant)
+    Override => Some(@ir.WgslIrDeclarationKind::Override)
+    GlobalVariable => Some(@ir.WgslIrDeclarationKind::GlobalVariable)
+    Function => Some(@ir.WgslIrDeclarationKind::Function)
+    Other => None
+  }
+}
+
+///|
 fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -279,13 +293,23 @@ fn Composer::compose_wgsl_import_requests(
       module_source
     }
     final_name_plan.apply_to_origins(session.symbols.source_origins)
-    let event_generated_symbol_names : Array[String] = []
+    let event_generated_symbols : Array[@ir.WgslIrImportArenaSymbol] = []
     let event_item_names : Array[String] = []
     for i in origin_start_index..<session.symbols.source_origins.length() {
       let origin = session.symbols.source_origins[i]
       if origin.rel_path == request.rel_path &&
         origin.generated_symbol_name != "" {
-        event_generated_symbol_names.push(origin.generated_symbol_name)
+        match wgsl_source_origin_kind_to_ir_declaration_kind(origin.kind) {
+          Some(kind) =>
+            event_generated_symbols.push(
+              @ir.WgslIrImportArenaSymbol(
+                kind,
+                origin.source_symbol_name,
+                origin.generated_symbol_name,
+              ),
+            )
+          None => ()
+        }
         event_item_names.push(origin.source_symbol_name)
       }
     }
@@ -305,7 +329,7 @@ fn Composer::compose_wgsl_import_requests(
       request.alias_name,
       event_item_names,
       event_kind,
-      event_generated_symbol_names,
+      event_generated_symbols,
     )
     session.symbols.import_arena_events.push(
       @ir.WgslIrImportArenaEvent(
@@ -316,7 +340,7 @@ fn Composer::compose_wgsl_import_requests(
         request.alias_name,
         event_item_names,
         event_kind,
-        event_generated_symbol_names,
+        event_generated_symbols,
       ),
     )
     if request.alias_name == "" {

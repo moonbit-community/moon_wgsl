@@ -54,6 +54,7 @@ pub fn WgslModuleItemExtraction::source(Self) -> String
 pub struct WgslModuleItemOrigin {
   // private fields
 }
+pub fn WgslModuleItemOrigin::kind(Self) -> @common.WgslSourceOriginKind
 pub fn WgslModuleItemOrigin::name(Self) -> String
 pub fn WgslModuleItemOrigin::source_end(Self) -> Int
 pub fn WgslModuleItemOrigin::source_start(Self) -> Int

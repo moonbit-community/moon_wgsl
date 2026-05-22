@@ -13,6 +13,16 @@ pub struct WgslSourceCatalogEntry {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum WgslSourceOriginKind {
+  Type
+  Constant
+  Override
+  GlobalVariable
+  Function
+  Other
+} derive(Eq, Debug)
+
+///|
 pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(
   rel_path : String,
   symbol_name : String,
@@ -27,6 +37,7 @@ pub struct WgslSourceOriginEntry {
   generated_symbol_name : String
   rel_path : String
   source_symbol_name : String
+  kind : WgslSourceOriginKind
   source_start : Int
   source_end : Int
 } derive(Eq, Debug)
@@ -36,6 +47,7 @@ pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(
   generated_symbol_name : String,
   rel_path : String,
   source_symbol_name : String,
+  kind : WgslSourceOriginKind,
   source_start : Int,
   source_end : Int,
 ) -> WgslSourceOriginEntry {
@@ -43,6 +55,7 @@ pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(
     generated_symbol_name,
     rel_path,
     source_symbol_name,
+    kind,
     source_start,
     source_end,
   }
@@ -65,6 +78,13 @@ pub fn WgslSourceOriginEntry::source_symbol_name(
   self : WgslSourceOriginEntry,
 ) -> String {
   self.source_symbol_name
+}
+
+///|
+pub fn WgslSourceOriginEntry::kind(
+  self : WgslSourceOriginEntry,
+) -> WgslSourceOriginKind {
+  self.kind
 }
 
 ///|

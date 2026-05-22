@@ -52,6 +52,7 @@ fn push_wgsl_source_origin(
   generated_symbol_name : String,
   rel_path : String,
   source_symbol_name : String,
+  kind : WgslSourceOriginKind,
   source_start : Int,
   source_end : Int,
 ) -> Unit {
@@ -60,7 +61,7 @@ fn push_wgsl_source_origin(
   }
   session.symbols.source_origins.push(
     WgslSourceOriginEntry(
-      generated_symbol_name, rel_path, source_symbol_name, source_start, source_end,
+      generated_symbol_name, rel_path, source_symbol_name, kind, source_start, source_end,
     ),
   )
 }
@@ -84,6 +85,7 @@ fn record_wgsl_source_origins_from_source(
       origin.name(),
       rel_path,
       origin.name(),
+      origin.kind(),
       origin.source_start(),
       origin.source_end(),
     )
@@ -106,6 +108,7 @@ fn record_wgsl_source_origins_from_extraction(
       origin.name(),
       rel_path,
       origin.name(),
+      origin.kind(),
       origin.source_start(),
       origin.source_end(),
     )
