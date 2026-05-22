@@ -584,6 +584,29 @@ test "naga-oil writer materializes mutable local loads in control-flow condition
 }
 
 ///|
+test "naga-oil writer allocates function locals before later function arguments" {
+  let source =
+    #|fn first() -> f32 {
+    #|  var dir: f32 = 1.0;
+    #|  return dir;
+    #|}
+    #|
+    #|fn second(dir: f32) -> f32 {
+    #|  return dir;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var dir: f32 = 1f;"), content="true")
+  debug_inspect(emitted.contains("fn second(dir_1: f32)"), content="true")
+  debug_inspect(emitted.contains("var dir_1: f32"), content="false")
+  debug_inspect(emitted.contains("return dir_1;"), content="true")
+}
+
+///|
 test "naga-oil writer absorbs projected call-result argument slots" {
   let source =
     #|fn local_to_world(vertex_position: vec4<f32>) -> vec4<f32> {

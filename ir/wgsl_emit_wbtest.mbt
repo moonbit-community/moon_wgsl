@@ -94,7 +94,7 @@ test "IR emitter resets Naga expression temporary names per function" {
 }
 
 ///|
-test "IR emitter allocates function signature names before body locals" {
+test "IR emitter allocates function var local names in Naga arena order" {
   let source =
     #|fn a(in_x: f32) -> f32 {
     #|  let x = abs(in_x);

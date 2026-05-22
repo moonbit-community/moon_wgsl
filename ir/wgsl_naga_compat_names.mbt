@@ -29,8 +29,6 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
   }
   for slot in view.function_slots() {
     view.allocate_function_signature_names(table, namer, slot)
-  }
-  for slot in view.function_slots() {
     view.reserve_function_var_local_names(table, namer, slot)
   }
   for slot in view.global_variable_slots() {
