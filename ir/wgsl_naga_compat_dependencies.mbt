@@ -36,6 +36,18 @@ fn WgslIrNagaCompatPlanner::generated_import_function_order(
   self : WgslIrNagaCompatPlanner,
 ) -> Array[Int] {
   let order : Array[Int] = []
+  for event in self.shader_module.import_arena_events {
+    for symbol in event.generated_symbols() {
+      match symbol.kind() {
+        Function =>
+          self.push_generated_import_function_by_name(
+            order,
+            symbol.generated_symbol_name(),
+          )
+        Type | Constant | Override | GlobalVariable => ()
+      }
+    }
+  }
   for index in 0..<self.shader_module.functions.items.length() {
     if self.function_order_should_include(index, order) &&
       self.shader_module.functions.items[index].generated_import {
@@ -43,6 +55,23 @@ fn WgslIrNagaCompatPlanner::generated_import_function_order(
     }
   }
   order
+}
+
+///|
+fn WgslIrNagaCompatPlanner::push_generated_import_function_by_name(
+  self : WgslIrNagaCompatPlanner,
+  order : Array[Int],
+  name : String,
+) -> Unit {
+  for index in 0..<self.shader_module.functions.items.length() {
+    let function = self.shader_module.functions.items[index]
+    if function.generated_import &&
+      function.name == Some(name) &&
+      self.function_order_should_include(index, order) {
+      order.push(index)
+      return
+    }
+  }
 }
 
 ///|
