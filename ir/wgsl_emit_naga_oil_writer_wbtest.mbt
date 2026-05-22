@@ -496,6 +496,36 @@ test "naga-oil writer materializes function pointer loads" {
 }
 
 ///|
+test "naga-oil writer elides local aliases of materialized temporaries" {
+  let source =
+    #|fn rand_f(state: ptr<function, u32>) -> f32 {
+    #|  *state = *state + 1u;
+    #|  return f32(*state);
+    #|}
+    #|
+    #|fn sample(rng: ptr<function, u32>) -> vec3<f32> {
+    #|  let cos_theta = rand_f(rng);
+    #|  let phi = rand_f(rng);
+    #|  let z = cos_theta;
+    #|  return vec3<f32>(z, phi, cos_theta);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e1: f32 = rand_f(rng);"), content="true")
+  debug_inspect(emitted.contains("let _e2: f32 = rand_f(rng);"), content="true")
+  debug_inspect(
+    emitted.contains("return vec3<f32>(_e1, _e2, _e1);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("let z"), content="false")
+  debug_inspect(emitted.contains("cos_theta"), content="false")
+}
+
+///|
 test "naga-oil writer absorbs projected call-result argument slots" {
   let source =
     #|fn local_to_world(vertex_position: vec4<f32>) -> vec4<f32> {

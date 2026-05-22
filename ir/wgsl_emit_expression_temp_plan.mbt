@@ -41,6 +41,7 @@ fn wgsl_ir_emit_local_name_key(
 ///|
 priv struct WgslIrNagaFunctionBodyPlan {
   materialized_expressions : @set.Set[Int]
+  elided_local_alias_targets : Map[Int, Handle]
   local_variable_declarations : Array[Int]
   has_body_after_hoisted_declarations : Bool
   implicit_expression_slots_before : Array[Int]
@@ -59,15 +60,20 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
   shader_module : Module,
   function : Function,
 ) -> WgslIrNagaFunctionBodyPlan {
+  let materialized_expressions = wgsl_ir_function_materialized_expression_indices(
+    function,
+  )
+  let elided_local_alias_targets = wgsl_ir_naga_function_elided_local_alias_targets(
+    function, materialized_expressions,
+  )
   WgslIrNagaFunctionBodyPlan::{
-    materialized_expressions: wgsl_ir_function_materialized_expression_indices(
-      function,
-    ),
+    materialized_expressions,
+    elided_local_alias_targets,
     local_variable_declarations: wgsl_ir_naga_function_body_local_declarations(
       function,
     ),
     has_body_after_hoisted_declarations: wgsl_ir_naga_function_body_has_non_hoisted_statement(
-      function,
+      function, elided_local_alias_targets,
     ),
     implicit_expression_slots_before: wgsl_ir_naga_function_implicit_expression_slots_before(
       shader_module, function,
@@ -84,6 +90,22 @@ fn WgslIrNagaFunctionBodyPlan::contains_materialized_expression(
   handle : Handle,
 ) -> Bool {
   self.materialized_expressions.contains(handle.index())
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::elided_local_alias_target(
+  self : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> Handle? {
+  self.elided_local_alias_targets.get(handle.index())
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::contains_elided_local_alias(
+  self : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> Bool {
+  self.elided_local_alias_target(handle) != None
 }
 
 ///|
@@ -135,14 +157,14 @@ fn WgslIrNagaFunctionBodyPlan::statement_plan(
   function : Function,
   block : Block,
 ) -> Array[WgslIrNagaStatementPlanItem] {
-  ignore(self)
   let plan : Array[WgslIrNagaStatementPlanItem] = []
   let mut emitted_leading_var_declaration = false
   let mut separated_leading_var_declarations = false
   for statement in block.statements {
-    let skip = wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
-      function, statement,
-    )
+    let skip = self.statement_is_elided_local_alias_declaration(statement) ||
+      wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
+        function, statement,
+      )
     let mut blank_before = false
     if !skip {
       if emitted_leading_var_declaration &&
@@ -159,6 +181,17 @@ fn WgslIrNagaFunctionBodyPlan::statement_plan(
     plan.push(WgslIrNagaStatementPlanItem::{ statement, skip, blank_before })
   }
   plan
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::statement_is_elided_local_alias_declaration(
+  self : WgslIrNagaFunctionBodyPlan,
+  statement : Statement,
+) -> Bool {
+  match statement {
+    Declare(handle) => self.contains_elided_local_alias(handle)
+    _ => false
+  }
 }
 
 ///|
@@ -182,15 +215,30 @@ fn wgsl_ir_naga_function_body_local_declarations(
 ///|
 fn wgsl_ir_naga_function_body_has_non_hoisted_statement(
   function : Function,
+  elided_local_alias_targets : Map[Int, Handle],
 ) -> Bool {
   for statement in function.body.statements {
-    if !wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
+    if !wgsl_ir_statement_is_naga_elided_local_alias_declaration(
+        elided_local_alias_targets, statement,
+      ) &&
+      !wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
         function, statement,
       ) {
       return true
     }
   }
   false
+}
+
+///|
+fn wgsl_ir_statement_is_naga_elided_local_alias_declaration(
+  elided_local_alias_targets : Map[Int, Handle],
+  statement : Statement,
+) -> Bool {
+  match statement {
+    Declare(handle) => elided_local_alias_targets.get(handle.index()) != None
+    _ => false
+  }
 }
 
 ///|
@@ -240,16 +288,23 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   for local_index in 0..<function.local_variables.items.length() {
     let local_handle = Handle::Handle(local_index)
     let local_var = function.local_variables.items[local_index]
-    let local_name = if local_var.generated_temporary {
-      match local_var.init {
-        Some(init) =>
-          self.names.get(
-            wgsl_ir_emit_expression_temporary_name_key(origin, init),
-          )
-        None => None
-      }
-    } else {
-      Some(namer.local_call_or(temp_namer, local_var.name, "local"))
+    let local_name = match body_plan.elided_local_alias_target(local_handle) {
+      Some(target) =>
+        self.names.get(
+          wgsl_ir_emit_expression_temporary_name_key(origin, target),
+        )
+      None =>
+        if local_var.generated_temporary {
+          match local_var.init {
+            Some(init) =>
+              self.names.get(
+                wgsl_ir_emit_expression_temporary_name_key(origin, init),
+              )
+            None => None
+          }
+        } else {
+          Some(namer.local_call_or(temp_namer, local_var.name, "local"))
+        }
     }
     match local_name {
       Some(name) =>
@@ -306,6 +361,92 @@ fn WgslIrFinalNamePlan::allocate_function_expression_temporary_names(
         self.names.set(key, temp_namer.call("_e\{semantic_index}"))
       }
     }
+  }
+}
+
+///|
+fn wgsl_ir_naga_function_elided_local_alias_targets(
+  function : Function,
+  materialized_expressions : @set.Set[Int],
+) -> Map[Int, Handle] {
+  let targets : Map[Int, Handle] = Map([])
+  let mut changed = true
+  while changed {
+    changed = false
+    for local_index in 0..<function.local_variables.items.length() {
+      if targets.get(local_index) == None {
+        match
+          wgsl_ir_naga_local_alias_target_expression(
+            function,
+            materialized_expressions,
+            targets,
+            Handle::Handle(local_index),
+          ) {
+          Some(target) => {
+            targets.set(local_index, target)
+            changed = true
+          }
+          None => ()
+        }
+      }
+    }
+  }
+  targets
+}
+
+///|
+fn wgsl_ir_naga_local_alias_target_expression(
+  function : Function,
+  materialized_expressions : @set.Set[Int],
+  known_targets : Map[Int, Handle],
+  local_handle : Handle,
+) -> Handle? {
+  guard function.local_variables.items.get(local_handle.index())
+    is Some(local_var) else {
+    return None
+  }
+  guard local_var.kind == LocalVariableKind::Let else { return None }
+  guard !local_var.generated_temporary else { return None }
+  guard local_var.init is Some(init) else { return None }
+  wgsl_ir_naga_expression_alias_target(
+    function, materialized_expressions, known_targets, init,
+  )
+}
+
+///|
+fn wgsl_ir_naga_expression_alias_target(
+  function : Function,
+  materialized_expressions : @set.Set[Int],
+  known_targets : Map[Int, Handle],
+  expression_handle : Handle,
+) -> Handle? {
+  if materialized_expressions.contains(expression_handle.index()) {
+    return Some(expression_handle)
+  }
+  match function.expressions.items.get(expression_handle.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match known_targets.get(local_handle.index()) {
+        Some(target) => Some(target)
+        None =>
+          match function.local_variables.items.get(local_handle.index()) {
+            Some(local_var) =>
+              if local_var.generated_temporary {
+                match local_var.init {
+                  Some(init) =>
+                    if materialized_expressions.contains(init.index()) {
+                      Some(init)
+                    } else {
+                      None
+                    }
+                  None => None
+                }
+              } else {
+                None
+              }
+            None => None
+          }
+      }
+    _ => None
   }
 }
 
