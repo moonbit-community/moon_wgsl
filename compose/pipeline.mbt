@@ -352,7 +352,17 @@ fn WgslComposeSymbolTable::generated_import_provenance(
       )
     }
   }
-  let mut import_sequence = 0
+  let generated_symbol_import_sequences : Map[String, Int] = Map([])
+  for event in self.import_arena_events {
+    for generated_symbol_name in event.generated_symbol_names() {
+      if !generated_symbol_import_sequences.contains(generated_symbol_name) {
+        generated_symbol_import_sequences.set(
+          generated_symbol_name,
+          event.sequence(),
+        )
+      }
+    }
+  }
   for origin in self.source_origins {
     if origin.rel_path() == root_rel_path {
       continue
@@ -379,13 +389,14 @@ fn WgslComposeSymbolTable::generated_import_provenance(
             origin.source_symbol_name(),
             name,
           ),
-          import_sequence~,
+          import_sequence=generated_symbol_import_sequences
+            .get(name)
+            .unwrap_or(-1),
           source_start=origin.source_start,
           source_end=origin.source_end,
         ),
       )
     }
-    import_sequence = import_sequence + 1
   }
   provenance
 }

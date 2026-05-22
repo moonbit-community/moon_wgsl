@@ -976,6 +976,14 @@ pub(all) enum WgslIrGeneratedImportProvenanceKind {
   VirtualOverrideSymbol
 } derive(Eq, @debug.Debug)
 
+pub struct WgslIrImportArenaEvent {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(Int, String, String, String, String, Array[String], WgslIrImportEdgeKind, Array[String]) -> Self
+pub fn WgslIrImportArenaEvent::generated_symbol_names(Self) -> Array[String]
+pub fn WgslIrImportArenaEvent::sequence(Self) -> Int
+pub fn WgslIrImportArenaEvent::target_rel_path(Self) -> String
+
 pub struct WgslIrImportEdge {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -994,9 +1002,12 @@ pub struct WgslIrLinkGraph {
 }
 pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> Self
 pub fn WgslIrLinkGraph::contains_reachable_symbol(Self, WgslIrSymbolIdentity) -> Bool
+pub fn WgslIrLinkGraph::import_arena_event_count(Self) -> Int
+pub fn WgslIrLinkGraph::import_arena_events(Self) -> Array[WgslIrImportArenaEvent]
 pub fn WgslIrLinkGraph::import_edge_count(Self) -> Int
 pub fn WgslIrLinkGraph::mark_reachable(Self, WgslIrSymbolIdentity) -> Unit
 pub fn WgslIrLinkGraph::record_import(Self, String, String, String, String, String, WgslIrImportEdgeKind) -> Unit
+pub fn WgslIrLinkGraph::record_import_arena_event(Self, String, String, String, String, Array[String], WgslIrImportEdgeKind, Array[String]) -> Unit
 pub fn WgslIrLinkGraph::record_import_edge(Self, WgslIrImportEdge) -> Unit
 pub fn WgslIrLinkGraph::record_reachable_symbol(Self, WgslIrSymbolIdentity) -> Unit
 pub fn WgslIrLinkGraph::record_symbol(Self, WgslIrSymbolIdentity) -> Unit

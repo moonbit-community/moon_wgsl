@@ -279,6 +279,46 @@ fn Composer::compose_wgsl_import_requests(
       module_source
     }
     final_name_plan.apply_to_origins(session.symbols.source_origins)
+    let event_generated_symbol_names : Array[String] = []
+    let event_item_names : Array[String] = []
+    for i in origin_start_index..<session.symbols.source_origins.length() {
+      let origin = session.symbols.source_origins[i]
+      if origin.rel_path == request.rel_path &&
+        origin.generated_symbol_name != "" {
+        event_generated_symbol_names.push(origin.generated_symbol_name)
+        event_item_names.push(origin.source_symbol_name)
+      }
+    }
+    let event_kind = if request.import_full_module {
+      if request.alias_name == "" {
+        @ir.WgslIrImportEdgeKind::FullModule
+      } else {
+        @ir.WgslIrImportEdgeKind::AliasModule
+      }
+    } else {
+      @ir.WgslIrImportEdgeKind::ItemBinding
+    }
+    session.link_graph.record_import_arena_event(
+      current_rel_path,
+      request.rel_path,
+      request.module_path,
+      request.alias_name,
+      event_item_names,
+      event_kind,
+      event_generated_symbol_names,
+    )
+    session.symbols.import_arena_events.push(
+      @ir.WgslIrImportArenaEvent(
+        session.symbols.import_arena_events.length(),
+        current_rel_path,
+        request.rel_path,
+        request.module_path,
+        request.alias_name,
+        event_item_names,
+        event_kind,
+        event_generated_symbol_names,
+      ),
+    )
     if request.alias_name == "" {
       for i in origin_start_index..<session.symbols.source_origins.length() {
         let origin = session.symbols.source_origins[i]

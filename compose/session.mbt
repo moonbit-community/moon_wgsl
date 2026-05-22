@@ -124,6 +124,7 @@ priv struct WgslComposeSymbolTable {
   local_import_final_names : Array[WgslLocalImportFinalNameBinding]
   local_spelling_final_names : Array[WgslLocalSpellingFinalNameBinding]
   source_origins : Array[WgslSourceOriginEntry]
+  import_arena_events : Array[@ir.WgslIrImportArenaEvent]
 }
 
 ///|
@@ -236,6 +237,7 @@ fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
     local_import_final_names: [],
     local_spelling_final_names: [],
     source_origins: [],
+    import_arena_events: [],
   }
 }
 

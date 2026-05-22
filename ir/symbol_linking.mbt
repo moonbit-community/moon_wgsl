@@ -48,6 +48,18 @@ pub struct WgslIrImportEdge {
 } derive(Eq, Debug)
 
 ///|
+pub struct WgslIrImportArenaEvent {
+  priv sequence : Int
+  priv importer_rel_path : String
+  priv target_rel_path : String
+  priv module_path : String
+  priv alias_name : String
+  priv item_names : Array[String]
+  priv kind : WgslIrImportEdgeKind
+  priv generated_symbol_names : Array[String]
+} derive(Eq, Debug)
+
+///|
 pub struct WgslIrSymbolNode {
   priv identity : WgslIrSymbolIdentity
 } derive(Eq, Debug)
@@ -58,6 +70,7 @@ pub struct WgslIrLinkGraph {
   priv symbol_nodes : Array[WgslIrSymbolNode]
   priv import_edge_keys : @set.Set[String]
   priv import_edges : Array[WgslIrImportEdge]
+  priv import_arena_events : Array[WgslIrImportArenaEvent]
   priv reachable_symbol_keys : @set.Set[String]
 }
 
@@ -280,6 +293,48 @@ pub fn WgslIrImportEdge::key(self : WgslIrImportEdge) -> String {
 }
 
 ///|
+pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(
+  sequence : Int,
+  importer_rel_path : String,
+  target_rel_path : String,
+  module_path : String,
+  alias_name : String,
+  item_names : Array[String],
+  kind : WgslIrImportEdgeKind,
+  generated_symbol_names : Array[String],
+) -> WgslIrImportArenaEvent {
+  WgslIrImportArenaEvent::{
+    sequence,
+    importer_rel_path,
+    target_rel_path,
+    module_path,
+    alias_name,
+    item_names,
+    kind,
+    generated_symbol_names,
+  }
+}
+
+///|
+pub fn WgslIrImportArenaEvent::sequence(self : WgslIrImportArenaEvent) -> Int {
+  self.sequence
+}
+
+///|
+pub fn WgslIrImportArenaEvent::target_rel_path(
+  self : WgslIrImportArenaEvent,
+) -> String {
+  self.target_rel_path
+}
+
+///|
+pub fn WgslIrImportArenaEvent::generated_symbol_names(
+  self : WgslIrImportArenaEvent,
+) -> Array[String] {
+  self.generated_symbol_names.copy()
+}
+
+///|
 pub fn WgslIrImportEdgeKind::key(self : WgslIrImportEdgeKind) -> String {
   match self {
     FullModule => "full"
@@ -295,6 +350,7 @@ pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> WgslIrLinkGraph {
     symbol_nodes: [],
     import_edge_keys: @set.Set([]),
     import_edges: [],
+    import_arena_events: [],
     reachable_symbol_keys: @set.Set([]),
   }
 }
@@ -362,6 +418,43 @@ pub fn WgslIrLinkGraph::record_import(
 ///|
 pub fn WgslIrLinkGraph::import_edge_count(self : WgslIrLinkGraph) -> Int {
   self.import_edges.length()
+}
+
+///|
+pub fn WgslIrLinkGraph::record_import_arena_event(
+  self : WgslIrLinkGraph,
+  importer_rel_path : String,
+  target_rel_path : String,
+  module_path : String,
+  alias_name : String,
+  item_names : Array[String],
+  kind : WgslIrImportEdgeKind,
+  generated_symbol_names : Array[String],
+) -> Unit {
+  self.import_arena_events.push(
+    WgslIrImportArenaEvent(
+      self.import_arena_events.length(),
+      importer_rel_path,
+      target_rel_path,
+      module_path,
+      alias_name,
+      item_names.copy(),
+      kind,
+      generated_symbol_names.copy(),
+    ),
+  )
+}
+
+///|
+pub fn WgslIrLinkGraph::import_arena_event_count(self : WgslIrLinkGraph) -> Int {
+  self.import_arena_events.length()
+}
+
+///|
+pub fn WgslIrLinkGraph::import_arena_events(
+  self : WgslIrLinkGraph,
+) -> Array[WgslIrImportArenaEvent] {
+  self.import_arena_events.copy()
 }
 
 ///|

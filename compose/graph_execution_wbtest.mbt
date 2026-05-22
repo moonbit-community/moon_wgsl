@@ -82,6 +82,7 @@ test "compose graph execution plans reachability before emission" {
   }
   debug_inspect(session.graph_execution_complete, content="true")
   debug_inspect(session.link_graph.import_edge_count(), content="1")
+  debug_inspect(session.link_graph.import_arena_event_count(), content="0")
   debug_inspect(
     session.link_graph.contains_reachable_symbol(
       WgslIrSymbolIdentity("dep.wgsl", "dep_fn"),
@@ -112,6 +113,11 @@ test "compose graph execution plans reachability before emission" {
     is Some(_),
     content="true",
   )
+  debug_inspect(session.link_graph.import_arena_event_count(), content="1")
+  debug_inspect(session.symbols.import_arena_events.length(), content="1")
+  let arena_events = session.link_graph.import_arena_events()
+  debug_inspect(arena_events[0].target_rel_path(), content="\"dep.wgsl\"")
+  debug_inspect(arena_events[0].generated_symbol_names().length(), content="1")
   let provenance = session.symbols.generated_import_provenance("root.wgsl")
   let mut dep_index = -1
   for i in 0..<provenance.length() {
