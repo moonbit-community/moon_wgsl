@@ -29,30 +29,7 @@ fn wgsl_token_text(token : WgslToken) -> String {
     None => ()
   }
   match token.punctuation_code() {
-    Some(35) => "#"
-    Some(37) => "%"
-    Some(38) => "&"
-    Some(40) => "("
-    Some(41) => ")"
-    Some(42) => "*"
-    Some(43) => "+"
-    Some(44) => ","
-    Some(45) => "-"
-    Some(46) => "."
-    Some(47) => "/"
-    Some(58) => ":"
-    Some(59) => ";"
-    Some(60) => "<"
-    Some(61) => "="
-    Some(62) => ">"
-    Some(64) => "@"
-    Some(91) => "["
-    Some(93) => "]"
-    Some(94) => "^"
-    Some(123) => "{"
-    Some(124) => "|"
-    Some(125) => "}"
-    Some(126) => "~"
+    Some(_) => token.source_text()
     _ => ""
   }
 }

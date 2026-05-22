@@ -60,14 +60,12 @@ fn WgslToken::new_whitespace(text : String, pos : Int) -> WgslToken {
 }
 
 ///|
-fn WgslToken::new_punctuation(code : Int, pos : Int) -> WgslToken {
-  WgslToken::{
-    kind: Punctuation,
-    text: "",
-    code,
-    pos,
-    end: pos + tokenizer_code_point_width(code),
-  }
+fn WgslToken::new_punctuation(
+  text : String,
+  code : Int,
+  pos : Int,
+) -> WgslToken {
+  WgslToken::{ kind: Punctuation, text, code, pos, end: pos + text.length() }
 }
 
 ///|
@@ -104,6 +102,11 @@ pub fn WgslToken::punctuation_code(self : WgslToken) -> Int? {
   } else {
     None
   }
+}
+
+///|
+pub fn WgslToken::source_text(self : WgslToken) -> String {
+  self.text
 }
 
 ///|
@@ -153,15 +156,6 @@ fn tokenizer_whitespace(code : Int, wgsl_blankspace : Bool) -> Bool {
     wgsl_blankspace_code_point(code)
   } else {
     wgsl_regex_whitespace_code_point(code)
-  }
-}
-
-///|
-fn tokenizer_code_point_width(code : Int) -> Int {
-  if code > 0xFFFF {
-    2
-  } else {
-    1
   }
 }
 
@@ -254,7 +248,9 @@ fn tokenizer_push_number_as_other(
   let mut pos = start
   while pos < end_ {
     let (code, width) = tokenizer_code_point_at(src, pos)
-    tokens.push(WgslToken::new_punctuation(code, pos))
+    tokens.push(
+      WgslToken::new_punctuation(src[pos:pos + width].to_owned(), code, pos),
+    )
     pos = pos + width
   }
 }
@@ -369,7 +365,9 @@ fn tokenize_with(
       }
     }
 
-    tokens.push(WgslToken::new_punctuation(code, i))
+    tokens.push(
+      WgslToken::new_punctuation(src[i:i + width].to_owned(), code, i),
+    )
     i = i + width
   }
 

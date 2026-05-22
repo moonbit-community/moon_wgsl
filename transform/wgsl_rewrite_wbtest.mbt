@@ -109,3 +109,19 @@ test "naga_oil wb: identity rewrite plan does not collapse ambiguous bindings" {
   debug_inspect(rewritten.contains("a__Shared"), content="false")
   debug_inspect(rewritten.contains("b__Shared"), content="false")
 }
+
+///|
+test "naga_oil wb: declaration rewrite preserves logical-not punctuation" {
+  let plan = WgslReferenceRewritePlan()
+  wbtest_add_symbol_reference_binding(
+    plan,
+    WgslIrSymbolIdentity("lib.wgsl", "pred"),
+    "pred",
+    "predX",
+  )
+  let rewritten = rewrite_wgsl_declarations_with_binding_plan(
+    "fn value() -> f32 {\n  return f32(!pred());\n}\n", plan,
+  )
+  debug_inspect(rewritten.contains("return f32(!predX());"), content="true")
+  debug_inspect(rewritten.contains("return f32(predX());"), content="false")
+}

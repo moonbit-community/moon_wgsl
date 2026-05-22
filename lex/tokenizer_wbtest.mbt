@@ -58,6 +58,15 @@ test "WGSL tokenizer emits numeric literals as semantic tokens" {
 }
 
 ///|
+test "WGSL tokenizer retains exact punctuation source text" {
+  let tokens = tokenize_wgsl("!value ? other", false)
+  debug_inspect(tokens[0].punctuation_code(), content="Some(33)")
+  debug_inspect(tokens[0].source_text(), content="\"!\"")
+  debug_inspect(tokens[2].punctuation_code(), content="Some(63)")
+  debug_inspect(tokens[2].source_text(), content="\"?\"")
+}
+
+///|
 test "WGSL identifier policy is centralized" {
   debug_inspect(wgsl_identifier_text("_valid123"), content="true")
   debug_inspect(wgsl_identifier_text("__"), content="true")

@@ -73,6 +73,7 @@ pub fn WgslToken::operator_text(Self) -> String?
 pub fn WgslToken::pos(Self) -> Int
 pub fn WgslToken::punctuation_code(Self) -> Int?
 pub fn WgslToken::shift(Self, Int) -> Self
+pub fn WgslToken::source_text(Self) -> String
 
 // Type aliases
 
