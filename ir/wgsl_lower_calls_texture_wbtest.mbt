@@ -441,7 +441,9 @@ test "WGSL AST lowerer resolves struct member names by type" {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("item.weight"), content="true")
-  debug_inspect(emitted.contains("item.count = weight;"), content="true")
+  debug_inspect(emitted.contains(": u32 = weight;"), content="true")
+  debug_inspect(emitted.contains("item.count = _e"), content="true")
+  debug_inspect(emitted.contains("item.count = weight;"), content="false")
   debug_inspect(emitted.contains("item.x"), content="false")
 }
 

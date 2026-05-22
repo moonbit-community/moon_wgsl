@@ -445,6 +445,31 @@ test "naga-oil writer inlines local store pointer index and materializes storage
 }
 
 ///|
+test "naga-oil writer materializes mutable local rhs for projected local store" {
+  let source =
+    #|struct Input {
+    #|  H: vec3<f32>,
+    #|}
+    #|
+    #|fn derive_lighting_input() -> Input {
+    #|  var input: Input;
+    #|  var H: vec3<f32>;
+    #|  H = vec3<f32>(1.0, 0.0, 0.0);
+    #|  input.H = H;
+    #|  return input;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(": vec3<f32> = H;"), content="true")
+  debug_inspect(emitted.contains("input.H = _e"), content="true")
+  debug_inspect(emitted.contains("input.H = H;"), content="false")
+}
+
+///|
 test "naga-oil writer materializes mutable store pointer index" {
   let source =
     #|struct Output {

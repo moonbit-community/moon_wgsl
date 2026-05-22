@@ -180,8 +180,8 @@ fn WgslIrLowerer::lower_statement(
           let rhs_value = self.lower_function_expression_ref(
             rhs_ref, function, scope,
           )
-          self.materialize_store_value_if_needed(
-            function, scope, block, rhs_value,
+          self.materialize_store_value_for_pointer_if_needed(
+            function, scope, block, target, rhs_value,
           )
         }
       }
@@ -593,8 +593,8 @@ fn WgslIrLowerer::lower_for_header_statement(
             function,
             scope,
           )
-          self.materialize_store_value_if_needed(
-            function, scope, block, rhs_value,
+          self.materialize_store_value_for_pointer_if_needed(
+            function, scope, block, target, rhs_value,
           )
         }
       }
