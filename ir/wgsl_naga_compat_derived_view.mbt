@@ -22,73 +22,89 @@ priv struct WgslIrNagaDerivedModuleView {
 }
 
 ///|
+priv struct WgslIrNagaDerivedModuleBuilder {
+  planner : WgslIrNagaCompatPlanner
+  view : WgslIrNagaDerivedModuleView
+  seen_types : @set.Set[Int]
+  seen_constants : @set.Set[Int]
+  seen_overrides : @set.Set[Int]
+  seen_globals : @set.Set[Int]
+  seen_functions : @set.Set[Int]
+}
+
+///|
 fn WgslIrNagaCompatPlanner::derived_module_view(
   self : WgslIrNagaCompatPlanner,
 ) -> WgslIrNagaDerivedModuleView {
-  let view = WgslIrNagaDerivedModuleView::{
-    types: [],
-    constants: [],
-    overrides: [],
-    global_variables: [],
-    functions: [],
+  let builder = WgslIrNagaDerivedModuleBuilder::{
+    planner: self,
+    view: WgslIrNagaDerivedModuleView::{
+      types: [],
+      constants: [],
+      overrides: [],
+      global_variables: [],
+      functions: [],
+    },
+    seen_types: @set.Set([]),
+    seen_constants: @set.Set([]),
+    seen_overrides: @set.Set([]),
+    seen_globals: @set.Set([]),
+    seen_functions: @set.Set([]),
   }
-  let seen_types = @set.Set([])
-  let seen_constants = @set.Set([])
-  let seen_overrides = @set.Set([])
-  let seen_globals = @set.Set([])
-  let seen_functions = @set.Set([])
   for event in self.shader_module.import_arena_events {
     for generated_symbol_name in event.generated_symbol_names() {
-      self.push_named_type_if_present(
-        view.types,
-        seen_types,
-        generated_symbol_name,
-      )
-      self.push_named_constant_if_present(
-        view.constants,
-        seen_constants,
-        generated_symbol_name,
-      )
-      self.push_named_override_if_present(
-        view.overrides,
-        seen_overrides,
-        generated_symbol_name,
-      )
-      self.push_named_global_if_present(
-        view.global_variables,
-        seen_globals,
-        generated_symbol_name,
-      )
-      self.push_named_function_if_present(
-        view.functions,
-        seen_functions,
-        generated_symbol_name,
-      )
+      builder.import_named_symbol(generated_symbol_name)
     }
   }
-  self.append_remaining_type_indices(view.types, seen_types)
-  self.append_remaining_constant_indices(view.constants, seen_constants)
-  self.append_remaining_override_indices(view.overrides, seen_overrides)
-  self.append_remaining_global_indices(view.global_variables, seen_globals)
-  self.append_remaining_function_indices(view.functions, seen_functions)
-  view
+  builder.append_remaining()
+  builder.view
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::push_named_type_if_present(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_named_symbol(
+  self : WgslIrNagaDerivedModuleBuilder,
   name : String,
 ) -> Unit {
-  for index in 0..<self.shader_module.types.items.length() {
-    if seen.contains(index) {
+  self.import_named_type_if_present(name)
+  self.import_named_constant_if_present(name)
+  self.import_named_override_if_present(name)
+  self.import_named_global_if_present(name)
+  self.import_named_function_if_present(name)
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::append_remaining(
+  self : WgslIrNagaDerivedModuleBuilder,
+) -> Unit {
+  for index in 0..<self.planner.shader_module.types.items.length() {
+    self.import_type(index)
+  }
+  for index in 0..<self.planner.shader_module.constants.items.length() {
+    self.import_constant(index)
+  }
+  for index in 0..<self.planner.shader_module.overrides.items.length() {
+    self.import_override(index)
+  }
+  for index in 0..<self.planner.shader_module.global_variables.items.length() {
+    self.import_global(index)
+  }
+  for index in 0..<self.planner.shader_module.functions.items.length() {
+    self.import_function(index)
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_named_type_if_present(
+  self : WgslIrNagaDerivedModuleBuilder,
+  name : String,
+) -> Unit {
+  for index in 0..<self.planner.shader_module.types.items.length() {
+    if self.seen_types.contains(index) {
       continue
     }
-    match self.shader_module.types.items[index].name {
+    match self.planner.shader_module.types.items[index].name {
       Some(type_name) if type_name == name => {
-        seen.add(index)
-        order.push(index)
+        self.import_type(index)
         return
       }
       _ => ()
@@ -97,20 +113,17 @@ fn WgslIrNagaCompatPlanner::push_named_type_if_present(
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::push_named_constant_if_present(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_named_constant_if_present(
+  self : WgslIrNagaDerivedModuleBuilder,
   name : String,
 ) -> Unit {
-  for index in 0..<self.shader_module.constants.items.length() {
-    if seen.contains(index) {
+  for index in 0..<self.planner.shader_module.constants.items.length() {
+    if self.seen_constants.contains(index) {
       continue
     }
-    match self.shader_module.constants.items[index].name {
+    match self.planner.shader_module.constants.items[index].name {
       Some(constant_name) if constant_name == name => {
-        seen.add(index)
-        order.push(index)
+        self.import_constant(index)
         return
       }
       _ => ()
@@ -119,20 +132,17 @@ fn WgslIrNagaCompatPlanner::push_named_constant_if_present(
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::push_named_override_if_present(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_named_override_if_present(
+  self : WgslIrNagaDerivedModuleBuilder,
   name : String,
 ) -> Unit {
-  for index in 0..<self.shader_module.overrides.items.length() {
-    if seen.contains(index) {
+  for index in 0..<self.planner.shader_module.overrides.items.length() {
+    if self.seen_overrides.contains(index) {
       continue
     }
-    match self.shader_module.overrides.items[index].name {
+    match self.planner.shader_module.overrides.items[index].name {
       Some(override_name) if override_name == name => {
-        seen.add(index)
-        order.push(index)
+        self.import_override(index)
         return
       }
       _ => ()
@@ -141,20 +151,17 @@ fn WgslIrNagaCompatPlanner::push_named_override_if_present(
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::push_named_global_if_present(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_named_global_if_present(
+  self : WgslIrNagaDerivedModuleBuilder,
   name : String,
 ) -> Unit {
-  for index in 0..<self.shader_module.global_variables.items.length() {
-    if seen.contains(index) {
+  for index in 0..<self.planner.shader_module.global_variables.items.length() {
+    if self.seen_globals.contains(index) {
       continue
     }
-    match self.shader_module.global_variables.items[index].name {
+    match self.planner.shader_module.global_variables.items[index].name {
       Some(global_name) if global_name == name => {
-        seen.add(index)
-        order.push(index)
+        self.import_global(index)
         return
       }
       _ => ()
@@ -163,22 +170,19 @@ fn WgslIrNagaCompatPlanner::push_named_global_if_present(
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::push_named_function_if_present(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_named_function_if_present(
+  self : WgslIrNagaDerivedModuleBuilder,
   name : String,
 ) -> Unit {
-  for index in 0..<self.shader_module.functions.items.length() {
-    if seen.contains(index) {
+  for index in 0..<self.planner.shader_module.functions.items.length() {
+    if self.seen_functions.contains(index) {
       continue
     }
-    match self.shader_module.functions.items[index].name {
+    match self.planner.shader_module.functions.items[index].name {
       Some(function_name) =>
         if function_name == name &&
-          self.function_order_should_include(index, order) {
-          seen.add(index)
-          order.push(index)
+          self.planner.function_order_should_include(index, self.view.functions) {
+          self.import_function(index)
           return
         }
       _ => ()
@@ -187,71 +191,571 @@ fn WgslIrNagaCompatPlanner::push_named_function_if_present(
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::append_remaining_type_indices(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_type(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
 ) -> Unit {
-  for index in 0..<self.shader_module.types.items.length() {
-    if !seen.contains(index) {
-      seen.add(index)
-      order.push(index)
+  if self.seen_types.contains(index) {
+    return
+  }
+  match self.planner.shader_module.types.items.get(index) {
+    Some(ty) => {
+      self.import_type_inner_dependencies(ty.inner)
+      self.seen_types.add(index)
+      self.view.types.push(index)
     }
+    None => ()
   }
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::append_remaining_constant_indices(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_type_handle(
+  self : WgslIrNagaDerivedModuleBuilder,
+  handle : Handle,
 ) -> Unit {
-  for index in 0..<self.shader_module.constants.items.length() {
-    if !seen.contains(index) {
-      seen.add(index)
-      order.push(index)
+  self.import_type(handle.index())
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_type_inner_dependencies(
+  self : WgslIrNagaDerivedModuleBuilder,
+  inner : TypeInner,
+) -> Unit {
+  match inner {
+    Pointer(base, _) => self.import_type_handle(base)
+    Array(base, size, _) | BindingArray(base, size) => {
+      self.import_type_handle(base)
+      self.import_array_size(size)
     }
+    Struct(members, _) | PredeclaredStruct(members, _) =>
+      for field in members {
+        self.import_type_handle(field.ty)
+      }
+    Atomic(_)
+    | Scalar(_)
+    | Vector(_, _)
+    | Matrix(_, _, _)
+    | CooperativeMatrix(_, _, _, _)
+    | ValuePointer(_, _, _)
+    | Image(_, _, _)
+    | Sampler(_)
+    | AccelerationStructure(_)
+    | RayQuery(_) => ()
   }
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::append_remaining_override_indices(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_array_size(
+  self : WgslIrNagaDerivedModuleBuilder,
+  size : ArraySize,
 ) -> Unit {
-  for index in 0..<self.shader_module.overrides.items.length() {
-    if !seen.contains(index) {
-      seen.add(index)
-      order.push(index)
-    }
+  match size {
+    Pending(handle) => self.import_global_expression(handle)
+    Constant(_) | Dynamic => ()
   }
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::append_remaining_global_indices(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_constant(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
 ) -> Unit {
-  for index in 0..<self.shader_module.global_variables.items.length() {
-    if !seen.contains(index) {
-      seen.add(index)
-      order.push(index)
+  if self.seen_constants.contains(index) {
+    return
+  }
+  match self.planner.shader_module.constants.items.get(index) {
+    Some(constant) => {
+      self.import_type_handle(constant.ty)
+      self.import_global_expression(constant.init)
+      self.seen_constants.add(index)
+      self.view.constants.push(index)
     }
+    None => ()
   }
 }
 
 ///|
-fn WgslIrNagaCompatPlanner::append_remaining_function_indices(
-  self : WgslIrNagaCompatPlanner,
-  order : Array[Int],
-  seen : @set.Set[Int],
+fn WgslIrNagaDerivedModuleBuilder::import_override(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
 ) -> Unit {
-  for index in 0..<self.shader_module.functions.items.length() {
-    if !seen.contains(index) && self.function_order_should_include(index, order) {
-      seen.add(index)
-      order.push(index)
-    }
+  if self.seen_overrides.contains(index) {
+    return
   }
+  match self.planner.shader_module.overrides.items.get(index) {
+    Some(override_) => {
+      self.import_type_handle(override_.ty)
+      match override_.init {
+        Some(init) => self.import_global_expression(init)
+        None => ()
+      }
+      self.seen_overrides.add(index)
+      self.view.overrides.push(index)
+    }
+    None => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_global(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
+) -> Unit {
+  if self.seen_globals.contains(index) {
+    return
+  }
+  match self.planner.shader_module.global_variables.items.get(index) {
+    Some(global) => {
+      self.import_type_handle(global.ty)
+      match global.init {
+        Some(init) => self.import_global_expression(init)
+        None => ()
+      }
+      self.seen_globals.add(index)
+      self.view.global_variables.push(index)
+    }
+    None => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_function(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
+) -> Unit {
+  if self.seen_functions.contains(index) ||
+    !self.planner.function_order_should_include(index, self.view.functions) {
+    return
+  }
+  let visiting : Array[Int] = []
+  self.import_function_inner(index, visiting)
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_function_inner(
+  self : WgslIrNagaDerivedModuleBuilder,
+  index : Int,
+  visiting : Array[Int],
+) -> Unit {
+  if self.seen_functions.contains(index) ||
+    visiting.contains(index) ||
+    !self.planner.function_order_should_include(index, self.view.functions) {
+    return
+  }
+  visiting.push(index)
+  match self.planner.shader_module.functions.items.get(index) {
+    Some(function) => {
+      for argument in function.arguments {
+        self.import_type_handle(argument.ty)
+      }
+      match function.result {
+        Some(result) => self.import_type_handle(result.ty)
+        None => ()
+      }
+      for local_var in function.local_variables.items {
+        self.import_type_handle(local_var.ty)
+        match local_var.init {
+          Some(init) =>
+            self.import_function_expression(function, init, visiting)
+          None => ()
+        }
+      }
+      self.import_function_block(function, function.body, visiting)
+      self.seen_functions.add(index)
+      self.view.functions.push(index)
+    }
+    None => ()
+  }
+  visiting.pop() |> ignore
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_global_expression(
+  self : WgslIrNagaDerivedModuleBuilder,
+  handle : Handle,
+) -> Unit {
+  match
+    self.planner.shader_module.global_expressions.items.get(handle.index()) {
+    Some(expression) => self.import_expression(expression, None, [])
+    None => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_function_expression(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function,
+  handle : Handle,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.import_expression(expression, Some(function), visiting_functions)
+    None => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_optional_function_expression(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function,
+  handle : Handle?,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match handle {
+    Some(value) =>
+      self.import_function_expression(function, value, visiting_functions)
+    None => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_function_block(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function,
+  block : Block,
+  visiting_functions : Array[Int],
+) -> Unit {
+  for statement in block.statements {
+    self.import_statement(function, statement, visiting_functions)
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_statement(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function,
+  statement : Statement,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match statement {
+    Emit(range) => {
+      let mut index = range.start.index()
+      while index <= range.end.index() {
+        self.import_function_expression(
+          function,
+          Handle::Handle(index),
+          visiting_functions,
+        )
+        index = index + 1
+      }
+    }
+    Block(nested) =>
+      self.import_function_block(function, nested, visiting_functions)
+    If(condition, accept, reject) => {
+      self.import_function_expression(function, condition, visiting_functions)
+      self.import_function_block(function, accept, visiting_functions)
+      self.import_function_block(function, reject, visiting_functions)
+    }
+    Switch(selector, cases) => {
+      self.import_function_expression(function, selector, visiting_functions)
+      for case in cases {
+        self.import_function_block(function, case.body, visiting_functions)
+      }
+    }
+    Loop(body, continuing, break_if) => {
+      self.import_function_block(function, body, visiting_functions)
+      self.import_function_block(function, continuing, visiting_functions)
+      self.import_optional_function_expression(
+        function, break_if, visiting_functions,
+      )
+    }
+    Return(value) =>
+      self.import_optional_function_expression(
+        function, value, visiting_functions,
+      )
+    ConstAssert(expr) =>
+      self.import_function_expression(function, expr, visiting_functions)
+    Store(pointer, value) => {
+      self.import_function_expression(function, pointer, visiting_functions)
+      self.import_function_expression(function, value, visiting_functions)
+    }
+    ImageStore(image, coordinate, array_index, value) => {
+      self.import_function_expression(function, image, visiting_functions)
+      self.import_function_expression(function, coordinate, visiting_functions)
+      self.import_optional_function_expression(
+        function, array_index, visiting_functions,
+      )
+      self.import_function_expression(function, value, visiting_functions)
+    }
+    Atomic(pointer, _, value, compare) => {
+      self.import_function_expression(function, pointer, visiting_functions)
+      self.import_function_expression(function, value, visiting_functions)
+      self.import_optional_function_expression(
+        function, compare, visiting_functions,
+      )
+    }
+    ImageAtomic(image, coordinate, array_index, _, value) => {
+      self.import_function_expression(function, image, visiting_functions)
+      self.import_function_expression(function, coordinate, visiting_functions)
+      self.import_optional_function_expression(
+        function, array_index, visiting_functions,
+      )
+      self.import_function_expression(function, value, visiting_functions)
+    }
+    WorkGroupUniformLoad(pointer, result) => {
+      self.import_function_expression(function, pointer, visiting_functions)
+      self.import_function_expression(function, result, visiting_functions)
+    }
+    Call(callee, arguments, result) => {
+      for argument in arguments {
+        self.import_function_expression(function, argument, visiting_functions)
+      }
+      self.import_optional_function_expression(
+        function, result, visiting_functions,
+      )
+      self.import_function_inner(callee.index(), visiting_functions)
+    }
+    RayQuery(query, action) => {
+      self.import_function_expression(function, query, visiting_functions)
+      match action {
+        Initialize(a, b) => {
+          self.import_function_expression(function, a, visiting_functions)
+          self.import_function_expression(function, b, visiting_functions)
+        }
+        GenerateIntersection(value) =>
+          self.import_function_expression(function, value, visiting_functions)
+        Proceed(value) =>
+          self.import_function_expression(function, value, visiting_functions)
+        ConfirmIntersection | Terminate => ()
+      }
+    }
+    RayPipelineFunction(TraceRay(a, b, c)) => {
+      self.import_function_expression(function, a, visiting_functions)
+      self.import_function_expression(function, b, visiting_functions)
+      self.import_function_expression(function, c, visiting_functions)
+    }
+    SubgroupBallot(value, result) => {
+      self.import_function_expression(function, value, visiting_functions)
+      self.import_optional_function_expression(
+        function, result, visiting_functions,
+      )
+    }
+    SubgroupGather(_, value, result)
+    | SubgroupCollectiveOperation(_, _, value, result) => {
+      self.import_function_expression(function, value, visiting_functions)
+      self.import_function_expression(function, result, visiting_functions)
+    }
+    CooperativeStore(pointer, data) => {
+      self.import_function_expression(function, pointer, visiting_functions)
+      self.import_cooperative_data(function, data, visiting_functions)
+    }
+    Declare(_)
+    | Break
+    | Continue
+    | ImplicitReturn
+    | Kill
+    | ControlBarrier(_)
+    | MemoryBarrier(_) => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_expression(
+  self : WgslIrNagaDerivedModuleBuilder,
+  expression : Expression,
+  function : Function?,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match expression {
+    Constant(handle) => self.import_constant(handle.index())
+    Override(handle) => self.import_override(handle.index())
+    GlobalVariable(handle) => self.import_global(handle.index())
+    ZeroValue(ty) => self.import_type_handle(ty)
+    Compose(ty, components) => {
+      self.import_type_handle(ty)
+      for component in components {
+        self.import_child_expression(function, component, visiting_functions)
+      }
+    }
+    Access(base, index) | Binary(_, base, index) => {
+      self.import_child_expression(function, base, visiting_functions)
+      self.import_child_expression(function, index, visiting_functions)
+    }
+    AccessIndex(base, _)
+    | Load(base)
+    | Unary(_, base)
+    | As(base, _, _)
+    | Relational(_, base)
+    | ArrayLength(base)
+    | WorkGroupUniformLoad(base)
+    | Splat(_, base)
+    | Swizzle(_, base, _)
+    | Derivative(_, _, base)
+    | AtomicResult(base, _)
+    | WorkGroupUniformLoadResult(base)
+    | RayQueryProceed(base)
+    | RayQueryConfirmIntersection(base)
+    | RayQueryTerminate(base)
+    | RayQueryGetIntersection(base, _) =>
+      self.import_child_expression(function, base, visiting_functions)
+    AddressOf(ty, target) | Bitcast(ty, target) => {
+      self.import_type_handle(ty)
+      self.import_child_expression(function, target, visiting_functions)
+    }
+    AtomicCall(_, arguments) | SubgroupCall(_, arguments) =>
+      for argument in arguments {
+        self.import_child_expression(function, argument, visiting_functions)
+      }
+    FunctionCall(target, arguments) => {
+      for argument in arguments {
+        self.import_child_expression(function, argument, visiting_functions)
+      }
+      self.import_function_inner(target.index(), visiting_functions)
+    }
+    Select(condition, accept, reject) => {
+      self.import_child_expression(function, condition, visiting_functions)
+      self.import_child_expression(function, accept, visiting_functions)
+      self.import_child_expression(function, reject, visiting_functions)
+    }
+    ImageSample(
+      image,
+      sampler,
+      _,
+      coordinate,
+      array_index,
+      offset,
+      level,
+      depth_ref,
+      _
+    ) => {
+      self.import_child_expression(function, image, visiting_functions)
+      self.import_child_expression(function, sampler, visiting_functions)
+      self.import_child_expression(function, coordinate, visiting_functions)
+      self.import_optional_child_expression(
+        function, array_index, visiting_functions,
+      )
+      self.import_optional_child_expression(
+        function, offset, visiting_functions,
+      )
+      self.import_sample_level(function, level, visiting_functions)
+      self.import_optional_child_expression(
+        function, depth_ref, visiting_functions,
+      )
+    }
+    ImageLoad(image, coordinate, array_index, sample, level) => {
+      self.import_child_expression(function, image, visiting_functions)
+      self.import_child_expression(function, coordinate, visiting_functions)
+      self.import_optional_child_expression(
+        function, array_index, visiting_functions,
+      )
+      self.import_optional_child_expression(
+        function, sample, visiting_functions,
+      )
+      self.import_optional_child_expression(function, level, visiting_functions)
+    }
+    ImageQuery(image, query) => {
+      self.import_child_expression(function, image, visiting_functions)
+      match query {
+        Size(level) =>
+          self.import_optional_child_expression(
+            function, level, visiting_functions,
+          )
+        _ => ()
+      }
+    }
+    Math(_, a, b, c, d) => {
+      self.import_child_expression(function, a, visiting_functions)
+      self.import_optional_child_expression(function, b, visiting_functions)
+      self.import_optional_child_expression(function, c, visiting_functions)
+      self.import_optional_child_expression(function, d, visiting_functions)
+    }
+    CallResult(target) =>
+      self.import_function_inner(target.index(), visiting_functions)
+    RayQueryInitialize(query, acceleration, ray_desc) => {
+      self.import_child_expression(function, query, visiting_functions)
+      self.import_child_expression(function, acceleration, visiting_functions)
+      self.import_child_expression(function, ray_desc, visiting_functions)
+    }
+    RayQueryGenerateIntersection(query, intersection_t) => {
+      self.import_child_expression(function, query, visiting_functions)
+      self.import_child_expression(function, intersection_t, visiting_functions)
+    }
+    RayQueryVertexPositions(query, _) =>
+      self.import_child_expression(function, query, visiting_functions)
+    SubgroupOperationResult(handle) =>
+      self.import_child_expression(function, handle, visiting_functions)
+    CooperativeLoad(_, _, _, data) =>
+      self.import_cooperative_data_for_optional_function(
+        function, data, visiting_functions,
+      )
+    CooperativeMultiplyAdd(a, b, c) => {
+      self.import_child_expression(function, a, visiting_functions)
+      self.import_child_expression(function, b, visiting_functions)
+      self.import_child_expression(function, c, visiting_functions)
+    }
+    Literal(_)
+    | FunctionArgument(_)
+    | LocalVariable(_)
+    | RayQueryProceedResult
+    | SubgroupBallotResult => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_child_expression(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function?,
+  handle : Handle,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match function {
+    Some(value) =>
+      self.import_function_expression(value, handle, visiting_functions)
+    None => self.import_global_expression(handle)
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_optional_child_expression(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function?,
+  handle : Handle?,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match handle {
+    Some(value) =>
+      self.import_child_expression(function, value, visiting_functions)
+    None => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_sample_level(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function?,
+  level : SampleLevel,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match level {
+    Exact(handle) | Bias(handle) =>
+      self.import_child_expression(function, handle, visiting_functions)
+    Gradient(x, y) => {
+      self.import_child_expression(function, x, visiting_functions)
+      self.import_child_expression(function, y, visiting_functions)
+    }
+    Auto | Zero => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_cooperative_data(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function,
+  data : CooperativeData,
+  visiting_functions : Array[Int],
+) -> Unit {
+  self.import_function_expression(function, data.pointer, visiting_functions)
+  self.import_function_expression(function, data.stride, visiting_functions)
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_cooperative_data_for_optional_function(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function?,
+  data : CooperativeData,
+  visiting_functions : Array[Int],
+) -> Unit {
+  self.import_child_expression(function, data.pointer, visiting_functions)
+  self.import_child_expression(function, data.stride, visiting_functions)
 }

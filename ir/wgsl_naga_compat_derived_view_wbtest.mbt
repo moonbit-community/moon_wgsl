@@ -61,7 +61,7 @@ test "Naga derived module view follows import arena events before root declarati
   let view = planner.derived_module_view()
   debug_inspect(module_.import_arena_events.length(), content="1")
   debug_inspect(
-    module_.types.items[view.types[0]].name,
+    module_.types.items[view.types[1]].name,
     content="Some(\"ImportedType\")",
   )
   debug_inspect(
@@ -74,6 +74,98 @@ test "Naga derived module view follows import arena events before root declarati
   )
   debug_inspect(
     module_.functions.items[view.functions[0]].name,
+    content="Some(\"imported_fn\")",
+  )
+}
+
+///|
+test "Naga derived module view imports global type dependencies as arena side effects" {
+  let source =
+    #|struct RootType {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct ImportedType {
+    #|  value: u32,
+    #|}
+    #|
+    #|var<private> imported_global: ImportedType;
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    ["imported_global"],
+    WgslIrImportEdgeKind::ItemBinding,
+    ["imported_global"],
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let view = planner.derived_module_view()
+  debug_inspect(
+    module_.types.items[view.types[1]].name,
+    content="Some(\"ImportedType\")",
+  )
+  debug_inspect(
+    module_.global_variables.items[view.global_variables[0]].name,
+    content="Some(\"imported_global\")",
+  )
+}
+
+///|
+test "Naga derived module view imports called functions before imported caller" {
+  let source =
+    #|fn root_fn() -> u32 {
+    #|  return 0u;
+    #|}
+    #|
+    #|fn imported_fn() -> u32 {
+    #|  return helper_fn();
+    #|}
+    #|
+    #|fn helper_fn() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    ["imported_fn"],
+    WgslIrImportEdgeKind::ItemBinding,
+    ["imported_fn"],
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let view = planner.derived_module_view()
+  debug_inspect(
+    module_.functions.items[view.functions[0]].name,
+    content="Some(\"helper_fn\")",
+  )
+  debug_inspect(
+    module_.functions.items[view.functions[1]].name,
     content="Some(\"imported_fn\")",
   )
 }
