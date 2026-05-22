@@ -1282,7 +1282,9 @@ fn WgslIrLowerer::function_pointer_expression_is_var_pointer(
   match function.expressions.items.get(value.index()) {
     Some(LocalVariable(handle)) =>
       match function.local_variables.items.get(handle.index()) {
-        Some(local_variable) => local_variable.kind == Var
+        Some(local_variable) =>
+          local_variable.kind == Var ||
+          self.local_variable_is_handle_value(function, handle)
         None => false
       }
     Some(FunctionArgument(index)) =>

@@ -188,14 +188,18 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
       Some(argument) => Some(argument.ty)
       None => None
     }
-    handles.push(
-      self.lower_function_expression_node_with_expected(
-        flattened[index],
-        function,
-        scope,
-        expected_ty,
-      ),
+    let lowered = self.lower_function_expression_node_with_expected(
+      flattened[index],
+      function,
+      scope,
+      expected_ty,
     )
+    let argument = match expected_ty {
+      Some(ty) if self.lowerer_type_is_pointer(ty) => lowered
+      Some(_) => self.apply_function_load_rule(function, lowered)
+      None => lowered
+    }
+    handles.push(argument)
   }
   handles
 }

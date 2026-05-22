@@ -302,6 +302,59 @@ fn WgslIrLowerer::lower_member_expression(
 }
 
 ///|
+fn WgslIrLowerer::apply_function_load_rule(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Handle {
+  if self.function_expression_is_reference(function, handle) {
+    function.expressions.append(Expression::Load(handle))
+  } else {
+    handle
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_is_reference(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        FunctionArgument(index) =>
+          self.function_argument_is_pointer(function, index)
+        LocalVariable(local_handle) =>
+          match function.local_variables.items.get(local_handle.index()) {
+            Some(local_variable) => local_variable.kind == Var
+            None => false
+          }
+        GlobalVariable(global_handle) =>
+          !self.global_variable_is_handle_value(global_handle)
+        Access(base, _) | AccessIndex(base, _) | Swizzle(_, base, _) =>
+          self.function_expression_is_reference(function, base) ||
+          self.function_expression_has_pointer_type(function, base)
+        Load(_) | AddressOf(_, _) => false
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_has_pointer_type(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match self.function_expression_type(function, handle) {
+    Some(ty) => self.lowerer_type_is_pointer(ty)
+    None => false
+  }
+}
+
+///|
 fn WgslIrLowerer::function_expression_type(
   self : WgslIrLowerer,
   function : Function,

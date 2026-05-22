@@ -754,11 +754,12 @@ fn WgslIrLowerer::lower_function_derivative_call(
       "derivative call expects one argument",
     )
   }
+  let argument = self.lower_function_expression_node(expr, function, scope)
   function.expressions.append(
     Expression::Derivative(
       axis,
       control,
-      self.lower_function_expression_node(expr, function, scope),
+      self.apply_function_load_rule(function, argument),
     ),
   )
 }
@@ -857,17 +858,23 @@ fn WgslIrLowerer::global_variable_is_handle_value(
   handle : Handle,
 ) -> Bool {
   match self.shader_module.global_variables.items.get(handle.index()) {
-    Some(global) =>
-      match self.shader_module.types.get(global.ty) {
-        Some(type_) =>
-          match type_.inner {
-            Image(_, _, _)
-            | Sampler(_)
-            | AccelerationStructure(_)
-            | RayQuery(_) => true
-            _ => false
-          }
-        None => false
+    Some(global) => self.type_is_global_handle_value(global.ty)
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::type_is_global_handle_value(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.types.get(handle) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, _, _) | Sampler(_) | AccelerationStructure(_) | RayQuery(_) =>
+          true
+        BindingArray(element, _) => self.type_is_global_handle_value(element)
+        _ => false
       }
     None => false
   }
@@ -1069,11 +1076,10 @@ fn WgslIrLowerer::lower_function_expression_arguments_with_expected(
 ) -> Array[Handle] raise WgslIrLowerError {
   let handles : Array[Handle] = []
   for argument in wgsl_ir_flatten_expression_arguments(arguments) {
-    handles.push(
-      self.lower_function_expression_node_with_expected(
-        argument, function, scope, expected_ty,
-      ),
+    let lowered = self.lower_function_expression_node_with_expected(
+      argument, function, scope, expected_ty,
     )
+    handles.push(self.apply_function_load_rule(function, lowered))
   }
   handles
 }
@@ -1178,7 +1184,8 @@ fn WgslIrLowerer::lower_function_math_call(
   }
   let handles : Array[Handle] = []
   for argument in arguments {
-    handles.push(self.lower_function_expression_node(argument, function, scope))
+    let lowered = self.lower_function_expression_node(argument, function, scope)
+    handles.push(self.apply_function_load_rule(function, lowered))
   }
   self.contextualize_homogeneous_math_arguments(
     math_function, function, handles,
@@ -1291,10 +1298,11 @@ fn WgslIrLowerer::lower_function_relational_call(
       "\{wgsl_ir_relational_function_name(relational_function)} expects one argument",
     )
   }
+  let argument = self.lower_function_expression_node(expr, function, scope)
   function.expressions.append(
     Expression::Relational(
       relational_function,
-      self.lower_function_expression_node(expr, function, scope),
+      self.apply_function_load_rule(function, argument),
     ),
   )
 }

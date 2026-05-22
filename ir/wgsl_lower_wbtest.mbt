@@ -464,8 +464,8 @@ test "WGSL AST lowerer indexes addressable bindings without preloading base arra
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e2: u32 = values[0];"), content="true")
-  debug_inspect(emitted.contains("return f32(_e2);"), content="true")
+  debug_inspect(emitted.contains("let _e3: u32 = values[0];"), content="true")
+  debug_inspect(emitted.contains("return f32(_e3);"), content="true")
 }
 
 ///|
