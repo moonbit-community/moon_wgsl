@@ -952,7 +952,8 @@ test "IR lowerer emits while as loop with leading condition guard" {
     },
   )
   debug_inspect(emitted.contains("loop {"), content="true")
-  debug_inspect(emitted.contains("if (x > 1u) {"), content="true")
+  debug_inspect(emitted.contains(": u32 = x;\n        if (_e"), content="true")
+  debug_inspect(emitted.contains(" > 1u) {"), content="true")
   debug_inspect(
     emitted.contains("} else {\n            break;"),
     content="true",

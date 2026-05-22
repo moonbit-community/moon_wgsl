@@ -559,6 +559,31 @@ test "naga-oil writer excludes inline operands before call-result temp slots" {
 }
 
 ///|
+test "naga-oil writer materializes mutable local loads in control-flow conditions" {
+  let source =
+    #|fn sample(value: f32) -> f32 {
+    #|  var b = value;
+    #|  if (b == 0.0) {
+    #|    b = 1.0;
+    #|  }
+    #|  if (1.0 < b) {
+    #|    b = b + 1.0;
+    #|  }
+    #|  return b;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(": f32 = b;"), content="true")
+  debug_inspect(emitted.contains("if (_e"), content="true")
+  debug_inspect(emitted.contains("if (b == 0f)"), content="false")
+  debug_inspect(emitted.contains("if (1f < b)"), content="false")
+}
+
+///|
 test "naga-oil writer absorbs projected call-result argument slots" {
   let source =
     #|fn local_to_world(vertex_position: vec4<f32>) -> vec4<f32> {
