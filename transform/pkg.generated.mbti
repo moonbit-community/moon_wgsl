@@ -10,6 +10,10 @@ import {
 // Values
 pub fn apply_wgsl_virtual_overrides_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise WgslVirtualOverrideError
 
+pub fn collect_wgsl_naga_dependency_ordered_item_origins_strict(String) -> Array[WgslModuleItemOrigin] raise @parser.WgslParseError
+
+pub fn collect_wgsl_naga_dependency_pulled_item_origins_strict(String) -> Array[WgslModuleItemOrigin] raise @parser.WgslParseError
+
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
 
 pub fn collect_wgsl_source_catalog_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError

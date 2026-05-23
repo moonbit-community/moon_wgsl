@@ -398,6 +398,60 @@ fn wgsl_declaration_graph_visit_import_order(
 }
 
 ///|
+fn wgsl_declaration_graph_visit_naga_dependency_order(
+  declaration_blocks : Array[WgslGraphBlock],
+  declaration_names : @set.Set[String],
+  name : String,
+  visiting : @set.Set[String],
+  emitted : @set.Set[String],
+  ordered : Array[String],
+) -> Unit {
+  if name == "" || emitted.contains(name) || visiting.contains(name) {
+    return
+  }
+  guard wgsl_declaration_graph_block_named(declaration_blocks, name)
+    is Some(block) else {
+    return
+  }
+  visiting.add(name)
+  let dependencies = wgsl_graph_block_dependencies_in_ast_order(
+    block, declaration_blocks, declaration_names,
+  )
+  for dependency in dependencies {
+    wgsl_declaration_graph_visit_naga_dependency_order(
+      declaration_blocks, declaration_names, dependency, visiting, emitted, ordered,
+    )
+  }
+  wgsl_graph_order_push_unique(ordered, emitted, name)
+  ignore(visiting.remove(name))
+}
+
+///|
+fn wgsl_declaration_graph_naga_dependency_order(
+  declaration_blocks : Array[WgslGraphBlock],
+) -> Array[String] {
+  let ordered : Array[String] = []
+  let emitted : @set.Set[String] = @set.Set([])
+  let visiting : @set.Set[String] = @set.Set([])
+  let declaration_names : @set.Set[String] = @set.Set([])
+  for block in declaration_blocks {
+    let name = block.name()
+    if name != "" {
+      declaration_names.add(name)
+    }
+  }
+  for block in declaration_blocks {
+    let name = block.name()
+    if name != "" {
+      wgsl_declaration_graph_visit_naga_dependency_order(
+        declaration_blocks, declaration_names, name, visiting, emitted, ordered,
+      )
+    }
+  }
+  ordered
+}
+
+///|
 fn wgsl_declaration_graph_reachable_import_order(
   declaration_blocks : Array[WgslGraphBlock],
   requested_items : Array[String],
@@ -588,6 +642,123 @@ fn extract_wgsl_module_item_extraction_from_graph(
     }
   }
   WgslModuleItemExtraction::{ source: out, origins }
+}
+
+///|
+pub fn collect_wgsl_naga_dependency_ordered_item_origins_strict(
+  source : String,
+) -> Array[WgslModuleItemOrigin] raise WgslParseError {
+  let graph = build_wgsl_declaration_graph_strict(source)
+  let origins : Array[WgslModuleItemOrigin] = []
+  let ordered_names = wgsl_declaration_graph_naga_dependency_order(
+    graph.declaration_blocks,
+  )
+  for name in ordered_names {
+    guard wgsl_declaration_graph_block_named(graph.declaration_blocks, name)
+      is Some(block) else {
+      continue
+    }
+    if block.is_symbol_origin() {
+      origins.push(WgslModuleItemOrigin::{
+        name: block.name(),
+        kind: block.source_origin_kind(),
+        source_start: block.start,
+        source_end: block.end,
+      })
+    }
+  }
+  origins
+}
+
+///|
+pub fn collect_wgsl_naga_dependency_pulled_item_origins_strict(
+  source : String,
+) -> Array[WgslModuleItemOrigin] raise WgslParseError {
+  let graph = build_wgsl_declaration_graph_strict(source)
+  let declaration_names : @set.Set[String] = @set.Set([])
+  for block in graph.declaration_blocks {
+    let name = block.name()
+    if name != "" {
+      declaration_names.add(name)
+    }
+  }
+  let pulled : Map[String, WgslModuleItemOrigin] = Map([])
+  for block in graph.declaration_blocks {
+    let dependencies = wgsl_graph_block_dependencies_in_ast_order(
+      block,
+      graph.declaration_blocks,
+      declaration_names,
+    )
+    for dependency in dependencies {
+      guard wgsl_declaration_graph_block_named(
+          graph.declaration_blocks,
+          dependency,
+        )
+        is Some(dependency_block) else {
+        continue
+      }
+      if dependency_block.start <= block.start {
+        continue
+      }
+      wgsl_declaration_graph_mark_dependency_pull(
+        graph.declaration_blocks,
+        declaration_names,
+        dependency,
+        block.start,
+        block.end,
+        @set.Set([]),
+        pulled,
+      )
+    }
+  }
+  let origins : Array[WgslModuleItemOrigin] = []
+  for block in graph.declaration_blocks {
+    match pulled.get(block.name()) {
+      Some(origin) => origins.push(origin)
+      None => ()
+    }
+  }
+  origins
+}
+
+///|
+fn wgsl_declaration_graph_mark_dependency_pull(
+  declaration_blocks : Array[WgslGraphBlock],
+  declaration_names : @set.Set[String],
+  name : String,
+  pull_start : Int,
+  pull_end : Int,
+  visiting : @set.Set[String],
+  pulled : Map[String, WgslModuleItemOrigin],
+) -> Unit {
+  if name == "" || visiting.contains(name) {
+    return
+  }
+  guard wgsl_declaration_graph_block_named(declaration_blocks, name)
+    is Some(block) else {
+    return
+  }
+  visiting.add(name)
+  let dependencies = wgsl_graph_block_dependencies_in_ast_order(
+    block, declaration_blocks, declaration_names,
+  )
+  for dependency in dependencies {
+    wgsl_declaration_graph_mark_dependency_pull(
+      declaration_blocks, declaration_names, dependency, pull_start, pull_end, visiting,
+      pulled,
+    )
+  }
+  match pulled.get(name) {
+    Some(existing) if existing.source_start() <= pull_start => ()
+    _ =>
+      pulled.set(name, WgslModuleItemOrigin::{
+        name,
+        kind: block.source_origin_kind(),
+        source_start: pull_start,
+        source_end: pull_end,
+      })
+  }
+  ignore(visiting.remove(name))
 }
 
 ///|

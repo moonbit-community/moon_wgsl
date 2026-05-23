@@ -61,6 +61,8 @@ pub struct WgslIrImportArenaSymbol {
   priv kind : WgslIrDeclarationKind
   priv source_symbol_name : String
   priv generated_symbol_name : String
+  priv source_decl_rank : Int
+  priv source_order_rank : Int
 } derive(Eq, Debug)
 
 ///|
@@ -313,8 +315,16 @@ pub fn WgslIrImportArenaSymbol::WgslIrImportArenaSymbol(
   kind : WgslIrDeclarationKind,
   source_symbol_name : String,
   generated_symbol_name : String,
+  source_decl_rank? : Int = -1,
+  source_order_rank? : Int = -1,
 ) -> WgslIrImportArenaSymbol {
-  WgslIrImportArenaSymbol::{ kind, source_symbol_name, generated_symbol_name }
+  WgslIrImportArenaSymbol::{
+    kind,
+    source_symbol_name,
+    generated_symbol_name,
+    source_decl_rank,
+    source_order_rank,
+  }
 }
 
 ///|
@@ -336,6 +346,20 @@ pub fn WgslIrImportArenaSymbol::generated_symbol_name(
   self : WgslIrImportArenaSymbol,
 ) -> String {
   self.generated_symbol_name
+}
+
+///|
+pub fn WgslIrImportArenaSymbol::source_order_rank(
+  self : WgslIrImportArenaSymbol,
+) -> Int {
+  self.source_order_rank
+}
+
+///|
+pub fn WgslIrImportArenaSymbol::source_decl_rank(
+  self : WgslIrImportArenaSymbol,
+) -> Int {
+  self.source_decl_rank
 }
 
 ///|

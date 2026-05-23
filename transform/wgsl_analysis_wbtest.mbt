@@ -575,3 +575,57 @@ test "analysis reachability respects function local shadowing" {
   names.sort()
   debug_inspect(names.join(","), content="\"entry\"")
 }
+
+///|
+test "naga dependency order records full module function arena side effects" {
+  let source =
+    #|fn earlier_unused() -> u32 {
+    #|  return late_helper();
+    #|}
+    #|
+    #|fn selected_a() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+    #|fn selected_b() -> u32 {
+    #|  return 2u;
+    #|}
+    #|
+    #|fn late_helper() -> u32 {
+    #|  return 3u;
+    #|}
+    #|
+  let origins = collect_wgsl_naga_dependency_ordered_item_origins_strict(source) catch {
+    _ => abort("expected valid WGSL parse")
+  }
+  let names : Array[String] = []
+  for origin in origins {
+    names.push(origin.name())
+  }
+  debug_inspect(
+    names.join(","),
+    content="\"late_helper,earlier_unused,selected_a,selected_b\"",
+  )
+}
+
+///|
+test "naga dependency pull records earlier declarations that pull later items" {
+  let source =
+    #|fn earlier_unused() -> u32 {
+    #|  return late_helper();
+    #|}
+    #|
+    #|fn selected_a() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+    #|fn late_helper() -> u32 {
+    #|  return 3u;
+    #|}
+    #|
+  let origins = collect_wgsl_naga_dependency_pulled_item_origins_strict(source) catch {
+    _ => abort("expected valid WGSL parse")
+  }
+  debug_inspect(origins.length(), content="1")
+  debug_inspect(origins[0].name(), content="\"late_helper\"")
+}

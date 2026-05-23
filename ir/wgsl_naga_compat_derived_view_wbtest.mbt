@@ -187,6 +187,76 @@ test "Naga derived module view imports called functions before imported caller" 
 }
 
 ///|
+test "Naga derived module view sorts imported functions by source arena rank" {
+  let source =
+    #|fn selected_a() -> u32 {
+    #|  return 1u;
+    #|}
+    #|
+    #|fn selected_b() -> u32 {
+    #|  return 2u;
+    #|}
+    #|
+    #|fn late_helper() -> u32 {
+    #|  return 3u;
+    #|}
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    ["selected_a", "selected_b", "late_helper"],
+    WgslIrImportEdgeKind::ItemBinding,
+    [
+      WgslIrImportArenaSymbol(
+        Function,
+        "selected_a",
+        "selected_a",
+        source_order_rank=2,
+      ),
+      WgslIrImportArenaSymbol(
+        Function,
+        "selected_b",
+        "selected_b",
+        source_order_rank=3,
+      ),
+      WgslIrImportArenaSymbol(
+        Function,
+        "late_helper",
+        "late_helper",
+        source_order_rank=0,
+      ),
+    ],
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let view = planner.derived_module_view()
+  debug_inspect(
+    module_.functions.items[view.functions[0]].name,
+    content="Some(\"late_helper\")",
+  )
+  debug_inspect(
+    module_.functions.items[view.functions[1]].name,
+    content="Some(\"selected_a\")",
+  )
+  debug_inspect(
+    module_.functions.items[view.functions[2]].name,
+    content="Some(\"selected_b\")",
+  )
+}
+
+///|
 test "Naga derived module view consumes typed arena symbol records" {
   let source =
     #|struct SharedName {

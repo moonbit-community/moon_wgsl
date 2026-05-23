@@ -4,6 +4,7 @@ using @transform {
   type WgslEmittedDeclaration,
   type WgslModuleItemExtraction,
   collect_wgsl_named_declarations_strict,
+  collect_wgsl_naga_dependency_pulled_item_origins_strict,
   collect_wgsl_source_catalog_declarations_strict,
   collect_wgsl_virtual_override_targets_strict,
   extract_wgsl_module_item_origins_strict,

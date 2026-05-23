@@ -13,6 +13,30 @@ fn wgsl_source_origin_kind_to_ir_declaration_kind(
 }
 
 ///|
+fn wgsl_compare_import_arena_symbols_by_dependency_pull(
+  lhs : @ir.WgslIrImportArenaSymbol,
+  rhs : @ir.WgslIrImportArenaSymbol,
+) -> Int {
+  let lhs_pull = lhs.source_order_rank()
+  let rhs_pull = rhs.source_order_rank()
+  if lhs_pull >= 0 && rhs_pull >= 0 && lhs_pull != rhs_pull {
+    return lhs_pull - rhs_pull
+  }
+  let lhs_decl = lhs.source_decl_rank()
+  let rhs_decl = rhs.source_decl_rank()
+  if lhs_pull >= 0 && rhs_pull >= 0 && lhs_decl != rhs_decl {
+    return lhs_decl - rhs_decl
+  }
+  if lhs_pull >= 0 && rhs_decl >= 0 && lhs_pull != rhs_decl {
+    return lhs_pull - rhs_decl
+  }
+  if rhs_pull >= 0 && lhs_decl >= 0 && lhs_decl != rhs_pull {
+    return lhs_decl - rhs_pull
+  }
+  0
+}
+
+///|
 fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
@@ -169,6 +193,40 @@ fn Composer::compose_wgsl_import_requests(
     let emitted_selected_items : Array[String] = []
     let raw_source = self.load_wgsl_source_required_raw(request.rel_path)
     let origin_start_index = session.symbols.source_origins.length()
+    let request_import_defs = self.active_compose_defs_for_rel_path(
+      request.rel_path,
+      session,
+      Some(importer_defs),
+    )
+    let request_active_source = apply_wgsl_template_consts(
+      apply_wgsl_ifdefs_strict_for_compose(raw_source, request_import_defs),
+      request_import_defs.value_defines,
+    )
+    let naga_pull_ranks : Map[String, Int] = Map([])
+    let naga_pulled_origins = collect_wgsl_naga_dependency_pulled_item_origins_strict(
+      request_active_source,
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    for origin in naga_pulled_origins {
+      if origin.name() != "" && !naga_pull_ranks.contains(origin.name()) {
+        naga_pull_ranks.set(origin.name(), origin.source_start())
+      }
+    }
+    let source_decl_ranks : Map[String, Int] = Map([])
+    let source_decl_origins = extract_wgsl_module_item_origins_strict(
+      request_active_source,
+      [],
+    ) catch {
+      error => raise composer_error_from_wgsl_parse_error(error)
+    }
+    let source_decl_origin_items = source_decl_origins.origins()
+    for i in 0..<source_decl_origin_items.length() {
+      let origin = source_decl_origin_items[i]
+      if origin.name() != "" && !source_decl_ranks.contains(origin.name()) {
+        source_decl_ranks.set(origin.name(), origin.source_start())
+      }
+    }
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
       WgslComposeEmitter(self, session).emit_source_with_path(
@@ -182,11 +240,7 @@ fn Composer::compose_wgsl_import_requests(
         true,
       )
     } else {
-      let import_defs = self.active_compose_defs_for_rel_path(
-        request.rel_path,
-        session,
-        Some(importer_defs),
-      )
+      let import_defs = request_import_defs
       merge_wgsl_source_local_shader_defs(import_defs, raw_source)
       let prepared = prepare_wgsl_compose_source(
         raw_source, session, import_defs,
@@ -308,23 +362,49 @@ fn Composer::compose_wgsl_import_requests(
     } else {
       wgsl_import_request_copy_items(emission_requested_items)
     }
+    let emitted_source_starts : @set.Set[Int] = @set.Set([])
+    for i in origin_start_index..<session.symbols.source_origins.length() {
+      let origin = session.symbols.source_origins[i]
+      if origin.rel_path == request.rel_path {
+        emitted_source_starts.add(origin.source_start)
+      }
+    }
     for i in origin_start_index..<session.symbols.source_origins.length() {
       let origin = session.symbols.source_origins[i]
       if origin.rel_path == request.rel_path &&
         origin.generated_symbol_name != "" {
         match wgsl_source_origin_kind_to_ir_declaration_kind(origin.kind) {
-          Some(kind) =>
+          Some(kind) => {
+            let source_decl_rank = source_decl_ranks
+              .get(origin.source_symbol_name)
+              .unwrap_or(-1)
+            let source_pull_rank = naga_pull_ranks
+              .get(origin.source_symbol_name)
+              .unwrap_or(-1)
+            let source_order_rank = if emitted_source_starts.contains(
+                source_pull_rank,
+              ) {
+              -1
+            } else {
+              source_pull_rank
+            }
             event_generated_symbols.push(
               @ir.WgslIrImportArenaSymbol(
                 kind,
                 origin.source_symbol_name,
                 origin.generated_symbol_name,
+                source_decl_rank~,
+                source_order_rank~,
               ),
             )
+          }
           None => ()
         }
       }
     }
+    wgsl_sort_import_arena_function_symbols_by_dependency_pull(
+      event_generated_symbols,
+    )
     let event_kind = if request.import_full_module {
       if request.alias_name == "" {
         @ir.WgslIrImportEdgeKind::FullModule
@@ -470,6 +550,26 @@ fn Composer::compose_wgsl_import_requests(
     }
   }
   merged
+}
+
+///|
+fn wgsl_sort_import_arena_function_symbols_by_dependency_pull(
+  symbols : Array[@ir.WgslIrImportArenaSymbol],
+) -> Unit {
+  let functions : Array[@ir.WgslIrImportArenaSymbol] = []
+  for symbol in symbols {
+    if symbol.kind() == @ir.WgslIrDeclarationKind::Function {
+      functions.push(symbol)
+    }
+  }
+  functions.sort_by(wgsl_compare_import_arena_symbols_by_dependency_pull)
+  let mut next_function = 0
+  for i in 0..<symbols.length() {
+    if symbols[i].kind() == @ir.WgslIrDeclarationKind::Function {
+      symbols[i] = functions[next_function]
+      next_function = next_function + 1
+    }
+  }
 }
 
 ///|

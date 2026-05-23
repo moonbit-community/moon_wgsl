@@ -94,6 +94,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_event_symbols_by_kind(
   item_names : Array[String]?,
   kind : WgslIrDeclarationKind,
 ) -> Unit {
+  let selected_symbols : Array[WgslIrImportArenaSymbol] = []
   for symbol in symbols {
     if symbol.kind() != kind {
       continue
@@ -105,8 +106,38 @@ fn WgslIrNagaDerivedModuleBuilder::import_event_symbols_by_kind(
         }
       None => ()
     }
+    selected_symbols.push(symbol)
+  }
+  if kind == Function {
+    selected_symbols.sort_by(wgsl_ir_naga_compare_import_arena_symbols)
+  }
+  for symbol in selected_symbols {
     self.import_symbol(symbol)
   }
+}
+
+///|
+fn wgsl_ir_naga_compare_import_arena_symbols(
+  lhs : WgslIrImportArenaSymbol,
+  rhs : WgslIrImportArenaSymbol,
+) -> Int {
+  let lhs_rank = lhs.source_order_rank()
+  let rhs_rank = rhs.source_order_rank()
+  if lhs_rank >= 0 && rhs_rank >= 0 && lhs_rank != rhs_rank {
+    return lhs_rank - rhs_rank
+  }
+  let lhs_decl_rank = lhs.source_decl_rank()
+  let rhs_decl_rank = rhs.source_decl_rank()
+  if lhs_rank >= 0 && rhs_rank >= 0 && lhs_decl_rank != rhs_decl_rank {
+    return lhs_decl_rank - rhs_decl_rank
+  }
+  if lhs_rank >= 0 && rhs_decl_rank >= 0 && lhs_rank != rhs_decl_rank {
+    return lhs_rank - rhs_decl_rank
+  }
+  if rhs_rank >= 0 && lhs_decl_rank >= 0 && lhs_decl_rank != rhs_rank {
+    return lhs_decl_rank - rhs_rank
+  }
+  0
 }
 
 ///|
