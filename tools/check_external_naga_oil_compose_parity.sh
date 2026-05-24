@@ -6,7 +6,6 @@ cd "$repo_root"
 
 manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_MANIFEST:-testdata/external_naga_oil_compose_parity.tsv}"
 oracle_blocked_manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_ORACLE_BLOCKED_MANIFEST:-testdata/external_naga_oil_compose_oracle_blocked.tsv}"
-writer_drift_manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_WRITER_DRIFT_MANIFEST:-testdata/external_naga_oil_compose_writer_drift.tsv}"
 byte_drift_manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_BYTE_DRIFT_MANIFEST:-testdata/external_naga_oil_compose_byte_drift.tsv}"
 repo_manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifest.tsv}"
 profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
@@ -76,12 +75,10 @@ validate_manifest_schemas() {
   local parity_keys="$tmpdir/parity.keys"
   local compose_source_keys="$tmpdir/compose-source.keys"
   local oracle_blocked_keys="$tmpdir/oracle-blocked.keys"
-  local writer_drift_keys="$tmpdir/writer-drift.keys"
   local byte_drift_keys="$tmpdir/byte-drift.keys"
   local repo_ids="$tmpdir/repo.ids"
   local duplicate_keys
   local duplicate_oracle_blocked_keys
-  local duplicate_writer_drift_keys
   local duplicate_byte_drift_keys
   local duplicate_repo_ids
   awk -F '\t' '
@@ -464,7 +461,6 @@ byte_drift_count=0
 oracle_blocked_actual="$tmpdir/oracle-blocked.actual"
 oracle_blocked_expected="$tmpdir/oracle-blocked.expected"
 writer_drift_actual="$tmpdir/writer-drift.actual"
-writer_drift_expected="$tmpdir/writer-drift.expected"
 byte_drift_actual="$tmpdir/byte-drift.actual"
 byte_drift_expected="$tmpdir/byte-drift.expected"
 : > "$oracle_blocked_actual"
