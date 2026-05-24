@@ -562,13 +562,17 @@ test "WGSL AST lowerer uses texture type to lower advanced sampling arguments" {
   )
   debug_inspect(emitted.contains("textureGather(1, tex, samp"), content="true")
   debug_inspect(
-    emitted.contains("textureGather(0, depth_tex, samp"),
+    emitted.contains("textureGather(depth_tex, samp"),
     content="true",
   )
   debug_inspect(
-    emitted.contains("textureGather(0, depth_tex, samp") &&
+    emitted.contains("textureGather(depth_tex, samp") &&
     emitted.contains("vec2<i32>(1i, 1i)"),
     content="true",
+  )
+  debug_inspect(
+    emitted.contains("textureGather(0, depth_tex, samp"),
+    content="false",
   )
   debug_inspect(
     emitted.contains("textureGatherCompare(depth_arr, cmp_samp"),

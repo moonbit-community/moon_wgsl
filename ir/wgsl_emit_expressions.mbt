@@ -1089,7 +1089,7 @@ fn WgslIrEmitter::image_gather_expression(
   }
   let out = StringBuilder::new()
   out.write_string("\{callee}(")
-  if depth_ref == None {
+  if depth_ref == None && !self.image_expression_is_depth(function, image) {
     out.write_string("\{wgsl_ir_gather_component_index(component)}, ")
   }
   out.write_string(
@@ -1118,6 +1118,26 @@ fn WgslIrEmitter::image_gather_expression(
   }
   out.write_string(")")
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::image_expression_is_depth(
+  self : WgslIrEmitter,
+  function : Function?,
+  image : Handle,
+) -> Bool {
+  match self.expression_type(function, image) {
+    Some(ty) =>
+      match self.shader_module.types.get(ty) {
+        Some(type_) =>
+          match type_.inner {
+            Image(_, _, Depth(_)) => true
+            _ => false
+          }
+        None => false
+      }
+    None => false
+  }
 }
 
 ///|
