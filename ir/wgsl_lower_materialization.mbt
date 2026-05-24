@@ -1130,7 +1130,8 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
     | Some(Access(_, _))
     | Some(AccessIndex(_, _))
     | Some(Swizzle(_, _, _)) =>
-      self.function_expression_reads_global_binding(function, value)
+      self.function_expression_reads_global_binding(function, value) ||
+      self.function_expression_reads_var_pointer_load(function, value)
     _ => false
   }
   should_materialize &&

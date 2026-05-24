@@ -503,6 +503,27 @@ test "naga-oil writer materializes mutable local rhs for projected local store" 
 }
 
 ///|
+test "naga-oil writer materializes mutable local rhs before local store" {
+  let source =
+    #|fn copy_local(a: bool) -> f32 {
+    #|  var h: f32 = 0.0;
+    #|  var g: f32 = 1.0;
+    #|  if a {
+    #|    h = g;
+    #|  }
+    #|  return h;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(": f32 = g;\n        h = _e"), content="true")
+  debug_inspect(emitted.contains("h = g;"), content="false")
+}
+
+///|
 test "naga-oil writer materializes mutable store pointer index" {
   let source =
     #|struct Output {
