@@ -1061,6 +1061,11 @@ if ! rg -n 'diff -u "\$byte_drift_expected" "\$byte_drift_actual"' tools/check_e
   fail "external naga-oil compose parity byte drift manifest must be exact-gated against observed byte drift rows"
 fi
 
+if ! rg -n 'rm -rf "\$failure_dir"' tools/check_external_naga_oil_compose_parity.sh >/dev/null ||
+   ! rg -n 'cp "\$byte_diff" "\$failure_dir/diffs/\$label\.byte\.diff"' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
+  fail "external naga-oil compose parity must rebuild current byte-drift artifacts in both strict and known-drift modes"
+fi
+
 if [[ ! -f tools/naga_oil_oracle/src/bin/wgsl_writer_fingerprint.rs ]]; then
   fail "external naga-oil compose parity must own a writer/order/name fingerprint tool"
 fi

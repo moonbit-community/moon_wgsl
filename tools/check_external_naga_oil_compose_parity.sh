@@ -466,10 +466,8 @@ byte_drift_expected="$tmpdir/byte-drift.expected"
 : > "$oracle_blocked_actual"
 : > "$writer_drift_actual"
 : > "$byte_drift_actual"
-if [[ "$allow_known_drift" != "1" ]]; then
-  rm -rf "$failure_dir"
-  mkdir -p "$failure_dir/diffs"
-fi
+rm -rf "$failure_dir"
+mkdir -p "$failure_dir/diffs"
 cached_repo_id=""
 cached_checkout=""
 cached_repo=""
@@ -551,9 +549,7 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   writer_diff="$tmpdir/$label.writer.diff"
   if writer_hash="$(diff_hash "$oracle_writer_fingerprint" "$moon_writer_fingerprint" "$writer_diff")"; then
     printf '%s\t%s\t%s\n' "$id" "$rel_path" "$writer_hash" >> "$writer_drift_actual"
-    if [[ "$allow_known_drift" != "1" ]]; then
-      cp "$writer_diff" "$failure_dir/diffs/$label.writer.diff"
-    fi
+    cp "$writer_diff" "$failure_dir/diffs/$label.writer.diff"
     writer_drift_count=$((writer_drift_count + 1))
   else
     writer_exact_count=$((writer_exact_count + 1))
@@ -561,9 +557,7 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   byte_diff="$tmpdir/$label.byte.diff"
   if byte_hash="$(diff_hash "$oracle_output" "$moon_output" "$byte_diff")"; then
     printf '%s\t%s\t%s\n' "$id" "$rel_path" "$byte_hash" >> "$byte_drift_actual"
-    if [[ "$allow_known_drift" != "1" ]]; then
-      cp "$byte_diff" "$failure_dir/diffs/$label.byte.diff"
-    fi
+    cp "$byte_diff" "$failure_dir/diffs/$label.byte.diff"
     byte_drift_count=$((byte_drift_count + 1))
   else
     byte_exact_count=$((byte_exact_count + 1))
@@ -586,13 +580,18 @@ if ! diff -u "$oracle_blocked_expected" "$oracle_blocked_actual" >"$tmpdir/oracl
 fi
 sort -o "$writer_drift_actual" "$writer_drift_actual"
 sort -o "$byte_drift_actual" "$byte_drift_actual"
+writer_failure_report="$failure_dir/writer_failures.tsv"
+byte_failure_report="$failure_dir/byte_failures.tsv"
+{
+  printf 'id\trel_path\thash\tclass\treason\n'
+  awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\twriter-fingerprint-drift\tstrict-byte-parity-failure" }' "$writer_drift_actual"
+} > "$writer_failure_report"
+{
+  printf 'id\trel_path\thash\tclass\treason\n'
+  awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\tbyte-output-drift\tstrict-byte-parity-failure" }' "$byte_drift_actual"
+} > "$byte_failure_report"
 
 if [[ -s "$writer_drift_actual" ]]; then
-  writer_failure_report="$failure_dir/writer_failures.tsv"
-  {
-    printf 'id\trel_path\thash\tclass\treason\n'
-    awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\twriter-fingerprint-drift\tstrict-byte-parity-failure" }' "$writer_drift_actual"
-  } > "$writer_failure_report"
   echo "external naga-oil writer/order/name parity regressed" >&2
   echo "writer/order/name drift is no longer allowlisted; fix WGSL-283 structurally instead of adding manifest rows" >&2
   sed -n '1,120p' "$writer_failure_report" >&2
@@ -618,16 +617,6 @@ if [[ "$allow_known_drift" == "1" ]]; then
 fi
 
 if ((writer_drift_count != 0 || byte_drift_count != 0)); then
-  writer_failure_report="$failure_dir/writer_failures.tsv"
-  byte_failure_report="$failure_dir/byte_failures.tsv"
-  {
-    printf 'id\trel_path\thash\tclass\treason\n'
-    awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\twriter-fingerprint-drift\tstrict-byte-parity-failure" }' "$writer_drift_actual"
-  } > "$writer_failure_report"
-  {
-    printf 'id\trel_path\thash\tclass\treason\n'
-    awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\tbyte-output-drift\tstrict-byte-parity-failure" }' "$byte_drift_actual"
-  } > "$byte_failure_report"
   echo "external naga-oil compose strict byte parity failed" >&2
   echo "writer/order/name failures: $writer_drift_count" >&2
   sed -n '1,80p' "$writer_failure_report" >&2
