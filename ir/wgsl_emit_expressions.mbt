@@ -207,7 +207,10 @@ fn WgslIrEmitter::emit_expression(
     Load(pointer) => self.load_expression(function, pointer)
     AddressOf(_, target) =>
       match function {
-        Some(func) => "&\{self.function_pointer_expression(func, target)}"
+        Some(func) =>
+          self.options.address_of_text(
+            self.function_pointer_expression(func, target),
+          )
         None =>
           raise WgslIrEmitError::Unsupported("global address-of expression")
       }
@@ -999,7 +1002,9 @@ fn WgslIrEmitter::pointer_expression(
   if self.expression_is_pointer(function, pointer) {
     self.required_function_expression(function, pointer)
   } else {
-    "&\{self.required_function_expression(function, pointer)}"
+    self.options.address_of_text(
+      self.required_function_expression(function, pointer),
+    )
   }
 }
 

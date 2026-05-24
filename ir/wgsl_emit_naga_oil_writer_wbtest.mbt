@@ -658,3 +658,30 @@ test "naga-oil writer absorbs projected call-result argument slots" {
   )
   debug_inspect(emitted.contains("let _e5: vec4<f32>"), content="false")
 }
+
+///|
+test "naga-oil writer parenthesizes address-of expressions" {
+  let source =
+    #|fn read(value: ptr<function, f32>) -> f32 {
+    #|  return *value;
+    #|}
+    #|
+    #|fn f() -> f32 {
+    #|  var x = 1.0;
+    #|  let p: ptr<function, f32> = &x;
+    #|  return read(&x) + read(p);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let p: ptr<function, f32> = (&x);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("read((&x))"), content="true")
+  debug_inspect(emitted.contains(" = &x;"), content="false")
+  debug_inspect(emitted.contains("read(&x)"), content="false")
+}

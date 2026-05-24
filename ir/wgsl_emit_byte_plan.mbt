@@ -73,6 +73,12 @@ priv enum WgslIrPointerDereferenceBytePolicy {
 }
 
 ///|
+priv enum WgslIrAddressOfBytePolicy {
+  PrefixAddressOf
+  ParenthesizedAddressOf
+}
+
+///|
 priv struct WgslIrWriterBytePlan {
   source_directives : WgslIrSourceDirectiveBytePolicy
   trailing_blank : WgslIrTrailingBlankBytePolicy
@@ -84,6 +90,7 @@ priv struct WgslIrWriterBytePlan {
   entry_point_attribute_line : WgslIrEntryPointAttributeLineBytePolicy
   storage_pointer_access : WgslIrStoragePointerAccessBytePolicy
   pointer_dereference : WgslIrPointerDereferenceBytePolicy
+  address_of : WgslIrAddressOfBytePolicy
 }
 
 ///|
@@ -99,6 +106,7 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
     entry_point_attribute_line: SuppressTrailingSpaceAfterEntryPointAttributes,
     storage_pointer_access: EmitStoragePointerReadAccess,
     pointer_dereference: PrefixPointerDereference,
+    address_of: PrefixAddressOf,
   }
 }
 
@@ -115,6 +123,7 @@ fn WgslIrWriterBytePlan::naga_oil_writer() -> WgslIrWriterBytePlan {
     entry_point_attribute_line: EmitTrailingSpaceAfterEntryPointAttributes,
     storage_pointer_access: ElideStoragePointerReadAccess,
     pointer_dereference: ParenthesizedPointerDereference,
+    address_of: ParenthesizedAddressOf,
   }
 }
 
@@ -214,5 +223,16 @@ fn WgslIrWriterBytePlan::pointer_dereference_text(
   match self.pointer_dereference {
     PrefixPointerDereference => "*(\{expression})"
     ParenthesizedPointerDereference => "(*\{expression})"
+  }
+}
+
+///|
+fn WgslIrWriterBytePlan::address_of_text(
+  self : WgslIrWriterBytePlan,
+  expression : String,
+) -> String {
+  match self.address_of {
+    PrefixAddressOf => "&\{expression}"
+    ParenthesizedAddressOf => "(&\{expression})"
   }
 }

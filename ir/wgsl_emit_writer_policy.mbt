@@ -129,6 +129,14 @@ fn WgslIrEmitOptions::pointer_dereference_text(
 }
 
 ///|
+fn WgslIrEmitOptions::address_of_text(
+  self : WgslIrEmitOptions,
+  expression : String,
+) -> String {
+  self.byte_plan.address_of_text(expression)
+}
+
+///|
 fn WgslIrEmitter::with_preserved_abstract_float_literals(
   self : WgslIrEmitter,
 ) -> WgslIrEmitter {

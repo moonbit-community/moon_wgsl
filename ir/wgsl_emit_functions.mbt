@@ -172,7 +172,7 @@ fn WgslIrEmitter::emit_local_declaration(
         wgsl_ir_expression_text_needs_address(init_expr) &&
         !self.expression_is_pointer(Some(function), init) {
         out.write_string(
-          " = &\{self.function_pointer_expression(function, init)}",
+          " = \{self.options.address_of_text(self.function_pointer_expression(function, init))}",
         )
       } else {
         out.write_string(" = \{init_expr}")
