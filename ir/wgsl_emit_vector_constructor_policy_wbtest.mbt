@@ -86,3 +86,29 @@ test "naga-oil writer policy contextualizes vector stores" {
     content="false",
   )
 }
+
+///|
+test "naga-oil writer policy contextualizes nested math vector literals" {
+  let source =
+    #|const FRAC_PI_3: f32 = 1.0471976;
+    #|
+    #|fn hsv_to_rgb(hsv: vec3<f32>) -> vec3<f32> {
+    #|  let n = vec3(5.0, 3.0, 1.0);
+    #|  let k = (n + hsv.x / FRAC_PI_3) % 6.0;
+    #|  return hsv.z - hsv.z * hsv.y * max(vec3(0.0), min(k, min(4.0 - k, vec3(1.0))));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("min((vec3(4f) - k), vec3(1f))"),
+    content="true",
+  )
+  debug_inspect(
+    naga_oil.contains("min((vec3(4f) - k), vec3(1.0))"),
+    content="false",
+  )
+}

@@ -636,6 +636,10 @@ fn WgslIrEmitter::binary_expression_result_type(
       None => ()
     }
   }
+  match self.contextual_numeric_binary_result_type(left_ty, right_ty) {
+    Some(ty) => return Some(ty)
+    None => ()
+  }
   if self.type_is_scalar(left_ty) && !self.type_is_scalar(right_ty) {
     return Some(right_ty)
   }
@@ -643,6 +647,66 @@ fn WgslIrEmitter::binary_expression_result_type(
     return Some(left_ty)
   }
   Some(left_ty)
+}
+
+///|
+fn WgslIrEmitter::contextual_numeric_binary_result_type(
+  self : WgslIrEmitter,
+  left_ty : Handle,
+  right_ty : Handle,
+) -> Handle? {
+  let left = match self.shader_module.types.get(left_ty) {
+    Some(value) => value.inner
+    None => return None
+  }
+  let right = match self.shader_module.types.get(right_ty) {
+    Some(value) => value.inner
+    None => return None
+  }
+  match (left, right) {
+    (Scalar(left_scalar), Scalar(right_scalar)) =>
+      self.contextual_numeric_scalar_result_type(
+        left_ty, left_scalar, right_ty, right_scalar,
+      )
+    (Vector(left_size, left_scalar), Vector(right_size, right_scalar)) =>
+      if left_size == right_size {
+        self.contextual_numeric_scalar_result_type(
+          left_ty, left_scalar, right_ty, right_scalar,
+        )
+      } else {
+        None
+      }
+    (
+      Matrix(left_columns, left_rows, left_scalar),
+      Matrix(right_columns, right_rows, right_scalar),
+    ) =>
+      if left_columns == right_columns && left_rows == right_rows {
+        self.contextual_numeric_scalar_result_type(
+          left_ty, left_scalar, right_ty, right_scalar,
+        )
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::contextual_numeric_scalar_result_type(
+  self : WgslIrEmitter,
+  left_ty : Handle,
+  left_scalar : Scalar,
+  right_ty : Handle,
+  right_scalar : Scalar,
+) -> Handle? {
+  ignore(self)
+  let left_is_abstract = wgsl_ir_scalar_kind_is_abstract(left_scalar.kind)
+  let right_is_abstract = wgsl_ir_scalar_kind_is_abstract(right_scalar.kind)
+  match (left_is_abstract, right_is_abstract) {
+    (true, false) => Some(right_ty)
+    (false, true) => Some(left_ty)
+    _ => None
+  }
 }
 
 ///|
