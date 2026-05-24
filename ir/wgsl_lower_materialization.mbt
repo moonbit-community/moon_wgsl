@@ -1343,6 +1343,8 @@ fn WgslIrLowerer::function_expression_reads_var_pointer_load(
   value : Handle,
 ) -> Bool {
   match function.expressions.items.get(value.index()) {
+    Some(LocalVariable(_)) | Some(FunctionArgument(_)) =>
+      self.function_pointer_expression_is_var_pointer(function, value)
     Some(Load(pointer)) =>
       self.function_pointer_expression_is_var_pointer(function, pointer)
     Some(Access(base, index)) =>

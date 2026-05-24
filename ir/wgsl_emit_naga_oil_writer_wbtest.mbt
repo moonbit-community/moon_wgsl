@@ -408,6 +408,39 @@ test "naga-oil writer materializes global field before swizzle projection" {
 }
 
 ///|
+test "naga-oil writer materializes pointer local field before swizzle projection" {
+  let source =
+    #|struct Light {
+    #|  position_radius: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<storage, read> lights: array<Light>;
+    #|
+    #|fn direction(index: u32, p: vec3<f32>) -> vec3<f32> {
+    #|  let light: ptr<storage, Light, read> = &lights[index];
+    #|  let to_light = (*light).position_radius.xyz - p;
+    #|  return to_light;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e") &&
+    emitted.contains(": vec4<f32> = (*light).position_radius;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(
+      "let to_light: vec3<f32> = ((*light).position_radius.xyz - p);",
+    ),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer inlines local store pointer index and materializes storage rhs" {
   let source =
     #|struct Input {
