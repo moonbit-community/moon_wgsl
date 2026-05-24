@@ -24,7 +24,6 @@ fail() {
 [[ -f "$manifest" ]] || fail "missing manifest: $manifest"
 [[ -f "$oracle_blocked_manifest" ]] || fail "missing oracle-blocked manifest: $oracle_blocked_manifest"
 if [[ "$allow_known_drift" == "1" ]]; then
-  [[ -f "$writer_drift_manifest" ]] || fail "missing writer-drift manifest: $writer_drift_manifest"
   [[ -f "$byte_drift_manifest" ]] || fail "missing byte-drift manifest: $byte_drift_manifest"
 fi
 [[ -f "$repo_manifest" ]] || fail "missing repo manifest: $repo_manifest"
@@ -141,22 +140,6 @@ validate_manifest_schemas() {
   fi
 
   if [[ "$allow_known_drift" == "1" ]]; then
-    awk -F '\t' '
-      $0 ~ /^($|#)/ { next }
-      $1 == "id" { next }
-      NF != 5 {
-        printf("external naga-oil writer-drift row has %d field(s), expected 5: %s\n", NF, $0) > "/dev/stderr"
-        exit 1
-      }
-      $1 == "" || $2 == "" || $3 == "" || $4 == "" || $5 == "" {
-        printf("external naga-oil writer-drift row must include id, rel_path, hash, class, and reason: %s\n", $0) > "/dev/stderr"
-        exit 1
-      }
-      { print $1 "\t" $2 "\t" $3 }
-    ' "$writer_drift_manifest" | sort > "$writer_drift_keys"
-    duplicate_writer_drift_keys="$(awk -F '\t' '{ print $1 "\t" $2 }' "$writer_drift_keys" | uniq -d | tr '\n' ' ')"
-    [[ -z "$duplicate_writer_drift_keys" ]] || fail "duplicate external naga-oil writer-drift row(s): $duplicate_writer_drift_keys"
-
     awk -F '\t' '
       $0 ~ /^($|#)/ { next }
       $1 == "id" { next }
@@ -608,19 +591,20 @@ fi
 sort -o "$writer_drift_actual" "$writer_drift_actual"
 sort -o "$byte_drift_actual" "$byte_drift_actual"
 
+if [[ -s "$writer_drift_actual" ]]; then
+  writer_failure_report="$failure_dir/writer_failures.tsv"
+  {
+    printf 'id\trel_path\thash\tclass\treason\n'
+    awk -F '\t' '{ print $1 "\t" $2 "\t" $3 "\twriter-fingerprint-drift\tstrict-byte-parity-failure" }' "$writer_drift_actual"
+  } > "$writer_failure_report"
+  echo "external naga-oil writer/order/name parity regressed" >&2
+  echo "writer/order/name drift is no longer allowlisted; fix WGSL-283 structurally instead of adding manifest rows" >&2
+  sed -n '1,120p' "$writer_failure_report" >&2
+  echo "failure report written to: $writer_failure_report" >&2
+  exit 1
+fi
+
 if [[ "$allow_known_drift" == "1" ]]; then
-  awk -F '\t' '
-    $0 ~ /^($|#)/ { next }
-    $1 == "id" { next }
-    { print $1 "\t" $2 "\t" $3 }
-  ' "$writer_drift_manifest" | sort > "$writer_drift_expected"
-  if ! diff -u "$writer_drift_expected" "$writer_drift_actual" >"$tmpdir/writer-drift.diff"; then
-    echo "external naga-oil writer/order/name drift manifest does not match observed fingerprint diffs" >&2
-    sed -n '1,200p' "$tmpdir/writer-drift.diff" >&2
-    echo "Observed writer drift rows:" >&2
-    sed -n '1,240p' "$writer_drift_actual" >&2
-    exit 1
-  fi
   awk -F '\t' '
     $0 ~ /^($|#)/ { next }
     $1 == "id" { next }

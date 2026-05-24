@@ -30,6 +30,9 @@ count_manifest_rows() {
 writer_count="$(count_manifest_rows "$writer_manifest")"
 byte_count="$(count_manifest_rows "$byte_manifest")"
 
+((writer_count == 0)) ||
+  fail "writer/order/name drift is no longer allowlisted; keep $writer_manifest empty and fix WGSL-283 regressions structurally"
+
 mkdir -p _build
 expected_keys="$(mktemp "${TMPDIR:-/tmp}/moon_wgsl_drift_expected.XXXXXX")"
 actual_keys="$(mktemp "${TMPDIR:-/tmp}/moon_wgsl_drift_actual.XXXXXX")"

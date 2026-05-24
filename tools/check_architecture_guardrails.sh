@@ -1024,7 +1024,7 @@ if [[ ! -f testdata/external_naga_oil_compose_oracle_blocked.tsv ]]; then
 fi
 
 if [[ ! -f testdata/external_naga_oil_compose_writer_drift.tsv ]]; then
-  fail "external naga-oil compose parity writer/order/name drift must be manifest-owned"
+  fail "external naga-oil compose parity writer/order/name drift must keep an empty sentinel manifest"
 fi
 
 if [[ ! -f testdata/external_naga_oil_compose_byte_drift.tsv ]]; then
@@ -1053,8 +1053,8 @@ if (( external_oracle_blocked_count != 1 )); then
   fail "external naga-oil compose parity oracle-blocked manifest must contain exactly one pinned-upstream blocked case, got ${external_oracle_blocked_count}"
 fi
 
-if ! rg -n 'diff -u "\$writer_drift_expected" "\$writer_drift_actual"' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
-  fail "external naga-oil compose parity writer drift manifest must be exact-gated against observed writer drift rows"
+if ! rg -n 'writer/order/name drift is no longer allowlisted|fix WGSL-283 structurally' tools/check_external_naga_oil_compose_parity.sh tools/check_external_naga_oil_drift_taxonomy.sh >/dev/null; then
+  fail "external naga-oil compose parity writer drift must hard-fail instead of being allowlisted"
 fi
 
 if ! rg -n 'diff -u "\$byte_drift_expected" "\$byte_drift_actual"' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
