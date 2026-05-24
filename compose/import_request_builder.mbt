@@ -164,7 +164,7 @@ fn merge_wgsl_resource_side_effect_request(
       requests,
       source_request.module_path,
       source_request.rel_path,
-      "",
+      source_request.alias_name,
     ) {
     Some(request_index) => {
       let request = requests[request_index]
@@ -182,7 +182,7 @@ fn merge_wgsl_resource_side_effect_request(
         keep_requested_items: true,
         requested_items: wgsl_import_request_copy_items(side_effect_items),
         declared_items: wgsl_import_request_copy_items(side_effect_items),
-        alias_name: "",
+        alias_name: source_request.alias_name,
       })
   }
 }

@@ -1,5 +1,2 @@
 id	rel_path	hash	class	reason
 bevy	assets/shaders/extended_material_bindless.wgsl	bf9420ea7f78e8a533a7f133189ad57ff105dd231eb918e8b577e2e819989357	writer-fingerprint-drift	strict-byte-parity-failure
-bevy	assets/shaders/irradiance_volume_voxel_visualization.wgsl	154bea3bb2800d08b0f2dd3531be0f310f8961cb0b76f279abc6dfd2d1b4c7e9	writer-fingerprint-drift	strict-byte-parity-failure
-bevy	crates/bevy_core_pipeline/src/prepass/background_motion_vectors.wgsl	7ddb2e7e3f92add5b973464471dde50a972893d588d781907c9a997ff5dea6a8	writer-fingerprint-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	b1f62bce9797a120ad1dd9cb8d80dfd69bddd1b57c802f6cc70f03d2f5107446	writer-fingerprint-drift	strict-byte-parity-failure
