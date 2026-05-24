@@ -349,7 +349,6 @@ fn WgslIrNagaDerivedModuleBuilder::import_constant(
   match self.planner.shader_module.constants.items.get(index) {
     Some(constant) => {
       self.import_type_handle(constant.ty)
-      self.import_global_expression(constant.init)
       self.seen_constants.add(index)
       self.view.constants.push(index)
     }
@@ -481,11 +480,6 @@ fn WgslIrNagaDerivedModuleBuilder::import_function_inner(
       }
       for local_var in function.local_variables.items {
         self.import_type_handle(local_var.ty)
-        match local_var.init {
-          Some(init) =>
-            self.import_function_expression(function, init, visiting)
-          None => ()
-        }
       }
       self.import_function_block(function, function.body, visiting)
       self.seen_functions.add(index)
@@ -667,13 +661,36 @@ fn WgslIrNagaDerivedModuleBuilder::import_statement(
       self.import_function_expression(function, pointer, visiting_functions)
       self.import_cooperative_data(function, data, visiting_functions)
     }
-    Declare(_)
-    | Break
+    Declare(handle) =>
+      self.import_local_variable_declaration(
+        function, handle, visiting_functions,
+      )
+    Break
     | Continue
     | ImplicitReturn
     | Kill
     | ControlBarrier(_)
     | MemoryBarrier(_) => ()
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_local_variable_declaration(
+  self : WgslIrNagaDerivedModuleBuilder,
+  function : Function,
+  handle : Handle,
+  visiting_functions : Array[Int],
+) -> Unit {
+  match function.local_variables.items.get(handle.index()) {
+    Some(local_var) => {
+      self.import_type_handle(local_var.ty)
+      match local_var.init {
+        Some(init) =>
+          self.import_function_expression(function, init, visiting_functions)
+        None => ()
+      }
+    }
+    None => ()
   }
 }
 

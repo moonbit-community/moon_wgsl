@@ -257,6 +257,52 @@ test "Naga derived module view sorts imported functions by source arena rank" {
 }
 
 ///|
+test "Naga writer arena uses derived constant import order" {
+  let source =
+    #|const source_first: u32 = 1u;
+    #|const callee_dependency: u32 = 2u;
+    #|
+    #|fn imported_callee() -> u32 {
+    #|  return callee_dependency;
+    #|}
+    #|
+    #|fn selected() -> u32 {
+    #|  return imported_callee() + source_first;
+    #|}
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    ["selected"],
+    WgslIrImportEdgeKind::ItemBinding,
+    [WgslIrImportArenaSymbol(Function, "selected", "selected")],
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let arena = planner.writer_arena()
+  let names : Array[String] = []
+  for slot in arena.constants {
+    match slot.item.name {
+      Some(name) => names.push(name)
+      None => ()
+    }
+  }
+  debug_inspect(names.join(","), content="\"callee_dependency,source_first\"")
+}
+
+///|
 test "Naga derived module view consumes typed arena symbol records" {
   let source =
     #|struct SharedName {

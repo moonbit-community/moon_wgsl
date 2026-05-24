@@ -252,7 +252,7 @@ fn WgslIrNagaCompatPlanner::declaration_arena(
   let derived = self.derived_module_view()
   WgslIrNagaCompatDeclarationArena::{
     types: wgsl_ir_naga_compat_declaration_slots(self.type_order()),
-    constants: wgsl_ir_naga_compat_declaration_slots(self.constant_order()),
+    constants: wgsl_ir_naga_compat_declaration_slots(derived.constants),
     overrides: wgsl_ir_naga_compat_declaration_slots(self.override_order()),
     global_variables: wgsl_ir_naga_compat_declaration_slots(
       derived.global_variables,
@@ -268,7 +268,7 @@ fn WgslIrNagaCompatPlanner::runtime_declaration_arena(
   let derived = self.derived_module_view()
   WgslIrNagaCompatDeclarationArena::{
     types: wgsl_ir_naga_compat_declaration_slots(self.type_order()),
-    constants: wgsl_ir_naga_compat_declaration_slots(self.constant_order()),
+    constants: wgsl_ir_naga_compat_declaration_slots(derived.constants),
     overrides: wgsl_ir_naga_compat_declaration_slots(self.override_order()),
     global_variables: wgsl_ir_naga_compat_declaration_slots(
       derived.global_variables,
@@ -295,25 +295,6 @@ fn WgslIrNagaCompatPlanner::type_order(
     }
     None =>
       wgsl_ir_source_order_indices(self.shader_module.types.items.length())
-  }
-}
-
-///|
-fn WgslIrNagaCompatPlanner::constant_order(
-  self : WgslIrNagaCompatPlanner,
-) -> Array[Int] {
-  match self.filter {
-    Some(filter) => {
-      let order : Array[Int] = []
-      for index in 0..<self.shader_module.constants.items.length() {
-        if filter.contains_constant(index) {
-          order.push(index)
-        }
-      }
-      order
-    }
-    None =>
-      wgsl_ir_source_order_indices(self.shader_module.constants.items.length())
   }
 }
 
