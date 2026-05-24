@@ -285,6 +285,19 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         value
       }
     }
+    Some(Splat(size, inner)) => {
+      let lowered_inner = self.materialize_nested_constructor_argument(
+        function, scope, block, inner,
+      )
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Expression::Splat(size, parent_inner))
+      } else {
+        value
+      }
+    }
     Some(Binary(op, left, right)) => {
       if wgsl_ir_binary_operator_is_short_circuit(op) {
         return self.materialize_short_circuit_expression(

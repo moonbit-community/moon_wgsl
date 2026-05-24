@@ -85,6 +85,32 @@ test "naga-oil writer policy preserves typed identity vector constructors" {
 }
 
 ///|
+test "naga-oil writer policy materializes vector splat global loads" {
+  let source =
+    #|struct Globals {
+    #|  delta_time: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> globals: Globals;
+    #|
+    #|fn scale(v: vec2<f32>) -> vec4<f32> {
+    #|  return vec4<f32>((v / vec2(globals.delta_time)), 0.0, 1.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e"), content="true")
+  debug_inspect(
+    emitted.contains("globals.delta_time;\n    return vec4<f32>((v / vec2(_e"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer policy contextualizes vector stores" {
   let source =
     #|struct RaymarchResult {
