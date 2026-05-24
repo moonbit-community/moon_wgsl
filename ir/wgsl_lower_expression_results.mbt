@@ -723,6 +723,48 @@ fn WgslIrLowerer::type_is_scalar(
 }
 
 ///|
+fn WgslIrLowerer::type_is_vector(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+  size : VectorSize,
+  scalar : Scalar,
+) -> Bool {
+  match self.shader_module.types.get(ty_handle) {
+    Some(type_) =>
+      match type_.inner {
+        Vector(existing_size, existing_scalar) =>
+          existing_size == size && existing_scalar == scalar
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::identity_vector_constructor_argument(
+  self : WgslIrLowerer,
+  ty : Handle,
+  arguments : Array[Handle],
+  function : Function,
+) -> Handle? {
+  guard arguments.length() == 1 else { return None }
+  guard self.shader_module.types.get(ty) is Some(type_) else { return None }
+  match type_.inner {
+    Vector(size, scalar) =>
+      match self.function_expression_type(function, arguments[0]) {
+        Some(argument_ty) =>
+          if self.type_is_vector(argument_ty, size, scalar) {
+            Some(arguments[0])
+          } else {
+            None
+          }
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
 fn WgslIrLowerer::vector_size_from_type(
   self : WgslIrLowerer,
   ty_handle : Handle,

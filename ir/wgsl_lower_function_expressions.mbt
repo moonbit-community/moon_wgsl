@@ -726,6 +726,11 @@ fn WgslIrLowerer::lower_function_constructor_call(
         name, arguments, lowered_arguments, function,
       )
   }
+  match
+    self.identity_vector_constructor_argument(ty, lowered_arguments, function) {
+    Some(handle) => return handle
+    None => ()
+  }
   let handle = function.expressions.append(
     Expression::Compose(ty, lowered_arguments),
   )

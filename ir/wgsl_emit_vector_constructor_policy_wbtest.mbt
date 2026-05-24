@@ -44,6 +44,28 @@ test "naga-oil writer policy emits inferred vector splat constructors" {
 }
 
 ///|
+test "naga-oil writer policy folds identity vector constructors" {
+  let source =
+    #|fn mip_coord(workgroup_id: vec2<u32>, x: u32, y: u32) -> vec2<u32> {
+    #|  return vec2(workgroup_id * 16u) + vec2(x, y);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("return ((workgroup_id * 16u) + vec2<u32>(x, y));"),
+    content="true",
+  )
+  debug_inspect(
+    naga_oil.contains("vec2<u32>((workgroup_id * 16u))"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer policy contextualizes vector stores" {
   let source =
     #|struct RaymarchResult {
