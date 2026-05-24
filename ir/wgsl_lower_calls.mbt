@@ -72,7 +72,15 @@ fn WgslIrLowerer::lower_call_statement(
                   let handle = self.lower_function_atomic_call(
                     atomic_function, arguments, function, scope,
                   )
-                  block.push(Statement::Emit(HandleRange(handle, handle)))
+                  if self.function_expression_type(function, handle) != None {
+                    ignore(
+                      self.materialize_function_expression(
+                        function, scope, block, handle,
+                      ),
+                    )
+                  } else {
+                    block.push(Statement::Emit(HandleRange(handle, handle)))
+                  }
                 }
                 None =>
                   match self.function_names.get(name.name()) {

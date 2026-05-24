@@ -614,6 +614,7 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
     #|
     #|fn main() -> u32 {
     #|  atomicStore(&atom, 1u);
+    #|  atomicAdd(&atom, 1u);
     #|  var y = atomicLoad(&atom);
     #|  y += atomicAdd(&atom, 2u);
     #|  let exchange = atomicCompareExchangeWeak(&atom, 12u, 0u);
@@ -630,10 +631,20 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
   }
   let var_index = emitted.find("var y: u32;")
   let store_index = emitted.find("atomicStore((&atom), 1u);")
-  let load_index = emitted.find("let _e3: u32 = atomicLoad((&atom));")
+  let unused_atomic_index = emitted.find(": u32 = atomicAdd((&atom), 1u);")
+  let load_index = emitted.find(": u32 = atomicLoad((&atom));")
   debug_inspect(store_index != None, content="true")
+  debug_inspect(unused_atomic_index != None, content="true")
+  debug_inspect(
+    emitted.contains("_ = atomicAdd((&atom), 1u);"),
+    content="false",
+  )
   let materialized_after_store = match (store_index, load_index) {
     (Some(store), Some(load)) => load > store
+    _ => false
+  }
+  let unused_atomic_after_store = match (store_index, unused_atomic_index) {
+    (Some(store), Some(unused)) => unused > store
     _ => false
   }
   let var_hoisted_before_store = match (var_index, store_index) {
@@ -641,6 +652,7 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
     _ => false
   }
   debug_inspect(var_hoisted_before_store, content="true")
+  debug_inspect(unused_atomic_after_store, content="true")
   debug_inspect(materialized_after_store, content="true")
   debug_inspect(
     emitted.contains("atomicCompareExchangeWeak((&atom), 12u, 0u)"),
