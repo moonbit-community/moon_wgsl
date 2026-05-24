@@ -331,3 +331,63 @@ test "semantic import target plans follow first AST reference order" {
     content="\"late_value\"",
   )
 }
+
+///|
+test "semantic import target plans follow naga-oil substitution use order" {
+  let registry = WgslSourceRegistry::default()
+  ignore(
+    registry.register_source(
+      "forward.wgsl",
+      "#define_import_path test::forward\n",
+      None,
+    ),
+  )
+  ignore(
+    registry.register_source(
+      "bindings.wgsl",
+      "#define_import_path test::bindings\n",
+      None,
+    ),
+  )
+  let targets = [
+    WgslImportTarget::{
+      raw_path: "test::forward::VertexOutput",
+      alias_name: "",
+    },
+    WgslImportTarget::{ raw_path: "test::bindings::material", alias_name: "" },
+  ]
+  let source =
+    #|#import test::forward::VertexOutput
+    #|#import test::bindings::material
+    #|
+    #|struct RootData {
+    #|  material: u32,
+    #|}
+    #|
+    #|fn read(input: VertexOutput) -> u32 {
+    #|  return material.value + input.value;
+    #|}
+    #|
+  let plans = build_wgsl_semantic_import_target_plans(
+    source,
+    "root.wgsl",
+    targets,
+    registry,
+    registry.copy_import_module_paths(),
+  ) catch {
+    _ => abort("expected semantic import target planning to parse valid WGSL")
+  }
+  debug_inspect(plans.plans.length(), content="2")
+  debug_inspect(
+    plans.plans[0].resolved_module.rel_path(),
+    content="\"bindings.wgsl\"",
+  )
+  debug_inspect(
+    plans.plans[0].requested_items.join(","),
+    content="\"material\"",
+  )
+  debug_inspect(
+    plans.plans[1].resolved_module.rel_path(),
+    content="\"forward.wgsl\"",
+  )
+}

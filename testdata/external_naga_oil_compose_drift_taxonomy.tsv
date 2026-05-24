@@ -1,12 +1,11 @@
 manifest	id	rel_path	category	tracker	reason
-writer-drift	bevy	assets/shaders/extended_material_bindless.wgsl	naga-writer-view	WGSL-283	writer fingerprint still differs; fix through the Naga-compatible declaration arena, final-name table, function body plan, and Naga writer module view rather than case-local emitter edits
 byte-drift	bevy	assets/shaders/array_texture.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan
 byte-drift	bevy	assets/shaders/automatic_instancing.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan
 byte-drift	bevy	assets/shaders/custom_gltf_2d.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan
 byte-drift	bevy	assets/shaders/custom_ui_material.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan
 byte-drift	bevy	assets/shaders/custom_vertex_attribute.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan
 byte-drift	bevy	assets/shaders/extended_material.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan
-byte-drift	bevy	assets/shaders/extended_material_bindless.wgsl	writer-cascaded-byte-drift	WGSL-283	byte output also differs because the Naga-compatible writer view still emits a structurally different module for this case
+byte-drift	bevy	assets/shaders/extended_material_bindless.wgsl	byte-token-policy	WGSL-281	writer fingerprint now matches; remaining byte output differs only in token, whitespace, literal, or formatting policy
 byte-drift	bevy	assets/shaders/instancing.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan
 byte-drift	bevy	assets/shaders/irradiance_volume_voxel_visualization.wgsl	byte-token-policy	WGSL-281	writer fingerprint now matches; remaining byte output differs only in token, whitespace, literal, or formatting policy
 byte-drift	bevy	assets/shaders/screen_space_texture_material.wgsl	byte-token-policy	WGSL-281	writer fingerprint matches but full bytes differ; fix through the upstream-compatible token, whitespace, literal, and formatting byte plan

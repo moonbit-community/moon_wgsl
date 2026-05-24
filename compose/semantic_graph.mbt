@@ -122,6 +122,35 @@ fn sort_wgsl_semantic_identifier_nodes_by_source(
 }
 
 ///|
+fn collect_wgsl_naga_oil_import_use_identifier_nodes(
+  source : String,
+  nodes : Array[WgslIdent],
+) -> Unit {
+  let body_source = @lex.replace_comments_naga_oil(
+    drop_wgsl_import_directives_from_compose_source(source),
+  )
+  let tokens = tokenize(body_source, true)
+  let mut in_substitution_position = true
+  for token in tokens {
+    match token.identifier_text() {
+      Some(name) =>
+        if in_substitution_position {
+          nodes.push(WgslIdent(name, token.pos(), token.end()))
+        }
+      None => ()
+    }
+    match token.punctuation_code() {
+      Some(code) if code == 46 || code == 64 => {
+        in_substitution_position = false
+        continue
+      }
+      _ => in_substitution_position = true
+    }
+  }
+  sort_wgsl_semantic_identifier_nodes_by_source(nodes)
+}
+
+///|
 fn wgsl_semantic_source_declares_global_name(
   source : String,
   name : String,
@@ -376,9 +405,9 @@ fn wgsl_semantic_import_target_plan_order_key(
 fn wgsl_semantic_order_import_target_plans_by_reference(
   source : String,
   plans : Array[WgslSemanticImportTargetPlan],
-) -> Array[WgslSemanticImportTargetPlan] raise WgslParseError {
+) -> Array[WgslSemanticImportTargetPlan] {
   let nodes : Array[WgslIdent] = []
-  collect_wgsl_semantic_reference_identifier_nodes(source, nodes)
+  collect_wgsl_naga_oil_import_use_identifier_nodes(source, nodes)
   let ordered : Array[WgslSemanticImportTargetPlan] = []
   let picked : @set.Set[Int] = @set.Set([])
   let fallback_base = source.length() + 1

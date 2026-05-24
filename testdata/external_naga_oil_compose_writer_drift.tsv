@@ -1,2 +1,1 @@
 id	rel_path	hash	class	reason
-bevy	assets/shaders/extended_material_bindless.wgsl	bf9420ea7f78e8a533a7f133189ad57ff105dd231eb918e8b577e2e819989357	writer-fingerprint-drift	strict-byte-parity-failure
