@@ -257,7 +257,7 @@ fn WgslIrNagaCompatPlanner::declaration_arena(
     global_variables: wgsl_ir_naga_compat_declaration_slots(
       derived.global_variables,
     ),
-    functions: wgsl_ir_naga_compat_declaration_slots(self.function_order()),
+    functions: wgsl_ir_naga_compat_declaration_slots(derived.functions),
   }
 }
 
