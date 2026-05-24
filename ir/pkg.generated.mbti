@@ -12,7 +12,7 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(String, Array[WgslIrG
 
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
 
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_naga_oil_writer_compatible(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_naga_oil_writer_compatible(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslIrPipelineError
 
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_naga_oil_writer_compatible_entry_roots(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
 
@@ -979,11 +979,12 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   inline_value : Bool
   local_spelling : Bool
   root_local_spelling : Bool
+  local_spelling_visible_rel_paths : Array[String]
   import_sequence : Int
   source_start : Int
   source_end : Int
 } derive(Eq, @debug.Debug)
-pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool, import_sequence? : Int, source_start? : Int, source_end? : Int) -> Self
+pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool, local_spelling_visible_rel_paths? : Array[String], import_sequence? : Int, source_start? : Int, source_end? : Int) -> Self
 pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(Self) -> String
 
 pub(all) enum WgslIrGeneratedImportProvenanceKind {

@@ -1354,6 +1354,65 @@ test "nested leaf imports feed naga-oil local spelling in imported module" {
 }
 
 ///|
+test "generated import local spelling stays scoped to visible module" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let root_source =
+    #|#import test::functions::read_global
+    #|#import test::lighting::sample
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) f32 {
+    #|  return read_global() + sample(1.0);
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  let functions_source =
+    #|#define_import_path test::functions
+    #|#import test::bindings::view
+    #|
+    #|fn read_view(view: f32) -> f32 {
+    #|  return view;
+    #|}
+    #|
+    #|fn read_global() -> f32 {
+    #|  return read_view(view);
+    #|}
+    #|
+  composer.register_source("functions.wgsl", functions_source)
+  let lighting_source =
+    #|#define_import_path test::lighting
+    #|
+    #|fn sample(view: f32) -> f32 {
+    #|  return view;
+    #|}
+    #|
+  composer.register_source("lighting.wgsl", lighting_source)
+  let bindings_source =
+    #|#define_import_path test::bindings
+    #|var<private> view: f32;
+    #|
+  composer.register_source("bindings.wgsl", bindings_source)
+  let emitted = composer.compose_wgsl_for_naga_oil_writer_parity(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "fn read_viewX_naga_oil_mod_XORSXG5B2HJTHK3TDORUW63TTX(viewX_naga_oil_mod_XORSXG5B2HJRGS3TENFXGO4YX: f32",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("fn sampleX_naga_oil_mod") &&
+    emitted.contains("(view: f32) -> f32"),
+    content="true",
+  )
+}
+
+///|
 test "selected dependency modules retain alias-qualified resource side effects" {
   let composer = Composer::default()
   composer.clear_sources()

@@ -5,7 +5,7 @@ bevy	assets/shaders/custom_gltf_2d.wgsl	04e178ad5b18e8e9de2ca6e4091f5216cf355fb5
 bevy	assets/shaders/custom_ui_material.wgsl	134e31bba6a56d517397ac664bade398a4e32eb59a9fe460bfa3a34b999cf24e	byte-output-drift	strict-byte-parity-failure
 bevy	assets/shaders/custom_vertex_attribute.wgsl	1c73374746a5cb539f0c927e3477de3d0d4805ce91076664baddb7b6a7ec928a	byte-output-drift	strict-byte-parity-failure
 bevy	assets/shaders/extended_material.wgsl	8b8a54bcdab7aa6c758330f77c905f48cdff9b4e631b9ba4b9fde21dd0b49d5a	byte-output-drift	strict-byte-parity-failure
-bevy	assets/shaders/extended_material_bindless.wgsl	48ceaccba36341d6830a6a3420c1a6a7742c839bea954d93938de0aa12789b80	byte-output-drift	strict-byte-parity-failure
+bevy	assets/shaders/extended_material_bindless.wgsl	5a5653cc21cec35cda3128689367276b464f714f9e17bb5f39454bab9407d4e4	byte-output-drift	strict-byte-parity-failure
 bevy	assets/shaders/instancing.wgsl	c6c78a47e02be973e3eddc5b64c11725da820fb7da3f07f09da67a1175e0272d	byte-output-drift	strict-byte-parity-failure
 bevy	assets/shaders/irradiance_volume_voxel_visualization.wgsl	741f740dc0093cae2261ae4a9aff1320d5edf8a9ec4bfcb49a3a1a2cdc261143	byte-output-drift	strict-byte-parity-failure
 bevy	assets/shaders/screen_space_texture_material.wgsl	8a1f86960b7c036bcf714bbb10ac13cd7fd19af1e45b9b8d80a10cf94da66018	byte-output-drift	strict-byte-parity-failure
@@ -30,7 +30,7 @@ bevy	crates/bevy_pbr/src/atmosphere/sky_view_lut.wgsl	8c19ecdb67e61e770110e28135
 bevy	crates/bevy_pbr/src/atmosphere/transmittance_lut.wgsl	915544801410789b2ca9ba18c2593ba4b28a9cf2e450cfa7b605c7aa9f79d7b6	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/cluster/cluster.wgsl	486dd6a98350051be49603cdcaf595891ebe186409a1408e862e60cfd56111b6	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/cluster/cluster_allocate.wgsl	e97bfb9589e2234d966e64bc7df0c20bdaf6ff73ddc975a28beaa96e48cc4f3d	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	eb79044ecad5cba92226c0033a14ff96722250d564a3bbaaec66466f4e194c97	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/cluster/cluster_raster.wgsl	0918bcb74e8b2cb53d8d04b393eb133a900b94393e6d41778e6b767c7b5b30a0	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/cluster/cluster_z_slice.wgsl	35bfcd62398ff4c65e031dfcf93553214ac33377f1ededab0c4cc3ceafe18f7f	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/decal/clustered.wgsl	2c4c592203e317f2c7dab4b32f59da624cf3eb3a744709fabfb32db7d56bab9b	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/decal/forward_decal.wgsl	2d26401b06bee1d35220fb1714edfefcb57385dda4c5568ec903d30420051c37	byte-output-drift	strict-byte-parity-failure
@@ -71,7 +71,7 @@ bevy	crates/bevy_pbr/src/ssao/preprocess_depth.wgsl	3575b80ea21fbd0fa95cf907c6ca
 bevy	crates/bevy_pbr/src/ssao/spatial_denoise.wgsl	972120540bc99577b24bd1ff05b47cfbfe136f15b0a803b39180ba244b9a818e	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	702f059d8646a10bcfa7722cf1acb2f2df78b49fae26ac4aedce1b5a58aa275a	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssr/raymarch.wgsl	1eea38c50f9ae8ae323eaedf988d9bc7fa59e4dfb85718eaca932e7a06f8fda5	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	f142020dd0b05ab6249f473493acec038e6738b700ee224cd9832a5f014bc756	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	bb473644a635f4a5ac91e84b6892cb48a707adcc0c1702403cbce580870fa9b5	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/transmission/transmission.wgsl	f6d7540c7cc96bbdba38ddd3d10e2e15824d60ebdef4484b5ea56ec28a68c8ae	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/volumetric_fog/volumetric_fog.wgsl	1a227d6087a412970db28c899a324d14c1d7581bc18b8b5c12440edbaa26b326	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_render/src/color_operations.wgsl	662b56e8351877efe77598769586003803efa21d8fb38eb8445c72a4e0387bae	byte-output-drift	strict-byte-parity-failure

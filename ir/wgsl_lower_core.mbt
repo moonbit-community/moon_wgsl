@@ -35,6 +35,7 @@ pub(all) struct WgslIrGeneratedImportProvenance {
   inline_value : Bool
   local_spelling : Bool
   root_local_spelling : Bool
+  local_spelling_visible_rel_paths : Array[String]
   import_sequence : Int
   source_start : Int
   source_end : Int
@@ -49,6 +50,7 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
   inline_value : Bool,
   local_spelling? : Bool = false,
   root_local_spelling? : Bool = false,
+  local_spelling_visible_rel_paths? : Array[String] = [],
   import_sequence? : Int = -1,
   source_start? : Int = -1,
   source_end? : Int = -1,
@@ -61,6 +63,7 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
     inline_value,
     local_spelling,
     root_local_spelling,
+    local_spelling_visible_rel_paths,
     import_sequence,
     source_start,
     source_end,
@@ -91,10 +94,13 @@ priv struct WgslIrLowerer {
   override_type_inference_stack : @set.Set[String]
   referenced_names : @set.Set[String]
   generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
+  root_visible_rel_path : String
 }
 
 ///|
-fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
+fn WgslIrLowerer::WgslIrLowerer(
+  root_visible_rel_path? : String = "",
+) -> WgslIrLowerer {
   WgslIrLowerer::{
     shader_module: Module(),
     type_cache: Map([]),
@@ -111,6 +117,7 @@ fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
     override_type_inference_stack: @set.Set([]),
     referenced_names: @set.Set([]),
     generated_import_provenance: Map([]),
+    root_visible_rel_path,
   }
 }
 
@@ -141,12 +148,16 @@ fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
   import_arena_events : Array[WgslIrImportArenaEvent],
+  root_visible_rel_path? : String = "",
 ) -> Module raise WgslIrLowerError {
   let unit = @parser.parse_wgsl_translation_unit_strict(source) catch {
     error => raise WgslIrLowerError::Parse(wgsl_ir_parse_error_message(error))
   }
   lower_wgsl_translation_unit_to_ir_with_generated_imports(
-    unit, generated_import_provenance, import_arena_events,
+    unit,
+    generated_import_provenance,
+    import_arena_events,
+    root_visible_rel_path~,
   )
 }
 
@@ -155,8 +166,9 @@ fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   unit : @ast.WgslTranslationUnit,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
   import_arena_events : Array[WgslIrImportArenaEvent],
+  root_visible_rel_path? : String = "",
 ) -> Module raise WgslIrLowerError {
-  let lowerer = WgslIrLowerer()
+  let lowerer = WgslIrLowerer(root_visible_rel_path~)
   for event in import_arena_events {
     lowerer.shader_module.import_arena_events.push(event)
   }
@@ -234,13 +246,15 @@ fn WgslIrLowerer::record_referenced_names(
 fn WgslIrLowerer::naga_oil_generated_import_local_spelling(
   self : WgslIrLowerer,
   source_name : String,
+  visible_rel_path : String,
 ) -> String {
   let mut target : String? = None
   for entry in self.generated_import_provenance.iter() {
     let (_, provenance) = entry
     if provenance.kind != ImportedSourceSymbol ||
       !provenance.local_spelling ||
-      provenance.source_symbol_name != source_name {
+      provenance.source_symbol_name != source_name ||
+      !provenance.local_spelling_visible_rel_paths.contains(visible_rel_path) {
       continue
     }
     match target {
@@ -290,10 +304,25 @@ fn WgslIrLowerer::naga_oil_generated_import_local_spelling_for_scope(
 ) -> String {
   match scope.generated_import_local_spelling {
     AllGeneratedImportLocalSpelling =>
-      self.naga_oil_generated_import_local_spelling(source_name)
+      self.naga_oil_generated_import_local_spelling(
+        source_name,
+        scope.visible_rel_path,
+      )
     RootGeneratedImportLocalSpelling =>
       self.naga_oil_generated_import_root_local_spelling(source_name)
     NoGeneratedImportLocalSpelling => source_name
+  }
+}
+
+///|
+fn WgslIrLowerer::generated_import_function_rel_path(
+  self : WgslIrLowerer,
+  generated_name : String,
+) -> String {
+  match self.generated_import_provenance.get(generated_name) {
+    Some(provenance) if provenance.kind == ImportedSourceSymbol =>
+      provenance.rel_path
+    _ => ""
   }
 }
 

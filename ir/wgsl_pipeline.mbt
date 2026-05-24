@@ -57,9 +57,13 @@ fn lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_eve
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
   import_arena_events : Array[WgslIrImportArenaEvent],
+  root_visible_rel_path? : String = "",
 ) -> Module raise WgslIrPipelineError {
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
-    source, generated_import_provenance, import_arena_events,
+    source,
+    generated_import_provenance,
+    import_arena_events,
+    root_visible_rel_path~,
   ) catch {
     error =>
       match error {
@@ -221,10 +225,14 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_even
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
   import_arena_events : Array[WgslIrImportArenaEvent],
+  root_visible_rel_path? : String = "",
 ) -> String raise WgslIrPipelineError {
   emit_naga_oil_writer_compatible_wgsl_source_from_ir(
     lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-      source, generated_import_provenance, import_arena_events,
+      source,
+      generated_import_provenance,
+      import_arena_events,
+      root_visible_rel_path~,
     ),
   )
 }

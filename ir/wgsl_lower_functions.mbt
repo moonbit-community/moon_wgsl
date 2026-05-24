@@ -346,6 +346,12 @@ fn WgslIrLowerer::lower_function(
     diagnostic_filter_leaf: None,
   }
   let scope = WgslIrFunctionScope()
+  scope.visible_rel_path = self.generated_import_function_rel_path(
+    function.name().name(),
+  )
+  if scope.visible_rel_path == "" {
+    scope.visible_rel_path = self.root_visible_rel_path
+  }
   let function_stage = wgsl_ir_shader_stage_from_attributes(
     function.attributes(),
   )

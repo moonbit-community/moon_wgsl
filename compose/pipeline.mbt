@@ -389,6 +389,11 @@ fn WgslComposeSymbolTable::generated_import_provenance(
             origin.source_symbol_name(),
             name,
           ),
+          local_spelling_visible_rel_paths=self.generated_import_local_spelling_visible_rel_paths(
+            origin.rel_path(),
+            origin.source_symbol_name(),
+            name,
+          ),
           import_sequence=generated_symbol_import_sequences
             .get(name)
             .unwrap_or(-1),
@@ -417,6 +422,26 @@ fn WgslComposeSymbolTable::generated_import_has_local_spelling(
     }
   }
   false
+}
+
+///|
+fn WgslComposeSymbolTable::generated_import_local_spelling_visible_rel_paths(
+  self : WgslComposeSymbolTable,
+  symbol_rel_path : String,
+  source_name : String,
+  final_name : String,
+) -> Array[String] {
+  let symbol_rel_path = normalize_shader_rel_path(symbol_rel_path)
+  let paths : Array[String] = []
+  for binding in self.local_spelling_final_names {
+    if binding.symbol_rel_path == symbol_rel_path &&
+      binding.source_name == source_name &&
+      (binding.final_name == "" || binding.final_name == final_name) &&
+      !paths.contains(binding.visible_rel_path) {
+      paths.push(binding.visible_rel_path)
+    }
+  }
+  paths
 }
 
 ///|
@@ -474,6 +499,7 @@ fn compose_wgsl_source_via_naga_oil_writer_compatible_ir(
     source,
     symbols.generated_import_provenance(root_rel_path),
     symbols.import_arena_events,
+    root_visible_rel_path=root_rel_path,
   ) catch {
     error =>
       match error {

@@ -16,6 +16,7 @@ priv struct WgslIrFunctionScope {
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
+  mut visible_rel_path : String
   mut generated_import_local_spelling : WgslIrGeneratedImportLocalSpellingMode
 }
 
@@ -36,6 +37,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     local_pointer_expressions: Map([]),
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
+    visible_rel_path: "",
     generated_import_local_spelling: AllGeneratedImportLocalSpelling,
   }
 }
@@ -82,6 +84,7 @@ fn WgslIrFunctionScope::child(
     global_pointer_expressions: wgsl_ir_copy_string_handle_map(
       self.global_pointer_expressions,
     ),
+    visible_rel_path: self.visible_rel_path,
     generated_import_local_spelling: self.generated_import_local_spelling,
   }
 }
