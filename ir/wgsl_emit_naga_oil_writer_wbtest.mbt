@@ -524,6 +524,32 @@ test "naga-oil writer materializes mutable local rhs before local store" {
 }
 
 ///|
+test "naga-oil writer materializes statement call value arguments" {
+  let source =
+    #|fn sink(position: vec2<u32>, color: vec4<f32>) {
+    #|  return;
+    #|}
+    #|
+    #|fn main() {
+    #|  var p: vec2<u32> = vec2<u32>(1u, 2u);
+    #|  var values: array<vec4<f32>, 1>;
+    #|  sink(p, values[0]);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(": vec2<u32> = p;") &&
+    emitted.contains(": vec4<f32> = values[0];"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("sink(p, values[0]);"), content="false")
+}
+
+///|
 test "naga-oil writer materializes mutable store pointer index" {
   let source =
     #|struct Output {

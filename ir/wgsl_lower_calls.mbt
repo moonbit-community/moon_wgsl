@@ -85,8 +85,8 @@ fn WgslIrLowerer::lower_call_statement(
                 None =>
                   match self.function_names.get(name.name()) {
                     Some(handle) => {
-                      let values = self.lower_user_function_call_arguments(
-                        handle, arguments, function, scope,
+                      let values = self.lower_user_function_call_statement_arguments(
+                        handle, arguments, function, scope, block,
                       )
                       block.push(Statement::Call(handle, values, None))
                     }
@@ -210,6 +210,27 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
     handles.push(argument)
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_user_function_call_statement_arguments(
+  self : WgslIrLowerer,
+  callee : Handle,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Array[Handle] raise WgslIrLowerError {
+  let lowered = self.lower_user_function_call_arguments(
+    callee, arguments, function, scope,
+  )
+  let materialized : Array[Handle] = []
+  for argument in lowered {
+    materialized.push(
+      self.materialize_nested_call_argument(function, scope, block, argument),
+    )
+  }
+  materialized
 }
 
 ///|
