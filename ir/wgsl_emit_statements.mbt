@@ -54,6 +54,15 @@ fn WgslIrEmitter::emit_statement_with_following_context(
         self.emit_statement(out, function, body_plan, statement, indent)
         false
       }
+    (
+      If(condition, accept, reject),
+      Some({ statement: ImplicitReturn, skip: false, .. }),
+    ) => {
+      self.emit_if_statement(
+        out, function, body_plan, condition, accept, reject, true, indent,
+      )
+      true
+    }
     _ => {
       self.emit_statement(out, function, body_plan, statement, indent)
       false
@@ -90,20 +99,10 @@ fn WgslIrEmitter::emit_statement(
       self.emit_block_statements(out, function, body_plan, child, indent + 1)
       out.write_string("\{pad}}\n")
     }
-    If(condition, accept, reject) => {
-      out.write_string(
-        "\{pad}if \{self.function_expression(function, condition)} {\n",
+    If(condition, accept, reject) =>
+      self.emit_if_statement(
+        out, function, body_plan, condition, accept, reject, false, indent,
       )
-      self.emit_block_statements(out, function, body_plan, accept, indent + 1)
-      out.write_string("\{pad}}")
-      if reject.statements.is_empty() {
-        out.write_string("\n")
-      } else {
-        out.write_string(" else {\n")
-        self.emit_block_statements(out, function, body_plan, reject, indent + 1)
-        out.write_string("\{pad}}\n")
-      }
-    }
     Loop(body, continuing, break_if) => {
       out.write_string("\{pad}loop {\n")
       self.emit_block_statements(out, function, body_plan, body, indent + 1)
@@ -210,6 +209,39 @@ fn WgslIrEmitter::emit_statement(
     CooperativeStore(target, data) =>
       self.emit_cooperative_store_statement(out, function, target, data, indent)
     _ => raise WgslIrEmitError::Unsupported("statement kind")
+  }
+}
+
+///|
+fn WgslIrEmitter::emit_if_statement(
+  self : WgslIrEmitter,
+  out : StringBuilder,
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  condition : Handle,
+  accept : Block,
+  reject : Block,
+  absorb_implicit_return : Bool,
+  indent : Int,
+) -> Unit raise WgslIrEmitError {
+  let pad = wgsl_ir_indent(indent)
+  out.write_string(
+    "\{pad}if \{self.function_expression(function, condition)} {\n",
+  )
+  self.emit_block_statements(out, function, body_plan, accept, indent + 1)
+  if absorb_implicit_return && !wgsl_ir_block_ends_with_return(accept) {
+    out.write_string("\{wgsl_ir_indent(indent + 1)}return;\n")
+  }
+  out.write_string("\{pad}}")
+  if reject.statements.is_empty() && !absorb_implicit_return {
+    out.write_string("\n")
+  } else {
+    out.write_string(" else {\n")
+    self.emit_block_statements(out, function, body_plan, reject, indent + 1)
+    if absorb_implicit_return && !wgsl_ir_block_ends_with_return(reject) {
+      out.write_string("\{wgsl_ir_indent(indent + 1)}return;\n")
+    }
+    out.write_string("\{pad}}\n")
   }
 }
 
