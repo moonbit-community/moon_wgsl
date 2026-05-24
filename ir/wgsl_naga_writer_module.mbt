@@ -17,6 +17,8 @@ priv struct WgslIrNagaWriterModule {
   filter : WgslIrEmitFilter?
   derived : WgslIrNagaDerivedModuleView
   emission : WgslIrNagaWriterEmissionPlan
+  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
+  root_struct_member_import_spelling : Bool
   mut names : WgslIrFinalNamePlan
 }
 
@@ -41,6 +43,8 @@ fn build_wgsl_ir_naga_writer_module(
     filter,
     derived,
     emission: planner.writer_emission_plan(arena),
+    generated_import_provenance: shader_module.generated_import_provenance,
+    root_struct_member_import_spelling: true,
     names: WgslIrFinalNamePlan::empty(),
   }
   view.names = build_wgsl_ir_naga_writer_final_name_plan(view)
@@ -63,6 +67,8 @@ fn build_wgsl_ir_runtime_writer_module(
     filter,
     derived,
     emission: planner.writer_emission_plan(arena),
+    generated_import_provenance: shader_module.generated_import_provenance,
+    root_struct_member_import_spelling: false,
     names: WgslIrFinalNamePlan::empty(),
   }
   view.names = build_wgsl_ir_naga_writer_final_name_plan(view)
