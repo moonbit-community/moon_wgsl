@@ -224,7 +224,7 @@ fn WgslIrEmitter::function_store_value_expression(
     match self.expression_type(Some(function), pointer) {
       Some(pointer_ty) => {
         let value_ty = self.deref_pointer_type_handle(pointer_ty)
-        self.store_scalar_context_from_value_type(value_ty)
+        self.store_numeric_literal_context(value_ty)
       }
       None => None
     }
@@ -235,13 +235,17 @@ fn WgslIrEmitter::function_store_value_expression(
 }
 
 ///|
-fn WgslIrEmitter::store_scalar_context_from_value_type(
+fn WgslIrEmitter::store_numeric_literal_context(
   self : WgslIrEmitter,
   value_ty : Handle,
 ) -> Scalar? {
   match self.shader_module.types.items.get(value_ty.index()) {
-    Some({ inner: Scalar(scalar), .. }) => Some(scalar)
-    _ => None
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) | Vector(_, scalar) => Some(scalar)
+        _ => None
+      }
+    None => None
   }
 }
 
