@@ -7,7 +7,7 @@ use naga_oil::compose::{
     ComposableModuleDescriptor, Composer, ImportDefinition, NagaModuleDescriptor, ShaderDefValue,
     ShaderLanguage, ShaderType,
 };
-use naga_oil_oracle::{add_wgsl_capability, WGSL_CAPABILITY_NAMES};
+use naga_oil_oracle::{add_wgsl_capability, module_expression_inventory, WGSL_CAPABILITY_NAMES};
 
 #[derive(Debug)]
 struct Options {
@@ -16,6 +16,7 @@ struct Options {
     shader_type: ShaderType,
     file_path_prefix: String,
     output: Option<PathBuf>,
+    expression_inventory: Option<PathBuf>,
     error_output: Option<PathBuf>,
     defs: HashMap<String, ShaderDefValue>,
     modules: Vec<String>,
@@ -34,7 +35,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability {WGSL_CAPABILITY_NAMES}] [--check-only] [--output <file>] [--error-output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability {WGSL_CAPABILITY_NAMES}] [--check-only] [--output <file>] [--expression-inventory <file>] [--error-output <file>]"
     );
     std::process::exit(2);
 }
@@ -80,6 +81,7 @@ fn parse_options() -> Options {
     let mut shader_type = None;
     let mut file_path_prefix = String::new();
     let mut output = None;
+    let mut expression_inventory = None;
     let mut error_output = None;
     let mut defs = HashMap::new();
     let mut modules = Vec::new();
@@ -101,6 +103,7 @@ fn parse_options() -> Options {
                 file_path_prefix = value;
             }
             "--output" => output = args.next().map(PathBuf::from),
+            "--expression-inventory" => expression_inventory = args.next().map(PathBuf::from),
             "--error-output" => error_output = args.next().map(PathBuf::from),
             "--def" => {
                 let Some(value) = args.next() else { usage() };
@@ -140,6 +143,7 @@ fn parse_options() -> Options {
         shader_type,
         file_path_prefix,
         output,
+        expression_inventory,
         error_output,
         defs,
         modules,
@@ -227,7 +231,10 @@ fn inferred_module_path(rel_path: &str) -> Option<String> {
 
 fn inferred_composable_module_name(rel_path: &str, file_path_prefix: &str) -> Option<String> {
     if rel_path.starts_with("assets/shaders/") {
-        return Some(format!("\"{}\"", display_file_path(file_path_prefix, rel_path)));
+        return Some(format!(
+            "\"{}\"",
+            display_file_path(file_path_prefix, rel_path)
+        ));
     }
     inferred_module_path(rel_path)
 }
@@ -358,6 +365,14 @@ fn main() {
     let info = validator
         .validate(&module)
         .unwrap_or_else(|err| panic!("naga validation failed for `{}`: {err:?}", entry.rel_path));
+    if let Some(output) = &options.expression_inventory {
+        fs::write(output, module_expression_inventory(&module)).unwrap_or_else(|err| {
+            panic!(
+                "failed to write expression inventory `{}`: {err}",
+                output.display()
+            );
+        });
+    }
     if options.check_only {
         return;
     }

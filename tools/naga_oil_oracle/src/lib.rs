@@ -66,6 +66,64 @@ pub fn normalize_wgsl_for_naga_parser(
     normalized
 }
 
+pub fn push_function_expression_inventory(
+    lines: &mut Vec<String>,
+    label: &str,
+    function: &naga::Function,
+) {
+    lines.push(format!(
+        "function\t{label}\targuments={}\tlocals={}\texpressions={}\tnamed={}",
+        function.arguments.len(),
+        function.local_variables.len(),
+        function.expressions.len(),
+        function.named_expressions.len()
+    ));
+    for (handle, argument) in function.arguments.iter().enumerate() {
+        lines.push(format!(
+            "argument\t{label}\t{handle}\tname={:?}\tbinding={:?}",
+            argument.name, argument.binding
+        ));
+    }
+    for (handle, local) in function.local_variables.iter() {
+        lines.push(format!(
+            "local\t{label}\t{}\tname={:?}\tinit={:?}",
+            handle.index(),
+            local.name,
+            local.init
+        ));
+    }
+    for (handle, name) in function.named_expressions.iter() {
+        lines.push(format!(
+            "named-expression\t{label}\t{}\t{name}",
+            handle.index()
+        ));
+    }
+    for (handle, expression) in function.expressions.iter() {
+        lines.push(format!(
+            "expression\t{label}\t{}\t{expression:?}",
+            handle.index()
+        ));
+    }
+    lines.push(format!("body\t{label}\t{:?}", function.body));
+}
+
+pub fn module_expression_inventory(module: &naga::Module) -> String {
+    let mut lines = Vec::new();
+    for (handle, function) in module.functions.iter() {
+        let label = function
+            .name
+            .as_deref()
+            .map(|name| format!("fn:{name}"))
+            .unwrap_or_else(|| format!("fn#{}", handle.index()));
+        push_function_expression_inventory(&mut lines, &label, function);
+    }
+    for (index, entry_point) in module.entry_points.iter().enumerate() {
+        let label = format!("entry#{index}:{}", entry_point.name);
+        push_function_expression_inventory(&mut lines, &label, &entry_point.function);
+    }
+    lines.join("\n") + "\n"
+}
+
 fn parser_unsupported_enable_is_enabled(
     trimmed_line: &str,
     capabilities: naga::valid::Capabilities,

@@ -50,17 +50,26 @@ fn main() {
     });
     let source = normalize_wgsl_for_naga_parser(&source, options.capabilities);
     let module = naga::front::wgsl::parse_str(&source).unwrap_or_else(|err| {
-        panic!("WGSL parse failed for `{}`:\n{err}", options.input.display());
+        panic!(
+            "WGSL parse failed for `{}`:\n{err}",
+            options.input.display()
+        );
     });
     let mut validator =
         naga::valid::Validator::new(naga::valid::ValidationFlags::all(), options.capabilities);
     let info = validator.validate(&module).unwrap_or_else(|err| {
-        panic!("WGSL validation failed for `{}`:\n{err:?}", options.input.display());
+        panic!(
+            "WGSL validation failed for `{}`:\n{err:?}",
+            options.input.display()
+        );
     });
     let canonical =
         naga::back::wgsl::write_string(&module, &info, naga::back::wgsl::WriterFlags::empty())
             .unwrap_or_else(|err| {
-                panic!("WGSL canonicalization failed for `{}`:\n{err}", options.input.display());
+                panic!(
+                    "WGSL canonicalization failed for `{}`:\n{err}",
+                    options.input.display()
+                );
             });
     fs::write(&options.output, canonical).unwrap_or_else(|err| {
         panic!("failed to write `{}`: {err}", options.output.display());

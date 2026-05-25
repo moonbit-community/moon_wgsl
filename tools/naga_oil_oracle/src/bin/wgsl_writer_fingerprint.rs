@@ -147,7 +147,10 @@ fn declaration_fingerprint(source: &str) -> Vec<String> {
             ("diagnostic", "diagnostic"),
         ];
         for (kind, keyword) in candidates {
-            if item == keyword || item.starts_with(&format!("{keyword} ")) || item.starts_with(&format!("{keyword}<")) {
+            if item == keyword
+                || item.starts_with(&format!("{keyword} "))
+                || item.starts_with(&format!("{keyword}<"))
+            {
                 let name = if kind == "const_assert" {
                     "<const_assert>".to_owned()
                 } else if kind == "enable" || kind == "requires" || kind == "diagnostic" {
