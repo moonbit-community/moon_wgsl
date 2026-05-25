@@ -778,6 +778,52 @@ test "naga-oil writer counts projected user-local loads before call results" {
 }
 
 ///|
+test "naga-oil writer does not persist function argument swizzle call slots" {
+  let source =
+    #|struct VertexOutput {
+    #|  @builtin(position) position: vec4<f32>,
+    #|}
+    #|
+    #|struct View {
+    #|  viewport: vec4<f32>,
+    #|}
+    #|
+    #|struct Uniforms {
+    #|  brightness: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|@group(1) @binding(0) var skybox: texture_cube<f32>;
+    #|@group(1) @binding(1) var skybox_sampler: sampler;
+    #|@group(1) @binding(2) var<uniform> uniforms: Uniforms;
+    #|
+    #|fn coords_to_ray_direction(coords: vec2<f32>, viewport: vec4<f32>) -> vec3<f32> {
+    #|  return vec3<f32>(coords, viewport.x);
+    #|}
+    #|
+    #|@fragment
+    #|fn skybox_fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    #|  let ray_direction = coords_to_ray_direction(in.position.xy, view.viewport);
+    #|  let out = textureSample(skybox, skybox_sampler, ray_direction * vec3<f32>(1.0, 1.0, -1.0));
+    #|  return vec4<f32>(out.xyz * uniforms.brightness, out.w);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e18: f32 = uniforms.brightness;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e19: f32 = uniforms.brightness;"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer parenthesizes address-of expressions" {
   let source =
     #|fn read(value: ptr<function, f32>) -> f32 {

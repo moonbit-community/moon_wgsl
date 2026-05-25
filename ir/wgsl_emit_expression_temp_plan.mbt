@@ -576,7 +576,7 @@ fn wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
       Call(_, arguments, Some(result)) =>
         if result.index() < limit.index() {
           for argument in arguments {
-            if wgsl_ir_function_expression_is_swizzle_projection(
+            if wgsl_ir_function_expression_is_persistent_call_argument_projection(
                 function, argument,
               ) {
               offset += 1
@@ -618,12 +618,46 @@ fn wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
 }
 
 ///|
-fn wgsl_ir_function_expression_is_swizzle_projection(
+fn wgsl_ir_function_expression_is_persistent_call_argument_projection(
   function : Function,
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
-    Some(Swizzle(_, _, _)) => true
+    Some(Swizzle(_, base, _)) =>
+      wgsl_ir_function_expression_graph_contains_source_var_local(
+        function, base,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_graph_contains_source_var_local(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          local_var.kind == LocalVariableKind::Var &&
+          !local_var.generated_temporary
+        None => false
+      }
+    Some(Access(base, field)) =>
+      wgsl_ir_function_expression_graph_contains_source_var_local(
+        function, base,
+      ) ||
+      wgsl_ir_function_expression_graph_contains_source_var_local(
+        function, field,
+      )
+    Some(AccessIndex(base, _))
+    | Some(Swizzle(_, base, _))
+    | Some(Load(base))
+    | Some(AddressOf(base, _)) =>
+      wgsl_ir_function_expression_graph_contains_source_var_local(
+        function, base,
+      )
     _ => false
   }
 }
