@@ -443,6 +443,34 @@ test "IR emitter shares lazy local aliases across sibling branches" {
 }
 
 ///|
+test "IR emitter places same-block scalar local constants in Naga arena order" {
+  let source =
+    #|struct Globals {
+    #|  time: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> globals: Globals;
+    #|
+    #|@fragment
+    #|fn fragment() -> @location(0) f32 {
+    #|  let speed = 2.0;
+    #|  let t = sin(globals.time * speed);
+    #|  return t;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e3: f32 = globals.time;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("sin((_e3 * 2f))"), content="true")
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

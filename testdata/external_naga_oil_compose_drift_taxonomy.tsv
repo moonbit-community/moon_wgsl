@@ -1,5 +1,4 @@
 manifest	id	rel_path	category	tracker	reason
-byte-drift	bevy	assets/shaders/animate_shader.wgsl	byte-token-policy	WGSL-281	writer fingerprint differs after Naga arena parity updates; continue through upstream-compatible expression arena and byte writer policy
 byte-drift	bevy	assets/shaders/array_texture.wgsl	byte-token-policy	WGSL-281	writer fingerprint differs after Naga arena parity updates; continue through upstream-compatible expression arena and byte writer policy
 byte-drift	bevy	assets/shaders/automatic_instancing.wgsl	byte-token-policy	WGSL-281	writer fingerprint differs after Naga arena parity updates; continue through upstream-compatible expression arena and byte writer policy
 byte-drift	bevy	assets/shaders/custom_gltf_2d.wgsl	byte-token-policy	WGSL-281	writer fingerprint differs after Naga arena parity updates; continue through upstream-compatible expression arena and byte writer policy

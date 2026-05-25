@@ -14,8 +14,16 @@ fn WgslIrLowerer::lower_block(
   scope : WgslIrFunctionScope,
 ) -> Block raise WgslIrLowerError {
   let ir_block = Block::Block()
-  for statement in block.statements() {
-    self.lower_statement(statement, function, scope, ir_block)
+  let statements = block.statements()
+  for index in 0..<statements.length() {
+    self.lower_statement_with_block_context(
+      statements[index],
+      statements,
+      index,
+      function,
+      scope,
+      ir_block,
+    )
   }
   ir_block
 }
@@ -40,6 +48,46 @@ fn WgslIrLowerer::lower_statement(
   scope : WgslIrFunctionScope,
   block : Block,
 ) -> Unit raise WgslIrLowerError {
+  self.lower_statement_with_local_constant_placement(
+    statement,
+    function,
+    scope,
+    block,
+    UseSiteLazyLocalConstant,
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_statement_with_block_context(
+  self : WgslIrLowerer,
+  statement : @ast.WgslStatement,
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Unit raise WgslIrLowerError {
+  let placement = match statement.payload() {
+    LocalDeclaration(_) =>
+      wgsl_ir_local_constant_arena_placement_for_statement(
+        statement, statements, statement_index,
+      )
+    _ => UseSiteLazyLocalConstant
+  }
+  self.lower_statement_with_local_constant_placement(
+    statement, function, scope, block, placement,
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_statement_with_local_constant_placement(
+  self : WgslIrLowerer,
+  statement : @ast.WgslStatement,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  local_constant_placement : WgslIrLocalConstantArenaPlacement,
+) -> Unit raise WgslIrLowerError {
   match statement.payload() {
     Empty => ()
     Compound =>
@@ -52,7 +100,9 @@ fn WgslIrLowerer::lower_statement(
       }
     LocalDeclaration(locals) =>
       for local_decl in locals {
-        self.lower_local_declaration(local_decl, function, scope, block)
+        self.lower_local_declaration(
+          local_decl, function, scope, block, local_constant_placement,
+        )
       }
     Return(expr) => {
       let value = match expr {
@@ -269,7 +319,9 @@ fn WgslIrLowerer::lower_loop_blocks(
     [body_block, ..] => {
       let child_scope = scope.child()
       let mut saw_continuing = false
-      for child in body_block.statements() {
+      let body_statements = body_block.statements()
+      for index in 0..<body_statements.length() {
+        let child = body_statements[index]
         match child.kind() {
           Continuing => {
             saw_continuing = true
@@ -287,7 +339,9 @@ fn WgslIrLowerer::lower_loop_blocks(
           }
           _ =>
             if !saw_continuing {
-              self.lower_statement(child, function, child_scope, body)
+              self.lower_statement_with_block_context(
+                child, body_statements, index, function, child_scope, body,
+              )
             } else {
               raise WgslIrLowerError::UnsupportedStatement(
                 "statement after continuing in loop",
@@ -401,7 +455,13 @@ fn WgslIrLowerer::lower_for_statement(
 ) -> Unit raise WgslIrLowerError {
   let loop_scope = scope.child()
   for local_decl in statement.local_bindings() {
-    self.lower_local_declaration(local_decl, function, loop_scope, block)
+    self.lower_local_declaration(
+      local_decl,
+      function,
+      loop_scope,
+      block,
+      UseSiteLazyLocalConstant,
+    )
   }
   for expr in expressions {
     if expr.role() == @ast.WgslStatementExpressionRole::ForInitializer {
@@ -608,15 +668,129 @@ fn WgslIrLowerer::lower_for_header_statement(
 }
 
 ///|
+fn wgsl_ir_local_constant_arena_placement_for_statement(
+  statement : @ast.WgslStatement,
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+) -> WgslIrLocalConstantArenaPlacement {
+  match statement.payload() {
+    LocalDeclaration(locals) => {
+      for local_decl in locals {
+        if (
+            local_decl.kind() == @ast.WgslLocalDeclarationKind::Let ||
+            local_decl.kind() == @ast.WgslLocalDeclarationKind::Const
+          ) &&
+          wgsl_ir_local_name_has_same_block_use_before_nested_flow(
+            local_decl.name().name(),
+            statements,
+            statement_index,
+          ) {
+          return DeclarationArenaLocalConstant
+        }
+      }
+      UseSiteLazyLocalConstant
+    }
+    _ => UseSiteLazyLocalConstant
+  }
+}
+
+///|
+fn wgsl_ir_local_name_has_same_block_use_before_nested_flow(
+  name : String,
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+) -> Bool {
+  for index in (statement_index + 1)..<statements.length() {
+    let statement = statements[index]
+    if wgsl_ir_statement_direct_expressions_mention_identifier(statement, name) {
+      return true
+    }
+    if statement.blocks().length() > 0 {
+      return false
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_statement_direct_expressions_mention_identifier(
+  statement : @ast.WgslStatement,
+  name : String,
+) -> Bool {
+  for local_decl in statement.local_bindings() {
+    match local_decl.initializer_ref() {
+      Some(expr_ref) =>
+        if wgsl_ir_expr_ref_mentions_identifier(expr_ref, name) {
+          return true
+        }
+      None => ()
+    }
+  }
+  for expr_ref in statement.expression_refs() {
+    if wgsl_ir_expr_ref_mentions_identifier(expr_ref, name) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_expr_ref_mentions_identifier(
+  expr_ref : @ast.WgslExprRef,
+  name : String,
+) -> Bool {
+  match expr_ref.root() {
+    Some(root) => wgsl_ir_expr_node_mentions_identifier(root, name)
+    None => expr_ref.identifiers().any(fn(ident) { ident.name() == name })
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_mentions_identifier(
+  node : @ast.WgslExprNode,
+  name : String,
+) -> Bool {
+  match node.kind() {
+    Identifier(ident) => ident.name() == name
+    Literal(_) | ShaderDefTemplate(_) => false
+    Unary(_, expr) | PostfixUpdate(_, expr) | Group(expr) =>
+      wgsl_ir_expr_node_mentions_identifier(expr, name)
+    Assignment(_, lhs, rhs) | Binary(_, lhs, rhs) | Index(lhs, rhs) =>
+      wgsl_ir_expr_node_mentions_identifier(lhs, name) ||
+      wgsl_ir_expr_node_mentions_identifier(rhs, name)
+    Call(callee, args) =>
+      wgsl_ir_expr_node_mentions_identifier(callee, name) ||
+      args.any(fn(arg) { wgsl_ir_expr_node_mentions_identifier(arg, name) })
+    Template(callee, args) =>
+      wgsl_ir_expr_node_mentions_identifier(callee, name) ||
+      args.any(fn(arg) {
+        match arg {
+          Expression(expr) => wgsl_ir_expr_ref_mentions_identifier(expr, name)
+          Type(_) => false
+        }
+      })
+    PathAccess(base, segment) =>
+      wgsl_ir_expr_node_mentions_identifier(base, name) ||
+      segment.name() == name
+    Member(base, _) => wgsl_ir_expr_node_mentions_identifier(base, name)
+    Sequence(items) =>
+      items.any(fn(item) { wgsl_ir_expr_node_mentions_identifier(item, name) })
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_local_declaration(
   self : WgslIrLowerer,
   local_decl : @ast.WgslLocalDeclaration,
   function : Function,
   scope : WgslIrFunctionScope,
   block : Block,
+  local_constant_placement : WgslIrLocalConstantArenaPlacement,
 ) -> Unit raise WgslIrLowerError {
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Const {
-    self.lower_local_const_declaration(local_decl, function, scope)
+    self.lower_local_const_declaration(
+      local_decl, function, scope, local_constant_placement,
+    )
     return
   }
   let expression_mark = function.expressions.items.length()
@@ -660,28 +834,36 @@ fn WgslIrLowerer::lower_local_declaration(
           let normalized = self.normalized_local_constant_initializer(
             function, init_handle,
           )
-          let normalized_expression = wgsl_ir_lazy_local_constant_expression(
-            function, normalized,
-          )
-          wgsl_ir_rewind_function_expressions(function, expression_mark)
-          wgsl_ir_restore_local_constant_values(
-            scope.local_constants,
-            local_constant_snapshot,
-          )
           ignore(scope.locals.remove(local_decl.name().name()))
           ignore(
             scope.local_pointer_expressions.remove(local_decl.name().name()),
           )
-          match local_decl.initializer_ref() {
-            Some(expr_ref) =>
+          match local_constant_placement {
+            DeclarationArenaLocalConstant =>
               scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
-                value: LazyConstant(WgslIrLazyLocalConstant::{
-                  expr_ref,
-                  explicit_ty,
-                  normalized: normalized_expression,
-                }),
+                value: ExpressionAlias(normalized),
               })
-            None => ()
+            UseSiteLazyLocalConstant => {
+              let normalized_expression = wgsl_ir_lazy_local_constant_expression(
+                function, normalized,
+              )
+              wgsl_ir_rewind_function_expressions(function, expression_mark)
+              wgsl_ir_restore_local_constant_values(
+                scope.local_constants,
+                local_constant_snapshot,
+              )
+              match local_decl.initializer_ref() {
+                Some(expr_ref) =>
+                  scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+                    value: LazyConstant(WgslIrLazyLocalConstant::{
+                      expr_ref,
+                      explicit_ty,
+                      normalized: normalized_expression,
+                    }),
+                  })
+                None => ()
+              }
+            }
           }
           return
         }
@@ -829,6 +1011,7 @@ fn WgslIrLowerer::lower_local_const_declaration(
   local_decl : @ast.WgslLocalDeclaration,
   function : Function,
   scope : WgslIrFunctionScope,
+  local_constant_placement : WgslIrLocalConstantArenaPlacement,
 ) -> Unit raise WgslIrLowerError {
   let expression_mark = function.expressions.items.length()
   let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
@@ -851,25 +1034,33 @@ fn WgslIrLowerer::lower_local_const_declaration(
     )
   }
   let normalized = self.normalized_local_constant_initializer(function, init)
-  let normalized_expression = wgsl_ir_lazy_local_constant_expression(
-    function, normalized,
-  )
-  wgsl_ir_rewind_function_expressions(function, expression_mark)
-  wgsl_ir_restore_local_constant_values(
-    scope.local_constants,
-    local_constant_snapshot,
-  )
   ignore(scope.locals.remove(local_decl.name().name()))
-  match local_decl.initializer_ref() {
-    Some(expr_ref) =>
+  match local_constant_placement {
+    DeclarationArenaLocalConstant =>
       scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
-        value: LazyConstant(WgslIrLazyLocalConstant::{
-          expr_ref,
-          explicit_ty,
-          normalized: normalized_expression,
-        }),
+        value: ExpressionAlias(normalized),
       })
-    None => ()
+    UseSiteLazyLocalConstant => {
+      let normalized_expression = wgsl_ir_lazy_local_constant_expression(
+        function, normalized,
+      )
+      wgsl_ir_rewind_function_expressions(function, expression_mark)
+      wgsl_ir_restore_local_constant_values(
+        scope.local_constants,
+        local_constant_snapshot,
+      )
+      match local_decl.initializer_ref() {
+        Some(expr_ref) =>
+          scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+            value: LazyConstant(WgslIrLazyLocalConstant::{
+              expr_ref,
+              explicit_ty,
+              normalized: normalized_expression,
+            }),
+          })
+        None => ()
+      }
+    }
   }
 }
 

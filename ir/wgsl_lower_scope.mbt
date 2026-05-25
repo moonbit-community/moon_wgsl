@@ -15,6 +15,12 @@ priv struct WgslIrLazyLocalConstant {
 }
 
 ///|
+priv enum WgslIrLocalConstantArenaPlacement {
+  DeclarationArenaLocalConstant
+  UseSiteLazyLocalConstant
+}
+
+///|
 priv enum WgslIrLocalValue {
   LazyConstant(WgslIrLazyLocalConstant)
   ExpressionAlias(Handle)
