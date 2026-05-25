@@ -83,6 +83,27 @@ test "naga-oil writer policy elides projection local aliases" {
 }
 
 ///|
+test "naga-oil writer policy materializes mutable access indices" {
+  let source =
+    #|fn sink(value: f32) {
+    #|  return;
+    #|}
+    #|
+    #|fn read_index(values: array<f32, 4>) {
+    #|  var i: u32 = 0u;
+    #|  sink(values[i]);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("values[i]"), content="false")
+  debug_inspect(naga_oil.contains("values[_e"), content="true")
+}
+
+///|
 test "naga-oil writer policy folds identity vector constructors" {
   let source =
     #|fn mip_coord(workgroup_id: vec2<u32>, x: u32, y: u32) -> vec2<u32> {

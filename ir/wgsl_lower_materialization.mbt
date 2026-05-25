@@ -324,7 +324,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let lowered_base = self.materialize_nested_access_base(
         function, scope, block, base,
       )
-      let lowered_index = self.materialize_return_subexpressions(
+      let lowered_index = self.materialize_nested_access_index(
         function, scope, block, index,
       )
       let parent_base = wgsl_ir_parent_expression_operand(
@@ -988,6 +988,29 @@ fn WgslIrLowerer::materialize_nested_access_base(
     function, scope, block, value,
   )
   if self.function_expression_should_materialize_as_access_base(
+      function, normalized,
+    ) {
+    self.materialize_function_expression(function, scope, block, normalized)
+  } else {
+    normalized
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_nested_access_index(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
+  if self.function_expression_should_materialize_as_nested_value(
+      function, normalized,
+    ) ||
+    self.function_expression_should_materialize_as_call_argument(
       function, normalized,
     ) {
     self.materialize_function_expression(function, scope, block, normalized)

@@ -1,6 +1,6 @@
 # moon_wgsl Issue Tracker
 
-Last updated: 2026-05-24
+Last updated: 2026-05-25
 
 ## Status Legend
 
@@ -11,6 +11,8 @@ Last updated: 2026-05-24
 
 ## Latest Progress
 
+- 2026-05-25: WGSL-281/WGSL-283 access-index materialization now treats mutable index reads as expression-arena inputs instead of leaving them inline inside `Access`. This makes call arguments such as `values[i]` lower through `let _eN = i; let _eM = values[_eN];`, matching Naga's arena shape for mutable local array indices. External Bevy compose parity remains `writer-drift=0` and `byte-drift=77`; affected hashes are refreshed because temp numbering moved closer to upstream in mip/downsample, OIT, meshlet, and related PBR cases.
+- 2026-05-25: WGSL-281/WGSL-283 Naga-oil writer body planning now elides only directly forwarded projection aliases and stops propagating that projection target through the next semantic local. This matches Naga-oil's `textureLoad(...).x` forwarding shape for Bevy `meshlet/resolve_render_targets.wgsl`: the intermediate `visibility` alias disappears, while the downstream `depth` local remains. External Bevy compose parity improves to `writer-exact=149`, `writer-drift=0`, `byte-exact=72`, and `byte-drift=77`.
 - 2026-05-24: WGSL-281/WGSL-283 function-expression lowering now canonicalizes identity vector constructors structurally: `vecN<T>(expr)` folds to `expr` when the single argument already has the same vector shape and scalar type. This removes a Naga-oil byte drift class such as Bevy `vec2(workgroup_id * 16u)` and `vec2<u32>(global_id.xy)` emitting redundant typed constructors; remaining affected files still drift on temp/name allocation, so external Bevy compose parity remains `writer-drift=0` and `byte-drift=85` with refreshed hashes.
 - 2026-05-24: WGSL-281/WGSL-283 statement-level user function calls now route value arguments through the same nested-call materialization pipeline as expression calls before emitting `Statement::Call`. This makes calls such as Bevy mip downsample `spd_store(pix, v[i], ...)` materialize mutable local/vector-index arguments into Naga-style `_eN` temporaries instead of inlining them directly at the call site. External Bevy compose parity remains `writer-drift=0` and `byte-drift=85`; affected byte-drift hashes are refreshed because these call sites moved closer to upstream byte spelling.
 - 2026-05-24: WGSL-281 store-value lowering now materializes mutable local loads before ordinary stores, matching Naga's `let _eN = source; target = _eN;` arena shape for `var`-to-`var` assignment in branch bodies. This removes a source of direct local-copy writeback from the Naga-oil writer path; exact temp numbering for these cases remains part of the broader expression arena/name-allocation drift. External Bevy compose parity remains `writer-drift=0` and `byte-drift=85`, with affected byte-drift hashes refreshed.
