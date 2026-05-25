@@ -45,7 +45,6 @@ priv struct WgslIrNagaFunctionBodyPlan {
   local_variable_declarations : Array[Int]
   has_body_after_hoisted_declarations : Bool
   implicit_expression_slots_before : Array[Int]
-  struct_value_store_pointers : @set.Set[Int]
 }
 
 ///|
@@ -76,9 +75,6 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
       function, elided_local_alias_targets,
     ),
     implicit_expression_slots_before: wgsl_ir_naga_function_implicit_expression_slots_before(
-      shader_module, function,
-    ),
-    struct_value_store_pointers: wgsl_ir_naga_function_struct_value_store_pointer_indices(
       shader_module, function,
     ),
   }
@@ -126,14 +122,6 @@ fn WgslIrNagaFunctionBodyPlan::implicit_expression_slot_offset(
     Some(value) => value
     None => 0
   }
-}
-
-///|
-fn WgslIrNagaFunctionBodyPlan::contains_struct_value_store_pointer(
-  self : WgslIrNagaFunctionBodyPlan,
-  pointer : Handle,
-) -> Bool {
-  self.struct_value_store_pointers.contains(pointer.index())
 }
 
 ///|
@@ -533,12 +521,6 @@ fn wgsl_ir_emit_expression_temporary_index(
       ) ||
       (
         current_is_call_result &&
-        wgsl_ir_function_expression_is_unmaterialized_function_argument_reference(
-          function, expression_handle, handle,
-        )
-      ) ||
-      (
-        current_is_call_result &&
         wgsl_ir_function_expression_is_unmaterialized_call_result_projection_argument(
           function, expression_handle, handle,
         )
@@ -555,20 +537,11 @@ fn wgsl_ir_emit_expression_temporary_index(
           function, expression_handle, handle,
         )
       ) ||
-      (
-        !current_is_call_result &&
-        wgsl_ir_emit_expression_is_call_result(function, expression_handle)
-      ) ||
       wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
         function, expression_handle,
       ) {
       skipped += 1
     }
-  }
-  let local_store_offset = if current_is_call_result {
-    0
-  } else {
-    wgsl_ir_emit_local_var_store_value_slot_offset(function, body_plan, handle)
   }
   let base_index = handle.index() - skipped
   let base_index = if wgsl_ir_emit_expression_is_adjacent_materialized_load_after_generated_snapshot(
@@ -581,7 +554,6 @@ fn wgsl_ir_emit_expression_temporary_index(
   base_index +
   body_plan.implicit_expression_slot_offset(handle) +
   wgsl_ir_emit_implicit_naga_load_slot_offset(function, body_plan, handle) +
-  local_store_offset +
   wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
 }
 
@@ -623,135 +595,6 @@ fn wgsl_ir_naga_compose_implicit_expression_slots(
         _ => 0
       }
     None => 0
-  }
-}
-
-///|
-fn wgsl_ir_naga_function_struct_value_store_pointer_indices(
-  shader_module : Module,
-  function : Function,
-) -> @set.Set[Int] {
-  let pointers : @set.Set[Int] = @set.Set([])
-  wgsl_ir_collect_struct_value_store_pointer_indices(
-    shader_module,
-    function,
-    function.body,
-    pointers,
-  )
-  pointers
-}
-
-///|
-fn wgsl_ir_collect_struct_value_store_pointer_indices(
-  shader_module : Module,
-  function : Function,
-  block : Block,
-  pointers : @set.Set[Int],
-) -> Unit {
-  for statement in block.statements {
-    match statement {
-      Store(pointer, _) =>
-        if wgsl_ir_naga_function_pointer_value_is_struct(
-            shader_module, function, pointer,
-          ) {
-          pointers.add(pointer.index())
-        }
-      Block(child) =>
-        wgsl_ir_collect_struct_value_store_pointer_indices(
-          shader_module, function, child, pointers,
-        )
-      If(_, accept, reject) => {
-        wgsl_ir_collect_struct_value_store_pointer_indices(
-          shader_module, function, accept, pointers,
-        )
-        wgsl_ir_collect_struct_value_store_pointer_indices(
-          shader_module, function, reject, pointers,
-        )
-      }
-      Switch(_, cases) =>
-        for case in cases {
-          wgsl_ir_collect_struct_value_store_pointer_indices(
-            shader_module,
-            function,
-            case.body,
-            pointers,
-          )
-        }
-      Loop(body, continuing, _) => {
-        wgsl_ir_collect_struct_value_store_pointer_indices(
-          shader_module, function, body, pointers,
-        )
-        wgsl_ir_collect_struct_value_store_pointer_indices(
-          shader_module, function, continuing, pointers,
-        )
-      }
-      _ => ()
-    }
-  }
-}
-
-///|
-fn wgsl_ir_naga_function_pointer_value_is_struct(
-  shader_module : Module,
-  function : Function,
-  pointer : Handle,
-) -> Bool {
-  match
-    wgsl_ir_naga_function_expression_value_type(
-      shader_module, function, pointer,
-    ) {
-    Some(ty) =>
-      match shader_module.types.items.get(ty.index()) {
-        Some(type_) =>
-          match type_.inner {
-            Struct(_, _) | PredeclaredStruct(_, _) => true
-            _ => false
-          }
-        None => false
-      }
-    None => false
-  }
-}
-
-///|
-fn wgsl_ir_naga_function_expression_value_type(
-  shader_module : Module,
-  function : Function,
-  handle : Handle,
-) -> Handle? {
-  match function.expressions.items.get(handle.index()) {
-    Some(LocalVariable(local_handle)) =>
-      match function.local_variables.items.get(local_handle.index()) {
-        Some(local_var) => Some(local_var.ty)
-        None => None
-      }
-    Some(FunctionArgument(index)) =>
-      match function.arguments.get(index) {
-        Some(argument) => Some(argument.ty)
-        None => None
-      }
-    Some(Load(inner)) =>
-      wgsl_ir_naga_function_expression_value_type(
-        shader_module, function, inner,
-      )
-    Some(AccessIndex(base, member_index)) =>
-      match
-        wgsl_ir_naga_function_expression_value_type(
-          shader_module, function, base,
-        ) {
-        Some(base_ty) =>
-          match shader_module.types.items.get(base_ty.index()) {
-            Some({ inner: Struct(members, _), .. })
-            | Some({ inner: PredeclaredStruct(members, _), .. }) =>
-              match members.get(member_index) {
-                Some(field) => Some(field.ty)
-                None => None
-              }
-            _ => None
-          }
-        None => None
-      }
-    _ => None
   }
 }
 
@@ -1042,17 +885,6 @@ fn wgsl_ir_function_call_result_has_projected_argument_containing(
 }
 
 ///|
-fn wgsl_ir_emit_expression_is_call_result(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  match function.expressions.items.get(handle.index()) {
-    Some(CallResult(_)) => true
-    _ => false
-  }
-}
-
-///|
 fn wgsl_ir_emit_implicit_naga_load_slot_offset(
   function : Function,
   body_plan : WgslIrNagaFunctionBodyPlan,
@@ -1091,94 +923,6 @@ fn wgsl_ir_emit_expression_is_dynamic_pointer_access(
     Some(AccessIndex(base, _)) =>
       wgsl_ir_emit_expression_is_dynamic_pointer_access(function, base)
     _ => false
-  }
-}
-
-///|
-fn wgsl_ir_emit_local_var_store_value_slot_offset(
-  function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
-  limit : Handle,
-) -> Int {
-  wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-    function,
-    body_plan,
-    function.body,
-    limit,
-  )
-}
-
-///|
-fn wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-  function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
-  block : Block,
-  limit : Handle,
-) -> Int {
-  let mut offset = 0
-  for statement in block.statements {
-    offset += wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
-      function, body_plan, statement, limit,
-    )
-  }
-  offset
-}
-
-///|
-fn wgsl_ir_emit_local_var_store_value_slot_offset_in_statement(
-  function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
-  statement : Statement,
-  limit : Handle,
-) -> Int {
-  match statement {
-    Store(pointer, value) =>
-      if pointer.index() < limit.index() &&
-        value.index() < limit.index() &&
-        wgsl_ir_emit_store_pointer_is_user_local_slot_countable(
-          function, body_plan, pointer,
-        ) &&
-        !wgsl_ir_emit_direct_local_store_slot_is_absorbed_by_call_argument_materialization(
-          function, body_plan, pointer, limit,
-        ) &&
-        wgsl_ir_emit_store_value_is_materialized_user_call_result(
-          function, body_plan, value,
-        ) {
-        1
-      } else {
-        0
-      }
-    Block(child) =>
-      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-        function, body_plan, child, limit,
-      )
-    If(_, accept, reject) =>
-      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-        function, body_plan, accept, limit,
-      ) +
-      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-        function, body_plan, reject, limit,
-      )
-    Switch(_, cases) => {
-      let mut offset = 0
-      for case in cases {
-        offset += wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-          function,
-          body_plan,
-          case.body,
-          limit,
-        )
-      }
-      offset
-    }
-    Loop(body, continuing, _) =>
-      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-        function, body_plan, body, limit,
-      ) +
-      wgsl_ir_emit_local_var_store_value_slot_offset_in_block(
-        function, body_plan, continuing, limit,
-      )
-    _ => 0
   }
 }
 
@@ -1325,19 +1069,6 @@ fn wgsl_ir_emit_expression_graph_contains_materialized_handle(
 }
 
 ///|
-fn wgsl_ir_emit_store_pointer_is_user_local_slot_countable(
-  function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
-  pointer : Handle,
-) -> Bool {
-  if wgsl_ir_emit_store_pointer_is_direct_user_local(function, pointer) {
-    return true
-  }
-  wgsl_ir_emit_store_pointer_is_rooted_user_local(function, pointer) &&
-  body_plan.contains_struct_value_store_pointer(pointer)
-}
-
-///|
 fn wgsl_ir_emit_store_pointer_is_direct_user_local(
   function : Function,
   pointer : Handle,
@@ -1348,55 +1079,6 @@ fn wgsl_ir_emit_store_pointer_is_direct_user_local(
         Some(local_var) =>
           local_var.kind == LocalVariableKind::Var &&
           !local_var.generated_temporary
-        None => false
-      }
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_emit_store_pointer_is_rooted_user_local(
-  function : Function,
-  pointer : Handle,
-) -> Bool {
-  if wgsl_ir_emit_store_pointer_is_direct_user_local(function, pointer) {
-    return true
-  }
-  match function.expressions.items.get(pointer.index()) {
-    Some(Load(base)) =>
-      wgsl_ir_emit_store_pointer_is_rooted_user_local(function, base)
-    Some(Access(base, _))
-    | Some(AccessIndex(base, _))
-    | Some(Swizzle(_, base, _)) =>
-      wgsl_ir_emit_store_pointer_is_rooted_user_local(function, base)
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_emit_store_value_is_materialized_user_call_result(
-  function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
-  value : Handle,
-) -> Bool {
-  if body_plan.contains_materialized_expression(value) &&
-    wgsl_ir_emit_expression_is_call_result(function, value) {
-    return true
-  }
-  match function.expressions.items.get(value.index()) {
-    Some(LocalVariable(local_handle)) =>
-      match function.local_variables.items.get(local_handle.index()) {
-        Some(local_var) =>
-          if local_var.generated_temporary {
-            match local_var.init {
-              Some(init) =>
-                body_plan.contains_materialized_expression(init) &&
-                wgsl_ir_emit_expression_is_call_result(function, init)
-              None => false
-            }
-          } else {
-            false
-          }
         None => false
       }
     _ => false

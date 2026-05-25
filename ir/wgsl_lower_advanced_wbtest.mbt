@@ -155,9 +155,10 @@ test "WGSL AST lowerer supports official constructor and swizzle forms" {
   debug_inspect(emitted.contains("v = (_e"), content="true")
   debug_inspect(emitted.contains(": vec4<i32> = w;"), content="true")
   debug_inspect(
-    emitted.contains("* _e") && emitted.contains(".xyz);"),
+    emitted.contains("let _e10: vec3<i32> = _e9.xyz;"),
     content="true",
   )
+  debug_inspect(emitted.contains("v = (_e7 * _e10);"), content="true")
   debug_inspect(
     emitted.contains("vec4<f32>(0.4f, 0.2f, 0.3f, 0.1f);"),
     content="true",

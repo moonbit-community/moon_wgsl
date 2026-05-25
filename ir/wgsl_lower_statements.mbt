@@ -619,6 +619,10 @@ fn WgslIrLowerer::lower_local_declaration(
     self.lower_local_const_declaration(local_decl, function, scope)
     return
   }
+  let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let explicit_ty = match local_decl.ty_ref() {
     Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
     None => None
@@ -653,14 +657,32 @@ fn WgslIrLowerer::lower_local_declaration(
       Some(init_handle) => {
         if self.function_expression_is_const_expression(function, init_handle) &&
           self.function_expression_has_scalar_type(function, init_handle) {
-          let init_handle = self.normalized_local_constant_initializer(
+          let normalized = self.normalized_local_constant_initializer(
             function, init_handle,
+          )
+          let normalized_expression = wgsl_ir_lazy_local_constant_expression(
+            function, normalized,
+          )
+          wgsl_ir_rewind_function_expressions(function, expression_mark)
+          wgsl_ir_restore_local_constant_values(
+            scope.local_constants,
+            local_constant_snapshot,
           )
           ignore(scope.locals.remove(local_decl.name().name()))
           ignore(
             scope.local_pointer_expressions.remove(local_decl.name().name()),
           )
-          scope.local_constants.set(local_decl.name().name(), init_handle)
+          match local_decl.initializer_ref() {
+            Some(expr_ref) =>
+              scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+                value: LazyConstant(WgslIrLazyLocalConstant::{
+                  expr_ref,
+                  explicit_ty,
+                  normalized: normalized_expression,
+                }),
+              })
+            None => ()
+          }
           return
         }
         let materialized = self.materialize_return_subexpressions(
@@ -681,10 +703,9 @@ fn WgslIrLowerer::lower_local_declaration(
               ignore(
                 scope.local_pointer_expressions.remove(local_decl.name().name()),
               )
-              scope.local_constants.set(
-                local_decl.name().name(),
-                materialized_value,
-              )
+              scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+                value: ExpressionAlias(materialized_value),
+              })
               return
             }
           _ => ()
@@ -809,6 +830,10 @@ fn WgslIrLowerer::lower_local_const_declaration(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
+  let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let explicit_ty = match local_decl.ty_ref() {
     Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
     None => None
@@ -825,9 +850,48 @@ fn WgslIrLowerer::lower_local_const_declaration(
       "local const initializer is not a const expression",
     )
   }
-  let init = self.normalized_local_constant_initializer(function, init)
+  let normalized = self.normalized_local_constant_initializer(function, init)
+  let normalized_expression = wgsl_ir_lazy_local_constant_expression(
+    function, normalized,
+  )
+  wgsl_ir_rewind_function_expressions(function, expression_mark)
+  wgsl_ir_restore_local_constant_values(
+    scope.local_constants,
+    local_constant_snapshot,
+  )
   ignore(scope.locals.remove(local_decl.name().name()))
-  scope.local_constants.set(local_decl.name().name(), init)
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+        value: LazyConstant(WgslIrLazyLocalConstant::{
+          expr_ref,
+          explicit_ty,
+          normalized: normalized_expression,
+        }),
+      })
+    None => ()
+  }
+}
+
+///|
+fn wgsl_ir_lazy_local_constant_expression(
+  function : Function,
+  handle : Handle,
+) -> Expression? {
+  match function.expressions.items.get(handle.index()) {
+    Some(Literal(literal)) => Some(Expression::Literal(literal))
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_rewind_function_expressions(
+  function : Function,
+  length : Int,
+) -> Unit {
+  while function.expressions.items.length() > length {
+    ignore(function.expressions.items.pop())
+  }
 }
 
 ///|

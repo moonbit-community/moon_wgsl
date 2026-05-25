@@ -247,11 +247,14 @@ fn WgslIrLowerer::lower_member_expression(
           match ty.inner {
             Vector(_, _) =>
               match wgsl_ir_swizzle_components(member_name) {
-                Some(components) =>
+                Some(components) => {
+                  let value_base = self.apply_function_load_rule(
+                    function, base_handle,
+                  )
                   if components.length() == 1 {
                     function.expressions.append(
                       Expression::AccessIndex(
-                        base_handle,
+                        value_base,
                         wgsl_ir_gather_component_index(components[0]),
                       ),
                     )
@@ -261,11 +264,12 @@ fn WgslIrLowerer::lower_member_expression(
                         wgsl_ir_vector_size_from_component_count(
                           components.length(),
                         ),
-                        base_handle,
+                        value_base,
                         components,
                       ),
                     )
                   }
+                }
                 None =>
                   raise WgslIrLowerError::UnsupportedExpression(
                     "invalid vector swizzle: \{member_name}",

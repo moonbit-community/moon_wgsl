@@ -41,7 +41,7 @@ test "IR emitter prints WGSL lowered from AST without source writeback" {
     emitted.contains("@compute @workgroup_size(2, 3, 4)"),
     content="true",
   )
-  debug_inspect(emitted.contains("helper(local_value);"), content="true")
+  debug_inspect(emitted.contains("helper(_e7);"), content="true")
 }
 
 ///|
@@ -60,7 +60,7 @@ test "IR pipeline owns output identifier sanitization" {
   debug_inspect(emitted.contains("var class_: f32;"), content="true")
   debug_inspect(emitted.contains("class_ = value;"), content="true")
   debug_inspect(emitted.contains("var gen__naga_tmp: f32;"), content="true")
-  debug_inspect(emitted.contains("gen__naga_tmp = class_;"), content="true")
+  debug_inspect(emitted.contains("gen__naga_tmp = _e2;"), content="true")
   debug_inspect(
     emitted.contains("class_ = (_e") && emitted.contains(" + _e"),
     content="true",
@@ -368,6 +368,78 @@ test "IR emitter numbers call results without local-reference handle drift" {
     content="false",
   )
   debug_inspect(emitted.contains("return vec4<f32>(_e41, 1f);"), content="true")
+}
+
+///|
+test "IR emitter shares lazy local aliases across sibling branches" {
+  let source =
+    #|struct Settings {
+    #|  show_depth: u32,
+    #|  show_normals: u32,
+    #|  show_motion_vectors: u32,
+    #|}
+    #|
+    #|struct VertexOutput {
+    #|  position: vec4<f32>,
+    #|  normal: vec3<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> settings: Settings;
+    #|
+    #|fn prepass_depth(position: vec4<f32>, sample_index: u32) -> vec4<f32> {
+    #|  return position + vec4<f32>(f32(sample_index));
+    #|}
+    #|
+    #|fn normal(value: vec3<f32>) -> vec4<f32> {
+    #|  return vec4<f32>(value, 1.0);
+    #|}
+    #|
+    #|fn motion_vector(position: vec4<f32>, sample_index: u32) -> vec4<f32> {
+    #|  return position + vec4<f32>(f32(sample_index));
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
+    #|  let sample_index = 0u;
+    #|  if settings.show_depth == 1u {
+    #|    return prepass_depth(mesh.position, sample_index);
+    #|  } else if settings.show_normals == 1u {
+    #|    return normal(mesh.normal);
+    #|  } else if settings.show_motion_vectors == 1u {
+    #|    return motion_vector(mesh.position, sample_index);
+    #|  }
+    #|  return vec4<f32>(0.0);
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e2: u32 = settings.show_depth;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e8: vec4<f32> = prepass_depth(mesh.position, 0u);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e11: u32 = settings.show_normals;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e15: vec4<f32> = normal(mesh.normal);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e18: u32 = settings.show_motion_vectors;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e22: vec4<f32> = motion_vector(mesh.position, 0u);"),
+    content="true",
+  )
 }
 
 ///|
@@ -1209,6 +1281,7 @@ test "generated import provenance supplies naga-oil local spelling collisions" {
         WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
         false,
         local_spelling=true,
+        local_spelling_visible_rel_paths=["imports/source.wgsl"],
       ),
       WgslIrGeneratedImportProvenance(
         "read_source",

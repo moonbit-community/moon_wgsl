@@ -8,11 +8,29 @@ priv enum WgslIrGeneratedImportLocalSpellingMode {
 }
 
 ///|
+priv struct WgslIrLazyLocalConstant {
+  expr_ref : @ast.WgslExprRef
+  explicit_ty : Handle?
+  normalized : Expression?
+}
+
+///|
+priv enum WgslIrLocalValue {
+  LazyConstant(WgslIrLazyLocalConstant)
+  ExpressionAlias(Handle)
+}
+
+///|
+priv struct WgslIrLocalValueCell {
+  mut value : WgslIrLocalValue
+}
+
+///|
 priv struct WgslIrFunctionScope {
   arguments : Map[String, Int]
   argument_expressions : Map[String, Handle]
   locals : Map[String, Handle]
-  local_constants : Map[String, Handle]
+  local_constants : Map[String, WgslIrLocalValueCell]
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
@@ -65,25 +83,59 @@ fn wgsl_ir_copy_string_handle_map(
 }
 
 ///|
+fn wgsl_ir_copy_string_local_constant_map(
+  source : Map[String, WgslIrLocalValueCell],
+) -> Map[String, WgslIrLocalValueCell] {
+  let copied : Map[String, WgslIrLocalValueCell] = Map([])
+  for entry in source.iter() {
+    let (key, value) = entry
+    copied.set(key, value)
+  }
+  copied
+}
+
+///|
+fn wgsl_ir_snapshot_local_constant_values(
+  source : Map[String, WgslIrLocalValueCell],
+) -> Map[String, WgslIrLocalValue] {
+  let snapshot : Map[String, WgslIrLocalValue] = Map([])
+  for entry in source.iter() {
+    let (key, cell) = entry
+    snapshot.set(key, cell.value)
+  }
+  snapshot
+}
+
+///|
+fn wgsl_ir_restore_local_constant_values(
+  source : Map[String, WgslIrLocalValueCell],
+  snapshot : Map[String, WgslIrLocalValue],
+) -> Unit {
+  for entry in snapshot.iter() {
+    let (key, value) = entry
+    match source.get(key) {
+      Some(cell) => cell.value = value
+      None => ()
+    }
+  }
+}
+
+///|
 fn WgslIrFunctionScope::child(
   self : WgslIrFunctionScope,
 ) -> WgslIrFunctionScope {
   WgslIrFunctionScope::{
     arguments: wgsl_ir_copy_string_int_map(self.arguments),
-    argument_expressions: wgsl_ir_copy_string_handle_map(
-      self.argument_expressions,
-    ),
+    argument_expressions: self.argument_expressions,
     locals: wgsl_ir_copy_string_handle_map(self.locals),
-    local_constants: wgsl_ir_copy_string_handle_map(self.local_constants),
+    local_constants: wgsl_ir_copy_string_local_constant_map(
+      self.local_constants,
+    ),
     local_pointer_expressions: wgsl_ir_copy_string_handle_map(
       self.local_pointer_expressions,
     ),
-    argument_pointer_expressions: wgsl_ir_copy_string_handle_map(
-      self.argument_pointer_expressions,
-    ),
-    global_pointer_expressions: wgsl_ir_copy_string_handle_map(
-      self.global_pointer_expressions,
-    ),
+    argument_pointer_expressions: self.argument_pointer_expressions,
+    global_pointer_expressions: self.global_pointer_expressions,
     visible_rel_path: self.visible_rel_path,
     generated_import_local_spelling: self.generated_import_local_spelling,
   }

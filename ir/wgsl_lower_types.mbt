@@ -390,7 +390,24 @@ fn WgslIrLowerer::lower_function_type_template_array_size_type_ref(
     Some(value) => ArraySize::Constant(value)
     None =>
       match scope.local_constants.get(name) {
-        Some(handle) =>
+        Some({ value: LazyConstant(local_constant) }) => {
+          let handle = match local_constant.normalized {
+            Some(expression) => function.expressions.append(expression)
+            None =>
+              self.lower_function_expression_ref_with_expected(
+                local_constant.expr_ref,
+                function,
+                scope,
+                local_constant.explicit_ty,
+              )
+          }
+          match scope.local_constants.get(name) {
+            Some(cell) => cell.value = ExpressionAlias(handle)
+            None => ()
+          }
+          self.lower_function_constant_array_size_expression(function, handle)
+        }
+        Some({ value: ExpressionAlias(handle) }) =>
           self.lower_function_constant_array_size_expression(function, handle)
         None => self.lower_type_template_array_size_type_ref(ty_ref)
       }

@@ -679,7 +679,8 @@ test "WGSL AST lowerer respects nested lexical shadowing" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("buffer[0] = x_1;"), content="true")
+  debug_inspect(emitted.contains("var x_1: u32 = 30u;"), content="true")
+  debug_inspect(emitted.contains("buffer[0] = _e"), content="true")
   debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
   debug_inspect(emitted.contains("buffer[3] = 20u;"), content="true")
   debug_inspect(emitted.contains("write_shadow(10u);"), content="true")
@@ -828,7 +829,8 @@ test "WGSL IR emitter uses explicit pointer dereference for member access" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("return (*p).value;"), content="true")
+  debug_inspect(emitted.contains("let _e2: u32 = (*p).value;"), content="true")
+  debug_inspect(emitted.contains("return _e2;"), content="true")
   debug_inspect(emitted.contains("return p.value;"), content="false")
 }
 

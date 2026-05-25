@@ -193,7 +193,12 @@ fn WgslIrLowerer::lower_function_member_value_base(
   match wgsl_ir_deref_operand(base) {
     Some(operand) =>
       self.lower_function_expression_node(operand, function, scope)
-    None => self.lower_function_expression_node(base, function, scope)
+    None =>
+      if self.function_access_base_is_addressable(base, function, scope) {
+        self.lower_function_access_base_pointer_node(base, function, scope)
+      } else {
+        self.lower_function_expression_node(base, function, scope)
+      }
   }
 }
 
@@ -324,7 +329,10 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let base_handle = self.lower_function_member_value_base(
         base, function, scope,
       )
-      self.lower_member_expression(function, base_handle, member_name.name())
+      self.apply_function_load_rule(
+        function,
+        self.lower_member_expression(function, base_handle, member_name.name()),
+      )
     }
     Index(base, index) => {
       let base_handle = self.lower_function_index_value_base(
@@ -783,7 +791,24 @@ fn WgslIrLowerer::lower_identifier_expression(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   match scope.local_constants.get(name) {
-    Some(handle) => return handle
+    Some({ value: LazyConstant(local_constant) }) => {
+      let handle = match local_constant.normalized {
+        Some(expression) => function.expressions.append(expression)
+        None =>
+          self.lower_function_expression_ref_with_expected(
+            local_constant.expr_ref,
+            function,
+            scope,
+            local_constant.explicit_ty,
+          )
+      }
+      match scope.local_constants.get(name) {
+        Some(cell) => cell.value = ExpressionAlias(handle)
+        None => ()
+      }
+      return handle
+    }
+    Some({ value: ExpressionAlias(handle) }) => return handle
     None => ()
   }
   match scope.locals.get(name) {
@@ -897,11 +922,7 @@ fn WgslIrLowerer::global_variable_reuses_pointer_expression(
   handle : Handle,
 ) -> Bool {
   match self.shader_module.global_variables.items.get(handle.index()) {
-    Some(global) =>
-      match global.space {
-        Storage(_) => self.global_variable_is_handle_value(handle)
-        _ => true
-      }
+    Some(_) => false
     None => false
   }
 }
@@ -913,15 +934,117 @@ fn WgslIrLowerer::lower_function_index_value_base(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
-  if self.function_index_base_is_addressable(base, function, scope) {
-    self.lower_function_lvalue_node(base, function, scope)
+  if self.function_access_base_is_addressable(base, function, scope) {
+    self.lower_function_access_base_pointer_node(base, function, scope)
   } else {
     self.lower_function_expression_node(base, function, scope)
   }
 }
 
 ///|
-fn WgslIrLowerer::function_index_base_is_addressable(
+fn WgslIrLowerer::lower_function_access_base_pointer_node(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match node.kind() {
+    Identifier(name) => {
+      match scope.local_constants.get(name.name()) {
+        Some(_) =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "local const is not addressable",
+          )
+        None => ()
+      }
+      match scope.locals.get(name.name()) {
+        Some(handle) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_var) =>
+              if local_var.kind == Var ||
+                self.local_variable_is_handle_value(function, handle) {
+                return scope.local_pointer_expression(
+                  name.name(),
+                  handle,
+                  function,
+                )
+              } else {
+                raise WgslIrLowerError::UnsupportedExpression(
+                  "local let is not addressable",
+                )
+              }
+            None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+          }
+        None => ()
+      }
+      match scope.arguments.get(name.name()) {
+        Some(index) =>
+          if self.function_argument_is_pointer(function, index) {
+            return scope.argument_pointer_expression(
+              name.name(),
+              index,
+              function,
+            )
+          } else {
+            raise WgslIrLowerError::UnsupportedExpression(
+              "function argument is not addressable",
+            )
+          }
+        None => ()
+      }
+      match self.global_names.get(name.name()) {
+        Some(handle) =>
+          scope.global_pointer_expression(
+            name.name(),
+            handle,
+            function,
+            self.global_variable_reuses_pointer_expression(handle),
+          )
+        None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+      }
+    }
+    Group(inner) =>
+      self.lower_function_access_base_pointer_node(inner, function, scope)
+    Unary(op, expr) =>
+      if op == @ast.WgslExprOperator::Multiply {
+        self.lower_function_expression_node(expr, function, scope)
+      } else {
+        raise WgslIrLowerError::UnsupportedExpression(
+          "unsupported addressable access base",
+        )
+      }
+    Member(base, member_name) => {
+      let base_handle = self.lower_function_access_base_pointer_node(
+        base, function, scope,
+      )
+      function.expressions.append(
+        Expression::AccessIndex(
+          base_handle,
+          self.member_index_for_expression(
+            function,
+            base_handle,
+            member_name.name(),
+          ),
+        ),
+      )
+    }
+    Index(base, index) => {
+      let base_handle = self.lower_function_access_base_pointer_node(
+        base, function, scope,
+      )
+      self.lower_function_static_or_dynamic_index(
+        base_handle, index, function, scope,
+      )
+    }
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "unsupported addressable access base",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::function_access_base_is_addressable(
   self : WgslIrLowerer,
   base : @ast.WgslExprNode,
   function : Function,
@@ -929,7 +1052,7 @@ fn WgslIrLowerer::function_index_base_is_addressable(
 ) -> Bool {
   match base.kind() {
     Group(inner) =>
-      self.function_index_base_is_addressable(inner, function, scope)
+      self.function_access_base_is_addressable(inner, function, scope)
     Identifier(name) =>
       match scope.locals.get(name.name()) {
         Some(handle) =>
@@ -946,7 +1069,7 @@ fn WgslIrLowerer::function_index_base_is_addressable(
           }
       }
     Index(inner, _) | Member(inner, _) =>
-      self.function_index_base_is_addressable(inner, function, scope)
+      self.function_access_base_is_addressable(inner, function, scope)
     Unary(op, _) => op == @ast.WgslExprOperator::Multiply
     _ => false
   }

@@ -77,19 +77,15 @@ fn wgsl_ir_function_expression_is_synthetic_local_reference(
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
+    Some(Load(inner)) =>
+      wgsl_ir_function_expression_is_synthetic_local_reference(function, inner)
     Some(LocalVariable(local_handle)) =>
       match function.local_variables.items.get(local_handle.index()) {
         Some(local_var) =>
           if local_var.kind != Let {
             false
           } else if local_var.generated_temporary {
-            if wgsl_ir_local_variable_initializes_materialized_value_call(
-                function, local_var,
-              ) {
-              true
-            } else {
-              local_var.generated_temporary_store_value_reference
-            }
+            true
           } else {
             true
           }
