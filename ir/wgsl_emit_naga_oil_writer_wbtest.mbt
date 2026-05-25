@@ -631,6 +631,38 @@ test "naga-oil writer elides local aliases of materialized temporaries" {
 }
 
 ///|
+test "naga-oil writer elides direct function argument aliases" {
+  let source =
+    #|fn sample(roughness: f32, normal: vec3<f32>, view: vec3<f32>) -> vec3<f32> {
+    #|  let n = normal;
+    #|  let alpha = roughness;
+    #|  let wi_n = dot(view, n);
+    #|  let wi_z = -n * wi_n;
+    #|  return normalize(alpha * wi_z);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let n:"), content="false")
+  debug_inspect(emitted.contains("let alpha:"), content="false")
+  debug_inspect(
+    emitted.contains("let wi_n: f32 = dot(view, normal);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let wi_z: vec3<f32> = (-(normal) * wi_n);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("return normalize((roughness * wi_z));"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer excludes inline operands before call-result temp slots" {
   let source =
     #|const SCALE: f32 = 6.2831853;

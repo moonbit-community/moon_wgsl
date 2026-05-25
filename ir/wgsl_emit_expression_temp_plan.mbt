@@ -278,9 +278,7 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
     let local_var = function.local_variables.items[local_index]
     let local_name = match body_plan.elided_local_alias_target(local_handle) {
       Some(target) =>
-        self.names.get(
-          wgsl_ir_emit_expression_temporary_name_key(origin, target),
-        )
+        self.expression_alias_name(origin, function, body_plan, target)
       None =>
         if local_var.generated_temporary {
           match local_var.init {
@@ -305,6 +303,38 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
         }
       None => ()
     }
+  }
+}
+
+///|
+fn WgslIrFinalNamePlan::expression_alias_name(
+  self : WgslIrFinalNamePlan,
+  origin : WgslIrEmitFunctionOrigin,
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> String? {
+  match function.expressions.items.get(handle.index()) {
+    Some(FunctionArgument(index)) =>
+      match origin {
+        UserFunction(function_index) =>
+          self.names.get(
+            wgsl_ir_emit_name_key2("fn_arg", function_index, index),
+          )
+        EntryPointFunction(entry_point_index) =>
+          self.names.get(
+            wgsl_ir_emit_name_key2("ep_arg", entry_point_index, index),
+          )
+      }
+    Some(LocalVariable(local_handle)) =>
+      match body_plan.elided_local_alias_target(local_handle) {
+        Some(target) =>
+          self.expression_alias_name(origin, function, body_plan, target)
+        None =>
+          self.names.get(wgsl_ir_emit_local_name_key(origin, local_handle))
+      }
+    _ =>
+      self.names.get(wgsl_ir_emit_expression_temporary_name_key(origin, handle))
   }
 }
 
@@ -412,6 +442,7 @@ fn wgsl_ir_naga_expression_alias_target(
     return Some(expression_handle)
   }
   match function.expressions.items.get(expression_handle.index()) {
+    Some(FunctionArgument(_)) => Some(expression_handle)
     Some(LocalVariable(local_handle)) =>
       match known_targets.get(local_handle.index()) {
         Some(target) => Some(target)
