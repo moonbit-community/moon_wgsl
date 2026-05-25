@@ -521,12 +521,6 @@ fn wgsl_ir_emit_expression_temporary_index(
       ) ||
       (
         current_is_call_result &&
-        wgsl_ir_function_expression_is_unmaterialized_call_result_projection_argument(
-          function, expression_handle, handle,
-        )
-      ) ||
-      (
-        current_is_call_result &&
         wgsl_ir_function_expression_is_absorbed_store_projected_call_argument_base(
           function, body_plan, expression_handle, handle,
         )
@@ -553,8 +547,85 @@ fn wgsl_ir_emit_expression_temporary_index(
   }
   base_index +
   body_plan.implicit_expression_slot_offset(handle) +
+  wgsl_ir_emit_prior_call_projection_argument_slot_offset(function, handle) +
   wgsl_ir_emit_implicit_naga_load_slot_offset(function, body_plan, handle) +
   wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
+}
+
+///|
+fn wgsl_ir_emit_prior_call_projection_argument_slot_offset(
+  function : Function,
+  limit : Handle,
+) -> Int {
+  wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+    function,
+    function.body,
+    limit,
+  )
+}
+
+///|
+fn wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+  function : Function,
+  block : Block,
+  limit : Handle,
+) -> Int {
+  let mut offset = 0
+  for statement in block.statements {
+    match statement {
+      Call(_, arguments, Some(result)) =>
+        if result.index() < limit.index() {
+          for argument in arguments {
+            if wgsl_ir_function_expression_is_swizzle_projection(
+                function, argument,
+              ) {
+              offset += 1
+            }
+          }
+        }
+      Block(child) =>
+        offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+          function, child, limit,
+        )
+      If(_, accept, reject) => {
+        offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+          function, accept, limit,
+        )
+        offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+          function, reject, limit,
+        )
+      }
+      Switch(_, cases) =>
+        for case in cases {
+          offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+            function,
+            case.body,
+            limit,
+          )
+        }
+      Loop(body, continuing, _) => {
+        offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+          function, body, limit,
+        )
+        offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
+          function, continuing, limit,
+        )
+      }
+      _ => ()
+    }
+  }
+  offset
+}
+
+///|
+fn wgsl_ir_function_expression_is_swizzle_projection(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Swizzle(_, _, _)) => true
+    _ => false
+  }
 }
 
 ///|
@@ -599,78 +670,32 @@ fn wgsl_ir_naga_compose_implicit_expression_slots(
 }
 
 ///|
-fn wgsl_ir_function_expression_is_unmaterialized_call_result_projection_argument(
+fn wgsl_ir_function_expression_is_projection_of_call_result_temporary(
   function : Function,
   handle : Handle,
-  result : Handle,
 ) -> Bool {
-  wgsl_ir_function_expression_is_projection_of_generated_temporary(
-    function, handle,
-  ) &&
-  wgsl_ir_function_call_result_uses_direct_argument(
-    function,
-    function.body,
-    handle,
-    result,
-  )
+  match function.expressions.items.get(handle.index()) {
+    Some(Access(base, _))
+    | Some(AccessIndex(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      wgsl_ir_function_expression_is_call_result_projection_base(function, base)
+    _ => false
+  }
 }
 
 ///|
-fn wgsl_ir_function_call_result_uses_direct_argument(
+fn wgsl_ir_function_expression_is_call_result_projection_base(
   function : Function,
-  block : Block,
-  argument : Handle,
-  result : Handle,
+  handle : Handle,
 ) -> Bool {
-  for statement in block.statements {
-    match statement {
-      Call(_, arguments, Some(call_result)) =>
-        if call_result == result {
-          for item in arguments {
-            if item == argument {
-              return true
-            }
-          }
-        }
-      Block(child) =>
-        if wgsl_ir_function_call_result_uses_direct_argument(
-            function, child, argument, result,
-          ) {
-          return true
-        }
-      If(_, accept, reject) =>
-        if wgsl_ir_function_call_result_uses_direct_argument(
-            function, accept, argument, result,
-          ) ||
-          wgsl_ir_function_call_result_uses_direct_argument(
-            function, reject, argument, result,
-          ) {
-          return true
-        }
-      Switch(_, cases) =>
-        for case in cases {
-          if wgsl_ir_function_call_result_uses_direct_argument(
-              function,
-              case.body,
-              argument,
-              result,
-            ) {
-            return true
-          }
-        }
-      Loop(body, continuing, _) =>
-        if wgsl_ir_function_call_result_uses_direct_argument(
-            function, body, argument, result,
-          ) ||
-          wgsl_ir_function_call_result_uses_direct_argument(
-            function, continuing, argument, result,
-          ) {
-          return true
-        }
-      _ => ()
-    }
+  match function.expressions.items.get(handle.index()) {
+    Some(CallResult(_)) => true
+    Some(Access(base, _))
+    | Some(AccessIndex(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      wgsl_ir_function_expression_is_call_result_projection_base(function, base)
+    _ => false
   }
-  false
 }
 
 ///|
@@ -833,7 +858,7 @@ fn wgsl_ir_function_call_result_has_projected_argument_containing(
       Call(_, arguments, Some(call_result)) =>
         if call_result == result {
           for argument in arguments {
-            if wgsl_ir_function_expression_is_projection_of_generated_temporary(
+            if wgsl_ir_function_expression_is_projection_of_call_result_temporary(
                 function, argument,
               ) &&
               wgsl_ir_function_expression_graph_contains(
@@ -1200,11 +1225,43 @@ fn wgsl_ir_emit_materialized_expression_has_projected_use_before(
     match function.expressions.items.get(index) {
       Some(Access(base, _))
       | Some(AccessIndex(base, _))
-      | Some(Swizzle(_, base, _)) => if base == materialized { return true }
+      | Some(Swizzle(_, base, _)) =>
+        if wgsl_ir_emit_projection_base_references_materialized_expression(
+            function, base, materialized,
+          ) {
+          return true
+        }
       _ => ()
     }
   }
   false
+}
+
+///|
+fn wgsl_ir_emit_projection_base_references_materialized_expression(
+  function : Function,
+  base : Handle,
+  materialized : Handle,
+) -> Bool {
+  if base == materialized {
+    return true
+  }
+  match function.expressions.items.get(base.index()) {
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          local_var.generated_temporary && local_var.init == Some(materialized)
+        None => false
+      }
+    Some(Access(inner, _))
+    | Some(AccessIndex(inner, _))
+    | Some(Swizzle(_, inner, _))
+    | Some(Load(inner)) =>
+      wgsl_ir_emit_projection_base_references_materialized_expression(
+        function, inner, materialized,
+      )
+    _ => false
+  }
 }
 
 ///|

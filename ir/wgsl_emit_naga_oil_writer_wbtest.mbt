@@ -369,7 +369,7 @@ test "naga-oil writer materializes var field before swizzle projection" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("let _e9: vec4<f32> = position_world_to_clip(_e8.xyz);"),
+    emitted.contains("let _e10: vec4<f32> = position_world_to_clip(_e8.xyz);"),
     content="true",
   )
   debug_inspect(
@@ -737,6 +737,44 @@ test "naga-oil writer absorbs projected call-result argument slots" {
     content="true",
   )
   debug_inspect(emitted.contains("let _e5: vec4<f32>"), content="false")
+}
+
+///|
+test "naga-oil writer counts projected user-local loads before call results" {
+  let source =
+    #|struct Out {
+    #|  clip_position: vec4<f32>,
+    #|  world_position: vec4<f32>,
+    #|}
+    #|
+    #|fn world_to_clip(world_position: vec3<f32>) -> vec4<f32> {
+    #|  return vec4<f32>(world_position, 1.0);
+    #|}
+    #|
+    #|fn vertex(position: vec3<f32>) -> Out {
+    #|  var out: Out;
+    #|  out.world_position = vec4<f32>(position, 1.0);
+    #|  out.clip_position = world_to_clip(out.world_position.xyz);
+    #|  return out;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e7: vec4<f32> = out.world_position;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e9: vec4<f32> = world_to_clip(_e7.xyz);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e8: vec4<f32> = world_to_clip(_e7.xyz);"),
+    content="false",
+  )
 }
 
 ///|
