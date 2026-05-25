@@ -58,12 +58,13 @@ priv struct WgslIrNagaStatementPlanItem {
 fn WgslIrNagaFunctionBodyPlan::from_function(
   shader_module : Module,
   function : Function,
+  projection_aliases : Bool,
 ) -> WgslIrNagaFunctionBodyPlan {
   let materialized_expressions = wgsl_ir_function_materialized_expression_indices(
     function,
   )
   let elided_local_alias_targets = wgsl_ir_naga_function_elided_local_alias_targets(
-    function, materialized_expressions,
+    shader_module, function, materialized_expressions, projection_aliases,
   )
   WgslIrNagaFunctionBodyPlan::{
     materialized_expressions,
@@ -264,6 +265,7 @@ fn wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
 ///|
 fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   self : WgslIrFinalNamePlan,
+  shader_module : Module,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
   body_plan : WgslIrNagaFunctionBodyPlan,
@@ -278,7 +280,9 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
     let local_var = function.local_variables.items[local_index]
     let local_name = match body_plan.elided_local_alias_target(local_handle) {
       Some(target) =>
-        self.expression_alias_name(origin, function, body_plan, target)
+        self.expression_alias_name(
+          shader_module, origin, function, body_plan, target,
+        )
       None =>
         if local_var.generated_temporary {
           match local_var.init {
@@ -309,6 +313,7 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
 ///|
 fn WgslIrFinalNamePlan::expression_alias_name(
   self : WgslIrFinalNamePlan,
+  shader_module : Module,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
   body_plan : WgslIrNagaFunctionBodyPlan,
@@ -329,12 +334,68 @@ fn WgslIrFinalNamePlan::expression_alias_name(
     Some(LocalVariable(local_handle)) =>
       match body_plan.elided_local_alias_target(local_handle) {
         Some(target) =>
-          self.expression_alias_name(origin, function, body_plan, target)
+          self.expression_alias_name(
+            shader_module, origin, function, body_plan, target,
+          )
         None =>
           self.names.get(wgsl_ir_emit_local_name_key(origin, local_handle))
       }
+    Some(Swizzle(_, base, components)) =>
+      match
+        self.expression_alias_name(
+          shader_module, origin, function, body_plan, base,
+        ) {
+        Some(base_name) =>
+          Some("\{base_name}.\{wgsl_ir_naga_swizzle_components(components)}")
+        None => None
+      }
+    Some(AccessIndex(base, index)) =>
+      match
+        self.expression_alias_name(
+          shader_module, origin, function, body_plan, base,
+        ) {
+        Some(base_name) =>
+          match
+            wgsl_ir_naga_access_index_alias_suffix(
+              shader_module, function, base, index,
+            ) {
+            Some(suffix) => Some("\{base_name}\{suffix}")
+            None => None
+          }
+        None => None
+      }
     _ =>
       self.names.get(wgsl_ir_emit_expression_temporary_name_key(origin, handle))
+  }
+}
+
+///|
+fn wgsl_ir_naga_swizzle_components(
+  components : Array[SwizzleComponent],
+) -> String {
+  let out = StringBuilder::new()
+  for component in components {
+    out.write_string(wgsl_ir_swizzle_component_name(component))
+  }
+  out.to_string()
+}
+
+///|
+fn wgsl_ir_naga_access_index_alias_suffix(
+  shader_module : Module,
+  function : Function,
+  base : Handle,
+  index : Int,
+) -> String? {
+  guard wgsl_ir_naga_alias_expression_is_vector(shader_module, function, base) else {
+    return None
+  }
+  match index {
+    0 => Some(".x")
+    1 => Some(".y")
+    2 => Some(".z")
+    3 => Some(".w")
+    _ => None
   }
 }
 
@@ -384,8 +445,10 @@ fn WgslIrFinalNamePlan::allocate_function_expression_temporary_names(
 
 ///|
 fn wgsl_ir_naga_function_elided_local_alias_targets(
+  shader_module : Module,
   function : Function,
   materialized_expressions : @set.Set[Int],
+  projection_aliases : Bool,
 ) -> Map[Int, Handle] {
   let targets : Map[Int, Handle] = Map([])
   let mut changed = true
@@ -396,8 +459,10 @@ fn wgsl_ir_naga_function_elided_local_alias_targets(
         match
           wgsl_ir_naga_local_alias_target_expression(
             function,
+            shader_module,
             materialized_expressions,
             targets,
+            projection_aliases,
             Handle::Handle(local_index),
           ) {
           Some(target) => {
@@ -415,8 +480,10 @@ fn wgsl_ir_naga_function_elided_local_alias_targets(
 ///|
 fn wgsl_ir_naga_local_alias_target_expression(
   function : Function,
+  shader_module : Module,
   materialized_expressions : @set.Set[Int],
   known_targets : Map[Int, Handle],
+  projection_aliases : Bool,
   local_handle : Handle,
 ) -> Handle? {
   guard function.local_variables.items.get(local_handle.index())
@@ -427,25 +494,61 @@ fn wgsl_ir_naga_local_alias_target_expression(
   guard !local_var.generated_temporary else { return None }
   guard local_var.init is Some(init) else { return None }
   wgsl_ir_naga_expression_alias_target(
-    function, materialized_expressions, known_targets, init,
+    function, shader_module, materialized_expressions, known_targets, projection_aliases,
+    local_handle, init,
   )
 }
 
 ///|
 fn wgsl_ir_naga_expression_alias_target(
   function : Function,
+  shader_module : Module,
   materialized_expressions : @set.Set[Int],
   known_targets : Map[Int, Handle],
+  projection_aliases : Bool,
+  local_handle : Handle,
   expression_handle : Handle,
 ) -> Handle? {
   if materialized_expressions.contains(expression_handle.index()) {
     return Some(expression_handle)
   }
   match function.expressions.items.get(expression_handle.index()) {
+    Some(Swizzle(_, base, _)) if projection_aliases =>
+      if wgsl_ir_naga_local_alias_is_forwarded_by_local_declaration(
+          function, local_handle,
+        ) &&
+        wgsl_ir_naga_expression_projection_base_has_alias_target(
+          function, materialized_expressions, known_targets, base,
+        ) {
+        Some(expression_handle)
+      } else {
+        None
+      }
+    Some(AccessIndex(base, index)) if projection_aliases =>
+      if wgsl_ir_naga_local_alias_is_forwarded_by_local_declaration(
+          function, local_handle,
+        ) &&
+        wgsl_ir_naga_expression_projection_base_has_alias_target(
+          function, materialized_expressions, known_targets, base,
+        ) &&
+        wgsl_ir_naga_access_index_alias_suffix(
+          shader_module, function, base, index,
+        ) !=
+        None {
+        Some(expression_handle)
+      } else {
+        None
+      }
     Some(FunctionArgument(_)) => Some(expression_handle)
     Some(LocalVariable(local_handle)) =>
       match known_targets.get(local_handle.index()) {
-        Some(target) => Some(target)
+        Some(target) =>
+          if projection_aliases &&
+            wgsl_ir_naga_expression_is_projection(function, target) {
+            None
+          } else {
+            Some(target)
+          }
         None =>
           match function.local_variables.items.get(local_handle.index()) {
             Some(local_var) =>
@@ -466,6 +569,213 @@ fn wgsl_ir_naga_expression_alias_target(
           }
       }
     _ => None
+  }
+}
+
+///|
+fn wgsl_ir_naga_expression_is_projection(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Swizzle(_, _, _)) | Some(AccessIndex(_, _)) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_naga_local_alias_is_forwarded_by_local_declaration(
+  function : Function,
+  local_handle : Handle,
+) -> Bool {
+  let mut reference_count = 0
+  for expression in function.expressions.items {
+    if expression == Expression::LocalVariable(local_handle) {
+      reference_count += 1
+    }
+  }
+  if reference_count != 1 {
+    return false
+  }
+  for local_var in function.local_variables.items {
+    match local_var.init {
+      Some(init) =>
+        if wgsl_ir_expression_graph_contains_local_variable(
+            function, init, local_handle,
+          ) {
+          return true
+        }
+      None => ()
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_expression_graph_contains_local_variable(
+  function : Function,
+  root : Handle,
+  local_handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(root.index()) {
+    Some(LocalVariable(handle)) => handle == local_handle
+    Some(Load(inner))
+    | Some(AddressOf(_, inner))
+    | Some(Splat(_, inner))
+    | Some(Swizzle(_, inner, _))
+    | Some(AccessIndex(inner, _)) =>
+      wgsl_ir_expression_graph_contains_local_variable(
+        function, inner, local_handle,
+      )
+    Some(Access(base, index)) =>
+      wgsl_ir_expression_graph_contains_local_variable(
+        function, base, local_handle,
+      ) ||
+      wgsl_ir_expression_graph_contains_local_variable(
+        function, index, local_handle,
+      )
+    Some(Unary(_, inner)) =>
+      wgsl_ir_expression_graph_contains_local_variable(
+        function, inner, local_handle,
+      )
+    Some(Binary(_, left, right)) =>
+      wgsl_ir_expression_graph_contains_local_variable(
+        function, left, local_handle,
+      ) ||
+      wgsl_ir_expression_graph_contains_local_variable(
+        function, right, local_handle,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_naga_expression_projection_base_has_alias_target(
+  function : Function,
+  materialized_expressions : @set.Set[Int],
+  known_targets : Map[Int, Handle],
+  base : Handle,
+) -> Bool {
+  if materialized_expressions.contains(base.index()) {
+    return true
+  }
+  match function.expressions.items.get(base.index()) {
+    Some(Swizzle(_, inner, _)) =>
+      wgsl_ir_naga_expression_projection_base_has_alias_target(
+        function, materialized_expressions, known_targets, inner,
+      )
+    Some(AccessIndex(inner, _)) =>
+      wgsl_ir_naga_expression_projection_base_has_alias_target(
+        function, materialized_expressions, known_targets, inner,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_naga_alias_expression_is_vector(
+  shader_module : Module,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(FunctionArgument(index)) =>
+      match function.arguments.get(index) {
+        Some(argument) =>
+          wgsl_ir_naga_type_handle_is_vector(shader_module, argument.ty)
+        None => false
+      }
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          wgsl_ir_naga_type_handle_is_vector(shader_module, local_var.ty)
+        None => false
+      }
+    Some(Load(pointer)) =>
+      match
+        wgsl_ir_naga_expression_type_handle(shader_module, function, pointer) {
+        Some(ty) =>
+          wgsl_ir_naga_type_handle_is_vector(
+            shader_module,
+            wgsl_ir_naga_deref_pointer_type_handle(shader_module, ty),
+          )
+        None => false
+      }
+    Some(ImageLoad(image, _, _, _, _)) =>
+      wgsl_ir_naga_image_load_result_is_vector(shader_module, function, image)
+    Some(Swizzle(size, _, _)) => size.width() > 1
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_naga_expression_type_handle(
+  shader_module : Module,
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  match function.expressions.items.get(handle.index()) {
+    Some(FunctionArgument(index)) =>
+      match function.arguments.get(index) {
+        Some(argument) => Some(argument.ty)
+        None => None
+      }
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) => Some(local_var.ty)
+        None => None
+      }
+    Some(GlobalVariable(global_handle)) =>
+      match shader_module.global_variables.items.get(global_handle.index()) {
+        Some(global) => Some(global.ty)
+        None => None
+      }
+    Some(Load(pointer)) =>
+      match
+        wgsl_ir_naga_expression_type_handle(shader_module, function, pointer) {
+        Some(ty) =>
+          Some(wgsl_ir_naga_deref_pointer_type_handle(shader_module, ty))
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_naga_type_handle_is_vector(
+  shader_module : Module,
+  ty : Handle,
+) -> Bool {
+  match shader_module.types.items.get(ty.index()) {
+    Some({ inner: Vector(_, _), .. }) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_naga_deref_pointer_type_handle(
+  shader_module : Module,
+  ty : Handle,
+) -> Handle {
+  match shader_module.types.items.get(ty.index()) {
+    Some({ inner: Pointer(inner, _) | BindingArray(inner, _), .. }) => inner
+    _ => ty
+  }
+}
+
+///|
+fn wgsl_ir_naga_image_load_result_is_vector(
+  shader_module : Module,
+  function : Function,
+  image : Handle,
+) -> Bool {
+  match wgsl_ir_naga_expression_type_handle(shader_module, function, image) {
+    Some(image_ty) =>
+      match shader_module.types.items.get(image_ty.index()) {
+        Some({ inner: Image(_, _, _), .. }) => true
+        _ => false
+      }
+    None => false
   }
 }
 

@@ -92,8 +92,8 @@ fn WgslIrNagaCompatPlanner::writer_arena(
   let global_variables = self.global_variable_slots(
     declarations.global_variables,
   )
-  let functions = self.function_slots(declarations.functions)
-  let entry_points = self.entry_point_slots()
+  let functions = self.function_slots(declarations.functions, true)
+  let entry_points = self.entry_point_slots(true)
   let const_asserts = self.const_assert_slots()
   WgslIrNagaWriterArena::{
     directives: self.shader_module.directives,
@@ -118,8 +118,8 @@ fn WgslIrNagaCompatPlanner::runtime_writer_arena(
   let global_variables = self.global_variable_slots(
     declarations.global_variables,
   )
-  let functions = self.function_slots(declarations.functions)
-  let entry_points = self.entry_point_slots()
+  let functions = self.function_slots(declarations.functions, false)
+  let entry_points = self.entry_point_slots(false)
   let const_asserts = self.const_assert_slots()
   WgslIrNagaWriterArena::{
     directives: self.shader_module.directives,
@@ -197,6 +197,7 @@ fn WgslIrNagaCompatPlanner::global_variable_slots(
 fn WgslIrNagaCompatPlanner::function_slots(
   self : WgslIrNagaCompatPlanner,
   declarations : Array[WgslIrNagaCompatDeclarationSlot],
+  projection_aliases : Bool,
 ) -> Array[WgslIrNagaWriterFunctionSlot] {
   let slots : Array[WgslIrNagaWriterFunctionSlot] = []
   for slot in declarations {
@@ -207,6 +208,7 @@ fn WgslIrNagaCompatPlanner::function_slots(
       body_plan: WgslIrNagaFunctionBodyPlan::from_function(
         self.shader_module,
         item,
+        projection_aliases,
       ),
     })
   }
@@ -216,6 +218,7 @@ fn WgslIrNagaCompatPlanner::function_slots(
 ///|
 fn WgslIrNagaCompatPlanner::entry_point_slots(
   self : WgslIrNagaCompatPlanner,
+  projection_aliases : Bool,
 ) -> Array[WgslIrNagaWriterEntryPointSlot] {
   let slots : Array[WgslIrNagaWriterEntryPointSlot] = []
   for source_index in self.entry_point_order() {
@@ -226,6 +229,7 @@ fn WgslIrNagaCompatPlanner::entry_point_slots(
       body_plan: WgslIrNagaFunctionBodyPlan::from_function(
         self.shader_module,
         item.function,
+        projection_aliases,
       ),
     })
   }

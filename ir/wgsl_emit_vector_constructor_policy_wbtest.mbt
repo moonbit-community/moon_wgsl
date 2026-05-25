@@ -62,6 +62,27 @@ test "WGSL lowerer normalizes compound vector-scalar assignments" {
 }
 
 ///|
+test "naga-oil writer policy elides projection local aliases" {
+  let source =
+    #|@group(0) @binding(0) var image: texture_storage_2d<r32uint, read>;
+    #|
+    #|fn extract(coord: vec2<u32>) -> u32 {
+    #|  let visibility = textureLoad(image, coord).x;
+    #|  let depth = visibility;
+    #|  return depth;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("let visibility"), content="false")
+  debug_inspect(naga_oil.contains("let depth"), content="true")
+  debug_inspect(naga_oil.contains(".x;"), content="true")
+}
+
+///|
 test "naga-oil writer policy folds identity vector constructors" {
   let source =
     #|fn mip_coord(workgroup_id: vec2<u32>, x: u32, y: u32) -> vec2<u32> {

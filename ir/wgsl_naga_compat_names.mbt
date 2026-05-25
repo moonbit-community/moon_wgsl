@@ -188,9 +188,9 @@ fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
   namer : WgslIrNagaNamer,
   slot : WgslIrNagaWriterEntryPointSlot,
 ) -> Unit {
-  ignore(self)
   let ep = slot.item
   table.allocate_function_body_names_from_arena(
+    self.shader_module,
     EntryPointFunction(slot.source_index),
     ep.function,
     slot.body_plan,
@@ -205,9 +205,9 @@ fn WgslIrNagaWriterModule::allocate_function_body_names(
   namer : WgslIrNagaNamer,
   slot : WgslIrNagaWriterFunctionSlot,
 ) -> Unit {
-  ignore(self)
   let function = slot.item
   table.allocate_function_body_names_from_arena(
+    self.shader_module,
     UserFunction(slot.source_index),
     function,
     slot.body_plan,
