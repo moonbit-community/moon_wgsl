@@ -127,13 +127,20 @@ pub fn LocalVariableArena::append(
 }
 
 ///|
+pub enum ExpressionOrigin {
+  SourceExpression
+  FoldedLocalConstant
+} derive(Eq, Debug)
+
+///|
 pub(all) struct ExpressionArena {
   items : Array[Expression]
+  origins : Array[ExpressionOrigin]
 } derive(Eq, Debug)
 
 ///|
 pub fn ExpressionArena::ExpressionArena() -> ExpressionArena {
-  ExpressionArena::{ items: [] }
+  ExpressionArena::{ items: [], origins: [] }
 }
 
 ///|
@@ -141,8 +148,18 @@ pub fn ExpressionArena::append(
   self : ExpressionArena,
   item : Expression,
 ) -> Handle {
+  self.append_with_origin(item, SourceExpression)
+}
+
+///|
+fn ExpressionArena::append_with_origin(
+  self : ExpressionArena,
+  item : Expression,
+  origin : ExpressionOrigin,
+) -> Handle {
   let handle = Handle::Handle(self.items.length())
   self.items.push(item)
+  self.origins.push(origin)
   handle
 }
 
@@ -153,6 +170,33 @@ fn ExpressionArena::set(
   item : Expression,
 ) -> Unit {
   self.items[handle.index()] = item
+}
+
+///|
+fn ExpressionArena::set_origin(
+  self : ExpressionArena,
+  handle : Handle,
+  origin : ExpressionOrigin,
+) -> Unit {
+  self.origins[handle.index()] = origin
+}
+
+///|
+fn ExpressionArena::origin(
+  self : ExpressionArena,
+  handle : Handle,
+) -> ExpressionOrigin? {
+  self.origins.get(handle.index())
+}
+
+///|
+fn ExpressionArena::truncate(self : ExpressionArena, length : Int) -> Unit {
+  while self.items.length() > length {
+    ignore(self.items.pop())
+  }
+  while self.origins.length() > length {
+    ignore(self.origins.pop())
+  }
 }
 
 ///|

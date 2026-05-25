@@ -11,7 +11,13 @@ priv enum WgslIrGeneratedImportLocalSpellingMode {
 priv struct WgslIrLazyLocalConstant {
   expr_ref : @ast.WgslExprRef
   explicit_ty : Handle?
-  normalized : Expression?
+  normalized : WgslIrLazyLocalConstantExpression?
+}
+
+///|
+priv struct WgslIrLazyLocalConstantExpression {
+  expression : Expression
+  origin : ExpressionOrigin
 }
 
 ///|

@@ -792,7 +792,11 @@ fn WgslIrLowerer::lower_identifier_expression(
   match scope.local_constants.get(name) {
     Some({ value: LazyConstant(local_constant) }) => {
       let handle = match local_constant.normalized {
-        Some(expression) => function.expressions.append(expression)
+        Some(normalized) =>
+          function.expressions.append_with_origin(
+            normalized.expression,
+            normalized.origin,
+          )
         None =>
           self.lower_function_expression_ref_with_expected(
             local_constant.expr_ref,

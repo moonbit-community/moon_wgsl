@@ -834,6 +834,7 @@ fn WgslIrLowerer::lower_local_declaration(
           let normalized = self.normalized_local_constant_initializer(
             function, init_handle,
           )
+          function.expressions.set_origin(normalized, FoldedLocalConstant)
           ignore(scope.locals.remove(local_decl.name().name()))
           ignore(
             scope.local_pointer_expressions.remove(local_decl.name().name()),
@@ -1034,6 +1035,7 @@ fn WgslIrLowerer::lower_local_const_declaration(
     )
   }
   let normalized = self.normalized_local_constant_initializer(function, init)
+  function.expressions.set_origin(normalized, FoldedLocalConstant)
   ignore(scope.locals.remove(local_decl.name().name()))
   match local_constant_placement {
     DeclarationArenaLocalConstant =>
@@ -1068,9 +1070,13 @@ fn WgslIrLowerer::lower_local_const_declaration(
 fn wgsl_ir_lazy_local_constant_expression(
   function : Function,
   handle : Handle,
-) -> Expression? {
+) -> WgslIrLazyLocalConstantExpression? {
   match function.expressions.items.get(handle.index()) {
-    Some(Literal(literal)) => Some(Expression::Literal(literal))
+    Some(Literal(literal)) =>
+      Some(WgslIrLazyLocalConstantExpression::{
+        expression: Expression::Literal(literal),
+        origin: FoldedLocalConstant,
+      })
     _ => None
   }
 }
@@ -1080,9 +1086,7 @@ fn wgsl_ir_rewind_function_expressions(
   function : Function,
   length : Int,
 ) -> Unit {
-  while function.expressions.items.length() > length {
-    ignore(function.expressions.items.pop())
-  }
+  function.expressions.truncate(length)
 }
 
 ///|

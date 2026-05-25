@@ -276,10 +276,18 @@ fn WgslIrLowerer::function_without_ambient_global_arguments(
   global_handles : Array[Handle],
 ) -> Function {
   let expressions = ExpressionArena()
-  for expression in function.expressions.items {
-    expressions.items.push(
-      self.rewrite_ambient_global_function_expression(
-        expression, global_handles,
+  for index in 0..<function.expressions.items.length() {
+    let expression = function.expressions.items[index]
+    let origin = match function.expressions.origins.get(index) {
+      Some(value) => value
+      None => SourceExpression
+    }
+    ignore(
+      expressions.append_with_origin(
+        self.rewrite_ambient_global_function_expression(
+          expression, global_handles,
+        ),
+        origin,
       ),
     )
   }

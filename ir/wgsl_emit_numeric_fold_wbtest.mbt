@@ -33,6 +33,22 @@ test "naga-oil writer policy folds typed constant binary operands" {
 }
 
 ///|
+test "naga-oil writer policy folds pure literal binary operands" {
+  let source =
+    #|fn w(a: f32) -> f32 {
+    #|  return (1.0 / 6.0) * ((a * a) * a);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("0.16666667f"), content="true")
+  debug_inspect(naga_oil.contains("1f / 6f"), content="false")
+}
+
+///|
 test "naga-oil writer policy folds retained generated import scalar constants" {
   let source =
     #|const PIX_naga_oil_mod_XABCDX: f32 = 3.1415927;

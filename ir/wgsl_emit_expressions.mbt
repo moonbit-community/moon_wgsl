@@ -698,7 +698,18 @@ fn WgslIrEmitter::folded_expression_for_scalar_context(
             ) {
             Some(value) =>
               self.float_value_literal_for_width(value, scalar.width)
-            None => None
+            None =>
+              if self.expression_tree_contains_folded_local_constant(
+                  function, operand,
+                ) {
+                None
+              } else {
+                match self.eval_float_expression_for_writer(function, operand) {
+                  Some(value) =>
+                    self.float_value_literal_for_width(value, scalar.width)
+                  None => None
+                }
+              }
           }
       }
     Uint =>

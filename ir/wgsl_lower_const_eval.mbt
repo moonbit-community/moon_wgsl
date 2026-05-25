@@ -385,7 +385,11 @@ fn WgslIrLowerer::normalized_local_constant_initializer(
     _ => ()
   }
   match self.fold_function_constant_float_expression(function, handle) {
-    Some(literal) => function.expressions.append(Expression::Literal(literal))
+    Some(literal) =>
+      function.expressions.append_with_origin(
+        Expression::Literal(literal),
+        FoldedLocalConstant,
+      )
     None => handle
   }
 }

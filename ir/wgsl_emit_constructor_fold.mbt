@@ -35,6 +35,44 @@ fn WgslIrEmitter::eval_float_expression_for_writer(
 }
 
 ///|
+fn WgslIrEmitter::expression_tree_contains_folded_local_constant(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Bool raise WgslIrEmitError {
+  match function {
+    Some(function) =>
+      match function.expressions.origin(handle) {
+        Some(FoldedLocalConstant) => return true
+        _ => ()
+      }
+    None => ()
+  }
+  match self.required_expression(function, handle) {
+    Compose(_, components) => {
+      for component in components {
+        if self.expression_tree_contains_folded_local_constant(
+            function, component,
+          ) {
+          return true
+        }
+      }
+      false
+    }
+    Splat(_, inner)
+    | Swizzle(_, inner, _)
+    | Unary(_, inner)
+    | As(inner, _, _)
+    | Bitcast(_, inner) =>
+      self.expression_tree_contains_folded_local_constant(function, inner)
+    Binary(_, left, right) =>
+      self.expression_tree_contains_folded_local_constant(function, left) ||
+      self.expression_tree_contains_folded_local_constant(function, right)
+    _ => false
+  }
+}
+
+///|
 fn WgslIrEmitter::folded_scalar_constructor_expression(
   self : WgslIrEmitter,
   ty : Handle,

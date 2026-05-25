@@ -319,9 +319,15 @@ pub enum Expression {
 
 pub(all) struct ExpressionArena {
   items : Array[Expression]
+  origins : Array[ExpressionOrigin]
 } derive(Eq, @debug.Debug)
 pub fn ExpressionArena::ExpressionArena() -> Self
 pub fn ExpressionArena::append(Self, Expression) -> Handle
+
+pub enum ExpressionOrigin {
+  SourceExpression
+  FoldedLocalConstant
+} derive(Eq, @debug.Debug)
 
 pub enum FilterableTriggeringRule {
   Standard(StandardFilterableTriggeringRule)
