@@ -103,7 +103,7 @@ pub(all) enum TokenKind {
 }
 
 ///|
-pub impl Show for TokenKind with output(self, logger) {
+pub impl Show for TokenKind with fn output(self, logger) {
   logger.write_string(
     match self {
       TK_STMT => "STMT"
@@ -141,7 +141,7 @@ pub impl Show for TokenKind with output(self, logger) {
 }
 
 ///|
-pub impl Debug for TokenKind with to_repr(self) {
+pub impl Debug for TokenKind with fn to_repr(self) {
   match self {
     TK_STMT => to_repr("STMT")
     TK_TYPE_ATOM => to_repr("TYPE_ATOM")

@@ -222,6 +222,9 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           let rhs_value = self.materialize_store_value_if_needed(
             function, scope, block, rhs_value,
           )
+          let (materialized_target, rhs_value) = self.normalize_function_binary_operands(
+            function, binary_op, materialized_target, rhs_value,
+          )
           function.expressions.append(
             Expression::Binary(binary_op, materialized_target, rhs_value),
           )
@@ -642,6 +645,9 @@ fn WgslIrLowerer::lower_for_header_statement(
           )
           let rhs_value = self.materialize_store_value_if_needed(
             function, scope, block, rhs_value,
+          )
+          let (materialized_target, rhs_value) = self.normalize_function_binary_operands(
+            function, binary_op, materialized_target, rhs_value,
           )
           function.expressions.append(
             Expression::Binary(binary_op, materialized_target, rhs_value),

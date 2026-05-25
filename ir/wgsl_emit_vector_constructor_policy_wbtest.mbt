@@ -44,6 +44,24 @@ test "naga-oil writer policy emits inferred vector splat constructors" {
 }
 
 ///|
+test "WGSL lowerer normalizes compound vector-scalar assignments" {
+  let source =
+    #|fn adjust(value: vec2<f32>) -> vec2<f32> {
+    #|  var base_uv = value;
+    #|  base_uv -= 0.5;
+    #|  return base_uv;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("- vec2(0.5f)"), content="true")
+  debug_inspect(naga_oil.contains("- 0.5f"), content="false")
+}
+
+///|
 test "naga-oil writer policy folds identity vector constructors" {
   let source =
     #|fn mip_coord(workgroup_id: vec2<u32>, x: u32, y: u32) -> vec2<u32> {
