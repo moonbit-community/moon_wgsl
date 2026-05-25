@@ -477,13 +477,12 @@ fn WgslIrLowerer::lower_function_call_expression(
             _ =>
               match self.lower_templated_callee_type(callee) {
                 Some(ty) =>
-                  function.expressions.append(
-                    Expression::Compose(
-                      ty,
-                      self.lower_function_constructor_arguments(
-                        ty, arguments, function, scope,
-                      ),
+                  self.lower_function_constructor_expression_from_handles(
+                    ty,
+                    self.lower_function_constructor_arguments(
+                      ty, arguments, function, scope,
                     ),
+                    function,
                   )
                 None =>
                   raise WgslIrLowerError::UnsupportedExpression(
@@ -745,8 +744,8 @@ fn WgslIrLowerer::lower_function_constructor_call(
       }
     None => ()
   }
-  let handle = function.expressions.append(
-    Expression::Compose(ty, lowered_arguments),
+  let handle = self.lower_function_constructor_expression_from_handles(
+    ty, lowered_arguments, function,
   )
   match self.contextualized_component_constructor_type(name, ty, expected_ty) {
     Some(target_ty) =>
@@ -1232,6 +1231,31 @@ fn WgslIrLowerer::lower_function_constructor_arguments(
     scope,
     self.constructor_component_expected_type(ty),
   )
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_expression_from_handles(
+  self : WgslIrLowerer,
+  ty : Handle,
+  lowered_arguments : Array[Handle],
+  function : Function,
+) -> Handle {
+  match self.vector_size_from_type(ty) {
+    Some(size) =>
+      match lowered_arguments {
+        [argument] =>
+          match self.function_expression_type(function, argument) {
+            Some(argument_ty) if self.type_is_scalar(argument_ty) =>
+              return function.expressions.append(
+                Expression::Splat(size, argument),
+              )
+            _ => ()
+          }
+        _ => ()
+      }
+    None => ()
+  }
+  function.expressions.append(Expression::Compose(ty, lowered_arguments))
 }
 
 ///|

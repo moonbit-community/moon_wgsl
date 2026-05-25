@@ -1432,6 +1432,7 @@ fn WgslIrLowerer::function_expression_can_return_directly(
         | FunctionArgument(_)
         | Binary(_, _, _)
         | Compose(_, _)
+        | Splat(_, _)
         | Access(_, _)
         | AccessIndex(_, _)
         | Swizzle(_, _, _)

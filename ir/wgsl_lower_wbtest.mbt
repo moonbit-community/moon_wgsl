@@ -1085,3 +1085,30 @@ test "WGSL AST lowerer lowers relational builtin expressions through IR" {
 }
 
 ///|
+test "WGSL AST lowerer lowers scalar vector constructors as splats" {
+  let source =
+    #|fn f(v: vec3<f32>) -> f32 {
+    #|  return dot(v, vec3(16.5));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  match module_.functions.items.get(0) {
+    Some(function) => {
+      let mut has_splat = false
+      let mut has_single_component_compose = false
+      for expression in function.expressions.items {
+        match expression {
+          Splat(Tri, _) => has_splat = true
+          Compose(_, [_]) => has_single_component_compose = true
+          _ => ()
+        }
+      }
+      debug_inspect(has_splat, content="true")
+      debug_inspect(has_single_component_compose, content="false")
+    }
+    None => abort("missing function")
+  }
+}
+
+///|

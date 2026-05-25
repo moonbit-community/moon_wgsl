@@ -117,7 +117,14 @@ fn WgslIrLowerer::contextualize_function_constructor_expression(
     None => ()
   }
   if target_ty != actual_ty {
-    function.expressions.set(handle, Expression::Compose(target_ty, components))
+    match function.expressions.items.get(handle.index()) {
+      Some(Splat(_, _)) => ()
+      _ =>
+        function.expressions.set(
+          handle,
+          Expression::Compose(target_ty, components),
+        )
+    }
   }
 }
 
