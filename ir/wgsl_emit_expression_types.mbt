@@ -60,6 +60,8 @@ fn WgslIrEmitter::function_expression_inner_type(
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
     AccessIndex(base, index) =>
       self.indexed_expression_type(Some(function), base, Some(index))
+    Component(base, _) =>
+      self.indexed_expression_type(Some(function), base, Some(0))
     Access(base, _) => self.indexed_expression_type(Some(function), base, None)
     Splat(size, inner) =>
       match self.expression_type(Some(function), inner) {
@@ -224,6 +226,7 @@ fn WgslIrEmitter::global_expression_inner_type(
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
     AccessIndex(base, index) =>
       self.indexed_expression_type(None, base, Some(index))
+    Component(base, _) => self.indexed_expression_type(None, base, Some(0))
     Access(base, _) => self.indexed_expression_type(None, base, None)
     Swizzle(size, base, _) => self.swizzle_expression_type(None, base, size)
     Unary(_, inner) => self.expression_type(None, inner)

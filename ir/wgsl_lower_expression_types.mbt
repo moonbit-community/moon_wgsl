@@ -511,6 +511,7 @@ fn WgslIrLowerer::global_expression_inner_references_override(
       self.global_expression_references_override(base) ||
       self.global_expression_references_override(index)
     AccessIndex(base, _)
+    | Component(base, _)
     | Splat(_, base)
     | Swizzle(_, base, _)
     | Load(base)

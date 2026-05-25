@@ -717,6 +717,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_expression(
       self.import_child_expression(function, index, visiting_functions)
     }
     AccessIndex(base, _)
+    | Component(base, _)
     | Load(base)
     | Unary(_, base)
     | As(base, _, _)

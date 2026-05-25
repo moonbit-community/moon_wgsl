@@ -542,6 +542,7 @@ fn WgslIrEmitter::expression_contains_constant_reference(
     | Splat(_, inner)
     | Swizzle(_, inner, _)
     | AccessIndex(inner, _)
+    | Component(inner, _)
     | Derivative(_, _, inner) =>
       self.expression_tree_contains_constant_reference(function, inner)
     Access(base, index) | Binary(_, base, index) =>

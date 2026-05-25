@@ -66,7 +66,7 @@ fn WgslIrValidator::store_target_value_type(
               }
             None => None
           }
-        Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) =>
+        Access(_, _) | AccessIndex(_, _) | Component(_, _) | Swizzle(_, _, _) =>
           if self.expression_is_addressable(function, handle) {
             self.function_expression_inner_type(function, expression)
           } else {
@@ -123,7 +123,7 @@ fn WgslIrValidator::function_expression_value_type(
               }
             None => None
           }
-        Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) =>
+        Access(_, _) | AccessIndex(_, _) | Component(_, _) | Swizzle(_, _, _) =>
           if self.expression_is_addressable(function, handle) {
             self.function_expression_inner_type(function, expression)
           } else {
@@ -177,6 +177,11 @@ fn WgslIrValidator::function_expression_inner_type(
     AccessIndex(base, index) =>
       match self.function_expression_type(function, base) {
         Some(base_ty) => self.indexed_type(base_ty, Some(index))
+        None => None
+      }
+    Component(base, _) =>
+      match self.function_expression_type(function, base) {
+        Some(base_ty) => self.indexed_type(base_ty, Some(0))
         None => None
       }
     Access(base, _) =>
@@ -308,6 +313,11 @@ fn WgslIrValidator::global_expression_inner_type(
     AccessIndex(base, index) =>
       match self.global_expression_type(base) {
         Some(base_ty) => self.indexed_type(base_ty, Some(index))
+        None => None
+      }
+    Component(base, _) =>
+      match self.global_expression_type(base) {
+        Some(base_ty) => self.indexed_type(base_ty, Some(0))
         None => None
       }
     Access(base, _) =>
@@ -547,8 +557,10 @@ fn WgslIrValidator::expression_is_addressable(
             Some(ty) => self.type_is_pointer_like(ty)
             None => false
           }
-        Access(base, _) | AccessIndex(base, _) | Swizzle(_, base, _) =>
-          self.expression_is_addressable(function, base)
+        Access(base, _)
+        | AccessIndex(base, _)
+        | Component(base, _)
+        | Swizzle(_, base, _) => self.expression_is_addressable(function, base)
         _ => false
       }
     None => false
@@ -570,7 +582,7 @@ fn WgslIrValidator::global_expression_is_addressable(
             Some(ty) => self.type_is_pointer_like(ty)
             None => false
           }
-        Access(base, _) | AccessIndex(base, _) =>
+        Access(base, _) | AccessIndex(base, _) | Component(base, _) =>
           self.global_expression_is_addressable(base)
         _ => false
       }
@@ -596,7 +608,7 @@ fn WgslIrValidator::global_expression_value_type(
             Some(ty) => self.deref_type(ty)
             None => None
           }
-        Access(_, _) | AccessIndex(_, _) =>
+        Access(_, _) | AccessIndex(_, _) | Component(_, _) =>
           self.global_expression_inner_type(expression)
         _ => None
       }

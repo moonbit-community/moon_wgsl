@@ -445,11 +445,11 @@ test "naga_oil upstream: atomic builtins survive module composition" {
   debug_inspect(source.contains("atomicCompareExchangeWeak"), content="true")
   debug_inspect(source.contains("atomicExchange"), content="true")
   debug_inspect(
-    source.contains("let _e26: u32 = y;\n    let _e28: u32 = atomicExchange"),
+    source.contains("let _e28: u32 = y;\n    let _e29: u32 = atomicExchange"),
     content="true",
   )
-  debug_inspect(source.contains("let _e35: u32 = y;"), content="true")
-  debug_inspect(source.contains("return f32(_e39);"), content="true")
+  debug_inspect(source.contains("let _e37: u32 = y;"), content="true")
+  debug_inspect(source.contains("return f32(_e40);"), content="true")
   debug_inspect(source.contains("test_module::entry_point"), content="false")
 }
 

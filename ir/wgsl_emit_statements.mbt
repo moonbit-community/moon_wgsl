@@ -360,7 +360,8 @@ fn WgslIrEmitter::function_store_pointer_expression(
   }
   let text = self.function_pointer_expression(function, handle)
   match expression {
-    Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) => text
+    Access(_, _) | AccessIndex(_, _) | Component(_, _) | Swizzle(_, _, _) =>
+      text
     _ =>
       match self.expression_type(Some(function), handle) {
         Some(ty) =>

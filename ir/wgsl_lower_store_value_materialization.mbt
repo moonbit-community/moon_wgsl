@@ -58,6 +58,7 @@ fn WgslIrLowerer::function_store_pointer_is_projected_user_local(
   match function.expressions.items.get(pointer.index()) {
     Some(Access(base, _))
     | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
     | Some(Swizzle(_, base, _)) =>
       wgsl_ir_function_store_pointer_root_is_user_local(function, base)
     _ => false
@@ -79,6 +80,7 @@ fn wgsl_ir_function_store_pointer_root_is_user_local(
       }
     Some(Access(base, _))
     | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
     | Some(Swizzle(_, base, _)) =>
       wgsl_ir_function_store_pointer_root_is_user_local(function, base)
     _ => false

@@ -48,6 +48,18 @@ fn WgslIrLowerer::materialize_store_pointer_if_needed(
         )
       }
     }
+    Some(Component(base, component)) => {
+      let lowered_base = self.materialize_store_pointer_if_needed(
+        function, scope, block, base,
+      )
+      if lowered_base == base {
+        pointer
+      } else {
+        function.expressions.append(
+          Expression::Component(lowered_base, component),
+        )
+      }
+    }
     _ => pointer
   }
 }

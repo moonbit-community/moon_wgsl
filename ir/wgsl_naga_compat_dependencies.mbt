@@ -438,6 +438,7 @@ fn wgsl_ir_collect_function_calls_from_expression_inner(
       wgsl_ir_collect_function_calls_from_expression(function, index, calls)
     }
     AccessIndex(base, _)
+    | Component(base, _)
     | Load(base)
     | AddressOf(_, base)
     | Unary(_, base)

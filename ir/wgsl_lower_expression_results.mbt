@@ -93,6 +93,11 @@ fn WgslIrLowerer::global_expression_inner_type(
         Some(ty) => self.indexed_type_from_type_handle(ty, Some(index))
         None => None
       }
+    Component(base, _) =>
+      match self.global_expression_type(base) {
+        Some(ty) => self.indexed_type_from_type_handle(ty, Some(0))
+        None => None
+      }
     Access(base, _) =>
       match self.global_expression_type(base) {
         Some(ty) => self.indexed_type_from_type_handle(ty, None)
@@ -242,7 +247,8 @@ fn WgslIrLowerer::lower_member_expression(
 ) -> Handle raise WgslIrLowerError {
   match self.function_expression_type(function, base_handle) {
     Some(ty_handle) =>
-      match self.shader_module.types.get(ty_handle) {
+      match
+        self.shader_module.types.get(self.deref_pointer_type_handle(ty_handle)) {
         Some(ty) =>
           match ty.inner {
             Vector(_, _) =>
@@ -253,10 +259,7 @@ fn WgslIrLowerer::lower_member_expression(
                   )
                   if components.length() == 1 {
                     function.expressions.append(
-                      Expression::AccessIndex(
-                        value_base,
-                        wgsl_ir_gather_component_index(components[0]),
-                      ),
+                      Expression::Component(value_base, components[0]),
                     )
                   } else {
                     function.expressions.append(
@@ -412,6 +415,7 @@ fn WgslIrLowerer::function_expression_inner_type(
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
     AccessIndex(base, index) =>
       self.indexed_expression_type(function, base, Some(index))
+    Component(base, _) => self.indexed_expression_type(function, base, Some(0))
     Access(base, _) => self.indexed_expression_type(function, base, None)
     Splat(size, inner) =>
       match self.function_expression_type(function, inner) {

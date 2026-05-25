@@ -553,6 +553,7 @@ fn WgslIrEmitFilter::mark_global_expression_inner(
       self.mark_global_expression(shader_module, index)
     }
     AccessIndex(base, _)
+    | Component(base, _)
     | Load(base)
     | Unary(_, base)
     | Bitcast(_, base)
@@ -628,6 +629,7 @@ fn WgslIrEmitFilter::mark_function_expression_inner(
       self.mark_function_expression(shader_module, function, index)
     }
     AccessIndex(base, _)
+    | Component(base, _)
     | Load(base)
     | Unary(_, base)
     | Bitcast(_, base)

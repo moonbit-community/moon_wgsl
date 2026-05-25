@@ -1,5 +1,5 @@
 ///|
-test "naga-oil writer policy lowers static vector indexes to swizzles" {
+test "naga-oil writer policy lowers value vector indexes to swizzles" {
   let source =
     #|fn read_z(m: mat4x4<f32>) -> f32 {
     #|  return m[3][2];
@@ -12,6 +12,44 @@ test "naga-oil writer policy lowers static vector indexes to swizzles" {
   }
   debug_inspect(naga_oil.contains("return m[3].z;"), content="true")
   debug_inspect(naga_oil.contains("return m[3][2];"), content="false")
+}
+
+///|
+test "naga-oil writer policy preserves global binding vector indexes" {
+  let source =
+    #|struct View {
+    #|  clip_from_view: mat4x4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|
+    #|fn near() -> f32 {
+    #|  return view.clip_from_view[3][2];
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("view.clip_from_view[3][2]"), content="true")
+  debug_inspect(naga_oil.contains("view.clip_from_view[3].z"), content="false")
+}
+
+///|
+test "naga-oil writer policy preserves vector component members" {
+  let source =
+    #|fn read_z(v: vec4<f32>) -> f32 {
+    #|  return v.z;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("return v.z;"), content="true")
+  debug_inspect(naga_oil.contains("return v[2];"), content="false")
 }
 
 ///|

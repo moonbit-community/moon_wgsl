@@ -349,6 +349,15 @@ fn WgslIrFinalNamePlan::expression_alias_name(
           Some("\{base_name}.\{wgsl_ir_naga_swizzle_components(components)}")
         None => None
       }
+    Some(Component(base, component)) =>
+      match
+        self.expression_alias_name(
+          shader_module, origin, function, body_plan, base,
+        ) {
+        Some(base_name) =>
+          Some("\{base_name}.\{wgsl_ir_swizzle_component_name(component)}")
+        None => None
+      }
     Some(AccessIndex(base, index)) =>
       match
         self.expression_alias_name(
@@ -524,6 +533,17 @@ fn wgsl_ir_naga_expression_alias_target(
       } else {
         None
       }
+    Some(Component(base, _)) if projection_aliases =>
+      if wgsl_ir_naga_local_alias_is_forwarded_by_local_declaration(
+          function, local_handle,
+        ) &&
+        wgsl_ir_naga_expression_projection_base_has_alias_target(
+          function, materialized_expressions, known_targets, base,
+        ) {
+        Some(expression_handle)
+      } else {
+        None
+      }
     Some(AccessIndex(base, index)) if projection_aliases =>
       if wgsl_ir_naga_local_alias_is_forwarded_by_local_declaration(
           function, local_handle,
@@ -578,7 +598,8 @@ fn wgsl_ir_naga_expression_is_projection(
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
-    Some(Swizzle(_, _, _)) | Some(AccessIndex(_, _)) => true
+    Some(Swizzle(_, _, _)) | Some(Component(_, _)) | Some(AccessIndex(_, _)) =>
+      true
     _ => false
   }
 }
@@ -623,6 +644,7 @@ fn wgsl_ir_expression_graph_contains_local_variable(
     | Some(AddressOf(_, inner))
     | Some(Splat(_, inner))
     | Some(Swizzle(_, inner, _))
+    | Some(Component(inner, _))
     | Some(AccessIndex(inner, _)) =>
       wgsl_ir_expression_graph_contains_local_variable(
         function, inner, local_handle,
@@ -661,6 +683,10 @@ fn wgsl_ir_naga_expression_projection_base_has_alias_target(
   }
   match function.expressions.items.get(base.index()) {
     Some(Swizzle(_, inner, _)) =>
+      wgsl_ir_naga_expression_projection_base_has_alias_target(
+        function, materialized_expressions, known_targets, inner,
+      )
+    Some(Component(inner, _)) =>
       wgsl_ir_naga_expression_projection_base_has_alias_target(
         function, materialized_expressions, known_targets, inner,
       )
@@ -964,7 +990,7 @@ fn wgsl_ir_function_expression_is_persistent_call_argument_projection(
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
-    Some(Swizzle(_, base, _)) =>
+    Some(Component(base, _)) | Some(Swizzle(_, base, _)) =>
       wgsl_ir_function_expression_graph_contains_source_var_local(
         function, base,
       )
@@ -993,6 +1019,7 @@ fn wgsl_ir_function_expression_graph_contains_source_var_local(
         function, field,
       )
     Some(AccessIndex(base, _))
+    | Some(Component(base, _))
     | Some(Swizzle(_, base, _))
     | Some(Load(base))
     | Some(AddressOf(base, _)) =>
@@ -1052,6 +1079,7 @@ fn wgsl_ir_function_expression_is_projection_of_call_result_temporary(
   match function.expressions.items.get(handle.index()) {
     Some(Access(base, _))
     | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
     | Some(Swizzle(_, base, _)) =>
       wgsl_ir_function_expression_is_call_result_projection_base(function, base)
     _ => false
@@ -1067,6 +1095,7 @@ fn wgsl_ir_function_expression_is_call_result_projection_base(
     Some(CallResult(_)) => true
     Some(Access(base, _))
     | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
     | Some(Swizzle(_, base, _)) =>
       wgsl_ir_function_expression_is_call_result_projection_base(function, base)
     _ => false
@@ -1216,6 +1245,7 @@ fn wgsl_ir_function_expression_is_projection_graph_node(
     Some(Load(_))
     | Some(Access(_, _))
     | Some(AccessIndex(_, _))
+    | Some(Component(_, _))
     | Some(Swizzle(_, _, _)) => true
     _ => false
   }
@@ -1307,7 +1337,7 @@ fn wgsl_ir_emit_expression_has_implicit_naga_load_slot(
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
-    Some(AccessIndex(base, _)) =>
+    Some(AccessIndex(base, _)) | Some(Component(base, _)) =>
       wgsl_ir_emit_expression_is_dynamic_pointer_access(function, base)
     _ => false
   }
@@ -1320,7 +1350,7 @@ fn wgsl_ir_emit_expression_is_dynamic_pointer_access(
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
     Some(Access(_, _)) => true
-    Some(AccessIndex(base, _)) =>
+    Some(AccessIndex(base, _)) | Some(Component(base, _)) =>
       wgsl_ir_emit_expression_is_dynamic_pointer_access(function, base)
     _ => false
   }
@@ -1600,6 +1630,7 @@ fn wgsl_ir_emit_materialized_expression_has_projected_use_before(
     match function.expressions.items.get(index) {
       Some(Access(base, _))
       | Some(AccessIndex(base, _))
+      | Some(Component(base, _))
       | Some(Swizzle(_, base, _)) =>
         if wgsl_ir_emit_projection_base_references_materialized_expression(
             function, base, materialized,
@@ -1630,6 +1661,7 @@ fn wgsl_ir_emit_projection_base_references_materialized_expression(
       }
     Some(Access(inner, _))
     | Some(AccessIndex(inner, _))
+    | Some(Component(inner, _))
     | Some(Swizzle(_, inner, _))
     | Some(Load(inner)) =>
       wgsl_ir_emit_projection_base_references_materialized_expression(
@@ -1648,6 +1680,7 @@ fn wgsl_ir_emit_projected_temporary_expression_slots(
     Some(Load(_))
     | Some(Access(_, _))
     | Some(AccessIndex(_, _))
+    | Some(Component(_, _))
     | Some(Swizzle(_, _, _)) => 0
     Some(ImageQuery(_, _)) => 1
     Some(ImageLoad(_, _, _, _, _)) => 0

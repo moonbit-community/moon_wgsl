@@ -200,6 +200,21 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         value
       }
     }
+    Some(Component(base, component)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if parent_base != base {
+        function.expressions.append(
+          Expression::Component(parent_base, component),
+        )
+      } else {
+        value
+      }
+    }
     Some(Swizzle(size, base, pattern)) => {
       let lowered_base = self.materialize_nested_access_base(
         function, scope, block, base,
@@ -395,6 +410,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_control_flow_conditi
     Some(Load(_))
     | Some(Access(_, _))
     | Some(AccessIndex(_, _))
+    | Some(Component(_, _))
     | Some(Swizzle(_, _, _)) =>
       self.function_expression_reads_global_binding(function, value) ||
       self.function_expression_reads_var_pointer_load(function, value)

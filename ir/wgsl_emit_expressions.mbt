@@ -126,7 +126,8 @@ fn WgslIrEmitter::load_expression_requires_explicit_deref(
       }
   }
   match expression {
-    Access(_, _) | AccessIndex(_, _) | Swizzle(_, _, _) => false
+    Access(_, _) | AccessIndex(_, _) | Component(_, _) | Swizzle(_, _, _) =>
+      false
     Load(inner) => self.load_expression_requires_explicit_deref(function, inner)
     _ =>
       match self.expression_type(function, pointer) {
@@ -199,6 +200,8 @@ fn WgslIrEmitter::emit_expression(
       }
     AccessIndex(base, index) =>
       self.access_index_expression(function, base, index)
+    Component(base, component) =>
+      "\{self.access_base_expression(function, base)}.\{wgsl_ir_swizzle_component(wgsl_ir_gather_component_index(component))}"
     Swizzle(_, base, components) =>
       "\{self.access_base_expression(function, base)}.\{self.swizzle_components(components)}"
     FunctionArgument(index) => self.function_argument_name(function, index)
@@ -1288,7 +1291,11 @@ fn WgslIrEmitter::access_index_expression(
                   )
               }
             Vector(_, _) =>
-              "\{base_expression}.\{wgsl_ir_swizzle_component(index)}"
+              if self.vector_static_index_keeps_bracket(function, base) {
+                "\{base_expression}[\{index}]"
+              } else {
+                "\{base_expression}.\{wgsl_ir_swizzle_component(index)}"
+              }
             Matrix(_, _, _)
             | Array(_, _, _)
             | BindingArray(_, _)
@@ -1308,6 +1315,53 @@ fn WgslIrEmitter::access_index_expression(
       raise WgslIrEmitError::Unsupported(
         "access-index expression without base type",
       )
+  }
+}
+
+///|
+fn WgslIrEmitter::vector_static_index_keeps_bracket(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+) -> Bool {
+  ignore(self)
+  match function {
+    Some(func) => wgsl_ir_emit_expression_reads_global_binding(func, base)
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_expression_reads_global_binding(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(GlobalVariable(_)) => true
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          if local_var.generated_temporary {
+            match local_var.init {
+              Some(init) =>
+                wgsl_ir_emit_expression_reads_global_binding(function, init)
+              None => false
+            }
+          } else {
+            false
+          }
+        None => false
+      }
+    Some(Load(inner)) =>
+      wgsl_ir_emit_expression_reads_global_binding(function, inner)
+    Some(Access(base, index)) =>
+      wgsl_ir_emit_expression_reads_global_binding(function, base) ||
+      wgsl_ir_emit_expression_reads_global_binding(function, index)
+    Some(AccessIndex(base, _))
+    | Some(Component(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      wgsl_ir_emit_expression_reads_global_binding(function, base)
+    _ => false
   }
 }
 

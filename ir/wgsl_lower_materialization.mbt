@@ -17,7 +17,7 @@ fn wgsl_ir_function_expression_is_atomic_compare_exchange_result_projection(
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
-    Some(AccessIndex(base, _)) =>
+    Some(AccessIndex(base, _)) | Some(Component(base, _)) =>
       match function.expressions.items.get(base.index()) {
         Some(Load(inner)) =>
           wgsl_ir_function_expression_is_atomic_compare_exchange_result_ref(
@@ -43,7 +43,8 @@ fn wgsl_ir_function_expression_is_atomic_compare_exchange_old_value_base_load(
     return false
   }
   match function.expressions.items.get(handle.index() + 1) {
-    Some(AccessIndex(base, 0)) => base == handle
+    Some(AccessIndex(base, 0)) | Some(Component(base, SwizzleComponent::X)) =>
+      base == handle
     _ => false
   }
 }
@@ -185,6 +186,7 @@ fn wgsl_ir_function_expression_debug(
         Compose(_, _) => "compose"
         Access(_, _) => "access"
         AccessIndex(_, _) => "access-index"
+        Component(_, _) => "component"
         Splat(_, _) => "splat"
         Swizzle(_, _, _) => "swizzle"
         FunctionArgument(_) => "function-argument"
@@ -350,6 +352,21 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       )
       if parent_base != base {
         function.expressions.append(Expression::AccessIndex(parent_base, index))
+      } else {
+        value
+      }
+    }
+    Some(Component(base, component)) => {
+      let lowered_base = self.materialize_nested_access_base(
+        function, scope, block, base,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if parent_base != base {
+        function.expressions.append(
+          Expression::Component(parent_base, component),
+        )
       } else {
         value
       }
@@ -1117,8 +1134,10 @@ fn WgslIrLowerer::compound_assignment_target_value(
   target : Handle,
 ) -> Handle {
   let direct_projection = match function.expressions.items.get(target.index()) {
-    Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
-      true
+    Some(Access(_, _))
+    | Some(AccessIndex(_, _))
+    | Some(Component(_, _))
+    | Some(Swizzle(_, _, _)) => true
     _ => false
   }
   if direct_projection {
@@ -1161,6 +1180,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
     Some(Load(_))
     | Some(Access(_, _))
     | Some(AccessIndex(_, _))
+    | Some(Component(_, _))
     | Some(Swizzle(_, _, _)) =>
       self.function_expression_reads_global_binding(function, value) ||
       self.function_expression_reads_var_pointer_load(function, value)
@@ -1195,6 +1215,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
       self.function_expression_reads_var_pointer_load(function, value)
     Some(Access(base, _))
     | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
     | Some(Swizzle(_, base, _)) =>
       !wgsl_ir_function_expression_is_generated_temporary_reference(
         function, base,
@@ -1217,6 +1238,7 @@ fn wgsl_ir_function_expression_is_projection_of_generated_temporary(
   match function.expressions.items.get(handle.index()) {
     Some(Access(base, _))
     | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
     | Some(Swizzle(_, base, _)) =>
       wgsl_ir_function_expression_is_generated_temporary_reference(
         function, base,
@@ -1266,10 +1288,10 @@ fn WgslIrLowerer::function_expression_should_materialize_projection_base_value(
   value : Handle,
 ) -> Bool {
   let should_materialize = match function.expressions.items.get(value.index()) {
-    Some(Load(_))
-    | Some(Access(_, _))
-    | Some(AccessIndex(_, _))
-    | Some(Swizzle(_, _, _)) =>
+    Some(Load(inner)) =>
+      wgsl_ir_function_expression_is_projection_graph_node(function, inner) ||
+      self.function_expression_reads_var_pointer_load(function, value)
+    Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
       self.function_expression_reads_global_binding(function, value) ||
       self.function_expression_reads_var_pointer_load(function, value)
     _ => false
@@ -1329,7 +1351,9 @@ fn WgslIrLowerer::function_pointer_expression_is_var_pointer(
     Some(Access(base, index)) =>
       self.function_pointer_expression_is_var_pointer(function, base) ||
       self.function_expression_reads_var_pointer_load(function, index)
-    Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
+    Some(AccessIndex(base, _))
+    | Some(Component(base, _))
+    | Some(Swizzle(_, base, _)) =>
       self.function_pointer_expression_is_var_pointer(function, base)
     _ => false
   }
@@ -1363,7 +1387,9 @@ fn WgslIrLowerer::function_expression_reads_global_binding(
     Some(Access(base, index)) =>
       self.function_expression_reads_global_binding(function, base) ||
       self.function_expression_reads_global_binding(function, index)
-    Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
+    Some(AccessIndex(base, _))
+    | Some(Component(base, _))
+    | Some(Swizzle(_, base, _)) =>
       self.function_expression_reads_global_binding(function, base)
     _ => false
   }
@@ -1383,7 +1409,9 @@ fn WgslIrLowerer::function_expression_reads_var_pointer_load(
     Some(Access(base, index)) =>
       self.function_expression_reads_var_pointer_load(function, base) ||
       self.function_expression_reads_var_pointer_load(function, index)
-    Some(AccessIndex(base, _)) | Some(Swizzle(_, base, _)) =>
+    Some(AccessIndex(base, _))
+    | Some(Component(base, _))
+    | Some(Swizzle(_, base, _)) =>
       self.function_expression_reads_var_pointer_load(function, base)
     _ => false
   }
@@ -1458,6 +1486,7 @@ fn WgslIrLowerer::function_expression_can_return_directly(
         | Splat(_, _)
         | Access(_, _)
         | AccessIndex(_, _)
+        | Component(_, _)
         | Swizzle(_, _, _)
         | Unary(_, _)
         | Select(_, _, _)

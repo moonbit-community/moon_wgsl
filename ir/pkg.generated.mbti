@@ -277,6 +277,7 @@ pub enum Expression {
   Compose(Handle, Array[Handle])
   Access(Handle, Handle)
   AccessIndex(Handle, Int)
+  Component(Handle, SwizzleComponent)
   Splat(VectorSize, Handle)
   Swizzle(VectorSize, Handle, Array[SwizzleComponent])
   FunctionArgument(Int)

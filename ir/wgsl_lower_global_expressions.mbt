@@ -95,10 +95,7 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
       )
     Member(base, member_name) => {
       let base_handle = self.lower_global_expression_node(base)
-      Expression::AccessIndex(
-        base_handle,
-        self.member_index_for_global_expression(base_handle, member_name.name()),
-      )
+      self.lower_global_member_expression(base_handle, member_name.name())
     }
     Index(base, index) =>
       Expression::Access(
@@ -172,6 +169,59 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
     _ =>
       raise WgslIrLowerError::UnsupportedExpression(
         "global expression kind is not constant-lowerable",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_global_member_expression(
+  self : WgslIrLowerer,
+  base_handle : Handle,
+  member_name : String,
+) -> Expression raise WgslIrLowerError {
+  match self.global_expression_type(base_handle) {
+    Some(ty_handle) =>
+      match
+        self.shader_module.types.get(self.deref_pointer_type_handle(ty_handle)) {
+        Some(ty) =>
+          match ty.inner {
+            Vector(_, _) =>
+              match wgsl_ir_swizzle_components(member_name) {
+                Some(components) =>
+                  if components.length() == 1 {
+                    Expression::Component(base_handle, components[0])
+                  } else {
+                    Expression::Swizzle(
+                      wgsl_ir_vector_size_from_component_count(
+                        components.length(),
+                      ),
+                      base_handle,
+                      components,
+                    )
+                  }
+                None =>
+                  raise WgslIrLowerError::UnsupportedExpression(
+                    "invalid vector swizzle: \{member_name}",
+                  )
+              }
+            _ =>
+              Expression::AccessIndex(
+                base_handle,
+                self.member_index_for_global_expression(
+                  base_handle, member_name,
+                ),
+              )
+          }
+        None =>
+          Expression::AccessIndex(
+            base_handle,
+            self.member_index_for_global_expression(base_handle, member_name),
+          )
+      }
+    None =>
+      Expression::AccessIndex(
+        base_handle,
+        self.member_index_for_global_expression(base_handle, member_name),
       )
   }
 }

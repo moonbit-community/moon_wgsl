@@ -23,6 +23,7 @@ fn WgslIrValidator::validate_global_expression(
       self.validate_global_expression_handle(base)
       self.require_global_access_index_signature(base, index)
     }
+    Component(base, _) => self.validate_global_expression_handle(base)
     GlobalVariable(handle) => self.require_global_variable(handle)
     Load(pointer) => self.validate_global_expression_handle(pointer)
     AddressOf(ty, target) => {
@@ -88,6 +89,8 @@ fn WgslIrValidator::validate_function_expression(
       self.validate_function_expression_handle(function, base)
       self.require_function_access_index_signature(function, base, index)
     }
+    Component(base, _) =>
+      self.validate_function_expression_handle(function, base)
     FunctionArgument(index) =>
       if index < 0 || index >= function.arguments.length() {
         raise WgslIrValidationError::InvalidFunctionExpressionHandle(index)

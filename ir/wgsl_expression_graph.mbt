@@ -66,6 +66,7 @@ fn wgsl_ir_function_expression_operands_contain(
       wgsl_ir_function_handle_contains(function, base, needle, visited) ||
       wgsl_ir_function_handle_contains(function, index, needle, visited)
     AccessIndex(base, _)
+    | Component(base, _)
     | Splat(_, base)
     | Swizzle(_, base, _)
     | Load(base)

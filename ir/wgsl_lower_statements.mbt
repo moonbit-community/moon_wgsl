@@ -1170,7 +1170,10 @@ fn WgslIrLowerer::function_expression_inner_is_const_expression(
     Access(base, index) =>
       self.function_expression_is_const_expression(function, base) &&
       self.function_expression_is_const_expression(function, index)
-    AccessIndex(base, _) | Splat(_, base) | Swizzle(_, base, _) =>
+    AccessIndex(base, _)
+    | Component(base, _)
+    | Splat(_, base)
+    | Swizzle(_, base, _) =>
       self.function_expression_is_const_expression(function, base)
     Unary(_, inner)
     | Bitcast(_, inner)
