@@ -29,35 +29,26 @@ fn WgslIrLowerer::lower_block(
 }
 
 ///|
-fn WgslIrLowerer::predeclare_function_source_locals(
-  self : WgslIrLowerer,
-  block : @ast.WgslBlock,
-  function : Function,
-  scope : WgslIrFunctionScope,
-) -> Unit raise WgslIrLowerError {
-  self.predeclare_source_locals_in_block(block, function, scope)
-}
-
-///|
-fn WgslIrLowerer::predeclare_source_locals_in_block(
+fn WgslIrLowerer::predeclare_function_source_local_prefix(
   self : WgslIrLowerer,
   block : @ast.WgslBlock,
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
   for statement in block.statements() {
-    for local_decl in statement.local_bindings() {
-      self.predeclare_source_local(local_decl, function, scope)
-    }
     match statement.payload() {
-      LocalDeclaration(locals) =>
+      LocalDeclaration(locals) => {
         for local_decl in locals {
           self.predeclare_source_local(local_decl, function, scope)
         }
-      _ => ()
-    }
-    for child in statement.blocks() {
-      self.predeclare_source_locals_in_block(child, function, scope)
+        continue
+      }
+      _ => {
+        for local_decl in statement.local_bindings() {
+          self.predeclare_source_local(local_decl, function, scope)
+        }
+        return
+      }
     }
   }
 }
@@ -1319,6 +1310,23 @@ fn WgslIrLowerer::lower_local_declaration(
 }
 
 ///|
+fn WgslIrLowerer::local_var_initializer_uses_store(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+) -> Bool raise WgslIrLowerError {
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) =>
+          !self.expression_node_is_const_initializer(root) &&
+          !wgsl_ir_expression_node_contains_call(root)
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
 fn wgsl_ir_lower_predeclared_source_var_declaration(
   local_decl : @ast.WgslLocalDeclaration,
   scope : WgslIrFunctionScope,
@@ -1333,23 +1341,6 @@ fn wgsl_ir_lower_predeclared_source_var_declaration(
       block.push(Statement::Declare(handle))
       true
     }
-    None => false
-  }
-}
-
-///|
-fn WgslIrLowerer::local_var_initializer_uses_store(
-  self : WgslIrLowerer,
-  local_decl : @ast.WgslLocalDeclaration,
-) -> Bool raise WgslIrLowerError {
-  match local_decl.initializer_ref() {
-    Some(expr_ref) =>
-      match expr_ref.root() {
-        Some(root) =>
-          !self.expression_node_is_const_initializer(root) &&
-          !wgsl_ir_expression_node_contains_call(root)
-        None => false
-      }
     None => false
   }
 }
