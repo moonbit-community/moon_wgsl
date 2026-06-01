@@ -75,6 +75,67 @@ test "WGSL AST lowerer preserves const and override workgroup sizes in IR" {
 }
 
 ///|
+test "WGSL AST lowerer predeclares mutable locals before non-const initializer arena values" {
+  let source =
+    #|fn probe(t0: f32) -> f32 {
+    #|  var t = t0;
+    #|  if 1. < t {
+    #|    return t;
+    #|  }
+    #|  return t;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    LocalVariable(handle) => debug_inspect(handle.index(), content="0")
+    _ => abort("expected mutable local pointer to own the first arena slot")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected initializer argument after local pointer")
+  }
+  match function.expressions.items[2] {
+    Load(_) => ()
+    _ => abort("expected right-hand mutable local load before left literal")
+  }
+  match function.expressions.items[3] {
+    Literal(_) => ()
+    _ => abort("expected comparison literal after mutable local load")
+  }
+  match function.expressions.items[4] {
+    Binary(Less, left, right) => {
+      debug_inspect(left.index(), content="3")
+      debug_inspect(right.index(), content="2")
+    }
+    _ => abort("expected comparison to preserve source operands")
+  }
+}
+
+///|
+test "WGSL AST lowerer keeps shadowing var out of scope while lowering its initializer" {
+  let source =
+    #|fn convert(value: vec2<f32>) -> vec4<f32> {
+    #|  return vec4<f32>(value, 0.0, 1.0);
+    #|}
+    #|
+    #|fn probe(input: vec2<f32>) -> vec3<f32> {
+    #|  let p = input;
+    #|  {
+    #|    var p = convert(p).xyz;
+    #|    return p;
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+}
+
+///|
 test "WGSL AST lowerer preserves global and function const_asserts in IR" {
   let source =
     #|const VALUE: u32 = 1u;

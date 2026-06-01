@@ -831,6 +831,11 @@ fn WgslIrLowerer::lower_local_declaration(
     )
     return
   }
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+    self.local_var_initializer_uses_store(local_decl) {
+    self.lower_local_var_store_declaration(local_decl, function, scope, block)
+    return
+  }
   let expression_mark = function.expressions.items.length()
   let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
     scope.local_constants,
@@ -1065,6 +1070,213 @@ fn WgslIrLowerer::lower_local_declaration(
       _ => ()
     }
   }
+}
+
+///|
+fn WgslIrLowerer::local_var_initializer_uses_store(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+) -> Bool raise WgslIrLowerError {
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) =>
+          !self.expression_node_is_const_initializer(root) &&
+          !wgsl_ir_expression_node_contains_call(root)
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_const_initializer(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool raise WgslIrLowerError {
+  match node.kind() {
+    Literal(_) => true
+    Identifier(name) =>
+      self.constant_declarations.contains(name.name()) ||
+      self.constant_names.contains(name.name())
+    Group(inner) => self.expression_node_is_const_initializer(inner)
+    Unary(_, inner) => self.expression_node_is_const_initializer(inner)
+    Binary(_, left, right) =>
+      self.expression_node_is_const_initializer(left) &&
+      self.expression_node_is_const_initializer(right)
+    Call(callee, arguments) =>
+      self.call_expression_is_const_initializer(callee, arguments)
+    Sequence([single]) => self.expression_node_is_const_initializer(single)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::call_expression_is_const_initializer(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+  arguments : Array[@ast.WgslExprNode],
+) -> Bool raise WgslIrLowerError {
+  guard self.expression_callee_is_const_constructor(callee) else {
+    return false
+  }
+  let arguments = wgsl_ir_call_arguments(arguments)
+  for argument in arguments {
+    if !self.expression_node_is_const_initializer(argument) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn WgslIrLowerer::expression_callee_is_const_constructor(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+) -> Bool raise WgslIrLowerError {
+  match callee.kind() {
+    Identifier(ident) =>
+      self.lower_bitcast_callee_type(callee) != None ||
+      self.lower_templated_callee_type(callee) != None ||
+      wgsl_ir_untemplated_constructor_name_is_const(ident.name())
+    Template(base, _) => self.expression_callee_is_const_constructor(base)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_untemplated_constructor_name_is_const(name : String) -> Bool {
+  name == "bool" ||
+  name == "i32" ||
+  name == "u32" ||
+  name == "f32" ||
+  name == "f16" ||
+  name == "vec2" ||
+  name == "vec3" ||
+  name == "vec4" ||
+  name == "mat2x2" ||
+  name == "mat2x3" ||
+  name == "mat2x4" ||
+  name == "mat3x2" ||
+  name == "mat3x3" ||
+  name == "mat3x4" ||
+  name == "mat4x2" ||
+  name == "mat4x3" ||
+  name == "mat4x4" ||
+  name == "array"
+}
+
+///|
+fn wgsl_ir_expression_node_contains_call(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Call(_, _) => true
+    Group(inner) => wgsl_ir_expression_node_contains_call(inner)
+    Unary(_, inner) => wgsl_ir_expression_node_contains_call(inner)
+    Binary(_, left, right) =>
+      wgsl_ir_expression_node_contains_call(left) ||
+      wgsl_ir_expression_node_contains_call(right)
+    Member(base, _) => wgsl_ir_expression_node_contains_call(base)
+    Index(base, index) =>
+      wgsl_ir_expression_node_contains_call(base) ||
+      wgsl_ir_expression_node_contains_call(index)
+    Sequence(items) => {
+      for item in items {
+        if wgsl_ir_expression_node_contains_call(item) {
+          return true
+        }
+      }
+      false
+    }
+    Template(base, _) => wgsl_ir_expression_node_contains_call(base)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_local_var_store_declaration(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Unit raise WgslIrLowerError {
+  let explicit_ty = match local_decl.ty_ref() {
+    Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
+    None => None
+  }
+  let placeholder_ty = match explicit_ty {
+    Some(ty) => ty
+    None => self.lower_builtin_type_name("i32")
+  }
+  let placeholder_ty = self.local_declaration_storage_type(
+    local_decl.kind(),
+    placeholder_ty,
+  )
+  let lowered_name = self.naga_oil_generated_import_local_spelling_for_scope(
+    local_decl.name().name(),
+    scope,
+  )
+  let handle = function.local_variables.append(LocalVariable::{
+    name: Some(lowered_name),
+    kind: LocalVariableKind::Var,
+    generated_temporary: false,
+    generated_temporary_store_value_reference: false,
+    ty: placeholder_ty,
+    init: None,
+  })
+  block.push(Statement::Declare(handle))
+  let pointer = function.expressions.append(Expression::LocalVariable(handle))
+  guard local_decl.initializer_ref() is Some(expr_ref) else { return }
+  let init = match wgsl_ir_address_of_operand_ref(expr_ref) {
+    Some(target_ref) => {
+      let target = self.lower_function_lvalue_node(target_ref, function, scope)
+      function.expressions.append(
+        Expression::AddressOf(
+          self.pointer_type_for_lvalue(function, target),
+          target,
+        ),
+      )
+    }
+    None =>
+      self.lower_function_expression_ref_with_expected(
+        expr_ref, function, scope, explicit_ty,
+      )
+  }
+  let ty = match explicit_ty {
+    Some(ty) => ty
+    None =>
+      match self.address_of_expression_type(function, init) {
+        Some(inferred) => inferred
+        None =>
+          match self.function_expression_type(function, init) {
+            Some(inferred) => inferred
+            None =>
+              self.infer_local_type_from_initializer(
+                local_decl.name().name(),
+                local_decl.initializer_ref(),
+              )
+          }
+      }
+  }
+  let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
+  function.local_variables.set(handle, LocalVariable::{
+    name: Some(lowered_name),
+    kind: LocalVariableKind::Var,
+    generated_temporary: false,
+    generated_temporary_store_value_reference: false,
+    ty,
+    init: None,
+  })
+  ignore(scope.local_constants.remove(local_decl.name().name()))
+  ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
+  scope.locals.set(local_decl.name().name(), handle)
+  scope.local_pointer_expressions.set(local_decl.name().name(), pointer)
+  self.contextualize_function_expression_for_type(function, init, ty)
+  let materialized = self.materialize_store_value_if_needed(
+    function, scope, block, init,
+  )
+  wgsl_ir_record_store_value_temporary_references(function, materialized)
+  block.push(Statement::Store(pointer, materialized))
 }
 
 ///|

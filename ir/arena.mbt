@@ -127,6 +127,15 @@ pub fn LocalVariableArena::append(
 }
 
 ///|
+fn LocalVariableArena::set(
+  self : LocalVariableArena,
+  handle : Handle,
+  item : LocalVariable,
+) -> Unit {
+  self.items[handle.index()] = item
+}
+
+///|
 pub enum ExpressionOrigin {
   SourceExpression
   FoldedLocalConstant

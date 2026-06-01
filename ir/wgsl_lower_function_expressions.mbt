@@ -302,12 +302,25 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
     Binary(op, left, right) => {
-      let left_handle = self.lower_function_expression_node(
-        left, function, scope,
-      )
-      let right_handle = self.lower_function_expression_node(
-        right, function, scope,
-      )
+      let (left_handle, right_handle) = if self.binary_expression_lowers_right_before_left(
+          op, left, right, function, scope,
+        ) {
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        (left_handle, right_handle)
+      } else {
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        (left_handle, right_handle)
+      }
       let binary_op = wgsl_ir_binary_operator(op)
       let (left_handle, right_handle) = self.normalize_function_binary_operands(
         function, binary_op, left_handle, right_handle,
@@ -358,6 +371,62 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       raise WgslIrLowerError::UnsupportedExpression(
         "expression sequence with \{items.length()} item(s) outside argument context: \{wgsl_ir_expr_node_shape(node)}",
       )
+  }
+}
+
+///|
+fn WgslIrLowerer::binary_expression_lowers_right_before_left(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  guard wgsl_ir_expr_operator_is_comparison(op) else { return false }
+  guard wgsl_ir_expr_node_is_literal_like(left) else { return false }
+  self.expression_node_is_mutable_local_value(right, function, scope)
+}
+
+///|
+fn wgsl_ir_expr_operator_is_comparison(op : @ast.WgslExprOperator) -> Bool {
+  match op {
+    Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_literal_like(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Literal(_) => true
+    Group(inner) => wgsl_ir_expr_node_is_literal_like(inner)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_mutable_local_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expression_node_is_mutable_local_value(inner, function, scope)
+    Identifier(name) =>
+      match scope.locals.get(name.name()) {
+        Some(handle) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_var) =>
+              local_var.kind == Var &&
+              !self.local_variable_is_handle_value(function, handle)
+            None => false
+          }
+        None => false
+      }
+    _ => false
   }
 }
 
