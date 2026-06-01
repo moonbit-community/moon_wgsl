@@ -114,6 +114,39 @@ test "WGSL AST lowerer predeclares mutable locals before non-const initializer a
 }
 
 ///|
+test "WGSL AST lowerer lowers non-argument var initializer before mutable local pointer" {
+  let source =
+    #|struct Material {
+    #|  color: vec4<f32>,
+    #|}
+    #|@group(0) @binding(0) var<uniform> material: Material;
+    #|fn fragment() -> vec4<f32> {
+    #|  var output_color: vec4<f32> = material.color;
+    #|  return output_color;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected global variable before mutable local pointer")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(_, _) => ()
+    _ => abort("expected member access before mutable local pointer")
+  }
+  match function.expressions.items[2] {
+    Load(_) => ()
+    _ => abort("expected initializer load before mutable local pointer")
+  }
+  match function.expressions.items[3] {
+    LocalVariable(handle) => debug_inspect(handle.index(), content="0")
+    _ => abort("expected mutable local pointer after initializer")
+  }
+}
+
+///|
 test "WGSL AST lowerer orders comparison argument before mutable local load" {
   let source =
     #|fn probe(a: f32, limit: f32) -> f32 {

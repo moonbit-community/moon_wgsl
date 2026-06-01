@@ -1316,7 +1316,14 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     init: None,
   })
   block.push(Statement::Declare(handle))
-  let pointer = function.expressions.append(Expression::LocalVariable(handle))
+  let predeclare_pointer = wgsl_ir_local_var_store_initializer_predeclares_pointer(
+    local_decl, scope,
+  )
+  let mut pointer : Handle? = if predeclare_pointer {
+    Some(function.expressions.append(Expression::LocalVariable(handle)))
+  } else {
+    None
+  }
   guard local_decl.initializer_ref() is Some(expr_ref) else { return }
   let init = match wgsl_ir_address_of_operand_ref(expr_ref) {
     Some(target_ref) => {
@@ -1332,6 +1339,11 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
       self.lower_function_expression_ref_with_expected(
         expr_ref, function, scope, explicit_ty,
       )
+  }
+  if pointer == None {
+    pointer = Some(
+      function.expressions.append(Expression::LocalVariable(handle)),
+    )
   }
   let ty = match explicit_ty {
     Some(ty) => ty
@@ -1361,6 +1373,11 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
   ignore(scope.local_constants.remove(local_decl.name().name()))
   ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
+  guard pointer is Some(pointer) else {
+    raise WgslIrLowerError::UnsupportedStatement(
+      "missing local pointer for var \{local_decl.name().name()}",
+    )
+  }
   scope.local_pointer_expressions.set(local_decl.name().name(), pointer)
   self.contextualize_function_expression_for_type(function, init, ty)
   let materialized = self.materialize_store_value_if_needed(
@@ -1368,6 +1385,35 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
   )
   wgsl_ir_record_store_value_temporary_references(function, materialized)
   block.push(Statement::Store(pointer, materialized))
+}
+
+///|
+fn wgsl_ir_local_var_store_initializer_predeclares_pointer(
+  local_decl : @ast.WgslLocalDeclaration,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) =>
+          wgsl_ir_expr_node_is_direct_function_argument_value(root, scope)
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_direct_function_argument_value(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      wgsl_ir_expr_node_is_direct_function_argument_value(inner, scope)
+    Identifier(name) => scope.arguments.contains(name.name())
+    _ => false
+  }
 }
 
 ///|
