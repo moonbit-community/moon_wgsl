@@ -98,7 +98,9 @@ fn wgsl_ir_is_compound_assignment_operator(op : String) -> Bool {
   op == "%=" ||
   op == "&=" ||
   op == "|=" ||
-  op == "^="
+  op == "^=" ||
+  op == "<<=" ||
+  op == ">>="
 }
 
 ///|

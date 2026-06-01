@@ -247,6 +247,35 @@ test "WGSL for statement expressions keep official header roles" {
 }
 
 ///|
+test "WGSL for statement expressions keep shift compound update role" {
+  let source =
+    #|fn demo() {
+    #|  for (var step = 32u; step > 0u; step >>= 1u) {
+    #|  }
+    #|}
+  let unit = parse_wgsl_translation_unit_for_test(source)
+  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+    abort("expected function payload")
+  }
+  let statement = function.body().statements()[0]
+  debug_inspect(statement.kind(), content="For")
+  debug_inspect(
+    statement.expressions().map(fn(item) { item.role() }),
+    content=(
+      #|[ForCondition, ForUpdate]
+    ),
+  )
+  debug_inspect(
+    statement
+    .expression_refs()
+    .map(fn(expr) { wgsl_expr_ref_source_text(source, expr) }),
+    content=(
+      #|["step > 0u", "step >>= 1u"]
+    ),
+  )
+}
+
+///|
 test "WGSL struct parser accepts preprocessing directives inside members" {
   let source =
     #|struct LightingInput {

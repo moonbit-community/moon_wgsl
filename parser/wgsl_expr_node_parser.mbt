@@ -455,6 +455,9 @@ fn WgslExprNodeParser::parse_expression(
   }
   let mut lhs = self.parse_postfix(prefix)
   while true {
+    if min_precedence == 0 && self.assignment_operator_at() != None {
+      break
+    }
     let (op, consumed) = match self.binary_operator_at() {
       Some(value) => value
       None => break

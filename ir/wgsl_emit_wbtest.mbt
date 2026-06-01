@@ -1110,6 +1110,31 @@ test "IR emitter hoists function var declarations before local let statements" {
 }
 
 ///|
+test "WGSL AST lowerer preserves shift compound for-loop updates" {
+  let source =
+    #|@group(0) @binding(0) var<storage, read_write> buffer: array<u32, 1>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  for (var step = 32u; step > 0u; step >>= 1u) {
+    #|    buffer[0] += step;
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("continuing {"), content="true")
+  debug_inspect(emitted.contains("step_ = (_e"), content="true")
+  debug_inspect(emitted.contains(" >> 1u);"), content="true")
+}
+
+///|
 test "IR emitter allocates local names around WGSL builtin functions like Naga" {
   let source =
     #|fn helper(value: f32) -> f32 {
