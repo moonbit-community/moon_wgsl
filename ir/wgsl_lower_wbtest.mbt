@@ -441,6 +441,73 @@ test "WGSL AST lowerer emits static array literal indexes as Naga access indexes
 }
 
 ///|
+test "WGSL AST lowerer loads dynamic storage array index value expressions" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var<storage, read> values: array<u32>;
+    #|
+    #|fn probe(index: u32) -> u32 {
+    #|  let value = values[index];
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected storage array global root")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(argument) => debug_inspect(argument, content="0")
+    _ => abort("expected dynamic index argument")
+  }
+  match function.expressions.items[2] {
+    Access(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index.index(), content="1")
+    }
+    _ => abort("expected dynamic storage array access pointer")
+  }
+  match function.expressions.items[3] {
+    Load(pointer) => debug_inspect(pointer.index(), content="2")
+    _ => abort("expected load from dynamic storage array access")
+  }
+  match function.local_variables.items[0].init {
+    Some(init) => debug_inspect(init.index(), content="3")
+    None => abort("expected local let initializer")
+  }
+}
+
+///|
+test "WGSL AST lowerer allocates resource globals per arena reference" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var texture: texture_2d<f32>;
+    #|
+    #|fn probe(coord: vec2<i32>) -> vec4<f32> {
+    #|  let dimensions = textureDimensions(texture);
+    #|  return textureLoad(texture, coord, 0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut global_reference_count = 0
+  for expression in function.expressions.items {
+    match expression {
+      GlobalVariable(_) => global_reference_count += 1
+      _ => ()
+    }
+  }
+  debug_inspect(global_reference_count, content="2")
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected first texture reference for textureDimensions")
+  }
+}
+
+///|
 test "WGSL AST lowerer binds load let initializers as named expressions" {
   let source =
     #|struct Layer {

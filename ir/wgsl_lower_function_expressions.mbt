@@ -383,8 +383,11 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let base_handle = self.lower_function_index_value_base(
         base, function, scope,
       )
-      self.lower_function_static_or_dynamic_index(
-        base_handle, index, function, scope,
+      self.apply_function_load_rule(
+        function,
+        self.lower_function_static_or_dynamic_index(
+          base_handle, index, function, scope,
+        ),
       )
     }
     Call(callee, arguments) =>
@@ -1191,7 +1194,7 @@ fn WgslIrLowerer::lower_identifier_expression(
   match self.global_names.get(name) {
     Some(handle) =>
       if self.global_variable_is_handle_value(handle) {
-        scope.global_pointer_expression(name, handle, function, true)
+        scope.global_pointer_expression(name, handle, function, false)
       } else {
         function.expressions.append(
           Expression::Load(
