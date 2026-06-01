@@ -895,6 +895,18 @@ fn wgsl_ir_expr_node_is_literal_like(node : @ast.WgslExprNode) -> Bool {
 }
 
 ///|
+fn wgsl_ir_expr_node_is_deferred_select_value(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Literal(_) => true
+    Group(inner) => wgsl_ir_expr_node_is_deferred_select_value(inner)
+    Unary(op, inner) =>
+      op == @ast.WgslExprOperator::Subtract &&
+      wgsl_ir_expr_node_is_deferred_select_value(inner)
+    _ => false
+  }
+}
+
+///|
 fn WgslIrLowerer::expression_node_is_mutable_local_value(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -2409,8 +2421,10 @@ fn WgslIrLowerer::lower_function_select_call(
       "select expects three arguments",
     )
   }
-  let (condition, accept, reject) = if wgsl_ir_expr_node_is_literal_like(reject) &&
-    wgsl_ir_expr_node_is_literal_like(accept) {
+  let (condition, accept, reject) = if wgsl_ir_expr_node_is_deferred_select_value(
+      reject,
+    ) &&
+    wgsl_ir_expr_node_is_deferred_select_value(accept) {
     let condition = self.lower_function_expression_node(
       condition, function, scope,
     )

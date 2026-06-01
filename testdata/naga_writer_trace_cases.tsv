@@ -3,5 +3,6 @@ bevy-pbr-fresnel	testdata/bevy_wgsl	bevy_pbr/src/render/pbr_functions.wgsl	fresn
 ui-border-select	testdata/naga_writer_trace	ui_border_select.wgsl	draw_uinode_border	-	-	-	-
 function-signature-before-entry-body	testdata/naga_writer_trace	function_signature_before_entry_body.wgsl	draw_a	-	-	-	-
 ui-fragment-texture-sample	testdata/naga_writer_trace	ui_fragment_texture_sample.wgsl	fragment	-	-	-	-
+ui-background-select	testdata/naga_writer_trace	ui_background_select.wgsl	draw_uinode_background	-	-	-	-
 box-shadow-horizontal	testdata/naga_writer_trace	box_shadow_horizontal.wgsl	horizontalRoundedBoxShadow	-	-	-	-
 box-shadow-rounded	testdata/naga_writer_trace	box_shadow_rounded.wgsl	roundedBoxShadow	-	-	-	-
