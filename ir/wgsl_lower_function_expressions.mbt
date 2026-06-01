@@ -557,7 +557,7 @@ fn WgslIrLowerer::binary_expression_lowers_right_before_left(
   scope : WgslIrFunctionScope,
 ) -> Bool {
   if wgsl_ir_expr_node_is_literal_like(left) {
-    return self.expression_node_contains_mutable_local_value(
+    return self.expression_node_contains_naga_reference_value(
       right, function, scope,
     )
   }
@@ -608,6 +608,56 @@ fn wgsl_ir_expr_node_is_direct_access_chain(node : @ast.WgslExprNode) -> Bool {
 }
 
 ///|
+fn WgslIrLowerer::expression_node_contains_naga_reference_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  if self.expression_node_is_mutable_local_value(node, function, scope) ||
+    self.expression_node_is_global_reference_value(node) {
+    return true
+  }
+  match node.kind() {
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.expression_node_contains_naga_reference_value(inner, function, scope)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      self.expression_node_contains_naga_reference_value(left, function, scope) ||
+      self.expression_node_contains_naga_reference_value(right, function, scope)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.expression_node_contains_naga_reference_value(base, function, scope)
+    Call(callee, arguments) =>
+      self.expression_node_contains_naga_reference_value(
+        callee, function, scope,
+      ) ||
+      arguments.any(fn(argument) {
+        self.expression_node_contains_naga_reference_value(
+          argument, function, scope,
+        )
+      })
+    Sequence(items) =>
+      items.any(fn(item) {
+        self.expression_node_contains_naga_reference_value(
+          item, function, scope,
+        )
+      })
+    Literal(_) | Identifier(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_global_reference_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => self.expression_node_is_global_reference_value(inner)
+    Identifier(name) => self.global_names.get(name.name()) != None
+    _ => false
+  }
+}
+
+///|
 fn wgsl_ir_expr_node_is_literal_like(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Literal(_) => true
@@ -638,39 +688,6 @@ fn WgslIrLowerer::expression_node_is_mutable_local_value(
         None => false
       }
     _ => false
-  }
-}
-
-///|
-fn WgslIrLowerer::expression_node_contains_mutable_local_value(
-  self : WgslIrLowerer,
-  node : @ast.WgslExprNode,
-  function : Function,
-  scope : WgslIrFunctionScope,
-) -> Bool {
-  if self.expression_node_is_mutable_local_value(node, function, scope) {
-    return true
-  }
-  match node.kind() {
-    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
-      self.expression_node_contains_mutable_local_value(inner, function, scope)
-    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
-      self.expression_node_contains_mutable_local_value(left, function, scope) ||
-      self.expression_node_contains_mutable_local_value(right, function, scope)
-    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
-      self.expression_node_contains_mutable_local_value(base, function, scope)
-    Call(callee, arguments) =>
-      self.expression_node_contains_mutable_local_value(callee, function, scope) ||
-      arguments.any(fn(argument) {
-        self.expression_node_contains_mutable_local_value(
-          argument, function, scope,
-        )
-      })
-    Sequence(items) =>
-      items.any(fn(item) {
-        self.expression_node_contains_mutable_local_value(item, function, scope)
-      })
-    Literal(_) | Identifier(_) | ShaderDefTemplate(_) => false
   }
 }
 

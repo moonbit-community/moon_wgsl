@@ -28,11 +28,11 @@ fn WgslIrEmitter::function_expression(
   function : Function,
   handle : Handle,
 ) -> String raise WgslIrEmitError {
-  match self.optional_function_expression_temporary_name(handle) {
+  match self.function_named_expression_name(function, handle) {
     Some(name) => return name
     None => ()
   }
-  match self.function_named_expression_name(function, handle) {
+  match self.optional_function_expression_temporary_name(handle) {
     Some(name) => return name
     None => ()
   }

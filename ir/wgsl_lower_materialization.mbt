@@ -1395,6 +1395,9 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return false
+  }
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
@@ -1421,6 +1424,9 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return false
+  }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
       function, value,
     ) {
@@ -1495,6 +1501,9 @@ fn WgslIrLowerer::function_expression_should_materialize_as_access_base(
   value : Handle,
 ) -> Bool {
   ignore(self)
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return false
+  }
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
@@ -1512,6 +1521,9 @@ fn WgslIrLowerer::function_expression_should_materialize_projection_base_value(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return false
+  }
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(Load(inner)) =>
       wgsl_ir_function_expression_is_projection_graph_node(function, inner) ||
@@ -1531,6 +1543,9 @@ fn WgslIrLowerer::function_expression_should_materialize_as_call_argument(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return false
+  }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
       function, value,
     ) {
@@ -1538,6 +1553,14 @@ fn WgslIrLowerer::function_expression_should_materialize_as_call_argument(
   }
   self.function_expression_is_var_pointer_load(function, value) &&
   self.function_expression_can_materialize_to_let(function, value)
+}
+
+///|
+fn wgsl_ir_function_expression_has_arena_name(
+  function : Function,
+  value : Handle,
+) -> Bool {
+  wgsl_ir_function_named_expression_name(function, value) != None
 }
 
 ///|

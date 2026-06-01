@@ -1423,7 +1423,46 @@ fn wgsl_ir_function_expression_should_use_named_let(
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
     Some(Math(_, _, _, _, _)) => true
+    Some(Load(_)) =>
+      wgsl_ir_function_expression_is_function_argument_pointer_load(
+        function, handle,
+      )
     None => false
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_function_argument_pointer_load(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Load(pointer)) =>
+      wgsl_ir_function_pointer_expression_has_function_argument_root(
+        function, pointer,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_pointer_expression_has_function_argument_root(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(FunctionArgument(_)) => true
+    Some(Access(base, _)) =>
+      wgsl_ir_function_pointer_expression_has_function_argument_root(
+        function, base,
+      )
+    Some(AccessIndex(base, _))
+    | Some(Component(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      wgsl_ir_function_pointer_expression_has_function_argument_root(
+        function, base,
+      )
     _ => false
   }
 }

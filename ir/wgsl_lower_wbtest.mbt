@@ -389,6 +389,152 @@ test "WGSL AST lowerer predeclares right argument before left global member proj
 }
 
 ///|
+test "WGSL AST lowerer emits static array literal indexes as Naga access indexes" {
+  let source =
+    #|const LAYER_BASE: u32 = 0u;
+    #|
+    #|struct Layer {
+    #|  n: f32,
+    #|}
+    #|
+    #|struct Input {
+    #|  layers: array<Layer, 4>,
+    #|}
+    #|
+    #|fn probe(input: ptr<function, Input>) -> f32 {
+    #|  return (*input).layers[LAYER_BASE].n;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected pointer argument root")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected struct member access")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="1")
+      debug_inspect(index, content="0")
+    }
+    Access(_, _) => abort("expected static array index, not dynamic access")
+    _ => abort("expected static array access index")
+  }
+  match function.expressions.items[3] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="2")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected array element member access")
+  }
+  match function.expressions.items[4] {
+    Load(base) => debug_inspect(base.index(), content="3")
+    _ => abort("expected final load")
+  }
+}
+
+///|
+test "WGSL AST lowerer binds load let initializers as named expressions" {
+  let source =
+    #|struct Layer {
+    #|  r: vec3<f32>,
+    #|}
+    #|
+    #|struct Input {
+    #|  layers: array<Layer, 4>,
+    #|}
+    #|
+    #|fn probe(input: ptr<function, Input>, layer: u32, light_to_frag: vec3<f32>) -> f32 {
+    #|  let r = (*input).layers[layer].r;
+    #|  return dot(light_to_frag, r);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.named_expressions.get(0) {
+    Some(named) => {
+      debug_inspect(named.name, content="\"r\"")
+      debug_inspect(named.handle.index(), content="5")
+    }
+    None => abort("expected load initializer named expression")
+  }
+  let mut generated_temporary_count = 0
+  for local_var in function.local_variables.items {
+    if local_var.generated_temporary {
+      generated_temporary_count += 1
+    }
+  }
+  debug_inspect(generated_temporary_count, content="0")
+  match function.expressions.items[6] {
+    FunctionArgument(index) => debug_inspect(index, content="2")
+    _ => abort("expected third argument before dot")
+  }
+  match function.expressions.items[7] {
+    Math(Dot, left, Some(right), None, None) => {
+      debug_inspect(left.index(), content="6")
+      debug_inspect(right.index(), content="5")
+    }
+    _ => abort("expected dot to reuse named load")
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let r: vec3<f32> = (*input).layers[layer].r;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("dot(light_to_frag, r)"), content="true")
+  debug_inspect(emitted.contains("_e"), content="false")
+}
+
+///|
+test "WGSL AST lowerer lowers literal-left global reference RHS before literal" {
+  let source =
+    #|struct Globals {
+    #|  time: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> globals: Globals;
+    #|
+    #|fn probe() -> f32 {
+    #|  let t = 0.05 * (0.85 + sin(5.0 * globals.time));
+    #|  return t;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected global reference before literal-left binary literal")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected global member access before literal")
+  }
+  match function.expressions.items[2] {
+    Load(base) => debug_inspect(base.index(), content="1")
+    _ => abort("expected global member load before literal")
+  }
+  match function.expressions.items[3] {
+    Literal(_) => ()
+    _ => abort("expected literal after global RHS load")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps member projections source ordered across higher-precedence right subtree" {
   let source =
     #|fn probe(point: vec2<f32>, width: vec4<f32>) -> f32 {

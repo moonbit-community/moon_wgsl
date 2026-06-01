@@ -53,8 +53,8 @@ fn WgslIrLowerer::static_index_for_naga_access_index(
   base_handle : Handle,
   index : @ast.WgslExprNode,
   function : Function,
-) -> Int? {
-  guard wgsl_ir_int_literal_from_expr_node(index) is Some(static_index) else {
+) -> Int? raise WgslIrLowerError {
+  guard self.static_index_value_from_expr_node(index) is Some(static_index) else {
     return None
   }
   guard static_index >= 0 else { return None }
@@ -76,8 +76,48 @@ fn WgslIrLowerer::static_index_for_naga_access_index(
           } else {
             None
           }
+        Array(_, Constant(count), _) =>
+          if static_index < count {
+            Some(static_index)
+          } else {
+            None
+          }
         _ => None
       }
     None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::static_index_value_from_expr_node(
+  self : WgslIrLowerer,
+  index : @ast.WgslExprNode,
+) -> Int? raise WgslIrLowerError {
+  match wgsl_ir_int_literal_from_expr_node(index) {
+    Some(static_index) => return Some(static_index)
+    None => ()
+  }
+  match index.kind() {
+    Group(inner) => self.static_index_value_from_expr_node(inner)
+    Identifier(name) =>
+      match self.ensure_constant_declaration_lowered(name.name()) {
+        Some(handle) =>
+          match self.shader_module.constants.items.get(handle.index()) {
+            Some(constant) => {
+              let evaluated = Some(
+                self.eval_global_integer_expression(constant.init),
+              ) catch {
+                _ => None
+              }
+              match evaluated {
+                Some(value) => Some(value.to_signed_int())
+                None => None
+              }
+            }
+            None => None
+          }
+        None => None
+      }
+    _ => None
   }
 }
