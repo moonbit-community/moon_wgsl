@@ -37,6 +37,28 @@ test "naga-oil writer policy preserves global binding vector indexes" {
 }
 
 ///|
+test "naga-oil writer policy preserves global binding matrix column components as indexes" {
+  let source =
+    #|struct View {
+    #|  clip_from_view: mat4x4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|
+    #|fn near() -> f32 {
+    #|  return view.clip_from_view[3].w;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("view.clip_from_view[3][3]"), content="true")
+  debug_inspect(naga_oil.contains("view.clip_from_view[3].w"), content="false")
+}
+
+///|
 test "naga-oil writer policy preserves vector component members" {
   let source =
     #|fn read_z(v: vec4<f32>) -> f32 {

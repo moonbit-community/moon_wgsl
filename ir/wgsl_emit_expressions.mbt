@@ -205,7 +205,7 @@ fn WgslIrEmitter::emit_expression(
     AccessIndex(base, index) =>
       self.access_index_expression(function, base, index)
     Component(base, component) =>
-      "\{self.access_base_expression(function, base)}.\{wgsl_ir_swizzle_component(wgsl_ir_gather_component_index(component))}"
+      self.component_expression(function, base, component)
     Swizzle(_, base, components) =>
       "\{self.access_base_expression(function, base)}.\{self.swizzle_components(components)}"
     FunctionArgument(index) => self.function_argument_name(function, index)
@@ -1260,6 +1260,22 @@ fn WgslIrEmitter::ray_query_vertex_positions_expression(
 }
 
 ///|
+fn WgslIrEmitter::component_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  base : Handle,
+  component : SwizzleComponent,
+) -> String raise WgslIrEmitError {
+  let index = wgsl_ir_gather_component_index(component)
+  let base_expression = self.access_base_expression(function, base)
+  if self.vector_static_index_keeps_bracket(function, base) {
+    "\{base_expression}[\{index}]"
+  } else {
+    "\{base_expression}.\{wgsl_ir_swizzle_component(index)}"
+  }
+}
+
+///|
 fn WgslIrEmitter::access_index_expression(
   self : WgslIrEmitter,
   function : Function?,
@@ -1328,9 +1344,44 @@ fn WgslIrEmitter::vector_static_index_keeps_bracket(
   function : Function?,
   base : Handle,
 ) -> Bool {
-  ignore(self)
   match function {
-    Some(func) => wgsl_ir_emit_expression_reads_global_binding(func, base)
+    Some(func) =>
+      self.vector_static_index_base_is_global_matrix_column(func, base)
+    None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::vector_static_index_base_is_global_matrix_column(
+  self : WgslIrEmitter,
+  function : Function,
+  base : Handle,
+) -> Bool {
+  match function.expressions.items.get(base.index()) {
+    Some(Load(inner)) =>
+      self.vector_static_index_base_is_global_matrix_column(function, inner)
+    Some(AccessIndex(matrix, _)) =>
+      self.expression_is_matrix_type(Some(function), matrix) &&
+      wgsl_ir_emit_expression_reads_global_binding(function, matrix)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_is_matrix_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Bool {
+  match self.expression_type(function, handle) {
+    Some(ty) =>
+      match
+        self.shader_module.types.items.get(
+          self.deref_pointer_type_handle(ty).index(),
+        ) {
+        Some({ inner: Matrix(_, _, _), .. }) => true
+        _ => false
+      }
     None => false
   }
 }

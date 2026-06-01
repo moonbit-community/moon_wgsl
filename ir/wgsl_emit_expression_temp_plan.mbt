@@ -75,6 +75,7 @@ priv struct WgslIrNagaTemporaryIndexTrace {
   implicit_expression_slots_before : Int
   prior_call_projection_argument_slots : Int
   implicit_naga_load_slots : Int
+  reused_resource_operand_slots : Int
   projected_temporary_slots : Int
   final_index : Int
 }
@@ -958,10 +959,20 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
   let projected_temporary_slots = wgsl_ir_emit_projected_temporary_slot_offset(
     function, body_plan, handle,
   )
+  let reused_resource_operand_slots = wgsl_ir_emit_reused_resource_operand_slot_offset(
+      function, handle,
+    ) -
+    projected_temporary_slots
+  let reused_resource_operand_slots = if reused_resource_operand_slots > 0 {
+    reused_resource_operand_slots
+  } else {
+    0
+  }
   let final_index = adjusted_base_index +
     implicit_expression_slots_before +
     prior_call_projection_argument_slots +
     implicit_naga_load_slots +
+    reused_resource_operand_slots +
     projected_temporary_slots
   WgslIrNagaTemporaryIndexTrace::{
     skipped,
@@ -970,6 +981,7 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
     implicit_expression_slots_before,
     prior_call_projection_argument_slots,
     implicit_naga_load_slots,
+    reused_resource_operand_slots,
     projected_temporary_slots,
     final_index,
   }
@@ -1446,6 +1458,58 @@ fn wgsl_ir_emit_expression_is_dynamic_pointer_access(
     Some(Access(_, _)) => true
     Some(AccessIndex(base, _)) | Some(Component(base, _)) =>
       wgsl_ir_emit_expression_is_dynamic_pointer_access(function, base)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_reused_resource_operand_slot_offset(
+  function : Function,
+  limit : Handle,
+) -> Int {
+  let seen : @set.Set[Int] = @set.Set([])
+  let mut offset = 0
+  for index in 0..<=limit.index() {
+    match function.expressions.items.get(index) {
+      Some(ImageSample(image, sampler, _, _, _, _, _, _, _)) => {
+        offset += wgsl_ir_emit_reused_resource_operand_slot(
+          function, seen, image,
+        )
+        offset += wgsl_ir_emit_reused_resource_operand_slot(
+          function, seen, sampler,
+        )
+      }
+      _ => ()
+    }
+  }
+  offset
+}
+
+///|
+fn wgsl_ir_emit_reused_resource_operand_slot(
+  function : Function,
+  seen : @set.Set[Int],
+  handle : Handle,
+) -> Int {
+  guard wgsl_ir_emit_expression_is_global_resource(function, handle) else {
+    return 0
+  }
+  let index = handle.index()
+  if seen.contains(index) {
+    1
+  } else {
+    seen.add(index)
+    0
+  }
+}
+
+///|
+fn wgsl_ir_emit_expression_is_global_resource(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(GlobalVariable(_)) => true
     _ => false
   }
 }

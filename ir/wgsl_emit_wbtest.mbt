@@ -1718,6 +1718,38 @@ test "naga-oil writer policy materializes binding access in control-flow conditi
 }
 
 ///|
+test "naga-oil writer plan counts reused resource operands at image use sites" {
+  let source =
+    #|@group(0) @binding(0) var<uniform> color: vec4<f32>;
+    #|@group(0) @binding(1) var<uniform> slider: vec4<f32>;
+    #|@group(0) @binding(2) var tex: texture_2d<f32>;
+    #|@group(0) @binding(3) var samp: sampler;
+    #|
+    #|fn fragment(uv: vec2<f32>) -> vec4<f32> {
+    #|  let output_color = textureSample(tex, samp, uv) * color;
+    #|  if uv.x < slider.x {
+    #|    let output_color = textureSample(tex, samp, uv) * color;
+    #|    return output_color;
+    #|  }
+    #|  return output_color;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("let _e14: vec4<f32> = textureSample(tex, samp, uv);"),
+    content="true",
+  )
+  debug_inspect(
+    naga_oil.contains("let _e12: vec4<f32> = textureSample"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer policy expands scalar matrix constructors into columns" {
   let source =
     #|fn helper() -> mat3x3<f32> {
