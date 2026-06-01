@@ -192,25 +192,6 @@ fn wgsl_ir_validation_scalar_assignable(
 }
 
 ///|
-fn wgsl_ir_validation_scalar_name(scalar : Scalar) -> String {
-  match scalar.kind {
-    Bool => "bool"
-    Sint => if scalar.width == 8 { "i64" } else { "i32" }
-    Uint => if scalar.width == 8 { "u64" } else { "u32" }
-    Float =>
-      if scalar.width == 2 {
-        "f16"
-      } else if scalar.width == 8 {
-        "f64"
-      } else {
-        "f32"
-      }
-    AbstractInt => "__abstract_int"
-    AbstractFloat => "__abstract_float"
-  }
-}
-
-///|
 fn wgsl_ir_validation_storage_format_scalar(format : StorageFormat) -> Scalar {
   match format {
     R64Uint => Scalar::Scalar(Uint, 8)

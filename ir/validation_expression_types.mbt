@@ -1036,20 +1036,7 @@ fn WgslIrValidator::predeclared_atomic_compare_exchange_type(
   self : WgslIrValidator,
   scalar : Scalar,
 ) -> Handle? {
-  for index in 0..<self.shader_module.types.items.length() {
-    let ty = self.shader_module.types.items[index]
-    match ty.inner {
-      PredeclaredStruct(_, _) =>
-        if ty.name ==
-          Some(
-            "atomic_compare_exchange_result_\{wgsl_ir_validation_scalar_name(scalar)}",
-          ) {
-          return Some(Handle::Handle(index))
-        }
-      _ => ()
-    }
-  }
-  None
+  self.predeclared_type_handle(AtomicCompareExchangeWeakResult(scalar))
 }
 
 ///|

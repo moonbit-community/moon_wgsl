@@ -68,20 +68,10 @@ fn WgslIrLowerer::lower_call_statement(
             Some(statement) => block.push(statement)
             None =>
               match wgsl_ir_atomic_function_from_name(name.name()) {
-                Some(atomic_function) => {
-                  let handle = self.lower_function_atomic_call(
-                    atomic_function, arguments, function, scope,
+                Some(atomic_function) =>
+                  self.lower_atomic_statement_call(
+                    atomic_function, arguments, function, scope, block,
                   )
-                  if self.function_expression_type(function, handle) != None {
-                    ignore(
-                      self.materialize_function_expression(
-                        function, scope, block, handle,
-                      ),
-                    )
-                  } else {
-                    block.push(Statement::Emit(HandleRange(handle, handle)))
-                  }
-                }
                 None =>
                   match self.function_names.get(name.name()) {
                     Some(handle) => {
@@ -411,6 +401,40 @@ fn WgslIrLowerer::lower_ray_query_statement_call(
       true
     }
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_atomic_statement_call(
+  self : WgslIrLowerer,
+  atomic_function : AtomicFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Unit raise WgslIrLowerError {
+  if atomic_function == Store {
+    guard arguments is [pointer_argument, value_argument] else {
+      raise WgslIrLowerError::UnsupportedExpression(
+        "atomicStore expects 2 arguments",
+      )
+    }
+    let pointer = self.lower_atomic_pointer_argument(
+      pointer_argument, function, scope,
+    )
+    let value = self.lower_function_expression_node(
+      value_argument, function, scope,
+    )
+    block.push(Statement::Atomic(pointer, Store, value, None))
+    return
+  }
+  let handle = self.lower_function_atomic_call(
+    atomic_function, arguments, function, scope,
+  )
+  if self.function_expression_type(function, handle) != None {
+    ignore(self.materialize_function_expression(function, scope, block, handle))
+  } else {
+    block.push(Statement::Emit(HandleRange(handle, handle)))
   }
 }
 

@@ -881,8 +881,8 @@ fn WgslIrEmitter::atomic_expression_result_type(
   atomic_function : AtomicFunction,
   arguments : Array[Handle],
 ) -> Handle? {
-  guard arguments is [pointer, ..] else { return None }
-  let scalar = self.atomic_pointer_scalar_type(function, pointer)
+  guard arguments is [_, ..] else { return None }
+  let scalar = self.atomic_call_result_scalar_type(function, arguments)
   match atomic_function {
     Store => None
     CompareExchangeWeak =>
@@ -896,6 +896,43 @@ fn WgslIrEmitter::atomic_expression_result_type(
         Some(value) => self.find_vector_scalar_type(value)
         None => None
       }
+  }
+}
+
+///|
+fn WgslIrEmitter::atomic_call_result_scalar_type(
+  self : WgslIrEmitter,
+  function : Function?,
+  arguments : Array[Handle],
+) -> Scalar? {
+  guard arguments is [pointer, .. rest] else { return None }
+  match self.atomic_pointer_scalar_type(function, pointer) {
+    Some(scalar) => Some(scalar)
+    None =>
+      match rest {
+        [value, ..] =>
+          match self.expression_type(function, value) {
+            Some(ty) => self.scalar_from_numeric_type_handle(ty)
+            None => None
+          }
+        [] => None
+      }
+  }
+}
+
+///|
+fn WgslIrEmitter::scalar_from_numeric_type_handle(
+  self : WgslIrEmitter,
+  ty : Handle,
+) -> Scalar? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) => Some(scalar)
+        Vector(_, scalar) | Matrix(_, _, scalar) => Some(scalar)
+        _ => None
+      }
+    None => None
   }
 }
 

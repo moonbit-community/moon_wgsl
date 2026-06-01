@@ -874,8 +874,8 @@ fn WgslIrLowerer::atomic_expression_result_type(
   atomic_function : AtomicFunction,
   arguments : Array[Handle],
 ) -> Handle? {
-  guard arguments is [pointer, ..] else { return None }
-  let scalar = self.atomic_pointer_scalar_type(function, pointer)
+  guard arguments is [_, ..] else { return None }
+  let scalar = self.atomic_call_result_scalar_type(function, arguments)
   match atomic_function {
     Store => None
     CompareExchangeWeak =>

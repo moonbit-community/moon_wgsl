@@ -2561,7 +2561,37 @@ fn WgslIrLowerer::lower_function_atomic_call(
       )
     }
   }
+  if atomic_function == CompareExchangeWeak {
+    match self.atomic_call_result_scalar_type(function, handles) {
+      Some(scalar) =>
+        ignore(
+          self.predeclared_struct_type(AtomicCompareExchangeWeakResult(scalar)),
+        )
+      None => ()
+    }
+  }
   function.expressions.append(Expression::AtomicCall(atomic_function, handles))
+}
+
+///|
+fn WgslIrLowerer::atomic_call_result_scalar_type(
+  self : WgslIrLowerer,
+  function : Function,
+  arguments : Array[Handle],
+) -> Scalar? {
+  guard arguments is [pointer, .. rest] else { return None }
+  match self.atomic_pointer_scalar_type(function, pointer) {
+    Some(scalar) => Some(scalar)
+    None =>
+      match rest {
+        [value, ..] =>
+          match self.function_expression_type(function, value) {
+            Some(ty) => self.scalar_from_numeric_type_handle(ty)
+            None => None
+          }
+        [] => None
+      }
+  }
 }
 
 ///|

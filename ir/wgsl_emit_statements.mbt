@@ -180,6 +180,19 @@ fn WgslIrEmitter::emit_statement(
       out.write_string(
         "\{pad}\{self.function_store_pointer_expression(function, pointer)} = \{self.function_store_value_expression(function, pointer, value)};\n",
       )
+    Atomic(pointer, atomic_function, value, compare) => {
+      out.write_string(
+        "\{pad}\{self.atomic_function_name(atomic_function)}(\{self.pointer_builtin_argument_expression(Some(function), pointer)}, \{self.required_function_expression(Some(function), value)}",
+      )
+      match compare {
+        Some(handle) =>
+          out.write_string(
+            ", \{self.required_function_expression(Some(function), handle)}",
+          )
+        None => ()
+      }
+      out.write_string(");\n")
+    }
     ImageStore(image, coordinate, array_index, value) => {
       out.write_string(
         "\{pad}textureStore(\{self.function_expression(function, image)}, \{self.function_expression(function, coordinate)}",
