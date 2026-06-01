@@ -466,6 +466,51 @@ test "WGSL AST lowerer orders nested call argument dependencies before outer sib
 }
 
 ///|
+test "WGSL AST lowerer folds untemplated vector constructor constants in math arenas" {
+  let source =
+    #|fn probe(color: vec3<f32>) -> f32 {
+    #|  return dot(color, vec3(50.0 * 0.33));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  debug_inspect(function.expressions.items.length(), content="4")
+  let mut literal : Handle? = None
+  let mut splat : Handle? = None
+  let mut argument : Handle? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      Literal(_) => literal = Some(Handle::Handle(index))
+      Splat(Tri, component) => {
+        guard literal is Some(literal_handle) else {
+          abort("expected folded literal before splat")
+        }
+        if component != literal_handle {
+          abort("expected folded literal to feed vector splat")
+        }
+        splat = Some(Handle::Handle(index))
+      }
+      FunctionArgument(0) => argument = Some(Handle::Handle(index))
+      Binary(Multiply, _, _) =>
+        abort("constructor constant product must not survive in arena")
+      Math(Dot, left, Some(right), None, None) => {
+        guard argument is Some(argument_handle) else {
+          abort("expected argument before dot")
+        }
+        guard splat is Some(splat_handle) else {
+          abort("expected splat before dot")
+        }
+        if left != argument_handle || right != splat_handle {
+          abort("expected dot over argument and folded vector splat")
+        }
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
 test "WGSL AST lowerer emits static array literal indexes as Naga access indexes" {
   let source =
     #|const LAYER_BASE: u32 = 0u;

@@ -1814,10 +1814,6 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
   guard argument.kind() is Call(callee, constructor_arguments) else {
     return None
   }
-  guard self.lower_templated_callee_type(callee) is Some(ty) else {
-    return None
-  }
-  guard self.vector_size_from_type(ty) is Some(_) else { return None }
   guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
     is [component] else {
     return None
@@ -1825,6 +1821,13 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
   guard wgsl_ir_expr_node_is_foldable_float_arena_candidate(component) else {
     return None
   }
+  guard self.lower_foldable_vector_constructor_callee_type(
+      callee, constructor_arguments, component,
+    )
+    is Some(ty) else {
+    return None
+  }
+  guard self.vector_size_from_type(ty) is Some(_) else { return None }
   let expected_ty = self.constructor_component_expected_type(ty)
   let expression_mark = function.expressions.items.length()
   let lowered = self.lower_function_expression_node_with_expected(
@@ -1843,6 +1846,53 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
       function.expressions.truncate(expression_mark)
       None
     }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_foldable_vector_constructor_callee_type(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+  constructor_arguments : Array[@ast.WgslExprNode],
+  component : @ast.WgslExprNode,
+) -> Handle? raise WgslIrLowerError {
+  match self.lower_templated_callee_type(callee) {
+    Some(ty) => return Some(ty)
+    None => ()
+  }
+  match callee.kind() {
+    Identifier(name) => {
+      let constructor_name = name.name()
+      guard wgsl_ir_vector_size_from_constructor_name(constructor_name)
+        is Some(_) else {
+        return None
+      }
+      guard wgsl_ir_expr_node_requires_float_arena_fold(component) else {
+        return None
+      }
+      Some(
+        self.lower_untemplated_constructor_type_from_ast(
+          constructor_name, constructor_arguments, constructor_name,
+        ),
+      )
+    }
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_requires_float_arena_fold(
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_requires_float_arena_fold(inner)
+    Sequence([single]) => wgsl_ir_expr_node_requires_float_arena_fold(single)
+    Unary(_, inner) =>
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(inner)
+    Binary(_, left, right) =>
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(left) ||
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(right)
+    _ => false
   }
 }
 
