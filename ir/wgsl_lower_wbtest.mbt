@@ -114,6 +114,47 @@ test "WGSL AST lowerer predeclares mutable locals before non-const initializer a
 }
 
 ///|
+test "WGSL AST lowerer inserts higher-precedence right binary subtrees before left operands" {
+  let source =
+    #|fn probe(point: vec2<f32>, size: vec2<f32>) -> vec2<f32> {
+    #|  return point + size * 0.5;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected right subtree argument first")
+  }
+  match function.expressions.items[1] {
+    Literal(_) => ()
+    _ => abort("expected right subtree literal second")
+  }
+  match function.expressions.items[2] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ =>
+      abort(
+        "expected source left operand after higher-precedence right subtree",
+      )
+  }
+  match function.expressions.items[3] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="0")
+      debug_inspect(right.index(), content="1")
+    }
+    _ => abort("expected right subtree multiply before parent add")
+  }
+  match function.expressions.items[4] {
+    Binary(Add, left, right) => {
+      debug_inspect(left.index(), content="2")
+      debug_inspect(right.index(), content="3")
+    }
+    _ => abort("expected parent add to preserve source operands")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps shadowing var out of scope while lowering its initializer" {
   let source =
     #|fn convert(value: vec2<f32>) -> vec4<f32> {

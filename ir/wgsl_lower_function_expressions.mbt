@@ -302,7 +302,24 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
     Binary(op, left, right) => {
-      let (left_handle, right_handle) = if self.binary_expression_lowers_right_before_left(
+      let (left_handle, right_handle) = if wgsl_ir_binary_right_subtree_has_higher_precedence(
+          op, right,
+        ) {
+        let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+          right, function, scope,
+        )
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        let right_binary_op = wgsl_ir_binary_operator(right_op)
+        let (right_left, right_right) = self.normalize_function_binary_operands(
+          function, right_binary_op, right_left, right_right,
+        )
+        let right_handle = function.expressions.append(
+          Expression::Binary(right_binary_op, right_left, right_right),
+        )
+        (left_handle, right_handle)
+      } else if self.binary_expression_lowers_right_before_left(
           op, left, right, function, scope,
         ) {
         let right_handle = self.lower_function_expression_node(
@@ -375,6 +392,43 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
 }
 
 ///|
+fn WgslIrLowerer::lower_binary_expression_children(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> (@ast.WgslExprOperator, Handle, Handle) raise WgslIrLowerError {
+  match node.kind() {
+    Binary(op, left, right) => {
+      let (left_handle, right_handle) = if self.binary_expression_lowers_right_before_left(
+          op, left, right, function, scope,
+        ) {
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        (left_handle, right_handle)
+      } else {
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        (left_handle, right_handle)
+      }
+      (op, left_handle, right_handle)
+    }
+    _ =>
+      raise WgslIrLowerError::UnsupportedExpression(
+        "expected binary expression subtree",
+      )
+  }
+}
+
+///|
 fn WgslIrLowerer::binary_expression_lowers_right_before_left(
   self : WgslIrLowerer,
   op : @ast.WgslExprOperator,
@@ -386,6 +440,18 @@ fn WgslIrLowerer::binary_expression_lowers_right_before_left(
   guard wgsl_ir_expr_operator_is_comparison(op) else { return false }
   guard wgsl_ir_expr_node_is_literal_like(left) else { return false }
   self.expression_node_is_mutable_local_value(right, function, scope)
+}
+
+///|
+fn wgsl_ir_binary_right_subtree_has_higher_precedence(
+  op : @ast.WgslExprOperator,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  match right.kind() {
+    Binary(right_op, _, _) =>
+      right_op.binary_precedence() > op.binary_precedence()
+    _ => false
+  }
 }
 
 ///|
