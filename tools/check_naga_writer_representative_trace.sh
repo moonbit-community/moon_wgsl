@@ -108,6 +108,50 @@ normalize_moon_trace() {
 ' "$trace" > "$output"
 }
 
+normalize_oracle_bindings() {
+  local inventory="$1"
+  local wgsl="$2"
+  local function_prefix="$3"
+  local output="$4"
+  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" -v wgsl="$wgsl" '
+  BEGIN {
+    while ((getline line < wgsl) > 0) {
+      if (line ~ ("^fn " function_prefix) || line ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(")) {
+        signature = line
+        sub(/^fn [^(]*\(/, "", signature)
+        sub(/\).*/, "", signature)
+        count = split(signature, params, ",")
+        for (i = 1; i <= count; i = i + 1) {
+          param = params[i]
+          gsub(/^ +| +$/, "", param)
+          sub(/:.*/, "", param)
+          final_arg[i - 1] = param
+        }
+        break
+      }
+    }
+    close(wgsl)
+  }
+  $1 == "function" { active = index($2, prefix) == 1 }
+  active && $1 == "expression" && $4 ~ /^FunctionArgument/ {
+    arg_index = $4
+    sub(/^FunctionArgument\(/, "", arg_index)
+    sub(/\).*$/, "", arg_index)
+    if (arg_index in final_arg) {
+      print "binding\t" $3 "\t" final_arg[arg_index]
+    }
+  }
+' "$inventory" > "$output"
+}
+
+normalize_moon_bindings() {
+  local trace="$1"
+  local output="$2"
+  awk -F '\t' '
+  $1 == "binding" && $3 == "argument" { print "binding\t" $4 "\t" $5 }
+' "$trace" > "$output"
+}
+
 normalize_oracle_materialized() {
   local inventory="$1"
   local function_prefix="$2"
@@ -150,6 +194,7 @@ run_case() {
   local capabilities="$8"
   local case_dir="$out_dir/$id"
   local expression_drift=0
+  local binding_drift=0
   local materialized_drift=0
 
   mkdir -p "$case_dir"
@@ -162,8 +207,8 @@ run_case() {
   oracle_args=(
     --fixture-root "$fixture_root"
     --entry "$entry"
+    --output "$case_dir/oracle.wgsl"
     --expression-inventory "$case_dir/oracle.inventory"
-    --check-only
   )
 
   append_csv_arg "$bool_defs" --def push_moon_arg
@@ -179,13 +224,16 @@ run_case() {
 
   normalize_oracle_trace "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.expression-order"
   normalize_moon_trace "$case_dir/moon.trace" "$case_dir/moon.expression-order"
+  normalize_oracle_bindings "$case_dir/oracle.inventory" "$case_dir/oracle.wgsl" "$function_prefix" "$case_dir/oracle.bindings"
+  normalize_moon_bindings "$case_dir/moon.trace" "$case_dir/moon.bindings"
   normalize_oracle_materialized "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.materialized"
   normalize_moon_materialized "$case_dir/moon.trace" "$case_dir/moon.materialized"
 
   diff -u "$case_dir/oracle.expression-order" "$case_dir/moon.expression-order" > "$case_dir/expression-order.diff" || expression_drift=1
+  diff -u "$case_dir/oracle.bindings" "$case_dir/moon.bindings" > "$case_dir/bindings.diff" || binding_drift=1
   diff -u "$case_dir/oracle.materialized" "$case_dir/moon.materialized" > "$case_dir/materialized.diff" || materialized_drift=1
 
-  if [[ "$expression_drift" == 0 && "$materialized_drift" == 0 ]]; then
+  if [[ "$expression_drift" == 0 && "$binding_drift" == 0 && "$materialized_drift" == 0 ]]; then
     echo "naga writer representative trace parity passed: $id: $entry :: $function_prefix"
     return 0
   fi
@@ -193,6 +241,7 @@ run_case() {
   echo "naga writer representative trace drift: $id: $entry :: $function_prefix" >&2
   echo "artifacts: $case_dir" >&2
   [[ "$expression_drift" == 0 ]] || sed -n '1,120p' "$case_dir/expression-order.diff" >&2
+  [[ "$binding_drift" == 0 ]] || sed -n '1,120p' "$case_dir/bindings.diff" >&2
   [[ "$materialized_drift" == 0 ]] || sed -n '1,120p' "$case_dir/materialized.diff" >&2
   return 1
 }

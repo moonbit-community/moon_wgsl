@@ -119,6 +119,32 @@ fn wgsl_ir_naga_writer_body_plan_trace(
   out.write_string(
     "function\t\{label}\targuments=\{function.arguments.length()}\tlocals=\{function.local_variables.items.length()}\texpressions=\{function.expressions.items.length()}\n",
   )
+  for expression_index in 0..<function.expressions.items.length() {
+    match function.expressions.items[expression_index] {
+      FunctionArgument(argument_index) => {
+        let final_name = match origin {
+          UserFunction(function_index) =>
+            view.names.get(
+              wgsl_ir_emit_name_key2("fn_arg", function_index, argument_index),
+            )
+          EntryPointFunction(entry_point_index) =>
+            view.names.get(
+              wgsl_ir_emit_name_key2(
+                "ep_arg", entry_point_index, argument_index,
+              ),
+            )
+        }
+        let final_name = match final_name {
+          Some(value) => value
+          None => "-"
+        }
+        out.write_string(
+          "binding\t\{label}\targument\t\{expression_index}\t\{final_name}\n",
+        )
+      }
+      _ => ()
+    }
+  }
   for index in 0..<function.expressions.items.length() {
     let handle = Handle::Handle(index)
     let trace = wgsl_ir_emit_expression_temporary_index_trace(
@@ -143,6 +169,9 @@ fn wgsl_ir_naga_writer_body_plan_trace(
     }
     out.write_string(
       "named-expression\t\{label}\t\{named.handle.index()}\t\{named.name}\tfinal=\{final_name}\n",
+    )
+    out.write_string(
+      "binding\t\{label}\tnamed\t\{named.handle.index()}\t\{final_name}\n",
     )
   }
   let statements = body_plan.statement_plan(function, function.body)

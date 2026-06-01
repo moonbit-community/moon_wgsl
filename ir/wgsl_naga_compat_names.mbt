@@ -23,9 +23,7 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
   }
   for slot in view.entry_point_slots() {
     view.allocate_entry_point_signature_names(table, namer, slot)
-  }
-  for slot in view.entry_point_slots() {
-    view.allocate_entry_point_body_names(table, namer, slot)
+    view.reserve_entry_point_var_local_names(table, namer, slot)
   }
   for slot in view.function_slots() {
     view.allocate_function_signature_names(table, namer, slot)
@@ -51,6 +49,9 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
   }
   for slot in view.function_slots() {
     view.allocate_function_body_names(table, namer, slot)
+  }
+  for slot in view.entry_point_slots() {
+    view.allocate_entry_point_body_names(table, namer, slot)
   }
   table
 }
@@ -194,6 +195,21 @@ fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
     EntryPointFunction(slot.source_index),
     ep.function,
     slot.body_plan,
+    namer,
+  )
+}
+
+///|
+fn WgslIrNagaWriterModule::reserve_entry_point_var_local_names(
+  self : WgslIrNagaWriterModule,
+  table : WgslIrFinalNamePlan,
+  namer : WgslIrNagaNamer,
+  slot : WgslIrNagaWriterEntryPointSlot,
+) -> Unit {
+  ignore(self)
+  table.reserve_function_var_local_names_from_arena(
+    EntryPointFunction(slot.source_index),
+    slot.item.function,
     namer,
   )
 }

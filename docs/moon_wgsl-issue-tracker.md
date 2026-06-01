@@ -1,6 +1,6 @@
 # moon_wgsl Issue Tracker
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
 ## Status Legend
 
@@ -11,6 +11,7 @@ Last updated: 2026-06-01
 
 ## Latest Progress
 
+- 2026-06-02: WGSL-281/WGSL-283 final-name allocation now follows upstream Naga's two-phase name model instead of treating every body-derived name as reset-phase state. Entry-point and user-function signatures plus non-generated `var` locals are reserved during the reset-style pass, while function/entry named expressions and `_eN` temporaries are allocated later in writer emission order. The representative trace gate now also compares final argument-name bindings against oracle WGSL output, and adds a regression where function signature names must win over later entry `let` names without regressing entry `var` locals. External Bevy compose parity remains `writer-drift=0`, `byte-drift=73`; affected byte hashes were refreshed because final-name allocation moved closer to Naga.
 - 2026-06-02: WGSL-281/WGSL-283 added a second representative upstream arena trace for a UI-style `select(..., builtin-call(...))` return path and aligned lowerer order with Naga: `select` now lowers condition before value operands, literal-left binary expressions lower reference-bearing right subtrees before the literal, named-expression emits are split on leaf holes instead of coalescing across them, and pure direct-return expressions record Naga-style emit ranges without emitting phony side-effect writes for materialized calls. The representative trace gate now covers both Bevy PBR `fresnel` and UI border selection. External Bevy compose parity remains `writer-drift=0`, `byte-drift=73`; affected byte hashes were refreshed because expression/body arena statement partitioning moved closer to upstream.
 - 2026-06-01: WGSL-281/WGSL-283 binary-chain lowering now models upstream's cross-level arena ordering for expressions shaped like `(left * global.member) * argument`: the lowerer finishes the pure left subtree, predeclares the global member root, predeclares the parent right argument, and only then completes the global projection. This makes Bevy `pbr_ambient.wgsl::ambient_light` byte-exact after the constructor-fold arena fix, improving external compose parity to `writer-drift=0`, `byte-exact=89`, `byte-drift=60`.
 - 2026-06-01: WGSL-281/WGSL-283 homogeneous math argument lowering now folds untemplated vector constructor constant subtrees in the expression arena instead of leaving emit-time numeric folding to hide the mismatch. This matches upstream's `dot(specular_color, vec3(50.0 * 0.33))` shape in Bevy `pbr_ambient.wgsl` by lowering the constructor component as one folded literal feeding a splat, while deliberately not pre-lowering plain literal splats such as `max(r, vec4(0f))` that would otherwise perturb already exact arenas. External compose parity remains `writer-drift=0`, `byte-drift=61`; affected byte hashes were refreshed because the expression arena moved closer to upstream.
