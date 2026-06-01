@@ -21,6 +21,9 @@ fn WgslIrLowerer::materialize_store_value_for_pointer_if_needed(
   pointer : Handle,
   value : Handle,
 ) -> Handle raise WgslIrLowerError {
+  ignore(
+    self.materialize_pointer_subexpressions(function, scope, block, pointer),
+  )
   let normalized = self.materialize_return_subexpressions(
     function, scope, block, value,
   )

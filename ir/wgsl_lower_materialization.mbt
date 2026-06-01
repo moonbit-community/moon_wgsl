@@ -425,6 +425,19 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         value
       }
     }
+    Some(Load(pointer)) => {
+      let lowered_pointer = self.materialize_pointer_subexpressions(
+        function, scope, block, pointer,
+      )
+      let parent_pointer = wgsl_ir_parent_expression_operand(
+        function, pointer, lowered_pointer,
+      )
+      if parent_pointer != pointer {
+        function.expressions.append(Expression::Load(parent_pointer))
+      } else {
+        value
+      }
+    }
     Some(Component(base, component)) => {
       let lowered_base = self.materialize_nested_access_base(
         function, scope, block, base,
@@ -1131,6 +1144,96 @@ fn WgslIrLowerer::materialize_short_circuit_branch_value(
       }
     }
     _ => self.materialize_store_value_if_needed(function, scope, block, value)
+  }
+}
+
+///|
+fn WgslIrLowerer::materialize_pointer_subexpressions(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  pointer : Handle,
+) -> Handle raise WgslIrLowerError {
+  match function.expressions.items.get(pointer.index()) {
+    Some(Access(base, index)) => {
+      let lowered_base = self.materialize_pointer_subexpressions(
+        function, scope, block, base,
+      )
+      let lowered_index = self.materialize_nested_access_index(
+        function, scope, block, index,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      let parent_index = wgsl_ir_parent_expression_operand(
+        function, index, lowered_index,
+      )
+      if parent_base != base || parent_index != index {
+        function.expressions.append(
+          Expression::Access(parent_base, parent_index),
+        )
+      } else {
+        pointer
+      }
+    }
+    Some(AccessIndex(base, index)) => {
+      let lowered_base = self.materialize_pointer_subexpressions(
+        function, scope, block, base,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if parent_base != base {
+        function.expressions.append(Expression::AccessIndex(parent_base, index))
+      } else {
+        pointer
+      }
+    }
+    Some(Component(base, component)) => {
+      let lowered_base = self.materialize_pointer_subexpressions(
+        function, scope, block, base,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if parent_base != base {
+        function.expressions.append(
+          Expression::Component(parent_base, component),
+        )
+      } else {
+        pointer
+      }
+    }
+    Some(Swizzle(size, base, pattern)) => {
+      let lowered_base = self.materialize_pointer_subexpressions(
+        function, scope, block, base,
+      )
+      let parent_base = wgsl_ir_parent_expression_operand(
+        function, base, lowered_base,
+      )
+      if parent_base != base {
+        function.expressions.append(
+          Expression::Swizzle(size, parent_base, pattern),
+        )
+      } else {
+        pointer
+      }
+    }
+    Some(Load(inner)) => {
+      let lowered_inner = self.materialize_pointer_subexpressions(
+        function, scope, block, inner,
+      )
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Expression::Load(parent_inner))
+      } else {
+        pointer
+      }
+    }
+    _ => pointer
   }
 }
 
