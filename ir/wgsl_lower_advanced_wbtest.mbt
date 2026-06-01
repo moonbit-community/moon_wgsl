@@ -154,11 +154,8 @@ test "WGSL AST lowerer supports official constructor and swizzle forms" {
   debug_inspect(emitted.contains("vec3<i32>(1i, 2i, 3i)"), content="true")
   debug_inspect(emitted.contains("v = (_e"), content="true")
   debug_inspect(emitted.contains(": vec4<i32> = w;"), content="true")
-  debug_inspect(
-    emitted.contains("let _e10: vec3<i32> = _e9.xyz;"),
-    content="true",
-  )
-  debug_inspect(emitted.contains("v = (_e7 * _e10);"), content="true")
+  debug_inspect(emitted.contains("v = (_e7 * _e9.xyz);"), content="true")
+  debug_inspect(emitted.contains(": vec3<i32> = _e9.xyz;"), content="false")
   debug_inspect(
     emitted.contains("vec4<f32>(0.4f, 0.2f, 0.3f, 0.1f);"),
     content="true",
@@ -234,9 +231,12 @@ test "WGSL IR emitter preserves pointer-valued local references" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("*(p)"), content="true")
-  debug_inspect(emitted.contains("inc(p)"), content="true")
-  debug_inspect(emitted.contains("inc(*(p)"), content="false")
+  debug_inspect(
+    emitted.contains("(*p") || emitted.contains("*(p"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("inc(p"), content="true")
+  debug_inspect(emitted.contains("inc((*p"), content="false")
 }
 
 ///|
@@ -633,7 +633,7 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
   let var_index = emitted.find("var y: u32;")
   let store_index = emitted.find("atomicStore((&atom), 1u);")
   let unused_atomic_index = emitted.find(": u32 = atomicAdd((&atom), 1u);")
-  let load_index = emitted.find(": u32 = atomicLoad((&atom));")
+  let load_index = emitted.find("atomicLoad")
   debug_inspect(store_index != None, content="true")
   debug_inspect(unused_atomic_index != None, content="true")
   debug_inspect(

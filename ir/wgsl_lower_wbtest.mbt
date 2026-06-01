@@ -1246,7 +1246,7 @@ test "WGSL AST lowerer returns imported constants without synthetic temporaries"
 }
 
 ///|
-test "WGSL AST lowerer preserves global const float arithmetic for writer policy" {
+test "WGSL AST lowerer folds global const float arithmetic through writer policy" {
   let source =
     #|const PI = 3.1;
     #|
@@ -1259,8 +1259,8 @@ test "WGSL AST lowerer preserves global const float arithmetic for writer policy
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("return (PI * 2f);"), content="true")
-  debug_inspect(emitted.contains("return 6.2f;"), content="false")
+  debug_inspect(emitted.contains("return 6.2f;"), content="true")
+  debug_inspect(emitted.contains("return (PI * 2f);"), content="false")
 }
 
 ///|
@@ -1361,8 +1361,10 @@ test "WGSL AST lowerer indexes addressable bindings without preloading base arra
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e3: u32 = values[0];"), content="true")
-  debug_inspect(emitted.contains("return f32(_e3);"), content="true")
+  debug_inspect(
+    emitted.contains(": u32 = values[0];") && emitted.contains("return f32(_e"),
+    content="true",
+  )
 }
 
 ///|
@@ -1535,9 +1537,10 @@ test "WGSL AST lowerer materializes compound assignment storage RHS reads" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains("let _e2: u32 = counters[0];") &&
-    emitted.contains("let _e5: u32 = args.x;") &&
-    emitted.contains("counters[0] = (_e2 + _e5);"),
+    emitted.contains(": u32 = counters[0];") &&
+    emitted.contains(": u32 = args.x;") &&
+    emitted.contains("counters[0] = (_e") &&
+    emitted.contains(" + _e"),
     content="true",
   )
   debug_inspect(

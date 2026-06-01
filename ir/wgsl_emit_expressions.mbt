@@ -97,6 +97,9 @@ fn WgslIrEmitter::load_expression(
   function : Function?,
   pointer : Handle,
 ) -> String raise WgslIrEmitError {
+  if self.atomic_pointer_scalar_type(function, pointer) != None {
+    return "atomicLoad(\{self.pointer_expression(function, pointer)})"
+  }
   let expression = self.required_function_expression(function, pointer)
   if self.load_expression_requires_explicit_deref(function, pointer) {
     self.options.pointer_dereference_text(expression)

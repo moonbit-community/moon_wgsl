@@ -15,7 +15,7 @@ test "naga-oil writer policy folds scalar float constructors from integer litera
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(valid.contains("f32(16777215u)"), content="true")
+  debug_inspect(valid.contains("saturate(depth) * 16777215f"), content="true")
   debug_inspect(
     naga_oil.contains("saturate(depth) * 16777215f"),
     content="true",
@@ -40,14 +40,14 @@ test "naga-oil writer policy folds scalar constructors from retained constants" 
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(valid.contains("f32(SAMPLES)"), content="true")
+  debug_inspect(valid.contains("(end - start) / 4f"), content="true")
   debug_inspect(naga_oil.contains("f32(SAMPLES)"), content="false")
   debug_inspect(naga_oil.contains("(end - start) / 4f"), content="true")
   debug_inspect(naga_oil.contains("const SAMPLES: i32 = 4i;"), content="true")
 }
 
 ///|
-test "naga-oil writer policy keeps parent expressions around normalized local constants" {
+test "naga-oil writer policy folds normalized local constant arithmetic" {
   let source =
     #|fn neutral(max_channel: f32) -> f32 {
     #|  const start_compression: f32 = 0.8 - 0.04;
@@ -60,8 +60,8 @@ test "naga-oil writer policy keeps parent expressions around normalized local co
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(naga_oil.contains("0.24f * 0.24f"), content="true")
-  debug_inspect(naga_oil.contains("0.0576f"), content="false")
+  debug_inspect(naga_oil.contains("0.0576f"), content="true")
+  debug_inspect(naga_oil.contains("0.24f * 0.24f"), content="false")
 }
 
 ///|

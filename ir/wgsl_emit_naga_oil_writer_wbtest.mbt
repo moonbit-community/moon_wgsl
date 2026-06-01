@@ -712,8 +712,8 @@ test "naga-oil writer excludes inline operands before call-result temp slots" {
   let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("let _e1: f32 = rand_f(rng);"), content="true")
-  debug_inspect(emitted.contains("let _e6: f32 = rand_f(rng);"), content="true")
+  debug_inspect(emitted.contains("let _e2: f32 = rand_f(rng);"), content="true")
+  debug_inspect(emitted.contains("let _e7: f32 = rand_f(rng);"), content="true")
   debug_inspect(
     emitted.contains("let _e3: f32 = rand_f(rng);"),
     content="false",

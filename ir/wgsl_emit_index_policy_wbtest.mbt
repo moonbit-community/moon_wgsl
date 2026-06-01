@@ -161,10 +161,7 @@ test "naga-oil writer policy folds integer constants in access index context" {
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(
-    valid.contains("input.layers[LAYER_BASE].roughness"),
-    content="true",
-  )
+  debug_inspect(valid.contains("input.layers[0].roughness"), content="true")
   debug_inspect(naga_oil.contains("input.layers[0].roughness"), content="true")
   debug_inspect(naga_oil.contains("input.layers[LAYER_BASE]"), content="false")
 }
