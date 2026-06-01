@@ -104,7 +104,7 @@ fn WgslIrEmitter::emit_statement(
         }
         let expr = self.function_expression(function, handle)
         if self.expression_type(Some(function), handle) == None &&
-          !self.function_expression_requires_phony_assignment(function, handle) {
+          self.function_expression_emits_standalone_statement(function, handle) {
           out.write_string("\{pad}\{expr};\n")
         } else if self.function_expression_requires_phony_assignment(
             function, handle,
@@ -300,6 +300,23 @@ fn WgslIrEmitter::store_numeric_literal_context(
         _ => None
       }
     None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::function_expression_emits_standalone_statement(
+  self : WgslIrEmitter,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  ignore(self)
+  match function.expressions.items.get(handle.index()) {
+    Some(RayQueryInitialize(_, _, _))
+    | Some(RayQueryProceed(_))
+    | Some(RayQueryGenerateIntersection(_, _))
+    | Some(RayQueryConfirmIntersection(_))
+    | Some(RayQueryTerminate(_)) => true
+    _ => false
   }
 }
 

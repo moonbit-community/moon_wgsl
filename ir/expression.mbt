@@ -214,6 +214,32 @@ pub enum MathFunction {
 } derive(Eq, Debug)
 
 ///|
+fn wgsl_ir_math_primary_result_operand(
+  math_function : MathFunction,
+  a : Handle,
+  b : Handle?,
+  c : Handle?,
+  d : Handle?,
+) -> Handle? {
+  ignore(d)
+  match math_function {
+    Step => b
+    SmoothStep => c
+    Min
+    | Max
+    | Clamp
+    | FaceForward
+    | Reflect
+    | Refract
+    | Fma
+    | Mix
+    | Pow
+    | Atan2 => Some(a)
+    _ => None
+  }
+}
+
+///|
 pub enum SampleLevel {
   Auto
   Zero

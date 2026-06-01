@@ -5,12 +5,17 @@ fn WgslIrEmitter::expression_type(
   handle : Handle,
 ) -> Handle? {
   match function {
-    Some(function) =>
+    Some(function) => {
+      match wgsl_ir_function_named_expression_type(function, handle) {
+        Some(ty) => return Some(ty)
+        None => ()
+      }
       match function.expressions.items.get(handle.index()) {
         Some(expression) =>
           self.function_expression_inner_type(function, expression)
         None => None
       }
+    }
     None =>
       match self.shader_module.global_expressions.items.get(handle.index()) {
         Some(expression) => self.global_expression_inner_type(expression)
@@ -526,6 +531,16 @@ fn WgslIrEmitter::math_expression_result_type(
     _ => ()
   }
   if wgsl_ir_math_function_uses_uniform_numeric_argument_context(math_function) {
+    match
+      wgsl_ir_math_primary_result_operand(math_function, argument, b, c, d) {
+      Some(primary) =>
+        match self.expression_component_scalar(function, primary) {
+          Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+            return self.expression_type(function, primary)
+          _ => ()
+        }
+      None => ()
+    }
     let arguments : Array[Handle] = [argument]
     match b {
       Some(value) => arguments.push(value)

@@ -1727,6 +1727,9 @@ fn WgslIrLowerer::function_expression_can_return_directly(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return true
+  }
   match function.expressions.items.get(value.index()) {
     Some(expression) =>
       match expression {

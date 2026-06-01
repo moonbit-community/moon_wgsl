@@ -614,6 +614,7 @@ pub fn Module::set_override(Self, Handle, Override) -> Unit
 pub(all) struct NamedExpression {
   handle : Handle
   name : String
+  ty : Handle
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Override {

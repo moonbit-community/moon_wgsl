@@ -4,6 +4,10 @@ fn WgslIrValidator::function_expression_type(
   function : Function,
   handle : Handle,
 ) -> Handle? {
+  match wgsl_ir_function_named_expression_type(function, handle) {
+    Some(ty) => return Some(ty)
+    None => ()
+  }
   match function.expressions.items.get(handle.index()) {
     Some(expression) =>
       self.function_expression_inner_type(function, expression)

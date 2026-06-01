@@ -629,6 +629,14 @@ fn WgslIrEmitter::contextual_scalar_literal(
   operand : Handle,
   scalar : Scalar,
 ) -> String? raise WgslIrEmitError {
+  match function {
+    Some(function) =>
+      match self.function_named_expression_name(function, operand) {
+        Some(_) => return None
+        None => ()
+      }
+    None => ()
+  }
   if self.options.fold_numeric_constant_expressions() {
     match self.folded_expression_for_scalar_context(function, operand, scalar) {
       Some(value) => return Some(value)

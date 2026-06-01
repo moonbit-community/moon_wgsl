@@ -94,6 +94,7 @@ pub(all) struct FunctionResult {
 pub(all) struct NamedExpression {
   handle : Handle
   name : String
+  ty : Handle
 } derive(Eq, Debug)
 
 ///|
@@ -137,6 +138,35 @@ fn wgsl_ir_function_named_expression_name(
     }
   }
   None
+}
+
+///|
+fn wgsl_ir_function_named_expression_type(
+  function : Function,
+  handle : Handle,
+) -> Handle? {
+  for named in function.named_expressions {
+    if named.handle == handle {
+      return Some(named.ty)
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_ir_function_replace_named_expression(
+  function : Function,
+  handle : Handle,
+  name : String,
+  ty : Handle,
+) -> Bool {
+  for index in 0..<function.named_expressions.length() {
+    if function.named_expressions[index].handle == handle {
+      function.named_expressions[index] = NamedExpression::{ handle, name, ty }
+      return true
+    }
+  }
+  false
 }
 
 ///|

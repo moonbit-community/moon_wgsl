@@ -679,9 +679,12 @@ test "WGSL AST lowerer loads dynamic storage array index value expressions" {
     Load(pointer) => debug_inspect(pointer.index(), content="2")
     _ => abort("expected load from dynamic storage array access")
   }
-  match function.local_variables.items[0].init {
-    Some(init) => debug_inspect(init.index(), content="3")
-    None => abort("expected local let initializer")
+  match function.named_expressions.get(0) {
+    Some(named) => {
+      debug_inspect(named.name, content="\"value\"")
+      debug_inspect(named.handle.index(), content="3")
+    }
+    None => abort("expected dynamic storage array load named expression")
   }
 }
 
@@ -746,6 +749,24 @@ test "WGSL AST lowerer binds load let initializers as named expressions" {
     }
   }
   debug_inspect(generated_temporary_count, content="0")
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected dynamic member index before static member projection")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected static member projection after dynamic index")
+  }
+  match function.expressions.items[3] {
+    Access(base, index) => {
+      debug_inspect(base.index(), content="2")
+      debug_inspect(index.index(), content="1")
+    }
+    _ => abort("expected dynamic access after static member projection")
+  }
   match function.expressions.items[6] {
     FunctionArgument(index) => debug_inspect(index, content="2")
     _ => abort("expected third argument before dot")
@@ -766,6 +787,75 @@ test "WGSL AST lowerer binds load let initializers as named expressions" {
   )
   debug_inspect(emitted.contains("dot(light_to_frag, r)"), content="true")
   debug_inspect(emitted.contains("_e"), content="false")
+}
+
+///|
+test "WGSL AST lowerer lets named expressions shadow global addressable names" {
+  let source =
+    #|struct View {
+    #|  w: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> view: View;
+    #|
+    #|fn probe(view_from_clip: mat4x4<f32>, clip: vec4<f32>) -> vec4<f32> {
+    #|  let view = view_from_clip * clip;
+    #|  return view / view.w;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let view_1: vec4<f32> = (view_from_clip * clip);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("view_1.w"), content="true")
+}
+
+///|
+test "WGSL AST lowerer preserves vector named expression result types" {
+  let source =
+    #|fn target(c: vec3<f32>) -> vec3<f32> {
+    #|  return c;
+    #|}
+    #|
+    #|fn probe(x: f32) -> vec3<f32> {
+    #|  let red = vec3<f32>(0.1, 0.2, 0.3);
+    #|  let blue = vec3<f32>(0.4, 0.5, 0.6);
+    #|  let mixed = mix(red, blue, x);
+    #|  return target(mixed);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut mixed_named : NamedExpression? = None
+  for named in function.named_expressions {
+    if named.name == "mixed" {
+      mixed_named = Some(named)
+    }
+  }
+  match mixed_named {
+    Some(named) => {
+      debug_inspect(named.name, content="\"mixed\"")
+      match module_.types.items.get(named.ty.index()) {
+        Some({ inner: Vector(size, scalar), .. }) => {
+          debug_inspect(size.width(), content="3")
+          debug_inspect(scalar.kind, content="Float")
+          debug_inspect(scalar.width, content="4")
+        }
+        _ => abort("expected mixed to keep vec3<f32> named type")
+      }
+    }
+    None => abort("expected mixed named expression")
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
 }
 
 ///|

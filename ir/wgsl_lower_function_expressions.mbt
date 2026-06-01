@@ -163,6 +163,13 @@ fn WgslIrLowerer::lower_function_lvalue_node(
       )
     }
     Index(base, index) => {
+      match
+        self.lower_function_dynamic_member_index_access(
+          base, index, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
       let base_handle = self.lower_function_lvalue_node(base, function, scope)
       self.lower_function_static_or_dynamic_index(
         base_handle, index, function, scope,
@@ -1444,6 +1451,13 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
       )
     }
     Index(base, index) => {
+      match
+        self.lower_function_dynamic_member_index_access(
+          base, index, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
       let base_handle = self.lower_function_access_base_pointer_node(
         base, function, scope,
       )
@@ -1459,6 +1473,80 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_dynamic_member_index_access(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  index : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match self.static_index_value_from_expr_node(index) {
+    Some(_) => return None
+    None => ()
+  }
+  match wgsl_ir_static_member_access_chain(base) {
+    Some((root, members)) =>
+      if members.length() == 0 {
+        None
+      } else {
+        let root_handle = self.lower_function_access_base_pointer_node(
+          root, function, scope,
+        )
+        let index_handle = self.lower_function_expression_node(
+          index, function, scope,
+        )
+        let base_handle = self.lower_function_static_member_access_chain(
+          root_handle, members, function,
+        )
+        Some(
+          function.expressions.append(
+            Expression::Access(base_handle, index_handle),
+          ),
+        )
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_static_member_access_chain(
+  self : WgslIrLowerer,
+  root_handle : Handle,
+  members : Array[String],
+  function : Function,
+) -> Handle raise WgslIrLowerError {
+  let mut base_handle = root_handle
+  for field_name in members {
+    base_handle = function.expressions.append(
+      Expression::AccessIndex(
+        base_handle,
+        self.member_index_for_expression(function, base_handle, field_name),
+      ),
+    )
+  }
+  base_handle
+}
+
+///|
+fn wgsl_ir_static_member_access_chain(
+  node : @ast.WgslExprNode,
+) -> (@ast.WgslExprNode, Array[String])? {
+  match node.kind() {
+    Group(inner) => wgsl_ir_static_member_access_chain(inner)
+    Member(base, field_name) =>
+      match wgsl_ir_static_member_access_chain(base) {
+        Some((root, members)) => {
+          members.push(field_name.name())
+          Some((root, members))
+        }
+        None => None
+      }
+    Index(_, _) => None
+    _ => Some((node, []))
+  }
+}
+
+///|
 fn WgslIrLowerer::function_access_base_is_addressable(
   self : WgslIrLowerer,
   base : @ast.WgslExprNode,
@@ -1469,18 +1557,23 @@ fn WgslIrLowerer::function_access_base_is_addressable(
     Group(inner) =>
       self.function_access_base_is_addressable(inner, function, scope)
     Identifier(name) =>
-      match scope.locals.get(name.name()) {
-        Some(handle) =>
-          match function.local_variables.items.get(handle.index()) {
-            Some(local_var) =>
-              local_var.kind == Var ||
-              self.local_variable_is_handle_value(function, handle)
-            None => false
-          }
+      match scope.local_constants.get(name.name()) {
+        Some(_) => false
         None =>
-          match scope.arguments.get(name.name()) {
-            Some(index) => self.function_argument_is_pointer(function, index)
-            None => self.global_names.get(name.name()) is Some(_)
+          match scope.locals.get(name.name()) {
+            Some(handle) =>
+              match function.local_variables.items.get(handle.index()) {
+                Some(local_var) =>
+                  local_var.kind == Var ||
+                  self.local_variable_is_handle_value(function, handle)
+                None => false
+              }
+            None =>
+              match scope.arguments.get(name.name()) {
+                Some(index) =>
+                  self.function_argument_is_pointer(function, index)
+                None => self.global_names.get(name.name()) is Some(_)
+              }
           }
       }
     Index(inner, _) | Member(inner, _) =>

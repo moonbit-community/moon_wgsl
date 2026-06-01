@@ -1330,6 +1330,124 @@ test "naga-oil writer policy folds typed float global constants" {
 }
 
 ///|
+test "naga-oil writer policy keeps named expressions as scalar context boundaries" {
+  let source =
+    #|fn probe(x: f32) -> vec4<f32> {
+    #|  let c0 = vec4<f32>(-1.0, -0.0275, -0.572, 0.022);
+    #|  let c1 = vec4<f32>(1.0, 0.0425, 1.04, -0.04);
+    #|  let r = x * c0 + c1;
+    #|  return r;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("let r: vec4<f32> = ((x * c0_) + c1_);"),
+    content="true",
+  )
+}
+
+///|
+test "naga-oil writer policy emits concrete type for abstract float named expression" {
+  let source =
+    #|fn probe(flag: bool) -> f32 {
+    #|  let value = select(1.0, -1.0, flag);
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("let value: f32 = select(1f, -1f, flag);"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("__abstract_float"), content="false")
+}
+
+///|
+test "naga-oil writer policy keeps mix result shape from value operands" {
+  let source =
+    #|fn target(c: vec3<f32>) -> vec3<f32> {
+    #|  return c;
+    #|}
+    #|
+    #|fn probe(x: f32) -> vec3<f32> {
+    #|  let red = vec3<f32>(0.1, 0.2, 0.3);
+    #|  let blue = vec3<f32>(0.4, 0.5, 0.6);
+    #|  let mixed = mix(red, blue, x);
+    #|  return target(mixed);
+    #|}
+  let module_ = lower_validated_wgsl_source_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("let mixed: vec3<f32> = mix(red, blue, x);"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("target_(mixed)"), content="true")
+}
+
+///|
+test "naga-oil writer policy collapses named expression aliases by arena handle" {
+  let source =
+    #|fn probe(flag: bool) -> u32 {
+    #|  let visibility = select(1u, 2u, flag);
+    #|  let depth = visibility;
+    #|  if depth == 0u {
+    #|    return 0u;
+    #|  }
+    #|  return depth;
+    #|}
+  let module_ = lower_validated_wgsl_source_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("let visibility"), content="false")
+  debug_inspect(
+    naga_oil.contains("let depth: u32 = select(1u, 2u, flag);"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("return depth;"), content="true")
+}
+
+///|
+test "naga-oil writer policy returns named image sample without resampling" {
+  let source =
+    #|@group(0) @binding(0) var texture: texture_2d<f32>;
+    #|@group(0) @binding(1) var texture_sampler: sampler;
+    #|
+    #|fn probe(uv: vec2<f32>) -> vec4<f32> {
+    #|  let color = textureSample(texture, texture_sampler, uv);
+    #|  return color;
+    #|}
+  let module_ = lower_validated_wgsl_source_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains(
+      "let color: vec4<f32> = textureSample(texture, texture_sampler, uv);",
+    ),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("return color;"), content="true")
+  debug_inspect(naga_oil.contains("let _e"), content="false")
+}
+
+///|
 test "naga-oil writer policy inlines array constants like Naga writer" {
   let source =
     #|const POINTS: array<vec2<f32>, 2> = array(vec2(0.125, -0.375), vec2(-0.125, 0.375));

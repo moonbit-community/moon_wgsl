@@ -1087,9 +1087,22 @@ fn WgslIrLowerer::lower_local_declaration(
         if wgsl_ir_function_expression_should_use_named_let(
             function, init_handle,
           ) {
+          if wgsl_ir_function_replace_named_expression(
+              function, init_handle, lowered_name, ty,
+            ) {
+            ignore(scope.locals.remove(local_decl.name().name()))
+            ignore(
+              scope.local_pointer_expressions.remove(local_decl.name().name()),
+            )
+            scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+              value: ExpressionAlias(init_handle),
+            })
+            return
+          }
           function.named_expressions.push(NamedExpression::{
             handle: init_handle,
             name: lowered_name,
+            ty,
           })
           ignore(scope.locals.remove(local_decl.name().name()))
           ignore(
@@ -1422,48 +1435,19 @@ fn wgsl_ir_function_expression_should_use_named_let(
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
-    Some(Math(_, _, _, _, _)) => true
-    Some(Load(_)) =>
-      wgsl_ir_function_expression_is_function_argument_pointer_load(
-        function, handle,
-      )
+    Some(Literal(_))
+    | Some(Constant(_))
+    | Some(Override(_))
+    | Some(ZeroValue(_))
+    | Some(FunctionArgument(_))
+    | Some(GlobalVariable(_))
+    | Some(LocalVariable(_))
+    | Some(AddressOf(_, _))
+    | Some(FunctionCall(_, _))
+    | Some(AtomicCall(_, _))
+    | Some(WorkGroupUniformLoad(_)) => false
+    Some(_) => true
     None => false
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_function_expression_is_function_argument_pointer_load(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  match function.expressions.items.get(handle.index()) {
-    Some(Load(pointer)) =>
-      wgsl_ir_function_pointer_expression_has_function_argument_root(
-        function, pointer,
-      )
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_function_pointer_expression_has_function_argument_root(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  match function.expressions.items.get(handle.index()) {
-    Some(FunctionArgument(_)) => true
-    Some(Access(base, _)) =>
-      wgsl_ir_function_pointer_expression_has_function_argument_root(
-        function, base,
-      )
-    Some(AccessIndex(base, _))
-    | Some(Component(base, _))
-    | Some(Swizzle(_, base, _)) =>
-      wgsl_ir_function_pointer_expression_has_function_argument_root(
-        function, base,
-      )
-    _ => false
   }
 }
 

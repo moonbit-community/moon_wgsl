@@ -373,6 +373,10 @@ fn WgslIrLowerer::function_expression_type(
   function : Function,
   handle : Handle,
 ) -> Handle? {
+  match wgsl_ir_function_named_expression_type(function, handle) {
+    Some(ty) => return Some(ty)
+    None => ()
+  }
   match function.expressions.items.get(handle.index()) {
     Some(expression) =>
       self.function_expression_inner_type(function, expression)
@@ -557,6 +561,16 @@ fn WgslIrLowerer::math_expression_result_type(
     _ => ()
   }
   if wgsl_ir_math_function_uses_uniform_numeric_argument_context(math_function) {
+    match
+      wgsl_ir_math_primary_result_operand(math_function, argument, b, c, d) {
+      Some(primary) =>
+        if self.function_expression_has_concrete_component_scalar(
+            function, primary,
+          ) {
+          return self.function_expression_type(function, primary)
+        }
+      None => ()
+    }
     let arguments : Array[Handle] = [argument]
     match b {
       Some(value) => arguments.push(value)
@@ -585,6 +599,22 @@ fn WgslIrLowerer::math_expression_result_type(
   match math_function {
     Transpose => self.transpose_expression_result_type(input_ty)
     _ => Some(input_ty)
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_has_concrete_component_scalar(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match self.function_expression_type(function, handle) {
+    Some(ty) =>
+      match self.scalar_for_literal_context_type(ty) {
+        Some(scalar) => !wgsl_ir_scalar_kind_is_abstract(scalar.kind)
+        None => false
+      }
+    None => false
   }
 }
 
