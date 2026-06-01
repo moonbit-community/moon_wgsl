@@ -906,9 +906,7 @@ fn wgsl_ir_emit_expression_temporary_index(
   body_plan : WgslIrNagaFunctionBodyPlan,
   handle : Handle,
 ) -> Int {
-  wgsl_ir_emit_expression_temporary_index_trace(
-    function, body_plan, handle,
-  ).final_index
+  wgsl_ir_emit_expression_temporary_index_trace(function, body_plan, handle).final_index
 }
 
 ///|
@@ -954,7 +952,9 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
   } else {
     base_index
   }
-  let implicit_expression_slots_before = body_plan.implicit_expression_slot_offset(handle)
+  let implicit_expression_slots_before = body_plan.implicit_expression_slot_offset(
+    handle,
+  )
   let prior_call_projection_argument_slots = wgsl_ir_emit_prior_call_projection_argument_slot_offset(
     function, handle,
   )

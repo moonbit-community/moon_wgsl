@@ -1229,9 +1229,13 @@ fn WgslIrLowerer::lower_function_constructor_arguments(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Array[Handle] raise WgslIrLowerError {
-  let expected_ty = self.constructor_component_expected_type(ty)
+  let flattened = wgsl_ir_flatten_expression_arguments(arguments)
+  let expected_ty = self.constructor_argument_expected_type(
+    ty,
+    flattened.length(),
+  )
   let handles : Array[Handle] = []
-  for argument in wgsl_ir_flatten_expression_arguments(arguments) {
+  for argument in flattened {
     let lowered = self.lower_function_constructor_argument(
       argument, function, scope, expected_ty,
     )
@@ -1379,10 +1383,11 @@ fn WgslIrLowerer::lower_function_math_call(
     let lowered = match deferred_constructors.get(index) {
       Some(deferred) =>
         self.lower_function_constructor_expression_from_handles(
-          deferred.ty, [deferred.component], function,
+          deferred.ty,
+          [deferred.component],
+          function,
         )
-      None =>
-        self.lower_function_expression_node(argument, function, scope)
+      None => self.lower_function_expression_node(argument, function, scope)
     }
     handles.push(self.apply_function_load_rule(function, lowered))
   }
@@ -1428,7 +1433,9 @@ fn WgslIrLowerer::prelower_homogeneous_math_constructor_arguments(
   for index in 0..<arguments.length() {
     match
       self.prelower_foldable_vector_constructor_argument(
-        arguments[index], function, scope,
+        arguments[index],
+        function,
+        scope,
       ) {
       Some(value) => deferred.set(index, value)
       None => ()
@@ -1450,9 +1457,7 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
   guard self.lower_templated_callee_type(callee) is Some(ty) else {
     return None
   }
-  guard self.vector_size_from_type(ty) is Some(_) else {
-    return None
-  }
+  guard self.vector_size_from_type(ty) is Some(_) else { return None }
   guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
     is [component] else {
     return None

@@ -364,6 +364,10 @@ test "IR emitter numbers call results without local-reference handle drift" {
     content="true",
   )
   debug_inspect(
+    wgsl_emit_test_count_occurrences(emitted, "let _e12: f32 = globals.time;"),
+    content="1",
+  )
+  debug_inspect(
     emitted.contains("let _e50: vec3<f32> = oklab_to_linear_srgb(mixed);"),
     content="false",
   )
@@ -647,6 +651,22 @@ fn wgsl_emit_test_before(text : String, left : String, right : String) -> Bool {
     return false
   }
   parts[1].contains(right)
+}
+
+///|
+fn wgsl_emit_test_count_occurrences(text : String, pattern : String) -> Int {
+  if pattern == "" {
+    return 0
+  }
+  let mut parts = 0
+  for _ in text.split(pattern) {
+    parts = parts + 1
+  }
+  if parts == 0 {
+    0
+  } else {
+    parts - 1
+  }
 }
 
 ///|

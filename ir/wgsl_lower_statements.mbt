@@ -987,10 +987,10 @@ fn WgslIrLowerer::lower_local_declaration(
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let &&
     !self.lowerer_type_is_pointer(ty) {
     match init {
-      Some(init_handle) => {
+      Some(init_handle) =>
         if wgsl_ir_function_expression_should_use_named_let(
-          function, init_handle,
-        ) {
+            function, init_handle,
+          ) {
           function.named_expressions.push(NamedExpression::{
             handle: init_handle,
             name: lowered_name,
@@ -1008,7 +1008,6 @@ fn WgslIrLowerer::lower_local_declaration(
           block.push(Statement::Emit(HandleRange(emit_start, init_handle)))
           return
         }
-      }
       None => ()
     }
   }
@@ -1097,7 +1096,7 @@ fn wgsl_ir_naga_named_expression_emit_start(
   expression_mark : Int,
   init_handle : Handle,
 ) -> Handle {
-  for index in expression_mark..=init_handle.index() {
+  for index in expression_mark..<=init_handle.index() {
     match function.expressions.items.get(index) {
       Some(expression) =>
         if !wgsl_ir_expression_is_naga_emit_leaf(expression) {

@@ -44,6 +44,31 @@ test "naga-oil writer policy emits inferred vector splat constructors" {
 }
 
 ///|
+test "WGSL lowerer infers mixed abstract vector constructors from concrete components" {
+  let source =
+    #|fn direction(y: f32) -> vec3<f32> {
+    #|  let light_dir = normalize(vec3(0.0, y, -1.0));
+    #|  return light_dir;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  validate_wgsl_ir_module(module_) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("vec3<abstract"), content="false")
+  debug_inspect(
+    naga_oil.contains(
+      "let light_dir: vec3<f32> = normalize(vec3<f32>(0f, y, -1f));",
+    ),
+    content="true",
+  )
+}
+
+///|
 test "WGSL lowerer normalizes compound vector-scalar assignments" {
   let source =
     #|fn adjust(value: vec2<f32>) -> vec2<f32> {

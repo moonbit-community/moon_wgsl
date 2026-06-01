@@ -74,7 +74,8 @@ fn wgsl_ir_naga_writer_function_slot_trace(
   view : WgslIrNagaWriterModule,
   slot : WgslIrNagaWriterFunctionSlot,
 ) -> String {
-  let name = match view.names.get(wgsl_ir_emit_name_key("fn", slot.source_index)) {
+  let name = match
+    view.names.get(wgsl_ir_emit_name_key("fn", slot.source_index)) {
     Some(value) => value
     None => "<missing>"
   }
@@ -92,7 +93,8 @@ fn wgsl_ir_naga_writer_entry_point_slot_trace(
   view : WgslIrNagaWriterModule,
   slot : WgslIrNagaWriterEntryPointSlot,
 ) -> String {
-  let name = match view.names.get(wgsl_ir_emit_name_key("ep", slot.source_index)) {
+  let name = match
+    view.names.get(wgsl_ir_emit_name_key("ep", slot.source_index)) {
     Some(value) => value
     None => "<missing>"
   }
@@ -129,6 +131,18 @@ fn wgsl_ir_naga_writer_body_plan_trace(
     }
     out.write_string(
       "expression\t\{label}\t\{index}\t\{wgsl_ir_trace_expression_kind(function.expressions.items[index])}\tmaterialized=\{body_plan.contains_materialized_expression(handle)}\ttemp=\{temp_name}\tfinal_index=\{trace.final_index}\tskipped=\{trace.skipped}\tbase=\{trace.base_index}\tadjusted=\{trace.adjusted_base_index}\timplicit_before=\{trace.implicit_expression_slots_before}\tprior_call_projection=\{trace.prior_call_projection_argument_slots}\timplicit_load=\{trace.implicit_naga_load_slots}\tprojected_temp=\{trace.projected_temporary_slots}\n",
+    )
+  }
+  for named in function.named_expressions {
+    let final_name = match
+      view.names.get(
+        wgsl_ir_emit_named_expression_name_key(origin, named.handle),
+      ) {
+      Some(value) => value
+      None => "-"
+    }
+    out.write_string(
+      "named-expression\t\{label}\t\{named.handle.index()}\t\{named.name}\tfinal=\{final_name}\n",
     )
   }
   let statements = body_plan.statement_plan(function, function.body)

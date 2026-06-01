@@ -288,6 +288,33 @@ fn WgslIrLowerer::constructor_component_expected_type(
 }
 
 ///|
+fn WgslIrLowerer::constructor_argument_expected_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+  argument_count : Int,
+) -> Handle? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(_, scalar) => Some(self.scalar_type_handle(scalar))
+        Matrix(columns, rows, scalar) => {
+          let column_count = columns.width()
+          let row_count = rows.width()
+          if argument_count == column_count {
+            Some(self.vector_type_handle(rows, scalar))
+          } else if argument_count == column_count * row_count {
+            Some(self.scalar_type_handle(scalar))
+          } else {
+            None
+          }
+        }
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
 fn WgslIrLowerer::literal_type(
   self : WgslIrLowerer,
   literal : Literal,

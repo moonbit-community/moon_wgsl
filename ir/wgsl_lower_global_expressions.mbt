@@ -348,9 +348,10 @@ fn WgslIrLowerer::lower_global_constructor_arguments(
   ty : Handle,
   arguments : Array[@ast.WgslExprNode],
 ) -> Array[Handle] raise WgslIrLowerError {
+  let flattened = wgsl_ir_flatten_expression_arguments(arguments)
   self.lower_global_expression_arguments_with_expected(
-    arguments,
-    self.constructor_component_expected_type(ty),
+    flattened,
+    self.constructor_argument_expected_type(ty, flattened.length()),
   )
 }
 

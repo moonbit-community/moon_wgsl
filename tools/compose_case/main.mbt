@@ -1051,14 +1051,14 @@ fn main {
         composer.trace_naga_oil_writer_function_plan(entry, options, prefix)
       None =>
         if args.pre_ir {
-      composer.compose_wgsl_before_ir(entry, options)
-    } else if args.runtime_valid {
-      composer.compose_wgsl_runtime_valid(entry, options)
-    } else if args.naga_oil_writer_parity {
-      composer.compose_wgsl_for_naga_oil_writer_parity(entry, options)
-    } else {
-      composer.compose_wgsl(entry, options)
-    }
+          composer.compose_wgsl_before_ir(entry, options)
+        } else if args.runtime_valid {
+          composer.compose_wgsl_runtime_valid(entry, options)
+        } else if args.naga_oil_writer_parity {
+          composer.compose_wgsl_for_naga_oil_writer_parity(entry, options)
+        } else {
+          composer.compose_wgsl(entry, options)
+        }
     }
   } catch {
     err =>

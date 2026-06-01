@@ -668,11 +668,18 @@ fn WgslIrLowerer::constructor_scalar_from_ast_arguments(
   arguments : Array[@ast.WgslExprNode],
   diagnostic_name : String,
 ) -> Scalar raise WgslIrLowerError {
-  guard wgsl_ir_flatten_expression_arguments(arguments) is [first, ..] else {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [first, .. rest] else {
     raise WgslIrLowerError::MissingType(diagnostic_name)
   }
-  let ty = self.infer_expression_type(first, diagnostic_name)
-  self.scalar_from_type_handle(ty, diagnostic_name)
+  let first_ty = self.infer_expression_type(first, diagnostic_name)
+  let mut scalar = self.scalar_from_type_handle(first_ty, diagnostic_name)
+  for argument in rest {
+    let ty = self.infer_expression_type(argument, diagnostic_name)
+    let next = self.scalar_from_type_handle(ty, diagnostic_name)
+    scalar = self.merge_constructor_scalar(scalar, next, diagnostic_name)
+  }
+  scalar
 }
 
 ///|
@@ -767,13 +774,66 @@ fn WgslIrLowerer::constructor_scalar_from_handles(
   function : Function,
   diagnostic_name : String,
 ) -> Scalar raise WgslIrLowerError {
-  guard lowered_arguments is [first, ..] else {
+  guard lowered_arguments is [first, .. rest] else {
     raise WgslIrLowerError::MissingType(diagnostic_name)
   }
   guard self.function_expression_type(function, first) is Some(ty) else {
     raise WgslIrLowerError::MissingType(diagnostic_name)
   }
-  self.scalar_from_type_handle(ty, diagnostic_name)
+  let mut scalar = self.scalar_from_type_handle(ty, diagnostic_name)
+  for argument in rest {
+    guard self.function_expression_type(function, argument) is Some(ty) else {
+      raise WgslIrLowerError::MissingType(diagnostic_name)
+    }
+    let next = self.scalar_from_type_handle(ty, diagnostic_name)
+    scalar = self.merge_constructor_scalar(scalar, next, diagnostic_name)
+  }
+  scalar
+}
+
+///|
+fn WgslIrLowerer::merge_constructor_scalar(
+  self : WgslIrLowerer,
+  left : Scalar,
+  right : Scalar,
+  diagnostic_name : String,
+) -> Scalar raise WgslIrLowerError {
+  ignore(self)
+  if !wgsl_ir_scalar_kind_is_abstract(left.kind) &&
+    !wgsl_ir_scalar_kind_is_abstract(right.kind) {
+    if left == right {
+      return left
+    }
+    raise WgslIrLowerError::UnsupportedType(diagnostic_name)
+  }
+  if !wgsl_ir_scalar_kind_is_abstract(left.kind) {
+    if wgsl_ir_abstract_scalar_can_convert_to(right.kind, left.kind) {
+      return left
+    }
+    raise WgslIrLowerError::UnsupportedType(diagnostic_name)
+  }
+  if !wgsl_ir_scalar_kind_is_abstract(right.kind) {
+    if wgsl_ir_abstract_scalar_can_convert_to(left.kind, right.kind) {
+      return right
+    }
+    raise WgslIrLowerError::UnsupportedType(diagnostic_name)
+  }
+  match (left.kind, right.kind) {
+    (AbstractFloat, _) | (_, AbstractFloat) => Scalar::Scalar(AbstractFloat, 8)
+    _ => left
+  }
+}
+
+///|
+fn wgsl_ir_abstract_scalar_can_convert_to(
+  from : ScalarKind,
+  to : ScalarKind,
+) -> Bool {
+  match (from, to) {
+    (AbstractInt, Sint | Uint | Float | AbstractInt | AbstractFloat) => true
+    (AbstractFloat, Float | AbstractFloat) => true
+    _ => false
+  }
 }
 
 ///|

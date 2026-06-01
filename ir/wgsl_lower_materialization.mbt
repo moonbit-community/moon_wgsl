@@ -151,6 +151,10 @@ fn WgslIrLowerer::materialize_function_expression(
     }
     _ => ()
   }
+  match self.existing_materialized_function_expression(function, block, value) {
+    Some(existing) => return existing
+    None => ()
+  }
   let ty = match self.function_expression_type(function, value) {
     Some(ty) => ty
     None =>
@@ -169,6 +173,38 @@ fn WgslIrLowerer::materialize_function_expression(
   ignore(scope)
   block.push(Statement::Declare(local_handle))
   function.expressions.append(Expression::LocalVariable(local_handle))
+}
+
+///|
+fn WgslIrLowerer::existing_materialized_function_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  block : Block,
+  value : Handle,
+) -> Handle? {
+  ignore(self)
+  for statement in block.statements {
+    match statement {
+      Declare(local_handle) =>
+        match function.local_variables.items.get(local_handle.index()) {
+          Some(local_var) =>
+            if local_var.generated_temporary && local_var.init == Some(value) {
+              for expression_index in 0..<function.expressions.items.length() {
+                match function.expressions.items[expression_index] {
+                  LocalVariable(existing_local) =>
+                    if existing_local == local_handle {
+                      return Some(Handle::Handle(expression_index))
+                    }
+                  _ => ()
+                }
+              }
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|

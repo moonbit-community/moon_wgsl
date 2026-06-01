@@ -155,7 +155,8 @@ fn WgslIrEmitter::function_named_expression_name(
   }
   match self.current_function_origin {
     Some(origin) =>
-      match self.names.get(wgsl_ir_emit_named_expression_name_key(origin, handle)) {
+      match
+        self.names.get(wgsl_ir_emit_named_expression_name_key(origin, handle)) {
         Some(value) => Some(value)
         None => wgsl_ir_function_named_expression_name(function, handle)
       }

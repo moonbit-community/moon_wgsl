@@ -127,11 +127,14 @@ fn WgslIrLowerer::global_expression_inner_type(
         None => self.global_expression_type(reject)
       }
     Bitcast(ty, _) => Some(ty)
-    Math(math_function, a, _, _, _) =>
+    Math(math_function, a, b, c, d) =>
       self.math_expression_result_type(
         Function::Function(None),
         math_function,
         a,
+        b,
+        c,
+        d,
       )
     Relational(relational_function, expr) =>
       self.relational_expression_result_type(
@@ -450,8 +453,8 @@ fn WgslIrLowerer::function_expression_inner_type(
         None => None
       }
     Derivative(_, _, expr) => self.function_expression_type(function, expr)
-    Math(math_function, a, _, _, _) =>
-      self.math_expression_result_type(function, math_function, a)
+    Math(math_function, a, b, c, d) =>
+      self.math_expression_result_type(function, math_function, a, b, c, d)
     Relational(relational_function, expr) =>
       self.relational_expression_result_type(
         function, relational_function, expr,
@@ -515,13 +518,16 @@ fn WgslIrLowerer::math_expression_result_type(
   function : Function,
   math_function : MathFunction,
   argument : Handle,
+  b : Handle?,
+  c : Handle?,
+  d : Handle?,
 ) -> Handle? {
   guard self.function_expression_type(function, argument) is Some(input_ty) else {
     return None
   }
   match math_function {
-    Modf => self.predeclared_modf_result_type(input_ty)
-    Frexp => self.predeclared_frexp_result_type(input_ty)
+    Modf => return self.predeclared_modf_result_type(input_ty)
+    Frexp => return self.predeclared_frexp_result_type(input_ty)
     Pack4x8snorm
     | Pack4x8unorm
     | Pack2x16snorm
@@ -531,16 +537,49 @@ fn WgslIrLowerer::math_expression_result_type(
     | Pack4xU8
     | Pack4xI8Clamp
     | Pack4xU8Clamp
-    | Dot4U8Packed => Some(self.scalar_type_handle(Scalar::Scalar(Uint, 4)))
-    Dot4I8Packed => Some(self.scalar_type_handle(Scalar::Scalar(Sint, 4)))
+    | Dot4U8Packed =>
+      return Some(self.scalar_type_handle(Scalar::Scalar(Uint, 4)))
+    Dot4I8Packed =>
+      return Some(self.scalar_type_handle(Scalar::Scalar(Sint, 4)))
     Unpack4x8snorm | Unpack4x8unorm =>
-      Some(self.vector_type_handle(Quad, Scalar::Scalar(Float, 4)))
+      return Some(self.vector_type_handle(Quad, Scalar::Scalar(Float, 4)))
     Unpack2x16snorm | Unpack2x16unorm | Unpack2x16float =>
-      Some(self.vector_type_handle(Bi, Scalar::Scalar(Float, 4)))
-    Unpack4xI8 => Some(self.vector_type_handle(Quad, Scalar::Scalar(Sint, 4)))
-    Unpack4xU8 => Some(self.vector_type_handle(Quad, Scalar::Scalar(Uint, 4)))
+      return Some(self.vector_type_handle(Bi, Scalar::Scalar(Float, 4)))
+    Unpack4xI8 =>
+      return Some(self.vector_type_handle(Quad, Scalar::Scalar(Sint, 4)))
+    Unpack4xU8 =>
+      return Some(self.vector_type_handle(Quad, Scalar::Scalar(Uint, 4)))
     Dot | Distance | Length | Determinant =>
-      Some(self.scalar_type_from_composite_type(input_ty))
+      return Some(self.scalar_type_from_composite_type(input_ty))
+    _ => ()
+  }
+  if wgsl_ir_math_function_uses_uniform_numeric_argument_context(math_function) {
+    let arguments : Array[Handle] = [argument]
+    match b {
+      Some(value) => arguments.push(value)
+      None => ()
+    }
+    match c {
+      Some(value) => arguments.push(value)
+      None => ()
+    }
+    match d {
+      Some(value) => arguments.push(value)
+      None => ()
+    }
+    for value in arguments {
+      match self.function_expression_type(function, value) {
+        Some(ty) =>
+          match self.scalar_from_numeric_type_handle(ty) {
+            Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
+              return Some(ty)
+            _ => ()
+          }
+        None => ()
+      }
+    }
+  }
+  match math_function {
     Transpose => self.transpose_expression_result_type(input_ty)
     _ => Some(input_ty)
   }
