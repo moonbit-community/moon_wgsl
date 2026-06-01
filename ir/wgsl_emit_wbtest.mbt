@@ -300,6 +300,33 @@ test "IR emitter does not count direct-store call result projections as later te
 }
 
 ///|
+test "IR lowerer keeps direct-store swizzle as arena store value" {
+  let source =
+    #|fn f(flag: bool) -> vec2<f32> {
+    #|  var local_uv = vec2<f32>(0.25, 0.75);
+    #|  if flag {
+    #|    local_uv = local_uv.yx;
+    #|  }
+    #|  return local_uv;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e5: vec2<f32> = local_uv;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("local_uv = _e5.yx;"), content="true")
+  debug_inspect(
+    emitted.contains("= _e5.yx;\n        local_uv = _e"),
+    content="false",
+  )
+}
+
+///|
 test "IR emitter does not shift later temporaries after projected textureLoad" {
   let source =
     #|struct FullscreenVertexOutput {

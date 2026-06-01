@@ -1398,6 +1398,11 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
   if wgsl_ir_function_expression_has_arena_name(function, value) {
     return false
   }
+  if wgsl_ir_function_expression_is_projection_of_generated_temporary(
+      function, value,
+    ) {
+    return false
+  }
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
