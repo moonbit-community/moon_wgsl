@@ -313,6 +313,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
     Binary(op, left, right) => {
+      let expression_mark = function.expressions.items.length()
       match
         self.lower_function_binary_chain_with_parent_argument_after_member_root(
           op, left, right, function, scope,
@@ -397,7 +398,16 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let handle = function.expressions.append(
         Expression::Binary(binary_op, left_handle, right_handle),
       )
-      handle
+      match self.fold_function_constant_float_expression(function, handle) {
+        Some(literal) => {
+          function.expressions.truncate(expression_mark)
+          function.expressions.append_with_origin(
+            Expression::Literal(literal),
+            FoldedLocalConstant,
+          )
+        }
+        None => handle
+      }
     }
     Group(expr) =>
       self.lower_function_expression_node_with_expected(
@@ -2060,6 +2070,13 @@ fn WgslIrLowerer::lower_function_math_call(
       "math call requires at least one argument",
     )
   }
+  if wgsl_ir_math_call_predeclares_function_argument_values(arguments, scope) {
+    for argument in arguments {
+      self.predeclare_function_argument_values_in_source_order(
+        argument, function, scope,
+      )
+    }
+  }
   let deferred_constructors = self.prelower_homogeneous_math_constructor_arguments(
     math_function, arguments, function, scope,
   )
@@ -2121,6 +2138,53 @@ fn WgslIrLowerer::lower_function_math_call(
       )
     }
     None => handle
+  }
+}
+
+///|
+fn wgsl_ir_math_call_predeclares_function_argument_values(
+  arguments : Array[@ast.WgslExprNode],
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  arguments.length() > 1 &&
+  arguments.any(fn(argument) {
+    wgsl_ir_expr_node_contains_function_argument_math_call(argument, scope)
+  })
+}
+
+///|
+fn WgslIrLowerer::predeclare_function_argument_values_in_source_order(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match node.kind() {
+    Identifier(_) =>
+      self.predeclare_function_argument_value(node, function, scope)
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.predeclare_function_argument_values_in_source_order(
+        inner, function, scope,
+      )
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) => {
+      self.predeclare_function_argument_values_in_source_order(
+        left, function, scope,
+      )
+      self.predeclare_function_argument_values_in_source_order(
+        right, function, scope,
+      )
+    }
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.predeclare_function_argument_values_in_source_order(
+        base, function, scope,
+      )
+    Call(_, arguments) | Sequence(arguments) =>
+      for argument in arguments {
+        self.predeclare_function_argument_values_in_source_order(
+          argument, function, scope,
+        )
+      }
+    Literal(_) | ShaderDefTemplate(_) => ()
   }
 }
 

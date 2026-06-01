@@ -6,3 +6,4 @@ ui-fragment-texture-sample	testdata/naga_writer_trace	ui_fragment_texture_sample
 ui-background-select	testdata/naga_writer_trace	ui_background_select.wgsl	draw_uinode_background	-	-	-	-
 box-shadow-horizontal	testdata/naga_writer_trace	box_shadow_horizontal.wgsl	horizontalRoundedBoxShadow	-	-	-	-
 box-shadow-rounded	testdata/naga_writer_trace	box_shadow_rounded.wgsl	roundedBoxShadow	-	-	-	-
+bevy-render-fast-atan2	testdata/bevy_wgsl	bevy_render/src/maths.wgsl	fast_atan2	-	-	-	-

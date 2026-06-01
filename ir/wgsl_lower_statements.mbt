@@ -61,7 +61,6 @@ fn WgslIrLowerer::predeclare_source_local(
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
   guard local_decl.kind() == @ast.WgslLocalDeclarationKind::Var else { return }
-  guard self.source_var_should_predeclare(local_decl) else { return }
   let key = wgsl_ir_local_declaration_key(local_decl)
   if scope.predeclared_source_locals.contains(key) {
     return
@@ -134,23 +133,6 @@ fn WgslIrLowerer::predeclare_source_local(
     init,
   })
   scope.predeclared_source_locals.set(key, handle)
-}
-
-///|
-fn WgslIrLowerer::source_var_should_predeclare(
-  self : WgslIrLowerer,
-  local_decl : @ast.WgslLocalDeclaration,
-) -> Bool raise WgslIrLowerError {
-  match local_decl.initializer_ref() {
-    None => true
-    Some(expr_ref) =>
-      match expr_ref.root() {
-        Some(root) =>
-          self.expression_node_is_const_initializer(root) ||
-          self.local_var_initializer_uses_store(local_decl)
-        None => false
-      }
-  }
 }
 
 ///|
@@ -1053,6 +1035,32 @@ fn WgslIrLowerer::lower_local_declaration(
     return
   }
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+    scope.predeclared_source_locals.contains(
+      wgsl_ir_local_declaration_key(local_decl),
+    ) {
+    if wgsl_ir_predeclared_source_var_has_init(local_decl, function, scope) {
+      ignore(
+        wgsl_ir_lower_predeclared_source_var_declaration(
+          local_decl, scope, block,
+        ),
+      )
+    } else {
+      match local_decl.initializer_ref() {
+        Some(_) =>
+          self.lower_local_var_store_declaration(
+            local_decl, function, scope, block,
+          )
+        None =>
+          ignore(
+            wgsl_ir_lower_predeclared_source_var_declaration(
+              local_decl, scope, block,
+            ),
+          )
+      }
+    }
+    return
+  }
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
     self.local_var_initializer_uses_store(local_decl) {
     self.lower_local_var_store_declaration(local_decl, function, scope, block)
     return
@@ -1306,6 +1314,25 @@ fn WgslIrLowerer::lower_local_declaration(
         }
       _ => ()
     }
+  }
+}
+
+///|
+fn wgsl_ir_predeclared_source_var_has_init(
+  local_decl : @ast.WgslLocalDeclaration,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match
+    scope.predeclared_source_locals.get(
+      wgsl_ir_local_declaration_key(local_decl),
+    ) {
+    Some(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_var) => local_var.init != None
+        None => false
+      }
+    None => false
   }
 }
 
