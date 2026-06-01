@@ -35,7 +35,9 @@ fn WgslIrLowerer::predeclare_function_source_local_prefix(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
+  let mut in_source_local_prefix = true
   for statement in block.statements() {
+    guard in_source_local_prefix else { break }
     match statement.payload() {
       LocalDeclaration(locals) => {
         for local_decl in locals {
@@ -47,8 +49,30 @@ fn WgslIrLowerer::predeclare_function_source_local_prefix(
         for local_decl in statement.local_bindings() {
           self.predeclare_source_local(local_decl, function, scope)
         }
-        return
+        in_source_local_prefix = false
       }
+    }
+  }
+  self.predeclare_function_for_initializer_locals(block, function, scope)
+}
+
+///|
+fn WgslIrLowerer::predeclare_function_for_initializer_locals(
+  self : WgslIrLowerer,
+  block : @ast.WgslBlock,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  for statement in block.statements() {
+    match statement.payload() {
+      For(_) =>
+        for local_decl in statement.local_bindings() {
+          self.predeclare_source_local(local_decl, function, scope)
+        }
+      _ => ()
+    }
+    for child in statement.blocks() {
+      self.predeclare_function_for_initializer_locals(child, function, scope)
     }
   }
 }

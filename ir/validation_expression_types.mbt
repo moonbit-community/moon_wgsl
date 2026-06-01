@@ -173,7 +173,7 @@ fn WgslIrValidator::function_expression_inner_type(
       }
     Load(inner) =>
       match self.function_expression_type(function, inner) {
-        Some(ty) => self.deref_type(ty)
+        Some(ty) => self.load_result_type(ty)
         None => None
       }
     AddressOf(ty, _) => Some(ty)
@@ -309,7 +309,7 @@ fn WgslIrValidator::global_expression_inner_type(
       }
     Load(inner) =>
       match self.global_expression_type(inner) {
-        Some(ty) => self.deref_type(ty)
+        Some(ty) => self.load_result_type(ty)
         None => None
       }
     AddressOf(ty, _) => Some(ty)
@@ -632,6 +632,25 @@ fn WgslIrValidator::deref_type(self : WgslIrValidator, ty : Handle) -> Handle? {
             None => self.find_scalar_type(scalar)
           }
         _ => Some(ty)
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrValidator::load_result_type(
+  self : WgslIrValidator,
+  ty : Handle,
+) -> Handle? {
+  match self.deref_type(ty) {
+    Some(deref) =>
+      match self.shader_module.types.get(deref) {
+        Some(type_) =>
+          match type_.inner {
+            Atomic(scalar) => self.find_scalar_type(scalar)
+            _ => Some(deref)
+          }
+        None => Some(deref)
       }
     None => None
   }

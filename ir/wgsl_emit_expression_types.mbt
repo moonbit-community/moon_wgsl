@@ -59,7 +59,7 @@ fn WgslIrEmitter::function_expression_inner_type(
       }
     Load(inner) =>
       match self.expression_type(Some(function), inner) {
-        Some(ty) => Some(self.deref_pointer_type_handle(ty))
+        Some(ty) => self.load_result_type(ty)
         None => None
       }
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
@@ -227,7 +227,7 @@ fn WgslIrEmitter::global_expression_inner_type(
       }
     Load(inner) =>
       match self.expression_type(None, inner) {
-        Some(ty) => Some(self.deref_pointer_type_handle(ty))
+        Some(ty) => self.load_result_type(ty)
         None => None
       }
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
@@ -450,6 +450,22 @@ fn WgslIrEmitter::indexed_type_from_type_handle(
         _ => None
       }
     None => None
+  }
+}
+
+///|
+fn WgslIrEmitter::load_result_type(
+  self : WgslIrEmitter,
+  ty_handle : Handle,
+) -> Handle? {
+  let deref = self.deref_pointer_type_handle(ty_handle)
+  match self.shader_module.types.get(deref) {
+    Some(type_) =>
+      match type_.inner {
+        Atomic(scalar) => self.find_scalar_type(scalar)
+        _ => Some(deref)
+      }
+    None => Some(deref)
   }
 }
 

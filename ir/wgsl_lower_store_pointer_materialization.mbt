@@ -26,7 +26,7 @@ fn WgslIrLowerer::materialize_store_pointer_if_needed(
         function, scope, block, base,
       )
       let lowered_index = self.materialize_store_pointer_index_if_needed(
-        function, scope, block, index,
+        function, scope, block, lowered_base, index,
       )
       if lowered_base == base && lowered_index == index {
         pointer
@@ -70,6 +70,7 @@ fn WgslIrLowerer::materialize_store_pointer_index_if_needed(
   function : Function,
   scope : WgslIrFunctionScope,
   block : Block,
+  pointer_base : Handle,
   index : Handle,
 ) -> Handle raise WgslIrLowerError {
   let normalized = self.materialize_return_subexpressions(
@@ -94,6 +95,9 @@ fn WgslIrLowerer::materialize_store_pointer_index_if_needed(
     return self.materialize_function_expression(
       function, scope, block, normalized,
     )
+  }
+  if wgsl_ir_function_store_pointer_root_is_user_local(function, pointer_base) {
+    return normalized
   }
   if self.function_expression_should_snapshot_store_pointer_index(
       function, normalized,

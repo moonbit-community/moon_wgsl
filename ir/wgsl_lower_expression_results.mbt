@@ -162,6 +162,22 @@ fn WgslIrLowerer::deref_pointer_type_handle(
 }
 
 ///|
+fn WgslIrLowerer::load_result_type_handle(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+) -> Handle {
+  let deref = self.deref_pointer_type_handle(ty_handle)
+  match self.shader_module.types.get(deref) {
+    Some(type_) =>
+      match type_.inner {
+        Atomic(scalar) => self.scalar_type_handle(scalar)
+        _ => deref
+      }
+    None => deref
+  }
+}
+
+///|
 fn WgslIrLowerer::pointer_type_for_lvalue(
   self : WgslIrLowerer,
   function : Function,
@@ -418,7 +434,7 @@ fn WgslIrLowerer::function_expression_inner_type(
       }
     Load(inner) =>
       match self.function_expression_type(function, inner) {
-        Some(ty) => Some(self.deref_pointer_type_handle(ty))
+        Some(ty) => Some(self.load_result_type_handle(ty))
         None => None
       }
     Expression::AddressOf(ty, _) => Some(ty)

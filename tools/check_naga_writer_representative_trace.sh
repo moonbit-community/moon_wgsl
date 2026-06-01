@@ -59,6 +59,70 @@ push_oracle_arg() {
   oracle_args+=("$1" "$2")
 }
 
+append_value_defs() {
+  local csv="$1"
+  local moon_push="$2"
+  local oracle_push="$3"
+  [[ "$csv" == "-" || "$csv" == "" ]] && return 0
+  local item
+  IFS=',' read -r -a items <<< "$csv"
+  for item in "${items[@]}"; do
+    [[ -n "$item" ]] || continue
+    [[ "$item" != *=raw:* ]] || continue
+    "$moon_push" --value-def "$item"
+    "$oracle_push" --def "$item"
+  done
+}
+
+materialize_raw_template_value_defs() {
+  local fixture_root="$1"
+  local entry="$2"
+  local value_defs="$3"
+  local case_dir="$4"
+  local overlay="$fixture_root"
+
+  [[ -n "$value_defs" && "$value_defs" != "-" ]] || {
+    printf '%s\n' "$fixture_root"
+    return 0
+  }
+
+  IFS=',' read -r -a values <<< "$value_defs"
+  local raw_values=()
+  local value
+  for value in "${values[@]}"; do
+    [[ -n "$value" ]] || continue
+    [[ "$value" == *=raw:* ]] || continue
+    raw_values+=("$value")
+  done
+
+  if (( ${#raw_values[@]} == 0 )); then
+    printf '%s\n' "$fixture_root"
+    return 0
+  fi
+
+  overlay="$case_dir/raw-overlay"
+  mkdir -p "$overlay"
+  cp -R "$fixture_root/." "$overlay/"
+  rm -rf "$overlay/.git"
+  local target="$overlay/$entry"
+  [[ -f "$target" ]] || {
+    echo "raw template overlay entry not found: $entry" >&2
+    return 1
+  }
+
+  for value in "${raw_values[@]}"; do
+    local name="${value%%=*}"
+    local raw="${value#*=raw:}"
+    [[ -n "$name" ]] || {
+      echo "raw template value-def has empty name: $value" >&2
+      return 1
+    }
+    FROM="##${name}##" TO="$raw" perl -0pi -e 's/\Q$ENV{FROM}\E/$ENV{TO}/g' "$target"
+  done
+
+  printf '%s\n' "$overlay"
+}
+
 normalize_oracle_trace() {
   local inventory="$1"
   local function_prefix="$2"
@@ -172,14 +236,16 @@ run_case() {
   local materialized_drift=0
 
   mkdir -p "$case_dir"
+  local compose_root
+  compose_root="$(materialize_raw_template_value_defs "$fixture_root" "$entry" "$value_defs" "$case_dir")" || return 1
   moon_args=(
-    --fixture-root "$fixture_root"
+    --fixture-root "$compose_root"
     --entry "$entry"
     --naga-writer-trace-function "$function_prefix"
     --output "$case_dir/moon.trace"
   )
   oracle_args=(
-    --fixture-root "$fixture_root"
+    --fixture-root "$compose_root"
     --entry "$entry"
     --output "$case_dir/oracle.wgsl"
     --expression-inventory "$case_dir/oracle.inventory"
@@ -187,8 +253,7 @@ run_case() {
 
   append_csv_arg "$bool_defs" --def push_moon_arg
   append_csv_arg "$bool_defs" --def push_oracle_arg
-  append_csv_arg "$value_defs" --value-def push_moon_arg
-  append_csv_arg "$value_defs" --def push_oracle_arg
+  append_value_defs "$value_defs" push_moon_arg push_oracle_arg
   append_csv_arg "$additional_imports" --additional-import push_moon_arg
   append_csv_arg "$additional_imports" --additional-import push_oracle_arg
   append_csv_arg "$capabilities" --capability push_oracle_arg
