@@ -2229,11 +2229,22 @@ fn WgslIrLowerer::lower_function_select_call(
       "select expects three arguments",
     )
   }
-  let condition = self.lower_function_expression_node(
-    condition, function, scope,
-  )
-  let accept = self.lower_function_expression_node(accept, function, scope)
-  let reject = self.lower_function_expression_node(reject, function, scope)
+  let (condition, accept, reject) = if wgsl_ir_expr_node_is_literal_like(reject) &&
+    wgsl_ir_expr_node_is_literal_like(accept) {
+    let condition = self.lower_function_expression_node(
+      condition, function, scope,
+    )
+    let accept = self.lower_function_expression_node(accept, function, scope)
+    let reject = self.lower_function_expression_node(reject, function, scope)
+    (condition, accept, reject)
+  } else {
+    let reject = self.lower_function_expression_node(reject, function, scope)
+    let accept = self.lower_function_expression_node(accept, function, scope)
+    let condition = self.lower_function_expression_node(
+      condition, function, scope,
+    )
+    (condition, accept, reject)
+  }
   function.expressions.append(Expression::Select(condition, accept, reject))
 }
 

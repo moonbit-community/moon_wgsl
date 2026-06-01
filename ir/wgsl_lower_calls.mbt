@@ -722,6 +722,23 @@ fn WgslIrLowerer::lower_texture_trailing_args(
 }
 
 ///|
+fn WgslIrLowerer::predeclare_texture_coordinate_root(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  coordinate_index : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match arguments.get(coordinate_index) {
+    Some(coordinate) =>
+      self.predeclare_function_member_root_expression(
+        coordinate, function, scope,
+      )
+    None => ()
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_texture_mip_level_argument(
   self : WgslIrLowerer,
   argument : @ast.WgslExprNode,
@@ -832,6 +849,7 @@ fn WgslIrLowerer::lower_image_sample_expression(
       "textureSample expects at least 3 arguments",
     )
   }
+  self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let sampler = self.lower_function_expression_node(
     arguments[1],
@@ -876,6 +894,7 @@ fn WgslIrLowerer::lower_image_sample_with_level_argument(
       "\{callee} expects at least 4 arguments",
     )
   }
+  self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let sampler = self.lower_function_expression_node(
     arguments[1],
@@ -928,6 +947,7 @@ fn WgslIrLowerer::lower_image_sample_grad_expression(
       "textureSampleGrad expects at least 5 arguments",
     )
   }
+  self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let sampler = self.lower_function_expression_node(
     arguments[1],
@@ -977,6 +997,7 @@ fn WgslIrLowerer::lower_image_sample_compare_expression(
       "\{callee} expects at least 4 arguments",
     )
   }
+  self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let sampler = self.lower_function_expression_node(
     arguments[1],
@@ -1024,6 +1045,7 @@ fn WgslIrLowerer::lower_image_sample_base_clamp_to_edge_expression(
       "textureSampleBaseClampToEdge expects 3 arguments",
     )
   }
+  self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let sampler = self.lower_function_expression_node(
     arguments[1],
@@ -1147,6 +1169,7 @@ fn WgslIrLowerer::lower_image_gather_compare_expression(
       "textureGatherCompare expects at least 4 arguments",
     )
   }
+  self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let sampler = self.lower_function_expression_node(
     arguments[1],

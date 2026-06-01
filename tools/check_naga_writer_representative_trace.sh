@@ -63,38 +63,13 @@ normalize_oracle_trace() {
   local inventory="$1"
   local function_prefix="$2"
   local output="$3"
-  awk -F '\t' -v prefix="fn:${function_prefix}" '
-  $1 == "function" { active = index($2, prefix) == 1 }
+  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
+  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
   active && $1 == "expression" {
     kind = $4
     sub(/\(.*/, "", kind)
     sub(/ \{.*/, "", kind)
     print "expression\t" $3 "\t" kind
-  }
-  active && $1 == "body" {
-    body = $3
-    statement = 0
-    while (match(body, /(Emit\(\[[0-9]+\.\.[0-9]+\]\)|Call \{[^}]*result: Some\(\[[0-9]+\]\)[^}]*\}|Return \{[^}]*\})/)) {
-      item = substr(body, RSTART, RLENGTH)
-      if (item ~ /^Emit/) {
-        range = item
-        sub(/^Emit\(\[/, "", range)
-        sub(/\]\)$/, "", range)
-        split(range, parts, "\\.\\.")
-        start = parts[1] + 0
-        end = parts[2] - 1
-        print "statement\t" statement "\tEmit(" start ".." end ")"
-      } else if (item ~ /^Call/) {
-        result = item
-        sub(/^.*result: Some\(\[/, "", result)
-        sub(/\]\).*$/, "", result)
-        print "statement\t" statement "\tCall(result=" result ")"
-      } else if (item ~ /^Return/) {
-        print "statement\t" statement "\tReturn"
-      }
-      body = substr(body, RSTART + RLENGTH)
-      statement = statement + 1
-    }
   }
 ' "$inventory" > "$output"
 }
@@ -104,7 +79,6 @@ normalize_moon_trace() {
   local output="$2"
   awk -F '\t' '
   $1 == "expression" { print "expression\t" $3 "\t" $4 }
-  $1 == "statement" { print "statement\t" $3 "\t" $4 }
 ' "$trace" > "$output"
 }
 
@@ -132,7 +106,7 @@ normalize_oracle_bindings() {
     }
     close(wgsl)
   }
-  $1 == "function" { active = index($2, prefix) == 1 }
+  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
   active && $1 == "expression" && $4 ~ /^FunctionArgument/ {
     arg_index = $4
     sub(/^FunctionArgument\(/, "", arg_index)
@@ -156,8 +130,8 @@ normalize_oracle_materialized() {
   local inventory="$1"
   local function_prefix="$2"
   local output="$3"
-  awk -F '\t' -v prefix="fn:${function_prefix}" '
-  $1 == "function" { active = index($2, prefix) == 1 }
+  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
+  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
   active && $1 == "body" {
     text = $0
     while (match(text, /result: Some\(\[[0-9]+\]\)/)) {
