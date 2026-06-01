@@ -481,7 +481,7 @@ fn WgslIrLowerer::lower_texture_statement_call(
         function,
         scope,
       )
-      let (array_index, value_index) = if arguments.length() == 4 {
+      let (raw_array_index, value_index) = if arguments.length() == 4 {
         (
           Some(
             self.lower_function_expression_node(arguments[2], function, scope),
@@ -496,7 +496,18 @@ fn WgslIrLowerer::lower_texture_statement_call(
         function,
         scope,
       )
-      block.push(Statement::ImageStore(image, coordinate, array_index, value))
+      block.push(
+        Statement::ImageStore(
+          image,
+          self.materialize_image_store_operand(
+            function, scope, block, coordinate,
+          ),
+          self.materialize_optional_image_store_operand(
+            function, scope, block, raw_array_index,
+          ),
+          self.materialize_image_store_operand(function, scope, block, value),
+        ),
+      )
       true
     }
     _ => false

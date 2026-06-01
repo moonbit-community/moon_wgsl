@@ -7,10 +7,10 @@ bevy	assets/shaders/screen_space_texture_material.wgsl	3017ad64eeb39d9640d754877
 bevy	assets/shaders/tonemapping_test_patterns.wgsl	ea47e988440cb45dfbcd476bf1578b7779e7f34ddcc50307550ca8c0f05c2b35	byte-output-drift	strict-byte-parity-failure
 bevy	assets/shaders/water_material.wgsl	9233b848c3c067f671ee6e70ea5d851ea745eda678f7699ea1a9a7fa8ace92d6	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_core_pipeline/src/mip_generation/downsample.wgsl	8c7ef1c1fdb7d5625adcf9543e163f35de1d216325c1c33ee21f2dc61b6acc44	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_core_pipeline/src/mip_generation/experimental/downsample_depth.wgsl	2d23f3198fda4c095fae96d278ef7babb5b98310fbac6cc1fd9dfb3563a9fec8	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_core_pipeline/src/mip_generation/experimental/downsample_depth.wgsl	f719275d40cb09cde5152d7a069f23453fc47830dc2a205dced4541904be4b92	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_core_pipeline/src/oit/resolve/oit_resolve.wgsl	2bc9881172c3c4edb6c756fb582154b2a05d89cf23d0ed196240f251d5f3a8c9	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_core_pipeline/src/tonemapping/tonemapping_shared.wgsl	ff2b8a9610305cc579e0768a6611ee4688bdfb19833b608d3d5047fe72ca7856	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/atmosphere/aerial_view_lut.wgsl	fe8c54bb4ec3512bcd7d6db3356c0bc256c04a4d508cbde1ea582411d88238c5	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/atmosphere/aerial_view_lut.wgsl	aee400d9844e68c2542e5ada130dffa4b1a9ebc2b98c595a69ae2e23c639f086	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/atmosphere/bruneton_functions.wgsl	38efff8116ca5617a0c1c3cb34bafb56223a0a51c000bc6f78e5a30f679b1b62	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/atmosphere/environment.wgsl	6da4a35d8206cf26a0771be92e38319f638a6fd8a8898dbace2d916e148ae1e6	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/atmosphere/functions.wgsl	0e3adb02cae6bf3882e0d71ea4cd2a72b542d68436bae4ad4952944f9010346a	byte-output-drift	strict-byte-parity-failure
@@ -25,7 +25,7 @@ bevy	crates/bevy_pbr/src/decal/forward_decal.wgsl	d879a7d8062294c93ea41eb862dc3b
 bevy	crates/bevy_pbr/src/deferred/deferred_lighting.wgsl	b84cc506853ff4844e303bc3b423abe42111b2380e88c5cd8c413f7356c1ede4	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/deferred/pbr_deferred_functions.wgsl	21366fec63d162872268fd602cc743fc1b014642a3aed5456055adff0203b230	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/deferred/pbr_deferred_types.wgsl	bc3cd9f5c8e5d6a013c54b49e520b19c7e0693b5c52d2ef2e7cc078ce3da709c	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/light_probe/environment_filter.wgsl	17ae68fa6fc4f74b5fd59bb1e874fc810cc37c96bf4b47257a26f2c0120f4b9e	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/light_probe/environment_filter.wgsl	91e2179ec9673066332c7febb3855254c262e326d624a13cb99cbcb3c4cd845c	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/light_probe/environment_map.wgsl	b8eaa03e9b2b6e22a100cfe0e7601704447f0588cd4a2fe2cfd50f0f0e2e2b41	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/light_probe/light_probe.wgsl	12746cd22148e1abe4753ef003cf26111a626f6a007ad14c83de1d65af457000	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/lightmap/lightmap.wgsl	d231c49e04ad1d08aa12b0f9ecc26ca6575c852d9a879f90d523cb7195d1a9f1	byte-output-drift	strict-byte-parity-failure
@@ -52,7 +52,7 @@ bevy	crates/bevy_pbr/src/render/unpack_bins.wgsl	8d90e4f289de995627a716047fbf47d
 bevy	crates/bevy_pbr/src/render/utils.wgsl	755da25d10b5fc2fafcb17ac47b586423a6ba2a1a7f23fad71370ec5c3783a15	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssao/preprocess_depth.wgsl	42c8217d0226ca5146a07c8c70bba2dea4d8658900eacb495ac07a5a7cc5f9fc	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssao/spatial_denoise.wgsl	214d7b8a83e1c8d946776ec52b110b9b25d67b715697738c2f0eb27818581c97	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	47d1788e1beab9ea6c38605c2d2b2481d20e4c5173b8dc72f4c9f566c6c7303a	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	7f83826cabba08339765416b69e6bc185b2aebeed4b6a19d02c985dcdbf12b2c	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssr/raymarch.wgsl	c3c7da97d38a7ebde8dcf94f4f5034e7c421aa5c607a2d8dbddbf1f9f6796d87	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssr/ssr.wgsl	828f3037f369c806b7263089558d209caee831e71824f4480c41dd3243885d25	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/transmission/transmission.wgsl	66fc9d6a1f09d95dc096d69db0d4240d7cda79ee5e415073948b5d817dabeedc	byte-output-drift	strict-byte-parity-failure

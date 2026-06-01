@@ -1191,6 +1191,32 @@ fn WgslIrLowerer::materialize_optional_nested_call_argument(
 }
 
 ///|
+fn WgslIrLowerer::materialize_image_store_operand(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle,
+) -> Handle raise WgslIrLowerError {
+  self.materialize_nested_call_argument(function, scope, block, value)
+}
+
+///|
+fn WgslIrLowerer::materialize_optional_image_store_operand(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  value : Handle?,
+) -> Handle? raise WgslIrLowerError {
+  match value {
+    Some(handle) =>
+      Some(self.materialize_image_store_operand(function, scope, block, handle))
+    None => None
+  }
+}
+
+///|
 fn WgslIrLowerer::materialize_nested_return_argument(
   self : WgslIrLowerer,
   function : Function,
