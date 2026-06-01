@@ -302,9 +302,16 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
     Binary(op, left, right) => {
-      let (left_handle, right_handle) = if wgsl_ir_binary_right_subtree_has_higher_precedence(
-          op, right,
-        ) {
+      let member_bases_lower_in_source_order = wgsl_ir_expr_node_contains_member_access(
+          left,
+        ) &&
+        wgsl_ir_expr_node_contains_member_access(right)
+      if member_bases_lower_in_source_order {
+        self.predeclare_function_member_base_expressions(left, function, scope)
+        self.predeclare_function_member_base_expressions(right, function, scope)
+      }
+      let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
+        wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) {
         let (right_op, right_left, right_right) = self.lower_binary_expression_children(
           right, function, scope,
         )
@@ -392,6 +399,83 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
 }
 
 ///|
+fn WgslIrLowerer::predeclare_function_member_base_expressions(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match node.kind() {
+    Member(base, _) =>
+      self.predeclare_function_member_root_expression(base, function, scope)
+    Group(inner) =>
+      self.predeclare_function_member_base_expressions(inner, function, scope)
+    Unary(_, expr) =>
+      self.predeclare_function_member_base_expressions(expr, function, scope)
+    Binary(_, left, right) => {
+      self.predeclare_function_member_base_expressions(left, function, scope)
+      self.predeclare_function_member_base_expressions(right, function, scope)
+    }
+    Call(_, arguments) | Sequence(arguments) =>
+      for argument in arguments {
+        self.predeclare_function_member_base_expressions(
+          argument, function, scope,
+        )
+      }
+    Index(base, index) => {
+      self.predeclare_function_member_base_expressions(base, function, scope)
+      self.predeclare_function_member_base_expressions(index, function, scope)
+    }
+    Template(base, _) =>
+      self.predeclare_function_member_base_expressions(base, function, scope)
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_function_member_root_expression(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match node.kind() {
+    Identifier(name) =>
+      self.predeclare_identifier_named_expression(name.name(), function, scope)
+    Group(inner) =>
+      self.predeclare_function_member_root_expression(inner, function, scope)
+    Member(base, _) =>
+      self.predeclare_function_member_root_expression(base, function, scope)
+    Index(base, _) =>
+      self.predeclare_function_member_root_expression(base, function, scope)
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_identifier_named_expression(
+  self : WgslIrLowerer,
+  name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match scope.arguments.get(name) {
+    Some(index) => {
+      ignore(scope.argument_expression(name, index, function))
+      return
+    }
+    None => ()
+  }
+  match scope.local_constants.get(name) {
+    Some(_) => {
+      ignore(self.lower_identifier_expression(name, function, scope))
+      return
+    }
+    None => ()
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_binary_expression_children(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -450,6 +534,27 @@ fn wgsl_ir_binary_right_subtree_has_higher_precedence(
   match right.kind() {
     Binary(right_op, _, _) =>
       right_op.binary_precedence() > op.binary_precedence()
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_contains_member_access(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Member(_, _) => true
+    Group(inner) => wgsl_ir_expr_node_contains_member_access(inner)
+    Unary(_, expr) => wgsl_ir_expr_node_contains_member_access(expr)
+    Binary(_, left, right) =>
+      wgsl_ir_expr_node_contains_member_access(left) ||
+      wgsl_ir_expr_node_contains_member_access(right)
+    Call(_, arguments) | Sequence(arguments) =>
+      arguments.any(fn(argument) {
+        wgsl_ir_expr_node_contains_member_access(argument)
+      })
+    Index(base, index) =>
+      wgsl_ir_expr_node_contains_member_access(base) ||
+      wgsl_ir_expr_node_contains_member_access(index)
+    Template(base, _) => wgsl_ir_expr_node_contains_member_access(base)
     _ => false
   }
 }

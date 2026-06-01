@@ -176,6 +176,99 @@ test "WGSL AST lowerer represents single vector members as Naga-style access ind
 }
 
 ///|
+test "WGSL AST lowerer predeclares binary member roots before projections" {
+  let source =
+    #|fn probe(point: vec2<f32>, width: vec4<f32>) -> f32 {
+    #|  return point.x / width.x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected left member root first")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected right member root before left projection")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected left member projection after both roots")
+  }
+  match function.expressions.items[3] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="1")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected right member projection after left projection")
+  }
+  match function.expressions.items[4] {
+    Binary(Divide, left, right) => {
+      debug_inspect(left.index(), content="2")
+      debug_inspect(right.index(), content="3")
+    }
+    _ => abort("expected division to preserve projected operands")
+  }
+}
+
+///|
+test "WGSL AST lowerer keeps member projections source ordered across higher-precedence right subtree" {
+  let source =
+    #|fn probe(point: vec2<f32>, width: vec4<f32>) -> f32 {
+    #|  return point.x + width.y * 2.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected left member root first")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected right member root second")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected left projection before right subtree projection")
+  }
+  match function.expressions.items[3] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="1")
+      debug_inspect(index, content="1")
+    }
+    _ => abort("expected right projection before right subtree literal")
+  }
+  match function.expressions.items[4] {
+    Literal(_) => ()
+    _ => abort("expected right subtree literal after member projections")
+  }
+  match function.expressions.items[5] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="3")
+      debug_inspect(right.index(), content="4")
+    }
+    _ => abort("expected right subtree multiply")
+  }
+  match function.expressions.items[6] {
+    Binary(Add, left, right) => {
+      debug_inspect(left.index(), content="2")
+      debug_inspect(right.index(), content="5")
+    }
+    _ => abort("expected parent add")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps shadowing var out of scope while lowering its initializer" {
   let source =
     #|fn convert(value: vec2<f32>) -> vec4<f32> {
