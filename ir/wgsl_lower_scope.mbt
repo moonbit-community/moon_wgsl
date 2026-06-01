@@ -38,6 +38,12 @@ priv struct WgslIrLocalValueCell {
 }
 
 ///|
+priv struct WgslIrPendingGlobalPointerExpressions {
+  handles : Array[Handle]
+  mut index : Int
+}
+
+///|
 priv struct WgslIrFunctionScope {
   arguments : Map[String, Int]
   argument_expressions : Map[String, Handle]
@@ -46,6 +52,10 @@ priv struct WgslIrFunctionScope {
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
+  pending_global_pointer_expressions : Map[
+    String,
+    WgslIrPendingGlobalPointerExpressions,
+  ]
   mut visible_rel_path : String
   mut generated_import_local_spelling : WgslIrGeneratedImportLocalSpellingMode
 }
@@ -67,6 +77,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     local_pointer_expressions: Map([]),
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
+    pending_global_pointer_expressions: Map([]),
     visible_rel_path: "",
     generated_import_local_spelling: AllGeneratedImportLocalSpelling,
   }
@@ -148,6 +159,7 @@ fn WgslIrFunctionScope::child(
     ),
     argument_pointer_expressions: self.argument_pointer_expressions,
     global_pointer_expressions: self.global_pointer_expressions,
+    pending_global_pointer_expressions: self.pending_global_pointer_expressions,
     visible_rel_path: self.visible_rel_path,
     generated_import_local_spelling: self.generated_import_local_spelling,
   }
@@ -228,6 +240,49 @@ fn WgslIrFunctionScope::global_pointer_expression(
     }
   }
   function.expressions.append(Expression::GlobalVariable(global_handle))
+}
+
+///|
+fn WgslIrFunctionScope::predeclare_global_pointer_expression(
+  self : WgslIrFunctionScope,
+  name : String,
+  global_handle : Handle,
+  function : Function,
+) -> Handle {
+  let handle = function.expressions.append(
+    Expression::GlobalVariable(global_handle),
+  )
+  match self.pending_global_pointer_expressions.get(name) {
+    Some(queue) => queue.handles.push(handle)
+    None =>
+      self.pending_global_pointer_expressions.set(name, WgslIrPendingGlobalPointerExpressions::{
+        handles: [handle],
+        index: 0,
+      })
+  }
+  handle
+}
+
+///|
+fn WgslIrFunctionScope::consume_pending_global_pointer_expression(
+  self : WgslIrFunctionScope,
+  name : String,
+) -> Handle? {
+  match self.pending_global_pointer_expressions.get(name) {
+    Some(queue) =>
+      if queue.index < queue.handles.length() {
+        let handle = queue.handles[queue.index]
+        queue.index += 1
+        if queue.index == queue.handles.length() {
+          ignore(self.pending_global_pointer_expressions.remove(name))
+        }
+        Some(handle)
+      } else {
+        ignore(self.pending_global_pointer_expressions.remove(name))
+        None
+      }
+    None => None
+  }
 }
 
 ///|

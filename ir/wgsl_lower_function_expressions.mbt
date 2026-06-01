@@ -125,12 +125,16 @@ fn WgslIrLowerer::lower_function_lvalue_node(
       }
       match self.global_names.get(name.name()) {
         Some(handle) =>
-          scope.global_pointer_expression(
-            name.name(),
-            handle,
-            function,
-            self.global_variable_reuses_pointer_expression(handle),
-          )
+          match scope.consume_pending_global_pointer_expression(name.name()) {
+            Some(predeclared) => predeclared
+            None =>
+              scope.global_pointer_expression(
+                name.name(),
+                handle,
+                function,
+                self.global_variable_reuses_pointer_expression(handle),
+              )
+          }
         None => raise WgslIrLowerError::UnknownIdentifier(name.name())
       }
     }
@@ -309,6 +313,10 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       if member_bases_lower_in_source_order {
         self.predeclare_function_member_base_expressions(left, function, scope)
         self.predeclare_function_member_base_expressions(right, function, scope)
+      } else if wgsl_ir_expr_node_is_direct_access_chain(left) &&
+        wgsl_ir_expr_node_is_function_argument_value(right, scope) {
+        self.predeclare_function_member_base_expressions(left, function, scope)
+        self.predeclare_function_argument_value(right, function, scope)
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
         wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) {
@@ -399,6 +407,27 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
 }
 
 ///|
+fn WgslIrLowerer::predeclare_function_argument_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  ignore(self)
+  match node.kind() {
+    Identifier(name) =>
+      match scope.arguments.get(name.name()) {
+        Some(index) =>
+          ignore(scope.argument_expression(name.name(), index, function))
+        None => ()
+      }
+    Group(inner) =>
+      self.predeclare_function_argument_value(inner, function, scope)
+    _ => ()
+  }
+}
+
+///|
 fn WgslIrLowerer::predeclare_function_member_base_expressions(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -469,6 +498,13 @@ fn WgslIrLowerer::predeclare_identifier_named_expression(
   match scope.local_constants.get(name) {
     Some(_) => {
       ignore(self.lower_identifier_expression(name, function, scope))
+      return
+    }
+    None => ()
+  }
+  match self.global_names.get(name) {
+    Some(handle) => {
+      ignore(scope.predeclare_global_pointer_expression(name, handle, function))
       return
     }
     None => ()
@@ -558,6 +594,15 @@ fn wgsl_ir_expr_node_contains_member_access(node : @ast.WgslExprNode) -> Bool {
       wgsl_ir_expr_node_contains_member_access(base) ||
       wgsl_ir_expr_node_contains_member_access(index)
     Template(base, _) => wgsl_ir_expr_node_contains_member_access(base)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_direct_access_chain(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_is_direct_access_chain(inner)
+    Member(_, _) | Index(_, _) => true
     _ => false
   }
 }
@@ -1277,12 +1322,16 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
       }
       match self.global_names.get(name.name()) {
         Some(handle) =>
-          scope.global_pointer_expression(
-            name.name(),
-            handle,
-            function,
-            self.global_variable_reuses_pointer_expression(handle),
-          )
+          match scope.consume_pending_global_pointer_expression(name.name()) {
+            Some(predeclared) => predeclared
+            None =>
+              scope.global_pointer_expression(
+                name.name(),
+                handle,
+                function,
+                self.global_variable_reuses_pointer_expression(handle),
+              )
+          }
         None => raise WgslIrLowerError::UnknownIdentifier(name.name())
       }
     }

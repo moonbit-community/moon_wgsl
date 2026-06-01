@@ -345,6 +345,50 @@ test "WGSL AST lowerer predeclares binary member roots before projections" {
 }
 
 ///|
+test "WGSL AST lowerer predeclares right argument before left global member projection" {
+  let source =
+    #|struct View {
+    #|  clip_from_world: mat4x4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|
+    #|fn project(world_position: vec4<f32>) -> vec4<f32> {
+    #|  return view.clip_from_world * world_position;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected global member root first")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected right function argument before left projection")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected left member projection after right argument")
+  }
+  match function.expressions.items[3] {
+    Load(base) => debug_inspect(base.index(), content="2")
+    _ => abort("expected global member load after projection")
+  }
+  match function.expressions.items[4] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="3")
+      debug_inspect(right.index(), content="1")
+    }
+    _ => abort("expected multiply to preserve source operands")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps member projections source ordered across higher-precedence right subtree" {
   let source =
     #|fn probe(point: vec2<f32>, width: vec4<f32>) -> f32 {
