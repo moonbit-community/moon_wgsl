@@ -191,25 +191,109 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
         "invalid function call target",
       )
   }
+  let prelowered = self.lower_user_function_call_argument_dependencies(
+    flattened, callee_function, function, scope,
+  )
   for index in 0..<flattened.length() {
-    let expected_ty = match callee_function.arguments.get(index) {
-      Some(argument) => Some(argument.ty)
-      None => None
-    }
-    let lowered = self.lower_function_expression_node_with_expected(
-      flattened[index],
-      function,
-      scope,
-      expected_ty,
-    )
-    let argument = match expected_ty {
-      Some(ty) if self.lowerer_type_is_pointer(ty) => lowered
-      Some(_) => self.apply_function_load_rule(function, lowered)
-      None => lowered
+    let argument = match prelowered[index] {
+      Some(handle) => handle
+      None =>
+        self.lower_user_function_call_argument_at(
+          flattened[index],
+          callee_function,
+          index,
+          function,
+          scope,
+        )
     }
     handles.push(argument)
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_user_function_call_argument_dependencies(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  callee_function : Function,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Array[Handle?] raise WgslIrLowerError {
+  let prelowered : Array[Handle?] = []
+  for _ in 0..<arguments.length() {
+    prelowered.push(None)
+  }
+  for index in 0..<arguments.length() {
+    if self.expression_node_contains_user_function_call(arguments[index]) {
+      prelowered[index] = Some(
+        self.lower_user_function_call_argument_at(
+          arguments[index],
+          callee_function,
+          index,
+          function,
+          scope,
+        ),
+      )
+    }
+  }
+  prelowered
+}
+
+///|
+fn WgslIrLowerer::lower_user_function_call_argument_at(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  callee_function : Function,
+  index : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let expected_ty = match callee_function.arguments.get(index) {
+    Some(argument) => Some(argument.ty)
+    None => None
+  }
+  let lowered = self.lower_function_expression_node_with_expected(
+    argument, function, scope, expected_ty,
+  )
+  match expected_ty {
+    Some(ty) if self.lowerer_type_is_pointer(ty) => lowered
+    Some(_) => self.apply_function_load_rule(function, lowered)
+    None => lowered
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_contains_user_function_call(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) | Template(inner, _) =>
+      self.expression_node_contains_user_function_call(inner)
+    Call(callee, arguments) => {
+      let callee_is_user_function = match callee.kind() {
+        Identifier(name) => self.function_names.contains(name.name())
+        _ => false
+      }
+      callee_is_user_function ||
+      wgsl_ir_flatten_expression_arguments(arguments).any(fn(argument) {
+        self.expression_node_contains_user_function_call(argument)
+      })
+    }
+    Sequence(items) =>
+      items.any(fn(item) {
+        self.expression_node_contains_user_function_call(item)
+      })
+    Unary(_, expr) => self.expression_node_contains_user_function_call(expr)
+    Binary(_, left, right) =>
+      self.expression_node_contains_user_function_call(left) ||
+      self.expression_node_contains_user_function_call(right)
+    Member(base, _) => self.expression_node_contains_user_function_call(base)
+    Index(base, index) =>
+      self.expression_node_contains_user_function_call(base) ||
+      self.expression_node_contains_user_function_call(index)
+    _ => false
+  }
 }
 
 ///|

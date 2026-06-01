@@ -426,6 +426,46 @@ test "WGSL AST lowerer scopes binary member root predeclarations per arena layer
 }
 
 ///|
+test "WGSL AST lowerer orders nested call argument dependencies before outer siblings" {
+  let source =
+    #|fn inner(a: f32, b: f32) -> vec2<f32> {
+    #|  return vec2<f32>(a, b);
+    #|}
+    #|
+    #|fn outer(x: f32, y: vec2<f32>) -> vec2<f32> {
+    #|  return y + vec2<f32>(x);
+    #|}
+    #|
+    #|fn probe(a: f32, b: f32, c: f32) -> vec2<f32> {
+    #|  return outer(a, inner(b, c));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[2]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected inner first argument before outer sibling")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="2")
+    _ => abort("expected inner second argument before outer sibling")
+  }
+  match function.expressions.items[2] {
+    CallResult(_) => ()
+    _ => abort("expected inner call result before outer sibling")
+  }
+  match function.expressions.items[3] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected outer first argument after inner call")
+  }
+  match function.expressions.items[4] {
+    CallResult(_) => ()
+    _ => abort("expected outer call result after reordered arguments")
+  }
+}
+
+///|
 test "WGSL AST lowerer emits static array literal indexes as Naga access indexes" {
   let source =
     #|const LAYER_BASE: u32 = 0u;
