@@ -1790,18 +1790,32 @@ fn WgslIrLowerer::lower_function_math_call(
     math_function, arguments, function, scope,
   )
   let handles : Array[Handle] = []
-  for index in 0..<arguments.length() {
-    let argument = arguments[index]
-    let lowered = match deferred_constructors.get(index) {
-      Some(deferred) =>
-        self.lower_function_constructor_expression_from_handles(
-          deferred.ty,
-          [deferred.component],
-          function,
-        )
-      None => self.lower_function_expression_node(argument, function, scope)
+  if self.math_call_lowers_second_argument_before_first(
+      math_function, arguments, function, scope,
+    ) {
+    let second = self.lower_function_math_argument_at(
+      1, arguments, deferred_constructors, function, scope,
+    )
+    let first = self.lower_function_math_argument_at(
+      0, arguments, deferred_constructors, function, scope,
+    )
+    handles.push(first)
+    handles.push(second)
+    for index in 2..<arguments.length() {
+      handles.push(
+        self.lower_function_math_argument_at(
+          index, arguments, deferred_constructors, function, scope,
+        ),
+      )
     }
-    handles.push(self.apply_function_load_rule(function, lowered))
+  } else {
+    for index in 0..<arguments.length() {
+      handles.push(
+        self.lower_function_math_argument_at(
+          index, arguments, deferred_constructors, function, scope,
+        ),
+      )
+    }
   }
   self.contextualize_homogeneous_math_arguments(
     math_function, function, handles,
@@ -1822,6 +1836,48 @@ fn WgslIrLowerer::lower_function_math_call(
     _ => None
   }
   function.expressions.append(Expression::Math(math_function, a, b, c, d))
+}
+
+///|
+fn WgslIrLowerer::lower_function_math_argument_at(
+  self : WgslIrLowerer,
+  index : Int,
+  arguments : Array[@ast.WgslExprNode],
+  deferred_constructors : Map[Int, WgslIrDeferredConstructorArgument],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let argument = arguments[index]
+  let lowered = match deferred_constructors.get(index) {
+    Some(deferred) =>
+      self.lower_function_constructor_expression_from_handles(
+        deferred.ty,
+        [deferred.component],
+        function,
+      )
+    None => self.lower_function_expression_node(argument, function, scope)
+  }
+  self.apply_function_load_rule(function, lowered)
+}
+
+///|
+fn WgslIrLowerer::math_call_lowers_second_argument_before_first(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  guard wgsl_ir_math_function_has_homogeneous_arguments(math_function) else {
+    return false
+  }
+  guard arguments.length() >= 2 else { return false }
+  wgsl_ir_expr_node_is_literal_like(arguments[0]) &&
+  self.expression_node_contains_naga_reference_value(
+    arguments[1],
+    function,
+    scope,
+  )
 }
 
 ///|

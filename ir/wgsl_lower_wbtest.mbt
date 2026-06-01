@@ -562,6 +562,39 @@ test "WGSL AST lowerer places parent argument after binary member root" {
 }
 
 ///|
+test "WGSL AST lowerer lowers math reference RHS before literal LHS" {
+  let source =
+    #|fn probe(a: f32) -> f32 {
+    #|  var x = a;
+    #|  x = max(0.0001, x);
+    #|  return x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut math_seen = false
+  for index, expression in function.expressions.items {
+    match expression {
+      Math(Max, left, Some(right), None, None) => {
+        math_seen = true
+        guard function.expressions.items.get(right.index()) is Some(Load(_)) else {
+          abort("expected mutable local load before math literal")
+        }
+        guard function.expressions.items.get(left.index()) is Some(Literal(_)) else {
+          abort("expected literal to stay first math argument")
+        }
+        if right.index() >= left.index() {
+          abort("expected mutable local load arena slot before literal")
+        }
+      }
+      _ => ignore(index)
+    }
+  }
+  debug_inspect(math_seen, content="true")
+}
+
+///|
 test "WGSL AST lowerer emits static array literal indexes as Naga access indexes" {
   let source =
     #|const LAYER_BASE: u32 = 0u;
