@@ -511,6 +511,57 @@ test "WGSL AST lowerer folds untemplated vector constructor constants in math ar
 }
 
 ///|
+test "WGSL AST lowerer places parent argument after binary member root" {
+  let source =
+    #|struct Lights {
+    #|  ambient_color: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> lights: Lights;
+    #|
+    #|fn probe(a: vec3<f32>, b: vec3<f32>, occlusion: f32) -> vec3<f32> {
+    #|  return (a + b) * lights.ambient_color.rgb * occlusion;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[2] {
+    Binary(Add, left, right) => {
+      debug_inspect(left.index(), content="0")
+      debug_inspect(right.index(), content="1")
+    }
+    _ => abort("expected pure left subtree before global root")
+  }
+  match function.expressions.items[3] {
+    GlobalVariable(_) => ()
+    _ => abort("expected global root after pure left subtree")
+  }
+  match function.expressions.items[4] {
+    FunctionArgument(index) => debug_inspect(index, content="2")
+    _ => abort("expected parent right argument before global projection")
+  }
+  match function.expressions.items[5] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="3")
+    _ => abort("expected global member projection after parent argument")
+  }
+  match function.expressions.items[8] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="2")
+      debug_inspect(right.index(), content="7")
+    }
+    _ => abort("expected inner multiply after projected global value")
+  }
+  match function.expressions.items[9] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="8")
+      debug_inspect(right.index(), content="4")
+    }
+    _ => abort("expected parent multiply to reuse predeclared argument")
+  }
+}
+
+///|
 test "WGSL AST lowerer emits static array literal indexes as Naga access indexes" {
   let source =
     #|const LAYER_BASE: u32 = 0u;
