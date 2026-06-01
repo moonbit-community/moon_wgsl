@@ -1721,6 +1721,7 @@ fn wgsl_ir_emit_materialized_expression_has_projected_use_before(
   limit : Handle,
 ) -> Bool {
   for index in (materialized.index() + 1)..<limit.index() {
+    let projection = Handle::Handle(index)
     match function.expressions.items.get(index) {
       Some(Access(base, _))
       | Some(AccessIndex(base, _))
@@ -1728,6 +1729,63 @@ fn wgsl_ir_emit_materialized_expression_has_projected_use_before(
       | Some(Swizzle(_, base, _)) =>
         if wgsl_ir_emit_projection_base_references_materialized_expression(
             function, base, materialized,
+          ) &&
+          !wgsl_ir_emit_projection_is_direct_store_value_before(
+            function.body,
+            projection,
+            limit,
+          ) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_emit_projection_is_direct_store_value_before(
+  block : Block,
+  projection : Handle,
+  limit : Handle,
+) -> Bool {
+  for statement in block.statements {
+    match statement {
+      Store(_, value) =>
+        if value == projection && value.index() < limit.index() {
+          return true
+        }
+      Block(child) =>
+        if wgsl_ir_emit_projection_is_direct_store_value_before(
+            child, projection, limit,
+          ) {
+          return true
+        }
+      If(_, accept, reject) =>
+        if wgsl_ir_emit_projection_is_direct_store_value_before(
+            accept, projection, limit,
+          ) ||
+          wgsl_ir_emit_projection_is_direct_store_value_before(
+            reject, projection, limit,
+          ) {
+          return true
+        }
+      Switch(_, cases) =>
+        for case in cases {
+          if wgsl_ir_emit_projection_is_direct_store_value_before(
+              case.body,
+              projection,
+              limit,
+            ) {
+            return true
+          }
+        }
+      Loop(body, continuing, _) =>
+        if wgsl_ir_emit_projection_is_direct_store_value_before(
+            body, projection, limit,
+          ) ||
+          wgsl_ir_emit_projection_is_direct_store_value_before(
+            continuing, projection, limit,
           ) {
           return true
         }

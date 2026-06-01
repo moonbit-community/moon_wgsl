@@ -260,6 +260,46 @@ test "IR emitter counts projected materialized temporaries like Naga" {
 }
 
 ///|
+test "IR emitter does not count direct-store call result projections as later temporary slots" {
+  let source =
+    #|struct VertexOutput {
+    #|  @location(0) uv: vec2<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var tex: texture_2d<f32>;
+    #|@group(0) @binding(1) var samp: sampler;
+    #|
+    #|fn tone_mapping(color: vec4<f32>) -> vec4<f32> {
+    #|  return color;
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    #|  let hdr_color = textureSample(tex, samp, in.uv);
+    #|  var output_rgb = tone_mapping(hdr_color).rgb;
+    #|  return vec4<f32>(output_rgb, hdr_color.a);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("let _e5: vec4<f32> = tone_mapping(hdr_color);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e8: vec3<f32> = output_rgb;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e10: vec3<f32> = output_rgb;"),
+    content="false",
+  )
+}
+
+///|
 test "IR emitter does not shift later temporaries after projected textureLoad" {
   let source =
     #|struct FullscreenVertexOutput {
