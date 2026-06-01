@@ -54,6 +54,7 @@ fn wgsl_ir_emit_named_expression_name_key(
 ///|
 priv struct WgslIrNagaFunctionBodyPlan {
   materialized_expressions : @set.Set[Int]
+  temporary_initializer_expressions : @set.Set[Int]
   elided_local_alias_targets : Map[Int, Handle]
   local_variable_declarations : Array[Int]
   has_body_after_hoisted_declarations : Bool
@@ -94,6 +95,9 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
   )
   WgslIrNagaFunctionBodyPlan::{
     materialized_expressions,
+    temporary_initializer_expressions: wgsl_ir_naga_function_temporary_initializer_expression_indices(
+      function,
+    ),
     elided_local_alias_targets,
     local_variable_declarations: wgsl_ir_naga_function_body_local_declarations(
       function,
@@ -113,6 +117,14 @@ fn WgslIrNagaFunctionBodyPlan::contains_materialized_expression(
   handle : Handle,
 ) -> Bool {
   self.materialized_expressions.contains(handle.index())
+}
+
+///|
+fn WgslIrNagaFunctionBodyPlan::contains_temporary_initializer_expression(
+  self : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> Bool {
+  self.temporary_initializer_expressions.contains(handle.index())
 }
 
 ///|
@@ -225,6 +237,22 @@ fn wgsl_ir_naga_function_body_local_declarations(
     }
   }
   order
+}
+
+///|
+fn wgsl_ir_naga_function_temporary_initializer_expression_indices(
+  function : Function,
+) -> @set.Set[Int] {
+  let indices : @set.Set[Int] = @set.Set([])
+  for local_var in function.local_variables.items {
+    if local_var.generated_temporary {
+      match local_var.init {
+        Some(init) => indices.add(init.index())
+        None => ()
+      }
+    }
+  }
+  indices
 }
 
 ///|

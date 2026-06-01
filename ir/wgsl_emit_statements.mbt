@@ -102,6 +102,9 @@ fn WgslIrEmitter::emit_statement(
           }
           None => ()
         }
+        if body_plan.contains_temporary_initializer_expression(handle) {
+          continue
+        }
         let expr = self.function_expression(function, handle)
         if self.expression_type(Some(function), handle) == None &&
           self.function_expression_emits_standalone_statement(function, handle) {
