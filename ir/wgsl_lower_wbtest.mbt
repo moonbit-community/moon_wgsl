@@ -389,6 +389,43 @@ test "WGSL AST lowerer predeclares right argument before left global member proj
 }
 
 ///|
+test "WGSL AST lowerer scopes binary member root predeclarations per arena layer" {
+  let source =
+    #|struct View {
+    #|  viewport: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|
+    #|fn frag_coord_to_uv(frag_coord: vec2<f32>) -> vec2<f32> {
+    #|  return (frag_coord - view.viewport.xy) / view.viewport.zw;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected inner RHS global root before argument")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected argument after inner RHS root")
+  }
+  match function.expressions.items[6] {
+    GlobalVariable(_) => ()
+    _ => abort("expected top-level RHS global root after left subtree")
+  }
+  match function.expressions.items[10] {
+    Binary(Divide, left, right) => {
+      debug_inspect(left.index(), content="5")
+      debug_inspect(right.index(), content="9")
+    }
+    _ => abort("expected top-level divide after both subtree arenas")
+  }
+}
+
+///|
 test "WGSL AST lowerer emits static array literal indexes as Naga access indexes" {
   let source =
     #|const LAYER_BASE: u32 = 0u;
