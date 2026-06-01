@@ -189,7 +189,10 @@ fn WgslIrLowerer::lower_global_member_expression(
               match wgsl_ir_swizzle_components(member_name) {
                 Some(components) =>
                   if components.length() == 1 {
-                    Expression::Component(base_handle, components[0])
+                    Expression::AccessIndex(
+                      base_handle,
+                      wgsl_ir_gather_component_index(components[0]),
+                    )
                   } else {
                     Expression::Swizzle(
                       wgsl_ir_vector_size_from_component_count(

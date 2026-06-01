@@ -262,7 +262,10 @@ fn WgslIrLowerer::lower_member_expression(
                   )
                   if components.length() == 1 {
                     function.expressions.append(
-                      Expression::Component(value_base, components[0]),
+                      Expression::AccessIndex(
+                        value_base,
+                        wgsl_ir_gather_component_index(components[0]),
+                      ),
                     )
                   } else {
                     function.expressions.append(

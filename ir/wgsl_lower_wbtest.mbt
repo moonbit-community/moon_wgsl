@@ -155,6 +155,27 @@ test "WGSL AST lowerer inserts higher-precedence right binary subtrees before le
 }
 
 ///|
+test "WGSL AST lowerer represents single vector members as Naga-style access indexes" {
+  let source =
+    #|fn probe(value: vec4<f32>) -> f32 {
+    #|  return value.z;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[1] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="2")
+    }
+    Component(_, _) =>
+      abort("expected Naga-style access index instead of component")
+    _ => abort("expected vector member access")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps shadowing var out of scope while lowering its initializer" {
   let source =
     #|fn convert(value: vec2<f32>) -> vec4<f32> {
