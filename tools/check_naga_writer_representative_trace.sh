@@ -193,8 +193,20 @@ run_case() {
   append_csv_arg "$additional_imports" --additional-import push_oracle_arg
   append_csv_arg "$capabilities" --capability push_oracle_arg
 
-  moon run tools/compose_case -- "${moon_args[@]}"
-  cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin naga_oil_oracle -- "${oracle_args[@]}"
+  if ! moon run tools/compose_case -- "${moon_args[@]}"; then
+    echo "failed to collect moon writer trace: $id" >&2
+    return 1
+  fi
+  if ! cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin naga_oil_oracle -- "${oracle_args[@]}"; then
+    echo "failed to collect oracle writer trace: $id" >&2
+    return 1
+  fi
+  for required in "$case_dir/moon.trace" "$case_dir/oracle.wgsl" "$case_dir/oracle.inventory"; do
+    if [[ ! -s "$required" ]]; then
+      echo "missing or empty trace artifact for $id: $required" >&2
+      return 1
+    fi
+  done
 
   normalize_oracle_trace "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.expression-order"
   normalize_moon_trace "$case_dir/moon.trace" "$case_dir/moon.expression-order"
