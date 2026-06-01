@@ -224,12 +224,14 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         block.push(Statement::Phony(rhs_value))
         return
       }
-      let raw_target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
-      let target = self.materialize_store_pointer_if_needed(
-        function, scope, block, raw_target,
-      )
-      let value = match wgsl_ir_compound_assignment_operator(op) {
+      let (target, value) = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
+          let raw_target = self.lower_function_lvalue_ref(
+            lhs_ref, function, scope,
+          )
+          let target = self.materialize_store_pointer_if_needed(
+            function, scope, block, raw_target,
+          )
           let target_value = self.compound_assignment_target_value(
             function, target,
           )
@@ -245,18 +247,41 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           let (materialized_target, rhs_value) = self.normalize_function_binary_operands(
             function, binary_op, materialized_target, rhs_value,
           )
-          function.expressions.append(
+          let value = function.expressions.append(
             Expression::Binary(binary_op, materialized_target, rhs_value),
           )
+          (target, value)
         }
-        None => {
-          let rhs_value = self.lower_function_expression_ref(
-            rhs_ref, function, scope,
-          )
-          self.materialize_store_value_for_pointer_if_needed(
-            function, scope, block, target, rhs_value,
-          )
-        }
+        None =>
+          if wgsl_ir_expr_ref_plain_local_identifier(lhs_ref, scope) {
+            let rhs_value = self.lower_function_expression_ref(
+              rhs_ref, function, scope,
+            )
+            let raw_target = self.lower_function_lvalue_ref(
+              lhs_ref, function, scope,
+            )
+            let target = self.materialize_store_pointer_if_needed(
+              function, scope, block, raw_target,
+            )
+            let value = self.materialize_store_value_for_pointer_if_needed(
+              function, scope, block, target, rhs_value,
+            )
+            (target, value)
+          } else {
+            let raw_target = self.lower_function_lvalue_ref(
+              lhs_ref, function, scope,
+            )
+            let target = self.materialize_store_pointer_if_needed(
+              function, scope, block, raw_target,
+            )
+            let rhs_value = self.lower_function_expression_ref(
+              rhs_ref, function, scope,
+            )
+            let value = self.materialize_store_value_for_pointer_if_needed(
+              function, scope, block, target, rhs_value,
+            )
+            (target, value)
+          }
       }
       wgsl_ir_record_store_value_temporary_references(function, value)
       block.push(Statement::Store(target, value))
@@ -670,16 +695,16 @@ fn WgslIrLowerer::lower_for_header_statement(
         block.push(Statement::Emit(HandleRange(rhs_value, rhs_value)))
         return
       }
-      let raw_target = self.lower_function_lvalue_node(
-        wgsl_ir_expr_node_from_tokens(lhs_tokens),
-        function,
-        scope,
-      )
-      let target = self.materialize_store_pointer_if_needed(
-        function, scope, block, raw_target,
-      )
-      let value = match wgsl_ir_compound_assignment_operator(op) {
+      let (target, value) = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
+          let raw_target = self.lower_function_lvalue_node(
+            wgsl_ir_expr_node_from_tokens(lhs_tokens),
+            function,
+            scope,
+          )
+          let target = self.materialize_store_pointer_if_needed(
+            function, scope, block, raw_target,
+          )
           let target_value = self.compound_assignment_target_value(
             function, target,
           )
@@ -697,19 +722,46 @@ fn WgslIrLowerer::lower_for_header_statement(
           let (materialized_target, rhs_value) = self.normalize_function_binary_operands(
             function, binary_op, materialized_target, rhs_value,
           )
-          function.expressions.append(
+          let value = function.expressions.append(
             Expression::Binary(binary_op, materialized_target, rhs_value),
           )
+          (target, value)
         }
         None => {
-          let rhs_value = self.lower_function_expression_node(
-            wgsl_ir_expr_node_from_tokens(rhs_tokens),
-            function,
-            scope,
-          )
-          self.materialize_store_value_for_pointer_if_needed(
-            function, scope, block, target, rhs_value,
-          )
+          let lhs_node = wgsl_ir_expr_node_from_tokens(lhs_tokens)
+          if wgsl_ir_expr_node_plain_local_identifier(lhs_node, scope) {
+            let rhs_value = self.lower_function_expression_node(
+              wgsl_ir_expr_node_from_tokens(rhs_tokens),
+              function,
+              scope,
+            )
+            let raw_target = self.lower_function_lvalue_node(
+              lhs_node, function, scope,
+            )
+            let target = self.materialize_store_pointer_if_needed(
+              function, scope, block, raw_target,
+            )
+            let value = self.materialize_store_value_for_pointer_if_needed(
+              function, scope, block, target, rhs_value,
+            )
+            (target, value)
+          } else {
+            let raw_target = self.lower_function_lvalue_node(
+              lhs_node, function, scope,
+            )
+            let target = self.materialize_store_pointer_if_needed(
+              function, scope, block, raw_target,
+            )
+            let rhs_value = self.lower_function_expression_node(
+              wgsl_ir_expr_node_from_tokens(rhs_tokens),
+              function,
+              scope,
+            )
+            let value = self.materialize_store_value_for_pointer_if_needed(
+              function, scope, block, target, rhs_value,
+            )
+            (target, value)
+          }
         }
       }
       wgsl_ir_record_store_value_temporary_references(function, value)
@@ -829,6 +881,29 @@ fn wgsl_ir_expr_node_mentions_identifier(
     Member(base, _) => wgsl_ir_expr_node_mentions_identifier(base, name)
     Sequence(items) =>
       items.any(fn(item) { wgsl_ir_expr_node_mentions_identifier(item, name) })
+  }
+}
+
+///|
+fn wgsl_ir_expr_ref_plain_local_identifier(
+  expr_ref : @ast.WgslExprRef,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match expr_ref.root() {
+    Some(root) => wgsl_ir_expr_node_plain_local_identifier(root, scope)
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_plain_local_identifier(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(ident) => scope.locals.contains(ident.name())
+    Group(inner) => wgsl_ir_expr_node_plain_local_identifier(inner, scope)
+    _ => false
   }
 }
 

@@ -981,6 +981,44 @@ test "WGSL IR lowerer materializes function calls before assignment stores" {
 }
 
 ///|
+test "WGSL AST lowerer reuses local pointer expressions across branch scopes" {
+  let source =
+    #|fn choose_a() -> f32 { return 1f; }
+    #|fn choose_b() -> f32 { return 2f; }
+    #|fn choose_c() -> f32 { return 3f; }
+    #|
+    #|fn choose(flag_a: bool, flag_b: bool) -> f32 {
+    #|  var value: f32;
+    #|  if flag_a {
+    #|    value = choose_a();
+    #|  } else if flag_b {
+    #|    value = choose_b();
+    #|  } else {
+    #|    value = choose_c();
+    #|  }
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let mut pointer_expression_count = 0
+  for function in module_.functions.items {
+    if function.name == Some("choose") {
+      for expression in function.expressions.items {
+        match expression {
+          LocalVariable(handle) =>
+            if handle.index() == 0 {
+              pointer_expression_count += 1
+            }
+          _ => ()
+        }
+      }
+    }
+  }
+  debug_inspect(pointer_expression_count, content="1")
+}
+
+///|
 test "WGSL IR lowerer materializes user function call let values" {
   let source =
     #|fn value(x: f32) -> f32 {

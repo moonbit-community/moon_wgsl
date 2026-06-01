@@ -182,13 +182,29 @@ fn WgslIrFunctionScope::local_pointer_expression(
   match self.local_pointer_expressions.get(name) {
     Some(handle) => handle
     None => {
-      let handle = function.expressions.append(
-        Expression::LocalVariable(local_handle),
-      )
+      let handle = match
+        wgsl_ir_find_local_pointer_expression(function, local_handle) {
+        Some(existing) => existing
+        None =>
+          function.expressions.append(Expression::LocalVariable(local_handle))
+      }
       self.local_pointer_expressions.set(name, handle)
       handle
     }
   }
+}
+
+///|
+fn wgsl_ir_find_local_pointer_expression(
+  function : Function,
+  local_handle : Handle,
+) -> Handle? {
+  for index, expression in function.expressions.items {
+    if expression == Expression::LocalVariable(local_handle) {
+      return Some(Handle::Handle(index))
+    }
+  }
+  None
 }
 
 ///|
