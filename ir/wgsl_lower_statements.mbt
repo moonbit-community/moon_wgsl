@@ -29,6 +29,140 @@ fn WgslIrLowerer::lower_block(
 }
 
 ///|
+fn WgslIrLowerer::predeclare_function_source_locals(
+  self : WgslIrLowerer,
+  block : @ast.WgslBlock,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  self.predeclare_source_locals_in_block(block, function, scope)
+}
+
+///|
+fn WgslIrLowerer::predeclare_source_locals_in_block(
+  self : WgslIrLowerer,
+  block : @ast.WgslBlock,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  for statement in block.statements() {
+    for local_decl in statement.local_bindings() {
+      self.predeclare_source_local(local_decl, function, scope)
+    }
+    match statement.payload() {
+      LocalDeclaration(locals) =>
+        for local_decl in locals {
+          self.predeclare_source_local(local_decl, function, scope)
+        }
+      _ => ()
+    }
+    for child in statement.blocks() {
+      self.predeclare_source_locals_in_block(child, function, scope)
+    }
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_source_local(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  guard local_decl.kind() == @ast.WgslLocalDeclarationKind::Var else { return }
+  guard self.source_var_should_predeclare(local_decl) else { return }
+  let key = wgsl_ir_local_declaration_key(local_decl)
+  if scope.predeclared_source_locals.contains(key) {
+    return
+  }
+  let explicit_ty = match local_decl.ty_ref() {
+    Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
+    None => None
+  }
+  let mut init : Handle? = None
+  let initializer_is_const = match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) => self.expression_node_is_const_initializer(root)
+        None => false
+      }
+    None => false
+  }
+  if initializer_is_const {
+    match local_decl.initializer_ref() {
+      Some(expr_ref) =>
+        init = Some(
+          self.lower_function_expression_ref_with_expected(
+            expr_ref, function, scope, explicit_ty,
+          ),
+        )
+      None => ()
+    }
+  }
+  let ty = match explicit_ty {
+    Some(ty) => ty
+    None =>
+      match init {
+        Some(init_handle) =>
+          match self.function_expression_type(function, init_handle) {
+            Some(inferred) => inferred
+            None =>
+              self.infer_local_type_from_initializer(
+                local_decl.name().name(),
+                local_decl.initializer_ref(),
+              )
+          }
+        None =>
+          match local_decl.initializer_ref() {
+            None =>
+              self.infer_local_type_from_initializer(
+                local_decl.name().name(),
+                local_decl.initializer_ref(),
+              )
+            Some(_) => self.lower_builtin_type_name("i32")
+          }
+      }
+  }
+  let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
+  match init {
+    Some(init_handle) =>
+      self.contextualize_function_expression_for_type(function, init_handle, ty)
+    None => ()
+  }
+  let handle = function.local_variables.append(LocalVariable::{
+    name: Some(
+      self.naga_oil_generated_import_local_spelling_for_scope(
+        local_decl.name().name(),
+        scope,
+      ),
+    ),
+    kind: LocalVariableKind::Var,
+    generated_temporary: false,
+    generated_temporary_store_value_reference: false,
+    ty,
+    init,
+  })
+  scope.predeclared_source_locals.set(key, handle)
+}
+
+///|
+fn WgslIrLowerer::source_var_should_predeclare(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+) -> Bool raise WgslIrLowerError {
+  match local_decl.initializer_ref() {
+    None => true
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) =>
+          self.expression_node_is_const_initializer(root) ||
+          self.local_var_initializer_uses_store(local_decl)
+        None => false
+      }
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_child_block(
   self : WgslIrLowerer,
   block : @ast.WgslBlock,
@@ -932,6 +1066,10 @@ fn WgslIrLowerer::lower_local_declaration(
     self.lower_local_var_store_declaration(local_decl, function, scope, block)
     return
   }
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+    wgsl_ir_lower_predeclared_source_var_declaration(local_decl, scope, block) {
+    return
+  }
   let expression_mark = function.expressions.items.length()
   let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
     scope.local_constants,
@@ -1181,6 +1319,25 @@ fn WgslIrLowerer::lower_local_declaration(
 }
 
 ///|
+fn wgsl_ir_lower_predeclared_source_var_declaration(
+  local_decl : @ast.WgslLocalDeclaration,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Bool {
+  let key = wgsl_ir_local_declaration_key(local_decl)
+  match scope.predeclared_source_locals.get(key) {
+    Some(handle) => {
+      ignore(scope.local_constants.remove(local_decl.name().name()))
+      ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
+      scope.locals.set(local_decl.name().name(), handle)
+      block.push(Statement::Declare(handle))
+      true
+    }
+    None => false
+  }
+}
+
+///|
 fn WgslIrLowerer::local_var_initializer_uses_store(
   self : WgslIrLowerer,
   local_decl : @ast.WgslLocalDeclaration,
@@ -1324,7 +1481,22 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     local_decl.name().name(),
     scope,
   )
-  let handle = function.local_variables.append(LocalVariable::{
+  let handle = match
+    scope.predeclared_source_locals.get(
+      wgsl_ir_local_declaration_key(local_decl),
+    ) {
+    Some(predeclared) => predeclared
+    None =>
+      function.local_variables.append(LocalVariable::{
+        name: Some(lowered_name),
+        kind: LocalVariableKind::Var,
+        generated_temporary: false,
+        generated_temporary_store_value_reference: false,
+        ty: placeholder_ty,
+        init: None,
+      })
+  }
+  function.local_variables.set(handle, LocalVariable::{
     name: Some(lowered_name),
     kind: LocalVariableKind::Var,
     generated_temporary: false,

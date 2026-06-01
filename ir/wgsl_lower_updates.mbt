@@ -23,12 +23,12 @@ fn WgslIrLowerer::lower_update_handle(
   block : Block,
   increment : Bool,
 ) -> Unit raise WgslIrLowerError {
+  let one = function.expressions.append(
+    Expression::Literal(self.update_unit_literal(function, pointer)),
+  )
   let loaded = function.expressions.append(Expression::Load(pointer))
   let loaded = self.materialize_function_expression(
     function, scope, block, loaded,
-  )
-  let one = function.expressions.append(
-    Expression::Literal(self.update_unit_literal(function, pointer)),
   )
   let op = if increment {
     BinaryOperator::Add

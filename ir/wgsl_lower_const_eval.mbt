@@ -395,6 +395,88 @@ fn WgslIrLowerer::normalized_local_constant_initializer(
 }
 
 ///|
+fn WgslIrLowerer::fold_function_scalar_constructor(
+  self : WgslIrLowerer,
+  ty : Handle,
+  arguments : Array[Handle],
+  function : Function,
+) -> Literal? raise WgslIrLowerError {
+  guard arguments is [argument] else { return None }
+  match self.shader_module.types.get(ty) {
+    Some({ inner: Scalar(scalar), .. }) =>
+      self.fold_function_scalar_constructor_argument(scalar, function, argument)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::fold_function_scalar_constructor_argument(
+  self : WgslIrLowerer,
+  scalar : Scalar,
+  function : Function,
+  argument : Handle,
+) -> Literal? raise WgslIrLowerError {
+  match scalar.kind {
+    Float =>
+      match self.eval_function_float_expression(function, argument) {
+        Some(value) =>
+          Some(wgsl_ir_float_literal_for_scalar_width(value, scalar.width))
+        None => {
+          let value = self.eval_function_integer_expression(function, argument)
+          Some(
+            wgsl_ir_float_literal_for_scalar_width(
+              value.to_double(),
+              scalar.width,
+            ),
+          )
+        }
+      }
+    Sint =>
+      match self.eval_function_integer_expression(function, argument) {
+        value =>
+          Some(
+            match scalar.width {
+              8 => Literal::I64(Int64::from_int(value.to_signed_int()))
+              _ => Literal::I32(value.to_signed_int())
+            },
+          )
+      }
+    Uint =>
+      match self.eval_function_integer_expression(function, argument) {
+        value =>
+          Some(
+            match scalar.width {
+              8 => Literal::U64(value.to_unsigned().to_uint64())
+              _ => Literal::U32(value.to_unsigned())
+            },
+          )
+      }
+    Bool | AbstractInt | AbstractFloat => None
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_double(self : WgslIrIntegerValue) -> Double {
+  match self {
+    Signed(value) => value.to_double()
+    Unsigned(value) => value.to_double()
+    Abstract(value) => value.to_double()
+  }
+}
+
+///|
+fn wgsl_ir_float_literal_for_scalar_width(
+  value : Double,
+  width : Int,
+) -> Literal {
+  match width {
+    2 => Literal::F16(value)
+    8 => Literal::F64(value)
+    _ => Literal::F32(Float::from_double(value))
+  }
+}
+
+///|
 fn WgslIrLowerer::eval_function_float_expression(
   self : WgslIrLowerer,
   function : Function,

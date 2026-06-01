@@ -119,6 +119,20 @@ fn wgsl_ir_naga_writer_body_plan_trace(
   out.write_string(
     "function\t\{label}\targuments=\{function.arguments.length()}\tlocals=\{function.local_variables.items.length()}\texpressions=\{function.expressions.items.length()}\n",
   )
+  for local_index in 0..<function.local_variables.items.length() {
+    let local_variable = function.local_variables.items[local_index]
+    let init = match local_variable.init {
+      Some(handle) => "\{handle.index()}"
+      None => "-"
+    }
+    let name = match local_variable.name {
+      Some(value) => value
+      None => "-"
+    }
+    out.write_string(
+      "local\t\{label}\t\{local_index}\tname=\{name}\tinit=\{init}\tgenerated=\{local_variable.generated_temporary}\n",
+    )
+  }
   for expression_index in 0..<function.expressions.items.length() {
     match function.expressions.items[expression_index] {
       FunctionArgument(argument_index) => {
@@ -155,8 +169,13 @@ fn wgsl_ir_naga_writer_body_plan_trace(
       Some(value) => value
       None => "-"
     }
+    let materialized = wgsl_ir_trace_expression_is_call_result_materialized(
+      function.expressions.items[index],
+      body_plan,
+      handle,
+    )
     out.write_string(
-      "expression\t\{label}\t\{index}\t\{wgsl_ir_trace_expression_kind(function.expressions.items[index])}\tmaterialized=\{body_plan.contains_materialized_expression(handle)}\ttemp=\{temp_name}\tfinal_index=\{trace.final_index}\tskipped=\{trace.skipped}\tbase=\{trace.base_index}\tadjusted=\{trace.adjusted_base_index}\timplicit_before=\{trace.implicit_expression_slots_before}\tprior_call_projection=\{trace.prior_call_projection_argument_slots}\timplicit_load=\{trace.implicit_naga_load_slots}\treused_resource=\{trace.reused_resource_operand_slots}\tprojected_temp=\{trace.projected_temporary_slots}\n",
+      "expression\t\{label}\t\{index}\t\{wgsl_ir_trace_expression_kind(function.expressions.items[index])}\tdetail=\{wgsl_ir_trace_expression_detail(function.expressions.items[index])}\tmaterialized=\{materialized}\ttemp=\{temp_name}\tfinal_index=\{trace.final_index}\tskipped=\{trace.skipped}\tbase=\{trace.base_index}\tadjusted=\{trace.adjusted_base_index}\timplicit_before=\{trace.implicit_expression_slots_before}\tprior_call_projection=\{trace.prior_call_projection_argument_slots}\timplicit_load=\{trace.implicit_naga_load_slots}\treused_resource=\{trace.reused_resource_operand_slots}\tprojected_temp=\{trace.projected_temporary_slots}\n",
     )
   }
   for named in function.named_expressions {
@@ -182,6 +201,34 @@ fn wgsl_ir_naga_writer_body_plan_trace(
     )
   }
   out.to_string()
+}
+
+///|
+fn wgsl_ir_trace_expression_is_call_result_materialized(
+  expression : Expression,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> Bool {
+  match expression {
+    CallResult(_) => body_plan.contains_materialized_expression(handle)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_trace_expression_detail(expression : Expression) -> String {
+  match expression {
+    FunctionArgument(index) => "arg:\{index}"
+    LocalVariable(handle) => "local:\{handle.index()}"
+    GlobalVariable(handle) => "global:\{handle.index()}"
+    Constant(handle) => "const:\{handle.index()}"
+    Override(handle) => "override:\{handle.index()}"
+    CallResult(handle) | FunctionCall(handle, _) => "function:\{handle.index()}"
+    Load(pointer) => "pointer:\{pointer.index()}"
+    AccessIndex(base, index) => "base:\{base.index()}:index:\{index}"
+    Binary(_, left, right) => "left:\{left.index()}:right:\{right.index()}"
+    _ => "-"
+  }
 }
 
 ///|

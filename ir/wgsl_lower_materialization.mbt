@@ -172,7 +172,7 @@ fn WgslIrLowerer::materialize_function_expression(
   })
   ignore(scope)
   block.push(Statement::Declare(local_handle))
-  function.expressions.append(Expression::LocalVariable(local_handle))
+  value
 }
 
 ///|
@@ -189,15 +189,7 @@ fn WgslIrLowerer::existing_materialized_function_expression(
         match function.local_variables.items.get(local_handle.index()) {
           Some(local_var) =>
             if local_var.generated_temporary && local_var.init == Some(value) {
-              for expression_index in 0..<function.expressions.items.length() {
-                match function.expressions.items[expression_index] {
-                  LocalVariable(existing_local) =>
-                    if existing_local == local_handle {
-                      return Some(Handle::Handle(expression_index))
-                    }
-                  _ => ()
-                }
-              }
+              return Some(value)
             }
           _ => ()
         }

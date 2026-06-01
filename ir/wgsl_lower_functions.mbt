@@ -392,6 +392,7 @@ fn WgslIrLowerer::lower_function(
     scope.arguments.set(argument.name().name(), index)
     index = index + 1
   }
+  self.predeclare_function_source_locals(function.body(), ir_function, scope)
   let body = self.lower_block(function.body(), ir_function, scope) catch {
     error =>
       match error {

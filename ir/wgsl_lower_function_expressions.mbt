@@ -1293,6 +1293,7 @@ fn WgslIrLowerer::lower_function_constructor_call(
   scope : WgslIrFunctionScope,
   expected_ty : Handle?,
 ) -> Handle raise WgslIrLowerError {
+  let expression_mark = function.expressions.items.length()
   let lowered_arguments = self.lower_function_expression_arguments(
     arguments, function, scope,
   )
@@ -1302,6 +1303,18 @@ fn WgslIrLowerer::lower_function_constructor_call(
       self.lower_untemplated_constructor_type_from_handles(
         name, arguments, lowered_arguments, function,
       )
+  }
+  let folded_scalar_constructor = self.fold_function_scalar_constructor(
+    ty, lowered_arguments, function,
+  ) catch {
+    _ => (None : Literal?)
+  }
+  match folded_scalar_constructor {
+    Some(literal) => {
+      wgsl_ir_rewind_function_expressions(function, expression_mark)
+      return function.expressions.append(Expression::Literal(literal))
+    }
+    None => ()
   }
   match wgsl_ir_vector_size_from_constructor_name(name) {
     Some(_) =>
