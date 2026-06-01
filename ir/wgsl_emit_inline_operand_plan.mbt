@@ -83,6 +83,7 @@ fn wgsl_ir_function_statement_contains_expression_pair(
   match statement {
     Declare(_)
     | Emit(_)
+    | Phony(_)
     | Break
     | Continue
     | ImplicitReturn

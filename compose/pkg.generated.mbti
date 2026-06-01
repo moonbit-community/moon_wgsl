@@ -63,6 +63,7 @@ pub fn Composer::register_source_tree(Self, String, @common.WgslSourceScanOption
 pub fn Composer::register_source_tree_checked(Self, String, @common.WgslSourceScanOptions) -> Array[@common.WgslDiagnostic] raise @fs.IOError
 pub fn Composer::registered_source(Self, String) -> String?
 pub fn Composer::remove_composable_module(Self, String) -> Unit
+pub fn Composer::trace_naga_oil_writer_function_plan(Self, String, @common.WgslComposeOptions, String) -> String raise ComposerError
 
 // Type aliases
 

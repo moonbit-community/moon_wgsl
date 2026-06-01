@@ -561,6 +561,8 @@ fn WgslIrNagaDerivedModuleBuilder::import_statement(
         index = index + 1
       }
     }
+    Phony(handle) =>
+      self.import_function_expression(function, handle, visiting_functions)
     Block(nested) =>
       self.import_function_block(function, nested, visiting_functions)
     If(condition, accept, reject) => {

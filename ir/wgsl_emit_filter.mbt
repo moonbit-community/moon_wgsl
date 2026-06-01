@@ -410,6 +410,8 @@ fn WgslIrEmitFilter::mark_statement(
         index = index + 1
       }
     }
+    Phony(handle) =>
+      self.mark_function_expression(shader_module, function, handle)
     If(condition, accept, reject) => {
       self.mark_function_expression(shader_module, function, condition)
       self.mark_block(shader_module, function, accept)

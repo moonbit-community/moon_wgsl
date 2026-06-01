@@ -32,6 +32,10 @@ fn WgslIrEmitter::function_expression(
     Some(name) => return name
     None => ()
   }
+  match self.function_named_expression_name(function, handle) {
+    Some(name) => return name
+    None => ()
+  }
   self.function_expression_inline(function, handle)
 }
 

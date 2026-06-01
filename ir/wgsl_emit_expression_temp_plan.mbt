@@ -39,6 +39,19 @@ fn wgsl_ir_emit_local_name_key(
 }
 
 ///|
+fn wgsl_ir_emit_named_expression_name_key(
+  origin : WgslIrEmitFunctionOrigin,
+  handle : Handle,
+) -> String {
+  match origin {
+    UserFunction(function_index) =>
+      wgsl_ir_emit_name_key2("fn_named_expr", function_index, handle.index())
+    EntryPointFunction(entry_point_index) =>
+      wgsl_ir_emit_name_key2("ep_named_expr", entry_point_index, handle.index())
+  }
+}
+
+///|
 priv struct WgslIrNagaFunctionBodyPlan {
   materialized_expressions : @set.Set[Int]
   elided_local_alias_targets : Map[Int, Handle]
@@ -52,6 +65,18 @@ priv struct WgslIrNagaStatementPlanItem {
   statement : Statement
   skip : Bool
   blank_before : Bool
+}
+
+///|
+priv struct WgslIrNagaTemporaryIndexTrace {
+  skipped : Int
+  base_index : Int
+  adjusted_base_index : Int
+  implicit_expression_slots_before : Int
+  prior_call_projection_argument_slots : Int
+  implicit_naga_load_slots : Int
+  projected_temporary_slots : Int
+  final_index : Int
 }
 
 ///|
@@ -275,6 +300,12 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   self.allocate_function_expression_temporary_names(
     origin, function, body_plan, temp_namer,
   )
+  for named in function.named_expressions {
+    let key = wgsl_ir_emit_named_expression_name_key(origin, named.handle)
+    if self.names.get(key) == None {
+      self.names.set(key, namer.local_call(temp_namer, named.name))
+    }
+  }
   for local_index in 0..<function.local_variables.items.length() {
     let local_handle = Handle::Handle(local_index)
     let local_var = function.local_variables.items[local_index]
@@ -875,6 +906,17 @@ fn wgsl_ir_emit_expression_temporary_index(
   body_plan : WgslIrNagaFunctionBodyPlan,
   handle : Handle,
 ) -> Int {
+  wgsl_ir_emit_expression_temporary_index_trace(
+    function, body_plan, handle,
+  ).final_index
+}
+
+///|
+fn wgsl_ir_emit_expression_temporary_index_trace(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> WgslIrNagaTemporaryIndexTrace {
   let mut skipped = 0
   let current_is_call_result = match
     function.expressions.items.get(handle.index()) {
@@ -905,18 +947,38 @@ fn wgsl_ir_emit_expression_temporary_index(
     }
   }
   let base_index = handle.index() - skipped
-  let base_index = if wgsl_ir_emit_expression_is_adjacent_materialized_load_after_generated_snapshot(
+  let adjusted_base_index = if wgsl_ir_emit_expression_is_adjacent_materialized_load_after_generated_snapshot(
       function, handle,
     ) {
     base_index - 1
   } else {
     base_index
   }
-  base_index +
-  body_plan.implicit_expression_slot_offset(handle) +
-  wgsl_ir_emit_prior_call_projection_argument_slot_offset(function, handle) +
-  wgsl_ir_emit_implicit_naga_load_slot_offset(function, body_plan, handle) +
-  wgsl_ir_emit_projected_temporary_slot_offset(function, body_plan, handle)
+  let implicit_expression_slots_before = body_plan.implicit_expression_slot_offset(handle)
+  let prior_call_projection_argument_slots = wgsl_ir_emit_prior_call_projection_argument_slot_offset(
+    function, handle,
+  )
+  let implicit_naga_load_slots = wgsl_ir_emit_implicit_naga_load_slot_offset(
+    function, body_plan, handle,
+  )
+  let projected_temporary_slots = wgsl_ir_emit_projected_temporary_slot_offset(
+    function, body_plan, handle,
+  )
+  let final_index = adjusted_base_index +
+    implicit_expression_slots_before +
+    prior_call_projection_argument_slots +
+    implicit_naga_load_slots +
+    projected_temporary_slots
+  WgslIrNagaTemporaryIndexTrace::{
+    skipped,
+    base_index,
+    adjusted_base_index,
+    implicit_expression_slots_before,
+    prior_call_projection_argument_slots,
+    implicit_naga_load_slots,
+    projected_temporary_slots,
+    final_index,
+  }
 }
 
 ///|

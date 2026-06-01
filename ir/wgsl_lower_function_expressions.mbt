@@ -1229,11 +1229,37 @@ fn WgslIrLowerer::lower_function_constructor_arguments(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Array[Handle] raise WgslIrLowerError {
-  self.lower_function_expression_arguments_with_expected(
-    arguments,
-    function,
-    scope,
-    self.constructor_component_expected_type(ty),
+  let expected_ty = self.constructor_component_expected_type(ty)
+  let handles : Array[Handle] = []
+  for argument in wgsl_ir_flatten_expression_arguments(arguments) {
+    let lowered = self.lower_function_constructor_argument(
+      argument, function, scope, expected_ty,
+    )
+    handles.push(self.apply_function_load_rule(function, lowered))
+  }
+  handles
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_argument(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  let expression_mark = function.expressions.items.length()
+  let lowered = self.lower_function_expression_node_with_expected(
+    argument, function, scope, expected_ty,
+  )
+  guard self.fold_function_constant_float_expression(function, lowered)
+    is Some(literal) else {
+    return lowered
+  }
+  function.expressions.truncate(expression_mark)
+  function.expressions.append_with_origin(
+    Expression::Literal(literal),
+    FoldedLocalConstant,
   )
 }
 
@@ -1344,9 +1370,20 @@ fn WgslIrLowerer::lower_function_math_call(
       "math call requires at least one argument",
     )
   }
+  let deferred_constructors = self.prelower_homogeneous_math_constructor_arguments(
+    math_function, arguments, function, scope,
+  )
   let handles : Array[Handle] = []
-  for argument in arguments {
-    let lowered = self.lower_function_expression_node(argument, function, scope)
+  for index in 0..<arguments.length() {
+    let argument = arguments[index]
+    let lowered = match deferred_constructors.get(index) {
+      Some(deferred) =>
+        self.lower_function_constructor_expression_from_handles(
+          deferred.ty, [deferred.component], function,
+        )
+      None =>
+        self.lower_function_expression_node(argument, function, scope)
+    }
     handles.push(self.apply_function_load_rule(function, lowered))
   }
   self.contextualize_homogeneous_math_arguments(
@@ -1368,6 +1405,99 @@ fn WgslIrLowerer::lower_function_math_call(
     _ => None
   }
   function.expressions.append(Expression::Math(math_function, a, b, c, d))
+}
+
+///|
+priv struct WgslIrDeferredConstructorArgument {
+  ty : Handle
+  component : Handle
+}
+
+///|
+fn WgslIrLowerer::prelower_homogeneous_math_constructor_arguments(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Map[Int, WgslIrDeferredConstructorArgument] raise WgslIrLowerError {
+  let deferred : Map[Int, WgslIrDeferredConstructorArgument] = Map([])
+  guard wgsl_ir_math_function_has_homogeneous_arguments(math_function) else {
+    return deferred
+  }
+  for index in 0..<arguments.length() {
+    match
+      self.prelower_foldable_vector_constructor_argument(
+        arguments[index], function, scope,
+      ) {
+      Some(value) => deferred.set(index, value)
+      None => ()
+    }
+  }
+  deferred
+}
+
+///|
+fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrDeferredConstructorArgument? raise WgslIrLowerError {
+  guard argument.kind() is Call(callee, constructor_arguments) else {
+    return None
+  }
+  guard self.lower_templated_callee_type(callee) is Some(ty) else {
+    return None
+  }
+  guard self.vector_size_from_type(ty) is Some(_) else {
+    return None
+  }
+  guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
+    is [component] else {
+    return None
+  }
+  guard wgsl_ir_expr_node_is_foldable_float_arena_candidate(component) else {
+    return None
+  }
+  let expected_ty = self.constructor_component_expected_type(ty)
+  let expression_mark = function.expressions.items.length()
+  let lowered = self.lower_function_expression_node_with_expected(
+    component, function, scope, expected_ty,
+  )
+  match self.fold_function_constant_float_expression(function, lowered) {
+    Some(literal) => {
+      function.expressions.truncate(expression_mark)
+      let component = function.expressions.append_with_origin(
+        Expression::Literal(literal),
+        FoldedLocalConstant,
+      )
+      Some(WgslIrDeferredConstructorArgument::{ ty, component })
+    }
+    None => {
+      function.expressions.truncate(expression_mark)
+      None
+    }
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_foldable_float_arena_candidate(
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Literal(_) => true
+    Group(inner) => wgsl_ir_expr_node_is_foldable_float_arena_candidate(inner)
+    Sequence([single]) =>
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(single)
+    Unary(op, inner) =>
+      op == @ast.WgslExprOperator::Subtract &&
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(inner)
+    Binary(_, left, right) =>
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(left) &&
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(right)
+    _ => false
+  }
 }
 
 ///|

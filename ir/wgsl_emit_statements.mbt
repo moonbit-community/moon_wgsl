@@ -86,14 +86,36 @@ fn WgslIrEmitter::emit_statement(
     Emit(range) =>
       for index in range.start.index()..<=range.end.index() {
         let handle = Handle::Handle(index)
+        match self.function_named_expression_name(function, handle) {
+          Some(name) => {
+            let ty = match self.expression_type(Some(function), handle) {
+              Some(value) => value
+              None =>
+                raise WgslIrEmitError::MissingHandle(
+                  "named expression type \{handle.index()}",
+                )
+            }
+            out.write_string(
+              "\{pad}let \{name}: \{self.type_name(ty)} = \{self.function_expression_inline(function, handle)};\n",
+            )
+            continue
+          }
+          None => ()
+        }
         let expr = self.function_expression(function, handle)
         if self.expression_type(Some(function), handle) == None &&
           !self.function_expression_requires_phony_assignment(function, handle) {
           out.write_string("\{pad}\{expr};\n")
-        } else {
+        } else if self.function_expression_requires_phony_assignment(
+            function, handle,
+          ) {
           out.write_string("\{pad}_ = \{expr};\n")
         }
       }
+    Phony(handle) =>
+      out.write_string(
+        "\{pad}_ = \{self.function_expression(function, handle)};\n",
+      )
     Block(child) => {
       out.write_string("\{pad}{\n")
       self.emit_block_statements(out, function, body_plan, child, indent + 1)

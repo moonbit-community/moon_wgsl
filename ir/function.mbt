@@ -30,6 +30,7 @@ pub enum RayPipelineFunction {
 pub enum Statement {
   Declare(Handle)
   Emit(HandleRange)
+  Phony(Handle)
   Block(Block)
   If(Handle, Block, Block)
   Switch(Handle, Array[SwitchCase])
@@ -123,6 +124,19 @@ pub fn Function::Function(name : String?) -> Function {
     body: Block::Block(),
     diagnostic_filter_leaf: None,
   }
+}
+
+///|
+fn wgsl_ir_function_named_expression_name(
+  function : Function,
+  handle : Handle,
+) -> String? {
+  for named in function.named_expressions {
+    if named.handle == handle {
+      return Some(named.name)
+    }
+  }
+  None
 }
 
 ///|

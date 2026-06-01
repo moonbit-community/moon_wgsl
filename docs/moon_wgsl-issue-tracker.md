@@ -1,6 +1,6 @@
 # moon_wgsl Issue Tracker
 
-Last updated: 2026-05-25
+Last updated: 2026-06-01
 
 ## Status Legend
 
@@ -11,6 +11,7 @@ Last updated: 2026-05-25
 
 ## Latest Progress
 
+- 2026-06-01: WGSL-281/WGSL-283 stopped treating remaining byte drift as writer-policy cases and added a representative upstream arena trace gate for Bevy `pbr_functions.wgsl::fresnel`. `tools/check_naga_writer_representative_trace.sh` now compares the pinned upstream Naga module expression order/materialized call-result temp table with moon_wgsl's internal Naga writer body plan (`--naga-writer-trace-function`). The first trace proves the root mismatch is upstream expression-arena construction, not final WGSL formatting: upstream lowers `fresnel` as `Literal -> FunctionArgument -> Splat -> Math -> Math -> FunctionArgument -> CallResult` and materializes `_e6`, while moon_wgsl currently lowers `FunctionArgument -> Literal -> Literal -> Binary -> Splat -> Math -> Math -> LocalVariable -> FunctionArgument -> CallResult` and materializes `_e8`. The next fix must align function expression-arena lowering with Naga, including constant folding placement and local `let` named-expression handling, before any more byte-policy patches.
 - 2026-05-25: WGSL-281/WGSL-283 vector projection lowering now separates source component members from numeric static indexes in IR. `Expression::Component` preserves `.x/.y/.z/.w` provenance, while `AccessIndex` remains numeric and the Naga-oil writer chooses swizzle spelling only for value-vector indexes; global binding access chains keep bracketed numeric indexes such as `view.clip_from_view[3][2]`. Component materialization no longer snapshots the whole vector base for single-component loads, but multi-component swizzles still materialize their composite base like upstream. IR tests now cover value matrix indexes, global binding matrix indexes, and source vector members. External Bevy compose parity remains `writer-drift=0` and `byte-drift=77`; byte-drift hashes were refreshed after projection/temp numbering moved closer to upstream.
 - 2026-05-25: WGSL-281/WGSL-283 access-index materialization now treats mutable index reads as expression-arena inputs instead of leaving them inline inside `Access`. This makes call arguments such as `values[i]` lower through `let _eN = i; let _eM = values[_eN];`, matching Naga's arena shape for mutable local array indices. External Bevy compose parity remains `writer-drift=0` and `byte-drift=77`; affected hashes are refreshed because temp numbering moved closer to upstream in mip/downsample, OIT, meshlet, and related PBR cases.
 - 2026-05-25: WGSL-281/WGSL-283 Naga-oil writer body planning now elides only directly forwarded projection aliases and stops propagating that projection target through the next semantic local. This matches Naga-oil's `textureLoad(...).x` forwarding shape for Bevy `meshlet/resolve_render_targets.wgsl`: the intermediate `visibility` alias disappears, while the downstream `depth` local remains. External Bevy compose parity improves to `writer-exact=149`, `writer-drift=0`, `byte-exact=72`, and `byte-drift=77`.

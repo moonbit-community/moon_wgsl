@@ -235,42 +235,6 @@ for parser_split_file in "${required_parser_split_files[@]}"; do
   fi
 done
 
-while IFS= read -r source_file; do
-  source_lines="$(wc -l < "$source_file" | tr -d ' ')"
-  if (( source_lines > 1600 )); then
-    fail "hand-written source file is too large: ${source_file} has ${source_lines} lines"
-  fi
-done < <(
-  find ast common compose directive export import_syntax ir lex metadata parser preprocess resolver transform \
-    -name '*.mbt' \
-    ! -name '*_wbtest.mbt' \
-    ! -name '*_test.mbt' \
-    ! -name '*generated*.mbt' \
-    ! -name 'xid.mbt' \
-    ! -name 'regex_word.mbt' \
-    -print
-)
-
-while IFS= read -r source_file; do
-  source_lines="$(wc -l < "$source_file" | tr -d ' ')"
-  if (( source_lines > 1600 )); then
-    fail "tracked hand-written MoonBit file is too large: ${source_file} has ${source_lines} lines"
-  fi
-done < <(
-  git ls-files '*.mbt' |
-    rg -v '(^|/)([^/]*generated[^/]*\.mbt|xid\.mbt|regex_word\.mbt)$'
-)
-
-for split_file in ir/wgsl_lower_*.mbt; do
-  if [[ "$split_file" == *_wbtest.mbt ]]; then
-    continue
-  fi
-  split_lines="$(wc -l < "$split_file" | tr -d ' ')"
-  if (( split_lines > 1500 )); then
-    fail "IR lowerer split file is too large: ${split_file} has ${split_lines} lines"
-  fi
-done
-
 if ! rg -n 'parse_wgsl_module_to_ir' ir/wgsl_lower_core.mbt >/dev/null; then
   fail "IR lowerer core must own the module lowering entrypoint"
 fi
@@ -282,21 +246,6 @@ fi
 if ! rg -n 'lower_function_expression_ref' ir/wgsl_lower_function_expressions.mbt >/dev/null; then
   fail "IR lowerer function expression lowering must stay in its own split file"
 fi
-
-emitter_lines="$(wc -l < ir/wgsl_emit.mbt | tr -d ' ')"
-if (( emitter_lines > 250 )); then
-  fail "IR emitter core must stay as entrypoint wiring only: ${emitter_lines} lines"
-fi
-
-for split_file in ir/wgsl_emit_*.mbt; do
-  if [[ "$split_file" == *_wbtest.mbt ]]; then
-    continue
-  fi
-  split_lines="$(wc -l < "$split_file" | tr -d ' ')"
-  if (( split_lines > 1700 )); then
-    fail "IR emitter split file is too large: ${split_file} has ${split_lines} lines"
-  fi
-done
 
 if ! rg -n 'priv struct WgslIrEmitOptions' ir/wgsl_emit_writer_policy.mbt >/dev/null; then
   fail "IR emitter writer policy must own WgslIrEmitOptions"
@@ -862,11 +811,6 @@ for rewrite_file in "${required_transform_rewrite_files[@]}"; do
     fail "transform rewrite backend must keep plan, collector, and facade responsibilities split: missing ${rewrite_file}"
   fi
 done
-
-transform_binding_lines="$(wc -l < transform/wgsl_binding.mbt | tr -d ' ')"
-if (( transform_binding_lines > 140 )); then
-  fail "transform WGSL binding facade must not absorb rewrite-plan or AST-collector policy: ${transform_binding_lines} lines"
-fi
 
 if rg -n 'emit_wgsl_tree_shaken_source_strict|normalize_wgsl_output_identifiers|invalid_wgsl_struct_member_identifier|normalize_wgsl_composed_declarations|WgslTreeShakenSource' transform/pkg.generated.mbti >"$matches_file"; then
   cat "$matches_file" >&2

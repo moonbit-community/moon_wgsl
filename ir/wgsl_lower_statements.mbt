@@ -198,10 +198,14 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           ) {
           return
         }
+        if self.wgsl_ir_expr_ref_is_user_function_call(rhs_ref) {
+          self.lower_call_statement(rhs_ref, function, scope, block)
+          return
+        }
         let rhs_value = self.lower_function_expression_ref(
           rhs_ref, function, scope,
         )
-        block.push(Statement::Emit(HandleRange(rhs_value, rhs_value)))
+        block.push(Statement::Phony(rhs_value))
         return
       }
       let raw_target = self.lower_function_lvalue_ref(lhs_ref, function, scope)
@@ -434,6 +438,34 @@ fn wgsl_ir_expr_ref_is_call(expr_ref : @ast.WgslExprRef) -> Bool {
   match expr_ref.root() {
     Some(root) => wgsl_ir_expr_node_is_call(root)
     None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::wgsl_ir_expr_ref_is_user_function_call(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+) -> Bool {
+  match expr_ref.root() {
+    Some(root) => self.wgsl_ir_expr_node_is_user_function_call(root)
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::wgsl_ir_expr_node_is_user_function_call(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => self.wgsl_ir_expr_node_is_user_function_call(inner)
+    Sequence([single]) => self.wgsl_ir_expr_node_is_user_function_call(single)
+    Call(callee, _) =>
+      match callee.kind() {
+        Identifier(name) => self.function_names.get(name.name()) != None
+        _ => false
+      }
+    _ => false
   }
 }
 
@@ -896,6 +928,17 @@ fn WgslIrLowerer::lower_local_declaration(
                 value: ExpressionAlias(materialized_value),
               })
               return
+            } else if wgsl_ir_function_expression_is_materialized_temporary(
+                function, normalized,
+              ) {
+              ignore(scope.locals.remove(local_decl.name().name()))
+              ignore(
+                scope.local_pointer_expressions.remove(local_decl.name().name()),
+              )
+              scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+                value: ExpressionAlias(normalized),
+              })
+              return
             }
           _ => ()
         }
@@ -941,6 +984,34 @@ fn WgslIrLowerer::lower_local_declaration(
     local_decl.name().name(),
     scope,
   )
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let &&
+    !self.lowerer_type_is_pointer(ty) {
+    match init {
+      Some(init_handle) => {
+        if wgsl_ir_function_expression_should_use_named_let(
+          function, init_handle,
+        ) {
+          function.named_expressions.push(NamedExpression::{
+            handle: init_handle,
+            name: lowered_name,
+          })
+          ignore(scope.locals.remove(local_decl.name().name()))
+          ignore(
+            scope.local_pointer_expressions.remove(local_decl.name().name()),
+          )
+          scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+            value: ExpressionAlias(init_handle),
+          })
+          let emit_start = wgsl_ir_naga_named_expression_emit_start(
+            function, expression_mark, init_handle,
+          )
+          block.push(Statement::Emit(HandleRange(emit_start, init_handle)))
+          return
+        }
+      }
+      None => ()
+    }
+  }
   let var_init_in_declaration = if local_decl.kind() ==
     @ast.WgslLocalDeclarationKind::Var {
     match init {
@@ -994,6 +1065,60 @@ fn WgslIrLowerer::lower_local_declaration(
         }
       _ => ()
     }
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_should_use_named_let(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Math(_, _, _, _, _)) => true
+    None => false
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_materialized_temporary(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(CallResult(_)) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_naga_named_expression_emit_start(
+  function : Function,
+  expression_mark : Int,
+  init_handle : Handle,
+) -> Handle {
+  for index in expression_mark..=init_handle.index() {
+    match function.expressions.items.get(index) {
+      Some(expression) =>
+        if !wgsl_ir_expression_is_naga_emit_leaf(expression) {
+          return Handle::Handle(index)
+        }
+      None => ()
+    }
+  }
+  init_handle
+}
+
+///|
+fn wgsl_ir_expression_is_naga_emit_leaf(expression : Expression) -> Bool {
+  match expression {
+    Literal(_)
+    | Constant(_)
+    | Override(_)
+    | FunctionArgument(_)
+    | GlobalVariable(_)
+    | LocalVariable(_) => true
+    _ => false
   }
 }
 

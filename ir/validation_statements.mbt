@@ -43,6 +43,7 @@ fn WgslIrValidator::validate_statement(
   match statement {
     Declare(handle) => self.require_local_variable(function, handle)
     Emit(range) => self.validate_function_expression_range(function, range)
+    Phony(handle) => self.validate_function_expression_handle(function, handle)
     Block(block) => self.validate_block(function, block)
     If(condition, accept, reject) => {
       self.validate_function_expression_handle(function, condition)

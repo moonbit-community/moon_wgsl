@@ -276,6 +276,8 @@ fn wgsl_ir_collect_function_calls_from_statement(
         index = index + 1
       }
     }
+    Phony(handle) =>
+      wgsl_ir_collect_function_calls_from_expression(function, handle, calls)
     Block(nested) =>
       wgsl_ir_collect_function_calls_from_block(function, nested, calls)
     If(condition, accept, reject) => {
