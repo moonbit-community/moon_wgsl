@@ -1266,6 +1266,52 @@ test "WGSL AST lowerer materializes short-circuit if conditions" {
 }
 
 ///|
+test "WGSL AST lowerer lazily materializes return short-circuit branches in Naga order" {
+  let source =
+    #|const BORDER_LEFT: u32 = 256u;
+    #|const BORDER_TOP: u32 = 512u;
+    #|const BORDER_RIGHT: u32 = 1024u;
+    #|const BORDER_BOTTOM: u32 = 2048u;
+    #|const BORDER_ANY: u32 = BORDER_LEFT + BORDER_TOP + BORDER_RIGHT + BORDER_BOTTOM;
+    #|
+    #|fn enabled(flags: u32, mask: u32) -> bool {
+    #|  return (flags & mask) == mask;
+    #|}
+    #|
+    #|fn nearest_border_active(point_vs_mid: vec2<f32>, size: vec2<f32>, width: vec4<f32>, flags: u32) -> bool {
+    #|  if ((flags & BORDER_ANY) == BORDER_ANY) {
+    #|    return true;
+    #|  }
+    #|  let point = clamp(point_vs_mid + size * 0.49999, vec2(0.0), size);
+    #|  let left = point.x / width.x;
+    #|  let top = point.y / width.y;
+    #|  let right = (size.x - point.x) / width.z;
+    #|  let bottom = (size.y - point.y) / width.w;
+    #|  let min_dist = min(min(left, top), min(right, bottom));
+    #|  return (enabled(flags, BORDER_LEFT) && min_dist == left) ||
+    #|    (enabled(flags, BORDER_TOP) && min_dist == top) ||
+    #|    (enabled(flags, BORDER_RIGHT) && min_dist == right) ||
+    #|    (enabled(flags, BORDER_BOTTOM) && min_dist == bottom);
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("if _e43 {\n            local_2 = (min_dist == top);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("if _e55 {\n            local_4 = (min_dist == right);"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let _e76: bool = local_5;\n    return _e76;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("return local_"), content="false")
+}
+
+///|
 test "WGSL IR emitter disambiguates repeated local names" {
   let source =
     #|fn f() -> u32 {

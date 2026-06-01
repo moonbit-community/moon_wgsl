@@ -111,14 +111,30 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             Some(result) => Some(result.ty)
             None => None
           }
-          let handle = self.lower_function_expression_ref_with_expected(
-            expr_ref, function, scope, expected_ty,
-          )
-          Some(
-            self.materialize_return_expression_if_needed(
-              function, scope, block, handle,
-            ),
-          )
+          guard expr_ref.root() is Some(root) else {
+            raise WgslIrLowerError::UnsupportedExpression(
+              "empty return expression",
+            )
+          }
+          if wgsl_ir_expr_node_is_short_circuit_binary(root) {
+            let handle = self.materialize_short_circuit_expression_node(
+              function, scope, block, root,
+            )
+            Some(
+              self.materialize_return_expression_if_needed(
+                function, scope, block, handle,
+              ),
+            )
+          } else {
+            let handle = self.lower_function_expression_ref_with_expected(
+              expr_ref, function, scope, expected_ty,
+            )
+            Some(
+              self.materialize_return_expression_if_needed(
+                function, scope, block, handle,
+              ),
+            )
+          }
         }
         None => None
       }
