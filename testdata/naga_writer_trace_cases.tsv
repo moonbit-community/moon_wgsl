@@ -1,2 +1,3 @@
 id	fixture_root	entry	function_prefix	bool_defs	value_defs	additional_imports	capabilities
 bevy-pbr-fresnel	testdata/bevy_wgsl	bevy_pbr/src/render/pbr_functions.wgsl	fresnelX_naga_oil_mod	-	AVAILABLE_STORAGE_BUFFER_BINDINGS=8,MAX_DIRECTIONAL_LIGHTS=10,MAX_CASCADES_PER_LIGHT=4,MAX_RECT_LIGHTS=4,MATERIAL_BIND_GROUP=3,SORTED_FRAGMENT_MAX_COUNT=8,WORLD_CACHE_SIZE=1048576,PER_OBJECT_BUFFER_BATCH_SIZE=1,SCREEN_SPACE_SPECULAR_TRANSMISSION_BLUR_TAPS=8	-	-
+ui-border-select	testdata/naga_writer_trace	ui_border_select.wgsl	draw_uinode_border	-	-	-	-

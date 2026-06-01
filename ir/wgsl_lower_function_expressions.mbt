@@ -694,6 +694,7 @@ fn WgslIrLowerer::expression_node_contains_naga_reference_value(
   match node.kind() {
     Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
       self.expression_node_contains_naga_reference_value(inner, function, scope)
+    Identifier(name) => scope.local_constants.contains(name.name())
     Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
       self.expression_node_contains_naga_reference_value(left, function, scope) ||
       self.expression_node_contains_naga_reference_value(right, function, scope)
@@ -714,7 +715,7 @@ fn WgslIrLowerer::expression_node_contains_naga_reference_value(
           item, function, scope,
         )
       })
-    Literal(_) | Identifier(_) | ShaderDefTemplate(_) => false
+    Literal(_) | ShaderDefTemplate(_) => false
   }
 }
 
@@ -2228,11 +2229,11 @@ fn WgslIrLowerer::lower_function_select_call(
       "select expects three arguments",
     )
   }
-  let reject = self.lower_function_expression_node(reject, function, scope)
-  let accept = self.lower_function_expression_node(accept, function, scope)
   let condition = self.lower_function_expression_node(
     condition, function, scope,
   )
+  let accept = self.lower_function_expression_node(accept, function, scope)
+  let reject = self.lower_function_expression_node(reject, function, scope)
   function.expressions.append(Expression::Select(condition, accept, reject))
 }
 
