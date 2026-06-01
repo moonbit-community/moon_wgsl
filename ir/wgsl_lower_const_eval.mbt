@@ -427,6 +427,12 @@ fn WgslIrLowerer::eval_function_float_expression_inner(
       }
       wgsl_ir_eval_float_binary(op, left_value, right_value)
     }
+    Math(Sqrt, value, None, None, None) => {
+      guard self.eval_function_float_expression(function, value) is Some(value) else {
+        return None
+      }
+      Some(value.sqrt())
+    }
     _ => None
   }
 }

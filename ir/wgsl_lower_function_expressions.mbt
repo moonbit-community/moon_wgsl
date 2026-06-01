@@ -333,22 +333,43 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         wgsl_ir_expr_node_is_function_argument_value(right, scope) {
         self.predeclare_function_member_base_expressions(left, function, scope)
         self.predeclare_function_argument_value(right, function, scope)
+      } else if wgsl_ir_expr_node_contains_member_access(left) &&
+        wgsl_ir_expr_node_contains_function_argument_math_call(right, scope) {
+        self.predeclare_function_reference_roots_in_source_order(
+          left, function, scope,
+        )
+        self.predeclare_function_reference_roots_in_source_order(
+          right, function, scope,
+        )
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
         wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) {
         let (right_op, right_left, right_right) = self.lower_binary_expression_children(
           right, function, scope,
         )
-        let left_handle = self.lower_function_expression_node(
-          left, function, scope,
-        )
         let right_binary_op = wgsl_ir_binary_operator(right_op)
         let (right_left, right_right) = self.normalize_function_binary_operands(
           function, right_binary_op, right_left, right_right,
         )
-        let right_handle = function.expressions.append(
-          Expression::Binary(right_binary_op, right_left, right_right),
-        )
+        let (left_handle, right_handle) = if wgsl_ir_expr_node_contains_call(
+            right,
+          ) {
+          let right_handle = function.expressions.append(
+            Expression::Binary(right_binary_op, right_left, right_right),
+          )
+          let left_handle = self.lower_function_expression_node(
+            left, function, scope,
+          )
+          (left_handle, right_handle)
+        } else {
+          let left_handle = self.lower_function_expression_node(
+            left, function, scope,
+          )
+          let right_handle = function.expressions.append(
+            Expression::Binary(right_binary_op, right_left, right_right),
+          )
+          (left_handle, right_handle)
+        }
         (left_handle, right_handle)
       } else if self.binary_expression_lowers_right_before_left(
           left, right, function, scope,
@@ -526,6 +547,64 @@ fn WgslIrLowerer::predeclare_function_member_base_expressions(
 }
 
 ///|
+fn WgslIrLowerer::predeclare_function_reference_roots_in_source_order(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match node.kind() {
+    Identifier(_) =>
+      self.predeclare_function_argument_value(node, function, scope)
+    Group(inner) =>
+      self.predeclare_function_reference_roots_in_source_order(
+        inner, function, scope,
+      )
+    Member(base, _) =>
+      self.predeclare_function_member_root_expression(base, function, scope)
+    Unary(_, expr) | PostfixUpdate(_, expr) =>
+      self.predeclare_function_reference_roots_in_source_order(
+        expr, function, scope,
+      )
+    Assignment(_, left, right) => {
+      self.predeclare_function_reference_roots_in_source_order(
+        left, function, scope,
+      )
+      self.predeclare_function_reference_roots_in_source_order(
+        right, function, scope,
+      )
+    }
+    Binary(_, left, right) => {
+      self.predeclare_function_reference_roots_in_source_order(
+        left, function, scope,
+      )
+      self.predeclare_function_reference_roots_in_source_order(
+        right, function, scope,
+      )
+    }
+    Call(_, arguments) | Sequence(arguments) =>
+      for argument in arguments {
+        self.predeclare_function_reference_roots_in_source_order(
+          argument, function, scope,
+        )
+      }
+    Index(base, index) => {
+      self.predeclare_function_reference_roots_in_source_order(
+        base, function, scope,
+      )
+      self.predeclare_function_reference_roots_in_source_order(
+        index, function, scope,
+      )
+    }
+    Template(base, _) =>
+      self.predeclare_function_reference_roots_in_source_order(
+        base, function, scope,
+      )
+    Literal(_) | ShaderDefTemplate(_) | PathAccess(_, _) => ()
+  }
+}
+
+///|
 fn WgslIrLowerer::predeclare_function_member_root_expression(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -668,6 +747,81 @@ fn wgsl_ir_expr_node_contains_member_access(node : @ast.WgslExprNode) -> Bool {
       wgsl_ir_expr_node_contains_member_access(index)
     Template(base, _) => wgsl_ir_expr_node_contains_member_access(base)
     _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_contains_function_argument_value(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(name) => scope.arguments.contains(name.name())
+    Group(inner) =>
+      wgsl_ir_expr_node_contains_function_argument_value(inner, scope)
+    Unary(_, expr) | PostfixUpdate(_, expr) =>
+      wgsl_ir_expr_node_contains_function_argument_value(expr, scope)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_contains_function_argument_value(left, scope) ||
+      wgsl_ir_expr_node_contains_function_argument_value(right, scope)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      wgsl_ir_expr_node_contains_function_argument_value(base, scope)
+    Call(_, arguments) | Sequence(arguments) =>
+      arguments.any(fn(argument) {
+        wgsl_ir_expr_node_contains_function_argument_value(argument, scope)
+      })
+    Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_contains_function_argument_math_call(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Call(callee, arguments) =>
+      match callee.kind() {
+        Identifier(name) if wgsl_ir_math_function_from_name(name.name()) != None =>
+          arguments.any(fn(argument) {
+            wgsl_ir_expr_node_contains_function_argument_value(argument, scope)
+          })
+        _ =>
+          arguments.any(fn(argument) {
+            wgsl_ir_expr_node_contains_function_argument_math_call(
+              argument, scope,
+            )
+          })
+      }
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      wgsl_ir_expr_node_contains_function_argument_math_call(inner, scope)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_contains_function_argument_math_call(left, scope) ||
+      wgsl_ir_expr_node_contains_function_argument_math_call(right, scope)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      wgsl_ir_expr_node_contains_function_argument_math_call(base, scope)
+    Sequence(items) =>
+      items.any(fn(item) {
+        wgsl_ir_expr_node_contains_function_argument_math_call(item, scope)
+      })
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_contains_call(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Call(_, _) => true
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      wgsl_ir_expr_node_contains_call(inner)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_contains_call(left) ||
+      wgsl_ir_expr_node_contains_call(right)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      wgsl_ir_expr_node_contains_call(base)
+    Sequence(items) =>
+      items.any(fn(item) { wgsl_ir_expr_node_contains_call(item) })
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
   }
 }
 
@@ -1874,6 +2028,7 @@ fn WgslIrLowerer::lower_function_math_call(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
+  let expression_mark = function.expressions.items.length()
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() > 0 else {
     raise WgslIrLowerError::UnsupportedExpression(
@@ -1929,7 +2084,19 @@ fn WgslIrLowerer::lower_function_math_call(
     [_, _, value, ..] => Some(value)
     _ => None
   }
-  function.expressions.append(Expression::Math(math_function, a, b, c, d))
+  let handle = function.expressions.append(
+    Expression::Math(math_function, a, b, c, d),
+  )
+  match self.fold_function_constant_float_expression(function, handle) {
+    Some(literal) => {
+      function.expressions.truncate(expression_mark)
+      function.expressions.append_with_origin(
+        Expression::Literal(literal),
+        FoldedLocalConstant,
+      )
+    }
+    None => handle
+  }
 }
 
 ///|
