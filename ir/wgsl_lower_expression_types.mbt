@@ -548,7 +548,6 @@ fn WgslIrLowerer::global_expression_inner_references_override(
     | Relational(_, base)
     | As(base, _, _)
     | CallResult(base)
-    | AtomicResult(base, _)
     | WorkGroupUniformLoadResult(base)
     | WorkGroupUniformLoad(base)
     | ArrayLength(base)
@@ -559,6 +558,7 @@ fn WgslIrLowerer::global_expression_inner_references_override(
     | RayQueryGetIntersection(base, _)
     | SubgroupOperationResult(base) =>
       self.global_expression_references_override(base)
+    AtomicResult(_, _) => false
     SubgroupCall(_, arguments) =>
       wgsl_ir_global_expression_list_references_override(self, arguments)
     AddressOf(_, target) => self.global_expression_references_override(target)

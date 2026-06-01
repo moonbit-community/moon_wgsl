@@ -2548,6 +2548,18 @@ fn WgslIrLowerer::lower_function_atomic_call(
       "\{wgsl_ir_atomic_function_name(atomic_function)} expects \{expected} arguments",
     )
   }
+  if atomic_function == Load {
+    guard arguments is [pointer_argument] else {
+      raise WgslIrLowerError::UnsupportedExpression(
+        "atomicLoad expects 1 argument",
+      )
+    }
+    return function.expressions.append(
+      Expression::Load(
+        self.lower_atomic_pointer_argument(pointer_argument, function, scope),
+      ),
+    )
+  }
   let handles : Array[Handle] = []
   for index in 0..<arguments.length() {
     let argument = arguments[index]

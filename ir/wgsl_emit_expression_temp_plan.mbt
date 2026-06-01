@@ -923,7 +923,8 @@ fn wgsl_ir_collect_statement_materialized_expression_indices(
           continuing, indices,
         )
       }
-      Call(_, _, Some(result)) => indices.add(result.index())
+      Call(_, _, Some(result)) | Atomic(_, _, _, _, Some(result)) =>
+        indices.add(result.index())
       _ => ()
     }
   }

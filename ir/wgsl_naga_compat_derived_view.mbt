@@ -601,11 +601,14 @@ fn WgslIrNagaDerivedModuleBuilder::import_statement(
       )
       self.import_function_expression(function, value, visiting_functions)
     }
-    Atomic(pointer, _, value, compare) => {
+    Atomic(pointer, _, value, compare, result) => {
       self.import_function_expression(function, pointer, visiting_functions)
       self.import_function_expression(function, value, visiting_functions)
       self.import_optional_function_expression(
         function, compare, visiting_functions,
+      )
+      self.import_optional_function_expression(
+        function, result, visiting_functions,
       )
     }
     ImageAtomic(image, coordinate, array_index, _, value) => {
@@ -729,13 +732,13 @@ fn WgslIrNagaDerivedModuleBuilder::import_expression(
     | Splat(_, base)
     | Swizzle(_, base, _)
     | Derivative(_, _, base)
-    | AtomicResult(base, _)
     | WorkGroupUniformLoadResult(base)
     | RayQueryProceed(base)
     | RayQueryConfirmIntersection(base)
     | RayQueryTerminate(base)
     | RayQueryGetIntersection(base, _) =>
       self.import_child_expression(function, base, visiting_functions)
+    AtomicResult(_, _) => ()
     AddressOf(ty, target) | Bitcast(ty, target) => {
       self.import_type_handle(ty)
       self.import_child_expression(function, target, visiting_functions)

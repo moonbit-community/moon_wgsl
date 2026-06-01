@@ -53,9 +53,9 @@ fn WgslIrEmitter::function_expression_inline(
       )
   }
   match expression {
-    CallResult(_) =>
+    CallResult(_) | AtomicResult(_, _) =>
       raise WgslIrEmitError::Unsupported(
-        "raw call result \{handle.index()} without arena temporary name",
+        "raw operation result \{handle.index()} without arena temporary name",
       )
     _ => self.emit_expression(expression, Some(function))
   }

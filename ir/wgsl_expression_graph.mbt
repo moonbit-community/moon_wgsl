@@ -132,9 +132,9 @@ fn wgsl_ir_function_expression_operands_contain(
     | Derivative(_, _, inner)
     | Relational(_, inner)
     | As(inner, _, _)
-    | AtomicResult(inner, _)
     | WorkGroupUniformLoadResult(inner) =>
       wgsl_ir_function_handle_contains(function, inner, needle, visited)
+    AtomicResult(_, _) => false
     Select(condition, accept, reject)
     | RayQueryInitialize(condition, accept, reject) =>
       wgsl_ir_function_handle_contains(function, condition, needle, visited) ||

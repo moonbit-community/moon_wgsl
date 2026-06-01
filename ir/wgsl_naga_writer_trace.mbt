@@ -210,7 +210,8 @@ fn wgsl_ir_trace_expression_is_call_result_materialized(
   handle : Handle,
 ) -> Bool {
   match expression {
-    CallResult(_) => body_plan.contains_materialized_expression(handle)
+    CallResult(_) | AtomicResult(_, _) =>
+      body_plan.contains_materialized_expression(handle)
     _ => false
   }
 }
@@ -303,7 +304,11 @@ fn wgsl_ir_trace_statement_kind(statement : Statement) -> String {
     MemoryBarrier(_) => "MemoryBarrier"
     Store(_, _) => "Store"
     ImageStore(_, _, _, _) => "ImageStore"
-    Atomic(_, _, _, _) => "Atomic"
+    Atomic(_, _, _, _, result) =>
+      match result {
+        Some(handle) => "Atomic(result=\{handle.index()})"
+        None => "Atomic"
+      }
     ImageAtomic(_, _, _, _, _) => "ImageAtomic"
     WorkGroupUniformLoad(_, _) => "WorkGroupUniformLoad"
     Call(_, _, result) =>

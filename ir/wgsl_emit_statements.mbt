@@ -183,16 +183,34 @@ fn WgslIrEmitter::emit_statement(
       out.write_string(
         "\{pad}\{self.function_store_pointer_expression(function, pointer)} = \{self.function_store_value_expression(function, pointer, value)};\n",
       )
-    Atomic(pointer, atomic_function, value, compare) => {
+    Atomic(pointer, atomic_function, value, compare, result) => {
+      match result {
+        Some(result_handle) => {
+          let ty = match self.expression_type(Some(function), result_handle) {
+            Some(value) => value
+            None =>
+              raise WgslIrEmitError::MissingHandle(
+                "atomic result type \{result_handle.index()}",
+              )
+          }
+          out.write_string(
+            "\{pad}let \{self.function_expression_temporary_name(result_handle)}: \{self.type_name(ty)} = ",
+          )
+        }
+        None => out.write_string(pad)
+      }
       out.write_string(
-        "\{pad}\{self.atomic_function_name(atomic_function)}(\{self.pointer_builtin_argument_expression(Some(function), pointer)}, \{self.required_function_expression(Some(function), value)}",
+        "\{self.atomic_function_name(atomic_function)}(\{self.pointer_builtin_argument_expression(Some(function), pointer)}",
       )
       match compare {
         Some(handle) =>
           out.write_string(
-            ", \{self.required_function_expression(Some(function), handle)}",
+            ", \{self.required_function_expression(Some(function), handle)}, \{self.required_function_expression(Some(function), value)}",
           )
-        None => ()
+        None =>
+          out.write_string(
+            ", \{self.required_function_expression(Some(function), value)}",
+          )
       }
       out.write_string(");\n")
     }

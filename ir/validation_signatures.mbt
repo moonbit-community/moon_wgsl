@@ -748,6 +748,7 @@ fn WgslIrValidator::require_atomic_statement_signature(
   atomic_function : AtomicFunction,
   value : Handle,
   compare : Handle?,
+  result : Handle?,
 ) -> Unit raise WgslIrValidationError {
   guard self.function_expression_type(function, pointer) is Some(pointer_ty) else {
     raise self.missing_function_expression_type(function, pointer)
@@ -791,6 +792,50 @@ fn WgslIrValidator::require_atomic_statement_signature(
         "atomic compare value is only valid for compare-exchange",
       )
     _ => ()
+  }
+  match result {
+    Some(result_handle) =>
+      match function.expressions.items.get(result_handle.index()) {
+        Some(AtomicResult(result_ty, comparison)) =>
+          match (atomic_function, comparison) {
+            (CompareExchangeWeak, true) => {
+              let expected_result_ty = match
+                self.predeclared_type_handle(
+                  AtomicCompareExchangeWeakResult(scalar),
+                ) {
+                Some(ty) => ty
+                None =>
+                  raise WgslIrValidationError::InvalidStatement(
+                    "atomic compare-exchange result type is unavailable",
+                  )
+              }
+              if !self.type_assignable(expected_result_ty, result_ty) {
+                raise WgslIrValidationError::InvalidStatement(
+                  "atomic compare-exchange result type mismatch",
+                )
+              }
+            }
+            (CompareExchangeWeak, false) =>
+              raise WgslIrValidationError::InvalidStatement(
+                "compare-exchange atomic result must be a comparison result",
+              )
+            (_, true) =>
+              raise WgslIrValidationError::InvalidStatement(
+                "comparison atomic result is only valid for compare-exchange",
+              )
+            _ =>
+              if !self.type_assignable(expected, result_ty) {
+                raise WgslIrValidationError::InvalidStatement(
+                  "atomic result type mismatch",
+                )
+              }
+          }
+        _ =>
+          raise WgslIrValidationError::InvalidStatement(
+            "atomic statement result must be AtomicResult",
+          )
+      }
+    None => ()
   }
 }
 

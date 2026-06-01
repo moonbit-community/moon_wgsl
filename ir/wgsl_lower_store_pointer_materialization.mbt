@@ -88,7 +88,16 @@ fn WgslIrLowerer::materialize_store_pointer_index_if_needed(
     ) {
     return normalized
   }
-  if self.function_expression_can_materialize_to_let(function, normalized) {
+  if wgsl_ir_function_expression_is_store_pointer_index_effect(
+      function, normalized,
+    ) {
+    return self.materialize_function_expression(
+      function, scope, block, normalized,
+    )
+  }
+  if self.function_expression_should_snapshot_store_pointer_index(
+      function, normalized,
+    ) {
     self.materialize_function_expression_snapshot(
       function, scope, block, normalized,
     )
@@ -114,6 +123,32 @@ fn wgsl_ir_function_expression_is_store_pointer_index_local_reference(
       }
     _ => false
   }
+}
+
+///|
+fn wgsl_ir_function_expression_is_store_pointer_index_effect(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(FunctionCall(_, _))
+    | Some(AtomicCall(_, _))
+    | Some(ImageSample(_, _, _, _, _, _, _, _, _))
+    | Some(ImageLoad(_, _, _, _, _))
+    | Some(ImageQuery(_, _))
+    | Some(WorkGroupUniformLoad(_)) => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_snapshot_store_pointer_index(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  self.function_expression_is_var_pointer_load(function, value) &&
+  self.function_expression_can_materialize_to_let(function, value)
 }
 
 ///|

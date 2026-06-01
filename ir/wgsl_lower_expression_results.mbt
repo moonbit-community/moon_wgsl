@@ -468,6 +468,7 @@ fn WgslIrLowerer::function_expression_inner_type(
       )
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(function, atomic_function, arguments)
+    AtomicResult(ty, _) => Some(ty)
     ImageSample(image, _, gather, _, _, _, _, depth_ref, _) =>
       self.image_expression_result_type(function, image, gather, depth_ref)
     ImageLoad(image, _, _, _, _) =>

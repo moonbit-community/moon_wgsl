@@ -123,6 +123,7 @@ fn WgslIrEmitter::function_expression_inner_type(
         atomic_function,
         arguments,
       )
+    AtomicResult(ty, _) => Some(ty)
     ImageSample(image, _, gather, _, _, _, _, depth_ref, _) =>
       self.image_expression_result_type(
         Some(function),
@@ -259,6 +260,7 @@ fn WgslIrEmitter::global_expression_inner_type(
       self.relational_expression_result_type(None, relational_function, expr)
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(None, atomic_function, arguments)
+    AtomicResult(ty, _) => Some(ty)
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(None, image, query)
     ArrayLength(_) => self.type_handle_named("u32")

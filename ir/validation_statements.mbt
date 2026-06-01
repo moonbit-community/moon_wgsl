@@ -97,7 +97,7 @@ fn WgslIrValidator::validate_statement(
       self.validate_function_expression_handle(function, value)
       self.require_image_store_signature(function, image, value)
     }
-    Atomic(pointer, atomic_function, value, compare) => {
+    Atomic(pointer, atomic_function, value, compare, result) => {
       self.validate_function_expression_handle(function, pointer)
       self.validate_function_expression_handle(function, value)
       match compare {
@@ -105,8 +105,13 @@ fn WgslIrValidator::validate_statement(
           self.validate_function_expression_handle(function, handle)
         None => ()
       }
+      match result {
+        Some(handle) =>
+          self.validate_function_expression_handle(function, handle)
+        None => ()
+      }
       self.require_atomic_statement_signature(
-        function, pointer, atomic_function, value, compare,
+        function, pointer, atomic_function, value, compare, result,
       )
     }
     ImageAtomic(image, coordinate, array_index, atomic_function, value) => {

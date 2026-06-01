@@ -149,6 +149,47 @@ fn WgslIrLowerer::materialize_function_expression(
       block.push(Statement::Call(function_handle, arguments, Some(value)))
       return value
     }
+    Some(AtomicCall(atomic_function, arguments)) => {
+      let result_ty = match self.function_expression_type(function, value) {
+        Some(ty) => ty
+        None =>
+          raise WgslIrLowerError::MissingType(
+            "materialized atomic expression \{value.index()}: \{wgsl_ir_function_expression_debug(function, value)}",
+          )
+      }
+      let comparison = atomic_function == CompareExchangeWeak
+      function.expressions.set(
+        value,
+        Expression::AtomicResult(result_ty, comparison),
+      )
+      match arguments {
+        [pointer, compare, atomic_value] if comparison =>
+          block.push(
+            Statement::Atomic(
+              pointer,
+              atomic_function,
+              atomic_value,
+              Some(compare),
+              Some(value),
+            ),
+          )
+        [pointer, atomic_value] =>
+          block.push(
+            Statement::Atomic(
+              pointer,
+              atomic_function,
+              atomic_value,
+              None,
+              Some(value),
+            ),
+          )
+        _ =>
+          raise WgslIrLowerError::UnsupportedExpression(
+            "materialized atomic expression has invalid argument shape",
+          )
+      }
+      return value
+    }
     _ => ()
   }
   match self.existing_materialized_function_expression(function, block, value) {

@@ -425,7 +425,7 @@ fn WgslIrLowerer::lower_atomic_statement_call(
     let value = self.lower_function_expression_node(
       value_argument, function, scope,
     )
-    block.push(Statement::Atomic(pointer, Store, value, None))
+    block.push(Statement::Atomic(pointer, Store, value, None, None))
     return
   }
   let handle = self.lower_function_atomic_call(

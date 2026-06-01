@@ -222,8 +222,7 @@ fn WgslIrValidator::validate_function_expression(
       self.require_as_width(kind, width)
     }
     CallResult(handle) => self.require_function(handle)
-    AtomicResult(handle, _) =>
-      self.validate_function_expression_handle(function, handle)
+    AtomicResult(ty, _) => self.require_type(ty)
     WorkGroupUniformLoadResult(handle) =>
       self.validate_function_expression_handle(function, handle)
     WorkGroupUniformLoad(handle) =>

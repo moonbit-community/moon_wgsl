@@ -766,7 +766,7 @@ pub enum Statement {
   MemoryBarrier(Barrier)
   Store(Handle, Handle)
   ImageStore(Handle, Handle, Handle?, Handle)
-  Atomic(Handle, AtomicFunction, Handle, Handle?)
+  Atomic(Handle, AtomicFunction, Handle, Handle?, Handle?)
   ImageAtomic(Handle, Handle, Handle?, AtomicFunction, Handle)
   WorkGroupUniformLoad(Handle, Handle)
   Call(Handle, Array[Handle], Handle?)

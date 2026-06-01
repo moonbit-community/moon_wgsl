@@ -242,7 +242,7 @@ fn WgslIrValidator::function_expression_inner_type(
         Some(ty) => self.deref_type(ty)
         None => None
       }
-    AtomicResult(handle, _) => self.function_expression_type(function, handle)
+    AtomicResult(ty, _) => Some(ty)
     RayQueryProceedResult => self.find_scalar_type(Scalar::Scalar(Bool, 1))
     SubgroupBallotResult => self.vector_type(Quad, Scalar::Scalar(Uint, 4))
     SubgroupOperationResult(handle) =>

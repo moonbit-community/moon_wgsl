@@ -455,10 +455,15 @@ fn WgslIrEmitFilter::mark_statement(
       }
       self.mark_function_expression(shader_module, function, value)
     }
-    Atomic(pointer, _, value, compare) => {
+    Atomic(pointer, _, value, compare, result) => {
       self.mark_function_expression(shader_module, function, pointer)
       self.mark_function_expression(shader_module, function, value)
       match compare {
+        Some(expr) =>
+          self.mark_function_expression(shader_module, function, expr)
+        None => ()
+      }
+      match result {
         Some(expr) =>
           self.mark_function_expression(shader_module, function, expr)
         None => ()
@@ -642,13 +647,13 @@ fn WgslIrEmitFilter::mark_function_expression_inner(
     | Splat(_, base)
     | Swizzle(_, base, _)
     | Derivative(_, _, base)
-    | AtomicResult(base, _)
     | WorkGroupUniformLoadResult(base)
     | RayQueryProceed(base)
     | RayQueryConfirmIntersection(base)
     | RayQueryTerminate(base)
     | RayQueryGetIntersection(base, _) =>
       self.mark_function_expression(shader_module, function, base)
+    AtomicResult(_, _) => ()
     AddressOf(ty, target) => {
       self.mark_type(shader_module, ty)
       self.mark_function_expression(shader_module, function, target)

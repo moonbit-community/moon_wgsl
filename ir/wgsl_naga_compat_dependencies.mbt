@@ -327,10 +327,15 @@ fn wgsl_ir_collect_function_calls_from_statement(
       }
       wgsl_ir_collect_function_calls_from_expression(function, value, calls)
     }
-    Atomic(pointer, _, value, compare) => {
+    Atomic(pointer, _, value, compare, result) => {
       wgsl_ir_collect_function_calls_from_expression(function, pointer, calls)
       wgsl_ir_collect_function_calls_from_expression(function, value, calls)
       match compare {
+        Some(expr) =>
+          wgsl_ir_collect_function_calls_from_expression(function, expr, calls)
+        None => ()
+      }
+      match result {
         Some(expr) =>
           wgsl_ir_collect_function_calls_from_expression(function, expr, calls)
         None => ()
@@ -452,13 +457,13 @@ fn wgsl_ir_collect_function_calls_from_expression_inner(
     | Splat(_, base)
     | Swizzle(_, base, _)
     | Derivative(_, _, base)
-    | AtomicResult(base, _)
     | WorkGroupUniformLoadResult(base)
     | RayQueryProceed(base)
     | RayQueryConfirmIntersection(base)
     | RayQueryTerminate(base)
     | RayQueryGetIntersection(base, _) =>
       wgsl_ir_collect_function_calls_from_expression(function, base, calls)
+    AtomicResult(_, _) => ()
     AtomicCall(_, arguments) | SubgroupCall(_, arguments) =>
       for argument in arguments {
         wgsl_ir_collect_function_calls_from_expression(

@@ -576,6 +576,35 @@ test "naga-oil writer materializes mutable store pointer index" {
 }
 
 ///|
+test "naga-oil writer reuses side-effect store pointer index" {
+  let source =
+    #|struct Output {
+    #|  x: u32,
+    #|  y: u32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<storage, read_write> output: array<Output>;
+    #|var<workgroup> counter: atomic<u32>;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  let index = atomicAdd(&counter, 1u);
+    #|  output[index].x = 2u;
+    #|  output[index].y = 3u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.split("atomicAdd").collect().length(), content="2")
+  debug_inspect(emitted.contains("output[_e"), content="true")
+  debug_inspect(emitted.contains("].x = 2u;"), content="true")
+  debug_inspect(emitted.contains("].y = 3u;"), content="true")
+}
+
+///|
 test "naga-oil writer materializes function pointer loads" {
   let source =
     #|fn rand_u(state: ptr<function, u32>) -> u32 {
