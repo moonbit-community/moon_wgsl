@@ -945,18 +945,12 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
     }
   }
   let base_index = handle.index() - skipped
-  let adjusted_base_index = if wgsl_ir_emit_expression_is_adjacent_materialized_load_after_generated_snapshot(
-      function, handle,
-    ) {
-    base_index - 1
-  } else {
-    base_index
-  }
+  let adjusted_base_index = base_index
   let implicit_expression_slots_before = body_plan.implicit_expression_slot_offset(
     handle,
   )
   let prior_call_projection_argument_slots = wgsl_ir_emit_prior_call_projection_argument_slot_offset(
-    function, handle,
+    function, body_plan, handle,
   )
   let implicit_naga_load_slots = wgsl_ir_emit_implicit_naga_load_slot_offset(
     function, body_plan, handle,
@@ -984,10 +978,12 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
 ///|
 fn wgsl_ir_emit_prior_call_projection_argument_slot_offset(
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   limit : Handle,
 ) -> Int {
   wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
     function,
+    body_plan,
     function.body,
     limit,
   )
@@ -996,6 +992,7 @@ fn wgsl_ir_emit_prior_call_projection_argument_slot_offset(
 ///|
 fn wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   block : Block,
   limit : Handle,
 ) -> Int {
@@ -1007,6 +1004,9 @@ fn wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
           for argument in arguments {
             if wgsl_ir_function_expression_is_persistent_call_argument_projection(
                 function, argument,
+              ) &&
+              wgsl_ir_emit_prior_projection_slot_applies_before_limit(
+                function, body_plan, result, limit,
               ) {
               offset += 1
             }
@@ -1014,30 +1014,31 @@ fn wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
         }
       Block(child) =>
         offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
-          function, child, limit,
+          function, body_plan, child, limit,
         )
       If(_, accept, reject) => {
         offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
-          function, accept, limit,
+          function, body_plan, accept, limit,
         )
         offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
-          function, reject, limit,
+          function, body_plan, reject, limit,
         )
       }
       Switch(_, cases) =>
         for case in cases {
           offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
             function,
+            body_plan,
             case.body,
             limit,
           )
         }
       Loop(body, continuing, _) => {
         offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
-          function, body, limit,
+          function, body_plan, body, limit,
         )
         offset += wgsl_ir_emit_prior_call_projection_argument_slot_offset_in_block(
-          function, continuing, limit,
+          function, body_plan, continuing, limit,
         )
       }
       _ => ()
@@ -1055,6 +1056,37 @@ fn wgsl_ir_function_expression_is_persistent_call_argument_projection(
     Some(Component(base, _)) | Some(Swizzle(_, base, _)) =>
       wgsl_ir_function_expression_graph_contains_source_var_local(
         function, base,
+      )
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_emit_prior_projection_slot_applies_before_limit(
+  function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  result : Handle,
+  limit : Handle,
+) -> Bool {
+  for index in (result.index() + 1)..<=limit.index() {
+    let handle = Handle::Handle(index)
+    if body_plan.contains_materialized_expression(handle) &&
+      !wgsl_ir_emit_expression_is_direct_source_var_load(function, handle) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_emit_expression_is_direct_source_var_load(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Load(pointer)) =>
+      wgsl_ir_function_expression_graph_contains_source_var_local(
+        function, pointer,
       )
     _ => false
   }
@@ -1758,38 +1790,5 @@ fn wgsl_ir_emit_projected_temporary_expression_slots(
         None => 2
       }
     _ => 2
-  }
-}
-
-///|
-fn wgsl_ir_emit_expression_is_adjacent_materialized_load_after_generated_snapshot(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  if handle.index() == 0 {
-    return false
-  }
-  guard function.expressions.items.get(handle.index()) is Some(Load(_)) else {
-    return false
-  }
-  guard function.expressions.items.get(handle.index() - 1)
-    is Some(LocalVariable(local_handle)) else {
-    return false
-  }
-  guard function.local_variables.items.get(local_handle.index())
-    is Some(local_var) else {
-    return false
-  }
-  guard local_var.generated_temporary else { return false }
-  guard !local_var.generated_temporary_store_value_reference else {
-    return false
-  }
-  match local_var.init {
-    Some(init) =>
-      match function.expressions.items.get(init.index()) {
-        Some(Load(_)) => true
-        _ => false
-      }
-    None => false
   }
 }

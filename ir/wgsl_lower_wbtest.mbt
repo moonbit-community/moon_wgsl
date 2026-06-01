@@ -114,6 +114,101 @@ test "WGSL AST lowerer predeclares mutable locals before non-const initializer a
 }
 
 ///|
+test "WGSL AST lowerer orders comparison argument before mutable local load" {
+  let source =
+    #|fn probe(a: f32, limit: f32) -> f32 {
+    #|  var t = a;
+    #|  if t < limit {
+    #|    return t;
+    #|  }
+    #|  return t;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[2] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected comparison argument before mutable local load")
+  }
+  match function.expressions.items[3] {
+    Load(_) => ()
+    _ => abort("expected mutable local load after comparison argument")
+  }
+  match function.expressions.items[4] {
+    Binary(Less, left, right) => {
+      debug_inspect(left.index(), content="3")
+      debug_inspect(right.index(), content="2")
+    }
+    _ => abort("expected comparison to preserve source operands")
+  }
+}
+
+///|
+test "WGSL AST lowerer reuses initialized local pointer in branch assignments" {
+  let source =
+    #|fn probe(a: f32, limit: f32) -> f32 {
+    #|  var t = (a + limit);
+    #|  if t < limit {
+    #|    t = 0.5 * t;
+    #|  }
+    #|  return t;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut local_handle : Handle? = None
+  for index, local_var in function.local_variables.items {
+    if local_var.name == Some("t") {
+      local_handle = Some(Handle::Handle(index))
+    }
+  }
+  guard local_handle is Some(handle) else { abort("expected local t") }
+  let mut pointer_count = 0
+  for expression in function.expressions.items {
+    match expression {
+      LocalVariable(candidate) => if candidate == handle { pointer_count += 1 }
+      _ => ()
+    }
+  }
+  debug_inspect(pointer_count, content="1")
+}
+
+///|
+test "WGSL AST lowerer lowers complex mutable-local right subtree before literal left" {
+  let source =
+    #|fn probe(a: f32, limit: f32) -> f32 {
+    #|  var t = a;
+    #|  t = 0.5 * (1.0 + ((t - limit) / (1.0 - limit)));
+    #|  return t;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[2] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected right subtree argument before mutable local load")
+  }
+  match function.expressions.items[3] {
+    Load(_) => ()
+    _ => abort("expected mutable local load before literal-left multiply")
+  }
+  match function.expressions.items[10] {
+    Literal(_) => ()
+    _ => abort("expected literal multiply operand after complex right subtree")
+  }
+  match function.expressions.items[11] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="10")
+      debug_inspect(right.index(), content="9")
+    }
+    _ => abort("expected multiply to preserve source operands")
+  }
+}
+
+///|
 test "WGSL AST lowerer inserts higher-precedence right binary subtrees before left operands" {
   let source =
     #|fn probe(point: vec2<f32>, size: vec2<f32>) -> vec2<f32> {

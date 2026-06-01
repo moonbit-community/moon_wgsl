@@ -327,7 +327,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
         (left_handle, right_handle)
       } else if self.binary_expression_lowers_right_before_left(
-          op, left, right, function, scope,
+          left, right, function, scope,
         ) {
         let right_handle = self.lower_function_expression_node(
           right, function, scope,
@@ -485,7 +485,7 @@ fn WgslIrLowerer::lower_binary_expression_children(
   match node.kind() {
     Binary(op, left, right) => {
       let (left_handle, right_handle) = if self.binary_expression_lowers_right_before_left(
-          op, left, right, function, scope,
+          left, right, function, scope,
         ) {
         let right_handle = self.lower_function_expression_node(
           right, function, scope,
@@ -515,15 +515,18 @@ fn WgslIrLowerer::lower_binary_expression_children(
 ///|
 fn WgslIrLowerer::binary_expression_lowers_right_before_left(
   self : WgslIrLowerer,
-  op : @ast.WgslExprOperator,
   left : @ast.WgslExprNode,
   right : @ast.WgslExprNode,
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Bool {
-  guard wgsl_ir_expr_operator_is_comparison(op) else { return false }
-  guard wgsl_ir_expr_node_is_literal_like(left) else { return false }
-  self.expression_node_is_mutable_local_value(right, function, scope)
+  if wgsl_ir_expr_node_is_literal_like(left) {
+    return self.expression_node_contains_mutable_local_value(
+      right, function, scope,
+    )
+  }
+  self.expression_node_is_mutable_local_value(left, function, scope) &&
+  wgsl_ir_expr_node_is_function_argument_value(right, scope)
 }
 
 ///|
@@ -560,14 +563,6 @@ fn wgsl_ir_expr_node_contains_member_access(node : @ast.WgslExprNode) -> Bool {
 }
 
 ///|
-fn wgsl_ir_expr_operator_is_comparison(op : @ast.WgslExprOperator) -> Bool {
-  match op {
-    Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => true
-    _ => false
-  }
-}
-
-///|
 fn wgsl_ir_expr_node_is_literal_like(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Literal(_) => true
@@ -597,6 +592,51 @@ fn WgslIrLowerer::expression_node_is_mutable_local_value(
           }
         None => false
       }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_contains_mutable_local_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  if self.expression_node_is_mutable_local_value(node, function, scope) {
+    return true
+  }
+  match node.kind() {
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.expression_node_contains_mutable_local_value(inner, function, scope)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      self.expression_node_contains_mutable_local_value(left, function, scope) ||
+      self.expression_node_contains_mutable_local_value(right, function, scope)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.expression_node_contains_mutable_local_value(base, function, scope)
+    Call(callee, arguments) =>
+      self.expression_node_contains_mutable_local_value(callee, function, scope) ||
+      arguments.any(fn(argument) {
+        self.expression_node_contains_mutable_local_value(
+          argument, function, scope,
+        )
+      })
+    Sequence(items) =>
+      items.any(fn(item) {
+        self.expression_node_contains_mutable_local_value(item, function, scope)
+      })
+    Literal(_) | Identifier(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_function_argument_value(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_is_function_argument_value(inner, scope)
+    Identifier(name) => scope.arguments.contains(name.name())
     _ => false
   }
 }
