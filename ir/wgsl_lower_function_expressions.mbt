@@ -322,7 +322,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         None => ()
       }
       let member_bases_lower_in_source_order = wgsl_ir_binary_predeclares_sibling_member_roots(
-        left, right,
+        left, right, scope,
       )
       if member_bases_lower_in_source_order {
         self.predeclare_function_member_base_expressions(left, function, scope)
@@ -809,9 +809,52 @@ fn wgsl_ir_binary_right_subtree_has_higher_precedence(
 fn wgsl_ir_binary_predeclares_sibling_member_roots(
   left : @ast.WgslExprNode,
   right : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
 ) -> Bool {
+  if wgsl_ir_direct_access_chain_root_is_function_argument(left, scope) &&
+    wgsl_ir_expr_node_contains_call_member_access(right) {
+    return false
+  }
   wgsl_ir_expr_node_is_direct_access_chain(left) &&
   wgsl_ir_expr_node_contains_member_access(right)
+}
+
+///|
+fn wgsl_ir_direct_access_chain_root_is_function_argument(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      wgsl_ir_direct_access_chain_root_is_function_argument(inner, scope)
+    Member(base, _) | Index(base, _) =>
+      wgsl_ir_direct_access_chain_root_is_function_argument(base, scope)
+    Identifier(name) => scope.arguments.contains(name.name())
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_contains_call_member_access(
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      wgsl_ir_expr_node_contains_call_member_access(inner)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_contains_call_member_access(left) ||
+      wgsl_ir_expr_node_contains_call_member_access(right)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      wgsl_ir_expr_node_contains_call_member_access(base)
+    Call(callee, arguments) =>
+      wgsl_ir_expr_node_contains_member_access(callee) ||
+      arguments.any(fn(argument) {
+        wgsl_ir_expr_node_contains_member_access(argument)
+      })
+    Sequence(items) =>
+      items.any(fn(item) { wgsl_ir_expr_node_contains_call_member_access(item) })
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
 }
 
 ///|

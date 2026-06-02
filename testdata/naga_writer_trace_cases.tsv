@@ -12,3 +12,4 @@ bevy-downsample-for-initializer	testdata/bevy_wgsl	bevy_core_pipeline/src/mip_ge
 bevy-downsample-first-entry	testdata/bevy_wgsl	bevy_core_pipeline/src/mip_generation/downsample.wgsl	downsample_first	COMBINE_BIND_GROUP	TEXTURE_FORMAT=raw:rgba8unorm	-	-
 bevy-downsample-second-entry	testdata/bevy_wgsl	bevy_core_pipeline/src/mip_generation/downsample.wgsl	downsample_second	COMBINE_BIND_GROUP	TEXTURE_FORMAT=raw:rgba8unorm	-	-
 indexed-reference-call-args	testdata/naga_writer_trace	indexed_reference_call_args.wgsl	dynamic_indexed_reference_call	-	-	-	-
+call-member-after-argument-access	testdata/naga_writer_trace	call_member_after_argument_access.wgsl	call_member_after_argument_access	-	-	-	-
