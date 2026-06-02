@@ -106,8 +106,8 @@ fn WgslIrLowerer::predeclare_source_local(
     match local_decl.initializer_ref() {
       Some(expr_ref) =>
         init = Some(
-          self.lower_function_expression_ref_with_expected(
-            expr_ref, function, scope, explicit_ty,
+          self.lower_source_local_const_initializer(
+            expr_ref, explicit_ty, function, scope,
           ),
         )
       None => ()
@@ -157,6 +157,39 @@ fn WgslIrLowerer::predeclare_source_local(
     init,
   })
   scope.predeclared_source_locals.set(key, handle)
+}
+
+///|
+fn WgslIrLowerer::lower_source_local_const_initializer(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  explicit_ty : Handle?,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let key = wgsl_ir_source_local_const_initializer_key(expr_ref, explicit_ty)
+  match scope.source_local_const_initializer_expressions.get(key) {
+    Some(handle) => handle
+    None => {
+      let handle = self.lower_function_expression_ref_with_expected(
+        expr_ref, function, scope, explicit_ty,
+      )
+      scope.source_local_const_initializer_expressions.set(key, handle)
+      handle
+    }
+  }
+}
+
+///|
+fn wgsl_ir_source_local_const_initializer_key(
+  expr_ref : @ast.WgslExprRef,
+  explicit_ty : Handle?,
+) -> String {
+  let ty_key = match explicit_ty {
+    Some(ty) => "\{ty.index()}"
+    None => "-"
+  }
+  "\{ty_key}:\{wgsl_ir_expr_ref_token_text(expr_ref)}"
 }
 
 ///|

@@ -15,6 +15,7 @@
 ///|
 fn build_wgsl_ir_naga_writer_final_name_plan(
   view : WgslIrNagaWriterModule,
+  shader_module : Module,
 ) -> WgslIrFinalNamePlan {
   let table = WgslIrFinalNamePlan::empty()
   let namer = WgslIrNagaNamer::WgslIrNagaNamer()
@@ -48,10 +49,10 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
     )
   }
   for slot in view.function_slots() {
-    view.allocate_function_body_names(table, namer, slot)
+    view.allocate_function_body_names(table, namer, slot, shader_module)
   }
   for slot in view.entry_point_slots() {
-    view.allocate_entry_point_body_names(table, namer, slot)
+    view.allocate_entry_point_body_names(table, namer, slot, shader_module)
   }
   table
 }
@@ -188,10 +189,12 @@ fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
   table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
   slot : WgslIrNagaWriterEntryPointSlot,
+  shader_module : Module,
 ) -> Unit {
+  ignore(self)
   let ep = slot.item
   table.allocate_function_body_names_from_arena(
-    self.shader_module,
+    shader_module,
     EntryPointFunction(slot.source_index),
     ep.function,
     slot.body_plan,
@@ -220,10 +223,12 @@ fn WgslIrNagaWriterModule::allocate_function_body_names(
   table : WgslIrFinalNamePlan,
   namer : WgslIrNagaNamer,
   slot : WgslIrNagaWriterFunctionSlot,
+  shader_module : Module,
 ) -> Unit {
+  ignore(self)
   let function = slot.item
   table.allocate_function_body_names_from_arena(
-    self.shader_module,
+    shader_module,
     UserFunction(slot.source_index),
     function,
     slot.body_plan,

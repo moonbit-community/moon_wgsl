@@ -14,7 +14,6 @@
 
 ///|
 priv struct WgslIrNagaWriterModule {
-  shader_module : Module
   filter : WgslIrEmitFilter?
   derived : WgslIrNagaDerivedModuleView
   emission : WgslIrNagaWriterEmissionPlan
@@ -41,7 +40,6 @@ fn build_wgsl_ir_naga_writer_module(
   let derived = planner.derived_module_view()
   let arena = planner.writer_arena()
   let view = WgslIrNagaWriterModule::{
-    shader_module,
     filter,
     derived,
     emission: planner.writer_emission_plan(arena),
@@ -49,7 +47,7 @@ fn build_wgsl_ir_naga_writer_module(
     root_struct_member_import_spelling: true,
     names: WgslIrFinalNamePlan::empty(),
   }
-  view.names = build_wgsl_ir_naga_writer_final_name_plan(view)
+  view.names = build_wgsl_ir_naga_writer_final_name_plan(view, shader_module)
   ignore(view.derived)
   view
 }
@@ -66,7 +64,6 @@ fn build_wgsl_ir_runtime_writer_module(
   let derived = planner.derived_module_view()
   let arena = planner.runtime_writer_arena()
   let view = WgslIrNagaWriterModule::{
-    shader_module,
     filter,
     derived,
     emission: planner.writer_emission_plan(arena),
@@ -74,7 +71,7 @@ fn build_wgsl_ir_runtime_writer_module(
     root_struct_member_import_spelling: false,
     names: WgslIrFinalNamePlan::empty(),
   }
-  view.names = build_wgsl_ir_naga_writer_final_name_plan(view)
+  view.names = build_wgsl_ir_naga_writer_final_name_plan(view, shader_module)
   ignore(view.derived)
   view
 }

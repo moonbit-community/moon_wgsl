@@ -426,12 +426,13 @@ fn WgslIrLowerer::expression_node_contains_user_function_call(
     Group(inner) | Template(inner, _) =>
       self.expression_node_contains_user_function_call(inner)
     Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       let callee_is_user_function = match callee.kind() {
         Identifier(name) => self.function_names.contains(name.name())
         _ => false
       }
       callee_is_user_function ||
-      wgsl_ir_flatten_expression_arguments(arguments).any(fn(argument) {
+      arguments.any(fn(argument) {
         self.expression_node_contains_user_function_call(argument)
       })
     }

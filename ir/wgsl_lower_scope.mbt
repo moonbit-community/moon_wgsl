@@ -49,6 +49,7 @@ priv struct WgslIrFunctionScope {
   argument_expressions : Map[String, Handle]
   locals : Map[String, Handle]
   predeclared_source_locals : Map[String, Handle]
+  source_local_const_initializer_expressions : Map[String, Handle]
   local_constants : Map[String, WgslIrLocalValueCell]
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
@@ -75,6 +76,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     argument_expressions: Map([]),
     locals: Map([]),
     predeclared_source_locals: Map([]),
+    source_local_const_initializer_expressions: Map([]),
     local_constants: Map([]),
     local_pointer_expressions: Map([]),
     argument_pointer_expressions: Map([]),
@@ -162,6 +164,7 @@ fn WgslIrFunctionScope::child(
     argument_expressions: self.argument_expressions,
     locals: wgsl_ir_copy_string_handle_map(self.locals),
     predeclared_source_locals: self.predeclared_source_locals,
+    source_local_const_initializer_expressions: self.source_local_const_initializer_expressions,
     local_constants: wgsl_ir_copy_string_local_constant_map(
       self.local_constants,
     ),

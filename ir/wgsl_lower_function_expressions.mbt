@@ -450,10 +450,12 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         ),
       )
     }
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       self.lower_function_call_expression(
         callee, arguments, function, scope, expected_ty,
       )
+    }
     Template(base, _) =>
       raise WgslIrLowerError::UnsupportedExpression(
         "standalone template expression: \{wgsl_ir_expr_node_shape(base)}",
@@ -846,11 +848,13 @@ fn wgsl_ir_expr_node_contains_call_member_access(
       wgsl_ir_expr_node_contains_call_member_access(right)
     Member(base, _) | PathAccess(base, _) | Template(base, _) =>
       wgsl_ir_expr_node_contains_call_member_access(base)
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       wgsl_ir_expr_node_contains_member_access(callee) ||
       arguments.any(fn(argument) {
         wgsl_ir_expr_node_contains_member_access(argument)
       })
+    }
     Sequence(items) =>
       items.any(fn(item) { wgsl_ir_expr_node_contains_call_member_access(item) })
     Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
@@ -908,7 +912,8 @@ fn wgsl_ir_expr_node_contains_function_argument_math_call(
   scope : WgslIrFunctionScope,
 ) -> Bool {
   match node.kind() {
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       match callee.kind() {
         Identifier(name) if wgsl_ir_math_function_from_name(name.name()) != None =>
           arguments.any(fn(argument) {
@@ -921,6 +926,7 @@ fn wgsl_ir_expr_node_contains_function_argument_math_call(
             )
           })
       }
+    }
     Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
       wgsl_ir_expr_node_contains_function_argument_math_call(inner, scope)
     Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
@@ -984,7 +990,8 @@ fn WgslIrLowerer::expression_node_contains_naga_reference_value(
       self.expression_node_contains_naga_reference_value(right, function, scope)
     Member(base, _) | PathAccess(base, _) | Template(base, _) =>
       self.expression_node_contains_naga_reference_value(base, function, scope)
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       self.expression_node_contains_naga_reference_value(
         callee, function, scope,
       ) ||
@@ -993,6 +1000,7 @@ fn WgslIrLowerer::expression_node_contains_naga_reference_value(
           argument, function, scope,
         )
       })
+    }
     Sequence(items) =>
       items.any(fn(item) {
         self.expression_node_contains_naga_reference_value(
