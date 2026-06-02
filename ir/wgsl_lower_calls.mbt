@@ -292,13 +292,26 @@ fn WgslIrLowerer::lower_call_reference_argument_run(
     index += 1
   }
   for run_index in start..<index {
-    self.predeclare_function_member_base_expressions(
-      arguments[run_index],
-      function,
-      scope,
-    )
+    if !self.call_reference_argument_has_dynamic_indexed_root(
+        arguments[run_index],
+      ) {
+      self.predeclare_function_member_base_expressions(
+        arguments[run_index],
+        function,
+        scope,
+      )
+    }
   }
   for run_index in start..<index {
+    if self.call_reference_argument_has_dynamic_indexed_root(
+        arguments[run_index],
+      ) {
+      self.predeclare_function_member_base_expressions(
+        arguments[run_index],
+        function,
+        scope,
+      )
+    }
     prelowered[run_index] = Some(
       self.lower_user_function_call_argument_at(
         arguments[run_index],
@@ -310,6 +323,42 @@ fn WgslIrLowerer::lower_call_reference_argument_run(
     )
   }
   index
+}
+
+///|
+fn WgslIrLowerer::call_reference_argument_has_dynamic_indexed_root(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => self.call_reference_argument_has_dynamic_indexed_root(inner)
+    Member(base, _) | Index(base, _) =>
+      self.call_reference_access_base_has_dynamic_index(base)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::call_reference_access_base_has_dynamic_index(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => self.call_reference_access_base_has_dynamic_index(inner)
+    Member(base, _) => self.call_reference_access_base_has_dynamic_index(base)
+    Index(base, index) =>
+      !wgsl_ir_expr_node_is_static_literal_index(index) ||
+      self.call_reference_access_base_has_dynamic_index(base)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_static_literal_index(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_is_static_literal_index(inner)
+    _ => wgsl_ir_int_literal_from_expr_node(node) != None
+  }
 }
 
 ///|
