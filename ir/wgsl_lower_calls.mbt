@@ -184,7 +184,28 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
   let prelowered = self.lower_user_function_call_argument_dependencies(
     flattened, callee_function, function, scope,
   )
-  for index in 0..<flattened.length() {
+  let mut index = 0
+  while index < flattened.length() {
+    if prelowered[index] == None &&
+      wgsl_ir_expr_node_is_literal_like(flattened[index]) {
+      ignore(
+        self.lower_next_call_reference_argument_run(
+          flattened,
+          prelowered,
+          index + 1,
+          callee_function,
+          function,
+          scope,
+        ),
+      )
+    } else if prelowered[index] == None &&
+      self.call_argument_is_naga_reference_access_chain(flattened[index], scope) {
+      ignore(
+        self.lower_call_reference_argument_run(
+          flattened, prelowered, index, callee_function, function, scope,
+        ),
+      )
+    }
     let argument = match prelowered[index] {
       Some(handle) => handle
       None =>
@@ -197,6 +218,7 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
         )
     }
     handles.push(argument)
+    index += 1
   }
   handles
 }
@@ -227,6 +249,100 @@ fn WgslIrLowerer::lower_user_function_call_argument_dependencies(
     }
   }
   prelowered
+}
+
+///|
+fn WgslIrLowerer::lower_next_call_reference_argument_run(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  prelowered : Array[Handle?],
+  start : Int,
+  callee_function : Function,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Int raise WgslIrLowerError {
+  if start < arguments.length() &&
+    prelowered[start] == None &&
+    self.call_argument_is_naga_reference_access_chain(arguments[start], scope) {
+    self.lower_call_reference_argument_run(
+      arguments, prelowered, start, callee_function, function, scope,
+    )
+  } else {
+    start
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_call_reference_argument_run(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  prelowered : Array[Handle?],
+  start : Int,
+  callee_function : Function,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Int raise WgslIrLowerError {
+  let mut index = start
+  while index < arguments.length() &&
+        prelowered[index] == None &&
+        self.call_argument_is_naga_reference_access_chain(
+          arguments[index],
+          scope,
+        ) {
+    index += 1
+  }
+  for run_index in start..<index {
+    self.predeclare_function_member_base_expressions(
+      arguments[run_index],
+      function,
+      scope,
+    )
+  }
+  for run_index in start..<index {
+    prelowered[run_index] = Some(
+      self.lower_user_function_call_argument_at(
+        arguments[run_index],
+        callee_function,
+        run_index,
+        function,
+        scope,
+      ),
+    )
+  }
+  index
+}
+
+///|
+fn WgslIrLowerer::call_argument_is_naga_reference_access_chain(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.call_argument_is_naga_reference_access_chain(inner, scope)
+    Member(base, _) | Index(base, _) =>
+      self.call_argument_access_root_is_naga_reference(base, scope)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::call_argument_access_root_is_naga_reference(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.call_argument_access_root_is_naga_reference(inner, scope)
+    Member(base, _) | Index(base, _) =>
+      self.call_argument_access_root_is_naga_reference(base, scope)
+    Identifier(name) =>
+      scope.arguments.contains(name.name()) ||
+      self.global_names.contains(name.name())
+    _ => false
+  }
 }
 
 ///|

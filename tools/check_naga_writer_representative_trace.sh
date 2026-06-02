@@ -157,13 +157,17 @@ normalize_oracle_bindings() {
       if (line ~ ("^fn " function_prefix) || line ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(")) {
         signature = line
         sub(/^fn [^(]*\(/, "", signature)
-        sub(/\).*/, "", signature)
+        sub(/ *\{.*$/, "", signature)
+        sub(/\) *$/, "", signature)
         count = split(signature, params, ",")
         for (i = 1; i <= count; i = i + 1) {
           param = params[i]
           gsub(/^ +| +$/, "", param)
+          gsub(/@[A-Za-z_][A-Za-z0-9_]*\([^)]*\) */, "", param)
           sub(/:.*/, "", param)
-          final_arg[i - 1] = param
+          gsub(/^ +| +$/, "", param)
+          split(param, parts, " ")
+          final_arg[i - 1] = parts[length(parts)]
         }
         break
       }
@@ -171,12 +175,15 @@ normalize_oracle_bindings() {
     close(wgsl)
   }
   $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  active && $1 == "named-expression" { final_name[$3] = $4 }
   active && $1 == "expression" && $4 ~ /^FunctionArgument/ {
     arg_index = $4
     sub(/^FunctionArgument\(/, "", arg_index)
     sub(/\).*$/, "", arg_index)
     if (arg_index in final_arg) {
       print "binding\t" $3 "\t" final_arg[arg_index]
+    } else if ($3 in final_name) {
+      print "binding\t" $3 "\t" final_name[$3]
     }
   }
 ' "$inventory" > "$output"

@@ -656,34 +656,24 @@ fn WgslIrLowerer::lower_function_right_operand_before_left(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> (Handle, Handle) raise WgslIrLowerError {
-  match wgsl_ir_grouped_binary_operator(right) {
-    Some(right_op) if !wgsl_ir_expr_node_contains_call(right) &&
-      right_op.binary_precedence() == parent_op.binary_precedence() => {
-      let (right_op, right_left, right_right) = self.lower_binary_expression_children(
-        right, function, scope,
-      )
-      let right_binary_op = wgsl_ir_binary_operator(right_op)
-      let (right_left, right_right) = self.normalize_function_binary_operands(
-        function, right_binary_op, right_left, right_right,
-      )
-      let left_handle = self.lower_function_expression_node(
-        left, function, scope,
-      )
-      let right_handle = function.expressions.append(
-        Expression::Binary(right_binary_op, right_left, right_right),
-      )
-      (left_handle, right_handle)
-    }
-    _ => {
-      let right_handle = self.lower_function_expression_node(
-        right, function, scope,
-      )
-      let left_handle = self.lower_function_expression_node(
-        left, function, scope,
-      )
-      (left_handle, right_handle)
-    }
+  if wgsl_ir_binary_right_root_is_delayed_after_parent_left(parent_op, right) &&
+    !wgsl_ir_expr_node_contains_call(right) {
+    let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+      right, function, scope,
+    )
+    let right_binary_op = wgsl_ir_binary_operator(right_op)
+    let (right_left, right_right) = self.normalize_function_binary_operands(
+      function, right_binary_op, right_left, right_right,
+    )
+    let left_handle = self.lower_function_expression_node(left, function, scope)
+    let right_handle = function.expressions.append(
+      Expression::Binary(right_binary_op, right_left, right_right),
+    )
+    return (left_handle, right_handle)
   }
+  let right_handle = self.lower_function_expression_node(right, function, scope)
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  (left_handle, right_handle)
 }
 
 ///|
@@ -752,13 +742,17 @@ fn WgslIrLowerer::lower_binary_expression_children(
 }
 
 ///|
-fn wgsl_ir_grouped_binary_operator(
+fn wgsl_ir_binary_right_root_is_delayed_after_parent_left(
+  parent_op : @ast.WgslExprOperator,
   node : @ast.WgslExprNode,
-) -> @ast.WgslExprOperator? {
+) -> Bool {
   match node.kind() {
-    Binary(op, _, _) => Some(op)
-    Group(inner) => wgsl_ir_grouped_binary_operator(inner)
-    _ => None
+    Binary(op, left, _) =>
+      op.binary_precedence() == parent_op.binary_precedence() ||
+      !wgsl_ir_expr_node_is_literal_like(left)
+    Group(inner) =>
+      wgsl_ir_binary_right_root_is_delayed_after_parent_left(parent_op, inner)
+    _ => false
   }
 }
 
