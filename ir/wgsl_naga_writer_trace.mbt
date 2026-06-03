@@ -375,11 +375,16 @@ fn wgsl_ir_naga_writer_body_plan_trace(
       "binding\t\{label}\tnamed\t\{named.handle.index()}\t\{final_name}\n",
     )
   }
+  let mut raw_statement_index = 0
   for index in 0..<function.body.statements.length() {
     let statement = function.body.statements[index]
+    if wgsl_ir_trace_statement_is_naga_local_declaration(statement) {
+      continue
+    }
     out.write_string(
-      "raw-statement\t\{label}\t\{index}\t\{wgsl_ir_trace_statement_kind(statement)}\n",
+      "raw-statement\t\{label}\t\{raw_statement_index}\t\{wgsl_ir_trace_statement_kind(statement)}\n",
     )
+    raw_statement_index = raw_statement_index + 1
   }
   for order_index in 0..<body_plan.local_declaration_order().length() {
     let local_index = body_plan.local_declaration_order()[order_index]
@@ -514,7 +519,7 @@ fn wgsl_ir_trace_statement_kind(statement : Statement) -> String {
     Break => "Break"
     Continue => "Continue"
     Return(_) => "Return"
-    ImplicitReturn => "ImplicitReturn"
+    ImplicitReturn => "Return"
     Kill => "Kill"
     ConstAssert(_) => "ConstAssert"
     ControlBarrier(_) => "ControlBarrier"
@@ -539,5 +544,15 @@ fn wgsl_ir_trace_statement_kind(statement : Statement) -> String {
     SubgroupGather(_, _, _) => "SubgroupGather"
     SubgroupCollectiveOperation(_, _, _, _) => "SubgroupCollectiveOperation"
     CooperativeStore(_, _) => "CooperativeStore"
+  }
+}
+
+///|
+fn wgsl_ir_trace_statement_is_naga_local_declaration(
+  statement : Statement,
+) -> Bool {
+  match statement {
+    Declare(_) => true
+    _ => false
   }
 }
