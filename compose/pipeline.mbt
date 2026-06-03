@@ -632,6 +632,32 @@ pub fn Composer::trace_naga_oil_writer_function_plan(
 }
 
 ///|
+pub fn Composer::trace_naga_oil_writer_module_plan(
+  self : Composer,
+  rel : String,
+  options : WgslComposeOptions,
+) -> String raise ComposerError {
+  let resolved = self.resolve_wgsl_compose_source(rel, options)
+  @ir.trace_naga_oil_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(
+    resolved.source,
+    resolved.symbols.generated_import_provenance(normalize_shader_rel_path(rel)),
+    resolved.symbols.import_arena_events,
+    root_visible_rel_path=normalize_shader_rel_path(rel),
+  ) catch {
+    error =>
+      match error {
+        @ir.WgslIrPipelineError::UnknownIdentifier(name) =>
+          if name.contains("::") {
+            raise ComposerError::FailedToResolveImport(name)
+          } else {
+            raise ComposerError::InvalidIr(error.message())
+          }
+        _ => raise ComposerError::InvalidIr(error.message())
+      }
+  }
+}
+
+///|
 pub fn Composer::compose_wgsl_source(
   self : Composer,
   source : String,

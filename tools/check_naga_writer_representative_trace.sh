@@ -55,8 +55,25 @@ push_moon_arg() {
   moon_args+=("$1" "$2")
 }
 
+push_moon_module_arg() {
+  moon_module_args+=("$1" "$2")
+}
+
 push_oracle_arg() {
   oracle_args+=("$1" "$2")
+}
+
+append_moon_value_defs() {
+  local csv="$1"
+  local moon_push="$2"
+  [[ "$csv" == "-" || "$csv" == "" ]] && return 0
+  local item
+  IFS=',' read -r -a items <<< "$csv"
+  for item in "${items[@]}"; do
+    [[ -n "$item" ]] || continue
+    [[ "$item" != *=raw:* ]] || continue
+    "$moon_push" --value-def "$item"
+  done
 }
 
 append_value_defs() {
@@ -228,6 +245,25 @@ normalize_moon_materialized() {
 ' "$trace" > "$output"
 }
 
+normalize_module_declaration_slots() {
+  local trace="$1"
+  local output="$2"
+  awk -F '\t' '
+  $1 == "slot" && ($2 == "constant" || $2 == "override" || $2 == "global" || $2 == "function" || $2 == "entry_point") {
+    root = $0
+    sub(/^.*\troot=/, "", root)
+    sub(/\t.*$/, "", root)
+    if (root != "emit") {
+      next
+    }
+    name = $0
+    sub(/^.*\tfinal=/, "", name)
+    sub(/\t.*$/, "", name)
+    print "slot\t" $2 "\t" name
+  }
+' "$trace" > "$output"
+}
+
 run_case() {
   local id="$1"
   local fixture_root="$2"
@@ -241,6 +277,7 @@ run_case() {
   local expression_drift=0
   local binding_drift=0
   local materialized_drift=0
+  local module_drift=0
 
   mkdir -p "$case_dir"
   local compose_root
@@ -251,17 +288,27 @@ run_case() {
     --naga-writer-trace-function "$function_prefix"
     --output "$case_dir/moon.trace"
   )
+  moon_module_args=(
+    --fixture-root "$compose_root"
+    --entry "$entry"
+    --naga-writer-trace-module
+    --output "$case_dir/moon.module"
+  )
   oracle_args=(
     --fixture-root "$compose_root"
     --entry "$entry"
     --output "$case_dir/oracle.wgsl"
     --expression-inventory "$case_dir/oracle.inventory"
+    --module-inventory "$case_dir/oracle.module"
   )
 
   append_csv_arg "$bool_defs" --def push_moon_arg
+  append_csv_arg "$bool_defs" --def push_moon_module_arg
   append_csv_arg "$bool_defs" --def push_oracle_arg
   append_value_defs "$value_defs" push_moon_arg push_oracle_arg
+  append_moon_value_defs "$value_defs" push_moon_module_arg
   append_csv_arg "$additional_imports" --additional-import push_moon_arg
+  append_csv_arg "$additional_imports" --additional-import push_moon_module_arg
   append_csv_arg "$additional_imports" --additional-import push_oracle_arg
   append_csv_arg "$capabilities" --capability push_oracle_arg
 
@@ -269,11 +316,15 @@ run_case() {
     echo "failed to collect moon writer trace: $id" >&2
     return 1
   fi
+  if ! moon run tools/compose_case -- "${moon_module_args[@]}"; then
+    echo "failed to collect moon module trace: $id" >&2
+    return 1
+  fi
   if ! cargo run --quiet --manifest-path tools/naga_oil_oracle/Cargo.toml --bin naga_oil_oracle -- "${oracle_args[@]}"; then
     echo "failed to collect oracle writer trace: $id" >&2
     return 1
   fi
-  for required in "$case_dir/moon.trace" "$case_dir/oracle.wgsl" "$case_dir/oracle.inventory"; do
+  for required in "$case_dir/moon.trace" "$case_dir/moon.module" "$case_dir/oracle.wgsl" "$case_dir/oracle.inventory" "$case_dir/oracle.module"; do
     if [[ ! -s "$required" ]]; then
       echo "missing or empty trace artifact for $id: $required" >&2
       return 1
@@ -286,12 +337,15 @@ run_case() {
   normalize_moon_bindings "$case_dir/moon.trace" "$case_dir/moon.bindings"
   normalize_oracle_materialized "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.materialized"
   normalize_moon_materialized "$case_dir/moon.trace" "$case_dir/moon.materialized"
+  normalize_module_declaration_slots "$case_dir/oracle.module" "$case_dir/oracle.module-slots"
+  normalize_module_declaration_slots "$case_dir/moon.module" "$case_dir/moon.module-slots"
 
   diff -u "$case_dir/oracle.expression-order" "$case_dir/moon.expression-order" > "$case_dir/expression-order.diff" || expression_drift=1
   diff -u "$case_dir/oracle.bindings" "$case_dir/moon.bindings" > "$case_dir/bindings.diff" || binding_drift=1
   diff -u "$case_dir/oracle.materialized" "$case_dir/moon.materialized" > "$case_dir/materialized.diff" || materialized_drift=1
+  diff -u "$case_dir/oracle.module-slots" "$case_dir/moon.module-slots" > "$case_dir/module-slots.diff" || module_drift=1
 
-  if [[ "$expression_drift" == 0 && "$binding_drift" == 0 && "$materialized_drift" == 0 ]]; then
+  if [[ "$expression_drift" == 0 && "$binding_drift" == 0 && "$materialized_drift" == 0 && "$module_drift" == 0 ]]; then
     echo "naga writer representative trace parity passed: $id: $entry :: $function_prefix"
     return 0
   fi
@@ -301,6 +355,7 @@ run_case() {
   [[ "$expression_drift" == 0 ]] || sed -n '1,120p' "$case_dir/expression-order.diff" >&2
   [[ "$binding_drift" == 0 ]] || sed -n '1,120p' "$case_dir/bindings.diff" >&2
   [[ "$materialized_drift" == 0 ]] || sed -n '1,120p' "$case_dir/materialized.diff" >&2
+  [[ "$module_drift" == 0 ]] || sed -n '1,120p' "$case_dir/module-slots.diff" >&2
   return 1
 }
 

@@ -7,7 +7,10 @@ use naga_oil::compose::{
     ComposableModuleDescriptor, Composer, ImportDefinition, NagaModuleDescriptor, ShaderDefValue,
     ShaderLanguage, ShaderType,
 };
-use naga_oil_oracle::{add_wgsl_capability, module_expression_inventory, WGSL_CAPABILITY_NAMES};
+use naga_oil_oracle::{
+    add_wgsl_capability, module_arena_inventory, module_expression_inventory,
+    WGSL_CAPABILITY_NAMES,
+};
 
 #[derive(Debug)]
 struct Options {
@@ -17,6 +20,7 @@ struct Options {
     file_path_prefix: String,
     output: Option<PathBuf>,
     expression_inventory: Option<PathBuf>,
+    module_inventory: Option<PathBuf>,
     error_output: Option<PathBuf>,
     defs: HashMap<String, ShaderDefValue>,
     modules: Vec<String>,
@@ -35,7 +39,7 @@ struct WgslFile {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability {WGSL_CAPABILITY_NAMES}] [--check-only] [--output <file>] [--expression-inventory <file>] [--error-output <file>]"
+        "usage: naga_oil_oracle --fixture-root <dir> --entry <rel.wgsl|rel.glsl> [--shader-type wgsl|glsl-vertex|glsl-fragment] [--file-path-prefix PREFIX] [--def NAME=true|false|INT] [--module REL] [--additional-import MODULE] [--entry-only] [--capability {WGSL_CAPABILITY_NAMES}] [--check-only] [--output <file>] [--expression-inventory <file>] [--module-inventory <file>] [--error-output <file>]"
     );
     std::process::exit(2);
 }
@@ -82,6 +86,7 @@ fn parse_options() -> Options {
     let mut file_path_prefix = String::new();
     let mut output = None;
     let mut expression_inventory = None;
+    let mut module_inventory = None;
     let mut error_output = None;
     let mut defs = HashMap::new();
     let mut modules = Vec::new();
@@ -104,6 +109,7 @@ fn parse_options() -> Options {
             }
             "--output" => output = args.next().map(PathBuf::from),
             "--expression-inventory" => expression_inventory = args.next().map(PathBuf::from),
+            "--module-inventory" => module_inventory = args.next().map(PathBuf::from),
             "--error-output" => error_output = args.next().map(PathBuf::from),
             "--def" => {
                 let Some(value) = args.next() else { usage() };
@@ -144,6 +150,7 @@ fn parse_options() -> Options {
         file_path_prefix,
         output,
         expression_inventory,
+        module_inventory,
         error_output,
         defs,
         modules,
@@ -382,6 +389,14 @@ fn main() {
         naga::back::wgsl::WriterFlags::EXPLICIT_TYPES,
     )
     .unwrap_or_else(|err| panic!("failed to write oracle WGSL: {err:?}"));
+    if let Some(output) = &options.module_inventory {
+        fs::write(output, module_arena_inventory(&module, &wgsl)).unwrap_or_else(|err| {
+            panic!(
+                "failed to write module inventory `{}`: {err}",
+                output.display()
+            );
+        });
+    }
     if let Some(output) = options.output {
         fs::write(&output, wgsl).unwrap_or_else(|err| {
             panic!("failed to write output `{}`: {err}", output.display());

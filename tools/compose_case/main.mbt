@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--shader-type wgsl|glsl-vertex|glsl-fragment] [--module FILE] [--entry-only] [--check-only] [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--runtime-valid] [--naga-oil-writer-parity] [--naga-writer-trace-function PREFIX] [--file-path-prefix PREFIX] [--expect-error --error-output FILE]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--shader-type wgsl|glsl-vertex|glsl-fragment] [--module FILE] [--entry-only] [--check-only] [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--runtime-valid] [--naga-oil-writer-parity] [--naga-writer-trace-function PREFIX] [--naga-writer-trace-module] [--file-path-prefix PREFIX] [--expect-error --error-output FILE]"
 }
 
 ///|
@@ -17,6 +17,7 @@ priv struct ComposeCaseArgs {
   mut runtime_valid : Bool
   mut naga_oil_writer_parity : Bool
   mut naga_writer_trace_function : String?
+  mut naga_writer_trace_module : Bool
   mut entry_only : Bool
   mut check_only : Bool
   mut file_path_prefix : String?
@@ -39,6 +40,7 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     runtime_valid: false,
     naga_oil_writer_parity: false,
     naga_writer_trace_function: None,
+    naga_writer_trace_module: false,
     entry_only: false,
     check_only: false,
     file_path_prefix: None,
@@ -110,6 +112,10 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
         guard index + 1 < args.length() else { abort(compose_case_usage()) }
         parsed.naga_writer_trace_function = Some(args[index + 1])
         index = index + 2
+      }
+      "--naga-writer-trace-module" => {
+        parsed.naga_writer_trace_module = true
+        index = index + 1
       }
       "--entry-only" => {
         parsed.entry_only = true
@@ -1050,7 +1056,9 @@ fn main {
       Some(prefix) =>
         composer.trace_naga_oil_writer_function_plan(entry, options, prefix)
       None =>
-        if args.pre_ir {
+        if args.naga_writer_trace_module {
+          composer.trace_naga_oil_writer_module_plan(entry, options)
+        } else if args.pre_ir {
           composer.compose_wgsl_before_ir(entry, options)
         } else if args.runtime_valid {
           composer.compose_wgsl_runtime_valid(entry, options)

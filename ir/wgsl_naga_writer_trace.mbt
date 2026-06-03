@@ -62,11 +62,188 @@ pub fn trace_naga_oil_writer_function_plan_for_source_with_generated_imports_and
 }
 
 ///|
+pub fn trace_naga_oil_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(
+  source : String,
+  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[WgslIrImportArenaEvent],
+  root_visible_rel_path? : String = "",
+) -> String raise WgslIrPipelineError {
+  let module_ = lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    generated_import_provenance,
+    import_arena_events,
+    root_visible_rel_path~,
+  )
+  let view = build_wgsl_ir_naga_writer_module(module_, None)
+  wgsl_ir_naga_writer_module_plan_trace(view)
+}
+
+///|
 fn wgsl_ir_trace_name_matches(name : String?, prefix : String) -> Bool {
   match name {
     Some(value) => value.has_prefix(prefix)
     None => false
   }
+}
+
+///|
+fn wgsl_ir_trace_text(value : String?) -> String {
+  match value {
+    Some(text) =>
+      text
+      .replace(old="\t", new="\\t")
+      .replace(old="\n", new="\\n")
+      .replace(old="\r", new="\\r")
+    None => "-"
+  }
+}
+
+///|
+fn wgsl_ir_trace_final_name(
+  view : WgslIrNagaWriterModule,
+  key : String,
+) -> String {
+  wgsl_ir_trace_text(view.names.get(key))
+}
+
+///|
+fn wgsl_ir_naga_writer_module_plan_trace(
+  view : WgslIrNagaWriterModule,
+) -> String {
+  let out = StringBuilder::new()
+  out.write_string(
+    "module\tdirectives=\{view.source_directives().length()}\ttypes=\{view.type_slots().length()}\tconstants=\{view.constant_slots().length()}\toverrides=\{view.override_slots().length()}\tglobals=\{view.global_variable_slots().length()}\tfunctions=\{view.function_slots().length()}\tentry_points=\{view.entry_point_slots().length()}\tconst_asserts=\{view.const_assert_slots().length()}\n",
+  )
+  for index in 0..<view.source_directives().length() {
+    out.write_string(
+      "slot\tdirective\t\{index}\tsource=-\tname=\{wgsl_ir_trace_text(Some(view.source_directives()[index]))}\tfinal=-\troot=emit\n",
+    )
+  }
+  for slot_index in 0..<view.type_slots().length() {
+    let slot = view.type_slots()[slot_index]
+    out.write_string(
+      "slot\ttype\t\{slot_index}\tsource=\{slot.source_index}\tname=\{wgsl_ir_trace_text(slot.item.name)}\tfinal=\{wgsl_ir_trace_final_name(view, wgsl_ir_emit_name_key("type", slot.source_index))}\troot=emit\n",
+    )
+  }
+  for slot_index in 0..<view.constant_slots().length() {
+    let slot = view.constant_slots()[slot_index]
+    let root = if wgsl_ir_trace_constant_is_inline_only(view, slot.item) {
+      "inline"
+    } else {
+      "emit"
+    }
+    out.write_string(
+      "slot\tconstant\t\{slot_index}\tsource=\{slot.source_index}\tname=\{wgsl_ir_trace_text(slot.item.name)}\tfinal=\{wgsl_ir_trace_final_name(view, wgsl_ir_emit_name_key("const", slot.source_index))}\troot=\{root}\n",
+    )
+  }
+  for slot_index in 0..<view.override_slots().length() {
+    let slot = view.override_slots()[slot_index]
+    out.write_string(
+      "slot\toverride\t\{slot_index}\tsource=\{slot.source_index}\tname=\{wgsl_ir_trace_text(slot.item.name)}\tfinal=\{wgsl_ir_trace_final_name(view, wgsl_ir_emit_name_key("override", slot.source_index))}\troot=emit\n",
+    )
+  }
+  for slot_index in 0..<view.global_variable_slots().length() {
+    let slot = view.global_variable_slots()[slot_index]
+    out.write_string(
+      "slot\tglobal\t\{slot_index}\tsource=\{slot.source_index}\tname=\{wgsl_ir_trace_text(slot.item.name)}\tfinal=\{wgsl_ir_trace_final_name(view, wgsl_ir_emit_name_key("global", slot.source_index))}\troot=emit\n",
+    )
+  }
+  for slot_index in 0..<view.function_slots().length() {
+    let slot = view.function_slots()[slot_index]
+    out.write_string(
+      "slot\tfunction\t\{slot_index}\tsource=\{slot.source_index}\tname=\{wgsl_ir_trace_text(slot.item.name)}\tfinal=\{wgsl_ir_trace_final_name(view, wgsl_ir_emit_name_key("fn", slot.source_index))}\troot=emit\n",
+    )
+  }
+  for slot_index in 0..<view.entry_point_slots().length() {
+    let slot = view.entry_point_slots()[slot_index]
+    out.write_string(
+      "slot\tentry_point\t\{slot_index}\tsource=\{slot.source_index}\tname=\{wgsl_ir_trace_text(Some(slot.item.name))}\tfinal=\{wgsl_ir_trace_final_name(view, wgsl_ir_emit_name_key("ep", slot.source_index))}\troot=emit\n",
+    )
+  }
+  for slot_index in 0..<view.const_assert_slots().length() {
+    let slot = view.const_assert_slots()[slot_index]
+    out.write_string(
+      "slot\tconst_assert\t\{slot_index}\tsource=-\tname=-\tfinal=-\troot=emit\tcondition=\{slot.condition.index()}\n",
+    )
+  }
+  out.to_string()
+}
+
+///|
+fn wgsl_ir_trace_constant_is_inline_only(
+  view : WgslIrNagaWriterModule,
+  constant : Constant,
+) -> Bool {
+  if wgsl_ir_trace_type_contains_abstract_scalar(view, constant.ty) {
+    return true
+  }
+  constant.inline_value ||
+  (constant.generated_import && wgsl_ir_trace_constant_has_naga_inline_only_type(
+    view, constant,
+  ))
+}
+
+///|
+fn wgsl_ir_trace_constant_has_naga_inline_only_type(
+  view : WgslIrNagaWriterModule,
+  constant : Constant,
+) -> Bool {
+  match wgsl_ir_trace_type_inner(view, constant.ty) {
+    Some(Array(_, _, _)) => true
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_trace_type_contains_abstract_scalar(
+  view : WgslIrNagaWriterModule,
+  handle : Handle,
+) -> Bool {
+  match wgsl_ir_trace_type_inner(view, handle) {
+    Some(inner) => wgsl_ir_trace_type_inner_contains_abstract_scalar(view, inner)
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_trace_type_inner_contains_abstract_scalar(
+  view : WgslIrNagaWriterModule,
+  inner : TypeInner,
+) -> Bool {
+  match inner {
+    Scalar(scalar)
+    | Vector(_, scalar)
+    | Matrix(_, _, scalar)
+    | CooperativeMatrix(_, _, scalar, _)
+    | Atomic(scalar)
+    | ValuePointer(_, scalar, _) =>
+      scalar.kind == AbstractInt || scalar.kind == AbstractFloat
+    Pointer(base, _) | Array(base, _, _) | BindingArray(base, _) =>
+      wgsl_ir_trace_type_contains_abstract_scalar(view, base)
+    Struct(members, _) | PredeclaredStruct(members, _) => {
+      for field in members {
+        if wgsl_ir_trace_type_contains_abstract_scalar(view, field.ty) {
+          return true
+        }
+      }
+      false
+    }
+    Image(_, _, _) | Sampler(_) | AccelerationStructure(_) | RayQuery(_) =>
+      false
+  }
+}
+
+///|
+fn wgsl_ir_trace_type_inner(
+  view : WgslIrNagaWriterModule,
+  handle : Handle,
+) -> TypeInner? {
+  for slot in view.type_slots() {
+    if slot.source_index == handle.index() {
+      return Some(slot.item.inner)
+    }
+  }
+  None
 }
 
 ///|

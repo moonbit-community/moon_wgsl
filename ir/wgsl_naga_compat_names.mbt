@@ -23,11 +23,15 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
     view.allocate_type_name(table, namer, slot)
   }
   for slot in view.entry_point_slots() {
-    view.allocate_entry_point_signature_names(table, namer, slot)
+    view.allocate_entry_point_signature_names(
+      table, namer, namer, slot,
+    )
     view.reserve_entry_point_var_local_names(table, namer, slot)
   }
   for slot in view.function_slots() {
-    view.allocate_function_signature_names(table, namer, slot)
+    view.allocate_function_signature_names(
+      table, namer, namer, slot,
+    )
     view.reserve_function_var_local_names(table, namer, slot)
   }
   for slot in view.global_variable_slots() {
@@ -52,7 +56,9 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
     view.allocate_function_body_names(table, namer, slot, shader_module)
   }
   for slot in view.entry_point_slots() {
-    view.allocate_entry_point_body_names(table, namer, slot, shader_module)
+    view.allocate_entry_point_body_names(
+      table, namer, slot, shader_module,
+    )
   }
   table
 }
@@ -145,19 +151,20 @@ fn WgslIrNagaWriterModule::root_struct_member_import_spelling_name(
 fn WgslIrNagaWriterModule::allocate_entry_point_signature_names(
   self : WgslIrNagaWriterModule,
   table : WgslIrFinalNamePlan,
-  namer : WgslIrNagaNamer,
+  module_namer : WgslIrNagaNamer,
+  local_namer : WgslIrNagaNamer,
   slot : WgslIrNagaWriterEntryPointSlot,
 ) -> Unit {
   ignore(self)
   let ep = slot.item
   table.names.set(
     wgsl_ir_emit_name_key("ep", slot.source_index),
-    namer.call(ep.name),
+    module_namer.call(ep.name),
   )
   for arg_index in 0..<ep.function.arguments.length() {
     table.names.set(
       wgsl_ir_emit_name_key2("ep_arg", slot.source_index, arg_index),
-      namer.call_or(ep.function.arguments[arg_index].name, "param"),
+      local_namer.call_or(ep.function.arguments[arg_index].name, "param"),
     )
   }
 }
@@ -166,19 +173,20 @@ fn WgslIrNagaWriterModule::allocate_entry_point_signature_names(
 fn WgslIrNagaWriterModule::allocate_function_signature_names(
   self : WgslIrNagaWriterModule,
   table : WgslIrFinalNamePlan,
-  namer : WgslIrNagaNamer,
+  module_namer : WgslIrNagaNamer,
+  local_namer : WgslIrNagaNamer,
   slot : WgslIrNagaWriterFunctionSlot,
 ) -> Unit {
   ignore(self)
   let function = slot.item
   table.names.set(
     wgsl_ir_emit_name_key("fn", slot.source_index),
-    namer.call_or(function.name, "function"),
+    module_namer.call_or(function.name, "function"),
   )
   for arg_index in 0..<function.arguments.length() {
     table.names.set(
       wgsl_ir_emit_name_key2("fn_arg", slot.source_index, arg_index),
-      namer.call_or(function.arguments[arg_index].name, "param"),
+      local_namer.call_or(function.arguments[arg_index].name, "param"),
     )
   }
 }
