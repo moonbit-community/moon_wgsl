@@ -378,7 +378,7 @@ fn wgsl_ir_naga_writer_body_plan_trace(
   let mut raw_statement_index = 0
   for index in 0..<function.body.statements.length() {
     let statement = function.body.statements[index]
-    if wgsl_ir_trace_statement_is_naga_local_declaration(statement) {
+    if wgsl_ir_trace_statement_is_not_naga_raw_body_row(statement) {
       continue
     }
     out.write_string(
@@ -548,7 +548,7 @@ fn wgsl_ir_trace_statement_kind(statement : Statement) -> String {
 }
 
 ///|
-fn wgsl_ir_trace_statement_is_naga_local_declaration(
+fn wgsl_ir_trace_statement_is_not_naga_raw_body_row(
   statement : Statement,
 ) -> Bool {
   match statement {

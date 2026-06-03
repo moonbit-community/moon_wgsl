@@ -500,6 +500,9 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             wgsl_ir_push_naga_named_expression_emit_ranges(
               block, function, expression_mark, handle,
             )
+          } else if !wgsl_ir_block_contains_expression_emit(block, handle) &&
+            !wgsl_ir_function_expression_is_naga_emit_leaf(function, handle) {
+            block.push(Statement::Emit(HandleRange(handle, handle)))
           }
           Some(handle)
         }
@@ -1608,6 +1611,9 @@ fn WgslIrLowerer::lower_local_declaration(
           wgsl_ir_record_store_value_temporary_references(
             function, materialized,
           )
+          wgsl_ir_push_naga_statement_emit_ranges(
+            block, function, expression_mark, materialized,
+          )
           block.push(
             Statement::Store(
               scope.local_pointer_expression(
@@ -1892,6 +1898,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     None
   }
   guard local_decl.initializer_ref() is Some(expr_ref) else { return }
+  let expression_mark = function.expressions.items.length()
   let init = match wgsl_ir_address_of_operand_ref(expr_ref) {
     Some(target_ref) => {
       let target = self.lower_function_lvalue_node(target_ref, function, scope)
@@ -1951,6 +1958,9 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     function, scope, block, init,
   )
   wgsl_ir_record_store_value_temporary_references(function, materialized)
+  wgsl_ir_push_naga_statement_emit_ranges(
+    block, function, expression_mark, materialized,
+  )
   block.push(Statement::Store(pointer, materialized))
 }
 
@@ -2102,6 +2112,35 @@ fn wgsl_ir_block_contains_emit_range(
 }
 
 ///|
+fn wgsl_ir_block_contains_expression_emit(
+  block : Block,
+  handle : Handle,
+) -> Bool {
+  for statement in block.statements {
+    match statement {
+      Statement::Emit(range) =>
+        if range.start.index() <= handle.index() &&
+          handle.index() <= range.end.index() {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_function_expression_is_naga_emit_leaf(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) => wgsl_ir_expression_is_naga_emit_leaf(expression)
+    None => false
+  }
+}
+
+///|
 fn wgsl_ir_return_expression_should_emit_before_return(
   function : Function,
   expression_mark : Int,
@@ -2136,6 +2175,7 @@ fn wgsl_ir_expression_is_naga_emit_leaf(expression : Expression) -> Bool {
     | Override(_)
     | FunctionArgument(_)
     | CallResult(_)
+    | AtomicResult(_, _)
     | GlobalVariable(_)
     | LocalVariable(_) => true
     _ => false

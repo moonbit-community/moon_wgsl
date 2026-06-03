@@ -251,7 +251,51 @@ normalize_oracle_statements() {
   local output="$3"
   awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
   $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
-  active && $1 == "raw-statement" { print "statement\t" $3 "\t" $4 }
+  active && $1 == "raw-statement" && $4 != "Emit(empty)" {
+    emit_statement($4)
+  }
+  END { flush_statements() }
+  function statement_width(kind) {
+    if (kind ~ /^Emit\([0-9]+\.\.[0-9]+\)$/) {
+      return emit_end(kind) - emit_start(kind) + 1
+    }
+    return 1
+  }
+  function emit_statement(kind, start, end, i) {
+    if (kind ~ /^Emit\([0-9]+\.\.[0-9]+\)$/) {
+      start = emit_start(kind)
+      end = emit_end(kind)
+      for (i = start; i <= end; i = i + 1) {
+        append_statement("Emit(" i ")")
+      }
+      return
+    }
+    append_statement(kind)
+  }
+  function append_statement(kind) {
+    rows[count++] = kind
+  }
+  function flush_statements(upper, i) {
+    upper = count
+    if (upper > 0 && rows[upper - 1] == "Return") {
+      upper = upper - 1
+    }
+    for (i = 0; i < upper; i = i + 1) {
+      print "statement\t" i "\t" rows[i]
+    }
+  }
+  function emit_start(kind, text) {
+    text = kind
+    sub(/^Emit\(/, "", text)
+    sub(/\.\..*$/, "", text)
+    return text + 0
+  }
+  function emit_end(kind, text) {
+    text = kind
+    sub(/^Emit\([0-9]+\.\./, "", text)
+    sub(/\)$/, "", text)
+    return text + 0
+  }
 ' "$inventory" > "$output"
 }
 
@@ -259,7 +303,51 @@ normalize_moon_statements() {
   local trace="$1"
   local output="$2"
   awk -F '\t' '
-  $1 == "raw-statement" { print "statement\t" $3 "\t" $4 }
+  $1 == "raw-statement" {
+    emit_statement($4)
+  }
+  END { flush_statements() }
+  function statement_width(kind) {
+    if (kind ~ /^Emit\([0-9]+\.\.[0-9]+\)$/) {
+      return emit_end(kind) - emit_start(kind) + 1
+    }
+    return 1
+  }
+  function emit_statement(kind, start, end, i) {
+    if (kind ~ /^Emit\([0-9]+\.\.[0-9]+\)$/) {
+      start = emit_start(kind)
+      end = emit_end(kind)
+      for (i = start; i <= end; i = i + 1) {
+        append_statement("Emit(" i ")")
+      }
+      return
+    }
+    append_statement(kind)
+  }
+  function append_statement(kind) {
+    rows[count++] = kind
+  }
+  function flush_statements(upper, i) {
+    upper = count
+    if (upper > 0 && rows[upper - 1] == "Return") {
+      upper = upper - 1
+    }
+    for (i = 0; i < upper; i = i + 1) {
+      print "statement\t" i "\t" rows[i]
+    }
+  }
+  function emit_start(kind, text) {
+    text = kind
+    sub(/^Emit\(/, "", text)
+    sub(/\.\..*$/, "", text)
+    return text + 0
+  }
+  function emit_end(kind, text) {
+    text = kind
+    sub(/^Emit\([0-9]+\.\./, "", text)
+    sub(/\)$/, "", text)
+    return text + 0
+  }
 ' "$trace" > "$output"
 }
 
