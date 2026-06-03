@@ -2076,9 +2076,29 @@ fn wgsl_ir_flush_naga_named_expression_emit_range(
 ) -> Unit {
   match (range_start, range_end) {
     (Some(start), Some(end)) =>
-      block.push(Statement::Emit(HandleRange(start, end)))
+      if !wgsl_ir_block_contains_emit_range(block, start, end) {
+        block.push(Statement::Emit(HandleRange(start, end)))
+      }
     _ => ()
   }
+}
+
+///|
+fn wgsl_ir_block_contains_emit_range(
+  block : Block,
+  start : Handle,
+  end : Handle,
+) -> Bool {
+  for statement in block.statements {
+    match statement {
+      Statement::Emit(range) =>
+        if range.start == start && range.end == end {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
 }
 
 ///|

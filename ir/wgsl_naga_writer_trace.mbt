@@ -536,7 +536,7 @@ fn wgsl_ir_trace_statement_kind(statement : Statement) -> String {
     Call(_, _, result) =>
       match result {
         Some(handle) => "Call(result=\{handle.index()})"
-        None => "Call"
+        None => "Call(result=-)"
       }
     RayQuery(_, _) => "RayQuery"
     RayPipelineFunction(_) => "RayPipelineFunction"

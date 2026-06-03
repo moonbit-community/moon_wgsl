@@ -146,6 +146,12 @@ fn WgslIrLowerer::materialize_function_expression(
   match function.expressions.items.get(value.index()) {
     Some(FunctionCall(function_handle, arguments)) => {
       function.expressions.set(value, Expression::CallResult(function_handle))
+      wgsl_ir_push_naga_statement_emit_ranges(
+        block,
+        function,
+        wgsl_ir_next_naga_statement_emit_mark(block),
+        value,
+      )
       block.push(Statement::Call(function_handle, arguments, Some(value)))
       return value
     }
@@ -161,6 +167,12 @@ fn WgslIrLowerer::materialize_function_expression(
       function.expressions.set(
         value,
         Expression::AtomicResult(result_ty, comparison),
+      )
+      wgsl_ir_push_naga_statement_emit_ranges(
+        block,
+        function,
+        wgsl_ir_next_naga_statement_emit_mark(block),
+        value,
       )
       match arguments {
         [pointer, compare, atomic_value] if comparison =>
@@ -238,6 +250,115 @@ fn WgslIrLowerer::existing_materialized_function_expression(
     }
   }
   None
+}
+
+///|
+fn wgsl_ir_next_naga_statement_emit_mark(block : Block) -> Int {
+  let mut next = 0
+  for statement in block.statements {
+    match wgsl_ir_statement_max_expression_index(statement) {
+      Some(index) =>
+        if index + 1 > next {
+          next = index + 1
+        }
+      None => ()
+    }
+  }
+  next
+}
+
+///|
+fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
+  match statement {
+    Declare(handle) => Some(handle.index())
+    Emit(range) => Some(range.end.index())
+    Phony(handle) => Some(handle.index())
+    If(condition, _, _) => Some(condition.index())
+    Switch(selector, _) => Some(selector.index())
+    Loop(_, _, break_if) =>
+      match break_if {
+        Some(handle) => Some(handle.index())
+        None => None
+      }
+    Return(value) =>
+      match value {
+        Some(handle) => Some(handle.index())
+        None => None
+      }
+    ConstAssert(condition) => Some(condition.index())
+    Store(pointer, value) => Some(wgsl_ir_max_expression_index(pointer, value))
+    ImageStore(image, coordinate, array_index, value) => {
+      let mut index = wgsl_ir_max_expression_index(image, coordinate)
+      match array_index {
+        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        None => ()
+      }
+      Some(wgsl_ir_max_expression_index(Handle::Handle(index), value))
+    }
+    Atomic(pointer, _, value, compare, result) => {
+      let mut index = wgsl_ir_max_expression_index(pointer, value)
+      match compare {
+        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        None => ()
+      }
+      match result {
+        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        None => ()
+      }
+      Some(index)
+    }
+    ImageAtomic(image, coordinate, array_index, _, value) => {
+      let mut index = wgsl_ir_max_expression_index(image, coordinate)
+      match array_index {
+        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        None => ()
+      }
+      Some(wgsl_ir_max_expression_index(Handle::Handle(index), value))
+    }
+    WorkGroupUniformLoad(pointer, result) => {
+      Some(wgsl_ir_max_expression_index(pointer, result))
+    }
+    Call(_, arguments, result) => {
+      let mut index : Int? = None
+      for argument in arguments {
+        index = Some(match index {
+          Some(current) => wgsl_ir_max_expression_index(Handle::Handle(current), argument)
+          None => argument.index()
+        })
+      }
+      match result {
+        Some(handle) =>
+          Some(match index {
+            Some(current) => wgsl_ir_max_expression_index(Handle::Handle(current), handle)
+            None => handle.index()
+          })
+        None => index
+      }
+    }
+    RayQuery(query, _) => Some(query.index())
+    RayPipelineFunction(_) => None
+    SubgroupBallot(value, result) =>
+      match result {
+        Some(handle) => Some(wgsl_ir_max_expression_index(value, handle))
+        None => Some(value.index())
+      }
+    SubgroupGather(_, value, result) =>
+      Some(wgsl_ir_max_expression_index(value, result))
+    SubgroupCollectiveOperation(_, _, value, result) =>
+      Some(wgsl_ir_max_expression_index(value, result))
+    CooperativeStore(pointer, _) => Some(pointer.index())
+    Block(_) | Break | Continue | ImplicitReturn | Kill | ControlBarrier(_) | MemoryBarrier(_) =>
+      None
+  }
+}
+
+///|
+fn wgsl_ir_max_expression_index(left : Handle, right : Handle) -> Int {
+  if left.index() >= right.index() {
+    left.index()
+  } else {
+    right.index()
+  }
 }
 
 ///|
