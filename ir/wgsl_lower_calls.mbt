@@ -210,7 +210,7 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
   let mut index = 0
   while index < flattened.length() {
     if prelowered[index] == None &&
-      wgsl_ir_expr_node_is_literal_like(flattened[index]) {
+      self.call_argument_is_naga_deferred_const_like(flattened[index], scope) {
       ignore(
         self.lower_next_call_reference_argument_run(
           flattened,
@@ -244,6 +244,16 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
     index += 1
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::call_argument_is_naga_deferred_const_like(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  wgsl_ir_expr_node_is_literal_like(argument) ||
+  self.expression_node_is_inline_constant_reference(argument, scope)
 }
 
 ///|
@@ -284,14 +294,45 @@ fn WgslIrLowerer::lower_next_call_reference_argument_run(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Int raise WgslIrLowerError {
-  if start < arguments.length() &&
-    prelowered[start] == None &&
-    self.call_argument_is_naga_reference_access_chain(arguments[start], scope) {
+  let mut run_start = start
+  while run_start < arguments.length() &&
+        prelowered[run_start] == None &&
+        self.call_argument_is_existing_expression_alias(
+          arguments[run_start],
+          scope,
+        ) {
+    run_start += 1
+  }
+  if run_start < arguments.length() &&
+    prelowered[run_start] == None &&
+    self.call_argument_is_naga_reference_access_chain(
+      arguments[run_start],
+      scope,
+    ) {
     self.lower_call_reference_argument_run(
-      arguments, prelowered, start, callee_function, function, scope,
+      arguments, prelowered, run_start, callee_function, function, scope,
     )
   } else {
-    start
+    run_start
+  }
+}
+
+///|
+fn WgslIrLowerer::call_argument_is_existing_expression_alias(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  ignore(self)
+  match argument.kind() {
+    Group(inner) =>
+      self.call_argument_is_existing_expression_alias(inner, scope)
+    Identifier(name) =>
+      match scope.local_constants.get(name.name()) {
+        Some({ value: ExpressionAlias(_) }) => true
+        _ => false
+      }
+    _ => false
   }
 }
 
@@ -419,10 +460,14 @@ fn WgslIrLowerer::call_argument_access_root_is_naga_reference(
   match node.kind() {
     Group(inner) =>
       self.call_argument_access_root_is_naga_reference(inner, scope)
+    Unary(op, inner) =>
+      op == @ast.WgslExprOperator::Multiply &&
+      self.call_argument_access_root_is_naga_reference(inner, scope)
     Member(base, _) | Index(base, _) =>
       self.call_argument_access_root_is_naga_reference(base, scope)
     Identifier(name) =>
       scope.arguments.contains(name.name()) ||
+      self.call_argument_is_existing_expression_alias(node, scope) ||
       self.global_names.contains(name.name())
     _ => false
   }

@@ -923,8 +923,23 @@ fn WgslIrLowerer::expression_node_is_inline_constant_reference(
       self.expression_node_is_inline_constant_reference(inner, scope)
     Identifier(name) =>
       scope.local_constants.contains(name.name()) ||
-      self.constant_names.contains(name.name())
+      self.constant_declarations.contains(name.name()) ||
+      self.constant_names.contains(name.name()) ||
+      self.generated_import_symbol_is_constant_reference(name.name())
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::generated_import_symbol_is_constant_reference(
+  self : WgslIrLowerer,
+  name : String,
+) -> Bool {
+  match self.generated_import_provenance.get(name) {
+    Some(provenance) =>
+      self.constant_declarations.contains(provenance.source_symbol_name) ||
+      self.constant_names.contains(provenance.source_symbol_name)
+    None => false
   }
 }
 
