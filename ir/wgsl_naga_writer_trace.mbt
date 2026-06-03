@@ -178,9 +178,10 @@ fn wgsl_ir_trace_constant_is_inline_only(
     return true
   }
   constant.inline_value ||
-  (constant.generated_import && wgsl_ir_trace_constant_has_naga_inline_only_type(
-    view, constant,
-  ))
+  (
+    constant.generated_import &&
+    wgsl_ir_trace_constant_has_naga_inline_only_type(view, constant)
+  )
 }
 
 ///|
@@ -200,7 +201,8 @@ fn wgsl_ir_trace_type_contains_abstract_scalar(
   handle : Handle,
 ) -> Bool {
   match wgsl_ir_trace_type_inner(view, handle) {
-    Some(inner) => wgsl_ir_trace_type_inner_contains_abstract_scalar(view, inner)
+    Some(inner) =>
+      wgsl_ir_trace_type_inner_contains_abstract_scalar(view, inner)
     None => false
   }
 }

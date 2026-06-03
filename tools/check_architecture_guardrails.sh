@@ -979,12 +979,20 @@ if [[ ! -f testdata/external_naga_oil_compose_drift_taxonomy.tsv ]]; then
   fail "external naga-oil compose drift must be classified into architecture burn-down categories"
 fi
 
+if [[ ! -f testdata/external_naga_oil_compose_byte_trace_roots.tsv ]]; then
+  fail "external naga-oil compose byte drift must include trace-derived root classifications"
+fi
+
 if [[ ! -x tools/check_external_naga_oil_drift_taxonomy.sh ]]; then
   fail "external naga-oil compose drift taxonomy gate must be executable"
 fi
 
 if ! rg -n 'drift taxonomy row has.*expected 6|drift taxonomy rows must exactly match writer and byte drift manifest cases' tools/check_external_naga_oil_drift_taxonomy.sh >/dev/null; then
   fail "external naga-oil compose drift taxonomy must be case-level and exact-key gated"
+fi
+
+if ! rg -n 'byte trace root row has.*expected 9|at least 5 current byte drift rows' tools/check_external_naga_oil_drift_taxonomy.sh >/dev/null; then
+  fail "external naga-oil compose byte trace root classifications must be schema-gated"
 fi
 
 external_compose_case_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_parity.tsv)"

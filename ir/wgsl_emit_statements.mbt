@@ -88,6 +88,10 @@ fn WgslIrEmitter::emit_statement(
         let handle = Handle::Handle(index)
         match self.function_named_expression_name(function, handle) {
           Some(name) => {
+            if self.emitted_function_named_expressions.contains(handle.index()) {
+              continue
+            }
+            self.emitted_function_named_expressions.add(handle.index())
             let ty = match self.expression_type(Some(function), handle) {
               Some(value) => value
               None =>

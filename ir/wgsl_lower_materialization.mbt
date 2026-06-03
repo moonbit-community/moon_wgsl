@@ -257,10 +257,7 @@ fn wgsl_ir_next_naga_statement_emit_mark(block : Block) -> Int {
   let mut next = 0
   for statement in block.statements {
     match wgsl_ir_statement_max_expression_index(statement) {
-      Some(index) =>
-        if index + 1 > next {
-          next = index + 1
-        }
+      Some(index) => if index + 1 > next { next = index + 1 }
       None => ()
     }
   }
@@ -290,7 +287,8 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
     ImageStore(image, coordinate, array_index, value) => {
       let mut index = wgsl_ir_max_expression_index(image, coordinate)
       match array_index {
-        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        Some(handle) =>
+          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
         None => ()
       }
       Some(wgsl_ir_max_expression_index(Handle::Handle(index), value))
@@ -298,11 +296,13 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
     Atomic(pointer, _, value, compare, result) => {
       let mut index = wgsl_ir_max_expression_index(pointer, value)
       match compare {
-        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        Some(handle) =>
+          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
         None => ()
       }
       match result {
-        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        Some(handle) =>
+          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
         None => ()
       }
       Some(index)
@@ -310,28 +310,34 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
     ImageAtomic(image, coordinate, array_index, _, value) => {
       let mut index = wgsl_ir_max_expression_index(image, coordinate)
       match array_index {
-        Some(handle) => index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+        Some(handle) =>
+          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
         None => ()
       }
       Some(wgsl_ir_max_expression_index(Handle::Handle(index), value))
     }
-    WorkGroupUniformLoad(pointer, result) => {
+    WorkGroupUniformLoad(pointer, result) =>
       Some(wgsl_ir_max_expression_index(pointer, result))
-    }
     Call(_, arguments, result) => {
       let mut index : Int? = None
       for argument in arguments {
-        index = Some(match index {
-          Some(current) => wgsl_ir_max_expression_index(Handle::Handle(current), argument)
-          None => argument.index()
-        })
+        index = Some(
+          match index {
+            Some(current) =>
+              wgsl_ir_max_expression_index(Handle::Handle(current), argument)
+            None => argument.index()
+          },
+        )
       }
       match result {
         Some(handle) =>
-          Some(match index {
-            Some(current) => wgsl_ir_max_expression_index(Handle::Handle(current), handle)
-            None => handle.index()
-          })
+          Some(
+            match index {
+              Some(current) =>
+                wgsl_ir_max_expression_index(Handle::Handle(current), handle)
+              None => handle.index()
+            },
+          )
         None => index
       }
     }
@@ -347,8 +353,13 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
     SubgroupCollectiveOperation(_, _, value, result) =>
       Some(wgsl_ir_max_expression_index(value, result))
     CooperativeStore(pointer, _) => Some(pointer.index())
-    Block(_) | Break | Continue | ImplicitReturn | Kill | ControlBarrier(_) | MemoryBarrier(_) =>
-      None
+    Block(_)
+    | Break
+    | Continue
+    | ImplicitReturn
+    | Kill
+    | ControlBarrier(_)
+    | MemoryBarrier(_) => None
   }
 }
 

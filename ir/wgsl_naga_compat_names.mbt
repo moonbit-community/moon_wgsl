@@ -23,15 +23,11 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
     view.allocate_type_name(table, namer, slot)
   }
   for slot in view.entry_point_slots() {
-    view.allocate_entry_point_signature_names(
-      table, namer, namer, slot,
-    )
+    view.allocate_entry_point_signature_names(table, namer, namer, slot)
     view.reserve_entry_point_var_local_names(table, namer, slot)
   }
   for slot in view.function_slots() {
-    view.allocate_function_signature_names(
-      table, namer, namer, slot,
-    )
+    view.allocate_function_signature_names(table, namer, namer, slot)
     view.reserve_function_var_local_names(table, namer, slot)
   }
   for slot in view.global_variable_slots() {
@@ -56,9 +52,7 @@ fn build_wgsl_ir_naga_writer_final_name_plan(
     view.allocate_function_body_names(table, namer, slot, shader_module)
   }
   for slot in view.entry_point_slots() {
-    view.allocate_entry_point_body_names(
-      table, namer, slot, shader_module,
-    )
+    view.allocate_entry_point_body_names(table, namer, slot, shader_module)
   }
   table
 }

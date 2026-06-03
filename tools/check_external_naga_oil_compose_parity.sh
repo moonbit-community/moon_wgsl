@@ -468,6 +468,8 @@ byte_drift_expected="$tmpdir/byte-drift.expected"
 : > "$byte_drift_actual"
 rm -rf "$failure_dir"
 mkdir -p "$failure_dir/diffs"
+byte_trace_dir="$failure_dir/byte_traces"
+mkdir -p "$byte_trace_dir"
 cached_repo_id=""
 cached_checkout=""
 cached_repo=""
@@ -558,6 +560,11 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   if byte_hash="$(diff_hash "$oracle_output" "$moon_output" "$byte_diff")"; then
     printf '%s\t%s\t%s\n' "$id" "$rel_path" "$byte_hash" >> "$byte_drift_actual"
     cp "$byte_diff" "$failure_dir/diffs/$label.byte.diff"
+    node tools/wgsl_byte_fragment_trace.mjs \
+      --expected "$oracle_output" \
+      --actual "$moon_output" \
+      --label "$label" \
+      --out-dir "$byte_trace_dir"
     byte_drift_count=$((byte_drift_count + 1))
   else
     byte_exact_count=$((byte_exact_count + 1))
