@@ -321,6 +321,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         Some(handle) => return handle
         None => ()
       }
+      match
+        self.lower_function_binary_chain_with_parent_argument_after_named_root(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
       let member_bases_lower_in_source_order = wgsl_ir_binary_predeclares_sibling_member_roots(
         left, right, scope,
       )
@@ -517,6 +524,63 @@ fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_member_
 }
 
 ///|
+fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_named_root(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard wgsl_ir_expr_node_is_function_argument_value(right, scope) else {
+    return None
+  }
+  let left = wgsl_ir_expr_node_without_groups(left)
+  guard left.kind() is Binary(left_op, left_left, left_right) else {
+    return None
+  }
+  guard self.expression_node_is_named_expression_alias(
+    left_left, function, scope,
+  ) else {
+    return None
+  }
+  let left_left_handle = self.lower_function_expression_node(
+    left_left, function, scope,
+  )
+  let left_right_handle = self.lower_function_expression_node(
+    left_right, function, scope,
+  )
+  self.predeclare_function_argument_value(right, function, scope)
+  let left_binary_op = wgsl_ir_binary_operator(left_op)
+  let (left_left_handle, left_right_handle) = self.normalize_function_binary_operands(
+    function, left_binary_op, left_left_handle, left_right_handle,
+  )
+  let left_handle = function.expressions.append(
+    Expression::Binary(left_binary_op, left_left_handle, left_right_handle),
+  )
+  let right_handle = self.lower_function_expression_node(right, function, scope)
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  Some(
+    function.expressions.append(
+      Expression::Binary(binary_op, left_handle, right_handle),
+    ),
+  )
+}
+
+///|
+fn wgsl_ir_expr_node_without_groups(
+  node : @ast.WgslExprNode,
+) -> @ast.WgslExprNode {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_without_groups(inner)
+    _ => node
+  }
+}
+
+///|
 fn WgslIrLowerer::predeclare_function_argument_value(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -534,6 +598,26 @@ fn WgslIrLowerer::predeclare_function_argument_value(
     Group(inner) =>
       self.predeclare_function_argument_value(inner, function, scope)
     _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_named_expression_alias(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expression_node_is_named_expression_alias(inner, function, scope)
+    Identifier(name) =>
+      match scope.local_constants.get(name.name()) {
+        Some({ value: ExpressionAlias(handle) }) =>
+          wgsl_ir_function_expression_has_arena_name(function, handle)
+        _ => false
+      }
+    _ => false
   }
 }
 

@@ -330,6 +330,9 @@ fn WgslIrLowerer::materialize_return_subexpressions(
   block : Block,
   value : Handle,
 ) -> Handle raise WgslIrLowerError {
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return value
+  }
   match function.expressions.items.get(value.index()) {
     Some(Compose(ty, components)) => {
       let lowered : Array[Handle] = []

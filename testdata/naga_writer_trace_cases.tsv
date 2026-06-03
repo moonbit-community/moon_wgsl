@@ -14,3 +14,4 @@ bevy-downsample-second-entry	testdata/bevy_wgsl	bevy_core_pipeline/src/mip_gener
 indexed-reference-call-args	testdata/naga_writer_trace	indexed_reference_call_args.wgsl	dynamic_indexed_reference_call	-	-	-	-
 call-member-after-argument-access	testdata/naga_writer_trace	call_member_after_argument_access.wgsl	call_member_after_argument_access	-	-	-	-
 repeated-const-var-initializers	testdata/naga_writer_trace	repeated_const_var_initializers.wgsl	repeated_const_var_initializers	-	-	-	-
+mix-hue-guard-named-expression	testdata/naga_writer_trace	mix_hue_guard_named_expression.wgsl	mix_hue_guard_named_expression	-	-	-	-

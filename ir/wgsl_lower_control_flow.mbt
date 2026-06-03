@@ -131,6 +131,9 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
   block : Block,
   value : Handle,
 ) -> Handle raise WgslIrLowerError {
+  if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return value
+  }
   match function.expressions.items.get(value.index()) {
     Some(Binary(op, left, right)) => {
       let lowered_left = self.materialize_nested_control_flow_condition_argument(
