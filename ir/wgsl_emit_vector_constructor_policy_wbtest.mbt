@@ -174,7 +174,7 @@ test "naga-oil writer policy folds identity vector constructors" {
 }
 
 ///|
-test "naga-oil writer policy preserves typed identity vector constructors" {
+test "naga-oil writer policy folds typed identity vector constructors" {
   let source =
     #|fn coords(global_id: vec3<u32>) -> vec2<u32> {
     #|  return vec2u(global_id.xy);
@@ -185,11 +185,11 @@ test "naga-oil writer policy preserves typed identity vector constructors" {
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
+  debug_inspect(naga_oil.contains("return global_id.xy;"), content="true")
   debug_inspect(
     naga_oil.contains("return vec2<u32>(global_id.xy);"),
-    content="true",
+    content="false",
   )
-  debug_inspect(naga_oil.contains("return global_id.xy;"), content="false")
 }
 
 ///|

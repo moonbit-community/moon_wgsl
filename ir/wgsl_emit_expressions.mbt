@@ -277,6 +277,7 @@ fn WgslIrEmitter::emit_expression(
       self.select_expression(function, condition, accept, reject)
     Bitcast(ty, expr) =>
       "bitcast<\{self.type_name(ty)}>(\{self.required_function_expression(function, expr)})"
+    As(expr, kind, width) => self.as_expression(function, expr, kind, width)
     Derivative(axis, control, expr) =>
       "\{wgsl_ir_derivative_function_name(axis, control)}(\{self.required_function_expression(function, expr)})"
     FunctionCall(handle, arguments) =>
@@ -288,6 +289,41 @@ fn WgslIrEmitter::emit_expression(
     CallResult(_) => raise WgslIrEmitError::Unsupported("raw call result")
     _ => raise WgslIrEmitError::Unsupported("expression kind")
   }
+}
+
+///|
+fn WgslIrEmitter::as_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  expr : Handle,
+  kind : ScalarKind,
+  width : Int?,
+) -> String raise WgslIrEmitError {
+  let scalar = Scalar::Scalar(kind, width.unwrap_or(4))
+  let result_ty = match
+    self.as_expression_result_type(
+      self.expression_type(function, expr),
+      kind,
+      width.unwrap_or(4),
+    ) {
+    Some(ty) => ty
+    None =>
+      raise WgslIrEmitError::Unsupported("invalid as expression result type")
+  }
+  let callee = match self.shader_module.types.get(result_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Vector(size, _) => "vec\{size.width()}<\{self.scalar_name(scalar)}>"
+        Scalar(_) => self.scalar_name(scalar)
+        _ =>
+          raise WgslIrEmitError::Unsupported(
+            "invalid as expression result type",
+          )
+      }
+    None =>
+      raise WgslIrEmitError::Unsupported("invalid as expression result type")
+  }
+  "\{callee}(\{self.required_function_expression(function, expr)})"
 }
 
 ///|

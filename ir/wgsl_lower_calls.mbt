@@ -292,17 +292,6 @@ fn WgslIrLowerer::lower_call_reference_argument_run(
     index += 1
   }
   for run_index in start..<index {
-    if !self.call_reference_argument_has_dynamic_indexed_root(
-        arguments[run_index],
-      ) {
-      self.predeclare_function_member_base_expressions(
-        arguments[run_index],
-        function,
-        scope,
-      )
-    }
-  }
-  for run_index in start..<index {
     if self.call_reference_argument_has_dynamic_indexed_root(
         arguments[run_index],
       ) {
@@ -311,6 +300,28 @@ fn WgslIrLowerer::lower_call_reference_argument_run(
         function,
         scope,
       )
+    } else {
+      self.predeclare_function_member_base_expressions(
+        arguments[run_index],
+        function,
+        scope,
+      )
+      let lookahead_start = run_index + 1
+      for lookahead in lookahead_start..<index {
+        if !self.call_reference_argument_has_dynamic_indexed_root(
+            arguments[lookahead],
+          ) &&
+          wgsl_ir_direct_access_chain_root_is_function_argument(
+            arguments[lookahead],
+            scope,
+          ) {
+          self.predeclare_function_member_base_expressions(
+            arguments[lookahead],
+            function,
+            scope,
+          )
+        }
+      }
     }
     prelowered[run_index] = Some(
       self.lower_user_function_call_argument_at(

@@ -117,6 +117,12 @@ fn WgslIrEmitter::function_expression_inner_type(
         relational_function,
         expr,
       )
+    As(expr, kind, width) =>
+      self.as_expression_result_type(
+        self.expression_type(Some(function), expr),
+        kind,
+        width.unwrap_or(4),
+      )
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(
         Some(function),
@@ -159,6 +165,26 @@ fn WgslIrEmitter::function_expression_inner_type(
       )
     Literal(literal) => self.literal_type(literal)
     _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::as_expression_result_type(
+  self : WgslIrEmitter,
+  input : Handle?,
+  kind : ScalarKind,
+  width : Int,
+) -> Handle? {
+  guard input is Some(input_ty) else { return None }
+  let scalar = Scalar::Scalar(kind, width)
+  match self.shader_module.types.get(input_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(_) => self.find_scalar_type(scalar)
+        Vector(size, _) => self.find_vector_type(size, scalar)
+        _ => None
+      }
+    None => None
   }
 }
 
@@ -258,6 +284,12 @@ fn WgslIrEmitter::global_expression_inner_type(
       self.math_expression_result_type(None, math_function, a, b, c, d)
     Relational(relational_function, expr) =>
       self.relational_expression_result_type(None, relational_function, expr)
+    As(expr, kind, width) =>
+      self.as_expression_result_type(
+        self.expression_type(None, expr),
+        kind,
+        width.unwrap_or(4),
+      )
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(None, atomic_function, arguments)
     AtomicResult(ty, _) => Some(ty)

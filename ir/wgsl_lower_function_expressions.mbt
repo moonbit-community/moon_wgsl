@@ -2234,18 +2234,61 @@ fn WgslIrLowerer::lower_function_constructor_expression_from_handles(
     Some(size) =>
       match lowered_arguments {
         [argument] =>
-          match self.function_expression_type(function, argument) {
-            Some(argument_ty) if self.type_is_scalar(argument_ty) =>
-              return function.expressions.append(
-                Expression::Splat(size, argument),
-              )
-            _ => ()
+          match
+            self.lower_function_single_vector_constructor_argument(
+              ty, size, argument, function,
+            ) {
+            Some(handle) => return handle
+            None => ()
           }
         _ => ()
       }
     None => ()
   }
   function.expressions.append(Expression::Compose(ty, lowered_arguments))
+}
+
+///|
+fn WgslIrLowerer::lower_function_single_vector_constructor_argument(
+  self : WgslIrLowerer,
+  ty : Handle,
+  size : VectorSize,
+  argument : Handle,
+  function : Function,
+) -> Handle? {
+  guard self.shader_module.types.get(ty) is Some(target_type) else {
+    return None
+  }
+  guard target_type.inner is Vector(_, target_scalar) else { return None }
+  guard self.function_expression_type(function, argument) is Some(argument_ty) else {
+    return None
+  }
+  if self.type_is_scalar(argument_ty) {
+    return Some(function.expressions.append(Expression::Splat(size, argument)))
+  }
+  match self.shader_module.types.get(argument_ty) {
+    Some(argument_type) =>
+      match argument_type.inner {
+        Vector(argument_size, argument_scalar) =>
+          if argument_size != size {
+            None
+          } else if argument_scalar == target_scalar {
+            Some(argument)
+          } else {
+            Some(
+              function.expressions.append(
+                Expression::As(
+                  argument,
+                  target_scalar.kind,
+                  Some(target_scalar.width),
+                ),
+              ),
+            )
+          }
+        _ => None
+      }
+    None => None
+  }
 }
 
 ///|

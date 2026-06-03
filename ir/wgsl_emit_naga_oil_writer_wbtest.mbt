@@ -46,12 +46,12 @@ test "IR emitter matches Naga temp slots around nested call arguments" {
     content="true",
   )
   debug_inspect(
-    emitted.contains("let _e38: VertexOutput = out;"),
+    emitted.contains("let _e37: VertexOutput = out;"),
     content="true",
   )
   debug_inspect(emitted.contains("let _e21: mat4x4<f32>"), content="false")
   debug_inspect(
-    emitted.contains("let _e39: VertexOutput = out;"),
+    emitted.contains("let _e38: VertexOutput = out;"),
     content="false",
   )
 }

@@ -142,6 +142,12 @@ fn WgslIrLowerer::global_expression_inner_type(
         relational_function,
         expr,
       )
+    As(expr, kind, width) =>
+      self.as_expression_result_type(
+        self.global_expression_type(expr),
+        kind,
+        width.unwrap_or(4),
+      )
     _ => None
   }
 }
@@ -488,6 +494,12 @@ fn WgslIrLowerer::function_expression_inner_type(
       self.relational_expression_result_type(
         function, relational_function, expr,
       )
+    As(expr, kind, width) =>
+      self.as_expression_result_type(
+        self.function_expression_type(function, expr),
+        kind,
+        width.unwrap_or(4),
+      )
     AtomicCall(atomic_function, arguments) =>
       self.atomic_expression_result_type(function, atomic_function, arguments)
     AtomicResult(ty, _) => Some(ty)
@@ -521,6 +533,26 @@ fn WgslIrLowerer::function_expression_inner_type(
       )
     Literal(literal) => self.literal_type(literal)
     _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::as_expression_result_type(
+  self : WgslIrLowerer,
+  input : Handle?,
+  kind : ScalarKind,
+  width : Int,
+) -> Handle? {
+  guard input is Some(input_ty) else { return None }
+  let scalar = Scalar::Scalar(kind, width)
+  match self.shader_module.types.get(input_ty) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(_) => Some(self.scalar_type_handle(scalar))
+        Vector(size, _) => Some(self.vector_type_handle(size, scalar))
+        _ => None
+      }
+    None => None
   }
 }
 
