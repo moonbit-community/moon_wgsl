@@ -220,14 +220,16 @@ normalize_oracle_materialized() {
   local output="$3"
   awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
   $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
-  active && $1 == "body" {
-    text = $0
-    while (match(text, /result: Some\(\[[0-9]+\]\)/)) {
-      item = substr(text, RSTART, RLENGTH)
-      gsub(/[^0-9]/, "", item)
-      print "materialized\t" item "\ttemp=_e" item
-      text = substr(text, RSTART + RLENGTH)
-    }
+  active && $1 == "helper-temp" {
+    expression = field_value($0, "expression")
+    temp = field_value($0, "temp")
+    print "materialized\t" expression "\ttemp=" temp
+  }
+  function field_value(row, key, text) {
+    text = row
+    sub("^.*\t" key "=", "", text)
+    sub(/\t.*$/, "", text)
+    return text
   }
 ' "$inventory" > "$output"
 }
@@ -241,6 +243,86 @@ normalize_moon_materialized() {
     sub(/^.*\ttemp=/, "", temp)
     sub(/\t.*$/, "", temp)
     print "materialized\t" $3 "\ttemp=" temp
+  }
+' "$trace" > "$output"
+}
+
+normalize_oracle_helper_temps() {
+  local inventory="$1"
+  local function_prefix="$2"
+  local output="$3"
+  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
+  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  active && $1 == "helper-temp" {
+    print "helper-temp\t" count++ "\texpression=" field_value($0, "expression") "\ttemp=" field_value($0, "temp")
+  }
+  function field_value(row, key, text) {
+    text = row
+    sub("^.*\t" key "=", "", text)
+    sub(/\t.*$/, "", text)
+    return text
+  }
+' "$inventory" > "$output"
+}
+
+normalize_moon_helper_temps() {
+  local trace="$1"
+  local output="$2"
+  awk -F '\t' '
+  $1 == "expression" && $0 ~ /materialized=true/ {
+    temp = field_value($0, "temp")
+    print "helper-temp\t" count++ "\texpression=" $3 "\ttemp=" temp
+  }
+  function field_value(row, key, text) {
+    text = row
+    sub("^.*\t" key "=", "", text)
+    sub(/\t.*$/, "", text)
+    return text
+  }
+' "$trace" > "$output"
+}
+
+normalize_oracle_local_declarations() {
+  local inventory="$1"
+  local function_prefix="$2"
+  local output="$3"
+  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
+  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  active && $1 == "local" {
+    print "local-declare\t" count++ "\tlocal=" $3 "\tinit=" local_init($0)
+  }
+  function local_init(row, init) {
+    init = row
+    sub(/^.*\tinit=/, "", init)
+    if (init == "None") {
+      return "-"
+    }
+    sub(/^Some\(\[/, "", init)
+    sub(/\]\).*$/, "", init)
+    return init
+  }
+' "$inventory" > "$output"
+}
+
+normalize_moon_local_declarations() {
+  local trace="$1"
+  local output="$2"
+  awk -F '\t' '
+  $1 == "local" {
+    init[$3] = field_value($0, "init")
+    generated[$3] = field_value($0, "generated")
+  }
+  $1 == "writer-local-declare" {
+    local = field_value($0, "local")
+    if (local in init) {
+      print "local-declare\t" count++ "\tlocal=" local "\tinit=" init[local]
+    }
+  }
+  function field_value(row, key, text) {
+    text = row
+    sub("^.*\t" key "=", "", text)
+    sub(/\t.*$/, "", text)
+    return text
   }
 ' "$trace" > "$output"
 }
@@ -385,6 +467,8 @@ run_case() {
   local materialized_drift=0
   local statement_drift=0
   local module_drift=0
+  local helper_temp_drift=0
+  local local_declaration_drift=0
 
   mkdir -p "$case_dir"
   local compose_root
@@ -444,6 +528,10 @@ run_case() {
   normalize_moon_bindings "$case_dir/moon.trace" "$case_dir/moon.bindings"
   normalize_oracle_materialized "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.materialized"
   normalize_moon_materialized "$case_dir/moon.trace" "$case_dir/moon.materialized"
+  normalize_oracle_helper_temps "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.helper-temps"
+  normalize_moon_helper_temps "$case_dir/moon.trace" "$case_dir/moon.helper-temps"
+  normalize_oracle_local_declarations "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.local-declarations"
+  normalize_moon_local_declarations "$case_dir/moon.trace" "$case_dir/moon.local-declarations"
   normalize_oracle_statements "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.statements"
   normalize_moon_statements "$case_dir/moon.trace" "$case_dir/moon.statements"
   normalize_module_declaration_slots "$case_dir/oracle.module" "$case_dir/oracle.module-slots"
@@ -452,10 +540,12 @@ run_case() {
   diff -u "$case_dir/oracle.expression-order" "$case_dir/moon.expression-order" > "$case_dir/expression-order.diff" || expression_drift=1
   diff -u "$case_dir/oracle.bindings" "$case_dir/moon.bindings" > "$case_dir/bindings.diff" || binding_drift=1
   diff -u "$case_dir/oracle.materialized" "$case_dir/moon.materialized" > "$case_dir/materialized.diff" || materialized_drift=1
+  diff -u "$case_dir/oracle.helper-temps" "$case_dir/moon.helper-temps" > "$case_dir/helper-temps.diff" || helper_temp_drift=1
+  diff -u "$case_dir/oracle.local-declarations" "$case_dir/moon.local-declarations" > "$case_dir/local-declarations.diff" || local_declaration_drift=1
   diff -u "$case_dir/oracle.statements" "$case_dir/moon.statements" > "$case_dir/statements.diff" || statement_drift=1
   diff -u "$case_dir/oracle.module-slots" "$case_dir/moon.module-slots" > "$case_dir/module-slots.diff" || module_drift=1
 
-  if [[ "$expression_drift" == 0 && "$binding_drift" == 0 && "$materialized_drift" == 0 && "$statement_drift" == 0 && "$module_drift" == 0 ]]; then
+  if [[ "$expression_drift" == 0 && "$binding_drift" == 0 && "$materialized_drift" == 0 && "$helper_temp_drift" == 0 && "$local_declaration_drift" == 0 && "$statement_drift" == 0 && "$module_drift" == 0 ]]; then
     echo "naga writer representative trace parity passed: $id: $entry :: $function_prefix"
     return 0
   fi
@@ -465,6 +555,8 @@ run_case() {
   [[ "$expression_drift" == 0 ]] || sed -n '1,120p' "$case_dir/expression-order.diff" >&2
   [[ "$binding_drift" == 0 ]] || sed -n '1,120p' "$case_dir/bindings.diff" >&2
   [[ "$materialized_drift" == 0 ]] || sed -n '1,120p' "$case_dir/materialized.diff" >&2
+  [[ "$helper_temp_drift" == 0 ]] || sed -n '1,120p' "$case_dir/helper-temps.diff" >&2
+  [[ "$local_declaration_drift" == 0 ]] || sed -n '1,120p' "$case_dir/local-declarations.diff" >&2
   [[ "$statement_drift" == 0 ]] || sed -n '1,120p' "$case_dir/statements.diff" >&2
   [[ "$module_drift" == 0 ]] || sed -n '1,120p' "$case_dir/module-slots.diff" >&2
   return 1

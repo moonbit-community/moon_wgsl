@@ -110,7 +110,72 @@ pub fn push_function_expression_inventory(
             statement_inventory_kind(statement)
         ));
     }
+    let mut helper_temp_order = 0usize;
+    push_block_helper_temp_inventory(lines, label, &function.body, &mut helper_temp_order);
     lines.push(format!("body\t{label}\t{:?}", function.body));
+}
+
+fn push_block_helper_temp_inventory(
+    lines: &mut Vec<String>,
+    label: &str,
+    block: &naga::Block,
+    order: &mut usize,
+) {
+    for statement in block.iter() {
+        push_statement_helper_temp_inventory(lines, label, statement, order);
+    }
+}
+
+fn push_statement_helper_temp_inventory(
+    lines: &mut Vec<String>,
+    label: &str,
+    statement: &naga::Statement,
+    order: &mut usize,
+) {
+    if let Some(result) = statement_inventory_result(statement) {
+        lines.push(format!(
+            "helper-temp\t{label}\t{}\texpression={}\ttemp=_e{}",
+            *order,
+            result.index(),
+            result.index()
+        ));
+        *order += 1;
+    }
+    match statement {
+        naga::Statement::Block(block) => {
+            push_block_helper_temp_inventory(lines, label, block, order)
+        }
+        naga::Statement::If { accept, reject, .. } => {
+            push_block_helper_temp_inventory(lines, label, accept, order);
+            push_block_helper_temp_inventory(lines, label, reject, order);
+        }
+        naga::Statement::Switch { cases, .. } => {
+            for case in cases {
+                push_block_helper_temp_inventory(lines, label, &case.body, order);
+            }
+        }
+        naga::Statement::Loop {
+            body, continuing, ..
+        } => {
+            push_block_helper_temp_inventory(lines, label, body, order);
+            push_block_helper_temp_inventory(lines, label, continuing, order);
+        }
+        _ => {}
+    }
+}
+
+fn statement_inventory_result(
+    statement: &naga::Statement,
+) -> Option<naga::Handle<naga::Expression>> {
+    match statement {
+        naga::Statement::Atomic { result, .. } => *result,
+        naga::Statement::WorkGroupUniformLoad { result, .. }
+        | naga::Statement::SubgroupBallot { result, .. }
+        | naga::Statement::SubgroupGather { result, .. }
+        | naga::Statement::SubgroupCollectiveOperation { result, .. } => Some(*result),
+        naga::Statement::Call { result, .. } => *result,
+        _ => None,
+    }
 }
 
 fn statement_inventory_kind(statement: &naga::Statement) -> String {
