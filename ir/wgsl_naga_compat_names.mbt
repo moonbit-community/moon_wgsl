@@ -213,6 +213,7 @@ fn WgslIrNagaWriterModule::reserve_entry_point_var_local_names(
   table.reserve_function_var_local_names_from_arena(
     EntryPointFunction(slot.source_index),
     slot.item.function,
+    slot.body_plan,
     namer,
   )
 }
@@ -247,6 +248,7 @@ fn WgslIrNagaWriterModule::reserve_function_var_local_names(
   table.reserve_function_var_local_names_from_arena(
     UserFunction(slot.source_index),
     slot.item,
+    slot.body_plan,
     namer,
   )
 }

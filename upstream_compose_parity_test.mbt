@@ -445,28 +445,34 @@ test "naga_oil upstream: atomic builtins survive module composition" {
   debug_inspect(source.contains("atomicCompareExchangeWeak"), content="true")
   debug_inspect(source.contains("atomicExchange"), content="true")
   debug_inspect(
-    source.contains("let _e28: u32 = y;\n    let _e29: u32 = atomicExchange"),
+    source.contains("let _e27: u32 = y;\n    let _e28: u32 = atomicExchange"),
     content="true",
   )
-  debug_inspect(source.contains("let _e37: u32 = y;"), content="true")
-  debug_inspect(source.contains("return f32(_e40);"), content="true")
+  debug_inspect(source.contains("let _e38: u32 = y;"), content="true")
+  debug_inspect(source.contains("return f32(_e38);"), content="true")
   debug_inspect(source.contains("test_module::entry_point"), content="false")
 }
 
 ///|
 test "naga_oil upstream: effective defs drive imported declaration values" {
+  let source = upstream_parity_compose_case(
+    "effective_defs",
+    "top.wgsl",
+    upstream_parity_bool_defines(["DEF_ONE", "DEF_THREE"]),
+  )
+  debug_inspect(source.contains("aX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains(": u32 = 1u;"), content="true")
+  debug_inspect(source.contains("bX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains(": u32 = 0u;"), content="true")
+  debug_inspect(source.contains("cX_naga_oil_mod_X"), content="true")
+  debug_inspect(source.contains(": u32 = 4u;"), content="true")
   let output = upstream_parity_export_case(
     "effective_defs",
     "top.wgsl",
     ["entry_point"],
     upstream_parity_bool_defines(["DEF_ONE", "DEF_THREE"]),
   )
-  debug_inspect(output.source.contains("aX_naga_oil_mod_X"), content="true")
-  debug_inspect(output.source.contains(": u32 = 1u;"), content="true")
-  debug_inspect(output.source.contains("bX_naga_oil_mod_X"), content="true")
-  debug_inspect(output.source.contains(": u32 = 0u;"), content="true")
-  debug_inspect(output.source.contains("cX_naga_oil_mod_X"), content="true")
-  debug_inspect(output.source.contains(": u32 = 4u;"), content="true")
+  debug_inspect(output.source.contains("return 5f;"), content="true")
 }
 
 ///|

@@ -100,7 +100,7 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
     ),
     elided_local_alias_targets,
     local_variable_declarations: wgsl_ir_naga_function_body_local_declarations(
-      function,
+      function, elided_local_alias_targets,
     ),
     has_body_after_hoisted_declarations: wgsl_ir_naga_function_body_has_non_hoisted_statement(
       function, elided_local_alias_targets,
@@ -224,13 +224,15 @@ fn WgslIrNagaFunctionBodyPlan::statement_is_elided_local_alias_declaration(
 ///|
 fn wgsl_ir_naga_function_body_local_declarations(
   function : Function,
+  elided_local_alias_targets : Map[Int, Handle],
 ) -> Array[Int] {
   let order : Array[Int] = []
   for index in 0..<function.local_variables.items.length() {
     match function.local_variables.items.get(index) {
       Some(local_var) =>
         if local_var.kind == LocalVariableKind::Var &&
-          !local_var.generated_temporary {
+          !local_var.generated_temporary &&
+          elided_local_alias_targets.get(index) == None {
           order.push(index)
         }
       None => ()
@@ -337,6 +339,10 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   }
   for local_index in 0..<function.local_variables.items.length() {
     let local_handle = Handle::Handle(local_index)
+    let local_key = wgsl_ir_emit_local_name_key(origin, local_handle)
+    if self.names.get(local_key) != None {
+      continue
+    }
     let local_var = function.local_variables.items[local_index]
     let local_name = match body_plan.elided_local_alias_target(local_handle) {
       Some(target) =>
@@ -357,14 +363,7 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
         }
     }
     match local_name {
-      Some(name) =>
-        if self.names.get(wgsl_ir_emit_local_name_key(origin, local_handle)) ==
-          None {
-          self.names.set(
-            wgsl_ir_emit_local_name_key(origin, local_handle),
-            name,
-          )
-        }
+      Some(name) => self.names.set(local_key, name)
       None => ()
     }
   }
@@ -473,10 +472,11 @@ fn WgslIrFinalNamePlan::reserve_function_var_local_names_from_arena(
   self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
+  body_plan : WgslIrNagaFunctionBodyPlan,
   namer : WgslIrNagaNamer,
 ) -> Unit {
   let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
-  for local_index in 0..<function.local_variables.items.length() {
+  for local_index in body_plan.local_declaration_order() {
     let local_handle = Handle::Handle(local_index)
     let local_var = function.local_variables.items[local_index]
     if local_var.kind == LocalVariableKind::Var &&

@@ -95,8 +95,24 @@ fn WgslIrEmitter::emit_statement(
                   "named expression type \{handle.index()}",
                 )
             }
+            let value = if self.type_is_pointer(ty) {
+              match function.expressions.items.get(handle.index()) {
+                Some(AddressOf(_, _)) =>
+                  self.function_expression_inline(function, handle)
+                Some(_) =>
+                  self.options.address_of_text(
+                    self.function_pointer_expression(function, handle),
+                  )
+                None =>
+                  raise WgslIrEmitError::MissingHandle(
+                    "named pointer expression \{handle.index()}",
+                  )
+              }
+            } else {
+              self.function_expression_inline(function, handle)
+            }
             out.write_string(
-              "\{pad}let \{name}: \{self.type_name(ty)} = \{self.function_expression_inline(function, handle)};\n",
+              "\{pad}let \{name}: \{self.type_name(ty)} = \{value};\n",
             )
             continue
           }

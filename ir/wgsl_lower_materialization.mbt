@@ -1734,6 +1734,18 @@ fn wgsl_ir_function_expression_has_arena_name(
 }
 
 ///|
+fn WgslIrLowerer::function_expression_is_non_pointer_arena_name(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match wgsl_ir_function_named_expression_type(function, value) {
+    Some(ty) => !self.lowerer_type_is_pointer(ty)
+    None => false
+  }
+}
+
+///|
 fn WgslIrLowerer::function_expression_is_var_pointer_load(
   self : WgslIrLowerer,
   function : Function,
@@ -1798,6 +1810,9 @@ fn WgslIrLowerer::function_expression_reads_global_binding(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if self.function_expression_is_non_pointer_arena_name(function, value) {
+    return false
+  }
   match function.expressions.items.get(value.index()) {
     Some(GlobalVariable(_)) => true
     Some(Load(inner)) =>
@@ -1819,6 +1834,9 @@ fn WgslIrLowerer::function_expression_reads_var_pointer_load(
   function : Function,
   value : Handle,
 ) -> Bool {
+  if self.function_expression_is_non_pointer_arena_name(function, value) {
+    return false
+  }
   match function.expressions.items.get(value.index()) {
     Some(LocalVariable(_)) | Some(FunctionArgument(_)) =>
       self.function_pointer_expression_is_var_pointer(function, value)

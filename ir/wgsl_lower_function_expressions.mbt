@@ -247,11 +247,18 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
 ) -> Handle raise WgslIrLowerError {
   match node.kind() {
     Literal(token) =>
-      function.expressions.append(
-        Expression::Literal(
-          self.literal_from_token_with_expected(token, expected_ty),
-        ),
-      )
+      match
+        scope.runtime_source_local_const_initializer_expressions.get(
+          wgsl_ir_source_local_const_literal_key(token, expected_ty),
+        ) {
+        Some(handle) => handle
+        None =>
+          function.expressions.append(
+            Expression::Literal(
+              self.literal_from_token_with_expected(token, expected_ty),
+            ),
+          )
+      }
     ShaderDefTemplate(text) =>
       raise WgslIrLowerError::UnsupportedExpression(
         "shader-def template expression requires preprocessing: \{text}",
@@ -352,7 +359,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
         wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) {
-        if wgsl_ir_expr_node_is_direct_access_chain(left) {
+        if wgsl_ir_expr_node_is_direct_access_chain(left) ||
+          self.expression_node_is_mutable_local_value(left, function, scope) {
           let left_handle = self.lower_function_expression_node(
             left, function, scope,
           )
@@ -801,6 +809,13 @@ fn WgslIrLowerer::lower_binary_expression_children(
 ) -> (@ast.WgslExprOperator, Handle, Handle) raise WgslIrLowerError {
   match node.kind() {
     Binary(op, left, right) => {
+      match
+        self.lower_binary_expression_children_with_parent_argument_after_child(
+          op, left, right, function, scope,
+        ) {
+        Some(result) => return result
+        None => ()
+      }
       let (left_handle, right_handle) = if self.binary_expression_lowers_right_before_left(
           left, right, function, scope,
         ) {
@@ -825,6 +840,40 @@ fn WgslIrLowerer::lower_binary_expression_children(
         "expected binary expression subtree",
       )
   }
+}
+
+///|
+fn WgslIrLowerer::lower_binary_expression_children_with_parent_argument_after_child(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> (@ast.WgslExprOperator, Handle, Handle)? raise WgslIrLowerError {
+  guard wgsl_ir_expr_node_is_function_argument_value(right, scope) else {
+    return None
+  }
+  let left = wgsl_ir_expr_node_without_groups(left)
+  guard left.kind() is Binary(left_op, left_left, left_right) else {
+    return None
+  }
+  let left_left_handle = self.lower_function_expression_node(
+    left_left, function, scope,
+  )
+  let left_right_handle = self.lower_function_expression_node(
+    left_right, function, scope,
+  )
+  self.predeclare_function_argument_value(right, function, scope)
+  let left_binary_op = wgsl_ir_binary_operator(left_op)
+  let (left_left_handle, left_right_handle) = self.normalize_function_binary_operands(
+    function, left_binary_op, left_left_handle, left_right_handle,
+  )
+  let left_handle = function.expressions.append(
+    Expression::Binary(left_binary_op, left_left_handle, left_right_handle),
+  )
+  let right_handle = self.lower_function_expression_node(right, function, scope)
+  Some((op, left_handle, right_handle))
 }
 
 ///|
@@ -855,9 +904,9 @@ fn WgslIrLowerer::binary_expression_lowers_right_before_left(
       right, function, scope,
     )
   }
-  if self.expression_node_is_inline_constant_reference(left, scope) &&
-    wgsl_ir_expr_node_contains_call(right) {
-    return true
+  if self.expression_node_is_inline_constant_reference(left, scope) {
+    return !self.expression_node_is_mutable_local_value(right, function, scope) &&
+      self.expression_node_contains_naga_reference_value(right, function, scope)
   }
   self.expression_node_is_mutable_local_value(left, function, scope) &&
   wgsl_ir_expr_node_is_function_argument_value(right, scope)

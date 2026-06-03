@@ -53,27 +53,43 @@ fn WgslIrLowerer::predeclare_function_source_local_prefix(
       }
     }
   }
-  self.predeclare_function_for_initializer_locals(block, function, scope)
+  self.predeclare_function_const_initializer_locals(block, function, scope)
 }
 
 ///|
-fn WgslIrLowerer::predeclare_function_for_initializer_locals(
+fn WgslIrLowerer::predeclare_function_const_initializer_locals(
   self : WgslIrLowerer,
   block : @ast.WgslBlock,
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
   for statement in block.statements() {
-    match statement.payload() {
-      For(_) =>
-        for local_decl in statement.local_bindings() {
-          self.predeclare_source_local(local_decl, function, scope)
-        }
-      _ => ()
+    for local_decl in statement.local_bindings() {
+      if self.source_var_has_const_initializer(local_decl) {
+        self.predeclare_source_local(local_decl, function, scope)
+      }
     }
     for child in statement.blocks() {
-      self.predeclare_function_for_initializer_locals(child, function, scope)
+      self.predeclare_function_const_initializer_locals(child, function, scope)
     }
+  }
+}
+
+///|
+fn WgslIrLowerer::source_var_has_const_initializer(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+) -> Bool raise WgslIrLowerError {
+  guard local_decl.kind() == @ast.WgslLocalDeclarationKind::Var else {
+    return false
+  }
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) => self.expression_node_is_const_initializer(root)
+        None => false
+      }
+    None => false
   }
 }
 
@@ -160,6 +176,51 @@ fn WgslIrLowerer::predeclare_source_local(
 }
 
 ///|
+fn WgslIrLowerer::predeclare_source_local_placeholder(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  guard local_decl.kind() == @ast.WgslLocalDeclarationKind::Var else { return }
+  let key = wgsl_ir_local_declaration_key(local_decl)
+  if scope.predeclared_source_locals.contains(key) {
+    return
+  }
+  let explicit_ty = match local_decl.ty_ref() {
+    Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
+    None => None
+  }
+  let ty = match explicit_ty {
+    Some(ty) => ty
+    None =>
+      match local_decl.initializer_ref() {
+        None =>
+          self.infer_local_type_from_initializer(
+            local_decl.name().name(),
+            local_decl.initializer_ref(),
+          )
+        Some(_) => self.lower_builtin_type_name("i32")
+      }
+  }
+  let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
+  let handle = function.local_variables.append(LocalVariable::{
+    name: Some(
+      self.naga_oil_generated_import_local_spelling_for_scope(
+        local_decl.name().name(),
+        scope,
+      ),
+    ),
+    kind: LocalVariableKind::Var,
+    generated_temporary: false,
+    generated_temporary_store_value_reference: false,
+    ty,
+    init: None,
+  })
+  scope.predeclared_source_locals.set(key, handle)
+}
+
+///|
 fn WgslIrLowerer::lower_source_local_const_initializer(
   self : WgslIrLowerer,
   expr_ref : @ast.WgslExprRef,
@@ -167,14 +228,132 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
+  match expr_ref.root() {
+    Some(root) =>
+      match wgsl_ir_expr_node_literal_token(root) {
+        Some(token) =>
+          match
+            scope.source_local_const_initializer_expressions.get(
+              wgsl_ir_source_local_const_literal_key(token, explicit_ty),
+            ) {
+            Some(handle) => return handle
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
   let key = wgsl_ir_source_local_const_initializer_key(expr_ref, explicit_ty)
   match scope.source_local_const_initializer_expressions.get(key) {
+    Some(handle) => handle
+    None => {
+      let expression_mark = function.expressions.items.length()
+      let handle = self.lower_function_expression_ref_with_expected(
+        expr_ref, function, scope, explicit_ty,
+      )
+      scope.source_local_const_initializer_expressions.set(key, handle)
+      wgsl_ir_record_source_local_const_initializer_literals(
+        expr_ref, expression_mark, function, scope, explicit_ty,
+      )
+      handle
+    }
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_literal_token(
+  node : @ast.WgslExprNode,
+) -> @ast.WgslExprToken? {
+  match node.kind() {
+    Literal(token) => Some(token)
+    Group(inner) => wgsl_ir_expr_node_literal_token(inner)
+    Sequence([single]) => wgsl_ir_expr_node_literal_token(single)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_record_source_local_const_initializer_literals(
+  expr_ref : @ast.WgslExprRef,
+  expression_mark : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  explicit_ty : Handle?,
+) -> Unit {
+  let literal_tokens : Array[@ast.WgslExprToken] = []
+  match expr_ref.root() {
+    Some(root) => wgsl_ir_collect_expr_node_literal_tokens(root, literal_tokens)
+    None => ()
+  }
+  guard !literal_tokens.is_empty() else { return }
+  let mut token_index = 0
+  for expression_index in expression_mark..<function.expressions.items.length() {
+    guard token_index < literal_tokens.length() else { break }
+    match function.expressions.items.get(expression_index) {
+      Some(Literal(_)) => {
+        let key = wgsl_ir_source_local_const_literal_key(
+          literal_tokens[token_index],
+          explicit_ty,
+        )
+        if !scope.source_local_const_initializer_expressions.contains(key) {
+          scope.source_local_const_initializer_expressions.set(
+            key,
+            Handle::Handle(expression_index),
+          )
+        }
+        token_index = token_index + 1
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn wgsl_ir_collect_expr_node_literal_tokens(
+  node : @ast.WgslExprNode,
+  out : Array[@ast.WgslExprToken],
+) -> Unit {
+  match node.kind() {
+    Literal(token) => out.push(token)
+    Group(inner) => wgsl_ir_collect_expr_node_literal_tokens(inner, out)
+    Unary(_, inner) => wgsl_ir_collect_expr_node_literal_tokens(inner, out)
+    Binary(_, left, right) => {
+      wgsl_ir_collect_expr_node_literal_tokens(left, out)
+      wgsl_ir_collect_expr_node_literal_tokens(right, out)
+    }
+    Call(callee, arguments) => {
+      wgsl_ir_collect_expr_node_literal_tokens(callee, out)
+      for argument in arguments {
+        wgsl_ir_collect_expr_node_literal_tokens(argument, out)
+      }
+    }
+    Template(base, _) => wgsl_ir_collect_expr_node_literal_tokens(base, out)
+    Member(base, _) => wgsl_ir_collect_expr_node_literal_tokens(base, out)
+    PathAccess(base, _) => wgsl_ir_collect_expr_node_literal_tokens(base, out)
+    Sequence(items) =>
+      for item in items {
+        wgsl_ir_collect_expr_node_literal_tokens(item, out)
+      }
+    _ => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_runtime_source_local_const_initializer(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  explicit_ty : Handle?,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let key = wgsl_ir_source_local_const_initializer_key(expr_ref, explicit_ty)
+  match scope.runtime_source_local_const_initializer_expressions.get(key) {
     Some(handle) => handle
     None => {
       let handle = self.lower_function_expression_ref_with_expected(
         expr_ref, function, scope, explicit_ty,
       )
-      scope.source_local_const_initializer_expressions.set(key, handle)
+      scope.runtime_source_local_const_initializer_expressions.set(key, handle)
       handle
     }
   }
@@ -185,11 +364,30 @@ fn wgsl_ir_source_local_const_initializer_key(
   expr_ref : @ast.WgslExprRef,
   explicit_ty : Handle?,
 ) -> String {
+  wgsl_ir_source_local_const_token_text_key(
+    wgsl_ir_expr_ref_token_text(expr_ref),
+    explicit_ty,
+  )
+}
+
+///|
+fn wgsl_ir_source_local_const_literal_key(
+  token : @ast.WgslExprToken,
+  explicit_ty : Handle?,
+) -> String {
+  wgsl_ir_source_local_const_token_text_key(token.text(), explicit_ty)
+}
+
+///|
+fn wgsl_ir_source_local_const_token_text_key(
+  token_text : String,
+  explicit_ty : Handle?,
+) -> String {
   let ty_key = match explicit_ty {
     Some(ty) => "\{ty.index()}"
     None => "-"
   }
-  "\{ty_key}:\{wgsl_ir_expr_ref_token_text(expr_ref)}"
+  "\{ty_key}:\{token_text}"
 }
 
 ///|
@@ -1092,6 +1290,13 @@ fn WgslIrLowerer::lower_local_declaration(
     return
   }
   if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+    !scope.predeclared_source_locals.contains(
+      wgsl_ir_local_declaration_key(local_decl),
+    ) &&
+    !self.local_var_initializer_uses_store(local_decl) {
+    self.predeclare_source_local_placeholder(local_decl, function, scope)
+  }
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
     scope.predeclared_source_locals.contains(
       wgsl_ir_local_declaration_key(local_decl),
     ) {
@@ -1103,10 +1308,21 @@ fn WgslIrLowerer::lower_local_declaration(
       )
     } else {
       match local_decl.initializer_ref() {
-        Some(_) =>
-          self.lower_local_var_store_declaration(
-            local_decl, function, scope, block,
-          )
+        Some(expr_ref) => {
+          let initializer_is_const = match expr_ref.root() {
+            Some(root) => self.expression_node_is_const_initializer(root)
+            None => false
+          }
+          if initializer_is_const {
+            self.lower_predeclared_source_var_const_initializer(
+              local_decl, expr_ref, function, scope, block,
+            )
+          } else {
+            self.lower_local_var_store_declaration(
+              local_decl, function, scope, block,
+            )
+          }
+        }
         None =>
           ignore(
             wgsl_ir_lower_predeclared_source_var_declaration(
@@ -1144,18 +1360,38 @@ fn WgslIrLowerer::lower_local_declaration(
           )
           let pointer_ty = self.pointer_type_for_lvalue(function, target)
           address_of_ty = Some(pointer_ty)
+          if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
+            Some(target)
+          } else {
+            Some(
+              function.expressions.append(
+                Expression::AddressOf(pointer_ty, target),
+              ),
+            )
+          }
+        }
+        None => {
+          let init_is_const = if local_decl.kind() ==
+            @ast.WgslLocalDeclarationKind::Var {
+            match expr_ref.root() {
+              Some(root) => self.expression_node_is_const_initializer(root)
+              None => false
+            }
+          } else {
+            false
+          }
           Some(
-            function.expressions.append(
-              Expression::AddressOf(pointer_ty, target),
-            ),
+            if init_is_const {
+              self.lower_runtime_source_local_const_initializer(
+                expr_ref, explicit_ty, function, scope,
+              )
+            } else {
+              self.lower_function_expression_ref_with_expected(
+                expr_ref, function, scope, explicit_ty,
+              )
+            },
           )
         }
-        None =>
-          Some(
-            self.lower_function_expression_ref_with_expected(
-              expr_ref, function, scope, explicit_ty,
-            ),
-          )
       }
     None => None
   }
@@ -1279,8 +1515,7 @@ fn WgslIrLowerer::lower_local_declaration(
     local_decl.name().name(),
     scope,
   )
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let &&
-    !self.lowerer_type_is_pointer(ty) {
+  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
     match init {
       Some(init_handle) =>
         if wgsl_ir_function_expression_should_use_named_let(
@@ -1391,6 +1626,59 @@ fn wgsl_ir_predeclared_source_var_has_init(
       }
     None => false
   }
+}
+
+///|
+fn WgslIrLowerer::lower_predeclared_source_var_const_initializer(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Unit raise WgslIrLowerError {
+  guard scope.predeclared_source_locals.get(
+      wgsl_ir_local_declaration_key(local_decl),
+    )
+    is Some(handle) else {
+    return
+  }
+  let lowered_name = self.naga_oil_generated_import_local_spelling_for_scope(
+    local_decl.name().name(),
+    scope,
+  )
+  let explicit_ty = match local_decl.ty_ref() {
+    Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
+    None => None
+  }
+  let init = self.lower_source_local_const_initializer(
+    expr_ref, explicit_ty, function, scope,
+  )
+  let ty = match explicit_ty {
+    Some(ty) => ty
+    None =>
+      match self.function_expression_type(function, init) {
+        Some(inferred) => inferred
+        None =>
+          self.infer_local_type_from_initializer(
+            local_decl.name().name(),
+            local_decl.initializer_ref(),
+          )
+      }
+  }
+  let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
+  self.contextualize_function_expression_for_type(function, init, ty)
+  function.local_variables.set(handle, LocalVariable::{
+    name: Some(lowered_name),
+    kind: LocalVariableKind::Var,
+    generated_temporary: false,
+    generated_temporary_store_value_reference: false,
+    ty,
+    init: Some(init),
+  })
+  ignore(
+    wgsl_ir_lower_predeclared_source_var_declaration(local_decl, scope, block),
+  )
 }
 
 ///|
