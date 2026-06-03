@@ -245,6 +245,24 @@ normalize_moon_materialized() {
 ' "$trace" > "$output"
 }
 
+normalize_oracle_statements() {
+  local inventory="$1"
+  local function_prefix="$2"
+  local output="$3"
+  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
+  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  active && $1 == "raw-statement" { print "statement\t" $3 "\t" $4 }
+' "$inventory" > "$output"
+}
+
+normalize_moon_statements() {
+  local trace="$1"
+  local output="$2"
+  awk -F '\t' '
+  $1 == "raw-statement" { print "statement\t" $3 "\t" $4 }
+' "$trace" > "$output"
+}
+
 normalize_module_declaration_slots() {
   local trace="$1"
   local output="$2"
@@ -277,6 +295,7 @@ run_case() {
   local expression_drift=0
   local binding_drift=0
   local materialized_drift=0
+  local statement_drift=0
   local module_drift=0
 
   mkdir -p "$case_dir"
@@ -337,15 +356,18 @@ run_case() {
   normalize_moon_bindings "$case_dir/moon.trace" "$case_dir/moon.bindings"
   normalize_oracle_materialized "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.materialized"
   normalize_moon_materialized "$case_dir/moon.trace" "$case_dir/moon.materialized"
+  normalize_oracle_statements "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.statements"
+  normalize_moon_statements "$case_dir/moon.trace" "$case_dir/moon.statements"
   normalize_module_declaration_slots "$case_dir/oracle.module" "$case_dir/oracle.module-slots"
   normalize_module_declaration_slots "$case_dir/moon.module" "$case_dir/moon.module-slots"
 
   diff -u "$case_dir/oracle.expression-order" "$case_dir/moon.expression-order" > "$case_dir/expression-order.diff" || expression_drift=1
   diff -u "$case_dir/oracle.bindings" "$case_dir/moon.bindings" > "$case_dir/bindings.diff" || binding_drift=1
   diff -u "$case_dir/oracle.materialized" "$case_dir/moon.materialized" > "$case_dir/materialized.diff" || materialized_drift=1
+  diff -u "$case_dir/oracle.statements" "$case_dir/moon.statements" > "$case_dir/statements.diff" || statement_drift=1
   diff -u "$case_dir/oracle.module-slots" "$case_dir/moon.module-slots" > "$case_dir/module-slots.diff" || module_drift=1
 
-  if [[ "$expression_drift" == 0 && "$binding_drift" == 0 && "$materialized_drift" == 0 && "$module_drift" == 0 ]]; then
+  if [[ "$expression_drift" == 0 && "$binding_drift" == 0 && "$materialized_drift" == 0 && "$statement_drift" == 0 && "$module_drift" == 0 ]]; then
     echo "naga writer representative trace parity passed: $id: $entry :: $function_prefix"
     return 0
   fi
@@ -355,6 +377,7 @@ run_case() {
   [[ "$expression_drift" == 0 ]] || sed -n '1,120p' "$case_dir/expression-order.diff" >&2
   [[ "$binding_drift" == 0 ]] || sed -n '1,120p' "$case_dir/bindings.diff" >&2
   [[ "$materialized_drift" == 0 ]] || sed -n '1,120p' "$case_dir/materialized.diff" >&2
+  [[ "$statement_drift" == 0 ]] || sed -n '1,120p' "$case_dir/statements.diff" >&2
   [[ "$module_drift" == 0 ]] || sed -n '1,120p' "$case_dir/module-slots.diff" >&2
   return 1
 }

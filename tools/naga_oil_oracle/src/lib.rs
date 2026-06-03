@@ -104,7 +104,66 @@ pub fn push_function_expression_inventory(
             handle.index()
         ));
     }
+    for (index, statement) in function.body.iter().enumerate() {
+        lines.push(format!(
+            "raw-statement\t{label}\t{index}\t{}",
+            statement_inventory_kind(statement)
+        ));
+    }
     lines.push(format!("body\t{label}\t{:?}", function.body));
+}
+
+fn statement_inventory_kind(statement: &naga::Statement) -> String {
+    match statement {
+        naga::Statement::Emit(range) => emit_range_inventory_kind(range.clone()),
+        naga::Statement::Block(_) => "Block".to_owned(),
+        naga::Statement::If { .. } => "If".to_owned(),
+        naga::Statement::Switch { .. } => "Switch".to_owned(),
+        naga::Statement::Loop { .. } => "Loop".to_owned(),
+        naga::Statement::Break => "Break".to_owned(),
+        naga::Statement::Continue => "Continue".to_owned(),
+        naga::Statement::Return { .. } => "Return".to_owned(),
+        naga::Statement::Kill => "Kill".to_owned(),
+        naga::Statement::ControlBarrier(_) => "ControlBarrier".to_owned(),
+        naga::Statement::MemoryBarrier(_) => "MemoryBarrier".to_owned(),
+        naga::Statement::Store { .. } => "Store".to_owned(),
+        naga::Statement::ImageStore { .. } => "ImageStore".to_owned(),
+        naga::Statement::Atomic { result, .. } => match result {
+            Some(handle) => format!("Atomic(result={})", handle.index()),
+            None => "Atomic(result=-)".to_owned(),
+        },
+        naga::Statement::ImageAtomic { .. } => "ImageAtomic".to_owned(),
+        naga::Statement::WorkGroupUniformLoad { result, .. } => {
+            format!("WorkGroupUniformLoad(result={})", result.index())
+        }
+        naga::Statement::Call { result, .. } => match result {
+            Some(handle) => format!("Call(result={})", handle.index()),
+            None => "Call(result=-)".to_owned(),
+        },
+        naga::Statement::RayQuery { .. } => "RayQuery".to_owned(),
+        naga::Statement::RayPipelineFunction(_) => "RayPipelineFunction".to_owned(),
+        naga::Statement::SubgroupBallot { result, .. } => {
+            format!("SubgroupBallot(result={})", result.index())
+        }
+        naga::Statement::SubgroupGather { result, .. } => {
+            format!("SubgroupGather(result={})", result.index())
+        }
+        naga::Statement::SubgroupCollectiveOperation { result, .. } => {
+            format!("SubgroupCollectiveOperation(result={})", result.index())
+        }
+        naga::Statement::CooperativeStore { .. } => "CooperativeStore".to_owned(),
+    }
+}
+
+fn emit_range_inventory_kind(mut range: naga::Range<naga::Expression>) -> String {
+    let Some(first) = range.next() else {
+        return "Emit(empty)".to_owned();
+    };
+    let mut last = first;
+    for handle in range {
+        last = handle;
+    }
+    format!("Emit({}..{})", first.index(), last.index())
 }
 
 pub fn module_expression_inventory(module: &naga::Module) -> String {
@@ -230,7 +289,10 @@ fn written_declarations(wgsl: &str) -> WrittenDeclarations {
     let mut next_function_is_entry_point = false;
     for raw_line in wgsl.lines() {
         let line = raw_line.trim();
-        if line.starts_with("@compute") || line.starts_with("@fragment") || line.starts_with("@vertex") {
+        if line.starts_with("@compute")
+            || line.starts_with("@fragment")
+            || line.starts_with("@vertex")
+        {
             next_function_is_entry_point = true;
         }
         if let Some(rest) = line.strip_prefix("struct ") {

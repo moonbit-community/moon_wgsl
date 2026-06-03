@@ -351,8 +351,13 @@ fn wgsl_ir_naga_writer_body_plan_trace(
       body_plan,
       handle,
     )
+    let materialized_reason = wgsl_ir_trace_expression_materialization_reason(
+      function.expressions.items[index],
+      body_plan,
+      handle,
+    )
     out.write_string(
-      "expression\t\{label}\t\{index}\t\{wgsl_ir_trace_expression_kind(function.expressions.items[index])}\tdetail=\{wgsl_ir_trace_expression_detail(function.expressions.items[index])}\tmaterialized=\{materialized}\ttemp=\{temp_name}\tfinal_index=\{trace.final_index}\tskipped=\{trace.skipped}\tbase=\{trace.base_index}\tadjusted=\{trace.adjusted_base_index}\timplicit_before=\{trace.implicit_expression_slots_before}\tprior_call_projection=\{trace.prior_call_projection_argument_slots}\timplicit_load=\{trace.implicit_naga_load_slots}\treused_resource=\{trace.reused_resource_operand_slots}\tprojected_temp=\{trace.projected_temporary_slots}\n",
+      "expression\t\{label}\t\{index}\t\{wgsl_ir_trace_expression_kind(function.expressions.items[index])}\tdetail=\{wgsl_ir_trace_expression_detail(function.expressions.items[index])}\tmaterialized=\{materialized}\treason=\{materialized_reason}\tinput=\{index}\ttemp=\{temp_name}\tfinal_index=\{trace.final_index}\tskipped=\{trace.skipped}\tbase=\{trace.base_index}\tadjusted=\{trace.adjusted_base_index}\timplicit_before=\{trace.implicit_expression_slots_before}\tprior_call_projection=\{trace.prior_call_projection_argument_slots}\timplicit_load=\{trace.implicit_naga_load_slots}\treused_resource=\{trace.reused_resource_operand_slots}\tprojected_temp=\{trace.projected_temporary_slots}\n",
     )
   }
   for named in function.named_expressions {
@@ -370,11 +375,29 @@ fn wgsl_ir_naga_writer_body_plan_trace(
       "binding\t\{label}\tnamed\t\{named.handle.index()}\t\{final_name}\n",
     )
   }
+  for index in 0..<function.body.statements.length() {
+    let statement = function.body.statements[index]
+    out.write_string(
+      "raw-statement\t\{label}\t\{index}\t\{wgsl_ir_trace_statement_kind(statement)}\n",
+    )
+  }
+  for order_index in 0..<body_plan.local_declaration_order().length() {
+    let local_index = body_plan.local_declaration_order()[order_index]
+    let local_handle = Handle::Handle(local_index)
+    let final_name = match
+      view.names.get(wgsl_ir_emit_local_name_key(origin, local_handle)) {
+      Some(value) => value
+      None => "-"
+    }
+    out.write_string(
+      "writer-local-declare\t\{label}\t\{order_index}\tlocal=\{local_index}\tfinal=\{final_name}\n",
+    )
+  }
   let statements = body_plan.statement_plan(function, function.body)
   for index in 0..<statements.length() {
     let item = statements[index]
     out.write_string(
-      "statement\t\{label}\t\{index}\t\{wgsl_ir_trace_statement_kind(item.statement)}\tskip=\{item.skip}\tblank_before=\{item.blank_before}\n",
+      "writer-statement\t\{label}\t\{index}\t\{wgsl_ir_trace_statement_kind(item.statement)}\tskip=\{item.skip}\tblank_before=\{item.blank_before}\n",
     )
   }
   out.to_string()
@@ -390,6 +413,23 @@ fn wgsl_ir_trace_expression_is_call_result_materialized(
     CallResult(_) | AtomicResult(_, _) =>
       body_plan.contains_materialized_expression(handle)
     _ => false
+  }
+}
+
+///|
+fn wgsl_ir_trace_expression_materialization_reason(
+  expression : Expression,
+  body_plan : WgslIrNagaFunctionBodyPlan,
+  handle : Handle,
+) -> String {
+  if !body_plan.contains_materialized_expression(handle) {
+    return "-"
+  }
+  match expression {
+    CallResult(_) => "call-result"
+    AtomicResult(_, _) => "atomic-result"
+    Load(_) => "load"
+    _ => "expression"
   }
 }
 

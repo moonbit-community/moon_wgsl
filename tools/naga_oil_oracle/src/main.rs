@@ -8,8 +8,7 @@ use naga_oil::compose::{
     ShaderLanguage, ShaderType,
 };
 use naga_oil_oracle::{
-    add_wgsl_capability, module_arena_inventory, module_expression_inventory,
-    WGSL_CAPABILITY_NAMES,
+    add_wgsl_capability, module_arena_inventory, module_expression_inventory, WGSL_CAPABILITY_NAMES,
 };
 
 #[derive(Debug)]
