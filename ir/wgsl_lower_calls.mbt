@@ -59,6 +59,7 @@ fn WgslIrLowerer::lower_call_statement(
   guard expr_ref.root() is Some(root) else {
     raise WgslIrLowerError::UnsupportedExpression("empty function call")
   }
+  let expression_mark = function.expressions.items.length()
   match wgsl_ir_expr_call_node(root).kind() {
     Call(callee, arguments) => {
       let arguments = wgsl_ir_call_arguments(arguments)
@@ -78,6 +79,13 @@ fn WgslIrLowerer::lower_call_statement(
                       let values = self.lower_user_function_call_statement_arguments(
                         handle, arguments, function, scope, block,
                       )
+                      match wgsl_ir_last_call_argument_handle(values) {
+                        Some(last_value) =>
+                          wgsl_ir_push_naga_statement_emit_ranges(
+                            block, function, expression_mark, last_value,
+                          )
+                        None => ()
+                      }
                       block.push(Statement::Call(handle, values, None))
                     }
                     None =>
@@ -116,6 +124,21 @@ fn WgslIrLowerer::lower_call_statement(
     }
     _ => ignore(self.lower_function_expression_node(root, function, scope))
   }
+}
+
+///|
+fn wgsl_ir_last_call_argument_handle(values : Array[Handle]) -> Handle? {
+  let mut result : Handle? = None
+  for value in values {
+    match result {
+      Some(current) =>
+        if value.index() > current.index() {
+          result = Some(value)
+        }
+      None => result = Some(value)
+    }
+  }
+  result
 }
 
 ///|

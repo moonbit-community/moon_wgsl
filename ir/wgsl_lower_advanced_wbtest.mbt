@@ -966,7 +966,17 @@ test "WGSL IR lowerer preserves else-if conditions as control flow" {
     error => abort(error.message())
   }
   let statements = module_.functions.items[0].body.statements
-  guard statements[1] is Statement::If(_, _, reject) else {
+  let mut reject_block : Block? = None
+  for statement in statements {
+    match statement {
+      Statement::If(_, _, reject) =>
+        if reject_block == None {
+          reject_block = Some(reject)
+        }
+      _ => ()
+    }
+  }
+  guard reject_block is Some(reject) else {
     abort("expected outer if")
   }
   let mut saw_nested_if = false

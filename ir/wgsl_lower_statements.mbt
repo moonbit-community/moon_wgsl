@@ -511,6 +511,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       guard condition is Some(condition_ref) else {
         raise WgslIrLowerError::UnsupportedStatement("if without condition")
       }
+      let expression_mark = function.expressions.items.length()
       let condition_handle = self.lower_function_expression_ref(
         condition_ref, function, scope,
       )
@@ -530,6 +531,9 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       }
       let else_block = self.lower_if_reject_chain(
         blocks, condition_refs, 1, function, scope,
+      )
+      wgsl_ir_push_naga_statement_emit_ranges(
+        block, function, expression_mark, condition_handle,
       )
       block.push(Statement::If(condition_handle, then_block, else_block))
     }
@@ -575,6 +579,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       guard rhs is Some(rhs_ref) else {
         raise WgslIrLowerError::UnsupportedStatement("assignment without rhs")
       }
+      let expression_mark = function.expressions.items.length()
       if wgsl_ir_expr_ref_is_phony(lhs_ref) {
         if self.lower_ray_query_statement_expr_ref(
             rhs_ref, function, scope, block,
@@ -651,6 +656,12 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           }
       }
       wgsl_ir_record_store_value_temporary_references(function, value)
+      wgsl_ir_push_naga_statement_emit_ranges(
+        block,
+        function,
+        expression_mark,
+        wgsl_ir_max_handle(target, value),
+      )
       block.push(Statement::Store(target, value))
     }
     Increment(target) =>
@@ -700,6 +711,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       guard selector is Some(selector_ref) else {
         raise WgslIrLowerError::UnsupportedStatement("switch without selector")
       }
+      let expression_mark = function.expressions.items.length()
       let selector_handle = self.lower_function_expression_ref(
         selector_ref, function, scope,
       )
@@ -711,6 +723,9 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           )
         [] => ()
       }
+      wgsl_ir_push_naga_statement_emit_ranges(
+        block, function, expression_mark, selector_handle,
+      )
       block.push(Statement::Switch(selector_handle, cases))
     }
     Case(_) | DefaultCase =>
@@ -2008,6 +2023,18 @@ fn wgsl_ir_push_naga_named_expression_emit_ranges(
   expression_mark : Int,
   init_handle : Handle,
 ) -> Unit {
+  wgsl_ir_push_naga_statement_emit_ranges(
+    block, function, expression_mark, init_handle,
+  )
+}
+
+///|
+fn wgsl_ir_push_naga_statement_emit_ranges(
+  block : Block,
+  function : Function,
+  expression_mark : Int,
+  init_handle : Handle,
+) -> Unit {
   let mut range_start : Handle? = None
   let mut range_end : Handle? = None
   for index in expression_mark..<=init_handle.index() {
@@ -2030,6 +2057,15 @@ fn wgsl_ir_push_naga_named_expression_emit_ranges(
     }
   }
   wgsl_ir_flush_naga_named_expression_emit_range(block, range_start, range_end)
+}
+
+///|
+fn wgsl_ir_max_handle(left : Handle, right : Handle) -> Handle {
+  if left.index() >= right.index() {
+    left
+  } else {
+    right
+  }
 }
 
 ///|

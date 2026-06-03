@@ -49,7 +49,7 @@ test "WGSL AST lowers declarations, bindings, and entry point metadata into IR" 
   )
   debug_inspect(
     module_.entry_points[0].function.body.statements.length(),
-    content="4",
+    content="6",
   )
 }
 
