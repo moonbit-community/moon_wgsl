@@ -576,8 +576,10 @@ fn WgslIrEmitter::emit_function_call_arguments(
       None
     }
     out.write_string(
-      self.contextual_argument_expression(
+      self.function_call_argument_expression(
         Some(function),
+        callee_function,
+        index,
         arguments[index],
         scalar_context,
       ),

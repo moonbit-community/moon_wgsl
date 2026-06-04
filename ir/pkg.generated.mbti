@@ -26,6 +26,8 @@ pub fn trace_naga_oil_writer_function_plan_for_source(String, String) -> String 
 
 pub fn trace_naga_oil_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], String, root_visible_rel_path? : String) -> String raise WgslIrPipelineError
 
+pub fn trace_naga_oil_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslIrPipelineError
+
 pub fn tree_shake_wgsl_source_via_ir(String, Array[String]) -> String raise WgslIrPipelineError
 
 // Errors

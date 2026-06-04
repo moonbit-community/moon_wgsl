@@ -146,10 +146,12 @@ fn WgslIrLowerer::materialize_function_expression(
   match function.expressions.items.get(value.index()) {
     Some(FunctionCall(function_handle, arguments)) => {
       function.expressions.set(value, Expression::CallResult(function_handle))
-      wgsl_ir_push_naga_statement_emit_ranges(
+      self.push_user_function_call_emit_ranges(
         block,
         function,
         wgsl_ir_next_naga_statement_emit_mark(block),
+        function_handle,
+        arguments,
         value,
       )
       block.push(Statement::Call(function_handle, arguments, Some(value)))
@@ -698,9 +700,10 @@ fn WgslIrLowerer::materialize_return_subexpressions(
     Some(FunctionCall(handle, arguments)) => {
       let lowered : Array[Handle] = []
       let mut changed = false
-      for argument in arguments {
-        let lowered_argument = self.materialize_nested_call_argument(
-          function, scope, block, argument,
+      for index in 0..<arguments.length() {
+        let argument = arguments[index]
+        let lowered_argument = self.materialize_nested_user_call_argument(
+          function, scope, block, handle, index, argument,
         )
         let parent_argument = wgsl_ir_parent_expression_operand(
           function, argument, lowered_argument,
@@ -1573,6 +1576,26 @@ fn WgslIrLowerer::materialize_nested_swizzle_base(
   } else {
     self.materialize_nested_access_base(function, scope, block, value)
   }
+}
+
+///|
+fn WgslIrLowerer::materialize_nested_user_call_argument(
+  self : WgslIrLowerer,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+  callee : Handle,
+  index : Int,
+  argument : Handle,
+) -> Handle raise WgslIrLowerError {
+  match self.shader_module.functions.items.get(callee.index()) {
+    Some(callee_function) =>
+      if self.callee_parameter_is_pointer(callee_function, index) {
+        return argument
+      }
+    None => ()
+  }
+  self.materialize_nested_call_argument(function, scope, block, argument)
 }
 
 ///|

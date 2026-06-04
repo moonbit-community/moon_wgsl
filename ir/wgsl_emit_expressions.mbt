@@ -544,14 +544,37 @@ fn WgslIrEmitter::function_call_argument_list(
       None
     }
     out.write_string(
-      self.contextual_argument_expression(
+      self.function_call_argument_expression(
         function,
+        callee_function,
+        i,
         arguments[i],
         scalar_context,
       ),
     )
   }
   out.to_string()
+}
+
+///|
+fn WgslIrEmitter::function_call_argument_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  callee_function : Function?,
+  index : Int,
+  argument : Handle,
+  scalar_context : Scalar?,
+) -> String raise WgslIrEmitError {
+  match callee_function {
+    Some(callee_function) =>
+      match callee_function.arguments.get(index) {
+        Some(parameter) if self.type_is_pointer(parameter.ty) =>
+          return self.pointer_expression(function, argument)
+        _ => ()
+      }
+    None => ()
+  }
+  self.contextual_argument_expression(function, argument, scalar_context)
 }
 
 ///|

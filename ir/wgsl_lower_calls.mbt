@@ -81,8 +81,8 @@ fn WgslIrLowerer::lower_call_statement(
                       )
                       match wgsl_ir_last_call_argument_handle(values) {
                         Some(last_value) =>
-                          wgsl_ir_push_naga_statement_emit_ranges(
-                            block, function, expression_mark, last_value,
+                          self.push_user_function_call_emit_ranges(
+                            block, function, expression_mark, handle, values, last_value,
                           )
                         None => ()
                       }
@@ -139,6 +139,93 @@ fn wgsl_ir_last_call_argument_handle(values : Array[Handle]) -> Handle? {
     }
   }
   result
+}
+
+///|
+fn WgslIrLowerer::push_user_function_call_emit_ranges(
+  self : WgslIrLowerer,
+  block : Block,
+  function : Function,
+  expression_mark : Int,
+  callee : Handle,
+  arguments : Array[Handle],
+  end : Handle,
+) -> Unit {
+  let suppressed : @set.Set[Int] = @set.Set([])
+  match self.shader_module.functions.items.get(callee.index()) {
+    Some(callee_function) =>
+      for index in 0..<arguments.length() {
+        match callee_function.arguments.get(index) {
+          Some(parameter) if self.lowerer_type_is_pointer(parameter.ty) =>
+            wgsl_ir_collect_pointer_call_lvalue_emit_suppression(
+              function,
+              arguments[index],
+              suppressed,
+            )
+          _ => ()
+        }
+      }
+    None => ()
+  }
+  wgsl_ir_push_naga_statement_emit_ranges_skipping(
+    block, function, expression_mark, end, suppressed,
+  )
+}
+
+///|
+fn wgsl_ir_collect_pointer_call_lvalue_emit_suppression(
+  function : Function,
+  handle : Handle,
+  suppressed : @set.Set[Int],
+) -> Unit {
+  if suppressed.contains(handle.index()) {
+    return
+  }
+  match function.expressions.items.get(handle.index()) {
+    Some(Access(base, _))
+    | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
+    | Some(Swizzle(_, base, _)) => {
+      suppressed.add(handle.index())
+      wgsl_ir_collect_pointer_call_lvalue_emit_suppression(
+        function, base, suppressed,
+      )
+    }
+    _ => ()
+  }
+}
+
+///|
+fn wgsl_ir_push_naga_statement_emit_ranges_skipping(
+  block : Block,
+  function : Function,
+  expression_mark : Int,
+  init_handle : Handle,
+  suppressed : @set.Set[Int],
+) -> Unit {
+  let mut range_start : Handle? = None
+  let mut range_end : Handle? = None
+  for index in expression_mark..<=init_handle.index() {
+    match function.expressions.items.get(index) {
+      Some(expression) =>
+        if suppressed.contains(index) ||
+          wgsl_ir_expression_is_naga_emit_leaf(expression) {
+          wgsl_ir_flush_naga_named_expression_emit_range(
+            block, range_start, range_end,
+          )
+          range_start = None
+          range_end = None
+        } else {
+          let handle = Handle::Handle(index)
+          if range_start == None {
+            range_start = Some(handle)
+          }
+          range_end = Some(handle)
+        }
+      None => ()
+    }
+  }
+  wgsl_ir_flush_naga_named_expression_emit_range(block, range_start, range_end)
 }
 
 ///|
@@ -222,7 +309,12 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
         ),
       )
     } else if prelowered[index] == None &&
-      self.call_argument_is_naga_reference_access_chain(flattened[index], scope) {
+      self.call_argument_uses_naga_reference_predeclare(
+        flattened[index],
+        callee_function,
+        index,
+        scope,
+      ) {
       ignore(
         self.lower_call_reference_argument_run(
           flattened, prelowered, index, callee_function, function, scope,
@@ -254,6 +346,32 @@ fn WgslIrLowerer::call_argument_is_naga_deferred_const_like(
 ) -> Bool {
   wgsl_ir_expr_node_is_literal_like(argument) ||
   self.expression_node_is_inline_constant_reference(argument, scope)
+}
+
+///|
+fn WgslIrLowerer::call_argument_uses_naga_reference_predeclare(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  callee_function : Function,
+  index : Int,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  if self.callee_parameter_is_pointer(callee_function, index) {
+    return false
+  }
+  self.call_argument_is_naga_reference_access_chain(argument, scope)
+}
+
+///|
+fn WgslIrLowerer::callee_parameter_is_pointer(
+  self : WgslIrLowerer,
+  callee_function : Function,
+  index : Int,
+) -> Bool {
+  match callee_function.arguments.get(index) {
+    Some(parameter) => self.lowerer_type_is_pointer(parameter.ty)
+    None => false
+  }
 }
 
 ///|
@@ -305,8 +423,10 @@ fn WgslIrLowerer::lower_next_call_reference_argument_run(
   }
   if run_start < arguments.length() &&
     prelowered[run_start] == None &&
-    self.call_argument_is_naga_reference_access_chain(
+    self.call_argument_uses_naga_reference_predeclare(
       arguments[run_start],
+      callee_function,
+      run_start,
       scope,
     ) {
     self.lower_call_reference_argument_run(
@@ -349,8 +469,10 @@ fn WgslIrLowerer::lower_call_reference_argument_run(
   let mut index = start
   while index < arguments.length() &&
         prelowered[index] == None &&
-        self.call_argument_is_naga_reference_access_chain(
+        self.call_argument_uses_naga_reference_predeclare(
           arguments[index],
+          callee_function,
+          index,
           scope,
         ) {
     index += 1
@@ -486,6 +608,15 @@ fn WgslIrLowerer::lower_user_function_call_argument_at(
     Some(argument) => Some(argument.ty)
     None => None
   }
+  match expected_ty {
+    Some(ty) if self.lowerer_type_is_pointer(ty) =>
+      match wgsl_ir_address_of_operand_node(argument) {
+        Some(target) =>
+          return self.lower_function_lvalue_node(target, function, scope)
+        None => ()
+      }
+    _ => ()
+  }
   let lowered = self.lower_function_expression_node_with_expected(
     argument, function, scope, expected_ty,
   )
@@ -544,9 +675,12 @@ fn WgslIrLowerer::lower_user_function_call_statement_arguments(
     callee, arguments, function, scope,
   )
   let materialized : Array[Handle] = []
-  for argument in lowered {
+  for index in 0..<lowered.length() {
+    let argument = lowered[index]
     materialized.push(
-      self.materialize_nested_call_argument(function, scope, block, argument),
+      self.materialize_nested_user_call_argument(
+        function, scope, block, callee, index, argument,
+      ),
     )
   }
   materialized

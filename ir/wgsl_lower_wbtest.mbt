@@ -1185,6 +1185,14 @@ test "WGSL AST lowerer uses callee parameter types for pointer call arguments" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
+  let mut address_of_count = 0
+  for expression in module_.entry_points[0].function.expressions.items {
+    match expression {
+      AddressOf(_, _) => address_of_count += 1
+      _ => ()
+    }
+  }
+  debug_inspect(address_of_count, content="0")
   debug_inspect(emitted.contains("array<i32, 4>"), content="true")
   debug_inspect(emitted.contains("sum(&F[2])"), content="true")
 }

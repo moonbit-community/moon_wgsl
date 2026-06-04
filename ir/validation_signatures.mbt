@@ -534,12 +534,12 @@ fn WgslIrValidator::require_call_signature(
   }
   for index in 0..<arguments.length() {
     let argument = arguments[index]
-    match self.function_expression_type(function, argument) {
-      Some(actual) =>
-        if !self.type_assignable(callee_function.arguments[index].ty, actual) {
-          raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
-        }
-      None => ()
+    if !self.function_call_argument_matches_parameter(
+        function,
+        callee_function.arguments[index].ty,
+        argument,
+      ) {
+      raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
     }
   }
   match (callee_function.result, result) {
@@ -554,6 +554,32 @@ fn WgslIrValidator::require_call_signature(
     (None, None) => ()
     (Some(_), None) => ()
     (None, Some(_)) => raise WgslIrValidationError::InvalidFunctionResult(name)
+  }
+}
+
+///|
+fn WgslIrValidator::function_call_argument_matches_parameter(
+  self : WgslIrValidator,
+  function : Function,
+  expected : Handle,
+  argument : Handle,
+) -> Bool {
+  let expected_pointee = self.pointer_pointee_type(expected)
+  match self.function_expression_type(function, argument) {
+    Some(actual) => if self.type_assignable(expected, actual) { return true }
+    None => if expected_pointee == None { return true }
+  }
+  match expected_pointee {
+    Some(pointee) => {
+      if !self.expression_is_addressable(function, argument) {
+        return false
+      }
+      match self.function_expression_value_type(function, argument) {
+        Some(actual) => self.type_assignable(pointee, actual)
+        None => false
+      }
+    }
+    None => false
   }
 }
 
@@ -578,13 +604,37 @@ fn WgslIrValidator::require_global_call_signature(
   }
   for index in 0..<arguments.length() {
     let argument = arguments[index]
-    match self.global_expression_type(argument) {
-      Some(actual) =>
-        if !self.type_assignable(callee_function.arguments[index].ty, actual) {
-          raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
-        }
-      None => ()
+    if !self.global_call_argument_matches_parameter(
+        callee_function.arguments[index].ty,
+        argument,
+      ) {
+      raise WgslIrValidationError::InvalidFunctionArgumentType(name, index)
     }
+  }
+}
+
+///|
+fn WgslIrValidator::global_call_argument_matches_parameter(
+  self : WgslIrValidator,
+  expected : Handle,
+  argument : Handle,
+) -> Bool {
+  let expected_pointee = self.pointer_pointee_type(expected)
+  match self.global_expression_type(argument) {
+    Some(actual) => if self.type_assignable(expected, actual) { return true }
+    None => if expected_pointee == None { return true }
+  }
+  match expected_pointee {
+    Some(pointee) => {
+      if !self.global_expression_is_addressable(argument) {
+        return false
+      }
+      match self.global_expression_value_type(argument) {
+        Some(actual) => self.type_assignable(pointee, actual)
+        None => false
+      }
+    }
+    None => false
   }
 }
 
