@@ -382,9 +382,11 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           let (right_left, right_right) = self.normalize_function_binary_operands(
             function, right_binary_op, right_left, right_right,
           )
-          let (left_handle, right_handle) = if wgsl_ir_expr_node_contains_call(
+          let right_binary_lowers_before_left = wgsl_ir_expr_node_contains_call(
               right,
-            ) {
+            ) ||
+            wgsl_ir_expr_node_is_literal_like(left)
+          let (left_handle, right_handle) = if right_binary_lowers_before_left {
             let right_handle = function.expressions.append(
               Binary(right_binary_op, right_left, right_right),
             )
@@ -1070,9 +1072,14 @@ fn wgsl_ir_binary_preserves_left_first_across_higher_precedence_right(
   let right = wgsl_ir_expr_node_without_groups(right)
   guard left.kind() is Binary(left_op, _, _) else { return false }
   guard right.kind() is Binary(right_op, _, _) else { return false }
-  wgsl_ir_ast_binary_operator_is_multiplicative(left_op) &&
-  wgsl_ir_ast_binary_operator_is_multiplicative(right_op) &&
-  right_op.binary_precedence() > parent_op.binary_precedence()
+  if !wgsl_ir_ast_binary_operator_is_multiplicative(right_op) ||
+    right_op.binary_precedence() <= parent_op.binary_precedence() {
+    return false
+  }
+  if wgsl_ir_ast_binary_operator_is_multiplicative(left_op) {
+    return true
+  }
+  left_op.binary_precedence() == parent_op.binary_precedence()
 }
 
 ///|
@@ -1719,8 +1726,11 @@ fn WgslIrLowerer::lower_function_constructor_call(
   expected_ty : Handle?,
 ) -> Handle raise WgslIrLowerError {
   let expression_mark = function.expressions.items.length()
-  let lowered_arguments = self.lower_function_expression_arguments(
-    arguments, function, scope,
+  let lowered_arguments = self.lower_function_constructor_arguments_with_expected(
+    arguments,
+    function,
+    scope,
+    None,
   )
   let ty = match self.expected_constructor_type(name, expected_ty) {
     Some(ty) => ty
@@ -2305,6 +2315,40 @@ fn WgslIrLowerer::lower_function_constructor_arguments(
     ty,
     flattened.length(),
   )
+  self.lower_function_flattened_constructor_arguments(
+    flattened, function, scope, expected_ty,
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_arguments_with_expected(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Array[Handle] raise WgslIrLowerError {
+  self.lower_function_flattened_constructor_arguments(
+    wgsl_ir_flatten_expression_arguments(arguments),
+    function,
+    scope,
+    expected_ty,
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_flattened_constructor_arguments(
+  self : WgslIrLowerer,
+  flattened : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Array[Handle] raise WgslIrLowerError {
+  if wgsl_ir_constructor_arguments_delay_literals(flattened) {
+    return self.lower_function_constructor_arguments_with_delayed_literals(
+      flattened, function, scope, expected_ty,
+    )
+  }
   let handles : Array[Handle] = []
   for argument in flattened {
     let lowered = self.lower_function_constructor_argument(
@@ -2313,6 +2357,66 @@ fn WgslIrLowerer::lower_function_constructor_arguments(
     handles.push(self.apply_function_load_rule(function, lowered))
   }
   handles
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_arguments_with_delayed_literals(
+  self : WgslIrLowerer,
+  flattened : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Array[Handle] raise WgslIrLowerError {
+  let lowered : Array[Handle?] = []
+  for _ in 0..<flattened.length() {
+    lowered.push(None)
+  }
+  for index in 0..<flattened.length() {
+    if !wgsl_ir_constructor_argument_is_literal_like(flattened[index]) {
+      lowered[index] = Some(
+        self.lower_function_constructor_argument_value(
+          flattened[index],
+          function,
+          scope,
+          expected_ty,
+        ),
+      )
+    }
+  }
+  for index in 0..<flattened.length() {
+    if wgsl_ir_constructor_argument_is_literal_like(flattened[index]) {
+      lowered[index] = Some(
+        self.lower_function_constructor_argument_value(
+          flattened[index],
+          function,
+          scope,
+          expected_ty,
+        ),
+      )
+    }
+  }
+  let handles : Array[Handle] = []
+  for handle in lowered {
+    match handle {
+      Some(handle) => handles.push(handle)
+      None => raise UnsupportedExpression("unlowered constructor argument")
+    }
+  }
+  handles
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_argument_value(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  let lowered = self.lower_function_constructor_argument(
+    argument, function, scope, expected_ty,
+  )
+  self.apply_function_load_rule(function, lowered)
 }
 
 ///|
@@ -2333,6 +2437,65 @@ fn WgslIrLowerer::lower_function_constructor_argument(
   }
   function.expressions.truncate(expression_mark)
   function.expressions.append_with_origin(Literal(literal), FoldedLocalConstant)
+}
+
+///|
+fn wgsl_ir_constructor_arguments_delay_literals(
+  arguments : Array[@ast.WgslExprNode],
+) -> Bool {
+  let mut saw_literal = false
+  let mut should_delay = false
+  for argument in arguments {
+    if wgsl_ir_constructor_argument_has_ordered_effect(argument) {
+      return false
+    }
+    if wgsl_ir_constructor_argument_is_literal_like(argument) {
+      saw_literal = true
+    } else if saw_literal {
+      should_delay = true
+    }
+  }
+  should_delay
+}
+
+///|
+fn wgsl_ir_constructor_argument_is_literal_like(
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_constructor_argument_is_literal_like(inner)
+    Literal(_) => true
+    Unary(op, inner) =>
+      op == Subtract && wgsl_ir_constructor_argument_is_literal_like(inner)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_constructor_argument_has_ordered_effect(
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      if node.kind() is PostfixUpdate(_, _) {
+        true
+      } else {
+        wgsl_ir_constructor_argument_has_ordered_effect(inner)
+      }
+    Assignment(_, _, _) => true
+    Call(_, _) => true
+    Binary(_, left, right) | Index(left, right) =>
+      wgsl_ir_constructor_argument_has_ordered_effect(left) ||
+      wgsl_ir_constructor_argument_has_ordered_effect(right)
+    Member(base, _) | Template(base, _) =>
+      wgsl_ir_constructor_argument_has_ordered_effect(base)
+    Sequence(items) =>
+      items.any(fn(item) {
+        wgsl_ir_constructor_argument_has_ordered_effect(item)
+      })
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) | PathAccess(_, _) =>
+      false
+  }
 }
 
 ///|

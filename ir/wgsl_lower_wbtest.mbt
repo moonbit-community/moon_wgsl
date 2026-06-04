@@ -346,6 +346,91 @@ test "WGSL AST lowerer keeps additive product subtrees in source arena order" {
 }
 
 ///|
+test "WGSL AST lowerer keeps subtract product chains in Naga arena order" {
+  let source =
+    #|struct Data {
+    #|  x: f32,
+    #|  z: f32,
+    #|}
+    #|
+    #|fn probe(p: ptr<function, Data>) -> f32 {
+    #|  return 1.0 - (*p).x * (*p).x - (*p).z * (*p).z;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected pointer argument root")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected first x access before literal")
+  }
+  match function.expressions.items[2] {
+    Load(pointer) => debug_inspect(pointer.index(), content="1")
+    _ => abort("expected first x load")
+  }
+  match function.expressions.items[3] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected second x access before literal")
+  }
+  match function.expressions.items[4] {
+    Load(pointer) => debug_inspect(pointer.index(), content="3")
+    _ => abort("expected second x load")
+  }
+  match function.expressions.items[5] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="2")
+      debug_inspect(right.index(), content="4")
+    }
+    _ => abort("expected x product before literal")
+  }
+  match function.expressions.items[6] {
+    Literal(_) => ()
+    _ => abort("expected literal after first product")
+  }
+  match function.expressions.items[7] {
+    Binary(Subtract, left, right) => {
+      debug_inspect(left.index(), content="6")
+      debug_inspect(right.index(), content="5")
+    }
+    _ => abort("expected first subtract before z product")
+  }
+  match function.expressions.items[8] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected first z access after left subtract")
+  }
+  match function.expressions.items[9] {
+    Load(pointer) => debug_inspect(pointer.index(), content="8")
+    _ => abort("expected first z load")
+  }
+  match function.expressions.items[10] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected second z access")
+  }
+  match function.expressions.items[11] {
+    Load(pointer) => debug_inspect(pointer.index(), content="10")
+    _ => abort("expected second z load")
+  }
+  match function.expressions.items[12] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="9")
+      debug_inspect(right.index(), content="11")
+    }
+    _ => abort("expected z product after left subtract")
+  }
+  match function.expressions.items[13] {
+    Binary(Subtract, left, right) => {
+      debug_inspect(left.index(), content="7")
+      debug_inspect(right.index(), content="12")
+    }
+    _ => abort("expected final subtract over source-ordered chain")
+  }
+}
+
+///|
 test "WGSL AST lowerer predeclares left associative binary chain roots" {
   let source =
     #|fn probe(factor: f32) -> f32 {
@@ -390,6 +475,55 @@ test "WGSL AST lowerer predeclares left associative binary chain roots" {
       debug_inspect(right.index(), content="6")
     }
     _ => abort("expected final multiply")
+  }
+}
+
+///|
+test "WGSL AST lowerer delays constructor literals after access arguments" {
+  let source =
+    #|struct Data {
+    #|  x: f32,
+    #|  y: f32,
+    #|}
+    #|
+    #|fn probe(p: ptr<function, Data>) -> vec3<f32> {
+    #|  return vec3<f32>((*p).x, 0.0, (*p).y);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected pointer argument root")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected first access before literal")
+  }
+  match function.expressions.items[2] {
+    Load(pointer) => debug_inspect(pointer.index(), content="1")
+    _ => abort("expected first access load")
+  }
+  match function.expressions.items[3] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected second access before literal")
+  }
+  match function.expressions.items[4] {
+    Load(pointer) => debug_inspect(pointer.index(), content="3")
+    _ => abort("expected second access load")
+  }
+  match function.expressions.items[5] {
+    Literal(_) => ()
+    _ => abort("expected literal after access arguments")
+  }
+  match function.expressions.items[6] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="2")
+      debug_inspect(components[1].index(), content="5")
+      debug_inspect(components[2].index(), content="4")
+    }
+    _ => abort("expected constructor compose to preserve component order")
   }
 }
 
