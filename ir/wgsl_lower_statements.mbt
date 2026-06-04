@@ -537,6 +537,17 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           let target = self.materialize_store_pointer_if_needed(
             function, scope, block, raw_target,
           )
+          match rhs_ref.root() {
+            Some(root) =>
+              if wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
+                  root, scope,
+                ) {
+                self.predeclare_function_binary_chain_reference_roots_in_source_order(
+                  root, function, scope,
+                )
+              }
+            None => ()
+          }
           let target_value = self.compound_assignment_target_value(
             function, target,
           )
@@ -999,6 +1010,14 @@ fn WgslIrLowerer::lower_for_header_statement(
           let target = self.materialize_store_pointer_if_needed(
             function, scope, block, raw_target,
           )
+          let rhs_node = wgsl_ir_expr_node_from_tokens(rhs_tokens)
+          if wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
+              rhs_node, scope,
+            ) {
+            self.predeclare_function_binary_chain_reference_roots_in_source_order(
+              rhs_node, function, scope,
+            )
+          }
           let target_value = self.compound_assignment_target_value(
             function, target,
           )
@@ -1065,6 +1084,46 @@ fn WgslIrLowerer::lower_for_header_statement(
     None => ()
   }
   ignore(self.lower_function_expression_ref(expr_ref, function, scope))
+}
+
+///|
+fn wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
+  root : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  wgsl_ir_expr_node_contains_member_access(root) &&
+  wgsl_ir_expr_node_contains_plain_local_identifier(root, scope)
+}
+
+///|
+fn wgsl_ir_expr_node_contains_plain_local_identifier(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(ident) => scope.locals.contains(ident.name())
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      wgsl_ir_expr_node_contains_plain_local_identifier(inner, scope)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_contains_plain_local_identifier(left, scope) ||
+      wgsl_ir_expr_node_contains_plain_local_identifier(right, scope)
+    Member(base, _) | Template(base, _) =>
+      wgsl_ir_expr_node_contains_plain_local_identifier(base, scope)
+    Call(callee, arguments) => {
+      if wgsl_ir_expr_node_contains_plain_local_identifier(callee, scope) {
+        return true
+      }
+      let arguments = wgsl_ir_call_arguments(arguments)
+      arguments.any(fn(argument) {
+        wgsl_ir_expr_node_contains_plain_local_identifier(argument, scope)
+      })
+    }
+    Sequence(items) =>
+      items.any(fn(item) {
+        wgsl_ir_expr_node_contains_plain_local_identifier(item, scope)
+      })
+    Literal(_) | ShaderDefTemplate(_) | PathAccess(_, _) => false
+  }
 }
 
 ///|
