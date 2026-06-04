@@ -359,7 +359,24 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
         wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) {
-        if wgsl_ir_expr_node_is_direct_access_chain(left) ||
+        if wgsl_ir_binary_preserves_left_first_across_higher_precedence_right(
+            op, left, right,
+          ) {
+          let left_handle = self.lower_function_expression_node(
+            left, function, scope,
+          )
+          let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+            right, function, scope,
+          )
+          let right_binary_op = wgsl_ir_binary_operator(right_op)
+          let (right_left, right_right) = self.normalize_function_binary_operands(
+            function, right_binary_op, right_left, right_right,
+          )
+          let right_handle = function.expressions.append(
+            Expression::Binary(right_binary_op, right_left, right_right),
+          )
+          (left_handle, right_handle)
+        } else if wgsl_ir_expr_node_is_direct_access_chain(left) ||
           self.expression_node_is_mutable_local_value(left, function, scope) {
           let left_handle = self.lower_function_expression_node(
             left, function, scope,
@@ -951,6 +968,39 @@ fn wgsl_ir_binary_right_subtree_has_higher_precedence(
   match right.kind() {
     Binary(right_op, _, _) =>
       right_op.binary_precedence() > op.binary_precedence()
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_binary_preserves_left_first_across_higher_precedence_right(
+  parent_op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  match parent_op {
+    Add | Subtract => ()
+    _ => return false
+  }
+  if wgsl_ir_expr_node_contains_call(left) ||
+    wgsl_ir_expr_node_contains_call(right) {
+    return false
+  }
+  let left = wgsl_ir_expr_node_without_groups(left)
+  let right = wgsl_ir_expr_node_without_groups(right)
+  guard left.kind() is Binary(left_op, _, _) else { return false }
+  guard right.kind() is Binary(right_op, _, _) else { return false }
+  wgsl_ir_ast_binary_operator_is_multiplicative(left_op) &&
+  wgsl_ir_ast_binary_operator_is_multiplicative(right_op) &&
+  right_op.binary_precedence() > parent_op.binary_precedence()
+}
+
+///|
+fn wgsl_ir_ast_binary_operator_is_multiplicative(
+  op : @ast.WgslExprOperator,
+) -> Bool {
+  match op {
+    Multiply | Divide | Modulo => true
     _ => false
   }
 }

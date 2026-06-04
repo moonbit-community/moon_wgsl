@@ -283,6 +283,69 @@ test "WGSL AST lowerer inserts higher-precedence right binary subtrees before le
 }
 
 ///|
+test "WGSL AST lowerer keeps additive product subtrees in source arena order" {
+  let source =
+    #|fn probe(a: vec3<f32>, b: vec4<f32>, c: vec3<f32>, d: vec4<f32>) -> vec3<f32> {
+    #|  return a * b.x + c * d.y;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected left product member root first")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected left product value after predeclared member root")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected left product member projection")
+  }
+  match function.expressions.items[3] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="1")
+      debug_inspect(right.index(), content="2")
+    }
+    _ => abort("expected left product before right product")
+  }
+  match function.expressions.items[4] {
+    FunctionArgument(index) => debug_inspect(index, content="2")
+    _ => abort("expected right product value after left product")
+  }
+  match function.expressions.items[5] {
+    FunctionArgument(index) => debug_inspect(index, content="3")
+    _ => abort("expected right product member root after left product")
+  }
+  match function.expressions.items[6] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="5")
+      debug_inspect(index, content="1")
+    }
+    _ => abort("expected right product member projection")
+  }
+  match function.expressions.items[7] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="4")
+      debug_inspect(right.index(), content="6")
+    }
+    _ => abort("expected right product after left product")
+  }
+  match function.expressions.items[8] {
+    Binary(Add, left, right) => {
+      debug_inspect(left.index(), content="3")
+      debug_inspect(right.index(), content="7")
+    }
+    _ => abort("expected parent add over source-ordered products")
+  }
+}
+
+///|
 test "WGSL AST lowerer represents single vector members as Naga-style access indexes" {
   let source =
     #|fn probe(value: vec4<f32>) -> f32 {
