@@ -43,14 +43,12 @@ fn WgslIrLowerer::lower_if_reject_chain(
   if condition_index >= blocks.length() {
     raise UnsupportedStatement("else-if condition without block")
   }
-  let condition_handle = self.lower_function_expression_ref(
+  let block = Block::Block()
+  let condition_handle = self.lower_control_flow_condition_ref(
     conditions[condition_index],
     function,
     scope,
-  )
-  let block = Block::Block()
-  let condition_handle = self.materialize_control_flow_condition_if_needed(
-    function, scope, block, condition_handle,
+    block,
   )
   let accept = self.lower_child_block(blocks[condition_index], function, scope)
   let reject = self.lower_if_reject_chain(
@@ -62,6 +60,28 @@ fn WgslIrLowerer::lower_if_reject_chain(
   )
   block.push(If(condition_handle, accept, reject))
   block
+}
+
+///|
+fn WgslIrLowerer::lower_control_flow_condition_ref(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Handle raise WgslIrLowerError {
+  match expr_ref.root() {
+    Some(root) if wgsl_ir_expr_node_is_short_circuit_binary(root) =>
+      self.materialize_short_circuit_expression_node(
+        function, scope, block, root,
+      )
+    _ => {
+      let handle = self.lower_function_expression_ref(expr_ref, function, scope)
+      self.materialize_control_flow_condition_if_needed(
+        function, scope, block, handle,
+      )
+    }
+  }
 }
 
 ///|

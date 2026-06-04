@@ -461,6 +461,7 @@ pub(all) struct LocalVariable {
   kind : LocalVariableKind
   generated_temporary : Bool
   mut generated_temporary_store_value_reference : Bool
+  short_circuit_result : Bool
   ty : Handle
   init : Handle?
 } derive(Eq, @debug.Debug)

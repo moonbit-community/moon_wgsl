@@ -212,6 +212,7 @@ fn WgslIrLowerer::materialize_function_expression(
     kind: Let,
     generated_temporary: true,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: false,
     ty,
     init: Some(value),
   })
@@ -1005,9 +1006,18 @@ fn WgslIrLowerer::materialize_short_circuit_expression_node(
   let ty = self.scalar_type_handle(Scalar(Bool, 1))
   match op {
     LogicalAnd => {
+      let left_is_short_circuit = wgsl_ir_expr_node_is_short_circuit_binary(
+        left,
+      )
+      let condition_mark = function.expressions.items.length()
       let condition = self.materialize_short_circuit_condition_node(
         function, scope, block, left,
       )
+      if !left_is_short_circuit {
+        wgsl_ir_push_naga_statement_emit_ranges(
+          block, function, condition_mark, condition,
+        )
+      }
       let local_handle = self.allocate_short_circuit_result_local(function, ty)
       let accept = Block::Block()
       let reject = Block::Block()
@@ -1022,13 +1032,25 @@ fn WgslIrLowerer::materialize_short_circuit_expression_node(
         Store(local_ptr, function.expressions.append(Literal(Bool(false)))),
       )
       block.push(If(condition, accept, reject))
-      self.append_short_circuit_result_load(function, local_ptr)
+      let result = self.append_short_circuit_result_load(function, local_ptr)
+      self.materialize_function_expression(function, scope, block, result)
     }
     LogicalOr => {
+      let left_is_short_circuit = wgsl_ir_expr_node_is_short_circuit_binary(
+        left,
+      )
+      let condition_mark = function.expressions.items.length()
       let condition = self.materialize_short_circuit_condition_node(
         function, scope, block, left,
       )
       let inverted = function.expressions.append(Unary(LogicalNot, condition))
+      if !left_is_short_circuit {
+        wgsl_ir_push_naga_statement_emit_ranges(
+          block, function, condition_mark, inverted,
+        )
+      } else {
+        block.push(Emit(HandleRange(inverted, inverted)))
+      }
       let local_handle = self.allocate_short_circuit_result_local(function, ty)
       let accept = Block::Block()
       let reject = Block::Block()
@@ -1043,7 +1065,8 @@ fn WgslIrLowerer::materialize_short_circuit_expression_node(
         Store(local_ptr, function.expressions.append(Literal(Bool(true)))),
       )
       block.push(If(inverted, accept, reject))
-      self.append_short_circuit_result_load(function, local_ptr)
+      let result = self.append_short_circuit_result_load(function, local_ptr)
+      self.materialize_function_expression(function, scope, block, result)
     }
     _ => raise UnsupportedExpression("expected short-circuit operator")
   }
@@ -1130,6 +1153,7 @@ fn WgslIrLowerer::allocate_short_circuit_result_local(
     kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: true,
     ty,
     init: None,
   })
@@ -1160,6 +1184,7 @@ fn WgslIrLowerer::append_short_circuit_result_local(
     kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: true,
     ty,
     init: None,
   })

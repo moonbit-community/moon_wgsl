@@ -314,8 +314,12 @@ normalize_moon_local_declarations() {
   }
   $1 == "writer-local-declare" {
     local = field_value($0, "local")
-    if (local in init) {
-      print "local-declare\t" count++ "\tlocal=" local "\tinit=" init[local]
+    source_local = field_value($0, "source_local")
+    if (source_local == $0) {
+      source_local = local
+    }
+    if (source_local in init) {
+      print "local-declare\t" count++ "\tlocal=" local "\tinit=" init[source_local]
     }
   }
   function field_value(row, key, text) {

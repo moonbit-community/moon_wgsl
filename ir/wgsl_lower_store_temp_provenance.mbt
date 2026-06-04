@@ -35,6 +35,7 @@ fn wgsl_ir_record_store_value_temporary_references(
                 kind: local_var.kind,
                 generated_temporary: local_var.generated_temporary,
                 generated_temporary_store_value_reference: simple_store_value,
+                short_circuit_result: local_var.short_circuit_result,
                 ty: local_var.ty,
                 init: local_var.init,
               }

@@ -123,6 +123,7 @@ fn WgslIrLowerer::predeclare_source_local_placeholder(
     kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: false,
     ty,
     init: None,
   })
@@ -449,11 +450,8 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         raise UnsupportedStatement("if without condition")
       }
       let expression_mark = function.expressions.items.length()
-      let condition_handle = self.lower_function_expression_ref(
-        condition_ref, function, scope,
-      )
-      let condition_handle = self.materialize_control_flow_condition_if_needed(
-        function, scope, block, condition_handle,
+      let condition_handle = self.lower_control_flow_condition_ref(
+        condition_ref, function, scope, block,
       )
       let condition_refs = wgsl_ir_statement_condition_refs(
         statement.expressions(),
@@ -469,26 +467,29 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       let else_block = self.lower_if_reject_chain(
         blocks, condition_refs, 1, function, scope,
       )
-      wgsl_ir_push_naga_statement_emit_ranges(
-        block, function, expression_mark, condition_handle,
-      )
+      let condition_emitted_by_short_circuit = match condition_ref.root() {
+        Some(root) => wgsl_ir_expr_node_is_short_circuit_binary(root)
+        None => false
+      }
+      if !condition_emitted_by_short_circuit {
+        wgsl_ir_push_naga_statement_emit_ranges(
+          block, function, expression_mark, condition_handle,
+        )
+      }
       block.push(If(condition_handle, then_block, else_block))
     }
     While(condition) => {
       guard condition is Some(condition_ref) else {
         raise UnsupportedStatement("while without condition")
       }
-      let cond = self.lower_function_expression_ref(
-        condition_ref, function, scope,
-      )
       let lowered_body = match statement.blocks() {
         [body_block, ..] => self.lower_child_block(body_block, function, scope)
         [] => Block()
       }
       let body_statements : Array[Statement] = []
       let guard_block = Block::{ statements: body_statements }
-      let cond = self.materialize_control_flow_condition_if_needed(
-        function, scope, guard_block, cond,
+      let cond = self.lower_control_flow_condition_ref(
+        condition_ref, function, scope, guard_block,
       )
       body_statements.push(If(cond, Block(), { statements: [Break] }))
       for body_statement in lowered_body.statements {
@@ -1566,6 +1567,7 @@ fn WgslIrLowerer::lower_local_declaration(
     kind: wgsl_ir_local_variable_kind(local_decl.kind()),
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: false,
     ty,
     init: if local_decl.kind() == Var {
       if var_init_in_declaration {
@@ -1691,6 +1693,7 @@ fn WgslIrLowerer::lower_predeclared_source_var_const_initializer_to_handle(
     kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: false,
     ty,
     init: Some(init),
   })
@@ -1870,6 +1873,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
         kind: Var,
         generated_temporary: false,
         generated_temporary_store_value_reference: false,
+        short_circuit_result: false,
         ty: placeholder_ty,
         init: None,
       })
@@ -1879,6 +1883,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: false,
     ty: placeholder_ty,
     init: None,
   })
@@ -1930,6 +1935,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
+    short_circuit_result: false,
     ty,
     init: None,
   })

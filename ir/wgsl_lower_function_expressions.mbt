@@ -2467,22 +2467,23 @@ fn WgslIrLowerer::lower_function_dynamic_member_index_access(
         let root_handle = self.lower_function_access_base_pointer_node(
           root, function, scope,
         )
-        let (base_handle, index_handle) = if wgsl_ir_expression_handle_is_global_variable(
+        let (base_handle, index_handle) = if !wgsl_ir_expression_handle_is_global_variable(
             function, root_handle,
-          ) {
-          let index_handle = self.lower_function_expression_node(
-            index, function, scope,
-          )
+          ) &&
+          self.expression_node_is_mutable_local_value(index, function, scope) {
           let base_handle = self.lower_function_static_member_access_chain(
             root_handle, members, function,
+          )
+          let index_handle = self.lower_function_expression_node(
+            index, function, scope,
           )
           (base_handle, index_handle)
         } else {
-          let base_handle = self.lower_function_static_member_access_chain(
-            root_handle, members, function,
-          )
           let index_handle = self.lower_function_expression_node(
             index, function, scope,
+          )
+          let base_handle = self.lower_function_static_member_access_chain(
+            root_handle, members, function,
           )
           (base_handle, index_handle)
         }

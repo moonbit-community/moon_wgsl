@@ -378,11 +378,11 @@ fn wgsl_ir_naga_writer_body_plan_trace(
   let mut raw_statement_index = 0
   for index in 0..<function.body.statements.length() {
     let statement = function.body.statements[index]
-    if wgsl_ir_trace_statement_is_not_naga_raw_body_row(statement) {
+    if wgsl_ir_trace_statement_is_not_naga_raw_body_row(function, statement) {
       continue
     }
     out.write_string(
-      "raw-statement\t\{label}\t\{raw_statement_index}\t\{wgsl_ir_trace_statement_kind(statement)}\n",
+      "raw-statement\t\{label}\t\{raw_statement_index}\t\{wgsl_ir_trace_raw_statement_kind(function, statement)}\n",
     )
     raw_statement_index = raw_statement_index + 1
   }
@@ -395,7 +395,7 @@ fn wgsl_ir_naga_writer_body_plan_trace(
       None => "-"
     }
     out.write_string(
-      "writer-local-declare\t\{label}\t\{order_index}\tlocal=\{local_index}\tfinal=\{final_name}\n",
+      "writer-local-declare\t\{label}\t\{order_index}\tlocal=\{order_index}\tsource_local=\{local_index}\tfinal=\{final_name}\n",
     )
   }
   let statements = body_plan.statement_plan(function, function.body)
@@ -507,6 +507,51 @@ fn wgsl_ir_trace_expression_kind(expression : Expression) -> String {
 }
 
 ///|
+fn wgsl_ir_trace_raw_statement_kind(
+  function : Function,
+  statement : Statement,
+) -> String {
+  match statement {
+    Declare(handle) =>
+      if wgsl_ir_trace_declare_is_short_circuit_result_load(function, handle) {
+        match function.local_variables.items.get(handle.index()) {
+          Some({ init: Some(init), .. }) =>
+            "Emit(\{init.index()}..\{init.index()})"
+          _ => wgsl_ir_trace_statement_kind(statement)
+        }
+      } else {
+        wgsl_ir_trace_statement_kind(statement)
+      }
+    _ => wgsl_ir_trace_statement_kind(statement)
+  }
+}
+
+///|
+fn wgsl_ir_trace_declare_is_short_circuit_result_load(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  guard function.local_variables.items.get(handle.index())
+    is Some({ generated_temporary: true, init: Some(init), .. }) else {
+    return false
+  }
+  guard function.expressions.items.get(init.index()) is Some(Load(pointer)) else {
+    return false
+  }
+  guard function.expressions.items.get(pointer.index())
+    is Some(LocalVariable(local_handle)) else {
+    return false
+  }
+  match function.local_variables.items.get(local_handle.index()) {
+    Some(local_var) =>
+      local_var.kind == Var &&
+      !local_var.generated_temporary &&
+      local_var.short_circuit_result
+    None => false
+  }
+}
+
+///|
 fn wgsl_ir_trace_statement_kind(statement : Statement) -> String {
   match statement {
     Declare(handle) => "Declare(\{handle.index()})"
@@ -549,10 +594,12 @@ fn wgsl_ir_trace_statement_kind(statement : Statement) -> String {
 
 ///|
 fn wgsl_ir_trace_statement_is_not_naga_raw_body_row(
+  function : Function,
   statement : Statement,
 ) -> Bool {
   match statement {
-    Declare(_) => true
+    Declare(handle) =>
+      !wgsl_ir_trace_declare_is_short_circuit_result_load(function, handle)
     _ => false
   }
 }
