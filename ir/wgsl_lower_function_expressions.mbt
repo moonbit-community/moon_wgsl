@@ -406,7 +406,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           (left_handle, right_handle)
         }
       } else if self.binary_expression_lowers_right_before_left(
-          left, right, function, scope,
+          op, left, right, function, scope,
         ) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
@@ -1105,7 +1105,7 @@ fn WgslIrLowerer::lower_binary_expression_children(
         None => ()
       }
       let (left_handle, right_handle) = if self.binary_expression_lowers_right_before_left(
-          left, right, function, scope,
+          op, left, right, function, scope,
         ) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
@@ -1179,6 +1179,7 @@ fn wgsl_ir_binary_right_root_is_delayed_after_parent_left(
 ///|
 fn WgslIrLowerer::binary_expression_lowers_right_before_left(
   self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
   left : @ast.WgslExprNode,
   right : @ast.WgslExprNode,
   function : Function,
@@ -1188,6 +1189,11 @@ fn WgslIrLowerer::binary_expression_lowers_right_before_left(
     return self.expression_node_contains_naga_reference_value(
       right, function, scope,
     )
+  }
+  if self.expression_node_is_naga_deferred_const_like(left, scope) {
+    return wgsl_ir_ast_binary_operator_is_multiplicative(op) &&
+      !self.expression_node_is_mutable_local_value(right, function, scope) &&
+      self.expression_node_contains_naga_reference_value(right, function, scope)
   }
   if self.expression_node_is_inline_constant_reference(left, scope) {
     return !self.expression_node_is_mutable_local_value(right, function, scope) &&
@@ -1215,6 +1221,25 @@ fn WgslIrLowerer::binary_expression_predeclares_left_associative_reference_roots
   }
   left_op.binary_precedence() == op.binary_precedence() &&
   self.expression_node_is_mutable_local_value(right, function, scope)
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_naga_deferred_const_like(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expression_node_is_naga_deferred_const_like(inner, scope)
+    Literal(_) => true
+    Identifier(_) =>
+      self.expression_node_is_inline_constant_reference(node, scope)
+    Binary(_, left, right) =>
+      self.expression_node_is_naga_deferred_const_like(left, scope) &&
+      self.expression_node_is_naga_deferred_const_like(right, scope)
+    _ => false
+  }
 }
 
 ///|
@@ -2711,6 +2736,13 @@ fn WgslIrLowerer::lower_function_constructor_expression_from_handles(
   lowered_arguments : Array[Handle],
   function : Function,
 ) -> Handle {
+  match
+    self.lower_function_matrix_constructor_expression_from_handles(
+      ty, lowered_arguments, function,
+    ) {
+    Some(handle) => return handle
+    None => ()
+  }
   match self.vector_size_from_type(ty) {
     Some(size) =>
       match lowered_arguments {
@@ -2727,6 +2759,34 @@ fn WgslIrLowerer::lower_function_constructor_expression_from_handles(
     None => ()
   }
   function.expressions.append(Compose(ty, lowered_arguments))
+}
+
+///|
+fn WgslIrLowerer::lower_function_matrix_constructor_expression_from_handles(
+  self : WgslIrLowerer,
+  ty : Handle,
+  lowered_arguments : Array[Handle],
+  function : Function,
+) -> Handle? {
+  guard self.shader_module.types.get(ty) is Some(type_) else { return None }
+  guard type_.inner is Matrix(columns, rows, scalar) else { return None }
+  let columns_len = columns.width()
+  let rows_len = rows.width()
+  guard lowered_arguments.length() == columns_len * rows_len else {
+    return None
+  }
+  let column_ty = self.vector_type_handle(rows, scalar)
+  let column_handles : Array[Handle] = []
+  for column in 0..<columns_len {
+    let column_components : Array[Handle] = []
+    for row in 0..<rows_len {
+      column_components.push(lowered_arguments[column * rows_len + row])
+    }
+    column_handles.push(
+      function.expressions.append(Compose(column_ty, column_components)),
+    )
+  }
+  Some(function.expressions.append(Compose(ty, column_handles)))
 }
 
 ///|
@@ -3266,6 +3326,16 @@ fn WgslIrLowerer::lower_function_select_call(
     let accept = self.lower_function_expression_node(accept, function, scope)
     let reject = self.lower_function_expression_node(reject, function, scope)
     (condition, accept, reject)
+  } else if self.select_accept_predeclares_reference_root(
+      accept, function, scope,
+    ) {
+    self.predeclare_function_member_root_expression(accept, function, scope)
+    let condition = self.lower_function_expression_node(
+      condition, function, scope,
+    )
+    let reject = self.lower_function_expression_node(reject, function, scope)
+    let accept = self.lower_function_expression_node(accept, function, scope)
+    (condition, accept, reject)
   } else {
     let reject = self.lower_function_expression_node(reject, function, scope)
     let accept = self.lower_function_expression_node(accept, function, scope)
@@ -3275,6 +3345,18 @@ fn WgslIrLowerer::lower_function_select_call(
     (condition, accept, reject)
   }
   function.expressions.append(Select(condition, accept, reject))
+}
+
+///|
+fn WgslIrLowerer::select_accept_predeclares_reference_root(
+  self : WgslIrLowerer,
+  accept : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  guard wgsl_ir_expr_node_is_direct_access_chain(accept) else { return false }
+  self.expression_node_contains_naga_reference_value(accept, function, scope) &&
+  !wgsl_ir_expr_node_is_function_argument_value(accept, scope)
 }
 
 ///|

@@ -387,7 +387,63 @@ fn WgslIrLowerer::lower_user_function_call_argument_dependencies(
       )
     }
   }
+  for index in 1..<arguments.length() {
+    if prelowered[index] == None &&
+      self.call_argument_lowers_before_prior_direct_argument(
+        arguments, prelowered, index, function, scope,
+      ) {
+      prelowered[index] = Some(
+        self.lower_user_function_call_argument_at(
+          arguments[index],
+          callee_function,
+          index,
+          function,
+          scope,
+        ),
+      )
+    }
+  }
   prelowered
+}
+
+///|
+fn WgslIrLowerer::call_argument_lowers_before_prior_direct_argument(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  prelowered : Array[Handle?],
+  index : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  guard self.expression_node_contains_naga_reference_value(
+    arguments[index],
+    function,
+    scope,
+  ) else {
+    return false
+  }
+  if wgsl_ir_expr_node_is_function_argument_value(arguments[index], scope) {
+    return false
+  }
+  if !wgsl_ir_expr_node_is_call_value(arguments[index]) {
+    return false
+  }
+  for prior in 0..<index {
+    if prelowered[prior] == None &&
+      wgsl_ir_expr_node_is_function_argument_value(arguments[prior], scope) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_expr_node_is_call_value(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_is_call_value(inner)
+    Call(_, _) => true
+    _ => false
+  }
 }
 
 ///|

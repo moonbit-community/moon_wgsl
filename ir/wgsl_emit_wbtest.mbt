@@ -1910,7 +1910,9 @@ test "naga-oil writer policy expands scalar matrix constructors into columns" {
     error => abort(error.message())
   }
   debug_inspect(
-    valid.contains("mat3x3<f32>(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f)"),
+    valid.contains(
+      "mat3x3<f32>(vec3<f32>(1f, 0f, 0f), vec3<f32>(0f, 1f, 0f), vec3<f32>(0f, 0f, 1f))",
+    ),
     content="true",
   )
   debug_inspect(

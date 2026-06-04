@@ -528,6 +528,61 @@ test "WGSL AST lowerer delays constructor literals after access arguments" {
 }
 
 ///|
+test "WGSL AST lowerer follows Naga call argument arena order for deferred select" {
+  let source =
+    #|struct Globals {
+    #|  frame_count: u32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> globals: Globals;
+    #|
+    #|fn noise(scale: vec2<f32>, frame: u32) -> f32 {
+    #|  return scale.x + f32(frame);
+    #|}
+    #|
+    #|fn probe(scale: vec2<f32>, temporal: bool) -> f32 {
+    #|  let angle = 2.0 * 3.1415927 * noise(scale, select(1u, globals.frame_count, temporal));
+    #|  return angle;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected select accept root before call argument")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected select condition before reject literal")
+  }
+  match function.expressions.items[2] {
+    Literal(_) => ()
+    _ => abort("expected select reject literal after condition")
+  }
+  match function.expressions.items[5] {
+    Select(condition, accept, reject) => {
+      debug_inspect(condition.index(), content="1")
+      debug_inspect(accept.index(), content="4")
+      debug_inspect(reject.index(), content="2")
+    }
+    _ => abort("expected select before first call argument")
+  }
+  match function.expressions.items[6] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected direct call argument after deferred select")
+  }
+  match function.expressions.items[7] {
+    CallResult(_) => ()
+    _ => abort("expected user call result after arguments")
+  }
+  match function.expressions.items[8] {
+    Literal(_) => ()
+    _ => abort("expected folded left constant after call")
+  }
+}
+
+///|
 test "WGSL AST lowerer represents single vector members as Naga-style access indexes" {
   let source =
     #|fn probe(value: vec4<f32>) -> f32 {
