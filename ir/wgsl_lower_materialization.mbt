@@ -2024,6 +2024,8 @@ fn WgslIrLowerer::function_expression_can_return_directly(
         | Relational(_, _)
         | CooperativeLoad(_, _, _, _)
         | CooperativeMultiplyAdd(_, _, _) => true
+        As(inner, _, _) =>
+          self.function_as_expression_can_return_directly(function, inner)
         LocalVariable(local_handle) =>
           match function.local_variables.items.get(local_handle.index()) {
             Some(local_variable) => local_variable.kind == Let
@@ -2034,6 +2036,25 @@ fn WgslIrLowerer::function_expression_can_return_directly(
         _ => false
       }
     None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_as_expression_can_return_directly(
+  self : WgslIrLowerer,
+  function : Function,
+  inner : Handle,
+) -> Bool {
+  if self.function_expression_can_return_directly(function, inner) {
+    return true
+  }
+  match function.expressions.items.get(inner.index()) {
+    Some(Load(pointer)) =>
+      match function.expressions.items.get(pointer.index()) {
+        Some(LocalVariable(_)) => true
+        _ => false
+      }
+    _ => false
   }
 }
 

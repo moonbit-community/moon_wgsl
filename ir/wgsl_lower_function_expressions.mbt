@@ -345,6 +345,15 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         self.predeclare_function_reference_roots_in_source_order(
           right, function, scope,
         )
+      } else if wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) &&
+        !wgsl_ir_expr_node_is_function_argument_value(left, scope) &&
+        wgsl_ir_expr_node_contains_call(left) &&
+        !wgsl_ir_expr_node_contains_non_math_call(left) &&
+        !wgsl_ir_expr_node_contains_non_math_call(right) &&
+        wgsl_ir_expr_node_contains_function_argument_value(right, scope) {
+        self.predeclare_function_argument_values_in_source_order(
+          right, function, scope,
+        )
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
         wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) {
@@ -382,18 +391,21 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           )
           (left_handle, right_handle)
         } else {
-          let (right_op, right_left, right_right) = self.lower_binary_expression_children(
-            right, function, scope,
-          )
-          let right_binary_op = wgsl_ir_binary_operator(right_op)
-          let (right_left, right_right) = self.normalize_function_binary_operands(
-            function, right_binary_op, right_left, right_right,
-          )
-          let right_binary_lowers_before_left = wgsl_ir_expr_node_contains_call(
+          let right_binary_lowers_before_left = wgsl_ir_expr_node_contains_non_math_call(
               right,
             ) ||
             wgsl_ir_expr_node_is_literal_like(left)
+          let right_children_lower_before_left = wgsl_ir_expr_node_is_function_argument_value(
+            left, scope,
+          )
           let (left_handle, right_handle) = if right_binary_lowers_before_left {
+            let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+              right, function, scope,
+            )
+            let right_binary_op = wgsl_ir_binary_operator(right_op)
+            let (right_left, right_right) = self.normalize_function_binary_operands(
+              function, right_binary_op, right_left, right_right,
+            )
             let right_handle = function.expressions.append(
               Binary(right_binary_op, right_left, right_right),
             )
@@ -401,9 +413,31 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               left, function, scope,
             )
             (left_handle, right_handle)
+          } else if right_children_lower_before_left {
+            let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+              right, function, scope,
+            )
+            let right_binary_op = wgsl_ir_binary_operator(right_op)
+            let (right_left, right_right) = self.normalize_function_binary_operands(
+              function, right_binary_op, right_left, right_right,
+            )
+            let left_handle = self.lower_function_expression_node(
+              left, function, scope,
+            )
+            let right_handle = function.expressions.append(
+              Binary(right_binary_op, right_left, right_right),
+            )
+            (left_handle, right_handle)
           } else {
             let left_handle = self.lower_function_expression_node(
               left, function, scope,
+            )
+            let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+              right, function, scope,
+            )
+            let right_binary_op = wgsl_ir_binary_operator(right_op)
+            let (right_left, right_right) = self.normalize_function_binary_operands(
+              function, right_binary_op, right_left, right_right,
             )
             let right_handle = function.expressions.append(
               Binary(right_binary_op, right_left, right_right),
@@ -1105,6 +1139,15 @@ fn WgslIrLowerer::lower_function_right_operand_before_left(
     let (right_left, right_right) = self.normalize_function_binary_operands(
       function, right_binary_op, right_left, right_right,
     )
+    if parent_op == Divide && wgsl_ir_expr_node_is_literal_like(left) {
+      let right_handle = function.expressions.append(
+        Binary(right_binary_op, right_left, right_right),
+      )
+      let left_handle = self.lower_function_expression_node(
+        left, function, scope,
+      )
+      return (left_handle, right_handle)
+    }
     let left_handle = self.lower_function_expression_node(left, function, scope)
     let right_handle = function.expressions.append(
       Binary(right_binary_op, right_left, right_right),
@@ -1270,8 +1313,8 @@ fn WgslIrLowerer::binary_expression_predeclares_left_associative_reference_roots
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Bool {
-  if wgsl_ir_expr_node_contains_call(left) ||
-    wgsl_ir_expr_node_contains_call(right) {
+  if wgsl_ir_expr_node_contains_non_math_call(left) ||
+    wgsl_ir_expr_node_contains_non_math_call(right) {
     return false
   }
   guard wgsl_ir_expr_node_without_groups(left).kind() is Binary(left_op, _, _) else {
@@ -1529,6 +1572,33 @@ fn wgsl_ir_expr_node_contains_call(node : @ast.WgslExprNode) -> Bool {
       wgsl_ir_expr_node_contains_call(base)
     Sequence(items) =>
       items.any(fn(item) { wgsl_ir_expr_node_contains_call(item) })
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_contains_non_math_call(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      let callee_is_math = match callee.kind() {
+        Identifier(name) => wgsl_ir_math_function_from_name(name.name()) != None
+        _ => false
+      }
+      !callee_is_math ||
+      arguments.any(fn(argument) {
+        wgsl_ir_expr_node_contains_non_math_call(argument)
+      })
+    }
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      wgsl_ir_expr_node_contains_non_math_call(inner)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_contains_non_math_call(left) ||
+      wgsl_ir_expr_node_contains_non_math_call(right)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      wgsl_ir_expr_node_contains_non_math_call(base)
+    Sequence(items) =>
+      items.any(fn(item) { wgsl_ir_expr_node_contains_non_math_call(item) })
     Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
   }
 }
@@ -2051,6 +2121,13 @@ fn WgslIrLowerer::lower_function_constructor_call(
       }
     None => ()
   }
+  match
+    self.lower_function_scalar_constructor_expression_from_handles(
+      ty, lowered_arguments, function,
+    ) {
+    Some(handle) => return handle
+    None => ()
+  }
   let handle = self.lower_function_constructor_expression_from_handles(
     ty, lowered_arguments, function,
   )
@@ -2062,6 +2139,35 @@ fn WgslIrLowerer::lower_function_constructor_call(
     None => ()
   }
   handle
+}
+
+///|
+fn WgslIrLowerer::lower_function_scalar_constructor_expression_from_handles(
+  self : WgslIrLowerer,
+  ty : Handle,
+  lowered_arguments : Array[Handle],
+  function : Function,
+) -> Handle? {
+  guard lowered_arguments is [argument] else { return None }
+  guard self.scalar_from_numeric_type_handle(ty) is Some(target_scalar) else {
+    return None
+  }
+  guard self.function_expression_type(function, argument) is Some(argument_ty) else {
+    return None
+  }
+  guard self.scalar_from_numeric_type_handle(argument_ty)
+    is Some(argument_scalar) else {
+    return None
+  }
+  if target_scalar == argument_scalar {
+    None
+  } else {
+    Some(
+      function.expressions.append(
+        As(argument, target_scalar.kind, Some(target_scalar.width)),
+      ),
+    )
+  }
 }
 
 ///|

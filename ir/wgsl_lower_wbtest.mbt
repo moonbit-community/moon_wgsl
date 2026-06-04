@@ -1293,6 +1293,192 @@ test "WGSL AST lowerer predeclares right function argument root before left memb
 }
 
 ///|
+test "WGSL AST lowerer keeps math-call additive left subtree before right product" {
+  let source =
+    #|struct Light {
+    #|  shadow_depth_bias: f32,
+    #|  shadow_normal_bias: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> light: Light;
+    #|
+    #|fn probe(surface_to_light: vec3<f32>, surface_normal: vec3<f32>, distance: f32) -> vec3<f32> {
+    #|  let offset = -surface_to_light + (light.shadow_depth_bias * normalize(surface_to_light)) + (surface_normal.xyz * light.shadow_normal_bias) * distance;
+    #|  return offset;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut left_unary : Int? = None
+  let mut surface_swizzle : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      Unary(_, _) if left_unary == None => left_unary = Some(index)
+      Swizzle(_, base, _) if surface_swizzle == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(FunctionArgument(argument_index)) if argument_index == 1 =>
+            surface_swizzle = Some(index)
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (left_unary, surface_swizzle) {
+    (Some(unary), Some(swizzle)) =>
+      debug_inspect(unary < swizzle, content="true")
+    _ => abort("expected left unary and surface normal swizzle handles")
+  }
+}
+
+///|
+test "WGSL AST lowerer appends literal-left division product denominator before numerator" {
+  let source =
+    #|fn probe(scale: f32, position: vec3<f32>) -> f32 {
+    #|  let value = 1.0 / (scale * -position.z);
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut denominator_binary : Int? = None
+  let mut numerator_literal : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      Binary(Multiply, _, _) if denominator_binary == None =>
+        denominator_binary = Some(index)
+      Literal(_) if numerator_literal == None => numerator_literal = Some(index)
+      _ => ()
+    }
+  }
+  match (denominator_binary, numerator_literal) {
+    (Some(denominator), Some(numerator)) =>
+      debug_inspect(denominator < numerator, content="true")
+    _ => abort("expected denominator multiply and numerator literal")
+  }
+}
+
+///|
+test "WGSL AST lowerer lowers scalar conversion constructors as As expressions" {
+  let source =
+    #|fn probe(light_id: u32, offset: i32) -> i32 {
+    #|  let array_index = i32(light_id) + offset;
+    #|  return array_index;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut found_as = false
+  for expression in function.expressions.items {
+    match expression {
+      As(_, Sint, Some(4)) => found_as = true
+      _ => ()
+    }
+  }
+  debug_inspect(found_as, content="true")
+}
+
+///|
+test "WGSL AST lowerer prelowers later reference call argument before prior direct argument" {
+  let source =
+    #|struct Light {
+    #|  soft_shadow_size: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> light: Light;
+    #|
+    #|fn target(depth: f32, frag_coord: vec2<f32>, light_size: f32) -> f32 {
+    #|  return light_size;
+    #|}
+    #|
+    #|fn probe(depth: f32, frag_coord: vec2<f32>) -> f32 {
+    #|  return target(depth, frag_coord, light.soft_shadow_size);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut frag_argument : Int? = None
+  let mut soft_shadow_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(argument_index) if argument_index == 1 &&
+        frag_argument == None => frag_argument = Some(index)
+      Load(base) if soft_shadow_load == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(access_base, _)) =>
+            match function.expressions.items.get(access_base.index()) {
+              Some(GlobalVariable(_)) => soft_shadow_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (soft_shadow_load, frag_argument) {
+    (Some(load), Some(argument)) =>
+      debug_inspect(load < argument, content="true")
+    _ => abort("expected soft shadow load and frag coord argument")
+  }
+}
+
+///|
+test "WGSL AST lowerer keeps earlier compound call argument before later reference argument" {
+  let source =
+    #|struct Light {
+    #|  soft_shadow_size: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> light: Light;
+    #|
+    #|const flip_z: vec3<f32> = vec3<f32>(1.0, 1.0, -1.0);
+    #|
+    #|fn target(position: vec3<f32>, light_id: u32, light_size: f32) -> f32 {
+    #|  return light_size;
+    #|}
+    #|
+    #|fn probe(frag_ls: vec3<f32>, light_id: u32) -> f32 {
+    #|  return target(frag_ls * flip_z, light_id, light.soft_shadow_size);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut flip_constant : Int? = None
+  let mut position_product : Int? = None
+  let mut soft_shadow_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      Constant(_) if flip_constant == None => flip_constant = Some(index)
+      Binary(Multiply, _, _) if position_product == None =>
+        position_product = Some(index)
+      Load(base) if soft_shadow_load == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(access_base, _)) =>
+            match function.expressions.items.get(access_base.index()) {
+              Some(GlobalVariable(_)) => soft_shadow_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (flip_constant, position_product, soft_shadow_load) {
+    (Some(constant), Some(product), Some(load)) =>
+      debug_inspect(constant < product && product < load, content="true")
+    _ =>
+      abort("expected flip_z constant, position product, and soft shadow load")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps shadowing var out of scope while lowering its initializer" {
   let source =
     #|fn convert(value: vec2<f32>) -> vec4<f32> {
@@ -1695,7 +1881,8 @@ test "WGSL AST lowerer materializes global binding accesses inside return constr
     error => abort(error.message())
   }
   debug_inspect(emitted.contains(": u32 = values[0];"), content="true")
-  debug_inspect(emitted.contains("return f32(_e"), content="true")
+  debug_inspect(emitted.contains(": f32 = f32(_e"), content="true")
+  debug_inspect(emitted.contains("return _e"), content="true")
 }
 
 ///|
@@ -1713,7 +1900,9 @@ test "WGSL AST lowerer indexes addressable bindings without preloading base arra
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains(": u32 = values[0];") && emitted.contains("return f32(_e"),
+    emitted.contains(": u32 = values[0];") &&
+    emitted.contains(": f32 = f32(_e") &&
+    emitted.contains("return _e"),
     content="true",
   )
 }

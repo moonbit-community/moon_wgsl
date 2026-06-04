@@ -425,13 +425,30 @@ fn WgslIrLowerer::call_argument_lowers_before_prior_direct_argument(
   if wgsl_ir_expr_node_is_function_argument_value(arguments[index], scope) {
     return false
   }
-  if !wgsl_ir_expr_node_is_call_value(arguments[index]) {
+  if !wgsl_ir_expr_node_is_call_value(arguments[index]) &&
+    !wgsl_ir_expr_node_is_direct_access_chain(arguments[index]) {
     return false
   }
   for prior in 0..<index {
     if prelowered[prior] == None &&
+      wgsl_ir_expr_node_is_call_value(arguments[prior]) {
+      return false
+    }
+    if prelowered[prior] == None &&
+      wgsl_ir_expr_node_is_direct_access_chain(arguments[prior]) &&
+      wgsl_ir_direct_access_chain_root_is_function_argument(
+        arguments[prior],
+        scope,
+      ) {
+      return false
+    }
+    if prelowered[prior] == None &&
       wgsl_ir_expr_node_is_function_argument_value(arguments[prior], scope) {
       return true
+    }
+    if prelowered[prior] == None &&
+      !self.call_argument_is_existing_expression_alias(arguments[prior], scope) {
+      return false
     }
   }
   false
