@@ -1091,8 +1091,29 @@ fn wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
   root : @ast.WgslExprNode,
   scope : WgslIrFunctionScope,
 ) -> Bool {
-  wgsl_ir_expr_node_contains_member_access(root) &&
-  wgsl_ir_expr_node_contains_plain_local_identifier(root, scope)
+  (
+    wgsl_ir_expr_node_contains_member_access(root) &&
+    wgsl_ir_expr_node_contains_plain_local_identifier(root, scope)
+  ) ||
+  wgsl_ir_expr_node_is_root_call_with_function_argument_value(root, scope)
+}
+
+///|
+fn wgsl_ir_expr_node_is_root_call_with_function_argument_value(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      wgsl_ir_expr_node_is_root_call_with_function_argument_value(inner, scope)
+    Call(_, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      arguments.any(fn(argument) {
+        wgsl_ir_expr_node_contains_function_argument_value(argument, scope)
+      })
+    }
+    _ => false
+  }
 }
 
 ///|

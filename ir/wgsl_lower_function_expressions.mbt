@@ -456,6 +456,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       )
     }
     Index(base, index) => {
+      match
+        self.lower_function_const_array_static_index_value(
+          base, index, function,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
       let base_handle = self.lower_function_index_value_base(
         base, function, scope,
       )
@@ -483,6 +490,195 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
     Sequence(items) =>
       raise UnsupportedExpression(
         "expression sequence with \{items.length()} item(s) outside argument context: \{wgsl_ir_expr_node_shape(node)}",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_const_array_static_index_value(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  index : @ast.WgslExprNode,
+  function : Function,
+) -> Handle? raise WgslIrLowerError {
+  let base = match base.kind() {
+    Group(inner) => inner
+    _ => base
+  }
+  guard base.kind() is Identifier(name) else { return None }
+  guard self.static_index_value_from_expr_node(index) is Some(static_index) else {
+    return None
+  }
+  guard static_index >= 0 else { return None }
+  guard self.ensure_constant_declaration_lowered(name.name())
+    is Some(constant_handle) else {
+    return None
+  }
+  guard self.shader_module.constants.items.get(constant_handle.index())
+    is Some(constant) else {
+    return None
+  }
+  guard self.shader_module.types.get(
+      self.deref_pointer_type_handle(constant.ty),
+    )
+    is Some(type_) else {
+    return None
+  }
+  match type_.inner {
+    Array(_, Constant(count), _) => if static_index >= count { return None }
+    _ => return None
+  }
+  guard self.shader_module.global_expressions.items.get(constant.init.index())
+    is Some(init) else {
+    return None
+  }
+  match init {
+    Compose(_, components) =>
+      match components.get(static_index) {
+        Some(component) =>
+          Some(
+            self.clone_global_const_expression_to_function(component, function),
+          )
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::clone_global_const_expression_to_function(
+  self : WgslIrLowerer,
+  handle : Handle,
+  function : Function,
+) -> Handle raise WgslIrLowerError {
+  guard self.shader_module.global_expressions.items.get(handle.index())
+    is Some(expression) else {
+    raise UnsupportedExpression("missing global const expression")
+  }
+  match expression {
+    Literal(literal) => function.expressions.append(Literal(literal))
+    ZeroValue(ty) => function.expressions.append(ZeroValue(ty))
+    Constant(constant) =>
+      match self.shader_module.constants.items.get(constant.index()) {
+        Some(nested) =>
+          self.clone_global_const_expression_to_function(nested.init, function)
+        None => function.expressions.append(Constant(constant))
+      }
+    Compose(ty, components) => {
+      let cloned : Array[Handle] = []
+      for component in components {
+        cloned.push(
+          self.clone_global_const_expression_to_function(component, function),
+        )
+      }
+      function.expressions.append(Compose(ty, cloned))
+    }
+    Splat(size, inner) =>
+      function.expressions.append(
+        Splat(
+          size,
+          self.clone_global_const_expression_to_function(inner, function),
+        ),
+      )
+    Unary(op, inner) =>
+      function.expressions.append(
+        Unary(
+          op,
+          self.clone_global_const_expression_to_function(inner, function),
+        ),
+      )
+    Binary(op, left, right) => {
+      let left = self.clone_global_const_expression_to_function(left, function)
+      let right = self.clone_global_const_expression_to_function(
+        right, function,
+      )
+      function.expressions.append(Binary(op, left, right))
+    }
+    Select(condition, accept, reject) => {
+      let condition = self.clone_global_const_expression_to_function(
+        condition, function,
+      )
+      let accept = self.clone_global_const_expression_to_function(
+        accept, function,
+      )
+      let reject = self.clone_global_const_expression_to_function(
+        reject, function,
+      )
+      function.expressions.append(Select(condition, accept, reject))
+    }
+    Bitcast(ty, inner) =>
+      function.expressions.append(
+        Bitcast(
+          ty,
+          self.clone_global_const_expression_to_function(inner, function),
+        ),
+      )
+    Relational(relational, inner) =>
+      function.expressions.append(
+        Relational(
+          relational,
+          self.clone_global_const_expression_to_function(inner, function),
+        ),
+      )
+    Math(math, a, b, c, d) => {
+      let a = self.clone_global_const_expression_to_function(a, function)
+      let b = match b {
+        Some(handle) =>
+          Some(self.clone_global_const_expression_to_function(handle, function))
+        None => None
+      }
+      let c = match c {
+        Some(handle) =>
+          Some(self.clone_global_const_expression_to_function(handle, function))
+        None => None
+      }
+      let d = match d {
+        Some(handle) =>
+          Some(self.clone_global_const_expression_to_function(handle, function))
+        None => None
+      }
+      function.expressions.append(Math(math, a, b, c, d))
+    }
+    As(inner, kind, width) =>
+      function.expressions.append(
+        As(
+          self.clone_global_const_expression_to_function(inner, function),
+          kind,
+          width,
+        ),
+      )
+    AccessIndex(base, index) =>
+      function.expressions.append(
+        AccessIndex(
+          self.clone_global_const_expression_to_function(base, function),
+          index,
+        ),
+      )
+    Access(base, index) => {
+      let base = self.clone_global_const_expression_to_function(base, function)
+      let index = self.clone_global_const_expression_to_function(
+        index, function,
+      )
+      function.expressions.append(Access(base, index))
+    }
+    Swizzle(size, base, components) =>
+      function.expressions.append(
+        Swizzle(
+          size,
+          self.clone_global_const_expression_to_function(base, function),
+          components,
+        ),
+      )
+    Component(base, component) =>
+      function.expressions.append(
+        Component(
+          self.clone_global_const_expression_to_function(base, function),
+          component,
+        ),
+      )
+    _ =>
+      raise UnsupportedExpression(
+        "global const expression is not function-cloneable",
       )
   }
 }
@@ -758,11 +954,21 @@ fn WgslIrLowerer::predeclare_function_binary_chain_reference_roots_in_source_ord
       self.predeclare_function_binary_chain_reference_roots_in_source_order(
         base, function, scope,
       )
-    Call(_, _)
-    | Sequence(_)
-    | Literal(_)
-    | ShaderDefTemplate(_)
-    | PathAccess(_, _) => ()
+    Call(_, arguments) =>
+      match wgsl_ir_call_arguments(arguments) {
+        [first, ..] =>
+          self.predeclare_function_binary_chain_reference_roots_in_source_order(
+            first, function, scope,
+          )
+        [] => ()
+      }
+    Sequence(arguments) =>
+      for argument in arguments {
+        self.predeclare_function_binary_chain_reference_roots_in_source_order(
+          argument, function, scope,
+        )
+      }
+    Literal(_) | ShaderDefTemplate(_) | PathAccess(_, _) => ()
   }
 }
 
