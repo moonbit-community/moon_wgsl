@@ -321,6 +321,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       }
     Binary(op, left, right) => {
       let expression_mark = function.expressions.items.length()
+      if self.binary_expression_predeclares_left_associative_reference_roots(
+          op, left, right, function, scope,
+        ) {
+        self.predeclare_function_binary_chain_reference_roots_in_source_order(
+          node, function, scope,
+        )
+      }
       match
         self.lower_function_binary_chain_with_parent_argument_after_member_root(
           op, left, right, function, scope,
@@ -739,6 +746,91 @@ fn WgslIrLowerer::predeclare_function_reference_roots_in_source_order(
 }
 
 ///|
+fn WgslIrLowerer::predeclare_function_binary_chain_reference_roots_in_source_order(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match node.kind() {
+    Identifier(name) =>
+      self.predeclare_identifier_reference_root(name.name(), function, scope)
+    Group(inner) =>
+      self.predeclare_function_binary_chain_reference_roots_in_source_order(
+        inner, function, scope,
+      )
+    Member(base, _) =>
+      self.predeclare_function_member_root_expression(base, function, scope)
+    Unary(_, expr) | PostfixUpdate(_, expr) =>
+      self.predeclare_function_binary_chain_reference_roots_in_source_order(
+        expr, function, scope,
+      )
+    Assignment(_, left, right) | Binary(_, left, right) => {
+      self.predeclare_function_binary_chain_reference_roots_in_source_order(
+        left, function, scope,
+      )
+      self.predeclare_function_binary_chain_reference_roots_in_source_order(
+        right, function, scope,
+      )
+    }
+    Index(base, index) => {
+      self.predeclare_function_binary_chain_reference_roots_in_source_order(
+        base, function, scope,
+      )
+      self.predeclare_function_binary_chain_reference_roots_in_source_order(
+        index, function, scope,
+      )
+    }
+    Template(base, _) =>
+      self.predeclare_function_binary_chain_reference_roots_in_source_order(
+        base, function, scope,
+      )
+    Call(_, _)
+    | Sequence(_)
+    | Literal(_)
+    | ShaderDefTemplate(_)
+    | PathAccess(_, _) => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_identifier_reference_root(
+  self : WgslIrLowerer,
+  name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match scope.local_constants.get(name) {
+    Some(_) => {
+      ignore(self.lower_identifier_expression(name, function, scope))
+      return
+    }
+    None => ()
+  }
+  match scope.locals.get(name) {
+    Some(handle) => {
+      ignore(scope.local_pointer_expression(name, handle, function))
+      return
+    }
+    None => ()
+  }
+  match scope.arguments.get(name) {
+    Some(index) => {
+      ignore(scope.argument_expression(name, index, function))
+      return
+    }
+    None => ()
+  }
+  match self.global_names.get(name) {
+    Some(handle) => {
+      ignore(scope.predeclare_global_pointer_expression(name, handle, function))
+      return
+    }
+    None => ()
+  }
+}
+
+///|
 fn WgslIrLowerer::predeclare_function_member_root_expression(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -927,6 +1019,26 @@ fn WgslIrLowerer::binary_expression_lowers_right_before_left(
   }
   self.expression_node_is_mutable_local_value(left, function, scope) &&
   wgsl_ir_expr_node_is_function_argument_value(right, scope)
+}
+
+///|
+fn WgslIrLowerer::binary_expression_predeclares_left_associative_reference_roots(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  if wgsl_ir_expr_node_contains_call(left) ||
+    wgsl_ir_expr_node_contains_call(right) {
+    return false
+  }
+  guard wgsl_ir_expr_node_without_groups(left).kind() is Binary(left_op, _, _) else {
+    return false
+  }
+  left_op.binary_precedence() == op.binary_precedence() &&
+  self.expression_node_is_mutable_local_value(right, function, scope)
 }
 
 ///|

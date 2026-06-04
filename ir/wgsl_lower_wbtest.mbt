@@ -346,6 +346,54 @@ test "WGSL AST lowerer keeps additive product subtrees in source arena order" {
 }
 
 ///|
+test "WGSL AST lowerer predeclares left associative binary chain roots" {
+  let source =
+    #|fn probe(factor: f32) -> f32 {
+    #|  var lhs: f32;
+    #|  var rhs: f32 = 1.0;
+    #|  return lhs * factor * rhs;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[1] {
+    LocalVariable(_) => ()
+    _ => abort("expected lhs local root before binary loads")
+  }
+  match function.expressions.items[2] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected argument root before binary loads")
+  }
+  match function.expressions.items[3] {
+    LocalVariable(_) => ()
+    _ => abort("expected rhs local root before binary loads")
+  }
+  match function.expressions.items[4] {
+    Load(pointer) => debug_inspect(pointer.index(), content="1")
+    _ => abort("expected lhs load after source roots")
+  }
+  match function.expressions.items[5] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="4")
+      debug_inspect(right.index(), content="2")
+    }
+    _ => abort("expected first multiply after lhs load")
+  }
+  match function.expressions.items[6] {
+    Load(pointer) => debug_inspect(pointer.index(), content="3")
+    _ => abort("expected rhs load after first multiply")
+  }
+  match function.expressions.items[7] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="5")
+      debug_inspect(right.index(), content="6")
+    }
+    _ => abort("expected final multiply")
+  }
+}
+
+///|
 test "WGSL AST lowerer represents single vector members as Naga-style access indexes" {
   let source =
     #|fn probe(value: vec4<f32>) -> f32 {
