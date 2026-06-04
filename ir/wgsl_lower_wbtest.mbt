@@ -1050,20 +1050,20 @@ test "WGSL AST lowerer binds load let initializers as named expressions" {
   }
   debug_inspect(generated_temporary_count, content="0")
   match function.expressions.items[1] {
-    FunctionArgument(index) => debug_inspect(index, content="1")
-    _ => abort("expected dynamic member index before static member projection")
-  }
-  match function.expressions.items[2] {
     AccessIndex(base, index) => {
       debug_inspect(base.index(), content="0")
       debug_inspect(index, content="0")
     }
-    _ => abort("expected static member projection after dynamic index")
+    _ => abort("expected static member projection before dynamic index")
+  }
+  match function.expressions.items[2] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected dynamic member index after static member projection")
   }
   match function.expressions.items[3] {
     Access(base, index) => {
-      debug_inspect(base.index(), content="2")
-      debug_inspect(index.index(), content="1")
+      debug_inspect(base.index(), content="1")
+      debug_inspect(index.index(), content="2")
     }
     _ => abort("expected dynamic access after static member projection")
   }

@@ -165,3 +165,34 @@ test "naga-oil writer policy folds integer constants in access index context" {
   debug_inspect(naga_oil.contains("input.layers[0].roughness"), content="true")
   debug_inspect(naga_oil.contains("input.layers[LAYER_BASE]"), content="false")
 }
+
+///|
+test "naga-oil writer policy materializes mutable local dynamic access indexes in conditions" {
+  let source =
+    #|struct Cascade {
+    #|  far_bound: f32,
+    #|}
+    #|struct Light {
+    #|  num_cascades: u32,
+    #|  cascades: array<Cascade, 4>,
+    #|}
+    #|@group(0) @binding(0) var<uniform> lights: array<Light, 4>;
+    #|fn get_cascade_index(light_id: u32, view_z: f32) -> u32 {
+    #|  let light = &lights[light_id];
+    #|  for (var i: u32 = 0u; i < (*light).num_cascades; i = i + 1u) {
+    #|    if (-view_z < (*light).cascades[i].far_bound) {
+    #|      return i;
+    #|    }
+    #|  }
+    #|  return (*light).num_cascades;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("let _e12: u32 = i;"), content="true")
+  debug_inspect(naga_oil.contains("cascades[_e12].far_bound"), content="true")
+  debug_inspect(naga_oil.contains("cascades[i].far_bound"), content="false")
+}

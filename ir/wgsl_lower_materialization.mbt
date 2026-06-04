@@ -1489,10 +1489,39 @@ fn WgslIrLowerer::materialize_nested_access_index(
     ) ||
     self.function_expression_should_materialize_as_call_argument(
       function, normalized,
+    ) ||
+    self.function_expression_should_materialize_as_access_index(
+      function, normalized,
     ) {
     self.materialize_function_expression(function, scope, block, normalized)
   } else {
     normalized
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_should_materialize_as_access_index(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  ignore(self)
+  match function.expressions.items.get(value.index()) {
+    Some(LocalVariable(handle)) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_variable) => local_variable.kind == Var
+        None => false
+      }
+    Some(Load(pointer)) =>
+      match function.expressions.items.get(pointer.index()) {
+        Some(LocalVariable(handle)) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_variable) => local_variable.kind == Var
+            None => false
+          }
+        _ => false
+      }
+    _ => false
   }
 }
 

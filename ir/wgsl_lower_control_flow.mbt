@@ -169,7 +169,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
       let lowered_base = self.materialize_nested_access_base(
         function, scope, block, base,
       )
-      let lowered_index = self.materialize_nested_control_flow_condition_argument(
+      let lowered_index = self.materialize_nested_access_index(
         function, scope, block, index,
       )
       let parent_base = wgsl_ir_parent_expression_operand(
@@ -193,6 +193,19 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
       )
       if parent_base != base {
         function.expressions.append(AccessIndex(parent_base, index))
+      } else {
+        value
+      }
+    }
+    Some(Load(pointer)) => {
+      let lowered_pointer = self.materialize_pointer_subexpressions(
+        function, scope, block, pointer,
+      )
+      let parent_pointer = wgsl_ir_parent_expression_operand(
+        function, pointer, lowered_pointer,
+      )
+      if parent_pointer != pointer {
+        function.expressions.append(Load(parent_pointer))
       } else {
         value
       }
