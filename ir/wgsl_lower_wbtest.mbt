@@ -1250,6 +1250,49 @@ test "WGSL AST lowerer keeps member projections source ordered across higher-pre
 }
 
 ///|
+test "WGSL AST lowerer predeclares right function argument root before left member multiply chain" {
+  let source =
+    #|struct Light {
+    #|  shadow_normal_bias: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> light: Light;
+    #|
+    #|fn probe(distance: f32, surface_normal: vec3<f32>) -> vec3<f32> {
+    #|  let distance_to_light = distance + 1.0;
+    #|  let normal_offset = light.shadow_normal_bias * distance_to_light * surface_normal.xyz;
+    #|  return normal_offset;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut surface_argument : Int? = None
+  let mut shadow_bias_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(argument_index) if argument_index == 1 &&
+        surface_argument == None => surface_argument = Some(index)
+      Load(base) if shadow_bias_load == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(access_base, _)) =>
+            match function.expressions.items.get(access_base.index()) {
+              Some(GlobalVariable(_)) => shadow_bias_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (surface_argument, shadow_bias_load) {
+    (Some(surface), Some(load)) => debug_inspect(surface < load, content="true")
+    _ => abort("expected surface argument and shadow bias load handles")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps shadowing var out of scope while lowering its initializer" {
   let source =
     #|fn convert(value: vec2<f32>) -> vec4<f32> {
