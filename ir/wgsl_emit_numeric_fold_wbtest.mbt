@@ -61,7 +61,7 @@ test "naga-oil writer policy folds retained generated import scalar constants" {
       "PIX_naga_oil_mod_XABCDX",
       "imports/math.wgsl",
       "PI",
-      WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+      ImportedSourceSymbol,
       false,
     ),
   ]) catch {
@@ -87,7 +87,7 @@ test "naga-oil writer policy retains direct generated import scalar constant ope
       "PIX_naga_oil_mod_XABCDX",
       "imports/math.wgsl",
       "PI",
-      WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+      ImportedSourceSymbol,
       false,
     ),
   ]) catch {

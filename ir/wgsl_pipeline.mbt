@@ -67,13 +67,12 @@ fn lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_eve
   ) catch {
     error =>
       match error {
-        UnknownIdentifier(name) =>
-          raise WgslIrPipelineError::UnknownIdentifier(name)
-        _ => raise WgslIrPipelineError::Lower(error.message())
+        UnknownIdentifier(name) => raise UnknownIdentifier(name)
+        _ => raise Lower(error.message())
       }
   }
   validate_wgsl_ir_module(module_) catch {
-    error => raise WgslIrPipelineError::Validate(error.message())
+    error => raise Validate(error.message())
   }
   module_
 }
@@ -83,13 +82,13 @@ fn emit_validated_wgsl_source_from_ir(
   module_ : Module,
 ) -> String raise WgslIrPipelineError {
   let source = emit_wgsl_module_from_ir(module_) catch {
-    error => raise WgslIrPipelineError::Emit(error.message())
+    error => raise Emit(error.message())
   }
   let reparsed = parse_wgsl_module_to_ir(source) catch {
-    error => raise WgslIrPipelineError::Reparse(error.message())
+    error => raise Reparse(error.message())
   }
   validate_wgsl_ir_module(reparsed) catch {
-    error => raise WgslIrPipelineError::Reparse(error.message())
+    error => raise Reparse(error.message())
   }
   source
 }
@@ -99,7 +98,7 @@ fn emit_naga_oil_writer_compatible_wgsl_source_from_ir(
   module_ : Module,
 ) -> String raise WgslIrPipelineError {
   emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
-    error => raise WgslIrPipelineError::Emit(error.message())
+    error => raise Emit(error.message())
   }
 }
 
@@ -118,13 +117,13 @@ fn emit_validated_wgsl_source_from_ir_roots(
   root_items : Array[String],
 ) -> String raise WgslIrPipelineError {
   let source = emit_wgsl_module_from_ir_roots(module_, root_items) catch {
-    error => raise WgslIrPipelineError::Emit(error.message())
+    error => raise Emit(error.message())
   }
   let reparsed = parse_wgsl_module_to_ir(source) catch {
-    error => raise WgslIrPipelineError::Reparse(error.message())
+    error => raise Reparse(error.message())
   }
   validate_wgsl_ir_module(reparsed) catch {
-    error => raise WgslIrPipelineError::Reparse(error.message())
+    error => raise Reparse(error.message())
   }
   source
 }
@@ -152,13 +151,13 @@ fn emit_naga_oil_writer_compatible_wgsl_source_from_ir_entry_roots(
     let source = emit_wgsl_module_from_ir_naga_oil_writer_compatible_roots(
       module_, roots,
     ) catch {
-      error => raise WgslIrPipelineError::Emit(error.message())
+      error => raise Emit(error.message())
     }
     let reparsed = parse_wgsl_module_to_ir(source) catch {
-      error => raise WgslIrPipelineError::Reparse(error.message())
+      error => raise Reparse(error.message())
     }
     validate_wgsl_ir_module(reparsed) catch {
-      error => raise WgslIrPipelineError::Reparse(error.message())
+      error => raise Reparse(error.message())
     }
     source
   }

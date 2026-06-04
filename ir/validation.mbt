@@ -150,7 +150,7 @@ fn WgslIrValidator::validate_entry_point(
   entry_point : EntryPoint,
 ) -> Unit raise WgslIrValidationError {
   if entry_point.name == "" {
-    raise WgslIrValidationError::InvalidEntryPoint(entry_point.name)
+    raise InvalidEntryPoint(entry_point.name)
   }
   self.validate_function(entry_point.function)
 }

@@ -18,7 +18,7 @@ fn wgsl_ir_statement_condition_refs(
 ) -> Array[@ast.WgslExprRef] {
   let refs : Array[@ast.WgslExprRef] = []
   for expression in expressions {
-    if expression.role() == @ast.WgslStatementExpressionRole::Condition {
+    if expression.role() == Condition {
       refs.push(expression.expression())
     }
   }
@@ -38,12 +38,10 @@ fn WgslIrLowerer::lower_if_reject_chain(
     if condition_index < blocks.length() {
       return self.lower_child_block(blocks[condition_index], function, scope)
     }
-    return Block::Block()
+    return Block()
   }
   if condition_index >= blocks.length() {
-    raise WgslIrLowerError::UnsupportedStatement(
-      "else-if condition without block",
-    )
+    raise UnsupportedStatement("else-if condition without block")
   }
   let condition_handle = self.lower_function_expression_ref(
     conditions[condition_index],
@@ -62,7 +60,7 @@ fn WgslIrLowerer::lower_if_reject_chain(
     function,
     scope,
   )
-  block.push(Statement::If(condition_handle, accept, reject))
+  block.push(If(condition_handle, accept, reject))
   block
 }
 
@@ -149,9 +147,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, right, lowered_right,
       )
       if parent_left != left || parent_right != right {
-        function.expressions.append(
-          Expression::Binary(op, parent_left, parent_right),
-        )
+        function.expressions.append(Binary(op, parent_left, parent_right))
       } else {
         value
       }
@@ -164,7 +160,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, inner, lowered_inner,
       )
       if parent_inner != inner {
-        function.expressions.append(Expression::Unary(op, parent_inner))
+        function.expressions.append(Unary(op, parent_inner))
       } else {
         value
       }
@@ -183,9 +179,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, index, lowered_index,
       )
       if parent_base != base || parent_index != index {
-        function.expressions.append(
-          Expression::Access(parent_base, parent_index),
-        )
+        function.expressions.append(Access(parent_base, parent_index))
       } else {
         value
       }
@@ -198,7 +192,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(Expression::AccessIndex(parent_base, index))
+        function.expressions.append(AccessIndex(parent_base, index))
       } else {
         value
       }
@@ -211,9 +205,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(
-          Expression::Component(parent_base, component),
-        )
+        function.expressions.append(Component(parent_base, component))
       } else {
         value
       }
@@ -226,9 +218,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(
-          Expression::Swizzle(size, parent_base, pattern),
-        )
+        function.expressions.append(Swizzle(size, parent_base, pattern))
       } else {
         value
       }
@@ -256,7 +246,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         parent_accept != accept ||
         parent_reject != reject {
         function.expressions.append(
-          Expression::Select(parent_condition, parent_accept, parent_reject),
+          Select(parent_condition, parent_accept, parent_reject),
         )
       } else {
         value
@@ -270,7 +260,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, inner, lowered_inner,
       )
       if parent_inner != inner {
-        function.expressions.append(Expression::Bitcast(ty, parent_inner))
+        function.expressions.append(Bitcast(ty, parent_inner))
       } else {
         value
       }
@@ -284,7 +274,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
       )
       if parent_argument != argument {
         function.expressions.append(
-          Expression::Relational(relational_function, parent_argument),
+          Relational(relational_function, parent_argument),
         )
       } else {
         value
@@ -315,9 +305,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
       )
       if parent_a != a || parent_b != b || parent_c != c || parent_d != d {
         function.expressions.append(
-          Expression::Math(
-            math_function, parent_a, parent_b, parent_c, parent_d,
-          ),
+          Math(math_function, parent_a, parent_b, parent_c, parent_d),
         )
       } else {
         value
@@ -331,7 +319,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         function, inner, lowered_inner,
       )
       if parent_inner != inner {
-        function.expressions.append(Expression::As(parent_inner, kind, width))
+        function.expressions.append(As(parent_inner, kind, width))
       } else {
         value
       }
@@ -352,7 +340,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         lowered.push(parent_arg)
       }
       if changed {
-        function.expressions.append(Expression::FunctionCall(handle, lowered))
+        function.expressions.append(FunctionCall(handle, lowered))
       } else {
         value
       }

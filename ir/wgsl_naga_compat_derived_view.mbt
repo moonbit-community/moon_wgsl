@@ -38,18 +38,18 @@ fn WgslIrNagaCompatPlanner::derived_module_view(
 ) -> WgslIrNagaDerivedModuleView {
   let builder = WgslIrNagaDerivedModuleBuilder::{
     planner: self,
-    view: WgslIrNagaDerivedModuleView::{
+    view: {
       types: [],
       constants: [],
       overrides: [],
       global_variables: [],
       functions: [],
     },
-    seen_types: @set.Set([]),
-    seen_constants: @set.Set([]),
-    seen_overrides: @set.Set([]),
-    seen_globals: @set.Set([]),
-    seen_functions: @set.Set([]),
+    seen_types: Set([]),
+    seen_constants: Set([]),
+    seen_overrides: Set([]),
+    seen_globals: Set([]),
+    seen_functions: Set([]),
   }
   for event in self.shader_module.import_arena_events {
     builder.import_event(event)
@@ -555,7 +555,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_statement(
       while index <= range.end.index() {
         self.import_function_expression(
           function,
-          Handle::Handle(index),
+          Handle(index),
           visiting_functions,
         )
         index = index + 1

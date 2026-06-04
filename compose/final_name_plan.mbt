@@ -13,7 +13,7 @@ priv struct WgslModuleFinalNameApplicationPlan {
 
 ///|
 fn WgslModuleFinalNameApplicationPlan::WgslModuleFinalNameApplicationPlan() -> WgslModuleFinalNameApplicationPlan {
-  WgslModuleFinalNameApplicationPlan::{ entries: [] }
+  { entries: [] }
 }
 
 ///|
@@ -39,12 +39,7 @@ fn WgslModuleFinalNameApplicationPlan::push(
   )
   match WgslReferencePath::from_text(origin.generated_symbol_name) {
     Some(reference_path) =>
-      self.entries.push(WgslModuleFinalNameApplication::{
-        origin_index,
-        identity,
-        reference_path,
-        final_name,
-      })
+      self.entries.push({ origin_index, identity, reference_path, final_name })
     None => ()
   }
 }

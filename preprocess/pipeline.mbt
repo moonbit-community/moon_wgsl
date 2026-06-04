@@ -8,9 +8,9 @@ fn preprocess_emit_pipeline_item(
 ) -> String raise PreprocessError {
   let offset = item.start()
   match item.kind() {
-    WgslDirectiveScanItemKind::GlslVersion(version) => {
+    GlslVersion(version) => {
       if version != "440" && version != "450" {
-        raise PreprocessError::GlslInvalidVersion(offset)
+        raise GlslInvalidVersion(offset)
       }
       preprocess_emit_scanned_item(
         BlankTrivia,
@@ -20,7 +20,7 @@ fn preprocess_emit_pipeline_item(
         used_imports,
       )
     }
-    WgslDirectiveScanItemKind::Directive(directive) => {
+    Directive(directive) => {
       let (is_scope, _) = preprocess_check_scope_directive(
         shader_defs,
         directive,
@@ -30,10 +30,7 @@ fn preprocess_emit_pipeline_item(
       if is_scope ||
         (
           directive.has_required_tail_separator() &&
-          (
-            directive.kind() == WgslDirectiveKind::DefineImportPath ||
-            directive.kind() == WgslDirectiveKind::Define
-          )
+          (directive.kind() == DefineImportPath || directive.kind() == Define)
         ) {
         return preprocess_emit_scanned_item(
           BlankTrivia,
@@ -45,13 +42,10 @@ fn preprocess_emit_pipeline_item(
       }
       if scope.active() &&
         directive.has_required_tail_separator() &&
-        directive.kind() == WgslDirectiveKind::Import {
+        directive.kind() == Import {
         import_state.declare_imports(item.source().cleaned_text()) catch {
           Parse(message, item_offset) =>
-            raise PreprocessError::ImportParseError(
-              message,
-              offset + item_offset,
-            )
+            raise ImportParseError(message, offset + item_offset)
         }
         return preprocess_emit_scanned_item(
           BlankTrivia,
@@ -79,7 +73,7 @@ fn preprocess_emit_pipeline_item(
         )
       }
     }
-    WgslDirectiveScanItemKind::Source =>
+    Source =>
       if scope.active() {
         preprocess_emit_scanned_item(
           RewriteActiveSource,

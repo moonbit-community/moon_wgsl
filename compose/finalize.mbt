@@ -79,7 +79,7 @@ fn finalize_wgsl_composed_source(
     out_facts, effective_bindings,
   )
   match live_bindings.first_conflict() {
-    Some(message) => raise ComposerError::AmbiguousImportBinding(message)
+    Some(message) => raise AmbiguousImportBinding(message)
     None => ()
   }
   let rewrite_plan = live_bindings.reference_rewrite_plan(session)

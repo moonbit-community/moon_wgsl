@@ -15,14 +15,14 @@
 ///|
 fn wgsl_ir_builtin_scalar_alias(name : String) -> TypeInner? {
   match name {
-    "bool" => Some(TypeInner::Scalar(Scalar::Scalar(Bool, 1)))
-    "i32" => Some(TypeInner::Scalar(Scalar::Scalar(Sint, 4)))
-    "i64" => Some(TypeInner::Scalar(Scalar::Scalar(Sint, 8)))
-    "u32" => Some(TypeInner::Scalar(Scalar::Scalar(Uint, 4)))
-    "u64" => Some(TypeInner::Scalar(Scalar::Scalar(Uint, 8)))
-    "f32" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 4)))
-    "f16" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 2)))
-    "f64" => Some(TypeInner::Scalar(Scalar::Scalar(Float, 8)))
+    "bool" => Some(Scalar(Scalar(Bool, 1)))
+    "i32" => Some(Scalar(Scalar(Sint, 4)))
+    "i64" => Some(Scalar(Scalar(Sint, 8)))
+    "u32" => Some(Scalar(Scalar(Uint, 4)))
+    "u64" => Some(Scalar(Scalar(Uint, 8)))
+    "f32" => Some(Scalar(Scalar(Float, 4)))
+    "f16" => Some(Scalar(Scalar(Float, 2)))
+    "f64" => Some(Scalar(Scalar(Float, 8)))
     _ => None
   }
 }
@@ -30,18 +30,18 @@ fn wgsl_ir_builtin_scalar_alias(name : String) -> TypeInner? {
 ///|
 fn wgsl_ir_builtin_vector_alias(name : String) -> TypeInner? {
   match name {
-    "vec2f" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Float, 4)))
-    "vec3f" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Float, 4)))
-    "vec4f" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Float, 4)))
-    "vec2h" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Float, 2)))
-    "vec3h" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Float, 2)))
-    "vec4h" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Float, 2)))
-    "vec2i" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Sint, 4)))
-    "vec3i" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Sint, 4)))
-    "vec4i" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Sint, 4)))
-    "vec2u" => Some(TypeInner::Vector(Bi, Scalar::Scalar(Uint, 4)))
-    "vec3u" => Some(TypeInner::Vector(Tri, Scalar::Scalar(Uint, 4)))
-    "vec4u" => Some(TypeInner::Vector(Quad, Scalar::Scalar(Uint, 4)))
+    "vec2f" => Some(Vector(Bi, Scalar(Float, 4)))
+    "vec3f" => Some(Vector(Tri, Scalar(Float, 4)))
+    "vec4f" => Some(Vector(Quad, Scalar(Float, 4)))
+    "vec2h" => Some(Vector(Bi, Scalar(Float, 2)))
+    "vec3h" => Some(Vector(Tri, Scalar(Float, 2)))
+    "vec4h" => Some(Vector(Quad, Scalar(Float, 2)))
+    "vec2i" => Some(Vector(Bi, Scalar(Sint, 4)))
+    "vec3i" => Some(Vector(Tri, Scalar(Sint, 4)))
+    "vec4i" => Some(Vector(Quad, Scalar(Sint, 4)))
+    "vec2u" => Some(Vector(Bi, Scalar(Uint, 4)))
+    "vec3u" => Some(Vector(Tri, Scalar(Uint, 4)))
+    "vec4u" => Some(Vector(Quad, Scalar(Uint, 4)))
     _ => None
   }
 }
@@ -49,24 +49,24 @@ fn wgsl_ir_builtin_vector_alias(name : String) -> TypeInner? {
 ///|
 fn wgsl_ir_builtin_matrix_alias(name : String) -> TypeInner? {
   match name {
-    "mat2x2f" => Some(TypeInner::Matrix(Bi, Bi, Scalar::Scalar(Float, 4)))
-    "mat2x3f" => Some(TypeInner::Matrix(Bi, Tri, Scalar::Scalar(Float, 4)))
-    "mat2x4f" => Some(TypeInner::Matrix(Bi, Quad, Scalar::Scalar(Float, 4)))
-    "mat3x2f" => Some(TypeInner::Matrix(Tri, Bi, Scalar::Scalar(Float, 4)))
-    "mat3x3f" => Some(TypeInner::Matrix(Tri, Tri, Scalar::Scalar(Float, 4)))
-    "mat3x4f" => Some(TypeInner::Matrix(Tri, Quad, Scalar::Scalar(Float, 4)))
-    "mat4x2f" => Some(TypeInner::Matrix(Quad, Bi, Scalar::Scalar(Float, 4)))
-    "mat4x3f" => Some(TypeInner::Matrix(Quad, Tri, Scalar::Scalar(Float, 4)))
-    "mat4x4f" => Some(TypeInner::Matrix(Quad, Quad, Scalar::Scalar(Float, 4)))
-    "mat2x2h" => Some(TypeInner::Matrix(Bi, Bi, Scalar::Scalar(Float, 2)))
-    "mat2x3h" => Some(TypeInner::Matrix(Bi, Tri, Scalar::Scalar(Float, 2)))
-    "mat2x4h" => Some(TypeInner::Matrix(Bi, Quad, Scalar::Scalar(Float, 2)))
-    "mat3x2h" => Some(TypeInner::Matrix(Tri, Bi, Scalar::Scalar(Float, 2)))
-    "mat3x3h" => Some(TypeInner::Matrix(Tri, Tri, Scalar::Scalar(Float, 2)))
-    "mat3x4h" => Some(TypeInner::Matrix(Tri, Quad, Scalar::Scalar(Float, 2)))
-    "mat4x2h" => Some(TypeInner::Matrix(Quad, Bi, Scalar::Scalar(Float, 2)))
-    "mat4x3h" => Some(TypeInner::Matrix(Quad, Tri, Scalar::Scalar(Float, 2)))
-    "mat4x4h" => Some(TypeInner::Matrix(Quad, Quad, Scalar::Scalar(Float, 2)))
+    "mat2x2f" => Some(Matrix(Bi, Bi, Scalar(Float, 4)))
+    "mat2x3f" => Some(Matrix(Bi, Tri, Scalar(Float, 4)))
+    "mat2x4f" => Some(Matrix(Bi, Quad, Scalar(Float, 4)))
+    "mat3x2f" => Some(Matrix(Tri, Bi, Scalar(Float, 4)))
+    "mat3x3f" => Some(Matrix(Tri, Tri, Scalar(Float, 4)))
+    "mat3x4f" => Some(Matrix(Tri, Quad, Scalar(Float, 4)))
+    "mat4x2f" => Some(Matrix(Quad, Bi, Scalar(Float, 4)))
+    "mat4x3f" => Some(Matrix(Quad, Tri, Scalar(Float, 4)))
+    "mat4x4f" => Some(Matrix(Quad, Quad, Scalar(Float, 4)))
+    "mat2x2h" => Some(Matrix(Bi, Bi, Scalar(Float, 2)))
+    "mat2x3h" => Some(Matrix(Bi, Tri, Scalar(Float, 2)))
+    "mat2x4h" => Some(Matrix(Bi, Quad, Scalar(Float, 2)))
+    "mat3x2h" => Some(Matrix(Tri, Bi, Scalar(Float, 2)))
+    "mat3x3h" => Some(Matrix(Tri, Tri, Scalar(Float, 2)))
+    "mat3x4h" => Some(Matrix(Tri, Quad, Scalar(Float, 2)))
+    "mat4x2h" => Some(Matrix(Quad, Bi, Scalar(Float, 2)))
+    "mat4x3h" => Some(Matrix(Quad, Tri, Scalar(Float, 2)))
+    "mat4x4h" => Some(Matrix(Quad, Quad, Scalar(Float, 2)))
     _ => None
   }
 }
@@ -161,13 +161,13 @@ fn wgsl_ir_derivative_function_from_name(
   name : String,
 ) -> (DerivativeAxis, DerivativeControl)? {
   match name {
-    "dpdx" => Some((X, DerivativeControl::None))
+    "dpdx" => Some((X, None))
     "dpdxCoarse" => Some((X, Coarse))
     "dpdxFine" => Some((X, Fine))
-    "dpdy" => Some((Y, DerivativeControl::None))
+    "dpdy" => Some((Y, None))
     "dpdyCoarse" => Some((Y, Coarse))
     "dpdyFine" => Some((Y, Fine))
-    "fwidth" => Some((Width, DerivativeControl::None))
+    "fwidth" => Some((Width, None))
     "fwidthCoarse" => Some((Width, Coarse))
     "fwidthFine" => Some((Width, Fine))
     _ => None

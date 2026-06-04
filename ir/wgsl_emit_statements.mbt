@@ -95,9 +95,7 @@ fn WgslIrEmitter::emit_statement(
             let ty = match self.expression_type(Some(function), handle) {
               Some(value) => value
               None =>
-                raise WgslIrEmitError::MissingHandle(
-                  "named expression type \{handle.index()}",
-                )
+                raise MissingHandle("named expression type \{handle.index()}")
             }
             let value = if self.type_is_pointer(ty) {
               match function.expressions.items.get(handle.index()) {
@@ -108,7 +106,7 @@ fn WgslIrEmitter::emit_statement(
                     self.function_pointer_expression(function, handle),
                   )
                 None =>
-                  raise WgslIrEmitError::MissingHandle(
+                  raise MissingHandle(
                     "named pointer expression \{handle.index()}",
                   )
               }
@@ -209,9 +207,7 @@ fn WgslIrEmitter::emit_statement(
           let ty = match self.expression_type(Some(function), result_handle) {
             Some(value) => value
             None =>
-              raise WgslIrEmitError::MissingHandle(
-                "atomic result type \{result_handle.index()}",
-              )
+              raise MissingHandle("atomic result type \{result_handle.index()}")
           }
           out.write_string(
             "\{pad}let \{self.function_expression_temporary_name(result_handle)}: \{self.type_name(ty)} = ",
@@ -262,9 +258,7 @@ fn WgslIrEmitter::emit_statement(
           let ty = match self.expression_type(Some(function), result_handle) {
             Some(value) => value
             None =>
-              raise WgslIrEmitError::MissingHandle(
-                "call result type \{result_handle.index()}",
-              )
+              raise MissingHandle("call result type \{result_handle.index()}")
           }
           out.write_string(
             "\{pad}let \{self.function_expression_temporary_name(result_handle)}: \{self.type_name(ty)} = ",
@@ -284,7 +278,7 @@ fn WgslIrEmitter::emit_statement(
       )
     CooperativeStore(target, data) =>
       self.emit_cooperative_store_statement(out, function, target, data, indent)
-    _ => raise WgslIrEmitError::Unsupported("statement kind")
+    _ => raise Unsupported("statement kind")
   }
 }
 
@@ -447,9 +441,7 @@ fn WgslIrEmitter::function_store_pointer_expression(
   let expression = match function.expressions.items.get(handle.index()) {
     Some(value) => value
     None =>
-      raise WgslIrEmitError::MissingHandle(
-        "function store pointer expression \{handle.index()}",
-      )
+      raise MissingHandle("function store pointer expression \{handle.index()}")
   }
   let text = self.function_pointer_expression(function, handle)
   match expression {
@@ -485,7 +477,7 @@ fn WgslIrEmitter::emit_control_barrier_statement(
     out.write_string("\{pad}subgroupBarrier();\n")
   } else {
     ignore(self)
-    raise WgslIrEmitError::Unsupported("control barrier flags")
+    raise Unsupported("control barrier flags")
   }
 }
 
@@ -503,7 +495,7 @@ fn WgslIrEmitter::emit_memory_barrier_statement(
     out.write_string("\{pad}textureBarrier();\n")
   } else {
     ignore(self)
-    raise WgslIrEmitError::Unsupported("memory barrier flags")
+    raise Unsupported("memory barrier flags")
   }
 }
 

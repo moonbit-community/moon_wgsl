@@ -53,7 +53,7 @@ fn WgslIrLowerer::lower_function_cooperative_load_call(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   guard template_arguments is [Type(ty_ref)] else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "\{name} expects exactly one cooperative matrix type template argument",
     )
   }
@@ -71,9 +71,7 @@ fn WgslIrLowerer::lower_function_cooperative_load_call(
     rows,
     name == "coopLoadT",
   )
-  function.expressions.append(
-    Expression::CooperativeLoad(columns, rows, role, data),
-  )
+  function.expressions.append(CooperativeLoad(columns, rows, role, data))
 }
 
 ///|
@@ -85,14 +83,12 @@ fn WgslIrLowerer::lower_function_cooperative_multiply_add_call(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [a, b, c] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "coopMultiplyAdd expects 3 arguments",
-    )
+    raise UnsupportedExpression("coopMultiplyAdd expects 3 arguments")
   }
   let a = self.lower_function_expression_node(a, function, scope)
   let b = self.lower_function_expression_node(b, function, scope)
   let c = self.lower_function_expression_node(c, function, scope)
-  function.expressions.append(Expression::CooperativeMultiplyAdd(a, b, c))
+  function.expressions.append(CooperativeMultiplyAdd(a, b, c))
 }
 
 ///|
@@ -108,9 +104,7 @@ fn WgslIrLowerer::lower_cooperative_statement_call(
     "coopStore" | "coopStoreT" => {
       let arguments = wgsl_ir_flatten_expression_arguments(arguments)
       guard arguments.length() == 2 || arguments.length() == 3 else {
-        raise WgslIrLowerError::UnsupportedExpression(
-          "\{name} expects 2 or 3 arguments",
-        )
+        raise UnsupportedExpression("\{name} expects 2 or 3 arguments")
       }
       let target = self.lower_function_expression_node(
         arguments[0],
@@ -118,7 +112,7 @@ fn WgslIrLowerer::lower_cooperative_statement_call(
         scope,
       )
       guard self.function_expression_type(function, target) is Some(ty) else {
-        raise WgslIrLowerError::MissingType(name)
+        raise MissingType(name)
       }
       let (columns, rows, _, _) = self.cooperative_matrix_spec_from_type_handle(
         ty, name,
@@ -133,7 +127,7 @@ fn WgslIrLowerer::lower_cooperative_statement_call(
         rows,
         name == "coopStoreT",
       )
-      block.push(Statement::CooperativeStore(target, data))
+      block.push(CooperativeStore(target, data))
       true
     }
     _ => false
@@ -154,9 +148,7 @@ fn WgslIrLowerer::lower_cooperative_data(
 ) -> CooperativeData raise WgslIrLowerError {
   guard arguments.length() == pointer_index + 1 ||
     arguments.length() == pointer_index + 2 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "\{name} expects a pointer and optional stride",
-    )
+    raise UnsupportedExpression("\{name} expects a pointer and optional stride")
   }
   let pointer = self.lower_atomic_pointer_argument(
     arguments[pointer_index],
@@ -176,12 +168,10 @@ fn WgslIrLowerer::lower_cooperative_data(
       wgsl_ir_cooperative_size_width(rows)
     }
     function.expressions.append(
-      Expression::Literal(
-        Literal::U32(wgsl_ir_non_negative_int_to_uint(default_stride)),
-      ),
+      Literal(U32(wgsl_ir_non_negative_int_to_uint(default_stride))),
     )
   }
-  CooperativeData::{ pointer, stride, row_major }
+  { pointer, stride, row_major }
 }
 
 ///|
@@ -195,15 +185,9 @@ fn WgslIrLowerer::cooperative_matrix_spec_from_type_handle(
       match type_.inner {
         CooperativeMatrix(columns, rows, scalar, role) =>
           (columns, rows, scalar, role)
-        _ =>
-          raise WgslIrLowerError::UnsupportedType(
-            "\{name} requires a cooperative matrix type",
-          )
+        _ => raise UnsupportedType("\{name} requires a cooperative matrix type")
       }
-    None =>
-      raise WgslIrLowerError::UnsupportedType(
-        "\{name} references a missing type",
-      )
+    None => raise UnsupportedType("\{name} references a missing type")
   }
 }
 

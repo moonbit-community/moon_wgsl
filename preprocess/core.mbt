@@ -13,11 +13,11 @@
 // limitations under the License.
 
 ///|
-pub struct Preprocessor {}
+pub struct Preprocessor {} derive(Default)
 
 ///|
 pub fn Preprocessor::default() -> Preprocessor {
-  Preprocessor::{  }
+  Default::default()
 }
 
 ///|
@@ -46,7 +46,7 @@ priv struct Scope {
 
 ///|
 fn Scope::Scope() -> Scope {
-  Scope::{ levels: [ScopeLevel::Active] }
+  { levels: [Active] }
 }
 
 ///|
@@ -59,20 +59,18 @@ fn Scope::branch(
   if is_else {
     let previous_scope = self.levels.pop()
     guard previous_scope is Some(previous) else {
-      raise PreprocessError::ElseWithoutCondition(offset)
+      raise ElseWithoutCondition(offset)
     }
-    guard self.levels.length() > 0 else {
-      raise PreprocessError::ElseWithoutCondition(offset)
-    }
+    guard self.levels.length() > 0 else { raise ElseWithoutCondition(offset) }
     let parent_scope = self.levels[self.levels.length() - 1]
-    let new_scope = if parent_scope != ScopeLevel::Active {
+    let new_scope = if parent_scope != Active {
       ScopeLevel::NotActive
-    } else if previous != ScopeLevel::NotActive {
-      ScopeLevel::PreviouslyActive
+    } else if previous != NotActive {
+      PreviouslyActive
     } else if condition {
-      ScopeLevel::Active
+      Active
     } else {
-      ScopeLevel::NotActive
+      NotActive
     }
     self.levels.push(new_scope)
     return ()
@@ -82,10 +80,10 @@ fn Scope::branch(
   } else {
     self.levels[self.levels.length() - 1]
   }
-  let new_scope = if parent_scope == ScopeLevel::Active && condition {
+  let new_scope = if parent_scope == Active && condition {
     ScopeLevel::Active
   } else {
-    ScopeLevel::NotActive
+    NotActive
   }
   self.levels.push(new_scope)
   ()
@@ -95,7 +93,7 @@ fn Scope::branch(
 fn Scope::pop(self : Scope, offset : Int) -> Unit raise PreprocessError {
   self.levels.pop() |> ignore
   if self.levels.is_empty() {
-    raise PreprocessError::TooManyEndIfs(offset)
+    raise TooManyEndIfs(offset)
   } else {
     ()
   }
@@ -103,13 +101,13 @@ fn Scope::pop(self : Scope, offset : Int) -> Unit raise PreprocessError {
 
 ///|
 fn Scope::active(self : Scope) -> Bool {
-  self.levels[self.levels.length() - 1] == ScopeLevel::Active
+  self.levels[self.levels.length() - 1] == Active
 }
 
 ///|
 fn Scope::finish(self : Scope, offset : Int) -> Unit raise PreprocessError {
   if self.levels.length() != 1 {
-    raise PreprocessError::NotEnoughEndIfs(offset)
+    raise NotEnoughEndIfs(offset)
   } else {
     ()
   }

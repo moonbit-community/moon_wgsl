@@ -24,7 +24,7 @@ priv struct WgslDeclHead {
 
 ///|
 fn WgslDeclHead::raw(attributes : Array[WgslAttribute]) -> WgslDeclHead {
-  WgslDeclHead::{
+  {
     kind: Raw,
     attributes,
     keyword: None,

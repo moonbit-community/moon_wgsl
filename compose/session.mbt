@@ -230,7 +230,7 @@ priv struct WgslLiveSymbolBinding {
 
 ///|
 fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
-  WgslComposeSymbolTable::{
+  {
     assigned_final_names: WgslIrFinalNameTable(),
     emitted_final_names: WgslIrFinalNameTable(),
     virtual_override_final_names: [],
@@ -243,7 +243,7 @@ fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
 
 ///|
 fn WgslLiveBindingPlan::WgslLiveBindingPlan() -> WgslLiveBindingPlan {
-  WgslLiveBindingPlan::{ bindings: [] }
+  { bindings: [] }
 }
 
 ///|
@@ -326,7 +326,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
 
 ///|
 fn WgslComposeBindingSet::WgslComposeBindingSet() -> WgslComposeBindingSet {
-  WgslComposeBindingSet::{ bindings: [], keys: @set.Set([]) }
+  { bindings: [], keys: Set([]) }
 }
 
 ///|
@@ -342,7 +342,7 @@ fn WgslComposeBindingKey::WgslComposeBindingKey(
   binding : WgslComposeBinding,
 ) -> WgslComposeBindingKey {
   let identity_key = WgslComposeIrIdentityKey(binding.target.identity).text()
-  WgslComposeBindingKey::{
+  {
     text: "\{binding.scope.label()}|\{binding.reference_path.text()}|\{binding.target.final_name}|\{binding.alias_name}|\{identity_key}",
   }
 }
@@ -357,10 +357,7 @@ fn WgslComposeSymbolTarget::WgslComposeSymbolTarget(
   identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> WgslComposeSymbolTarget {
-  WgslComposeSymbolTarget::{
-    identity,
-    final_name: final_name.trim().to_owned(),
-  }
+  { identity, final_name: final_name.trim().to_owned() }
 }
 
 ///|
@@ -370,7 +367,7 @@ fn WgslComposeBinding::WgslComposeBinding(
   scope : WgslComposeBindingScope,
   alias_name : String,
 ) -> WgslComposeBinding {
-  WgslComposeBinding::{ reference_path, target, scope, alias_name }
+  { reference_path, target, scope, alias_name }
 }
 
 ///|
@@ -450,7 +447,7 @@ fn WgslComposeBinding::to_live_binding(
   self : WgslComposeBinding,
   target : WgslComposeSymbolTarget,
 ) -> WgslLiveSymbolBinding {
-  WgslLiveSymbolBinding::{
+  {
     reference_path: self.reference_path,
     target,
     scope: self.scope,
@@ -510,7 +507,7 @@ fn WgslComposeBindingSet::has_unqualified_reference_name(
 fn WgslVirtualOverrideFinalNameKey::WgslVirtualOverrideFinalNameKey(
   binding : WgslVirtualOverrideFinalNameBinding,
 ) -> WgslVirtualOverrideFinalNameKey {
-  WgslVirtualOverrideFinalNameKey::{
+  {
     text: "\{binding.raw_target_name}|\{binding.rel_path}|\{binding.target_name}|\{binding.override_name}",
   }
 }
@@ -526,9 +523,7 @@ fn WgslVirtualOverrideFinalNameKey::text(
 fn WgslLocalImportFinalNameKey::WgslLocalImportFinalNameKey(
   binding : WgslLocalImportFinalNameBinding,
 ) -> WgslLocalImportFinalNameKey {
-  WgslLocalImportFinalNameKey::{
-    text: "\{binding.rel_path}|\{binding.source_name}|\{binding.final_name}",
-  }
+  { text: "\{binding.rel_path}|\{binding.source_name}|\{binding.final_name}" }
 }
 
 ///|
@@ -542,7 +537,7 @@ fn WgslLocalImportFinalNameKey::text(
 fn WgslLocalSpellingFinalNameKey::WgslLocalSpellingFinalNameKey(
   binding : WgslLocalSpellingFinalNameBinding,
 ) -> WgslLocalSpellingFinalNameKey {
-  WgslLocalSpellingFinalNameKey::{
+  {
     text: "\{binding.visible_rel_path}|\{binding.symbol_rel_path}|\{binding.source_name}|\{binding.final_name}",
   }
 }
@@ -727,14 +722,14 @@ fn composable_module_name_from_descriptor(
     Some(as_name) => {
       let trimmed = as_name.trim().to_owned()
       if trimmed == "" {
-        raise ComposerError::NoModuleName(desc.file_path)
+        raise NoModuleName(desc.file_path)
       }
       trimmed
     }
     None =>
       match metadata_name {
         Some(name) if name.trim() != "" => name.trim().to_owned()
-        _ => raise ComposerError::NoModuleName(desc.file_path)
+        _ => raise NoModuleName(desc.file_path)
       }
   }
 }

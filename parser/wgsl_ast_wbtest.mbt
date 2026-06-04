@@ -41,21 +41,18 @@ test "WGSL translation unit classifies top-level declarations" {
   debug_inspect(unit.declarations()[0].kind(), content="Directive")
   debug_inspect(unit.declarations()[1].kind(), content="Trivia")
   debug_inspect(unit.declarations()[2].kind(), content="Import")
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::Directive(module_directive) else {
+  guard unit.declarations()[0].data() is Directive(module_directive) else {
     abort("expected directive payload")
   }
   debug_inspect(module_directive.kind(), content="DefineImportPath")
-  guard unit.declarations()[2].data()
-    is WgslGlobalDeclData::Import(import_directive) else {
+  guard unit.declarations()[2].data() is Import(import_directive) else {
     abort("expected import payload")
   }
   debug_inspect(import_directive.kind(), content="Import")
   debug_inspect(unit.declarations()[3].kind(), content="Struct")
   debug_inspect(unit.declarations()[4].kind(), content="GlobalVariable")
   debug_inspect(unit.declarations()[5].kind(), content="ConstAssert")
-  guard unit.declarations()[5].data()
-    is WgslGlobalDeclData::ConstAssert(assert_expr) else {
+  guard unit.declarations()[5].data() is ConstAssert(assert_expr) else {
     abort("expected const assert payload")
   }
   debug_inspect(
@@ -167,7 +164,7 @@ test "WGSL numeric literal tokens expose raw descriptor" {
     #|const B = 0x10i;
     #|const C = 1.0h;
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Const(a) else {
+  guard unit.declarations()[0].data() is Const(a) else {
     abort("expected const A")
   }
   guard a.initializer_ref() is Some(a_init) else { abort("expected init A") }
@@ -178,7 +175,7 @@ test "WGSL numeric literal tokens expose raw descriptor" {
   debug_inspect(a_literal.base, content="Decimal")
   debug_inspect(a_literal.suffix, content="U32Suffix")
   debug_inspect(a_literal.category, content="U32Literal")
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Const(b) else {
+  guard unit.declarations()[1].data() is Const(b) else {
     abort("expected const B")
   }
   guard b.initializer_ref() is Some(b_init) else { abort("expected init B") }
@@ -188,7 +185,7 @@ test "WGSL numeric literal tokens expose raw descriptor" {
   debug_inspect(b_literal.base, content="Hexadecimal")
   debug_inspect(b_literal.suffix, content="I32Suffix")
   debug_inspect(b_literal.category, content="I32Literal")
-  guard unit.declarations()[2].data() is WgslGlobalDeclData::Const(c) else {
+  guard unit.declarations()[2].data() is Const(c) else {
     abort("expected const C")
   }
   guard c.initializer_ref() is Some(c_init) else { abort("expected init C") }
@@ -242,7 +239,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(struct_decl) else {
+  guard unit.declarations()[0].data() is Struct(struct_decl) else {
     abort("expected struct declaration payload")
   }
   debug_inspect(struct_decl.name().name(), content="\"Vertex\"")
@@ -260,8 +257,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(position_ty.name(), content="\"vec3\"")
   debug_inspect(position_ty.arguments().length(), content="1")
   debug_inspect(position_ty.arguments()[0].name(), content="\"f32\"")
-  guard unit.declarations()[1].data()
-    is WgslGlobalDeclData::GlobalVariable(global) else {
+  guard unit.declarations()[1].data() is GlobalVariable(global) else {
     abort("expected global var payload")
   }
   debug_inspect(global.attributes().length(), content="2")
@@ -272,8 +268,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   }
   debug_inspect(global_ty.name(), content="\"Globals\"")
   debug_inspect(global.initializer_ref(), content="None")
-  guard unit.declarations()[2].data()
-    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+  guard unit.declarations()[2].data() is TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
   debug_inspect(alias_decl.name().name(), content="\"Color\"")
@@ -283,7 +278,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
   debug_inspect(alias_ty.canonical_text(), content="\"vec4<f32>\"")
   debug_inspect(alias_ty.name(), content="\"vec4\"")
   debug_inspect(alias_ty.arguments()[0].name(), content="\"f32\"")
-  guard unit.declarations()[3].data() is WgslGlobalDeclData::Const(const_decl) else {
+  guard unit.declarations()[3].data() is Const(const_decl) else {
     abort("expected const payload")
   }
   debug_inspect(const_decl.name().name(), content="\"SCALE\"")
@@ -295,8 +290,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected const initializer")
   }
   debug_inspect(const_initializer.tokens()[0].text(), content="\"2.0\"")
-  guard unit.declarations()[4].data()
-    is WgslGlobalDeclData::Override(override_decl) else {
+  guard unit.declarations()[4].data() is Override(override_decl) else {
     abort("expected override payload")
   }
   debug_inspect(override_decl.attributes()[0].name().name(), content="\"id\"")
@@ -309,7 +303,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
     abort("expected override initializer")
   }
   debug_inspect(override_initializer.tokens()[0].text(), content="\"true\"")
-  guard unit.declarations()[5].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[5].data() is Function(function) else {
     abort("expected function payload")
   }
   debug_inspect(function.attributes()[0].name().name(), content="\"fragment\"")
@@ -349,8 +343,7 @@ test "WGSL translation unit exposes Naga-shaped declaration payloads" {
 test "WGSL type refs expose nested template arguments" {
   let source = "alias Values = array<vec4<f32>, 4>;\n"
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+  guard unit.declarations()[0].data() is TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
   guard alias_decl.ty_ref() is Some(ty) else {
@@ -381,8 +374,7 @@ test "WGSL declarations parse adjacent generic type closes" {
     #|@group(2) @binding(1) var<storage> joint_matrices: array<mat4x4<f32>>;
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::GlobalVariable(global) else {
+  guard unit.declarations()[0].data() is GlobalVariable(global) else {
     abort("expected global variable")
   }
   guard global.ty_ref() is Some(ty) else {
@@ -395,7 +387,7 @@ test "WGSL declarations parse adjacent generic type closes" {
 test "WGSL initializer fragments do not treat comparison as type depth" {
   let source = "const LESS = value < limit;\n"
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Const(value) else {
+  guard unit.declarations()[0].data() is Const(value) else {
     abort("expected const")
   }
   guard value.initializer_ref() is Some(initializer) else {
@@ -415,7 +407,7 @@ test "WGSL struct member parser skips conditional directive lines" {
     #|};
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(value) else {
+  guard unit.declarations()[0].data() is Struct(value) else {
     abort("expected struct")
   }
   debug_inspect(value.members().length(), content="2")
@@ -430,8 +422,7 @@ test "WGSL struct member parser skips conditional directive lines" {
 test "WGSL type refs normalize template spacing structurally" {
   let source = "alias Values = array < vec4 < f32 > , 4 >;\n"
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+  guard unit.declarations()[0].data() is TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
   guard alias_decl.ty_ref() is Some(ty) else {
@@ -454,8 +445,7 @@ test "WGSL type refs ignore comments around template delimiters" {
     #|  <i32>;
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+  guard unit.declarations()[0].data() is TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
   guard alias_decl.ty_ref() is Some(ty) else {
@@ -470,8 +460,7 @@ test "WGSL type refs ignore comments around template delimiters" {
 test "WGSL type refs accept Pattern_White_Space blankspace" {
   let source = "alias Values = array\u{000C}<vec4\u{200E}<f32>\u{2029}, 4>;\n"
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+  guard unit.declarations()[0].data() is TypeAlias(alias_decl) else {
     abort("expected type alias payload")
   }
   guard alias_decl.ty_ref() is Some(ty) else {
@@ -490,15 +479,13 @@ test "WGSL variable template lists are parsed by grammar" {
     #|@group(0) @binding(1) var<texture_storage_2d<rgba8unorm>, write> image: texture_storage_2d<rgba8unorm, write>;
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::GlobalVariable(values) else {
+  guard unit.declarations()[0].data() is GlobalVariable(values) else {
     abort("expected values global")
   }
   debug_inspect(values.template_list().length(), content="2")
   debug_inspect(values.template_list()[0].name(), content="\"storage\"")
   debug_inspect(values.template_list()[1].name(), content="\"read_write\"")
-  guard unit.declarations()[1].data()
-    is WgslGlobalDeclData::GlobalVariable(image) else {
+  guard unit.declarations()[1].data() is GlobalVariable(image) else {
     abort("expected image global")
   }
   debug_inspect(image.template_list().length(), content="2")
@@ -518,7 +505,7 @@ test "WGSL function arguments are parsed by grammar" {
     #|) -> f32 { return values[0].x; }
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   debug_inspect(function.arguments().length(), content="2")
@@ -552,7 +539,7 @@ test "WGSL struct members are parsed by grammar" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(struct_decl) else {
+  guard unit.declarations()[0].data() is Struct(struct_decl) else {
     abort("expected struct payload")
   }
   debug_inspect(struct_decl.members().length(), content="2")
@@ -584,15 +571,14 @@ test "WGSL expression refs expose attribute and initializer identifiers" {
     #|@id(FACTOR) override VALUE: bool = ENABLED_FLAG;
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Const(const_decl) else {
+  guard unit.declarations()[1].data() is Const(const_decl) else {
     abort("expected const payload")
   }
   guard const_decl.initializer_ref() is Some(const_initializer) else {
     abort("expected const initializer ref")
   }
   debug_inspect(const_initializer.identifiers()[0].name(), content="\"BASE\"")
-  guard unit.declarations()[2].data()
-    is WgslGlobalDeclData::Override(override_decl) else {
+  guard unit.declarations()[2].data() is Override(override_decl) else {
     abort("expected override payload")
   }
   guard override_decl.attributes()[0].arguments_ref() is Some(attr_args) else {
@@ -619,7 +605,7 @@ test "WGSL AST records spans for attributes members and signatures" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(struct_decl) else {
+  guard unit.declarations()[0].data() is Struct(struct_decl) else {
     abort("expected struct")
   }
   let field = struct_decl.members()[0]
@@ -632,7 +618,7 @@ test "WGSL AST records spans for attributes members and signatures" {
     source[field.start():field.end()].to_owned(),
     content="\"@location(0) position: vec3<f32>\"",
   )
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[1].data() is Function(function) else {
     abort("expected function")
   }
   debug_inspect(
@@ -664,7 +650,7 @@ test "WGSL attributes are parsed by grammar" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[1].data() is Function(function) else {
     abort("expected function")
   }
   debug_inspect(function.attributes().length(), content="2")
@@ -688,8 +674,7 @@ test "WGSL expression refs expose token and literal AST" {
     #|@group(0u) @binding(12) @id(true) override FLAG: bool = false;
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::Override(override_decl) else {
+  guard unit.declarations()[0].data() is Override(override_decl) else {
     abort("expected override")
   }
   guard override_decl.attributes()[0].arguments_ref() is Some(group_args) else {
@@ -740,7 +725,7 @@ test "WGSL expression refs preserve large u32 literals as unsigned" {
     #|const MASK: u32 = 3221225472u;
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Const(const_decl) else {
+  guard unit.declarations()[0].data() is Const(const_decl) else {
     abort("expected const")
   }
   guard const_decl.initializer_ref() is Some(initializer) else {
@@ -769,8 +754,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
     #|@id(1) override FLAG = ENABLED_FLAG;
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data()
-    is WgslGlobalDeclData::GlobalVariable(global) else {
+  guard unit.declarations()[0].data() is GlobalVariable(global) else {
     abort("expected global variable")
   }
   guard global.ty_ref() is Some(global_ty) else {
@@ -784,7 +768,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
     global_initializer.identifiers()[0].name(),
     content="\"FACTOR\"",
   )
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Const(const_decl) else {
+  guard unit.declarations()[1].data() is Const(const_decl) else {
     abort("expected const")
   }
   debug_inspect(const_decl.ty_ref(), content="None")
@@ -792,8 +776,7 @@ test "WGSL typed initializer tails are parsed by grammar" {
     abort("expected const initializer")
   }
   debug_inspect(const_initializer.identifiers()[0].name(), content="\"cache\"")
-  guard unit.declarations()[2].data()
-    is WgslGlobalDeclData::Override(override_decl) else {
+  guard unit.declarations()[2].data() is Override(override_decl) else {
     abort("expected override")
   }
   debug_inspect(override_decl.ty_ref(), content="None")

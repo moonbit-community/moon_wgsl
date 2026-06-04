@@ -73,9 +73,9 @@ fn wgsl_expr_numeric_literal_base(text : String) -> WgslNumericLiteralBase {
       text.code_unit_at(1).to_int() == 120 ||
       text.code_unit_at(1).to_int() == 88
     ) {
-    WgslNumericLiteralBase::Hexadecimal
+    Hexadecimal
   } else {
-    WgslNumericLiteralBase::Decimal
+    Decimal
   }
 }
 
@@ -84,11 +84,11 @@ fn wgsl_expr_numeric_literal_suffix(
   category : WgslNumericLiteralCategory,
 ) -> WgslNumericLiteralSuffix {
   match category {
-    I32Literal => WgslNumericLiteralSuffix::I32Suffix
-    U32Literal => WgslNumericLiteralSuffix::U32Suffix
-    F32Literal => WgslNumericLiteralSuffix::F32Suffix
-    F16Literal => WgslNumericLiteralSuffix::F16Suffix
-    _ => WgslNumericLiteralSuffix::NoSuffix
+    I32Literal => I32Suffix
+    U32Literal => U32Suffix
+    F32Literal => F32Suffix
+    F16Literal => F16Suffix
+    _ => NoSuffix
   }
 }
 
@@ -245,24 +245,24 @@ fn wgsl_expr_number_token_kind(text : String) -> WgslExprTokenKind {
         text.code_unit_at(text.length() - 1).to_int() == 105 ||
         text.code_unit_at(text.length() - 1).to_int() == 73
       ) {
-      WgslNumericLiteralCategory::I32Literal
+      I32Literal
     } else {
-      WgslNumericLiteralCategory::AbstractIntLiteral
+      AbstractIntLiteral
     }
   } else if wgsl_expr_float_literal_token_is_valid(text) {
     if text.length() > 0 {
       match text[text.length() - 1:].to_owned().to_lower() {
-        "f" => WgslNumericLiteralCategory::F32Literal
-        "h" => WgslNumericLiteralCategory::F16Literal
-        _ => WgslNumericLiteralCategory::AbstractFloatLiteral
+        "f" => F32Literal
+        "h" => F16Literal
+        _ => AbstractFloatLiteral
       }
     } else {
-      WgslNumericLiteralCategory::AbstractFloatLiteral
+      AbstractFloatLiteral
     }
   } else {
-    WgslNumericLiteralCategory::InvalidNumericLiteral
+    InvalidNumericLiteral
   }
-  WgslExprTokenKind::NumericLiteral(WgslNumericLiteral::{
+  NumericLiteral({
     raw_text: text,
     base: wgsl_expr_numeric_literal_base(text),
     suffix: wgsl_expr_numeric_literal_suffix(category),
@@ -287,8 +287,8 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
         let absolute_start = base + pos
         let kind = match name {
           "true" => WgslExprTokenKind::BoolLiteral(true)
-          "false" => WgslExprTokenKind::BoolLiteral(false)
-          _ => WgslExprTokenKind::Identifier
+          "false" => BoolLiteral(false)
+          _ => Identifier
         }
         expr_tokens.push(
           WgslExprToken(
@@ -299,7 +299,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           ),
         )
         if !wgsl_expr_identifier_has_access_prefix(tokens, i) &&
-          kind is WgslExprTokenKind::Identifier {
+          kind is Identifier {
           identifiers.push(
             WgslIdent(name, absolute_start, absolute_start + name.length()),
           )
@@ -374,7 +374,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
         let pos = token.pos()
         expr_tokens.push(
           WgslExprToken(
-            WgslExprTokenKind::Punctuation(code),
+            Punctuation(code),
             text[pos:tokens[i].end()].to_owned(),
             base + pos,
             base + tokens[i].end(),
@@ -389,7 +389,7 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
       Some(operator) => {
         expr_tokens.push(
           WgslExprToken(
-            WgslExprTokenKind::Operator(WgslExprOperator::from_text(operator)),
+            Operator(WgslExprOperator::from_text(operator)),
             operator,
             base + token.pos(),
             base + tokens[i].end(),

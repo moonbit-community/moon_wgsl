@@ -6,7 +6,7 @@ fn WgslIrLowerer::address_of_expression_type(
 ) -> Handle? {
   ignore(self)
   match function.expressions.items.get(handle.index()) {
-    Some(Expression::AddressOf(ty, _)) => Some(ty)
+    Some(AddressOf(ty, _)) => Some(ty)
     _ => None
   }
 }
@@ -27,12 +27,7 @@ fn wgsl_ir_address_of_operand_node(
 ) -> @ast.WgslExprNode? {
   match node.kind() {
     Group(inner) => wgsl_ir_address_of_operand_node(inner)
-    Unary(op, expr) =>
-      if op == @ast.WgslExprOperator::BitAnd {
-        Some(expr)
-      } else {
-        None
-      }
+    Unary(op, expr) => if op == BitAnd { Some(expr) } else { None }
     _ => None
   }
 }
@@ -42,8 +37,8 @@ fn wgsl_ir_local_variable_kind(
   kind : @ast.WgslLocalDeclarationKind,
 ) -> LocalVariableKind {
   match kind {
-    Var => LocalVariableKind::Var
-    Let => LocalVariableKind::Let
+    Var => Var
+    Let => Let
     Const => abort("local const declarations are not local variables")
   }
 }
@@ -57,7 +52,7 @@ fn WgslIrLowerer::lower_call_statement(
   block : Block,
 ) -> Unit raise WgslIrLowerError {
   guard expr_ref.root() is Some(root) else {
-    raise WgslIrLowerError::UnsupportedExpression("empty function call")
+    raise UnsupportedExpression("empty function call")
   }
   let expression_mark = function.expressions.items.length()
   match wgsl_ir_expr_call_node(root).kind() {
@@ -86,7 +81,7 @@ fn WgslIrLowerer::lower_call_statement(
                           )
                         None => ()
                       }
-                      block.push(Statement::Call(handle, values, None))
+                      block.push(Call(handle, values, None))
                     }
                     None =>
                       if !self.lower_ray_query_statement_call(
@@ -151,7 +146,7 @@ fn WgslIrLowerer::push_user_function_call_emit_ranges(
   arguments : Array[Handle],
   end : Handle,
 ) -> Unit {
-  let suppressed : @set.Set[Int] = @set.Set([])
+  let suppressed : @set.Set[Int] = Set([])
   match self.shader_module.functions.items.get(callee.index()) {
     Some(callee_function) =>
       for index in 0..<arguments.length() {
@@ -253,13 +248,11 @@ fn wgsl_ir_barrier_statement_from_call(
   match wgsl_ir_barrier_builtin_from_name(name) {
     Some(barrier) => {
       guard arguments.length() == 0 else {
-        raise WgslIrLowerError::UnsupportedExpression(
-          "\{name} expects no arguments",
-        )
+        raise UnsupportedExpression("\{name} expects no arguments")
       }
       match barrier {
-        BarrierControl(barrier) => Some(Statement::ControlBarrier(barrier))
-        BarrierMemory(barrier) => Some(Statement::MemoryBarrier(barrier))
+        BarrierControl(barrier) => Some(ControlBarrier(barrier))
+        BarrierMemory(barrier) => Some(MemoryBarrier(barrier))
       }
     }
     None => None
@@ -268,9 +261,7 @@ fn wgsl_ir_barrier_statement_from_call(
 
 ///|
 fn wgsl_ir_barrier_value_error(name : String) -> WgslIrLowerError {
-  WgslIrLowerError::UnsupportedExpression(
-    "barrier builtin has no value: \{name}",
-  )
+  UnsupportedExpression("barrier builtin has no value: \{name}")
 }
 
 ///|
@@ -286,10 +277,7 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
   let callee_function = match
     self.shader_module.functions.items.get(callee.index()) {
     Some(value) => value
-    None =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "invalid function call target",
-      )
+    None => raise UnsupportedExpression("invalid function call target")
   }
   let prelowered = self.lower_user_function_call_argument_dependencies(
     flattened, callee_function, function, scope,
@@ -583,7 +571,7 @@ fn WgslIrLowerer::call_argument_access_root_is_naga_reference(
     Group(inner) =>
       self.call_argument_access_root_is_naga_reference(inner, scope)
     Unary(op, inner) =>
-      op == @ast.WgslExprOperator::Multiply &&
+      op == Multiply &&
       self.call_argument_access_root_is_naga_reference(inner, scope)
     Member(base, _) | Index(base, _) =>
       self.call_argument_access_root_is_naga_reference(base, scope)
@@ -725,10 +713,7 @@ fn WgslIrLowerer::lower_ray_query_statement_call(
         ray_desc, function, scope,
       )
       block.push(
-        Statement::RayQuery(
-          query_handle,
-          RayQueryFunction::Initialize(acceleration_handle, ray_desc_handle),
-        ),
+        RayQuery(query_handle, Initialize(acceleration_handle, ray_desc_handle)),
       )
       true
     }
@@ -737,12 +722,7 @@ fn WgslIrLowerer::lower_ray_query_statement_call(
       let query_handle = self.lower_function_expression_node(
         query, function, scope,
       )
-      block.push(
-        Statement::RayQuery(
-          query_handle,
-          RayQueryFunction::Proceed(query_handle),
-        ),
-      )
+      block.push(RayQuery(query_handle, Proceed(query_handle)))
       true
     }
     "rayQueryGenerateIntersection" => {
@@ -753,12 +733,7 @@ fn WgslIrLowerer::lower_ray_query_statement_call(
       let t_handle = self.lower_function_expression_node(
         intersection_t, function, scope,
       )
-      block.push(
-        Statement::RayQuery(
-          query_handle,
-          RayQueryFunction::GenerateIntersection(t_handle),
-        ),
-      )
+      block.push(RayQuery(query_handle, GenerateIntersection(t_handle)))
       true
     }
     "rayQueryConfirmIntersection" => {
@@ -766,9 +741,7 @@ fn WgslIrLowerer::lower_ray_query_statement_call(
       let query_handle = self.lower_function_expression_node(
         query, function, scope,
       )
-      block.push(
-        Statement::RayQuery(query_handle, RayQueryFunction::ConfirmIntersection),
-      )
+      block.push(RayQuery(query_handle, ConfirmIntersection))
       true
     }
     "rayQueryTerminate" => {
@@ -776,7 +749,7 @@ fn WgslIrLowerer::lower_ray_query_statement_call(
       let query_handle = self.lower_function_expression_node(
         query, function, scope,
       )
-      block.push(Statement::RayQuery(query_handle, RayQueryFunction::Terminate))
+      block.push(RayQuery(query_handle, Terminate))
       true
     }
     _ => false
@@ -794,9 +767,7 @@ fn WgslIrLowerer::lower_atomic_statement_call(
 ) -> Unit raise WgslIrLowerError {
   if atomic_function == Store {
     guard arguments is [pointer_argument, value_argument] else {
-      raise WgslIrLowerError::UnsupportedExpression(
-        "atomicStore expects 2 arguments",
-      )
+      raise UnsupportedExpression("atomicStore expects 2 arguments")
     }
     let pointer = self.lower_atomic_pointer_argument(
       pointer_argument, function, scope,
@@ -804,7 +775,7 @@ fn WgslIrLowerer::lower_atomic_statement_call(
     let value = self.lower_function_expression_node(
       value_argument, function, scope,
     )
-    block.push(Statement::Atomic(pointer, Store, value, None, None))
+    block.push(Atomic(pointer, Store, value, None, None))
     return
   }
   let handle = self.lower_function_atomic_call(
@@ -813,7 +784,7 @@ fn WgslIrLowerer::lower_atomic_statement_call(
   if self.function_expression_type(function, handle) != None {
     ignore(self.materialize_function_expression(function, scope, block, handle))
   } else {
-    block.push(Statement::Emit(HandleRange(handle, handle)))
+    block.push(Emit(HandleRange(handle, handle)))
   }
 }
 
@@ -846,9 +817,7 @@ fn WgslIrLowerer::lower_texture_statement_call(
     }
     "textureStore" => {
       guard arguments.length() == 3 || arguments.length() == 4 else {
-        raise WgslIrLowerError::UnsupportedExpression(
-          "textureStore expects 3 or 4 arguments",
-        )
+        raise UnsupportedExpression("textureStore expects 3 or 4 arguments")
       }
       let image = self.lower_function_expression_node(
         arguments[0],
@@ -876,7 +845,7 @@ fn WgslIrLowerer::lower_texture_statement_call(
         scope,
       )
       block.push(
-        Statement::ImageStore(
+        ImageStore(
           image,
           self.materialize_image_store_operand(
             function, scope, block, coordinate,
@@ -917,7 +886,7 @@ fn WgslIrLowerer::lower_texture_atomic_statement(
   block : Block,
 ) -> Unit raise WgslIrLowerError {
   guard arguments.length() == 3 || arguments.length() == 4 else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "\{name} expects 3 arguments for non-arrayed storage textures or 4 arguments for arrayed storage textures",
     )
   }
@@ -930,7 +899,7 @@ fn WgslIrLowerer::lower_texture_atomic_statement(
   let arrayed = self.image_expression_is_arrayed(function, image)
   let (array_index, value_index) = if arrayed {
     guard arguments.length() == 4 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "\{name} on arrayed storage texture expects array index",
       )
     }
@@ -940,7 +909,7 @@ fn WgslIrLowerer::lower_texture_atomic_statement(
     )
   } else {
     guard arguments.length() == 3 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "\{name} on non-arrayed storage texture does not accept array index",
       )
     }
@@ -952,9 +921,7 @@ fn WgslIrLowerer::lower_texture_atomic_statement(
     scope,
   )
   block.push(
-    Statement::ImageAtomic(
-      image, coordinate, array_index, atomic_function, value,
-    ),
+    ImageAtomic(image, coordinate, array_index, atomic_function, value),
   )
 }
 
@@ -969,14 +936,7 @@ fn WgslIrLowerer::lower_texture_expression_call(
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   match name {
     "textureSample" =>
-      Some(
-        self.lower_image_sample_expression(
-          arguments,
-          function,
-          scope,
-          SampleLevel::Auto,
-        ),
-      )
+      Some(self.lower_image_sample_expression(arguments, function, scope, Auto))
     "textureSampleBias" =>
       Some(
         self.lower_image_sample_with_level_argument(
@@ -997,7 +957,7 @@ fn WgslIrLowerer::lower_texture_expression_call(
           arguments,
           function,
           scope,
-          SampleLevel::Auto,
+          Auto,
           "textureSampleCompare",
         ),
       )
@@ -1007,7 +967,7 @@ fn WgslIrLowerer::lower_texture_expression_call(
           arguments,
           function,
           scope,
-          SampleLevel::Zero,
+          Zero,
           "textureSampleCompareLevel",
         ),
       )
@@ -1033,7 +993,7 @@ fn WgslIrLowerer::lower_texture_expression_call(
           arguments,
           function,
           scope,
-          ImageQuery::NumLevels,
+          NumLevels,
           "textureNumLevels",
         ),
       )
@@ -1043,7 +1003,7 @@ fn WgslIrLowerer::lower_texture_expression_call(
           arguments,
           function,
           scope,
-          ImageQuery::NumLayers,
+          NumLayers,
           "textureNumLayers",
         ),
       )
@@ -1053,7 +1013,7 @@ fn WgslIrLowerer::lower_texture_expression_call(
           arguments,
           function,
           scope,
-          ImageQuery::NumSamples,
+          NumSamples,
           "textureNumSamples",
         ),
       )
@@ -1082,13 +1042,11 @@ fn WgslIrLowerer::lower_texture_trailing_args(
   let arrayed = self.image_expression_is_arrayed(function, image)
   let remaining = arguments.length() - base_count
   guard remaining >= trailing_count else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "\{callee} has too few arguments",
-    )
+    raise UnsupportedExpression("\{callee} has too few arguments")
   }
   let (array_index, trailing_start) = if arrayed {
     guard remaining == trailing_count + 1 || remaining == trailing_count + 2 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "\{callee} argument list does not match arrayed texture signature",
       )
     }
@@ -1104,7 +1062,7 @@ fn WgslIrLowerer::lower_texture_trailing_args(
     )
   } else {
     guard remaining == trailing_count || remaining == trailing_count + 1 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "\{callee} argument list does not match texture signature",
       )
     }
@@ -1132,7 +1090,7 @@ fn WgslIrLowerer::lower_texture_trailing_args(
   } else {
     None
   }
-  WgslIrTextureTrailingArgs::{ array_index, trailing, offset }
+  { array_index, trailing, offset }
 }
 
 ///|
@@ -1163,7 +1121,7 @@ fn WgslIrLowerer::lower_texture_mip_level_argument(
     argument,
     function,
     scope,
-    Some(self.scalar_type_handle(Scalar::Scalar(Sint, 4))),
+    Some(self.scalar_type_handle(Scalar(Sint, 4))),
   )
 }
 
@@ -1259,9 +1217,7 @@ fn WgslIrLowerer::lower_image_sample_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() >= 3 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "textureSample expects at least 3 arguments",
-    )
+    raise UnsupportedExpression("textureSample expects at least 3 arguments")
   }
   self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
@@ -1279,7 +1235,7 @@ fn WgslIrLowerer::lower_image_sample_expression(
     arguments, function, scope, image, 3, 0, "textureSample",
   )
   function.expressions.append(
-    Expression::ImageSample(
+    ImageSample(
       image,
       sampler,
       None,
@@ -1304,9 +1260,7 @@ fn WgslIrLowerer::lower_image_sample_with_level_argument(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() >= 4 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "\{callee} expects at least 4 arguments",
-    )
+    raise UnsupportedExpression("\{callee} expects at least 4 arguments")
   }
   self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
@@ -1324,17 +1278,15 @@ fn WgslIrLowerer::lower_image_sample_with_level_argument(
     arguments, function, scope, image, 3, 1, callee,
   )
   guard parsed.trailing is [level_handle] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "\{callee} missing \{level_name} argument",
-    )
+    raise UnsupportedExpression("\{callee} missing \{level_name} argument")
   }
   let level = if level_name == "bias" {
     SampleLevel::Bias(level_handle)
   } else {
-    SampleLevel::Exact(level_handle)
+    Exact(level_handle)
   }
   function.expressions.append(
-    Expression::ImageSample(
+    ImageSample(
       image,
       sampler,
       None,
@@ -1357,7 +1309,7 @@ fn WgslIrLowerer::lower_image_sample_grad_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() >= 5 else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "textureSampleGrad expects at least 5 arguments",
     )
   }
@@ -1377,19 +1329,17 @@ fn WgslIrLowerer::lower_image_sample_grad_expression(
     arguments, function, scope, image, 3, 2, "textureSampleGrad",
   )
   guard parsed.trailing is [ddx, ddy] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "textureSampleGrad missing gradient arguments",
-    )
+    raise UnsupportedExpression("textureSampleGrad missing gradient arguments")
   }
   function.expressions.append(
-    Expression::ImageSample(
+    ImageSample(
       image,
       sampler,
       None,
       coordinate,
       parsed.array_index,
       parsed.offset,
-      SampleLevel::Gradient(ddx, ddy),
+      Gradient(ddx, ddy),
       None,
       false,
     ),
@@ -1407,9 +1357,7 @@ fn WgslIrLowerer::lower_image_sample_compare_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() >= 4 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "\{callee} expects at least 4 arguments",
-    )
+    raise UnsupportedExpression("\{callee} expects at least 4 arguments")
   }
   self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
   let image = self.lower_function_expression_node(arguments[0], function, scope)
@@ -1427,12 +1375,10 @@ fn WgslIrLowerer::lower_image_sample_compare_expression(
     arguments, function, scope, image, 3, 1, callee,
   )
   guard parsed.trailing is [depth_ref] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "\{callee} missing depth reference argument",
-    )
+    raise UnsupportedExpression("\{callee} missing depth reference argument")
   }
   function.expressions.append(
-    Expression::ImageSample(
+    ImageSample(
       image,
       sampler,
       None,
@@ -1455,7 +1401,7 @@ fn WgslIrLowerer::lower_image_sample_base_clamp_to_edge_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() == 3 else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "textureSampleBaseClampToEdge expects 3 arguments",
     )
   }
@@ -1472,17 +1418,7 @@ fn WgslIrLowerer::lower_image_sample_base_clamp_to_edge_expression(
     scope,
   )
   function.expressions.append(
-    Expression::ImageSample(
-      image,
-      sampler,
-      None,
-      coordinate,
-      None,
-      None,
-      SampleLevel::Zero,
-      None,
-      true,
-    ),
+    ImageSample(image, sampler, None, coordinate, None, None, Zero, None, true),
   )
 }
 
@@ -1495,9 +1431,7 @@ fn WgslIrLowerer::lower_image_gather_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() >= 3 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "textureGather expects at least 3 arguments",
-    )
+    raise UnsupportedExpression("textureGather expects at least 3 arguments")
   }
   let probe_image_index = if wgsl_ir_expr_node_is_gather_component(arguments[0]) {
     1
@@ -1514,13 +1448,13 @@ fn WgslIrLowerer::lower_image_gather_expression(
   let (component, image, sampler, coordinate, base_count) = if depth {
     let (component, sampler_index, coordinate_index, base_count) = if has_component {
       guard arguments.length() >= 4 else {
-        raise WgslIrLowerError::UnsupportedExpression(
+        raise UnsupportedExpression(
           "textureGather with a component argument expects image, sampler, and coordinate arguments",
         )
       }
       (wgsl_ir_gather_component_from_node(arguments[0]), 2, 3, 4)
     } else {
-      (SwizzleComponent::X, 1, 2, 3)
+      (X, 1, 2, 3)
     }
     let sampler = self.lower_function_expression_node(
       arguments[sampler_index],
@@ -1535,7 +1469,7 @@ fn WgslIrLowerer::lower_image_gather_expression(
     (Some(component), probe_image, sampler, coordinate, base_count)
   } else {
     guard arguments.length() >= 4 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "textureGather for non-depth textures expects a component argument",
       )
     }
@@ -1556,14 +1490,14 @@ fn WgslIrLowerer::lower_image_gather_expression(
     arguments, function, scope, image, base_count, 0, "textureGather",
   )
   function.expressions.append(
-    Expression::ImageSample(
+    ImageSample(
       image,
       sampler,
       component,
       coordinate,
       parsed.array_index,
       parsed.offset,
-      SampleLevel::Auto,
+      Auto,
       None,
       false,
     ),
@@ -1579,7 +1513,7 @@ fn WgslIrLowerer::lower_image_gather_compare_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() >= 4 else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "textureGatherCompare expects at least 4 arguments",
     )
   }
@@ -1599,19 +1533,19 @@ fn WgslIrLowerer::lower_image_gather_compare_expression(
     arguments, function, scope, image, 3, 1, "textureGatherCompare",
   )
   guard parsed.trailing is [depth_ref] else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "textureGatherCompare missing depth reference argument",
     )
   }
   function.expressions.append(
-    Expression::ImageSample(
+    ImageSample(
       image,
       sampler,
-      Some(SwizzleComponent::X),
+      Some(X),
       coordinate,
       parsed.array_index,
       parsed.offset,
-      SampleLevel::Auto,
+      Auto,
       Some(depth_ref),
       false,
     ),
@@ -1627,9 +1561,7 @@ fn WgslIrLowerer::lower_image_load_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() >= 2 && arguments.length() <= 4 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "textureLoad expects 2 to 4 arguments",
-    )
+    raise UnsupportedExpression("textureLoad expects 2 to 4 arguments")
   }
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let coordinate = self.lower_function_expression_node(
@@ -1644,7 +1576,7 @@ fn WgslIrLowerer::lower_image_load_expression(
   let no_handle : Handle? = None
   let (array_index, sample, level) = if multisampled {
     guard !arrayed && arguments.length() == 3 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "textureLoad multisampled texture expects sample index",
       )
     }
@@ -1656,7 +1588,7 @@ fn WgslIrLowerer::lower_image_load_expression(
   } else if arrayed {
     if storage {
       guard arguments.length() == 3 else {
-        raise WgslIrLowerError::UnsupportedExpression(
+        raise UnsupportedExpression(
           "textureLoad storage texture array expects array index",
         )
       }
@@ -1667,7 +1599,7 @@ fn WgslIrLowerer::lower_image_load_expression(
       )
     } else {
       guard arguments.length() == 4 else {
-        raise WgslIrLowerError::UnsupportedExpression(
+        raise UnsupportedExpression(
           "textureLoad sampled texture array expects array index and level",
         )
       }
@@ -1681,14 +1613,14 @@ fn WgslIrLowerer::lower_image_load_expression(
     }
   } else if storage || external {
     guard arguments.length() == 2 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "textureLoad storage/external texture expects no level argument",
       )
     }
     (no_handle, no_handle, no_handle)
   } else {
     guard arguments.length() == 3 else {
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "textureLoad sampled texture expects mip level",
       )
     }
@@ -1700,7 +1632,7 @@ fn WgslIrLowerer::lower_image_load_expression(
   }
   ignore(self.image_expression_result_type(function, image, None, None))
   function.expressions.append(
-    Expression::ImageLoad(image, coordinate, array_index, sample, level),
+    ImageLoad(image, coordinate, array_index, sample, level),
   )
 }
 
@@ -1713,9 +1645,7 @@ fn WgslIrLowerer::lower_image_query_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() == 1 || arguments.length() == 2 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "textureDimensions expects 1 or 2 arguments",
-    )
+    raise UnsupportedExpression("textureDimensions expects 1 or 2 arguments")
   }
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let level = if arguments.length() == 2 {
@@ -1723,9 +1653,7 @@ fn WgslIrLowerer::lower_image_query_expression(
   } else {
     None
   }
-  function.expressions.append(
-    Expression::ImageQuery(image, ImageQuery::Size(level)),
-  )
+  function.expressions.append(ImageQuery(image, Size(level)))
 }
 
 ///|
@@ -1739,10 +1667,8 @@ fn WgslIrLowerer::lower_image_query_kind_expression(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() == 1 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "\{callee} expects 1 argument",
-    )
+    raise UnsupportedExpression("\{callee} expects 1 argument")
   }
   let image = self.lower_function_expression_node(arguments[0], function, scope)
-  function.expressions.append(Expression::ImageQuery(image, query))
+  function.expressions.append(ImageQuery(image, query))
 }

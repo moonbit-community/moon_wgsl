@@ -18,7 +18,7 @@ fn wgsl_ir_function_expression_graph_contains(
   root : Handle,
   needle : Handle,
 ) -> Bool {
-  let visited : @set.Set[Int] = @set.Set([])
+  let visited : @set.Set[Int] = Set([])
   wgsl_ir_function_expression_graph_contains_inner(
     function, root, needle, visited,
   )

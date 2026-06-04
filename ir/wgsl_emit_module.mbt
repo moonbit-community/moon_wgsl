@@ -21,7 +21,7 @@ fn WgslIrEmitter::emit_module(
         if needs_blank {
           out.write_string("\n")
         }
-        self.emit_struct_type(out, Handle::Handle(slot.source_index), ty)
+        self.emit_struct_type(out, Handle(slot.source_index), ty)
         needs_blank = true
         last_item_is_entry_point = false
       }
@@ -36,7 +36,7 @@ fn WgslIrEmitter::emit_module(
     if needs_blank && !emitted_constant {
       out.write_string("\n")
     }
-    self.emit_constant(out, Handle::Handle(slot.source_index), slot.item)
+    self.emit_constant(out, Handle(slot.source_index), slot.item)
     needs_blank = true
     last_item_is_entry_point = false
     emitted_constant = true
@@ -57,7 +57,7 @@ fn WgslIrEmitter::emit_module(
     if needs_blank && !emitted_override {
       out.write_string("\n")
     }
-    self.emit_override(out, Handle::Handle(slot.source_index), slot.item)
+    self.emit_override(out, Handle(slot.source_index), slot.item)
     needs_blank = true
     last_item_is_entry_point = false
     emitted_override = true
@@ -67,7 +67,7 @@ fn WgslIrEmitter::emit_module(
     if needs_blank && !emitted_global_variable {
       out.write_string("\n")
     }
-    self.emit_global_variable(out, Handle::Handle(slot.source_index), slot.item)
+    self.emit_global_variable(out, Handle(slot.source_index), slot.item)
     needs_blank = true
     last_item_is_entry_point = false
     emitted_global_variable = true

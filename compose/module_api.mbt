@@ -13,7 +13,7 @@ pub fn Composer::add_composable_module(
 
   let shader_defs = copy_shader_def_values(desc.shader_defs)
   let effective_defs = metadata.effective_defs.copy()
-  let all_imports : @set.Set[String] = @set.Set([])
+  let all_imports : @set.Set[String] = Set([])
   let additional_imports = copy_import_definitions(desc.additional_imports)
   let import_names : Array[String] = []
   for import_binding in metadata.imports {
@@ -37,7 +37,7 @@ pub fn Composer::add_composable_module(
         self.registry.copy_import_module_paths(),
       )
       is Some(resolved_module) else {
-      raise ComposerError::FailedToResolveImport(import_name)
+      raise FailedToResolveImport(import_name)
     }
     let resolved_module_path = resolved_module.module_path()
     all_imports.add(resolved_module_path)
@@ -103,7 +103,7 @@ fn Composer::load_wgsl_source_required_raw(
   }
   match self.registry.registered_source(normalized_rel) {
     Some(source) => source
-    None => raise ComposerError::MissingStartupRegisteredSource(normalized_rel)
+    None => raise MissingStartupRegisteredSource(normalized_rel)
   }
 }
 

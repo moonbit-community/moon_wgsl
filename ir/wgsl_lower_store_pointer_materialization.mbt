@@ -31,9 +31,7 @@ fn WgslIrLowerer::materialize_store_pointer_if_needed(
       if lowered_base == base && lowered_index == index {
         pointer
       } else {
-        function.expressions.append(
-          Expression::Access(lowered_base, lowered_index),
-        )
+        function.expressions.append(Access(lowered_base, lowered_index))
       }
     }
     Some(AccessIndex(base, index)) => {
@@ -43,9 +41,7 @@ fn WgslIrLowerer::materialize_store_pointer_if_needed(
       if lowered_base == base {
         pointer
       } else {
-        function.expressions.append(
-          Expression::AccessIndex(lowered_base, index),
-        )
+        function.expressions.append(AccessIndex(lowered_base, index))
       }
     }
     Some(Component(base, component)) => {
@@ -55,9 +51,7 @@ fn WgslIrLowerer::materialize_store_pointer_if_needed(
       if lowered_base == base {
         pointer
       } else {
-        function.expressions.append(
-          Expression::Component(lowered_base, component),
-        )
+        function.expressions.append(Component(lowered_base, component))
       }
     }
     _ => pointer
@@ -169,7 +163,7 @@ fn WgslIrLowerer::materialize_function_expression_snapshot(
       self.materialize_function_expression(function, scope, block, snapshot)
     }
     None =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "materialized expression snapshot \{value.index()}",
       )
   }

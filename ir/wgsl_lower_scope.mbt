@@ -72,7 +72,7 @@ priv struct WgslIrExprTokenParser {
 
 ///|
 fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
-  WgslIrFunctionScope::{
+  {
     arguments: Map([]),
     argument_expressions: Map([]),
     locals: Map([]),
@@ -161,7 +161,7 @@ fn wgsl_ir_restore_local_constant_values(
 fn WgslIrFunctionScope::child(
   self : WgslIrFunctionScope,
 ) -> WgslIrFunctionScope {
-  WgslIrFunctionScope::{
+  {
     arguments: wgsl_ir_copy_string_int_map(self.arguments),
     argument_expressions: self.argument_expressions,
     locals: wgsl_ir_copy_string_handle_map(self.locals),
@@ -192,9 +192,7 @@ fn WgslIrFunctionScope::argument_expression(
   match self.argument_expressions.get(name) {
     Some(handle) => handle
     None => {
-      let handle = function.expressions.append(
-        Expression::FunctionArgument(index),
-      )
+      let handle = function.expressions.append(FunctionArgument(index))
       self.argument_expressions.set(name, handle)
       handle
     }
@@ -214,8 +212,7 @@ fn WgslIrFunctionScope::local_pointer_expression(
       let handle = match
         wgsl_ir_find_local_pointer_expression(function, local_handle) {
         Some(existing) => existing
-        None =>
-          function.expressions.append(Expression::LocalVariable(local_handle))
+        None => function.expressions.append(LocalVariable(local_handle))
       }
       self.local_pointer_expressions.set(name, handle)
       handle
@@ -229,8 +226,8 @@ fn wgsl_ir_find_local_pointer_expression(
   local_handle : Handle,
 ) -> Handle? {
   for index, expression in function.expressions.items {
-    if expression == Expression::LocalVariable(local_handle) {
-      return Some(Handle::Handle(index))
+    if expression == LocalVariable(local_handle) {
+      return Some(Handle(index))
     }
   }
   None
@@ -248,15 +245,13 @@ fn WgslIrFunctionScope::global_pointer_expression(
     match self.global_pointer_expressions.get(name) {
       Some(handle) => return handle
       None => {
-        let handle = function.expressions.append(
-          Expression::GlobalVariable(global_handle),
-        )
+        let handle = function.expressions.append(GlobalVariable(global_handle))
         self.global_pointer_expressions.set(name, handle)
         return handle
       }
     }
   }
-  function.expressions.append(Expression::GlobalVariable(global_handle))
+  function.expressions.append(GlobalVariable(global_handle))
 }
 
 ///|
@@ -266,13 +261,11 @@ fn WgslIrFunctionScope::predeclare_global_pointer_expression(
   global_handle : Handle,
   function : Function,
 ) -> Handle {
-  let handle = function.expressions.append(
-    Expression::GlobalVariable(global_handle),
-  )
+  let handle = function.expressions.append(GlobalVariable(global_handle))
   match self.pending_global_pointer_expressions.get(name) {
     Some(queue) => queue.handles.push(handle)
     None =>
-      self.pending_global_pointer_expressions.set(name, WgslIrPendingGlobalPointerExpressions::{
+      self.pending_global_pointer_expressions.set(name, {
         handles: [handle],
         index: 0,
       })

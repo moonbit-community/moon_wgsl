@@ -544,25 +544,25 @@ fn compose_case_parse_value_define_value(
 ) -> @common.ShaderDefValue {
   let value = raw.trim().to_owned()
   if value.has_prefix("raw:") {
-    return @common.ShaderDefValue::Raw(value[4:value.length()].to_owned())
+    return Raw(value[4:value.length()].to_owned())
   }
   if value == "true" {
-    return @common.ShaderDefValue::Bool(true)
+    return Bool(true)
   }
   if value == "false" {
-    return @common.ShaderDefValue::Bool(false)
+    return Bool(false)
   }
   if value.has_suffix("u") || value.has_suffix("U") {
     let body = value[:value.length() - 1].to_owned()
     let parsed = @string.parse_uint(body[:], base=10) catch {
       _ => abort("invalid unsigned --value-def value: \{raw}")
     }
-    return @common.ShaderDefValue::UInt(parsed)
+    return UInt(parsed)
   }
   let parsed_int = @string.parse_int(value[:], base=10) catch {
     _ => abort("invalid --value-def value: \{raw}")
   }
-  @common.ShaderDefValue::Int(parsed_int)
+  Int(parsed_int)
 }
 
 ///|
@@ -586,7 +586,7 @@ fn compose_case_additional_imports(
 ) -> Array[@common.ImportDefinition] {
   let imports : Array[@common.ImportDefinition] = []
   for path in paths {
-    imports.push(@common.ImportDefinition::{ import_path: path, items: [] })
+    imports.push({ import_path: path, items: [] })
   }
   imports
 }

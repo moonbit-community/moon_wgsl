@@ -54,7 +54,7 @@ test "Naga derived module view follows import arena events before root declarati
     "dep",
     "",
     symbols,
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     event_symbols,
   )
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
@@ -108,7 +108,7 @@ test "Naga derived module view imports global type dependencies as arena side ef
     "dep",
     "",
     ["imported_global"],
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     [
       WgslIrImportArenaSymbol(
         GlobalVariable,
@@ -161,7 +161,7 @@ test "Naga derived module view imports called functions before imported caller" 
     "dep",
     "",
     ["imported_fn"],
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     [WgslIrImportArenaSymbol(Function, "imported_fn", "imported_fn")],
   )
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
@@ -208,7 +208,7 @@ test "Naga derived module view sorts imported functions by source arena rank" {
     "dep",
     "",
     ["selected_a", "selected_b", "late_helper"],
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     [
       WgslIrImportArenaSymbol(
         Function,
@@ -277,7 +277,7 @@ test "Naga writer arena uses derived constant import order" {
     "dep",
     "",
     ["selected"],
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     [WgslIrImportArenaSymbol(Function, "selected", "selected")],
   )
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
@@ -324,7 +324,7 @@ test "Naga writer arena uses derived nested function-call order" {
     "dep",
     "",
     ["selected"],
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     [WgslIrImportArenaSymbol(Function, "selected", "selected")],
   )
   let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
@@ -370,7 +370,7 @@ test "Naga derived module view consumes typed arena symbol records" {
     "dep",
     "",
     ["SharedName"],
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     [WgslIrImportArenaSymbol(Function, "SharedName", "SharedName")],
   )
   let recorded_symbols = event.generated_symbols()
@@ -429,7 +429,7 @@ test "Naga derived module view filters selected items through category loops" {
     "dep",
     "",
     ["DirectType", "direct_global", "direct_function"],
-    WgslIrImportEdgeKind::ItemBinding,
+    ItemBinding,
     [
       WgslIrImportArenaSymbol(Function, "direct_function", "direct_function"),
       WgslIrImportArenaSymbol(Type, "FunctionArgType", "FunctionArgType"),

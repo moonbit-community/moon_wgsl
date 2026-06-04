@@ -153,7 +153,7 @@ fn yy_action_0(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 // 18|    module_path=IDENT targets=target_list semis EOF {
 // 19|      let out : Array[@common.WgslImportTarget] = []
 // 20|      for target in targets {
-// 21|        out.push(@common.WgslImportTarget::{
+// 21|        out.push({
 // 22|          raw_path: module_path + "::" + target.raw_path,
 // 23|          alias_name: target.alias_name,
 // 24|        })
@@ -170,7 +170,7 @@ fn yy_action_1(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
       ()
       let out : Array[@common.WgslImportTarget] = []
       for target in targets {
-        out.push(@common.WgslImportTarget::{
+        out.push({
           raw_path: module_path + "::" + target.raw_path,
           alias_name: target.alias_name,
         })
@@ -256,7 +256,7 @@ fn yy_action_5(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 // 60|        } else {
 // 61|          "::"
 // 62|        }
-// 63|        out.push(@common.WgslImportTarget::{
+// 63|        out.push({
 // 64|          raw_path: module_path + sep + target.raw_path,
 // 65|          alias_name: target.alias_name,
 // 66|        })
@@ -278,7 +278,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
         } else {
           "::"
         }
-        out.push(@common.WgslImportTarget::{
+        out.push({
           raw_path: module_path + sep + target.raw_path,
           alias_name: target.alias_name,
         })
@@ -290,7 +290,7 @@ fn yy_action_6(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
 
 // file:///./import_parser.mbty
 // 52|    path=IDENT alias_name=alias {
-// 53|      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
+// 53|      [{ raw_path: path, alias_name }]
 // 54|    }
 
 ///|
@@ -300,7 +300,7 @@ fn yy_action_7(_last_pos : Int, _args : ArrayView[(YYObj, Int, Int)]) -> YYObj {
   YYObj_Array__common_WgslImportTarget_(
     {
       ()
-      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
+      [{ raw_path: path, alias_name }]
     },
   )
 }

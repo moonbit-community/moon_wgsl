@@ -95,7 +95,7 @@ fn WgslIrNagaCompatPlanner::writer_arena(
   let functions = self.function_slots(declarations.functions, true)
   let entry_points = self.entry_point_slots(true)
   let const_asserts = self.const_assert_slots()
-  WgslIrNagaWriterArena::{
+  {
     directives: self.shader_module.directives,
     types,
     constants,
@@ -121,7 +121,7 @@ fn WgslIrNagaCompatPlanner::runtime_writer_arena(
   let functions = self.function_slots(declarations.functions, false)
   let entry_points = self.entry_point_slots(false)
   let const_asserts = self.const_assert_slots()
-  WgslIrNagaWriterArena::{
+  {
     directives: self.shader_module.directives,
     types,
     constants,
@@ -140,7 +140,7 @@ fn WgslIrNagaCompatPlanner::type_slots(
 ) -> Array[WgslIrNagaWriterTypeSlot] {
   let slots : Array[WgslIrNagaWriterTypeSlot] = []
   for slot in declarations {
-    slots.push(WgslIrNagaWriterTypeSlot::{
+    slots.push({
       source_index: slot.source_index,
       item: self.shader_module.types.items[slot.source_index],
     })
@@ -155,7 +155,7 @@ fn WgslIrNagaCompatPlanner::constant_slots(
 ) -> Array[WgslIrNagaWriterConstantSlot] {
   let slots : Array[WgslIrNagaWriterConstantSlot] = []
   for slot in declarations {
-    slots.push(WgslIrNagaWriterConstantSlot::{
+    slots.push({
       source_index: slot.source_index,
       item: self.shader_module.constants.items[slot.source_index],
     })
@@ -170,7 +170,7 @@ fn WgslIrNagaCompatPlanner::override_slots(
 ) -> Array[WgslIrNagaWriterOverrideSlot] {
   let slots : Array[WgslIrNagaWriterOverrideSlot] = []
   for slot in declarations {
-    slots.push(WgslIrNagaWriterOverrideSlot::{
+    slots.push({
       source_index: slot.source_index,
       item: self.shader_module.overrides.items[slot.source_index],
     })
@@ -185,7 +185,7 @@ fn WgslIrNagaCompatPlanner::global_variable_slots(
 ) -> Array[WgslIrNagaWriterGlobalVariableSlot] {
   let slots : Array[WgslIrNagaWriterGlobalVariableSlot] = []
   for slot in declarations {
-    slots.push(WgslIrNagaWriterGlobalVariableSlot::{
+    slots.push({
       source_index: slot.source_index,
       item: self.shader_module.global_variables.items[slot.source_index],
     })
@@ -202,7 +202,7 @@ fn WgslIrNagaCompatPlanner::function_slots(
   let slots : Array[WgslIrNagaWriterFunctionSlot] = []
   for slot in declarations {
     let item = self.shader_module.functions.items[slot.source_index]
-    slots.push(WgslIrNagaWriterFunctionSlot::{
+    slots.push({
       source_index: slot.source_index,
       item,
       body_plan: WgslIrNagaFunctionBodyPlan::from_function(
@@ -223,7 +223,7 @@ fn WgslIrNagaCompatPlanner::entry_point_slots(
   let slots : Array[WgslIrNagaWriterEntryPointSlot] = []
   for source_index in self.entry_point_order() {
     let item = self.shader_module.entry_points[source_index]
-    slots.push(WgslIrNagaWriterEntryPointSlot::{
+    slots.push({
       source_index,
       item,
       body_plan: WgslIrNagaFunctionBodyPlan::from_function(
@@ -242,9 +242,7 @@ fn WgslIrNagaCompatPlanner::const_assert_slots(
 ) -> Array[WgslIrNagaWriterConstAssertSlot] {
   let slots : Array[WgslIrNagaWriterConstAssertSlot] = []
   for source_index in 0..<self.shader_module.const_asserts.length() {
-    slots.push(WgslIrNagaWriterConstAssertSlot::{
-      condition: self.shader_module.const_asserts[source_index],
-    })
+    slots.push({ condition: self.shader_module.const_asserts[source_index] })
   }
   slots
 }
@@ -254,7 +252,7 @@ fn WgslIrNagaCompatPlanner::declaration_arena(
   self : WgslIrNagaCompatPlanner,
 ) -> WgslIrNagaCompatDeclarationArena {
   let derived = self.derived_module_view()
-  WgslIrNagaCompatDeclarationArena::{
+  {
     types: wgsl_ir_naga_compat_declaration_slots(self.type_order()),
     constants: wgsl_ir_naga_compat_declaration_slots(derived.constants),
     overrides: wgsl_ir_naga_compat_declaration_slots(self.override_order()),
@@ -270,7 +268,7 @@ fn WgslIrNagaCompatPlanner::runtime_declaration_arena(
   self : WgslIrNagaCompatPlanner,
 ) -> WgslIrNagaCompatDeclarationArena {
   let derived = self.derived_module_view()
-  WgslIrNagaCompatDeclarationArena::{
+  {
     types: wgsl_ir_naga_compat_declaration_slots(self.type_order()),
     constants: wgsl_ir_naga_compat_declaration_slots(derived.constants),
     overrides: wgsl_ir_naga_compat_declaration_slots(self.override_order()),
@@ -359,7 +357,7 @@ fn wgsl_ir_naga_compat_declaration_slots(
 ) -> Array[WgslIrNagaCompatDeclarationSlot] {
   let slots : Array[WgslIrNagaCompatDeclarationSlot] = []
   for source_index in source_order {
-    slots.push(WgslIrNagaCompatDeclarationSlot::{ source_index, })
+    slots.push({ source_index, })
   }
   slots
 }

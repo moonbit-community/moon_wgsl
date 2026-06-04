@@ -40,16 +40,14 @@ test "IR validator accepts immediate globals" {
 ///|
 test "IR validator rejects invalid type handles" {
   let module_ = Module()
-  let init = module_.append_global_expression(
-    Expression::Literal(Literal::I32(1)),
-  )
+  let init = module_.append_global_expression(Literal(I32(1)))
   ignore(
-    module_.append_constant(Constant::{
+    module_.append_constant({
       name: Some("BAD"),
       generated_import: false,
       inline_value: false,
       source_start: -1,
-      ty: Handle::Handle(99),
+      ty: Handle(99),
       init,
     }),
   )
@@ -66,8 +64,8 @@ test "IR validator rejects invalid type handles" {
 test "IR validator rejects invalid function call handles" {
   let module_ = Module()
   let function = Function::Function(Some("main"))
-  function.body.push(Statement::Call(Handle::Handle(42), [], None))
-  module_.append_entry_point(EntryPoint::{
+  function.body.push(Call(Handle(42), [], None))
+  module_.append_entry_point({
     name: "main",
     source_start: -1,
     stage: Compute,
@@ -91,7 +89,7 @@ test "IR validator rejects invalid function call handles" {
 ///|
 test "IR validator rejects invalid const_assert handles" {
   let module_ = Module()
-  module_.append_const_assert(Handle::Handle(42))
+  module_.append_const_assert(Handle(42))
   let message = try {
     validate_wgsl_ir_module(module_)
     "ok"
@@ -105,12 +103,8 @@ test "IR validator rejects invalid const_assert handles" {
 test "IR validator rejects invalid function-call expression handles" {
   let module_ = Module()
   let function = Function::Function(Some("main"))
-  ignore(
-    function.expressions.append(
-      Expression::FunctionCall(Handle::Handle(42), []),
-    ),
-  )
-  module_.append_entry_point(EntryPoint::{
+  ignore(function.expressions.append(FunctionCall(Handle(42), [])))
+  module_.append_entry_point({
     name: "main",
     source_start: -1,
     stage: Compute,
@@ -135,16 +129,11 @@ test "IR validator rejects invalid function-call expression handles" {
 test "IR validator rejects non-bool branch condition" {
   let module_ = Module()
   ignore(
-    module_.append_type(Type::{
-      name: Some("u32"),
-      inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
-    }),
+    module_.append_type({ name: Some("u32"), inner: Scalar(Scalar(Uint, 4)) }),
   )
   let function = Function::Function(Some("main"))
-  let condition = function.expressions.append(
-    Expression::Literal(Literal::U32(1)),
-  )
-  function.body.push(Statement::If(condition, Block::Block(), Block::Block()))
+  let condition = function.expressions.append(Literal(U32(1)))
+  function.body.push(If(condition, Block(), Block()))
   module_.append_entry_point(validation_test_entry_point(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -162,15 +151,12 @@ test "IR validator rejects non-bool branch condition" {
 test "IR validator rejects non-pointer store target" {
   let module_ = Module()
   ignore(
-    module_.append_type(Type::{
-      name: Some("u32"),
-      inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
-    }),
+    module_.append_type({ name: Some("u32"), inner: Scalar(Scalar(Uint, 4)) }),
   )
   let function = Function::Function(Some("main"))
-  let target = function.expressions.append(Expression::Literal(Literal::U32(1)))
-  let value = function.expressions.append(Expression::Literal(Literal::U32(2)))
-  function.body.push(Statement::Store(target, value))
+  let target = function.expressions.append(Literal(U32(1)))
+  let value = function.expressions.append(Literal(U32(2)))
+  function.body.push(Store(target, value))
   module_.append_entry_point(validation_test_entry_point(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -187,19 +173,15 @@ test "IR validator rejects non-pointer store target" {
 ///|
 test "IR validator rejects function call argument count mismatch" {
   let module_ = Module()
-  let u32_ty = module_.append_type(Type::{
+  let u32_ty = module_.append_type({
     name: Some("u32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+    inner: Scalar(Scalar(Uint, 4)),
   })
   let callee = Function::Function(Some("callee"))
-  callee.arguments.push(FunctionArgument::{
-    name: Some("x"),
-    ty: u32_ty,
-    binding: None,
-  })
+  callee.arguments.push({ name: Some("x"), ty: u32_ty, binding: None })
   let callee_handle = module_.append_function(callee)
   let caller = Function::Function(Some("main"))
-  caller.body.push(Statement::Call(callee_handle, [], None))
+  caller.body.push(Call(callee_handle, [], None))
   module_.append_entry_point(validation_test_entry_point(caller))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -216,28 +198,19 @@ test "IR validator rejects function call argument count mismatch" {
 ///|
 test "IR validator rejects function call argument type mismatch" {
   let module_ = Module()
-  let u32_ty = module_.append_type(Type::{
+  let u32_ty = module_.append_type({
     name: Some("u32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+    inner: Scalar(Scalar(Uint, 4)),
   })
   ignore(
-    module_.append_type(Type::{
-      name: Some("bool"),
-      inner: TypeInner::Scalar(Scalar::Scalar(Bool, 1)),
-    }),
+    module_.append_type({ name: Some("bool"), inner: Scalar(Scalar(Bool, 1)) }),
   )
   let callee = Function::Function(Some("callee"))
-  callee.arguments.push(FunctionArgument::{
-    name: Some("x"),
-    ty: u32_ty,
-    binding: None,
-  })
+  callee.arguments.push({ name: Some("x"), ty: u32_ty, binding: None })
   let callee_handle = module_.append_function(callee)
   let caller = Function::Function(Some("main"))
-  let argument = caller.expressions.append(
-    Expression::Literal(Literal::Bool(true)),
-  )
-  caller.body.push(Statement::Call(callee_handle, [argument], None))
+  let argument = caller.expressions.append(Literal(Bool(true)))
+  caller.body.push(Call(callee_handle, [argument], None))
   module_.append_entry_point(validation_test_entry_point(caller))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -254,28 +227,24 @@ test "IR validator rejects function call argument type mismatch" {
 ///|
 test "IR validator accepts vector select masks" {
   let module_ = Module()
-  let f32_ty = module_.append_type(Type::{
+  let f32_ty = module_.append_type({
     name: Some("f32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Float, 4)),
+    inner: Scalar(Scalar(Float, 4)),
   })
   ignore(f32_ty)
-  let vec2_f32_ty = module_.append_type(Type::{
+  let vec2_f32_ty = module_.append_type({
     name: Some("vec2<f32>"),
-    inner: TypeInner::Vector(Bi, Scalar::Scalar(Float, 4)),
+    inner: Vector(Bi, Scalar(Float, 4)),
   })
-  let vec2_bool_ty = module_.append_type(Type::{
+  let vec2_bool_ty = module_.append_type({
     name: Some("vec2<bool>"),
-    inner: TypeInner::Vector(Bi, Scalar::Scalar(Bool, 1)),
+    inner: Vector(Bi, Scalar(Bool, 1)),
   })
   let function = Function::Function(Some("select_mask"))
-  let condition = function.expressions.append(
-    Expression::ZeroValue(vec2_bool_ty),
-  )
-  let accept = function.expressions.append(Expression::ZeroValue(vec2_f32_ty))
-  let reject = function.expressions.append(Expression::ZeroValue(vec2_f32_ty))
-  ignore(
-    function.expressions.append(Expression::Select(condition, accept, reject)),
-  )
+  let condition = function.expressions.append(ZeroValue(vec2_bool_ty))
+  let accept = function.expressions.append(ZeroValue(vec2_f32_ty))
+  let reject = function.expressions.append(ZeroValue(vec2_f32_ty))
+  ignore(function.expressions.append(Select(condition, accept, reject)))
   ignore(module_.append_function(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -289,23 +258,19 @@ test "IR validator accepts vector select masks" {
 ///|
 test "IR validator rejects mismatched vector select masks" {
   let module_ = Module()
-  let vec2_f32_ty = module_.append_type(Type::{
+  let vec2_f32_ty = module_.append_type({
     name: Some("vec2<f32>"),
-    inner: TypeInner::Vector(Bi, Scalar::Scalar(Float, 4)),
+    inner: Vector(Bi, Scalar(Float, 4)),
   })
-  let vec3_bool_ty = module_.append_type(Type::{
+  let vec3_bool_ty = module_.append_type({
     name: Some("vec3<bool>"),
-    inner: TypeInner::Vector(Tri, Scalar::Scalar(Bool, 1)),
+    inner: Vector(Tri, Scalar(Bool, 1)),
   })
   let function = Function::Function(Some("select_mask"))
-  let condition = function.expressions.append(
-    Expression::ZeroValue(vec3_bool_ty),
-  )
-  let accept = function.expressions.append(Expression::ZeroValue(vec2_f32_ty))
-  let reject = function.expressions.append(Expression::ZeroValue(vec2_f32_ty))
-  ignore(
-    function.expressions.append(Expression::Select(condition, accept, reject)),
-  )
+  let condition = function.expressions.append(ZeroValue(vec3_bool_ty))
+  let accept = function.expressions.append(ZeroValue(vec2_f32_ty))
+  let reject = function.expressions.append(ZeroValue(vec2_f32_ty))
+  ignore(function.expressions.append(Select(condition, accept, reject)))
   ignore(module_.append_function(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -322,15 +287,15 @@ test "IR validator rejects mismatched vector select masks" {
 ///|
 test "IR validator rejects resource binding on private globals" {
   let module_ = Module()
-  let f32_ty = module_.append_type(Type::{
+  let f32_ty = module_.append_type({
     name: Some("f32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Float, 4)),
+    inner: Scalar(Scalar(Float, 4)),
   })
   ignore(
-    module_.append_global_variable(GlobalVariable::{
+    module_.append_global_variable({
       name: Some("value"),
       space: Private,
-      binding: Some(ResourceBinding::{ group: 0, binding: 0 }),
+      binding: Some({ group: 0, binding: 0 }),
       ty: f32_ty,
       init: None,
       memory_decorations: MemoryDecorations::empty(),
@@ -351,22 +316,22 @@ test "IR validator rejects resource binding on private globals" {
 ///|
 test "IR validator rejects writes through read-only storage globals" {
   let module_ = Module()
-  let u32_ty = module_.append_type(Type::{
+  let u32_ty = module_.append_type({
     name: Some("u32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+    inner: Scalar(Scalar(Uint, 4)),
   })
-  let global = module_.append_global_variable(GlobalVariable::{
+  let global = module_.append_global_variable({
     name: Some("buffer"),
     space: Storage(StorageAccess::load()),
-    binding: Some(ResourceBinding::{ group: 0, binding: 0 }),
+    binding: Some({ group: 0, binding: 0 }),
     ty: u32_ty,
     init: None,
     memory_decorations: MemoryDecorations::empty(),
   })
   let function = Function::Function(Some("main"))
-  let target = function.expressions.append(Expression::GlobalVariable(global))
-  let value = function.expressions.append(Expression::Literal(Literal::U32(1)))
-  function.body.push(Statement::Store(target, value))
+  let target = function.expressions.append(GlobalVariable(global))
+  let value = function.expressions.append(Literal(U32(1)))
+  function.body.push(Store(target, value))
   module_.append_entry_point(validation_test_entry_point(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -383,13 +348,13 @@ test "IR validator rejects writes through read-only storage globals" {
 ///|
 test "IR validator rejects out-of-range constant access" {
   let module_ = Module()
-  let vec2_ty = module_.append_type(Type::{
+  let vec2_ty = module_.append_type({
     name: Some("vec2<u32>"),
-    inner: TypeInner::Vector(Bi, Scalar::Scalar(Uint, 4)),
+    inner: Vector(Bi, Scalar(Uint, 4)),
   })
   let function = Function::Function(Some("main"))
-  let base = function.expressions.append(Expression::ZeroValue(vec2_ty))
-  ignore(function.expressions.append(Expression::AccessIndex(base, 2)))
+  let base = function.expressions.append(ZeroValue(vec2_ty))
+  ignore(function.expressions.append(AccessIndex(base, 2)))
   module_.append_entry_point(validation_test_entry_point(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -406,16 +371,16 @@ test "IR validator rejects out-of-range constant access" {
 ///|
 test "IR validator rejects invalid struct member layout" {
   let module_ = Module()
-  let f32_ty = module_.append_type(Type::{
+  let f32_ty = module_.append_type({
     name: Some("f32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Float, 4)),
+    inner: Scalar(Scalar(Float, 4)),
   })
   ignore(
-    module_.append_type(Type::{
+    module_.append_type({
       name: Some("Bad"),
-      inner: TypeInner::Struct(
+      inner: Struct(
         [
-          StructMember::{
+          {
             name: Some("value"),
             ty: f32_ty,
             binding: None,
@@ -443,17 +408,17 @@ test "IR validator rejects invalid struct member layout" {
 ///|
 test "IR validator rejects arrayLength on fixed arrays" {
   let module_ = Module()
-  let u32_ty = module_.append_type(Type::{
+  let u32_ty = module_.append_type({
     name: Some("u32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+    inner: Scalar(Scalar(Uint, 4)),
   })
-  let array_ty = module_.append_type(Type::{
+  let array_ty = module_.append_type({
     name: Some("array<u32, 4>"),
-    inner: TypeInner::Array(u32_ty, Constant(4), 4),
+    inner: Array(u32_ty, Constant(4), 4),
   })
   let function = Function::Function(Some("main"))
-  let base = function.expressions.append(Expression::ZeroValue(array_ty))
-  ignore(function.expressions.append(Expression::ArrayLength(base)))
+  let base = function.expressions.append(ZeroValue(array_ty))
+  ignore(function.expressions.append(ArrayLength(base)))
   module_.append_entry_point(validation_test_entry_point(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -470,21 +435,17 @@ test "IR validator rejects arrayLength on fixed arrays" {
 ///|
 test "IR validator rejects address-of non-addressable expressions" {
   let module_ = Module()
-  let u32_ty = module_.append_type(Type::{
+  let u32_ty = module_.append_type({
     name: Some("u32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
+    inner: Scalar(Scalar(Uint, 4)),
   })
-  let pointer_ty = module_.append_type(Type::{
+  let pointer_ty = module_.append_type({
     name: Some("ptr<function, u32>"),
-    inner: TypeInner::Pointer(u32_ty, Function),
+    inner: Pointer(u32_ty, Function),
   })
   let function = Function::Function(Some("main"))
-  let literal = function.expressions.append(
-    Expression::Literal(Literal::U32(1)),
-  )
-  ignore(
-    function.expressions.append(Expression::AddressOf(pointer_ty, literal)),
-  )
+  let literal = function.expressions.append(Literal(U32(1)))
+  ignore(function.expressions.append(AddressOf(pointer_ty, literal)))
   module_.append_entry_point(validation_test_entry_point(function))
   let message = try {
     validate_wgsl_ir_module(module_)
@@ -500,7 +461,7 @@ test "IR validator rejects address-of non-addressable expressions" {
 
 ///|
 fn validation_test_entry_point(function : Function) -> EntryPoint {
-  EntryPoint::{
+  {
     name: "main",
     source_start: -1,
     stage: Compute,

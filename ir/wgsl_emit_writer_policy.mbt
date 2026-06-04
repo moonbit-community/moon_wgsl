@@ -7,7 +7,7 @@ priv struct WgslIrEmitOptions {
 
 ///|
 fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
-  WgslIrEmitOptions::{
+  {
     byte_plan: WgslIrWriterBytePlan::runtime_writer(),
     semantic_plan: WgslIrWriterSemanticPlan::runtime_writer(),
     preserve_abstract_float_literals: false,
@@ -16,7 +16,7 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
 
 ///|
 fn WgslIrEmitOptions::naga_oil_writer_compatible() -> WgslIrEmitOptions {
-  WgslIrEmitOptions::{
+  {
     byte_plan: WgslIrWriterBytePlan::naga_oil_writer(),
     semantic_plan: WgslIrWriterSemanticPlan::naga_oil_writer(),
     preserve_abstract_float_literals: false,
@@ -140,9 +140,9 @@ fn WgslIrEmitOptions::address_of_text(
 fn WgslIrEmitter::with_preserved_abstract_float_literals(
   self : WgslIrEmitter,
 ) -> WgslIrEmitter {
-  WgslIrEmitter::{
+  {
     shader_module: self.shader_module,
-    options: WgslIrEmitOptions::{
+    options: {
       byte_plan: self.options.byte_plan,
       semantic_plan: self.options.semantic_plan,
       preserve_abstract_float_literals: true,

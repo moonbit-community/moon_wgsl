@@ -6,10 +6,7 @@ fn WgslIrEmitter::global_expression(
   let expression = match
     self.shader_module.global_expressions.items.get(handle.index()) {
     Some(value) => value
-    None =>
-      raise WgslIrEmitError::MissingHandle(
-        "global expression \{handle.index()}",
-      )
+    None => raise MissingHandle("global expression \{handle.index()}")
   }
   self.emit_expression(expression, None)
 }
@@ -47,14 +44,11 @@ fn WgslIrEmitter::function_expression_inline(
 ) -> String raise WgslIrEmitError {
   let expression = match function.expressions.items.get(handle.index()) {
     Some(value) => value
-    None =>
-      raise WgslIrEmitError::MissingHandle(
-        "function expression \{handle.index()}",
-      )
+    None => raise MissingHandle("function expression \{handle.index()}")
   }
   match expression {
     CallResult(_) | AtomicResult(_, _) =>
-      raise WgslIrEmitError::Unsupported(
+      raise Unsupported(
         "raw operation result \{handle.index()} without arena temporary name",
       )
     _ => self.emit_expression(expression, Some(function))
@@ -80,10 +74,7 @@ fn WgslIrEmitter::function_pointer_expression(
 ) -> String raise WgslIrEmitError {
   let expression = match function.expressions.items.get(handle.index()) {
     Some(value) => value
-    None =>
-      raise WgslIrEmitError::MissingHandle(
-        "function pointer expression \{handle.index()}",
-      )
+    None => raise MissingHandle("function pointer expression \{handle.index()}")
   }
   match expression {
     Load(inner) => self.function_pointer_expression(function, inner)
@@ -119,17 +110,12 @@ fn WgslIrEmitter::load_expression_requires_explicit_deref(
       match function.expressions.items.get(pointer.index()) {
         Some(expression) => expression
         None =>
-          raise WgslIrEmitError::MissingHandle(
-            "function load expression \{pointer.index()}",
-          )
+          raise MissingHandle("function load expression \{pointer.index()}")
       }
     None =>
       match self.shader_module.global_expressions.items.get(pointer.index()) {
         Some(expression) => expression
-        None =>
-          raise WgslIrEmitError::MissingHandle(
-            "global load expression \{pointer.index()}",
-          )
+        None => raise MissingHandle("global load expression \{pointer.index()}")
       }
   }
   match expression {
@@ -221,8 +207,7 @@ fn WgslIrEmitter::emit_expression(
           self.options.address_of_text(
             self.function_pointer_expression(func, target),
           )
-        None =>
-          raise WgslIrEmitError::Unsupported("global address-of expression")
+        None => raise Unsupported("global address-of expression")
       }
     AtomicCall(atomic_function, arguments) =>
       self.atomic_call_expression(function, atomic_function, arguments)
@@ -286,8 +271,8 @@ fn WgslIrEmitter::emit_expression(
       self.math_expression(function, math_function, a, b, c, d)
     Relational(relational_function, expr) =>
       "\{self.relational_function_name(relational_function)}(\{self.required_function_expression(function, expr)})"
-    CallResult(_) => raise WgslIrEmitError::Unsupported("raw call result")
-    _ => raise WgslIrEmitError::Unsupported("expression kind")
+    CallResult(_) => raise Unsupported("raw call result")
+    _ => raise Unsupported("expression kind")
   }
 }
 
@@ -307,21 +292,16 @@ fn WgslIrEmitter::as_expression(
       width.unwrap_or(4),
     ) {
     Some(ty) => ty
-    None =>
-      raise WgslIrEmitError::Unsupported("invalid as expression result type")
+    None => raise Unsupported("invalid as expression result type")
   }
   let callee = match self.shader_module.types.get(result_ty) {
     Some(type_) =>
       match type_.inner {
         Vector(size, _) => "vec\{size.width()}<\{self.scalar_name(scalar)}>"
         Scalar(_) => self.scalar_name(scalar)
-        _ =>
-          raise WgslIrEmitError::Unsupported(
-            "invalid as expression result type",
-          )
+        _ => raise Unsupported("invalid as expression result type")
       }
-    None =>
-      raise WgslIrEmitError::Unsupported("invalid as expression result type")
+    None => raise Unsupported("invalid as expression result type")
   }
   "\{callee}(\{self.required_function_expression(function, expr)})"
 }
@@ -355,7 +335,7 @@ fn WgslIrEmitter::folded_float_math_expression(
 ) -> String? raise WgslIrEmitError {
   guard self.options.fold_numeric_constant_expressions() else { return None }
   guard b == None && c == None && d == None else { return None }
-  guard math_function == MathFunction::Sqrt else { return None }
+  guard math_function == Sqrt else { return None }
   match self.eval_float_expression_with_retained_constants(function, a) {
     Some(value) => self.float_value_literal_for_width(value.sqrt(), 4)
     None =>
@@ -493,7 +473,7 @@ fn WgslIrEmitter::select_scalar_context(
     (Some(left), Some(right)) if wgsl_ir_select_abstract_operands_are_float(
         left.kind,
         right.kind,
-      ) => Some(Scalar::Scalar(Float, 4))
+      ) => Some(Scalar(Float, 4))
     (Some(scalar), _) => Some(scalar)
     (_, Some(scalar)) => Some(scalar)
     _ => None
@@ -711,7 +691,7 @@ fn WgslIrEmitter::contextual_scalar_literal(
   }
   match expression {
     Some(Literal(literal)) => self.literal_for_scalar_context(literal, scalar)
-    Some(Unary(UnaryOperator::Negate, inner)) =>
+    Some(Unary(Negate, inner)) =>
       match self.required_expression(function, inner) {
         Literal(literal) =>
           match wgsl_ir_negate_literal(literal) {
@@ -861,7 +841,7 @@ fn WgslIrEmitter::matrix_scalar_component_list(
     return None
   }
   guard self.shader_module.types.items.get(ty.index()) is Some(matrix_ty) else {
-    raise WgslIrEmitError::MissingHandle("type \{ty.index()}")
+    raise MissingHandle("type \{ty.index()}")
   }
   guard matrix_ty.inner is Matrix(columns, rows, scalar) else { return None }
   let columns_len = columns.width()
@@ -915,18 +895,12 @@ fn WgslIrEmitter::required_expression(
     Some(function) =>
       match function.expressions.items.get(handle.index()) {
         Some(expression) => expression
-        None =>
-          raise WgslIrEmitError::MissingHandle(
-            "function expression \{handle.index()}",
-          )
+        None => raise MissingHandle("function expression \{handle.index()}")
       }
     None =>
       match self.shader_module.global_expressions.items.get(handle.index()) {
         Some(expression) => expression
-        None =>
-          raise WgslIrEmitError::MissingHandle(
-            "global expression \{handle.index()}",
-          )
+        None => raise MissingHandle("global expression \{handle.index()}")
       }
   }
 }
@@ -966,9 +940,7 @@ fn WgslIrEmitter::image_sample_expression(
   }
   if clamp_to_edge {
     if array_index != None || offset != None || depth_ref != None {
-      raise WgslIrEmitError::Unsupported(
-        "textureSampleBaseClampToEdge advanced arguments",
-      )
+      raise Unsupported("textureSampleBaseClampToEdge advanced arguments")
     }
     let callee = "textureSampleBaseClampToEdge"
     return "\{callee}(\{self.required_function_expression(function, image)}, \{self.required_function_expression(function, sampler)}, \{self.required_function_expression(function, coordinate)})"
@@ -978,10 +950,7 @@ fn WgslIrEmitter::image_sample_expression(
       match level {
         Auto => "textureSampleCompare"
         Zero => "textureSampleCompareLevel"
-        _ =>
-          raise WgslIrEmitError::Unsupported(
-            "texture compare sampling level mode",
-          )
+        _ => raise Unsupported("texture compare sampling level mode")
       }
     None =>
       match level {
@@ -1045,7 +1014,7 @@ fn WgslIrEmitter::atomic_call_expression(
   arguments : Array[Handle],
 ) -> String raise WgslIrEmitError {
   guard arguments is [pointer, .. rest] else {
-    raise WgslIrEmitError::Unsupported("atomic call without pointer")
+    raise Unsupported("atomic call without pointer")
   }
   let out = StringBuilder::new()
   let pointer_text = self.pointer_builtin_argument_expression(function, pointer)
@@ -1123,8 +1092,7 @@ fn WgslIrEmitter::cooperative_load_expression(
   let suffix = if data.row_major { "T" } else { "" }
   let scalar = match self.cooperative_data_scalar(function, data) {
     Some(scalar) => scalar
-    None =>
-      raise WgslIrEmitError::Unsupported("cooperative load pointer scalar type")
+    None => raise Unsupported("cooperative load pointer scalar type")
   }
   "coopLoad\{suffix}<coop_mat\{wgsl_ir_cooperative_size_name(columns)}x\{wgsl_ir_cooperative_size_name(rows)}<\{self.scalar_name(scalar)}, \{wgsl_ir_cooperative_role_name(role)}>>(\{self.pointer_expression(function, data.pointer)}, \{self.required_function_expression(function, data.stride)})"
 }
@@ -1375,10 +1343,7 @@ fn WgslIrEmitter::access_index_expression(
                   )
                   "\{base_expression}.\{member_name}"
                 }
-                None =>
-                  raise WgslIrEmitError::Unsupported(
-                    "struct member index \{index}",
-                  )
+                None => raise Unsupported("struct member index \{index}")
               }
             Vector(_, _) =>
               if self.vector_static_index_keeps_bracket(function, base) {
@@ -1391,20 +1356,17 @@ fn WgslIrEmitter::access_index_expression(
             | BindingArray(_, _)
             | ValuePointer(_, _, _) => "\{base_expression}[\{index}]"
             _ =>
-              raise WgslIrEmitError::Unsupported(
+              raise Unsupported(
                 "access-index base type \{base_type_handle.index()}",
               )
           }
         None =>
-          raise WgslIrEmitError::MissingHandle(
+          raise MissingHandle(
             "access-index base type \{base_type_handle.index()}",
           )
       }
     }
-    None =>
-      raise WgslIrEmitError::Unsupported(
-        "access-index expression without base type",
-      )
+    None => raise Unsupported("access-index expression without base type")
   }
 }
 
@@ -1520,7 +1482,7 @@ fn WgslIrEmitter::folded_static_constant_array_constructor_access(
 ) -> String? raise WgslIrEmitError {
   guard self.shader_module.constants.items.get(constant_handle.index())
     is Some(constant) else {
-    raise WgslIrEmitError::MissingHandle("constant \{constant_handle.index()}")
+    raise MissingHandle("constant \{constant_handle.index()}")
   }
   guard self.should_inline_constant_expression(constant) else { return None }
   guard self.shader_module.global_expressions.items.get(constant.init.index())
@@ -1545,10 +1507,7 @@ fn WgslIrEmitter::folded_static_array_constructor_access(
   match components.get(index) {
     Some(component) =>
       Some(self.required_function_expression(function, component))
-    None =>
-      raise WgslIrEmitError::Unsupported(
-        "constant array index \{index} out of bounds",
-      )
+    None => raise Unsupported("constant array index \{index} out of bounds")
   }
 }
 
@@ -1597,10 +1556,7 @@ fn WgslIrEmitter::eval_integer_expression_for_access_index(
     Constant(handle) =>
       match self.shader_module.constants.items.get(handle.index()) {
         Some(constant) =>
-          self.eval_global_integer_expression_for_emit(
-            constant.init,
-            @set.Set([]),
-          )
+          self.eval_global_integer_expression_for_emit(constant.init, Set([]))
         None => None
       }
     _ => self.eval_integer_expression_for_writer(function, index)

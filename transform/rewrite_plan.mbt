@@ -48,7 +48,7 @@ fn WgslVirtualOverrideRewriteBinding::key(
 
 ///|
 pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> WgslReferenceRewritePlan {
-  WgslReferenceRewritePlan::{ bindings: [], virtual_overrides: [] }
+  { bindings: [], virtual_overrides: [] }
 }
 
 ///|

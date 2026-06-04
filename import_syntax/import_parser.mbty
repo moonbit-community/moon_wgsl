@@ -18,7 +18,7 @@ import_targets -> Array[@common.WgslImportTarget]
   | module_path=IDENT targets=target_list semis EOF {
       let out : Array[@common.WgslImportTarget] = []
       for target in targets {
-        out.push(@common.WgslImportTarget::{
+        out.push({
           raw_path: module_path + "::" + target.raw_path,
           alias_name: target.alias_name,
         })
@@ -50,7 +50,7 @@ target_list -> Array[@common.WgslImportTarget]
 
 target -> Array[@common.WgslImportTarget]
   : path=IDENT alias_name=alias {
-      [@common.WgslImportTarget::{ raw_path: path, alias_name }]
+      [{ raw_path: path, alias_name }]
     }
   | module_path=IDENT "{" targets=target_list "}" {
       let out : Array[@common.WgslImportTarget] = []
@@ -60,7 +60,7 @@ target -> Array[@common.WgslImportTarget]
         } else {
           "::"
         }
-        out.push(@common.WgslImportTarget::{
+        out.push({
           raw_path: module_path + sep + target.raw_path,
           alias_name: target.alias_name,
         })

@@ -8,7 +8,7 @@ priv struct WgslIrExprTokenDepth {
 
 ///|
 fn WgslIrExprTokenDepth::WgslIrExprTokenDepth() -> WgslIrExprTokenDepth {
-  WgslIrExprTokenDepth::{ paren: 0, angle: 0, bracket: 0, brace: 0 }
+  { paren: 0, angle: 0, bracket: 0, brace: 0 }
 }
 
 ///|
@@ -147,22 +147,17 @@ fn wgsl_ir_expr_node_from_tokens(
   tokens : Array[@ast.WgslExprToken],
 ) -> @ast.WgslExprNode raise WgslIrLowerError {
   guard tokens.length() > 0 else {
-    raise WgslIrLowerError::UnsupportedExpression("empty expression token list")
+    raise UnsupportedExpression("empty expression token list")
   }
   let parser = WgslIrExprTokenParser::{ tokens, index: 0, failed: false }
   match parser.parse_expression(0) {
     Some(node) =>
       if parser.failed || !parser.at_end() {
-        raise WgslIrLowerError::UnsupportedExpression(
-          "failed to parse expression token list",
-        )
+        raise UnsupportedExpression("failed to parse expression token list")
       } else {
         node
       }
-    None =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "failed to parse expression token list",
-      )
+    None => raise UnsupportedExpression("failed to parse expression token list")
   }
 }
 
@@ -198,7 +193,7 @@ fn wgsl_ir_expr_make_node(
   start : Int,
   end_ : Int,
 ) -> @ast.WgslExprNode {
-  @ast.WgslExprNode(kind, start, end_)
+  WgslExprNode(kind, start, end_)
 }
 
 ///|
@@ -228,11 +223,7 @@ fn WgslIrExprTokenParser::parse_expression(
         break
       }
     }
-    lhs = wgsl_ir_expr_make_node(
-      @ast.WgslExprNodeKind::Binary(op, lhs, rhs),
-      lhs.start(),
-      rhs.end(),
-    )
+    lhs = wgsl_ir_expr_make_node(Binary(op, lhs, rhs), lhs.start(), rhs.end())
   }
   Some(lhs)
 }
@@ -248,9 +239,7 @@ fn WgslIrExprTokenParser::parse_prefix(
           self.index = self.index + 1
           Some(
             wgsl_ir_expr_make_node(
-              @ast.WgslExprNodeKind::Identifier(
-                @ast.WgslIdent(token.text(), token.start(), token.end()),
-              ),
+              Identifier(WgslIdent(token.text(), token.start(), token.end())),
               token.start(),
               token.end(),
             ),
@@ -259,11 +248,7 @@ fn WgslIrExprTokenParser::parse_prefix(
         BoolLiteral(_) | NumericLiteral(_) => {
           self.index = self.index + 1
           Some(
-            wgsl_ir_expr_make_node(
-              @ast.WgslExprNodeKind::Literal(token),
-              token.start(),
-              token.end(),
-            ),
+            wgsl_ir_expr_make_node(Literal(token), token.start(), token.end()),
           )
         }
         Punctuation(33)
@@ -282,10 +267,7 @@ fn WgslIrExprTokenParser::parse_prefix(
           }
           Some(
             wgsl_ir_expr_make_node(
-              @ast.WgslExprNodeKind::Unary(
-                @ast.WgslExprOperator::from_text(token.text()),
-                rhs,
-              ),
+              Unary(@ast.WgslExprOperator::from_text(token.text()), rhs),
               token.start(),
               rhs.end(),
             ),
@@ -302,13 +284,7 @@ fn WgslIrExprTokenParser::parse_prefix(
             }
             _ => inner.end()
           }
-          Some(
-            wgsl_ir_expr_make_node(
-              @ast.WgslExprNodeKind::Group(inner),
-              start,
-              end_,
-            ),
-          )
+          Some(wgsl_ir_expr_make_node(Group(inner), start, end_))
         }
         _ => {
           self.index = self.index + 1
@@ -336,7 +312,7 @@ fn WgslIrExprTokenParser::parse_postfix(
             Some(close) if wgsl_ir_expr_token_is_punctuation(close, 41) => {
               self.index = self.index + 1
               node = wgsl_ir_expr_make_node(
-                @ast.WgslExprNodeKind::Call(node, args),
+                Call(node, args),
                 node.start(),
                 close.end(),
               )
@@ -358,9 +334,9 @@ fn WgslIrExprTokenParser::parse_postfix(
           Some(member_token) if member_token.kind() is Identifier => {
             self.index = self.index + 1
             node = wgsl_ir_expr_make_node(
-              @ast.WgslExprNodeKind::Member(
+              Member(
                 node,
-                @ast.WgslIdent(
+                WgslIdent(
                   member_token.text(),
                   member_token.start(),
                   member_token.end(),
@@ -384,11 +360,7 @@ fn WgslIrExprTokenParser::parse_postfix(
           }
           _ => index.end()
         }
-        node = wgsl_ir_expr_make_node(
-          @ast.WgslExprNodeKind::Index(node, index),
-          node.start(),
-          end_,
-        )
+        node = wgsl_ir_expr_make_node(Index(node, index), node.start(), end_)
         continue
       }
       _ => return node
@@ -427,10 +399,10 @@ fn WgslIrExprTokenParser::parse_sequence_until_any(
   }
   match nodes {
     [single] => single
-    [] => wgsl_ir_expr_make_node(@ast.WgslExprNodeKind::Sequence([]), 0, 0)
+    [] => wgsl_ir_expr_make_node(Sequence([]), 0, 0)
     _ =>
       wgsl_ir_expr_make_node(
-        @ast.WgslExprNodeKind::Sequence(nodes),
+        Sequence(nodes),
         nodes[0].start(),
         nodes[nodes.length() - 1].end(),
       )
@@ -444,16 +416,16 @@ fn WgslIrExprTokenParser::binary_operator_at(
   guard self.index < self.tokens.length() else { return None }
   match self.tokens[self.index].kind() {
     Operator(op) => Some((op, 1))
-    Punctuation(124) => Some((@ast.WgslExprOperator::BitOr, 1))
-    Punctuation(38) => Some((@ast.WgslExprOperator::BitAnd, 1))
-    Punctuation(60) => Some((@ast.WgslExprOperator::Less, 1))
-    Punctuation(62) => Some((@ast.WgslExprOperator::Greater, 1))
-    Punctuation(43) => Some((@ast.WgslExprOperator::Add, 1))
-    Punctuation(45) => Some((@ast.WgslExprOperator::Subtract, 1))
-    Punctuation(42) => Some((@ast.WgslExprOperator::Multiply, 1))
-    Punctuation(47) => Some((@ast.WgslExprOperator::Divide, 1))
-    Punctuation(37) => Some((@ast.WgslExprOperator::Modulo, 1))
-    Punctuation(94) => Some((@ast.WgslExprOperator::BitXor, 1))
+    Punctuation(124) => Some((BitOr, 1))
+    Punctuation(38) => Some((BitAnd, 1))
+    Punctuation(60) => Some((Less, 1))
+    Punctuation(62) => Some((Greater, 1))
+    Punctuation(43) => Some((Add, 1))
+    Punctuation(45) => Some((Subtract, 1))
+    Punctuation(42) => Some((Multiply, 1))
+    Punctuation(47) => Some((Divide, 1))
+    Punctuation(37) => Some((Modulo, 1))
+    Punctuation(94) => Some((BitXor, 1))
     _ => None
   }
 }

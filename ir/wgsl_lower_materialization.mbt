@@ -43,8 +43,7 @@ fn wgsl_ir_function_expression_is_atomic_compare_exchange_old_value_base_load(
     return false
   }
   match function.expressions.items.get(handle.index() + 1) {
-    Some(AccessIndex(base, 0)) | Some(Component(base, SwizzleComponent::X)) =>
-      base == handle
+    Some(AccessIndex(base, 0)) | Some(Component(base, X)) => base == handle
     _ => false
   }
 }
@@ -145,7 +144,7 @@ fn WgslIrLowerer::materialize_function_expression(
 ) -> Handle raise WgslIrLowerError {
   match function.expressions.items.get(value.index()) {
     Some(FunctionCall(function_handle, arguments)) => {
-      function.expressions.set(value, Expression::CallResult(function_handle))
+      function.expressions.set(value, CallResult(function_handle))
       self.push_user_function_call_emit_ranges(
         block,
         function,
@@ -154,22 +153,19 @@ fn WgslIrLowerer::materialize_function_expression(
         arguments,
         value,
       )
-      block.push(Statement::Call(function_handle, arguments, Some(value)))
+      block.push(Call(function_handle, arguments, Some(value)))
       return value
     }
     Some(AtomicCall(atomic_function, arguments)) => {
       let result_ty = match self.function_expression_type(function, value) {
         Some(ty) => ty
         None =>
-          raise WgslIrLowerError::MissingType(
+          raise MissingType(
             "materialized atomic expression \{value.index()}: \{wgsl_ir_function_expression_debug(function, value)}",
           )
       }
       let comparison = atomic_function == CompareExchangeWeak
-      function.expressions.set(
-        value,
-        Expression::AtomicResult(result_ty, comparison),
-      )
+      function.expressions.set(value, AtomicResult(result_ty, comparison))
       wgsl_ir_push_naga_statement_emit_ranges(
         block,
         function,
@@ -179,7 +175,7 @@ fn WgslIrLowerer::materialize_function_expression(
       match arguments {
         [pointer, compare, atomic_value] if comparison =>
           block.push(
-            Statement::Atomic(
+            Atomic(
               pointer,
               atomic_function,
               atomic_value,
@@ -189,16 +185,10 @@ fn WgslIrLowerer::materialize_function_expression(
           )
         [pointer, atomic_value] =>
           block.push(
-            Statement::Atomic(
-              pointer,
-              atomic_function,
-              atomic_value,
-              None,
-              Some(value),
-            ),
+            Atomic(pointer, atomic_function, atomic_value, None, Some(value)),
           )
         _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
+          raise UnsupportedExpression(
             "materialized atomic expression has invalid argument shape",
           )
       }
@@ -213,11 +203,11 @@ fn WgslIrLowerer::materialize_function_expression(
   let ty = match self.function_expression_type(function, value) {
     Some(ty) => ty
     None =>
-      raise WgslIrLowerError::MissingType(
+      raise MissingType(
         "materialized expression \{value.index()}: \{wgsl_ir_function_expression_debug(function, value)}",
       )
   }
-  let local_handle = function.local_variables.append(LocalVariable::{
+  let local_handle = function.local_variables.append({
     name: None,
     kind: Let,
     generated_temporary: true,
@@ -226,7 +216,7 @@ fn WgslIrLowerer::materialize_function_expression(
     init: Some(value),
   })
   ignore(scope)
-  block.push(Statement::Declare(local_handle))
+  block.push(Declare(local_handle))
   value
 }
 
@@ -290,21 +280,21 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
       let mut index = wgsl_ir_max_expression_index(image, coordinate)
       match array_index {
         Some(handle) =>
-          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+          index = wgsl_ir_max_expression_index(Handle(index), handle)
         None => ()
       }
-      Some(wgsl_ir_max_expression_index(Handle::Handle(index), value))
+      Some(wgsl_ir_max_expression_index(Handle(index), value))
     }
     Atomic(pointer, _, value, compare, result) => {
       let mut index = wgsl_ir_max_expression_index(pointer, value)
       match compare {
         Some(handle) =>
-          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+          index = wgsl_ir_max_expression_index(Handle(index), handle)
         None => ()
       }
       match result {
         Some(handle) =>
-          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+          index = wgsl_ir_max_expression_index(Handle(index), handle)
         None => ()
       }
       Some(index)
@@ -313,10 +303,10 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
       let mut index = wgsl_ir_max_expression_index(image, coordinate)
       match array_index {
         Some(handle) =>
-          index = wgsl_ir_max_expression_index(Handle::Handle(index), handle)
+          index = wgsl_ir_max_expression_index(Handle(index), handle)
         None => ()
       }
-      Some(wgsl_ir_max_expression_index(Handle::Handle(index), value))
+      Some(wgsl_ir_max_expression_index(Handle(index), value))
     }
     WorkGroupUniformLoad(pointer, result) =>
       Some(wgsl_ir_max_expression_index(pointer, result))
@@ -326,7 +316,7 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
         index = Some(
           match index {
             Some(current) =>
-              wgsl_ir_max_expression_index(Handle::Handle(current), argument)
+              wgsl_ir_max_expression_index(Handle(current), argument)
             None => argument.index()
           },
         )
@@ -336,7 +326,7 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
           Some(
             match index {
               Some(current) =>
-                wgsl_ir_max_expression_index(Handle::Handle(current), handle)
+                wgsl_ir_max_expression_index(Handle(current), handle)
               None => handle.index()
             },
           )
@@ -484,7 +474,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         lowered.push(parent_component)
       }
       if changed {
-        function.expressions.append(Expression::Compose(ty, lowered))
+        function.expressions.append(Compose(ty, lowered))
       } else {
         value
       }
@@ -497,7 +487,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, inner, lowered_inner,
       )
       if parent_inner != inner {
-        function.expressions.append(Expression::Splat(size, parent_inner))
+        function.expressions.append(Splat(size, parent_inner))
       } else {
         value
       }
@@ -521,9 +511,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, right, lowered_right,
       )
       if parent_left != left || parent_right != right {
-        function.expressions.append(
-          Expression::Binary(op, parent_left, parent_right),
-        )
+        function.expressions.append(Binary(op, parent_left, parent_right))
       } else {
         value
       }
@@ -542,9 +530,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, index, lowered_index,
       )
       if parent_base != base || parent_index != index {
-        function.expressions.append(
-          Expression::Access(parent_base, parent_index),
-        )
+        function.expressions.append(Access(parent_base, parent_index))
       } else {
         value
       }
@@ -557,7 +543,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(Expression::AccessIndex(parent_base, index))
+        function.expressions.append(AccessIndex(parent_base, index))
       } else {
         value
       }
@@ -570,7 +556,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, pointer, lowered_pointer,
       )
       if parent_pointer != pointer {
-        function.expressions.append(Expression::Load(parent_pointer))
+        function.expressions.append(Load(parent_pointer))
       } else {
         value
       }
@@ -583,9 +569,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(
-          Expression::Component(parent_base, component),
-        )
+        function.expressions.append(Component(parent_base, component))
       } else {
         value
       }
@@ -598,9 +582,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(
-          Expression::Swizzle(size, parent_base, pattern),
-        )
+        function.expressions.append(Swizzle(size, parent_base, pattern))
       } else {
         value
       }
@@ -613,7 +595,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, inner, lowered_inner,
       )
       if parent_inner != inner {
-        function.expressions.append(Expression::Unary(op, parent_inner))
+        function.expressions.append(Unary(op, parent_inner))
       } else {
         value
       }
@@ -626,7 +608,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, inner, lowered_inner,
       )
       if parent_inner != inner {
-        function.expressions.append(Expression::Bitcast(ty, parent_inner))
+        function.expressions.append(Bitcast(ty, parent_inner))
       } else {
         value
       }
@@ -637,9 +619,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       )
       let parent = wgsl_ir_parent_expression_operand(function, expr, lowered)
       if parent != expr {
-        function.expressions.append(
-          Expression::Derivative(axis, control, parent),
-        )
+        function.expressions.append(Derivative(axis, control, parent))
       } else {
         value
       }
@@ -650,9 +630,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       )
       let parent = wgsl_ir_parent_expression_operand(function, expr, lowered)
       if parent != expr {
-        function.expressions.append(
-          Expression::Relational(relational_function, parent),
-        )
+        function.expressions.append(Relational(relational_function, parent))
       } else {
         value
       }
@@ -663,7 +641,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       )
       let parent = wgsl_ir_parent_expression_operand(function, expr, lowered)
       if parent != expr {
-        function.expressions.append(Expression::As(parent, kind, width))
+        function.expressions.append(As(parent, kind, width))
       } else {
         value
       }
@@ -691,7 +669,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         parent_accept != accept ||
         parent_reject != reject {
         function.expressions.append(
-          Expression::Select(parent_condition, parent_accept, parent_reject),
+          Select(parent_condition, parent_accept, parent_reject),
         )
       } else {
         value
@@ -714,10 +692,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         lowered.push(parent_argument)
       }
       if changed {
-        function.expressions.set(
-          value,
-          Expression::FunctionCall(handle, lowered),
-        )
+        function.expressions.set(value, FunctionCall(handle, lowered))
       }
       value
     }
@@ -770,7 +745,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         parent_level != level ||
         parent_depth_ref != depth_ref {
         function.expressions.append(
-          Expression::ImageSample(
+          ImageSample(
             image, sampler, gather, parent_coordinate, parent_array_index, parent_offset,
             parent_level, parent_depth_ref, clamp_to_edge,
           ),
@@ -809,7 +784,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         parent_sample != sample ||
         parent_level != level {
         function.expressions.append(
-          Expression::ImageLoad(
+          ImageLoad(
             image, parent_coordinate, parent_array_index, parent_sample, parent_level,
           ),
         )
@@ -822,9 +797,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         function, scope, block, query,
       )
       if lowered_query != query {
-        function.expressions.append(
-          Expression::ImageQuery(image, lowered_query),
-        )
+        function.expressions.append(ImageQuery(image, lowered_query))
       } else {
         value
       }
@@ -845,10 +818,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         lowered.push(parent_argument)
       }
       if changed {
-        function.expressions.set(
-          value,
-          Expression::AtomicCall(atomic_function, lowered),
-        )
+        function.expressions.set(value, AtomicCall(atomic_function, lowered))
       }
       value
     }
@@ -877,9 +847,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       )
       if parent_a != a || parent_b != b || parent_c != c || parent_d != d {
         function.expressions.append(
-          Expression::Math(
-            math_function, parent_a, parent_b, parent_c, parent_d,
-          ),
+          Math(math_function, parent_a, parent_b, parent_c, parent_d),
         )
       } else {
         value
@@ -901,9 +869,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
         lowered.push(parent_argument)
       }
       if changed {
-        function.expressions.append(
-          Expression::SubgroupCall(subgroup_function, lowered),
-        )
+        function.expressions.append(SubgroupCall(subgroup_function, lowered))
       } else {
         value
       }
@@ -914,7 +880,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       )
       if lowered_data != data {
         function.expressions.append(
-          Expression::CooperativeLoad(columns, rows, role, lowered_data),
+          CooperativeLoad(columns, rows, role, lowered_data),
         )
       } else {
         value
@@ -935,7 +901,7 @@ fn WgslIrLowerer::materialize_return_subexpressions(
       let parent_c = wgsl_ir_parent_expression_operand(function, c, lowered_c)
       if parent_a != a || parent_b != b || parent_c != c {
         function.expressions.append(
-          Expression::CooperativeMultiplyAdd(parent_a, parent_b, parent_c),
+          CooperativeMultiplyAdd(parent_a, parent_b, parent_c),
         )
       } else {
         value
@@ -961,7 +927,7 @@ fn WgslIrLowerer::materialize_short_circuit_expression(
   let ty = match self.function_expression_type(function, value) {
     Some(ty) => ty
     None =>
-      raise WgslIrLowerError::MissingType(
+      raise MissingType(
         "materialized short-circuit expression \{value.index()}: boolean expression",
       )
   }
@@ -980,22 +946,17 @@ fn WgslIrLowerer::materialize_short_circuit_expression(
       let right_value = self.materialize_short_circuit_branch_value(
         function, scope, accept, right,
       )
-      accept.push(Statement::Store(local_ptr, right_value))
+      accept.push(Store(local_ptr, right_value))
       reject.push(
-        Statement::Store(
-          local_ptr,
-          function.expressions.append(Expression::Literal(Bool(false))),
-        ),
+        Store(local_ptr, function.expressions.append(Literal(Bool(false)))),
       )
-      block.push(Statement::If(condition, accept, reject))
+      block.push(If(condition, accept, reject))
     }
     LogicalOr => {
       let condition = self.materialize_short_circuit_condition(
         function, scope, block, left,
       )
-      let inverted = function.expressions.append(
-        Expression::Unary(UnaryOperator::LogicalNot, condition),
-      )
+      let inverted = function.expressions.append(Unary(LogicalNot, condition))
       let local_ptr = self.append_short_circuit_result_local(
         function, block, ty,
       )
@@ -1005,23 +966,18 @@ fn WgslIrLowerer::materialize_short_circuit_expression(
       let right_value = self.materialize_short_circuit_branch_value(
         function, scope, accept, right,
       )
-      accept.push(Statement::Store(local_ptr, right_value))
+      accept.push(Store(local_ptr, right_value))
       reject.push(
-        Statement::Store(
-          local_ptr,
-          function.expressions.append(Expression::Literal(Bool(true))),
-        ),
+        Store(local_ptr, function.expressions.append(Literal(Bool(true)))),
       )
-      block.push(Statement::If(inverted, accept, reject))
+      block.push(If(inverted, accept, reject))
     }
     _ => ()
   }
   match result_ptr {
-    Some(local_ptr) => function.expressions.append(Expression::Load(local_ptr))
+    Some(local_ptr) => function.expressions.append(Load(local_ptr))
     _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "short-circuit result local was not emitted",
-      )
+      raise UnsupportedExpression("short-circuit result local was not emitted")
   }
 }
 
@@ -1046,7 +1002,7 @@ fn WgslIrLowerer::materialize_short_circuit_expression_node(
       function, scope, block, value,
     )
   }
-  let ty = self.scalar_type_handle(Scalar::Scalar(Bool, 1))
+  let ty = self.scalar_type_handle(Scalar(Bool, 1))
   match op {
     LogicalAnd => {
       let condition = self.materialize_short_circuit_condition_node(
@@ -1061,23 +1017,18 @@ fn WgslIrLowerer::materialize_short_circuit_expression_node(
       let local_ptr = self.append_short_circuit_result_local_pointer(
         function, block, local_handle,
       )
-      accept.push(Statement::Store(local_ptr, right_value))
+      accept.push(Store(local_ptr, right_value))
       reject.push(
-        Statement::Store(
-          local_ptr,
-          function.expressions.append(Expression::Literal(Bool(false))),
-        ),
+        Store(local_ptr, function.expressions.append(Literal(Bool(false)))),
       )
-      block.push(Statement::If(condition, accept, reject))
+      block.push(If(condition, accept, reject))
       self.append_short_circuit_result_load(function, local_ptr)
     }
     LogicalOr => {
       let condition = self.materialize_short_circuit_condition_node(
         function, scope, block, left,
       )
-      let inverted = function.expressions.append(
-        Expression::Unary(UnaryOperator::LogicalNot, condition),
-      )
+      let inverted = function.expressions.append(Unary(LogicalNot, condition))
       let local_handle = self.allocate_short_circuit_result_local(function, ty)
       let accept = Block::Block()
       let reject = Block::Block()
@@ -1087,20 +1038,14 @@ fn WgslIrLowerer::materialize_short_circuit_expression_node(
       let local_ptr = self.append_short_circuit_result_local_pointer(
         function, block, local_handle,
       )
-      accept.push(Statement::Store(local_ptr, right_value))
+      accept.push(Store(local_ptr, right_value))
       reject.push(
-        Statement::Store(
-          local_ptr,
-          function.expressions.append(Expression::Literal(Bool(true))),
-        ),
+        Store(local_ptr, function.expressions.append(Literal(Bool(true)))),
       )
-      block.push(Statement::If(inverted, accept, reject))
+      block.push(If(inverted, accept, reject))
       self.append_short_circuit_result_load(function, local_ptr)
     }
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "expected short-circuit operator",
-      )
+    _ => raise UnsupportedExpression("expected short-circuit operator")
   }
 }
 
@@ -1163,13 +1108,11 @@ fn WgslIrLowerer::append_short_circuit_result_load(
   ignore(self)
   match function.expressions.items.get(local_ptr.index()) {
     Some(LocalVariable(local_handle)) => {
-      let load_ptr = function.expressions.append(
-        Expression::LocalVariable(local_handle),
-      )
-      function.expressions.append(Expression::Load(load_ptr))
+      let load_ptr = function.expressions.append(LocalVariable(local_handle))
+      function.expressions.append(Load(load_ptr))
     }
     _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "short-circuit result pointer is not a local variable",
       )
   }
@@ -1182,7 +1125,7 @@ fn WgslIrLowerer::allocate_short_circuit_result_local(
   ty : Handle,
 ) -> Handle {
   ignore(self)
-  function.local_variables.append(LocalVariable::{
+  function.local_variables.append({
     name: Some("local"),
     kind: Var,
     generated_temporary: false,
@@ -1200,8 +1143,8 @@ fn WgslIrLowerer::append_short_circuit_result_local_pointer(
   local_handle : Handle,
 ) -> Handle {
   ignore(self)
-  block.push(Statement::Declare(local_handle))
-  function.expressions.append(Expression::LocalVariable(local_handle))
+  block.push(Declare(local_handle))
+  function.expressions.append(LocalVariable(local_handle))
 }
 
 ///|
@@ -1212,7 +1155,7 @@ fn WgslIrLowerer::append_short_circuit_result_local(
   ty : Handle,
 ) -> Handle {
   ignore(self)
-  let local_handle = function.local_variables.append(LocalVariable::{
+  let local_handle = function.local_variables.append({
     name: Some("local"),
     kind: Var,
     generated_temporary: false,
@@ -1220,8 +1163,8 @@ fn WgslIrLowerer::append_short_circuit_result_local(
     ty,
     init: None,
   })
-  block.push(Statement::Declare(local_handle))
-  function.expressions.append(Expression::LocalVariable(local_handle))
+  block.push(Declare(local_handle))
+  function.expressions.append(LocalVariable(local_handle))
 }
 
 ///|
@@ -1308,9 +1251,7 @@ fn WgslIrLowerer::materialize_pointer_subexpressions(
         function, index, lowered_index,
       )
       if parent_base != base || parent_index != index {
-        function.expressions.append(
-          Expression::Access(parent_base, parent_index),
-        )
+        function.expressions.append(Access(parent_base, parent_index))
       } else {
         pointer
       }
@@ -1323,7 +1264,7 @@ fn WgslIrLowerer::materialize_pointer_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(Expression::AccessIndex(parent_base, index))
+        function.expressions.append(AccessIndex(parent_base, index))
       } else {
         pointer
       }
@@ -1336,9 +1277,7 @@ fn WgslIrLowerer::materialize_pointer_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(
-          Expression::Component(parent_base, component),
-        )
+        function.expressions.append(Component(parent_base, component))
       } else {
         pointer
       }
@@ -1351,9 +1290,7 @@ fn WgslIrLowerer::materialize_pointer_subexpressions(
         function, base, lowered_base,
       )
       if parent_base != base {
-        function.expressions.append(
-          Expression::Swizzle(size, parent_base, pattern),
-        )
+        function.expressions.append(Swizzle(size, parent_base, pattern))
       } else {
         pointer
       }
@@ -1366,7 +1303,7 @@ fn WgslIrLowerer::materialize_pointer_subexpressions(
         function, inner, lowered_inner,
       )
       if parent_inner != inner {
-        function.expressions.append(Expression::Load(parent_inner))
+        function.expressions.append(Load(parent_inner))
       } else {
         pointer
       }
@@ -1383,9 +1320,7 @@ fn wgsl_ir_binary_operator_is_short_circuit(op : BinaryOperator) -> Bool {
 ///|
 fn wgsl_ir_expr_node_is_short_circuit_binary(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
-    Binary(op, _, _) =>
-      op == @ast.WgslExprOperator::LogicalAnd ||
-      op == @ast.WgslExprOperator::LogicalOr
+    Binary(op, _, _) => op == LogicalAnd || op == LogicalOr
     _ => false
   }
 }
@@ -1443,7 +1378,7 @@ fn WgslIrLowerer::materialize_cooperative_data(
   block : Block,
   data : CooperativeData,
 ) -> CooperativeData raise WgslIrLowerError {
-  CooperativeData::{
+  {
     pointer: data.pointer,
     stride: self.materialize_nested_call_argument(
       function,
@@ -1691,7 +1626,7 @@ fn WgslIrLowerer::compound_assignment_target_value(
       None => return target
     }
   }
-  function.expressions.append(Expression::Load(target))
+  function.expressions.append(Load(target))
 }
 
 ///|
@@ -2110,7 +2045,7 @@ fn WgslIrLowerer::function_pointer_expression_can_return_directly(
 ) -> Bool {
   ignore(self)
   match function.expressions.items.get(value.index()) {
-    Some(Expression::LocalVariable(handle)) =>
+    Some(LocalVariable(handle)) =>
       match function.local_variables.items.get(handle.index()) {
         Some(local_variable) => local_variable.kind == Let
         None => false

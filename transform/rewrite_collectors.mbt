@@ -51,7 +51,7 @@ fn collect_wgsl_function_body_bound_rewrite_nodes(
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   match data {
-    WgslGlobalDeclData::Function(function) => {
+    Function(function) => {
       let identifiers : Array[WgslIdent] = []
       collect_wgsl_function_body_identifier_nodes(function, identifiers)
       collect_wgsl_bound_rewrite_nodes_from_identifiers(

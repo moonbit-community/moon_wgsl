@@ -21,7 +21,6 @@ using @ast {
   type WgslGlobalVariable,
   type WgslIdent,
   type WgslCaseSelector,
-  type WgslNumericLiteral,
   type WgslNumericLiteralBase,
   type WgslNumericLiteralCategory,
   type WgslNumericLiteralSuffix,

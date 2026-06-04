@@ -11,7 +11,7 @@ pub struct WgslImportSubstitutionState {
 
 ///|
 pub fn WgslImportSubstitutionState::default() -> WgslImportSubstitutionState {
-  WgslImportSubstitutionState::{ declared_imports: [] }
+  { declared_imports: [] }
 }
 
 ///|
@@ -52,10 +52,7 @@ fn declared_imports_add(
   if declared_imports_find_index(declared_imports, used_name) is Some(index) {
     declared_imports[index].full_paths.push(full_path)
   } else {
-    declared_imports.push(DeclaredImportBinding::{
-      used_name,
-      full_paths: [full_path],
-    })
+    declared_imports.push({ used_name, full_paths: [full_path] })
   }
 }
 
@@ -98,23 +95,20 @@ fn parse_imports(
 ) -> Unit raise ParseImportsError {
   let tokens = tokenize(input, false)
   if tokens.length() == 0 {
-    raise ParseImportsError::Parse("expected #import", utf8_byte_length(input))
+    raise Parse("expected #import", utf8_byte_length(input))
   }
 
   guard tokens[0].is_punctuation(35) else {
-    raise ParseImportsError::Parse(
+    raise Parse(
       "expected `#import`",
       import_token_byte_offset(input, tokens[0]),
     )
   }
   if tokens.length() == 1 {
-    raise ParseImportsError::Parse(
-      "expected `#import`",
-      utf8_byte_length(input),
-    )
+    raise Parse("expected `#import`", utf8_byte_length(input))
   }
   guard tokens[1].is_identifier("import") else {
-    raise ParseImportsError::Parse(
+    raise Parse(
       "expected `#import`",
       import_token_byte_offset(input, tokens[1]),
     )
@@ -128,8 +122,7 @@ fn parse_imports(
   }
   let targets : Array[WgslImportTarget] = []
   parse_wgsl_import_targets(tail, "", targets) catch {
-    Parse(message, offset) =>
-      raise ParseImportsError::Parse(message, tail_byte_start + offset)
+    Parse(message, offset) => raise Parse(message, tail_byte_start + offset)
   }
   for target in targets {
     declared_imports_add(
@@ -191,10 +184,7 @@ fn used_imports_record(
     used_imports[index].definition.items.push(item_name)
   } else {
     used_imports.push(
-      ImportDefWithOffset(ImportDefinition::{
-        import_path: module_path,
-        items: [item_name],
-      }),
+      ImportDefWithOffset({ import_path: module_path, items: [item_name] }),
     )
   }
 }

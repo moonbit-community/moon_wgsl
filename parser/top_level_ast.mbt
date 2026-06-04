@@ -77,18 +77,18 @@ fn top_level_directive_item_kind(
   kind : WgslDirectiveKind,
 ) -> WgslRawTopLevelKind {
   match kind {
-    WgslDirectiveKind::DefineImportPath => WgslRawTopLevelKind::DefineImportPath
-    WgslDirectiveKind::Define => WgslRawTopLevelKind::Define
-    WgslDirectiveKind::Import => WgslRawTopLevelKind::Import
-    WgslDirectiveKind::Ifdef
-    | WgslDirectiveKind::Ifndef
-    | WgslDirectiveKind::If
-    | WgslDirectiveKind::Else
-    | WgslDirectiveKind::Endif
-    | WgslDirectiveKind::Enable
-    | WgslDirectiveKind::Requires
-    | WgslDirectiveKind::Diagnostic
-    | WgslDirectiveKind::Other => WgslRawTopLevelKind::Directive
+    DefineImportPath => DefineImportPath
+    Define => Define
+    Import => Import
+    Ifdef
+    | Ifndef
+    | If
+    | Else
+    | Endif
+    | Enable
+    | Requires
+    | Diagnostic
+    | Other => Directive
   }
 }
 
@@ -99,7 +99,7 @@ fn top_level_push_span_item(
   start : Int,
   end_ : Int,
 ) -> Unit {
-  items.push(WgslRawTopLevelItem::{ kind, start, end: end_ })
+  items.push({ kind, start, end: end_ })
 }
 
 ///|
@@ -116,7 +116,7 @@ fn WgslTopLevelParser::WgslTopLevelParser(
   source : String,
 ) -> WgslTopLevelParser {
   let cleaned = replace_comments(source)
-  WgslTopLevelParser::{
+  {
     source,
     cleaned,
     tokens: tokenize_wgsl(cleaned, false),
@@ -143,12 +143,7 @@ fn WgslTopLevelParser::flush_trivia_until(
   end_ : Int,
 ) -> Unit {
   if top_level_span_has_text(self.source, self.pending_start, end_) {
-    top_level_push_span_item(
-      items,
-      WgslRawTopLevelKind::Trivia,
-      self.pending_start,
-      end_,
-    )
+    top_level_push_span_item(items, Trivia, self.pending_start, end_)
   }
   self.pending_start = end_
 }
@@ -169,7 +164,7 @@ fn WgslTopLevelParser::parse_directive_item(
   self.flush_trivia_until(items, item_start)
   let first_line_end = top_level_line_end(self.source, token_pos)
   let mut item_end = first_line_end
-  if directive.kind() == WgslDirectiveKind::Import {
+  if directive.kind() == Import {
     let mut balance = naga_oil_raw_import_brace_balance_next(
       0,
       replace_comments(self.source[token_pos:first_line_end].to_owned()),
@@ -255,12 +250,7 @@ fn WgslTopLevelParser::parse_declaration_item(
     }
   }
   if top_level_span_has_text(self.source, item_start, item_end) {
-    top_level_push_span_item(
-      items,
-      WgslRawTopLevelKind::Declaration,
-      item_start,
-      item_end,
-    )
+    top_level_push_span_item(items, Declaration, item_start, item_end)
   }
   self.pending_start = item_end
 }
@@ -279,12 +269,7 @@ fn WgslTopLevelParser::parse_items(
     let token_pos = token.pos()
     if token.is_punctuation(59) {
       self.flush_trivia_until(items, token_pos)
-      top_level_push_span_item(
-        items,
-        WgslRawTopLevelKind::Trivia,
-        token_pos,
-        token.end(),
-      )
+      top_level_push_span_item(items, Trivia, token_pos, token.end())
       self.index = self.index + 1
       self.pending_start = token.end()
       continue

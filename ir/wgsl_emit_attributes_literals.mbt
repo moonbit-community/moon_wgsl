@@ -9,7 +9,7 @@ fn WgslIrEmitter::stage_attribute(
     Task => "@task"
     Fragment => "@fragment"
     Compute => "@compute"
-    _ => raise WgslIrEmitError::Unsupported("shader stage")
+    _ => raise Unsupported("shader stage")
   }
 }
 
@@ -104,7 +104,7 @@ fn WgslIrEmitter::builtin_name(
     Vertices => "vertices"
     PrimitiveCount => "primitive_count"
     Primitives => "primitives"
-    _ => raise WgslIrEmitError::Unsupported("builtin")
+    _ => raise Unsupported("builtin")
   }
 }
 

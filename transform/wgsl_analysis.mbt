@@ -125,23 +125,23 @@ fn build_wgsl_declaration_graph_from_unit(
       data: decl.data(),
     }
     match decl.kind() {
-      WgslGlobalDeclKind::Import => import_blocks.push(graph_block)
-      WgslGlobalDeclKind::Function
-      | WgslGlobalDeclKind::GlobalVariable
-      | WgslGlobalDeclKind::Const
-      | WgslGlobalDeclKind::Override
-      | WgslGlobalDeclKind::Struct
-      | WgslGlobalDeclKind::TypeAlias
-      | WgslGlobalDeclKind::ConstAssert
-      | WgslGlobalDeclKind::Unknown => declaration_blocks.push(graph_block)
-      WgslGlobalDeclKind::Directive =>
+      Import => import_blocks.push(graph_block)
+      Function
+      | GlobalVariable
+      | Const
+      | Override
+      | Struct
+      | TypeAlias
+      | ConstAssert
+      | Unknown => declaration_blocks.push(graph_block)
+      Directive =>
         match decl.data() {
-          WgslGlobalDeclData::Directive(directive) =>
-            if directive.kind() == WgslDirectiveKind::Import {
+          Directive(directive) =>
+            if directive.kind() == Import {
               import_blocks.push(graph_block)
-            } else if directive.kind() == WgslDirectiveKind::Enable ||
-              directive.kind() == WgslDirectiveKind::Requires ||
-              directive.kind() == WgslDirectiveKind::Diagnostic {
+            } else if directive.kind() == Enable ||
+              directive.kind() == Requires ||
+              directive.kind() == Diagnostic {
               declaration_blocks.push(graph_block)
             }
           _ => ()
@@ -150,7 +150,7 @@ fn build_wgsl_declaration_graph_from_unit(
     }
   }
 
-  WgslDeclarationGraph::{ import_blocks, declaration_blocks }
+  { import_blocks, declaration_blocks }
 }
 
 ///|
@@ -161,7 +161,7 @@ fn WgslGraphBlock::name(self : WgslGraphBlock) -> String {
 ///|
 fn WgslGraphBlock::is_type_declaration(self : WgslGraphBlock) -> Bool {
   match self.data {
-    WgslGlobalDeclData::Struct(_) | WgslGlobalDeclData::TypeAlias(_) => true
+    Struct(_) | TypeAlias(_) => true
     _ => false
   }
 }
@@ -171,23 +171,19 @@ fn WgslGraphBlock::source_origin_kind(
   self : WgslGraphBlock,
 ) -> WgslSourceOriginKind {
   match self.data {
-    WgslGlobalDeclData::Struct(_) | WgslGlobalDeclData::TypeAlias(_) => Type
-    WgslGlobalDeclData::Const(_) => Constant
-    WgslGlobalDeclData::Override(_) => Override
-    WgslGlobalDeclData::GlobalVariable(_) => GlobalVariable
-    WgslGlobalDeclData::Function(_) => Function
-    WgslGlobalDeclData::Directive(_)
-    | WgslGlobalDeclData::Import(_)
-    | WgslGlobalDeclData::ConstAssert(_)
-    | WgslGlobalDeclData::Raw => Other
+    Struct(_) | TypeAlias(_) => Type
+    Const(_) => Constant
+    Override(_) => Override
+    GlobalVariable(_) => GlobalVariable
+    Function(_) => Function
+    Directive(_) | Import(_) | ConstAssert(_) | Raw => Other
   }
 }
 
 ///|
 fn WgslGraphBlock::is_symbol_origin(self : WgslGraphBlock) -> Bool {
   match self.data {
-    WgslGlobalDeclData::Function(function) =>
-      function.qualifier() != Some(WgslFunctionQualifier::Override)
+    Function(function) => function.qualifier() != Some(Override)
     _ => self.name() != ""
   }
 }
@@ -214,7 +210,7 @@ fn emit_wgsl_import_blocks_for_item_extraction(
   source : String,
   graph : WgslDeclarationGraph,
 ) -> String {
-  let imported_starts : @set.Set[Int] = @set.Set([])
+  let imported_starts : @set.Set[Int] = Set([])
   let mut out = ""
   for import_block in graph.import_blocks {
     imported_starts.add(import_block.start)
@@ -223,8 +219,7 @@ fn emit_wgsl_import_blocks_for_item_extraction(
   for
     item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
     match item.kind() {
-      WgslDirectiveScanItemKind::Directive(directive) if directive.kind() ==
-        WgslDirectiveKind::Import =>
+      Directive(directive) if directive.kind() == Import =>
         if !imported_starts.contains(item.start()) {
           out = out + item.source().original_text()
         }
@@ -239,16 +234,11 @@ fn wgsl_reachable_declaration_map(
   declaration_blocks : Array[WgslGraphBlock],
   root_items : Array[String],
 ) -> (@set.Set[String], Array[String], Array[String]) {
-  let included_names : @set.Set[String] = @set.Set([])
+  let included_names : @set.Set[String] = Set([])
   let declarations : Array[WgslGlobalDecl] = []
   for block in declaration_blocks {
     declarations.push(
-      WgslGlobalDecl(
-        WgslGlobalDeclKind::Unknown,
-        block.data,
-        block.start,
-        block.end,
-      ),
+      WgslGlobalDecl(Unknown, block.data, block.start, block.end),
     )
   }
   let reachable = collect_wgsl_reachable_declaration_names(
@@ -276,7 +266,7 @@ fn wgsl_declaration_graph_block_named(
 ///|
 fn wgsl_graph_block_is_const_like(block : WgslGraphBlock) -> Bool {
   match block.data {
-    WgslGlobalDeclData::Const(_) | WgslGlobalDeclData::Override(_) => true
+    Const(_) | Override(_) => true
     _ => false
   }
 }
@@ -431,9 +421,9 @@ fn wgsl_declaration_graph_naga_dependency_order(
   declaration_blocks : Array[WgslGraphBlock],
 ) -> Array[String] {
   let ordered : Array[String] = []
-  let emitted : @set.Set[String] = @set.Set([])
-  let visiting : @set.Set[String] = @set.Set([])
-  let declaration_names : @set.Set[String] = @set.Set([])
+  let emitted : @set.Set[String] = Set([])
+  let visiting : @set.Set[String] = Set([])
+  let declaration_names : @set.Set[String] = Set([])
   for block in declaration_blocks {
     let name = block.name()
     if name != "" {
@@ -458,9 +448,9 @@ fn wgsl_declaration_graph_reachable_import_order(
   included_names : @set.Set[String],
 ) -> Array[String] {
   let ordered : Array[String] = []
-  let emitted : @set.Set[String] = @set.Set([])
-  let visiting : @set.Set[String] = @set.Set([])
-  let declaration_names : @set.Set[String] = @set.Set([])
+  let emitted : @set.Set[String] = Set([])
+  let visiting : @set.Set[String] = Set([])
+  let declaration_names : @set.Set[String] = Set([])
   for block in declaration_blocks {
     if block.name() != "" {
       declaration_names.add(block.name())
@@ -469,10 +459,10 @@ fn wgsl_declaration_graph_reachable_import_order(
   for
     category in [
       WgslSourceOriginKind::Type,
-      WgslSourceOriginKind::Constant,
-      WgslSourceOriginKind::Override,
-      WgslSourceOriginKind::GlobalVariable,
-      WgslSourceOriginKind::Function,
+      Constant,
+      Override,
+      GlobalVariable,
+      Function,
     ] {
     for block in declaration_blocks {
       let name = block.name()
@@ -510,7 +500,7 @@ pub fn collect_wgsl_named_declarations_strict(
     let block_generated_start = generated_start
     generated_start = generated_start + emitted_block.length()
     if block.is_symbol_origin() {
-      declarations.push(WgslEmittedDeclaration::{
+      declarations.push({
         name: block.name(),
         is_type_declaration: block.is_type_declaration(),
         generated_start: block_generated_start,
@@ -529,14 +519,13 @@ fn strip_wgsl_import_declarations_from_source_unit(
   let mut out = ""
   for decl in unit.declarations() {
     let skip = match decl.data() {
-      WgslGlobalDeclData::Import(_) => true
-      WgslGlobalDeclData::Directive(directive) =>
-        directive.kind() == WgslDirectiveKind::DefineImportPath
+      Import(_) => true
+      Directive(directive) => directive.kind() == DefineImportPath
       _ => false
     }
     if !skip {
       out = out +
-        emit_wgsl_graph_block_canonical(WgslGraphBlock::{
+        emit_wgsl_graph_block_canonical({
           tokens: tokenize_wgsl_absolute_fragment(
             source,
             decl.start(),
@@ -580,7 +569,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
   if requested_items.length() == 0 {
     for block in graph.declaration_blocks {
       if block.is_symbol_origin() {
-        origins.push(WgslModuleItemOrigin::{
+        origins.push({
           name: block.name(),
           kind: block.source_origin_kind(),
           source_start: block.start,
@@ -588,7 +577,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
         })
       }
     }
-    return WgslModuleItemExtraction::{
+    return {
       source: emit_wgsl_graph_blocks_canonical(graph.declaration_blocks),
       origins,
     }
@@ -604,14 +593,14 @@ fn extract_wgsl_module_item_extraction_from_graph(
     }
   }
   if matched_requested == 0 {
-    return WgslModuleItemExtraction::{ source: "", origins }
+    return { source: "", origins }
   }
   let mut out = emit_wgsl_import_blocks_for_item_extraction(source, graph)
   for block in graph.declaration_blocks {
     if block.name() == "" {
       out = out + emit_wgsl_graph_block_canonical(block)
       if block.is_symbol_origin() {
-        origins.push(WgslModuleItemOrigin::{
+        origins.push({
           name: block.name(),
           kind: block.source_origin_kind(),
           source_start: block.start,
@@ -633,7 +622,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
     guard included_names.contains(block.name()) else { continue }
     out = out + emit_wgsl_graph_block_canonical(block)
     if block.is_symbol_origin() {
-      origins.push(WgslModuleItemOrigin::{
+      origins.push({
         name: block.name(),
         kind: block.source_origin_kind(),
         source_start: block.start,
@@ -641,7 +630,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
       })
     }
   }
-  WgslModuleItemExtraction::{ source: out, origins }
+  { source: out, origins }
 }
 
 ///|
@@ -659,7 +648,7 @@ pub fn collect_wgsl_naga_dependency_ordered_item_origins_strict(
       continue
     }
     if block.is_symbol_origin() {
-      origins.push(WgslModuleItemOrigin::{
+      origins.push({
         name: block.name(),
         kind: block.source_origin_kind(),
         source_start: block.start,
@@ -675,7 +664,7 @@ pub fn collect_wgsl_naga_dependency_pulled_item_origins_strict(
   source : String,
 ) -> Array[WgslModuleItemOrigin] raise WgslParseError {
   let graph = build_wgsl_declaration_graph_strict(source)
-  let declaration_names : @set.Set[String] = @set.Set([])
+  let declaration_names : @set.Set[String] = Set([])
   for block in graph.declaration_blocks {
     let name = block.name()
     if name != "" {
@@ -706,7 +695,7 @@ pub fn collect_wgsl_naga_dependency_pulled_item_origins_strict(
         dependency,
         block.start,
         block.end,
-        @set.Set([]),
+        Set([]),
         pulled,
       )
     }
@@ -751,7 +740,7 @@ fn wgsl_declaration_graph_mark_dependency_pull(
   match pulled.get(name) {
     Some(existing) if existing.source_start() <= pull_start => ()
     _ =>
-      pulled.set(name, WgslModuleItemOrigin::{
+      pulled.set(name, {
         name,
         kind: block.source_origin_kind(),
         source_start: pull_start,

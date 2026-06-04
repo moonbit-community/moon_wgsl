@@ -28,17 +28,17 @@ priv struct WgslIrEmitFilter {
 
 ///|
 fn WgslIrEmitFilter::WgslIrEmitFilter() -> WgslIrEmitFilter {
-  WgslIrEmitFilter::{
-    types: @set.Set([]),
+  {
+    types: Set([]),
     type_order: [],
-    constants: @set.Set([]),
+    constants: Set([]),
     constant_order: [],
-    overrides: @set.Set([]),
+    overrides: Set([]),
     override_order: [],
-    global_variables: @set.Set([]),
+    global_variables: Set([]),
     global_variable_order: [],
-    functions: @set.Set([]),
-    entry_points: @set.Set([]),
+    functions: Set([]),
+    entry_points: Set([]),
   }
 }
 
@@ -142,36 +142,35 @@ fn WgslIrEmitFilter::mark_root_name(
 ) -> Unit {
   for index in 0..<shader_module.types.items.length() {
     match shader_module.types.items[index].name {
-      Some(name) if name == root =>
-        self.mark_type(shader_module, Handle::Handle(index))
+      Some(name) if name == root => self.mark_type(shader_module, Handle(index))
       _ => ()
     }
   }
   for index in 0..<shader_module.constants.items.length() {
     match shader_module.constants.items[index].name {
       Some(name) if name == root =>
-        self.mark_constant(shader_module, Handle::Handle(index))
+        self.mark_constant(shader_module, Handle(index))
       _ => ()
     }
   }
   for index in 0..<shader_module.overrides.items.length() {
     match shader_module.overrides.items[index].name {
       Some(name) if name == root =>
-        self.mark_override(shader_module, Handle::Handle(index))
+        self.mark_override(shader_module, Handle(index))
       _ => ()
     }
   }
   for index in 0..<shader_module.global_variables.items.length() {
     match shader_module.global_variables.items[index].name {
       Some(name) if name == root =>
-        self.mark_global_variable(shader_module, Handle::Handle(index))
+        self.mark_global_variable(shader_module, Handle(index))
       _ => ()
     }
   }
   for index in 0..<shader_module.functions.items.length() {
     match shader_module.functions.items[index].name {
       Some(name) if name == root =>
-        self.mark_function(shader_module, Handle::Handle(index))
+        self.mark_function(shader_module, Handle(index))
       _ => ()
     }
   }
@@ -402,11 +401,7 @@ fn WgslIrEmitFilter::mark_statement(
     Emit(range) => {
       let mut index = range.start.index()
       while index <= range.end.index() {
-        self.mark_function_expression(
-          shader_module,
-          function,
-          Handle::Handle(index),
-        )
+        self.mark_function_expression(shader_module, function, Handle(index))
         index = index + 1
       }
     }

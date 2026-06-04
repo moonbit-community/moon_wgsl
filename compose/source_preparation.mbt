@@ -91,7 +91,7 @@ fn prepare_wgsl_compose_source(
     active_defs.value_defines,
   )
   let active_scan_source = active_source
-  WgslPreparedComposeSource::{ active_source, active_scan_source }
+  { active_source, active_scan_source }
 }
 
 ///|

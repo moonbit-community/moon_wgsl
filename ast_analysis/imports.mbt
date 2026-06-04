@@ -5,7 +5,6 @@ using @ast {
   type WgslExprNode,
   type WgslExprRef,
   type WgslFunction,
-  type WgslFunctionQualifier,
   type WgslGlobalDeclData,
   type WgslIdent,
   type WgslLocalDeclaration,

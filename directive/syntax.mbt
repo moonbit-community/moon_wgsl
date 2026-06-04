@@ -35,7 +35,7 @@ fn WgslShaderDefComparison::WgslShaderDefComparison(
   operator : WgslShaderDefOperator,
   value : String,
 ) -> WgslShaderDefComparison {
-  WgslShaderDefComparison::{ def, operator, value }
+  { def, operator, value }
 }
 
 ///|
@@ -185,14 +185,9 @@ pub fn parse_wgsl_shader_def_comparison(
 ///|
 pub fn wgsl_effective_directive_tail(directive : WgslDirective) -> String {
   match directive.kind() {
-    WgslDirectiveKind::Else =>
-      if directive.tail() == "" {
-        ""
-      } else {
-        " \{directive.tail()}"
-      }
-    WgslDirectiveKind::Endif => directive.tail()
-    WgslDirectiveKind::Other => {
+    Else => if directive.tail() == "" { "" } else { " \{directive.tail()}" }
+    Endif => directive.tail()
+    Other => {
       let name = directive.name().name()
       if name.has_prefix("else") {
         let suffix = name["else".length():name.length()].to_owned()
@@ -221,12 +216,12 @@ pub fn wgsl_effective_directive_kind(
   directive : WgslDirective,
 ) -> WgslDirectiveKind {
   match directive.kind() {
-    WgslDirectiveKind::Other => {
+    Other => {
       let name = directive.name().name()
       if name.has_prefix("else") {
-        WgslDirectiveKind::Else
+        Else
       } else if name.has_prefix("endif") {
-        WgslDirectiveKind::Endif
+        Endif
       } else {
         directive.kind()
       }

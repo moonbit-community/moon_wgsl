@@ -22,7 +22,7 @@ pub(all) struct Handle {
 
 ///|
 pub fn Handle::Handle(index : Int) -> Handle {
-  Handle::{ index, }
+  { index, }
 }
 
 ///|
@@ -38,7 +38,7 @@ pub(all) struct HandleRange {
 
 ///|
 pub fn HandleRange::HandleRange(start : Handle, end : Handle) -> HandleRange {
-  HandleRange::{ start, end }
+  { start, end }
 }
 
 ///|
@@ -48,22 +48,22 @@ pub(all) struct StorageAccess {
 
 ///|
 pub fn StorageAccess::empty() -> StorageAccess {
-  StorageAccess::{ bits: 0 }
+  { bits: 0 }
 }
 
 ///|
 pub fn StorageAccess::load() -> StorageAccess {
-  StorageAccess::{ bits: 1 }
+  { bits: 1 }
 }
 
 ///|
 pub fn StorageAccess::store() -> StorageAccess {
-  StorageAccess::{ bits: 2 }
+  { bits: 2 }
 }
 
 ///|
 pub fn StorageAccess::atomic_access() -> StorageAccess {
-  StorageAccess::{ bits: 4 }
+  { bits: 4 }
 }
 
 ///|
@@ -71,7 +71,7 @@ pub fn StorageAccess::union(
   self : StorageAccess,
   other : StorageAccess,
 ) -> StorageAccess {
-  StorageAccess::{ bits: self.bits | other.bits }
+  { bits: self.bits | other.bits }
 }
 
 ///|
@@ -89,17 +89,17 @@ pub(all) struct MemoryDecorations {
 
 ///|
 pub fn MemoryDecorations::empty() -> MemoryDecorations {
-  MemoryDecorations::{ bits: 0 }
+  { bits: 0 }
 }
 
 ///|
 pub fn MemoryDecorations::coherent() -> MemoryDecorations {
-  MemoryDecorations::{ bits: 1 }
+  { bits: 1 }
 }
 
 ///|
 pub fn MemoryDecorations::volatile_decoration() -> MemoryDecorations {
-  MemoryDecorations::{ bits: 2 }
+  { bits: 2 }
 }
 
 ///|
@@ -107,7 +107,7 @@ pub fn MemoryDecorations::union(
   self : MemoryDecorations,
   other : MemoryDecorations,
 ) -> MemoryDecorations {
-  MemoryDecorations::{ bits: self.bits | other.bits }
+  { bits: self.bits | other.bits }
 }
 
 ///|
@@ -117,32 +117,32 @@ pub(all) struct Barrier {
 
 ///|
 pub fn Barrier::empty() -> Barrier {
-  Barrier::{ bits: 0 }
+  { bits: 0 }
 }
 
 ///|
 pub fn Barrier::storage() -> Barrier {
-  Barrier::{ bits: 1 }
+  { bits: 1 }
 }
 
 ///|
 pub fn Barrier::work_group() -> Barrier {
-  Barrier::{ bits: 2 }
+  { bits: 2 }
 }
 
 ///|
 pub fn Barrier::sub_group() -> Barrier {
-  Barrier::{ bits: 4 }
+  { bits: 4 }
 }
 
 ///|
 pub fn Barrier::texture() -> Barrier {
-  Barrier::{ bits: 8 }
+  { bits: 8 }
 }
 
 ///|
 pub fn Barrier::union(self : Barrier, other : Barrier) -> Barrier {
-  Barrier::{ bits: self.bits | other.bits }
+  { bits: self.bits | other.bits }
 }
 
 ///|
@@ -152,60 +152,60 @@ pub(all) struct RayFlag {
 
 ///|
 pub fn RayFlag::empty() -> RayFlag {
-  RayFlag::{ bits: 0 }
+  { bits: 0 }
 }
 
 ///|
 pub fn RayFlag::force_opaque() -> RayFlag {
-  RayFlag::{ bits: 1 }
+  { bits: 1 }
 }
 
 ///|
 pub fn RayFlag::force_no_opaque() -> RayFlag {
-  RayFlag::{ bits: 2 }
+  { bits: 2 }
 }
 
 ///|
 pub fn RayFlag::terminate_on_first_hit() -> RayFlag {
-  RayFlag::{ bits: 4 }
+  { bits: 4 }
 }
 
 ///|
 pub fn RayFlag::skip_closest_hit_shader() -> RayFlag {
-  RayFlag::{ bits: 8 }
+  { bits: 8 }
 }
 
 ///|
 pub fn RayFlag::cull_back_facing() -> RayFlag {
-  RayFlag::{ bits: 0x10 }
+  { bits: 0x10 }
 }
 
 ///|
 pub fn RayFlag::cull_front_facing() -> RayFlag {
-  RayFlag::{ bits: 0x20 }
+  { bits: 0x20 }
 }
 
 ///|
 pub fn RayFlag::cull_opaque() -> RayFlag {
-  RayFlag::{ bits: 0x40 }
+  { bits: 0x40 }
 }
 
 ///|
 pub fn RayFlag::cull_no_opaque() -> RayFlag {
-  RayFlag::{ bits: 0x80 }
+  { bits: 0x80 }
 }
 
 ///|
 pub fn RayFlag::skip_triangles() -> RayFlag {
-  RayFlag::{ bits: 0x100 }
+  { bits: 0x100 }
 }
 
 ///|
 pub fn RayFlag::skip_aabbs() -> RayFlag {
-  RayFlag::{ bits: 0x200 }
+  { bits: 0x200 }
 }
 
 ///|
 pub fn RayFlag::union(self : RayFlag, other : RayFlag) -> RayFlag {
-  RayFlag::{ bits: self.bits | other.bits }
+  { bits: self.bits | other.bits }
 }

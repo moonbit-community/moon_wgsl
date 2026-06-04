@@ -32,7 +32,7 @@ priv struct WgslTokenDepth {
 
 ///|
 fn WgslTokenDepth::WgslTokenDepth() -> WgslTokenDepth {
-  WgslTokenDepth::{
+  {
     paren: 0,
     angle: 0,
     bracket: 0,
@@ -147,7 +147,7 @@ fn tokenize_at(
 ///|
 fn WgslDeclParser::new_at(text : String, source_start : Int) -> WgslDeclParser {
   let tokens = tokenize_at(replace_comments(text), false, source_start)
-  WgslDeclParser::{ source_text: text, source_start, token_view: tokens[:] }
+  { source_text: text, source_start, token_view: tokens[:] }
 }
 
 ///|
@@ -263,7 +263,7 @@ fn WgslDeclParser::collect_delimited_token_view(
       let pos = view[i].pos()
       depth = depth - 1
       if depth == 0 {
-        return Some(WgslDelimitedTokenView::{
+        return Some({
           inner: view[1:i],
           open_start,
           close_start: pos,
@@ -311,12 +311,10 @@ fn WgslDeclParser::push_attribute_tokens(
         let at_pos = at_token.pos()
         let name_pos = name_token.pos()
         self.update_view(rest)
-        tokens.push((Token::AT(at_pos), at_pos, at_pos + 1))
+        tokens.push((AT(at_pos), at_pos, at_pos + 1))
         tokens.push(
           (
-            Token::ATTR_NAME(
-              WgslIdent(name, name_pos, name_pos + name.length()),
-            ),
+            ATTR_NAME(WgslIdent(name, name_pos, name_pos + name.length())),
             name_pos,
             name_pos + name.length(),
           ),
@@ -328,7 +326,7 @@ fn WgslDeclParser::push_attribute_tokens(
             if argument_end >= argument_start {
               tokens.push(
                 (
-                  Token::ATTR_ARGS(
+                  ATTR_ARGS(
                     (
                       parse_wgsl_expr_ref_text(
                         self.slice(argument_start, argument_end),
@@ -410,7 +408,7 @@ fn WgslDeclParser::collect_until_top_level_fragment_with_mode(
   } else {
     wgsl_trim_blankspace(self.slice(start_pos, end_pos))
   }
-  WgslTextFragment::{ text, start: start_pos, end: end_pos }
+  { text, start: start_pos, end: end_pos }
 }
 
 ///|

@@ -5,7 +5,7 @@ fn WgslIrValidator::type_layout(
 ) -> WgslIrValidationLayout raise WgslIrValidationError {
   match self.shader_module.types.get(ty) {
     Some(type_) => self.type_inner_layout(type_.inner)
-    None => raise WgslIrValidationError::InvalidTypeHandle(ty.index())
+    None => raise InvalidTypeHandle(ty.index())
   }
 }
 
@@ -16,11 +16,11 @@ fn WgslIrValidator::type_inner_layout(
 ) -> WgslIrValidationLayout raise WgslIrValidationError {
   match inner {
     Scalar(scalar) | Atomic(scalar) =>
-      WgslIrValidationLayout::{ align: scalar.width, size: scalar.width }
+      { align: scalar.width, size: scalar.width }
     Vector(size, scalar) => {
       let lanes = size.width()
       let raw_size = lanes * scalar.width
-      WgslIrValidationLayout::{
+      {
         align: if lanes == 3 {
           4 * scalar.width
         } else {
@@ -40,20 +40,14 @@ fn WgslIrValidator::type_inner_layout(
         row_lanes * scalar.width,
         column_align,
       )
-      WgslIrValidationLayout::{
-        align: column_align,
-        size: column_size * columns.width(),
-      }
+      { align: column_align, size: column_size * columns.width() }
     }
     Array(base, size, stride) => {
       let count = match size {
         Constant(value) => value
         Dynamic | Pending(_) => 1
       }
-      WgslIrValidationLayout::{
-        align: self.type_layout(base).align,
-        size: count * stride,
-      }
+      { align: self.type_layout(base).align, size: count * stride }
     }
     Struct(members, span) | PredeclaredStruct(members, span) => {
       let mut align = 1
@@ -67,17 +61,16 @@ fn WgslIrValidator::type_inner_layout(
           align = member_align
         }
       }
-      WgslIrValidationLayout::{ align, size: span }
+      { align, size: span }
     }
-    Pointer(_, _) | ValuePointer(_, _, _) =>
-      WgslIrValidationLayout::{ align: 1, size: 4 }
+    Pointer(_, _) | ValuePointer(_, _, _) => { align: 1, size: 4 }
     Image(_, _, _)
     | Sampler(_)
     | AccelerationStructure(_)
     | RayQuery(_)
-    | BindingArray(_, _) => WgslIrValidationLayout::{ align: 1, size: 0 }
+    | BindingArray(_, _) => { align: 1, size: 0 }
     CooperativeMatrix(columns, rows, scalar, _) =>
-      WgslIrValidationLayout::{
+      {
         align: scalar.width,
         size: wgsl_ir_validation_cooperative_size_width(columns) *
         wgsl_ir_validation_cooperative_size_width(rows) *
@@ -94,7 +87,7 @@ fn WgslIrValidator::find_type_by_name(
   for index in 0..<self.shader_module.types.items.length() {
     let ty = self.shader_module.types.items[index]
     if ty.name == Some(name) {
-      return Some(Handle::Handle(index))
+      return Some(Handle(index))
     }
   }
   None
@@ -105,7 +98,7 @@ fn WgslIrValidator::find_scalar_type(
   self : WgslIrValidator,
   scalar : Scalar,
 ) -> Handle? {
-  self.find_type_inner(TypeInner::Scalar(scalar))
+  self.find_type_inner(Scalar(scalar))
 }
 
 ///|
@@ -114,7 +107,7 @@ fn WgslIrValidator::vector_type(
   size : VectorSize,
   scalar : Scalar,
 ) -> Handle? {
-  self.find_type_inner(TypeInner::Vector(size, scalar))
+  self.find_type_inner(Vector(size, scalar))
 }
 
 ///|
@@ -124,7 +117,7 @@ fn WgslIrValidator::matrix_type(
   rows : VectorSize,
   scalar : Scalar,
 ) -> Handle? {
-  self.find_type_inner(TypeInner::Matrix(columns, rows, scalar))
+  self.find_type_inner(Matrix(columns, rows, scalar))
 }
 
 ///|
@@ -135,9 +128,7 @@ fn WgslIrValidator::cooperative_matrix_type(
   scalar : Scalar,
   role : CooperativeRole,
 ) -> Handle? {
-  self.find_type_inner(
-    TypeInner::CooperativeMatrix(columns, rows, scalar, role),
-  )
+  self.find_type_inner(CooperativeMatrix(columns, rows, scalar, role))
 }
 
 ///|
@@ -147,7 +138,7 @@ fn WgslIrValidator::find_type_inner(
 ) -> Handle? {
   for index in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[index].inner == inner {
-      return Some(Handle::Handle(index))
+      return Some(Handle(index))
     }
   }
   None
@@ -194,7 +185,7 @@ fn wgsl_ir_validation_scalar_assignable(
 ///|
 fn wgsl_ir_validation_storage_format_scalar(format : StorageFormat) -> Scalar {
   match format {
-    R64Uint => Scalar::Scalar(Uint, 8)
+    R64Uint => Scalar(Uint, 8)
     R8Uint
     | R16Uint
     | Rg8Uint
@@ -204,10 +195,10 @@ fn wgsl_ir_validation_storage_format_scalar(format : StorageFormat) -> Scalar {
     | Rgb10a2Uint
     | Rg32Uint
     | Rgba16Uint
-    | Rgba32Uint => Scalar::Scalar(Uint, 4)
+    | Rgba32Uint => Scalar(Uint, 4)
     R8Sint | R16Sint | Rg8Sint | R32Sint | Rg16Sint | Rgba8Sint | Rgba32Sint =>
-      Scalar::Scalar(Sint, 4)
-    _ => Scalar::Scalar(Float, 4)
+      Scalar(Sint, 4)
+    _ => Scalar(Float, 4)
   }
 }
 

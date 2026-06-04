@@ -298,7 +298,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         self.session.graph_planning_rel_paths,
         request.rel_path,
       ) {
-      raise ComposerError::ImportCycle(
+      raise ImportCycle(
         wgsl_import_cycle_string(
           self.session.graph_planning_rel_paths,
           request.rel_path,

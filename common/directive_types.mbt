@@ -7,7 +7,7 @@ pub struct EnableDirective {
 pub fn EnableDirective::EnableDirective(
   extensions : Array[String],
 ) -> EnableDirective {
-  EnableDirective::{ extensions, }
+  { extensions, }
 }
 
 ///|
@@ -19,7 +19,7 @@ pub struct RequiresDirective {
 pub fn RequiresDirective::RequiresDirective(
   extensions : Array[String],
 ) -> RequiresDirective {
-  RequiresDirective::{ extensions, }
+  { extensions, }
 }
 
 ///|
@@ -33,7 +33,7 @@ pub fn DiagnosticDirective::DiagnosticDirective(
   severity : String,
   rule : String,
 ) -> DiagnosticDirective {
-  DiagnosticDirective::{ severity, rule }
+  { severity, rule }
 }
 
 ///|
@@ -45,7 +45,7 @@ pub struct WgslDirectives {
 
 ///|
 pub fn WgslDirectives::default() -> WgslDirectives {
-  WgslDirectives::{ enables: [], requires: [], diagnostics: [] }
+  { enables: [], requires: [], diagnostics: [] }
 }
 
 ///|

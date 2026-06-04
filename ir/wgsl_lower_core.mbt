@@ -55,7 +55,7 @@ pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
   source_start? : Int = -1,
   source_end? : Int = -1,
 ) -> WgslIrGeneratedImportProvenance {
-  WgslIrGeneratedImportProvenance::{
+  {
     generated_symbol_name,
     rel_path,
     source_symbol_name,
@@ -101,7 +101,7 @@ priv struct WgslIrLowerer {
 fn WgslIrLowerer::WgslIrLowerer(
   root_visible_rel_path? : String = "",
 ) -> WgslIrLowerer {
-  WgslIrLowerer::{
+  {
     shader_module: Module(),
     type_cache: Map([]),
     function_names: Map([]),
@@ -109,13 +109,13 @@ fn WgslIrLowerer::WgslIrLowerer(
     constant_names: Map([]),
     constant_declarations: Map([]),
     constant_type_cache: Map([]),
-    constant_type_inference_stack: @set.Set([]),
-    constant_lowering_stack: @set.Set([]),
-    lowered_constants: @set.Set([]),
+    constant_type_inference_stack: Set([]),
+    constant_lowering_stack: Set([]),
+    lowered_constants: Set([]),
     override_names: Map([]),
     override_declarations: Map([]),
-    override_type_inference_stack: @set.Set([]),
-    referenced_names: @set.Set([]),
+    override_type_inference_stack: Set([]),
+    referenced_names: Set([]),
     generated_import_provenance: Map([]),
     root_visible_rel_path,
   }
@@ -151,7 +151,7 @@ fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
   root_visible_rel_path? : String = "",
 ) -> Module raise WgslIrLowerError {
   let unit = @parser.parse_wgsl_translation_unit_strict(source) catch {
-    error => raise WgslIrLowerError::Parse(wgsl_ir_parse_error_message(error))
+    error => raise Parse(wgsl_ir_parse_error_message(error))
   }
   lower_wgsl_translation_unit_to_ir_with_generated_imports(
     unit,
@@ -328,62 +328,29 @@ fn WgslIrLowerer::generated_import_function_rel_path(
 
 ///|
 fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
-  let bool_ty = self.intern_type(
-    "bool",
-    TypeInner::Scalar(Scalar::Scalar(Bool, 1)),
-  )
-  ignore(
-    self.intern_type(
-      "vec2<bool>",
-      TypeInner::Vector(Bi, Scalar::Scalar(Bool, 1)),
-    ),
-  )
-  ignore(
-    self.intern_type(
-      "vec3<bool>",
-      TypeInner::Vector(Tri, Scalar::Scalar(Bool, 1)),
-    ),
-  )
-  ignore(
-    self.intern_type(
-      "vec4<bool>",
-      TypeInner::Vector(Quad, Scalar::Scalar(Bool, 1)),
-    ),
-  )
-  ignore(self.intern_type("i32", TypeInner::Scalar(Scalar::Scalar(Sint, 4))))
-  ignore(self.intern_type("i64", TypeInner::Scalar(Scalar::Scalar(Sint, 8))))
-  let u32_ty = self.intern_type(
-    "u32",
-    TypeInner::Scalar(Scalar::Scalar(Uint, 4)),
-  )
-  ignore(self.intern_type("u64", TypeInner::Scalar(Scalar::Scalar(Uint, 8))))
-  let f32_ty = self.intern_type(
-    "f32",
-    TypeInner::Scalar(Scalar::Scalar(Float, 4)),
-  )
-  ignore(self.intern_type("f16", TypeInner::Scalar(Scalar::Scalar(Float, 2))))
-  let vec2_f32_ty = self.intern_type(
-    "vec2<f32>",
-    TypeInner::Vector(Bi, Scalar::Scalar(Float, 4)),
-  )
-  let vec3_f32_ty = self.intern_type(
-    "vec3<f32>",
-    TypeInner::Vector(Tri, Scalar::Scalar(Float, 4)),
-  )
+  let bool_ty = self.intern_type("bool", Scalar(Scalar(Bool, 1)))
+  ignore(self.intern_type("vec2<bool>", Vector(Bi, Scalar(Bool, 1))))
+  ignore(self.intern_type("vec3<bool>", Vector(Tri, Scalar(Bool, 1))))
+  ignore(self.intern_type("vec4<bool>", Vector(Quad, Scalar(Bool, 1))))
+  ignore(self.intern_type("i32", Scalar(Scalar(Sint, 4))))
+  ignore(self.intern_type("i64", Scalar(Scalar(Sint, 8))))
+  let u32_ty = self.intern_type("u32", Scalar(Scalar(Uint, 4)))
+  ignore(self.intern_type("u64", Scalar(Scalar(Uint, 8))))
+  let f32_ty = self.intern_type("f32", Scalar(Scalar(Float, 4)))
+  ignore(self.intern_type("f16", Scalar(Scalar(Float, 2))))
+  let vec2_f32_ty = self.intern_type("vec2<f32>", Vector(Bi, Scalar(Float, 4)))
+  let vec3_f32_ty = self.intern_type("vec3<f32>", Vector(Tri, Scalar(Float, 4)))
   self.shader_module.special_types.ray_vertex_return = Some(
-    self.intern_type(
-      "array<vec3<f32>, 3>",
-      TypeInner::Array(vec3_f32_ty, ArraySize::Constant(3), 16),
-    ),
+    self.intern_type("array<vec3<f32>, 3>", Array(vec3_f32_ty, Constant(3), 16)),
   )
   let mat4x3_f32_ty = self.intern_type(
     "mat4x3<f32>",
-    TypeInner::Matrix(Quad, Tri, Scalar::Scalar(Float, 4)),
+    Matrix(Quad, Tri, Scalar(Float, 4)),
   )
   ignore(
     self.intern_type(
       "RayDesc",
-      TypeInner::PredeclaredStruct(
+      PredeclaredStruct(
         [
           wgsl_ir_synthetic_struct_member("flags", u32_ty),
           wgsl_ir_synthetic_struct_member("cull_mask", u32_ty),
@@ -399,7 +366,7 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
   ignore(
     self.intern_type(
       "RayIntersection",
-      TypeInner::PredeclaredStruct(
+      PredeclaredStruct(
         [
           wgsl_ir_synthetic_struct_member("kind", u32_ty),
           wgsl_ir_synthetic_struct_member("t", f32_ty),
@@ -417,30 +384,13 @@ fn WgslIrLowerer::register_prelude_types(self : WgslIrLowerer) -> Unit {
       ),
     ),
   )
-  ignore(
-    self.intern_type(
-      "__abstract_int",
-      TypeInner::Scalar(Scalar::Scalar(AbstractInt, 8)),
-    ),
-  )
-  ignore(
-    self.intern_type(
-      "__abstract_float",
-      TypeInner::Scalar(Scalar::Scalar(AbstractFloat, 8)),
-    ),
-  )
+  ignore(self.intern_type("__abstract_int", Scalar(Scalar(AbstractInt, 8))))
+  ignore(self.intern_type("__abstract_float", Scalar(Scalar(AbstractFloat, 8))))
 }
 
 ///|
 fn wgsl_ir_synthetic_struct_member(name : String, ty : Handle) -> StructMember {
-  StructMember::{
-    name: Some(name),
-    ty,
-    binding: None,
-    offset: 0,
-    size: None,
-    align: None,
-  }
+  { name: Some(name), ty, binding: None, offset: 0, size: None, align: None }
 }
 
 ///|
@@ -453,10 +403,7 @@ fn WgslIrLowerer::intern_type(
     Some(handle) => handle
     None => {
       self.ensure_type_dependencies(inner)
-      let handle = self.shader_module.append_type(Type::{
-        name: Some(key),
-        inner,
-      })
+      let handle = self.shader_module.append_type({ name: Some(key), inner })
       self.type_cache.set(key, handle)
       handle
     }

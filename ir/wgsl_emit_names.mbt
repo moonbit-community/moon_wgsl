@@ -4,7 +4,7 @@ fn WgslIrEmitter::constant_name(
   handle : Handle,
 ) -> String raise WgslIrEmitError {
   if self.shader_module.constants.items.get(handle.index()) == None {
-    raise WgslIrEmitError::MissingHandle("constant \{handle.index()}")
+    raise MissingHandle("constant \{handle.index()}")
   }
   self.required_emit_name(wgsl_ir_emit_name_key("const", handle.index()))
 }
@@ -21,7 +21,7 @@ fn WgslIrEmitter::constant_expression(
       } else {
         self.constant_name(handle)
       }
-    None => raise WgslIrEmitError::MissingHandle("constant \{handle.index()}")
+    None => raise MissingHandle("constant \{handle.index()}")
   }
 }
 
@@ -61,7 +61,7 @@ fn WgslIrEmitter::override_name(
   handle : Handle,
 ) -> String raise WgslIrEmitError {
   if self.shader_module.overrides.items.get(handle.index()) == None {
-    raise WgslIrEmitError::MissingHandle("override \{handle.index()}")
+    raise MissingHandle("override \{handle.index()}")
   }
   self.required_emit_name(wgsl_ir_emit_name_key("override", handle.index()))
 }
@@ -72,7 +72,7 @@ fn WgslIrEmitter::global_variable_name(
   handle : Handle,
 ) -> String raise WgslIrEmitError {
   if self.shader_module.global_variables.items.get(handle.index()) == None {
-    raise WgslIrEmitError::MissingHandle("global variable \{handle.index()}")
+    raise MissingHandle("global variable \{handle.index()}")
   }
   self.required_emit_name(wgsl_ir_emit_name_key("global", handle.index()))
 }
@@ -83,7 +83,7 @@ fn WgslIrEmitter::function_name(
   handle : Handle,
 ) -> String raise WgslIrEmitError {
   if self.shader_module.functions.items.get(handle.index()) == None {
-    raise WgslIrEmitError::MissingHandle("function \{handle.index()}")
+    raise MissingHandle("function \{handle.index()}")
   }
   self.required_emit_name(wgsl_ir_emit_name_key("fn", handle.index()))
 }
@@ -95,10 +95,10 @@ fn WgslIrEmitter::function_argument_name(
   index : Int,
 ) -> String raise WgslIrEmitError {
   guard function is Some(func) else {
-    raise WgslIrEmitError::Unsupported("function argument outside function")
+    raise Unsupported("function argument outside function")
   }
   if func.arguments.get(index) == None {
-    raise WgslIrEmitError::MissingHandle("function argument \{index}")
+    raise MissingHandle("function argument \{index}")
   }
   match self.current_function_origin {
     Some(UserFunction(function_index)) =>
@@ -110,9 +110,7 @@ fn WgslIrEmitter::function_argument_name(
         wgsl_ir_emit_name_key2("ep_arg", entry_point_index, index),
       )
     None =>
-      raise WgslIrEmitError::Unsupported(
-        "function argument without emitter function origin",
-      )
+      raise Unsupported("function argument without emitter function origin")
   }
 }
 
@@ -123,10 +121,10 @@ fn WgslIrEmitter::local_variable_name(
   handle : Handle,
 ) -> String raise WgslIrEmitError {
   guard function is Some(func) else {
-    raise WgslIrEmitError::Unsupported("local variable outside function")
+    raise Unsupported("local variable outside function")
   }
   if func.local_variables.items.get(handle.index()) == None {
-    raise WgslIrEmitError::MissingHandle("local variable \{handle.index()}")
+    raise MissingHandle("local variable \{handle.index()}")
   }
   match self.current_function_origin {
     Some(UserFunction(function_index)) =>
@@ -137,10 +135,7 @@ fn WgslIrEmitter::local_variable_name(
       self.required_emit_name(
         wgsl_ir_emit_name_key2("ep_local", entry_point_index, handle.index()),
       )
-    None =>
-      raise WgslIrEmitError::Unsupported(
-        "local variable without emitter function origin",
-      )
+    None => raise Unsupported("local variable without emitter function origin")
   }
 }
 
@@ -179,9 +174,7 @@ fn WgslIrEmitter::function_expression_temporary_name(
         wgsl_ir_emit_name_key2("ep_expr", entry_point_index, handle.index()),
       )
     None =>
-      raise WgslIrEmitError::Unsupported(
-        "function expression without emitter function origin",
-      )
+      raise Unsupported("function expression without emitter function origin")
   }
 }
 

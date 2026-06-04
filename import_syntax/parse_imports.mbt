@@ -50,50 +50,48 @@ fn tokenize_wgsl_import_targets(
         input[token.pos():wgsl_generated_import_token_end(token)].to_owned(),
       )
     if after_final_semicolon {
-      raise ParseImportsError::Parse("unexpected token after ';'", start)
+      raise Parse("unexpected token after ';'", start)
     }
     match token.identifier_text() {
       Some("as") =>
         if previous_can_start_alias {
           guard index + 1 < raw_tokens.length() &&
             raw_tokens[index + 1].identifier_text() is Some(_) else {
-            raise ParseImportsError::Parse(
-              "expected identifier after `as`", start,
-            )
+            raise Parse("expected identifier after `as`", start)
           }
-          push_generated_import_token(out, Token::AS, start, end_)
+          push_generated_import_token(out, AS, start, end_)
           previous_can_start_alias = false
           previous_identifier = None
         } else {
-          push_generated_import_token(out, Token::IDENT("as"), start, end_)
+          push_generated_import_token(out, IDENT("as"), start, end_)
           previous_can_start_alias = true
           previous_identifier = Some("as")
         }
       Some(name) => {
-        push_generated_import_token(out, Token::IDENT(name), start, end_)
+        push_generated_import_token(out, IDENT(name), start, end_)
         previous_can_start_alias = true
         previous_identifier = Some(name)
       }
       None if token.is_punctuation(123) => {
         guard previous_identifier is Some(name) && name.has_suffix("::") else {
-          raise ParseImportsError::Parse("open brace must follow `::`", start)
+          raise Parse("open brace must follow `::`", start)
         }
-        push_generated_import_token(out, Token::LBRACE(start), start, end_)
+        push_generated_import_token(out, LBRACE(start), start, end_)
         previous_can_start_alias = false
         previous_identifier = None
       }
       None if token.is_punctuation(125) => {
-        push_generated_import_token(out, Token::RBRACE(start), start, end_)
+        push_generated_import_token(out, RBRACE(start), start, end_)
         previous_can_start_alias = false
         previous_identifier = None
       }
       None if token.is_punctuation(44) => {
-        push_generated_import_token(out, Token::COMMA, start, end_)
+        push_generated_import_token(out, COMMA, start, end_)
         previous_can_start_alias = false
         previous_identifier = None
       }
       None if token.is_punctuation(59) => {
-        push_generated_import_token(out, Token::SEMI, start, end_)
+        push_generated_import_token(out, SEMI, start, end_)
         previous_can_start_alias = false
         previous_identifier = None
         after_final_semicolon = true
@@ -101,7 +99,7 @@ fn tokenize_wgsl_import_targets(
       None if token.is_whitespace() =>
         abort("whitespace tokens should not be emitted here")
       _ =>
-        raise ParseImportsError::Parse(
+        raise Parse(
           "unexpected token",
           utf8_byte_length(input[:token.pos()].to_owned()),
         )
@@ -109,7 +107,7 @@ fn tokenize_wgsl_import_targets(
     index = index + 1
   }
   let eof = utf8_byte_length(input)
-  push_generated_import_token(out, Token::EOF, eof, eof)
+  push_generated_import_token(out, EOF, eof, eof)
   out
 }
 
@@ -135,7 +133,7 @@ fn apply_wgsl_import_prefix(
   }
   for i in 0..<targets.length() {
     let path = wgsl_trim_blankspace(targets[i].raw_path)
-    targets[i] = WgslImportTarget::{
+    targets[i] = {
       raw_path: if path == "" {
         normalized_prefix
       } else {
@@ -153,31 +151,24 @@ pub fn parse_wgsl_import_targets(
   targets : Array[WgslImportTarget],
 ) -> Unit raise ParseImportsError {
   if wgsl_regex_trim_whitespace(input) == "" {
-    raise ParseImportsError::Parse(
-      "expected import path",
-      utf8_byte_length(input),
-    )
+    raise Parse("expected import path", utf8_byte_length(input))
   }
   let tokens = tokenize_wgsl_import_targets(input)
   for i in 0..<tokens.length() {
     let (token, _, _) = tokens[i]
-    if token is Token::SEMI {
+    if token is SEMI {
       let next_index = i + 1
       if next_index < tokens.length() {
         let (next_token, next_start, _) = tokens[next_index]
-        if !(next_token is Token::EOF) {
-          raise ParseImportsError::Parse(
-            "unexpected token after ';'", next_start,
-          )
+        if !(next_token is EOF) {
+          raise Parse("unexpected token after ';'", next_start)
         }
       }
     }
   }
   let parsed = import_targets(tokens) catch {
-    ParseError::UnexpectedToken(_, (start, _), _) =>
-      raise ParseImportsError::Parse("unexpected token", start)
-    ParseError::UnexpectedEndOfInput(pos, _) =>
-      raise ParseImportsError::Parse("unexpected end of input", pos)
+    UnexpectedToken(_, (start, _), _) => raise Parse("unexpected token", start)
+    UnexpectedEndOfInput(pos, _) => raise Parse("unexpected end of input", pos)
   }
   apply_wgsl_import_prefix(prefix, parsed)
   for target in parsed {

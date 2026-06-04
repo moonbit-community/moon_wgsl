@@ -23,7 +23,7 @@ fn bool_shader_def(
   value : Bool,
 ) -> Map[String, @common.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
-  shader_defs.set(name, @common.ShaderDefValue::Bool(value))
+  shader_defs.set(name, Bool(value))
   shader_defs
 }
 
@@ -33,7 +33,7 @@ fn int_shader_def(
   value : Int,
 ) -> Map[String, @common.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
-  shader_defs.set(name, @common.ShaderDefValue::Int(value))
+  shader_defs.set(name, Int(value))
   shader_defs
 }
 
@@ -125,14 +125,12 @@ test "naga_oil: metadata parser records only used imports like upstream" {
   debug_inspect(metadata.effective_defs.contains("HDR"), content="false")
   debug_inspect(metadata.wgsl_directives.is_empty(), content="true")
 
-  guard metadata.defines.get("HDR")
-    is Some(@common.ShaderDefValue::Bool(enabled)) else {
+  guard metadata.defines.get("HDR") is Some(Bool(enabled)) else {
     abort("expected HDR define")
   }
   debug_inspect(enabled, content="true")
 
-  guard metadata.defines.get("TONEMAP_MODE")
-    is Some(@common.ShaderDefValue::Bool(mode)) else {
+  guard metadata.defines.get("TONEMAP_MODE") is Some(Bool(mode)) else {
     abort("expected TONEMAP_MODE define")
   }
   debug_inspect(mode, content="false")
@@ -144,7 +142,7 @@ test "metadata import use collection rejects invalid WGSL instead of source fall
     @metadata.get_preprocessor_metadata(
       "#import bevy_render::view::View\nfn main(view: View) -> f32 {\n",
     ) catch {
-      @metadata.MetadataError::ImportParseError(message, _) => {
+      ImportParseError(message, _) => {
         inspect(
           message.contains("declaration could not be parsed"),
           content="true",
@@ -179,7 +177,7 @@ test "naga_oil: multiline import brace counting includes quoted braces" {
     "#import demo::{\n  \"quoted}\" as quoted,\n  item,\n}\nfn shade() {}\n",
     empty_shader_defs(),
   ) catch {
-    @preprocess.PreprocessError::ImportParseError(_, _) => return
+    ImportParseError(_, _) => return
     _ => abort("expected import parse error")
   }
   abort("expected import parse error")
@@ -342,7 +340,7 @@ test "naga_oil: preprocess strips imports and records used import offsets" {
 ///|
 test "issue 5: preprocessor shader defs preserve non-BMP source text" {
   let shader_defs = empty_shader_defs()
-  shader_defs.set("CUSTOM_LIMIT", @common.ShaderDefValue::Int(42))
+  shader_defs.set("CUSTOM_LIMIT", Int(42))
   let output = @preprocess.Preprocessor::default().preprocess(
     "// 😀 before a braced shader def\nlet a = #{CUSTOM_LIMIT};\n// 😃 before a bare shader def\nlet b = #CUSTOM_LIMIT;\n// 😄 before an unknown shader def\nlet c = #UNKNOWN;\n",
     shader_defs,
@@ -415,7 +413,7 @@ test "naga_oil upstream: preprocess else-if chains choose only first active bran
     content="\"second\"",
   )
   let defs = bool_shader_def("SECOND_TEXTURE", true)
-  defs.set("THIRD_TEXTURE", @common.ShaderDefValue::Bool(true))
+  defs.set("THIRD_TEXTURE", Bool(true))
   debug_inspect(
     preprocess_without_ascii_whitespace(source, defs),
     content="\"second\"",
@@ -488,7 +486,7 @@ test "naga_oil upstream: preprocess reports shader-def comparison errors" {
   let _ = @preprocess.Preprocessor::default().preprocess(
     "#if TEXTURE !! true\nok\n#endif\n", unknown_operator_defs,
   ) catch {
-    @preprocess.PreprocessError::UnknownShaderDefOperator(operator, _) => {
+    UnknownShaderDefOperator(operator, _) => {
       debug_inspect(operator, content="\"!!\"")
       return
     }
@@ -506,7 +504,7 @@ test "naga_oil upstream: if comparison parser preserves whitespace token boundar
       empty_shader_defs(),
     ),
   ) catch {
-    @preprocess.PreprocessError::UnknownShaderDef(name, _) => {
+    UnknownShaderDef(name, _) => {
       debug_inspect(name, content="\"TEXTURE\"")
       saw_missing_def = true
     }
@@ -521,7 +519,7 @@ test "naga_oil upstream: if comparison parser preserves whitespace token boundar
       "#if TEXTURE true\nok\n#endif\n", defs,
     ),
   ) catch {
-    @preprocess.PreprocessError::UnknownShaderDefOperator(operator, _) => {
+    UnknownShaderDefOperator(operator, _) => {
       debug_inspect(operator, content="\"\"")
       saw_empty_operator = true
     }
@@ -545,8 +543,7 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
       empty_shader_defs(),
     ),
   ) catch {
-    @preprocess.PreprocessError::UnknownShaderDef(name, _) =>
-      debug_inspect(name, content="\"TEXTURE\"")
+    UnknownShaderDef(name, _) => debug_inspect(name, content="\"TEXTURE\"")
     _ => abort("expected missing shader-def error")
   }
 
@@ -556,12 +553,7 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
       bool_shader_def("TEXTURE", true),
     ),
   ) catch {
-    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
-      name,
-      value,
-      expected,
-      _
-    ) => {
+    InvalidShaderDefComparisonValue(name, value, expected, _) => {
       debug_inspect(name, content="\"TEXTURE\"")
       debug_inspect(value, content="\"3\"")
       debug_inspect(expected, content="\"bool\"")
@@ -573,12 +565,7 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
     "#if TEXTURE != false\nok\n#endif\n",
     int_shader_def("TEXTURE", 7),
   ) catch {
-    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
-      name,
-      value,
-      expected,
-      _
-    ) => {
+    InvalidShaderDefComparisonValue(name, value, expected, _) => {
       debug_inspect(name, content="\"TEXTURE\"")
       debug_inspect(value, content="\"false\"")
       debug_inspect(expected, content="\"int\"")
@@ -605,8 +592,7 @@ test "naga_oil: preprocess applies module defines to output" {
     output.preprocessed_source.contains("bool: false"),
     content="true",
   )
-  guard metadata.defines.get("DEFUINT")
-    is Some(@common.ShaderDefValue::UInt(uint_value)) else {
+  guard metadata.defines.get("DEFUINT") is Some(UInt(uint_value)) else {
     abort("expected naga_oil-style unsigned positive define")
   }
   debug_inspect(uint_value.to_string(), content="\"1\"")
@@ -615,13 +601,11 @@ test "naga_oil: preprocess applies module defines to output" {
 ///|
 test "naga_oil: define metadata rejects unsigned suffix like upstream" {
   let metadata = metadata_or_abort("#define VALUE 2u\n#define NEG_ZERO -0\n")
-  guard metadata.defines.get("VALUE")
-    is Some(@common.ShaderDefValue::Bool(value)) else {
+  guard metadata.defines.get("VALUE") is Some(Bool(value)) else {
     abort("expected naga_oil-style failed unsigned suffix define")
   }
   debug_inspect(value, content="false")
-  guard metadata.defines.get("NEG_ZERO")
-    is Some(@common.ShaderDefValue::Int(neg_zero)) else {
+  guard metadata.defines.get("NEG_ZERO") is Some(Int(neg_zero)) else {
     abort("expected naga_oil-style signed negative zero define")
   }
   debug_inspect(neg_zero.to_string(), content="\"0\"")
@@ -631,7 +615,7 @@ test "naga_oil: define metadata rejects unsigned suffix like upstream" {
 test "naga_oil: unsigned shader defs support full u32 range" {
   let source = "#define BIG 4000000000\n#if BIG == 4000000000\nbig\n#else\nsmall\n#endif\n"
   let metadata = metadata_or_abort(source)
-  guard metadata.defines.get("BIG") is Some(@common.ShaderDefValue::UInt(big)) else {
+  guard metadata.defines.get("BIG") is Some(UInt(big)) else {
     abort("expected full-range unsigned define")
   }
   debug_inspect(big.to_string(), content="\"4000000000\"")
@@ -650,7 +634,7 @@ test "naga_oil: preprocess accepts whitespace after hash directives" {
   let source = "# define_import_path demo::spaced\n# define MODE 2\n# if MODE==1\none\n# else if MODE==2\ntwo #MODE\n# else\nthree\n# endif\n"
   let metadata = metadata_or_abort(source)
   debug_inspect(metadata.name, content="Some(\"demo::spaced\")")
-  guard metadata.defines.get("MODE") is Some(@common.ShaderDefValue::UInt(mode)) else {
+  guard metadata.defines.get("MODE") is Some(UInt(mode)) else {
     abort("expected MODE define")
   }
   debug_inspect(mode.to_string(), content="\"2\"")
@@ -697,8 +681,8 @@ test "naga_oil: shader def placeholders accept hash whitespace and upstream name
   debug_inspect(metadata.effective_defs.contains("MIXED|PIPE"), content="true")
 
   let shader_defs = empty_shader_defs()
-  shader_defs.set("lower_def", @common.ShaderDefValue::Int(7))
-  shader_defs.set("MIXED|PIPE", @common.ShaderDefValue::Int(9))
+  shader_defs.set("lower_def", Int(7))
+  shader_defs.set("MIXED|PIPE", Int(9))
   let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
@@ -718,7 +702,7 @@ test "naga_oil: shader def placeholders accept hash whitespace and upstream name
 test "naga_oil: ifdef identifiers accept upstream pipe names" {
   let source = "#ifdef MIXED|PIPE\nactive\n#else\ninactive\n#endif\n"
   let shader_defs = empty_shader_defs()
-  shader_defs.set("MIXED|PIPE", @common.ShaderDefValue::Bool(true))
+  shader_defs.set("MIXED|PIPE", Bool(true))
   let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
@@ -735,8 +719,8 @@ test "naga_oil: ifdef identifiers accept upstream pipe names" {
 test "naga_oil: ifdef identifiers accept upstream leading digit and pipe names" {
   let source = "#ifdef 1FLAG\none\n#endif\n#ifdef |PIPE\npipe\n#endif\n#ifdef 1FLAG trailing\ntrail\n#endif\n"
   let shader_defs = empty_shader_defs()
-  shader_defs.set("1FLAG", @common.ShaderDefValue::Bool(true))
-  shader_defs.set("|PIPE", @common.ShaderDefValue::Bool(true))
+  shader_defs.set("1FLAG", Bool(true))
+  shader_defs.set("|PIPE", Bool(true))
   let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
@@ -761,7 +745,7 @@ test "naga_oil: ifdef identifiers accept upstream leading digit and pipe names" 
 test "naga_oil: if comparison identifiers accept upstream pipe names" {
   let source = "#if MIXED|PIPE == 4\nactive\n#else\ninactive\n#endif\n"
   let shader_defs = empty_shader_defs()
-  shader_defs.set("MIXED|PIPE", @common.ShaderDefValue::Int(4))
+  shader_defs.set("MIXED|PIPE", Int(4))
   let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
   ) catch {
@@ -780,12 +764,11 @@ test "naga_oil: define metadata consumes one token like upstream regexes" {
     "# define_import_path demo::module trailing_text\n# define COUNT 3 ignored_tail\n# define FLAG true ignored_tail\n",
   )
   debug_inspect(metadata.name, content="Some(\"demo::module\")")
-  guard metadata.defines.get("COUNT")
-    is Some(@common.ShaderDefValue::UInt(count)) else {
+  guard metadata.defines.get("COUNT") is Some(UInt(count)) else {
     abort("expected COUNT define")
   }
   debug_inspect(count.to_string(), content="\"3\"")
-  guard metadata.defines.get("FLAG") is Some(@common.ShaderDefValue::Bool(flag)) else {
+  guard metadata.defines.get("FLAG") is Some(Bool(flag)) else {
     abort("expected FLAG define")
   }
   debug_inspect(flag, content="true")
@@ -802,18 +785,15 @@ test "naga_oil: define metadata follows upstream regex character classes" {
   let metadata = metadata_or_abort(
     "#define NAME+TAIL 7\n#define PLUS +1\n#define PIPE|NAME value|tail ignored\n",
   )
-  guard metadata.defines.get("NAME")
-    is Some(@common.ShaderDefValue::Bool(name_value)) else {
+  guard metadata.defines.get("NAME") is Some(Bool(name_value)) else {
     abort("expected NAME define")
   }
   debug_inspect(name_value, content="true")
-  guard metadata.defines.get("PLUS")
-    is Some(@common.ShaderDefValue::Bool(plus_value)) else {
+  guard metadata.defines.get("PLUS") is Some(Bool(plus_value)) else {
     abort("expected PLUS define")
   }
   debug_inspect(plus_value, content="true")
-  guard metadata.defines.get("PIPE|NAME")
-    is Some(@common.ShaderDefValue::Bool(pipe_value)) else {
+  guard metadata.defines.get("PIPE|NAME") is Some(Bool(pipe_value)) else {
     abort("expected PIPE|NAME define")
   }
   debug_inspect(pipe_value, content="false")
@@ -822,19 +802,18 @@ test "naga_oil: define metadata follows upstream regex character classes" {
 ///|
 test "naga_oil: shader-def token parsing keeps upstream underscore tails" {
   let metadata = metadata_or_abort("#define 1_NAME false\n#define BAD 1_name\n")
-  guard metadata.defines.get("1_NAME")
-    is Some(@common.ShaderDefValue::Bool(one_name)) else {
+  guard metadata.defines.get("1_NAME") is Some(Bool(one_name)) else {
     abort("expected full digit-leading underscore define name")
   }
   debug_inspect(one_name, content="false")
   debug_inspect(metadata.defines.contains("1"), content="false")
-  guard metadata.defines.get("BAD") is Some(@common.ShaderDefValue::Bool(bad)) else {
+  guard metadata.defines.get("BAD") is Some(Bool(bad)) else {
     abort("expected malformed underscore value to follow upstream fallback")
   }
   debug_inspect(bad, content="false")
 
   let shader_defs = empty_shader_defs()
-  shader_defs.set("1_NAME", @common.ShaderDefValue::UInt(3U))
+  shader_defs.set("1_NAME", UInt(3U))
   let output = @preprocess.Preprocessor::default().preprocess(
     "let value = #1_NAME;\n", shader_defs,
   ) catch {
@@ -879,8 +858,8 @@ test "naga_oil: directive keywords without required tail whitespace stay as sour
 ///|
 test "naga_oil: shader-def replacement follows upstream first-match loop" {
   let shader_defs = empty_shader_defs()
-  shader_defs.set("KNOWN", @common.ShaderDefValue::Int(7))
-  shader_defs.set("KNOWN_BRACED", @common.ShaderDefValue::Int(9))
+  shader_defs.set("KNOWN", Int(7))
+  shader_defs.set("KNOWN_BRACED", Int(9))
   let output = @preprocess.Preprocessor::default().preprocess(
     "let a = #MISSING + #KNOWN;\nlet b = #{MISSING_BRACED} + #{KNOWN_BRACED};\n",
     shader_defs,
@@ -900,12 +879,12 @@ test "naga_oil: shader-def replacement follows upstream first-match loop" {
 ///|
 test "naga_oil: shader-def replacement width advances later diagnostics" {
   let shader_defs = empty_shader_defs()
-  shader_defs.set("LONG", @common.ShaderDefValue::UInt(1234567890U))
+  shader_defs.set("LONG", UInt(1234567890U))
   let _ = @preprocess.Preprocessor::default().preprocess(
     "#import a::Thing\n#import b::Thing\nfn entry() -> u32 {\n  let x = #LONG;\n  var y: Thing;\n}\n",
     shader_defs,
   ) catch {
-    @preprocess.PreprocessError::ImportParseError(message, offset) => {
+    ImportParseError(message, offset) => {
       debug_inspect(message, content="\"Ambiguous import path for item\"")
       debug_inspect(offset, content="85")
       return
@@ -925,9 +904,9 @@ test "naga_oil: delimited shader-def references require regex name body" {
   debug_inspect(metadata.effective_defs.contains("KNOWN_OK"), content="true")
 
   let shader_defs = empty_shader_defs()
-  shader_defs.set("KNOWN BAD", @common.ShaderDefValue::Int(1))
-  shader_defs.set("KNOWN+BAD", @common.ShaderDefValue::Int(2))
-  shader_defs.set("KNOWN_OK", @common.ShaderDefValue::Int(3))
+  shader_defs.set("KNOWN BAD", Int(1))
+  shader_defs.set("KNOWN+BAD", Int(2))
+  shader_defs.set("KNOWN_OK", Int(3))
   let output = @preprocess.Preprocessor::default().preprocess(
     "let a = #{KNOWN BAD};\nlet b = #{KNOWN+BAD};\nlet c = #{KNOWN_OK};\nlet d = #{ KNOWN_OK };\n",
     shader_defs,
@@ -955,8 +934,8 @@ test "naga_oil: delimited shader-def references require regex name body" {
 ///|
 test "naga_oil: shader-def regex word rejects emoji but keeps Unicode words" {
   let shader_defs = empty_shader_defs()
-  shader_defs.set("KNOWN", @common.ShaderDefValue::Int(7))
-  shader_defs.set("中文", @common.ShaderDefValue::Int(9))
+  shader_defs.set("KNOWN", Int(7))
+  shader_defs.set("中文", Int(9))
   let output = @preprocess.Preprocessor::default().preprocess(
     "let a = #KNOWN💡;\nlet b = #{KNOWN💡};\nlet c = #中文;\n", shader_defs,
   ) catch {
@@ -979,7 +958,7 @@ test "naga_oil: shader-def regex word rejects emoji but keeps Unicode words" {
 ///|
 test "naga_oil: conditional directive regex word stops before emoji" {
   let shader_defs = empty_shader_defs()
-  shader_defs.set("FLAG", @common.ShaderDefValue::Bool(true))
+  shader_defs.set("FLAG", Bool(true))
   let output = @preprocess.Preprocessor::default().preprocess(
     "#ifdef FLAG💡\nactive\n#else\ninactive\n#endif\n", shader_defs,
   ) catch {
@@ -1001,7 +980,7 @@ test "naga_oil: conditional directive regex word stops before emoji" {
 ///|
 test "naga_oil: conditional directive keywords require trailing whitespace" {
   let shader_defs = empty_shader_defs()
-  shader_defs.set("|FLAG", @common.ShaderDefValue::Bool(true))
+  shader_defs.set("|FLAG", Bool(true))
   let direct = @preprocess.Preprocessor::default().preprocess(
     "#ifdef|FLAG\nbody\n", shader_defs,
   ) catch {
@@ -1136,7 +1115,7 @@ test "naga_oil: diagnostic directive accepts whitespace-only severity capture" {
       "diagnostic( , derivative_uniformity);\nfn shade() {}\n",
     ),
   ) catch {
-    @metadata.MetadataError::InvalidWgslDirective(directive, position, reason) => {
+    InvalidWgslDirective(directive, position, reason) => {
       debug_inspect(
         directive,
         content="\"diagnostic( , derivative_uniformity);\"",
@@ -1216,7 +1195,7 @@ test "naga_oil: repeated whitespace empty enable body raises directive error" {
       "enable  ;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
     ),
   ) catch {
-    @metadata.MetadataError::InvalidWgslDirective(_, _, message) => {
+    InvalidWgslDirective(_, _, message) => {
       debug_inspect(message, content="\"No extensions specified\"")
       return
     }
@@ -1229,8 +1208,8 @@ test "naga_oil: repeated whitespace empty enable body raises directive error" {
 test "naga_oil: preprocessor directive regex whitespace includes form feed" {
   let ff = "\u{000C}"
   let shader_defs = empty_shader_defs()
-  shader_defs.set("FLAG", @common.ShaderDefValue::Bool(true))
-  shader_defs.set("VALUE", @common.ShaderDefValue::Int(7))
+  shader_defs.set("FLAG", Bool(true))
+  shader_defs.set("VALUE", Int(7))
   let output = @preprocess.Preprocessor::default().preprocess(
     "#\{ff}ifdef\{ff}FLAG\nlet a = #\{ff}VALUE;\n#\{ff}else\nlet a = 0;\n#\{ff}endif\n",
     shader_defs,
@@ -1264,8 +1243,8 @@ test "naga_oil: preprocessor directive regex whitespace includes Unicode spaces"
   let em = "\u{2003}"
   let ideographic = "\u{3000}"
   let shader_defs = empty_shader_defs()
-  shader_defs.set("FLAG", @common.ShaderDefValue::Bool(true))
-  shader_defs.set("VALUE", @common.ShaderDefValue::Int(9))
+  shader_defs.set("FLAG", Bool(true))
+  shader_defs.set("VALUE", Int(9))
   let output = @preprocess.Preprocessor::default().preprocess(
     "#\{nbsp}ifdef\{em}FLAG\nlet a = #\{ideographic}VALUE;\n#\{nbsp}else\nlet a = 0;\n#\{em}endif\n",
     shader_defs,
@@ -1311,7 +1290,7 @@ test "naga_oil: invalid diagnostic severity reports directive error" {
       "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
     ),
   ) catch {
-    @metadata.MetadataError::InvalidWgslDirective(directive, position, reason) => {
+    InvalidWgslDirective(directive, position, reason) => {
       debug_inspect(
         directive,
         content="\"diagnostic(note, derivative_uniformity);\"",
@@ -1332,7 +1311,7 @@ test "naga_oil: metadata parser reports invalid WGSL directive errors" {
       "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
     ),
   ) catch {
-    @metadata.MetadataError::InvalidWgslDirective(directive, _, reason) => {
+    InvalidWgslDirective(directive, _, reason) => {
       debug_inspect(
         directive,
         content="\"diagnostic(note, derivative_uniformity);\"",
@@ -1348,7 +1327,7 @@ test "naga_oil: metadata parser reports invalid WGSL directive errors" {
 ///|
 test "naga_oil: empty directive extension list reports directive error" {
   ignore(@metadata.get_preprocessor_metadata("enable , ;\nfn shade() {}\n")) catch {
-    @metadata.MetadataError::InvalidWgslDirective(directive, position, reason) => {
+    InvalidWgslDirective(directive, position, reason) => {
       debug_inspect(directive, content="\"enable , ;\"")
       debug_inspect(position.to_string(), content="\"0\"")
       debug_inspect(reason, content="\"No extensions specified\"")
@@ -1362,19 +1341,14 @@ test "naga_oil: empty directive extension list reports directive error" {
 ///|
 test "naga_oil: uint comparison rejects unsigned suffix values" {
   let defs = empty_shader_defs()
-  defs.set("COUNT", @common.ShaderDefValue::UInt(1U))
+  defs.set("COUNT", UInt(1U))
   let mut saw_suffix_error = false
   ignore(
     @preprocess.Preprocessor::default().preprocess(
       "#if COUNT == 1u\nok\n#endif\n", defs,
     ),
   ) catch {
-    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
-      name,
-      value,
-      expected,
-      _
-    ) => {
+    InvalidShaderDefComparisonValue(name, value, expected, _) => {
       debug_inspect(name, content="\"COUNT\"")
       debug_inspect(value, content="\"1u\"")
       debug_inspect(expected, content="\"uint\"")
@@ -1390,12 +1364,7 @@ test "naga_oil: uint comparison rejects unsigned suffix values" {
       "#if COUNT == -1\nok\n#endif\n", defs,
     ),
   ) catch {
-    @preprocess.PreprocessError::InvalidShaderDefComparisonValue(
-      name,
-      value,
-      expected,
-      _
-    ) => {
+    InvalidShaderDefComparisonValue(name, value, expected, _) => {
       debug_inspect(name, content="\"COUNT\"")
       debug_inspect(value, content="\"-1\"")
       debug_inspect(expected, content="\"uint\"")
@@ -1424,7 +1393,7 @@ test "naga_oil: preprocess uses Rust lines trailing newline semantics" {
 ///|
 test "naga_oil: strict ifdefs parse decommented conditions like preprocess" {
   let defs = empty_shader_defs()
-  defs.set("COUNT", @common.ShaderDefValue::Int(2))
+  defs.set("COUNT", Int(2))
   let output = @preprocess.apply_wgsl_ifdefs_strict(
     "#if COUNT /* comment before operator */ == 2\nactive\n#else\ninactive\n#endif\n",
     defs,
@@ -1452,7 +1421,7 @@ test "naga_oil: strict ifdefs apply GLSL version preprocessing" {
       empty_shader_defs(),
     ),
   ) catch {
-    @preprocess.PreprocessError::GlslInvalidVersion(_) => return
+    GlslInvalidVersion(_) => return
     _ => abort("expected invalid GLSL version strict preprocess error")
   }
   abort("expected invalid GLSL version strict preprocess error")

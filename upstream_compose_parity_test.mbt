@@ -32,7 +32,7 @@ fn upstream_parity_shader_def_values(
 ) -> Map[String, @common.ShaderDefValue] {
   let defines : Map[String, @common.ShaderDefValue] = Map([])
   for name in names {
-    defines.set(name, @common.ShaderDefValue::Bool(true))
+    defines.set(name, Bool(true))
   }
   defines
 }
@@ -174,7 +174,7 @@ fn upstream_parity_check_effective_defs_sum_with_false_three(
   expected_b : String,
 ) -> Unit {
   let shader_defs = upstream_parity_shader_def_values(names)
-  shader_defs.set("DEF_THREE", @common.ShaderDefValue::Bool(false))
+  shader_defs.set("DEF_THREE", Bool(false))
   upstream_parity_check_effective_defs_sum(
     shader_defs, expected_a, expected_b, "0u",
   )
@@ -783,10 +783,7 @@ test "naga_oil upstream: transitive virtual override replaces imported body" {
 test "naga_oil upstream: additional import plugin overrides virtual function" {
   let composer = upstream_mirror_composer("add_imports")
   let options = upstream_parity_compose_options(upstream_parity_empty_defines())
-  options.additional_imports.push(@common.ImportDefinition::{
-    import_path: "plugin",
-    items: [],
-  })
+  options.additional_imports.push({ import_path: "plugin", items: [] })
   let source = composer.compose_wgsl("top.wgsl", options) catch {
     err =>
       abort(

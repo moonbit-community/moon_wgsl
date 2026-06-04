@@ -41,7 +41,7 @@ fn wgsl_ir_struct_predeclare_order(
         }
         entry_names.add(name)
         first_uses.set(name, declaration.start())
-        entries.push(WgslStructPredeclareEntry::{
+        entries.push({
           declaration,
           name,
           source_start: declaration.start(),
@@ -62,7 +62,7 @@ fn wgsl_ir_struct_predeclare_order(
   }
   let ordered : Array[WgslStructPredeclareEntry] = []
   for entry in entries {
-    ordered.push(WgslStructPredeclareEntry::{
+    ordered.push({
       declaration: entry.declaration,
       name: entry.name,
       source_start: entry.source_start,
@@ -126,8 +126,8 @@ fn wgsl_ir_order_struct_predeclare_entries_by_dependencies(
     index_by_name.set(entries[i].name, i)
   }
   let ordered : Array[WgslStructPredeclareEntry] = []
-  let visiting : @set.Set[Int] = @set.Set([])
-  let emitted : @set.Set[Int] = @set.Set([])
+  let visiting : @set.Set[Int] = Set([])
+  let emitted : @set.Set[Int] = Set([])
   for i in 0..<entries.length() {
     wgsl_ir_push_struct_predeclare_entry_with_dependencies(
       entries, index_by_name, i, visiting, emitted, ordered,

@@ -45,7 +45,7 @@ fn preprocess_check_scope_directive(
   let tail = wgsl_effective_directive_tail(directive)
   let has_required_separator = directive.has_required_tail_separator()
   match wgsl_effective_directive_kind(directive) {
-    WgslDirectiveKind::Ifdef =>
+    Ifdef =>
       if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => {
@@ -60,7 +60,7 @@ fn preprocess_check_scope_directive(
       } else {
         (false, None)
       }
-    WgslDirectiveKind::Ifndef =>
+    Ifndef =>
       if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => {
@@ -75,13 +75,13 @@ fn preprocess_check_scope_directive(
       } else {
         (false, None)
       }
-    WgslDirectiveKind::If =>
+    If =>
       if has_required_separator {
         check_if_operator_scope(shader_defs, tail, scope, offset, false)
       } else {
         (false, None)
       }
-    WgslDirectiveKind::Else => {
+    Else => {
       let else_tail_has_space = wgsl_text_starts_with_tokenized_space(tail)
       if else_tail_has_space &&
         wgsl_required_space_word_tail(tail, "ifdef") is Some(rest) &&
@@ -115,7 +115,7 @@ fn preprocess_check_scope_directive(
       }
       (true, None)
     }
-    WgslDirectiveKind::Endif => {
+    Endif => {
       if scope is Some(scope_state) {
         scope_state.pop(offset)
       }
@@ -246,11 +246,9 @@ fn preprocess_rewrite_source_item(
     true,
   ) catch {
     AmbiguousImport(position) =>
-      raise PreprocessError::ImportParseError(
-        "Ambiguous import path for item", position,
-      )
+      raise ImportParseError("Ambiguous import path for item", position)
     InvalidWgslSyntax(message, position) =>
-      raise PreprocessError::ImportParseError(message, position)
+      raise ImportParseError(message, position)
   }
   ignore(
     import_state.rewrite_source(
@@ -260,11 +258,9 @@ fn preprocess_rewrite_source_item(
       false,
     ) catch {
       AmbiguousImport(position) =>
-        raise PreprocessError::ImportParseError(
-          "Ambiguous import path for item", position,
-        )
+        raise ImportParseError("Ambiguous import path for item", position)
       InvalidWgslSyntax(message, position) =>
-        raise PreprocessError::ImportParseError(message, position)
+        raise ImportParseError(message, position)
     },
   )
   preprocess_pad_rewritten_source_item(rewritten_original, replaced_decommented)

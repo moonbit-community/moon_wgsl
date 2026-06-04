@@ -16,17 +16,12 @@ fn WgslIrLowerer::image_expression_result_type(
           Some(
             self.intern_type(
               "vec4<\{wgsl_ir_scalar_name(kind, 4)}>",
-              TypeInner::Vector(Quad, Scalar::Scalar(kind, 4)),
+              Vector(Quad, Scalar(kind, 4)),
             ),
           )
         Image(_, _, Depth(_)) =>
           if gather != None {
-            Some(
-              self.intern_type(
-                "vec4<f32>",
-                TypeInner::Vector(Quad, Scalar::Scalar(Float, 4)),
-              ),
-            )
+            Some(self.intern_type("vec4<f32>", Vector(Quad, Scalar(Float, 4))))
           } else if depth_ref != None {
             self.type_cache.get("f32")
           } else {
@@ -37,17 +32,12 @@ fn WgslIrLowerer::image_expression_result_type(
           Some(
             self.intern_type(
               "vec4<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-              TypeInner::Vector(Quad, scalar),
+              Vector(Quad, scalar),
             ),
           )
         }
         Image(_, _, External) =>
-          Some(
-            self.intern_type(
-              "vec4<f32>",
-              TypeInner::Vector(Quad, Scalar::Scalar(Float, 4)),
-            ),
-          )
+          Some(self.intern_type("vec4<f32>", Vector(Quad, Scalar(Float, 4))))
         _ => None
       }
     None => None
@@ -352,7 +342,7 @@ fn WgslIrLowerer::scalar_type_handle(
     AbstractInt => "__abstract_int"
     AbstractFloat => "__abstract_float"
   }
-  self.intern_type(name, TypeInner::Scalar(scalar))
+  self.intern_type(name, Scalar(scalar))
 }
 
 ///|
@@ -370,7 +360,7 @@ fn wgsl_ir_scalar_name(kind : ScalarKind, width : Int) -> String {
 ///|
 fn wgsl_ir_storage_format_scalar(format : StorageFormat) -> Scalar {
   match format {
-    R64Uint => Scalar::Scalar(Uint, 8)
+    R64Uint => Scalar(Uint, 8)
     R8Uint
     | R16Uint
     | Rg8Uint
@@ -380,7 +370,7 @@ fn wgsl_ir_storage_format_scalar(format : StorageFormat) -> Scalar {
     | Rgb10a2Uint
     | Rg32Uint
     | Rgba16Uint
-    | Rgba32Uint => Scalar::Scalar(Uint, 4)
+    | Rgba32Uint => Scalar(Uint, 4)
     R8Sint
     | R16Sint
     | Rg8Sint
@@ -389,8 +379,8 @@ fn wgsl_ir_storage_format_scalar(format : StorageFormat) -> Scalar {
     | Rgba8Sint
     | Rg32Sint
     | Rgba16Sint
-    | Rgba32Sint => Scalar::Scalar(Sint, 4)
-    _ => Scalar::Scalar(Float, 4)
+    | Rgba32Sint => Scalar(Sint, 4)
+    _ => Scalar(Float, 4)
   }
 }
 
@@ -405,27 +395,27 @@ fn wgsl_ir_gather_component_from_node(
           match wgsl_ir_numeric_literal_to_small_int(literal) {
             Some(value) =>
               match value {
-                0 => SwizzleComponent::X
-                1 => SwizzleComponent::Y
-                2 => SwizzleComponent::Z
-                3 => SwizzleComponent::W
+                0 => X
+                1 => Y
+                2 => Z
+                3 => W
                 _ =>
-                  raise WgslIrLowerError::UnsupportedExpression(
+                  raise UnsupportedExpression(
                     "textureGather component must be 0, 1, 2, or 3",
                   )
               }
             None =>
-              raise WgslIrLowerError::UnsupportedExpression(
+              raise UnsupportedExpression(
                 "textureGather component must be an integer literal",
               )
           }
         _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
+          raise UnsupportedExpression(
             "textureGather component must be an integer literal",
           )
       }
     _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "textureGather component must be an integer literal",
       )
   }
@@ -472,7 +462,7 @@ fn wgsl_ir_member_index(name : String) -> Int raise WgslIrLowerError {
     "z" | "b" => 2
     "w" | "a" => 3
     _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "member access requires resolved struct member index: \{name}",
       )
   }
@@ -486,10 +476,10 @@ fn wgsl_ir_swizzle_components(name : String) -> Array[SwizzleComponent]? {
   let components : Array[SwizzleComponent] = []
   for i in 0..<name.length() {
     match name.code_unit_at(i).to_int() {
-      120 | 114 => components.push(SwizzleComponent::X)
-      121 | 103 => components.push(SwizzleComponent::Y)
-      122 | 98 => components.push(SwizzleComponent::Z)
-      119 | 97 => components.push(SwizzleComponent::W)
+      120 | 114 => components.push(X)
+      121 | 103 => components.push(Y)
+      122 | 98 => components.push(Z)
+      119 | 97 => components.push(W)
       _ => return None
     }
   }
@@ -685,13 +675,13 @@ fn wgsl_ir_optional_handle_array_is_empty(handles : Array[Handle?]) -> Bool {
 ///|
 fn wgsl_ir_image_dimension_from_name(name : String) -> ImageDimension {
   if name.contains("_1d") {
-    ImageDimension::D1
+    D1
   } else if name.contains("_3d") {
-    ImageDimension::D3
+    D3
   } else if name.contains("cube") {
-    ImageDimension::Cube
+    Cube
   } else {
-    ImageDimension::D2
+    D2
   }
 }
 
@@ -741,6 +731,6 @@ fn wgsl_ir_storage_format_from_name(
     "rg16snorm" => Rg16Snorm
     "rgba16unorm" => Rgba16Unorm
     "rgba16snorm" => Rgba16Snorm
-    _ => raise WgslIrLowerError::UnsupportedType("storage format \{name}")
+    _ => raise UnsupportedType("storage format \{name}")
   }
 }

@@ -40,15 +40,15 @@ fn replace_comments_line(
   let mut i = 0
   while i < line_in.length() {
     let marker_index = match current_state {
-      CommentState::None => find_first_comment_or_quote_marker(line_in, i)
-      CommentState::Block(_) => find_first_block_marker(line_in, i)
-      CommentState::Quote => find_first_quote_marker(line_in, i)
+      None => find_first_comment_or_quote_marker(line_in, i)
+      Block(_) => find_first_block_marker(line_in, i)
+      Quote => find_first_quote_marker(line_in, i)
     }
 
     guard marker_index is Some(marker) else {
       let section_end = line_in.length()
       match current_state {
-        CommentState::Block(_) =>
+        Block(_) =>
           output = output +
             comment_spaces(
               line_in[section_start:section_end].to_owned(),
@@ -61,7 +61,7 @@ fn replace_comments_line(
 
     let (marker_start, marker_text) = marker
     match current_state {
-      CommentState::Block(_) =>
+      Block(_) =>
         output = output +
           comment_spaces(
             line_in[section_start:marker_start].to_owned(),
@@ -81,24 +81,24 @@ fn replace_comments_line(
       }
       "/*" => {
         current_state = match current_state {
-          CommentState::None => CommentState::Block(1)
-          CommentState::Block(level) => CommentState::Block(level + 1)
-          CommentState::Quote => current_state
+          None => Block(1)
+          Block(level) => Block(level + 1)
+          Quote => current_state
         }
         output = "\{output}  "
       }
       "*/" => {
         current_state = match current_state {
-          CommentState::Block(1) => CommentState::None
-          CommentState::Block(level) => CommentState::Block(level - 1)
+          Block(1) => None
+          Block(level) => Block(level - 1)
           _ => current_state
         }
         output = "\{output}  "
       }
       "\"" => {
         current_state = match current_state {
-          CommentState::None => CommentState::Quote
-          CommentState::Quote => CommentState::None
+          None => Quote
+          Quote => None
           _ => current_state
         }
         output = "\{output}\""

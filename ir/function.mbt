@@ -69,7 +69,7 @@ pub(all) struct Block {
 
 ///|
 pub fn Block::Block() -> Block {
-  Block::{ statements: [] }
+  { statements: [] }
 }
 
 ///|
@@ -113,7 +113,7 @@ pub(all) struct Function {
 
 ///|
 pub fn Function::Function(name : String?) -> Function {
-  Function::{
+  {
     name,
     source_start: -1,
     generated_import: false,
@@ -122,7 +122,7 @@ pub fn Function::Function(name : String?) -> Function {
     local_variables: LocalVariableArena(),
     expressions: ExpressionArena(),
     named_expressions: [],
-    body: Block::Block(),
+    body: Block(),
     diagnostic_filter_leaf: None,
   }
 }
@@ -162,7 +162,7 @@ fn wgsl_ir_function_replace_named_expression(
 ) -> Bool {
   for index in 0..<function.named_expressions.length() {
     if function.named_expressions[index].handle == handle {
-      function.named_expressions[index] = NamedExpression::{ handle, name, ty }
+      function.named_expressions[index] = { handle, name, ty }
       return true
     }
   }

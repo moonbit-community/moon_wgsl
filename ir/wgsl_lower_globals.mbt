@@ -55,9 +55,9 @@ fn WgslIrLowerer::predeclare_struct_declaration(
   if self.type_cache.contains(struct_decl.name().name()) {
     return
   }
-  let handle = self.shader_module.append_type(Type::{
+  let handle = self.shader_module.append_type({
     name: Some(struct_decl.name().name()),
-    inner: TypeInner::Struct([], 1),
+    inner: Struct([], 1),
   })
   self.type_cache.set(struct_decl.name().name(), handle)
 }
@@ -93,7 +93,7 @@ fn WgslIrLowerer::predeclare_function_declaration(
     local_variables: LocalVariableArena(),
     expressions: ExpressionArena(),
     named_expressions: [],
-    body: Block::Block(),
+    body: Block(),
     diagnostic_filter_leaf: None,
   }
   let handle = self.shader_module.append_function(placeholder)
@@ -115,7 +115,7 @@ fn WgslIrLowerer::predeclare_global_variable(
       self.infer_local_type_from_initializer(name, global.initializer_ref())
   }
   let ty = self.concretize_abstract_storage_type(inferred_ty)
-  let handle = self.shader_module.append_global_variable(GlobalVariable::{
+  let handle = self.shader_module.append_global_variable({
     name: Some(name),
     space: self.global_address_space(global.template_list(), ty),
     binding: wgsl_ir_resource_binding_from_attributes(global.attributes()),
@@ -158,9 +158,9 @@ fn WgslIrLowerer::predeclare_constant_declaration(
   }
   let ty = self.infer_constant_declaration_type(constant)
   let placeholder_init = self.shader_module.append_global_expression(
-    Expression::ZeroValue(ty),
+    ZeroValue(ty),
   )
-  let handle = self.shader_module.append_constant(Constant::{
+  let handle = self.shader_module.append_constant({
     name: Some(name),
     generated_import: self.function_has_generated_import_provenance(name),
     inline_value: self.constant_should_inline_generated_import_value(name),
@@ -181,7 +181,7 @@ fn WgslIrLowerer::predeclare_override_declaration(
     return
   }
   if self.override_type_inference_stack.contains(name) {
-    raise WgslIrLowerError::MissingType(name)
+    raise MissingType(name)
   }
   self.override_type_inference_stack.add(name)
   let ty = match override_decl.ty_ref() {
@@ -192,7 +192,7 @@ fn WgslIrLowerer::predeclare_override_declaration(
         override_decl.initializer_ref(),
       )
   }
-  let handle = self.shader_module.append_override(Override::{
+  let handle = self.shader_module.append_override({
     name: Some(name),
     id: wgsl_ir_id_from_attributes(override_decl.attributes()),
     ty,
@@ -251,7 +251,7 @@ fn WgslIrLowerer::lower_type_alias(
   alias_decl : @ast.WgslTypeAlias,
 ) -> Unit raise WgslIrLowerError {
   guard alias_decl.ty_ref() is Some(ty_ref) else {
-    raise WgslIrLowerError::MissingType(alias_decl.name().name())
+    raise MissingType(alias_decl.name().name())
   }
   let target = self.lower_type_ref(ty_ref)
   self.type_cache.set(alias_decl.name().name(), target)
@@ -267,7 +267,7 @@ fn WgslIrLowerer::lower_struct_declaration(
   let mut max_align = 1
   for struct_member in struct_decl.members() {
     guard struct_member.ty_ref() is Some(member_ty_ref) else {
-      raise WgslIrLowerError::MissingType(struct_member.name().name())
+      raise MissingType(struct_member.name().name())
     }
     let ty = self.lower_type_ref(member_ty_ref)
     let layout = self.type_layout(ty)
@@ -280,7 +280,7 @@ fn WgslIrLowerer::lower_struct_declaration(
       layout,
     )
     offset = wgsl_ir_align_to(offset, member_align)
-    members.push(StructMember::{
+    members.push({
       name: Some(struct_member.name().name()),
       ty,
       binding: wgsl_ir_binding_from_attributes(struct_member.attributes()),
@@ -306,7 +306,7 @@ fn WgslIrLowerer::lower_struct_declaration(
   let span = wgsl_ir_align_to(if offset == 0 { 1 } else { offset }, max_align)
   let ty = Type::{
     name: Some(struct_decl.name().name()),
-    inner: TypeInner::Struct(members, span),
+    inner: Struct(members, span),
   }
   match self.type_cache.get(struct_decl.name().name()) {
     Some(handle) => self.shader_module.types.set(handle, ty)
@@ -398,7 +398,7 @@ fn WgslIrLowerer::lower_constant(
     return
   }
   if self.constant_lowering_stack.contains(name) {
-    raise WgslIrLowerError::MissingType(name)
+    raise MissingType(name)
   }
   self.constant_lowering_stack.add(name)
   let explicit_ty = match constant.ty_ref() {
@@ -409,7 +409,7 @@ fn WgslIrLowerer::lower_constant(
     Some(handle) =>
       match self.shader_module.constants.items.get(handle.index()) {
         Some(existing) => (handle, existing.ty)
-        None => raise WgslIrLowerError::MissingType(name)
+        None => raise MissingType(name)
       }
     None => {
       let ty = match explicit_ty {
@@ -421,9 +421,9 @@ fn WgslIrLowerer::lower_constant(
           )
       }
       let placeholder_init = self.shader_module.append_global_expression(
-        Expression::ZeroValue(ty),
+        ZeroValue(ty),
       )
-      let handle = self.shader_module.append_constant(Constant::{
+      let handle = self.shader_module.append_constant({
         name: Some(name),
         generated_import: self.function_has_generated_import_provenance(name),
         inline_value: self.constant_should_inline_generated_import_value(name),
@@ -438,10 +438,9 @@ fn WgslIrLowerer::lower_constant(
   let init = match constant.initializer_ref() {
     Some(expr) =>
       self.lower_global_expression_ref_with_expected(expr, explicit_ty)
-    None =>
-      self.shader_module.append_global_expression(Expression::ZeroValue(ty))
+    None => self.shader_module.append_global_expression(ZeroValue(ty))
   }
-  module_set_constant(self.shader_module, handle, Constant::{
+  module_set_constant(self.shader_module, handle, {
     name: Some(name),
     generated_import: self.function_has_generated_import_provenance(name),
     inline_value: self.constant_should_inline_generated_import_value(name),
@@ -459,7 +458,7 @@ fn WgslIrLowerer::ensure_constant_declaration_lowered(
   name : String,
 ) -> Handle? raise WgslIrLowerError {
   if self.constant_lowering_stack.contains(name) {
-    raise WgslIrLowerError::MissingType(name)
+    raise MissingType(name)
   }
   match self.constant_names.get(name) {
     Some(handle) =>

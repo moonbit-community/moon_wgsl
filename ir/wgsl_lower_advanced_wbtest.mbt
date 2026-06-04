@@ -969,7 +969,7 @@ test "WGSL IR lowerer preserves else-if conditions as control flow" {
   let mut reject_block : Block? = None
   for statement in statements {
     match statement {
-      Statement::If(_, _, reject) =>
+      If(_, _, reject) =>
         if reject_block == None {
           reject_block = Some(reject)
         }
@@ -980,7 +980,7 @@ test "WGSL IR lowerer preserves else-if conditions as control flow" {
   let mut saw_nested_if = false
   for statement in reject.statements {
     match statement {
-      Statement::If(_, _, _) => saw_nested_if = true
+      If(_, _, _) => saw_nested_if = true
       _ => ()
     }
   }

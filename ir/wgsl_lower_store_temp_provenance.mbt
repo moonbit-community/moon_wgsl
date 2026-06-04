@@ -30,7 +30,7 @@ fn wgsl_ir_record_store_value_temporary_references(
               wgsl_ir_store_value_contains_generated_temporary(
                 function, handle, reference, local_var,
               ) {
-              function.local_variables.items[local_handle.index()] = LocalVariable::{
+              function.local_variables.items[local_handle.index()] = {
                 name: local_var.name,
                 kind: local_var.kind,
                 generated_temporary: local_var.generated_temporary,

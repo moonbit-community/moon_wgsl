@@ -1,11 +1,8 @@
 ///|
 using @ast {
-  type WgslDirectiveKind,
   type WgslFunction,
-  type WgslFunctionQualifier,
   type WgslGlobalDecl,
   type WgslGlobalDeclData,
-  type WgslGlobalDeclKind,
   type WgslIdent,
 }
 
@@ -21,10 +18,7 @@ using @ast_analysis {
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 
 ///|
-using @directive {
-  type WgslDirectiveScanItemKind,
-  parse_wgsl_directive_scan_items,
-}
+using @directive {parse_wgsl_directive_scan_items}
 
 ///|
 using @ir {type WgslIrSymbolIdentity}

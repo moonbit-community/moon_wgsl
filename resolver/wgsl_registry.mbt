@@ -21,7 +21,7 @@ pub struct WgslSourceRegistry {
 
 ///|
 pub fn WgslSourceRegistry::default() -> WgslSourceRegistry {
-  WgslSourceRegistry::{
+  {
     rel_to_source_ref: Ref(Map([])),
     module_to_rel_ref: Ref(Map([])),
     module_to_rels_ref: Ref(Map([])),

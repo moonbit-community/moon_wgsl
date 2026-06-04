@@ -24,7 +24,7 @@ fn wgsl_analysis_string_list_push_unique(
 fn wgsl_analysis_declaration_name_map(
   declarations : Array[WgslGlobalDecl],
 ) -> (@set.Set[String], Map[String, Int]) {
-  let declaration_names : @set.Set[String] = @set.Set([])
+  let declaration_names : @set.Set[String] = Set([])
   let declaration_indexes : Map[String, Int] = Map([])
   for i in 0..<declarations.length() {
     let decl = declarations[i]
@@ -60,8 +60,8 @@ fn wgsl_analysis_collect_declaration_dependencies(
   dependencies : Array[String],
 ) -> Unit {
   match declaration_data {
-    WgslGlobalDeclData::Raw => ()
-    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) => ()
+    Raw => ()
+    Directive(_) | Import(_) => ()
     _ => {
       let identifiers : Array[WgslIdent] = []
       collect_wgsl_decl_identifier_nodes(declaration_data, identifiers)
@@ -82,7 +82,7 @@ fn collect_wgsl_reachable_declaration_names(
     for decl in declarations {
       wgsl_analysis_string_list_push_unique(included_names, decl.name())
     }
-    return WgslReachableDeclarations::{ included_names, missing_root_items: [] }
+    return { included_names, missing_root_items: [] }
   }
   let (declaration_names, declaration_indexes) = wgsl_analysis_declaration_name_map(
     declarations,
@@ -100,7 +100,7 @@ fn collect_wgsl_reachable_declaration_names(
     for decl in declarations {
       wgsl_analysis_string_list_push_unique(included_names, decl.name())
     }
-    return WgslReachableDeclarations::{ included_names, missing_root_items }
+    return { included_names, missing_root_items }
   }
   while worklist.length() > 0 {
     let name = worklist.pop().unwrap()
@@ -123,5 +123,5 @@ fn collect_wgsl_reachable_declaration_names(
       }
     }
   }
-  WgslReachableDeclarations::{ included_names, missing_root_items }
+  { included_names, missing_root_items }
 }

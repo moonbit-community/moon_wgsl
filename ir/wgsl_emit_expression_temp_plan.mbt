@@ -93,7 +93,7 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
   let elided_local_alias_targets = wgsl_ir_naga_function_elided_local_alias_targets(
     shader_module, function, materialized_expressions, projection_aliases,
   )
-  WgslIrNagaFunctionBodyPlan::{
+  {
     materialized_expressions,
     temporary_initializer_expressions: wgsl_ir_naga_function_temporary_initializer_expression_indices(
       function,
@@ -205,7 +205,7 @@ fn WgslIrNagaFunctionBodyPlan::statement_plan(
         emitted_leading_var_declaration = true
       }
     }
-    plan.push(WgslIrNagaStatementPlanItem::{ statement, skip, blank_before })
+    plan.push({ statement, skip, blank_before })
   }
   plan
 }
@@ -230,7 +230,7 @@ fn wgsl_ir_naga_function_body_local_declarations(
   for index in 0..<function.local_variables.items.length() {
     match function.local_variables.items.get(index) {
       Some(local_var) =>
-        if local_var.kind == LocalVariableKind::Var &&
+        if local_var.kind == Var &&
           !local_var.generated_temporary &&
           elided_local_alias_targets.get(index) == None {
           order.push(index)
@@ -245,7 +245,7 @@ fn wgsl_ir_naga_function_body_local_declarations(
 fn wgsl_ir_naga_function_temporary_initializer_expression_indices(
   function : Function,
 ) -> @set.Set[Int] {
-  let indices : @set.Set[Int] = @set.Set([])
+  let indices : @set.Set[Int] = Set([])
   for local_var in function.local_variables.items {
     if local_var.generated_temporary {
       match local_var.init {
@@ -294,7 +294,7 @@ fn wgsl_ir_statement_is_any_local_var_declaration(
   match statement {
     Declare(handle) =>
       match function.local_variables.items.get(handle.index()) {
-        Some(local_var) => local_var.kind == LocalVariableKind::Var
+        Some(local_var) => local_var.kind == Var
         None => false
       }
     _ => false
@@ -310,8 +310,7 @@ fn wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
     Declare(handle) =>
       match function.local_variables.items.get(handle.index()) {
         Some(local_var) =>
-          local_var.kind == LocalVariableKind::Var &&
-          !local_var.generated_temporary
+          local_var.kind == Var && !local_var.generated_temporary
         None => false
       }
     _ => false
@@ -479,8 +478,7 @@ fn WgslIrFinalNamePlan::reserve_function_var_local_names_from_arena(
   for local_index in body_plan.local_declaration_order() {
     let local_handle = Handle::Handle(local_index)
     let local_var = function.local_variables.items[local_index]
-    if local_var.kind == LocalVariableKind::Var &&
-      !local_var.generated_temporary {
+    if local_var.kind == Var && !local_var.generated_temporary {
       let key = wgsl_ir_emit_local_name_key(origin, local_handle)
       if self.names.get(key) == None {
         self.names.set(
@@ -532,7 +530,7 @@ fn wgsl_ir_naga_function_elided_local_alias_targets(
             materialized_expressions,
             targets,
             projection_aliases,
-            Handle::Handle(local_index),
+            Handle(local_index),
           ) {
           Some(target) => {
             targets.set(local_index, target)
@@ -559,7 +557,7 @@ fn wgsl_ir_naga_local_alias_target_expression(
     is Some(local_var) else {
     return None
   }
-  guard local_var.kind == LocalVariableKind::Let else { return None }
+  guard local_var.kind == Let else { return None }
   guard !local_var.generated_temporary else { return None }
   guard local_var.init is Some(init) else { return None }
   wgsl_ir_naga_expression_alias_target(
@@ -671,7 +669,7 @@ fn wgsl_ir_naga_local_alias_is_forwarded_by_local_declaration(
 ) -> Bool {
   let mut reference_count = 0
   for expression in function.expressions.items {
-    if expression == Expression::LocalVariable(local_handle) {
+    if expression == LocalVariable(local_handle) {
       reference_count += 1
     }
   }
@@ -869,7 +867,7 @@ fn wgsl_ir_naga_image_load_result_is_vector(
 fn wgsl_ir_function_materialized_expression_indices(
   function : Function,
 ) -> @set.Set[Int] {
-  let indices : @set.Set[Int] = @set.Set([])
+  let indices : @set.Set[Int] = Set([])
   for local_var in function.local_variables.items {
     if local_var.generated_temporary {
       match local_var.init {
@@ -982,7 +980,7 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
     implicit_naga_load_slots +
     reused_resource_operand_slots +
     projected_temporary_slots
-  WgslIrNagaTemporaryIndexTrace::{
+  {
     skipped,
     base_index,
     adjusted_base_index,
@@ -1098,7 +1096,7 @@ fn wgsl_ir_emit_reused_resource_operand_slot_offset(
   function : Function,
   limit : Handle,
 ) -> Int {
-  let seen : @set.Set[Int] = @set.Set([])
+  let seen : @set.Set[Int] = Set([])
   let mut offset = 0
   for index in 0..<=limit.index() {
     match function.expressions.items.get(index) {

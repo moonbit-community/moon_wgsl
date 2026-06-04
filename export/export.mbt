@@ -18,10 +18,7 @@ fn export_composer_error_from_wgsl_parse_error(
 ) -> ComposerError {
   match error {
     UnparsedDeclaration(text, offset) =>
-      ComposerError::InvalidWgslSyntax(
-        "declaration could not be parsed: \{text}",
-        offset,
-      )
+      InvalidWgslSyntax("declaration could not be parsed: \{text}", offset)
   }
 }
 
@@ -75,7 +72,7 @@ fn match_wgsl_source_catalog_entry(
   guard catalog.get(declaration.name()) is Some(entries) else {
     push_wgsl_diagnostic(
       diagnostics,
-      WgslDiagnosticSeverity::Warn,
+      Warn,
       "source map entry could not be resolved for declaration",
       None,
       Some(declaration.name()),
@@ -97,7 +94,7 @@ fn match_wgsl_source_catalog_entry(
   }
   push_wgsl_diagnostic(
     diagnostics,
-    WgslDiagnosticSeverity::Warn,
+    Warn,
     "source map entry is ambiguous for declaration",
     None,
     Some(declaration.name()),
@@ -114,7 +111,7 @@ fn match_wgsl_source_origin_entry(
   guard origins.get(declaration.name()) is Some(entries) else {
     push_wgsl_diagnostic(
       diagnostics,
-      WgslDiagnosticSeverity::Warn,
+      Warn,
       "source origin entry could not be resolved for declaration",
       None,
       Some(declaration.name()),
@@ -126,7 +123,7 @@ fn match_wgsl_source_origin_entry(
   }
   push_wgsl_diagnostic(
     diagnostics,
-    WgslDiagnosticSeverity::Warn,
+    Warn,
     "source origin entry is ambiguous for declaration",
     None,
     Some(declaration.name()),
@@ -146,7 +143,7 @@ fn serialize_wgsl_export_output(
   for missing_root in missing_root_items {
     push_wgsl_diagnostic(
       diagnostics,
-      WgslDiagnosticSeverity::Warn,
+      Warn,
       "tree-shake root item was not found in the composed WGSL",
       None,
       Some(missing_root),
@@ -180,7 +177,7 @@ fn collect_missing_wgsl_export_roots(
   declarations : Array[WgslEmittedDeclaration],
   root_items : Array[String],
 ) -> Array[String] {
-  let declared : @set.Set[String] = @set.Set([])
+  let declared : @set.Set[String] = Set([])
   for declaration in declarations {
     declared.add(declaration.name())
   }
@@ -205,7 +202,7 @@ pub fn export_wgsl_with_options(
     prepared.source,
     export_options.root_items,
   ) catch {
-    error => raise ComposerError::InvalidIr(error.message())
+    error => raise InvalidIr(error.message())
   }
   let declarations = collect_wgsl_named_declarations_strict(tree_shaken_source) catch {
     error => raise export_composer_error_from_wgsl_parse_error(error)

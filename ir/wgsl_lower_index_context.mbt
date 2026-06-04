@@ -35,14 +35,12 @@ fn WgslIrLowerer::lower_function_static_or_dynamic_index(
 ) -> Handle raise WgslIrLowerError {
   match self.static_index_for_naga_access_index(base_handle, index, function) {
     Some(static_index) =>
-      function.expressions.append(
-        Expression::AccessIndex(base_handle, static_index),
-      )
+      function.expressions.append(AccessIndex(base_handle, static_index))
     None => {
       let index_handle = self.lower_function_expression_node(
         index, function, scope,
       )
-      function.expressions.append(Expression::Access(base_handle, index_handle))
+      function.expressions.append(Access(base_handle, index_handle))
     }
   }
 }

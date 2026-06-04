@@ -22,13 +22,13 @@ fn WgslIrLowerer::lower_function_expression_ref_with_expected(
   expected_ty : Handle?,
 ) -> Handle raise WgslIrLowerError {
   guard expr_ref.root() is Some(root) else {
-    raise WgslIrLowerError::UnsupportedExpression("empty function expression")
+    raise UnsupportedExpression("empty function expression")
   }
   self.lower_function_expression_node_with_expected(
     root, function, scope, expected_ty,
   ) catch {
     UnsupportedExpression(message) =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "\{message} at \{expr_ref.start()}..\{expr_ref.end()}: \{wgsl_ir_expr_ref_token_text(expr_ref)}",
       )
     error => raise error
@@ -52,7 +52,7 @@ fn WgslIrLowerer::lower_function_lvalue_ref(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   guard expr_ref.root() is Some(root) else {
-    raise WgslIrLowerError::UnsupportedExpression("empty lvalue")
+    raise UnsupportedExpression("empty lvalue")
   }
   self.lower_function_lvalue_node(root, function, scope)
 }
@@ -87,10 +87,7 @@ fn WgslIrLowerer::lower_function_lvalue_node(
   match node.kind() {
     Identifier(name) => {
       match scope.local_constants.get(name.name()) {
-        Some(_) =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "local const is not assignable",
-          )
+        Some(_) => raise UnsupportedExpression("local const is not assignable")
         None => ()
       }
       match scope.locals.get(name.name()) {
@@ -98,9 +95,7 @@ fn WgslIrLowerer::lower_function_lvalue_node(
           match function.local_variables.items.get(handle.index()) {
             Some(local_var) =>
               if local_var.kind == Let {
-                raise WgslIrLowerError::UnsupportedExpression(
-                  "local let is not assignable",
-                )
+                raise UnsupportedExpression("local let is not assignable")
               }
             None => ()
           }
@@ -117,9 +112,7 @@ fn WgslIrLowerer::lower_function_lvalue_node(
               function,
             )
           } else {
-            raise WgslIrLowerError::UnsupportedExpression(
-              "function argument is not assignable",
-            )
+            raise UnsupportedExpression("function argument is not assignable")
           }
         None => ()
       }
@@ -135,24 +128,22 @@ fn WgslIrLowerer::lower_function_lvalue_node(
                 self.global_variable_reuses_pointer_expression(handle),
               )
           }
-        None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+        None => raise UnknownIdentifier(name.name())
       }
     }
     Group(inner) => self.lower_function_lvalue_node(inner, function, scope)
     Unary(op, expr) =>
-      if op == @ast.WgslExprOperator::Multiply {
+      if op == Multiply {
         self.lower_function_expression_node(expr, function, scope)
       } else {
-        raise WgslIrLowerError::UnsupportedExpression(
-          "unsupported lvalue shape",
-        )
+        raise UnsupportedExpression("unsupported lvalue shape")
       }
     Member(base, member_name) => {
       let base_handle = self.lower_function_member_lvalue_base(
         base, function, scope,
       )
       function.expressions.append(
-        Expression::AccessIndex(
+        AccessIndex(
           base_handle,
           self.member_index_for_expression(
             function,
@@ -175,8 +166,7 @@ fn WgslIrLowerer::lower_function_lvalue_node(
         base_handle, index, function, scope,
       )
     }
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression("unsupported lvalue shape")
+    _ => raise UnsupportedExpression("unsupported lvalue shape")
   }
 }
 
@@ -217,12 +207,7 @@ fn WgslIrLowerer::lower_function_member_value_base(
 fn wgsl_ir_deref_operand(node : @ast.WgslExprNode) -> @ast.WgslExprNode? {
   match node.kind() {
     Group(inner) => wgsl_ir_deref_operand(inner)
-    Unary(op, expr) =>
-      if op == @ast.WgslExprOperator::Multiply {
-        Some(expr)
-      } else {
-        None
-      }
+    Unary(op, expr) => if op == Multiply { Some(expr) } else { None }
     _ => None
   }
 }
@@ -254,50 +239,40 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         Some(handle) => handle
         None =>
           function.expressions.append(
-            Expression::Literal(
-              self.literal_from_token_with_expected(token, expected_ty),
-            ),
+            Literal(self.literal_from_token_with_expected(token, expected_ty)),
           )
       }
     ShaderDefTemplate(text) =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "shader-def template expression requires preprocessing: \{text}",
       )
     Identifier(name) =>
       self.lower_identifier_expression(name.name(), function, scope)
     PostfixUpdate(_, _) =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "update expression outside statement context",
-      )
+      raise UnsupportedExpression("update expression outside statement context")
     Assignment(_, _, _) =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "assignment expression outside statement context",
       )
     Unary(op, expr) =>
-      if op == @ast.WgslExprOperator::BitAnd {
+      if op == BitAnd {
         let target = self.lower_function_lvalue_node(expr, function, scope)
         function.expressions.append(
-          Expression::AddressOf(
-            self.pointer_type_for_lvalue(function, target),
-            target,
-          ),
+          AddressOf(self.pointer_type_for_lvalue(function, target), target),
         )
-      } else if op == @ast.WgslExprOperator::Multiply {
+      } else if op == Multiply {
         function.expressions.append(
-          Expression::Load(
-            self.lower_function_expression_node(expr, function, scope),
-          ),
+          Load(self.lower_function_expression_node(expr, function, scope)),
         )
-      } else if op == @ast.WgslExprOperator::Subtract {
+      } else if op == Subtract {
         match expr.kind() {
           Literal(token) =>
             match
               self.negated_literal_from_token_with_expected(token, expected_ty) {
-              Some(literal) =>
-                function.expressions.append(Expression::Literal(literal))
+              Some(literal) => function.expressions.append(Literal(literal))
               None =>
                 function.expressions.append(
-                  Expression::Unary(
+                  Unary(
                     wgsl_ir_unary_operator(op),
                     self.lower_function_expression_node(expr, function, scope),
                   ),
@@ -305,7 +280,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             }
           _ =>
             function.expressions.append(
-              Expression::Unary(
+              Unary(
                 wgsl_ir_unary_operator(op),
                 self.lower_function_expression_node(expr, function, scope),
               ),
@@ -313,7 +288,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         }
       } else {
         function.expressions.append(
-          Expression::Unary(
+          Unary(
             wgsl_ir_unary_operator(op),
             self.lower_function_expression_node(expr, function, scope),
           ),
@@ -380,7 +355,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             function, right_binary_op, right_left, right_right,
           )
           let right_handle = function.expressions.append(
-            Expression::Binary(right_binary_op, right_left, right_right),
+            Binary(right_binary_op, right_left, right_right),
           )
           (left_handle, right_handle)
         } else if wgsl_ir_expr_node_is_direct_access_chain(left) ||
@@ -396,7 +371,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             function, right_binary_op, right_left, right_right,
           )
           let right_handle = function.expressions.append(
-            Expression::Binary(right_binary_op, right_left, right_right),
+            Binary(right_binary_op, right_left, right_right),
           )
           (left_handle, right_handle)
         } else {
@@ -411,7 +386,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               right,
             ) {
             let right_handle = function.expressions.append(
-              Expression::Binary(right_binary_op, right_left, right_right),
+              Binary(right_binary_op, right_left, right_right),
             )
             let left_handle = self.lower_function_expression_node(
               left, function, scope,
@@ -422,7 +397,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               left, function, scope,
             )
             let right_handle = function.expressions.append(
-              Expression::Binary(right_binary_op, right_left, right_right),
+              Binary(right_binary_op, right_left, right_right),
             )
             (left_handle, right_handle)
           }
@@ -448,13 +423,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         function, binary_op, left_handle, right_handle,
       )
       let handle = function.expressions.append(
-        Expression::Binary(binary_op, left_handle, right_handle),
+        Binary(binary_op, left_handle, right_handle),
       )
       match self.fold_function_constant_float_expression(function, handle) {
         Some(literal) => {
           function.expressions.truncate(expression_mark)
           function.expressions.append_with_origin(
-            Expression::Literal(literal),
+            Literal(literal),
             FoldedLocalConstant,
           )
         }
@@ -496,15 +471,15 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       )
     }
     Template(base, _) =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "standalone template expression: \{wgsl_ir_expr_node_shape(base)}",
       )
     PathAccess(_, _) =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "unresolved qualified path expression: \{wgsl_ir_expr_node_shape(node)}",
       )
     Sequence(items) =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "expression sequence with \{items.length()} item(s) outside argument context: \{wgsl_ir_expr_node_shape(node)}",
       )
   }
@@ -541,7 +516,7 @@ fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_member_
     function, left_binary_op, left_left_handle, left_right_handle,
   )
   let left_handle = function.expressions.append(
-    Expression::Binary(left_binary_op, left_left_handle, left_right_handle),
+    Binary(left_binary_op, left_left_handle, left_right_handle),
   )
   let right_handle = self.lower_function_expression_node(right, function, scope)
   let binary_op = wgsl_ir_binary_operator(op)
@@ -549,9 +524,7 @@ fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_member_
     function, binary_op, left_handle, right_handle,
   )
   Some(
-    function.expressions.append(
-      Expression::Binary(binary_op, left_handle, right_handle),
-    ),
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
   )
 }
 
@@ -588,7 +561,7 @@ fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_named_r
     function, left_binary_op, left_left_handle, left_right_handle,
   )
   let left_handle = function.expressions.append(
-    Expression::Binary(left_binary_op, left_left_handle, left_right_handle),
+    Binary(left_binary_op, left_left_handle, left_right_handle),
   )
   let right_handle = self.lower_function_expression_node(right, function, scope)
   let binary_op = wgsl_ir_binary_operator(op)
@@ -596,9 +569,7 @@ fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_named_r
     function, binary_op, left_handle, right_handle,
   )
   Some(
-    function.expressions.append(
-      Expression::Binary(binary_op, left_handle, right_handle),
-    ),
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
   )
 }
 
@@ -870,7 +841,7 @@ fn WgslIrLowerer::lower_function_right_operand_before_left(
     )
     let left_handle = self.lower_function_expression_node(left, function, scope)
     let right_handle = function.expressions.append(
-      Expression::Binary(right_binary_op, right_left, right_right),
+      Binary(right_binary_op, right_left, right_right),
     )
     return (left_handle, right_handle)
   }
@@ -944,10 +915,7 @@ fn WgslIrLowerer::lower_binary_expression_children(
     }
     Group(inner) =>
       self.lower_binary_expression_children(inner, function, scope)
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "expected binary expression subtree",
-      )
+    _ => raise UnsupportedExpression("expected binary expression subtree")
   }
 }
 
@@ -979,7 +947,7 @@ fn WgslIrLowerer::lower_binary_expression_children_with_parent_argument_after_ch
     function, left_binary_op, left_left_handle, left_right_handle,
   )
   let left_handle = function.expressions.append(
-    Expression::Binary(left_binary_op, left_left_handle, left_right_handle),
+    Binary(left_binary_op, left_left_handle, left_right_handle),
   )
   let right_handle = self.lower_function_expression_node(right, function, scope)
   Some((op, left_handle, right_handle))
@@ -1348,8 +1316,7 @@ fn wgsl_ir_expr_node_is_deferred_select_value(node : @ast.WgslExprNode) -> Bool 
     Literal(_) => true
     Group(inner) => wgsl_ir_expr_node_is_deferred_select_value(inner)
     Unary(op, inner) =>
-      op == @ast.WgslExprOperator::Subtract &&
-      wgsl_ir_expr_node_is_deferred_select_value(inner)
+      op == Subtract && wgsl_ir_expr_node_is_deferred_select_value(inner)
     _ => false
   }
 }
@@ -1413,11 +1380,11 @@ fn WgslIrLowerer::normalize_function_binary_operands(
   }
   match self.vector_size_from_type(left_ty) {
     Some(size) if self.type_is_scalar(right_ty) =>
-      (left, function.expressions.append(Expression::Splat(size, right)))
+      (left, function.expressions.append(Splat(size, right)))
     _ =>
       match self.vector_size_from_type(right_ty) {
         Some(size) if self.type_is_scalar(left_ty) =>
-          (function.expressions.append(Expression::Splat(size, left)), right)
+          (function.expressions.append(Splat(size, left)), right)
         _ => (left, right)
       }
   }
@@ -1436,7 +1403,7 @@ fn WgslIrLowerer::contextualize_function_binary_operand_pair(
   if wgsl_ir_binary_operator_has_asymmetric_integer_context(op) {
     return
   }
-  if op == BinaryOperator::Multiply {
+  if op == Multiply {
     match self.matrix_multiply_operand_context(left_ty, right_ty) {
       Some((left_expected, right_expected)) => {
         match left_expected {
@@ -1515,7 +1482,7 @@ fn WgslIrLowerer::lower_function_call_expression(
                     function,
                   )
                 None =>
-                  raise WgslIrLowerError::UnsupportedExpression(
+                  raise UnsupportedExpression(
                     "non-identifier call expression: \{wgsl_ir_expr_node_shape(callee)}",
                   )
               }
@@ -1536,7 +1503,7 @@ fn WgslIrLowerer::lower_named_function_call_expression(
   match self.function_names.get(name) {
     Some(handle) =>
       function.expressions.append(
-        Expression::FunctionCall(
+        FunctionCall(
           handle,
           self.lower_user_function_call_arguments(
             handle, arguments, function, scope,
@@ -1732,16 +1699,14 @@ fn WgslIrLowerer::lower_function_subgroup_call(
     | QuadBroadcast => 2
   }
   guard arguments.length() == expected else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "\{wgsl_ir_subgroup_function_name(subgroup_function)} expects \{expected} argument(s)",
     )
   }
   let lowered = self.lower_function_expression_arguments(
     arguments, function, scope,
   )
-  function.expressions.append(
-    Expression::SubgroupCall(subgroup_function, lowered),
-  )
+  function.expressions.append(SubgroupCall(subgroup_function, lowered))
 }
 
 ///|
@@ -1772,7 +1737,7 @@ fn WgslIrLowerer::lower_function_constructor_call(
   match folded_scalar_constructor {
     Some(literal) => {
       wgsl_ir_rewind_function_expressions(function, expression_mark)
-      return function.expressions.append(Expression::Literal(literal))
+      return function.expressions.append(Literal(literal))
     }
     None => ()
   }
@@ -1811,17 +1776,11 @@ fn WgslIrLowerer::lower_function_derivative_call(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [expr] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "derivative call expects one argument",
-    )
+    raise UnsupportedExpression("derivative call expects one argument")
   }
   let argument = self.lower_function_expression_node(expr, function, scope)
   function.expressions.append(
-    Expression::Derivative(
-      axis,
-      control,
-      self.apply_function_load_rule(function, argument),
-    ),
+    Derivative(axis, control, self.apply_function_load_rule(function, argument)),
   )
 }
 
@@ -1866,12 +1825,10 @@ fn WgslIrLowerer::lower_identifier_expression(
             return scope.local_pointer_expression(name, handle, function)
           } else {
             return function.expressions.append(
-              Expression::Load(
-                scope.local_pointer_expression(name, handle, function),
-              ),
+              Load(scope.local_pointer_expression(name, handle, function)),
             )
           }
-        None => raise WgslIrLowerError::UnknownIdentifier(name)
+        None => raise UnknownIdentifier(name)
       }
     None => ()
   }
@@ -1880,13 +1837,11 @@ fn WgslIrLowerer::lower_identifier_expression(
     None => ()
   }
   match self.ensure_constant_declaration_lowered(name) {
-    Some(handle) =>
-      return function.expressions.append(Expression::Constant(handle))
+    Some(handle) => return function.expressions.append(Constant(handle))
     None => ()
   }
   match self.ensure_override_declaration_predeclared(name) {
-    Some(handle) =>
-      return function.expressions.append(Expression::Override(handle))
+    Some(handle) => return function.expressions.append(Override(handle))
     None => ()
   }
   match self.global_names.get(name) {
@@ -1895,7 +1850,7 @@ fn WgslIrLowerer::lower_identifier_expression(
         scope.global_pointer_expression(name, handle, function, false)
       } else {
         function.expressions.append(
-          Expression::Load(
+          Load(
             scope.global_pointer_expression(
               name,
               handle,
@@ -1907,9 +1862,8 @@ fn WgslIrLowerer::lower_identifier_expression(
       }
     None =>
       match wgsl_ir_predeclared_u32_constant_literal(name) {
-        Some(literal) =>
-          function.expressions.append(Expression::Literal(literal))
-        None => raise WgslIrLowerError::UnknownIdentifier(name)
+        Some(literal) => function.expressions.append(Literal(literal))
+        None => raise UnknownIdentifier(name)
       }
   }
 }
@@ -1997,10 +1951,7 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
   match node.kind() {
     Identifier(name) => {
       match scope.local_constants.get(name.name()) {
-        Some(_) =>
-          raise WgslIrLowerError::UnsupportedExpression(
-            "local const is not addressable",
-          )
+        Some(_) => raise UnsupportedExpression("local const is not addressable")
         None => ()
       }
       match scope.locals.get(name.name()) {
@@ -2015,11 +1966,9 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
                   function,
                 )
               } else {
-                raise WgslIrLowerError::UnsupportedExpression(
-                  "local let is not addressable",
-                )
+                raise UnsupportedExpression("local let is not addressable")
               }
-            None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+            None => raise UnknownIdentifier(name.name())
           }
         None => ()
       }
@@ -2032,9 +1981,7 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
               function,
             )
           } else {
-            raise WgslIrLowerError::UnsupportedExpression(
-              "function argument is not addressable",
-            )
+            raise UnsupportedExpression("function argument is not addressable")
           }
         None => ()
       }
@@ -2050,25 +1997,23 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
                 self.global_variable_reuses_pointer_expression(handle),
               )
           }
-        None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+        None => raise UnknownIdentifier(name.name())
       }
     }
     Group(inner) =>
       self.lower_function_access_base_pointer_node(inner, function, scope)
     Unary(op, expr) =>
-      if op == @ast.WgslExprOperator::Multiply {
+      if op == Multiply {
         self.lower_function_expression_node(expr, function, scope)
       } else {
-        raise WgslIrLowerError::UnsupportedExpression(
-          "unsupported addressable access base",
-        )
+        raise UnsupportedExpression("unsupported addressable access base")
       }
     Member(base, member_name) => {
       let base_handle = self.lower_function_access_base_pointer_node(
         base, function, scope,
       )
       function.expressions.append(
-        Expression::AccessIndex(
+        AccessIndex(
           base_handle,
           self.member_index_for_expression(
             function,
@@ -2093,10 +2038,7 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
         base_handle, index, function, scope,
       )
     }
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "unsupported addressable access base",
-      )
+    _ => raise UnsupportedExpression("unsupported addressable access base")
   }
 }
 
@@ -2126,11 +2068,7 @@ fn WgslIrLowerer::lower_function_dynamic_member_index_access(
         let base_handle = self.lower_function_static_member_access_chain(
           root_handle, members, function,
         )
-        Some(
-          function.expressions.append(
-            Expression::Access(base_handle, index_handle),
-          ),
-        )
+        Some(function.expressions.append(Access(base_handle, index_handle)))
       }
     None => None
   }
@@ -2146,7 +2084,7 @@ fn WgslIrLowerer::lower_function_static_member_access_chain(
   let mut base_handle = root_handle
   for field_name in members {
     base_handle = function.expressions.append(
-      Expression::AccessIndex(
+      AccessIndex(
         base_handle,
         self.member_index_for_expression(function, base_handle, field_name),
       ),
@@ -2206,7 +2144,7 @@ fn WgslIrLowerer::function_access_base_is_addressable(
       }
     Index(inner, _) | Member(inner, _) =>
       self.function_access_base_is_addressable(inner, function, scope)
-    Unary(op, _) => op == @ast.WgslExprOperator::Multiply
+    Unary(op, _) => op == Multiply
     _ => false
   }
 }
@@ -2224,7 +2162,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query, acceleration, ray_desc] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryInitialize(
+          RayQueryInitialize(
             self.lower_function_expression_node(query, function, scope),
             self.lower_function_expression_node(acceleration, function, scope),
             self.lower_function_expression_node(ray_desc, function, scope),
@@ -2236,7 +2174,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryProceed(
+          RayQueryProceed(
             self.lower_function_expression_node(query, function, scope),
           ),
         ),
@@ -2246,7 +2184,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query, intersection_t] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryGenerateIntersection(
+          RayQueryGenerateIntersection(
             self.lower_function_expression_node(query, function, scope),
             self.lower_function_expression_node(intersection_t, function, scope),
           ),
@@ -2257,7 +2195,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryConfirmIntersection(
+          RayQueryConfirmIntersection(
             self.lower_function_expression_node(query, function, scope),
           ),
         ),
@@ -2267,7 +2205,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryTerminate(
+          RayQueryTerminate(
             self.lower_function_expression_node(query, function, scope),
           ),
         ),
@@ -2277,7 +2215,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryGetIntersection(
+          RayQueryGetIntersection(
             self.lower_function_expression_node(query, function, scope),
             true,
           ),
@@ -2288,7 +2226,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryGetIntersection(
+          RayQueryGetIntersection(
             self.lower_function_expression_node(query, function, scope),
             false,
           ),
@@ -2299,7 +2237,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryVertexPositions(
+          RayQueryVertexPositions(
             self.lower_function_expression_node(query, function, scope),
             true,
           ),
@@ -2310,7 +2248,7 @@ fn WgslIrLowerer::lower_ray_query_expression_call(
       guard arguments is [query] else { return None }
       Some(
         function.expressions.append(
-          Expression::RayQueryVertexPositions(
+          RayQueryVertexPositions(
             self.lower_function_expression_node(query, function, scope),
             false,
           ),
@@ -2394,10 +2332,7 @@ fn WgslIrLowerer::lower_function_constructor_argument(
     return lowered
   }
   function.expressions.truncate(expression_mark)
-  function.expressions.append_with_origin(
-    Expression::Literal(literal),
-    FoldedLocalConstant,
-  )
+  function.expressions.append_with_origin(Literal(literal), FoldedLocalConstant)
 }
 
 ///|
@@ -2422,7 +2357,7 @@ fn WgslIrLowerer::lower_function_constructor_expression_from_handles(
       }
     None => ()
   }
-  function.expressions.append(Expression::Compose(ty, lowered_arguments))
+  function.expressions.append(Compose(ty, lowered_arguments))
 }
 
 ///|
@@ -2441,7 +2376,7 @@ fn WgslIrLowerer::lower_function_single_vector_constructor_argument(
     return None
   }
   if self.type_is_scalar(argument_ty) {
-    return Some(function.expressions.append(Expression::Splat(size, argument)))
+    return Some(function.expressions.append(Splat(size, argument)))
   }
   match self.shader_module.types.get(argument_ty) {
     Some(argument_type) =>
@@ -2454,11 +2389,7 @@ fn WgslIrLowerer::lower_function_single_vector_constructor_argument(
           } else {
             Some(
               function.expressions.append(
-                Expression::As(
-                  argument,
-                  target_scalar.kind,
-                  Some(target_scalar.width),
-                ),
+                As(argument, target_scalar.kind, Some(target_scalar.width)),
               ),
             )
           }
@@ -2487,7 +2418,7 @@ fn WgslIrLowerer::lower_function_array_constructor_call(
       )
   }
   guard self.array_element_type(ty) is Some(element_ty) else {
-    raise WgslIrLowerError::UnsupportedType("array")
+    raise UnsupportedType("array")
   }
   let components = match expected_ty {
     Some(_) =>
@@ -2499,7 +2430,7 @@ fn WgslIrLowerer::lower_function_array_constructor_call(
       )
     None => lowered_arguments
   }
-  function.expressions.append(Expression::Compose(ty, components))
+  function.expressions.append(Compose(ty, components))
 }
 
 ///|
@@ -2511,12 +2442,10 @@ fn WgslIrLowerer::lower_function_array_length_call(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [argument] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "arrayLength expects one argument",
-    )
+    raise UnsupportedExpression("arrayLength expects one argument")
   }
   let pointer = self.lower_atomic_pointer_argument(argument, function, scope)
-  function.expressions.append(Expression::ArrayLength(pointer))
+  function.expressions.append(ArrayLength(pointer))
 }
 
 ///|
@@ -2528,12 +2457,10 @@ fn WgslIrLowerer::lower_function_workgroup_uniform_load_call(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [argument] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "workgroupUniformLoad expects one argument",
-    )
+    raise UnsupportedExpression("workgroupUniformLoad expects one argument")
   }
   let pointer = self.lower_atomic_pointer_argument(argument, function, scope)
-  function.expressions.append(Expression::WorkGroupUniformLoad(pointer))
+  function.expressions.append(WorkGroupUniformLoad(pointer))
 }
 
 ///|
@@ -2547,9 +2474,7 @@ fn WgslIrLowerer::lower_function_math_call(
   let expression_mark = function.expressions.items.length()
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() > 0 else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "math call requires at least one argument",
-    )
+    raise UnsupportedExpression("math call requires at least one argument")
   }
   if wgsl_ir_math_call_predeclares_function_argument_values(arguments, scope) {
     for argument in arguments {
@@ -2607,14 +2532,12 @@ fn WgslIrLowerer::lower_function_math_call(
     [_, _, value, ..] => Some(value)
     _ => None
   }
-  let handle = function.expressions.append(
-    Expression::Math(math_function, a, b, c, d),
-  )
+  let handle = function.expressions.append(Math(math_function, a, b, c, d))
   match self.fold_function_constant_float_expression(function, handle) {
     Some(literal) => {
       function.expressions.truncate(expression_mark)
       function.expressions.append_with_origin(
-        Expression::Literal(literal),
+        Literal(literal),
         FoldedLocalConstant,
       )
     }
@@ -2776,10 +2699,10 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
     Some(literal) => {
       function.expressions.truncate(expression_mark)
       let component = function.expressions.append_with_origin(
-        Expression::Literal(literal),
+        Literal(literal),
         FoldedLocalConstant,
       )
-      Some(WgslIrDeferredConstructorArgument::{ ty, component })
+      Some({ ty, component })
     }
     None => {
       function.expressions.truncate(expression_mark)
@@ -2845,7 +2768,7 @@ fn wgsl_ir_expr_node_is_foldable_float_arena_candidate(
     Sequence([single]) =>
       wgsl_ir_expr_node_is_foldable_float_arena_candidate(single)
     Unary(op, inner) =>
-      op == @ast.WgslExprOperator::Subtract &&
+      op == Subtract &&
       wgsl_ir_expr_node_is_foldable_float_arena_candidate(inner)
     Binary(_, left, right) =>
       wgsl_ir_expr_node_is_foldable_float_arena_candidate(left) &&
@@ -2940,13 +2863,13 @@ fn WgslIrLowerer::lower_function_relational_call(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [expr] else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "\{wgsl_ir_relational_function_name(relational_function)} expects one argument",
     )
   }
   let argument = self.lower_function_expression_node(expr, function, scope)
   function.expressions.append(
-    Expression::Relational(
+    Relational(
       relational_function,
       self.apply_function_load_rule(function, argument),
     ),
@@ -2962,9 +2885,7 @@ fn WgslIrLowerer::lower_function_select_call(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [reject, accept, condition] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "select expects three arguments",
-    )
+    raise UnsupportedExpression("select expects three arguments")
   }
   let (condition, accept, reject) = if wgsl_ir_expr_node_is_deferred_select_value(
       reject,
@@ -2984,7 +2905,7 @@ fn WgslIrLowerer::lower_function_select_call(
     )
     (condition, accept, reject)
   }
-  function.expressions.append(Expression::Select(condition, accept, reject))
+  function.expressions.append(Select(condition, accept, reject))
 }
 
 ///|
@@ -2997,15 +2918,10 @@ fn WgslIrLowerer::lower_function_bitcast_call(
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [expr] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "bitcast expects one argument",
-    )
+    raise UnsupportedExpression("bitcast expects one argument")
   }
   function.expressions.append(
-    Expression::Bitcast(
-      ty,
-      self.lower_function_expression_node(expr, function, scope),
-    ),
+    Bitcast(ty, self.lower_function_expression_node(expr, function, scope)),
   )
 }
 
@@ -3025,18 +2941,16 @@ fn WgslIrLowerer::lower_function_atomic_call(
     CompareExchangeWeak => 3
   }
   if arguments.length() != expected {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "\{wgsl_ir_atomic_function_name(atomic_function)} expects \{expected} arguments",
     )
   }
   if atomic_function == Load {
     guard arguments is [pointer_argument] else {
-      raise WgslIrLowerError::UnsupportedExpression(
-        "atomicLoad expects 1 argument",
-      )
+      raise UnsupportedExpression("atomicLoad expects 1 argument")
     }
     return function.expressions.append(
-      Expression::Load(
+      Load(
         self.lower_atomic_pointer_argument(pointer_argument, function, scope),
       ),
     )
@@ -3063,7 +2977,7 @@ fn WgslIrLowerer::lower_function_atomic_call(
       None => ()
     }
   }
-  function.expressions.append(Expression::AtomicCall(atomic_function, handles))
+  function.expressions.append(AtomicCall(atomic_function, handles))
 }
 
 ///|

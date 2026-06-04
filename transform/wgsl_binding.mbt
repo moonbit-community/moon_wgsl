@@ -28,9 +28,8 @@ fn rewrite_wgsl_graph_block_with_binding_plan(
   rewrite_declarations : Bool,
 ) -> String {
   let rewritten = match block.data {
-    WgslGlobalDeclData::Raw =>
-      emit_wgsl_token_stream_canonical(block.tokens, [])
-    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) =>
+    Raw => emit_wgsl_token_stream_canonical(block.tokens, [])
+    Directive(_) | Import(_) =>
       emit_wgsl_token_stream_canonical(block.tokens, [])
     _ => {
       let nodes : Array[WgslTokenReplacement] = []

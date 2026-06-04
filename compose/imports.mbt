@@ -20,7 +20,6 @@ using @common {
   type ShaderDefValue,
   type WgslComposeOptions,
   type WgslDiagnostic,
-  type WgslDiagnosticSeverity,
   type WgslImportTarget,
   type WgslReferencePath,
   type WgslSourceCatalogEntry,
@@ -50,7 +49,7 @@ using @resolver {
 }
 
 ///|
-using @ast {type WgslDirective, type WgslDirectiveKind, type WgslGlobalDeclData}
+using @ast {type WgslDirective}
 
 ///|
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
@@ -70,11 +69,7 @@ using @import_syntax {
 }
 
 ///|
-using @directive {
-  type WgslDirectiveScanItem,
-  type WgslDirectiveScanItemKind,
-  parse_wgsl_directive_scan_items,
-}
+using @directive {type WgslDirectiveScanItem, parse_wgsl_directive_scan_items}
 
 ///|
 using @directive_syntax {parse_glsl_version_directive}

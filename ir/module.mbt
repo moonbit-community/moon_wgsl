@@ -19,7 +19,7 @@ pub(all) struct Module {
 
 ///|
 pub fn Module::Module() -> Module {
-  Module::{
+  {
     directives: [],
     types: TypeArena(),
     special_types: SpecialTypes(),

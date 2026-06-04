@@ -124,7 +124,7 @@ fn WgslIrEmitter::math_function_name(
     Unpack2x16float => "unpack2x16float"
     Unpack4xI8 => "unpack4xI8"
     Unpack4xU8 => "unpack4xU8"
-    _ => raise WgslIrEmitError::Unsupported("math function")
+    _ => raise Unsupported("math function")
   }
 }
 
@@ -134,13 +134,13 @@ fn wgsl_ir_derivative_function_name(
   control : DerivativeControl,
 ) -> String {
   match (axis, control) {
-    (X, DerivativeControl::None) => "dpdx"
+    (X, None) => "dpdx"
     (X, Coarse) => "dpdxCoarse"
     (X, Fine) => "dpdxFine"
-    (Y, DerivativeControl::None) => "dpdy"
+    (Y, None) => "dpdy"
     (Y, Coarse) => "dpdyCoarse"
     (Y, Fine) => "dpdyFine"
-    (Width, DerivativeControl::None) => "fwidth"
+    (Width, None) => "fwidth"
     (Width, Coarse) => "fwidthCoarse"
     (Width, Fine) => "fwidthFine"
   }
@@ -194,8 +194,7 @@ fn WgslIrEmitter::texture_atomic_function_name(
     Min => "textureAtomicMin"
     InclusiveOr => "textureAtomicOr"
     ExclusiveOr => "textureAtomicXor"
-    _ =>
-      raise WgslIrEmitError::Unsupported("unsupported texture atomic function")
+    _ => raise Unsupported("unsupported texture atomic function")
   }
 }
 
@@ -253,7 +252,7 @@ fn WgslIrEmitter::storage_format_name(
 ///|
 fn wgsl_ir_emit_storage_format_scalar(format : StorageFormat) -> Scalar {
   match format {
-    R64Uint => Scalar::Scalar(Uint, 8)
+    R64Uint => Scalar(Uint, 8)
     R8Uint
     | R16Uint
     | R32Uint
@@ -263,7 +262,7 @@ fn wgsl_ir_emit_storage_format_scalar(format : StorageFormat) -> Scalar {
     | Rgb10a2Uint
     | Rg32Uint
     | Rgba16Uint
-    | Rgba32Uint => Scalar::Scalar(Uint, 4)
+    | Rgba32Uint => Scalar(Uint, 4)
     R8Sint
     | R16Sint
     | R32Sint
@@ -272,8 +271,8 @@ fn wgsl_ir_emit_storage_format_scalar(format : StorageFormat) -> Scalar {
     | Rgba8Sint
     | Rg32Sint
     | Rgba16Sint
-    | Rgba32Sint => Scalar::Scalar(Sint, 4)
-    _ => Scalar::Scalar(Float, 4)
+    | Rgba32Sint => Scalar(Sint, 4)
+    _ => Scalar(Float, 4)
   }
 }
 
@@ -284,7 +283,7 @@ fn wgsl_ir_swizzle_component(index : Int) -> String raise WgslIrEmitError {
     1 => "y"
     2 => "z"
     3 => "w"
-    _ => raise WgslIrEmitError::Unsupported("access index \{index}")
+    _ => raise Unsupported("access index \{index}")
   }
 }
 

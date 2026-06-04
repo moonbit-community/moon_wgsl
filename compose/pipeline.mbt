@@ -30,8 +30,7 @@ fn drop_wgsl_import_directives_from_compose_source(source : String) -> String {
   for
     item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
     match item.kind() {
-      WgslDirectiveScanItemKind::Directive(directive) if directive.kind() ==
-        WgslDirectiveKind::Import => ()
+      Directive(directive) if directive.kind() == Import => ()
       _ => out = out + item.source().original_text()
     }
   }
@@ -44,8 +43,7 @@ fn wgsl_compose_scan_has_import_directive(
 ) -> Bool {
   for item in items {
     match item.kind() {
-      WgslDirectiveScanItemKind::Directive(directive) if directive.kind() ==
-        WgslDirectiveKind::Import => return true
+      Directive(directive) if directive.kind() == Import => return true
       _ => ()
     }
   }
@@ -58,9 +56,8 @@ fn wgsl_compose_directive_emission_kind(
   directive : WgslDirective,
 ) -> WgslComposeSourceEmissionKind {
   match directive.kind() {
-    WgslDirectiveKind::DefineImportPath | WgslDirectiveKind::Define =>
-      DropDirective
-    WgslDirectiveKind::Other =>
+    DefineImportPath | Define => DropDirective
+    Other =>
       if parse_glsl_version_directive(item.source().cleaned_text()) is None {
         KeepTrivia
       } else {
@@ -83,8 +80,7 @@ fn Composer::compose_wgsl_scanned_item(
   declared_imports : Bool,
 ) -> String raise ComposerError {
   match item.kind() {
-    WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
-      WgslDirectiveKind::Import => {
+    Directive(import_directive) if import_directive.kind() == Import => {
       let requests = if declared_imports {
         self.build_wgsl_declared_import_requests(
           current_rel_path,
@@ -106,15 +102,13 @@ fn Composer::compose_wgsl_scanned_item(
         alias_prefixes,
       )
     }
-    WgslDirectiveScanItemKind::Directive(directive) =>
+    Directive(directive) =>
       compose_emit_scanned_item(
         wgsl_compose_directive_emission_kind(item, directive),
         item,
       )
-    WgslDirectiveScanItemKind::Source =>
-      compose_emit_scanned_item(KeepTrivia, item)
-    WgslDirectiveScanItemKind::GlslVersion(_) =>
-      compose_emit_scanned_item(KeepTrivia, item)
+    Source => compose_emit_scanned_item(KeepTrivia, item)
+    GlslVersion(_) => compose_emit_scanned_item(KeepTrivia, item)
   }
 }
 
@@ -190,8 +184,7 @@ fn WgslComposeEmitter::emit_source_with_path(
   let mut saw_import_directive = false
   for item in scan_items {
     match item.kind() {
-      WgslDirectiveScanItemKind::Directive(import_directive) if import_directive.kind() ==
-        WgslDirectiveKind::Import => {
+      Directive(import_directive) if import_directive.kind() == Import => {
         saw_import_directive = true
         if !explicit_imports_emitted {
           explicit_imports_emitted = true
@@ -295,7 +288,7 @@ fn collect_wgsl_unused_redirect_diagnostics(
     if !matched {
       diagnostics.push(
         WgslDiagnostic(
-          WgslDiagnosticSeverity::Warn,
+          Warn,
           "symbol redirect did not match any source identifier",
           None,
           Some(from_name),
@@ -313,7 +306,7 @@ fn WgslComposeEmitter::resolve_compose_source(
 ) -> WgslResolvedComposeSource raise ComposerError {
   let composed = strip_wgsl_virtual_functions(self.emit_root(rel))
   let prepared_source = finalize_wgsl_output_source(composed)
-  WgslResolvedComposeSource::{
+  {
     source: prepared_source,
     symbols: self.session.symbols,
     diagnostics: collect_wgsl_unused_redirect_diagnostics(self.session),
@@ -342,11 +335,11 @@ fn WgslComposeSymbolTable::generated_import_provenance(
     if !seen.contains(name) {
       seen.add(name)
       provenance.push(
-        @ir.WgslIrGeneratedImportProvenance(
+        WgslIrGeneratedImportProvenance(
           name,
           binding.rel_path,
           binding.target_name,
-          @ir.WgslIrGeneratedImportProvenanceKind::VirtualOverrideSymbol,
+          VirtualOverrideSymbol,
           false,
         ),
       )
@@ -371,11 +364,11 @@ fn WgslComposeSymbolTable::generated_import_provenance(
     if !seen.contains(name) {
       seen.add(name)
       provenance.push(
-        @ir.WgslIrGeneratedImportProvenance(
+        WgslIrGeneratedImportProvenance(
           name,
           origin.rel_path(),
           origin.source_symbol_name(),
-          @ir.WgslIrGeneratedImportProvenanceKind::ImportedSourceSymbol,
+          ImportedSourceSymbol,
           root_rel_path.has_suffix(".glsl") ||
           origin.rel_path().has_suffix(".glsl"),
           local_spelling=self.generated_import_has_local_spelling(
@@ -478,13 +471,13 @@ fn compose_wgsl_source_via_ir(
   ) catch {
     error =>
       match error {
-        @ir.WgslIrPipelineError::UnknownIdentifier(name) =>
+        UnknownIdentifier(name) =>
           if name.contains("::") {
-            raise ComposerError::FailedToResolveImport(name)
+            raise FailedToResolveImport(name)
           } else {
-            raise ComposerError::InvalidIr(error.message())
+            raise InvalidIr(error.message())
           }
-        _ => raise ComposerError::InvalidIr(error.message())
+        _ => raise InvalidIr(error.message())
       }
   }
 }
@@ -503,13 +496,13 @@ fn compose_wgsl_source_via_naga_oil_writer_compatible_ir(
   ) catch {
     error =>
       match error {
-        @ir.WgslIrPipelineError::UnknownIdentifier(name) =>
+        UnknownIdentifier(name) =>
           if name.contains("::") {
-            raise ComposerError::FailedToResolveImport(name)
+            raise FailedToResolveImport(name)
           } else {
-            raise ComposerError::InvalidIr(error.message())
+            raise InvalidIr(error.message())
           }
-        _ => raise ComposerError::InvalidIr(error.message())
+        _ => raise InvalidIr(error.message())
       }
   }
 }
@@ -620,13 +613,13 @@ pub fn Composer::trace_naga_oil_writer_function_plan(
   ) catch {
     error =>
       match error {
-        @ir.WgslIrPipelineError::UnknownIdentifier(name) =>
+        UnknownIdentifier(name) =>
           if name.contains("::") {
-            raise ComposerError::FailedToResolveImport(name)
+            raise FailedToResolveImport(name)
           } else {
-            raise ComposerError::InvalidIr(error.message())
+            raise InvalidIr(error.message())
           }
-        _ => raise ComposerError::InvalidIr(error.message())
+        _ => raise InvalidIr(error.message())
       }
   }
 }
@@ -646,13 +639,13 @@ pub fn Composer::trace_naga_oil_writer_module_plan(
   ) catch {
     error =>
       match error {
-        @ir.WgslIrPipelineError::UnknownIdentifier(name) =>
+        UnknownIdentifier(name) =>
           if name.contains("::") {
-            raise ComposerError::FailedToResolveImport(name)
+            raise FailedToResolveImport(name)
           } else {
-            raise ComposerError::InvalidIr(error.message())
+            raise InvalidIr(error.message())
           }
-        _ => raise ComposerError::InvalidIr(error.message())
+        _ => raise InvalidIr(error.message())
       }
   }
 }

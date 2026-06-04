@@ -409,7 +409,7 @@ fn wgsl_semantic_order_import_target_plans_by_reference(
   let nodes : Array[WgslIdent] = []
   collect_wgsl_naga_oil_import_use_identifier_nodes(source, nodes)
   let ordered : Array[WgslSemanticImportTargetPlan] = []
-  let picked : @set.Set[Int] = @set.Set([])
+  let picked : @set.Set[Int] = Set([])
   let fallback_base = source.length() + 1
   while ordered.length() < plans.length() {
     let mut best_index = -1
@@ -503,7 +503,7 @@ fn collect_wgsl_semantic_qualified_module_targets(
     if requested_item == "" {
       continue
     }
-    semantic_import_targets_push_unique(targets, WgslImportTarget::{
+    semantic_import_targets_push_unique(targets, {
       raw_path: resolved_module.module_path(),
       alias_name: resolved_module.module_path(),
     })
@@ -525,7 +525,7 @@ fn wgsl_semantic_collect_alias_plan_items(
   )
   for requested_path in requested_paths {
     if split_last_wgsl_semantic_path(requested_path) is Some((nested_prefix, _)) {
-      semantic_import_targets_push_unique(pending_targets, WgslImportTarget::{
+      semantic_import_targets_push_unique(pending_targets, {
         raw_path: "\{target.raw_path}::\{nested_prefix}",
         alias_name: "\{target.alias_name}::\{nested_prefix}",
       })
@@ -550,7 +550,7 @@ fn wgsl_semantic_collect_default_alias_plan_items(
   )
   for requested_path in requested_paths {
     if split_last_wgsl_semantic_path(requested_path) is Some((nested_prefix, _)) {
-      semantic_import_targets_push_unique(pending_targets, WgslImportTarget::{
+      semantic_import_targets_push_unique(pending_targets, {
         raw_path: "\{request_module_prefix}::\{nested_prefix}",
         alias_name: "\{module_alias}::\{nested_prefix}",
       })
@@ -563,7 +563,7 @@ fn wgsl_semantic_collect_default_alias_plan_items(
 
 ///|
 fn unresolved_wgsl_semantic_import_target_plan() -> WgslSemanticImportTargetPlan {
-  WgslSemanticImportTargetPlan::{
+  {
     resolved_module: WgslResolvedImportModule("", ""),
     module_alias: "",
     requested_items: [],
@@ -654,7 +654,7 @@ fn build_wgsl_semantic_import_target_plan(
       requested_items.push(requested_item)
     }
   }
-  Some(WgslSemanticImportTargetPlan::{
+  Some({
     resolved_module,
     module_alias,
     requested_items,
@@ -697,12 +697,12 @@ fn build_wgsl_semantic_import_target_plans(
     }
   }
   if unresolved_targets.length() > 0 {
-    return WgslSemanticImportTargetPlans::{ plans, unresolved_targets }
+    return { plans, unresolved_targets }
   }
   let ordered_plans = wgsl_semantic_order_import_target_plans_by_reference(
     source, plans,
   )
-  WgslSemanticImportTargetPlans::{ plans: ordered_plans, unresolved_targets }
+  { plans: ordered_plans, unresolved_targets }
 }
 
 ///|

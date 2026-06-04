@@ -69,7 +69,7 @@ test "compose graph execution plans reachability before emission" {
       "PIX_naga_oil_mod_X",
       "maths.wgsl",
       "PI",
-      WgslSourceOriginKind::Constant,
+      Constant,
       0,
       0,
     ),
@@ -1142,7 +1142,7 @@ test "import request declared-dependency ordering is applied in place" {
       declared_items: [],
       alias_name: "",
     },
-    WgslImportRequest::{
+    {
       module_path: "test::types",
       rel_path: "types.wgsl",
       import_full_module: true,

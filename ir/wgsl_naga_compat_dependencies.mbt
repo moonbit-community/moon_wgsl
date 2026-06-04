@@ -270,7 +270,7 @@ fn wgsl_ir_collect_function_calls_from_statement(
       while index <= range.end.index() {
         wgsl_ir_collect_function_calls_from_expression(
           function,
-          Handle::Handle(index),
+          Handle(index),
           calls,
         )
         index = index + 1

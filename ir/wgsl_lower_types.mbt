@@ -51,19 +51,19 @@ fn WgslIrLowerer::lower_function_array_type_ref(
 ) -> Handle raise WgslIrLowerError {
   let args = ty_ref.template_arguments()
   guard args is [Type(element_ty), .. rest] else {
-    raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+    raise UnsupportedType(ty_ref.canonical_text())
   }
   let element = self.lower_function_type_ref(element_ty, function, scope)
   let size = match rest {
     [size_arg, ..] =>
       self.lower_function_type_template_array_size(size_arg, function, scope)
-    _ => ArraySize::Dynamic
+    _ => Dynamic
   }
   let layout = self.type_layout(element)
   let stride = wgsl_ir_align_to(layout.size, layout.align)
   self.intern_type(
     "array<\{self.type_cache_name(element)}, \{wgsl_ir_array_size_key(size)}>",
-    TypeInner::Array(element, size, stride),
+    Array(element, size, stride),
   )
 }
 
@@ -102,7 +102,7 @@ fn WgslIrLowerer::lower_composite_type_ref(
       let scalar = self.required_scalar_type_argument(ty_ref)
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::Vector(wgsl_ir_vector_size_from_name(name), scalar),
+        Vector(wgsl_ir_vector_size_from_name(name), scalar),
       )
     }
     "mat2x2"
@@ -116,10 +116,7 @@ fn WgslIrLowerer::lower_composite_type_ref(
     | "mat4x4" => {
       let scalar = self.required_scalar_type_argument(ty_ref)
       let (columns, rows) = wgsl_ir_matrix_size_from_name(name)
-      self.intern_type(
-        ty_ref.canonical_text(),
-        TypeInner::Matrix(columns, rows, scalar),
-      )
+      self.intern_type(ty_ref.canonical_text(), Matrix(columns, rows, scalar))
     }
     "coop_mat8x8" | "coop_mat16x16" => {
       let (columns, rows, scalar, role) = self.required_cooperative_matrix_type(
@@ -127,30 +124,27 @@ fn WgslIrLowerer::lower_composite_type_ref(
       )
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::CooperativeMatrix(columns, rows, scalar, role),
+        CooperativeMatrix(columns, rows, scalar, role),
       )
     }
     "array" => {
       let args = ty_ref.template_arguments()
       guard args is [Type(element_ty), .. rest] else {
-        raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+        raise UnsupportedType(ty_ref.canonical_text())
       }
       let element = self.lower_type_ref(element_ty)
       let size = match rest {
         [size_arg, ..] => self.lower_type_template_array_size(size_arg)
-        _ => ArraySize::Dynamic
+        _ => Dynamic
       }
       let layout = self.type_layout(element)
       let stride = wgsl_ir_align_to(layout.size, layout.align)
-      self.intern_type(
-        ty_ref.canonical_text(),
-        TypeInner::Array(element, size, stride),
-      )
+      self.intern_type(ty_ref.canonical_text(), Array(element, size, stride))
     }
     "ptr" => {
       let args = ty_ref.template_arguments()
       guard args is [Type(space_ref), Type(target_ref), .. rest] else {
-        raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+        raise UnsupportedType(ty_ref.canonical_text())
       }
       let space = if space_ref.name() == "storage" {
         match rest {
@@ -158,33 +152,31 @@ fn WgslIrLowerer::lower_composite_type_ref(
             AddressSpace::Storage(
               wgsl_ir_storage_access_from_name(access_ref.name()),
             )
-          _ => AddressSpace::Storage(StorageAccess::load())
+          _ => Storage(StorageAccess::load())
         }
       } else {
         wgsl_ir_address_space_from_type_name(space_ref.name())
       }
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::Pointer(self.lower_type_ref(target_ref), space),
+        Pointer(self.lower_type_ref(target_ref), space),
       )
     }
     "atomic" => {
       let scalar = self.required_scalar_type_argument(ty_ref)
-      self.intern_type(ty_ref.canonical_text(), TypeInner::Atomic(scalar))
+      self.intern_type(ty_ref.canonical_text(), Atomic(scalar))
     }
-    "sampler" => self.intern_type(name, TypeInner::Sampler(false))
-    "sampler_comparison" => self.intern_type(name, TypeInner::Sampler(true))
+    "sampler" => self.intern_type(name, Sampler(false))
+    "sampler_comparison" => self.intern_type(name, Sampler(true))
     "acceleration_structure" =>
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::AccelerationStructure(
-          wgsl_ir_type_ref_uses_vertex_return(ty_ref),
-        ),
+        AccelerationStructure(wgsl_ir_type_ref_uses_vertex_return(ty_ref)),
       )
     "ray_query" =>
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::RayQuery(wgsl_ir_type_ref_uses_vertex_return(ty_ref)),
+        RayQuery(wgsl_ir_type_ref_uses_vertex_return(ty_ref)),
       )
     "texture_1d"
     | "texture_2d"
@@ -196,10 +188,10 @@ fn WgslIrLowerer::lower_composite_type_ref(
       let scalar = self.required_scalar_type_argument(ty_ref)
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::Image(
+        Image(
           wgsl_ir_image_dimension_from_name(name),
           name.contains("array"),
-          ImageClass::Sampled(scalar.kind, name.contains("multisampled")),
+          Sampled(scalar.kind, name.contains("multisampled")),
         ),
       )
     }
@@ -210,24 +202,20 @@ fn WgslIrLowerer::lower_composite_type_ref(
     | "texture_depth_multisampled_2d" =>
       self.intern_type(
         name,
-        TypeInner::Image(
+        Image(
           wgsl_ir_image_dimension_from_name(name),
           name.contains("array"),
-          ImageClass::Depth(name.contains("multisampled")),
+          Depth(name.contains("multisampled")),
         ),
       )
-    "texture_external" =>
-      self.intern_type(
-        name,
-        TypeInner::Image(ImageDimension::D2, false, ImageClass::External),
-      )
+    "texture_external" => self.intern_type(name, Image(D2, false, External))
     "texture_storage_1d"
     | "texture_storage_2d"
     | "texture_storage_2d_array"
     | "texture_storage_3d" => {
       let args = ty_ref.template_arguments()
       guard args is [Type(format_ref), .. rest] else {
-        raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+        raise UnsupportedType(ty_ref.canonical_text())
       }
       let access = match rest {
         [Type(access_ref), ..] =>
@@ -236,34 +224,29 @@ fn WgslIrLowerer::lower_composite_type_ref(
       }
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::Image(
+        Image(
           wgsl_ir_image_dimension_from_name(name),
           name.contains("array"),
-          ImageClass::Storage(
-            wgsl_ir_storage_format_from_name(format_ref.name()),
-            access,
-          ),
+          Storage(wgsl_ir_storage_format_from_name(format_ref.name()), access),
         ),
       )
     }
     "binding_array" => {
       let args = ty_ref.template_arguments()
       guard args is [Type(element_ty), .. rest] else {
-        raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+        raise UnsupportedType(ty_ref.canonical_text())
       }
       let size = match rest {
         [size_arg, ..] => self.lower_type_template_array_size(size_arg)
-        _ => ArraySize::Dynamic
+        _ => Dynamic
       }
       self.intern_type(
         ty_ref.canonical_text(),
-        TypeInner::BindingArray(self.lower_type_ref(element_ty), size),
+        BindingArray(self.lower_type_ref(element_ty), size),
       )
     }
     _ =>
-      raise WgslIrLowerError::UnsupportedType(
-        "\{ty_ref.canonical_text()} before \{ty_ref.end()}",
-      )
+      raise UnsupportedType("\{ty_ref.canonical_text()} before \{ty_ref.end()}")
   }
 }
 
@@ -274,8 +257,8 @@ fn WgslIrLowerer::required_cooperative_matrix_type(
 ) -> (CooperativeSize, CooperativeSize, Scalar, CooperativeRole) raise WgslIrLowerError {
   let (columns, rows) = match ty_ref.name() {
     "coop_mat8x8" => (CooperativeSize::Eight, CooperativeSize::Eight)
-    "coop_mat16x16" => (CooperativeSize::Sixteen, CooperativeSize::Sixteen)
-    _ => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+    "coop_mat16x16" => (Sixteen, Sixteen)
+    _ => raise UnsupportedType(ty_ref.canonical_text())
   }
   match ty_ref.template_arguments() {
     [Type(scalar_ref), Type(role_ref)] =>
@@ -285,7 +268,7 @@ fn WgslIrLowerer::required_cooperative_matrix_type(
         self.scalar_from_type_ref(scalar_ref),
         wgsl_ir_cooperative_role_from_name(role_ref.name()),
       )
-    _ => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+    _ => raise UnsupportedType(ty_ref.canonical_text())
   }
 }
 
@@ -298,10 +281,7 @@ fn WgslIrLowerer::cooperative_matrix_type_handle(
   role : CooperativeRole,
 ) -> Handle {
   let key = "coop_mat\{wgsl_ir_cooperative_size_name(columns)}x\{wgsl_ir_cooperative_size_name(rows)}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}, \{wgsl_ir_cooperative_role_name(role)}>"
-  self.intern_type(
-    key,
-    TypeInner::CooperativeMatrix(columns, rows, scalar, role),
-  )
+  self.intern_type(key, CooperativeMatrix(columns, rows, scalar, role))
 }
 
 ///|
@@ -309,13 +289,10 @@ fn wgsl_ir_cooperative_role_from_name(
   name : String,
 ) -> CooperativeRole raise WgslIrLowerError {
   match name {
-    "A" => CooperativeRole::A
-    "B" => CooperativeRole::B
-    "C" => CooperativeRole::C
-    _ =>
-      raise WgslIrLowerError::UnsupportedType(
-        "unsupported cooperative matrix role: \{name}",
-      )
+    "A" => A
+    "B" => B
+    "C" => C
+    _ => raise UnsupportedType("unsupported cooperative matrix role: \{name}")
   }
 }
 
@@ -344,7 +321,7 @@ fn WgslIrLowerer::lower_type_template_array_size(
   match argument {
     Expression(expr) =>
       match wgsl_ir_int_literal_from_expr_ref(expr) {
-        Some(value) => ArraySize::Constant(value)
+        Some(value) => Constant(value)
         None => {
           let handle = self.lower_global_expression_ref(expr)
           self.lower_constant_array_size_expression(handle)
@@ -364,7 +341,7 @@ fn WgslIrLowerer::lower_function_type_template_array_size(
   match argument {
     Expression(expr) =>
       match wgsl_ir_int_literal_from_expr_ref(expr) {
-        Some(value) => ArraySize::Constant(value)
+        Some(value) => Constant(value)
         None => {
           let handle = self.lower_function_expression_ref(expr, function, scope)
           self.lower_function_constant_array_size_expression(function, handle)
@@ -387,7 +364,7 @@ fn WgslIrLowerer::lower_function_type_template_array_size_type_ref(
   let name = ty_ref.name()
   let literal = wgsl_ir_array_size_literal_from_type_name(name)
   match literal {
-    Some(value) => ArraySize::Constant(value)
+    Some(value) => Constant(value)
     None =>
       match scope.local_constants.get(name) {
         Some({ value: LazyConstant(local_constant) }) => {
@@ -426,7 +403,7 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
   let name = ty_ref.name()
   let literal = wgsl_ir_array_size_literal_from_type_name(name)
   match literal {
-    Some(value) => ArraySize::Constant(value)
+    Some(value) => Constant(value)
     None =>
       match self.ensure_constant_declaration_lowered(name) {
         Some(handle) =>
@@ -434,12 +411,10 @@ fn WgslIrLowerer::lower_type_template_array_size_type_ref(
         None =>
           match self.ensure_override_declaration_predeclared(name) {
             Some(handle) =>
-              ArraySize::Pending(
-                self.shader_module.append_global_expression(
-                  Expression::Override(handle),
-                ),
+              Pending(
+                self.shader_module.append_global_expression(Override(handle)),
               )
-            None => ArraySize::Dynamic
+            None => Dynamic
           }
       }
   }
@@ -452,10 +427,7 @@ fn WgslIrLowerer::lower_constant_array_size_from_constant_handle(
 ) -> ArraySize raise WgslIrLowerError {
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) => self.lower_constant_array_size_expression(constant.init)
-    None =>
-      raise WgslIrLowerError::UnsupportedType(
-        "array size references missing constant",
-      )
+    None => raise UnsupportedType("array size references missing constant")
   }
 }
 
@@ -468,8 +440,8 @@ fn WgslIrLowerer::lower_constant_array_size_expression(
     _ => None
   }
   match evaluated {
-    Some(value) => ArraySize::Constant(value.to_non_negative_int())
-    None => ArraySize::Pending(handle)
+    Some(value) => Constant(value.to_non_negative_int())
+    None => Pending(handle)
   }
 }
 
@@ -517,7 +489,7 @@ fn WgslIrLowerer::required_scalar_type_argument(
 ) -> Scalar raise WgslIrLowerError {
   match ty_ref.template_arguments() {
     [Type(arg), ..] => self.scalar_from_type_ref(arg)
-    _ => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+    _ => raise UnsupportedType(ty_ref.canonical_text())
   }
 }
 
@@ -527,23 +499,22 @@ fn WgslIrLowerer::scalar_from_type_ref(
   ty_ref : @ast.WgslTypeRef,
 ) -> Scalar raise WgslIrLowerError {
   match ty_ref.name() {
-    "bool" => Scalar::Scalar(Bool, 1)
-    "i32" => Scalar::Scalar(Sint, 4)
-    "i64" => Scalar::Scalar(Sint, 8)
-    "u32" => Scalar::Scalar(Uint, 4)
-    "u64" => Scalar::Scalar(Uint, 8)
-    "f32" => Scalar::Scalar(Float, 4)
-    "f16" => Scalar::Scalar(Float, 2)
+    "bool" => Scalar(Bool, 1)
+    "i32" => Scalar(Sint, 4)
+    "i64" => Scalar(Sint, 8)
+    "u32" => Scalar(Uint, 4)
+    "u64" => Scalar(Uint, 8)
+    "f32" => Scalar(Float, 4)
+    "f16" => Scalar(Float, 2)
     _ => {
       let handle = self.lower_type_ref(ty_ref)
       match self.shader_module.types.get(handle) {
         Some(ty) =>
           match ty.inner {
             Scalar(scalar) => scalar
-            _ =>
-              raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+            _ => raise UnsupportedType(ty_ref.canonical_text())
           }
-        None => raise WgslIrLowerError::UnsupportedType(ty_ref.canonical_text())
+        None => raise UnsupportedType(ty_ref.canonical_text())
       }
     }
   }
@@ -559,7 +530,7 @@ fn WgslIrLowerer::lower_templated_callee_type(
       match base.kind() {
         Identifier(name) => {
           let atom = @ast.WgslTypeAtom(
-            @ast.WgslTypeAtomKind::Identifier,
+            Identifier,
             name.name(),
             name.start(),
             name.end(),
@@ -573,7 +544,7 @@ fn WgslIrLowerer::lower_templated_callee_type(
           Some(self.lower_type_ref(ty_ref))
         }
         _ =>
-          raise WgslIrLowerError::UnsupportedExpression(
+          raise UnsupportedExpression(
             "template call callee must be a type identifier",
           )
       }
@@ -623,7 +594,7 @@ fn WgslIrLowerer::lower_generic_constructor_type_from_ast(
       )
       self.intern_type(
         "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-        TypeInner::Vector(wgsl_ir_vector_size_from_name(name), scalar),
+        Vector(wgsl_ir_vector_size_from_name(name), scalar),
       )
     }
     "mat2x2"
@@ -641,10 +612,10 @@ fn WgslIrLowerer::lower_generic_constructor_type_from_ast(
       let (columns, rows) = wgsl_ir_matrix_size_from_name(name)
       self.intern_type(
         "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-        TypeInner::Matrix(columns, rows, scalar),
+        Matrix(columns, rows, scalar),
       )
     }
-    _ => raise WgslIrLowerError::UnsupportedType(name)
+    _ => raise UnsupportedType(name)
   }
 }
 
@@ -655,9 +626,7 @@ fn WgslIrLowerer::infer_array_constructor_type_from_ast(
   diagnostic_name : String,
 ) -> Handle raise WgslIrLowerError {
   let flattened = wgsl_ir_flatten_expression_arguments(arguments)
-  guard flattened is [first, ..] else {
-    raise WgslIrLowerError::MissingType(diagnostic_name)
-  }
+  guard flattened is [first, ..] else { raise MissingType(diagnostic_name) }
   let element_ty = self.infer_expression_type(first, diagnostic_name)
   self.intern_inferred_array_type(element_ty, flattened.length())
 }
@@ -670,7 +639,7 @@ fn WgslIrLowerer::constructor_scalar_from_ast_arguments(
 ) -> Scalar raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [first, .. rest] else {
-    raise WgslIrLowerError::MissingType(diagnostic_name)
+    raise MissingType(diagnostic_name)
   }
   let first_ty = self.infer_expression_type(first, diagnostic_name)
   let mut scalar = self.scalar_from_type_handle(first_ty, diagnostic_name)
@@ -726,7 +695,7 @@ fn WgslIrLowerer::lower_generic_constructor_type_from_handles(
       )
       self.intern_type(
         "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-        TypeInner::Vector(wgsl_ir_vector_size_from_name(name), scalar),
+        Vector(wgsl_ir_vector_size_from_name(name), scalar),
       )
     }
     "mat2x2"
@@ -744,7 +713,7 @@ fn WgslIrLowerer::lower_generic_constructor_type_from_handles(
       let (columns, rows) = wgsl_ir_matrix_size_from_name(name)
       self.intern_type(
         "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-        TypeInner::Matrix(columns, rows, scalar),
+        Matrix(columns, rows, scalar),
       )
     }
     _ => self.lower_type_name_with_expression_arguments(name, arguments)
@@ -759,10 +728,10 @@ fn WgslIrLowerer::infer_array_constructor_type_from_handles(
   diagnostic_name : String,
 ) -> Handle raise WgslIrLowerError {
   guard lowered_arguments is [first, ..] else {
-    raise WgslIrLowerError::MissingType(diagnostic_name)
+    raise MissingType(diagnostic_name)
   }
   guard self.function_expression_type(function, first) is Some(element_ty) else {
-    raise WgslIrLowerError::MissingType(diagnostic_name)
+    raise MissingType(diagnostic_name)
   }
   self.intern_inferred_array_type(element_ty, lowered_arguments.length())
 }
@@ -775,15 +744,15 @@ fn WgslIrLowerer::constructor_scalar_from_handles(
   diagnostic_name : String,
 ) -> Scalar raise WgslIrLowerError {
   guard lowered_arguments is [first, .. rest] else {
-    raise WgslIrLowerError::MissingType(diagnostic_name)
+    raise MissingType(diagnostic_name)
   }
   guard self.function_expression_type(function, first) is Some(ty) else {
-    raise WgslIrLowerError::MissingType(diagnostic_name)
+    raise MissingType(diagnostic_name)
   }
   let mut scalar = self.scalar_from_type_handle(ty, diagnostic_name)
   for argument in rest {
     guard self.function_expression_type(function, argument) is Some(ty) else {
-      raise WgslIrLowerError::MissingType(diagnostic_name)
+      raise MissingType(diagnostic_name)
     }
     let next = self.scalar_from_type_handle(ty, diagnostic_name)
     scalar = self.merge_constructor_scalar(scalar, next, diagnostic_name)
@@ -804,22 +773,22 @@ fn WgslIrLowerer::merge_constructor_scalar(
     if left == right {
       return left
     }
-    raise WgslIrLowerError::UnsupportedType(diagnostic_name)
+    raise UnsupportedType(diagnostic_name)
   }
   if !wgsl_ir_scalar_kind_is_abstract(left.kind) {
     if wgsl_ir_abstract_scalar_can_convert_to(right.kind, left.kind) {
       return left
     }
-    raise WgslIrLowerError::UnsupportedType(diagnostic_name)
+    raise UnsupportedType(diagnostic_name)
   }
   if !wgsl_ir_scalar_kind_is_abstract(right.kind) {
     if wgsl_ir_abstract_scalar_can_convert_to(left.kind, right.kind) {
       return right
     }
-    raise WgslIrLowerError::UnsupportedType(diagnostic_name)
+    raise UnsupportedType(diagnostic_name)
   }
   match (left.kind, right.kind) {
-    (AbstractFloat, _) | (_, AbstractFloat) => Scalar::Scalar(AbstractFloat, 8)
+    (AbstractFloat, _) | (_, AbstractFloat) => Scalar(AbstractFloat, 8)
     _ => left
   }
 }
@@ -846,7 +815,7 @@ fn WgslIrLowerer::intern_inferred_array_type(
   let stride = wgsl_ir_align_to(layout.size, layout.align)
   self.intern_type(
     "array<\{self.type_cache_name(element_ty)}, \{length}>",
-    TypeInner::Array(element_ty, Constant(length), stride),
+    Array(element_ty, Constant(length), stride),
   )
 }
 
@@ -885,7 +854,7 @@ fn WgslIrLowerer::concretize_abstract_storage_type(
             Some(concrete) =>
               self.intern_type(
                 "mat\{columns.width()}x\{rows.width()}<\{wgsl_ir_scalar_name(concrete.kind, concrete.width)}>",
-                TypeInner::Matrix(columns, rows, concrete),
+                Matrix(columns, rows, concrete),
               )
             None => ty
           }
@@ -898,7 +867,7 @@ fn WgslIrLowerer::concretize_abstract_storage_type(
             let stride = wgsl_ir_align_to(layout.size, layout.align)
             self.intern_type(
               "array<\{self.type_key(concrete_element)}, \{wgsl_ir_array_size_key(size)}>",
-              TypeInner::Array(concrete_element, size, stride),
+              Array(concrete_element, size, stride),
             )
           }
         }
@@ -909,7 +878,7 @@ fn WgslIrLowerer::concretize_abstract_storage_type(
           } else {
             self.intern_type(
               "binding_array<\{self.type_key(concrete_element)}, \{wgsl_ir_array_size_key(size)}>",
-              TypeInner::BindingArray(concrete_element, size),
+              BindingArray(concrete_element, size),
             )
           }
         }
@@ -926,8 +895,8 @@ fn WgslIrLowerer::concretize_abstract_storage_scalar(
 ) -> Scalar? {
   ignore(self)
   match scalar.kind {
-    AbstractInt => Some(Scalar::Scalar(Sint, 4))
-    AbstractFloat => Some(Scalar::Scalar(Float, 4))
+    AbstractInt => Some(Scalar(Sint, 4))
+    AbstractFloat => Some(Scalar(Float, 4))
     _ => None
   }
 }
@@ -943,7 +912,7 @@ fn WgslIrLowerer::type_cache_name(
         Some(name) => name
         None => "type_\{handle.index()}"
       }
-    None => raise WgslIrLowerError::MissingType("type handle")
+    None => raise MissingType("type handle")
   }
 }
 
@@ -959,9 +928,9 @@ fn WgslIrLowerer::scalar_from_type_handle(
         Scalar(scalar) => scalar
         Vector(_, scalar) => scalar
         Matrix(_, _, scalar) => scalar
-        _ => raise WgslIrLowerError::MissingType(diagnostic_name)
+        _ => raise MissingType(diagnostic_name)
       }
-    None => raise WgslIrLowerError::MissingType(diagnostic_name)
+    None => raise MissingType(diagnostic_name)
   }
 }
 

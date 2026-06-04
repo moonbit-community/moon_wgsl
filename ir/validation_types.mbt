@@ -49,12 +49,10 @@ fn WgslIrValidator::validate_global_variable(
   match global.binding {
     Some(binding) => {
       if binding.group < 0 || binding.binding < 0 {
-        raise WgslIrValidationError::InvalidGlobalVariable(
-          "negative resource binding",
-        )
+        raise InvalidGlobalVariable("negative resource binding")
       }
       if !self.global_address_space_accepts_resource_binding(global.space) {
-        raise WgslIrValidationError::InvalidGlobalVariable(
+        raise InvalidGlobalVariable(
           "resource binding on non-resource address space",
         )
       }
@@ -64,7 +62,7 @@ fn WgslIrValidator::validate_global_variable(
   match global.init {
     Some(init) => {
       if !self.global_address_space_accepts_initializer(global.space) {
-        raise WgslIrValidationError::InvalidGlobalVariable(
+        raise InvalidGlobalVariable(
           "initializer on non-initializable address space",
         )
       }
@@ -82,15 +80,13 @@ fn WgslIrValidator::validate_global_address_space(
   match global.space {
     Handle =>
       if !self.type_is_handle_resource(global.ty) {
-        raise WgslIrValidationError::InvalidGlobalVariable(
+        raise InvalidGlobalVariable(
           "handle address space requires handle resource type",
         )
       }
     Storage(access) =>
       if access == StorageAccess::empty() {
-        raise WgslIrValidationError::InvalidGlobalVariable(
-          "storage address space has empty access",
-        )
+        raise InvalidGlobalVariable("storage address space has empty access")
       }
     _ => ()
   }
@@ -136,9 +132,7 @@ fn WgslIrValidator::validate_pointer_address_space(
     | RayPayload
     | IncomingRayPayload => ()
     Handle | Immediate =>
-      raise WgslIrValidationError::InvalidType(
-        "pointer uses non-addressable address space",
-      )
+      raise InvalidType("pointer uses non-addressable address space")
   }
 }
 
@@ -149,9 +143,7 @@ fn WgslIrValidator::validate_atomic_scalar(
 ) -> Unit raise WgslIrValidationError {
   ignore(self)
   if !(scalar.kind == Sint || scalar.kind == Uint) || scalar.width != 4 {
-    raise WgslIrValidationError::InvalidType(
-      "atomic type must use i32 or u32 scalar",
-    )
+    raise InvalidType("atomic type must use i32 or u32 scalar")
   }
 }
 
@@ -162,7 +154,7 @@ fn WgslIrValidator::validate_array_stride(
   stride : Int,
 ) -> Unit raise WgslIrValidationError {
   if stride <= 0 {
-    raise WgslIrValidationError::InvalidType("array stride must be positive")
+    raise InvalidType("array stride must be positive")
   }
   let layout = self.type_layout(base)
   if stride < layout.size {
@@ -170,7 +162,7 @@ fn WgslIrValidator::validate_array_stride(
       Some(value) => @debug.to_string(value)
       None => "<invalid type handle>"
     }
-    raise WgslIrValidationError::InvalidType(
+    raise InvalidType(
       "array stride is smaller than element size: stride=\{stride}, element_size=\{layout.size}, element_type=\{base.index()} \{element_text}",
     )
   }
@@ -179,7 +171,7 @@ fn WgslIrValidator::validate_array_stride(
       Some(value) => @debug.to_string(value)
       None => "<invalid type handle>"
     }
-    raise WgslIrValidationError::InvalidType(
+    raise InvalidType(
       "array stride is not aligned to element alignment: stride=\{stride}, element_align=\{layout.align}, element_type=\{base.index()} \{element_text}",
     )
   }
@@ -192,7 +184,7 @@ fn WgslIrValidator::validate_struct_layout(
   span : Int,
 ) -> Unit raise WgslIrValidationError {
   if span <= 0 {
-    raise WgslIrValidationError::InvalidType("struct span must be positive")
+    raise InvalidType("struct span must be positive")
   }
   let mut end = 0
   let mut max_align = 1
@@ -201,9 +193,7 @@ fn WgslIrValidator::validate_struct_layout(
     self.require_type(struct_member.ty)
     if self.type_is_runtime_array(struct_member.ty) &&
       index != members.length() - 1 {
-      raise WgslIrValidationError::InvalidType(
-        "runtime array is only valid as the last struct member",
-      )
+      raise InvalidType("runtime array is only valid as the last struct member")
     }
     let layout = self.type_layout(struct_member.ty)
     let member_align = match struct_member.align {
@@ -212,28 +202,20 @@ fn WgslIrValidator::validate_struct_layout(
     }
     if !wgsl_ir_validation_is_power_of_two(member_align) ||
       member_align < layout.align {
-      raise WgslIrValidationError::InvalidType(
-        "struct member alignment is invalid",
-      )
+      raise InvalidType("struct member alignment is invalid")
     }
     let member_size = match struct_member.size {
       Some(value) => value
       None => layout.size
     }
     if member_size < layout.size {
-      raise WgslIrValidationError::InvalidType(
-        "struct member size is smaller than type size",
-      )
+      raise InvalidType("struct member size is smaller than type size")
     }
     if struct_member.offset < end {
-      raise WgslIrValidationError::InvalidType(
-        "struct member offset overlaps previous member",
-      )
+      raise InvalidType("struct member offset overlaps previous member")
     }
     if struct_member.offset % member_align != 0 {
-      raise WgslIrValidationError::InvalidType(
-        "struct member offset is not aligned",
-      )
+      raise InvalidType("struct member offset is not aligned")
     }
     end = struct_member.offset + member_size
     if member_align > max_align {
@@ -241,13 +223,9 @@ fn WgslIrValidator::validate_struct_layout(
     }
   }
   if span < end {
-    raise WgslIrValidationError::InvalidType(
-      "struct span is smaller than member range",
-    )
+    raise InvalidType("struct span is smaller than member range")
   }
   if span % max_align != 0 {
-    raise WgslIrValidationError::InvalidType(
-      "struct span is not aligned to struct alignment",
-    )
+    raise InvalidType("struct span is not aligned to struct alignment")
   }
 }

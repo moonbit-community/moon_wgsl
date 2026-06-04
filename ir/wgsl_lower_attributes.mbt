@@ -59,7 +59,7 @@ fn wgsl_ir_binding_from_attributes(
   match wgsl_ir_attribute_named(attributes, "builtin") {
     Some(attribute) =>
       match wgsl_ir_attribute_identifier_value(attribute) {
-        Some(name) => Some(Binding::BuiltIn(wgsl_ir_builtin_from_name(name)))
+        Some(name) => Some(BuiltIn(wgsl_ir_builtin_from_name(name)))
         None => None
       }
     None =>
@@ -68,7 +68,7 @@ fn wgsl_ir_binding_from_attributes(
           match wgsl_ir_attribute_int_value(attribute) {
             Some(location) =>
               Some(
-                Binding::Location(
+                Location(
                   location,
                   wgsl_ir_interpolation_from_attributes(attributes),
                   wgsl_ir_sampling_from_attributes(attributes),
@@ -106,40 +106,37 @@ fn wgsl_ir_blend_src_from_attributes(
 ///|
 fn wgsl_ir_builtin_from_name(name : String) -> BuiltIn raise WgslIrLowerError {
   match name {
-    "position" => BuiltIn::Position(false)
-    "view_index" => BuiltIn::ViewIndex
-    "clip_distances" => BuiltIn::ClipDistances
-    "primitive_index" => BuiltIn::PrimitiveIndex
-    "vertex_index" => BuiltIn::VertexIndex
-    "instance_index" => BuiltIn::InstanceIndex
-    "front_facing" => BuiltIn::FrontFacing
-    "barycentric" => BuiltIn::Barycentric(true)
-    "barycentric_no_perspective" => BuiltIn::Barycentric(false)
-    "frag_depth" => BuiltIn::FragDepth
-    "sample_index" => BuiltIn::SampleIndex
-    "sample_mask" => BuiltIn::SampleMask
-    "global_invocation_id" => BuiltIn::GlobalInvocationId
-    "local_invocation_id" => BuiltIn::LocalInvocationId
-    "local_invocation_index" => BuiltIn::LocalInvocationIndex
-    "workgroup_id" => BuiltIn::WorkGroupId
-    "num_workgroups" => BuiltIn::NumWorkGroups
-    "num_subgroups" => BuiltIn::NumSubgroups
-    "subgroup_id" => BuiltIn::SubgroupId
-    "subgroup_size" => BuiltIn::SubgroupSize
-    "subgroup_invocation_id" => BuiltIn::SubgroupInvocationId
-    "mesh_task_size" => BuiltIn::MeshTaskSize
-    "cull_primitive" => BuiltIn::CullPrimitive
-    "point_index" => BuiltIn::PointIndex
-    "line_indices" => BuiltIn::LineIndices
-    "triangle_indices" => BuiltIn::TriangleIndices
-    "vertex_count" => BuiltIn::VertexCount
-    "vertices" => BuiltIn::Vertices
-    "primitive_count" => BuiltIn::PrimitiveCount
-    "primitives" => BuiltIn::Primitives
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "unknown builtin attribute: \{name}",
-      )
+    "position" => Position(false)
+    "view_index" => ViewIndex
+    "clip_distances" => ClipDistances
+    "primitive_index" => PrimitiveIndex
+    "vertex_index" => VertexIndex
+    "instance_index" => InstanceIndex
+    "front_facing" => FrontFacing
+    "barycentric" => Barycentric(true)
+    "barycentric_no_perspective" => Barycentric(false)
+    "frag_depth" => FragDepth
+    "sample_index" => SampleIndex
+    "sample_mask" => SampleMask
+    "global_invocation_id" => GlobalInvocationId
+    "local_invocation_id" => LocalInvocationId
+    "local_invocation_index" => LocalInvocationIndex
+    "workgroup_id" => WorkGroupId
+    "num_workgroups" => NumWorkGroups
+    "num_subgroups" => NumSubgroups
+    "subgroup_id" => SubgroupId
+    "subgroup_size" => SubgroupSize
+    "subgroup_invocation_id" => SubgroupInvocationId
+    "mesh_task_size" => MeshTaskSize
+    "cull_primitive" => CullPrimitive
+    "point_index" => PointIndex
+    "line_indices" => LineIndices
+    "triangle_indices" => TriangleIndices
+    "vertex_count" => VertexCount
+    "vertices" => Vertices
+    "primitive_count" => PrimitiveCount
+    "primitives" => Primitives
+    _ => raise UnsupportedExpression("unknown builtin attribute: \{name}")
   }
 }
 
@@ -154,10 +151,10 @@ fn wgsl_ir_interpolation_from_attributes(
           match expr_ref.identifiers() {
             [name, ..] =>
               match name.name() {
-                "perspective" => Some(Interpolation::Perspective)
-                "linear" => Some(Interpolation::Linear)
-                "flat" => Some(Interpolation::Flat)
-                "per_vertex" => Some(Interpolation::PerVertex)
+                "perspective" => Some(Perspective)
+                "linear" => Some(Linear)
+                "flat" => Some(Flat)
+                "per_vertex" => Some(PerVertex)
                 _ => None
               }
             [] => None
@@ -179,11 +176,11 @@ fn wgsl_ir_sampling_from_attributes(
           match expr_ref.identifiers() {
             [_, sampling, ..] =>
               match sampling.name() {
-                "center" => Some(Sampling::Center)
-                "centroid" => Some(Sampling::Centroid)
-                "sample" => Some(Sampling::Sample)
-                "first" => Some(Sampling::First)
-                "either" => Some(Sampling::Either)
+                "center" => Some(Center)
+                "centroid" => Some(Centroid)
+                "sample" => Some(Sample)
+                "first" => Some(First)
+                "either" => Some(Either)
                 _ => None
               }
             _ => None
@@ -207,8 +204,7 @@ fn wgsl_ir_resource_binding_from_attributes(
               wgsl_ir_attribute_int_value(group_attribute),
               wgsl_ir_attribute_int_value(binding_attribute),
             ) {
-            (Some(group), Some(binding)) =>
-              Some(ResourceBinding::{ group, binding })
+            (Some(group), Some(binding)) => Some({ group, binding })
             _ => None
           }
         None => None
@@ -227,14 +223,12 @@ fn wgsl_ir_address_space_from_template_list(
         "storage" =>
           match rest {
             [access, ..] =>
-              AddressSpace::Storage(
-                wgsl_ir_storage_access_from_name(access.name()),
-              )
-            [] => AddressSpace::Storage(StorageAccess::load())
+              Storage(wgsl_ir_storage_access_from_name(access.name()))
+            [] => Storage(StorageAccess::load())
           }
         other => wgsl_ir_address_space_from_type_name(other)
       }
-    [] => AddressSpace::Private
+    [] => Private
   }
 }
 
@@ -243,20 +237,17 @@ fn wgsl_ir_address_space_from_type_name(
   name : String,
 ) -> AddressSpace raise WgslIrLowerError {
   match name {
-    "function" => AddressSpace::Function
-    "private" => AddressSpace::Private
-    "workgroup" => AddressSpace::WorkGroup
-    "uniform" => AddressSpace::Uniform
-    "storage" => AddressSpace::Storage(StorageAccess::load())
-    "handle" => AddressSpace::Handle
-    "immediate" => AddressSpace::Immediate
-    "task_payload" => AddressSpace::TaskPayload
-    "ray_payload" => AddressSpace::RayPayload
-    "incoming_ray_payload" => AddressSpace::IncomingRayPayload
-    _ =>
-      raise WgslIrLowerError::UnsupportedType(
-        "unknown WGSL address space: \{name}",
-      )
+    "function" => Function
+    "private" => Private
+    "workgroup" => WorkGroup
+    "uniform" => Uniform
+    "storage" => Storage(StorageAccess::load())
+    "handle" => Handle
+    "immediate" => Immediate
+    "task_payload" => TaskPayload
+    "ray_payload" => RayPayload
+    "incoming_ray_payload" => IncomingRayPayload
+    _ => raise UnsupportedType("unknown WGSL address space: \{name}")
   }
 }
 
@@ -299,10 +290,7 @@ fn wgsl_ir_storage_access_from_name(
     "write" => StorageAccess::store()
     "read_write" => StorageAccess::load().union(StorageAccess::store())
     "atomic" => StorageAccess::atomic_access()
-    _ =>
-      raise WgslIrLowerError::UnsupportedType(
-        "unknown WGSL storage access: \{name}",
-      )
+    _ => raise UnsupportedType("unknown WGSL storage access: \{name}")
   }
 }
 
@@ -336,19 +324,19 @@ fn wgsl_ir_shader_stage_from_attributes(
   attributes : Array[@ast.WgslAttribute],
 ) -> ShaderStage? {
   match wgsl_ir_attribute_named(attributes, "vertex") {
-    Some(_) => Some(ShaderStage::Vertex)
+    Some(_) => Some(Vertex)
     None =>
       match wgsl_ir_attribute_named(attributes, "fragment") {
-        Some(_) => Some(ShaderStage::Fragment)
+        Some(_) => Some(Fragment)
         None =>
           match wgsl_ir_attribute_named(attributes, "compute") {
-            Some(_) => Some(ShaderStage::Compute)
+            Some(_) => Some(Compute)
             None =>
               match wgsl_ir_attribute_named(attributes, "task") {
-                Some(_) => Some(ShaderStage::Task)
+                Some(_) => Some(Task)
                 None =>
                   match wgsl_ir_attribute_named(attributes, "mesh") {
-                    Some(_) => Some(ShaderStage::Mesh)
+                    Some(_) => Some(Mesh)
                     None => None
                   }
               }
@@ -362,7 +350,7 @@ fn wgsl_ir_early_depth_test_from_attributes(
   attributes : Array[@ast.WgslAttribute],
 ) -> EarlyDepthTest? {
   match wgsl_ir_attribute_named(attributes, "early_depth_test") {
-    Some(_) => Some(EarlyDepthTest::Force)
+    Some(_) => Some(Force)
     None => None
   }
 }
@@ -431,7 +419,7 @@ fn WgslIrLowerer::workgroup_size_dimension_from_node(
       if self.global_expression_references_override(handle) {
         (1, Some(handle))
       } else {
-        raise WgslIrLowerError::UnsupportedExpression(
+        raise UnsupportedExpression(
           "workgroup_size dimension must be a const or override integer expression",
         )
       }

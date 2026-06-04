@@ -16,10 +16,7 @@ fn WgslIrEmitter::folded_constant_expression(
   match self.constant_type_integer_kind(constant) {
     Some(kind) =>
       match
-        self.eval_global_integer_expression_for_emit(
-          constant.init,
-          @set.Set([]),
-        ) {
+        self.eval_global_integer_expression_for_emit(constant.init, Set([])) {
         Some(value) => return self.integer_value_literal_for_kind(value, kind)
         None => ()
       }
@@ -27,8 +24,7 @@ fn WgslIrEmitter::folded_constant_expression(
   }
   match self.constant_type_float_width(constant) {
     Some(width) =>
-      match
-        self.eval_global_float_expression_for_emit(constant.init, @set.Set([])) {
+      match self.eval_global_float_expression_for_emit(constant.init, Set([])) {
         Some(value) => self.float_value_literal_for_width(value, width)
         None => None
       }
@@ -162,13 +158,12 @@ fn WgslIrEmitter::eval_global_float_expression_inner_for_emit(
   visiting_constants : @set.Set[Int],
 ) -> Double? {
   match expression {
-    Literal(Literal::F32(value)) => wgsl_ir_emit_f32_to_double(value)
-    Literal(Literal::F16(value))
-    | Literal(Literal::F64(value))
-    | Literal(Literal::AbstractFloat(value)) => Some(value)
+    Literal(F32(value)) => wgsl_ir_emit_f32_to_double(value)
+    Literal(F16(value)) | Literal(F64(value)) | Literal(AbstractFloat(value)) =>
+      Some(value)
     Constant(handle) =>
       self.eval_constant_float_expression_for_emit(handle, visiting_constants)
-    Unary(UnaryOperator::Negate, inner) => {
+    Unary(Negate, inner) => {
       guard self.eval_global_float_expression_for_emit(
           inner, visiting_constants,
         )
@@ -225,7 +220,7 @@ fn WgslIrEmitter::eval_constant_float_expression_for_writer(
 ) -> Double? {
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) if self.should_inline_constant_expression(constant) =>
-      self.eval_global_float_expression_for_emit(constant.init, @set.Set([]))
+      self.eval_global_float_expression_for_emit(constant.init, Set([]))
     _ => None
   }
 }
@@ -257,12 +252,12 @@ fn WgslIrEmitter::eval_global_integer_expression_inner_for_emit(
   visiting_constants : @set.Set[Int],
 ) -> WgslIrEmitIntegerValue? {
   match expression {
-    Literal(Literal::I32(value)) => Some(Signed(value))
-    Literal(Literal::U32(value)) => Some(Unsigned(value))
-    Literal(Literal::AbstractInt(value)) => Some(Abstract(value))
+    Literal(I32(value)) => Some(Signed(value))
+    Literal(U32(value)) => Some(Unsigned(value))
+    Literal(AbstractInt(value)) => Some(Abstract(value))
     Constant(handle) =>
       self.eval_constant_integer_expression_for_emit(handle, visiting_constants)
-    Unary(UnaryOperator::Negate, inner) => {
+    Unary(Negate, inner) => {
       guard self.eval_global_integer_expression_for_emit(
           inner, visiting_constants,
         )
@@ -274,7 +269,7 @@ fn WgslIrEmitter::eval_global_integer_expression_inner_for_emit(
         None => None
       }
     }
-    Unary(UnaryOperator::BitwiseNot, inner) =>
+    Unary(BitwiseNot, inner) =>
       match
         self.eval_global_integer_expression_for_emit(inner, visiting_constants) {
         Some(Unsigned(value)) => Some(Unsigned(value.lnot()))
@@ -297,7 +292,7 @@ fn WgslIrEmitter::eval_global_integer_expression_inner_for_emit(
       }
       wgsl_ir_emit_eval_integer_binary(op, left_value, right_value)
     }
-    Math(MathFunction::Min, a, Some(b), None, None) => {
+    Math(Min, a, Some(b), None, None) => {
       guard self.eval_global_integer_expression_for_emit(a, visiting_constants)
         is Some(a_value) else {
         return None
@@ -308,7 +303,7 @@ fn WgslIrEmitter::eval_global_integer_expression_inner_for_emit(
       }
       wgsl_ir_emit_eval_integer_min(a_value, b_value)
     }
-    Math(MathFunction::Max, a, Some(b), None, None) => {
+    Math(Max, a, Some(b), None, None) => {
       guard self.eval_global_integer_expression_for_emit(a, visiting_constants)
         is Some(a_value) else {
         return None
@@ -319,7 +314,7 @@ fn WgslIrEmitter::eval_global_integer_expression_inner_for_emit(
       }
       wgsl_ir_emit_eval_integer_max(a_value, b_value)
     }
-    Math(MathFunction::Clamp, value, Some(low), Some(high), None) => {
+    Math(Clamp, value, Some(low), Some(high), None) => {
       guard self.eval_global_integer_expression_for_emit(
           value, visiting_constants,
         )
@@ -377,7 +372,7 @@ fn WgslIrEmitter::eval_constant_integer_expression_for_writer(
 ) -> WgslIrEmitIntegerValue? {
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) if self.should_inline_constant_expression(constant) =>
-      self.eval_global_integer_expression_for_emit(constant.init, @set.Set([]))
+      self.eval_global_integer_expression_for_emit(constant.init, Set([]))
     _ => None
   }
 }
@@ -389,7 +384,7 @@ fn WgslIrEmitter::eval_constant_float_expression_for_constructor(
 ) -> Double? {
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) if !constant.generated_import =>
-      self.eval_global_float_expression_for_emit(constant.init, @set.Set([]))
+      self.eval_global_float_expression_for_emit(constant.init, Set([]))
     _ => None
   }
 }
@@ -401,7 +396,7 @@ fn WgslIrEmitter::eval_constant_integer_expression_for_constructor(
 ) -> WgslIrEmitIntegerValue? {
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) if !constant.generated_import =>
-      self.eval_global_integer_expression_for_emit(constant.init, @set.Set([]))
+      self.eval_global_integer_expression_for_emit(constant.init, Set([]))
     _ => None
   }
 }
@@ -444,7 +439,7 @@ fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
           )
         _ => None
       }
-    Unary(UnaryOperator::Negate, inner) =>
+    Unary(Negate, inner) =>
       match
         self.eval_float_expression_with_retained_constants_inner(
           function, inner,
@@ -478,7 +473,7 @@ fn WgslIrEmitter::eval_constant_float_expression_for_retained_context(
 ) -> Double? {
   match self.shader_module.constants.items.get(handle.index()) {
     Some(constant) =>
-      self.eval_global_float_expression_for_emit(constant.init, @set.Set([]))
+      self.eval_global_float_expression_for_emit(constant.init, Set([]))
     None => None
   }
 }
@@ -596,11 +591,11 @@ fn WgslIrEmitter::eval_integer_expression_for_writer(
   handle : Handle,
 ) -> WgslIrEmitIntegerValue? raise WgslIrEmitError {
   match self.required_expression(function, handle) {
-    Literal(Literal::I32(value)) => Some(Signed(value))
-    Literal(Literal::U32(value)) => Some(Unsigned(value))
-    Literal(Literal::AbstractInt(value)) => Some(Abstract(value))
+    Literal(I32(value)) => Some(Signed(value))
+    Literal(U32(value)) => Some(Unsigned(value))
+    Literal(AbstractInt(value)) => Some(Abstract(value))
     Constant(handle) => self.eval_constant_integer_expression_for_writer(handle)
-    Unary(UnaryOperator::Negate, inner) => {
+    Unary(Negate, inner) => {
       guard self.eval_integer_expression_for_writer(function, inner)
         is Some(value) else {
         return None
@@ -610,7 +605,7 @@ fn WgslIrEmitter::eval_integer_expression_for_writer(
         None => None
       }
     }
-    Unary(UnaryOperator::BitwiseNot, inner) =>
+    Unary(BitwiseNot, inner) =>
       match self.eval_integer_expression_for_writer(function, inner) {
         Some(Unsigned(value)) => Some(Unsigned(value.lnot()))
         Some(Signed(value)) => Some(Signed(value.lnot()))
@@ -628,7 +623,7 @@ fn WgslIrEmitter::eval_integer_expression_for_writer(
       }
       wgsl_ir_emit_eval_integer_binary(op, left_value, right_value)
     }
-    Math(MathFunction::Min, a, Some(b), None, None) => {
+    Math(Min, a, Some(b), None, None) => {
       guard self.eval_integer_expression_for_writer(function, a)
         is Some(a_value) else {
         return None
@@ -639,7 +634,7 @@ fn WgslIrEmitter::eval_integer_expression_for_writer(
       }
       wgsl_ir_emit_eval_integer_min(a_value, b_value)
     }
-    Math(MathFunction::Max, a, Some(b), None, None) => {
+    Math(Max, a, Some(b), None, None) => {
       guard self.eval_integer_expression_for_writer(function, a)
         is Some(a_value) else {
         return None
@@ -650,7 +645,7 @@ fn WgslIrEmitter::eval_integer_expression_for_writer(
       }
       wgsl_ir_emit_eval_integer_max(a_value, b_value)
     }
-    Math(MathFunction::Clamp, value, Some(low), Some(high), None) => {
+    Math(Clamp, value, Some(low), Some(high), None) => {
       guard self.eval_integer_expression_for_writer(function, value)
         is Some(value) else {
         return None

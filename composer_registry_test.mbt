@@ -18,13 +18,7 @@ fn composer_test_descriptor(
   file_path : String,
   shader_defs : Map[String, @common.ShaderDefValue],
 ) -> @common.ComposableModuleDescriptor {
-  @common.ComposableModuleDescriptor::{
-    source,
-    file_path,
-    as_name: None,
-    additional_imports: [],
-    shader_defs,
-  }
+  { source, file_path, as_name: None, additional_imports: [], shader_defs }
 }
 
 ///|
@@ -41,7 +35,7 @@ fn composer_test_add_or_abort(
 test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
   let composer = @compose.Composer::default()
   let base_shader_defs : Map[String, @common.ShaderDefValue] = Map([])
-  base_shader_defs.set("BASE_DEF", @common.ShaderDefValue::Bool(true))
+  base_shader_defs.set("BASE_DEF", Bool(true))
 
   let base_definition = composer_test_add_or_abort(
     composer,

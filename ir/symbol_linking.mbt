@@ -97,7 +97,7 @@ pub fn WgslIrSymbolIdentity::WgslIrSymbolIdentity(
   rel_path : String,
   original_name : String,
 ) -> WgslIrSymbolIdentity {
-  WgslIrSymbolIdentity::{ rel_path, original_name }
+  { rel_path, original_name }
 }
 
 ///|
@@ -123,10 +123,7 @@ pub fn WgslIrAliasSymbolIdentity::WgslIrAliasSymbolIdentity(
   alias_name : String,
   original_name : String,
 ) -> WgslIrAliasSymbolIdentity {
-  WgslIrAliasSymbolIdentity::{
-    alias_name,
-    symbol: WgslIrSymbolIdentity(rel_path, original_name),
-  }
+  { alias_name, symbol: WgslIrSymbolIdentity(rel_path, original_name) }
 }
 
 ///|
@@ -180,7 +177,7 @@ pub fn WgslIrAliasFinalNameEntry::final_name(
 
 ///|
 pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> WgslIrFinalNameTable {
-  WgslIrFinalNameTable::{
+  {
     canonical: Map([]),
     alias_scoped: Map([]),
     canonical_entries: [],
@@ -199,10 +196,7 @@ pub fn WgslIrFinalNameTable::canonical_set(
     return
   }
   self.canonical.set(key, final_name)
-  self.canonical_entries.push(WgslIrCanonicalFinalNameEntry::{
-    identity,
-    final_name,
-  })
+  self.canonical_entries.push({ identity, final_name })
 }
 
 ///|
@@ -245,7 +239,7 @@ pub fn WgslIrFinalNameTable::alias_set(
     return
   }
   self.alias_scoped.set(key, final_name)
-  self.alias_entries.push(WgslIrAliasFinalNameEntry::{ identity, final_name })
+  self.alias_entries.push({ identity, final_name })
 }
 
 ///|
@@ -295,7 +289,7 @@ pub fn WgslIrImportEdge::WgslIrImportEdge(
   item_name : String,
   kind : WgslIrImportEdgeKind,
 ) -> WgslIrImportEdge {
-  WgslIrImportEdge::{
+  {
     importer_rel_path,
     target_rel_path,
     module_path,
@@ -318,7 +312,7 @@ pub fn WgslIrImportArenaSymbol::WgslIrImportArenaSymbol(
   source_decl_rank? : Int = -1,
   source_order_rank? : Int = -1,
 ) -> WgslIrImportArenaSymbol {
-  WgslIrImportArenaSymbol::{
+  {
     kind,
     source_symbol_name,
     generated_symbol_name,
@@ -373,7 +367,7 @@ pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(
   kind : WgslIrImportEdgeKind,
   generated_symbols : Array[WgslIrImportArenaSymbol],
 ) -> WgslIrImportArenaEvent {
-  WgslIrImportArenaEvent::{
+  {
     sequence,
     importer_rel_path,
     target_rel_path,
@@ -440,13 +434,13 @@ pub fn WgslIrImportEdgeKind::key(self : WgslIrImportEdgeKind) -> String {
 
 ///|
 pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> WgslIrLinkGraph {
-  WgslIrLinkGraph::{
-    symbol_keys: @set.Set([]),
+  {
+    symbol_keys: Set([]),
     symbol_nodes: [],
-    import_edge_keys: @set.Set([]),
+    import_edge_keys: Set([]),
     import_edges: [],
     import_arena_events: [],
-    reachable_symbol_keys: @set.Set([]),
+    reachable_symbol_keys: Set([]),
   }
 }
 
@@ -460,7 +454,7 @@ pub fn WgslIrLinkGraph::record_symbol(
     return
   }
   self.symbol_keys.add(key)
-  self.symbol_nodes.push(WgslIrSymbolNode::{ identity, })
+  self.symbol_nodes.push({ identity, })
 }
 
 ///|

@@ -223,11 +223,11 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
   composer.register_source_files([
-    @common.WgslSourceFile::{
+    {
       rel_path: "plugin.wgsl",
       source: "fn plugin_value() -> f32 {\n  return 2f;\n}\n",
     },
-    @common.WgslSourceFile::{
+    {
       rel_path: "root.wgsl",
       source: "#import plugin\nfn main() -> f32 {\n  return plugin::plugin_value();\n}\n",
     },

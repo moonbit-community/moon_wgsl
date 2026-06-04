@@ -61,7 +61,7 @@ fn Composer::new_wgsl_compose_session(
   self : Composer,
   options : WgslComposeOptions,
 ) -> WgslComposeSession {
-  WgslComposeSession::{
+  {
     defines: copy_bool_defs(options.defines),
     value_defines: copy_value_defs(options.value_defines),
     modules: self.registry.copy_import_module_paths(),
@@ -69,8 +69,8 @@ fn Composer::new_wgsl_compose_session(
     additional_imports: copy_import_definitions(options.additional_imports),
     global_alias_bindings: WgslComposeBindingSet(),
     redirect_match_counts: Map([]),
-    visited: @set.Set([]),
-    graph_planned_requests: @set.Set([]),
+    visited: Set([]),
+    graph_planned_requests: Set([]),
     graph_planning_rel_paths: [],
     graph_execution_complete: false,
     symbols: WgslComposeSymbolTable(),

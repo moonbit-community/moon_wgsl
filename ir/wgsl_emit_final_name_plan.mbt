@@ -19,7 +19,7 @@ priv struct WgslIrFinalNamePlan {
 
 ///|
 fn WgslIrFinalNamePlan::empty() -> WgslIrFinalNamePlan {
-  WgslIrFinalNamePlan::{ names: Map([]) }
+  { names: Map([]) }
 }
 
 ///|
@@ -35,7 +35,7 @@ priv enum WgslIrEmitFunctionOrigin {
 
 ///|
 fn WgslIrNagaNamer::WgslIrNagaNamer() -> WgslIrNagaNamer {
-  WgslIrNagaNamer::{ unique: Map([]) }
+  { unique: Map([]) }
 }
 
 ///|
@@ -194,7 +194,7 @@ fn WgslIrEmitter::required_emit_name(
 ) -> String raise WgslIrEmitError {
   match self.names.get(key) {
     Some(value) => value
-    None => raise WgslIrEmitError::MissingName("emitter name key \{key}")
+    None => raise MissingName("emitter name key \{key}")
   }
 }
 
@@ -203,13 +203,13 @@ fn WgslIrEmitter::with_function_origin(
   self : WgslIrEmitter,
   origin : WgslIrEmitFunctionOrigin,
 ) -> WgslIrEmitter {
-  WgslIrEmitter::{
+  {
     shader_module: self.shader_module,
     options: self.options,
     writer_module: self.writer_module,
     names: self.names,
     current_function_origin: Some(origin),
     naga_compatible_negative_zero_seen: self.naga_compatible_negative_zero_seen,
-    emitted_function_named_expressions: @set.Set([]),
+    emitted_function_named_expressions: Set([]),
   }
 }

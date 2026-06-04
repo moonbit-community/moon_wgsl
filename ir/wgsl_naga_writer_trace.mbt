@@ -56,9 +56,7 @@ pub fn trace_naga_oil_writer_function_plan_for_source_with_generated_imports_and
       return wgsl_ir_naga_writer_entry_point_slot_trace(view, slot)
     }
   }
-  raise WgslIrPipelineError::Emit(
-    "Naga writer trace function not found: \{function_name_prefix}",
-  )
+  raise Emit("Naga writer trace function not found: \{function_name_prefix}")
 }
 
 ///|

@@ -4,7 +4,7 @@ fn parse_wgsl_declaration_data_at(
   source_start : Int,
 ) -> WgslGlobalDeclData raise WgslParseError {
   WgslDeclParser::new_at(text, source_start).parse_decl_data_checked() catch {
-    _ => raise WgslParseError::UnparsedDeclaration(text, source_start)
+    _ => raise UnparsedDeclaration(text, source_start)
   }
 }
 
@@ -29,42 +29,36 @@ fn parse_wgsl_raw_global_decl_strict(
   let item_text = source[item.start:item.end].to_owned()
   let directive_text = replace_comments_naga_oil(item_text)
   let (kind, data) = match item.kind {
-    WgslRawTopLevelKind::DefineImportPath | WgslRawTopLevelKind::Define =>
+    DefineImportPath | Define =>
       match parse_wgsl_directive_line_at(directive_text, item.start) {
         Some(directive) =>
           (
             WgslGlobalDeclKind::Directive,
             WgslGlobalDeclData::Directive(directive),
           )
-        None => raise WgslParseError::UnparsedDeclaration(item_text, item.start)
+        None => raise UnparsedDeclaration(item_text, item.start)
       }
-    WgslRawTopLevelKind::Import =>
+    Import =>
       match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) =>
-          (WgslGlobalDeclKind::Import, WgslGlobalDeclData::Import(directive))
-        None => raise WgslParseError::UnparsedDeclaration(item_text, item.start)
+        Some(directive) => (Import, Import(directive))
+        None => raise UnparsedDeclaration(item_text, item.start)
       }
-    WgslRawTopLevelKind::Directive =>
+    Directive =>
       match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) =>
-          (
-            WgslGlobalDeclKind::Directive,
-            WgslGlobalDeclData::Directive(directive),
-          )
-        None => raise WgslParseError::UnparsedDeclaration(item_text, item.start)
+        Some(directive) => (Directive, Directive(directive))
+        None => raise UnparsedDeclaration(item_text, item.start)
       }
-    WgslRawTopLevelKind::Declaration => {
+    Declaration => {
       let data = parse_wgsl_declaration_data_at(item_text, item.start)
       (wgsl_global_decl_kind_from_data(data), data)
     }
-    WgslRawTopLevelKind::Trivia =>
-      (WgslGlobalDeclKind::Trivia, WgslGlobalDeclData::Raw)
+    Trivia => (Trivia, Raw)
   }
   let declaration = WgslGlobalDecl(kind, data, item.start, item.end)
   match data {
-    WgslGlobalDeclData::Function(function) =>
+    Function(function) =>
       if wgsl_function_has_invalid_statement_expression(function) {
-        raise WgslParseError::UnparsedDeclaration(item_text, item.start)
+        raise UnparsedDeclaration(item_text, item.start)
       } else {
         declaration
       }

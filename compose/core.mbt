@@ -21,7 +21,7 @@ pub struct Composer {
 
 ///|
 pub fn Composer::default() -> Composer {
-  Composer::{
+  {
     module_sets: Map([]),
     registry: WgslSourceRegistry::default(),
     composable_module_registry_paths: Map([]),

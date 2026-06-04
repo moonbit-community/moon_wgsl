@@ -24,23 +24,23 @@ fn collect_effective_def_names(
 fn parse_define_value(raw_value : String) -> ShaderDefValue {
   let value = trim_trailing_semicolons(raw_value)
   if value == "" {
-    return ShaderDefValue::Bool(true)
+    return Bool(true)
   }
   if value == "true" {
-    return ShaderDefValue::Bool(true)
+    return Bool(true)
   }
   if value == "false" {
-    return ShaderDefValue::Bool(false)
+    return Bool(false)
   }
   let parsed_unsigned = @string.parse_uint(value[:], base=10) catch {
     _ => {
       let parsed = @string.parse_int(value[:], base=10) catch {
-        _ => return ShaderDefValue::Bool(false)
+        _ => return Bool(false)
       }
-      return ShaderDefValue::Int(parsed)
+      return Int(parsed)
     }
   }
-  ShaderDefValue::UInt(parsed_unsigned)
+  UInt(parsed_unsigned)
 }
 
 ///|
@@ -93,7 +93,7 @@ fn extract_wgsl_directives(
     let trimmed = wgsl_regex_trim_whitespace(line)
 
     match item.kind() {
-      WgslSourceDirectiveItemKind::Trivia => {
+      Trivia => {
         cleaned_lines.push(line)
         line_index = line_index + 1
         continue
@@ -103,10 +103,10 @@ fn extract_wgsl_directives(
 
     if in_directive_section {
       match item.kind() {
-        WgslSourceDirectiveItemKind::Enable(body) => {
+        Enable(body) => {
           let extensions = split_extensions(body)
           if extensions.is_empty() {
-            raise MetadataError::InvalidWgslDirective(
+            raise InvalidWgslDirective(
               trimmed, line_index, "No extensions specified",
             )
           }
@@ -115,10 +115,10 @@ fn extract_wgsl_directives(
           line_index = line_index + 1
           continue
         }
-        WgslSourceDirectiveItemKind::Requires(body) => {
+        Requires(body) => {
           let extensions = split_extensions(body)
           if extensions.is_empty() {
-            raise MetadataError::InvalidWgslDirective(
+            raise InvalidWgslDirective(
               trimmed, line_index, "No extensions specified",
             )
           }
@@ -127,13 +127,13 @@ fn extract_wgsl_directives(
           line_index = line_index + 1
           continue
         }
-        WgslSourceDirectiveItemKind::Diagnostic(severity, rule) => {
+        Diagnostic(severity, rule) => {
           if severity != "off" &&
             severity != "info" &&
             severity != "warning" &&
             severity != "warn" &&
             severity != "error" {
-            raise MetadataError::InvalidWgslDirective(
+            raise InvalidWgslDirective(
               trimmed,
               line_index,
               "Invalid severity '\{severity}'. Must be one of: off, info, warning, warn, error",
@@ -144,7 +144,7 @@ fn extract_wgsl_directives(
           line_index = line_index + 1
           continue
         }
-        WgslSourceDirectiveItemKind::PrefixCandidate => ()
+        PrefixCandidate => ()
         _ => in_directive_section = false
       }
     }

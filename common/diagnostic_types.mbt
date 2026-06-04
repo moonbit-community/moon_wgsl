@@ -19,5 +19,5 @@ pub fn WgslDiagnostic::WgslDiagnostic(
   rel_path : String?,
   symbol_name : String?,
 ) -> WgslDiagnostic {
-  WgslDiagnostic::{ severity, message, rel_path, symbol_name }
+  { severity, message, rel_path, symbol_name }
 }

@@ -29,15 +29,14 @@ fn wgsl_virtual_override_error_from_parse(
   error : WgslParseError,
 ) -> WgslVirtualOverrideError {
   match error {
-    UnparsedDeclaration(text, offset) =>
-      WgslVirtualOverrideError::UnparsedDeclaration(text, offset)
+    UnparsedDeclaration(text, offset) => UnparsedDeclaration(text, offset)
   }
 }
 
 ///|
 fn wgsl_graph_block_function(block : WgslGraphBlock) -> WgslFunction? {
   match block.data {
-    WgslGlobalDeclData::Function(function) => Some(function)
+    Function(function) => Some(function)
     _ => None
   }
 }
@@ -45,8 +44,7 @@ fn wgsl_graph_block_function(block : WgslGraphBlock) -> WgslFunction? {
 ///|
 fn wgsl_graph_block_is_virtual_fn(block : WgslGraphBlock) -> Bool {
   match wgsl_graph_block_function(block) {
-    Some(function) =>
-      function.qualifier() == Some(WgslFunctionQualifier::Virtual)
+    Some(function) => function.qualifier() == Some(Virtual)
     None => false
   }
 }
@@ -55,7 +53,7 @@ fn wgsl_graph_block_is_virtual_fn(block : WgslGraphBlock) -> Bool {
 fn wgsl_graph_block_override_target(block : WgslGraphBlock) -> String? {
   match wgsl_graph_block_function(block) {
     Some(function) =>
-      if function.qualifier() == Some(WgslFunctionQualifier::Override) {
+      if function.qualifier() == Some(Override) {
         Some(function.name().name())
       } else {
         None
@@ -71,8 +69,8 @@ pub fn wgsl_source_contains_override_directive(
   let graph = build_wgsl_declaration_graph(source)
   for block in graph.declaration_blocks {
     match block.data {
-      WgslGlobalDeclData::Function(function) =>
-        if function.qualifier() == Some(WgslFunctionQualifier::Override) {
+      Function(function) =>
+        if function.qualifier() == Some(Override) {
           return true
         }
       _ => ()
@@ -102,8 +100,7 @@ pub fn collect_wgsl_virtual_override_targets_strict(
   let graph = build_wgsl_declaration_graph(source)
   for block in graph.declaration_blocks {
     match wgsl_graph_block_function(block) {
-      Some(function) if function.qualifier() ==
-        Some(WgslFunctionQualifier::Override) =>
+      Some(function) if function.qualifier() == Some(Override) =>
         if function.name().name() != "" {
           targets.push(function.name().name())
         }
@@ -131,7 +128,7 @@ pub fn rewrite_wgsl_override_targets_with_binding_plan(
       out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
-    if function.qualifier() != Some(WgslFunctionQualifier::Override) {
+    if function.qualifier() != Some(Override) {
       out = out + emit_wgsl_graph_block_canonical(block)
       continue
     }
@@ -379,7 +376,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   plan : WgslReferenceRewritePlan,
 ) -> WgslVirtualOverrideOutput raise WgslParseError {
   let graph = build_wgsl_declaration_graph(source)
-  let virtual_names : @set.Set[String] = @set.Set([])
+  let virtual_names : @set.Set[String] = Set([])
   let overrides : Map[String, String] = Map([])
   let override_base_names : Map[String, String] = Map([])
   let override_names : Map[String, String] = Map([])
@@ -391,8 +388,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   }
   for block in graph.declaration_blocks {
     match wgsl_graph_block_function(block) {
-      Some(function) if function.qualifier() ==
-        Some(WgslFunctionQualifier::Override) => {
+      Some(function) if function.qualifier() == Some(Override) => {
         let raw_target = function.name().name()
         let target = wgsl_binding_plan_redirect_target(raw_target, plan)
         let original_raw_target = match
@@ -405,10 +401,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
             Some((_, name)) => name
             None => raw_target
           }
-          return WgslVirtualOverrideOutput::{
-            source,
-            invalid_override: Some(invalid_target_name),
-          }
+          return { source, invalid_override: Some(invalid_target_name) }
         }
         let needs_base = wgsl_override_body_references_target(
           function,
@@ -446,7 +439,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
     }
   }
   if virtual_names.is_empty() || overrides.is_empty() {
-    return WgslVirtualOverrideOutput::{ source, invalid_override: None }
+    return { source, invalid_override: None }
   }
   let mut out = ""
   for import_block in graph.import_blocks {
@@ -459,7 +452,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
     }
     match wgsl_graph_block_function(block) {
       Some(function) if block.name() != "" &&
-        function.qualifier() == Some(WgslFunctionQualifier::Virtual) => {
+        function.qualifier() == Some(Virtual) => {
         match overrides.get(block.name()) {
           Some(override_block) => {
             let base_block = match override_base_names.get(block.name()) {
@@ -496,7 +489,7 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
         )
     }
   }
-  WgslVirtualOverrideOutput::{ source: out, invalid_override: None }
+  { source: out, invalid_override: None }
 }
 
 ///|
@@ -510,7 +503,7 @@ pub fn apply_wgsl_virtual_overrides_with_binding_plan(
     error => raise wgsl_virtual_override_error_from_parse(error)
   }
   match output.invalid_override {
-    Some(name) => raise WgslVirtualOverrideError::InvalidOverride(name)
+    Some(name) => raise InvalidOverride(name)
     None => output.source
   }
 }
@@ -531,7 +524,7 @@ pub fn strip_wgsl_virtual_functions(
     return source
   }
   let mut out = ""
-  let emitted_names : @set.Set[String] = @set.Set([])
+  let emitted_names : @set.Set[String] = Set([])
   for import_block in graph.import_blocks {
     out = out + emit_wgsl_graph_block_canonical(import_block)
   }

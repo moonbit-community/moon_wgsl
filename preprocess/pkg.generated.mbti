@@ -24,7 +24,7 @@ pub suberror PreprocessError {
 
 // Types and methods
 pub struct Preprocessor {
-}
+} derive(Default)
 pub fn Preprocessor::default() -> Self
 pub fn Preprocessor::preprocess(Self, String, Map[String, @common.ShaderDefValue]) -> @common.PreprocessOutput raise PreprocessError
 

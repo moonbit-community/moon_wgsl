@@ -236,15 +236,15 @@ fn WgslIrValidator::function_expression_inner_type(
       self.image_result_type(function, image, None, None)
     ImageQuery(image, query) =>
       self.image_query_result_type(function, image, query)
-    ArrayLength(_) => self.find_scalar_type(Scalar::Scalar(Uint, 4))
+    ArrayLength(_) => self.find_scalar_type(Scalar(Uint, 4))
     WorkGroupUniformLoad(pointer) | WorkGroupUniformLoadResult(pointer) =>
       match self.function_expression_type(function, pointer) {
         Some(ty) => self.deref_type(ty)
         None => None
       }
     AtomicResult(ty, _) => Some(ty)
-    RayQueryProceedResult => self.find_scalar_type(Scalar::Scalar(Bool, 1))
-    SubgroupBallotResult => self.vector_type(Quad, Scalar::Scalar(Uint, 4))
+    RayQueryProceedResult => self.find_scalar_type(Scalar(Bool, 1))
+    SubgroupBallotResult => self.vector_type(Quad, Scalar(Uint, 4))
     SubgroupOperationResult(handle) =>
       self.function_expression_type(function, handle)
     SubgroupCall(subgroup_function, arguments) =>
@@ -267,7 +267,7 @@ fn WgslIrValidator::function_expression_inner_type(
     RayQueryGetIntersection(_, _) => self.find_type_by_name("RayIntersection")
     RayQueryVertexPositions(_, _) =>
       self.shader_module.special_types.ray_vertex_return
-    RayQueryProceed(_) => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    RayQueryProceed(_) => self.find_scalar_type(Scalar(Bool, 1))
     RayQueryInitialize(_, _, _)
     | RayQueryGenerateIntersection(_, _)
     | RayQueryConfirmIntersection(_)
@@ -379,18 +379,18 @@ fn WgslIrValidator::literal_type(
   literal : Literal,
 ) -> Handle? {
   match literal {
-    Bool(_) => self.find_scalar_type(Scalar::Scalar(Bool, 1))
-    I32(_) => self.find_scalar_type(Scalar::Scalar(Sint, 4))
-    U32(_) => self.find_scalar_type(Scalar::Scalar(Uint, 4))
-    I64(_) => self.find_scalar_type(Scalar::Scalar(Sint, 8))
-    U64(_) => self.find_scalar_type(Scalar::Scalar(Uint, 8))
-    I16(_) => self.find_scalar_type(Scalar::Scalar(Sint, 2))
-    U16(_) => self.find_scalar_type(Scalar::Scalar(Uint, 2))
-    F16(_) => self.find_scalar_type(Scalar::Scalar(Float, 2))
-    F32(_) => self.find_scalar_type(Scalar::Scalar(Float, 4))
-    F64(_) => self.find_scalar_type(Scalar::Scalar(Float, 8))
-    AbstractInt(_) => self.find_scalar_type(Scalar::Scalar(AbstractInt, 8))
-    AbstractFloat(_) => self.find_scalar_type(Scalar::Scalar(AbstractFloat, 8))
+    Bool(_) => self.find_scalar_type(Scalar(Bool, 1))
+    I32(_) => self.find_scalar_type(Scalar(Sint, 4))
+    U32(_) => self.find_scalar_type(Scalar(Uint, 4))
+    I64(_) => self.find_scalar_type(Scalar(Sint, 8))
+    U64(_) => self.find_scalar_type(Scalar(Uint, 8))
+    I16(_) => self.find_scalar_type(Scalar(Sint, 2))
+    U16(_) => self.find_scalar_type(Scalar(Uint, 2))
+    F16(_) => self.find_scalar_type(Scalar(Float, 2))
+    F32(_) => self.find_scalar_type(Scalar(Float, 4))
+    F64(_) => self.find_scalar_type(Scalar(Float, 8))
+    AbstractInt(_) => self.find_scalar_type(Scalar(AbstractInt, 8))
+    AbstractFloat(_) => self.find_scalar_type(Scalar(AbstractFloat, 8))
   }
 }
 
@@ -700,7 +700,7 @@ fn WgslIrValidator::binary_result_type(
   }
   match (left, right) {
     (Some(left_ty), Some(right_ty)) =>
-      if op == BinaryOperator::Multiply {
+      if op == Multiply {
         match self.matrix_vector_multiply_result_type(left_ty, right_ty) {
           Some(ty) => Some(ty)
           None => self.numeric_binary_fallback_type(left_ty, right_ty)
@@ -776,7 +776,7 @@ fn WgslIrValidator::boolean_result_type(
   match left {
     Some(ty) =>
       match self.vector_size(ty) {
-        Some(size) => return self.vector_type(size, Scalar::Scalar(Bool, 1))
+        Some(size) => return self.vector_type(size, Scalar(Bool, 1))
         None => ()
       }
     None => ()
@@ -784,10 +784,10 @@ fn WgslIrValidator::boolean_result_type(
   match right {
     Some(ty) =>
       match self.vector_size(ty) {
-        Some(size) => self.vector_type(size, Scalar::Scalar(Bool, 1))
-        None => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+        Some(size) => self.vector_type(size, Scalar(Bool, 1))
+        None => self.find_scalar_type(Scalar(Bool, 1))
       }
-    None => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    None => self.find_scalar_type(Scalar(Bool, 1))
   }
 }
 
@@ -798,7 +798,7 @@ fn WgslIrValidator::relational_result_type(
   input : Handle?,
 ) -> Handle? {
   match relational_function {
-    All | Any => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    All | Any => self.find_scalar_type(Scalar(Bool, 1))
     IsNan | IsInf => self.boolean_result_type(input, input)
   }
 }
@@ -822,14 +822,13 @@ fn WgslIrValidator::math_result_type(
     | Pack4xU8
     | Pack4xI8Clamp
     | Pack4xU8Clamp
-    | Dot4U8Packed => self.find_scalar_type(Scalar::Scalar(Uint, 4))
-    Dot4I8Packed => self.find_scalar_type(Scalar::Scalar(Sint, 4))
-    Unpack4x8snorm | Unpack4x8unorm =>
-      self.vector_type(Quad, Scalar::Scalar(Float, 4))
+    | Dot4U8Packed => self.find_scalar_type(Scalar(Uint, 4))
+    Dot4I8Packed => self.find_scalar_type(Scalar(Sint, 4))
+    Unpack4x8snorm | Unpack4x8unorm => self.vector_type(Quad, Scalar(Float, 4))
     Unpack2x16snorm | Unpack2x16unorm | Unpack2x16float =>
-      self.vector_type(Bi, Scalar::Scalar(Float, 4))
-    Unpack4xI8 => self.vector_type(Quad, Scalar::Scalar(Sint, 4))
-    Unpack4xU8 => self.vector_type(Quad, Scalar::Scalar(Uint, 4))
+      self.vector_type(Bi, Scalar(Float, 4))
+    Unpack4xI8 => self.vector_type(Quad, Scalar(Sint, 4))
+    Unpack4xU8 => self.vector_type(Quad, Scalar(Uint, 4))
     Dot | Distance | Length | Determinant =>
       self.scalar_type_from_type(input_ty)
     Transpose => self.transpose_type(input_ty)
@@ -939,22 +938,20 @@ fn WgslIrValidator::image_result_type(
   match self.shader_module.types.get(image_ty) {
     Some(type_) =>
       match type_.inner {
-        Image(_, _, Sampled(kind, _)) =>
-          self.vector_type(Quad, Scalar::Scalar(kind, 4))
+        Image(_, _, Sampled(kind, _)) => self.vector_type(Quad, Scalar(kind, 4))
         Image(_, _, Depth(_)) =>
           if gather != None {
-            self.vector_type(Quad, Scalar::Scalar(Float, 4))
+            self.vector_type(Quad, Scalar(Float, 4))
           } else {
             ignore(depth_ref)
-            self.find_scalar_type(Scalar::Scalar(Float, 4))
+            self.find_scalar_type(Scalar(Float, 4))
           }
         Image(_, _, Storage(format, _)) =>
           self.vector_type(
             Quad,
             wgsl_ir_validation_storage_format_scalar(format),
           )
-        Image(_, _, External) =>
-          self.vector_type(Quad, Scalar::Scalar(Float, 4))
+        Image(_, _, External) => self.vector_type(Quad, Scalar(Float, 4))
         _ => None
       }
     None => None
@@ -971,13 +968,12 @@ fn WgslIrValidator::image_query_result_type(
   match query {
     Size(_) =>
       match self.image_dimension(function, image) {
-        Some(D1) => self.find_scalar_type(Scalar::Scalar(Uint, 4))
-        Some(D2) | Some(Cube) => self.vector_type(Bi, Scalar::Scalar(Uint, 4))
-        Some(D3) => self.vector_type(Tri, Scalar::Scalar(Uint, 4))
+        Some(D1) => self.find_scalar_type(Scalar(Uint, 4))
+        Some(D2) | Some(Cube) => self.vector_type(Bi, Scalar(Uint, 4))
+        Some(D3) => self.vector_type(Tri, Scalar(Uint, 4))
         None => None
       }
-    NumLevels | NumLayers | NumSamples =>
-      self.find_scalar_type(Scalar::Scalar(Uint, 4))
+    NumLevels | NumLayers | NumSamples => self.find_scalar_type(Scalar(Uint, 4))
   }
 }
 
@@ -989,8 +985,8 @@ fn WgslIrValidator::subgroup_result_type(
   arguments : Array[Handle],
 ) -> Handle? {
   match subgroup_function {
-    Ballot => self.vector_type(Quad, Scalar::Scalar(Uint, 4))
-    All | Any => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    Ballot => self.vector_type(Quad, Scalar(Uint, 4))
+    All | Any => self.find_scalar_type(Scalar(Bool, 1))
     _ =>
       match arguments.get(0) {
         Some(argument) => self.function_expression_type(function, argument)

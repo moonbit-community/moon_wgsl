@@ -15,14 +15,12 @@
 ///|
 test "Naga-style shader IR module stores handles into arenas" {
   let shader_module = Module()
-  let f32_ty = shader_module.append_type(Type::{
+  let f32_ty = shader_module.append_type({
     name: Some("f32"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Float, 4)),
+    inner: Scalar(Scalar(Float, 4)),
   })
-  let literal = shader_module.append_global_expression(
-    Expression::Literal(Literal::F32(1.0)),
-  )
-  let constant = shader_module.append_constant(Constant::{
+  let literal = shader_module.append_global_expression(Literal(F32(1.0)))
+  let constant = shader_module.append_constant({
     name: Some("ONE"),
     generated_import: false,
     inline_value: false,
@@ -31,9 +29,7 @@ test "Naga-style shader IR module stores handles into arenas" {
     init: literal,
   })
   shader_module.append_const_assert(literal)
-  let global_expr = shader_module.append_global_expression(
-    Expression::Constant(constant),
-  )
+  let global_expr = shader_module.append_global_expression(Constant(constant))
   debug_inspect(f32_ty.index(), content="0")
   debug_inspect(literal.index(), content="0")
   debug_inspect(constant.index(), content="0")
@@ -47,22 +43,14 @@ test "Naga-style shader IR module stores handles into arenas" {
 ///|
 test "Naga-style shader IR represents function statements and entry points" {
   let shader_module = Module()
-  let bool_ty = shader_module.append_type(Type::{
+  let bool_ty = shader_module.append_type({
     name: Some("bool"),
-    inner: TypeInner::Scalar(Scalar::Scalar(Bool, 1)),
+    inner: Scalar(Scalar(Bool, 1)),
   })
   let function = Function::Function(Some("main"))
-  let condition = function.expressions.append(
-    Expression::Literal(Literal::Bool(true)),
-  )
-  function.body.push(
-    Statement::If(
-      condition,
-      Block::{ statements: [Statement::Return(None)] },
-      Block::Block(),
-    ),
-  )
-  shader_module.append_entry_point(EntryPoint::{
+  let condition = function.expressions.append(Literal(Bool(true)))
+  function.body.push(If(condition, { statements: [Return(None)] }, Block()))
+  shader_module.append_entry_point({
     name: "main",
     source_start: -1,
     stage: Compute,

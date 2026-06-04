@@ -10,15 +10,13 @@ fn WgslDeclParser::parse_function_arguments_checked(
   match self.collect_delimited_token_view(40, 41) {
     Some(fragment) => {
       let tokens = self.tokenize_function_arguments(fragment) catch {
-        _ => raise WgslFunctionArgsParseError::UnexpectedToken
+        _ => raise UnexpectedToken
       }
-      let arguments = function_args(tokens) catch {
-        _ => raise WgslFunctionArgsParseError::UnexpectedToken
-      }
+      let arguments = function_args(tokens) catch { _ => raise UnexpectedToken }
       self.drop_tokens(fragment.consumed)
       arguments
     }
-    None => raise WgslFunctionArgsParseError::UnexpectedToken
+    None => raise UnexpectedToken
   }
 }
 
@@ -33,7 +31,7 @@ fn WgslDeclParser::tokenize_function_arguments(
   fragment : WgslDelimitedTokenView,
 ) -> Array[(Token, Int, Int)] raise WgslFunctionArgsTokenizeError {
   let tokens : Array[(Token, Int, Int)] = [
-    (Token::LPAREN, fragment.open_start, fragment.open_start + 1),
+    (LPAREN, fragment.open_start, fragment.open_start + 1),
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
@@ -58,40 +56,40 @@ fn WgslDeclParser::tokenize_function_arguments(
       _ => ()
     }
     if parser.consume_if_other(44) {
-      tokens.push((Token::COMMA, 0, 0))
+      tokens.push((COMMA, 0, 0))
       continue
     }
     parser.push_attribute_tokens(tokens)
     let name = match parser.consume_ident_node() {
       Some(value) => value
-      None => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+      None => raise UnexpectedToken
     }
-    tokens.push((Token::ARG_NAME(name), name.start(), name.end()))
+    tokens.push((ARG_NAME(name), name.start(), name.end()))
     match parser.view() {
       [token, .. rest] if token.is_punctuation(58) => {
         let pos = token.pos()
         parser.update_view(rest)
-        tokens.push((Token::COLON, pos, pos + 1))
+        tokens.push((COLON, pos, pos + 1))
       }
-      _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+      _ => raise UnexpectedToken
     }
     let ty_fragment = parser.collect_until_top_level_type_fragment([44])
     if ty_fragment.text == "" {
-      raise WgslFunctionArgsTokenizeError::UnexpectedToken
+      raise UnexpectedToken
     }
     let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
       Some(value) => value
-      None => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+      None => raise UnexpectedToken
     }
-    tokens.push((Token::ARG_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
+    tokens.push((ARG_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
     match parser.view() {
       [token, ..] if token.is_punctuation(44) => continue
       [] => break
-      _ => raise WgslFunctionArgsTokenizeError::UnexpectedToken
+      _ => raise UnexpectedToken
     }
   }
-  tokens.push((Token::RPAREN, fragment.close_start, fragment.close_start + 1))
-  tokens.push((Token::EOF, fragment.close_start + 1, fragment.close_start + 1))
+  tokens.push((RPAREN, fragment.close_start, fragment.close_start + 1))
+  tokens.push((EOF, fragment.close_start + 1, fragment.close_start + 1))
   tokens
 }
 
@@ -109,7 +107,7 @@ fn WgslDeclParser::parse_function_result(
       }
       let rest_len = rest.length()
       let tokens : Array[(Token, Int, Int)] = [
-        (Token::ARROW(arrow_start), arrow_start, arrow_start + 2),
+        (ARROW(arrow_start), arrow_start, arrow_start + 2),
       ]
       parser.push_attribute_tokens(tokens)
       let ty_fragment = parser.collect_until_top_level_type_fragment([123, 59])
@@ -120,8 +118,8 @@ fn WgslDeclParser::parse_function_result(
         Some(value) => value
         None => return None
       }
-      tokens.push((Token::ARG_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
-      tokens.push((Token::EOF, ty_fragment.end, ty_fragment.end))
+      tokens.push((ARG_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
+      tokens.push((EOF, ty_fragment.end, ty_fragment.end))
       let result = function_result(tokens) catch { _ => return None }
       self.drop_tokens(1 + rest_len - parser.view().length())
       result
@@ -228,19 +226,19 @@ fn wgsl_statement_expression_kind_from_tokens(
   tokens : Array[WgslToken],
 ) -> WgslStatementKind {
   match wgsl_statement_assignment_operator(tokens) {
-    Some(_) => return WgslStatementKind::Assignment
+    Some(_) => return Assignment
     None => ()
   }
   if wgsl_statement_is_update(tokens, "++") {
-    return WgslStatementKind::Increment
+    return Increment
   }
   if wgsl_statement_is_update(tokens, "--") {
-    return WgslStatementKind::Decrement
+    return Decrement
   }
   if wgsl_statement_is_function_call_tokens(tokens) {
-    return WgslStatementKind::FunctionCall
+    return FunctionCall
   }
-  WgslStatementKind::Expression
+  Expression
 }
 
 ///|
@@ -249,26 +247,25 @@ fn wgsl_statement_kind_from_tokens(
   tokens : Array[WgslToken],
 ) -> WgslStatementKind {
   match first_identifier {
-    Some("var") | Some("let") | Some("const") =>
-      WgslStatementKind::LocalDeclaration
-    Some("return") => WgslStatementKind::Return
-    Some("if") => WgslStatementKind::If
-    Some("for") => WgslStatementKind::For
-    Some("while") => WgslStatementKind::While
-    Some("loop") => WgslStatementKind::Loop
-    Some("continuing") => WgslStatementKind::Continuing
-    Some("switch") => WgslStatementKind::Switch
-    Some("case") => WgslStatementKind::Case
-    Some("default") => WgslStatementKind::DefaultCase
-    Some("break") => WgslStatementKind::Break
-    Some("continue") => WgslStatementKind::Continue
-    Some("discard") => WgslStatementKind::Discard
-    Some("const_assert") => WgslStatementKind::ConstAssert
+    Some("var") | Some("let") | Some("const") => LocalDeclaration
+    Some("return") => Return
+    Some("if") => If
+    Some("for") => For
+    Some("while") => While
+    Some("loop") => Loop
+    Some("continuing") => Continuing
+    Some("switch") => Switch
+    Some("case") => Case
+    Some("default") => DefaultCase
+    Some("break") => Break
+    Some("continue") => Continue
+    Some("discard") => Discard
+    Some("const_assert") => ConstAssert
     Some(_) => wgsl_statement_expression_kind_from_tokens(tokens)
     None =>
       match tokens {
-        [token, ..] if token.is_punctuation(123) => WgslStatementKind::Compound
-        [] => WgslStatementKind::Empty
+        [token, ..] if token.is_punctuation(123) => Compound
+        [] => Empty
         _ => wgsl_statement_expression_kind_from_tokens(tokens)
       }
   }
@@ -290,8 +287,8 @@ fn WgslDeclParser::parse_statement_local_binding(
   }
   let kind = match wgsl_statement_token_identifier(tokens[keyword_index]) {
     Some("var") => WgslLocalDeclarationKind::Var
-    Some("let") => WgslLocalDeclarationKind::Let
-    Some("const") => WgslLocalDeclarationKind::Const
+    Some("let") => Let
+    Some("const") => Const
     _ => return None
   }
   let parser = WgslDeclParser::{
@@ -299,7 +296,7 @@ fn WgslDeclParser::parse_statement_local_binding(
     source_start: self.source_start,
     token_view: tokens[keyword_index + 1:],
   }
-  let template_list = if kind == WgslLocalDeclarationKind::Var {
+  let template_list = if kind == Var {
     parser.parse_template_list()
   } else {
     []
@@ -312,8 +309,7 @@ fn WgslDeclParser::parse_statement_local_binding(
     _ => return None
   }
   match (kind, tail.initializer_ref) {
-    (WgslLocalDeclarationKind::Let, None)
-    | (WgslLocalDeclarationKind::Const, None) => return None
+    (Let, None) | (Const, None) => return None
     _ => ()
   }
   Some(
@@ -379,7 +375,7 @@ fn WgslDeclParser::parse_block_tokens_checked(
   inner : ArrayView[WgslToken],
 ) -> WgslBlock raise WgslBlockParseError {
   let tokens : Array[(Token, Int, Int)] = [
-    (Token::LBRACE(open_start), open_start, open_start + 1),
+    (LBRACE(open_start), open_start, open_start + 1),
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
@@ -388,19 +384,14 @@ fn WgslDeclParser::parse_block_tokens_checked(
   }
   while parser.view().length() > 0 {
     match parser.collect_statement() {
-      Some(statement) => tokens.push((Token::STMT(statement), 0, 0))
-      None =>
-        if parser.view() is [] {
-          break
-        } else {
-          raise WgslBlockParseError::UnexpectedToken
-        }
+      Some(statement) => tokens.push((STMT(statement), 0, 0))
+      None => if parser.view() is [] { break } else { raise UnexpectedToken }
     }
   }
-  tokens.push((Token::RBRACE(close_start), close_start, close_start + 1))
-  tokens.push((Token::EOF, close_start + 1, close_start + 1))
+  tokens.push((RBRACE(close_start), close_start, close_start + 1))
+  tokens.push((EOF, close_start + 1, close_start + 1))
   block(tokens) catch {
-    _ => raise WgslBlockParseError::UnexpectedToken
+    _ => raise UnexpectedToken
   }
 }
 
@@ -598,19 +589,14 @@ fn wgsl_statement_case_selectors_from_tokens(
   fn push_selector(item_end : Int) -> Unit {
     guard item_end > item_start else { return }
     if item_start + 1 == item_end && tokens[item_start].is_identifier("default") {
-      selectors.push(WgslCaseSelector::DefaultSelector)
+      selectors.push(DefaultSelector)
       return
     }
     match owner.expr_ref_from_token_range(tokens, item_start, item_end) {
       Some(expr) => {
         expression_refs.push(expr)
-        expressions.push(
-          WgslStatementExpression(
-            WgslStatementExpressionRole::CaseSelector,
-            expr,
-          ),
-        )
-        selectors.push(WgslCaseSelector::ExpressionSelector(expr))
+        expressions.push(WgslStatementExpression(CaseSelector, expr))
+        selectors.push(ExpressionSelector(expr))
       }
       None => ()
     }
@@ -762,7 +748,7 @@ fn wgsl_statement_collect_for_header_exprs(
       tokens,
       header_start + 1,
       first_end,
-      WgslStatementExpressionRole::ForInitializer,
+      ForInitializer,
       expression_refs,
       expressions,
     )
@@ -777,7 +763,7 @@ fn wgsl_statement_collect_for_header_exprs(
       tokens,
       second_start,
       header_end,
-      WgslStatementExpressionRole::ForCondition,
+      ForCondition,
       expression_refs,
       expressions,
     )
@@ -788,7 +774,7 @@ fn wgsl_statement_collect_for_header_exprs(
     tokens,
     second_start,
     second_end,
-    WgslStatementExpressionRole::ForCondition,
+    ForCondition,
     expression_refs,
     expressions,
   )
@@ -797,7 +783,7 @@ fn wgsl_statement_collect_for_header_exprs(
     tokens,
     second_end + 1,
     header_end,
-    WgslStatementExpressionRole::ForUpdate,
+    ForUpdate,
     expression_refs,
     expressions,
   )
@@ -828,7 +814,7 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             2,
             tokens.length(),
-            WgslStatementExpressionRole::BreakIf,
+            BreakIf,
             expression_refs,
             expressions,
           )
@@ -842,7 +828,7 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         1,
         tokens.length(),
-        WgslStatementExpressionRole::ReturnValue,
+        ReturnValue,
         expression_refs,
         expressions,
       )
@@ -857,7 +843,7 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             2,
             close_index,
-            WgslStatementExpressionRole::ConstAssertValue,
+            ConstAssertValue,
             expression_refs,
             expressions,
           )
@@ -869,7 +855,7 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         1,
         tokens.length(),
-        WgslStatementExpressionRole::ConstAssertValue,
+        ConstAssertValue,
         expression_refs,
         expressions,
       )
@@ -893,7 +879,7 @@ fn collect_wgsl_statement_expression_refs(
             owner,
             tokens,
             i,
-            WgslStatementExpressionRole::Condition,
+            Condition,
             expression_refs,
             expressions,
           )
@@ -905,7 +891,7 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             i + 1,
             expr_end,
-            WgslStatementExpressionRole::CaseSelector,
+            CaseSelector,
             expression_refs,
             expressions,
           )
@@ -924,7 +910,7 @@ fn collect_wgsl_statement_expression_refs(
             owner,
             tokens,
             i,
-            WgslStatementExpressionRole::SwitchSelector,
+            SwitchSelector,
             expression_refs,
             expressions,
           )
@@ -936,7 +922,7 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             i + 1,
             expr_end,
-            WgslStatementExpressionRole::CaseSelector,
+            CaseSelector,
             expression_refs,
             expressions,
           )
@@ -955,7 +941,7 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             0,
             op_index,
-            WgslStatementExpressionRole::AssignmentLhs,
+            AssignmentLhs,
             expression_refs,
             expressions,
           )
@@ -964,7 +950,7 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             op_index + consumed,
             tokens.length(),
-            WgslStatementExpressionRole::AssignmentRhs,
+            AssignmentRhs,
             expression_refs,
             expressions,
           )
@@ -979,7 +965,7 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         0,
         tokens.length() - 1,
-        WgslStatementExpressionRole::UpdateTarget,
+        UpdateTarget,
         expression_refs,
         expressions,
       )
@@ -991,7 +977,7 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         0,
         tokens.length(),
-        WgslStatementExpressionRole::FunctionCallValue,
+        FunctionCallValue,
         expression_refs,
         expressions,
       )
@@ -1007,7 +993,7 @@ fn collect_wgsl_statement_expression_refs(
             tokens,
             1,
             expr_end,
-            WgslStatementExpressionRole::CaseSelector,
+            CaseSelector,
             expression_refs,
             expressions,
           )
@@ -1021,7 +1007,7 @@ fn collect_wgsl_statement_expression_refs(
         tokens,
         0,
         tokens.length(),
-        WgslStatementExpressionRole::ExpressionValue,
+        ExpressionValue,
         expression_refs,
         expressions,
       )
@@ -1092,47 +1078,25 @@ fn wgsl_statement_has_invalid_expression(
   match kind {
     Return =>
       tokens.length() > 1 &&
-      !wgsl_statement_has_expression_role(
-        expressions,
-        WgslStatementExpressionRole::ReturnValue,
-      )
+      !wgsl_statement_has_expression_role(expressions, ReturnValue)
     ConstAssert =>
       tokens.length() > 1 &&
-      !wgsl_statement_has_expression_role(
-        expressions,
-        WgslStatementExpressionRole::ConstAssertValue,
-      )
+      !wgsl_statement_has_expression_role(expressions, ConstAssertValue)
     FunctionCall =>
-      !wgsl_statement_has_expression_role(
-        expressions,
-        WgslStatementExpressionRole::FunctionCallValue,
-      )
+      !wgsl_statement_has_expression_role(expressions, FunctionCallValue)
     Expression =>
       match tokens {
         [token, ..] if token.is_punctuation(35) => false
         [token, ..] if token.is_identifier("case") ||
           token.is_identifier("default") => false
         [] => false
-        _ =>
-          !wgsl_statement_has_expression_role(
-            expressions,
-            WgslStatementExpressionRole::ExpressionValue,
-          )
+        _ => !wgsl_statement_has_expression_role(expressions, ExpressionValue)
       }
     Increment | Decrement =>
-      !wgsl_statement_has_expression_role(
-        expressions,
-        WgslStatementExpressionRole::UpdateTarget,
-      )
+      !wgsl_statement_has_expression_role(expressions, UpdateTarget)
     Assignment =>
-      !wgsl_statement_has_expression_role(
-        expressions,
-        WgslStatementExpressionRole::AssignmentLhs,
-      ) ||
-      !wgsl_statement_has_expression_role(
-        expressions,
-        WgslStatementExpressionRole::AssignmentRhs,
-      )
+      !wgsl_statement_has_expression_role(expressions, AssignmentLhs) ||
+      !wgsl_statement_has_expression_role(expressions, AssignmentRhs)
     _ => false
   }
 }
@@ -1178,51 +1142,24 @@ fn wgsl_statement_payload_from_ast(
     Empty => Empty
     LocalDeclaration => LocalDeclaration(local_bindings)
     Return =>
-      Return(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::ReturnValue,
-        ),
-      )
-    If =>
-      If(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::Condition,
-        ),
-      )
+      Return(wgsl_statement_first_expression_by_role(expressions, ReturnValue))
+    If => If(wgsl_statement_first_expression_by_role(expressions, Condition))
     For => For(expressions)
     While =>
-      While(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::Condition,
-        ),
-      )
+      While(wgsl_statement_first_expression_by_role(expressions, Condition))
     Loop => Loop
     Continuing => Compound
     Switch =>
       Switch(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::SwitchSelector,
-        ),
+        wgsl_statement_first_expression_by_role(expressions, SwitchSelector),
       )
     Break =>
-      Break(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::BreakIf,
-        ),
-      )
+      Break(wgsl_statement_first_expression_by_role(expressions, BreakIf))
     Continue => Continue
     Discard => Discard
     ConstAssert =>
       ConstAssert(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::ConstAssertValue,
-        ),
+        wgsl_statement_first_expression_by_role(expressions, ConstAssertValue),
       )
     Compound => Compound
     Case => Case(case_selectors)
@@ -1233,35 +1170,20 @@ fn wgsl_statement_payload_from_ast(
           Some(text) => text
           None => ""
         },
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::AssignmentLhs,
-        ),
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::AssignmentRhs,
-        ),
+        wgsl_statement_first_expression_by_role(expressions, AssignmentLhs),
+        wgsl_statement_first_expression_by_role(expressions, AssignmentRhs),
       )
     Increment =>
       Increment(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::UpdateTarget,
-        ),
+        wgsl_statement_first_expression_by_role(expressions, UpdateTarget),
       )
     Decrement =>
       Decrement(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::UpdateTarget,
-        ),
+        wgsl_statement_first_expression_by_role(expressions, UpdateTarget),
       )
     FunctionCall =>
       FunctionCall(
-        wgsl_statement_first_expression_by_role(
-          expressions,
-          WgslStatementExpressionRole::FunctionCallValue,
-        ),
+        wgsl_statement_first_expression_by_role(expressions, FunctionCallValue),
       )
     Expression =>
       match first_identifier {
@@ -1271,7 +1193,7 @@ fn wgsl_statement_payload_from_ast(
           Expression(
             wgsl_statement_first_expression_by_role(
               expressions,
-              WgslStatementExpressionRole::ExpressionValue,
+              ExpressionValue,
             ),
           )
       }
@@ -1409,7 +1331,7 @@ fn WgslDeclParser::collect_statement(self : WgslDeclParser) -> WgslStatement? {
     collect_wgsl_statement_expression_refs(
       self, scope_tokens, kind, expression_refs, expressions,
     )
-    let case_selectors = if kind == WgslStatementKind::Case {
+    let case_selectors = if kind == Case {
       let colon = wgsl_statement_top_level_token_index(scope_tokens, 1, 58)
       let selector_end = if colon >= 0 { colon } else { scope_tokens.length() }
       wgsl_statement_case_selectors_from_tokens(
@@ -1454,7 +1376,7 @@ fn WgslDeclParser::parse_block_checked(
       self.drop_tokens(fragment.consumed)
       block
     }
-    None => raise WgslBlockParseError::UnexpectedToken
+    None => raise UnexpectedToken
   }
 }
 

@@ -93,7 +93,7 @@ fn WgslIrValidator::validate_function_expression(
       self.validate_function_expression_handle(function, base)
     FunctionArgument(index) =>
       if index < 0 || index >= function.arguments.length() {
-        raise WgslIrValidationError::InvalidFunctionExpressionHandle(index)
+        raise InvalidFunctionExpressionHandle(index)
       }
     GlobalVariable(handle) => self.require_global_variable(handle)
     LocalVariable(handle) => self.require_local_variable(function, handle)

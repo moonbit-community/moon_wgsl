@@ -9,7 +9,7 @@ fn WgslImportGraphBuilder::WgslImportGraphBuilder(
   composer : Composer,
   session : WgslComposeSession,
 ) -> WgslImportGraphBuilder {
-  WgslImportGraphBuilder::{ composer, session }
+  { composer, session }
 }
 
 ///|
@@ -23,7 +23,7 @@ fn WgslReachabilityPlan::WgslReachabilityPlan(
   facts : WgslComposeSemanticFacts,
   bindings : WgslComposeBindingSet,
 ) -> WgslReachabilityPlan {
-  WgslReachabilityPlan::{ facts, bindings }
+  { facts, bindings }
 }
 
 ///|
@@ -44,7 +44,7 @@ fn WgslFinalNameAllocator::WgslFinalNameAllocator(
   session : WgslComposeSession,
   alias_prefixes : Array[String],
 ) -> WgslFinalNameAllocator {
-  WgslFinalNameAllocator::{ session, alias_prefixes }
+  { session, alias_prefixes }
 }
 
 ///|
@@ -70,5 +70,5 @@ fn WgslComposeEmitter::WgslComposeEmitter(
   composer : Composer,
   session : WgslComposeSession,
 ) -> WgslComposeEmitter {
-  WgslComposeEmitter::{ composer, session }
+  { composer, session }
 }

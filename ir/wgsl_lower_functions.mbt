@@ -27,7 +27,7 @@ fn WgslIrLowerer::lower_function_declaration(
         let (workgroup_size, workgroup_size_overrides) = self.workgroup_size_from_attributes(
           function.attributes(),
         )
-        self.shader_module.append_entry_point(EntryPoint::{
+        self.shader_module.append_entry_point({
           name: function.name().name(),
           source_start: function.fn_start(),
           stage,
@@ -68,17 +68,13 @@ fn WgslIrLowerer::entry_point_name_is_lowered(
 fn wgsl_ir_strip_function_io_bindings(function : Function) -> Function {
   let arguments : Array[FunctionArgument] = []
   for argument in function.arguments {
-    arguments.push(FunctionArgument::{
-      name: argument.name,
-      ty: argument.ty,
-      binding: None,
-    })
+    arguments.push({ name: argument.name, ty: argument.ty, binding: None })
   }
   let result = match function.result {
     Some(value) => Some(FunctionResult::{ ty: value.ty, binding: None })
     None => None
   }
-  Function::{
+  {
     name: function.name,
     source_start: function.source_start,
     generated_import: function.generated_import,
@@ -291,7 +287,7 @@ fn WgslIrLowerer::function_without_ambient_global_arguments(
       ),
     )
   }
-  Function::{
+  {
     name: function.name,
     source_start: function.source_start,
     generated_import: function.generated_import,
@@ -350,7 +346,7 @@ fn WgslIrLowerer::lower_function(
     local_variables: LocalVariableArena(),
     expressions: ExpressionArena(),
     named_expressions: [],
-    body: Block::Block(),
+    body: Block(),
     diagnostic_filter_leaf: None,
   }
   let scope = WgslIrFunctionScope()
@@ -377,9 +373,9 @@ fn WgslIrLowerer::lower_function(
   let mut index = 0
   for argument in function.arguments() {
     guard argument.ty_ref() is Some(ty_ref) else {
-      raise WgslIrLowerError::MissingType(argument.name().name())
+      raise MissingType(argument.name().name())
     }
-    ir_function.arguments.push(FunctionArgument::{
+    ir_function.arguments.push({
       name: Some(
         self.naga_oil_generated_import_local_spelling_for_scope(
           argument.name().name(),
@@ -401,24 +397,24 @@ fn WgslIrLowerer::lower_function(
     error =>
       match error {
         UnknownIdentifier(name) =>
-          raise WgslIrLowerError::UnknownIdentifier(
+          raise UnknownIdentifier(
             "\{name} in function \{function.name().name()} with args \{wgsl_ir_function_argument_names(function)}",
           )
         UnsupportedExpression(message) =>
-          raise WgslIrLowerError::UnsupportedExpression(
+          raise UnsupportedExpression(
             "\{message} in function \{function.name().name()}",
           )
         UnsupportedStatement(message) =>
-          raise WgslIrLowerError::UnsupportedStatement(
+          raise UnsupportedStatement(
             "\{message} in function \{function.name().name()}",
           )
         _ => raise error
       }
   }
   if result == None && !wgsl_ir_block_ends_with_return(body) {
-    body.push(Statement::ImplicitReturn)
+    body.push(ImplicitReturn)
   }
-  Function::{
+  {
     name: ir_function.name,
     source_start: ir_function.source_start,
     generated_import: ir_function.generated_import,

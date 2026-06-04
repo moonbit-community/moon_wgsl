@@ -11,7 +11,7 @@ fn WgslTemplateConstReference::WgslTemplateConstReference(
   start : Int,
   end : Int,
 ) -> WgslTemplateConstReference {
-  WgslTemplateConstReference::{ name, start, end }
+  { name, start, end }
 }
 
 ///|

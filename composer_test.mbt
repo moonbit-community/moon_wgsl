@@ -441,7 +441,7 @@ test "naga_oil: composer local registry can compose without test registry state"
 ///|
 test "issue 5: template constants handle non-BMP source text" {
   let value_defines = @common.default_wgsl_value_defines()
-  value_defines.set("CUSTOM_LIMIT", @common.ShaderDefValue::Int(42))
+  value_defines.set("CUSTOM_LIMIT", Int(42))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     "// 😀 before a braced template const\nconst A: u32 = #{CUSTOM_LIMIT}u;\n// 😃 before a bare template const\nconst B: u32 = #CUSTOM_LIMITu;\n",
     {
@@ -460,7 +460,7 @@ test "issue 5: template constants handle non-BMP source text" {
 ///|
 test "template constants preserve large unsigned shader-def values" {
   let value_defines = @common.default_wgsl_value_defines()
-  value_defines.set("LARGE_COUNT", @common.ShaderDefValue::UInt(3221225472U))
+  value_defines.set("LARGE_COUNT", UInt(3221225472U))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     "const A: u32 = #LARGE_COUNTu;\nconst B: u32 = #{LARGE_COUNT}u;\n",
     {
@@ -489,7 +489,7 @@ test "template constants preserve large unsigned shader-def values" {
 ///|
 test "template constants support raw double-hash WGSL token placeholders" {
   let value_defines = @common.default_wgsl_value_defines()
-  value_defines.set("TEXTURE_FORMAT", @common.ShaderDefValue::Raw("rgba8unorm"))
+  value_defines.set("TEXTURE_FORMAT", Raw("rgba8unorm"))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     "@group(0) @binding(0) var out_tex: texture_storage_2d<##TEXTURE_FORMAT##, write>;\n",
     {
@@ -922,7 +922,7 @@ test "naga_oil: composer rejects unsigned-suffix if comparison values" {
     "invalid_uint_if.wgsl", "#if COUNT == 1u\nconst active: u32 = 1u;\n#endif\n",
   )
   let options = composer_test_compose_options(empty_bool_defines(), [])
-  options.value_defines.set("COUNT", @common.ShaderDefValue::Int(1))
+  options.value_defines.set("COUNT", Int(1))
   ignore(composer.compose_wgsl("invalid_uint_if.wgsl", options)) catch {
     err => {
       debug_inspect(
@@ -1086,7 +1086,7 @@ test "naga_oil: source catalog uses per-module strict shader defs" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
   let module_defs : Map[String, @common.ShaderDefValue] = Map([])
-  module_defs.set("MODULE_FLAG", @common.ShaderDefValue::Bool(false))
+  module_defs.set("MODULE_FLAG", Bool(false))
   ignore(
     composer.add_composable_module({
       source: "#define_import_path catalog::module\n#ifdef MODULE_FLAG\nfn from_if() -> f32 {\n  return 1f;\n}\n#else\nfn from_else() -> f32 {\n  return 2f;\n}\n#endif\n",

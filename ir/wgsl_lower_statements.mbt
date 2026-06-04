@@ -66,7 +66,7 @@ fn WgslIrLowerer::predeclare_source_var_const_initializer_expression(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
-  guard local_decl.kind() == @ast.WgslLocalDeclarationKind::Var else { return }
+  guard local_decl.kind() == Var else { return }
   guard local_decl.initializer_ref() is Some(expr_ref) else { return }
   let initializer_is_const = match expr_ref.root() {
     Some(root) => self.expression_node_is_const_initializer(root)
@@ -91,7 +91,7 @@ fn WgslIrLowerer::predeclare_source_local_placeholder(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Unit raise WgslIrLowerError {
-  guard local_decl.kind() == @ast.WgslLocalDeclarationKind::Var else { return }
+  guard local_decl.kind() == Var else { return }
   let key = wgsl_ir_local_declaration_key(local_decl)
   if scope.predeclared_source_locals.contains(key) {
     return
@@ -113,14 +113,14 @@ fn WgslIrLowerer::predeclare_source_local_placeholder(
       }
   }
   let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
-  let handle = function.local_variables.append(LocalVariable::{
+  let handle = function.local_variables.append({
     name: Some(
       self.naga_oil_generated_import_local_spelling_for_scope(
         local_decl.name().name(),
         scope,
       ),
     ),
-    kind: LocalVariableKind::Var,
+    kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
     ty,
@@ -207,7 +207,7 @@ fn wgsl_ir_record_source_local_const_initializer_literals(
         if !scope.source_local_const_initializer_expressions.contains(key) {
           scope.source_local_const_initializer_expressions.set(
             key,
-            Handle::Handle(expression_index),
+            Handle(expression_index),
           )
         }
         token_index = token_index + 1
@@ -365,7 +365,7 @@ fn WgslIrLowerer::predeclare_source_var_suffix_locals(
 ) -> Unit raise WgslIrLowerError {
   for index in statement_index..<statements.length() {
     for local_decl in statements[index].local_bindings() {
-      if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
+      if local_decl.kind() == Var {
         self.predeclare_source_local_placeholder(local_decl, function, scope)
       }
     }
@@ -376,11 +376,7 @@ fn WgslIrLowerer::predeclare_source_var_suffix_locals(
 fn wgsl_ir_statement_is_source_var_declaration(
   statement : @ast.WgslStatement,
 ) -> Bool {
-  statement
-  .local_bindings()
-  .any(fn(local_decl) {
-    local_decl.kind() == @ast.WgslLocalDeclarationKind::Var
-  })
+  statement.local_bindings().any(fn(local_decl) { local_decl.kind() == Var })
 }
 
 ///|
@@ -397,9 +393,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
     Compound =>
       match statement.blocks() {
         [child, ..] =>
-          block.push(
-            Statement::Block(self.lower_child_block(child, function, scope)),
-          )
+          block.push(Block(self.lower_child_block(child, function, scope)))
         [] => ()
       }
     LocalDeclaration(locals) =>
@@ -417,9 +411,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             None => None
           }
           guard expr_ref.root() is Some(root) else {
-            raise WgslIrLowerError::UnsupportedExpression(
-              "empty return expression",
-            )
+            raise UnsupportedExpression("empty return expression")
           }
           let handle = if wgsl_ir_expr_node_is_short_circuit_binary(root) {
             let handle = self.materialize_short_circuit_expression_node(
@@ -444,17 +436,17 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             )
           } else if !wgsl_ir_block_contains_expression_emit(block, handle) &&
             !wgsl_ir_function_expression_is_naga_emit_leaf(function, handle) {
-            block.push(Statement::Emit(HandleRange(handle, handle)))
+            block.push(Emit(HandleRange(handle, handle)))
           }
           Some(handle)
         }
         None => None
       }
-      block.push(Statement::Return(value))
+      block.push(Return(value))
     }
     If(condition) => {
       guard condition is Some(condition_ref) else {
-        raise WgslIrLowerError::UnsupportedStatement("if without condition")
+        raise UnsupportedStatement("if without condition")
       }
       let expression_mark = function.expressions.items.length()
       let condition_handle = self.lower_function_expression_ref(
@@ -467,12 +459,12 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         statement.expressions(),
       )
       guard condition_refs.length() > 0 else {
-        raise WgslIrLowerError::UnsupportedStatement("if without condition")
+        raise UnsupportedStatement("if without condition")
       }
       let blocks = statement.blocks()
       let then_block = match statement.blocks() {
         [then_child, ..] => self.lower_child_block(then_child, function, scope)
-        [] => Block::Block()
+        [] => Block()
       }
       let else_block = self.lower_if_reject_chain(
         blocks, condition_refs, 1, function, scope,
@@ -480,49 +472,45 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       wgsl_ir_push_naga_statement_emit_ranges(
         block, function, expression_mark, condition_handle,
       )
-      block.push(Statement::If(condition_handle, then_block, else_block))
+      block.push(If(condition_handle, then_block, else_block))
     }
     While(condition) => {
       guard condition is Some(condition_ref) else {
-        raise WgslIrLowerError::UnsupportedStatement("while without condition")
+        raise UnsupportedStatement("while without condition")
       }
       let cond = self.lower_function_expression_ref(
         condition_ref, function, scope,
       )
       let lowered_body = match statement.blocks() {
         [body_block, ..] => self.lower_child_block(body_block, function, scope)
-        [] => Block::Block()
+        [] => Block()
       }
       let body_statements : Array[Statement] = []
       let guard_block = Block::{ statements: body_statements }
       let cond = self.materialize_control_flow_condition_if_needed(
         function, scope, guard_block, cond,
       )
-      body_statements.push(
-        Statement::If(cond, Block::Block(), Block::{
-          statements: [Statement::Break],
-        }),
-      )
+      body_statements.push(If(cond, Block(), { statements: [Break] }))
       for body_statement in lowered_body.statements {
         body_statements.push(body_statement)
       }
-      block.push(Statement::Loop(guard_block, Block::Block(), None))
+      block.push(Loop(guard_block, Block(), None))
     }
     Loop => {
       let (body, continuing, break_if) = self.lower_loop_blocks(
         statement, function, scope,
       )
-      block.push(Statement::Loop(body, continuing, break_if))
+      block.push(Loop(body, continuing, break_if))
     }
-    Break(_) => block.push(Statement::Break)
-    Continue => block.push(Statement::Continue)
-    Discard => block.push(Statement::Kill)
+    Break(_) => block.push(Break)
+    Continue => block.push(Continue)
+    Discard => block.push(Kill)
     Assignment(op, lhs, rhs) => {
       guard lhs is Some(lhs_ref) else {
-        raise WgslIrLowerError::UnsupportedStatement("assignment without lhs")
+        raise UnsupportedStatement("assignment without lhs")
       }
       guard rhs is Some(rhs_ref) else {
-        raise WgslIrLowerError::UnsupportedStatement("assignment without rhs")
+        raise UnsupportedStatement("assignment without rhs")
       }
       let expression_mark = function.expressions.items.length()
       if wgsl_ir_expr_ref_is_phony(lhs_ref) {
@@ -538,7 +526,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         let rhs_value = self.lower_function_expression_ref(
           rhs_ref, function, scope,
         )
-        block.push(Statement::Phony(rhs_value))
+        block.push(Phony(rhs_value))
         return
       }
       let (target, value) = match wgsl_ir_compound_assignment_operator(op) {
@@ -565,7 +553,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             function, binary_op, materialized_target, rhs_value,
           )
           let value = function.expressions.append(
-            Expression::Binary(binary_op, materialized_target, rhs_value),
+            Binary(binary_op, materialized_target, rhs_value),
           )
           (target, value)
         }
@@ -607,7 +595,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         expression_mark,
         wgsl_ir_max_handle(target, value),
       )
-      block.push(Statement::Store(target, value))
+      block.push(Store(target, value))
     }
     Increment(target) =>
       self.lower_update_statement(target, function, scope, block, true)
@@ -615,9 +603,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       self.lower_update_statement(target, function, scope, block, false)
     FunctionCall(expr) => {
       guard expr is Some(expr_ref) else {
-        raise WgslIrLowerError::UnsupportedStatement(
-          "function call without expression",
-        )
+        raise UnsupportedStatement("function call without expression")
       }
       self.lower_call_statement(expr_ref, function, scope, block)
     }
@@ -634,18 +620,16 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             let handle = self.lower_function_expression_ref(
               expr_ref, function, scope,
             )
-            block.push(Statement::Emit(HandleRange(handle, handle)))
+            block.push(Emit(HandleRange(handle, handle)))
           }
         None => ()
       }
     ConstAssert(expr) => {
       guard expr is Some(expr_ref) else {
-        raise WgslIrLowerError::UnsupportedStatement(
-          "const_assert without expression",
-        )
+        raise UnsupportedStatement("const_assert without expression")
       }
       block.push(
-        Statement::ConstAssert(
+        ConstAssert(
           self.lower_function_expression_ref(expr_ref, function, scope),
         ),
       )
@@ -654,7 +638,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       self.lower_for_statement(statement, expressions, function, scope, block)
     Switch(selector) => {
       guard selector is Some(selector_ref) else {
-        raise WgslIrLowerError::UnsupportedStatement("switch without selector")
+        raise UnsupportedStatement("switch without selector")
       }
       let expression_mark = function.expressions.items.length()
       let selector_handle = self.lower_function_expression_ref(
@@ -671,10 +655,10 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       wgsl_ir_push_naga_statement_emit_ranges(
         block, function, expression_mark, selector_handle,
       )
-      block.push(Statement::Switch(selector_handle, cases))
+      block.push(Switch(selector_handle, cases))
     }
     Case(_) | DefaultCase =>
-      raise WgslIrLowerError::UnsupportedStatement(
+      raise UnsupportedStatement(
         "structured statement not yet representable by this WGSL IR lowerer",
       )
   }
@@ -709,7 +693,7 @@ fn WgslIrLowerer::lower_loop_blocks(
                 continuing = result.0
                 break_if = result.1
               }
-              [] => continuing = Block::Block()
+              [] => continuing = Block()
             }
           }
           _ =>
@@ -718,9 +702,7 @@ fn WgslIrLowerer::lower_loop_blocks(
                 child, body_statements, index, function, child_scope, body,
               )
             } else {
-              raise WgslIrLowerError::UnsupportedStatement(
-                "statement after continuing in loop",
-              )
+              raise UnsupportedStatement("statement after continuing in loop")
             }
         }
       }
@@ -747,7 +729,7 @@ fn WgslIrLowerer::lower_continuing_block(
             break_if = Some(
               self.lower_function_expression_ref(expr_ref, function, scope),
             )
-          None => ir_block.push(Statement::Break)
+          None => ir_block.push(Break)
         }
       _ => self.lower_statement(statement, function, scope, ir_block)
     }
@@ -867,7 +849,7 @@ fn WgslIrLowerer::lower_for_statement(
     )
   }
   for expr in expressions {
-    if expr.role() == @ast.WgslStatementExpressionRole::ForInitializer {
+    if expr.role() == ForInitializer {
       self.lower_for_header_statement(
         expr.expression(),
         function,
@@ -877,11 +859,7 @@ fn WgslIrLowerer::lower_for_statement(
     }
   }
   let loop_body = Block::Block()
-  match
-    wgsl_ir_for_expression_by_role(
-      expressions,
-      @ast.WgslStatementExpressionRole::ForCondition,
-    ) {
+  match wgsl_ir_for_expression_by_role(expressions, ForCondition) {
     Some(condition_ref) => {
       let condition = self.lower_function_expression_ref(
         condition_ref, function, loop_scope,
@@ -889,11 +867,7 @@ fn WgslIrLowerer::lower_for_statement(
       let condition = self.materialize_for_loop_condition_if_needed(
         function, loop_scope, loop_body, condition,
       )
-      loop_body.push(
-        Statement::If(condition, Block::Block(), Block::{
-          statements: [Statement::Break],
-        }),
-      )
+      loop_body.push(If(condition, Block(), { statements: [Break] }))
     }
     None => ()
   }
@@ -901,14 +875,14 @@ fn WgslIrLowerer::lower_for_statement(
     [body_block, ..] => {
       let body = self.lower_child_block(body_block, function, loop_scope)
       if body.statements.length() > 0 {
-        loop_body.push(Statement::Block(body))
+        loop_body.push(Block(body))
       }
     }
     [] => ()
   }
   let continuing = Block::Block()
   for expr in expressions {
-    if expr.role() == @ast.WgslStatementExpressionRole::ForUpdate {
+    if expr.role() == ForUpdate {
       self.lower_for_header_statement(
         expr.expression(),
         function,
@@ -917,7 +891,7 @@ fn WgslIrLowerer::lower_for_statement(
       )
     }
   }
-  block.push(Statement::Loop(loop_body, continuing, None))
+  block.push(Loop(loop_body, continuing, None))
 }
 
 ///|
@@ -948,21 +922,17 @@ fn WgslIrLowerer::lower_switch_cases(
         let body = match statement.blocks() {
           [case_block, ..] =>
             self.lower_child_block(case_block, function, scope)
-          [] => Block::Block()
+          [] => Block()
         }
         for selector in selectors {
           match selector {
             DefaultSelector =>
-              cases.push(SwitchCase::{
-                value: Default,
-                body,
-                fall_through: false,
-              })
+              cases.push({ value: Default, body, fall_through: false })
             ExpressionSelector(expr) => {
               let case_selector_handle = self.lower_function_expression_ref(
                 expr, function, scope,
               )
-              cases.push(SwitchCase::{
+              cases.push({
                 value: wgsl_ir_switch_value_from_expression(
                   self, function, selector_handle, case_selector_handle,
                 ),
@@ -977,15 +947,12 @@ fn WgslIrLowerer::lower_switch_cases(
         let body = match statement.blocks() {
           [case_block, ..] =>
             self.lower_child_block(case_block, function, scope)
-          [] => Block::Block()
+          [] => Block()
         }
-        cases.push(SwitchCase::{ value: Default, body, fall_through: false })
+        cases.push({ value: Default, body, fall_through: false })
       }
       Empty => ()
-      _ =>
-        raise WgslIrLowerError::UnsupportedStatement(
-          "switch body contains non-case statement",
-        )
+      _ => raise UnsupportedStatement("switch body contains non-case statement")
     }
   }
 }
@@ -1019,7 +986,7 @@ fn WgslIrLowerer::lower_for_header_statement(
           function,
           scope,
         )
-        block.push(Statement::Emit(HandleRange(rhs_value, rhs_value)))
+        block.push(Emit(HandleRange(rhs_value, rhs_value)))
         return
       }
       let (target, value) = match wgsl_ir_compound_assignment_operator(op) {
@@ -1050,7 +1017,7 @@ fn WgslIrLowerer::lower_for_header_statement(
             function, binary_op, materialized_target, rhs_value,
           )
           let value = function.expressions.append(
-            Expression::Binary(binary_op, materialized_target, rhs_value),
+            Binary(binary_op, materialized_target, rhs_value),
           )
           (target, value)
         }
@@ -1092,7 +1059,7 @@ fn WgslIrLowerer::lower_for_header_statement(
         }
       }
       wgsl_ir_record_store_value_temporary_references(function, value)
-      block.push(Statement::Store(target, value))
+      block.push(Store(target, value))
       return
     }
     None => ()
@@ -1109,10 +1076,7 @@ fn wgsl_ir_local_constant_arena_placement_for_statement(
   match statement.payload() {
     LocalDeclaration(locals) => {
       for local_decl in locals {
-        if (
-            local_decl.kind() == @ast.WgslLocalDeclarationKind::Let ||
-            local_decl.kind() == @ast.WgslLocalDeclarationKind::Const
-          ) &&
+        if (local_decl.kind() == Let || local_decl.kind() == Const) &&
           wgsl_ir_local_name_has_same_block_use_before_nested_flow(
             local_decl.name().name(),
             statements,
@@ -1243,20 +1207,20 @@ fn WgslIrLowerer::lower_local_declaration(
   block : Block,
   local_constant_placement : WgslIrLocalConstantArenaPlacement,
 ) -> Unit raise WgslIrLowerError {
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Const {
+  if local_decl.kind() == Const {
     self.lower_local_const_declaration(
       local_decl, function, scope, local_constant_placement,
     )
     return
   }
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+  if local_decl.kind() == Var &&
     !scope.predeclared_source_locals.contains(
       wgsl_ir_local_declaration_key(local_decl),
     ) &&
     !self.local_var_initializer_uses_store(local_decl) {
     self.predeclare_source_local_placeholder(local_decl, function, scope)
   }
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+  if local_decl.kind() == Var &&
     scope.predeclared_source_locals.contains(
       wgsl_ir_local_declaration_key(local_decl),
     ) {
@@ -1293,12 +1257,12 @@ fn WgslIrLowerer::lower_local_declaration(
     }
     return
   }
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+  if local_decl.kind() == Var &&
     self.local_var_initializer_uses_store(local_decl) {
     self.lower_local_var_store_declaration(local_decl, function, scope, block)
     return
   }
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var &&
+  if local_decl.kind() == Var &&
     wgsl_ir_lower_predeclared_source_var_declaration(local_decl, scope, block) {
     return
   }
@@ -1320,19 +1284,14 @@ fn WgslIrLowerer::lower_local_declaration(
           )
           let pointer_ty = self.pointer_type_for_lvalue(function, target)
           address_of_ty = Some(pointer_ty)
-          if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
+          if local_decl.kind() == Let {
             Some(target)
           } else {
-            Some(
-              function.expressions.append(
-                Expression::AddressOf(pointer_ty, target),
-              ),
-            )
+            Some(function.expressions.append(AddressOf(pointer_ty, target)))
           }
         }
         None => {
-          let init_is_const = if local_decl.kind() ==
-            @ast.WgslLocalDeclarationKind::Var {
+          let init_is_const = if local_decl.kind() == Var {
             match expr_ref.root() {
               Some(root) => self.expression_node_is_const_initializer(root)
               None => false
@@ -1355,7 +1314,7 @@ fn WgslIrLowerer::lower_local_declaration(
       }
     None => None
   }
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
+  if local_decl.kind() == Let {
     match init {
       Some(init_handle) => {
         if self.function_expression_is_const_expression(function, init_handle) &&
@@ -1370,7 +1329,7 @@ fn WgslIrLowerer::lower_local_declaration(
           )
           match local_constant_placement {
             DeclarationArenaLocalConstant =>
-              scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+              scope.local_constants.set(local_decl.name().name(), {
                 value: ExpressionAlias(normalized),
               })
             UseSiteLazyLocalConstant => {
@@ -1384,8 +1343,8 @@ fn WgslIrLowerer::lower_local_declaration(
               )
               match local_decl.initializer_ref() {
                 Some(expr_ref) =>
-                  scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
-                    value: LazyConstant(WgslIrLazyLocalConstant::{
+                  scope.local_constants.set(local_decl.name().name(), {
+                    value: LazyConstant({
                       expr_ref,
                       explicit_ty,
                       normalized: normalized_expression,
@@ -1415,7 +1374,7 @@ fn WgslIrLowerer::lower_local_declaration(
               ignore(
                 scope.local_pointer_expressions.remove(local_decl.name().name()),
               )
-              scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+              scope.local_constants.set(local_decl.name().name(), {
                 value: ExpressionAlias(materialized_value),
               })
               return
@@ -1426,7 +1385,7 @@ fn WgslIrLowerer::lower_local_declaration(
               ignore(
                 scope.local_pointer_expressions.remove(local_decl.name().name()),
               )
-              scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+              scope.local_constants.set(local_decl.name().name(), {
                 value: ExpressionAlias(normalized),
               })
               return
@@ -1475,7 +1434,7 @@ fn WgslIrLowerer::lower_local_declaration(
     local_decl.name().name(),
     scope,
   )
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Let {
+  if local_decl.kind() == Let {
     match init {
       Some(init_handle) =>
         if wgsl_ir_function_expression_should_use_named_let(
@@ -1488,12 +1447,12 @@ fn WgslIrLowerer::lower_local_declaration(
             ignore(
               scope.local_pointer_expressions.remove(local_decl.name().name()),
             )
-            scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+            scope.local_constants.set(local_decl.name().name(), {
               value: ExpressionAlias(init_handle),
             })
             return
           }
-          function.named_expressions.push(NamedExpression::{
+          function.named_expressions.push({
             handle: init_handle,
             name: lowered_name,
             ty,
@@ -1502,7 +1461,7 @@ fn WgslIrLowerer::lower_local_declaration(
           ignore(
             scope.local_pointer_expressions.remove(local_decl.name().name()),
           )
-          scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+          scope.local_constants.set(local_decl.name().name(), {
             value: ExpressionAlias(init_handle),
           })
           wgsl_ir_push_naga_named_expression_emit_ranges(
@@ -1513,8 +1472,7 @@ fn WgslIrLowerer::lower_local_declaration(
       None => ()
     }
   }
-  let var_init_in_declaration = if local_decl.kind() ==
-    @ast.WgslLocalDeclarationKind::Var {
+  let var_init_in_declaration = if local_decl.kind() == Var {
     match init {
       Some(init_handle) =>
         self.function_expression_is_const_expression(function, init_handle)
@@ -1523,13 +1481,13 @@ fn WgslIrLowerer::lower_local_declaration(
   } else {
     false
   }
-  let handle = function.local_variables.append(LocalVariable::{
+  let handle = function.local_variables.append({
     name: Some(lowered_name),
     kind: wgsl_ir_local_variable_kind(local_decl.kind()),
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
     ty,
-    init: if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
+    init: if local_decl.kind() == Var {
       if var_init_in_declaration {
         init
       } else {
@@ -1542,8 +1500,8 @@ fn WgslIrLowerer::lower_local_declaration(
   ignore(scope.local_constants.remove(local_decl.name().name()))
   ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
-  block.push(Statement::Declare(handle))
-  if local_decl.kind() == @ast.WgslLocalDeclarationKind::Var {
+  block.push(Declare(handle))
+  if local_decl.kind() == Var {
     match init {
       Some(init_handle) =>
         if !var_init_in_declaration {
@@ -1557,7 +1515,7 @@ fn WgslIrLowerer::lower_local_declaration(
             block, function, expression_mark, materialized,
           )
           block.push(
-            Statement::Store(
+            Store(
               scope.local_pointer_expression(
                 local_decl.name().name(),
                 handle,
@@ -1648,9 +1606,9 @@ fn WgslIrLowerer::lower_predeclared_source_var_const_initializer_to_handle(
   }
   let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
   self.contextualize_function_expression_for_type(function, init, ty)
-  function.local_variables.set(handle, LocalVariable::{
+  function.local_variables.set(handle, {
     name: Some(lowered_name),
-    kind: LocalVariableKind::Var,
+    kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
     ty,
@@ -1687,7 +1645,7 @@ fn wgsl_ir_lower_predeclared_source_var_declaration(
       ignore(scope.local_constants.remove(local_decl.name().name()))
       ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
       scope.locals.set(local_decl.name().name(), handle)
-      block.push(Statement::Declare(handle))
+      block.push(Declare(handle))
       true
     }
     None => false
@@ -1827,29 +1785,29 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     ) {
     Some(predeclared) => predeclared
     None =>
-      function.local_variables.append(LocalVariable::{
+      function.local_variables.append({
         name: Some(lowered_name),
-        kind: LocalVariableKind::Var,
+        kind: Var,
         generated_temporary: false,
         generated_temporary_store_value_reference: false,
         ty: placeholder_ty,
         init: None,
       })
   }
-  function.local_variables.set(handle, LocalVariable::{
+  function.local_variables.set(handle, {
     name: Some(lowered_name),
-    kind: LocalVariableKind::Var,
+    kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
     ty: placeholder_ty,
     init: None,
   })
-  block.push(Statement::Declare(handle))
+  block.push(Declare(handle))
   let predeclare_pointer = wgsl_ir_local_var_store_initializer_predeclares_pointer(
     local_decl, scope,
   )
   let mut pointer : Handle? = if predeclare_pointer {
-    Some(function.expressions.append(Expression::LocalVariable(handle)))
+    Some(function.expressions.append(LocalVariable(handle)))
   } else {
     None
   }
@@ -1859,10 +1817,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     Some(target_ref) => {
       let target = self.lower_function_lvalue_node(target_ref, function, scope)
       function.expressions.append(
-        Expression::AddressOf(
-          self.pointer_type_for_lvalue(function, target),
-          target,
-        ),
+        AddressOf(self.pointer_type_for_lvalue(function, target), target),
       )
     }
     None =>
@@ -1871,9 +1826,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
       )
   }
   if pointer == None {
-    pointer = Some(
-      function.expressions.append(Expression::LocalVariable(handle)),
-    )
+    pointer = Some(function.expressions.append(LocalVariable(handle)))
   }
   let ty = match explicit_ty {
     Some(ty) => ty
@@ -1892,9 +1845,9 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
       }
   }
   let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
-  function.local_variables.set(handle, LocalVariable::{
+  function.local_variables.set(handle, {
     name: Some(lowered_name),
-    kind: LocalVariableKind::Var,
+    kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,
     ty,
@@ -1904,7 +1857,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
   ignore(scope.local_pointer_expressions.remove(local_decl.name().name()))
   scope.locals.set(local_decl.name().name(), handle)
   guard pointer is Some(pointer) else {
-    raise WgslIrLowerError::UnsupportedStatement(
+    raise UnsupportedStatement(
       "missing local pointer for var \{local_decl.name().name()}",
     )
   }
@@ -1917,7 +1870,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
   wgsl_ir_push_naga_statement_emit_ranges(
     block, function, expression_mark, materialized,
   )
-  block.push(Statement::Store(pointer, materialized))
+  block.push(Store(pointer, materialized))
 }
 
 ///|
@@ -2043,7 +1996,7 @@ fn wgsl_ir_flush_naga_named_expression_emit_range(
   match (range_start, range_end) {
     (Some(start), Some(end)) =>
       if !wgsl_ir_block_contains_emit_range(block, start, end) {
-        block.push(Statement::Emit(HandleRange(start, end)))
+        block.push(Emit(HandleRange(start, end)))
       }
     _ => ()
   }
@@ -2057,10 +2010,7 @@ fn wgsl_ir_block_contains_emit_range(
 ) -> Bool {
   for statement in block.statements {
     match statement {
-      Statement::Emit(range) =>
-        if range.start == start && range.end == end {
-          return true
-        }
+      Emit(range) => if range.start == start && range.end == end { return true }
       _ => ()
     }
   }
@@ -2074,7 +2024,7 @@ fn wgsl_ir_block_contains_expression_emit(
 ) -> Bool {
   for statement in block.statements {
     match statement {
-      Statement::Emit(range) =>
+      Emit(range) =>
         if range.start.index() <= handle.index() &&
           handle.index() <= range.end.index() {
           return true
@@ -2174,10 +2124,10 @@ fn WgslIrLowerer::lower_local_const_declaration(
       self.lower_function_expression_ref_with_expected(
         expr_ref, function, scope, explicit_ty,
       )
-    None => raise WgslIrLowerError::MissingType(local_decl.name().name())
+    None => raise MissingType(local_decl.name().name())
   }
   if !self.function_expression_is_const_expression(function, init) {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "local const initializer is not a const expression",
     )
   }
@@ -2186,7 +2136,7 @@ fn WgslIrLowerer::lower_local_const_declaration(
   ignore(scope.locals.remove(local_decl.name().name()))
   match local_constant_placement {
     DeclarationArenaLocalConstant =>
-      scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
+      scope.local_constants.set(local_decl.name().name(), {
         value: ExpressionAlias(normalized),
       })
     UseSiteLazyLocalConstant => {
@@ -2200,8 +2150,8 @@ fn WgslIrLowerer::lower_local_const_declaration(
       )
       match local_decl.initializer_ref() {
         Some(expr_ref) =>
-          scope.local_constants.set(local_decl.name().name(), WgslIrLocalValueCell::{
-            value: LazyConstant(WgslIrLazyLocalConstant::{
+          scope.local_constants.set(local_decl.name().name(), {
+            value: LazyConstant({
               expr_ref,
               explicit_ty,
               normalized: normalized_expression,
@@ -2220,10 +2170,7 @@ fn wgsl_ir_lazy_local_constant_expression(
 ) -> WgslIrLazyLocalConstantExpression? {
   match function.expressions.items.get(handle.index()) {
     Some(Literal(literal)) =>
-      Some(WgslIrLazyLocalConstantExpression::{
-        expression: Expression::Literal(literal),
-        origin: FoldedLocalConstant,
-      })
+      Some({ expression: Literal(literal), origin: FoldedLocalConstant })
     _ => None
   }
 }

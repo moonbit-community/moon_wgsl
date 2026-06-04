@@ -95,7 +95,7 @@ priv struct WgslIrWriterBytePlan {
 
 ///|
 fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
-  WgslIrWriterBytePlan::{
+  {
     source_directives: EmitSourceDirectives,
     trailing_blank: SuppressTrailingBlankAfterEntryPoint,
     implicit_flat_interpolation: SuppressImplicitFlatInterpolation,
@@ -112,7 +112,7 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
 
 ///|
 fn WgslIrWriterBytePlan::naga_oil_writer() -> WgslIrWriterBytePlan {
-  WgslIrWriterBytePlan::{
+  {
     source_directives: SuppressSourceDirectives,
     trailing_blank: SuppressTrailingBlankAfterEntryPoint,
     implicit_flat_interpolation: EmitImplicitFlatInterpolation,

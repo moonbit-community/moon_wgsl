@@ -51,7 +51,7 @@ pub(all) struct DocComments {
 
 ///|
 pub fn DocComments::DocComments() -> DocComments {
-  DocComments::{
+  {
     types: [],
     struct_members: [],
     entry_points: [],

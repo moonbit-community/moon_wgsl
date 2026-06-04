@@ -14,7 +14,7 @@ fn WgslIrEmitter::eval_float_expression_for_writer(
           self.eval_float_expression_for_writer(function, component)
         _ => None
       }
-    Unary(UnaryOperator::Negate, inner) =>
+    Unary(Negate, inner) =>
       match self.eval_float_expression_for_writer(function, inner) {
         Some(value) => Some(-value)
         None => None
@@ -84,7 +84,7 @@ fn WgslIrEmitter::folded_scalar_constructor_expression(
     return None
   }
   guard self.shader_module.types.items.get(ty.index()) is Some(type_) else {
-    raise WgslIrEmitError::MissingHandle("type \{ty.index()}")
+    raise MissingHandle("type \{ty.index()}")
   }
   guard type_.inner is Scalar(target) else { return None }
   guard target.kind == Float else { return None }
@@ -232,14 +232,14 @@ fn WgslIrEmitter::constructor_component_folded_expression(
 ) -> String? raise WgslIrEmitError {
   match self.expression_component_scalar(function, operand) {
     Some({ kind: AbstractFloat, .. }) =>
-      self.constructor_scalar_folded_expression(function, operand, Scalar::{
+      self.constructor_scalar_folded_expression(function, operand, {
         kind: Float,
         width: 4,
       })
     Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
       self.constructor_scalar_folded_expression(function, operand, scalar)
     _ =>
-      self.constructor_scalar_folded_expression(function, operand, Scalar::{
+      self.constructor_scalar_folded_expression(function, operand, {
         kind: Float,
         width: 4,
       })

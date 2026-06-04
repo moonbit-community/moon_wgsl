@@ -182,7 +182,7 @@ fn push_wgsl_registry_diagnostic(
 ///|
 fn wgsl_diagnostics_has_error(diagnostics : Array[WgslDiagnostic]) -> Bool {
   for diagnostic in diagnostics {
-    if diagnostic.severity == WgslDiagnosticSeverity::Error {
+    if diagnostic.severity == Error {
       return true
     }
   }
@@ -202,7 +202,7 @@ fn analyze_source_files_against(
     if normalized_rel == "" {
       push_wgsl_registry_diagnostic(
         diagnostics,
-        WgslDiagnosticSeverity::Error,
+        Error,
         "registry source file path resolves to an empty normalized path",
         Some(source_file.rel_path),
         None,
@@ -214,7 +214,7 @@ fn analyze_source_files_against(
       if existing_source != source_file.source {
         push_wgsl_registry_diagnostic(
           diagnostics,
-          WgslDiagnosticSeverity::Error,
+          Error,
           "multiple WGSL source files normalize to the same rel_path with different contents",
           Some(normalized_rel),
           None,
@@ -225,7 +225,7 @@ fn analyze_source_files_against(
       if existing_source != source_file.source {
         push_wgsl_registry_diagnostic(
           diagnostics,
-          WgslDiagnosticSeverity::Error,
+          Error,
           "bulk registry would overwrite an existing rel_path with different contents",
           Some(normalized_rel),
           None,

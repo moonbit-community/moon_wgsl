@@ -18,7 +18,7 @@ fn WgslDirectiveScanSource::WgslDirectiveScanSource(
   original_text : String,
   cleaned_text : String,
 ) -> WgslDirectiveScanSource {
-  WgslDirectiveScanSource::{ start, original_text, cleaned_text }
+  { start, original_text, cleaned_text }
 }
 
 ///|
@@ -60,10 +60,7 @@ fn WgslDirectiveScanItem::WgslDirectiveScanItem(
   original_text : String,
   cleaned_text : String,
 ) -> WgslDirectiveScanItem {
-  WgslDirectiveScanItem::{
-    kind,
-    source: WgslDirectiveScanSource(start, original_text, cleaned_text),
-  }
+  { kind, source: WgslDirectiveScanSource(start, original_text, cleaned_text) }
 }
 
 ///|
@@ -100,7 +97,7 @@ fn wgsl_directive_scan_build_lines(
     } else {
       original
     }
-    lines.push(WgslDirectiveScanLine::{ original, cleaned, start: offset })
+    lines.push({ original, cleaned, start: offset })
     offset = offset + utf8_byte_length(original) + 1
   }
   lines
@@ -113,13 +110,12 @@ fn wgsl_directive_scan_line_kind(
 ) -> WgslDirectiveScanItemKind? {
   if include_glsl_version {
     match parse_glsl_version_directive(line.cleaned) {
-      Some(version) =>
-        return Some(WgslDirectiveScanItemKind::GlslVersion(version))
+      Some(version) => return Some(GlslVersion(version))
       None => ()
     }
   }
   match parse_wgsl_directive_line_at(line.cleaned, line.start) {
-    Some(directive) => Some(WgslDirectiveScanItemKind::Directive(directive))
+    Some(directive) => Some(Directive(directive))
     None => None
   }
 }
@@ -173,7 +169,7 @@ fn wgsl_directive_scan_push_item(
   let original_text = wgsl_directive_scan_join_lines(lines, start, end_, false)
   let cleaned_text = wgsl_directive_scan_join_lines(lines, start, end_, true)
   let kind = match raw_kind {
-    WgslDirectiveScanItemKind::Directive(_) =>
+    Directive(_) =>
       match parse_wgsl_directive_line_at(cleaned_text, lines[start].start) {
         Some(directive) => WgslDirectiveScanItemKind::Directive(directive)
         None => raw_kind
@@ -201,13 +197,13 @@ pub fn parse_wgsl_directive_scan_items(
         wgsl_directive_scan_push_item(
           items,
           lines,
-          WgslDirectiveScanItemKind::Source,
+          Source,
           pending_start,
           line_index,
         )
         let item_end = match kind {
-          WgslDirectiveScanItemKind::Directive(directive) =>
-            if directive.kind() == WgslDirectiveKind::Import {
+          Directive(directive) =>
+            if directive.kind() == Import {
               wgsl_directive_scan_import_item_line_end(lines, line_index)
             } else {
               line_index + 1
@@ -224,7 +220,7 @@ pub fn parse_wgsl_directive_scan_items(
   wgsl_directive_scan_push_item(
     items,
     lines,
-    WgslDirectiveScanItemKind::Source,
+    Source,
     pending_start,
     lines.length(),
   )

@@ -13,7 +13,7 @@ fn WgslShaderDefReference::WgslShaderDefReference(
   end : Int,
   delimited : Bool,
 ) -> WgslShaderDefReference {
-  WgslShaderDefReference::{ name, start, end, delimited }
+  { name, start, end, delimited }
 }
 
 ///|

@@ -7,7 +7,7 @@ using @common {
 }
 
 ///|
-using @ast {type WgslDirective, type WgslDirectiveKind}
+using @ast {type WgslDirective}
 
 ///|
 using @lex {
@@ -22,8 +22,6 @@ using @lex {
 ///|
 using @directive {
   type WgslDirectiveScanItem,
-  type WgslDirectiveScanItemKind,
-  type WgslSourceDirectiveItemKind,
   parse_wgsl_directive_identifier,
   parse_wgsl_directive_scan_items,
   parse_wgsl_shader_def_comparison,

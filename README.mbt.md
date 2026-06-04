@@ -78,7 +78,7 @@ shader-definition substitution for a single source string.
 ///|
 test "README: preprocess one shader" {
   let defs : Map[String, @common.ShaderDefValue] = Map([])
-  defs.set("TEXTURE", @common.ShaderDefValue::Bool(true))
+  defs.set("TEXTURE", Bool(true))
 
   let source = "#ifdef TEXTURE\nvar sprite_texture: texture_2d<f32>;\n#else\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
   let output = @preprocess.Preprocessor::default().preprocess(source, defs) catch {

@@ -21,18 +21,11 @@ fn WgslIrLowerer::type_layout(
     Some(ty) =>
       match ty.inner {
         Scalar(scalar) | Atomic(scalar) =>
-          WgslIrLayout::{ align: scalar.width, size: scalar.width }
+          { align: scalar.width, size: scalar.width }
         Vector(size, scalar) => {
           let width = size.width()
           let raw = width * scalar.width
-          WgslIrLayout::{
-            align: if width == 3 {
-              4 * scalar.width
-            } else {
-              raw
-            },
-            size: raw,
-          }
+          { align: if width == 3 { 4 * scalar.width } else { raw }, size: raw }
         }
         Matrix(columns, rows, scalar) => {
           let column_align = if rows.width() == 3 {
@@ -44,14 +37,11 @@ fn WgslIrLowerer::type_layout(
             rows.width() * scalar.width,
             column_align,
           )
-          WgslIrLayout::{
-            align: column_align,
-            size: column_size * columns.width(),
-          }
+          { align: column_align, size: column_size * columns.width() }
         }
         Array(base, size, stride) => {
           let base_layout = self.type_layout(base)
-          WgslIrLayout::{
+          {
             align: base_layout.align,
             size: self.array_size_layout_count(size) * stride,
           }
@@ -64,24 +54,23 @@ fn WgslIrLowerer::type_layout(
               align = member_layout.align
             }
           }
-          WgslIrLayout::{ align, size: span }
+          { align, size: span }
         }
-        Pointer(_, _) | ValuePointer(_, _, _) =>
-          WgslIrLayout::{ align: 1, size: 4 }
+        Pointer(_, _) | ValuePointer(_, _, _) => { align: 1, size: 4 }
         Image(_, _, _)
         | Sampler(_)
         | AccelerationStructure(_)
         | RayQuery(_)
-        | BindingArray(_, _) => WgslIrLayout::{ align: 1, size: 0 }
+        | BindingArray(_, _) => { align: 1, size: 0 }
         CooperativeMatrix(columns, rows, scalar, _) =>
-          WgslIrLayout::{
+          {
             align: scalar.width,
             size: wgsl_ir_cooperative_size_width(columns) *
             wgsl_ir_cooperative_size_width(rows) *
             scalar.width,
           }
       }
-    None => raise WgslIrLowerError::UnsupportedType("invalid type handle")
+    None => raise UnsupportedType("invalid type handle")
   }
 }
 
@@ -111,9 +100,9 @@ fn WgslIrLowerer::refresh_dependent_type_layouts(
           let layout = self.type_layout(element)
           let refreshed_stride = wgsl_ir_align_to(layout.size, layout.align)
           if refreshed_stride != stride {
-            self.shader_module.types.set(Handle::Handle(index), Type::{
+            self.shader_module.types.set(Handle(index), {
               name: ty.name,
-              inner: TypeInner::Array(element, size, refreshed_stride),
+              inner: Array(element, size, refreshed_stride),
             })
             changed = true
           }
@@ -122,9 +111,9 @@ fn WgslIrLowerer::refresh_dependent_type_layouts(
           match self.refresh_struct_layout(members) {
             Some((refreshed_members, refreshed_span)) =>
               if refreshed_members != members || refreshed_span != span {
-                self.shader_module.types.set(Handle::Handle(index), Type::{
+                self.shader_module.types.set(Handle(index), {
                   name: ty.name,
-                  inner: TypeInner::Struct(refreshed_members, refreshed_span),
+                  inner: Struct(refreshed_members, refreshed_span),
                 })
                 changed = true
               }
@@ -163,7 +152,7 @@ fn WgslIrLowerer::refresh_struct_layout(
       None => layout.align
     }
     offset = wgsl_ir_align_to(offset, member_align)
-    refreshed.push(StructMember::{
+    refreshed.push({
       name: struct_member.name,
       ty: struct_member.ty,
       binding: struct_member.binding,
@@ -194,16 +183,11 @@ fn wgsl_ir_struct_member_size(
       match wgsl_ir_attribute_int_value(attribute) {
         Some(size) =>
           if size < layout.size {
-            raise WgslIrLowerError::UnsupportedType(
-              "@size is smaller than member type size",
-            )
+            raise UnsupportedType("@size is smaller than member type size")
           } else {
             size
           }
-        None =>
-          raise WgslIrLowerError::UnsupportedType(
-            "@size must be an integer literal",
-          )
+        None => raise UnsupportedType("@size must be an integer literal")
       }
     None => layout.size
   }
@@ -219,20 +203,15 @@ fn wgsl_ir_struct_member_align(
       match wgsl_ir_attribute_int_value(attribute) {
         Some(align) =>
           if !wgsl_ir_is_power_of_two(align) {
-            raise WgslIrLowerError::UnsupportedType(
-              "@align must be a positive power of two",
-            )
+            raise UnsupportedType("@align must be a positive power of two")
           } else if align < layout.align {
-            raise WgslIrLowerError::UnsupportedType(
+            raise UnsupportedType(
               "@align is smaller than member type alignment",
             )
           } else {
             align
           }
-        None =>
-          raise WgslIrLowerError::UnsupportedType(
-            "@align must be an integer literal",
-          )
+        None => raise UnsupportedType("@align must be an integer literal")
       }
     None => layout.align
   }
@@ -267,8 +246,8 @@ fn WgslIrLowerer::lower_type_name_with_expression_arguments(
             Some(inner) => self.intern_type(name, inner)
             None =>
               match arguments {
-                [] => raise WgslIrLowerError::UnsupportedType(name)
-                _ => raise WgslIrLowerError::UnsupportedType(name)
+                [] => raise UnsupportedType(name)
+                _ => raise UnsupportedType(name)
               }
           }
       }

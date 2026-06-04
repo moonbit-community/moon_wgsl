@@ -5,13 +5,9 @@ fn WgslIrEmitter::emit_struct_type(
   handle : Handle,
   ty : Type,
 ) -> Unit raise WgslIrEmitError {
-  guard ty.name is Some(name) else {
-    raise WgslIrEmitError::MissingName("struct type")
-  }
+  guard ty.name is Some(name) else { raise MissingName("struct type") }
   guard ty.inner is Struct(members, _) else {
-    raise WgslIrEmitError::Unsupported(
-      "non-struct type passed to struct emitter",
-    )
+    raise Unsupported("non-struct type passed to struct emitter")
   }
   ignore(name)
   let type_name = self.required_emit_name(
@@ -59,9 +55,7 @@ fn WgslIrEmitter::emit_constant(
   handle : Handle,
   constant : Constant,
 ) -> Unit raise WgslIrEmitError {
-  guard constant.name is Some(name) else {
-    raise WgslIrEmitError::MissingName("constant")
-  }
+  guard constant.name is Some(name) else { raise MissingName("constant") }
   ignore(name)
   let generated_name = self.constant_name(handle)
   if self.type_contains_abstract_scalar(constant.ty) {
@@ -90,9 +84,7 @@ fn WgslIrEmitter::emit_override(
     Some(id) => out.write_string("@id(\{id}) ")
     None => ()
   }
-  guard override_.name is Some(name) else {
-    raise WgslIrEmitError::MissingName("override")
-  }
+  guard override_.name is Some(name) else { raise MissingName("override") }
   ignore(name)
   let generated_name = self.override_name(handle)
   if self.type_contains_abstract_scalar(override_.ty) {
@@ -123,9 +115,7 @@ fn WgslIrEmitter::emit_global_variable(
       )
     None => ()
   }
-  guard global.name is Some(name) else {
-    raise WgslIrEmitError::MissingName("global variable")
-  }
+  guard global.name is Some(name) else { raise MissingName("global variable") }
   ignore(name)
   let generated_name = self.global_variable_name(handle)
   let space = self.address_space_template(global.space)

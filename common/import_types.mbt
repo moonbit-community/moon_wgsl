@@ -13,7 +13,7 @@ pub struct ImportDefWithOffset {
 pub fn ImportDefWithOffset::ImportDefWithOffset(
   definition : ImportDefinition,
 ) -> ImportDefWithOffset {
-  ImportDefWithOffset::{ definition, }
+  { definition, }
 }
 
 ///|
@@ -42,7 +42,7 @@ pub fn WgslReferencePath::from_segments(
   if normalized.length() == 0 {
     None
   } else {
-    Some(WgslReferencePath::{ segments: normalized })
+    Some({ segments: normalized })
   }
 }
 
@@ -96,7 +96,7 @@ pub fn WgslResolvedImportModule::WgslResolvedImportModule(
   module_path : String,
   rel_path : String,
 ) -> WgslResolvedImportModule {
-  WgslResolvedImportModule::{ module_path, rel_path }
+  { module_path, rel_path }
 }
 
 ///|

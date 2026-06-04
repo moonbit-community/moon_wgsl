@@ -29,7 +29,7 @@ pub fn WgslDirectiveTail::WgslDirectiveTail(
   end : Int,
   has_required_separator : Bool,
 ) -> WgslDirectiveTail {
-  WgslDirectiveTail::{ text, start, end, has_required_separator }
+  { text, start, end, has_required_separator }
 }
 
 ///|
@@ -74,7 +74,7 @@ pub fn WgslDirective::WgslDirective(
   start : Int,
   end : Int,
 ) -> WgslDirective {
-  WgslDirective::{ kind, name, tail, start, end }
+  { kind, name, tail, start, end }
 }
 
 ///|
@@ -146,7 +146,7 @@ pub struct WgslIdent {
 
 ///|
 pub fn WgslIdent::WgslIdent(name : String, start : Int, end : Int) -> WgslIdent {
-  WgslIdent::{ name, start, end }
+  { name, start, end }
 }
 
 ///|
@@ -319,7 +319,7 @@ pub fn WgslExprToken::WgslExprToken(
   start : Int,
   end : Int,
 ) -> WgslExprToken {
-  WgslExprToken::{ kind, text, start, end }
+  { kind, text, start, end }
 }
 
 ///|
@@ -383,7 +383,7 @@ pub fn WgslExprNode::WgslExprNode(
   start : Int,
   end : Int,
 ) -> WgslExprNode {
-  WgslExprNode::{ kind, start, end }
+  { kind, start, end }
 }
 
 ///|
@@ -418,7 +418,7 @@ pub fn WgslExprRef::WgslExprRef(
   start : Int,
   end : Int,
 ) -> WgslExprRef {
-  WgslExprRef::{ tokens, identifiers, root, start, end }
+  { tokens, identifiers, root, start, end }
 }
 
 ///|
@@ -461,7 +461,7 @@ pub fn WgslAttribute::WgslAttribute(
   end : Int,
   arguments_ref : WgslExprRef?,
 ) -> WgslAttribute {
-  WgslAttribute::{ name, start, end, arguments_ref }
+  { name, start, end, arguments_ref }
 }
 
 ///|
@@ -512,7 +512,7 @@ pub fn WgslTypeAtom::WgslTypeAtom(
   start : Int,
   end : Int,
 ) -> WgslTypeAtom {
-  WgslTypeAtom::{ kind, text, start, end }
+  { kind, text, start, end }
 }
 
 ///|
@@ -561,9 +561,9 @@ pub fn WgslTypeRef::WgslTypeRef(
 ) -> WgslTypeRef {
   let template_arguments : Array[WgslTypeArgument] = []
   for argument in arguments {
-    template_arguments.push(WgslTypeArgument::Type(argument))
+    template_arguments.push(Type(argument))
   }
-  WgslTypeRef::{ atom, arguments, template_arguments, start, end }
+  { atom, arguments, template_arguments, start, end }
 }
 
 ///|
@@ -580,7 +580,7 @@ pub fn WgslTypeRef::new_with_template_arguments(
       Expression(_) => ()
     }
   }
-  WgslTypeRef::{ atom, arguments, template_arguments, start, end }
+  { atom, arguments, template_arguments, start, end }
 }
 
 ///|
@@ -654,7 +654,7 @@ pub fn WgslFunctionArgument::WgslFunctionArgument(
   end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionArgument {
-  WgslFunctionArgument::{ attributes, name, start, end, ty_ref }
+  { attributes, name, start, end, ty_ref }
 }
 
 ///|
@@ -701,7 +701,7 @@ pub fn WgslFunctionResult::WgslFunctionResult(
   end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslFunctionResult {
-  WgslFunctionResult::{ attributes, start, end, ty_ref }
+  { attributes, start, end, ty_ref }
 }
 
 ///|
@@ -775,7 +775,7 @@ pub fn WgslLocalDeclaration::WgslLocalDeclaration(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslLocalDeclaration {
-  WgslLocalDeclaration::{ kind, name, template_list, ty_ref, initializer_ref }
+  { kind, name, template_list, ty_ref, initializer_ref }
 }
 
 ///|
@@ -841,7 +841,7 @@ pub fn WgslStatementExpression::WgslStatementExpression(
   role : WgslStatementExpressionRole,
   expression : WgslExprRef,
 ) -> WgslStatementExpression {
-  WgslStatementExpression::{ role, expression }
+  { role, expression }
 }
 
 ///|
@@ -921,7 +921,7 @@ pub fn WgslStatement::WgslStatement(
   expressions : Array[WgslStatementExpression],
   invalid_expression : Bool,
 ) -> WgslStatement {
-  WgslStatement::{
+  {
     kind,
     attributes,
     payload,
@@ -1000,7 +1000,7 @@ pub fn WgslBlock::WgslBlock(
   end : Int,
   statements : Array[WgslStatement],
 ) -> WgslBlock {
-  WgslBlock::{ start, end, statements }
+  { start, end, statements }
 }
 
 ///|
@@ -1053,7 +1053,7 @@ pub fn WgslFunction::WgslFunction(
   body_attributes : Array[WgslAttribute],
   body : WgslBlock,
 ) -> WgslFunction {
-  WgslFunction::{
+  {
     attributes,
     qualifier,
     qualifier_start,
@@ -1144,7 +1144,7 @@ pub fn WgslStructMember::WgslStructMember(
   end : Int,
   ty_ref : WgslTypeRef?,
 ) -> WgslStructMember {
-  WgslStructMember::{ attributes, name, start, end, ty_ref }
+  { attributes, name, start, end, ty_ref }
 }
 
 ///|
@@ -1187,7 +1187,7 @@ pub fn WgslStruct::WgslStruct(
   name : WgslIdent,
   members : Array[WgslStructMember],
 ) -> WgslStruct {
-  WgslStruct::{ attributes, name, members }
+  { attributes, name, members }
 }
 
 ///|
@@ -1222,13 +1222,7 @@ pub fn WgslGlobalVariable::WgslGlobalVariable(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslGlobalVariable {
-  WgslGlobalVariable::{
-    attributes,
-    name,
-    template_list,
-    ty_ref,
-    initializer_ref,
-  }
+  { attributes, name, template_list, ty_ref, initializer_ref }
 }
 
 ///|
@@ -1275,7 +1269,7 @@ pub fn WgslConst::WgslConst(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslConst {
-  WgslConst::{ name, ty_ref, initializer_ref }
+  { name, ty_ref, initializer_ref }
 }
 
 ///|
@@ -1308,7 +1302,7 @@ pub fn WgslOverride::WgslOverride(
   ty_ref : WgslTypeRef?,
   initializer_ref : WgslExprRef?,
 ) -> WgslOverride {
-  WgslOverride::{ attributes, name, ty_ref, initializer_ref }
+  { attributes, name, ty_ref, initializer_ref }
 }
 
 ///|
@@ -1342,7 +1336,7 @@ pub fn WgslTypeAlias::WgslTypeAlias(
   name : WgslIdent,
   ty_ref : WgslTypeRef?,
 ) -> WgslTypeAlias {
-  WgslTypeAlias::{ name, ty_ref }
+  { name, ty_ref }
 }
 
 ///|
@@ -1384,7 +1378,7 @@ pub fn WgslGlobalDecl::WgslGlobalDecl(
   start : Int,
   end : Int,
 ) -> WgslGlobalDecl {
-  WgslGlobalDecl::{ kind, data, start, end }
+  { kind, data, start, end }
 }
 
 ///|
@@ -1434,7 +1428,7 @@ pub struct WgslTranslationUnit {
 pub fn WgslTranslationUnit::WgslTranslationUnit(
   declarations : Array[WgslGlobalDecl],
 ) -> WgslTranslationUnit {
-  WgslTranslationUnit::{ declarations, }
+  { declarations, }
 }
 
 ///|

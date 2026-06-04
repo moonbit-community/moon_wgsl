@@ -295,7 +295,7 @@ test "semantic import target plans follow first AST reference order" {
   )
   let targets = [
     WgslImportTarget::{ raw_path: "test::late::late_value", alias_name: "" },
-    WgslImportTarget::{ raw_path: "test::early::EarlyType", alias_name: "" },
+    { raw_path: "test::early::EarlyType", alias_name: "" },
   ]
   let source =
     #|#import test::{late::late_value, early::EarlyType}
@@ -354,7 +354,7 @@ test "semantic import target plans follow naga-oil substitution use order" {
       raw_path: "test::forward::VertexOutput",
       alias_name: "",
     },
-    WgslImportTarget::{ raw_path: "test::bindings::material", alias_name: "" },
+    { raw_path: "test::bindings::material", alias_name: "" },
   ]
   let source =
     #|#import test::forward::VertexOutput

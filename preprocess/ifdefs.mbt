@@ -29,11 +29,11 @@ pub fn apply_wgsl_ifdefs_strict(
   for item in parse_wgsl_directive_scan_items(source) {
     let offset = item.start()
     match item.kind() {
-      WgslDirectiveScanItemKind::GlslVersion(version) =>
+      GlslVersion(version) =>
         if version != "440" && version != "450" {
-          raise PreprocessError::GlslInvalidVersion(offset)
+          raise GlslInvalidVersion(offset)
         }
-      WgslDirectiveScanItemKind::Directive(directive) => {
+      Directive(directive) => {
         let (is_scope, _) = preprocess_check_scope_directive(
           shader_defs,
           directive,
@@ -51,7 +51,7 @@ pub fn apply_wgsl_ifdefs_strict(
             )
         }
       }
-      WgslDirectiveScanItemKind::Source =>
+      Source =>
         if scope.active() {
           out = out +
             preprocess_emit_scanned_item(

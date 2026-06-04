@@ -53,8 +53,7 @@ fn compare_bool_values(
     GreaterEqual => lhs >= rhs
     Less => lhs < rhs
     LessEqual => lhs <= rhs
-    Unknown(text) =>
-      raise PreprocessError::UnknownShaderDefOperator(text, offset)
+    Unknown(text) => raise UnknownShaderDefOperator(text, offset)
   }
 }
 
@@ -72,8 +71,7 @@ fn compare_int_values(
     GreaterEqual => lhs >= rhs
     Less => lhs < rhs
     LessEqual => lhs <= rhs
-    Unknown(text) =>
-      raise PreprocessError::UnknownShaderDefOperator(text, offset)
+    Unknown(text) => raise UnknownShaderDefOperator(text, offset)
   }
 }
 
@@ -91,8 +89,7 @@ fn compare_uint_values(
     GreaterEqual => lhs >= rhs
     Less => lhs < rhs
     LessEqual => lhs <= rhs
-    Unknown(text) =>
-      raise PreprocessError::UnknownShaderDefOperator(text, offset)
+    Unknown(text) => raise UnknownShaderDefOperator(text, offset)
   }
 }
 
@@ -105,40 +102,30 @@ fn eval_if_condition(
   offset : Int,
 ) -> Bool raise PreprocessError {
   guard shader_defs.get(def) is Some(def_value) else {
-    raise PreprocessError::UnknownShaderDef(def, offset)
+    raise UnknownShaderDef(def, offset)
   }
   match def_value {
-    ShaderDefValue::Bool(bool_value) =>
+    Bool(bool_value) =>
       match parse_bool_text(value) {
         Some(expected) =>
           compare_bool_values(bool_value, expected, operator, offset)
         None =>
-          raise PreprocessError::InvalidShaderDefComparisonValue(
-            def, value, "bool", offset,
-          )
+          raise InvalidShaderDefComparisonValue(def, value, "bool", offset)
       }
-    ShaderDefValue::Int(int_value) => {
+    Int(int_value) => {
       let parsed = @string.parse_int(value[:], base=10) catch {
-        _ =>
-          raise PreprocessError::InvalidShaderDefComparisonValue(
-            def, value, "int", offset,
-          )
+        _ => raise InvalidShaderDefComparisonValue(def, value, "int", offset)
       }
       compare_int_values(int_value, parsed, operator, offset)
     }
-    ShaderDefValue::UInt(uint_value) => {
+    UInt(uint_value) => {
       let parsed = @string.parse_uint(value[:], base=10) catch {
-        _ =>
-          raise PreprocessError::InvalidShaderDefComparisonValue(
-            def, value, "uint", offset,
-          )
+        _ => raise InvalidShaderDefComparisonValue(def, value, "uint", offset)
       }
       compare_uint_values(uint_value, parsed, operator, offset)
     }
-    ShaderDefValue::Raw(_) =>
-      raise PreprocessError::InvalidShaderDefComparisonValue(
-        def, value, "bool/int/uint", offset,
-      )
+    Raw(_) =>
+      raise InvalidShaderDefComparisonValue(def, value, "bool/int/uint", offset)
   }
 }
 

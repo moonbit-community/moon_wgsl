@@ -138,7 +138,7 @@ pub(all) struct Scalar {
 
 ///|
 pub fn Scalar::Scalar(kind : ScalarKind, width : Int) -> Scalar {
-  Scalar::{ kind, width }
+  { kind, width }
 }
 
 ///|
@@ -286,7 +286,7 @@ pub(all) struct SpecialTypes {
 
 ///|
 pub fn SpecialTypes::SpecialTypes() -> SpecialTypes {
-  SpecialTypes::{
+  {
     ray_desc: None,
     ray_intersection: None,
     ray_vertex_return: None,

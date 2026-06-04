@@ -19,7 +19,7 @@ fn metadata_scope_def_from_directive(
   let tail = wgsl_effective_directive_tail(directive)
   let has_required_separator = directive.has_required_tail_separator()
   match wgsl_effective_directive_kind(directive) {
-    WgslDirectiveKind::Ifdef =>
+    Ifdef =>
       if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => (true, Some(name))
@@ -28,7 +28,7 @@ fn metadata_scope_def_from_directive(
       } else {
         (false, None)
       }
-    WgslDirectiveKind::Ifndef =>
+    Ifndef =>
       if has_required_separator {
         match parse_wgsl_directive_identifier(tail) {
           Some(name) => (true, Some(name))
@@ -37,7 +37,7 @@ fn metadata_scope_def_from_directive(
       } else {
         (false, None)
       }
-    WgslDirectiveKind::If =>
+    If =>
       if has_required_separator {
         match metadata_shader_def_comparison_def(tail) {
           Some(def) => (true, Some(def))
@@ -46,7 +46,7 @@ fn metadata_scope_def_from_directive(
       } else {
         (false, None)
       }
-    WgslDirectiveKind::Else => {
+    Else => {
       let else_tail_has_space = wgsl_text_starts_with_tokenized_space(tail)
       if else_tail_has_space &&
         wgsl_required_space_word_tail(tail, "ifdef") is Some(rest) &&
@@ -65,7 +65,7 @@ fn metadata_scope_def_from_directive(
       }
       (true, None)
     }
-    WgslDirectiveKind::Endif => (true, None)
+    Endif => (true, None)
     _ => (false, None)
   }
 }
@@ -112,11 +112,9 @@ fn metadata_collect_import_uses(
   ignore(
     import_state.rewrite_source(source, 0, used_imports, true) catch {
       AmbiguousImport(position) =>
-        raise MetadataError::ImportParseError(
-          "Ambiguous import path for item", position,
-        )
+        raise ImportParseError("Ambiguous import path for item", position)
       InvalidWgslSyntax(message, position) =>
-        raise MetadataError::ImportParseError(message, position)
+        raise ImportParseError(message, position)
     },
   )
 }

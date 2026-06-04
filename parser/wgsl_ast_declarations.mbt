@@ -7,7 +7,7 @@ fn WgslDeclParser::parse_function(
   qualifier_end : Int?,
   fn_keyword : WgslIdent,
 ) -> WgslFunction? {
-  let name = if qualifier == Some(WgslFunctionQualifier::Override) {
+  let name = if qualifier == Some(Override) {
     match self.consume_path_ident_node() {
       Some(value) => value
       None => return None
@@ -99,15 +99,13 @@ fn WgslDeclParser::parse_struct_members_checked(
   match self.collect_delimited_token_view(123, 125) {
     Some(fragment) => {
       let tokens = self.tokenize_struct_members(fragment) catch {
-        _ => raise WgslStructMembersParseError::UnexpectedToken
+        _ => raise UnexpectedToken
       }
-      let members = struct_members(tokens) catch {
-        _ => raise WgslStructMembersParseError::UnexpectedToken
-      }
+      let members = struct_members(tokens) catch { _ => raise UnexpectedToken }
       self.drop_tokens(fragment.consumed)
       members
     }
-    None => raise WgslStructMembersParseError::UnexpectedToken
+    None => raise UnexpectedToken
   }
 }
 
@@ -122,11 +120,7 @@ fn WgslDeclParser::tokenize_struct_members(
   fragment : WgslDelimitedTokenView,
 ) -> Array[(Token, Int, Int)] raise WgslStructMembersTokenizeError {
   let tokens : Array[(Token, Int, Int)] = [
-    (
-      Token::LBRACE(fragment.open_start),
-      fragment.open_start,
-      fragment.open_start + 1,
-    ),
+    (LBRACE(fragment.open_start), fragment.open_start, fragment.open_start + 1),
   ]
   let parser = WgslDeclParser::{
     source_text: self.source_text,
@@ -161,13 +155,13 @@ fn WgslDeclParser::tokenize_struct_members(
       [token, .. rest] if token.is_punctuation(44) => {
         let pos = token.pos()
         parser.update_view(rest)
-        tokens.push((Token::COMMA, pos, pos + 1))
+        tokens.push((COMMA, pos, pos + 1))
         continue
       }
       [token, .. rest] if token.is_punctuation(59) => {
         let pos = token.pos()
         parser.update_view(rest)
-        tokens.push((Token::SEMI, pos, pos + 1))
+        tokens.push((SEMI, pos, pos + 1))
         continue
       }
       _ => ()
@@ -175,45 +169,43 @@ fn WgslDeclParser::tokenize_struct_members(
     parser.push_attribute_tokens(tokens)
     let name = match parser.consume_ident_node() {
       Some(value) => value
-      None => raise WgslStructMembersTokenizeError::UnexpectedToken
+      None => raise UnexpectedToken
     }
-    tokens.push((Token::MEMBER_NAME(name), name.start(), name.end()))
+    tokens.push((MEMBER_NAME(name), name.start(), name.end()))
     match parser.view() {
       [token, .. rest] if token.is_punctuation(58) => {
         let pos = token.pos()
         parser.update_view(rest)
-        tokens.push((Token::COLON, pos, pos + 1))
+        tokens.push((COLON, pos, pos + 1))
       }
-      _ => raise WgslStructMembersTokenizeError::UnexpectedToken
+      _ => raise UnexpectedToken
     }
     let ty_fragment = parser.collect_until_top_level_type_fragment([44, 59])
     if ty_fragment.text == "" {
-      raise WgslStructMembersTokenizeError::UnexpectedToken
+      raise UnexpectedToken
     }
     let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
       Some(value) => value
-      None => raise WgslStructMembersTokenizeError::UnexpectedToken
+      None => raise UnexpectedToken
     }
-    tokens.push(
-      (Token::MEMBER_TYPE(ty_ref), ty_fragment.start, ty_fragment.end),
-    )
+    tokens.push((MEMBER_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
     match parser.view() {
       [token, ..] if token.is_punctuation(44) || token.is_punctuation(59) =>
         continue
       [token, ..] if token.is_punctuation(35) &&
         parser.directive_line_end_at_hash(token.pos()) is Some(_) => continue
       [] => break
-      _ => raise WgslStructMembersTokenizeError::UnexpectedToken
+      _ => raise UnexpectedToken
     }
   }
   tokens.push(
     (
-      Token::RBRACE(fragment.close_start),
+      RBRACE(fragment.close_start),
       fragment.close_start,
       fragment.close_start + 1,
     ),
   )
-  tokens.push((Token::EOF, fragment.close_start + 1, fragment.close_start + 1))
+  tokens.push((EOF, fragment.close_start + 1, fragment.close_start + 1))
   tokens
 }
 
@@ -274,18 +266,16 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
     [token, .. rest] if token.is_punctuation(58) => {
       let pos = token.pos()
       self.update_view(rest)
-      tokens.push((Token::COLON, pos, pos + 1))
+      tokens.push((COLON, pos, pos + 1))
       let ty_fragment = self.collect_until_top_level_type_fragment([61, 59])
       if ty_fragment.text != "" {
         let ty_ref = match parse_wgsl_type_ref_fragment(ty_fragment) {
           Some(value) => value
-          None => raise WgslTypedInitializerTailParseError::UnexpectedToken
+          None => raise UnexpectedToken
         }
-        tokens.push(
-          (Token::DECL_TYPE(ty_ref), ty_fragment.start, ty_fragment.end),
-        )
+        tokens.push((DECL_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
       } else {
-        raise WgslTypedInitializerTailParseError::UnexpectedToken
+        raise UnexpectedToken
       }
     }
     _ => ()
@@ -294,35 +284,28 @@ fn WgslDeclParser::parse_typed_initializer_tail_checked(
     [token, .. rest] if token.is_punctuation(61) => {
       let pos = token.pos()
       self.update_view(rest)
-      tokens.push((Token::EQUAL, pos, pos + 1))
+      tokens.push((EQUAL, pos, pos + 1))
       let initializer = self.collect_until_top_level_fragment([59])
       if initializer.text != "" {
         let initializer_ref = match parse_wgsl_expr_ref_fragment(initializer) {
           Some(value) => value
-          None => raise WgslTypedInitializerTailParseError::UnexpectedToken
+          None => raise UnexpectedToken
         }
         tokens.push(
-          (
-            Token::INIT_EXPR(initializer_ref),
-            initializer.start,
-            initializer.end,
-          ),
+          (INIT_EXPR(initializer_ref), initializer.start, initializer.end),
         )
       } else {
-        raise WgslTypedInitializerTailParseError::UnexpectedToken
+        raise UnexpectedToken
       }
     }
     _ => ()
   }
-  tokens.push(
-    (Token::EOF, self.source_text.length(), self.source_text.length()),
-  )
+  tokens.push((EOF, self.source_text.length(), self.source_text.length()))
   let parsed = typed_initializer_tail(tokens) catch {
-    _ => raise WgslTypedInitializerTailParseError::UnexpectedToken
+    _ => raise UnexpectedToken
   }
   match parsed {
-    (ty_ref, initializer_ref) =>
-      WgslTypedInitializerTail::{ ty_ref, initializer_ref }
+    (ty_ref, initializer_ref) => { ty_ref, initializer_ref }
   }
 }
 
@@ -373,7 +356,7 @@ fn WgslDeclParser::parse_type_alias_tail(self : WgslDeclParser) -> WgslTypeRef? 
     [token, .. rest] if token.is_punctuation(61) => {
       let pos = token.pos()
       self.update_view(rest)
-      tokens.push((Token::EQUAL, pos, pos + 1))
+      tokens.push((EQUAL, pos, pos + 1))
     }
     _ => return None
   }
@@ -385,8 +368,8 @@ fn WgslDeclParser::parse_type_alias_tail(self : WgslDeclParser) -> WgslTypeRef? 
     Some(value) => value
     None => return None
   }
-  tokens.push((Token::DECL_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
-  tokens.push((Token::EOF, ty_fragment.end, ty_fragment.end))
+  tokens.push((DECL_TYPE(ty_ref), ty_fragment.start, ty_fragment.end))
+  tokens.push((EOF, ty_fragment.end, ty_fragment.end))
   Some(type_alias_tail(tokens) catch { _ => return None })
 }
 
@@ -409,21 +392,15 @@ fn WgslDeclParser::parse_source_directive(
     ("", keyword.end(), keyword.end())
   }
   let tokens : Array[(Token, Int, Int)] = [
-    (Token::SOURCE_TEXT(text), 0, 0),
+    (SOURCE_TEXT(text), 0, 0),
     (token, keyword.start(), keyword.end()),
   ]
   if tail_text != "" {
     tokens.push(
-      (
-        Token::DIRECTIVE_TAIL((tail_text, tail_start, tail_end)),
-        tail_start,
-        tail_end,
-      ),
+      (DIRECTIVE_TAIL((tail_text, tail_start, tail_end)), tail_start, tail_end),
     )
   }
-  tokens.push(
-    (Token::EOF, self.source_text.length(), self.source_text.length()),
-  )
+  tokens.push((EOF, self.source_text.length(), self.source_text.length()))
   Some(source_directive(tokens) catch { _ => return None })
 }
 
@@ -444,14 +421,14 @@ fn WgslDeclParser::parse_const_assert_checked(
   let fragment = self.collect_until_top_level_fragment([59])
   let expr = match parse_wgsl_expr_ref_fragment(fragment) {
     Some(value) => value
-    None => raise WgslConstAssertParseError::UnexpectedToken
+    None => raise UnexpectedToken
   }
   let tokens : Array[(Token, Int, Int)] = [
-    (Token::EXPR_REF(expr), expr.start(), expr.end()),
-    (Token::EOF, expr.end(), expr.end()),
+    (EXPR_REF(expr), expr.start(), expr.end()),
+    (EOF, expr.end(), expr.end()),
   ]
   const_assert_expr(tokens) catch {
-    _ => raise WgslConstAssertParseError::UnexpectedToken
+    _ => raise UnexpectedToken
   }
 }
 
@@ -461,9 +438,9 @@ fn WgslDeclParser::source_directive_token(
   ident : WgslIdent,
 ) -> Token? {
   match ident.name() {
-    "enable" => Some(Token::KW_ENABLE(ident))
-    "requires" => Some(Token::KW_REQUIRES(ident))
-    "diagnostic" => Some(Token::KW_DIAGNOSTIC(ident))
+    "enable" => Some(KW_ENABLE(ident))
+    "requires" => Some(KW_REQUIRES(ident))
+    "diagnostic" => Some(KW_DIAGNOSTIC(ident))
     _ => None
   }
 }
@@ -478,11 +455,11 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
       let second_ident = WgslIdent(second_name, second.pos(), second.end())
       if first_name == "virtual" && second_name == "fn" {
         self.drop_tokens(2)
-        return WgslDeclHead::{
+        return {
           kind: Function,
           attributes,
           keyword: Some(second_ident),
-          qualifier: Some(WgslFunctionQualifier::Virtual),
+          qualifier: Some(Virtual),
           qualifier_start: Some(first_ident.start()),
           qualifier_end: Some(first_ident.end()),
           fn_keyword: Some(second_ident),
@@ -490,11 +467,11 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
       }
       if first_name == "override" && second_name == "fn" {
         self.drop_tokens(2)
-        return WgslDeclHead::{
+        return {
           kind: Function,
           attributes,
           keyword: Some(second_ident),
-          qualifier: Some(WgslFunctionQualifier::Override),
+          qualifier: Some(Override),
           qualifier_start: Some(first_ident.start()),
           qualifier_end: Some(first_ident.end()),
           fn_keyword: Some(second_ident),
@@ -521,7 +498,7 @@ fn WgslDeclParser::parse_decl_head(self : WgslDeclParser) -> WgslDeclHead {
         Raw => ()
         _ => {
           self.drop_tokens(1)
-          return WgslDeclHead::{
+          return {
             kind,
             attributes,
             keyword: Some(ident),
@@ -558,41 +535,41 @@ fn WgslDeclParser::parse_decl_data_checked(
               head.qualifier_end,
               fn_keyword,
             ) {
-            Some(function) => WgslGlobalDeclData::Function(function)
-            None => raise WgslDeclDataParseError::UnparsedDeclaration
+            Some(function) => Function(function)
+            None => raise UnparsedDeclaration
           }
-        None => raise WgslDeclDataParseError::UnparsedDeclaration
+        None => raise UnparsedDeclaration
       }
     Override =>
       match self.parse_override(head.attributes) {
-        Some(value) => WgslGlobalDeclData::Override(value)
-        None => raise WgslDeclDataParseError::UnparsedDeclaration
+        Some(value) => Override(value)
+        None => raise UnparsedDeclaration
       }
     GlobalVariable =>
       match self.parse_global_variable(head.attributes) {
-        Some(value) => WgslGlobalDeclData::GlobalVariable(value)
-        None => raise WgslDeclDataParseError::UnparsedDeclaration
+        Some(value) => GlobalVariable(value)
+        None => raise UnparsedDeclaration
       }
     Struct =>
       match self.parse_struct(head.attributes) {
-        Some(value) => WgslGlobalDeclData::Struct(value)
-        None => raise WgslDeclDataParseError::UnparsedDeclaration
+        Some(value) => Struct(value)
+        None => raise UnparsedDeclaration
       }
     Const =>
       match self.parse_const() {
-        Some(value) => WgslGlobalDeclData::Const(value)
-        None => raise WgslDeclDataParseError::UnparsedDeclaration
+        Some(value) => Const(value)
+        None => raise UnparsedDeclaration
       }
     ConstAssert => {
       let value = self.parse_const_assert_checked() catch {
-        _ => raise WgslDeclDataParseError::UnparsedDeclaration
+        _ => raise UnparsedDeclaration
       }
-      WgslGlobalDeclData::ConstAssert(value)
+      ConstAssert(value)
     }
     TypeAlias =>
       match self.parse_type_alias() {
-        Some(value) => WgslGlobalDeclData::TypeAlias(value)
-        None => raise WgslDeclDataParseError::UnparsedDeclaration
+        Some(value) => TypeAlias(value)
+        None => raise UnparsedDeclaration
       }
     SourceDirective =>
       match head.keyword {
@@ -600,14 +577,14 @@ fn WgslDeclParser::parse_decl_data_checked(
           match self.source_directive_token(keyword) {
             Some(token) =>
               match self.parse_source_directive(keyword, token) {
-                Some(value) => WgslGlobalDeclData::Directive(value)
-                None => raise WgslDeclDataParseError::UnparsedDeclaration
+                Some(value) => Directive(value)
+                None => raise UnparsedDeclaration
               }
-            None => raise WgslDeclDataParseError::UnparsedDeclaration
+            None => raise UnparsedDeclaration
           }
-        None => raise WgslDeclDataParseError::UnparsedDeclaration
+        None => raise UnparsedDeclaration
       }
-    Raw => raise WgslDeclDataParseError::UnparsedDeclaration
+    Raw => raise UnparsedDeclaration
   }
 }
 
@@ -616,16 +593,16 @@ fn wgsl_global_decl_kind_from_data(
   data : WgslGlobalDeclData,
 ) -> WgslGlobalDeclKind {
   match data {
-    Function(_) => WgslGlobalDeclKind::Function
-    GlobalVariable(_) => WgslGlobalDeclKind::GlobalVariable
-    Const(_) => WgslGlobalDeclKind::Const
-    Override(_) => WgslGlobalDeclKind::Override
-    Struct(_) => WgslGlobalDeclKind::Struct
-    TypeAlias(_) => WgslGlobalDeclKind::TypeAlias
-    ConstAssert(_) => WgslGlobalDeclKind::ConstAssert
-    Directive(_) => WgslGlobalDeclKind::Directive
-    Import(_) => WgslGlobalDeclKind::Import
-    Raw => WgslGlobalDeclKind::Unknown
+    Function(_) => Function
+    GlobalVariable(_) => GlobalVariable
+    Const(_) => Const
+    Override(_) => Override
+    Struct(_) => Struct
+    TypeAlias(_) => TypeAlias
+    ConstAssert(_) => ConstAssert
+    Directive(_) => Directive
+    Import(_) => Import
+    Raw => Unknown
   }
 }
 

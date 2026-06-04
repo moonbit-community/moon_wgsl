@@ -123,7 +123,7 @@ fn collect_scanned_wgsl_source_files(
       ) {
       continue
     }
-    out.push(WgslSourceFile::{
+    out.push({
       rel_path: normalize_shader_rel_path(entry_rel_path),
       source: @fs.read_file_to_string(entry_fs_path),
     })

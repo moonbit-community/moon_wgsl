@@ -13,7 +13,7 @@ fn WgslIrLowerer::lower_global_expression_ref_with_expected(
   expected_ty : Handle?,
 ) -> Handle raise WgslIrLowerError {
   guard expr_ref.root() is Some(root) else {
-    raise WgslIrLowerError::UnsupportedExpression("empty global expression")
+    raise UnsupportedExpression("empty global expression")
   }
   self.lower_global_expression_node_with_expected(root, expected_ty)
 }
@@ -47,31 +47,29 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
 ) -> Expression raise WgslIrLowerError {
   match node.kind() {
     Literal(token) =>
-      Expression::Literal(
-        self.literal_from_token_with_expected(token, expected_ty),
-      )
+      Literal(self.literal_from_token_with_expected(token, expected_ty))
     Identifier(name) => self.global_identifier_expression(name)
     Unary(op, expr) =>
-      if op == @ast.WgslExprOperator::Subtract {
+      if op == Subtract {
         match expr.kind() {
           Literal(token) =>
             match
               self.negated_literal_from_token_with_expected(token, expected_ty) {
-              Some(literal) => Expression::Literal(literal)
+              Some(literal) => Literal(literal)
               None =>
-                Expression::Unary(
+                Unary(
                   wgsl_ir_unary_operator(op),
                   self.lower_global_expression_node(expr),
                 )
             }
           _ =>
-            Expression::Unary(
+            Unary(
               wgsl_ir_unary_operator(op),
               self.lower_global_expression_node(expr),
             )
         }
       } else {
-        Expression::Unary(
+        Unary(
           wgsl_ir_unary_operator(op),
           self.lower_global_expression_node(expr),
         )
@@ -83,7 +81,7 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
       let (left_handle, right_handle) = self.normalize_global_binary_operands(
         binary_op, left_handle, right_handle,
       )
-      Expression::Binary(binary_op, left_handle, right_handle)
+      Binary(binary_op, left_handle, right_handle)
     }
     Group(expr) =>
       self.lower_expression_node_to_global_expression_with_expected(
@@ -98,7 +96,7 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
       self.lower_global_member_expression(base_handle, member_name.name())
     }
     Index(base, index) =>
-      Expression::Access(
+      Access(
         self.lower_global_expression_node(base),
         self.lower_global_expression_node(index),
       )
@@ -143,7 +141,7 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
                                 name.name(),
                               )
                           }
-                          Expression::Compose(
+                          Compose(
                             ty,
                             self.lower_global_expression_arguments(arguments),
                           )
@@ -154,12 +152,12 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
             _ =>
               match self.lower_templated_callee_type(callee) {
                 Some(ty) =>
-                  Expression::Compose(
+                  Compose(
                     ty,
                     self.lower_global_constructor_arguments(ty, arguments),
                   )
                 None =>
-                  raise WgslIrLowerError::UnsupportedExpression(
+                  raise UnsupportedExpression(
                     "non-identifier global call expression: \{wgsl_ir_expr_node_shape(callee)}",
                   )
               }
@@ -167,7 +165,7 @@ fn WgslIrLowerer::lower_expression_node_to_global_expression_with_expected(
       }
     }
     _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
+      raise UnsupportedExpression(
         "global expression kind is not constant-lowerable",
       )
   }
@@ -189,12 +187,12 @@ fn WgslIrLowerer::lower_global_member_expression(
               match wgsl_ir_swizzle_components(member_name) {
                 Some(components) =>
                   if components.length() == 1 {
-                    Expression::AccessIndex(
+                    AccessIndex(
                       base_handle,
                       wgsl_ir_gather_component_index(components[0]),
                     )
                   } else {
-                    Expression::Swizzle(
+                    Swizzle(
                       wgsl_ir_vector_size_from_component_count(
                         components.length(),
                       ),
@@ -203,12 +201,12 @@ fn WgslIrLowerer::lower_global_member_expression(
                     )
                   }
                 None =>
-                  raise WgslIrLowerError::UnsupportedExpression(
+                  raise UnsupportedExpression(
                     "invalid vector swizzle: \{member_name}",
                   )
               }
             _ =>
-              Expression::AccessIndex(
+              AccessIndex(
                 base_handle,
                 self.member_index_for_global_expression(
                   base_handle, member_name,
@@ -216,13 +214,13 @@ fn WgslIrLowerer::lower_global_member_expression(
               )
           }
         None =>
-          Expression::AccessIndex(
+          AccessIndex(
             base_handle,
             self.member_index_for_global_expression(base_handle, member_name),
           )
       }
     None =>
-      Expression::AccessIndex(
+      AccessIndex(
         base_handle,
         self.member_index_for_global_expression(base_handle, member_name),
       )
@@ -247,19 +245,12 @@ fn WgslIrLowerer::normalize_global_binary_operands(
   }
   match self.vector_size_from_type(left_ty) {
     Some(size) if self.type_is_scalar(right_ty) =>
-      (
-        left,
-        self.shader_module.global_expressions.append(
-          Expression::Splat(size, right),
-        ),
-      )
+      (left, self.shader_module.global_expressions.append(Splat(size, right)))
     _ =>
       match self.vector_size_from_type(right_ty) {
         Some(size) if self.type_is_scalar(left_ty) =>
           (
-            self.shader_module.global_expressions.append(
-              Expression::Splat(size, left),
-            ),
+            self.shader_module.global_expressions.append(Splat(size, left)),
             right,
           )
         _ => (left, right)
@@ -274,11 +265,9 @@ fn WgslIrLowerer::lower_global_select_call(
 ) -> Expression raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [reject, accept, condition] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "select expects three arguments",
-    )
+    raise UnsupportedExpression("select expects three arguments")
   }
-  Expression::Select(
+  Select(
     self.lower_global_expression_node(condition),
     self.lower_global_expression_node(accept),
     self.lower_global_expression_node(reject),
@@ -293,11 +282,9 @@ fn WgslIrLowerer::lower_global_bitcast_call(
 ) -> Expression raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [expr] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "bitcast expects one argument",
-    )
+    raise UnsupportedExpression("bitcast expects one argument")
   }
-  Expression::Bitcast(ty, self.lower_global_expression_node(expr))
+  Bitcast(ty, self.lower_global_expression_node(expr))
 }
 
 ///|
@@ -311,9 +298,9 @@ fn WgslIrLowerer::lower_global_array_constructor_call(
     None => self.infer_array_constructor_type_from_ast(arguments, "array")
   }
   guard self.array_element_type(ty) is Some(element_ty) else {
-    raise WgslIrLowerError::UnsupportedType("array")
+    raise UnsupportedType("array")
   }
-  Expression::Compose(
+  Compose(
     ty,
     self.lower_global_expression_arguments_with_expected(
       arguments,
@@ -366,9 +353,7 @@ fn WgslIrLowerer::lower_global_math_call(
 ) -> Expression raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [first, .. rest] else {
-    raise WgslIrLowerError::UnsupportedExpression(
-      "math call requires at least one argument",
-    )
+    raise UnsupportedExpression("math call requires at least one argument")
   }
   let a = self.lower_global_expression_node(first)
   let b = match rest {
@@ -383,7 +368,7 @@ fn WgslIrLowerer::lower_global_math_call(
     [_, _, value, ..] => Some(self.lower_global_expression_node(value))
     _ => None
   }
-  Expression::Math(math_function, a, b, c, d)
+  Math(math_function, a, b, c, d)
 }
 
 ///|
@@ -394,12 +379,9 @@ fn WgslIrLowerer::lower_global_relational_call(
 ) -> Expression raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments is [expr] else {
-    raise WgslIrLowerError::UnsupportedExpression(
+    raise UnsupportedExpression(
       "\{wgsl_ir_relational_function_name(relational_function)} expects one argument",
     )
   }
-  Expression::Relational(
-    relational_function,
-    self.lower_global_expression_node(expr),
-  )
+  Relational(relational_function, self.lower_global_expression_node(expr))
 }

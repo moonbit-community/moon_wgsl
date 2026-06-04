@@ -10,7 +10,7 @@ test "WGSL source directives parse as directive AST nodes" {
   debug_inspect(unit.declarations()[0].kind(), content="Directive")
   debug_inspect(unit.declarations()[1].kind(), content="Directive")
   debug_inspect(unit.declarations()[2].kind(), content="Directive")
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Directive(enable) else {
+  guard unit.declarations()[0].data() is Directive(enable) else {
     abort("expected enable directive")
   }
   debug_inspect(enable.kind(), content="Enable")
@@ -21,8 +21,7 @@ test "WGSL source directives parse as directive AST nodes" {
   debug_inspect(enable.name().end(), content="6")
   debug_inspect(enable.tail_start(), content="7")
   debug_inspect(enable.tail_end(), content="21")
-  guard unit.declarations()[2].data()
-    is WgslGlobalDeclData::Directive(diagnostic) else {
+  guard unit.declarations()[2].data() is Directive(diagnostic) else {
     abort("expected diagnostic directive")
   }
   debug_inspect(diagnostic.kind(), content="Diagnostic")
@@ -38,7 +37,7 @@ test "WGSL hash conditionals parse as directive AST nodes" {
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
   debug_inspect(unit.declarations()[0].kind(), content="Directive")
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Directive(ifdef) else {
+  guard unit.declarations()[0].data() is Directive(ifdef) else {
     abort("expected ifdef directive")
   }
   debug_inspect(ifdef.kind(), content="Ifdef")
@@ -62,7 +61,7 @@ test "WGSL hash directive spans are absolute in translation units" {
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
   debug_inspect(unit.declarations()[0].kind(), content="Trivia")
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Directive(ifdef) else {
+  guard unit.declarations()[1].data() is Directive(ifdef) else {
     abort("expected ifdef directive")
   }
   debug_inspect(ifdef.start(), content="8")
@@ -81,7 +80,7 @@ test "WGSL override function payload preserves qualified target path" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   debug_inspect(function.qualifier(), content="Some(Override)")
@@ -125,7 +124,7 @@ test "WGSL statement classification uses identifier tokens" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   debug_inspect(function.body().statements().length(), content="2")
@@ -152,7 +151,7 @@ test "WGSL statement payload exposes structured statement semantics" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   match function.body().statements()[0].payload() {
@@ -204,7 +203,7 @@ test "WGSL for statement expressions keep official header roles" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let statements = function.body().statements()
@@ -254,7 +253,7 @@ test "WGSL for statement expressions keep shift compound update role" {
     #|  }
     #|}
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let statement = function.body().statements()[0]
@@ -291,7 +290,7 @@ test "WGSL struct parser accepts preprocessing directives inside members" {
   let unit = parse_wgsl_translation_unit_strict(source) catch {
     _ => abort("expected strict struct parse")
   }
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(struct_decl) else {
+  guard unit.declarations()[0].data() is Struct(struct_decl) else {
     abort("expected struct")
   }
   debug_inspect(struct_decl.members().length(), content="4")
@@ -351,7 +350,7 @@ test "WGSL struct parser accepts Bevy LightingInput member shape" {
   let unit = parse_wgsl_translation_unit_strict(source) catch {
     _ => abort("expected strict Bevy struct parse")
   }
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Struct(struct_decl) else {
+  guard unit.declarations()[0].data() is Struct(struct_decl) else {
     abort("expected struct")
   }
   debug_inspect(struct_decl.members().length() > 10, content="true")
@@ -378,8 +377,7 @@ test "WGSL parser accepts official directives and statement attributes" {
   debug_inspect(unit.declarations()[0].kind(), content="Directive")
   debug_inspect(unit.declarations()[1].kind(), content="Directive")
   debug_inspect(unit.declarations()[2].kind(), content="Directive")
-  guard unit.declarations()[4].data()
-    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+  guard unit.declarations()[4].data() is TypeAlias(alias_decl) else {
     abort("expected type alias")
   }
   guard alias_decl.ty_ref() is Some(alias_ty) else {
@@ -400,7 +398,7 @@ test "WGSL parser accepts official directives and statement attributes" {
       )
     _ => abort("expected expression template argument")
   }
-  guard unit.declarations()[5].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[5].data() is Function(function) else {
     abort("expected function")
   }
   debug_inspect(function.body_attributes().length(), content="1")
@@ -448,7 +446,7 @@ test "WGSL parser classifies official loop continuing and switch clauses" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function")
   }
   debug_inspect(function.body().statements()[1].kind(), content="Loop")
@@ -461,8 +459,7 @@ test "WGSL parser classifies official loop continuing and switch clauses" {
   debug_inspect(function.body().statements()[2].kind(), content="Switch")
   let switch_body = function.body().statements()[2].blocks()[0]
   debug_inspect(switch_body.statements()[0].kind(), content="Case")
-  guard switch_body.statements()[0].payload()
-    is WgslStatementPayload::Case(selectors) else {
+  guard switch_body.statements()[0].payload() is Case(selectors) else {
     abort("expected case selector payload")
   }
   debug_inspect(
@@ -486,7 +483,7 @@ test "WGSL parser models default as a case selector" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function")
   }
   match function.body().statements()[0].payload() {
@@ -499,7 +496,7 @@ test "WGSL parser models default as a case selector" {
   }
   let switch_body = function.body().statements()[0].blocks()[0]
   let case_statement = switch_body.statements()[0]
-  guard case_statement.payload() is WgslStatementPayload::Case(selectors) else {
+  guard case_statement.payload() is Case(selectors) else {
     abort("expected case payload")
   }
   debug_inspect(
@@ -533,7 +530,7 @@ test "WGSL parser structures assignment update and call statements" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[1].data() is Function(function) else {
     abort("expected main function")
   }
   let statements = function.body().statements()
@@ -544,8 +541,7 @@ test "WGSL parser structures assignment update and call statements" {
   debug_inspect(statements[5].kind(), content="Decrement")
   debug_inspect(statements[6].kind(), content="FunctionCall")
   debug_inspect(statements[7].kind(), content="Assignment")
-  guard statements[1].payload()
-    is WgslStatementPayload::Assignment(assign_op, assign_lhs, assign_rhs) else {
+  guard statements[1].payload() is Assignment(assign_op, assign_lhs, assign_rhs) else {
     abort("expected plain assignment payload")
   }
   debug_inspect(assign_op, content="\"=\"")
@@ -556,18 +552,15 @@ test "WGSL parser structures assignment update and call statements" {
     wgsl_expr_ref_source_text(source, rhs),
     content="\"value + 1u\"",
   )
-  guard statements[2].payload()
-    is WgslStatementPayload::Assignment(compound_op, _, _) else {
+  guard statements[2].payload() is Assignment(compound_op, _, _) else {
     abort("expected compound assignment payload")
   }
   debug_inspect(compound_op, content="\"+=\"")
-  guard statements[3].payload()
-    is WgslStatementPayload::Assignment(shift_op, _, _) else {
+  guard statements[3].payload() is Assignment(shift_op, _, _) else {
     abort("expected shift assignment payload")
   }
   debug_inspect(shift_op, content="\"<<=\"")
-  guard statements[4].payload()
-    is WgslStatementPayload::Increment(increment_target) else {
+  guard statements[4].payload() is Increment(increment_target) else {
     abort("expected increment payload")
   }
   guard increment_target is Some(increment_expr) else {
@@ -577,8 +570,7 @@ test "WGSL parser structures assignment update and call statements" {
     wgsl_expr_ref_source_text(source, increment_expr),
     content="\"value\"",
   )
-  guard statements[5].payload()
-    is WgslStatementPayload::Decrement(decrement_target) else {
+  guard statements[5].payload() is Decrement(decrement_target) else {
     abort("expected decrement payload")
   }
   guard decrement_target is Some(decrement_expr) else {
@@ -588,7 +580,7 @@ test "WGSL parser structures assignment update and call statements" {
     wgsl_expr_ref_source_text(source, decrement_expr),
     content="\"value\"",
   )
-  guard statements[6].payload() is WgslStatementPayload::FunctionCall(call_expr) else {
+  guard statements[6].payload() is FunctionCall(call_expr) else {
     abort("expected function call payload")
   }
   guard call_expr is Some(call_ref) else { abort("expected call expression") }
@@ -599,14 +591,12 @@ test "WGSL parser structures assignment update and call statements" {
   match call_ref.root() {
     Some(root) =>
       match root.kind() {
-        WgslExprNodeKind::Call(_, arguments) =>
-          debug_inspect(arguments.length(), content="3")
+        Call(_, arguments) => debug_inspect(arguments.length(), content="3")
         _ => abort("expected parsed call root")
       }
     None => abort("expected parsed call root")
   }
-  guard statements[7].payload()
-    is WgslStatementPayload::Assignment(phony_op, phony_lhs, _) else {
+  guard statements[7].payload() is Assignment(phony_op, phony_lhs, _) else {
     abort("expected phony assignment payload")
   }
   debug_inspect(phony_op, content="\"=\"")
@@ -622,7 +612,7 @@ test "WGSL identifier collection exposes qualified function calls" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let nodes : Array[WgslIdent] = []

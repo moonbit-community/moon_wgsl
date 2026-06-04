@@ -16,10 +16,7 @@ fn WgslIrEmitter::emit_entry_point(
           out.write_string(
             "@mesh(\{self.global_variable_name(mesh_info.output_variable)})",
           )
-        None =>
-          raise WgslIrEmitError::Unsupported(
-            "mesh entry point without mesh output",
-          )
+        None => raise Unsupported("mesh entry point without mesh output")
       }
     _ => out.write_string(self.stage_attribute(entry_point.stage))
   }
@@ -131,7 +128,7 @@ fn WgslIrEmitter::emit_function_argument(
   index : Int,
 ) -> Unit raise WgslIrEmitError {
   guard function.arguments.get(index) is Some(argument) else {
-    raise WgslIrEmitError::MissingHandle("function argument \{index}")
+    raise MissingHandle("function argument \{index}")
   }
   self.emit_binding_attribute_prefix(out, argument.binding, Some(argument.ty))
   let name = self.function_argument_name(Some(function), index)
@@ -148,8 +145,7 @@ fn WgslIrEmitter::emit_local_declaration(
 ) -> Unit raise WgslIrEmitError {
   let local_var = match function.local_variables.items.get(handle.index()) {
     Some(value) => value
-    None =>
-      raise WgslIrEmitError::MissingHandle("local variable \{handle.index()}")
+    None => raise MissingHandle("local variable \{handle.index()}")
   }
   if wgsl_ir_local_variable_is_generated_call_result_alias(function, local_var) {
     return
@@ -205,7 +201,7 @@ fn WgslIrEmitter::emit_function_local_var_declarations(
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
   for index in body_plan.local_declaration_order() {
-    self.emit_local_declaration(out, function, Handle::Handle(index), indent)
+    self.emit_local_declaration(out, function, Handle(index), indent)
   }
   if body_plan.needs_blank_after_local_declarations() {
     out.write_string("\n")

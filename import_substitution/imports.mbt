@@ -11,11 +11,7 @@ using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 using @lex {type WgslToken, split_last_identifier, tokenize, utf8_byte_length}
 
 ///|
-using @common {
-  type ImportDefWithOffset,
-  type ImportDefinition,
-  type WgslImportTarget,
-}
+using @common {type ImportDefWithOffset, type WgslImportTarget}
 
 ///|
 using @import_syntax {

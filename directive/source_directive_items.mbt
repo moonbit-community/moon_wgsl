@@ -19,7 +19,7 @@ fn WgslSourceDirectiveItem::WgslSourceDirectiveItem(
   kind : WgslSourceDirectiveItemKind,
   line : String,
 ) -> WgslSourceDirectiveItem {
-  WgslSourceDirectiveItem::{ kind, line }
+  { kind, line }
 }
 
 ///|
@@ -139,15 +139,15 @@ fn parse_wgsl_source_directive_item(line : String) -> WgslSourceDirectiveItem {
   let kind = if trimmed == "" || trimmed.has_prefix("//") {
     WgslSourceDirectiveItemKind::Trivia
   } else if wgsl_source_directive_keyword_tail(line, "enable") is Some(body) {
-    WgslSourceDirectiveItemKind::Enable(body)
+    Enable(body)
   } else if wgsl_source_directive_keyword_tail(line, "requires") is Some(body) {
-    WgslSourceDirectiveItemKind::Requires(body)
+    Requires(body)
   } else if wgsl_source_diagnostic_tail(line) is Some((severity, rule)) {
-    WgslSourceDirectiveItemKind::Diagnostic(severity, rule)
+    Diagnostic(severity, rule)
   } else if wgsl_source_directive_prefix_candidate(trimmed) {
-    WgslSourceDirectiveItemKind::PrefixCandidate
+    PrefixCandidate
   } else {
-    WgslSourceDirectiveItemKind::Source
+    Source
   }
   WgslSourceDirectiveItem(kind, line)
 }
@@ -160,15 +160,14 @@ fn wgsl_source_directive_item_from_scan_directive(
   let line = item.source().original_text()
   let tail = wgsl_effective_directive_tail(directive)
   let kind = match wgsl_effective_directive_kind(directive) {
-    WgslDirectiveKind::Enable => WgslSourceDirectiveItemKind::Enable(tail)
-    WgslDirectiveKind::Requires => WgslSourceDirectiveItemKind::Requires(tail)
-    WgslDirectiveKind::Diagnostic =>
+    Enable => WgslSourceDirectiveItemKind::Enable(tail)
+    Requires => Requires(tail)
+    Diagnostic =>
       match wgsl_source_diagnostic_tail(item.source().cleaned_text()) {
-        Some((severity, rule)) =>
-          WgslSourceDirectiveItemKind::Diagnostic(severity, rule)
-        None => WgslSourceDirectiveItemKind::PrefixCandidate
+        Some((severity, rule)) => Diagnostic(severity, rule)
+        None => PrefixCandidate
       }
-    _ => WgslSourceDirectiveItemKind::Source
+    _ => Source
   }
   WgslSourceDirectiveItem(kind, line)
 }
@@ -181,7 +180,7 @@ pub fn parse_wgsl_source_directive_items(
   for
     item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
     match item.kind() {
-      WgslDirectiveScanItemKind::Directive(directive) =>
+      Directive(directive) =>
         items.push(
           wgsl_source_directive_item_from_scan_directive(item, directive),
         )

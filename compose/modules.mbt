@@ -35,7 +35,7 @@ fn Composer::active_compose_defs_for_rel_path(
     None => {
       for entry in session.defines.iter() {
         let (name, value) = entry
-        shader_defs.set(name, ShaderDefValue::Bool(value))
+        shader_defs.set(name, Bool(value))
       }
       for entry in session.value_defines.iter() {
         let (name, value) = entry
@@ -53,7 +53,7 @@ fn Composer::active_compose_defs_for_rel_path(
       )
     }
   }
-  WgslActiveComposeDefs::{ defines, value_defines, shader_defs }
+  { defines, value_defines, shader_defs }
 }
 
 ///|

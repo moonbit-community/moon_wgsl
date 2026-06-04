@@ -11,7 +11,7 @@ fn try_get_preprocessor_metadata(
   let import_state = WgslImportSubstitutionState::default()
   let used_imports : Array[ImportDefWithOffset] = []
   let defines : Map[String, ShaderDefValue] = Map([])
-  let effective_defs : @set.Set[String] = @set.Set([])
+  let effective_defs : @set.Set[String] = Set([])
   let mut name : String? = None
 
   for
@@ -20,23 +20,20 @@ fn try_get_preprocessor_metadata(
       include_glsl_version=false,
     ) {
     match item.kind() {
-      WgslDirectiveScanItemKind::Directive(directive) => {
+      Directive(directive) => {
         let (is_scope, def) = metadata_scope_def_from_directive(directive)
         if is_scope {
           if def is Some(def_name) {
             effective_defs.add(def_name)
           }
         } else if directive.has_required_tail_separator() &&
-          directive.kind() == WgslDirectiveKind::Import {
+          directive.kind() == Import {
           import_state.declare_imports(item.source().cleaned_text()) catch {
             Parse(message, item_offset) =>
-              raise MetadataError::ImportParseError(
-                message,
-                item.start() + item_offset,
-              )
+              raise ImportParseError(message, item.start() + item_offset)
           }
         } else if directive.has_required_tail_separator() &&
-          directive.kind() == WgslDirectiveKind::DefineImportPath {
+          directive.kind() == DefineImportPath {
           let import_path = wgsl_metadata_first_space_separated_token(
             directive.tail(),
           )
@@ -44,7 +41,7 @@ fn try_get_preprocessor_metadata(
             name = Some(import_path)
           }
         } else if directive.has_required_tail_separator() &&
-          directive.kind() == WgslDirectiveKind::Define {
+          directive.kind() == Define {
           if allow_defines {
             let (define_name, define_value) = split_define_name_and_value(
               directive.tail(),
@@ -53,15 +50,14 @@ fn try_get_preprocessor_metadata(
               defines.set(define_name, parse_define_value(define_value))
             }
           } else {
-            raise MetadataError::DefineInModule(item.start())
+            raise DefineInModule(item.start())
           }
         } else {
           metadata_collect_source_item(item, effective_defs)
         }
       }
-      WgslDirectiveScanItemKind::Source =>
-        metadata_collect_source_item(item, effective_defs)
-      WgslDirectiveScanItemKind::GlslVersion(_) => ()
+      Source => metadata_collect_source_item(item, effective_defs)
+      GlslVersion(_) => ()
     }
   }
   if collect_import_uses {

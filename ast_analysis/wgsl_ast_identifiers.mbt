@@ -284,9 +284,9 @@ pub fn collect_wgsl_decl_identifier_nodes(
   nodes : Array[WgslIdent],
 ) -> Unit {
   match data {
-    WgslGlobalDeclData::Function(function) => {
+    Function(function) => {
       collect_wgsl_attribute_identifier_nodes(function.attributes(), nodes)
-      if function.qualifier() == Some(WgslFunctionQualifier::Override) {
+      if function.qualifier() == Some(Override) {
         nodes.push(function.name())
       }
       let active_local_names : Array[String] = []
@@ -308,7 +308,7 @@ pub fn collect_wgsl_decl_identifier_nodes(
         nodes,
       )
     }
-    WgslGlobalDeclData::Struct(struct_decl) => {
+    Struct(struct_decl) => {
       collect_wgsl_attribute_identifier_nodes(struct_decl.attributes(), nodes)
       for struct_member in struct_decl.members() {
         collect_wgsl_attribute_identifier_nodes(
@@ -318,7 +318,7 @@ pub fn collect_wgsl_decl_identifier_nodes(
         collect_wgsl_type_ref_identifier_nodes(struct_member.ty_ref(), nodes)
       }
     }
-    WgslGlobalDeclData::GlobalVariable(global) => {
+    GlobalVariable(global) => {
       collect_wgsl_attribute_identifier_nodes(global.attributes(), nodes)
       for argument in global.template_list() {
         collect_wgsl_type_ref_identifier_nodes(Some(argument), nodes)
@@ -326,14 +326,14 @@ pub fn collect_wgsl_decl_identifier_nodes(
       collect_wgsl_type_ref_identifier_nodes(global.ty_ref(), nodes)
       collect_wgsl_expr_ref_identifier_nodes(global.initializer_ref(), nodes)
     }
-    WgslGlobalDeclData::Const(const_decl) => {
+    Const(const_decl) => {
       collect_wgsl_type_ref_identifier_nodes(const_decl.ty_ref(), nodes)
       collect_wgsl_expr_ref_identifier_nodes(
         const_decl.initializer_ref(),
         nodes,
       )
     }
-    WgslGlobalDeclData::Override(override_decl) => {
+    Override(override_decl) => {
       collect_wgsl_attribute_identifier_nodes(override_decl.attributes(), nodes)
       collect_wgsl_type_ref_identifier_nodes(override_decl.ty_ref(), nodes)
       collect_wgsl_expr_ref_identifier_nodes(
@@ -341,11 +341,11 @@ pub fn collect_wgsl_decl_identifier_nodes(
         nodes,
       )
     }
-    WgslGlobalDeclData::TypeAlias(alias_decl) =>
+    TypeAlias(alias_decl) =>
       collect_wgsl_type_ref_identifier_nodes(alias_decl.ty_ref(), nodes)
-    WgslGlobalDeclData::ConstAssert(expr) =>
+    ConstAssert(expr) =>
       collect_wgsl_expr_ref_identifier_nodes(Some(expr), nodes)
-    WgslGlobalDeclData::Directive(_) | WgslGlobalDeclData::Import(_) | Raw => ()
+    Directive(_) | Import(_) | Raw => ()
   }
 }
 
@@ -355,17 +355,13 @@ pub fn collect_wgsl_decl_global_declared_identifier_nodes(
   nodes : Array[WgslIdent],
 ) -> Unit {
   match data {
-    WgslGlobalDeclData::Function(function) => nodes.push(function.name())
-    WgslGlobalDeclData::Struct(struct_decl) => nodes.push(struct_decl.name())
-    WgslGlobalDeclData::GlobalVariable(global) => nodes.push(global.name())
-    WgslGlobalDeclData::Const(const_decl) => nodes.push(const_decl.name())
-    WgslGlobalDeclData::Override(override_decl) =>
-      nodes.push(override_decl.name())
-    WgslGlobalDeclData::TypeAlias(alias_decl) => nodes.push(alias_decl.name())
-    WgslGlobalDeclData::Directive(_)
-    | WgslGlobalDeclData::Import(_)
-    | WgslGlobalDeclData::ConstAssert(_)
-    | Raw => ()
+    Function(function) => nodes.push(function.name())
+    Struct(struct_decl) => nodes.push(struct_decl.name())
+    GlobalVariable(global) => nodes.push(global.name())
+    Const(const_decl) => nodes.push(const_decl.name())
+    Override(override_decl) => nodes.push(override_decl.name())
+    TypeAlias(alias_decl) => nodes.push(alias_decl.name())
+    Directive(_) | Import(_) | ConstAssert(_) | Raw => ()
   }
 }
 

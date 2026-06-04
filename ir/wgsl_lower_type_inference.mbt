@@ -4,12 +4,10 @@ fn WgslIrLowerer::infer_local_type_from_initializer(
   name : String,
   initializer : @ast.WgslExprRef?,
 ) -> Handle raise WgslIrLowerError {
-  guard initializer is Some(expr_ref) else {
-    raise WgslIrLowerError::MissingType(name)
-  }
+  guard initializer is Some(expr_ref) else { raise MissingType(name) }
   match expr_ref.root() {
     Some(root) => self.infer_expression_type(root, name)
-    None => raise WgslIrLowerError::MissingType(name)
+    None => raise MissingType(name)
   }
 }
 
@@ -24,7 +22,7 @@ fn WgslIrLowerer::infer_constant_declaration_type(
     None => ()
   }
   if self.constant_type_inference_stack.contains(name) {
-    raise WgslIrLowerError::MissingType(name)
+    raise MissingType(name)
   }
   self.constant_type_inference_stack.add(name)
   let ty = match constant.ty_ref() {
@@ -51,7 +49,7 @@ fn WgslIrLowerer::infer_expression_type(
           self.lower_builtin_type_name(
             wgsl_ir_numeric_literal_default_type_name(literal),
           )
-        _ => raise WgslIrLowerError::MissingType(name)
+        _ => raise MissingType(name)
       }
     Identifier(identifier) =>
       self.infer_named_expression_type(identifier.name(), name)
@@ -60,17 +58,17 @@ fn WgslIrLowerer::infer_expression_type(
       match op {
         Not => self.lower_builtin_type_name("bool")
         Subtract | Complement => self.infer_expression_type(inner, name)
-        _ => raise WgslIrLowerError::MissingType(name)
+        _ => raise MissingType(name)
       }
     Member(base, member_ident) =>
       match self.infer_member_expression_type(base, member_ident.name(), name) {
         Some(ty) => ty
-        None => raise WgslIrLowerError::MissingType(name)
+        None => raise MissingType(name)
       }
     Index(base, _) =>
       match self.infer_index_expression_type(base, name) {
         Some(ty) => ty
-        None => raise WgslIrLowerError::MissingType(name)
+        None => raise MissingType(name)
       }
     Binary(op, left, right) =>
       match self.infer_expression_type(left, name) {
@@ -109,9 +107,9 @@ fn WgslIrLowerer::infer_expression_type(
                           Some(function) =>
                             match function.result {
                               Some(result) => result.ty
-                              None => raise WgslIrLowerError::MissingType(name)
+                              None => raise MissingType(name)
                             }
-                          None => raise WgslIrLowerError::MissingType(name)
+                          None => raise MissingType(name)
                         }
                       None =>
                         match
@@ -137,12 +135,12 @@ fn WgslIrLowerer::infer_expression_type(
                         }
                     }
                   }
-                _ => raise WgslIrLowerError::MissingType(name)
+                _ => raise MissingType(name)
               }
           }
       }
     }
-    _ => raise WgslIrLowerError::MissingType(name)
+    _ => raise MissingType(name)
   }
 }
 
@@ -207,7 +205,7 @@ fn WgslIrLowerer::lower_bitcast_callee_type(
           match template_arguments {
             [Type(ty_ref)] => Some(self.lower_type_ref(ty_ref))
             _ =>
-              raise WgslIrLowerError::UnsupportedExpression(
+              raise UnsupportedExpression(
                 "bitcast expects exactly one type template argument",
               )
           }
@@ -226,7 +224,7 @@ fn WgslIrLowerer::infer_select_expression_type(
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   match arguments {
     [reject, _, _] => self.infer_expression_type(reject, name)
-    _ => raise WgslIrLowerError::MissingType(name)
+    _ => raise MissingType(name)
   }
 }
 
@@ -238,9 +236,7 @@ fn WgslIrLowerer::infer_math_expression_type(
   name : String,
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
-  guard arguments is [first, .. rest] else {
-    raise WgslIrLowerError::MissingType(name)
-  }
+  guard arguments is [first, .. rest] else { raise MissingType(name) }
   match math_function {
     Dot | Distance | Length | Determinant =>
       match self.infer_expression_type(first, name) {
@@ -262,11 +258,9 @@ fn WgslIrLowerer::infer_relational_expression_type(
   name : String,
 ) -> Handle raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
-  guard arguments is [first, ..] else {
-    raise WgslIrLowerError::MissingType(name)
-  }
+  guard arguments is [first, ..] else { raise MissingType(name) }
   match relational_function {
-    All | Any => self.scalar_type_handle(Scalar::Scalar(Bool, 1))
+    All | Any => self.scalar_type_handle(Scalar(Bool, 1))
     IsNan | IsInf =>
       match self.infer_expression_type(first, name) {
         ty => self.boolean_result_type(ty, ty)
@@ -303,7 +297,7 @@ fn WgslIrLowerer::infer_named_expression_type(
         Some(handle) =>
           match self.shader_module.constants.items.get(handle.index()) {
             Some(constant) => constant.ty
-            None => raise WgslIrLowerError::MissingType(diagnostic_name)
+            None => raise MissingType(diagnostic_name)
           }
         None =>
           match self.constant_declarations.get(referenced_name) {
@@ -320,21 +314,21 @@ fn WgslIrLowerer::infer_named_expression_type(
 ///|
 fn wgsl_ir_predeclared_u32_constant_literal(name : String) -> Literal? {
   match name {
-    "RAY_FLAG_NONE" => Some(Literal::U32(0))
-    "RAY_FLAG_FORCE_OPAQUE" => Some(Literal::U32(0x1))
-    "RAY_FLAG_FORCE_NO_OPAQUE" => Some(Literal::U32(0x2))
-    "RAY_FLAG_TERMINATE_ON_FIRST_HIT" => Some(Literal::U32(0x4))
-    "RAY_FLAG_SKIP_CLOSEST_HIT_SHADER" => Some(Literal::U32(0x8))
-    "RAY_FLAG_CULL_BACK_FACING" => Some(Literal::U32(0x10))
-    "RAY_FLAG_CULL_FRONT_FACING" => Some(Literal::U32(0x20))
-    "RAY_FLAG_CULL_OPAQUE" => Some(Literal::U32(0x40))
-    "RAY_FLAG_CULL_NO_OPAQUE" => Some(Literal::U32(0x80))
-    "RAY_FLAG_SKIP_TRIANGLES" => Some(Literal::U32(0x100))
-    "RAY_FLAG_SKIP_AABBS" => Some(Literal::U32(0x200))
-    "RAY_QUERY_INTERSECTION_NONE" => Some(Literal::U32(0))
-    "RAY_QUERY_INTERSECTION_TRIANGLE" => Some(Literal::U32(1))
-    "RAY_QUERY_INTERSECTION_GENERATED" => Some(Literal::U32(2))
-    "RAY_QUERY_INTERSECTION_AABB" => Some(Literal::U32(3))
+    "RAY_FLAG_NONE" => Some(U32(0))
+    "RAY_FLAG_FORCE_OPAQUE" => Some(U32(0x1))
+    "RAY_FLAG_FORCE_NO_OPAQUE" => Some(U32(0x2))
+    "RAY_FLAG_TERMINATE_ON_FIRST_HIT" => Some(U32(0x4))
+    "RAY_FLAG_SKIP_CLOSEST_HIT_SHADER" => Some(U32(0x8))
+    "RAY_FLAG_CULL_BACK_FACING" => Some(U32(0x10))
+    "RAY_FLAG_CULL_FRONT_FACING" => Some(U32(0x20))
+    "RAY_FLAG_CULL_OPAQUE" => Some(U32(0x40))
+    "RAY_FLAG_CULL_NO_OPAQUE" => Some(U32(0x80))
+    "RAY_FLAG_SKIP_TRIANGLES" => Some(U32(0x100))
+    "RAY_FLAG_SKIP_AABBS" => Some(U32(0x200))
+    "RAY_QUERY_INTERSECTION_NONE" => Some(U32(0))
+    "RAY_QUERY_INTERSECTION_TRIANGLE" => Some(U32(1))
+    "RAY_QUERY_INTERSECTION_GENERATED" => Some(U32(2))
+    "RAY_QUERY_INTERSECTION_AABB" => Some(U32(3))
     _ => None
   }
 }
@@ -345,17 +339,17 @@ fn WgslIrLowerer::global_identifier_expression(
   name : @ast.WgslIdent,
 ) -> Expression raise WgslIrLowerError {
   match self.ensure_constant_declaration_lowered(name.name()) {
-    Some(handle) => Expression::Constant(handle)
+    Some(handle) => Constant(handle)
     None =>
       match self.ensure_override_declaration_predeclared(name.name()) {
-        Some(handle) => Expression::Override(handle)
+        Some(handle) => Override(handle)
         None =>
           match self.global_names.get(name.name()) {
-            Some(handle) => Expression::GlobalVariable(handle)
+            Some(handle) => GlobalVariable(handle)
             None =>
               match wgsl_ir_predeclared_u32_constant_literal(name.name()) {
-                Some(literal) => Expression::Literal(literal)
-                None => raise WgslIrLowerError::UnknownIdentifier(name.name())
+                Some(literal) => Literal(literal)
+                None => raise UnknownIdentifier(name.name())
               }
           }
       }
@@ -372,7 +366,7 @@ fn WgslIrLowerer::infer_non_constant_named_expression_type(
     Some(handle) =>
       match self.shader_module.overrides.items.get(handle.index()) {
         Some(override_) => override_.ty
-        None => raise WgslIrLowerError::MissingType(diagnostic_name)
+        None => raise MissingType(diagnostic_name)
       }
     None =>
       match self.override_declarations.get(referenced_name) {
@@ -382,9 +376,9 @@ fn WgslIrLowerer::infer_non_constant_named_expression_type(
             Some(handle) =>
               match self.shader_module.overrides.items.get(handle.index()) {
                 Some(override_) => override_.ty
-                None => raise WgslIrLowerError::MissingType(diagnostic_name)
+                None => raise MissingType(diagnostic_name)
               }
-            None => raise WgslIrLowerError::MissingType(diagnostic_name)
+            None => raise MissingType(diagnostic_name)
           }
         }
         None =>
@@ -393,9 +387,9 @@ fn WgslIrLowerer::infer_non_constant_named_expression_type(
               match
                 self.shader_module.global_variables.items.get(handle.index()) {
                 Some(global) => global.ty
-                None => raise WgslIrLowerError::MissingType(diagnostic_name)
+                None => raise MissingType(diagnostic_name)
               }
-            None => raise WgslIrLowerError::MissingType(diagnostic_name)
+            None => raise MissingType(diagnostic_name)
           }
       }
   }
@@ -408,6 +402,6 @@ fn WgslIrLowerer::lower_builtin_type_name(
 ) -> Handle raise WgslIrLowerError {
   match self.type_cache.get(name) {
     Some(handle) => handle
-    None => raise WgslIrLowerError::MissingType(name)
+    None => raise MissingType(name)
   }
 }

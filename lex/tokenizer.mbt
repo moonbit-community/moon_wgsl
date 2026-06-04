@@ -36,7 +36,7 @@ fn WgslToken::new_text(
   text : String,
   pos : Int,
 ) -> WgslToken {
-  WgslToken::{ kind, text, code: -1, pos, end: pos + text.length() }
+  { kind, text, code: -1, pos, end: pos + text.length() }
 }
 
 ///|
@@ -65,7 +65,7 @@ fn WgslToken::new_punctuation(
   code : Int,
   pos : Int,
 ) -> WgslToken {
-  WgslToken::{ kind: Punctuation, text, code, pos, end: pos + text.length() }
+  { kind: Punctuation, text, code, pos, end: pos + text.length() }
 }
 
 ///|
@@ -141,7 +141,7 @@ pub fn WgslToken::end(self : WgslToken) -> Int {
 
 ///|
 pub fn WgslToken::shift(self : WgslToken, offset : Int) -> WgslToken {
-  WgslToken::{
+  {
     kind: self.kind,
     text: self.text,
     code: self.code,

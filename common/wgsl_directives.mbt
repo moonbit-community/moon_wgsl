@@ -28,7 +28,7 @@ fn join_strings(items : Array[String], sep : String) -> String {
 pub fn WgslDirectives::to_wgsl_string(self : WgslDirectives) -> String {
   let mut result = ""
 
-  let all_enables : @set.Set[String] = @set.Set([])
+  let all_enables : @set.Set[String] = Set([])
   for enable in self.enables {
     for extension in enable.extensions {
       all_enables.add(extension)
@@ -41,7 +41,7 @@ pub fn WgslDirectives::to_wgsl_string(self : WgslDirectives) -> String {
     result = "\{result}enable \{joined_enables};\n"
   }
 
-  let all_requires : @set.Set[String] = @set.Set([])
+  let all_requires : @set.Set[String] = Set([])
   for requires in self.requires {
     for extension in requires.extensions {
       all_requires.add(extension)

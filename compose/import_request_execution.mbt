@@ -3,11 +3,11 @@ fn wgsl_source_origin_kind_to_ir_declaration_kind(
   kind : WgslSourceOriginKind,
 ) -> @ir.WgslIrDeclarationKind? {
   match kind {
-    Type => Some(@ir.WgslIrDeclarationKind::Type)
-    Constant => Some(@ir.WgslIrDeclarationKind::Constant)
-    Override => Some(@ir.WgslIrDeclarationKind::Override)
-    GlobalVariable => Some(@ir.WgslIrDeclarationKind::GlobalVariable)
-    Function => Some(@ir.WgslIrDeclarationKind::Function)
+    Type => Some(Type)
+    Constant => Some(Constant)
+    Override => Some(Override)
+    GlobalVariable => Some(GlobalVariable)
+    Function => Some(Function)
     Other => None
   }
 }
@@ -50,7 +50,7 @@ fn Composer::compose_wgsl_import_requests(
   let mut merged = ""
   for request in requests {
     if !session.graph_request_is_planned(current_rel_path, request) {
-      raise ComposerError::FailedToResolveImport(
+      raise FailedToResolveImport(
         "internal compose graph is missing planned request \{wgsl_import_request_visit_key(current_rel_path, request)}",
       )
     }
@@ -61,7 +61,7 @@ fn Composer::compose_wgsl_import_requests(
     }
     let full_module_key = wgsl_full_module_visit_key(request.rel_path, "")
     if wgsl_path_stack_contains(session.active_rel_paths, request.rel_path) {
-      raise ComposerError::ImportCycle(
+      raise ImportCycle(
         wgsl_import_cycle_string(session.active_rel_paths, request.rel_path),
       )
     }
@@ -362,7 +362,7 @@ fn Composer::compose_wgsl_import_requests(
     } else {
       wgsl_import_request_copy_items(emission_requested_items)
     }
-    let emitted_source_starts : @set.Set[Int] = @set.Set([])
+    let emitted_source_starts : @set.Set[Int] = Set([])
     for i in origin_start_index..<session.symbols.source_origins.length() {
       let origin = session.symbols.source_origins[i]
       if origin.rel_path == request.rel_path {
@@ -389,7 +389,7 @@ fn Composer::compose_wgsl_import_requests(
               source_pull_rank
             }
             event_generated_symbols.push(
-              @ir.WgslIrImportArenaSymbol(
+              WgslIrImportArenaSymbol(
                 kind,
                 origin.source_symbol_name,
                 origin.generated_symbol_name,
@@ -409,10 +409,10 @@ fn Composer::compose_wgsl_import_requests(
       if request.alias_name == "" {
         @ir.WgslIrImportEdgeKind::FullModule
       } else {
-        @ir.WgslIrImportEdgeKind::AliasModule
+        AliasModule
       }
     } else {
-      @ir.WgslIrImportEdgeKind::ItemBinding
+      ItemBinding
     }
     session.link_graph.record_import_arena_event(
       current_rel_path,
@@ -424,7 +424,7 @@ fn Composer::compose_wgsl_import_requests(
       event_generated_symbols,
     )
     session.symbols.import_arena_events.push(
-      @ir.WgslIrImportArenaEvent(
+      WgslIrImportArenaEvent(
         session.symbols.import_arena_events.length(),
         current_rel_path,
         request.rel_path,
@@ -558,14 +558,14 @@ fn wgsl_sort_import_arena_function_symbols_by_dependency_pull(
 ) -> Unit {
   let functions : Array[@ir.WgslIrImportArenaSymbol] = []
   for symbol in symbols {
-    if symbol.kind() == @ir.WgslIrDeclarationKind::Function {
+    if symbol.kind() == Function {
       functions.push(symbol)
     }
   }
   functions.sort_by(wgsl_compare_import_arena_symbols_by_dependency_pull)
   let mut next_function = 0
   for i in 0..<symbols.length() {
-    if symbols[i].kind() == @ir.WgslIrDeclarationKind::Function {
+    if symbols[i].kind() == Function {
       symbols[i] = functions[next_function]
       next_function = next_function + 1
     }
@@ -583,7 +583,7 @@ fn seed_wgsl_local_declaration_bindings(
   }
   for declaration in unit.declarations() {
     match declaration.data() {
-      WgslGlobalDeclData::GlobalVariable(_) => ()
+      GlobalVariable(_) => ()
       _ => continue
     }
     let name = declaration.name()

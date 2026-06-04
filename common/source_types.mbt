@@ -29,7 +29,7 @@ pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(
   source_start : Int,
   source_end : Int,
 ) -> WgslSourceCatalogEntry {
-  WgslSourceCatalogEntry::{ rel_path, symbol_name, source_start, source_end }
+  { rel_path, symbol_name, source_start, source_end }
 }
 
 ///|
@@ -51,7 +51,7 @@ pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(
   source_start : Int,
   source_end : Int,
 ) -> WgslSourceOriginEntry {
-  WgslSourceOriginEntry::{
+  {
     generated_symbol_name,
     rel_path,
     source_symbol_name,
@@ -104,13 +104,7 @@ pub fn PreparedWgslSource::PreparedWgslSource(
   source_origins : Array[WgslSourceOriginEntry],
   diagnostics : Array[WgslDiagnostic],
 ) -> PreparedWgslSource {
-  PreparedWgslSource::{
-    source,
-    source_files,
-    source_catalog,
-    source_origins,
-    diagnostics,
-  }
+  { source, source_files, source_catalog, source_origins, diagnostics }
 }
 
 ///|
@@ -122,9 +116,5 @@ pub(all) struct WgslSourceScanOptions {
 
 ///|
 pub fn WgslSourceScanOptions::default() -> WgslSourceScanOptions {
-  WgslSourceScanOptions::{
-    recursive: true,
-    extensions: [".wgsl"],
-    exclude_prefixes: [],
-  }
+  { recursive: true, extensions: [".wgsl"], exclude_prefixes: [] }
 }

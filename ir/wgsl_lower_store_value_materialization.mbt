@@ -77,8 +77,7 @@ fn wgsl_ir_function_store_pointer_root_is_user_local(
     Some(LocalVariable(local_handle)) =>
       match function.local_variables.items.get(local_handle.index()) {
         Some(local_var) =>
-          local_var.kind == LocalVariableKind::Var &&
-          !local_var.generated_temporary
+          local_var.kind == Var && !local_var.generated_temporary
         None => false
       }
     Some(Access(base, _))

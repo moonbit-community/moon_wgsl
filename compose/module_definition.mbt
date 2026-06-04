@@ -27,7 +27,7 @@ fn ComposableModuleDefinition::ComposableModuleDefinition(
   effective_defs : Array[String],
   all_imports : @set.Set[String],
 ) -> ComposableModuleDefinition {
-  ComposableModuleDefinition::{ name, shader_defs, effective_defs, all_imports }
+  { name, shader_defs, effective_defs, all_imports }
 }
 
 ///|

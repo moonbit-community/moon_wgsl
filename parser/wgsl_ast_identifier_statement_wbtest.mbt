@@ -37,8 +37,7 @@ test "WGSL type identifier collection ignores numeric type atoms" {
       #|["vec4", "f32", "array", "Alias"]
     ),
   )
-  guard unit.declarations()[1].data()
-    is WgslGlobalDeclData::TypeAlias(alias_decl) else {
+  guard unit.declarations()[1].data() is TypeAlias(alias_decl) else {
     abort("expected type alias")
   }
   guard alias_decl.ty_ref() is Some(sized_ty) else {
@@ -59,7 +58,7 @@ test "WGSL function payload exposes statement AST spans" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   debug_inspect(function.body().statements().length(), content="3")
@@ -135,7 +134,7 @@ test "WGSL statement expression refs skip local declarations and member access" 
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   debug_inspect(
@@ -174,7 +173,7 @@ test "WGSL expression refs expose structured expression root" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let expr = function.body().statements()[0].expression_refs()[0]
@@ -265,7 +264,7 @@ test "WGSL expression parser uses lexer compound operator tokens" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let expr = function.body().statements()[0].expression_refs()[0]
@@ -320,7 +319,7 @@ test "WGSL expression parser structures template elaborated calls" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[1].data() is Function(function) else {
     abort("expected function payload")
   }
   let expr = function.body().statements()[0].expression_refs()[0]
@@ -331,19 +330,18 @@ test "WGSL expression parser structures template elaborated calls" {
   match expr.root() {
     Some(root) =>
       match root.kind() {
-        WgslExprNodeKind::Call(callee, args) => {
+        Call(callee, args) => {
           debug_inspect(args.length(), content="1")
           match callee.kind() {
-            WgslExprNodeKind::Template(base, template_args) => {
+            Template(base, template_args) => {
               debug_inspect(template_args.length(), content="1")
               match base.kind() {
-                WgslExprNodeKind::Identifier(ident) =>
+                Identifier(ident) =>
                   debug_inspect(ident.name(), content="\"vec4\"")
                 _ => abort("expected template base identifier")
               }
               match template_args[0] {
-                WgslTypeArgument::Type(ty) =>
-                  debug_inspect(ty.name(), content="\"f32\"")
+                Type(ty) => debug_inspect(ty.name(), content="\"f32\"")
                 _ => abort("expected type template argument")
               }
             }
@@ -364,7 +362,7 @@ test "WGSL expression parser binds postfix calls inside unary operands" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let expr = function.body().statements()[0].expression_refs()[0]
@@ -375,13 +373,13 @@ test "WGSL expression parser binds postfix calls inside unary operands" {
   match expr.root() {
     Some(root) =>
       match root.kind() {
-        WgslExprNodeKind::Unary(op, rhs) => {
+        Unary(op, rhs) => {
           debug_inspect(op.text(), content="\"-\"")
           match rhs.kind() {
-            WgslExprNodeKind::Call(callee, args) => {
+            Call(callee, args) => {
               debug_inspect(args.length(), content="2")
               match callee.kind() {
-                WgslExprNodeKind::Identifier(ident) =>
+                Identifier(ident) =>
                   debug_inspect(ident.name(), content="\"cross\"")
                 _ => abort("expected call callee identifier")
               }
@@ -409,7 +407,7 @@ test "WGSL statement parser keeps nested if condition separate from block" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let for_stmt = function.body().statements()[0]
@@ -422,8 +420,7 @@ test "WGSL statement parser keeps nested if condition separate from block" {
   match expr.root() {
     Some(root) =>
       match root.kind() {
-        WgslExprNodeKind::Binary(op, _, _) =>
-          debug_inspect(op.text(), content="\"!=\"")
+        Binary(op, _, _) => debug_inspect(op.text(), content="\"!=\"")
         _ => abort("expected binary condition root")
       }
     None => abort("expected condition root")
@@ -446,7 +443,7 @@ test "WGSL statement parser attaches continuing only to loop statements" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   let loop_stmt = function.body().statements()[1]
@@ -499,14 +496,11 @@ test "WGSL declaration identifier collection excludes function locals" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[1].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[1].data() is Function(function) else {
     abort("expected function payload")
   }
   let nodes : Array[WgslIdent] = []
-  @ast_analysis.collect_wgsl_decl_identifier_nodes(
-    WgslGlobalDeclData::Function(function),
-    nodes,
-  )
+  @ast_analysis.collect_wgsl_decl_identifier_nodes(Function(function), nodes)
   debug_inspect(
     nodes.map(fn(node) { node.name() }),
     content=(
@@ -530,7 +524,7 @@ test "WGSL statement AST records nested and loop local declarations" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function payload")
   }
   debug_inspect(function.body().statements()[0].kind(), content="If")
@@ -618,10 +612,7 @@ test "WGSL statement AST records nested and loop local declarations" {
     content="[]",
   )
   let nodes : Array[WgslIdent] = []
-  @ast_analysis.collect_wgsl_decl_identifier_nodes(
-    WgslGlobalDeclData::Function(function),
-    nodes,
-  )
+  @ast_analysis.collect_wgsl_decl_identifier_nodes(Function(function), nodes)
   debug_inspect(
     nodes.map(fn(node) { node.name() }),
     content=(
@@ -642,7 +633,7 @@ test "WGSL statement AST parses multiple branch blocks structurally" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function")
   }
   let statement = function.body().statements()[0]
@@ -692,7 +683,7 @@ test "WGSL statement AST preserves else-if conditions structurally" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is WgslGlobalDeclData::Function(function) else {
+  guard unit.declarations()[0].data() is Function(function) else {
     abort("expected function")
   }
   let statement = function.body().statements()[0]
@@ -701,7 +692,7 @@ test "WGSL statement AST preserves else-if conditions structurally" {
   debug_inspect(
     statement
     .expressions()
-    .filter(fn(expr) { expr.role() == WgslStatementExpressionRole::Condition })
+    .filter(fn(expr) { expr.role() == Condition })
     .map(fn(expr) { wgsl_expr_ref_source_text(source, expr.expression()) }),
     content=(
       #|["arg == 0u", "arg == 1u || arg == 2u"]

@@ -208,7 +208,7 @@ fn WgslIrEmitter::cooperative_matrix_type_handle(
           existing_rows == rows &&
           existing_scalar == scalar &&
           existing_role == role {
-          return Some(Handle::Handle(index))
+          return Some(Handle(index))
         }
       _ => ()
     }
@@ -223,7 +223,7 @@ fn WgslIrEmitter::type_handle_named(
 ) -> Handle? {
   for index in 0..<self.shader_module.types.items.length() {
     match self.shader_module.types.items[index].name {
-      Some(existing) if existing == name => return Some(Handle::Handle(index))
+      Some(existing) if existing == name => return Some(Handle(index))
       _ => ()
     }
   }
@@ -329,7 +329,7 @@ fn WgslIrEmitter::subgroup_expression_result_type(
   arguments : Array[Handle],
 ) -> Handle? {
   match subgroup_function {
-    Ballot => self.find_vector_type(Quad, Scalar::Scalar(Uint, 4))
+    Ballot => self.find_vector_type(Quad, Scalar(Uint, 4))
     All | Any => self.type_handle_named("bool")
     _ =>
       match arguments.get(0) {
@@ -384,10 +384,10 @@ fn WgslIrEmitter::image_expression_result_type(
     Some(ty) =>
       match ty.inner {
         Image(_, _, Sampled(kind, _)) =>
-          self.find_vector_type(Quad, Scalar::Scalar(kind, 4))
+          self.find_vector_type(Quad, Scalar(kind, 4))
         Image(_, _, Depth(_)) =>
           if gather != None {
-            self.find_vector_type(Quad, Scalar::Scalar(Float, 4))
+            self.find_vector_type(Quad, Scalar(Float, 4))
           } else if depth_ref != None {
             self.type_handle_named("f32")
           } else {
@@ -398,8 +398,7 @@ fn WgslIrEmitter::image_expression_result_type(
             Quad,
             wgsl_ir_emit_storage_format_scalar(format),
           )
-        Image(_, _, External) =>
-          self.find_vector_type(Quad, Scalar::Scalar(Float, 4))
+        Image(_, _, External) => self.find_vector_type(Quad, Scalar(Float, 4))
         _ => None
       }
     None => None
@@ -529,7 +528,7 @@ fn WgslIrEmitter::find_vector_scalar_type(
   let scalar_inner = TypeInner::Scalar(scalar)
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == scalar_inner {
-      return Some(Handle::Handle(i))
+      return Some(Handle(i))
     }
   }
   None
@@ -544,7 +543,7 @@ fn WgslIrEmitter::find_vector_type(
   let vector_inner = TypeInner::Vector(size, scalar)
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == vector_inner {
-      return Some(Handle::Handle(i))
+      return Some(Handle(i))
     }
   }
   None
@@ -630,11 +629,11 @@ fn WgslIrEmitter::math_expression_result_type(
     | Dot4U8Packed => self.type_handle_named("u32")
     Dot4I8Packed => self.type_handle_named("i32")
     Unpack4x8snorm | Unpack4x8unorm =>
-      self.find_vector_type(Quad, Scalar::Scalar(Float, 4))
+      self.find_vector_type(Quad, Scalar(Float, 4))
     Unpack2x16snorm | Unpack2x16unorm | Unpack2x16float =>
-      self.find_vector_type(Bi, Scalar::Scalar(Float, 4))
-    Unpack4xI8 => self.find_vector_type(Quad, Scalar::Scalar(Sint, 4))
-    Unpack4xU8 => self.find_vector_type(Quad, Scalar::Scalar(Uint, 4))
+      self.find_vector_type(Bi, Scalar(Float, 4))
+    Unpack4xI8 => self.find_vector_type(Quad, Scalar(Sint, 4))
+    Unpack4xU8 => self.find_vector_type(Quad, Scalar(Uint, 4))
     Transpose => self.transpose_expression_result_type(input_ty)
     _ => Some(input_ty)
   }
@@ -680,7 +679,7 @@ fn WgslIrEmitter::relational_expression_result_type(
   argument : Handle,
 ) -> Handle? {
   match relational_function {
-    All | Any => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+    All | Any => self.find_scalar_type(Scalar(Bool, 1))
     IsNan | IsInf =>
       match self.expression_type(function, argument) {
         Some(input_ty) => self.boolean_result_type(input_ty, input_ty)
@@ -699,7 +698,7 @@ fn WgslIrEmitter::binary_expression_result_type(
   if wgsl_ir_binary_operator_is_comparison(op) {
     return self.boolean_result_type(left_ty, right_ty)
   }
-  if op == BinaryOperator::Multiply {
+  if op == Multiply {
     match self.matrix_vector_multiply_result_type(left_ty, right_ty) {
       Some(ty) => return Some(ty)
       None => ()
@@ -827,7 +826,7 @@ fn WgslIrEmitter::find_matrix_type(
   let matrix_inner = TypeInner::Matrix(columns, rows, scalar)
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == matrix_inner {
-      return Some(Handle::Handle(i))
+      return Some(Handle(i))
     }
   }
   None
@@ -840,11 +839,11 @@ fn WgslIrEmitter::boolean_result_type(
   right_ty : Handle,
 ) -> Handle? {
   match self.vector_size_from_type(left_ty) {
-    Some(size) => self.find_vector_type(size, Scalar::Scalar(Bool, 1))
+    Some(size) => self.find_vector_type(size, Scalar(Bool, 1))
     None =>
       match self.vector_size_from_type(right_ty) {
-        Some(size) => self.find_vector_type(size, Scalar::Scalar(Bool, 1))
-        None => self.find_scalar_type(Scalar::Scalar(Bool, 1))
+        Some(size) => self.find_vector_type(size, Scalar(Bool, 1))
+        None => self.find_scalar_type(Scalar(Bool, 1))
       }
   }
 }
@@ -887,7 +886,7 @@ fn WgslIrEmitter::find_scalar_type(
   let scalar_inner = TypeInner::Scalar(scalar)
   for i in 0..<self.shader_module.types.items.length() {
     if self.shader_module.types.items[i].inner == scalar_inner {
-      return Some(Handle::Handle(i))
+      return Some(Handle(i))
     }
   }
   None
@@ -906,13 +905,13 @@ fn WgslIrEmitter::predeclared_numeric_result_type(
           if math_function == Modf {
             Some(PredeclaredType::ModfResult(None, scalar))
           } else {
-            Some(PredeclaredType::FrexpResult(None, scalar))
+            Some(FrexpResult(None, scalar))
           }
         Vector(size, scalar) =>
           if math_function == Modf {
-            Some(PredeclaredType::ModfResult(Some(size), scalar))
+            Some(ModfResult(Some(size), scalar))
           } else {
-            Some(PredeclaredType::FrexpResult(Some(size), scalar))
+            Some(FrexpResult(Some(size), scalar))
           }
         _ => None
       }

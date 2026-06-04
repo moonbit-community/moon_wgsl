@@ -5,7 +5,7 @@ pub(all) struct TypeArena {
 
 ///|
 pub fn TypeArena::TypeArena() -> TypeArena {
-  TypeArena::{ items: [] }
+  { items: [] }
 }
 
 ///|
@@ -32,7 +32,7 @@ pub(all) struct ConstantArena {
 
 ///|
 pub fn ConstantArena::ConstantArena() -> ConstantArena {
-  ConstantArena::{ items: [] }
+  { items: [] }
 }
 
 ///|
@@ -58,7 +58,7 @@ pub(all) struct OverrideArena {
 
 ///|
 pub fn OverrideArena::OverrideArena() -> OverrideArena {
-  OverrideArena::{ items: [] }
+  { items: [] }
 }
 
 ///|
@@ -84,7 +84,7 @@ pub(all) struct GlobalVariableArena {
 
 ///|
 pub fn GlobalVariableArena::GlobalVariableArena() -> GlobalVariableArena {
-  GlobalVariableArena::{ items: [] }
+  { items: [] }
 }
 
 ///|
@@ -113,7 +113,7 @@ pub(all) struct LocalVariableArena {
 
 ///|
 pub fn LocalVariableArena::LocalVariableArena() -> LocalVariableArena {
-  LocalVariableArena::{ items: [] }
+  { items: [] }
 }
 
 ///|
@@ -149,7 +149,7 @@ pub(all) struct ExpressionArena {
 
 ///|
 pub fn ExpressionArena::ExpressionArena() -> ExpressionArena {
-  ExpressionArena::{ items: [], origins: [] }
+  { items: [], origins: [] }
 }
 
 ///|
@@ -215,7 +215,7 @@ pub(all) struct FunctionArena {
 
 ///|
 pub fn FunctionArena::FunctionArena() -> FunctionArena {
-  FunctionArena::{ items: [] }
+  { items: [] }
 }
 
 ///|
@@ -241,7 +241,7 @@ pub(all) struct DiagnosticFilterArena {
 
 ///|
 pub fn DiagnosticFilterArena::DiagnosticFilterArena() -> DiagnosticFilterArena {
-  DiagnosticFilterArena::{ items: [] }
+  { items: [] }
 }
 
 ///|

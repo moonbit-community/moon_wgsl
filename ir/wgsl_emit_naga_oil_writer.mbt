@@ -31,11 +31,11 @@ fn WgslIrNagaOilWriterBackend::validate(
   match self.view.filter {
     Some(filter) =>
       validate_wgsl_ir_module_with_filter(self.shader_module, filter) catch {
-        error => raise WgslIrEmitError::Unsupported(error.message())
+        error => raise Unsupported(error.message())
       }
     None =>
       validate_wgsl_ir_module(self.shader_module) catch {
-        error => raise WgslIrEmitError::Unsupported(error.message())
+        error => raise Unsupported(error.message())
       }
   }
 }
@@ -44,13 +44,13 @@ fn WgslIrNagaOilWriterBackend::validate(
 fn WgslIrNagaOilWriterBackend::emitter(
   self : WgslIrNagaOilWriterBackend,
 ) -> WgslIrEmitter {
-  WgslIrEmitter::{
+  {
     shader_module: self.shader_module,
     options: WgslIrEmitOptions::naga_oil_writer_compatible(),
     writer_module: self.view,
     names: self.view.names,
     current_function_origin: None,
     naga_compatible_negative_zero_seen: false,
-    emitted_function_named_expressions: @set.Set([]),
+    emitted_function_named_expressions: Set([]),
   }
 }

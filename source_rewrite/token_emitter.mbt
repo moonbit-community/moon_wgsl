@@ -11,7 +11,7 @@ pub fn WgslTokenReplacement::WgslTokenReplacement(
   end : Int,
   replacement : String,
 ) -> WgslTokenReplacement {
-  WgslTokenReplacement::{ start, end, replacement }
+  { start, end, replacement }
 }
 
 ///|

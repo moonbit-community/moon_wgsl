@@ -194,7 +194,7 @@ test "WGSL AST lowerer reuses initialized local pointer in branch assignments" {
   let mut local_handle : Handle? = None
   for index, local_var in function.local_variables.items {
     if local_var.name == Some("t") {
-      local_handle = Some(Handle::Handle(index))
+      local_handle = Some(Handle(index))
     }
   }
   guard local_handle is Some(handle) else { abort("expected local t") }
@@ -592,7 +592,7 @@ test "WGSL AST lowerer folds untemplated vector constructor constants in math ar
   let mut argument : Handle? = None
   for index, expression in function.expressions.items {
     match expression {
-      Literal(_) => literal = Some(Handle::Handle(index))
+      Literal(_) => literal = Some(Handle(index))
       Splat(Tri, component) => {
         guard literal is Some(literal_handle) else {
           abort("expected folded literal before splat")
@@ -600,9 +600,9 @@ test "WGSL AST lowerer folds untemplated vector constructor constants in math ar
         if component != literal_handle {
           abort("expected folded literal to feed vector splat")
         }
-        splat = Some(Handle::Handle(index))
+        splat = Some(Handle(index))
       }
-      FunctionArgument(0) => argument = Some(Handle::Handle(index))
+      FunctionArgument(0) => argument = Some(Handle(index))
       Binary(Multiply, _, _) =>
         abort("constructor constant product must not survive in arena")
       Math(Dot, left, Some(right), None, None) => {

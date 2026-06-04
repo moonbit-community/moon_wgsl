@@ -71,7 +71,7 @@ fn WgslIrEmitter::type_name(
 ) -> String raise WgslIrEmitError {
   let ty = match self.shader_module.types.items.get(handle.index()) {
     Some(value) => value
-    None => raise WgslIrEmitError::MissingHandle("type \{handle.index()}")
+    None => raise MissingHandle("type \{handle.index()}")
   }
   match ty.name {
     Some(name) =>
@@ -149,7 +149,7 @@ fn WgslIrEmitter::compose_constructor_name(
 ) -> String raise WgslIrEmitError {
   let ty = match self.shader_module.types.items.get(handle.index()) {
     Some(value) => value
-    None => raise WgslIrEmitError::MissingHandle("type \{handle.index()}")
+    None => raise MissingHandle("type \{handle.index()}")
   }
   if !self.type_inner_contains_abstract_scalar(ty.inner) {
     return self.type_name(handle)
@@ -192,7 +192,7 @@ fn WgslIrEmitter::compose_constructor_name_for_components(
             }
           _ => ()
         }
-      None => raise WgslIrEmitError::MissingHandle("type \{handle.index()}")
+      None => raise MissingHandle("type \{handle.index()}")
     }
   }
   self.compose_constructor_name(handle)
@@ -347,9 +347,9 @@ fn WgslIrEmitter::type_inner_name(
         Pending(handle) =>
           "array<\{self.type_name(base)}, \{self.global_expression(handle)}>"
       }
-    Struct(_, _) => raise WgslIrEmitError::Unsupported("anonymous struct type")
+    Struct(_, _) => raise Unsupported("anonymous struct type")
     PredeclaredStruct(_, _) =>
-      raise WgslIrEmitError::Unsupported("anonymous predeclared struct type")
+      raise Unsupported("anonymous predeclared struct type")
     Image(dimension, arrayed, image_class) =>
       self.image_type_name(dimension, arrayed, image_class)
     Sampler(comparison) =>
@@ -377,7 +377,7 @@ fn WgslIrEmitter::type_inner_name(
         Pending(handle) =>
           "binding_array<\{self.type_name(base)}, \{self.global_expression(handle)}>"
       }
-    _ => raise WgslIrEmitError::Unsupported("type kind")
+    _ => raise Unsupported("type kind")
   }
 }
 

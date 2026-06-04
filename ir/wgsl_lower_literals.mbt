@@ -50,7 +50,7 @@ fn WgslIrLowerer::contextualize_function_expression_for_type(
   match function.expressions.items.get(handle.index()) {
     Some(Literal(_)) =>
       self.contextualize_function_literal_handle(function, handle, expected_ty)
-    Some(Unary(UnaryOperator::Negate, inner)) =>
+    Some(Unary(Negate, inner)) =>
       self.contextualize_function_expression_for_type(
         function, inner, expected_ty,
       )
@@ -87,7 +87,7 @@ fn WgslIrLowerer::contextualize_function_literal_handle(
     Some(scalar) =>
       function.expressions.set(
         handle,
-        Expression::Literal(wgsl_ir_contextualize_literal(literal, scalar)),
+        Literal(wgsl_ir_contextualize_literal(literal, scalar)),
       )
     None => ()
   }
@@ -119,11 +119,7 @@ fn WgslIrLowerer::contextualize_function_constructor_expression(
   if target_ty != actual_ty {
     match function.expressions.items.get(handle.index()) {
       Some(Splat(_, _)) => ()
-      _ =>
-        function.expressions.set(
-          handle,
-          Expression::Compose(target_ty, components),
-        )
+      _ => function.expressions.set(handle, Compose(target_ty, components))
     }
   }
 }
@@ -202,14 +198,14 @@ fn WgslIrLowerer::negated_literal_from_token_with_expected(
 ///|
 fn wgsl_ir_negate_literal(literal : Literal) -> Literal? {
   match literal {
-    F64(value) => Some(Literal::F64(-value))
-    F32(value) => Some(Literal::F32(Float::from_double(-value.to_double())))
-    F16(value) => Some(Literal::F16(-value))
-    I16(value) => Some(Literal::I16(-value))
-    I32(value) => Some(Literal::I32(-value))
-    I64(value) => Some(Literal::I64(-value))
-    AbstractInt(value) => Some(Literal::AbstractInt(-value))
-    AbstractFloat(value) => Some(Literal::AbstractFloat(-value))
+    F64(value) => Some(F64(-value))
+    F32(value) => Some(F32(Float::from_double(-value.to_double())))
+    F16(value) => Some(F16(-value))
+    I16(value) => Some(I16(-value))
+    I32(value) => Some(I32(-value))
+    I64(value) => Some(I64(-value))
+    AbstractInt(value) => Some(AbstractInt(-value))
+    AbstractFloat(value) => Some(AbstractFloat(-value))
     _ => None
   }
 }
@@ -236,11 +232,11 @@ fn wgsl_ir_contextualize_literal(
   scalar : Scalar,
 ) -> Literal raise WgslIrLowerError {
   match (literal, scalar.kind, scalar.width) {
-    (AbstractInt(value), Sint, _) => Literal::I32(wgsl_ir_int64_to_i32(value))
+    (AbstractInt(value), Sint, _) => I32(wgsl_ir_int64_to_i32(value))
     (AbstractInt(value), Uint, _) =>
-      Literal::U32(wgsl_ir_int64_to_u32(value, "unsigned literal \{value}"))
-    (AbstractFloat(value), Float, 2) => Literal::F16(value)
-    (AbstractFloat(value), Float, 8) => Literal::F64(value)
+      U32(wgsl_ir_int64_to_u32(value, "unsigned literal \{value}"))
+    (AbstractFloat(value), Float, 2) => F16(value)
+    (AbstractFloat(value), Float, 8) => F64(value)
     _ => literal
   }
 }
@@ -250,36 +246,31 @@ fn wgsl_ir_literal_from_token(
   token : @ast.WgslExprToken,
 ) -> Literal raise WgslIrLowerError {
   match token.kind() {
-    BoolLiteral(value) => Literal::Bool(value)
+    BoolLiteral(value) => Bool(value)
     NumericLiteral(literal) =>
       match literal.category {
         AbstractIntLiteral =>
-          Literal::AbstractInt(
-            wgsl_ir_int64_literal_from_text(literal.raw_text),
-          )
-        I32Literal =>
-          Literal::I32(wgsl_ir_i32_literal_from_numeric_literal(literal))
-        U32Literal =>
-          Literal::U32(wgsl_ir_u32_literal_from_numeric_literal(literal))
+          AbstractInt(wgsl_ir_int64_literal_from_text(literal.raw_text))
+        I32Literal => I32(wgsl_ir_i32_literal_from_numeric_literal(literal))
+        U32Literal => U32(wgsl_ir_u32_literal_from_numeric_literal(literal))
         AbstractFloatLiteral => {
           let text = wgsl_ir_float_literal_text(literal.raw_text)
           let value : Double = @strconv.from_str(text) catch {
-            _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+            _ => raise UnsupportedExpression(literal.raw_text)
           }
-          Literal::AbstractFloat(value)
+          AbstractFloat(value)
         }
         F32Literal => {
           let text = wgsl_ir_float_literal_text(literal.raw_text)
           let value : Double = @strconv.from_str(text) catch {
-            _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+            _ => raise UnsupportedExpression(literal.raw_text)
           }
-          Literal::F32(Float::from_double(value))
+          F32(Float::from_double(value))
         }
-        F16Literal => Literal::F16(wgsl_ir_float64_literal_from_text(literal))
-        InvalidNumericLiteral =>
-          raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+        F16Literal => F16(wgsl_ir_float64_literal_from_text(literal))
+        InvalidNumericLiteral => raise UnsupportedExpression(literal.raw_text)
       }
-    _ => raise WgslIrLowerError::UnsupportedExpression(token.text())
+    _ => raise UnsupportedExpression(token.text())
   }
 }
 
@@ -296,7 +287,7 @@ fn wgsl_ir_int64_to_i32(value : Int64) -> Int raise WgslIrLowerError {
   let min = Int64::from_int(-2147483648)
   let max = Int64::from_int(2147483647)
   if value < min || value > max {
-    raise WgslIrLowerError::UnsupportedExpression("i32 literal \{value}")
+    raise UnsupportedExpression("i32 literal \{value}")
   }
   value.to_int()
 }
@@ -315,10 +306,10 @@ fn wgsl_ir_int64_to_u32(
   source : String,
 ) -> UInt raise WgslIrLowerError {
   if value < Int64::from_int(0) {
-    raise WgslIrLowerError::UnsupportedExpression(source)
+    raise UnsupportedExpression(source)
   }
   if value > 4294967295L {
-    raise WgslIrLowerError::UnsupportedExpression(source)
+    raise UnsupportedExpression(source)
   }
   value.reinterpret_as_uint64().to_uint()
 }
@@ -329,7 +320,7 @@ fn wgsl_ir_float64_literal_from_text(
 ) -> Double raise WgslIrLowerError {
   let text = wgsl_ir_float_literal_text(literal.raw_text)
   @strconv.from_str(text) catch {
-    _ => raise WgslIrLowerError::UnsupportedExpression(literal.raw_text)
+    _ => raise UnsupportedExpression(literal.raw_text)
   }
 }
 
@@ -353,7 +344,7 @@ fn wgsl_ir_int64_literal_from_text(
 ) -> Int64 raise WgslIrLowerError {
   let body = wgsl_ir_integer_literal_without_suffix(text)
   let end = body.length()
-  guard end > 0 else { raise WgslIrLowerError::UnsupportedExpression(text) }
+  guard end > 0 else { raise UnsupportedExpression(text) }
   let mut value : Int64 = 0
   if end > 2 &&
     body.code_unit_at(0).to_int() == 48 &&
@@ -364,7 +355,7 @@ fn wgsl_ir_int64_literal_from_text(
     for i in 2..<end {
       match wgsl_ir_hex_digit_value(body.code_unit_at(i).to_int()) {
         Some(digit) => value = value * 16 + Int64::from_int(digit)
-        None => raise WgslIrLowerError::UnsupportedExpression(text)
+        None => raise UnsupportedExpression(text)
       }
     }
     return value
@@ -372,7 +363,7 @@ fn wgsl_ir_int64_literal_from_text(
   for i in 0..<end {
     let code = body.code_unit_at(i).to_int()
     if code < 48 || code > 57 {
-      raise WgslIrLowerError::UnsupportedExpression(text)
+      raise UnsupportedExpression(text)
     }
     value = value * 10 + Int64::from_int(code - 48)
   }
@@ -477,13 +468,10 @@ fn wgsl_ir_unary_operator(
   op : @ast.WgslExprOperator,
 ) -> UnaryOperator raise WgslIrLowerError {
   match op {
-    Subtract => UnaryOperator::Negate
-    Not => UnaryOperator::LogicalNot
-    Complement => UnaryOperator::BitwiseNot
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "unary operator \{op.text()}",
-      )
+    Subtract => Negate
+    Not => LogicalNot
+    Complement => BitwiseNot
+    _ => raise UnsupportedExpression("unary operator \{op.text()}")
   }
 }
 
@@ -492,44 +480,41 @@ fn wgsl_ir_binary_operator(
   op : @ast.WgslExprOperator,
 ) -> BinaryOperator raise WgslIrLowerError {
   match op {
-    Add => BinaryOperator::Add
-    Subtract => BinaryOperator::Subtract
-    Multiply => BinaryOperator::Multiply
-    Divide => BinaryOperator::Divide
-    Modulo => BinaryOperator::Modulo
-    Equal => BinaryOperator::Equal
-    NotEqual => BinaryOperator::NotEqual
-    Less => BinaryOperator::Less
-    LessEqual => BinaryOperator::LessEqual
-    Greater => BinaryOperator::Greater
-    GreaterEqual => BinaryOperator::GreaterEqual
-    BitAnd => BinaryOperator::And
-    BitXor => BinaryOperator::ExclusiveOr
-    BitOr => BinaryOperator::InclusiveOr
-    LogicalAnd => BinaryOperator::LogicalAnd
-    LogicalOr => BinaryOperator::LogicalOr
-    ShiftLeft => BinaryOperator::ShiftLeft
-    ShiftRight => BinaryOperator::ShiftRight
-    _ =>
-      raise WgslIrLowerError::UnsupportedExpression(
-        "binary operator \{op.text()}",
-      )
+    Add => Add
+    Subtract => Subtract
+    Multiply => Multiply
+    Divide => Divide
+    Modulo => Modulo
+    Equal => Equal
+    NotEqual => NotEqual
+    Less => Less
+    LessEqual => LessEqual
+    Greater => Greater
+    GreaterEqual => GreaterEqual
+    BitAnd => And
+    BitXor => ExclusiveOr
+    BitOr => InclusiveOr
+    LogicalAnd => LogicalAnd
+    LogicalOr => LogicalOr
+    ShiftLeft => ShiftLeft
+    ShiftRight => ShiftRight
+    _ => raise UnsupportedExpression("binary operator \{op.text()}")
   }
 }
 
 ///|
 fn wgsl_ir_compound_assignment_operator(op : String) -> BinaryOperator? {
   match op {
-    "+=" => Some(BinaryOperator::Add)
-    "-=" => Some(BinaryOperator::Subtract)
-    "*=" => Some(BinaryOperator::Multiply)
-    "/=" => Some(BinaryOperator::Divide)
-    "%=" => Some(BinaryOperator::Modulo)
-    "&=" => Some(BinaryOperator::And)
-    "^=" => Some(BinaryOperator::ExclusiveOr)
-    "|=" => Some(BinaryOperator::InclusiveOr)
-    "<<=" => Some(BinaryOperator::ShiftLeft)
-    ">>=" => Some(BinaryOperator::ShiftRight)
+    "+=" => Some(Add)
+    "-=" => Some(Subtract)
+    "*=" => Some(Multiply)
+    "/=" => Some(Divide)
+    "%=" => Some(Modulo)
+    "&=" => Some(And)
+    "^=" => Some(ExclusiveOr)
+    "|=" => Some(InclusiveOr)
+    "<<=" => Some(ShiftLeft)
+    ">>=" => Some(ShiftRight)
     _ => None
   }
 }

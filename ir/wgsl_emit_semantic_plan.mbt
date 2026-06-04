@@ -46,7 +46,7 @@ priv struct WgslIrWriterSemanticPlan {
 
 ///|
 fn WgslIrWriterSemanticPlan::runtime_writer() -> WgslIrWriterSemanticPlan {
-  WgslIrWriterSemanticPlan::{
+  {
     generated_import_constants: EmitGeneratedImportConstants,
     numeric_constant_expressions: PreserveNumericConstantExpressions,
     matrix_scalar_constructors: PreserveMatrixScalarConstructors,
@@ -56,7 +56,7 @@ fn WgslIrWriterSemanticPlan::runtime_writer() -> WgslIrWriterSemanticPlan {
 
 ///|
 fn WgslIrWriterSemanticPlan::naga_oil_writer() -> WgslIrWriterSemanticPlan {
-  WgslIrWriterSemanticPlan::{
+  {
     generated_import_constants: InlineGeneratedImportConstants,
     numeric_constant_expressions: FoldNumericConstantExpressions,
     matrix_scalar_constructors: ExpandMatrixScalarConstructors,

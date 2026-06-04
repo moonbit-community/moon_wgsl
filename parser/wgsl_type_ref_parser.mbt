@@ -45,15 +45,15 @@ fn wgsl_type_atom_is_identifier_path(text : String) -> Bool {
 ///|
 fn wgsl_type_atom_kind(text : String) -> WgslTypeAtomKind {
   if text.length() == 0 {
-    return WgslTypeAtomKind::Unknown
+    return Unknown
   }
   let first = text.code_unit_at(0).to_int()
   if first >= 48 && first <= 57 {
-    WgslTypeAtomKind::Numeric
+    Numeric
   } else if wgsl_type_atom_is_identifier_path(text) {
-    WgslTypeAtomKind::Identifier
+    Identifier
   } else {
-    WgslTypeAtomKind::Unknown
+    Unknown
   }
 }
 
@@ -168,7 +168,7 @@ fn split_wgsl_template_argument_fragments(
           i - start,
         )
         if trimmed != "" {
-          fragments.push(WgslTextFragment::{
+          fragments.push({
             text: trimmed,
             start: start + local_start,
             end: start + local_end,
@@ -186,7 +186,7 @@ fn split_wgsl_template_argument_fragments(
     inner_end - start,
   )
   if trimmed != "" {
-    fragments.push(WgslTextFragment::{
+    fragments.push({
       text: trimmed,
       start: start + local_start,
       end: start + local_end,
@@ -203,12 +203,12 @@ fn parse_wgsl_type_template_argument(
   let absolute_start = source_start + fragment.start
   if !wgsl_template_arg_has_top_level_expression_operator(fragment.text) {
     match parse_wgsl_type_ref_text(fragment.text, absolute_start) {
-      Some(ty) => return Some(WgslTypeArgument::Type(ty))
+      Some(ty) => return Some(Type(ty))
       None => ()
     }
   }
   match parse_wgsl_expr_ref_text(fragment.text, absolute_start) {
-    Some(expr) => Some(WgslTypeArgument::Expression(expr))
+    Some(expr) => Some(Expression(expr))
     None => None
   }
 }
@@ -254,7 +254,7 @@ fn tokenize_wgsl_type_ref(
           let atom_end = source_start + atom_local_end
           tokens.push(
             (
-              Token::TYPE_ATOM(
+              TYPE_ATOM(
                 WgslTypeAtom(
                   wgsl_type_atom_kind(atom_text),
                   atom_text,
@@ -268,7 +268,7 @@ fn tokenize_wgsl_type_ref(
           )
           tokens.push(
             (
-              Token::TYPE_ARGS(
+              TYPE_ARGS(
                 (
                   parse_wgsl_type_template_arguments(
                     source, source_start, lt_index, gt_index,
@@ -282,7 +282,7 @@ fn tokenize_wgsl_type_ref(
           )
           tokens.push(
             (
-              Token::EOF,
+              EOF,
               source_start + source.length(),
               source_start + source.length(),
             ),
@@ -304,28 +304,20 @@ fn tokenize_wgsl_type_ref(
     let absolute_start = source_start + start
     if code == 60 {
       tokens.push(
-        (
-          Token::TYPE_LT(source_start + start + 1),
-          absolute_start,
-          absolute_start + 1,
-        ),
+        (TYPE_LT(source_start + start + 1), absolute_start, absolute_start + 1),
       )
       i = i + 1
       continue
     }
     if code == 62 {
       tokens.push(
-        (
-          Token::TYPE_GT(source_start + start + 1),
-          absolute_start,
-          absolute_start + 1,
-        ),
+        (TYPE_GT(source_start + start + 1), absolute_start, absolute_start + 1),
       )
       i = i + 1
       continue
     }
     if code == 44 {
-      tokens.push((Token::COMMA, absolute_start, absolute_start + 1))
+      tokens.push((COMMA, absolute_start, absolute_start + 1))
       i = i + 1
       continue
     }
@@ -340,7 +332,7 @@ fn tokenize_wgsl_type_ref(
     let text = source[start:i].to_owned()
     tokens.push(
       (
-        Token::TYPE_ATOM(
+        TYPE_ATOM(
           WgslTypeAtom(
             wgsl_type_atom_kind(text),
             text,
@@ -354,7 +346,7 @@ fn tokenize_wgsl_type_ref(
     )
   }
   tokens.push(
-    (Token::EOF, source_start + source.length(), source_start + source.length()),
+    (EOF, source_start + source.length(), source_start + source.length()),
   )
   tokens
 }
@@ -401,11 +393,7 @@ fn WgslDeclParser::collect_template_list_fragment(
     consumed = consumed + 1
   }
   guard end_pos >= open_pos else { return None }
-  Some(WgslTemplateListFragment::{
-    text: self.slice(open_pos, end_pos),
-    start: open_pos,
-    consumed,
-  })
+  Some({ text: self.slice(open_pos, end_pos), start: open_pos, consumed })
 }
 
 ///|

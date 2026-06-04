@@ -15,7 +15,7 @@ fn WgslIrLowerer::member_index_for_expression(
               match wgsl_ir_struct_member_index(members, member_name) {
                 Some(index) => index
                 None =>
-                  raise WgslIrLowerError::UnsupportedExpression(
+                  raise UnsupportedExpression(
                     "unknown struct member \{member_name}",
                   )
               }
@@ -43,7 +43,7 @@ fn WgslIrLowerer::member_index_for_global_expression(
               match wgsl_ir_struct_member_index(members, member_name) {
                 Some(index) => index
                 None =>
-                  raise WgslIrLowerError::UnsupportedExpression(
+                  raise UnsupportedExpression(
                     "unknown struct member \{member_name}",
                   )
               }
@@ -129,7 +129,7 @@ fn WgslIrLowerer::global_expression_inner_type(
     Bitcast(ty, _) => Some(ty)
     Math(math_function, a, b, c, d) =>
       self.math_expression_result_type(
-        Function::Function(None),
+        Function(None),
         math_function,
         a,
         b,
@@ -138,7 +138,7 @@ fn WgslIrLowerer::global_expression_inner_type(
       )
     Relational(relational_function, expr) =>
       self.relational_expression_result_type(
-        Function::Function(None),
+        Function(None),
         relational_function,
         expr,
       )
@@ -190,13 +190,13 @@ fn WgslIrLowerer::pointer_type_for_lvalue(
   target : Handle,
 ) -> Handle raise WgslIrLowerError {
   guard self.function_expression_type(function, target) is Some(value_ty) else {
-    raise WgslIrLowerError::MissingType("address-of target")
+    raise MissingType("address-of target")
   }
   let space = self.address_space_for_lvalue(function, target)
   let key = "ptr<\{wgsl_ir_address_space_key(space)}, \{self.type_key(value_ty)}>"
-  let handle = self.shader_module.append_type(Type::{
+  let handle = self.shader_module.append_type({
     name: Some(key),
-    inner: TypeInner::Pointer(value_ty, space),
+    inner: Pointer(value_ty, space),
   })
   self.type_cache.set(key, handle)
   handle
@@ -215,24 +215,24 @@ fn WgslIrLowerer::address_space_for_lvalue(
           match function.local_variables.items.get(handle.index()) {
             Some(local_variable) =>
               self.address_space_from_pointer_type(local_variable.ty)
-            None => AddressSpace::Function
+            None => Function
           }
         GlobalVariable(handle) =>
           match self.shader_module.global_variables.items.get(handle.index()) {
             Some(global) => global.space
-            None => AddressSpace::Function
+            None => Function
           }
         FunctionArgument(index) =>
           match function.arguments.get(index) {
             Some(argument) => self.address_space_from_pointer_type(argument.ty)
-            None => AddressSpace::Function
+            None => Function
           }
         Access(base, _) | AccessIndex(base, _) =>
           self.address_space_for_lvalue(function, base)
         Load(inner) => self.address_space_for_lvalue(function, inner)
-        _ => AddressSpace::Function
+        _ => Function
       }
-    None => AddressSpace::Function
+    None => Function
   }
 }
 
@@ -245,9 +245,9 @@ fn WgslIrLowerer::address_space_from_pointer_type(
     Some(ty) =>
       match ty.inner {
         Pointer(_, space) => space
-        _ => AddressSpace::Function
+        _ => Function
       }
-    None => AddressSpace::Function
+    None => Function
   }
 }
 
@@ -288,7 +288,7 @@ fn WgslIrLowerer::lower_member_expression(
                       self.apply_function_load_rule(function, base_handle)
                     }
                     function.expressions.append(
-                      Expression::AccessIndex(
+                      AccessIndex(
                         base_handle,
                         wgsl_ir_gather_component_index(components[0]),
                       ),
@@ -298,7 +298,7 @@ fn WgslIrLowerer::lower_member_expression(
                       function, base_handle,
                     )
                     function.expressions.append(
-                      Expression::Swizzle(
+                      Swizzle(
                         wgsl_ir_vector_size_from_component_count(
                           components.length(),
                         ),
@@ -308,13 +308,13 @@ fn WgslIrLowerer::lower_member_expression(
                     )
                   }
                 None =>
-                  raise WgslIrLowerError::UnsupportedExpression(
+                  raise UnsupportedExpression(
                     "invalid vector swizzle: \{member_name}",
                   )
               }
             _ =>
               function.expressions.append(
-                Expression::AccessIndex(
+                AccessIndex(
                   base_handle,
                   self.member_index_for_expression(
                     function, base_handle, member_name,
@@ -324,7 +324,7 @@ fn WgslIrLowerer::lower_member_expression(
           }
         None =>
           function.expressions.append(
-            Expression::AccessIndex(
+            AccessIndex(
               base_handle,
               self.member_index_for_expression(
                 function, base_handle, member_name,
@@ -334,7 +334,7 @@ fn WgslIrLowerer::lower_member_expression(
       }
     None =>
       function.expressions.append(
-        Expression::AccessIndex(
+        AccessIndex(
           base_handle,
           self.member_index_for_expression(function, base_handle, member_name),
         ),
@@ -349,7 +349,7 @@ fn WgslIrLowerer::apply_function_load_rule(
   handle : Handle,
 ) -> Handle {
   if self.function_expression_is_reference(function, handle) {
-    function.expressions.append(Expression::Load(handle))
+    function.expressions.append(Load(handle))
   } else {
     handle
   }
@@ -449,7 +449,7 @@ fn WgslIrLowerer::function_expression_inner_type(
         Some(ty) => Some(self.load_result_type_handle(ty))
         None => None
       }
-    Expression::AddressOf(ty, _) => Some(ty)
+    AddressOf(ty, _) => Some(ty)
     Compose(ty, _) | ZeroValue(ty) => Some(ty)
     AccessIndex(base, index) =>
       self.indexed_expression_type(function, base, Some(index))
@@ -564,7 +564,7 @@ fn WgslIrLowerer::subgroup_expression_result_type(
   arguments : Array[Handle],
 ) -> Handle? {
   match subgroup_function {
-    Ballot => Some(self.vector_type_handle(Quad, Scalar::Scalar(Uint, 4)))
+    Ballot => Some(self.vector_type_handle(Quad, Scalar(Uint, 4)))
     All | Any => self.type_cache.get("bool")
     _ =>
       match arguments.get(0) {
@@ -599,18 +599,14 @@ fn WgslIrLowerer::math_expression_result_type(
     | Pack4xU8
     | Pack4xI8Clamp
     | Pack4xU8Clamp
-    | Dot4U8Packed =>
-      return Some(self.scalar_type_handle(Scalar::Scalar(Uint, 4)))
-    Dot4I8Packed =>
-      return Some(self.scalar_type_handle(Scalar::Scalar(Sint, 4)))
+    | Dot4U8Packed => return Some(self.scalar_type_handle(Scalar(Uint, 4)))
+    Dot4I8Packed => return Some(self.scalar_type_handle(Scalar(Sint, 4)))
     Unpack4x8snorm | Unpack4x8unorm =>
-      return Some(self.vector_type_handle(Quad, Scalar::Scalar(Float, 4)))
+      return Some(self.vector_type_handle(Quad, Scalar(Float, 4)))
     Unpack2x16snorm | Unpack2x16unorm | Unpack2x16float =>
-      return Some(self.vector_type_handle(Bi, Scalar::Scalar(Float, 4)))
-    Unpack4xI8 =>
-      return Some(self.vector_type_handle(Quad, Scalar::Scalar(Sint, 4)))
-    Unpack4xU8 =>
-      return Some(self.vector_type_handle(Quad, Scalar::Scalar(Uint, 4)))
+      return Some(self.vector_type_handle(Bi, Scalar(Float, 4)))
+    Unpack4xI8 => return Some(self.vector_type_handle(Quad, Scalar(Sint, 4)))
+    Unpack4xU8 => return Some(self.vector_type_handle(Quad, Scalar(Uint, 4)))
     Dot | Distance | Length | Determinant =>
       return Some(self.scalar_type_from_composite_type(input_ty))
     _ => ()
@@ -697,7 +693,7 @@ fn WgslIrLowerer::relational_expression_result_type(
   argument : Handle,
 ) -> Handle? {
   match relational_function {
-    All | Any => Some(self.scalar_type_handle(Scalar::Scalar(Bool, 1)))
+    All | Any => Some(self.scalar_type_handle(Scalar(Bool, 1)))
     IsNan | IsInf =>
       match self.function_expression_type(function, argument) {
         Some(input_ty) => Some(self.boolean_result_type(input_ty, input_ty))
@@ -716,7 +712,7 @@ fn WgslIrLowerer::binary_expression_result_type(
   if wgsl_ir_binary_operator_is_comparison(op) {
     return self.boolean_result_type(left_ty, right_ty)
   }
-  if op == BinaryOperator::Multiply {
+  if op == Multiply {
     match self.matrix_vector_multiply_result_type(left_ty, right_ty) {
       Some(ty) => return ty
       None => ()
@@ -785,7 +781,7 @@ fn WgslIrLowerer::vector_type_handle(
 ) -> Handle {
   self.intern_type(
     "vec\{size.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-    TypeInner::Vector(size, scalar),
+    Vector(size, scalar),
   )
 }
 
@@ -811,7 +807,7 @@ fn WgslIrLowerer::matrix_type_handle(
 ) -> Handle {
   self.intern_type(
     "mat\{columns.width()}x\{rows.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-    TypeInner::Matrix(columns, rows, scalar),
+    Matrix(columns, rows, scalar),
   )
 }
 
@@ -826,7 +822,7 @@ fn WgslIrLowerer::boolean_result_type(
     None =>
       match self.vector_size_from_type(right_ty) {
         Some(size) => self.boolean_vector_type(size)
-        None => self.scalar_type_handle(Scalar::Scalar(Bool, 1))
+        None => self.scalar_type_handle(Scalar(Bool, 1))
       }
   }
 }
@@ -836,10 +832,7 @@ fn WgslIrLowerer::boolean_vector_type(
   self : WgslIrLowerer,
   size : VectorSize,
 ) -> Handle {
-  self.intern_type(
-    "vec\{size.width()}<bool>",
-    TypeInner::Vector(size, Scalar::Scalar(Bool, 1)),
-  )
+  self.intern_type("vec\{size.width()}<bool>", Vector(size, Scalar(Bool, 1)))
 }
 
 ///|
@@ -1031,7 +1024,7 @@ fn WgslIrLowerer::predeclared_struct_type(
       return handle
     }
   }
-  let handle = self.shader_module.append_type(Type::{
+  let handle = self.shader_module.append_type({
     name: None,
     inner: self.predeclared_type_inner(predeclared),
   })
@@ -1047,7 +1040,7 @@ fn WgslIrLowerer::predeclared_type_inner(
   match predeclared {
     AtomicCompareExchangeWeakResult(scalar) => {
       let value_ty = self.scalar_type_handle(scalar)
-      let bool_ty = self.scalar_type_handle(Scalar::Scalar(Bool, 1))
+      let bool_ty = self.scalar_type_handle(Scalar(Bool, 1))
       let value_layout = WgslIrLayout::{
         align: scalar.width,
         size: scalar.width,
@@ -1061,9 +1054,9 @@ fn WgslIrLowerer::predeclared_type_inner(
         exchanged_offset + bool_layout.size,
         value_layout.align,
       )
-      TypeInner::Struct(
+      Struct(
         [
-          StructMember::{
+          {
             name: Some("old_value"),
             ty: value_ty,
             binding: None,
@@ -1071,7 +1064,7 @@ fn WgslIrLowerer::predeclared_type_inner(
             size: None,
             align: None,
           },
-          StructMember::{
+          {
             name: Some("exchanged"),
             ty: bool_ty,
             binding: None,
@@ -1091,9 +1084,9 @@ fn WgslIrLowerer::predeclared_type_inner(
         whole_offset + value_layout.size,
         value_layout.align,
       )
-      TypeInner::Struct(
+      Struct(
         [
-          StructMember::{
+          {
             name: Some("fract"),
             ty: value_ty,
             binding: None,
@@ -1101,7 +1094,7 @@ fn WgslIrLowerer::predeclared_type_inner(
             size: None,
             align: None,
           },
-          StructMember::{
+          {
             name: Some("whole"),
             ty: value_ty,
             binding: None,
@@ -1132,9 +1125,9 @@ fn WgslIrLowerer::predeclared_type_inner(
         exponent_offset + exponent_layout.size,
         max_align,
       )
-      TypeInner::Struct(
+      Struct(
         [
-          StructMember::{
+          {
             name: Some("fract"),
             ty: fract_ty,
             binding: None,
@@ -1142,7 +1135,7 @@ fn WgslIrLowerer::predeclared_type_inner(
             size: None,
             align: None,
           },
-          StructMember::{
+          {
             name: Some("exp"),
             ty: exponent_ty,
             binding: None,
@@ -1166,16 +1159,9 @@ fn wgsl_ir_numeric_value_layout(
     Some(vector_size) => {
       let width = vector_size.width()
       let raw = width * scalar.width
-      WgslIrLayout::{
-        align: if width == 3 {
-          4 * scalar.width
-        } else {
-          raw
-        },
-        size: raw,
-      }
+      { align: if width == 3 { 4 * scalar.width } else { raw }, size: raw }
     }
-    None => WgslIrLayout::{ align: scalar.width, size: scalar.width }
+    None => { align: scalar.width, size: scalar.width }
   }
 }
 
@@ -1189,7 +1175,7 @@ fn WgslIrLowerer::numeric_value_type_handle(
     Some(vector_size) =>
       self.intern_type(
         "vec\{vector_size.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-        TypeInner::Vector(vector_size, scalar),
+        Vector(vector_size, scalar),
       )
     None => self.scalar_type_handle(scalar)
   }
@@ -1212,7 +1198,7 @@ fn WgslIrLowerer::swizzle_expression_type(
           Some(
             self.intern_type(
               "vec\{size.width()}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
-              TypeInner::Vector(size, scalar),
+              Vector(size, scalar),
             ),
           )
         _ => None

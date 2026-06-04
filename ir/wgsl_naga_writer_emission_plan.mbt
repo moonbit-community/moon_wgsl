@@ -30,7 +30,7 @@ fn WgslIrNagaCompatPlanner::writer_emission_plan(
   arena : WgslIrNagaWriterArena,
 ) -> WgslIrNagaWriterEmissionPlan {
   ignore(self)
-  WgslIrNagaWriterEmissionPlan::{
+  {
     directives: arena.directives,
     types: arena.types,
     constants: arena.constants,

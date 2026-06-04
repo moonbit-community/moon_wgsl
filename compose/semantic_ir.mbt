@@ -37,9 +37,7 @@ fn WgslComposeIrSymbolKey::WgslComposeIrSymbolKey(
   final_name : String,
   declared : Bool,
 ) -> WgslComposeIrSymbolKey {
-  WgslComposeIrSymbolKey::{
-    text: "\{identity.key()}|\{final_name}|\{declared}",
-  }
+  { text: "\{identity.key()}|\{final_name}|\{declared}" }
 }
 
 ///|
@@ -51,7 +49,7 @@ fn WgslComposeIrSymbolKey::text(self : WgslComposeIrSymbolKey) -> String {
 fn WgslComposeIrIdentityKey::WgslComposeIrIdentityKey(
   identity : WgslIrSymbolIdentity,
 ) -> WgslComposeIrIdentityKey {
-  WgslComposeIrIdentityKey::{ text: identity.key() }
+  { text: identity.key() }
 }
 
 ///|
@@ -61,10 +59,10 @@ fn WgslComposeIrIdentityKey::text(self : WgslComposeIrIdentityKey) -> String {
 
 ///|
 fn WgslComposeSemanticIr::WgslComposeSemanticIr() -> WgslComposeSemanticIr {
-  WgslComposeSemanticIr::{
-    declared_names: @set.Set([]),
-    reference_path_keys: @set.Set([]),
-    symbol_keys: @set.Set([]),
+  {
+    declared_names: Set([]),
+    reference_path_keys: Set([]),
+    symbol_keys: Set([]),
     symbols: [],
     emitted_final_name_by_identity: Map([]),
     reference_bindings: [],
@@ -108,7 +106,7 @@ fn WgslComposeSemanticIr::record_symbol(
     return
   }
   self.symbol_keys.add(symbol_key)
-  self.symbols.push(WgslComposeIrSymbol::{ identity, final_name, declared })
+  self.symbols.push({ identity, final_name, declared })
 }
 
 ///|
@@ -136,7 +134,7 @@ fn WgslComposeSemanticIr::resolved_binding_target_symbol(
   let requested_final_name = binding.target.final_name.trim().to_owned()
   if requested_final_name == "" ||
     self.declared_names.contains(requested_final_name) {
-    return WgslComposeIrSymbol::{
+    return {
       identity: binding.target.identity,
       final_name: requested_final_name,
       declared: self.declared_names.contains(requested_final_name),
@@ -145,13 +143,13 @@ fn WgslComposeSemanticIr::resolved_binding_target_symbol(
   let identity_key = WgslComposeIrIdentityKey(binding.target.identity).text()
   match self.emitted_final_name_by_identity.get(identity_key) {
     Some(emitted_name) =>
-      WgslComposeIrSymbol::{
+      {
         identity: binding.target.identity,
         final_name: emitted_name,
         declared: true,
       }
     None =>
-      WgslComposeIrSymbol::{
+      {
         identity: binding.target.identity,
         final_name: requested_final_name,
         declared: false,
@@ -166,10 +164,7 @@ fn WgslComposeSemanticIr::record_reference_binding(
 ) -> Unit {
   let target = self.resolved_binding_target_symbol(binding)
   self.record_symbol(target.identity, target.final_name, target.declared)
-  self.reference_bindings.push(WgslComposeIrReferenceBinding::{
-    binding,
-    target,
-  })
+  self.reference_bindings.push({ binding, target })
 }
 
 ///|
@@ -235,7 +230,7 @@ fn WgslComposeSemanticIr::live_binding_plan(
   self : WgslComposeSemanticIr,
 ) -> WgslLiveBindingPlan {
   let plan = WgslLiveBindingPlan()
-  let seen_binding_keys : @set.Set[String] = @set.Set([])
+  let seen_binding_keys : @set.Set[String] = Set([])
   for ir_binding in self.reference_bindings {
     let resolved_binding = if ir_binding.target.final_name ==
       ir_binding.binding.target.final_name.trim().to_owned() {
