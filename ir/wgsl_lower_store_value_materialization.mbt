@@ -27,6 +27,11 @@ fn WgslIrLowerer::materialize_store_value_for_pointer_if_needed(
   let normalized = self.materialize_return_subexpressions(
     function, scope, block, value,
   )
+  match self.store_pointer_value_type(function, pointer) {
+    Some(ty) =>
+      self.contextualize_function_expression_for_type(function, normalized, ty)
+    None => ()
+  }
   if self.function_expression_should_materialize_as_store_value(
       function, normalized,
     ) ||
@@ -40,6 +45,18 @@ fn WgslIrLowerer::materialize_store_value_for_pointer_if_needed(
 }
 
 ///|
+fn WgslIrLowerer::store_pointer_value_type(
+  self : WgslIrLowerer,
+  function : Function,
+  pointer : Handle,
+) -> Handle? {
+  match self.function_expression_type(function, pointer) {
+    Some(ty) => Some(self.deref_pointer_type_handle(ty))
+    None => None
+  }
+}
+
+///|
 fn WgslIrLowerer::function_expression_should_materialize_as_projected_local_store_value(
   self : WgslIrLowerer,
   function : Function,
@@ -47,6 +64,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_projected_local_stor
   value : Handle,
 ) -> Bool {
   self.function_store_pointer_is_projected_user_local(function, pointer) &&
+  !wgsl_ir_function_expression_has_arena_name(function, value) &&
   self.function_expression_is_var_pointer_load(function, value) &&
   self.function_expression_can_materialize_to_let(function, value)
 }

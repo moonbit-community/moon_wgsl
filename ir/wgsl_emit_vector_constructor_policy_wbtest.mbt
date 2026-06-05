@@ -219,6 +219,38 @@ test "naga-oil writer policy materializes vector splat global loads" {
 }
 
 ///|
+test "naga-oil writer policy contextualizes local vector stores" {
+  let source =
+    #|fn choose(face_index: u32) -> vec2<f32> {
+    #|  var face_size: vec2<f32>;
+    #|  switch face_index {
+    #|    case 0u: {
+    #|      face_size = vec2(0.33333334, 0.25);
+    #|    }
+    #|    default: {
+    #|      face_size = vec2(1.0, 0.16666667);
+    #|    }
+    #|  }
+    #|  return face_size;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("face_size = vec2<f32>(0.33333334f, 0.25f);"),
+    content="true",
+  )
+  debug_inspect(
+    naga_oil.contains("face_size = vec2<f32>(1f, 0.16666667f);"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("face_size = vec2("), content="false")
+}
+
+///|
 test "naga-oil writer policy contextualizes vector stores" {
   let source =
     #|struct RaymarchResult {

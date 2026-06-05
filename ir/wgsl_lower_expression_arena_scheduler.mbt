@@ -118,6 +118,16 @@ fn ExpressionArenaScheduler::binary_lowers_right_before_left(
 }
 
 ///|
+fn ExpressionArenaScheduler::binary_lowers_right_argument_before_left_access(
+  self : ExpressionArenaScheduler,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  wgsl_ir_expr_node_is_direct_access_chain(left) &&
+  wgsl_ir_expr_node_is_function_argument_value(right, self.scope)
+}
+
+///|
 fn ExpressionArenaScheduler::binary_right_subtree_has_higher_precedence(
   self : ExpressionArenaScheduler,
   op : @ast.WgslExprOperator,

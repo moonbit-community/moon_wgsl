@@ -351,7 +351,9 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         self.predeclare_function_member_base_expressions(right, function, scope)
       } else if wgsl_ir_expr_node_is_direct_access_chain(left) &&
         wgsl_ir_expr_node_is_function_argument_value(right, scope) {
-        self.predeclare_function_member_base_expressions(left, function, scope)
+        self.predeclare_function_reference_roots_in_source_order(
+          left, function, scope,
+        )
         self.predeclare_function_argument_value(right, function, scope)
       } else if wgsl_ir_expr_node_contains_member_access(left) &&
         wgsl_ir_expr_node_contains_function_argument_math_call(right, scope) {
@@ -413,7 +415,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             wgsl_ir_expr_node_is_literal_like(left)
           let right_children_lower_before_left = wgsl_ir_expr_node_is_function_argument_value(
             left, scope,
-          )
+          ) &&
+            !wgsl_ir_expr_node_contains_call(right)
           let (left_handle, right_handle) = if right_binary_lowers_before_left {
             let (right_op, right_left, right_right) = self.lower_binary_expression_children(
               right, function, scope,
@@ -462,6 +465,16 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           }
           (left_handle, right_handle)
         }
+      } else if scheduler.binary_lowers_right_argument_before_left_access(
+          left, right,
+        ) {
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        (left_handle, right_handle)
       } else if scheduler.binary_lowers_right_before_left(op, left, right) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
@@ -1239,12 +1252,30 @@ fn WgslIrLowerer::lower_binary_expression_children(
         Some(result) => return result
         None => ()
       }
+      if scheduler.binary_lowers_right_argument_before_left_access(
+          left, right,
+        ) {
+        self.predeclare_function_reference_roots_in_source_order(
+          left, function, scope,
+        )
+        self.predeclare_function_argument_value(right, function, scope)
+      }
       let (left_handle, right_handle) = if scheduler.binary_lowers_right_before_left(
           op, left, right,
         ) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
         )
+      } else if scheduler.binary_lowers_right_argument_before_left_access(
+          left, right,
+        ) {
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        (left_handle, right_handle)
       } else {
         let left_handle = self.lower_function_expression_node(
           left, function, scope,

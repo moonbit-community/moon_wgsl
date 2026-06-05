@@ -114,6 +114,55 @@ test "WGSL AST lowerer predeclares mutable locals before non-const initializer a
 }
 
 ///|
+test "WGSL AST lowerer keeps parent argument before higher-precedence call RHS" {
+  let source =
+    #|fn probe(N: vec3<f32>, V: vec3<f32>) -> vec3<f32> {
+    #|  let T1 = normalize(V - N * dot(V, N));
+    #|  return T1;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected parent-left argument before RHS product")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected RHS product argument after parent-left argument")
+  }
+  match function.expressions.items[2] {
+    Math(Dot, _, _, _, _) => ()
+    _ => abort("expected dot after both arguments")
+  }
+}
+
+///|
+test "WGSL AST lowerer keeps right argument before completing left access" {
+  let source =
+    #|fn probe(P: vec3<f32>, points: array<vec3<f32>, 4>) -> vec3<f32> {
+    #|  return points[0] - P;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected left access root before right argument")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected right argument before left access completion")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected left access after right argument")
+  }
+}
+
+///|
 test "WGSL AST lowerer lowers non-argument var initializer before mutable local pointer" {
   let source =
     #|struct Material {
