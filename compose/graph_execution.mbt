@@ -387,10 +387,14 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
           false,
         )
         let requests : Array[WgslImportRequest] = []
+        let dependency_facts = collect_wgsl_compose_semantic_facts(
+          self.session,
+          prepared.active_source,
+        )
         self.composer.merge_wgsl_non_resource_dependency_requests(
           requests,
           dependency_requests,
-          prepared.active_source,
+          dependency_facts,
           self.session,
           import_defs,
         )

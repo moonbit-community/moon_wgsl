@@ -48,6 +48,9 @@ fn Composer::compose_wgsl_import_requests(
   alias_prefixes : Array[String],
 ) -> String raise ComposerError {
   let mut merged = ""
+  let importer_facts = collect_wgsl_compose_semantic_facts(
+    session, importer_scan_source,
+  )
   for request in requests {
     if !session.graph_request_is_planned(current_rel_path, request) {
       raise FailedToResolveImport(
@@ -252,8 +255,8 @@ fn Composer::compose_wgsl_import_requests(
         error => raise composer_error_from_wgsl_parse_error(error)
       }
       let has_missing_local_fallback = record_wgsl_missing_item_local_import_final_names(
-        current_rel_path, request, importer_scan_source, emission_requested_items,
-        extraction, session,
+        current_rel_path, request, importer_facts, emission_requested_items, extraction,
+        session,
       )
       let extracted_source = extraction.source()
       if extracted_source == "" {
@@ -314,12 +317,9 @@ fn Composer::compose_wgsl_import_requests(
             false,
           )
         for binding in item_bindings.bindings {
-          let referenced_by_importer = wgsl_semantic_source_contains_reference_path(
-            importer_scan_source,
+          let referenced_by_importer = importer_facts.contains_reference_path(
             binding.reference_path.text(),
-          ) catch {
-            error => raise composer_error_from_wgsl_parse_error(error)
-          }
+          )
           if referenced_by_importer {
             push_wgsl_unqualified_import_binding_respecting_locals(
               bindings, binding,
@@ -621,29 +621,23 @@ fn push_wgsl_unqualified_import_binding_respecting_locals(
 fn record_wgsl_missing_item_local_import_final_names(
   current_rel_path : String,
   request : WgslImportRequest,
-  importer_scan_source : String,
+  importer_facts : WgslComposeSemanticFacts,
   emission_requested_items : Array[String],
   extraction : WgslModuleItemExtraction,
   session : WgslComposeSession,
-) -> Bool raise ComposerError {
+) -> Bool {
   let mut recorded = false
   for requested_item in emission_requested_items {
     if wgsl_item_extraction_contains_requested_item(extraction, requested_item) {
       continue
     }
-    let declares_local = wgsl_semantic_source_declares_global_name(
-      importer_scan_source, requested_item,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    let declares_local = importer_facts.declares_name(requested_item)
     if !declares_local {
       continue
     }
-    let references_local = wgsl_semantic_source_contains_reference_path(
-      importer_scan_source, requested_item,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    let references_local = importer_facts.contains_reference_path(
+      requested_item,
+    )
     if !references_local {
       continue
     }
@@ -677,8 +671,11 @@ fn Composer::compose_wgsl_missing_item_local_dependency_imports(
     current_rel_path, targets, dependency_scan_source, session, importer_defs, false,
   )
   let requests : Array[WgslImportRequest] = []
+  let dependency_facts = collect_wgsl_compose_semantic_facts(
+    session, dependency_scan_source,
+  )
   self.merge_wgsl_non_resource_dependency_requests(
-    requests, dependency_requests, dependency_scan_source, session, importer_defs,
+    requests, dependency_requests, dependency_facts, session, importer_defs,
   )
   if requests.length() == 0 {
     return ""

@@ -113,6 +113,14 @@ if rg -n 'CachedQualifiedAliasBinding' compose transform ir --glob '*.mbt' >"$ma
   fail "cached alias bindings must not be a separate compose binding phase"
 fi
 
+if rg -n 'wgsl_semantic_source_contains_reference_path' \
+  compose/import_request_builder.mbt \
+  compose/import_request_execution.mbt \
+  compose/graph_execution.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "compose import request retention must use structured semantic facts, not source-level reference scans"
+fi
+
 if rg -n 'pub fn WgslReferenceRewritePlan::add\(' transform --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "reference rewrite plans must not expose unscoped string-only bindings"

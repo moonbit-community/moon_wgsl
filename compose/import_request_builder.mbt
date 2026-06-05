@@ -223,20 +223,17 @@ fn merge_wgsl_const_side_effect_request(
 ///|
 fn widen_wgsl_dependency_requests_with_alias_side_effects(
   dependency_requests : Array[WgslImportRequest],
-  dependency_scan_source : String,
-) -> Unit raise ComposerError {
+  dependency_scan_facts : WgslComposeSemanticFacts,
+) -> Unit {
   for dependency_request in dependency_requests {
     if dependency_request.alias_name == "" {
       continue
     }
     let alias_requested_paths : Array[String] = []
-    collect_wgsl_semantic_alias_requested_paths(
-      dependency_scan_source,
+    dependency_scan_facts.collect_alias_requested_paths(
       dependency_request.alias_name,
       alias_requested_paths,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    )
     for requested_path in alias_requested_paths {
       if split_last_wgsl_semantic_path(requested_path) is Some(_) {
         continue
@@ -475,8 +472,11 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
       current_rel_path, dependency_targets, dependency_scan_source, session, importer_defs,
       false,
     )
+    let dependency_scan_facts = collect_wgsl_compose_semantic_facts(
+      session, dependency_scan_source,
+    )
     widen_wgsl_dependency_requests_with_alias_side_effects(
-      dependency_requests, dependency_scan_source,
+      dependency_requests, dependency_scan_facts,
     )
     let declared_dependency_requests = self.build_wgsl_declared_import_requests_from_targets(
       current_rel_path, side_effect_targets, session, importer_defs,
@@ -565,7 +565,7 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
       )
     }
     self.merge_wgsl_non_resource_dependency_requests(
-      requests, dependency_requests, dependency_scan_source, session, importer_defs,
+      requests, dependency_requests, dependency_scan_facts, session, importer_defs,
     )
   }
   requests
@@ -576,7 +576,7 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
   self : Composer,
   requests : Array[WgslImportRequest],
   dependency_requests : Array[WgslImportRequest],
-  dependency_scan_source : String,
+  dependency_scan_facts : WgslComposeSemanticFacts,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Unit raise ComposerError {
@@ -602,7 +602,7 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
       continue
     }
     let filtered_items = self.filtered_wgsl_non_resource_dependency_items(
-      dependency_request, dependency_scan_source, session, importer_defs,
+      dependency_request, dependency_scan_facts, session, importer_defs,
     )
     if find_wgsl_import_request_index(
         requests,
@@ -655,7 +655,7 @@ fn Composer::merge_wgsl_non_resource_dependency_requests(
 fn Composer::filtered_wgsl_non_resource_dependency_items(
   self : Composer,
   dependency_request : WgslImportRequest,
-  dependency_scan_source : String,
+  dependency_scan_facts : WgslComposeSemanticFacts,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[String] raise ComposerError {
@@ -678,30 +678,21 @@ fn Composer::filtered_wgsl_non_resource_dependency_items(
     import_defs.value_defines,
   )
   for requested_item in dependency_request.requested_items {
-    let requested_item_is_referenced = wgsl_semantic_source_contains_reference_path(
-      dependency_scan_source, requested_item,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    let requested_item_is_referenced = dependency_scan_facts.contains_reference_path(
+      requested_item,
+    )
     let leaf_item_is_referenced = match
       split_last_wgsl_semantic_path(requested_item) {
       Some((_, leaf_name)) =>
-        wgsl_semantic_source_contains_reference_path(
-          dependency_scan_source, leaf_name,
-        ) catch {
-          error => raise composer_error_from_wgsl_parse_error(error)
-        }
+        dependency_scan_facts.contains_reference_path(leaf_name)
       None => false
     }
     let alias_item_is_referenced = if dependency_request.alias_name == "" {
       false
     } else {
-      wgsl_semantic_source_contains_reference_path(
-        dependency_scan_source,
+      dependency_scan_facts.contains_reference_path(
         "\{dependency_request.alias_name}::\{requested_item}",
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
+      )
     }
     if wgsl_source_declares_non_resource_dependency_item(
         active_import_source,
@@ -910,21 +901,18 @@ fn Composer::build_wgsl_import_requests_from_targets(
     }
     if !import_full_module {
       if target_plan.keep_requested_items && requested_items.length() > 0 {
+        let active_scan_facts = collect_wgsl_compose_semantic_facts(
+          session, active_scan_source,
+        )
         let live_requested_items : Array[String] = []
         for requested_item in requested_items {
-          let requested_item_is_live = wgsl_semantic_source_contains_reference_path(
-            active_scan_source, requested_item,
-          ) catch {
-            error => raise composer_error_from_wgsl_parse_error(error)
-          }
+          let requested_item_is_live = active_scan_facts.contains_reference_path(
+            requested_item,
+          )
           let leaf_item_is_live = match
             split_last_wgsl_semantic_path(requested_item) {
             Some((_, leaf_name)) =>
-              wgsl_semantic_source_contains_reference_path(
-                active_scan_source, leaf_name,
-              ) catch {
-                error => raise composer_error_from_wgsl_parse_error(error)
-              }
+              active_scan_facts.contains_reference_path(leaf_name)
             None => false
           }
           if requested_item_is_live || leaf_item_is_live {

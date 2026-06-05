@@ -151,26 +151,6 @@ fn collect_wgsl_naga_oil_import_use_identifier_nodes(
 }
 
 ///|
-fn wgsl_semantic_source_declares_global_name(
-  source : String,
-  name : String,
-) -> Bool raise WgslParseError {
-  let declared_nodes : Array[WgslIdent] = []
-  for decl in parse_wgsl_translation_unit_strict(source).declarations() {
-    @ast_analysis.collect_wgsl_decl_global_declared_identifier_nodes(
-      decl.data(),
-      declared_nodes,
-    )
-  }
-  for node in declared_nodes {
-    if node.name() == name {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn wgsl_semantic_requested_item_name(
   raw_path : String,
   module_path : String,
@@ -282,6 +262,58 @@ fn collect_wgsl_semantic_alias_requested_paths(
   let paths : Array[WgslReferencePath] = []
   collect_wgsl_semantic_reference_paths(source, paths)
   for path in paths {
+    let requested_item = wgsl_semantic_alias_requested_item_name(
+      path, alias_name,
+    )
+    semantic_string_list_push_unique(requested_paths, requested_item)
+  }
+}
+
+///|
+fn WgslComposeSemanticFacts::contains_reference_path(
+  self : WgslComposeSemanticFacts,
+  reference_path : String,
+) -> Bool {
+  match wgsl_semantic_reference_path_from_identifier(reference_path) {
+    Some(expected) => {
+      for path in self.references {
+        if path.text() == expected.text() {
+          return true
+        }
+      }
+      false
+    }
+    None => false
+  }
+}
+
+///|
+fn WgslComposeSemanticFacts::declares_name(
+  self : WgslComposeSemanticFacts,
+  name : String,
+) -> Bool {
+  let name = name.trim().to_owned()
+  if name == "" {
+    return false
+  }
+  for declaration in self.declarations {
+    if declaration.name() == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn WgslComposeSemanticFacts::collect_alias_requested_paths(
+  self : WgslComposeSemanticFacts,
+  alias_name : String,
+  requested_paths : Array[String],
+) -> Unit {
+  if alias_name == "" {
+    return
+  }
+  for path in self.references {
     let requested_item = wgsl_semantic_alias_requested_item_name(
       path, alias_name,
     )
