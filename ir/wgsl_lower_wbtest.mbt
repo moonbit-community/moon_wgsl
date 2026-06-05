@@ -2217,8 +2217,8 @@ test "WGSL AST lowerer respects nested lexical shadowing" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("var x_1: u32;\n"), content="true")
-  debug_inspect(emitted.contains("x_1 = 30u;\n"), content="true")
+  debug_inspect(emitted.contains("var x_1: u32 = 30u;\n"), content="true")
+  debug_inspect(emitted.contains("x_1 = 30u;\n"), content="false")
   debug_inspect(emitted.contains("buffer[0] = _e"), content="true")
   debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
   debug_inspect(emitted.contains("buffer[3] = 20u;"), content="true")
@@ -2695,6 +2695,30 @@ test "WGSL AST lowerer preserves nested var const initializer execution site" {
   debug_inspect(emitted.contains("var shadow: f32;\n"), content="true")
   debug_inspect(emitted.contains("var shadow: f32 = 1f;"), content="false")
   debug_inspect(emitted.contains("shadow = 1f;\n"), content="true")
+}
+
+///|
+test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
+  let source =
+    #|fn nested_if_var_init(flag: bool) -> f32 {
+    #|  var total: f32 = 0.0;
+    #|  if flag {
+    #|    var color: vec3<f32> = vec3(1.0);
+    #|    total = color.x;
+    #|  }
+    #|  return total;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var color: vec3<f32> = vec3(1f);\n"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("color = vec3(1f);\n"), content="false")
 }
 
 ///|

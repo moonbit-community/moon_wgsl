@@ -59,7 +59,7 @@ priv struct WgslIrFunctionScope {
     String,
     WgslIrPendingGlobalPointerExpressions,
   ]
-  block_depth : Int
+  loop_depth : Int
   mut visible_rel_path : String
   mut generated_import_local_spelling : WgslIrGeneratedImportLocalSpellingMode
 }
@@ -85,7 +85,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
     pending_global_pointer_expressions: Map([]),
-    block_depth: 0,
+    loop_depth: 0,
     visible_rel_path: "",
     generated_import_local_spelling: AllGeneratedImportLocalSpelling,
   }
@@ -179,10 +179,18 @@ fn WgslIrFunctionScope::child(
     argument_pointer_expressions: self.argument_pointer_expressions,
     global_pointer_expressions: self.global_pointer_expressions,
     pending_global_pointer_expressions: self.pending_global_pointer_expressions,
-    block_depth: self.block_depth + 1,
+    loop_depth: self.loop_depth,
     visible_rel_path: self.visible_rel_path,
     generated_import_local_spelling: self.generated_import_local_spelling,
   }
+}
+
+///|
+fn WgslIrFunctionScope::loop_child(
+  self : WgslIrFunctionScope,
+) -> WgslIrFunctionScope {
+  let child = self.child()
+  { ..child, loop_depth: self.loop_depth + 1 }
 }
 
 ///|

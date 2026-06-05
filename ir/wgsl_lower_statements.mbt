@@ -704,7 +704,7 @@ fn WgslIrLowerer::lower_loop_blocks(
   let mut break_if : Handle? = None
   match statement.blocks() {
     [body_block, ..] => {
-      let child_scope = scope.child()
+      let child_scope = scope.loop_child()
       let mut saw_continuing = false
       let body_statements = body_block.statements()
       for index in 0..<body_statements.length() {
@@ -714,7 +714,7 @@ fn WgslIrLowerer::lower_loop_blocks(
             saw_continuing = true
             match child.blocks() {
               [continuing_block, ..] => {
-                let continuing_scope = child_scope.child()
+                let continuing_scope = child_scope.loop_child()
                 let result = self.lower_continuing_block(
                   continuing_block, function, continuing_scope,
                 )
@@ -866,7 +866,7 @@ fn WgslIrLowerer::lower_for_statement(
   scope : WgslIrFunctionScope,
   block : Block,
 ) -> Unit raise WgslIrLowerError {
-  let loop_scope = scope.child()
+  let loop_scope = scope.loop_child()
   for local_decl in statement.local_bindings() {
     self.lower_local_declaration(
       local_decl,
@@ -1339,7 +1339,7 @@ fn WgslIrLowerer::lower_local_declaration(
               DeclarationArenaLocalConstant => true
               UseSiteLazyLocalConstant => false
             }
-            if scope.block_depth == 0 || declaration_placement {
+            if scope.loop_depth == 0 || declaration_placement {
               self.lower_predeclared_source_var_const_initializer(
                 local_decl, expr_ref, function, scope, block,
               )
