@@ -51,11 +51,26 @@ fn WgslIrLowerer::predeclare_function_source_var_const_initializers(
         local_decl, function, scope,
       )
     }
+    guard wgsl_ir_statement_allows_function_entry_const_initializer_predeclare(
+      statement,
+    ) else {
+      continue
+    }
     for child in statement.blocks() {
       self.predeclare_function_source_var_const_initializers(
         child, function, scope,
       )
     }
+  }
+}
+
+///|
+fn wgsl_ir_statement_allows_function_entry_const_initializer_predeclare(
+  statement : @ast.WgslStatement,
+) -> Bool {
+  match statement.kind() {
+    For | While | Loop | Continuing => false
+    _ => true
   }
 }
 
