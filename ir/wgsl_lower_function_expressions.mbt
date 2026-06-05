@@ -2700,6 +2700,14 @@ fn WgslIrLowerer::lower_function_flattened_constructor_arguments(
   expected_ty : Handle?,
 ) -> Array[Handle] raise WgslIrLowerError {
   let scheduler = self.expression_arena_scheduler(function, scope)
+  match
+    self
+    .lower_function_constructor_arguments_with_later_local_root_after_first_global_root(
+      flattened, function, scope, expected_ty,
+    ) {
+    Some(handles) => return handles
+    None => ()
+  }
   if scheduler.constructor_arguments_delay_literals(flattened) {
     return self.lower_function_constructor_arguments_with_delayed_literals(
       flattened, function, scope, expected_ty,
@@ -2716,6 +2724,351 @@ fn WgslIrLowerer::lower_function_flattened_constructor_arguments(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_constructor_arguments_with_later_local_root_after_first_global_root(
+  self : WgslIrLowerer,
+  flattened : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Array[Handle]? raise WgslIrLowerError {
+  guard flattened.length() >= 2 else { return None }
+  let scheduler = self.expression_arena_scheduler(function, scope)
+  guard !scheduler.constructor_argument_has_ordered_effect(flattened[0]) else {
+    return None
+  }
+  guard
+    self.first_global_static_member_root_end(flattened[0]) is Some(root_end)
+  else {
+    return None
+  }
+  guard
+    self.expression_node_contains_mutable_local_root_after(
+      flattened[0], root_end, function, scope,
+    )
+  else {
+    return None
+  }
+  guard
+    self.predeclare_first_global_static_member_root(
+      flattened[0], function, scope,
+    )
+  else {
+    return None
+  }
+  guard
+    self.predeclare_first_mutable_local_root_after(
+      flattened[0], root_end, function, scope,
+    )
+  else {
+    return None
+  }
+  let handles : Array[Handle] = []
+  for index in 0..<flattened.length() {
+    handles.push(
+      self.lower_function_constructor_argument_value(
+        flattened[index], function, scope, expected_ty,
+      ),
+    )
+  }
+  Some(handles)
+}
+
+///|
+fn WgslIrLowerer::first_global_static_member_root_end(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Int? {
+  match node.kind() {
+    Member(_, _) =>
+      match wgsl_ir_static_member_access_chain(node) {
+        Some((root, members)) =>
+          if members.length() > 0 &&
+            self.expression_node_is_global_reference_value(root) {
+            Some(node.end())
+          } else {
+            None
+          }
+        None => None
+      }
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.first_global_static_member_root_end(inner)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      match self.first_global_static_member_root_end(left) {
+        Some(end_) => Some(end_)
+        None => self.first_global_static_member_root_end(right)
+      }
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      match self.first_global_static_member_root_end(callee) {
+        Some(end_) => Some(end_)
+        None => {
+          for argument in arguments {
+            match self.first_global_static_member_root_end(argument) {
+              Some(end_) => return Some(end_)
+              None => ()
+            }
+          }
+          None
+        }
+      }
+    }
+    Sequence(arguments) => {
+      for argument in arguments {
+        match self.first_global_static_member_root_end(argument) {
+          Some(end_) => return Some(end_)
+          None => ()
+        }
+      }
+      None
+    }
+    Template(base, _) | PathAccess(base, _) =>
+      self.first_global_static_member_root_end(base)
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => None
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_first_global_static_member_root(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool raise WgslIrLowerError {
+  match node.kind() {
+    Member(_, _) =>
+      match wgsl_ir_static_member_access_chain(node) {
+        Some((root, members)) =>
+          if members.length() > 0 &&
+            self.predeclare_global_identifier_root(root, function, scope) {
+            true
+          } else {
+            false
+          }
+        None => false
+      }
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.predeclare_first_global_static_member_root(inner, function, scope)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      if self.predeclare_first_global_static_member_root(
+          left, function, scope,
+        ) {
+        true
+      } else {
+        self.predeclare_first_global_static_member_root(right, function, scope)
+      }
+    Call(callee, arguments) => {
+      if self.predeclare_first_global_static_member_root(
+          callee, function, scope,
+        ) {
+        true
+      } else {
+        let arguments = wgsl_ir_call_arguments(arguments)
+        let mut found = false
+        for argument in arguments {
+          if !found &&
+            self.predeclare_first_global_static_member_root(
+              argument, function, scope,
+            ) {
+            found = true
+          }
+        }
+        found
+      }
+    }
+    Sequence(arguments) => {
+      let mut found = false
+      for argument in arguments {
+        if !found &&
+          self.predeclare_first_global_static_member_root(
+            argument, function, scope,
+          ) {
+          found = true
+        }
+      }
+      found
+    }
+    Template(base, _) | PathAccess(base, _) =>
+      self.predeclare_first_global_static_member_root(base, function, scope)
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_global_identifier_root(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.predeclare_global_identifier_root(inner, function, scope)
+    Identifier(name) =>
+      match self.global_names.get(name.name()) {
+        Some(handle) => {
+          ignore(scope.predeclare_global_pointer_expression(
+            name.name(), handle, function,
+          ))
+          true
+        }
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_contains_mutable_local_root_after(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  after_offset : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(name) =>
+      if node.start() >= after_offset {
+        match scope.locals.get(name.name()) {
+          Some(handle) =>
+            match function.local_variables.items.get(handle.index()) {
+              Some(local_var) => local_var.kind == Var
+              None => false
+            }
+          None => false
+        }
+      } else {
+        false
+      }
+    Group(inner) =>
+      self.expression_node_contains_mutable_local_root_after(
+        inner, after_offset, function, scope,
+      )
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.expression_node_contains_mutable_local_root_after(
+        base, after_offset, function, scope,
+      )
+    Unary(_, expr) | PostfixUpdate(_, expr) =>
+      self.expression_node_contains_mutable_local_root_after(
+        expr, after_offset, function, scope,
+      )
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      self.expression_node_contains_mutable_local_root_after(
+        left, after_offset, function, scope,
+      ) ||
+      self.expression_node_contains_mutable_local_root_after(
+        right, after_offset, function, scope,
+      )
+    Call(callee, arguments) => {
+      if self.expression_node_contains_mutable_local_root_after(
+          callee, after_offset, function, scope,
+        ) {
+        true
+      } else {
+        let call_args = wgsl_ir_call_arguments(arguments)
+        call_args.any(fn(argument) {
+          self.expression_node_contains_mutable_local_root_after(
+            argument, after_offset, function, scope,
+          )
+        })
+      }
+    }
+    Sequence(arguments) =>
+      arguments.any(fn(argument) {
+        self.expression_node_contains_mutable_local_root_after(
+          argument, after_offset, function, scope,
+        )
+      })
+    Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn WgslIrLowerer::predeclare_first_mutable_local_root_after(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  after_offset : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(name) =>
+      if node.start() >= after_offset {
+        match scope.locals.get(name.name()) {
+          Some(handle) =>
+            match function.local_variables.items.get(handle.index()) {
+              Some(local_var) =>
+                if local_var.kind == Var {
+                  ignore(scope.predeclare_local_pointer_expression(
+                    name.name(), handle, function,
+                  ))
+                  true
+                } else {
+                  false
+                }
+              None => false
+            }
+          None => false
+        }
+      } else {
+        false
+      }
+    Group(inner) =>
+      self.predeclare_first_mutable_local_root_after(
+        inner, after_offset, function, scope,
+      )
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.predeclare_first_mutable_local_root_after(
+        base, after_offset, function, scope,
+      )
+    Unary(_, expr) | PostfixUpdate(_, expr) =>
+      self.predeclare_first_mutable_local_root_after(
+        expr, after_offset, function, scope,
+      )
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      if self.predeclare_first_mutable_local_root_after(
+          left, after_offset, function, scope,
+        ) {
+        true
+      } else {
+        self.predeclare_first_mutable_local_root_after(
+          right, after_offset, function, scope,
+        )
+      }
+    Call(callee, arguments) => {
+      if self.predeclare_first_mutable_local_root_after(
+          callee, after_offset, function, scope,
+        ) {
+        true
+      } else {
+        let call_args = wgsl_ir_call_arguments(arguments)
+        let mut found = false
+        for argument in call_args {
+          if !found &&
+            self.predeclare_first_mutable_local_root_after(
+              argument, after_offset, function, scope,
+            ) {
+            found = true
+          }
+        }
+        found
+      }
+    }
+    Sequence(arguments) => {
+      let mut found = false
+      for argument in arguments {
+        if !found &&
+          self.predeclare_first_mutable_local_root_after(
+            argument, after_offset, function, scope,
+          ) {
+          found = true
+        }
+      }
+      found
+    }
+    Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
 fn WgslIrLowerer::lower_function_constructor_arguments_with_delayed_literals(
   self : WgslIrLowerer,
   flattened : Array[@ast.WgslExprNode],

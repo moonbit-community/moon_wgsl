@@ -232,6 +232,18 @@ fn WgslIrFunctionScope::local_pointer_expression(
 }
 
 ///|
+fn WgslIrFunctionScope::predeclare_local_pointer_expression(
+  self : WgslIrFunctionScope,
+  name : String,
+  local_handle : Handle,
+  function : Function,
+) -> Handle {
+  let handle = function.expressions.append(LocalVariable(local_handle))
+  self.local_pointer_expressions.set(name, handle)
+  handle
+}
+
+///|
 fn wgsl_ir_find_local_pointer_expression(
   function : Function,
   local_handle : Handle,

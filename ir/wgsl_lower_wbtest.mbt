@@ -3020,6 +3020,63 @@ test "WGSL AST lowerer lowers later math access before deferred first literal" {
 }
 
 ///|
+test "WGSL AST lowerer predeclares later constructor local root after first global root" {
+  let source =
+    #|struct View {
+    #|  exposure: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> view: View;
+    #|
+    #|fn probe(color: vec3<f32>) -> vec4<f32> {
+    #|  var output_color: vec4<f32>;
+    #|  output_color = vec4<f32>(0.0);
+    #|  var transmitted_light: vec3<f32> = vec3<f32>(0.0);
+    #|  return vec4<f32>(view.exposure * transmitted_light, output_color.a);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut transmitted_local = -1
+  for local_index, local_var in function.local_variables.items {
+    match local_var.name {
+      Some("transmitted_light") => transmitted_local = local_index
+      _ => ()
+    }
+  }
+  let mut global_root = -1
+  let mut transmitted_root = -1
+  let mut exposure_access = -1
+  let mut exposure_load = -1
+  let mut transmitted_load = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      GlobalVariable(_) if global_root == -1 => global_root = expression_index
+      LocalVariable(handle) =>
+        if handle.index() == transmitted_local && global_root >= 0 &&
+          transmitted_root == -1 {
+          transmitted_root = expression_index
+        }
+      AccessIndex(base, _) if base.index() == global_root &&
+        exposure_access == -1 => exposure_access = expression_index
+      Load(pointer) if pointer.index() == exposure_access &&
+        exposure_load == -1 => exposure_load = expression_index
+      Load(pointer) if pointer.index() == transmitted_root &&
+        transmitted_load == -1 => transmitted_load = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(transmitted_local >= 0, content="true")
+  debug_inspect(global_root >= 0, content="true")
+  debug_inspect(transmitted_root > global_root, content="true")
+  debug_inspect(exposure_access > transmitted_root, content="true")
+  debug_inspect(exposure_load > exposure_access, content="true")
+  debug_inspect(transmitted_load > exposure_load, content="true")
+}
+
+///|
 test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
   let source =
     #|fn nested_if_var_init(flag: bool) -> f32 {
