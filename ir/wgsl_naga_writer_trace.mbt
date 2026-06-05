@@ -429,6 +429,13 @@ fn wgsl_ir_trace_expression_materialization_reason(
 ///|
 fn wgsl_ir_trace_expression_detail(expression : Expression) -> String {
   match expression {
+    Literal(literal) => "literal:\{wgsl_ir_trace_literal(literal)}"
+    ZeroValue(ty) => "ty:\{ty.index()}"
+    Compose(ty, components) =>
+      "ty:\{ty.index()}:components:\{wgsl_ir_trace_handle_list(components)}"
+    Splat(_, inner) => "inner:\{inner.index()}"
+    Swizzle(_, base, components) =>
+      "base:\{base.index()}:components:\{wgsl_ir_trace_swizzle_list(components)}"
     FunctionArgument(index) => "arg:\{index}"
     LocalVariable(handle) => "local:\{handle.index()}"
     GlobalVariable(handle) => "global:\{handle.index()}"
@@ -439,6 +446,58 @@ fn wgsl_ir_trace_expression_detail(expression : Expression) -> String {
     AccessIndex(base, index) => "base:\{base.index()}:index:\{index}"
     Binary(_, left, right) => "left:\{left.index()}:right:\{right.index()}"
     _ => "-"
+  }
+}
+
+///|
+fn wgsl_ir_trace_handle_list(handles : Array[Handle]) -> String {
+  let mut out = ""
+  for index, handle in handles {
+    if index > 0 {
+      out = out + ","
+    }
+    out = out + "\{handle.index()}"
+  }
+  out
+}
+
+///|
+fn wgsl_ir_trace_swizzle_list(components : Array[SwizzleComponent]) -> String {
+  let mut out = ""
+  for index, component in components {
+    if index > 0 {
+      out = out + ","
+    }
+    out = out + wgsl_ir_trace_swizzle_component(component)
+  }
+  out
+}
+
+///|
+fn wgsl_ir_trace_literal(literal : Literal) -> String {
+  match literal {
+    F64(value) => "f64:\{value}"
+    F32(value) => "f32:\{value.to_double()}"
+    F16(value) => "f16:\{value}"
+    U16(value) => "u16:\{value}"
+    I16(value) => "i16:\{value}"
+    U32(value) => "u32:\{value}"
+    I32(value) => "i32:\{value}"
+    U64(value) => "u64:\{value}"
+    I64(value) => "i64:\{value}"
+    Bool(value) => "bool:\{value}"
+    AbstractInt(value) => "abstract-int:\{value}"
+    AbstractFloat(value) => "abstract-float:\{value}"
+  }
+}
+
+///|
+fn wgsl_ir_trace_swizzle_component(component : SwizzleComponent) -> String {
+  match component {
+    X => "x"
+    Y => "y"
+    Z => "z"
+    W => "w"
   }
 }
 

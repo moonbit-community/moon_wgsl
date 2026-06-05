@@ -2871,6 +2871,67 @@ test "WGSL AST lowerer reuses source local const initializer literal by scalar t
 }
 
 ///|
+test "WGSL AST lowerer reuses semantic source local const initializers" {
+  let source =
+    #|fn source_const_semantic_initializer_reuse() -> vec3<f32> {
+    #|  var first: vec3<f32> = vec3<f32>(0.0);
+    #|  var second = vec3(0.0f);
+    #|  var flag = false;
+    #|  var again = false;
+    #|  if again {
+    #|    return first;
+    #|  }
+    #|  return first + second;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut first_init = -1
+  let mut second_init = -2
+  let mut flag_init = -3
+  let mut again_init = -4
+  for local_var in function.local_variables.items {
+    match local_var.name {
+      Some("first") =>
+        match local_var.init {
+          Some(init) => first_init = init.index()
+          None => ()
+        }
+      Some("second") =>
+        match local_var.init {
+          Some(init) => second_init = init.index()
+          None => ()
+        }
+      Some("flag") =>
+        match local_var.init {
+          Some(init) => flag_init = init.index()
+          None => ()
+        }
+      Some("again") =>
+        match local_var.init {
+          Some(init) => again_init = init.index()
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(first_init == second_init, content="true")
+  debug_inspect(flag_init == again_init, content="true")
+  let mut splat_count = 0
+  let mut false_count = 0
+  for expression in function.expressions.items {
+    match expression {
+      Splat(_, _) => splat_count += 1
+      Literal(Bool(false)) => false_count += 1
+      _ => ()
+    }
+  }
+  debug_inspect(splat_count, content="1")
+  debug_inspect(false_count, content="1")
+}
+
+///|
 test "WGSL IR emitter disambiguates repeated local names" {
   let source =
     #|fn f() -> u32 {

@@ -159,6 +159,17 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
+  let semantic_key = self.source_local_const_initializer_semantic_key(
+    expr_ref, explicit_ty,
+  )
+  match semantic_key {
+    Some(key) =>
+      match scope.source_local_const_initializer_expressions.get(key) {
+        Some(handle) => return handle
+        None => ()
+      }
+    None => ()
+  }
   match expr_ref.root() {
     Some(root) =>
       match wgsl_ir_expr_node_literal_token(root) {
@@ -174,7 +185,10 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
       }
     None => ()
   }
-  let key = wgsl_ir_source_local_const_initializer_key(expr_ref, explicit_ty)
+  let key = match semantic_key {
+    Some(value) => value
+    None => wgsl_ir_source_local_const_initializer_key(expr_ref, explicit_ty)
+  }
   match scope.source_local_const_initializer_expressions.get(key) {
     Some(handle) => handle
     None => {
@@ -211,7 +225,7 @@ fn WgslIrLowerer::record_source_local_const_initializer_literals(
   function : Function,
   scope : WgslIrFunctionScope,
   explicit_ty : Handle?,
-) -> Unit {
+) -> Unit raise WgslIrLowerError {
   let literal_tokens : Array[@ast.WgslExprToken] = []
   match expr_ref.root() {
     Some(root) => wgsl_ir_collect_expr_node_literal_tokens(root, literal_tokens)
@@ -316,11 +330,21 @@ fn WgslIrLowerer::record_source_local_const_literal_handle(
   token : @ast.WgslExprToken,
   ty : Handle?,
   handle : Handle,
-) -> Unit {
-  ignore(self)
+) -> Unit raise WgslIrLowerError {
   let key = wgsl_ir_source_local_const_literal_key(token, ty)
   if !scope.source_local_const_initializer_expressions.contains(key) {
     scope.source_local_const_initializer_expressions.set(key, handle)
+  }
+  match self.source_local_const_literal_semantic_key(token, ty) {
+    Some(semantic_key) =>
+      if !scope.source_local_const_initializer_expressions.contains(
+          semantic_key,
+        ) {
+        scope.source_local_const_initializer_expressions.set(
+          semantic_key, handle,
+        )
+      }
+    None => ()
   }
 }
 
@@ -422,6 +446,120 @@ fn wgsl_ir_source_local_const_token_text_key(
     None => "-"
   }
   "\{ty_key}:\{token_text}"
+}
+
+///|
+fn WgslIrLowerer::source_local_const_initializer_semantic_key(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  expected_ty : Handle?,
+) -> String? raise WgslIrLowerError {
+  guard expr_ref.root() is Some(root) else { return None }
+  self.source_local_const_initializer_node_semantic_key(root, expected_ty)
+}
+
+///|
+fn WgslIrLowerer::source_local_const_initializer_node_semantic_key(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  expected_ty : Handle?,
+) -> String? raise WgslIrLowerError {
+  match node.kind() {
+    Literal(token) =>
+      self.source_local_const_literal_semantic_key(token, expected_ty)
+    Call(callee, arguments) =>
+      self.source_local_const_vector_splat_semantic_key(
+        callee,
+        wgsl_ir_call_arguments(arguments),
+        expected_ty,
+      )
+    Group(inner) =>
+      self.source_local_const_initializer_node_semantic_key(inner, expected_ty)
+    Sequence([single]) =>
+      self.source_local_const_initializer_node_semantic_key(single, expected_ty)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::source_local_const_vector_splat_semantic_key(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+  arguments : Array[@ast.WgslExprNode],
+  expected_ty : Handle?,
+) -> String? raise WgslIrLowerError {
+  guard expected_ty is Some(ty) else { return None }
+  guard arguments is [argument] else { return None }
+  guard wgsl_ir_expr_node_vector_constructor_name(callee) is Some(name) else {
+    return None
+  }
+  guard wgsl_ir_vector_size_from_constructor_name(name) is Some(_) else {
+    return None
+  }
+  guard argument.kind() is Literal(token) else { return None }
+  let component_ty = match self.constructor_component_expected_type(ty) {
+    Some(value) => value
+    None => ty
+  }
+  match
+    self.source_local_const_literal_semantic_key(token, Some(component_ty)) {
+    Some(literal_key) => Some("semantic:splat:\{ty.index()}:\{literal_key}")
+    None => None
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_vector_constructor_name(
+  node : @ast.WgslExprNode,
+) -> String? {
+  match node.kind() {
+    Identifier(name) => Some(name.name())
+    Template(base, _) => wgsl_ir_expr_node_vector_constructor_name(base)
+    Group(inner) => wgsl_ir_expr_node_vector_constructor_name(inner)
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::source_local_const_literal_semantic_key(
+  self : WgslIrLowerer,
+  token : @ast.WgslExprToken,
+  expected_ty : Handle?,
+) -> String? raise WgslIrLowerError {
+  let literal_ty = match expected_ty {
+    Some(ty) =>
+      match self.constructor_component_expected_type(ty) {
+        Some(component_ty) => Some(component_ty)
+        None => Some(ty)
+      }
+    None => None
+  }
+  let literal = self.literal_from_token_with_expected(token, literal_ty)
+  Some(
+    "semantic:literal:\{wgsl_ir_source_local_const_literal_value_key(literal_ty, literal)}",
+  )
+}
+
+///|
+fn wgsl_ir_source_local_const_literal_value_key(
+  ty : Handle?,
+  literal : Literal,
+) -> String {
+  let ty_key = match ty {
+    Some(handle) => "\{handle.index()}"
+    None => "-"
+  }
+  let value_key = match literal {
+    Bool(value) => "bool:\{value}"
+    F64(value) | AbstractFloat(value) | F16(value) => "float:\{value}"
+    F32(value) => "float:\{value.to_double()}"
+    I16(value) | I32(value) => "int:\{value}"
+    I64(value) | AbstractInt(value) => "int:\{value}"
+    U16(value) => "uint:\{value}"
+    U32(value) => "uint:\{value}"
+    U64(value) => "uint:\{value}"
+  }
+  "\{ty_key}:\{value_key}"
 }
 
 ///|
