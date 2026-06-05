@@ -2664,10 +2664,10 @@ test "WGSL AST lowerer lazily materializes return short-circuit branches in Naga
     emitted.contains("if _e55 {\n            local_4 = (min_dist == right);"),
     content="true",
   )
-  debug_inspect(emitted.contains("return local_5;"), content="true")
+  debug_inspect(emitted.contains("return local_5;"), content="false")
   debug_inspect(
     emitted.contains("let _e76: bool = local_5;\n    return _e76;"),
-    content="false",
+    content="true",
   )
 }
 

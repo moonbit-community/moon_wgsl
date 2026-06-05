@@ -123,6 +123,25 @@ fn WgslIrEmitter::emit_statement(
         if function_plan.contains_temporary_initializer_expression(handle) {
           continue
         }
+        if function_plan.contains_materialized_expression(handle) {
+          if self.emitted_function_materialized_expressions.contains(
+              handle.index(),
+            ) {
+            continue
+          }
+          self.emitted_function_materialized_expressions.add(handle.index())
+          let ty = match self.expression_type(Some(function), handle) {
+            Some(value) => value
+            None =>
+              raise MissingHandle(
+                "materialized expression type \{handle.index()}",
+              )
+          }
+          out.write_string(
+            "\{pad}let \{self.function_expression_temporary_name(handle)}: \{self.type_name(ty)} = \{self.function_expression_inline(function, handle)};\n",
+          )
+          continue
+        }
         let expr = self.function_expression(function, handle)
         if self.expression_type(Some(function), handle) == None &&
           self.function_expression_emits_standalone_statement(function, handle) {

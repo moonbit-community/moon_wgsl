@@ -152,5 +152,6 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
     current_function_origin: self.current_function_origin,
     naga_compatible_negative_zero_seen: self.naga_compatible_negative_zero_seen,
     emitted_function_named_expressions: self.emitted_function_named_expressions,
+    emitted_function_materialized_expressions: self.emitted_function_materialized_expressions,
   }
 }

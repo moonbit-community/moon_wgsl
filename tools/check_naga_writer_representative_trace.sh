@@ -215,23 +215,36 @@ normalize_moon_bindings() {
 }
 
 normalize_oracle_materialized() {
-  local inventory="$1"
+  local wgsl="$1"
   local function_prefix="$2"
   local output="$3"
-  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
-  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
-  active && $1 == "helper-temp" {
-    expression = field_value($0, "expression")
-    temp = field_value($0, "temp")
-    print "materialized\t" expression "\ttemp=" temp
+  awk -v function_prefix="$function_prefix" '
+  $0 ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(") {
+    active = 1
+    depth = 0
   }
-  function field_value(row, key, text) {
-    text = row
-    sub("^.*\t" key "=", "", text)
-    sub(/\t.*$/, "", text)
-    return text
+  active {
+    for (i = 1; i <= length($0); i = i + 1) {
+      ch = substr($0, i, 1)
+      if (ch == "{") {
+        depth = depth + 1
+      } else if (ch == "}") {
+        depth = depth - 1
+      }
+    }
+    if ($0 ~ /^[ ]*let _e[0-9]+:/) {
+      temp = $0
+      sub(/^[ ]*let /, "", temp)
+      sub(/:.*/, "", temp)
+      expression = temp
+      sub(/^_e/, "", expression)
+      print "materialized\t" expression "\ttemp=" temp
+    }
+    if (depth == 0 && $0 ~ /}/) {
+      active = 0
+    }
   }
-' "$inventory" > "$output"
+' "$wgsl" > "$output"
 }
 
 normalize_moon_materialized() {
@@ -248,21 +261,36 @@ normalize_moon_materialized() {
 }
 
 normalize_oracle_helper_temps() {
-  local inventory="$1"
+  local wgsl="$1"
   local function_prefix="$2"
   local output="$3"
-  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
-  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
-  active && $1 == "helper-temp" {
-    print "helper-temp\t" count++ "\texpression=" field_value($0, "expression") "\ttemp=" field_value($0, "temp")
+  awk -v function_prefix="$function_prefix" '
+  $0 ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(") {
+    active = 1
+    depth = 0
   }
-  function field_value(row, key, text) {
-    text = row
-    sub("^.*\t" key "=", "", text)
-    sub(/\t.*$/, "", text)
-    return text
+  active {
+    for (i = 1; i <= length($0); i = i + 1) {
+      ch = substr($0, i, 1)
+      if (ch == "{") {
+        depth = depth + 1
+      } else if (ch == "}") {
+        depth = depth - 1
+      }
+    }
+    if ($0 ~ /^[ ]*let _e[0-9]+:/) {
+      temp = $0
+      sub(/^[ ]*let /, "", temp)
+      sub(/:.*/, "", temp)
+      expression = temp
+      sub(/^_e/, "", expression)
+      print "helper-temp\t" count++ "\texpression=" expression "\ttemp=" temp
+    }
+    if (depth == 0 && $0 ~ /}/) {
+      active = 0
+    }
   }
-' "$inventory" > "$output"
+' "$wgsl" > "$output"
 }
 
 normalize_moon_helper_temps() {
@@ -530,9 +558,9 @@ run_case() {
   normalize_moon_trace "$case_dir/moon.trace" "$case_dir/moon.expression-order"
   normalize_oracle_bindings "$case_dir/oracle.inventory" "$case_dir/oracle.wgsl" "$function_prefix" "$case_dir/oracle.bindings"
   normalize_moon_bindings "$case_dir/moon.trace" "$case_dir/moon.bindings"
-  normalize_oracle_materialized "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.materialized"
+  normalize_oracle_materialized "$case_dir/oracle.wgsl" "$function_prefix" "$case_dir/oracle.materialized"
   normalize_moon_materialized "$case_dir/moon.trace" "$case_dir/moon.materialized"
-  normalize_oracle_helper_temps "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.helper-temps"
+  normalize_oracle_helper_temps "$case_dir/oracle.wgsl" "$function_prefix" "$case_dir/oracle.helper-temps"
   normalize_moon_helper_temps "$case_dir/moon.trace" "$case_dir/moon.helper-temps"
   normalize_oracle_local_declarations "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.local-declarations"
   normalize_moon_local_declarations "$case_dir/moon.trace" "$case_dir/moon.local-declarations"

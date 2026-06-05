@@ -211,5 +211,6 @@ fn WgslIrEmitter::with_function_origin(
     current_function_origin: Some(origin),
     naga_compatible_negative_zero_seen: self.naga_compatible_negative_zero_seen,
     emitted_function_named_expressions: Set([]),
+    emitted_function_materialized_expressions: Set([]),
   }
 }

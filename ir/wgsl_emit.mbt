@@ -53,4 +53,5 @@ priv struct WgslIrEmitter {
   current_function_origin : WgslIrEmitFunctionOrigin?
   mut naga_compatible_negative_zero_seen : Bool
   emitted_function_named_expressions : @set.Set[Int]
+  emitted_function_materialized_expressions : @set.Set[Int]
 }

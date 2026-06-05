@@ -1453,9 +1453,6 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
   if wgsl_ir_function_expression_has_arena_name(function, value) {
     return false
   }
-  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
-    return false
-  }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
       function, value,
     ) {
@@ -1490,9 +1487,6 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   if wgsl_ir_function_expression_has_arena_name(function, value) {
     return false
   }
-  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
-    return false
-  }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
       function, value,
     ) {
@@ -1525,25 +1519,6 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   }
   should_materialize &&
   self.function_expression_can_materialize_to_let(function, value)
-}
-
-///|
-fn wgsl_ir_function_expression_is_short_circuit_result_load(
-  function : Function,
-  value : Handle,
-) -> Bool {
-  match function.expressions.items.get(value.index()) {
-    Some(Load(pointer)) =>
-      match function.expressions.items.get(pointer.index()) {
-        Some(LocalVariable(local_handle)) =>
-          match function.local_variables.items.get(local_handle.index()) {
-            Some(local_var) => local_var.short_circuit_result
-            None => false
-          }
-        _ => false
-      }
-    _ => false
-  }
 }
 
 ///|
@@ -1629,9 +1604,6 @@ fn WgslIrLowerer::function_expression_should_materialize_as_call_argument(
   value : Handle,
 ) -> Bool {
   if wgsl_ir_function_expression_has_arena_name(function, value) {
-    return false
-  }
-  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
     return false
   }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
@@ -1829,9 +1801,6 @@ fn WgslIrLowerer::function_expression_can_return_directly(
   value : Handle,
 ) -> Bool {
   if wgsl_ir_function_expression_has_arena_name(function, value) {
-    return true
-  }
-  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
     return true
   }
   match function.expressions.items.get(value.index()) {

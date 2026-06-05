@@ -52,5 +52,6 @@ fn WgslIrNagaOilWriterBackend::emitter(
     current_function_origin: None,
     naga_compatible_negative_zero_seen: false,
     emitted_function_named_expressions: Set([]),
+    emitted_function_materialized_expressions: Set([]),
   }
 }

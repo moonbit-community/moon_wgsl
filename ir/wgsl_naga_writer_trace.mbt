@@ -348,11 +348,7 @@ fn wgsl_ir_naga_writer_body_plan_trace(
       Some(value) => value
       None => "-"
     }
-    let materialized = wgsl_ir_trace_expression_is_call_result_materialized(
-      function.expressions.items[index],
-      function_plan,
-      handle,
-    )
+    let materialized = function_plan.contains_materialized_expression(handle)
     let materialized_reason = wgsl_ir_trace_expression_materialization_reason(
       function.expressions.items[index],
       function_plan,
@@ -383,10 +379,12 @@ fn wgsl_ir_naga_writer_body_plan_trace(
     if wgsl_ir_trace_statement_is_not_naga_raw_body_row(function, statement) {
       continue
     }
-    out.write_string(
-      "raw-statement\t\{label}\t\{raw_statement_index}\t\{wgsl_ir_trace_raw_statement_kind(function, statement)}\n",
-    )
-    raw_statement_index = raw_statement_index + 1
+    for kind in wgsl_ir_trace_raw_statement_kinds(function, statement) {
+      out.write_string(
+        "raw-statement\t\{label}\t\{raw_statement_index}\t\{kind}\n",
+      )
+      raw_statement_index = raw_statement_index + 1
+    }
   }
   let local_declaration_order = function_plan.local_declaration_order()
   for order_index in 0..<local_declaration_order.length() {
@@ -409,19 +407,6 @@ fn wgsl_ir_naga_writer_body_plan_trace(
     )
   }
   out.to_string()
-}
-
-///|
-fn wgsl_ir_trace_expression_is_call_result_materialized(
-  expression : Expression,
-  function_plan : NagaCompatFunctionPlan,
-  handle : Handle,
-) -> Bool {
-  match expression {
-    CallResult(_) | AtomicResult(_, _) =>
-      function_plan.contains_materialized_expression(handle)
-    _ => false
-  }
 }
 
 ///|
@@ -510,22 +495,83 @@ fn wgsl_ir_trace_expression_kind(expression : Expression) -> String {
 }
 
 ///|
-fn wgsl_ir_trace_raw_statement_kind(
+fn wgsl_ir_trace_raw_statement_kinds(
   function : Function,
   statement : Statement,
-) -> String {
+) -> Array[String] {
   match statement {
     Declare(handle) =>
       if wgsl_ir_trace_declare_is_short_circuit_result_load(function, handle) {
         match function.local_variables.items.get(handle.index()) {
           Some({ init: Some(init), .. }) =>
-            "Emit(\{init.index()}..\{init.index()})"
-          _ => wgsl_ir_trace_statement_kind(statement)
+            ["Emit(\{init.index()}..\{init.index()})"]
+          _ => [wgsl_ir_trace_statement_kind(statement)]
         }
       } else {
-        wgsl_ir_trace_statement_kind(statement)
+        [wgsl_ir_trace_statement_kind(statement)]
       }
-    _ => wgsl_ir_trace_statement_kind(statement)
+    Emit(range) => wgsl_ir_trace_emit_range_statement_kinds(function, range)
+    _ => [wgsl_ir_trace_statement_kind(statement)]
+  }
+}
+
+///|
+fn wgsl_ir_trace_emit_range_statement_kinds(
+  function : Function,
+  range : HandleRange,
+) -> Array[String] {
+  let rows : Array[String] = []
+  let mut start : Int? = None
+  let mut end : Int? = None
+  for index in range.start.index()..<=range.end.index() {
+    if wgsl_ir_trace_expression_has_raw_short_circuit_temporary_owner(
+        function,
+        Handle::Handle(index),
+      ) {
+      wgsl_ir_trace_flush_emit_statement_range(rows, start, end)
+      start = None
+      end = None
+    } else {
+      if start == None {
+        start = Some(index)
+      }
+      end = Some(index)
+    }
+  }
+  wgsl_ir_trace_flush_emit_statement_range(rows, start, end)
+  rows
+}
+
+///|
+fn wgsl_ir_trace_expression_has_raw_short_circuit_temporary_owner(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  for local_index in 0..<function.local_variables.items.length() {
+    let local_handle = Handle::Handle(local_index)
+    match function.local_variables.items.get(local_index) {
+      Some({ generated_temporary: true, init: Some(init), .. }) =>
+        if init == handle &&
+          wgsl_ir_trace_declare_is_short_circuit_result_load(
+            function, local_handle,
+          ) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_trace_flush_emit_statement_range(
+  rows : Array[String],
+  start : Int?,
+  end : Int?,
+) -> Unit {
+  match (start, end) {
+    (Some(first), Some(last)) => rows.push("Emit(\{first}..\{last})")
+    _ => ()
   }
 }
 
