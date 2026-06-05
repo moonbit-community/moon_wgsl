@@ -2252,7 +2252,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     init: None,
   })
   block.push(Declare(handle))
-  let predeclare_pointer = wgsl_ir_local_var_store_initializer_predeclares_pointer(
+  let predeclare_pointer = self.local_var_store_initializer_predeclares_pointer(
     local_decl, scope,
   )
   let mut pointer : Handle? = if predeclare_pointer {
@@ -2324,14 +2324,16 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
 }
 
 ///|
-fn wgsl_ir_local_var_store_initializer_predeclares_pointer(
+fn WgslIrLowerer::local_var_store_initializer_predeclares_pointer(
+  self : WgslIrLowerer,
   local_decl : @ast.WgslLocalDeclaration,
   scope : WgslIrFunctionScope,
-) -> Bool {
+) -> Bool raise WgslIrLowerError {
   match local_decl.initializer_ref() {
     Some(expr_ref) =>
       match expr_ref.root() {
         Some(root) =>
+          self.expression_node_is_const_initializer(root) ||
           wgsl_ir_expr_node_is_direct_function_argument_value(root, scope)
         None => false
       }

@@ -2806,6 +2806,48 @@ test "WGSL AST lowerer preserves nested var const initializer execution site" {
 }
 
 ///|
+test "WGSL AST lowerer schedules runtime const var store pointer before initializer" {
+  let source =
+    #|fn runtime_const_var_store_pointer_order(count: u32) -> f32 {
+    #|  var total: f32 = 0.0;
+    #|  for (var i: u32 = 0u; i < count; i = i + 1u) {
+    #|    var shadow: f32 = 1.0;
+    #|    total = total + shadow;
+    #|  }
+    #|  return total;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut shadow_local = -1
+  for index, local_var in function.local_variables.items {
+    match local_var.name {
+      Some("shadow") => shadow_local = index
+      _ => ()
+    }
+  }
+  let mut pointer_index = -1
+  let mut literal_index = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      LocalVariable(handle) =>
+        if handle.index() == shadow_local && pointer_index == -1 {
+          pointer_index = index
+        }
+      Literal(AbstractFloat(value)) =>
+        if value == 1.0 && pointer_index != -1 && literal_index == -1 {
+          literal_index = index
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(shadow_local >= 0, content="true")
+  debug_inspect(pointer_index >= 0, content="true")
+  debug_inspect(literal_index > pointer_index, content="true")
+}
+
+///|
 test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
   let source =
     #|fn nested_if_var_init(flag: bool) -> f32 {
