@@ -499,6 +499,10 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         wgsl_ir_expr_node_references_local_let_constant(node, scope) {
         return handle
       }
+      if scope.compound_assignment_rhs_depth > 0 &&
+        wgsl_ir_expr_node_references_local_let_constant(node, scope) {
+        return handle
+      }
       match self.fold_function_constant_float_expression(function, handle) {
         Some(literal) => {
           function.expressions.truncate(expression_mark)

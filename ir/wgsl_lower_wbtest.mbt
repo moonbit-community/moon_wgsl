@@ -3173,6 +3173,50 @@ test "WGSL AST lowerer keeps literal-only let aliases lazy until use" {
 }
 
 ///|
+test "WGSL AST lowerer preserves source let products before compound call RHS" {
+  let source =
+    #|fn sample(value: f32) -> f32 {
+    #|  return value;
+    #|}
+    #|
+    #|fn probe(value: f32) -> f32 {
+    #|  let a = 7.0;
+    #|  let b = 7.0;
+    #|  var sum = 0.0;
+    #|  sum += a * b * sample(value);
+    #|  return sum;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut product = -1
+  let mut call_result = -1
+  let mut folded_product = false
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Literal(AbstractFloat(value)) if value == 49.0 => folded_product = true
+      Binary(Multiply, left, right) if product == -1 =>
+        match
+          (
+            function.expressions.items.get(left.index()),
+            function.expressions.items.get(right.index()),
+          ) {
+          (Some(Literal(AbstractFloat(7.0))), Some(Literal(AbstractFloat(7.0)))) =>
+            product = expression_index
+          _ => ()
+        }
+      FunctionCall(_, _) | CallResult(_) if call_result == -1 =>
+        call_result = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(product >= 0, content="true")
+  debug_inspect(call_result > product, content="true")
+  debug_inspect(folded_product, content="false")
+}
+
+///|
 test "WGSL AST lowerer lowers later math access before deferred first literal" {
   let source =
     #|struct View {

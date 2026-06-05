@@ -84,6 +84,12 @@ fn ExpressionArenaScheduler::binary_lowers_right_before_left(
       self.scope,
     )
   }
+  if self.scope.compound_assignment_rhs_depth > 0 &&
+    wgsl_ir_ast_binary_operator_is_multiplicative(op) &&
+    self.lowerer.expression_node_is_naga_deferred_const_like(left, self.scope) &&
+    wgsl_ir_expr_node_contains_non_math_call(right) {
+    return false
+  }
   if self.lowerer.expression_node_is_naga_deferred_const_like(left, self.scope) {
     return wgsl_ir_ast_binary_operator_is_multiplicative(op) &&
       !self.lowerer.expression_node_is_mutable_local_value(

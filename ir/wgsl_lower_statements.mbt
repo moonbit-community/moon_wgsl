@@ -879,6 +879,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           let materialized_target = self.materialize_function_expression(
             function, scope, block, target_value,
           )
+          scope.compound_assignment_rhs_depth += 1
           let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
             rhs_ref,
             function,
@@ -886,6 +887,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             block,
             None,
           )
+          scope.compound_assignment_rhs_depth -= 1
           let rhs_value = self.materialize_store_value_if_needed(
             function, scope, block, rhs_value,
           )
@@ -1376,11 +1378,13 @@ fn WgslIrLowerer::lower_for_header_statement(
           let materialized_target = self.materialize_function_expression(
             function, scope, block, target_value,
           )
+          scope.compound_assignment_rhs_depth += 1
           let rhs_value = self.lower_function_expression_node(
             wgsl_ir_expr_node_from_tokens(rhs_tokens),
             function,
             scope,
           )
+          scope.compound_assignment_rhs_depth -= 1
           let rhs_value = self.materialize_store_value_if_needed(
             function, scope, block, rhs_value,
           )
