@@ -166,7 +166,7 @@ fn WgslIrLowerer::materialize_function_expression(
       }
       let comparison = atomic_function == CompareExchangeWeak
       function.expressions.set(value, AtomicResult(result_ty, comparison))
-      wgsl_ir_push_naga_statement_emit_ranges(
+      BodyEmissionPlanner::push_statement_emit_ranges(
         block,
         function,
         wgsl_ir_next_naga_statement_emit_mark(block),
@@ -580,9 +580,9 @@ fn WgslIrLowerer::materialize_return_subexpressions(
     }
     Some(Binary(op, left, right)) => {
       if wgsl_ir_binary_operator_is_short_circuit(op) {
-        return self.materialize_short_circuit_expression(
-          function, scope, block, value,
-        )
+        return self
+          .short_circuit_planner(function, scope, block)
+          .materialize_value_handle(value)
       }
       let lowered_left = self.materialize_nested_return_argument(
         function, scope, block, left,
@@ -998,347 +998,6 @@ fn WgslIrLowerer::materialize_return_subexpressions(
 }
 
 ///|
-fn WgslIrLowerer::materialize_short_circuit_expression(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  value : Handle,
-) -> Handle raise WgslIrLowerError {
-  guard function.expressions.items.get(value.index())
-    is Some(Binary(op, left, right)) else {
-    return value
-  }
-  guard wgsl_ir_binary_operator_is_short_circuit(op) else { return value }
-  let ty = match self.function_expression_type(function, value) {
-    Some(ty) => ty
-    None =>
-      raise MissingType(
-        "materialized short-circuit expression \{value.index()}: boolean expression",
-      )
-  }
-  let mut result_ptr : Handle? = None
-  match op {
-    LogicalAnd => {
-      let condition = self.materialize_short_circuit_condition(
-        function, scope, block, left,
-      )
-      let local_ptr = self.append_short_circuit_result_local(
-        function, block, ty,
-      )
-      result_ptr = Some(local_ptr)
-      let accept = Block::Block()
-      let reject = Block::Block()
-      let right_value = self.materialize_short_circuit_branch_value(
-        function, scope, accept, right,
-      )
-      accept.push(Store(local_ptr, right_value))
-      reject.push(
-        Store(local_ptr, function.expressions.append(Literal(Bool(false)))),
-      )
-      block.push(If(condition, accept, reject))
-    }
-    LogicalOr => {
-      let condition = self.materialize_short_circuit_condition(
-        function, scope, block, left,
-      )
-      let inverted = function.expressions.append(Unary(LogicalNot, condition))
-      let local_ptr = self.append_short_circuit_result_local(
-        function, block, ty,
-      )
-      result_ptr = Some(local_ptr)
-      let accept = Block::Block()
-      let reject = Block::Block()
-      let right_value = self.materialize_short_circuit_branch_value(
-        function, scope, accept, right,
-      )
-      accept.push(Store(local_ptr, right_value))
-      reject.push(
-        Store(local_ptr, function.expressions.append(Literal(Bool(true)))),
-      )
-      block.push(If(inverted, accept, reject))
-    }
-    _ => ()
-  }
-  match result_ptr {
-    Some(local_ptr) => function.expressions.append(Load(local_ptr))
-    _ =>
-      raise UnsupportedExpression("short-circuit result local was not emitted")
-  }
-}
-
-///|
-fn WgslIrLowerer::materialize_short_circuit_expression_node(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  node : @ast.WgslExprNode,
-) -> Handle raise WgslIrLowerError {
-  guard node.kind() is Binary(ast_op, left, right) else {
-    let value = self.lower_function_expression_node(node, function, scope)
-    return self.materialize_return_expression_if_needed(
-      function, scope, block, value,
-    )
-  }
-  let op = wgsl_ir_binary_operator(ast_op)
-  guard wgsl_ir_binary_operator_is_short_circuit(op) else {
-    let value = self.lower_function_expression_node(node, function, scope)
-    return self.materialize_return_expression_if_needed(
-      function, scope, block, value,
-    )
-  }
-  let ty = self.scalar_type_handle(Scalar(Bool, 1))
-  match op {
-    LogicalAnd => {
-      let left_is_short_circuit = wgsl_ir_expr_node_is_short_circuit_binary(
-        left,
-      )
-      let condition_mark = function.expressions.items.length()
-      let condition = self.materialize_short_circuit_condition_node(
-        function, scope, block, left,
-      )
-      if !left_is_short_circuit {
-        wgsl_ir_push_naga_statement_emit_ranges(
-          block, function, condition_mark, condition,
-        )
-      }
-      let local_handle = self.allocate_short_circuit_result_local(function, ty)
-      let accept = Block::Block()
-      let reject = Block::Block()
-      let right_value = self.materialize_short_circuit_branch_node(
-        function, scope, accept, right,
-      )
-      let local_ptr = self.append_short_circuit_result_local_pointer(
-        function, block, local_handle,
-      )
-      accept.push(Store(local_ptr, right_value))
-      reject.push(
-        Store(local_ptr, function.expressions.append(Literal(Bool(false)))),
-      )
-      block.push(If(condition, accept, reject))
-      let result = self.append_short_circuit_result_load(function, local_ptr)
-      self.materialize_function_expression(function, scope, block, result)
-    }
-    LogicalOr => {
-      let left_is_short_circuit = wgsl_ir_expr_node_is_short_circuit_binary(
-        left,
-      )
-      let condition_mark = function.expressions.items.length()
-      let condition = self.materialize_short_circuit_condition_node(
-        function, scope, block, left,
-      )
-      let inverted = function.expressions.append(Unary(LogicalNot, condition))
-      if !left_is_short_circuit {
-        wgsl_ir_push_naga_statement_emit_ranges(
-          block, function, condition_mark, inverted,
-        )
-      } else {
-        block.push(Emit(HandleRange(inverted, inverted)))
-      }
-      let local_handle = self.allocate_short_circuit_result_local(function, ty)
-      let accept = Block::Block()
-      let reject = Block::Block()
-      let right_value = self.materialize_short_circuit_branch_node(
-        function, scope, accept, right,
-      )
-      let local_ptr = self.append_short_circuit_result_local_pointer(
-        function, block, local_handle,
-      )
-      accept.push(Store(local_ptr, right_value))
-      reject.push(
-        Store(local_ptr, function.expressions.append(Literal(Bool(true)))),
-      )
-      block.push(If(inverted, accept, reject))
-      let result = self.append_short_circuit_result_load(function, local_ptr)
-      self.materialize_function_expression(function, scope, block, result)
-    }
-    _ => raise UnsupportedExpression("expected short-circuit operator")
-  }
-}
-
-///|
-fn WgslIrLowerer::materialize_short_circuit_condition_node(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  node : @ast.WgslExprNode,
-) -> Handle raise WgslIrLowerError {
-  if wgsl_ir_expr_node_is_short_circuit_binary(node) {
-    let lowered = self.materialize_short_circuit_expression_node(
-      function, scope, block, node,
-    )
-    if self.function_expression_should_materialize_as_nested_value(
-        function, lowered,
-      ) {
-      self.materialize_function_expression(function, scope, block, lowered)
-    } else {
-      lowered
-    }
-  } else {
-    let value = self.lower_function_expression_node(node, function, scope)
-    self.materialize_short_circuit_condition(function, scope, block, value)
-  }
-}
-
-///|
-fn WgslIrLowerer::materialize_short_circuit_branch_node(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  node : @ast.WgslExprNode,
-) -> Handle raise WgslIrLowerError {
-  if wgsl_ir_expr_node_is_short_circuit_binary(node) {
-    let lowered = self.materialize_short_circuit_expression_node(
-      function, scope, block, node,
-    )
-    if self.function_expression_should_materialize_as_nested_value(
-        function, lowered,
-      ) {
-      self.materialize_function_expression(function, scope, block, lowered)
-    } else {
-      lowered
-    }
-  } else {
-    let value = self.lower_function_expression_node(node, function, scope)
-    self.materialize_short_circuit_branch_value(function, scope, block, value)
-  }
-}
-
-///|
-fn WgslIrLowerer::append_short_circuit_result_load(
-  self : WgslIrLowerer,
-  function : Function,
-  local_ptr : Handle,
-) -> Handle raise WgslIrLowerError {
-  ignore(self)
-  match function.expressions.items.get(local_ptr.index()) {
-    Some(LocalVariable(local_handle)) => {
-      let load_ptr = function.expressions.append(LocalVariable(local_handle))
-      function.expressions.append(Load(load_ptr))
-    }
-    _ =>
-      raise UnsupportedExpression(
-        "short-circuit result pointer is not a local variable",
-      )
-  }
-}
-
-///|
-fn WgslIrLowerer::allocate_short_circuit_result_local(
-  self : WgslIrLowerer,
-  function : Function,
-  ty : Handle,
-) -> Handle {
-  ignore(self)
-  function.local_variables.append({
-    name: Some("local"),
-    kind: Var,
-    generated_temporary: false,
-    generated_temporary_store_value_reference: false,
-    short_circuit_result: true,
-    ty,
-    init: None,
-  })
-}
-
-///|
-fn WgslIrLowerer::append_short_circuit_result_local_pointer(
-  self : WgslIrLowerer,
-  function : Function,
-  block : Block,
-  local_handle : Handle,
-) -> Handle {
-  ignore(self)
-  block.push(Declare(local_handle))
-  function.expressions.append(LocalVariable(local_handle))
-}
-
-///|
-fn WgslIrLowerer::append_short_circuit_result_local(
-  self : WgslIrLowerer,
-  function : Function,
-  block : Block,
-  ty : Handle,
-) -> Handle {
-  ignore(self)
-  let local_handle = function.local_variables.append({
-    name: Some("local"),
-    kind: Var,
-    generated_temporary: false,
-    generated_temporary_store_value_reference: false,
-    short_circuit_result: true,
-    ty,
-    init: None,
-  })
-  block.push(Declare(local_handle))
-  function.expressions.append(LocalVariable(local_handle))
-}
-
-///|
-fn WgslIrLowerer::materialize_short_circuit_condition(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  value : Handle,
-) -> Handle raise WgslIrLowerError {
-  match function.expressions.items.get(value.index()) {
-    Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) => {
-      let lowered = self.materialize_short_circuit_expression(
-        function, scope, block, value,
-      )
-      if self.function_expression_should_materialize_as_nested_value(
-          function, lowered,
-        ) {
-        self.materialize_function_expression(function, scope, block, lowered)
-      } else {
-        lowered
-      }
-    }
-    _ => {
-      let normalized = self.materialize_return_subexpressions(
-        function, scope, block, value,
-      )
-      if self.function_expression_should_materialize_as_nested_value(
-          function, normalized,
-        ) {
-        self.materialize_function_expression(function, scope, block, normalized)
-      } else {
-        normalized
-      }
-    }
-  }
-}
-
-///|
-fn WgslIrLowerer::materialize_short_circuit_branch_value(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  value : Handle,
-) -> Handle raise WgslIrLowerError {
-  match function.expressions.items.get(value.index()) {
-    Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) => {
-      let lowered = self.materialize_short_circuit_expression(
-        function, scope, block, value,
-      )
-      if self.function_expression_should_materialize_as_nested_value(
-          function, lowered,
-        ) {
-        self.materialize_function_expression(function, scope, block, lowered)
-      } else {
-        lowered
-      }
-    }
-    _ => self.materialize_store_value_if_needed(function, scope, block, value)
-  }
-}
-
-///|
 fn WgslIrLowerer::materialize_pointer_subexpressions(
   self : WgslIrLowerer,
   function : Function,
@@ -1431,6 +1090,8 @@ fn wgsl_ir_binary_operator_is_short_circuit(op : BinaryOperator) -> Bool {
 fn wgsl_ir_expr_node_is_short_circuit_binary(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Binary(op, _, _) => op == LogicalAnd || op == LogicalOr
+    Group(inner) | Template(inner, _) =>
+      wgsl_ir_expr_node_is_short_circuit_binary(inner)
     _ => false
   }
 }
@@ -1792,6 +1453,9 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
   if wgsl_ir_function_expression_has_arena_name(function, value) {
     return false
   }
+  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
+    return false
+  }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
       function, value,
     ) {
@@ -1826,6 +1490,9 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   if wgsl_ir_function_expression_has_arena_name(function, value) {
     return false
   }
+  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
+    return false
+  }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
       function, value,
     ) {
@@ -1858,6 +1525,25 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
   }
   should_materialize &&
   self.function_expression_can_materialize_to_let(function, value)
+}
+
+///|
+fn wgsl_ir_function_expression_is_short_circuit_result_load(
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match function.expressions.items.get(value.index()) {
+    Some(Load(pointer)) =>
+      match function.expressions.items.get(pointer.index()) {
+        Some(LocalVariable(local_handle)) =>
+          match function.local_variables.items.get(local_handle.index()) {
+            Some(local_var) => local_var.short_circuit_result
+            None => false
+          }
+        _ => false
+      }
+    _ => false
+  }
 }
 
 ///|
@@ -1943,6 +1629,9 @@ fn WgslIrLowerer::function_expression_should_materialize_as_call_argument(
   value : Handle,
 ) -> Bool {
   if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return false
+  }
+  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
     return false
   }
   if wgsl_ir_function_expression_is_projection_of_generated_temporary(
@@ -2140,6 +1829,9 @@ fn WgslIrLowerer::function_expression_can_return_directly(
   value : Handle,
 ) -> Bool {
   if wgsl_ir_function_expression_has_arena_name(function, value) {
+    return true
+  }
+  if wgsl_ir_function_expression_is_short_circuit_result_load(function, value) {
     return true
   }
   match function.expressions.items.get(value.index()) {

@@ -72,9 +72,9 @@ fn WgslIrLowerer::lower_control_flow_condition_ref(
 ) -> Handle raise WgslIrLowerError {
   match expr_ref.root() {
     Some(root) if wgsl_ir_expr_node_is_short_circuit_binary(root) =>
-      self.materialize_short_circuit_expression_node(
-        function, scope, block, root,
-      )
+      self
+      .short_circuit_planner(function, scope, block)
+      .materialize_value_node(root)
     _ => {
       let handle = self.lower_function_expression_ref(expr_ref, function, scope)
       self.materialize_control_flow_condition_if_needed(
@@ -94,9 +94,9 @@ fn WgslIrLowerer::materialize_control_flow_condition_if_needed(
 ) -> Handle raise WgslIrLowerError {
   match function.expressions.items.get(value.index()) {
     Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) =>
-      return self.materialize_short_circuit_condition(
-        function, scope, block, value,
-      )
+      return self
+        .short_circuit_planner(function, scope, block)
+        .materialize_condition_handle(value)
     _ => ()
   }
   let normalized = self.materialize_control_flow_condition_subexpressions(
@@ -121,9 +121,9 @@ fn WgslIrLowerer::materialize_for_loop_condition_if_needed(
 ) -> Handle raise WgslIrLowerError {
   match function.expressions.items.get(value.index()) {
     Some(Binary(op, _, _)) if wgsl_ir_binary_operator_is_short_circuit(op) =>
-      return self.materialize_short_circuit_condition(
-        function, scope, block, value,
-      )
+      return self
+        .short_circuit_planner(function, scope, block)
+        .materialize_condition_handle(value)
     _ => ()
   }
   let normalized = self.materialize_return_subexpressions(

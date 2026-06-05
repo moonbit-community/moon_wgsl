@@ -411,31 +411,31 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             Some(result) => Some(result.ty)
             None => None
           }
-          guard expr_ref.root() is Some(root) else {
+          guard expr_ref.root() is Some(_) else {
             raise UnsupportedExpression("empty return expression")
           }
-          let handle = if wgsl_ir_expr_node_is_short_circuit_binary(root) {
-            let handle = self.materialize_short_circuit_expression_node(
-              function, scope, block, root,
-            )
-            self.materialize_return_expression_if_needed(
-              function, scope, block, handle,
-            )
-          } else {
-            let handle = self.lower_function_expression_ref_with_expected(
-              expr_ref, function, scope, expected_ty,
-            )
-            self.materialize_return_expression_if_needed(
-              function, scope, block, handle,
-            )
+          let handle = match expr_ref.root() {
+            Some(root) if wgsl_ir_expr_node_is_short_circuit_binary(root) =>
+              self
+              .short_circuit_planner(function, scope, block)
+              .materialize_return_value_node(root)
+            _ =>
+              self.lower_expression_ref_with_materialized_short_circuit_inputs(
+                expr_ref, function, scope, block, expected_ty,
+              )
           }
+          let handle = self.materialize_return_expression_if_needed(
+            function, scope, block, handle,
+          )
           if wgsl_ir_return_expression_should_emit_before_return(
               function, expression_mark, handle,
             ) {
-            wgsl_ir_push_naga_named_expression_emit_ranges(
+            BodyEmissionPlanner::push_named_expression_emit_ranges(
               block, function, expression_mark, handle,
             )
-          } else if !wgsl_ir_block_contains_expression_emit(block, handle) &&
+          } else if !BodyEmissionPlanner::block_contains_expression_emit(
+              block, handle,
+            ) &&
             !wgsl_ir_function_expression_is_naga_emit_leaf(function, handle) {
             block.push(Emit(HandleRange(handle, handle)))
           }
@@ -472,7 +472,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         None => false
       }
       if !condition_emitted_by_short_circuit {
-        wgsl_ir_push_naga_statement_emit_ranges(
+        BodyEmissionPlanner::push_statement_emit_ranges(
           block, function, expression_mark, condition_handle,
         )
       }
@@ -524,8 +524,12 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           self.lower_call_statement(rhs_ref, function, scope, block)
           return
         }
-        let rhs_value = self.lower_function_expression_ref(
-          rhs_ref, function, scope,
+        let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
+          rhs_ref,
+          function,
+          scope,
+          block,
+          None,
         )
         block.push(Phony(rhs_value))
         return
@@ -555,8 +559,12 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           let materialized_target = self.materialize_function_expression(
             function, scope, block, target_value,
           )
-          let rhs_value = self.lower_function_expression_ref(
-            rhs_ref, function, scope,
+          let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
+            rhs_ref,
+            function,
+            scope,
+            block,
+            None,
           )
           let rhs_value = self.materialize_store_value_if_needed(
             function, scope, block, rhs_value,
@@ -571,8 +579,12 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         }
         None =>
           if wgsl_ir_expr_ref_plain_local_identifier(lhs_ref, scope) {
-            let rhs_value = self.lower_function_expression_ref(
-              rhs_ref, function, scope,
+            let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
+              rhs_ref,
+              function,
+              scope,
+              block,
+              None,
             )
             let raw_target = self.lower_function_lvalue_ref(
               lhs_ref, function, scope,
@@ -591,8 +603,12 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             let target = self.materialize_store_pointer_if_needed(
               function, scope, block, raw_target,
             )
-            let rhs_value = self.lower_function_expression_ref(
-              rhs_ref, function, scope,
+            let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
+              rhs_ref,
+              function,
+              scope,
+              block,
+              None,
             )
             let value = self.materialize_store_value_for_pointer_if_needed(
               function, scope, block, target, rhs_value,
@@ -601,7 +617,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           }
       }
       wgsl_ir_record_store_value_temporary_references(function, value)
-      wgsl_ir_push_naga_statement_emit_ranges(
+      BodyEmissionPlanner::push_statement_emit_ranges(
         block,
         function,
         expression_mark,
@@ -664,7 +680,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           )
         [] => ()
       }
-      wgsl_ir_push_naga_statement_emit_ranges(
+      BodyEmissionPlanner::push_statement_emit_ranges(
         block, function, expression_mark, selector_handle,
       )
       block.push(Switch(selector_handle, cases))
@@ -1545,7 +1561,7 @@ fn WgslIrLowerer::lower_local_declaration(
           scope.local_constants.set(local_decl.name().name(), {
             value: ExpressionAlias(init_handle),
           })
-          wgsl_ir_push_naga_named_expression_emit_ranges(
+          BodyEmissionPlanner::push_named_expression_emit_ranges(
             block, function, expression_mark, init_handle,
           )
           return
@@ -1593,7 +1609,7 @@ fn WgslIrLowerer::lower_local_declaration(
           wgsl_ir_record_store_value_temporary_references(
             function, materialized,
           )
-          wgsl_ir_push_naga_statement_emit_ranges(
+          BodyEmissionPlanner::push_statement_emit_ranges(
             block, function, expression_mark, materialized,
           )
           block.push(
@@ -1906,8 +1922,8 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
       )
     }
     None =>
-      self.lower_function_expression_ref_with_expected(
-        expr_ref, function, scope, explicit_ty,
+      self.lower_expression_ref_with_materialized_short_circuit_inputs(
+        expr_ref, function, scope, block, explicit_ty,
       )
   }
   if pointer == None {
@@ -1953,7 +1969,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     function, scope, block, init,
   )
   wgsl_ir_record_store_value_temporary_references(function, materialized)
-  wgsl_ir_push_naga_statement_emit_ranges(
+  BodyEmissionPlanner::push_statement_emit_ranges(
     block, function, expression_mark, materialized,
   )
   block.push(Store(pointer, materialized))
@@ -2022,103 +2038,12 @@ fn wgsl_ir_function_expression_is_materialized_temporary(
 }
 
 ///|
-fn wgsl_ir_push_naga_named_expression_emit_ranges(
-  block : Block,
-  function : Function,
-  expression_mark : Int,
-  init_handle : Handle,
-) -> Unit {
-  wgsl_ir_push_naga_statement_emit_ranges(
-    block, function, expression_mark, init_handle,
-  )
-}
-
-///|
-fn wgsl_ir_push_naga_statement_emit_ranges(
-  block : Block,
-  function : Function,
-  expression_mark : Int,
-  init_handle : Handle,
-) -> Unit {
-  let mut range_start : Handle? = None
-  let mut range_end : Handle? = None
-  for index in expression_mark..<=init_handle.index() {
-    match function.expressions.items.get(index) {
-      Some(expression) =>
-        if wgsl_ir_expression_is_naga_emit_leaf(expression) {
-          wgsl_ir_flush_naga_named_expression_emit_range(
-            block, range_start, range_end,
-          )
-          range_start = None
-          range_end = None
-        } else {
-          let handle = Handle::Handle(index)
-          if range_start == None {
-            range_start = Some(handle)
-          }
-          range_end = Some(handle)
-        }
-      None => ()
-    }
-  }
-  wgsl_ir_flush_naga_named_expression_emit_range(block, range_start, range_end)
-}
-
-///|
 fn wgsl_ir_max_handle(left : Handle, right : Handle) -> Handle {
   if left.index() >= right.index() {
     left
   } else {
     right
   }
-}
-
-///|
-fn wgsl_ir_flush_naga_named_expression_emit_range(
-  block : Block,
-  range_start : Handle?,
-  range_end : Handle?,
-) -> Unit {
-  match (range_start, range_end) {
-    (Some(start), Some(end)) =>
-      if !wgsl_ir_block_contains_emit_range(block, start, end) {
-        block.push(Emit(HandleRange(start, end)))
-      }
-    _ => ()
-  }
-}
-
-///|
-fn wgsl_ir_block_contains_emit_range(
-  block : Block,
-  start : Handle,
-  end : Handle,
-) -> Bool {
-  for statement in block.statements {
-    match statement {
-      Emit(range) => if range.start == start && range.end == end { return true }
-      _ => ()
-    }
-  }
-  false
-}
-
-///|
-fn wgsl_ir_block_contains_expression_emit(
-  block : Block,
-  handle : Handle,
-) -> Bool {
-  for statement in block.statements {
-    match statement {
-      Emit(range) =>
-        if range.start.index() <= handle.index() &&
-          handle.index() <= range.end.index() {
-          return true
-        }
-      _ => ()
-    }
-  }
-  false
 }
 
 ///|

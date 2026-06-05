@@ -3,11 +3,11 @@ fn WgslIrEmitter::emit_block_statements(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   block : Block,
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
-  let plan = body_plan.statement_plan(function, block)
+  let plan = function_plan.statement_plan(function, block)
   let mut index = 0
   while index < plan.length() {
     let item = plan[index]
@@ -21,7 +21,7 @@ fn WgslIrEmitter::emit_block_statements(
     let consumed_next = self.emit_statement_with_following_context(
       out,
       function,
-      body_plan,
+      function_plan,
       item.statement,
       plan.get(index + 1),
       indent,
@@ -35,7 +35,7 @@ fn WgslIrEmitter::emit_statement_with_following_context(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   statement : Statement,
   following : WgslIrNagaStatementPlanItem?,
   indent : Int,
@@ -47,11 +47,11 @@ fn WgslIrEmitter::emit_statement_with_following_context(
     ) =>
       if wgsl_ir_switch_can_absorb_implicit_return(cases) {
         self.emit_switch_statement(
-          out, function, body_plan, selector, cases, true, indent,
+          out, function, function_plan, selector, cases, true, indent,
         )
         true
       } else {
-        self.emit_statement(out, function, body_plan, statement, indent)
+        self.emit_statement(out, function, function_plan, statement, indent)
         false
       }
     (
@@ -59,12 +59,12 @@ fn WgslIrEmitter::emit_statement_with_following_context(
       Some({ statement: ImplicitReturn, skip: false, .. }),
     ) => {
       self.emit_if_statement(
-        out, function, body_plan, condition, accept, reject, true, indent,
+        out, function, function_plan, condition, accept, reject, true, indent,
       )
       true
     }
     _ => {
-      self.emit_statement(out, function, body_plan, statement, indent)
+      self.emit_statement(out, function, function_plan, statement, indent)
       false
     }
   }
@@ -75,7 +75,7 @@ fn WgslIrEmitter::emit_statement(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   statement : Statement,
   indent : Int,
 ) -> Unit raise WgslIrEmitError {
@@ -120,7 +120,7 @@ fn WgslIrEmitter::emit_statement(
           }
           None => ()
         }
-        if body_plan.contains_temporary_initializer_expression(handle) {
+        if function_plan.contains_temporary_initializer_expression(handle) {
           continue
         }
         let expr = self.function_expression(function, handle)
@@ -139,16 +139,22 @@ fn WgslIrEmitter::emit_statement(
       )
     Block(child) => {
       out.write_string("\{pad}{\n")
-      self.emit_block_statements(out, function, body_plan, child, indent + 1)
+      self.emit_block_statements(
+        out,
+        function,
+        function_plan,
+        child,
+        indent + 1,
+      )
       out.write_string("\{pad}}\n")
     }
     If(condition, accept, reject) =>
       self.emit_if_statement(
-        out, function, body_plan, condition, accept, reject, false, indent,
+        out, function, function_plan, condition, accept, reject, false, indent,
       )
     Loop(body, continuing, break_if) => {
       out.write_string("\{pad}loop {\n")
-      self.emit_block_statements(out, function, body_plan, body, indent + 1)
+      self.emit_block_statements(out, function, function_plan, body, indent + 1)
       let has_break_if = match break_if {
         Some(_) => true
         None => false
@@ -158,7 +164,7 @@ fn WgslIrEmitter::emit_statement(
         self.emit_block_statements(
           out,
           function,
-          body_plan,
+          function_plan,
           continuing,
           indent + 2,
         )
@@ -175,7 +181,7 @@ fn WgslIrEmitter::emit_statement(
     }
     Switch(selector, cases) =>
       self.emit_switch_statement(
-        out, function, body_plan, selector, cases, false, indent,
+        out, function, function_plan, selector, cases, false, indent,
       )
     Break => out.write_string("\{pad}break;\n")
     Continue => out.write_string("\{pad}continue;\n")
@@ -287,7 +293,7 @@ fn WgslIrEmitter::emit_if_statement(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   condition : Handle,
   accept : Block,
   reject : Block,
@@ -298,7 +304,7 @@ fn WgslIrEmitter::emit_if_statement(
   out.write_string(
     "\{pad}if \{self.function_expression(function, condition)} {\n",
   )
-  self.emit_block_statements(out, function, body_plan, accept, indent + 1)
+  self.emit_block_statements(out, function, function_plan, accept, indent + 1)
   if absorb_implicit_return && !wgsl_ir_block_ends_with_return(accept) {
     out.write_string("\{wgsl_ir_indent(indent + 1)}return;\n")
   }
@@ -307,7 +313,7 @@ fn WgslIrEmitter::emit_if_statement(
     out.write_string("\n")
   } else {
     out.write_string(" else {\n")
-    self.emit_block_statements(out, function, body_plan, reject, indent + 1)
+    self.emit_block_statements(out, function, function_plan, reject, indent + 1)
     if absorb_implicit_return && !wgsl_ir_block_ends_with_return(reject) {
       out.write_string("\{wgsl_ir_indent(indent + 1)}return;\n")
     }
@@ -394,7 +400,7 @@ fn WgslIrEmitter::emit_switch_statement(
   self : WgslIrEmitter,
   out : StringBuilder,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   selector : Handle,
   cases : Array[SwitchCase],
   absorb_implicit_return : Bool,
@@ -408,7 +414,13 @@ fn WgslIrEmitter::emit_switch_statement(
     out.write_string(
       "\{wgsl_ir_indent(indent + 1)}\{wgsl_ir_switch_case_label(case.value)}: {\n",
     )
-    self.emit_block_statements(out, function, body_plan, case.body, indent + 2)
+    self.emit_block_statements(
+      out,
+      function,
+      function_plan,
+      case.body,
+      indent + 2,
+    )
     if absorb_implicit_return && !wgsl_ir_block_ends_with_return(case.body) {
       out.write_string("\{wgsl_ir_indent(indent + 2)}return;\n")
     }

@@ -295,9 +295,10 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
     Binary(op, left, right) => {
+      let scheduler = self.expression_arena_scheduler(function, scope)
       let expression_mark = function.expressions.items.length()
-      if self.binary_expression_predeclares_left_associative_reference_roots(
-          op, left, right, function, scope,
+      if scheduler.binary_predeclares_left_associative_reference_roots(
+          op, left, right,
         ) {
         self.predeclare_function_binary_chain_reference_roots_in_source_order(
           node, function, scope,
@@ -324,8 +325,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         Some(handle) => return handle
         None => ()
       }
-      let member_bases_lower_in_source_order = wgsl_ir_binary_predeclares_sibling_member_roots(
-        left, right, scope,
+      let member_bases_lower_in_source_order = scheduler.binary_predeclares_sibling_member_roots(
+        left, right,
       )
       if member_bases_lower_in_source_order {
         self.predeclare_function_member_base_expressions(left, function, scope)
@@ -345,7 +346,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         self.predeclare_function_reference_roots_in_source_order(
           right, function, scope,
         )
-      } else if wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) &&
+      } else if scheduler.binary_right_subtree_has_higher_precedence(op, right) &&
         !wgsl_ir_expr_node_is_function_argument_value(left, scope) &&
         wgsl_ir_expr_node_contains_call(left) &&
         !wgsl_ir_expr_node_contains_non_math_call(left) &&
@@ -356,8 +357,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
-        wgsl_ir_binary_right_subtree_has_higher_precedence(op, right) {
-        if wgsl_ir_binary_preserves_left_first_across_higher_precedence_right(
+        scheduler.binary_right_subtree_has_higher_precedence(op, right) {
+        if scheduler.binary_preserves_left_first_across_higher_precedence_right(
             op, left, right,
           ) {
           let left_handle = self.lower_function_expression_node(
@@ -446,9 +447,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           }
           (left_handle, right_handle)
         }
-      } else if self.binary_expression_lowers_right_before_left(
-          op, left, right, function, scope,
-        ) {
+      } else if scheduler.binary_lowers_right_before_left(op, left, right) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
         )
@@ -1130,7 +1129,8 @@ fn WgslIrLowerer::lower_function_right_operand_before_left(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> (Handle, Handle) raise WgslIrLowerError {
-  if wgsl_ir_binary_right_root_is_delayed_after_parent_left(parent_op, right) &&
+  let scheduler = self.expression_arena_scheduler(function, scope)
+  if scheduler.binary_right_root_is_delayed_after_parent_left(parent_op, right) &&
     !wgsl_ir_expr_node_contains_call(right) {
     let (right_op, right_left, right_right) = self.lower_binary_expression_children(
       right, function, scope,
@@ -1198,6 +1198,7 @@ fn WgslIrLowerer::lower_binary_expression_children(
 ) -> (@ast.WgslExprOperator, Handle, Handle) raise WgslIrLowerError {
   match node.kind() {
     Binary(op, left, right) => {
+      let scheduler = self.expression_arena_scheduler(function, scope)
       match
         self.lower_binary_expression_children_with_parent_argument_after_child(
           op, left, right, function, scope,
@@ -1205,8 +1206,8 @@ fn WgslIrLowerer::lower_binary_expression_children(
         Some(result) => return result
         None => ()
       }
-      let (left_handle, right_handle) = if self.binary_expression_lowers_right_before_left(
-          op, left, right, function, scope,
+      let (left_handle, right_handle) = if scheduler.binary_lowers_right_before_left(
+          op, left, right,
         ) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
@@ -1263,74 +1264,6 @@ fn WgslIrLowerer::lower_binary_expression_children_with_parent_argument_after_ch
 }
 
 ///|
-fn wgsl_ir_binary_right_root_is_delayed_after_parent_left(
-  parent_op : @ast.WgslExprOperator,
-  node : @ast.WgslExprNode,
-) -> Bool {
-  match node.kind() {
-    Binary(op, left, _) =>
-      op.binary_precedence() == parent_op.binary_precedence() ||
-      !wgsl_ir_expr_node_is_literal_like(left)
-    Group(inner) =>
-      wgsl_ir_binary_right_root_is_delayed_after_parent_left(parent_op, inner)
-    _ => false
-  }
-}
-
-///|
-fn WgslIrLowerer::binary_expression_lowers_right_before_left(
-  self : WgslIrLowerer,
-  op : @ast.WgslExprOperator,
-  left : @ast.WgslExprNode,
-  right : @ast.WgslExprNode,
-  function : Function,
-  scope : WgslIrFunctionScope,
-) -> Bool {
-  if wgsl_ir_expr_node_is_literal_like(left) {
-    return self.expression_node_contains_naga_reference_value(
-      right, function, scope,
-    )
-  }
-  if self.expression_node_is_naga_deferred_const_like(left, scope) {
-    return wgsl_ir_ast_binary_operator_is_multiplicative(op) &&
-      !self.expression_node_is_mutable_local_value(right, function, scope) &&
-      self.expression_node_contains_naga_reference_value(right, function, scope)
-  }
-  if self.expression_node_is_inline_constant_reference(left, scope) {
-    return !self.expression_node_is_mutable_local_value(right, function, scope) &&
-      self.expression_node_contains_naga_reference_value(right, function, scope)
-  }
-  self.expression_node_is_mutable_local_value(left, function, scope) &&
-  wgsl_ir_expr_node_is_function_argument_value(right, scope)
-}
-
-///|
-fn WgslIrLowerer::binary_expression_predeclares_left_associative_reference_roots(
-  self : WgslIrLowerer,
-  op : @ast.WgslExprOperator,
-  left : @ast.WgslExprNode,
-  right : @ast.WgslExprNode,
-  function : Function,
-  scope : WgslIrFunctionScope,
-) -> Bool {
-  if wgsl_ir_expr_node_contains_non_math_call(left) ||
-    wgsl_ir_expr_node_contains_non_math_call(right) {
-    return false
-  }
-  guard wgsl_ir_expr_node_without_groups(left).kind() is Binary(left_op, _, _) else {
-    return false
-  }
-  guard left_op.binary_precedence() == op.binary_precedence() else {
-    return false
-  }
-  self.expression_node_is_mutable_local_value(right, function, scope) ||
-  (
-    !wgsl_ir_expr_node_is_function_argument_value(right, scope) &&
-    wgsl_ir_direct_access_chain_root_is_function_argument(right, scope)
-  )
-}
-
-///|
 fn WgslIrLowerer::expression_node_is_naga_deferred_const_like(
   self : WgslIrLowerer,
   node : @ast.WgslExprNode,
@@ -1381,46 +1314,6 @@ fn WgslIrLowerer::generated_import_symbol_is_constant_reference(
 }
 
 ///|
-fn wgsl_ir_binary_right_subtree_has_higher_precedence(
-  op : @ast.WgslExprOperator,
-  right : @ast.WgslExprNode,
-) -> Bool {
-  match right.kind() {
-    Binary(right_op, _, _) =>
-      right_op.binary_precedence() > op.binary_precedence()
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_binary_preserves_left_first_across_higher_precedence_right(
-  parent_op : @ast.WgslExprOperator,
-  left : @ast.WgslExprNode,
-  right : @ast.WgslExprNode,
-) -> Bool {
-  match parent_op {
-    Add | Subtract => ()
-    _ => return false
-  }
-  if wgsl_ir_expr_node_contains_call(left) ||
-    wgsl_ir_expr_node_contains_call(right) {
-    return false
-  }
-  let left = wgsl_ir_expr_node_without_groups(left)
-  let right = wgsl_ir_expr_node_without_groups(right)
-  guard left.kind() is Binary(left_op, _, _) else { return false }
-  guard right.kind() is Binary(right_op, _, _) else { return false }
-  if !wgsl_ir_ast_binary_operator_is_multiplicative(right_op) ||
-    right_op.binary_precedence() <= parent_op.binary_precedence() {
-    return false
-  }
-  if wgsl_ir_ast_binary_operator_is_multiplicative(left_op) {
-    return true
-  }
-  left_op.binary_precedence() == parent_op.binary_precedence()
-}
-
-///|
 fn wgsl_ir_ast_binary_operator_is_multiplicative(
   op : @ast.WgslExprOperator,
 ) -> Bool {
@@ -1428,20 +1321,6 @@ fn wgsl_ir_ast_binary_operator_is_multiplicative(
     Multiply | Divide | Modulo => true
     _ => false
   }
-}
-
-///|
-fn wgsl_ir_binary_predeclares_sibling_member_roots(
-  left : @ast.WgslExprNode,
-  right : @ast.WgslExprNode,
-  scope : WgslIrFunctionScope,
-) -> Bool {
-  if wgsl_ir_direct_access_chain_root_is_function_argument(left, scope) &&
-    wgsl_ir_expr_node_contains_call_member_access(right) {
-    return false
-  }
-  wgsl_ir_expr_node_is_direct_access_chain(left) &&
-  wgsl_ir_expr_node_contains_member_access(right)
 }
 
 ///|
@@ -2097,6 +1976,21 @@ fn WgslIrLowerer::lower_function_constructor_call(
     scope,
     None,
   )
+  self.finish_function_constructor_call(
+    name, arguments, lowered_arguments, function, expected_ty, expression_mark,
+  )
+}
+
+///|
+fn WgslIrLowerer::finish_function_constructor_call(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  lowered_arguments : Array[Handle],
+  function : Function,
+  expected_ty : Handle?,
+  expression_mark : Int,
+) -> Handle raise WgslIrLowerError {
   let ty = match self.expected_constructor_type(name, expected_ty) {
     Some(ty) => ty
     None =>
@@ -2161,10 +2055,10 @@ fn WgslIrLowerer::lower_function_scalar_constructor_expression_from_handles(
   guard self.function_expression_type(function, argument) is Some(argument_ty) else {
     return None
   }
-  guard self.scalar_from_numeric_type_handle(argument_ty)
-    is Some(argument_scalar) else {
+  guard self.shader_module.types.get(argument_ty) is Some(type_) else {
     return None
   }
+  guard type_.inner is Scalar(argument_scalar) else { return None }
   if target_scalar == argument_scalar {
     None
   } else {
@@ -2770,7 +2664,8 @@ fn WgslIrLowerer::lower_function_flattened_constructor_arguments(
   scope : WgslIrFunctionScope,
   expected_ty : Handle?,
 ) -> Array[Handle] raise WgslIrLowerError {
-  if wgsl_ir_constructor_arguments_delay_literals(flattened) {
+  let scheduler = self.expression_arena_scheduler(function, scope)
+  if scheduler.constructor_arguments_delay_literals(flattened) {
     return self.lower_function_constructor_arguments_with_delayed_literals(
       flattened, function, scope, expected_ty,
     )
@@ -2793,12 +2688,13 @@ fn WgslIrLowerer::lower_function_constructor_arguments_with_delayed_literals(
   scope : WgslIrFunctionScope,
   expected_ty : Handle?,
 ) -> Array[Handle] raise WgslIrLowerError {
+  let scheduler = self.expression_arena_scheduler(function, scope)
   let lowered : Array[Handle?] = []
   for _ in 0..<flattened.length() {
     lowered.push(None)
   }
   for index in 0..<flattened.length() {
-    if !wgsl_ir_constructor_argument_is_literal_like(flattened[index]) {
+    if !scheduler.constructor_argument_is_literal_like(flattened[index]) {
       lowered[index] = Some(
         self.lower_function_constructor_argument_value(
           flattened[index],
@@ -2810,7 +2706,7 @@ fn WgslIrLowerer::lower_function_constructor_arguments_with_delayed_literals(
     }
   }
   for index in 0..<flattened.length() {
-    if wgsl_ir_constructor_argument_is_literal_like(flattened[index]) {
+    if scheduler.constructor_argument_is_literal_like(flattened[index]) {
       lowered[index] = Some(
         self.lower_function_constructor_argument_value(
           flattened[index],
@@ -2863,65 +2759,6 @@ fn WgslIrLowerer::lower_function_constructor_argument(
   }
   function.expressions.truncate(expression_mark)
   function.expressions.append_with_origin(Literal(literal), FoldedLocalConstant)
-}
-
-///|
-fn wgsl_ir_constructor_arguments_delay_literals(
-  arguments : Array[@ast.WgslExprNode],
-) -> Bool {
-  let mut saw_literal = false
-  let mut should_delay = false
-  for argument in arguments {
-    if wgsl_ir_constructor_argument_has_ordered_effect(argument) {
-      return false
-    }
-    if wgsl_ir_constructor_argument_is_literal_like(argument) {
-      saw_literal = true
-    } else if saw_literal {
-      should_delay = true
-    }
-  }
-  should_delay
-}
-
-///|
-fn wgsl_ir_constructor_argument_is_literal_like(
-  node : @ast.WgslExprNode,
-) -> Bool {
-  match node.kind() {
-    Group(inner) => wgsl_ir_constructor_argument_is_literal_like(inner)
-    Literal(_) => true
-    Unary(op, inner) =>
-      op == Subtract && wgsl_ir_constructor_argument_is_literal_like(inner)
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_constructor_argument_has_ordered_effect(
-  node : @ast.WgslExprNode,
-) -> Bool {
-  match node.kind() {
-    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
-      if node.kind() is PostfixUpdate(_, _) {
-        true
-      } else {
-        wgsl_ir_constructor_argument_has_ordered_effect(inner)
-      }
-    Assignment(_, _, _) => true
-    Call(_, _) => true
-    Binary(_, left, right) | Index(left, right) =>
-      wgsl_ir_constructor_argument_has_ordered_effect(left) ||
-      wgsl_ir_constructor_argument_has_ordered_effect(right)
-    Member(base, _) | Template(base, _) =>
-      wgsl_ir_constructor_argument_has_ordered_effect(base)
-    Sequence(items) =>
-      items.any(fn(item) {
-        wgsl_ir_constructor_argument_has_ordered_effect(item)
-      })
-    Identifier(_) | Literal(_) | ShaderDefTemplate(_) | PathAccess(_, _) =>
-      false
-  }
 }
 
 ///|

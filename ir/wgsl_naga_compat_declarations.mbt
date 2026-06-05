@@ -52,14 +52,14 @@ priv struct WgslIrNagaWriterGlobalVariableSlot {
 priv struct WgslIrNagaWriterFunctionSlot {
   source_index : Int
   item : Function
-  body_plan : WgslIrNagaFunctionBodyPlan
+  function_plan : NagaCompatFunctionPlan
 }
 
 ///|
 priv struct WgslIrNagaWriterEntryPointSlot {
   source_index : Int
   item : EntryPoint
-  body_plan : WgslIrNagaFunctionBodyPlan
+  function_plan : NagaCompatFunctionPlan
 }
 
 ///|
@@ -205,7 +205,7 @@ fn WgslIrNagaCompatPlanner::function_slots(
     slots.push({
       source_index: slot.source_index,
       item,
-      body_plan: WgslIrNagaFunctionBodyPlan::from_function(
+      function_plan: NagaCompatFunctionPlan::from_function(
         self.shader_module,
         item,
         projection_aliases,
@@ -226,7 +226,7 @@ fn WgslIrNagaCompatPlanner::entry_point_slots(
     slots.push({
       source_index,
       item,
-      body_plan: WgslIrNagaFunctionBodyPlan::from_function(
+      function_plan: NagaCompatFunctionPlan::from_function(
         self.shader_module,
         item.function,
         projection_aliases,

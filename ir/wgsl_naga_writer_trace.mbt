@@ -261,7 +261,7 @@ fn wgsl_ir_naga_writer_function_slot_trace(
     "fn:\{name}",
     UserFunction(slot.source_index),
     slot.item,
-    slot.body_plan,
+    slot.function_plan,
   )
 }
 
@@ -280,7 +280,7 @@ fn wgsl_ir_naga_writer_entry_point_slot_trace(
     "entry:\{name}",
     EntryPointFunction(slot.source_index),
     slot.item.function,
-    slot.body_plan,
+    slot.function_plan,
   )
 }
 
@@ -290,12 +290,14 @@ fn wgsl_ir_naga_writer_body_plan_trace(
   label : String,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
 ) -> String {
   let out = StringBuilder::new()
   out.write_string(
     "function\t\{label}\targuments=\{function.arguments.length()}\tlocals=\{function.local_variables.items.length()}\texpressions=\{function.expressions.items.length()}\n",
   )
+  out.write_string(function_plan.trace_summary(label))
+  out.write_string(function_plan.trace_sections(label))
   for local_index in 0..<function.local_variables.items.length() {
     let local_variable = function.local_variables.items[local_index]
     let init = match local_variable.init {
@@ -339,7 +341,7 @@ fn wgsl_ir_naga_writer_body_plan_trace(
   for index in 0..<function.expressions.items.length() {
     let handle = Handle::Handle(index)
     let trace = wgsl_ir_emit_expression_temporary_index_trace(
-      function, body_plan, handle,
+      function, function_plan, handle,
     )
     let temp_name = match
       view.names.get(wgsl_ir_emit_expression_temporary_name_key(origin, handle)) {
@@ -348,12 +350,12 @@ fn wgsl_ir_naga_writer_body_plan_trace(
     }
     let materialized = wgsl_ir_trace_expression_is_call_result_materialized(
       function.expressions.items[index],
-      body_plan,
+      function_plan,
       handle,
     )
     let materialized_reason = wgsl_ir_trace_expression_materialization_reason(
       function.expressions.items[index],
-      body_plan,
+      function_plan,
       handle,
     )
     out.write_string(
@@ -386,8 +388,9 @@ fn wgsl_ir_naga_writer_body_plan_trace(
     )
     raw_statement_index = raw_statement_index + 1
   }
-  for order_index in 0..<body_plan.local_declaration_order().length() {
-    let local_index = body_plan.local_declaration_order()[order_index]
+  let local_declaration_order = function_plan.local_declaration_order()
+  for order_index in 0..<local_declaration_order.length() {
+    let local_index = local_declaration_order[order_index]
     let local_handle = Handle::Handle(local_index)
     let final_name = match
       view.names.get(wgsl_ir_emit_local_name_key(origin, local_handle)) {
@@ -398,7 +401,7 @@ fn wgsl_ir_naga_writer_body_plan_trace(
       "writer-local-declare\t\{label}\t\{order_index}\tlocal=\{order_index}\tsource_local=\{local_index}\tfinal=\{final_name}\n",
     )
   }
-  let statements = body_plan.statement_plan(function, function.body)
+  let statements = function_plan.statement_plan(function, function.body)
   for index in 0..<statements.length() {
     let item = statements[index]
     out.write_string(
@@ -411,12 +414,12 @@ fn wgsl_ir_naga_writer_body_plan_trace(
 ///|
 fn wgsl_ir_trace_expression_is_call_result_materialized(
   expression : Expression,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   handle : Handle,
 ) -> Bool {
   match expression {
     CallResult(_) | AtomicResult(_, _) =>
-      body_plan.contains_materialized_expression(handle)
+      function_plan.contains_materialized_expression(handle)
     _ => false
   }
 }
@@ -424,10 +427,10 @@ fn wgsl_ir_trace_expression_is_call_result_materialized(
 ///|
 fn wgsl_ir_trace_expression_materialization_reason(
   expression : Expression,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   handle : Handle,
 ) -> String {
-  if !body_plan.contains_materialized_expression(handle) {
+  if !function_plan.contains_materialized_expression(handle) {
     return "-"
   }
   match expression {

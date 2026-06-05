@@ -199,7 +199,7 @@ fn WgslIrNagaWriterModule::allocate_entry_point_body_names(
     shader_module,
     EntryPointFunction(slot.source_index),
     ep.function,
-    slot.body_plan,
+    slot.function_plan,
     namer,
   )
 }
@@ -215,7 +215,7 @@ fn WgslIrNagaWriterModule::reserve_entry_point_var_local_names(
   table.reserve_function_var_local_names_from_arena(
     EntryPointFunction(slot.source_index),
     slot.item.function,
-    slot.body_plan,
+    slot.function_plan,
     namer,
   )
 }
@@ -234,7 +234,7 @@ fn WgslIrNagaWriterModule::allocate_function_body_names(
     shader_module,
     UserFunction(slot.source_index),
     function,
-    slot.body_plan,
+    slot.function_plan,
     namer,
   )
 }
@@ -250,7 +250,7 @@ fn WgslIrNagaWriterModule::reserve_function_var_local_names(
   table.reserve_function_var_local_names_from_arena(
     UserFunction(slot.source_index),
     slot.item,
-    slot.body_plan,
+    slot.function_plan,
     namer,
   )
 }

@@ -637,30 +637,154 @@ if ! rg -n 'priv struct WgslIrNagaFunctionBodyPlan' ir/wgsl_emit_expression_temp
   fail "WGSL Naga temporary planning must be represented as a function-body arena plan"
 fi
 
-if ! rg -n 'contains_materialized_expression|temporary_index' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
-  fail "WGSL function-body arena plan must own materialized expression membership and temp index calculation"
+if ! rg -n 'contains_materialized_expression|temporary_index' ir/wgsl_naga_compat_function_plan.mbt >/dev/null; then
+  fail "Naga-compatible function plan must own materialized expression membership and temp index calculation"
 fi
 
-if ! rg -n 'local_declaration_order|needs_blank_after_local_declarations' ir/wgsl_emit_expression_temp_plan.mbt ir/wgsl_emit_functions.mbt >/dev/null; then
-  fail "WGSL function local declaration order must be owned by the function-body arena plan"
+if ! rg -n 'local_declaration_order|needs_blank_after_local_declarations' ir/wgsl_naga_compat_function_plan.mbt >/dev/null; then
+  fail "Naga-compatible function plan must own local declaration order"
 fi
 
-if ! rg -n 'priv struct WgslIrNagaStatementPlanItem|fn WgslIrNagaFunctionBodyPlan::statement_plan' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
-  fail "WGSL function statement emission must be planned by the function-body arena plan"
+if [[ ! -f ir/wgsl_emit_body_emission_plan.mbt ]]; then
+  fail "WGSL function statement emission must be owned by BodyEmissionPlanner"
 fi
 
-if ! rg -n 'body_plan : WgslIrNagaFunctionBodyPlan' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
-  fail "writer function and entry-point slots must carry the precomputed function-body plan"
+if ! rg -n 'priv struct BodyEmissionPlanner|priv struct WgslIrNagaStatementPlanItem|fn BodyEmissionPlanner::statement_plan|fn BodyEmissionPlanner::push_statement_emit_ranges' ir/wgsl_emit_body_emission_plan.mbt >/dev/null; then
+  fail "BodyEmissionPlanner must own statement order, skip policy, blank policy, and emit-range construction"
+fi
+
+if ! rg -n 'body_emission : BodyEmissionPlanner|BodyEmissionPlanner::from_function' ir/wgsl_emit_expression_temp_plan.mbt >/dev/null; then
+  fail "Naga function body plans must carry the body emission planner"
+fi
+
+if rg -n 'priv struct WgslIrNagaStatementPlanItem|fn WgslIrNagaFunctionBodyPlan::statement_is_elided_local_alias_declaration|fn wgsl_ir_push_naga_(named_expression_emit_ranges|statement_emit_ranges)|fn wgsl_ir_flush_naga_named_expression_emit_range|fn wgsl_ir_block_contains_expression_emit' ir --glob '*.mbt' --glob '!wgsl_emit_body_emission_plan.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "statement emission planning and emit-range builders must not be split back into lowerer/temp-plan helpers"
+fi
+
+if ! rg -n 'priv struct NagaCompatFunctionPlan' ir/wgsl_naga_compat_function_plan.mbt >/dev/null; then
+  fail "Naga-compatible function lowering must be represented by NagaCompatFunctionPlan"
+fi
+
+if ! rg -n 'arena : NagaCompatExpressionArenaPlan|call : NagaCompatCallArgumentPlan|short_circuit : NagaCompatShortCircuitPlan|materialization : NagaCompatMaterializationPlan|body : WgslIrNagaFunctionBodyPlan|names : NagaCompatNamePlan' ir/wgsl_naga_compat_function_plan.mbt >/dev/null; then
+  fail "NagaCompatFunctionPlan must own arena, call, short-circuit, materialization, body, and name subplans"
+fi
+
+if ! rg -n 'function_plan : NagaCompatFunctionPlan' ir/wgsl_naga_compat_declarations.mbt >/dev/null; then
+  fail "writer function and entry-point slots must carry the precomputed Naga-compatible function plan"
+fi
+
+if ! rg -n 'function_plan : NagaCompatFunctionPlan' ir/wgsl_emit_functions.mbt ir/wgsl_emit_statements.mbt ir/wgsl_naga_compat_names.mbt >/dev/null; then
+  fail "Naga-compatible writer and name allocation must consume NagaCompatFunctionPlan"
+fi
+
+if [[ ! -f ir/wgsl_naga_compat_plan_invariants_wbtest.mbt ]]; then
+  fail "Naga compatibility model invariants must be tested through a dedicated plan-invariant gate"
+fi
+
+if ! rg -n 'NagaCompatPlanInvariantCase|Naga compat plan invariants are table driven|plan-arena|plan-calls|plan-short-circuit|plan-body|plan-names' ir/wgsl_naga_compat_plan_invariants_wbtest.mbt >/dev/null; then
+  fail "Naga compatibility plan invariant tests must be table-driven and cover arena, calls, short-circuit, body, and names"
+fi
+
+if ! rg -n 'plan-arena|plan-calls|plan-short-circuit|plan-materialization|plan-body|plan-names' ir/wgsl_naga_compat_function_plan.mbt >/dev/null; then
+  fail "Naga compatibility function trace must expose structured plan sections"
+fi
+
+if rg -n 'Naga compat function plan dump exposes unified planning sections|IR emitter matches Naga temp slots around nested call arguments|IR emitter counts implicit matrix scalar constructor columns in Naga arena order' ir --glob '*wbtest.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "case-by-case Naga writer symptom tests must be replaced by plan invariant fixtures"
+fi
+
+if rg -n 'body_plan\(\)|slot\.body_plan\(\)|body_plan : WgslIrNagaFunctionBodyPlan' \
+  ir/wgsl_emit_functions.mbt \
+  ir/wgsl_emit_statements.mbt \
+  ir/wgsl_naga_compat_names.mbt \
+  ir/wgsl_emit_expression_temp_plan.mbt \
+  ir/wgsl_naga_writer_trace.mbt \
+  ir/wgsl_naga_compat_function_plan.mbt >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "Naga-compatible writer path must not expose or re-extract raw function body plans"
+fi
+
+if [[ ! -f ir/wgsl_lower_expression_arena_scheduler.mbt ]]; then
+  fail "WGSL expression arena ordering must be owned by ExpressionArenaScheduler"
+fi
+
+if ! rg -n 'priv struct ExpressionArenaScheduler' ir/wgsl_lower_expression_arena_scheduler.mbt >/dev/null; then
+  fail "ExpressionArenaScheduler must be the concrete expression-ordering scheduler"
+fi
+
+for scheduler_entry in \
+  'binary_predeclares_left_associative_reference_roots' \
+  'binary_lowers_right_before_left' \
+  'constructor_arguments_delay_literals' \
+  'constructor_argument_is_literal_like'; do
+  if ! rg -n "$scheduler_entry" ir/wgsl_lower_expression_arena_scheduler.mbt >/dev/null; then
+    fail "ExpressionArenaScheduler is missing required entry: $scheduler_entry"
+  fi
+done
+
+if rg -n 'binary_expression_lowers_right_before_left|binary_expression_predeclares_left_associative_reference_roots|wgsl_ir_binary_right_subtree_has_higher_precedence|wgsl_ir_binary_preserves_left_first_across_higher_precedence_right|wgsl_ir_binary_predeclares_sibling_member_roots|wgsl_ir_constructor_arguments_delay_literals|wgsl_ir_constructor_argument_is_literal_like|wgsl_ir_constructor_argument_has_ordered_effect' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "expression arena ordering must not be split back into legacy lowerer helper predicates"
+fi
+
+if [[ ! -f ir/wgsl_lower_call_argument_planner.mbt ]]; then
+  fail "WGSL user-call argument ordering must be owned by CallArgumentPlanner"
+fi
+
+if ! rg -n 'priv struct CallArgumentPlanner|fn CallArgumentPlanner::lower_arguments' ir/wgsl_lower_call_argument_planner.mbt >/dev/null; then
+  fail "CallArgumentPlanner must own structured user-call argument scheduling"
+fi
+
+if ! rg -n 'call_argument_planner\(.*\)|planner\.lower_arguments\(\)' ir/wgsl_lower_calls.mbt >/dev/null; then
+  fail "lower_user_function_call_arguments must delegate to CallArgumentPlanner"
+fi
+
+if rg -n 'call_argument_is_naga_deferred_const_like|call_argument_uses_naga_reference_predeclare|lower_user_function_call_argument_dependencies|call_value_argument_lowers_before_prior_direct_argument|lower_later_reference_argument_before_direct_argument|lower_next_call_reference_argument_run|call_argument_is_existing_expression_alias|call_argument_is_existing_expression_alias_reference|lower_call_reference_argument_run|call_reference_argument_has_dynamic_indexed_root|call_reference_access_base_has_dynamic_index|call_argument_is_naga_reference_access_chain|call_argument_access_root_is_naga_reference' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "call argument scheduling must not be split back into legacy lowerer lookahead predicates"
+fi
+
+if [[ ! -f ir/wgsl_lower_short_circuit_planner.mbt ]]; then
+  fail "WGSL short-circuit materialization must be owned by ShortCircuitPlanner"
+fi
+
+if ! rg -n 'priv struct ShortCircuitPlanner' ir/wgsl_lower_short_circuit_planner.mbt >/dev/null; then
+  fail "ShortCircuitPlanner must be the concrete short-circuit materialization planner"
+fi
+
+for short_circuit_entry in \
+  'materialize_value_handle' \
+  'materialize_value_node' \
+  'materialize_condition_handle' \
+  'materialize_condition_node' \
+  'materialize_branch_handle' \
+  'materialize_branch_node' \
+  'append_result_load' \
+  'allocate_result_local'; do
+  if ! rg -n "$short_circuit_entry" ir/wgsl_lower_short_circuit_planner.mbt >/dev/null; then
+    fail "ShortCircuitPlanner is missing required entry: $short_circuit_entry"
+  fi
+done
+
+if ! rg -n 'short_circuit_planner\(.*\)' ir/wgsl_lower_control_flow.mbt ir/wgsl_lower_statements.mbt ir/wgsl_lower_materialization.mbt >/dev/null; then
+  fail "short-circuit control-flow, return, and nested materialization paths must enter ShortCircuitPlanner"
+fi
+
+if rg -n 'materialize_short_circuit_expression|materialize_short_circuit_condition|materialize_short_circuit_branch|append_short_circuit_result|allocate_short_circuit_result' ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "short-circuit materialization must not be split back into legacy lowerer helpers"
 fi
 
 if rg -n 'WgslIrNagaFunctionBodyPlan::from_function\(function\)' ir/wgsl_emit_functions.mbt ir/wgsl_emit_statements.mbt >"$matches_file"; then
   cat "$matches_file" >&2
-  fail "function emission must consume body plans from writer slots instead of rebuilding them from raw IR"
+  fail "function emission must consume NagaCompatFunctionPlan instead of rebuilding body plans from raw IR"
 fi
 
 if rg -n 'WgslIrNagaFunctionBodyPlan::from_function\(function\)' ir/wgsl_naga_compat_names.mbt ir/wgsl_emit_final_name_plan.mbt >"$matches_file"; then
   cat "$matches_file" >&2
-  fail "final-name allocation must consume body plans from writer slots instead of rebuilding them from raw IR"
+  fail "final-name allocation must consume NagaCompatFunctionPlan instead of rebuilding body plans from raw IR"
 fi
 
 if rg -n 'build_wgsl_ir_runtime_final_name_plan' ir --glob '*.mbt' >"$matches_file"; then

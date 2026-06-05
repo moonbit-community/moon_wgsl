@@ -79,7 +79,7 @@ fn WgslIrEmitter::emit_module(
     self.emit_function(
       out,
       slot.item,
-      slot.body_plan,
+      slot.function_plan,
       UserFunction(slot.source_index),
     )
     needs_blank = true
@@ -89,7 +89,7 @@ fn WgslIrEmitter::emit_module(
     if needs_blank {
       out.write_string("\n")
     }
-    self.emit_entry_point(out, slot.item, slot.body_plan, slot.source_index)
+    self.emit_entry_point(out, slot.item, slot.function_plan, slot.source_index)
     needs_blank = true
     last_item_is_entry_point = true
   }

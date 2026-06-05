@@ -59,13 +59,7 @@ priv struct WgslIrNagaFunctionBodyPlan {
   local_variable_declarations : Array[Int]
   has_body_after_hoisted_declarations : Bool
   implicit_expression_slots_before : Array[Int]
-}
-
-///|
-priv struct WgslIrNagaStatementPlanItem {
-  statement : Statement
-  skip : Bool
-  blank_before : Bool
+  body_emission : BodyEmissionPlanner
 }
 
 ///|
@@ -108,48 +102,10 @@ fn WgslIrNagaFunctionBodyPlan::from_function(
     implicit_expression_slots_before: wgsl_ir_naga_function_implicit_expression_slots_before(
       shader_module, function,
     ),
+    body_emission: BodyEmissionPlanner::from_function(
+      elided_local_alias_targets,
+    ),
   }
-}
-
-///|
-fn WgslIrNagaFunctionBodyPlan::contains_materialized_expression(
-  self : WgslIrNagaFunctionBodyPlan,
-  handle : Handle,
-) -> Bool {
-  self.materialized_expressions.contains(handle.index())
-}
-
-///|
-fn WgslIrNagaFunctionBodyPlan::contains_temporary_initializer_expression(
-  self : WgslIrNagaFunctionBodyPlan,
-  handle : Handle,
-) -> Bool {
-  self.temporary_initializer_expressions.contains(handle.index())
-}
-
-///|
-fn WgslIrNagaFunctionBodyPlan::elided_local_alias_target(
-  self : WgslIrNagaFunctionBodyPlan,
-  handle : Handle,
-) -> Handle? {
-  self.elided_local_alias_targets.get(handle.index())
-}
-
-///|
-fn WgslIrNagaFunctionBodyPlan::contains_elided_local_alias(
-  self : WgslIrNagaFunctionBodyPlan,
-  handle : Handle,
-) -> Bool {
-  self.elided_local_alias_target(handle) != None
-}
-
-///|
-fn WgslIrNagaFunctionBodyPlan::temporary_index(
-  self : WgslIrNagaFunctionBodyPlan,
-  function : Function,
-  handle : Handle,
-) -> Int {
-  wgsl_ir_emit_expression_temporary_index(function, self, handle)
 }
 
 ///|
@@ -184,41 +140,7 @@ fn WgslIrNagaFunctionBodyPlan::statement_plan(
   function : Function,
   block : Block,
 ) -> Array[WgslIrNagaStatementPlanItem] {
-  let plan : Array[WgslIrNagaStatementPlanItem] = []
-  let mut emitted_leading_var_declaration = false
-  let mut separated_leading_var_declarations = false
-  for statement in block.statements {
-    let skip = self.statement_is_elided_local_alias_declaration(statement) ||
-      wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
-        function, statement,
-      )
-    let mut blank_before = false
-    if !skip {
-      if emitted_leading_var_declaration &&
-        !separated_leading_var_declarations &&
-        !wgsl_ir_statement_is_any_local_var_declaration(function, statement) {
-        blank_before = true
-        separated_leading_var_declarations = true
-      }
-      if !separated_leading_var_declarations &&
-        wgsl_ir_statement_is_any_local_var_declaration(function, statement) {
-        emitted_leading_var_declaration = true
-      }
-    }
-    plan.push({ statement, skip, blank_before })
-  }
-  plan
-}
-
-///|
-fn WgslIrNagaFunctionBodyPlan::statement_is_elided_local_alias_declaration(
-  self : WgslIrNagaFunctionBodyPlan,
-  statement : Statement,
-) -> Bool {
-  match statement {
-    Declare(handle) => self.contains_elided_local_alias(handle)
-    _ => false
-  }
+  self.body_emission.statement_plan(function, block)
 }
 
 ///|
@@ -266,7 +188,7 @@ fn wgsl_ir_naga_function_body_has_non_hoisted_statement(
     if !wgsl_ir_statement_is_naga_elided_local_alias_declaration(
         elided_local_alias_targets, statement,
       ) &&
-      !wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
+      !wgsl_ir_body_statement_is_hoisted_local_var_declaration(
         function, statement,
       ) {
       return true
@@ -287,48 +209,17 @@ fn wgsl_ir_statement_is_naga_elided_local_alias_declaration(
 }
 
 ///|
-fn wgsl_ir_statement_is_any_local_var_declaration(
-  function : Function,
-  statement : Statement,
-) -> Bool {
-  match statement {
-    Declare(handle) =>
-      match function.local_variables.items.get(handle.index()) {
-        Some(local_var) => local_var.kind == Var
-        None => false
-      }
-    _ => false
-  }
-}
-
-///|
-fn wgsl_ir_statement_is_naga_hoisted_local_var_declaration(
-  function : Function,
-  statement : Statement,
-) -> Bool {
-  match statement {
-    Declare(handle) =>
-      match function.local_variables.items.get(handle.index()) {
-        Some(local_var) =>
-          local_var.kind == Var && !local_var.generated_temporary
-        None => false
-      }
-    _ => false
-  }
-}
-
-///|
 fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   self : WgslIrFinalNamePlan,
   shader_module : Module,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   namer : WgslIrNagaNamer,
 ) -> Unit {
   let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
   self.allocate_function_expression_temporary_names(
-    origin, function, body_plan, temp_namer,
+    origin, function, function_plan, temp_namer,
   )
   for named in function.named_expressions {
     let key = wgsl_ir_emit_named_expression_name_key(origin, named.handle)
@@ -343,10 +234,11 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
       continue
     }
     let local_var = function.local_variables.items[local_index]
-    let local_name = match body_plan.elided_local_alias_target(local_handle) {
+    let local_name = match
+      function_plan.elided_local_alias_target(local_handle) {
       Some(target) =>
         self.expression_alias_name(
-          shader_module, origin, function, body_plan, target,
+          shader_module, origin, function, function_plan, target,
         )
       None =>
         if local_var.generated_temporary {
@@ -374,7 +266,7 @@ fn WgslIrFinalNamePlan::expression_alias_name(
   shader_module : Module,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   handle : Handle,
 ) -> String? {
   match function.expressions.items.get(handle.index()) {
@@ -390,10 +282,10 @@ fn WgslIrFinalNamePlan::expression_alias_name(
           )
       }
     Some(LocalVariable(local_handle)) =>
-      match body_plan.elided_local_alias_target(local_handle) {
+      match function_plan.elided_local_alias_target(local_handle) {
         Some(target) =>
           self.expression_alias_name(
-            shader_module, origin, function, body_plan, target,
+            shader_module, origin, function, function_plan, target,
           )
         None =>
           self.names.get(wgsl_ir_emit_local_name_key(origin, local_handle))
@@ -401,7 +293,7 @@ fn WgslIrFinalNamePlan::expression_alias_name(
     Some(Swizzle(_, base, components)) =>
       match
         self.expression_alias_name(
-          shader_module, origin, function, body_plan, base,
+          shader_module, origin, function, function_plan, base,
         ) {
         Some(base_name) =>
           Some("\{base_name}.\{wgsl_ir_naga_swizzle_components(components)}")
@@ -410,7 +302,7 @@ fn WgslIrFinalNamePlan::expression_alias_name(
     Some(Component(base, component)) =>
       match
         self.expression_alias_name(
-          shader_module, origin, function, body_plan, base,
+          shader_module, origin, function, function_plan, base,
         ) {
         Some(base_name) =>
           Some("\{base_name}.\{wgsl_ir_swizzle_component_name(component)}")
@@ -419,7 +311,7 @@ fn WgslIrFinalNamePlan::expression_alias_name(
     Some(AccessIndex(base, index)) =>
       match
         self.expression_alias_name(
-          shader_module, origin, function, body_plan, base,
+          shader_module, origin, function, function_plan, base,
         ) {
         Some(base_name) =>
           match
@@ -471,11 +363,11 @@ fn WgslIrFinalNamePlan::reserve_function_var_local_names_from_arena(
   self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   namer : WgslIrNagaNamer,
 ) -> Unit {
   let temp_namer = WgslIrNagaNamer::WgslIrNagaNamer()
-  for local_index in body_plan.local_declaration_order() {
+  for local_index in function_plan.local_declaration_order() {
     let local_handle = Handle::Handle(local_index)
     let local_var = function.local_variables.items[local_index]
     if local_var.kind == Var && !local_var.generated_temporary {
@@ -495,15 +387,15 @@ fn WgslIrFinalNamePlan::allocate_function_expression_temporary_names(
   self : WgslIrFinalNamePlan,
   origin : WgslIrEmitFunctionOrigin,
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   temp_namer : WgslIrNagaNamer,
 ) -> Unit {
   for expr_index in 0..<function.expressions.items.length() {
     let handle = Handle::Handle(expr_index)
-    if body_plan.contains_materialized_expression(handle) {
+    if function_plan.contains_materialized_expression(handle) {
       let key = wgsl_ir_emit_expression_temporary_name_key(origin, handle)
       if self.names.get(key) == None {
-        let semantic_index = body_plan.temporary_index(function, handle)
+        let semantic_index = function_plan.temporary_index(function, handle)
         self.names.set(key, temp_namer.call("_e\{semantic_index}"))
       }
     }
@@ -931,16 +823,16 @@ fn wgsl_ir_collect_statement_materialized_expression_indices(
 ///|
 fn wgsl_ir_emit_expression_temporary_index(
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   handle : Handle,
 ) -> Int {
-  wgsl_ir_emit_expression_temporary_index_trace(function, body_plan, handle).final_index
+  wgsl_ir_emit_expression_temporary_index_trace(function, function_plan, handle).final_index
 }
 
 ///|
 fn wgsl_ir_emit_expression_temporary_index_trace(
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   handle : Handle,
 ) -> WgslIrNagaTemporaryIndexTrace {
   let mut skipped = 0
@@ -957,12 +849,12 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
   }
   let base_index = handle.index() - skipped
   let adjusted_base_index = base_index
-  let implicit_expression_slots_before = body_plan.implicit_expression_slot_offset(
+  let implicit_expression_slots_before = function_plan.implicit_expression_slot_offset(
     handle,
   )
   let prior_call_projection_argument_slots = 0
   let implicit_naga_load_slots = wgsl_ir_emit_implicit_naga_load_slot_offset(
-    function, body_plan, handle,
+    function, function_plan, handle,
   )
   let projected_temporary_slots = 0
   let reused_resource_operand_slots = wgsl_ir_emit_reused_resource_operand_slot_offset(
@@ -1052,13 +944,13 @@ fn wgsl_ir_function_expression_is_projection_graph_node(
 ///|
 fn wgsl_ir_emit_implicit_naga_load_slot_offset(
   function : Function,
-  body_plan : WgslIrNagaFunctionBodyPlan,
+  function_plan : NagaCompatFunctionPlan,
   limit : Handle,
 ) -> Int {
   let mut offset = 0
   for index in 0..<=limit.index() {
     let handle = Handle::Handle(index)
-    if body_plan.contains_materialized_expression(handle) &&
+    if function_plan.contains_materialized_expression(handle) &&
       wgsl_ir_emit_expression_has_implicit_naga_load_slot(function, handle) {
       offset += 1
     }
