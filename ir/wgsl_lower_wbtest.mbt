@@ -2217,7 +2217,8 @@ test "WGSL AST lowerer respects nested lexical shadowing" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("var x_1: u32 = 30u;"), content="true")
+  debug_inspect(emitted.contains("var x_1: u32;\n"), content="true")
+  debug_inspect(emitted.contains("x_1 = 30u;\n"), content="true")
   debug_inspect(emitted.contains("buffer[0] = _e"), content="true")
   debug_inspect(emitted.contains("buffer[2] = x;"), content="true")
   debug_inspect(emitted.contains("buffer[3] = 20u;"), content="true")
@@ -2669,6 +2670,31 @@ test "WGSL AST lowerer lazily materializes return short-circuit branches in Naga
     emitted.contains("let _e76: bool = local_5;\n    return _e76;"),
     content="true",
   )
+}
+
+///|
+test "WGSL AST lowerer preserves nested var const initializer execution site" {
+  let source =
+    #|fn nested_var_init(count: u32) -> f32 {
+    #|  var total: f32 = 0.0;
+    #|  for (var i: u32 = 0u; i < count; i = i + 1u) {
+    #|    var shadow: f32 = 1.0;
+    #|    if i == 0u {
+    #|      shadow = 0.5;
+    #|    }
+    #|    total = total + shadow;
+    #|  }
+    #|  return total;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var shadow: f32;\n"), content="true")
+  debug_inspect(emitted.contains("var shadow: f32 = 1f;"), content="false")
+  debug_inspect(emitted.contains("shadow = 1f;\n"), content="true")
 }
 
 ///|

@@ -149,18 +149,94 @@ fn wgsl_ir_naga_function_body_local_declarations(
   elided_local_alias_targets : Map[Int, Handle],
 ) -> Array[Int] {
   let order : Array[Int] = []
+  let seen : @set.Set[Int] = Set([])
+  wgsl_ir_naga_collect_body_local_declarations(
+    function.body,
+    function,
+    elided_local_alias_targets,
+    order,
+    seen,
+  )
   for index in 0..<function.local_variables.items.length() {
-    match function.local_variables.items.get(index) {
-      Some(local_var) =>
-        if local_var.kind == Var &&
-          !local_var.generated_temporary &&
-          elided_local_alias_targets.get(index) == None {
-          order.push(index)
-        }
-      None => ()
+    if !seen.contains(index) &&
+      wgsl_ir_naga_local_declaration_is_hoistable(
+        function, elided_local_alias_targets, index,
+      ) {
+      seen.add(index)
+      order.push(index)
     }
   }
   order
+}
+
+///|
+fn wgsl_ir_naga_collect_body_local_declarations(
+  block : Block,
+  function : Function,
+  elided_local_alias_targets : Map[Int, Handle],
+  order : Array[Int],
+  seen : @set.Set[Int],
+) -> Unit {
+  for statement in block.statements {
+    match statement {
+      Declare(handle) => {
+        let index = handle.index()
+        if !seen.contains(index) &&
+          wgsl_ir_naga_local_declaration_is_hoistable(
+            function, elided_local_alias_targets, index,
+          ) {
+          seen.add(index)
+          order.push(index)
+        }
+      }
+      Block(child) =>
+        wgsl_ir_naga_collect_body_local_declarations(
+          child, function, elided_local_alias_targets, order, seen,
+        )
+      If(_, accept, reject) => {
+        wgsl_ir_naga_collect_body_local_declarations(
+          accept, function, elided_local_alias_targets, order, seen,
+        )
+        wgsl_ir_naga_collect_body_local_declarations(
+          reject, function, elided_local_alias_targets, order, seen,
+        )
+      }
+      Switch(_, cases) =>
+        for case in cases {
+          wgsl_ir_naga_collect_body_local_declarations(
+            case.body,
+            function,
+            elided_local_alias_targets,
+            order,
+            seen,
+          )
+        }
+      Loop(body, continuing, _) => {
+        wgsl_ir_naga_collect_body_local_declarations(
+          body, function, elided_local_alias_targets, order, seen,
+        )
+        wgsl_ir_naga_collect_body_local_declarations(
+          continuing, function, elided_local_alias_targets, order, seen,
+        )
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn wgsl_ir_naga_local_declaration_is_hoistable(
+  function : Function,
+  elided_local_alias_targets : Map[Int, Handle],
+  index : Int,
+) -> Bool {
+  if elided_local_alias_targets.get(index) != None {
+    return false
+  }
+  match function.local_variables.items.get(index) {
+    Some(local_var) => local_var.kind == Var && !local_var.generated_temporary
+    None => false
+  }
 }
 
 ///|

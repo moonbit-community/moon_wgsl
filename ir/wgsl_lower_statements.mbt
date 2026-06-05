@@ -873,7 +873,7 @@ fn WgslIrLowerer::lower_for_statement(
       function,
       loop_scope,
       block,
-      UseSiteLazyLocalConstant,
+      DeclarationArenaLocalConstant,
     )
   }
   for expr in expressions {
@@ -1335,9 +1335,19 @@ fn WgslIrLowerer::lower_local_declaration(
             None => false
           }
           if initializer_is_const {
-            self.lower_predeclared_source_var_const_initializer(
-              local_decl, expr_ref, function, scope, block,
-            )
+            let declaration_placement = match local_constant_placement {
+              DeclarationArenaLocalConstant => true
+              UseSiteLazyLocalConstant => false
+            }
+            if scope.block_depth == 0 || declaration_placement {
+              self.lower_predeclared_source_var_const_initializer(
+                local_decl, expr_ref, function, scope, block,
+              )
+            } else {
+              self.lower_local_var_store_declaration(
+                local_decl, function, scope, block,
+              )
+            }
           } else {
             self.lower_local_var_store_declaration(
               local_decl, function, scope, block,
