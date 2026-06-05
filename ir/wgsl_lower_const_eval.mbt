@@ -141,14 +141,14 @@ fn WgslIrLowerer::eval_ast_integer_call(
 ) -> WgslIrIntegerValue raise WgslIrLowerError {
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard callee.kind() is Identifier(name) else {
-    raise UnsupportedExpression(
-      "switch case selector uses non-identifier call",
-    )
+    raise UnsupportedExpression("switch case selector uses non-identifier call")
   }
   match name.name() {
     "i32" => {
       guard arguments is [argument] else {
-        raise UnsupportedExpression("i32 switch selector cast expects one argument")
+        raise UnsupportedExpression(
+          "i32 switch selector cast expects one argument",
+        )
       }
       Signed(
         self
@@ -158,7 +158,9 @@ fn WgslIrLowerer::eval_ast_integer_call(
     }
     "u32" => {
       guard arguments is [argument] else {
-        raise UnsupportedExpression("u32 switch selector cast expects one argument")
+        raise UnsupportedExpression(
+          "u32 switch selector cast expects one argument",
+        )
       }
       Unsigned(
         self
@@ -170,7 +172,9 @@ fn WgslIrLowerer::eval_ast_integer_call(
       match wgsl_ir_math_function_from_name(name.name()) {
         Some(Min) => {
           guard arguments is [left, right] else {
-            raise UnsupportedExpression("min switch selector expects two arguments")
+            raise UnsupportedExpression(
+              "min switch selector expects two arguments",
+            )
           }
           wgsl_ir_eval_integer_min(
             self.eval_ast_integer_expression(left, function, scope),
@@ -179,7 +183,9 @@ fn WgslIrLowerer::eval_ast_integer_call(
         }
         Some(Max) => {
           guard arguments is [left, right] else {
-            raise UnsupportedExpression("max switch selector expects two arguments")
+            raise UnsupportedExpression(
+              "max switch selector expects two arguments",
+            )
           }
           wgsl_ir_eval_integer_max(
             self.eval_ast_integer_expression(left, function, scope),
@@ -235,7 +241,10 @@ fn WgslIrLowerer::collect_ast_integer_constant_dependencies(
   match node.kind() {
     Identifier(name) =>
       self.collect_ast_identifier_constant_dependencies(
-        name.name(), function, scope, dependencies,
+        name.name(),
+        function,
+        scope,
+        dependencies,
       )
     Unary(_, inner) | Group(inner) =>
       self.collect_ast_integer_constant_dependencies(
@@ -450,6 +459,20 @@ fn WgslIrLowerer::eval_function_integer_expression_inner(
 }
 
 ///|
+fn WgslIrLowerer::eval_constant_integer_expression(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) => self.eval_global_integer_expression(constant.init)
+    None =>
+      raise UnsupportedExpression(
+        "constant expression references missing const",
+      )
+  }
+}
+
+///|
 fn WgslIrLowerer::eval_global_integer_expression_inner(
   self : WgslIrLowerer,
   expression : Expression,
@@ -599,6 +622,44 @@ fn WgslIrIntegerValue::to_non_negative_int(
 }
 
 ///|
+fn WgslIrIntegerValue::to_signed_literal(
+  self : WgslIrIntegerValue,
+  width : Int,
+) -> Literal raise WgslIrLowerError {
+  let value = self.to_signed_int()
+  match width {
+    8 => I64(Int64::from_int(value))
+    _ => I32(value)
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_unsigned_literal(
+  self : WgslIrIntegerValue,
+  width : Int,
+) -> Literal raise WgslIrLowerError {
+  let value = self.to_unsigned()
+  match width {
+    8 => U64(value.to_uint64())
+    _ => U32(value)
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_abstract_int_literal(
+  self : WgslIrIntegerValue,
+) -> Literal raise WgslIrLowerError {
+  match self {
+    Abstract(value) => AbstractInt(value)
+    Signed(value) => AbstractInt(Int64::from_int(value))
+    Unsigned(value) =>
+      AbstractInt(
+        Int64::from_int(WgslIrIntegerValue::Unsigned(value).to_signed_int()),
+      )
+  }
+}
+
+///|
 fn wgsl_ir_eval_integer_binary(
   op : BinaryOperator,
   left : WgslIrIntegerValue,
@@ -695,6 +756,71 @@ fn WgslIrLowerer::fold_function_constant_float_expression(
   match self.eval_function_float_expression(function, handle) {
     Some(value) => Some(AbstractFloat(value))
     None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::fold_function_constant_literal_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Literal? raise WgslIrLowerError {
+  let integer = Some(self.eval_function_integer_expression(function, handle)) catch {
+    _ => None
+  }
+  match integer {
+    Some(value) => return Some(value.to_abstract_int_literal())
+    None => ()
+  }
+  self.fold_function_constant_float_expression(function, handle)
+}
+
+///|
+fn WgslIrLowerer::inline_constant_literal_for_function(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Literal? raise WgslIrLowerError {
+  guard self.shader_module.constants.items.get(handle.index()) is Some(constant) else {
+    return None
+  }
+  guard self.shader_module.types.get(constant.ty) is Some(ty) else {
+    return None
+  }
+  guard ty.inner is Scalar(scalar) else { return None }
+  guard constant.inline_value ||
+    scalar.kind == AbstractInt ||
+    scalar.kind == AbstractFloat else {
+    return None
+  }
+  match scalar.kind {
+    Float =>
+      match self.eval_constant_float_expression(handle) {
+        Some(value) =>
+          Some(wgsl_ir_float_literal_for_scalar_width(value, scalar.width))
+        None => None
+      }
+    AbstractFloat =>
+      match self.eval_constant_float_expression(handle) {
+        Some(value) => Some(AbstractFloat(value))
+        None => None
+      }
+    Sint =>
+      Some(
+        self
+        .eval_constant_integer_expression(handle)
+        .to_signed_literal(scalar.width),
+      )
+    Uint =>
+      Some(
+        self
+        .eval_constant_integer_expression(handle)
+        .to_unsigned_literal(scalar.width),
+      )
+    AbstractInt =>
+      Some(
+        self.eval_constant_integer_expression(handle).to_abstract_int_literal(),
+      )
+    Bool => None
   }
 }
 

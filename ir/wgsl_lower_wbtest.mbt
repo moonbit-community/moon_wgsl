@@ -941,6 +941,48 @@ test "WGSL AST lowerer folds untemplated vector constructor constants in math ar
 }
 
 ///|
+test "WGSL AST lowerer prelowers clamp splat constructors before direct value" {
+  let source =
+    #|const MAX_VALUE = 65408.0;
+    #|
+    #|fn probe(color: vec3<f32>) -> vec3<f32> {
+    #|  return clamp(color, vec3(0.0), vec3(MAX_VALUE));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    Literal(_) => ()
+    _ => abort("expected lower bound scalar before direct argument")
+  }
+  match function.expressions.items[1] {
+    Splat(_, component) => debug_inspect(component.index(), content="0")
+    _ => abort("expected lower bound splat before direct argument")
+  }
+  match function.expressions.items[2] {
+    Literal(_) => ()
+    _ => abort("expected upper bound scalar before direct argument")
+  }
+  match function.expressions.items[3] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected direct value after splat scalar prelower")
+  }
+  match function.expressions.items[4] {
+    Splat(_, component) => debug_inspect(component.index(), content="2")
+    _ => abort("expected upper bound splat after direct argument")
+  }
+  match function.expressions.items[5] {
+    Math(Clamp, value, Some(low), Some(high), None) => {
+      debug_inspect(value.index(), content="3")
+      debug_inspect(low.index(), content="1")
+      debug_inspect(high.index(), content="4")
+    }
+    _ => abort("expected clamp to use source-order argument handles")
+  }
+}
+
+///|
 test "WGSL AST lowerer places parent argument after binary member root" {
   let source =
     #|struct Lights {
@@ -3150,6 +3192,54 @@ test "WGSL AST lowerer lowers later math access before deferred first literal" {
 }
 
 ///|
+test "WGSL AST lowerer lowers later math user call before deferred first const expression" {
+  let source =
+    #|const BIAS = 15;
+    #|
+    #|fn floor_log2_(value: f32) -> i32 {
+    #|  return i32(value);
+    #|}
+    #|
+    #|fn probe(maxrgb: f32) -> i32 {
+    #|  return max(-BIAS - 1, floor_log2_(maxrgb)) + 1 + BIAS;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut call_result = -1
+  let mut first_const_expr = -1
+  let mut max_call = -1
+  let mut max_left = -1
+  let mut max_right = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      FunctionCall(_, _) | CallResult(_) if call_result == -1 =>
+        call_result = expression_index
+      Unary(_, _) if call_result >= 0 && first_const_expr == -1 =>
+        first_const_expr = expression_index
+      Constant(_) if call_result >= 0 && first_const_expr == -1 =>
+        first_const_expr = expression_index
+      Literal(_) if call_result >= 0 && first_const_expr == -1 =>
+        first_const_expr = expression_index
+      Binary(_, _, _) if call_result >= 0 && first_const_expr == -1 =>
+        first_const_expr = expression_index
+      Math(Max, left, Some(right), None, None) if max_call == -1 => {
+        max_call = expression_index
+        max_left = left.index()
+        max_right = right.index()
+      }
+      _ => ()
+    }
+  }
+  debug_inspect(call_result >= 0, content="true")
+  debug_inspect(first_const_expr > call_result, content="true")
+  debug_inspect(max_call > first_const_expr, content="true")
+  debug_inspect(max_left > call_result, content="true")
+  debug_inspect(max_right, content="\{call_result}")
+}
+
+///|
 test "WGSL AST lowerer predeclares later constructor local root after first global root" {
   let source =
     #|struct View {
@@ -3185,14 +3275,15 @@ test "WGSL AST lowerer predeclares later constructor local root after first glob
     match expression {
       GlobalVariable(_) if global_root == -1 => global_root = expression_index
       LocalVariable(handle) =>
-        if handle.index() == transmitted_local && global_root >= 0 &&
+        if handle.index() == transmitted_local &&
+          global_root >= 0 &&
           transmitted_root == -1 {
           transmitted_root = expression_index
         }
       AccessIndex(base, _) if base.index() == global_root &&
         exposure_access == -1 => exposure_access = expression_index
-      Load(pointer) if pointer.index() == exposure_access &&
-        exposure_load == -1 => exposure_load = expression_index
+      Load(pointer) if pointer.index() == exposure_access && exposure_load == -1 =>
+        exposure_load = expression_index
       Load(pointer) if pointer.index() == transmitted_root &&
         transmitted_load == -1 => transmitted_load = expression_index
       _ => ()

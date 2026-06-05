@@ -414,8 +414,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             ) ||
             wgsl_ir_expr_node_is_literal_like(left)
           let right_children_lower_before_left = wgsl_ir_expr_node_is_function_argument_value(
-            left, scope,
-          ) &&
+              left, scope,
+            ) &&
             !wgsl_ir_expr_node_contains_call(right)
           let (left_handle, right_handle) = if right_binary_lowers_before_left {
             let (right_op, right_left, right_right) = self.lower_binary_expression_children(
@@ -1256,9 +1256,7 @@ fn WgslIrLowerer::lower_binary_expression_children(
         Some(result) => return result
         None => ()
       }
-      if scheduler.binary_lowers_right_argument_before_left_access(
-          left, right,
-        ) {
+      if scheduler.binary_lowers_right_argument_before_left_access(left, right) {
         self.predeclare_function_reference_roots_in_source_order(
           left, function, scope,
         )
@@ -1347,6 +1345,24 @@ fn WgslIrLowerer::expression_node_is_naga_deferred_const_like(
       self.expression_node_is_naga_deferred_const_like(left, scope) &&
       self.expression_node_is_naga_deferred_const_like(right, scope)
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_foldable_math_const_like(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expression_node_is_foldable_math_const_like(inner, scope)
+    Unary(_, inner) =>
+      self.expression_node_is_foldable_math_const_like(inner, scope)
+    Binary(_, left, right) =>
+      self.expression_node_is_foldable_math_const_like(left, scope) &&
+      self.expression_node_is_foldable_math_const_like(right, scope)
+    _ => self.expression_node_is_naga_deferred_const_like(node, scope)
   }
 }
 
@@ -2210,7 +2226,15 @@ fn WgslIrLowerer::lower_identifier_expression(
     None => ()
   }
   match self.ensure_constant_declaration_lowered(name) {
-    Some(handle) => return function.expressions.append(Constant(handle))
+    Some(handle) =>
+      match self.inline_constant_literal_for_function(handle) {
+        Some(literal) =>
+          return function.expressions.append_with_origin(
+            Literal(literal),
+            FoldedLocalConstant,
+          )
+        None => return function.expressions.append(Constant(handle))
+      }
     None => ()
   }
   match self.ensure_override_declaration_predeclared(name) {
@@ -2475,6 +2499,7 @@ fn WgslIrLowerer::lower_function_dynamic_member_index_access(
   }
 }
 
+///|
 fn WgslIrLowerer::lower_function_static_member_access_chain(
   self : WgslIrLowerer,
   root_handle : Handle,
@@ -2736,8 +2761,7 @@ fn WgslIrLowerer::lower_function_flattened_constructor_arguments(
 ) -> Array[Handle] raise WgslIrLowerError {
   let scheduler = self.expression_arena_scheduler(function, scope)
   match
-    self
-    .lower_function_constructor_arguments_with_later_local_root_after_first_global_root(
+    self.lower_function_constructor_arguments_with_later_local_root_after_first_global_root(
       flattened, function, scope, expected_ty,
     ) {
     Some(handles) => return handles
@@ -2771,37 +2795,40 @@ fn WgslIrLowerer::lower_function_constructor_arguments_with_later_local_root_aft
   guard !scheduler.constructor_argument_has_ordered_effect(flattened[0]) else {
     return None
   }
-  guard
-    self.first_global_static_member_root_end(flattened[0]) is Some(root_end)
-  else {
+  guard self.first_global_static_member_root_end(flattened[0]) is Some(root_end) else {
     return None
   }
-  guard
-    self.expression_node_contains_mutable_local_root_after(
-      flattened[0], root_end, function, scope,
-    )
-  else {
+  guard self.expression_node_contains_mutable_local_root_after(
+    flattened[0],
+    root_end,
+    function,
+    scope,
+  ) else {
     return None
   }
-  guard
-    self.predeclare_first_global_static_member_root(
-      flattened[0], function, scope,
-    )
-  else {
+  guard self.predeclare_first_global_static_member_root(
+    flattened[0],
+    function,
+    scope,
+  ) else {
     return None
   }
-  guard
-    self.predeclare_first_mutable_local_root_after(
-      flattened[0], root_end, function, scope,
-    )
-  else {
+  guard self.predeclare_first_mutable_local_root_after(
+    flattened[0],
+    root_end,
+    function,
+    scope,
+  ) else {
     return None
   }
   let handles : Array[Handle] = []
   for index in 0..<flattened.length() {
     handles.push(
       self.lower_function_constructor_argument_value(
-        flattened[index], function, scope, expected_ty,
+        flattened[index],
+        function,
+        scope,
+        expected_ty,
       ),
     )
   }
@@ -2884,14 +2911,12 @@ fn WgslIrLowerer::predeclare_first_global_static_member_root(
     Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
       self.predeclare_first_global_static_member_root(inner, function, scope)
     Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
-      if self.predeclare_first_global_static_member_root(
-          left, function, scope,
-        ) {
+      if self.predeclare_first_global_static_member_root(left, function, scope) {
         true
       } else {
         self.predeclare_first_global_static_member_root(right, function, scope)
       }
-    Call(callee, arguments) => {
+    Call(callee, arguments) =>
       if self.predeclare_first_global_static_member_root(
           callee, function, scope,
         ) {
@@ -2909,7 +2934,6 @@ fn WgslIrLowerer::predeclare_first_global_static_member_root(
         }
         found
       }
-    }
     Sequence(arguments) => {
       let mut found = false
       for argument in arguments {
@@ -2941,9 +2965,13 @@ fn WgslIrLowerer::predeclare_global_identifier_root(
     Identifier(name) =>
       match self.global_names.get(name.name()) {
         Some(handle) => {
-          ignore(scope.predeclare_global_pointer_expression(
-            name.name(), handle, function,
-          ))
+          ignore(
+            scope.predeclare_global_pointer_expression(
+              name.name(),
+              handle,
+              function,
+            ),
+          )
           true
         }
         None => false
@@ -2993,7 +3021,7 @@ fn WgslIrLowerer::expression_node_contains_mutable_local_root_after(
       self.expression_node_contains_mutable_local_root_after(
         right, after_offset, function, scope,
       )
-    Call(callee, arguments) => {
+    Call(callee, arguments) =>
       if self.expression_node_contains_mutable_local_root_after(
           callee, after_offset, function, scope,
         ) {
@@ -3006,7 +3034,6 @@ fn WgslIrLowerer::expression_node_contains_mutable_local_root_after(
           )
         })
       }
-    }
     Sequence(arguments) =>
       arguments.any(fn(argument) {
         self.expression_node_contains_mutable_local_root_after(
@@ -3033,9 +3060,13 @@ fn WgslIrLowerer::predeclare_first_mutable_local_root_after(
             match function.local_variables.items.get(handle.index()) {
               Some(local_var) =>
                 if local_var.kind == Var {
-                  ignore(scope.predeclare_local_pointer_expression(
-                    name.name(), handle, function,
-                  ))
+                  ignore(
+                    scope.predeclare_local_pointer_expression(
+                      name.name(),
+                      handle,
+                      function,
+                    ),
+                  )
                   true
                 } else {
                   false
@@ -3069,7 +3100,7 @@ fn WgslIrLowerer::predeclare_first_mutable_local_root_after(
           right, after_offset, function, scope,
         )
       }
-    Call(callee, arguments) => {
+    Call(callee, arguments) =>
       if self.predeclare_first_mutable_local_root_after(
           callee, after_offset, function, scope,
         ) {
@@ -3087,7 +3118,6 @@ fn WgslIrLowerer::predeclare_first_mutable_local_root_after(
         }
         found
       }
-    }
     Sequence(arguments) => {
       let mut found = false
       for argument in arguments {
@@ -3104,6 +3134,7 @@ fn WgslIrLowerer::predeclare_first_mutable_local_root_after(
   }
 }
 
+///|
 fn WgslIrLowerer::lower_function_constructor_arguments_with_delayed_literals(
   self : WgslIrLowerer,
   flattened : Array[@ast.WgslExprNode],
@@ -3367,6 +3398,13 @@ fn WgslIrLowerer::lower_function_math_call(
       )
     }
   }
+  match
+    self.lower_function_math_call_with_later_splat_constructors_before_first_direct(
+      math_function, arguments, function, scope,
+    ) {
+    Some(handle) => return handle
+    None => ()
+  }
   let deferred_constructors = self.prelower_homogeneous_math_constructor_arguments(
     math_function, arguments, function, scope,
   )
@@ -3383,7 +3421,9 @@ fn WgslIrLowerer::lower_function_math_call(
     )
     for index in 2..<arguments.length() {
       if self.math_call_later_argument_lowers_before_deferred_first(
-          arguments[index], function, scope,
+          arguments[index],
+          function,
+          scope,
         ) {
         prelowered_later[index] = Some(
           self.lower_function_math_argument_at(
@@ -3392,7 +3432,7 @@ fn WgslIrLowerer::lower_function_math_call(
         )
       }
     }
-    let first = self.lower_function_math_argument_at(
+    let first = self.lower_function_foldable_const_math_argument_at(
       0, arguments, deferred_constructors, function, scope,
     )
     handles.push(first)
@@ -3446,6 +3486,79 @@ fn WgslIrLowerer::lower_function_math_call(
     }
     None => handle
   }
+}
+
+///|
+fn WgslIrLowerer::lower_function_math_call_with_later_splat_constructors_before_first_direct(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard math_function == Clamp else { return None }
+  guard wgsl_ir_math_function_has_homogeneous_arguments(math_function) else {
+    return None
+  }
+  guard arguments.length() >= 2 else { return None }
+  guard wgsl_ir_expr_node_is_function_argument_value(arguments[0], scope) else {
+    return None
+  }
+  guard self.prelower_math_splat_constructor_argument(
+      arguments[1],
+      function,
+      scope,
+    )
+    is Some(first_later) else {
+    return None
+  }
+  let second = self.lower_function_constructor_expression_from_handles(
+    first_later.ty,
+    [first_later.component],
+    function,
+  )
+  let deferred : Map[Int, WgslIrDeferredConstructorArgument] = Map([])
+  for index in 2..<arguments.length() {
+    match
+      self.prelower_math_splat_constructor_argument(
+        arguments[index],
+        function,
+        scope,
+      ) {
+      Some(value) => deferred.set(index, value)
+      None => return None
+    }
+  }
+  let first = self.lower_function_math_argument_at(
+    0, arguments, deferred, function, scope,
+  )
+  let handles : Array[Handle] = [first, second]
+  for index in 2..<arguments.length() {
+    handles.push(
+      self.lower_function_math_argument_at(
+        index, arguments, deferred, function, scope,
+      ),
+    )
+  }
+  self.contextualize_homogeneous_math_arguments(
+    math_function, function, handles,
+  )
+  guard handles is [a, .. rest] else {
+    abort("math call argument guard already checked")
+  }
+  let b = match rest {
+    [value, ..] => Some(value)
+    [] => None
+  }
+  let c = match rest {
+    [_, value, ..] => Some(value)
+    _ => None
+  }
+  let d = match rest {
+    [_, _, value, ..] => Some(value)
+    _ => None
+  }
+  Some(function.expressions.append(Math(math_function, a, b, c, d)))
 }
 
 ///|
@@ -3529,6 +3642,39 @@ fn WgslIrLowerer::lower_function_math_argument_at(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_foldable_const_math_argument_at(
+  self : WgslIrLowerer,
+  index : Int,
+  arguments : Array[@ast.WgslExprNode],
+  deferred_constructors : Map[Int, WgslIrDeferredConstructorArgument],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  guard self.expression_node_is_foldable_math_const_like(
+    arguments[index],
+    scope,
+  ) else {
+    return self.lower_function_math_argument_at(
+      index, arguments, deferred_constructors, function, scope,
+    )
+  }
+  let expression_mark = function.expressions.items.length()
+  let lowered = self.lower_function_math_argument_at(
+    index, arguments, deferred_constructors, function, scope,
+  )
+  match self.fold_function_constant_literal_expression(function, lowered) {
+    Some(literal) => {
+      function.expressions.truncate(expression_mark)
+      function.expressions.append_with_origin(
+        Literal(literal),
+        FoldedLocalConstant,
+      )
+    }
+    None => lowered
+  }
+}
+
+///|
 fn WgslIrLowerer::math_call_lowers_second_argument_before_first(
   self : WgslIrLowerer,
   math_function : MathFunction,
@@ -3540,12 +3686,90 @@ fn WgslIrLowerer::math_call_lowers_second_argument_before_first(
     return false
   }
   guard arguments.length() >= 2 else { return false }
-  wgsl_ir_expr_node_is_literal_like(arguments[0]) &&
-  self.expression_node_contains_naga_reference_value(
-    arguments[1],
-    function,
-    scope,
+  (
+    wgsl_ir_expr_node_is_literal_like(arguments[0]) &&
+    self.expression_node_contains_naga_reference_value(
+      arguments[1],
+      function,
+      scope,
+    )
+  ) ||
+  (
+    self.expression_node_is_foldable_math_const_like(arguments[0], scope) &&
+    self.expression_node_contains_user_function_call(arguments[1])
   )
+}
+
+///|
+fn WgslIrLowerer::prelower_math_splat_constructor_argument(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrDeferredConstructorArgument? raise WgslIrLowerError {
+  guard argument.kind() is Call(callee, constructor_arguments) else {
+    return None
+  }
+  guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
+    is [component] else {
+    return None
+  }
+  guard self.expression_node_is_naga_deferred_const_like(component, scope) else {
+    return None
+  }
+  guard self.lower_math_splat_constructor_callee_type(
+      callee, constructor_arguments,
+    )
+    is Some(ty) else {
+    return None
+  }
+  guard self.vector_size_from_type(ty) is Some(_) else { return None }
+  let expected_ty = self.constructor_component_expected_type(ty)
+  let expression_mark = function.expressions.items.length()
+  let lowered = self.lower_function_expression_node_with_expected(
+    component, function, scope, expected_ty,
+  )
+  match self.fold_function_constant_float_expression(function, lowered) {
+    Some(literal) => {
+      function.expressions.truncate(expression_mark)
+      let component = function.expressions.append_with_origin(
+        Literal(literal),
+        FoldedLocalConstant,
+      )
+      Some({ ty, component })
+    }
+    None => {
+      function.expressions.truncate(expression_mark)
+      None
+    }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_math_splat_constructor_callee_type(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+  constructor_arguments : Array[@ast.WgslExprNode],
+) -> Handle? raise WgslIrLowerError {
+  match self.lower_templated_callee_type(callee) {
+    Some(ty) => return Some(ty)
+    None => ()
+  }
+  match callee.kind() {
+    Identifier(name) => {
+      let constructor_name = name.name()
+      guard wgsl_ir_vector_size_from_constructor_name(constructor_name)
+        is Some(_) else {
+        return None
+      }
+      Some(
+        self.lower_untemplated_constructor_type_from_ast(
+          constructor_name, constructor_arguments, constructor_name,
+        ),
+      )
+    }
+    _ => None
+  }
 }
 
 ///|
@@ -3882,9 +4106,11 @@ fn WgslIrLowerer::lower_function_select_with_constant_values_and_binary_conditio
   let condition_handle = function.expressions.append(
     Binary(binary_op, left_handle, right_handle),
   )
-  Some(function.expressions.append(
-    Select(condition_handle, accept_handle, reject_handle),
-  ))
+  Some(
+    function.expressions.append(
+      Select(condition_handle, accept_handle, reject_handle),
+    ),
+  )
 }
 
 ///|
