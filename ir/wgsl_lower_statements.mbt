@@ -77,11 +77,32 @@ fn WgslIrLowerer::predeclare_source_var_const_initializer_expression(
     Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
     None => None
   }
+  let expected_ty = self.source_local_const_initializer_expected_type(
+    local_decl, explicit_ty,
+  )
   ignore(
     self.lower_source_local_const_initializer(
-      expr_ref, explicit_ty, function, scope,
+      expr_ref, expected_ty, function, scope,
     ),
   )
+}
+
+///|
+fn WgslIrLowerer::source_local_const_initializer_expected_type(
+  self : WgslIrLowerer,
+  local_decl : @ast.WgslLocalDeclaration,
+  explicit_ty : Handle?,
+) -> Handle? raise WgslIrLowerError {
+  match explicit_ty {
+    Some(ty) => Some(ty)
+    None =>
+      Some(
+        self.infer_local_type_from_initializer(
+          local_decl.name().name(),
+          local_decl.initializer_ref(),
+        ),
+      )
+  }
 }
 
 ///|
@@ -162,7 +183,7 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
         expr_ref, function, scope, explicit_ty,
       )
       scope.source_local_const_initializer_expressions.set(key, handle)
-      wgsl_ir_record_source_local_const_initializer_literals(
+      self.record_source_local_const_initializer_literals(
         expr_ref, expression_mark, function, scope, explicit_ty,
       )
       handle
@@ -183,7 +204,8 @@ fn wgsl_ir_expr_node_literal_token(
 }
 
 ///|
-fn wgsl_ir_record_source_local_const_initializer_literals(
+fn WgslIrLowerer::record_source_local_const_initializer_literals(
+  self : WgslIrLowerer,
   expr_ref : @ast.WgslExprRef,
   expression_mark : Int,
   function : Function,
@@ -197,24 +219,126 @@ fn wgsl_ir_record_source_local_const_initializer_literals(
   }
   guard !literal_tokens.is_empty() else { return }
   let mut token_index = 0
-  for expression_index in expression_mark..<function.expressions.items.length() {
+  let expression_end = function.expressions.items.length()
+  for expression_index in expression_mark..<expression_end {
     guard token_index < literal_tokens.length() else { break }
     match function.expressions.items.get(expression_index) {
       Some(Literal(_)) => {
-        let key = wgsl_ir_source_local_const_literal_key(
+        let literal_handle = Handle::Handle(expression_index)
+        let literal_ty = match
+          self.function_expression_type(function, literal_handle) {
+          Some(ty) => Some(ty)
+          None => explicit_ty
+        }
+        self.record_source_local_const_literal_handle(
+          scope,
           literal_tokens[token_index],
-          explicit_ty,
+          literal_ty,
+          literal_handle,
         )
-        if !scope.source_local_const_initializer_expressions.contains(key) {
-          scope.source_local_const_initializer_expressions.set(
-            key,
-            Handle(expression_index),
-          )
+        match
+          self.source_local_const_literal_initializer_context_type(
+            function, literal_handle, expression_end, explicit_ty,
+          ) {
+          Some(context_ty) =>
+            self.record_source_local_const_literal_handle(
+              scope,
+              literal_tokens[token_index],
+              Some(context_ty),
+              literal_handle,
+            )
+          None => ()
         }
         token_index = token_index + 1
       }
       _ => ()
     }
+  }
+}
+
+///|
+fn WgslIrLowerer::source_local_const_literal_initializer_context_type(
+  self : WgslIrLowerer,
+  function : Function,
+  literal : Handle,
+  expression_end : Int,
+  explicit_ty : Handle?,
+) -> Handle? {
+  match self.source_local_const_literal_context_type(explicit_ty) {
+    Some(ty) => return Some(ty)
+    None => ()
+  }
+  let start = literal.index() + 1
+  for expression_index in start..<expression_end {
+    match function.expressions.items.get(expression_index) {
+      Some(Splat(_, inner)) if inner == literal =>
+        match
+          self.function_expression_type(function, Handle(expression_index)) {
+          Some(ty) =>
+            match self.source_local_const_literal_context_type(Some(ty)) {
+              Some(context_ty) => return Some(context_ty)
+              None => ()
+            }
+          None => ()
+        }
+      Some(Compose(ty, components)) =>
+        if wgsl_ir_source_local_const_initializer_components_contain(
+            components, literal,
+          ) {
+          match self.source_local_const_literal_context_type(Some(ty)) {
+            Some(context_ty) => return Some(context_ty)
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_ir_source_local_const_initializer_components_contain(
+  components : Array[Handle],
+  literal : Handle,
+) -> Bool {
+  for component in components {
+    if component == literal {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn WgslIrLowerer::record_source_local_const_literal_handle(
+  self : WgslIrLowerer,
+  scope : WgslIrFunctionScope,
+  token : @ast.WgslExprToken,
+  ty : Handle?,
+  handle : Handle,
+) -> Unit {
+  ignore(self)
+  let key = wgsl_ir_source_local_const_literal_key(token, ty)
+  if !scope.source_local_const_initializer_expressions.contains(key) {
+    scope.source_local_const_initializer_expressions.set(key, handle)
+  }
+}
+
+///|
+fn WgslIrLowerer::source_local_const_literal_context_type(
+  self : WgslIrLowerer,
+  explicit_ty : Handle?,
+) -> Handle? {
+  match explicit_ty {
+    Some(ty) =>
+      match self.shader_module.types.get(ty) {
+        Some({ inner: Scalar(_), .. }) => Some(ty)
+        Some({ inner: Vector(_, scalar), .. })
+        | Some({ inner: Matrix(_, _, scalar), .. }) =>
+          Some(self.scalar_type_handle(scalar))
+        _ => None
+      }
+    None => None
   }
 }
 
@@ -1697,8 +1821,11 @@ fn WgslIrLowerer::lower_predeclared_source_var_const_initializer_to_handle(
     Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
     None => None
   }
+  let expected_ty = self.source_local_const_initializer_expected_type(
+    local_decl, explicit_ty,
+  )
   let init = self.lower_source_local_const_initializer(
-    expr_ref, explicit_ty, function, scope,
+    expr_ref, expected_ty, function, scope,
   )
   let ty = match explicit_ty {
     Some(ty) => ty

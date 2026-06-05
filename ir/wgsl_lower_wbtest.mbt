@@ -2722,6 +2722,47 @@ test "WGSL AST lowerer keeps non-loop nested var const initializer in declaratio
 }
 
 ///|
+test "WGSL AST lowerer reuses source local const initializer literal by scalar type" {
+  let source =
+    #|fn source_const_literal_reuse() -> f32 {
+    #|  var color: vec3<f32> = vec3(1.0);
+    #|  var scalar: f32 = 1.0;
+    #|  return scalar + color.x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut color_init = -1
+  let mut scalar_init = -1
+  for local_var in function.local_variables.items {
+    match local_var.name {
+      Some("color") =>
+        match local_var.init {
+          Some(init) => color_init = init.index()
+          None => ()
+        }
+      Some("scalar") =>
+        match local_var.init {
+          Some(init) => scalar_init = init.index()
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(color_init, content="1")
+  debug_inspect(scalar_init, content="0")
+  let mut literal_count = 0
+  for expression in function.expressions.items {
+    match expression {
+      Literal(_) => literal_count += 1
+      _ => ()
+    }
+  }
+  debug_inspect(literal_count, content="1")
+}
+
+///|
 test "WGSL IR emitter disambiguates repeated local names" {
   let source =
     #|fn f() -> u32 {

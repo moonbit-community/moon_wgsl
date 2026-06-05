@@ -430,7 +430,7 @@ test "WGSL AST lowerer lowers for loops into IR loops" {
   }
   debug_inspect(emitted.contains("var i: u32 = 0u;"), content="true")
   debug_inspect(emitted.contains("loop {"), content="true")
-  debug_inspect(emitted.contains("if (_e3 < 4u) {"), content="true")
+  debug_inspect(emitted.contains("if (_e2 < 4u) {"), content="true")
   debug_inspect(
     emitted.contains("} else {\n            break;"),
     content="true",
