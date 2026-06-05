@@ -635,6 +635,35 @@ test "WGSL AST lowerer lowers constant select values after condition operands" {
   }
 }
 
+///|
+test "WGSL AST lowerer reuses duplicate untemplated var initializer literals" {
+  let source =
+    #|fn probe() -> vec2<u32> {
+    #|  var corner_uv: vec2<u32> = vec2(0, 0);
+    #|  return corner_uv;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    Literal(_) => ()
+    _ => abort("expected a single typed literal")
+  }
+  match function.expressions.items[1] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="0")
+      debug_inspect(components[1].index(), content="0")
+    }
+    _ => abort("expected constructor compose to reuse duplicate literal")
+  }
+  match function.local_variables.items[0].init {
+    Some(handle) => debug_inspect(handle.index(), content="1")
+    None => abort("expected local initializer")
+  }
+}
+
+///|
 test "WGSL AST lowerer represents single vector members as Naga-style access indexes" {
   let source =
     #|fn probe(value: vec4<f32>) -> f32 {

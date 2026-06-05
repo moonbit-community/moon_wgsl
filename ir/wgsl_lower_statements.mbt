@@ -208,9 +208,16 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
     Some(handle) => handle
     None => {
       let expression_mark = function.expressions.items.length()
-      let handle = self.lower_function_expression_ref_with_expected(
-        expr_ref, function, scope, explicit_ty,
-      )
+      let handle = match
+        self.lower_reused_literal_vector_source_local_const_initializer(
+          expr_ref, explicit_ty, function,
+        ) {
+        Some(handle) => handle
+        None =>
+          self.lower_function_expression_ref_with_expected(
+            expr_ref, function, scope, explicit_ty,
+          )
+      }
       scope.source_local_const_initializer_expressions.set(key, handle)
       self.record_source_local_const_initializer_literals(
         expr_ref, expression_mark, function, scope, explicit_ty,
@@ -218,6 +225,39 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
       handle
     }
   }
+}
+
+///|
+fn WgslIrLowerer::lower_reused_literal_vector_source_local_const_initializer(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  explicit_ty : Handle?,
+  function : Function,
+) -> Handle? raise WgslIrLowerError {
+  guard explicit_ty is Some(vector_ty) else { return None }
+  guard self.shader_module.types.get(vector_ty) is Some({ inner: Vector(size, scalar), .. }) else {
+    return None
+  }
+  guard expr_ref.root() is Some(root) else { return None }
+  guard root.kind() is Call(callee, arguments) else { return None }
+  guard callee.kind() is Identifier(name) else { return None }
+  guard name.name() == "vec\{size.width()}" else { return None }
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments.length() == size.width() else { return None }
+  guard arguments[0].kind() is Literal(first_token) else { return None }
+  for index in 1..<arguments.length() {
+    guard arguments[index].kind() is Literal(token) else { return None }
+    guard token.text() == first_token.text() else { return None }
+  }
+  let scalar_ty = self.scalar_type_handle(scalar)
+  let literal = function.expressions.append(
+    Literal(self.literal_from_token_with_expected(first_token, Some(scalar_ty))),
+  )
+  let components : Array[Handle] = []
+  for _ in 0..<arguments.length() {
+    components.push(literal)
+  }
+  Some(function.expressions.append(Compose(vector_ty, components)))
 }
 
 ///|
