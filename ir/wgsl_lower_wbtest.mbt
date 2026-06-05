@@ -2848,6 +2848,75 @@ test "WGSL AST lowerer schedules runtime const var store pointer before initiali
 }
 
 ///|
+test "WGSL AST lowerer builds global member base before mutable dynamic index load" {
+  let source =
+    #|struct Light {
+    #|  flags: u32,
+    #|}
+    #|
+    #|struct Lights {
+    #|  directional_lights: array<Light, 4>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> lights: Lights;
+    #|
+    #|fn dynamic_uniform_index_order(count: u32) -> u32 {
+    #|  var total: u32 = 0u;
+    #|  for (var i: u32 = 0u; i < count; i = i + 1u) {
+    #|    total = total + lights.directional_lights[i].flags;
+    #|  }
+    #|  return total;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut loop_index_local = -1
+  for local_index, local_var in function.local_variables.items {
+    match local_var.name {
+      Some("i") => loop_index_local = local_index
+      _ => ()
+    }
+  }
+  let mut member_base_index = -1
+  let mut index_load_index = -1
+  let mut dynamic_access_index = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Access(base, index) =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(root, _)) =>
+            match function.expressions.items.get(root.index()) {
+              Some(GlobalVariable(_)) =>
+                match function.expressions.items.get(index.index()) {
+                  Some(Load(pointer)) =>
+                    match function.expressions.items.get(pointer.index()) {
+                      Some(LocalVariable(handle)) =>
+                        if handle.index() == loop_index_local &&
+                          dynamic_access_index == -1 {
+                          member_base_index = base.index()
+                          index_load_index = index.index()
+                          dynamic_access_index = expression_index
+                        }
+                      _ => ()
+                    }
+                  _ => ()
+                }
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(loop_index_local >= 0, content="true")
+  debug_inspect(member_base_index >= 0, content="true")
+  debug_inspect(index_load_index > member_base_index, content="true")
+  debug_inspect(dynamic_access_index > index_load_index, content="true")
+}
+
+///|
 test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
   let source =
     #|fn nested_if_var_init(flag: bool) -> f32 {
