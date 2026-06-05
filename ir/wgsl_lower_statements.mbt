@@ -666,16 +666,18 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           let target = self.materialize_store_pointer_if_needed(
             function, scope, block, raw_target,
           )
-          match rhs_ref.root() {
-            Some(root) =>
-              if wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
-                  root, scope,
-                ) {
-                self.predeclare_function_binary_chain_reference_roots_in_source_order(
-                  root, function, scope,
-                )
-              }
-            None => ()
+          if wgsl_ir_expr_ref_plain_local_identifier(lhs_ref, scope) {
+            match rhs_ref.root() {
+              Some(root) =>
+                if wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
+                    root, scope,
+                  ) {
+                  self.predeclare_function_binary_chain_reference_roots_in_source_order(
+                    root, function, scope,
+                  )
+                }
+              None => ()
+            }
           }
           let target_value = self.compound_assignment_target_value(
             function, target,
@@ -1152,12 +1154,15 @@ fn WgslIrLowerer::lower_for_header_statement(
             function, scope, block, raw_target,
           )
           let rhs_node = wgsl_ir_expr_node_from_tokens(rhs_tokens)
-          if wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
-              rhs_node, scope,
-            ) {
-            self.predeclare_function_binary_chain_reference_roots_in_source_order(
-              rhs_node, function, scope,
-            )
+          let lhs_node = wgsl_ir_expr_node_from_tokens(lhs_tokens)
+          if wgsl_ir_expr_node_plain_local_identifier(lhs_node, scope) {
+            if wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
+                rhs_node, scope,
+              ) {
+              self.predeclare_function_binary_chain_reference_roots_in_source_order(
+                rhs_node, function, scope,
+              )
+            }
           }
           let target_value = self.compound_assignment_target_value(
             function, target,

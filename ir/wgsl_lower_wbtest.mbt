@@ -1891,6 +1891,42 @@ test "WGSL AST lowerer emits compound field target load before store" {
 }
 
 ///|
+test "WGSL AST lowerer keeps compound field target load before RHS member roots" {
+  let source =
+    #|struct Material {
+    #|  color: vec4<f32>,
+    #|}
+    #|
+    #|struct Bias {
+    #|  scale: f32,
+    #|}
+    #|
+    #|fn sample(scale: f32) -> vec4<f32> {
+    #|  return vec4<f32>(scale);
+    #|}
+    #|
+    #|@compute
+    #|fn main() {
+    #|  var material: Material;
+    #|  var bias: Bias;
+    #|  material.color *= sample(bias.scale);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  let target_load = emitted.find(": vec4<f32> = material.color;")
+  let rhs_load = emitted.find(": f32 = bias.scale;")
+  let ordered = match (target_load, rhs_load) {
+    (Some(target), Some(rhs)) => target < rhs
+    _ => false
+  }
+  debug_inspect(ordered, content="true")
+}
+
+///|
 test "WGSL AST lowerer returns imported constants without synthetic temporaries" {
   let source =
     #|const VALUE: u32 = 1u;
