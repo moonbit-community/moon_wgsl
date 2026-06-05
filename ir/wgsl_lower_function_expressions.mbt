@@ -2986,20 +2986,39 @@ fn WgslIrLowerer::lower_function_math_call(
   if self.math_call_lowers_second_argument_before_first(
       math_function, arguments, function, scope,
     ) {
+    let prelowered_later : Array[Handle?] = []
+    for _ in 0..<arguments.length() {
+      prelowered_later.push(None)
+    }
     let second = self.lower_function_math_argument_at(
       1, arguments, deferred_constructors, function, scope,
     )
+    for index in 2..<arguments.length() {
+      if self.math_call_later_argument_lowers_before_deferred_first(
+          arguments[index], function, scope,
+        ) {
+        prelowered_later[index] = Some(
+          self.lower_function_math_argument_at(
+            index, arguments, deferred_constructors, function, scope,
+          ),
+        )
+      }
+    }
     let first = self.lower_function_math_argument_at(
       0, arguments, deferred_constructors, function, scope,
     )
     handles.push(first)
     handles.push(second)
     for index in 2..<arguments.length() {
-      handles.push(
-        self.lower_function_math_argument_at(
-          index, arguments, deferred_constructors, function, scope,
-        ),
-      )
+      match prelowered_later[index] {
+        Some(handle) => handles.push(handle)
+        None =>
+          handles.push(
+            self.lower_function_math_argument_at(
+              index, arguments, deferred_constructors, function, scope,
+            ),
+          )
+      }
     }
   } else {
     for index in 0..<arguments.length() {
@@ -3039,6 +3058,17 @@ fn WgslIrLowerer::lower_function_math_call(
     }
     None => handle
   }
+}
+
+///|
+fn WgslIrLowerer::math_call_later_argument_lowers_before_deferred_first(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  wgsl_ir_expr_node_is_direct_access_chain(argument) &&
+  self.expression_node_contains_naga_reference_value(argument, function, scope)
 }
 
 ///|

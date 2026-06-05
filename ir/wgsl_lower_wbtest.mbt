@@ -2969,6 +2969,57 @@ test "WGSL AST lowerer lowers mutable call argument before scalar const alias" {
 }
 
 ///|
+test "WGSL AST lowerer lowers later math access before deferred first literal" {
+  let source =
+    #|struct View {
+    #|  exposure: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> view: View;
+    #|
+    #|fn probe(emissive: vec4<f32>) -> f32 {
+    #|  return mix(1.0, view.exposure, emissive.a);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut exposure_load = -1
+  let mut emissive_access = -1
+  let mut first_literal = -1
+  let mut mix_call = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(AccessIndex(base, _)) =>
+            match function.expressions.items.get(base.index()) {
+              Some(GlobalVariable(_)) if exposure_load == -1 =>
+                exposure_load = expression_index
+              _ => ()
+            }
+          _ => ()
+        }
+      AccessIndex(base, _) =>
+        match function.expressions.items.get(base.index()) {
+          Some(FunctionArgument(_)) if emissive_access == -1 =>
+            emissive_access = expression_index
+          _ => ()
+        }
+      Literal(AbstractFloat(value)) if value == 1.0 && first_literal == -1 =>
+        first_literal = expression_index
+      Math(Mix, _, _, _, _) if mix_call == -1 => mix_call = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(exposure_load >= 0, content="true")
+  debug_inspect(emissive_access > exposure_load, content="true")
+  debug_inspect(first_literal > emissive_access, content="true")
+  debug_inspect(mix_call > first_literal, content="true")
+}
+
+///|
 test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
   let source =
     #|fn nested_if_var_init(flag: bool) -> f32 {
