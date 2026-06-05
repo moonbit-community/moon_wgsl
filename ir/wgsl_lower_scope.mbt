@@ -33,8 +33,29 @@ priv enum WgslIrLocalValue {
 }
 
 ///|
+priv enum WgslIrLocalValueSource {
+  LocalLet
+  LocalConst
+} derive(Eq)
+
+///|
 priv struct WgslIrLocalValueCell {
   mut value : WgslIrLocalValue
+  source : WgslIrLocalValueSource
+}
+
+///|
+fn wgsl_ir_local_let_value_cell(
+  value : WgslIrLocalValue,
+) -> WgslIrLocalValueCell {
+  { value, source: LocalLet }
+}
+
+///|
+fn wgsl_ir_local_const_value_cell(
+  value : WgslIrLocalValue,
+) -> WgslIrLocalValueCell {
+  { value, source: LocalConst }
 }
 
 ///|
@@ -59,6 +80,7 @@ priv struct WgslIrFunctionScope {
     String,
     WgslIrPendingGlobalPointerExpressions,
   ]
+  mut source_let_initializer_preserve_depth : Int
   loop_depth : Int
   mut visible_rel_path : String
   mut generated_import_local_spelling : WgslIrGeneratedImportLocalSpellingMode
@@ -85,6 +107,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
     pending_global_pointer_expressions: Map([]),
+    source_let_initializer_preserve_depth: 0,
     loop_depth: 0,
     visible_rel_path: "",
     generated_import_local_spelling: AllGeneratedImportLocalSpelling,
@@ -179,6 +202,7 @@ fn WgslIrFunctionScope::child(
     argument_pointer_expressions: self.argument_pointer_expressions,
     global_pointer_expressions: self.global_pointer_expressions,
     pending_global_pointer_expressions: self.pending_global_pointer_expressions,
+    source_let_initializer_preserve_depth: self.source_let_initializer_preserve_depth,
     loop_depth: self.loop_depth,
     visible_rel_path: self.visible_rel_path,
     generated_import_local_spelling: self.generated_import_local_spelling,

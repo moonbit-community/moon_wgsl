@@ -542,6 +542,39 @@ test "IR emitter places same-block scalar local constants in Naga arena order" {
 }
 
 ///|
+test "IR emitter preserves source let constant chains as named expressions" {
+  let source =
+    #|fn weighted_average(depth0: f32, depth1: f32, depth2: f32, depth3: f32) -> f32 {
+    #|  let depth_range_scale_factor = 0.75;
+    #|  let effect_radius = depth_range_scale_factor * 0.5 * 1.457;
+    #|  let falloff_range = 0.615 * effect_radius;
+    #|  let falloff_from = effect_radius * (1.0 - 0.615);
+    #|  let falloff_mul = -1.0 / falloff_range;
+    #|  let falloff_add = falloff_from / falloff_range + 1.0;
+    #|  let min_depth = min(min(depth0, depth1), min(depth2, depth3));
+    #|  let weight0 = saturate((depth0 - min_depth) * falloff_mul + falloff_add);
+    #|  return weight0;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "let effect_radius: f32 = ((0.75f * 0.5f) * 1.457f);",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("let falloff_mul: f32 = (-1f / falloff_range);"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("* -2.976"), content="false")
+}
+
+///|
 test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let source =
     #|@fragment

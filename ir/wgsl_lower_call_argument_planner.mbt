@@ -264,7 +264,7 @@ fn CallArgumentPlanner::argument_is_existing_alias(
     Group(inner) => self.argument_is_existing_alias(inner)
     Identifier(name) =>
       match self.scope.local_constants.get(name.name()) {
-        Some({ value: ExpressionAlias(_) }) => true
+        Some({ value: ExpressionAlias(_), .. }) => true
         _ => false
       }
     _ => false

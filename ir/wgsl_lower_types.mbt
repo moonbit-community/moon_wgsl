@@ -367,7 +367,7 @@ fn WgslIrLowerer::lower_function_type_template_array_size_type_ref(
     Some(value) => Constant(value)
     None =>
       match scope.local_constants.get(name) {
-        Some({ value: LazyConstant(local_constant) }) => {
+        Some({ value: LazyConstant(local_constant), .. }) => {
           let handle = match local_constant.normalized {
             Some(normalized) =>
               function.expressions.append_with_origin(
@@ -388,7 +388,7 @@ fn WgslIrLowerer::lower_function_type_template_array_size_type_ref(
           }
           self.lower_function_constant_array_size_expression(function, handle)
         }
-        Some({ value: ExpressionAlias(handle) }) =>
+        Some({ value: ExpressionAlias(handle), .. }) =>
           self.lower_function_constant_array_size_expression(function, handle)
         None => self.lower_type_template_array_size_type_ref(ty_ref)
       }

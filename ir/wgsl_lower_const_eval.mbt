@@ -108,13 +108,13 @@ fn WgslIrLowerer::eval_ast_integer_identifier(
   scope : WgslIrFunctionScope,
 ) -> WgslIrIntegerValue raise WgslIrLowerError {
   match scope.local_constants.get(name) {
-    Some({ value: LazyConstant(local_constant) }) =>
+    Some({ value: LazyConstant(local_constant), .. }) =>
       match local_constant.expr_ref.root() {
         Some(root) =>
           return self.eval_ast_integer_expression(root, function, scope)
         None => raise UnsupportedExpression("empty local const selector")
       }
-    Some({ value: ExpressionAlias(handle) }) =>
+    Some({ value: ExpressionAlias(handle), .. }) =>
       return self.eval_function_integer_expression(function, handle)
     None => ()
   }
@@ -278,7 +278,7 @@ fn WgslIrLowerer::collect_ast_identifier_constant_dependencies(
   dependencies : Array[Handle],
 ) -> Unit raise WgslIrLowerError {
   match scope.local_constants.get(name) {
-    Some({ value: LazyConstant(local_constant) }) => {
+    Some({ value: LazyConstant(local_constant), .. }) => {
       match local_constant.expr_ref.root() {
         Some(root) =>
           self.collect_ast_integer_constant_dependencies(
@@ -288,7 +288,7 @@ fn WgslIrLowerer::collect_ast_identifier_constant_dependencies(
       }
       return
     }
-    Some({ value: ExpressionAlias(handle) }) => {
+    Some({ value: ExpressionAlias(handle), .. }) => {
       self.collect_function_expression_constant_dependencies(
         function, handle, dependencies,
       )

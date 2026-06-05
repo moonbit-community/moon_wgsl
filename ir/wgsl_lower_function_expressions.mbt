@@ -495,6 +495,10 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let handle = function.expressions.append(
         Binary(binary_op, left_handle, right_handle),
       )
+      if scope.source_let_initializer_preserve_depth > 0 &&
+        wgsl_ir_expr_node_references_local_let_constant(node, scope) {
+        return handle
+      }
       match self.fold_function_constant_float_expression(function, handle) {
         Some(literal) => {
           function.expressions.truncate(expression_mark)
@@ -951,7 +955,7 @@ fn WgslIrLowerer::expression_node_is_named_expression_alias(
       self.expression_node_is_named_expression_alias(inner, function, scope)
     Identifier(name) =>
       match scope.local_constants.get(name.name()) {
-        Some({ value: ExpressionAlias(handle) }) =>
+        Some({ value: ExpressionAlias(handle), .. }) =>
           wgsl_ir_function_expression_has_arena_name(function, handle)
         _ => false
       }
@@ -2161,7 +2165,7 @@ fn WgslIrLowerer::lower_identifier_expression(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   match scope.local_constants.get(name) {
-    Some({ value: LazyConstant(local_constant) }) => {
+    Some({ value: LazyConstant(local_constant), .. }) => {
       let handle = match local_constant.normalized {
         Some(normalized) =>
           function.expressions.append_with_origin(
@@ -2182,7 +2186,7 @@ fn WgslIrLowerer::lower_identifier_expression(
       }
       return handle
     }
-    Some({ value: ExpressionAlias(handle) }) => return handle
+    Some({ value: ExpressionAlias(handle), .. }) => return handle
     None => ()
   }
   match scope.locals.get(name) {
