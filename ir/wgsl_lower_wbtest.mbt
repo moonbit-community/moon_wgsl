@@ -961,17 +961,17 @@ test "WGSL AST lowerer loads dynamic storage array index value expressions" {
   }
   let function = module_.functions.items[0]
   match function.expressions.items[0] {
-    GlobalVariable(_) => ()
-    _ => abort("expected storage array global root")
-  }
-  match function.expressions.items[1] {
     FunctionArgument(argument) => debug_inspect(argument, content="0")
     _ => abort("expected dynamic index argument")
   }
+  match function.expressions.items[1] {
+    GlobalVariable(_) => ()
+    _ => abort("expected storage array global root")
+  }
   match function.expressions.items[2] {
     Access(base, index) => {
-      debug_inspect(base.index(), content="0")
-      debug_inspect(index.index(), content="1")
+      debug_inspect(base.index(), content="1")
+      debug_inspect(index.index(), content="0")
     }
     _ => abort("expected dynamic storage array access pointer")
   }

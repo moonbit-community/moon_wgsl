@@ -161,6 +161,21 @@ fn WgslIrLowerer::lower_function_lvalue_node(
         Some(handle) => return handle
         None => ()
       }
+      match self.static_index_value_from_expr_node(index) {
+        Some(_) => ()
+        None => {
+          self.predeclare_function_reference_roots_in_source_order(
+            index, function, scope,
+          )
+          let base_handle = self.lower_function_lvalue_node(
+            base, function, scope,
+          )
+          let index_handle = self.lower_function_expression_node(
+            index, function, scope,
+          )
+          return function.expressions.append(Access(base_handle, index_handle))
+        }
+      }
       let base_handle = self.lower_function_lvalue_node(base, function, scope)
       self.lower_function_static_or_dynamic_index(
         base_handle, index, function, scope,
@@ -502,6 +517,24 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         ) {
         Some(handle) => return handle
         None => ()
+      }
+      match self.static_index_value_from_expr_node(index) {
+        Some(_) => ()
+        None => {
+          self.predeclare_function_reference_roots_in_source_order(
+            index, function, scope,
+          )
+          let base_handle = self.lower_function_index_value_base(
+            base, function, scope,
+          )
+          let index_handle = self.lower_function_expression_node(
+            index, function, scope,
+          )
+          return self.apply_function_load_rule(
+            function,
+            function.expressions.append(Access(base_handle, index_handle)),
+          )
+        }
       }
       let base_handle = self.lower_function_index_value_base(
         base, function, scope,
@@ -2335,6 +2368,21 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
         ) {
         Some(handle) => return handle
         None => ()
+      }
+      match self.static_index_value_from_expr_node(index) {
+        Some(_) => ()
+        None => {
+          self.predeclare_function_reference_roots_in_source_order(
+            index, function, scope,
+          )
+          let base_handle = self.lower_function_access_base_pointer_node(
+            base, function, scope,
+          )
+          let index_handle = self.lower_function_expression_node(
+            index, function, scope,
+          )
+          return function.expressions.append(Access(base_handle, index_handle))
+        }
       }
       let base_handle = self.lower_function_access_base_pointer_node(
         base, function, scope,
