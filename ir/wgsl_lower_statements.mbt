@@ -723,6 +723,9 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             )
             (target, value)
           } else {
+            predeclare_assignment_rhs_root_before_target_if_needed(
+              rhs_ref, function, scope,
+            )
             let raw_target = self.lower_function_lvalue_ref(
               lhs_ref, function, scope,
             )
@@ -1188,11 +1191,10 @@ fn WgslIrLowerer::lower_for_header_statement(
         }
         None => {
           let lhs_node = wgsl_ir_expr_node_from_tokens(lhs_tokens)
+          let rhs_node = wgsl_ir_expr_node_from_tokens(rhs_tokens)
           if wgsl_ir_expr_node_plain_local_identifier(lhs_node, scope) {
             let rhs_value = self.lower_function_expression_node(
-              wgsl_ir_expr_node_from_tokens(rhs_tokens),
-              function,
-              scope,
+              rhs_node, function, scope,
             )
             let raw_target = self.lower_function_lvalue_node(
               lhs_node, function, scope,
@@ -1205,6 +1207,9 @@ fn WgslIrLowerer::lower_for_header_statement(
             )
             (target, value)
           } else {
+            predeclare_assignment_rhs_node_root_before_target_if_needed(
+              rhs_node, function, scope,
+            )
             let raw_target = self.lower_function_lvalue_node(
               lhs_node, function, scope,
             )
@@ -1212,9 +1217,7 @@ fn WgslIrLowerer::lower_for_header_statement(
               function, scope, block, raw_target,
             )
             let rhs_value = self.lower_function_expression_node(
-              wgsl_ir_expr_node_from_tokens(rhs_tokens),
-              function,
-              scope,
+              rhs_node, function, scope,
             )
             let value = self.materialize_store_value_for_pointer_if_needed(
               function, scope, block, target, rhs_value,
@@ -1230,6 +1233,38 @@ fn WgslIrLowerer::lower_for_header_statement(
     None => ()
   }
   ignore(self.lower_function_expression_ref(expr_ref, function, scope))
+}
+
+///|
+fn predeclare_assignment_rhs_root_before_target_if_needed(
+  rhs_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit {
+  match rhs_ref.root() {
+    Some(root) =>
+      predeclare_assignment_rhs_node_root_before_target_if_needed(
+        root, function, scope,
+      )
+    None => ()
+  }
+}
+
+///|
+fn predeclare_assignment_rhs_node_root_before_target_if_needed(
+  rhs_node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit {
+  match wgsl_ir_expr_node_plain_mutable_local_identifier_name(rhs_node, scope) {
+    Some(name) =>
+      match scope.locals.get(name) {
+        Some(handle) =>
+          ignore(scope.local_pointer_expression(name, handle, function))
+        None => ()
+      }
+    None => ()
+  }
 }
 
 ///|
@@ -1421,6 +1456,24 @@ fn wgsl_ir_expr_node_plain_local_identifier(
     Identifier(ident) => scope.locals.contains(ident.name())
     Group(inner) => wgsl_ir_expr_node_plain_local_identifier(inner, scope)
     _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_plain_mutable_local_identifier_name(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> String? {
+  match node.kind() {
+    Identifier(ident) =>
+      if scope.locals.contains(ident.name()) {
+        Some(ident.name())
+      } else {
+        None
+      }
+    Group(inner) =>
+      wgsl_ir_expr_node_plain_mutable_local_identifier_name(inner, scope)
+    _ => None
   }
 }
 

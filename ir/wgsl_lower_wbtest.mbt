@@ -1927,6 +1927,50 @@ test "WGSL AST lowerer keeps compound field target load before RHS member roots"
 }
 
 ///|
+test "WGSL AST lowerer predeclares field assignment RHS local before target" {
+  let source =
+    #|struct Payload {
+    #|  diffuse: f32,
+    #|  specular: f32,
+    #|}
+    #|
+    #|@compute
+    #|fn main() {
+    #|  var payload: Payload;
+    #|  var specular: f32 = 1.0;
+    #|  payload.specular = specular;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.entry_points[0].function
+  let mut rhs_local_index = -1
+  let mut target_access_index = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      LocalVariable(handle) =>
+        if handle.index() == 1 && rhs_local_index < 0 {
+          rhs_local_index = index
+        }
+      AccessIndex(base, field_index) =>
+        if field_index == 1 {
+          match function.expressions.items.get(base.index()) {
+            Some(LocalVariable(handle)) =>
+              if handle.index() == 0 && target_access_index < 0 {
+                target_access_index = index
+              }
+            _ => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(rhs_local_index >= 0, content="true")
+  debug_inspect(target_access_index >= 0, content="true")
+  debug_inspect(rhs_local_index < target_access_index, content="true")
+}
+
+///|
 test "WGSL AST lowerer returns imported constants without synthetic temporaries" {
   let source =
     #|const VALUE: u32 = 1u;
