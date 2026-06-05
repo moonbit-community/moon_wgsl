@@ -1,0 +1,8 @@
+# label	fixture_root	entry	file_path_prefix	args	notes
+conditional_missing_import	testdata/naga_oil_upstream/compose_tests/conditional_import_fail	top.wgsl	tests/conditional_import_fail	-	Inactive conditional import must still report the missing referenced module item like upstream.
+conditional_missing_import_nested	testdata/naga_oil_upstream/compose_tests/conditional_import_fail	top_nested.wgsl	tests/conditional_import_fail	-	Nested inactive conditional import must preserve upstream missing-import diagnostic bytes.
+missing_import	testdata/naga_oil_upstream/compose_tests/error_test	include.wgsl	tests/error_test	-	Missing import in shader source must report the import failure before invalid WGSL body parsing.
+invalid_override_base	testdata/naga_oil_upstream/compose_tests/overrides	top_invalid.wgsl	tests/overrides	-	Invalid override target diagnostics must match upstream source rendering.
+err_parse	testdata/naga_oil_upstream/compose_tests/error_test	wgsl_parse_err.wgsl	tests/error_test	--entry-only	Parser diagnostics must match upstream for direct entry compilation.
+err_validation_1	testdata/naga_oil_upstream/compose_tests/error_test	wgsl_valid_err.wgsl	tests/error_test	--entry-only	Validation diagnostics must match upstream for direct entry compilation.
+err_validation_2	testdata/naga_oil_upstream/compose_tests/error_test	wgsl_valid_wrap.wgsl	tests/error_test	--module,wgsl_valid_err.wgsl,--additional-import,valid_inc	Validation diagnostics must match upstream when an imported module is wrapped by another entry.

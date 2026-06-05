@@ -1061,6 +1061,18 @@ if rg -n 'headline|first-line|first line' \
   fail "naga_oil parity gates must not use diagnostic-headline classes"
 fi
 
+if [[ ! -f testdata/naga_oil_upstream/compose_tests/error_parity_cases.tsv ]]; then
+  fail "naga_oil diagnostic parity cases must be owned by a manifest"
+fi
+
+if ! rg -n 'expected 6|machine-readable diagnostic summary drift|rendered diagnostic byte drift' tools/check_moon_wgsl_error_parity.sh >/dev/null; then
+  fail "diagnostic parity gate must schema-check rows and compare summary plus byte diagnostics"
+fi
+
+if ! rg -n 'cargo run .*--bin naga_oil_oracle|diff -u "\$oracle_summary" "\$moon_summary"|diff -u "\$oracle_output" "\$moon_output"' tools/check_moon_wgsl_error_parity.sh >/dev/null; then
+  fail "diagnostic parity gate must compare moon_wgsl directly against the pinned naga_oil oracle"
+fi
+
 if rg -n -- '--runtime-valid' tools/check_moon_wgsl_byte_parity.sh >/dev/null && \
   ! rg -n 'check_runtime_valid_case' tools/check_moon_wgsl_byte_parity.sh >/dev/null; then
   fail "byte parity must use default upstream writer output; runtime-valid mode is allowed only for the atomics validation cross-check"
