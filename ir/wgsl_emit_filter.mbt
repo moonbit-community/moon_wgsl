@@ -415,6 +415,9 @@ fn WgslIrEmitFilter::mark_statement(
     Switch(selector, cases) => {
       self.mark_function_expression(shader_module, function, selector)
       for case in cases {
+        for dependency in case.constant_dependencies {
+          self.mark_constant(shader_module, dependency)
+        }
         self.mark_block(shader_module, function, case.body)
       }
     }

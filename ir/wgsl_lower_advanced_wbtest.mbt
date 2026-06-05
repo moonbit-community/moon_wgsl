@@ -394,6 +394,43 @@ test "WGSL AST lowerer infers unary const switch selector types" {
 }
 
 ///|
+test "WGSL AST lowerer keeps const switch selectors out of function arena" {
+  let source =
+    #|const FIRST: u32 = 1u;
+    #|const SECOND: u32 = 2u;
+    #|
+    #|fn choose(value: u32) -> u32 {
+    #|  switch value {
+    #|    case FIRST, SECOND: {
+    #|    }
+    #|    default: {
+    #|    }
+    #|  }
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.body.statements[0] {
+    Switch(_, cases) => {
+      debug_inspect(cases[0].value, content="U32(1)")
+      debug_inspect(cases[1].value, content="U32(2)")
+      debug_inspect(cases[2].value, content="Default")
+    }
+    _ => abort("expected switch statement")
+  }
+  let mut constants = 0
+  for expression in function.expressions.items {
+    match expression {
+      Constant(_) => constants += 1
+      _ => ()
+    }
+  }
+  debug_inspect(constants, content="0")
+}
+
+///|
 test "WGSL AST lowerer preserves abstract composite constructors" {
   let source =
     #|const vector = vec2(0xffffffffff, 0xfffffffff0);

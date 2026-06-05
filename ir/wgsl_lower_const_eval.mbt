@@ -1,15 +1,19 @@
 ///|
-fn wgsl_ir_switch_value_from_expression(
+fn wgsl_ir_switch_value_from_ast_expression(
   lowerer : WgslIrLowerer,
   function : Function,
+  scope : WgslIrFunctionScope,
   selector : Handle,
-  handle : Handle,
+  expr_ref : @ast.WgslExprRef,
 ) -> SwitchValue raise WgslIrLowerError {
+  guard expr_ref.root() is Some(root) else {
+    raise UnsupportedExpression("empty switch case selector")
+  }
   let selector_is_unsigned = lowerer.switch_selector_is_unsigned(
     function, selector,
   )
   lowerer
-  .eval_function_integer_expression(function, handle)
+  .eval_ast_integer_expression(root, function, scope)
   .to_switch_value(selector_is_unsigned)
 }
 
@@ -30,6 +34,330 @@ fn WgslIrLowerer::switch_selector_is_unsigned(
         None => false
       }
     None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_ast_integer_expression(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  match node.kind() {
+    Literal(token) => wgsl_ir_eval_ast_integer_literal(token)
+    Identifier(name) =>
+      self.eval_ast_integer_identifier(name.name(), function, scope)
+    Unary(op, inner) =>
+      match wgsl_ir_unary_operator(op) {
+        Negate => {
+          let value = self
+            .eval_ast_integer_expression(inner, function, scope)
+            .to_signed_int()
+          Signed(-value)
+        }
+        BitwiseNot =>
+          match self.eval_ast_integer_expression(inner, function, scope) {
+            Unsigned(value) => Unsigned(value.lnot())
+            Signed(value) => Signed(value.lnot())
+            Abstract(value) => Abstract(value.lnot())
+          }
+        LogicalNot =>
+          raise UnsupportedExpression(
+            "switch case const selector uses non-integer unary operator",
+          )
+      }
+    Binary(op, left, right) =>
+      wgsl_ir_eval_integer_binary(
+        wgsl_ir_binary_operator(op),
+        self.eval_ast_integer_expression(left, function, scope),
+        self.eval_ast_integer_expression(right, function, scope),
+      )
+    Call(callee, arguments) =>
+      self.eval_ast_integer_call(callee, arguments, function, scope)
+    Group(inner) => self.eval_ast_integer_expression(inner, function, scope)
+    Sequence([single]) =>
+      self.eval_ast_integer_expression(single, function, scope)
+    _ =>
+      raise UnsupportedExpression(
+        "switch case const selector must initialize to an integer expression",
+      )
+  }
+}
+
+///|
+fn wgsl_ir_eval_ast_integer_literal(
+  token : @ast.WgslExprToken,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  match wgsl_ir_literal_from_token(token) {
+    I32(value) => Signed(value)
+    U32(value) => Unsigned(value)
+    AbstractInt(value) => Abstract(value)
+    _ =>
+      raise UnsupportedExpression(
+        "switch case const selector must initialize to an integer expression",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_ast_integer_identifier(
+  self : WgslIrLowerer,
+  name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  match scope.local_constants.get(name) {
+    Some({ value: LazyConstant(local_constant) }) =>
+      match local_constant.expr_ref.root() {
+        Some(root) =>
+          return self.eval_ast_integer_expression(root, function, scope)
+        None => raise UnsupportedExpression("empty local const selector")
+      }
+    Some({ value: ExpressionAlias(handle) }) =>
+      return self.eval_function_integer_expression(function, handle)
+    None => ()
+  }
+  match self.ensure_constant_declaration_lowered(name) {
+    Some(handle) =>
+      match self.shader_module.constants.items.get(handle.index()) {
+        Some(constant) => self.eval_global_integer_expression(constant.init)
+        None =>
+          raise UnsupportedExpression(
+            "switch case selector references missing const",
+          )
+      }
+    None => raise UnknownIdentifier(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_ast_integer_call(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrIntegerValue raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard callee.kind() is Identifier(name) else {
+    raise UnsupportedExpression(
+      "switch case selector uses non-identifier call",
+    )
+  }
+  match name.name() {
+    "i32" => {
+      guard arguments is [argument] else {
+        raise UnsupportedExpression("i32 switch selector cast expects one argument")
+      }
+      Signed(
+        self
+        .eval_ast_integer_expression(argument, function, scope)
+        .to_signed_int(),
+      )
+    }
+    "u32" => {
+      guard arguments is [argument] else {
+        raise UnsupportedExpression("u32 switch selector cast expects one argument")
+      }
+      Unsigned(
+        self
+        .eval_ast_integer_expression(argument, function, scope)
+        .to_unsigned(),
+      )
+    }
+    _ =>
+      match wgsl_ir_math_function_from_name(name.name()) {
+        Some(Min) => {
+          guard arguments is [left, right] else {
+            raise UnsupportedExpression("min switch selector expects two arguments")
+          }
+          wgsl_ir_eval_integer_min(
+            self.eval_ast_integer_expression(left, function, scope),
+            self.eval_ast_integer_expression(right, function, scope),
+          )
+        }
+        Some(Max) => {
+          guard arguments is [left, right] else {
+            raise UnsupportedExpression("max switch selector expects two arguments")
+          }
+          wgsl_ir_eval_integer_max(
+            self.eval_ast_integer_expression(left, function, scope),
+            self.eval_ast_integer_expression(right, function, scope),
+          )
+        }
+        Some(Clamp) => {
+          guard arguments is [value, low, high] else {
+            raise UnsupportedExpression(
+              "clamp switch selector expects three arguments",
+            )
+          }
+          wgsl_ir_eval_integer_clamp(
+            self.eval_ast_integer_expression(value, function, scope),
+            self.eval_ast_integer_expression(low, function, scope),
+            self.eval_ast_integer_expression(high, function, scope),
+          )
+        }
+        _ =>
+          raise UnsupportedExpression(
+            "switch case selector uses non-integer const call",
+          )
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::switch_case_constant_dependencies(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Array[Handle] raise WgslIrLowerError {
+  let dependencies : Array[Handle] = []
+  match expr_ref.root() {
+    Some(root) =>
+      self.collect_ast_integer_constant_dependencies(
+        root, function, scope, dependencies,
+      )
+    None => ()
+  }
+  dependencies
+}
+
+///|
+fn WgslIrLowerer::collect_ast_integer_constant_dependencies(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  dependencies : Array[Handle],
+) -> Unit raise WgslIrLowerError {
+  match node.kind() {
+    Identifier(name) =>
+      self.collect_ast_identifier_constant_dependencies(
+        name.name(), function, scope, dependencies,
+      )
+    Unary(_, inner) | Group(inner) =>
+      self.collect_ast_integer_constant_dependencies(
+        inner, function, scope, dependencies,
+      )
+    Binary(_, left, right) => {
+      self.collect_ast_integer_constant_dependencies(
+        left, function, scope, dependencies,
+      )
+      self.collect_ast_integer_constant_dependencies(
+        right, function, scope, dependencies,
+      )
+    }
+    Call(_, arguments) =>
+      for argument in wgsl_ir_flatten_expression_arguments(arguments) {
+        self.collect_ast_integer_constant_dependencies(
+          argument, function, scope, dependencies,
+        )
+      }
+    Sequence(items) =>
+      for item in items {
+        self.collect_ast_integer_constant_dependencies(
+          item, function, scope, dependencies,
+        )
+      }
+    Literal(_) | ShaderDefTemplate(_) => ()
+    _ =>
+      raise UnsupportedExpression(
+        "switch case const selector must initialize to an integer expression",
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::collect_ast_identifier_constant_dependencies(
+  self : WgslIrLowerer,
+  name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  dependencies : Array[Handle],
+) -> Unit raise WgslIrLowerError {
+  match scope.local_constants.get(name) {
+    Some({ value: LazyConstant(local_constant) }) => {
+      match local_constant.expr_ref.root() {
+        Some(root) =>
+          self.collect_ast_integer_constant_dependencies(
+            root, function, scope, dependencies,
+          )
+        None => ()
+      }
+      return
+    }
+    Some({ value: ExpressionAlias(handle) }) => {
+      self.collect_function_expression_constant_dependencies(
+        function, handle, dependencies,
+      )
+      return
+    }
+    None => ()
+  }
+  match self.ensure_constant_declaration_lowered(name) {
+    Some(handle) => dependencies.push(handle)
+    None => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::collect_function_expression_constant_dependencies(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+  dependencies : Array[Handle],
+) -> Unit {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      match expression {
+        Constant(handle) => dependencies.push(handle)
+        Unary(_, inner) | As(inner, _, _) | Bitcast(_, inner) =>
+          self.collect_function_expression_constant_dependencies(
+            function, inner, dependencies,
+          )
+        Binary(_, left, right) => {
+          self.collect_function_expression_constant_dependencies(
+            function, left, dependencies,
+          )
+          self.collect_function_expression_constant_dependencies(
+            function, right, dependencies,
+          )
+        }
+        Math(_, a, b, c, d) => {
+          self.collect_function_expression_constant_dependencies(
+            function, a, dependencies,
+          )
+          wgsl_ir_collect_optional_function_expression_constant_dependencies(
+            self, function, b, dependencies,
+          )
+          wgsl_ir_collect_optional_function_expression_constant_dependencies(
+            self, function, c, dependencies,
+          )
+          wgsl_ir_collect_optional_function_expression_constant_dependencies(
+            self, function, d, dependencies,
+          )
+        }
+        _ => ()
+      }
+    None => ()
+  }
+}
+
+///|
+fn wgsl_ir_collect_optional_function_expression_constant_dependencies(
+  lowerer : WgslIrLowerer,
+  function : Function,
+  handle : Handle?,
+  dependencies : Array[Handle],
+) -> Unit {
+  match handle {
+    Some(handle) =>
+      lowerer.collect_function_expression_constant_dependencies(
+        function, handle, dependencies,
+      )
+    None => ()
   }
 }
 

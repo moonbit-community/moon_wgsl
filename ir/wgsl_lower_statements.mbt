@@ -1277,17 +1277,22 @@ fn WgslIrLowerer::lower_switch_cases(
         for selector in selectors {
           match selector {
             DefaultSelector =>
-              cases.push({ value: Default, body, fall_through: false })
-            ExpressionSelector(expr) => {
-              let case_selector_handle = self.lower_function_expression_ref(
-                expr, function, scope,
-              )
               cases.push({
-                value: wgsl_ir_switch_value_from_expression(
-                  self, function, selector_handle, case_selector_handle,
+                value: Default,
+                body,
+                fall_through: false,
+                constant_dependencies: [],
+              })
+            ExpressionSelector(expr) => {
+              cases.push({
+                value: wgsl_ir_switch_value_from_ast_expression(
+                  self, function, scope, selector_handle, expr,
                 ),
                 body,
                 fall_through: false,
+                constant_dependencies: self.switch_case_constant_dependencies(
+                  expr, function, scope,
+                ),
               })
             }
           }
@@ -1299,7 +1304,12 @@ fn WgslIrLowerer::lower_switch_cases(
             self.lower_child_block(case_block, function, scope)
           [] => Block()
         }
-        cases.push({ value: Default, body, fall_through: false })
+        cases.push({
+          value: Default,
+          body,
+          fall_through: false,
+          constant_dependencies: [],
+        })
       }
       Empty => ()
       _ => raise UnsupportedStatement("switch body contains non-case statement")

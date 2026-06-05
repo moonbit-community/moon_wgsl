@@ -10,6 +10,7 @@ pub(all) struct SwitchCase {
   value : SwitchValue
   body : Block
   fall_through : Bool
+  constant_dependencies : Array[Handle]
 } derive(Eq, Debug)
 
 ///|

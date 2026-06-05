@@ -573,6 +573,9 @@ fn WgslIrNagaDerivedModuleBuilder::import_statement(
     Switch(selector, cases) => {
       self.import_function_expression(function, selector, visiting_functions)
       for case in cases {
+        for dependency in case.constant_dependencies {
+          self.import_constant(dependency.index())
+        }
         self.import_function_block(function, case.body, visiting_functions)
       }
     }
