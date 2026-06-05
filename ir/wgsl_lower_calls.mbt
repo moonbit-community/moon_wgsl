@@ -498,6 +498,13 @@ fn WgslIrLowerer::lower_later_reference_argument_before_direct_argument(
       lookahead += 1
       continue
     }
+    if self.expression_node_is_inline_constant_reference(
+        arguments[lookahead],
+        scope,
+      ) {
+      lookahead += 1
+      continue
+    }
     return
   }
 }

@@ -1486,13 +1486,15 @@ test "WGSL AST lowerer skips alias projection call arguments when prelowering la
     #|@group(0) @binding(0)
     #|var<uniform> light: Light;
     #|
-    #|fn target(uv: vec2<f32>, depth: f32, frag_coord: vec2<f32>, light_size: f32) -> f32 {
+    #|const TEXEL_SIZE: f32 = 0.25;
+    #|
+    #|fn target(uv: vec2<f32>, depth: f32, frag_coord: vec2<f32>, texel_size: f32, light_size: f32) -> f32 {
     #|  return light_size;
     #|}
     #|
     #|fn probe(light_local: vec3<f32>, frag_coord: vec2<f32>) -> f32 {
     #|  let projected = light_local;
-    #|  return target(projected.xy, projected.z, frag_coord, light.soft_shadow_size);
+    #|  return target(projected.xy, projected.z, frag_coord, TEXEL_SIZE, light.soft_shadow_size);
     #|}
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
