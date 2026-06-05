@@ -235,7 +235,8 @@ fn WgslIrLowerer::lower_reused_literal_vector_source_local_const_initializer(
   function : Function,
 ) -> Handle? raise WgslIrLowerError {
   guard explicit_ty is Some(vector_ty) else { return None }
-  guard self.shader_module.types.get(vector_ty) is Some({ inner: Vector(size, scalar), .. }) else {
+  guard self.shader_module.types.get(vector_ty)
+    is Some({ inner: Vector(size, scalar), .. }) else {
     return None
   }
   guard expr_ref.root() is Some(root) else { return None }
@@ -664,7 +665,7 @@ fn WgslIrLowerer::lower_statement_with_block_context(
   let placement = match statement.payload() {
     LocalDeclaration(_) =>
       wgsl_ir_local_constant_arena_placement_for_statement(
-        statement, statements, statement_index,
+        statement, statements, statement_index, scope,
       )
     _ => UseSiteLazyLocalConstant
   }
@@ -1283,7 +1284,7 @@ fn WgslIrLowerer::lower_switch_cases(
                 fall_through: false,
                 constant_dependencies: [],
               })
-            ExpressionSelector(expr) => {
+            ExpressionSelector(expr) =>
               cases.push({
                 value: wgsl_ir_switch_value_from_ast_expression(
                   self, function, scope, selector_handle, expr,
@@ -1294,7 +1295,6 @@ fn WgslIrLowerer::lower_switch_cases(
                   expr, function, scope,
                 ),
               })
-            }
           }
         }
       }
@@ -1536,12 +1536,15 @@ fn wgsl_ir_local_constant_arena_placement_for_statement(
   statement : @ast.WgslStatement,
   statements : Array[@ast.WgslStatement],
   statement_index : Int,
+  scope : WgslIrFunctionScope,
 ) -> WgslIrLocalConstantArenaPlacement {
   match statement.payload() {
     LocalDeclaration(locals) => {
       for local_decl in locals {
         if (local_decl.kind() == Let || local_decl.kind() == Const) &&
-          !wgsl_ir_local_const_initializer_is_bool_literal(local_decl) &&
+          wgsl_ir_local_const_initializer_uses_declaration_arena(
+            local_decl, statements, statement_index, scope,
+          ) &&
           wgsl_ir_local_name_has_same_block_use_before_nested_flow(
             local_decl.name().name(),
             statements,
@@ -1553,6 +1556,40 @@ fn wgsl_ir_local_constant_arena_placement_for_statement(
       UseSiteLazyLocalConstant
     }
     _ => UseSiteLazyLocalConstant
+  }
+}
+
+///|
+fn wgsl_ir_local_const_initializer_uses_declaration_arena(
+  local_decl : @ast.WgslLocalDeclaration,
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  if wgsl_ir_local_const_initializer_references_local_let(local_decl, scope) {
+    return true
+  }
+  !wgsl_ir_local_const_initializer_is_bool_literal(local_decl) &&
+  wgsl_ir_next_statement_mentions_identifier(
+    local_decl.name().name(),
+    statements,
+    statement_index,
+  )
+}
+
+///|
+fn wgsl_ir_local_const_initializer_references_local_let(
+  local_decl : @ast.WgslLocalDeclaration,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) =>
+          wgsl_ir_expr_node_references_local_let_constant(root, scope)
+        None => false
+      }
+    None => false
   }
 }
 
@@ -1577,6 +1614,22 @@ fn wgsl_ir_expr_node_is_bool_literal(node : @ast.WgslExprNode) -> Bool {
     Group(inner) => wgsl_ir_expr_node_is_bool_literal(inner)
     _ => false
   }
+}
+
+///|
+fn wgsl_ir_next_statement_mentions_identifier(
+  name : String,
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+) -> Bool {
+  let next_index = statement_index + 1
+  if next_index >= statements.length() {
+    return false
+  }
+  wgsl_ir_statement_direct_expressions_mention_identifier(
+    statements[next_index],
+    name,
+  )
 }
 
 ///|
@@ -1698,21 +1751,16 @@ fn wgsl_ir_expr_node_references_local_let_constant(
         None => false
       }
     Literal(_) | ShaderDefTemplate(_) => false
-    Unary(_, inner)
-    | PostfixUpdate(_, inner)
-    | Group(inner) =>
+    Unary(_, inner) | PostfixUpdate(_, inner) | Group(inner) =>
       wgsl_ir_expr_node_references_local_let_constant(inner, scope)
-    Assignment(_, left, right)
-    | Binary(_, left, right)
-    | Index(left, right) =>
+    Assignment(_, left, right) | Binary(_, left, right) | Index(left, right) =>
       wgsl_ir_expr_node_references_local_let_constant(left, scope) ||
       wgsl_ir_expr_node_references_local_let_constant(right, scope)
-    Call(callee, arguments) =>
-      {
-        let arguments = wgsl_ir_call_arguments(arguments)
-        wgsl_ir_expr_node_references_local_let_constant(callee, scope) ||
-        wgsl_ir_expr_node_list_references_local_let_constant(arguments, scope)
-      }
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      wgsl_ir_expr_node_references_local_let_constant(callee, scope) ||
+      wgsl_ir_expr_node_list_references_local_let_constant(arguments, scope)
+    }
     Template(callee, arguments) =>
       wgsl_ir_expr_node_references_local_let_constant(callee, scope) ||
       arguments.any(fn(argument) {
@@ -1726,8 +1774,7 @@ fn wgsl_ir_expr_node_references_local_let_constant(
           Type(_) => false
         }
       })
-    PathAccess(base, _)
-    | Member(base, _) =>
+    PathAccess(base, _) | Member(base, _) =>
       wgsl_ir_expr_node_references_local_let_constant(base, scope)
     Sequence(items) =>
       wgsl_ir_expr_node_list_references_local_let_constant(items, scope)
@@ -1892,22 +1939,18 @@ fn WgslIrLowerer::lower_local_declaration(
               self.lower_runtime_source_local_const_initializer(
                 expr_ref, explicit_ty, function, scope,
               )
-          } else {
-              if local_decl.kind() == Let &&
-                wgsl_ir_expr_ref_references_local_let_constant(
-                  expr_ref, scope,
-                ) {
-                scope.source_let_initializer_preserve_depth += 1
-                let handle = self.lower_function_expression_ref_with_expected(
-                  expr_ref, function, scope, explicit_ty,
-                )
-                scope.source_let_initializer_preserve_depth -= 1
-                handle
-              } else {
-                self.lower_function_expression_ref_with_expected(
-                  expr_ref, function, scope, explicit_ty,
-                )
-              }
+            } else if local_decl.kind() == Let &&
+              wgsl_ir_expr_ref_references_local_let_constant(expr_ref, scope) {
+              scope.source_let_initializer_preserve_depth += 1
+              let handle = self.lower_function_expression_ref_with_expected(
+                expr_ref, function, scope, explicit_ty,
+              )
+              scope.source_let_initializer_preserve_depth -= 1
+              handle
+            } else {
+              self.lower_function_expression_ref_with_expected(
+                expr_ref, function, scope, explicit_ty,
+              )
             },
           )
         }

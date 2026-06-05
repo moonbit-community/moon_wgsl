@@ -3141,6 +3141,38 @@ test "WGSL AST lowerer lowers mutable call argument before scalar const alias" {
 }
 
 ///|
+test "WGSL AST lowerer keeps literal-only let aliases lazy until use" {
+  let source =
+    #|fn probe(s: f32) -> f32 {
+    #|  let uw0 = (4.0 - 3.0 * s);
+    #|  let uw1 = 7.0;
+    #|  let uw2 = (1.0 + 3.0 * s);
+    #|  let u1 = (3.0 + s) / uw1;
+    #|  return uw0 + uw2 + u1;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut uw2_handle = -1
+  for named in function.named_expressions {
+    if named.name == "uw2" {
+      uw2_handle = named.handle.index()
+    }
+  }
+  let mut seven_literal = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Literal(AbstractFloat(value)) if value == 7.0 && seven_literal == -1 =>
+        seven_literal = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(uw2_handle >= 0, content="true")
+  debug_inspect(seven_literal > uw2_handle, content="true")
+}
+
+///|
 test "WGSL AST lowerer lowers later math access before deferred first literal" {
   let source =
     #|struct View {

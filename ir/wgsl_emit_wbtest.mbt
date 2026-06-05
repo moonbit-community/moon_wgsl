@@ -562,9 +562,7 @@ test "IR emitter preserves source let constant chains as named expressions" {
     error => abort(error.message())
   }
   debug_inspect(
-    emitted.contains(
-      "let effect_radius: f32 = ((0.75f * 0.5f) * 1.457f);",
-    ),
+    emitted.contains("let effect_radius: f32 = ((0.75f * 0.5f) * 1.457f);"),
     content="true",
   )
   debug_inspect(
