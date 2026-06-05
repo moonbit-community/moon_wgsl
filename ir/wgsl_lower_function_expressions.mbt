@@ -1320,8 +1320,14 @@ fn WgslIrLowerer::binary_expression_predeclares_left_associative_reference_roots
   guard wgsl_ir_expr_node_without_groups(left).kind() is Binary(left_op, _, _) else {
     return false
   }
-  left_op.binary_precedence() == op.binary_precedence() &&
-  self.expression_node_is_mutable_local_value(right, function, scope)
+  guard left_op.binary_precedence() == op.binary_precedence() else {
+    return false
+  }
+  self.expression_node_is_mutable_local_value(right, function, scope) ||
+  (
+    !wgsl_ir_expr_node_is_function_argument_value(right, scope) &&
+    wgsl_ir_direct_access_chain_root_is_function_argument(right, scope)
+  )
 }
 
 ///|

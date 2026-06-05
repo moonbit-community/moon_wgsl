@@ -309,6 +309,12 @@ fn WgslIrLowerer::lower_user_function_call_arguments(
         ),
       )
     }
+    if prelowered[index] == None &&
+      wgsl_ir_expr_node_is_function_argument_value(flattened[index], scope) {
+      self.lower_later_reference_argument_before_direct_argument(
+        flattened, prelowered, index, callee_function, function, scope,
+      )
+    }
     let argument = match prelowered[index] {
       Some(handle) => handle
       None =>
@@ -389,7 +395,7 @@ fn WgslIrLowerer::lower_user_function_call_argument_dependencies(
   }
   for index in 1..<arguments.length() {
     if prelowered[index] == None &&
-      self.call_argument_lowers_before_prior_direct_argument(
+      self.call_value_argument_lowers_before_prior_direct_argument(
         arguments, prelowered, index, function, scope,
       ) {
       prelowered[index] = Some(
@@ -407,7 +413,7 @@ fn WgslIrLowerer::lower_user_function_call_argument_dependencies(
 }
 
 ///|
-fn WgslIrLowerer::call_argument_lowers_before_prior_direct_argument(
+fn WgslIrLowerer::call_value_argument_lowers_before_prior_direct_argument(
   self : WgslIrLowerer,
   arguments : Array[@ast.WgslExprNode],
   prelowered : Array[Handle?],
@@ -415,18 +421,12 @@ fn WgslIrLowerer::call_argument_lowers_before_prior_direct_argument(
   function : Function,
   scope : WgslIrFunctionScope,
 ) -> Bool {
+  guard wgsl_ir_expr_node_is_call_value(arguments[index]) else { return false }
   guard self.expression_node_contains_naga_reference_value(
     arguments[index],
     function,
     scope,
   ) else {
-    return false
-  }
-  if wgsl_ir_expr_node_is_function_argument_value(arguments[index], scope) {
-    return false
-  }
-  if !wgsl_ir_expr_node_is_call_value(arguments[index]) &&
-    !wgsl_ir_expr_node_is_direct_access_chain(arguments[index]) {
     return false
   }
   for prior in 0..<index {
@@ -452,6 +452,54 @@ fn WgslIrLowerer::call_argument_lowers_before_prior_direct_argument(
     }
   }
   false
+}
+
+///|
+fn WgslIrLowerer::lower_later_reference_argument_before_direct_argument(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  prelowered : Array[Handle?],
+  direct_index : Int,
+  callee_function : Function,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  let mut lookahead = direct_index + 1
+  while lookahead < arguments.length() {
+    if prelowered[lookahead] != None {
+      lookahead += 1
+      continue
+    }
+    if wgsl_ir_expr_node_is_function_argument_value(arguments[lookahead], scope) ||
+      wgsl_ir_expr_node_is_call_value(arguments[lookahead]) {
+      return
+    }
+    if self.call_argument_uses_naga_reference_predeclare(
+        arguments[lookahead],
+        callee_function,
+        lookahead,
+        scope,
+      ) {
+      prelowered[lookahead] = Some(
+        self.lower_user_function_call_argument_at(
+          arguments[lookahead],
+          callee_function,
+          lookahead,
+          function,
+          scope,
+        ),
+      )
+      return
+    }
+    if self.call_argument_is_existing_expression_alias_reference(
+        arguments[lookahead],
+        scope,
+      ) {
+      lookahead += 1
+      continue
+    }
+    return
+  }
 }
 
 ///|
@@ -514,6 +562,21 @@ fn WgslIrLowerer::call_argument_is_existing_expression_alias(
         _ => false
       }
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::call_argument_is_existing_expression_alias_reference(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match argument.kind() {
+    Group(inner) =>
+      self.call_argument_is_existing_expression_alias_reference(inner, scope)
+    Member(base, _) | Index(base, _) =>
+      self.call_argument_is_existing_expression_alias_reference(base, scope)
+    _ => self.call_argument_is_existing_expression_alias(argument, scope)
   }
 }
 

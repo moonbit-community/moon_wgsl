@@ -1293,6 +1293,55 @@ test "WGSL AST lowerer predeclares right function argument root before left memb
 }
 
 ///|
+test "WGSL AST lowerer predeclares right argument projection before left member multiply chain" {
+  let source =
+    #|struct Light {
+    #|  shadow_normal_bias: f32,
+    #|}
+    #|
+    #|struct Cascade {
+    #|  texel_size: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> light: Light;
+    #|
+    #|@group(0) @binding(1)
+    #|var<uniform> cascade: Cascade;
+    #|
+    #|fn probe(surface_normal: vec3<f32>) -> vec3<f32> {
+    #|  let normal_offset = light.shadow_normal_bias * cascade.texel_size * surface_normal.xyz;
+    #|  return normal_offset;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut surface_argument : Int? = None
+  let mut first_member_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(argument_index) if argument_index == 0 &&
+        surface_argument == None => surface_argument = Some(index)
+      Load(base) if first_member_load == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(access_base, _)) =>
+            match function.expressions.items.get(access_base.index()) {
+              Some(GlobalVariable(_)) => first_member_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (surface_argument, first_member_load) {
+    (Some(surface), Some(load)) => debug_inspect(surface < load, content="true")
+    _ => abort("expected surface argument and member load handles")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps math-call additive left subtree before right product" {
   let source =
     #|struct Light {
@@ -1397,6 +1446,53 @@ test "WGSL AST lowerer prelowers later reference call argument before prior dire
     #|
     #|fn probe(depth: f32, frag_coord: vec2<f32>) -> f32 {
     #|  return target(depth, frag_coord, light.soft_shadow_size);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut frag_argument : Int? = None
+  let mut soft_shadow_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(argument_index) if argument_index == 1 &&
+        frag_argument == None => frag_argument = Some(index)
+      Load(base) if soft_shadow_load == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(access_base, _)) =>
+            match function.expressions.items.get(access_base.index()) {
+              Some(GlobalVariable(_)) => soft_shadow_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (soft_shadow_load, frag_argument) {
+    (Some(load), Some(argument)) =>
+      debug_inspect(load < argument, content="true")
+    _ => abort("expected soft shadow load and frag coord argument")
+  }
+}
+
+///|
+test "WGSL AST lowerer skips alias projection call arguments when prelowering later reference argument" {
+  let source =
+    #|struct Light {
+    #|  soft_shadow_size: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> light: Light;
+    #|
+    #|fn target(uv: vec2<f32>, depth: f32, frag_coord: vec2<f32>, light_size: f32) -> f32 {
+    #|  return light_size;
+    #|}
+    #|
+    #|fn probe(light_local: vec3<f32>, frag_coord: vec2<f32>) -> f32 {
+    #|  let projected = light_local;
+    #|  return target(projected.xy, projected.z, frag_coord, light.soft_shadow_size);
     #|}
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())

@@ -263,13 +263,76 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
     Declare(handle) => Some(handle.index())
     Emit(range) => Some(range.end.index())
     Phony(handle) => Some(handle.index())
-    If(condition, _, _) => Some(condition.index())
-    Switch(selector, _) => Some(selector.index())
-    Loop(_, _, break_if) =>
-      match break_if {
-        Some(handle) => Some(handle.index())
-        None => None
+    If(condition, accept, reject) => {
+      let mut index = condition.index()
+      match wgsl_ir_block_max_expression_index(accept) {
+        Some(block_index) =>
+          index = wgsl_ir_max_expression_index(
+            Handle(index),
+            Handle(block_index),
+          )
+        None => ()
       }
+      match wgsl_ir_block_max_expression_index(reject) {
+        Some(block_index) =>
+          index = wgsl_ir_max_expression_index(
+            Handle(index),
+            Handle(block_index),
+          )
+        None => ()
+      }
+      Some(index)
+    }
+    Switch(selector, cases) => {
+      let mut index = selector.index()
+      for case in cases {
+        match wgsl_ir_block_max_expression_index(case.body) {
+          Some(block_index) =>
+            index = wgsl_ir_max_expression_index(
+              Handle(index),
+              Handle(block_index),
+            )
+          None => ()
+        }
+      }
+      Some(index)
+    }
+    Loop(body, continuing, break_if) => {
+      let mut index : Int? = None
+      match break_if {
+        Some(handle) => index = Some(handle.index())
+        None => ()
+      }
+      match wgsl_ir_block_max_expression_index(body) {
+        Some(block_index) =>
+          index = Some(
+            match index {
+              Some(current) =>
+                wgsl_ir_max_expression_index(
+                  Handle(current),
+                  Handle(block_index),
+                )
+              None => block_index
+            },
+          )
+        None => ()
+      }
+      match wgsl_ir_block_max_expression_index(continuing) {
+        Some(block_index) =>
+          index = Some(
+            match index {
+              Some(current) =>
+                wgsl_ir_max_expression_index(
+                  Handle(current),
+                  Handle(block_index),
+                )
+              None => block_index
+            },
+          )
+        None => ()
+      }
+      index
+    }
     Return(value) =>
       match value {
         Some(handle) => Some(handle.index())
@@ -346,14 +409,36 @@ fn wgsl_ir_statement_max_expression_index(statement : Statement) -> Int? {
     SubgroupCollectiveOperation(_, _, value, result) =>
       Some(wgsl_ir_max_expression_index(value, result))
     CooperativeStore(pointer, _) => Some(pointer.index())
-    Block(_)
-    | Break
+    Block(block) => wgsl_ir_block_max_expression_index(block)
+    Break
     | Continue
     | ImplicitReturn
     | Kill
     | ControlBarrier(_)
     | MemoryBarrier(_) => None
   }
+}
+
+///|
+fn wgsl_ir_block_max_expression_index(block : Block) -> Int? {
+  let mut index : Int? = None
+  for statement in block.statements {
+    match wgsl_ir_statement_max_expression_index(statement) {
+      Some(statement_index) =>
+        index = Some(
+          match index {
+            Some(current) =>
+              wgsl_ir_max_expression_index(
+                Handle(current),
+                Handle(statement_index),
+              )
+            None => statement_index
+          },
+        )
+      None => ()
+    }
+  }
+  index
 }
 
 ///|
