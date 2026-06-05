@@ -2917,6 +2917,58 @@ test "WGSL AST lowerer builds global member base before mutable dynamic index lo
 }
 
 ///|
+test "WGSL AST lowerer lowers mutable call argument before scalar const alias" {
+  let source =
+    #|fn callee(index: u32, enabled: bool) -> u32 {
+    #|  if enabled {
+    #|    return index;
+    #|  }
+    #|  return 0u;
+    #|}
+    #|
+    #|fn probe() -> u32 {
+    #|  var i: u32 = 1u;
+    #|  let enabled = true;
+    #|  return callee(i, enabled);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut i_local = -1
+  for local_index, local_var in function.local_variables.items {
+    match local_var.name {
+      Some("i") => i_local = local_index
+      _ => ()
+    }
+  }
+  let mut i_arg_load = -1
+  let mut enabled_literal = -1
+  let mut call_index = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(LocalVariable(handle)) =>
+            if handle.index() == i_local && i_arg_load == -1 {
+              i_arg_load = expression_index
+            }
+          _ => ()
+        }
+      Literal(Bool(true)) if enabled_literal == -1 =>
+        enabled_literal = expression_index
+      FunctionCall(_, _) | CallResult(_) if call_index == -1 =>
+        call_index = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(i_local >= 0, content="true")
+  debug_inspect(i_arg_load >= 0, content="true")
+  debug_inspect(enabled_literal > i_arg_load, content="true")
+  debug_inspect(call_index > enabled_literal, content="true")
+}
+
+///|
 test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
   let source =
     #|fn nested_if_var_init(flag: bool) -> f32 {

@@ -1491,6 +1491,7 @@ fn wgsl_ir_local_constant_arena_placement_for_statement(
     LocalDeclaration(locals) => {
       for local_decl in locals {
         if (local_decl.kind() == Let || local_decl.kind() == Const) &&
+          !wgsl_ir_local_const_initializer_is_bool_literal(local_decl) &&
           wgsl_ir_local_name_has_same_block_use_before_nested_flow(
             local_decl.name().name(),
             statements,
@@ -1502,6 +1503,29 @@ fn wgsl_ir_local_constant_arena_placement_for_statement(
       UseSiteLazyLocalConstant
     }
     _ => UseSiteLazyLocalConstant
+  }
+}
+
+///|
+fn wgsl_ir_local_const_initializer_is_bool_literal(
+  local_decl : @ast.WgslLocalDeclaration,
+) -> Bool {
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) => wgsl_ir_expr_node_is_bool_literal(root)
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_bool_literal(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Literal(token) => token.text() == "true" || token.text() == "false"
+    Group(inner) => wgsl_ir_expr_node_is_bool_literal(inner)
+    _ => false
   }
 }
 
