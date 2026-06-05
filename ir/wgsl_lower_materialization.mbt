@@ -1413,19 +1413,7 @@ fn WgslIrLowerer::compound_assignment_target_value(
   function : Function,
   target : Handle,
 ) -> Handle {
-  let direct_projection = match function.expressions.items.get(target.index()) {
-    Some(Access(_, _))
-    | Some(AccessIndex(_, _))
-    | Some(Component(_, _))
-    | Some(Swizzle(_, _, _)) => true
-    _ => false
-  }
-  if direct_projection {
-    match self.function_expression_type(function, target) {
-      Some(ty) => if !self.lowerer_type_is_pointer(ty) { return target }
-      None => return target
-    }
-  }
+  ignore(self)
   function.expressions.append(Load(target))
 }
 

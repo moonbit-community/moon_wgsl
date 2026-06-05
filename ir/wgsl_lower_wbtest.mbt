@@ -1863,6 +1863,34 @@ test "WGSL AST lowerer preserves compound assignment semantics in IR" {
 }
 
 ///|
+test "WGSL AST lowerer emits compound field target load before store" {
+  let source =
+    #|struct Material {
+    #|  color: vec4<f32>,
+    #|}
+    #|
+    #|@compute
+    #|fn main() {
+    #|  var material: Material;
+    #|  let tint = vec4<f32>(0.5);
+    #|  material.color *= tint;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  let load_index = emitted.find(": vec4<f32> = material.color;")
+  let store_index = emitted.find("material.color = (_e")
+  let ordered = match (load_index, store_index) {
+    (Some(load), Some(store)) => load < store
+    _ => false
+  }
+  debug_inspect(ordered, content="true")
+}
+
+///|
 test "WGSL AST lowerer returns imported constants without synthetic temporaries" {
   let source =
     #|const VALUE: u32 = 1u;
