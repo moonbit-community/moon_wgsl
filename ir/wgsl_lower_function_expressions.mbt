@@ -3766,6 +3766,13 @@ fn WgslIrLowerer::lower_function_select_call(
   guard arguments is [reject, accept, condition] else {
     raise UnsupportedExpression("select expects three arguments")
   }
+  match
+    self.lower_function_select_with_constant_values_and_binary_condition(
+      reject, accept, condition, function, scope,
+    ) {
+    Some(handle) => return handle
+    None => ()
+  }
   let (condition, accept, reject) = if wgsl_ir_expr_node_is_deferred_select_value(
       reject,
     ) &&
@@ -3795,6 +3802,72 @@ fn WgslIrLowerer::lower_function_select_call(
     (condition, accept, reject)
   }
   function.expressions.append(Select(condition, accept, reject))
+}
+
+///|
+fn WgslIrLowerer::lower_function_select_with_constant_values_and_binary_condition(
+  self : WgslIrLowerer,
+  reject : @ast.WgslExprNode,
+  accept : @ast.WgslExprNode,
+  condition : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard self.expression_node_is_select_constant_value(reject) else {
+    return None
+  }
+  guard self.expression_node_is_select_constant_value(accept) else {
+    return None
+  }
+  let (condition_op, condition_left, condition_right) = match condition.kind() {
+    Binary(op, left, right) => (op, left, right)
+    Group(inner) =>
+      match inner.kind() {
+        Binary(op, left, right) => (op, left, right)
+        _ => return None
+      }
+    _ => return None
+  }
+  let left_handle = self.lower_function_expression_node(
+    condition_left, function, scope,
+  )
+  let right_handle = self.lower_function_expression_node(
+    condition_right, function, scope,
+  )
+  let accept_handle = self.lower_function_expression_node(
+    accept, function, scope,
+  )
+  let reject_handle = self.lower_function_expression_node(
+    reject, function, scope,
+  )
+  let binary_op = wgsl_ir_binary_operator(condition_op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  let condition_handle = function.expressions.append(
+    Binary(binary_op, left_handle, right_handle),
+  )
+  Some(function.expressions.append(
+    Select(condition_handle, accept_handle, reject_handle),
+  ))
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_select_constant_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Literal(_) => return true
+    Group(inner) => return self.expression_node_is_select_constant_value(inner)
+    Unary(op, inner) =>
+      return op == Subtract &&
+        self.expression_node_is_select_constant_value(inner)
+    Identifier(name) =>
+      return self.constant_names.contains(name.name()) ||
+        wgsl_ir_predeclared_u32_constant_literal(name.name()) != None
+    _ => return false
+  }
 }
 
 ///|

@@ -583,6 +583,58 @@ test "WGSL AST lowerer follows Naga call argument arena order for deferred selec
 }
 
 ///|
+test "WGSL AST lowerer lowers constant select values after condition operands" {
+  let source =
+    #|const X_PLUS: u32 = 0u;
+    #|const X_MINUS: u32 = 1u;
+    #|
+    #|fn probe(direction: vec3<f32>) -> u32 {
+    #|  return select(X_PLUS, X_MINUS, direction.x < 0.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected direction argument root")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected condition access before constants")
+  }
+  match function.expressions.items[2] {
+    Literal(_) => ()
+    _ => abort("expected condition literal before constants")
+  }
+  match function.expressions.items[3] {
+    Constant(_) => ()
+    _ => abort("expected select accept constant after condition operands")
+  }
+  match function.expressions.items[4] {
+    Constant(_) => ()
+    _ => abort("expected select reject constant after accept")
+  }
+  match function.expressions.items[5] {
+    Binary(_, left, right) => {
+      debug_inspect(left.index(), content="1")
+      debug_inspect(right.index(), content="2")
+    }
+    _ => abort("expected condition binary after constants")
+  }
+  match function.expressions.items[6] {
+    Select(condition, accept, reject) => {
+      debug_inspect(condition.index(), content="5")
+      debug_inspect(accept.index(), content="3")
+      debug_inspect(reject.index(), content="4")
+    }
+    _ => abort("expected select after binary condition")
+  }
+}
+
 test "WGSL AST lowerer represents single vector members as Naga-style access indexes" {
   let source =
     #|fn probe(value: vec4<f32>) -> f32 {
