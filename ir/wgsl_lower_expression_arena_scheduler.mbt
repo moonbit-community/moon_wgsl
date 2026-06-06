@@ -71,7 +71,17 @@ fn ExpressionArenaScheduler::binary_predeclares_sibling_member_roots(
     return false
   }
   wgsl_ir_expr_node_is_direct_access_chain(left) &&
-  wgsl_ir_expr_node_contains_member_access(right)
+  wgsl_ir_binary_right_operand_has_sibling_member_root(right)
+}
+
+///|
+fn wgsl_ir_binary_right_operand_has_sibling_member_root(
+  right : @ast.WgslExprNode,
+) -> Bool {
+  match wgsl_ir_expr_node_without_groups(right).kind() {
+    Binary(_, _, _) => wgsl_ir_expr_node_contains_member_access(right)
+    _ => wgsl_ir_expr_node_is_direct_access_chain(right)
+  }
 }
 
 ///|

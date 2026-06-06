@@ -3903,6 +3903,56 @@ test "WGSL AST lowerer predeclares later constructor local root after first glob
 }
 
 ///|
+test "WGSL AST lowerer keeps constructor member root after left global load" {
+  let source =
+    #|struct Atmosphere {
+    #|  world_to_atmosphere: mat4x4<f32>,
+    #|}
+    #|
+    #|struct View {
+    #|  world_position: vec3<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> atmosphere: Atmosphere;
+    #|
+    #|@group(0) @binding(1)
+    #|var<uniform> view: View;
+    #|
+    #|fn probe(position: vec3<f32>) -> vec3<f32> {
+    #|  return (atmosphere.world_to_atmosphere * vec4(view.world_position, 1.0)).xyz;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut left_root = -1
+  let mut right_root = -1
+  let mut left_access = -1
+  let mut left_load = -1
+  let mut right_access = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      GlobalVariable(_) if left_root == -1 => left_root = expression_index
+      GlobalVariable(_) if left_root >= 0 && right_root == -1 =>
+        right_root = expression_index
+      AccessIndex(base, _) if base.index() == left_root && left_access == -1 =>
+        left_access = expression_index
+      Load(pointer) if pointer.index() == left_access && left_load == -1 =>
+        left_load = expression_index
+      AccessIndex(base, _) if base.index() == right_root && right_access == -1 =>
+        right_access = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(left_root, content="0")
+  debug_inspect(left_access, content="1")
+  debug_inspect(left_load, content="2")
+  debug_inspect(right_root, content="3")
+  debug_inspect(right_access, content="4")
+}
+
+///|
 test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
   let source =
     #|fn nested_if_var_init(flag: bool) -> f32 {
