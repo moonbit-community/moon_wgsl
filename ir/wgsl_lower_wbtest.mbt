@@ -75,6 +75,134 @@ test "WGSL AST lowerer preserves const and override workgroup sizes in IR" {
 }
 
 ///|
+test "WGSL AST lowerer keeps function argument swizzle before control-flow global member RHS" {
+  let source =
+    #|struct Settings {
+    #|  size: vec3<u32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> settings: Settings;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main(@builtin(global_invocation_id) idx: vec3<u32>) {
+    #|  if any(idx.xy > settings.size.xy) {
+    #|    return;
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.entry_points[0].function
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected entry argument first")
+  }
+  match function.expressions.items[1] {
+    Swizzle(_, base, _) => debug_inspect(base.index(), content="0")
+    _ => abort("expected source-left function argument swizzle before global")
+  }
+  match function.expressions.items[2] {
+    GlobalVariable(_) => ()
+    _ => abort("expected right-hand global after function argument swizzle")
+  }
+}
+
+///|
+test "WGSL AST lowerer allocates fresh literal for nested for execution-site initializer store" {
+  let source =
+    #|fn probe(limit: u32) {
+    #|  var slice = 0u;
+    #|  loop {
+    #|    if slice < limit {
+    #|    } else {
+    #|      break;
+    #|    }
+    #|    {
+    #|      for (var step = 0u; step < limit; step = step + 1u) {
+    #|      }
+    #|    }
+    #|    continuing {
+    #|      slice = slice + 1u;
+    #|    }
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut step_local = -1
+  for index in 0..<function.local_variables.items.length() {
+    match function.local_variables.items[index].name {
+      Some(name) if name == "step" => step_local = index
+      _ => ()
+    }
+  }
+  debug_inspect(step_local >= 0, content="true")
+  let mut step_pointer_expression = -1
+  for index in 0..<function.expressions.items.length() {
+    match function.expressions.items[index] {
+      LocalVariable(handle) if handle.index() == step_local &&
+        step_pointer_expression == -1 => step_pointer_expression = index
+      _ => ()
+    }
+  }
+  debug_inspect(step_pointer_expression >= 0, content="true")
+  match function.expressions.items[step_pointer_expression + 1] {
+    Literal(U32(value)) => debug_inspect(value, content="0")
+    _ =>
+      abort("expected fresh nested for initializer literal after step pointer")
+  }
+}
+
+///|
+test "WGSL AST lowerer predeclares compound assignment RHS mutable local before target load" {
+  let source =
+    #|fn probe() {
+    #|  var total = vec3(0.0);
+    #|  var throughput = vec3(1.0);
+    #|  let s = vec3(0.5);
+    #|  total += throughput * s;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut total_local = -1
+  let mut throughput_local = -1
+  for index in 0..<function.local_variables.items.length() {
+    match function.local_variables.items[index].name {
+      Some(name) if name == "total" => total_local = index
+      Some(name) if name == "throughput" => throughput_local = index
+      _ => ()
+    }
+  }
+  debug_inspect(total_local >= 0, content="true")
+  debug_inspect(throughput_local >= 0, content="true")
+  let mut found = false
+  for index in 0..<(function.expressions.items.length() - 3) {
+    match
+      (
+        function.expressions.items[index],
+        function.expressions.items[index + 1],
+        function.expressions.items[index + 2],
+        function.expressions.items[index + 3],
+      ) {
+      (
+        LocalVariable(total),
+        LocalVariable(throughput),
+        Load(total_pointer),
+        Load(throughput_pointer),
+      ) if total.index() == total_local &&
+        throughput.index() == throughput_local &&
+        total_pointer.index() == index &&
+        throughput_pointer.index() == index + 1 => found = true
+      _ => ()
+    }
+  }
+  debug_inspect(found, content="true")
+}
+
+///|
 test "WGSL AST lowerer predeclares mutable locals before non-const initializer arena values" {
   let source =
     #|fn probe(t0: f32) -> f32 {

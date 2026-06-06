@@ -1727,7 +1727,20 @@ fn wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
     wgsl_ir_expr_node_contains_member_access(root) &&
     wgsl_ir_expr_node_contains_plain_local_identifier(root, scope)
   ) ||
+  wgsl_ir_binary_expr_node_contains_plain_local_identifier(root, scope) ||
   wgsl_ir_expr_node_is_root_call_with_function_argument_value(root, scope)
+}
+
+///|
+fn wgsl_ir_binary_expr_node_contains_plain_local_identifier(
+  root : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match wgsl_ir_expr_node_without_groups(root).kind() {
+    Binary(_, _, _) =>
+      wgsl_ir_expr_node_contains_plain_local_identifier(root, scope)
+    _ => false
+  }
 }
 
 ///|
@@ -2931,9 +2944,16 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
       )
     }
     None =>
-      self.lower_expression_ref_with_materialized_short_circuit_inputs(
-        expr_ref, function, scope, block, explicit_ty,
-      )
+      match expr_ref.root() {
+        Some(root) if wgsl_ir_expr_node_literal_token(root) is Some(token) =>
+          self.lower_function_fresh_literal_node_with_expected(
+            token, function, explicit_ty,
+          )
+        _ =>
+          self.lower_expression_ref_with_materialized_short_circuit_inputs(
+            expr_ref, function, scope, block, explicit_ty,
+          )
+      }
   }
   if pointer == None {
     pointer = Some(function.expressions.append(LocalVariable(handle)))

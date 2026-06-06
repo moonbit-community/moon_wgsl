@@ -66,6 +66,10 @@ fn ExpressionArenaScheduler::binary_predeclares_sibling_member_roots(
     wgsl_ir_expr_node_contains_call_member_access(right) {
     return false
   }
+  if wgsl_ir_direct_access_chain_root_is_function_argument(left, self.scope) &&
+    self.lowerer.direct_access_chain_root_is_global_reference(right) {
+    return false
+  }
   if self.lowerer.direct_access_chain_root_is_global_reference(left) &&
     self.lowerer.direct_access_chain_root_is_global_reference(right) {
     return false
