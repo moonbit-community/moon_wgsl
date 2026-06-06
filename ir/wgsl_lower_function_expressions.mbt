@@ -155,6 +155,13 @@ fn WgslIrLowerer::lower_function_lvalue_node(
     }
     Index(base, index) => {
       match
+        self.lower_function_direct_global_lvalue_binary_index(
+          base, index, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
         self.lower_function_dynamic_member_index_access(
           base, index, function, scope,
         ) {
@@ -192,6 +199,91 @@ fn WgslIrLowerer::lower_function_lvalue_node(
     }
     _ => raise UnsupportedExpression("unsupported lvalue shape")
   }
+}
+
+///|
+fn WgslIrLowerer::lower_function_direct_global_lvalue_binary_index(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  index : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match self.static_index_value_from_expr_node(index) {
+    Some(_) => return None
+    None => ()
+  }
+  guard !wgsl_ir_expr_node_contains_member_access(index) else { return None }
+  guard !self.expression_node_contains_mutable_local_reference(
+    index, function, scope,
+  ) else {
+    return None
+  }
+  let name = match base.kind() {
+    Identifier(name) => name.name()
+    _ => return None
+  }
+  match self.global_names.get(name) {
+    Some(_) => ()
+    None => return None
+  }
+  let (op, left, right) = match index.kind() {
+    Binary(_, _, _) =>
+      self.lower_binary_expression_children(index, function, scope)
+    _ => return None
+  }
+  let base_handle = self.lower_function_lvalue_node(base, function, scope)
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left, right) = self.normalize_function_binary_operands(
+    function, binary_op, left, right,
+  )
+  let index_handle = function.expressions.append(Binary(binary_op, left, right))
+  Some(function.expressions.append(Access(base_handle, index_handle)))
+}
+
+///|
+fn WgslIrLowerer::lower_function_direct_global_value_binary_index(
+  self : WgslIrLowerer,
+  base : @ast.WgslExprNode,
+  index : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match self.static_index_value_from_expr_node(index) {
+    Some(_) => return None
+    None => ()
+  }
+  guard !wgsl_ir_expr_node_contains_member_access(index) else { return None }
+  guard !self.expression_node_contains_mutable_local_reference(
+    index, function, scope,
+  ) else {
+    return None
+  }
+  let name = match base.kind() {
+    Identifier(name) => name.name()
+    _ => return None
+  }
+  match self.global_names.get(name) {
+    Some(_) => ()
+    None => return None
+  }
+  let (op, left, right) = match index.kind() {
+    Binary(_, _, _) =>
+      self.lower_binary_expression_children(index, function, scope)
+    _ => return None
+  }
+  let base_handle = self.lower_function_index_value_base(base, function, scope)
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left, right) = self.normalize_function_binary_operands(
+    function, binary_op, left, right,
+  )
+  let index_handle = function.expressions.append(Binary(binary_op, left, right))
+  Some(
+    self.apply_function_load_rule(
+      function,
+      function.expressions.append(Access(base_handle, index_handle)),
+    ),
+  )
 }
 
 ///|
@@ -622,6 +714,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       match
         self.lower_function_const_array_static_index_value(
           base, index, function,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
+        self.lower_function_direct_global_value_binary_index(
+          base, index, function, scope,
         ) {
         Some(handle) => return handle
         None => ()
@@ -3235,6 +3334,13 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
       )
     }
     Index(base, index) => {
+      match
+        self.lower_function_direct_global_lvalue_binary_index(
+          base, index, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
       match
         self.lower_function_dynamic_member_index_access(
           base, index, function, scope,

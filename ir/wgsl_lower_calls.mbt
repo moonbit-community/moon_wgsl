@@ -523,11 +523,7 @@ fn WgslIrLowerer::lower_texture_statement_call(
       guard arguments.length() == 3 || arguments.length() == 4 else {
         raise UnsupportedExpression("textureStore expects 3 or 4 arguments")
       }
-      let image = self.lower_function_expression_node(
-        arguments[0],
-        function,
-        scope,
-      )
+      let expression_mark = function.expressions.items.length()
       let coordinate = self.lower_function_expression_node(
         arguments[1],
         function,
@@ -548,18 +544,30 @@ fn WgslIrLowerer::lower_texture_statement_call(
         function,
         scope,
       )
-      block.push(
-        ImageStore(
-          image,
-          self.materialize_image_store_operand(
-            function, scope, block, coordinate,
-          ),
-          self.materialize_optional_image_store_operand(
-            function, scope, block, raw_array_index,
-          ),
-          self.materialize_image_store_operand(function, scope, block, value),
-        ),
+      let image = self.lower_function_expression_node(
+        arguments[0],
+        function,
+        scope,
       )
+      let coordinate = self.materialize_image_store_operand(
+        function, scope, block, coordinate,
+      )
+      let array_index = self.materialize_optional_image_store_operand(
+        function, scope, block, raw_array_index,
+      )
+      let value = self.materialize_image_store_operand(
+        function, scope, block, value,
+      )
+      let mut end = wgsl_ir_max_handle(image, coordinate)
+      match array_index {
+        Some(handle) => end = wgsl_ir_max_handle(end, handle)
+        None => ()
+      }
+      end = wgsl_ir_max_handle(end, value)
+      BodyEmissionPlanner::push_statement_emit_ranges(
+        block, function, expression_mark, end,
+      )
+      block.push(ImageStore(image, coordinate, array_index, value))
       true
     }
     _ => false

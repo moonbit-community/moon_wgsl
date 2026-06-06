@@ -3792,6 +3792,34 @@ test "WGSL AST lowerer predeclares dynamic lvalue function argument roots after 
 }
 
 ///|
+test "WGSL AST lowerer lowers pure global array index children before root" {
+  let source =
+    #|var<workgroup> memory: array<array<f32, 16>, 16>;
+    #|
+    #|fn pure_global_array_index(x: u32, y: u32, value: f32) {
+    #|  memory[x * 2u + 0u][y * 2u + 0u] = value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut global_root = -1
+  let mut first_literal = -1
+  let mut first_binary = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Literal(U32(2)) if first_literal == -1 => first_literal = expression_index
+      Binary(_, _, _) if first_binary == -1 => first_binary = expression_index
+      GlobalVariable(_) if global_root == -1 => global_root = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(first_literal >= 0, content="true")
+  debug_inspect(first_binary > first_literal, content="true")
+  debug_inspect(global_root > first_binary, content="true")
+}
+
+///|
 test "WGSL AST lowerer lowers mutable call argument before scalar const alias" {
   let source =
     #|fn callee(index: u32, enabled: bool) -> u32 {
