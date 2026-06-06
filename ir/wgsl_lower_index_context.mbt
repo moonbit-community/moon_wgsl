@@ -80,6 +80,7 @@ fn WgslIrLowerer::static_index_for_naga_access_index(
           } else {
             None
           }
+        Array(_, Dynamic, _) => Some(static_index)
         _ => None
       }
     None => None

@@ -1641,6 +1641,44 @@ test "WGSL AST lowerer emits static array literal indexes as Naga access indexes
 }
 
 ///|
+test "WGSL AST lowerer emits static runtime array literal indexes as Naga access indexes" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var<storage, read_write> values: array<u32>;
+    #|
+    #|fn probe() {
+    #|  values[0] += values[1];
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected storage array global root")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    Access(_, _) => abort("expected static runtime array index")
+    _ => abort("expected access index")
+  }
+  match function.expressions.items[2] {
+    Load(base) => debug_inspect(base.index(), content="1")
+    _ => abort("expected old value load")
+  }
+  for expression in function.expressions.items {
+    match expression {
+      Literal(U32(_)) =>
+        abort("static runtime array index should not allocate a literal")
+      _ => ()
+    }
+  }
+}
+
+///|
 test "WGSL AST lowerer loads dynamic storage array index value expressions" {
   let source =
     #|@group(0) @binding(0)
