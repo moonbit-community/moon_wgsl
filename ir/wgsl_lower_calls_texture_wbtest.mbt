@@ -650,3 +650,117 @@ test "WGSL AST lowerer schedules textureGather offset leaves before resource roo
 }
 
 ///|
+test "WGSL AST lowerer schedules textureLoad coordinate before texture root" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var color_texture: texture_2d<f32>;
+    #|
+    #|fn probe(position: vec4<f32>) -> vec4<f32> {
+    #|  var frag_coord = position;
+    #|  return textureLoad(color_texture, vec2<i32>(frag_coord.xy), 0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut as_index = -1
+  let mut texture_root_index = -1
+  for index in 0..<function.expressions.items.length() {
+    match function.expressions.items[index] {
+      As(_, Sint, Some(4)) if as_index == -1 => as_index = index
+      GlobalVariable(_) if texture_root_index == -1 =>
+        texture_root_index = index
+      _ => ()
+    }
+  }
+  debug_inspect(as_index >= 0, content="true")
+  debug_inspect(texture_root_index >= 0, content="true")
+  debug_inspect(as_index < texture_root_index, content="true")
+  match function.expressions.items[texture_root_index + 2] {
+    ImageLoad(_, coordinate, _, _, level) => {
+      debug_inspect(coordinate.index(), content="\{as_index}")
+      match level {
+        Some(handle) =>
+          debug_inspect(handle.index(), content="\{texture_root_index + 1}")
+        None => abort("expected textureLoad mip level")
+      }
+    }
+    _ => abort("expected ImageLoad after texture root and level")
+  }
+}
+
+///|
+test "WGSL AST lowerer schedules textureLoad array index before texture root" {
+  let source =
+    #|struct Globals {
+    #|  frame_count: u32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> globals: Globals;
+    #|@group(0) @binding(1)
+    #|var stbn_texture: texture_2d_array<f32>;
+    #|
+    #|fn probe(coords: vec2<u32>, layers: u32) -> vec4<f32> {
+    #|  return textureLoad(stbn_texture, coords, i32(globals.frame_count % layers), 0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut array_index_as = -1
+  let mut texture_root = -1
+  for index in 0..<function.expressions.items.length() {
+    match function.expressions.items[index] {
+      As(_, Sint, Some(4)) if array_index_as == -1 => array_index_as = index
+      GlobalVariable(global) if global.index() == 1 && texture_root == -1 =>
+        texture_root = index
+      _ => ()
+    }
+  }
+  debug_inspect(array_index_as >= 0, content="true")
+  debug_inspect(texture_root >= 0, content="true")
+  debug_inspect(array_index_as < texture_root, content="true")
+  match function.expressions.items[texture_root + 2] {
+    ImageLoad(image, _, array_index, _, level) => {
+      debug_inspect(image.index(), content="\{texture_root}")
+      match array_index {
+        Some(handle) =>
+          debug_inspect(handle.index(), content="\{array_index_as}")
+        None => abort("expected array index")
+      }
+      match level {
+        Some(handle) =>
+          debug_inspect(handle.index(), content="\{texture_root + 1}")
+        None => abort("expected mip level")
+      }
+    }
+    _ => abort("expected ImageLoad after texture root and level")
+  }
+}
+
+///|
+test "WGSL AST lowerer infers textureLoad image type from function arguments" {
+  let source =
+    #|fn get_occluder_depth(
+    #|  coord: vec2<u32>,
+    #|  depth_level: i32,
+    #|  depth_pyramid: texture_2d<f32>
+    #|) -> f32 {
+    #|  return textureLoad(depth_pyramid, coord, depth_level).x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut found = false
+  for expression in function.expressions.items {
+    match expression {
+      ImageLoad(_, _, _, _, Some(_)) => found = true
+      _ => ()
+    }
+  }
+  debug_inspect(found, content="true")
+}
+
+///|

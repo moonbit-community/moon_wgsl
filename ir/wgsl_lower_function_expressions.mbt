@@ -2524,15 +2524,12 @@ fn WgslIrLowerer::lower_function_scalar_constructor_expression_from_handles(
     return None
   }
   guard type_.inner is Scalar(argument_scalar) else { return None }
-  if target_scalar == argument_scalar {
-    None
-  } else {
-    Some(
-      function.expressions.append(
-        As(argument, target_scalar.kind, Some(target_scalar.width)),
-      ),
-    )
-  }
+  ignore(argument_scalar)
+  Some(
+    function.expressions.append(
+      As(argument, target_scalar.kind, Some(target_scalar.width)),
+    ),
+  )
 }
 
 ///|

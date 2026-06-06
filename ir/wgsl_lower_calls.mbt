@@ -900,13 +900,9 @@ fn WgslIrLowerer::image_type_handle_is_depth(
   self : WgslIrLowerer,
   ty : Handle,
 ) -> Bool {
-  match self.shader_module.types.get(self.deref_pointer_type_handle(ty)) {
-    Some(type_) =>
-      match type_.inner {
-        Image(_, _, Depth(_)) => true
-        _ => false
-      }
-    None => false
+  match self.image_type_handle_inner(ty) {
+    Some((_, _, Depth(_))) => true
+    _ => false
   }
 }
 
@@ -915,13 +911,59 @@ fn WgslIrLowerer::image_type_handle_is_arrayed(
   self : WgslIrLowerer,
   ty : Handle,
 ) -> Bool {
+  match self.image_type_handle_inner(ty) {
+    Some((_, arrayed, _)) => arrayed
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::image_type_handle_is_multisampled(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.image_type_handle_inner(ty) {
+    Some((_, _, Sampled(_, multisampled))) => multisampled
+    Some((_, _, Depth(multisampled))) => multisampled
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::image_type_handle_is_storage(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.image_type_handle_inner(ty) {
+    Some((_, _, Storage(_, _))) => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::image_type_handle_is_external(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.image_type_handle_inner(ty) {
+    Some((_, _, External)) => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::image_type_handle_inner(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> (ImageDimension, Bool, ImageClass)? {
   match self.shader_module.types.get(self.deref_pointer_type_handle(ty)) {
     Some(type_) =>
       match type_.inner {
-        Image(_, arrayed, _) => arrayed
-        _ => false
+        Image(dimension, arrayed, image_class) =>
+          Some((dimension, arrayed, image_class))
+        _ => None
       }
-    None => false
+    None => None
   }
 }
 
@@ -1003,43 +1045,6 @@ fn WgslIrLowerer::image_expression_is_arrayed(
   match self.image_expression_inner(function, image) {
     Some((_, arrayed, _)) => arrayed
     None => false
-  }
-}
-
-///|
-fn WgslIrLowerer::image_expression_is_multisampled(
-  self : WgslIrLowerer,
-  function : Function,
-  image : Handle,
-) -> Bool {
-  match self.image_expression_inner(function, image) {
-    Some((_, _, Sampled(_, multisampled))) => multisampled
-    Some((_, _, Depth(multisampled))) => multisampled
-    _ => false
-  }
-}
-
-///|
-fn WgslIrLowerer::image_expression_is_storage(
-  self : WgslIrLowerer,
-  function : Function,
-  image : Handle,
-) -> Bool {
-  match self.image_expression_inner(function, image) {
-    Some((_, _, Storage(_, _))) => true
-    _ => false
-  }
-}
-
-///|
-fn WgslIrLowerer::image_expression_is_external(
-  self : WgslIrLowerer,
-  function : Function,
-  image : Handle,
-) -> Bool {
-  match self.image_expression_inner(function, image) {
-    Some((_, _, External)) => true
-    _ => false
   }
 }
 
@@ -1295,9 +1300,11 @@ fn WgslIrLowerer::lower_image_gather_expression(
   } else {
     0
   }
-  let probe_image_ty = self.infer_expression_type(
+  let probe_image_ty = self.infer_expression_type_in_function_scope(
     arguments[probe_image_index],
     "textureGather image",
+    function,
+    scope,
   )
   let depth = self.image_type_handle_is_depth(probe_image_ty)
   let has_component = probe_image_index == 1
@@ -1446,28 +1453,39 @@ fn WgslIrLowerer::lower_image_load_expression(
   guard arguments.length() >= 2 && arguments.length() <= 4 else {
     raise UnsupportedExpression("textureLoad expects 2 to 4 arguments")
   }
-  let image = self.lower_function_expression_node(arguments[0], function, scope)
+  let image_ty = self.infer_expression_type_in_function_scope(
+    arguments[0],
+    "textureLoad image",
+    function,
+    scope,
+  )
   let coordinate = self.lower_function_expression_node(
     arguments[1],
     function,
     scope,
   )
-  let arrayed = self.image_expression_is_arrayed(function, image)
-  let multisampled = self.image_expression_is_multisampled(function, image)
-  let storage = self.image_expression_is_storage(function, image)
-  let external = self.image_expression_is_external(function, image)
+  let arrayed = self.image_type_handle_is_arrayed(image_ty)
+  let multisampled = self.image_type_handle_is_multisampled(image_ty)
+  let storage = self.image_type_handle_is_storage(image_ty)
+  let external = self.image_type_handle_is_external(image_ty)
   let no_handle : Handle? = None
-  let (array_index, sample, level) = if multisampled {
+  let (array_index, sample, level, image) = if multisampled {
     guard !arrayed && arguments.length() == 3 else {
       raise UnsupportedExpression(
         "textureLoad multisampled texture expects sample index",
       )
     }
-    (
-      no_handle,
-      Some(self.lower_function_expression_node(arguments[2], function, scope)),
-      no_handle,
+    let sample = self.lower_function_expression_node(
+      arguments[2],
+      function,
+      scope,
     )
+    let image = self.lower_function_expression_node(
+      arguments[0],
+      function,
+      scope,
+    )
+    (no_handle, Some(sample), no_handle, image)
   } else if arrayed {
     if storage {
       guard arguments.length() == 3 else {
@@ -1475,23 +1493,40 @@ fn WgslIrLowerer::lower_image_load_expression(
           "textureLoad storage texture array expects array index",
         )
       }
-      (
-        Some(self.lower_function_expression_node(arguments[2], function, scope)),
-        no_handle,
-        no_handle,
+      let array_index = self.lower_function_expression_node(
+        arguments[2],
+        function,
+        scope,
       )
+      let image = self.lower_function_expression_node(
+        arguments[0],
+        function,
+        scope,
+      )
+      (Some(array_index), no_handle, no_handle, image)
     } else {
       guard arguments.length() == 4 else {
         raise UnsupportedExpression(
           "textureLoad sampled texture array expects array index and level",
         )
       }
+      let array_index = self.lower_function_expression_node(
+        arguments[2],
+        function,
+        scope,
+      )
+      let image = self.lower_function_expression_node(
+        arguments[0],
+        function,
+        scope,
+      )
       (
-        Some(self.lower_function_expression_node(arguments[2], function, scope)),
+        Some(array_index),
         no_handle,
         Some(
           self.lower_texture_mip_level_argument(arguments[3], function, scope),
         ),
+        image,
       )
     }
   } else if storage || external {
@@ -1500,17 +1535,28 @@ fn WgslIrLowerer::lower_image_load_expression(
         "textureLoad storage/external texture expects no level argument",
       )
     }
-    (no_handle, no_handle, no_handle)
+    let image = self.lower_function_expression_node(
+      arguments[0],
+      function,
+      scope,
+    )
+    (no_handle, no_handle, no_handle, image)
   } else {
     guard arguments.length() == 3 else {
       raise UnsupportedExpression(
         "textureLoad sampled texture expects mip level",
       )
     }
+    let image = self.lower_function_expression_node(
+      arguments[0],
+      function,
+      scope,
+    )
     (
       no_handle,
       no_handle,
       Some(self.lower_texture_mip_level_argument(arguments[2], function, scope)),
+      image,
     )
   }
   ignore(self.image_expression_result_type(function, image, None, None))

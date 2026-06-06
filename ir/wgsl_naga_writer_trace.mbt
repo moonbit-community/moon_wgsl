@@ -40,6 +40,15 @@ pub fn trace_naga_oil_writer_function_plan_for_source_with_generated_imports_and
     root_visible_rel_path~,
   )
   let view = build_wgsl_ir_naga_writer_module(module_, None)
+  for slot in view.entry_point_slots() {
+    let final_name = view.names.get(
+      wgsl_ir_emit_name_key("ep", slot.source_index),
+    )
+    if wgsl_ir_trace_name_matches_exact(final_name, function_name_prefix) ||
+      slot.item.name == function_name_prefix {
+      return wgsl_ir_naga_writer_entry_point_slot_trace(view, slot)
+    }
+  }
   for slot in view.function_slots() {
     let final_name = view.names.get(
       wgsl_ir_emit_name_key("fn", slot.source_index),
@@ -74,6 +83,14 @@ pub fn trace_naga_oil_writer_module_plan_for_source_with_generated_imports_and_i
   )
   let view = build_wgsl_ir_naga_writer_module(module_, None)
   wgsl_ir_naga_writer_module_plan_trace(view)
+}
+
+///|
+fn wgsl_ir_trace_name_matches_exact(name : String?, expected : String) -> Bool {
+  match name {
+    Some(value) => value == expected
+    None => false
+  }
 }
 
 ///|

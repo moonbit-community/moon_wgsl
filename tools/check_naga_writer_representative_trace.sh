@@ -140,12 +140,82 @@ materialize_raw_template_value_defs() {
   printf '%s\n' "$overlay"
 }
 
-normalize_oracle_trace() {
+select_oracle_trace_label() {
   local inventory="$1"
   local function_prefix="$2"
+  awk -F '\t' -v prefix="$function_prefix" '
+  $1 == "function" {
+    if ($2 == ("entry#0:" prefix) || $2 ~ ("^entry#[0-9]+:" prefix "$")) {
+      print $2
+      exit
+    }
+    if ($2 == ("fn:" prefix) && exact_fn == "") {
+      exact_fn = $2
+    }
+    if (index($2, "fn:" prefix) == 1 && prefix_fn == "") {
+      prefix_fn = $2
+    }
+    if ($2 ~ ("^entry#[0-9]+:" prefix) && prefix_entry == "") {
+      prefix_entry = $2
+    }
+  }
+  END {
+    if (exact_fn != "") {
+      print exact_fn
+    } else if (prefix_fn != "") {
+      print prefix_fn
+    } else if (prefix_entry != "") {
+      print prefix_entry
+    }
+  }
+' "$inventory" | sed -n '1p'
+}
+
+trace_label_function_name() {
+  local label="$1"
+  case "$label" in
+    fn:*)
+      printf '%s\n' "${label#fn:}"
+      ;;
+    entry#:*)
+      printf '%s\n' "${label#*:}"
+      ;;
+    entry#*:*)
+      printf '%s\n' "${label#*:}"
+      ;;
+    *)
+      printf '%s\n' "$label"
+      ;;
+  esac
+}
+
+select_oracle_text_function_name() {
+  local wgsl="$1"
+  local function_prefix="$2"
+  local selected_label="$3"
+  local source_name
+  source_name="$(trace_label_function_name "$selected_label")"
+  awk -v source_name="$source_name" -v function_prefix="$function_prefix" '
+  $0 ~ ("^fn " source_name "\\(") {
+    print source_name
+    exit
+  }
+  $0 ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(") {
+    line = $0
+    sub(/^fn /, "", line)
+    sub(/\(.*/, "", line)
+    print line
+    exit
+  }
+' "$wgsl" | sed -n '1p'
+}
+
+normalize_oracle_trace() {
+  local inventory="$1"
+  local selected_label="$2"
   local output="$3"
-  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
-  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  awk -F '\t' -v selected_label="$selected_label" '
+  $1 == "function" { active = $2 == selected_label }
   active && $1 == "expression" {
     kind = $4
     sub(/\(.*/, "", kind)
@@ -166,12 +236,13 @@ normalize_moon_trace() {
 normalize_oracle_bindings() {
   local inventory="$1"
   local wgsl="$2"
-  local function_prefix="$3"
-  local output="$4"
-  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" -v wgsl="$wgsl" '
+  local selected_label="$3"
+  local function_name="$4"
+  local output="$5"
+  awk -F '\t' -v selected_label="$selected_label" -v function_name="$function_name" -v wgsl="$wgsl" '
   BEGIN {
     while ((getline line < wgsl) > 0) {
-      if (line ~ ("^fn " function_prefix) || line ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(")) {
+      if (line ~ ("^fn " function_name "\\(")) {
         signature = line
         sub(/^fn [^(]*\(/, "", signature)
         sub(/ *\{.*$/, "", signature)
@@ -191,7 +262,7 @@ normalize_oracle_bindings() {
     }
     close(wgsl)
   }
-  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  $1 == "function" { active = $2 == selected_label }
   active && $1 == "named-expression" { final_name[$3] = $4 }
   active && $1 == "expression" && $4 ~ /^FunctionArgument/ {
     arg_index = $4
@@ -216,10 +287,10 @@ normalize_moon_bindings() {
 
 normalize_oracle_materialized() {
   local wgsl="$1"
-  local function_prefix="$2"
+  local function_name="$2"
   local output="$3"
-  awk -v function_prefix="$function_prefix" '
-  $0 ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(") {
+  awk -v function_name="$function_name" '
+  $0 ~ ("^fn " function_name "\\(") {
     active = 1
     depth = 0
   }
@@ -262,10 +333,10 @@ normalize_moon_materialized() {
 
 normalize_oracle_helper_temps() {
   local wgsl="$1"
-  local function_prefix="$2"
+  local function_name="$2"
   local output="$3"
-  awk -v function_prefix="$function_prefix" '
-  $0 ~ ("^fn " function_prefix "[A-Za-z0-9_]*\\(") {
+  awk -v function_name="$function_name" '
+  $0 ~ ("^fn " function_name "\\(") {
     active = 1
     depth = 0
   }
@@ -312,10 +383,10 @@ normalize_moon_helper_temps() {
 
 normalize_oracle_local_declarations() {
   local inventory="$1"
-  local function_prefix="$2"
+  local selected_label="$2"
   local output="$3"
-  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
-  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  awk -F '\t' -v selected_label="$selected_label" '
+  $1 == "function" { active = $2 == selected_label }
   active && $1 == "local" {
     print "local-declare\t" count++ "\tlocal=" $3 "\tinit=" local_init($0)
   }
@@ -361,10 +432,10 @@ normalize_moon_local_declarations() {
 
 normalize_oracle_statements() {
   local inventory="$1"
-  local function_prefix="$2"
+  local selected_label="$2"
   local output="$3"
-  awk -F '\t' -v prefix="fn:${function_prefix}" -v function_prefix="$function_prefix" '
-  $1 == "function" { active = index($2, prefix) == 1 || $2 ~ ("^entry#[0-9]+:" function_prefix) }
+  awk -F '\t' -v selected_label="$selected_label" '
+  $1 == "function" { active = $2 == selected_label }
   active && $1 == "raw-statement" && $4 != "Emit(empty)" {
     emit_statement($4)
   }
@@ -553,18 +624,30 @@ run_case() {
       return 1
     fi
   done
+  local oracle_trace_label
+  oracle_trace_label="$(select_oracle_trace_label "$case_dir/oracle.inventory" "$function_prefix")"
+  if [[ -z "$oracle_trace_label" ]]; then
+    echo "oracle trace function not found for $id: $function_prefix" >&2
+    return 1
+  fi
+  local oracle_function_name
+  oracle_function_name="$(select_oracle_text_function_name "$case_dir/oracle.wgsl" "$function_prefix" "$oracle_trace_label")"
+  if [[ -z "$oracle_function_name" ]]; then
+    echo "oracle writer function not found for $id: $function_prefix" >&2
+    return 1
+  fi
 
-  normalize_oracle_trace "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.expression-order"
+  normalize_oracle_trace "$case_dir/oracle.inventory" "$oracle_trace_label" "$case_dir/oracle.expression-order"
   normalize_moon_trace "$case_dir/moon.trace" "$case_dir/moon.expression-order"
-  normalize_oracle_bindings "$case_dir/oracle.inventory" "$case_dir/oracle.wgsl" "$function_prefix" "$case_dir/oracle.bindings"
+  normalize_oracle_bindings "$case_dir/oracle.inventory" "$case_dir/oracle.wgsl" "$oracle_trace_label" "$oracle_function_name" "$case_dir/oracle.bindings"
   normalize_moon_bindings "$case_dir/moon.trace" "$case_dir/moon.bindings"
-  normalize_oracle_materialized "$case_dir/oracle.wgsl" "$function_prefix" "$case_dir/oracle.materialized"
+  normalize_oracle_materialized "$case_dir/oracle.wgsl" "$oracle_function_name" "$case_dir/oracle.materialized"
   normalize_moon_materialized "$case_dir/moon.trace" "$case_dir/moon.materialized"
-  normalize_oracle_helper_temps "$case_dir/oracle.wgsl" "$function_prefix" "$case_dir/oracle.helper-temps"
+  normalize_oracle_helper_temps "$case_dir/oracle.wgsl" "$oracle_function_name" "$case_dir/oracle.helper-temps"
   normalize_moon_helper_temps "$case_dir/moon.trace" "$case_dir/moon.helper-temps"
-  normalize_oracle_local_declarations "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.local-declarations"
+  normalize_oracle_local_declarations "$case_dir/oracle.inventory" "$oracle_trace_label" "$case_dir/oracle.local-declarations"
   normalize_moon_local_declarations "$case_dir/moon.trace" "$case_dir/moon.local-declarations"
-  normalize_oracle_statements "$case_dir/oracle.inventory" "$function_prefix" "$case_dir/oracle.statements"
+  normalize_oracle_statements "$case_dir/oracle.inventory" "$oracle_trace_label" "$case_dir/oracle.statements"
   normalize_moon_statements "$case_dir/moon.trace" "$case_dir/moon.statements"
   normalize_module_declaration_slots "$case_dir/oracle.module" "$case_dir/oracle.module-slots"
   normalize_module_declaration_slots "$case_dir/moon.module" "$case_dir/moon.module-slots"

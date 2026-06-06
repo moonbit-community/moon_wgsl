@@ -121,3 +121,24 @@ test "Naga compat plan invariants are table driven" {
     assert_naga_compat_plan_invariant_case(item)
   }
 }
+
+///|
+test "Naga writer trace selects exact entry point before prefix-matching helpers" {
+  let trace = trace_naga_oil_writer_function_plan_for_source(
+    (
+      #|fn fragment_helper(value: f32) -> f32 {
+      #|  return value;
+      #|}
+      #|
+      #|@fragment
+      #|fn fragment(@location(0) value: f32) -> @location(0) f32 {
+      #|  return fragment_helper(value);
+      #|}
+    ),
+    "fragment",
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(trace.contains("function\tentry:fragment"), content="true")
+  debug_inspect(trace.contains("function\tfn:fragment_helper"), content="false")
+}

@@ -984,6 +984,55 @@ test "WGSL AST lowerer predeclares binary member roots before projections" {
 }
 
 ///|
+test "WGSL AST lowerer keeps global member binary operands in chain order" {
+  let source =
+    #|struct Settings {
+    #|  min_value: f32,
+    #|  max_value: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> settings: Settings;
+    #|
+    #|fn probe() -> bool {
+    #|  return settings.min_value >= settings.max_value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected left global root")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected left global member projection before right root")
+  }
+  match function.expressions.items[2] {
+    Load(base) => debug_inspect(base.index(), content="1")
+    _ => abort("expected left global member load before right root")
+  }
+  match function.expressions.items[3] {
+    GlobalVariable(_) => ()
+    _ => abort("expected right global root after left chain")
+  }
+  match function.expressions.items[4] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="3")
+      debug_inspect(index, content="1")
+    }
+    _ => abort("expected right global member projection")
+  }
+  match function.expressions.items[5] {
+    Load(base) => debug_inspect(base.index(), content="4")
+    _ => abort("expected right global member load")
+  }
+}
+
+///|
 test "WGSL AST lowerer predeclares right argument before left global member projection" {
   let source =
     #|struct View {
@@ -3211,6 +3260,22 @@ test "WGSL AST lowerer preserves source let scalar constructor conversions" {
   match function.expressions.items[1] {
     As(argument, Float, Some(4)) => debug_inspect(argument.index(), content="0")
     _ => abort("expected source let scalar constructor conversion")
+  }
+}
+
+///|
+test "WGSL AST lowerer preserves explicit same-type scalar constructors as casts" {
+  let source =
+    #|fn probe(value: u32) -> u32 {
+    #|  return u32(value);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[1] {
+    As(argument, Uint, Some(4)) => debug_inspect(argument.index(), content="0")
+    _ => abort("expected explicit same-type scalar constructor cast")
   }
 }
 
