@@ -465,6 +465,25 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           }
           (left_handle, right_handle)
         }
+      } else if wgsl_ir_expr_node_is_binary_source_let_arithmetic(left, scope) &&
+        wgsl_ir_expr_node_is_direct_access_chain(right) &&
+        !wgsl_ir_expr_node_contains_call(left) &&
+        !wgsl_ir_expr_node_contains_call(right) {
+        let (left_op, left_left, left_right) = self.lower_binary_expression_children(
+          left, function, scope,
+        )
+        self.predeclare_function_member_root_expression(right, function, scope)
+        let left_binary_op = wgsl_ir_binary_operator(left_op)
+        let (left_left, left_right) = self.normalize_function_binary_operands(
+          function, left_binary_op, left_left, left_right,
+        )
+        let left_handle = function.expressions.append(
+          Binary(left_binary_op, left_left, left_right),
+        )
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        (left_handle, right_handle)
       } else if scheduler.binary_lowers_right_argument_before_left_access(
           left, right,
         ) {
@@ -495,12 +514,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       let handle = function.expressions.append(
         Binary(binary_op, left_handle, right_handle),
       )
-      if scope.source_let_initializer_preserve_depth > 0 &&
-        wgsl_ir_expr_node_references_local_let_constant(node, scope) {
-        return handle
-      }
-      if scope.compound_assignment_rhs_depth > 0 &&
-        wgsl_ir_expr_node_references_local_let_constant(node, scope) {
+      if wgsl_ir_expr_node_references_local_let_constant(node, scope) {
         return handle
       }
       match self.fold_function_constant_float_expression(function, handle) {
@@ -1645,6 +1659,17 @@ fn wgsl_ir_expr_node_is_literal_like(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Literal(_) => true
     Group(inner) => wgsl_ir_expr_node_is_literal_like(inner)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_binary_source_let_arithmetic(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match wgsl_ir_expr_node_without_groups(node).kind() {
+    Binary(_, _, _) => wgsl_ir_expr_node_references_local_let_constant(node, scope)
     _ => false
   }
 }
@@ -3300,11 +3325,9 @@ fn WgslIrLowerer::lower_function_single_vector_constructor_argument(
   match self.shader_module.types.get(argument_ty) {
     Some(argument_type) =>
       match argument_type.inner {
-        Vector(argument_size, argument_scalar) =>
+        Vector(argument_size, _) =>
           if argument_size != size {
             None
-          } else if argument_scalar == target_scalar {
-            Some(argument)
           } else {
             Some(
               function.expressions.append(

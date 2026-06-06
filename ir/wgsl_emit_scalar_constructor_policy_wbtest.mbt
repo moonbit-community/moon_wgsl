@@ -47,7 +47,7 @@ test "naga-oil writer policy folds scalar constructors from retained constants" 
 }
 
 ///|
-test "naga-oil writer policy folds normalized local constant arithmetic" {
+test "naga-oil writer policy preserves source let arithmetic aliases" {
   let source =
     #|fn neutral(max_channel: f32) -> f32 {
     #|  const start_compression: f32 = 0.8 - 0.04;
@@ -60,8 +60,8 @@ test "naga-oil writer policy folds normalized local constant arithmetic" {
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(naga_oil.contains("0.0576f"), content="true")
-  debug_inspect(naga_oil.contains("0.24f * 0.24f"), content="false")
+  debug_inspect(naga_oil.contains("0.0576f"), content="false")
+  debug_inspect(naga_oil.contains("0.24f * 0.24f"), content="true")
 }
 
 ///|
