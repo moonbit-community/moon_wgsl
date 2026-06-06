@@ -21,6 +21,27 @@ test "naga-oil writer policy contextualizes vector splat literals" {
 }
 
 ///|
+test "naga-oil writer policy contextualizes multi-component select constructors" {
+  let source =
+    #|fn clip(delta_cs: vec3<f32>, mask: vec3<bool>) -> vec3<f32> {
+    #|  return select(vec3(-1.0, -1.0, 0.0), vec3(1.0, 1.0, 1.0), mask);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains(
+      "select(vec3<f32>(-1f, -1f, 0f), vec3<f32>(1f, 1f, 1f), mask)",
+    ),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("select(vec3(-1f"), content="false")
+}
+
+///|
 test "naga-oil writer policy emits inferred vector splat constructors" {
   let source =
     #|fn screen_space_dither(frag_coord: vec2<f32>) -> vec3<f32> {

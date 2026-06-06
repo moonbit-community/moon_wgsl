@@ -711,6 +711,14 @@ fn WgslIrEmitter::contextual_scalar_literal(
         Some(value) => return Some(value)
         None => ()
       }
+      let constructor_name = match
+        self.contextual_multi_component_vector_constructor_name(
+          ty, components, scalar,
+        ) {
+        Some(name) => name
+        None =>
+          self.compose_constructor_name_for_components(ty, components, function)
+      }
       let out = StringBuilder::new()
       for i in 0..<components.length() {
         if i > 0 {
@@ -724,11 +732,30 @@ fn WgslIrEmitter::contextual_scalar_literal(
           ),
         )
       }
-      Some(
-        "\{self.compose_constructor_name_for_components(ty, components, function)}(\{out.to_string()})",
-      )
+      Some("\{constructor_name}(\{out.to_string()})")
     }
     _ => None
+  }
+}
+
+///|
+fn WgslIrEmitter::contextual_multi_component_vector_constructor_name(
+  self : WgslIrEmitter,
+  ty : Handle,
+  components : Array[Handle],
+  scalar : Scalar,
+) -> String? raise WgslIrEmitError {
+  guard components.length() > 1 else { return None }
+  guard !wgsl_ir_scalar_kind_is_abstract(scalar.kind) else { return None }
+  match self.shader_module.types.items.get(ty.index()) {
+    Some({ inner: Vector(size, existing), .. }) =>
+      if wgsl_ir_scalar_kind_is_abstract(existing.kind) {
+        Some("vec\{size.width()}<\{self.scalar_name(scalar)}>")
+      } else {
+        None
+      }
+    Some(_) => None
+    None => raise MissingHandle("type \{ty.index()}")
   }
 }
 
