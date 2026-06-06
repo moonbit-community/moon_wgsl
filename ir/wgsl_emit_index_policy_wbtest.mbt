@@ -59,6 +59,34 @@ test "naga-oil writer policy preserves global binding matrix column components a
 }
 
 ///|
+test "naga-oil writer policy lowers copied matrix column indexes to swizzles" {
+  let source =
+    #|struct View {
+    #|  clip_from_view: mat4x4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> view: View;
+    #|
+    #|fn near() -> f32 {
+    #|  let projection = view.clip_from_view;
+    #|  if projection[3][3] == 1.0 {
+    #|    return projection[3][2];
+    #|  }
+    #|  return 0.0;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("projection[3].w == 1f"), content="true")
+  debug_inspect(naga_oil.contains("return projection[3].z;"), content="true")
+  debug_inspect(naga_oil.contains("projection[3][3]"), content="false")
+  debug_inspect(naga_oil.contains("projection[3][2]"), content="false")
+}
+
+///|
 test "naga-oil writer policy preserves vector component members" {
   let source =
     #|fn read_z(v: vec4<f32>) -> f32 {

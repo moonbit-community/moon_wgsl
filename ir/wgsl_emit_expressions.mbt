@@ -184,7 +184,7 @@ fn WgslIrEmitter::emit_expression(
     Splat(size, inner) => self.splat_expression(function, size, inner)
     Access(base, index) =>
       match
-        self.folded_static_constant_array_access_by_index_expression(
+        self.static_access_index_expression_by_index_expression(
           function, base, index,
         ) {
         Some(value) => value
@@ -1534,6 +1534,7 @@ fn WgslIrEmitter::vector_static_index_base_is_global_matrix_column(
       self.vector_static_index_base_is_global_matrix_column(function, inner)
     Some(AccessIndex(matrix, _)) =>
       self.expression_is_matrix_type(Some(function), matrix) &&
+      wgsl_ir_function_named_expression_name(function, matrix) == None &&
       wgsl_ir_emit_expression_reads_global_binding(function, matrix)
     _ => false
   }
@@ -1652,7 +1653,7 @@ fn WgslIrEmitter::folded_static_array_constructor_access(
 }
 
 ///|
-fn WgslIrEmitter::folded_static_constant_array_access_by_index_expression(
+fn WgslIrEmitter::static_access_index_expression_by_index_expression(
   self : WgslIrEmitter,
   function : Function?,
   base : Handle,
@@ -1664,7 +1665,10 @@ fn WgslIrEmitter::folded_static_constant_array_access_by_index_expression(
     return None
   }
   guard value.to_signed_int() is Some(static_index) else { return None }
-  self.folded_static_constant_array_access(function, base, static_index)
+  match self.folded_static_constant_array_access(function, base, static_index) {
+    Some(value) => Some(value)
+    None => Some(self.access_index_expression(function, base, static_index))
+  }
 }
 
 ///|
