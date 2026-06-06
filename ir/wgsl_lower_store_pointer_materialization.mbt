@@ -96,9 +96,7 @@ fn WgslIrLowerer::materialize_store_pointer_index_if_needed(
   if self.function_expression_should_snapshot_store_pointer_index(
       function, normalized,
     ) {
-    self.materialize_function_expression_snapshot(
-      function, scope, block, normalized,
-    )
+    self.materialize_function_expression(function, scope, block, normalized)
   } else {
     normalized
   }
@@ -147,24 +145,4 @@ fn WgslIrLowerer::function_expression_should_snapshot_store_pointer_index(
 ) -> Bool {
   self.function_expression_is_var_pointer_load(function, value) &&
   self.function_expression_can_materialize_to_let(function, value)
-}
-
-///|
-fn WgslIrLowerer::materialize_function_expression_snapshot(
-  self : WgslIrLowerer,
-  function : Function,
-  scope : WgslIrFunctionScope,
-  block : Block,
-  value : Handle,
-) -> Handle raise WgslIrLowerError {
-  match function.expressions.items.get(value.index()) {
-    Some(expression) => {
-      let snapshot = function.expressions.append(expression)
-      self.materialize_function_expression(function, scope, block, snapshot)
-    }
-    None =>
-      raise UnsupportedExpression(
-        "materialized expression snapshot \{value.index()}",
-      )
-  }
 }

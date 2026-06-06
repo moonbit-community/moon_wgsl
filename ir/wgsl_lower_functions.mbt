@@ -411,7 +411,9 @@ fn WgslIrLowerer::lower_function(
         _ => raise error
       }
   }
-  if result == None && !wgsl_ir_block_ends_with_return(body) {
+  if result == None &&
+    !wgsl_ir_block_ends_with_return(body) &&
+    !wgsl_ir_absorb_implicit_tail_return(body) {
     body.push(ImplicitReturn)
   }
   {

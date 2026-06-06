@@ -7,6 +7,34 @@ fn wgsl_ir_block_ends_with_return(block : Block) -> Bool {
 }
 
 ///|
+fn wgsl_ir_block_accepts_implicit_tail_return(block : Block) -> Bool {
+  if wgsl_ir_block_ends_with_return(block) {
+    true
+  } else {
+    block.statements.push(ImplicitReturn)
+    true
+  }
+}
+
+///|
+fn wgsl_ir_absorb_implicit_tail_return(block : Block) -> Bool {
+  match block.statements {
+    [.., If(_, accept, reject)] => {
+      let accept_absorbed = wgsl_ir_block_accepts_implicit_tail_return(accept)
+      let reject_absorbed = wgsl_ir_block_accepts_implicit_tail_return(reject)
+      accept_absorbed && reject_absorbed
+    }
+    [.., Switch(_, cases)] => {
+      for case in cases {
+        ignore(wgsl_ir_block_accepts_implicit_tail_return(case.body))
+      }
+      true
+    }
+    _ => false
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_block(
   self : WgslIrLowerer,
   block : @ast.WgslBlock,

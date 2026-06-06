@@ -1,10 +1,7 @@
 id	rel_path	hash	class	reason
-bevy	crates/bevy_pbr/src/meshlet/cull_bvh.wgsl	8a215ff53401548ebb439b0778b870bcd7970a91a1422eb299cd18b934701d0d	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/meshlet/cull_clusters.wgsl	bcd09305498f933c025c3f38bd108e454df2ea19b1f8957d942ec4c3d8fa9121	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	8154b3f11da32c719679e3f0b0246b069d6975b4759cf80318b77ff6dff2d2dd	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_hardware_raster.wgsl	598d843ab0244515b9b08f81afb0a1ff8c504bb341f3b0267faabd187c0683d6	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	dfdef09587a23e0ff44d4e27ce86b361ebb2df2b6a4750311f5b9aa2511b50b5	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/render/build_indirect_params.wgsl	a16951d6c6b460f6d5d87a2c56afb6d5901d0735efaf77400c773cefad237ec6	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/render/parallax_mapping.wgsl	fe0ca1854007b2d6b50f4f22e994df8e753436e7af3ef0c4bab0aef0692317ab	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	f3d73636c410ddc18ca70e07586ab2b97b168e490636f4cb8cd76e9cd03155b8	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/transmission/transmission.wgsl	fbf638df452e302dd8444ce115014c5827cfab5c7d19ef5f88f6b479e6718644	byte-output-drift	strict-byte-parity-failure
