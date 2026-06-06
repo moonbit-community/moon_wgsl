@@ -33,3 +33,4 @@ bevy-pbr-ltc-integrate-quad	testdata/bevy_wgsl	bevy_pbr/src/render/pbr_lighting.
 bevy-ssao-weighted-average	testdata/bevy_wgsl	bevy_pbr/src/ssao/preprocess_depth.wgsl	weighted_average	-	-	-	-
 bevy-rgb9e5-vec3-to-rgb9e5	testdata/bevy_wgsl	bevy_pbr/src/render/rgb9e5.wgsl	vec3_to_rgb9e5_	-	-	-	-
 bevy-utils-octahedral-encode	testdata/bevy_wgsl	bevy_pbr/src/render/utils.wgsl	octahedral_encode	-	-	-	-
+bevy-utils-sample-disk	testdata/bevy_wgsl	bevy_pbr/src/render/utils.wgsl	sample_disk	-	-	-	-

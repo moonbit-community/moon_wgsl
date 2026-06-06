@@ -375,95 +375,102 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
         scheduler.binary_right_subtree_has_higher_precedence(op, right) {
-        if scheduler.binary_preserves_left_first_across_higher_precedence_right(
-            op, left, right,
+        match
+          self.lower_function_binary_const_parent_between_right_const_and_local_reference(
+            op, left, right, function, scope,
           ) {
-          let left_handle = self.lower_function_expression_node(
-            left, function, scope,
-          )
-          let (right_op, right_left, right_right) = self.lower_binary_expression_children(
-            right, function, scope,
-          )
-          let right_binary_op = wgsl_ir_binary_operator(right_op)
-          let (right_left, right_right) = self.normalize_function_binary_operands(
-            function, right_binary_op, right_left, right_right,
-          )
-          let right_handle = function.expressions.append(
-            Binary(right_binary_op, right_left, right_right),
-          )
-          (left_handle, right_handle)
-        } else if wgsl_ir_expr_node_is_direct_access_chain(left) ||
-          self.expression_node_is_mutable_local_value(left, function, scope) {
-          let left_handle = self.lower_function_expression_node(
-            left, function, scope,
-          )
-          let (right_op, right_left, right_right) = self.lower_binary_expression_children(
-            right, function, scope,
-          )
-          let right_binary_op = wgsl_ir_binary_operator(right_op)
-          let (right_left, right_right) = self.normalize_function_binary_operands(
-            function, right_binary_op, right_left, right_right,
-          )
-          let right_handle = function.expressions.append(
-            Binary(right_binary_op, right_left, right_right),
-          )
-          (left_handle, right_handle)
-        } else {
-          let right_binary_lowers_before_left = wgsl_ir_expr_node_contains_non_math_call(
-              right,
-            ) ||
-            wgsl_ir_expr_node_is_literal_like(left)
-          let right_children_lower_before_left = wgsl_ir_expr_node_is_function_argument_value(
-              left, scope,
-            ) &&
-            !wgsl_ir_expr_node_contains_call(right)
-          let (left_handle, right_handle) = if right_binary_lowers_before_left {
-            let (right_op, right_left, right_right) = self.lower_binary_expression_children(
-              right, function, scope,
-            )
-            let right_binary_op = wgsl_ir_binary_operator(right_op)
-            let (right_left, right_right) = self.normalize_function_binary_operands(
-              function, right_binary_op, right_left, right_right,
-            )
-            let right_handle = function.expressions.append(
-              Binary(right_binary_op, right_left, right_right),
-            )
-            let left_handle = self.lower_function_expression_node(
-              left, function, scope,
-            )
-            (left_handle, right_handle)
-          } else if right_children_lower_before_left {
-            let (right_op, right_left, right_right) = self.lower_binary_expression_children(
-              right, function, scope,
-            )
-            let right_binary_op = wgsl_ir_binary_operator(right_op)
-            let (right_left, right_right) = self.normalize_function_binary_operands(
-              function, right_binary_op, right_left, right_right,
-            )
-            let left_handle = self.lower_function_expression_node(
-              left, function, scope,
-            )
-            let right_handle = function.expressions.append(
-              Binary(right_binary_op, right_left, right_right),
-            )
-            (left_handle, right_handle)
-          } else {
-            let left_handle = self.lower_function_expression_node(
-              left, function, scope,
-            )
-            let (right_op, right_left, right_right) = self.lower_binary_expression_children(
-              right, function, scope,
-            )
-            let right_binary_op = wgsl_ir_binary_operator(right_op)
-            let (right_left, right_right) = self.normalize_function_binary_operands(
-              function, right_binary_op, right_left, right_right,
-            )
-            let right_handle = function.expressions.append(
-              Binary(right_binary_op, right_left, right_right),
-            )
-            (left_handle, right_handle)
-          }
-          (left_handle, right_handle)
+          Some(result) => result
+          None =>
+            if scheduler.binary_preserves_left_first_across_higher_precedence_right(
+                op, left, right,
+              ) {
+              let left_handle = self.lower_function_expression_node(
+                left, function, scope,
+              )
+              let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+                right, function, scope,
+              )
+              let right_binary_op = wgsl_ir_binary_operator(right_op)
+              let (right_left, right_right) = self.normalize_function_binary_operands(
+                function, right_binary_op, right_left, right_right,
+              )
+              let right_handle = function.expressions.append(
+                Binary(right_binary_op, right_left, right_right),
+              )
+              (left_handle, right_handle)
+            } else if wgsl_ir_expr_node_is_direct_access_chain(left) ||
+              self.expression_node_is_mutable_local_value(left, function, scope) {
+              let left_handle = self.lower_function_expression_node(
+                left, function, scope,
+              )
+              let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+                right, function, scope,
+              )
+              let right_binary_op = wgsl_ir_binary_operator(right_op)
+              let (right_left, right_right) = self.normalize_function_binary_operands(
+                function, right_binary_op, right_left, right_right,
+              )
+              let right_handle = function.expressions.append(
+                Binary(right_binary_op, right_left, right_right),
+              )
+              (left_handle, right_handle)
+            } else {
+              let right_binary_lowers_before_left = wgsl_ir_expr_node_contains_non_math_call(
+                  right,
+                ) ||
+                wgsl_ir_expr_node_is_literal_like(left)
+              let right_children_lower_before_left = wgsl_ir_expr_node_is_function_argument_value(
+                  left, scope,
+                ) &&
+                !wgsl_ir_expr_node_contains_call(right)
+              let (left_handle, right_handle) = if right_binary_lowers_before_left {
+                let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+                  right, function, scope,
+                )
+                let right_binary_op = wgsl_ir_binary_operator(right_op)
+                let (right_left, right_right) = self.normalize_function_binary_operands(
+                  function, right_binary_op, right_left, right_right,
+                )
+                let right_handle = function.expressions.append(
+                  Binary(right_binary_op, right_left, right_right),
+                )
+                let left_handle = self.lower_function_expression_node(
+                  left, function, scope,
+                )
+                (left_handle, right_handle)
+              } else if right_children_lower_before_left {
+                let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+                  right, function, scope,
+                )
+                let right_binary_op = wgsl_ir_binary_operator(right_op)
+                let (right_left, right_right) = self.normalize_function_binary_operands(
+                  function, right_binary_op, right_left, right_right,
+                )
+                let left_handle = self.lower_function_expression_node(
+                  left, function, scope,
+                )
+                let right_handle = function.expressions.append(
+                  Binary(right_binary_op, right_left, right_right),
+                )
+                (left_handle, right_handle)
+              } else {
+                let left_handle = self.lower_function_expression_node(
+                  left, function, scope,
+                )
+                let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+                  right, function, scope,
+                )
+                let right_binary_op = wgsl_ir_binary_operator(right_op)
+                let (right_left, right_right) = self.normalize_function_binary_operands(
+                  function, right_binary_op, right_left, right_right,
+                )
+                let right_handle = function.expressions.append(
+                  Binary(right_binary_op, right_left, right_right),
+                )
+                (left_handle, right_handle)
+              }
+              (left_handle, right_handle)
+            }
         }
       } else if wgsl_ir_expr_node_is_binary_source_let_arithmetic(left, scope) &&
         wgsl_ir_expr_node_is_direct_access_chain(right) &&
@@ -817,6 +824,63 @@ fn WgslIrLowerer::clone_global_const_expression_to_function(
         "global const expression is not function-cloneable",
       )
   }
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_const_parent_between_right_const_and_local_reference(
+  self : WgslIrLowerer,
+  parent_op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> (Handle, Handle)? raise WgslIrLowerError {
+  match parent_op {
+    Add | Subtract => ()
+    _ => return None
+  }
+  guard self.expression_node_is_naga_deferred_const_like(left, scope) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_without_groups(left).kind() is Binary(_, _, _) else {
+    return None
+  }
+  guard !wgsl_ir_expr_node_contains_non_math_call(right) else { return None }
+  let (right_op, right_left_node, right_right_node) = match
+    wgsl_ir_expr_node_without_groups(right).kind() {
+    Binary(op, right_left, right_right) => (op, right_left, right_right)
+    _ => return None
+  }
+  guard wgsl_ir_ast_binary_operator_is_multiplicative(right_op) else {
+    return None
+  }
+  guard self.expression_node_is_naga_deferred_const_like(right_left_node, scope) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_without_groups(right_left_node).kind()
+    is Binary(_, _, _) else {
+    return None
+  }
+  guard self.expression_node_contains_mutable_local_reference(
+    right_right_node, function, scope,
+  ) else {
+    return None
+  }
+  let right_left = self.lower_function_expression_node(
+    right_left_node, function, scope,
+  )
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  let right_right = self.lower_function_expression_node(
+    right_right_node, function, scope,
+  )
+  let right_binary_op = wgsl_ir_binary_operator(right_op)
+  let (right_left, right_right) = self.normalize_function_binary_operands(
+    function, right_binary_op, right_left, right_right,
+  )
+  let right_handle = function.expressions.append(
+    Binary(right_binary_op, right_left, right_right),
+  )
+  Some((left_handle, right_handle))
 }
 
 ///|
@@ -1879,6 +1943,61 @@ fn WgslIrLowerer::expression_node_is_mutable_local_value(
         None => false
       }
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_contains_mutable_local_reference(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  if self.expression_node_is_mutable_local_value(node, function, scope) {
+    return true
+  }
+  match node.kind() {
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.expression_node_contains_mutable_local_reference(
+        inner, function, scope,
+      )
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      self.expression_node_contains_mutable_local_reference(
+        left, function, scope,
+      ) ||
+      self.expression_node_contains_mutable_local_reference(
+        right, function, scope,
+      )
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.expression_node_contains_mutable_local_reference(
+        base, function, scope,
+      )
+    Call(callee, arguments) => {
+      if self.expression_node_contains_mutable_local_reference(
+          callee, function, scope,
+        ) {
+        return true
+      }
+      for argument in wgsl_ir_call_arguments(arguments) {
+        if self.expression_node_contains_mutable_local_reference(
+            argument, function, scope,
+          ) {
+          return true
+        }
+      }
+      false
+    }
+    Sequence(items) => {
+      for item in items {
+        if self.expression_node_contains_mutable_local_reference(
+            item, function, scope,
+          ) {
+          return true
+        }
+      }
+      false
+    }
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
   }
 }
 

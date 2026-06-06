@@ -91,6 +91,11 @@ fn ExpressionArenaScheduler::binary_lowers_right_before_left(
     return false
   }
   if self.lowerer.expression_node_is_naga_deferred_const_like(left, self.scope) {
+    if self.binary_preserves_deferred_const_left_before_local_right_binary(
+        op, left, right,
+      ) {
+      return false
+    }
     return wgsl_ir_ast_binary_operator_is_multiplicative(op) &&
       !self.lowerer.expression_node_is_mutable_local_value(
         right,
@@ -121,6 +126,31 @@ fn ExpressionArenaScheduler::binary_lowers_right_before_left(
     self.scope,
   ) &&
   wgsl_ir_expr_node_is_function_argument_value(right, self.scope)
+}
+
+///|
+fn ExpressionArenaScheduler::binary_preserves_deferred_const_left_before_local_right_binary(
+  self : ExpressionArenaScheduler,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  guard wgsl_ir_ast_binary_operator_is_multiplicative(op) else { return false }
+  guard wgsl_ir_expr_node_without_groups(left).kind() is Binary(_, _, _) else {
+    return false
+  }
+  guard wgsl_ir_expr_node_without_groups(right).kind() is Binary(right_op, _, _) else {
+    return false
+  }
+  guard right_op.binary_precedence() == op.binary_precedence() else {
+    return false
+  }
+  !wgsl_ir_expr_node_contains_non_math_call(right) &&
+  self.lowerer.expression_node_contains_mutable_local_reference(
+    right,
+    self.function,
+    self.scope,
+  )
 }
 
 ///|

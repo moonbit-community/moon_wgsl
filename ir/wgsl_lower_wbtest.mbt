@@ -291,6 +291,57 @@ test "WGSL AST lowerer lowers complex mutable-local right subtree before literal
 }
 
 ///|
+test "WGSL AST lowerer interleaves deferred constants with local binary subtrees" {
+  let source =
+    #|const PI: f32 = 3.141592653589793;
+    #|
+    #|fn rand_vec2f(state: ptr<function, u32>) -> vec2<f32> {
+    #|  return vec2<f32>(f32(*state), f32(*state));
+    #|}
+    #|
+    #|fn probe(disk_radius: f32, rng: ptr<function, u32>) -> vec2<f32> {
+    #|  let ab = 2.0 * rand_vec2f(rng) - 1.0;
+    #|  let a = ab.x;
+    #|  var b = ab.y;
+    #|  if (b == 0.0) { b = 1.0; }
+    #|  var phi: f32;
+    #|  var r: f32;
+    #|  if (a * a > b * b) {
+    #|    r = disk_radius * a;
+    #|    phi = (PI / 4.0) * (b / a);
+    #|  } else {
+    #|    r = disk_radius * b;
+    #|    phi = (PI / 2.0) - (PI / 4.0) * (a / b);
+    #|  }
+    #|  return vec2(r * cos(phi), r * sin(phi));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  match function.expressions.items[22] {
+    Literal(_) => ()
+    _ => abort("expected true-branch scale constant before mutable local load")
+  }
+  match function.expressions.items[23] {
+    Load(_) => ()
+    _ => abort("expected true-branch mutable local load after scale constant")
+  }
+  match function.expressions.items[29] {
+    Literal(_) => ()
+    _ => abort("expected else-branch product constant before parent constant")
+  }
+  match function.expressions.items[30] {
+    Literal(_) => ()
+    _ => abort("expected else-branch parent constant after product constant")
+  }
+  match function.expressions.items[31] {
+    Load(_) => ()
+    _ => abort("expected else-branch mutable local load after constants")
+  }
+}
+
+///|
 test "WGSL AST lowerer inserts higher-precedence right binary subtrees before left operands" {
   let source =
     #|fn probe(point: vec2<f32>, size: vec2<f32>) -> vec2<f32> {
