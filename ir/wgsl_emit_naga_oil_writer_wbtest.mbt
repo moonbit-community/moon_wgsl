@@ -328,6 +328,40 @@ test "naga-oil writer materializes statement call value arguments" {
 }
 
 ///|
+test "naga-oil writer materializes atomic user-call value arguments" {
+  let source =
+    #|var<workgroup> counter: atomic<u32>;
+    #|var<workgroup> shared_farthest_z: array<f32, 1>;
+    #|
+    #|fn f32_bits_to_sortable_u32(bits: u32) -> u32 {
+    #|  return bits;
+    #|}
+    #|
+    #|@compute
+    #|@workgroup_size(1)
+    #|fn main() {
+    #|  atomicMax(&counter, f32_bits_to_sortable_u32(bitcast<u32>(shared_farthest_z[0u])));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(": f32 = shared_farthest_z[0];") &&
+    emitted.contains(": u32 = f32_bits_to_sortable_u32") &&
+    emitted.contains("(bitcast<u32>(_e") &&
+    emitted.contains("atomicMax((&counter), _e"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("atomicMax((&counter), f32_bits_to_sortable_u32("),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer materializes mutable store pointer index" {
   let source =
     #|struct Output {

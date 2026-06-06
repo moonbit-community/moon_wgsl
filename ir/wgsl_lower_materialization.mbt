@@ -157,6 +157,14 @@ fn WgslIrLowerer::materialize_function_expression(
       return value
     }
     Some(AtomicCall(atomic_function, arguments)) => {
+      let lowered_arguments : Array[Handle] = []
+      for argument in arguments {
+        lowered_arguments.push(
+          self.materialize_nested_call_argument(
+            function, scope, block, argument,
+          ),
+        )
+      }
       let result_ty = match self.function_expression_type(function, value) {
         Some(ty) => ty
         None =>
@@ -172,7 +180,7 @@ fn WgslIrLowerer::materialize_function_expression(
         wgsl_ir_next_naga_statement_emit_mark(block),
         value,
       )
-      match arguments {
+      match lowered_arguments {
         [pointer, compare, atomic_value] if comparison =>
           block.push(
             Atomic(
