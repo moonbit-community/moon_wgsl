@@ -247,33 +247,105 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_initialize
     return None
   }
   let literal_handles : Map[String, Handle] = Map([])
-  let components : Array[Handle] = []
-  for index, argument in arguments {
-    guard argument.kind() is Literal(token) else { return None }
-    let argument_ty = match
-      self.constructor_literal_argument_expected_type(
-        ty,
-        index,
-        arguments.length(),
-      ) {
-      Some(value) => Some(value)
-      None => explicit_ty
-    }
-    let literal = self.literal_from_token_with_expected(token, argument_ty)
-    let semantic_key = wgsl_ir_source_local_const_literal_value_key(
-      argument_ty, literal,
-    )
-    let handle = match literal_handles.get(semantic_key) {
-      Some(existing) => existing
-      None => {
-        let appended = function.expressions.append(Literal(literal))
-        literal_handles.set(semantic_key, appended)
-        appended
+  self.lower_reused_literal_source_local_const_constructor_node(
+    root, ty, literal_handles, function,
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_node(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  expected_ty : Handle,
+  literal_handles : Map[String, Handle],
+  function : Function,
+) -> Handle? raise WgslIrLowerError {
+  match node.kind() {
+    Literal(token) =>
+      Some(
+        self.reused_source_local_const_constructor_literal_handle(
+          token,
+          Some(expected_ty),
+          literal_handles,
+          function,
+        ),
+      )
+    Call(callee, arguments) => {
+      guard self.expression_callee_is_const_constructor(callee) else {
+        return None
+      }
+      let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+      guard !arguments.is_empty() else { return None }
+      let components : Array[Handle] = []
+      for index, argument in arguments {
+        let argument_ty = match
+          self.constructor_literal_argument_expected_type(
+            expected_ty,
+            index,
+            arguments.length(),
+          ) {
+          Some(value) => value
+          None => expected_ty
+        }
+        match
+          self.lower_reused_literal_source_local_const_constructor_node(
+            argument, argument_ty, literal_handles, function,
+          ) {
+          Some(handle) => components.push(handle)
+          None => return None
+        }
+      }
+      match
+        self.source_local_const_constructor_initializer_vector_splat_size(
+          expected_ty,
+          arguments.length(),
+        ) {
+        Some(size) =>
+          Some(function.expressions.append(Splat(size, components[0])))
+        None =>
+          Some(function.expressions.append(Compose(expected_ty, components)))
       }
     }
-    components.push(handle)
+    Group(inner) =>
+      self.lower_reused_literal_source_local_const_constructor_node(
+        inner, expected_ty, literal_handles, function,
+      )
+    Sequence([single]) =>
+      self.lower_reused_literal_source_local_const_constructor_node(
+        single, expected_ty, literal_handles, function,
+      )
+    _ => None
   }
-  Some(function.expressions.append(Compose(ty, components)))
+}
+
+///|
+fn WgslIrLowerer::reused_source_local_const_constructor_literal_handle(
+  self : WgslIrLowerer,
+  token : @ast.WgslExprToken,
+  expected_ty : Handle?,
+  literal_handles : Map[String, Handle],
+  function : Function,
+) -> Handle raise WgslIrLowerError {
+  let literal_ty = match expected_ty {
+    Some(ty) =>
+      match self.constructor_component_expected_type(ty) {
+        Some(component_ty) => Some(component_ty)
+        None => Some(ty)
+      }
+    None => None
+  }
+  let literal = self.literal_from_token_with_expected(token, literal_ty)
+  let semantic_key = wgsl_ir_source_local_const_literal_value_key(
+    literal_ty, literal,
+  )
+  match literal_handles.get(semantic_key) {
+    Some(existing) => existing
+    None => {
+      let appended = function.expressions.append(Literal(literal))
+      literal_handles.set(semantic_key, appended)
+      appended
+    }
+  }
 }
 
 ///|
@@ -286,6 +358,19 @@ fn WgslIrLowerer::source_local_const_constructor_initializer_is_vector_splat(
   match self.shader_module.types.get(ty_handle) {
     Some({ inner: Vector(_, _), .. }) => true
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::source_local_const_constructor_initializer_vector_splat_size(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+  argument_count : Int,
+) -> VectorSize? {
+  guard argument_count == 1 else { return None }
+  match self.shader_module.types.get(ty_handle) {
+    Some({ inner: Vector(size, _), .. }) => Some(size)
+    _ => None
   }
 }
 

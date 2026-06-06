@@ -638,6 +638,7 @@ fn ShortCircuitPlanner::lower_named_call_with_materialized_inputs(
     flattened,
     lowered_arguments,
     self.function,
+    self.scope,
     expected_ty,
     expression_mark,
   )

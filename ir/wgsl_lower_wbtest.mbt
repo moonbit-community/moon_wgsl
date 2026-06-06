@@ -1688,6 +1688,38 @@ test "WGSL AST lowerer appends literal-left division product denominator before 
 }
 
 ///|
+test "WGSL AST lowerer appends literal-left division call denominator before numerator" {
+  let source =
+    #|fn near() -> f32 {
+    #|  return 0.1;
+    #|}
+    #|
+    #|fn probe() -> f32 {
+    #|  let value = 1.0 / near();
+    #|  return value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut denominator_call : Int? = None
+  let mut numerator_literal : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      CallResult(_) if denominator_call == None =>
+        denominator_call = Some(index)
+      Literal(_) if numerator_literal == None => numerator_literal = Some(index)
+      _ => ()
+    }
+  }
+  match (denominator_call, numerator_literal) {
+    (Some(denominator), Some(numerator)) =>
+      debug_inspect(denominator < numerator, content="true")
+    _ => abort("expected denominator call and numerator literal")
+  }
+}
+
+///|
 test "WGSL AST lowerer lowers scalar conversion constructors as As expressions" {
   let source =
     #|fn probe(light_id: u32, offset: i32) -> i32 {
@@ -3009,6 +3041,74 @@ test "WGSL AST lowerer keeps struct const constructor var initializer" {
     emitted.contains("min_d = DistanceWithPenetration"),
     content="false",
   )
+}
+
+///|
+test "WGSL AST lowerer reuses nested vector splat literals in struct var initializer" {
+  let source =
+    #|struct DepthRayMarchResult {
+    #|  hit: bool,
+    #|  hit_t: f32,
+    #|  hit_uv: vec2<f32>,
+    #|  hit_penetration: f32,
+    #|  hit_penetration_frac: f32,
+    #|}
+    #|
+    #|fn f() -> DepthRayMarchResult {
+    #|  var res = DepthRayMarchResult(false, 0.0, vec2(0.0), 0.0, 0.0);
+    #|  return res;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    Literal(Bool(false)) => ()
+    _ => abort("expected first struct constructor bool literal")
+  }
+  match function.expressions.items[1] {
+    Literal(_) => ()
+    _ => abort("expected first struct constructor numeric literal")
+  }
+  match function.expressions.items[2] {
+    Splat(Bi, component) => debug_inspect(component.index(), content="1")
+    _ => abort("expected nested vector splat to reuse f32 literal")
+  }
+  match function.expressions.items[3] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="0")
+      debug_inspect(components[1].index(), content="1")
+      debug_inspect(components[2].index(), content="2")
+      debug_inspect(components[3].index(), content="1")
+      debug_inspect(components[4].index(), content="1")
+    }
+    _ => abort("expected struct compose to reuse nested splat and literals")
+  }
+  match function.local_variables.items[0].init {
+    Some(handle) => debug_inspect(handle.index(), content="3")
+    None => abort("expected local initializer")
+  }
+}
+
+///|
+test "WGSL AST lowerer preserves source let scalar constructor conversions" {
+  let source =
+    #|fn f() -> f32 {
+    #|  let min_px_per_step = 1u;
+    #|  return f32(min_px_per_step);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    Literal(U32(1)) => ()
+    _ => abort("expected source let unsigned literal")
+  }
+  match function.expressions.items[1] {
+    As(argument, Float, Some(4)) => debug_inspect(argument.index(), content="0")
+    _ => abort("expected source let scalar constructor conversion")
+  }
 }
 
 ///|

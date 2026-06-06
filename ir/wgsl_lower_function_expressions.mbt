@@ -512,6 +512,16 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             (left_handle, right_handle)
           }
         }
+      } else if op == Divide &&
+        wgsl_ir_expr_node_is_literal_like(left) &&
+        wgsl_ir_expr_node_contains_non_math_call(right) {
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        (left_handle, right_handle)
       } else if scheduler.binary_lowers_right_before_left(op, left, right) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
@@ -1438,6 +1448,7 @@ fn WgslIrLowerer::lower_function_constructor_call_after_predeclared_argument(
               arguments,
               lowered_arguments,
               function,
+              scope,
               None,
               expression_mark,
             ),
@@ -2237,7 +2248,7 @@ fn WgslIrLowerer::lower_function_constructor_call(
     None,
   )
   self.finish_function_constructor_call(
-    name, arguments, lowered_arguments, function, expected_ty, expression_mark,
+    name, arguments, lowered_arguments, function, scope, expected_ty, expression_mark,
   )
 }
 
@@ -2248,6 +2259,7 @@ fn WgslIrLowerer::finish_function_constructor_call(
   arguments : Array[@ast.WgslExprNode],
   lowered_arguments : Array[Handle],
   function : Function,
+  scope : WgslIrFunctionScope,
   expected_ty : Handle?,
   expression_mark : Int,
 ) -> Handle raise WgslIrLowerError {
@@ -2258,10 +2270,14 @@ fn WgslIrLowerer::finish_function_constructor_call(
         name, arguments, lowered_arguments, function,
       )
   }
-  let folded_scalar_constructor = self.fold_function_scalar_constructor(
-    ty, lowered_arguments, function,
-  ) catch {
-    _ => (None : Literal?)
+  let folded_scalar_constructor = if wgsl_ir_constructor_arguments_reference_source_local_let(
+      arguments, scope,
+    ) {
+    (None : Literal?)
+  } else {
+    self.fold_function_scalar_constructor(ty, lowered_arguments, function) catch {
+      _ => (None : Literal?)
+    }
   }
   match folded_scalar_constructor {
     Some(literal) => {
@@ -2299,6 +2315,61 @@ fn WgslIrLowerer::finish_function_constructor_call(
     None => ()
   }
   handle
+}
+
+///|
+fn wgsl_ir_constructor_arguments_reference_source_local_let(
+  arguments : Array[@ast.WgslExprNode],
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  for argument in arguments {
+    if wgsl_ir_expr_node_references_source_local_let(argument, scope) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn wgsl_ir_expr_node_references_source_local_let(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(name) =>
+      match scope.local_constants.get(name.name()) {
+        Some({ source: LocalLet, .. }) => true
+        _ => false
+      }
+    Group(inner) => wgsl_ir_expr_node_references_source_local_let(inner, scope)
+    Unary(_, inner) =>
+      wgsl_ir_expr_node_references_source_local_let(inner, scope)
+    Binary(_, left, right) =>
+      wgsl_ir_expr_node_references_source_local_let(left, scope) ||
+      wgsl_ir_expr_node_references_source_local_let(right, scope)
+    Call(_, arguments) => {
+      for argument in wgsl_ir_call_arguments(arguments) {
+        if wgsl_ir_expr_node_references_source_local_let(argument, scope) {
+          return true
+        }
+      }
+      false
+    }
+    Member(base, _) =>
+      wgsl_ir_expr_node_references_source_local_let(base, scope)
+    Index(base, index) =>
+      wgsl_ir_expr_node_references_source_local_let(base, scope) ||
+      wgsl_ir_expr_node_references_source_local_let(index, scope)
+    Sequence(items) => {
+      for item in items {
+        if wgsl_ir_expr_node_references_source_local_let(item, scope) {
+          return true
+        }
+      }
+      false
+    }
+    _ => false
+  }
 }
 
 ///|
