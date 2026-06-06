@@ -117,31 +117,18 @@ fn wgsl_ir_body_statement_is_hoisted_local_var_initializer_emit(
   statement : Statement,
 ) -> Bool {
   match statement {
-    Emit(range) =>
-      if range.start == range.end {
-        wgsl_ir_expression_is_hoisted_local_var_initializer(function, range.end)
-      } else {
-        false
+    Emit(range) => {
+      for index in range.start.index()..<=range.end.index() {
+        if !wgsl_ir_function_expression_is_local_initializer_owned(
+            function, index,
+          ) {
+          return false
+        }
       }
+      true
+    }
     _ => false
   }
-}
-
-///|
-fn wgsl_ir_expression_is_hoisted_local_var_initializer(
-  function : Function,
-  handle : Handle,
-) -> Bool {
-  for local_var in function.local_variables.items {
-    guard local_var.kind == Var && !local_var.generated_temporary else {
-      continue
-    }
-    match local_var.init {
-      Some(init) if init == handle => return true
-      _ => ()
-    }
-  }
-  false
 }
 
 ///|
@@ -163,12 +150,33 @@ fn BodyEmissionPlanner::push_statement_emit_ranges(
   expression_mark : Int,
   init_handle : Handle,
 ) -> Unit {
+  BodyEmissionPlanner::push_statement_emit_ranges_skipping(
+    block,
+    function,
+    expression_mark,
+    init_handle,
+    Set([]),
+  )
+}
+
+///|
+fn BodyEmissionPlanner::push_statement_emit_ranges_skipping(
+  block : Block,
+  function : Function,
+  expression_mark : Int,
+  init_handle : Handle,
+  suppressed : @set.Set[Int],
+) -> Unit {
   let mut range_start : Handle? = None
   let mut range_end : Handle? = None
   for index in expression_mark..<=init_handle.index() {
     match function.expressions.items.get(index) {
       Some(expression) =>
-        if wgsl_ir_expression_is_naga_emit_leaf(expression) {
+        if suppressed.contains(index) ||
+          wgsl_ir_function_expression_is_local_initializer_owned(
+            function, index,
+          ) ||
+          wgsl_ir_expression_is_naga_emit_leaf(expression) {
           BodyEmissionPlanner::flush_named_expression_emit_range(
             block, range_start, range_end,
           )
@@ -190,38 +198,27 @@ fn BodyEmissionPlanner::push_statement_emit_ranges(
 }
 
 ///|
-fn BodyEmissionPlanner::push_statement_emit_ranges_skipping(
-  block : Block,
+fn wgsl_ir_function_expression_is_local_initializer_owned(
   function : Function,
-  expression_mark : Int,
-  init_handle : Handle,
-  suppressed : @set.Set[Int],
-) -> Unit {
-  let mut range_start : Handle? = None
-  let mut range_end : Handle? = None
-  for index in expression_mark..<=init_handle.index() {
-    match function.expressions.items.get(index) {
-      Some(expression) =>
-        if suppressed.contains(index) ||
-          wgsl_ir_expression_is_naga_emit_leaf(expression) {
-          BodyEmissionPlanner::flush_named_expression_emit_range(
-            block, range_start, range_end,
-          )
-          range_start = None
-          range_end = None
-        } else {
-          let handle = Handle::Handle(index)
-          if range_start == None {
-            range_start = Some(handle)
-          }
-          range_end = Some(handle)
+  index : Int,
+) -> Bool {
+  for local_var in function.local_variables.items {
+    guard local_var.kind == Var && !local_var.generated_temporary else {
+      continue
+    }
+    match local_var.init {
+      Some(init) =>
+        if wgsl_ir_function_expression_graph_contains(
+            function,
+            init,
+            Handle(index),
+          ) {
+          return true
         }
       None => ()
     }
   }
-  BodyEmissionPlanner::flush_named_expression_emit_range(
-    block, range_start, range_end,
-  )
+  false
 }
 
 ///|

@@ -416,9 +416,23 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_node(
           arguments.length(),
         ) {
         Some(size) =>
-          Some(function.expressions.append(Splat(size, components[0])))
+          Some(
+            wgsl_ir_reused_source_local_const_constructor_expression_handle(
+              "splat:\{expected_ty.index()}:\{components[0].index()}",
+              Splat(size, components[0]),
+              literal_handles,
+              function,
+            ),
+          )
         None =>
-          Some(function.expressions.append(Compose(expected_ty, components)))
+          Some(
+            wgsl_ir_reused_source_local_const_constructor_expression_handle(
+              "compose:\{expected_ty.index()}:\{wgsl_ir_handle_index_list_key(components)}",
+              Compose(expected_ty, components),
+              literal_handles,
+              function,
+            ),
+          )
       }
     }
     Group(inner) =>
@@ -431,6 +445,32 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_node(
       )
     _ => None
   }
+}
+
+///|
+fn wgsl_ir_reused_source_local_const_constructor_expression_handle(
+  key : String,
+  expression : Expression,
+  literal_handles : Map[String, Handle],
+  function : Function,
+) -> Handle {
+  match literal_handles.get(key) {
+    Some(existing) => existing
+    None => {
+      let appended = function.expressions.append(expression)
+      literal_handles.set(key, appended)
+      appended
+    }
+  }
+}
+
+///|
+fn wgsl_ir_handle_index_list_key(handles : Array[Handle]) -> String {
+  let parts : Array[String] = []
+  for handle in handles {
+    parts.push(handle.index().to_string())
+  }
+  parts.join(",")
 }
 
 ///|

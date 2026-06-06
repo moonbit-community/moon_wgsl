@@ -142,3 +142,49 @@ test "Naga writer trace selects exact entry point before prefix-matching helpers
   debug_inspect(trace.contains("function\tentry:fragment"), content="true")
   debug_inspect(trace.contains("function\tfn:fragment_helper"), content="false")
 }
+
+///|
+test "Naga writer trace treats source var const initializer as declaration owned" {
+  let trace = trace_naga_oil_writer_function_plan_for_source(
+    (
+      #|struct ScreenAabb {
+      #|  min: vec3<f32>,
+      #|  max: vec3<f32>,
+      #|}
+      #|
+      #|fn projection() -> mat4x4<f32> {
+      #|  return mat4x4<f32>();
+      #|}
+      #|
+      #|fn takes(value: ptr<function, ScreenAabb>) -> bool {
+      #|  return true;
+      #|}
+      #|
+      #|fn probe() -> bool {
+      #|  let clip = projection();
+      #|  var screen_aabb = ScreenAabb(vec3<f32>(0.0), vec3<f32>(0.0));
+      #|  if takes(&screen_aabb) {
+      #|    return clip[3][3] == 1.0;
+      #|  }
+      #|  return false;
+      #|}
+    ),
+    "probe",
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    trace.contains("expression\tfn:probe\t2\tCompose"),
+    content="true",
+  )
+  debug_inspect(trace.contains("detail=ty:"), content="true")
+  debug_inspect(trace.contains("components:1,1"), content="true")
+  debug_inspect(
+    trace.contains("writer-statement\tfn:probe\t0\tEmit(1..2)\tskip=true"),
+    content="true",
+  )
+  debug_inspect(
+    trace.contains("writer-statement\tfn:probe\t1\tCall(result=3)"),
+    content="true",
+  )
+}

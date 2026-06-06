@@ -1,9 +1,7 @@
 id	rel_path	hash	class	reason
-bevy	crates/bevy_pbr/src/meshlet/cull_bvh.wgsl	382a21ec5e9a61866b70ed61107bb9209e11ccc2e4a25d24f676a3319623991f	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/meshlet/cull_clusters.wgsl	3460c36ae3019ec23ee480e56b33317287263db436d4879910eb1b32c08ba92e	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/meshlet/cull_instances.wgsl	f7e2ae858cd443514d5494da17001b8510e48711c35e03656f5437c8bfcac76f	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/meshlet/cull_bvh.wgsl	8a215ff53401548ebb439b0778b870bcd7970a91a1422eb299cd18b934701d0d	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/meshlet/cull_clusters.wgsl	e4d4da4ad1465a7f9c7c6e913145ff3bfc8a20c15a808e80276076145c435fec	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/fill_counts.wgsl	6b3fb364c0798dba8f9220de59069b895ebb891a91f936984dc343a401491b73	byte-output-drift	strict-byte-parity-failure
-bevy	crates/bevy_pbr/src/meshlet/meshlet_cull_shared.wgsl	6a7cb82ca18b3efce43e0698fc42d4e7e1579d775499481f02390b36221c10b1	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	8154b3f11da32c719679e3f0b0246b069d6975b4759cf80318b77ff6dff2d2dd	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_hardware_raster.wgsl	b9c1d37e566882e30588d861227542c8df928b0a5d6160097b93e6fa6f892417	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	94b215d883d2508be603e1d8430237aaa00f96cb156df830fc6e4840a9c3dd6b	byte-output-drift	strict-byte-parity-failure
