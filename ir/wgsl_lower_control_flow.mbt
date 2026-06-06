@@ -142,6 +142,28 @@ fn WgslIrLowerer::materialize_for_loop_condition_if_needed(
 }
 
 ///|
+fn WgslIrLowerer::lower_for_loop_condition_ref(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Handle raise WgslIrLowerError {
+  match expr_ref.root() {
+    Some(root) if wgsl_ir_expr_node_is_short_circuit_binary(root) =>
+      self
+      .short_circuit_planner(function, scope, block)
+      .materialize_value_node(root)
+    _ => {
+      let handle = self.lower_function_expression_ref(expr_ref, function, scope)
+      self.materialize_for_loop_condition_if_needed(
+        function, scope, block, handle,
+      )
+    }
+  }
+}
+
+///|
 fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
   self : WgslIrLowerer,
   function : Function,

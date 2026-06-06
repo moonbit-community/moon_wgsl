@@ -815,6 +815,7 @@ fn WgslIrLowerer::lower_statement(
     scope,
     block,
     UseSiteLazyLocalConstant,
+    [],
   )
 }
 
@@ -840,8 +841,15 @@ fn WgslIrLowerer::lower_statement_with_block_context(
       )
     _ => UseSiteLazyLocalConstant
   }
+  let source_var_store_initializers = match statement.payload() {
+    LocalDeclaration(locals) =>
+      wgsl_ir_source_var_store_initializers_for_statement(
+        locals, statements, statement_index, self, scope,
+      )
+    _ => []
+  }
   self.lower_statement_with_local_constant_placement(
-    statement, function, scope, block, placement,
+    statement, function, scope, block, placement, source_var_store_initializers,
   )
 }
 
@@ -877,6 +885,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
   scope : WgslIrFunctionScope,
   block : Block,
   local_constant_placement : WgslIrLocalConstantArenaPlacement,
+  source_var_store_initializers : Array[String],
 ) -> Unit raise WgslIrLowerError {
   match statement.payload() {
     Empty => ()
@@ -889,7 +898,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
     LocalDeclaration(locals) =>
       for local_decl in locals {
         self.lower_local_declaration(
-          local_decl, function, scope, block, local_constant_placement,
+          local_decl, function, scope, block, local_constant_placement, source_var_store_initializers,
         )
       }
     Return(expr) => {
@@ -1401,6 +1410,7 @@ fn WgslIrLowerer::lower_for_statement(
       loop_scope,
       block,
       DeclarationArenaLocalConstant,
+      [],
     )
   }
   for expr in expressions {
@@ -1416,11 +1426,8 @@ fn WgslIrLowerer::lower_for_statement(
   let loop_body = Block::Block()
   match wgsl_ir_for_expression_by_role(expressions, ForCondition) {
     Some(condition_ref) => {
-      let condition = self.lower_function_expression_ref(
-        condition_ref, function, loop_scope,
-      )
-      let condition = self.materialize_for_loop_condition_if_needed(
-        function, loop_scope, loop_body, condition,
+      let condition = self.lower_for_loop_condition_ref(
+        condition_ref, function, loop_scope, loop_body,
       )
       loop_body.push(If(condition, Block(), { statements: [Break] }))
     }
@@ -1779,6 +1786,47 @@ fn wgsl_ir_local_constant_arena_placement_for_statement(
     }
     _ => UseSiteLazyLocalConstant
   }
+}
+
+///|
+fn wgsl_ir_source_var_store_initializers_for_statement(
+  locals : Array[@ast.WgslLocalDeclaration],
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+  lowerer : WgslIrLowerer,
+  scope : WgslIrFunctionScope,
+) -> Array[String] raise WgslIrLowerError {
+  let names : Array[String] = []
+  for local_decl in locals {
+    if wgsl_ir_source_var_initializer_uses_store_before_next_for(
+        local_decl, statements, statement_index, lowerer, scope,
+      ) {
+      names.push(local_decl.name().name())
+    }
+  }
+  names
+}
+
+///|
+fn wgsl_ir_source_var_initializer_uses_store_before_next_for(
+  local_decl : @ast.WgslLocalDeclaration,
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+  lowerer : WgslIrLowerer,
+  scope : WgslIrFunctionScope,
+) -> Bool raise WgslIrLowerError {
+  guard local_decl.kind() == Var else { return false }
+  guard local_decl.initializer_ref() is Some(expr_ref) else { return false }
+  guard expr_ref.root() is Some(root) else { return false }
+  guard lowerer.expression_node_is_const_initializer(root) else { return false }
+  let next_index = statement_index + 1
+  guard next_index < statements.length() else { return false }
+  guard statements[next_index].kind() == For else { return false }
+  ignore(scope)
+  wgsl_ir_statement_direct_expressions_mention_identifier(
+    statements[next_index],
+    local_decl.name().name(),
+  )
 }
 
 ///|
@@ -2166,11 +2214,19 @@ fn WgslIrLowerer::lower_local_declaration(
   scope : WgslIrFunctionScope,
   block : Block,
   local_constant_placement : WgslIrLocalConstantArenaPlacement,
+  source_var_store_initializers : Array[String],
 ) -> Unit raise WgslIrLowerError {
   if local_decl.kind() == Const {
     self.lower_local_const_declaration(
       local_decl, function, scope, local_constant_placement,
     )
+    return
+  }
+  if local_decl.kind() == Var &&
+    source_var_store_initializers.any(fn(name) {
+      name == local_decl.name().name()
+    }) {
+    self.lower_local_var_store_declaration(local_decl, function, scope, block)
     return
   }
   if local_decl.kind() == Var &&

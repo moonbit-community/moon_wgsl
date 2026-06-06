@@ -41,7 +41,8 @@ test "IR emitter prints WGSL lowered from AST without source writeback" {
     emitted.contains("@compute @workgroup_size(2, 3, 4)"),
     content="true",
   )
-  debug_inspect(emitted.contains("helper(_e7);"), content="true")
+  debug_inspect(emitted.contains("var local_value: u32 = 5u;"), content="true")
+  debug_inspect(emitted.contains("helper(_e5);"), content="true")
 }
 
 ///|

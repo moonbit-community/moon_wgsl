@@ -1062,6 +1062,36 @@ fn WgslIrLowerer::fold_function_constant_literal_expression(
 }
 
 ///|
+fn WgslIrLowerer::fold_function_constant_typed_literal_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Literal? raise WgslIrLowerError {
+  let integer = Some(self.eval_function_integer_expression(function, handle)) catch {
+    _ => None
+  }
+  match integer {
+    Some(value) =>
+      match self.function_expression_type(function, handle) {
+        Some(ty) =>
+          match self.shader_module.types.get(ty) {
+            Some({ inner: Scalar(scalar), .. }) =>
+              match scalar.kind {
+                Sint => return Some(value.to_signed_literal(scalar.width))
+                Uint => return Some(value.to_unsigned_literal(scalar.width))
+                AbstractInt => return Some(value.to_abstract_int_literal())
+                _ => ()
+              }
+            _ => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  self.fold_function_constant_float_expression(function, handle)
+}
+
+///|
 fn WgslIrLowerer::inline_constant_literal_for_function(
   self : WgslIrLowerer,
   handle : Handle,

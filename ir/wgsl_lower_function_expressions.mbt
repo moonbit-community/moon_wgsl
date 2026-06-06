@@ -58,6 +58,44 @@ fn WgslIrLowerer::lower_function_lvalue_ref(
 }
 
 ///|
+fn WgslIrLowerer::append_foldable_function_binary_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  expression_mark : Int,
+  op : BinaryOperator,
+  left : Handle,
+  right : Handle,
+  allow_fold : Bool,
+) -> Handle raise WgslIrLowerError {
+  let handle = function.expressions.append(Binary(op, left, right))
+  if !allow_fold {
+    return handle
+  }
+  self.fold_function_binary_expression_at_mark(
+    function, expression_mark, handle,
+  )
+}
+
+///|
+fn WgslIrLowerer::fold_function_binary_expression_at_mark(
+  self : WgslIrLowerer,
+  function : Function,
+  expression_mark : Int,
+  handle : Handle,
+) -> Handle raise WgslIrLowerError {
+  match self.fold_function_constant_typed_literal_expression(function, handle) {
+    Some(literal) => {
+      function.expressions.truncate(expression_mark)
+      function.expressions.append_with_origin(
+        Literal(literal),
+        FoldedLocalConstant,
+      )
+    }
+    None => handle
+  }
+}
+
+///|
 fn WgslIrLowerer::function_argument_is_pointer(
   self : WgslIrLowerer,
   function : Function,
@@ -155,7 +193,7 @@ fn WgslIrLowerer::lower_function_lvalue_node(
     }
     Index(base, index) => {
       match
-        self.lower_function_direct_global_lvalue_binary_index(
+        self.lower_function_direct_addressable_lvalue_binary_index(
           base, index, function, scope,
         ) {
         Some(handle) => return handle
@@ -202,7 +240,7 @@ fn WgslIrLowerer::lower_function_lvalue_node(
 }
 
 ///|
-fn WgslIrLowerer::lower_function_direct_global_lvalue_binary_index(
+fn WgslIrLowerer::lower_function_direct_addressable_lvalue_binary_index(
   self : WgslIrLowerer,
   base : @ast.WgslExprNode,
   index : @ast.WgslExprNode,
@@ -214,18 +252,20 @@ fn WgslIrLowerer::lower_function_direct_global_lvalue_binary_index(
     None => ()
   }
   guard !wgsl_ir_expr_node_contains_member_access(index) else { return None }
-  guard !self.expression_node_contains_mutable_local_reference(
-    index, function, scope,
-  ) else {
-    return None
-  }
   let name = match base.kind() {
     Identifier(name) => name.name()
     _ => return None
   }
-  match self.global_names.get(name) {
-    Some(_) => ()
-    None => return None
+  guard !self.expression_node_contains_mutable_local_reference(
+      index, function, scope,
+    ) ||
+    self.expression_identifier_is_direct_local_var_base(name, function, scope) else {
+    return None
+  }
+  guard self.expression_identifier_is_direct_addressable_base(
+    name, function, scope,
+  ) else {
+    return None
   }
   let (op, left, right) = match index.kind() {
     Binary(_, _, _) =>
@@ -242,7 +282,7 @@ fn WgslIrLowerer::lower_function_direct_global_lvalue_binary_index(
 }
 
 ///|
-fn WgslIrLowerer::lower_function_direct_global_value_binary_index(
+fn WgslIrLowerer::lower_function_direct_addressable_value_binary_index(
   self : WgslIrLowerer,
   base : @ast.WgslExprNode,
   index : @ast.WgslExprNode,
@@ -254,18 +294,20 @@ fn WgslIrLowerer::lower_function_direct_global_value_binary_index(
     None => ()
   }
   guard !wgsl_ir_expr_node_contains_member_access(index) else { return None }
-  guard !self.expression_node_contains_mutable_local_reference(
-    index, function, scope,
-  ) else {
-    return None
-  }
   let name = match base.kind() {
     Identifier(name) => name.name()
     _ => return None
   }
-  match self.global_names.get(name) {
-    Some(_) => ()
-    None => return None
+  guard !self.expression_node_contains_mutable_local_reference(
+      index, function, scope,
+    ) ||
+    self.expression_identifier_is_direct_local_var_base(name, function, scope) else {
+    return None
+  }
+  guard self.expression_identifier_is_direct_addressable_base(
+    name, function, scope,
+  ) else {
+    return None
   }
   let (op, left, right) = match index.kind() {
     Binary(_, _, _) =>
@@ -284,6 +326,48 @@ fn WgslIrLowerer::lower_function_direct_global_value_binary_index(
       function.expressions.append(Access(base_handle, index_handle)),
     ),
   )
+}
+
+///|
+fn WgslIrLowerer::expression_identifier_is_direct_addressable_base(
+  self : WgslIrLowerer,
+  name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match scope.locals.get(name) {
+    Some(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_var) =>
+          local_var.kind == Var ||
+          self.local_variable_is_handle_value(function, handle)
+        None => false
+      }
+    None =>
+      match self.global_names.get(name) {
+        Some(_) => true
+        None => false
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_identifier_is_direct_local_var_base(
+  self : WgslIrLowerer,
+  name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match scope.locals.get(name) {
+    Some(handle) =>
+      match function.local_variables.items.get(handle.index()) {
+        Some(local_var) =>
+          local_var.kind == Var ||
+          self.local_variable_is_handle_value(function, handle)
+        None => false
+      }
+    None => false
+  }
 }
 
 ///|
@@ -516,6 +600,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               let left_handle = self.lower_function_expression_node(
                 left, function, scope,
               )
+              let right_mark = function.expressions.items.length()
               let (right_op, right_left, right_right) = self.lower_binary_expression_children(
                 right, function, scope,
               )
@@ -523,8 +608,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               let (right_left, right_right) = self.normalize_function_binary_operands(
                 function, right_binary_op, right_left, right_right,
               )
-              let right_handle = function.expressions.append(
-                Binary(right_binary_op, right_left, right_right),
+              let right_handle = self.append_foldable_function_binary_expression(
+                function,
+                right_mark,
+                right_binary_op,
+                right_left,
+                right_right,
+                !wgsl_ir_expr_node_references_local_let_constant(right, scope),
               )
               (left_handle, right_handle)
             } else if wgsl_ir_expr_node_is_direct_access_chain(left) ||
@@ -532,6 +622,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               let left_handle = self.lower_function_expression_node(
                 left, function, scope,
               )
+              let right_mark = function.expressions.items.length()
               let (right_op, right_left, right_right) = self.lower_binary_expression_children(
                 right, function, scope,
               )
@@ -539,8 +630,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               let (right_left, right_right) = self.normalize_function_binary_operands(
                 function, right_binary_op, right_left, right_right,
               )
-              let right_handle = function.expressions.append(
-                Binary(right_binary_op, right_left, right_right),
+              let right_handle = self.append_foldable_function_binary_expression(
+                function,
+                right_mark,
+                right_binary_op,
+                right_left,
+                right_right,
+                !wgsl_ir_expr_node_references_local_let_constant(right, scope),
               )
               (left_handle, right_handle)
             } else {
@@ -553,6 +649,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                 ) &&
                 !wgsl_ir_expr_node_contains_call(right)
               let (left_handle, right_handle) = if right_binary_lowers_before_left {
+                let right_mark = function.expressions.items.length()
                 let (right_op, right_left, right_right) = self.lower_binary_expression_children(
                   right, function, scope,
                 )
@@ -560,14 +657,20 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                 let (right_left, right_right) = self.normalize_function_binary_operands(
                   function, right_binary_op, right_left, right_right,
                 )
-                let right_handle = function.expressions.append(
-                  Binary(right_binary_op, right_left, right_right),
+                let right_handle = self.append_foldable_function_binary_expression(
+                  function,
+                  right_mark,
+                  right_binary_op,
+                  right_left,
+                  right_right,
+                  !wgsl_ir_expr_node_references_local_let_constant(right, scope),
                 )
                 let left_handle = self.lower_function_expression_node(
                   left, function, scope,
                 )
                 (left_handle, right_handle)
               } else if right_children_lower_before_left {
+                let right_mark = function.expressions.items.length()
                 let (right_op, right_left, right_right) = self.lower_binary_expression_children(
                   right, function, scope,
                 )
@@ -578,14 +681,20 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                 let left_handle = self.lower_function_expression_node(
                   left, function, scope,
                 )
-                let right_handle = function.expressions.append(
-                  Binary(right_binary_op, right_left, right_right),
+                let right_handle = self.append_foldable_function_binary_expression(
+                  function,
+                  right_mark,
+                  right_binary_op,
+                  right_left,
+                  right_right,
+                  !wgsl_ir_expr_node_references_local_let_constant(right, scope),
                 )
                 (left_handle, right_handle)
               } else {
                 let left_handle = self.lower_function_expression_node(
                   left, function, scope,
                 )
+                let right_mark = function.expressions.items.length()
                 let (right_op, right_left, right_right) = self.lower_binary_expression_children(
                   right, function, scope,
                 )
@@ -593,8 +702,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                 let (right_left, right_right) = self.normalize_function_binary_operands(
                   function, right_binary_op, right_left, right_right,
                 )
-                let right_handle = function.expressions.append(
-                  Binary(right_binary_op, right_left, right_right),
+                let right_handle = self.append_foldable_function_binary_expression(
+                  function,
+                  right_mark,
+                  right_binary_op,
+                  right_left,
+                  right_right,
+                  !wgsl_ir_expr_node_references_local_let_constant(right, scope),
                 )
                 (left_handle, right_handle)
               }
@@ -682,16 +796,9 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         function.expressions.set_origin(handle, RetainedSourceLetExpression)
         return handle
       }
-      match self.fold_function_constant_float_expression(function, handle) {
-        Some(literal) => {
-          function.expressions.truncate(expression_mark)
-          function.expressions.append_with_origin(
-            Literal(literal),
-            FoldedLocalConstant,
-          )
-        }
-        None => handle
-      }
+      self.fold_function_binary_expression_at_mark(
+        function, expression_mark, handle,
+      )
     }
     Group(expr) =>
       self.lower_function_expression_node_with_expected(
@@ -719,7 +826,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         None => ()
       }
       match
-        self.lower_function_direct_global_value_binary_index(
+        self.lower_function_direct_addressable_value_binary_index(
           base, index, function, scope,
         ) {
         Some(handle) => return handle
@@ -3335,7 +3442,7 @@ fn WgslIrLowerer::lower_function_access_base_pointer_node(
     }
     Index(base, index) => {
       match
-        self.lower_function_direct_global_lvalue_binary_index(
+        self.lower_function_direct_addressable_lvalue_binary_index(
           base, index, function, scope,
         ) {
         Some(handle) => return handle

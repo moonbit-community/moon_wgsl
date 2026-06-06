@@ -3547,6 +3547,53 @@ test "WGSL AST lowerer materializes short-circuit if conditions" {
 }
 
 ///|
+test "WGSL AST lowerer materializes short-circuit for conditions from AST nodes" {
+  let source =
+    #|fn probe(limit: u32) {
+    #|  var values: array<u32, 4>;
+    #|  var i = limit;
+    #|  for (; i > 0u && values[i - 1u] > 0u; i -= 1u) {
+    #|    values[i] = values[i - 1u];
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  for expression in function.expressions.items {
+    match expression {
+      Binary(LogicalAnd, _, _) =>
+        abort("for short-circuit condition must not keep a parent LogicalAnd")
+      _ => ()
+    }
+  }
+}
+
+///|
+test "WGSL AST lowerer folds typed integer const subexpressions in function arena" {
+  let source =
+    #|const LIMIT: u32 = 8u;
+    #|
+    #|fn probe(i: u32) -> bool {
+    #|  return i < LIMIT - 1u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut saw_seven_u32 = false
+  for expression in function.expressions.items {
+    match expression {
+      Literal(U32(value)) if value == 7U => saw_seven_u32 = true
+      Constant(_) =>
+        abort("folded integer const subexpression must not keep Constant")
+      _ => ()
+    }
+  }
+  debug_inspect(saw_seven_u32, content="true")
+}
+
+///|
 test "WGSL AST lowerer lazily materializes return short-circuit branches in Naga order" {
   let source =
     #|const BORDER_LEFT: u32 = 256u;
