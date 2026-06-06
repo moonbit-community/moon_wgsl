@@ -168,8 +168,11 @@ fn CallArgumentPlanner::lower_later_reference_before_direct(
     if wgsl_ir_expr_node_is_function_argument_value(
         self.arguments[lookahead],
         self.scope,
-      ) ||
-      wgsl_ir_expr_node_is_call_value(self.arguments[lookahead]) {
+      ) {
+      lookahead += 1
+      continue
+    }
+    if wgsl_ir_expr_node_is_call_value(self.arguments[lookahead]) {
       return
     }
     if self.argument_uses_reference_predeclare(lookahead) {

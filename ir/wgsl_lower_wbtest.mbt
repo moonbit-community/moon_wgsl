@@ -1957,10 +1957,13 @@ test "WGSL AST lowerer prelowers later reference call argument before prior dire
     error => abort(error.message())
   }
   let function = module_.functions.items[1]
+  let mut depth_argument : Int? = None
   let mut frag_argument : Int? = None
   let mut soft_shadow_load : Int? = None
   for index, expression in function.expressions.items {
     match expression {
+      FunctionArgument(argument_index) if argument_index == 0 &&
+        depth_argument == None => depth_argument = Some(index)
       FunctionArgument(argument_index) if argument_index == 1 &&
         frag_argument == None => frag_argument = Some(index)
       Load(base) if soft_shadow_load == None =>
@@ -1975,9 +1978,11 @@ test "WGSL AST lowerer prelowers later reference call argument before prior dire
       _ => ()
     }
   }
-  match (soft_shadow_load, frag_argument) {
-    (Some(load), Some(argument)) =>
-      debug_inspect(load < argument, content="true")
+  match (soft_shadow_load, depth_argument, frag_argument) {
+    (Some(load), Some(depth), Some(frag)) => {
+      debug_inspect(load < depth, content="true")
+      debug_inspect(load < frag, content="true")
+    }
     _ => abort("expected soft shadow load and frag coord argument")
   }
 }
