@@ -1520,6 +1520,50 @@ test "WGSL AST lowerer binds load let initializers as named expressions" {
 }
 
 ///|
+test "WGSL AST lowerer predeclares later direct math argument before reference projection" {
+  let source =
+    #|struct Light {
+    #|  direction_to_light: vec3<f32>,
+    #|}
+    #|
+    #|struct Lights {
+    #|  directional_lights: array<Light, 4>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> lights: Lights;
+    #|
+    #|fn probe(ray_dir: vec3<f32>, i: u32) -> f32 {
+    #|  let light = &lights.directional_lights[i];
+    #|  return dot((*light).direction_to_light, ray_dir);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut light_access = -1
+  let mut ray_dir = -1
+  let mut direction_access = -1
+  let mut direction_load = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Access(_, _) if light_access == -1 => light_access = expression_index
+      FunctionArgument(0) if light_access >= 0 && ray_dir == -1 =>
+        ray_dir = expression_index
+      AccessIndex(base, _) if base.index() == light_access &&
+        direction_access == -1 => direction_access = expression_index
+      Load(pointer) if pointer.index() == direction_access &&
+        direction_load == -1 => direction_load = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(light_access >= 0, content="true")
+  debug_inspect(ray_dir > light_access, content="true")
+  debug_inspect(direction_access > ray_dir, content="true")
+  debug_inspect(direction_load > direction_access, content="true")
+}
+
+///|
 test "WGSL AST lowerer lets named expressions shadow global addressable names" {
   let source =
     #|struct View {

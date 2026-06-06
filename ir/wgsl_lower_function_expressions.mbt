@@ -3854,6 +3854,19 @@ fn WgslIrLowerer::lower_function_math_call(
   let deferred_constructors = self.prelower_homogeneous_math_constructor_arguments(
     math_function, arguments, function, scope,
   )
+  if self.math_call_predeclares_later_direct_arguments_before_reference_first(
+      arguments, function, scope,
+    ) {
+    for index in 1..<arguments.length() {
+      if wgsl_ir_expr_node_is_function_argument_value(arguments[index], scope) {
+        self.predeclare_function_argument_value(
+          arguments[index],
+          function,
+          scope,
+        )
+      }
+    }
+  }
   let handles : Array[Handle] = []
   if self.math_call_lowers_second_argument_before_first(
       math_function, arguments, function, scope,
@@ -4016,6 +4029,32 @@ fn WgslIrLowerer::math_call_later_argument_lowers_before_deferred_first(
 ) -> Bool {
   wgsl_ir_expr_node_is_direct_access_chain(argument) &&
   self.expression_node_contains_naga_reference_value(argument, function, scope)
+}
+
+///|
+fn WgslIrLowerer::math_call_predeclares_later_direct_arguments_before_reference_first(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  guard arguments.length() > 1 else { return false }
+  guard wgsl_ir_expr_node_is_direct_access_chain(arguments[0]) else {
+    return false
+  }
+  guard self.expression_node_contains_naga_reference_value(
+    arguments[0],
+    function,
+    scope,
+  ) else {
+    return false
+  }
+  for index in 1..<arguments.length() {
+    if wgsl_ir_expr_node_is_function_argument_value(arguments[index], scope) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
