@@ -210,7 +210,7 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
       let expression_mark = function.expressions.items.length()
       let handle = match
         self.lower_reused_literal_source_local_const_constructor_initializer(
-          expr_ref, explicit_ty, function,
+          expr_ref, explicit_ty, function, scope,
         ) {
         Some(handle) => handle
         None =>
@@ -233,6 +233,7 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_initialize
   expr_ref : @ast.WgslExprRef,
   explicit_ty : Handle?,
   function : Function,
+  scope : WgslIrFunctionScope,
 ) -> Handle? raise WgslIrLowerError {
   guard explicit_ty is Some(ty) else { return None }
   guard expr_ref.root() is Some(root) else { return None }
@@ -244,6 +245,36 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_initialize
       ty,
       arguments.length(),
     ) {
+    guard arguments is [argument] else { return None }
+    guard argument.kind() is Literal(token) else { return None }
+    guard self.source_local_const_constructor_initializer_vector_splat_size(
+        ty,
+        arguments.length(),
+      )
+      is Some(size) else {
+      return None
+    }
+    guard self.constructor_component_expected_type(ty) is Some(component_ty) else {
+      return None
+    }
+    guard self.source_local_const_literal_semantic_key(
+        token,
+        Some(component_ty),
+      )
+      is Some(semantic_key) else {
+      return None
+    }
+    match scope.source_local_const_initializer_expressions.get(semantic_key) {
+      Some(handle) =>
+        return Some(function.expressions.append(Splat(size, handle)))
+      None => ()
+    }
+    match
+      scope.runtime_source_local_const_initializer_expressions.get(semantic_key) {
+      Some(handle) =>
+        return Some(function.expressions.append(Splat(size, handle)))
+      None => ()
+    }
     return None
   }
   let literal_handles : Map[String, Handle] = Map([])
@@ -873,6 +904,10 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
             raise UnsupportedExpression("empty return expression")
           }
           let handle = match expr_ref.root() {
+            Some(root) if wgsl_ir_expr_node_literal_token(root) is Some(token) =>
+              self.lower_function_fresh_literal_node_with_expected(
+                token, function, expected_ty,
+              )
             Some(root) if wgsl_ir_expr_node_is_short_circuit_binary(root) =>
               self
               .short_circuit_planner(function, scope, block)
@@ -1756,6 +1791,14 @@ fn wgsl_ir_local_const_initializer_uses_declaration_arena(
   if wgsl_ir_local_const_initializer_references_local_let(local_decl, scope) {
     return true
   }
+  if wgsl_ir_local_const_initializer_is_literal(local_decl) &&
+    wgsl_ir_next_assignment_rhs_mentions_identifier(
+      local_decl.name().name(),
+      statements,
+      statement_index,
+    ) {
+    return false
+  }
   !wgsl_ir_local_const_initializer_is_bool_literal(local_decl) &&
   wgsl_ir_next_statement_mentions_identifier(
     local_decl.name().name(),
@@ -1781,6 +1824,20 @@ fn wgsl_ir_local_const_initializer_references_local_let(
 }
 
 ///|
+fn wgsl_ir_local_const_initializer_is_literal(
+  local_decl : @ast.WgslLocalDeclaration,
+) -> Bool {
+  match local_decl.initializer_ref() {
+    Some(expr_ref) =>
+      match expr_ref.root() {
+        Some(root) => wgsl_ir_expr_node_is_literal(root)
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
 fn wgsl_ir_local_const_initializer_is_bool_literal(
   local_decl : @ast.WgslLocalDeclaration,
 ) -> Bool {
@@ -1795,10 +1852,36 @@ fn wgsl_ir_local_const_initializer_is_bool_literal(
 }
 
 ///|
+fn wgsl_ir_expr_node_is_literal(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Literal(_) => true
+    Group(inner) => wgsl_ir_expr_node_is_literal(inner)
+    _ => false
+  }
+}
+
+///|
 fn wgsl_ir_expr_node_is_bool_literal(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Literal(token) => token.text() == "true" || token.text() == "false"
     Group(inner) => wgsl_ir_expr_node_is_bool_literal(inner)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_next_assignment_rhs_mentions_identifier(
+  name : String,
+  statements : Array[@ast.WgslStatement],
+  statement_index : Int,
+) -> Bool {
+  let next_index = statement_index + 1
+  if next_index >= statements.length() {
+    return false
+  }
+  match statements[next_index].payload() {
+    Assignment(_, _, Some(rhs)) =>
+      wgsl_ir_expr_ref_mentions_identifier(rhs, name)
     _ => false
   }
 }
@@ -2333,6 +2416,44 @@ fn WgslIrLowerer::lower_local_declaration(
     Some(init_handle) =>
       self.contextualize_function_expression_for_type(function, init_handle, ty)
     None => ()
+  }
+  if local_decl.kind() == Var {
+    match local_decl.initializer_ref() {
+      Some(expr_ref) =>
+        match expr_ref.root() {
+          Some(root) =>
+            if self.expression_node_is_const_initializer(root) {
+              self.record_source_local_const_initializer_literals(
+                expr_ref,
+                expression_mark,
+                function,
+                scope,
+                Some(ty),
+              )
+            }
+          None => ()
+        }
+      None => ()
+    }
+  }
+  if local_decl.kind() == Let {
+    match init {
+      Some(init_handle) =>
+        if self.function_expression_is_handle_resource_value(
+            function, init_handle,
+          ) {
+          ignore(scope.locals.remove(local_decl.name().name()))
+          ignore(
+            scope.local_pointer_expressions.remove(local_decl.name().name()),
+          )
+          scope.local_constants.set(
+            local_decl.name().name(),
+            wgsl_ir_local_let_value_cell(ExpressionAlias(init_handle)),
+          )
+          return
+        }
+      None => ()
+    }
   }
   let lowered_name = self.naga_oil_generated_import_local_spelling_for_scope(
     local_decl.name().name(),
@@ -3057,6 +3178,18 @@ fn WgslIrLowerer::function_expression_has_scalar_type(
           }
         None => false
       }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_is_handle_resource_value(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match self.function_expression_type(function, handle) {
+    Some(ty) => self.type_is_global_handle_value(ty)
     None => false
   }
 }

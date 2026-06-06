@@ -414,6 +414,129 @@ fn WgslIrEmitter::eval_float_expression_with_retained_constants(
 }
 
 ///|
+fn WgslIrEmitter::eval_float_vector_binary_with_retained_constants(
+  self : WgslIrEmitter,
+  function : Function?,
+  op : BinaryOperator,
+  left : Handle,
+  right : Handle,
+) -> Array[Double]? raise WgslIrEmitError {
+  if !self.expression_tree_contains_constant_reference(function, left) &&
+    !self.expression_tree_contains_constant_reference(function, right) {
+    return None
+  }
+  guard self.eval_float_vector_expression_with_retained_constants_inner(
+      function, left,
+    )
+    is Some(left_values) else {
+    return None
+  }
+  guard self.eval_float_vector_expression_with_retained_constants_inner(
+      function, right,
+    )
+    is Some(right_values) else {
+    return None
+  }
+  wgsl_ir_emit_eval_float_vector_binary(op, left_values, right_values)
+}
+
+///|
+fn WgslIrEmitter::eval_float_vector_expression_with_retained_constants_inner(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Array[Double]? raise WgslIrEmitError {
+  match self.required_expression(function, handle) {
+    Literal(literal) =>
+      match wgsl_ir_float_value_from_numeric_literal(literal) {
+        Some(value) => Some([value])
+        None => None
+      }
+    Constant(constant) =>
+      match self.eval_constant_float_expression_for_retained_context(constant) {
+        Some(value) => Some([value])
+        None =>
+          match
+            self.eval_constant_integer_expression_for_constructor(constant) {
+            Some(value) =>
+              match value.to_double() {
+                Some(value) => Some([value])
+                None => None
+              }
+            None => None
+          }
+      }
+    Splat(size, inner) =>
+      match
+        self.eval_float_expression_with_retained_constants_inner(
+          function, inner,
+        ) {
+        Some(value) => {
+          let values : Array[Double] = []
+          for _ in 0..<size.width() {
+            values.push(value)
+          }
+          Some(values)
+        }
+        None => None
+      }
+    Compose(ty, components) =>
+      match self.shader_module.types.items.get(ty.index()) {
+        Some({ inner: Vector(_, { kind: Float | AbstractFloat, .. }), .. }) => {
+          let values : Array[Double] = []
+          for component in components {
+            match
+              self.eval_float_expression_with_retained_constants_inner(
+                function, component,
+              ) {
+              Some(value) => values.push(value)
+              None => return None
+            }
+          }
+          Some(values)
+        }
+        Some({ inner: Scalar({ kind: Float | AbstractFloat, .. }), .. }) =>
+          match components {
+            [component] =>
+              match
+                self.eval_float_expression_with_retained_constants_inner(
+                  function, component,
+                ) {
+                Some(value) => Some([value])
+                None => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    Unary(Negate, inner) =>
+      match
+        self.eval_float_vector_expression_with_retained_constants_inner(
+          function, inner,
+        ) {
+        Some(values) => Some(values.map(fn(value) { -value }))
+        None => None
+      }
+    Binary(op, left, right) => {
+      guard self.eval_float_vector_expression_with_retained_constants_inner(
+          function, left,
+        )
+        is Some(left_values) else {
+        return None
+      }
+      guard self.eval_float_vector_expression_with_retained_constants_inner(
+          function, right,
+        )
+        is Some(right_values) else {
+        return None
+      }
+      wgsl_ir_emit_eval_float_vector_binary(op, left_values, right_values)
+    }
+    _ => None
+  }
+}
+
+///|
 fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
   self : WgslIrEmitter,
   function : Function?,
@@ -476,6 +599,33 @@ fn WgslIrEmitter::eval_constant_float_expression_for_retained_context(
       self.eval_global_float_expression_for_emit(constant.init, Set([]))
     None => None
   }
+}
+
+///|
+fn wgsl_ir_emit_eval_float_vector_binary(
+  op : BinaryOperator,
+  left : Array[Double],
+  right : Array[Double],
+) -> Array[Double]? {
+  let width = if left.length() == right.length() {
+    left.length()
+  } else if left.length() == 1 {
+    right.length()
+  } else if right.length() == 1 {
+    left.length()
+  } else {
+    return None
+  }
+  let values : Array[Double] = []
+  for index in 0..<width {
+    let left_value = if left.length() == 1 { left[0] } else { left[index] }
+    let right_value = if right.length() == 1 { right[0] } else { right[index] }
+    match wgsl_ir_emit_eval_float_binary(op, left_value, right_value) {
+      Some(value) => values.push(value)
+      None => return None
+    }
+  }
+  Some(values)
 }
 
 ///|

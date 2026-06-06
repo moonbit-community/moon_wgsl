@@ -178,6 +178,19 @@ fn ExpressionArenaScheduler::binary_lowers_right_argument_before_left_access(
 }
 
 ///|
+fn ExpressionArenaScheduler::binary_predeclares_right_constructor_argument_member_root(
+  self : ExpressionArenaScheduler,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  wgsl_ir_expr_node_is_direct_access_chain(left) &&
+  self.lowerer.direct_access_chain_root_is_global_reference(left) &&
+  self.lowerer.expression_node_is_constructor_call_value(right) &&
+  wgsl_ir_expr_node_contains_member_access(right) &&
+  wgsl_ir_expr_node_contains_function_argument_value(right, self.scope)
+}
+
+///|
 fn ExpressionArenaScheduler::binary_delays_left_constructor_commit_until_right_argument(
   self : ExpressionArenaScheduler,
   left : @ast.WgslExprNode,
@@ -273,12 +286,14 @@ fn ExpressionArenaScheduler::constructor_argument_is_literal_like(
   self : ExpressionArenaScheduler,
   node : @ast.WgslExprNode,
 ) -> Bool {
-  ignore(self)
   match node.kind() {
     Group(inner) => self.constructor_argument_is_literal_like(inner)
     Literal(_) => true
     Unary(op, inner) =>
       op == Subtract && self.constructor_argument_is_literal_like(inner)
+    Binary(_, left, right) =>
+      self.constructor_argument_is_literal_like(left) &&
+      self.constructor_argument_is_literal_like(right)
     _ => false
   }
 }

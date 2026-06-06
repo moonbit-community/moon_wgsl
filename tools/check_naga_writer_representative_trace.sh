@@ -246,8 +246,9 @@ normalize_oracle_bindings() {
         signature = line
         sub(/^fn [^(]*\(/, "", signature)
         sub(/ *\{.*$/, "", signature)
+        sub(/\) *->.*$/, ")", signature)
         sub(/\) *$/, "", signature)
-        count = split(signature, params, ",")
+        count = split_parameter_list(signature, params)
         for (i = 1; i <= count; i = i + 1) {
           param = params[i]
           gsub(/^ +| +$/, "", param)
@@ -273,6 +274,36 @@ normalize_oracle_bindings() {
     } else if ($3 in final_name) {
       print "binding\t" $3 "\t" final_name[$3]
     }
+  }
+  function split_parameter_list(signature, params,    i,ch,angle,paren,count,current) {
+    angle = 0
+    paren = 0
+    count = 0
+    current = ""
+    for (i = 1; i <= length(signature); i = i + 1) {
+      ch = substr(signature, i, 1)
+      if (ch == "<") {
+        angle = angle + 1
+      } else if (ch == ">" && angle > 0) {
+        angle = angle - 1
+      } else if (ch == "(") {
+        paren = paren + 1
+      } else if (ch == ")" && paren > 0) {
+        paren = paren - 1
+      }
+      if (ch == "," && angle == 0 && paren == 0) {
+        count = count + 1
+        params[count] = current
+        current = ""
+      } else {
+        current = current ch
+      }
+    }
+    if (current != "" || length(signature) > 0) {
+      count = count + 1
+      params[count] = current
+    }
+    return count
   }
 ' "$inventory" > "$output"
 }

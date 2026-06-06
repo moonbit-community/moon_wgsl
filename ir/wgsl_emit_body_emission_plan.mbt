@@ -44,6 +44,9 @@ fn BodyEmissionPlanner::statement_plan(
     let skip = self.statement_is_elided_local_alias_declaration(statement) ||
       wgsl_ir_body_statement_is_hoisted_local_var_declaration(
         function, statement,
+      ) ||
+      wgsl_ir_body_statement_is_hoisted_local_var_initializer_emit(
+        function, statement,
       )
     let mut blank_before = false
     if !skip {
@@ -106,6 +109,39 @@ fn wgsl_ir_body_statement_is_hoisted_local_var_declaration(
       }
     _ => false
   }
+}
+
+///|
+fn wgsl_ir_body_statement_is_hoisted_local_var_initializer_emit(
+  function : Function,
+  statement : Statement,
+) -> Bool {
+  match statement {
+    Emit(range) =>
+      if range.start == range.end {
+        wgsl_ir_expression_is_hoisted_local_var_initializer(function, range.end)
+      } else {
+        false
+      }
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expression_is_hoisted_local_var_initializer(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  for local_var in function.local_variables.items {
+    guard local_var.kind == Var && !local_var.generated_temporary else {
+      continue
+    }
+    match local_var.init {
+      Some(init) if init == handle => return true
+      _ => ()
+    }
+  }
+  false
 }
 
 ///|

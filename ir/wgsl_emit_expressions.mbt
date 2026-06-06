@@ -354,6 +354,10 @@ fn WgslIrEmitter::binary_expression(
   left : Handle,
   right : Handle,
 ) -> String raise WgslIrEmitError {
+  match self.folded_float_vector_binary_expression(function, op, left, right) {
+    Some(value) => return value
+    None => ()
+  }
   let left_text = self.binary_operand_expression(
     function, op, left, right, false,
   )
@@ -361,6 +365,107 @@ fn WgslIrEmitter::binary_expression(
     function, op, right, left, true,
   )
   "(\{left_text} \{self.binary_operator(op)} \{right_text})"
+}
+
+///|
+fn WgslIrEmitter::folded_float_vector_binary_expression(
+  self : WgslIrEmitter,
+  function : Function?,
+  op : BinaryOperator,
+  left : Handle,
+  right : Handle,
+) -> String? raise WgslIrEmitError {
+  guard self.options.fold_numeric_constant_expressions() else { return None }
+  guard wgsl_ir_binary_operator_is_float_arithmetic(op) else { return None }
+  guard self.eval_float_vector_binary_with_retained_constants(
+      function, op, left, right,
+    )
+    is Some(values) else {
+    return None
+  }
+  let shape = match
+    self.binary_float_vector_result_shape(function, left, right) {
+    Some(shape) => Some(shape)
+    None => self.float_vector_shape_from_lane_count(values.length())
+  }
+  guard shape is Some((size, scalar)) else { return None }
+  guard values.length() == size.width() else { return None }
+  let out = StringBuilder::new()
+  out.write_string("vec\{size.width()}<\{self.scalar_name(scalar)}>(")
+  for index in 0..<values.length() {
+    if index > 0 {
+      out.write_string(", ")
+    }
+    match self.float_value_literal_for_width(values[index], scalar.width) {
+      Some(value) => out.write_string(value)
+      None => return None
+    }
+  }
+  out.write_string(")")
+  Some(out.to_string())
+}
+
+///|
+fn WgslIrEmitter::float_vector_shape_from_lane_count(
+  self : WgslIrEmitter,
+  lanes : Int,
+) -> (VectorSize, Scalar)? {
+  ignore(self)
+  let size = match lanes {
+    2 => Bi
+    3 => Tri
+    4 => Quad
+    _ => return None
+  }
+  Some((size, { kind: Float, width: 4 }))
+}
+
+///|
+fn WgslIrEmitter::binary_float_vector_result_shape(
+  self : WgslIrEmitter,
+  function : Function?,
+  left : Handle,
+  right : Handle,
+) -> (VectorSize, Scalar)? {
+  match self.float_vector_expression_shape(function, left) {
+    Some(shape) => return Some(shape)
+    None => ()
+  }
+  self.float_vector_expression_shape(function, right)
+}
+
+///|
+fn WgslIrEmitter::float_vector_expression_shape(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> (VectorSize, Scalar)? {
+  match self.expression_type(function, handle) {
+    Some(ty_handle) =>
+      match self.shader_module.types.items.get(ty_handle.index()) {
+        Some({ inner: Vector(size, scalar), .. }) =>
+          match scalar.kind {
+            Float =>
+              Some(
+                (
+                  size,
+                  {
+                    kind: Float,
+                    width: if scalar.width == 0 {
+                      4
+                    } else {
+                      scalar.width
+                    },
+                  },
+                ),
+              )
+            AbstractFloat => Some((size, { kind: Float, width: 4 }))
+            _ => None
+          }
+        _ => None
+      }
+    None => None
+  }
 }
 
 ///|
@@ -405,6 +510,14 @@ fn WgslIrEmitter::binary_operand_scalar_context(
     Some(scalar) if !wgsl_ir_scalar_kind_is_abstract(scalar.kind) =>
       Some(scalar)
     _ => None
+  }
+}
+
+///|
+fn wgsl_ir_binary_operator_is_float_arithmetic(op : BinaryOperator) -> Bool {
+  match op {
+    Add | Subtract | Multiply | Divide | Modulo => true
+    _ => false
   }
 }
 

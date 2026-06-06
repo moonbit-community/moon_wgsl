@@ -256,16 +256,9 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
 ) -> Handle raise WgslIrLowerError {
   match node.kind() {
     Literal(token) =>
-      match
-        scope.runtime_source_local_const_initializer_expressions.get(
-          wgsl_ir_source_local_const_literal_key(token, expected_ty),
-        ) {
-        Some(handle) => handle
-        None =>
-          function.expressions.append(
-            Literal(self.literal_from_token_with_expected(token, expected_ty)),
-          )
-      }
+      self.lower_function_literal_node_with_expected(
+        token, function, scope, expected_ty,
+      )
     ShaderDefTemplate(text) =>
       raise UnsupportedExpression(
         "shader-def template expression requires preprocessing: \{text}",
@@ -329,6 +322,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
       match
+        self.lower_function_binary_chain_with_sibling_arguments_before_parent(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
         self.lower_function_binary_chain_with_parent_argument_after_member_root(
           op, left, right, function, scope,
         ) {
@@ -364,6 +364,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           left, function, scope,
         )
         self.predeclare_function_argument_value(right, function, scope)
+      } else if scheduler.binary_predeclares_right_constructor_argument_member_root(
+          left, right,
+        ) {
+        self.predeclare_function_reference_roots_in_source_order(
+          left, function, scope,
+        )
+        self.predeclare_function_member_base_expressions(right, function, scope)
       } else if wgsl_ir_expr_node_contains_member_access(left) &&
         wgsl_ir_expr_node_contains_function_argument_math_call(right, scope) {
         self.predeclare_function_reference_roots_in_source_order(
@@ -648,6 +655,96 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_literal_node_with_expected(
+  self : WgslIrLowerer,
+  token : @ast.WgslExprToken,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  let text_key = wgsl_ir_source_local_const_literal_key(token, expected_ty)
+  match scope.runtime_source_local_const_initializer_expressions.get(text_key) {
+    Some(handle) => return handle
+    None => ()
+  }
+  match scope.source_local_const_initializer_expressions.get(text_key) {
+    Some(handle) => return handle
+    None => ()
+  }
+  match self.source_local_const_literal_semantic_key(token, expected_ty) {
+    Some(semantic_key) => {
+      match
+        scope.runtime_source_local_const_initializer_expressions.get(
+          semantic_key,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match scope.source_local_const_initializer_expressions.get(semantic_key) {
+        Some(handle) => return handle
+        None => ()
+      }
+    }
+    None => ()
+  }
+  match self.source_local_const_literal_concrete_storage_type(expected_ty) {
+    Some(concrete_ty) =>
+      match
+        self.source_local_const_literal_semantic_key(token, Some(concrete_ty)) {
+        Some(semantic_key) => {
+          match
+            scope.runtime_source_local_const_initializer_expressions.get(
+              semantic_key,
+            ) {
+            Some(handle) => return handle
+            None => ()
+          }
+          match
+            scope.source_local_const_initializer_expressions.get(semantic_key) {
+            Some(handle) => return handle
+            None => ()
+          }
+        }
+        None => ()
+      }
+    None => ()
+  }
+  function.expressions.append(
+    Literal(self.literal_from_token_with_expected(token, expected_ty)),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_fresh_literal_node_with_expected(
+  self : WgslIrLowerer,
+  token : @ast.WgslExprToken,
+  function : Function,
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
+  function.expressions.append(
+    Literal(self.literal_from_token_with_expected(token, expected_ty)),
+  )
+}
+
+///|
+fn WgslIrLowerer::source_local_const_literal_concrete_storage_type(
+  self : WgslIrLowerer,
+  expected_ty : Handle?,
+) -> Handle? {
+  guard expected_ty is Some(ty) else { return None }
+  match self.shader_module.types.get(ty) {
+    Some({ inner: Scalar(scalar), .. })
+    | Some({ inner: Vector(_, scalar), .. })
+    | Some({ inner: Matrix(_, _, scalar), .. }) =>
+      match self.concretize_abstract_storage_scalar(scalar) {
+        Some(concrete) => Some(self.scalar_type_handle(concrete))
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_function_const_array_static_index_value(
   self : WgslIrLowerer,
   base : @ast.WgslExprNode,
@@ -915,6 +1012,50 @@ fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_member_
     left_left, function, scope,
   )
   self.predeclare_function_member_base_expressions(left_right, function, scope)
+  self.predeclare_function_argument_value(right, function, scope)
+  let left_right_handle = self.lower_function_expression_node(
+    left_right, function, scope,
+  )
+  let left_binary_op = wgsl_ir_binary_operator(left_op)
+  let (left_left_handle, left_right_handle) = self.normalize_function_binary_operands(
+    function, left_binary_op, left_left_handle, left_right_handle,
+  )
+  let left_handle = function.expressions.append(
+    Binary(left_binary_op, left_left_handle, left_right_handle),
+  )
+  let right_handle = self.lower_function_expression_node(right, function, scope)
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  Some(
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_chain_with_sibling_arguments_before_parent(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard wgsl_ir_expr_node_is_function_argument_value(right, scope) else {
+    return None
+  }
+  let left = wgsl_ir_expr_node_without_groups(left)
+  guard left.kind() is Binary(left_op, left_left, left_right) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_is_function_argument_value(left_right, scope) else {
+    return None
+  }
+  let left_left_handle = self.lower_function_expression_node(
+    left_left, function, scope,
+  )
+  self.predeclare_function_argument_value(left_right, function, scope)
   self.predeclare_function_argument_value(right, function, scope)
   let left_right_handle = self.lower_function_expression_node(
     left_right, function, scope,
@@ -4511,6 +4652,13 @@ fn WgslIrLowerer::lower_function_select_call(
     raise UnsupportedExpression("select expects three arguments")
   }
   match
+    self.lower_function_select_with_splat_values_and_binary_splat_condition(
+      reject, accept, condition, function, scope,
+    ) {
+    Some(handle) => return handle
+    None => ()
+  }
+  match
     self.lower_function_select_with_constant_constructor_values_and_binary_condition(
       reject, accept, condition, function, scope,
     ) {
@@ -4553,6 +4701,108 @@ fn WgslIrLowerer::lower_function_select_call(
     (condition, accept, reject)
   }
   function.expressions.append(Select(condition, accept, reject))
+}
+
+///|
+fn WgslIrLowerer::lower_function_select_with_splat_values_and_binary_splat_condition(
+  self : WgslIrLowerer,
+  reject : @ast.WgslExprNode,
+  accept : @ast.WgslExprNode,
+  condition : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard self.expression_node_is_select_constant_vector_splat_value(reject) else {
+    return None
+  }
+  guard self.expression_node_is_select_constant_vector_splat_value(accept) else {
+    return None
+  }
+  let (condition_op, condition_left, condition_right) = match condition.kind() {
+    Binary(op, left, right) => (op, left, right)
+    Group(inner) =>
+      match inner.kind() {
+        Binary(op, left, right) => (op, left, right)
+        _ => return None
+      }
+    _ => return None
+  }
+  guard self.expression_node_is_select_constant_vector_splat_value(
+    condition_right,
+  ) else {
+    return None
+  }
+  let reject_handle = self.lower_function_expression_node(
+    reject, function, scope,
+  )
+  let accept_handle = self.lower_function_expression_node(
+    accept, function, scope,
+  )
+  guard self.prelower_select_constant_vector_splat_component(
+      condition_right, function, scope,
+    )
+    is Some(right_splat) else {
+    return None
+  }
+  let left_handle = self.lower_function_expression_node(
+    condition_left, function, scope,
+  )
+  let right_handle = self.lower_function_constructor_expression_from_handles(
+    right_splat.ty,
+    [right_splat.component],
+    function,
+  )
+  let binary_op = wgsl_ir_binary_operator(condition_op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  let condition_handle = function.expressions.append(
+    Binary(binary_op, left_handle, right_handle),
+  )
+  Some(
+    function.expressions.append(
+      Select(condition_handle, accept_handle, reject_handle),
+    ),
+  )
+}
+
+///|
+fn WgslIrLowerer::prelower_select_constant_vector_splat_component(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrDeferredConstructorArgument? raise WgslIrLowerError {
+  match node.kind() {
+    Group(inner) =>
+      self.prelower_select_constant_vector_splat_component(
+        inner, function, scope,
+      )
+    Call(callee, constructor_arguments) => {
+      guard wgsl_ir_flatten_expression_arguments(
+          wgsl_ir_call_arguments(constructor_arguments),
+        )
+        is [component] else {
+        return None
+      }
+      guard self.expression_node_is_select_constant_value(component) else {
+        return None
+      }
+      guard self.lower_math_splat_constructor_callee_type(
+          callee, constructor_arguments,
+        )
+        is Some(ty) else {
+        return None
+      }
+      guard self.vector_size_from_type(ty) is Some(_) else { return None }
+      let expected_ty = self.constructor_component_expected_type(ty)
+      let component = self.lower_function_constructor_argument(
+        component, function, scope, expected_ty,
+      )
+      Some({ ty, component })
+    }
+    _ => None
+  }
 }
 
 ///|
@@ -4664,6 +4914,63 @@ fn WgslIrLowerer::expression_node_is_select_constant_constructor_value(
         self.expression_node_is_select_constant_value(argument)
       })
     }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_select_constant_vector_splat_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expression_node_is_select_constant_vector_splat_value(inner)
+    Call(callee, arguments) => {
+      guard wgsl_ir_flatten_expression_arguments(
+          wgsl_ir_call_arguments(arguments),
+        )
+        is [argument] else {
+        return false
+      }
+      guard self.expression_node_is_select_constant_value(argument) else {
+        return false
+      }
+      match callee.kind() {
+        Identifier(name) =>
+          wgsl_ir_vector_size_from_constructor_name(name.name()) != None
+        Template(base, _) =>
+          self.expression_node_is_select_constant_vector_splat_callee(base)
+        Group(inner) =>
+          self.expression_node_is_select_constant_vector_splat_callee(inner)
+        _ => false
+      }
+    }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_select_constant_vector_splat_callee(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  ignore(self)
+  match node.kind() {
+    Identifier(name) =>
+      wgsl_ir_vector_size_from_constructor_name(name.name()) != None
+    Template(base, _) =>
+      match base.kind() {
+        Identifier(name) =>
+          wgsl_ir_vector_size_from_constructor_name(name.name()) != None
+        _ => false
+      }
+    Group(inner) =>
+      match inner.kind() {
+        Identifier(name) =>
+          wgsl_ir_vector_size_from_constructor_name(name.name()) != None
+        _ => false
+      }
     _ => false
   }
 }

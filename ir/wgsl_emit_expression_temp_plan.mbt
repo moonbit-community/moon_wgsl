@@ -1064,16 +1064,20 @@ fn wgsl_ir_emit_reused_resource_operand_slot_offset(
   function : Function,
   limit : Handle,
 ) -> Int {
-  let seen : @set.Set[Int] = Set([])
+  let seen : Map[Int, Int] = Map([])
   let mut offset = 0
   for index in 0..<=limit.index() {
     match function.expressions.items.get(index) {
       Some(ImageSample(image, sampler, _, _, _, _, _, _, _)) => {
-        offset += wgsl_ir_emit_reused_resource_operand_slot(
-          function, seen, image,
+        let sample_depth = wgsl_ir_function_expression_statement_depth(
+          function,
+          Handle::Handle(index),
         )
         offset += wgsl_ir_emit_reused_resource_operand_slot(
-          function, seen, sampler,
+          function, seen, sample_depth, image,
+        )
+        offset += wgsl_ir_emit_reused_resource_operand_slot(
+          function, seen, sample_depth, sampler,
         )
       }
       _ => ()
@@ -1085,19 +1089,242 @@ fn wgsl_ir_emit_reused_resource_operand_slot_offset(
 ///|
 fn wgsl_ir_emit_reused_resource_operand_slot(
   function : Function,
-  seen : @set.Set[Int],
+  seen : Map[Int, Int],
+  sample_depth : Int,
   handle : Handle,
 ) -> Int {
   guard wgsl_ir_emit_expression_is_global_resource(function, handle) else {
     return 0
   }
   let index = handle.index()
-  if seen.contains(index) {
-    1
-  } else {
-    seen.add(index)
-    0
+  match seen.get(index) {
+    Some(first_depth) => if first_depth == sample_depth { 0 } else { 1 }
+    None => {
+      seen.set(index, sample_depth)
+      0
+    }
   }
+}
+
+///|
+fn wgsl_ir_function_expression_statement_depth(
+  function : Function,
+  handle : Handle,
+) -> Int {
+  match wgsl_ir_block_expression_statement_depth(function.body, handle, 0) {
+    Some(depth) => depth
+    None => -1
+  }
+}
+
+///|
+fn wgsl_ir_block_expression_statement_depth(
+  block : Block,
+  handle : Handle,
+  depth : Int,
+) -> Int? {
+  for statement in block.statements {
+    match wgsl_ir_statement_expression_depth(statement, handle, depth) {
+      Some(found) => return Some(found)
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+fn wgsl_ir_statement_expression_depth(
+  statement : Statement,
+  handle : Handle,
+  depth : Int,
+) -> Int? {
+  match statement {
+    Emit(range) =>
+      if range.start.index() <= handle.index() &&
+        handle.index() <= range.end.index() {
+        Some(depth)
+      } else {
+        None
+      }
+    Store(target, value) =>
+      if target == handle || value == handle {
+        Some(depth)
+      } else {
+        None
+      }
+    Phony(value) | Return(Some(value)) | ConstAssert(value) =>
+      if value == handle {
+        Some(depth)
+      } else {
+        None
+      }
+    If(condition, accept, reject) =>
+      if condition == handle {
+        Some(depth)
+      } else {
+        match
+          wgsl_ir_block_expression_statement_depth(accept, handle, depth + 1) {
+          Some(found) => Some(found)
+          None =>
+            wgsl_ir_block_expression_statement_depth(reject, handle, depth + 1)
+        }
+      }
+    Loop(body, continuing, break_if) =>
+      match break_if {
+        Some(value) if value == handle => Some(depth)
+        _ =>
+          match
+            wgsl_ir_block_expression_statement_depth(body, handle, depth + 1) {
+            Some(found) => Some(found)
+            None =>
+              wgsl_ir_block_expression_statement_depth(
+                continuing,
+                handle,
+                depth + 1,
+              )
+          }
+      }
+    Block(child) =>
+      wgsl_ir_block_expression_statement_depth(child, handle, depth + 1)
+    Switch(selector, cases) =>
+      if selector == handle {
+        Some(depth)
+      } else {
+        for case in cases {
+          match
+            wgsl_ir_block_expression_statement_depth(
+              case.body,
+              handle,
+              depth + 1,
+            ) {
+            Some(found) => return Some(found)
+            None => ()
+          }
+        }
+        None
+      }
+    ImageStore(image, coordinate, array_index, value) =>
+      if image == handle ||
+        coordinate == handle ||
+        value == handle ||
+        array_index == Some(handle) {
+        Some(depth)
+      } else {
+        None
+      }
+    ImageAtomic(image, coordinate, array_index, _, value) =>
+      if image == handle ||
+        coordinate == handle ||
+        value == handle ||
+        array_index == Some(handle) {
+        Some(depth)
+      } else {
+        None
+      }
+    Atomic(pointer, _, value, compare, result) =>
+      if pointer == handle ||
+        value == handle ||
+        compare == Some(handle) ||
+        result == Some(handle) {
+        Some(depth)
+      } else {
+        None
+      }
+    WorkGroupUniformLoad(pointer, result) =>
+      if pointer == handle || result == handle {
+        Some(depth)
+      } else {
+        None
+      }
+    Call(callee, arguments, result) =>
+      if callee == handle ||
+        arguments.any(fn(argument) { argument == handle }) ||
+        result == Some(handle) {
+        Some(depth)
+      } else {
+        None
+      }
+    RayQuery(query, ray_function) =>
+      if query == handle ||
+        wgsl_ir_ray_query_statement_function_contains_handle(
+          ray_function, handle,
+        ) {
+        Some(depth)
+      } else {
+        None
+      }
+    RayPipelineFunction(ray_function) =>
+      if wgsl_ir_ray_pipeline_statement_function_contains_handle(
+          ray_function, handle,
+        ) {
+        Some(depth)
+      } else {
+        None
+      }
+    SubgroupBallot(value, result) =>
+      if value == handle || result == Some(handle) {
+        Some(depth)
+      } else {
+        None
+      }
+    SubgroupGather(_, value, result) =>
+      if value == handle || result == handle {
+        Some(depth)
+      } else {
+        None
+      }
+    SubgroupCollectiveOperation(_, _, value, result) =>
+      if value == handle || result == handle {
+        Some(depth)
+      } else {
+        None
+      }
+    CooperativeStore(pointer, data) =>
+      if pointer == handle ||
+        wgsl_ir_cooperative_store_data_contains_handle(data, handle) {
+        Some(depth)
+      } else {
+        None
+      }
+    ControlBarrier(_)
+    | MemoryBarrier(_)
+    | Declare(_)
+    | Break
+    | Continue
+    | Kill
+    | Return(None)
+    | ImplicitReturn => None
+  }
+}
+
+///|
+fn wgsl_ir_ray_query_statement_function_contains_handle(
+  ray_function : RayQueryFunction,
+  handle : Handle,
+) -> Bool {
+  match ray_function {
+    Initialize(ray, flags) => ray == handle || flags == handle
+    Proceed(value) | GenerateIntersection(value) => value == handle
+    ConfirmIntersection | Terminate => false
+  }
+}
+
+///|
+fn wgsl_ir_ray_pipeline_statement_function_contains_handle(
+  ray_function : RayPipelineFunction,
+  handle : Handle,
+) -> Bool {
+  match ray_function {
+    TraceRay(a, b, c) => a == handle || b == handle || c == handle
+  }
+}
+
+///|
+fn wgsl_ir_cooperative_store_data_contains_handle(
+  data : CooperativeData,
+  handle : Handle,
+) -> Bool {
+  data.pointer == handle || data.stride == handle
 }
 
 ///|

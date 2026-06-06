@@ -575,6 +575,11 @@ fn wgsl_ir_trace_raw_statement_kinds(
   function : Function,
   statement : Statement,
 ) -> Array[String] {
+  if wgsl_ir_body_statement_is_hoisted_local_var_initializer_emit(
+      function, statement,
+    ) {
+    return []
+  }
   match statement {
     Declare(handle) =>
       if wgsl_ir_trace_declare_is_short_circuit_result_load(function, handle) {

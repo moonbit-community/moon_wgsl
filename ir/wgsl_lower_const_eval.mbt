@@ -947,6 +947,8 @@ fn WgslIrLowerer::eval_function_float_expression_inner(
 ) -> Double? {
   match expression {
     Literal(AbstractFloat(value)) => Some(value)
+    Literal(F32(value)) => Some(value.to_double())
+    Literal(F16(value)) | Literal(F64(value)) => Some(value)
     Constant(handle) => self.eval_constant_float_expression(handle)
     Binary(op, left, right) => {
       guard self.eval_function_float_expression(function, left)
@@ -998,6 +1000,8 @@ fn WgslIrLowerer::eval_global_float_expression_inner(
 ) -> Double? {
   match expression {
     Literal(AbstractFloat(value)) => Some(value)
+    Literal(F32(value)) => Some(value.to_double())
+    Literal(F16(value)) | Literal(F64(value)) => Some(value)
     Constant(handle) => self.eval_constant_float_expression(handle)
     Binary(op, left, right) => {
       guard self.eval_global_float_expression(left) is Some(left_value) else {

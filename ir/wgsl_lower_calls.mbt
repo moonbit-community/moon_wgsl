@@ -302,9 +302,16 @@ fn WgslIrLowerer::lower_user_function_call_argument_at(
       }
     _ => ()
   }
-  let lowered = self.lower_function_expression_node_with_expected(
-    argument, function, scope, expected_ty,
-  )
+  let lowered = match wgsl_ir_expr_node_literal_token(argument) {
+    Some(token) =>
+      self.lower_function_fresh_literal_node_with_expected(
+        token, function, expected_ty,
+      )
+    None =>
+      self.lower_function_expression_node_with_expected(
+        argument, function, scope, expected_ty,
+      )
+  }
   match expected_ty {
     Some(ty) if self.lowerer_type_is_pointer(ty) => lowered
     Some(_) => self.apply_function_load_rule(function, lowered)

@@ -791,6 +791,100 @@ test "WGSL AST lowerer lowers constant constructor select values after condition
 }
 
 ///|
+test "WGSL AST lowerer lowers constant vector splat select values before binary condition root" {
+  let source =
+    #|fn probe(normal: vec3<f32>) -> vec3<f32> {
+    #|  return select(vec3(0.0), vec3(0.5), normal < vec3(0.0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    Literal(_) => ()
+    _ => abort("expected reject splat literal first")
+  }
+  match function.expressions.items[1] {
+    Splat(_, component) => debug_inspect(component.index(), content="0")
+    _ => abort("expected reject splat before condition")
+  }
+  match function.expressions.items[2] {
+    Literal(_) => ()
+    _ => abort("expected accept splat literal")
+  }
+  match function.expressions.items[3] {
+    Splat(_, component) => debug_inspect(component.index(), content="2")
+    _ => abort("expected accept splat before condition")
+  }
+  match function.expressions.items[4] {
+    Literal(_) => ()
+    _ => abort("expected condition right splat literal")
+  }
+  match function.expressions.items[5] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected condition left root after right component")
+  }
+  match function.expressions.items[6] {
+    Splat(_, component) => debug_inspect(component.index(), content="4")
+    _ => abort("expected condition right splat")
+  }
+  match function.expressions.items[7] {
+    Binary(_, left, right) => {
+      debug_inspect(left.index(), content="5")
+      debug_inspect(right.index(), content="6")
+    }
+    _ => abort("expected condition binary after splat operands")
+  }
+  match function.expressions.items[8] {
+    Select(condition, accept, reject) => {
+      debug_inspect(condition.index(), content="7")
+      debug_inspect(accept.index(), content="3")
+      debug_inspect(reject.index(), content="1")
+    }
+    _ => abort("expected select after splat condition")
+  }
+}
+
+///|
+test "WGSL AST lowerer folds pure literal binary constructor arguments in delayed literal pass" {
+  let source =
+    #|fn probe(uvw: vec3<f32>, offset: vec3<f32>) -> vec3<f32> {
+    #|  return uvw + vec3(0.0, offset.y, 1.0 / 3.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[2] {
+    AccessIndex(_, _) => ()
+    _ => abort("expected non-literal constructor argument first")
+  }
+  match function.expressions.items[3] {
+    Literal(_) => ()
+    _ => abort("expected first delayed literal")
+  }
+  match function.expressions.items[4] {
+    Literal(_) => ()
+    _ => abort("expected folded division literal")
+  }
+  match function.expressions.items[5] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="3")
+      debug_inspect(components[1].index(), content="2")
+      debug_inspect(components[2].index(), content="4")
+    }
+    _ => abort("expected constructor compose before parent binary")
+  }
+  match function.expressions.items[6] {
+    Binary(_, left, right) => {
+      debug_inspect(left.index(), content="0")
+      debug_inspect(right.index(), content="5")
+    }
+    _ => abort("expected parent binary after constructor compose")
+  }
+}
+
+///|
 test "WGSL AST lowerer lowers mutable local select operands before condition" {
   let source =
     #|fn probe(v: vec3<f32>) -> vec2<f32> {
@@ -1443,6 +1537,37 @@ test "WGSL AST lowerer allocates resource globals per arena reference" {
   match function.expressions.items[0] {
     GlobalVariable(_) => ()
     _ => abort("expected first texture reference for textureDimensions")
+  }
+}
+
+///|
+test "WGSL AST lowerer keeps handle resource lets as expression aliases" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var texture: texture_3d<f32>;
+    #|
+    #|fn probe() -> vec3<u32> {
+    #|  let local_texture = texture;
+    #|  return textureDimensions(local_texture);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  for local_var in function.local_variables.items {
+    match local_var.name {
+      Some("local_texture") =>
+        abort("resource alias must not lower to a local variable")
+      _ => ()
+    }
+  }
+  match function.expressions.items[1] {
+    ImageQuery(image, Size(None)) =>
+      match function.expressions.items[image.index()] {
+        GlobalVariable(_) => ()
+        _ => abort("resource alias must resolve to the global resource handle")
+      }
+    _ => abort("expected textureDimensions image query")
   }
 }
 
@@ -4002,6 +4127,77 @@ test "WGSL AST lowerer keeps constructor member root after left global load" {
 }
 
 ///|
+test "WGSL AST lowerer predeclares constructor argument root before left global projection" {
+  let source =
+    #|struct VolumeInfo {
+    #|  voxel_from_world: mat4x4<f32>,
+    #|}
+    #|
+    #|struct VertexOutput {
+    #|  world_position: vec4<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> volume: VolumeInfo;
+    #|
+    #|fn fragment(mesh: VertexOutput) -> vec3<f32> {
+    #|  return (volume.voxel_from_world * vec4<f32>(mesh.world_position.xyz, 1.0)).xyz;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    GlobalVariable(_) => ()
+    _ => abort("expected left global root first")
+  }
+  match function.expressions.items[1] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected constructor argument root before left projection")
+  }
+  match function.expressions.items[2] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected left global projection after argument root")
+  }
+  match function.expressions.items[3] {
+    Load(pointer) => debug_inspect(pointer.index(), content="2")
+    _ => abort("expected left global load after projection")
+  }
+  match function.expressions.items[4] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="1")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected constructor member projection after left load")
+  }
+}
+
+///|
+test "WGSL AST lowerer delays literal let constants used by assignment RHS" {
+  let source =
+    #|fn color_sweep(uv_input: vec2<f32>) -> vec2<f32> {
+    #|  var uv = uv_input;
+    #|  let steps = 24.0;
+    #|  uv.y = uv.y * (1.0 + 1.0 / steps);
+    #|  return uv;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e4: f32 = uv.y;"), content="true")
+  debug_inspect(
+    emitted.contains("uv.y = (_e4 * (1f + (1f / 24f)));"),
+    content="true",
+  )
+}
+
+///|
 test "WGSL AST lowerer keeps non-loop nested var const initializer in declaration" {
   let source =
     #|fn nested_if_var_init(flag: bool) -> f32 {
@@ -4056,6 +4252,51 @@ test "WGSL AST lowerer reuses source local const initializer literal by scalar t
   }
   debug_inspect(color_init, content="1")
   debug_inspect(scalar_init, content="0")
+  let mut literal_count = 0
+  for expression in function.expressions.items {
+    match expression {
+      Literal(_) => literal_count += 1
+      _ => ()
+    }
+  }
+  debug_inspect(literal_count, content="1")
+}
+
+///|
+test "WGSL AST lowerer reuses inferred scalar var initializer literals in vector splats" {
+  let source =
+    #|fn source_var_splat_literal_reuse() -> vec3<f32> {
+    #|  var scalar = 0.0;
+    #|  var vector = vec3(0.0);
+    #|  return vector + vec3(scalar);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut scalar_init = -1
+  let mut vector_init = -1
+  for local_var in function.local_variables.items {
+    match local_var.name {
+      Some("scalar") =>
+        match local_var.init {
+          Some(init) => scalar_init = init.index()
+          None => ()
+        }
+      Some("vector") =>
+        match local_var.init {
+          Some(init) => vector_init = init.index()
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(scalar_init, content="0")
+  debug_inspect(vector_init, content="1")
+  match function.expressions.items[1] {
+    Splat(Tri, component) => debug_inspect(component.index(), content="0")
+    _ => abort("expected vector splat to reuse inferred scalar literal")
+  }
   let mut literal_count = 0
   for expression in function.expressions.items {
     match expression {
