@@ -104,6 +104,35 @@ test "naga-oil writer policy retains direct generated import scalar constant ope
 }
 
 ///|
+test "naga-oil writer policy folds generated import scalar constants in vector splats" {
+  let source =
+    #|const PIX_naga_oil_mod_XABCDX: f32 = 3.1415927;
+    #|
+    #|fn ground(value: vec3<f32>) -> vec3<f32> {
+    #|  return value / vec3(PIX_naga_oil_mod_XABCDX);
+    #|}
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
+    WgslIrGeneratedImportProvenance(
+      "PIX_naga_oil_mod_XABCDX",
+      "imports/math.wgsl",
+      "PI",
+      ImportedSourceSymbol,
+      false,
+    ),
+  ]) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("vec3(3.1415927f)"), content="true")
+  debug_inspect(
+    naga_oil.contains("vec3(PIX_naga_oil_mod_XABCDX)"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer follows Naga f32 negative-zero spelling state" {
   let source =
     #|const A: f32 = -0.0000;

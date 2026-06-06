@@ -261,7 +261,15 @@ fn WgslIrEmitter::constructor_scalar_folded_expression(
     Float | AbstractFloat =>
       match self.eval_float_expression_for_writer(function, operand) {
         Some(value) => self.float_value_literal_for_width(value, scalar.width)
-        None => None
+        None =>
+          match
+            self.eval_float_expression_with_retained_constants(
+              function, operand,
+            ) {
+            Some(value) =>
+              self.float_value_literal_for_width(value, scalar.width)
+            None => None
+          }
       }
     _ => None
   }
