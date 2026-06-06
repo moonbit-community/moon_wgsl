@@ -329,6 +329,27 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         None => ()
       }
       match
+        self.lower_function_binary_left_const_before_right_math_parent(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
+        self.lower_function_binary_chain_with_trailing_source_let_initializer(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
+        self.lower_function_binary_with_folded_right_const_vector_operand(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
         self.lower_function_binary_chain_with_parent_argument_after_member_root(
           op, left, right, function, scope,
         ) {
@@ -1034,6 +1055,187 @@ fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_member_
 }
 
 ///|
+fn WgslIrLowerer::lower_function_binary_left_const_before_right_math_parent(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard wgsl_ir_ast_binary_operator_is_multiplicative(op) else { return None }
+  guard self.expression_node_is_foldable_math_const_like(left, scope) else {
+    return None
+  }
+  guard !wgsl_ir_expr_node_references_local_let_constant(left, scope) else {
+    return None
+  }
+  let (math_function, argument) = match
+    wgsl_ir_expr_node_without_groups(right).kind() {
+    Call(callee, arguments) =>
+      match callee.kind() {
+        Identifier(name) =>
+          match wgsl_ir_math_function_from_name(name.name()) {
+            Some(math_function) => {
+              let arguments = wgsl_ir_call_arguments(arguments)
+              guard arguments is [argument] else { return None }
+              (math_function, argument)
+            }
+            None => return None
+          }
+        _ => return None
+      }
+    _ => return None
+  }
+  guard wgsl_ir_expr_node_without_groups(argument).kind() is Binary(_, _, _) else {
+    return None
+  }
+  let (argument_op, argument_left, argument_right) = self.lower_binary_expression_children_for_const_left_math_argument(
+    argument, function, scope,
+  )
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  let argument_binary_op = wgsl_ir_binary_operator(argument_op)
+  let (argument_left, argument_right) = self.normalize_function_binary_operands(
+    function, argument_binary_op, argument_left, argument_right,
+  )
+  let argument_handle = function.expressions.append(
+    Binary(argument_binary_op, argument_left, argument_right),
+  )
+  let right_handle = function.expressions.append(
+    Math(math_function, argument_handle, None, None, None),
+  )
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  Some(
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_with_folded_right_const_vector_operand(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match op {
+    Add | Subtract => ()
+    _ => return None
+  }
+  guard self.expression_node_is_float_vector_const_fold_candidate(right, scope) else {
+    return None
+  }
+  guard self.expression_node_contains_constructor_call_value(right) else {
+    return None
+  }
+  let mark = function.expressions.items.length()
+  let lowered_right = self.lower_function_expression_node(
+    right, function, scope,
+  )
+  let folded = self.fold_function_constant_float_vector_expression(
+    function, lowered_right,
+  )
+  function.expressions.truncate(mark)
+  guard folded is Some((right_ty, values)) else { return None }
+  let right_handle = self.append_function_float_vector_literal_compose(
+    function, right_ty, values,
+  )
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  Some(
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
+  )
+}
+
+///|
+fn WgslIrLowerer::lower_binary_expression_children_for_const_left_math_argument(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> (@ast.WgslExprOperator, Handle, Handle) raise WgslIrLowerError {
+  match wgsl_ir_expr_node_without_groups(node).kind() {
+    Binary(op, left, right) =>
+      if wgsl_ir_expr_node_is_literal_like(left) &&
+        wgsl_ir_expr_node_without_groups(right).kind() is Binary(_, _, _) {
+        let right_handle = self.lower_function_expression_node(
+          right, function, scope,
+        )
+        let left_handle = self.lower_function_expression_node(
+          left, function, scope,
+        )
+        (op, left_handle, right_handle)
+      } else {
+        self.lower_binary_expression_children(node, function, scope)
+      }
+    _ => self.lower_binary_expression_children(node, function, scope)
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_chain_with_trailing_source_let_initializer(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard wgsl_ir_ast_binary_operator_is_multiplicative(op) else { return None }
+  guard wgsl_ir_expr_node_without_groups(left).kind() is Binary(_, _, _) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_without_groups(right).kind() is Identifier(name) else {
+    return None
+  }
+  guard self.local_let_identifier_has_literal_initializer(name.name(), scope) else {
+    return None
+  }
+  guard self.expression_node_contains_mutable_local_reference(
+    left, function, scope,
+  ) else {
+    return None
+  }
+  let right_handle = self.lower_identifier_expression(
+    name.name(),
+    function,
+    scope,
+  )
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  Some(
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
+  )
+}
+
+///|
+fn WgslIrLowerer::local_let_identifier_has_literal_initializer(
+  self : WgslIrLowerer,
+  name : String,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  ignore(self)
+  match scope.local_constants.get(name) {
+    Some({ value: LazyConstant(local_constant), source: LocalLet }) =>
+      match local_constant.expr_ref.root() {
+        Some(root) => wgsl_ir_expr_node_is_literal_like(root)
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_function_binary_chain_with_sibling_arguments_before_parent(
   self : WgslIrLowerer,
   op : @ast.WgslExprOperator,
@@ -1726,6 +1928,55 @@ fn WgslIrLowerer::expression_node_is_foldable_math_const_like(
       self.expression_node_is_foldable_math_const_like(left, scope) &&
       self.expression_node_is_foldable_math_const_like(right, scope)
     _ => self.expression_node_is_naga_deferred_const_like(node, scope)
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_float_vector_const_fold_candidate(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expression_node_is_float_vector_const_fold_candidate(inner, scope)
+    Literal(_) => true
+    Identifier(_) =>
+      self.expression_node_is_inline_constant_reference(node, scope)
+    Unary(op, inner) =>
+      op == Subtract &&
+      self.expression_node_is_float_vector_const_fold_candidate(inner, scope)
+    Binary(_, left, right) =>
+      self.expression_node_is_float_vector_const_fold_candidate(left, scope) &&
+      self.expression_node_is_float_vector_const_fold_candidate(right, scope)
+    Call(callee, arguments) =>
+      self.expression_callee_is_constructor_call_value(callee) &&
+      wgsl_ir_call_arguments(arguments).all(fn(argument) {
+        self.expression_node_is_float_vector_const_fold_candidate(
+          argument, scope,
+        )
+      })
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_contains_constructor_call_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) | Unary(_, inner) =>
+      self.expression_node_contains_constructor_call_value(inner)
+    Binary(_, left, right) =>
+      self.expression_node_contains_constructor_call_value(left) ||
+      self.expression_node_contains_constructor_call_value(right)
+    Call(callee, arguments) =>
+      self.expression_callee_is_constructor_call_value(callee) ||
+      wgsl_ir_call_arguments(arguments).any(fn(argument) {
+        self.expression_node_contains_constructor_call_value(argument)
+      })
+    _ => false
   }
 }
 

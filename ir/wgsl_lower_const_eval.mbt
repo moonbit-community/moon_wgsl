@@ -760,6 +760,292 @@ fn WgslIrLowerer::fold_function_constant_float_expression(
 }
 
 ///|
+fn WgslIrLowerer::fold_function_constant_float_vector_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> (Handle, Array[Double])? {
+  guard self.function_expression_tree_contains_constant_reference(
+    function, handle,
+  ) else {
+    return None
+  }
+  guard self.function_expression_type(function, handle) is Some(ty) else {
+    return None
+  }
+  guard self.shader_module.types.get(ty) is Some(type_) else { return None }
+  let (size, scalar) = match type_.inner {
+    Vector(size, scalar) => {
+      let scalar = match scalar.kind {
+        AbstractFloat => Scalar::{ kind: Float, width: 4 }
+        Float => scalar
+        _ => return None
+      }
+      (size, scalar)
+    }
+    _ => return None
+  }
+  guard self.eval_function_float_vector_expression(function, handle)
+    is Some(values) else {
+    return None
+  }
+  guard values.length() == size.width() else { return None }
+  Some((self.vector_type_handle(size, scalar), values))
+}
+
+///|
+fn WgslIrLowerer::append_function_float_vector_literal_compose(
+  self : WgslIrLowerer,
+  function : Function,
+  ty : Handle,
+  values : Array[Double],
+) -> Handle raise WgslIrLowerError {
+  guard self.shader_module.types.get(ty) is Some(type_) else {
+    raise UnsupportedExpression("folded float vector uses missing type")
+  }
+  guard type_.inner is Vector(_, scalar) else {
+    raise UnsupportedExpression("folded float vector uses non-vector type")
+  }
+  let components : Array[Handle] = []
+  for value in values {
+    components.push(
+      function.expressions.append_with_origin(
+        Literal(wgsl_ir_float_literal_for_scalar_width(value, scalar.width)),
+        FoldedLocalConstant,
+      ),
+    )
+  }
+  function.expressions.append_with_origin(
+    Compose(ty, components),
+    FoldedLocalConstant,
+  )
+}
+
+///|
+fn WgslIrLowerer::eval_function_float_vector_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Array[Double]? {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.eval_function_float_vector_expression_inner(function, expression)
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::eval_function_float_vector_expression_inner(
+  self : WgslIrLowerer,
+  function : Function,
+  expression : Expression,
+) -> Array[Double]? {
+  match expression {
+    Literal(literal) =>
+      match wgsl_ir_float_value_from_literal_for_lowerer(literal) {
+        Some(value) => Some([value])
+        None => None
+      }
+    Constant(handle) =>
+      match self.eval_constant_float_expression(handle) {
+        Some(value) => Some([value])
+        None => {
+          let integer = Some(self.eval_constant_integer_expression(handle)) catch {
+            _ => None
+          }
+          match integer {
+            Some(value) => Some([value.to_double()])
+            None => None
+          }
+        }
+      }
+    Unary(Negate, inner) =>
+      match self.eval_function_float_vector_expression(function, inner) {
+        Some(values) => Some(values.map(fn(value) { -value }))
+        None => None
+      }
+    Splat(size, inner) =>
+      match self.eval_function_float_expression(function, inner) {
+        Some(value) => {
+          let values : Array[Double] = []
+          for _ in 0..<size.width() {
+            values.push(value)
+          }
+          Some(values)
+        }
+        None => None
+      }
+    Compose(_, components) => {
+      let values : Array[Double] = []
+      for component in components {
+        match self.eval_function_float_expression(function, component) {
+          Some(value) => values.push(value)
+          None => return None
+        }
+      }
+      Some(values)
+    }
+    Binary(op, left, right) => {
+      guard self.eval_function_float_vector_expression(function, left)
+        is Some(left_values) else {
+        return None
+      }
+      guard self.eval_function_float_vector_expression(function, right)
+        is Some(right_values) else {
+        return None
+      }
+      wgsl_ir_eval_float_vector_binary_for_lowerer(
+        op, left_values, right_values,
+      )
+    }
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_float_value_from_literal_for_lowerer(literal : Literal) -> Double? {
+  match literal {
+    AbstractFloat(value) => Some(value)
+    F32(value) => Some(value.to_double())
+    F16(value) | F64(value) => Some(value)
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_eval_float_vector_binary_for_lowerer(
+  op : BinaryOperator,
+  left : Array[Double],
+  right : Array[Double],
+) -> Array[Double]? {
+  let width = if left.length() == right.length() {
+    left.length()
+  } else if left.length() == 1 {
+    right.length()
+  } else if right.length() == 1 {
+    left.length()
+  } else {
+    return None
+  }
+  let values : Array[Double] = []
+  for index in 0..<width {
+    let left_value = if left.length() == 1 { left[0] } else { left[index] }
+    let right_value = if right.length() == 1 { right[0] } else { right[index] }
+    match wgsl_ir_eval_float_binary(op, left_value, right_value) {
+      Some(value) => values.push(value)
+      None => return None
+    }
+  }
+  Some(values)
+}
+
+///|
+fn WgslIrLowerer::function_expression_tree_contains_constant_reference(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(expression) =>
+      self.function_expression_contains_constant_reference(function, expression)
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_contains_constant_reference(
+  self : WgslIrLowerer,
+  function : Function,
+  expression : Expression,
+) -> Bool {
+  match expression {
+    Constant(_) => true
+    Literal(_)
+    | Override(_)
+    | FunctionArgument(_)
+    | GlobalVariable(_)
+    | LocalVariable(_)
+    | Load(_)
+    | AddressOf(_, _)
+    | ZeroValue(_)
+    | FunctionCall(_, _)
+    | AtomicCall(_, _)
+    | ImageSample(_, _, _, _, _, _, _, _, _)
+    | ImageLoad(_, _, _, _, _)
+    | ImageQuery(_, _)
+    | CallResult(_)
+    | AtomicResult(_, _)
+    | WorkGroupUniformLoadResult(_)
+    | WorkGroupUniformLoad(_)
+    | ArrayLength(_)
+    | RayQueryInitialize(_, _, _)
+    | RayQueryProceed(_)
+    | RayQueryGenerateIntersection(_, _)
+    | RayQueryConfirmIntersection(_)
+    | RayQueryTerminate(_)
+    | RayQueryVertexPositions(_, _)
+    | RayQueryProceedResult
+    | RayQueryGetIntersection(_, _)
+    | SubgroupCall(_, _)
+    | SubgroupBallotResult
+    | SubgroupOperationResult(_)
+    | CooperativeLoad(_, _, _, _)
+    | CooperativeMultiplyAdd(_, _, _) => false
+    Unary(_, inner)
+    | Bitcast(_, inner)
+    | Relational(_, inner)
+    | As(inner, _, _)
+    | Splat(_, inner)
+    | Swizzle(_, inner, _)
+    | AccessIndex(inner, _)
+    | Component(inner, _)
+    | Derivative(_, _, inner) =>
+      self.function_expression_tree_contains_constant_reference(function, inner)
+    Access(base, index) | Binary(_, base, index) =>
+      self.function_expression_tree_contains_constant_reference(function, base) ||
+      self.function_expression_tree_contains_constant_reference(function, index)
+    Select(left, right, condition) =>
+      self.function_expression_tree_contains_constant_reference(function, left) ||
+      self.function_expression_tree_contains_constant_reference(function, right) ||
+      self.function_expression_tree_contains_constant_reference(
+        function, condition,
+      )
+    Compose(_, components) =>
+      components.any(fn(component) {
+        self.function_expression_tree_contains_constant_reference(
+          function, component,
+        )
+      })
+    Math(_, first, second, third, fourth) =>
+      self.function_expression_tree_contains_constant_reference(function, first) ||
+      self.optional_function_expression_contains_constant_reference(
+        function, second,
+      ) ||
+      self.optional_function_expression_contains_constant_reference(
+        function, third,
+      ) ||
+      self.optional_function_expression_contains_constant_reference(
+        function, fourth,
+      )
+  }
+}
+
+///|
+fn WgslIrLowerer::optional_function_expression_contains_constant_reference(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle?,
+) -> Bool {
+  match handle {
+    Some(handle) =>
+      self.function_expression_tree_contains_constant_reference(
+        function, handle,
+      )
+    None => false
+  }
+}
+
+///|
 fn WgslIrLowerer::fold_function_constant_literal_expression(
   self : WgslIrLowerer,
   function : Function,
