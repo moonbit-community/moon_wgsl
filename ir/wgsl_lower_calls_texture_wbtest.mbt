@@ -602,3 +602,51 @@ test "WGSL AST lowerer uses texture type to lower advanced sampling arguments" {
 }
 
 ///|
+test "WGSL AST lowerer schedules textureGather offset leaves before resource roots" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var depth_tex: texture_depth_2d;
+    #|@group(0) @binding(1)
+    #|var samp: sampler;
+    #|
+    #|fn probe(uv: vec2<f32>) -> vec4<f32> {
+    #|  return textureGather(0, depth_tex, samp, uv, vec2<i32>(1i, 1i));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    Literal(I32(1)) => ()
+    _ => abort("expected first offset literal before texture root")
+  }
+  match function.expressions.items[1] {
+    Literal(I32(1)) => ()
+    _ => abort("expected second offset literal before texture root")
+  }
+  match function.expressions.items[2] {
+    GlobalVariable(_) => ()
+    _ => abort("expected texture root after offset leaves")
+  }
+  match function.expressions.items[3] {
+    GlobalVariable(_) => ()
+    _ => abort("expected sampler root after texture root")
+  }
+  match function.expressions.items[5] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="0")
+      debug_inspect(components[1].index(), content="1")
+    }
+    _ => abort("expected offset compose after texture and sampler roots")
+  }
+  match function.expressions.items[6] {
+    ImageSample(_, _, _, _, _, offset, _, _, _) =>
+      match offset {
+        Some(handle) => debug_inspect(handle.index(), content="5")
+        None => abort("expected textureGather offset handle")
+      }
+    _ => abort("expected textureGather image sample after offset compose")
+  }
+}
+
+///|

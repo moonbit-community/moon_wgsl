@@ -43,7 +43,7 @@ fn WgslIrEmitter::expression_tree_contains_folded_local_constant(
   match function {
     Some(function) =>
       match function.expressions.origin(handle) {
-        Some(FoldedLocalConstant) => return true
+        Some(FoldedLocalConstant | RetainedSourceLetExpression) => return true
         _ => ()
       }
     None => ()
@@ -254,6 +254,9 @@ fn WgslIrEmitter::constructor_scalar_folded_expression(
   scalar : Scalar,
 ) -> String? raise WgslIrEmitError {
   guard self.options.fold_numeric_constant_expressions() else { return None }
+  if self.expression_tree_contains_folded_local_constant(function, operand) {
+    return None
+  }
   match scalar.kind {
     Float | AbstractFloat =>
       match self.eval_float_expression_for_writer(function, operand) {

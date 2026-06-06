@@ -726,6 +726,111 @@ priv struct WgslIrTextureTrailingArgs {
 }
 
 ///|
+priv enum WgslIrTextureOffsetPlan {
+  LowerTextureOffsetNode(@ast.WgslExprNode)
+  FinishNamedTextureOffsetConstructor(
+    String,
+    Array[@ast.WgslExprNode],
+    Array[Handle],
+    Int
+  )
+  FinishTemplatedTextureOffsetConstructor(Handle, Array[Handle])
+}
+
+///|
+fn WgslIrLowerer::prelower_texture_offset_plan(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrTextureOffsetPlan raise WgslIrLowerError {
+  match node.kind() {
+    Group(inner) => self.prelower_texture_offset_plan(inner, function, scope)
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      match callee.kind() {
+        Template(_, _) => {
+          let ty = self.lower_templated_callee_type(callee)
+          match ty {
+            Some(ty) =>
+              FinishTemplatedTextureOffsetConstructor(
+                ty,
+                self.lower_function_constructor_arguments(
+                  ty, arguments, function, scope,
+                ),
+              )
+            None => LowerTextureOffsetNode(node)
+          }
+        }
+        Identifier(name) => {
+          let ty = Some(
+            self.lower_untemplated_constructor_type_from_ast(
+              name.name(),
+              arguments,
+              "texture offset constructor",
+            ),
+          ) catch {
+            _ => None
+          }
+          match ty {
+            Some(_) => {
+              let expression_mark = function.expressions.items.length()
+              let lowered_arguments = self.lower_function_constructor_arguments_with_expected(
+                arguments,
+                function,
+                scope,
+                None,
+              )
+              FinishNamedTextureOffsetConstructor(
+                name.name(),
+                arguments,
+                lowered_arguments,
+                expression_mark,
+              )
+            }
+            None => LowerTextureOffsetNode(node)
+          }
+        }
+        _ => LowerTextureOffsetNode(node)
+      }
+    }
+    _ => LowerTextureOffsetNode(node)
+  }
+}
+
+///|
+fn WgslIrLowerer::finish_texture_offset_plan(
+  self : WgslIrLowerer,
+  plan : WgslIrTextureOffsetPlan,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match plan {
+    LowerTextureOffsetNode(node) =>
+      self.lower_function_expression_node(node, function, scope)
+    FinishNamedTextureOffsetConstructor(
+      name,
+      arguments,
+      lowered_arguments,
+      expression_mark
+    ) =>
+      self.finish_function_constructor_call(
+        name,
+        arguments,
+        lowered_arguments,
+        function,
+        scope,
+        None,
+        expression_mark,
+      )
+    FinishTemplatedTextureOffsetConstructor(ty, lowered_arguments) =>
+      self.lower_function_constructor_expression_from_handles(
+        ty, lowered_arguments, function,
+      )
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_texture_trailing_args(
   self : WgslIrLowerer,
   arguments : Array[@ast.WgslExprNode],
@@ -788,6 +893,73 @@ fn WgslIrLowerer::lower_texture_trailing_args(
     None
   }
   { array_index, trailing, offset }
+}
+
+///|
+fn WgslIrLowerer::image_type_handle_is_depth(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(self.deref_pointer_type_handle(ty)) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, _, Depth(_)) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::image_type_handle_is_arrayed(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.get(self.deref_pointer_type_handle(ty)) {
+    Some(type_) =>
+      match type_.inner {
+        Image(_, arrayed, _) => arrayed
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::texture_offset_index_from_image_type(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  image_ty : Handle,
+  base_count : Int,
+  trailing_count : Int,
+  callee : String,
+) -> Int? raise WgslIrLowerError {
+  let arrayed = self.image_type_handle_is_arrayed(image_ty)
+  let remaining = arguments.length() - base_count
+  guard remaining >= trailing_count else {
+    raise UnsupportedExpression("\{callee} has too few arguments")
+  }
+  let trailing_start = if arrayed {
+    guard remaining == trailing_count + 1 || remaining == trailing_count + 2 else {
+      raise UnsupportedExpression(
+        "\{callee} argument list does not match arrayed texture signature",
+      )
+    }
+    base_count + 1
+  } else {
+    guard remaining == trailing_count || remaining == trailing_count + 1 else {
+      raise UnsupportedExpression(
+        "\{callee} argument list does not match texture signature",
+      )
+    }
+    base_count
+  }
+  let offset_index = trailing_start + trailing_count
+  if offset_index < arguments.length() {
+    Some(offset_index)
+  } else {
+    None
+  }
 }
 
 ///|
@@ -867,18 +1039,6 @@ fn WgslIrLowerer::image_expression_is_external(
 ) -> Bool {
   match self.image_expression_inner(function, image) {
     Some((_, _, External)) => true
-    _ => false
-  }
-}
-
-///|
-fn WgslIrLowerer::image_expression_is_depth(
-  self : WgslIrLowerer,
-  function : Function,
-  image : Handle,
-) -> Bool {
-  match self.image_expression_inner(function, image) {
-    Some((_, _, Depth(_))) => true
     _ => false
   }
 }
@@ -1135,14 +1295,13 @@ fn WgslIrLowerer::lower_image_gather_expression(
   } else {
     0
   }
-  let probe_image = self.lower_function_expression_node(
+  let probe_image_ty = self.infer_expression_type(
     arguments[probe_image_index],
-    function,
-    scope,
+    "textureGather image",
   )
-  let depth = self.image_expression_is_depth(function, probe_image)
+  let depth = self.image_type_handle_is_depth(probe_image_ty)
   let has_component = probe_image_index == 1
-  let (component, image, sampler, coordinate, base_count) = if depth {
+  let (component, image_index, sampler_index, coordinate_index, base_count) = if depth {
     let (component, sampler_index, coordinate_index, base_count) = if has_component {
       guard arguments.length() >= 4 else {
         raise UnsupportedExpression(
@@ -1153,17 +1312,13 @@ fn WgslIrLowerer::lower_image_gather_expression(
     } else {
       (X, 1, 2, 3)
     }
-    let sampler = self.lower_function_expression_node(
-      arguments[sampler_index],
-      function,
-      scope,
+    (
+      Some(component),
+      probe_image_index,
+      sampler_index,
+      coordinate_index,
+      base_count,
     )
-    let coordinate = self.lower_function_expression_node(
-      arguments[coordinate_index],
-      function,
-      scope,
-    )
-    (Some(component), probe_image, sampler, coordinate, base_count)
   } else {
     guard arguments.length() >= 4 else {
       raise UnsupportedExpression(
@@ -1171,29 +1326,60 @@ fn WgslIrLowerer::lower_image_gather_expression(
       )
     }
     let component = wgsl_ir_gather_component_from_node(arguments[0])
-    let sampler = self.lower_function_expression_node(
-      arguments[2],
-      function,
-      scope,
-    )
-    let coordinate = self.lower_function_expression_node(
-      arguments[3],
-      function,
-      scope,
-    )
-    (Some(component), probe_image, sampler, coordinate, 4)
+    (Some(component), probe_image_index, 2, 3, 4)
   }
-  let parsed = self.lower_texture_trailing_args(
-    arguments, function, scope, image, base_count, 0, "textureGather",
+  let offset_plan = match
+    self.texture_offset_index_from_image_type(
+      arguments, probe_image_ty, base_count, 0, "textureGather",
+    ) {
+    Some(offset_index) =>
+      Some(
+        self.prelower_texture_offset_plan(
+          arguments[offset_index],
+          function,
+          scope,
+        ),
+      )
+    None => None
+  }
+  let image = self.lower_function_expression_node(
+    arguments[image_index],
+    function,
+    scope,
   )
+  let sampler = self.lower_function_expression_node(
+    arguments[sampler_index],
+    function,
+    scope,
+  )
+  let coordinate = self.lower_function_expression_node(
+    arguments[coordinate_index],
+    function,
+    scope,
+  )
+  let array_index = if self.image_type_handle_is_arrayed(probe_image_ty) {
+    Some(
+      self.lower_function_expression_node(
+        arguments[base_count],
+        function,
+        scope,
+      ),
+    )
+  } else {
+    None
+  }
+  let offset = match offset_plan {
+    Some(plan) => Some(self.finish_texture_offset_plan(plan, function, scope))
+    None => None
+  }
   function.expressions.append(
     ImageSample(
       image,
       sampler,
       component,
       coordinate,
-      parsed.array_index,
-      parsed.offset,
+      array_index,
+      offset,
       Auto,
       None,
       false,

@@ -139,6 +139,7 @@ fn LocalVariableArena::set(
 pub enum ExpressionOrigin {
   SourceExpression
   FoldedLocalConstant
+  RetainedSourceLetExpression
 } derive(Eq, Debug)
 
 ///|

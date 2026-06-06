@@ -65,6 +65,23 @@ test "naga-oil writer policy preserves source let arithmetic aliases" {
 }
 
 ///|
+test "naga-oil writer policy preserves source let arithmetic inside vector splats" {
+  let source =
+    #|fn apply_bias(value: vec4<f32>) -> vec4<f32> {
+    #|  let bias = 0.25;
+    #|  return vec4((1.0 + bias)) - value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(naga_oil.contains("(1f + 0.25f)"), content="true")
+  debug_inspect(naga_oil.contains("vec4(1.25f)"), content="false")
+}
+
+///|
 test "naga-oil writer policy emits unsigned bit masks in u32 context" {
   let source =
     #|fn copysign(a: f32, b: f32) -> f32 {

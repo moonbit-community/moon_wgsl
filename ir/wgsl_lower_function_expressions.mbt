@@ -550,6 +550,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         Binary(binary_op, left_handle, right_handle),
       )
       if wgsl_ir_expr_node_references_local_let_constant(node, scope) {
+        function.expressions.set_origin(handle, RetainedSourceLetExpression)
         return handle
       }
       match self.fold_function_constant_float_expression(function, handle) {
@@ -2561,12 +2562,16 @@ fn WgslIrLowerer::lower_identifier_expression(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   match scope.local_constants.get(name) {
-    Some({ value: LazyConstant(local_constant), .. }) => {
+    Some({ value: LazyConstant(local_constant), source }) => {
       let handle = match local_constant.normalized {
         Some(normalized) =>
           function.expressions.append_with_origin(
             normalized.expression,
-            normalized.origin,
+            if source == LocalLet {
+              RetainedSourceLetExpression
+            } else {
+              normalized.origin
+            },
           )
         None =>
           self.lower_function_expression_ref_with_expected(
@@ -2575,6 +2580,9 @@ fn WgslIrLowerer::lower_identifier_expression(
             scope,
             local_constant.explicit_ty,
           )
+      }
+      if source == LocalLet {
+        function.expressions.set_origin(handle, RetainedSourceLetExpression)
       }
       match scope.local_constants.get(name) {
         Some(cell) => cell.value = ExpressionAlias(handle)
@@ -3587,6 +3595,9 @@ fn WgslIrLowerer::lower_function_constructor_argument(
   let lowered = self.lower_function_expression_node_with_expected(
     argument, function, scope, expected_ty,
   )
+  if wgsl_ir_expr_node_references_local_let_constant(argument, scope) {
+    return lowered
+  }
   guard self.fold_function_constant_float_expression(function, lowered)
     is Some(literal) else {
     return lowered

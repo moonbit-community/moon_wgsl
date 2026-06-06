@@ -334,6 +334,7 @@ pub fn ExpressionArena::append(Self, Expression) -> Handle
 pub enum ExpressionOrigin {
   SourceExpression
   FoldedLocalConstant
+  RetainedSourceLetExpression
 } derive(Eq, @debug.Debug)
 
 pub enum FilterableTriggeringRule {
