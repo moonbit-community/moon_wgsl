@@ -494,7 +494,7 @@ fn wgsl_ir_trace_swizzle_list(components : Array[SwizzleComponent]) -> String {
 fn wgsl_ir_trace_literal(literal : Literal) -> String {
   match literal {
     F64(value) => "f64:\{value}"
-    F32(value) => "f32:\{value.to_double()}"
+    F32(value) | F32Exact(value) => "f32:\{value.to_double()}"
     F16(value) => "f16:\{value}"
     U16(value) => "u16:\{value}"
     I16(value) => "i16:\{value}"

@@ -2,6 +2,7 @@
 pub enum Literal {
   F64(Double)
   F32(Float)
+  F32Exact(Float)
   F16(Double)
   U16(Int)
   I16(Int)

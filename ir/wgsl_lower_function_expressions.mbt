@@ -519,6 +519,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         None => ()
       }
       match
+        self.lower_function_binary_with_trailing_source_let_literal(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
         self.lower_function_binary_with_folded_right_const_vector_operand(
           op, left, right, function, scope,
         ) {
@@ -1422,6 +1429,43 @@ fn WgslIrLowerer::lower_function_binary_chain_with_trailing_source_let_initializ
   Some(
     function.expressions.append(Binary(binary_op, left_handle, right_handle)),
   )
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_with_trailing_source_let_literal(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard wgsl_ir_ast_binary_operator_is_multiplicative(op) else { return None }
+  guard wgsl_ir_expr_node_without_groups(right).kind() is Identifier(name) else {
+    return None
+  }
+  guard self.local_let_identifier_has_literal_initializer(name.name(), scope) else {
+    return None
+  }
+  guard self.expression_node_is_mutable_local_value(left, function, scope) else {
+    return None
+  }
+  guard !wgsl_ir_expr_node_contains_call(left) else { return None }
+  let right_handle = self.lower_identifier_expression(
+    name.name(),
+    function,
+    scope,
+  )
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  let handle = function.expressions.append(
+    Binary(binary_op, left_handle, right_handle),
+  )
+  function.expressions.set_origin(handle, RetainedSourceLetExpression)
+  Some(handle)
 }
 
 ///|
@@ -4459,6 +4503,32 @@ fn WgslIrLowerer::lower_function_math_call(
   let deferred_constructors = self.prelower_homogeneous_math_constructor_arguments(
     math_function, arguments, function, scope,
   )
+  if wgsl_ir_math_call_has_later_function_argument_values(arguments, scope) &&
+    !deferred_constructors.contains(0) {
+    match
+      self.prelower_math_splat_constructor_argument_from_later_context(
+        arguments, function, scope,
+      ) {
+      Some(value) => deferred_constructors.set(0, value)
+      None => ()
+    }
+  }
+  if self.math_call_predeclares_later_function_arguments_after_first_consts(
+      math_function, arguments, deferred_constructors, function, scope,
+    ) {
+    self.predeclare_inline_constant_references_in_source_order(
+      arguments[0],
+      function,
+      scope,
+    )
+    for index in 1..<arguments.length() {
+      self.predeclare_function_argument_values_in_source_order(
+        arguments[index],
+        function,
+        scope,
+      )
+    }
+  }
   if self.math_call_predeclares_later_direct_arguments_before_reference_first(
       arguments, function, scope,
     ) {
@@ -4626,6 +4696,167 @@ fn WgslIrLowerer::lower_function_math_call_with_later_splat_constructors_before_
 }
 
 ///|
+fn wgsl_ir_math_call_has_later_function_argument_values(
+  arguments : Array[@ast.WgslExprNode],
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  guard arguments.length() > 1 else { return false }
+  for index in 1..<arguments.length() {
+    if wgsl_ir_expr_node_contains_function_argument_value(
+        arguments[index],
+        scope,
+      ) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn WgslIrLowerer::prelower_math_splat_constructor_argument_from_later_context(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrDeferredConstructorArgument? raise WgslIrLowerError {
+  guard arguments.length() > 1 else { return None }
+  guard arguments[0].kind() is Call(_, constructor_arguments) else {
+    return None
+  }
+  guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
+    is [component] else {
+    return None
+  }
+  guard wgsl_ir_expr_node_is_foldable_float_arena_candidate(component) else {
+    return None
+  }
+  guard self.math_call_later_function_argument_context_type(
+      arguments, function, scope,
+    )
+    is Some(expected_ty) else {
+    return None
+  }
+  self.prelower_math_splat_constructor_argument_with_expected_type(
+    arguments[0],
+    expected_ty,
+    function,
+    scope,
+  )
+}
+
+///|
+fn WgslIrLowerer::math_call_later_function_argument_context_type(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  for index in 1..<arguments.length() {
+    if wgsl_ir_expr_node_contains_function_argument_value(
+        arguments[index],
+        scope,
+      ) {
+      return Some(
+        self.infer_expression_type_in_function_scope(
+          arguments[index],
+          "math argument",
+          function,
+          scope,
+        ),
+      )
+    }
+  }
+  None
+}
+
+///|
+fn WgslIrLowerer::prelower_math_splat_constructor_argument_with_expected_type(
+  self : WgslIrLowerer,
+  argument : @ast.WgslExprNode,
+  expected_ty : Handle,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> WgslIrDeferredConstructorArgument? raise WgslIrLowerError {
+  guard argument.kind() is Call(callee, constructor_arguments) else {
+    return None
+  }
+  guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
+    is [component] else {
+    return None
+  }
+  guard wgsl_ir_expr_node_is_foldable_float_arena_candidate(component) else {
+    return None
+  }
+  guard self.vector_size_from_type(expected_ty) is Some(expected_size) else {
+    return None
+  }
+  let ty = match self.lower_templated_callee_type(callee) {
+    Some(ty) => ty
+    None =>
+      match callee.kind() {
+        Identifier(name) =>
+          match wgsl_ir_vector_size_from_constructor_name(name.name()) {
+            Some(size) if size == expected_size => expected_ty
+            _ => return None
+          }
+        _ => return None
+      }
+  }
+  guard self.constructor_component_expected_type(ty) is Some(component_ty) else {
+    return None
+  }
+  let expression_mark = function.expressions.items.length()
+  let lowered = self.lower_function_expression_node_with_expected(
+    component,
+    function,
+    scope,
+    Some(component_ty),
+  )
+  match self.fold_function_constant_float_expression(function, lowered) {
+    Some(literal) => {
+      function.expressions.truncate(expression_mark)
+      let component = function.expressions.append_with_origin(
+        Literal(literal),
+        FoldedLocalConstant,
+      )
+      Some({ ty, component })
+    }
+    None => {
+      function.expressions.truncate(expression_mark)
+      None
+    }
+  }
+}
+
+///|
+fn WgslIrLowerer::math_call_predeclares_later_function_arguments_after_first_consts(
+  self : WgslIrLowerer,
+  math_function : MathFunction,
+  arguments : Array[@ast.WgslExprNode],
+  deferred_constructors : Map[Int, WgslIrDeferredConstructorArgument],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  guard wgsl_ir_math_function_has_homogeneous_arguments(math_function) else {
+    return false
+  }
+  guard arguments.length() > 1 else { return false }
+  let first_has_const_leaf = deferred_constructors.contains(0) ||
+    self.expression_node_contains_inline_constant_reference(arguments[0], scope)
+  guard first_has_const_leaf else { return false }
+  for index in 1..<arguments.length() {
+    if wgsl_ir_expr_node_contains_function_argument_value(
+        arguments[index],
+        scope,
+      ) {
+      return true
+    }
+  }
+  ignore(function)
+  false
+}
+
+///|
 fn WgslIrLowerer::math_call_later_argument_lowers_before_deferred_first(
   self : WgslIrLowerer,
   argument : @ast.WgslExprNode,
@@ -4671,6 +4902,68 @@ fn wgsl_ir_math_call_predeclares_function_argument_values(
   arguments.any(fn(argument) {
     wgsl_ir_expr_node_contains_function_argument_math_call(argument, scope)
   })
+}
+
+///|
+fn WgslIrLowerer::predeclare_inline_constant_references_in_source_order(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  match node.kind() {
+    Identifier(name) =>
+      if self.expression_node_is_inline_constant_reference(node, scope) {
+        ignore(self.lower_identifier_expression(name.name(), function, scope))
+      }
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.predeclare_inline_constant_references_in_source_order(
+        inner, function, scope,
+      )
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) => {
+      self.predeclare_inline_constant_references_in_source_order(
+        left, function, scope,
+      )
+      self.predeclare_inline_constant_references_in_source_order(
+        right, function, scope,
+      )
+    }
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.predeclare_inline_constant_references_in_source_order(
+        base, function, scope,
+      )
+    Call(_, arguments) | Sequence(arguments) =>
+      for argument in arguments {
+        self.predeclare_inline_constant_references_in_source_order(
+          argument, function, scope,
+        )
+      }
+    Literal(_) | ShaderDefTemplate(_) => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_contains_inline_constant_reference(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(_) =>
+      self.expression_node_is_inline_constant_reference(node, scope)
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.expression_node_contains_inline_constant_reference(inner, scope)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      self.expression_node_contains_inline_constant_reference(left, scope) ||
+      self.expression_node_contains_inline_constant_reference(right, scope)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.expression_node_contains_inline_constant_reference(base, scope)
+    Call(_, arguments) | Sequence(arguments) =>
+      arguments.any(fn(argument) {
+        self.expression_node_contains_inline_constant_reference(argument, scope)
+      })
+    Literal(_) | ShaderDefTemplate(_) => false
+  }
 }
 
 ///|
@@ -4785,9 +5078,42 @@ fn WgslIrLowerer::math_call_lowers_second_argument_before_first(
     )
   ) ||
   (
+    wgsl_ir_expr_node_is_foldable_float_splat_constructor(arguments[0]) &&
+    self.expression_node_contains_naga_reference_value(
+      arguments[1],
+      function,
+      scope,
+    )
+  ) ||
+  (
     self.expression_node_is_foldable_math_const_like(arguments[0], scope) &&
     self.expression_node_contains_user_function_call(arguments[1])
   )
+}
+
+///|
+fn wgsl_ir_expr_node_is_foldable_float_splat_constructor(
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_is_foldable_float_splat_constructor(inner)
+    Call(callee, arguments) =>
+      wgsl_ir_callee_is_vector_constructor(callee) &&
+      wgsl_ir_flatten_expression_arguments(arguments) is [component] &&
+      wgsl_ir_expr_node_is_foldable_float_arena_candidate(component)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_callee_is_vector_constructor(callee : @ast.WgslExprNode) -> Bool {
+  match callee.kind() {
+    Identifier(name) =>
+      wgsl_ir_vector_size_from_constructor_name(name.name()) != None
+    Template(base, _) => wgsl_ir_callee_is_vector_constructor(base)
+    Group(inner) => wgsl_ir_callee_is_vector_constructor(inner)
+    _ => false
+  }
 }
 
 ///|

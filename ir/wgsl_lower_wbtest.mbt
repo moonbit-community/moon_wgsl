@@ -3594,6 +3594,170 @@ test "WGSL AST lowerer folds typed integer const subexpressions in function aren
 }
 
 ///|
+test "WGSL AST lowerer allocates trailing source-let literals before mutable local loads" {
+  let source =
+    #|fn probe(input: vec3<f32>) -> vec3<f32> {
+    #|  var color = input;
+    #|  let scale = 0.97;
+    #|  return color * scale;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let last = function.expressions.items.length() - 1
+  match function.expressions.items[last - 2] {
+    Literal(F32(value)) =>
+      debug_inspect(value.to_double() > 0.969, content="true")
+    Literal(AbstractFloat(value)) =>
+      debug_inspect(value > 0.969, content="true")
+    _ => abort("expected source-let literal before mutable local load")
+  }
+  match function.expressions.items[last - 1] {
+    Load(_) => ()
+    _ => abort("expected mutable local load after source-let literal")
+  }
+  match function.expressions.items[last] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="\{last - 1}")
+      debug_inspect(right.index(), content="\{last - 2}")
+    }
+    _ => abort("expected binary to preserve source operand semantics")
+  }
+}
+
+///|
+test "WGSL AST lowerer schedules homogeneous math const leaves before later function arguments" {
+  let source =
+    #|fn probe(color: vec3<f32>, minimum_ev: f32, maximum_ev: f32) -> vec3<f32> {
+    #|  let mid = 0.18;
+    #|  var normalized_color = max(vec3(0.0), color);
+    #|  normalized_color = clamp(
+    #|    log2(normalized_color / mid),
+    #|    vec3(minimum_ev),
+    #|    vec3(maximum_ev)
+    #|  );
+    #|  return normalized_color;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut zero_literal = -1
+  let mut color_argument = -1
+  let mut max_splat = -1
+  let mut max_call = -1
+  let mut mid_literal = -1
+  let mut minimum_argument = -1
+  let mut maximum_argument = -1
+  let mut normalized_load = -1
+  let mut mid_splat = -1
+  let mut log2_call = -1
+  let mut minimum_splat = -1
+  let mut maximum_splat = -1
+  let mut clamp_call = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Literal(AbstractFloat(value)) =>
+        if value < 0.001 && zero_literal == -1 {
+          zero_literal = expression_index
+        } else if value > 0.179 && value < 0.181 && mid_literal == -1 {
+          mid_literal = expression_index
+        }
+      Literal(F32(value)) => {
+        let value = value.to_double()
+        if value < 0.001 && zero_literal == -1 {
+          zero_literal = expression_index
+        } else if value > 0.179 && value < 0.181 && mid_literal == -1 {
+          mid_literal = expression_index
+        }
+      }
+      FunctionArgument(0) if color_argument == -1 =>
+        color_argument = expression_index
+      FunctionArgument(1) if minimum_argument == -1 =>
+        minimum_argument = expression_index
+      FunctionArgument(2) if maximum_argument == -1 =>
+        maximum_argument = expression_index
+      Splat(_, inner) if inner.index() == zero_literal && max_splat == -1 =>
+        max_splat = expression_index
+      Splat(_, inner) if inner.index() == mid_literal && mid_splat == -1 =>
+        mid_splat = expression_index
+      Splat(_, inner) if inner.index() == minimum_argument &&
+        minimum_splat == -1 => minimum_splat = expression_index
+      Splat(_, inner) if inner.index() == maximum_argument &&
+        maximum_splat == -1 => maximum_splat = expression_index
+      Math(Max, left, Some(right), None, None) if max_call == -1 => {
+        max_call = expression_index
+        debug_inspect(left.index(), content="\{max_splat}")
+        debug_inspect(right.index(), content="\{color_argument}")
+      }
+      Load(_) if maximum_argument >= 0 && normalized_load == -1 =>
+        normalized_load = expression_index
+      Math(Log2, _, None, None, None) if log2_call == -1 =>
+        log2_call = expression_index
+      Math(Clamp, value, Some(low), Some(high), None) if clamp_call == -1 => {
+        clamp_call = expression_index
+        debug_inspect(value.index(), content="\{log2_call}")
+        debug_inspect(low.index(), content="\{minimum_splat}")
+        debug_inspect(high.index(), content="\{maximum_splat}")
+      }
+      _ => ()
+    }
+  }
+  debug_inspect(zero_literal < color_argument, content="true")
+  debug_inspect(color_argument < max_splat, content="true")
+  debug_inspect(max_splat < max_call, content="true")
+  debug_inspect(mid_literal < minimum_argument, content="true")
+  debug_inspect(minimum_argument < maximum_argument, content="true")
+  debug_inspect(maximum_argument < normalized_load, content="true")
+  debug_inspect(normalized_load < mid_splat, content="true")
+  debug_inspect(mid_splat < log2_call, content="true")
+  debug_inspect(log2_call < minimum_splat, content="true")
+  debug_inspect(minimum_splat < maximum_splat, content="true")
+  debug_inspect(maximum_splat < clamp_call, content="true")
+}
+
+///|
+test "WGSL AST lowerer schedules mutable second math argument before foldable first splat" {
+  let source =
+    #|fn probe(color: vec3<f32>) -> vec3<f32> {
+    #|  var open_color = color;
+    #|  open_color = pow(vec3(2.0), open_color);
+    #|  return open_color;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut open_load = -1
+  let mut two_literal = -1
+  let mut two_splat = -1
+  let mut pow_call = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Load(_) if open_load == -1 => open_load = expression_index
+      Literal(AbstractFloat(value)) if value > 1.99 &&
+        value < 2.01 &&
+        two_literal == -1 => two_literal = expression_index
+      Literal(F32(value)) if value.to_double() > 1.99 &&
+        value.to_double() < 2.01 &&
+        two_literal == -1 => two_literal = expression_index
+      Splat(_, inner) if inner.index() == two_literal && two_splat == -1 =>
+        two_splat = expression_index
+      Math(Pow, left, Some(right), None, None) if pow_call == -1 => {
+        pow_call = expression_index
+        debug_inspect(left.index(), content="\{two_splat}")
+        debug_inspect(right.index(), content="\{open_load}")
+      }
+      _ => ()
+    }
+  }
+  debug_inspect(open_load < two_literal, content="true")
+  debug_inspect(two_literal < two_splat, content="true")
+  debug_inspect(two_splat < pow_call, content="true")
+}
+
+///|
 test "WGSL AST lowerer lazily materializes return short-circuit branches in Naga order" {
   let source =
     #|const BORDER_LEFT: u32 = 256u;

@@ -387,7 +387,7 @@ fn WgslIrValidator::literal_type(
     I16(_) => self.find_scalar_type(Scalar(Sint, 2))
     U16(_) => self.find_scalar_type(Scalar(Uint, 2))
     F16(_) => self.find_scalar_type(Scalar(Float, 2))
-    F32(_) => self.find_scalar_type(Scalar(Float, 4))
+    F32(_) | F32Exact(_) => self.find_scalar_type(Scalar(Float, 4))
     F64(_) => self.find_scalar_type(Scalar(Float, 8))
     AbstractInt(_) => self.find_scalar_type(Scalar(AbstractInt, 8))
     AbstractFloat(_) => self.find_scalar_type(Scalar(AbstractFloat, 8))

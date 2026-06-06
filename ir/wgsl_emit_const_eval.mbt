@@ -158,7 +158,7 @@ fn WgslIrEmitter::eval_global_float_expression_inner_for_emit(
   visiting_constants : @set.Set[Int],
 ) -> Double? {
   match expression {
-    Literal(F32(value)) => wgsl_ir_emit_f32_to_double(value)
+    Literal(F32(value) | F32Exact(value)) => wgsl_ir_emit_f32_to_double(value)
     Literal(F16(value)) | Literal(F64(value)) | Literal(AbstractFloat(value)) =>
       Some(value)
     Constant(handle) =>

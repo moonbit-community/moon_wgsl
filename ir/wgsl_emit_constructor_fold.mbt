@@ -125,7 +125,7 @@ fn WgslIrEmitter::folded_scalar_constructor_expression(
 fn wgsl_ir_float_value_from_numeric_literal(literal : Literal) -> Double? {
   match literal {
     F16(value) | F64(value) | AbstractFloat(value) => Some(value)
-    F32(value) => Some(value.to_double())
+    F32(value) | F32Exact(value) => Some(value.to_double())
     I32(value) => Some(Double::from_int(value))
     U32(value) => Some(value.to_double())
     AbstractInt(value) => Some(value.to_double())

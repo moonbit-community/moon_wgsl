@@ -1,5 +1,4 @@
 id	rel_path	hash	class	reason
-bevy	crates/bevy_core_pipeline/src/tonemapping/tonemapping_shared.wgsl	0cf271540053f99bd9bf2394f369cbc44b99638106cf294c7e0100870d77b1b8	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/atmosphere/aerial_view_lut.wgsl	f7f5a3c778e6fede2c7b57c340514344dbefec708fac1c1ba1d855d268df0443	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/atmosphere/multiscattering_lut.wgsl	37364d22238e2f90a29ae9d9d16b69343595e451fc2cc9905c5fbae9388d01a7	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/light_probe/environment_map.wgsl	02449502199fbe2efa2c09f5d145cb829285d24442497955402d8788b87cfdd8	byte-output-drift	strict-byte-parity-failure

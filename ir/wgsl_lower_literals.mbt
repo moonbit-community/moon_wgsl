@@ -200,6 +200,7 @@ fn wgsl_ir_negate_literal(literal : Literal) -> Literal? {
   match literal {
     F64(value) => Some(F64(-value))
     F32(value) => Some(F32(Float::from_double(-value.to_double())))
+    F32Exact(value) => Some(F32Exact(Float::from_double(-value.to_double())))
     F16(value) => Some(F16(-value))
     I16(value) => Some(I16(-value))
     I32(value) => Some(I32(-value))

@@ -315,7 +315,7 @@ fn WgslIrLowerer::literal_type(
     AbstractInt(_) => self.type_cache.get("__abstract_int")
     U32(_) => self.type_cache.get("u32")
     F16(_) => self.type_cache.get("f16")
-    F32(_) => self.type_cache.get("f32")
+    F32(_) | F32Exact(_) => self.type_cache.get("f32")
     F64(_) => self.type_cache.get("f64")
     AbstractFloat(_) => self.type_cache.get("__abstract_float")
     _ => None

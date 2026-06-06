@@ -143,6 +143,7 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
   match literal {
     F64(value) => wgsl_ir_emit_abstract_float_literal_text("\{value}")
     F32(value) => self.f32_literal(value, numeric_policy)
+    F32Exact(value) => wgsl_ir_emit_exact_f32_literal(value, numeric_policy)
     F16(value) => wgsl_ir_emit_f16_literal_text("\{value}")
     U16(value) => "\{value}u"
     I16(value) => "\{value}"
@@ -158,6 +159,24 @@ fn WgslIrEmitter::literal(self : WgslIrEmitter, literal : Literal) -> String {
       } else {
         wgsl_ir_emit_f32_literal(Float::from_double(value), numeric_policy)
       }
+  }
+}
+
+///|
+fn wgsl_ir_emit_exact_f32_literal(
+  value : Float,
+  policy : WgslIrNumericLiteralBytePolicy,
+) -> String {
+  if wgsl_ir_f32_is_negative_zero(value) {
+    return "-0f"
+  }
+  match policy {
+    NagaCompatibleNumericLiteralSpelling =>
+      wgsl_ir_emit_concrete_float_literal_text("\{value}")
+    RuntimeNumericLiteralSpelling =>
+      wgsl_ir_emit_concrete_float_literal_text(
+        wgsl_ir_shortest_f32_literal_text(value),
+      )
   }
 }
 

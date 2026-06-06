@@ -779,7 +779,7 @@ fn wgsl_ir_source_local_const_literal_value_key(
   let value_key = match literal {
     Bool(value) => "bool:\{value}"
     F64(value) | AbstractFloat(value) | F16(value) => "float:\{value}"
-    F32(value) => "float:\{value.to_double()}"
+    F32(value) | F32Exact(value) => "float:\{value.to_double()}"
     I16(value) | I32(value) => "int:\{value}"
     I64(value) | AbstractInt(value) => "int:\{value}"
     U16(value) => "uint:\{value}"
@@ -2355,7 +2355,7 @@ fn WgslIrLowerer::lower_local_declaration(
             local_decl, init_handle, function, scope,
           ) {
           let normalized = self.normalized_local_constant_initializer(
-            function, init_handle,
+            function, init_handle, explicit_ty,
           )
           function.expressions.set_origin(normalized, FoldedLocalConstant)
           ignore(scope.locals.remove(local_decl.name().name()))
@@ -3134,7 +3134,23 @@ fn WgslIrLowerer::lower_local_const_declaration(
       "local const initializer is not a const expression",
     )
   }
-  let normalized = self.normalized_local_constant_initializer(function, init)
+  let const_ty = match explicit_ty {
+    Some(ty) => ty
+    None =>
+      match self.function_expression_type(function, init) {
+        Some(ty) => ty
+        None =>
+          self.infer_local_type_from_initializer(
+            local_decl.name().name(),
+            local_decl.initializer_ref(),
+          )
+      }
+  }
+  let normalized = self.normalized_local_constant_initializer(
+    function,
+    init,
+    Some(const_ty),
+  )
   function.expressions.set_origin(normalized, FoldedLocalConstant)
   ignore(scope.locals.remove(local_decl.name().name()))
   match local_constant_placement {

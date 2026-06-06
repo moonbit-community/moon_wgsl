@@ -314,7 +314,7 @@ fn WgslIrEmitter::literal_type(
     AbstractInt(_) => self.type_handle_named("__abstract_int")
     U32(_) => self.type_handle_named("u32")
     F16(_) => self.type_handle_named("f16")
-    F32(_) => self.type_handle_named("f32")
+    F32(_) | F32Exact(_) => self.type_handle_named("f32")
     F64(_) => self.type_handle_named("f64")
     AbstractFloat(_) => self.type_handle_named("__abstract_float")
     _ => None

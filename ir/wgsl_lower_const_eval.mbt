@@ -73,8 +73,10 @@ fn WgslIrLowerer::eval_ast_integer_expression(
         self.eval_ast_integer_expression(left, function, scope),
         self.eval_ast_integer_expression(right, function, scope),
       )
-    Call(callee, arguments) =>
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
       self.eval_ast_integer_call(callee, arguments, function, scope)
+    }
     Group(inner) => self.eval_ast_integer_expression(inner, function, scope)
     Sequence([single]) =>
       self.eval_ast_integer_expression(single, function, scope)
@@ -754,8 +756,139 @@ fn WgslIrLowerer::fold_function_constant_float_expression(
   handle : Handle,
 ) -> Literal? {
   match self.eval_function_float_expression(function, handle) {
-    Some(value) => Some(AbstractFloat(value))
+    Some(value) =>
+      Some(
+        self.folded_function_float_literal_for_expression(
+          function, handle, value,
+        ),
+      )
     None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::folded_function_float_literal_for_expression(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+  value : Double,
+) -> Literal {
+  self.folded_function_float_literal_for_expression_with_expected(
+    function,
+    handle,
+    value,
+    None,
+  )
+}
+
+///|
+fn WgslIrLowerer::folded_function_float_literal_for_expression_with_expected(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+  value : Double,
+  expected_ty : Handle?,
+) -> Literal {
+  let ty = match expected_ty {
+    Some(ty) => ty
+    None =>
+      match self.function_expression_type(function, handle) {
+        Some(ty) => ty
+        None => return AbstractFloat(value)
+      }
+  }
+  guard self.shader_module.types.get(ty) is Some(type_) else {
+    return AbstractFloat(value)
+  }
+  match type_.inner {
+    Scalar({ kind: Float, width: 4 }) =>
+      if wgsl_ir_function_expression_is_computed_float_fold(function, handle) {
+        F32Exact(Float::from_double(value))
+      } else {
+        F32(Float::from_double(value))
+      }
+    Scalar({ kind: Float, width }) =>
+      wgsl_ir_float_literal_for_scalar_width(value, width)
+    _ =>
+      if wgsl_ir_function_expression_is_computed_float_fold(function, handle) &&
+        self.function_expression_tree_contains_concrete_f32_value(
+          function, handle,
+        ) {
+        F32Exact(Float::from_double(value))
+      } else {
+        AbstractFloat(value)
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::function_expression_tree_contains_concrete_f32_value(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Literal(F32(_) | F32Exact(_))) => true
+    Some(Constant(constant)) => self.constant_is_concrete_f32(constant)
+    Some(Unary(_, inner)) | Some(Load(inner)) | Some(Splat(_, inner)) =>
+      self.function_expression_tree_contains_concrete_f32_value(function, inner)
+    Some(Binary(_, left, right)) =>
+      self.function_expression_tree_contains_concrete_f32_value(function, left) ||
+      self.function_expression_tree_contains_concrete_f32_value(function, right)
+    Some(Math(_, a, b, c, d)) =>
+      self.function_expression_tree_contains_concrete_f32_value(function, a) ||
+      self.optional_function_expression_tree_contains_concrete_f32_value(
+        function, b,
+      ) ||
+      self.optional_function_expression_tree_contains_concrete_f32_value(
+        function, c,
+      ) ||
+      self.optional_function_expression_tree_contains_concrete_f32_value(
+        function, d,
+      )
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::optional_function_expression_tree_contains_concrete_f32_value(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle?,
+) -> Bool {
+  match handle {
+    Some(handle) =>
+      self.function_expression_tree_contains_concrete_f32_value(
+        function, handle,
+      )
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::constant_is_concrete_f32(
+  self : WgslIrLowerer,
+  handle : Handle,
+) -> Bool {
+  match self.shader_module.constants.items.get(handle.index()) {
+    Some(constant) =>
+      match self.shader_module.types.get(constant.ty) {
+        Some({ inner: Scalar({ kind: Float, width: 4 }), .. }) => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn wgsl_ir_function_expression_is_computed_float_fold(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Literal(_)) => false
+    Some(_) => true
+    None => false
   }
 }
 
@@ -906,7 +1039,7 @@ fn WgslIrLowerer::eval_function_float_vector_expression_inner(
 fn wgsl_ir_float_value_from_literal_for_lowerer(literal : Literal) -> Double? {
   match literal {
     AbstractFloat(value) => Some(value)
-    F32(value) => Some(value.to_double())
+    F32(value) | F32Exact(value) => Some(value.to_double())
     F16(value) | F64(value) => Some(value)
     _ => None
   }
@@ -1112,7 +1245,11 @@ fn WgslIrLowerer::inline_constant_literal_for_function(
     Float =>
       match self.eval_constant_float_expression(handle) {
         Some(value) =>
-          Some(wgsl_ir_float_literal_for_scalar_width(value, scalar.width))
+          if scalar.width == 4 {
+            Some(F32Exact(Float::from_double(value)))
+          } else {
+            Some(wgsl_ir_float_literal_for_scalar_width(value, scalar.width))
+          }
         None => None
       }
     AbstractFloat =>
@@ -1145,10 +1282,46 @@ fn WgslIrLowerer::normalized_local_constant_initializer(
   self : WgslIrLowerer,
   function : Function,
   handle : Handle,
-) -> Handle {
+  expected_ty : Handle?,
+) -> Handle raise WgslIrLowerError {
   match function.expressions.items.get(handle.index()) {
-    Some(Literal(_)) => return handle
+    Some(Literal(literal)) => {
+      match expected_ty {
+        Some(ty) =>
+          match self.shader_module.types.get(ty) {
+            Some({ inner: Scalar(scalar), .. }) => {
+              let contextualized = match
+                (
+                  function.expressions.origin(handle),
+                  scalar.kind,
+                  scalar.width,
+                  literal,
+                ) {
+                (Some(FoldedLocalConstant), Float, 4, AbstractFloat(value)) =>
+                  F32Exact(Float::from_double(value))
+                _ => wgsl_ir_contextualize_literal(literal, scalar)
+              }
+              function.expressions.set(handle, Literal(contextualized))
+            }
+            _ => ()
+          }
+        None => ()
+      }
+      return handle
+    }
     _ => ()
+  }
+  match self.eval_function_float_expression(function, handle) {
+    Some(value) => {
+      let literal = self.folded_function_float_literal_for_expression_with_expected(
+        function, handle, value, expected_ty,
+      )
+      return function.expressions.append_with_origin(
+        Literal(literal),
+        FoldedLocalConstant,
+      )
+    }
+    None => ()
   }
   match self.fold_function_constant_float_expression(function, handle) {
     Some(literal) =>
@@ -1263,7 +1436,7 @@ fn WgslIrLowerer::eval_function_float_expression_inner(
 ) -> Double? {
   match expression {
     Literal(AbstractFloat(value)) => Some(value)
-    Literal(F32(value)) => Some(value.to_double())
+    Literal(F32(value) | F32Exact(value)) => Some(value.to_double())
     Literal(F16(value)) | Literal(F64(value)) => Some(value)
     Constant(handle) => self.eval_constant_float_expression(handle)
     Binary(op, left, right) => {
@@ -1316,7 +1489,7 @@ fn WgslIrLowerer::eval_global_float_expression_inner(
 ) -> Double? {
   match expression {
     Literal(AbstractFloat(value)) => Some(value)
-    Literal(F32(value)) => Some(value.to_double())
+    Literal(F32(value) | F32Exact(value)) => Some(value.to_double())
     Literal(F16(value)) | Literal(F64(value)) => Some(value)
     Constant(handle) => self.eval_constant_float_expression(handle)
     Binary(op, left, right) => {

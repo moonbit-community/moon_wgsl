@@ -61,7 +61,7 @@ test "naga-oil writer policy preserves source let arithmetic aliases" {
     error => abort(error.message())
   }
   debug_inspect(naga_oil.contains("0.0576f"), content="false")
-  debug_inspect(naga_oil.contains("0.24f * 0.24f"), content="true")
+  debug_inspect(naga_oil.contains("0.24000001f * 0.24000001f"), content="true")
 }
 
 ///|
