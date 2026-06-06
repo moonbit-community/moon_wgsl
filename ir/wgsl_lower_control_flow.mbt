@@ -266,7 +266,7 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
       }
     }
     Some(Swizzle(size, base, pattern)) => {
-      let lowered_base = self.materialize_nested_access_base(
+      let lowered_base = self.materialize_nested_swizzle_base(
         function, scope, block, base,
       )
       let parent_base = wgsl_ir_parent_expression_operand(
@@ -449,6 +449,11 @@ fn WgslIrLowerer::function_expression_should_materialize_as_control_flow_conditi
   function : Function,
   value : Handle,
 ) -> Bool {
+  if wgsl_ir_function_expression_is_projection_of_generated_temporary(
+      function, value,
+    ) {
+    return false
+  }
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))

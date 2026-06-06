@@ -190,6 +190,35 @@ test "naga-oil writer materializes global field before swizzle projection" {
 }
 
 ///|
+test "naga-oil writer materializes control-flow global field before swizzle projection" {
+  let source =
+    #|struct Settings {
+    #|  size: vec3<u32>,
+    #|}
+    #|
+    #|@group(0) @binding(0) var<uniform> settings: Settings;
+    #|
+    #|fn guard(idx: vec3<u32>) -> bool {
+    #|  if any(idx.xy > settings.size.xy) {
+    #|    return true;
+    #|  }
+    #|  return false;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(": vec3<u32> = settings.size;"),
+    content="true",
+  )
+  debug_inspect(emitted.contains(".size.xy;"), content="false")
+  debug_inspect(emitted.contains(": vec2<u32> ="), content="false")
+}
+
+///|
 test "naga-oil writer materializes pointer local field before swizzle projection" {
   let source =
     #|struct Light {
