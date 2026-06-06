@@ -227,6 +227,10 @@ fn wgsl_ir_f32_is_negative_zero(value : Float) -> Bool {
 fn wgsl_ir_shortest_f32_literal_text(value : Float) -> String {
   let original = "\{value}"
   if original.contains("e") || original.contains("E") {
+    match wgsl_ir_shortest_large_fixed_f32_literal_text(value, original) {
+      Some(fixed) => return fixed
+      None => ()
+    }
     match wgsl_ir_shortest_fixed_f32_literal_text(value, original) {
       Some(fixed) => return fixed
       None => ()
@@ -244,6 +248,55 @@ fn wgsl_ir_shortest_f32_literal_text(value : Float) -> String {
     }
   }
   original
+}
+
+///|
+fn wgsl_ir_shortest_large_fixed_f32_literal_text(
+  value : Float,
+  scientific : String,
+) -> String? {
+  let exp_index = wgsl_ir_find_scientific_exponent_index(scientific)
+  guard exp_index >= 0 else { return None }
+  let mantissa = scientific[0:exp_index].to_owned()
+  let exponent_text = scientific[exp_index + 1:scientific.length()].to_owned()
+  let exponent : Int = @strconv.from_str(exponent_text) catch {
+    _ => return None
+  }
+  let negative = mantissa.has_prefix("-")
+  let mantissa_body = if negative {
+    mantissa[1:mantissa.length()].to_owned()
+  } else {
+    mantissa
+  }
+  let dot = wgsl_ir_find_ascii_char(mantissa_body, 46)
+  let decimal_pos = if dot >= 0 { dot } else { mantissa_body.length() }
+  let digits = wgsl_ir_decimal_digits_without_dot(mantissa_body)
+  guard digits.length() > 0 else { return None }
+  let shifted_decimal_pos = decimal_pos + exponent
+  guard shifted_decimal_pos > 18 else { return None }
+  let integer_digits = if shifted_decimal_pos >= digits.length() {
+    "\{digits}\{wgsl_ir_repeat_ascii_zero(shifted_decimal_pos - digits.length())}"
+  } else {
+    digits[0:shifted_decimal_pos].to_owned()
+  }
+  let max_keep = if digits.length() < integer_digits.length() {
+    digits.length()
+  } else {
+    integer_digits.length()
+  }
+  for keep in 1..<=max_keep {
+    match
+      wgsl_ir_round_decimal_integer_to_significant_digits(integer_digits, keep) {
+      Some(candidate) => {
+        let text = if negative { "-\{candidate}" } else { candidate }
+        if wgsl_ir_f32_literal_round_trips(value, text) {
+          return Some(text)
+        }
+      }
+      None => ()
+    }
+  }
+  None
 }
 
 ///|
@@ -332,6 +385,62 @@ fn wgsl_ir_repeat_ascii_zero(count : Int) -> String {
   let out = StringBuilder::new()
   for _ in 0..<count {
     out.write_string("0")
+  }
+  out.to_string()
+}
+
+///|
+fn wgsl_ir_round_decimal_integer_to_significant_digits(
+  digits : String,
+  keep : Int,
+) -> String? {
+  guard keep > 0 && keep <= digits.length() else { return None }
+  let prefix = digits[0:keep].to_owned()
+  let next_digit = if keep < digits.length() {
+    let code = digits.code_unit_at(keep).to_int()
+    if code < 48 || code > 57 {
+      return None
+    }
+    code - 48
+  } else {
+    0
+  }
+  let rounded = if next_digit >= 5 {
+    wgsl_ir_increment_decimal_digit_string(prefix)
+  } else {
+    prefix
+  }
+  let zero_count = digits.length() - rounded.length()
+  if zero_count > 0 {
+    Some("\{rounded}\{wgsl_ir_repeat_ascii_zero(zero_count)}")
+  } else {
+    Some(rounded)
+  }
+}
+
+///|
+fn wgsl_ir_increment_decimal_digit_string(text : String) -> String {
+  let digits : Array[Int] = []
+  for index in 0..<text.length() {
+    digits.push(text.code_unit_at(index).to_int())
+  }
+  let mut index = digits.length() - 1
+  let mut carry = true
+  while index >= 0 && carry {
+    if digits[index] == 57 {
+      digits[index] = 48
+      index = index - 1
+    } else {
+      digits[index] = digits[index] + 1
+      carry = false
+    }
+  }
+  let out = StringBuilder::new()
+  if carry {
+    out.write_string("1")
+  }
+  for code in digits {
+    out.write_char(code.unsafe_to_char())
   }
   out.to_string()
 }
