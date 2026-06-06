@@ -2035,6 +2035,46 @@ test "WGSL AST lowerer preserves compound assignment semantics in IR" {
 }
 
 ///|
+test "WGSL AST lowerer schedules pointer argument store RHS before target" {
+  let source =
+    #|fn f(miss_t: ptr<function, f32>, hit_t: ptr<function, f32>) {
+    #|  var min_t: f32 = 1.0;
+    #|  *miss_t = min_t;
+    #|  *hit_t = min_t;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut first_min_t_load = -1
+  let mut first_pointer_argument = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(LocalVariable(local_handle)) =>
+            match function.local_variables.items.get(local_handle.index()) {
+              Some({ name: Some("min_t"), .. }) =>
+                if first_min_t_load < 0 {
+                  first_min_t_load = index
+                }
+              _ => ()
+            }
+          _ => ()
+        }
+      FunctionArgument(_) =>
+        if first_pointer_argument < 0 {
+          first_pointer_argument = index
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(first_min_t_load >= 0, content="true")
+  debug_inspect(first_pointer_argument >= 0, content="true")
+  debug_inspect(first_min_t_load < first_pointer_argument, content="true")
+}
+
+///|
 test "WGSL AST lowerer emits compound field target load before store" {
   let source =
     #|struct Material {
@@ -2811,6 +2851,58 @@ test "WGSL AST lowerer splits runtime var initializers like Naga writer" {
   debug_inspect(emitted.contains("var r: vec4<f32>;"), content="true")
   debug_inspect(emitted.contains("r = radius;"), content="true")
   debug_inspect(emitted.contains("var r: vec4<f32> = radius;"), content="false")
+}
+
+///|
+test "WGSL AST lowerer keeps struct const constructor var initializer" {
+  let source =
+    #|struct DistanceWithPenetration {
+    #|  distance: f32,
+    #|  valid: bool,
+    #|  penetration: f32,
+    #|}
+    #|
+    #|fn f() -> DistanceWithPenetration {
+    #|  var min_d = DistanceWithPenetration(0.0, false, 0.0);
+    #|  return min_d;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    Literal(_) => ()
+    _ => abort("expected first struct constructor literal")
+  }
+  match function.expressions.items[1] {
+    Literal(_) => ()
+    _ => abort("expected bool struct constructor literal")
+  }
+  match function.expressions.items[2] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="0")
+      debug_inspect(components[1].index(), content="1")
+      debug_inspect(components[2].index(), content="0")
+    }
+    _ => abort("expected struct constructor compose to reuse duplicate literal")
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(
+      "var min_d: DistanceWithPenetration = DistanceWithPenetration(0f, false, 0f);",
+    ),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("var min_d: DistanceWithPenetration;\n"),
+    content="false",
+  )
+  debug_inspect(
+    emitted.contains("min_d = DistanceWithPenetration"),
+    content="false",
+  )
 }
 
 ///|

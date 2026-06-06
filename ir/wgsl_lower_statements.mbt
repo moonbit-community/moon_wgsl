@@ -209,7 +209,7 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
     None => {
       let expression_mark = function.expressions.items.length()
       let handle = match
-        self.lower_reused_literal_vector_source_local_const_initializer(
+        self.lower_reused_literal_source_local_const_constructor_initializer(
           expr_ref, explicit_ty, function,
         ) {
         Some(handle) => handle
@@ -228,37 +228,92 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
 }
 
 ///|
-fn WgslIrLowerer::lower_reused_literal_vector_source_local_const_initializer(
+fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_initializer(
   self : WgslIrLowerer,
   expr_ref : @ast.WgslExprRef,
   explicit_ty : Handle?,
   function : Function,
 ) -> Handle? raise WgslIrLowerError {
-  guard explicit_ty is Some(vector_ty) else { return None }
-  guard self.shader_module.types.get(vector_ty)
-    is Some({ inner: Vector(size, scalar), .. }) else {
-    return None
-  }
+  guard explicit_ty is Some(ty) else { return None }
   guard expr_ref.root() is Some(root) else { return None }
   guard root.kind() is Call(callee, arguments) else { return None }
-  guard callee.kind() is Identifier(name) else { return None }
-  guard name.name() == "vec\{size.width()}" else { return None }
+  guard self.expression_callee_is_const_constructor(callee) else { return None }
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
-  guard arguments.length() == size.width() else { return None }
-  guard arguments[0].kind() is Literal(first_token) else { return None }
-  for index in 1..<arguments.length() {
-    guard arguments[index].kind() is Literal(token) else { return None }
-    guard token.text() == first_token.text() else { return None }
+  guard !arguments.is_empty() else { return None }
+  if self.source_local_const_constructor_initializer_is_vector_splat(
+      ty,
+      arguments.length(),
+    ) {
+    return None
   }
-  let scalar_ty = self.scalar_type_handle(scalar)
-  let literal = function.expressions.append(
-    Literal(self.literal_from_token_with_expected(first_token, Some(scalar_ty))),
-  )
+  let literal_handles : Map[String, Handle] = Map([])
   let components : Array[Handle] = []
-  for _ in 0..<arguments.length() {
-    components.push(literal)
+  for index, argument in arguments {
+    guard argument.kind() is Literal(token) else { return None }
+    let argument_ty = match
+      self.constructor_literal_argument_expected_type(
+        ty,
+        index,
+        arguments.length(),
+      ) {
+      Some(value) => Some(value)
+      None => explicit_ty
+    }
+    let literal = self.literal_from_token_with_expected(token, argument_ty)
+    let semantic_key = wgsl_ir_source_local_const_literal_value_key(
+      argument_ty, literal,
+    )
+    let handle = match literal_handles.get(semantic_key) {
+      Some(existing) => existing
+      None => {
+        let appended = function.expressions.append(Literal(literal))
+        literal_handles.set(semantic_key, appended)
+        appended
+      }
+    }
+    components.push(handle)
   }
-  Some(function.expressions.append(Compose(vector_ty, components)))
+  Some(function.expressions.append(Compose(ty, components)))
+}
+
+///|
+fn WgslIrLowerer::source_local_const_constructor_initializer_is_vector_splat(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+  argument_count : Int,
+) -> Bool {
+  guard argument_count == 1 else { return false }
+  match self.shader_module.types.get(ty_handle) {
+    Some({ inner: Vector(_, _), .. }) => true
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::constructor_literal_argument_expected_type(
+  self : WgslIrLowerer,
+  ty_handle : Handle,
+  argument_index : Int,
+  argument_count : Int,
+) -> Handle? {
+  match self.shader_module.types.get(ty_handle) {
+    Some(ty) =>
+      match ty.inner {
+        Vector(size, scalar) =>
+          if argument_count == size.width() {
+            Some(self.scalar_type_handle(scalar))
+          } else {
+            None
+          }
+        Struct(members, _) | PredeclaredStruct(members, _) =>
+          match members.get(argument_index) {
+            Some(struct_member) => Some(struct_member.ty)
+            None => None
+          }
+        _ => None
+      }
+    None => None
+  }
 }
 
 ///|
@@ -918,6 +973,26 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
               function, scope, block, target, rhs_value,
             )
             (target, value)
+          } else if self.wgsl_ir_expr_ref_is_function_argument_pointer_deref(
+              lhs_ref, function, scope,
+            ) {
+            let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
+              rhs_ref,
+              function,
+              scope,
+              block,
+              None,
+            )
+            let raw_target = self.lower_function_lvalue_ref(
+              lhs_ref, function, scope,
+            )
+            let target = self.materialize_store_pointer_if_needed(
+              function, scope, block, raw_target,
+            )
+            let value = self.materialize_store_value_for_pointer_if_needed(
+              function, scope, block, target, rhs_value,
+            )
+            (target, value)
           } else {
             predeclare_assignment_rhs_root_before_target_if_needed(
               rhs_ref, function, scope,
@@ -1413,6 +1488,22 @@ fn WgslIrLowerer::lower_for_header_statement(
               function, scope, block, target, rhs_value,
             )
             (target, value)
+          } else if self.wgsl_ir_expr_node_is_function_argument_pointer_deref(
+              lhs_node, function, scope,
+            ) {
+            let rhs_value = self.lower_function_expression_node(
+              rhs_node, function, scope,
+            )
+            let raw_target = self.lower_function_lvalue_node(
+              lhs_node, function, scope,
+            )
+            let target = self.materialize_store_pointer_if_needed(
+              function, scope, block, raw_target,
+            )
+            let value = self.materialize_store_value_for_pointer_if_needed(
+              function, scope, block, target, rhs_value,
+            )
+            (target, value)
           } else {
             predeclare_assignment_rhs_node_root_before_target_if_needed(
               rhs_node, function, scope,
@@ -1728,6 +1819,71 @@ fn wgsl_ir_expr_ref_plain_local_identifier(
   match expr_ref.root() {
     Some(root) => wgsl_ir_expr_node_plain_local_identifier(root, scope)
     None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::wgsl_ir_expr_ref_is_function_argument_pointer_deref(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match expr_ref.root() {
+    Some(root) =>
+      self.wgsl_ir_expr_node_is_function_argument_pointer_deref(
+        root, function, scope,
+      )
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::wgsl_ir_expr_node_is_function_argument_pointer_deref(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.wgsl_ir_expr_node_is_function_argument_pointer_deref(
+        inner, function, scope,
+      )
+    Unary(op, inner) =>
+      if op == Multiply {
+        self.wgsl_ir_expr_node_is_function_argument_pointer(
+          inner, function, scope,
+        )
+      } else {
+        false
+      }
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::wgsl_ir_expr_node_is_function_argument_pointer(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.wgsl_ir_expr_node_is_function_argument_pointer(
+        inner, function, scope,
+      )
+    Identifier(ident) =>
+      match scope.arguments.get(ident.name()) {
+        Some(index) =>
+          match function.arguments.get(index) {
+            Some(argument) => self.lowerer_type_is_pointer(argument.ty)
+            None => false
+          }
+        None => false
+      }
+    _ => false
   }
 }
 
@@ -2362,6 +2518,7 @@ fn WgslIrLowerer::expression_callee_is_const_constructor(
 ) -> Bool raise WgslIrLowerError {
   match callee.kind() {
     Identifier(ident) =>
+      self.type_cache.contains(ident.name()) ||
       self.lower_bitcast_callee_type(callee) != None ||
       self.lower_templated_callee_type(callee) != None ||
       wgsl_ir_untemplated_constructor_name_is_const(ident.name())

@@ -1669,7 +1669,8 @@ fn wgsl_ir_expr_node_is_binary_source_let_arithmetic(
   scope : WgslIrFunctionScope,
 ) -> Bool {
   match wgsl_ir_expr_node_without_groups(node).kind() {
-    Binary(_, _, _) => wgsl_ir_expr_node_references_local_let_constant(node, scope)
+    Binary(_, _, _) =>
+      wgsl_ir_expr_node_references_local_let_constant(node, scope)
     _ => false
   }
 }
