@@ -1176,6 +1176,11 @@ test "IR lowerer emits while as loop with leading condition guard" {
     emitted.contains("} else {\n            break;"),
     content="true",
   )
+  debug_inspect(
+    emitted.contains("        {\n            let _e") ||
+    emitted.contains("        {\n            x ="),
+    content="true",
+  )
   debug_inspect(emitted.contains("continuing {"), content="false")
 }
 

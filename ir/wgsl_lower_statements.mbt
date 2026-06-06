@@ -940,18 +940,18 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       guard condition is Some(condition_ref) else {
         raise UnsupportedStatement("while without condition")
       }
-      let lowered_body = match statement.blocks() {
-        [body_block, ..] => self.lower_child_block(body_block, function, scope)
-        [] => Block()
-      }
       let body_statements : Array[Statement] = []
       let guard_block = Block::{ statements: body_statements }
       let cond = self.lower_control_flow_condition_ref(
         condition_ref, function, scope, guard_block,
       )
       body_statements.push(If(cond, Block(), { statements: [Break] }))
-      for body_statement in lowered_body.statements {
-        body_statements.push(body_statement)
+      let lowered_body = match statement.blocks() {
+        [body_block, ..] => self.lower_child_block(body_block, function, scope)
+        [] => Block()
+      }
+      if lowered_body.statements.length() > 0 {
+        body_statements.push(Block(lowered_body))
       }
       block.push(Loop(guard_block, Block(), None))
     }
