@@ -2349,6 +2349,16 @@ fn wgsl_ir_ast_binary_operator_is_multiplicative(
 }
 
 ///|
+fn wgsl_ir_ast_binary_operator_is_comparison(
+  op : @ast.WgslExprOperator,
+) -> Bool {
+  match op {
+    Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => true
+    _ => false
+  }
+}
+
+///|
 fn wgsl_ir_direct_access_chain_root_is_function_argument(
   node : @ast.WgslExprNode,
   scope : WgslIrFunctionScope,
@@ -5498,13 +5508,44 @@ fn WgslIrLowerer::lower_function_relational_call(
       "\{wgsl_ir_relational_function_name(relational_function)} expects one argument",
     )
   }
-  let argument = self.lower_function_expression_node(expr, function, scope)
+  let argument = self.lower_function_relational_argument(expr, function, scope)
   function.expressions.append(
     Relational(
       relational_function,
       self.apply_function_load_rule(function, argument),
     ),
   )
+}
+
+///|
+fn WgslIrLowerer::lower_function_relational_argument(
+  self : WgslIrLowerer,
+  expr : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match wgsl_ir_expr_node_without_groups(expr).kind() {
+    Binary(op, left, right) if wgsl_ir_ast_binary_operator_is_comparison(op) => {
+      let expression_mark = function.expressions.items.length()
+      let left_handle = self.lower_function_expression_node(
+        left, function, scope,
+      )
+      let right_handle = self.lower_function_expression_node(
+        right, function, scope,
+      )
+      let binary_op = wgsl_ir_binary_operator(op)
+      let (left_handle, right_handle) = self.normalize_function_binary_operands(
+        function, binary_op, left_handle, right_handle,
+      )
+      let handle = function.expressions.append(
+        Binary(binary_op, left_handle, right_handle),
+      )
+      self.fold_function_binary_expression_at_mark(
+        function, expression_mark, handle,
+      )
+    }
+    _ => self.lower_function_expression_node(expr, function, scope)
+  }
 }
 
 ///|

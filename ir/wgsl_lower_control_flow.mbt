@@ -175,6 +175,40 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
     return value
   }
   match function.expressions.items.get(value.index()) {
+    Some(Compose(ty, components)) => {
+      let lowered : Array[Handle] = []
+      let mut changed = false
+      for component in components {
+        let lowered_component = self.materialize_nested_control_flow_condition_argument(
+          function, scope, block, component,
+        )
+        let parent_component = wgsl_ir_parent_expression_operand(
+          function, component, lowered_component,
+        )
+        if parent_component != component {
+          changed = true
+        }
+        lowered.push(parent_component)
+      }
+      if changed {
+        function.expressions.append(Compose(ty, lowered))
+      } else {
+        value
+      }
+    }
+    Some(Splat(size, inner)) => {
+      let lowered_inner = self.materialize_nested_control_flow_condition_argument(
+        function, scope, block, inner,
+      )
+      let parent_inner = wgsl_ir_parent_expression_operand(
+        function, inner, lowered_inner,
+      )
+      if parent_inner != inner {
+        function.expressions.append(Splat(size, parent_inner))
+      } else {
+        value
+      }
+    }
     Some(Binary(op, left, right)) => {
       let lowered_left = self.materialize_nested_control_flow_condition_argument(
         function, scope, block, left,

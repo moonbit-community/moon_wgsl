@@ -1473,13 +1473,14 @@ fn WgslIrLowerer::function_expression_should_materialize_as_store_value(
     | Some(ImageLoad(_, _, _, _, _))
     | Some(ImageQuery(_, _))
     | Some(WorkGroupUniformLoad(_)) => true
-    Some(Load(_))
-    | Some(Access(_, _))
+    Some(Load(_)) =>
+      self.function_expression_reads_global_binding(function, value) ||
+      self.function_expression_reads_var_pointer_load(function, value)
+    Some(Access(_, _))
     | Some(AccessIndex(_, _))
     | Some(Component(_, _))
     | Some(Swizzle(_, _, _)) =>
-      self.function_expression_reads_global_binding(function, value) ||
-      self.function_expression_reads_var_pointer_load(function, value)
+      self.function_projection_expression_reads_pointer_base(function, value)
     _ => false
   }
   should_materialize &&
@@ -1520,10 +1521,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
       !wgsl_ir_function_expression_is_generated_temporary_reference(
         function, base,
       ) &&
-      (
-        self.function_expression_reads_global_binding(function, value) ||
-        self.function_expression_reads_var_pointer_load(function, value)
-      )
+      self.function_projection_expression_reads_pointer_base(function, value)
     _ => false
   }
   should_materialize &&
@@ -1598,8 +1596,7 @@ fn WgslIrLowerer::function_expression_should_materialize_projection_base_value(
       wgsl_ir_function_expression_is_projection_graph_node(function, inner) ||
       self.function_expression_reads_var_pointer_load(function, value)
     Some(Access(_, _)) | Some(AccessIndex(_, _)) | Some(Swizzle(_, _, _)) =>
-      self.function_expression_reads_global_binding(function, value) ||
-      self.function_expression_reads_var_pointer_load(function, value)
+      self.function_projection_expression_reads_pointer_base(function, value)
     _ => false
   }
   should_materialize &&
@@ -1724,6 +1721,25 @@ fn WgslIrLowerer::function_expression_reads_global_binding(
     | Some(Swizzle(_, base, _)) =>
       self.function_expression_reads_global_binding(function, base)
     _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_projection_expression_reads_pointer_base(
+  self : WgslIrLowerer,
+  function : Function,
+  value : Handle,
+) -> Bool {
+  match function.expressions.items.get(value.index()) {
+    Some(Access(base, _))
+    | Some(AccessIndex(base, _))
+    | Some(Component(base, _))
+    | Some(Swizzle(_, base, _)) =>
+      self.function_expression_reads_global_binding(function, base) ||
+      self.function_expression_reads_var_pointer_load(function, base)
+    _ =>
+      self.function_expression_reads_global_binding(function, value) ||
+      self.function_expression_reads_var_pointer_load(function, value)
   }
 }
 

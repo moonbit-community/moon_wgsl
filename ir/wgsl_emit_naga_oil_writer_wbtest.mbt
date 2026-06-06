@@ -440,6 +440,29 @@ test "naga-oil writer materializes nested derivative arguments" {
 }
 
 ///|
+test "naga-oil writer snapshots mutable splat operands inside conditions" {
+  let source =
+    #|fn probe(max_texel: vec2<u32>, min_texel: vec2<u32>) -> bool {
+    #|  var mip: u32 = 1u;
+    #|  if any((max_texel >> vec2(mip)) > (min_texel >> vec2(mip)) + 3u) {
+    #|    mip = mip + 1u;
+    #|  }
+    #|  return mip > 0u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("let _e"), content="true")
+  debug_inspect(
+    emitted.contains("if any(((max_texel >> vec2(mip))"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer materializes dynamic storage index before swizzle store" {
   let source =
     #|struct Item {
