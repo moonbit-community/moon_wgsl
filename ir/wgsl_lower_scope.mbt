@@ -73,6 +73,7 @@ priv struct WgslIrFunctionScope {
   source_local_const_initializer_expressions : Map[String, Handle]
   runtime_source_local_const_initializer_expressions : Map[String, Handle]
   local_constants : Map[String, WgslIrLocalValueCell]
+  materialized_expression_locals : Map[Int, Handle]
   local_pointer_expressions : Map[String, Handle]
   argument_pointer_expressions : Map[String, Handle]
   global_pointer_expressions : Map[String, Handle]
@@ -105,6 +106,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     source_local_const_initializer_expressions: Map([]),
     runtime_source_local_const_initializer_expressions: Map([]),
     local_constants: Map([]),
+    materialized_expression_locals: Map([]),
     local_pointer_expressions: Map([]),
     argument_pointer_expressions: Map([]),
     global_pointer_expressions: Map([]),
@@ -133,6 +135,16 @@ fn wgsl_ir_copy_string_handle_map(
   source : Map[String, Handle],
 ) -> Map[String, Handle] {
   let copied : Map[String, Handle] = Map([])
+  for entry in source.iter() {
+    let (key, value) = entry
+    copied.set(key, value)
+  }
+  copied
+}
+
+///|
+fn wgsl_ir_copy_int_handle_map(source : Map[Int, Handle]) -> Map[Int, Handle] {
+  let copied : Map[Int, Handle] = Map([])
   for entry in source.iter() {
     let (key, value) = entry
     copied.set(key, value)
@@ -199,6 +211,9 @@ fn WgslIrFunctionScope::child(
     runtime_source_local_const_initializer_expressions: self.runtime_source_local_const_initializer_expressions,
     local_constants: wgsl_ir_copy_string_local_constant_map(
       self.local_constants,
+    ),
+    materialized_expression_locals: wgsl_ir_copy_int_handle_map(
+      self.materialized_expression_locals,
     ),
     local_pointer_expressions: wgsl_ir_copy_string_handle_map(
       self.local_pointer_expressions,

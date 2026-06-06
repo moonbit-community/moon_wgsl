@@ -204,7 +204,10 @@ fn WgslIrLowerer::materialize_function_expression(
     }
     _ => ()
   }
-  match self.existing_materialized_function_expression(function, block, value) {
+  match
+    self.existing_materialized_function_expression(
+      function, scope, block, value,
+    ) {
     Some(existing) => return existing
     None => ()
   }
@@ -224,7 +227,7 @@ fn WgslIrLowerer::materialize_function_expression(
     ty,
     init: Some(value),
   })
-  ignore(scope)
+  scope.materialized_expression_locals.set(value.index(), value)
   block.push(Declare(local_handle))
   value
 }
@@ -233,16 +236,22 @@ fn WgslIrLowerer::materialize_function_expression(
 fn WgslIrLowerer::existing_materialized_function_expression(
   self : WgslIrLowerer,
   function : Function,
+  scope : WgslIrFunctionScope,
   block : Block,
   value : Handle,
 ) -> Handle? {
   ignore(self)
+  match scope.materialized_expression_locals.get(value.index()) {
+    Some(existing) => return Some(existing)
+    None => ()
+  }
   for statement in block.statements {
     match statement {
       Declare(local_handle) =>
         match function.local_variables.items.get(local_handle.index()) {
           Some(local_var) =>
             if local_var.generated_temporary && local_var.init == Some(value) {
+              scope.materialized_expression_locals.set(value.index(), value)
               return Some(value)
             }
           _ => ()
@@ -1496,6 +1505,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_nested_value(
     | Some(AtomicCall(_, _))
     | Some(CooperativeLoad(_, _, _, _))
     | Some(CooperativeMultiplyAdd(_, _, _))
+    | Some(Derivative(_, _, _))
     | Some(ImageSample(_, _, _, _, _, _, _, _, _))
     | Some(ImageLoad(_, _, _, _, _))
     | Some(ImageQuery(_, _))

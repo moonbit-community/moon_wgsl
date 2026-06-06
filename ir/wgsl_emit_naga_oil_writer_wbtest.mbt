@@ -362,6 +362,29 @@ test "naga-oil writer materializes atomic user-call value arguments" {
 }
 
 ///|
+test "naga-oil writer materializes nested derivative arguments" {
+  let source =
+    #|fn helper(x: f32) -> f32 {
+    #|  return x;
+    #|}
+    #|
+    #|fn probe(x: f32) -> f32 {
+    #|  let angle = helper(x);
+    #|  let w = max(0.5 * fwidth(angle), 0.000001);
+    #|  return w;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(": f32 = fwidth(_e"), content="true")
+  debug_inspect(emitted.contains("* fwidth("), content="false")
+  debug_inspect(emitted.contains("max((0.5f * _e"), content="true")
+}
+
+///|
 test "naga-oil writer materializes dynamic storage index before swizzle store" {
   let source =
     #|struct Item {
