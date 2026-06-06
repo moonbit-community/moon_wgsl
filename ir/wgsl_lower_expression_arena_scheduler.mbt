@@ -134,6 +134,16 @@ fn ExpressionArenaScheduler::binary_lowers_right_argument_before_left_access(
 }
 
 ///|
+fn ExpressionArenaScheduler::binary_delays_left_constructor_commit_until_right_argument(
+  self : ExpressionArenaScheduler,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  self.lowerer.expression_node_is_constructor_call_value(left) &&
+  wgsl_ir_expr_node_is_function_argument_value(right, self.scope)
+}
+
+///|
 fn ExpressionArenaScheduler::binary_right_subtree_has_higher_precedence(
   self : ExpressionArenaScheduler,
   op : @ast.WgslExprOperator,

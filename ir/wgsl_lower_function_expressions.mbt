@@ -494,6 +494,24 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           left, function, scope,
         )
         (left_handle, right_handle)
+      } else if scheduler.binary_delays_left_constructor_commit_until_right_argument(
+          left, right,
+        ) {
+        match
+          self.lower_function_binary_left_constructor_after_right_argument_root(
+            left, right, function, scope,
+          ) {
+          Some(result) => result
+          None => {
+            let left_handle = self.lower_function_expression_node(
+              left, function, scope,
+            )
+            let right_handle = self.lower_function_expression_node(
+              right, function, scope,
+            )
+            (left_handle, right_handle)
+          }
+        }
       } else if scheduler.binary_lowers_right_before_left(op, left, right) {
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
@@ -1286,6 +1304,24 @@ fn WgslIrLowerer::lower_binary_expression_children(
         self.lower_function_right_operand_before_left(
           op, left, right, function, scope,
         )
+      } else if scheduler.binary_delays_left_constructor_commit_until_right_argument(
+          left, right,
+        ) {
+        match
+          self.lower_function_binary_left_constructor_after_right_argument_root(
+            left, right, function, scope,
+          ) {
+          Some(result) => result
+          None => {
+            let left_handle = self.lower_function_expression_node(
+              left, function, scope,
+            )
+            let right_handle = self.lower_function_expression_node(
+              right, function, scope,
+            )
+            (left_handle, right_handle)
+          }
+        }
       } else if scheduler.binary_lowers_right_argument_before_left_access(
           left, right,
         ) {
@@ -1345,6 +1381,89 @@ fn WgslIrLowerer::lower_binary_expression_children_with_parent_argument_after_ch
   )
   let right_handle = self.lower_function_expression_node(right, function, scope)
   Some((op, left_handle, right_handle))
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_left_constructor_after_right_argument_root(
+  self : WgslIrLowerer,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> (Handle, Handle)? raise WgslIrLowerError {
+  let left_handle = match
+    self.lower_function_constructor_call_after_predeclared_argument(
+      left, right, function, scope,
+    ) {
+    Some(handle) => handle
+    None => return None
+  }
+  let right_handle = self.lower_function_expression_node(right, function, scope)
+  Some((left_handle, right_handle))
+}
+
+///|
+fn WgslIrLowerer::lower_function_constructor_call_after_predeclared_argument(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  sibling_argument : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match node.kind() {
+    Group(inner) =>
+      self.lower_function_constructor_call_after_predeclared_argument(
+        inner, sibling_argument, function, scope,
+      )
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      match callee.kind() {
+        Identifier(name) => {
+          guard self.expression_callee_is_constructor_call_value(callee) else {
+            return None
+          }
+          let expression_mark = function.expressions.items.length()
+          let lowered_arguments = self.lower_function_constructor_arguments_with_expected(
+            arguments,
+            function,
+            scope,
+            None,
+          )
+          self.predeclare_function_argument_value(
+            sibling_argument, function, scope,
+          )
+          Some(
+            self.finish_function_constructor_call(
+              name.name(),
+              arguments,
+              lowered_arguments,
+              function,
+              None,
+              expression_mark,
+            ),
+          )
+        }
+        _ =>
+          match self.lower_templated_callee_type(callee) {
+            Some(ty) => {
+              let lowered_arguments = self.lower_function_constructor_arguments(
+                ty, arguments, function, scope,
+              )
+              self.predeclare_function_argument_value(
+                sibling_argument, function, scope,
+              )
+              Some(
+                self.lower_function_constructor_expression_from_handles(
+                  ty, lowered_arguments, function,
+                ),
+              )
+            }
+            None => None
+          }
+      }
+    }
+    _ => None
+  }
 }
 
 ///|
@@ -1462,6 +1581,33 @@ fn wgsl_ir_expr_node_contains_call_member_access(
     Sequence(items) =>
       items.any(fn(item) { wgsl_ir_expr_node_contains_call_member_access(item) })
     Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_constructor_call_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => self.expression_node_is_constructor_call_value(inner)
+    Call(callee, _) => self.expression_callee_is_constructor_call_value(callee)
+    _ => false
+  }
+}
+
+///|
+fn WgslIrLowerer::expression_callee_is_constructor_call_value(
+  self : WgslIrLowerer,
+  callee : @ast.WgslExprNode,
+) -> Bool {
+  match callee.kind() {
+    Group(inner) => self.expression_callee_is_constructor_call_value(inner)
+    Identifier(name) =>
+      self.type_cache.contains(name.name()) ||
+      wgsl_ir_untemplated_constructor_name_is_const(name.name())
+    Template(base, _) => self.expression_callee_is_constructor_call_value(base)
+    _ => false
   }
 }
 
@@ -4054,6 +4200,13 @@ fn WgslIrLowerer::lower_function_select_call(
     raise UnsupportedExpression("select expects three arguments")
   }
   match
+    self.lower_function_select_with_constant_constructor_values_and_binary_condition(
+      reject, accept, condition, function, scope,
+    ) {
+    Some(handle) => return handle
+    None => ()
+  }
+  match
     self.lower_function_select_with_constant_values_and_binary_condition(
       reject, accept, condition, function, scope,
     ) {
@@ -4092,6 +4245,46 @@ fn WgslIrLowerer::lower_function_select_call(
 }
 
 ///|
+fn WgslIrLowerer::lower_function_select_with_constant_constructor_values_and_binary_condition(
+  self : WgslIrLowerer,
+  reject : @ast.WgslExprNode,
+  accept : @ast.WgslExprNode,
+  condition : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard self.expression_node_is_select_constant_constructor_value(reject) else {
+    return None
+  }
+  guard self.expression_node_is_select_constant_constructor_value(accept) else {
+    return None
+  }
+  match condition.kind() {
+    Binary(_, _, _) => ()
+    Group(inner) =>
+      match inner.kind() {
+        Binary(_, _, _) => ()
+        _ => return None
+      }
+    _ => return None
+  }
+  let condition_handle = self.lower_function_expression_node(
+    condition, function, scope,
+  )
+  let reject_handle = self.lower_function_expression_node(
+    reject, function, scope,
+  )
+  let accept_handle = self.lower_function_expression_node(
+    accept, function, scope,
+  )
+  Some(
+    function.expressions.append(
+      Select(condition_handle, accept_handle, reject_handle),
+    ),
+  )
+}
+
+///|
 fn WgslIrLowerer::lower_function_select_with_constant_values_and_binary_condition(
   self : WgslIrLowerer,
   reject : @ast.WgslExprNode,
@@ -4121,12 +4314,6 @@ fn WgslIrLowerer::lower_function_select_with_constant_values_and_binary_conditio
   let right_handle = self.lower_function_expression_node(
     condition_right, function, scope,
   )
-  let accept_handle = self.lower_function_expression_node(
-    accept, function, scope,
-  )
-  let reject_handle = self.lower_function_expression_node(
-    reject, function, scope,
-  )
   let binary_op = wgsl_ir_binary_operator(condition_op)
   let (left_handle, right_handle) = self.normalize_function_binary_operands(
     function, binary_op, left_handle, right_handle,
@@ -4134,11 +4321,40 @@ fn WgslIrLowerer::lower_function_select_with_constant_values_and_binary_conditio
   let condition_handle = function.expressions.append(
     Binary(binary_op, left_handle, right_handle),
   )
+  let accept_handle = self.lower_function_expression_node(
+    accept, function, scope,
+  )
+  let reject_handle = self.lower_function_expression_node(
+    reject, function, scope,
+  )
   Some(
     function.expressions.append(
       Select(condition_handle, accept_handle, reject_handle),
     ),
   )
+}
+
+///|
+fn WgslIrLowerer::expression_node_is_select_constant_constructor_value(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expression_node_is_select_constant_constructor_value(inner)
+    Call(callee, arguments) => {
+      guard self.expression_callee_is_constructor_call_value(callee) else {
+        return false
+      }
+      let arguments = wgsl_ir_flatten_expression_arguments(
+        wgsl_ir_call_arguments(arguments),
+      )
+      arguments.all(fn(argument) {
+        self.expression_node_is_select_constant_value(argument)
+      })
+    }
+    _ => false
+  }
 }
 
 ///|

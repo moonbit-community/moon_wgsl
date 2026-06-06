@@ -660,27 +660,133 @@ test "WGSL AST lowerer lowers constant select values after condition operands" {
     _ => abort("expected condition literal before constants")
   }
   match function.expressions.items[3] {
-    Constant(_) => ()
-    _ => abort("expected select accept constant after condition operands")
-  }
-  match function.expressions.items[4] {
-    Constant(_) => ()
-    _ => abort("expected select reject constant after accept")
-  }
-  match function.expressions.items[5] {
     Binary(_, left, right) => {
       debug_inspect(left.index(), content="1")
       debug_inspect(right.index(), content="2")
     }
-    _ => abort("expected condition binary after constants")
+    _ => abort("expected condition binary before constants")
+  }
+  match function.expressions.items[4] {
+    Constant(_) => ()
+    _ => abort("expected select accept constant after condition binary")
+  }
+  match function.expressions.items[5] {
+    Constant(_) => ()
+    _ => abort("expected select reject constant after accept")
   }
   match function.expressions.items[6] {
     Select(condition, accept, reject) => {
-      debug_inspect(condition.index(), content="5")
-      debug_inspect(accept.index(), content="3")
-      debug_inspect(reject.index(), content="4")
+      debug_inspect(condition.index(), content="3")
+      debug_inspect(accept.index(), content="4")
+      debug_inspect(reject.index(), content="5")
     }
     _ => abort("expected select after binary condition")
+  }
+}
+
+///|
+test "WGSL AST lowerer lowers constant constructor select values after condition" {
+  let source =
+    #|fn probe(delta_cs: vec3<f32>) -> vec3<f32> {
+    #|  return select(vec3(-1.0, -1.0, 0.0), vec3(1.0, 1.0, 1.0), delta_cs < vec3(0.0));
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected condition left argument")
+  }
+  match function.expressions.items[1] {
+    Literal(_) => ()
+    _ => abort("expected condition constructor literal")
+  }
+  match function.expressions.items[2] {
+    Splat(_, component) => debug_inspect(component.index(), content="1")
+    _ => abort("expected condition splat before binary")
+  }
+  match function.expressions.items[3] {
+    Binary(_, left, right) => {
+      debug_inspect(left.index(), content="0")
+      debug_inspect(right.index(), content="2")
+    }
+    _ => abort("expected condition binary before select values")
+  }
+  match function.expressions.items[7] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="4")
+      debug_inspect(components[1].index(), content="5")
+      debug_inspect(components[2].index(), content="6")
+    }
+    _ => abort("expected reject constructor after condition")
+  }
+  match function.expressions.items[11] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="8")
+      debug_inspect(components[1].index(), content="9")
+      debug_inspect(components[2].index(), content="10")
+    }
+    _ => abort("expected accept constructor after reject")
+  }
+  match function.expressions.items[12] {
+    Select(condition, accept, reject) => {
+      debug_inspect(condition.index(), content="3")
+      debug_inspect(accept.index(), content="11")
+      debug_inspect(reject.index(), content="7")
+    }
+    _ => abort("expected select after constructor values")
+  }
+}
+
+///|
+test "WGSL AST lowerer commits left constructor after right argument root" {
+  let source =
+    #|struct Raymarch { ray_start_cs: vec3<f32> }
+    #|
+    #|fn probe(raymarch: ptr<function, Raymarch>, dir_cs: vec4<f32>) -> vec4<f32> {
+    #|  return vec4((*raymarch).ray_start_cs, 1.0) + dir_cs;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(index) => debug_inspect(index, content="0")
+    _ => abort("expected pointer argument")
+  }
+  match function.expressions.items[1] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="0")
+      debug_inspect(index, content="0")
+    }
+    _ => abort("expected member access")
+  }
+  match function.expressions.items[2] {
+    Load(pointer) => debug_inspect(pointer.index(), content="1")
+    _ => abort("expected member load")
+  }
+  match function.expressions.items[3] {
+    Literal(_) => ()
+    _ => abort("expected constructor literal before sibling argument")
+  }
+  match function.expressions.items[4] {
+    FunctionArgument(index) => debug_inspect(index, content="1")
+    _ => abort("expected sibling argument before constructor compose")
+  }
+  match function.expressions.items[5] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="2")
+      debug_inspect(components[1].index(), content="3")
+    }
+    _ => abort("expected constructor compose after sibling argument")
+  }
+  match function.expressions.items[6] {
+    Binary(_, left, right) => {
+      debug_inspect(left.index(), content="5")
+      debug_inspect(right.index(), content="4")
+    }
+    _ => abort("expected final binary")
   }
 }
 
