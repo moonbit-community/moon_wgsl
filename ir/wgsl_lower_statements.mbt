@@ -1403,6 +1403,10 @@ fn WgslIrLowerer::lower_for_statement(
   block : Block,
 ) -> Unit raise WgslIrLowerError {
   let loop_scope = scope.loop_child()
+  let source_var_store_initializers = wgsl_ir_for_source_var_store_initializers(
+    statement.local_bindings(),
+    scope,
+  )
   for local_decl in statement.local_bindings() {
     self.lower_local_declaration(
       local_decl,
@@ -1410,7 +1414,7 @@ fn WgslIrLowerer::lower_for_statement(
       loop_scope,
       block,
       DeclarationArenaLocalConstant,
-      [],
+      source_var_store_initializers,
     )
   }
   for expr in expressions {
@@ -1454,6 +1458,21 @@ fn WgslIrLowerer::lower_for_statement(
     }
   }
   block.push(Loop(loop_body, continuing, None))
+}
+
+///|
+fn wgsl_ir_for_source_var_store_initializers(
+  locals : Array[@ast.WgslLocalDeclaration],
+  parent_scope : WgslIrFunctionScope,
+) -> Array[String] {
+  let names : Array[String] = []
+  guard parent_scope.loop_depth > 0 else { return names }
+  for local_decl in locals {
+    guard local_decl.kind() == Var else { continue }
+    guard local_decl.initializer_ref() is Some(_) else { continue }
+    names.push(local_decl.name().name())
+  }
+  names
 }
 
 ///|

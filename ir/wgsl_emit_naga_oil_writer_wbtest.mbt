@@ -135,6 +135,32 @@ test "naga-oil writer materializes var field before swizzle projection" {
 }
 
 ///|
+test "naga-oil writer resets nested for initializer at execution site" {
+  let source =
+    #|fn count(limit: u32) -> u32 {
+    #|  var total: u32 = 0u;
+    #|  for (var outer: u32 = 0u; outer < limit; outer++) {
+    #|    for (var step_i: u32 = 0u; step_i < 4u; step_i++) {
+    #|      total = total + step_i;
+    #|    }
+    #|  }
+    #|  return total;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var step_i: u32;\n"), content="true")
+  debug_inspect(emitted.contains("var step_i: u32 = 0u;"), content="false")
+  debug_inspect(
+    emitted.contains("step_i = 0u;\n            loop {"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer materializes global field before swizzle projection" {
   let source =
     #|struct Lights {
