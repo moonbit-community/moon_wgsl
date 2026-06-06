@@ -32,3 +32,4 @@ short-circuit-return	testdata/naga_writer_trace	short_circuit_return.wgsl	is_ena
 bevy-pbr-ltc-integrate-quad	testdata/bevy_wgsl	bevy_pbr/src/render/pbr_lighting.wgsl	ltc_integrate_quad	-	AVAILABLE_STORAGE_BUFFER_BINDINGS=8,MAX_DIRECTIONAL_LIGHTS=10,MAX_CASCADES_PER_LIGHT=4,MAX_RECT_LIGHTS=4,MATERIAL_BIND_GROUP=3,SORTED_FRAGMENT_MAX_COUNT=8,WORLD_CACHE_SIZE=1048576,PER_OBJECT_BUFFER_BATCH_SIZE=1,SCREEN_SPACE_SPECULAR_TRANSMISSION_BLUR_TAPS=8	-	-
 bevy-ssao-weighted-average	testdata/bevy_wgsl	bevy_pbr/src/ssao/preprocess_depth.wgsl	weighted_average	-	-	-	-
 bevy-rgb9e5-vec3-to-rgb9e5	testdata/bevy_wgsl	bevy_pbr/src/render/rgb9e5.wgsl	vec3_to_rgb9e5_	-	-	-	-
+bevy-utils-octahedral-encode	testdata/bevy_wgsl	bevy_pbr/src/render/utils.wgsl	octahedral_encode	-	-	-	-

@@ -1571,6 +1571,20 @@ fn wgsl_ir_direct_access_chain_root_is_function_argument(
 }
 
 ///|
+fn WgslIrLowerer::direct_access_chain_root_is_global_reference(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => self.direct_access_chain_root_is_global_reference(inner)
+    Member(base, _) | Index(base, _) =>
+      self.direct_access_chain_root_is_global_reference(base)
+    Identifier(name) => self.global_names.get(name.name()) != None
+    _ => false
+  }
+}
+
+///|
 fn wgsl_ir_expr_node_contains_call_member_access(
   node : @ast.WgslExprNode,
 ) -> Bool {
@@ -4454,6 +4468,9 @@ fn WgslIrLowerer::select_accept_predeclares_reference_root(
   scope : WgslIrFunctionScope,
 ) -> Bool {
   guard wgsl_ir_expr_node_is_direct_access_chain(accept) else { return false }
+  guard self.direct_access_chain_root_is_global_reference(accept) else {
+    return false
+  }
   self.expression_node_contains_naga_reference_value(accept, function, scope) &&
   !wgsl_ir_expr_node_is_function_argument_value(accept, scope)
 }

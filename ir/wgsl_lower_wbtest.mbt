@@ -740,6 +740,58 @@ test "WGSL AST lowerer lowers constant constructor select values after condition
 }
 
 ///|
+test "WGSL AST lowerer lowers mutable local select operands before condition" {
+  let source =
+    #|fn probe(v: vec3<f32>) -> vec2<f32> {
+    #|  var n = v / (abs(v.x) + abs(v.y) + abs(v.z));
+    #|  let wrap = (1.0 - abs(n.yx)) * select(vec2(-1.0), vec2(1.0), n.xy > vec2f(0.0));
+    #|  return select(wrap, n.xy, n.z >= 0.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[29] {
+    Load(pointer) => debug_inspect(pointer.index(), content="11")
+    _ => abort("expected mutable local load before select condition")
+  }
+  match function.expressions.items[30] {
+    Swizzle(_, base, _) => debug_inspect(base.index(), content="29")
+    _ => abort("expected select accept swizzle before condition")
+  }
+  match function.expressions.items[31] {
+    AccessIndex(base, index) => {
+      debug_inspect(base.index(), content="11")
+      debug_inspect(index, content="2")
+    }
+    _ => abort("expected condition member after accept")
+  }
+  match function.expressions.items[32] {
+    Load(pointer) => debug_inspect(pointer.index(), content="31")
+    _ => abort("expected condition load after member access")
+  }
+  match function.expressions.items[33] {
+    Literal(_) => ()
+    _ => abort("expected condition literal after local load")
+  }
+  match function.expressions.items[34] {
+    Binary(_, left, right) => {
+      debug_inspect(left.index(), content="32")
+      debug_inspect(right.index(), content="33")
+    }
+    _ => abort("expected condition binary after accept")
+  }
+  match function.expressions.items[35] {
+    Select(condition, accept, reject) => {
+      debug_inspect(condition.index(), content="34")
+      debug_inspect(accept.index(), content="30")
+      debug_inspect(reject.index(), content="28")
+    }
+    _ => abort("expected select after source-order operands")
+  }
+}
+
+///|
 test "WGSL AST lowerer commits left constructor after right argument root" {
   let source =
     #|struct Raymarch { ray_start_cs: vec3<f32> }
