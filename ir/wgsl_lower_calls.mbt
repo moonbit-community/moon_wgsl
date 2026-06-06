@@ -1037,6 +1037,56 @@ fn WgslIrLowerer::predeclare_texture_coordinate_root(
 }
 
 ///|
+fn WgslIrLowerer::lower_texture_coordinate_before_image_if_needed(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  coordinate_index : Int,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  match arguments.get(coordinate_index) {
+    Some(coordinate) =>
+      if self.texture_coordinate_is_mutable_local_value(
+          coordinate, function, scope,
+        ) {
+        Some(self.lower_function_expression_node(coordinate, function, scope))
+      } else {
+        self.predeclare_function_member_root_expression(
+          coordinate, function, scope,
+        )
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::texture_coordinate_is_mutable_local_value(
+  self : WgslIrLowerer,
+  coordinate : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  ignore(self)
+  guard scope.block_depth > 0 else { return false }
+  match coordinate.kind() {
+    Group(inner) =>
+      self.texture_coordinate_is_mutable_local_value(inner, function, scope)
+    Identifier(name) =>
+      match scope.locals.get(name.name()) {
+        Some(handle) =>
+          match function.local_variables.items.get(handle.index()) {
+            Some(local_var) =>
+              local_var.kind == Var && !local_var.generated_temporary
+            None => false
+          }
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_texture_mip_level_argument(
   self : WgslIrLowerer,
   argument : @ast.WgslExprNode,
@@ -1139,18 +1189,24 @@ fn WgslIrLowerer::lower_image_sample_with_level_argument(
   guard arguments.length() >= 4 else {
     raise UnsupportedExpression("\{callee} expects at least 4 arguments")
   }
-  self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
+  let prelowered_coordinate = if level_name == "level" {
+    self.lower_texture_coordinate_before_image_if_needed(
+      arguments, 2, function, scope,
+    )
+  } else {
+    self.predeclare_texture_coordinate_root(arguments, 2, function, scope)
+    None
+  }
   let image = self.lower_function_expression_node(arguments[0], function, scope)
   let sampler = self.lower_function_expression_node(
     arguments[1],
     function,
     scope,
   )
-  let coordinate = self.lower_function_expression_node(
-    arguments[2],
-    function,
-    scope,
-  )
+  let coordinate = match prelowered_coordinate {
+    Some(handle) => handle
+    None => self.lower_function_expression_node(arguments[2], function, scope)
+  }
   let parsed = self.lower_texture_trailing_args(
     arguments, function, scope, image, 3, 1, callee,
   )

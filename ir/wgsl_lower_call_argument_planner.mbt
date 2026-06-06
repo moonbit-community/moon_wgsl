@@ -179,6 +179,10 @@ fn CallArgumentPlanner::lower_later_reference_before_direct(
       self.prelowered[lookahead] = Some(self.lower_argument_at(lookahead))
       return
     }
+    if self.argument_is_mutable_local_value(lookahead) {
+      self.prelowered[lookahead] = Some(self.lower_argument_at(lookahead))
+      return
+    }
     if self.argument_is_existing_alias_reference(self.arguments[lookahead]) {
       lookahead += 1
       continue
@@ -269,6 +273,41 @@ fn CallArgumentPlanner::argument_is_existing_alias(
       match self.scope.local_constants.get(name.name()) {
         Some({ value: ExpressionAlias(_), .. }) => true
         _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn CallArgumentPlanner::argument_is_mutable_local_value(
+  self : CallArgumentPlanner,
+  index : Int,
+) -> Bool {
+  if self.lowerer.callee_parameter_is_pointer(self.callee_function, index) {
+    return false
+  }
+  match self.arguments[index].kind() {
+    Group(_) => self.argument_is_mutable_local_value_node(self.arguments[index])
+    _ => self.argument_is_mutable_local_value_node(self.arguments[index])
+  }
+}
+
+///|
+fn CallArgumentPlanner::argument_is_mutable_local_value_node(
+  self : CallArgumentPlanner,
+  argument : @ast.WgslExprNode,
+) -> Bool {
+  match argument.kind() {
+    Group(inner) => self.argument_is_mutable_local_value_node(inner)
+    Identifier(name) =>
+      match self.scope.locals.get(name.name()) {
+        Some(handle) =>
+          match self.function.local_variables.items.get(handle.index()) {
+            Some(local_var) =>
+              local_var.kind == Var && !local_var.generated_temporary
+            None => false
+          }
+        None => false
       }
     _ => false
   }

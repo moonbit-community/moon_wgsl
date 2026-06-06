@@ -690,6 +690,51 @@ test "WGSL AST lowerer schedules textureLoad coordinate before texture root" {
 }
 
 ///|
+test "WGSL AST lowerer schedules textureSampleLevel mutable coordinate before texture root" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var color_texture: texture_2d<f32>;
+    #|@group(0) @binding(1)
+    #|var color_sampler: sampler;
+    #|
+    #|fn probe(uv: vec2<f32>, enabled: bool) -> vec4<f32> {
+    #|  var sample_uv = uv;
+    #|  if enabled {
+    #|    return textureSampleLevel(color_texture, color_sampler, sample_uv, 0.0);
+    #|  }
+    #|  return vec4<f32>(0.0);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut sample_uv_local = -1
+  for local_index, local_var in function.local_variables.items {
+    match local_var.name {
+      Some("sample_uv") => sample_uv_local = local_index
+      _ => ()
+    }
+  }
+  let mut coordinate_load = -1
+  let mut texture_root = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      Load(pointer) if coordinate_load == -1 =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(LocalVariable(handle)) if handle.index() == sample_uv_local =>
+            coordinate_load = index
+          _ => ()
+        }
+      GlobalVariable(_) if texture_root == -1 => texture_root = index
+      _ => ()
+    }
+  }
+  debug_inspect(sample_uv_local >= 0, content="true")
+  debug_inspect(coordinate_load >= 0, content="true")
+  debug_inspect(texture_root > coordinate_load, content="true")
+}
+
+///|
 test "WGSL AST lowerer schedules textureLoad array index before texture root" {
   let source =
     #|struct Globals {

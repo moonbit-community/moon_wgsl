@@ -574,6 +574,48 @@ test "WGSL AST lowerer keeps additive product subtrees in source arena order" {
 }
 
 ///|
+test "WGSL AST lowerer keeps right constructor arguments before left function argument in matrix multiply" {
+  let source =
+    #|fn matrix_vector_constructor_order(
+    #|  origin: vec3<f32>,
+    #|  transform: mat4x4<f32>,
+    #|) -> vec3<f32> {
+    #|  let projected = (transform * vec4(origin, 1.0)).xyz;
+    #|  return projected;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  match function.expressions.items[0] {
+    FunctionArgument(0) => ()
+    _ => abort("expected constructor argument first")
+  }
+  match function.expressions.items[1] {
+    Literal(AbstractFloat(1.0)) => ()
+    _ => abort("expected constructor literal second")
+  }
+  match function.expressions.items[2] {
+    FunctionArgument(1) => ()
+    _ => abort("expected matrix argument after constructor leaves")
+  }
+  match function.expressions.items[3] {
+    Compose(_, components) => {
+      debug_inspect(components[0].index(), content="0")
+      debug_inspect(components[1].index(), content="1")
+    }
+    _ => abort("expected vector constructor compose")
+  }
+  match function.expressions.items[4] {
+    Binary(Multiply, left, right) => {
+      debug_inspect(left.index(), content="2")
+      debug_inspect(right.index(), content="3")
+    }
+    _ => abort("expected matrix/vector multiply")
+  }
+}
+
+///|
 test "WGSL AST lowerer keeps subtract product chains in Naga arena order" {
   let source =
     #|struct Data {
@@ -4208,6 +4250,55 @@ test "WGSL AST lowerer lowers mutable call argument before scalar const alias" {
   debug_inspect(i_arg_load >= 0, content="true")
   debug_inspect(enabled_literal > i_arg_load, content="true")
   debug_inspect(call_index > enabled_literal, content="true")
+}
+
+///|
+test "WGSL AST lowerer prelowers later mutable local call argument before prior direct argument" {
+  let source =
+    #|fn quat_rotate(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
+    #|  return v;
+    #|}
+    #|
+    #|fn probe(view_rotation: vec4<f32>, dir: vec3<f32>) -> vec3<f32> {
+    #|  var sample_dir: vec3<f32>;
+    #|  sample_dir = dir;
+    #|  sample_dir = quat_rotate(view_rotation, sample_dir);
+    #|  return sample_dir;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut sample_dir_local = -1
+  for local_index, local_var in function.local_variables.items {
+    match local_var.name {
+      Some("sample_dir") => sample_dir_local = local_index
+      _ => ()
+    }
+  }
+  let mut sample_dir_call_load = -1
+  let mut view_rotation_argument = -1
+  let mut call_result = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Load(pointer) if sample_dir_call_load == -1 =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(LocalVariable(handle)) if handle.index() == sample_dir_local =>
+            sample_dir_call_load = expression_index
+          _ => ()
+        }
+      FunctionArgument(argument_index) if argument_index == 0 &&
+        view_rotation_argument == -1 =>
+        view_rotation_argument = expression_index
+      FunctionCall(_, _) | CallResult(_) if call_result == -1 =>
+        call_result = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(sample_dir_local >= 0, content="true")
+  debug_inspect(sample_dir_call_load >= 0, content="true")
+  debug_inspect(view_rotation_argument > sample_dir_call_load, content="true")
+  debug_inspect(call_result > view_rotation_argument, content="true")
 }
 
 ///|

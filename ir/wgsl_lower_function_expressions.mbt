@@ -769,28 +769,37 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
             (left_handle, right_handle)
           }
         }
-      } else if op == Divide &&
-        wgsl_ir_expr_node_is_literal_like(left) &&
-        wgsl_ir_expr_node_contains_non_math_call(right) {
-        let right_handle = self.lower_function_expression_node(
-          right, function, scope,
-        )
-        let left_handle = self.lower_function_expression_node(
-          left, function, scope,
-        )
-        (left_handle, right_handle)
-      } else if scheduler.binary_lowers_right_before_left(op, left, right) {
-        self.lower_function_right_operand_before_left(
-          op, left, right, function, scope,
-        )
       } else {
-        let left_handle = self.lower_function_expression_node(
-          left, function, scope,
-        )
-        let right_handle = self.lower_function_expression_node(
-          right, function, scope,
-        )
-        (left_handle, right_handle)
+        match
+          self.lower_function_binary_right_constructor_after_arguments_before_left(
+            op, left, right, function, scope,
+          ) {
+          Some(result) => result
+          None =>
+            if op == Divide &&
+              wgsl_ir_expr_node_is_literal_like(left) &&
+              wgsl_ir_expr_node_contains_non_math_call(right) {
+              let right_handle = self.lower_function_expression_node(
+                right, function, scope,
+              )
+              let left_handle = self.lower_function_expression_node(
+                left, function, scope,
+              )
+              (left_handle, right_handle)
+            } else if scheduler.binary_lowers_right_before_left(op, left, right) {
+              self.lower_function_right_operand_before_left(
+                op, left, right, function, scope,
+              )
+            } else {
+              let left_handle = self.lower_function_expression_node(
+                left, function, scope,
+              )
+              let right_handle = self.lower_function_expression_node(
+                right, function, scope,
+              )
+              (left_handle, right_handle)
+            }
+        }
       }
       let binary_op = wgsl_ir_binary_operator(op)
       let (left_handle, right_handle) = self.normalize_function_binary_operands(
@@ -2077,6 +2086,74 @@ fn WgslIrLowerer::lower_function_binary_left_constructor_after_right_argument_ro
   }
   let right_handle = self.lower_function_expression_node(right, function, scope)
   Some((left_handle, right_handle))
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_right_constructor_after_arguments_before_left(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> (Handle, Handle)? raise WgslIrLowerError {
+  guard op == Multiply else { return None }
+  guard wgsl_ir_expr_node_is_function_argument_value(left, scope) else {
+    return None
+  }
+  match wgsl_ir_expr_node_without_groups(right).kind() {
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      guard self.expression_callee_is_constructor_call_value(callee) else {
+        return None
+      }
+      let flattened = wgsl_ir_flatten_expression_arguments(arguments)
+      guard !flattened.is_empty() else { return None }
+      let scheduler = self.expression_arena_scheduler(function, scope)
+      for argument in flattened {
+        if scheduler.constructor_argument_has_ordered_effect(argument) {
+          return None
+        }
+      }
+      let expression_mark = function.expressions.items.length()
+      let lowered_arguments = self.lower_function_constructor_arguments_with_expected(
+        arguments,
+        function,
+        scope,
+        None,
+      )
+      let left_handle = self.lower_function_expression_node(
+        left, function, scope,
+      )
+      let right_handle = match callee.kind() {
+        Identifier(name) => {
+          guard wgsl_ir_vector_size_from_constructor_name(name.name()) != None else {
+            return None
+          }
+          self.finish_function_constructor_call(
+            name.name(),
+            arguments,
+            lowered_arguments,
+            function,
+            scope,
+            None,
+            expression_mark,
+          )
+        }
+        Template(_, _) =>
+          match self.lower_templated_callee_type(callee) {
+            Some(ty) =>
+              self.lower_function_constructor_expression_from_handles(
+                ty, lowered_arguments, function,
+              )
+            None => return None
+          }
+        _ => return None
+      }
+      Some((left_handle, right_handle))
+    }
+    _ => None
+  }
 }
 
 ///|
