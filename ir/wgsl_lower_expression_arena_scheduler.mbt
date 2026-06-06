@@ -108,6 +108,12 @@ fn ExpressionArenaScheduler::binary_lowers_right_before_left(
     wgsl_ir_expr_node_contains_non_math_call(right) {
     return false
   }
+  if wgsl_ir_ast_binary_operator_is_multiplicative(op) &&
+    wgsl_ir_expr_node_without_groups(left).kind() is Binary(_, _, _) &&
+    wgsl_ir_expr_node_without_groups(right).kind() is Call(_, _) &&
+    wgsl_ir_expr_node_references_local_constant_alias(right, self.scope) {
+    return false
+  }
   if self.lowerer.expression_node_is_naga_deferred_const_like(left, self.scope) {
     if self.binary_preserves_deferred_const_left_before_local_right_binary(
         op, left, right,
@@ -144,6 +150,46 @@ fn ExpressionArenaScheduler::binary_lowers_right_before_left(
     self.scope,
   ) &&
   wgsl_ir_expr_node_is_function_argument_value(right, self.scope)
+}
+
+///|
+fn wgsl_ir_expr_node_references_local_constant_alias(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Identifier(name) => scope.local_constants.contains(name.name())
+    Literal(_) | ShaderDefTemplate(_) => false
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      wgsl_ir_expr_node_references_local_constant_alias(inner, scope)
+    Assignment(_, left, right) | Binary(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_references_local_constant_alias(left, scope) ||
+      wgsl_ir_expr_node_references_local_constant_alias(right, scope)
+    Call(callee, arguments) =>
+      wgsl_ir_expr_node_references_local_constant_alias(callee, scope) ||
+      wgsl_ir_call_arguments(arguments).any(fn(argument) {
+        wgsl_ir_expr_node_references_local_constant_alias(argument, scope)
+      })
+    Template(callee, arguments) =>
+      wgsl_ir_expr_node_references_local_constant_alias(callee, scope) ||
+      arguments.any(fn(argument) {
+        match argument {
+          Expression(expr_ref) =>
+            match expr_ref.root() {
+              Some(root) =>
+                wgsl_ir_expr_node_references_local_constant_alias(root, scope)
+              None => false
+            }
+          Type(_) => false
+        }
+      })
+    Member(base, _) | PathAccess(base, _) =>
+      wgsl_ir_expr_node_references_local_constant_alias(base, scope)
+    Sequence(items) =>
+      items.any(fn(item) {
+        wgsl_ir_expr_node_references_local_constant_alias(item, scope)
+      })
+  }
 }
 
 ///|

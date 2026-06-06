@@ -4736,6 +4736,102 @@ test "WGSL AST lowerer reuses semantic source local const initializers" {
 }
 
 ///|
+test "WGSL AST lowerer reuses concrete storage vector splat initializers" {
+  let source =
+    #|fn source_var_zero_vector_storage_reuse() -> vec3<f32> {
+    #|  var first: vec3<f32> = vec3<f32>(0.0);
+    #|  var second = vec3(0.0);
+    #|  var third = vec3(0.0);
+    #|  var one = vec3(1.0);
+    #|  return first + second + third + one;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut first_init = -1
+  let mut second_init = -2
+  let mut third_init = -3
+  let mut one_init = -4
+  for local_var in function.local_variables.items {
+    match local_var.name {
+      Some("first") =>
+        match local_var.init {
+          Some(init) => first_init = init.index()
+          None => ()
+        }
+      Some("second") =>
+        match local_var.init {
+          Some(init) => second_init = init.index()
+          None => ()
+        }
+      Some("third") =>
+        match local_var.init {
+          Some(init) => third_init = init.index()
+          None => ()
+        }
+      Some("one") =>
+        match local_var.init {
+          Some(init) => one_init = init.index()
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(first_init == second_init, content="true")
+  debug_inspect(second_init == third_init, content="true")
+  debug_inspect(one_init == first_init, content="false")
+  let mut splat_count = 0
+  for expression in function.expressions.items {
+    match expression {
+      Splat(_, _) => splat_count += 1
+      _ => ()
+    }
+  }
+  debug_inspect(splat_count, content="2")
+}
+
+///|
+test "WGSL AST lowerer preserves abstract scalar source local const initializer identity" {
+  let source =
+    #|fn source_var_scalar_zero_reuse() -> f32 {
+    #|  var hit = 0.0;
+    #|  var miss = 0.0;
+    #|  return hit + miss;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut hit_init = -1
+  let mut miss_init = -2
+  for local_var in function.local_variables.items {
+    match local_var.name {
+      Some("hit") =>
+        match local_var.init {
+          Some(init) => hit_init = init.index()
+          None => ()
+        }
+      Some("miss") =>
+        match local_var.init {
+          Some(init) => miss_init = init.index()
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(hit_init == miss_init, content="true")
+  let mut zero_count = 0
+  for expression in function.expressions.items {
+    match expression {
+      Literal(AbstractFloat(0.0)) => zero_count += 1
+      _ => ()
+    }
+  }
+  debug_inspect(zero_count, content="1")
+}
+
+///|
 test "WGSL IR emitter disambiguates repeated local names" {
   let source =
     #|fn f() -> u32 {

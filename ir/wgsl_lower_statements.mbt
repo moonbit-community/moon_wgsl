@@ -108,7 +108,7 @@ fn WgslIrLowerer::source_local_const_initializer_expected_type(
   local_decl : @ast.WgslLocalDeclaration,
   explicit_ty : Handle?,
 ) -> Handle? raise WgslIrLowerError {
-  match explicit_ty {
+  let ty = match explicit_ty {
     Some(ty) => Some(ty)
     None =>
       Some(
@@ -117,6 +117,30 @@ fn WgslIrLowerer::source_local_const_initializer_expected_type(
           local_decl.initializer_ref(),
         ),
       )
+  }
+  match ty {
+    Some(value) =>
+      if self.source_local_const_initializer_uses_storage_expected_type(value) {
+        Some(self.local_declaration_storage_type(local_decl.kind(), value))
+      } else {
+        Some(value)
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::source_local_const_initializer_uses_storage_expected_type(
+  self : WgslIrLowerer,
+  ty : Handle,
+) -> Bool {
+  match self.shader_module.types.items.get(ty.index()) {
+    Some(type_) =>
+      match type_.inner {
+        Vector(_, _) | Matrix(_, _, _) => true
+        _ => false
+      }
+    None => false
   }
 }
 
@@ -257,30 +281,90 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_initialize
     guard self.constructor_component_expected_type(ty) is Some(component_ty) else {
       return None
     }
-    guard self.source_local_const_literal_semantic_key(
-        token,
-        Some(component_ty),
-      )
-      is Some(semantic_key) else {
-      return None
-    }
-    match scope.source_local_const_initializer_expressions.get(semantic_key) {
+    match
+      self.source_local_const_initializer_literal_handle(token, None, scope) {
       Some(handle) =>
         return Some(function.expressions.append(Splat(size, handle)))
       None => ()
     }
     match
-      scope.runtime_source_local_const_initializer_expressions.get(semantic_key) {
+      self.source_local_const_initializer_literal_handle(
+        token,
+        Some(component_ty),
+        scope,
+      ) {
       Some(handle) =>
         return Some(function.expressions.append(Splat(size, handle)))
-      None => ()
+      None => return None
     }
-    return None
   }
   let literal_handles : Map[String, Handle] = Map([])
   self.lower_reused_literal_source_local_const_constructor_node(
     root, ty, literal_handles, function,
   )
+}
+
+///|
+fn WgslIrLowerer::source_local_const_initializer_literal_handle(
+  self : WgslIrLowerer,
+  token : @ast.WgslExprToken,
+  ty : Handle?,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  let text_key = wgsl_ir_source_local_const_literal_key(token, ty)
+  match scope.source_local_const_initializer_expressions.get(text_key) {
+    Some(handle) => return Some(handle)
+    None => ()
+  }
+  match scope.runtime_source_local_const_initializer_expressions.get(text_key) {
+    Some(handle) => return Some(handle)
+    None => ()
+  }
+  match self.source_local_const_literal_semantic_key(token, ty) {
+    Some(semantic_key) => {
+      match scope.source_local_const_initializer_expressions.get(semantic_key) {
+        Some(handle) => return Some(handle)
+        None => ()
+      }
+      match
+        scope.runtime_source_local_const_initializer_expressions.get(
+          semantic_key,
+        ) {
+        Some(handle) => return Some(handle)
+        None => ()
+      }
+    }
+    None => ()
+  }
+  match self.source_local_const_literal_abstract_context_type(ty) {
+    Some(abstract_ty) =>
+      match
+        self.source_local_const_initializer_literal_handle(
+          token,
+          Some(abstract_ty),
+          scope,
+        ) {
+        Some(handle) => return Some(handle)
+        None => ()
+      }
+    None => ()
+  }
+  None
+}
+
+///|
+fn WgslIrLowerer::source_local_const_literal_abstract_context_type(
+  self : WgslIrLowerer,
+  ty : Handle?,
+) -> Handle? {
+  guard ty is Some(handle) else { return None }
+  match self.shader_module.types.get(handle) {
+    Some({ inner: Scalar({ kind: Float, .. }), .. }) =>
+      Some(self.scalar_type_handle(Scalar(AbstractFloat, 8)))
+    Some({ inner: Scalar({ kind: Sint | Uint, .. }), .. }) =>
+      Some(self.scalar_type_handle(Scalar(AbstractInt, 8)))
+    _ => None
+  }
 }
 
 ///|
