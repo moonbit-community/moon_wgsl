@@ -362,6 +362,45 @@ test "naga-oil writer materializes atomic user-call value arguments" {
 }
 
 ///|
+test "naga-oil writer materializes dynamic storage index before swizzle store" {
+  let source =
+    #|struct Item {
+    #|  position_radius: vec4<f32>,
+    #|}
+    #|
+    #|struct Buffer {
+    #|  data: array<Item, 4>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<storage> clustered_lights: Buffer;
+    #|
+    #|fn main(input_index: u32) -> vec3<f32> {
+    #|  var object_index: u32 = input_index;
+    #|  var position: vec3<f32>;
+    #|  position = clustered_lights.data[object_index].position_radius.xyz;
+    #|  return position;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains(": u32 = object_index;") &&
+    emitted.contains(".data[_e") &&
+    emitted.contains("].position_radius;") &&
+    emitted.contains("position = _e"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains(".data[object_index].position_radius"),
+    content="false",
+  )
+}
+
+///|
 test "naga-oil writer materializes mutable store pointer index" {
   let source =
     #|struct Output {

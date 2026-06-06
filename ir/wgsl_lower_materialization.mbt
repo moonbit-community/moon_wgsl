@@ -1312,12 +1312,15 @@ fn WgslIrLowerer::materialize_nested_swizzle_base(
   block : Block,
   value : Handle,
 ) -> Handle raise WgslIrLowerError {
+  let normalized = self.materialize_return_subexpressions(
+    function, scope, block, value,
+  )
   if self.function_expression_should_materialize_projection_base_value(
-      function, value,
+      function, normalized,
     ) {
-    self.materialize_function_expression(function, scope, block, value)
+    self.materialize_function_expression(function, scope, block, normalized)
   } else {
-    self.materialize_nested_access_base(function, scope, block, value)
+    self.materialize_nested_access_base(function, scope, block, normalized)
   }
 }
 
