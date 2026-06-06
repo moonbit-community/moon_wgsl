@@ -994,9 +994,16 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
       }
       let (target, value) = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
+          scope.pending_compound_assignment_rhs_local_root = match
+            rhs_ref.root() {
+            Some(root) =>
+              wgsl_ir_expr_node_plain_mutable_local_identifier_name(root, scope)
+            None => None
+          }
           let raw_target = self.lower_function_lvalue_ref(
             lhs_ref, function, scope,
           )
+          scope.pending_compound_assignment_rhs_local_root = None
           let target = self.materialize_store_pointer_if_needed(
             function, scope, block, raw_target,
           )

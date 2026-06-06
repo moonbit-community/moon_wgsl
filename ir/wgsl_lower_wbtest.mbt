@@ -3555,6 +3555,69 @@ test "WGSL AST lowerer builds global member base before mutable dynamic index lo
 }
 
 ///|
+test "WGSL AST lowerer predeclares dynamic lvalue function argument roots after global root" {
+  let source =
+    #|struct Item {
+    #|  x: u32,
+    #|}
+    #|
+    #|struct Buffer {
+    #|  data: array<Item, 16>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<storage, read_write> buffer: Buffer;
+    #|
+    #|fn dynamic_lvalue_argument_root(local_id: vec3<u32>, offset: u32) -> u32 {
+    #|  var i: u32 = 0u;
+    #|  buffer.data[i + local_id.x].x += offset;
+    #|  return buffer.data[i].x;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut global_root = -1
+  let mut local_id_root = -1
+  let mut data_projection = -1
+  let mut i_load = -1
+  let mut local_id_x = -1
+  let mut dynamic_sum = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      GlobalVariable(_) if global_root == -1 => global_root = expression_index
+      FunctionArgument(index) if index == 0 && local_id_root == -1 =>
+        local_id_root = expression_index
+      AccessIndex(base, field) =>
+        if base.index() == global_root && field == 0 && data_projection == -1 {
+          data_projection = expression_index
+        } else if base.index() == local_id_root &&
+          field == 0 &&
+          local_id_x == -1 {
+          local_id_x = expression_index
+        }
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(LocalVariable(_)) if data_projection >= 0 && i_load == -1 =>
+            i_load = expression_index
+          _ => ()
+        }
+      Binary(_, left, right) =>
+        if left.index() == i_load && right.index() == local_id_x {
+          dynamic_sum = expression_index
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(global_root >= 0, content="true")
+  debug_inspect(local_id_root > global_root, content="true")
+  debug_inspect(data_projection > local_id_root, content="true")
+  debug_inspect(i_load > data_projection, content="true")
+  debug_inspect(local_id_x > i_load, content="true")
+  debug_inspect(dynamic_sum > local_id_x, content="true")
+}
+
+///|
 test "WGSL AST lowerer lowers mutable call argument before scalar const alias" {
   let source =
     #|fn callee(index: u32, enabled: bool) -> u32 {

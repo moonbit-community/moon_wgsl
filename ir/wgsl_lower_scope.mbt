@@ -82,6 +82,7 @@ priv struct WgslIrFunctionScope {
   ]
   mut source_let_initializer_preserve_depth : Int
   mut compound_assignment_rhs_depth : Int
+  mut pending_compound_assignment_rhs_local_root : String?
   loop_depth : Int
   mut visible_rel_path : String
   mut generated_import_local_spelling : WgslIrGeneratedImportLocalSpellingMode
@@ -110,6 +111,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     pending_global_pointer_expressions: Map([]),
     source_let_initializer_preserve_depth: 0,
     compound_assignment_rhs_depth: 0,
+    pending_compound_assignment_rhs_local_root: None,
     loop_depth: 0,
     visible_rel_path: "",
     generated_import_local_spelling: AllGeneratedImportLocalSpelling,
@@ -206,6 +208,7 @@ fn WgslIrFunctionScope::child(
     pending_global_pointer_expressions: self.pending_global_pointer_expressions,
     source_let_initializer_preserve_depth: self.source_let_initializer_preserve_depth,
     compound_assignment_rhs_depth: self.compound_assignment_rhs_depth,
+    pending_compound_assignment_rhs_local_root: self.pending_compound_assignment_rhs_local_root,
     loop_depth: self.loop_depth,
     visible_rel_path: self.visible_rel_path,
     generated_import_local_spelling: self.generated_import_local_spelling,

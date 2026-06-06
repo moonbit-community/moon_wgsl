@@ -164,9 +164,18 @@ fn WgslIrLowerer::lower_function_lvalue_node(
       match self.static_index_value_from_expr_node(index) {
         Some(_) => ()
         None => {
-          self.predeclare_function_reference_roots_in_source_order(
-            index, function, scope,
-          )
+          if wgsl_ir_expr_node_contains_member_access(base) {
+            self.predeclare_function_member_root_expression(
+              base, function, scope,
+            )
+            self.predeclare_function_argument_values_in_source_order(
+              index, function, scope,
+            )
+          } else {
+            self.predeclare_function_reference_roots_in_source_order(
+              index, function, scope,
+            )
+          }
           let base_handle = self.lower_function_lvalue_node(
             base, function, scope,
           )
@@ -2859,7 +2868,20 @@ fn WgslIrLowerer::lower_function_dynamic_member_index_access(
         let root_handle = self.lower_function_access_base_pointer_node(
           root, function, scope,
         )
-        let (base_handle, index_handle) = if self.expression_node_is_mutable_local_value(
+        let (base_handle, index_handle) = if wgsl_ir_expr_node_contains_function_argument_value(
+            index, scope,
+          ) {
+          self.predeclare_function_argument_values_in_source_order(
+            index, function, scope,
+          )
+          let base_handle = self.lower_function_static_member_access_chain(
+            root_handle, members, function,
+          )
+          let index_handle = self.lower_function_expression_node(
+            index, function, scope,
+          )
+          (base_handle, index_handle)
+        } else if self.expression_node_contains_mutable_local_reference(
             index, function, scope,
           ) {
           let base_handle = self.lower_function_static_member_access_chain(
@@ -2878,7 +2900,17 @@ fn WgslIrLowerer::lower_function_dynamic_member_index_access(
           )
           (base_handle, index_handle)
         }
-        Some(function.expressions.append(Access(base_handle, index_handle)))
+        let access = function.expressions.append(
+          Access(base_handle, index_handle),
+        )
+        match scope.pending_compound_assignment_rhs_local_root {
+          Some(name) => {
+            self.predeclare_identifier_reference_root(name, function, scope)
+            scope.pending_compound_assignment_rhs_local_root = None
+          }
+          None => ()
+        }
+        Some(access)
       }
     None => None
   }
