@@ -2037,6 +2037,13 @@ fn WgslIrLowerer::normalize_function_binary_operands(
   guard self.function_expression_type(function, right) is Some(right_ty) else {
     return (left, right)
   }
+  match self.shift_amount_expected_type(op, left_ty) {
+    Some(expected_ty) =>
+      self.contextualize_function_expression_for_type(
+        function, right, expected_ty,
+      )
+    None => ()
+  }
   self.contextualize_function_binary_operand_pair(
     function, op, left, left_ty, right, right_ty,
   )
@@ -2094,6 +2101,27 @@ fn WgslIrLowerer::contextualize_function_binary_operand_pair(
     Some(_) =>
       self.contextualize_function_expression_for_type(function, left, right_ty)
     None => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::shift_amount_expected_type(
+  self : WgslIrLowerer,
+  op : BinaryOperator,
+  left_ty : Handle,
+) -> Handle? {
+  match op {
+    ShiftLeft | ShiftRight => {
+      let u32_ty = match self.type_cache.get("u32") {
+        Some(ty) => ty
+        None => return None
+      }
+      match self.vector_size_from_type(left_ty) {
+        Some(size) => self.vector_type_from_scalar_type_handle(size, u32_ty)
+        None => Some(u32_ty)
+      }
+    }
+    _ => None
   }
 }
 

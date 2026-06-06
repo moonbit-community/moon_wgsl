@@ -1800,7 +1800,7 @@ test "naga-oil writer policy contextualizes same-shaped binary constructors" {
 }
 
 ///|
-test "naga-oil writer policy preserves abstract shift counts" {
+test "naga-oil writer policy emits unsigned shift counts from IR" {
   let source =
     #|fn high_bit_mask(bits: u32) -> u32 {
     #|  return bitcast<u32>(bitcast<i32>(bits) >> 31) | 0x80000000u;
@@ -1811,7 +1811,7 @@ test "naga-oil writer policy preserves abstract shift counts" {
   let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(naga_oil.contains(">> 31)"), content="true")
+  debug_inspect(naga_oil.contains(">> 31u)"), content="true")
   debug_inspect(naga_oil.contains(">> 31i)"), content="false")
 }
 

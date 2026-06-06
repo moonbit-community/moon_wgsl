@@ -4091,3 +4091,32 @@ test "WGSL AST lowerer lowers scalar vector constructors as splats" {
 }
 
 ///|
+test "WGSL AST lowerer contextualizes shift amount literals as u32" {
+  let source =
+    #|fn f32_bits_to_sortable_u32(bits: u32) -> u32 {
+    #|  return bitcast<u32>(bitcast<i32>(bits) >> 31);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut found_shift = false
+  for expression in function.expressions.items {
+    match expression {
+      Binary(ShiftRight, _, right) =>
+        match function.expressions.items.get(right.index()) {
+          Some(Literal(U32(31))) => found_shift = true
+          Some(_) => abort("unexpected shift amount")
+          None => abort("missing shift amount")
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(found_shift, content="true")
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(">> 31u"), content="true")
+}
+
+///|
