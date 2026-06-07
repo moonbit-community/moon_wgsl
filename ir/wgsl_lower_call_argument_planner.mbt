@@ -47,6 +47,7 @@ fn CallArgumentPlanner::lower_arguments(
   while index < self.arguments.length() {
     if self.prelowered[index] == None &&
       self.argument_is_deferred_const_like(self.arguments[index]) {
+      self.lower_later_source_let_arithmetic_before_direct(index)
       ignore(self.lower_next_reference_run(index + 1))
     } else if self.prelowered[index] == None &&
       self.argument_uses_reference_predeclare(index) {
@@ -89,11 +90,87 @@ fn CallArgumentPlanner::prelower_dependencies(
 }
 
 ///|
+fn CallArgumentPlanner::lower_later_source_let_arithmetic_before_direct(
+  self : CallArgumentPlanner,
+  direct_index : Int,
+) -> Unit raise WgslIrLowerError {
+  guard self.has_later_pointer_argument(direct_index) else { return }
+  let mut lookahead = direct_index + 1
+  while lookahead < self.arguments.length() {
+    if self.prelowered[lookahead] != None {
+      lookahead += 1
+      continue
+    }
+    if self.lowerer.callee_parameter_is_pointer(self.callee_function, lookahead) {
+      return
+    }
+    if wgsl_ir_expr_node_is_call_value(self.arguments[lookahead]) ||
+      self.lowerer.expression_node_contains_user_function_call(
+        self.arguments[lookahead],
+      ) {
+      return
+    }
+    if self.argument_is_pure_binary_value_expression(lookahead) {
+      self.prelowered[lookahead] = Some(self.lower_argument_at(lookahead))
+      return
+    }
+    if self.argument_is_existing_alias_reference(self.arguments[lookahead]) ||
+      self.lowerer.expression_node_is_inline_constant_reference(
+        self.arguments[lookahead],
+        self.scope,
+      ) ||
+      wgsl_ir_expr_node_is_function_argument_value(
+        self.arguments[lookahead],
+        self.scope,
+      ) {
+      lookahead += 1
+      continue
+    }
+    return
+  }
+}
+
+///|
+fn CallArgumentPlanner::has_later_pointer_argument(
+  self : CallArgumentPlanner,
+  direct_index : Int,
+) -> Bool {
+  let mut index = direct_index + 1
+  while index < self.arguments.length() {
+    if self.lowerer.callee_parameter_is_pointer(self.callee_function, index) {
+      return true
+    }
+    index += 1
+  }
+  false
+}
+
+///|
+fn CallArgumentPlanner::argument_is_pure_binary_value_expression(
+  self : CallArgumentPlanner,
+  index : Int,
+) -> Bool {
+  if self.argument_uses_reference_predeclare(index) {
+    return false
+  }
+  if self.lowerer.expression_node_contains_user_function_call(
+      self.arguments[index],
+    ) {
+    return false
+  }
+  match wgsl_ir_expr_node_without_groups(self.arguments[index]).kind() {
+    Binary(_, _, _) => true
+    _ => false
+  }
+}
+
+///|
 fn CallArgumentPlanner::argument_is_deferred_const_like(
   self : CallArgumentPlanner,
   argument : @ast.WgslExprNode,
 ) -> Bool {
   wgsl_ir_expr_node_is_literal_like(argument) ||
+  wgsl_ir_expr_node_is_deferred_select_value(argument) ||
   self.lowerer.expression_node_is_inline_constant_reference(
     argument,
     self.scope,
@@ -175,6 +252,10 @@ fn CallArgumentPlanner::lower_later_reference_before_direct(
     if wgsl_ir_expr_node_is_call_value(self.arguments[lookahead]) {
       return
     }
+    if self.argument_is_pending_store_pointer_deref(lookahead) {
+      self.prelowered[lookahead] = Some(self.lower_argument_at(lookahead))
+      return
+    }
     if self.argument_uses_reference_predeclare(lookahead) {
       self.prelowered[lookahead] = Some(self.lower_argument_at(lookahead))
       return
@@ -195,6 +276,23 @@ fn CallArgumentPlanner::lower_later_reference_before_direct(
       continue
     }
     return
+  }
+}
+
+///|
+fn CallArgumentPlanner::argument_is_pending_store_pointer_deref(
+  self : CallArgumentPlanner,
+  index : Int,
+) -> Bool {
+  if self.lowerer.callee_parameter_is_pointer(self.callee_function, index) {
+    return false
+  }
+  match self.scope.pending_store_pointer_argument_root {
+    Some(name) =>
+      wgsl_ir_expr_node_is_pointer_deref_of_argument_name(
+        self.arguments[index], name,
+      )
+    None => false
   }
 }
 

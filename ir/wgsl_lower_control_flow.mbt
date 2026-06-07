@@ -154,12 +154,86 @@ fn WgslIrLowerer::lower_for_loop_condition_ref(
       self
       .short_circuit_planner(function, scope, block)
       .materialize_value_node(root)
+    Some(root) =>
+      match
+        self.lower_for_loop_local_comparison_condition(
+          root, function, scope, block,
+        ) {
+        Some(handle) => handle
+        None => {
+          let handle = self.lower_function_expression_ref(expr_ref, function, scope)
+          self.materialize_for_loop_condition_if_needed(
+            function, scope, block, handle,
+          )
+        }
+      }
     _ => {
       let handle = self.lower_function_expression_ref(expr_ref, function, scope)
       self.materialize_for_loop_condition_if_needed(
         function, scope, block, handle,
       )
     }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_for_loop_local_comparison_condition(
+  self : WgslIrLowerer,
+  root : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+  block : Block,
+) -> Handle? raise WgslIrLowerError {
+  guard root.kind() is Binary(op, left, right) else { return None }
+  guard wgsl_ir_ast_binary_operator_is_comparison(op) else { return None }
+  guard wgsl_ir_expr_node_plain_mutable_local_identifier_name(left, scope)
+    is Some(name) else {
+    return None
+  }
+  guard wgsl_ir_for_loop_condition_rhs_lowers_before_local_load(
+      right, scope,
+    ) else {
+    return None
+  }
+  let local_handle = match scope.locals.get(name) {
+    Some(handle) => handle
+    None => return None
+  }
+  let pointer = scope.local_pointer_expression(name, local_handle, function)
+  let expected_ty = match self.function_expression_type(function, pointer) {
+    Some(ty) => Some(self.deref_pointer_type_handle(ty))
+    None => None
+  }
+  let right_handle = self.lower_function_expression_node_with_expected(
+    right, function, scope, expected_ty,
+  )
+  let left_handle = function.expressions.append(Load(pointer))
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  let handle = function.expressions.append(
+    Binary(binary_op, left_handle, right_handle),
+  )
+  Some(self.materialize_for_loop_condition_if_needed(
+    function, scope, block, handle,
+  ))
+}
+
+///|
+fn wgsl_ir_for_loop_condition_rhs_lowers_before_local_load(
+  node : @ast.WgslExprNode,
+  scope : WgslIrFunctionScope,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      wgsl_ir_for_loop_condition_rhs_lowers_before_local_load(inner, scope)
+    Identifier(name) =>
+      match scope.local_constants.get(name.name()) {
+        Some(_) => true
+        None => false
+      }
+    _ => false
   }
 }
 

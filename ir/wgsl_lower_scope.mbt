@@ -84,6 +84,7 @@ priv struct WgslIrFunctionScope {
   mut source_let_initializer_preserve_depth : Int
   mut compound_assignment_rhs_depth : Int
   mut pending_compound_assignment_rhs_local_root : String?
+  mut pending_store_pointer_argument_root : String?
   block_depth : Int
   loop_depth : Int
   mut visible_rel_path : String
@@ -115,6 +116,7 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     source_let_initializer_preserve_depth: 0,
     compound_assignment_rhs_depth: 0,
     pending_compound_assignment_rhs_local_root: None,
+    pending_store_pointer_argument_root: None,
     block_depth: 0,
     loop_depth: 0,
     visible_rel_path: "",
@@ -226,6 +228,7 @@ fn WgslIrFunctionScope::child(
     source_let_initializer_preserve_depth: self.source_let_initializer_preserve_depth,
     compound_assignment_rhs_depth: self.compound_assignment_rhs_depth,
     pending_compound_assignment_rhs_local_root: self.pending_compound_assignment_rhs_local_root,
+    pending_store_pointer_argument_root: self.pending_store_pointer_argument_root,
     block_depth: self.block_depth + 1,
     loop_depth: self.loop_depth,
     visible_rel_path: self.visible_rel_path,

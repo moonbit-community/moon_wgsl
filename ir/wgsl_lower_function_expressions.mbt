@@ -83,6 +83,11 @@ fn WgslIrLowerer::fold_function_binary_expression_at_mark(
   expression_mark : Int,
   handle : Handle,
 ) -> Handle raise WgslIrLowerError {
+  if self.function_binary_expression_should_retain_generated_import_constant(
+    function, handle,
+  ) {
+    return handle
+  }
   match self.fold_function_constant_typed_literal_expression(function, handle) {
     Some(literal) => {
       function.expressions.truncate(expression_mark)
@@ -512,6 +517,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         None => ()
       }
       match
+        self.lower_function_binary_left_declared_constant_before_right_call_product(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
         self.lower_function_binary_chain_with_trailing_source_let_initializer(
           op, left, right, function, scope,
         ) {
@@ -548,6 +560,13 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
       }
       match
         self.lower_function_binary_chain_with_parent_argument_root_projection(
+          op, left, right, function, scope,
+        ) {
+        Some(handle) => return handle
+        None => ()
+      }
+      match
+        self.lower_function_binary_left_argument_after_right_argument_global_product(
           op, left, right, function, scope,
         ) {
         Some(handle) => return handle
@@ -1262,6 +1281,64 @@ fn WgslIrLowerer::lower_function_binary_const_parent_between_right_const_and_loc
 }
 
 ///|
+fn WgslIrLowerer::lower_function_binary_left_declared_constant_before_right_call_product(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard op == Subtract else { return None }
+  guard self.expr_node_is_declared_or_generated_constant_reference(left) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_without_groups(right).kind()
+    is Binary(right_op, right_left, right_right) else {
+    return None
+  }
+  guard wgsl_ir_ast_binary_operator_is_multiplicative(right_op) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_contains_call(right) else { return None }
+  let right_left_handle = self.lower_function_expression_node(
+    right_left, function, scope,
+  )
+  let right_right_handle = self.lower_function_expression_node(
+    right_right, function, scope,
+  )
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  let right_binary_op = wgsl_ir_binary_operator(right_op)
+  let (right_left_handle, right_right_handle) = self.normalize_function_binary_operands(
+    function, right_binary_op, right_left_handle, right_right_handle,
+  )
+  let right_handle = function.expressions.append(
+    Binary(right_binary_op, right_left_handle, right_right_handle),
+  )
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  Some(function.expressions.append(Binary(binary_op, left_handle, right_handle)))
+}
+
+///|
+fn WgslIrLowerer::expr_node_is_declared_or_generated_constant_reference(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      self.expr_node_is_declared_or_generated_constant_reference(inner)
+    Identifier(name) =>
+      self.constant_declarations.contains(name.name()) ||
+      self.constant_names.contains(name.name()) ||
+      self.generated_import_symbol_is_constant_reference(name.name())
+    _ => false
+  }
+}
+
+///|
 fn WgslIrLowerer::lower_function_binary_chain_with_parent_argument_after_member_root(
   self : WgslIrLowerer,
   op : @ast.WgslExprOperator,
@@ -1803,6 +1880,62 @@ fn WgslIrLowerer::predeclare_function_reference_roots_in_source_order(
       )
     Literal(_) | ShaderDefTemplate(_) | PathAccess(_, _) => ()
   }
+}
+
+///|
+fn WgslIrLowerer::lower_function_binary_left_argument_after_right_argument_global_product(
+  self : WgslIrLowerer,
+  op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle? raise WgslIrLowerError {
+  guard op == Subtract else { return None }
+  guard wgsl_ir_expr_node_is_function_argument_value(left, scope) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_without_groups(right).kind()
+    is Binary(right_op, right_left, right_right) else {
+    return None
+  }
+  guard wgsl_ir_ast_binary_operator_is_multiplicative(right_op) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_is_function_argument_value(right_left, scope) else {
+    return None
+  }
+  guard wgsl_ir_expr_node_without_groups(right_right).kind()
+    is Identifier(global_name) else {
+    return None
+  }
+  let global_handle = match self.global_names.get(global_name.name()) {
+    Some(handle) => handle
+    None => return None
+  }
+  guard !self.global_variable_is_handle_value(global_handle) else {
+    return None
+  }
+  let global_pointer = function.expressions.append(
+    GlobalVariable(global_handle),
+  )
+  let right_left_handle = self.lower_function_expression_node(
+    right_left, function, scope,
+  )
+  let left_handle = self.lower_function_expression_node(left, function, scope)
+  let right_right_handle = function.expressions.append(Load(global_pointer))
+  let right_binary_op = wgsl_ir_binary_operator(right_op)
+  let (right_left_handle, right_right_handle) = self.normalize_function_binary_operands(
+    function, right_binary_op, right_left_handle, right_right_handle,
+  )
+  let right_handle = function.expressions.append(
+    Binary(right_binary_op, right_left_handle, right_right_handle),
+  )
+  let binary_op = wgsl_ir_binary_operator(op)
+  let (left_handle, right_handle) = self.normalize_function_binary_operands(
+    function, binary_op, left_handle, right_handle,
+  )
+  Some(function.expressions.append(Binary(binary_op, left_handle, right_handle)))
 }
 
 ///|
@@ -4657,6 +4790,9 @@ fn WgslIrLowerer::lower_function_math_call(
       }
     }
   }
+  self.predeclare_math_later_direct_argument_after_first_constructor_component(
+    arguments, function, scope,
+  )
   let handles : Array[Handle] = []
   if self.math_call_lowers_second_argument_before_first(
       math_function, arguments, function, scope,
@@ -4735,6 +4871,43 @@ fn WgslIrLowerer::lower_function_math_call(
     }
     None => handle
   }
+}
+
+///|
+fn WgslIrLowerer::predeclare_math_later_direct_argument_after_first_constructor_component(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Unit raise WgslIrLowerError {
+  guard arguments.length() >= 3 else { return }
+  guard arguments[0].kind() is Call(callee, constructor_arguments) else {
+    return
+  }
+  guard self.expression_callee_is_constructor_call_value(callee) else {
+    return
+  }
+  guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
+    is [component] else {
+    return
+  }
+  guard wgsl_ir_expr_node_is_function_argument_value(component, scope) else {
+    return
+  }
+  let mut direct_index = -1
+  for index in 2..<arguments.length() {
+    if direct_index < 0 &&
+      wgsl_ir_expr_node_is_function_argument_value(arguments[index], scope) {
+      direct_index = index
+    }
+  }
+  guard direct_index >= 0 else { return }
+  ignore(self.lower_function_expression_node(component, function, scope))
+  self.predeclare_function_argument_value(
+    arguments[direct_index],
+    function,
+    scope,
+  )
 }
 
 ///|

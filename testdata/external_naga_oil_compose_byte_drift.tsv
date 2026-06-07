@@ -1,5 +1,5 @@
 id	rel_path	hash	class	reason
-bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	f3d73636c410ddc18ca70e07586ab2b97b168e490636f4cb8cd76e9cd03155b8	byte-output-drift	strict-byte-parity-failure
+bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	321a48d727b34d079ecea9ad988eac13ad40205279e62f1535bd56b4e0a262d1	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/transmission/transmission.wgsl	fbf638df452e302dd8444ce115014c5827cfab5c7d19ef5f88f6b479e6718644	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/volumetric_fog/volumetric_fog.wgsl	7dfb14a3983bf14744c70b035c8917f3411bf338b0adf198c8b4ead09361cca9	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_sprite_render/src/sprite_mesh/sprite_material.wgsl	d6a5c4525308ee6e51e06fc58694e828d1b3f021de3e51b5de63fd1cc9ec47c8	byte-output-drift	strict-byte-parity-failure

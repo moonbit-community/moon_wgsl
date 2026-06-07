@@ -2248,6 +2248,169 @@ test "WGSL AST lowerer predeclares short-circuit condition local operands before
 }
 
 ///|
+test "WGSL AST lowerer orders global scale root before argument product in subtract" {
+  let source =
+    #|@group(0) @binding(0) var<uniform> thickness: f32;
+    #|
+    #|fn probe(delta_position: vec3<f32>, view_vec: vec3<f32>) -> vec3<f32> {
+    #|  return delta_position - view_vec * thickness;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut global_root : Int? = None
+  let mut view_argument : Int? = None
+  let mut delta_argument : Int? = None
+  let mut global_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      GlobalVariable(_) if global_root == None => global_root = Some(index)
+      FunctionArgument(1) if view_argument == None => view_argument = Some(index)
+      FunctionArgument(0) if delta_argument == None => delta_argument = Some(index)
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(GlobalVariable(_)) if global_load == None =>
+            global_load = Some(index)
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (global_root, view_argument, delta_argument, global_load) {
+    (Some(root), Some(view), Some(delta), Some(load)) => {
+      debug_inspect(root < view, content="true")
+      debug_inspect(view < delta, content="true")
+      debug_inspect(delta < load, content="true")
+    }
+    _ => abort("expected global root, two arguments, and global load")
+  }
+}
+
+///|
+test "WGSL AST lowerer predeclares later fma direct argument after first constructor component" {
+  let source =
+    #|fn probe(sampling_direction: f32, n: vec2<f32>) -> vec2<f32> {
+    #|  var front_back_horizon = vec2(0.1, 0.2);
+    #|  front_back_horizon = fma(vec2(sampling_direction), -front_back_horizon, n);
+    #|  return front_back_horizon;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut sampling_argument : Int? = None
+  let mut n_argument : Int? = None
+  let mut sampling_splat : Int? = None
+  let mut horizon_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(0) if sampling_argument == None =>
+        sampling_argument = Some(index)
+      FunctionArgument(1) if n_argument == None => n_argument = Some(index)
+      Splat(_, inner) =>
+        match sampling_argument {
+          Some(sampling) if inner.index() == sampling &&
+            sampling_splat == None => sampling_splat = Some(index)
+          _ => ()
+        }
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(LocalVariable(_)) if sampling_splat != None &&
+            horizon_load == None => horizon_load = Some(index)
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (sampling_argument, n_argument, sampling_splat, horizon_load) {
+    (Some(sampling), Some(n), Some(splat), Some(load)) => {
+      debug_inspect(sampling < n, content="true")
+      debug_inspect(n < splat, content="true")
+      debug_inspect(splat < load, content="true")
+    }
+    _ => abort("expected fma argument ordering handles")
+  }
+}
+
+///|
+test "WGSL AST lowerer does not treat user call math argument as constructor" {
+  let source =
+    #|fn calculate(reflectance: vec3<f32>) -> vec3<f32> {
+    #|  return reflectance;
+    #|}
+    #|
+    #|fn probe(base_color: vec3<f32>, metallic: f32, reflectance: vec3<f32>) -> vec3<f32> {
+    #|  return mix(calculate(reflectance), base_color, metallic);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut call_result : Int? = None
+  let mut base_color_argument : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      CallResult(_) if call_result == None => call_result = Some(index)
+      FunctionArgument(0) if base_color_argument == None =>
+        base_color_argument = Some(index)
+      _ => ()
+    }
+  }
+  match (call_result, base_color_argument) {
+    (Some(call), Some(base_color)) =>
+      debug_inspect(call < base_color, content="true")
+    _ => abort("expected user call result and base_color argument")
+  }
+}
+
+///|
+test "WGSL AST lowerer schedules store pointer argument reads through assignment context" {
+  let source =
+    #|fn update(a: f32, b: f32, samples: f32, bits: u32) -> u32 {
+    #|  return bits;
+    #|}
+    #|
+    #|fn probe(front_back_horizon: vec2<f32>, samples_per_slice: f32, bitmask: ptr<function, u32>) {
+    #|  *bitmask = update(front_back_horizon.x, front_back_horizon.y, samples_per_slice, *bitmask);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut bitmask_root : Int? = None
+  let mut horizon_access : Int? = None
+  let mut bitmask_load : Int? = None
+  let mut samples_argument : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(2) if bitmask_root == None =>
+        bitmask_root = Some(index)
+      AccessIndex(base, _) if horizon_access == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(FunctionArgument(0)) => horizon_access = Some(index)
+          _ => ()
+        }
+      Load(base) if bitmask_load == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(FunctionArgument(2)) => bitmask_load = Some(index)
+          _ => ()
+        }
+      FunctionArgument(1) if samples_argument == None =>
+        samples_argument = Some(index)
+      _ => ()
+    }
+  }
+  match (bitmask_root, horizon_access, bitmask_load, samples_argument) {
+    (Some(root), Some(access), Some(load), Some(samples)) => {
+      debug_inspect(root < access, content="true")
+      debug_inspect(load < samples, content="true")
+    }
+    _ => abort("expected store pointer root, horizon access, load, and samples")
+  }
+}
+
+///|
 test "WGSL AST lowerer predeclares right argument projection before left member multiply chain" {
   let source =
     #|struct Light {
@@ -2466,6 +2629,39 @@ test "WGSL AST lowerer prelowers later reference call argument before prior dire
     }
     _ => abort("expected soft shadow load and frag coord argument")
   }
+}
+
+///|
+test "WGSL AST lowerer prelowers later source-let arithmetic before prior direct literal argument" {
+  let source =
+    #|fn target(width: f32, dir: vec2<f32>, thickness: f32, radius: f32, mask: ptr<function, u32>) -> f32 {
+    #|  *mask = 1u;
+    #|  return radius + thickness + dir.x + width;
+    #|}
+    #|
+    #|fn probe(width: f32, dir: vec2<f32>) -> f32 {
+    #|  var mask = 0u;
+    #|  let scale = width;
+    #|  return target(width, dir, -1.0, scale * 2.0, &mask);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut minus_literal = -1
+  let mut scale_product = -1
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Literal(AbstractFloat(value)) if value == -1.0 && minus_literal == -1 =>
+        minus_literal = expression_index
+      Binary(Multiply, _, _) if scale_product == -1 =>
+        scale_product = expression_index
+      _ => ()
+    }
+  }
+  debug_inspect(minus_literal >= 0, content="true")
+  debug_inspect(scale_product >= 0, content="true")
+  debug_inspect(scale_product < minus_literal, content="true")
 }
 
 ///|

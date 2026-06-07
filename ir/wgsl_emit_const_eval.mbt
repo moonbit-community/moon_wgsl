@@ -518,6 +518,13 @@ fn WgslIrEmitter::eval_float_vector_expression_with_retained_constants_inner(
         None => None
       }
     Binary(op, left, right) => {
+      if op == Divide &&
+        self.expression_is_generated_import_constant_reference(
+          function, left,
+        ) &&
+        wgsl_ir_expression_is_local_initializer(function, right) {
+        return None
+      }
       guard self.eval_float_vector_expression_with_retained_constants_inner(
           function, left,
         )
@@ -571,6 +578,13 @@ fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
         None => None
       }
     Binary(op, left, right) => {
+      if op == Divide &&
+        self.expression_is_generated_import_constant_reference(
+          function, left,
+        ) &&
+        wgsl_ir_expression_is_local_initializer(function, right) {
+        return None
+      }
       guard self.eval_float_expression_with_retained_constants_inner(
           function, left,
         )
@@ -629,6 +643,40 @@ fn wgsl_ir_emit_eval_float_vector_binary(
 }
 
 ///|
+fn wgsl_ir_expression_is_local_initializer(
+  function : Function?,
+  handle : Handle,
+) -> Bool {
+  match function {
+    Some(function) => {
+      for local_var in function.local_variables.items {
+        match local_var.init {
+          Some(init) if init == handle => return true
+          _ => ()
+        }
+      }
+      false
+    }
+    None => false
+  }
+}
+
+///|
+fn WgslIrEmitter::expression_is_generated_import_constant_reference(
+  self : WgslIrEmitter,
+  function : Function?,
+  handle : Handle,
+) -> Bool {
+  match self.optional_expression(function, handle) {
+    Some(Constant(constant_handle)) =>
+      match self.shader_module.constants.items.get(constant_handle.index()) {
+        Some(constant) => constant.generated_import
+        None => false
+      }
+    _ => false
+  }
+}
+
 fn WgslIrEmitter::expression_tree_contains_constant_reference(
   self : WgslIrEmitter,
   function : Function?,

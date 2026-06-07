@@ -1163,7 +1163,51 @@ fn WgslIrLowerer::function_expression_contains_constant_reference(
   }
 }
 
+fn WgslIrLowerer::function_binary_expression_should_retain_generated_import_constant(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Binary(Divide, left, right)) =>
+      self.function_expression_is_generated_import_constant_reference(
+        function, left,
+      ) &&
+      wgsl_ir_function_expression_is_local_initializer(function, right)
+    _ => false
+  }
+}
+
 ///|
+fn wgsl_ir_function_expression_is_local_initializer(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  for local_var in function.local_variables.items {
+    match local_var.init {
+      Some(init) if init == handle => return true
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn WgslIrLowerer::function_expression_is_generated_import_constant_reference(
+  self : WgslIrLowerer,
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Constant(constant_handle)) =>
+      match self.shader_module.constants.items.get(constant_handle.index()) {
+        Some(constant) => constant.generated_import
+        None => false
+      }
+    _ => false
+  }
+}
+
 fn WgslIrLowerer::optional_function_expression_contains_constant_reference(
   self : WgslIrLowerer,
   function : Function,

@@ -1286,6 +1286,19 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
           } else if self.wgsl_ir_expr_ref_is_function_argument_pointer_deref(
               lhs_ref, function, scope,
             ) {
+            let store_pointer_root = self.function_argument_pointer_deref_name_ref(
+              lhs_ref, function, scope,
+            )
+            if store_pointer_root is Some(name) &&
+              self.rhs_user_call_reads_pointer_argument(rhs_ref, name) {
+              ignore(
+                scope.argument_pointer_expression(
+                  name, scope.arguments[name], function,
+                ),
+              )
+            }
+            let previous_pending = scope.pending_store_pointer_argument_root
+            scope.pending_store_pointer_argument_root = store_pointer_root
             let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
               rhs_ref,
               function,
@@ -1293,6 +1306,7 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
               block,
               None,
             )
+            scope.pending_store_pointer_argument_root = previous_pending
             let raw_target = self.lower_function_lvalue_ref(
               lhs_ref, function, scope,
             )
@@ -1886,6 +1900,158 @@ fn predeclare_assignment_rhs_root_before_target_if_needed(
         root, function, scope,
       )
     None => ()
+  }
+}
+
+///|
+fn WgslIrLowerer::rhs_user_call_reads_pointer_argument(
+  self : WgslIrLowerer,
+  rhs_ref : @ast.WgslExprRef,
+  argument_name : String,
+) -> Bool {
+  match rhs_ref.root() {
+    Some(root) =>
+      self.expression_node_contains_user_function_call(root) &&
+      wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+        root, argument_name,
+      )
+    None => false
+  }
+}
+
+///|
+fn WgslIrLowerer::function_argument_pointer_deref_name_ref(
+  self : WgslIrLowerer,
+  expr_ref : @ast.WgslExprRef,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> String? {
+  match expr_ref.root() {
+    Some(root) =>
+      self.function_argument_pointer_deref_name_node(root, function, scope)
+    None => None
+  }
+}
+
+///|
+fn WgslIrLowerer::function_argument_pointer_deref_name_node(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> String? {
+  match node.kind() {
+    Group(inner) =>
+      self.function_argument_pointer_deref_name_node(inner, function, scope)
+    Unary(op, inner) =>
+      if op == Multiply {
+        self.function_argument_pointer_name_node(inner, function, scope)
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn WgslIrLowerer::function_argument_pointer_name_node(
+  self : WgslIrLowerer,
+  node : @ast.WgslExprNode,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> String? {
+  match node.kind() {
+    Group(inner) =>
+      self.function_argument_pointer_name_node(inner, function, scope)
+    Identifier(name) =>
+      match scope.arguments.get(name.name()) {
+        Some(index) =>
+          if self.function_argument_is_pointer(function, index) {
+            Some(name.name())
+          } else {
+            None
+          }
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+  node : @ast.WgslExprNode,
+  argument_name : String,
+) -> Bool {
+  if wgsl_ir_expr_node_is_pointer_deref_of_argument_name(node, argument_name) {
+    return true
+  }
+  match node.kind() {
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+        inner, argument_name,
+      )
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+        left, argument_name,
+      ) ||
+      wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+        right, argument_name,
+      )
+    Member(base, _) | Template(base, _) =>
+      wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+        base, argument_name,
+      )
+    Call(callee, arguments) => {
+      if wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+          callee, argument_name,
+        ) {
+        return true
+      }
+      let arguments = wgsl_ir_call_arguments(arguments)
+      arguments.any(fn(argument) {
+        wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+          argument, argument_name,
+        )
+      })
+    }
+    Sequence(items) =>
+      items.any(fn(item) {
+        wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+          item, argument_name,
+        )
+      })
+    PathAccess(base, _) =>
+      wgsl_ir_expr_node_contains_pointer_deref_of_argument_name(
+        base, argument_name,
+      )
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_pointer_deref_of_argument_name(
+  node : @ast.WgslExprNode,
+  argument_name : String,
+) -> Bool {
+  match node.kind() {
+    Group(inner) =>
+      wgsl_ir_expr_node_is_pointer_deref_of_argument_name(inner, argument_name)
+    Unary(op, inner) =>
+      op == Multiply &&
+      wgsl_ir_expr_node_is_identifier_name(inner, argument_name)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_identifier_name(
+  node : @ast.WgslExprNode,
+  name : String,
+) -> Bool {
+  match node.kind() {
+    Group(inner) => wgsl_ir_expr_node_is_identifier_name(inner, name)
+    Identifier(ident) => ident.name() == name
+    _ => false
   }
 }
 
