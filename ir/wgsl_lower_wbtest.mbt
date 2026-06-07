@@ -544,6 +544,195 @@ test "WGSL AST lowerer inserts higher-precedence right binary subtrees before le
 }
 
 ///|
+test "WGSL AST lowerer preserves literal-left product chain arena order" {
+  let source =
+    #|fn probe(ior: f32, a: f32, b: f32) -> f32 {
+    #|  let eta = 1.0 / ior;
+    #|  let ndot = a + b;
+    #|  let result = 1.0 - eta * eta * (1.0 - ndot * ndot);
+    #|  return result;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut eta_product = -1
+  let mut ndot_product = -1
+  let mut inner_literal = -1
+  let mut saw_ndot_product = false
+  for index, expression in function.expressions.items {
+    match expression {
+      Binary(Multiply, left, right) =>
+        if left.index() == 2 && right.index() == 2 {
+          eta_product = index
+        } else if left.index() == 5 && right.index() == 5 {
+          ndot_product = index
+          saw_ndot_product = true
+        }
+      Literal(_) if saw_ndot_product && inner_literal == -1 =>
+        inner_literal = index
+      _ => ()
+    }
+  }
+  if eta_product == -1 || ndot_product == -1 || inner_literal == -1 {
+    abort("expected eta product, ndot product, and inner literal")
+  }
+  debug_inspect(eta_product < ndot_product, content="true")
+  debug_inspect(ndot_product < inner_literal, content="true")
+}
+
+///|
+test "WGSL AST lowerer commits source-let right binary before literal-left parent" {
+  let source =
+    #|fn probe(value: f32) -> f32 {
+    #|  let named = value;
+    #|  let result = 1.0 - named * named;
+    #|  return result;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut product : Int? = None
+  let mut literal : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      Binary(Multiply, _, _) if product == None => product = Some(index)
+      Literal(_) if literal == None => literal = Some(index)
+      _ => ()
+    }
+  }
+  match (product, literal) {
+    (Some(product), Some(literal)) =>
+      debug_inspect(product < literal, content="true")
+    _ => abort("expected source-let product and literal-left parent")
+  }
+}
+
+///|
+test "WGSL AST lowerer predeclares right arguments before left access projection" {
+  let source =
+    #|fn probe(world_position: vec4<f32>, direction: vec3<f32>, thickness: f32) -> vec3<f32> {
+    #|  let ray = direction;
+    #|  return world_position.xyz + ray * thickness;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut world_root = -1
+  let mut thickness_root = -1
+  let mut swizzle = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(0) if world_root == -1 => world_root = index
+      FunctionArgument(2) if thickness_root == -1 => thickness_root = index
+      Swizzle(_, _, _) if swizzle == -1 => swizzle = index
+      _ => ()
+    }
+  }
+  if world_root == -1 || thickness_root == -1 || swizzle == -1 {
+    abort("expected world root, thickness argument, and swizzle")
+  }
+  debug_inspect(world_root < thickness_root, content="true")
+  debug_inspect(thickness_root < swizzle, content="true")
+}
+
+///|
+test "WGSL AST lowerer keeps mutable local member load before right global root" {
+  let source =
+    #|struct View {
+    #|  exposure: f32,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> view: View;
+    #|
+    #|fn probe() -> vec3<f32> {
+    #|  var color: vec4<f32>;
+    #|  return color.rgb / view.exposure;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut color_pointer = -1
+  let mut color_load = -1
+  let mut view_root = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      LocalVariable(_) if color_pointer == -1 => color_pointer = index
+      Load(pointer) if pointer.index() == color_pointer && color_load == -1 =>
+        color_load = index
+      GlobalVariable(_) if view_root == -1 => view_root = index
+      _ => ()
+    }
+  }
+  if color_load == -1 || view_root == -1 {
+    abort("expected mutable local load and global root")
+  }
+  debug_inspect(color_load < view_root, content="true")
+}
+
+///|
+test "WGSL AST lowerer lowers right call before left literal constructor" {
+  let source =
+    #|fn helper(value: vec3<f32>, amount: f32) -> vec3<f32> {
+    #|  return value * amount;
+    #|}
+    #|
+    #|fn probe(base: vec3<f32>, amount: f32) -> vec3<f32> {
+    #|  return vec3(1.0) - helper(base, amount);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[1]
+  let mut call_result = -1
+  let mut literal = -1
+  let mut splat = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      CallResult(_) if call_result == -1 => call_result = index
+      Literal(_) if literal == -1 => literal = index
+      Splat(_, _) if splat == -1 => splat = index
+      _ => ()
+    }
+  }
+  if call_result == -1 || literal == -1 || splat == -1 {
+    abort("expected call result, constructor literal, and splat")
+  }
+  debug_inspect(call_result < literal, content="true")
+  debug_inspect(literal < splat, content="true")
+}
+
+///|
+test "WGSL AST lowerer predeclares right call argument before left chain commit" {
+  let source =
+    #|fn probe(left: vec3<f32>, color: vec3<f32>, env: vec3<f32>, background: vec3<f32>, alpha: f32) -> vec3<f32> {
+    #|  let fresnel = left + color;
+    #|  return fresnel * color * mix(env, background, alpha);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut env_argument = -1
+  let mut left_product = -1
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(2) if env_argument == -1 => env_argument = index
+      Binary(Multiply, _, _) if left_product == -1 => left_product = index
+      _ => ()
+    }
+  }
+  if env_argument == -1 || left_product == -1 {
+    abort("expected env argument and left product")
+  }
+  debug_inspect(env_argument < left_product, content="true")
+}
+
+///|
 test "WGSL AST lowerer keeps additive product subtrees in source arena order" {
   let source =
     #|fn probe(a: vec3<f32>, b: vec4<f32>, c: vec3<f32>, d: vec4<f32>) -> vec3<f32> {
@@ -2509,23 +2698,41 @@ test "WGSL AST lowerer keeps math-call additive left subtree before right produc
     error => abort(error.message())
   }
   let function = module_.functions.items[0]
+  let mut global_root : Int? = None
   let mut left_unary : Int? = None
+  let mut surface_argument : Int? = None
   let mut surface_swizzle : Int? = None
+  let mut shadow_depth_load : Int? = None
   for index, expression in function.expressions.items {
     match expression {
+      GlobalVariable(_) if global_root == None => global_root = Some(index)
       Unary(_, _) if left_unary == None => left_unary = Some(index)
+      FunctionArgument(argument_index) if argument_index == 1 &&
+        surface_argument == None => surface_argument = Some(index)
       Swizzle(_, base, _) if surface_swizzle == None =>
         match function.expressions.items.get(base.index()) {
           Some(FunctionArgument(argument_index)) if argument_index == 1 =>
             surface_swizzle = Some(index)
           _ => ()
         }
+      Load(base) =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(access_base, 0)) =>
+            match global_root {
+              Some(root) if access_base.index() == root =>
+                shadow_depth_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
       _ => ()
     }
   }
-  match (left_unary, surface_swizzle) {
-    (Some(unary), Some(swizzle)) =>
+  match (left_unary, surface_argument, surface_swizzle, shadow_depth_load) {
+    (Some(unary), Some(surface), Some(swizzle), Some(depth_load)) => {
       debug_inspect(unary < swizzle, content="true")
+      debug_inspect(surface < depth_load, content="true")
+    }
     _ => abort("expected left unary and surface normal swizzle handles")
   }
 }

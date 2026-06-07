@@ -587,6 +587,21 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
           left, function, scope,
         )
         self.predeclare_function_argument_value(right, function, scope)
+      } else if scheduler.binary_predeclares_right_subtree_arguments_before_left_access_projection(
+          op, left, right,
+        ) {
+        self.predeclare_function_reference_roots_in_source_order(
+          left, function, scope,
+        )
+        self.predeclare_function_argument_values_in_source_order(
+          right, function, scope,
+        )
+      } else if scheduler.binary_predeclares_right_subtree_arguments_before_left_associative_call_chain(
+          op, left, right,
+        ) {
+        self.predeclare_function_argument_values_in_source_order(
+          right, function, scope,
+        )
       } else if scheduler.binary_predeclares_right_constructor_argument_member_root(
           left, right,
         ) {
@@ -604,6 +619,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       } else if scheduler.binary_right_subtree_has_higher_precedence(op, right) &&
         !wgsl_ir_expr_node_is_function_argument_value(left, scope) &&
+        wgsl_ir_expr_node_is_direct_access_chain(left) &&
         wgsl_ir_expr_node_contains_call(left) &&
         !wgsl_ir_expr_node_contains_non_math_call(left) &&
         !wgsl_ir_expr_node_contains_non_math_call(right) &&
@@ -2069,6 +2085,19 @@ fn WgslIrLowerer::lower_function_right_operand_before_left(
   let scheduler = self.expression_arena_scheduler(function, scope)
   if scheduler.binary_right_root_is_delayed_after_parent_left(parent_op, right) &&
     !wgsl_ir_expr_node_contains_call(right) {
+    if (parent_op == Divide || parent_op == Subtract) &&
+      (
+        wgsl_ir_expr_node_is_literal_like(left) ||
+        wgsl_ir_expr_node_is_negative_literal_like(left)
+      ) {
+      let right_handle = self.lower_function_expression_node(
+        right, function, scope,
+      )
+      let left_handle = self.lower_function_expression_node(
+        left, function, scope,
+      )
+      return (left_handle, right_handle)
+    }
     let (right_op, right_left, right_right) = self.lower_binary_expression_children(
       right, function, scope,
     )
@@ -2076,19 +2105,6 @@ fn WgslIrLowerer::lower_function_right_operand_before_left(
     let (right_left, right_right) = self.normalize_function_binary_operands(
       function, right_binary_op, right_left, right_right,
     )
-    if parent_op == Divide &&
-      (
-        wgsl_ir_expr_node_is_literal_like(left) ||
-        wgsl_ir_expr_node_is_negative_literal_like(left)
-      ) {
-      let right_handle = function.expressions.append(
-        Binary(right_binary_op, right_left, right_right),
-      )
-      let left_handle = self.lower_function_expression_node(
-        left, function, scope,
-      )
-      return (left_handle, right_handle)
-    }
     let left_handle = self.lower_function_expression_node(left, function, scope)
     let right_handle = function.expressions.append(
       Binary(right_binary_op, right_left, right_right),

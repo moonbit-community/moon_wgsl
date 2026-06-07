@@ -1,2 +1,1 @@
-byte-drift	bevy	crates/bevy_pbr/src/transmission/transmission.wgsl	expression-temp-index-order	WGSL-281	switch-local-emission-order fixed; remaining first drift is generated expression temporary numbering in specular_transmissive_light
 byte-drift	bevy	crates/bevy_sprite_render/src/sprite_mesh/sprite_material.wgsl	byte-token-policy	WGSL-281	remaining byte-output drift after Naga arena trace alignment; continue through upstream-compatible expression arena and byte writer policy
