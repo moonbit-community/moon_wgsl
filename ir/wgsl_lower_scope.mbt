@@ -29,7 +29,7 @@ priv enum WgslIrLocalConstantArenaPlacement {
 ///|
 priv enum WgslIrLocalValue {
   LazyConstant(WgslIrLazyLocalConstant)
-  ExpressionAlias(Handle)
+  ExpressionAlias(Handle, WgslIrLazyLocalConstant?)
 }
 
 ///|
@@ -193,12 +193,44 @@ fn wgsl_ir_restore_local_constant_values(
   source : Map[String, WgslIrLocalValueCell],
   snapshot : Map[String, WgslIrLocalValue],
 ) -> Unit {
+  let added_keys : Array[String] = []
+  for entry in source.iter() {
+    let (key, _) = entry
+    if !snapshot.contains(key) {
+      added_keys.push(key)
+    }
+  }
+  for key in added_keys {
+    ignore(source.remove(key))
+  }
   for entry in snapshot.iter() {
     let (key, value) = entry
     match source.get(key) {
       Some(cell) => cell.value = value
       None => ()
     }
+  }
+}
+
+///|
+fn wgsl_ir_invalidate_local_constant_aliases_after_expression_rewind(
+  source : Map[String, WgslIrLocalValueCell],
+  length : Int,
+) -> Unit {
+  let removed_keys : Array[String] = []
+  for entry in source.iter() {
+    let (key, cell) = entry
+    match cell.value {
+      ExpressionAlias(handle, fallback) if handle.index() >= length =>
+        match fallback {
+          Some(local_constant) => cell.value = LazyConstant(local_constant)
+          None => removed_keys.push(key)
+        }
+      _ => ()
+    }
+  }
+  for key in removed_keys {
+    ignore(source.remove(key))
   }
 }
 

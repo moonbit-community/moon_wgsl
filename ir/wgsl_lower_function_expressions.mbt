@@ -61,6 +61,8 @@ fn WgslIrLowerer::lower_function_lvalue_ref(
 fn WgslIrLowerer::append_foldable_function_binary_expression(
   self : WgslIrLowerer,
   function : Function,
+  scope : WgslIrFunctionScope,
+  local_constant_snapshot : Map[String, WgslIrLocalValue],
   expression_mark : Int,
   op : BinaryOperator,
   left : Handle,
@@ -72,7 +74,7 @@ fn WgslIrLowerer::append_foldable_function_binary_expression(
     return handle
   }
   self.fold_function_binary_expression_at_mark(
-    function, expression_mark, handle,
+    function, scope, local_constant_snapshot, expression_mark, handle,
   )
 }
 
@@ -80,6 +82,8 @@ fn WgslIrLowerer::append_foldable_function_binary_expression(
 fn WgslIrLowerer::fold_function_binary_expression_at_mark(
   self : WgslIrLowerer,
   function : Function,
+  scope : WgslIrFunctionScope,
+  local_constant_snapshot : Map[String, WgslIrLocalValue],
   expression_mark : Int,
   handle : Handle,
 ) -> Handle raise WgslIrLowerError {
@@ -90,7 +94,9 @@ fn WgslIrLowerer::fold_function_binary_expression_at_mark(
   }
   match self.fold_function_constant_typed_literal_expression(function, handle) {
     Some(literal) => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       function.expressions.append_with_origin(
         Literal(literal),
         FoldedLocalConstant,
@@ -495,6 +501,9 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
     Binary(op, left, right) => {
       let scheduler = self.expression_arena_scheduler(function, scope)
       let expression_mark = function.expressions.items.length()
+      let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+        scope.local_constants,
+      )
       if scheduler.binary_predeclares_left_associative_reference_roots(
           op, left, right,
         ) {
@@ -657,6 +666,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               )
               let right_handle = self.append_foldable_function_binary_expression(
                 function,
+                scope,
+                local_constant_snapshot,
                 right_mark,
                 right_binary_op,
                 right_left,
@@ -680,6 +691,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               )
               let right_handle = self.append_foldable_function_binary_expression(
                 function,
+                scope,
+                local_constant_snapshot,
                 right_mark,
                 right_binary_op,
                 right_left,
@@ -702,6 +715,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               )
               let right_handle = self.append_foldable_function_binary_expression(
                 function,
+                scope,
+                local_constant_snapshot,
                 right_mark,
                 right_binary_op,
                 right_left,
@@ -729,6 +744,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                 )
                 let right_handle = self.append_foldable_function_binary_expression(
                   function,
+                  scope,
+                  local_constant_snapshot,
                   right_mark,
                   right_binary_op,
                   right_left,
@@ -753,6 +770,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                 )
                 let right_handle = self.append_foldable_function_binary_expression(
                   function,
+                  scope,
+                  local_constant_snapshot,
                   right_mark,
                   right_binary_op,
                   right_left,
@@ -774,6 +793,8 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
                 )
                 let right_handle = self.append_foldable_function_binary_expression(
                   function,
+                  scope,
+                  local_constant_snapshot,
                   right_mark,
                   right_binary_op,
                   right_left,
@@ -876,7 +897,7 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         return handle
       }
       self.fold_function_binary_expression_at_mark(
-        function, expression_mark, handle,
+        function, scope, local_constant_snapshot, expression_mark, handle,
       )
     }
     Group(expr) =>
@@ -1800,7 +1821,7 @@ fn WgslIrLowerer::expression_node_is_named_expression_alias(
       self.expression_node_is_named_expression_alias(inner, function, scope)
     Identifier(name) =>
       match scope.local_constants.get(name.name()) {
-        Some({ value: ExpressionAlias(handle), .. }) =>
+        Some({ value: ExpressionAlias(handle, _), .. }) =>
           wgsl_ir_function_expression_has_arena_name(function, handle)
         _ => false
       }
@@ -3378,6 +3399,10 @@ fn WgslIrLowerer::finish_function_constructor_call(
   match folded_scalar_constructor {
     Some(literal) => {
       wgsl_ir_rewind_function_expressions(function, expression_mark)
+      wgsl_ir_invalidate_local_constant_aliases_after_expression_rewind(
+        scope.local_constants,
+        expression_mark,
+      )
       return function.expressions.append(Literal(literal))
     }
     None => ()
@@ -3402,6 +3427,9 @@ fn WgslIrLowerer::finish_function_constructor_call(
   }
   let handle = self.lower_function_constructor_expression_from_handles(
     ty, lowered_arguments, function,
+  )
+  self.contextualize_function_struct_constructor_arguments(
+    function, ty, lowered_arguments,
   )
   match self.contextualized_component_constructor_type(name, ty, expected_ty) {
     Some(target_ty) =>
@@ -3544,17 +3572,33 @@ fn WgslIrLowerer::lower_identifier_expression(
         function.expressions.set_origin(handle, RetainedSourceLetExpression)
       }
       match scope.local_constants.get(name) {
-        Some(cell) => cell.value = ExpressionAlias(handle)
+        Some(cell) => cell.value = ExpressionAlias(handle, Some(local_constant))
         None => ()
       }
       return handle
     }
-    Some({ value: ExpressionAlias(handle), source }) => {
-      if source == LocalLet {
-        function.expressions.set_origin(handle, RetainedSourceLetExpression)
+    Some(cell) =>
+      match cell.value {
+        ExpressionAlias(handle, fallback) => {
+          if handle.index() >= function.expressions.items.length() {
+            match fallback {
+              Some(local_constant) => {
+                cell.value = LazyConstant(local_constant)
+                return self.lower_identifier_expression(name, function, scope)
+              }
+              None =>
+                raise UnsupportedExpression(
+                  "stale local constant alias after expression rewind: \{name}",
+                )
+            }
+          }
+          if cell.source == LocalLet {
+            function.expressions.set_origin(handle, RetainedSourceLetExpression)
+          }
+          return handle
+        }
+        _ => ()
       }
-      return handle
-    }
     None => ()
   }
   match scope.locals.get(name) {
@@ -4586,6 +4630,9 @@ fn WgslIrLowerer::lower_function_constructor_argument(
   expected_ty : Handle?,
 ) -> Handle raise WgslIrLowerError {
   let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let lowered = self.lower_function_expression_node_with_expected(
     argument, function, scope, expected_ty,
   )
@@ -4596,7 +4643,9 @@ fn WgslIrLowerer::lower_function_constructor_argument(
     is Some(literal) else {
     return lowered
   }
-  function.expressions.truncate(expression_mark)
+  wgsl_ir_rewind_function_expressions_and_local_constant_values(
+    function, expression_mark, scope, local_constant_snapshot,
+  )
   function.expressions.append_with_origin(Literal(literal), FoldedLocalConstant)
 }
 
@@ -4770,6 +4819,9 @@ fn WgslIrLowerer::lower_function_math_call(
   scope : WgslIrFunctionScope,
 ) -> Handle raise WgslIrLowerError {
   let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let arguments = wgsl_ir_flatten_expression_arguments(arguments)
   guard arguments.length() > 0 else {
     raise UnsupportedExpression("math call requires at least one argument")
@@ -4903,7 +4955,9 @@ fn WgslIrLowerer::lower_function_math_call(
   let handle = function.expressions.append(Math(math_function, a, b, c, d))
   match self.fold_function_constant_float_expression(function, handle) {
     Some(literal) => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       function.expressions.append_with_origin(
         Literal(literal),
         FoldedLocalConstant,
@@ -5132,6 +5186,9 @@ fn WgslIrLowerer::prelower_math_splat_constructor_argument_with_expected_type(
     return None
   }
   let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let lowered = self.lower_function_expression_node_with_expected(
     component,
     function,
@@ -5140,7 +5197,9 @@ fn WgslIrLowerer::prelower_math_splat_constructor_argument_with_expected_type(
   )
   match self.fold_function_constant_float_expression(function, lowered) {
     Some(literal) => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       let component = function.expressions.append_with_origin(
         Literal(literal),
         FoldedLocalConstant,
@@ -5148,7 +5207,9 @@ fn WgslIrLowerer::prelower_math_splat_constructor_argument_with_expected_type(
       Some({ ty, component })
     }
     None => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       None
     }
   }
@@ -5368,12 +5429,17 @@ fn WgslIrLowerer::lower_function_foldable_const_math_argument_at(
     )
   }
   let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let lowered = self.lower_function_math_argument_at(
     index, arguments, deferred_constructors, function, scope,
   )
   match self.fold_function_constant_literal_expression(function, lowered) {
     Some(literal) => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       function.expressions.append_with_origin(
         Literal(literal),
         FoldedLocalConstant,
@@ -5468,12 +5534,17 @@ fn WgslIrLowerer::prelower_math_splat_constructor_argument(
   guard self.vector_size_from_type(ty) is Some(_) else { return None }
   let expected_ty = self.constructor_component_expected_type(ty)
   let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let lowered = self.lower_function_expression_node_with_expected(
     component, function, scope, expected_ty,
   )
   match self.fold_function_constant_float_expression(function, lowered) {
     Some(literal) => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       let component = function.expressions.append_with_origin(
         Literal(literal),
         FoldedLocalConstant,
@@ -5481,7 +5552,9 @@ fn WgslIrLowerer::prelower_math_splat_constructor_argument(
       Some({ ty, component })
     }
     None => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       None
     }
   }
@@ -5572,12 +5645,17 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
   guard self.vector_size_from_type(ty) is Some(_) else { return None }
   let expected_ty = self.constructor_component_expected_type(ty)
   let expression_mark = function.expressions.items.length()
+  let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+    scope.local_constants,
+  )
   let lowered = self.lower_function_expression_node_with_expected(
     component, function, scope, expected_ty,
   )
   match self.fold_function_constant_float_expression(function, lowered) {
     Some(literal) => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       let component = function.expressions.append_with_origin(
         Literal(literal),
         FoldedLocalConstant,
@@ -5585,7 +5663,9 @@ fn WgslIrLowerer::prelower_foldable_vector_constructor_argument(
       Some({ ty, component })
     }
     None => {
-      function.expressions.truncate(expression_mark)
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
+      )
       None
     }
   }
@@ -5766,6 +5846,9 @@ fn WgslIrLowerer::lower_function_relational_argument(
   match wgsl_ir_expr_node_without_groups(expr).kind() {
     Binary(op, left, right) if wgsl_ir_ast_binary_operator_is_comparison(op) => {
       let expression_mark = function.expressions.items.length()
+      let local_constant_snapshot = wgsl_ir_snapshot_local_constant_values(
+        scope.local_constants,
+      )
       let left_handle = self.lower_function_expression_node(
         left, function, scope,
       )
@@ -5780,7 +5863,7 @@ fn WgslIrLowerer::lower_function_relational_argument(
         Binary(binary_op, left_handle, right_handle),
       )
       self.fold_function_binary_expression_at_mark(
-        function, expression_mark, handle,
+        function, scope, local_constant_snapshot, expression_mark, handle,
       )
     }
     _ => self.lower_function_expression_node(expr, function, scope)

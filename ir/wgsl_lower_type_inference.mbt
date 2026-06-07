@@ -239,7 +239,7 @@ fn WgslIrLowerer::infer_scoped_named_expression_type(
     None => ()
   }
   match scope.local_constants.get(referenced_name) {
-    Some({ value: ExpressionAlias(handle), .. }) =>
+    Some({ value: ExpressionAlias(handle, _), .. }) =>
       match self.function_expression_type(function, handle) {
         Some(ty) => return ty
         None => raise MissingType(diagnostic_name)

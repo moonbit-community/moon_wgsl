@@ -383,12 +383,13 @@ fn WgslIrLowerer::lower_function_type_template_array_size_type_ref(
               )
           }
           match scope.local_constants.get(name) {
-            Some(cell) => cell.value = ExpressionAlias(handle)
+            Some(cell) =>
+              cell.value = ExpressionAlias(handle, Some(local_constant))
             None => ()
           }
           self.lower_function_constant_array_size_expression(function, handle)
         }
-        Some({ value: ExpressionAlias(handle), .. }) =>
+        Some({ value: ExpressionAlias(handle, _), .. }) =>
           self.lower_function_constant_array_size_expression(function, handle)
         None => self.lower_type_template_array_size_type_ref(ty_ref)
       }

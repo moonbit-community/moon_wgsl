@@ -2827,16 +2827,14 @@ fn WgslIrLowerer::lower_local_declaration(
             DeclarationArenaLocalConstant =>
               scope.local_constants.set(
                 local_decl.name().name(),
-                wgsl_ir_local_let_value_cell(ExpressionAlias(normalized)),
+                wgsl_ir_local_let_value_cell(ExpressionAlias(normalized, None)),
               )
             UseSiteLazyLocalConstant => {
               let normalized_expression = wgsl_ir_lazy_local_constant_expression(
                 function, normalized,
               )
-              wgsl_ir_rewind_function_expressions(function, expression_mark)
-              wgsl_ir_restore_local_constant_values(
-                scope.local_constants,
-                local_constant_snapshot,
+              wgsl_ir_rewind_function_expressions_and_local_constant_values(
+                function, expression_mark, scope, local_constant_snapshot,
               )
               match local_decl.initializer_ref() {
                 Some(expr_ref) =>
@@ -2877,7 +2875,7 @@ fn WgslIrLowerer::lower_local_declaration(
               scope.local_constants.set(
                 local_decl.name().name(),
                 wgsl_ir_local_let_value_cell(
-                  ExpressionAlias(materialized_value),
+                  ExpressionAlias(materialized_value, None),
                 ),
               )
               return
@@ -2890,7 +2888,7 @@ fn WgslIrLowerer::lower_local_declaration(
               )
               scope.local_constants.set(
                 local_decl.name().name(),
-                wgsl_ir_local_let_value_cell(ExpressionAlias(normalized)),
+                wgsl_ir_local_let_value_cell(ExpressionAlias(normalized, None)),
               )
               return
             }
@@ -2965,7 +2963,7 @@ fn WgslIrLowerer::lower_local_declaration(
           )
           scope.local_constants.set(
             local_decl.name().name(),
-            wgsl_ir_local_let_value_cell(ExpressionAlias(init_handle)),
+            wgsl_ir_local_let_value_cell(ExpressionAlias(init_handle, None)),
           )
           return
         }
@@ -2991,7 +2989,7 @@ fn WgslIrLowerer::lower_local_declaration(
             )
             scope.local_constants.set(
               local_decl.name().name(),
-              wgsl_ir_local_let_value_cell(ExpressionAlias(init_handle)),
+              wgsl_ir_local_let_value_cell(ExpressionAlias(init_handle, None)),
             )
             return
           }
@@ -3006,7 +3004,7 @@ fn WgslIrLowerer::lower_local_declaration(
           )
           scope.local_constants.set(
             local_decl.name().name(),
-            wgsl_ir_local_let_value_cell(ExpressionAlias(init_handle)),
+            wgsl_ir_local_let_value_cell(ExpressionAlias(init_handle, None)),
           )
           BodyEmissionPlanner::push_named_expression_emit_ranges(
             block, function, expression_mark, init_handle,
@@ -3625,16 +3623,14 @@ fn WgslIrLowerer::lower_local_const_declaration(
     DeclarationArenaLocalConstant =>
       scope.local_constants.set(
         local_decl.name().name(),
-        wgsl_ir_local_const_value_cell(ExpressionAlias(normalized)),
+        wgsl_ir_local_const_value_cell(ExpressionAlias(normalized, None)),
       )
     UseSiteLazyLocalConstant => {
       let normalized_expression = wgsl_ir_lazy_local_constant_expression(
         function, normalized,
       )
-      wgsl_ir_rewind_function_expressions(function, expression_mark)
-      wgsl_ir_restore_local_constant_values(
-        scope.local_constants,
-        local_constant_snapshot,
+      wgsl_ir_rewind_function_expressions_and_local_constant_values(
+        function, expression_mark, scope, local_constant_snapshot,
       )
       match local_decl.initializer_ref() {
         Some(expr_ref) =>
@@ -3672,6 +3668,24 @@ fn wgsl_ir_rewind_function_expressions(
   length : Int,
 ) -> Unit {
   function.expressions.truncate(length)
+}
+
+///|
+fn wgsl_ir_rewind_function_expressions_and_local_constant_values(
+  function : Function,
+  length : Int,
+  scope : WgslIrFunctionScope,
+  local_constant_snapshot : Map[String, WgslIrLocalValue],
+) -> Unit {
+  wgsl_ir_rewind_function_expressions(function, length)
+  wgsl_ir_restore_local_constant_values(
+    scope.local_constants,
+    local_constant_snapshot,
+  )
+  wgsl_ir_invalidate_local_constant_aliases_after_expression_rewind(
+    scope.local_constants,
+    length,
+  )
 }
 
 ///|

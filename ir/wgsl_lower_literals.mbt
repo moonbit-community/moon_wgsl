@@ -125,6 +125,31 @@ fn WgslIrLowerer::contextualize_function_constructor_expression(
 }
 
 ///|
+fn WgslIrLowerer::contextualize_function_struct_constructor_arguments(
+  self : WgslIrLowerer,
+  function : Function,
+  ty : Handle,
+  components : Array[Handle],
+) -> Unit raise WgslIrLowerError {
+  guard self.shader_module.types.get(ty) is Some(type_) else { return }
+  let members = match type_.inner {
+    Struct(members, _) | PredeclaredStruct(members, _) => members
+    _ => return
+  }
+  for index in 0..<components.length() {
+    match members.get(index) {
+      Some(struct_member) =>
+        self.contextualize_function_expression_for_type(
+          function,
+          components[index],
+          struct_member.ty,
+        )
+      None => ()
+    }
+  }
+}
+
+///|
 fn WgslIrLowerer::contextualized_constructor_type(
   self : WgslIrLowerer,
   actual_ty : Handle,

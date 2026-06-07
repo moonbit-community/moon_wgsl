@@ -4296,6 +4296,90 @@ test "WGSL AST lowerer reuses nested vector splat literals in struct var initial
 }
 
 ///|
+test "WGSL AST lowerer contextualizes abstract int struct constructor fields" {
+  let source =
+    #|struct IteratorState {
+    #|  first: i32,
+    #|  second: i32,
+    #|  uv: vec2<f32>,
+    #|  tag: u32,
+    #|}
+    #|
+    #|fn make_state() -> IteratorState {
+    #|  return IteratorState(-1, -1, vec2(0.0), 0u);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("-1f"), content="false")
+  debug_inspect(emitted.contains("IteratorState(-1i, -1i"), content="true")
+  match function.expressions.items[0] {
+    Literal(I32(value)) => debug_inspect(value, content="-1")
+    _ => abort("expected first negative struct field to be i32")
+  }
+}
+
+///|
+test "WGSL AST lowerer restores speculative local constant aliases after rewind" {
+  let source =
+    #|fn probe(frame: u32) -> vec2<f32> {
+    #|  let num_spirals: i32 = i32(ceil((f32(8i) / 8f)));
+    #|  let current_spiral: i32 = 0i;
+    #|  let angle = (f32(current_spiral) / f32(num_spirals));
+    #|  return vec2<f32>(sin(angle), cos(angle));
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("fn probe"), content="true")
+}
+
+///|
+test "WGSL AST lowerer invalidates shared lazy aliases after child-scope rewinds" {
+  let source =
+    #|fn noise(_: vec2<f32>, _: u32) -> f32 {
+    #|  return 0.25f;
+    #|}
+    #|
+    #|fn probe(offset_position: vec2<f32>, frag_coord: vec3<f32>, view_z: f32, roughness: f32) -> vec2<f32> {
+    #|  var i: i32 = 0i;
+    #|  var spiral_offset: vec2<f32>;
+    #|  let aspect: f32 = 1f;
+    #|  let blur_intensity: f32 = ((roughness * roughness) / view_z);
+    #|  let num_spirals: i32 = i32(ceil((f32(8i) / 8f)));
+    #|  let jitter: f32 = noise(frag_coord.xy, 0u);
+    #|  loop {
+    #|    if i < 8i {
+    #|    } else {
+    #|      break;
+    #|    }
+    #|    {
+    #|      let current_spiral: i32 = (i >> 3u);
+    #|      let angle: f32 = ((jitter + (f32(current_spiral) / f32(num_spirals))) * 2f);
+    #|      let m: vec2<f32> = vec2<f32>(sin(angle), cos(angle));
+    #|      let rotation_matrix: mat2x2<f32> = mat2x2<f32>(vec2<f32>(m.y, -(m.x)), vec2<f32>(m.x, m.y));
+    #|      spiral_offset = vec2<f32>(1f, 0f);
+    #|      spiral_offset = (spiral_offset * (1f - ((0.5f * f32((current_spiral + 1i))) / f32(num_spirals))));
+    #|      let rotated_spiral_offset: vec2<f32> = ((rotation_matrix * spiral_offset) * vec2<f32>(1f, aspect));
+    #|      return (offset_position + (rotated_spiral_offset * blur_intensity));
+    #|    }
+    #|    continuing {
+    #|      i = (i + 1i);
+    #|    }
+    #|  }
+    #|  return offset_position;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("fn probe"), content="true")
+}
+
+///|
 test "WGSL AST lowerer preserves source let scalar constructor conversions" {
   let source =
     #|fn f() -> f32 {

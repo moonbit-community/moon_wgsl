@@ -136,7 +136,7 @@ fn WgslIrLowerer::eval_ast_integer_identifier(
           return self.eval_ast_integer_expression(root, function, scope)
         None => raise UnsupportedExpression("empty local const selector")
       }
-    Some({ value: ExpressionAlias(handle), .. }) =>
+    Some({ value: ExpressionAlias(handle, _), .. }) =>
       return self.eval_function_integer_expression(function, handle)
     None => ()
   }
@@ -319,7 +319,7 @@ fn WgslIrLowerer::collect_ast_identifier_constant_dependencies(
       }
       return
     }
-    Some({ value: ExpressionAlias(handle), .. }) => {
+    Some({ value: ExpressionAlias(handle, _), .. }) => {
       self.collect_function_expression_constant_dependencies(
         function, handle, dependencies,
       )
