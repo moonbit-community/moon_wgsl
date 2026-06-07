@@ -31,13 +31,6 @@ fn WgslIrEmitOptions::preserve_abstract_float_literals(
 }
 
 ///|
-fn WgslIrEmitOptions::annotate_atomic_compare_exchange_result_locals(
-  self : WgslIrEmitOptions,
-) -> Bool {
-  self.byte_plan.should_annotate_atomic_compare_exchange_result_locals()
-}
-
-///|
 fn WgslIrEmitOptions::inline_generated_import_constants(
   self : WgslIrEmitOptions,
 ) -> Bool {

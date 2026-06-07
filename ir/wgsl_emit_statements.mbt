@@ -114,7 +114,7 @@ fn WgslIrEmitter::emit_statement(
               self.function_expression_inline(function, handle)
             }
             out.write_string(
-              "\{pad}let \{name}: \{self.type_name(ty)} = \{value};\n",
+              "\{pad}let \{name}\{self.inferred_result_type_annotation(ty)} = \{value};\n",
             )
             continue
           }
@@ -138,7 +138,7 @@ fn WgslIrEmitter::emit_statement(
               )
           }
           out.write_string(
-            "\{pad}let \{self.function_expression_temporary_name(handle)}: \{self.type_name(ty)} = \{self.function_expression_inline(function, handle)};\n",
+            "\{pad}let \{self.function_expression_temporary_name(handle)}\{self.inferred_result_type_annotation(ty)} = \{self.function_expression_inline(function, handle)};\n",
           )
           continue
         }
@@ -235,7 +235,7 @@ fn WgslIrEmitter::emit_statement(
               raise MissingHandle("atomic result type \{result_handle.index()}")
           }
           out.write_string(
-            "\{pad}let \{self.function_expression_temporary_name(result_handle)}: \{self.type_name(ty)} = ",
+            "\{pad}let \{self.function_expression_temporary_name(result_handle)}\{self.inferred_result_type_annotation(ty)} = ",
           )
         }
         None => out.write_string(pad)
@@ -286,7 +286,7 @@ fn WgslIrEmitter::emit_statement(
               raise MissingHandle("call result type \{result_handle.index()}")
           }
           out.write_string(
-            "\{pad}let \{self.function_expression_temporary_name(result_handle)}: \{self.type_name(ty)} = ",
+            "\{pad}let \{self.function_expression_temporary_name(result_handle)}\{self.inferred_result_type_annotation(ty)} = ",
           )
         }
         None => out.write_string(pad)

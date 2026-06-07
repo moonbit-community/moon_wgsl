@@ -233,31 +233,25 @@ fn WgslIrEmitter::local_variable_needs_type_annotation(
   if self.type_contains_abstract_scalar(local_var.ty) {
     return false
   }
+  if self.type_is_predeclared_result(local_var.ty) {
+    return false
+  }
   if self.options.annotate_all_local_types() {
     return true
   }
-  if self.options.annotate_atomic_compare_exchange_result_locals() &&
-    self.type_is_atomic_compare_exchange_result(local_var.ty) {
-    return true
-  }
-  !self.type_is_predeclared_result(local_var.ty)
+  true
 }
 
 ///|
-fn WgslIrEmitter::type_is_atomic_compare_exchange_result(
+fn WgslIrEmitter::inferred_result_type_annotation(
   self : WgslIrEmitter,
-  handle : Handle,
-) -> Bool {
-  for item in self.shader_module.special_types.predeclared_types {
-    let (predeclared, existing) = item
-    if existing == handle {
-      match predeclared {
-        AtomicCompareExchangeWeakResult(_) => return true
-        _ => return false
-      }
-    }
+  ty : Handle,
+) -> String raise WgslIrEmitError {
+  if self.type_is_predeclared_result(ty) {
+    ""
+  } else {
+    ": \{self.type_name(ty)}"
   }
-  false
 }
 
 ///|

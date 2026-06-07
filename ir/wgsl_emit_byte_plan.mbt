@@ -43,12 +43,6 @@ priv enum WgslIrLocalTypeAnnotationBytePolicy {
 }
 
 ///|
-priv enum WgslIrAtomicResultLocalAnnotationBytePolicy {
-  AnnotateAtomicCompareExchangeResultLocals
-  FollowLocalTypeAnnotationPolicy
-}
-
-///|
 priv enum WgslIrNumericLiteralBytePolicy {
   NagaCompatibleNumericLiteralSpelling
   RuntimeNumericLiteralSpelling
@@ -85,7 +79,6 @@ priv struct WgslIrWriterBytePlan {
   implicit_flat_interpolation : WgslIrImplicitFlatInterpolationBytePolicy
   storage_texture_type_arguments : WgslIrStorageTextureTypeBytePolicy
   local_type_annotations : WgslIrLocalTypeAnnotationBytePolicy
-  atomic_result_local_annotations : WgslIrAtomicResultLocalAnnotationBytePolicy
   numeric_literals : WgslIrNumericLiteralBytePolicy
   entry_point_attribute_line : WgslIrEntryPointAttributeLineBytePolicy
   storage_pointer_access : WgslIrStoragePointerAccessBytePolicy
@@ -101,7 +94,6 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
     implicit_flat_interpolation: SuppressImplicitFlatInterpolation,
     storage_texture_type_arguments: SpacedStorageTextureTypeArguments,
     local_type_annotations: ElideInferredConcreteLocalTypes,
-    atomic_result_local_annotations: FollowLocalTypeAnnotationPolicy,
     numeric_literals: RuntimeNumericLiteralSpelling,
     entry_point_attribute_line: SuppressTrailingSpaceAfterEntryPointAttributes,
     storage_pointer_access: EmitStoragePointerReadAccess,
@@ -118,7 +110,6 @@ fn WgslIrWriterBytePlan::naga_oil_writer() -> WgslIrWriterBytePlan {
     implicit_flat_interpolation: EmitImplicitFlatInterpolation,
     storage_texture_type_arguments: CompactStorageTextureTypeArguments,
     local_type_annotations: AnnotateConcreteLocalTypes,
-    atomic_result_local_annotations: AnnotateAtomicCompareExchangeResultLocals,
     numeric_literals: NagaCompatibleNumericLiteralSpelling,
     entry_point_attribute_line: EmitTrailingSpaceAfterEntryPointAttributes,
     storage_pointer_access: ElideStoragePointerReadAccess,
@@ -175,16 +166,6 @@ fn WgslIrWriterBytePlan::should_annotate_all_local_types(
   match self.local_type_annotations {
     AnnotateConcreteLocalTypes => true
     ElideInferredConcreteLocalTypes => false
-  }
-}
-
-///|
-fn WgslIrWriterBytePlan::should_annotate_atomic_compare_exchange_result_locals(
-  self : WgslIrWriterBytePlan,
-) -> Bool {
-  match self.atomic_result_local_annotations {
-    AnnotateAtomicCompareExchangeResultLocals => true
-    FollowLocalTypeAnnotationPolicy => false
   }
 }
 

@@ -696,6 +696,10 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
     emitted.contains("atomicCompareExchangeWeak((&atom), 12u, 0u)"),
     content="true",
   )
+  debug_inspect(
+    emitted.contains("_atomic_compare_exchange_result"),
+    content="false",
+  )
   debug_inspect(emitted.contains(".old_value"), content="true")
 }
 
