@@ -704,6 +704,21 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
 }
 
 ///|
+test "WGSL emitter types function-scope arrayLength casts" {
+  let source =
+    #|@group(0) @binding(0)
+    #|var<storage> data: array<vec2<f32>>;
+    #|
+    #|fn main() -> f32 {
+    #|  return f32(arrayLength(&data));
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("f32(arrayLength((&data)))"), content="true")
+}
+
+///|
 test "WGSL AST lowerer supports modf predeclared result members" {
   let source =
     #|fn main(x: f32) -> f32 {

@@ -141,6 +141,7 @@ fn WgslIrEmitter::function_expression_inner_type(
       self.image_expression_result_type(Some(function), image, None, None)
     ImageQuery(image, query) =>
       self.image_query_expression_result_type(Some(function), image, query)
+    ArrayLength(_) => self.type_handle_named("u32")
     RayQueryVertexPositions(_, _) =>
       self.shader_module.special_types.ray_vertex_return
     RayQueryGetIntersection(_, _) => self.type_handle_named("RayIntersection")
