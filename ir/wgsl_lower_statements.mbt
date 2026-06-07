@@ -599,6 +599,14 @@ fn WgslIrLowerer::constructor_literal_argument_expected_type(
           } else {
             None
           }
+        Matrix(columns, rows, scalar) =>
+          if argument_count == columns.width() {
+            Some(self.vector_type_handle(rows, scalar))
+          } else if argument_count == columns.width() * rows.width() {
+            Some(self.scalar_type_handle(scalar))
+          } else {
+            None
+          }
         Struct(members, _) | PredeclaredStruct(members, _) =>
           match members.get(argument_index) {
             Some(struct_member) => Some(struct_member.ty)

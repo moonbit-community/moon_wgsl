@@ -4402,6 +4402,24 @@ test "WGSL AST lowerer contextualizes array constructor elements with element ty
 }
 
 ///|
+test "WGSL AST lowerer contextualizes matrix constructor columns with vector type" {
+  let source =
+    #|fn make_matrix() -> mat3x2<f32> {
+    #|  var value = mat3x2<f32>(
+    #|    vec2<f32>(1.0),
+    #|    vec2<f32>(2.0),
+    #|    vec2<f32>(3.0)
+    #|  );
+    #|  return value;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("var value: mat3x2<f32>"), content="true")
+  debug_inspect(emitted.contains("vec2(1f)"), content="true")
+}
+
+///|
 test "WGSL AST lowerer preserves source let scalar constructor conversions" {
   let source =
     #|fn f() -> f32 {
