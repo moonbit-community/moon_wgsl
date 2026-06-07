@@ -2181,8 +2181,7 @@ test "WGSL AST lowerer predeclares compound assignment RHS function argument pro
     }
   }
   match (scale_argument, result_ddx_load) {
-    (Some(scale), Some(load)) =>
-      debug_inspect(scale < load, content="true")
+    (Some(scale), Some(load)) => debug_inspect(scale < load, content="true")
     _ => abort("expected scale argument and result.ddx load")
   }
 }
@@ -2203,10 +2202,7 @@ test "WGSL AST lowerer materializes subgroup call conditions like Naga" {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("_ = subgroupAny"), content="false")
-  debug_inspect(
-    emitted.contains(": bool = subgroupAny"),
-    content="true",
-  )
+  debug_inspect(emitted.contains(": bool = subgroupAny"), content="true")
   debug_inspect(emitted.contains("if _e"), content="true")
 }
 
@@ -2229,10 +2225,11 @@ test "WGSL AST lowerer predeclares short-circuit condition local operands before
   for _, expression in function.expressions.items {
     match expression {
       Binary(Greater, left, right) =>
-        match (
-          function.expressions.items.get(left.index()),
-          function.expressions.items.get(right.index()),
-        ) {
+        match
+          (
+            function.expressions.items.get(left.index()),
+            function.expressions.items.get(right.index()),
+          ) {
           (Some(Load(left_pointer)), Some(Load(right_pointer))) => {
             debug_inspect(left_pointer.index() < left.index(), content="true")
             debug_inspect(right_pointer.index() < left.index(), content="true")
@@ -2266,8 +2263,10 @@ test "WGSL AST lowerer orders global scale root before argument product in subtr
   for index, expression in function.expressions.items {
     match expression {
       GlobalVariable(_) if global_root == None => global_root = Some(index)
-      FunctionArgument(1) if view_argument == None => view_argument = Some(index)
-      FunctionArgument(0) if delta_argument == None => delta_argument = Some(index)
+      FunctionArgument(1) if view_argument == None =>
+        view_argument = Some(index)
+      FunctionArgument(0) if delta_argument == None =>
+        delta_argument = Some(index)
       Load(pointer) =>
         match function.expressions.items.get(pointer.index()) {
           Some(GlobalVariable(_)) if global_load == None =>
@@ -2310,8 +2309,8 @@ test "WGSL AST lowerer predeclares later fma direct argument after first constru
       FunctionArgument(1) if n_argument == None => n_argument = Some(index)
       Splat(_, inner) =>
         match sampling_argument {
-          Some(sampling) if inner.index() == sampling &&
-            sampling_splat == None => sampling_splat = Some(index)
+          Some(sampling) if inner.index() == sampling && sampling_splat == None =>
+            sampling_splat = Some(index)
           _ => ()
         }
       Load(pointer) =>
@@ -2384,8 +2383,7 @@ test "WGSL AST lowerer schedules store pointer argument reads through assignment
   let mut samples_argument : Int? = None
   for index, expression in function.expressions.items {
     match expression {
-      FunctionArgument(2) if bitmask_root == None =>
-        bitmask_root = Some(index)
+      FunctionArgument(2) if bitmask_root == None => bitmask_root = Some(index)
       AccessIndex(base, _) if horizon_access == None =>
         match function.expressions.items.get(base.index()) {
           Some(FunctionArgument(0)) => horizon_access = Some(index)
@@ -4509,10 +4507,11 @@ test "WGSL AST lowerer does not materialize value vector dynamic access in condi
   for expression_index, expression in function.expressions.items {
     match expression {
       Access(base, index) =>
-        match (
-          function.expressions.items.get(base.index()),
-          function.expressions.items.get(index.index()),
-        ) {
+        match
+          (
+            function.expressions.items.get(base.index()),
+            function.expressions.items.get(index.index()),
+          ) {
           (Some(FunctionArgument(0)), Some(Load(_))) if condition_access == None =>
             condition_access = Some(Handle(expression_index))
           _ => ()

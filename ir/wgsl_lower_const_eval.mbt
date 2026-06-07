@@ -1163,6 +1163,7 @@ fn WgslIrLowerer::function_expression_contains_constant_reference(
   }
 }
 
+///|
 fn WgslIrLowerer::function_binary_expression_should_retain_generated_import_constant(
   self : WgslIrLowerer,
   function : Function,
@@ -1173,23 +1174,21 @@ fn WgslIrLowerer::function_binary_expression_should_retain_generated_import_cons
       self.function_expression_is_generated_import_constant_reference(
         function, left,
       ) &&
-      wgsl_ir_function_expression_is_local_initializer(function, right)
+      wgsl_ir_expression_origin_retains_generated_import_denominator(
+        function.expressions.origin(right),
+      )
     _ => false
   }
 }
 
 ///|
-fn wgsl_ir_function_expression_is_local_initializer(
-  function : Function,
-  handle : Handle,
+fn wgsl_ir_expression_origin_retains_generated_import_denominator(
+  origin : ExpressionOrigin?,
 ) -> Bool {
-  for local_var in function.local_variables.items {
-    match local_var.init {
-      Some(init) if init == handle => return true
-      _ => ()
-    }
+  match origin {
+    Some(SourceLocalConstInitializer | RetainedSourceLetExpression) => true
+    _ => false
   }
-  false
 }
 
 ///|
@@ -1208,6 +1207,7 @@ fn WgslIrLowerer::function_expression_is_generated_import_constant_reference(
   }
 }
 
+///|
 fn WgslIrLowerer::optional_function_expression_contains_constant_reference(
   self : WgslIrLowerer,
   function : Function,

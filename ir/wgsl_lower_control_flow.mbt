@@ -161,7 +161,9 @@ fn WgslIrLowerer::lower_for_loop_condition_ref(
         ) {
         Some(handle) => handle
         None => {
-          let handle = self.lower_function_expression_ref(expr_ref, function, scope)
+          let handle = self.lower_function_expression_ref(
+            expr_ref, function, scope,
+          )
           self.materialize_for_loop_condition_if_needed(
             function, scope, block, handle,
           )
@@ -190,9 +192,7 @@ fn WgslIrLowerer::lower_for_loop_local_comparison_condition(
     is Some(name) else {
     return None
   }
-  guard wgsl_ir_for_loop_condition_rhs_lowers_before_local_load(
-      right, scope,
-    ) else {
+  guard wgsl_ir_for_loop_condition_rhs_lowers_before_local_load(right, scope) else {
     return None
   }
   let local_handle = match scope.locals.get(name) {
@@ -215,9 +215,11 @@ fn WgslIrLowerer::lower_for_loop_local_comparison_condition(
   let handle = function.expressions.append(
     Binary(binary_op, left_handle, right_handle),
   )
-  Some(self.materialize_for_loop_condition_if_needed(
-    function, scope, block, handle,
-  ))
+  Some(
+    self.materialize_for_loop_condition_if_needed(
+      function, scope, block, handle,
+    ),
+  )
 }
 
 ///|

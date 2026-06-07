@@ -519,10 +519,10 @@ fn WgslIrEmitter::eval_float_vector_expression_with_retained_constants_inner(
       }
     Binary(op, left, right) => {
       if op == Divide &&
-        self.expression_is_generated_import_constant_reference(
-          function, left,
-        ) &&
-        wgsl_ir_expression_is_local_initializer(function, right) {
+        self.expression_is_generated_import_constant_reference(function, left) &&
+        wgsl_ir_expression_origin_is_source_local_const_initializer(
+          function, right,
+        ) {
         return None
       }
       guard self.eval_float_vector_expression_with_retained_constants_inner(
@@ -579,10 +579,10 @@ fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
       }
     Binary(op, left, right) => {
       if op == Divide &&
-        self.expression_is_generated_import_constant_reference(
-          function, left,
-        ) &&
-        wgsl_ir_expression_is_local_initializer(function, right) {
+        self.expression_is_generated_import_constant_reference(function, left) &&
+        wgsl_ir_expression_origin_is_source_local_const_initializer(
+          function, right,
+        ) {
         return None
       }
       guard self.eval_float_expression_with_retained_constants_inner(
@@ -643,20 +643,15 @@ fn wgsl_ir_emit_eval_float_vector_binary(
 }
 
 ///|
-fn wgsl_ir_expression_is_local_initializer(
+fn wgsl_ir_expression_origin_is_source_local_const_initializer(
   function : Function?,
   handle : Handle,
 ) -> Bool {
   match function {
-    Some(function) => {
-      for local_var in function.local_variables.items {
-        match local_var.init {
-          Some(init) if init == handle => return true
-          _ => ()
-        }
-      }
-      false
-    }
+    Some(function) =>
+      wgsl_ir_expression_origin_retains_generated_import_denominator(
+        function.expressions.origin(handle),
+      )
     None => false
   }
 }
@@ -677,6 +672,7 @@ fn WgslIrEmitter::expression_is_generated_import_constant_reference(
   }
 }
 
+///|
 fn WgslIrEmitter::expression_tree_contains_constant_reference(
   self : WgslIrEmitter,
   function : Function?,

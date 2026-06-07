@@ -97,9 +97,43 @@ test "naga-oil writer policy folds generated import scalar constant literal deno
     error => abort(error.message())
   }
   debug_inspect(naga_oil.contains("0.7853982f"), content="true")
-  debug_inspect(naga_oil.contains("PIX_naga_oil_mod_XABCDX / 4f"), content="false")
+  debug_inspect(
+    naga_oil.contains("PIX_naga_oil_mod_XABCDX / 4f"),
+    content="false",
+  )
 }
 
+///|
+test "naga-oil writer policy retains generated import division by source let denominator" {
+  let source =
+    #|const PIX_naga_oil_mod_XABCDX: f32 = 3.1415927;
+    #|
+    #|fn scale(value: f32) -> f32 {
+    #|  let slice_count = f32(4);
+    #|  return (PIX_naga_oil_mod_XABCDX / slice_count) * value;
+    #|}
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
+    WgslIrGeneratedImportProvenance(
+      "PIX_naga_oil_mod_XABCDX",
+      "imports/math.wgsl",
+      "PI",
+      ImportedSourceSymbol,
+      false,
+    ),
+  ]) catch {
+    error => abort(error.message())
+  }
+  let naga_oil = emit_wgsl_module_from_ir_naga_oil_writer_compatible(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    naga_oil.contains("((PIX_naga_oil_mod_XABCDX / 4f) * value)"),
+    content="true",
+  )
+  debug_inspect(naga_oil.contains("0.7853982f"), content="false")
+}
+
+///|
 test "naga-oil writer policy retains direct generated import scalar constant operands" {
   let source =
     #|const PIX_naga_oil_mod_XABCDX: f32 = 3.1415927;

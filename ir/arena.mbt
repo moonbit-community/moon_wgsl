@@ -140,6 +140,7 @@ pub enum ExpressionOrigin {
   SourceExpression
   FoldedLocalConstant
   RetainedSourceLetExpression
+  SourceLocalConstInitializer
 } derive(Eq, Debug)
 
 ///|

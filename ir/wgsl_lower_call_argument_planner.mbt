@@ -290,7 +290,8 @@ fn CallArgumentPlanner::argument_is_pending_store_pointer_deref(
   match self.scope.pending_store_pointer_argument_root {
     Some(name) =>
       wgsl_ir_expr_node_is_pointer_deref_of_argument_name(
-        self.arguments[index], name,
+        self.arguments[index],
+        name,
       )
     None => false
   }

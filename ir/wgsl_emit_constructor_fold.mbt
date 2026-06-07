@@ -43,7 +43,11 @@ fn WgslIrEmitter::expression_tree_contains_folded_local_constant(
   match function {
     Some(function) =>
       match function.expressions.origin(handle) {
-        Some(FoldedLocalConstant | RetainedSourceLetExpression) => return true
+        Some(
+          FoldedLocalConstant
+          | RetainedSourceLetExpression
+          | SourceLocalConstInitializer
+        ) => return true
         _ => ()
       }
     None => ()

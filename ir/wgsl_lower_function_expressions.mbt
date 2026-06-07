@@ -84,8 +84,8 @@ fn WgslIrLowerer::fold_function_binary_expression_at_mark(
   handle : Handle,
 ) -> Handle raise WgslIrLowerError {
   if self.function_binary_expression_should_retain_generated_import_constant(
-    function, handle,
-  ) {
+      function, handle,
+    ) {
     return handle
   }
   match self.fold_function_constant_typed_literal_expression(function, handle) {
@@ -1319,7 +1319,9 @@ fn WgslIrLowerer::lower_function_binary_left_declared_constant_before_right_call
   let (left_handle, right_handle) = self.normalize_function_binary_operands(
     function, binary_op, left_handle, right_handle,
   )
-  Some(function.expressions.append(Binary(binary_op, left_handle, right_handle)))
+  Some(
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
+  )
 }
 
 ///|
@@ -1935,7 +1937,9 @@ fn WgslIrLowerer::lower_function_binary_left_argument_after_right_argument_globa
   let (left_handle, right_handle) = self.normalize_function_binary_operands(
     function, binary_op, left_handle, right_handle,
   )
-  Some(function.expressions.append(Binary(binary_op, left_handle, right_handle)))
+  Some(
+    function.expressions.append(Binary(binary_op, left_handle, right_handle)),
+  )
 }
 
 ///|
@@ -3514,7 +3518,12 @@ fn WgslIrLowerer::lower_identifier_expression(
       }
       return handle
     }
-    Some({ value: ExpressionAlias(handle), .. }) => return handle
+    Some({ value: ExpressionAlias(handle), source }) => {
+      if source == LocalLet {
+        function.expressions.set_origin(handle, RetainedSourceLetExpression)
+      }
+      return handle
+    }
     None => ()
   }
   match scope.locals.get(name) {
@@ -4884,9 +4893,7 @@ fn WgslIrLowerer::predeclare_math_later_direct_argument_after_first_constructor_
   guard arguments[0].kind() is Call(callee, constructor_arguments) else {
     return
   }
-  guard self.expression_callee_is_constructor_call_value(callee) else {
-    return
-  }
+  guard self.expression_callee_is_constructor_call_value(callee) else { return }
   guard wgsl_ir_flatten_expression_arguments(constructor_arguments)
     is [component] else {
     return

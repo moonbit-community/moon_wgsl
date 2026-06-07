@@ -232,7 +232,10 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
   match semantic_key {
     Some(key) =>
       match scope.source_local_const_initializer_expressions.get(key) {
-        Some(handle) => return handle
+        Some(handle) => {
+          wgsl_ir_mark_source_local_const_initializer_origin(function, handle)
+          return handle
+        }
         None => ()
       }
     None => ()
@@ -245,7 +248,12 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
             scope.source_local_const_initializer_expressions.get(
               wgsl_ir_source_local_const_literal_key(token, explicit_ty),
             ) {
-            Some(handle) => return handle
+            Some(handle) => {
+              wgsl_ir_mark_source_local_const_initializer_origin(
+                function, handle,
+              )
+              return handle
+            }
             None => ()
           }
         None => ()
@@ -257,7 +265,10 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
     None => wgsl_ir_source_local_const_initializer_key(expr_ref, explicit_ty)
   }
   match scope.source_local_const_initializer_expressions.get(key) {
-    Some(handle) => handle
+    Some(handle) => {
+      wgsl_ir_mark_source_local_const_initializer_origin(function, handle)
+      handle
+    }
     None => {
       let expression_mark = function.expressions.items.length()
       let handle = match
@@ -271,6 +282,7 @@ fn WgslIrLowerer::lower_source_local_const_initializer(
           )
       }
       scope.source_local_const_initializer_expressions.set(key, handle)
+      wgsl_ir_mark_source_local_const_initializer_origin(function, handle)
       self.record_source_local_const_initializer_literals(
         expr_ref, expression_mark, function, scope, explicit_ty,
       )
@@ -310,7 +322,12 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_initialize
       return None
     }
     match
-      self.source_local_const_initializer_literal_handle(token, None, scope) {
+      self.source_local_const_initializer_literal_handle(
+        token,
+        None,
+        function,
+        scope,
+      ) {
       Some(handle) =>
         return Some(function.expressions.append(Splat(size, handle)))
       None => ()
@@ -319,6 +336,7 @@ fn WgslIrLowerer::lower_reused_literal_source_local_const_constructor_initialize
       self.source_local_const_initializer_literal_handle(
         token,
         Some(component_ty),
+        function,
         scope,
       ) {
       Some(handle) =>
@@ -337,11 +355,15 @@ fn WgslIrLowerer::source_local_const_initializer_literal_handle(
   self : WgslIrLowerer,
   token : @ast.WgslExprToken,
   ty : Handle?,
+  function : Function,
   scope : WgslIrFunctionScope,
 ) -> Handle? raise WgslIrLowerError {
   let text_key = wgsl_ir_source_local_const_literal_key(token, ty)
   match scope.source_local_const_initializer_expressions.get(text_key) {
-    Some(handle) => return Some(handle)
+    Some(handle) => {
+      wgsl_ir_mark_source_local_const_initializer_origin(function, handle)
+      return Some(handle)
+    }
     None => ()
   }
   match scope.runtime_source_local_const_initializer_expressions.get(text_key) {
@@ -351,7 +373,10 @@ fn WgslIrLowerer::source_local_const_initializer_literal_handle(
   match self.source_local_const_literal_semantic_key(token, ty) {
     Some(semantic_key) => {
       match scope.source_local_const_initializer_expressions.get(semantic_key) {
-        Some(handle) => return Some(handle)
+        Some(handle) => {
+          wgsl_ir_mark_source_local_const_initializer_origin(function, handle)
+          return Some(handle)
+        }
         None => ()
       }
       match
@@ -370,6 +395,7 @@ fn WgslIrLowerer::source_local_const_initializer_literal_handle(
         self.source_local_const_initializer_literal_handle(
           token,
           Some(abstract_ty),
+          function,
           scope,
         ) {
         Some(handle) => return Some(handle)
@@ -618,12 +644,17 @@ fn WgslIrLowerer::record_source_local_const_initializer_literals(
     match function.expressions.items.get(expression_index) {
       Some(Literal(_)) => {
         let literal_handle = Handle::Handle(expression_index)
+        function.expressions.set_origin(
+          literal_handle,
+          SourceLocalConstInitializer,
+        )
         let literal_ty = match
           self.function_expression_type(function, literal_handle) {
           Some(ty) => Some(ty)
           None => explicit_ty
         }
         self.record_source_local_const_literal_handle(
+          function,
           scope,
           literal_tokens[token_index],
           literal_ty,
@@ -635,6 +666,7 @@ fn WgslIrLowerer::record_source_local_const_initializer_literals(
           ) {
           Some(context_ty) =>
             self.record_source_local_const_literal_handle(
+              function,
               scope,
               literal_tokens[token_index],
               Some(context_ty),
@@ -705,11 +737,13 @@ fn wgsl_ir_source_local_const_initializer_components_contain(
 ///|
 fn WgslIrLowerer::record_source_local_const_literal_handle(
   self : WgslIrLowerer,
+  function : Function,
   scope : WgslIrFunctionScope,
   token : @ast.WgslExprToken,
   ty : Handle?,
   handle : Handle,
 ) -> Unit raise WgslIrLowerError {
+  wgsl_ir_mark_source_local_const_initializer_origin(function, handle)
   let key = wgsl_ir_source_local_const_literal_key(token, ty)
   if !scope.source_local_const_initializer_expressions.contains(key) {
     scope.source_local_const_initializer_expressions.set(key, handle)
@@ -724,6 +758,18 @@ fn WgslIrLowerer::record_source_local_const_literal_handle(
         )
       }
     None => ()
+  }
+}
+
+///|
+fn wgsl_ir_mark_source_local_const_initializer_origin(
+  function : Function,
+  handle : Handle,
+) -> Unit {
+  match function.expressions.items.get(handle.index()) {
+    Some(Literal(_)) =>
+      function.expressions.set_origin(handle, SourceLocalConstInitializer)
+    _ => ()
   }
 }
 
@@ -1293,7 +1339,9 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
               self.rhs_user_call_reads_pointer_argument(rhs_ref, name) {
               ignore(
                 scope.argument_pointer_expression(
-                  name, scope.arguments[name], function,
+                  name,
+                  scope.arguments[name],
+                  function,
                 ),
               )
             }
