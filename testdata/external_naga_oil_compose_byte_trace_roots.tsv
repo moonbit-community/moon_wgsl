@@ -1,2 +1,0 @@
-id	rel_path	trace_label	first_index	owner	expected	actual	category	reason
-bevy	crates/bevy_sprite_render/src/sprite_mesh/sprite_material.wgsl	bevy.143.sprite_material	1344	fn:apply_slicing	identifier:_e92	identifier:_e90	expression-temp-index-order	first divergent byte is generated expression temporary numbering in apply_slicing

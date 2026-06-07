@@ -83,11 +83,43 @@ fn ExpressionArenaScheduler::binary_predeclares_sibling_member_roots(
       self.function,
       self.scope,
     ) &&
-    self.lowerer.direct_access_chain_root_is_global_reference(right) {
+    self.expr_node_contains_global_reference_value(right) {
     return false
   }
   wgsl_ir_expr_node_is_direct_access_chain(left) &&
   wgsl_ir_binary_right_operand_has_sibling_member_root(right)
+}
+
+///|
+fn ExpressionArenaScheduler::expr_node_contains_global_reference_value(
+  self : ExpressionArenaScheduler,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  if self.lowerer.expression_node_is_global_reference_value(node) {
+    return true
+  }
+  match node.kind() {
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.expr_node_contains_global_reference_value(inner)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      self.expr_node_contains_global_reference_value(left) ||
+      self.expr_node_contains_global_reference_value(right)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.expr_node_contains_global_reference_value(base)
+    Call(callee, arguments) => {
+      if self.expr_node_contains_global_reference_value(callee) {
+        return true
+      }
+      wgsl_ir_call_arguments(arguments).any(fn(argument) {
+        self.expr_node_contains_global_reference_value(argument)
+      })
+    }
+    Sequence(items) =>
+      items.any(fn(item) {
+        self.expr_node_contains_global_reference_value(item)
+      })
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
 }
 
 ///|
@@ -415,10 +447,14 @@ fn ExpressionArenaScheduler::binary_preserves_left_first_across_higher_precedenc
   left : @ast.WgslExprNode,
   right : @ast.WgslExprNode,
 ) -> Bool {
-  ignore(self)
   match parent_op {
     Add | Subtract => ()
     _ => return false
+  }
+  if self.binary_preserves_left_constructor_before_higher_precedence_right(
+      left, right,
+    ) {
+    return true
   }
   if wgsl_ir_expr_node_contains_call(left) ||
     wgsl_ir_expr_node_contains_call(right) {
@@ -436,6 +472,86 @@ fn ExpressionArenaScheduler::binary_preserves_left_first_across_higher_precedenc
     return true
   }
   left_op.binary_precedence() == parent_op.binary_precedence()
+}
+
+///|
+fn ExpressionArenaScheduler::binary_preserves_left_constructor_before_higher_precedence_right(
+  self : ExpressionArenaScheduler,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  guard self.constructor_call_is_literal_like(left) else { return false }
+  guard self.lowerer.expression_node_contains_constructor_call_value(right) else {
+    return false
+  }
+  guard !self.expr_node_contains_non_constructor_non_math_call(right) else {
+    return false
+  }
+  wgsl_ir_expr_node_contains_member_access(right) ||
+  self.lowerer.expression_node_contains_naga_reference_value(
+    right,
+    self.function,
+    self.scope,
+  )
+}
+
+///|
+fn ExpressionArenaScheduler::constructor_call_is_literal_like(
+  self : ExpressionArenaScheduler,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match wgsl_ir_expr_node_without_groups(node).kind() {
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      guard self.lowerer.expression_callee_is_constructor_call_value(callee) else {
+        return false
+      }
+      let flattened = wgsl_ir_flatten_expression_arguments(arguments)
+      !flattened.is_empty() &&
+      flattened.all(fn(argument) {
+        self.constructor_argument_is_literal_like(argument)
+      })
+    }
+    _ => false
+  }
+}
+
+///|
+fn ExpressionArenaScheduler::expr_node_contains_non_constructor_non_math_call(
+  self : ExpressionArenaScheduler,
+  node : @ast.WgslExprNode,
+) -> Bool {
+  match node.kind() {
+    Call(callee, arguments) => {
+      let arguments = wgsl_ir_call_arguments(arguments)
+      let callee_is_constructor = self.lowerer.expression_callee_is_constructor_call_value(
+        callee,
+      )
+      let callee_is_math = match callee.kind() {
+        Identifier(name) => wgsl_ir_math_function_from_name(name.name()) != None
+        _ => false
+      }
+      let callee_is_safe = callee_is_constructor || callee_is_math
+      if !callee_is_safe {
+        return true
+      }
+      arguments.any(fn(argument) {
+        self.expr_node_contains_non_constructor_non_math_call(argument)
+      })
+    }
+    Group(inner) | Unary(_, inner) | PostfixUpdate(_, inner) =>
+      self.expr_node_contains_non_constructor_non_math_call(inner)
+    Binary(_, left, right) | Assignment(_, left, right) | Index(left, right) =>
+      self.expr_node_contains_non_constructor_non_math_call(left) ||
+      self.expr_node_contains_non_constructor_non_math_call(right)
+    Member(base, _) | PathAccess(base, _) | Template(base, _) =>
+      self.expr_node_contains_non_constructor_non_math_call(base)
+    Sequence(items) =>
+      items.any(fn(item) {
+        self.expr_node_contains_non_constructor_non_math_call(item)
+      })
+    Identifier(_) | Literal(_) | ShaderDefTemplate(_) => false
+  }
 }
 
 ///|

@@ -2738,6 +2738,95 @@ test "WGSL AST lowerer keeps math-call additive left subtree before right produc
 }
 
 ///|
+test "WGSL AST lowerer keeps left splat constructor before grouped product RHS" {
+  let source =
+    #|struct Material {
+    #|  scale: vec2<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> material: Material;
+    #|
+    #|fn probe(uv: vec2<f32>) -> vec2<f32> {
+    #|  return vec2<f32>(1.0) - (vec2<f32>(1.0) - uv) * material.scale;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut splats_before_load = 0
+  let mut scale_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      Load(pointer) if scale_load == None =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(AccessIndex(access_base, 0)) =>
+            match function.expressions.items.get(access_base.index()) {
+              Some(GlobalVariable(_)) => scale_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      Splat(_, _) if scale_load == None => splats_before_load += 1
+      _ => ()
+    }
+  }
+  match scale_load {
+    Some(_) => debug_inspect(splats_before_load, content="2")
+    None => abort("expected material.scale load")
+  }
+}
+
+///|
+test "WGSL AST lowerer keeps field assignment RHS local load before global product roots" {
+  let source =
+    #|struct Material {
+    #|  tile: vec2<f32>,
+    #|}
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> material: Material;
+    #|
+    #|fn probe(input_uv: vec2<f32>) -> vec2<f32> {
+    #|  var uv = input_uv;
+    #|  uv.x = (uv.x - material.tile.x * floor(uv.x / material.tile.x)) / material.tile.x;
+    #|  return uv;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut first_uv_load : Int? = None
+  let mut first_material_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(AccessIndex(base, 0)) =>
+            match function.expressions.items.get(base.index()) {
+              Some(LocalVariable(_)) if first_uv_load == None =>
+                first_uv_load = Some(index)
+              Some(AccessIndex(material_root, _)) =>
+                match function.expressions.items.get(material_root.index()) {
+                  Some(GlobalVariable(_)) if first_material_load == None =>
+                    first_material_load = Some(index)
+                  _ => ()
+                }
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (first_uv_load, first_material_load) {
+    (Some(uv_load), Some(material_load)) =>
+      debug_inspect(uv_load < material_load, content="true")
+    _ => abort("expected uv and material loads")
+  }
+}
+
+///|
 test "WGSL AST lowerer appends literal-left division product denominator before numerator" {
   let source =
     #|fn probe(scale: f32, position: vec3<f32>) -> f32 {

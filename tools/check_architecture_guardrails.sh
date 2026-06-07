@@ -1115,28 +1115,11 @@ if [[ ! -f testdata/external_naga_oil_compose_writer_drift.tsv ]]; then
   fail "external naga-oil compose parity writer/order/name drift must keep an empty sentinel manifest"
 fi
 
-if [[ ! -f testdata/external_naga_oil_compose_byte_drift.tsv ]]; then
-  fail "external naga-oil compose parity byte drift must be manifest-owned"
-fi
-
-if [[ ! -f testdata/external_naga_oil_compose_drift_taxonomy.tsv ]]; then
-  fail "external naga-oil compose drift must be classified into architecture burn-down categories"
-fi
-
-if [[ ! -f testdata/external_naga_oil_compose_byte_trace_roots.tsv ]]; then
-  fail "external naga-oil compose byte drift must include trace-derived root classifications"
-fi
-
-if [[ ! -x tools/check_external_naga_oil_drift_taxonomy.sh ]]; then
-  fail "external naga-oil compose drift taxonomy gate must be executable"
-fi
-
-if ! rg -n 'drift taxonomy row has.*expected 6|drift taxonomy rows must exactly match writer and byte drift manifest cases' tools/check_external_naga_oil_drift_taxonomy.sh >/dev/null; then
-  fail "external naga-oil compose drift taxonomy must be case-level and exact-key gated"
-fi
-
-if ! rg -n 'byte trace root row has.*expected 9|at least 5 current byte drift rows' tools/check_external_naga_oil_drift_taxonomy.sh >/dev/null; then
-  fail "external naga-oil compose byte trace root classifications must be schema-gated"
+if [[ -f testdata/external_naga_oil_compose_byte_drift.tsv ||
+      -f testdata/external_naga_oil_compose_drift_taxonomy.tsv ||
+      -f testdata/external_naga_oil_compose_byte_trace_roots.tsv ||
+      -f tools/check_external_naga_oil_drift_taxonomy.sh ]]; then
+  fail "external naga-oil compose byte drift is no longer allowlisted; remove legacy drift inventory files and fix regressions structurally"
 fi
 
 external_compose_case_count="$(awk -F '\t' '$0 !~ /^($|#)/ && $1 != "id" { count += 1 } END { print count + 0 }' testdata/external_naga_oil_compose_parity.tsv)"
@@ -1149,12 +1132,13 @@ if (( external_oracle_blocked_count != 1 )); then
   fail "external naga-oil compose parity oracle-blocked manifest must contain exactly one pinned-upstream blocked case, got ${external_oracle_blocked_count}"
 fi
 
-if ! rg -n 'writer/order/name drift is no longer allowlisted|fix WGSL-283 structurally' tools/check_external_naga_oil_compose_parity.sh tools/check_external_naga_oil_drift_taxonomy.sh >/dev/null; then
+if ! rg -n 'writer/order/name drift is no longer allowlisted|fix WGSL-283 structurally' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
   fail "external naga-oil compose parity writer drift must hard-fail instead of being allowlisted"
 fi
 
-if ! rg -n 'diff -u "\$byte_drift_expected" "\$byte_drift_actual"' tools/check_external_naga_oil_compose_parity.sh >/dev/null; then
-  fail "external naga-oil compose parity byte drift manifest must be exact-gated against observed byte drift rows"
+if rg -n 'MOON_WGSL_ALLOW_KNOWN_DRIFT|EXTERNAL_NAGA_OIL_COMPOSE_PARITY_BYTE_DRIFT_MANIFEST|byte_drift_manifest|byte_drift_expected|known drift allowed|legacy drift-manifest' \
+  tools/check_external_naga_oil_compose_parity.sh .github/workflows/check.yml >/dev/null; then
+  fail "external naga-oil compose parity must not retain legacy known byte-drift mode"
 fi
 
 if ! rg -n 'rm -rf "\$failure_dir"' tools/check_external_naga_oil_compose_parity.sh >/dev/null ||

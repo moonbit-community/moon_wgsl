@@ -1,2 +1,0 @@
-id	rel_path	hash	class	reason
-bevy	crates/bevy_sprite_render/src/sprite_mesh/sprite_material.wgsl	21797c307498f537335b4e2e371a4652a14c73ce0718acf0a559bcbac53f7289	byte-output-drift	strict-byte-parity-failure
