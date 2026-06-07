@@ -14,7 +14,27 @@ fn wgsl_ir_switch_value_from_ast_expression(
   )
   lowerer
   .eval_ast_integer_expression(root, function, scope)
-  .to_switch_value(selector_is_unsigned)
+  .to_switch_value(
+    selector_is_unsigned,
+    wgsl_ir_switch_case_label_style_from_ast_expression(root),
+  )
+}
+
+///|
+fn wgsl_ir_switch_case_label_style_from_ast_expression(
+  node : @ast.WgslExprNode,
+) -> SwitchCaseLabelStyle {
+  match node.kind() {
+    Group(inner) | Sequence([inner]) =>
+      wgsl_ir_switch_case_label_style_from_ast_expression(inner)
+    Literal(token) =>
+      match token.numeric_literal() {
+        Some({ category: AbstractIntLiteral, suffix: NoSuffix, .. }) =>
+          SourceAbstractInt
+        _ => Typed
+      }
+    _ => Typed
+  }
 }
 
 ///|
@@ -548,15 +568,16 @@ fn WgslIrIntegerValue::is_unsigned(self : WgslIrIntegerValue) -> Bool {
 fn WgslIrIntegerValue::to_switch_value(
   self : WgslIrIntegerValue,
   selector_is_unsigned : Bool,
+  label_style : SwitchCaseLabelStyle,
 ) -> SwitchValue raise WgslIrLowerError {
   if selector_is_unsigned {
-    U32(self.to_unsigned())
+    U32(self.to_unsigned(), label_style)
   } else {
     match self {
       Unsigned(value) =>
-        I32(WgslIrIntegerValue::Unsigned(value).to_signed_int())
-      Signed(value) => I32(value)
-      Abstract(value) => I32(wgsl_ir_int64_to_i32(value))
+        I32(WgslIrIntegerValue::Unsigned(value).to_signed_int(), label_style)
+      Signed(value) => I32(value, label_style)
+      Abstract(value) => I32(wgsl_ir_int64_to_i32(value), label_style)
     }
   }
 }

@@ -893,9 +893,14 @@ pub(all) struct SwitchCase {
   constant_dependencies : Array[Handle]
 } derive(Eq, @debug.Debug)
 
+pub enum SwitchCaseLabelStyle {
+  Typed
+  SourceAbstractInt
+} derive(Eq, @debug.Debug)
+
 pub enum SwitchValue {
-  I32(Int)
-  U32(UInt)
+  I32(Int, SwitchCaseLabelStyle)
+  U32(UInt, SwitchCaseLabelStyle)
   Default
 } derive(Eq, @debug.Debug)
 

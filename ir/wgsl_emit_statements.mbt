@@ -567,8 +567,10 @@ fn WgslIrEmitter::emit_ray_query_statement(
 ///|
 fn wgsl_ir_switch_case_label(value : SwitchValue) -> String {
   match value {
-    I32(value) => "case \{value}i"
-    U32(value) => "case \{value}u"
+    I32(value, SourceAbstractInt) => "case \{value}"
+    I32(value, Typed) => "case \{value}i"
+    U32(value, SourceAbstractInt) => "case \{value}"
+    U32(value, Typed) => "case \{value}u"
     Default => "default"
   }
 }

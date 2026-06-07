@@ -1441,8 +1441,11 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         raise UnsupportedStatement("switch without selector")
       }
       let expression_mark = function.expressions.items.length()
-      let selector_handle = self.lower_function_expression_ref(
+      let lowered_selector = self.lower_function_expression_ref(
         selector_ref, function, scope,
+      )
+      let selector_handle = self.materialize_control_flow_condition_if_needed(
+        function, scope, block, lowered_selector,
       )
       let cases : Array[SwitchCase] = []
       match statement.blocks() {

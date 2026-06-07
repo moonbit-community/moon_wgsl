@@ -352,7 +352,7 @@ test "WGSL AST lowerer supports switch statements" {
   match switch_cases {
     Some(cases) => {
       debug_inspect(cases.length(), content="3")
-      debug_inspect(cases[0].value, content="U32(0)")
+      debug_inspect(cases[0].value, content="U32(0, Typed)")
       debug_inspect(cases[2].value, content="Default")
     }
     None => abort("expected switch statement")
@@ -360,7 +360,7 @@ test "WGSL AST lowerer supports switch statements" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("switch value {"), content="true")
+  debug_inspect(emitted.contains("switch _e"), content="true")
   debug_inspect(emitted.contains("case 0u: {"), content="true")
   debug_inspect(emitted.contains("default: {"), content="true")
 }
@@ -390,7 +390,7 @@ test "WGSL AST lowerer preserves default case selectors" {
   match switch_cases {
     Some(cases) => {
       debug_inspect(cases.length(), content="2")
-      debug_inspect(cases[0].value, content="U32(0)")
+      debug_inspect(cases[0].value, content="U32(0, Typed)")
       debug_inspect(cases[1].value, content="Default")
     }
     None => abort("expected switch statement")

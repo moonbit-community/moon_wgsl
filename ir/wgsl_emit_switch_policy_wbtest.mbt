@@ -56,6 +56,58 @@ test "naga-oil writer policy preserves explicit return after switch" {
 }
 
 ///|
+test "naga-oil writer policy keeps source abstract-int switch labels" {
+  let source =
+    #|fn choose(value: i32) -> i32 {
+    #|  var result: i32 = 0;
+    #|  switch value & 7 {
+    #|    case 0: {
+    #|      result = 1;
+    #|    }
+    #|    default {
+    #|      result = 2;
+    #|    }
+    #|  }
+    #|  return result;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("case 0: {"), content="true")
+  debug_inspect(emitted.contains("case 0i: {"), content="false")
+}
+
+///|
+test "naga-oil writer policy materializes mutable switch selector loads" {
+  let source =
+    #|fn choose() -> i32 {
+    #|  var i: i32 = 0;
+    #|  var result: i32 = 0;
+    #|  switch i & 7 {
+    #|    case 0: {
+    #|      result = 1;
+    #|    }
+    #|    default {
+    #|      result = 2;
+    #|    }
+    #|  }
+    #|  return result;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_naga_oil_writer_compatible(
+    source,
+    [],
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains(": i32 = i;\n    switch (_e"), content="true")
+  debug_inspect(emitted.contains("switch (i & 7i)"), content="false")
+  debug_inspect(emitted.contains("case 0: {"), content="true")
+}
+
+///|
 test "naga-oil writer policy absorbs implicit void return into if branches" {
   let source =
     #|fn store(mip: u32) {

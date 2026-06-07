@@ -351,7 +351,7 @@ test "WGSL AST lowerer preserves large u32 const switch selectors" {
   }
   match module_.functions.items[0].body.statements[0] {
     Switch(_, cases) => {
-      debug_inspect(cases[0].value, content="U32(3221225472)")
+      debug_inspect(cases[0].value, content="U32(3221225472, Typed)")
       debug_inspect(cases[1].value, content="Default")
     }
     _ => abort("expected switch statement")
@@ -382,7 +382,7 @@ test "WGSL AST lowerer infers unary const switch selector types" {
   }
   match module_.functions.items[0].body.statements[0] {
     Switch(_, cases) => {
-      debug_inspect(cases[0].value, content="I32(-1)")
+      debug_inspect(cases[0].value, content="I32(-1, Typed)")
       debug_inspect(cases[1].value, content="Default")
     }
     _ => abort("expected switch statement")
@@ -414,8 +414,8 @@ test "WGSL AST lowerer keeps const switch selectors out of function arena" {
   let function = module_.functions.items[0]
   match function.body.statements[0] {
     Switch(_, cases) => {
-      debug_inspect(cases[0].value, content="U32(1)")
-      debug_inspect(cases[1].value, content="U32(2)")
+      debug_inspect(cases[0].value, content="U32(1, Typed)")
+      debug_inspect(cases[1].value, content="U32(2, Typed)")
       debug_inspect(cases[2].value, content="Default")
     }
     _ => abort("expected switch statement")

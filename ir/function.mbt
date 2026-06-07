@@ -1,7 +1,13 @@
 ///|
+pub enum SwitchCaseLabelStyle {
+  Typed
+  SourceAbstractInt
+} derive(Eq, Debug)
+
+///|
 pub enum SwitchValue {
-  I32(Int)
-  U32(UInt)
+  I32(Int, SwitchCaseLabelStyle)
+  U32(UInt, SwitchCaseLabelStyle)
   Default
 } derive(Eq, Debug)
 
