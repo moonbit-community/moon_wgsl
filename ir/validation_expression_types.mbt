@@ -1128,7 +1128,6 @@ fn WgslIrValidator::type_inner_assignable(
   expected : TypeInner,
   actual : TypeInner,
 ) -> Bool {
-  ignore(self)
   if expected == actual {
     return true
   }
@@ -1144,6 +1143,27 @@ fn WgslIrValidator::type_inner_assignable(
     ) =>
       expected_columns == actual_columns &&
       expected_rows == actual_rows &&
+      wgsl_ir_validation_scalar_assignable(expected_scalar, actual_scalar)
+    (
+      Array(expected_element, expected_size, expected_stride),
+      Array(actual_element, actual_size, actual_stride),
+    ) =>
+      expected_size == actual_size &&
+      expected_stride == actual_stride &&
+      self.type_assignable(expected_element, actual_element)
+    (
+      BindingArray(expected_element, expected_size),
+      BindingArray(actual_element, actual_size),
+    ) =>
+      expected_size == actual_size &&
+      self.type_assignable(expected_element, actual_element)
+    (
+      Pointer(expected_pointee, expected_space),
+      Pointer(actual_pointee, actual_space),
+    ) =>
+      expected_space == actual_space &&
+      self.type_assignable(expected_pointee, actual_pointee)
+    (Atomic(expected_scalar), Atomic(actual_scalar)) =>
       wgsl_ir_validation_scalar_assignable(expected_scalar, actual_scalar)
     _ => false
   }

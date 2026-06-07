@@ -849,6 +849,36 @@ test "WGSL IR lowerer exposes complete Naga RayIntersection fields" {
 }
 
 ///|
+test "WGSL IR lowerer assigns ray query vertex positions to vec3f array variables" {
+  let source =
+    #|enable wgpu_ray_query;
+    #|enable wgpu_ray_query_vertex_return;
+    #|
+    #|@group(0) @binding(0)
+    #|var tlas: acceleration_structure<vertex_return>;
+    #|
+    #|fn main() -> vec3f {
+    #|  var rq: ray_query<vertex_return>;
+    #|  let desc: RayDesc = RayDesc(0u, 255u, 0.0001f, 100000f, vec3f(0f, 0f, 0f), vec3f(1f, 0f, 0f));
+    #|  rayQueryInitialize(&rq, tlas, desc);
+    #|  rayQueryProceed(&rq);
+    #|  var positions: array<vec3f, 3> = getCommittedHitVertexPositions(&rq);
+    #|  return positions[0];
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var positions: array<vec3<f32>, 3>;"),
+    content="true",
+  )
+  debug_inspect(
+    emitted.contains("positions = getCommittedHitVertexPositions(&rq);"),
+    content="true",
+  )
+}
+
+///|
 test "WGSL IR lowerer supports external textureLoad without mip level" {
   let source =
     #|@group(0) @binding(0) var tex: texture_external;
