@@ -4380,6 +4380,28 @@ test "WGSL AST lowerer invalidates shared lazy aliases after child-scope rewinds
 }
 
 ///|
+test "WGSL AST lowerer contextualizes array constructor elements with element type" {
+  let source =
+    #|@vertex
+    #|fn vs_main(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32> {
+    #|  var vertices = array<vec4<f32>, 3>(
+    #|    vec4<f32>(0.0, 1.0, 0.0, 1.0),
+    #|    vec4<f32>(-1.0, -1.0, 0.0, 1.0),
+    #|    vec4<f32>(1.0, -1.0, 0.0, 1.0)
+    #|  );
+    #|  return vertices[index];
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("var vertices: array<vec4<f32>, 3>"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("vertices[index]"), content="true")
+}
+
+///|
 test "WGSL AST lowerer preserves source let scalar constructor conversions" {
   let source =
     #|fn f() -> f32 {

@@ -604,6 +604,7 @@ fn WgslIrLowerer::constructor_literal_argument_expected_type(
             Some(struct_member) => Some(struct_member.ty)
             None => None
           }
+        Array(element, _, _) | BindingArray(element, _) => Some(element)
         _ => None
       }
     None => None
