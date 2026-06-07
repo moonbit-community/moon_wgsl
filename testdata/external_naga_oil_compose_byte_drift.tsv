@@ -1,5 +1,4 @@
 id	rel_path	hash	class	reason
-bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	94a0a084ae290a78882413616bebde9e4222da3ec47491879df21bd0ca85aabd	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	d08fecc4919343b9d4a8e700df8101dc369b5004e2a690b3037556cc2bfeee84	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/render/parallax_mapping.wgsl	fe0ca1854007b2d6b50f4f22e994df8e753436e7af3ef0c4bab0aef0692317ab	byte-output-drift	strict-byte-parity-failure
 bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	f3d73636c410ddc18ca70e07586ab2b97b168e490636f4cb8cd76e9cd03155b8	byte-output-drift	strict-byte-parity-failure

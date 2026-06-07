@@ -1196,6 +1196,17 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
               wgsl_ir_expr_node_plain_mutable_local_identifier_name(root, scope)
             None => None
           }
+          match rhs_ref.root() {
+            Some(root) =>
+              if wgsl_ir_direct_access_chain_root_is_function_argument(
+                  root, scope,
+                ) {
+                self.predeclare_function_reference_roots_in_source_order(
+                  root, function, scope,
+                )
+              }
+            None => ()
+          }
           let raw_target = self.lower_function_lvalue_ref(
             lhs_ref, function, scope,
           )
@@ -1215,6 +1226,17 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
                 }
               None => ()
             }
+          }
+          match rhs_ref.root() {
+            Some(root) =>
+              if wgsl_ir_direct_access_chain_root_is_function_argument(
+                  root, scope,
+                ) {
+                self.predeclare_function_reference_roots_in_source_order(
+                  root, function, scope,
+                )
+              }
+            None => ()
           }
           let target_value = self.compound_assignment_target_value(
             function, target,
@@ -1733,6 +1755,14 @@ fn WgslIrLowerer::lower_for_header_statement(
       }
       let (target, value) = match wgsl_ir_compound_assignment_operator(op) {
         Some(binary_op) => {
+          let rhs_node = wgsl_ir_expr_node_from_tokens(rhs_tokens)
+          if wgsl_ir_direct_access_chain_root_is_function_argument(
+              rhs_node, scope,
+            ) {
+            self.predeclare_function_reference_roots_in_source_order(
+              rhs_node, function, scope,
+            )
+          }
           let raw_target = self.lower_function_lvalue_node(
             wgsl_ir_expr_node_from_tokens(lhs_tokens),
             function,
@@ -1741,7 +1771,6 @@ fn WgslIrLowerer::lower_for_header_statement(
           let target = self.materialize_store_pointer_if_needed(
             function, scope, block, raw_target,
           )
-          let rhs_node = wgsl_ir_expr_node_from_tokens(rhs_tokens)
           let lhs_node = wgsl_ir_expr_node_from_tokens(lhs_tokens)
           if wgsl_ir_expr_node_plain_local_identifier(lhs_node, scope) {
             if wgsl_ir_compound_assignment_rhs_predeclares_reference_roots(
@@ -1751,6 +1780,13 @@ fn WgslIrLowerer::lower_for_header_statement(
                 rhs_node, function, scope,
               )
             }
+          }
+          if wgsl_ir_direct_access_chain_root_is_function_argument(
+              rhs_node, scope,
+            ) {
+            self.predeclare_function_reference_roots_in_source_order(
+              rhs_node, function, scope,
+            )
           }
           let target_value = self.compound_assignment_target_value(
             function, target,

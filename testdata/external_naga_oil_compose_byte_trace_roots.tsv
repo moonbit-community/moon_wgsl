@@ -1,5 +1,4 @@
 id	rel_path	trace_label	first_index	owner	expected	actual	category	reason
-bevy	crates/bevy_pbr/src/meshlet/meshlet_mesh_material.wgsl	bevy.77.meshlet_mesh_material	4422	fn:compute_partial_derivativesX_naga_oil_mod_XMJSXM6K7OBRHEOR2NVSXG2DMMV2F65TJONUWE2LMNF2HSX3COVTGMZLSL5ZGK43PNR3GKX	identifier:_e126	identifier:_e125	expression-temp-index-order	first divergent byte is generated expression temporary numbering in compute_partial_derivatives
 bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	bevy.81.visibility_buffer_software_raster	4540	fn:rasterize_cluster	keyword:let	identifier:_	subgroup-call-emission-order	first divergent byte is subgroup call emission shape in rasterize_cluster
 bevy	crates/bevy_pbr/src/render/parallax_mapping.wgsl	bevy.99.parallax_mapping	559	fn:parallaxed_uv	identifier:_e30	identifier:_e29	expression-temp-index-order	first divergent byte is generated expression temporary numbering in parallaxed_uv
 bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	bevy.120.ssao	2005	fn:processSample	identifier:_e3	identifier:_e2	expression-temp-index-order	first divergent byte is generated expression temporary numbering in processSample

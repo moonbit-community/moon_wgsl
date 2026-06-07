@@ -2145,6 +2145,49 @@ test "WGSL AST lowerer schedules right multiply argument before left pointer fie
 }
 
 ///|
+test "WGSL AST lowerer predeclares compound assignment RHS function argument projection before target load" {
+  let source =
+    #|struct PartialDerivatives {
+    #|  ddx: vec3<f32>,
+    #|}
+    #|
+    #|fn probe(scale: vec2<f32>) -> vec3<f32> {
+    #|  var result: PartialDerivatives;
+    #|  result.ddx = vec3(1.0);
+    #|  result.ddx *= scale.x;
+    #|  return result.ddx;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut scale_argument : Int? = None
+  let mut result_ddx_load : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(argument_index) if argument_index == 0 &&
+        scale_argument == None => scale_argument = Some(index)
+      Load(pointer) =>
+        match function.expressions.items.get(pointer.index()) {
+          Some(AccessIndex(base, _)) =>
+            match function.expressions.items.get(base.index()) {
+              Some(LocalVariable(_)) if scale_argument != None &&
+                result_ddx_load == None => result_ddx_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  match (scale_argument, result_ddx_load) {
+    (Some(scale), Some(load)) =>
+      debug_inspect(scale < load, content="true")
+    _ => abort("expected scale argument and result.ddx load")
+  }
+}
+
+///|
 test "WGSL AST lowerer predeclares right argument projection before left member multiply chain" {
   let source =
     #|struct Light {
