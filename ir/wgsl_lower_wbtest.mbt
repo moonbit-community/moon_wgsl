@@ -2188,6 +2188,29 @@ test "WGSL AST lowerer predeclares compound assignment RHS function argument pro
 }
 
 ///|
+test "WGSL AST lowerer materializes subgroup call conditions like Naga" {
+  let source =
+    #|enable subgroups;
+    #|
+    #|fn probe(max_x: f32, min_x: f32) {
+    #|  if subgroupAny(max_x - min_x > 4.0) {
+    #|  }
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("_ = subgroupAny"), content="false")
+  debug_inspect(
+    emitted.contains(": bool = subgroupAny"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("if _e"), content="true")
+}
+
+///|
 test "WGSL AST lowerer predeclares right argument projection before left member multiply chain" {
   let source =
     #|struct Light {

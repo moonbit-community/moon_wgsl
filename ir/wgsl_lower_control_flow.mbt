@@ -434,6 +434,27 @@ fn WgslIrLowerer::materialize_control_flow_condition_subexpressions(
         value
       }
     }
+    Some(SubgroupCall(subgroup_function, args)) => {
+      let lowered : Array[Handle] = []
+      let mut changed = false
+      for arg in args {
+        let lowered_arg = self.materialize_nested_control_flow_condition_argument(
+          function, scope, block, arg,
+        )
+        let parent_arg = wgsl_ir_parent_expression_operand(
+          function, arg, lowered_arg,
+        )
+        if parent_arg != arg {
+          changed = true
+        }
+        lowered.push(parent_arg)
+      }
+      if changed {
+        function.expressions.append(SubgroupCall(subgroup_function, lowered))
+      } else {
+        value
+      }
+    }
     _ => value
   }
 }
@@ -491,6 +512,7 @@ fn WgslIrLowerer::function_expression_should_materialize_as_control_flow_conditi
   let should_materialize = match function.expressions.items.get(value.index()) {
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
+    | Some(SubgroupCall(_, _))
     | Some(WorkGroupUniformLoad(_)) => true
     Some(Load(_)) =>
       self.function_expression_reads_global_binding(function, value) ||

@@ -1,4 +1,3 @@
-byte-drift	bevy	crates/bevy_pbr/src/meshlet/visibility_buffer_software_raster.wgsl	byte-token-policy	WGSL-281	remaining byte-output drift after Naga arena trace alignment; continue through upstream-compatible expression arena and byte writer policy
 byte-drift	bevy	crates/bevy_pbr/src/render/parallax_mapping.wgsl	byte-token-policy	WGSL-281	remaining byte-output drift after Naga arena trace alignment; continue through upstream-compatible expression arena and byte writer policy
 byte-drift	bevy	crates/bevy_pbr/src/ssao/ssao.wgsl	byte-token-policy	WGSL-281	remaining byte-output drift after Naga arena trace alignment; continue through upstream-compatible expression arena and byte writer policy
 byte-drift	bevy	crates/bevy_pbr/src/transmission/transmission.wgsl	byte-token-policy	WGSL-281	remaining byte-output drift after Naga arena trace alignment; continue through upstream-compatible expression arena and byte writer policy
