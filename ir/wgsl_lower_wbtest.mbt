@@ -386,6 +386,39 @@ test "WGSL AST lowerer reuses initialized local pointer in branch assignments" {
 }
 
 ///|
+test "WGSL AST lowerer lowers plain local literal assignment target before value" {
+  let source =
+    #|fn probe(flag: bool) -> f32 {
+    #|  var sign = -1.0;
+    #|  if flag {
+    #|    sign = 1.0;
+    #|  }
+    #|  return sign;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut sign_local : Handle? = None
+  for index, local_var in function.local_variables.items {
+    if local_var.name == Some("sign") {
+      sign_local = Some(Handle(index))
+    }
+  }
+  guard sign_local is Some(sign_handle) else { abort("expected sign local") }
+  let mut found = false
+  for index in 0..<(function.expressions.items.length() - 1) {
+    match
+      (function.expressions.items[index], function.expressions.items[index + 1]) {
+      (LocalVariable(handle), Literal(_)) if handle == sign_handle =>
+        found = true
+      _ => ()
+    }
+  }
+  debug_inspect(found, content="true")
+}
+
+///|
 test "WGSL AST lowerer lowers complex mutable-local right subtree before literal left" {
   let source =
     #|fn probe(a: f32, limit: f32) -> f32 {

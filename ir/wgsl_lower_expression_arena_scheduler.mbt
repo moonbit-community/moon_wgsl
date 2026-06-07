@@ -95,6 +95,13 @@ fn ExpressionArenaScheduler::binary_lowers_right_before_left(
   left : @ast.WgslExprNode,
   right : @ast.WgslExprNode,
 ) -> Bool {
+  if op == Divide && wgsl_ir_expr_node_is_negative_literal_like(left) {
+    return self.lowerer.expression_node_contains_naga_reference_value(
+      right,
+      self.function,
+      self.scope,
+    )
+  }
   if wgsl_ir_expr_node_is_literal_like(left) {
     return self.lowerer.expression_node_contains_naga_reference_value(
       right,

@@ -1312,6 +1312,13 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
         }
         None =>
           if wgsl_ir_expr_ref_plain_local_identifier(lhs_ref, scope) {
+            let early_raw_target : Handle? = if wgsl_ir_expr_ref_root_is_literal_like(
+                rhs_ref,
+              ) {
+              Some(self.lower_function_lvalue_ref(lhs_ref, function, scope))
+            } else {
+              None
+            }
             let rhs_value = self.lower_expression_ref_with_materialized_short_circuit_inputs(
               rhs_ref,
               function,
@@ -1319,9 +1326,10 @@ fn WgslIrLowerer::lower_statement_with_local_constant_placement(
               block,
               None,
             )
-            let raw_target = self.lower_function_lvalue_ref(
-              lhs_ref, function, scope,
-            )
+            let raw_target = match early_raw_target {
+              Some(target) => target
+              None => self.lower_function_lvalue_ref(lhs_ref, function, scope)
+            }
             let target = self.materialize_store_pointer_if_needed(
               function, scope, block, raw_target,
             )
@@ -1881,12 +1889,20 @@ fn WgslIrLowerer::lower_for_header_statement(
           let lhs_node = wgsl_ir_expr_node_from_tokens(lhs_tokens)
           let rhs_node = wgsl_ir_expr_node_from_tokens(rhs_tokens)
           if wgsl_ir_expr_node_plain_local_identifier(lhs_node, scope) {
+            let early_raw_target : Handle? = if wgsl_ir_expr_node_is_literal_like(
+                rhs_node,
+              ) {
+              Some(self.lower_function_lvalue_node(lhs_node, function, scope))
+            } else {
+              None
+            }
             let rhs_value = self.lower_function_expression_node(
               rhs_node, function, scope,
             )
-            let raw_target = self.lower_function_lvalue_node(
-              lhs_node, function, scope,
-            )
+            let raw_target = match early_raw_target {
+              Some(target) => target
+              None => self.lower_function_lvalue_node(lhs_node, function, scope)
+            }
             let target = self.materialize_store_pointer_if_needed(
               function, scope, block, raw_target,
             )
@@ -1937,6 +1953,14 @@ fn WgslIrLowerer::lower_for_header_statement(
     None => ()
   }
   ignore(self.lower_function_expression_ref(expr_ref, function, scope))
+}
+
+///|
+fn wgsl_ir_expr_ref_root_is_literal_like(expr_ref : @ast.WgslExprRef) -> Bool {
+  match expr_ref.root() {
+    Some(root) => wgsl_ir_expr_node_is_literal_like(root)
+    None => false
+  }
 }
 
 ///|

@@ -2076,7 +2076,11 @@ fn WgslIrLowerer::lower_function_right_operand_before_left(
     let (right_left, right_right) = self.normalize_function_binary_operands(
       function, right_binary_op, right_left, right_right,
     )
-    if parent_op == Divide && wgsl_ir_expr_node_is_literal_like(left) {
+    if parent_op == Divide &&
+      (
+        wgsl_ir_expr_node_is_literal_like(left) ||
+        wgsl_ir_expr_node_is_negative_literal_like(left)
+      ) {
       let right_handle = function.expressions.append(
         Binary(right_binary_op, right_left, right_right),
       )
@@ -2798,6 +2802,17 @@ fn wgsl_ir_expr_node_is_literal_like(node : @ast.WgslExprNode) -> Bool {
   match node.kind() {
     Literal(_) => true
     Group(inner) => wgsl_ir_expr_node_is_literal_like(inner)
+    Sequence([single]) => wgsl_ir_expr_node_is_literal_like(single)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_expr_node_is_negative_literal_like(node : @ast.WgslExprNode) -> Bool {
+  match node.kind() {
+    Group(inner) | Sequence([inner]) =>
+      wgsl_ir_expr_node_is_negative_literal_like(inner)
+    Unary(Subtract, inner) => wgsl_ir_expr_node_is_literal_like(inner)
     _ => false
   }
 }
