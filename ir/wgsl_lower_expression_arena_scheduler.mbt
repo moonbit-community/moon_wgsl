@@ -228,6 +228,22 @@ fn ExpressionArenaScheduler::binary_lowers_right_argument_before_left_access(
 }
 
 ///|
+fn ExpressionArenaScheduler::binary_lowers_right_children_before_left_access(
+  self : ExpressionArenaScheduler,
+  parent_op : @ast.WgslExprOperator,
+  left : @ast.WgslExprNode,
+  right : @ast.WgslExprNode,
+) -> Bool {
+  guard wgsl_ir_expr_node_is_direct_access_chain(left) else { return false }
+  let right = wgsl_ir_expr_node_without_groups(right)
+  guard right.kind() is Binary(right_op, right_left, _) else { return false }
+  guard right_op.binary_precedence() > parent_op.binary_precedence() else {
+    return false
+  }
+  wgsl_ir_expr_node_is_function_argument_value(right_left, self.scope)
+}
+
+///|
 fn ExpressionArenaScheduler::binary_predeclares_right_constructor_argument_member_root(
   self : ExpressionArenaScheduler,
   left : @ast.WgslExprNode,

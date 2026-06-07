@@ -594,7 +594,12 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
         )
       }
       let (left_handle, right_handle) = if !member_bases_lower_in_source_order &&
-        scheduler.binary_right_subtree_has_higher_precedence(op, right) {
+        (
+          scheduler.binary_right_subtree_has_higher_precedence(op, right) ||
+          scheduler.binary_lowers_right_children_before_left_access(
+            op, left, right,
+          )
+        ) {
         match
           self.lower_function_binary_const_parent_between_right_const_and_local_reference(
             op, left, right, function, scope,
@@ -614,6 +619,29 @@ fn WgslIrLowerer::lower_function_expression_node_with_expected(
               let right_binary_op = wgsl_ir_binary_operator(right_op)
               let (right_left, right_right) = self.normalize_function_binary_operands(
                 function, right_binary_op, right_left, right_right,
+              )
+              let right_handle = self.append_foldable_function_binary_expression(
+                function,
+                right_mark,
+                right_binary_op,
+                right_left,
+                right_right,
+                !wgsl_ir_expr_node_references_local_let_constant(right, scope),
+              )
+              (left_handle, right_handle)
+            } else if scheduler.binary_lowers_right_children_before_left_access(
+                op, left, right,
+              ) {
+              let right_mark = function.expressions.items.length()
+              let (right_op, right_left, right_right) = self.lower_binary_expression_children(
+                right, function, scope,
+              )
+              let right_binary_op = wgsl_ir_binary_operator(right_op)
+              let (right_left, right_right) = self.normalize_function_binary_operands(
+                function, right_binary_op, right_left, right_right,
+              )
+              let left_handle = self.lower_function_expression_node(
+                left, function, scope,
               )
               let right_handle = self.append_foldable_function_binary_expression(
                 function,

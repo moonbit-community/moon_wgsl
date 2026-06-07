@@ -2100,6 +2100,51 @@ test "WGSL AST lowerer predeclares right function argument root before left memb
 }
 
 ///|
+test "WGSL AST lowerer schedules right multiply argument before left pointer field load" {
+  let source =
+    #|struct Meshlet {
+    #|  start_vertex_position_bit: u32,
+    #|}
+    #|
+    #|fn probe(meshlet: ptr<function, Meshlet>, vertex_id: u32, bits_per_vertex: u32) -> u32 {
+    #|  var start_bit = (*meshlet).start_vertex_position_bit + (vertex_id * bits_per_vertex);
+    #|  return start_bit;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut vertex_argument : Int? = None
+  let mut field_load : Int? = None
+  let mut multiply : Int? = None
+  for index, expression in function.expressions.items {
+    match expression {
+      FunctionArgument(argument_index) if argument_index == 1 &&
+        vertex_argument == None => vertex_argument = Some(index)
+      Load(base) if field_load == None =>
+        match function.expressions.items.get(base.index()) {
+          Some(AccessIndex(access_base, _)) =>
+            match function.expressions.items.get(access_base.index()) {
+              Some(FunctionArgument(argument_index)) if argument_index == 0 =>
+                field_load = Some(index)
+              _ => ()
+            }
+          _ => ()
+        }
+      Binary(Multiply, _, _) if multiply == None => multiply = Some(index)
+      _ => ()
+    }
+  }
+  match (vertex_argument, field_load, multiply) {
+    (Some(vertex), Some(load), Some(product)) => {
+      debug_inspect(vertex < load, content="true")
+      debug_inspect(load < product, content="true")
+    }
+    _ => abort("expected vertex argument, field load, and multiply handles")
+  }
+}
+
+///|
 test "WGSL AST lowerer predeclares right argument projection before left member multiply chain" {
   let source =
     #|struct Light {
@@ -4145,6 +4190,48 @@ test "WGSL AST lowerer builds global member base before mutable dynamic index lo
   debug_inspect(member_base_index >= 0, content="true")
   debug_inspect(index_load_index > member_base_index, content="true")
   debug_inspect(dynamic_access_index > index_load_index, content="true")
+}
+
+///|
+test "WGSL AST lowerer does not materialize value vector dynamic access in conditions" {
+  let source =
+    #|fn dynamic_value_vector_condition(values: vec3<u32>, count: u32) -> u32 {
+    #|  var i: u32 = count;
+    #|  if values[i] > 1u {
+    #|    return values[i];
+    #|  }
+    #|  return 0u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut condition_access : Handle? = None
+  for expression_index, expression in function.expressions.items {
+    match expression {
+      Access(base, index) =>
+        match (
+          function.expressions.items.get(base.index()),
+          function.expressions.items.get(index.index()),
+        ) {
+          (Some(FunctionArgument(0)), Some(Load(_))) if condition_access == None =>
+            condition_access = Some(Handle(expression_index))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let mut access_materialized = false
+  match condition_access {
+    Some(access) =>
+      for local_var in function.local_variables.items {
+        if local_var.generated_temporary && local_var.init == Some(access) {
+          access_materialized = true
+        }
+      }
+    None => abort("expected dynamic vector access")
+  }
+  debug_inspect(access_materialized, content="false")
 }
 
 ///|

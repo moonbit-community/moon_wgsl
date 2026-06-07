@@ -492,13 +492,14 @@ fn WgslIrLowerer::function_expression_should_materialize_as_control_flow_conditi
     Some(FunctionCall(_, _))
     | Some(AtomicCall(_, _))
     | Some(WorkGroupUniformLoad(_)) => true
-    Some(Load(_))
-    | Some(Access(_, _))
+    Some(Load(_)) =>
+      self.function_expression_reads_global_binding(function, value) ||
+      self.function_expression_reads_var_pointer_load(function, value)
+    Some(Access(_, _))
     | Some(AccessIndex(_, _))
     | Some(Component(_, _))
     | Some(Swizzle(_, _, _)) =>
-      self.function_expression_reads_global_binding(function, value) ||
-      self.function_expression_reads_var_pointer_load(function, value)
+      self.function_projection_expression_reads_pointer_base(function, value)
     _ => false
   }
   should_materialize &&
