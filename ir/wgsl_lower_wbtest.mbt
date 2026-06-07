@@ -2211,6 +2211,43 @@ test "WGSL AST lowerer materializes subgroup call conditions like Naga" {
 }
 
 ///|
+test "WGSL AST lowerer predeclares short-circuit condition local operands before loads" {
+  let source =
+    #|fn probe(layer_count: f32) -> f32 {
+    #|  var texture_depth = 1.0;
+    #|  var current_layer_depth = 0.0;
+    #|  for (var i: i32 = 0; texture_depth > current_layer_depth && i <= i32(layer_count); i++) {
+    #|    current_layer_depth += 0.1;
+    #|  }
+    #|  return texture_depth;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let function = module_.functions.items[0]
+  let mut matched = false
+  for _, expression in function.expressions.items {
+    match expression {
+      Binary(Greater, left, right) =>
+        match (
+          function.expressions.items.get(left.index()),
+          function.expressions.items.get(right.index()),
+        ) {
+          (Some(Load(left_pointer)), Some(Load(right_pointer))) => {
+            debug_inspect(left_pointer.index() < left.index(), content="true")
+            debug_inspect(right_pointer.index() < left.index(), content="true")
+            debug_inspect(left.index() < right.index(), content="true")
+            matched = true
+          }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  debug_inspect(matched, content="true")
+}
+
+///|
 test "WGSL AST lowerer predeclares right argument projection before left member multiply chain" {
   let source =
     #|struct Light {

@@ -104,7 +104,7 @@ taxonomy_byte_count="$(awk -F '\t' '$1 == "byte-drift" { print $2 }' _build/drif
 [[ "$taxonomy_byte_count" == "$byte_count" ]] ||
   fail "byte drift taxonomy count $taxonomy_byte_count does not match manifest count $byte_count"
 
-awk -F '\t' '
+awk -F '\t' -v expected_count="$byte_count" '
   FNR == NR {
     if ($0 ~ /^($|#)/ || $1 == "id") {
       next
@@ -139,8 +139,8 @@ awk -F '\t' '
     count += 1
   }
   END {
-    if (count < 5) {
-      printf("byte trace root classification must contain at least 5 current byte drift rows, got %d\n", count + 0) > "/dev/stderr"
+    if (count != expected_count) {
+      printf("byte trace root classification count %d does not match current byte drift manifest count %d\n", count + 0, expected_count + 0) > "/dev/stderr"
       exit 1
     }
   }

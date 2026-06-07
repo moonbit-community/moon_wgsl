@@ -342,6 +342,11 @@ fn ShortCircuitPlanner::materialize_condition_node(
       lowered
     }
   } else {
+    self.lowerer.predeclare_function_binary_chain_reference_roots_in_source_order(
+      node,
+      self.function,
+      self.scope,
+    )
     let value = self.lowerer.lower_function_expression_node(
       node,
       self.function,
