@@ -4441,6 +4441,24 @@ test "WGSL AST lowerer preserves source let scalar constructor conversions" {
 }
 
 ///|
+test "WGSL AST lowerer keeps large abstract integer vector constants until u32 context" {
+  let source =
+    #|var<private> rnd: vec3u;
+    #|
+    #|fn init_rand(invocation_id: vec3u) {
+    #|  const A = vec3(1741651 * 1009,
+    #|                 140893  * 1609 * 13,
+    #|                 6521    * 983  * 7 * 2);
+    #|  rnd = invocation_id * A;
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("2947058881u"), content="true")
+  debug_inspect(emitted.contains("-1347908415"), content="false")
+}
+
+///|
 test "WGSL AST lowerer preserves explicit same-type scalar constructors as casts" {
   let source =
     #|fn probe(value: u32) -> u32 {

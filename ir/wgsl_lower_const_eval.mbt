@@ -565,6 +565,23 @@ fn WgslIrIntegerValue::is_unsigned(self : WgslIrIntegerValue) -> Bool {
 }
 
 ///|
+fn WgslIrIntegerValue::is_abstract(self : WgslIrIntegerValue) -> Bool {
+  match self {
+    Abstract(_) => true
+    Signed(_) | Unsigned(_) => false
+  }
+}
+
+///|
+fn WgslIrIntegerValue::to_abstract_int64(self : WgslIrIntegerValue) -> Int64 {
+  match self {
+    Abstract(value) => value
+    Signed(value) => Int64::from_int(value)
+    Unsigned(value) => value.to_uint64().reinterpret_as_int64()
+  }
+}
+
+///|
 fn WgslIrIntegerValue::to_switch_value(
   self : WgslIrIntegerValue,
   selector_is_unsigned : Bool,
@@ -703,6 +720,27 @@ fn wgsl_ir_eval_integer_binary(
       InclusiveOr => Unsigned(left | right_value)
       ShiftLeft => Unsigned(left << right_shift)
       ShiftRight => Unsigned(left >> right_shift)
+      _ =>
+        raise UnsupportedExpression(
+          "switch case const selector uses non-integer binary operator",
+        )
+    }
+  }
+  if left.is_abstract() || right.is_abstract() {
+    let left = left.to_abstract_int64()
+    let right_value = right.to_abstract_int64()
+    let right_shift = WgslIrIntegerValue::Abstract(right_value).to_non_negative_int()
+    return match op {
+      Add => Abstract(left + right_value)
+      Subtract => Abstract(left - right_value)
+      Multiply => Abstract(left * right_value)
+      Divide => Abstract(left / right_value)
+      Modulo => Abstract(left % right_value)
+      And => Abstract(left & right_value)
+      ExclusiveOr => Abstract(left ^ right_value)
+      InclusiveOr => Abstract(left | right_value)
+      ShiftLeft => Abstract(left << right_shift)
+      ShiftRight => Abstract(left >> right_shift)
       _ =>
         raise UnsupportedExpression(
           "switch case const selector uses non-integer binary operator",
