@@ -4459,6 +4459,18 @@ test "WGSL AST lowerer keeps large abstract integer vector constants until u32 c
 }
 
 ///|
+test "WGSL AST lowerer infers scoped vector constructors with mixed composite arguments" {
+  let source =
+    #|fn f(cb: vec3<f32>, cs: vec3<f32>, ab: f32, as_: f32) -> vec4<f32> {
+    #|  return min(vec4(1.0), vec4(as_ * cs + ab * cb, as_ + ab));
+    #|}
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("min(vec4(1f), vec4<f32>"), content="true")
+}
+
+///|
 test "WGSL AST lowerer preserves explicit same-type scalar constructors as casts" {
   let source =
     #|fn probe(value: u32) -> u32 {

@@ -316,7 +316,9 @@ fn WgslIrLowerer::infer_scoped_call_expression_type(
                   _ => raise MissingType(name)
                 }
               } else if ident.name() == "array" {
-                self.infer_array_constructor_type_from_ast(arguments, name)
+                self.infer_scoped_array_constructor_type_from_ast(
+                  arguments, name, function, scope,
+                )
               } else {
                 match self.function_names.get(ident.name()) {
                   Some(handle) =>
@@ -342,10 +344,12 @@ fn WgslIrLowerer::infer_scoped_call_expression_type(
                               math_function, arguments, name, function, scope,
                             )
                           None =>
-                            self.lower_untemplated_constructor_type_from_ast(
+                            self.lower_scoped_untemplated_constructor_type_from_ast(
                               ident.name(),
                               arguments,
                               name,
+                              function,
+                              scope,
                             )
                         }
                     }
@@ -355,6 +359,119 @@ fn WgslIrLowerer::infer_scoped_call_expression_type(
           }
       }
   }
+}
+
+///|
+fn WgslIrLowerer::lower_scoped_untemplated_constructor_type_from_ast(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match self.type_cache.get(name) {
+    Some(handle) => handle
+    None =>
+      match wgsl_ir_builtin_vector_alias(name) {
+        Some(inner) => self.intern_type(name, inner)
+        None =>
+          match wgsl_ir_builtin_matrix_alias(name) {
+            Some(inner) => self.intern_type(name, inner)
+            None =>
+              match wgsl_ir_builtin_scalar_alias(name) {
+                Some(inner) => self.intern_type(name, inner)
+                None =>
+                  self.lower_scoped_generic_constructor_type_from_ast(
+                    name, arguments, diagnostic_name, function, scope,
+                  )
+              }
+          }
+      }
+  }
+}
+
+///|
+fn WgslIrLowerer::lower_scoped_generic_constructor_type_from_ast(
+  self : WgslIrLowerer,
+  name : String,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  match name {
+    "vec2" | "vec3" | "vec4" => {
+      let scalar = self.scoped_constructor_scalar_from_ast_arguments(
+        arguments, diagnostic_name, function, scope,
+      )
+      self.intern_type(
+        "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+        Vector(wgsl_ir_vector_size_from_name(name), scalar),
+      )
+    }
+    "mat2x2"
+    | "mat2x3"
+    | "mat2x4"
+    | "mat3x2"
+    | "mat3x3"
+    | "mat3x4"
+    | "mat4x2"
+    | "mat4x3"
+    | "mat4x4" => {
+      let scalar = self.scoped_constructor_scalar_from_ast_arguments(
+        arguments, diagnostic_name, function, scope,
+      )
+      let (columns, rows) = wgsl_ir_matrix_size_from_name(name)
+      self.intern_type(
+        "\{name}<\{wgsl_ir_scalar_name(scalar.kind, scalar.width)}>",
+        Matrix(columns, rows, scalar),
+      )
+    }
+    _ => raise UnsupportedType(name)
+  }
+}
+
+///|
+fn WgslIrLowerer::infer_scoped_array_constructor_type_from_ast(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Handle raise WgslIrLowerError {
+  let flattened = wgsl_ir_flatten_expression_arguments(arguments)
+  guard flattened is [first, ..] else { raise MissingType(diagnostic_name) }
+  let element_ty = self.infer_expression_type_in_function_scope(
+    first, diagnostic_name, function, scope,
+  )
+  self.intern_inferred_array_type(element_ty, flattened.length())
+}
+
+///|
+fn WgslIrLowerer::scoped_constructor_scalar_from_ast_arguments(
+  self : WgslIrLowerer,
+  arguments : Array[@ast.WgslExprNode],
+  diagnostic_name : String,
+  function : Function,
+  scope : WgslIrFunctionScope,
+) -> Scalar raise WgslIrLowerError {
+  let arguments = wgsl_ir_flatten_expression_arguments(arguments)
+  guard arguments is [first, .. rest] else {
+    raise MissingType(diagnostic_name)
+  }
+  let first_ty = self.infer_expression_type_in_function_scope(
+    first, diagnostic_name, function, scope,
+  )
+  let mut scalar = self.scalar_from_type_handle(first_ty, diagnostic_name)
+  for argument in rest {
+    let ty = self.infer_expression_type_in_function_scope(
+      argument, diagnostic_name, function, scope,
+    )
+    let next = self.scalar_from_type_handle(ty, diagnostic_name)
+    scalar = self.merge_constructor_scalar(scalar, next, diagnostic_name)
+  }
+  scalar
 }
 
 ///|
