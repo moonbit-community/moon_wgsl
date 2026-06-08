@@ -10,6 +10,7 @@ expected_invalid_normalized_manifest="${EXTERNAL_WGSL_CORPUS_EXPECTED_INVALID_NO
 profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
 profile_mode_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MODE_MANIFEST:-testdata/external_wgsl_corpus_profile_modes.tsv}"
 compose_source_manifest="${EXTERNAL_WGSL_CORPUS_COMPOSE_SOURCE_MANIFEST:-testdata/external_wgsl_corpus_compose_sources.tsv}"
+module_import_path_manifest="${EXTERNAL_WGSL_CORPUS_MODULE_IMPORT_PATH_MANIFEST:-testdata/external_wgsl_corpus_module_import_paths.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
 
 fail() {
@@ -23,6 +24,7 @@ fail() {
 [[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
 [[ -f "$profile_mode_manifest" ]] || fail "missing profile mode manifest: $profile_mode_manifest"
 [[ -f "$compose_source_manifest" ]] || fail "missing compose source manifest: $compose_source_manifest"
+[[ -f "$module_import_path_manifest" ]] || fail "missing module import path manifest: $module_import_path_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -159,6 +161,7 @@ profile_mode_actual_keys="$tmpdir/profile-mode.actual.keys.tsv"
 profile_mode_expected_keys="$tmpdir/profile-mode.expected.keys.tsv"
 compose_source_actual="$tmpdir/compose-source.actual.tsv"
 compose_source_expected="$tmpdir/compose-source.expected.tsv"
+module_import_path_keys="$tmpdir/module-import-path.keys.tsv"
 : > "$expected_invalid_actual"
 : > "$expected_invalid_normalized_actual"
 : > "$profile_used_keys"
@@ -255,6 +258,25 @@ awk -F '\t' '
 ' "$compose_source_manifest" | sort > "$compose_source_expected"
 duplicate_compose_source_keys="$(uniq -d "$compose_source_expected" | tr '\n' ' ')"
 [[ -z "$duplicate_compose_source_keys" ]] || fail "duplicate external WGSL compose source row(s): $duplicate_compose_source_keys"
+awk -F '\t' '
+  $0 ~ /^($|#)/ { next }
+  $1 == "id" { next }
+  NF != 4 {
+    printf("module import path manifest row has %d field(s), expected 4: %s\n", NF, $0) > "/dev/stderr"
+    exit 1
+  }
+  $1 == "" || $2 == "" || $3 == "" || $4 == "" {
+    printf("module import path manifest row must include id, rel_path, import_path, and notes: %s\n", $0) > "/dev/stderr"
+    exit 1
+  }
+  $3 !~ /^[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*$/ {
+    printf("module import path must be a WGSL-style import path: %s\n", $0) > "/dev/stderr"
+    exit 1
+  }
+  { print $1 "\t" $2 }
+' "$module_import_path_manifest" | sort > "$module_import_path_keys"
+duplicate_module_import_path_keys="$(uniq -d "$module_import_path_keys" | tr '\n' ' ')"
+[[ -z "$duplicate_module_import_path_keys" ]] || fail "duplicate module import path row(s): $duplicate_module_import_path_keys"
 
 source_contains_preprocessor_directive() {
   local source="$1"
@@ -432,6 +454,42 @@ profile_overlay_root() {
   printf '%s\n' "$overlay"
 }
 
+external_corpus_has_module_import_paths() {
+  local id="$1"
+  awk -F '\t' -v id="$id" '
+    $0 !~ /^($|#)/ && $1 == id { found = 1; exit }
+    END { exit found ? 0 : 1 }
+  ' "$module_import_path_manifest"
+}
+
+apply_external_corpus_module_import_paths() {
+  local id="$1"
+  local overlay="$2"
+  local reason_output="$3"
+  local row_count=0
+
+  while IFS=$'\t' read -r _id rel_path import_path _notes; do
+    [[ -n "${rel_path:-}" ]] || continue
+    local target="$overlay/$rel_path"
+    if [[ ! -f "$target" ]]; then
+      printf 'module_import_path_missing\tmodule import path target not found: %s\n' "$rel_path" > "$reason_output"
+      return 1
+    fi
+    local prefixed="$target.module-import-path"
+    printf '#define_import_path %s\n' "$import_path" > "$prefixed"
+    cat "$target" >> "$prefixed"
+    mv "$prefixed" "$target"
+    row_count=$((row_count + 1))
+  done < <(
+    awk -F '\t' -v id="$id" '
+      $0 ~ /^($|#)/ { next }
+      $1 == "id" { next }
+      $1 == id { print }
+    ' "$module_import_path_manifest"
+  )
+  ((row_count > 0)) || return 1
+}
+
 append_csv_compose_args() {
   local flag="$1"
   local csv="$2"
@@ -496,8 +554,11 @@ materialize_valid_external_wgsl_source() {
   fi
 
   local compose_checkout="$checkout"
-  if [[ "$profile_source" != "$source" ]]; then
+  if [[ "$profile_source" != "$source" ]] || external_corpus_has_module_import_paths "$id"; then
     compose_checkout="$(profile_overlay_root "$id" "$checkout" "$rel_path" "$profile_source" "$reason_output")" || return 1
+    if external_corpus_has_module_import_paths "$id"; then
+      apply_external_corpus_module_import_paths "$id" "$compose_checkout" "$reason_output" || return 1
+    fi
   fi
 
   local composed="$tmpdir/$id.compose.$(basename "$source").wgsl"

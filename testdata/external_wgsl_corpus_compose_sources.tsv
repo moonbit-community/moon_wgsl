@@ -149,3 +149,23 @@ bevy	crates/bevy_ui_render/src/ui.wgsl	Bevy source contains active naga-oil prep
 bevy	crates/bevy_ui_render/src/ui_material.wgsl	Bevy source contains active naga-oil preprocessing directives and must exercise compose.
 bevy	crates/bevy_ui_render/src/ui_texture_slice.wgsl	Bevy source contains active naga-oil preprocessing directives and must exercise compose.
 bevy	crates/bevy_ui_render/src/ui_vertex_output.wgsl	Bevy source contains active naga-oil preprocessing directives and must exercise compose.
+vello	vello_shaders/shader/backdrop.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/backdrop_dyn.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/bbox_clear.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/binning.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/clip_leaf.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/clip_reduce.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/coarse.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/draw_leaf.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/draw_reduce.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/fine.wgsl	Vello entry source imports shared modules and compile-time feature branches through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/flatten.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/path_count.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/path_count_setup.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/path_tiling.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/path_tiling_setup.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/pathtag_reduce.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/pathtag_reduce2.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/pathtag_scan.wgsl	Vello entry source imports shared modules and compile-time feature branches through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/pathtag_scan1.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.
+vello	vello_shaders/shader/tile_alloc.wgsl	Vello entry source imports shared modules through its build-time preprocessor and must exercise compose.

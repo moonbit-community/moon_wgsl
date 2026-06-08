@@ -18,5 +18,6 @@ naga	tests/out/wgsl/math-functions.frag.wgsl	raw_invalid_no_preprocessor	Expecte
 naga	tests/out/wgsl/multiview.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/pointers.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
 naga	tests/out/wgsl/samplers.frag.wgsl	raw_invalid_no_preprocessor	Expected invalid or capability-context Naga corpus source under the standalone validator profile.
+vello	vello_shaders/shader/shared/util.wgsl	raw_invalid_no_preprocessor	Vello shared utility module depends on resource declarations and config symbols supplied by importing entry shaders.
 wgpu	tests/tests/wgpu-gpu/regression/issue_4485.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.
 wgpu	tests/tests/wgpu-gpu/shader/compilation_messages/error_shader.wgsl	raw_invalid_no_preprocessor	Expected invalid or feature-context wgpu corpus source under the standalone validator profile.

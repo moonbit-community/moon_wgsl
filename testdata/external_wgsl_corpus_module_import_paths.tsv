@@ -1,0 +1,14 @@
+# id	rel_path	import_path	notes
+vello	vello_shaders/shader/shared/bbox.wgsl	bbox	Vello shader compiler registers shared/bbox.wgsl as import name bbox.
+vello	vello_shaders/shader/shared/blend.wgsl	blend	Vello shader compiler registers shared/blend.wgsl as import name blend.
+vello	vello_shaders/shader/shared/bump.wgsl	bump	Vello shader compiler registers shared/bump.wgsl as import name bump.
+vello	vello_shaders/shader/shared/clip.wgsl	clip	Vello shader compiler registers shared/clip.wgsl as import name clip.
+vello	vello_shaders/shader/shared/config.wgsl	config	Vello shader compiler registers shared/config.wgsl as import name config.
+vello	vello_shaders/shader/shared/cubic.wgsl	cubic	Vello shader compiler registers shared/cubic.wgsl as import name cubic.
+vello	vello_shaders/shader/shared/drawtag.wgsl	drawtag	Vello shader compiler registers shared/drawtag.wgsl as import name drawtag.
+vello	vello_shaders/shader/shared/pathtag.wgsl	pathtag	Vello shader compiler registers shared/pathtag.wgsl as import name pathtag.
+vello	vello_shaders/shader/shared/ptcl.wgsl	ptcl	Vello shader compiler registers shared/ptcl.wgsl as import name ptcl.
+vello	vello_shaders/shader/shared/segment.wgsl	segment	Vello shader compiler registers shared/segment.wgsl as import name segment.
+vello	vello_shaders/shader/shared/tile.wgsl	tile	Vello shader compiler registers shared/tile.wgsl as import name tile.
+vello	vello_shaders/shader/shared/transform.wgsl	transform	Vello shader compiler registers shared/transform.wgsl as import name transform.
+vello	vello_shaders/shader/shared/util.wgsl	util	Vello shader compiler registers shared/util.wgsl as import name util.
