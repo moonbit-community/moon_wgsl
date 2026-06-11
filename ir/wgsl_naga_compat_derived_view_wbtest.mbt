@@ -303,6 +303,146 @@ test "Naga writer arena uses derived constant import order" {
 }
 
 ///|
+test "Naga writer arena does not root unused full-module generated constants" {
+  let source =
+    #|const DEP: u32 = 1u;
+    #|const USED: u32 = DEP;
+    #|const UNUSED: u32 = 2u;
+    #|
+    #|fn selected() -> u32 {
+    #|  return USED;
+    #|}
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    [],
+    FullModule,
+    [
+      WgslIrImportArenaSymbol(Constant, "DEP", "DEP"),
+      WgslIrImportArenaSymbol(Constant, "USED", "USED"),
+      WgslIrImportArenaSymbol(Constant, "UNUSED", "UNUSED"),
+      WgslIrImportArenaSymbol(Function, "selected", "selected"),
+    ],
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [
+      WgslIrGeneratedImportProvenance(
+        "DEP",
+        "dep.wgsl",
+        "DEP",
+        ImportedSourceSymbol,
+        false,
+      ),
+      WgslIrGeneratedImportProvenance(
+        "USED",
+        "dep.wgsl",
+        "USED",
+        ImportedSourceSymbol,
+        false,
+      ),
+      WgslIrGeneratedImportProvenance(
+        "UNUSED",
+        "dep.wgsl",
+        "UNUSED",
+        ImportedSourceSymbol,
+        false,
+      ),
+      WgslIrGeneratedImportProvenance(
+        "selected",
+        "dep.wgsl",
+        "selected",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let arena = planner.writer_arena()
+  let names : Array[String] = []
+  for slot in arena.constants {
+    match slot.item.name {
+      Some(name) => names.push(name)
+      None => ()
+    }
+  }
+  debug_inspect(names.join(","), content="\"USED,DEP\"")
+}
+
+///|
+test "Naga writer arena imports entry point generated constant dependencies" {
+  let source =
+    #|const ENTRY_FLAG: u32 = 1u;
+    #|const UNUSED_FLAG: u32 = 2u;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  if ENTRY_FLAG != 0u {
+    #|    return;
+    #|  }
+    #|}
+    #|
+  let event = WgslIrImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    [],
+    FullModule,
+    [
+      WgslIrImportArenaSymbol(Constant, "ENTRY_FLAG", "ENTRY_FLAG"),
+      WgslIrImportArenaSymbol(Constant, "UNUSED_FLAG", "UNUSED_FLAG"),
+    ],
+  )
+  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+    source,
+    [
+      WgslIrGeneratedImportProvenance(
+        "ENTRY_FLAG",
+        "dep.wgsl",
+        "ENTRY_FLAG",
+        ImportedSourceSymbol,
+        false,
+      ),
+      WgslIrGeneratedImportProvenance(
+        "UNUSED_FLAG",
+        "dep.wgsl",
+        "UNUSED_FLAG",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrNagaCompatPlanner::{
+    shader_module: module_,
+    filter: None,
+  }
+  let arena = planner.writer_arena()
+  let names : Array[String] = []
+  for slot in arena.constants {
+    match slot.item.name {
+      Some(name) => names.push(name)
+      None => ()
+    }
+  }
+  debug_inspect(names.join(","), content="\"ENTRY_FLAG\"")
+}
+
+///|
 test "Naga writer arena uses derived nested function-call order" {
   let source =
     #|fn parent_callee(value: u32) -> u32 {

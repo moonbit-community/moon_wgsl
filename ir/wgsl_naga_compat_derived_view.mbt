@@ -55,6 +55,7 @@ fn WgslIrNagaCompatPlanner::derived_module_view(
     builder.import_event(event)
   }
   builder.append_remaining()
+  builder.import_entry_points()
   builder.view
 }
 
@@ -79,10 +80,24 @@ fn WgslIrNagaDerivedModuleBuilder::import_event(
     }
     FullModule | AliasModule => {
       self.import_event_symbols_by_kind(symbols, None, Type)
-      self.import_event_symbols_by_kind(symbols, None, Constant)
+      self.import_full_module_constant_event_symbols(symbols)
       self.import_event_symbols_by_kind(symbols, None, Override)
       self.import_event_symbols_by_kind(symbols, None, GlobalVariable)
       self.import_event_symbols_by_kind(symbols, None, Function)
+    }
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_full_module_constant_event_symbols(
+  self : WgslIrNagaDerivedModuleBuilder,
+  symbols : Array[WgslIrImportArenaSymbol],
+) -> Unit {
+  for symbol in symbols {
+    if symbol.kind() == Constant {
+      self.import_named_non_generated_constant_if_present(
+        symbol.generated_symbol_name(),
+      )
     }
   }
 }
@@ -163,6 +178,9 @@ fn WgslIrNagaDerivedModuleBuilder::append_remaining(
     self.import_type(index)
   }
   for index in 0..<self.planner.shader_module.constants.items.length() {
+    if self.planner.shader_module.constants.items[index].generated_import {
+      continue
+    }
     self.import_constant(index)
   }
   for index in 0..<self.planner.shader_module.overrides.items.length() {
@@ -206,6 +224,26 @@ fn WgslIrNagaDerivedModuleBuilder::import_named_constant_if_present(
     }
     match self.planner.shader_module.constants.items[index].name {
       Some(constant_name) if constant_name == name => {
+        self.import_constant(index)
+        return
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_named_non_generated_constant_if_present(
+  self : WgslIrNagaDerivedModuleBuilder,
+  name : String,
+) -> Unit {
+  for index in 0..<self.planner.shader_module.constants.items.length() {
+    if self.seen_constants.contains(index) {
+      continue
+    }
+    match self.planner.shader_module.constants.items[index] {
+      { name: Some(constant_name), generated_import: false, .. } if constant_name ==
+        name => {
         self.import_constant(index)
         return
       }
@@ -351,6 +389,7 @@ fn WgslIrNagaDerivedModuleBuilder::import_constant(
       self.import_type_handle(constant.ty)
       self.seen_constants.add(index)
       self.view.constants.push(index)
+      self.import_global_expression(constant.init)
     }
     None => ()
   }
@@ -488,6 +527,76 @@ fn WgslIrNagaDerivedModuleBuilder::import_function_inner(
     None => ()
   }
   visiting.pop() |> ignore
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_entry_points(
+  self : WgslIrNagaDerivedModuleBuilder,
+) -> Unit {
+  for index in 0..<self.planner.shader_module.entry_points.length() {
+    match self.planner.filter {
+      Some(filter) => if !filter.contains_entry_point(index) { continue }
+      None => ()
+    }
+    self.import_entry_point(self.planner.shader_module.entry_points[index])
+  }
+}
+
+///|
+fn WgslIrNagaDerivedModuleBuilder::import_entry_point(
+  self : WgslIrNagaDerivedModuleBuilder,
+  entry_point : EntryPoint,
+) -> Unit {
+  let visiting : Array[Int] = []
+  for argument in entry_point.function.arguments {
+    self.import_type_handle(argument.ty)
+  }
+  match entry_point.function.result {
+    Some(result) => self.import_type_handle(result.ty)
+    None => ()
+  }
+  for local_var in entry_point.function.local_variables.items {
+    self.import_type_handle(local_var.ty)
+  }
+  match entry_point.workgroup_size_overrides {
+    Some(overrides) =>
+      for item in overrides {
+        match item {
+          Some(expr) => self.import_global_expression(expr)
+          None => ()
+        }
+      }
+    None => ()
+  }
+  match entry_point.mesh_info {
+    Some(mesh_info) => {
+      match mesh_info.max_vertices_override {
+        Some(expr) => self.import_global_expression(expr)
+        None => ()
+      }
+      match mesh_info.max_primitives_override {
+        Some(expr) => self.import_global_expression(expr)
+        None => ()
+      }
+      self.import_type_handle(mesh_info.vertex_output_type)
+      self.import_type_handle(mesh_info.primitive_output_type)
+      self.import_global(mesh_info.output_variable.index())
+    }
+    None => ()
+  }
+  match entry_point.task_payload {
+    Some(handle) => self.import_global(handle.index())
+    None => ()
+  }
+  match entry_point.incoming_ray_payload {
+    Some(handle) => self.import_global(handle.index())
+    None => ()
+  }
+  self.import_function_block(
+    entry_point.function,
+    entry_point.function.body,
+    visiting,
+  )
 }
 
 ///|
