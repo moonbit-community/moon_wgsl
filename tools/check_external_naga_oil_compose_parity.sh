@@ -8,9 +8,10 @@ manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_MANIFEST:-testdata/external_naga_oi
 oracle_blocked_manifest="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_ORACLE_BLOCKED_MANIFEST:-testdata/external_naga_oil_compose_oracle_blocked.tsv}"
 repo_manifest="${EXTERNAL_WGSL_CORPUS_MANIFEST:-testdata/external_wgsl_corpus_manifest.tsv}"
 profile_manifest="${EXTERNAL_WGSL_CORPUS_PROFILE_MANIFEST:-testdata/external_wgsl_corpus_profiles.tsv}"
+module_import_path_manifest="${EXTERNAL_WGSL_CORPUS_MODULE_IMPORT_PATH_MANIFEST:-testdata/external_wgsl_corpus_module_import_paths.tsv}"
 cache_root="${EXTERNAL_WGSL_CACHE_ROOT:-$repo_root/.moon_wgsl_cache/external_wgsl}"
-expected_case_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES:-150}"
-expected_oracle_blocked_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_ORACLE_BLOCKED_CASES:-1}"
+expected_case_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_CASES:-170}"
+expected_oracle_blocked_count="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_EXPECTED_ORACLE_BLOCKED_CASES:-21}"
 failure_dir="${EXTERNAL_NAGA_OIL_COMPOSE_PARITY_FAILURE_DIR:-_build/parity/external_naga_oil_compose}"
 
 fail() {
@@ -22,6 +23,7 @@ fail() {
 [[ -f "$oracle_blocked_manifest" ]] || fail "missing oracle-blocked manifest: $oracle_blocked_manifest"
 [[ -f "$repo_manifest" ]] || fail "missing repo manifest: $repo_manifest"
 [[ -f "$profile_manifest" ]] || fail "missing profile manifest: $profile_manifest"
+[[ -f "$module_import_path_manifest" ]] || fail "missing module import path manifest: $module_import_path_manifest"
 
 tmpdir="$(mktemp -d)"
 cleanup() {
@@ -70,9 +72,11 @@ validate_manifest_schemas() {
   local parity_keys="$tmpdir/parity.keys"
   local compose_source_keys="$tmpdir/compose-source.keys"
   local oracle_blocked_keys="$tmpdir/oracle-blocked.keys"
+  local module_import_path_keys="$tmpdir/module-import-path.keys"
   local repo_ids="$tmpdir/repo.ids"
   local duplicate_keys
   local duplicate_oracle_blocked_keys
+  local duplicate_module_import_path_keys
   local duplicate_repo_ids
   awk -F '\t' '
     $0 ~ /^($|#)/ { next }
@@ -128,6 +132,26 @@ validate_manifest_schemas() {
     sed -n '1,200p' "$tmpdir/oracle-blocked-stale" >&2
     exit 1
   fi
+
+  awk -F '\t' '
+    $0 ~ /^($|#)/ { next }
+    $1 == "id" { next }
+    NF != 4 {
+      printf("module import path manifest row has %d field(s), expected 4: %s\n", NF, $0) > "/dev/stderr"
+      exit 1
+    }
+    $1 == "" || $2 == "" || $3 == "" || $4 == "" {
+      printf("module import path manifest row must include id, rel_path, import_path, and notes: %s\n", $0) > "/dev/stderr"
+      exit 1
+    }
+    $3 !~ /^[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*$/ {
+      printf("module import path must be a WGSL-style import path: %s\n", $0) > "/dev/stderr"
+      exit 1
+    }
+    { print $1 "\t" $2 }
+  ' "$module_import_path_manifest" | sort > "$module_import_path_keys"
+  duplicate_module_import_path_keys="$(uniq -d "$module_import_path_keys" | tr '\n' ' ')"
+  [[ -z "$duplicate_module_import_path_keys" ]] || fail "duplicate module import path row(s): $duplicate_module_import_path_keys"
 
   awk -F '\t' '
     $0 ~ /^($|#)/ { next }
@@ -307,6 +331,51 @@ materialize_profile_source_overlay() {
   printf '%s\n' "$overlay"
 }
 
+external_corpus_has_module_import_paths() {
+  local id="$1"
+  awk -F '\t' -v id="$id" '
+    $0 !~ /^($|#)/ && $1 == id { found = 1; exit }
+    END { exit found ? 0 : 1 }
+  ' "$module_import_path_manifest"
+}
+
+materialize_module_import_path_overlay() {
+  local checkout="$1"
+  local id="$2"
+  local label="$3"
+
+  if ! external_corpus_has_module_import_paths "$id"; then
+    printf '%s\n' "$checkout"
+    return 0
+  fi
+
+  local overlay="$tmpdir/$label.module-import-path-overlay"
+  mkdir -p "$overlay"
+  cp -R "$checkout/." "$overlay/"
+  rm -rf "$overlay/.git"
+  local row_count=0
+
+  while IFS=$'\t' read -r _id rel_path import_path _notes; do
+    [[ -n "${rel_path:-}" ]] || continue
+    local target="$overlay/$rel_path"
+    [[ -f "$target" ]] || fail "module import path target not found: $id/$rel_path"
+    local prefixed="$target.module-import-path"
+    printf '#define_import_path %s\n' "$import_path" > "$prefixed"
+    cat "$target" >> "$prefixed"
+    mv "$prefixed" "$target"
+    row_count=$((row_count + 1))
+  done < <(
+    awk -F '\t' -v id="$id" '
+      $0 ~ /^($|#)/ { next }
+      $1 == "id" { next }
+      $1 == id { print }
+    ' "$module_import_path_manifest"
+  )
+
+  ((row_count > 0)) || fail "module import path manifest has no rows for $id"
+  printf '%s\n' "$overlay"
+}
+
 append_imports() {
   local csv="$1"
   [[ -n "$csv" && "$csv" != "-" ]] || return 0
@@ -475,7 +544,8 @@ while IFS=$'\t' read -r id rel_path bool_defs value_defs additional_imports capa
   case_count=$((case_count + 1))
   label="$id.$case_count.$(basename "$rel_path" .wgsl)"
   profile_root="$(materialize_profile_source_overlay "$checkout" "$id" "$rel_path" "$label")"
-  compose_root="$(materialize_raw_template_value_defs "$profile_root" "$rel_path" "$value_defs" "$label")"
+  import_path_root="$(materialize_module_import_path_overlay "$profile_root" "$id" "$label")"
+  compose_root="$(materialize_raw_template_value_defs "$import_path_root" "$rel_path" "$value_defs" "$label")"
   moon_output="$tmpdir/$label.moon.wgsl"
   oracle_output="$tmpdir/$label.oracle.wgsl"
   moon_fingerprint="$tmpdir/$label.moon.interface.txt"

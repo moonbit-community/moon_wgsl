@@ -151,6 +151,18 @@ test "WGSL AST lowerer rejects out-of-range abstract int contextualized to i32" 
 }
 
 ///|
+test "WGSL AST lowerer accepts i32 minimum written as negated abstract int" {
+  let source =
+    #|fn main() -> i32 {
+    #|  return -2147483648;
+    #|}
+  let ir_module = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(ir_module.functions.items.length(), content="1")
+}
+
+///|
 test "WGSL AST lowerer rejects out-of-range abstract int switch selectors" {
   let source =
     #|const CASE = 2147483648;

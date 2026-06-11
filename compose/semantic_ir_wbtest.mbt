@@ -25,6 +25,33 @@ fn semantic_ir_facts(source : String) -> WgslComposeSemanticFacts {
 }
 
 ///|
+test "compose semantic unqualified reference scan ignores qualified path leaves" {
+  let qualified_only =
+    #|fn read_flag() -> u32 {
+    #|  return types::FLAG;
+    #|}
+    #|
+  let has_flag = wgsl_semantic_source_contains_unqualified_reference_name(
+    qualified_only, "FLAG",
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(has_flag, content="false")
+  let unqualified =
+    #|fn read_config() -> Config {
+    #|  var value: Config;
+    #|  return value;
+    #|}
+    #|
+  let has_config = wgsl_semantic_source_contains_unqualified_reference_name(
+    unqualified, "Config",
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(has_config, content="true")
+}
+
+///|
 fn push_required_alias_binding(
   bindings : WgslComposeBindingSet,
   rel_path : String,

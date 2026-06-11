@@ -454,6 +454,41 @@ fn Composer::compose_wgsl_import_requests(
         }
       }
     }
+    if request.import_full_module {
+      for i in origin_start_index..<session.symbols.source_origins.length() {
+        let origin = session.symbols.source_origins[i]
+        if origin.rel_path != request.rel_path ||
+          origin.source_symbol_name == "" ||
+          origin.generated_symbol_name == "" ||
+          !wgsl_requested_items_contains(
+            request.declared_items,
+            origin.source_symbol_name,
+          ) ||
+          bindings.has_unqualified_local_name(origin.source_symbol_name) {
+          continue
+        }
+        match
+          WgslComposeBinding::for_unqualified_symbol(
+            origin.rel_path,
+            origin.source_symbol_name,
+            origin.generated_symbol_name,
+            UnqualifiedItemBinding,
+          ) {
+          Some(binding) => {
+            push_wgsl_unqualified_import_binding_respecting_locals(
+              bindings, binding,
+            )
+            session.record_local_spelling_final_name(
+              current_rel_path,
+              origin.rel_path,
+              origin.source_symbol_name,
+              origin.generated_symbol_name,
+            )
+          }
+          None => ()
+        }
+      }
+    }
     if request.alias_name != "" {
       for i in origin_start_index..<session.symbols.source_origins.length() {
         let origin = session.symbols.source_origins[i]

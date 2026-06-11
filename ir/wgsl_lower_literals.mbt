@@ -215,9 +215,18 @@ fn WgslIrLowerer::negated_literal_from_token_with_expected(
   token : @ast.WgslExprToken,
   expected_ty : Handle?,
 ) -> Literal? raise WgslIrLowerError {
-  wgsl_ir_negate_literal(
-    self.literal_from_token_with_expected(token, expected_ty),
-  )
+  match wgsl_ir_negate_literal(wgsl_ir_literal_from_token(token)) {
+    Some(literal) =>
+      match expected_ty {
+        Some(ty) =>
+          match self.scalar_for_literal_context_type(ty) {
+            Some(scalar) => Some(wgsl_ir_contextualize_literal(literal, scalar))
+            None => Some(literal)
+          }
+        None => Some(literal)
+      }
+    None => None
+  }
 }
 
 ///|

@@ -781,6 +781,141 @@ test "composer scans full selected item module for alias type dependencies" {
 }
 
 ///|
+test "composer retains full-module unqualified type dependencies" {
+  let composer = Composer::default()
+  let config_source =
+    #|#define_import_path config
+    #|
+    #|struct Config {
+    #|  width: u32,
+    #|}
+    #|
+    #|const UNUSED_CONFIG_VALUE = 1u;
+    #|
+  let root_source =
+    #|#import config
+    #|
+    #|@group(0) @binding(0)
+    #|var<uniform> config: Config;
+    #|
+    #|@compute @workgroup_size(1)
+    #|fn main() {
+    #|  let width = config.width;
+    #|}
+    #|
+  composer.register_source("config.wgsl", config_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("struct ConfigX_naga_oil_mod"), content="true")
+  debug_inspect(
+    emitted.contains("var<uniform> config: ConfigX_naga_oil_mod"),
+    content="true",
+  )
+  debug_inspect(emitted.contains("UNUSED_CONFIG_VALUE"), content="true")
+}
+
+///|
+test "composer exposes sibling full-module constants to imported function bodies" {
+  let composer = Composer::default()
+  let drawtag_source =
+    #|#define_import_path drawtag
+    #|
+    #|const DRAWTAG_NOP = 0u;
+    #|
+  let util_source =
+    #|#define_import_path util
+    #|
+    #|fn read_draw_tag_from_scene(ix: u32) -> u32 {
+    #|  if ix == 0u {
+    #|    return DRAWTAG_NOP;
+    #|  }
+    #|  return ix;
+    #|}
+    #|
+  let root_source =
+    #|#import drawtag
+    #|#import util
+    #|
+    #|fn main() -> u32 {
+    #|  return read_draw_tag_from_scene(1u);
+    #|}
+    #|
+  composer.register_source("drawtag.wgsl", drawtag_source)
+  composer.register_source("util.wgsl", util_source)
+  composer.register_source("root.wgsl", root_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("DRAWTAG_NOPX_naga_oil_mod"), content="true")
+  debug_inspect(
+    emitted.contains("return DRAWTAG_NOPX_naga_oil_mod"),
+    content="true",
+  )
+}
+
+///|
+test "composer prunes inactive qualified module constants from final output" {
+  let composer = Composer::default()
+  composer.clear_sources()
+  let root_source =
+    #|#import test::{
+    #|  funcs::use_config,
+    #|  types,
+    #|}
+    #|
+    #|fn main() -> u32 {
+    #|  return use_config();
+    #|}
+    #|
+  let types_source =
+    #|#define_import_path test::types
+    #|
+    #|struct Config {
+    #|  value: u32,
+    #|}
+    #|
+    #|const STANDARD_MATERIAL_FLAGS_DISABLED: u32 = 1u;
+    #|
+  let funcs_source =
+    #|#define_import_path test::funcs
+    #|#import test::types as types
+    #|
+    #|fn use_config() -> u32 {
+    #|  var config: types::Config;
+    #|#ifdef DISABLED_FEATURE
+    #|  config.value = types::STANDARD_MATERIAL_FLAGS_DISABLED;
+    #|#endif
+    #|  return config.value;
+    #|}
+    #|
+  composer.register_source("root.wgsl", root_source)
+  composer.register_source("types.wgsl", types_source)
+  composer.register_source("funcs.wgsl", funcs_source)
+  let emitted = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("const STANDARD_MATERIAL_FLAGS_DISABLEDX_naga_oil_mod"),
+    content="false",
+  )
+  debug_inspect(
+    emitted.contains("types::STANDARD_MATERIAL_FLAGS_DISABLED"),
+    content="false",
+  )
+}
+
+///|
 test "composer rewrites imported module-local alias type references" {
   let composer = Composer::default()
   let types_source =

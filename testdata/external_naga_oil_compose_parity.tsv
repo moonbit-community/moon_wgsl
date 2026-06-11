@@ -149,3 +149,23 @@ bevy	crates/bevy_ui_render/src/ui.wgsl	-	-	-	-	Full Bevy compose-source parity c
 bevy	crates/bevy_ui_render/src/ui_material.wgsl	-	-	-	-	Full Bevy compose-source parity case generated from the manifest-owned compose source inventory.
 bevy	crates/bevy_ui_render/src/ui_texture_slice.wgsl	-	-	-	-	Full Bevy compose-source parity case generated from the manifest-owned compose source inventory.
 bevy	crates/bevy_ui_render/src/ui_vertex_output.wgsl	-	-	-	-	Full Bevy compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/backdrop.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/backdrop_dyn.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/bbox_clear.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/binning.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/clip_leaf.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/clip_reduce.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/coarse.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/draw_leaf.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/draw_reduce.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/fine.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/flatten.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/path_count.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/path_count_setup.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/path_tiling.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/path_tiling_setup.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/pathtag_reduce.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/pathtag_reduce2.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/pathtag_scan.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/pathtag_scan1.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
+vello	vello_shaders/shader/tile_alloc.wgsl	-	-	-	-	Vello compose-source parity case generated from the manifest-owned compose source inventory.
