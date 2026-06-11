@@ -915,8 +915,11 @@ fn Composer::build_wgsl_import_requests_from_targets(
   self.record_declared_leaf_import_local_spelling(
     current_rel_path, targets, session, importer_defs,
   )
-  let target_plans = build_wgsl_semantic_import_target_plans(
+  let reference_scan_base_source = drop_wgsl_import_directives_from_compose_source(
     active_scan_source,
+  )
+  let target_plans = build_wgsl_semantic_import_target_plans(
+    reference_scan_base_source,
     current_rel_path,
     targets,
     self.registry,
@@ -928,18 +931,18 @@ fn Composer::build_wgsl_import_requests_from_targets(
     raise FailedToResolveImport(target_plans.unresolved_targets[0])
   }
   let active_scan_facts = collect_wgsl_compose_semantic_facts(
-    session, active_scan_source,
+    session, reference_scan_base_source,
   )
   let full_module_dependency_scan_source = self.active_wgsl_full_module_import_dependency_scan_source(
     target_plans.plans,
-    active_scan_source,
+    reference_scan_base_source,
     session,
     importer_defs,
   )
   let reference_scan_source = if full_module_dependency_scan_source == "" {
-    active_scan_source
+    reference_scan_base_source
   } else {
-    "\{active_scan_source}\n\{full_module_dependency_scan_source}"
+    "\{reference_scan_base_source}\n\{full_module_dependency_scan_source}"
   }
   for target_plan in target_plans.plans {
     let requested_items = target_plan.requested_items
