@@ -607,7 +607,7 @@ fn wgsl_ir_trace_emit_range_statement_kinds(
   for index in range.start.index()..<=range.end.index() {
     if wgsl_ir_trace_expression_has_raw_short_circuit_temporary_owner(
         function,
-        Handle::Handle(index),
+        Handle(index),
       ) {
       wgsl_ir_trace_flush_emit_statement_range(rows, start, end)
       start = None

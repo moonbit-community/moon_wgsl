@@ -1071,7 +1071,7 @@ fn wgsl_ir_emit_reused_resource_operand_slot_offset(
       Some(ImageSample(image, sampler, _, _, _, _, _, _, _)) => {
         let sample_depth = wgsl_ir_function_expression_statement_depth(
           function,
-          Handle::Handle(index),
+          Handle(index),
         )
         offset += wgsl_ir_emit_reused_resource_operand_slot(
           function, seen, sample_depth, image,
