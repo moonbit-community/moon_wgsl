@@ -1,0 +1,7 @@
+members = [
+  "./modules/wgsl",
+  "./modules/moon_wgsl_naga",
+  "./modules/moon_wgsl_naga_oil",
+  "./modules/moon_wgsl",
+  "./tools",
+]

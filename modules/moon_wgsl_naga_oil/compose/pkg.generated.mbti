@@ -1,0 +1,72 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl_naga_oil/compose"
+
+import {
+  "Milky2018/wgsl/common",
+  "moonbitlang/x/fs",
+}
+
+// Values
+
+// Errors
+pub(all) suberror ComposerError {
+  FailedToResolveImport(String)
+  ImportCycle(String)
+  InvalidStructMemberIdentifier(String)
+  InvalidWgslSyntax(String, Int)
+  InvalidOverride(String)
+  MissingRegisteredSource(String)
+  MissingPreparedSourceDefs(String)
+  MissingStartupRegisteredSource(String)
+  NoModuleName(String)
+  DefineInModule
+  GlslInvalidVersion
+  InvalidWgslDirective(String, String)
+  InvalidIr(String)
+  AmbiguousImportBinding(String)
+  UnknownShaderDef(String)
+  UnknownShaderDefOperator(String)
+  InvalidShaderDefComparisonValue(String, String, String)
+  ElseWithoutCondition
+  TooManyEndIfs
+  NotEnoughEndIfs
+}
+pub fn ComposerError::message(Self) -> String
+
+// Types and methods
+pub struct ComposableModuleDefinition {
+  // private fields
+}
+pub fn ComposableModuleDefinition::all_imports_is_empty(Self) -> Bool
+pub fn ComposableModuleDefinition::contains_effective_def(Self, String) -> Bool
+pub fn ComposableModuleDefinition::imports_module(Self, String) -> Bool
+pub fn ComposableModuleDefinition::name(Self) -> String
+pub fn ComposableModuleDefinition::shader_def(Self, String) -> @common.ShaderDefValue?
+
+pub struct Composer {
+  // private fields
+}
+pub fn Composer::add_composable_module(Self, @common.ComposableModuleDescriptor) -> ComposableModuleDefinition raise ComposerError
+pub fn Composer::clear_sources(Self) -> Unit
+pub fn Composer::compose_wgsl(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_before_ir(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_for_naga_oil_writer_parity(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_runtime_valid(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::compose_wgsl_source(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+pub fn Composer::contains_module(Self, String) -> Bool
+pub fn Composer::default() -> Self
+pub fn Composer::prepare_wgsl_source(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
+pub fn Composer::prepare_wgsl_source_runtime_valid(Self, String, @common.WgslComposeOptions) -> @common.PreparedWgslSource raise ComposerError
+pub fn Composer::register_source(Self, String, String) -> Unit
+pub fn Composer::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
+pub fn Composer::register_source_tree(Self, String, @common.WgslSourceScanOptions) -> Unit raise @fs.IOError
+pub fn Composer::register_source_tree_checked(Self, String, @common.WgslSourceScanOptions) -> Array[@common.WgslDiagnostic] raise @fs.IOError
+pub fn Composer::registered_source(Self, String) -> String?
+pub fn Composer::remove_composable_module(Self, String) -> Unit
+pub fn Composer::trace_naga_oil_writer_function_plan(Self, String, @common.WgslComposeOptions, String) -> String raise ComposerError
+pub fn Composer::trace_naga_oil_writer_module_plan(Self, String, @common.WgslComposeOptions) -> String raise ComposerError
+
+// Type aliases
+
+// Traits
+

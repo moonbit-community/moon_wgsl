@@ -1,8 +1,8 @@
 import {
-  "Milky2018/moon_wgsl/common",
-  "Milky2018/moon_wgsl/compose",
-  "Milky2018/moon_wgsl/export",
-  "Milky2018/moon_wgsl/ir",
+  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/compose",
+  "Milky2018/moon_wgsl_naga_oil/export",
+  "Milky2018/wgsl/ir",
   "moonbitlang/core/env",
 }
 

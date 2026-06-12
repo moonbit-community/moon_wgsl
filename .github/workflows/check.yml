@@ -11,20 +11,98 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    strategy:
-      fail-fast: false
+  wgsl-core-fast:
     runs-on: ubuntu-latest
-    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check wgsl core
+        run: |
+          moon -C modules/wgsl update
+          moon -C modules/wgsl fmt
+          moon -C modules/wgsl info --target all
+          moon -C modules/wgsl check --target all --deny-warn
+          moon -C modules/wgsl test --target all
+          git diff --exit-code
+
+  naga-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check Naga compatibility module
+        run: |
+          moon -C modules/moon_wgsl_naga update
+          moon -C modules/moon_wgsl_naga fmt
+          moon -C modules/moon_wgsl_naga info --target all
+          moon -C modules/moon_wgsl_naga check --target all --deny-warn
+          moon -C modules/moon_wgsl_naga test --target all
+          git diff --exit-code
+
+  naga-oil-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check naga-oil compatibility module
+        run: |
+          moon -C modules/moon_wgsl_naga_oil update
+          moon -C modules/moon_wgsl_naga_oil fmt
+          moon -C modules/moon_wgsl_naga_oil info --target all
+          moon -C modules/moon_wgsl_naga_oil check --target all --deny-warn
+          moon -C modules/moon_wgsl_naga_oil test --target all
+          git diff --exit-code
+
+  facade-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check facade module
+        run: |
+          moon -C modules/moon_wgsl update
+          moon -C modules/moon_wgsl fmt
+          moon -C modules/moon_wgsl info --target all
+          moon -C modules/moon_wgsl check --target all --deny-warn
+          moon -C modules/moon_wgsl test --target all
+          git diff --exit-code
+
+  workspace-integration:
+    runs-on: ubuntu-latest
+    needs:
+      - wgsl-core-fast
+      - naga-fast
+      - naga-oil-fast
+      - facade-fast
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
-          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -61,37 +139,22 @@ jobs:
           node --version
           cargo --version
 
-      - name: Moon package update
+      - name: Workspace Moon gates
         run: |
           moon update
           moon -C tools/wgpu_validation update
-
-      - name: Moon check
-        run: |
-          moon check --target all --deny-warn
-
-      - name: Moon info is committed
-        run: |
-          moon info --target all
-          git diff --exit-code
-
-      - name: Moon format is committed
-        run: |
           moon fmt
-          git diff --exit-code
-
-      - name: Moon test
-        run: |
+          moon info --target all
+          moon check --target all --deny-warn
           ulimit -s 8176
           moon test --target all
+          git diff --exit-code
 
-      - name: Moon test filter guard
-        run: |
-          bash tools/check_moon_test_filters.sh
+      - name: Test filter guard
+        run: bash tools/check_moon_test_filters.sh
 
       - name: Architecture guardrails
-        run: |
-          bash tools/check_architecture_guardrails.sh
+        run: bash tools/check_architecture_guardrails.sh
 
       - name: IR roundtrip corpus
         run: |
@@ -139,8 +202,7 @@ jobs:
           bash tools/check_moon_wgsl_error_parity.sh
 
       - name: Naga Oil parity inventory
-        run: |
-          bash tools/check_naga_oil_parity_inventory.sh
+        run: bash tools/check_naga_oil_parity_inventory.sh
 
       - name: Naga Oil preprocess parity
         run: |

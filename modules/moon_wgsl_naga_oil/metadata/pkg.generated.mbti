@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl_naga_oil/metadata"
+
+import {
+  "Milky2018/wgsl/common",
+}
+
+// Values
+pub fn get_preprocessor_metadata(String, allow_defines? : Bool, collect_import_uses? : Bool) -> @common.PreprocessorMetaData raise MetadataError
+
+pub fn wgsl_source_define_import_path(String) -> String?
+
+// Errors
+pub suberror MetadataError {
+  InvalidWgslDirective(String, Int, String)
+  ImportParseError(String, Int)
+  DefineInModule(Int)
+}
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

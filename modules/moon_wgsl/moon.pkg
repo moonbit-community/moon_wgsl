@@ -1,0 +1,20 @@
+import {
+  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/compose",
+  "Milky2018/moon_wgsl_naga_oil/export",
+  "Milky2018/moon_wgsl_naga_oil/metadata",
+  "Milky2018/moon_wgsl_naga_oil/preprocess",
+  "Milky2018/moon_wgsl_naga_oil/resolver",
+  "moonbitlang/core/ref",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/set",
+  "moonbitlang/core/string",
+  "moonbitlang/x/fs",
+} for "test"
+
+import {
+  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/resolver",
+  "Milky2018/wgsl/parser",
+  "moonbitlang/x/fs",
+} for "wbtest"

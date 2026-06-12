@@ -1,6 +1,6 @@
 import {
-  "Milky2018/moon_wgsl/ir",
-  "Milky2018/moon_wgsl/parser",
+  "Milky2018/wgsl/ir",
+  "Milky2018/wgsl/parser",
   "moonbitlang/core/env",
   "moonbitlang/x/fs",
 }

@@ -1,0 +1,64 @@
+import {
+  "moonbitlang/x@0.4.43/sys" as @sys
+}
+
+extern "js" fn js_valid_version(version : String) -> Bool =
+  #| (version) => /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[-+][0-9A-Za-z.-]+)?$/.test(version)
+
+extern "js" fn js_update_module_manifest(path : String, version : String) -> Unit =
+  #| (path, version) => {
+  #|   const fs = require("node:fs");
+  #|   const text = fs.readFileSync(path, "utf8");
+  #|   let next = text.replace(/^version = "[^"]+"/m, `version = "${version}"`);
+  #|   next = next.replace(/"Milky2018\/(wgsl|moon_wgsl_naga|moon_wgsl_naga_oil)@[^"]+"/g, (_, name) => `"Milky2018/${name}@${version}"`);
+  #|   fs.writeFileSync(path, next);
+  #| }
+
+extern "js" fn js_run(command : String) -> Unit =
+  #| (command) => {
+  #|   console.log(`$ ${command}`);
+  #|   require("node:child_process").execSync(command, { stdio: "inherit" });
+  #| }
+
+fn usage() -> Unit {
+  println("usage: moon run --target js publish.mbtx <version>")
+  println("example: moon run --target js publish.mbtx 0.15.0")
+}
+
+fn update_manifest(path : String, version : String) -> Unit {
+  js_update_module_manifest(path, version)
+  println("updated " + path)
+}
+
+fn publish_module(path : String) -> Unit {
+  js_run("moon -C " + path + " publish")
+}
+
+fn main {
+  let args = @sys.get_cli_args()
+  if args.length() != 2 {
+    usage()
+    @sys.exit(2)
+  }
+  let version = args[1]
+  if !js_valid_version(version) {
+    println("invalid version: " + version)
+    usage()
+    @sys.exit(2)
+  }
+
+  update_manifest("modules/wgsl/moon.mod", version)
+  update_manifest("modules/moon_wgsl_naga/moon.mod", version)
+  update_manifest("modules/moon_wgsl_naga_oil/moon.mod", version)
+  update_manifest("modules/moon_wgsl/moon.mod", version)
+
+  js_run("moon fmt")
+  js_run("moon info --target all")
+  js_run("moon check --target all --deny-warn")
+  js_run("moon test --target all")
+
+  publish_module("modules/wgsl")
+  publish_module("modules/moon_wgsl_naga")
+  publish_module("modules/moon_wgsl_naga_oil")
+  publish_module("modules/moon_wgsl")
+}

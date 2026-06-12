@@ -1,0 +1,26 @@
+package "Milky2018/moon_wgsl_naga_oil/import_substitution"
+
+import {
+  "Milky2018/wgsl/common",
+  "Milky2018/wgsl/import_syntax",
+}
+
+// Values
+
+// Errors
+pub suberror WgslImportSubstitutionError {
+  AmbiguousImport(Int)
+  InvalidWgslSyntax(String, Int)
+}
+
+// Types and methods
+pub struct WgslImportSubstitutionState {
+  // private fields
+}
+pub fn WgslImportSubstitutionState::declare_imports(Self, String) -> Unit raise @import_syntax.ParseImportsError
+pub fn WgslImportSubstitutionState::default() -> Self
+pub fn WgslImportSubstitutionState::rewrite_source(Self, String, Int, Array[@common.ImportDefWithOffset], Bool) -> String raise WgslImportSubstitutionError
+
+// Type aliases
+
+// Traits

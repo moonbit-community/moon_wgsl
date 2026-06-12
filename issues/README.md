@@ -8,7 +8,10 @@ No ready issues.
 
 ## Unresolved Issues
 
-No unresolved issues.
+| ID | Status | Priority | Type | Assignee | Blocked by | Blocks | Title |
+| --- | --- | ---: | --- | --- | --- | --- | --- |
+| [ISS-021](ISS-021.md) | in_progress | 0 | task | unassigned | none | ISS-022, ISS-023 | Split semantic IR from Naga compatibility view |
+| [ISS-022](ISS-022.md) | open | 0 | task | unassigned | ISS-021 | ISS-023, ISS-027 | Move Naga compatibility into modules/moon_wgsl_naga |
 
 ## Dependency Graph
 
@@ -32,6 +35,16 @@ graph TD
   ISS_016["ISS-016: Retain imported declarations according to naga-oil module construction"]
   ISS_017["ISS-017: Add byte-level diagnostic parity for compose and preprocess failures"]
   ISS_018["ISS-018: Expand real shader profile matrix beyond the current five repositories"]
+  ISS_019["ISS-019: Create workspace skeleton and module manifests"]
+  ISS_020["ISS-020: Move WGSL Core packages into modules/wgsl"]
+  ISS_021["ISS-021: Split semantic IR from Naga compatibility view"]
+  ISS_022["ISS-022: Move Naga compatibility into modules/moon_wgsl_naga"]
+  ISS_023["ISS-023: Move naga-oil composer and preprocessor into modules/moon_wgsl_naga_oil"]
+  ISS_024["ISS-024: Split transform into WGSL analysis and compatibility rewrite"]
+  ISS_025["ISS-025: Create thin moon_wgsl facade module"]
+  ISS_026["ISS-026: Add synchronized workspace publish script"]
+  ISS_027["ISS-027: Rebuild CI as module-local and workspace integration gates"]
+  ISS_028["ISS-028: Update README and migration documentation for the workspace split"]
   ISS_002 --> ISS_003
   ISS_006 --> ISS_003
   ISS_003 --> ISS_004
@@ -57,6 +70,25 @@ graph TD
   ISS_007 --> ISS_016
   ISS_008 --> ISS_016
   ISS_001 --> ISS_017
+  ISS_019 --> ISS_020
+  ISS_020 --> ISS_021
+  ISS_021 --> ISS_022
+  ISS_021 --> ISS_023
+  ISS_022 --> ISS_023
+  ISS_020 --> ISS_024
+  ISS_023 --> ISS_024
+  ISS_023 --> ISS_025
+  ISS_024 --> ISS_025
+  ISS_019 --> ISS_026
+  ISS_025 --> ISS_026
+  ISS_020 --> ISS_027
+  ISS_022 --> ISS_027
+  ISS_023 --> ISS_027
+  ISS_025 --> ISS_027
+  ISS_026 --> ISS_027
+  ISS_025 --> ISS_028
+  ISS_026 --> ISS_028
+  ISS_027 --> ISS_028
 ```
 
 ## Warnings

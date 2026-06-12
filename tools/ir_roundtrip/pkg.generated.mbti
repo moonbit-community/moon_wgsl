@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Milky2018/moon_wgsl/tools/ir_roundtrip"
+package "Milky2018/moon_wgsl_tools/ir_roundtrip"
 
 // Values
 

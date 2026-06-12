@@ -1,0 +1,205 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/wgsl/common"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/set",
+}
+
+// Values
+pub fn default_wgsl_value_defines() -> Map[String, ShaderDefValue]
+
+// Errors
+
+// Types and methods
+pub(all) struct ComposableModuleDescriptor {
+  source : String
+  file_path : String
+  as_name : String?
+  additional_imports : Array[ImportDefinition]
+  shader_defs : Map[String, ShaderDefValue]
+} derive(Eq, @debug.Debug)
+pub fn ComposableModuleDescriptor::default() -> Self
+
+pub struct DiagnosticDirective {
+  severity : String
+  rule : String
+} derive(Eq, @debug.Debug)
+pub fn DiagnosticDirective::DiagnosticDirective(String, String) -> Self
+
+pub struct EnableDirective {
+  extensions : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn EnableDirective::EnableDirective(Array[String]) -> Self
+
+pub struct ImportDefWithOffset {
+  definition : ImportDefinition
+} derive(Eq, @debug.Debug)
+pub fn ImportDefWithOffset::ImportDefWithOffset(ImportDefinition) -> Self
+
+pub(all) struct ImportDefinition {
+  import_path : String
+  items : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub struct PreparedWgslSource {
+  source : String
+  source_files : Array[WgslSourceFile]
+  source_catalog : Array[WgslSourceCatalogEntry]
+  source_origins : Array[WgslSourceOriginEntry]
+  diagnostics : Array[WgslDiagnostic]
+}
+pub fn PreparedWgslSource::PreparedWgslSource(String, Array[WgslSourceFile], Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslDiagnostic]) -> Self
+
+pub struct PreprocessOutput {
+  preprocessed_source : String
+  imports : Array[ImportDefWithOffset]
+}
+pub fn PreprocessOutput::PreprocessOutput(String, Array[ImportDefWithOffset]) -> Self
+
+pub struct PreprocessorMetaData {
+  name : String?
+  imports : Array[ImportDefWithOffset]
+  defines : Map[String, ShaderDefValue]
+  effective_defs : @set.Set[String]
+  wgsl_directives : WgslDirectives
+  cleaned_source : String
+}
+pub fn PreprocessorMetaData::PreprocessorMetaData(String?, Array[ImportDefWithOffset], Map[String, ShaderDefValue], @set.Set[String], WgslDirectives, String) -> Self
+
+pub struct RequiresDirective {
+  extensions : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn RequiresDirective::RequiresDirective(Array[String]) -> Self
+
+pub(all) enum ShaderDefValue {
+  Bool(Bool)
+  Int(Int)
+  UInt(UInt)
+  Raw(String)
+} derive(Eq, @debug.Debug)
+pub fn ShaderDefValue::value_as_string(Self) -> String
+
+pub(all) struct WgslComposeOptions {
+  defines : Map[String, Bool]
+  value_defines : Map[String, ShaderDefValue]
+  redirects : Array[WgslSymbolRedirect]
+  additional_imports : Array[ImportDefinition]
+} derive(Eq, @debug.Debug)
+pub fn WgslComposeOptions::default() -> Self
+
+pub struct WgslDiagnostic {
+  severity : WgslDiagnosticSeverity
+  message : String
+  rel_path : String?
+  symbol_name : String?
+} derive(Eq, @debug.Debug)
+pub fn WgslDiagnostic::WgslDiagnostic(WgslDiagnosticSeverity, String, String?, String?) -> Self
+
+pub(all) enum WgslDiagnosticSeverity {
+  Warn
+  Error
+} derive(Eq, @debug.Debug)
+
+pub struct WgslDirectives {
+  enables : Array[EnableDirective]
+  requires : Array[RequiresDirective]
+  diagnostics : Array[DiagnosticDirective]
+} derive(Eq, @debug.Debug)
+pub fn WgslDirectives::default() -> Self
+pub fn WgslDirectives::is_empty(Self) -> Bool
+pub fn WgslDirectives::to_wgsl_string(Self) -> String
+
+pub(all) struct WgslExportOptions {
+  root_items : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub struct WgslExportOutput {
+  source : String
+  source_catalog : Array[WgslSourceCatalogEntry]
+  source_origins : Array[WgslSourceOriginEntry]
+  source_map : Array[WgslSourceMapEntry]
+  diagnostics : Array[WgslDiagnostic]
+} derive(Eq, @debug.Debug)
+pub fn WgslExportOutput::WgslExportOutput(String, Array[WgslSourceCatalogEntry], Array[WgslSourceOriginEntry], Array[WgslSourceMapEntry], Array[WgslDiagnostic]) -> Self
+
+pub(all) struct WgslImportTarget {
+  raw_path : String
+  alias_name : String
+} derive(Eq, @debug.Debug)
+
+pub struct WgslReferencePath {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslReferencePath::from_segments(Array[String]) -> Self?
+pub fn WgslReferencePath::from_text(String) -> Self?
+pub fn WgslReferencePath::matches(Self, Self) -> Bool
+pub fn WgslReferencePath::segments(Self) -> Array[String]
+pub fn WgslReferencePath::text(Self) -> String
+
+pub struct WgslResolvedImportModule {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslResolvedImportModule::WgslResolvedImportModule(String, String) -> Self
+pub fn WgslResolvedImportModule::is_empty(Self) -> Bool
+pub fn WgslResolvedImportModule::module_path(Self) -> String
+pub fn WgslResolvedImportModule::rel_path(Self) -> String
+
+pub struct WgslSourceCatalogEntry {
+  rel_path : String
+  symbol_name : String
+  source_start : Int
+  source_end : Int
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceCatalogEntry::WgslSourceCatalogEntry(String, String, Int, Int) -> Self
+
+pub(all) struct WgslSourceFile {
+  rel_path : String
+  source : String
+} derive(Eq, @debug.Debug)
+
+pub struct WgslSourceMapEntry {
+  rel_path : String
+  symbol_name : String?
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceMapEntry::WgslSourceMapEntry(String, String?) -> Self
+
+pub struct WgslSourceOriginEntry {
+  generated_symbol_name : String
+  rel_path : String
+  source_symbol_name : String
+  kind : WgslSourceOriginKind
+  source_start : Int
+  source_end : Int
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceOriginEntry::WgslSourceOriginEntry(String, String, String, WgslSourceOriginKind, Int, Int) -> Self
+pub fn WgslSourceOriginEntry::generated_symbol_name(Self) -> String
+pub fn WgslSourceOriginEntry::kind(Self) -> WgslSourceOriginKind
+pub fn WgslSourceOriginEntry::rel_path(Self) -> String
+pub fn WgslSourceOriginEntry::source_symbol_name(Self) -> String
+
+pub(all) enum WgslSourceOriginKind {
+  Type
+  Constant
+  Override
+  GlobalVariable
+  Function
+  Other
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WgslSourceScanOptions {
+  recursive : Bool
+  extensions : Array[String]
+  exclude_prefixes : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn WgslSourceScanOptions::default() -> Self
+
+pub(all) struct WgslSymbolRedirect {
+  from_name : String
+  to_name : String
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,63 @@
+///|
+using @ast {
+  type WgslAttribute,
+  type WgslBlock,
+  type WgslConst,
+  type WgslDirective,
+  type WgslDirectiveKind,
+  type WgslExprNode,
+  type WgslExprNodeKind,
+  type WgslExprOperator,
+  type WgslExprRef,
+  type WgslExprToken,
+  type WgslExprTokenKind,
+  type WgslFunction,
+  type WgslFunctionArgument,
+  type WgslFunctionQualifier,
+  type WgslFunctionResult,
+  type WgslGlobalDecl,
+  type WgslGlobalDeclData,
+  type WgslGlobalDeclKind,
+  type WgslGlobalVariable,
+  type WgslIdent,
+  type WgslCaseSelector,
+  type WgslNumericLiteralBase,
+  type WgslNumericLiteralCategory,
+  type WgslNumericLiteralSuffix,
+  type WgslLocalDeclaration,
+  type WgslLocalDeclarationKind,
+  type WgslOverride,
+  type WgslStatement,
+  type WgslStatementExpression,
+  type WgslStatementExpressionRole,
+  type WgslStatementKind,
+  type WgslStatementPayload,
+  type WgslStruct,
+  type WgslStructMember,
+  type WgslTranslationUnit,
+  type WgslTypeAtomKind,
+  type WgslTypeAlias,
+  type WgslTypeArgument,
+  type WgslTypeRef,
+}
+
+///|
+using @directive_syntax {
+  parse_wgsl_directive_line,
+  parse_wgsl_directive_line_at,
+}
+
+///|
+using @lex {
+  type WgslToken,
+  replace_comments,
+  replace_comments_preserving_byte_width,
+  raw_import_brace_balance_next,
+  tokenize_wgsl,
+  wgsl_blankspace_code_point,
+  wgsl_identifier_text,
+  wgsl_line_end,
+  wgsl_line_start,
+  wgsl_regex_trim_whitespace,
+  wgsl_trim_blankspace,
+}

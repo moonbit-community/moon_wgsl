@@ -1,0 +1,69 @@
+package "Milky2018/moon_wgsl_naga_oil/transform"
+
+import {
+  "Milky2018/wgsl/common",
+  "Milky2018/wgsl/ir",
+  "Milky2018/wgsl/parser",
+}
+
+// Values
+pub fn apply_wgsl_virtual_overrides_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise WgslVirtualOverrideError
+
+pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
+
+pub fn collect_wgsl_source_catalog_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
+
+pub fn collect_wgsl_virtual_override_targets_strict(String) -> Array[String] raise @parser.WgslParseError
+
+pub fn extract_wgsl_module_item_origins_strict(String, Array[String]) -> WgslModuleItemExtraction raise @parser.WgslParseError
+
+pub fn rewrite_wgsl_declarations_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
+
+pub fn rewrite_wgsl_override_targets_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
+
+pub fn rewrite_wgsl_references_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
+
+pub fn strip_wgsl_virtual_functions(String) -> String raise @parser.WgslParseError
+
+pub fn wgsl_source_contains_override_directive(String) -> Bool raise @parser.WgslParseError
+
+pub fn wgsl_source_contains_virtual_directive(String) -> Bool raise @parser.WgslParseError
+
+// Errors
+pub suberror WgslVirtualOverrideError {
+  InvalidOverride(String)
+  UnparsedDeclaration(String, Int)
+}
+
+// Types and methods
+pub struct WgslEmittedDeclaration {
+  // private fields
+}
+pub fn WgslEmittedDeclaration::generated_end(Self) -> Int
+pub fn WgslEmittedDeclaration::generated_start(Self) -> Int
+pub fn WgslEmittedDeclaration::is_type_declaration(Self) -> Bool
+pub fn WgslEmittedDeclaration::name(Self) -> String
+
+pub struct WgslModuleItemExtraction {
+  // private fields
+}
+pub fn WgslModuleItemExtraction::origins(Self) -> Array[WgslModuleItemOrigin]
+pub fn WgslModuleItemExtraction::source(Self) -> String
+
+pub struct WgslModuleItemOrigin {
+  // private fields
+}
+pub fn WgslModuleItemOrigin::name(Self) -> String
+pub fn WgslModuleItemOrigin::source_end(Self) -> Int
+pub fn WgslModuleItemOrigin::source_start(Self) -> Int
+
+pub struct WgslReferenceRewritePlan {
+  // private fields
+}
+pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> Self
+pub fn WgslReferenceRewritePlan::add_symbol_reference_binding(Self, @ir.WgslIrSymbolIdentity, @common.WgslReferencePath, String) -> Unit
+pub fn WgslReferenceRewritePlan::add_virtual_override_binding(Self, String, String, String) -> Unit
+
+// Type aliases
+
+// Traits

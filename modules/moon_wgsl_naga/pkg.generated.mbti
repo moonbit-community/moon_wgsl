@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl_naga"
+
+import {
+  "Milky2018/wgsl/ir",
+}
+
+// Values
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise @ir.WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer_entry_roots(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent]) -> String raise @ir.WgslIrPipelineError
+
+pub fn trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent], String, root_visible_rel_path? : String) -> String raise @ir.WgslIrPipelineError
+
+pub fn trace_compat_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise @ir.WgslIrPipelineError
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

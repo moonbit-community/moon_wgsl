@@ -1,0 +1,1085 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/wgsl/ir"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer_entry_roots(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
+
+pub fn trace_compat_writer_function_plan_for_source(String, String) -> String raise WgslIrPipelineError
+
+pub fn trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], String, root_visible_rel_path? : String) -> String raise WgslIrPipelineError
+
+pub fn trace_compat_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslIrPipelineError
+
+pub fn tree_shake_wgsl_source_via_ir(String, Array[String]) -> String raise WgslIrPipelineError
+
+// Errors
+pub suberror WgslIrPipelineError {
+  Lower(String)
+  UnknownIdentifier(String)
+  Emit(String)
+  Validate(String)
+  Reparse(String)
+}
+pub fn WgslIrPipelineError::message(Self) -> String
+
+// Types and methods
+pub enum AddressSpace {
+  Function
+  Private
+  WorkGroup
+  Uniform
+  Storage(StorageAccess)
+  Handle
+  Immediate
+  TaskPayload
+  RayPayload
+  IncomingRayPayload
+} derive(Eq, @debug.Debug)
+
+pub enum ArraySize {
+  Constant(Int)
+  Pending(Handle)
+  Dynamic
+} derive(Eq, @debug.Debug)
+
+pub enum AtomicFunction {
+  Load
+  Store
+  Add
+  Subtract
+  And
+  ExclusiveOr
+  InclusiveOr
+  Min
+  Max
+  Exchange
+  CompareExchangeWeak
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Barrier {
+  bits : Int
+} derive(Eq, @debug.Debug)
+pub fn Barrier::empty() -> Self
+pub fn Barrier::storage() -> Self
+pub fn Barrier::sub_group() -> Self
+pub fn Barrier::texture() -> Self
+pub fn Barrier::union(Self, Self) -> Self
+pub fn Barrier::work_group() -> Self
+
+pub enum BinaryOperator {
+  Add
+  Subtract
+  Multiply
+  Divide
+  Modulo
+  Equal
+  NotEqual
+  Less
+  LessEqual
+  Greater
+  GreaterEqual
+  And
+  ExclusiveOr
+  InclusiveOr
+  LogicalAnd
+  LogicalOr
+  ShiftLeft
+  ShiftRight
+} derive(Eq, @debug.Debug)
+
+pub enum Binding {
+  BuiltIn(BuiltIn)
+  Location(Int, Interpolation?, Sampling?, Int?, Bool)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Block {
+  statements : Array[Statement]
+} derive(Eq, @debug.Debug)
+pub fn Block::Block() -> Self
+pub fn Block::push(Self, Statement) -> Unit
+
+pub enum BuiltIn {
+  PrimitiveIndex
+  Position(Bool)
+  ViewIndex
+  BaseInstance
+  BaseVertex
+  ClipDistances
+  CullDistance
+  InstanceIndex
+  PointSize
+  VertexIndex
+  DrawIndex
+  FragDepth
+  PointCoord
+  FrontFacing
+  Barycentric(Bool)
+  SampleIndex
+  SampleMask
+  GlobalInvocationId
+  LocalInvocationId
+  LocalInvocationIndex
+  WorkGroupId
+  WorkGroupSize
+  NumWorkGroups
+  NumSubgroups
+  SubgroupId
+  SubgroupSize
+  SubgroupInvocationId
+  MeshTaskSize
+  CullPrimitive
+  PointIndex
+  LineIndices
+  TriangleIndices
+  VertexCount
+  Vertices
+  PrimitiveCount
+  Primitives
+  RayInvocationId
+  NumRayInvocations
+  InstanceCustomData
+  GeometryIndex
+  WorldRayOrigin
+  WorldRayDirection
+  ObjectRayOrigin
+  ObjectRayDirection
+  RayTmin
+  RayTCurrentMax
+  ObjectToWorld
+  WorldToObject
+  HitKind
+} derive(Eq, @debug.Debug)
+
+pub enum CollectiveOperation {
+  Reduce
+  InclusiveScan
+  ExclusiveScan
+} derive(Eq, @debug.Debug)
+
+pub enum ConservativeDepth {
+  GreaterEqual
+  LessEqual
+  Unchanged
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Constant {
+  name : String?
+  generated_import : Bool
+  inline_value : Bool
+  source_start : Int
+  ty : Handle
+  init : Handle
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ConstantArena {
+  items : Array[Constant]
+} derive(Eq, @debug.Debug)
+pub fn ConstantArena::ConstantArena() -> Self
+pub fn ConstantArena::append(Self, Constant) -> Handle
+
+pub(all) struct CooperativeData {
+  pointer : Handle
+  stride : Handle
+  row_major : Bool
+} derive(Eq, @debug.Debug)
+
+pub enum CooperativeRole {
+  A
+  B
+  C
+} derive(Eq, @debug.Debug)
+
+pub enum CooperativeSize {
+  Eight
+  Sixteen
+} derive(Eq, @debug.Debug)
+
+pub enum DerivativeAxis {
+  X
+  Y
+  Width
+} derive(Eq, @debug.Debug)
+
+pub enum DerivativeControl {
+  Coarse
+  Fine
+  None
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DiagnosticFilter {
+  new_severity : Severity
+  triggering_rule : FilterableTriggeringRule
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DiagnosticFilterArena {
+  items : Array[DiagnosticFilterNode]
+} derive(Eq, @debug.Debug)
+pub fn DiagnosticFilterArena::DiagnosticFilterArena() -> Self
+pub fn DiagnosticFilterArena::append(Self, DiagnosticFilterNode) -> Handle
+
+pub(all) struct DiagnosticFilterNode {
+  inner : DiagnosticFilter
+  parent : Handle?
+} derive(Eq, @debug.Debug)
+
+pub enum Direction {
+  X
+  Y
+  Diagonal
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DocComments {
+  types : Array[(Handle, Array[String])]
+  struct_members : Array[(Handle, Int, Array[String])]
+  entry_points : Array[(Int, Array[String])]
+  functions : Array[(Handle, Array[String])]
+  constants : Array[(Handle, Array[String])]
+  global_variables : Array[(Handle, Array[String])]
+  module_comments : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn DocComments::DocComments() -> Self
+
+pub enum EarlyDepthTest {
+  Force
+  Allow(ConservativeDepth)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EntryPoint {
+  name : String
+  source_start : Int
+  stage : ShaderStage
+  early_depth_test : EarlyDepthTest?
+  workgroup_size : Array[Int]
+  workgroup_size_overrides : Array[Handle?]?
+  function : Function
+  mesh_info : MeshStageInfo?
+  task_payload : Handle?
+  incoming_ray_payload : Handle?
+} derive(Eq, @debug.Debug)
+
+pub enum Expression {
+  Literal(Literal)
+  Constant(Handle)
+  Override(Handle)
+  ZeroValue(Handle)
+  Compose(Handle, Array[Handle])
+  Access(Handle, Handle)
+  AccessIndex(Handle, Int)
+  Component(Handle, SwizzleComponent)
+  Splat(VectorSize, Handle)
+  Swizzle(VectorSize, Handle, Array[SwizzleComponent])
+  FunctionArgument(Int)
+  GlobalVariable(Handle)
+  LocalVariable(Handle)
+  Load(Handle)
+  AddressOf(Handle, Handle)
+  AtomicCall(AtomicFunction, Array[Handle])
+  ImageSample(Handle, Handle, SwizzleComponent?, Handle, Handle?, Handle?, SampleLevel, Handle?, Bool)
+  ImageLoad(Handle, Handle, Handle?, Handle?, Handle?)
+  ImageQuery(Handle, ImageQuery)
+  Unary(UnaryOperator, Handle)
+  Binary(BinaryOperator, Handle, Handle)
+  FunctionCall(Handle, Array[Handle])
+  Select(Handle, Handle, Handle)
+  Bitcast(Handle, Handle)
+  Derivative(DerivativeAxis, DerivativeControl, Handle)
+  Relational(RelationalFunction, Handle)
+  Math(MathFunction, Handle, Handle?, Handle?, Handle?)
+  As(Handle, ScalarKind, Int?)
+  CallResult(Handle)
+  AtomicResult(Handle, Bool)
+  WorkGroupUniformLoadResult(Handle)
+  WorkGroupUniformLoad(Handle)
+  ArrayLength(Handle)
+  RayQueryInitialize(Handle, Handle, Handle)
+  RayQueryProceed(Handle)
+  RayQueryGenerateIntersection(Handle, Handle)
+  RayQueryConfirmIntersection(Handle)
+  RayQueryTerminate(Handle)
+  RayQueryVertexPositions(Handle, Bool)
+  RayQueryProceedResult
+  RayQueryGetIntersection(Handle, Bool)
+  SubgroupCall(SubgroupFunction, Array[Handle])
+  SubgroupBallotResult
+  SubgroupOperationResult(Handle)
+  CooperativeLoad(CooperativeSize, CooperativeSize, CooperativeRole, CooperativeData)
+  CooperativeMultiplyAdd(Handle, Handle, Handle)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ExpressionArena {
+  items : Array[Expression]
+  origins : Array[ExpressionOrigin]
+} derive(Eq, @debug.Debug)
+pub fn ExpressionArena::ExpressionArena() -> Self
+pub fn ExpressionArena::append(Self, Expression) -> Handle
+
+pub enum ExpressionOrigin {
+  SourceExpression
+  FoldedLocalConstant
+  RetainedSourceLetExpression
+  SourceLocalConstInitializer
+} derive(Eq, @debug.Debug)
+
+pub enum FilterableTriggeringRule {
+  Standard(StandardFilterableTriggeringRule)
+  Unknown(String)
+  User(String, String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Function {
+  name : String?
+  source_start : Int
+  generated_import : Bool
+  arguments : Array[FunctionArgument]
+  result : FunctionResult?
+  local_variables : LocalVariableArena
+  expressions : ExpressionArena
+  named_expressions : Array[NamedExpression]
+  body : Block
+  diagnostic_filter_leaf : Handle?
+} derive(Eq, @debug.Debug)
+pub fn Function::Function(String?) -> Self
+
+pub(all) struct FunctionArena {
+  items : Array[Function]
+} derive(Eq, @debug.Debug)
+pub fn FunctionArena::FunctionArena() -> Self
+pub fn FunctionArena::append(Self, Function) -> Handle
+pub fn FunctionArena::set(Self, Handle, Function) -> Unit
+
+pub(all) struct FunctionArgument {
+  name : String?
+  ty : Handle
+  binding : Binding?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionResult {
+  ty : Handle
+  binding : Binding?
+} derive(Eq, @debug.Debug)
+
+pub enum GatherMode {
+  BroadcastFirst
+  Broadcast(Handle)
+  Shuffle(Handle)
+  ShuffleDown(Handle)
+  ShuffleUp(Handle)
+  ShuffleXor(Handle)
+  QuadBroadcast(Handle)
+  QuadSwap(Direction)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GlobalVariable {
+  name : String?
+  space : AddressSpace
+  binding : ResourceBinding?
+  ty : Handle
+  init : Handle?
+  memory_decorations : MemoryDecorations
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GlobalVariableArena {
+  items : Array[GlobalVariable]
+} derive(Eq, @debug.Debug)
+pub fn GlobalVariableArena::GlobalVariableArena() -> Self
+pub fn GlobalVariableArena::append(Self, GlobalVariable) -> Handle
+pub fn GlobalVariableArena::set(Self, Handle, GlobalVariable) -> Unit
+
+pub(all) struct Handle {
+  index : Int
+} derive(Eq, @debug.Debug)
+pub fn Handle::Handle(Int) -> Self
+pub fn Handle::index(Self) -> Int
+
+pub(all) struct HandleRange {
+  start : Handle
+  end : Handle
+} derive(Eq, @debug.Debug)
+pub fn HandleRange::HandleRange(Handle, Handle) -> Self
+
+pub enum ImageClass {
+  Sampled(ScalarKind, Bool)
+  Depth(Bool)
+  External
+  Storage(StorageFormat, StorageAccess)
+} derive(Eq, @debug.Debug)
+
+pub enum ImageDimension {
+  D1
+  D2
+  D3
+  Cube
+} derive(Eq, @debug.Debug)
+
+pub enum ImageQuery {
+  Size(Handle?)
+  NumLevels
+  NumLayers
+  NumSamples
+} derive(Eq, @debug.Debug)
+
+pub enum Interpolation {
+  Perspective
+  Linear
+  Flat
+  PerVertex
+} derive(Eq, @debug.Debug)
+
+pub enum Literal {
+  F64(Double)
+  F32(Float)
+  F32Exact(Float)
+  F16(Double)
+  U16(Int)
+  I16(Int)
+  U32(UInt)
+  I32(Int)
+  U64(UInt64)
+  I64(Int64)
+  Bool(Bool)
+  AbstractInt(Int64)
+  AbstractFloat(Double)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct LocalVariable {
+  name : String?
+  kind : LocalVariableKind
+  generated_temporary : Bool
+  mut generated_temporary_store_value_reference : Bool
+  short_circuit_result : Bool
+  ty : Handle
+  init : Handle?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct LocalVariableArena {
+  items : Array[LocalVariable]
+} derive(Eq, @debug.Debug)
+pub fn LocalVariableArena::LocalVariableArena() -> Self
+pub fn LocalVariableArena::append(Self, LocalVariable) -> Handle
+
+pub enum LocalVariableKind {
+  Var
+  Let
+} derive(Eq, @debug.Debug)
+
+pub enum MathFunction {
+  Abs
+  Min
+  Max
+  Clamp
+  Saturate
+  Cos
+  Cosh
+  Sin
+  Sinh
+  Tan
+  Tanh
+  Acos
+  Asin
+  Atan
+  Atan2
+  Asinh
+  Acosh
+  Atanh
+  Radians
+  Degrees
+  Ceil
+  Floor
+  Round
+  Fract
+  Trunc
+  Modf
+  Frexp
+  Ldexp
+  Exp
+  Exp2
+  Log
+  Log2
+  Pow
+  Dot
+  Dot4I8Packed
+  Dot4U8Packed
+  Outer
+  Cross
+  Distance
+  Length
+  Normalize
+  FaceForward
+  Reflect
+  Refract
+  Sign
+  Fma
+  Mix
+  Step
+  SmoothStep
+  Sqrt
+  InverseSqrt
+  Inverse
+  Transpose
+  Determinant
+  QuantizeToF16
+  CountTrailingZeros
+  CountLeadingZeros
+  CountOneBits
+  ReverseBits
+  ExtractBits
+  InsertBits
+  FirstTrailingBit
+  FirstLeadingBit
+  Pack4x8snorm
+  Pack4x8unorm
+  Pack2x16snorm
+  Pack2x16unorm
+  Pack2x16float
+  Pack4xI8
+  Pack4xU8
+  Pack4xI8Clamp
+  Pack4xU8Clamp
+  Unpack4x8snorm
+  Unpack4x8unorm
+  Unpack2x16snorm
+  Unpack2x16unorm
+  Unpack2x16float
+  Unpack4xI8
+  Unpack4xU8
+} derive(Eq, @debug.Debug)
+
+pub(all) struct MemoryDecorations {
+  bits : Int
+} derive(Eq, @debug.Debug)
+pub fn MemoryDecorations::coherent() -> Self
+pub fn MemoryDecorations::empty() -> Self
+pub fn MemoryDecorations::union(Self, Self) -> Self
+pub fn MemoryDecorations::volatile_decoration() -> Self
+
+pub enum MeshOutputTopology {
+  Points
+  Lines
+  Triangles
+} derive(Eq, @debug.Debug)
+
+pub(all) struct MeshStageInfo {
+  topology : MeshOutputTopology
+  max_vertices : Int
+  max_vertices_override : Handle?
+  max_primitives : Int
+  max_primitives_override : Handle?
+  vertex_output_type : Handle
+  primitive_output_type : Handle
+  output_variable : Handle
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Module {
+  directives : Array[String]
+  types : TypeArena
+  special_types : SpecialTypes
+  constants : ConstantArena
+  const_asserts : Array[Handle]
+  overrides : OverrideArena
+  global_variables : GlobalVariableArena
+  global_expressions : ExpressionArena
+  functions : FunctionArena
+  entry_points : Array[EntryPoint]
+  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
+  import_arena_events : Array[WgslIrImportArenaEvent]
+  diagnostic_filters : DiagnosticFilterArena
+  diagnostic_filter_leaf : Handle?
+  doc_comments : DocComments?
+} derive(Eq, @debug.Debug)
+pub fn Module::Module() -> Self
+pub fn Module::append_const_assert(Self, Handle) -> Unit
+pub fn Module::append_constant(Self, Constant) -> Handle
+pub fn Module::append_directive(Self, String) -> Unit
+pub fn Module::append_entry_point(Self, EntryPoint) -> Unit
+pub fn Module::append_function(Self, Function) -> Handle
+pub fn Module::append_global_expression(Self, Expression) -> Handle
+pub fn Module::append_global_variable(Self, GlobalVariable) -> Handle
+pub fn Module::append_override(Self, Override) -> Handle
+pub fn Module::append_type(Self, Type) -> Handle
+pub fn Module::set_function(Self, Handle, Function) -> Unit
+pub fn Module::set_override(Self, Handle, Override) -> Unit
+
+pub(all) struct NamedExpression {
+  handle : Handle
+  name : String
+  ty : Handle
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Override {
+  name : String?
+  id : Int?
+  ty : Handle
+  init : Handle?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct OverrideArena {
+  items : Array[Override]
+} derive(Eq, @debug.Debug)
+pub fn OverrideArena::OverrideArena() -> Self
+pub fn OverrideArena::append(Self, Override) -> Handle
+pub fn OverrideArena::set(Self, Handle, Override) -> Unit
+
+pub enum PredeclaredType {
+  AtomicCompareExchangeWeakResult(Scalar)
+  ModfResult(VectorSize?, Scalar)
+  FrexpResult(VectorSize?, Scalar)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RayFlag {
+  bits : Int
+} derive(Eq, @debug.Debug)
+pub fn RayFlag::cull_back_facing() -> Self
+pub fn RayFlag::cull_front_facing() -> Self
+pub fn RayFlag::cull_no_opaque() -> Self
+pub fn RayFlag::cull_opaque() -> Self
+pub fn RayFlag::empty() -> Self
+pub fn RayFlag::force_no_opaque() -> Self
+pub fn RayFlag::force_opaque() -> Self
+pub fn RayFlag::skip_aabbs() -> Self
+pub fn RayFlag::skip_closest_hit_shader() -> Self
+pub fn RayFlag::skip_triangles() -> Self
+pub fn RayFlag::terminate_on_first_hit() -> Self
+pub fn RayFlag::union(Self, Self) -> Self
+
+pub enum RayPipelineFunction {
+  TraceRay(Handle, Handle, Handle)
+} derive(Eq, @debug.Debug)
+
+pub enum RayQueryFunction {
+  Initialize(Handle, Handle)
+  Proceed(Handle)
+  GenerateIntersection(Handle)
+  ConfirmIntersection
+  Terminate
+} derive(Eq, @debug.Debug)
+
+pub enum RayQueryIntersection {
+  None
+  Triangle
+  Generated
+  Aabb
+} derive(Eq, @debug.Debug)
+
+pub enum RelationalFunction {
+  All
+  Any
+  IsNan
+  IsInf
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ResourceBinding {
+  group : Int
+  binding : Int
+} derive(Eq, @debug.Debug)
+
+pub enum SampleLevel {
+  Auto
+  Zero
+  Exact(Handle)
+  Bias(Handle)
+  Gradient(Handle, Handle)
+} derive(Eq, @debug.Debug)
+
+pub enum Sampling {
+  Center
+  Centroid
+  Sample
+  First
+  Either
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Scalar {
+  kind : ScalarKind
+  width : Int
+} derive(Eq, @debug.Debug)
+pub fn Scalar::Scalar(ScalarKind, Int) -> Self
+
+pub enum ScalarKind {
+  Sint
+  Uint
+  Float
+  Bool
+  AbstractInt
+  AbstractFloat
+} derive(Eq, @debug.Debug)
+
+pub enum Severity {
+  Off
+  Info
+  Warning
+  Error
+} derive(Eq, @debug.Debug)
+
+pub enum ShaderStage {
+  Vertex
+  Task
+  Mesh
+  Fragment
+  Compute
+  RayGeneration
+  Miss
+  AnyHit
+  ClosestHit
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SpecialTypes {
+  ray_desc : Handle?
+  ray_intersection : Handle?
+  mut ray_vertex_return : Handle?
+  external_texture_params : Handle?
+  external_texture_transfer_function : Handle?
+  predeclared_types : Array[(PredeclaredType, Handle)]
+} derive(Eq, @debug.Debug)
+pub fn SpecialTypes::SpecialTypes() -> Self
+
+pub enum StandardFilterableTriggeringRule {
+  DerivativeUniformity
+} derive(Eq, @debug.Debug)
+
+pub enum Statement {
+  Declare(Handle)
+  Emit(HandleRange)
+  Phony(Handle)
+  Block(Block)
+  If(Handle, Block, Block)
+  Switch(Handle, Array[SwitchCase])
+  Loop(Block, Block, Handle?)
+  Break
+  Continue
+  Return(Handle?)
+  ImplicitReturn
+  Kill
+  ConstAssert(Handle)
+  ControlBarrier(Barrier)
+  MemoryBarrier(Barrier)
+  Store(Handle, Handle)
+  ImageStore(Handle, Handle, Handle?, Handle)
+  Atomic(Handle, AtomicFunction, Handle, Handle?, Handle?)
+  ImageAtomic(Handle, Handle, Handle?, AtomicFunction, Handle)
+  WorkGroupUniformLoad(Handle, Handle)
+  Call(Handle, Array[Handle], Handle?)
+  RayQuery(Handle, RayQueryFunction)
+  RayPipelineFunction(RayPipelineFunction)
+  SubgroupBallot(Handle, Handle?)
+  SubgroupGather(GatherMode, Handle, Handle)
+  SubgroupCollectiveOperation(SubgroupOperation, CollectiveOperation, Handle, Handle)
+  CooperativeStore(Handle, CooperativeData)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StorageAccess {
+  bits : Int
+} derive(Eq, @debug.Debug)
+pub fn StorageAccess::atomic_access() -> Self
+pub fn StorageAccess::contains(Self, Self) -> Bool
+pub fn StorageAccess::empty() -> Self
+pub fn StorageAccess::load() -> Self
+pub fn StorageAccess::store() -> Self
+pub fn StorageAccess::union(Self, Self) -> Self
+
+pub enum StorageFormat {
+  R8Unorm
+  R8Snorm
+  R8Uint
+  R8Sint
+  R16Uint
+  R16Sint
+  R16Float
+  Rg8Unorm
+  Rg8Snorm
+  Rg8Uint
+  Rg8Sint
+  R32Uint
+  R32Sint
+  R32Float
+  Rg16Uint
+  Rg16Sint
+  Rg16Float
+  Rgba8Unorm
+  Rgba8Snorm
+  Rgba8Uint
+  Rgba8Sint
+  Bgra8Unorm
+  Rgb10a2Uint
+  Rgb10a2Unorm
+  Rg11b10Ufloat
+  R64Uint
+  Rg32Uint
+  Rg32Sint
+  Rg32Float
+  Rgba16Uint
+  Rgba16Sint
+  Rgba16Float
+  Rgba32Uint
+  Rgba32Sint
+  Rgba32Float
+  R16Unorm
+  R16Snorm
+  Rg16Unorm
+  Rg16Snorm
+  Rgba16Unorm
+  Rgba16Snorm
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StructMember {
+  name : String?
+  ty : Handle
+  binding : Binding?
+  offset : Int
+  size : Int?
+  align : Int?
+} derive(Eq, @debug.Debug)
+
+pub enum SubgroupFunction {
+  Ballot
+  All
+  Any
+  Add
+  Mul
+  Max
+  Min
+  And
+  Or
+  Xor
+  ExclusiveAdd
+  ExclusiveMul
+  InclusiveAdd
+  InclusiveMul
+  BroadcastFirst
+  Broadcast
+  Shuffle
+  ShuffleDown
+  ShuffleUp
+  ShuffleXor
+  QuadBroadcast
+  QuadSwapX
+  QuadSwapY
+  QuadSwapDiagonal
+} derive(Eq, @debug.Debug)
+
+pub enum SubgroupOperation {
+  All
+  Any
+  Add
+  Mul
+  Min
+  Max
+  And
+  Or
+  Xor
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SwitchCase {
+  value : SwitchValue
+  body : Block
+  fall_through : Bool
+  constant_dependencies : Array[Handle]
+} derive(Eq, @debug.Debug)
+
+pub enum SwitchCaseLabelStyle {
+  Typed
+  SourceAbstractInt
+} derive(Eq, @debug.Debug)
+
+pub enum SwitchValue {
+  I32(Int, SwitchCaseLabelStyle)
+  U32(UInt, SwitchCaseLabelStyle)
+  Default
+} derive(Eq, @debug.Debug)
+
+pub enum SwizzleComponent {
+  X
+  Y
+  Z
+  W
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Type {
+  name : String?
+  inner : TypeInner
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TypeArena {
+  items : Array[Type]
+} derive(Eq, @debug.Debug)
+pub fn TypeArena::TypeArena() -> Self
+pub fn TypeArena::append(Self, Type) -> Handle
+pub fn TypeArena::get(Self, Handle) -> Type?
+pub fn TypeArena::set(Self, Handle, Type) -> Unit
+
+pub enum TypeInner {
+  Scalar(Scalar)
+  Vector(VectorSize, Scalar)
+  Matrix(VectorSize, VectorSize, Scalar)
+  CooperativeMatrix(CooperativeSize, CooperativeSize, Scalar, CooperativeRole)
+  Atomic(Scalar)
+  Pointer(Handle, AddressSpace)
+  ValuePointer(VectorSize?, Scalar, AddressSpace)
+  Array(Handle, ArraySize, Int)
+  Struct(Array[StructMember], Int)
+  PredeclaredStruct(Array[StructMember], Int)
+  Image(ImageDimension, Bool, ImageClass)
+  Sampler(Bool)
+  AccelerationStructure(Bool)
+  RayQuery(Bool)
+  BindingArray(Handle, ArraySize)
+} derive(Eq, @debug.Debug)
+
+pub enum UnaryOperator {
+  Negate
+  LogicalNot
+  BitwiseNot
+} derive(Eq, @debug.Debug)
+
+pub enum VectorSize {
+  Bi
+  Tri
+  Quad
+} derive(Eq, @debug.Debug)
+pub fn VectorSize::width(Self) -> Int
+
+pub struct WgslIrAliasFinalNameEntry {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrAliasFinalNameEntry::final_name(Self) -> String
+pub fn WgslIrAliasFinalNameEntry::identity(Self) -> WgslIrAliasSymbolIdentity
+
+pub struct WgslIrAliasSymbolIdentity {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrAliasSymbolIdentity::WgslIrAliasSymbolIdentity(String, String, String) -> Self
+pub fn WgslIrAliasSymbolIdentity::alias_name(Self) -> String
+pub fn WgslIrAliasSymbolIdentity::key(Self) -> String
+pub fn WgslIrAliasSymbolIdentity::symbol(Self) -> WgslIrSymbolIdentity
+
+pub struct WgslIrCanonicalFinalNameEntry {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrCanonicalFinalNameEntry::final_name(Self) -> String
+pub fn WgslIrCanonicalFinalNameEntry::identity(Self) -> WgslIrSymbolIdentity
+
+pub(all) enum WgslIrDeclarationKind {
+  Type
+  Constant
+  Override
+  GlobalVariable
+  Function
+} derive(Eq, @debug.Debug)
+
+pub struct WgslIrFinalNameTable {
+  // private fields
+}
+pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> Self
+pub fn WgslIrFinalNameTable::alias_entries(Self) -> Array[WgslIrAliasFinalNameEntry]
+pub fn WgslIrFinalNameTable::alias_entries_for_scope(Self, String, String) -> Array[WgslIrAliasFinalNameEntry]
+pub fn WgslIrFinalNameTable::alias_get(Self, WgslIrAliasSymbolIdentity) -> String?
+pub fn WgslIrFinalNameTable::alias_set(Self, WgslIrAliasSymbolIdentity, String) -> Unit
+pub fn WgslIrFinalNameTable::canonical_entries_for_rel_path(Self, String) -> Array[WgslIrCanonicalFinalNameEntry]
+pub fn WgslIrFinalNameTable::canonical_entry_count(Self) -> Int
+pub fn WgslIrFinalNameTable::canonical_get(Self, WgslIrSymbolIdentity) -> String?
+pub fn WgslIrFinalNameTable::canonical_set(Self, WgslIrSymbolIdentity, String) -> Unit
+
+pub(all) struct WgslIrGeneratedImportProvenance {
+  generated_symbol_name : String
+  rel_path : String
+  source_symbol_name : String
+  kind : WgslIrGeneratedImportProvenanceKind
+  inline_value : Bool
+  local_spelling : Bool
+  root_local_spelling : Bool
+  local_spelling_visible_rel_paths : Array[String]
+  import_sequence : Int
+  source_start : Int
+  source_end : Int
+} derive(Eq, @debug.Debug)
+pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool, local_spelling_visible_rel_paths? : Array[String], import_sequence? : Int, source_start? : Int, source_end? : Int) -> Self
+pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(Self) -> String
+
+pub(all) enum WgslIrGeneratedImportProvenanceKind {
+  ImportedSourceSymbol
+  VirtualOverrideSymbol
+} derive(Eq, @debug.Debug)
+
+pub struct WgslIrImportArenaEvent {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(Int, String, String, String, String, Array[String], WgslIrImportEdgeKind, Array[WgslIrImportArenaSymbol]) -> Self
+pub fn WgslIrImportArenaEvent::generated_symbol_names(Self) -> Array[String]
+pub fn WgslIrImportArenaEvent::generated_symbols(Self) -> Array[WgslIrImportArenaSymbol]
+pub fn WgslIrImportArenaEvent::item_names(Self) -> Array[String]
+pub fn WgslIrImportArenaEvent::kind(Self) -> WgslIrImportEdgeKind
+pub fn WgslIrImportArenaEvent::sequence(Self) -> Int
+pub fn WgslIrImportArenaEvent::target_rel_path(Self) -> String
+
+pub struct WgslIrImportArenaSymbol {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrImportArenaSymbol::WgslIrImportArenaSymbol(WgslIrDeclarationKind, String, String, source_decl_rank? : Int, source_order_rank? : Int) -> Self
+pub fn WgslIrImportArenaSymbol::generated_symbol_name(Self) -> String
+pub fn WgslIrImportArenaSymbol::kind(Self) -> WgslIrDeclarationKind
+pub fn WgslIrImportArenaSymbol::source_decl_rank(Self) -> Int
+pub fn WgslIrImportArenaSymbol::source_order_rank(Self) -> Int
+pub fn WgslIrImportArenaSymbol::source_symbol_name(Self) -> String
+
+pub struct WgslIrImportEdge {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrImportEdge::WgslIrImportEdge(String, String, String, String, String, WgslIrImportEdgeKind) -> Self
+pub fn WgslIrImportEdge::key(Self) -> String
+
+pub(all) enum WgslIrImportEdgeKind {
+  FullModule
+  AliasModule
+  ItemBinding
+} derive(Eq, @debug.Debug)
+pub fn WgslIrImportEdgeKind::key(Self) -> String
+
+pub struct WgslIrLinkGraph {
+  // private fields
+}
+pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> Self
+pub fn WgslIrLinkGraph::contains_reachable_symbol(Self, WgslIrSymbolIdentity) -> Bool
+pub fn WgslIrLinkGraph::import_arena_event_count(Self) -> Int
+pub fn WgslIrLinkGraph::import_arena_events(Self) -> Array[WgslIrImportArenaEvent]
+pub fn WgslIrLinkGraph::import_edge_count(Self) -> Int
+pub fn WgslIrLinkGraph::mark_reachable(Self, WgslIrSymbolIdentity) -> Unit
+pub fn WgslIrLinkGraph::record_import(Self, String, String, String, String, String, WgslIrImportEdgeKind) -> Unit
+pub fn WgslIrLinkGraph::record_import_arena_event(Self, String, String, String, String, Array[String], WgslIrImportEdgeKind, Array[WgslIrImportArenaSymbol]) -> Unit
+pub fn WgslIrLinkGraph::record_import_edge(Self, WgslIrImportEdge) -> Unit
+pub fn WgslIrLinkGraph::record_reachable_symbol(Self, WgslIrSymbolIdentity) -> Unit
+pub fn WgslIrLinkGraph::record_symbol(Self, WgslIrSymbolIdentity) -> Unit
+
+pub struct WgslIrSymbolIdentity {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrSymbolIdentity::WgslIrSymbolIdentity(String, String) -> Self
+pub fn WgslIrSymbolIdentity::key(Self) -> String
+pub fn WgslIrSymbolIdentity::original_name(Self) -> String
+pub fn WgslIrSymbolIdentity::rel_path(Self) -> String
+
+pub struct WgslIrSymbolNode {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WgslIrSymbolNode::identity(Self) -> WgslIrSymbolIdentity
+
+// Type aliases
+
+// Traits
+

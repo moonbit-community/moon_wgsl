@@ -1,0 +1,6 @@
+import {
+  "Milky2018/wgsl/common",
+  "Milky2018/wgsl/ast",
+  "Milky2018/wgsl/directive_syntax",
+  "Milky2018/wgsl/lex",
+}

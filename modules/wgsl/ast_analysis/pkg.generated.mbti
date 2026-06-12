@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/wgsl/ast_analysis"
+
+import {
+  "Milky2018/wgsl/ast",
+}
+
+// Values
+pub fn collect_wgsl_decl_global_declared_identifier_nodes(@ast.WgslGlobalDeclData, Array[@ast.WgslIdent]) -> Unit
+
+pub fn collect_wgsl_decl_identifier_nodes(@ast.WgslGlobalDeclData, Array[@ast.WgslIdent]) -> Unit
+
+pub fn collect_wgsl_function_body_identifier_nodes(@ast.WgslFunction, Array[@ast.WgslIdent]) -> Unit
+
+pub fn wgsl_decl_data_name(@ast.WgslGlobalDeclData) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
