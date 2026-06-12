@@ -15,15 +15,6 @@ fn WgslIrEmitOptions::valid_wgsl() -> WgslIrEmitOptions {
 }
 
 ///|
-fn WgslIrEmitOptions::compat_writer() -> WgslIrEmitOptions {
-  {
-    byte_plan: WgslIrWriterBytePlan::compat_writer(),
-    semantic_plan: WgslIrWriterSemanticPlan::compat_writer(),
-    preserve_abstract_float_literals: false,
-  }
-}
-
-///|
 fn WgslIrEmitOptions::preserve_abstract_float_literals(
   self : WgslIrEmitOptions,
 ) -> Bool {
@@ -143,7 +134,6 @@ fn WgslIrEmitter::with_preserved_abstract_float_literals(
     writer_module: self.writer_module,
     names: self.names,
     current_function_origin: self.current_function_origin,
-    compat_negative_zero_seen: self.compat_negative_zero_seen,
     emitted_function_named_expressions: self.emitted_function_named_expressions,
     emitted_function_materialized_expressions: self.emitted_function_materialized_expressions,
   }

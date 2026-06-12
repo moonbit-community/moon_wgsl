@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn wgsl_ir_identifier_is_reserved(ident : String) -> Bool {
+pub fn wgsl_ir_identifier_is_reserved(ident : String) -> Bool {
   if ident == "" {
     return false
   }
@@ -240,7 +240,7 @@ fn wgsl_ir_identifier_is_reserved(ident : String) -> Bool {
 }
 
 ///|
-fn wgsl_ir_identifier_is_builtin_function(ident : String) -> Bool {
+pub fn wgsl_ir_identifier_is_builtin_function(ident : String) -> Bool {
   ident == "abs" ||
   ident == "acos" ||
   ident == "acosh" ||
@@ -371,7 +371,7 @@ fn wgsl_ir_identifier_is_builtin_function(ident : String) -> Bool {
 }
 
 ///|
-fn wgsl_ir_identifier_ends_with_digit(ident : String) -> Bool {
+pub fn wgsl_ir_identifier_ends_with_digit(ident : String) -> Bool {
   if ident == "" {
     return false
   }
@@ -388,7 +388,7 @@ fn wgsl_ir_identifier_ends_with_digit(ident : String) -> Bool {
 }
 
 ///|
-fn sanitize_wgsl_ir_identifier(ident : String) -> String {
+pub fn sanitize_wgsl_ir_identifier(ident : String) -> String {
   let had_trailing_separator = ident.has_suffix("_")
   let mut out = ident
   while out.has_suffix("_") {

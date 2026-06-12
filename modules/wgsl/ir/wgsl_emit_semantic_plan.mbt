@@ -14,25 +14,21 @@
 
 ///|
 priv enum WgslIrGeneratedImportConstantSemanticPolicy {
-  InlineGeneratedImportConstants
   EmitGeneratedImportConstants
 }
 
 ///|
 priv enum WgslIrNumericConstantExpressionSemanticPolicy {
-  FoldNumericConstantExpressions
   PreserveNumericConstantExpressions
 }
 
 ///|
 priv enum WgslIrMatrixScalarConstructorSemanticPolicy {
-  ExpandMatrixScalarConstructors
   PreserveMatrixScalarConstructors
 }
 
 ///|
 priv enum WgslIrNumericLiteralContextSemanticPolicy {
-  ContextualizeNumericLiterals
   PreserveNumericLiteralKinds
 }
 
@@ -55,21 +51,10 @@ fn WgslIrWriterSemanticPlan::runtime_writer() -> WgslIrWriterSemanticPlan {
 }
 
 ///|
-fn WgslIrWriterSemanticPlan::compat_writer() -> WgslIrWriterSemanticPlan {
-  {
-    generated_import_constants: InlineGeneratedImportConstants,
-    numeric_constant_expressions: FoldNumericConstantExpressions,
-    matrix_scalar_constructors: ExpandMatrixScalarConstructors,
-    numeric_literal_context: ContextualizeNumericLiterals,
-  }
-}
-
-///|
 fn WgslIrWriterSemanticPlan::should_inline_generated_import_constants(
   self : WgslIrWriterSemanticPlan,
 ) -> Bool {
   match self.generated_import_constants {
-    InlineGeneratedImportConstants => true
     EmitGeneratedImportConstants => false
   }
 }
@@ -79,7 +64,6 @@ fn WgslIrWriterSemanticPlan::should_fold_numeric_constant_expressions(
   self : WgslIrWriterSemanticPlan,
 ) -> Bool {
   match self.numeric_constant_expressions {
-    FoldNumericConstantExpressions => true
     PreserveNumericConstantExpressions => false
   }
 }
@@ -89,7 +73,6 @@ fn WgslIrWriterSemanticPlan::should_expand_matrix_scalar_constructors(
   self : WgslIrWriterSemanticPlan,
 ) -> Bool {
   match self.matrix_scalar_constructors {
-    ExpandMatrixScalarConstructors => true
     PreserveMatrixScalarConstructors => false
   }
 }
@@ -99,7 +82,6 @@ fn WgslIrWriterSemanticPlan::should_contextualize_numeric_literals(
   self : WgslIrWriterSemanticPlan,
 ) -> Bool {
   match self.numeric_literal_context {
-    ContextualizeNumericLiterals => true
     PreserveNumericLiteralKinds => false
   }
 }

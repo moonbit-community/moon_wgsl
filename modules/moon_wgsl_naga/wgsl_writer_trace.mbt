@@ -16,7 +16,7 @@
 pub fn trace_compat_writer_function_plan_for_source(
   source : String,
   function_name_prefix : String,
-) -> String raise WgslIrPipelineError {
+) -> String raise WgslNagaPipelineError {
   trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(
     source,
     [],
@@ -32,7 +32,7 @@ pub fn trace_compat_writer_function_plan_for_source_with_generated_imports_and_i
   import_arena_events : Array[WgslIrImportArenaEvent],
   function_name_prefix : String,
   root_visible_rel_path? : String = "",
-) -> String raise WgslIrPipelineError {
+) -> String raise WgslNagaPipelineError {
   let module_ = lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
     source,
     generated_import_provenance,
@@ -74,7 +74,7 @@ pub fn trace_compat_writer_module_plan_for_source_with_generated_imports_and_imp
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
   import_arena_events : Array[WgslIrImportArenaEvent],
   root_visible_rel_path? : String = "",
-) -> String raise WgslIrPipelineError {
+) -> String raise WgslNagaPipelineError {
   let module_ = lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
     source,
     generated_import_provenance,

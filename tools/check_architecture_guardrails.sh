@@ -185,7 +185,6 @@ required_ir_split_files=(
   modules/wgsl/ir/wgsl_emit_semantic_plan.mbt
   modules/wgsl/ir/wgsl_emit_writer_policy.mbt
   modules/wgsl/ir/wgsl_emit_runtime_writer.mbt
-  modules/wgsl/ir/wgsl_emit_compat_writer.mbt
   modules/wgsl/ir/wgsl_writer_module.mbt
   modules/wgsl/ir/wgsl_writer_emission_plan.mbt
   modules/wgsl/ir/wgsl_emit_final_name_plan.mbt
@@ -217,6 +216,35 @@ done
 if [[ -f modules/wgsl/ir/wgsl_lower.mbt ]]; then
   fail "IR lowerer monolith must not be reintroduced as modules/wgsl/ir/wgsl_lower.mbt"
 fi
+
+if [[ -f modules/wgsl/ir/wgsl_emit_compat_writer.mbt ]]; then
+  fail "Naga-compatible writer backend must live in modules/moon_wgsl_naga, not modules/wgsl/ir"
+fi
+
+if [[ -f modules/wgsl/ir/wgsl_writer_trace.mbt ]]; then
+  fail "Naga-compatible writer trace tooling must live in modules/moon_wgsl_naga, not modules/wgsl/ir"
+fi
+
+if rg -n 'compat_writer|trace_compat_writer|WgslIrEmitOptions::compat_writer|WgslIrWriterBytePlan::compat_writer|WgslIrWriterSemanticPlan::compat_writer|CompatNumericLiteralSpelling' \
+  modules/wgsl/ir --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "WGSL semantic IR must not own Naga-compatible writer policy or trace entrypoints"
+fi
+
+required_naga_writer_files=(
+  modules/moon_wgsl_naga/wgsl_emit_compat_writer.mbt
+  modules/moon_wgsl_naga/wgsl_writer_trace.mbt
+  modules/moon_wgsl_naga/wgsl_writer_module.mbt
+  modules/moon_wgsl_naga/wgsl_writer_declarations.mbt
+  modules/moon_wgsl_naga/wgsl_writer_emission_plan.mbt
+  modules/moon_wgsl_naga/wgsl_emit_byte_plan.mbt
+  modules/moon_wgsl_naga/wgsl_emit_semantic_plan.mbt
+)
+for naga_writer_file in "${required_naga_writer_files[@]}"; do
+  if [[ ! -f "$naga_writer_file" ]]; then
+    fail "Naga-compatible writer ownership split is missing ${naga_writer_file}"
+  fi
+done
 
 if [[ -f modules/wgsl/parser/wgsl_ast_expr_type.mbt ]]; then
   fail "modules/wgsl/parser expression/type monolith must stay split; modules/wgsl/parser/wgsl_ast_expr_type.mbt must not be reintroduced"
@@ -617,15 +645,15 @@ if ! rg -n 'validate_wgsl_ir_module\(self\.shader_module\)' modules/wgsl/ir/wgsl
   fail "runtime WGSL writer backend must run internal IR validation before writing source"
 fi
 
-if ! rg -n 'validate_wgsl_ir_module\(self\.shader_module\)' modules/wgsl/ir/wgsl_emit_compat_writer.mbt >/dev/null; then
+if ! rg -n 'validate_wgsl_ir_module\(self\.shader_module\)' modules/moon_wgsl_naga/wgsl_emit_compat_writer.mbt >/dev/null; then
   fail "compat WGSL writer backend must run internal IR validation before writing source"
 fi
 
-if ! rg -n 'build_wgsl_ir_writer_module\(' modules/wgsl/ir/wgsl_emit_compat_writer.mbt >/dev/null; then
+if ! rg -n 'build_wgsl_ir_writer_module\(' modules/moon_wgsl_naga/wgsl_emit_compat_writer.mbt >/dev/null; then
   fail "compat WGSL writer backend must build a Writer-compatible module view before emission"
 fi
 
-if ! rg -n 'writer_module: self\.view' modules/wgsl/ir/wgsl_emit_compat_writer.mbt >/dev/null; then
+if ! rg -n 'writer_module: self\.view' modules/moon_wgsl_naga/wgsl_emit_compat_writer.mbt >/dev/null; then
   fail "compat WGSL writer backend must emit through the Writer-compatible module view"
 fi
 
@@ -686,15 +714,15 @@ if ! rg -n 'function_plan : WgslIrFunctionWriterPlan' modules/wgsl/ir/wgsl_emit_
   fail "Writer-compatible writer and name allocation must consume WgslIrFunctionWriterPlan"
 fi
 
-if [[ ! -f modules/wgsl/ir/wgsl_writer_plan_invariants_wbtest.mbt ]]; then
+if [[ ! -f modules/moon_wgsl_naga/wgsl_writer_plan_invariants_wbtest.mbt ]]; then
   fail "Writer compatibility model invariants must be tested through a dedicated plan-invariant gate"
 fi
 
-if ! rg -n 'WgslIrWriterPlanInvariantCase|Writer compat plan invariants are table driven|plan-arena|plan-calls|plan-short-circuit|plan-body|plan-names' modules/wgsl/ir/wgsl_writer_plan_invariants_wbtest.mbt >/dev/null; then
+if ! rg -n 'WgslIrWriterPlanInvariantCase|Writer compat plan invariants are table driven|plan-arena|plan-calls|plan-short-circuit|plan-body|plan-names' modules/moon_wgsl_naga/wgsl_writer_plan_invariants_wbtest.mbt >/dev/null; then
   fail "Writer compatibility plan invariant tests must be table-driven and cover arena, calls, short-circuit, body, and names"
 fi
 
-if ! rg -n 'plan-arena|plan-calls|plan-short-circuit|plan-materialization|plan-body|plan-names' modules/wgsl/ir/wgsl_writer_function_plan.mbt >/dev/null; then
+if ! rg -n 'plan-arena|plan-calls|plan-short-circuit|plan-materialization|plan-body|plan-names' modules/moon_wgsl_naga/wgsl_writer_function_plan.mbt >/dev/null; then
   fail "Writer compatibility function trace must expose structured plan sections"
 fi
 
@@ -708,8 +736,13 @@ if rg -n 'body_plan\(\)|slot\.body_plan\(\)|body_plan : WgslIrFunctionBodyWriter
   modules/wgsl/ir/wgsl_emit_statements.mbt \
   modules/wgsl/ir/wgsl_writer_names.mbt \
   modules/wgsl/ir/wgsl_emit_expression_temp_plan.mbt \
-  modules/wgsl/ir/wgsl_writer_trace.mbt \
-  modules/wgsl/ir/wgsl_writer_function_plan.mbt >"$matches_file"; then
+  modules/wgsl/ir/wgsl_writer_function_plan.mbt \
+  modules/moon_wgsl_naga/wgsl_emit_functions.mbt \
+  modules/moon_wgsl_naga/wgsl_emit_statements.mbt \
+  modules/moon_wgsl_naga/wgsl_writer_names.mbt \
+  modules/moon_wgsl_naga/wgsl_emit_expression_temp_plan.mbt \
+  modules/moon_wgsl_naga/wgsl_writer_trace.mbt \
+  modules/moon_wgsl_naga/wgsl_writer_function_plan.mbt >"$matches_file"; then
   cat "$matches_file" >&2
   fail "Writer-compatible writer path must not expose or re-extract raw function body plans"
 fi
@@ -819,25 +852,25 @@ if rg -n 'pub (struct|enum|typealias) (Module|ModuleInfo|EntryPoint|Function|Fun
   fail "IR public interface must not expose internal IR model, arenas, handles, lowerer, emitter, or validator types"
 fi
 
-if rg -n 'pub\(all\) struct WgslIrGeneratedImportProvenance|pub (struct|fn WgslIrImportEdge::) WgslIrImportEdge|WgslIrSymbolNode|record_import_edge' modules/wgsl/ir/pkg.mbti >"$matches_file"; then
+if rg -n 'Naga|naga_oil|compat_writer|trace_compat_writer|WgslIrEmitOptions|WgslIrWriterBytePlan|WgslIrWriterSemanticPlan' modules/wgsl/ir/pkg.mbti >"$matches_file"; then
   cat "$matches_file" >&2
-  fail "IR public symbol-linking surface must expose only opaque modules/moon_wgsl_naga_oil/compose contracts, not graph internals or provenance fields"
+  fail "IR public surface must expose semantic IR contracts only, not Naga-compatible writer policy"
 fi
 
-if rg -n 'pub (fn (parse_wgsl_module_to_ir|parse_wgsl_module_to_ir_with_generated_imports|lower_wgsl_translation_unit_to_ir|lower_wgsl_translation_unit_to_ir_with_generated_imports|emit_wgsl_module_from_ir|emit_wgsl_module_from_ir_roots)|suberror WgslIr(Lower|Emit)Error)' modules/wgsl/ir \
+if rg -n 'pub (fn (lower_wgsl_translation_unit_to_ir|lower_wgsl_translation_unit_to_ir_with_generated_imports|emit_wgsl_module_from_ir|emit_wgsl_module_from_ir_roots)|suberror WgslIrEmitError)' modules/wgsl/ir \
   --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
-  fail "raw WGSL IR lower/emit APIs must remain internal; public callers must use the validated IR pipeline"
+  fail "raw WGSL IR AST-lower and emit APIs must remain internal; public callers must use semantic parse/validate or the validated pipeline"
 fi
 
-if rg -n 'parse_wgsl_module_to_ir|lower_wgsl_translation_unit_to_ir|lower_validated_wgsl_source_to_ir|emit_validated_wgsl_source_from_ir|emit_wgsl_module_from_ir|WgslIr(Lower|Emit)Error|WgslIrEmitFilter|sanitize_wgsl_ir_identifier' modules/wgsl/ir/pkg.mbti >"$matches_file"; then
+if rg -n 'lower_wgsl_translation_unit_to_ir|lower_validated_wgsl_source_to_ir|emit_validated_wgsl_source_from_ir|emit_wgsl_module_from_ir|WgslIrEmitError|WgslIrEmitFilter' modules/wgsl/ir/pkg.mbti >"$matches_file"; then
   cat "$matches_file" >&2
-  fail "IR explicit public interface must only expose validated pipeline entrypoints, not raw lower/emit internals"
+  fail "IR explicit public interface must not expose raw AST-lower/emit internals"
 fi
 
-if rg -n 'parse_wgsl_module_to_ir|lower_wgsl_translation_unit_to_ir|lower_validated_wgsl_source_to_ir|emit_validated_wgsl_source_from_ir|emit_wgsl_module_from_ir|WgslIr(Lower|Emit)Error|WgslIrEmitFilter|sanitize_wgsl_ir_identifier' modules/wgsl/ir/pkg.generated.mbti >"$matches_file"; then
+if rg -n 'lower_wgsl_translation_unit_to_ir|lower_validated_wgsl_source_to_ir|emit_validated_wgsl_source_from_ir|emit_wgsl_module_from_ir|WgslIrEmitError|WgslIrEmitFilter' modules/wgsl/ir/pkg.generated.mbti >"$matches_file"; then
   cat "$matches_file" >&2
-  fail "IR public interface must only expose validated pipeline entrypoints, not raw lower/emit internals"
+  fail "IR public interface must not expose raw AST-lower/emit internals"
 fi
 
 if ! rg -n 'roundtrip_wgsl_source_via_ir_with_generated_imports' modules/moon_wgsl_naga_oil/compose/pipeline.mbt >/dev/null; then

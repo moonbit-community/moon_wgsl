@@ -1,11 +1,11 @@
 ///|
-pub enum SwitchCaseLabelStyle {
+pub(all) enum SwitchCaseLabelStyle {
   Typed
   SourceAbstractInt
 } derive(Eq, Debug)
 
 ///|
-pub enum SwitchValue {
+pub(all) enum SwitchValue {
   I32(Int, SwitchCaseLabelStyle)
   U32(UInt, SwitchCaseLabelStyle)
   Default
@@ -20,7 +20,7 @@ pub(all) struct SwitchCase {
 } derive(Eq, Debug)
 
 ///|
-pub enum RayQueryFunction {
+pub(all) enum RayQueryFunction {
   Initialize(Handle, Handle)
   Proceed(Handle)
   GenerateIntersection(Handle)
@@ -29,12 +29,12 @@ pub enum RayQueryFunction {
 } derive(Eq, Debug)
 
 ///|
-pub enum RayPipelineFunction {
+pub(all) enum RayPipelineFunction {
   TraceRay(Handle, Handle, Handle)
 } derive(Eq, Debug)
 
 ///|
-pub enum Statement {
+pub(all) enum Statement {
   Declare(Handle)
   Emit(HandleRange)
   Phony(Handle)
@@ -135,7 +135,7 @@ pub fn Function::Function(name : String?) -> Function {
 }
 
 ///|
-fn wgsl_ir_function_named_expression_name(
+pub fn wgsl_ir_function_named_expression_name(
   function : Function,
   handle : Handle,
 ) -> String? {
@@ -148,7 +148,7 @@ fn wgsl_ir_function_named_expression_name(
 }
 
 ///|
-fn wgsl_ir_function_named_expression_type(
+pub fn wgsl_ir_function_named_expression_type(
   function : Function,
   handle : Handle,
 ) -> Handle? {
@@ -203,7 +203,7 @@ pub(all) struct MeshStageInfo {
 } derive(Eq, Debug)
 
 ///|
-pub enum MeshOutputTopology {
+pub(all) enum MeshOutputTopology {
   Points
   Lines
   Triangles

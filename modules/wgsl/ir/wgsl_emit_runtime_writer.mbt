@@ -48,7 +48,6 @@ fn WgslIrRuntimeWriterBackend::emitter(
     writer_module: self.view,
     names: self.view.names,
     current_function_origin: None,
-    compat_negative_zero_seen: false,
     emitted_function_named_expressions: Set([]),
     emitted_function_materialized_expressions: Set([]),
   }

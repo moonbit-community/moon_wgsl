@@ -94,15 +94,6 @@ fn emit_validated_wgsl_source_from_ir(
 }
 
 ///|
-fn emit_compat_writer_wgsl_source_from_ir(
-  module_ : Module,
-) -> String raise WgslIrPipelineError {
-  emit_wgsl_module_from_ir_compat_writer(module_) catch {
-    error => raise Emit(error.message())
-  }
-}
-
-///|
 fn wgsl_ir_entry_point_root_items(module_ : Module) -> Array[String] {
   let roots : Array[String] = []
   for entry_point in module_.entry_points {
@@ -137,27 +128,6 @@ fn emit_validated_wgsl_source_from_ir_entry_roots(
     emit_validated_wgsl_source_from_ir(module_)
   } else {
     emit_validated_wgsl_source_from_ir_roots(module_, roots)
-  }
-}
-
-///|
-fn emit_compat_writer_wgsl_source_from_ir_entry_roots(
-  module_ : Module,
-) -> String raise WgslIrPipelineError {
-  let roots = wgsl_ir_entry_point_root_items(module_)
-  if roots.length() == 0 {
-    emit_compat_writer_wgsl_source_from_ir(module_)
-  } else {
-    let source = emit_wgsl_module_from_ir_compat_writer_roots(module_, roots) catch {
-      error => raise Emit(error.message())
-    }
-    let reparsed = parse_wgsl_module_to_ir(source) catch {
-      error => raise Reparse(error.message())
-    }
-    validate_wgsl_ir_module(reparsed) catch {
-      error => raise Reparse(error.message())
-    }
-    source
   }
 }
 
@@ -199,60 +169,6 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_even
   import_arena_events : Array[WgslIrImportArenaEvent],
 ) -> String raise WgslIrPipelineError {
   emit_validated_wgsl_source_from_ir_entry_roots(
-    lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-      source, generated_import_provenance, import_arena_events,
-    ),
-  )
-}
-
-///|
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-) -> String raise WgslIrPipelineError {
-  roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer(
-    source,
-    generated_import_provenance,
-    [],
-  )
-}
-
-///|
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[WgslIrImportArenaEvent],
-  root_visible_rel_path? : String = "",
-) -> String raise WgslIrPipelineError {
-  emit_compat_writer_wgsl_source_from_ir(
-    lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-      source,
-      generated_import_provenance,
-      import_arena_events,
-      root_visible_rel_path~,
-    ),
-  )
-}
-
-///|
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer_entry_roots(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-) -> String raise WgslIrPipelineError {
-  roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer_entry_roots(
-    source,
-    generated_import_provenance,
-    [],
-  )
-}
-
-///|
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer_entry_roots(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[WgslIrImportArenaEvent],
-) -> String raise WgslIrPipelineError {
-  emit_compat_writer_wgsl_source_from_ir_entry_roots(
     lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
       source, generated_import_provenance, import_arena_events,
     ),

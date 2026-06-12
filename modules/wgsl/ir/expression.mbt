@@ -1,5 +1,5 @@
 ///|
-pub enum Literal {
+pub(all) enum Literal {
   F64(Double)
   F32(Float)
   F32Exact(Float)
@@ -50,7 +50,7 @@ pub(all) struct GlobalVariable {
 } derive(Eq, Debug)
 
 ///|
-pub enum LocalVariableKind {
+pub(all) enum LocalVariableKind {
   Var
   Let
 } derive(Eq, Debug)
@@ -67,14 +67,14 @@ pub(all) struct LocalVariable {
 } derive(Eq, Debug)
 
 ///|
-pub enum UnaryOperator {
+pub(all) enum UnaryOperator {
   Negate
   LogicalNot
   BitwiseNot
 } derive(Eq, Debug)
 
 ///|
-pub enum BinaryOperator {
+pub(all) enum BinaryOperator {
   Add
   Subtract
   Multiply
@@ -96,7 +96,7 @@ pub enum BinaryOperator {
 } derive(Eq, Debug)
 
 ///|
-pub enum AtomicFunction {
+pub(all) enum AtomicFunction {
   Load
   Store
   Add
@@ -111,21 +111,21 @@ pub enum AtomicFunction {
 } derive(Eq, Debug)
 
 ///|
-pub enum DerivativeControl {
+pub(all) enum DerivativeControl {
   Coarse
   Fine
   None
 } derive(Eq, Debug)
 
 ///|
-pub enum DerivativeAxis {
+pub(all) enum DerivativeAxis {
   X
   Y
   Width
 } derive(Eq, Debug)
 
 ///|
-pub enum RelationalFunction {
+pub(all) enum RelationalFunction {
   All
   Any
   IsNan
@@ -133,7 +133,7 @@ pub enum RelationalFunction {
 } derive(Eq, Debug)
 
 ///|
-pub enum MathFunction {
+pub(all) enum MathFunction {
   Abs
   Min
   Max
@@ -216,7 +216,7 @@ pub enum MathFunction {
 } derive(Eq, Debug)
 
 ///|
-fn wgsl_ir_math_primary_result_operand(
+pub fn wgsl_ir_math_primary_result_operand(
   math_function : MathFunction,
   a : Handle,
   b : Handle?,
@@ -242,7 +242,7 @@ fn wgsl_ir_math_primary_result_operand(
 }
 
 ///|
-pub enum SampleLevel {
+pub(all) enum SampleLevel {
   Auto
   Zero
   Exact(Handle)
@@ -251,7 +251,7 @@ pub enum SampleLevel {
 } derive(Eq, Debug)
 
 ///|
-pub enum ImageQuery {
+pub(all) enum ImageQuery {
   Size(Handle?)
   NumLevels
   NumLayers
@@ -259,7 +259,7 @@ pub enum ImageQuery {
 } derive(Eq, Debug)
 
 ///|
-pub enum SwizzleComponent {
+pub(all) enum SwizzleComponent {
   X
   Y
   Z
@@ -267,14 +267,14 @@ pub enum SwizzleComponent {
 } derive(Eq, Debug)
 
 ///|
-pub enum Direction {
+pub(all) enum Direction {
   X
   Y
   Diagonal
 } derive(Eq, Debug)
 
 ///|
-pub enum GatherMode {
+pub(all) enum GatherMode {
   BroadcastFirst
   Broadcast(Handle)
   Shuffle(Handle)
@@ -286,7 +286,7 @@ pub enum GatherMode {
 } derive(Eq, Debug)
 
 ///|
-pub enum SubgroupOperation {
+pub(all) enum SubgroupOperation {
   All
   Any
   Add
@@ -299,7 +299,7 @@ pub enum SubgroupOperation {
 } derive(Eq, Debug)
 
 ///|
-pub enum SubgroupFunction {
+pub(all) enum SubgroupFunction {
   Ballot
   All
   Any
@@ -327,7 +327,7 @@ pub enum SubgroupFunction {
 } derive(Eq, Debug)
 
 ///|
-pub enum CollectiveOperation {
+pub(all) enum CollectiveOperation {
   Reduce
   InclusiveScan
   ExclusiveScan
@@ -341,7 +341,7 @@ pub(all) struct CooperativeData {
 } derive(Eq, Debug)
 
 ///|
-pub enum Expression {
+pub(all) enum Expression {
   Literal(Literal)
   Constant(Handle)
   Override(Handle)

@@ -1,18 +1,18 @@
 ///|
-pub enum ConservativeDepth {
+pub(all) enum ConservativeDepth {
   GreaterEqual
   LessEqual
   Unchanged
 } derive(Eq, Debug)
 
 ///|
-pub enum EarlyDepthTest {
+pub(all) enum EarlyDepthTest {
   Force
   Allow(ConservativeDepth)
 } derive(Eq, Debug)
 
 ///|
-pub enum ShaderStage {
+pub(all) enum ShaderStage {
   Vertex
   Task
   Mesh
@@ -25,7 +25,7 @@ pub enum ShaderStage {
 } derive(Eq, Debug)
 
 ///|
-pub enum AddressSpace {
+pub(all) enum AddressSpace {
   Function
   Private
   WorkGroup
@@ -39,7 +39,7 @@ pub enum AddressSpace {
 } derive(Eq, Debug)
 
 ///|
-pub enum BuiltIn {
+pub(all) enum BuiltIn {
   PrimitiveIndex
   Position(Bool)
   ViewIndex
@@ -92,7 +92,7 @@ pub enum BuiltIn {
 } derive(Eq, Debug)
 
 ///|
-pub enum VectorSize {
+pub(all) enum VectorSize {
   Bi
   Tri
   Quad
@@ -108,13 +108,13 @@ pub fn VectorSize::width(self : VectorSize) -> Int {
 }
 
 ///|
-pub enum CooperativeSize {
+pub(all) enum CooperativeSize {
   Eight
   Sixteen
 } derive(Eq, Debug)
 
 ///|
-pub enum ScalarKind {
+pub(all) enum ScalarKind {
   Sint
   Uint
   Float
@@ -124,7 +124,7 @@ pub enum ScalarKind {
 } derive(Eq, Debug)
 
 ///|
-pub enum CooperativeRole {
+pub(all) enum CooperativeRole {
   A
   B
   C
@@ -142,14 +142,14 @@ pub fn Scalar::Scalar(kind : ScalarKind, width : Int) -> Scalar {
 }
 
 ///|
-pub enum ArraySize {
+pub(all) enum ArraySize {
   Constant(Int)
   Pending(Handle)
   Dynamic
 } derive(Eq, Debug)
 
 ///|
-pub enum Interpolation {
+pub(all) enum Interpolation {
   Perspective
   Linear
   Flat
@@ -157,7 +157,7 @@ pub enum Interpolation {
 } derive(Eq, Debug)
 
 ///|
-pub enum Sampling {
+pub(all) enum Sampling {
   Center
   Centroid
   Sample
@@ -166,7 +166,7 @@ pub enum Sampling {
 } derive(Eq, Debug)
 
 ///|
-pub enum ImageDimension {
+pub(all) enum ImageDimension {
   D1
   D2
   D3
@@ -174,7 +174,7 @@ pub enum ImageDimension {
 } derive(Eq, Debug)
 
 ///|
-pub enum StorageFormat {
+pub(all) enum StorageFormat {
   R8Unorm
   R8Snorm
   R8Uint
@@ -219,7 +219,7 @@ pub enum StorageFormat {
 } derive(Eq, Debug)
 
 ///|
-pub enum ImageClass {
+pub(all) enum ImageClass {
   Sampled(ScalarKind, Bool)
   Depth(Bool)
   External
@@ -227,7 +227,7 @@ pub enum ImageClass {
 } derive(Eq, Debug)
 
 ///|
-pub enum Binding {
+pub(all) enum Binding {
   BuiltIn(BuiltIn)
   Location(Int, Interpolation?, Sampling?, Int?, Bool)
 } derive(Eq, Debug)
@@ -249,7 +249,7 @@ pub(all) struct Type {
 } derive(Eq, Debug)
 
 ///|
-pub enum TypeInner {
+pub(all) enum TypeInner {
   Scalar(Scalar)
   Vector(VectorSize, Scalar)
   Matrix(VectorSize, VectorSize, Scalar)
@@ -268,7 +268,7 @@ pub enum TypeInner {
 } derive(Eq, Debug)
 
 ///|
-pub enum PredeclaredType {
+pub(all) enum PredeclaredType {
   AtomicCompareExchangeWeakResult(Scalar)
   ModfResult(VectorSize?, Scalar)
   FrexpResult(VectorSize?, Scalar)

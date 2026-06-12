@@ -1,5 +1,5 @@
 ///|
-fn wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
+pub fn wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
   function : Function,
   handle : Handle,
 ) -> Bool {
@@ -72,7 +72,7 @@ fn wgsl_ir_function_expression_is_atomic_compare_exchange_result_ref(
 }
 
 ///|
-fn wgsl_ir_function_expression_is_synthetic_local_reference(
+pub fn wgsl_ir_function_expression_is_synthetic_local_reference(
   function : Function,
   handle : Handle,
 ) -> Bool {

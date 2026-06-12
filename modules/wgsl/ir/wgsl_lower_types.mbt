@@ -297,7 +297,7 @@ fn wgsl_ir_cooperative_role_from_name(
 }
 
 ///|
-fn wgsl_ir_cooperative_role_name(role : CooperativeRole) -> String {
+pub fn wgsl_ir_cooperative_role_name(role : CooperativeRole) -> String {
   match role {
     A => "A"
     B => "B"
@@ -306,7 +306,7 @@ fn wgsl_ir_cooperative_role_name(role : CooperativeRole) -> String {
 }
 
 ///|
-fn wgsl_ir_cooperative_size_name(size : CooperativeSize) -> String {
+pub fn wgsl_ir_cooperative_size_name(size : CooperativeSize) -> String {
   match size {
     Eight => "8"
     Sixteen => "16"

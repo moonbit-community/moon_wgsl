@@ -1,5 +1,5 @@
 ///|
-priv suberror WgslIrValidationError {
+pub suberror WgslIrValidationError {
   InvalidTypeHandle(Int)
   InvalidConstantHandle(Int)
   InvalidOverrideHandle(Int)
@@ -24,7 +24,7 @@ priv suberror WgslIrValidationError {
 }
 
 ///|
-fn WgslIrValidationError::message(self : WgslIrValidationError) -> String {
+pub fn WgslIrValidationError::message(self : WgslIrValidationError) -> String {
   match self {
     InvalidTypeHandle(index) => "invalid IR type handle: \{index}"
     InvalidConstantHandle(index) => "invalid IR constant handle: \{index}"
@@ -62,7 +62,7 @@ fn WgslIrValidationError::message(self : WgslIrValidationError) -> String {
 }
 
 ///|
-fn validate_wgsl_ir_module(
+pub fn validate_wgsl_ir_module(
   shader_module : Module,
 ) -> Unit raise WgslIrValidationError {
   let validator = WgslIrValidator::{ shader_module, filter: None }

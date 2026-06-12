@@ -1,5 +1,5 @@
 ///|
-pub enum Severity {
+pub(all) enum Severity {
   Off
   Info
   Warning
@@ -7,12 +7,12 @@ pub enum Severity {
 } derive(Eq, Debug)
 
 ///|
-pub enum StandardFilterableTriggeringRule {
+pub(all) enum StandardFilterableTriggeringRule {
   DerivativeUniformity
 } derive(Eq, Debug)
 
 ///|
-pub enum FilterableTriggeringRule {
+pub(all) enum FilterableTriggeringRule {
   Standard(StandardFilterableTriggeringRule)
   Unknown(String)
   User(String, String)
@@ -31,7 +31,7 @@ pub(all) struct DiagnosticFilterNode {
 } derive(Eq, Debug)
 
 ///|
-pub enum RayQueryIntersection {
+pub(all) enum RayQueryIntersection {
   None
   Triangle
   Generated

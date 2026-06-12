@@ -82,32 +82,6 @@ priv struct WgslIrWriterDeclarationSlot {
 }
 
 ///|
-fn WgslIrWriterPlanner::writer_arena(
-  self : WgslIrWriterPlanner,
-) -> WgslIrWriterArena {
-  let declarations = self.declaration_arena()
-  let types = self.type_slots(declarations.types)
-  let constants = self.constant_slots(declarations.constants)
-  let overrides = self.override_slots(declarations.overrides)
-  let global_variables = self.global_variable_slots(
-    declarations.global_variables,
-  )
-  let functions = self.function_slots(declarations.functions, true)
-  let entry_points = self.entry_point_slots(true)
-  let const_asserts = self.const_assert_slots()
-  {
-    directives: self.shader_module.directives,
-    types,
-    constants,
-    overrides,
-    global_variables,
-    functions,
-    entry_points,
-    const_asserts,
-  }
-}
-
-///|
 fn WgslIrWriterPlanner::runtime_writer_arena(
   self : WgslIrWriterPlanner,
 ) -> WgslIrWriterArena {
@@ -248,36 +222,16 @@ fn WgslIrWriterPlanner::const_assert_slots(
 }
 
 ///|
-fn WgslIrWriterPlanner::declaration_arena(
-  self : WgslIrWriterPlanner,
-) -> WgslIrWriterDeclarationArena {
-  let derived = self.derived_module_view()
-  {
-    types: wgsl_ir_writer_compat_declaration_slots(self.type_order()),
-    constants: wgsl_ir_writer_compat_declaration_slots(derived.constants),
-    overrides: wgsl_ir_writer_compat_declaration_slots(self.override_order()),
-    global_variables: wgsl_ir_writer_compat_declaration_slots(
-      derived.global_variables,
-    ),
-    functions: wgsl_ir_writer_compat_declaration_slots(derived.functions),
-  }
-}
-
-///|
 fn WgslIrWriterPlanner::runtime_declaration_arena(
   self : WgslIrWriterPlanner,
 ) -> WgslIrWriterDeclarationArena {
   let derived = self.derived_module_view()
   {
-    types: wgsl_ir_writer_compat_declaration_slots(self.type_order()),
-    constants: wgsl_ir_writer_compat_declaration_slots(derived.constants),
-    overrides: wgsl_ir_writer_compat_declaration_slots(self.override_order()),
-    global_variables: wgsl_ir_writer_compat_declaration_slots(
-      derived.global_variables,
-    ),
-    functions: wgsl_ir_writer_compat_declaration_slots(
-      self.runtime_function_order(),
-    ),
+    types: wgsl_ir_writer_declaration_slots(self.type_order()),
+    constants: wgsl_ir_writer_declaration_slots(derived.constants),
+    overrides: wgsl_ir_writer_declaration_slots(self.override_order()),
+    global_variables: wgsl_ir_writer_declaration_slots(derived.global_variables),
+    functions: wgsl_ir_writer_declaration_slots(self.runtime_function_order()),
   }
 }
 
@@ -350,7 +304,7 @@ fn WgslIrWriterPlanner::runtime_function_order_should_include(
 }
 
 ///|
-fn wgsl_ir_writer_compat_declaration_slots(
+fn wgsl_ir_writer_declaration_slots(
   source_order : Array[Int],
 ) -> Array[WgslIrWriterDeclarationSlot] {
   let slots : Array[WgslIrWriterDeclarationSlot] = []

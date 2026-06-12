@@ -120,7 +120,7 @@ fn wgsl_ir_emit_unsigned_literal(
   policy : WgslIrNumericLiteralBytePolicy,
 ) -> String {
   match policy {
-    CompatNumericLiteralSpelling | RuntimeNumericLiteralSpelling => "\{value}u"
+    RuntimeNumericLiteralSpelling => "\{value}u"
   }
 }
 
@@ -130,7 +130,7 @@ fn wgsl_ir_emit_signed_literal(
   policy : WgslIrNumericLiteralBytePolicy,
 ) -> String {
   match policy {
-    CompatNumericLiteralSpelling | RuntimeNumericLiteralSpelling => "\{value}i"
+    RuntimeNumericLiteralSpelling => "\{value}i"
   }
 }
 

@@ -212,7 +212,6 @@ fn WgslIrEmitter::with_function_origin(
     writer_module: self.writer_module,
     names: self.names,
     current_function_origin: Some(origin),
-    compat_negative_zero_seen: self.compat_negative_zero_seen,
     emitted_function_named_expressions: Set([]),
     emitted_function_materialized_expressions: Set([]),
   }

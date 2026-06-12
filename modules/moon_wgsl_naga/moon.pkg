@@ -1,3 +1,12 @@
 import {
   "Milky2018/wgsl/ir",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/set",
+  "moonbitlang/core/strconv",
 }
+
+import {
+  "Milky2018/wgsl/parser",
+} for "wbtest"
+
+warnings = "-unused_type_declaration-unused_value-unresolved_type_variable"

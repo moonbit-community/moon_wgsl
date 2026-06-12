@@ -64,14 +64,6 @@ priv struct WgslIrFunctionBodyWriterPlan {
 
 ///|
 priv struct WgslIrTemporaryIndexTrace {
-  skipped : Int
-  base_index : Int
-  adjusted_base_index : Int
-  implicit_expression_slots_before : Int
-  prior_call_projection_argument_slots : Int
-  implicit_load_slots : Int
-  reused_resource_operand_slots : Int
-  projected_temporary_slots : Int
   final_index : Int
 }
 
@@ -948,17 +940,7 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
     implicit_load_slots +
     reused_resource_operand_slots +
     projected_temporary_slots
-  {
-    skipped,
-    base_index,
-    adjusted_base_index,
-    implicit_expression_slots_before,
-    prior_call_projection_argument_slots,
-    implicit_load_slots,
-    reused_resource_operand_slots,
-    projected_temporary_slots,
-    final_index,
-  }
+  { final_index, }
 }
 
 ///|

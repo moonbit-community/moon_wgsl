@@ -230,7 +230,7 @@ fn WgslIrLowerer::negated_literal_from_token_with_expected(
 }
 
 ///|
-fn wgsl_ir_negate_literal(literal : Literal) -> Literal? {
+pub fn wgsl_ir_negate_literal(literal : Literal) -> Literal? {
   match literal {
     F64(value) => Some(F64(-value))
     F32(value) => Some(F32(Float::from_double(-value.to_double())))
@@ -451,7 +451,7 @@ fn wgsl_ir_float_literal_text(text : String) -> String {
 }
 
 ///|
-fn wgsl_ir_uint_literal_to_small_int(value : UInt) -> Int? {
+pub fn wgsl_ir_uint_literal_to_small_int(value : UInt) -> Int? {
   if value <= (2147483647 : Int).reinterpret_as_uint() {
     Some(value.reinterpret_as_int())
   } else {

@@ -136,7 +136,7 @@ fn LocalVariableArena::set(
 }
 
 ///|
-pub enum ExpressionOrigin {
+pub(all) enum ExpressionOrigin {
   SourceExpression
   FoldedLocalConstant
   RetainedSourceLetExpression
@@ -193,7 +193,7 @@ fn ExpressionArena::set_origin(
 }
 
 ///|
-fn ExpressionArena::origin(
+pub fn ExpressionArena::origin(
   self : ExpressionArena,
   handle : Handle,
 ) -> ExpressionOrigin? {

@@ -908,7 +908,7 @@ fn WgslIrLowerer::vector_size_from_type(
 }
 
 ///|
-fn wgsl_ir_binary_operator_is_comparison(op : BinaryOperator) -> Bool {
+pub fn wgsl_ir_binary_operator_is_comparison(op : BinaryOperator) -> Bool {
   match op {
     Equal | NotEqual | Less | LessEqual | Greater | GreaterEqual => true
     _ => false

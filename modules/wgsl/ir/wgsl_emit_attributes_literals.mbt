@@ -171,8 +171,6 @@ fn wgsl_ir_emit_exact_f32_literal(
     return "-0f"
   }
   match policy {
-    CompatNumericLiteralSpelling =>
-      wgsl_ir_emit_concrete_float_literal_text("\{value}")
     RuntimeNumericLiteralSpelling =>
       wgsl_ir_emit_concrete_float_literal_text(
         wgsl_ir_shortest_f32_literal_text(value),
@@ -189,7 +187,7 @@ fn wgsl_ir_emit_f32_literal(
     return "-0f"
   }
   match policy {
-    CompatNumericLiteralSpelling | RuntimeNumericLiteralSpelling =>
+    RuntimeNumericLiteralSpelling =>
       wgsl_ir_emit_concrete_float_literal_text(
         wgsl_ir_shortest_f32_literal_text(value),
       )
@@ -202,17 +200,8 @@ fn WgslIrEmitter::f32_literal(
   value : Float,
   policy : WgslIrNumericLiteralBytePolicy,
 ) -> String {
+  ignore(self)
   match policy {
-    CompatNumericLiteralSpelling =>
-      if value == Float::from_int(0) {
-        if wgsl_ir_f32_is_negative_zero(value) {
-          self.compat_negative_zero_seen = true
-          return "-0f"
-        }
-        if self.compat_negative_zero_seen {
-          return "-0f"
-        }
-      }
     RuntimeNumericLiteralSpelling => ()
   }
   wgsl_ir_emit_f32_literal(value, policy)

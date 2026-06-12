@@ -6,31 +6,67 @@ import {
 }
 
 // Values
+pub fn parse_wgsl_module_to_ir(String) -> Module raise WgslIrLowerError
+
+pub fn parse_wgsl_module_to_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> Module raise WgslIrLowerError
+
+pub fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> Module raise WgslIrLowerError
+
 pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslIrPipelineError
 
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
 
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslIrPipelineError
-
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer_entry_roots(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
-
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
-
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
-
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
 
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
 
-pub fn trace_compat_writer_function_plan_for_source(String, String) -> String raise WgslIrPipelineError
-
-pub fn trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], String, root_visible_rel_path? : String) -> String raise WgslIrPipelineError
-
-pub fn trace_compat_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslIrPipelineError
+pub fn sanitize_wgsl_ir_identifier(String) -> String
 
 pub fn tree_shake_wgsl_source_via_ir(String, Array[String]) -> String raise WgslIrPipelineError
 
+pub fn validate_wgsl_ir_module(Module) -> Unit raise WgslIrValidationError
+
+pub fn wgsl_ir_binary_operator_is_comparison(BinaryOperator) -> Bool
+
+pub fn wgsl_ir_block_ends_with_return(Block) -> Bool
+
+pub fn wgsl_ir_cooperative_role_name(CooperativeRole) -> String
+
+pub fn wgsl_ir_cooperative_size_name(CooperativeSize) -> String
+
+pub fn wgsl_ir_expression_origin_retains_generated_import_denominator(ExpressionOrigin?) -> Bool
+
+pub fn wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(Function, Handle) -> Bool
+
+pub fn wgsl_ir_function_expression_is_synthetic_local_reference(Function, Handle) -> Bool
+
+pub fn wgsl_ir_function_named_expression_name(Function, Handle) -> String?
+
+pub fn wgsl_ir_function_named_expression_type(Function, Handle) -> Handle?
+
+pub fn wgsl_ir_identifier_ends_with_digit(String) -> Bool
+
+pub fn wgsl_ir_identifier_is_builtin_function(String) -> Bool
+
+pub fn wgsl_ir_identifier_is_reserved(String) -> Bool
+
+pub fn wgsl_ir_math_primary_result_operand(MathFunction, Handle, Handle?, Handle?, Handle?) -> Handle?
+
+pub fn wgsl_ir_negate_literal(Literal) -> Literal?
+
+pub fn wgsl_ir_uint_literal_to_small_int(UInt) -> Int?
+
 // Errors
+pub suberror WgslIrLowerError {
+  Parse(String)
+  MissingType(String)
+  UnsupportedType(String)
+  UnsupportedExpression(String)
+  UnsupportedStatement(String)
+  UnknownIdentifier(String)
+}
+pub fn WgslIrLowerError::message(Self) -> String
+
 pub suberror WgslIrPipelineError {
   Lower(String)
   UnknownIdentifier(String)
@@ -40,8 +76,33 @@ pub suberror WgslIrPipelineError {
 }
 pub fn WgslIrPipelineError::message(Self) -> String
 
+pub suberror WgslIrValidationError {
+  InvalidTypeHandle(Int)
+  InvalidConstantHandle(Int)
+  InvalidOverrideHandle(Int)
+  InvalidGlobalVariableHandle(Int)
+  InvalidGlobalExpressionHandle(Int)
+  InvalidFunctionHandle(Int)
+  InvalidLocalVariableHandle(Int)
+  InvalidFunctionExpressionHandle(Int)
+  InvalidHandleRange(Int, Int)
+  InvalidEntryPoint(String)
+  MissingExpressionType(Int, String)
+  InvalidConditionType(String, Int, String, String)
+  InvalidStoreTarget(Int)
+  InvalidReturnValue(String)
+  InvalidFunctionArgumentCount(String, Int, Int)
+  InvalidFunctionArgumentType(String, Int)
+  InvalidFunctionResult(String)
+  InvalidType(String)
+  InvalidGlobalVariable(String)
+  InvalidExpression(String, Int)
+  InvalidStatement(String)
+}
+pub fn WgslIrValidationError::message(Self) -> String
+
 // Types and methods
-pub enum AddressSpace {
+pub(all) enum AddressSpace {
   Function
   Private
   WorkGroup
@@ -54,13 +115,13 @@ pub enum AddressSpace {
   IncomingRayPayload
 } derive(Eq, @debug.Debug)
 
-pub enum ArraySize {
+pub(all) enum ArraySize {
   Constant(Int)
   Pending(Handle)
   Dynamic
 } derive(Eq, @debug.Debug)
 
-pub enum AtomicFunction {
+pub(all) enum AtomicFunction {
   Load
   Store
   Add
@@ -84,7 +145,7 @@ pub fn Barrier::texture() -> Self
 pub fn Barrier::union(Self, Self) -> Self
 pub fn Barrier::work_group() -> Self
 
-pub enum BinaryOperator {
+pub(all) enum BinaryOperator {
   Add
   Subtract
   Multiply
@@ -105,7 +166,7 @@ pub enum BinaryOperator {
   ShiftRight
 } derive(Eq, @debug.Debug)
 
-pub enum Binding {
+pub(all) enum Binding {
   BuiltIn(BuiltIn)
   Location(Int, Interpolation?, Sampling?, Int?, Bool)
 } derive(Eq, @debug.Debug)
@@ -116,7 +177,7 @@ pub(all) struct Block {
 pub fn Block::Block() -> Self
 pub fn Block::push(Self, Statement) -> Unit
 
-pub enum BuiltIn {
+pub(all) enum BuiltIn {
   PrimitiveIndex
   Position(Bool)
   ViewIndex
@@ -168,13 +229,13 @@ pub enum BuiltIn {
   HitKind
 } derive(Eq, @debug.Debug)
 
-pub enum CollectiveOperation {
+pub(all) enum CollectiveOperation {
   Reduce
   InclusiveScan
   ExclusiveScan
 } derive(Eq, @debug.Debug)
 
-pub enum ConservativeDepth {
+pub(all) enum ConservativeDepth {
   GreaterEqual
   LessEqual
   Unchanged
@@ -201,24 +262,24 @@ pub(all) struct CooperativeData {
   row_major : Bool
 } derive(Eq, @debug.Debug)
 
-pub enum CooperativeRole {
+pub(all) enum CooperativeRole {
   A
   B
   C
 } derive(Eq, @debug.Debug)
 
-pub enum CooperativeSize {
+pub(all) enum CooperativeSize {
   Eight
   Sixteen
 } derive(Eq, @debug.Debug)
 
-pub enum DerivativeAxis {
+pub(all) enum DerivativeAxis {
   X
   Y
   Width
 } derive(Eq, @debug.Debug)
 
-pub enum DerivativeControl {
+pub(all) enum DerivativeControl {
   Coarse
   Fine
   None
@@ -240,7 +301,7 @@ pub(all) struct DiagnosticFilterNode {
   parent : Handle?
 } derive(Eq, @debug.Debug)
 
-pub enum Direction {
+pub(all) enum Direction {
   X
   Y
   Diagonal
@@ -257,7 +318,7 @@ pub(all) struct DocComments {
 } derive(Eq, @debug.Debug)
 pub fn DocComments::DocComments() -> Self
 
-pub enum EarlyDepthTest {
+pub(all) enum EarlyDepthTest {
   Force
   Allow(ConservativeDepth)
 } derive(Eq, @debug.Debug)
@@ -275,7 +336,7 @@ pub(all) struct EntryPoint {
   incoming_ray_payload : Handle?
 } derive(Eq, @debug.Debug)
 
-pub enum Expression {
+pub(all) enum Expression {
   Literal(Literal)
   Constant(Handle)
   Override(Handle)
@@ -330,15 +391,16 @@ pub(all) struct ExpressionArena {
 } derive(Eq, @debug.Debug)
 pub fn ExpressionArena::ExpressionArena() -> Self
 pub fn ExpressionArena::append(Self, Expression) -> Handle
+pub fn ExpressionArena::origin(Self, Handle) -> ExpressionOrigin?
 
-pub enum ExpressionOrigin {
+pub(all) enum ExpressionOrigin {
   SourceExpression
   FoldedLocalConstant
   RetainedSourceLetExpression
   SourceLocalConstInitializer
 } derive(Eq, @debug.Debug)
 
-pub enum FilterableTriggeringRule {
+pub(all) enum FilterableTriggeringRule {
   Standard(StandardFilterableTriggeringRule)
   Unknown(String)
   User(String, String)
@@ -376,7 +438,7 @@ pub(all) struct FunctionResult {
   binding : Binding?
 } derive(Eq, @debug.Debug)
 
-pub enum GatherMode {
+pub(all) enum GatherMode {
   BroadcastFirst
   Broadcast(Handle)
   Shuffle(Handle)
@@ -415,35 +477,35 @@ pub(all) struct HandleRange {
 } derive(Eq, @debug.Debug)
 pub fn HandleRange::HandleRange(Handle, Handle) -> Self
 
-pub enum ImageClass {
+pub(all) enum ImageClass {
   Sampled(ScalarKind, Bool)
   Depth(Bool)
   External
   Storage(StorageFormat, StorageAccess)
 } derive(Eq, @debug.Debug)
 
-pub enum ImageDimension {
+pub(all) enum ImageDimension {
   D1
   D2
   D3
   Cube
 } derive(Eq, @debug.Debug)
 
-pub enum ImageQuery {
+pub(all) enum ImageQuery {
   Size(Handle?)
   NumLevels
   NumLayers
   NumSamples
 } derive(Eq, @debug.Debug)
 
-pub enum Interpolation {
+pub(all) enum Interpolation {
   Perspective
   Linear
   Flat
   PerVertex
 } derive(Eq, @debug.Debug)
 
-pub enum Literal {
+pub(all) enum Literal {
   F64(Double)
   F32(Float)
   F32Exact(Float)
@@ -475,12 +537,12 @@ pub(all) struct LocalVariableArena {
 pub fn LocalVariableArena::LocalVariableArena() -> Self
 pub fn LocalVariableArena::append(Self, LocalVariable) -> Handle
 
-pub enum LocalVariableKind {
+pub(all) enum LocalVariableKind {
   Var
   Let
 } derive(Eq, @debug.Debug)
 
-pub enum MathFunction {
+pub(all) enum MathFunction {
   Abs
   Min
   Max
@@ -570,7 +632,7 @@ pub fn MemoryDecorations::empty() -> Self
 pub fn MemoryDecorations::union(Self, Self) -> Self
 pub fn MemoryDecorations::volatile_decoration() -> Self
 
-pub enum MeshOutputTopology {
+pub(all) enum MeshOutputTopology {
   Points
   Lines
   Triangles
@@ -637,7 +699,7 @@ pub fn OverrideArena::OverrideArena() -> Self
 pub fn OverrideArena::append(Self, Override) -> Handle
 pub fn OverrideArena::set(Self, Handle, Override) -> Unit
 
-pub enum PredeclaredType {
+pub(all) enum PredeclaredType {
   AtomicCompareExchangeWeakResult(Scalar)
   ModfResult(VectorSize?, Scalar)
   FrexpResult(VectorSize?, Scalar)
@@ -659,11 +721,11 @@ pub fn RayFlag::skip_triangles() -> Self
 pub fn RayFlag::terminate_on_first_hit() -> Self
 pub fn RayFlag::union(Self, Self) -> Self
 
-pub enum RayPipelineFunction {
+pub(all) enum RayPipelineFunction {
   TraceRay(Handle, Handle, Handle)
 } derive(Eq, @debug.Debug)
 
-pub enum RayQueryFunction {
+pub(all) enum RayQueryFunction {
   Initialize(Handle, Handle)
   Proceed(Handle)
   GenerateIntersection(Handle)
@@ -671,14 +733,14 @@ pub enum RayQueryFunction {
   Terminate
 } derive(Eq, @debug.Debug)
 
-pub enum RayQueryIntersection {
+pub(all) enum RayQueryIntersection {
   None
   Triangle
   Generated
   Aabb
 } derive(Eq, @debug.Debug)
 
-pub enum RelationalFunction {
+pub(all) enum RelationalFunction {
   All
   Any
   IsNan
@@ -690,7 +752,7 @@ pub(all) struct ResourceBinding {
   binding : Int
 } derive(Eq, @debug.Debug)
 
-pub enum SampleLevel {
+pub(all) enum SampleLevel {
   Auto
   Zero
   Exact(Handle)
@@ -698,7 +760,7 @@ pub enum SampleLevel {
   Gradient(Handle, Handle)
 } derive(Eq, @debug.Debug)
 
-pub enum Sampling {
+pub(all) enum Sampling {
   Center
   Centroid
   Sample
@@ -712,7 +774,7 @@ pub(all) struct Scalar {
 } derive(Eq, @debug.Debug)
 pub fn Scalar::Scalar(ScalarKind, Int) -> Self
 
-pub enum ScalarKind {
+pub(all) enum ScalarKind {
   Sint
   Uint
   Float
@@ -721,14 +783,14 @@ pub enum ScalarKind {
   AbstractFloat
 } derive(Eq, @debug.Debug)
 
-pub enum Severity {
+pub(all) enum Severity {
   Off
   Info
   Warning
   Error
 } derive(Eq, @debug.Debug)
 
-pub enum ShaderStage {
+pub(all) enum ShaderStage {
   Vertex
   Task
   Mesh
@@ -750,11 +812,11 @@ pub(all) struct SpecialTypes {
 } derive(Eq, @debug.Debug)
 pub fn SpecialTypes::SpecialTypes() -> Self
 
-pub enum StandardFilterableTriggeringRule {
+pub(all) enum StandardFilterableTriggeringRule {
   DerivativeUniformity
 } derive(Eq, @debug.Debug)
 
-pub enum Statement {
+pub(all) enum Statement {
   Declare(Handle)
   Emit(HandleRange)
   Phony(Handle)
@@ -794,7 +856,7 @@ pub fn StorageAccess::load() -> Self
 pub fn StorageAccess::store() -> Self
 pub fn StorageAccess::union(Self, Self) -> Self
 
-pub enum StorageFormat {
+pub(all) enum StorageFormat {
   R8Unorm
   R8Snorm
   R8Uint
@@ -847,7 +909,7 @@ pub(all) struct StructMember {
   align : Int?
 } derive(Eq, @debug.Debug)
 
-pub enum SubgroupFunction {
+pub(all) enum SubgroupFunction {
   Ballot
   All
   Any
@@ -874,7 +936,7 @@ pub enum SubgroupFunction {
   QuadSwapDiagonal
 } derive(Eq, @debug.Debug)
 
-pub enum SubgroupOperation {
+pub(all) enum SubgroupOperation {
   All
   Any
   Add
@@ -893,18 +955,18 @@ pub(all) struct SwitchCase {
   constant_dependencies : Array[Handle]
 } derive(Eq, @debug.Debug)
 
-pub enum SwitchCaseLabelStyle {
+pub(all) enum SwitchCaseLabelStyle {
   Typed
   SourceAbstractInt
 } derive(Eq, @debug.Debug)
 
-pub enum SwitchValue {
+pub(all) enum SwitchValue {
   I32(Int, SwitchCaseLabelStyle)
   U32(UInt, SwitchCaseLabelStyle)
   Default
 } derive(Eq, @debug.Debug)
 
-pub enum SwizzleComponent {
+pub(all) enum SwizzleComponent {
   X
   Y
   Z
@@ -924,7 +986,7 @@ pub fn TypeArena::append(Self, Type) -> Handle
 pub fn TypeArena::get(Self, Handle) -> Type?
 pub fn TypeArena::set(Self, Handle, Type) -> Unit
 
-pub enum TypeInner {
+pub(all) enum TypeInner {
   Scalar(Scalar)
   Vector(VectorSize, Scalar)
   Matrix(VectorSize, VectorSize, Scalar)
@@ -942,13 +1004,13 @@ pub enum TypeInner {
   BindingArray(Handle, ArraySize)
 } derive(Eq, @debug.Debug)
 
-pub enum UnaryOperator {
+pub(all) enum UnaryOperator {
   Negate
   LogicalNot
   BitwiseNot
 } derive(Eq, @debug.Debug)
 
-pub enum VectorSize {
+pub(all) enum VectorSize {
   Bi
   Tri
   Quad

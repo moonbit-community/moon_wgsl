@@ -28,15 +28,9 @@ fn WgslIrCompatWriterBackend::emit(
 fn WgslIrCompatWriterBackend::validate(
   self : WgslIrCompatWriterBackend,
 ) -> Unit raise WgslIrEmitError {
-  match self.view.filter {
-    Some(filter) =>
-      validate_wgsl_ir_module_with_filter(self.shader_module, filter) catch {
-        error => raise Unsupported(error.message())
-      }
-    None =>
-      validate_wgsl_ir_module(self.shader_module) catch {
-        error => raise Unsupported(error.message())
-      }
+  ignore(self.view.filter)
+  validate_wgsl_ir_module(self.shader_module) catch {
+    error => raise Unsupported(error.message())
   }
 }
 

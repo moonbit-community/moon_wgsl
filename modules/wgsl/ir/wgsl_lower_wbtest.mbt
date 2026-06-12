@@ -2063,7 +2063,7 @@ test "WGSL AST lowerer binds load let initializers as named expressions" {
     }
     _ => abort("expected dot to reuse named load")
   }
-  let emitted = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(
@@ -2135,7 +2135,7 @@ test "WGSL AST lowerer lets named expressions shadow global addressable names" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  let emitted = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(
@@ -3433,7 +3433,7 @@ test "WGSL AST lowerer emits compound field target load before store" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  let emitted = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   let load_index = emitted.find(": vec4<f32> = material.color;")
@@ -3469,7 +3469,7 @@ test "WGSL AST lowerer keeps compound field target load before RHS member roots"
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  let emitted = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   let target_load = emitted.find(": vec4<f32> = material.color;")
@@ -3834,7 +3834,7 @@ test "WGSL AST lowerer materializes compound assignment storage RHS reads" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  let emitted = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(
@@ -3955,10 +3955,7 @@ test "WGSL IR lowerer materializes function calls before assignment stores" {
     #|  item = make_item();
     #|  return item;
     #|}
-  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
-    source,
-    [],
-  ) catch {
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports(source, []) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("let _e"), content="true")
@@ -4016,10 +4013,7 @@ test "WGSL IR lowerer materializes user function call let values" {
     #|  let nested = select(0f, 1f, value(b) > direct);
     #|  return direct + nested;
     #|}
-  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
-    source,
-    [],
-  ) catch {
+  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports(source, []) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("let direct"), content="false")
@@ -5551,7 +5545,7 @@ test "WGSL AST lowerer delays literal let constants used by assignment RHS" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  let emitted = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("let _e4: f32 = uv.y;"), content="true")

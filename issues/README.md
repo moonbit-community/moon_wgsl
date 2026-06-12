@@ -8,10 +8,7 @@ No ready issues.
 
 ## Unresolved Issues
 
-| ID | Status | Priority | Type | Assignee | Blocked by | Blocks | Title |
-| --- | --- | ---: | --- | --- | --- | --- | --- |
-| [ISS-021](ISS-021.md) | in_progress | 0 | task | unassigned | none | ISS-022, ISS-023 | Split semantic IR from Naga compatibility view |
-| [ISS-022](ISS-022.md) | open | 0 | task | unassigned | ISS-021 | ISS-023, ISS-027 | Move Naga compatibility into modules/moon_wgsl_naga |
+No unresolved issues.
 
 ## Dependency Graph
 

@@ -1,5 +1,5 @@
 ///|
-priv suberror WgslIrLowerError {
+pub suberror WgslIrLowerError {
   Parse(String)
   MissingType(String)
   UnsupportedType(String)
@@ -9,7 +9,7 @@ priv suberror WgslIrLowerError {
 }
 
 ///|
-fn WgslIrLowerError::message(self : WgslIrLowerError) -> String {
+pub fn WgslIrLowerError::message(self : WgslIrLowerError) -> String {
   match self {
     Parse(message) => message
     MissingType(name) => "missing WGSL type for \{name}"
@@ -127,12 +127,14 @@ fn wgsl_ir_parse_error_message(error : @parser.WgslParseError) -> String {
 }
 
 ///|
-fn parse_wgsl_module_to_ir(source : String) -> Module raise WgslIrLowerError {
+pub fn parse_wgsl_module_to_ir(
+  source : String,
+) -> Module raise WgslIrLowerError {
   parse_wgsl_module_to_ir_with_generated_imports(source, [])
 }
 
 ///|
-fn parse_wgsl_module_to_ir_with_generated_imports(
+pub fn parse_wgsl_module_to_ir_with_generated_imports(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
 ) -> Module raise WgslIrLowerError {
@@ -144,7 +146,7 @@ fn parse_wgsl_module_to_ir_with_generated_imports(
 }
 
 ///|
-fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+pub fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
   source : String,
   generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
   import_arena_events : Array[WgslIrImportArenaEvent],
