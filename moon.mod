@@ -1,6 +1,6 @@
 name = "Milky2018/moon_wgsl"
 
-version = "0.12.3"
+version = "0.14.0"
 
 import {
   "moonbitlang/x@0.4.43",
