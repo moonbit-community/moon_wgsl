@@ -888,11 +888,26 @@ fn compose_case_translate_glsl_module_source(source : String) -> String {
   compose_case_glsl_emit_directives(out, source)
   if source.contains("uniform CustomMaterial") {
     out.write_string("\n")
-    out.write_string("struct CustomMaterial {\n")
+    out.write_string(
+      (
+        #|struct CustomMaterial {
+        #|
+      ),
+    )
     out.write_string("    Color: vec4<f32>,\n")
     out.write_string("}\n\n")
-    out.write_string("@group(1) @binding(0)\n")
-    out.write_string("var<uniform> global: CustomMaterial;\n")
+    out.write_string(
+      (
+        #|@group(1) @binding(0)
+        #|
+      ),
+    )
+    out.write_string(
+      (
+        #|var<uniform> global: CustomMaterial;
+        #|
+      ),
+    )
   }
   match compose_case_glsl_extract_const_float(source) {
     Some((name, value)) => {
@@ -923,11 +938,27 @@ fn compose_case_translate_glsl_vertex_source(source : String) -> String {
     None => "vec4<f32>(0.0)"
   }
   out.write_string("\n")
-  out.write_string("struct VertexOutput {\n")
+  out.write_string(
+    (
+      #|struct VertexOutput {
+      #|
+    ),
+  )
   out.write_string("    @builtin(position) gl_Position: vec4<f32>,\n")
   out.write_string("}\n\n")
-  out.write_string("var<private> gl_Position: vec4<f32>;\n\n")
-  out.write_string("fn main_1() {\n")
+  out.write_string(
+    (
+      #|var<private> gl_Position: vec4<f32>;
+      #|
+      #|
+    ),
+  )
+  out.write_string(
+    (
+      #|fn main_1() {
+      #|
+    ),
+  )
   if compose_case_glsl_vec4_single_argument(expr) is Some(inner) &&
     inner.contains("::") {
     out.write_string("    let _e0: f32 = ")
@@ -939,8 +970,18 @@ fn compose_case_translate_glsl_vertex_source(source : String) -> String {
   }
   out.write_string("    return;\n")
   out.write_string("}\n\n")
-  out.write_string("@vertex\n")
-  out.write_string("fn main() -> VertexOutput {\n")
+  out.write_string(
+    (
+      #|@vertex
+      #|
+    ),
+  )
+  out.write_string(
+    (
+      #|fn main() -> VertexOutput {
+      #|
+    ),
+  )
   out.write_string("    main_1();\n")
   out.write_string("    return VertexOutput(gl_Position);\n")
   out.write_string("}\n")
@@ -964,16 +1005,36 @@ fn compose_case_translate_glsl_fragment_source(source : String) -> String {
   let out = StringBuilder::new()
   compose_case_glsl_emit_directives(out, source)
   out.write_string("\n")
-  out.write_string("struct FragmentOutput {\n")
+  out.write_string(
+    (
+      #|struct FragmentOutput {
+      #|
+    ),
+  )
   out.write_string("    @location(0) \{out_name}: vec4<f32>,\n")
   out.write_string("}\n\n")
   out.write_string("var<private> \{out_name}: vec4<f32>;\n\n")
-  out.write_string("fn main_1() {\n")
+  out.write_string(
+    (
+      #|fn main_1() {
+      #|
+    ),
+  )
   out.write_string("    \{out_name} = \{expr};\n")
   out.write_string("    return;\n")
   out.write_string("}\n\n")
-  out.write_string("@fragment\n")
-  out.write_string("fn main() -> FragmentOutput {\n")
+  out.write_string(
+    (
+      #|@fragment
+      #|
+    ),
+  )
+  out.write_string(
+    (
+      #|fn main() -> FragmentOutput {
+      #|
+    ),
+  )
   out.write_string("    main_1();\n")
   out.write_string("    return FragmentOutput(\{out_name});\n")
   out.write_string("}\n")

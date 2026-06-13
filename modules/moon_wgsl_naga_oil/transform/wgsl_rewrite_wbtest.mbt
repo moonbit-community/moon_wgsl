@@ -22,7 +22,15 @@ test "naga_oil wb: AST-scoped symbol redirects rewrite references but keep decla
     "build_color",
   )
   let rewritten = rewrite_wgsl_references_with_binding_plan(
-    "fn shade() -> f32 {\n  return build_shadow();\n}\nfn build_shadow() -> f32 {\n  return 1.0;\n}\n",
+    (
+      #|fn shade() -> f32 {
+      #|  return build_shadow();
+      #|}
+      #|fn build_shadow() -> f32 {
+      #|  return 1.0;
+      #|}
+      #|
+    ),
     plan,
   )
   debug_inspect(rewritten.contains("return build_color();"), content="true")
@@ -40,7 +48,22 @@ test "naga_oil wb: AST-scoped symbol redirects ignore nested local shadows" {
     "build_color",
   )
   let rewritten = rewrite_wgsl_references_with_binding_plan(
-    "fn shade(arg: u32) -> u32 {\n  if (arg > 0u) {\n    let build_shadow = arg;\n    return build_shadow;\n  }\n  for (var i: u32 = 0u; i < arg; i = i + 1u) {\n    continue;\n  }\n  return arg;\n}\nfn build_shadow() -> u32 {\n  return 1u;\n}\n",
+    (
+      #|fn shade(arg: u32) -> u32 {
+      #|  if (arg > 0u) {
+      #|    let build_shadow = arg;
+      #|    return build_shadow;
+      #|  }
+      #|  for (var i: u32 = 0u; i < arg; i = i + 1u) {
+      #|    continue;
+      #|  }
+      #|  return arg;
+      #|}
+      #|fn build_shadow() -> u32 {
+      #|  return 1u;
+      #|}
+      #|
+    ),
     plan,
   )
   debug_inspect(rewritten.contains("let build_shadow = arg;"), content="true")
@@ -59,7 +82,13 @@ test "naga_oil wb: reference rewrite plan carries symbol identity" {
     "lighting__build_shadow",
   )
   let rewritten = rewrite_wgsl_references_with_binding_plan(
-    "fn shade() -> f32 {\n  return lighting::build_shadow();\n}\n", plan,
+    (
+      #|fn shade() -> f32 {
+      #|  return lighting::build_shadow();
+      #|}
+      #|
+    ),
+    plan,
   )
   debug_inspect(
     rewritten.contains("return lighting__build_shadow();"),
@@ -78,7 +107,13 @@ test "naga_oil wb: unqualified bindings do not rewrite qualified references" {
     "funcX",
   )
   let rewritten = rewrite_wgsl_references_with_binding_plan(
-    "fn shade() -> f32 {\n  return overridable::func();\n}\n", plan,
+    (
+      #|fn shade() -> f32 {
+      #|  return overridable::func();
+      #|}
+      #|
+    ),
+    plan,
   )
   debug_inspect(
     rewritten.contains("return overridable::func();"),
@@ -103,7 +138,13 @@ test "naga_oil wb: identity rewrite plan does not collapse ambiguous bindings" {
     "b__Shared",
   )
   let rewritten = rewrite_wgsl_references_with_binding_plan(
-    "fn shade(value: Shared) -> Shared {\n  return value;\n}\n", plan,
+    (
+      #|fn shade(value: Shared) -> Shared {
+      #|  return value;
+      #|}
+      #|
+    ),
+    plan,
   )
   debug_inspect(rewritten.contains("Shared"), content="true")
   debug_inspect(rewritten.contains("a__Shared"), content="false")
@@ -120,7 +161,13 @@ test "naga_oil wb: declaration rewrite preserves logical-not punctuation" {
     "predX",
   )
   let rewritten = rewrite_wgsl_declarations_with_binding_plan(
-    "fn value() -> f32 {\n  return f32(!pred());\n}\n", plan,
+    (
+      #|fn value() -> f32 {
+      #|  return f32(!pred());
+      #|}
+      #|
+    ),
+    plan,
   )
   debug_inspect(rewritten.contains("return f32(!predX());"), content="true")
   debug_inspect(rewritten.contains("return f32(predX());"), content="false")

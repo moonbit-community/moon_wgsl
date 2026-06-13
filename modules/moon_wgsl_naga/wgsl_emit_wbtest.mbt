@@ -586,7 +586,15 @@ test "IR emitter mirrors naga entry-point stage attribute spacing" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(emitted.contains("@fragment \nfn fragment"), content="true")
+  debug_inspect(
+    emitted.contains(
+      (
+        #|@fragment 
+        #|fn fragment
+      ),
+    ),
+    content="true",
+  )
 }
 
 ///|

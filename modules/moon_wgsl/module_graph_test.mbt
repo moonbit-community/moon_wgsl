@@ -52,7 +52,11 @@ test "naga_oil: registered source registry tracks define_import_path" {
   ignore(
     registry.register_source(
       "shaders/demo/module.wgsl",
-      "#define_import_path demo::module\nfn shade() -> f32 { return 1f; }\n",
+      (
+        #|#define_import_path demo::module
+        #|fn shade() -> f32 { return 1f; }
+        #|
+      ),
       None,
     ),
   )
@@ -73,14 +77,22 @@ test "registry source replacement removes stale module path entries" {
   ignore(
     registry.register_source(
       "shaders/demo/module.wgsl",
-      "#define_import_path demo::old\nfn old() {}\n",
+      (
+        #|#define_import_path demo::old
+        #|fn old() {}
+        #|
+      ),
       None,
     ),
   )
   ignore(
     registry.register_source(
       "shaders/demo/module.wgsl",
-      "#define_import_path demo::new\nfn new() {}\n",
+      (
+        #|#define_import_path demo::new
+        #|fn new() {}
+        #|
+      ),
       None,
     ),
   )
@@ -102,7 +114,11 @@ test "naga_oil: resolve import module prefers registered map entries" {
   ignore(
     registry.register_source(
       "sprite_render/render/sprite_view_bindings.wgsl",
-      "#define_import_path bevy_sprite_render::render::sprite_view_bindings\nfn shade() -> f32 { return 1f; }\n",
+      (
+        #|#define_import_path bevy_sprite_render::render::sprite_view_bindings
+        #|fn shade() -> f32 { return 1f; }
+        #|
+      ),
       None,
     ),
   )
@@ -122,11 +138,23 @@ test "naga_oil: bulk source registration resolves relative quoted file paths" {
   registry.register_source_files([
     {
       rel_path: "shaders/shared/common.wgsl",
-      source: "#define_import_path demo::shared\nstruct SharedValue {\n  tint: vec4<f32>,\n}\n",
+      source: (
+        #|#define_import_path demo::shared
+        #|struct SharedValue {
+        #|  tint: vec4<f32>,
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/main.wgsl",
-      source: "#import \"../shared/common.wgsl\" SharedValue\nfn shade(value: SharedValue) -> vec4<f32> {\n  return value.tint;\n}\n",
+      source: (
+        #|#import "../shared/common.wgsl" SharedValue
+        #|fn shade(value: SharedValue) -> vec4<f32> {
+        #|  return value.tint;
+        #|}
+        #|
+      ),
     },
   ])
   debug_inspect(
@@ -149,11 +177,19 @@ test "naga_oil: registry analysis allows duplicate module path candidates" {
   let files : Array[@common.WgslSourceFile] = [
     {
       rel_path: "shaders/demo/a.wgsl",
-      source: "#define_import_path demo::dup\nfn a() -> f32 { return 1f; }\n",
+      source: (
+        #|#define_import_path demo::dup
+        #|fn a() -> f32 { return 1f; }
+        #|
+      ),
     },
     {
       rel_path: "shaders/demo/b.wgsl",
-      source: "#define_import_path demo::dup\nfn b() -> f32 { return 2f; }\n",
+      source: (
+        #|#define_import_path demo::dup
+        #|fn b() -> f32 { return 2f; }
+        #|
+      ),
     },
   ]
   let diagnostics = registry.analyze_source_files(files)
@@ -173,11 +209,19 @@ test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" 
     [
       {
         rel_path: "shaders/demo/./shared.wgsl",
-        source: "#define_import_path demo::shared_a\nfn a() -> f32 { return 1f; }\n",
+        source: (
+          #|#define_import_path demo::shared_a
+          #|fn a() -> f32 { return 1f; }
+          #|
+        ),
       },
       {
         rel_path: "shaders/demo/shared.wgsl",
-        source: "#define_import_path demo::shared_b\nfn b() -> f32 { return 2f; }\n",
+        source: (
+          #|#define_import_path demo::shared_b
+          #|fn b() -> f32 { return 2f; }
+          #|
+        ),
       },
     ],
     diagnostics,
@@ -224,11 +268,22 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
   composer.register_source_files([
     {
       rel_path: "plugin.wgsl",
-      source: "fn plugin_value() -> f32 {\n  return 2f;\n}\n",
+      source: (
+        #|fn plugin_value() -> f32 {
+        #|  return 2f;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "root.wgsl",
-      source: "#import plugin\nfn main() -> f32 {\n  return plugin::plugin_value();\n}\n",
+      source: (
+        #|#import plugin
+        #|fn main() -> f32 {
+        #|  return plugin::plugin_value();
+        #|}
+        #|
+      ),
     },
   ])
   let source = composer.compose_wgsl(

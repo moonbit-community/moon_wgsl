@@ -222,7 +222,11 @@ test "naga_oil parity: item-imported functions do not force imported mesh bindin
     "}\n",
   )
   composer.register_source(
-    "entry.wgsl", "#import bevy_pbr::{ mesh::vertex, pbr::fragment }\n",
+    "entry.wgsl",
+    (
+      #|#import bevy_pbr::{ mesh::vertex, pbr::fragment }
+      #|
+    ),
   )
   let source = composer.compose_wgsl(
     "entry.wgsl",
@@ -254,7 +258,11 @@ test "naga_oil parity: item-imported entry points are dropped when unused by sou
     "}\n",
   )
   composer.register_source(
-    "entry.wgsl", "#import demo::{ mesh::vertex, pbr::fragment }\n",
+    "entry.wgsl",
+    (
+      #|#import demo::{ mesh::vertex, pbr::fragment }
+      #|
+    ),
   )
   let source = composer.compose_wgsl(
     "entry.wgsl",
@@ -308,7 +316,13 @@ test "naga_oil parity: explicit import-only entry modules do not force dependenc
     "  return out;\n" +
     "}\n",
   )
-  composer.register_source("entry.wgsl", "#import demo::mesh::vertex\n")
+  composer.register_source(
+    "entry.wgsl",
+    (
+      #|#import demo::mesh::vertex
+      #|
+    ),
+  )
   let source = composer.compose_wgsl(
     "entry.wgsl",
     upstream_parity_compose_options(upstream_parity_empty_defines()),

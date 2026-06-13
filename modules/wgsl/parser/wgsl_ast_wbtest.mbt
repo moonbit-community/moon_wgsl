@@ -385,7 +385,9 @@ test "WGSL declarations parse adjacent generic type closes" {
 
 ///|
 test "WGSL initializer fragments do not treat comparison as type depth" {
-  let source = "const LESS = value < limit;\n"
+  let source =
+    #|const LESS = value < limit;
+    #|
   let unit = parse_wgsl_translation_unit_for_test(source)
   guard unit.declarations()[0].data() is Const(value) else {
     abort("expected const")

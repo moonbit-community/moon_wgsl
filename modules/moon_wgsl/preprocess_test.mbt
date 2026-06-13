@@ -98,7 +98,20 @@ fn upstream_compose_fixture_source(
 ///|
 test "naga_oil: metadata parser records only used imports like upstream" {
   let metadata = metadata_or_abort(
-    "#define_import_path bevy_ui::ui_node\n#define HDR\n#define TONEMAP_MODE 2u\n#import bevy_render::{\n  view::View,\n  globals::Globals,\n}\n#import bevy_render::maths as maths\nfn main(view: View, globals: Globals) -> f32 {\n  return maths::tone_map(1.0);\n}\n",
+    (
+      #|#define_import_path bevy_ui::ui_node
+      #|#define HDR
+      #|#define TONEMAP_MODE 2u
+      #|#import bevy_render::{
+      #|  view::View,
+      #|  globals::Globals,
+      #|}
+      #|#import bevy_render::maths as maths
+      #|fn main(view: View, globals: Globals) -> f32 {
+      #|  return maths::tone_map(1.0);
+      #|}
+      #|
+    ),
   )
   debug_inspect(metadata.name, content="Some(\"bevy_ui::ui_node\")")
   debug_inspect(metadata.imports.length(), content="3")
@@ -140,7 +153,11 @@ test "naga_oil: metadata parser records only used imports like upstream" {
 test "metadata import use collection rejects invalid WGSL instead of source fallback" {
   ignore(
     @metadata.get_preprocessor_metadata(
-      "#import bevy_render::view::View\nfn main(view: View) -> f32 {\n",
+      (
+        #|#import bevy_render::view::View
+        #|fn main(view: View) -> f32 {
+        #|
+      ),
     ) catch {
       ImportParseError(message, _) => {
         inspect(
@@ -158,7 +175,14 @@ test "metadata import use collection rejects invalid WGSL instead of source fall
 ///|
 test "naga_oil: metadata parser keeps quoted path imports and duplicate item uses" {
   let imports = metadata_imports_or_abort(
-    "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\nfn vertex(vertex: Vertex) -> VertexOutput {\n  var out : VertexOutput;\n  return out;\n}\n",
+    (
+      #|#import "shaders/skills/shared.wgsl" Vertex, VertexOutput
+      #|fn vertex(vertex: Vertex) -> VertexOutput {
+      #|  var out : VertexOutput;
+      #|  return out;
+      #|}
+      #|
+    ),
   )
   debug_inspect(imports.length(), content="1")
   debug_inspect(
@@ -174,7 +198,14 @@ test "naga_oil: metadata parser keeps quoted path imports and duplicate item use
 ///|
 test "naga_oil: multiline import brace counting includes quoted braces" {
   let _ = @preprocess.Preprocessor::default().preprocess(
-    "#import demo::{\n  \"quoted}\" as quoted,\n  item,\n}\nfn shade() {}\n",
+    (
+      #|#import demo::{
+      #|  "quoted}" as quoted,
+      #|  item,
+      #|}
+      #|fn shade() {}
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     ImportParseError(_, _) => return
@@ -186,7 +217,11 @@ test "naga_oil: multiline import brace counting includes quoted braces" {
 ///|
 test "naga_oil: removed non-ascii directive lines pad by UTF-8 byte width" {
   let output = @preprocess.Preprocessor::default().preprocess(
-    "#define_import_path 模块\nfn shade() {}\n",
+    (
+      #|#define_import_path 模块
+      #|fn shade() {}
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     _ => abort("expected preprocess success")
@@ -200,7 +235,15 @@ test "naga_oil: removed non-ascii directive lines pad by UTF-8 byte width" {
 ///|
 test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
   let metadata = metadata_or_abort(
-    "enable f16, subgroups;\nrequires readonly_and_readwrite_storage_textures;\ndiagnostic(warn, derivative_uniformity);\nfn shade() -> f32 {\n  return #EXPOSURE + #{WHITE_POINT};\n}\n",
+    (
+      #|enable f16, subgroups;
+      #|requires readonly_and_readwrite_storage_textures;
+      #|diagnostic(warn, derivative_uniformity);
+      #|fn shade() -> f32 {
+      #|  return #EXPOSURE + #{WHITE_POINT};
+      #|}
+      #|
+    ),
   )
   debug_inspect(metadata.wgsl_directives.is_empty(), content="false")
   debug_inspect(
@@ -226,7 +269,40 @@ test "naga_oil: metadata parser preserves wgsl directives and effective defs" {
 ///|
 test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
   let imports = metadata_imports_or_abort(
-    "#import \"shaders/skills/shared.wgsl\" Vertex, VertexOutput\n\n#if EFFECT_ID == 0\n    #import \"shaders/skills/sound.wgsl\" frag, vert\n#else if EFFECT_ID == 1\n    #import \"shaders/skills/orb.wgsl\" frag, vert\n#else if EFFECT_ID == 2\n    #import \"shaders/skills/slash.wgsl\" frag, vert\n#else if EFFECT_ID == 3\n    #import \"shaders/skills/railgun_trail.wgsl\" frag, vert\n#else if EFFECT_ID == 4\n    #import \"shaders/skills/magic_arrow.wgsl\" frag, vert\n#else if EFFECT_ID == 5\n    #import \"shaders/skills/hit.wgsl\" frag, vert\n#else if EFFECT_ID == 6\n    #import \"shaders/skills/lightning_ring.wgsl\" frag, vert\n#else if EFFECT_ID == 7\n    #import \"shaders/skills/lightning.wgsl\" frag, vert\n#endif\n\n#import something_unused\n\n@fragment\nfn fragment(in: VertexOutput) -> @location(0) vec4<f32> {\n    return frag(in);\n}\n\n@vertex\nfn vertex(vertex: Vertex) -> VertexOutput {\n    return vert(vertex);\n}\n",
+    (
+      #|#import "shaders/skills/shared.wgsl" Vertex, VertexOutput
+      #|
+      #|#if EFFECT_ID == 0
+      #|    #import "shaders/skills/sound.wgsl" frag, vert
+      #|#else if EFFECT_ID == 1
+      #|    #import "shaders/skills/orb.wgsl" frag, vert
+      #|#else if EFFECT_ID == 2
+      #|    #import "shaders/skills/slash.wgsl" frag, vert
+      #|#else if EFFECT_ID == 3
+      #|    #import "shaders/skills/railgun_trail.wgsl" frag, vert
+      #|#else if EFFECT_ID == 4
+      #|    #import "shaders/skills/magic_arrow.wgsl" frag, vert
+      #|#else if EFFECT_ID == 5
+      #|    #import "shaders/skills/hit.wgsl" frag, vert
+      #|#else if EFFECT_ID == 6
+      #|    #import "shaders/skills/lightning_ring.wgsl" frag, vert
+      #|#else if EFFECT_ID == 7
+      #|    #import "shaders/skills/lightning.wgsl" frag, vert
+      #|#endif
+      #|
+      #|#import something_unused
+      #|
+      #|@fragment
+      #|fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+      #|    return frag(in);
+      #|}
+      #|
+      #|@vertex
+      #|fn vertex(vertex: Vertex) -> VertexOutput {
+      #|    return vert(vertex);
+      #|}
+      #|
+    ),
   )
   debug_inspect(imports.length(), content="9")
   debug_inspect(
@@ -319,7 +395,13 @@ test "naga_oil upstream mirror: metadata parser matches bevy path import fixture
 ///|
 test "naga_oil: preprocess strips imports and records used import offsets" {
   let output = @preprocess.Preprocessor::default().preprocess(
-    "#import bevy_render::view::View\nfn main(view: View) -> View {\n  return view;\n}\n",
+    (
+      #|#import bevy_render::view::View
+      #|fn main(view: View) -> View {
+      #|  return view;
+      #|}
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     _ => abort("expected preprocess success")
@@ -366,7 +448,26 @@ test "issue 5: preprocessor shader defs preserve non-BMP source text" {
 
 ///|
 test "naga_oil: preprocess follows else-ifdef fallback semantics" {
-  let source = "\nstruct View {\n    view_proj: mat4x4<f32>,\n    world_position: vec3<f32>,\n};\n@group(0) @binding(0)\nvar<uniform> view: View;\n\n#ifdef TEXTURE\n@group(1) @binding(0)\nvar sprite_texture: texture_2d<f32>;\n#else ifdef SECOND_TEXTURE\n@group(1) @binding(0)\nvar sprite_texture: texture_2d<f32>;\n#else\n@group(1) @binding(0)\nvar sprite_texture: texture_2d_array<f32>;\n#endif\n"
+  let source =
+    #|
+    #|struct View {
+    #|    view_proj: mat4x4<f32>,
+    #|    world_position: vec3<f32>,
+    #|};
+    #|@group(0) @binding(0)
+    #|var<uniform> view: View;
+    #|
+    #|#ifdef TEXTURE
+    #|@group(1) @binding(0)
+    #|var sprite_texture: texture_2d<f32>;
+    #|#else ifdef SECOND_TEXTURE
+    #|@group(1) @binding(0)
+    #|var sprite_texture: texture_2d<f32>;
+    #|#else
+    #|@group(1) @binding(0)
+    #|var sprite_texture: texture_2d_array<f32>;
+    #|#endif
+    #|
   let fallback_output = @preprocess.Preprocessor::default().preprocess(
     source,
     empty_shader_defs(),
@@ -400,7 +501,18 @@ test "naga_oil: preprocess follows else-ifdef fallback semantics" {
 
 ///|
 test "naga_oil upstream: preprocess else-if chains choose only first active branch" {
-  let source = "\n#ifdef TEXTURE\nmain\n#else ifdef SECOND_TEXTURE\nsecond\n#else ifdef THIRD_TEXTURE\nthird\n#else\nfallback\n#endif\n"
+  let source =
+    #|
+    #|#ifdef TEXTURE
+    #|main
+    #|#else ifdef SECOND_TEXTURE
+    #|second
+    #|#else ifdef THIRD_TEXTURE
+    #|third
+    #|#else
+    #|fallback
+    #|#endif
+    #|
   debug_inspect(
     preprocess_without_ascii_whitespace(source, empty_shader_defs()),
     content="\"fallback\"",
@@ -422,13 +534,35 @@ test "naga_oil upstream: preprocess else-if chains choose only first active bran
 
 ///|
 test "naga_oil upstream: preprocess supports else-ifndef and else-if comparisons" {
-  let ifndef_source = "\n#ifdef NOT_DEFINED\nfail1\n#else ifdef ALSO_NOT_DEFINED\nfail2\n#else ifndef ALSO_ALSO_NOT_DEFINED\nok\n#else\nfail3\n#endif\n"
+  let ifndef_source =
+    #|
+    #|#ifdef NOT_DEFINED
+    #|fail1
+    #|#else ifdef ALSO_NOT_DEFINED
+    #|fail2
+    #|#else ifndef ALSO_ALSO_NOT_DEFINED
+    #|ok
+    #|#else
+    #|fail3
+    #|#endif
+    #|
   debug_inspect(
     preprocess_without_ascii_whitespace(ifndef_source, empty_shader_defs()),
     content="\"ok\"",
   )
 
-  let if_source = "\n#ifdef NOT_DEFINED\nfail1\n#else if x == 1\nfail2\n#else if x == 2\nok\n#else\nfail3\n#endif\n"
+  let if_source =
+    #|
+    #|#ifdef NOT_DEFINED
+    #|fail1
+    #|#else if x == 1
+    #|fail2
+    #|#else if x == 2
+    #|ok
+    #|#else
+    #|fail3
+    #|#endif
+    #|
   debug_inspect(
     preprocess_without_ascii_whitespace(if_source, int_shader_def("x", 2)),
     content="\"ok\"",
@@ -437,7 +571,14 @@ test "naga_oil upstream: preprocess supports else-ifndef and else-if comparisons
 
 ///|
 test "naga_oil upstream: else and endif directives use prefix regex matching" {
-  let else_source = "\n#ifdef ENABLED\nactive\n#elsewhere\nfallback\n#endif\n"
+  let else_source =
+    #|
+    #|#ifdef ENABLED
+    #|active
+    #|#elsewhere
+    #|fallback
+    #|#endif
+    #|
   debug_inspect(
     preprocess_without_ascii_whitespace(else_source, empty_shader_defs()),
     content="\"fallback\"",
@@ -449,7 +590,14 @@ test "naga_oil upstream: else and endif directives use prefix regex matching" {
     ),
     content="\"active\"",
   )
-  let else_ifdef_without_space_source = "\n#ifdef NOT_DEFINED\nfail\n#elseifdef ENABLED\nplain_else\n#endif\n"
+  let else_ifdef_without_space_source =
+    #|
+    #|#ifdef NOT_DEFINED
+    #|fail
+    #|#elseifdef ENABLED
+    #|plain_else
+    #|#endif
+    #|
   debug_inspect(
     preprocess_without_ascii_whitespace(
       else_ifdef_without_space_source,
@@ -458,7 +606,13 @@ test "naga_oil upstream: else and endif directives use prefix regex matching" {
     content="\"plain_else\"",
   )
 
-  let endif_source = "\n#ifdef ENABLED\nactive\n#endif_trailing\noutside\n"
+  let endif_source =
+    #|
+    #|#ifdef ENABLED
+    #|active
+    #|#endif_trailing
+    #|outside
+    #|
   debug_inspect(
     preprocess_without_ascii_whitespace(
       endif_source,
@@ -470,7 +624,26 @@ test "naga_oil upstream: else and endif directives use prefix regex matching" {
 
 ///|
 test "naga_oil upstream: preprocess handles complicated nested else-ifdef scopes" {
-  let source = "\n#ifdef NOT_DEFINED\nfail1\n#else ifdef IS_DEFINED\nok1\n#ifdef NOT_DEFINED\nfail2\n#else\nok2\n#ifdef NOT_DEFINED\nfail3\n#else ifdef ALSO_NOT_DEFINED\nfail4\n#else ifdef IS_DEFINED\nok3\n#endif\n#endif\n#endif\n"
+  let source =
+    #|
+    #|#ifdef NOT_DEFINED
+    #|fail1
+    #|#else ifdef IS_DEFINED
+    #|ok1
+    #|#ifdef NOT_DEFINED
+    #|fail2
+    #|#else
+    #|ok2
+    #|#ifdef NOT_DEFINED
+    #|fail3
+    #|#else ifdef ALSO_NOT_DEFINED
+    #|fail4
+    #|#else ifdef IS_DEFINED
+    #|ok3
+    #|#endif
+    #|#endif
+    #|#endif
+    #|
   debug_inspect(
     preprocess_without_ascii_whitespace(
       source,
@@ -484,7 +657,13 @@ test "naga_oil upstream: preprocess handles complicated nested else-ifdef scopes
 test "naga_oil upstream: preprocess reports shader-def comparison errors" {
   let unknown_operator_defs = bool_shader_def("TEXTURE", true)
   let _ = @preprocess.Preprocessor::default().preprocess(
-    "#if TEXTURE !! true\nok\n#endif\n", unknown_operator_defs,
+    (
+      #|#if TEXTURE !! true
+      #|ok
+      #|#endif
+      #|
+    ),
+    unknown_operator_defs,
   ) catch {
     UnknownShaderDefOperator(operator, _) => {
       debug_inspect(operator, content="\"!!\"")
@@ -500,7 +679,12 @@ test "naga_oil upstream: if comparison parser preserves whitespace token boundar
   let mut saw_missing_def = false
   ignore(
     @preprocess.Preprocessor::default().preprocess(
-      "#if TEXTURE true\nok\n#endif\n",
+      (
+        #|#if TEXTURE true
+        #|ok
+        #|#endif
+        #|
+      ),
       empty_shader_defs(),
     ),
   ) catch {
@@ -516,7 +700,13 @@ test "naga_oil upstream: if comparison parser preserves whitespace token boundar
   let mut saw_empty_operator = false
   ignore(
     @preprocess.Preprocessor::default().preprocess(
-      "#if TEXTURE true\nok\n#endif\n", defs,
+      (
+        #|#if TEXTURE true
+        #|ok
+        #|#endif
+        #|
+      ),
+      defs,
     ),
   ) catch {
     UnknownShaderDefOperator(operator, _) => {
@@ -527,7 +717,14 @@ test "naga_oil upstream: if comparison parser preserves whitespace token boundar
   }
   debug_inspect(saw_empty_operator, content="true")
 
-  let metadata = metadata_or_abort("#if TEXTURE true\n#VALUE\n#endif\n")
+  let metadata = metadata_or_abort(
+    (
+      #|#if TEXTURE true
+      #|#VALUE
+      #|#endif
+      #|
+    ),
+  )
   debug_inspect(metadata.effective_defs.contains("TEXTURE"), content="true")
   debug_inspect(
     metadata.effective_defs.contains("TEXTUREtrue"),
@@ -539,7 +736,12 @@ test "naga_oil upstream: if comparison parser preserves whitespace token boundar
 test "naga_oil upstream: preprocess validates int and bool comparison values" {
   ignore(
     @preprocess.Preprocessor::default().preprocess(
-      "#if TEXTURE == 3\nok\n#endif\n",
+      (
+        #|#if TEXTURE == 3
+        #|ok
+        #|#endif
+        #|
+      ),
       empty_shader_defs(),
     ),
   ) catch {
@@ -549,7 +751,12 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
 
   ignore(
     @preprocess.Preprocessor::default().preprocess(
-      "#if TEXTURE == 3\nok\n#endif\n",
+      (
+        #|#if TEXTURE == 3
+        #|ok
+        #|#endif
+        #|
+      ),
       bool_shader_def("TEXTURE", true),
     ),
   ) catch {
@@ -562,7 +769,12 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
   }
 
   let _ = @preprocess.Preprocessor::default().preprocess(
-    "#if TEXTURE != false\nok\n#endif\n",
+    (
+      #|#if TEXTURE != false
+      #|ok
+      #|#endif
+      #|
+    ),
     int_shader_def("TEXTURE", 7),
   ) catch {
     InvalidShaderDefComparisonValue(name, value, expected, _) => {
@@ -578,7 +790,20 @@ test "naga_oil upstream: preprocess validates int and bool comparison values" {
 
 ///|
 test "naga_oil: preprocess applies module defines to output" {
-  let source = "#define DEFUINT 1\n#define DEFINT -1\n#define DEFBOOL false\n#if DEFUINT == 1\nuint: #DEFUINT\n#endif\n#if DEFINT == -1\nint: #DEFINT\n#endif\n#if DEFBOOL == false\nbool: #DEFBOOL\n#endif\n"
+  let source =
+    #|#define DEFUINT 1
+    #|#define DEFINT -1
+    #|#define DEFBOOL false
+    #|#if DEFUINT == 1
+    #|uint: #DEFUINT
+    #|#endif
+    #|#if DEFINT == -1
+    #|int: #DEFINT
+    #|#endif
+    #|#if DEFBOOL == false
+    #|bool: #DEFBOOL
+    #|#endif
+    #|
   let metadata = metadata_or_abort(source)
   let output = @preprocess.Preprocessor::default().preprocess(
     source,
@@ -600,7 +825,13 @@ test "naga_oil: preprocess applies module defines to output" {
 
 ///|
 test "naga_oil: define metadata rejects unsigned suffix like upstream" {
-  let metadata = metadata_or_abort("#define VALUE 2u\n#define NEG_ZERO -0\n")
+  let metadata = metadata_or_abort(
+    (
+      #|#define VALUE 2u
+      #|#define NEG_ZERO -0
+      #|
+    ),
+  )
   guard metadata.defines.get("VALUE") is Some(Bool(value)) else {
     abort("expected naga_oil-style failed unsigned suffix define")
   }
@@ -613,7 +844,14 @@ test "naga_oil: define metadata rejects unsigned suffix like upstream" {
 
 ///|
 test "naga_oil: unsigned shader defs support full u32 range" {
-  let source = "#define BIG 4000000000\n#if BIG == 4000000000\nbig\n#else\nsmall\n#endif\n"
+  let source =
+    #|#define BIG 4000000000
+    #|#if BIG == 4000000000
+    #|big
+    #|#else
+    #|small
+    #|#endif
+    #|
   let metadata = metadata_or_abort(source)
   guard metadata.defines.get("BIG") is Some(UInt(big)) else {
     abort("expected full-range unsigned define")
@@ -652,7 +890,13 @@ test "naga_oil: preprocess accepts whitespace after hash directives" {
 ///|
 test "naga_oil: preprocess accepts whitespace after hash import directives" {
   let output = @preprocess.Preprocessor::default().preprocess(
-    "# import demo::math::PI\nfn main() -> f32 {\n  return PI;\n}\n",
+    (
+      #|# import demo::math::PI
+      #|fn main() -> f32 {
+      #|  return PI;
+      #|}
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     _ => abort("expected spaced import preprocess success")
@@ -700,7 +944,13 @@ test "naga_oil: shader def placeholders accept hash whitespace and upstream name
 
 ///|
 test "naga_oil: ifdef identifiers accept upstream pipe names" {
-  let source = "#ifdef MIXED|PIPE\nactive\n#else\ninactive\n#endif\n"
+  let source =
+    #|#ifdef MIXED|PIPE
+    #|active
+    #|#else
+    #|inactive
+    #|#endif
+    #|
   let shader_defs = empty_shader_defs()
   shader_defs.set("MIXED|PIPE", Bool(true))
   let output = @preprocess.Preprocessor::default().preprocess(
@@ -717,7 +967,17 @@ test "naga_oil: ifdef identifiers accept upstream pipe names" {
 
 ///|
 test "naga_oil: ifdef identifiers accept upstream leading digit and pipe names" {
-  let source = "#ifdef 1FLAG\none\n#endif\n#ifdef |PIPE\npipe\n#endif\n#ifdef 1FLAG trailing\ntrail\n#endif\n"
+  let source =
+    #|#ifdef 1FLAG
+    #|one
+    #|#endif
+    #|#ifdef |PIPE
+    #|pipe
+    #|#endif
+    #|#ifdef 1FLAG trailing
+    #|trail
+    #|#endif
+    #|
   let shader_defs = empty_shader_defs()
   shader_defs.set("1FLAG", Bool(true))
   shader_defs.set("|PIPE", Bool(true))
@@ -731,7 +991,18 @@ test "naga_oil: ifdef identifiers accept upstream leading digit and pipe names" 
   debug_inspect(output.preprocessed_source.contains("trail"), content="true")
 
   let metadata = metadata_or_abort(
-    "#ifdef 1FLAG\n#VALUE\n#endif\n#ifndef |PIPE\n#OTHER\n#endif\n#ifdef 1FLAG trailing\n#TAIL\n#endif\n",
+    (
+      #|#ifdef 1FLAG
+      #|#VALUE
+      #|#endif
+      #|#ifndef |PIPE
+      #|#OTHER
+      #|#endif
+      #|#ifdef 1FLAG trailing
+      #|#TAIL
+      #|#endif
+      #|
+    ),
   )
   debug_inspect(metadata.effective_defs.contains("1FLAG"), content="true")
   debug_inspect(metadata.effective_defs.contains("|PIPE"), content="true")
@@ -743,7 +1014,13 @@ test "naga_oil: ifdef identifiers accept upstream leading digit and pipe names" 
 
 ///|
 test "naga_oil: if comparison identifiers accept upstream pipe names" {
-  let source = "#if MIXED|PIPE == 4\nactive\n#else\ninactive\n#endif\n"
+  let source =
+    #|#if MIXED|PIPE == 4
+    #|active
+    #|#else
+    #|inactive
+    #|#endif
+    #|
   let shader_defs = empty_shader_defs()
   shader_defs.set("MIXED|PIPE", Int(4))
   let output = @preprocess.Preprocessor::default().preprocess(
@@ -776,14 +1053,24 @@ test "naga_oil: define metadata consumes one token like upstream regexes" {
 
 ///|
 test "naga_oil: define import path keeps semicolon in captured token" {
-  let metadata = metadata_or_abort("#define_import_path demo::module;\n")
+  let metadata = metadata_or_abort(
+    (
+      #|#define_import_path demo::module;
+      #|
+    ),
+  )
   debug_inspect(metadata.name, content="Some(\"demo::module;\")")
 }
 
 ///|
 test "naga_oil: define metadata follows upstream regex character classes" {
   let metadata = metadata_or_abort(
-    "#define NAME+TAIL 7\n#define PLUS +1\n#define PIPE|NAME value|tail ignored\n",
+    (
+      #|#define NAME+TAIL 7
+      #|#define PLUS +1
+      #|#define PIPE|NAME value|tail ignored
+      #|
+    ),
   )
   guard metadata.defines.get("NAME") is Some(Bool(name_value)) else {
     abort("expected NAME define")
@@ -801,7 +1088,13 @@ test "naga_oil: define metadata follows upstream regex character classes" {
 
 ///|
 test "naga_oil: shader-def token parsing keeps upstream underscore tails" {
-  let metadata = metadata_or_abort("#define 1_NAME false\n#define BAD 1_name\n")
+  let metadata = metadata_or_abort(
+    (
+      #|#define 1_NAME false
+      #|#define BAD 1_name
+      #|
+    ),
+  )
   guard metadata.defines.get("1_NAME") is Some(Bool(one_name)) else {
     abort("expected full digit-leading underscore define name")
   }
@@ -828,7 +1121,13 @@ test "naga_oil: shader-def token parsing keeps upstream underscore tails" {
 ///|
 test "naga_oil: directive keywords without required tail whitespace stay as source" {
   let metadata = @metadata.get_preprocessor_metadata(
-    "#define\n#import\n#define_import_path\nfn shade() {}\n",
+    (
+      #|#define
+      #|#import
+      #|#define_import_path
+      #|fn shade() {}
+      #|
+    ),
     allow_defines=false,
   ) catch {
     _ => abort("expected keyword-only directive metadata success")
@@ -842,7 +1141,13 @@ test "naga_oil: directive keywords without required tail whitespace stay as sour
   )
 
   let output = @preprocess.Preprocessor::default().preprocess(
-    "#define\n#import\n#define_import_path\nfn shade() {}\n",
+    (
+      #|#define
+      #|#import
+      #|#define_import_path
+      #|fn shade() {}
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     _ => abort("expected keyword-only directive preprocess success")
@@ -881,7 +1186,15 @@ test "naga_oil: shader-def replacement width advances later diagnostics" {
   let shader_defs = empty_shader_defs()
   shader_defs.set("LONG", UInt(1234567890U))
   let _ = @preprocess.Preprocessor::default().preprocess(
-    "#import a::Thing\n#import b::Thing\nfn entry() -> u32 {\n  let x = #LONG;\n  var y: Thing;\n}\n",
+    (
+      #|#import a::Thing
+      #|#import b::Thing
+      #|fn entry() -> u32 {
+      #|  let x = #LONG;
+      #|  var y: Thing;
+      #|}
+      #|
+    ),
     shader_defs,
   ) catch {
     ImportParseError(message, offset) => {
@@ -960,7 +1273,15 @@ test "naga_oil: conditional directive regex word stops before emoji" {
   let shader_defs = empty_shader_defs()
   shader_defs.set("FLAG", Bool(true))
   let output = @preprocess.Preprocessor::default().preprocess(
-    "#ifdef FLAG💡\nactive\n#else\ninactive\n#endif\n", shader_defs,
+    (
+      #|#ifdef FLAG💡
+      #|active
+      #|#else
+      #|inactive
+      #|#endif
+      #|
+    ),
+    shader_defs,
   ) catch {
     _ => abort("expected emoji-suffixed ifdef preprocess success")
   }
@@ -970,7 +1291,13 @@ test "naga_oil: conditional directive regex word stops before emoji" {
     content="false",
   )
   let metadata = metadata_or_abort(
-    "#ifdef FLAG💡\n#endif\n#FLAG💡\n#中文\n",
+    (
+      #|#ifdef FLAG💡
+      #|#endif
+      #|#FLAG💡
+      #|#中文
+      #|
+    ),
   )
   debug_inspect(metadata.effective_defs.contains("FLAG"), content="true")
   debug_inspect(metadata.effective_defs.contains("FLAG💡"), content="false")
@@ -982,7 +1309,12 @@ test "naga_oil: conditional directive keywords require trailing whitespace" {
   let shader_defs = empty_shader_defs()
   shader_defs.set("|FLAG", Bool(true))
   let direct = @preprocess.Preprocessor::default().preprocess(
-    "#ifdef|FLAG\nbody\n", shader_defs,
+    (
+      #|#ifdef|FLAG
+      #|body
+      #|
+    ),
+    shader_defs,
   ) catch {
     _ => abort("expected non-directive ifdef source success")
   }
@@ -993,7 +1325,14 @@ test "naga_oil: conditional directive keywords require trailing whitespace" {
   debug_inspect(direct.preprocessed_source.contains("body"), content="true")
 
   let fallback = @preprocess.Preprocessor::default().preprocess(
-    "#ifdef MISSING\nno\n#else ifdef|FLAG\nfallback\n#endif\n",
+    (
+      #|#ifdef MISSING
+      #|no
+      #|#else ifdef|FLAG
+      #|fallback
+      #|#endif
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     _ => abort("expected else-prefix fallback success")
@@ -1026,7 +1365,13 @@ test "naga_oil: glsl version directive captures numeric version token" {
 ///|
 test "naga_oil: glsl version directive does not allow hash whitespace" {
   let output = @preprocess.Preprocessor::default().preprocess(
-    "# version 450\nfn main() -> f32 {\n  return 1.0;\n}\n",
+    (
+      #|# version 450
+      #|fn main() -> f32 {
+      #|  return 1.0;
+      #|}
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     _ => abort("expected spaced hash version to stay as normal source")
@@ -1071,7 +1416,12 @@ test "naga_oil: wgsl directives accept upstream whitespace forms" {
 ///|
 test "naga_oil: wgsl directive extension lists split only on commas" {
   let metadata = metadata_or_abort(
-    "enable foo-bar, spaced extension;\nrequires one two, three-four;\nfn shade() {}\n",
+    (
+      #|enable foo-bar, spaced extension;
+      #|requires one two, three-four;
+      #|fn shade() {}
+      #|
+    ),
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
   debug_inspect(
@@ -1095,7 +1445,11 @@ test "naga_oil: wgsl directive extension lists split only on commas" {
 ///|
 test "naga_oil: diagnostic directive captures raw rule text" {
   let metadata = metadata_or_abort(
-    "diagnostic(warn, derivative-uniformity rule); trailing\nfn shade() {}\n",
+    (
+      #|diagnostic(warn, derivative-uniformity rule); trailing
+      #|fn shade() {}
+      #|
+    ),
   )
   debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="1")
   debug_inspect(
@@ -1112,7 +1466,11 @@ test "naga_oil: diagnostic directive captures raw rule text" {
 test "naga_oil: diagnostic directive accepts whitespace-only severity capture" {
   ignore(
     @metadata.get_preprocessor_metadata(
-      "diagnostic( , derivative_uniformity);\nfn shade() {}\n",
+      (
+        #|diagnostic( , derivative_uniformity);
+        #|fn shade() {}
+        #|
+      ),
     ),
   ) catch {
     InvalidWgslDirective(directive, position, reason) => {
@@ -1131,7 +1489,13 @@ test "naga_oil: diagnostic directive accepts whitespace-only severity capture" {
 
 ///|
 test "naga_oil: diagnostic directive accepts whitespace-only rule capture" {
-  let metadata = metadata_or_abort("diagnostic(off, );\nfn shade() {}\n")
+  let metadata = metadata_or_abort(
+    (
+      #|diagnostic(off, );
+      #|fn shade() {}
+      #|
+    ),
+  )
   debug_inspect(metadata.wgsl_directives.diagnostics.length(), content="1")
   debug_inspect(
     metadata.wgsl_directives.diagnostics[0].severity,
@@ -1143,7 +1507,15 @@ test "naga_oil: diagnostic directive accepts whitespace-only rule capture" {
 ///|
 test "naga_oil: directive section stays open on directive name prefix" {
   let metadata = metadata_or_abort(
-    "enable_extra();\ndiagnostic_extra();\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+    (
+      #|enable_extra();
+      #|diagnostic_extra();
+      #|enable f16;
+      #|fn shade() -> f32 {
+      #|  return 1.0;
+      #|}
+      #|
+    ),
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
   debug_inspect(
@@ -1160,7 +1532,15 @@ test "naga_oil: directive section stays open on directive name prefix" {
 ///|
 test "naga_oil: enable and requires directives require whitespace body separator" {
   let metadata = metadata_or_abort(
-    "enable+f16;\nrequires+subgroups;\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+    (
+      #|enable+f16;
+      #|requires+subgroups;
+      #|enable f16;
+      #|fn shade() -> f32 {
+      #|  return 1.0;
+      #|}
+      #|
+    ),
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
   debug_inspect(metadata.wgsl_directives.requires.length(), content="0")
@@ -1178,7 +1558,14 @@ test "naga_oil: enable and requires directives require whitespace body separator
 ///|
 test "naga_oil: single whitespace empty enable body stays source" {
   let metadata = metadata_or_abort(
-    "enable ;\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+    (
+      #|enable ;
+      #|enable f16;
+      #|fn shade() -> f32 {
+      #|  return 1.0;
+      #|}
+      #|
+    ),
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="1")
   debug_inspect(metadata.cleaned_source.contains("enable ;"), content="true")
@@ -1192,7 +1579,13 @@ test "naga_oil: single whitespace empty enable body stays source" {
 test "naga_oil: repeated whitespace empty enable body raises directive error" {
   ignore(
     @metadata.get_preprocessor_metadata(
-      "enable  ;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+      (
+        #|enable  ;
+        #|fn shade() -> f32 {
+        #|  return 1.0;
+        #|}
+        #|
+      ),
     ),
   ) catch {
     InvalidWgslDirective(_, _, message) => {
@@ -1277,7 +1670,14 @@ test "naga_oil: wgsl source directives accept Unicode regex whitespace" {
 ///|
 test "naga_oil: block comments terminate directive section like upstream" {
   let metadata = metadata_or_abort(
-    "/* block comment */\nenable f16;\nfn shade() -> f32 {\n  return 1.0;\n}\n",
+    (
+      #|/* block comment */
+      #|enable f16;
+      #|fn shade() -> f32 {
+      #|  return 1.0;
+      #|}
+      #|
+    ),
   )
   debug_inspect(metadata.wgsl_directives.enables.length(), content="0")
   debug_inspect(metadata.cleaned_source.contains("enable f16;"), content="true")
@@ -1287,7 +1687,11 @@ test "naga_oil: block comments terminate directive section like upstream" {
 test "naga_oil: invalid diagnostic severity reports directive error" {
   ignore(
     @metadata.get_preprocessor_metadata(
-      "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+      (
+        #|diagnostic(note, derivative_uniformity);
+        #|fn shade() {}
+        #|
+      ),
     ),
   ) catch {
     InvalidWgslDirective(directive, position, reason) => {
@@ -1308,7 +1712,11 @@ test "naga_oil: invalid diagnostic severity reports directive error" {
 test "naga_oil: metadata parser reports invalid WGSL directive errors" {
   ignore(
     @metadata.get_preprocessor_metadata(
-      "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+      (
+        #|diagnostic(note, derivative_uniformity);
+        #|fn shade() {}
+        #|
+      ),
     ),
   ) catch {
     InvalidWgslDirective(directive, _, reason) => {
@@ -1326,7 +1734,15 @@ test "naga_oil: metadata parser reports invalid WGSL directive errors" {
 
 ///|
 test "naga_oil: empty directive extension list reports directive error" {
-  ignore(@metadata.get_preprocessor_metadata("enable , ;\nfn shade() {}\n")) catch {
+  ignore(
+    @metadata.get_preprocessor_metadata(
+      (
+        #|enable , ;
+        #|fn shade() {}
+        #|
+      ),
+    ),
+  ) catch {
     InvalidWgslDirective(directive, position, reason) => {
       debug_inspect(directive, content="\"enable , ;\"")
       debug_inspect(position.to_string(), content="\"0\"")
@@ -1345,7 +1761,13 @@ test "naga_oil: uint comparison rejects unsigned suffix values" {
   let mut saw_suffix_error = false
   ignore(
     @preprocess.Preprocessor::default().preprocess(
-      "#if COUNT == 1u\nok\n#endif\n", defs,
+      (
+        #|#if COUNT == 1u
+        #|ok
+        #|#endif
+        #|
+      ),
+      defs,
     ),
   ) catch {
     InvalidShaderDefComparisonValue(name, value, expected, _) => {
@@ -1361,7 +1783,13 @@ test "naga_oil: uint comparison rejects unsigned suffix values" {
   let mut saw_negative_error = false
   ignore(
     @preprocess.Preprocessor::default().preprocess(
-      "#if COUNT == -1\nok\n#endif\n", defs,
+      (
+        #|#if COUNT == -1
+        #|ok
+        #|#endif
+        #|
+      ),
+      defs,
     ),
   ) catch {
     InvalidShaderDefComparisonValue(name, value, expected, _) => {
@@ -1395,7 +1823,14 @@ test "naga_oil: strict ifdefs parse decommented conditions like preprocess" {
   let defs = empty_shader_defs()
   defs.set("COUNT", Int(2))
   let output = @preprocess.apply_wgsl_ifdefs_strict(
-    "#if COUNT /* comment before operator */ == 2\nactive\n#else\ninactive\n#endif\n",
+    (
+      #|#if COUNT /* comment before operator */ == 2
+      #|active
+      #|#else
+      #|inactive
+      #|#endif
+      #|
+    ),
     defs,
   ) catch {
     _ => abort("expected strict ifdef success with block comment")
@@ -1407,7 +1842,11 @@ test "naga_oil: strict ifdefs parse decommented conditions like preprocess" {
 ///|
 test "naga_oil: strict ifdefs apply GLSL version preprocessing" {
   let output = @preprocess.apply_wgsl_ifdefs_strict(
-    "#version 450\nfn shade() -> f32 { return 1.0; }\n",
+    (
+      #|#version 450
+      #|fn shade() -> f32 { return 1.0; }
+      #|
+    ),
     empty_shader_defs(),
   ) catch {
     _ => abort("expected accepted GLSL version strict preprocess success")
@@ -1417,7 +1856,11 @@ test "naga_oil: strict ifdefs apply GLSL version preprocessing" {
 
   ignore(
     @preprocess.apply_wgsl_ifdefs_strict(
-      "#version 430\nfn shade() -> f32 { return 1.0; }\n",
+      (
+        #|#version 430
+        #|fn shade() -> f32 { return 1.0; }
+        #|
+      ),
       empty_shader_defs(),
     ),
   ) catch {

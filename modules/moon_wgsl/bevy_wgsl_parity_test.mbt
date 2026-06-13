@@ -152,7 +152,9 @@ test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live"
 
 ///|
 fn issue10_alias_redirect_stress_module(declaration_count : Int) -> String {
-  let mut source = "#define_import_path stress::many\n"
+  let mut source =
+    #|#define_import_path stress::many
+    #|
   for i in 0..<declaration_count {
     source = source + "const item_\{i}: u32 = \{i}u;\n"
   }

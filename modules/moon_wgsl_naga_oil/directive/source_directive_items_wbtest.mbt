@@ -1,7 +1,14 @@
 ///|
 test "WGSL source directive item parser classifies directive section input" {
   let items = parse_wgsl_source_directive_items(
-    "// keep\n  enable f16, subgroups; trailing\n  diagnostic(warn, derivative_uniformity);\nenable_extra();\nfn shade() {}\n",
+    (
+      #|// keep
+      #|  enable f16, subgroups; trailing
+      #|  diagnostic(warn, derivative_uniformity);
+      #|enable_extra();
+      #|fn shade() {}
+      #|
+    ),
   )
   debug_inspect(items.length(), content="5")
   debug_inspect(items[0].kind, content="Trivia")
@@ -17,7 +24,13 @@ test "WGSL source directive item parser classifies directive section input" {
 ///|
 test "WGSL source directive item parser preserves naga-oil empty body distinction" {
   let items = parse_wgsl_source_directive_items(
-    "enable ;\nenable  ;\ndiagnostic( , derivative_uniformity);\ndiagnostic(off, );\n",
+    (
+      #|enable ;
+      #|enable  ;
+      #|diagnostic( , derivative_uniformity);
+      #|diagnostic(off, );
+      #|
+    ),
   )
   debug_inspect(items[0].kind, content="PrefixCandidate")
   debug_inspect(items[1].kind, content="Enable(\"\")")

@@ -156,7 +156,10 @@ test "semantic import target plan resolves alias-qualified binding item" {
     },
   ]
   let plans = build_wgsl_semantic_import_target_plans(
-    "fn read() -> u32 { return view_bindings::clustered_lights; }\n",
+    (
+      #|fn read() -> u32 { return view_bindings::clustered_lights; }
+      #|
+    ),
     "root.wgsl",
     targets,
     registry,
@@ -176,7 +179,14 @@ test "semantic import target plan resolves alias-qualified binding item" {
 test "semantic import target plan expands nested module aliases" {
   let registry = WgslSourceRegistry::default()
   ignore(
-    registry.register_source("pbr.wgsl", "#define_import_path bevy_pbr\n", None),
+    registry.register_source(
+      "pbr.wgsl",
+      (
+        #|#define_import_path bevy_pbr
+        #|
+      ),
+      None,
+    ),
   )
   ignore(
     registry.register_source(
@@ -189,7 +199,10 @@ test "semantic import target plan expands nested module aliases" {
   )
   let targets = [WgslImportTarget::{ raw_path: "bevy_pbr", alias_name: "pbr" }]
   let plans = build_wgsl_semantic_import_target_plans(
-    "fn read() -> u32 { return pbr::bindings::view.value; }\n",
+    (
+      #|fn read() -> u32 { return pbr::bindings::view.value; }
+      #|
+    ),
     "root.wgsl",
     targets,
     registry,
@@ -207,7 +220,14 @@ test "semantic import target plan expands nested module aliases" {
 test "semantic import target plan prefers exact nested module over base item split" {
   let registry = WgslSourceRegistry::default()
   ignore(
-    registry.register_source("pbr.wgsl", "#define_import_path bevy_pbr\n", None),
+    registry.register_source(
+      "pbr.wgsl",
+      (
+        #|#define_import_path bevy_pbr
+        #|
+      ),
+      None,
+    ),
   )
   ignore(
     registry.register_source(
@@ -258,7 +278,10 @@ test "semantic import target plan splits nested item import when source uses lea
     },
   ]
   let plans = build_wgsl_semantic_import_target_plans(
-    "fn read() -> u32 { return mesh; }\n",
+    (
+      #|fn read() -> u32 { return mesh; }
+      #|
+    ),
     "root.wgsl",
     targets,
     registry,
@@ -282,14 +305,20 @@ test "semantic import target plans follow first AST reference order" {
   ignore(
     registry.register_source(
       "late.wgsl",
-      "#define_import_path test::late\n",
+      (
+        #|#define_import_path test::late
+        #|
+      ),
       None,
     ),
   )
   ignore(
     registry.register_source(
       "early.wgsl",
-      "#define_import_path test::early\n",
+      (
+        #|#define_import_path test::early
+        #|
+      ),
       None,
     ),
   )
@@ -338,14 +367,20 @@ test "semantic import target plans follow naga-oil substitution use order" {
   ignore(
     registry.register_source(
       "forward.wgsl",
-      "#define_import_path test::forward\n",
+      (
+        #|#define_import_path test::forward
+        #|
+      ),
       None,
     ),
   )
   ignore(
     registry.register_source(
       "bindings.wgsl",
-      "#define_import_path test::bindings\n",
+      (
+        #|#define_import_path test::bindings
+        #|
+      ),
       None,
     ),
   )

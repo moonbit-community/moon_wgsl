@@ -66,10 +66,28 @@ fn registered_composer_test_shader_source(path : String) -> String? {
 fn register_grouped_import_test_shaders() -> Unit {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "render/color_operations.wgsl", "#define_import_path bevy_render::color_operations\nfn rgb_to_hsv(color: vec3<f32>) -> vec3<f32> {\n  return color;\n}\nfn hsv_to_rgb(color: vec3<f32>) -> vec3<f32> {\n  return color;\n}\n",
+    "render/color_operations.wgsl",
+    (
+      #|#define_import_path bevy_render::color_operations
+      #|fn rgb_to_hsv(color: vec3<f32>) -> vec3<f32> {
+      #|  return color;
+      #|}
+      #|fn hsv_to_rgb(color: vec3<f32>) -> vec3<f32> {
+      #|  return color;
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "render/maths.wgsl", "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318f;\nfn powsafe(value: f32, power: f32) -> f32 {\n  return value * power;\n}\n",
+    "render/maths.wgsl",
+    (
+      #|#define_import_path bevy_render::maths
+      #|const PI_2: f32 = 6.28318f;
+      #|fn powsafe(value: f32, power: f32) -> f32 {
+      #|  return value * power;
+      #|}
+      #|
+    ),
   )
 }
 
@@ -77,13 +95,39 @@ fn register_grouped_import_test_shaders() -> Unit {
 fn register_item_import_test_shaders() -> Unit {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "render/view/view.wgsl", "#define_import_path bevy_render::view\nstruct View {\n  exposure: f32,\n}\nstruct ColorGrading {\n  view: View,\n}\n",
+    "render/view/view.wgsl",
+    (
+      #|#define_import_path bevy_render::view
+      #|struct View {
+      #|  exposure: f32,
+      #|}
+      #|struct ColorGrading {
+      #|  view: View,
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "sprite_render/render/sprite_view_bindings.wgsl", "#define_import_path bevy_sprite::sprite_view_bindings\n#import bevy_render::view::ColorGrading\nstruct SpriteViewBindings {\n  grading: ColorGrading,\n}\n",
+    "sprite_render/render/sprite_view_bindings.wgsl",
+    (
+      #|#define_import_path bevy_sprite::sprite_view_bindings
+      #|#import bevy_render::view::ColorGrading
+      #|struct SpriteViewBindings {
+      #|  grading: ColorGrading,
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "sprite_render/mesh2d/mesh2d_view_bindings.wgsl", "#define_import_path bevy_sprite::mesh2d_view_bindings\n#import bevy_render::view::ColorGrading\nstruct Mesh2dViewBindings {\n  grading: ColorGrading,\n}\n",
+    "sprite_render/mesh2d/mesh2d_view_bindings.wgsl",
+    (
+      #|#define_import_path bevy_sprite::mesh2d_view_bindings
+      #|#import bevy_render::view::ColorGrading
+      #|struct Mesh2dViewBindings {
+      #|  grading: ColorGrading,
+      #|}
+      #|
+    ),
   )
 }
 
@@ -91,10 +135,32 @@ fn register_item_import_test_shaders() -> Unit {
 fn register_mesh_preprocess_branch_test_shaders() -> Unit {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "render/view/view.wgsl", "#define_import_path bevy_render::view\nstruct View {\n  exposure: f32,\n}\n",
+    "render/view/view.wgsl",
+    (
+      #|#define_import_path bevy_render::view
+      #|struct View {
+      #|  exposure: f32,
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "pbr/render/mesh_preprocess.wgsl", "#define_import_path bevy_pbr::mesh_preprocess\n#ifdef WRITE_INDIRECT_PARAMETERS_METADATA\n#ifdef INDIRECT\n#ifdef FRUSTUM_CULLING\n#import bevy_render::view::View\n@group(0) @binding(0) var<uniform> view: View;\n#else\n#import bevy_render::previous_view::PreviousView\n@group(0) @binding(2) var<uniform> previous_view_uniforms: PreviousView;\n#endif\n#endif\n#endif\n",
+    "pbr/render/mesh_preprocess.wgsl",
+    (
+      #|#define_import_path bevy_pbr::mesh_preprocess
+      #|#ifdef WRITE_INDIRECT_PARAMETERS_METADATA
+      #|#ifdef INDIRECT
+      #|#ifdef FRUSTUM_CULLING
+      #|#import bevy_render::view::View
+      #|@group(0) @binding(0) var<uniform> view: View;
+      #|#else
+      #|#import bevy_render::previous_view::PreviousView
+      #|@group(0) @binding(2) var<uniform> previous_view_uniforms: PreviousView;
+      #|#endif
+      #|#endif
+      #|#endif
+      #|
+    ),
   )
 }
 
@@ -104,11 +170,31 @@ fn register_relative_file_import_test_shaders() -> Unit {
   register_composer_test_shader_files([
     {
       rel_path: "shaders/shared/common.wgsl",
-      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
+      source: (
+        #|struct SharedParams {
+        #|  tint: vec4<f32>,
+        #|}
+        #|struct SharedVertex {
+        #|  params: SharedParams,
+        #|}
+        #|fn build_color(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vertex.params.tint;
+        #|}
+        #|fn unused_helper() -> f32 {
+        #|  return 0.0;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/main.wgsl",
-      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
+      source: (
+        #|#import "../shared/common.wgsl" SharedVertex, build_color
+        #|fn shade(vertex: SharedVertex) -> vec4<f32> {
+        #|  return build_color(vertex);
+        #|}
+        #|
+      ),
     },
   ])
 }
@@ -119,11 +205,31 @@ fn register_redirect_test_shaders() -> Unit {
   register_composer_test_shader_files([
     {
       rel_path: "shaders/shared/common.wgsl",
-      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn build_shadow(vertex: SharedVertex) -> vec4<f32> {\n  return vec4<f32>(0.0, 0.0, 0.0, 1.0);\n}\n",
+      source: (
+        #|struct SharedParams {
+        #|  tint: vec4<f32>,
+        #|}
+        #|struct SharedVertex {
+        #|  params: SharedParams,
+        #|}
+        #|fn build_color(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vertex.params.tint;
+        #|}
+        #|fn build_shadow(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/redirect.wgsl",
-      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color, build_shadow\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_shadow(vertex);\n}\n",
+      source: (
+        #|#import "../shared/common.wgsl" SharedVertex, build_color, build_shadow
+        #|fn shade(vertex: SharedVertex) -> vec4<f32> {
+        #|  return build_shadow(vertex);
+        #|}
+        #|
+      ),
     },
   ])
 }
@@ -132,10 +238,26 @@ fn register_redirect_test_shaders() -> Unit {
 fn register_cycle_test_shaders() -> Unit {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "shaders/cycle/a.wgsl", "#define_import_path demo::a\n#import demo::b::b_value\nfn a_value() -> f32 {\n  return b_value();\n}\n",
+    "shaders/cycle/a.wgsl",
+    (
+      #|#define_import_path demo::a
+      #|#import demo::b::b_value
+      #|fn a_value() -> f32 {
+      #|  return b_value();
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "shaders/cycle/b.wgsl", "#define_import_path demo::b\n#import demo::a::a_value\nfn b_value() -> f32 {\n  return a_value();\n}\n",
+    "shaders/cycle/b.wgsl",
+    (
+      #|#define_import_path demo::b
+      #|#import demo::a::a_value
+      #|fn b_value() -> f32 {
+      #|  return a_value();
+      #|}
+      #|
+    ),
   )
 }
 
@@ -143,13 +265,35 @@ fn register_cycle_test_shaders() -> Unit {
 fn register_unqualified_import_conflict_test_shaders() -> Unit {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "shaders/a.wgsl", "#define_import_path demo::a\nstruct Shared {\n  value: u32,\n}\n",
+    "shaders/a.wgsl",
+    (
+      #|#define_import_path demo::a
+      #|struct Shared {
+      #|  value: u32,
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "shaders/b.wgsl", "#define_import_path demo::b\nstruct Shared {\n  value: u32,\n}\n",
+    "shaders/b.wgsl",
+    (
+      #|#define_import_path demo::b
+      #|struct Shared {
+      #|  value: u32,
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "shaders/root.wgsl", "#import demo::a::Shared\n#import demo::b::Shared\nfn entry(value: Shared) -> u32 {\n  return value.value;\n}\n",
+    "shaders/root.wgsl",
+    (
+      #|#import demo::a::Shared
+      #|#import demo::b::Shared
+      #|fn entry(value: Shared) -> u32 {
+      #|  return value.value;
+      #|}
+      #|
+    ),
   )
 }
 
@@ -157,7 +301,17 @@ fn register_unqualified_import_conflict_test_shaders() -> Unit {
 test "naga_oil: composer preprocess supports multiline grouped imports" {
   register_grouped_import_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl_source(
-    "#import bevy_render::{\n  color_operations::{hsv_to_rgb, rgb_to_hsv},\n  maths::{PI_2, powsafe},\n}\nfn demo(color: vec3<f32>) -> vec3<f32> {\n  let h = rgb_to_hsv(color);\n  return hsv_to_rgb(vec3<f32>(h.x + PI_2, h.y, powsafe(h.z, 1.0)));\n}\n",
+    (
+      #|#import bevy_render::{
+      #|  color_operations::{hsv_to_rgb, rgb_to_hsv},
+      #|  maths::{PI_2, powsafe},
+      #|}
+      #|fn demo(color: vec3<f32>) -> vec3<f32> {
+      #|  let h = rgb_to_hsv(color);
+      #|  return hsv_to_rgb(vec3<f32>(h.x + PI_2, h.y, powsafe(h.z, 1.0)));
+      #|}
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
@@ -173,7 +327,14 @@ test "naga_oil: composer preprocess supports multiline grouped imports" {
 test "naga_oil: composer directives use Rust regex Unicode whitespace" {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "shared/inc.wgsl", "#define_import_path demo::inc\nfn inc() -> f32 {\n  return 1f;\n}\n",
+    "shared/inc.wgsl",
+    (
+      #|#define_import_path demo::inc
+      #|fn inc() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
   )
   let preprocessed = composer_test_composer().compose_wgsl_source(
     "\u{00A0}#import demo::inc::inc\nfn demo() -> f32 {\n  return inc();\n}\n",
@@ -192,10 +353,23 @@ test "naga_oil: composer directives use Rust regex Unicode whitespace" {
 test "naga_oil: composer directives are detected after block comment stripping" {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "shared/inc.wgsl", "#define_import_path demo::inc\nfn inc() -> f32 {\n  return 1f;\n}\n",
+    "shared/inc.wgsl",
+    (
+      #|#define_import_path demo::inc
+      #|fn inc() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
   )
   let preprocessed = composer_test_composer().compose_wgsl_source(
-    "/* stripped prefix */#import demo::inc::inc\nfn demo() -> f32 {\n  return inc();\n}\n",
+    (
+      #|/* stripped prefix */#import demo::inc::inc
+      #|fn demo() -> f32 {
+      #|  return inc();
+      #|}
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
@@ -213,7 +387,13 @@ test "naga_oil: composer directives are detected after block comment stripping" 
 test "naga_oil: composer preprocess strips module aliases" {
   register_grouped_import_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl_source(
-    "#import bevy_render::maths as maths\nfn demo() -> f32 {\n  return maths::PI_2;\n}\n",
+    (
+      #|#import bevy_render::maths as maths
+      #|fn demo() -> f32 {
+      #|  return maths::PI_2;
+      #|}
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
@@ -227,7 +407,14 @@ test "naga_oil: composer preprocess strips module aliases" {
 test "naga_oil: commented module alias references do not trigger imports" {
   register_grouped_import_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl_source(
-    "#import bevy_render::maths as maths\n// return maths::PI_2;\nfn demo() -> f32 {\n  return 1f;\n}\n",
+    (
+      #|#import bevy_render::maths as maths
+      #|// return maths::PI_2;
+      #|fn demo() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected composer preprocess success: \{err.message()}")
@@ -240,7 +427,13 @@ test "naga_oil: commented module alias references do not trigger imports" {
 ///|
 test "naga_oil: commented namespace paths do not report unresolved imports" {
   let preprocessed = composer_test_composer().compose_wgsl_source(
-    "// unresolved::path should stay a comment\nfn demo() -> f32 {\n  return 1f;\n}\n",
+    (
+      #|// unresolved::path should stay a comment
+      #|fn demo() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
@@ -315,13 +508,33 @@ test "naga_oil: composer drops preprocess previous-view imports outside active b
 test "naga_oil: composer registered sources satisfy strict mesh2d preprocessing" {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "render/maths.wgsl", "#define_import_path bevy_render::maths\nconst PI_2: f32 = 6.28318f;\n",
+    "render/maths.wgsl",
+    (
+      #|#define_import_path bevy_render::maths
+      #|const PI_2: f32 = 6.28318f;
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "sprite_render/mesh2d/mesh2d_functions.wgsl", "#define_import_path bevy_sprite::mesh2d_functions\n#import bevy_render::maths::PI_2\nfn twice_pi() -> f32 {\n  return PI_2;\n}\n",
+    "sprite_render/mesh2d/mesh2d_functions.wgsl",
+    (
+      #|#define_import_path bevy_sprite::mesh2d_functions
+      #|#import bevy_render::maths::PI_2
+      #|fn twice_pi() -> f32 {
+      #|  return PI_2;
+      #|}
+      #|
+    ),
   )
   register_composer_test_shader_source(
-    "sprite_render/mesh2d/mesh2d.wgsl", "#import bevy_sprite::mesh2d_functions as mesh_functions\nfn demo() -> f32 {\n  return mesh_functions::twice_pi();\n}\n",
+    "sprite_render/mesh2d/mesh2d.wgsl",
+    (
+      #|#import bevy_sprite::mesh2d_functions as mesh_functions
+      #|fn demo() -> f32 {
+      #|  return mesh_functions::twice_pi();
+      #|}
+      #|
+    ),
   )
   let preprocessed = composer_test_composer().compose_wgsl(
     "sprite_render/mesh2d/mesh2d.wgsl",
@@ -360,7 +573,14 @@ test "naga_oil: composer preprocess resolves relative quoted file imports" {
 test "naga_oil: composer default is isolated from test registry state" {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "shaders/demo/global.wgsl", "#define_import_path demo::global\nfn global_value() -> f32 {\n  return 1f;\n}\n",
+    "shaders/demo/global.wgsl",
+    (
+      #|#define_import_path demo::global
+      #|fn global_value() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
   )
   debug_inspect(
     @compose.Composer::default().registered_source("shaders/demo/global.wgsl"),
@@ -377,12 +597,26 @@ test "naga_oil: composer default is isolated from test registry state" {
 test "naga_oil: composer instances stay isolated from later test registry resets" {
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "shaders/demo/snap_a.wgsl", "#define_import_path demo::snap_a\nfn snap_a() -> f32 {\n  return 1f;\n}\n",
+    "shaders/demo/snap_a.wgsl",
+    (
+      #|#define_import_path demo::snap_a
+      #|fn snap_a() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
   )
   let composer = composer_test_composer()
   clear_composer_test_registry()
   register_composer_test_shader_source(
-    "shaders/demo/snap_b.wgsl", "#define_import_path demo::snap_b\nfn snap_b() -> f32 {\n  return 2f;\n}\n",
+    "shaders/demo/snap_b.wgsl",
+    (
+      #|#define_import_path demo::snap_b
+      #|fn snap_b() -> f32 {
+      #|  return 2f;
+      #|}
+      #|
+    ),
   )
   debug_inspect(
     composer.registered_source("shaders/demo/snap_a.wgsl") is Some(_),
@@ -411,11 +645,28 @@ test "naga_oil: composer local registry can compose without test registry state"
   composer.register_source_files([
     {
       rel_path: "shaders/shared/common.wgsl",
-      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\n",
+      source: (
+        #|struct SharedParams {
+        #|  tint: vec4<f32>,
+        #|}
+        #|struct SharedVertex {
+        #|  params: SharedParams,
+        #|}
+        #|fn build_color(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vertex.params.tint;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/main.wgsl",
-      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
+      source: (
+        #|#import "../shared/common.wgsl" SharedVertex, build_color
+        #|fn shade(vertex: SharedVertex) -> vec4<f32> {
+        #|  return build_color(vertex);
+        #|}
+        #|
+      ),
     },
   ])
   let preprocessed = composer.compose_wgsl("shaders/effects/main.wgsl", {
@@ -443,7 +694,13 @@ test "issue 5: template constants handle non-BMP source text" {
   let value_defines = @common.default_wgsl_value_defines()
   value_defines.set("CUSTOM_LIMIT", Int(42))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
-    "// 😀 before a braced template const\nconst A: u32 = #{CUSTOM_LIMIT}u;\n// 😃 before a bare template const\nconst B: u32 = #CUSTOM_LIMITu;\n",
+    (
+      #|// 😀 before a braced template const
+      #|const A: u32 = #{CUSTOM_LIMIT}u;
+      #|// 😃 before a bare template const
+      #|const B: u32 = #CUSTOM_LIMITu;
+      #|
+    ),
     {
       defines: empty_bool_defines(),
       value_defines,
@@ -462,7 +719,11 @@ test "template constants preserve large unsigned shader-def values" {
   let value_defines = @common.default_wgsl_value_defines()
   value_defines.set("LARGE_COUNT", UInt(3221225472U))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
-    "const A: u32 = #LARGE_COUNTu;\nconst B: u32 = #{LARGE_COUNT}u;\n",
+    (
+      #|const A: u32 = #LARGE_COUNTu;
+      #|const B: u32 = #{LARGE_COUNT}u;
+      #|
+    ),
     {
       defines: empty_bool_defines(),
       value_defines,
@@ -491,7 +752,10 @@ test "template constants support raw double-hash WGSL token placeholders" {
   let value_defines = @common.default_wgsl_value_defines()
   value_defines.set("TEXTURE_FORMAT", Raw("rgba8unorm"))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
-    "@group(0) @binding(0) var out_tex: texture_storage_2d<##TEXTURE_FORMAT##, write>;\n",
+    (
+      #|@group(0) @binding(0) var out_tex: texture_storage_2d<##TEXTURE_FORMAT##, write>;
+      #|
+    ),
     {
       defines: empty_bool_defines(),
       value_defines,
@@ -516,7 +780,11 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
   composer.clear_sources()
   ignore(
     composer.add_composable_module({
-      source: "#define_import_path demo::maths\nconst PI_2: f32 = 6.28318f;\n",
+      source: (
+        #|#define_import_path demo::maths
+        #|const PI_2: f32 = 6.28318f;
+        #|
+      ),
       file_path: "shaders/demo/maths.wgsl",
       as_name: None,
       additional_imports: [],
@@ -527,7 +795,14 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
   }
   ignore(
     composer.add_composable_module({
-      source: "#define_import_path demo::main\n#import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
+      source: (
+        #|#define_import_path demo::main
+        #|#import demo::maths::PI_2
+        #|fn demo() -> f32 {
+        #|  return PI_2;
+        #|}
+        #|
+      ),
       file_path: "shaders/demo/main.wgsl",
       as_name: None,
       additional_imports: [],
@@ -559,7 +834,11 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
   composer.clear_sources()
   ignore(
     composer.add_composable_module({
-      source: "# define_import_path demo::maths\nconst PI_2: f32 = 6.28318f;\n",
+      source: (
+        #|# define_import_path demo::maths
+        #|const PI_2: f32 = 6.28318f;
+        #|
+      ),
       file_path: "shaders/demo/maths.wgsl",
       as_name: None,
       additional_imports: [],
@@ -570,7 +849,14 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
   }
   ignore(
     composer.add_composable_module({
-      source: "# define_import_path demo::main\n# import demo::maths::PI_2\nfn demo() -> f32 {\n  return PI_2;\n}\n",
+      source: (
+        #|# define_import_path demo::main
+        #|# import demo::maths::PI_2
+        #|fn demo() -> f32 {
+        #|  return PI_2;
+        #|}
+        #|
+      ),
       file_path: "shaders/demo/main.wgsl",
       as_name: None,
       additional_imports: [],
@@ -595,7 +881,13 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
 ///|
 test "naga_oil: composer directive dispatch requires upstream tail whitespace" {
   let output = @compose.Composer::default().compose_wgsl_source(
-    "#define\n#import\n#define_import_path\nfn shade() {}\n",
+    (
+      #|#define
+      #|#import
+      #|#define_import_path
+      #|fn shade() {}
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err =>
@@ -610,7 +902,11 @@ test "naga_oil: composer directive dispatch requires upstream tail whitespace" {
 test "naga_oil: composer reports invalid active import specs" {
   ignore(
     @compose.Composer::default().compose_wgsl_source(
-      "#import @\nfn shade() {}\n",
+      (
+        #|#import @
+        #|fn shade() {}
+        #|
+      ),
       composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
@@ -628,7 +924,11 @@ test "naga_oil: composer reports invalid active import specs" {
 ///|
 test "naga_oil: composer accepts empty final-semicolon imports" {
   let output = @compose.Composer::default().compose_wgsl_source(
-    "#import ;\nfn shade() {}\n",
+    (
+      #|#import ;
+      #|fn shade() {}
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected empty import compose success: \{err.message()}")
@@ -644,7 +944,13 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
   composer.clear_sources()
   ignore(
     composer.add_composable_module({
-      source: "#define_import_path plugin\nfn external_scale() -> f32 {\n  return 2f;\n}\n",
+      source: (
+        #|#define_import_path plugin
+        #|fn external_scale() -> f32 {
+        #|  return 2f;
+        #|}
+        #|
+      ),
       file_path: "shaders/demo/plugin.wgsl",
       as_name: None,
       additional_imports: [],
@@ -656,7 +962,13 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
   }
   ignore(
     composer.add_composable_module({
-      source: "#define_import_path demo::main\nfn demo() -> f32 {\n  return plugin::external_scale();\n}\n",
+      source: (
+        #|#define_import_path demo::main
+        #|fn demo() -> f32 {
+        #|  return plugin::external_scale();
+        #|}
+        #|
+      ),
       file_path: "shaders/demo/main.wgsl",
       as_name: None,
       additional_imports: [{ import_path: "plugin", items: [] }],
@@ -715,7 +1027,14 @@ test "naga_oil: checked source-tree registration preserves existing registry con
   let composer = @compose.Composer::default()
   composer.clear_sources()
   composer.register_source(
-    "shared/common.wgsl", "#define_import_path demo::shared\nfn shared_value() -> f32 {\n  return 1f;\n}\n",
+    "shared/common.wgsl",
+    (
+      #|#define_import_path demo::shared
+      #|fn shared_value() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
   )
   let diagnostics = composer.register_source_tree_checked(
     moon_wgsl_testdata_path("wgsl_scan_conflict"),
@@ -805,10 +1124,28 @@ test "naga_oil: virtual override base detection ignores local shadows" {
   clear_composer_test_registry()
   let composer = composer_test_composer()
   composer.register_source(
-    "mod.wgsl", "#define_import_path mod\nvirtual fn inner() -> f32 {\n  return 1f;\n}\n",
+    "mod.wgsl",
+    (
+      #|#define_import_path mod
+      #|virtual fn inner() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
   )
   composer.register_source(
-    "top.wgsl", "#import mod\noverride fn mod::inner() -> f32 {\n  let mod__inner = 2f;\n  return mod__inner;\n}\nfn top() -> f32 {\n  return mod::inner();\n}\n",
+    "top.wgsl",
+    (
+      #|#import mod
+      #|override fn mod::inner() -> f32 {
+      #|  let mod__inner = 2f;
+      #|  return mod__inner;
+      #|}
+      #|fn top() -> f32 {
+      #|  return mod::inner();
+      #|}
+      #|
+    ),
   )
   let source = composer.compose_wgsl(
     "top.wgsl",
@@ -828,10 +1165,29 @@ test "naga_oil: virtual override base detection respects statement order" {
   clear_composer_test_registry()
   let composer = composer_test_composer()
   composer.register_source(
-    "mod.wgsl", "#define_import_path mod\nvirtual fn inner() -> f32 {\n  return 1f;\n}\n",
+    "mod.wgsl",
+    (
+      #|#define_import_path mod
+      #|virtual fn inner() -> f32 {
+      #|  return 1f;
+      #|}
+      #|
+    ),
   )
   composer.register_source(
-    "top.wgsl", "#import mod\noverride fn mod::inner() -> f32 {\n  let value = mod::inner();\n  let mod__inner = 2f;\n  return value + mod__inner;\n}\nfn top() -> f32 {\n  return mod::inner();\n}\n",
+    "top.wgsl",
+    (
+      #|#import mod
+      #|override fn mod::inner() -> f32 {
+      #|  let value = mod::inner();
+      #|  let mod__inner = 2f;
+      #|  return value + mod__inner;
+      #|}
+      #|fn top() -> f32 {
+      #|  return mod::inner();
+      #|}
+      #|
+    ),
   )
   let source = composer.compose_wgsl(
     "top.wgsl",
@@ -853,13 +1209,39 @@ test "naga_oil: transitive override keeps virtual module side effects" {
   clear_composer_test_registry()
   let composer = composer_test_composer()
   composer.register_source(
-    "mod.wgsl", "#define_import_path mod\nvirtual fn inner() -> f32 {\n  return 1f;\n}\nfn outer() -> f32 {\n  return inner();\n}\n",
+    "mod.wgsl",
+    (
+      #|#define_import_path mod
+      #|virtual fn inner() -> f32 {
+      #|  return 1f;
+      #|}
+      #|fn outer() -> f32 {
+      #|  return inner();
+      #|}
+      #|
+    ),
   )
   composer.register_source(
-    "middle.wgsl", "#define_import_path middle\n#import mod\noverride fn mod::inner() -> f32 {\n  return 2f;\n}\n",
+    "middle.wgsl",
+    (
+      #|#define_import_path middle
+      #|#import mod
+      #|override fn mod::inner() -> f32 {
+      #|  return 2f;
+      #|}
+      #|
+    ),
   )
   composer.register_source(
-    "top.wgsl", "#import middle\n#import mod\nfn top() -> f32 {\n  return mod::outer();\n}\n",
+    "top.wgsl",
+    (
+      #|#import middle
+      #|#import mod
+      #|fn top() -> f32 {
+      #|  return mod::outer();
+      #|}
+      #|
+    ),
   )
   let source = composer.compose_wgsl(
     "top.wgsl",
@@ -881,7 +1263,15 @@ test "naga_oil: transitive override keeps virtual module side effects" {
 
 ///|
 test "github issue 5: unicode source lines do not abort prefix checks" {
-  let source = "// 中文注释会让旧 starts_with_text 切到非法边界\n#ifdef ENABLED\nconst enabled_value: u32 = 1u;\n#endif\nfn main() -> u32 {\n  return 0u;\n}\n"
+  let source =
+    #|// 中文注释会让旧 starts_with_text 切到非法边界
+    #|#ifdef ENABLED
+    #|const enabled_value: u32 = 1u;
+    #|#endif
+    #|fn main() -> u32 {
+    #|  return 0u;
+    #|}
+    #|
   let preprocessed = composer_test_composer().compose_wgsl_source(
     source,
     composer_test_compose_options(empty_bool_defines(), []),
@@ -896,7 +1286,13 @@ test "github issue 5: unicode source lines do not abort prefix checks" {
 test "naga_oil: composer reports missing shader def in if comparison" {
   let composer = @compose.Composer::default()
   composer.register_source(
-    "missing_if.wgsl", "#if TEXTURE == 3\nconst active: u32 = 1u;\n#endif\n",
+    "missing_if.wgsl",
+    (
+      #|#if TEXTURE == 3
+      #|const active: u32 = 1u;
+      #|#endif
+      #|
+    ),
   )
   ignore(
     composer.compose_wgsl(
@@ -919,7 +1315,13 @@ test "naga_oil: composer reports missing shader def in if comparison" {
 test "naga_oil: composer rejects unsigned-suffix if comparison values" {
   let composer = @compose.Composer::default()
   composer.register_source(
-    "invalid_uint_if.wgsl", "#if COUNT == 1u\nconst active: u32 = 1u;\n#endif\n",
+    "invalid_uint_if.wgsl",
+    (
+      #|#if COUNT == 1u
+      #|const active: u32 = 1u;
+      #|#endif
+      #|
+    ),
   )
   let options = composer_test_compose_options(empty_bool_defines(), [])
   options.value_defines.set("COUNT", Int(1))
@@ -941,7 +1343,13 @@ test "naga_oil: composer rejects unsigned-suffix if comparison values" {
 test "naga_oil: composer reports unknown shader def operator" {
   let composer = @compose.Composer::default()
   composer.register_source(
-    "bad_operator_if.wgsl", "#if TEXTURE !! true\nconst active: u32 = 1u;\n#endif\n",
+    "bad_operator_if.wgsl",
+    (
+      #|#if TEXTURE !! true
+      #|const active: u32 = 1u;
+      #|#endif
+      #|
+    ),
   )
   let defines = empty_bool_defines()
   defines.set("TEXTURE", true)
@@ -965,7 +1373,13 @@ test "naga_oil: composer reports unknown shader def operator" {
 ///|
 test "naga_oil: composer reports malformed shader-def scopes" {
   let composer = @compose.Composer::default()
-  composer.register_source("too_many.wgsl", "#endif\n")
+  composer.register_source(
+    "too_many.wgsl",
+    (
+      #|#endif
+      #|
+    ),
+  )
   ignore(
     composer.compose_wgsl(
       "too_many.wgsl",
@@ -976,7 +1390,12 @@ test "naga_oil: composer reports malformed shader-def scopes" {
       debug_inspect(err.message().contains("too many #endif"), content="true")
   }
   composer.register_source(
-    "not_enough.wgsl", "#ifdef ENABLED\nconst a: u32 = 1u;\n",
+    "not_enough.wgsl",
+    (
+      #|#ifdef ENABLED
+      #|const a: u32 = 1u;
+      #|
+    ),
   )
   ignore(
     composer.compose_wgsl(
@@ -995,7 +1414,14 @@ test "naga_oil: composer reports malformed shader-def scopes" {
 ///|
 test "naga_oil: composer reports else without condition" {
   let composer = @compose.Composer::default()
-  composer.register_source("else_without.wgsl", "#else\nconst a: u32 = 1u;\n")
+  composer.register_source(
+    "else_without.wgsl",
+    (
+      #|#else
+      #|const a: u32 = 1u;
+      #|
+    ),
+  )
   ignore(
     composer.compose_wgsl(
       "else_without.wgsl",
@@ -1016,7 +1442,18 @@ test "naga_oil: composer reports else without condition" {
 ///|
 test "naga_oil: composer applies root-local shader defines" {
   let composer = @compose.Composer::default()
-  let source = "#define NOW_DEFINED\n#define MODE 2\n#ifdef NOW_DEFINED\nconst enabled: u32 = #MODE;\n#endif\n#if MODE == 2\nconst selected: u32 = #MODE;\n#else\nconst selected: u32 = 0u;\n#endif\n"
+  let source =
+    #|#define NOW_DEFINED
+    #|#define MODE 2
+    #|#ifdef NOW_DEFINED
+    #|const enabled: u32 = #MODE;
+    #|#endif
+    #|#if MODE == 2
+    #|const selected: u32 = #MODE;
+    #|#else
+    #|const selected: u32 = 0u;
+    #|#endif
+    #|
   let preprocessed = composer.compose_wgsl_source(
     source,
     composer_test_compose_options(empty_bool_defines(), []),
@@ -1089,7 +1526,19 @@ test "naga_oil: source catalog uses per-module strict shader defs" {
   module_defs.set("MODULE_FLAG", Bool(false))
   ignore(
     composer.add_composable_module({
-      source: "#define_import_path catalog::module\n#ifdef MODULE_FLAG\nfn from_if() -> f32 {\n  return 1f;\n}\n#else\nfn from_else() -> f32 {\n  return 2f;\n}\n#endif\n",
+      source: (
+        #|#define_import_path catalog::module
+        #|#ifdef MODULE_FLAG
+        #|fn from_if() -> f32 {
+        #|  return 1f;
+        #|}
+        #|#else
+        #|fn from_else() -> f32 {
+        #|  return 2f;
+        #|}
+        #|#endif
+        #|
+      ),
       file_path: "shaders/catalog/module.wgsl",
       as_name: None,
       additional_imports: [],
@@ -1099,7 +1548,14 @@ test "naga_oil: source catalog uses per-module strict shader defs" {
     err => abort("expected module registration success: \{err.message()}")
   }
   composer.register_source(
-    "shaders/catalog/root.wgsl", "#import catalog::module::from_if\nfn shade() -> f32 {\n  return from_if();\n}\n",
+    "shaders/catalog/root.wgsl",
+    (
+      #|#import catalog::module::from_if
+      #|fn shade() -> f32 {
+      #|  return from_if();
+      #|}
+      #|
+    ),
   )
   let prepared = composer.prepare_wgsl_source(
     "shaders/catalog/root.wgsl",
@@ -1127,7 +1583,14 @@ test "naga_oil: composable modules reject local define directives" {
   let composer = @compose.Composer::default()
   ignore(
     composer.add_composable_module({
-      source: "#define_import_path bad::module\n#define LOCAL_FLAG\nfn value() -> f32 {\n  return 1f;\n}\n",
+      source: (
+        #|#define_import_path bad::module
+        #|#define LOCAL_FLAG
+        #|fn value() -> f32 {
+        #|  return 1f;
+        #|}
+        #|
+      ),
       file_path: "shaders/bad/module.wgsl",
       as_name: None,
       additional_imports: [],
@@ -1150,7 +1613,11 @@ test "naga_oil: composer reports invalid WGSL directive as directive error" {
   let composer = @compose.Composer::default()
   ignore(
     composer.compose_wgsl_source(
-      "diagnostic(note, derivative_uniformity);\nfn shade() {}\n",
+      (
+        #|diagnostic(note, derivative_uniformity);
+        #|fn shade() {}
+        #|
+      ),
       composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
@@ -1174,7 +1641,11 @@ test "naga_oil: composer reports invalid GLSL version as version error" {
   let composer = @compose.Composer::default()
   ignore(
     composer.compose_wgsl_source(
-      "#version 430\nfn shade() -> f32 { return 1f; }\n",
+      (
+        #|#version 430
+        #|fn shade() -> f32 { return 1f; }
+        #|
+      ),
       composer_test_compose_options(empty_bool_defines(), []),
     ),
   ) catch {
@@ -1192,7 +1663,11 @@ test "naga_oil: composer reports invalid GLSL version as version error" {
 ///|
 test "naga_oil: composer strips accepted GLSL version directive" {
   let output = @compose.Composer::default().compose_wgsl_source(
-    "#version 450\nfn shade() -> f32 { return 1f; }\n",
+    (
+      #|#version 450
+      #|fn shade() -> f32 { return 1f; }
+      #|
+    ),
     composer_test_compose_options(empty_bool_defines(), []),
   ) catch {
     err => abort("expected GLSL version compose success: \{err.message()}")
@@ -1205,10 +1680,21 @@ test "naga_oil: composer strips accepted GLSL version directive" {
 test "naga_oil: item imports reject invalid GLSL version before extraction" {
   let composer = @compose.Composer::default()
   composer.register_source(
-    "shaders/version/module.wgsl", "#define_import_path version::module\n#version 430\nfn value() -> f32 { return 1f; }\n",
+    "shaders/version/module.wgsl",
+    (
+      #|#define_import_path version::module
+      #|#version 430
+      #|fn value() -> f32 { return 1f; }
+      #|
+    ),
   )
   composer.register_source(
-    "shaders/version/root.wgsl", "#import version::module::value\nfn shade() -> f32 { return value(); }\n",
+    "shaders/version/root.wgsl",
+    (
+      #|#import version::module::value
+      #|fn shade() -> f32 { return value(); }
+      #|
+    ),
   )
   ignore(
     composer.compose_wgsl(
@@ -1231,10 +1717,21 @@ test "naga_oil: item imports reject invalid GLSL version before extraction" {
 test "naga_oil: item imports strip accepted GLSL version before extraction" {
   let composer = @compose.Composer::default()
   composer.register_source(
-    "shaders/version/module.wgsl", "#define_import_path version::module\n#version 450\nfn value() -> f32 { return 1f; }\n",
+    "shaders/version/module.wgsl",
+    (
+      #|#define_import_path version::module
+      #|#version 450
+      #|fn value() -> f32 { return 1f; }
+      #|
+    ),
   )
   composer.register_source(
-    "shaders/version/root.wgsl", "#import version::module::value\nfn shade() -> f32 { return value(); }\n",
+    "shaders/version/root.wgsl",
+    (
+      #|#import version::module::value
+      #|fn shade() -> f32 { return value(); }
+      #|
+    ),
   )
   let output = composer.compose_wgsl(
     "shaders/version/root.wgsl",

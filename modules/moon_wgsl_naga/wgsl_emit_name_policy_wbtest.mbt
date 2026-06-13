@@ -67,7 +67,10 @@ test "naga-oil writer applies root visible import spelling to struct members" {
   )
   debug_inspect(
     emitted.contains(
-      "struct ImportedInputX_naga_oil_mod_IMPORT {\n    material: u32,",
+      (
+        #|struct ImportedInputX_naga_oil_mod_IMPORT {
+        #|    material: u32,
+      ),
     ),
     content="true",
   )

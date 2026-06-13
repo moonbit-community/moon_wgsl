@@ -40,8 +40,15 @@ test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
   let base_definition = composer_test_add_or_abort(
     composer,
     composer_test_descriptor(
-      "#define_import_path test::base\nfn base_value() -> f32 {\n  return 1f;\n}\n",
-      "tests/base.wgsl", base_shader_defs,
+      (
+        #|#define_import_path test::base
+        #|fn base_value() -> f32 {
+        #|  return 1f;
+        #|}
+        #|
+      ),
+      "tests/base.wgsl",
+      base_shader_defs,
     ),
   )
   debug_inspect(base_definition.name(), content="\"test::base\"")
@@ -50,7 +57,20 @@ test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
   let child_definition = composer_test_add_or_abort(
     composer,
     composer_test_descriptor(
-      "#define_import_path test::child\n#import test::base::base_value\n#ifdef USE_CHILD\nfn child_value() -> f32 {\n  return base_value();\n}\n#else\nfn child_value() -> f32 {\n  return 0.0;\n}\n#endif\n",
+      (
+        #|#define_import_path test::child
+        #|#import test::base::base_value
+        #|#ifdef USE_CHILD
+        #|fn child_value() -> f32 {
+        #|  return base_value();
+        #|}
+        #|#else
+        #|fn child_value() -> f32 {
+        #|  return 0.0;
+        #|}
+        #|#endif
+        #|
+      ),
       "tests/child.wgsl",
       Map([]),
     ),
@@ -77,7 +97,13 @@ test "naga_oil: composer remove_composable_module removes dependent modules" {
     composer_test_add_or_abort(
       composer,
       composer_test_descriptor(
-        "#define_import_path test::base\nfn base_value() -> f32 {\n  return 1f;\n}\n",
+        (
+          #|#define_import_path test::base
+          #|fn base_value() -> f32 {
+          #|  return 1f;
+          #|}
+          #|
+        ),
         "tests/base_remove.wgsl",
         Map([]),
       ),
@@ -87,7 +113,14 @@ test "naga_oil: composer remove_composable_module removes dependent modules" {
     composer_test_add_or_abort(
       composer,
       composer_test_descriptor(
-        "#define_import_path test::child\n#import test::base::base_value\nfn child_value() -> f32 {\n  return base_value();\n}\n",
+        (
+          #|#define_import_path test::child
+          #|#import test::base::base_value
+          #|fn child_value() -> f32 {
+          #|  return base_value();
+          #|}
+          #|
+        ),
         "tests/child_remove.wgsl",
         Map([]),
       ),
@@ -107,7 +140,12 @@ test "naga_oil: composer rejects modules without an import path name" {
   ignore(
     composer.add_composable_module(
       composer_test_descriptor(
-        "fn shade() -> f32 {\n  return 1f;\n}\n",
+        (
+          #|fn shade() -> f32 {
+          #|  return 1f;
+          #|}
+          #|
+        ),
         "tests/no_name.wgsl",
         Map([]),
       ),
@@ -128,13 +166,27 @@ test "naga_oil: composer rejects modules without an import path name" {
 test "naga_oil: add_composable_module resolves imports from the composer registry" {
   let composer = @compose.Composer::default()
   composer.register_source(
-    "tests/plain_shared.wgsl", "#define_import_path test::plain\nfn plain_value() -> f32 {\n  return 2f;\n}\n",
+    "tests/plain_shared.wgsl",
+    (
+      #|#define_import_path test::plain
+      #|fn plain_value() -> f32 {
+      #|  return 2f;
+      #|}
+      #|
+    ),
   )
 
   let child_definition = composer_test_add_or_abort(
     composer,
     composer_test_descriptor(
-      "#define_import_path test::child\n#import test::plain::plain_value\nfn child_value() -> f32 {\n  return plain_value();\n}\n",
+      (
+        #|#define_import_path test::child
+        #|#import test::plain::plain_value
+        #|fn child_value() -> f32 {
+        #|  return plain_value();
+        #|}
+        #|
+      ),
       "tests/child_against_registry.wgsl",
       Map([]),
     ),

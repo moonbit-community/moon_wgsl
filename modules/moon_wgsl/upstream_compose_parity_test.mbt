@@ -685,7 +685,22 @@ test "naga_oil writer profile suppresses dual source blending enable directive" 
 ///|
 test "naga_oil upstream: multiline dual source blending members skip identifier validation" {
   let source = @compose.Composer::default().compose_wgsl_source(
-    "enable dual_source_blending;\nstruct FragmentOutput {\n  @location(0)\n  @blend_src(0)\n  source0_: vec4<f32>,\n  @location(0)\n  @blend_src(1)\n  source1_: vec4<f32>,\n}\n@fragment\nfn fragment() -> FragmentOutput {\n  return FragmentOutput(vec4<f32>(), vec4<f32>());\n}\n",
+    (
+      #|enable dual_source_blending;
+      #|struct FragmentOutput {
+      #|  @location(0)
+      #|  @blend_src(0)
+      #|  source0_: vec4<f32>,
+      #|  @location(0)
+      #|  @blend_src(1)
+      #|  source1_: vec4<f32>,
+      #|}
+      #|@fragment
+      #|fn fragment() -> FragmentOutput {
+      #|  return FragmentOutput(vec4<f32>(), vec4<f32>());
+      #|}
+      #|
+    ),
     @common.WgslComposeOptions::default(),
   ) catch {
     err =>

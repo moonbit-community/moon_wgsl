@@ -63,11 +63,31 @@ fn register_export_test_shaders() -> Unit {
   register_export_test_shader_files([
     {
       rel_path: "shaders/shared/common.wgsl",
-      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
+      source: (
+        #|struct SharedParams {
+        #|  tint: vec4<f32>,
+        #|}
+        #|struct SharedVertex {
+        #|  params: SharedParams,
+        #|}
+        #|fn build_color(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vertex.params.tint;
+        #|}
+        #|fn unused_helper() -> f32 {
+        #|  return 0.0;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/main.wgsl",
-      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
+      source: (
+        #|#import "../shared/common.wgsl" SharedVertex, build_color
+        #|fn shade(vertex: SharedVertex) -> vec4<f32> {
+        #|  return build_color(vertex);
+        #|}
+        #|
+      ),
     },
   ])
 }
@@ -78,15 +98,31 @@ fn register_ambiguous_export_test_shaders() -> Unit {
   register_export_test_shader_files([
     {
       rel_path: "shaders/shared/a.wgsl",
-      source: "fn identical_helper() -> f32 {\n  return 1f;\n}\n",
+      source: (
+        #|fn identical_helper() -> f32 {
+        #|  return 1f;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/shared/b.wgsl",
-      source: "fn identical_helper() -> f32 {\n  return 1f;\n}\n",
+      source: (
+        #|fn identical_helper() -> f32 {
+        #|  return 1f;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/ambiguous.wgsl",
-      source: "#import \"../shared/a.wgsl\" identical_helper\nfn shade() -> f32 {\n  return identical_helper();\n}\n",
+      source: (
+        #|#import "../shared/a.wgsl" identical_helper
+        #|fn shade() -> f32 {
+        #|  return identical_helper();
+        #|}
+        #|
+      ),
     },
   ])
 }
@@ -97,11 +133,31 @@ fn register_redirect_export_test_shaders() -> Unit {
   register_export_test_shader_files([
     {
       rel_path: "shaders/shared/common.wgsl",
-      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\nfn build_shadow(vertex: SharedVertex) -> vec4<f32> {\n  return vec4<f32>(0.0, 0.0, 0.0, 1.0);\n}\n",
+      source: (
+        #|struct SharedParams {
+        #|  tint: vec4<f32>,
+        #|}
+        #|struct SharedVertex {
+        #|  params: SharedParams,
+        #|}
+        #|fn build_color(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vertex.params.tint;
+        #|}
+        #|fn build_shadow(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/redirect.wgsl",
-      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color, build_shadow\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_shadow(vertex);\n}\n",
+      source: (
+        #|#import "../shared/common.wgsl" SharedVertex, build_color, build_shadow
+        #|fn shade(vertex: SharedVertex) -> vec4<f32> {
+        #|  return build_shadow(vertex);
+        #|}
+        #|
+      ),
     },
   ])
 }
@@ -112,11 +168,29 @@ fn register_analysis_alignment_export_test_shaders() -> Unit {
   register_export_test_shader_files([
     {
       rel_path: "shaders/shared/aligned.wgsl",
-      source: "struct SharedParams {\n  value: f32,\n}\n@group(0) @binding(0) var<uniform> shared_params: SharedParams;\nfn read_shared() -> f32 {\n  return shared_params.value;\n}\nfn unused_helper() -> f32 {\n  return 0.0;\n}\n",
+      source: (
+        #|struct SharedParams {
+        #|  value: f32,
+        #|}
+        #|@group(0) @binding(0) var<uniform> shared_params: SharedParams;
+        #|fn read_shared() -> f32 {
+        #|  return shared_params.value;
+        #|}
+        #|fn unused_helper() -> f32 {
+        #|  return 0.0;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/aligned.wgsl",
-      source: "#import \"../shared/aligned.wgsl\" read_shared\nfn shade() -> f32 {\n  return read_shared();\n}\n",
+      source: (
+        #|#import "../shared/aligned.wgsl" read_shared
+        #|fn shade() -> f32 {
+        #|  return read_shared();
+        #|}
+        #|
+      ),
     },
   ])
 }
@@ -127,11 +201,26 @@ fn register_invalid_struct_member_export_test_shaders() -> Unit {
   register_export_test_shader_files([
     {
       rel_path: "shaders/shared/invalid_member.wgsl",
-      source: "struct BadOutput {\n  bad_: vec3<f32>,\n}\nfn build_bad() -> BadOutput {\n  var out: BadOutput;\n  return out;\n}\n",
+      source: (
+        #|struct BadOutput {
+        #|  bad_: vec3<f32>,
+        #|}
+        #|fn build_bad() -> BadOutput {
+        #|  var out: BadOutput;
+        #|  return out;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/invalid_member.wgsl",
-      source: "#import \"../shared/invalid_member.wgsl\" BadOutput, build_bad\nfn main() -> BadOutput {\n  return build_bad();\n}\n",
+      source: (
+        #|#import "../shared/invalid_member.wgsl" BadOutput, build_bad
+        #|fn main() -> BadOutput {
+        #|  return build_bad();
+        #|}
+        #|
+      ),
     },
   ])
 }
@@ -258,7 +347,17 @@ test "naga_oil: export keeps same-name local initializer callee" {
   clear_export_test_registry()
   let composer = export_test_composer()
   composer.register_source(
-    "pbr/same_name_callee.wgsl", "fn point_light(light_id: u32) -> u32 {\n  return light_id + 1u;\n}\nfn fragment(light_id: u32) -> u32 {\n  let point_light = point_light(light_id);\n  return point_light;\n}\n",
+    "pbr/same_name_callee.wgsl",
+    (
+      #|fn point_light(light_id: u32) -> u32 {
+      #|  return light_id + 1u;
+      #|}
+      #|fn fragment(light_id: u32) -> u32 {
+      #|  let point_light = point_light(light_id);
+      #|  return point_light;
+      #|}
+      #|
+    ),
   )
   let output = @export.export_wgsl_with_options(
     composer,
@@ -283,11 +382,28 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
   composer.register_source_files([
     {
       rel_path: "shaders/shared/common.wgsl",
-      source: "struct SharedParams {\n  tint: vec4<f32>,\n}\nstruct SharedVertex {\n  params: SharedParams,\n}\nfn build_color(vertex: SharedVertex) -> vec4<f32> {\n  return vertex.params.tint;\n}\n",
+      source: (
+        #|struct SharedParams {
+        #|  tint: vec4<f32>,
+        #|}
+        #|struct SharedVertex {
+        #|  params: SharedParams,
+        #|}
+        #|fn build_color(vertex: SharedVertex) -> vec4<f32> {
+        #|  return vertex.params.tint;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/main.wgsl",
-      source: "#import \"../shared/common.wgsl\" SharedVertex, build_color\nfn shade(vertex: SharedVertex) -> vec4<f32> {\n  return build_color(vertex);\n}\n",
+      source: (
+        #|#import "../shared/common.wgsl" SharedVertex, build_color
+        #|fn shade(vertex: SharedVertex) -> vec4<f32> {
+        #|  return build_color(vertex);
+        #|}
+        #|
+      ),
     },
   ])
   let output = @export.export_wgsl_with_options(
@@ -432,11 +548,23 @@ test "redirect diagnostics require exact AST reference path matches" {
   register_export_test_shader_files([
     {
       rel_path: "shaders/shared/other.wgsl",
-      source: "#define_import_path demo::other\nfn Item() -> u32 {\n  return 1u;\n}\n",
+      source: (
+        #|#define_import_path demo::other
+        #|fn Item() -> u32 {
+        #|  return 1u;
+        #|}
+        #|
+      ),
     },
     {
       rel_path: "shaders/effects/qualified_suffix.wgsl",
-      source: "#import demo::other as other\nfn shade() -> u32 {\n  return other::Item();\n}\n",
+      source: (
+        #|#import demo::other as other
+        #|fn shade() -> u32 {
+        #|  return other::Item();
+        #|}
+        #|
+      ),
     },
   ])
   let output = @export.export_wgsl_with_options(
