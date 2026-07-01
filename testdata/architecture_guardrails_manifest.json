@@ -1,0 +1,164 @@
+{
+  "package_imports": {
+    "modules/moon_wgsl/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/compose",
+      "Milky2018/moon_wgsl_naga_oil/export",
+      "Milky2018/moon_wgsl_naga_oil/metadata",
+      "Milky2018/moon_wgsl_naga_oil/preprocess",
+      "Milky2018/moon_wgsl_naga_oil/resolver",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/parser",
+      "moonbitlang/core/encoding/utf8",
+      "moonbitlang/core/ref",
+      "moonbitlang/core/set",
+      "moonbitlang/core/string",
+      "moonbitlang/x/fs"
+    ],
+    "modules/moon_wgsl_naga/moon.pkg": [
+      "Milky2018/wgsl/ir",
+      "Milky2018/wgsl/parser",
+      "moonbitlang/core/debug",
+      "moonbitlang/core/set",
+      "moonbitlang/core/strconv"
+    ],
+    "modules/moon_wgsl_naga_oil/compose/moon.pkg": [
+      "Milky2018/moon_wgsl_naga",
+      "Milky2018/moon_wgsl_naga_oil/directive",
+      "Milky2018/moon_wgsl_naga_oil/metadata",
+      "Milky2018/moon_wgsl_naga_oil/preprocess",
+      "Milky2018/moon_wgsl_naga_oil/resolver",
+      "Milky2018/moon_wgsl_naga_oil/transform",
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/ast_analysis",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/directive_syntax",
+      "Milky2018/wgsl/import_syntax",
+      "Milky2018/wgsl/ir",
+      "Milky2018/wgsl/lex",
+      "Milky2018/wgsl/parser",
+      "moonbitlang/core/ref",
+      "moonbitlang/core/set",
+      "moonbitlang/core/string",
+      "moonbitlang/x/fs"
+    ],
+    "modules/moon_wgsl_naga_oil/directive/moon.pkg": [
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/directive_syntax",
+      "Milky2018/wgsl/lex"
+    ],
+    "modules/moon_wgsl_naga_oil/export/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/compose",
+      "Milky2018/moon_wgsl_naga_oil/transform",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/ir",
+      "Milky2018/wgsl/parser",
+      "moonbitlang/core/set"
+    ],
+    "modules/moon_wgsl_naga_oil/import_substitution/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/source_rewrite",
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/ast_analysis",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/import_syntax",
+      "Milky2018/wgsl/lex",
+      "Milky2018/wgsl/parser",
+      "moonbitlang/core/encoding/utf8"
+    ],
+    "modules/moon_wgsl_naga_oil/metadata/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/directive",
+      "Milky2018/moon_wgsl_naga_oil/import_substitution",
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/lex",
+      "moonbitlang/core/encoding/utf8",
+      "moonbitlang/core/set",
+      "moonbitlang/core/string"
+    ],
+    "modules/moon_wgsl_naga_oil/preprocess/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/directive",
+      "Milky2018/moon_wgsl_naga_oil/import_substitution",
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/lex",
+      "moonbitlang/core/string"
+    ],
+    "modules/moon_wgsl_naga_oil/resolver/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/metadata",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/import_syntax",
+      "Milky2018/wgsl/lex",
+      "moonbitlang/core/ref",
+      "moonbitlang/x/fs"
+    ],
+    "modules/moon_wgsl_naga_oil/source_rewrite/moon.pkg": [
+      "Milky2018/wgsl/lex"
+    ],
+    "modules/moon_wgsl_naga_oil/transform/moon.pkg": [
+      "Milky2018/moon_wgsl_naga_oil/directive",
+      "Milky2018/moon_wgsl_naga_oil/source_rewrite",
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/ast_analysis",
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/ir",
+      "Milky2018/wgsl/lex",
+      "Milky2018/wgsl/parser",
+      "moonbitlang/core/encoding/utf8",
+      "moonbitlang/core/set"
+    ],
+    "modules/wgsl/ast/moon.pkg": [],
+    "modules/wgsl/ast_analysis/moon.pkg": [
+      "Milky2018/wgsl/ast"
+    ],
+    "modules/wgsl/common/moon.pkg": [
+      "moonbitlang/core/set"
+    ],
+    "modules/wgsl/directive_syntax/moon.pkg": [
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/lex"
+    ],
+    "modules/wgsl/import_syntax/moon.pkg": [
+      "Milky2018/wgsl/common",
+      "Milky2018/wgsl/lex",
+      "moonbitlang/core/list"
+    ],
+    "modules/wgsl/ir/moon.pkg": [
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/ast_analysis",
+      "Milky2018/wgsl/parser",
+      "moonbitlang/core/debug",
+      "moonbitlang/core/set",
+      "moonbitlang/core/strconv"
+    ],
+    "modules/wgsl/lex/moon.pkg": [
+      "moonbitlang/core/debug"
+    ],
+    "modules/wgsl/parser/moon.pkg": [
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/ast_analysis",
+      "Milky2018/wgsl/directive_syntax",
+      "Milky2018/wgsl/lex",
+      "moonbitlang/core/list"
+    ]
+  },
+  "public_api": {
+    "modules/wgsl/parser/pkg.mbti": {
+      "required": [
+        "pub fn parse_wgsl_translation_unit_strict\\(",
+        "pub suberror WgslParseError"
+      ],
+      "forbidden": [
+        "pub fn (block|const_assert_expr|function_args|function_result|source_directive|struct_members|template_list|type_alias_tail|type_ref|typed_initializer_tail)\\(",
+        "pub(\\(all\\))? enum Token",
+        "pub(\\(all\\))? enum TokenKind",
+        "pub suberror ParseError"
+      ]
+    }
+  },
+  "symlinks": {
+    "modules/moon_wgsl_naga/wgsl_emit_expression_types.mbt": "../wgsl/ir/wgsl_emit_expression_types.mbt",
+    "modules/moon_wgsl_naga/wgsl_emit_filter.mbt": "../wgsl/ir/wgsl_emit_filter.mbt",
+    "modules/moon_wgsl_naga/wgsl_emit_types.mbt": "../wgsl/ir/wgsl_emit_types.mbt",
+    "modules/moon_wgsl_naga/wgsl_writer_derived_view.mbt": "../wgsl/ir/wgsl_writer_derived_view.mbt"
+  }
+}
