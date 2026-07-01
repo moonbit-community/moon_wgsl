@@ -1,6 +1,6 @@
 # naga_oil Preprocessing Parity
 
-Last updated: 2026-05-09
+Last updated: 2026-07-01
 
 ## Scope
 
@@ -30,12 +30,24 @@ The preprocessing target is:
 
 ## Current Status
 
-As of current `main`, there are no known open WGSL source-level preprocessing
-gaps in the mirrored upstream compose corpus. Deterministic WGSL outputs are
-byte-gated through `tools/check_moon_wgsl_byte_parity.sh`; source-level error
-shapes are gated through `tools/check_moon_wgsl_error_parity.sh`; every mirrored
-expected fixture is classified by the manifest and audited by
+As of current `main`, the published workspace line is `0.15.0`. There are no
+known open WGSL source-level preprocessing gaps in the mirrored upstream compose
+corpus. Deterministic WGSL outputs are byte-gated through
+`tools/check_moon_wgsl_byte_parity.sh`; source-level error shapes are gated
+through `tools/check_moon_wgsl_error_parity.sh`; every mirrored expected fixture
+is classified by the manifest and audited by
 `tools/check_naga_oil_parity_inventory.sh`.
+
+The external naga-oil compose strict byte parity gate currently passes with:
+
+- `cases=170`
+- `comparable=149`
+- `oracle-blocked=21`
+- `writer-exact=149`
+- `byte-exact=149`
+
+The Naga writer representative trace gate currently passes 45 cases through
+`tools/check_naga_writer_representative_trace.sh`.
 
 Downstream consumers such as `mgstudio` should use current `main` or the latest
 published release, then rerun their shader-pipeline tests. Runtime pipeline
@@ -95,7 +107,19 @@ Parity is tracked with explicit gates:
    across static files, compose fixture roots, and generated downstream
    regressions.
 
-8. CI parity gate.
+8. Naga writer representative trace parity.
+   `tools/check_naga_writer_representative_trace.sh` checks the Naga
+   Compatibility Layer against representative upstream writer/order/name
+   behavior. This is the gate for byte-level Naga writer convergence and should
+   be expanded when new writer drift classes are found.
+
+9. External naga-oil compose strict byte parity.
+   `tools/check_external_naga_oil_compose_parity.sh` runs registered external
+   compose cases against the pinned oracle and requires all comparable cases to
+   be writer-exact and byte-exact. Oracle-blocked cases must be explicitly
+   counted and cannot silently pass as skipped local failures.
+
+10. CI parity gate.
    `tools/check_preprocess_parity.sh` runs the local preprocessing parity suite
    and pinned-oracle comparisons. The GitHub Actions `check` workflow runs the
    byte parity, error parity, inventory, preprocess parity, WGSL corpus matrix,
@@ -217,7 +241,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 
 For `mgstudio` or similar consumers, the expected verification path is:
 
-1. Upgrade to `Milky2018/moon_wgsl 0.6.2` or current `main`.
+1. Upgrade to `Milky2018/moon_wgsl 0.15.0` or current `main`.
 2. Rerun the downstream WGSL preprocessing/compose tests against byte-identical
    Bevy WGSL sources.
 3. Confirm that previous preprocessing failures such as unresolved
