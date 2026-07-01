@@ -13,7 +13,7 @@ fail() {
 
 echo "architecture guardrail: semantic metadata checks"
 python3 tools/check_architecture_metadata.py
-tools/check_issue_tracker_index.sh
+python3 tools/check_docs_freshness.py
 tools/check_naga_oil_parity_inventory.sh
 
 echo "architecture guardrail: textual regression scans"

@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def fail(message: str) -> None:
+    print(f"documentation freshness check failed: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def non_comment_rows(path: Path) -> int:
+    count = 0
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and stripped.split("\t")[0] != "id":
+            count += 1
+    return count
+
+
+def module_version(module: str) -> str:
+    path = REPO_ROOT / "modules" / module / "moon.mod"
+    text = path.read_text()
+    match = re.search(r'^version = "([^"]+)"$', text, re.MULTILINE)
+    if not match:
+      fail(f"missing version in {path.relative_to(REPO_ROOT)}")
+    return match.group(1)
+
+
+def check_closed_issue_acceptance() -> None:
+    for path in sorted((REPO_ROOT / "issues").glob("ISS-*.md")):
+        text = path.read_text()
+        if re.search(r"^- Status: closed$", text, re.MULTILINE):
+            unchecked = [
+                line for line in text.splitlines()
+                if line.startswith("- [ ]")
+            ]
+            if unchecked and "Unchecked acceptance exception:" not in text:
+                fail(
+                    f"{path.relative_to(REPO_ROOT)} is closed with unchecked acceptance criteria"
+                )
+
+
+def check_issue_index_freshness() -> None:
+    subprocess.run(
+        [str(REPO_ROOT / "tools" / "check_issue_tracker_index.sh")],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+
+
+def check_naga_oil_parity_doc() -> None:
+    docs = (REPO_ROOT / "docs" / "naga_oil-parity.md").read_text()
+    release = module_version("moon_wgsl")
+    for module in ["wgsl", "moon_wgsl_naga", "moon_wgsl_naga_oil"]:
+        other = module_version(module)
+        if other != release:
+            fail(f"workspace module versions are not synchronized: moon_wgsl={release}, {module}={other}")
+    if f"published workspace line is `{release}`" not in docs:
+        fail(f"docs/naga_oil-parity.md does not record current release {release}")
+    if f"Upgrade to `Milky2018/moon_wgsl {release}`" not in docs:
+        fail(f"docs/naga_oil-parity.md downstream verification still references a stale release")
+
+    cases = non_comment_rows(REPO_ROOT / "testdata" / "external_naga_oil_compose_parity.tsv")
+    oracle_blocked = non_comment_rows(
+        REPO_ROOT / "testdata" / "external_naga_oil_compose_oracle_blocked.tsv"
+    )
+    comparable = cases - oracle_blocked
+    trace_cases = non_comment_rows(REPO_ROOT / "testdata" / "naga_writer_trace_cases.tsv")
+    expected_fragments = [
+        f"`cases={cases}`",
+        f"`comparable={comparable}`",
+        f"`oracle-blocked={oracle_blocked}`",
+        f"`writer-exact={comparable}`",
+        f"`byte-exact={comparable}`",
+        f"passes {trace_cases} cases",
+    ]
+    for fragment in expected_fragments:
+        if fragment not in docs:
+            fail(f"docs/naga_oil-parity.md is missing current parity fragment: {fragment}")
+
+
+def main() -> None:
+    check_closed_issue_acceptance()
+    check_issue_index_freshness()
+    check_naga_oil_parity_doc()
+    print("documentation freshness checks passed")
+
+
+if __name__ == "__main__":
+    main()
