@@ -150,7 +150,7 @@ fn collect_wgsl_const_side_effect_items(
 fn collect_wgsl_unqualified_live_module_items(
   import_source : String,
   local_facts : WgslComposeSemanticFacts,
-  reference_source : String,
+  reference_facts : WgslComposeSemanticFacts,
 ) -> Array[String] raise ComposerError {
   let items : Array[String] = []
   let declarations = collect_wgsl_named_declarations_strict(import_source) catch {
@@ -161,11 +161,7 @@ fn collect_wgsl_unqualified_live_module_items(
     if local_facts.declares_name(name) {
       continue
     }
-    let referenced = wgsl_semantic_source_contains_unqualified_reference_name(
-      reference_source, name,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    let referenced = reference_facts.contains_unqualified_reference_name(name)
     if referenced {
       composer_string_list_push_unique(items, name)
     }
@@ -473,14 +469,14 @@ fn Composer::build_wgsl_import_requests_from_source_directives(
 }
 
 ///|
-fn Composer::active_wgsl_full_module_import_dependency_scan_source(
+fn Composer::active_wgsl_full_module_import_dependency_scan_facts(
   self : Composer,
   target_plans : Array[WgslSemanticImportTargetPlan],
-  active_scan_source : String,
+  active_scan_facts : WgslComposeSemanticFacts,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
-) -> String raise ComposerError {
-  let parts : Array[String] = []
+) -> WgslComposeSemanticFacts raise ComposerError {
+  let mut facts = WgslComposeSemanticFacts::{ declarations: [], references: [] }
   for target_plan in target_plans {
     if !target_plan.import_full_module {
       continue
@@ -506,12 +502,9 @@ fn Composer::active_wgsl_full_module_import_dependency_scan_source(
     }
     let requested_items : Array[String] = []
     for declaration in declarations {
-      let referenced = wgsl_semantic_source_contains_unqualified_reference_name(
-        active_scan_source,
+      let referenced = active_scan_facts.contains_unqualified_reference_name(
         declaration.name(),
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
+      )
       if referenced {
         composer_string_list_push_unique(requested_items, declaration.name())
       }
@@ -524,9 +517,13 @@ fn Composer::active_wgsl_full_module_import_dependency_scan_source(
     ) catch {
       error => raise composer_error_from_wgsl_parse_error(error)
     }
-    parts.push(extraction.source())
+    let extraction_facts = collect_wgsl_compose_semantic_facts(
+      session,
+      extraction.source(),
+    )
+    facts = facts.merge(extraction_facts)
   }
-  parts.join("\n")
+  facts
 }
 
 ///|
@@ -933,17 +930,15 @@ fn Composer::build_wgsl_import_requests_from_targets(
   let active_scan_facts = collect_wgsl_compose_semantic_facts(
     session, reference_scan_base_source,
   )
-  let full_module_dependency_scan_source = self.active_wgsl_full_module_import_dependency_scan_source(
+  let full_module_dependency_scan_facts = self.active_wgsl_full_module_import_dependency_scan_facts(
     target_plans.plans,
-    reference_scan_base_source,
+    active_scan_facts,
     session,
     importer_defs,
   )
-  let reference_scan_source = if full_module_dependency_scan_source == "" {
-    reference_scan_base_source
-  } else {
-    "\{reference_scan_base_source}\n\{full_module_dependency_scan_source}"
-  }
+  let reference_scan_facts = active_scan_facts.merge(
+    full_module_dependency_scan_facts,
+  )
   for target_plan in target_plans.plans {
     let requested_items = target_plan.requested_items
     let declared_items = wgsl_import_request_copy_items(requested_items)
@@ -972,7 +967,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let unqualified_live_module_items = if target_plan.import_full_module &&
       !target_plan.alias_is_used {
       collect_wgsl_unqualified_live_module_items(
-        active_import_source, active_scan_facts, reference_scan_source,
+        active_import_source, active_scan_facts, reference_scan_facts,
       )
     } else {
       []

@@ -213,20 +213,16 @@ fn find_wgsl_visible_identity_imported_item_binding(
 
 ///|
 fn record_wgsl_redirect_matches(
-  source : String,
+  facts : WgslComposeSemanticFacts,
   session : WgslComposeSession,
-) -> Unit raise ComposerError {
+) -> Unit {
   for redirect in session.redirects {
     let from_name = redirect.from_name.trim().to_owned()
     let to_name = redirect.to_name.trim().to_owned()
     if from_name == "" || to_name == "" || from_name == to_name {
       continue
     }
-    let contains_reference = wgsl_semantic_source_contains_reference_path(
-      source, from_name,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    let contains_reference = facts.contains_reference_path(from_name)
     if contains_reference {
       let current = match session.redirect_match_counts.get(from_name) {
         Some(count) => count

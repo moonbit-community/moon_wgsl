@@ -13,6 +13,18 @@
 // limitations under the License.
 
 ///|
+fn semantic_graph_test_facts(source : String) -> WgslComposeSemanticFacts {
+  let declarations = collect_wgsl_named_declarations_strict(source) catch {
+    _ => abort("expected semantic graph fixture parse success")
+  }
+  let references : Array[WgslReferencePath] = []
+  collect_wgsl_semantic_reference_paths(source, references) catch {
+    _ => abort("expected semantic graph fixture reference parse success")
+  }
+  { declarations, references }
+}
+
+///|
 test "semantic alias graph resolves global binding member access" {
   let source =
     #|fn read() -> u32 {
@@ -53,11 +65,9 @@ test "semantic reference matcher includes address-of alias member access" {
     #|}
     #|
   debug_inspect(
-    wgsl_semantic_source_contains_reference_path(
-      source, "view_bindings::clustered_lights",
-    ) catch {
-      _ => abort("expected semantic matcher to parse valid WGSL")
-    },
+    semantic_graph_test_facts(source).contains_reference_path(
+      "view_bindings::clustered_lights",
+    ),
     content="true",
   )
 }
@@ -84,15 +94,11 @@ test "semantic reference matcher distinguishes qualified suffixes" {
     #|}
     #|
   debug_inspect(
-    wgsl_semantic_source_contains_reference_path(source, "Item") catch {
-      _ => abort("expected semantic matcher to parse valid WGSL")
-    },
+    semantic_graph_test_facts(source).contains_reference_path("Item"),
     content="false",
   )
   debug_inspect(
-    wgsl_semantic_source_contains_reference_path(source, "other::Item") catch {
-      _ => abort("expected semantic matcher to parse valid WGSL")
-    },
+    semantic_graph_test_facts(source).contains_reference_path("other::Item"),
     content="true",
   )
 }
@@ -108,11 +114,9 @@ test "semantic reference matcher keeps same-name global declaration references" 
     #|}
     #|
   debug_inspect(
-    wgsl_semantic_source_contains_reference_path(
-      source, "convert_to_linear_rgba",
-    ) catch {
-      _ => abort("expected semantic matcher to parse valid WGSL")
-    },
+    semantic_graph_test_facts(source).contains_reference_path(
+      "convert_to_linear_rgba",
+    ),
     content="true",
   )
 }
@@ -125,15 +129,13 @@ test "semantic reference matcher ignores struct member names" {
     #|}
     #|
   debug_inspect(
-    wgsl_semantic_source_contains_reference_path(source, "lighting::spot_light") catch {
-      _ => abort("expected semantic matcher to parse valid WGSL")
-    },
+    semantic_graph_test_facts(source).contains_reference_path(
+      "lighting::spot_light",
+    ),
     content="true",
   )
   debug_inspect(
-    wgsl_semantic_source_contains_reference_path(source, "member") catch {
-      _ => abort("expected semantic matcher to parse valid WGSL")
-    },
+    semantic_graph_test_facts(source).contains_reference_path("member"),
     content="false",
   )
 }

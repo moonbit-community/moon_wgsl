@@ -288,59 +288,40 @@ fn WgslComposeSemanticFacts::contains_reference_path(
 }
 
 ///|
-fn wgsl_semantic_source_has_colon_pair_before(
-  source : String,
-  start : Int,
-) -> Bool {
-  start >= 2 && source[start - 2:start].to_owned() == "::"
-}
-
-///|
-fn wgsl_semantic_source_has_colon_pair_after(
-  source : String,
-  end_ : Int,
-) -> Bool {
-  end_ + 2 <= source.length() && source[end_:end_ + 2].to_owned() == "::"
-}
-
-///|
-fn wgsl_semantic_identifier_node_is_unqualified_name(
-  source : String,
-  node : WgslIdent,
+fn WgslComposeSemanticFacts::contains_unqualified_reference_name(
+  self : WgslComposeSemanticFacts,
   name : String,
 ) -> Bool {
-  if node.name() != name {
-    return false
-  }
-  if node.start() < 0 ||
-    node.end() > source.length() ||
-    node.start() > node.end() {
-    return false
-  }
-  if source[node.start():node.end()].to_owned() != name {
-    return false
-  }
-  !wgsl_semantic_source_has_colon_pair_before(source, node.start()) &&
-  !wgsl_semantic_source_has_colon_pair_after(source, node.end())
-}
-
-///|
-fn wgsl_semantic_source_contains_unqualified_reference_name(
-  source : String,
-  name : String,
-) -> Bool raise WgslParseError {
   let name = name.trim().to_owned()
   if name == "" {
     return false
   }
-  let nodes : Array[WgslIdent] = []
-  collect_wgsl_semantic_reference_identifier_nodes(source, nodes)
-  for node in nodes {
-    if wgsl_semantic_identifier_node_is_unqualified_name(source, node, name) {
+  for path in self.references {
+    let segments = path.segments()
+    if segments.length() == 1 && segments[0] == name {
       return true
     }
   }
   false
+}
+
+///|
+fn WgslComposeSemanticFacts::merge(
+  self : WgslComposeSemanticFacts,
+  other : WgslComposeSemanticFacts,
+) -> WgslComposeSemanticFacts {
+  let declarations = self.declarations.copy()
+  for declaration in other.declarations {
+    declarations.push(declaration)
+  }
+  let references = self.references.copy()
+  for reference in other.references {
+    let reference_text = reference.text()
+    if !references.any(fn(existing) { existing.text() == reference_text }) {
+      references.push(reference)
+    }
+  }
+  { declarations, references }
 }
 
 ///|
@@ -387,26 +368,6 @@ fn wgsl_semantic_source_uses_alias(
     source, alias_name, requested_paths,
   )
   requested_paths.length() > 0
-}
-
-///|
-fn wgsl_semantic_source_contains_reference_path(
-  source : String,
-  reference_path : String,
-) -> Bool raise WgslParseError {
-  match wgsl_semantic_reference_path_from_identifier(reference_path) {
-    Some(expected) => {
-      let paths : Array[WgslReferencePath] = []
-      collect_wgsl_semantic_reference_paths(source, paths)
-      for path in paths {
-        if path.text() == expected.text() {
-          return true
-        }
-      }
-      false
-    }
-    None => false
-  }
 }
 
 ///|

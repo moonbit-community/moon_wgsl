@@ -31,11 +31,9 @@ test "compose semantic unqualified reference scan ignores qualified path leaves"
     #|  return types::FLAG;
     #|}
     #|
-  let has_flag = wgsl_semantic_source_contains_unqualified_reference_name(
-    qualified_only, "FLAG",
-  ) catch {
-    error => abort(error.message())
-  }
+  let has_flag = semantic_ir_facts(qualified_only).contains_unqualified_reference_name(
+    "FLAG",
+  )
   debug_inspect(has_flag, content="false")
   let unqualified =
     #|fn read_config() -> Config {
@@ -43,11 +41,9 @@ test "compose semantic unqualified reference scan ignores qualified path leaves"
     #|  return value;
     #|}
     #|
-  let has_config = wgsl_semantic_source_contains_unqualified_reference_name(
-    unqualified, "Config",
-  ) catch {
-    error => abort(error.message())
-  }
+  let has_config = semantic_ir_facts(unqualified).contains_unqualified_reference_name(
+    "Config",
+  )
   debug_inspect(has_config, content="true")
 }
 

@@ -79,7 +79,10 @@ fn prepare_wgsl_compose_source(
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
 ) -> WgslPreparedComposeSource raise ComposerError {
-  record_wgsl_redirect_matches(source, session)
+  if session.redirects.length() > 0 {
+    let source_facts = collect_wgsl_compose_semantic_facts(session, source)
+    record_wgsl_redirect_matches(source_facts, session)
+  }
   let redirect_plan = build_wgsl_redirect_reference_plan(session.redirects)
   let redirected_source = rewrite_wgsl_references_with_binding_plan(
     source, redirect_plan,
