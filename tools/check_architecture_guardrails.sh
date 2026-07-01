@@ -246,6 +246,23 @@ for naga_writer_file in "${required_naga_writer_files[@]}"; do
   fi
 done
 
+shared_writer_substrate_files=(
+  wgsl_writer_derived_view.mbt
+  wgsl_emit_filter.mbt
+  wgsl_emit_expression_types.mbt
+  wgsl_emit_types.mbt
+)
+for shared_writer_file in "${shared_writer_substrate_files[@]}"; do
+  naga_path="modules/moon_wgsl_naga/${shared_writer_file}"
+  core_path="../wgsl/ir/${shared_writer_file}"
+  if [[ ! -L "$naga_path" ]]; then
+    fail "neutral writer substrate must have one source of truth: ${naga_path} must be a symlink to modules/wgsl/ir"
+  fi
+  if [[ "$(readlink "$naga_path")" != "$core_path" ]]; then
+    fail "neutral writer substrate symlink ${naga_path} must target ${core_path}"
+  fi
+done
+
 if [[ -f modules/wgsl/parser/wgsl_ast_expr_type.mbt ]]; then
   fail "modules/wgsl/parser expression/type monolith must stay split; modules/wgsl/parser/wgsl_ast_expr_type.mbt must not be reintroduced"
 fi
