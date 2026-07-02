@@ -124,6 +124,12 @@ fn wgsl_ir_writer_module_plan_trace(view : WgslIrWriterModule) -> String {
   out.write_string(
     "module\tdirectives=\{view.source_directives().length()}\ttypes=\{view.type_slots().length()}\tconstants=\{view.constant_slots().length()}\toverrides=\{view.override_slots().length()}\tglobals=\{view.global_variable_slots().length()}\tfunctions=\{view.function_slots().length()}\tentry_points=\{view.entry_point_slots().length()}\tconst_asserts=\{view.const_assert_slots().length()}\n",
   )
+  for entry in view.generated_import_provenance.iter() {
+    let (name, provenance) = entry
+    out.write_string(
+      "import-provenance\tname=\{name}\trel=\{provenance.rel_path}\tsource=\{provenance.source_symbol_name}\tkind=\{wgsl_ir_trace_generated_import_provenance_kind(provenance.kind)}\tinline=\{provenance.inline_value}\tlocal=\{provenance.local_spelling}\troot_local=\{provenance.root_local_spelling}\n",
+    )
+  }
   for index in 0..<view.source_directives().length() {
     out.write_string(
       "slot\tdirective\t\{index}\tsource=-\tname=\{wgsl_ir_trace_text(Some(view.source_directives()[index]))}\tfinal=-\troot=emit\n",
@@ -180,6 +186,16 @@ fn wgsl_ir_writer_module_plan_trace(view : WgslIrWriterModule) -> String {
 }
 
 ///|
+fn wgsl_ir_trace_generated_import_provenance_kind(
+  kind : WgslIrGeneratedImportProvenanceKind,
+) -> String {
+  match kind {
+    ImportedSourceSymbol => "imported"
+    VirtualOverrideSymbol => "virtual-override"
+  }
+}
+
+///|
 fn wgsl_ir_trace_constant_is_inline_only(
   view : WgslIrWriterModule,
   constant : Constant,
@@ -187,11 +203,8 @@ fn wgsl_ir_trace_constant_is_inline_only(
   if wgsl_ir_trace_type_contains_abstract_scalar(view, constant.ty) {
     return true
   }
-  constant.inline_value ||
-  (
-    constant.generated_import &&
-    wgsl_ir_trace_constant_has_inline_only_type(view, constant)
-  )
+  constant.generated_import &&
+  wgsl_ir_trace_constant_has_inline_only_type(view, constant)
 }
 
 ///|

@@ -51,6 +51,30 @@ fn wgsl_import_request_copy_items(items : Array[String]) -> Array[String] {
 }
 
 ///|
+fn wgsl_import_request_copy(request : WgslImportRequest) -> WgslImportRequest {
+  {
+    module_path: request.module_path,
+    rel_path: request.rel_path,
+    import_full_module: request.import_full_module,
+    keep_requested_items: request.keep_requested_items,
+    requested_items: wgsl_import_request_copy_items(request.requested_items),
+    declared_items: wgsl_import_request_copy_items(request.declared_items),
+    alias_name: request.alias_name,
+  }
+}
+
+///|
+fn wgsl_import_request_array_copy(
+  requests : Array[WgslImportRequest],
+) -> Array[WgslImportRequest] {
+  let copied : Array[WgslImportRequest] = []
+  for request in requests {
+    copied.push(wgsl_import_request_copy(request))
+  }
+  copied
+}
+
+///|
 fn wgsl_import_request_visit_key(
   importer_rel_path : String,
   request : WgslImportRequest,

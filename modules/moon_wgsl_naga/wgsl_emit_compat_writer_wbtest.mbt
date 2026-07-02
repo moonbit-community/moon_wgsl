@@ -27,7 +27,7 @@ test "IR emitter does not count texture store as extra writer arena slot" {
 }
 
 ///|
-test "naga-oil writer profile suppresses source directives like Writer" {
+test "naga-oil writer profile suppresses source directives like upstream Writer" {
   let source =
     #|enable dual_source_blending;
     #|

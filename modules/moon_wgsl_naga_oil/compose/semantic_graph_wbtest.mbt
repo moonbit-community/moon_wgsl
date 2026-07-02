@@ -32,11 +32,9 @@ test "semantic alias graph resolves global binding member access" {
     #|}
     #|
   let requested_paths : Array[String] = []
-  collect_wgsl_semantic_alias_requested_paths(
-    source, "view_bindings", requested_paths,
-  ) catch {
-    _ => abort("expected semantic alias collection to parse valid WGSL")
-  }
+  semantic_graph_test_facts(source).collect_alias_requested_paths(
+    "view_bindings", requested_paths,
+  )
   debug_inspect(requested_paths.join(","), content="\"clustered_lights\"")
 }
 
@@ -80,9 +78,9 @@ test "semantic alias graph resolves nested module alias paths" {
     #|}
     #|
   let requested_paths : Array[String] = []
-  collect_wgsl_semantic_alias_requested_paths(source, "pbr", requested_paths) catch {
-    _ => abort("expected semantic alias collection to parse valid WGSL")
-  }
+  semantic_graph_test_facts(source).collect_alias_requested_paths(
+    "pbr", requested_paths,
+  )
   debug_inspect(requested_paths.join(","), content="\"bindings::view\"")
 }
 
@@ -157,18 +155,17 @@ test "semantic import target plan resolves alias-qualified binding item" {
       alias_name: "view_bindings",
     },
   ]
+  let source =
+    #|fn read() -> u32 { return view_bindings::clustered_lights; }
+    #|
   let plans = build_wgsl_semantic_import_target_plans(
-    (
-      #|fn read() -> u32 { return view_bindings::clustered_lights; }
-      #|
-    ),
+    source,
+    semantic_graph_test_facts(source),
     "root.wgsl",
     targets,
     registry,
     registry.copy_import_module_paths(),
-  ) catch {
-    _ => abort("expected semantic import target planning to parse valid WGSL")
-  }
+  )
   debug_inspect(plans.unresolved_targets.length(), content="0")
   debug_inspect(plans.plans.length(), content="1")
   debug_inspect(
@@ -200,18 +197,17 @@ test "semantic import target plan expands nested module aliases" {
     ),
   )
   let targets = [WgslImportTarget::{ raw_path: "bevy_pbr", alias_name: "pbr" }]
+  let source =
+    #|fn read() -> u32 { return pbr::bindings::view.value; }
+    #|
   let plans = build_wgsl_semantic_import_target_plans(
-    (
-      #|fn read() -> u32 { return pbr::bindings::view.value; }
-      #|
-    ),
+    source,
+    semantic_graph_test_facts(source),
     "root.wgsl",
     targets,
     registry,
     registry.copy_import_module_paths(),
-  ) catch {
-    _ => abort("expected semantic import target planning to parse valid WGSL")
-  }
+  )
   debug_inspect(plans.unresolved_targets.length(), content="0")
   debug_inspect(plans.plans.length(), content="1")
   debug_inspect(plans.plans[0].module_alias, content="\"pbr::bindings\"")
@@ -243,15 +239,15 @@ test "semantic import target plan prefers exact nested module over base item spl
   let targets = [
     WgslImportTarget::{ raw_path: "bevy_pbr::prepass_bindings", alias_name: "" },
   ]
+  let source = ""
   let plans = build_wgsl_semantic_import_target_plans(
-    "",
+    source,
+    semantic_graph_test_facts(source),
     "root.wgsl",
     targets,
     registry,
     registry.copy_import_module_paths(),
-  ) catch {
-    _ => abort("expected semantic import target planning to parse valid WGSL")
-  }
+  )
   debug_inspect(plans.unresolved_targets.length(), content="0")
   debug_inspect(plans.plans.length(), content="1")
   debug_inspect(
@@ -279,18 +275,17 @@ test "semantic import target plan splits nested item import when source uses lea
       alias_name: "",
     },
   ]
+  let source =
+    #|fn read() -> u32 { return mesh; }
+    #|
   let plans = build_wgsl_semantic_import_target_plans(
-    (
-      #|fn read() -> u32 { return mesh; }
-      #|
-    ),
+    source,
+    semantic_graph_test_facts(source),
     "root.wgsl",
     targets,
     registry,
     registry.copy_import_module_paths(),
-  ) catch {
-    _ => abort("expected semantic import target planning to parse valid WGSL")
-  }
+  )
   debug_inspect(plans.unresolved_targets.length(), content="0")
   debug_inspect(plans.plans.length(), content="1")
   debug_inspect(
@@ -337,13 +332,12 @@ test "semantic import target plans follow first AST reference order" {
     #|
   let plans = build_wgsl_semantic_import_target_plans(
     source,
+    semantic_graph_test_facts(source),
     "root.wgsl",
     targets,
     registry,
     registry.copy_import_module_paths(),
-  ) catch {
-    _ => abort("expected semantic import target planning to parse valid WGSL")
-  }
+  )
   debug_inspect(plans.plans.length(), content="2")
   debug_inspect(
     plans.plans[0].resolved_module.rel_path(),
@@ -407,13 +401,12 @@ test "semantic import target plans follow naga-oil substitution use order" {
     #|
   let plans = build_wgsl_semantic_import_target_plans(
     source,
+    semantic_graph_test_facts(source),
     "root.wgsl",
     targets,
     registry,
     registry.copy_import_module_paths(),
-  ) catch {
-    _ => abort("expected semantic import target planning to parse valid WGSL")
-  }
+  )
   debug_inspect(plans.plans.length(), content="2")
   debug_inspect(
     plans.plans[0].resolved_module.rel_path(),

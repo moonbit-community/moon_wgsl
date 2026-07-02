@@ -95,10 +95,30 @@ fn WgslIrDerivedModuleBuilder::import_full_module_constant_event_symbols(
 ) -> Unit {
   for symbol in symbols {
     if symbol.kind() == Constant {
-      self.import_named_non_generated_constant_if_present(
-        symbol.generated_symbol_name(),
-      )
+      let name = symbol.generated_symbol_name()
+      if self.full_module_generated_constant_should_be_rooted(name) {
+        self.import_named_constant_if_present(name)
+      } else {
+        self.import_named_non_generated_constant_if_present(name)
+      }
     }
+  }
+}
+
+///|
+fn WgslIrDerivedModuleBuilder::full_module_generated_constant_should_be_rooted(
+  self : WgslIrDerivedModuleBuilder,
+  name : String,
+) -> Bool {
+  match self.planner.shader_module.generated_import_provenance.get(name) {
+    Some(provenance) =>
+      provenance.kind == ImportedSourceSymbol &&
+      (
+        provenance.local_spelling ||
+        provenance.root_local_spelling ||
+        provenance.inline_value
+      )
+    None => false
   }
 }
 

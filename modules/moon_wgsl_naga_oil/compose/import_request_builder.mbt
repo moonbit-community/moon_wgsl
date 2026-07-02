@@ -30,19 +30,6 @@ fn wgsl_import_rel_path_is_glsl_frontend(rel_path : String) -> Bool {
 }
 
 ///|
-fn wgsl_item_extraction_contains_all_requested_items(
-  extraction : WgslModuleItemExtraction,
-  requested_items : Array[String],
-) -> Bool {
-  for requested_item in requested_items {
-    if !wgsl_item_extraction_contains_requested_item(extraction, requested_item) {
-      return false
-    }
-  }
-  true
-}
-
-///|
 fn wgsl_import_candidate_error_path(
   module_path : String,
   requested_items : Array[String],
@@ -55,107 +42,12 @@ fn wgsl_import_candidate_error_path(
 }
 
 ///|
-fn wgsl_source_declares_non_resource_dependency_item(
-  source : String,
-  item_name : String,
-  referenced : Bool,
-) -> Bool raise ComposerError {
-  let unit = parse_wgsl_translation_unit_strict(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  for decl in unit.declarations() {
-    if decl.name() == item_name {
-      match decl.data() {
-        Struct(_) | TypeAlias(_) => return referenced
-        Const(_) | Override(_) | Function(_) => return referenced
-        _ => return false
-      }
-    }
-  }
-  false
-}
-
-///|
-fn wgsl_source_declares_const_side_effect_item(
-  source : String,
-  item_name : String,
-) -> Bool raise ComposerError {
-  let unit = parse_wgsl_translation_unit_strict(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  for decl in unit.declarations() {
-    if decl.name() == item_name {
-      match decl.data() {
-        Const(_) | Override(_) => return true
-        _ => return false
-      }
-    }
-  }
-  false
-}
-
-///|
-fn wgsl_global_variable_has_resource_binding(
-  global : @ast.WgslGlobalVariable,
-) -> Bool {
-  let mut has_group = false
-  let mut has_binding = false
-  for attribute in global.attributes() {
-    match attribute.name().name() {
-      "group" => has_group = true
-      "binding" => has_binding = true
-      _ => ()
-    }
-  }
-  has_group && has_binding
-}
-
-///|
-fn collect_wgsl_resource_side_effect_items(
-  source : String,
-  candidate_items : Array[String],
-) -> Array[String] raise ComposerError {
-  let unit = parse_wgsl_translation_unit_strict(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  let items : Array[String] = []
-  for decl in unit.declarations() {
-    match decl.data() {
-      GlobalVariable(global) =>
-        if wgsl_global_variable_has_resource_binding(global) &&
-          wgsl_requested_items_contains(candidate_items, global.name().name()) {
-          composer_string_list_push_unique(items, global.name().name())
-        }
-      _ => ()
-    }
-  }
-  items
-}
-
-///|
-fn collect_wgsl_const_side_effect_items(
-  source : String,
-  candidate_items : Array[String],
-) -> Array[String] raise ComposerError {
-  let items : Array[String] = []
-  for candidate_item in candidate_items {
-    if wgsl_source_declares_const_side_effect_item(source, candidate_item) {
-      composer_string_list_push_unique(items, candidate_item)
-    }
-  }
-  items
-}
-
-///|
 fn collect_wgsl_unqualified_live_module_items(
-  import_source : String,
+  declarations : Array[WgslEmittedDeclaration],
   local_facts : WgslComposeSemanticFacts,
   reference_facts : WgslComposeSemanticFacts,
-) -> Array[String] raise ComposerError {
+) -> Array[String] {
   let items : Array[String] = []
-  let declarations = collect_wgsl_named_declarations_strict(import_source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
   for declaration in declarations {
     let name = declaration.name()
     if local_facts.declares_name(name) {
@@ -167,6 +59,16 @@ fn collect_wgsl_unqualified_live_module_items(
     }
   }
   items
+}
+
+///|
+fn wgsl_compose_semantic_facts_from_extraction(
+  extraction : WgslModuleItemExtraction,
+) -> WgslComposeSemanticFacts {
+  {
+    declarations: extraction.declarations(),
+    references: extraction.references(),
+  }
 }
 
 ///|
@@ -274,6 +176,49 @@ fn widen_wgsl_dependency_requests_with_alias_side_effects(
 }
 
 ///|
+fn wgsl_import_target_plan_cache_key(
+  current_rel_path : String,
+  targets : Array[WgslImportTarget],
+  active_scan_source : String,
+  importer_defs : WgslActiveComposeDefs,
+  prune_requested_items_by_active_usage : Bool,
+) -> String {
+  let target_entries : Array[String] = []
+  for target in targets {
+    target_entries.push("\{target.raw_path} as \{target.alias_name}")
+  }
+  let prune = if prune_requested_items_by_active_usage {
+    "prune"
+  } else {
+    "keep"
+  }
+  "\{current_rel_path}|\{prune}|\{wgsl_active_defs_cache_key(current_rel_path, importer_defs)}|\{target_entries.join("|")}|\{active_scan_source}"
+}
+
+///|
+fn Composer::preflight_wgsl_import_targets_without_source_parse(
+  self : Composer,
+  current_rel_path : String,
+  targets : Array[WgslImportTarget],
+  session : WgslComposeSession,
+) -> Unit raise ComposerError {
+  for target in targets {
+    if target.alias_name != "" {
+      continue
+    }
+    if resolve_wgsl_semantic_import_module(
+        current_rel_path,
+        target.raw_path,
+        self.registry,
+        session.modules,
+      )
+      is None {
+      raise FailedToResolveImport(target.raw_path)
+    }
+  }
+}
+
+///|
 fn Composer::collect_wgsl_declared_const_side_effect_items(
   self : Composer,
   request : WgslImportRequest,
@@ -281,20 +226,12 @@ fn Composer::collect_wgsl_declared_const_side_effect_items(
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[String] raise ComposerError {
-  let import_source = match self.registry.registered_source(request.rel_path) {
-    Some(source) => source
-    None => raise MissingRegisteredSource(request.rel_path)
-  }
-  let import_defs = self.active_compose_defs_for_rel_path(
+  let processed = self.processed_registered_wgsl_compose_module(
     request.rel_path,
     session,
     Some(importer_defs),
   )
-  let active_import_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
-    import_defs.value_defines,
-  )
-  collect_wgsl_const_side_effect_items(active_import_source, candidate_items)
+  processed.const_side_effect_items(candidate_items)
 }
 
 ///|
@@ -305,20 +242,12 @@ fn Composer::collect_wgsl_declared_full_module_side_effect_items(
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[String] raise ComposerError {
-  let import_source = match self.registry.registered_source(request.rel_path) {
-    Some(source) => source
-    None => raise MissingRegisteredSource(request.rel_path)
-  }
-  let import_defs = self.active_compose_defs_for_rel_path(
+  let processed = self.processed_registered_wgsl_compose_module(
     request.rel_path,
     session,
     Some(importer_defs),
   )
-  let active_import_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
-    import_defs.value_defines,
-  )
-  collect_wgsl_resource_side_effect_items(active_import_source, candidate_items)
+  processed.resource_side_effect_items(candidate_items)
 }
 
 ///|
@@ -341,28 +270,12 @@ fn Composer::select_wgsl_import_candidate_rel_path(
   }
   let supporting_rel_paths : Array[String] = []
   for candidate_rel_path in candidate_rel_paths {
-    let candidate_source = match
-      self.registry.registered_source(candidate_rel_path) {
-      Some(source) => source
-      None => raise MissingRegisteredSource(candidate_rel_path)
-    }
-    let candidate_defs = self.active_compose_defs_for_rel_path(
+    let candidate = self.processed_registered_wgsl_compose_module(
       candidate_rel_path,
       session,
       Some(importer_defs),
     )
-    let active_candidate_source = apply_wgsl_template_consts(
-      apply_wgsl_ifdefs_strict_for_compose(candidate_source, candidate_defs),
-      candidate_defs.value_defines,
-    )
-    let extraction = extract_wgsl_module_item_origins_strict(
-      active_candidate_source, requested_items,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
-    if wgsl_item_extraction_contains_all_requested_items(
-        extraction, requested_items,
-      ) {
+    if candidate.declares_all_items(requested_items) {
       supporting_rel_paths.push(candidate_rel_path)
     }
   }
@@ -482,26 +395,13 @@ fn Composer::active_wgsl_full_module_import_dependency_scan_facts(
       continue
     }
     let rel_path = target_plan.resolved_module.rel_path()
-    let import_source = match self.registry.registered_source(rel_path) {
-      Some(source) => source
-      None => raise MissingRegisteredSource(rel_path)
-    }
-    let import_defs = self.active_compose_defs_for_rel_path(
+    let processed = self.processed_registered_wgsl_compose_module(
       rel_path,
       session,
       Some(importer_defs),
     )
-    let active_import_source = apply_wgsl_template_consts(
-      apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
-      import_defs.value_defines,
-    )
-    let declarations = collect_wgsl_named_declarations_strict(
-      active_import_source,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
     let requested_items : Array[String] = []
-    for declaration in declarations {
+    for declaration in processed.named_declarations() {
       let referenced = active_scan_facts.contains_unqualified_reference_name(
         declaration.name(),
       )
@@ -512,11 +412,7 @@ fn Composer::active_wgsl_full_module_import_dependency_scan_facts(
     if requested_items.length() == 0 {
       continue
     }
-    let extraction = extract_wgsl_module_item_origins_strict(
-      active_import_source, requested_items,
-    ) catch {
-      error => raise composer_error_from_wgsl_parse_error(error)
-    }
+    let extraction = processed.item_extraction(requested_items)
     let extraction_facts = collect_wgsl_compose_semantic_facts(
       session,
       extraction.source(),
@@ -527,14 +423,41 @@ fn Composer::active_wgsl_full_module_import_dependency_scan_facts(
 }
 
 ///|
+fn wgsl_emitted_item_import_request_cache_key(
+  current_rel_path : String,
+  directive_source : String,
+  dependency_scan_source : String,
+  importer_defs : WgslActiveComposeDefs,
+) -> String {
+  "\{current_rel_path}|\{wgsl_active_defs_cache_key(current_rel_path, importer_defs)}|\{directive_source}|\{dependency_scan_source}"
+}
+
+///|
 fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
   self : Composer,
   current_rel_path : String,
   directive_source : String,
   dependency_scan_source : String,
+  extraction : WgslModuleItemExtraction?,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
+  let cache_key = wgsl_emitted_item_import_request_cache_key(
+    current_rel_path, directive_source, dependency_scan_source, importer_defs,
+  )
+  match session.emitted_item_import_requests.get(cache_key) {
+    Some(cached_requests) =>
+      return wgsl_import_request_array_copy(cached_requests)
+    None => ()
+  }
+  match extraction {
+    Some(value) =>
+      session.semantic_facts.set(
+        drop_wgsl_import_directives_from_compose_source(directive_source),
+        wgsl_compose_semantic_facts_from_extraction(value),
+      )
+    None => ()
+  }
   let targets : Array[WgslImportTarget] = []
   collect_wgsl_import_targets_from_source_directives(directive_source, targets)
   let requests = self.build_wgsl_import_requests_from_targets(
@@ -649,6 +572,10 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
       requests, dependency_requests, dependency_scan_facts, session, importer_defs,
     )
   }
+  session.emitted_item_import_requests.set(
+    cache_key,
+    wgsl_import_request_array_copy(requests),
+  )
   requests
 }
 
@@ -744,19 +671,10 @@ fn Composer::filtered_wgsl_non_resource_dependency_items(
   if dependency_request.requested_items.length() == 0 {
     return filtered_items
   }
-  let import_source = match
-    self.registry.registered_source(dependency_request.rel_path) {
-    Some(source) => source
-    None => raise MissingRegisteredSource(dependency_request.rel_path)
-  }
-  let import_defs = self.active_compose_defs_for_rel_path(
+  let processed = self.processed_registered_wgsl_compose_module(
     dependency_request.rel_path,
     session,
     Some(importer_defs),
-  )
-  let active_import_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
-    import_defs.value_defines,
   )
   for requested_item in dependency_request.requested_items {
     let requested_item_is_referenced = dependency_scan_facts.contains_reference_path(
@@ -775,8 +693,7 @@ fn Composer::filtered_wgsl_non_resource_dependency_items(
         "\{dependency_request.alias_name}::\{requested_item}",
       )
     }
-    if wgsl_source_declares_non_resource_dependency_item(
-        active_import_source,
+    if processed.declares_non_resource_dependency_item(
         requested_item,
         requested_item_is_referenced ||
         leaf_item_is_referenced ||
@@ -912,24 +829,34 @@ fn Composer::build_wgsl_import_requests_from_targets(
   self.record_declared_leaf_import_local_spelling(
     current_rel_path, targets, session, importer_defs,
   )
+  let plan_cache_key = wgsl_import_target_plan_cache_key(
+    current_rel_path, targets, active_scan_source, importer_defs, prune_requested_items_by_active_usage,
+  )
+  match session.import_request_plans.get(plan_cache_key) {
+    Some(cached_requests) =>
+      return wgsl_import_request_array_copy(cached_requests)
+    None => ()
+  }
+  self.preflight_wgsl_import_targets_without_source_parse(
+    current_rel_path, targets, session,
+  )
   let reference_scan_base_source = drop_wgsl_import_directives_from_compose_source(
     active_scan_source,
   )
+  let active_scan_facts = collect_wgsl_compose_semantic_facts(
+    session, reference_scan_base_source,
+  )
   let target_plans = build_wgsl_semantic_import_target_plans(
     reference_scan_base_source,
+    active_scan_facts,
     current_rel_path,
     targets,
     self.registry,
     session.modules,
-  ) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
+  )
   if target_plans.unresolved_targets.length() > 0 {
     raise FailedToResolveImport(target_plans.unresolved_targets[0])
   }
-  let active_scan_facts = collect_wgsl_compose_semantic_facts(
-    session, reference_scan_base_source,
-  )
   let full_module_dependency_scan_facts = self.active_wgsl_full_module_import_dependency_scan_facts(
     target_plans.plans,
     active_scan_facts,
@@ -944,20 +871,12 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let declared_items = wgsl_import_request_copy_items(requested_items)
     let base_resolved_module = target_plan.resolved_module
     let module_path = base_resolved_module.module_path()
-    let import_source = match
-      self.registry.registered_source(base_resolved_module.rel_path()) {
-      Some(source) => source
-      None => raise MissingRegisteredSource(base_resolved_module.rel_path())
-    }
-    let import_defs = self.active_compose_defs_for_rel_path(
+    let import_module = self.processed_registered_wgsl_compose_module(
       base_resolved_module.rel_path(),
       session,
       Some(importer_defs),
     )
-    let active_import_source = apply_wgsl_template_consts(
-      apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
-      import_defs.value_defines,
-    )
+    let active_import_source = import_module.prepared.active_source
     let imports_for_override_side_effect = wgsl_source_contains_override_directive(
       active_import_source,
     )
@@ -967,7 +886,9 @@ fn Composer::build_wgsl_import_requests_from_targets(
     let unqualified_live_module_items = if target_plan.import_full_module &&
       !target_plan.alias_is_used {
       collect_wgsl_unqualified_live_module_items(
-        active_import_source, active_scan_facts, reference_scan_facts,
+        import_module.named_declarations(),
+        active_scan_facts,
+        reference_scan_facts,
       )
     } else {
       []
@@ -1025,8 +946,8 @@ fn Composer::build_wgsl_import_requests_from_targets(
           if requested_item_is_live || leaf_item_is_live {
             live_requested_items.push(requested_item)
           } else if !prune_requested_items_by_active_usage &&
-            wgsl_source_declares_non_resource_dependency_item(
-              active_import_source, requested_item, false,
+            import_module.declares_non_resource_dependency_item(
+              requested_item, false,
             ) {
             live_requested_items.push(requested_item)
           }
@@ -1100,9 +1021,14 @@ fn Composer::build_wgsl_import_requests_from_targets(
       })
     }
   }
-  self.order_wgsl_import_requests_by_declared_dependencies(
+  let ordered_requests = self.order_wgsl_import_requests_by_declared_dependencies(
     requests, session, importer_defs,
   )
+  session.import_request_plans.set(
+    plan_cache_key,
+    wgsl_import_request_array_copy(ordered_requests),
+  )
+  ordered_requests
 }
 
 ///|
@@ -1219,24 +1145,16 @@ fn Composer::declared_dependency_requests_for_import_request(
   if !request.import_full_module {
     return []
   }
-  let import_source = match self.registry.registered_source(request.rel_path) {
-    Some(source) => source
-    None => raise MissingRegisteredSource(request.rel_path)
-  }
-  let import_defs = self.active_compose_defs_for_rel_path(
+  let processed = self.processed_registered_wgsl_compose_module(
     request.rel_path,
     session,
     Some(importer_defs),
   )
-  let active_import_source = apply_wgsl_template_consts(
-    apply_wgsl_ifdefs_strict_for_compose(import_source, import_defs),
-    import_defs.value_defines,
-  )
   self.build_wgsl_declared_import_requests_from_source_directives(
     request.rel_path,
-    active_import_source,
+    processed.prepared.active_source,
     session,
-    import_defs,
+    processed.active_defs,
   )
 }
 
@@ -1312,15 +1230,21 @@ fn Composer::build_wgsl_implicit_import_requests(
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let qualified_targets : Array[WgslImportTarget] = []
-  collect_wgsl_semantic_qualified_module_targets(
+  let reference_scan_base_source = drop_wgsl_import_directives_from_compose_source(
     active_scan_source,
+  )
+  let active_scan_facts = collect_wgsl_compose_semantic_facts(
+    session, reference_scan_base_source,
+  ) catch {
+    _ => return []
+  }
+  collect_wgsl_semantic_qualified_module_targets_from_facts(
+    active_scan_facts,
     current_rel_path,
     self.registry,
     session.modules,
     qualified_targets,
-  ) catch {
-    _ => return []
-  }
+  )
   self.build_wgsl_import_requests_from_targets(
     current_rel_path, qualified_targets, active_scan_source, session, importer_defs,
     true,

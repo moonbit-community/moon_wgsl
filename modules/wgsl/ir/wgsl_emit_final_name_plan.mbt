@@ -48,7 +48,12 @@ fn WgslIrWriterNamer::member_call(
   self : WgslIrWriterNamer,
   raw : String,
 ) -> String {
-  self.call_with_builtin_policy(raw, false)
+  let name = self.call_with_builtin_policy(raw, false)
+  if wgsl_ir_identifier_ends_with_digit(name) {
+    "\{name}_"
+  } else {
+    name
+  }
 }
 
 ///|

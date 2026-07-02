@@ -143,7 +143,25 @@ priv struct WgslComposeSession {
   symbols : WgslComposeSymbolTable
   link_graph : WgslIrLinkGraph
   semantic_facts : Map[String, WgslComposeSemanticFacts]
+  source_local_shader_defs : Map[String, Map[String, ShaderDefValue]]
+  processed_modules : Map[String, WgslProcessedComposeModule]
+  import_request_plans : Map[String, Array[WgslImportRequest]]
+  emitted_item_import_requests : Map[String, Array[WgslImportRequest]]
   active_rel_paths : Array[String]
+}
+
+///|
+priv struct WgslProcessedComposeModule {
+  raw_source : String
+  active_defs : WgslActiveComposeDefs
+  prepared : WgslPreparedComposeSource
+  mut unit : WgslTranslationUnit?
+  mut declarations_by_name : Map[String, WgslGlobalDecl]?
+  mut declarations : Array[WgslEmittedDeclaration]?
+  mut item_extractor : WgslModuleItemExtractor?
+  item_extractions : Map[String, WgslModuleItemExtraction]
+  mut naga_pull_ranks : Map[String, Int]?
+  mut source_decl_ranks : Map[String, Int]?
 }
 
 ///|

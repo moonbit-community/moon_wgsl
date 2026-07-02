@@ -48,7 +48,12 @@ fn WgslIrWriterNamer::member_call(
   self : WgslIrWriterNamer,
   raw : String,
 ) -> String {
-  self.call_with_builtin_policy(raw, false)
+  let name = self.call_with_builtin_policy(raw, false)
+  if wgsl_ir_identifier_ends_with_digit(name) {
+    "\{name}_"
+  } else {
+    name
+  }
 }
 
 ///|
@@ -75,6 +80,30 @@ fn WgslIrWriterNamer::call_with_builtin_policy(
           reserve_builtin_functions &&
           wgsl_ir_identifier_is_builtin_function(base)
         ) {
+        "\{base}_"
+      } else {
+        base
+      }
+    }
+  }
+}
+
+///|
+fn WgslIrWriterNamer::call_preserving_trailing_digit(
+  self : WgslIrWriterNamer,
+  raw : String,
+) -> String {
+  let base = sanitize_wgsl_ir_writer_identifier_base(raw)
+  match self.unique.get(base) {
+    Some(count) => {
+      let next = count + 1
+      self.unique.set(base, next)
+      "\{base}_\{next}"
+    }
+    None => {
+      self.unique.set(base, 0)
+      if self.should_reserve_identifier(base, true) ||
+        wgsl_ir_identifier_is_builtin_function(base) {
         "\{base}_"
       } else {
         base

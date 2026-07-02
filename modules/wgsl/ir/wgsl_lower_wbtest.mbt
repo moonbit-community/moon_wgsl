@@ -3562,6 +3562,25 @@ test "WGSL AST lowerer folds global const float arithmetic through writer policy
 }
 
 ///|
+test "WGSL AST lowerer returns casts of materialized global loads directly" {
+  let source =
+    #|const X: u32 = 1u;
+    #|var<private> arr: array<u32, X>;
+    #|
+    #|fn main() -> f32 {
+    #|  return f32(arr[0]);
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(emitted.contains("return f32(_e"), content="true")
+  debug_inspect(emitted.contains(": f32 = f32(_e"), content="false")
+}
+
+///|
 test "WGSL IR writer emits Naga-style f32 literal spelling" {
   let source =
     #|fn f() -> f32 {
@@ -3642,8 +3661,9 @@ test "WGSL AST lowerer materializes global binding accesses inside return constr
     error => abort(error.message())
   }
   debug_inspect(emitted.contains(": u32 = values[0];"), content="true")
-  debug_inspect(emitted.contains(": f32 = f32(_e"), content="true")
-  debug_inspect(emitted.contains("return _e"), content="true")
+  debug_inspect(emitted.contains(": f32 = f32(_e"), content="false")
+  debug_inspect(emitted.contains("return f32(_e"), content="true")
+  debug_inspect(emitted.contains("return _e"), content="false")
 }
 
 ///|
@@ -3662,8 +3682,8 @@ test "WGSL AST lowerer indexes addressable bindings without preloading base arra
   }
   debug_inspect(
     emitted.contains(": u32 = values[0];") &&
-    emitted.contains(": f32 = f32(_e") &&
-    emitted.contains("return _e"),
+    !emitted.contains(": f32 = f32(_e") &&
+    emitted.contains("return f32(_e"),
     content="true",
   )
 }

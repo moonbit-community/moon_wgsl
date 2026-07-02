@@ -445,7 +445,7 @@ test "naga_oil upstream: atomic builtins survive module composition" {
   debug_inspect(source.contains("atomicCompareExchangeWeak"), content="true")
   debug_inspect(source.contains("atomicExchange"), content="true")
   debug_inspect(
-    source.contains("let _e27: u32 = y;\n    let _e28: u32 = atomicExchange"),
+    source.contains("let _e26: u32 = y;\n    let _e28: u32 = atomicExchange"),
     content="true",
   )
   debug_inspect(source.contains("let _e38: u32 = y;"), content="true")

@@ -1873,6 +1873,11 @@ fn WgslIrLowerer::function_as_expression_can_return_directly(
   if self.function_expression_can_return_directly(function, inner) {
     return true
   }
+  if wgsl_ir_function_expression_has_generated_temporary_snapshot(
+      function, inner,
+    ) {
+    return true
+  }
   match function.expressions.items.get(inner.index()) {
     Some(Load(pointer)) =>
       match function.expressions.items.get(pointer.index()) {

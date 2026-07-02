@@ -303,6 +303,7 @@ test "item slice import request builder prunes unreferenced explicit nested item
     "color.wgsl",
     extracted.source(),
     color_source,
+    Some(extracted),
     session,
     defs,
   ) catch {

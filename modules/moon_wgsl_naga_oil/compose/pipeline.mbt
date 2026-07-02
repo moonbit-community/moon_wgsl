@@ -26,15 +26,15 @@ fn compose_emit_scanned_item(
 
 ///|
 fn drop_wgsl_import_directives_from_compose_source(source : String) -> String {
-  let mut out = ""
+  let out = StringBuilder::new(size_hint=source.length())
   for
     item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
     match item.kind() {
       Directive(directive) if directive.kind() == Import => ()
-      _ => out = out + item.source().original_text()
+      _ => out.write_string(item.source().original_text())
     }
   }
-  out
+  out.to_string()
 }
 
 ///|
@@ -124,13 +124,35 @@ fn WgslComposeEmitter::emit_source_with_path(
   alias_prefixes : Array[String],
   declared_imports : Bool,
 ) -> String raise ComposerError {
-  let active_defs = self.composer.active_compose_defs_for_rel_path(
-    current_rel_path,
-    self.session,
-    inherited_defs,
-  )
-  merge_wgsl_source_local_shader_defs(active_defs, source)
-  let prepared = prepare_wgsl_compose_source(source, self.session, active_defs)
+  let maybe_registered_processed = match
+    self.composer.registry.registered_source(current_rel_path) {
+    Some(registered_source) if registered_source == source =>
+      Some(
+        self.composer.processed_registered_wgsl_compose_module(
+          current_rel_path,
+          self.session,
+          inherited_defs,
+        ),
+      )
+    _ => None
+  }
+  let (active_defs, prepared) = match maybe_registered_processed {
+    Some(processed) => (processed.active_defs, processed.prepared)
+    None => {
+      let active_defs = self.composer.active_compose_defs_for_rel_path(
+        current_rel_path,
+        self.session,
+        inherited_defs,
+      )
+      merge_wgsl_source_local_shader_defs(active_defs, source, self.session)
+      let prepared = prepare_wgsl_compose_source(
+        source,
+        self.session,
+        active_defs,
+      )
+      (active_defs, prepared)
+    }
+  }
   if record_current_origins {
     record_wgsl_source_origins_from_source(
       self.session,
@@ -138,7 +160,7 @@ fn WgslComposeEmitter::emit_source_with_path(
       prepared.active_source,
     )
   }
-  let mut merged = ""
+  let merged = StringBuilder::new(size_hint=prepared.active_source.length())
   let bindings = WgslComposeBindingSet()
   for binding in inherited_bindings.bindings {
     bindings.push(binding)
@@ -188,7 +210,7 @@ fn WgslComposeEmitter::emit_source_with_path(
         saw_import_directive = true
         if !explicit_imports_emitted {
           explicit_imports_emitted = true
-          merged = merged +
+          merged.write_string(
             self.composer.compose_wgsl_import_requests(
               current_rel_path,
               explicit_requests,
@@ -197,16 +219,17 @@ fn WgslComposeEmitter::emit_source_with_path(
               self.session,
               active_defs,
               alias_prefixes,
-            )
+            ),
+          )
         }
       }
       _ => {
         if !implicit_imports_emitted &&
           (!has_import_directive || saw_import_directive) {
           implicit_imports_emitted = true
-          merged = merged + implicit_imports
+          merged.write_string(implicit_imports)
         }
-        merged = merged +
+        merged.write_string(
           self.composer.compose_wgsl_scanned_item(
             current_rel_path,
             item,
@@ -216,15 +239,16 @@ fn WgslComposeEmitter::emit_source_with_path(
             active_defs,
             alias_prefixes,
             declared_imports,
-          )
+          ),
+        )
       }
     }
   }
   if !implicit_imports_emitted {
-    merged = merged + implicit_imports
+    merged.write_string(implicit_imports)
   }
   finalize_wgsl_composed_source(
-    merged,
+    merged.to_string(),
     bindings,
     active_defs,
     self.session,

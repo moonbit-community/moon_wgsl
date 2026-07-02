@@ -233,9 +233,6 @@ fn WgslIrEmitter::local_variable_needs_type_annotation(
   if self.type_contains_abstract_scalar(local_var.ty) {
     return false
   }
-  if self.type_is_predeclared_result(local_var.ty) {
-    return false
-  }
   if self.options.annotate_all_local_types() {
     return true
   }
@@ -247,11 +244,7 @@ fn WgslIrEmitter::inferred_result_type_annotation(
   self : WgslIrEmitter,
   ty : Handle,
 ) -> String raise WgslIrEmitError {
-  if self.type_is_predeclared_result(ty) {
-    ""
-  } else {
-    ": \{self.type_name(ty)}"
-  }
+  ": \{self.type_name(ty)}"
 }
 
 ///|

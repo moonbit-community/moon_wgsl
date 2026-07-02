@@ -220,3 +220,8 @@ jobs:
         run: |
           ulimit -s 8176
           bash tools/check_external_wgsl_corpus.sh
+
+      - name: Bevy PBR compose performance
+        run: |
+          ulimit -s 8176
+          bash tools/check_bevy_pbr_compose_performance.sh

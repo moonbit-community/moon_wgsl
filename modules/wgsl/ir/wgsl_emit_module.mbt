@@ -30,7 +30,7 @@ fn WgslIrEmitter::emit_module(
   }
   let mut emitted_constant = false
   for slot in module_.constant_slots() {
-    if self.should_inline_constant_expression(slot.item) {
+    if self.should_skip_constant_declaration(slot.item) {
       continue
     }
     if needs_blank && !emitted_constant {

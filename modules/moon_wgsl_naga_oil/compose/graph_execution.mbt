@@ -218,13 +218,35 @@ fn WgslImportGraphBuilder::plan_with_path(
   alias_prefixes : Array[String],
   declared_imports : Bool,
 ) -> Unit raise ComposerError {
-  let active_defs = self.composer.active_compose_defs_for_rel_path(
-    current_rel_path,
-    self.session,
-    inherited_defs,
-  )
-  merge_wgsl_source_local_shader_defs(active_defs, source)
-  let prepared = prepare_wgsl_compose_source(source, self.session, active_defs)
+  let maybe_registered_processed = match
+    self.composer.registry.registered_source(current_rel_path) {
+    Some(registered_source) if registered_source == source =>
+      Some(
+        self.composer.processed_registered_wgsl_compose_module(
+          current_rel_path,
+          self.session,
+          inherited_defs,
+        ),
+      )
+    _ => None
+  }
+  let (active_defs, prepared) = match maybe_registered_processed {
+    Some(processed) => (processed.active_defs, processed.prepared)
+    None => {
+      let active_defs = self.composer.active_compose_defs_for_rel_path(
+        current_rel_path,
+        self.session,
+        inherited_defs,
+      )
+      merge_wgsl_source_local_shader_defs(active_defs, source, self.session)
+      let prepared = prepare_wgsl_compose_source(
+        source,
+        self.session,
+        active_defs,
+      )
+      (active_defs, prepared)
+    }
+  }
   record_wgsl_planned_final_names_from_source(
     self.session,
     current_rel_path,
@@ -311,9 +333,12 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         request_alias_scope,
       )
     }
-    let raw_source = self.composer.load_wgsl_source_required_raw(
+    let processed = self.composer.processed_registered_wgsl_compose_module(
       request.rel_path,
+      self.session,
+      Some(importer_defs),
     )
+    let raw_source = processed.raw_source
     self.session.graph_planning_rel_paths.push(request.rel_path)
     if request.import_full_module {
       self.plan_with_path(
@@ -325,23 +350,9 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         true,
       )
     } else {
-      let import_defs = self.composer.active_compose_defs_for_rel_path(
-        request.rel_path,
-        self.session,
-        Some(importer_defs),
-      )
-      merge_wgsl_source_local_shader_defs(import_defs, raw_source)
-      let prepared = prepare_wgsl_compose_source(
-        raw_source,
-        self.session,
-        import_defs,
-      )
-      let extraction = extract_wgsl_module_item_origins_strict(
-        prepared.active_source,
-        request.requested_items,
-      ) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
+      let import_defs = processed.active_defs
+      let prepared = processed.prepared
+      let extraction = processed.item_extraction(request.requested_items)
       let extracted_source = extraction.source()
       if extracted_source != "" {
         record_wgsl_planned_final_names_from_extraction(
@@ -355,6 +366,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
           request.rel_path,
           extracted_source,
           prepared.active_source,
+          Some(extraction),
           self.session,
           import_defs,
         )

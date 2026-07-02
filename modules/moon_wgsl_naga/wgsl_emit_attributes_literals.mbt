@@ -172,7 +172,9 @@ fn wgsl_ir_emit_exact_f32_literal(
   }
   match policy {
     CompatNumericLiteralSpelling =>
-      wgsl_ir_emit_concrete_float_literal_text("\{value}")
+      wgsl_ir_emit_concrete_float_literal_text(
+        wgsl_ir_shortest_f32_literal_text(value),
+      )
     RuntimeNumericLiteralSpelling =>
       wgsl_ir_emit_concrete_float_literal_text(
         wgsl_ir_shortest_f32_literal_text(value),

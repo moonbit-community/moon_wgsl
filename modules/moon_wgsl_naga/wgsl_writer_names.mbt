@@ -173,16 +173,32 @@ fn WgslIrWriterModule::allocate_function_signature_names(
 ) -> Unit {
   ignore(self)
   let function = slot.item
-  table.names.set(
-    wgsl_ir_emit_name_key("fn", slot.source_index),
-    module_namer.call_or(function.name, "function"),
-  )
+  let name = match function.name {
+    Some(name) if self.function_name_is_generated_entry_wrapper(name) =>
+      module_namer.call_preserving_trailing_digit(name)
+    _ => module_namer.call_or(function.name, "function")
+  }
+  table.names.set(wgsl_ir_emit_name_key("fn", slot.source_index), name)
   for arg_index in 0..<function.arguments.length() {
     table.names.set(
       wgsl_ir_emit_name_key2("fn_arg", slot.source_index, arg_index),
       local_namer.call_or(function.arguments[arg_index].name, "param"),
     )
   }
+}
+
+///|
+fn WgslIrWriterModule::function_name_is_generated_entry_wrapper(
+  self : WgslIrWriterModule,
+  name : String,
+) -> Bool {
+  guard name == "main_1" else { return false }
+  for slot in self.entry_point_slots() {
+    if slot.item.name == "main" {
+      return true
+    }
+  }
+  false
 }
 
 ///|

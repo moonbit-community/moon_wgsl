@@ -42,6 +42,20 @@ fn WgslIrEmitter::should_inline_constant_expression(
 }
 
 ///|
+fn WgslIrEmitter::should_skip_constant_declaration(
+  self : WgslIrEmitter,
+  constant : Constant,
+) -> Bool {
+  if self.options.fold_numeric_constant_expressions() &&
+    self.type_contains_abstract_scalar(constant.ty) {
+    return true
+  }
+  self.options.inline_generated_import_constants() &&
+  constant.generated_import &&
+  self.constant_has_inline_only_type(constant)
+}
+
+///|
 fn WgslIrEmitter::constant_has_inline_only_type(
   self : WgslIrEmitter,
   constant : Constant,

@@ -2,12 +2,14 @@
 using @transform {
   type WgslReferenceRewritePlan,
   type WgslEmittedDeclaration,
+  type WgslModuleItemExtractor,
   type WgslModuleItemExtraction,
   collect_wgsl_named_declarations_strict,
   collect_wgsl_naga_dependency_pulled_item_origins_strict,
   collect_wgsl_source_catalog_declarations_strict,
   collect_wgsl_virtual_override_targets_strict,
   extract_wgsl_module_item_origins_strict,
+  new_wgsl_module_item_extractor_from_unit,
   rewrite_wgsl_declarations_with_binding_plan,
   rewrite_wgsl_references_with_binding_plan,
 }
@@ -49,7 +51,7 @@ using @resolver {
 }
 
 ///|
-using @ast {type WgslDirective}
+using @ast {type WgslDirective, type WgslGlobalDecl, type WgslTranslationUnit}
 
 ///|
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}

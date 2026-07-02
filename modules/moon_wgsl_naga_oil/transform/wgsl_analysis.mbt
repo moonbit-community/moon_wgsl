@@ -46,6 +46,13 @@ pub struct WgslModuleItemOrigin {
 pub struct WgslModuleItemExtraction {
   priv source : String
   priv origins : Array[WgslModuleItemOrigin]
+  priv references : Array[WgslReferencePath]
+}
+
+///|
+pub struct WgslModuleItemExtractor {
+  priv source : String
+  priv graph : WgslDeclarationGraph
 }
 
 ///|
@@ -108,6 +115,51 @@ pub fn WgslModuleItemExtraction::origins(
   self : WgslModuleItemExtraction,
 ) -> Array[WgslModuleItemOrigin] {
   self.origins.copy()
+}
+
+///|
+pub fn WgslModuleItemExtraction::references(
+  self : WgslModuleItemExtraction,
+) -> Array[WgslReferencePath] {
+  self.references.copy()
+}
+
+///|
+pub fn WgslModuleItemExtraction::declarations(
+  self : WgslModuleItemExtraction,
+) -> Array[WgslEmittedDeclaration] {
+  let declarations : Array[WgslEmittedDeclaration] = []
+  for origin in self.origins {
+    if origin.name() != "" {
+      declarations.push({
+        name: origin.name(),
+        is_type_declaration: origin.kind() == Type,
+        generated_start: origin.source_start(),
+        generated_end: origin.source_end(),
+      })
+    }
+  }
+  declarations
+}
+
+///|
+pub fn new_wgsl_module_item_extractor_from_unit(
+  source : String,
+  unit : WgslTranslationUnit,
+) -> WgslModuleItemExtractor {
+  { source, graph: build_wgsl_declaration_graph_from_unit(source, unit) }
+}
+
+///|
+pub fn WgslModuleItemExtractor::extract(
+  self : WgslModuleItemExtractor,
+  requested_items : Array[String],
+) -> WgslModuleItemExtraction {
+  extract_wgsl_module_item_extraction_from_graph(
+    self.source,
+    self.graph,
+    requested_items,
+  )
 }
 
 ///|
@@ -269,6 +321,25 @@ fn wgsl_graph_block_is_const_like(block : WgslGraphBlock) -> Bool {
     Const(_) | Override(_) => true
     _ => false
   }
+}
+
+///|
+fn wgsl_graph_block_reference_paths(
+  blocks : Array[WgslGraphBlock],
+) -> Array[WgslReferencePath] {
+  let identifiers : Array[WgslIdent] = []
+  for block in blocks {
+    collect_wgsl_decl_identifier_nodes(block.data, identifiers)
+  }
+  wgsl_graph_sort_identifier_nodes_by_source(identifiers)
+  let references : Array[WgslReferencePath] = []
+  for identifier in identifiers {
+    match WgslReferencePath::from_text(identifier.name()) {
+      Some(path) => references.push(path)
+      None => ()
+    }
+  }
+  references
 }
 
 ///|
@@ -580,6 +651,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
     return {
       source: emit_wgsl_graph_blocks_canonical(graph.declaration_blocks),
       origins,
+      references: wgsl_graph_block_reference_paths(graph.declaration_blocks),
     }
   }
   let (included_names, _, _) = wgsl_reachable_declaration_map(
@@ -593,12 +665,14 @@ fn extract_wgsl_module_item_extraction_from_graph(
     }
   }
   if matched_requested == 0 {
-    return { source: "", origins }
+    return { source: "", origins, references: [] }
   }
   let mut out = emit_wgsl_import_blocks_for_item_extraction(source, graph)
+  let included_blocks : Array[WgslGraphBlock] = []
   for block in graph.declaration_blocks {
     if block.name() == "" {
       out = out + emit_wgsl_graph_block_canonical(block)
+      included_blocks.push(block)
       if block.is_symbol_origin() {
         origins.push({
           name: block.name(),
@@ -621,6 +695,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
     }
     guard included_names.contains(block.name()) else { continue }
     out = out + emit_wgsl_graph_block_canonical(block)
+    included_blocks.push(block)
     if block.is_symbol_origin() {
       origins.push({
         name: block.name(),
@@ -630,7 +705,11 @@ fn extract_wgsl_module_item_extraction_from_graph(
       })
     }
   }
-  { source: out, origins }
+  {
+    source: out,
+    origins,
+    references: wgsl_graph_block_reference_paths(included_blocks),
+  }
 }
 
 ///|

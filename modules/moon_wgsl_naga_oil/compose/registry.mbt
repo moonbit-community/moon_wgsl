@@ -76,6 +76,10 @@ fn Composer::new_wgsl_compose_session(
     symbols: WgslComposeSymbolTable(),
     link_graph: WgslIrLinkGraph(),
     semantic_facts: Map([]),
+    source_local_shader_defs: Map([]),
+    processed_modules: Map([]),
+    import_request_plans: Map([]),
+    emitted_item_import_requests: Map([]),
     active_rel_paths: [],
   }
 }

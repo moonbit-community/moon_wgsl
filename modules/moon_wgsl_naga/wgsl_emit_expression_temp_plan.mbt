@@ -924,7 +924,8 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
     }
   }
   let base_index = handle.index() - skipped
-  let adjusted_base_index = base_index
+  let adjusted_base_index = base_index -
+    wgsl_ir_emit_atomic_value_operand_slot_adjustment(function, handle)
   let implicit_expression_slots_before = function_plan.implicit_expression_slot_offset(
     handle,
   )
@@ -959,6 +960,78 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
     projected_temporary_slots,
     final_index,
   }
+}
+
+///|
+fn wgsl_ir_emit_atomic_value_operand_slot_adjustment(
+  function : Function,
+  handle : Handle,
+) -> Int {
+  guard function.expressions.items.get(handle.index()) is Some(Load(_)) else {
+    return 0
+  }
+  guard wgsl_ir_function_materialized_expression_indices(function).contains(
+    handle.index(),
+  ) else {
+    return 0
+  }
+  for statement in function.body.statements {
+    if wgsl_ir_statement_uses_handle_as_atomic_value(
+        function, statement, handle,
+      ) {
+      return 1
+    }
+  }
+  0
+}
+
+///|
+fn wgsl_ir_statement_uses_handle_as_atomic_value(
+  function : Function,
+  statement : Statement,
+  handle : Handle,
+) -> Bool {
+  match statement {
+    Atomic(_, _, value, _, result) =>
+      value == handle && result == Some(Handle(handle.index() + 1))
+    Block(block) =>
+      wgsl_ir_block_uses_handle_as_atomic_value(function, block, handle)
+    If(_, accept, reject) =>
+      wgsl_ir_block_uses_handle_as_atomic_value(function, accept, handle) ||
+      wgsl_ir_block_uses_handle_as_atomic_value(function, reject, handle)
+    Switch(_, cases) => {
+      for case in cases {
+        if wgsl_ir_block_uses_handle_as_atomic_value(
+            function,
+            case.body,
+            handle,
+          ) {
+          return true
+        }
+      }
+      false
+    }
+    Loop(body, continuing, _) =>
+      wgsl_ir_block_uses_handle_as_atomic_value(function, body, handle) ||
+      wgsl_ir_block_uses_handle_as_atomic_value(function, continuing, handle)
+    _ => false
+  }
+}
+
+///|
+fn wgsl_ir_block_uses_handle_as_atomic_value(
+  function : Function,
+  block : Block,
+  handle : Handle,
+) -> Bool {
+  for statement in block.statements {
+    if wgsl_ir_statement_uses_handle_as_atomic_value(
+        function, statement, handle,
+      ) {
+      return true
+    }
+  }
+  false
 }
 
 ///|

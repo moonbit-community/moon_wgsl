@@ -251,17 +251,15 @@ fn wgsl_semantic_alias_requested_item_name(
 }
 
 ///|
-fn collect_wgsl_semantic_alias_requested_paths(
-  source : String,
+fn collect_wgsl_semantic_alias_requested_paths_from_references(
+  references : Array[WgslReferencePath],
   alias_name : String,
   requested_paths : Array[String],
-) -> Unit raise WgslParseError {
+) -> Unit {
   if alias_name == "" {
     return
   }
-  let paths : Array[WgslReferencePath] = []
-  collect_wgsl_semantic_reference_paths(source, paths)
-  for path in paths {
+  for path in references {
     let requested_item = wgsl_semantic_alias_requested_item_name(
       path, alias_name,
     )
@@ -347,26 +345,20 @@ fn WgslComposeSemanticFacts::collect_alias_requested_paths(
   alias_name : String,
   requested_paths : Array[String],
 ) -> Unit {
-  if alias_name == "" {
-    return
-  }
-  for path in self.references {
-    let requested_item = wgsl_semantic_alias_requested_item_name(
-      path, alias_name,
-    )
-    semantic_string_list_push_unique(requested_paths, requested_item)
-  }
+  collect_wgsl_semantic_alias_requested_paths_from_references(
+    self.references,
+    alias_name,
+    requested_paths,
+  )
 }
 
 ///|
-fn wgsl_semantic_source_uses_alias(
-  source : String,
+fn wgsl_semantic_facts_use_alias(
+  facts : WgslComposeSemanticFacts,
   alias_name : String,
-) -> Bool raise WgslParseError {
+) -> Bool {
   let requested_paths : Array[String] = []
-  collect_wgsl_semantic_alias_requested_paths(
-    source, alias_name, requested_paths,
-  )
+  facts.collect_alias_requested_paths(alias_name, requested_paths)
   requested_paths.length() > 0
 }
 
@@ -523,16 +515,14 @@ fn resolve_wgsl_semantic_import_module(
 }
 
 ///|
-fn collect_wgsl_semantic_qualified_module_targets(
-  source : String,
+fn collect_wgsl_semantic_qualified_module_targets_from_facts(
+  facts : WgslComposeSemanticFacts,
   current_rel_path : String,
   registry : WgslSourceRegistry,
   modules : Map[String, String],
   targets : Array[WgslImportTarget],
-) -> Unit raise WgslParseError {
-  let paths : Array[WgslReferencePath] = []
-  collect_wgsl_semantic_reference_paths(source, paths)
-  for path in paths {
+) -> Unit {
+  for path in facts.references {
     if path.segments().length() < 3 {
       continue
     }
@@ -561,17 +551,13 @@ fn collect_wgsl_semantic_qualified_module_targets(
 
 ///|
 fn wgsl_semantic_collect_alias_plan_items(
-  source : String,
+  facts : WgslComposeSemanticFacts,
   target : WgslImportTarget,
   pending_targets : Array[WgslImportTarget],
   requested_items : Array[String],
-) -> Bool raise WgslParseError {
+) -> Bool {
   let requested_paths : Array[String] = []
-  collect_wgsl_semantic_alias_requested_paths(
-    source,
-    target.alias_name,
-    requested_paths,
-  )
+  facts.collect_alias_requested_paths(target.alias_name, requested_paths)
   for requested_path in requested_paths {
     if split_last_wgsl_semantic_path(requested_path) is Some((nested_prefix, _)) {
       semantic_import_targets_push_unique(pending_targets, {
@@ -587,16 +573,14 @@ fn wgsl_semantic_collect_alias_plan_items(
 
 ///|
 fn wgsl_semantic_collect_default_alias_plan_items(
-  source : String,
+  facts : WgslComposeSemanticFacts,
   request_module_prefix : String,
   module_alias : String,
   pending_targets : Array[WgslImportTarget],
   requested_items : Array[String],
-) -> Bool raise WgslParseError {
+) -> Bool {
   let requested_paths : Array[String] = []
-  collect_wgsl_semantic_alias_requested_paths(
-    source, module_alias, requested_paths,
-  )
+  facts.collect_alias_requested_paths(module_alias, requested_paths)
   for requested_path in requested_paths {
     if split_last_wgsl_semantic_path(requested_path) is Some((nested_prefix, _)) {
       semantic_import_targets_push_unique(pending_targets, {
@@ -625,13 +609,13 @@ fn unresolved_wgsl_semantic_import_target_plan() -> WgslSemanticImportTargetPlan
 
 ///|
 fn build_wgsl_semantic_import_target_plan(
-  source : String,
+  facts : WgslComposeSemanticFacts,
   current_rel_path : String,
   target : WgslImportTarget,
   registry : WgslSourceRegistry,
   modules : Map[String, String],
   pending_targets : Array[WgslImportTarget],
-) -> WgslSemanticImportTargetPlan? raise WgslParseError {
+) -> WgslSemanticImportTargetPlan? {
   let requested_items : Array[String] = []
   let resolved_module_opt = resolve_wgsl_semantic_import_module(
     current_rel_path,
@@ -640,22 +624,19 @@ fn build_wgsl_semantic_import_target_plan(
     modules,
   )
   if target.alias_name != "" && resolved_module_opt is None {
-    let mut alias_parse_failed = false
     ignore(
       wgsl_semantic_collect_alias_plan_items(
-        source, target, pending_targets, requested_items,
+        facts, target, pending_targets, requested_items,
       ),
-    ) catch {
-      _ => alias_parse_failed = true
-    }
-    if alias_parse_failed || requested_items.length() > 0 {
+    )
+    if requested_items.length() > 0 {
       return Some(unresolved_wgsl_semantic_import_target_plan())
     }
     return None
   }
   if target.alias_name != "" &&
     !wgsl_semantic_collect_alias_plan_items(
-      source, target, pending_targets, requested_items,
+      facts, target, pending_targets, requested_items,
     ) {
     return None
   }
@@ -682,11 +663,11 @@ fn build_wgsl_semantic_import_target_plan(
     alias_is_used = true
   } else if module_alias != "" {
     default_module_alias_candidate = true
-    alias_is_used = wgsl_semantic_source_uses_alias(source, module_alias)
+    alias_is_used = wgsl_semantic_facts_use_alias(facts, module_alias)
     if alias_is_used {
       ignore(
         wgsl_semantic_collect_default_alias_plan_items(
-          source, request_module_prefix, module_alias, pending_targets, requested_items,
+          facts, request_module_prefix, module_alias, pending_targets, requested_items,
         ),
       )
     }
@@ -717,11 +698,12 @@ fn build_wgsl_semantic_import_target_plan(
 ///|
 fn build_wgsl_semantic_import_target_plans(
   source : String,
+  facts : WgslComposeSemanticFacts,
   current_rel_path : String,
   initial_targets : Array[WgslImportTarget],
   registry : WgslSourceRegistry,
   modules : Map[String, String],
-) -> WgslSemanticImportTargetPlans raise WgslParseError {
+) -> WgslSemanticImportTargetPlans {
   let pending_targets : Array[WgslImportTarget] = []
   for target in initial_targets {
     semantic_import_targets_push_unique(pending_targets, target)
@@ -734,7 +716,7 @@ fn build_wgsl_semantic_import_target_plans(
     target_index = target_index + 1
     match
       build_wgsl_semantic_import_target_plan(
-        source, current_rel_path, target, registry, modules, pending_targets,
+        facts, current_rel_path, target, registry, modules, pending_targets,
       ) {
       Some(plan) =>
         if plan.resolved_module.is_empty() {

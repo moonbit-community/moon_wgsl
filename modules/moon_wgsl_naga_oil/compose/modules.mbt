@@ -60,11 +60,27 @@ fn Composer::active_compose_defs_for_rel_path(
 fn merge_wgsl_source_local_shader_defs(
   active_defs : WgslActiveComposeDefs,
   source : String,
+  session : WgslComposeSession,
 ) -> Unit raise ComposerError {
-  let metadata = get_preprocessor_metadata(source, collect_import_uses=false) catch {
-    error => raise composer_error_from_metadata_error(error)
+  let local_defs = match session.source_local_shader_defs.get(source) {
+    Some(cached_defs) => cached_defs
+    None => {
+      let metadata = get_preprocessor_metadata(
+        source,
+        collect_import_uses=false,
+      ) catch {
+        error => raise composer_error_from_metadata_error(error)
+      }
+      let cached_defs : Map[String, ShaderDefValue] = Map([])
+      for entry in metadata.defines.iter() {
+        let (name, value) = entry
+        cached_defs.set(name, value)
+      }
+      session.source_local_shader_defs.set(source, cached_defs)
+      cached_defs
+    }
   }
-  for entry in metadata.defines.iter() {
+  for entry in local_defs.iter() {
     let (name, value) = entry
     merge_shader_def_value_into_compose_defs(
       active_defs.defines,
