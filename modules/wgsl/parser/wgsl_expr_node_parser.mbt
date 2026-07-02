@@ -596,6 +596,61 @@ fn parse_wgsl_expr_ref_text(text : String, base : Int) -> WgslExprRef? {
 }
 
 ///|
+fn parse_wgsl_expr_ref_token_range(
+  source_text : String,
+  source_start : Int,
+  tokens : Array[WgslToken],
+  start : Int,
+  end_ : Int,
+) -> WgslExprRef? {
+  guard start >= 0 && end_ > start && end_ <= tokens.length() else {
+    return None
+  }
+  let mut first = start
+  while first < end_ && tokens[first].is_whitespace() {
+    first = first + 1
+  }
+  let mut last = end_ - 1
+  while last >= first && tokens[last].is_whitespace() {
+    last = last - 1
+  }
+  guard first <= last else { return None }
+  let expr_start = tokens[first].pos()
+  let expr_end = tokens[last].end()
+  let local_start = expr_start - source_start
+  let local_end = expr_end - source_start
+  guard local_start >= 0 &&
+    local_end > local_start &&
+    local_end <= source_text.length() else {
+    return None
+  }
+  let text = source_text[local_start:local_end].to_owned()
+  let expr_tokens : Array[WgslExprToken] = []
+  let identifiers : Array[WgslIdent] = []
+  let token_slice : Array[WgslToken] = []
+  for i in first..<(last + 1) {
+    token_slice.push(tokens[i])
+  }
+  collect_wgsl_expr_ref_tokens_and_identifiers_from_tokens(
+    text, expr_start, expr_start, token_slice, expr_tokens, identifiers,
+  )
+  for token in expr_tokens {
+    match token.kind() {
+      NumericLiteral(literal) =>
+        if literal.category == InvalidNumericLiteral {
+          return None
+        }
+      _ => ()
+    }
+  }
+  let root = match parse_wgsl_expr_node(text, expr_start, expr_tokens) {
+    Some(node) => Some(node)
+    None => return None
+  }
+  Some(WgslExprRef(expr_tokens, identifiers, root, expr_start, expr_end))
+}
+
+///|
 fn parse_wgsl_expr_ref_fragment(fragment : WgslTextFragment) -> WgslExprRef? {
   if fragment.start < 0 || fragment.end < fragment.start {
     return None

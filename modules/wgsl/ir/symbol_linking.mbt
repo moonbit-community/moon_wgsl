@@ -2,12 +2,14 @@
 pub struct WgslIrSymbolIdentity {
   priv rel_path : String
   priv original_name : String
+  priv key : String
 } derive(Eq, Debug)
 
 ///|
 pub struct WgslIrAliasSymbolIdentity {
   priv alias_name : String
   priv symbol : WgslIrSymbolIdentity
+  priv key : String
 } derive(Eq, Debug)
 
 ///|
@@ -97,12 +99,12 @@ pub fn WgslIrSymbolIdentity::WgslIrSymbolIdentity(
   rel_path : String,
   original_name : String,
 ) -> WgslIrSymbolIdentity {
-  { rel_path, original_name }
+  { rel_path, original_name, key: "\{rel_path}|\{original_name}" }
 }
 
 ///|
 pub fn WgslIrSymbolIdentity::key(self : WgslIrSymbolIdentity) -> String {
-  "\{self.rel_path}|\{self.original_name}"
+  self.key
 }
 
 ///|
@@ -123,14 +125,15 @@ pub fn WgslIrAliasSymbolIdentity::WgslIrAliasSymbolIdentity(
   alias_name : String,
   original_name : String,
 ) -> WgslIrAliasSymbolIdentity {
-  { alias_name, symbol: WgslIrSymbolIdentity(rel_path, original_name) }
+  let symbol = WgslIrSymbolIdentity(rel_path, original_name)
+  { alias_name, symbol, key: "\{alias_name}|\{symbol.key()}" }
 }
 
 ///|
 pub fn WgslIrAliasSymbolIdentity::key(
   self : WgslIrAliasSymbolIdentity,
 ) -> String {
-  "\{self.alias_name}|\{self.symbol.key()}"
+  self.key
 }
 
 ///|

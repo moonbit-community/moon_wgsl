@@ -18,7 +18,6 @@ using @ast_analysis {
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
 
 ///|
-using @directive {parse_wgsl_directive_scan_items}
 
 ///|
 using @ir {type WgslIrSymbolIdentity}
@@ -36,5 +35,5 @@ using @common {type WgslReferencePath, type WgslSourceOriginKind}
 using @source_rewrite {
   type WgslTokenReplacement,
   emit_wgsl_token_stream_canonical,
-  tokenize_wgsl_absolute_fragment,
+  tokenize_wgsl_absolute_source,
 }

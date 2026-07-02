@@ -12,6 +12,8 @@ pub fn emit_wgsl_token_stream_canonical(Array[@lex.WgslToken], Array[WgslTokenRe
 
 pub fn tokenize_wgsl_absolute_fragment(String, Int, Int) -> Array[@lex.WgslToken]
 
+pub fn tokenize_wgsl_absolute_source(String) -> Array[@lex.WgslToken]
+
 // Errors
 
 // Types and methods

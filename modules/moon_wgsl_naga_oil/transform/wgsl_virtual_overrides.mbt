@@ -119,23 +119,23 @@ pub fn rewrite_wgsl_override_targets_with_binding_plan(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let mut out = ""
+  let out = StringBuilder::new()
   for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
+    out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
   for block in graph.declaration_blocks {
     guard wgsl_graph_block_function(block) is Some(function) else {
-      out = out + emit_wgsl_graph_block_canonical(block)
+      out.write_string(emit_wgsl_graph_block_canonical(block))
       continue
     }
     if function.qualifier() != Some(Override) {
-      out = out + emit_wgsl_graph_block_canonical(block)
+      out.write_string(emit_wgsl_graph_block_canonical(block))
       continue
     }
     let nodes : Array[WgslTokenReplacement] = []
     let raw_target = function.name().name()
     if split_last_identifier(raw_target) is None {
-      out = out + emit_wgsl_graph_block_canonical(block)
+      out.write_string(emit_wgsl_graph_block_canonical(block))
       continue
     }
     let target = wgsl_binding_plan_redirect_target(raw_target, plan)
@@ -148,9 +148,9 @@ pub fn rewrite_wgsl_override_targets_with_binding_plan(
         ),
       )
     }
-    out = out + emit_wgsl_token_stream_canonical(block.tokens, nodes)
+    out.write_string(emit_wgsl_token_stream_canonical(block.tokens, nodes))
   }
-  out
+  out.to_string()
 }
 
 ///|
@@ -241,12 +241,7 @@ fn rewrite_wgsl_virtual_base_block(
   if target_name != base_name {
     let plan = WgslReferenceRewritePlan()
     add_wgsl_virtual_rewrite_binding(plan, target_name, base_name)
-    collect_wgsl_bound_block_rewrite_nodes(
-      block.data,
-      plan.bindings,
-      true,
-      nodes,
-    )
+    collect_wgsl_bound_block_rewrite_nodes(block.data, plan, true, nodes)
   }
   collect_wgsl_virtual_fn_nodes(function, nodes)
   emit_wgsl_token_stream_canonical(block.tokens, nodes)
@@ -265,7 +260,7 @@ fn collect_wgsl_override_body_reference_nodes(
   add_wgsl_virtual_rewrite_binding(plan, target_name, base_name)
   add_wgsl_virtual_rewrite_binding(plan, raw_target, base_name)
   add_wgsl_virtual_rewrite_binding(plan, original_raw_target, base_name)
-  collect_wgsl_function_body_bound_rewrite_nodes(data, plan.bindings, nodes)
+  collect_wgsl_function_body_bound_rewrite_nodes(data, plan, nodes)
 }
 
 ///|
@@ -441,9 +436,9 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
   if virtual_names.is_empty() || overrides.is_empty() {
     return { source, invalid_override: None }
   }
-  let mut out = ""
+  let out = StringBuilder::new()
   for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
+    out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
   for block in graph.declaration_blocks {
     match wgsl_graph_block_override_target(block) {
@@ -468,12 +463,13 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
               None => None
             }
             match base_block {
-              Some(base) => out = out + base
+              Some(base) => out.write_string(base)
               None => ()
             }
-            out = out + override_block
+            out.write_string(override_block)
           }
-          None => out = out + rewrite_wgsl_virtual_fn_block(block, function)
+          None =>
+            out.write_string(rewrite_wgsl_virtual_fn_block(block, function))
         }
         continue
       }
@@ -481,15 +477,16 @@ fn apply_wgsl_virtual_overrides_checked_with_binding_plan(
     }
     if overrides.get(block.name()) is Some(_) ||
       override_names.get(block.name()) is Some(_) {
-      out = out + emit_wgsl_graph_block_canonical(block)
+      out.write_string(emit_wgsl_graph_block_canonical(block))
     } else {
-      out = out +
+      out.write_string(
         rewrite_wgsl_virtual_dispatch_block(
           block, override_names, override_raw_targets,
-        )
+        ),
+      )
     }
   }
-  { source: out, invalid_override: None }
+  { source: out.to_string(), invalid_override: None }
 }
 
 ///|
@@ -523,10 +520,10 @@ pub fn strip_wgsl_virtual_functions(
   if !saw_virtual {
     return source
   }
-  let mut out = ""
+  let out = StringBuilder::new()
   let emitted_names : @set.Set[String] = Set([])
   for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
+    out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
   for block in graph.declaration_blocks {
     if wgsl_graph_block_is_virtual_fn(block) {
@@ -535,17 +532,17 @@ pub fn strip_wgsl_virtual_functions(
       }
       match wgsl_graph_block_function(block) {
         Some(function) =>
-          out = out + rewrite_wgsl_virtual_fn_block(block, function)
-        None => out = out + emit_wgsl_graph_block_canonical(block)
+          out.write_string(rewrite_wgsl_virtual_fn_block(block, function))
+        None => out.write_string(emit_wgsl_graph_block_canonical(block))
       }
     } else {
-      out = out + emit_wgsl_graph_block_canonical(block)
+      out.write_string(emit_wgsl_graph_block_canonical(block))
     }
     if block.name() != "" {
       emitted_names.add(block.name())
     }
   }
-  out
+  out.to_string()
 }
 
 ///|

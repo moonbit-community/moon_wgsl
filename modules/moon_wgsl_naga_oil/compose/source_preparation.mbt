@@ -105,16 +105,38 @@ fn collect_wgsl_compose_semantic_facts(
   match session.semantic_facts.get(source) {
     Some(facts) => facts
     None => {
-      let declarations = collect_wgsl_named_declarations_strict(source) catch {
+      let unit = parse_wgsl_translation_unit_strict(source) catch {
         error => raise composer_error_from_wgsl_parse_error(error)
       }
+      let declarations = collect_wgsl_semantic_declaration_names_from_unit(unit)
+      let global_variables = collect_wgsl_semantic_global_variable_names_from_unit(
+        unit,
+      )
       let references : Array[WgslReferencePath] = []
-      collect_wgsl_semantic_reference_paths(source, references) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
-      let facts = WgslComposeSemanticFacts::{ declarations, references }
+      collect_wgsl_semantic_reference_paths_from_unit(unit, references)
+      let facts = WgslComposeSemanticFacts(
+        declarations, global_variables, references,
+      )
       session.semantic_facts.set(source, facts)
       facts
+    }
+  }
+}
+
+///|
+fn WgslComposeSession::directive_scan_items(
+  self : WgslComposeSession,
+  source : String,
+) -> Array[WgslDirectiveScanItem] {
+  match self.directive_scans.get(source) {
+    Some(items) => items
+    None => {
+      let items = parse_wgsl_directive_scan_items(
+        source,
+        include_glsl_version=false,
+      )
+      self.directive_scans.set(source, items)
+      items
     }
   }
 }

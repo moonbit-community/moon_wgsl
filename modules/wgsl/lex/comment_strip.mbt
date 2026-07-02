@@ -33,7 +33,7 @@ fn replace_comments_line(
   state : CommentState,
   preserve_byte_width : Bool,
 ) -> (String, CommentState) {
-  let mut output = ""
+  let output = StringBuilder::new()
   let mut section_start = 0
   let mut current_state = state
 
@@ -49,35 +49,38 @@ fn replace_comments_line(
       let section_end = line_in.length()
       match current_state {
         Block(_) =>
-          output = output +
+          output.write_string(
             comment_spaces(
               line_in[section_start:section_end].to_owned(),
               preserve_byte_width,
-            )
-        _ => output = output + line_in[section_start:section_end].to_owned()
+            ),
+          )
+        _ => output.write_string(line_in[section_start:section_end].to_owned())
       }
-      return (output, current_state)
+      return (output.to_string(), current_state)
     }
 
     let (marker_start, marker_text) = marker
     match current_state {
       Block(_) =>
-        output = output +
+        output.write_string(
           comment_spaces(
             line_in[section_start:marker_start].to_owned(),
             preserve_byte_width,
-          )
-      _ => output = output + line_in[section_start:marker_start].to_owned()
+          ),
+        )
+      _ => output.write_string(line_in[section_start:marker_start].to_owned())
     }
 
     match marker_text {
       "//" => {
-        output = output +
+        output.write_string(
           comment_spaces(
             line_in[marker_start:line_in.length()].to_owned(),
             preserve_byte_width,
-          )
-        return (output, current_state)
+          ),
+        )
+        return (output.to_string(), current_state)
       }
       "/*" => {
         current_state = match current_state {
@@ -85,7 +88,7 @@ fn replace_comments_line(
           Block(level) => Block(level + 1)
           Quote => current_state
         }
-        output = "\{output}  "
+        output.write_string("  ")
       }
       "*/" => {
         current_state = match current_state {
@@ -93,7 +96,7 @@ fn replace_comments_line(
           Block(level) => Block(level - 1)
           _ => current_state
         }
-        output = "\{output}  "
+        output.write_string("  ")
       }
       "\"" => {
         current_state = match current_state {
@@ -101,7 +104,7 @@ fn replace_comments_line(
           Quote => None
           _ => current_state
         }
-        output = "\{output}\""
+        output.write_string("\"")
       }
       _ => abort("unreachable comment marker")
     }
@@ -110,7 +113,7 @@ fn replace_comments_line(
     i = section_start
   }
 
-  (output, current_state)
+  (output.to_string(), current_state)
 }
 
 ///|
@@ -177,29 +180,46 @@ fn find_first_quote_marker(line : String, start : Int) -> (Int, String)? {
 }
 
 ///|
+fn source_contains_comment_marker(source : String) -> Bool {
+  let mut i = 0
+  while i + 1 < source.length() {
+    if source.code_unit_at(i).to_int() == 47 {
+      let next = source.code_unit_at(i + 1).to_int()
+      if next == 47 || next == 42 {
+        return true
+      }
+    }
+    i = i + 1
+  }
+  false
+}
+
+///|
 fn replace_comments_with(source : String, preserve_byte_width : Bool) -> String {
-  let output_lines : Array[String] = []
+  if !source_contains_comment_marker(source) {
+    return source
+  }
   let mut state = CommentState::None
   let lines = if preserve_byte_width {
     source_lines(source)
   } else {
     split_source_lines(source)
   }
+  let output = StringBuilder::new()
+  let mut first_line = true
   for line in lines {
     let (output_line, next_state) = replace_comments_line(
       line, state, preserve_byte_width,
     )
-    output_lines.push(output_line)
+    if first_line {
+      first_line = false
+    } else {
+      output.write_string("\n")
+    }
+    output.write_string(output_line)
     state = next_state
   }
-  let mut output = ""
-  for i in 0..<output_lines.length() {
-    if i > 0 {
-      output = "\{output}\n"
-    }
-    output = output + output_lines[i]
-  }
-  output
+  output.to_string()
 }
 
 ///|

@@ -1,23 +1,15 @@
 ///|
 fn collect_wgsl_bound_rewrite_nodes_from_identifiers(
   identifiers : Array[WgslIdent],
-  bindings : Array[WgslReferenceRewriteBinding],
+  plan : WgslReferenceRewritePlan,
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   for identifier in identifiers {
-    match WgslReferencePath::from_text(identifier.name()) {
-      Some(reference_path) =>
-        match wgsl_symbol_binding_for_reference(bindings, reference_path) {
-          Some(binding) =>
-            nodes.push(
-              WgslTokenReplacement(
-                identifier.start(),
-                identifier.end(),
-                binding.final_name,
-              ),
-            )
-          None => ()
-        }
+    match plan.final_name_for_identifier_text(identifier.name()) {
+      Some(final_name) =>
+        nodes.push(
+          WgslTokenReplacement(identifier.start(), identifier.end(), final_name),
+        )
       None => ()
     }
   }
@@ -26,28 +18,24 @@ fn collect_wgsl_bound_rewrite_nodes_from_identifiers(
 ///|
 fn collect_wgsl_bound_block_rewrite_nodes(
   data : WgslGlobalDeclData,
-  bindings : Array[WgslReferenceRewriteBinding],
+  plan : WgslReferenceRewritePlan,
   rewrite_declarations : Bool,
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   let identifiers : Array[WgslIdent] = []
   if rewrite_declarations {
     collect_wgsl_decl_global_declared_identifier_nodes(data, identifiers)
-    collect_wgsl_bound_rewrite_nodes_from_identifiers(
-      identifiers, bindings, nodes,
-    )
+    collect_wgsl_bound_rewrite_nodes_from_identifiers(identifiers, plan, nodes)
     identifiers.clear()
   }
   collect_wgsl_decl_identifier_nodes(data, identifiers)
-  collect_wgsl_bound_rewrite_nodes_from_identifiers(
-    identifiers, bindings, nodes,
-  )
+  collect_wgsl_bound_rewrite_nodes_from_identifiers(identifiers, plan, nodes)
 }
 
 ///|
 fn collect_wgsl_function_body_bound_rewrite_nodes(
   data : WgslGlobalDeclData,
-  bindings : Array[WgslReferenceRewriteBinding],
+  plan : WgslReferenceRewritePlan,
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
   match data {
@@ -55,7 +43,7 @@ fn collect_wgsl_function_body_bound_rewrite_nodes(
       let identifiers : Array[WgslIdent] = []
       collect_wgsl_function_body_identifier_nodes(function, identifiers)
       collect_wgsl_bound_rewrite_nodes_from_identifiers(
-        identifiers, bindings, nodes,
+        identifiers, plan, nodes,
       )
     }
     _ => ()

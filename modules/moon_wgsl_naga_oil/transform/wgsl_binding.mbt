@@ -35,7 +35,7 @@ fn rewrite_wgsl_graph_block_with_binding_plan(
       let nodes : Array[WgslTokenReplacement] = []
       collect_wgsl_bound_block_rewrite_nodes(
         block.data,
-        plan.bindings,
+        plan,
         rewrite_declarations,
         nodes,
       )
@@ -54,11 +54,11 @@ fn emit_wgsl_graph_block_canonical(block : WgslGraphBlock) -> String {
 
 ///|
 fn emit_wgsl_graph_blocks_canonical(blocks : Array[WgslGraphBlock]) -> String {
-  let mut out = ""
+  let out = StringBuilder::new()
   for block in blocks {
-    out = out + emit_wgsl_graph_block_canonical(block)
+    out.write_string(emit_wgsl_graph_block_canonical(block))
   }
-  out
+  out.to_string()
 }
 
 ///|
@@ -69,15 +69,33 @@ pub fn rewrite_wgsl_references_with_binding_plan(
   if !plan.has_symbol_bindings() {
     return source
   }
-  let graph = build_wgsl_declaration_graph(source)
-  let mut out = ""
+  rewrite_wgsl_references_with_binding_plan_from_unit(
+    source,
+    parse_wgsl_translation_unit_strict(source),
+    plan,
+  )
+}
+
+///|
+pub fn rewrite_wgsl_references_with_binding_plan_from_unit(
+  source : String,
+  unit : WgslTranslationUnit,
+  plan : WgslReferenceRewritePlan,
+) -> String {
+  if !plan.has_symbol_bindings() {
+    return source
+  }
+  let graph = build_wgsl_declaration_graph_from_unit(source, unit)
+  let out = StringBuilder::new()
   for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
+    out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
   for block in graph.declaration_blocks {
-    out = out + rewrite_wgsl_graph_block_with_binding_plan(block, plan, false)
+    out.write_string(
+      rewrite_wgsl_graph_block_with_binding_plan(block, plan, false),
+    )
   }
-  out
+  out.to_string()
 }
 
 ///|
@@ -89,12 +107,14 @@ pub fn rewrite_wgsl_declarations_with_binding_plan(
     return source
   }
   let graph = build_wgsl_declaration_graph(source)
-  let mut out = ""
+  let out = StringBuilder::new()
   for import_block in graph.import_blocks {
-    out = out + emit_wgsl_graph_block_canonical(import_block)
+    out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
   for block in graph.declaration_blocks {
-    out = out + rewrite_wgsl_graph_block_with_binding_plan(block, plan, true)
+    out.write_string(
+      rewrite_wgsl_graph_block_with_binding_plan(block, plan, true),
+    )
   }
-  out
+  out.to_string()
 }

@@ -163,15 +163,55 @@ pub fn WgslModuleItemExtractor::extract(
 }
 
 ///|
+pub fn WgslModuleItemExtractor::naga_dependency_pulled_item_origins(
+  self : WgslModuleItemExtractor,
+) -> Array[WgslModuleItemOrigin] {
+  collect_wgsl_naga_dependency_pulled_item_origins_from_graph(self.graph)
+}
+
+///|
+fn wgsl_declaration_graph_block_tokens(
+  source_tokens : Array[WgslToken],
+  token_start : Int,
+  start : Int,
+  end_ : Int,
+) -> (Array[WgslToken], Int) {
+  let tokens : Array[WgslToken] = []
+  let mut first_candidate = token_start
+  while first_candidate < source_tokens.length() &&
+        source_tokens[first_candidate].end() <= start {
+    first_candidate = first_candidate + 1
+  }
+  let mut index = first_candidate
+  while index < source_tokens.length() && source_tokens[index].pos() < end_ {
+    let token = source_tokens[index]
+    if token.pos() >= start && token.end() <= end_ {
+      tokens.push(token)
+    }
+    index = index + 1
+  }
+  (tokens, first_candidate)
+}
+
+///|
 fn build_wgsl_declaration_graph_from_unit(
   source : String,
   unit : WgslTranslationUnit,
 ) -> WgslDeclarationGraph {
   let import_blocks : Array[WgslGraphBlock] = []
   let declaration_blocks : Array[WgslGraphBlock] = []
+  let source_tokens = tokenize_wgsl_absolute_source(source)
+  let mut token_start = 0
   for decl in unit.declarations() {
+    let (tokens, next_token_start) = wgsl_declaration_graph_block_tokens(
+      source_tokens,
+      token_start,
+      decl.start(),
+      decl.end(),
+    )
+    token_start = next_token_start
     let graph_block = WgslGraphBlock::{
-      tokens: tokenize_wgsl_absolute_fragment(source, decl.start(), decl.end()),
+      tokens,
       start: decl.start(),
       end: decl.end(),
       data: decl.data(),
@@ -259,26 +299,14 @@ fn build_wgsl_declaration_graph_strict(
 
 ///|
 fn emit_wgsl_import_blocks_for_item_extraction(
-  source : String,
+  _source : String,
   graph : WgslDeclarationGraph,
 ) -> String {
-  let imported_starts : @set.Set[Int] = Set([])
-  let mut out = ""
+  let out = StringBuilder::new()
   for import_block in graph.import_blocks {
-    imported_starts.add(import_block.start)
-    out = out + emit_wgsl_graph_block_canonical(import_block)
+    out.write_string(emit_wgsl_graph_block_canonical(import_block))
   }
-  for
-    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
-    match item.kind() {
-      Directive(directive) if directive.kind() == Import =>
-        if !imported_starts.contains(item.start()) {
-          out = out + item.source().original_text()
-        }
-      _ => ()
-    }
-  }
-  out
+  out.to_string()
 }
 
 ///|
@@ -556,10 +584,9 @@ fn wgsl_declaration_graph_reachable_import_order(
 }
 
 ///|
-pub fn collect_wgsl_named_declarations_strict(
-  source : String,
-) -> Array[WgslEmittedDeclaration] raise WgslParseError {
-  let graph = build_wgsl_declaration_graph_strict(source)
+fn collect_wgsl_named_declarations_from_graph(
+  graph : WgslDeclarationGraph,
+) -> Array[WgslEmittedDeclaration] {
   let declarations : Array[WgslEmittedDeclaration] = []
   let mut generated_start = 0
   for import_block in graph.import_blocks {
@@ -583,11 +610,33 @@ pub fn collect_wgsl_named_declarations_strict(
 }
 
 ///|
+pub fn collect_wgsl_named_declarations_from_unit(
+  source : String,
+  unit : WgslTranslationUnit,
+) -> Array[WgslEmittedDeclaration] {
+  collect_wgsl_named_declarations_from_graph(
+    build_wgsl_declaration_graph_from_unit(source, unit),
+  )
+}
+
+///|
+pub fn collect_wgsl_named_declarations_strict(
+  source : String,
+) -> Array[WgslEmittedDeclaration] raise WgslParseError {
+  collect_wgsl_named_declarations_from_unit(
+    source,
+    parse_wgsl_translation_unit_strict(source),
+  )
+}
+
+///|
 fn strip_wgsl_import_declarations_from_source_unit(
   source : String,
   unit : WgslTranslationUnit,
 ) -> String {
-  let mut out = ""
+  let out = StringBuilder::new()
+  let source_tokens = tokenize_wgsl_absolute_source(source)
+  let mut token_start = 0
   for decl in unit.declarations() {
     let skip = match decl.data() {
       Import(_) => true
@@ -595,20 +644,29 @@ fn strip_wgsl_import_declarations_from_source_unit(
       _ => false
     }
     if !skip {
-      out = out +
+      let (tokens, next_token_start) = wgsl_declaration_graph_block_tokens(
+        source_tokens,
+        token_start,
+        decl.start(),
+        decl.end(),
+      )
+      token_start = next_token_start
+      out.write_string(
         emit_wgsl_graph_block_canonical({
-          tokens: tokenize_wgsl_absolute_fragment(
-            source,
-            decl.start(),
-            decl.end(),
-          ),
+          tokens,
           start: decl.start(),
           end: decl.end(),
           data: decl.data(),
-        })
+        }),
+      )
+    } else {
+      while token_start < source_tokens.length() &&
+            source_tokens[token_start].end() <= decl.end() {
+        token_start = token_start + 1
+      }
     }
   }
-  out
+  out.to_string()
 }
 
 ///|
@@ -667,11 +725,12 @@ fn extract_wgsl_module_item_extraction_from_graph(
   if matched_requested == 0 {
     return { source: "", origins, references: [] }
   }
-  let mut out = emit_wgsl_import_blocks_for_item_extraction(source, graph)
+  let out = StringBuilder::new()
+  out.write_string(emit_wgsl_import_blocks_for_item_extraction(source, graph))
   let included_blocks : Array[WgslGraphBlock] = []
   for block in graph.declaration_blocks {
     if block.name() == "" {
-      out = out + emit_wgsl_graph_block_canonical(block)
+      out.write_string(emit_wgsl_graph_block_canonical(block))
       included_blocks.push(block)
       if block.is_symbol_origin() {
         origins.push({
@@ -694,7 +753,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
       continue
     }
     guard included_names.contains(block.name()) else { continue }
-    out = out + emit_wgsl_graph_block_canonical(block)
+    out.write_string(emit_wgsl_graph_block_canonical(block))
     included_blocks.push(block)
     if block.is_symbol_origin() {
       origins.push({
@@ -706,7 +765,7 @@ fn extract_wgsl_module_item_extraction_from_graph(
     }
   }
   {
-    source: out,
+    source: out.to_string(),
     origins,
     references: wgsl_graph_block_reference_paths(included_blocks),
   }
@@ -743,6 +802,13 @@ pub fn collect_wgsl_naga_dependency_pulled_item_origins_strict(
   source : String,
 ) -> Array[WgslModuleItemOrigin] raise WgslParseError {
   let graph = build_wgsl_declaration_graph_strict(source)
+  collect_wgsl_naga_dependency_pulled_item_origins_from_graph(graph)
+}
+
+///|
+fn collect_wgsl_naga_dependency_pulled_item_origins_from_graph(
+  graph : WgslDeclarationGraph,
+) -> Array[WgslModuleItemOrigin] {
   let declaration_names : @set.Set[String] = Set([])
   for block in graph.declaration_blocks {
     let name = block.name()

@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn collect_wgsl_source_local_shader_defines(String) -> Map[String, @common.ShaderDefValue]
+
 pub fn get_preprocessor_metadata(String, allow_defines? : Bool, collect_import_uses? : Bool) -> @common.PreprocessorMetaData raise MetadataError
 
 pub fn wgsl_source_define_import_path(String) -> String?

@@ -112,8 +112,11 @@ fn set_strings_to_array(values : @set.Set[String]) -> Array[String] {
 
 ///|
 priv struct WgslComposeSemanticFacts {
-  declarations : Array[WgslEmittedDeclaration]
+  declarations : Array[String]
+  global_variables : Array[String]
   references : Array[WgslReferencePath]
+  reference_keys : @set.Set[String]
+  unqualified_reference_names : @set.Set[String]
 }
 
 ///|
@@ -140,14 +143,39 @@ priv struct WgslComposeSession {
   graph_planned_requests : @set.Set[String]
   graph_planning_rel_paths : Array[String]
   mut graph_execution_complete : Bool
+  mut emitted_virtual_functions : Bool
   symbols : WgslComposeSymbolTable
   link_graph : WgslIrLinkGraph
   semantic_facts : Map[String, WgslComposeSemanticFacts]
+  directive_scans : Map[String, Array[WgslDirectiveScanItem]]
+  importless_sources : Map[String, String]
+  directive_import_targets : Map[String, Array[WgslImportTarget]]
+  directive_single_import_targets : Map[String, Array[WgslImportTarget]]
+  semantic_reference_first_starts : Map[String, Map[String, Int]]
   source_local_shader_defs : Map[String, Map[String, ShaderDefValue]]
+  source_cache_ids : Map[String, Int]
+  mut next_source_cache_id : Int
   processed_modules : Map[String, WgslProcessedComposeModule]
+  selected_import_candidate_rel_paths : Map[String, String]
   import_request_plans : Map[String, Array[WgslImportRequest]]
   emitted_item_import_requests : Map[String, Array[WgslImportRequest]]
   active_rel_paths : Array[String]
+}
+
+///|
+fn WgslComposeSession::source_cache_id(
+  self : WgslComposeSession,
+  source : String,
+) -> Int {
+  match self.source_cache_ids.get(source) {
+    Some(id) => id
+    None => {
+      let id = self.next_source_cache_id
+      self.next_source_cache_id = id + 1
+      self.source_cache_ids.set(source, id)
+      id
+    }
+  }
 }
 
 ///|
@@ -157,11 +185,31 @@ priv struct WgslProcessedComposeModule {
   prepared : WgslPreparedComposeSource
   mut unit : WgslTranslationUnit?
   mut declarations_by_name : Map[String, WgslGlobalDecl]?
-  mut declarations : Array[WgslEmittedDeclaration]?
+  mut declaration_summaries : Map[String, WgslProcessedDeclarationSummary]?
+  mut declaration_names : Array[String]?
+  mut semantic_facts : WgslComposeSemanticFacts?
   mut item_extractor : WgslModuleItemExtractor?
   item_extractions : Map[String, WgslModuleItemExtraction]
   mut naga_pull_ranks : Map[String, Int]?
   mut source_decl_ranks : Map[String, Int]?
+  mut virtual_override_targets : Array[String]?
+  mut has_override_function : Bool?
+  mut has_virtual_function : Bool?
+}
+
+///|
+priv enum WgslProcessedDeclarationKind {
+  SummaryType
+  SummaryConstant
+  SummaryOverride
+  SummaryGlobalVariable
+  SummaryFunction
+} derive(Eq)
+
+///|
+priv struct WgslProcessedDeclarationSummary {
+  kind : WgslProcessedDeclarationKind
+  has_resource_binding : Bool
 }
 
 ///|
@@ -176,11 +224,13 @@ priv struct WgslComposeBinding {
   target : WgslComposeSymbolTarget
   scope : WgslComposeBindingScope
   alias_name : String
+  key : String
 }
 
 ///|
 priv struct WgslComposeSymbolTarget {
   identity : WgslIrSymbolIdentity
+  identity_key : String
   final_name : String
 }
 
@@ -188,11 +238,6 @@ priv struct WgslComposeSymbolTarget {
 priv struct WgslComposeBindingSet {
   bindings : Array[WgslComposeBinding]
   keys : @set.Set[String]
-}
-
-///|
-priv struct WgslComposeBindingKey {
-  text : String
 }
 
 ///|
@@ -277,8 +322,8 @@ fn wgsl_live_binding_conflict_message(
   existing : WgslLiveSymbolBinding,
   binding : WgslLiveSymbolBinding,
 ) -> String {
-  let existing_identity = WgslComposeIrIdentityKey(existing.target.identity).text()
-  let binding_identity = WgslComposeIrIdentityKey(binding.target.identity).text()
+  let existing_identity = existing.target.identity_key
+  let binding_identity = binding.target.identity_key
   let scope = if binding.alias_name == "" {
     binding.scope.label()
   } else {
@@ -296,10 +341,8 @@ fn WgslLiveBindingPlan::first_conflict(self : WgslLiveBindingPlan) -> String? {
       if existing.scope == binding.scope &&
         existing.alias_name == binding.alias_name &&
         existing.reference_path.matches(binding.reference_path) {
-        let existing_identity = WgslComposeIrIdentityKey(
-          existing.target.identity,
-        ).text()
-        let binding_identity = WgslComposeIrIdentityKey(binding.target.identity).text()
+        let existing_identity = existing.target.identity_key
+        let binding_identity = binding.target.identity_key
         if existing_identity != binding_identity ||
           existing.target.final_name != binding.target.final_name {
           return Some(wgsl_live_binding_conflict_message(existing, binding))
@@ -356,26 +399,15 @@ fn WgslComposeBindingScope::label(self : WgslComposeBindingScope) -> String {
 }
 
 ///|
-fn WgslComposeBindingKey::WgslComposeBindingKey(
-  binding : WgslComposeBinding,
-) -> WgslComposeBindingKey {
-  let identity_key = WgslComposeIrIdentityKey(binding.target.identity).text()
-  {
-    text: "\{binding.scope.label()}|\{binding.reference_path.text()}|\{binding.target.final_name}|\{binding.alias_name}|\{identity_key}",
-  }
-}
-
-///|
-fn WgslComposeBindingKey::text(self : WgslComposeBindingKey) -> String {
-  self.text
-}
-
-///|
 fn WgslComposeSymbolTarget::WgslComposeSymbolTarget(
   identity : WgslIrSymbolIdentity,
   final_name : String,
 ) -> WgslComposeSymbolTarget {
-  { identity, final_name: final_name.trim().to_owned() }
+  {
+    identity,
+    identity_key: identity.key(),
+    final_name: final_name.trim().to_owned(),
+  }
 }
 
 ///|
@@ -385,7 +417,9 @@ fn WgslComposeBinding::WgslComposeBinding(
   scope : WgslComposeBindingScope,
   alias_name : String,
 ) -> WgslComposeBinding {
-  { reference_path, target, scope, alias_name }
+  let alias_name = alias_name.trim().to_owned()
+  let key = "\{scope.label()}|\{reference_path.text()}|\{target.final_name}|\{alias_name}|\{target.identity_key}"
+  { reference_path, target, scope, alias_name, key }
 }
 
 ///|
@@ -478,11 +512,10 @@ fn WgslComposeBindingSet::push(
   self : WgslComposeBindingSet,
   binding : WgslComposeBinding,
 ) -> Unit {
-  if binding.reference_path.segments().length() == 0 ||
-    binding.target.final_name == "" {
+  if binding.target.final_name == "" {
     return
   }
-  let key = WgslComposeBindingKey(binding).text()
+  let key = binding.key
   if self.keys.contains(key) {
     return
   }
@@ -729,6 +762,7 @@ priv struct WgslActiveComposeDefs {
   defines : Map[String, Bool]
   value_defines : Map[String, ShaderDefValue]
   shader_defs : Map[String, ShaderDefValue]
+  mut cache_text : String?
 }
 
 ///|

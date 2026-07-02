@@ -25,6 +25,7 @@ pub(all) struct WgslImportTarget {
 ///|
 pub struct WgslReferencePath {
   priv segments : Array[String]
+  priv text : String
 } derive(Eq, Debug)
 
 ///|
@@ -42,7 +43,7 @@ pub fn WgslReferencePath::from_segments(
   if normalized.length() == 0 {
     None
   } else {
-    Some({ segments: normalized })
+    Some({ segments: normalized, text: normalized.join("::") })
   }
 }
 
@@ -66,7 +67,7 @@ pub fn WgslReferencePath::segments(self : WgslReferencePath) -> Array[String] {
 
 ///|
 pub fn WgslReferencePath::text(self : WgslReferencePath) -> String {
-  self.segments.join("::")
+  self.text
 }
 
 ///|

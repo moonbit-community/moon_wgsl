@@ -109,6 +109,7 @@ test "compose graph execution plans reachability before emission" {
     true,
     [],
     false,
+    true,
   ) catch {
     error => abort(error.message())
   }

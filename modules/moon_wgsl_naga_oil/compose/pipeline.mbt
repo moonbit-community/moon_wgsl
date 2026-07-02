@@ -25,16 +25,36 @@ fn compose_emit_scanned_item(
 }
 
 ///|
-fn drop_wgsl_import_directives_from_compose_source(source : String) -> String {
+fn drop_wgsl_import_directives_from_scan_items(
+  items : Array[WgslDirectiveScanItem],
+  source : String,
+) -> String {
   let out = StringBuilder::new(size_hint=source.length())
-  for
-    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+  for item in items {
     match item.kind() {
       Directive(directive) if directive.kind() == Import => ()
       _ => out.write_string(item.source().original_text())
     }
   }
   out.to_string()
+}
+
+///|
+fn drop_wgsl_import_directives_from_compose_source_cached(
+  session : WgslComposeSession,
+  source : String,
+) -> String {
+  match session.importless_sources.get(source) {
+    Some(importless_source) => importless_source
+    None => {
+      let importless_source = drop_wgsl_import_directives_from_scan_items(
+        session.directive_scan_items(source),
+        source,
+      )
+      session.importless_sources.set(source, importless_source)
+      importless_source
+    }
+  }
 }
 
 ///|
@@ -123,6 +143,7 @@ fn WgslComposeEmitter::emit_source_with_path(
   record_current_origins : Bool,
   alias_prefixes : Array[String],
   declared_imports : Bool,
+  validate_output : Bool,
 ) -> String raise ComposerError {
   let maybe_registered_processed = match
     self.composer.registry.registered_source(current_rel_path) {
@@ -144,7 +165,12 @@ fn WgslComposeEmitter::emit_source_with_path(
         self.session,
         inherited_defs,
       )
-      merge_wgsl_source_local_shader_defs(active_defs, source, self.session)
+      merge_wgsl_source_local_shader_defs(
+        active_defs,
+        source,
+        self.session,
+        normalize_shader_rel_path(current_rel_path),
+      )
       let prepared = prepare_wgsl_compose_source(
         source,
         self.session,
@@ -153,12 +179,32 @@ fn WgslComposeEmitter::emit_source_with_path(
       (active_defs, prepared)
     }
   }
+  match maybe_registered_processed {
+    Some(processed) => self.session.record_processed_semantic_facts(processed)
+    None => ()
+  }
+  match maybe_registered_processed {
+    Some(processed) =>
+      if processed.imports_for_virtual_side_effect() {
+        self.session.emitted_virtual_functions = true
+      }
+    None => self.session.emitted_virtual_functions = true
+  }
   if record_current_origins {
-    record_wgsl_source_origins_from_source(
-      self.session,
-      current_rel_path,
-      prepared.active_source,
-    )
+    match maybe_registered_processed {
+      Some(processed) =>
+        record_wgsl_source_origins_from_extraction(
+          self.session,
+          current_rel_path,
+          processed.item_extraction([]),
+        )
+      None =>
+        record_wgsl_source_origins_from_source(
+          self.session,
+          current_rel_path,
+          prepared.active_source,
+        )
+    }
   }
   let merged = StringBuilder::new(size_hint=prepared.active_source.length())
   let bindings = WgslComposeBindingSet()
@@ -198,10 +244,7 @@ fn WgslComposeEmitter::emit_source_with_path(
   }
   let mut explicit_imports_emitted = false
   let mut implicit_imports_emitted = false
-  let scan_items = parse_wgsl_directive_scan_items(
-    prepared.active_source,
-    include_glsl_version=false,
-  )
+  let scan_items = self.session.directive_scan_items(prepared.active_source)
   let has_import_directive = wgsl_compose_scan_has_import_directive(scan_items)
   let mut saw_import_directive = false
   for item in scan_items {
@@ -253,6 +296,7 @@ fn WgslComposeEmitter::emit_source_with_path(
     active_defs,
     self.session,
     apply_virtual_overrides,
+    validate_output,
   )
 }
 
@@ -273,11 +317,6 @@ fn WgslComposeEmitter::emit_root(
     source,
     self.session.additional_imports,
   )
-  WgslImportGraphBuilder(self.composer, self.session).complete_execution(
-    normalized_rel,
-    root_source,
-    None,
-  )
   self.session.visited.add(normalized_rel)
   self.session.active_rel_paths.push(normalized_rel)
   let composed = self.emit_source_with_path(
@@ -289,6 +328,7 @@ fn WgslComposeEmitter::emit_root(
     true,
     [],
     false,
+    true,
   )
   self.session.active_rel_paths.pop() |> ignore
   composed
@@ -328,7 +368,12 @@ fn WgslComposeEmitter::resolve_compose_source(
   self : WgslComposeEmitter,
   rel : String,
 ) -> WgslResolvedComposeSource raise ComposerError {
-  let composed = strip_wgsl_virtual_functions(self.emit_root(rel))
+  let root_source = self.emit_root(rel)
+  let composed = if self.session.emitted_virtual_functions {
+    strip_wgsl_virtual_functions(root_source)
+  } else {
+    root_source
+  }
   let prepared_source = finalize_wgsl_output_source(composed)
   {
     source: prepared_source,
@@ -594,7 +639,14 @@ pub fn Composer::compose_wgsl(
   rel : String,
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
-  self.prepare_wgsl_source(rel, options).source
+  let resolved = self.resolve_wgsl_compose_source(rel, options)
+  finalize_wgsl_output_source(
+    compose_wgsl_source_via_compat_writer_ir(
+      resolved.source,
+      resolved.symbols,
+      normalize_shader_rel_path(rel),
+    ),
+  )
 }
 
 ///|
@@ -603,7 +655,14 @@ pub fn Composer::compose_wgsl_runtime_valid(
   rel : String,
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
-  self.prepare_wgsl_source_runtime_valid(rel, options).source
+  let resolved = self.resolve_wgsl_compose_source(rel, options)
+  finalize_wgsl_output_source(
+    compose_wgsl_source_via_ir(
+      resolved.source,
+      resolved.symbols,
+      normalize_shader_rel_path(rel),
+    ),
+  )
 }
 
 ///|
@@ -700,6 +759,7 @@ pub fn Composer::compose_wgsl_source(
       false,
       [],
       false,
+      true,
     ),
   )
   compose_wgsl_source_via_ir(

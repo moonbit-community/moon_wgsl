@@ -48,20 +48,25 @@ fn Composer::compose_wgsl_import_requests(
   alias_prefixes : Array[String],
 ) -> String raise ComposerError {
   let merged = StringBuilder::new()
+  record_wgsl_import_request_batch_link_edges(
+    session.link_graph,
+    current_rel_path,
+    requests,
+  )
   let importer_facts = collect_wgsl_compose_semantic_facts(
     session, importer_scan_source,
   )
   for request in requests {
     if !session.graph_request_is_planned(current_rel_path, request) {
-      raise FailedToResolveImport(
-        "internal compose graph is missing planned request \{wgsl_import_request_visit_key(current_rel_path, request)}",
+      session.record_graph_planned_request(current_rel_path, request)
+    }
+    let request_alias_prefixes = alias_prefixes.copy()
+    if request.alias_name != "" {
+      request_alias_prefixes.push(
+        wgsl_semantic_import_alias_prefix(request.alias_name),
       )
     }
-    let request_alias_scope = if request.alias_name != "" {
-      wgsl_semantic_import_alias_prefix(request.alias_name)
-    } else {
-      ""
-    }
+    let request_alias_scope = request_alias_prefixes.join("__")
     let full_module_key = wgsl_full_module_visit_key(request.rel_path, "")
     if wgsl_path_stack_contains(session.active_rel_paths, request.rel_path) {
       raise ImportCycle(
@@ -199,6 +204,7 @@ fn Composer::compose_wgsl_import_requests(
       session,
       Some(importer_defs),
     )
+    session.record_processed_semantic_facts(processed)
     let raw_source = processed.raw_source
     let origin_start_index = session.symbols.source_origins.length()
     let request_import_defs = processed.active_defs
@@ -206,6 +212,13 @@ fn Composer::compose_wgsl_import_requests(
     let source_decl_ranks = processed.declaration_source_ranks()
     session.active_rel_paths.push(request.rel_path)
     let module_source = if request.import_full_module {
+      record_wgsl_planned_final_names_from_processed(
+        session,
+        request.rel_path,
+        Some(request.module_path),
+        request_alias_prefixes,
+        processed,
+      )
       WgslComposeEmitter(self, session).emit_source_with_path(
         request.rel_path,
         raw_source,
@@ -213,8 +226,9 @@ fn Composer::compose_wgsl_import_requests(
         bindings,
         false,
         true,
-        alias_prefixes,
+        request_alias_prefixes,
         true,
+        false,
       )
     } else {
       let import_defs = request_import_defs
@@ -232,7 +246,7 @@ fn Composer::compose_wgsl_import_requests(
             prepared.active_source,
             session,
             import_defs,
-            alias_prefixes,
+            request_alias_prefixes,
           )
         } else {
           ""
@@ -251,6 +265,13 @@ fn Composer::compose_wgsl_import_requests(
           request.rel_path,
           extraction,
         )
+        record_wgsl_planned_final_names_from_extraction(
+          session,
+          request.rel_path,
+          Some(request.module_path),
+          request_alias_prefixes,
+          extraction,
+        )
         let requests = self.build_wgsl_import_requests_from_emitted_item_slice(
           request.rel_path,
           extracted_source,
@@ -261,7 +282,7 @@ fn Composer::compose_wgsl_import_requests(
         )
         let item_bindings = WgslComposeBindingSet()
         seed_wgsl_local_declaration_bindings(
-          item_bindings, current_rel_path, importer_scan_source,
+          item_bindings, current_rel_path, importer_facts,
         )
         let imported_prefix = self.compose_wgsl_import_requests(
           request.rel_path,
@@ -270,18 +291,14 @@ fn Composer::compose_wgsl_import_requests(
           item_bindings,
           session,
           import_defs,
-          alias_prefixes,
+          request_alias_prefixes,
+        )
+        let local_source = drop_wgsl_import_directives_from_compose_source_cached(
+          session, extracted_source,
         )
         let emitted_slice = imported_prefix +
-          WgslComposeEmitter(self, session).emit_source_with_path(
-            request.rel_path,
-            drop_wgsl_import_directives_from_compose_source(extracted_source),
-            Some(importer_defs),
-            item_bindings,
-            false,
-            false,
-            alias_prefixes,
-            false,
+          finalize_wgsl_composed_source(
+            local_source, item_bindings, import_defs, session, false, false,
           )
         for binding in item_bindings.bindings {
           let referenced_by_importer = importer_facts.contains_reference_path(
@@ -300,7 +317,7 @@ fn Composer::compose_wgsl_import_requests(
     if module_source == "" {
       continue
     }
-    let final_name_plan = WgslFinalNameAllocator(session, alias_prefixes).application_plan(
+    let final_name_plan = WgslFinalNameAllocator(session, request_alias_prefixes).application_plan(
       origin_start_index,
     )
     let final_module_source = if !final_name_plan.is_empty() {
@@ -578,17 +595,9 @@ fn wgsl_sort_import_arena_function_symbols_by_dependency_pull(
 fn seed_wgsl_local_declaration_bindings(
   bindings : WgslComposeBindingSet,
   rel_path : String,
-  source : String,
-) -> Unit raise ComposerError {
-  let unit = parse_wgsl_translation_unit_strict(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-  for declaration in unit.declarations() {
-    match declaration.data() {
-      GlobalVariable(_) => ()
-      _ => continue
-    }
-    let name = declaration.name()
+  facts : WgslComposeSemanticFacts,
+) -> Unit {
+  for name in facts.global_variable_names() {
     if name == "" {
       continue
     }
@@ -664,7 +673,7 @@ fn Composer::compose_wgsl_missing_item_local_dependency_imports(
 ) -> String raise ComposerError {
   let targets : Array[WgslImportTarget] = []
   collect_wgsl_import_targets_from_source_directives(
-    dependency_scan_source, targets,
+    session, dependency_scan_source, targets,
   )
   if targets.length() == 0 {
     return ""

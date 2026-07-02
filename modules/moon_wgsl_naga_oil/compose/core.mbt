@@ -17,6 +17,7 @@ pub struct Composer {
   priv module_sets : Map[String, ComposableModuleDefinition]
   priv registry : WgslSourceRegistry
   priv composable_module_registry_paths : Map[String, String]
+  priv processed_module_cache : Map[String, WgslProcessedComposeModule]
 }
 
 ///|
@@ -25,6 +26,7 @@ pub fn Composer::default() -> Composer {
     module_sets: Map([]),
     registry: WgslSourceRegistry::default(),
     composable_module_registry_paths: Map([]),
+    processed_module_cache: Map([]),
   }
 }
 

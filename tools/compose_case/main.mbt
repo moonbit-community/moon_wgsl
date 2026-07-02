@@ -1,6 +1,6 @@
 ///|
 fn compose_case_usage() -> String {
-  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--shader-type wgsl|glsl-vertex|glsl-fragment] [--module FILE] [--entry-only] [--check-only] [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--runtime-valid] [--naga-oil-writer-parity] [--naga-writer-trace-function PREFIX] [--naga-writer-trace-module] [--file-path-prefix PREFIX] [--expect-error --error-output FILE]"
+  "usage: moon run tools/compose_case -- --fixture-root DIR --entry FILE [--shader-type wgsl|glsl-vertex|glsl-fragment] [--module FILE] [--entry-only] [--check-only] [--def NAME] [--value-def NAME=VALUE] [--additional-import PATH] [--output FILE] [--pre-ir] [--runtime-valid] [--naga-oil-writer-parity] [--naga-writer-trace-function PREFIX] [--naga-writer-trace-module] [--repeat COUNT] [--file-path-prefix PREFIX] [--expect-error --error-output FILE]"
 }
 
 ///|
@@ -18,6 +18,7 @@ priv struct ComposeCaseArgs {
   mut naga_oil_writer_parity : Bool
   mut naga_writer_trace_function : String?
   mut naga_writer_trace_module : Bool
+  mut repeat : Int
   mut entry_only : Bool
   mut check_only : Bool
   mut file_path_prefix : String?
@@ -41,6 +42,7 @@ fn ComposeCaseArgs::ComposeCaseArgs() -> ComposeCaseArgs {
     naga_oil_writer_parity: false,
     naga_writer_trace_function: None,
     naga_writer_trace_module: false,
+    repeat: 1,
     entry_only: false,
     check_only: false,
     file_path_prefix: None,
@@ -117,6 +119,11 @@ fn parse_compose_case_args() -> ComposeCaseArgs {
         parsed.naga_writer_trace_module = true
         index = index + 1
       }
+      "--repeat" => {
+        guard index + 1 < args.length() else { abort(compose_case_usage()) }
+        parsed.repeat = compose_case_parse_positive_decimal(args[index + 1])
+        index = index + 2
+      }
       "--entry-only" => {
         parsed.entry_only = true
         index = index + 1
@@ -154,6 +161,19 @@ fn write_compose_case_output(path : String?, text : String) -> Unit {
       }
     None => println(text)
   }
+}
+
+///|
+fn compose_case_parse_positive_decimal(text : String) -> Int {
+  guard text.length() > 0 else { abort(compose_case_usage()) }
+  let mut value = 0
+  for i in 0..<text.length() {
+    let code = text.code_unit_at(i).to_int()
+    guard code >= 48 && code <= 57 else { abort(compose_case_usage()) }
+    value = value * 10 + code - 48
+  }
+  guard value > 0 else { abort(compose_case_usage()) }
+  value
 }
 
 ///|
@@ -1112,40 +1132,43 @@ fn main {
     redirects: [],
     additional_imports: compose_case_additional_imports(args.additional_imports),
   }
-  let output = try {
-    match args.naga_writer_trace_function {
-      Some(prefix) =>
-        composer.trace_naga_oil_writer_function_plan(entry, options, prefix)
-      None =>
-        if args.naga_writer_trace_module {
-          composer.trace_naga_oil_writer_module_plan(entry, options)
-        } else if args.pre_ir {
-          composer.compose_wgsl_before_ir(entry, options)
-        } else if args.runtime_valid {
-          composer.compose_wgsl_runtime_valid(entry, options)
-        } else if args.naga_oil_writer_parity {
-          composer.compose_wgsl_for_naga_oil_writer_parity(entry, options)
+  let mut output = ""
+  for _ in 0..<args.repeat {
+    output = try {
+      match args.naga_writer_trace_function {
+        Some(prefix) =>
+          composer.trace_naga_oil_writer_function_plan(entry, options, prefix)
+        None =>
+          if args.naga_writer_trace_module {
+            composer.trace_naga_oil_writer_module_plan(entry, options)
+          } else if args.pre_ir {
+            composer.compose_wgsl_before_ir(entry, options)
+          } else if args.runtime_valid {
+            composer.compose_wgsl_runtime_valid(entry, options)
+          } else if args.naga_oil_writer_parity {
+            composer.compose_wgsl_for_naga_oil_writer_parity(entry, options)
+          } else {
+            composer.compose_wgsl(entry, options)
+          }
+      }
+    } catch {
+      err =>
+        if args.expect_error {
+          write_compose_case_output(
+            args.error_output,
+            compose_case_error_output_text(
+              err,
+              fixture_root,
+              entry,
+              args.file_path_prefix,
+            ),
+          )
+          return
         } else {
-          composer.compose_wgsl(entry, options)
+          println("failed to compose WGSL: \{err.message()}")
+          abort("failed to compose WGSL")
         }
     }
-  } catch {
-    err =>
-      if args.expect_error {
-        write_compose_case_output(
-          args.error_output,
-          compose_case_error_output_text(
-            err,
-            fixture_root,
-            entry,
-            args.file_path_prefix,
-          ),
-        )
-        return
-      } else {
-        println("failed to compose WGSL: \{err.message()}")
-        abort("failed to compose WGSL")
-      }
   }
   if args.expect_error {
     write_compose_case_output(args.error_output, "UNEXPECTED_SUCCESS")

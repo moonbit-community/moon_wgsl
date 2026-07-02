@@ -13,24 +13,6 @@
 // limitations under the License.
 
 ///|
-fn wgsl_source_contains_override_directive(
-  source : String,
-) -> Bool raise ComposerError {
-  @transform.wgsl_source_contains_override_directive(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-}
-
-///|
-fn wgsl_source_contains_virtual_directive(
-  source : String,
-) -> Bool raise ComposerError {
-  @transform.wgsl_source_contains_virtual_directive(source) catch {
-    error => raise composer_error_from_wgsl_parse_error(error)
-  }
-}
-
-///|
 fn apply_wgsl_virtual_overrides_with_binding_plan(
   source : String,
   plan : WgslReferenceRewritePlan,

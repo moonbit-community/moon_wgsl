@@ -28,6 +28,8 @@ pub fn utf8_byte_length(String) -> Int
 
 pub fn wgsl_blankspace_code_point(Int) -> Bool
 
+pub fn wgsl_code_point_at(String, Int) -> (Int, Int)?
+
 pub fn wgsl_identifier_continue_code_point(Int) -> Bool
 
 pub fn wgsl_identifier_start_code_point(Int) -> Bool
@@ -55,6 +57,10 @@ pub fn wgsl_regex_word_text(String) -> Bool
 pub fn wgsl_regex_word_width(String, Int) -> Int
 
 pub fn wgsl_trim_blankspace(String) -> String
+
+pub fn wgsl_xid_continue_code_point(Int) -> Bool
+
+pub fn wgsl_xid_start_code_point(Int) -> Bool
 
 // Errors
 

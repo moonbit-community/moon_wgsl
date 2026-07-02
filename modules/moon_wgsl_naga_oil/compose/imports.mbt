@@ -1,11 +1,9 @@
 ///|
 using @transform {
   type WgslReferenceRewritePlan,
-  type WgslEmittedDeclaration,
   type WgslModuleItemExtractor,
   type WgslModuleItemExtraction,
-  collect_wgsl_named_declarations_strict,
-  collect_wgsl_naga_dependency_pulled_item_origins_strict,
+  type WgslModuleItemOrigin,
   collect_wgsl_source_catalog_declarations_strict,
   collect_wgsl_virtual_override_targets_strict,
   extract_wgsl_module_item_origins_strict,
@@ -33,7 +31,11 @@ using @common {
 }
 
 ///|
-using @metadata {type MetadataError, get_preprocessor_metadata}
+using @metadata {
+  type MetadataError,
+  collect_wgsl_source_local_shader_defines,
+  get_preprocessor_metadata,
+}
 
 ///|
 using @preprocess {
@@ -55,6 +57,18 @@ using @ast {type WgslDirective, type WgslGlobalDecl, type WgslTranslationUnit}
 
 ///|
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
+
+///|
+using @lex {
+  type WgslToken,
+  replace_comments,
+  tokenize_wgsl,
+  wgsl_code_point_at,
+  wgsl_line_end,
+  wgsl_regex_whitespace_code_point,
+  wgsl_xid_continue_code_point,
+  wgsl_xid_start_code_point,
+}
 
 ///|
 using @ir {

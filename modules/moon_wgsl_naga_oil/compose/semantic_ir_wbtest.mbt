@@ -14,14 +14,16 @@
 
 ///|
 fn semantic_ir_facts(source : String) -> WgslComposeSemanticFacts {
-  let declarations = collect_wgsl_named_declarations_strict(source) catch {
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
     _ => abort("expected semantic IR fixture parse success")
   }
+  let declarations = collect_wgsl_semantic_declaration_names_from_unit(unit)
+  let global_variables = collect_wgsl_semantic_global_variable_names_from_unit(
+    unit,
+  )
   let references : Array[WgslReferencePath] = []
-  collect_wgsl_semantic_reference_paths(source, references) catch {
-    _ => abort("expected semantic IR fixture reference parse success")
-  }
-  { declarations, references }
+  collect_wgsl_semantic_reference_paths_from_unit(unit, references)
+  WgslComposeSemanticFacts(declarations, global_variables, references)
 }
 
 ///|

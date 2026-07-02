@@ -818,7 +818,7 @@ fn wgsl_regex_word_code_point(code_point : Int) -> Bool {
 }
 
 ///|
-fn wgsl_code_point_at(text : String, index : Int) -> (Int, Int)? {
+pub fn wgsl_code_point_at(text : String, index : Int) -> (Int, Int)? {
   guard index >= 0 && index < text.length() else { return None }
   let first = text.code_unit_at(index).to_int()
   if first >= 0xD800 && first <= 0xDBFF {

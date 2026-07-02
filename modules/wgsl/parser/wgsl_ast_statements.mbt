@@ -532,10 +532,14 @@ fn wgsl_statement_push_expr_ref(
   expressions : Array[WgslStatementExpression],
 ) -> Unit {
   guard start >= 0 && end_ > start && end_ <= tokens.length() else { return }
-  let expr_start = tokens[start].pos()
-  let expr_end = tokens[end_ - 1].end()
   match
-    parse_wgsl_expr_ref_text(owner.slice(expr_start, expr_end), expr_start) {
+    parse_wgsl_expr_ref_token_range(
+      owner.source_text,
+      owner.source_start,
+      tokens,
+      start,
+      end_,
+    ) {
     Some(expr) => {
       expression_refs.push(expr)
       expressions.push(WgslStatementExpression(role, expr))
@@ -622,9 +626,13 @@ fn WgslDeclParser::expr_ref_from_token_range(
   guard start >= 0 && end_ > start && end_ <= tokens.length() else {
     return None
   }
-  let expr_start = tokens[start].pos()
-  let expr_end = tokens[end_ - 1].end()
-  parse_wgsl_expr_ref_text(self.slice(expr_start, expr_end), expr_start)
+  parse_wgsl_expr_ref_token_range(
+    self.source_text,
+    self.source_start,
+    tokens,
+    start,
+    end_,
+  )
 }
 
 ///|

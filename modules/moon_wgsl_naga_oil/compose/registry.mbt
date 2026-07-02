@@ -1,6 +1,6 @@
-///|
 pub fn Composer::clear_sources(self : Composer) -> Unit {
   self.registry.clear()
+  self.processed_module_cache.clear()
 }
 
 ///|
@@ -9,6 +9,7 @@ pub fn Composer::register_source(
   rel_path : String,
   source : String,
 ) -> Unit {
+  self.processed_module_cache.clear()
   ignore(self.registry.register_source(rel_path, source, None))
 }
 
@@ -17,6 +18,7 @@ pub fn Composer::register_source_files(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Unit {
+  self.processed_module_cache.clear()
   self.registry.register_source_files(files)
 }
 
@@ -73,11 +75,20 @@ fn Composer::new_wgsl_compose_session(
     graph_planned_requests: Set([]),
     graph_planning_rel_paths: [],
     graph_execution_complete: false,
+    emitted_virtual_functions: false,
     symbols: WgslComposeSymbolTable(),
     link_graph: WgslIrLinkGraph(),
     semantic_facts: Map([]),
+    directive_scans: Map([]),
+    importless_sources: Map([]),
+    directive_import_targets: Map([]),
+    directive_single_import_targets: Map([]),
+    semantic_reference_first_starts: Map([]),
     source_local_shader_defs: Map([]),
+    source_cache_ids: Map([]),
+    next_source_cache_id: 0,
     processed_modules: Map([]),
+    selected_import_candidate_rel_paths: Map([]),
     import_request_plans: Map([]),
     emitted_item_import_requests: Map([]),
     active_rel_paths: [],

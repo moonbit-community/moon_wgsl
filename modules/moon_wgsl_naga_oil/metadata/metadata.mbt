@@ -79,3 +79,77 @@ pub fn get_preprocessor_metadata(
 ) -> PreprocessorMetaData raise MetadataError {
   try_get_preprocessor_metadata(source, allow_defines, collect_import_uses)
 }
+
+///|
+fn wgsl_metadata_skip_whitespace(line : String, start : Int) -> Int {
+  let mut index = start
+  while index < line.length() {
+    let width = wgsl_regex_whitespace_width(line, index)
+    guard width > 0 else { break }
+    index = index + width
+  }
+  index
+}
+
+///|
+fn wgsl_metadata_has_word_at(
+  line : String,
+  start : Int,
+  word : String,
+) -> Bool {
+  guard start + word.length() <= line.length() else { return false }
+  for i in 0..<word.length() {
+    if line.code_unit_at(start + i).to_int() != word.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  let end_ = start + word.length()
+  end_ >= line.length() || wgsl_regex_word_width(line, end_) == 0
+}
+
+///|
+fn wgsl_metadata_line_may_define_shader_def(line : String) -> Bool {
+  let hash_start = wgsl_metadata_skip_whitespace(line, 0)
+  guard hash_start < line.length() &&
+    line.code_unit_at(hash_start).to_int() == 35 else {
+    return false
+  }
+  let name_start = wgsl_metadata_skip_whitespace(line, hash_start + 1)
+  wgsl_metadata_has_word_at(line, name_start, "define")
+}
+
+///|
+fn wgsl_metadata_source_may_define_shader_def(source : String) -> Bool {
+  for line in source.split("\n") {
+    if wgsl_metadata_line_may_define_shader_def(line.to_owned()) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+pub fn collect_wgsl_source_local_shader_defines(
+  source : String,
+) -> Map[String, ShaderDefValue] {
+  let defines : Map[String, ShaderDefValue] = Map([])
+  if !wgsl_metadata_source_may_define_shader_def(source) {
+    return defines
+  }
+  for
+    item in parse_wgsl_directive_scan_items(source, include_glsl_version=false) {
+    match item.kind() {
+      Directive(directive) =>
+        if directive.has_required_tail_separator() && directive.kind() == Define {
+          let (define_name, define_value) = split_define_name_and_value(
+            directive.tail(),
+          )
+          if define_name != "" {
+            defines.set(define_name, parse_define_value(define_value))
+          }
+        }
+      _ => ()
+    }
+  }
+  defines
+}

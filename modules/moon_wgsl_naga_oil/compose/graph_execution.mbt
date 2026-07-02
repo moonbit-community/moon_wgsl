@@ -110,14 +110,25 @@ fn record_wgsl_virtual_override_final_names_from_source(
   rel_path : String,
   source : String,
 ) -> Unit {
+  let targets = collect_wgsl_virtual_override_targets_strict(source) catch {
+    _ => return
+  }
+  record_wgsl_virtual_override_final_names_from_targets(
+    session, rel_path, targets,
+  )
+}
+
+///|
+fn record_wgsl_virtual_override_final_names_from_targets(
+  session : WgslComposeSession,
+  rel_path : String,
+  targets : Array[String],
+) -> Unit {
   let composing_root = session.graph_planning_rel_paths.length() <= 1 &&
     session.active_rel_paths.length() <= 1
   let override_module_path = match session.module_path_for_rel_path(rel_path) {
     Some(module_path) if !composing_root => module_path
     _ => ""
-  }
-  let targets = collect_wgsl_virtual_override_targets_strict(source) catch {
-    _ => return
   }
   for raw_target in targets {
     let (target_module_path, original_name) = match
@@ -209,6 +220,24 @@ fn record_wgsl_planned_final_names_from_source(
 }
 
 ///|
+fn record_wgsl_planned_final_names_from_processed(
+  session : WgslComposeSession,
+  rel_path : String,
+  module_path_override : String?,
+  alias_prefixes : Array[String],
+  processed : WgslProcessedComposeModule,
+) -> Unit {
+  let targets = processed.virtual_override_target_names() catch { _ => [] }
+  record_wgsl_virtual_override_final_names_from_targets(
+    session, rel_path, targets,
+  )
+  let extraction = processed.item_extraction([]) catch { _ => return }
+  record_wgsl_planned_final_names_from_extraction(
+    session, rel_path, module_path_override, alias_prefixes, extraction,
+  )
+}
+
+///|
 fn WgslImportGraphBuilder::plan_with_path(
   self : WgslImportGraphBuilder,
   current_rel_path : String,
@@ -217,6 +246,7 @@ fn WgslImportGraphBuilder::plan_with_path(
   inherited_defs : WgslActiveComposeDefs?,
   alias_prefixes : Array[String],
   declared_imports : Bool,
+  source_already_prepared : Bool,
 ) -> Unit raise ComposerError {
   let maybe_registered_processed = match
     self.composer.registry.registered_source(current_rel_path) {
@@ -238,22 +268,43 @@ fn WgslImportGraphBuilder::plan_with_path(
         self.session,
         inherited_defs,
       )
-      merge_wgsl_source_local_shader_defs(active_defs, source, self.session)
-      let prepared = prepare_wgsl_compose_source(
-        source,
-        self.session,
-        active_defs,
-      )
+      let prepared = if source_already_prepared {
+        WgslPreparedComposeSource::{
+          active_source: source,
+          active_scan_source: source,
+        }
+      } else {
+        merge_wgsl_source_local_shader_defs(
+          active_defs,
+          source,
+          self.session,
+          normalize_shader_rel_path(current_rel_path),
+        )
+        prepare_wgsl_compose_source(source, self.session, active_defs)
+      }
       (active_defs, prepared)
     }
   }
-  record_wgsl_planned_final_names_from_source(
-    self.session,
-    current_rel_path,
-    current_module_path,
-    prepared.active_source,
-    alias_prefixes,
-  )
+  match maybe_registered_processed {
+    Some(processed) => {
+      self.session.record_processed_semantic_facts(processed)
+      record_wgsl_planned_final_names_from_processed(
+        self.session,
+        current_rel_path,
+        current_module_path,
+        alias_prefixes,
+        processed,
+      )
+    }
+    None =>
+      record_wgsl_planned_final_names_from_source(
+        self.session,
+        current_rel_path,
+        current_module_path,
+        prepared.active_source,
+        alias_prefixes,
+      )
+  }
   let implicit_requests = self.composer.build_wgsl_implicit_import_requests(
     current_rel_path,
     prepared.active_scan_source,
@@ -338,6 +389,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
       self.session,
       Some(importer_defs),
     )
+    self.session.record_processed_semantic_facts(processed)
     let raw_source = processed.raw_source
     self.session.graph_planning_rel_paths.push(request.rel_path)
     if request.import_full_module {
@@ -348,6 +400,7 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         Some(importer_defs),
         request_alias_prefixes,
         true,
+        false,
       )
     } else {
       let import_defs = processed.active_defs
@@ -376,17 +429,10 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
           import_defs,
           request_alias_prefixes,
         )
-        self.plan_with_path(
-          request.rel_path,
-          Some(request.module_path),
-          drop_wgsl_import_directives_from_compose_source(extracted_source),
-          Some(importer_defs),
-          request_alias_prefixes,
-          false,
-        )
       } else {
         let targets : Array[WgslImportTarget] = []
         collect_wgsl_import_targets_from_source_directives(
+          self.session,
           prepared.active_source,
           targets,
         )
@@ -433,7 +479,15 @@ fn WgslImportGraphBuilder::complete_execution(
     return
   }
   self.session.graph_planning_rel_paths.push(current_rel_path)
-  self.plan_with_path(current_rel_path, None, source, inherited_defs, [], false)
+  self.plan_with_path(
+    current_rel_path,
+    None,
+    source,
+    inherited_defs,
+    [],
+    false,
+    false,
+  )
   self.session.graph_planning_rel_paths.pop() |> ignore
   self.session.graph_execution_complete = true
 }

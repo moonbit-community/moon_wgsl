@@ -53,7 +53,7 @@ fn Composer::active_compose_defs_for_rel_path(
       )
     }
   }
-  { defines, value_defines, shader_defs }
+  { defines, value_defines, shader_defs, cache_text: None }
 }
 
 ///|
@@ -61,22 +61,14 @@ fn merge_wgsl_source_local_shader_defs(
   active_defs : WgslActiveComposeDefs,
   source : String,
   session : WgslComposeSession,
-) -> Unit raise ComposerError {
-  let local_defs = match session.source_local_shader_defs.get(source) {
+  source_key : String,
+) -> Unit {
+  let cache_key = if source_key == "" { source } else { source_key }
+  let local_defs = match session.source_local_shader_defs.get(cache_key) {
     Some(cached_defs) => cached_defs
     None => {
-      let metadata = get_preprocessor_metadata(
-        source,
-        collect_import_uses=false,
-      ) catch {
-        error => raise composer_error_from_metadata_error(error)
-      }
-      let cached_defs : Map[String, ShaderDefValue] = Map([])
-      for entry in metadata.defines.iter() {
-        let (name, value) = entry
-        cached_defs.set(name, value)
-      }
-      session.source_local_shader_defs.set(source, cached_defs)
+      let cached_defs = collect_wgsl_source_local_shader_defines(source)
+      session.source_local_shader_defs.set(cache_key, cached_defs)
       cached_defs
     }
   }
@@ -90,6 +82,7 @@ fn merge_wgsl_source_local_shader_defs(
       value,
     )
   }
+  active_defs.cache_text = None
 }
 
 ///|
@@ -210,7 +203,7 @@ fn find_wgsl_visible_identity_imported_item_binding(
   ).text()
   let mut found : WgslComposeBinding? = None
   for binding in bindings.bindings {
-    if WgslComposeIrIdentityKey(binding.target.identity).text() != identity_key {
+    if binding.target.identity_key != identity_key {
       continue
     }
     match found {

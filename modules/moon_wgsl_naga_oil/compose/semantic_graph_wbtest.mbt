@@ -14,14 +14,21 @@
 
 ///|
 fn semantic_graph_test_facts(source : String) -> WgslComposeSemanticFacts {
-  let declarations = collect_wgsl_named_declarations_strict(source) catch {
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
     _ => abort("expected semantic graph fixture parse success")
   }
+  let declarations = collect_wgsl_semantic_declaration_names_from_unit(unit)
+  let global_variables = collect_wgsl_semantic_global_variable_names_from_unit(
+    unit,
+  )
   let references : Array[WgslReferencePath] = []
-  collect_wgsl_semantic_reference_paths(source, references) catch {
-    _ => abort("expected semantic graph fixture reference parse success")
-  }
-  { declarations, references }
+  collect_wgsl_semantic_reference_paths_from_unit(unit, references)
+  WgslComposeSemanticFacts(declarations, global_variables, references)
+}
+
+///|
+fn semantic_graph_test_session() -> WgslComposeSession {
+  Composer::default().new_wgsl_compose_session(WgslComposeOptions::default())
 }
 
 ///|
@@ -159,6 +166,7 @@ test "semantic import target plan resolves alias-qualified binding item" {
     #|fn read() -> u32 { return view_bindings::clustered_lights; }
     #|
   let plans = build_wgsl_semantic_import_target_plans(
+    semantic_graph_test_session(),
     source,
     semantic_graph_test_facts(source),
     "root.wgsl",
@@ -201,6 +209,7 @@ test "semantic import target plan expands nested module aliases" {
     #|fn read() -> u32 { return pbr::bindings::view.value; }
     #|
   let plans = build_wgsl_semantic_import_target_plans(
+    semantic_graph_test_session(),
     source,
     semantic_graph_test_facts(source),
     "root.wgsl",
@@ -241,6 +250,7 @@ test "semantic import target plan prefers exact nested module over base item spl
   ]
   let source = ""
   let plans = build_wgsl_semantic_import_target_plans(
+    semantic_graph_test_session(),
     source,
     semantic_graph_test_facts(source),
     "root.wgsl",
@@ -279,6 +289,7 @@ test "semantic import target plan splits nested item import when source uses lea
     #|fn read() -> u32 { return mesh; }
     #|
   let plans = build_wgsl_semantic_import_target_plans(
+    semantic_graph_test_session(),
     source,
     semantic_graph_test_facts(source),
     "root.wgsl",
@@ -331,6 +342,7 @@ test "semantic import target plans follow first AST reference order" {
     #|}
     #|
   let plans = build_wgsl_semantic_import_target_plans(
+    semantic_graph_test_session(),
     source,
     semantic_graph_test_facts(source),
     "root.wgsl",
@@ -400,6 +412,7 @@ test "semantic import target plans follow naga-oil substitution use order" {
     #|}
     #|
   let plans = build_wgsl_semantic_import_target_plans(
+    semantic_graph_test_session(),
     source,
     semantic_graph_test_facts(source),
     "root.wgsl",

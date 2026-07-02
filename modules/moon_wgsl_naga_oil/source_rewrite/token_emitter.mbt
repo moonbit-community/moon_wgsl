@@ -169,7 +169,7 @@ pub fn emit_wgsl_token_stream_canonical(
   tokens : Array[WgslToken],
   replacements : Array[WgslTokenReplacement],
 ) -> String {
-  let mut out = ""
+  let out = StringBuilder::new()
   let mut previous = ""
   let mut skip_until = -1
   for token in tokens {
@@ -191,17 +191,17 @@ pub fn emit_wgsl_token_stream_canonical(
       continue
     }
     if wgsl_emit_needs_space(previous, text) {
-      out = out + " "
+      out.write_string(" ")
     }
-    out = out + text
+    out.write_string(text)
     if text == ";" || text == "}" {
-      out = out + "\n"
+      out.write_string("\n")
       previous = "\n"
     } else {
       previous = text
     }
   }
-  out
+  out.to_string()
 }
 
 ///|
@@ -218,6 +218,11 @@ pub fn emit_wgsl_source_tokens_canonical(
   } else {
     "\{out}\n"
   }
+}
+
+///|
+pub fn tokenize_wgsl_absolute_source(source : String) -> Array[WgslToken] {
+  tokenize_wgsl(replace_comments(source), false)
 }
 
 ///|

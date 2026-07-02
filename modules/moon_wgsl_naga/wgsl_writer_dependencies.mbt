@@ -13,11 +13,17 @@
 // limitations under the License.
 
 ///|
+priv struct WgslIrFunctionCallGraph {
+  direct_calls : Array[Array[Int]]
+}
+
+///|
 fn WgslIrWriterPlanner::function_order(
   self : WgslIrWriterPlanner,
 ) -> Array[Int] {
+  let call_graph = self.function_call_graph()
   let order = self.generated_import_function_order()
-  let reachable = self.reachable_function_order()
+  let reachable = self.reachable_function_order(call_graph)
   for index in reachable {
     if self.function_order_should_include(index, order) {
       order.push(index)
@@ -25,10 +31,32 @@ fn WgslIrWriterPlanner::function_order(
   }
   for index in 0..<self.shader_module.functions.items.length() {
     if self.function_order_should_include(index, order) {
-      self.push_function_with_dependencies(order, index)
+      self.push_function_with_dependencies(order, index, call_graph)
     }
   }
   order
+}
+
+///|
+fn WgslIrWriterPlanner::function_call_graph(
+  self : WgslIrWriterPlanner,
+) -> WgslIrFunctionCallGraph {
+  let direct_calls : Array[Array[Int]] = []
+  for function in self.shader_module.functions.items {
+    direct_calls.push(wgsl_ir_collect_block_function_calls(function))
+  }
+  { direct_calls, }
+}
+
+///|
+fn WgslIrFunctionCallGraph::direct_calls_for(
+  self : WgslIrFunctionCallGraph,
+  index : Int,
+) -> Array[Int] {
+  match self.direct_calls.get(index) {
+    Some(calls) => calls
+    None => []
+  }
 }
 
 ///|
@@ -77,13 +105,16 @@ fn WgslIrWriterPlanner::push_generated_import_function_by_name(
 ///|
 fn WgslIrWriterPlanner::reachable_function_order(
   self : WgslIrWriterPlanner,
+  call_graph : WgslIrFunctionCallGraph,
 ) -> Array[Int] {
   let order : Array[Int] = []
   for entry_point in self.shader_module.entry_points {
-    self.push_source_prefix_before_entry(order, entry_point)
+    self.push_source_prefix_before_entry(order, entry_point, call_graph)
     let direct = wgsl_ir_collect_block_function_calls(entry_point.function)
     for function_index in direct {
-      self.push_reachable_function_with_dependencies(order, function_index)
+      self.push_reachable_function_with_dependencies(
+        order, function_index, call_graph,
+      )
     }
   }
   order
@@ -94,6 +125,7 @@ fn WgslIrWriterPlanner::push_source_prefix_before_entry(
   self : WgslIrWriterPlanner,
   order : Array[Int],
   entry_point : EntryPoint,
+  call_graph : WgslIrFunctionCallGraph,
 ) -> Unit {
   guard entry_point.source_start >= 0 else { return }
   for index in 0..<self.shader_module.functions.items.length() {
@@ -102,7 +134,7 @@ fn WgslIrWriterPlanner::push_source_prefix_before_entry(
       function.source_start < entry_point.source_start &&
       !function.generated_import &&
       self.function_order_should_include(index, order) {
-      self.push_reachable_function_with_dependencies(order, index)
+      self.push_reachable_function_with_dependencies(order, index, call_graph)
     }
   }
 }
@@ -112,9 +144,10 @@ fn WgslIrWriterPlanner::push_function_with_dependencies(
   self : WgslIrWriterPlanner,
   order : Array[Int],
   index : Int,
+  call_graph : WgslIrFunctionCallGraph,
 ) -> Unit {
   let visiting : Array[Int] = []
-  self.push_function_with_dependencies_inner(order, visiting, index)
+  self.push_function_with_dependencies_inner(order, visiting, index, call_graph)
 }
 
 ///|
@@ -122,22 +155,26 @@ fn WgslIrWriterPlanner::push_reachable_function_with_dependencies(
   self : WgslIrWriterPlanner,
   order : Array[Int],
   index : Int,
+  call_graph : WgslIrFunctionCallGraph,
 ) -> Unit {
   if !self.function_order_should_include(index, order) {
     return
   }
   let dependencies : Array[Int] = []
-  self.collect_transitive_function_dependencies(index, dependencies)
+  self.collect_transitive_function_dependencies(index, dependencies, call_graph)
   for dependency_index in 0..<self.shader_module.functions.items.length() {
     if dependency_index < index && dependencies.contains(dependency_index) {
-      self.push_reachable_function_with_dependencies(order, dependency_index)
+      self.push_reachable_function_with_dependencies(
+        order, dependency_index, call_graph,
+      )
     }
   }
-  let function = self.shader_module.functions.items[index]
-  let direct = wgsl_ir_collect_block_function_calls(function)
+  let direct = call_graph.direct_calls_for(index)
   for dependency_index in direct {
     if dependency_index > index {
-      self.push_reachable_function_with_dependencies(order, dependency_index)
+      self.push_reachable_function_with_dependencies(
+        order, dependency_index, call_graph,
+      )
     }
   }
   if self.function_order_should_include(index, order) {
@@ -150,19 +187,21 @@ fn WgslIrWriterPlanner::collect_transitive_function_dependencies(
   self : WgslIrWriterPlanner,
   index : Int,
   dependencies : Array[Int],
+  call_graph : WgslIrFunctionCallGraph,
 ) -> Unit {
   if !self.function_order_should_include(index, []) {
     return
   }
-  let function = self.shader_module.functions.items[index]
-  let direct = wgsl_ir_collect_block_function_calls(function)
+  let direct = call_graph.direct_calls_for(index)
   for dependency in direct {
     if dependency == index {
       continue
     }
     if !dependencies.contains(dependency) {
       dependencies.push(dependency)
-      self.collect_transitive_function_dependencies(dependency, dependencies)
+      self.collect_transitive_function_dependencies(
+        dependency, dependencies, call_graph,
+      )
     }
   }
 }
@@ -173,18 +212,18 @@ fn WgslIrWriterPlanner::push_function_with_dependencies_inner(
   order : Array[Int],
   visiting : Array[Int],
   index : Int,
+  call_graph : WgslIrFunctionCallGraph,
 ) -> Unit {
   if !self.function_order_should_include(index, order) ||
     visiting.contains(index) {
     return
   }
   visiting.push(index)
-  let function = self.shader_module.functions.items[index]
-  let direct = wgsl_ir_collect_block_function_calls(function)
+  let direct = call_graph.direct_calls_for(index)
   for dependency_index in direct {
     if dependency_index != index {
       self.push_function_with_dependencies_inner(
-        order, visiting, dependency_index,
+        order, visiting, dependency_index, call_graph,
       )
     }
   }

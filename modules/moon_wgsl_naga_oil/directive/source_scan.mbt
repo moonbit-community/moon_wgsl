@@ -143,12 +143,12 @@ fn wgsl_directive_scan_join_lines(
   end_ : Int,
   cleaned : Bool,
 ) -> String {
-  let mut out = ""
+  let out = StringBuilder::new()
   for i in start..<end_ {
-    out = if cleaned { out + lines[i].cleaned } else { out + lines[i].original }
-    out = out + "\n"
+    out.write_string(if cleaned { lines[i].cleaned } else { lines[i].original })
+    out.write_string("\n")
   }
-  out
+  out.to_string()
 }
 
 ///|

@@ -15,6 +15,8 @@ pub fn collect_wgsl_naga_dependency_ordered_item_origins_strict(String) -> Array
 
 pub fn collect_wgsl_naga_dependency_pulled_item_origins_strict(String) -> Array[WgslModuleItemOrigin] raise @parser.WgslParseError
 
+pub fn collect_wgsl_named_declarations_from_unit(String, @ast.WgslTranslationUnit) -> Array[WgslEmittedDeclaration]
+
 pub fn collect_wgsl_named_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
 
 pub fn collect_wgsl_source_catalog_declarations_strict(String) -> Array[WgslEmittedDeclaration] raise @parser.WgslParseError
@@ -30,6 +32,8 @@ pub fn rewrite_wgsl_declarations_with_binding_plan(String, WgslReferenceRewriteP
 pub fn rewrite_wgsl_override_targets_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
 
 pub fn rewrite_wgsl_references_with_binding_plan(String, WgslReferenceRewritePlan) -> String raise @parser.WgslParseError
+
+pub fn rewrite_wgsl_references_with_binding_plan_from_unit(String, @ast.WgslTranslationUnit, WgslReferenceRewritePlan) -> String
 
 pub fn strip_wgsl_virtual_functions(String) -> String raise @parser.WgslParseError
 
@@ -64,6 +68,7 @@ pub struct WgslModuleItemExtractor {
   // private fields
 }
 pub fn WgslModuleItemExtractor::extract(Self, Array[String]) -> WgslModuleItemExtraction
+pub fn WgslModuleItemExtractor::naga_dependency_pulled_item_origins(Self) -> Array[WgslModuleItemOrigin]
 
 pub struct WgslModuleItemOrigin {
   // private fields
@@ -79,6 +84,7 @@ pub struct WgslReferenceRewritePlan {
 pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> Self
 pub fn WgslReferenceRewritePlan::add_symbol_reference_binding(Self, @ir.WgslIrSymbolIdentity, @common.WgslReferencePath, String) -> Unit
 pub fn WgslReferenceRewritePlan::add_virtual_override_binding(Self, String, String, String) -> Unit
+pub fn WgslReferenceRewritePlan::has_virtual_override_bindings(Self) -> Bool
 
 // Type aliases
 

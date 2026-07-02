@@ -1525,11 +1525,11 @@ fn wgsl_xid_range_contains(
 }
 
 ///|
-fn wgsl_xid_start_code_point(code_point : Int) -> Bool {
+pub fn wgsl_xid_start_code_point(code_point : Int) -> Bool {
   wgsl_xid_range_contains(wgsl_xid_start_ranges, code_point)
 }
 
 ///|
-fn wgsl_xid_continue_code_point(code_point : Int) -> Bool {
+pub fn wgsl_xid_continue_code_point(code_point : Int) -> Bool {
   wgsl_xid_range_contains(wgsl_xid_continue_ranges, code_point)
 }

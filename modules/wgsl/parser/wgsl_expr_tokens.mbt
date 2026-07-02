@@ -278,13 +278,28 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
   identifiers : Array[WgslIdent],
 ) -> Unit {
   let tokens = tokenize_wgsl(replace_comments(text), false)
+  collect_wgsl_expr_ref_tokens_and_identifiers_from_tokens(
+    text, base, 0, tokens, expr_tokens, identifiers,
+  )
+}
+
+///|
+fn collect_wgsl_expr_ref_tokens_and_identifiers_from_tokens(
+  text : String,
+  base : Int,
+  token_base : Int,
+  tokens : Array[WgslToken],
+  expr_tokens : Array[WgslExprToken],
+  identifiers : Array[WgslIdent],
+) -> Unit {
   let mut i = 0
   while i < tokens.length() {
     let token = tokens[i]
+    let token_pos = token.pos() - token_base
+    let token_end = token.end() - token_base
     match token.identifier_text() {
       Some(name) => {
-        let pos = token.pos()
-        let absolute_start = base + pos
+        let absolute_start = base + token_pos
         let kind = match name {
           "true" => WgslExprTokenKind::BoolLiteral(true)
           "false" => BoolLiteral(false)
@@ -315,8 +330,8 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           WgslExprToken(
             wgsl_expr_number_token_kind(token_text),
             token_text,
-            base + token.pos(),
-            base + tokens[i].end(),
+            base + token_pos,
+            base + token_end,
           ),
         )
         i = i + 1
@@ -329,15 +344,15 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
         if code == 46 &&
           i + 1 < tokens.length() &&
           wgsl_expr_token_starts_numeric_fraction(tokens[i + 1]) {
-          let pos = token.pos()
+          let pos = token_pos
           let end_index = match tokens[i + 1].number_text() {
             Some(_) => i + 2
             None => wgsl_expr_number_token_end(tokens, i)
           }
           let end_pos = if end_index > i {
-            tokens[end_index - 1].end()
+            tokens[end_index - 1].end() - token_base
           } else {
-            tokens[i].end()
+            token_end
           }
           let token_text = text[pos:end_pos].to_owned()
           expr_tokens.push(
@@ -352,12 +367,12 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           continue
         }
         if wgsl_expr_ascii_digit(code) {
-          let pos = token.pos()
+          let pos = token_pos
           let end_index = wgsl_expr_number_token_end(tokens, i)
           let end_pos = if end_index > i {
-            tokens[end_index - 1].end()
+            tokens[end_index - 1].end() - token_base
           } else {
-            tokens[i].end()
+            token_end
           }
           let token_text = text[pos:end_pos].to_owned()
           expr_tokens.push(
@@ -371,13 +386,13 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           i = end_index
           continue
         }
-        let pos = token.pos()
+        let pos = token_pos
         expr_tokens.push(
           WgslExprToken(
             Punctuation(code),
-            text[pos:tokens[i].end()].to_owned(),
+            text[pos:token_end].to_owned(),
             base + pos,
-            base + tokens[i].end(),
+            base + token_end,
           ),
         )
         i = i + 1
@@ -391,8 +406,8 @@ fn collect_wgsl_expr_ref_tokens_and_identifiers(
           WgslExprToken(
             Operator(WgslExprOperator::from_text(operator)),
             operator,
-            base + token.pos(),
-            base + tokens[i].end(),
+            base + token_pos,
+            base + token_end,
           ),
         )
         i = i + 1

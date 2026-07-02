@@ -15,14 +15,15 @@
 ///|
 pub struct WgslReferenceRewritePlan {
   priv bindings : Array[WgslReferenceRewriteBinding]
+  priv bindings_by_reference : Map[String, Array[WgslReferenceRewriteBinding]]
   priv virtual_overrides : Array[WgslVirtualOverrideRewriteBinding]
 }
 
 ///|
 priv struct WgslReferenceRewriteBinding {
-  reference_path : WgslReferencePath
   final_name : String
-  identity : WgslIrSymbolIdentity
+  identity_key : String
+  key : String
 }
 
 ///|
@@ -36,7 +37,7 @@ priv struct WgslVirtualOverrideRewriteBinding {
 fn WgslReferenceRewriteBinding::key(
   self : WgslReferenceRewriteBinding,
 ) -> String {
-  "\{self.identity.key()}|\{self.reference_path.text()}|\{self.final_name}"
+  self.key
 }
 
 ///|
@@ -48,7 +49,7 @@ fn WgslVirtualOverrideRewriteBinding::key(
 
 ///|
 pub fn WgslReferenceRewritePlan::WgslReferenceRewritePlan() -> WgslReferenceRewritePlan {
-  { bindings: [], virtual_overrides: [] }
+  { bindings: [], bindings_by_reference: Map([]), virtual_overrides: [] }
 }
 
 ///|
@@ -62,10 +63,12 @@ pub fn WgslReferenceRewritePlan::add_symbol_reference_binding(
   if final_name == "" || reference_path.text() == final_name {
     return
   }
+  let reference_text = reference_path.text()
+  let identity_key = identity.key()
   let binding = WgslReferenceRewriteBinding::{
-    reference_path,
     final_name,
-    identity,
+    identity_key,
+    key: "\{identity_key}|\{reference_text}|\{final_name}",
   }
   let key = binding.key()
   for existing in self.bindings {
@@ -74,6 +77,10 @@ pub fn WgslReferenceRewritePlan::add_symbol_reference_binding(
     }
   }
   self.bindings.push(binding)
+  match self.bindings_by_reference.get(reference_text) {
+    Some(bucket) => bucket.push(binding)
+    None => self.bindings_by_reference.set(reference_text, [binding])
+  }
 }
 
 ///|
@@ -111,12 +118,45 @@ fn WgslReferenceRewritePlan::has_symbol_bindings(
 }
 
 ///|
+pub fn WgslReferenceRewritePlan::has_virtual_override_bindings(
+  self : WgslReferenceRewritePlan,
+) -> Bool {
+  self.virtual_overrides.length() > 0
+}
+
+///|
 fn WgslReferenceRewritePlan::final_name_for_reference_path(
   self : WgslReferenceRewritePlan,
   reference_path : WgslReferencePath,
 ) -> String? {
-  match wgsl_symbol_binding_for_reference(self.bindings, reference_path) {
+  match self.binding_for_reference_text(reference_path.text()) {
     Some(binding) => Some(binding.final_name)
+    None => None
+  }
+}
+
+///|
+fn WgslReferenceRewritePlan::final_name_for_identifier_text(
+  self : WgslReferenceRewritePlan,
+  identifier_text : String,
+) -> String? {
+  match self.binding_for_reference_text(identifier_text) {
+    Some(binding) => Some(binding.final_name)
+    None => None
+  }
+}
+
+///|
+fn WgslReferenceRewritePlan::binding_for_reference_text(
+  self : WgslReferenceRewritePlan,
+  reference_text : String,
+) -> WgslReferenceRewriteBinding? {
+  let reference_text = reference_text.trim().to_owned()
+  if reference_text == "" {
+    return None
+  }
+  match self.bindings_by_reference.get(reference_text) {
+    Some(bindings) => wgsl_symbol_binding_from_candidates(bindings)
     None => None
   }
 }
@@ -184,25 +224,21 @@ fn WgslReferenceRewritePlan::virtual_raw_target_name_for_target(
 }
 
 ///|
-fn wgsl_symbol_binding_for_reference(
+fn wgsl_symbol_binding_from_candidates(
   bindings : Array[WgslReferenceRewriteBinding],
-  reference_path : WgslReferencePath,
 ) -> WgslReferenceRewriteBinding? {
   let mut target : WgslReferenceRewriteBinding? = None
   for binding in bindings {
-    if !binding.reference_path.matches(reference_path) {
-      continue
-    }
-    let current_identity_key = binding.identity.key()
+    let current_identity_key = binding.identity_key
     match target {
       Some(existing) if existing.final_name != binding.final_name =>
-        if existing.identity.key() == current_identity_key {
+        if existing.identity_key == current_identity_key {
           target = Some(binding)
         } else {
           return None
         }
       Some(existing) =>
-        if existing.identity.key() != current_identity_key {
+        if existing.identity_key != current_identity_key {
           return None
         }
       None => target = Some(binding)

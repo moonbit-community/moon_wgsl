@@ -120,7 +120,7 @@ fn WgslComposeSemanticIr::record_emitted_symbol_target(
   }
   let identity = binding.target.identity
   self.record_symbol(identity, final_name, true)
-  let identity_key = WgslComposeIrIdentityKey(identity).text()
+  let identity_key = binding.target.identity_key
   if !self.emitted_final_name_by_identity.contains(identity_key) {
     self.emitted_final_name_by_identity.set(identity_key, final_name)
   }
@@ -140,7 +140,7 @@ fn WgslComposeSemanticIr::resolved_binding_target_symbol(
       declared: self.declared_names.contains(requested_final_name),
     }
   }
-  let identity_key = WgslComposeIrIdentityKey(binding.target.identity).text()
+  let identity_key = binding.target.identity_key
   match self.emitted_final_name_by_identity.get(identity_key) {
     Some(emitted_name) =>
       {
@@ -174,7 +174,7 @@ fn WgslComposeSemanticIr::from_facts_and_bindings(
 ) -> WgslComposeSemanticIr {
   let ir = WgslComposeSemanticIr()
   for declaration in facts.declarations {
-    ir.record_declared_name(declaration.name())
+    ir.record_declared_name(declaration)
   }
   for reference in facts.references {
     ir.record_reference_path(reference)
@@ -243,7 +243,7 @@ fn WgslComposeSemanticIr::live_binding_plan(
         ),
       )
     }
-    let binding_key = WgslComposeBindingKey(resolved_binding).text()
+    let binding_key = resolved_binding.key
     if seen_binding_keys.contains(binding_key) {
       continue
     }

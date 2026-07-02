@@ -3,6 +3,7 @@ pub fn Composer::add_composable_module(
   self : Composer,
   desc : ComposableModuleDescriptor,
 ) -> ComposableModuleDefinition raise ComposerError {
+  self.processed_module_cache.clear()
   let metadata = get_preprocessor_metadata(desc.source, allow_defines=false) catch {
     error => raise composer_error_from_metadata_error(error)
   }
@@ -89,6 +90,7 @@ pub fn Composer::remove_composable_module(
   self : Composer,
   module_name : String,
 ) -> Unit {
+  self.processed_module_cache.clear()
   composer_remove_composable_module_recursive(self, module_name)
 }
 
