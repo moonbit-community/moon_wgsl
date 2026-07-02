@@ -51,18 +51,16 @@ fn wgsl_filter_live_requested_import_items(
     let requested_item_is_live = active_scan_facts.contains_reference_path(
       requested_item,
     )
-    let leaf_item_is_live = match split_last_wgsl_semantic_path(requested_item) {
-      Some((_, leaf_name)) => active_scan_facts.contains_reference_path(
-        leaf_name,
-      )
+    let leaf_item_is_live = match
+      split_last_wgsl_semantic_path(requested_item) {
+      Some((_, leaf_name)) =>
+        active_scan_facts.contains_reference_path(leaf_name)
       None => false
     }
     if requested_item_is_live || leaf_item_is_live {
       live_requested_items.push(requested_item)
     } else if !prune_requested_items_by_active_usage &&
-      import_module.declares_non_resource_dependency_item(
-        requested_item, false,
-      ) {
+      import_module.declares_non_resource_dependency_item(requested_item, false) {
       live_requested_items.push(requested_item)
     }
   }
@@ -160,7 +158,10 @@ fn Composer::build_wgsl_import_request_from_target_plan(
   if module_alias == "" {
     for declared_item in declared_items {
       context.session.record_local_spelling_final_name(
-        context.current_rel_path, selected_rel_path, declared_item, "",
+        context.current_rel_path,
+        selected_rel_path,
+        declared_item,
+        "",
       )
     }
   }

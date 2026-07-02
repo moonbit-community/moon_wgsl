@@ -1,3 +1,4 @@
+///|
 pub fn Composer::clear_sources(self : Composer) -> Unit {
   self.registry.clear()
   self.processed_module_cache.clear()

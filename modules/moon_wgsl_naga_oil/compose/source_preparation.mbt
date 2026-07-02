@@ -93,6 +93,9 @@ fn prepare_wgsl_compose_source(
     apply_wgsl_ifdefs_strict_for_compose(redirected_source, active_defs),
     active_defs.value_defines,
   )
+  ignore(get_preprocessor_metadata(active_source, collect_import_uses=false)) catch {
+    error => raise composer_error_from_metadata_error(error)
+  }
   let active_scan_source = active_source
   { active_source, active_scan_source }
 }

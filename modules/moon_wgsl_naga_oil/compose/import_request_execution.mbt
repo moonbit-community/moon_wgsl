@@ -317,9 +317,9 @@ fn Composer::compose_wgsl_import_requests(
     if module_source == "" {
       continue
     }
-    let final_name_plan = WgslFinalNameAllocator(session, request_alias_prefixes).application_plan(
-      origin_start_index,
-    )
+    let final_name_plan = WgslFinalNameAllocator(
+      session, request_alias_prefixes,
+    ).application_plan(origin_start_index)
     let final_module_source = if !final_name_plan.is_empty() {
       rewrite_wgsl_declarations_with_binding_plan(
         module_source,

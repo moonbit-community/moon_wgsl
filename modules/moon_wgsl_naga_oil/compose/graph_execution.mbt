@@ -285,6 +285,22 @@ fn WgslImportGraphBuilder::plan_with_path(
       (active_defs, prepared)
     }
   }
+  let explicit_requests = if declared_imports {
+    self.composer.build_wgsl_declared_import_requests_from_source_directives(
+      current_rel_path,
+      prepared.active_source,
+      self.session,
+      active_defs,
+    )
+  } else {
+    self.composer.build_wgsl_import_requests_from_source_directives(
+      current_rel_path,
+      prepared.active_source,
+      prepared.active_scan_source,
+      self.session,
+      active_defs,
+    )
+  }
   match maybe_registered_processed {
     Some(processed) => {
       self.session.record_processed_semantic_facts(processed)
@@ -314,22 +330,6 @@ fn WgslImportGraphBuilder::plan_with_path(
   self.plan_import_request_batch(
     current_rel_path, implicit_requests, active_defs, alias_prefixes,
   )
-  let explicit_requests = if declared_imports {
-    self.composer.build_wgsl_declared_import_requests_from_source_directives(
-      current_rel_path,
-      prepared.active_source,
-      self.session,
-      active_defs,
-    )
-  } else {
-    self.composer.build_wgsl_import_requests_from_source_directives(
-      current_rel_path,
-      prepared.active_source,
-      prepared.active_scan_source,
-      self.session,
-      active_defs,
-    )
-  }
   self.plan_import_request_batch(
     current_rel_path, explicit_requests, active_defs, alias_prefixes,
   )

@@ -169,9 +169,8 @@ fn Composer::build_wgsl_import_requests_from_targets(
     full_module_dependency_scan_facts: None,
   }
   for target_plan in target_plans.plans {
-    match self.build_wgsl_import_request_from_target_plan(
-      context, target_plan,
-    ) {
+    match
+      self.build_wgsl_import_request_from_target_plan(context, target_plan) {
       Some(request) => merge_wgsl_import_request(requests, request)
       None => ()
     }

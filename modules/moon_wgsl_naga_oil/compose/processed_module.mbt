@@ -389,7 +389,8 @@ fn WgslProcessedComposeModule::declares_non_resource_dependency_item(
   match self.declaration_summary(item_name) {
     Some(summary) =>
       match summary.kind {
-        SummaryType | SummaryConstant | SummaryOverride | SummaryFunction => true
+        SummaryType | SummaryConstant | SummaryOverride | SummaryFunction =>
+          true
         SummaryGlobalVariable => false
       }
     None => false
@@ -420,8 +421,7 @@ fn WgslProcessedComposeModule::resource_side_effect_items(
   for candidate_item in candidate_items {
     match self.declaration_summary(candidate_item) {
       Some(summary) =>
-        if summary.kind == SummaryGlobalVariable &&
-          summary.has_resource_binding {
+        if summary.kind == SummaryGlobalVariable && summary.has_resource_binding {
           composer_string_list_push_unique(items, candidate_item)
         }
       None => ()
@@ -487,7 +487,10 @@ fn WgslProcessedComposeModule::scan_function_qualifier_flags(
     self.has_virtual_function = Some(false)
     return
   }
-  let tokens = tokenize_wgsl(replace_comments(self.prepared.active_source), false)
+  let tokens = tokenize_wgsl(
+    replace_comments(self.prepared.active_source),
+    false,
+  )
   let mut has_override = false
   let mut has_virtual = false
   let mut depth = 0
@@ -680,7 +683,9 @@ fn Composer::processed_wgsl_compose_module(
     session,
     normalize_shader_rel_path(rel_path),
   )
-  let cache_key = wgsl_processed_module_cache_key(rel_path, active_defs, session)
+  let cache_key = wgsl_processed_module_cache_key(
+    rel_path, active_defs, session,
+  )
   match session.processed_modules.get(cache_key) {
     Some(processed) => processed
     None =>

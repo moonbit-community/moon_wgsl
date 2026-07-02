@@ -35,6 +35,7 @@ fn merge_wgsl_side_effect_request(
   }
 }
 
+///|
 fn widen_wgsl_dependency_requests_with_alias_side_effects(
   dependency_requests : Array[WgslImportRequest],
   dependency_scan_facts : WgslComposeSemanticFacts,
@@ -207,11 +208,7 @@ fn Composer::merge_wgsl_dependency_scan_import_requests(
     current_rel_path, side_effect_targets, session, importer_defs,
   )
   self.merge_wgsl_declared_full_module_side_effect_requests(
-    requests,
-    dependency_requests,
-    declared_dependency_requests,
-    session,
-    importer_defs,
+    requests, dependency_requests, declared_dependency_requests, session, importer_defs,
   )
   self.merge_wgsl_dependency_side_effect_requests(
     requests, dependency_requests, session, importer_defs,

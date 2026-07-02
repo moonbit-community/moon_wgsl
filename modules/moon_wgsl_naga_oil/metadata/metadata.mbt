@@ -92,11 +92,7 @@ fn wgsl_metadata_skip_whitespace(line : String, start : Int) -> Int {
 }
 
 ///|
-fn wgsl_metadata_has_word_at(
-  line : String,
-  start : Int,
-  word : String,
-) -> Bool {
+fn wgsl_metadata_has_word_at(line : String, start : Int, word : String) -> Bool {
   guard start + word.length() <= line.length() else { return false }
   for i in 0..<word.length() {
     if line.code_unit_at(start + i).to_int() != word.code_unit_at(i).to_int() {

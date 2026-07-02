@@ -234,10 +234,7 @@ fn wgsl_naga_oil_import_use_skip_block_comment(
 }
 
 ///|
-fn wgsl_naga_oil_import_use_skip_string(
-  source : String,
-  start : Int,
-) -> Int {
+fn wgsl_naga_oil_import_use_skip_string(source : String, start : Int) -> Int {
   let mut index = start + 1
   while index < source.length() {
     let (code, width) = wgsl_naga_oil_import_use_code_point_at(source, index)
@@ -250,10 +247,7 @@ fn wgsl_naga_oil_import_use_skip_string(
 }
 
 ///|
-fn wgsl_naga_oil_import_use_identifier_end(
-  source : String,
-  start : Int,
-) -> Int {
+fn wgsl_naga_oil_import_use_identifier_end(source : String, start : Int) -> Int {
   let mut index = start
   while index < source.length() {
     let (code, width) = wgsl_naga_oil_import_use_code_point_at(source, index)

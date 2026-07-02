@@ -179,6 +179,22 @@ fn WgslComposeEmitter::emit_source_with_path(
       (active_defs, prepared)
     }
   }
+  let explicit_requests = if declared_imports {
+    self.composer.build_wgsl_declared_import_requests_from_source_directives(
+      current_rel_path,
+      prepared.active_source,
+      self.session,
+      active_defs,
+    )
+  } else {
+    self.composer.build_wgsl_import_requests_from_source_directives(
+      current_rel_path,
+      prepared.active_source,
+      prepared.active_scan_source,
+      self.session,
+      active_defs,
+    )
+  }
   match maybe_registered_processed {
     Some(processed) => self.session.record_processed_semantic_facts(processed)
     None => ()
@@ -226,22 +242,6 @@ fn WgslComposeEmitter::emit_source_with_path(
     active_defs,
     alias_prefixes,
   )
-  let explicit_requests = if declared_imports {
-    self.composer.build_wgsl_declared_import_requests_from_source_directives(
-      current_rel_path,
-      prepared.active_source,
-      self.session,
-      active_defs,
-    )
-  } else {
-    self.composer.build_wgsl_import_requests_from_source_directives(
-      current_rel_path,
-      prepared.active_source,
-      prepared.active_scan_source,
-      self.session,
-      active_defs,
-    )
-  }
   let mut explicit_imports_emitted = false
   let mut implicit_imports_emitted = false
   let scan_items = self.session.directive_scan_items(prepared.active_source)
@@ -316,6 +316,11 @@ fn WgslComposeEmitter::emit_root(
   let root_source = prepend_wgsl_additional_imports(
     source,
     self.session.additional_imports,
+  )
+  WgslImportGraphBuilder(self.composer, self.session).complete_execution(
+    normalized_rel,
+    root_source,
+    None,
   )
   self.session.visited.add(normalized_rel)
   self.session.active_rel_paths.push(normalized_rel)

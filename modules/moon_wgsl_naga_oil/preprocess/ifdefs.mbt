@@ -20,7 +20,8 @@ fn wgsl_template_const_source_has_prefix_at(
     return false
   }
   for i in 0..<prefix.length() {
-    if source.code_unit_at(start + i).to_int() != prefix.code_unit_at(i).to_int() {
+    if source.code_unit_at(start + i).to_int() !=
+      prefix.code_unit_at(i).to_int() {
       return false
     }
   }
