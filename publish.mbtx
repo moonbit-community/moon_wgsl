@@ -34,6 +34,10 @@ fn publish_module(path : String) -> Unit {
   js_run("moon -C " + path + " publish")
 }
 
+fn refresh_registry_metadata() -> Unit {
+  js_run("moon update")
+}
+
 fn main {
   let args = @sys.get_cli_args()
   if args.length() != 2 {
@@ -58,7 +62,10 @@ fn main {
   js_run("moon test --target all")
 
   publish_module("modules/wgsl")
+  refresh_registry_metadata()
   publish_module("modules/moon_wgsl_naga")
+  refresh_registry_metadata()
   publish_module("modules/moon_wgsl_naga_oil")
+  refresh_registry_metadata()
   publish_module("modules/moon_wgsl")
 }
