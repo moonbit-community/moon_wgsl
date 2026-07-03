@@ -195,9 +195,7 @@ fn Composer::build_wgsl_implicit_import_requests(
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let qualified_targets : Array[WgslImportTarget] = []
-  let active_scan_facts = prepared.reference_scan_semantic_facts(session) catch {
-    _ => return []
-  }
+  let active_scan_facts = prepared.reference_scan_semantic_facts(session)
   collect_wgsl_semantic_qualified_module_targets_from_facts(
     active_scan_facts,
     current_rel_path,

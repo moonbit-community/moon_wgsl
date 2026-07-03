@@ -89,6 +89,46 @@ test "issue 16: minimal direct item import composes without scanner drift" {
 }
 
 ///|
+test "implicit import scan surfaces parse failure" {
+  let composer = Composer::default()
+  composer.register_source(
+    "dep.wgsl",
+    (
+      #|#define_import_path dep
+      #|fn value() -> u32 {
+      #|  return 1u;
+      #|}
+      #|
+    ),
+  )
+  let session = composer.new_wgsl_compose_session(WgslComposeOptions::default())
+  let defs = composer.active_compose_defs_for_rel_path(
+    "root.wgsl",
+    session,
+    None,
+  )
+  let prepared = prepare_active_wgsl_compose_source(
+    (
+      #|#define_import_path root
+      #|fn root() -> u32 {
+      #|  return dep::value(;
+      #|}
+      #|
+    ),
+    session,
+  )
+  let mut message = ""
+  ignore(
+    composer.build_wgsl_implicit_import_requests(
+      "root.wgsl", prepared, session, defs,
+    ),
+  ) catch {
+    error => message = error.message()
+  }
+  debug_inspect(message != "", content="true")
+}
+
+///|
 test "compose graph execution plans reachability before emission" {
   let composer = Composer::default()
   let dep_source =
