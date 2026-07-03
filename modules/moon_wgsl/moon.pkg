@@ -5,6 +5,9 @@ import {
   "Milky2018/moon_wgsl_naga_oil/metadata",
   "Milky2018/moon_wgsl_naga_oil/preprocess",
   "Milky2018/moon_wgsl_naga_oil/resolver",
+}
+
+import {
   "moonbitlang/core/ref",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/set",
