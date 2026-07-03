@@ -1,6 +1,6 @@
 # naga_oil Preprocessing Parity
 
-Last updated: 2026-07-01
+Last updated: 2026-07-03
 
 ## Scope
 
@@ -30,7 +30,7 @@ The preprocessing target is:
 
 ## Current Status
 
-As of current `main`, the published workspace line is `0.15.0`. There are no
+As of current `main`, the published workspace line is `0.15.2`. There are no
 known open WGSL source-level preprocessing gaps in the mirrored upstream compose
 corpus. Deterministic WGSL outputs are byte-gated through
 `tools/check_moon_wgsl_byte_parity.sh`; source-level error shapes are gated
@@ -241,7 +241,7 @@ tree-shakes them away, matching upstream `naga_oil`.
 
 For `mgstudio` or similar consumers, the expected verification path is:
 
-1. Upgrade to `Milky2018/moon_wgsl 0.15.0` or current `main`.
+1. Upgrade to `Milky2018/moon_wgsl 0.15.2` or current `main`.
 2. Rerun the downstream WGSL preprocessing/compose tests against byte-identical
    Bevy WGSL sources.
 3. Confirm that previous preprocessing failures such as unresolved

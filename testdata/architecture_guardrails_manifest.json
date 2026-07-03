@@ -95,7 +95,6 @@
       "Milky2018/wgsl/lex"
     ],
     "modules/moon_wgsl_naga_oil/transform/moon.pkg": [
-      "Milky2018/moon_wgsl_naga_oil/directive",
       "Milky2018/moon_wgsl_naga_oil/source_rewrite",
       "Milky2018/wgsl/ast",
       "Milky2018/wgsl/ast_analysis",

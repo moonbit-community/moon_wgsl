@@ -357,8 +357,8 @@ fn wgsl_binding_plan_redirect_target(
   }
   match WgslReferencePath::from_text(target) {
     Some(reference_path) =>
-      match plan.final_name_for_reference_path(reference_path) {
-        Some(redirected) => redirected
+      match plan.bound_binding_for_reference_path(reference_path) {
+        Some(binding) => binding.final_name
         None => wgsl_flatten_path_identifier(target)
       }
     None => wgsl_flatten_path_identifier(target)

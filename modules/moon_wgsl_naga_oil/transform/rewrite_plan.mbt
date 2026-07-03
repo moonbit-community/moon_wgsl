@@ -21,9 +21,26 @@ pub struct WgslReferenceRewritePlan {
 
 ///|
 priv struct WgslReferenceRewriteBinding {
+  reference_text : String
   final_name : String
-  identity_key : String
+  identity : WgslIrSymbolIdentity
   key : String
+}
+
+///|
+priv struct WgslBoundReferenceRewriteEntry {
+  start : Int
+  end : Int
+  reference_text : String
+  identity : WgslIrSymbolIdentity
+  final_name : String
+  key : String
+}
+
+///|
+priv struct WgslBoundReferenceRewritePlan {
+  entries : Array[WgslBoundReferenceRewriteEntry]
+  keys : @set.Set[String]
 }
 
 ///|
@@ -38,6 +55,58 @@ fn WgslReferenceRewriteBinding::key(
   self : WgslReferenceRewriteBinding,
 ) -> String {
   self.key
+}
+
+///|
+fn WgslBoundReferenceRewriteEntry::token_replacement(
+  self : WgslBoundReferenceRewriteEntry,
+) -> WgslTokenReplacement {
+  WgslTokenReplacement(self.start, self.end, self.final_name)
+}
+
+///|
+fn WgslBoundReferenceRewriteEntry::is_bound(
+  self : WgslBoundReferenceRewriteEntry,
+) -> Bool {
+  self.reference_text != "" && self.identity.key() != "" && self.key != ""
+}
+
+///|
+fn WgslBoundReferenceRewritePlan::WgslBoundReferenceRewritePlan() -> WgslBoundReferenceRewritePlan {
+  { entries: [], keys: Set([]) }
+}
+
+///|
+fn WgslBoundReferenceRewritePlan::push(
+  self : WgslBoundReferenceRewritePlan,
+  identifier : WgslIdent,
+  binding : WgslReferenceRewriteBinding,
+) -> Unit {
+  let key = "\{identifier.start()}|\{identifier.end()}|\{binding.identity.key()}|\{binding.final_name}"
+  if self.keys.contains(key) {
+    return
+  }
+  self.keys.add(key)
+  self.entries.push({
+    start: identifier.start(),
+    end: identifier.end(),
+    reference_text: binding.reference_text,
+    identity: binding.identity,
+    final_name: binding.final_name,
+    key,
+  })
+}
+
+///|
+fn WgslBoundReferenceRewritePlan::collect_token_replacements(
+  self : WgslBoundReferenceRewritePlan,
+  nodes : Array[WgslTokenReplacement],
+) -> Unit {
+  for entry in self.entries {
+    if entry.is_bound() {
+      nodes.push(entry.token_replacement())
+    }
+  }
 }
 
 ///|
@@ -64,11 +133,11 @@ pub fn WgslReferenceRewritePlan::add_symbol_reference_binding(
     return
   }
   let reference_text = reference_path.text()
-  let identity_key = identity.key()
   let binding = WgslReferenceRewriteBinding::{
+    reference_text,
     final_name,
-    identity_key,
-    key: "\{identity_key}|\{reference_text}|\{final_name}",
+    identity,
+    key: "\{identity.key()}|\{reference_text}|\{final_name}",
   }
   let key = binding.key()
   for existing in self.bindings {
@@ -125,29 +194,23 @@ pub fn WgslReferenceRewritePlan::has_virtual_override_bindings(
 }
 
 ///|
-fn WgslReferenceRewritePlan::final_name_for_reference_path(
+fn WgslReferenceRewritePlan::bound_binding_for_reference_path(
   self : WgslReferenceRewritePlan,
   reference_path : WgslReferencePath,
-) -> String? {
-  match self.binding_for_reference_text(reference_path.text()) {
-    Some(binding) => Some(binding.final_name)
-    None => None
-  }
+) -> WgslReferenceRewriteBinding? {
+  self.bound_binding_for_reference_text(reference_path.text())
 }
 
 ///|
-fn WgslReferenceRewritePlan::final_name_for_identifier_text(
+fn WgslReferenceRewritePlan::bound_binding_for_identifier(
   self : WgslReferenceRewritePlan,
-  identifier_text : String,
-) -> String? {
-  match self.binding_for_reference_text(identifier_text) {
-    Some(binding) => Some(binding.final_name)
-    None => None
-  }
+  identifier : WgslIdent,
+) -> WgslReferenceRewriteBinding? {
+  self.bound_binding_for_reference_text(identifier.name())
 }
 
 ///|
-fn WgslReferenceRewritePlan::binding_for_reference_text(
+fn WgslReferenceRewritePlan::bound_binding_for_reference_text(
   self : WgslReferenceRewritePlan,
   reference_text : String,
 ) -> WgslReferenceRewriteBinding? {
@@ -159,6 +222,21 @@ fn WgslReferenceRewritePlan::binding_for_reference_text(
     Some(bindings) => wgsl_symbol_binding_from_candidates(bindings)
     None => None
   }
+}
+
+///|
+fn WgslReferenceRewritePlan::bound_identifier_rewrite_plan(
+  self : WgslReferenceRewritePlan,
+  identifiers : Array[WgslIdent],
+) -> WgslBoundReferenceRewritePlan {
+  let bound = WgslBoundReferenceRewritePlan()
+  for identifier in identifiers {
+    match self.bound_binding_for_identifier(identifier) {
+      Some(binding) => bound.push(identifier, binding)
+      None => ()
+    }
+  }
+  bound
 }
 
 ///|
@@ -229,16 +307,16 @@ fn wgsl_symbol_binding_from_candidates(
 ) -> WgslReferenceRewriteBinding? {
   let mut target : WgslReferenceRewriteBinding? = None
   for binding in bindings {
-    let current_identity_key = binding.identity_key
+    let current_identity_key = binding.identity.key()
     match target {
       Some(existing) if existing.final_name != binding.final_name =>
-        if existing.identity_key == current_identity_key {
+        if existing.identity.key() == current_identity_key {
           target = Some(binding)
         } else {
           return None
         }
       Some(existing) =>
-        if existing.identity_key != current_identity_key {
+        if existing.identity.key() != current_identity_key {
           return None
         }
       None => target = Some(binding)

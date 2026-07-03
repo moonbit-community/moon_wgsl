@@ -152,6 +152,71 @@ test "naga_oil wb: identity rewrite plan does not collapse ambiguous bindings" {
 }
 
 ///|
+test "naga_oil wb: bound rewrite keeps qualified identity when unqualified spelling is ambiguous" {
+  let plan = WgslReferenceRewritePlan()
+  wbtest_add_symbol_reference_binding(
+    plan,
+    WgslIrSymbolIdentity("a.wgsl", "Shared"),
+    "Shared",
+    "a__Shared",
+  )
+  wbtest_add_symbol_reference_binding(
+    plan,
+    WgslIrSymbolIdentity("b.wgsl", "Shared"),
+    "Shared",
+    "b__Shared",
+  )
+  wbtest_add_symbol_reference_binding(
+    plan,
+    WgslIrSymbolIdentity("lib.wgsl", "Shared"),
+    "lib::Shared",
+    "lib__Shared",
+  )
+  let rewritten = rewrite_wgsl_references_with_binding_plan(
+    (
+      #|fn shade(value: Shared) -> f32 {
+      #|  return lib::Shared(value);
+      #|}
+      #|
+    ),
+    plan,
+  )
+  debug_inspect(rewritten.contains("value: Shared"), content="true")
+  debug_inspect(rewritten.contains("a__Shared"), content="false")
+  debug_inspect(rewritten.contains("value: b__Shared"), content="false")
+  debug_inspect(rewritten.contains("return b__Shared"), content="false")
+  debug_inspect(
+    rewritten.contains("return lib__Shared(value);"),
+    content="true",
+  )
+  debug_inspect(rewritten.contains("lib::Shared"), content="false")
+}
+
+///|
+test "naga_oil wb: bound rewrite keeps same identity reference paths independent" {
+  let plan = WgslReferenceRewritePlan()
+  let identity = WgslIrSymbolIdentity("shared.wgsl", "value")
+  wbtest_add_symbol_reference_binding(plan, identity, "value", "direct_value")
+  wbtest_add_symbol_reference_binding(
+    plan, identity, "alias::value", "alias__value",
+  )
+  let rewritten = rewrite_wgsl_references_with_binding_plan(
+    (
+      #|fn root() -> u32 {
+      #|  return value() + alias::value();
+      #|}
+      #|
+    ),
+    plan,
+  )
+  debug_inspect(
+    rewritten.contains("return direct_value() + alias__value();"),
+    content="true",
+  )
+  debug_inspect(rewritten.contains("alias::value"), content="false")
+}
+
+///|
 test "naga_oil wb: declaration rewrite preserves logical-not punctuation" {
   let plan = WgslReferenceRewritePlan()
   wbtest_add_symbol_reference_binding(

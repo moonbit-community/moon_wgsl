@@ -4,15 +4,9 @@ fn collect_wgsl_bound_rewrite_nodes_from_identifiers(
   plan : WgslReferenceRewritePlan,
   nodes : Array[WgslTokenReplacement],
 ) -> Unit {
-  for identifier in identifiers {
-    match plan.final_name_for_identifier_text(identifier.name()) {
-      Some(final_name) =>
-        nodes.push(
-          WgslTokenReplacement(identifier.start(), identifier.end(), final_name),
-        )
-      None => ()
-    }
-  }
+  plan
+  .bound_identifier_rewrite_plan(identifiers)
+  .collect_token_replacements(nodes)
 }
 
 ///|

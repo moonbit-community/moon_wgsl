@@ -267,18 +267,18 @@ fn wgsl_naga_oil_import_use_identifier_end(source : String, start : Int) -> Int 
 }
 
 ///|
-fn wgsl_naga_oil_import_use_reference_text_is_valid(text : String) -> Bool {
-  if text == "" {
+fn wgsl_naga_oil_import_use_reference_text_is_valid(raw : String) -> Bool {
+  if raw == "" {
     return false
   }
   let mut segment_has_text = false
   let mut index = 0
-  while index < text.length() {
-    let code = text.code_unit_at(index).to_int()
+  while index < raw.length() {
+    let code = raw.code_unit_at(index).to_int()
     if code == 58 {
       if !segment_has_text ||
-        index + 1 >= text.length() ||
-        text.code_unit_at(index + 1).to_int() != 58 {
+        index + 1 >= raw.length() ||
+        raw.code_unit_at(index + 1).to_int() != 58 {
         return false
       }
       index = index + 2
