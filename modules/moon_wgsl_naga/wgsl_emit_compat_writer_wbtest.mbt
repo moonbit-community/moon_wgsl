@@ -27,7 +27,7 @@ test "IR emitter does not count texture store as extra writer arena slot" {
 }
 
 ///|
-test "naga-oil writer profile suppresses source directives like upstream Writer" {
+test "naga-oil writer profile preserves source directives like upstream Writer" {
   let source =
     #|enable dual_source_blending;
     #|
@@ -53,10 +53,33 @@ test "naga-oil writer profile suppresses source directives like upstream Writer"
     runtime.contains("enable dual_source_blending;"),
     content="true",
   )
+  debug_inspect(parity.contains("enable dual_source_blending;"), content="true")
+}
+
+///|
+test "naga-oil writer profile drops inactive semantic extension enables" {
+  let source =
+    #|enable dual_source_blending;
+    #|
+    #|struct FragmentOutput {
+    #|  @location(0) color: vec4<f32>,
+    #|}
+    #|
+    #|@fragment
+    #|fn fragment() -> FragmentOutput {
+    #|  return FragmentOutput(vec4<f32>());
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let parity = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+    error => abort(error.message())
+  }
   debug_inspect(
     parity.contains("enable dual_source_blending;"),
     content="false",
   )
+  debug_inspect(parity.contains("@location(0) color"), content="true")
 }
 
 ///|

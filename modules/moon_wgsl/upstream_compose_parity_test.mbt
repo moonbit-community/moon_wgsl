@@ -647,7 +647,7 @@ test "naga_oil upstream: entrypoint imports are renamed instead of shadowing loc
 }
 
 ///|
-test "naga_oil writer profile suppresses diagnostic directives while binding ambient globals" {
+test "naga_oil writer profile preserves diagnostic directives while binding ambient globals" {
   let source = upstream_parity_composer("diagnostic_filters").compose_wgsl(
     "top.wgsl",
     upstream_parity_empty_compose_options(),
@@ -656,7 +656,7 @@ test "naga_oil writer profile suppresses diagnostic directives while binding amb
   }
   debug_inspect(
     source.contains("diagnostic(warning, derivative_uniformity);"),
-    content="false",
+    content="true",
   )
   debug_inspect(source.contains("fn diagnostic_test"), content="true")
   debug_inspect(
@@ -668,7 +668,7 @@ test "naga_oil writer profile suppresses diagnostic directives while binding amb
 }
 
 ///|
-test "naga_oil writer profile suppresses dual source blending enable directive" {
+test "naga_oil writer profile preserves dual source blending enable directive" {
   let output = upstream_parity_export_case(
     "dual_source_blending",
     "blending.wgsl",
@@ -677,7 +677,7 @@ test "naga_oil writer profile suppresses dual source blending enable directive" 
   )
   debug_inspect(
     output.source.contains("enable dual_source_blending;"),
-    content="false",
+    content="true",
   )
   debug_inspect(output.source.contains("@blend_src(1)"), content="true")
 }
@@ -877,13 +877,13 @@ test "naga_oil upstream: invalid struct member identifier reports compose failur
 }
 
 ///|
-test "naga_oil writer profile suppresses raycast enable directive" {
+test "naga_oil writer profile preserves raycast enable directive" {
   let source = upstream_mirror_compose_case(
     "raycast",
     "top.wgsl",
     upstream_parity_empty_defines(),
   )
-  debug_inspect(source.contains("enable wgpu_ray_query;"), content="false")
+  debug_inspect(source.contains("enable wgpu_ray_query;"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("var rq: ray_query;"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")

@@ -40,3 +40,21 @@ test "naga-oil import-use scanner preserves substitution-position semantics" {
   debug_inspect(names.contains("ignored::path"), content="false")
   debug_inspect(names.contains("u"), content="true")
 }
+
+///|
+test "naga-oil import-use scanner drops import directives before scanning" {
+  let source =
+    #|#import test::util::value
+    #|
+    #|fn root() -> u32 {
+    #|  return value();
+    #|}
+    #|
+  let nodes : Array[@ast.WgslIdent] = []
+  collect_wgsl_naga_oil_import_use_identifier_nodes(source, nodes)
+  let names = nodes.map(fn(node) { node.name() })
+  debug_inspect(names.contains("import"), content="false")
+  debug_inspect(names.contains("test::util::value"), content="false")
+  debug_inspect(names.contains("root"), content="true")
+  debug_inspect(names.contains("value"), content="true")
+}

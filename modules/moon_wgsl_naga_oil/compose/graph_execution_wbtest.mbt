@@ -54,6 +54,41 @@ test "composer preserves quoted file import path identity for final names" {
 }
 
 ///|
+test "issue 16: minimal direct item import composes without scanner drift" {
+  let composer = Composer::default()
+  composer.register_source(
+    "util.wgsl",
+    (
+      #|#define_import_path test::util
+      #|
+      #|fn value() -> u32 {
+      #|  return 1u;
+      #|}
+      #|
+    ),
+  )
+  composer.register_source(
+    "root.wgsl",
+    (
+      #|#import test::util::value
+      #|
+      #|fn root() -> u32 {
+      #|  return value();
+      #|}
+      #|
+    ),
+  )
+  let source = composer.compose_wgsl_before_ir(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(source.contains("return 1u"), content="true")
+  debug_inspect(source.contains("#import"), content="false")
+}
+
+///|
 test "compose graph execution plans reachability before emission" {
   let composer = Composer::default()
   let dep_source =

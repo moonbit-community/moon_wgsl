@@ -39,11 +39,11 @@ assert_contains() {
 
 echo "== moon_wgsl source-level preprocessing parity tests =="
 moon test \
-  preprocess_test.mbt \
-  composer_test.mbt \
-  upstream_compose_parity_test.mbt \
-  bevy_wgsl_parity_test.mbt \
-  naga_oil_upstream_mirror_wbtest.mbt
+  modules/moon_wgsl/preprocess_test.mbt \
+  modules/moon_wgsl/composer_test.mbt \
+  modules/moon_wgsl/upstream_compose_parity_test.mbt \
+  modules/moon_wgsl/bevy_wgsl_parity_test.mbt \
+  modules/moon_wgsl/naga_oil_upstream_mirror_wbtest.mbt
 
 echo "== naga_oil oracle: simple compose =="
 oracle \

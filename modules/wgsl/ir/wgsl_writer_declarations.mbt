@@ -96,7 +96,7 @@ fn WgslIrWriterPlanner::runtime_writer_arena(
   let entry_points = self.entry_point_slots(false)
   let const_asserts = self.const_assert_slots()
   {
-    directives: self.shader_module.directives,
+    directives: wgsl_ir_semantic_source_directives(self.shader_module),
     types,
     constants,
     overrides,

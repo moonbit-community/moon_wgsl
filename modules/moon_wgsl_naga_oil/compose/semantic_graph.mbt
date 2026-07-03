@@ -296,6 +296,14 @@ fn collect_wgsl_naga_oil_import_use_identifier_nodes(
   source : String,
   nodes : Array[WgslIdent],
 ) -> Unit {
+  let source = if source.contains("#import") {
+    drop_wgsl_import_directives_from_scan_items(
+      parse_wgsl_directive_scan_items(source, include_glsl_version=false),
+      source,
+    )
+  } else {
+    source
+  }
   let mut in_substitution_position = true
   let mut index = 0
   while index < source.length() {

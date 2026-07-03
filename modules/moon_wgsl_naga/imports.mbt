@@ -132,5 +132,6 @@ using @ir {
   wgsl_ir_identifier_is_reserved,
   wgsl_ir_math_primary_result_operand,
   wgsl_ir_negate_literal,
+  wgsl_ir_semantic_source_directives,
   wgsl_ir_uint_literal_to_small_int,
 }

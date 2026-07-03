@@ -54,6 +54,8 @@ pub fn wgsl_ir_math_primary_result_operand(MathFunction, Handle, Handle?, Handle
 
 pub fn wgsl_ir_negate_literal(Literal) -> Literal?
 
+pub fn wgsl_ir_semantic_source_directives(Module) -> Array[String]
+
 pub fn wgsl_ir_uint_literal_to_small_int(UInt) -> Int?
 
 // Errors

@@ -15,7 +15,6 @@
 ///|
 priv enum WgslIrSourceDirectiveBytePolicy {
   EmitSourceDirectives
-  SuppressSourceDirectives
 }
 
 ///|
@@ -104,7 +103,7 @@ fn WgslIrWriterBytePlan::runtime_writer() -> WgslIrWriterBytePlan {
 ///|
 fn WgslIrWriterBytePlan::compat_writer() -> WgslIrWriterBytePlan {
   {
-    source_directives: SuppressSourceDirectives,
+    source_directives: EmitSourceDirectives,
     trailing_blank: SuppressTrailingBlankAfterEntryPoint,
     implicit_flat_interpolation: EmitImplicitFlatInterpolation,
     storage_texture_type_arguments: CompactStorageTextureTypeArguments,
@@ -123,7 +122,6 @@ fn WgslIrWriterBytePlan::should_emit_source_directives(
 ) -> Bool {
   match self.source_directives {
     EmitSourceDirectives => true
-    SuppressSourceDirectives => false
   }
 }
 
