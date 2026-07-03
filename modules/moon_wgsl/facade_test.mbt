@@ -31,7 +31,10 @@ test "facade exposes preprocessing and composition runtime API" {
     #|}
     #|
   composer.register_source("root.wgsl", root_source)
-  let composed = composer.compose_wgsl("root.wgsl", WgslComposeOptions::default()) catch {
+  let composed = composer.compose_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+  ) catch {
     err => abort("expected facade compose success: \{err.message()}")
   }
   assert_true(composed.contains("fn value"))

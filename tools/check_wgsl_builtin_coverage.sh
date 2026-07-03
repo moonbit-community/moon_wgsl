@@ -94,9 +94,10 @@ extract_lowerer_builtin_names() {
     /fn wgsl_ir_atomic_function_from_name/,/^}/ {
       if (match($0, /"[A-Za-z][A-Za-z0-9]*"/)) print substr($0, RSTART + 1, RLENGTH - 2)
     }
-  ' ir/wgsl_lower_builtins.mbt
-  rg -o '"(texture[A-Za-z0-9]+|rayQuery[A-Za-z0-9]+|get[A-Za-z0-9]+HitVertexPositions|subgroup[A-Za-z0-9]+|quad[A-Za-z0-9]+|workgroupBarrier|storageBarrier|textureBarrier|arrayLength)"' \
-    ir/wgsl_lower.mbt | tr -d '"'
+  ' modules/wgsl/ir/wgsl_lower_builtins.mbt
+  rg --no-filename -o '"(texture[A-Za-z0-9]+|rayQuery[A-Za-z0-9]+|get[A-Za-z0-9]+HitVertexPositions|subgroup[A-Za-z0-9]+|quad[A-Za-z0-9]+|workgroupBarrier|storageBarrier|textureBarrier|arrayLength)"' \
+    modules/wgsl/ir/wgsl_lower_*.mbt \
+    --glob '!**/*test.mbt' | tr -d '"'
 }
 
 extract_lowerer_builtin_names | sed '/^$/d' | sort -u > "$known_builtins"

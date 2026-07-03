@@ -57,6 +57,37 @@ test "naga-oil writer profile preserves source directives like upstream Writer" 
 }
 
 ///|
+test "runtime writer elides predeclared atomic result annotations while compat writer preserves them" {
+  let source =
+    #|var<workgroup> atom: atomic<u32>;
+    #|
+    #|fn entry() -> u32 {
+    #|  let exchange = atomicCompareExchangeWeak(&atom, 12u, 0u);
+    #|  if exchange.exchanged {
+    #|    return exchange.old_value;
+    #|  }
+    #|  return 0u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let runtime = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  let parity = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    runtime.contains("_atomic_compare_exchange_result"),
+    content="false",
+  )
+  debug_inspect(
+    parity.contains("_atomic_compare_exchange_result_Uint_4_"),
+    content="true",
+  )
+}
+
+///|
 test "naga-oil writer profile drops inactive semantic extension enables" {
   let source =
     #|enable dual_source_blending;

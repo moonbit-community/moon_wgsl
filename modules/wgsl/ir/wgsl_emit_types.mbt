@@ -118,6 +118,36 @@ fn wgsl_ir_predeclared_result_type_name(
 }
 
 ///|
+fn wgsl_ir_predeclared_result_type_from_name(name : String) -> PredeclaredType? {
+  let atomic_prefix = "_atomic_compare_exchange_result_"
+  if name.has_prefix(atomic_prefix) && name.has_suffix("_") {
+    let scalar_name = name[atomic_prefix.length():name.length() - 1].to_owned()
+    return match wgsl_ir_predeclared_scalar_from_name(scalar_name) {
+      Some(scalar) =>
+        Some(PredeclaredType::AtomicCompareExchangeWeakResult(scalar))
+      None => None
+    }
+  }
+  let modf_prefix = "_modf_result_"
+  if name.has_prefix(modf_prefix) && name.has_suffix("_") {
+    let numeric_name = name[modf_prefix.length():name.length() - 1].to_owned()
+    return match wgsl_ir_predeclared_numeric_from_name(numeric_name) {
+      Some((size, scalar)) => Some(PredeclaredType::ModfResult(size, scalar))
+      None => None
+    }
+  }
+  let frexp_prefix = "_frexp_result_"
+  if name.has_prefix(frexp_prefix) && name.has_suffix("_") {
+    let numeric_name = name[frexp_prefix.length():name.length() - 1].to_owned()
+    return match wgsl_ir_predeclared_numeric_from_name(numeric_name) {
+      Some((size, scalar)) => Some(PredeclaredType::FrexpResult(size, scalar))
+      None => None
+    }
+  }
+  None
+}
+
+///|
 fn wgsl_ir_predeclared_numeric_name(
   size : VectorSize?,
   scalar : Scalar,
@@ -126,6 +156,44 @@ fn wgsl_ir_predeclared_numeric_name(
     Some(vector_size) =>
       "Vec\{vector_size.width()}_\{wgsl_ir_predeclared_scalar_name(scalar)}"
     None => wgsl_ir_predeclared_scalar_name(scalar)
+  }
+}
+
+///|
+fn wgsl_ir_predeclared_numeric_from_name(
+  name : String,
+) -> (VectorSize?, Scalar)? {
+  if name.has_prefix("Vec") {
+    match name.split("_").collect() {
+      [size_name, kind_name, width_name] =>
+        match
+          (
+            wgsl_ir_predeclared_vector_size_from_name(size_name.to_owned()),
+            wgsl_ir_predeclared_scalar_from_parts(
+              kind_name.to_owned(),
+              width_name.to_owned(),
+            ),
+          ) {
+          (Some(size), Some(scalar)) => Some((Some(size), scalar))
+          _ => None
+        }
+      _ => None
+    }
+  } else {
+    match wgsl_ir_predeclared_scalar_from_name(name) {
+      Some(scalar) => Some((None, scalar))
+      None => None
+    }
+  }
+}
+
+///|
+fn wgsl_ir_predeclared_vector_size_from_name(name : String) -> VectorSize? {
+  match name {
+    "Vec2" => Some(VectorSize::Bi)
+    "Vec3" => Some(VectorSize::Tri)
+    "Vec4" => Some(VectorSize::Quad)
+    _ => None
   }
 }
 
@@ -140,6 +208,45 @@ fn wgsl_ir_predeclared_scalar_name(scalar : Scalar) -> String {
     AbstractFloat => "AbstractFloat"
   }
   "\{kind}_\{scalar.width}"
+}
+
+///|
+fn wgsl_ir_predeclared_scalar_from_name(name : String) -> Scalar? {
+  match name.split("_").collect() {
+    [kind_name, width_name] =>
+      wgsl_ir_predeclared_scalar_from_parts(
+        kind_name.to_owned(),
+        width_name.to_owned(),
+      )
+    _ => None
+  }
+}
+
+///|
+fn wgsl_ir_predeclared_scalar_from_parts(
+  kind_name : String,
+  width_name : String,
+) -> Scalar? {
+  let kind = match kind_name {
+    "Sint" => Some(ScalarKind::Sint)
+    "Uint" => Some(ScalarKind::Uint)
+    "Float" => Some(ScalarKind::Float)
+    "Bool" => Some(ScalarKind::Bool)
+    "AbstractInt" => Some(ScalarKind::AbstractInt)
+    "AbstractFloat" => Some(ScalarKind::AbstractFloat)
+    _ => None
+  }
+  let width = match width_name {
+    "1" => Some(1)
+    "2" => Some(2)
+    "4" => Some(4)
+    "8" => Some(8)
+    _ => None
+  }
+  match (kind, width) {
+    (Some(kind), Some(width)) => Some(Scalar::Scalar(kind, width))
+    _ => None
+  }
 }
 
 ///|

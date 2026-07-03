@@ -704,6 +704,31 @@ test "WGSL AST lowerer materializes atomic side effects through IR" {
 }
 
 ///|
+test "WGSL AST lowerer reads back predeclared atomic compare exchange result names" {
+  let source =
+    #|var<workgroup> atom: atomic<u32>;
+    #|
+    #|fn main() -> u32 {
+    #|  let exchange: _atomic_compare_exchange_result_Uint_4_ = atomicCompareExchangeWeak(&atom, 12u, 0u);
+    #|  if exchange.exchanged {
+    #|    return exchange.old_value;
+    #|  }
+    #|  return 0u;
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let mut found = false
+  for item in module_.special_types.predeclared_types {
+    let (predeclared, _) = item
+    if predeclared == AtomicCompareExchangeWeakResult(Scalar(Uint, 4)) {
+      found = true
+    }
+  }
+  debug_inspect(found, content="true")
+}
+
+///|
 test "WGSL emitter types function-scope arrayLength casts" {
   let source =
     #|@group(0) @binding(0)

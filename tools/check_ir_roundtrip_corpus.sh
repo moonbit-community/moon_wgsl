@@ -108,7 +108,7 @@ compose_runtime_valid_roundtrip_case \
   "upstream-atomics-compose" \
   "testdata/upstream_compose/atomics" \
   "top.wgsl"
-compose_roundtrip_case \
+compose_runtime_valid_roundtrip_case \
   "upstream-modf-compose" \
   "testdata/upstream_compose/modf" \
   "top.wgsl"

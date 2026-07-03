@@ -16,6 +16,7 @@ preserved. Import lower-level modules explicitly when you need their ownership
 boundary.
 
 ```mbt check
+///|
 test "compose a shader through the facade" {
   let composer = Composer::default()
   let util_source =

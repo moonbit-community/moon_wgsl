@@ -12,7 +12,7 @@ expected_naga_count="${WGSL_CORPUS_EXPECTED_NAGA_CASES:-42}"
 expected_ir_count="${WGSL_CORPUS_EXPECTED_IR_CASES:-47}"
 expected_naga_ir_count="${WGSL_CORPUS_EXPECTED_NAGA_IR_CASES:-46}"
 expected_compose_count="${WGSL_CORPUS_EXPECTED_COMPOSE_CASES:-20}"
-expected_runtime_valid_compose_count="${WGSL_CORPUS_EXPECTED_RUNTIME_VALID_COMPOSE_CASES:-1}"
+expected_runtime_valid_compose_count="${WGSL_CORPUS_EXPECTED_RUNTIME_VALID_COMPOSE_CASES:-2}"
 
 fail() {
   printf 'WGSL corpus matrix failed: %s\n' "$*" >&2

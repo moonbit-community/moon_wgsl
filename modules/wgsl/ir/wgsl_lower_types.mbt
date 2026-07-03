@@ -84,7 +84,12 @@ fn WgslIrLowerer::lower_uncached_type_ref(
             None =>
               match wgsl_ir_builtin_matrix_alias(name) {
                 Some(inner) => self.intern_type(name, inner)
-                None => self.lower_composite_type_ref(ty_ref)
+                None =>
+                  match wgsl_ir_predeclared_result_type_from_name(name) {
+                    Some(predeclared) =>
+                      self.predeclared_struct_type(predeclared)
+                    None => self.lower_composite_type_ref(ty_ref)
+                  }
               }
           }
       }
