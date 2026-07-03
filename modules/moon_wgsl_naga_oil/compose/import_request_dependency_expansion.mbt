@@ -195,7 +195,11 @@ fn Composer::merge_wgsl_dependency_scan_import_requests(
     session, dependency_scan_source, side_effect_targets,
   )
   let dependency_requests = self.build_wgsl_import_requests_from_targets(
-    current_rel_path, dependency_targets, dependency_scan_source, session, importer_defs,
+    current_rel_path,
+    dependency_targets,
+    prepare_active_wgsl_compose_source(dependency_scan_source, session),
+    session,
+    importer_defs,
     false,
   )
   let dependency_scan_facts = collect_wgsl_compose_semantic_facts(

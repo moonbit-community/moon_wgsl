@@ -187,7 +187,6 @@ priv struct WgslProcessedComposeModule {
   mut declarations_by_name : Map[String, WgslGlobalDecl]?
   mut declaration_summaries : Map[String, WgslProcessedDeclarationSummary]?
   mut declaration_names : Array[String]?
-  mut semantic_facts : WgslComposeSemanticFacts?
   mut item_extractor : WgslModuleItemExtractor?
   item_extractions : Map[String, WgslModuleItemExtraction]
   mut naga_pull_ranks : Map[String, Int]?

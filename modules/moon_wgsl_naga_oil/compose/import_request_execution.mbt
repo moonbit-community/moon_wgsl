@@ -41,7 +41,7 @@ fn Composer::compose_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   requests : Array[WgslImportRequest],
-  importer_scan_source : String,
+  importer : WgslPreparedComposeSource,
   bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
@@ -53,9 +53,7 @@ fn Composer::compose_wgsl_import_requests(
     current_rel_path,
     requests,
   )
-  let importer_facts = collect_wgsl_compose_semantic_facts(
-    session, importer_scan_source,
-  )
+  let importer_facts = importer.active_semantic_facts(session)
   for request in requests {
     if !session.graph_request_is_planned(current_rel_path, request) {
       session.record_graph_planned_request(current_rel_path, request)
@@ -243,7 +241,7 @@ fn Composer::compose_wgsl_import_requests(
         if has_missing_local_fallback {
           self.compose_wgsl_missing_item_local_dependency_imports(
             request.rel_path,
-            prepared.active_source,
+            prepared,
             session,
             import_defs,
             request_alias_prefixes,
@@ -284,18 +282,19 @@ fn Composer::compose_wgsl_import_requests(
         seed_wgsl_local_declaration_bindings(
           item_bindings, current_rel_path, importer_facts,
         )
+        let extracted_prepared = prepare_active_wgsl_compose_source(
+          extracted_source, session,
+        )
         let imported_prefix = self.compose_wgsl_import_requests(
           request.rel_path,
           requests,
-          extracted_source,
+          extracted_prepared,
           item_bindings,
           session,
           import_defs,
           request_alias_prefixes,
         )
-        let local_source = drop_wgsl_import_directives_from_compose_source_cached(
-          session, extracted_source,
-        )
+        let local_source = extracted_prepared.importless_source
         let emitted_slice = imported_prefix +
           finalize_wgsl_composed_source(
             local_source, item_bindings, import_defs, session, false, false,
@@ -666,25 +665,25 @@ fn record_wgsl_missing_item_local_import_final_names(
 fn Composer::compose_wgsl_missing_item_local_dependency_imports(
   self : Composer,
   current_rel_path : String,
-  dependency_scan_source : String,
+  dependency : WgslPreparedComposeSource,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
   alias_prefixes : Array[String],
 ) -> String raise ComposerError {
   let targets : Array[WgslImportTarget] = []
   collect_wgsl_import_targets_from_source_directives(
-    session, dependency_scan_source, targets,
+    session,
+    dependency.active_source,
+    targets,
   )
   if targets.length() == 0 {
     return ""
   }
   let dependency_requests = self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, dependency_scan_source, session, importer_defs, false,
+    current_rel_path, targets, dependency, session, importer_defs, false,
   )
   let requests : Array[WgslImportRequest] = []
-  let dependency_facts = collect_wgsl_compose_semantic_facts(
-    session, dependency_scan_source,
-  )
+  let dependency_facts = dependency.active_semantic_facts(session)
   self.merge_wgsl_non_resource_dependency_requests(
     requests, dependency_requests, dependency_facts, session, importer_defs,
   )
@@ -694,7 +693,7 @@ fn Composer::compose_wgsl_missing_item_local_dependency_imports(
   self.compose_wgsl_import_requests(
     current_rel_path,
     requests,
-    dependency_scan_source,
+    dependency,
     WgslComposeBindingSet(),
     session,
     importer_defs,

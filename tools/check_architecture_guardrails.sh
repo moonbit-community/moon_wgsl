@@ -128,6 +128,11 @@ if rg -n 'wgsl_semantic_source_contains_reference_path' \
   fail "modules/moon_wgsl_naga_oil/compose import request retention must use structured semantic facts, not source-level reference scans"
 fi
 
+if rg -n 'active_scan_source' modules/moon_wgsl_naga_oil/compose --glob '*.mbt' >"$matches_file"; then
+  cat "$matches_file" >&2
+  fail "modules/moon_wgsl_naga_oil/compose prepared source must carry structured scan facts instead of passing active_scan_source strings"
+fi
+
 if rg -n 'pub fn WgslReferenceRewritePlan::add\(' modules/moon_wgsl_naga_oil/transform --glob '*.mbt' >"$matches_file"; then
   cat "$matches_file" >&2
   fail "reference rewrite plans must not expose unscoped string-only bindings"

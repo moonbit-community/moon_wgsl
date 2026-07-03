@@ -269,10 +269,7 @@ fn WgslImportGraphBuilder::plan_with_path(
         inherited_defs,
       )
       let prepared = if source_already_prepared {
-        WgslPreparedComposeSource::{
-          active_source: source,
-          active_scan_source: source,
-        }
+        prepare_active_wgsl_compose_source(source, self.session)
       } else {
         merge_wgsl_source_local_shader_defs(
           active_defs,
@@ -295,8 +292,7 @@ fn WgslImportGraphBuilder::plan_with_path(
   } else {
     self.composer.build_wgsl_import_requests_from_source_directives(
       current_rel_path,
-      prepared.active_source,
-      prepared.active_scan_source,
+      prepared,
       self.session,
       active_defs,
     )
@@ -323,7 +319,7 @@ fn WgslImportGraphBuilder::plan_with_path(
   }
   let implicit_requests = self.composer.build_wgsl_implicit_import_requests(
     current_rel_path,
-    prepared.active_scan_source,
+    prepared,
     self.session,
     active_defs,
   )
@@ -439,16 +435,13 @@ fn WgslImportGraphBuilder::plan_import_request_batch(
         let dependency_requests = self.composer.build_wgsl_import_requests_from_targets(
           request.rel_path,
           targets,
-          prepared.active_source,
+          prepared,
           self.session,
           import_defs,
           false,
         )
         let requests : Array[WgslImportRequest] = []
-        let dependency_facts = collect_wgsl_compose_semantic_facts(
-          self.session,
-          prepared.active_source,
-        )
+        let dependency_facts = prepared.active_semantic_facts(self.session)
         self.composer.merge_wgsl_non_resource_dependency_requests(
           requests,
           dependency_requests,

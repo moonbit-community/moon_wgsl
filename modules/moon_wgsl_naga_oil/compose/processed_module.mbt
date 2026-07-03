@@ -111,9 +111,7 @@ fn WgslProcessedComposeModule::translation_unit(
   match self.unit {
     Some(unit) => unit
     None => {
-      let unit = parse_wgsl_translation_unit_strict(self.prepared.active_source) catch {
-        error => raise composer_error_from_wgsl_parse_error(error)
-      }
+      let unit = self.prepared.translation_unit()
       self.unit = Some(unit)
       unit
     }
@@ -587,30 +585,6 @@ fn WgslProcessedComposeModule::semantic_declaration_names(
 }
 
 ///|
-fn WgslProcessedComposeModule::compose_semantic_facts(
-  self : WgslProcessedComposeModule,
-) -> WgslComposeSemanticFacts raise ComposerError {
-  match self.semantic_facts {
-    Some(facts) => facts
-    None => {
-      let unit = self.translation_unit()
-      let declarations = collect_wgsl_semantic_declaration_names_from_unit(unit)
-      let global_variables = collect_wgsl_semantic_global_variable_names_from_unit(
-        unit,
-      )
-      let references : Array[WgslReferencePath] = []
-      collect_wgsl_semantic_reference_paths_from_unit(unit, references)
-      let facts = WgslComposeSemanticFacts(
-        declarations, global_variables, references,
-      )
-      self.declaration_names = Some(declarations)
-      self.semantic_facts = Some(facts)
-      facts
-    }
-  }
-}
-
-///|
 fn WgslComposeSession::record_processed_semantic_facts(
   self : WgslComposeSession,
   processed : WgslProcessedComposeModule,
@@ -619,18 +593,19 @@ fn WgslComposeSession::record_processed_semantic_facts(
   match self.semantic_facts.get(active_source) {
     Some(_) => ()
     None =>
-      self.semantic_facts.set(active_source, processed.compose_semantic_facts())
+      self.semantic_facts.set(
+        active_source,
+        processed.prepared.active_semantic_facts(self),
+      )
   }
-  let importless_source = drop_wgsl_import_directives_from_compose_source_cached(
-    self, active_source,
-  )
+  let importless_source = processed.prepared.importless_source
   if importless_source != active_source {
     match self.semantic_facts.get(importless_source) {
       Some(_) => ()
       None =>
         self.semantic_facts.set(
           importless_source,
-          processed.compose_semantic_facts(),
+          processed.prepared.reference_scan_semantic_facts(self),
         )
     }
   }
@@ -706,7 +681,6 @@ fn Composer::processed_wgsl_compose_module(
             declarations_by_name: None,
             declaration_summaries: None,
             declaration_names: None,
-            semantic_facts: None,
             item_extractor: None,
             item_extractions: Map([]),
             naga_pull_ranks: None,

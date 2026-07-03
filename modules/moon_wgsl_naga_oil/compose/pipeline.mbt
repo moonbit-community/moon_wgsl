@@ -92,7 +92,7 @@ fn Composer::compose_wgsl_scanned_item(
   self : Composer,
   current_rel_path : String,
   item : WgslDirectiveScanItem,
-  active_scan_source : String,
+  prepared : WgslPreparedComposeSource,
   bindings : WgslComposeBindingSet,
   session : WgslComposeSession,
   active_defs : WgslActiveComposeDefs,
@@ -112,14 +112,13 @@ fn Composer::compose_wgsl_scanned_item(
         self.build_wgsl_import_requests(
           current_rel_path,
           import_directive.tail(),
-          active_scan_source,
+          prepared,
           session,
           active_defs,
         )
       }
       self.compose_wgsl_import_requests(
-        current_rel_path, requests, active_scan_source, bindings, session, active_defs,
-        alias_prefixes,
+        current_rel_path, requests, prepared, bindings, session, active_defs, alias_prefixes,
       )
     }
     Directive(directive) =>
@@ -189,8 +188,7 @@ fn WgslComposeEmitter::emit_source_with_path(
   } else {
     self.composer.build_wgsl_import_requests_from_source_directives(
       current_rel_path,
-      prepared.active_source,
-      prepared.active_scan_source,
+      prepared,
       self.session,
       active_defs,
     )
@@ -229,14 +227,14 @@ fn WgslComposeEmitter::emit_source_with_path(
   }
   let implicit_requests = self.composer.build_wgsl_implicit_import_requests(
     current_rel_path,
-    prepared.active_scan_source,
+    prepared,
     self.session,
     active_defs,
   )
   let implicit_imports = self.composer.compose_wgsl_import_requests(
     current_rel_path,
     implicit_requests,
-    prepared.active_scan_source,
+    prepared,
     bindings,
     self.session,
     active_defs,
@@ -244,7 +242,7 @@ fn WgslComposeEmitter::emit_source_with_path(
   )
   let mut explicit_imports_emitted = false
   let mut implicit_imports_emitted = false
-  let scan_items = self.session.directive_scan_items(prepared.active_source)
+  let scan_items = prepared.directive_scan_items
   let has_import_directive = wgsl_compose_scan_has_import_directive(scan_items)
   let mut saw_import_directive = false
   for item in scan_items {
@@ -257,7 +255,7 @@ fn WgslComposeEmitter::emit_source_with_path(
             self.composer.compose_wgsl_import_requests(
               current_rel_path,
               explicit_requests,
-              prepared.active_scan_source,
+              prepared,
               bindings,
               self.session,
               active_defs,
@@ -276,7 +274,7 @@ fn WgslComposeEmitter::emit_source_with_path(
           self.composer.compose_wgsl_scanned_item(
             current_rel_path,
             item,
-            prepared.active_scan_source,
+            prepared,
             bindings,
             self.session,
             active_defs,

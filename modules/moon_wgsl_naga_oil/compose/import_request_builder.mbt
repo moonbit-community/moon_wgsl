@@ -2,8 +2,7 @@
 fn wgsl_import_target_plan_cache_key(
   current_rel_path : String,
   targets : Array[WgslImportTarget],
-  active_scan_source : String,
-  session : WgslComposeSession,
+  prepared : WgslPreparedComposeSource,
   importer_defs : WgslActiveComposeDefs,
   prune_requested_items_by_active_usage : Bool,
 ) -> String {
@@ -16,7 +15,7 @@ fn wgsl_import_target_plan_cache_key(
   } else {
     "keep"
   }
-  let source_id = session.source_cache_id(active_scan_source)
+  let source_id = prepared.cache_id
   "\{current_rel_path}|\{prune}|\{wgsl_active_defs_cache_key(current_rel_path, importer_defs)}|\{target_entries.join("|")}|source:\{source_id}"
 }
 
@@ -25,7 +24,7 @@ fn Composer::build_wgsl_import_requests(
   self : Composer,
   current_rel_path : String,
   spec : String,
-  active_scan_source : String,
+  prepared : WgslPreparedComposeSource,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
@@ -36,7 +35,7 @@ fn Composer::build_wgsl_import_requests(
     }
   }
   self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, active_scan_source, session, importer_defs, true,
+    current_rel_path, targets, prepared, session, importer_defs, true,
   )
 }
 
@@ -44,17 +43,18 @@ fn Composer::build_wgsl_import_requests(
 fn Composer::build_wgsl_import_requests_from_source_directives(
   self : Composer,
   current_rel_path : String,
-  active_source : String,
-  active_scan_source : String,
+  prepared : WgslPreparedComposeSource,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let targets : Array[WgslImportTarget] = []
   collect_wgsl_import_targets_from_source_directives(
-    session, active_source, targets,
+    session,
+    prepared.active_source,
+    targets,
   )
   self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, active_scan_source, session, importer_defs, true,
+    current_rel_path, targets, prepared, session, importer_defs, true,
   )
 }
 
@@ -99,7 +99,12 @@ fn Composer::build_wgsl_import_requests_from_emitted_item_slice(
     session, directive_source, targets,
   )
   let requests = self.build_wgsl_import_requests_from_targets(
-    current_rel_path, targets, directive_source, session, importer_defs, true,
+    current_rel_path,
+    targets,
+    prepare_active_wgsl_compose_source(directive_source, session),
+    session,
+    importer_defs,
+    true,
   )
   if dependency_scan_source != directive_source {
     self.merge_wgsl_dependency_scan_import_requests(
@@ -118,7 +123,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
   self : Composer,
   current_rel_path : String,
   targets : Array[WgslImportTarget],
-  active_scan_source : String,
+  prepared : WgslPreparedComposeSource,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
   prune_requested_items_by_active_usage : Bool,
@@ -128,7 +133,7 @@ fn Composer::build_wgsl_import_requests_from_targets(
   }
   let requests : Array[WgslImportRequest] = []
   let plan_cache_key = wgsl_import_target_plan_cache_key(
-    current_rel_path, targets, active_scan_source, session, importer_defs, prune_requested_items_by_active_usage,
+    current_rel_path, targets, prepared, importer_defs, prune_requested_items_by_active_usage,
   )
   match session.import_request_plans.get(plan_cache_key) {
     Some(cached_requests) =>
@@ -141,12 +146,8 @@ fn Composer::build_wgsl_import_requests_from_targets(
   self.preflight_wgsl_import_targets_without_source_parse(
     current_rel_path, targets, session,
   )
-  let reference_scan_base_source = drop_wgsl_import_directives_from_compose_source_cached(
-    session, active_scan_source,
-  )
-  let active_scan_facts = collect_wgsl_compose_semantic_facts(
-    session, reference_scan_base_source,
-  )
+  let reference_scan_base_source = prepared.importless_source
+  let active_scan_facts = prepared.reference_scan_semantic_facts(session)
   let target_plans = build_wgsl_semantic_import_target_plans(
     session,
     reference_scan_base_source,
@@ -189,17 +190,12 @@ fn Composer::build_wgsl_import_requests_from_targets(
 fn Composer::build_wgsl_implicit_import_requests(
   self : Composer,
   current_rel_path : String,
-  active_scan_source : String,
+  prepared : WgslPreparedComposeSource,
   session : WgslComposeSession,
   importer_defs : WgslActiveComposeDefs,
 ) -> Array[WgslImportRequest] raise ComposerError {
   let qualified_targets : Array[WgslImportTarget] = []
-  let reference_scan_base_source = drop_wgsl_import_directives_from_compose_source_cached(
-    session, active_scan_source,
-  )
-  let active_scan_facts = collect_wgsl_compose_semantic_facts(
-    session, reference_scan_base_source,
-  ) catch {
+  let active_scan_facts = prepared.reference_scan_semantic_facts(session) catch {
     _ => return []
   }
   collect_wgsl_semantic_qualified_module_targets_from_facts(
@@ -210,7 +206,6 @@ fn Composer::build_wgsl_implicit_import_requests(
     qualified_targets,
   )
   self.build_wgsl_import_requests_from_targets(
-    current_rel_path, qualified_targets, active_scan_source, session, importer_defs,
-    true,
+    current_rel_path, qualified_targets, prepared, session, importer_defs, true,
   )
 }
