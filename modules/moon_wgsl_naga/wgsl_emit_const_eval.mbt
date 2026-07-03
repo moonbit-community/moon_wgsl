@@ -647,10 +647,20 @@ fn wgsl_ir_expression_origin_is_source_local_const_initializer(
 ) -> Bool {
   match function {
     Some(function) =>
-      wgsl_ir_expression_origin_retains_generated_import_denominator(
+      wgsl_naga_expression_origin_retains_generated_import_denominator(
         function.expressions.origin(handle),
       )
     None => false
+  }
+}
+
+///|
+fn wgsl_naga_expression_origin_retains_generated_import_denominator(
+  origin : ExpressionOrigin?,
+) -> Bool {
+  match origin {
+    Some(SourceLocalConstInitializer | RetainedSourceLetExpression) => true
+    _ => false
   }
 }
 

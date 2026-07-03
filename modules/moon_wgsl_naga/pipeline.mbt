@@ -87,6 +87,27 @@ pub fn roundtrip_wgsl_source_via_ir(
 }
 
 ///|
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(
+  source : String,
+  generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],
+  import_arena_events : Array[@ir.WgslIrImportArenaEvent],
+) -> String raise WgslNagaPipelineError {
+  let module_ = lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+    source, generated_import_provenance, import_arena_events,
+  )
+  let roots = wgsl_ir_entry_point_root_items(module_)
+  if roots.length() == 0 {
+    emit_wgsl_module_from_ir(module_) catch {
+      error => raise Emit(error.message())
+    }
+  } else {
+    emit_wgsl_module_from_ir_roots(module_, roots) catch {
+      error => raise Emit(error.message())
+    }
+  }
+}
+
+///|
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
   source : String,
   generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],

@@ -538,7 +538,7 @@ fn compose_wgsl_source_via_ir(
   symbols : WgslComposeSymbolTable,
   root_rel_path : String,
 ) -> String raise ComposerError {
-  @ir.roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(
+  @moon_wgsl_naga.roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(
     source,
     symbols.generated_import_provenance(root_rel_path),
     symbols.import_arena_events,

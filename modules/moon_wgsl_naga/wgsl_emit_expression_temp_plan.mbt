@@ -914,7 +914,7 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
   let mut skipped = 0
   for index in 0..<handle.index() {
     let expression_handle = Handle::Handle(index)
-    if wgsl_ir_function_expression_is_synthetic_local_reference(
+    if wgsl_naga_function_expression_is_synthetic_local_reference(
         function, expression_handle,
       ) ||
       wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(
@@ -959,6 +959,32 @@ fn wgsl_ir_emit_expression_temporary_index_trace(
     reused_resource_operand_slots,
     projected_temporary_slots,
     final_index,
+  }
+}
+
+///|
+fn wgsl_naga_function_expression_is_synthetic_local_reference(
+  function : Function,
+  handle : Handle,
+) -> Bool {
+  match function.expressions.items.get(handle.index()) {
+    Some(Load(inner)) =>
+      wgsl_naga_function_expression_is_synthetic_local_reference(
+        function, inner,
+      )
+    Some(LocalVariable(local_handle)) =>
+      match function.local_variables.items.get(local_handle.index()) {
+        Some(local_var) =>
+          if local_var.kind != Let {
+            false
+          } else if local_var.generated_temporary {
+            true
+          } else {
+            true
+          }
+        None => false
+      }
+    _ => false
   }
 }
 

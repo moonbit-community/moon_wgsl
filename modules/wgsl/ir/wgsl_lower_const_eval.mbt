@@ -1241,7 +1241,7 @@ fn WgslIrLowerer::function_binary_expression_should_retain_generated_import_cons
 }
 
 ///|
-pub fn wgsl_ir_expression_origin_retains_generated_import_denominator(
+fn wgsl_ir_expression_origin_retains_generated_import_denominator(
   origin : ExpressionOrigin?,
 ) -> Bool {
   match origin {

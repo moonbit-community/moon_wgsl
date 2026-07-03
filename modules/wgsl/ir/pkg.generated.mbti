@@ -14,12 +14,6 @@ pub fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(St
 
 pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslIrPipelineError
 
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
-
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent]) -> String raise WgslIrPipelineError
-
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots(String, Array[WgslIrGeneratedImportProvenance]) -> String raise WgslIrPipelineError
-
 pub fn sanitize_wgsl_ir_identifier(String) -> String
 
 pub fn tree_shake_wgsl_source_via_ir(String, Array[String]) -> String raise WgslIrPipelineError
@@ -34,11 +28,7 @@ pub fn wgsl_ir_cooperative_role_name(CooperativeRole) -> String
 
 pub fn wgsl_ir_cooperative_size_name(CooperativeSize) -> String
 
-pub fn wgsl_ir_expression_origin_retains_generated_import_denominator(ExpressionOrigin?) -> Bool
-
 pub fn wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(Function, Handle) -> Bool
-
-pub fn wgsl_ir_function_expression_is_synthetic_local_reference(Function, Handle) -> Bool
 
 pub fn wgsl_ir_function_named_expression_name(Function, Handle) -> String?
 

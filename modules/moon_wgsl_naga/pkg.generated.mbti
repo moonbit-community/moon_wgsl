@@ -12,6 +12,8 @@ pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_even
 
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer_entry_roots(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent]) -> String raise WgslNagaPipelineError
 
+pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent]) -> String raise WgslNagaPipelineError
+
 pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(String, Array[@ir.WgslIrGeneratedImportProvenance]) -> String raise WgslNagaPipelineError
 
 pub fn trace_compat_writer_function_plan_for_source(String, String) -> String raise WgslNagaPipelineError

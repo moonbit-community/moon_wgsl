@@ -152,6 +152,21 @@
         "pub(\\(all\\))? enum TokenKind",
         "pub suberror ParseError"
       ]
+    },
+    "modules/wgsl/ir/pkg.generated.mbti": {
+      "required": [
+        "pub fn parse_wgsl_module_to_ir\\(",
+        "pub fn roundtrip_wgsl_source_via_ir\\(",
+        "pub fn validate_wgsl_ir_module\\(",
+        "pub fn tree_shake_wgsl_source_via_ir\\("
+      ],
+      "forbidden": [
+        "pub fn roundtrip_wgsl_source_via_ir_with_generated_imports",
+        "pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events",
+        "pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_entry_roots",
+        "pub fn wgsl_ir_expression_origin_retains_generated_import_denominator",
+        "pub fn wgsl_ir_function_expression_is_synthetic_local_reference"
+      ]
     }
   },
   "symlinks": {

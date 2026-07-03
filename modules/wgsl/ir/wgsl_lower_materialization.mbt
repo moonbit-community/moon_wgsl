@@ -72,7 +72,7 @@ fn wgsl_ir_function_expression_is_atomic_compare_exchange_result_ref(
 }
 
 ///|
-pub fn wgsl_ir_function_expression_is_synthetic_local_reference(
+fn wgsl_ir_function_expression_is_synthetic_local_reference(
   function : Function,
   handle : Handle,
 ) -> Bool {
