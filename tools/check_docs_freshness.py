@@ -31,6 +31,33 @@ def module_version(module: str) -> str:
     return match.group(1)
 
 
+def manifest_version(path: Path) -> str:
+    text = path.read_text()
+    match = re.search(r'^version = "([^"]+)"$', text, re.MULTILINE)
+    if not match:
+        fail(f"missing version in {path.relative_to(REPO_ROOT)}")
+    return match.group(1)
+
+
+def manifest_dependency_version(path: Path, package: str) -> str:
+    text = path.read_text()
+    match = re.search(rf'"{re.escape(package)}@([^"]+)"', text)
+    if not match:
+        fail(f"missing dependency {package} in {path.relative_to(REPO_ROOT)}")
+    return match.group(1)
+
+
+def check_tools_manifest_freshness(release: str) -> None:
+    path = REPO_ROOT / "tools" / "moon.mod"
+    version = manifest_version(path)
+    if version != release:
+        fail(f"tools/moon.mod version is stale: expected {release}, found {version}")
+    for package in ["Milky2018/wgsl", "Milky2018/moon_wgsl_naga_oil"]:
+        dep_version = manifest_dependency_version(path, package)
+        if dep_version != release:
+            fail(f"tools/moon.mod dependency {package} is stale: expected {release}, found {dep_version}")
+
+
 def check_closed_issue_acceptance() -> None:
     for path in sorted((REPO_ROOT / "issues").glob("ISS-*.md")):
         text = path.read_text()
@@ -60,6 +87,7 @@ def check_naga_oil_parity_doc() -> None:
         other = module_version(module)
         if other != release:
             fail(f"workspace module versions are not synchronized: moon_wgsl={release}, {module}={other}")
+    check_tools_manifest_freshness(release)
     if f"published workspace line is `{release}`" not in docs:
         fail(f"docs/naga_oil-parity.md does not record current release {release}")
     if f"Upgrade to `Milky2018/moon_wgsl {release}`" not in docs:

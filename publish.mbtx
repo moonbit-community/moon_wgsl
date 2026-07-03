@@ -22,7 +22,7 @@ extern "js" fn js_run(command : String) -> Unit =
 
 fn usage() -> Unit {
   println("usage: moon run --target js publish.mbtx <version>")
-  println("example: moon run --target js publish.mbtx 0.15.0")
+  println("example: moon run --target js publish.mbtx 1.2.3")
 }
 
 fn update_manifest(path : String, version : String) -> Unit {
@@ -55,6 +55,7 @@ fn main {
   update_manifest("modules/moon_wgsl_naga/moon.mod", version)
   update_manifest("modules/moon_wgsl_naga_oil/moon.mod", version)
   update_manifest("modules/moon_wgsl/moon.mod", version)
+  update_manifest("tools/moon.mod", version)
 
   js_run("moon fmt")
   js_run("moon info --target all")
