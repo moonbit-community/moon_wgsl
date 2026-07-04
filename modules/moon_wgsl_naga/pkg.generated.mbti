@@ -6,21 +6,17 @@ import {
 }
 
 // Values
-pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslNagaPipelineError
+pub fn roundtrip_wgsl_compose_source(String, WgslNagaComposeContext, options? : WgslNagaPipelineOptions) -> String raise WgslNagaPipelineError
 
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslNagaPipelineError
+pub fn roundtrip_wgsl_source(String, options? : WgslNagaPipelineOptions) -> String raise WgslNagaPipelineError
 
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer_entry_roots(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent]) -> String raise WgslNagaPipelineError
+pub fn trace_writer_compose_function_plan(String, String, WgslNagaComposeContext, options? : WgslNagaPipelineOptions) -> String raise WgslNagaPipelineError
 
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent]) -> String raise WgslNagaPipelineError
+pub fn trace_writer_compose_module_plan(String, WgslNagaComposeContext, options? : WgslNagaPipelineOptions) -> String raise WgslNagaPipelineError
 
-pub fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(String, Array[@ir.WgslIrGeneratedImportProvenance]) -> String raise WgslNagaPipelineError
+pub fn trace_writer_function_plan(String, String, options? : WgslNagaPipelineOptions) -> String raise WgslNagaPipelineError
 
-pub fn trace_compat_writer_function_plan_for_source(String, String) -> String raise WgslNagaPipelineError
-
-pub fn trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent], String, root_visible_rel_path? : String) -> String raise WgslNagaPipelineError
-
-pub fn trace_compat_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(String, Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent], root_visible_rel_path? : String) -> String raise WgslNagaPipelineError
+pub fn trace_writer_module_plan(String, options? : WgslNagaPipelineOptions) -> String raise WgslNagaPipelineError
 
 // Errors
 pub suberror WgslNagaPipelineError {
@@ -32,6 +28,18 @@ pub suberror WgslNagaPipelineError {
 pub fn WgslNagaPipelineError::message(Self) -> String
 
 // Types and methods
+pub struct WgslNagaComposeContext {
+  // private fields
+}
+pub fn WgslNagaComposeContext::empty() -> Self
+pub fn WgslNagaComposeContext::from_import_graph(Array[@ir.WgslIrGeneratedImportProvenance], Array[@ir.WgslIrImportArenaEvent], root_visible_rel_path? : String) -> Self
+
+pub struct WgslNagaPipelineOptions {
+  // private fields
+}
+pub fn WgslNagaPipelineOptions::compat() -> Self
+pub fn WgslNagaPipelineOptions::runtime() -> Self
+pub fn WgslNagaPipelineOptions::with_entry_roots(Self) -> Self
 
 // Type aliases
 

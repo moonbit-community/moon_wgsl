@@ -13,32 +13,47 @@
 // limitations under the License.
 
 ///|
-pub fn trace_compat_writer_function_plan_for_source(
+fn trace_compat_writer_function_plan_for_source(
   source : String,
   function_name_prefix : String,
 ) -> String raise WgslNagaPipelineError {
-  trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(
+  trace_writer_function_plan(source, function_name_prefix)
+}
+
+///|
+pub fn trace_writer_function_plan(
+  source : String,
+  function_name_prefix : String,
+  options? : WgslNagaPipelineOptions = WgslNagaPipelineOptions::compat(),
+) -> String raise WgslNagaPipelineError {
+  trace_writer_function_plan_with_compose_context(
     source,
-    [],
-    [],
     function_name_prefix,
+    WgslNagaComposeContext::empty(),
+    options,
   )
 }
 
 ///|
-pub fn trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(
+pub fn trace_writer_compose_function_plan(
   source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[WgslIrImportArenaEvent],
   function_name_prefix : String,
-  root_visible_rel_path? : String = "",
+  context : WgslNagaComposeContext,
+  options? : WgslNagaPipelineOptions = WgslNagaPipelineOptions::compat(),
 ) -> String raise WgslNagaPipelineError {
-  let module_ = lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-    source,
-    generated_import_provenance,
-    import_arena_events,
-    root_visible_rel_path~,
+  trace_writer_function_plan_with_compose_context(
+    source, function_name_prefix, context, options,
   )
+}
+
+///|
+fn trace_writer_function_plan_with_compose_context(
+  source : String,
+  function_name_prefix : String,
+  context : WgslNagaComposeContext,
+  options : WgslNagaPipelineOptions,
+) -> String raise WgslNagaPipelineError {
+  let module_ = lower_validated_wgsl_source_to_ir_with_options(source, context)
   let view = build_wgsl_ir_writer_module(module_, None)
   for slot in view.entry_point_slots() {
     let final_name = view.names.get(
@@ -69,18 +84,24 @@ pub fn trace_compat_writer_function_plan_for_source_with_generated_imports_and_i
 }
 
 ///|
-pub fn trace_compat_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(
+pub fn trace_writer_module_plan(
   source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[WgslIrImportArenaEvent],
-  root_visible_rel_path? : String = "",
+  options? : WgslNagaPipelineOptions = WgslNagaPipelineOptions::compat(),
 ) -> String raise WgslNagaPipelineError {
-  let module_ = lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
+  trace_writer_compose_module_plan(
     source,
-    generated_import_provenance,
-    import_arena_events,
-    root_visible_rel_path~,
+    WgslNagaComposeContext::empty(),
+    options~,
   )
+}
+
+///|
+pub fn trace_writer_compose_module_plan(
+  source : String,
+  context : WgslNagaComposeContext,
+  options? : WgslNagaPipelineOptions = WgslNagaPipelineOptions::compat(),
+) -> String raise WgslNagaPipelineError {
+  let module_ = lower_validated_wgsl_source_to_ir_with_options(source, context)
   let view = build_wgsl_ir_writer_module(module_, None)
   wgsl_ir_writer_module_plan_trace(view)
 }

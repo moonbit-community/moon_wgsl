@@ -536,10 +536,15 @@ fn compose_wgsl_source_via_ir(
   symbols : WgslComposeSymbolTable,
   root_rel_path : String,
 ) -> String raise ComposerError {
-  @moon_wgsl_naga.roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_entry_roots(
-    source,
+  let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
     symbols.generated_import_provenance(root_rel_path),
     symbols.import_arena_events,
+  )
+  let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::runtime().with_entry_roots()
+  @moon_wgsl_naga.roundtrip_wgsl_compose_source(
+    source,
+    naga_context,
+    options=naga_options,
   ) catch {
     error =>
       match error {
@@ -560,11 +565,16 @@ fn compose_wgsl_source_via_compat_writer_ir(
   symbols : WgslComposeSymbolTable,
   root_rel_path : String,
 ) -> String raise ComposerError {
-  @moon_wgsl_naga.roundtrip_wgsl_source_via_ir_with_generated_imports_and_import_arena_events_compat_writer(
-    source,
+  let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
     symbols.generated_import_provenance(root_rel_path),
     symbols.import_arena_events,
     root_visible_rel_path=root_rel_path,
+  )
+  let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::compat()
+  @moon_wgsl_naga.roundtrip_wgsl_compose_source(
+    source,
+    naga_context,
+    options=naga_options,
   ) catch {
     error =>
       match error {
@@ -690,12 +700,18 @@ pub fn Composer::trace_naga_oil_writer_function_plan(
   function_name_prefix : String,
 ) -> String raise ComposerError {
   let resolved = self.resolve_wgsl_compose_source(rel, options)
-  @moon_wgsl_naga.trace_compat_writer_function_plan_for_source_with_generated_imports_and_import_arena_events(
-    resolved.source,
-    resolved.symbols.generated_import_provenance(normalize_shader_rel_path(rel)),
+  let root_rel_path = normalize_shader_rel_path(rel)
+  let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
+    resolved.symbols.generated_import_provenance(root_rel_path),
     resolved.symbols.import_arena_events,
+    root_visible_rel_path=root_rel_path,
+  )
+  let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::compat()
+  @moon_wgsl_naga.trace_writer_compose_function_plan(
+    resolved.source,
     function_name_prefix,
-    root_visible_rel_path=normalize_shader_rel_path(rel),
+    naga_context,
+    options=naga_options,
   ) catch {
     error =>
       match error {
@@ -717,11 +733,17 @@ pub fn Composer::trace_naga_oil_writer_module_plan(
   options : WgslComposeOptions,
 ) -> String raise ComposerError {
   let resolved = self.resolve_wgsl_compose_source(rel, options)
-  @moon_wgsl_naga.trace_compat_writer_module_plan_for_source_with_generated_imports_and_import_arena_events(
-    resolved.source,
-    resolved.symbols.generated_import_provenance(normalize_shader_rel_path(rel)),
+  let root_rel_path = normalize_shader_rel_path(rel)
+  let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
+    resolved.symbols.generated_import_provenance(root_rel_path),
     resolved.symbols.import_arena_events,
-    root_visible_rel_path=normalize_shader_rel_path(rel),
+    root_visible_rel_path=root_rel_path,
+  )
+  let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::compat()
+  @moon_wgsl_naga.trace_writer_compose_module_plan(
+    resolved.source,
+    naga_context,
+    options=naga_options,
   ) catch {
     error =>
       match error {
