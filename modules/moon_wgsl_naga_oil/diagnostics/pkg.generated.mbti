@@ -22,3 +22,4 @@ pub fn trace_writer_module_plan(@compose.Composer, String, @contract.WgslCompose
 // Type aliases
 
 // Traits
+
