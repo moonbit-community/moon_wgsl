@@ -5,7 +5,7 @@ using @ast {type WgslIdent}
 using @ast_analysis {collect_wgsl_decl_identifier_nodes}
 
 ///|
-using @common {type WgslResolvedImportModule}
+using @contract {type WgslResolvedImportModule}
 
 ///|
 using @lex {split_last_identifier, tokenize}

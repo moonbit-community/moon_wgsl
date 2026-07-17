@@ -16,7 +16,7 @@
 test "naga_oil upstream WGSL fixture mirror is complete" {
   let files = @resolver.scan_wgsl_source_files(
     moon_wgsl_testdata_path("naga_oil_upstream/compose_tests"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected naga_oil upstream fixture scan success")
   }

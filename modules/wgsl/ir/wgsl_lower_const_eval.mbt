@@ -1223,17 +1223,15 @@ fn WgslIrLowerer::function_expression_contains_constant_reference(
 }
 
 ///|
-fn WgslIrLowerer::function_binary_expression_should_retain_generated_import_constant(
+fn WgslIrLowerer::function_binary_expression_should_retain_named_constant(
   self : WgslIrLowerer,
   function : Function,
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
     Some(Binary(Divide, left, right)) =>
-      self.function_expression_is_generated_import_constant_reference(
-        function, left,
-      ) &&
-      wgsl_ir_expression_origin_retains_generated_import_denominator(
+      self.function_expression_is_named_constant_reference(function, left) &&
+      wgsl_ir_expression_origin_retains_named_constant_denominator(
         function.expressions.origin(right),
       )
     _ => false
@@ -1241,7 +1239,7 @@ fn WgslIrLowerer::function_binary_expression_should_retain_generated_import_cons
 }
 
 ///|
-fn wgsl_ir_expression_origin_retains_generated_import_denominator(
+fn wgsl_ir_expression_origin_retains_named_constant_denominator(
   origin : ExpressionOrigin?,
 ) -> Bool {
   match origin {
@@ -1251,17 +1249,14 @@ fn wgsl_ir_expression_origin_retains_generated_import_denominator(
 }
 
 ///|
-fn WgslIrLowerer::function_expression_is_generated_import_constant_reference(
+fn WgslIrLowerer::function_expression_is_named_constant_reference(
   self : WgslIrLowerer,
   function : Function,
   handle : Handle,
 ) -> Bool {
   match function.expressions.items.get(handle.index()) {
     Some(Constant(constant_handle)) =>
-      match self.shader_module.constants.items.get(constant_handle.index()) {
-        Some(constant) => constant.generated_import
-        None => false
-      }
+      self.shader_module.constants.items.get(constant_handle.index()) != None
     _ => false
   }
 }
@@ -1339,9 +1334,7 @@ fn WgslIrLowerer::inline_constant_literal_for_function(
     return None
   }
   guard ty.inner is Scalar(scalar) else { return None }
-  guard constant.inline_value ||
-    scalar.kind == AbstractInt ||
-    scalar.kind == AbstractFloat else {
+  guard scalar.kind == AbstractInt || scalar.kind == AbstractFloat else {
     return None
   }
   match scalar.kind {

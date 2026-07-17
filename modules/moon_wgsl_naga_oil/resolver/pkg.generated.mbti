@@ -2,12 +2,12 @@
 package "Milky2018/moon_wgsl_naga_oil/resolver"
 
 import {
-  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/contract",
   "moonbitlang/x/fs",
 }
 
 // Values
-pub fn collect_wgsl_import_targets(String, String, Array[@common.WgslImportTarget]) -> Unit
+pub fn collect_wgsl_import_targets(String, String, Array[@contract.WgslImportTarget]) -> Unit
 
 pub fn default_shader_rel_path_for_module_path(String) -> String
 
@@ -15,11 +15,11 @@ pub fn normalize_shader_rel_path(String) -> String
 
 pub fn resolve_wgsl_import_file_path_from_registry(WgslSourceRegistry, String, String) -> String?
 
-pub fn resolve_wgsl_import_module_in_registry(WgslSourceRegistry, String, Map[String, String]) -> @common.WgslResolvedImportModule?
+pub fn resolve_wgsl_import_module_in_registry(WgslSourceRegistry, String, Map[String, String]) -> @contract.WgslResolvedImportModule?
 
-pub fn scan_wgsl_source_files(String, @common.WgslSourceScanOptions) -> Array[@common.WgslSourceFile] raise @fs.IOError
+pub fn scan_wgsl_source_files(String, @contract.WgslSourceScanOptions) -> Array[@contract.WgslSourceFile] raise @fs.IOError
 
-pub fn scan_wgsl_source_files_checked(String, @common.WgslSourceScanOptions) -> (Array[@common.WgslSourceFile], Array[@common.WgslDiagnostic]) raise @fs.IOError
+pub fn scan_wgsl_source_files_checked(String, @contract.WgslSourceScanOptions) -> (Array[@contract.WgslSourceFile], Array[@contract.WgslDiagnostic]) raise @fs.IOError
 
 // Errors
 
@@ -27,14 +27,14 @@ pub fn scan_wgsl_source_files_checked(String, @common.WgslSourceScanOptions) -> 
 pub struct WgslSourceRegistry {
   // private fields
 }
-pub fn WgslSourceRegistry::analyze_source_files(Self, Array[@common.WgslSourceFile]) -> Array[@common.WgslDiagnostic]
+pub fn WgslSourceRegistry::analyze_source_files(Self, Array[@contract.WgslSourceFile]) -> Array[@contract.WgslDiagnostic]
 pub fn WgslSourceRegistry::candidate_rel_paths_for_module_path(Self, String) -> Array[String]
 pub fn WgslSourceRegistry::clear(Self) -> Unit
 pub fn WgslSourceRegistry::copy_import_module_paths(Self) -> Map[String, String]
 pub fn WgslSourceRegistry::default() -> Self
 pub fn WgslSourceRegistry::register_source(Self, String, String, String?) -> String?
-pub fn WgslSourceRegistry::register_source_files(Self, Array[@common.WgslSourceFile]) -> Unit
-pub fn WgslSourceRegistry::register_source_files_checked(Self, Array[@common.WgslSourceFile], Array[@common.WgslDiagnostic]) -> Unit
+pub fn WgslSourceRegistry::register_source_files(Self, Array[@contract.WgslSourceFile]) -> Unit
+pub fn WgslSourceRegistry::register_source_files_checked(Self, Array[@contract.WgslSourceFile], Array[@contract.WgslDiagnostic]) -> Unit
 pub fn WgslSourceRegistry::registered_source(Self, String) -> String?
 pub fn WgslSourceRegistry::remove_source_and_module(Self, String, String) -> Unit
 

@@ -199,57 +199,6 @@ fn WgslIrEmitter::texture_atomic_function_name(
 }
 
 ///|
-fn WgslIrEmitter::storage_format_name(
-  self : WgslIrEmitter,
-  format : StorageFormat,
-) -> String {
-  ignore(self)
-  match format {
-    R8Unorm => "r8unorm"
-    R8Snorm => "r8snorm"
-    R8Uint => "r8uint"
-    R8Sint => "r8sint"
-    R16Uint => "r16uint"
-    R16Sint => "r16sint"
-    R16Float => "r16float"
-    Rg8Unorm => "rg8unorm"
-    Rg8Snorm => "rg8snorm"
-    Rg8Uint => "rg8uint"
-    Rg8Sint => "rg8sint"
-    R32Uint => "r32uint"
-    R32Sint => "r32sint"
-    R32Float => "r32float"
-    Rg16Uint => "rg16uint"
-    Rg16Sint => "rg16sint"
-    Rg16Float => "rg16float"
-    Rgba8Unorm => "rgba8unorm"
-    Rgba8Snorm => "rgba8snorm"
-    Rgba8Uint => "rgba8uint"
-    Rgba8Sint => "rgba8sint"
-    Bgra8Unorm => "bgra8unorm"
-    Rgb10a2Uint => "rgb10a2uint"
-    Rgb10a2Unorm => "rgb10a2unorm"
-    Rg11b10Ufloat => "rg11b10ufloat"
-    R64Uint => "r64uint"
-    Rg32Uint => "rg32uint"
-    Rg32Sint => "rg32sint"
-    Rg32Float => "rg32float"
-    Rgba16Uint => "rgba16uint"
-    Rgba16Sint => "rgba16sint"
-    Rgba16Float => "rgba16float"
-    Rgba32Uint => "rgba32uint"
-    Rgba32Sint => "rgba32sint"
-    Rgba32Float => "rgba32float"
-    R16Unorm => "r16unorm"
-    R16Snorm => "r16snorm"
-    Rg16Unorm => "rg16unorm"
-    Rg16Snorm => "rg16snorm"
-    Rgba16Unorm => "rgba16unorm"
-    Rgba16Snorm => "rgba16snorm"
-  }
-}
-
-///|
 fn wgsl_ir_emit_storage_format_scalar(format : StorageFormat) -> Scalar {
   match format {
     R64Uint => Scalar(Uint, 8)

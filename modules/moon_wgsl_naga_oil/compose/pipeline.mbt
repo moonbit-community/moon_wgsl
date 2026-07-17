@@ -73,7 +73,7 @@ fn wgsl_compose_scan_has_import_directive(
 ///|
 fn wgsl_compose_directive_emission_kind(
   item : WgslDirectiveScanItem,
-  directive : WgslDirective,
+  directive : WgslPreprocessorDirective,
 ) -> WgslComposeSourceEmissionKind {
   match directive.kind() {
     DefineImportPath | Define => DropDirective
@@ -399,19 +399,32 @@ fn Composer::resolve_wgsl_compose_source(
 fn WgslComposeSymbolTable::generated_import_provenance(
   self : WgslComposeSymbolTable,
   root_rel_path : String,
-) -> Array[@ir.WgslIrGeneratedImportProvenance] {
+  composed_source : String,
+) -> Array[@moon_wgsl_naga.WgslNagaGeneratedImportProvenance] raise ComposerError {
+  let composed_source_starts : Map[String, Int] = Map([])
+  let composed_origins = extract_wgsl_module_item_origins_strict(
+    composed_source,
+    [],
+  ) catch {
+    error => raise composer_error_from_wgsl_parse_error(error)
+  }
+  for origin in composed_origins.origins() {
+    if !composed_source_starts.contains(origin.name()) {
+      composed_source_starts.set(origin.name(), origin.source_start())
+    }
+  }
   let seen = @set.Set([])
-  let provenance : Array[@ir.WgslIrGeneratedImportProvenance] = []
+  let provenance : Array[@moon_wgsl_naga.WgslNagaGeneratedImportProvenance] = []
   for binding in self.virtual_override_final_names {
     let name = binding.override_name
     if !seen.contains(name) {
       seen.add(name)
       provenance.push(
-        WgslIrGeneratedImportProvenance(
+        @moon_wgsl_naga.WgslNagaGeneratedImportProvenance(
           name,
           binding.rel_path,
           binding.target_name,
-          VirtualOverrideSymbol,
+          @moon_wgsl_naga.WgslNagaGeneratedImportProvenanceKind::VirtualOverrideSymbol,
           false,
         ),
       )
@@ -436,11 +449,11 @@ fn WgslComposeSymbolTable::generated_import_provenance(
     if !seen.contains(name) {
       seen.add(name)
       provenance.push(
-        WgslIrGeneratedImportProvenance(
+        @moon_wgsl_naga.WgslNagaGeneratedImportProvenance(
           name,
           origin.rel_path(),
           origin.source_symbol_name(),
-          ImportedSourceSymbol,
+          @moon_wgsl_naga.WgslNagaGeneratedImportProvenanceKind::ImportedSourceSymbol,
           root_rel_path.has_suffix(".glsl") ||
           origin.rel_path().has_suffix(".glsl"),
           local_spelling=self.generated_import_has_local_spelling(
@@ -464,11 +477,70 @@ fn WgslComposeSymbolTable::generated_import_provenance(
             .unwrap_or(-1),
           source_start=origin.source_start,
           source_end=origin.source_end,
+          composed_source_start=composed_source_starts.get(name).unwrap_or(-1),
         ),
       )
     }
   }
   provenance
+}
+
+///|
+fn wgsl_compose_declaration_kind_to_naga(
+  kind : WgslComposeDeclarationKind,
+) -> @moon_wgsl_naga.WgslNagaDeclarationKind {
+  match kind {
+    Type => Type
+    Constant => Constant
+    Override => Override
+    GlobalVariable => GlobalVariable
+    Function => Function
+  }
+}
+
+///|
+fn wgsl_compose_import_edge_kind_to_naga(
+  kind : WgslComposeImportEdgeKind,
+) -> @moon_wgsl_naga.WgslNagaImportEdgeKind {
+  match kind {
+    FullModule => FullModule
+    AliasModule => AliasModule
+    ItemBinding => ItemBinding
+  }
+}
+
+///|
+fn WgslComposeSymbolTable::naga_import_arena_events(
+  self : WgslComposeSymbolTable,
+) -> Array[@moon_wgsl_naga.WgslNagaImportArenaEvent] {
+  let events : Array[@moon_wgsl_naga.WgslNagaImportArenaEvent] = []
+  for event in self.import_arena_events {
+    let symbols : Array[@moon_wgsl_naga.WgslNagaImportArenaSymbol] = []
+    for symbol in event.generated_symbols() {
+      symbols.push(
+        @moon_wgsl_naga.WgslNagaImportArenaSymbol(
+          wgsl_compose_declaration_kind_to_naga(symbol.kind()),
+          symbol.source_symbol_name(),
+          symbol.generated_symbol_name(),
+          source_decl_rank=symbol.source_decl_rank(),
+          source_order_rank=symbol.source_order_rank(),
+        ),
+      )
+    }
+    events.push(
+      @moon_wgsl_naga.WgslNagaImportArenaEvent(
+        event.sequence(),
+        event.importer_rel_path(),
+        event.target_rel_path(),
+        event.module_path(),
+        event.alias_name(),
+        event.item_names(),
+        wgsl_compose_import_edge_kind_to_naga(event.kind()),
+        symbols,
+      ),
+    )
+  }
+  events
 }
 
 ///|
@@ -537,8 +609,8 @@ fn compose_wgsl_source_via_ir(
   root_rel_path : String,
 ) -> String raise ComposerError {
   let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
-    symbols.generated_import_provenance(root_rel_path),
-    symbols.import_arena_events,
+    symbols.generated_import_provenance(root_rel_path, source),
+    symbols.naga_import_arena_events(),
   )
   let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::runtime().with_entry_roots()
   @moon_wgsl_naga.roundtrip_wgsl_compose_source(
@@ -566,8 +638,8 @@ fn compose_wgsl_source_via_compat_writer_ir(
   root_rel_path : String,
 ) -> String raise ComposerError {
   let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
-    symbols.generated_import_provenance(root_rel_path),
-    symbols.import_arena_events,
+    symbols.generated_import_provenance(root_rel_path, source),
+    symbols.naga_import_arena_events(),
     root_visible_rel_path=root_rel_path,
   )
   let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::compat()
@@ -702,8 +774,8 @@ pub fn Composer::trace_naga_oil_writer_function_plan(
   let resolved = self.resolve_wgsl_compose_source(rel, options)
   let root_rel_path = normalize_shader_rel_path(rel)
   let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
-    resolved.symbols.generated_import_provenance(root_rel_path),
-    resolved.symbols.import_arena_events,
+    resolved.symbols.generated_import_provenance(root_rel_path, resolved.source),
+    resolved.symbols.naga_import_arena_events(),
     root_visible_rel_path=root_rel_path,
   )
   let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::compat()
@@ -735,8 +807,8 @@ pub fn Composer::trace_naga_oil_writer_module_plan(
   let resolved = self.resolve_wgsl_compose_source(rel, options)
   let root_rel_path = normalize_shader_rel_path(rel)
   let naga_context = @moon_wgsl_naga.WgslNagaComposeContext::from_import_graph(
-    resolved.symbols.generated_import_provenance(root_rel_path),
-    resolved.symbols.import_arena_events,
+    resolved.symbols.generated_import_provenance(root_rel_path, resolved.source),
+    resolved.symbols.naga_import_arena_events(),
     root_visible_rel_path=root_rel_path,
   )
   let naga_options = @moon_wgsl_naga.WgslNagaPipelineOptions::compat()

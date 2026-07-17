@@ -39,26 +39,29 @@ test "naga-oil writer applies root visible import spelling to struct members" {
     #|fn read(input: RootData) -> u32 {
     #|  return input.material + materialX_naga_oil_mod_IMPORT.value;
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "ImportedInputX_naga_oil_mod_IMPORT",
-      "types.wgsl",
-      "ImportedInput",
-      ImportedSourceSymbol,
-      false,
-    ),
-    WgslIrGeneratedImportProvenance(
-      "materialX_naga_oil_mod_IMPORT",
-      "bindings.wgsl",
-      "material",
-      ImportedSourceSymbol,
-      false,
-      root_local_spelling=true,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "ImportedInputX_naga_oil_mod_IMPORT",
+        "types.wgsl",
+        "ImportedInput",
+        ImportedSourceSymbol,
+        false,
+      ),
+      WgslNagaGeneratedImportProvenance(
+        "materialX_naga_oil_mod_IMPORT",
+        "bindings.wgsl",
+        "material",
+        ImportedSourceSymbol,
+        false,
+        root_local_spelling=true,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let emitted = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let emitted = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(

@@ -64,7 +64,7 @@ fn WgslIrWriterPlanner::generated_import_function_order(
   self : WgslIrWriterPlanner,
 ) -> Array[Int] {
   let order : Array[Int] = []
-  for event in self.shader_module.import_arena_events {
+  for event in self.compatibility.import_arena_events {
     for symbol in event.generated_symbols() {
       match symbol.kind() {
         Function =>
@@ -78,7 +78,9 @@ fn WgslIrWriterPlanner::generated_import_function_order(
   }
   for index in 0..<self.shader_module.functions.items.length() {
     if self.function_order_should_include(index, order) &&
-      self.shader_module.functions.items[index].generated_import {
+      self.compatibility.is_generated_import(
+        self.shader_module.functions.items[index].name,
+      ) {
       order.push(index)
     }
   }
@@ -93,7 +95,7 @@ fn WgslIrWriterPlanner::push_generated_import_function_by_name(
 ) -> Unit {
   for index in 0..<self.shader_module.functions.items.length() {
     let function = self.shader_module.functions.items[index]
-    if function.generated_import &&
+    if self.compatibility.is_generated_import(function.name) &&
       function.name == Some(name) &&
       self.function_order_should_include(index, order) {
       order.push(index)
@@ -132,7 +134,7 @@ fn WgslIrWriterPlanner::push_source_prefix_before_entry(
     let function = self.shader_module.functions.items[index]
     if function.source_start >= 0 &&
       function.source_start < entry_point.source_start &&
-      !function.generated_import &&
+      !self.compatibility.is_generated_import(function.name) &&
       self.function_order_should_include(index, order) {
       self.push_reachable_function_with_dependencies(order, index, call_graph)
     }

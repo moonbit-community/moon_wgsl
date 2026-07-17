@@ -14,7 +14,7 @@
 
 ///|
 fn semantic_graph_test_facts(source : String) -> WgslComposeSemanticFacts {
-  let unit = parse_wgsl_translation_unit_strict(source) catch {
+  let unit = parse_wgsl_compose_translation_unit(source) catch {
     _ => abort("expected semantic graph fixture parse success")
   }
   let declarations = collect_wgsl_semantic_declaration_names_from_unit(unit)

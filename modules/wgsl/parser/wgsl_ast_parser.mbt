@@ -27,27 +27,7 @@ fn parse_wgsl_raw_global_decl_strict(
   item : WgslRawTopLevelItem,
 ) -> WgslGlobalDecl raise WgslParseError {
   let item_text = source[item.start:item.end].to_owned()
-  let directive_text = replace_comments_preserving_byte_width(item_text)
   let (kind, data) = match item.kind {
-    DefineImportPath | Define =>
-      match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) =>
-          (
-            WgslGlobalDeclKind::Directive,
-            WgslGlobalDeclData::Directive(directive),
-          )
-        None => raise UnparsedDeclaration(item_text, item.start)
-      }
-    Import =>
-      match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) => (Import, Import(directive))
-        None => raise UnparsedDeclaration(item_text, item.start)
-      }
-    Directive =>
-      match parse_wgsl_directive_line_at(directive_text, item.start) {
-        Some(directive) => (Directive, Directive(directive))
-        None => raise UnparsedDeclaration(item_text, item.start)
-      }
     Declaration => {
       let data = parse_wgsl_declaration_data_at(item_text, item.start)
       (wgsl_global_decl_kind_from_data(data), data)

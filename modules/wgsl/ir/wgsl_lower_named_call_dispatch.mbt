@@ -190,7 +190,7 @@ fn wgsl_ir_subgroup_function_from_name(name : String) -> SubgroupFunction? {
 }
 
 ///|
-fn wgsl_ir_subgroup_function_name(function : SubgroupFunction) -> String {
+pub fn wgsl_ir_subgroup_function_name(function : SubgroupFunction) -> String {
   match function {
     Ballot => "subgroupBallot"
     All => "subgroupAll"

@@ -22,8 +22,6 @@ test "Naga-style shader IR module stores handles into arenas" {
   let literal = shader_module.append_global_expression(Literal(F32(1.0)))
   let constant = shader_module.append_constant({
     name: Some("ONE"),
-    generated_import: false,
-    inline_value: false,
     source_start: -1,
     ty: f32_ty,
     init: literal,

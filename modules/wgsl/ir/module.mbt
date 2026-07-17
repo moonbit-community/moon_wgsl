@@ -10,8 +10,6 @@ pub(all) struct Module {
   global_expressions : ExpressionArena
   functions : FunctionArena
   entry_points : Array[EntryPoint]
-  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
-  import_arena_events : Array[WgslIrImportArenaEvent]
   diagnostic_filters : DiagnosticFilterArena
   diagnostic_filter_leaf : Handle?
   doc_comments : DocComments?
@@ -30,8 +28,6 @@ pub fn Module::Module() -> Module {
     global_expressions: ExpressionArena(),
     functions: FunctionArena(),
     entry_points: [],
-    generated_import_provenance: Map([]),
-    import_arena_events: [],
     diagnostic_filters: DiagnosticFilterArena(),
     diagnostic_filter_leaf: None,
     doc_comments: None,

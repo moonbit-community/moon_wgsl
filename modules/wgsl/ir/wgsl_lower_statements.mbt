@@ -847,10 +847,7 @@ fn WgslIrLowerer::lower_local_declaration(
       None => ()
     }
   }
-  let lowered_name = self.generated_import_local_spelling_for_scope(
-    local_decl.name().name(),
-    scope,
-  )
+  let lowered_name = local_decl.name().name()
   if local_decl.kind() == Let {
     match init {
       Some(init_handle) =>
@@ -1001,10 +998,7 @@ fn WgslIrLowerer::lower_predeclared_source_var_const_initializer_to_handle(
   scope : WgslIrFunctionScope,
   handle : Handle,
 ) -> Unit raise WgslIrLowerError {
-  let lowered_name = self.generated_import_local_spelling_for_scope(
-    local_decl.name().name(),
-    scope,
-  )
+  let lowered_name = local_decl.name().name()
   let explicit_ty = match local_decl.ty_ref() {
     Some(ty_ref) => Some(self.lower_function_type_ref(ty_ref, function, scope))
     None => None
@@ -1200,10 +1194,7 @@ fn WgslIrLowerer::lower_local_var_store_declaration(
     local_decl.kind(),
     placeholder_ty,
   )
-  let lowered_name = self.generated_import_local_spelling_for_scope(
-    local_decl.name().name(),
-    scope,
-  )
+  let lowered_name = local_decl.name().name()
   let handle = match
     scope.predeclared_source_locals.get(
       wgsl_ir_local_declaration_key(local_decl),

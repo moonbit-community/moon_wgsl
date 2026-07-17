@@ -152,7 +152,11 @@ fn validate_wgsl_translation_unit_strict(
   if parse_glsl_version_directive(source) is Some(_) {
     return
   }
-  ignore(parse_wgsl_translation_unit_strict(source)) catch {
+  ignore(
+    parse_wgsl_translation_unit_strict(
+      mask_naga_oil_directives_for_wgsl(source),
+    ),
+  ) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
 }

@@ -1,6 +1,6 @@
 import {
-  "Milky2018/moon_wgsl_naga_oil/transform",
-  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/internal/transform",
+  "Milky2018/moon_wgsl_naga_oil/contract",
   "Milky2018/moon_wgsl_naga_oil/compose",
   "Milky2018/wgsl/ir",
   "Milky2018/wgsl/parser",

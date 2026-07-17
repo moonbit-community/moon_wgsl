@@ -35,11 +35,11 @@ fn composer_test_composer() -> @compose.Composer {
 ///|
 fn composer_test_compose_options(
   defines : Map[String, Bool],
-  redirects : Array[@common.WgslSymbolRedirect],
-) -> @common.WgslComposeOptions {
+  redirects : Array[@contract.WgslSymbolRedirect],
+) -> @contract.WgslComposeOptions {
   {
     defines,
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
@@ -52,7 +52,7 @@ fn register_composer_test_shader_source(path : String, source : String) -> Unit 
 
 ///|
 fn register_composer_test_shader_files(
-  files : Array[@common.WgslSourceFile],
+  files : Array[@contract.WgslSourceFile],
 ) -> Unit {
   composer_test_composer().register_source_files(files)
 }
@@ -671,7 +671,7 @@ test "naga_oil: composer local registry can compose without test registry state"
   ])
   let preprocessed = composer.compose_wgsl("shaders/effects/main.wgsl", {
     defines: empty_bool_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -691,7 +691,7 @@ test "naga_oil: composer local registry can compose without test registry state"
 
 ///|
 test "issue 5: template constants handle non-BMP source text" {
-  let value_defines = @common.default_wgsl_value_defines()
+  let value_defines = @profile.bevy_wgsl_value_defines()
   value_defines.set("CUSTOM_LIMIT", Int(42))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     (
@@ -716,7 +716,7 @@ test "issue 5: template constants handle non-BMP source text" {
 
 ///|
 test "template constants preserve large unsigned shader-def values" {
-  let value_defines = @common.default_wgsl_value_defines()
+  let value_defines = @profile.bevy_wgsl_value_defines()
   value_defines.set("LARGE_COUNT", UInt(3221225472U))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     (
@@ -749,7 +749,7 @@ test "template constants preserve large unsigned shader-def values" {
 
 ///|
 test "template constants support raw double-hash WGSL token placeholders" {
-  let value_defines = @common.default_wgsl_value_defines()
+  let value_defines = @profile.bevy_wgsl_value_defines()
   value_defines.set("TEXTURE_FORMAT", Raw("rgba8unorm"))
   let preprocessed = @compose.Composer::default().compose_wgsl_source(
     (
@@ -813,7 +813,7 @@ test "naga_oil: add_composable_module feeds the composer compose path" {
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
     defines: empty_bool_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -867,7 +867,7 @@ test "naga_oil: composer accepts whitespace after hash import directives" {
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
     defines: empty_bool_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -979,7 +979,7 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
   }
   let preprocessed = composer.compose_wgsl("shaders/demo/main.wgsl", {
     defines: empty_bool_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -999,13 +999,13 @@ test "naga_oil: composer can register a WGSL source tree from moonbitlang/x/fs" 
   composer.clear_sources()
   composer.register_source_tree(
     moon_wgsl_testdata_path("wgsl_scan"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected WGSL source tree registration success")
   }
   let preprocessed = composer.compose_wgsl("effects/main.wgsl", {
     defines: empty_bool_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -1038,7 +1038,7 @@ test "naga_oil: checked source-tree registration preserves existing registry con
   )
   let diagnostics = composer.register_source_tree_checked(
     moon_wgsl_testdata_path("wgsl_scan_conflict"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected checked WGSL source tree registration success")
   }
@@ -1522,7 +1522,7 @@ test "naga_oil: composer rejects unqualified import binding ambiguity" {
 test "naga_oil: source catalog uses per-module strict shader defs" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  let module_defs : Map[String, @common.ShaderDefValue] = Map([])
+  let module_defs : Map[String, @contract.ShaderDefValue] = Map([])
   module_defs.set("MODULE_FLAG", Bool(false))
   ignore(
     composer.add_composable_module({

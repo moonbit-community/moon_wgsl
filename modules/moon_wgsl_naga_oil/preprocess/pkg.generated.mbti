@@ -2,13 +2,13 @@
 package "Milky2018/moon_wgsl_naga_oil/preprocess"
 
 import {
-  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/contract",
 }
 
 // Values
-pub fn apply_wgsl_ifdefs_strict(String, Map[String, @common.ShaderDefValue]) -> String raise PreprocessError
+pub fn apply_wgsl_ifdefs_strict(String, Map[String, @contract.ShaderDefValue]) -> String raise PreprocessError
 
-pub fn apply_wgsl_template_consts(String, Map[String, @common.ShaderDefValue]) -> String
+pub fn apply_wgsl_template_consts(String, Map[String, @contract.ShaderDefValue]) -> String
 
 // Errors
 pub suberror PreprocessError {
@@ -26,7 +26,7 @@ pub suberror PreprocessError {
 pub struct Preprocessor {
 } derive(Default)
 pub fn Preprocessor::default() -> Self
-pub fn Preprocessor::preprocess(Self, String, Map[String, @common.ShaderDefValue]) -> @common.PreprocessOutput raise PreprocessError
+pub fn Preprocessor::preprocess(Self, String, Map[String, @contract.ShaderDefValue]) -> @contract.PreprocessOutput raise PreprocessError
 
 // Type aliases
 

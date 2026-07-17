@@ -24,8 +24,6 @@ test "IR emitter prints WGSL lowered from AST without source writeback" {
   let module_ = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  debug_inspect(module_.functions.items[0].generated_import, content="false")
-  debug_inspect(module_.functions.items[1].generated_import, content="false")
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
@@ -714,8 +712,6 @@ test "IR lowerer does not infer generated import provenance from names" {
   let emitted = emit_wgsl_module_from_ir(module_) catch {
     error => abort(error.message())
   }
-  debug_inspect(module_.functions.items[0].generated_import, content="false")
-  debug_inspect(module_.functions.items[1].generated_import, content="false")
   debug_inspect(emitted.contains("value_1"), content="true")
 }
 
@@ -729,26 +725,35 @@ test "IR lowerer accepts explicit generated import provenance" {
     #|fn secondX_naga_oil_mod_XABCDX(value: u32) -> u32 {
     #|  return value;
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "firstX_naga_oil_mod_XABCDX",
-      "imports/first.wgsl",
-      "first",
-      ImportedSourceSymbol,
-      false,
-    ),
-    WgslIrGeneratedImportProvenance(
-      "secondX_naga_oil_mod_XABCDX",
-      "imports/second.wgsl",
-      "second",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "firstX_naga_oil_mod_XABCDX",
+        "imports/first.wgsl",
+        "first",
+        ImportedSourceSymbol,
+        false,
+      ),
+      WgslNagaGeneratedImportProvenance(
+        "secondX_naga_oil_mod_XABCDX",
+        "imports/second.wgsl",
+        "second",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  debug_inspect(module_.functions.items[0].generated_import, content="true")
-  debug_inspect(module_.functions.items[1].generated_import, content="true")
+  debug_inspect(
+    compatibility.is_generated_import(module_.functions.items[0].name),
+    content="true",
+  )
+  debug_inspect(
+    compatibility.is_generated_import(module_.functions.items[1].name),
+    content="true",
+  )
 }
 
 ///|
@@ -864,7 +869,7 @@ test "naga-oil writer orders generated imports before root reachability helpers"
   let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
     source,
     [
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "importedX_naga_oil_mod_XABCDX",
         "imports/imported.wgsl",
         "imported",
@@ -1307,8 +1312,6 @@ test "IR emitter fails on invalid handles instead of inventing output" {
   let module_ = Module()
   let constant = Constant::{
     name: Some("BAD"),
-    generated_import: false,
-    inline_value: false,
     source_start: -1,
     ty: Handle(99),
     init: Handle(0),
@@ -1502,21 +1505,24 @@ test "naga-oil writer policy inlines array constants like Writer" {
   let root_module = parse_wgsl_module_to_ir(source) catch {
     error => abort(error.message())
   }
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "POINTS",
-      "imports/constants.wgsl",
-      "POINTS",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "POINTS",
+        "imports/constants.wgsl",
+        "POINTS",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
   let root_naga_oil = emit_wgsl_module_from_ir_compat_writer(root_module) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(root_naga_oil.contains("const POINTS:"), content="true")
@@ -1537,18 +1543,21 @@ test "naga-oil writer policy folds static generated array constant indexes" {
     #|fn sample() -> vec2<f32> {
     #|  return POINTS[0] * 0.5;
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "POINTS",
-      "imports/constants.wgsl",
-      "POINTS",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "POINTS",
+        "imports/constants.wgsl",
+        "POINTS",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(
@@ -1574,7 +1583,7 @@ test "generated import provenance supplies naga-oil local spelling collisions" {
   let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
     source,
     [
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "sourceX_naga_oil_mod_XABCDX",
         "imports/source.wgsl",
         "source",
@@ -1583,7 +1592,7 @@ test "generated import provenance supplies naga-oil local spelling collisions" {
         local_spelling=true,
         local_spelling_visible_rel_paths=["imports/source.wgsl"],
       ),
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "read_source",
         "imports/source.wgsl",
         "read_source",
@@ -1629,7 +1638,7 @@ test "generated import provenance supplies naga-oil local spelling for entry poi
   let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
     source,
     [
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "sourceX_naga_oil_mod_XABCDX",
         "imports/source.wgsl",
         "source",

@@ -18,7 +18,7 @@ expected_template_valid_cases="${WGSL_CTS_EXPECTED_TEMPLATE_VALID_CASES:-99}"
 expected_template_ir_cases="${WGSL_CTS_EXPECTED_TEMPLATE_IR_CASES:-97}"
 expected_template_oracle_blocked_cases="${WGSL_CTS_EXPECTED_TEMPLATE_ORACLE_BLOCKED_CASES:-2}"
 expected_invalid_cases="${WGSL_CTS_EXPECTED_INVALID_CASES:-87}"
-expected_invalid_oracle_accepted_cases="${WGSL_CTS_EXPECTED_INVALID_ORACLE_ACCEPTED_CASES:-21}"
+expected_invalid_oracle_accepted_cases="${WGSL_CTS_EXPECTED_INVALID_ORACLE_ACCEPTED_CASES:-20}"
 expected_template_invalid_cases="${WGSL_CTS_EXPECTED_TEMPLATE_INVALID_CASES:-57}"
 expected_template_invalid_oracle_accepted_cases="${WGSL_CTS_EXPECTED_TEMPLATE_INVALID_ORACLE_ACCEPTED_CASES:-16}"
 expected_execution_cases="${WGSL_CTS_EXPECTED_EXECUTION_CASES:-28}"
@@ -49,7 +49,7 @@ validate_wgsl_with_detected_capabilities() {
   if grep -q 'enable subgroups' "$emitted" || grep -q 'subgroup' "$emitted"; then
     validate_args+=(--capability subgroups)
   fi
-  if grep -q '@blend_src' "$emitted"; then
+  if grep -q 'enable dual_source_blending' "$emitted" || grep -q '@blend_src' "$emitted"; then
     validate_args+=(--capability dual-source-blending)
   fi
   if grep -q 'texture_external' "$emitted"; then

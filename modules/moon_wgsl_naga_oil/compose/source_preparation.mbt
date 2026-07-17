@@ -65,7 +65,7 @@ fn build_wgsl_redirect_reference_plan(
           match WgslReferencePath::from_text(from_name) {
             Some(reference_path) =>
               plan.add_symbol_reference_binding(
-                WgslIrSymbolIdentity("", from_name),
+                WgslComposeSymbolIdentity("", from_name),
                 reference_path,
                 to_name,
               )
@@ -108,7 +108,7 @@ fn prepare_wgsl_compose_source(
 fn parse_wgsl_compose_translation_unit(
   source : String,
 ) -> WgslTranslationUnit raise ComposerError {
-  parse_wgsl_translation_unit_strict(source) catch {
+  parse_wgsl_translation_unit_strict(mask_naga_oil_directives_for_wgsl(source)) catch {
     error => raise composer_error_from_wgsl_parse_error(error)
   }
 }

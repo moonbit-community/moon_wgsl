@@ -14,7 +14,7 @@
 
 ///|
 test "naga_oil: composable descriptor defaults to empty source" {
-  let composable = @common.ComposableModuleDescriptor::default()
+  let composable = @contract.ComposableModuleDescriptor::default()
   debug_inspect(composable.source, content="\"\"")
   debug_inspect(composable.file_path, content="\"\"")
   debug_inspect(composable.as_name, content="None")

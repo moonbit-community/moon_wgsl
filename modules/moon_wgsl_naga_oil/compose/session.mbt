@@ -121,13 +121,13 @@ priv struct WgslComposeSemanticFacts {
 
 ///|
 priv struct WgslComposeSymbolTable {
-  assigned_final_names : WgslIrFinalNameTable
-  emitted_final_names : WgslIrFinalNameTable
+  assigned_final_names : WgslComposeFinalNameTable
+  emitted_final_names : WgslComposeFinalNameTable
   virtual_override_final_names : Array[WgslVirtualOverrideFinalNameBinding]
   local_import_final_names : Array[WgslLocalImportFinalNameBinding]
   local_spelling_final_names : Array[WgslLocalSpellingFinalNameBinding]
   source_origins : Array[WgslSourceOriginEntry]
-  import_arena_events : Array[@ir.WgslIrImportArenaEvent]
+  import_arena_events : Array[WgslComposeImportArenaEvent]
 }
 
 ///|
@@ -145,7 +145,7 @@ priv struct WgslComposeSession {
   mut graph_execution_complete : Bool
   mut emitted_virtual_functions : Bool
   symbols : WgslComposeSymbolTable
-  link_graph : WgslIrLinkGraph
+  link_graph : WgslComposeLinkGraph
   semantic_facts : Map[String, WgslComposeSemanticFacts]
   directive_scans : Map[String, Array[WgslDirectiveScanItem]]
   importless_sources : Map[String, String]
@@ -228,7 +228,7 @@ priv struct WgslComposeBinding {
 
 ///|
 priv struct WgslComposeSymbolTarget {
-  identity : WgslIrSymbolIdentity
+  identity : WgslComposeSymbolIdentity
   identity_key : String
   final_name : String
 }
@@ -293,8 +293,8 @@ priv struct WgslLiveSymbolBinding {
 ///|
 fn WgslComposeSymbolTable::WgslComposeSymbolTable() -> WgslComposeSymbolTable {
   {
-    assigned_final_names: WgslIrFinalNameTable(),
-    emitted_final_names: WgslIrFinalNameTable(),
+    assigned_final_names: WgslComposeFinalNameTable(),
+    emitted_final_names: WgslComposeFinalNameTable(),
     virtual_override_final_names: [],
     local_import_final_names: [],
     local_spelling_final_names: [],
@@ -369,7 +369,7 @@ fn WgslLiveBindingPlan::reference_rewrite_plan(
     match WgslReferencePath::from_text(binding.raw_target_name) {
       Some(reference_path) =>
         plan.add_symbol_reference_binding(
-          WgslIrSymbolIdentity(binding.rel_path, binding.raw_target_name),
+          WgslComposeSymbolIdentity(binding.rel_path, binding.raw_target_name),
           reference_path,
           binding.target_name,
         )
@@ -399,7 +399,7 @@ fn WgslComposeBindingScope::label(self : WgslComposeBindingScope) -> String {
 
 ///|
 fn WgslComposeSymbolTarget::WgslComposeSymbolTarget(
-  identity : WgslIrSymbolIdentity,
+  identity : WgslComposeSymbolIdentity,
   final_name : String,
 ) -> WgslComposeSymbolTarget {
   {
@@ -429,7 +429,7 @@ fn WgslComposeBinding::for_alias_symbol(
   final_name : String,
   scope : WgslComposeBindingScope,
 ) -> WgslComposeBinding? {
-  let identity = WgslIrSymbolIdentity(rel_path, original_name)
+  let identity = WgslComposeSymbolIdentity(rel_path, original_name)
   match WgslReferencePath::from_text("\{alias_name}::\{original_name}") {
     Some(reference_path) =>
       Some(
@@ -451,7 +451,7 @@ fn WgslComposeBinding::for_unqualified_symbol(
   final_name : String,
   scope : WgslComposeBindingScope,
 ) -> WgslComposeBinding? {
-  let identity = WgslIrSymbolIdentity(rel_path, original_name)
+  let identity = WgslComposeSymbolIdentity(rel_path, original_name)
   match WgslReferencePath::from_text(original_name) {
     Some(reference_path) =>
       Some(
@@ -688,7 +688,7 @@ fn WgslComposeSession::record_local_spelling_final_name(
 ///|
 fn WgslComposeSession::record_canonical_final_name(
   self : WgslComposeSession,
-  identity : WgslIrSymbolIdentity,
+  identity : WgslComposeSymbolIdentity,
   final_name : String,
 ) -> Unit {
   self.symbols.emitted_final_names.canonical_set(identity, final_name)
@@ -698,7 +698,7 @@ fn WgslComposeSession::record_canonical_final_name(
 ///|
 fn WgslComposeSession::assign_canonical_final_name(
   self : WgslComposeSession,
-  identity : WgslIrSymbolIdentity,
+  identity : WgslComposeSymbolIdentity,
   final_name : String,
 ) -> Unit {
   self.symbols.assigned_final_names.canonical_set(identity, final_name)
@@ -708,7 +708,7 @@ fn WgslComposeSession::assign_canonical_final_name(
 ///|
 fn WgslComposeSession::assigned_canonical_final_name(
   self : WgslComposeSession,
-  identity : WgslIrSymbolIdentity,
+  identity : WgslComposeSymbolIdentity,
 ) -> String? {
   self.symbols.assigned_final_names.canonical_get(identity)
 }
@@ -716,7 +716,7 @@ fn WgslComposeSession::assigned_canonical_final_name(
 ///|
 fn WgslComposeSession::assign_alias_final_name(
   self : WgslComposeSession,
-  identity : WgslIrAliasSymbolIdentity,
+  identity : WgslComposeAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
   self.symbols.assigned_final_names.canonical_set(identity.symbol(), final_name)
@@ -727,7 +727,7 @@ fn WgslComposeSession::assign_alias_final_name(
 ///|
 fn WgslComposeSession::record_canonical_final_name_if_absent(
   self : WgslComposeSession,
-  identity : WgslIrSymbolIdentity,
+  identity : WgslComposeSymbolIdentity,
   final_name : String,
 ) -> Unit {
   if self.symbols.emitted_final_names.canonical_get(identity) is None {
@@ -738,7 +738,7 @@ fn WgslComposeSession::record_canonical_final_name_if_absent(
 ///|
 fn WgslComposeSession::record_alias_final_name(
   self : WgslComposeSession,
-  identity : WgslIrAliasSymbolIdentity,
+  identity : WgslComposeAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
   self.symbols.emitted_final_names.alias_set(identity, final_name)
@@ -748,7 +748,7 @@ fn WgslComposeSession::record_alias_final_name(
 ///|
 fn WgslComposeSession::record_alias_final_name_if_absent(
   self : WgslComposeSession,
-  identity : WgslIrAliasSymbolIdentity,
+  identity : WgslComposeAliasSymbolIdentity,
   final_name : String,
 ) -> Unit {
   if self.symbols.emitted_final_names.alias_get(identity) is None {

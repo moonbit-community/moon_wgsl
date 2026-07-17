@@ -1,6 +1,87 @@
 ///|
-fn WgslIrEmitter::type_is_pointer(
-  self : WgslIrEmitter,
+/// A policy-neutral type spelling service shared by WGSL writers.
+///
+/// Callers supply only writer-owned name/expression lookups and the two byte
+/// spelling choices that cannot be derived from semantic IR.
+pub struct WgslIrTypeSpelling {
+  priv shader_module : Module
+  priv final_type_name : (Handle) -> String?
+  priv global_expression : (Handle) -> String?
+  priv elide_storage_pointer_read_access : Bool
+  priv storage_texture_type_argument_separator : String
+}
+
+///|
+pub suberror WgslIrTypeSpellingError {
+  MissingType(Int)
+  MissingTypeName(Int)
+  MissingGlobalExpression(Int)
+  UnsupportedTypeSpelling(String)
+}
+
+///|
+pub fn WgslIrTypeSpellingError::message(
+  self : WgslIrTypeSpellingError,
+) -> String {
+  match self {
+    MissingType(index) => "missing IR type handle: \{index}"
+    MissingTypeName(index) => "missing final name for IR type: \{index}"
+    MissingGlobalExpression(index) =>
+      "missing spelling for IR global expression: \{index}"
+    UnsupportedTypeSpelling(message) =>
+      "unsupported IR type spelling: \{message}"
+  }
+}
+
+///|
+pub fn WgslIrTypeSpelling::new(
+  shader_module : Module,
+  final_type_name : (Handle) -> String?,
+  global_expression : (Handle) -> String?,
+  elide_storage_pointer_read_access : Bool,
+  storage_texture_type_argument_separator : String,
+) -> WgslIrTypeSpelling {
+  {
+    shader_module,
+    final_type_name,
+    global_expression,
+    elide_storage_pointer_read_access,
+    storage_texture_type_argument_separator,
+  }
+}
+
+///|
+fn WgslIrTypeSpelling::type_inference(
+  self : WgslIrTypeSpelling,
+) -> WgslIrTypeInference {
+  WgslIrTypeInference::from_module(self.shader_module)
+}
+
+///|
+fn WgslIrTypeSpelling::required_type_name(
+  self : WgslIrTypeSpelling,
+  handle : Handle,
+) -> String raise WgslIrTypeSpellingError {
+  match (self.final_type_name)(handle) {
+    Some(name) => name
+    None => raise MissingTypeName(handle.index())
+  }
+}
+
+///|
+fn WgslIrTypeSpelling::required_global_expression(
+  self : WgslIrTypeSpelling,
+  handle : Handle,
+) -> String raise WgslIrTypeSpellingError {
+  match (self.global_expression)(handle) {
+    Some(source) => source
+    None => raise MissingGlobalExpression(handle.index())
+  }
+}
+
+///|
+pub fn WgslIrTypeSpelling::type_is_pointer(
+  self : WgslIrTypeSpelling,
   handle : Handle,
 ) -> Bool {
   match self.shader_module.types.get(handle) {
@@ -14,8 +95,8 @@ fn WgslIrEmitter::type_is_pointer(
 }
 
 ///|
-fn WgslIrEmitter::type_contains_abstract_scalar(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeSpelling::type_contains_abstract_scalar(
+  self : WgslIrTypeSpelling,
   handle : Handle,
 ) -> Bool {
   match self.shader_module.types.get(handle) {
@@ -25,8 +106,8 @@ fn WgslIrEmitter::type_contains_abstract_scalar(
 }
 
 ///|
-fn WgslIrEmitter::type_inner_contains_abstract_scalar(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::type_inner_contains_abstract_scalar(
+  self : WgslIrTypeSpelling,
   inner : TypeInner,
 ) -> Bool {
   match inner {
@@ -53,32 +134,32 @@ fn WgslIrEmitter::type_inner_contains_abstract_scalar(
 }
 
 ///|
-fn WgslIrEmitter::expression_is_pointer(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeSpelling::expression_is_pointer(
+  self : WgslIrTypeSpelling,
   function : Function?,
   handle : Handle,
 ) -> Bool {
-  match self.expression_type(function, handle) {
+  match self.type_inference().expression_type(function, handle) {
     Some(ty) => self.type_is_pointer(ty)
     None => false
   }
 }
 
 ///|
-fn WgslIrEmitter::type_name(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeSpelling::type_name(
+  self : WgslIrTypeSpelling,
   handle : Handle,
-) -> String raise WgslIrEmitError {
+) -> String raise WgslIrTypeSpellingError {
   let ty = match self.shader_module.types.items.get(handle.index()) {
     Some(value) => value
-    None => raise MissingHandle("type \{handle.index()}")
+    None => raise MissingType(handle.index())
   }
   match ty.name {
     Some(name) =>
       match ty.inner {
         Scalar(_) => name
         Struct(_, _) | PredeclaredStruct(_, _) =>
-          self.required_emit_name(wgsl_ir_emit_name_key("type", handle.index()))
+          self.required_type_name(handle)
         _ => self.type_inner_name(ty.inner)
       }
     None =>
@@ -90,8 +171,8 @@ fn WgslIrEmitter::type_name(
 }
 
 ///|
-fn WgslIrEmitter::predeclared_result_type_name(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::predeclared_result_type_name(
+  self : WgslIrTypeSpelling,
   handle : Handle,
 ) -> String? {
   for item in self.shader_module.special_types.predeclared_types {
@@ -250,13 +331,13 @@ fn wgsl_ir_predeclared_scalar_from_parts(
 }
 
 ///|
-fn WgslIrEmitter::compose_constructor_name(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::compose_constructor_name(
+  self : WgslIrTypeSpelling,
   handle : Handle,
-) -> String raise WgslIrEmitError {
+) -> String raise WgslIrTypeSpellingError {
   let ty = match self.shader_module.types.items.get(handle.index()) {
     Some(value) => value
-    None => raise MissingHandle("type \{handle.index()}")
+    None => raise MissingType(handle.index())
   }
   if !self.type_inner_contains_abstract_scalar(ty.inner) {
     return self.type_name(handle)
@@ -271,24 +352,12 @@ fn WgslIrEmitter::compose_constructor_name(
 }
 
 ///|
-fn WgslIrEmitter::compose_constructor_name_for_components(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeSpelling::compose_constructor_name_for_components(
+  self : WgslIrTypeSpelling,
   handle : Handle,
   components : Array[Handle],
   function : Function?,
-) -> String raise WgslIrEmitError {
-  if self.options.inline_generated_import_constants() &&
-    self.compose_components_include_generated_import_constant(
-      components, function,
-    ) {
-    match
-      self.generated_import_constant_scalar_constructor_name(
-        handle, components, function,
-      ) {
-      Some(name) => return name
-      None => return self.type_name(handle)
-    }
-  }
+) -> String raise WgslIrTypeSpellingError {
   if components.length() == 1 {
     match self.shader_module.types.items.get(handle.index()) {
       Some(type_) =>
@@ -299,99 +368,20 @@ fn WgslIrEmitter::compose_constructor_name_for_components(
             }
           _ => ()
         }
-      None => raise MissingHandle("type \{handle.index()}")
+      None => raise MissingType(handle.index())
     }
   }
   self.compose_constructor_name(handle)
 }
 
 ///|
-fn WgslIrEmitter::compose_components_include_generated_import_constant(
-  self : WgslIrEmitter,
-  components : Array[Handle],
-  function : Function?,
-) -> Bool {
-  for component in components {
-    let expression = match function {
-      Some(func) =>
-        match func.expressions.items.get(component.index()) {
-          Some(value) => value
-          None => continue
-        }
-      None =>
-        match
-          self.shader_module.global_expressions.items.get(component.index()) {
-          Some(value) => value
-          None => continue
-        }
-    }
-    match expression {
-      Constant(handle) =>
-        match self.shader_module.constants.items.get(handle.index()) {
-          Some(constant) if constant.inline_value => return true
-          _ => ()
-        }
-      _ => ()
-    }
-  }
-  false
-}
-
-///|
-fn WgslIrEmitter::generated_import_constant_scalar_constructor_name(
-  self : WgslIrEmitter,
-  handle : Handle,
-  components : Array[Handle],
-  function : Function?,
-) -> String? {
-  let mut scalar : Scalar? = None
-  for component in components {
-    let expression = match function {
-      Some(func) =>
-        match func.expressions.items.get(component.index()) {
-          Some(value) => value
-          None => continue
-        }
-      None =>
-        match
-          self.shader_module.global_expressions.items.get(component.index()) {
-          Some(value) => value
-          None => continue
-        }
-    }
-    match expression {
-      Constant(constant_handle) =>
-        match self.shader_module.constants.items.get(constant_handle.index()) {
-          Some(constant) if constant.inline_value =>
-            match self.shader_module.types.items.get(constant.ty.index()) {
-              Some({ inner: Scalar(value), .. }) => scalar = Some(value)
-              _ => ()
-            }
-          _ => ()
-        }
-      _ => ()
-    }
-  }
-  guard scalar is Some(concrete_scalar) else { return None }
-  match self.shader_module.types.items.get(handle.index()) {
-    Some({ inner: Vector(size, _), .. }) =>
-      Some("vec\{size.width()}<\{self.scalar_name(concrete_scalar)}>")
-    Some({ inner: Matrix(columns, rows, _), .. }) =>
-      Some(
-        "mat\{columns.width()}x\{rows.width()}<\{self.scalar_name(concrete_scalar)}>",
-      )
-    _ => None
-  }
-}
-
-///|
-fn WgslIrEmitter::expression_is_scalar_type(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeSpelling::expression_is_scalar_type(
+  self : WgslIrTypeSpelling,
   function : Function?,
   handle : Handle,
   scalar : Scalar,
 ) -> Bool {
-  match self.expression_type(function, handle) {
+  match self.type_inference().expression_type(function, handle) {
     Some(ty_handle) =>
       match self.shader_module.types.items.get(ty_handle.index()) {
         Some(type_) =>
@@ -407,8 +397,8 @@ fn WgslIrEmitter::expression_is_scalar_type(
 }
 
 ///|
-fn WgslIrEmitter::scalar_matches_constructor_component(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::scalar_matches_constructor_component(
+  self : WgslIrTypeSpelling,
   value : Scalar,
   target : Scalar,
 ) -> Bool {
@@ -424,10 +414,10 @@ fn WgslIrEmitter::scalar_matches_constructor_component(
 }
 
 ///|
-fn WgslIrEmitter::type_inner_name(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::type_inner_name(
+  self : WgslIrTypeSpelling,
   inner : TypeInner,
-) -> String raise WgslIrEmitError {
+) -> String raise WgslIrTypeSpellingError {
   match inner {
     Scalar(scalar) => self.scalar_name(scalar)
     Vector(size, scalar) => "vec\{size.width()}<\{self.scalar_name(scalar)}>"
@@ -440,7 +430,7 @@ fn WgslIrEmitter::type_inner_name(
       match space {
         Storage(access) =>
           if access == StorageAccess::load() &&
-            self.options.elide_storage_pointer_read_access() {
+            self.elide_storage_pointer_read_access {
             "ptr<storage, \{self.type_name(base)}>"
           } else {
             "ptr<storage, \{self.type_name(base)}, \{self.storage_access_name(access)}>"
@@ -452,11 +442,11 @@ fn WgslIrEmitter::type_inner_name(
         Constant(value) => "array<\{self.type_name(base)}, \{value}>"
         Dynamic => "array<\{self.type_name(base)}>"
         Pending(handle) =>
-          "array<\{self.type_name(base)}, \{self.global_expression(handle)}>"
+          "array<\{self.type_name(base)}, \{self.required_global_expression(handle)}>"
       }
-    Struct(_, _) => raise Unsupported("anonymous struct type")
+    Struct(_, _) => raise UnsupportedTypeSpelling("anonymous struct type")
     PredeclaredStruct(_, _) =>
-      raise Unsupported("anonymous predeclared struct type")
+      raise UnsupportedTypeSpelling("anonymous predeclared struct type")
     Image(dimension, arrayed, image_class) =>
       self.image_type_name(dimension, arrayed, image_class)
     Sampler(comparison) =>
@@ -482,15 +472,15 @@ fn WgslIrEmitter::type_inner_name(
         Constant(value) => "binding_array<\{self.type_name(base)}, \{value}>"
         Dynamic => "binding_array<\{self.type_name(base)}>"
         Pending(handle) =>
-          "binding_array<\{self.type_name(base)}, \{self.global_expression(handle)}>"
+          "binding_array<\{self.type_name(base)}, \{self.required_global_expression(handle)}>"
       }
-    _ => raise Unsupported("type kind")
+    _ => raise UnsupportedTypeSpelling("type kind")
   }
 }
 
 ///|
-fn WgslIrEmitter::image_type_name(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::image_type_name(
+  self : WgslIrTypeSpelling,
   dimension : ImageDimension,
   arrayed : Bool,
   image_class : ImageClass,
@@ -510,15 +500,15 @@ fn WgslIrEmitter::image_type_name(
     }
     External => "texture_external"
     Storage(format, access) => {
-      let separator = self.options.storage_texture_type_argument_separator()
-      "texture_storage_\{self.image_dimension_suffix(dimension, arrayed)}<\{self.storage_format_name(format)}\{separator}\{self.storage_access_name(access)}>"
+      let separator = self.storage_texture_type_argument_separator
+      "texture_storage_\{self.image_dimension_suffix(dimension, arrayed)}<\{wgsl_ir_storage_format_name(format)}\{separator}\{self.storage_access_name(access)}>"
     }
   }
 }
 
 ///|
-fn WgslIrEmitter::image_dimension_suffix(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::image_dimension_suffix(
+  self : WgslIrTypeSpelling,
   dimension : ImageDimension,
   arrayed : Bool,
 ) -> String {
@@ -537,7 +527,10 @@ fn WgslIrEmitter::image_dimension_suffix(
 }
 
 ///|
-fn WgslIrEmitter::scalar_name(self : WgslIrEmitter, scalar : Scalar) -> String {
+pub fn WgslIrTypeSpelling::scalar_name(
+  self : WgslIrTypeSpelling,
+  scalar : Scalar,
+) -> String {
   ignore(self)
   match scalar.kind {
     Bool => "bool"
@@ -557,8 +550,8 @@ fn WgslIrEmitter::scalar_name(self : WgslIrEmitter, scalar : Scalar) -> String {
 }
 
 ///|
-fn WgslIrEmitter::scalar_kind_name(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::scalar_kind_name(
+  self : WgslIrTypeSpelling,
   kind : ScalarKind,
 ) -> String {
   ignore(self)
@@ -573,8 +566,8 @@ fn WgslIrEmitter::scalar_kind_name(
 }
 
 ///|
-fn WgslIrEmitter::address_space_template(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeSpelling::address_space_template(
+  self : WgslIrTypeSpelling,
   space : AddressSpace,
 ) -> String {
   match space {
@@ -597,8 +590,8 @@ fn WgslIrEmitter::address_space_template(
 }
 
 ///|
-fn WgslIrEmitter::address_space_name(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::address_space_name(
+  self : WgslIrTypeSpelling,
   space : AddressSpace,
 ) -> String {
   ignore(self)
@@ -617,8 +610,8 @@ fn WgslIrEmitter::address_space_name(
 }
 
 ///|
-fn WgslIrEmitter::storage_access_name(
-  self : WgslIrEmitter,
+fn WgslIrTypeSpelling::storage_access_name(
+  self : WgslIrTypeSpelling,
   access : StorageAccess,
 ) -> String {
   ignore(self)

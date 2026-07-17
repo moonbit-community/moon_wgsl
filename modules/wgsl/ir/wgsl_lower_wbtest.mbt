@@ -3646,6 +3646,56 @@ test "WGSL AST lowerer preserves f16 literal suffixes" {
 }
 
 ///|
+test "WGSL IR retains enable directives required by standalone types" {
+  let source =
+    #|enable dual_source_blending;
+    #|struct BlendOutput {
+    #|  @location(0) @blend_src(0) color: vec4f,
+    #|  @location(0) @blend_src(1) blend: vec4f,
+    #|}
+  let module_ = parse_wgsl_module_to_ir(source) catch {
+    error => abort(error.message())
+  }
+  let emitted = emit_wgsl_module_from_ir(module_) catch {
+    error => abort(error.message())
+  }
+  debug_inspect(
+    emitted.contains("enable dual_source_blending;"),
+    content="true",
+  )
+}
+
+///|
+test "WGSL IR rejects duplicate module-scope names across declaration kinds" {
+  let source =
+    #|fn S() {}
+    #|struct S {
+    #|  x: u32,
+    #|}
+  let message = try {
+    ignore(parse_wgsl_module_to_ir(source))
+    "ok"
+  } catch {
+    error => error.message()
+  }
+  debug_inspect(message, content="\"redefinition of `S`\"")
+}
+
+///|
+test "WGSL IR rejects duplicate struct members and function arguments" {
+  let sources = ["struct S { x: u32, x: u32 }\n", "fn f(x: u32, x: u32) {}\n"]
+  for source in sources {
+    let message = try {
+      ignore(parse_wgsl_module_to_ir(source))
+      "ok"
+    } catch {
+      error => error.message()
+    }
+    debug_inspect(message, content="\"redefinition of `x`\"")
+  }
+}
+
+///|
 test "WGSL AST lowerer materializes global binding accesses inside return constructors" {
   let source =
     #|const SIZE: u32 = 1u;
@@ -3975,7 +4025,7 @@ test "WGSL IR lowerer materializes function calls before assignment stores" {
     #|  item = make_item();
     #|  return item;
     #|}
-  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports(source, []) catch {
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("let _e"), content="true")
@@ -4033,7 +4083,7 @@ test "WGSL IR lowerer materializes user function call let values" {
     #|  let nested = select(0f, 1f, value(b) > direct);
     #|  return direct + nested;
     #|}
-  let emitted = roundtrip_wgsl_source_via_ir_with_generated_imports(source, []) catch {
+  let emitted = roundtrip_wgsl_source_via_ir(source) catch {
     error => abort(error.message())
   }
   debug_inspect(emitted.contains("let direct"), content="false")

@@ -87,7 +87,7 @@ fn WgslIrLowerer::fold_function_binary_expression_at_mark(
   expression_mark : Int,
   handle : Handle,
 ) -> Handle raise WgslIrLowerError {
-  if self.function_binary_expression_should_retain_generated_import_constant(
+  if self.function_binary_expression_should_retain_named_constant(
       function, handle,
     ) {
     return handle

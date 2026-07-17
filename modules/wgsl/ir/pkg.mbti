@@ -3,14 +3,13 @@ package "Milky2018/wgsl/ir"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/set",
 }
 
 // Values
+pub fn build_wgsl_ir_reachability(Module, Array[String]) -> WgslIrReachability
+
 pub fn parse_wgsl_module_to_ir(String) -> Module raise WgslIrLowerError
-
-pub fn parse_wgsl_module_to_ir_with_generated_imports(String, Array[WgslIrGeneratedImportProvenance]) -> Module raise WgslIrLowerError
-
-pub fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(String, Array[WgslIrGeneratedImportProvenance], Array[WgslIrImportArenaEvent], root_visible_rel_path? : String) -> Module raise WgslIrLowerError
 
 pub fn roundtrip_wgsl_source_via_ir(String) -> String raise WgslIrPipelineError
 
@@ -28,11 +27,7 @@ pub fn wgsl_ir_cooperative_role_name(CooperativeRole) -> String
 
 pub fn wgsl_ir_cooperative_size_name(CooperativeSize) -> String
 
-pub fn wgsl_ir_expression_origin_retains_generated_import_denominator(ExpressionOrigin?) -> Bool
-
 pub fn wgsl_ir_function_expression_is_atomic_compare_exchange_projection_role(Function, Handle) -> Bool
-
-pub fn wgsl_ir_function_expression_is_synthetic_local_reference(Function, Handle) -> Bool
 
 pub fn wgsl_ir_function_named_expression_name(Function, Handle) -> String?
 
@@ -47,6 +42,12 @@ pub fn wgsl_ir_identifier_is_reserved(String) -> Bool
 pub fn wgsl_ir_math_primary_result_operand(MathFunction, Handle, Handle?, Handle?, Handle?) -> Handle?
 
 pub fn wgsl_ir_negate_literal(Literal) -> Literal?
+
+pub fn wgsl_ir_semantic_source_directives(Module) -> Array[String]
+
+pub fn wgsl_ir_storage_format_name(StorageFormat) -> String
+
+pub fn wgsl_ir_subgroup_function_name(SubgroupFunction) -> String
 
 pub fn wgsl_ir_uint_literal_to_small_int(UInt) -> Int?
 
@@ -69,6 +70,14 @@ pub suberror WgslIrPipelineError {
   Reparse(String)
 }
 pub fn WgslIrPipelineError::message(Self) -> String
+
+pub suberror WgslIrTypeSpellingError {
+  MissingType(Int)
+  MissingTypeName(Int)
+  MissingGlobalExpression(Int)
+  UnsupportedTypeSpelling(String)
+}
+pub fn WgslIrTypeSpellingError::message(Self) -> String
 
 pub suberror WgslIrValidationError {
   InvalidTypeHandle(Int)
@@ -237,8 +246,6 @@ pub(all) enum ConservativeDepth {
 
 pub(all) struct Constant {
   name : String?
-  generated_import : Bool
-  inline_value : Bool
   source_start : Int
   ty : Handle
   init : Handle
@@ -403,7 +410,6 @@ pub(all) enum FilterableTriggeringRule {
 pub(all) struct Function {
   name : String?
   source_start : Int
-  generated_import : Bool
   arguments : Array[FunctionArgument]
   result : FunctionResult?
   local_variables : LocalVariableArena
@@ -654,8 +660,6 @@ pub(all) struct Module {
   global_expressions : ExpressionArena
   functions : FunctionArena
   entry_points : Array[EntryPoint]
-  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
-  import_arena_events : Array[WgslIrImportArenaEvent]
   diagnostic_filters : DiagnosticFilterArena
   diagnostic_filter_leaf : Handle?
   doc_comments : DocComments?
@@ -1011,129 +1015,45 @@ pub(all) enum VectorSize {
 } derive(Eq, @debug.Debug)
 pub fn VectorSize::width(Self) -> Int
 
-pub struct WgslIrAliasFinalNameEntry {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrAliasFinalNameEntry::final_name(Self) -> String
-pub fn WgslIrAliasFinalNameEntry::identity(Self) -> WgslIrAliasSymbolIdentity
+pub struct WgslIrReachability {
+  types : @set.Set[String]
+  type_order : Array[Int]
+  constants : @set.Set[String]
+  constant_order : Array[Int]
+  overrides : @set.Set[String]
+  override_order : Array[Int]
+  global_variables : @set.Set[String]
+  global_variable_order : Array[Int]
+  functions : @set.Set[String]
+  entry_points : @set.Set[String]
+}
+pub fn WgslIrReachability::contains_constant(Self, Int) -> Bool
+pub fn WgslIrReachability::contains_entry_point(Self, Int) -> Bool
+pub fn WgslIrReachability::contains_function(Self, Int) -> Bool
+pub fn WgslIrReachability::contains_global_variable(Self, Int) -> Bool
+pub fn WgslIrReachability::contains_override(Self, Int) -> Bool
+pub fn WgslIrReachability::contains_type(Self, Int) -> Bool
 
-pub struct WgslIrAliasSymbolIdentity {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrAliasSymbolIdentity::WgslIrAliasSymbolIdentity(String, String, String) -> Self
-pub fn WgslIrAliasSymbolIdentity::alias_name(Self) -> String
-pub fn WgslIrAliasSymbolIdentity::key(Self) -> String
-pub fn WgslIrAliasSymbolIdentity::symbol(Self) -> WgslIrSymbolIdentity
-
-pub struct WgslIrCanonicalFinalNameEntry {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrCanonicalFinalNameEntry::final_name(Self) -> String
-pub fn WgslIrCanonicalFinalNameEntry::identity(Self) -> WgslIrSymbolIdentity
-
-pub(all) enum WgslIrDeclarationKind {
-  Type
-  Constant
-  Override
-  GlobalVariable
-  Function
-} derive(Eq, @debug.Debug)
-
-pub struct WgslIrFinalNameTable {
+pub struct WgslIrTypeInference {
   // private fields
 }
-pub fn WgslIrFinalNameTable::WgslIrFinalNameTable() -> Self
-pub fn WgslIrFinalNameTable::alias_entries(Self) -> Array[WgslIrAliasFinalNameEntry]
-pub fn WgslIrFinalNameTable::alias_entries_for_scope(Self, String, String) -> Array[WgslIrAliasFinalNameEntry]
-pub fn WgslIrFinalNameTable::alias_get(Self, WgslIrAliasSymbolIdentity) -> String?
-pub fn WgslIrFinalNameTable::alias_set(Self, WgslIrAliasSymbolIdentity, String) -> Unit
-pub fn WgslIrFinalNameTable::canonical_entries_for_rel_path(Self, String) -> Array[WgslIrCanonicalFinalNameEntry]
-pub fn WgslIrFinalNameTable::canonical_entry_count(Self) -> Int
-pub fn WgslIrFinalNameTable::canonical_get(Self, WgslIrSymbolIdentity) -> String?
-pub fn WgslIrFinalNameTable::canonical_set(Self, WgslIrSymbolIdentity, String) -> Unit
+pub fn WgslIrTypeInference::as_expression_result_type(Self, Handle?, ScalarKind, Int) -> Handle?
+pub fn WgslIrTypeInference::atomic_pointer_scalar_type(Self, Function?, Handle) -> Scalar?
+pub fn WgslIrTypeInference::expression_type(Self, Function?, Handle) -> Handle?
+pub fn WgslIrTypeInference::from_module(Module) -> Self
 
-pub(all) struct WgslIrGeneratedImportProvenance {
-  generated_symbol_name : String
-  rel_path : String
-  source_symbol_name : String
-  kind : WgslIrGeneratedImportProvenanceKind
-  inline_value : Bool
-  local_spelling : Bool
-  root_local_spelling : Bool
-  local_spelling_visible_rel_paths : Array[String]
-  import_sequence : Int
-  source_start : Int
-  source_end : Int
-} derive(Eq, @debug.Debug)
-pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(String, String, String, WgslIrGeneratedImportProvenanceKind, Bool, local_spelling? : Bool, root_local_spelling? : Bool, local_spelling_visible_rel_paths? : Array[String], import_sequence? : Int, source_start? : Int, source_end? : Int) -> Self
-pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(Self) -> String
-
-pub(all) enum WgslIrGeneratedImportProvenanceKind {
-  ImportedSourceSymbol
-  VirtualOverrideSymbol
-} derive(Eq, @debug.Debug)
-
-pub struct WgslIrImportArenaEvent {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrImportArenaEvent::WgslIrImportArenaEvent(Int, String, String, String, String, Array[String], WgslIrImportEdgeKind, Array[WgslIrImportArenaSymbol]) -> Self
-pub fn WgslIrImportArenaEvent::generated_symbol_names(Self) -> Array[String]
-pub fn WgslIrImportArenaEvent::generated_symbols(Self) -> Array[WgslIrImportArenaSymbol]
-pub fn WgslIrImportArenaEvent::item_names(Self) -> Array[String]
-pub fn WgslIrImportArenaEvent::kind(Self) -> WgslIrImportEdgeKind
-pub fn WgslIrImportArenaEvent::sequence(Self) -> Int
-pub fn WgslIrImportArenaEvent::target_rel_path(Self) -> String
-
-pub struct WgslIrImportArenaSymbol {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrImportArenaSymbol::WgslIrImportArenaSymbol(WgslIrDeclarationKind, String, String, source_decl_rank? : Int, source_order_rank? : Int) -> Self
-pub fn WgslIrImportArenaSymbol::generated_symbol_name(Self) -> String
-pub fn WgslIrImportArenaSymbol::kind(Self) -> WgslIrDeclarationKind
-pub fn WgslIrImportArenaSymbol::source_decl_rank(Self) -> Int
-pub fn WgslIrImportArenaSymbol::source_order_rank(Self) -> Int
-pub fn WgslIrImportArenaSymbol::source_symbol_name(Self) -> String
-
-pub struct WgslIrImportEdge {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrImportEdge::WgslIrImportEdge(String, String, String, String, String, WgslIrImportEdgeKind) -> Self
-pub fn WgslIrImportEdge::key(Self) -> String
-
-pub(all) enum WgslIrImportEdgeKind {
-  FullModule
-  AliasModule
-  ItemBinding
-} derive(Eq, @debug.Debug)
-pub fn WgslIrImportEdgeKind::key(Self) -> String
-
-pub struct WgslIrLinkGraph {
+pub struct WgslIrTypeSpelling {
   // private fields
 }
-pub fn WgslIrLinkGraph::WgslIrLinkGraph() -> Self
-pub fn WgslIrLinkGraph::contains_reachable_symbol(Self, WgslIrSymbolIdentity) -> Bool
-pub fn WgslIrLinkGraph::import_arena_event_count(Self) -> Int
-pub fn WgslIrLinkGraph::import_arena_events(Self) -> Array[WgslIrImportArenaEvent]
-pub fn WgslIrLinkGraph::import_edge_count(Self) -> Int
-pub fn WgslIrLinkGraph::mark_reachable(Self, WgslIrSymbolIdentity) -> Unit
-pub fn WgslIrLinkGraph::record_import(Self, String, String, String, String, String, WgslIrImportEdgeKind) -> Unit
-pub fn WgslIrLinkGraph::record_import_arena_event(Self, String, String, String, String, Array[String], WgslIrImportEdgeKind, Array[WgslIrImportArenaSymbol]) -> Unit
-pub fn WgslIrLinkGraph::record_import_edge(Self, WgslIrImportEdge) -> Unit
-pub fn WgslIrLinkGraph::record_reachable_symbol(Self, WgslIrSymbolIdentity) -> Unit
-pub fn WgslIrLinkGraph::record_symbol(Self, WgslIrSymbolIdentity) -> Unit
-
-pub struct WgslIrSymbolIdentity {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrSymbolIdentity::WgslIrSymbolIdentity(String, String) -> Self
-pub fn WgslIrSymbolIdentity::key(Self) -> String
-pub fn WgslIrSymbolIdentity::original_name(Self) -> String
-pub fn WgslIrSymbolIdentity::rel_path(Self) -> String
-
-pub struct WgslIrSymbolNode {
-  // private fields
-} derive(Eq, @debug.Debug)
-pub fn WgslIrSymbolNode::identity(Self) -> WgslIrSymbolIdentity
+pub fn WgslIrTypeSpelling::address_space_template(Self, AddressSpace) -> String
+pub fn WgslIrTypeSpelling::compose_constructor_name_for_components(Self, Handle, Array[Handle], Function?) -> String raise WgslIrTypeSpellingError
+pub fn WgslIrTypeSpelling::expression_is_pointer(Self, Function?, Handle) -> Bool
+pub fn WgslIrTypeSpelling::expression_is_scalar_type(Self, Function?, Handle, Scalar) -> Bool
+pub fn WgslIrTypeSpelling::new(Module, (Handle) -> String?, (Handle) -> String?, Bool, String) -> Self
+pub fn WgslIrTypeSpelling::scalar_name(Self, Scalar) -> String
+pub fn WgslIrTypeSpelling::type_contains_abstract_scalar(Self, Handle) -> Bool
+pub fn WgslIrTypeSpelling::type_is_pointer(Self, Handle) -> Bool
+pub fn WgslIrTypeSpelling::type_name(Self, Handle) -> String raise WgslIrTypeSpellingError
 
 // Type aliases
 

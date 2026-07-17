@@ -14,7 +14,7 @@
 
 ///|
 test "naga_oil: import target parser preserves nested group and alias shapes" {
-  let targets : Array[@common.WgslImportTarget] = []
+  let targets : Array[@contract.WgslImportTarget] = []
   @resolver.collect_wgsl_import_targets(
     "bevy_render::{view::View, globals::Globals, maths as maths}", "", targets,
   )
@@ -31,7 +31,7 @@ test "naga_oil: import target parser preserves nested group and alias shapes" {
 
 ///|
 test "naga_oil: import target parser preserves grouped module aliases" {
-  let targets : Array[@common.WgslImportTarget] = []
+  let targets : Array[@contract.WgslImportTarget] = []
   @resolver.collect_wgsl_import_targets(
     "bevy_pbr::{\n  mesh_view_bindings as view_bindings,\n  view_transformations,\n}",
     "", targets,
@@ -174,7 +174,7 @@ test "naga_oil: bulk source registration resolves relative quoted file paths" {
 ///|
 test "naga_oil: registry analysis allows duplicate module path candidates" {
   let registry = @resolver.WgslSourceRegistry::default()
-  let files : Array[@common.WgslSourceFile] = [
+  let files : Array[@contract.WgslSourceFile] = [
     {
       rel_path: "shaders/demo/a.wgsl",
       source: (
@@ -204,7 +204,7 @@ test "naga_oil: registry analysis allows duplicate module path candidates" {
 ///|
 test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" {
   let registry = @resolver.WgslSourceRegistry::default()
-  let diagnostics : Array[@common.WgslDiagnostic] = []
+  let diagnostics : Array[@contract.WgslDiagnostic] = []
   registry.register_source_files_checked(
     [
       {
@@ -288,7 +288,7 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
   ])
   let source = composer.compose_wgsl(
     "root.wgsl",
-    @common.WgslComposeOptions::default(),
+    @contract.WgslComposeOptions::default(),
   ) catch {
     err =>
       abort("expected path-inferred module compose success: \{err.message()}")
@@ -301,7 +301,7 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
 test "naga_oil: scan_wgsl_source_files_checked allows duplicate module candidates" {
   let (files, diagnostics) = @resolver.scan_wgsl_source_files_checked(
     moon_wgsl_testdata_path("wgsl_scan_dups"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected checked WGSL source scan success")
   }

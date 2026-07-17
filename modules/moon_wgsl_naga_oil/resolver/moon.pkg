@@ -1,6 +1,6 @@
 import {
-  "Milky2018/wgsl/common",
-  "Milky2018/wgsl/import_syntax",
+  "Milky2018/moon_wgsl_naga_oil/contract",
+  "Milky2018/moon_wgsl_naga_oil/internal/import_syntax",
   "Milky2018/moon_wgsl_naga_oil/metadata",
   "Milky2018/wgsl/lex",
   "moonbitlang/core/ref",

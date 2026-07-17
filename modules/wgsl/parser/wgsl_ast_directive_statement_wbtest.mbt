@@ -29,50 +29,6 @@ test "WGSL source directives parse as directive AST nodes" {
 }
 
 ///|
-test "WGSL hash conditionals parse as directive AST nodes" {
-  let source =
-    #|#ifdef ENABLED
-    #|const A: u32 = 1u;
-    #|#endif
-    #|
-  let unit = parse_wgsl_translation_unit_for_test(source)
-  debug_inspect(unit.declarations()[0].kind(), content="Directive")
-  guard unit.declarations()[0].data() is Directive(ifdef) else {
-    abort("expected ifdef directive")
-  }
-  debug_inspect(ifdef.kind(), content="Ifdef")
-  debug_inspect(ifdef.tail(), content="\"ENABLED\"")
-  debug_inspect(ifdef.start(), content="0")
-  debug_inspect(ifdef.end(), content="14")
-  debug_inspect(ifdef.name().start(), content="1")
-  debug_inspect(ifdef.name().end(), content="6")
-  debug_inspect(ifdef.tail_start(), content="7")
-  debug_inspect(ifdef.tail_end(), content="14")
-  debug_inspect(unit.declarations()[1].kind(), content="Const")
-  debug_inspect(unit.declarations()[2].kind(), content="Directive")
-}
-
-///|
-test "WGSL hash directive spans are absolute in translation units" {
-  let source =
-    #|// lead
-    #|#ifdef ENABLED
-    #|#endif
-    #|
-  let unit = parse_wgsl_translation_unit_for_test(source)
-  debug_inspect(unit.declarations()[0].kind(), content="Trivia")
-  guard unit.declarations()[1].data() is Directive(ifdef) else {
-    abort("expected ifdef directive")
-  }
-  debug_inspect(ifdef.start(), content="8")
-  debug_inspect(ifdef.end(), content="22")
-  debug_inspect(ifdef.name().start(), content="9")
-  debug_inspect(ifdef.name().end(), content="14")
-  debug_inspect(ifdef.tail_start(), content="15")
-  debug_inspect(ifdef.tail_end(), content="22")
-}
-
-///|
 test "WGSL override function payload preserves qualified target path" {
   let source =
     #|override fn mod::inner(arg: f32) -> f32 {
@@ -275,85 +231,20 @@ test "WGSL for statement expressions keep shift compound update role" {
 }
 
 ///|
-test "WGSL struct parser accepts preprocessing directives inside members" {
-  let source =
-    #|struct LightingInput {
-    #|#ifdef STANDARD_MATERIAL_CLEARCOAT
-    #|  layers: array<LayerLightingInput, 2>,
-    #|#else   // STANDARD_MATERIAL_CLEARCOAT
-    #|  layers: array<LayerLightingInput, 1>,
-    #|#endif  // STANDARD_MATERIAL_CLEARCOAT
-    #|  P: vec3<f32>,
-    #|  F0_dielectric: vec3<f32>,
-    #|}
-    #|
-  let unit = parse_wgsl_translation_unit_strict(source) catch {
-    _ => abort("expected strict struct parse")
+test "strict WGSL parser rejects naga-oil hash directives" {
+  let sources = [
+    "#ifdef ENABLED\nconst A: u32 = 1u;\n#endif\n", "#define_import_path demo::module\nconst A: u32 = 1u;\n",
+    "#import demo::shared::Value\nconst A: u32 = 1u;\n",
+  ]
+  for source in sources {
+    let mut failed = false
+    ignore(parse_wgsl_translation_unit_strict(source)) catch {
+      _ => failed = true
+    }
+    guard failed else {
+      abort("expected strict WGSL rejection for naga-oil syntax")
+    }
   }
-  guard unit.declarations()[0].data() is Struct(struct_decl) else {
-    abort("expected struct")
-  }
-  debug_inspect(struct_decl.members().length(), content="4")
-  debug_inspect(struct_decl.members()[2].name().name(), content="\"P\"")
-}
-
-///|
-test "WGSL struct parser accepts Bevy LightingInput member shape" {
-  let source =
-    #|struct LightingInput {
-    #|#ifdef STANDARD_MATERIAL_CLEARCOAT
-    #|    layers: array<LayerLightingInput, 2>,
-    #|#else   // STANDARD_MATERIAL_CLEARCOAT
-    #|    layers: array<LayerLightingInput, 1>,
-    #|#endif  // STANDARD_MATERIAL_CLEARCOAT
-    #|
-    #|    // The world-space position.
-    #|    P: vec3<f32>,
-    #|    // The vector to the view.
-    #|    V: vec3<f32>,
-    #|
-    #|    // The diffuse color of the material.
-    #|    diffuse_color: vec3<f32>,
-    #|
-    #|    // The 0-1 metallic factor of the material.
-    #|    metallic: f32,
-    #|
-    #|    // Specular reflectance at the normal incidence angle.
-    #|    F0_dielectric: vec3<f32>,
-    #|    F0_metallic: vec3<f32>,
-    #|
-    #|    // Constants for the BRDF approximation.
-    #|    //
-    #|    // See `EnvBRDFApprox` in
-    #|    // <https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile>.
-    #|    // What we call `F_ab` they call `AB`.
-    #|    F_ab: vec2<f32>,
-    #|
-    #|#ifdef STANDARD_MATERIAL_CLEARCOAT
-    #|    // The strength of the clearcoat layer.
-    #|    clearcoat_strength: f32,
-    #|#endif  // STANDARD_MATERIAL_CLEARCOAT
-    #|
-    #|#ifdef STANDARD_MATERIAL_ANISOTROPY
-    #|    // The anisotropy strength, reflecting the amount of increased roughness in
-    #|    // the tangent direction.
-    #|    anisotropy: f32,
-    #|    // The tangent direction for anisotropy: i.e. the direction in which
-    #|    // roughness increases.
-    #|    Ta: vec3<f32>,
-    #|    // The bitangent direction, which is the cross product of the normal with
-    #|    // the tangent direction.
-    #|    Ba: vec3<f32>,
-    #|#endif  // STANDARD_MATERIAL_ANISOTROPY
-    #|}
-    #|
-  let unit = parse_wgsl_translation_unit_strict(source) catch {
-    _ => abort("expected strict Bevy struct parse")
-  }
-  guard unit.declarations()[0].data() is Struct(struct_decl) else {
-    abort("expected struct")
-  }
-  debug_inspect(struct_decl.members().length() > 10, content="true")
 }
 
 ///|

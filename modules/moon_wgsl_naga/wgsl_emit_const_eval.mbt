@@ -381,8 +381,9 @@ fn WgslIrEmitter::eval_constant_float_expression_for_constructor(
   handle : Handle,
 ) -> Double? {
   match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) if !constant.generated_import =>
-      self.eval_global_float_expression_for_emit(constant.init, Set([]))
+    Some(constant) if !self.writer_module.compatibility.is_generated_import(
+        constant.name,
+      ) => self.eval_global_float_expression_for_emit(constant.init, Set([]))
     _ => None
   }
 }
@@ -393,8 +394,9 @@ fn WgslIrEmitter::eval_constant_integer_expression_for_constructor(
   handle : Handle,
 ) -> WgslIrEmitIntegerValue? {
   match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) if !constant.generated_import =>
-      self.eval_global_integer_expression_for_emit(constant.init, Set([]))
+    Some(constant) if !self.writer_module.compatibility.is_generated_import(
+        constant.name,
+      ) => self.eval_global_integer_expression_for_emit(constant.init, Set([]))
     _ => None
   }
 }
@@ -673,7 +675,8 @@ fn WgslIrEmitter::expression_is_generated_import_constant_reference(
   match self.optional_expression(function, handle) {
     Some(Constant(constant_handle)) =>
       match self.shader_module.constants.items.get(constant_handle.index()) {
-        Some(constant) => constant.generated_import
+        Some(constant) =>
+          self.writer_module.compatibility.is_generated_import(constant.name)
         None => false
       }
     _ => false

@@ -56,18 +56,21 @@ test "naga-oil writer policy folds retained generated import scalar constants" {
     #|fn scale(value: f32) -> f32 {
     #|  return value * (1.0 / PIX_naga_oil_mod_XABCDX);
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "PIX_naga_oil_mod_XABCDX",
-      "imports/math.wgsl",
-      "PI",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "PIX_naga_oil_mod_XABCDX",
+        "imports/math.wgsl",
+        "PI",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(naga_oil.contains("0.31830987f"), content="true")
@@ -82,18 +85,21 @@ test "naga-oil writer policy folds generated import scalar constant literal deno
     #|fn scale(value: f32) -> f32 {
     #|  return (PIX_naga_oil_mod_XABCDX / 4.0) * value;
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "PIX_naga_oil_mod_XABCDX",
-      "imports/math.wgsl",
-      "PI",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "PIX_naga_oil_mod_XABCDX",
+        "imports/math.wgsl",
+        "PI",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(naga_oil.contains("0.7853982f"), content="true")
@@ -112,18 +118,21 @@ test "naga-oil writer policy retains generated import division by source let den
     #|  let slice_count = f32(4);
     #|  return (PIX_naga_oil_mod_XABCDX / slice_count) * value;
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "PIX_naga_oil_mod_XABCDX",
-      "imports/math.wgsl",
-      "PI",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "PIX_naga_oil_mod_XABCDX",
+        "imports/math.wgsl",
+        "PI",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(
@@ -141,18 +150,21 @@ test "naga-oil writer policy retains direct generated import scalar constant ope
     #|fn wrap(value: f32) -> f32 {
     #|  return PIX_naga_oil_mod_XABCDX - value;
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "PIX_naga_oil_mod_XABCDX",
-      "imports/math.wgsl",
-      "PI",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "PIX_naga_oil_mod_XABCDX",
+        "imports/math.wgsl",
+        "PI",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(
@@ -170,18 +182,21 @@ test "naga-oil writer policy folds generated import scalar constants in vector s
     #|fn ground(value: vec3<f32>) -> vec3<f32> {
     #|  return value / vec3(PIX_naga_oil_mod_XABCDX);
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "PIX_naga_oil_mod_XABCDX",
-      "imports/math.wgsl",
-      "PI",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "PIX_naga_oil_mod_XABCDX",
+        "imports/math.wgsl",
+        "PI",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(naga_oil.contains("vec3(3.1415927f)"), content="true")
@@ -199,18 +214,21 @@ test "naga-oil writer policy folds generated import scalar constants in vector a
     #|fn color(h: f32) -> vec3<f32> {
     #|  return cos(vec3(h) + vec3(0.0, 1.0, 2.0) * PIX_naga_oil_mod_XABCDX * 2.0 / 3.0);
     #|}
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports(source, [
-    WgslIrGeneratedImportProvenance(
-      "PIX_naga_oil_mod_XABCDX",
-      "imports/math.wgsl",
-      "PI",
-      ImportedSourceSymbol,
-      false,
-    ),
-  ]) catch {
+  let (module_, compatibility) = wgsl_naga_test_parse_with_generated_imports(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "PIX_naga_oil_mod_XABCDX",
+        "imports/math.wgsl",
+        "PI",
+        ImportedSourceSymbol,
+        false,
+      ),
+    ],
+  ) catch {
     error => abort(error.message())
   }
-  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_) catch {
+  let naga_oil = emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
     error => abort(error.message())
   }
   debug_inspect(

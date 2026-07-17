@@ -1,6 +1,21 @@
 ///|
-fn WgslIrEmitter::expression_type(
-  self : WgslIrEmitter,
+/// Semantic type queries shared by valid-WGSL and compatibility writers.
+///
+/// The query owns no naming, ordering, formatting, or compatibility policy.
+pub struct WgslIrTypeInference {
+  priv shader_module : Module
+}
+
+///|
+pub fn WgslIrTypeInference::from_module(
+  shader_module : Module,
+) -> WgslIrTypeInference {
+  { shader_module, }
+}
+
+///|
+pub fn WgslIrTypeInference::expression_type(
+  self : WgslIrTypeInference,
   function : Function?,
   handle : Handle,
 ) -> Handle? {
@@ -25,8 +40,8 @@ fn WgslIrEmitter::expression_type(
 }
 
 ///|
-fn WgslIrEmitter::function_expression_inner_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::function_expression_inner_type(
+  self : WgslIrTypeInference,
   function : Function,
   expression : Expression,
 ) -> Handle? {
@@ -170,8 +185,8 @@ fn WgslIrEmitter::function_expression_inner_type(
 }
 
 ///|
-fn WgslIrEmitter::as_expression_result_type(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeInference::as_expression_result_type(
+  self : WgslIrTypeInference,
   input : Handle?,
   kind : ScalarKind,
   width : Int,
@@ -190,8 +205,8 @@ fn WgslIrEmitter::as_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::cooperative_matrix_type_handle(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::cooperative_matrix_type_handle(
+  self : WgslIrTypeInference,
   columns : CooperativeSize,
   rows : CooperativeSize,
   scalar : Scalar,
@@ -218,8 +233,8 @@ fn WgslIrEmitter::cooperative_matrix_type_handle(
 }
 
 ///|
-fn WgslIrEmitter::type_handle_named(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::type_handle_named(
+  self : WgslIrTypeInference,
   name : String,
 ) -> Handle? {
   for index in 0..<self.shader_module.types.items.length() {
@@ -232,8 +247,8 @@ fn WgslIrEmitter::type_handle_named(
 }
 
 ///|
-fn WgslIrEmitter::global_expression_inner_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::global_expression_inner_type(
+  self : WgslIrTypeInference,
   expression : Expression,
 ) -> Handle? {
   match expression {
@@ -305,8 +320,8 @@ fn WgslIrEmitter::global_expression_inner_type(
 }
 
 ///|
-fn WgslIrEmitter::literal_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::literal_type(
+  self : WgslIrTypeInference,
   literal : Literal,
 ) -> Handle? {
   match literal {
@@ -323,8 +338,8 @@ fn WgslIrEmitter::literal_type(
 }
 
 ///|
-fn WgslIrEmitter::subgroup_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::subgroup_expression_result_type(
+  self : WgslIrTypeInference,
   function : Function?,
   subgroup_function : SubgroupFunction,
   arguments : Array[Handle],
@@ -341,38 +356,8 @@ fn WgslIrEmitter::subgroup_expression_result_type(
 }
 
 ///|
-fn wgsl_ir_emit_subgroup_function_name(function : SubgroupFunction) -> String {
-  match function {
-    Ballot => "subgroupBallot"
-    All => "subgroupAll"
-    Any => "subgroupAny"
-    Add => "subgroupAdd"
-    Mul => "subgroupMul"
-    Max => "subgroupMax"
-    Min => "subgroupMin"
-    And => "subgroupAnd"
-    Or => "subgroupOr"
-    Xor => "subgroupXor"
-    ExclusiveAdd => "subgroupExclusiveAdd"
-    ExclusiveMul => "subgroupExclusiveMul"
-    InclusiveAdd => "subgroupInclusiveAdd"
-    InclusiveMul => "subgroupInclusiveMul"
-    BroadcastFirst => "subgroupBroadcastFirst"
-    Broadcast => "subgroupBroadcast"
-    Shuffle => "subgroupShuffle"
-    ShuffleDown => "subgroupShuffleDown"
-    ShuffleUp => "subgroupShuffleUp"
-    ShuffleXor => "subgroupShuffleXor"
-    QuadBroadcast => "quadBroadcast"
-    QuadSwapX => "quadSwapX"
-    QuadSwapY => "quadSwapY"
-    QuadSwapDiagonal => "quadSwapDiagonal"
-  }
-}
-
-///|
-fn WgslIrEmitter::image_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::image_expression_result_type(
+  self : WgslIrTypeInference,
   function : Function?,
   image : Handle,
   gather : SwizzleComponent?,
@@ -407,8 +392,8 @@ fn WgslIrEmitter::image_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::image_query_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::image_query_expression_result_type(
+  self : WgslIrTypeInference,
   function : Function?,
   image : Handle,
   query : ImageQuery,
@@ -433,8 +418,8 @@ fn WgslIrEmitter::image_query_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::image_dimension_size_type_handle(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::image_dimension_size_type_handle(
+  self : WgslIrTypeInference,
   dimension : ImageDimension,
 ) -> Handle? {
   match dimension {
@@ -445,8 +430,8 @@ fn WgslIrEmitter::image_dimension_size_type_handle(
 }
 
 ///|
-fn WgslIrEmitter::indexed_expression_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::indexed_expression_type(
+  self : WgslIrTypeInference,
   function : Function?,
   base : Handle,
   index : Int?,
@@ -458,8 +443,8 @@ fn WgslIrEmitter::indexed_expression_type(
 }
 
 ///|
-fn WgslIrEmitter::indexed_type_from_type_handle(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::indexed_type_from_type_handle(
+  self : WgslIrTypeInference,
   ty_handle : Handle,
   index : Int?,
 ) -> Handle? {
@@ -486,8 +471,8 @@ fn WgslIrEmitter::indexed_type_from_type_handle(
 }
 
 ///|
-fn WgslIrEmitter::load_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::load_result_type(
+  self : WgslIrTypeInference,
   ty_handle : Handle,
 ) -> Handle? {
   let deref = self.deref_pointer_type_handle(ty_handle)
@@ -502,8 +487,8 @@ fn WgslIrEmitter::load_result_type(
 }
 
 ///|
-fn WgslIrEmitter::swizzle_expression_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::swizzle_expression_type(
+  self : WgslIrTypeInference,
   function : Function?,
   base : Handle,
   size : VectorSize,
@@ -522,8 +507,8 @@ fn WgslIrEmitter::swizzle_expression_type(
 }
 
 ///|
-fn WgslIrEmitter::find_vector_scalar_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::find_vector_scalar_type(
+  self : WgslIrTypeInference,
   scalar : Scalar,
 ) -> Handle? {
   let scalar_inner = TypeInner::Scalar(scalar)
@@ -536,8 +521,8 @@ fn WgslIrEmitter::find_vector_scalar_type(
 }
 
 ///|
-fn WgslIrEmitter::find_vector_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::find_vector_type(
+  self : WgslIrTypeInference,
   size : VectorSize,
   scalar : Scalar,
 ) -> Handle? {
@@ -551,8 +536,8 @@ fn WgslIrEmitter::find_vector_type(
 }
 
 ///|
-fn WgslIrEmitter::vector_type_from_scalar_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::vector_type_from_scalar_type(
+  self : WgslIrTypeInference,
   size : VectorSize,
   ty : Handle,
 ) -> Handle? {
@@ -563,8 +548,8 @@ fn WgslIrEmitter::vector_type_from_scalar_type(
 }
 
 ///|
-fn WgslIrEmitter::math_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::math_expression_result_type(
+  self : WgslIrTypeInference,
   function : Function?,
   math_function : MathFunction,
   argument : Handle,
@@ -641,8 +626,8 @@ fn WgslIrEmitter::math_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::transpose_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::transpose_expression_result_type(
+  self : WgslIrTypeInference,
   input_ty : Handle,
 ) -> Handle? {
   match self.shader_module.types.get(input_ty) {
@@ -657,8 +642,8 @@ fn WgslIrEmitter::transpose_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::scalar_type_from_composite_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::scalar_type_from_composite_type(
+  self : WgslIrTypeInference,
   ty_handle : Handle,
 ) -> Handle? {
   match self.shader_module.types.get(ty_handle) {
@@ -673,8 +658,8 @@ fn WgslIrEmitter::scalar_type_from_composite_type(
 }
 
 ///|
-fn WgslIrEmitter::relational_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::relational_expression_result_type(
+  self : WgslIrTypeInference,
   function : Function?,
   relational_function : RelationalFunction,
   argument : Handle,
@@ -690,8 +675,8 @@ fn WgslIrEmitter::relational_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::binary_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::binary_expression_result_type(
+  self : WgslIrTypeInference,
   op : BinaryOperator,
   left_ty : Handle,
   right_ty : Handle,
@@ -719,8 +704,8 @@ fn WgslIrEmitter::binary_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::contextual_numeric_binary_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::contextual_numeric_binary_result_type(
+  self : WgslIrTypeInference,
   left_ty : Handle,
   right_ty : Handle,
 ) -> Handle? {
@@ -761,8 +746,8 @@ fn WgslIrEmitter::contextual_numeric_binary_result_type(
 }
 
 ///|
-fn WgslIrEmitter::contextual_numeric_scalar_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::contextual_numeric_scalar_result_type(
+  self : WgslIrTypeInference,
   left_ty : Handle,
   left_scalar : Scalar,
   right_ty : Handle,
@@ -779,8 +764,8 @@ fn WgslIrEmitter::contextual_numeric_scalar_result_type(
 }
 
 ///|
-fn WgslIrEmitter::matrix_vector_multiply_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::matrix_vector_multiply_result_type(
+  self : WgslIrTypeInference,
   left_ty : Handle,
   right_ty : Handle,
 ) -> Handle? {
@@ -818,8 +803,8 @@ fn WgslIrEmitter::matrix_vector_multiply_result_type(
 }
 
 ///|
-fn WgslIrEmitter::find_matrix_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::find_matrix_type(
+  self : WgslIrTypeInference,
   columns : VectorSize,
   rows : VectorSize,
   scalar : Scalar,
@@ -834,8 +819,8 @@ fn WgslIrEmitter::find_matrix_type(
 }
 
 ///|
-fn WgslIrEmitter::boolean_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::boolean_result_type(
+  self : WgslIrTypeInference,
   left_ty : Handle,
   right_ty : Handle,
 ) -> Handle? {
@@ -850,8 +835,8 @@ fn WgslIrEmitter::boolean_result_type(
 }
 
 ///|
-fn WgslIrEmitter::type_is_scalar(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::type_is_scalar(
+  self : WgslIrTypeInference,
   ty_handle : Handle,
 ) -> Bool {
   match self.shader_module.types.get(ty_handle) {
@@ -865,8 +850,8 @@ fn WgslIrEmitter::type_is_scalar(
 }
 
 ///|
-fn WgslIrEmitter::vector_size_from_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::vector_size_from_type(
+  self : WgslIrTypeInference,
   ty_handle : Handle,
 ) -> VectorSize? {
   match self.shader_module.types.get(ty_handle) {
@@ -880,8 +865,8 @@ fn WgslIrEmitter::vector_size_from_type(
 }
 
 ///|
-fn WgslIrEmitter::find_scalar_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::find_scalar_type(
+  self : WgslIrTypeInference,
   scalar : Scalar,
 ) -> Handle? {
   let scalar_inner = TypeInner::Scalar(scalar)
@@ -894,8 +879,8 @@ fn WgslIrEmitter::find_scalar_type(
 }
 
 ///|
-fn WgslIrEmitter::predeclared_numeric_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::predeclared_numeric_result_type(
+  self : WgslIrTypeInference,
   input_ty : Handle,
   math_function : MathFunction,
 ) -> Handle? {
@@ -925,8 +910,8 @@ fn WgslIrEmitter::predeclared_numeric_result_type(
 }
 
 ///|
-fn WgslIrEmitter::atomic_expression_result_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::atomic_expression_result_type(
+  self : WgslIrTypeInference,
   function : Function?,
   atomic_function : AtomicFunction,
   arguments : Array[Handle],
@@ -950,8 +935,8 @@ fn WgslIrEmitter::atomic_expression_result_type(
 }
 
 ///|
-fn WgslIrEmitter::atomic_call_result_scalar_type(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::atomic_call_result_scalar_type(
+  self : WgslIrTypeInference,
   function : Function?,
   arguments : Array[Handle],
 ) -> Scalar? {
@@ -971,8 +956,8 @@ fn WgslIrEmitter::atomic_call_result_scalar_type(
 }
 
 ///|
-fn WgslIrEmitter::scalar_from_numeric_type_handle(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::scalar_from_numeric_type_handle(
+  self : WgslIrTypeInference,
   ty : Handle,
 ) -> Scalar? {
   match self.shader_module.types.get(ty) {
@@ -987,8 +972,8 @@ fn WgslIrEmitter::scalar_from_numeric_type_handle(
 }
 
 ///|
-fn WgslIrEmitter::atomic_pointer_scalar_type(
-  self : WgslIrEmitter,
+pub fn WgslIrTypeInference::atomic_pointer_scalar_type(
+  self : WgslIrTypeInference,
   function : Function?,
   pointer : Handle,
 ) -> Scalar? {
@@ -999,8 +984,80 @@ fn WgslIrEmitter::atomic_pointer_scalar_type(
 }
 
 ///|
-fn WgslIrEmitter::atomic_scalar_type_from_handle(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::deref_pointer_type_handle(
+  self : WgslIrTypeInference,
+  ty_handle : Handle,
+) -> Handle {
+  match self.shader_module.types.items.get(ty_handle.index()) {
+    Some(ty) =>
+      match ty.inner {
+        Pointer(inner, _) => self.deref_pointer_type_handle(inner)
+        _ => ty_handle
+      }
+    None => ty_handle
+  }
+}
+
+///|
+fn WgslIrTypeInference::expression_component_scalar(
+  self : WgslIrTypeInference,
+  function : Function?,
+  handle : Handle,
+) -> Scalar? {
+  match self.expression_type(function, handle) {
+    Some(ty_handle) => self.type_component_scalar(ty_handle)
+    None => None
+  }
+}
+
+///|
+fn WgslIrTypeInference::type_component_scalar(
+  self : WgslIrTypeInference,
+  ty : Handle,
+) -> Scalar? {
+  match self.shader_module.types.items.get(ty.index()) {
+    Some(type_) =>
+      match type_.inner {
+        Scalar(scalar) | Vector(_, scalar) | Matrix(_, _, scalar) =>
+          Some(scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrTypeInference::cooperative_data_scalar(
+  self : WgslIrTypeInference,
+  function : Function?,
+  data : CooperativeData,
+) -> Scalar? {
+  match self.expression_type(function, data.pointer) {
+    Some(ty) => self.cooperative_pointer_scalar(ty)
+    None => None
+  }
+}
+
+///|
+fn WgslIrTypeInference::cooperative_pointer_scalar(
+  self : WgslIrTypeInference,
+  ty : Handle,
+) -> Scalar? {
+  match self.shader_module.types.get(ty) {
+    Some(type_) =>
+      match type_.inner {
+        Pointer(base, _) => self.cooperative_pointer_scalar(base)
+        ValuePointer(_, scalar, _) => Some(scalar)
+        Scalar(scalar) => Some(scalar)
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn WgslIrTypeInference::atomic_scalar_type_from_handle(
+  self : WgslIrTypeInference,
   ty_handle : Handle,
 ) -> Scalar? {
   match self.shader_module.types.items.get(ty_handle.index()) {
@@ -1015,8 +1072,8 @@ fn WgslIrEmitter::atomic_scalar_type_from_handle(
 }
 
 ///|
-fn WgslIrEmitter::predeclared_type_handle(
-  self : WgslIrEmitter,
+fn WgslIrTypeInference::predeclared_type_handle(
+  self : WgslIrTypeInference,
   predeclared : PredeclaredType,
 ) -> Handle? {
   for item in self.shader_module.special_types.predeclared_types {

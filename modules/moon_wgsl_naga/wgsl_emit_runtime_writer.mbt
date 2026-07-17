@@ -8,8 +8,13 @@ priv struct WgslIrRuntimeWriterBackend {
 fn emit_wgsl_module_with_runtime_writer_backend(
   shader_module : Module,
   root_items : Array[String]?,
+  compatibility : WgslNagaCompatibilityView,
 ) -> String raise WgslIrEmitError {
-  let view = build_wgsl_ir_runtime_writer_module(shader_module, root_items)
+  let view = build_wgsl_ir_runtime_writer_module(
+    shader_module,
+    root_items,
+    compatibility~,
+  )
   let backend = WgslIrRuntimeWriterBackend::{ shader_module, view }
   backend.emit()
 }

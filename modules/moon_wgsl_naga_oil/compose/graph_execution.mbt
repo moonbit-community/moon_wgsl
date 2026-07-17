@@ -171,7 +171,7 @@ fn record_wgsl_planned_final_names_from_extraction(
     return
   }
   for origin in extraction.origins() {
-    let identity = WgslIrSymbolIdentity(rel_path, origin.name())
+    let identity = WgslComposeSymbolIdentity(rel_path, origin.name())
     let module_path = match module_path_override {
       Some(value) => value
       None =>
@@ -189,7 +189,7 @@ fn record_wgsl_planned_final_names_from_extraction(
       session.assign_canonical_final_name(identity, final_name)
     } else {
       session.assign_alias_final_name(
-        WgslIrAliasSymbolIdentity(
+        WgslComposeAliasSymbolIdentity(
           rel_path,
           alias_prefixes.join("__"),
           origin.name(),

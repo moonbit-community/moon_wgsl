@@ -22,16 +22,16 @@ fn bevy_parity_defines(names : Array[String]) -> Map[String, Bool] {
 }
 
 ///|
-fn bevy_parity_value_defines() -> Map[String, @common.ShaderDefValue] {
-  let value_defines = @common.default_wgsl_value_defines()
+fn bevy_parity_value_defines() -> Map[String, @contract.ShaderDefValue] {
+  let value_defines = @profile.bevy_wgsl_value_defines()
   value_defines.remove("PER_OBJECT_BUFFER_BATCH_SIZE")
   value_defines
 }
 
 ///|
 fn bevy_prepared_catalog_entry_text(
-  prepared : @common.PreparedWgslSource,
-  entry : @common.WgslSourceCatalogEntry,
+  prepared : @contract.PreparedWgslSource,
+  entry : @contract.WgslSourceCatalogEntry,
 ) -> String {
   for source_file in prepared.source_files {
     if source_file.rel_path == entry.rel_path &&
@@ -50,7 +50,7 @@ fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
   composer.clear_sources()
   composer.register_source_tree(
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
@@ -107,7 +107,7 @@ test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live"
   composer.clear_sources()
   composer.register_source_tree(
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
@@ -190,7 +190,7 @@ test "issue 10: cached alias redirect stress compose completes" {
   )
   let source = composer.compose_wgsl("stress/root.wgsl", {
     defines: empty_bool_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -255,7 +255,7 @@ test "issue 13: nested alias global references use emitted symbol identity" {
   )
   let source = composer.compose_wgsl("bevy_pbr/src/render/pbr.wgsl", {
     defines: empty_bool_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {
@@ -277,7 +277,7 @@ test "naga_oil parity: prepared Bevy catalog resolves alias-qualified bindings" 
   composer.clear_sources()
   composer.register_source_tree(
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }

@@ -104,7 +104,7 @@ fn WgslIrWriterModule::type_name_is_imported_generated_symbol(
 ) -> Bool {
   match name {
     Some(value) =>
-      match self.generated_import_provenance.get(value) {
+      match self.compatibility.generated_import(value) {
         Some(provenance) => provenance.kind == ImportedSourceSymbol
         None => false
       }
@@ -121,7 +121,7 @@ fn WgslIrWriterModule::root_struct_member_import_spelling_name(
     return source_name
   }
   let mut target : String? = None
-  for entry in self.generated_import_provenance.iter() {
+  for entry in self.compatibility.generated_import_provenance.iter() {
     let (_, provenance) = entry
     if provenance.kind != ImportedSourceSymbol ||
       !provenance.root_local_spelling ||
@@ -156,9 +156,13 @@ fn WgslIrWriterModule::allocate_entry_point_signature_names(
     module_namer.call(ep.name),
   )
   for arg_index in 0..<ep.function.arguments.length() {
+    let raw_name = match ep.function.arguments[arg_index].name {
+      Some(name) => Some(self.compatibility.root_local_spelling(name))
+      None => None
+    }
     table.names.set(
       wgsl_ir_emit_name_key2("ep_arg", slot.source_index, arg_index),
-      local_namer.call_or(ep.function.arguments[arg_index].name, "param"),
+      local_namer.call_or(raw_name, "param"),
     )
   }
 }
@@ -179,10 +183,18 @@ fn WgslIrWriterModule::allocate_function_signature_names(
     _ => module_namer.call_or(function.name, "function")
   }
   table.names.set(wgsl_ir_emit_name_key("fn", slot.source_index), name)
+  let visible_rel_path = self.compatibility.generated_function_rel_path(
+    function.name,
+  )
   for arg_index in 0..<function.arguments.length() {
+    let raw_name = match function.arguments[arg_index].name {
+      Some(value) =>
+        Some(self.compatibility.local_spelling(value, visible_rel_path))
+      None => None
+    }
     table.names.set(
       wgsl_ir_emit_name_key2("fn_arg", slot.source_index, arg_index),
-      local_namer.call_or(function.arguments[arg_index].name, "param"),
+      local_namer.call_or(raw_name, "param"),
     )
   }
 }
@@ -217,6 +229,8 @@ fn WgslIrWriterModule::allocate_entry_point_body_names(
     ep.function,
     slot.function_plan,
     namer,
+    self.compatibility,
+    Root,
   )
 }
 
@@ -233,6 +247,8 @@ fn WgslIrWriterModule::reserve_entry_point_var_local_names(
     slot.item.function,
     slot.function_plan,
     namer,
+    self.compatibility,
+    Root,
   )
 }
 
@@ -252,6 +268,8 @@ fn WgslIrWriterModule::allocate_function_body_names(
     function,
     slot.function_plan,
     namer,
+    self.compatibility,
+    Visible(self.compatibility.generated_function_rel_path(function.name)),
   )
 }
 
@@ -268,5 +286,7 @@ fn WgslIrWriterModule::reserve_function_var_local_names(
     slot.item,
     slot.function_plan,
     namer,
+    self.compatibility,
+    Visible(self.compatibility.generated_function_rel_path(slot.item.name)),
   )
 }

@@ -4,7 +4,6 @@ using @ast {
   type WgslBlock,
   type WgslConst,
   type WgslDirective,
-  type WgslDirectiveKind,
   type WgslExprNode,
   type WgslExprNodeKind,
   type WgslExprOperator,
@@ -42,22 +41,12 @@ using @ast {
 }
 
 ///|
-using @directive_syntax {
-  parse_wgsl_directive_line,
-  parse_wgsl_directive_line_at,
-}
-
-///|
 using @lex {
   type WgslToken,
   replace_comments,
-  replace_comments_preserving_byte_width,
-  raw_import_brace_balance_next,
   tokenize_wgsl,
   wgsl_blankspace_code_point,
   wgsl_identifier_text,
-  wgsl_line_end,
-  wgsl_line_start,
   wgsl_regex_trim_whitespace,
   wgsl_trim_blankspace,
 }

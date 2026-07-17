@@ -18,14 +18,12 @@ priv struct WgslStructPredeclareEntry {
   name : String
   source_start : Int
   first_use : Int
-  generated_import : Bool
   dependencies : Array[String]
 }
 
 ///|
 fn wgsl_ir_struct_predeclare_order(
   declarations : Array[@ast.WgslGlobalDecl],
-  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance],
 ) -> Array[@ast.WgslGlobalDecl] {
   let struct_names = @set.Set([])
   let entry_names = @set.Set([])
@@ -46,9 +44,6 @@ fn wgsl_ir_struct_predeclare_order(
           name,
           source_start: declaration.start(),
           first_use: declaration.start(),
-          generated_import: wgsl_ir_struct_predeclare_is_generated_import(
-            name, generated_import_provenance,
-          ),
           dependencies: [],
         })
       }
@@ -66,12 +61,7 @@ fn wgsl_ir_struct_predeclare_order(
       declaration: entry.declaration,
       name: entry.name,
       source_start: entry.source_start,
-      first_use: if entry.generated_import {
-        entry.source_start
-      } else {
-        first_uses.get(entry.name).unwrap_or(entry.source_start)
-      },
-      generated_import: entry.generated_import,
+      first_use: first_uses.get(entry.name).unwrap_or(entry.source_start),
       dependencies: wgsl_ir_collect_decl_struct_type_dependencies(
         entry.declaration,
         entry.name,
@@ -88,17 +78,6 @@ fn wgsl_ir_struct_predeclare_order(
     declarations_out.push(entry.declaration)
   }
   declarations_out
-}
-
-///|
-fn wgsl_ir_struct_predeclare_is_generated_import(
-  name : String,
-  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance],
-) -> Bool {
-  match generated_import_provenance.get(name) {
-    Some(provenance) => provenance.kind == ImportedSourceSymbol
-    None => false
-  }
 }
 
 ///|
@@ -297,7 +276,7 @@ fn wgsl_ir_record_decl_struct_type_first_uses(
           None => ()
         }
       }
-    Directive(_) | Import(_) | ConstAssert(_) | Raw => ()
+    Directive(_) | ConstAssert(_) | Raw => ()
   }
 }
 

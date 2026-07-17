@@ -38,7 +38,7 @@ fn preprocess_blank_text(text : String) -> String {
 ///|
 fn preprocess_check_scope_directive(
   shader_defs : Map[String, ShaderDefValue],
-  directive : WgslDirective,
+  directive : WgslPreprocessorDirective,
   scope : Scope?,
   offset : Int,
 ) -> (Bool, String?) raise PreprocessError {
@@ -139,11 +139,7 @@ fn preprocess_replace_shader_defs_in_text(
   let mut line_start = 0
   while line_start < text.length() {
     let line_text_end = preprocess_source_line_text_end(text, line_start)
-    let line_end = if line_text_end < text.length() {
-      line_text_end + 1
-    } else {
-      line_text_end
-    }
+    let line_end = line_text_end + wgsl_line_break_width(text, line_text_end)
     let line = text[line_start:line_text_end].to_owned()
     out = out + replace_shader_defs_in_line(line, shader_defs)
     if line_end > line_text_end {
@@ -166,19 +162,13 @@ fn preprocess_pad_rewritten_source_item(
     let rewritten_line_text_end = preprocess_source_line_text_end(
       rewritten, rewritten_line_start,
     )
-    let rewritten_line_end = if rewritten_line_text_end < rewritten.length() {
-      rewritten_line_text_end + 1
-    } else {
-      rewritten_line_text_end
-    }
+    let rewritten_line_end = rewritten_line_text_end +
+      wgsl_line_break_width(rewritten, rewritten_line_text_end)
     let reference_line_text_end = preprocess_source_line_text_end(
       reference, reference_line_start,
     )
-    let reference_line_end = if reference_line_text_end < reference.length() {
-      reference_line_text_end + 1
-    } else {
-      reference_line_text_end
-    }
+    let reference_line_end = reference_line_text_end +
+      wgsl_line_break_width(reference, reference_line_text_end)
     let rewritten_line = rewritten[rewritten_line_start:rewritten_line_text_end].to_owned()
     let reference_line = reference[reference_line_start:reference_line_text_end].to_owned()
     out = out + rewritten_line

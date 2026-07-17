@@ -1,10 +1,6 @@
 ///|
 priv enum WgslRawTopLevelKind {
   Trivia
-  Import
-  DefineImportPath
-  Define
-  Directive
   Declaration
 }
 

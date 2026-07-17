@@ -84,14 +84,14 @@ test "naga_oil wb: comment stripping replaces non-ascii comments by UTF-8 byte w
 }
 
 ///|
-test "naga_oil wb: comment stripping uses Rust CRLF line semantics" {
+test "byte-preserving comment stripping retains CRLF source offsets" {
   debug_inspect(
     replace_comments_preserving_byte_width("//x\r\nvalue"),
-    content="\"   \\nvalue\"",
+    content="\"   \\r\\nvalue\"",
   )
   debug_inspect(
     replace_comments_preserving_byte_width("/*x*/\r\nvalue"),
-    content="\"     \\nvalue\"",
+    content="\"     \\r\\nvalue\"",
   )
 }
 

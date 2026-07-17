@@ -5,7 +5,7 @@ using @transform {
 }
 
 ///|
-using @common {
+using @contract {
   type WgslComposeOptions,
   type WgslDiagnostic,
   type WgslDiagnosticSeverity,

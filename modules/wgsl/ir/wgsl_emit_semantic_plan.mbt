@@ -13,11 +13,6 @@
 // limitations under the License.
 
 ///|
-priv enum WgslIrGeneratedImportConstantSemanticPolicy {
-  EmitGeneratedImportConstants
-}
-
-///|
 priv enum WgslIrNumericConstantExpressionSemanticPolicy {
   PreserveNumericConstantExpressions
 }
@@ -34,7 +29,6 @@ priv enum WgslIrNumericLiteralContextSemanticPolicy {
 
 ///|
 priv struct WgslIrWriterSemanticPlan {
-  generated_import_constants : WgslIrGeneratedImportConstantSemanticPolicy
   numeric_constant_expressions : WgslIrNumericConstantExpressionSemanticPolicy
   matrix_scalar_constructors : WgslIrMatrixScalarConstructorSemanticPolicy
   numeric_literal_context : WgslIrNumericLiteralContextSemanticPolicy
@@ -43,19 +37,9 @@ priv struct WgslIrWriterSemanticPlan {
 ///|
 fn WgslIrWriterSemanticPlan::runtime_writer() -> WgslIrWriterSemanticPlan {
   {
-    generated_import_constants: EmitGeneratedImportConstants,
     numeric_constant_expressions: PreserveNumericConstantExpressions,
     matrix_scalar_constructors: PreserveMatrixScalarConstructors,
     numeric_literal_context: PreserveNumericLiteralKinds,
-  }
-}
-
-///|
-fn WgslIrWriterSemanticPlan::should_inline_generated_import_constants(
-  self : WgslIrWriterSemanticPlan,
-) -> Bool {
-  match self.generated_import_constants {
-    EmitGeneratedImportConstants => false
   }
 }
 

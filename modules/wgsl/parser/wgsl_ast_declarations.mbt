@@ -136,22 +136,6 @@ fn WgslDeclParser::tokenize_struct_members(
       _ => ()
     }
     match parser.view() {
-      [token, ..] if token.is_punctuation(35) => {
-        let hash_pos = token.pos()
-        match parser.directive_line_end_at_hash(hash_pos) {
-          Some(line_end) => {
-            while parser.view().length() > 0 &&
-                  parser.view()[0].pos() < line_end {
-              parser.drop_tokens(1)
-            }
-            continue
-          }
-          None => ()
-        }
-      }
-      _ => ()
-    }
-    match parser.view() {
       [token, .. rest] if token.is_punctuation(44) => {
         let pos = token.pos()
         parser.update_view(rest)
@@ -192,8 +176,6 @@ fn WgslDeclParser::tokenize_struct_members(
     match parser.view() {
       [token, ..] if token.is_punctuation(44) || token.is_punctuation(59) =>
         continue
-      [token, ..] if token.is_punctuation(35) &&
-        parser.directive_line_end_at_hash(token.pos()) is Some(_) => continue
       [] => break
       _ => raise UnexpectedToken
     }
@@ -601,7 +583,6 @@ fn wgsl_global_decl_kind_from_data(
     TypeAlias(_) => TypeAlias
     ConstAssert(_) => ConstAssert
     Directive(_) => Directive
-    Import(_) => Import
     Raw => Unknown
   }
 }

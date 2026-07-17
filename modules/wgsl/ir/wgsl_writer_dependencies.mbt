@@ -22,7 +22,7 @@ fn WgslIrWriterPlanner::function_order(
   self : WgslIrWriterPlanner,
 ) -> Array[Int] {
   let call_graph = self.function_call_graph()
-  let order = self.generated_import_function_order()
+  let order : Array[Int] = []
   let reachable = self.reachable_function_order(call_graph)
   for index in reachable {
     if self.function_order_should_include(index, order) {
@@ -60,49 +60,6 @@ fn WgslIrFunctionCallGraph::direct_calls_for(
 }
 
 ///|
-fn WgslIrWriterPlanner::generated_import_function_order(
-  self : WgslIrWriterPlanner,
-) -> Array[Int] {
-  let order : Array[Int] = []
-  for event in self.shader_module.import_arena_events {
-    for symbol in event.generated_symbols() {
-      match symbol.kind() {
-        Function =>
-          self.push_generated_import_function_by_name(
-            order,
-            symbol.generated_symbol_name(),
-          )
-        Type | Constant | Override | GlobalVariable => ()
-      }
-    }
-  }
-  for index in 0..<self.shader_module.functions.items.length() {
-    if self.function_order_should_include(index, order) &&
-      self.shader_module.functions.items[index].generated_import {
-      order.push(index)
-    }
-  }
-  order
-}
-
-///|
-fn WgslIrWriterPlanner::push_generated_import_function_by_name(
-  self : WgslIrWriterPlanner,
-  order : Array[Int],
-  name : String,
-) -> Unit {
-  for index in 0..<self.shader_module.functions.items.length() {
-    let function = self.shader_module.functions.items[index]
-    if function.generated_import &&
-      function.name == Some(name) &&
-      self.function_order_should_include(index, order) {
-      order.push(index)
-      return
-    }
-  }
-}
-
-///|
 fn WgslIrWriterPlanner::reachable_function_order(
   self : WgslIrWriterPlanner,
   call_graph : WgslIrFunctionCallGraph,
@@ -132,7 +89,6 @@ fn WgslIrWriterPlanner::push_source_prefix_before_entry(
     let function = self.shader_module.functions.items[index]
     if function.source_start >= 0 &&
       function.source_start < entry_point.source_start &&
-      !function.generated_import &&
       self.function_order_should_include(index, order) {
       self.push_reachable_function_with_dependencies(order, index, call_graph)
     }

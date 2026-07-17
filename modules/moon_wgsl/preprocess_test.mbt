@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn empty_shader_defs() -> Map[String, @common.ShaderDefValue] {
+fn empty_shader_defs() -> Map[String, @contract.ShaderDefValue] {
   Map([])
 }
 
@@ -21,7 +21,7 @@ fn empty_shader_defs() -> Map[String, @common.ShaderDefValue] {
 fn bool_shader_def(
   name : String,
   value : Bool,
-) -> Map[String, @common.ShaderDefValue] {
+) -> Map[String, @contract.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
   shader_defs.set(name, Bool(value))
   shader_defs
@@ -31,7 +31,7 @@ fn bool_shader_def(
 fn int_shader_def(
   name : String,
   value : Int,
-) -> Map[String, @common.ShaderDefValue] {
+) -> Map[String, @contract.ShaderDefValue] {
   let shader_defs = empty_shader_defs()
   shader_defs.set(name, Int(value))
   shader_defs
@@ -40,7 +40,7 @@ fn int_shader_def(
 ///|
 fn preprocess_without_ascii_whitespace(
   source : String,
-  shader_defs : Map[String, @common.ShaderDefValue],
+  shader_defs : Map[String, @contract.ShaderDefValue],
 ) -> String {
   let output = @preprocess.Preprocessor::default().preprocess(
     source, shader_defs,
@@ -58,7 +58,7 @@ fn preprocess_without_ascii_whitespace(
 }
 
 ///|
-fn metadata_or_abort(source : String) -> @common.PreprocessorMetaData {
+fn metadata_or_abort(source : String) -> @contract.PreprocessorMetaData {
   @metadata.get_preprocessor_metadata(source) catch {
     _ => abort("expected metadata parse success")
   }
@@ -67,9 +67,9 @@ fn metadata_or_abort(source : String) -> @common.PreprocessorMetaData {
 ///|
 fn metadata_imports_or_abort(
   source : String,
-) -> Array[@common.ImportDefinition] {
+) -> Array[@contract.ImportDefinition] {
   let metadata = metadata_or_abort(source)
-  let imports : Array[@common.ImportDefinition] = []
+  let imports : Array[@contract.ImportDefinition] = []
   for import_with_offset in metadata.imports {
     imports.push(import_with_offset.definition)
   }
@@ -83,7 +83,7 @@ fn upstream_compose_fixture_source(
 ) -> String {
   let files = @resolver.scan_wgsl_source_files(
     moon_wgsl_testdata_path("naga_oil_upstream/compose_tests/\{case_name}"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream compose fixture scan success")
   }

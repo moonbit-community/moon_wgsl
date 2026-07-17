@@ -38,16 +38,16 @@ test "Naga derived module view follows import arena events before root declarati
     "ImportedType", "imported_const", "imported_global", "imported_fn",
   ]
   let event_symbols = [
-    WgslIrImportArenaSymbol(Type, "ImportedType", "ImportedType"),
-    WgslIrImportArenaSymbol(Constant, "imported_const", "imported_const"),
-    WgslIrImportArenaSymbol(
+    WgslNagaImportArenaSymbol(Type, "ImportedType", "ImportedType"),
+    WgslNagaImportArenaSymbol(Constant, "imported_const", "imported_const"),
+    WgslNagaImportArenaSymbol(
       GlobalVariable,
       "imported_global",
       "imported_global",
     ),
-    WgslIrImportArenaSymbol(Function, "imported_fn", "imported_fn"),
+    WgslNagaImportArenaSymbol(Function, "imported_fn", "imported_fn"),
   ]
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -57,16 +57,20 @@ test "Naga derived module view follows import arena events before root declarati
     ItemBinding,
     event_symbols,
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let view = planner.derived_module_view()
-  debug_inspect(module_.import_arena_events.length(), content="1")
+  debug_inspect(compatibility.import_arena_events.length(), content="1")
   debug_inspect(
     module_.types.items[view.types[1]].name,
     content="Some(\"ImportedType\")",
@@ -98,7 +102,7 @@ test "Naga derived module view imports global type dependencies as arena side ef
     #|
     #|var<private> imported_global: ImportedType;
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -107,21 +111,25 @@ test "Naga derived module view imports global type dependencies as arena side ef
     ["imported_global"],
     ItemBinding,
     [
-      WgslIrImportArenaSymbol(
+      WgslNagaImportArenaSymbol(
         GlobalVariable,
         "imported_global",
         "imported_global",
       ),
     ],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let view = planner.derived_module_view()
   debug_inspect(
     module_.types.items[view.types[1]].name,
@@ -131,6 +139,84 @@ test "Naga derived module view imports global type dependencies as arena side ef
     module_.global_variables.items[view.global_variables[0]].name,
     content="Some(\"imported_global\")",
   )
+}
+
+///|
+test "Naga derived module view keeps later global types in semantic arena order" {
+  let source =
+    #|struct FirstType {
+    #|  value: u32,
+    #|}
+    #|
+    #|var<private> early_global: LaterType;
+    #|
+    #|struct MiddleType {
+    #|  value: u32,
+    #|}
+    #|
+    #|struct LaterType {
+    #|  value: u32,
+    #|}
+    #|
+  let event = WgslNagaImportArenaEvent(
+    0,
+    "root.wgsl",
+    "dep.wgsl",
+    "dep",
+    "",
+    ["early_global"],
+    ItemBinding,
+    [WgslNagaImportArenaSymbol(GlobalVariable, "early_global", "early_global")],
+  )
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
+    source,
+    [
+      WgslNagaGeneratedImportProvenance(
+        "FirstType",
+        "dep.wgsl",
+        "FirstType",
+        ImportedSourceSymbol,
+        false,
+        composed_source_start=0,
+        source_end=10,
+      ),
+      WgslNagaGeneratedImportProvenance(
+        "MiddleType",
+        "dep.wgsl",
+        "MiddleType",
+        ImportedSourceSymbol,
+        false,
+        composed_source_start=20,
+        source_end=30,
+      ),
+      WgslNagaGeneratedImportProvenance(
+        "LaterType",
+        "dep.wgsl",
+        "LaterType",
+        ImportedSourceSymbol,
+        false,
+        composed_source_start=40,
+        source_end=50,
+      ),
+    ],
+    [event],
+  ) catch {
+    error => abort(error.message())
+  }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
+  let view = planner.derived_module_view()
+  let names : Array[String] = []
+  for index in view.types {
+    match module_.types.items[index].name {
+      Some("FirstType" | "MiddleType" | "LaterType" as name) => names.push(name)
+      _ => ()
+    }
+  }
+  debug_inspect(names.join(","), content="\"FirstType,MiddleType,LaterType\"")
 }
 
 ///|
@@ -148,7 +234,7 @@ test "Naga derived module view imports called functions before imported caller" 
     #|  return 1u;
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -156,16 +242,20 @@ test "Naga derived module view imports called functions before imported caller" 
     "",
     ["imported_fn"],
     ItemBinding,
-    [WgslIrImportArenaSymbol(Function, "imported_fn", "imported_fn")],
+    [WgslNagaImportArenaSymbol(Function, "imported_fn", "imported_fn")],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let view = planner.derived_module_view()
   debug_inspect(
     module_.functions.items[view.functions[0]].name,
@@ -192,7 +282,7 @@ test "Naga derived module view sorts imported functions by source arena rank" {
     #|  return 3u;
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -201,19 +291,19 @@ test "Naga derived module view sorts imported functions by source arena rank" {
     ["selected_a", "selected_b", "late_helper"],
     ItemBinding,
     [
-      WgslIrImportArenaSymbol(
+      WgslNagaImportArenaSymbol(
         Function,
         "selected_a",
         "selected_a",
         source_order_rank=2,
       ),
-      WgslIrImportArenaSymbol(
+      WgslNagaImportArenaSymbol(
         Function,
         "selected_b",
         "selected_b",
         source_order_rank=3,
       ),
-      WgslIrImportArenaSymbol(
+      WgslNagaImportArenaSymbol(
         Function,
         "late_helper",
         "late_helper",
@@ -221,14 +311,18 @@ test "Naga derived module view sorts imported functions by source arena rank" {
       ),
     ],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let view = planner.derived_module_view()
   debug_inspect(
     module_.functions.items[view.functions[0]].name,
@@ -258,7 +352,7 @@ test "Writer arena uses derived constant import order" {
     #|  return imported_callee() + source_first;
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -266,16 +360,20 @@ test "Writer arena uses derived constant import order" {
     "",
     ["selected"],
     ItemBinding,
-    [WgslIrImportArenaSymbol(Function, "selected", "selected")],
+    [WgslNagaImportArenaSymbol(Function, "selected", "selected")],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let arena = planner.writer_arena()
   let names : Array[String] = []
   for slot in arena.constants {
@@ -298,7 +396,7 @@ test "Writer arena does not root unused full-module generated constants" {
     #|  return USED;
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -307,37 +405,37 @@ test "Writer arena does not root unused full-module generated constants" {
     [],
     FullModule,
     [
-      WgslIrImportArenaSymbol(Constant, "DEP", "DEP"),
-      WgslIrImportArenaSymbol(Constant, "USED", "USED"),
-      WgslIrImportArenaSymbol(Constant, "UNUSED", "UNUSED"),
-      WgslIrImportArenaSymbol(Function, "selected", "selected"),
+      WgslNagaImportArenaSymbol(Constant, "DEP", "DEP"),
+      WgslNagaImportArenaSymbol(Constant, "USED", "USED"),
+      WgslNagaImportArenaSymbol(Constant, "UNUSED", "UNUSED"),
+      WgslNagaImportArenaSymbol(Function, "selected", "selected"),
     ],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "DEP",
         "dep.wgsl",
         "DEP",
         ImportedSourceSymbol,
         false,
       ),
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "USED",
         "dep.wgsl",
         "USED",
         ImportedSourceSymbol,
         false,
       ),
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "UNUSED",
         "dep.wgsl",
         "UNUSED",
         ImportedSourceSymbol,
         false,
       ),
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "selected",
         "dep.wgsl",
         "selected",
@@ -349,7 +447,11 @@ test "Writer arena does not root unused full-module generated constants" {
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let arena = planner.writer_arena()
   let names : Array[String] = []
   for slot in arena.constants {
@@ -374,7 +476,7 @@ test "Writer arena imports entry point generated constant dependencies" {
     #|  }
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -383,21 +485,21 @@ test "Writer arena imports entry point generated constant dependencies" {
     [],
     FullModule,
     [
-      WgslIrImportArenaSymbol(Constant, "ENTRY_FLAG", "ENTRY_FLAG"),
-      WgslIrImportArenaSymbol(Constant, "UNUSED_FLAG", "UNUSED_FLAG"),
+      WgslNagaImportArenaSymbol(Constant, "ENTRY_FLAG", "ENTRY_FLAG"),
+      WgslNagaImportArenaSymbol(Constant, "UNUSED_FLAG", "UNUSED_FLAG"),
     ],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "ENTRY_FLAG",
         "dep.wgsl",
         "ENTRY_FLAG",
         ImportedSourceSymbol,
         false,
       ),
-      WgslIrGeneratedImportProvenance(
+      WgslNagaGeneratedImportProvenance(
         "UNUSED_FLAG",
         "dep.wgsl",
         "UNUSED_FLAG",
@@ -409,7 +511,11 @@ test "Writer arena imports entry point generated constant dependencies" {
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let arena = planner.writer_arena()
   let names : Array[String] = []
   for slot in arena.constants {
@@ -436,7 +542,7 @@ test "Writer arena uses derived nested function-call order" {
     #|  return parent_callee(argument_callee());
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -444,16 +550,20 @@ test "Writer arena uses derived nested function-call order" {
     "",
     ["selected"],
     ItemBinding,
-    [WgslIrImportArenaSymbol(Function, "selected", "selected")],
+    [WgslNagaImportArenaSymbol(Function, "selected", "selected")],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let arena = planner.writer_arena()
   let names : Array[String] = []
   for slot in arena.functions {
@@ -475,42 +585,46 @@ test "Naga derived module view consumes typed arena symbol records" {
     #|  value: u32,
     #|}
     #|
-    #|fn SharedName() -> u32 {
+    #|fn shared_name() -> u32 {
     #|  return 1u;
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
     "dep",
     "",
-    ["SharedName"],
+    ["shared_name"],
     ItemBinding,
-    [WgslIrImportArenaSymbol(Function, "SharedName", "SharedName")],
+    [WgslNagaImportArenaSymbol(Function, "shared_name", "shared_name")],
   )
   let recorded_symbols = event.generated_symbols()
   debug_inspect(recorded_symbols[0].kind(), content="Function")
   debug_inspect(
     recorded_symbols[0].source_symbol_name(),
-    content="\"SharedName\"",
+    content="\"shared_name\"",
   )
   debug_inspect(
     recorded_symbols[0].generated_symbol_name(),
-    content="\"SharedName\"",
+    content="\"shared_name\"",
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let view = planner.derived_module_view()
   debug_inspect(
     module_.functions.items[view.functions[0]].name,
-    content="Some(\"SharedName\")",
+    content="Some(\"shared_name\")",
   )
 }
 
@@ -535,7 +649,7 @@ test "Naga derived module view filters selected items through category loops" {
     #|  return value.value;
     #|}
     #|
-  let event = WgslIrImportArenaEvent(
+  let event = WgslNagaImportArenaEvent(
     0,
     "root.wgsl",
     "dep.wgsl",
@@ -544,21 +658,29 @@ test "Naga derived module view filters selected items through category loops" {
     ["DirectType", "direct_global", "direct_function"],
     ItemBinding,
     [
-      WgslIrImportArenaSymbol(Function, "direct_function", "direct_function"),
-      WgslIrImportArenaSymbol(Type, "FunctionArgType", "FunctionArgType"),
-      WgslIrImportArenaSymbol(Type, "DirectType", "DirectType"),
-      WgslIrImportArenaSymbol(Type, "GlobalType", "GlobalType"),
-      WgslIrImportArenaSymbol(GlobalVariable, "direct_global", "direct_global"),
+      WgslNagaImportArenaSymbol(Function, "direct_function", "direct_function"),
+      WgslNagaImportArenaSymbol(Type, "FunctionArgType", "FunctionArgType"),
+      WgslNagaImportArenaSymbol(Type, "DirectType", "DirectType"),
+      WgslNagaImportArenaSymbol(Type, "GlobalType", "GlobalType"),
+      WgslNagaImportArenaSymbol(
+        GlobalVariable,
+        "direct_global",
+        "direct_global",
+      ),
     ],
   )
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
+  let (module_, compatibility) = wgsl_naga_test_parse_with_import_graph(
     source,
     [],
     [event],
   ) catch {
     error => abort(error.message())
   }
-  let planner = WgslIrWriterPlanner::{ shader_module: module_, filter: None }
+  let planner = WgslIrWriterPlanner::{
+    shader_module: module_,
+    filter: None,
+    compatibility,
+  }
   let view = planner.derived_module_view()
   debug_inspect(
     module_.types.items[view.types[1]].name,

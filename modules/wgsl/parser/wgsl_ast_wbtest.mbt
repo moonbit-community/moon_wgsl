@@ -24,9 +24,7 @@ fn wgsl_case_selector_snapshot(
 ///|
 test "WGSL translation unit classifies top-level declarations" {
   let source =
-    #|#define_import_path demo::module
     #|;
-    #|#import demo::shared::Value
     #|struct Value {
     #|  x: u32,
     #|}
@@ -37,30 +35,20 @@ test "WGSL translation unit classifies top-level declarations" {
     #|}
     #|
   let unit = parse_wgsl_translation_unit_for_test(source)
-  debug_inspect(unit.declarations().length(), content="7")
-  debug_inspect(unit.declarations()[0].kind(), content="Directive")
-  debug_inspect(unit.declarations()[1].kind(), content="Trivia")
-  debug_inspect(unit.declarations()[2].kind(), content="Import")
-  guard unit.declarations()[0].data() is Directive(module_directive) else {
-    abort("expected directive payload")
-  }
-  debug_inspect(module_directive.kind(), content="DefineImportPath")
-  guard unit.declarations()[2].data() is Import(import_directive) else {
-    abort("expected import payload")
-  }
-  debug_inspect(import_directive.kind(), content="Import")
-  debug_inspect(unit.declarations()[3].kind(), content="Struct")
-  debug_inspect(unit.declarations()[4].kind(), content="GlobalVariable")
-  debug_inspect(unit.declarations()[5].kind(), content="ConstAssert")
-  guard unit.declarations()[5].data() is ConstAssert(assert_expr) else {
+  debug_inspect(unit.declarations().length(), content="5")
+  debug_inspect(unit.declarations()[0].kind(), content="Trivia")
+  debug_inspect(unit.declarations()[1].kind(), content="Struct")
+  debug_inspect(unit.declarations()[2].kind(), content="GlobalVariable")
+  debug_inspect(unit.declarations()[3].kind(), content="ConstAssert")
+  guard unit.declarations()[3].data() is ConstAssert(assert_expr) else {
     abort("expected const assert payload")
   }
   debug_inspect(
     wgsl_expr_ref_source_text(source, assert_expr),
     content="\"(1 == 1)\"",
   )
-  debug_inspect(unit.declarations()[6].kind(), content="Function")
-  debug_inspect(unit.declarations()[6].name(), content="\"fragment\"")
+  debug_inspect(unit.declarations()[4].kind(), content="Function")
+  debug_inspect(unit.declarations()[4].name(), content="\"fragment\"")
 }
 
 ///|
@@ -396,28 +384,6 @@ test "WGSL initializer fragments do not treat comparison as type depth" {
     abort("expected initializer")
   }
   debug_inspect(initializer.end(), content="26")
-}
-
-///|
-test "WGSL struct member parser skips conditional directive lines" {
-  let source =
-    #|struct Globals {
-    #|  frame_count: u32,
-    #|#ifdef SIXTEEN_BYTE_ALIGNMENT
-    #|  _webgl2_padding: f32
-    #|#endif
-    #|};
-    #|
-  let unit = parse_wgsl_translation_unit_for_test(source)
-  guard unit.declarations()[0].data() is Struct(value) else {
-    abort("expected struct")
-  }
-  debug_inspect(value.members().length(), content="2")
-  debug_inspect(value.members()[1].name().name(), content="\"_webgl2_padding\"")
-  guard value.members()[1].ty_ref() is Some(padding_ty) else {
-    abort("expected padding type")
-  }
-  debug_inspect(padding_ty.name(), content="\"f32\"")
 }
 
 ///|

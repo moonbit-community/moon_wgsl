@@ -31,12 +31,39 @@ test "facade exposes preprocessing and composition runtime API" {
     #|}
     #|
   composer.register_source("root.wgsl", root_source)
-  let composed = composer.compose_wgsl(
-    "root.wgsl",
-    WgslComposeOptions::default(),
-  ) catch {
+  let composed = composer.compose("root.wgsl", WgslComposeOptions::default()) catch {
     err => abort("expected facade compose success: \{err.message()}")
   }
   assert_true(composed.contains("fn value"))
   assert_true(composed.contains("fn root"))
+
+  let prepared = composer.prepare("root.wgsl", WgslComposeOptions::default()) catch {
+    err => abort("expected facade prepare success: \{err.message()}")
+  }
+  assert_true(prepared.source().contains("fn root"))
+
+  let exported = composer.export_wgsl(
+    "root.wgsl",
+    WgslComposeOptions::default(),
+    { root_items: [] },
+  ) catch {
+    err => abort("expected facade export success: \{err.message()}")
+  }
+  assert_true(exported.source().contains("fn root"))
+  assert_eq(exported.diagnostics().length(), 0)
+}
+
+///|
+test "facade maps lower-level failures without exposing implementation errors" {
+  let composer = Composer::default()
+  let mut error_message = ""
+  ignore(
+    composer.compose("missing.wgsl", WgslComposeOptions::default()) catch {
+      error => {
+        error_message = error.message()
+        ""
+      }
+    },
+  )
+  assert_true(error_message.contains("missing.wgsl"))
 }

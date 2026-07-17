@@ -16,15 +16,15 @@
 fn composer_test_descriptor(
   source : String,
   file_path : String,
-  shader_defs : Map[String, @common.ShaderDefValue],
-) -> @common.ComposableModuleDescriptor {
+  shader_defs : Map[String, @contract.ShaderDefValue],
+) -> @contract.ComposableModuleDescriptor {
   { source, file_path, as_name: None, additional_imports: [], shader_defs }
 }
 
 ///|
 fn composer_test_add_or_abort(
   composer : @compose.Composer,
-  desc : @common.ComposableModuleDescriptor,
+  desc : @contract.ComposableModuleDescriptor,
 ) -> @compose.ComposableModuleDefinition {
   composer.add_composable_module(desc) catch {
     err => abort("expected add_composable_module success: \{err.message()}")
@@ -34,7 +34,7 @@ fn composer_test_add_or_abort(
 ///|
 test "naga_oil: composer add_composable_module mirrors module bookkeeping" {
   let composer = @compose.Composer::default()
-  let base_shader_defs : Map[String, @common.ShaderDefValue] = Map([])
+  let base_shader_defs : Map[String, @contract.ShaderDefValue] = Map([])
   base_shader_defs.set("BASE_DEF", Bool(true))
 
   let base_definition = composer_test_add_or_abort(
@@ -196,7 +196,7 @@ test "naga_oil: add_composable_module resolves imports from the composer registr
 
   let composed = composer.compose_wgsl("tests/child_against_registry.wgsl", {
     defines: Map([]),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }) catch {

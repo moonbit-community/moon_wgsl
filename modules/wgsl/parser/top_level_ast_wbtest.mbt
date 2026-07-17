@@ -16,10 +16,6 @@
 fn top_level_kind_snapshot(kind : WgslRawTopLevelKind) -> String {
   match kind {
     Trivia => "Trivia"
-    Import => "Import"
-    DefineImportPath => "DefineImportPath"
-    Define => "Define"
-    Directive => "Directive"
     Declaration => "Declaration"
   }
 }
@@ -30,14 +26,8 @@ fn top_level_item_text(source : String, item : WgslRawTopLevelItem) -> String {
 }
 
 ///|
-test "top-level AST classifies directives imports and declarations" {
-  let source = "#define_import_path bevy_pbr::demo\n" +
-    "#define TONEMAPPING_PASS\n" +
-    "#import bevy_render::{\n" +
-    "  view::View,\n" +
-    "  globals::Globals,\n" +
-    "}\n" +
-    "@group(0) @binding(0)\n" +
+test "top-level AST classifies official WGSL declarations" {
+  let source = "@group(0) @binding(0)\n" +
     "var<uniform> view: View;\n" +
     "struct Output {\n" +
     "  value: vec4<f32>,\n" +
@@ -48,31 +38,21 @@ test "top-level AST classifies directives imports and declarations" {
     "  return out;\n" +
     "}\n"
   let items = parse_wgsl_top_level_items(source)
-  debug_inspect(items.length(), content="6")
+  debug_inspect(items.length(), content="3")
   debug_inspect(
     top_level_kind_snapshot(items[0].kind),
-    content="\"DefineImportPath\"",
-  )
-  debug_inspect(top_level_kind_snapshot(items[1].kind), content="\"Define\"")
-  debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Import\"")
-  debug_inspect(
-    top_level_item_text(source, items[2]).contains("globals::Globals"),
-    content="true",
-  )
-  debug_inspect(
-    top_level_kind_snapshot(items[3].kind),
     content="\"Declaration\"",
   )
   debug_inspect(
-    top_level_item_text(source, items[3]).contains("var<uniform> view"),
+    top_level_item_text(source, items[0]).contains("var<uniform> view"),
     content="true",
   )
   debug_inspect(
-    top_level_item_text(source, items[4]).contains("struct Output"),
+    top_level_item_text(source, items[1]).contains("struct Output"),
     content="true",
   )
   debug_inspect(
-    top_level_item_text(source, items[5]).contains("fn fragment"),
+    top_level_item_text(source, items[2]).contains("fn fragment"),
     content="true",
   )
 }
@@ -101,13 +81,9 @@ test "top-level AST ignores comments while finding block boundaries" {
 
 ///|
 test "top-level AST ignores quoted braces while finding boundaries" {
-  let source = "const A = \"{\";\n" +
-    "const B: u32 = 1u;\n" +
-    "#import demo::{\n" +
-    "  thing::Value,\n" +
-    "}\n"
+  let source = "const A = \"{\";\n" + "const B: u32 = 1u;\n"
   let items = parse_wgsl_top_level_items(source)
-  debug_inspect(items.length(), content="3")
+  debug_inspect(items.length(), content="2")
   debug_inspect(
     top_level_item_text(source, items[0]).contains("const A"),
     content="true",
@@ -116,49 +92,24 @@ test "top-level AST ignores quoted braces while finding boundaries" {
     top_level_item_text(source, items[1]).contains("const B"),
     content="true",
   )
-  debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Import\"")
 }
 
 ///|
-test "top-level AST preserves directive-adjacent trivia" {
-  let source = "// leading import note\n" +
-    "#import demo::thing\n" +
-    "// trailing note\n"
+test "top-level AST preserves declaration-adjacent trivia" {
+  let source = "// leading note\n;\n// trailing note\n"
   let items = parse_wgsl_top_level_items(source)
   debug_inspect(items.length(), content="3")
   debug_inspect(top_level_kind_snapshot(items[0].kind), content="\"Trivia\"")
-  debug_inspect(top_level_kind_snapshot(items[1].kind), content="\"Import\"")
+  debug_inspect(top_level_kind_snapshot(items[1].kind), content="\"Trivia\"")
   debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Trivia\"")
   debug_inspect(
-    top_level_item_text(source, items[0]).contains("leading import note"),
+    top_level_item_text(source, items[0]).contains("leading note"),
     content="true",
   )
   debug_inspect(
     top_level_item_text(source, items[2]).contains("trailing note"),
     content="true",
   )
-}
-
-///|
-test "top-level AST classifies hash conditionals as directives" {
-  let source = "#ifdef ENABLED\n" +
-    "const A: u32 = 1u;\n" +
-    "#else\n" +
-    "const A: u32 = 0u;\n" +
-    "#endif\n"
-  let items = parse_wgsl_top_level_items(source)
-  debug_inspect(items.length(), content="5")
-  debug_inspect(top_level_kind_snapshot(items[0].kind), content="\"Directive\"")
-  debug_inspect(
-    top_level_kind_snapshot(items[1].kind),
-    content="\"Declaration\"",
-  )
-  debug_inspect(top_level_kind_snapshot(items[2].kind), content="\"Directive\"")
-  debug_inspect(
-    top_level_kind_snapshot(items[3].kind),
-    content="\"Declaration\"",
-  )
-  debug_inspect(top_level_kind_snapshot(items[4].kind), content="\"Directive\"")
 }
 
 ///|

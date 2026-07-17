@@ -1,13 +1,4 @@
 ///|
-
-///|
-priv enum WgslIrGeneratedImportLocalSpellingMode {
-  AllGeneratedImportLocalSpelling
-  RootGeneratedImportLocalSpelling
-  NoGeneratedImportLocalSpelling
-}
-
-///|
 priv struct WgslIrLazyLocalConstant {
   expr_ref : @ast.WgslExprRef
   explicit_ty : Handle?
@@ -87,8 +78,6 @@ priv struct WgslIrFunctionScope {
   mut pending_store_pointer_argument_root : String?
   block_depth : Int
   loop_depth : Int
-  mut visible_rel_path : String
-  mut generated_import_local_spelling : WgslIrGeneratedImportLocalSpellingMode
 }
 
 ///|
@@ -119,8 +108,6 @@ fn WgslIrFunctionScope::WgslIrFunctionScope() -> WgslIrFunctionScope {
     pending_store_pointer_argument_root: None,
     block_depth: 0,
     loop_depth: 0,
-    visible_rel_path: "",
-    generated_import_local_spelling: AllGeneratedImportLocalSpelling,
   }
 }
 
@@ -263,8 +250,6 @@ fn WgslIrFunctionScope::child(
     pending_store_pointer_argument_root: self.pending_store_pointer_argument_root,
     block_depth: self.block_depth + 1,
     loop_depth: self.loop_depth,
-    visible_rel_path: self.visible_rel_path,
-    generated_import_local_spelling: self.generated_import_local_spelling,
   }
 }
 

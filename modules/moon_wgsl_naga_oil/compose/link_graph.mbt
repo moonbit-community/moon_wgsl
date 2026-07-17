@@ -1,6 +1,6 @@
 ///|
 fn record_wgsl_import_request_link_edges(
-  link_graph : WgslIrLinkGraph,
+  link_graph : WgslComposeLinkGraph,
   importer_rel_path : String,
   request : WgslImportRequest,
 ) -> Unit {
@@ -19,7 +19,7 @@ fn record_wgsl_import_request_link_edges(
     )
   }
   for item_name in request.requested_items {
-    let identity = WgslIrSymbolIdentity(request.rel_path, item_name)
+    let identity = WgslComposeSymbolIdentity(request.rel_path, item_name)
     link_graph.mark_reachable(identity)
     link_graph.record_import(
       importer_rel_path,
@@ -34,7 +34,7 @@ fn record_wgsl_import_request_link_edges(
 
 ///|
 fn record_wgsl_import_request_batch_link_edges(
-  link_graph : WgslIrLinkGraph,
+  link_graph : WgslComposeLinkGraph,
   importer_rel_path : String,
   requests : Array[WgslImportRequest],
 ) -> Unit {

@@ -54,7 +54,11 @@ fn trace_writer_function_plan_with_compose_context(
   options : WgslNagaPipelineOptions,
 ) -> String raise WgslNagaPipelineError {
   let module_ = lower_validated_wgsl_source_to_ir_with_options(source, context)
-  let view = build_wgsl_ir_writer_module(module_, None)
+  let view = build_wgsl_ir_writer_module(
+    module_,
+    None,
+    compatibility=WgslNagaCompatibilityView::from_context(context),
+  )
   for slot in view.entry_point_slots() {
     let final_name = view.names.get(
       wgsl_ir_emit_name_key("ep", slot.source_index),
@@ -102,7 +106,11 @@ pub fn trace_writer_compose_module_plan(
   options? : WgslNagaPipelineOptions = WgslNagaPipelineOptions::compat(),
 ) -> String raise WgslNagaPipelineError {
   let module_ = lower_validated_wgsl_source_to_ir_with_options(source, context)
-  let view = build_wgsl_ir_writer_module(module_, None)
+  let view = build_wgsl_ir_writer_module(
+    module_,
+    None,
+    compatibility=WgslNagaCompatibilityView::from_context(context),
+  )
   wgsl_ir_writer_module_plan_trace(view)
 }
 
@@ -145,10 +153,10 @@ fn wgsl_ir_writer_module_plan_trace(view : WgslIrWriterModule) -> String {
   out.write_string(
     "module\tdirectives=\{view.source_directives().length()}\ttypes=\{view.type_slots().length()}\tconstants=\{view.constant_slots().length()}\toverrides=\{view.override_slots().length()}\tglobals=\{view.global_variable_slots().length()}\tfunctions=\{view.function_slots().length()}\tentry_points=\{view.entry_point_slots().length()}\tconst_asserts=\{view.const_assert_slots().length()}\n",
   )
-  for entry in view.generated_import_provenance.iter() {
+  for entry in view.compatibility.generated_import_provenance.iter() {
     let (name, provenance) = entry
     out.write_string(
-      "import-provenance\tname=\{name}\trel=\{provenance.rel_path}\tsource=\{provenance.source_symbol_name}\tkind=\{wgsl_ir_trace_generated_import_provenance_kind(provenance.kind)}\tinline=\{provenance.inline_value}\tlocal=\{provenance.local_spelling}\troot_local=\{provenance.root_local_spelling}\n",
+      "import-provenance\tname=\{name}\trel=\{provenance.rel_path}\tsource=\{provenance.source_symbol_name}\tkind=\{wgsl_ir_trace_generated_import_provenance_kind(provenance.kind)}\tinline=\{provenance.inline_value}\tlocal=\{provenance.local_spelling}\troot_local=\{provenance.root_local_spelling}\timport_sequence=\{provenance.import_sequence}\tsource_start=\{provenance.source_start}\tsource_end=\{provenance.source_end}\tcomposed_source_start=\{provenance.composed_source_start}\n",
     )
   }
   for index in 0..<view.source_directives().length() {
@@ -161,6 +169,27 @@ fn wgsl_ir_writer_module_plan_trace(view : WgslIrWriterModule) -> String {
     out.write_string(
       "slot\ttype\t\{slot_index}\tsource=\{slot.source_index}\tname=\{wgsl_ir_trace_text(slot.item.name)}\tfinal=\{wgsl_ir_trace_final_name(view, wgsl_ir_emit_name_key("type", slot.source_index))}\troot=emit\n",
     )
+    match slot.item.inner {
+      Struct(members, _) | PredeclaredStruct(members, _) => {
+        let dependencies : Array[String] = []
+        for field in members {
+          let mut dependency_name = "<missing>"
+          for dependency_slot in view.type_slots() {
+            if dependency_slot.source_index == field.ty.index() {
+              dependency_name = dependency_slot.item.name.unwrap_or(
+                "<anonymous>",
+              )
+              break
+            }
+          }
+          dependencies.push(dependency_name)
+        }
+        out.write_string(
+          "type-dependencies\tname=\{wgsl_ir_trace_text(slot.item.name)}\titems=\{dependencies.join(",")}\n",
+        )
+      }
+      _ => ()
+    }
   }
   for slot_index in 0..<view.constant_slots().length() {
     let slot = view.constant_slots()[slot_index]
@@ -208,7 +237,7 @@ fn wgsl_ir_writer_module_plan_trace(view : WgslIrWriterModule) -> String {
 
 ///|
 fn wgsl_ir_trace_generated_import_provenance_kind(
-  kind : WgslIrGeneratedImportProvenanceKind,
+  kind : WgslNagaGeneratedImportProvenanceKind,
 ) -> String {
   match kind {
     ImportedSourceSymbol => "imported"
@@ -224,7 +253,7 @@ fn wgsl_ir_trace_constant_is_inline_only(
   if wgsl_ir_trace_type_contains_abstract_scalar(view, constant.ty) {
     return true
   }
-  constant.generated_import &&
+  view.compatibility.is_generated_import(constant.name) &&
   wgsl_ir_trace_constant_has_inline_only_type(view, constant)
 }
 

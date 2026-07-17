@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-priv struct WgslIrEmitFilter {
+pub struct WgslIrReachability {
   types : @set.Set[String]
   type_order : Array[Int]
   constants : @set.Set[String]
@@ -27,7 +27,7 @@ priv struct WgslIrEmitFilter {
 }
 
 ///|
-fn WgslIrEmitFilter::WgslIrEmitFilter() -> WgslIrEmitFilter {
+fn WgslIrReachability::WgslIrReachability() -> WgslIrReachability {
   {
     types: Set([]),
     type_order: [],
@@ -43,18 +43,18 @@ fn WgslIrEmitFilter::WgslIrEmitFilter() -> WgslIrEmitFilter {
 }
 
 ///|
-fn wgsl_ir_emit_filter_key(index : Int) -> String {
+fn wgsl_ir_reachability_key(index : Int) -> String {
   index.to_string()
 }
 
 ///|
-fn wgsl_ir_emit_filter_contains(items : @set.Set[String], index : Int) -> Bool {
-  items.contains(wgsl_ir_emit_filter_key(index))
+fn wgsl_ir_reachability_contains(items : @set.Set[String], index : Int) -> Bool {
+  items.contains(wgsl_ir_reachability_key(index))
 }
 
 ///|
-fn wgsl_ir_emit_filter_mark(items : @set.Set[String], index : Int) -> Bool {
-  let key = wgsl_ir_emit_filter_key(index)
+fn wgsl_ir_reachability_mark(items : @set.Set[String], index : Int) -> Bool {
+  let key = wgsl_ir_reachability_key(index)
   if items.contains(key) {
     return false
   }
@@ -63,59 +63,59 @@ fn wgsl_ir_emit_filter_mark(items : @set.Set[String], index : Int) -> Bool {
 }
 
 ///|
-fn WgslIrEmitFilter::contains_type(
-  self : WgslIrEmitFilter,
+pub fn WgslIrReachability::contains_type(
+  self : WgslIrReachability,
   index : Int,
 ) -> Bool {
-  wgsl_ir_emit_filter_contains(self.types, index)
+  wgsl_ir_reachability_contains(self.types, index)
 }
 
 ///|
-fn WgslIrEmitFilter::contains_constant(
-  self : WgslIrEmitFilter,
+pub fn WgslIrReachability::contains_constant(
+  self : WgslIrReachability,
   index : Int,
 ) -> Bool {
-  wgsl_ir_emit_filter_contains(self.constants, index)
+  wgsl_ir_reachability_contains(self.constants, index)
 }
 
 ///|
-fn WgslIrEmitFilter::contains_override(
-  self : WgslIrEmitFilter,
+pub fn WgslIrReachability::contains_override(
+  self : WgslIrReachability,
   index : Int,
 ) -> Bool {
-  wgsl_ir_emit_filter_contains(self.overrides, index)
+  wgsl_ir_reachability_contains(self.overrides, index)
 }
 
 ///|
-fn WgslIrEmitFilter::contains_global_variable(
-  self : WgslIrEmitFilter,
+pub fn WgslIrReachability::contains_global_variable(
+  self : WgslIrReachability,
   index : Int,
 ) -> Bool {
-  wgsl_ir_emit_filter_contains(self.global_variables, index)
+  wgsl_ir_reachability_contains(self.global_variables, index)
 }
 
 ///|
-fn WgslIrEmitFilter::contains_function(
-  self : WgslIrEmitFilter,
+pub fn WgslIrReachability::contains_function(
+  self : WgslIrReachability,
   index : Int,
 ) -> Bool {
-  wgsl_ir_emit_filter_contains(self.functions, index)
+  wgsl_ir_reachability_contains(self.functions, index)
 }
 
 ///|
-fn WgslIrEmitFilter::contains_entry_point(
-  self : WgslIrEmitFilter,
+pub fn WgslIrReachability::contains_entry_point(
+  self : WgslIrReachability,
   index : Int,
 ) -> Bool {
-  wgsl_ir_emit_filter_contains(self.entry_points, index)
+  wgsl_ir_reachability_contains(self.entry_points, index)
 }
 
 ///|
-fn build_wgsl_ir_emit_filter(
+pub fn build_wgsl_ir_reachability(
   shader_module : Module,
   root_items : Array[String],
-) -> WgslIrEmitFilter {
-  let filter = WgslIrEmitFilter::WgslIrEmitFilter()
+) -> WgslIrReachability {
+  let filter = WgslIrReachability::WgslIrReachability()
   for root in root_items {
     filter.mark_root_name(shader_module, root)
   }
@@ -123,20 +123,20 @@ fn build_wgsl_ir_emit_filter(
 }
 
 ///|
-fn wgsl_ir_emit_filter_from_optional_roots(
+fn wgsl_ir_reachability_from_optional_roots(
   shader_module : Module,
   root_items : Array[String]?,
-) -> WgslIrEmitFilter? {
+) -> WgslIrReachability? {
   match root_items {
     Some(root_items) if root_items.length() > 0 =>
-      Some(build_wgsl_ir_emit_filter(shader_module, root_items))
+      Some(build_wgsl_ir_reachability(shader_module, root_items))
     _ => None
   }
 }
 
 ///|
-fn WgslIrEmitFilter::mark_root_name(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_root_name(
+  self : WgslIrReachability,
   shader_module : Module,
   root : String,
 ) -> Unit {
@@ -182,12 +182,12 @@ fn WgslIrEmitFilter::mark_root_name(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_type(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_type(
+  self : WgslIrReachability,
   shader_module : Module,
   handle : Handle,
 ) -> Unit {
-  if !wgsl_ir_emit_filter_mark(self.types, handle.index()) {
+  if !wgsl_ir_reachability_mark(self.types, handle.index()) {
     return
   }
   match shader_module.types.items.get(handle.index()) {
@@ -200,8 +200,8 @@ fn WgslIrEmitFilter::mark_type(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_type_inner(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_type_inner(
+  self : WgslIrReachability,
   shader_module : Module,
   inner : TypeInner,
 ) -> Unit {
@@ -224,12 +224,12 @@ fn WgslIrEmitFilter::mark_type_inner(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_constant(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_constant(
+  self : WgslIrReachability,
   shader_module : Module,
   handle : Handle,
 ) -> Unit {
-  if !wgsl_ir_emit_filter_mark(self.constants, handle.index()) {
+  if !wgsl_ir_reachability_mark(self.constants, handle.index()) {
     return
   }
   self.constant_order.push(handle.index())
@@ -243,12 +243,12 @@ fn WgslIrEmitFilter::mark_constant(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_override(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_override(
+  self : WgslIrReachability,
   shader_module : Module,
   handle : Handle,
 ) -> Unit {
-  if !wgsl_ir_emit_filter_mark(self.overrides, handle.index()) {
+  if !wgsl_ir_reachability_mark(self.overrides, handle.index()) {
     return
   }
   self.override_order.push(handle.index())
@@ -265,12 +265,12 @@ fn WgslIrEmitFilter::mark_override(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_global_variable(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_global_variable(
+  self : WgslIrReachability,
   shader_module : Module,
   handle : Handle,
 ) -> Unit {
-  if !wgsl_ir_emit_filter_mark(self.global_variables, handle.index()) {
+  if !wgsl_ir_reachability_mark(self.global_variables, handle.index()) {
     return
   }
   self.global_variable_order.push(handle.index())
@@ -287,12 +287,12 @@ fn WgslIrEmitFilter::mark_global_variable(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_function(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_function(
+  self : WgslIrReachability,
   shader_module : Module,
   handle : Handle,
 ) -> Unit {
-  if !wgsl_ir_emit_filter_mark(self.functions, handle.index()) {
+  if !wgsl_ir_reachability_mark(self.functions, handle.index()) {
     return
   }
   match shader_module.functions.items.get(handle.index()) {
@@ -302,12 +302,12 @@ fn WgslIrEmitFilter::mark_function(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_entry_point(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_entry_point(
+  self : WgslIrReachability,
   shader_module : Module,
   index : Int,
 ) -> Unit {
-  if !wgsl_ir_emit_filter_mark(self.entry_points, index) {
+  if !wgsl_ir_reachability_mark(self.entry_points, index) {
     return
   }
   match shader_module.entry_points.get(index) {
@@ -353,8 +353,8 @@ fn WgslIrEmitFilter::mark_entry_point(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_function_body(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_function_body(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
 ) -> Unit {
@@ -379,8 +379,8 @@ fn WgslIrEmitFilter::mark_function_body(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_block(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_block(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
   block : Block,
@@ -391,8 +391,8 @@ fn WgslIrEmitFilter::mark_block(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_statement(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_statement(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
   statement : Statement,
@@ -524,8 +524,8 @@ fn WgslIrEmitFilter::mark_statement(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_global_expression(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_global_expression(
+  self : WgslIrReachability,
   shader_module : Module,
   handle : Handle,
 ) -> Unit {
@@ -537,8 +537,8 @@ fn WgslIrEmitFilter::mark_global_expression(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_global_expression_inner(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_global_expression_inner(
+  self : WgslIrReachability,
   shader_module : Module,
   expression : Expression,
 ) -> Unit {
@@ -598,8 +598,8 @@ fn WgslIrEmitFilter::mark_global_expression_inner(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_function_expression(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_function_expression(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
   handle : Handle,
@@ -612,8 +612,8 @@ fn WgslIrEmitFilter::mark_function_expression(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_function_expression_inner(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_function_expression_inner(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
   expression : Expression,
@@ -749,8 +749,8 @@ fn WgslIrEmitFilter::mark_function_expression_inner(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_sample_level(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_sample_level(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
   level : SampleLevel,
@@ -767,8 +767,8 @@ fn WgslIrEmitFilter::mark_sample_level(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_cooperative_data(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_cooperative_data(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
   data : CooperativeData,
@@ -778,8 +778,8 @@ fn WgslIrEmitFilter::mark_cooperative_data(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_optional_global_expression(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_optional_global_expression(
+  self : WgslIrReachability,
   shader_module : Module,
   handle : Handle?,
 ) -> Unit {
@@ -790,8 +790,8 @@ fn WgslIrEmitFilter::mark_optional_global_expression(
 }
 
 ///|
-fn WgslIrEmitFilter::mark_optional_function_expression(
-  self : WgslIrEmitFilter,
+fn WgslIrReachability::mark_optional_function_expression(
+  self : WgslIrReachability,
   shader_module : Module,
   function : Function,
   handle : Handle?,

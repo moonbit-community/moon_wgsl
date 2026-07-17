@@ -34,7 +34,7 @@ fn export_test_composer() -> @compose.Composer {
 
 ///|
 fn register_export_test_shader_files(
-  files : Array[@common.WgslSourceFile],
+  files : Array[@contract.WgslSourceFile],
 ) -> Unit {
   export_test_composer().register_source_files(files)
 }
@@ -47,11 +47,11 @@ fn registered_export_test_shader_source(path : String) -> String? {
 ///|
 fn export_test_compose_options(
   defines : Map[String, Bool],
-  redirects : Array[@common.WgslSymbolRedirect],
-) -> @common.WgslComposeOptions {
+  redirects : Array[@contract.WgslSymbolRedirect],
+) -> @contract.WgslComposeOptions {
   {
     defines,
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects,
     additional_imports: [],
   }
@@ -411,7 +411,7 @@ test "naga_oil: export_wgsl_with_options uses composer-owned session config" {
     "shaders/effects/main.wgsl",
     {
       defines: export_test_empty_defines(),
-      value_defines: @common.default_wgsl_value_defines(),
+      value_defines: @profile.bevy_wgsl_value_defines(),
       redirects: [],
       additional_imports: [],
     },

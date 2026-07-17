@@ -92,7 +92,8 @@ fn WgslIrEmitter::emit_statement(
               continue
             }
             self.emitted_function_named_expressions.add(handle.index())
-            let ty = match self.expression_type(Some(function), handle) {
+            let ty = match
+              self.type_inference().expression_type(Some(function), handle) {
               Some(value) => value
               None =>
                 raise MissingHandle("named expression type \{handle.index()}")
@@ -130,7 +131,8 @@ fn WgslIrEmitter::emit_statement(
             continue
           }
           self.emitted_function_materialized_expressions.add(handle.index())
-          let ty = match self.expression_type(Some(function), handle) {
+          let ty = match
+            self.type_inference().expression_type(Some(function), handle) {
             Some(value) => value
             None =>
               raise MissingHandle(
@@ -143,7 +145,7 @@ fn WgslIrEmitter::emit_statement(
           continue
         }
         let expr = self.function_expression(function, handle)
-        if self.expression_type(Some(function), handle) == None &&
+        if self.type_inference().expression_type(Some(function), handle) == None &&
           self.function_expression_emits_standalone_statement(function, handle) {
           out.write_string("\{pad}\{expr};\n")
         } else if self.function_expression_requires_phony_assignment(
@@ -229,7 +231,8 @@ fn WgslIrEmitter::emit_statement(
     Atomic(pointer, atomic_function, value, compare, result) => {
       match result {
         Some(result_handle) => {
-          let ty = match self.expression_type(Some(function), result_handle) {
+          let ty = match
+            self.type_inference().expression_type(Some(function), result_handle) {
             Some(value) => value
             None =>
               raise MissingHandle("atomic result type \{result_handle.index()}")
@@ -280,7 +283,8 @@ fn WgslIrEmitter::emit_statement(
     Call(function_handle, arguments, result) => {
       match result {
         Some(result_handle) => {
-          let ty = match self.expression_type(Some(function), result_handle) {
+          let ty = match
+            self.type_inference().expression_type(Some(function), result_handle) {
             Some(value) => value
             None =>
               raise MissingHandle("call result type \{result_handle.index()}")
@@ -348,7 +352,7 @@ fn WgslIrEmitter::function_store_value_expression(
   value : Handle,
 ) -> String raise WgslIrEmitError {
   let scalar_context = if self.options.contextualize_numeric_literals() {
-    match self.expression_type(Some(function), pointer) {
+    match self.type_inference().expression_type(Some(function), pointer) {
       Some(pointer_ty) => {
         let value_ty = self.deref_pointer_type_handle(pointer_ty)
         self.store_numeric_literal_context(value_ty)
@@ -479,7 +483,7 @@ fn WgslIrEmitter::function_store_pointer_expression(
     Access(_, _) | AccessIndex(_, _) | Component(_, _) | Swizzle(_, _, _) =>
       text
     _ =>
-      match self.expression_type(Some(function), handle) {
+      match self.type_inference().expression_type(Some(function), handle) {
         Some(ty) =>
           match self.shader_module.types.items.get(ty.index()) {
             Some(type_) =>

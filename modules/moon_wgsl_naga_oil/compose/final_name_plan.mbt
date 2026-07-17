@@ -1,7 +1,7 @@
 ///|
 priv struct WgslModuleFinalNameApplication {
   origin_index : Int
-  identity : WgslIrSymbolIdentity
+  identity : WgslComposeSymbolIdentity
   reference_path : WgslReferencePath
   final_name : String
 }
@@ -33,7 +33,7 @@ fn WgslModuleFinalNameApplicationPlan::push(
   if final_name == "" || final_name == origin.generated_symbol_name {
     return
   }
-  let identity = WgslIrSymbolIdentity(
+  let identity = WgslComposeSymbolIdentity(
     origin.rel_path,
     origin.source_symbol_name,
   )
@@ -88,7 +88,7 @@ fn WgslComposeSession::assigned_final_name_for_origin(
     origin.generated_symbol_name == "" {
     return None
   }
-  let identity = WgslIrSymbolIdentity(
+  let identity = WgslComposeSymbolIdentity(
     origin.rel_path,
     origin.source_symbol_name,
   )
@@ -96,7 +96,7 @@ fn WgslComposeSession::assigned_final_name_for_origin(
     self.assigned_canonical_final_name(identity)
   } else {
     self.symbols.assigned_final_names.alias_get(
-      WgslIrAliasSymbolIdentity(
+      WgslComposeAliasSymbolIdentity(
         origin.rel_path,
         alias_prefixes.join("__"),
         origin.source_symbol_name,

@@ -29,8 +29,8 @@ fn upstream_parity_bool_defines(names : Array[String]) -> Map[String, Bool] {
 ///|
 fn upstream_parity_shader_def_values(
   names : Array[String],
-) -> Map[String, @common.ShaderDefValue] {
-  let defines : Map[String, @common.ShaderDefValue] = Map([])
+) -> Map[String, @contract.ShaderDefValue] {
+  let defines : Map[String, @contract.ShaderDefValue] = Map([])
   for name in names {
     defines.set(name, Bool(true))
   }
@@ -40,17 +40,17 @@ fn upstream_parity_shader_def_values(
 ///|
 fn upstream_parity_compose_options(
   defines : Map[String, Bool],
-) -> @common.WgslComposeOptions {
+) -> @contract.WgslComposeOptions {
   {
     defines,
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }
 }
 
 ///|
-fn upstream_parity_empty_compose_options() -> @common.WgslComposeOptions {
+fn upstream_parity_empty_compose_options() -> @contract.WgslComposeOptions {
   upstream_parity_compose_options(upstream_parity_empty_defines())
 }
 
@@ -60,7 +60,7 @@ fn upstream_parity_composer(case_name : String) -> @compose.Composer {
   composer.clear_sources()
   composer.register_source_tree(
     moon_wgsl_testdata_path("upstream_compose/\{case_name}"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream fixture registration success")
   }
@@ -69,7 +69,7 @@ fn upstream_parity_composer(case_name : String) -> @compose.Composer {
 
 ///|
 fn upstream_parity_descriptor_effective_defs_source(
-  shader_defs : Map[String, @common.ShaderDefValue],
+  shader_defs : Map[String, @contract.ShaderDefValue],
 ) -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
@@ -135,7 +135,7 @@ fn upstream_parity_descriptor_effective_defs_source(
 
 ///|
 fn upstream_parity_check_effective_defs_sum(
-  shader_defs : Map[String, @common.ShaderDefValue],
+  shader_defs : Map[String, @contract.ShaderDefValue],
   expected_a : String,
   expected_b : String,
   expected_c : String,
@@ -186,7 +186,7 @@ fn upstream_mirror_composer(case_name : String) -> @compose.Composer {
   composer.clear_sources()
   composer.register_source_tree(
     moon_wgsl_testdata_path("naga_oil_upstream/compose_tests/\{case_name}"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream mirror fixture registration success")
   }
@@ -233,7 +233,7 @@ fn upstream_parity_export_case(
   rel_path : String,
   root_items : Array[String],
   defines : Map[String, Bool],
-) -> @common.WgslExportOutput {
+) -> @contract.WgslExportOutput {
   @export.export_wgsl_with_options(
     upstream_parity_composer(case_name),
     rel_path,
@@ -701,7 +701,7 @@ test "naga_oil upstream: multiline dual source blending members skip identifier 
       #|}
       #|
     ),
-    @common.WgslComposeOptions::default(),
+    @contract.WgslComposeOptions::default(),
   ) catch {
     err =>
       abort("expected multiline blend_src compose success: \{err.message()}")
@@ -727,7 +727,7 @@ test "naga_oil upstream: additional imports are applied only to the root compose
   let composer = upstream_parity_composer("add_imports")
   let source = composer.compose_wgsl("top.wgsl", {
     defines: upstream_parity_empty_defines(),
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [{ import_path: "plugin", items: [] }],
   }) catch {
@@ -747,7 +747,7 @@ test "naga_oil upstream: additional imports participate in single-file export" {
     "top.wgsl",
     {
       defines: upstream_parity_empty_defines(),
-      value_defines: @common.default_wgsl_value_defines(),
+      value_defines: @profile.bevy_wgsl_value_defines(),
       redirects: [],
       additional_imports: [{ import_path: "plugin", items: [] }],
     },

@@ -144,12 +144,7 @@ fn WgslIrLowerer::predeclare_source_local_placeholder(
   }
   let ty = self.local_declaration_storage_type(local_decl.kind(), ty)
   let handle = function.local_variables.append({
-    name: Some(
-      self.generated_import_local_spelling_for_scope(
-        local_decl.name().name(),
-        scope,
-      ),
-    ),
+    name: Some(local_decl.name().name()),
     kind: Var,
     generated_temporary: false,
     generated_temporary_store_value_reference: false,

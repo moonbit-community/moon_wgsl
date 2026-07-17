@@ -13,19 +13,40 @@
 // limitations under the License.
 
 ///|
-test "naga_oil upstream WGSL fixture mirror parses without raw top-level declarations" {
+fn mirror_source_needs_conditional_evaluation(source : String) -> Bool {
+  source.contains("#if") ||
+  source.contains("#else") ||
+  source.contains("#endif")
+}
+
+///|
+fn mirror_preprocess_source(source : String) -> String {
+  @preprocess.Preprocessor::default().preprocess(source, Map([])).source() catch {
+    _ => abort("expected fixture preprocessing success")
+  }
+}
+
+///|
+test "non-conditional naga_oil fixtures mask into official WGSL" {
   let files = @resolver.scan_wgsl_source_files(
     moon_wgsl_testdata_path("naga_oil_upstream/compose_tests"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected naga_oil upstream fixture scan success")
   }
   let failures : Array[String] = []
+  let mut checked = 0
   for file in files {
-    if file.rel_path.has_prefix("error_test/") {
+    if file.rel_path.has_prefix("error_test/") ||
+      mirror_source_needs_conditional_evaluation(file.source) {
       continue
     }
-    ignore(@parser.parse_wgsl_translation_unit_strict(file.source)) catch {
+    checked = checked + 1
+    ignore(
+      @parser.parse_wgsl_translation_unit_strict(
+        mirror_preprocess_source(file.source),
+      ),
+    ) catch {
       err => failures.push("\{file.rel_path}:\{err.message()}")
     }
   }
@@ -35,19 +56,29 @@ test "naga_oil upstream WGSL fixture mirror parses without raw top-level declara
       #|[]
     ),
   )
+  debug_inspect(checked > 0, content="true")
 }
 
 ///|
-test "Bevy WGSL fixture mirror parses without raw top-level declarations" {
+test "non-conditional Bevy fixtures mask into official WGSL" {
   let files = @resolver.scan_wgsl_source_files(
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture scan success")
   }
   let failures : Array[String] = []
+  let mut checked = 0
   for file in files {
-    ignore(@parser.parse_wgsl_translation_unit_strict(file.source)) catch {
+    if mirror_source_needs_conditional_evaluation(file.source) {
+      continue
+    }
+    checked = checked + 1
+    ignore(
+      @parser.parse_wgsl_translation_unit_strict(
+        mirror_preprocess_source(file.source),
+      ),
+    ) catch {
       err => failures.push("\{file.rel_path}:\{err.message()}")
     }
   }
@@ -57,4 +88,5 @@ test "Bevy WGSL fixture mirror parses without raw top-level declarations" {
       #|[]
     ),
   )
+  debug_inspect(checked > 0, content="true")
 }

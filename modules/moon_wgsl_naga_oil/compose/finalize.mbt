@@ -54,7 +54,7 @@ fn collect_wgsl_local_import_final_name_rewrite_plan(
     match WgslReferencePath::from_text(binding.source_name) {
       Some(reference_path) =>
         plan.add_symbol_reference_binding(
-          WgslIrSymbolIdentity(binding.rel_path, binding.source_name),
+          WgslComposeSymbolIdentity(binding.rel_path, binding.source_name),
           reference_path,
           binding.final_name,
         )
@@ -115,6 +115,7 @@ fn finalize_wgsl_composed_source(
   if !validate_output {
     return out
   }
+  out = deduplicate_identical_wgsl_declarations(out)
   if !apply_virtual_overrides {
     validate_wgsl_translation_unit_strict(out)
     return out

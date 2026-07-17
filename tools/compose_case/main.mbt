@@ -561,7 +561,7 @@ fn compose_case_split_value_define(text : String) -> (String, String) {
 ///|
 fn compose_case_parse_value_define_value(
   raw : String,
-) -> @common.ShaderDefValue {
+) -> @contract.ShaderDefValue {
   let value = raw.trim().to_owned()
   if value.has_prefix("raw:") {
     return Raw(value[4:value.length()].to_owned())
@@ -588,8 +588,8 @@ fn compose_case_parse_value_define_value(
 ///|
 fn compose_case_value_defines(
   entries : Array[String],
-) -> Map[String, @common.ShaderDefValue] {
-  let values = @common.default_wgsl_value_defines()
+) -> Map[String, @contract.ShaderDefValue] {
+  let values = @profile.bevy_wgsl_value_defines()
   for entry in entries {
     let (name, raw_value) = compose_case_split_value_define(entry)
     if name == "" {
@@ -603,8 +603,8 @@ fn compose_case_value_defines(
 ///|
 fn compose_case_additional_imports(
   paths : Array[String],
-) -> Array[@common.ImportDefinition] {
-  let imports : Array[@common.ImportDefinition] = []
+) -> Array[@contract.ImportDefinition] {
+  let imports : Array[@contract.ImportDefinition] = []
   for path in paths {
     imports.push({ import_path: path, items: [] })
   }
@@ -612,7 +612,7 @@ fn compose_case_additional_imports(
 }
 
 ///|
-fn compose_case_scan_options() -> @common.WgslSourceScanOptions {
+fn compose_case_scan_options() -> @contract.WgslSourceScanOptions {
   { recursive: true, extensions: [".wgsl", ".glsl"], exclude_prefixes: [] }
 }
 
@@ -1126,7 +1126,7 @@ fn main {
   let composer = @compose.Composer::default()
   composer.clear_sources()
   compose_case_register_fixture_sources(composer, fixture_root, args)
-  let options : @common.WgslComposeOptions = {
+  let options : @contract.WgslComposeOptions = {
     defines: compose_case_bool_defines(args.defines),
     value_defines: compose_case_value_defines(args.value_defines),
     redirects: [],
@@ -1137,16 +1137,18 @@ fn main {
     output = try {
       match args.naga_writer_trace_function {
         Some(prefix) =>
-          composer.trace_naga_oil_writer_function_plan(entry, options, prefix)
+          @diagnostics.trace_writer_function_plan(
+            composer, entry, options, prefix,
+          )
         None =>
           if args.naga_writer_trace_module {
-            composer.trace_naga_oil_writer_module_plan(entry, options)
+            @diagnostics.trace_writer_module_plan(composer, entry, options)
           } else if args.pre_ir {
-            composer.compose_wgsl_before_ir(entry, options)
+            @diagnostics.compose_before_ir(composer, entry, options)
           } else if args.runtime_valid {
             composer.compose_wgsl_runtime_valid(entry, options)
           } else if args.naga_oil_writer_parity {
-            composer.compose_wgsl_for_naga_oil_writer_parity(entry, options)
+            @diagnostics.compose_for_writer_parity(composer, entry, options)
           } else {
             composer.compose_wgsl(entry, options)
           }

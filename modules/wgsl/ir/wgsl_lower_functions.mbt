@@ -77,7 +77,6 @@ fn wgsl_ir_strip_function_io_bindings(function : Function) -> Function {
   {
     name: function.name,
     source_start: function.source_start,
-    generated_import: function.generated_import,
     arguments,
     result,
     local_variables: function.local_variables,
@@ -290,7 +289,6 @@ fn WgslIrLowerer::function_without_ambient_global_arguments(
   {
     name: function.name,
     source_start: function.source_start,
-    generated_import: function.generated_import,
     arguments: [],
     result: function.result,
     local_variables: function.local_variables,
@@ -338,9 +336,6 @@ fn WgslIrLowerer::lower_function(
   let ir_function = Function::{
     name: Some(function.name().name()),
     source_start: function.fn_start(),
-    generated_import: self.function_has_generated_import_provenance(
-      function.name().name(),
-    ),
     arguments: [],
     result,
     local_variables: LocalVariableArena(),
@@ -350,38 +345,13 @@ fn WgslIrLowerer::lower_function(
     diagnostic_filter_leaf: None,
   }
   let scope = WgslIrFunctionScope()
-  scope.visible_rel_path = self.generated_import_function_rel_path(
-    function.name().name(),
-  )
-  if scope.visible_rel_path == "" {
-    scope.visible_rel_path = self.root_visible_rel_path
-  }
-  let function_stage = wgsl_ir_shader_stage_from_attributes(
-    function.attributes(),
-  )
-  let referenced_stage_function = match function_stage {
-    Some(_) => self.referenced_names.contains(function.name().name())
-    None => false
-  }
-  scope.generated_import_local_spelling = if function_stage == None ||
-    referenced_stage_function ||
-    ir_function.generated_import {
-    AllGeneratedImportLocalSpelling
-  } else {
-    RootGeneratedImportLocalSpelling
-  }
   let mut index = 0
   for argument in function.arguments() {
     guard argument.ty_ref() is Some(ty_ref) else {
       raise MissingType(argument.name().name())
     }
     ir_function.arguments.push({
-      name: Some(
-        self.generated_import_local_spelling_for_scope(
-          argument.name().name(),
-          scope,
-        ),
-      ),
+      name: Some(argument.name().name()),
       ty: self.lower_type_ref(ty_ref),
       binding: wgsl_ir_binding_from_attributes(argument.attributes()),
     })
@@ -419,7 +389,6 @@ fn WgslIrLowerer::lower_function(
   {
     name: ir_function.name,
     source_start: ir_function.source_start,
-    generated_import: ir_function.generated_import,
     arguments: ir_function.arguments,
     result,
     local_variables: ir_function.local_variables,

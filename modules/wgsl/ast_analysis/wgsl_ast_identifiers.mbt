@@ -7,7 +7,7 @@ pub fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
     Override(value) => value.name().name()
     Struct(value) => value.name().name()
     TypeAlias(value) => value.name().name()
-    Directive(_) | Import(_) | ConstAssert(_) | Raw => ""
+    Directive(_) | ConstAssert(_) | Raw => ""
   }
 }
 
@@ -345,7 +345,7 @@ pub fn collect_wgsl_decl_identifier_nodes(
       collect_wgsl_type_ref_identifier_nodes(alias_decl.ty_ref(), nodes)
     ConstAssert(expr) =>
       collect_wgsl_expr_ref_identifier_nodes(Some(expr), nodes)
-    Directive(_) | Import(_) | Raw => ()
+    Directive(_) | Raw => ()
   }
 }
 
@@ -361,7 +361,7 @@ pub fn collect_wgsl_decl_global_declared_identifier_nodes(
     Const(const_decl) => nodes.push(const_decl.name())
     Override(override_decl) => nodes.push(override_decl.name())
     TypeAlias(alias_decl) => nodes.push(alias_decl.name())
-    Directive(_) | Import(_) | ConstAssert(_) | Raw => ()
+    Directive(_) | ConstAssert(_) | Raw => ()
   }
 }
 

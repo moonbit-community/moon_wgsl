@@ -1,7 +1,7 @@
 ///|
-fn wgsl_source_origin_kind_to_ir_declaration_kind(
+fn wgsl_source_origin_kind_to_compose_declaration_kind(
   kind : WgslSourceOriginKind,
-) -> @ir.WgslIrDeclarationKind? {
+) -> WgslComposeDeclarationKind? {
   match kind {
     Type => Some(Type)
     Constant => Some(Constant)
@@ -14,8 +14,8 @@ fn wgsl_source_origin_kind_to_ir_declaration_kind(
 
 ///|
 fn wgsl_compare_import_arena_symbols_by_dependency_pull(
-  lhs : @ir.WgslIrImportArenaSymbol,
-  rhs : @ir.WgslIrImportArenaSymbol,
+  lhs : WgslComposeImportArenaSymbol,
+  rhs : WgslComposeImportArenaSymbol,
 ) -> Int {
   let lhs_pull = lhs.source_order_rank()
   let rhs_pull = rhs.source_order_rank()
@@ -330,7 +330,7 @@ fn Composer::compose_wgsl_import_requests(
       module_source
     }
     final_name_plan.apply_to_origins(session.symbols.source_origins)
-    let event_generated_symbols : Array[@ir.WgslIrImportArenaSymbol] = []
+    let event_generated_symbols : Array[WgslComposeImportArenaSymbol] = []
     let event_item_names = if request.import_full_module {
       let names : Array[String] = []
       for i in origin_start_index..<session.symbols.source_origins.length() {
@@ -356,7 +356,7 @@ fn Composer::compose_wgsl_import_requests(
       let origin = session.symbols.source_origins[i]
       if origin.rel_path == request.rel_path &&
         origin.generated_symbol_name != "" {
-        match wgsl_source_origin_kind_to_ir_declaration_kind(origin.kind) {
+        match wgsl_source_origin_kind_to_compose_declaration_kind(origin.kind) {
           Some(kind) => {
             let source_decl_rank = source_decl_ranks
               .get(origin.source_symbol_name)
@@ -372,7 +372,7 @@ fn Composer::compose_wgsl_import_requests(
               source_pull_rank
             }
             event_generated_symbols.push(
-              WgslIrImportArenaSymbol(
+              WgslComposeImportArenaSymbol(
                 kind,
                 origin.source_symbol_name,
                 origin.generated_symbol_name,
@@ -390,7 +390,7 @@ fn Composer::compose_wgsl_import_requests(
     )
     let event_kind = if request.import_full_module {
       if request.alias_name == "" {
-        @ir.WgslIrImportEdgeKind::FullModule
+        WgslComposeImportEdgeKind::FullModule
       } else {
         AliasModule
       }
@@ -407,7 +407,7 @@ fn Composer::compose_wgsl_import_requests(
       event_generated_symbols,
     )
     session.symbols.import_arena_events.push(
-      WgslIrImportArenaEvent(
+      WgslComposeImportArenaEvent(
         session.symbols.import_arena_events.length(),
         current_rel_path,
         request.rel_path,
@@ -537,11 +537,14 @@ fn Composer::compose_wgsl_import_requests(
         origin.generated_symbol_name != "" {
         if request.alias_name == "" {
           session.record_canonical_final_name_if_absent(
-            WgslIrSymbolIdentity(origin.rel_path, origin.source_symbol_name),
+            WgslComposeSymbolIdentity(
+              origin.rel_path,
+              origin.source_symbol_name,
+            ),
             origin.generated_symbol_name,
           )
         } else if origin.rel_path == request.rel_path {
-          let identity = WgslIrAliasSymbolIdentity(
+          let identity = WgslComposeAliasSymbolIdentity(
             origin.rel_path,
             request_alias_scope,
             origin.source_symbol_name,
@@ -572,9 +575,9 @@ fn Composer::compose_wgsl_import_requests(
 
 ///|
 fn wgsl_sort_import_arena_function_symbols_by_dependency_pull(
-  symbols : Array[@ir.WgslIrImportArenaSymbol],
+  symbols : Array[WgslComposeImportArenaSymbol],
 ) -> Unit {
-  let functions : Array[@ir.WgslIrImportArenaSymbol] = []
+  let functions : Array[WgslComposeImportArenaSymbol] = []
   for symbol in symbols {
     if symbol.kind() == Function {
       functions.push(symbol)

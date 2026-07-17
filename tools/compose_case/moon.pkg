@@ -1,12 +1,12 @@
 import {
-  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/contract",
   "Milky2018/moon_wgsl_naga_oil/compose",
+  "Milky2018/moon_wgsl_naga_oil/diagnostics",
+  "Milky2018/moon_wgsl_naga_oil/profile",
   "Milky2018/moon_wgsl_naga_oil/resolver",
   "moonbitlang/core/env",
   "moonbitlang/core/string",
   "moonbitlang/x/fs",
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

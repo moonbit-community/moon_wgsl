@@ -37,34 +37,7 @@ pub fn WgslIrPipelineError::message(self : WgslIrPipelineError) -> String {
 fn lower_validated_wgsl_source_to_ir(
   source : String,
 ) -> Module raise WgslIrPipelineError {
-  lower_validated_wgsl_source_to_ir_with_generated_imports(source, [])
-}
-
-///|
-fn lower_validated_wgsl_source_to_ir_with_generated_imports(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-) -> Module raise WgslIrPipelineError {
-  lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-    source,
-    generated_import_provenance,
-    [],
-  )
-}
-
-///|
-fn lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[WgslIrImportArenaEvent],
-  root_visible_rel_path? : String = "",
-) -> Module raise WgslIrPipelineError {
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
-    source,
-    generated_import_provenance,
-    import_arena_events,
-    root_visible_rel_path~,
-  ) catch {
+  let module_ = parse_wgsl_module_to_ir(source) catch {
     error =>
       match error {
         UnknownIdentifier(name) => raise UnknownIdentifier(name)
@@ -114,19 +87,7 @@ fn emit_validated_wgsl_source_from_ir_roots(
 pub fn roundtrip_wgsl_source_via_ir(
   source : String,
 ) -> String raise WgslIrPipelineError {
-  roundtrip_wgsl_source_via_ir_with_generated_imports(source, [])
-}
-
-///|
-fn roundtrip_wgsl_source_via_ir_with_generated_imports(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-) -> String raise WgslIrPipelineError {
-  emit_validated_wgsl_source_from_ir(
-    lower_validated_wgsl_source_to_ir_with_generated_imports(
-      source, generated_import_provenance,
-    ),
-  )
+  emit_validated_wgsl_source_from_ir(lower_validated_wgsl_source_to_ir(source))
 }
 
 ///|

@@ -199,11 +199,7 @@ fn WgslIrEmitter::texture_atomic_function_name(
 }
 
 ///|
-fn WgslIrEmitter::storage_format_name(
-  self : WgslIrEmitter,
-  format : StorageFormat,
-) -> String {
-  ignore(self)
+pub fn wgsl_ir_storage_format_name(format : StorageFormat) -> String {
   match format {
     R8Unorm => "r8unorm"
     R8Snorm => "r8snorm"

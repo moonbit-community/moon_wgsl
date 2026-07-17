@@ -253,9 +253,9 @@ fn WgslIrWriterPlanner::declaration_arena(
 ) -> WgslIrWriterDeclarationArena {
   let derived = self.derived_module_view()
   {
-    types: wgsl_ir_writer_compat_declaration_slots(self.type_order()),
+    types: wgsl_ir_writer_compat_declaration_slots(derived.types),
     constants: wgsl_ir_writer_compat_declaration_slots(derived.constants),
-    overrides: wgsl_ir_writer_compat_declaration_slots(self.override_order()),
+    overrides: wgsl_ir_writer_compat_declaration_slots(derived.overrides),
     global_variables: wgsl_ir_writer_compat_declaration_slots(
       derived.global_variables,
     ),
@@ -269,51 +269,15 @@ fn WgslIrWriterPlanner::runtime_declaration_arena(
 ) -> WgslIrWriterDeclarationArena {
   let derived = self.derived_module_view()
   {
-    types: wgsl_ir_writer_compat_declaration_slots(self.type_order()),
+    types: wgsl_ir_writer_compat_declaration_slots(derived.types),
     constants: wgsl_ir_writer_compat_declaration_slots(derived.constants),
-    overrides: wgsl_ir_writer_compat_declaration_slots(self.override_order()),
+    overrides: wgsl_ir_writer_compat_declaration_slots(derived.overrides),
     global_variables: wgsl_ir_writer_compat_declaration_slots(
       derived.global_variables,
     ),
     functions: wgsl_ir_writer_compat_declaration_slots(
       self.runtime_function_order(),
     ),
-  }
-}
-
-///|
-fn WgslIrWriterPlanner::type_order(self : WgslIrWriterPlanner) -> Array[Int] {
-  match self.filter {
-    Some(filter) => {
-      let order : Array[Int] = []
-      for index in 0..<self.shader_module.types.items.length() {
-        if filter.contains_type(index) {
-          order.push(index)
-        }
-      }
-      order
-    }
-    None =>
-      wgsl_ir_source_order_indices(self.shader_module.types.items.length())
-  }
-}
-
-///|
-fn WgslIrWriterPlanner::override_order(
-  self : WgslIrWriterPlanner,
-) -> Array[Int] {
-  match self.filter {
-    Some(filter) => {
-      let order : Array[Int] = []
-      for index in 0..<self.shader_module.overrides.items.length() {
-        if filter.contains_override(index) {
-          order.push(index)
-        }
-      }
-      order
-    }
-    None =>
-      wgsl_ir_source_order_indices(self.shader_module.overrides.items.length())
   }
 }
 

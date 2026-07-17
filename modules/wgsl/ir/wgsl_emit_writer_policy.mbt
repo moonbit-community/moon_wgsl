@@ -22,13 +22,6 @@ fn WgslIrEmitOptions::preserve_abstract_float_literals(
 }
 
 ///|
-fn WgslIrEmitOptions::inline_generated_import_constants(
-  self : WgslIrEmitOptions,
-) -> Bool {
-  self.semantic_plan.should_inline_generated_import_constants()
-}
-
-///|
 fn WgslIrEmitOptions::fold_numeric_constant_expressions(
   self : WgslIrEmitOptions,
 ) -> Bool {

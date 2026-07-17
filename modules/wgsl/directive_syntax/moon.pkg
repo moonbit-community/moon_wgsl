@@ -1,4 +1,0 @@
-import {
-  "Milky2018/wgsl/ast",
-  "Milky2018/wgsl/lex",
-}

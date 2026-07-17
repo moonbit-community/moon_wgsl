@@ -59,6 +59,9 @@ section "module boundaries"
 required_boundary_files=(
   modules/wgsl/ir/pkg.mbti
   modules/wgsl/parser/pkg.mbti
+  modules/wgsl/ir/wgsl_emit_expression_types.mbt
+  modules/wgsl/ir/wgsl_emit_filter.mbt
+  modules/wgsl/ir/wgsl_emit_types.mbt
   modules/moon_wgsl_naga/pipeline.mbt
   modules/moon_wgsl_naga/wgsl_emit_compat_writer.mbt
   modules/moon_wgsl_naga/wgsl_writer_trace.mbt
@@ -69,9 +72,9 @@ required_boundary_files=(
   modules/moon_wgsl_naga_oil/compose/import_request_builder.mbt
   modules/moon_wgsl_naga_oil/compose/import_request_execution.mbt
   modules/moon_wgsl_naga_oil/compose/finalize.mbt
-  modules/moon_wgsl_naga_oil/transform/rewrite_plan.mbt
-  modules/moon_wgsl_naga_oil/transform/rewrite_collectors.mbt
-  modules/moon_wgsl_naga_oil/transform/wgsl_binding.mbt
+  modules/moon_wgsl_naga_oil/internal/transform/rewrite_plan.mbt
+  modules/moon_wgsl_naga_oil/internal/transform/rewrite_collectors.mbt
+  modules/moon_wgsl_naga_oil/internal/transform/wgsl_binding.mbt
 )
 for file in "${required_boundary_files[@]}"; do
   require_file "$file" "required architecture boundary file"
@@ -84,6 +87,9 @@ legacy_paths=(
   modules/wgsl/parser/wgsl_ast_expr_type.mbt
   modules/wgsl/common/types.mbt
   modules/moon_wgsl_naga_oil/compose/import_graph.mbt
+  modules/moon_wgsl_naga/wgsl_emit_expression_types.mbt
+  modules/moon_wgsl_naga/wgsl_emit_filter.mbt
+  modules/moon_wgsl_naga/wgsl_emit_types.mbt
   testdata/gpuweb_cts_ir_allowlist.txt
   testdata/external_wgsl_corpus_skips.tsv
   testdata/external_wgsl_corpus_expected_failures.tsv
@@ -171,8 +177,8 @@ forbid_rg \
 
 forbid_rg \
   'emit_wgsl_tree_shaken_source_strict|normalize_wgsl_output_identifiers|invalid_wgsl_struct_member_identifier|normalize_wgsl_composed_declarations|WgslTreeShakenSource' \
-  modules/moon_wgsl_naga_oil/transform/pkg.generated.mbti \
-  "transform public interface must not expose source-level semantic rewrite/tree-shake APIs"
+  modules/moon_wgsl_naga_oil/internal/transform/pkg.generated.mbti \
+  "internal transform interface must not expose obsolete source-level semantic rewrite/tree-shake APIs"
 
 section "corpus and CI gates"
 required_manifests=(

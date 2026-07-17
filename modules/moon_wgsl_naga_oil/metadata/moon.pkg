@@ -1,8 +1,7 @@
 import {
-  "Milky2018/wgsl/common",
-  "Milky2018/moon_wgsl_naga_oil/directive",
-  "Milky2018/moon_wgsl_naga_oil/import_substitution",
-  "Milky2018/wgsl/ast",
+  "Milky2018/moon_wgsl_naga_oil/contract",
+  "Milky2018/moon_wgsl_naga_oil/internal/directive",
+  "Milky2018/moon_wgsl_naga_oil/internal/import_substitution",
   "Milky2018/wgsl/lex",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/set",

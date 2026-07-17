@@ -292,6 +292,8 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   function : Function,
   function_plan : WgslIrFunctionWriterPlan,
   namer : WgslIrWriterNamer,
+  compatibility : WgslNagaCompatibilityView,
+  local_spelling_mode : WgslNagaLocalSpellingMode,
 ) -> Unit {
   let temp_namer = WgslIrWriterNamer::WgslIrWriterNamer()
   self.allocate_function_expression_temporary_names(
@@ -300,7 +302,13 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
   for named in function.named_expressions {
     let key = wgsl_ir_emit_named_expression_name_key(origin, named.handle)
     if self.names.get(key) == None {
-      self.names.set(key, namer.local_call(temp_namer, named.name))
+      self.names.set(
+        key,
+        namer.local_call(
+          temp_namer,
+          compatibility.spelling_for_mode(named.name, local_spelling_mode),
+        ),
+      )
     }
   }
   for local_index in 0..<function.local_variables.items.length() {
@@ -326,7 +334,12 @@ fn WgslIrFinalNamePlan::allocate_function_body_names_from_arena(
             None => None
           }
         } else {
-          Some(namer.local_call_or(temp_namer, local_var.name, "local"))
+          let raw_name = match local_var.name {
+            Some(name) =>
+              Some(compatibility.spelling_for_mode(name, local_spelling_mode))
+            None => None
+          }
+          Some(namer.local_call_or(temp_namer, raw_name, "local"))
         }
     }
     match local_name {
@@ -441,6 +454,8 @@ fn WgslIrFinalNamePlan::reserve_function_var_local_names_from_arena(
   function : Function,
   function_plan : WgslIrFunctionWriterPlan,
   namer : WgslIrWriterNamer,
+  compatibility : WgslNagaCompatibilityView,
+  local_spelling_mode : WgslNagaLocalSpellingMode,
 ) -> Unit {
   let temp_namer = WgslIrWriterNamer::WgslIrWriterNamer()
   for local_index in function_plan.local_declaration_order() {
@@ -449,10 +464,12 @@ fn WgslIrFinalNamePlan::reserve_function_var_local_names_from_arena(
     if local_var.kind == Var && !local_var.generated_temporary {
       let key = wgsl_ir_emit_local_name_key(origin, local_handle)
       if self.names.get(key) == None {
-        self.names.set(
-          key,
-          namer.local_call_or(temp_namer, local_var.name, "local"),
-        )
+        let raw_name = match local_var.name {
+          Some(name) =>
+            Some(compatibility.spelling_for_mode(name, local_spelling_mode))
+          None => None
+        }
+        self.names.set(key, namer.local_call_or(temp_namer, raw_name, "local"))
       }
     }
   }

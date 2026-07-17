@@ -1,5 +1,5 @@
 ///|
-using @common {
+using @contract {
   type WgslDiagnostic,
   type WgslDiagnosticSeverity,
   type WgslImportTarget,

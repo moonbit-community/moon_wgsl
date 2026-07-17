@@ -1,9 +1,10 @@
 import {
-  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/contract",
   "Milky2018/moon_wgsl_naga_oil/compose",
   "Milky2018/moon_wgsl_naga_oil/export",
   "Milky2018/moon_wgsl_naga_oil/metadata",
   "Milky2018/moon_wgsl_naga_oil/preprocess",
+  "Milky2018/moon_wgsl_naga_oil/profile",
   "Milky2018/moon_wgsl_naga_oil/resolver",
 }
 
@@ -16,7 +17,9 @@ import {
 } for "test"
 
 import {
-  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/contract",
+  "Milky2018/moon_wgsl_naga_oil/preprocess",
+  "Milky2018/moon_wgsl_naga_oil/profile",
   "Milky2018/moon_wgsl_naga_oil/resolver",
   "Milky2018/wgsl/parser",
   "moonbitlang/x/fs",

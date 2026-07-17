@@ -195,16 +195,49 @@ fn source_contains_comment_marker(source : String) -> Bool {
 }
 
 ///|
+fn replace_comments_preserving_line_endings(source : String) -> String {
+  let output = StringBuilder::new(size_hint=utf8_byte_length(source))
+  let mut state = CommentState::None
+  let mut line_start = 0
+  let mut index = 0
+  while index < source.length() {
+    let break_width = wgsl_line_break_width(source, index)
+    if break_width == 0 {
+      index = index + 1
+      continue
+    }
+    let (output_line, next_state) = replace_comments_line(
+      source[line_start:index].to_owned(),
+      state,
+      true,
+    )
+    output.write_string(output_line)
+    output.write_string(source[index:index + break_width].to_owned())
+    state = next_state
+    index = index + break_width
+    line_start = index
+  }
+  if line_start < source.length() {
+    let (output_line, _) = replace_comments_line(
+      source[line_start:source.length()].to_owned(),
+      state,
+      true,
+    )
+    output.write_string(output_line)
+  }
+  output.to_string()
+}
+
+///|
 fn replace_comments_with(source : String, preserve_byte_width : Bool) -> String {
   if !source_contains_comment_marker(source) {
     return source
   }
-  let mut state = CommentState::None
-  let lines = if preserve_byte_width {
-    source_lines(source)
-  } else {
-    split_source_lines(source)
+  if preserve_byte_width {
+    return replace_comments_preserving_line_endings(source)
   }
+  let mut state = CommentState::None
+  let lines = split_source_lines(source)
   let output = StringBuilder::new()
   let mut first_line = true
   for line in lines {

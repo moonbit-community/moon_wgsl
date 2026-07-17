@@ -39,22 +39,6 @@ fn WgslDeclParser::tokenize_function_arguments(
     token_view: fragment.inner,
   }
   while parser.view().length() > 0 {
-    match parser.view() {
-      [token, ..] if token.is_punctuation(35) => {
-        let hash_pos = token.pos()
-        match parser.directive_line_end_at_hash(hash_pos) {
-          Some(line_end) => {
-            while parser.view().length() > 0 &&
-                  parser.view()[0].pos() < line_end {
-              parser.drop_tokens(1)
-            }
-            continue
-          }
-          None => ()
-        }
-      }
-      _ => ()
-    }
     if parser.consume_if_other(44) {
       tokens.push((COMMA, 0, 0))
       continue

@@ -21,63 +21,6 @@ pub fn WgslIrLowerError::message(self : WgslIrLowerError) -> String {
 }
 
 ///|
-pub(all) enum WgslIrGeneratedImportProvenanceKind {
-  ImportedSourceSymbol
-  VirtualOverrideSymbol
-} derive(Eq, Debug)
-
-///|
-pub(all) struct WgslIrGeneratedImportProvenance {
-  generated_symbol_name : String
-  rel_path : String
-  source_symbol_name : String
-  kind : WgslIrGeneratedImportProvenanceKind
-  inline_value : Bool
-  local_spelling : Bool
-  root_local_spelling : Bool
-  local_spelling_visible_rel_paths : Array[String]
-  import_sequence : Int
-  source_start : Int
-  source_end : Int
-} derive(Eq, Debug)
-
-///|
-pub fn WgslIrGeneratedImportProvenance::WgslIrGeneratedImportProvenance(
-  generated_symbol_name : String,
-  rel_path : String,
-  source_symbol_name : String,
-  kind : WgslIrGeneratedImportProvenanceKind,
-  inline_value : Bool,
-  local_spelling? : Bool = false,
-  root_local_spelling? : Bool = false,
-  local_spelling_visible_rel_paths? : Array[String] = [],
-  import_sequence? : Int = -1,
-  source_start? : Int = -1,
-  source_end? : Int = -1,
-) -> WgslIrGeneratedImportProvenance {
-  {
-    generated_symbol_name,
-    rel_path,
-    source_symbol_name,
-    kind,
-    inline_value,
-    local_spelling,
-    root_local_spelling,
-    local_spelling_visible_rel_paths,
-    import_sequence,
-    source_start,
-    source_end,
-  }
-}
-
-///|
-pub fn WgslIrGeneratedImportProvenance::generated_symbol_name(
-  self : WgslIrGeneratedImportProvenance,
-) -> String {
-  self.generated_symbol_name
-}
-
-///|
 priv struct WgslIrLowerer {
   shader_module : Module
   type_cache : Map[String, Handle]
@@ -93,14 +36,10 @@ priv struct WgslIrLowerer {
   override_declarations : Map[String, @ast.WgslOverride]
   override_type_inference_stack : @set.Set[String]
   referenced_names : @set.Set[String]
-  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
-  root_visible_rel_path : String
 }
 
 ///|
-fn WgslIrLowerer::WgslIrLowerer(
-  root_visible_rel_path? : String = "",
-) -> WgslIrLowerer {
+fn WgslIrLowerer::WgslIrLowerer() -> WgslIrLowerer {
   {
     shader_module: Module(),
     type_cache: Map([]),
@@ -116,8 +55,6 @@ fn WgslIrLowerer::WgslIrLowerer(
     override_declarations: Map([]),
     override_type_inference_stack: Set([]),
     referenced_names: Set([]),
-    generated_import_provenance: Map([]),
-    root_visible_rel_path,
   }
 }
 
@@ -127,63 +64,76 @@ fn wgsl_ir_parse_error_message(error : @parser.WgslParseError) -> String {
 }
 
 ///|
+fn validate_wgsl_module_namespace(
+  unit : @ast.WgslTranslationUnit,
+) -> Unit raise WgslIrLowerError {
+  let names : @set.Set[String] = Set([])
+  for declaration in unit.declarations() {
+    match declaration.data() {
+      Struct(struct_decl) =>
+        validate_wgsl_unique_struct_member_names(struct_decl)
+      Function(function) =>
+        validate_wgsl_unique_function_argument_names(function)
+      _ => ()
+    }
+    let name = declaration.name()
+    if name == "" {
+      continue
+    }
+    if names.contains(name) {
+      raise Parse("redefinition of `\{name}`")
+    }
+    names.add(name)
+  }
+}
+
+///|
+fn validate_wgsl_unique_struct_member_names(
+  struct_decl : @ast.WgslStruct,
+) -> Unit raise WgslIrLowerError {
+  let names : @set.Set[String] = Set([])
+  for field in struct_decl.members() {
+    let name = field.name().name()
+    if names.contains(name) {
+      raise Parse("redefinition of `\{name}`")
+    }
+    names.add(name)
+  }
+}
+
+///|
+fn validate_wgsl_unique_function_argument_names(
+  function : @ast.WgslFunction,
+) -> Unit raise WgslIrLowerError {
+  let names : @set.Set[String] = Set([])
+  for argument in function.arguments() {
+    let name = argument.name().name()
+    if name == "_" {
+      continue
+    }
+    if names.contains(name) {
+      raise Parse("redefinition of `\{name}`")
+    }
+    names.add(name)
+  }
+}
+
+///|
 pub fn parse_wgsl_module_to_ir(
   source : String,
-) -> Module raise WgslIrLowerError {
-  parse_wgsl_module_to_ir_with_generated_imports(source, [])
-}
-
-///|
-pub fn parse_wgsl_module_to_ir_with_generated_imports(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-) -> Module raise WgslIrLowerError {
-  parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
-    source,
-    generated_import_provenance,
-    [],
-  )
-}
-
-///|
-pub fn parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
-  source : String,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[WgslIrImportArenaEvent],
-  root_visible_rel_path? : String = "",
 ) -> Module raise WgslIrLowerError {
   let unit = @parser.parse_wgsl_translation_unit_strict(source) catch {
     error => raise Parse(wgsl_ir_parse_error_message(error))
   }
-  lower_wgsl_translation_unit_to_ir_with_generated_imports(
-    unit,
-    generated_import_provenance,
-    import_arena_events,
-    root_visible_rel_path~,
-  )
+  validate_wgsl_module_namespace(unit)
+  lower_wgsl_translation_unit_to_ir(unit)
 }
 
 ///|
-fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
+fn lower_wgsl_translation_unit_to_ir(
   unit : @ast.WgslTranslationUnit,
-  generated_import_provenance : Array[WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[WgslIrImportArenaEvent],
-  root_visible_rel_path? : String = "",
 ) -> Module raise WgslIrLowerError {
-  let lowerer = WgslIrLowerer(root_visible_rel_path~)
-  for event in import_arena_events {
-    lowerer.shader_module.import_arena_events.push(event)
-  }
-  for entry in generated_import_provenance {
-    lowerer.generated_import_provenance.set(
-      entry.generated_symbol_name(),
-      entry,
-    )
-    lowerer.shader_module.generated_import_provenance.set(
-      entry.generated_symbol_name(),
-      entry,
-    )
-  }
+  let lowerer = WgslIrLowerer()
   lowerer.register_prelude_types()
   for declaration in unit.declarations() {
     lowerer.record_referenced_names(declaration)
@@ -191,11 +141,7 @@ fn lower_wgsl_translation_unit_to_ir_with_generated_imports(
   for declaration in unit.declarations() {
     lowerer.record_override_declaration(declaration)
   }
-  for
-    declaration in wgsl_ir_struct_predeclare_order(
-      unit.declarations(),
-      lowerer.generated_import_provenance,
-    ) {
+  for declaration in wgsl_ir_struct_predeclare_order(unit.declarations()) {
     lowerer.predeclare_global_type_declaration(declaration)
   }
   for declaration in unit.declarations() {
@@ -241,90 +187,6 @@ fn WgslIrLowerer::record_referenced_names(
   )
   for identifier in identifiers {
     self.referenced_names.add(identifier.name())
-  }
-}
-
-///|
-fn WgslIrLowerer::naga_oil_generated_import_local_spelling(
-  self : WgslIrLowerer,
-  source_name : String,
-  visible_rel_path : String,
-) -> String {
-  let mut target : String? = None
-  for entry in self.generated_import_provenance.iter() {
-    let (_, provenance) = entry
-    if provenance.kind != ImportedSourceSymbol ||
-      !provenance.local_spelling ||
-      provenance.source_symbol_name != source_name ||
-      !provenance.local_spelling_visible_rel_paths.contains(visible_rel_path) {
-      continue
-    }
-    match target {
-      Some(existing) if existing != provenance.generated_symbol_name =>
-        return source_name
-      Some(_) => ()
-      None => target = Some(provenance.generated_symbol_name)
-    }
-  }
-  match target {
-    Some(value) => value
-    None => source_name
-  }
-}
-
-///|
-fn WgslIrLowerer::naga_oil_generated_import_root_local_spelling(
-  self : WgslIrLowerer,
-  source_name : String,
-) -> String {
-  let mut target : String? = None
-  for entry in self.generated_import_provenance.iter() {
-    let (_, provenance) = entry
-    if provenance.kind != ImportedSourceSymbol ||
-      !provenance.root_local_spelling ||
-      provenance.source_symbol_name != source_name {
-      continue
-    }
-    match target {
-      Some(existing) if existing != provenance.generated_symbol_name =>
-        return source_name
-      Some(_) => ()
-      None => target = Some(provenance.generated_symbol_name)
-    }
-  }
-  match target {
-    Some(value) => value
-    None => source_name
-  }
-}
-
-///|
-fn WgslIrLowerer::generated_import_local_spelling_for_scope(
-  self : WgslIrLowerer,
-  source_name : String,
-  scope : WgslIrFunctionScope,
-) -> String {
-  match scope.generated_import_local_spelling {
-    AllGeneratedImportLocalSpelling =>
-      self.naga_oil_generated_import_local_spelling(
-        source_name,
-        scope.visible_rel_path,
-      )
-    RootGeneratedImportLocalSpelling =>
-      self.naga_oil_generated_import_root_local_spelling(source_name)
-    NoGeneratedImportLocalSpelling => source_name
-  }
-}
-
-///|
-fn WgslIrLowerer::generated_import_function_rel_path(
-  self : WgslIrLowerer,
-  generated_name : String,
-) -> String {
-  match self.generated_import_provenance.get(generated_name) {
-    Some(provenance) if provenance.kind == ImportedSourceSymbol =>
-      provenance.rel_path
-    _ => ""
   }
 }
 

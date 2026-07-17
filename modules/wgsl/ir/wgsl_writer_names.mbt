@@ -102,14 +102,9 @@ fn WgslIrWriterModule::type_name_is_imported_generated_symbol(
   self : WgslIrWriterModule,
   name : String?,
 ) -> Bool {
-  match name {
-    Some(value) =>
-      match self.generated_import_provenance.get(value) {
-        Some(provenance) => provenance.kind == ImportedSourceSymbol
-        None => false
-      }
-    None => false
-  }
+  ignore(self)
+  ignore(name)
+  false
 }
 
 ///|
@@ -120,25 +115,7 @@ fn WgslIrWriterModule::root_struct_member_import_spelling_name(
   if !self.root_struct_member_import_spelling {
     return source_name
   }
-  let mut target : String? = None
-  for entry in self.generated_import_provenance.iter() {
-    let (_, provenance) = entry
-    if provenance.kind != ImportedSourceSymbol ||
-      !provenance.root_local_spelling ||
-      provenance.source_symbol_name != source_name {
-      continue
-    }
-    match target {
-      Some(existing) if existing != provenance.generated_symbol_name =>
-        return source_name
-      Some(_) => ()
-      None => target = Some(provenance.generated_symbol_name)
-    }
-  }
-  match target {
-    Some(value) => value
-    None => source_name
-  }
+  source_name
 }
 
 ///|

@@ -1,17 +1,8 @@
 ///|
 pub(all) enum WgslDirectiveKind {
-  Ifdef
-  Ifndef
-  If
-  Else
-  Endif
-  DefineImportPath
-  Define
-  Import
   Enable
   Requires
   Diagnostic
-  Other
 } derive(Eq, Debug)
 
 ///|
@@ -125,7 +116,6 @@ pub fn WgslDirective::tail_end(self : WgslDirective) -> Int {
 ///|
 pub(all) enum WgslGlobalDeclKind {
   Directive
-  Import
   Function
   GlobalVariable
   Const
@@ -1352,7 +1342,6 @@ pub fn WgslTypeAlias::ty_ref(self : WgslTypeAlias) -> WgslTypeRef? {
 ///|
 pub(all) enum WgslGlobalDeclData {
   Directive(WgslDirective)
-  Import(WgslDirective)
   Function(WgslFunction)
   GlobalVariable(WgslGlobalVariable)
   Const(WgslConst)
@@ -1400,7 +1389,7 @@ fn wgsl_decl_data_name(data : WgslGlobalDeclData) -> String {
     Override(value) => value.name().name()
     Struct(value) => value.name().name()
     TypeAlias(value) => value.name().name()
-    Directive(_) | Import(_) | ConstAssert(_) | Raw => ""
+    Directive(_) | ConstAssert(_) | Raw => ""
   }
 }
 

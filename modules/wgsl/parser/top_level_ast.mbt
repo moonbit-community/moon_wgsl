@@ -20,26 +20,6 @@ fn top_level_span_has_text(source : String, start : Int, end_ : Int) -> Bool {
 }
 
 ///|
-fn top_level_line_start(source : String, pos : Int) -> Int {
-  wgsl_line_start(source, pos)
-}
-
-///|
-fn top_level_line_end(source : String, pos : Int) -> Int {
-  wgsl_line_end(source, pos)
-}
-
-///|
-fn top_level_hash_starts_directive(cleaned : String, pos : Int) -> Bool {
-  let line_start = top_level_line_start(cleaned, pos)
-  guard wgsl_regex_trim_whitespace(cleaned[line_start:pos].to_owned()) == "" else {
-    return false
-  }
-  let line_end = top_level_line_end(cleaned, pos)
-  parse_wgsl_directive_line(cleaned[pos:line_end].to_owned()) is Some(_)
-}
-
-///|
 fn top_level_non_whitespace_index(
   tokens : Array[WgslToken],
   start : Int,
@@ -73,26 +53,6 @@ fn top_level_previous_token_is_hash(previous : WgslToken?) -> Bool {
 }
 
 ///|
-fn top_level_directive_item_kind(
-  kind : WgslDirectiveKind,
-) -> WgslRawTopLevelKind {
-  match kind {
-    DefineImportPath => DefineImportPath
-    Define => Define
-    Import => Import
-    Ifdef
-    | Ifndef
-    | If
-    | Else
-    | Endif
-    | Enable
-    | Requires
-    | Diagnostic
-    | Other => Directive
-  }
-}
-
-///|
 fn top_level_push_span_item(
   items : Array[WgslRawTopLevelItem],
   kind : WgslRawTopLevelKind,
@@ -105,7 +65,6 @@ fn top_level_push_span_item(
 ///|
 priv struct WgslTopLevelParser {
   source : String
-  cleaned : String
   tokens : Array[WgslToken]
   mut index : Int
   mut pending_start : Int
@@ -115,24 +74,11 @@ priv struct WgslTopLevelParser {
 fn WgslTopLevelParser::WgslTopLevelParser(
   source : String,
 ) -> WgslTopLevelParser {
-  let cleaned = replace_comments(source)
   {
     source,
-    cleaned,
-    tokens: tokenize_wgsl(cleaned, false),
+    tokens: tokenize_wgsl(replace_comments(source), false),
     index: 0,
     pending_start: 0,
-  }
-}
-
-///|
-fn WgslTopLevelParser::skip_to_span_end(
-  self : WgslTopLevelParser,
-  end_ : Int,
-) -> Unit {
-  while self.index < self.tokens.length() &&
-        self.tokens[self.index].pos() < end_ {
-    self.index = self.index + 1
   }
 }
 
@@ -146,46 +92,6 @@ fn WgslTopLevelParser::flush_trivia_until(
     top_level_push_span_item(items, Trivia, self.pending_start, end_)
   }
   self.pending_start = end_
-}
-
-///|
-fn WgslTopLevelParser::parse_directive_item(
-  self : WgslTopLevelParser,
-  items : Array[WgslRawTopLevelItem],
-  directive : WgslDirective,
-) -> Unit {
-  let token_pos = self.tokens[self.index].pos()
-  let physical_line_start = top_level_line_start(self.source, token_pos)
-  let item_start = if physical_line_start < self.pending_start {
-    self.pending_start
-  } else {
-    physical_line_start
-  }
-  self.flush_trivia_until(items, item_start)
-  let first_line_end = top_level_line_end(self.source, token_pos)
-  let mut item_end = first_line_end
-  if directive.kind() == Import {
-    let mut balance = raw_import_brace_balance_next(
-      0,
-      replace_comments(self.source[token_pos:first_line_end].to_owned()),
-    )
-    while balance > 0 && item_end < self.source.length() {
-      let next_line_end = top_level_line_end(self.source, item_end)
-      balance = raw_import_brace_balance_next(
-        balance,
-        replace_comments(self.source[item_end:next_line_end].to_owned()),
-      )
-      item_end = next_line_end
-    }
-  }
-  top_level_push_span_item(
-    items,
-    top_level_directive_item_kind(directive.kind()),
-    item_start,
-    item_end,
-  )
-  self.skip_to_span_end(item_end)
-  self.pending_start = item_end
 }
 
 ///|
@@ -209,13 +115,6 @@ fn WgslTopLevelParser::parse_declaration_item(
   let mut previous_significant : WgslToken? = None
   while self.index < self.tokens.length() {
     let token = self.tokens[self.index]
-    if depth.at_top() &&
-      token.pos() > first_token_pos &&
-      token.is_punctuation(35) &&
-      top_level_hash_starts_directive(self.cleaned, token.pos()) {
-      item_end = token.pos()
-      break
-    }
     if !saw_brace && depth.at_top() && token.is_punctuation(59) {
       item_end = token.end()
       self.index = self.index + 1
@@ -273,17 +172,6 @@ fn WgslTopLevelParser::parse_items(
       self.index = self.index + 1
       self.pending_start = token.end()
       continue
-    }
-    if token.is_punctuation(35) {
-      let line_end = top_level_line_end(self.source, token_pos)
-      let cleaned_line = self.cleaned[token_pos:line_end].to_owned()
-      match parse_wgsl_directive_line(cleaned_line) {
-        Some(directive) => {
-          self.parse_directive_item(items, directive)
-          continue
-        }
-        None => ()
-      }
     }
     self.parse_declaration_item(items)
   }

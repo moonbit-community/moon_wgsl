@@ -39,8 +39,8 @@ pub struct WgslNagaPipelineOptions {
 
 ///|
 pub struct WgslNagaComposeContext {
-  priv generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance]
-  priv import_arena_events : Array[@ir.WgslIrImportArenaEvent]
+  priv generated_import_provenance : Array[WgslNagaGeneratedImportProvenance]
+  priv import_arena_events : Array[WgslNagaImportArenaEvent]
   priv root_visible_rel_path : String
 }
 
@@ -72,8 +72,8 @@ pub fn WgslNagaComposeContext::empty() -> WgslNagaComposeContext {
 
 ///|
 pub fn WgslNagaComposeContext::from_import_graph(
-  generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[@ir.WgslIrImportArenaEvent],
+  generated_import_provenance : Array[WgslNagaGeneratedImportProvenance],
+  import_arena_events : Array[WgslNagaImportArenaEvent],
   root_visible_rel_path? : String = "",
 ) -> WgslNagaComposeContext {
   { generated_import_provenance, import_arena_events, root_visible_rel_path }
@@ -83,25 +83,7 @@ pub fn WgslNagaComposeContext::from_import_graph(
 fn lower_validated_wgsl_source_to_ir(
   source : String,
 ) -> Module raise WgslNagaPipelineError {
-  lower_validated_wgsl_source_to_ir_with_options(
-    source,
-    WgslNagaComposeContext::empty(),
-  )
-}
-
-///|
-fn lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-  source : String,
-  generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[@ir.WgslIrImportArenaEvent],
-  root_visible_rel_path? : String = "",
-) -> Module raise WgslNagaPipelineError {
-  let module_ = parse_wgsl_module_to_ir_with_generated_imports_and_import_arena_events(
-    source,
-    generated_import_provenance,
-    import_arena_events,
-    root_visible_rel_path~,
-  ) catch {
+  let module_ = parse_wgsl_module_to_ir(source) catch {
     error =>
       match error {
         UnknownIdentifier(name) => raise UnknownIdentifier(name)
@@ -119,12 +101,8 @@ fn lower_validated_wgsl_source_to_ir_with_options(
   source : String,
   context : WgslNagaComposeContext,
 ) -> Module raise WgslNagaPipelineError {
-  lower_validated_wgsl_source_to_ir_with_generated_imports_and_import_arena_events(
-    source,
-    context.generated_import_provenance,
-    context.import_arena_events,
-    root_visible_rel_path=context.root_visible_rel_path,
-  )
+  ignore(context)
+  lower_validated_wgsl_source_to_ir(source)
 }
 
 ///|
@@ -164,7 +142,11 @@ fn roundtrip_wgsl_source_with_compose_context(
   options : WgslNagaPipelineOptions,
 ) -> String raise WgslNagaPipelineError {
   let module_ = lower_validated_wgsl_source_to_ir_with_options(source, context)
-  emit_wgsl_module_with_options(module_, options)
+  emit_wgsl_module_with_options(
+    module_,
+    options,
+    compatibility=WgslNagaCompatibilityView::from_context(context),
+  )
 }
 
 ///|
@@ -178,6 +160,7 @@ fn roundtrip_wgsl_source_via_ir(
 fn emit_wgsl_module_with_options(
   module_ : Module,
   options : WgslNagaPipelineOptions,
+  compatibility? : WgslNagaCompatibilityView = WgslNagaCompatibilityView::empty(),
 ) -> String raise WgslNagaPipelineError {
   let roots = if options.entry_roots {
     wgsl_ir_entry_point_root_items(module_)
@@ -186,20 +169,24 @@ fn emit_wgsl_module_with_options(
   }
   if options.compat_writer {
     if roots.length() == 0 {
-      emit_wgsl_module_from_ir_compat_writer(module_) catch {
+      emit_wgsl_module_from_ir_compat_writer(module_, compatibility~) catch {
         error => raise Emit(error.message())
       }
     } else {
-      emit_wgsl_module_from_ir_compat_writer_roots(module_, roots) catch {
+      emit_wgsl_module_from_ir_compat_writer_roots(
+        module_,
+        roots,
+        compatibility~,
+      ) catch {
         error => raise Emit(error.message())
       }
     }
   } else if roots.length() == 0 {
-    emit_wgsl_module_from_ir(module_) catch {
+    emit_wgsl_module_from_ir(module_, compatibility~) catch {
       error => raise Emit(error.message())
     }
   } else {
-    emit_wgsl_module_from_ir_roots(module_, roots) catch {
+    emit_wgsl_module_from_ir_roots(module_, roots, compatibility~) catch {
       error => raise Emit(error.message())
     }
   }
@@ -208,8 +195,8 @@ fn emit_wgsl_module_with_options(
 ///|
 fn roundtrip_runtime_entry_roots(
   source : String,
-  generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[@ir.WgslIrImportArenaEvent],
+  generated_import_provenance : Array[WgslNagaGeneratedImportProvenance],
+  import_arena_events : Array[WgslNagaImportArenaEvent],
 ) -> String raise WgslNagaPipelineError {
   roundtrip_wgsl_compose_source(
     source,
@@ -223,7 +210,7 @@ fn roundtrip_runtime_entry_roots(
 ///|
 fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
   source : String,
-  generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],
+  generated_import_provenance : Array[WgslNagaGeneratedImportProvenance],
 ) -> String raise WgslNagaPipelineError {
   roundtrip_compat_import_context(source, generated_import_provenance, [])
 }
@@ -231,8 +218,8 @@ fn roundtrip_wgsl_source_via_ir_with_generated_imports_compat_writer(
 ///|
 fn roundtrip_compat_import_context(
   source : String,
-  generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[@ir.WgslIrImportArenaEvent],
+  generated_import_provenance : Array[WgslNagaGeneratedImportProvenance],
+  import_arena_events : Array[WgslNagaImportArenaEvent],
   root_visible_rel_path? : String = "",
 ) -> String raise WgslNagaPipelineError {
   roundtrip_wgsl_compose_source(
@@ -248,8 +235,8 @@ fn roundtrip_compat_import_context(
 ///|
 fn roundtrip_compat_entry_roots(
   source : String,
-  generated_import_provenance : Array[@ir.WgslIrGeneratedImportProvenance],
-  import_arena_events : Array[@ir.WgslIrImportArenaEvent],
+  generated_import_provenance : Array[WgslNagaGeneratedImportProvenance],
+  import_arena_events : Array[WgslNagaImportArenaEvent],
 ) -> String raise WgslNagaPipelineError {
   roundtrip_wgsl_compose_source(
     source,

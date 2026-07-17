@@ -72,7 +72,7 @@ pub fn validate_wgsl_ir_module(
 ///|
 fn validate_wgsl_ir_module_with_filter(
   shader_module : Module,
-  filter : WgslIrEmitFilter,
+  filter : WgslIrReachability,
 ) -> Unit raise WgslIrValidationError {
   let validator = WgslIrValidator::{ shader_module, filter: Some(filter) }
   validator.validate_module()
@@ -81,7 +81,7 @@ fn validate_wgsl_ir_module_with_filter(
 ///|
 priv struct WgslIrValidator {
   shader_module : Module
-  filter : WgslIrEmitFilter?
+  filter : WgslIrReachability?
 }
 
 ///|

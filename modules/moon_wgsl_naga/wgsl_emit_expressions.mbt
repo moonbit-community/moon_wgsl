@@ -249,7 +249,7 @@ fn WgslIrEmitter::emit_expression(
     RayQueryGetIntersection(query, committed) =>
       self.ray_query_get_intersection_expression(function, query, committed)
     SubgroupCall(subgroup_function, arguments) =>
-      "\{wgsl_ir_emit_subgroup_function_name(subgroup_function)}(\{self.expression_list(arguments, function)})"
+      "\{wgsl_ir_subgroup_function_name(subgroup_function)}(\{self.expression_list(arguments, function)})"
     CooperativeLoad(columns, rows, role, data) =>
       self.cooperative_load_expression(function, columns, rows, role, data)
     CooperativeMultiplyAdd(a, b, c) =>

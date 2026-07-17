@@ -14,10 +14,9 @@
 
 ///|
 priv struct WgslIrWriterModule {
-  filter : WgslIrEmitFilter?
+  filter : WgslIrReachability?
   derived : WgslIrDerivedModuleView
   emission : WgslIrWriterEmissionPlan
-  generated_import_provenance : Map[String, WgslIrGeneratedImportProvenance]
   root_struct_member_import_spelling : Bool
   mut names : WgslIrFinalNamePlan
 }
@@ -25,7 +24,7 @@ priv struct WgslIrWriterModule {
 ///|
 priv struct WgslIrWriterPlanner {
   shader_module : Module
-  filter : WgslIrEmitFilter?
+  filter : WgslIrReachability?
 }
 
 ///|
@@ -33,7 +32,7 @@ fn build_wgsl_ir_runtime_writer_module(
   shader_module : Module,
   root_items : Array[String]?,
 ) -> WgslIrWriterModule {
-  let filter = wgsl_ir_emit_filter_from_optional_roots(
+  let filter = wgsl_ir_reachability_from_optional_roots(
     shader_module, root_items,
   )
   let planner = WgslIrWriterPlanner::{ shader_module, filter }
@@ -43,7 +42,6 @@ fn build_wgsl_ir_runtime_writer_module(
     filter,
     derived,
     emission: planner.writer_emission_plan(arena),
-    generated_import_provenance: shader_module.generated_import_provenance,
     root_struct_member_import_spelling: false,
     names: WgslIrFinalNamePlan::empty(),
   }

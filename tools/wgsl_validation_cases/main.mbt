@@ -29,18 +29,18 @@ fn validation_bool_defines(names : Array[String]) -> Map[String, Bool] {
 ///|
 fn validation_compose_options(
   defines : Map[String, Bool],
-) -> @common.WgslComposeOptions {
+) -> @contract.WgslComposeOptions {
   {
     defines,
-    value_defines: @common.default_wgsl_value_defines(),
+    value_defines: @profile.bevy_wgsl_value_defines(),
     redirects: [],
     additional_imports: [],
   }
 }
 
 ///|
-fn validation_bevy_value_defines() -> Map[String, @common.ShaderDefValue] {
-  let value_defines = @common.default_wgsl_value_defines()
+fn validation_bevy_value_defines() -> Map[String, @contract.ShaderDefValue] {
+  let value_defines = @profile.bevy_wgsl_value_defines()
   value_defines.remove("PER_OBJECT_BUFFER_BATCH_SIZE")
   value_defines
 }
@@ -73,7 +73,7 @@ fn validation_upstream_compute_source() -> String {
   composer.clear_sources()
   composer.register_source_tree(
     "testdata/upstream_compose/compute_test",
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream compute fixture registration success")
   }
@@ -94,7 +94,7 @@ fn validation_upstream_diagnostic_filters_source() -> String {
   composer.clear_sources()
   composer.register_source_tree(
     "testdata/upstream_compose/diagnostic_filters",
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected diagnostic filters fixture registration success")
   }
@@ -161,7 +161,7 @@ fn validation_bevy_source(entry : String) -> String {
   composer.clear_sources()
   composer.register_source_tree(
     "testdata/bevy_wgsl",
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
@@ -181,7 +181,7 @@ fn validation_upstream_raycast_source() -> String {
   composer.clear_sources()
   composer.register_source_tree(
     "testdata/naga_oil_upstream/compose_tests/raycast",
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream raycast fixture registration success")
   }
@@ -199,7 +199,7 @@ fn validation_upstream_dual_source_blending_source() -> String {
   composer.clear_sources()
   composer.register_source_tree(
     "testdata/upstream_compose/dual_source_blending",
-    @common.WgslSourceScanOptions::default(),
+    @contract.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream dual-source fixture registration success")
   }

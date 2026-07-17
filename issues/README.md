@@ -47,6 +47,15 @@ graph TD
   ISS_031["ISS-031: Make compose reference liveness purely symbol-graph driven"]
   ISS_032["ISS-032: Replace grep-heavy architecture guardrails with structured assertions"]
   ISS_033["ISS-033: Add freshness gates for tracker and parity documentation"]
+  ISS_034["ISS-034: Restore conceptual ownership and deep module interfaces"]
+  ISS_035["ISS-035: Define and enforce the target ownership model"]
+  ISS_036["ISS-036: Move compatibility contracts out of WGSL Core"]
+  ISS_037["ISS-037: Separate naga-oil dialect syntax from the official WGSL frontend"]
+  ISS_038["ISS-038: Build the Naga compatibility view outside semantic IR"]
+  ISS_039["ISS-039: Replace the leaked Composer type with a deep facade interface"]
+  ISS_040["ISS-040: Internalize naga-oil implementation packages"]
+  ISS_041["ISS-041: Replace writer symlinks with explicit neutral ownership"]
+  ISS_042["ISS-042: Complete migration documentation and architecture proof"]
   ISS_002 --> ISS_003
   ISS_006 --> ISS_003
   ISS_003 --> ISS_004
@@ -91,6 +100,20 @@ graph TD
   ISS_025 --> ISS_028
   ISS_026 --> ISS_028
   ISS_027 --> ISS_028
+  ISS_035 --> ISS_036
+  ISS_036 --> ISS_037
+  ISS_035 --> ISS_038
+  ISS_036 --> ISS_039
+  ISS_037 --> ISS_039
+  ISS_038 --> ISS_039
+  ISS_039 --> ISS_040
+  ISS_038 --> ISS_041
+  ISS_036 --> ISS_042
+  ISS_037 --> ISS_042
+  ISS_038 --> ISS_042
+  ISS_039 --> ISS_042
+  ISS_040 --> ISS_042
+  ISS_041 --> ISS_042
 ```
 
 ## Warnings

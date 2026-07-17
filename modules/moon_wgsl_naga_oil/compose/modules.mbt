@@ -165,7 +165,7 @@ fn find_wgsl_cached_imported_item_name(
   item_name : String,
 ) -> String? {
   session.symbols.emitted_final_names.canonical_get(
-    WgslIrSymbolIdentity(rel_path, item_name),
+    WgslComposeSymbolIdentity(rel_path, item_name),
   )
 }
 
@@ -199,7 +199,7 @@ fn find_wgsl_visible_identity_imported_item_binding(
   item_name : String,
 ) -> WgslComposeBinding? {
   let identity_key = WgslComposeIrIdentityKey(
-    WgslIrSymbolIdentity(rel_path, item_name),
+    WgslComposeSymbolIdentity(rel_path, item_name),
   ).text()
   let mut found : WgslComposeBinding? = None
   for binding in bindings.bindings {

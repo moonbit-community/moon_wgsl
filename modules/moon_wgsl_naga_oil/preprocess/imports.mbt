@@ -1,5 +1,5 @@
 ///|
-using @common {
+using @contract {
   type ImportDefWithOffset,
   type PreprocessOutput,
   type ShaderDefValue,
@@ -7,9 +7,6 @@ using @common {
 
 ///|
 using @import_substitution {type WgslImportSubstitutionState}
-
-///|
-using @ast {type WgslDirective}
 
 ///|
 using @lex {
@@ -22,6 +19,7 @@ using @lex {
 
 ///|
 using @directive {
+  type WgslPreprocessorDirective,
   type WgslDirectiveScanItem,
   type WgslShaderDefOperator,
   parse_wgsl_directive_identifier,

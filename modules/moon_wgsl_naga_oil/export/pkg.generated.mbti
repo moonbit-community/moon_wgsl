@@ -3,11 +3,11 @@ package "Milky2018/moon_wgsl_naga_oil/export"
 
 import {
   "Milky2018/moon_wgsl_naga_oil/compose",
-  "Milky2018/wgsl/common",
+  "Milky2018/moon_wgsl_naga_oil/contract",
 }
 
 // Values
-pub fn export_wgsl_with_options(@compose.Composer, String, @common.WgslComposeOptions, @common.WgslExportOptions) -> @common.WgslExportOutput raise @compose.ComposerError
+pub fn export_wgsl_with_options(@compose.Composer, String, @contract.WgslComposeOptions, @contract.WgslExportOptions) -> @contract.WgslExportOutput raise @compose.ComposerError
 
 // Errors
 

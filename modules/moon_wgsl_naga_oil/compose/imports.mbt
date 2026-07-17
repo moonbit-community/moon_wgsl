@@ -13,12 +13,14 @@ using @transform {
 }
 
 ///|
-using @common {
+using @contract {
   type ComposableModuleDescriptor,
   type ImportDefinition,
   type PreparedWgslSource,
   type ShaderDefValue,
+  type WgslComposeAliasSymbolIdentity,
   type WgslComposeOptions,
+  type WgslComposeSymbolIdentity,
   type WgslDiagnostic,
   type WgslImportTarget,
   type WgslReferencePath,
@@ -53,7 +55,7 @@ using @resolver {
 }
 
 ///|
-using @ast {type WgslDirective, type WgslGlobalDecl, type WgslTranslationUnit}
+using @ast {type WgslGlobalDecl, type WgslTranslationUnit}
 
 ///|
 using @parser {type WgslParseError, parse_wgsl_translation_unit_strict}
@@ -71,12 +73,6 @@ using @lex {
 }
 
 ///|
-using @ir {
-  type WgslIrAliasSymbolIdentity,
-  type WgslIrFinalNameTable,
-  type WgslIrLinkGraph,
-  type WgslIrSymbolIdentity,
-}
 
 ///|
 using @import_syntax {
@@ -85,9 +81,12 @@ using @import_syntax {
 }
 
 ///|
-using @directive {type WgslDirectiveScanItem, parse_wgsl_directive_scan_items}
-
-///|
-using @directive_syntax {parse_glsl_version_directive}
+using @directive {
+  type WgslPreprocessorDirective,
+  type WgslDirectiveScanItem,
+  mask_naga_oil_directives_for_wgsl,
+  parse_glsl_version_directive,
+  parse_wgsl_directive_scan_items,
+}
 
 ///|

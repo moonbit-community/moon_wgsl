@@ -151,6 +151,9 @@ fn wgsl_ir_required_enable_extensions(
   shader_module : Module,
 ) -> WgslIrRequiredEnableExtensions {
   let required = WgslIrRequiredEnableExtensions()
+  for ty in shader_module.types.items {
+    wgsl_ir_collect_required_extensions_from_type(ty, required)
+  }
   for constant in shader_module.constants.items {
     wgsl_ir_collect_required_extensions_from_type_handle(
       shader_module,

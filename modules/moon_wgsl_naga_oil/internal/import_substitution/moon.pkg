@@ -1,0 +1,11 @@
+import {
+  "Milky2018/moon_wgsl_naga_oil/contract",
+  "Milky2018/moon_wgsl_naga_oil/internal/directive",
+  "Milky2018/wgsl/ast",
+  "Milky2018/wgsl/ast_analysis",
+  "Milky2018/moon_wgsl_naga_oil/internal/import_syntax",
+  "Milky2018/moon_wgsl_naga_oil/internal/source_rewrite",
+  "Milky2018/wgsl/parser",
+  "Milky2018/wgsl/lex",
+  "moonbitlang/core/encoding/utf8",
+}

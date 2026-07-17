@@ -85,9 +85,6 @@ fn WgslIrLowerer::predeclare_function_declaration(
   let placeholder = Function::{
     name: Some(function.name().name()),
     source_start: function.fn_start(),
-    generated_import: self.function_has_generated_import_provenance(
-      function.name().name(),
-    ),
     arguments: [],
     result,
     local_variables: LocalVariableArena(),
@@ -129,25 +126,6 @@ fn WgslIrLowerer::predeclare_global_variable(
 }
 
 ///|
-fn WgslIrLowerer::function_has_generated_import_provenance(
-  self : WgslIrLowerer,
-  name : String,
-) -> Bool {
-  self.generated_import_provenance.get(name) != None
-}
-
-///|
-fn WgslIrLowerer::constant_should_inline_generated_import_value(
-  self : WgslIrLowerer,
-  name : String,
-) -> Bool {
-  match self.generated_import_provenance.get(name) {
-    Some(provenance) => provenance.inline_value
-    None => false
-  }
-}
-
-///|
 fn WgslIrLowerer::predeclare_constant_declaration(
   self : WgslIrLowerer,
   constant : @ast.WgslConst,
@@ -162,8 +140,6 @@ fn WgslIrLowerer::predeclare_constant_declaration(
   )
   let handle = self.shader_module.append_constant({
     name: Some(name),
-    generated_import: self.function_has_generated_import_provenance(name),
-    inline_value: self.constant_should_inline_generated_import_value(name),
     source_start: constant.name().start(),
     ty,
     init: placeholder_init,
@@ -227,7 +203,6 @@ fn WgslIrLowerer::lower_source_directive(
   match directive.kind() {
     Enable | Requires | Diagnostic =>
       self.shader_module.append_directive(wgsl_ir_directive_text(directive))
-    _ => ()
   }
 }
 
@@ -425,8 +400,6 @@ fn WgslIrLowerer::lower_constant(
       )
       let handle = self.shader_module.append_constant({
         name: Some(name),
-        generated_import: self.function_has_generated_import_provenance(name),
-        inline_value: self.constant_should_inline_generated_import_value(name),
         source_start: constant.name().start(),
         ty,
         init: placeholder_init,
@@ -442,8 +415,6 @@ fn WgslIrLowerer::lower_constant(
   }
   module_set_constant(self.shader_module, handle, {
     name: Some(name),
-    generated_import: self.function_has_generated_import_provenance(name),
-    inline_value: self.constant_should_inline_generated_import_value(name),
     source_start: constant.name().start(),
     ty,
     init,

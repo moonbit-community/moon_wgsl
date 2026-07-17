@@ -1,5 +1,5 @@
 ///|
-using @common {
+using @contract {
   type ImportDefWithOffset,
   type PreprocessorMetaData,
   type ShaderDefValue,
@@ -7,11 +7,9 @@ using @common {
 }
 
 ///|
-using @ast {type WgslDirective}
-
-///|
 using @lex {
   trim_trailing_semicolons,
+  wgsl_line_break_width,
   wgsl_line_text_end,
   wgsl_regex_trim_whitespace,
   wgsl_regex_whitespace_code_point,
@@ -21,6 +19,7 @@ using @lex {
 
 ///|
 using @directive {
+  type WgslPreprocessorDirective,
   type WgslDirectiveScanItem,
   parse_wgsl_directive_identifier,
   parse_wgsl_directive_scan_items,

@@ -1,0 +1,149 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl_naga_oil/internal/directive"
+
+import {
+  "Milky2018/moon_wgsl_naga_oil/contract",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn mask_naga_oil_directives_for_wgsl(String) -> String
+
+pub fn parse_glsl_version_directive(String) -> String?
+
+pub fn parse_wgsl_directive_identifier(String) -> String?
+
+pub fn parse_wgsl_directive_line(String) -> WgslPreprocessorDirective?
+
+pub fn parse_wgsl_directive_line_at(String, Int) -> WgslPreprocessorDirective?
+
+pub fn parse_wgsl_directive_scan_items(String, include_glsl_version? : Bool) -> Array[WgslDirectiveScanItem]
+
+pub fn parse_wgsl_shader_def_comparison(String) -> WgslShaderDefComparison?
+
+pub fn parse_wgsl_shader_def_references(String) -> Array[WgslShaderDefReference]
+
+pub fn parse_wgsl_source_directive_items(String) -> Array[WgslSourceDirectiveItem]
+
+pub fn parse_wgsl_template_const_references(String, Map[String, @contract.ShaderDefValue]) -> Array[WgslTemplateConstReference]
+
+pub fn wgsl_effective_directive_kind(WgslPreprocessorDirective) -> WgslPreprocessorDirectiveKind
+
+pub fn wgsl_effective_directive_tail(WgslPreprocessorDirective) -> String
+
+pub fn wgsl_required_space_word_tail(String, String) -> String?
+
+pub fn wgsl_text_starts_with_tokenized_space(String) -> Bool
+
+// Errors
+
+// Types and methods
+pub struct WgslDirectiveScanItem {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslDirectiveScanItem::kind(Self) -> WgslDirectiveScanItemKind
+pub fn WgslDirectiveScanItem::source(Self) -> WgslDirectiveScanSource
+pub fn WgslDirectiveScanItem::start(Self) -> Int
+
+pub enum WgslDirectiveScanItemKind {
+  Source
+  GlslVersion(String)
+  Directive(WgslPreprocessorDirective)
+} derive(@debug.Debug)
+
+pub struct WgslDirectiveScanSource {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslDirectiveScanSource::cleaned_text(Self) -> String
+pub fn WgslDirectiveScanSource::original_text(Self) -> String
+
+pub struct WgslPreprocessorDirective {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslPreprocessorDirective::end(Self) -> Int
+pub fn WgslPreprocessorDirective::has_required_tail_separator(Self) -> Bool
+pub fn WgslPreprocessorDirective::has_tail(Self) -> Bool
+pub fn WgslPreprocessorDirective::kind(Self) -> WgslPreprocessorDirectiveKind
+pub fn WgslPreprocessorDirective::name(Self) -> WgslPreprocessorIdent
+pub fn WgslPreprocessorDirective::start(Self) -> Int
+pub fn WgslPreprocessorDirective::tail(Self) -> String
+pub fn WgslPreprocessorDirective::tail_end(Self) -> Int
+pub fn WgslPreprocessorDirective::tail_start(Self) -> Int
+
+pub(all) enum WgslPreprocessorDirectiveKind {
+  Ifdef
+  Ifndef
+  If
+  Else
+  Endif
+  DefineImportPath
+  Define
+  Import
+  Enable
+  Requires
+  Diagnostic
+  Other
+} derive(Eq, @debug.Debug)
+
+pub struct WgslPreprocessorDirectiveTail {
+  // private fields
+} derive(@debug.Debug)
+
+pub struct WgslPreprocessorIdent {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslPreprocessorIdent::end(Self) -> Int
+pub fn WgslPreprocessorIdent::name(Self) -> String
+pub fn WgslPreprocessorIdent::start(Self) -> Int
+
+pub struct WgslShaderDefComparison {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslShaderDefComparison::def_name(Self) -> String
+pub fn WgslShaderDefComparison::operator(Self) -> WgslShaderDefOperator
+pub fn WgslShaderDefComparison::value_text(Self) -> String
+
+pub(all) enum WgslShaderDefOperator {
+  Equal
+  NotEqual
+  Greater
+  GreaterEqual
+  Less
+  LessEqual
+  Unknown(String)
+} derive(Eq, @debug.Debug)
+
+pub struct WgslShaderDefReference {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslShaderDefReference::end(Self) -> Int
+pub fn WgslShaderDefReference::is_delimited(Self) -> Bool
+pub fn WgslShaderDefReference::name(Self) -> String
+pub fn WgslShaderDefReference::start(Self) -> Int
+
+pub struct WgslSourceDirectiveItem {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslSourceDirectiveItem::kind(Self) -> WgslSourceDirectiveItemKind
+pub fn WgslSourceDirectiveItem::line(Self) -> String
+
+pub(all) enum WgslSourceDirectiveItemKind {
+  Trivia
+  Enable(String)
+  Requires(String)
+  Diagnostic(String, String)
+  PrefixCandidate
+  Source
+} derive(Eq, @debug.Debug)
+
+pub struct WgslTemplateConstReference {
+  // private fields
+} derive(@debug.Debug)
+pub fn WgslTemplateConstReference::end(Self) -> Int
+pub fn WgslTemplateConstReference::name(Self) -> String
+pub fn WgslTemplateConstReference::start(Self) -> Int
+
+// Type aliases
+
+// Traits
+

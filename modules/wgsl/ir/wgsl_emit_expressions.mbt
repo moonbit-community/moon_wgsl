@@ -88,7 +88,7 @@ fn WgslIrEmitter::load_expression(
   function : Function?,
   pointer : Handle,
 ) -> String raise WgslIrEmitError {
-  if self.atomic_pointer_scalar_type(function, pointer) != None {
+  if self.type_inference().atomic_pointer_scalar_type(function, pointer) != None {
     return "atomicLoad(\{self.pointer_expression(function, pointer)})"
   }
   let expression = self.required_function_expression(function, pointer)
@@ -123,7 +123,7 @@ fn WgslIrEmitter::load_expression_requires_explicit_deref(
       false
     Load(inner) => self.load_expression_requires_explicit_deref(function, inner)
     _ =>
-      match self.expression_type(function, pointer) {
+      match self.type_inference().expression_type(function, pointer) {
         Some(ty) =>
           match self.shader_module.types.items.get(ty.index()) {
             Some(type_) =>
@@ -249,7 +249,7 @@ fn WgslIrEmitter::emit_expression(
     RayQueryGetIntersection(query, committed) =>
       self.ray_query_get_intersection_expression(function, query, committed)
     SubgroupCall(subgroup_function, arguments) =>
-      "\{wgsl_ir_emit_subgroup_function_name(subgroup_function)}(\{self.expression_list(arguments, function)})"
+      "\{wgsl_ir_subgroup_function_name(subgroup_function)}(\{self.expression_list(arguments, function)})"
     CooperativeLoad(columns, rows, role, data) =>
       self.cooperative_load_expression(function, columns, rows, role, data)
     CooperativeMultiplyAdd(a, b, c) =>
@@ -286,8 +286,10 @@ fn WgslIrEmitter::as_expression(
 ) -> String raise WgslIrEmitError {
   let scalar = Scalar::Scalar(kind, width.unwrap_or(4))
   let result_ty = match
-    self.as_expression_result_type(
-      self.expression_type(function, expr),
+    self
+    .type_inference()
+    .as_expression_result_type(
+      self.type_inference().expression_type(function, expr),
       kind,
       width.unwrap_or(4),
     ) {
@@ -440,7 +442,7 @@ fn WgslIrEmitter::float_vector_expression_shape(
   function : Function?,
   handle : Handle,
 ) -> (VectorSize, Scalar)? {
-  match self.expression_type(function, handle) {
+  match self.type_inference().expression_type(function, handle) {
     Some(ty_handle) =>
       match self.shader_module.types.items.get(ty_handle.index()) {
         Some({ inner: Vector(size, scalar), .. }) =>
@@ -693,7 +695,7 @@ fn WgslIrEmitter::expression_component_scalar(
   function : Function?,
   handle : Handle,
 ) -> Scalar? {
-  match self.expression_type(function, handle) {
+  match self.type_inference().expression_type(function, handle) {
     Some(ty_handle) => self.type_component_scalar(ty_handle)
     None => None
   }
@@ -1243,7 +1245,7 @@ fn WgslIrEmitter::cooperative_data_scalar(
   function : Function?,
   data : CooperativeData,
 ) -> Scalar? {
-  match self.expression_type(function, data.pointer) {
+  match self.type_inference().expression_type(function, data.pointer) {
     Some(ty) => self.cooperative_pointer_scalar(ty)
     None => None
   }
@@ -1322,7 +1324,7 @@ fn WgslIrEmitter::image_expression_is_depth(
   function : Function?,
   image : Handle,
 ) -> Bool {
-  match self.expression_type(function, image) {
+  match self.type_inference().expression_type(function, image) {
     Some(ty) =>
       match self.shader_module.types.get(ty) {
         Some(type_) =>
@@ -1465,7 +1467,7 @@ fn WgslIrEmitter::access_index_expression(
     None => ()
   }
   let base_expression = self.access_base_expression(function, base)
-  match self.expression_type(function, base) {
+  match self.type_inference().expression_type(function, base) {
     Some(ty_handle) => {
       let base_type_handle = self.deref_pointer_type_handle(ty_handle)
       match self.shader_module.types.items.get(base_type_handle.index()) {
@@ -1546,7 +1548,7 @@ fn WgslIrEmitter::expression_is_matrix_type(
   function : Function?,
   handle : Handle,
 ) -> Bool {
-  match self.expression_type(function, handle) {
+  match self.type_inference().expression_type(function, handle) {
     Some(ty) =>
       match
         self.shader_module.types.items.get(

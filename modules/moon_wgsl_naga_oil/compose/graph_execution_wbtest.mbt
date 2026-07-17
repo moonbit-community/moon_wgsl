@@ -167,7 +167,7 @@ test "compose graph execution plans reachability before emission" {
   debug_inspect(session.link_graph.import_arena_event_count(), content="0")
   debug_inspect(
     session.link_graph.contains_reachable_symbol(
-      WgslIrSymbolIdentity("dep.wgsl", "dep_fn"),
+      WgslComposeSymbolIdentity("dep.wgsl", "dep_fn"),
     ),
     content="true",
   )
@@ -191,7 +191,7 @@ test "compose graph execution plans reachability before emission" {
   debug_inspect(output.contains("fn dep_fn"), content="true")
   debug_inspect(
     session.symbols.emitted_final_names.canonical_get(
-      WgslIrSymbolIdentity("dep.wgsl", "dep_fn"),
+      WgslComposeSymbolIdentity("dep.wgsl", "dep_fn"),
     )
     is Some(_),
     content="true",
@@ -201,7 +201,9 @@ test "compose graph execution plans reachability before emission" {
   let arena_events = session.link_graph.import_arena_events()
   debug_inspect(arena_events[0].target_rel_path(), content="\"dep.wgsl\"")
   debug_inspect(arena_events[0].generated_symbol_names().length(), content="1")
-  let provenance = session.symbols.generated_import_provenance("root.wgsl")
+  let provenance = session.symbols.generated_import_provenance(
+    "root.wgsl", output,
+  )
   let mut dep_index = -1
   for i in 0..<provenance.length() {
     if provenance[i].source_symbol_name == "dep_fn" {

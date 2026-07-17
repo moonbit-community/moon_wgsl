@@ -381,7 +381,7 @@ fn WgslIrEmitter::eval_constant_float_expression_for_constructor(
   handle : Handle,
 ) -> Double? {
   match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) if !constant.generated_import =>
+    Some(constant) =>
       self.eval_global_float_expression_for_emit(constant.init, Set([]))
     _ => None
   }
@@ -393,7 +393,7 @@ fn WgslIrEmitter::eval_constant_integer_expression_for_constructor(
   handle : Handle,
 ) -> WgslIrEmitIntegerValue? {
   match self.shader_module.constants.items.get(handle.index()) {
-    Some(constant) if !constant.generated_import =>
+    Some(constant) =>
       self.eval_global_integer_expression_for_emit(constant.init, Set([]))
     _ => None
   }
@@ -516,13 +516,6 @@ fn WgslIrEmitter::eval_float_vector_expression_with_retained_constants_inner(
         None => None
       }
     Binary(op, left, right) => {
-      if op == Divide &&
-        self.expression_is_generated_import_constant_reference(function, left) &&
-        wgsl_ir_expression_origin_is_source_local_const_initializer(
-          function, right,
-        ) {
-        return None
-      }
       guard self.eval_float_vector_expression_with_retained_constants_inner(
           function, left,
         )
@@ -576,13 +569,6 @@ fn WgslIrEmitter::eval_float_expression_with_retained_constants_inner(
         None => None
       }
     Binary(op, left, right) => {
-      if op == Divide &&
-        self.expression_is_generated_import_constant_reference(function, left) &&
-        wgsl_ir_expression_origin_is_source_local_const_initializer(
-          function, right,
-        ) {
-        return None
-      }
       guard self.eval_float_expression_with_retained_constants_inner(
           function, left,
         )
@@ -638,36 +624,6 @@ fn wgsl_ir_emit_eval_float_vector_binary(
     }
   }
   Some(values)
-}
-
-///|
-fn wgsl_ir_expression_origin_is_source_local_const_initializer(
-  function : Function?,
-  handle : Handle,
-) -> Bool {
-  match function {
-    Some(function) =>
-      wgsl_ir_expression_origin_retains_generated_import_denominator(
-        function.expressions.origin(handle),
-      )
-    None => false
-  }
-}
-
-///|
-fn WgslIrEmitter::expression_is_generated_import_constant_reference(
-  self : WgslIrEmitter,
-  function : Function?,
-  handle : Handle,
-) -> Bool {
-  match self.optional_expression(function, handle) {
-    Some(Constant(constant_handle)) =>
-      match self.shader_module.constants.items.get(constant_handle.index()) {
-        Some(constant) => constant.generated_import
-        None => false
-      }
-    _ => false
-  }
 }
 
 ///|

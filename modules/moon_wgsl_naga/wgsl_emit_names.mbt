@@ -36,8 +36,11 @@ fn WgslIrEmitter::should_inline_constant_expression(
   }
   self.options.inline_generated_import_constants() &&
   (
-    constant.inline_value ||
-    (constant.generated_import && self.constant_has_inline_only_type(constant))
+    self.writer_module.compatibility.constant_should_inline(constant.name) ||
+    (
+      self.writer_module.compatibility.is_generated_import(constant.name) &&
+      self.constant_has_inline_only_type(constant)
+    )
   )
 }
 
@@ -51,7 +54,7 @@ fn WgslIrEmitter::should_skip_constant_declaration(
     return true
   }
   self.options.inline_generated_import_constants() &&
-  constant.generated_import &&
+  self.writer_module.compatibility.is_generated_import(constant.name) &&
   self.constant_has_inline_only_type(constant)
 }
 

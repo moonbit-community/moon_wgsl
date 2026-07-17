@@ -14,7 +14,7 @@
 
 ///|
 fn metadata_scope_def_from_directive(
-  directive : WgslDirective,
+  directive : WgslPreprocessorDirective,
 ) -> (Bool, String?) {
   let tail = wgsl_effective_directive_tail(directive)
   let has_required_separator = directive.has_required_tail_separator()
@@ -92,11 +92,8 @@ fn metadata_collect_source_item(
   let cleaned_text = item.source().cleaned_text()
   while line_start < cleaned_text.length() {
     let line_text_end = metadata_source_line_text_end(cleaned_text, line_start)
-    let line_end = if line_text_end < cleaned_text.length() {
-      line_text_end + 1
-    } else {
-      line_text_end
-    }
+    let line_end = line_text_end +
+      wgsl_line_break_width(cleaned_text, line_text_end)
     let line = cleaned_text[line_start:line_text_end].to_owned()
     collect_effective_def_names(line, effective_defs)
     line_start = line_end

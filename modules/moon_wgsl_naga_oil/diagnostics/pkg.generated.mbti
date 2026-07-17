@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl_naga_oil/diagnostics"
+
+import {
+  "Milky2018/moon_wgsl_naga_oil/compose",
+  "Milky2018/moon_wgsl_naga_oil/contract",
+}
+
+// Values
+pub fn compose_before_ir(@compose.Composer, String, @contract.WgslComposeOptions) -> String raise @compose.ComposerError
+
+pub fn compose_for_writer_parity(@compose.Composer, String, @contract.WgslComposeOptions) -> String raise @compose.ComposerError
+
+pub fn trace_writer_function_plan(@compose.Composer, String, @contract.WgslComposeOptions, String) -> String raise @compose.ComposerError
+
+pub fn trace_writer_module_plan(@compose.Composer, String, @contract.WgslComposeOptions) -> String raise @compose.ComposerError
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

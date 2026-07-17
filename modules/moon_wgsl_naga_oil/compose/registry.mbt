@@ -78,7 +78,7 @@ fn Composer::new_wgsl_compose_session(
     graph_execution_complete: false,
     emitted_virtual_functions: false,
     symbols: WgslComposeSymbolTable(),
-    link_graph: WgslIrLinkGraph(),
+    link_graph: WgslComposeLinkGraph(),
     semantic_facts: Map([]),
     directive_scans: Map([]),
     importless_sources: Map([]),
