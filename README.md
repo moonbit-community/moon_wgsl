@@ -13,12 +13,15 @@ by ownership instead of exposing every internal package through one module.
   export.
 - `Milky2018/moon_wgsl`: thin user-facing facade for ordinary preprocessing and
   composition workflows.
-- `Milky2018/moon_wesl`: incubating WESL module resolution, conditional
-  compilation, and source assembly. It is tested in this workspace but remains
-  outside the synchronized WGSL compatibility release line during migration.
+- `Milky2018/moon_wesl`: WESL module resolution, conditional compilation,
+  and source assembly. It is maintained and released from this workspace with
+  its own semantic version while depending on WGSL Core for official WGSL
+  parsing and validation.
 
-Most users should install `Milky2018/moon_wgsl`. Use the lower-level modules
-only when you need their specific parser, IR, Naga, or naga-oil boundary.
+Most composition users should install `Milky2018/moon_wgsl`. Install
+`Milky2018/moon_wesl` when you need WESL imports, conditional compilation,
+or source assembly. Use the lower-level WGSL, Naga, and naga-oil modules only
+when you need their specific interfaces.
 
 The facade owns an opaque `Composer` with only registration, `prepare`,
 `compose`, and `export_wgsl` workflows. Repository diagnostics use the explicit

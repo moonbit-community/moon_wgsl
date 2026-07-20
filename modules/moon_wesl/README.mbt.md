@@ -1,7 +1,8 @@
 # moon_wesl
 
-`Milky2018/moon_wesl` is a MoonBit library and baseline CLI for compiling WESL
-shader modules into one emitted source string.
+`Milky2018/moon_wesl` is the WESL extension module maintained in the
+`moonbit-community/moon_wgsl` workspace. It provides a MoonBit library for
+compiling WESL shader modules into one emitted source string.
 
 This package was extracted from `mgstudio` and preserves the former
 `mgstudio/wesl` root-package surface for downstream users. The public API is
@@ -26,8 +27,6 @@ intentionally small and centered on:
   `Milky2018/wgsl`; WESL itself owns only extension and assembly semantics
 - Lets callers provide source code from memory, files, asset systems, or editor
   buffers through the `Resolver` trait
-- Provides a `cmd/wesl` command with `check`, `compile`, `eval`, `exec`, and
-  `package` subcommands aligned to the upstream `wesl-rs` command matrix
 
 ## Install
 
@@ -223,44 +222,6 @@ The public error surface is:
 
 Each error type exposes `message()` for user-facing diagnostics.
 
-## CLI
-
-The repository includes a MoonBit-native `wesl` command package:
-
-```bash
-moon run cmd/wesl -- compile --base src/shaders src/shaders/main.wesl
-moon run cmd/wesl -- check --kind wesl src/shaders/main.wesl
-moon run cmd/wesl -- eval "abs(3 - 5)"
-moon run cmd/wesl -- eval --binary "42u"
-moon run cmd/wesl -- exec src/shaders/main.wesl
-moon run cmd/wesl -- package shader-lib src/shaders/lib
-```
-
-The `compile` command supports the upstream option shape for mangling,
-conditional compilation, stripping, lowering, validation toggles, keep lists,
-feature flags, and base-directory selection. `package` emits the same
-MoonBit-native codegen artifact produced by `PkgBuilder`. `eval --binary`
-emits little-endian scalar and vector buffers for storable `i32`, `u32`, and
-`f32` const-eval results and rejects non-storable values such as `bool`. `exec`
-can run a minimal entrypoint whose return expression fits the current
-const-evaluator, including zero-initialized builtin entrypoint inputs,
-user-defined `@location` inputs passed through `Inputs.user_defined`, scalar
-pipeline overrides, scalar/vector/struct/array/matrix uniform/storage resource
-buffers, field/index/component storage resource writeback through
-`ExecResult::resource`, and matching `--out-binary` return output for storable
-values. The
-current evaluator applies basic vector arithmetic, comparisons, `clamp`, `min`,
-`max`, `abs`, `select`, `all`, and `any` component-wise, supports struct member
-access, WGSL `xyzw` / `rgba` vector swizzles, vector/array/matrix indexing,
-`arrayLength(&runtime_array)` for storage buffers whose runtime length is
-inferred from input bytes,
-basic `if` / `else` branches, and `while`, `for`, `loop`, and `switch` control
-flow with local assignment, `break`, `continue`, `continuing`, and `break if`,
-and uses WGSL
-memory layout for scalar/vector, struct member, array stride, and matrix column
-padding. Pointer-style writes, atomics, textures, and the full arbitrary shader
-control-flow model still require the broader CPU execution layer.
-
 ## Scope and Current Behavior
 
 This package currently focuses on the mechanics required to compose WESL
@@ -282,7 +243,6 @@ modules:
   runtime array length queries, field/index/component storage resource
   writeback, and return buffers
 - filesystem package scanning and artifact generation
-- baseline CLI compile/check/eval/exec/package workflows
 
 The parser and syntax layer are materially richer than the original
 text-oriented implementation, but this package is still not a full source-level

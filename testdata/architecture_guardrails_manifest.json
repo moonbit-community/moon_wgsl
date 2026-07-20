@@ -1,13 +1,5 @@
 {
   "package_imports": {
-    "modules/moon_wesl/cmd/wesl/moon.pkg": [
-      "Milky2018/moon_wesl",
-      "Milky2018/moon_wesl/internal/wgsl_validation",
-      "moonbitlang/core/debug",
-      "moonbitlang/core/string",
-      "moonbitlang/x/fs",
-      "moonbitlang/x/sys"
-    ],
     "modules/moon_wesl/internal/attribute_parse/moon.pkg": [
       "moonbitlang/core/list"
     ],
@@ -298,8 +290,7 @@
     },
     "modules/moon_wesl": {
       "allowed": [
-        ".",
-        "cmd/wesl"
+        "."
       ],
       "internal": [
         "internal/attribute_parse",

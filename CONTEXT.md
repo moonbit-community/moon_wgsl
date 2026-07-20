@@ -20,9 +20,9 @@ _Avoid_: single implementation truth
 A synchronized release of the WGSL compatibility module line with the same version number.
 _Avoid_: independent module release
 
-**Incubating Workspace Member**:
-A module that is tested by the workspace but has not yet joined the synchronized release line.
-_Avoid_: unreleased code, experimental package
+**Independently Versioned Workspace Member**:
+A module whose source, CI, release process, and maintenance belong to this workspace while its semantic version is not synchronized with the WGSL compatibility release line.
+_Avoid_: incubating module, external repository
 
 **Moon WGSL Facade**:
 The public compatibility product that keeps the existing `moon_wgsl` identity as the recommended user entrypoint while delegating language facts to **WGSL Core**.
@@ -82,7 +82,7 @@ _Avoid_: WGSL core
 - **WGSL Core** aims to provide an **Official WGSL Frontend**, not a composer-oriented subset.
 - **WGSL Oracle Baseline** combines GPUWeb CTS and Naga parser/validator behavior, with wgpu validation kept as an isolated tooling concern.
 - **Workspace Release** publishes `wgsl`, `moon_wgsl_naga`, `moon_wgsl_naga_oil`, and `moon_wgsl` with the same version.
-- `moon_wesl` is an **Incubating Workspace Member** until it completes its first release from this repository; it already consumes **WGSL Core** for official WGSL semantics.
+- `moon_wesl` is an **Independently Versioned Workspace Member** and the workspace's **WESL Extension Layer**. It consumes **WGSL Core** for official WGSL semantics.
 - **Moon WGSL Facade** is the default user-facing entrypoint for preprocessing and composition.
 - **Legacy Subpackage Path** compatibility is not part of the workspace split goal.
 - **Naga Compatibility Layer** depends on **WGSL Core** and must not define WGSL language semantics.

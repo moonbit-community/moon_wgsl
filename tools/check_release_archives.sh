@@ -37,6 +37,5 @@ moon -C "$release_root" check --target all --warn-list +73 --deny-warn
 moon -C "$release_root" test \
   wgsl/ir \
   moon_wesl \
-  moon_wesl/cmd/wesl \
   moon_wesl/internal/wgsl_validation \
   --target all

@@ -1,5 +1,8 @@
 # Import moon_wesl as an incubating workspace member
 
+Status: superseded by ADR 0022 after the staged import and WGSL Core integration
+completed. This record retains the constraints of the original import decision.
+
 `Milky2018/moon_wesl` is imported under `modules/moon_wesl` from commit
 `08fd313a638daa9b74245a9da5e3a51845a4fe40` of
 `https://github.com/moonbit-community/moon_wesl`. The import contains only the
@@ -29,9 +32,9 @@ WGSL Core owns official WGSL parsing, validation, semantic IR, and emission.
 The second integration stage removes the public WESL-owned `validate_wgsl`
 surface and routes assembled WGSL through a private adapter over
 `Milky2018/wgsl/ir`. WESL retains only extension parsing, module graph checks,
-resolution, conditional compilation, lowering, and assembly. The same Core
-boundary is used by `wesl check --kind wgsl`; source-local WESL checks perform
-Core validation when no unresolved imports prevent assembly.
+resolution, conditional compilation, lowering, and assembly. The imported CLI
+used the same Core boundary during migration and was later removed when ADR
+0022 established the workspace's library-only WESL product boundary.
 
 The Core validator now owns matrix scalar legality as an IR invariant. The
 integration also fixed WESL lowering so global alias/constant substitutions are
