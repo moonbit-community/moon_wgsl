@@ -623,6 +623,11 @@ pub fn WgslTypeRef::canonical_text(self : WgslTypeRef) -> String {
 }
 
 ///|
+pub fn WgslTypeRef::start(self : WgslTypeRef) -> Int {
+  self.start
+}
+
+///|
 pub fn WgslTypeRef::end(self : WgslTypeRef) -> Int {
   self.end
 }

@@ -3528,7 +3528,10 @@ pub fn validate_wesl(unit : TranslationUnit) -> Unit raise WeslCompileError {
 
 ///|
 fn wesl_validate_wgsl_source(source : String) -> Unit raise WeslCompileError {
-  @wgsl_validation.validate_source(source) catch {
+  let module_ = @ir.parse_wgsl_module_to_ir(source) catch {
+    error => raise Validation(error.message())
+  }
+  @ir.validate_wgsl_ir_module(module_) catch {
     error => raise Validation(error.message())
   }
 }

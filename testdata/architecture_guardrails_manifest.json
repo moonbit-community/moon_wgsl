@@ -33,15 +33,6 @@
     "modules/moon_wesl/internal/statement_parse/moon.pkg": [
       "moonbitlang/core/list"
     ],
-    "modules/moon_wesl/internal/struct_parse/moon.pkg": [
-      "moonbitlang/core/list"
-    ],
-    "modules/moon_wesl/internal/type_parse/moon.pkg": [
-      "moonbitlang/core/list"
-    ],
-    "modules/moon_wesl/internal/wgsl_validation/moon.pkg": [
-      "Milky2018/wgsl/ir"
-    ],
     "modules/moon_wesl/moon.pkg": [
       "Milky2018/moon_wesl/internal/attribute_parse",
       "Milky2018/moon_wesl/internal/binding_parse",
@@ -54,9 +45,10 @@
       "Milky2018/moon_wesl/internal/item_parse",
       "Milky2018/moon_wesl/internal/module_path_parse",
       "Milky2018/moon_wesl/internal/statement_parse",
-      "Milky2018/moon_wesl/internal/struct_parse",
-      "Milky2018/moon_wesl/internal/type_parse",
-      "Milky2018/moon_wesl/internal/wgsl_validation",
+      "Milky2018/wgsl/ast",
+      "Milky2018/wgsl/ir",
+      "Milky2018/wgsl/lex",
+      "Milky2018/wgsl/parser",
       "moonbitlang/core/debug",
       "moonbitlang/core/env",
       "moonbitlang/core/hashmap",
@@ -303,10 +295,7 @@
         "internal/import_parse",
         "internal/item_parse",
         "internal/module_path_parse",
-        "internal/statement_parse",
-        "internal/struct_parse",
-        "internal/type_parse",
-        "internal/wgsl_validation"
+        "internal/statement_parse"
       ]
     }
   },

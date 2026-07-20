@@ -15,7 +15,11 @@ pub fn function_args(Array[(Token, Int, Int)], initial_pos? : Int) -> Array[@ast
 
 pub fn function_result(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslFunctionResult? raise ParseError
 
+pub fn parse_wgsl_struct(String) -> @ast.WgslStruct?
+
 pub fn parse_wgsl_translation_unit_strict(String) -> @ast.WgslTranslationUnit raise WgslParseError
+
+pub fn parse_wgsl_type_ref(String) -> @ast.WgslTypeRef?
 
 pub fn source_directive(Array[(Token, Int, Int)], initial_pos? : Int) -> @ast.WgslDirective raise ParseError
 

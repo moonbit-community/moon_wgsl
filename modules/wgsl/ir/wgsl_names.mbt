@@ -13,10 +13,7 @@
 // limitations under the License.
 
 ///|
-pub fn wgsl_ir_identifier_is_reserved(ident : String) -> Bool {
-  if ident == "" {
-    return false
-  }
+pub fn wgsl_ir_identifier_is_predeclared_type(ident : String) -> Bool {
   ident == "array" ||
   ident == "atomic" ||
   ident == "bool" ||
@@ -57,7 +54,15 @@ pub fn wgsl_ir_identifier_is_reserved(ident : String) -> Bool {
   ident == "u64" ||
   ident == "vec2" ||
   ident == "vec3" ||
-  ident == "vec4" ||
+  ident == "vec4"
+}
+
+///|
+pub fn wgsl_ir_identifier_is_reserved(ident : String) -> Bool {
+  if ident == "" {
+    return false
+  }
+  wgsl_ir_identifier_is_predeclared_type(ident) ||
   ident == "alias" ||
   ident == "bitcast" ||
   ident == "break" ||

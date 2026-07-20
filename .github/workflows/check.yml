@@ -103,7 +103,7 @@ jobs:
           moon -C modules/moon_wesl fmt
           moon -C modules/moon_wesl info --target all
           moon check modules/moon_wesl --target all --warn-list +73 --deny-warn
-          moon test modules/moon_wesl modules/moon_wesl/internal/wgsl_validation --target all
+          moon test modules/moon_wesl --target all
           git diff --exit-code
 
   workspace-integration:

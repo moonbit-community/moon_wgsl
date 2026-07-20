@@ -37,6 +37,8 @@ pub fn wgsl_ir_identifier_ends_with_digit(String) -> Bool
 
 pub fn wgsl_ir_identifier_is_builtin_function(String) -> Bool
 
+pub fn wgsl_ir_identifier_is_predeclared_type(String) -> Bool
+
 pub fn wgsl_ir_identifier_is_reserved(String) -> Bool
 
 pub fn wgsl_ir_math_primary_result_operand(MathFunction, Handle, Handle?, Handle?, Handle?) -> Handle?

@@ -442,6 +442,7 @@ pub fn WgslTypeRef::canonical_text(Self) -> String
 pub fn WgslTypeRef::end(Self) -> Int
 pub fn WgslTypeRef::name(Self) -> String
 pub fn WgslTypeRef::new_with_template_arguments(WgslTypeAtom, Array[WgslTypeArgument], Int, Int) -> Self
+pub fn WgslTypeRef::start(Self) -> Int
 pub fn WgslTypeRef::template_arguments(Self) -> Array[WgslTypeArgument]
 
 // Type aliases

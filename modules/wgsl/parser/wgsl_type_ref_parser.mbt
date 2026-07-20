@@ -9,12 +9,40 @@ fn parse_wgsl_type_ref_text(text : String, base : Int) -> WgslTypeRef? {
   if trimmed == "" {
     return None
   }
+  match wgsl_type_ref_top_level_template_start(trimmed) {
+    Some(lt_index) =>
+      match wgsl_type_ref_matching_template_end(trimmed, lt_index) {
+        Some(gt_index) =>
+          if gt_index == trimmed.length() - 1 &&
+            !wgsl_template_argument_list_is_well_formed(
+              trimmed,
+              lt_index + 1,
+              gt_index,
+            ) {
+            return None
+          }
+        _ => ()
+      }
+    None => ()
+  }
   let source_start = base + local_start
   Some(
     type_ref(tokenize_wgsl_type_ref(trimmed, source_start)) catch {
       _ => return None
     },
   )
+}
+
+///|
+/// Parses a standalone WGSL type reference.
+///
+/// This string-level entry point keeps callers from constructing the
+/// generated parser's internal token representation.
+pub fn parse_wgsl_type_ref(text : String) -> WgslTypeRef? {
+  match parse_wgsl_type_ref_text(text, 0) {
+    Some(ty) if ty.atom().kind() == Identifier => Some(ty)
+    _ => None
+  }
 }
 
 ///|
@@ -86,6 +114,12 @@ fn wgsl_type_ref_matching_template_end(source : String, lt_index : Int) -> Int? 
   let mut brace = 0
   for i in lt_index..<source.length() {
     let code = source.code_unit_at(i).to_int()
+    let shift_left = code == 60 &&
+      angle > 0 &&
+      (
+        (i > lt_index && source.code_unit_at(i - 1).to_int() == 60) ||
+        (i + 1 < source.length() && source.code_unit_at(i + 1).to_int() == 60)
+      )
     match code {
       40 => paren = paren + 1
       41 => paren = paren - 1
@@ -93,6 +127,7 @@ fn wgsl_type_ref_matching_template_end(source : String, lt_index : Int) -> Int? 
       93 => bracket = bracket - 1
       123 => brace = brace + 1
       125 => brace = brace - 1
+      60 if paren == 0 && bracket == 0 && brace == 0 && shift_left => ()
       60 if paren == 0 && bracket == 0 && brace == 0 => angle = angle + 1
       62 if paren == 0 && bracket == 0 && brace == 0 => {
         angle = angle - 1
@@ -115,6 +150,15 @@ fn wgsl_template_arg_has_top_level_expression_operator(text : String) -> Bool {
   let mut i = 0
   while i < text.length() {
     let code = text.code_unit_at(i).to_int()
+    if code == 60 &&
+      i + 1 < text.length() &&
+      text.code_unit_at(i + 1).to_int() == 60 &&
+      angle == 0 &&
+      paren == 0 &&
+      bracket == 0 &&
+      brace == 0 {
+      return true
+    }
     match code {
       40 => paren = paren + 1
       41 => paren = paren - 1
@@ -134,6 +178,43 @@ fn wgsl_template_arg_has_top_level_expression_operator(text : String) -> Bool {
     i = i + 1
   }
   false
+}
+
+///|
+fn wgsl_template_argument_list_is_well_formed(
+  source : String,
+  inner_start : Int,
+  inner_end : Int,
+) -> Bool {
+  let mut angle = 0
+  let mut paren = 0
+  let mut bracket = 0
+  let mut brace = 0
+  let mut start = inner_start
+  let mut item_count = 0
+  for i in inner_start..<inner_end {
+    let code = source.code_unit_at(i).to_int()
+    match code {
+      40 => paren = paren + 1
+      41 => paren = paren - 1
+      91 => bracket = bracket + 1
+      93 => bracket = bracket - 1
+      123 => brace = brace + 1
+      125 => brace = brace - 1
+      60 if paren == 0 && bracket == 0 && brace == 0 => angle = angle + 1
+      62 if paren == 0 && bracket == 0 && brace == 0 && angle > 0 =>
+        angle = angle - 1
+      44 if angle == 0 && paren == 0 && bracket == 0 && brace == 0 => {
+        if source[start:i].trim() == "" {
+          return false
+        }
+        item_count = item_count + 1
+        start = i + 1
+      }
+      _ => ()
+    }
+  }
+  source[start:inner_end].trim() != "" || item_count > 0
 }
 
 ///|

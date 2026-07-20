@@ -72,6 +72,7 @@ test "WGSL identifier policy is centralized" {
   debug_inspect(wgsl_identifier_text("__"), content="true")
   debug_inspect(wgsl_identifier_text("123bad"), content="false")
   debug_inspect(wgsl_identifier_text("bad💡"), content="false")
+  debug_inspect(wgsl_identifier_text("שָׁלוֹם"), content="true")
   let tokens = tokenize_wgsl("_valid123 __ 123bad bad💡", false)
   debug_inspect(tokens[0].identifier_text(), content="Some(\"_valid123\")")
   debug_inspect(tokens[1].identifier_text(), content="Some(\"__\")")

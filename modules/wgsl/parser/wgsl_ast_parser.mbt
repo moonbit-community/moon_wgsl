@@ -78,3 +78,24 @@ pub fn parse_wgsl_translation_unit_strict(
   }
   WgslTranslationUnit(declarations)
 }
+
+///|
+/// Parses exactly one WGSL struct declaration, ignoring surrounding trivia.
+pub fn parse_wgsl_struct(source : String) -> WgslStruct? {
+  let unit = parse_wgsl_translation_unit_strict(source) catch {
+    _ => return None
+  }
+  let mut result : WgslStruct? = None
+  for declaration in unit.declarations() {
+    match declaration.data() {
+      Struct(struct_) =>
+        match result {
+          None => result = Some(struct_)
+          Some(_) => return None
+        }
+      Raw => ()
+      _ => return None
+    }
+  }
+  result
+}

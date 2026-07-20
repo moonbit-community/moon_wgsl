@@ -96,61 +96,56 @@ fn ParserToken::line(self : ParserToken) -> Int {
 
 ///|
 fn parser_is_identifier_start(code : Int) -> Bool {
-  (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code == 95
+  @lex.wgsl_identifier_start_code_point(code)
 }
 
 ///|
 fn parser_is_identifier_char(code : Int) -> Bool {
-  parser_is_identifier_start(code) || (code >= 48 && code <= 57)
+  @lex.wgsl_identifier_continue_code_point(code)
+}
+
+///|
+fn parser_identifier_start_width(source : String, index : Int) -> Int {
+  match @lex.wgsl_code_point_at(source, index) {
+    Some((code_point, width)) if parser_is_identifier_start(code_point) => width
+    _ => 0
+  }
+}
+
+///|
+fn parser_identifier_continue_width(source : String, index : Int) -> Int {
+  match @lex.wgsl_code_point_at(source, index) {
+    Some((code_point, width)) if parser_is_identifier_char(code_point) => width
+    _ => 0
+  }
+}
+
+///|
+fn parser_identifier_continues_before(source : String, index : Int) -> Bool {
+  guard index > 0 else { return false }
+  let previous = index - 1
+  let previous_code = source.code_unit_at(previous).to_int()
+  let start = if previous_code >= 0xDC00 && previous_code <= 0xDFFF {
+    previous - 1
+  } else {
+    previous
+  }
+  start >= 0 && parser_identifier_continue_width(source, start) == index - start
 }
 
 ///|
 fn parser_is_reserved_word(name : String) -> Bool {
-  match name {
-    "alias" => true
-    "await" => true
-    "break" => true
-    "case" => true
-    "common" => true
-    "const" => true
-    "const_assert" => true
-    "continue" => true
-    "continuing" => true
-    "default" => true
-    "diagnostic" => true
-    "discard" => true
-    "else" => true
-    "enable" => true
-    "export" => true
-    "false" => true
-    "fn" => true
-    "for" => true
-    "if" => true
-    "import" => true
-    "let" => true
-    "loop" => true
-    "NULL" => true
-    "of" => true
-    "override" => true
-    "package" => true
-    "requires" => true
-    "return" => true
-    "self" => true
-    "struct" => true
-    "super" => true
-    "switch" => true
-    "true" => true
-    "var" => true
-    "wgsl" => true
-    "while" => true
-    _ => false
-  }
+  @ir.wgsl_ir_identifier_is_reserved(name) &&
+  !@ir.wgsl_ir_identifier_is_predeclared_type(name)
 }
 
 ///|
 fn parser_validate_declaration_ident(
   name : String,
 ) -> Unit raise WeslCompileError {
+  if !@lex.wgsl_identifier_text(name) {
+    raise Parse("invalid declaration identifier `\{name}`")
+  }
   if name == "_" {
     raise Parse("invalid declaration identifier `\{name}`")
   }
@@ -211,12 +206,16 @@ fn parser_lex(source : String) -> Array[ParserToken] {
       index += 2
       continue
     }
-    if parser_is_identifier_start(code) {
+    let identifier_width = parser_identifier_start_width(source, index)
+    if identifier_width > 0 {
       let start = index
-      index += 1
-      while index < source.length() &&
-            parser_is_identifier_char(source.code_unit_at(index).to_int()) {
-        index += 1
+      index += identifier_width
+      while index < source.length() {
+        let width = parser_identifier_continue_width(source, index)
+        if width == 0 {
+          break
+        }
+        index += width
       }
       tokens.push(Ident(source[start:index].to_owned(), start, index, line))
       continue
@@ -458,19 +457,27 @@ fn parser_import_node_from_generated(
 }
 
 ///|
-fn parser_struct_members_from_generated(
-  members : Array[@struct_parse.StructMemberParseNode],
+fn parser_struct_members_from_wgsl(
+  source : String,
+  members : Array[@ast.WgslStructMember],
 ) -> Array[StructMember] raise WeslCompileError {
   let mapped : Array[StructMember] = []
   for field in members {
+    guard field.ty_ref() is Some(ty) else {
+      raise Parse("struct member `\{field.name().name()}` has no type")
+    }
+    let type_text = source[ty.start():ty.end()].trim().to_owned()
+    let attribute_text = source[field.start():field.name().start()]
+      .trim()
+      .to_owned()
     mapped.push({
-      name: field.name,
-      type_text: field.type_text,
-      type_expr: parser_parse_type_expression(field.type_text),
-      attributes: if field.attributes == "" {
+      name: field.name().name(),
+      type_text,
+      type_expr: parser_type_expression_from_wgsl(source, ty),
+      attributes: if attribute_text == "" {
         []
       } else {
-        parser_statement_attributes(field.attributes)
+        parser_statement_attributes(attribute_text)
       },
     })
   }
@@ -590,44 +597,41 @@ fn parser_type_expression_from_generated(
 }
 
 ///|
-fn parser_type_template_argument_from_generated(
-  node : @type_parse.TypeTemplateArgumentParseNode,
-) -> TypeTemplateArgument {
-  match node {
-    Type(ty) => Type(parser_type_expression_from_type_parse(ty))
-    Literal(text) => Literal(text)
-  }
-}
-
-///|
-fn parser_type_expression_from_type_parse(
-  node : @type_parse.TypeSpecifierParseNode,
+fn parser_type_expression_from_wgsl(
+  source : String,
+  node : @ast.WgslTypeRef,
 ) -> TypeExpression {
-  let template_args : Array[TypeTemplateArgument] = []
-  for arg in node.template_args {
-    template_args.push(parser_type_template_argument_from_generated(arg))
+  let parts : Array[String] = []
+  for part in node.name().split("::") {
+    parts.push(part.to_owned())
   }
-  { path: node.path, ident: node.ident, template_text: None, template_args }
+  let path : Array[String] = []
+  for index in 0..<(parts.length() - 1) {
+    path.push(parts[index])
+  }
+  let template_args : Array[TypeTemplateArgument] = []
+  for arg in node.template_arguments() {
+    match arg {
+      Type(ty) if ty.atom().kind() == Numeric =>
+        template_args.push(Literal(ty.name()))
+      Type(ty) =>
+        template_args.push(Type(parser_type_expression_from_wgsl(source, ty)))
+      Expression(expr) =>
+        template_args.push(
+          Literal(source[expr.start():expr.end()].trim().to_owned()),
+        )
+    }
+  }
+  { path, ident: parts[parts.length() - 1], template_text: None, template_args }
 }
 
 ///|
 fn parser_parse_type_expression(
   source : String,
 ) -> TypeExpression raise WeslCompileError {
-  match @type_parse.parse_type_source(source) {
-    Parsed(node) => parser_type_expression_from_type_parse(node)
-    Failed(diagnostic) => {
-      if diagnostic.incomplete {
-        raise Parse(
-          "incomplete type expression at byte \{diagnostic.offset}: \{source}",
-        )
-      }
-      let message = match diagnostic.message {
-        Some(message) => message
-        None => "invalid type expression"
-      }
-      raise Parse("\{message} at byte \{diagnostic.offset}: \{source}")
-    }
+  match @parser.parse_wgsl_type_ref(source) {
+    Some(node) => parser_type_expression_from_wgsl(source, node)
+    None => raise Parse("invalid type expression: \{source}")
   }
 }
 
@@ -676,9 +680,12 @@ fn parser_function_return_attributes(
   let mut cursor = attr_start
   while cursor < source.length() && source.code_unit_at(cursor).to_int() == 64 {
     cursor += 1
-    while cursor < source.length() &&
-          parser_is_identifier_char(source.code_unit_at(cursor).to_int()) {
-      cursor += 1
+    while cursor < source.length() {
+      let width = parser_identifier_continue_width(source, cursor)
+      if width == 0 {
+        break
+      }
+      cursor += width
     }
     cursor = parser_skip_layout_and_comments(source, cursor)
     if cursor < source.length() && source.code_unit_at(cursor).to_int() == 40 {
@@ -1336,13 +1343,13 @@ fn parser_keyword_at(source : String, index : Int, keyword : String) -> Bool {
   let before_ok = if index == 0 {
     true
   } else {
-    !parser_is_identifier_char(source.code_unit_at(index - 1).to_int())
+    !parser_identifier_continues_before(source, index)
   }
   let after = index + keyword.length()
   let after_ok = if after >= source.length() {
     true
   } else {
-    !parser_is_identifier_char(source.code_unit_at(after).to_int())
+    parser_identifier_continue_width(source, after) == 0
   }
   before_ok && after_ok
 }
@@ -1411,14 +1418,17 @@ fn parser_skip_switch_clause_attributes(source : String, index : Int) -> Int {
     running = false
     if source.code_unit_at(cursor).to_int() == 64 {
       cursor += 1
-      if cursor >= source.length() ||
-        !parser_is_identifier_start(source.code_unit_at(cursor).to_int()) {
+      let start_width = parser_identifier_start_width(source, cursor)
+      if start_width == 0 {
         return index
       }
-      cursor += 1
-      while cursor < source.length() &&
-            parser_is_identifier_char(source.code_unit_at(cursor).to_int()) {
-        cursor += 1
+      cursor += start_width
+      while cursor < source.length() {
+        let width = parser_identifier_continue_width(source, cursor)
+        if width == 0 {
+          break
+        }
+        cursor += width
       }
       cursor = parser_skip_layout_and_comments(source, cursor)
       if cursor < source.length() && source.code_unit_at(cursor).to_int() == 40 {
@@ -1878,14 +1888,17 @@ fn parser_strip_statement_attributes(source : String) -> String {
       break
     }
     cursor += 1
-    if cursor >= source.length() ||
-      !parser_is_identifier_start(source.code_unit_at(cursor).to_int()) {
+    let start_width = parser_identifier_start_width(source, cursor)
+    if start_width == 0 {
       break
     }
-    cursor += 1
-    while cursor < source.length() &&
-          parser_is_identifier_char(source.code_unit_at(cursor).to_int()) {
-      cursor += 1
+    cursor += start_width
+    while cursor < source.length() {
+      let width = parser_identifier_continue_width(source, cursor)
+      if width == 0 {
+        break
+      }
+      cursor += width
     }
     while cursor < source.length() {
       let code = source.code_unit_at(cursor).to_int()
@@ -2221,24 +2234,14 @@ fn Parser::parse_global_declaration(
     }
     Parsed(Struct(name)) => {
       parser_validate_declaration_ident(name)
-      let members = match @struct_parse.parse_struct_source(item_source) {
-        Parsed(node) => parser_struct_members_from_generated(node.members)
-        Failed(diagnostic) => {
-          let byte_offset = if self.tokens.length() > 0 {
-            self.tokens[0].start() + diagnostic.offset
-          } else {
-            diagnostic.offset
-          }
-          if diagnostic.incomplete {
-            raise Parse(
-              "incomplete struct declaration at byte \{byte_offset}: \{item_source}",
-            )
-          }
-          raise Parse(
-            "invalid struct declaration at byte \{byte_offset}: \{item_source}",
-          )
-        }
+      let struct_ = match @parser.parse_wgsl_struct(item_source) {
+        Some(struct_) => struct_
+        None => raise Parse("invalid struct declaration: \{item_source}")
       }
+      let members = parser_struct_members_from_wgsl(
+        item_source,
+        struct_.members(),
+      )
       Struct({ name, members })
     }
     Parsed(Alias(name)) => {

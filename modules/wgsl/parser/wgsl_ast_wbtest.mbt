@@ -357,6 +357,31 @@ test "WGSL type refs parse adjacent generic closes" {
 }
 
 ///|
+test "WGSL type refs expose a string-level fragment API" {
+  guard parse_wgsl_type_ref("package::shared::Payload<array<u32, 4>>")
+    is Some(ty) else {
+    abort("expected standalone type ref")
+  }
+  debug_inspect(
+    ty.canonical_text(),
+    content="\"package::shared::Payload<array<u32, 4>>\"",
+  )
+  debug_inspect(parse_wgsl_type_ref("array<"), content="None")
+}
+
+///|
+test "WGSL parser exposes a string-level struct API" {
+  guard parse_wgsl_struct("struct Payload { @if(true) value: array<u32, 4>, };")
+    is Some(struct_) else {
+    abort("expected standalone struct")
+  }
+  debug_inspect(struct_.name().name(), content="\"Payload\"")
+  debug_inspect(struct_.members().length(), content="1")
+  debug_inspect(struct_.members()[0].name().name(), content="\"value\"")
+  debug_inspect(struct_.members()[0].attributes().length(), content="1")
+}
+
+///|
 test "WGSL declarations parse adjacent generic type closes" {
   let source =
     #|@group(2) @binding(1) var<storage> joint_matrices: array<mat4x4<f32>>;

@@ -337,29 +337,8 @@ pub fn PkgBuilder::add_packages(
 }
 
 ///|
-fn pkg_scan_is_ident_start(code : Int) -> Bool {
-  (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code == 95
-}
-
-///|
-fn pkg_scan_is_ident_char(code : Int) -> Bool {
-  pkg_scan_is_ident_start(code) || (code >= 48 && code <= 57)
-}
-
-///|
 fn pkg_scan_is_mod_ident(name : String) -> Bool {
-  if name.length() == 0 {
-    return false
-  }
-  if !pkg_scan_is_ident_start(name.code_unit_at(0).to_int()) {
-    return false
-  }
-  for index in 1..<name.length() {
-    if !pkg_scan_is_ident_char(name.code_unit_at(index).to_int()) {
-      return false
-    }
-  }
-  true
+  @lex.wgsl_identifier_text(name)
 }
 
 ///|

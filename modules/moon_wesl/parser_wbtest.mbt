@@ -54,42 +54,12 @@ fn parse_expression_ast(
 
 ///|
 fn parse_type_specifier(source : String) -> Unit raise WeslCompileError {
-  match @type_parse.parse_type_source(source) {
-    Parsed(_) => ()
-    Failed(diagnostic) => {
-      let message = match diagnostic.message {
-        Some(message) => message
-        None =>
-          if diagnostic.incomplete {
-            "incomplete type"
-          } else {
-            "unsupported type syntax"
-          }
-      }
-      raise Parse("\{message}: `\{source}`")
-    }
-  }
+  ignore(parser_parse_type_expression(source))
 }
 
 ///|
-fn parse_type_ast(
-  source : String,
-) -> @type_parse.TypeSpecifierParseNode raise WeslCompileError {
-  match @type_parse.parse_type_source(source) {
-    Parsed(node) => node
-    Failed(diagnostic) => {
-      let message = match diagnostic.message {
-        Some(message) => message
-        None =>
-          if diagnostic.incomplete {
-            "incomplete type"
-          } else {
-            "unsupported type syntax"
-          }
-      }
-      raise Parse("\{message}: `\{source}`")
-    }
-  }
+fn parse_type_ast(source : String) -> TypeExpression raise WeslCompileError {
+  parser_parse_type_expression(source)
 }
 
 ///|
@@ -176,7 +146,7 @@ test "parser: generated expression parser returns AST nodes" {
 }
 
 ///|
-test "parser: generated type parser handles nested WGSL type specifiers" {
+test "parser: WGSL Core handles nested type specifiers" {
   let valid_cases = [
     "f32", "vec4<f32>", "mat4x4<f16>", "array<vec3<f32>, 4>", "array<array<f32, 2>, 3>",
     "ptr<storage, DynamicArray, read_write>", "package::shared::Payload", "foo::bar::Texture<vec2<f32>, N>",
@@ -208,23 +178,26 @@ test "parser: generated type parser handles nested WGSL type specifiers" {
 }
 
 ///|
-test "parser: generated type parser returns AST nodes" {
+test "parser: WGSL Core type adapter returns compatibility AST nodes" {
   let ast = parse_type_ast("package::shared::Payload<array<vec3<f32>, 4>, -1>")
   let expected =
     #|{
     #|  path: ["package", "shared"],
     #|  ident: "Payload",
+    #|  template_text: None,
     #|  template_args: [
     #|    Type(
     #|      {
     #|        path: [],
     #|        ident: "array",
+    #|        template_text: None,
     #|        template_args: [
     #|          Type(
     #|            {
     #|              path: [],
     #|              ident: "vec3",
-    #|              template_args: [Type({ path: [], ident: "f32", template_args: [] })],
+    #|              template_text: None,
+    #|              template_args: [Type({ path: [], ident: "f32", template_text: None, template_args: [] })],
     #|            },
     #|          ),
     #|          Literal("4"),
@@ -235,6 +208,42 @@ test "parser: generated type parser returns AST nodes" {
     #|  ],
     #|}
   debug_inspect(ast, content=expected)
+}
+
+///|
+test "parser: declaration identifiers follow WGSL Core rules" {
+  let path = try! parse_module_path("demo")
+  ignore(parse_translation_unit(path, "const Δέλτα = 1u;", false))
+  let reserved = try
+    parse_translation_unit(path, "const asm = 1u;", false)
+  catch {
+    err => Err(err)
+  } noraise {
+    unit => Ok(unit)
+  }
+  match reserved {
+    Err(Parse(message)) =>
+      debug_inspect(
+        message.contains("invalid declaration identifier"),
+        content="true",
+      )
+    _ => fail("expected WGSL reserved word to be rejected")
+  }
+  let invalid_unicode = try
+    parse_translation_unit(path, "const 😀 = 1u;", false)
+  catch {
+    err => Err(err)
+  } noraise {
+    unit => Ok(unit)
+  }
+  match invalid_unicode {
+    Err(Parse(message)) =>
+      debug_inspect(
+        message.contains("invalid declaration identifier"),
+        content="true",
+      )
+    _ => fail("expected non-XID Unicode to be rejected")
+  }
 }
 
 ///|
@@ -309,7 +318,7 @@ test "parser: generated attribute parser preserves leading attributes" {
 }
 
 ///|
-test "parser: generated struct parser records member names and types" {
+test "parser: WGSL Core struct adapter records member names and types" {
   let unit = try! parse_translation_unit(
     try! parse_module_path("demo"),
     "struct VertexOutput {\n  @builtin(position) clip_position: vec4<f32>,\n  color: array<vec3<f32>, 4>,\n  index: u32\n};\n",
@@ -380,6 +389,23 @@ test "parser: generated struct parser records member names and types" {
     }
     _ => fail("expected struct declaration")
   }
+}
+
+///|
+test "parser: WGSL struct adapter preserves WESL member conditions" {
+  let unit = try! parse_translation_unit(
+    try! parse_module_path("demo"),
+    "struct Payload { @if(FEATURE) value: u32, }",
+    true,
+  )
+  guard unit.global_declarations[0].header is Struct(header) else {
+    fail("expected struct declaration")
+  }
+  debug_inspect(header.members[0].attributes[0].name, content="\"if\"")
+  debug_inspect(
+    header.members[0].attributes[0].condition_expr,
+    content="Some(Feature(\"FEATURE\"))",
+  )
 }
 
 ///|

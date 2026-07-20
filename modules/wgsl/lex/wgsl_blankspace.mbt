@@ -78,8 +78,7 @@ pub fn wgsl_identifier_start_code_point(code_point : Int) -> Bool {
 
 ///|
 pub fn wgsl_identifier_continue_code_point(code_point : Int) -> Bool {
-  wgsl_identifier_start_code_point(code_point) ||
-  (code_point >= 48 && code_point <= 57)
+  code_point == 95 || wgsl_xid_continue_code_point(code_point)
 }
 
 ///|
