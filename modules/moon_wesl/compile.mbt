@@ -3305,6 +3305,35 @@ fn wesl_apply_replacements(
 }
 
 ///|
+fn wesl_close_replacements(
+  replacements : Array[(String, String)],
+) -> Array[(String, String)] {
+  let mut current = replacements
+  for _ in 0..<replacements.length() {
+    let next : Array[(String, String)] = []
+    let mut changed = false
+    for replacement in current {
+      let candidates : Array[(String, String)] = []
+      for candidate in current {
+        if candidate.0 != replacement.0 {
+          candidates.push(candidate)
+        }
+      }
+      let expanded = wesl_apply_replacements(replacement.1, candidates)
+      if expanded != replacement.1 {
+        changed = true
+      }
+      next.push((replacement.0, expanded))
+    }
+    current = next
+    if !changed {
+      break
+    }
+  }
+  current
+}
+
+///|
 fn wesl_item_references_local(item : ModuleItem, name : String) -> Bool {
   for reference in item.references {
     match reference {
@@ -3374,14 +3403,18 @@ fn wesl_lower_source(source : String) -> String raise WeslCompileError {
       _ => kept_items.push(parsed)
     }
   }
+  let replacements : Array[(String, String)] = []
+  for replacement in alias_replacements {
+    replacements.push(replacement)
+  }
+  for replacement in const_replacements {
+    replacements.push(replacement)
+  }
+  let closed_replacements = wesl_close_replacements(replacements)
   let lowered : Array[String] = []
   for item in kept_items {
     let lowered_item = wesl_apply_referenced_replacements(
-        {
-          ..item,
-          source: wesl_apply_referenced_replacements(item, alias_replacements),
-        },
-        const_replacements,
+        item, closed_replacements,
       )
       .trim()
       .to_owned()

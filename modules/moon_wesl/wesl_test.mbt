@@ -2236,6 +2236,70 @@ test "wesl: lowering removes aliases and global const declarations" {
 }
 
 ///|
+test "wesl: lowering resolves forward transitive aliases" {
+  let resolver = VirtualResolver::new()
+  let root_path = ModulePath::from_path("/shaders/root")
+  resolver.add_module(
+    root_path, "alias A = B;\nalias B = i32;\n\n@compute @workgroup_size(1)\nfn main() {\n  let x: A = 1i;\n}\n",
+  )
+
+  let compiled = compile(
+    root_path,
+    resolver,
+    EscapeMangler::default(),
+    CompileOptions::default().with_lower(true),
+  )
+  let compiled_text = compiled.to_string()
+
+  debug_inspect(compiled_text.contains("alias A"), content="false")
+  debug_inspect(compiled_text.contains("alias B"), content="false")
+  debug_inspect(compiled_text.contains("let x: i32 = 1i;"), content="true")
+}
+
+///|
+test "wesl: lowering resolves forward transitive constants" {
+  let resolver = VirtualResolver::new()
+  let root_path = ModulePath::from_path("/shaders/root")
+  resolver.add_module(
+    root_path, "const OFFSET = BASE + 1i;\nconst BASE = 1i;\n\n@compute @workgroup_size(1)\nfn main() {\n  let x = OFFSET;\n}\n",
+  )
+
+  let compiled = compile(
+    root_path,
+    resolver,
+    EscapeMangler::default(),
+    CompileOptions::default().with_lower(true),
+  )
+  let compiled_text = compiled.to_string()
+
+  debug_inspect(compiled_text.contains("const OFFSET"), content="false")
+  debug_inspect(compiled_text.contains("const BASE"), content="false")
+  debug_inspect(compiled_text.contains("BASE"), content="false")
+  debug_inspect(compiled_text.contains("(1i) + 1i"), content="true")
+}
+
+///|
+test "wesl: lowering preserves local names that shadow constants" {
+  let resolver = VirtualResolver::new()
+  let root_path = ModulePath::from_path("/shaders/root")
+  resolver.add_module(
+    root_path, "const SCALE = 2.0;\n\nfn helper(SCALE: f32) -> f32 {\n  return SCALE;\n}\n\n@fragment\nfn fragment() -> f32 {\n  return helper(1.0);\n}\n",
+  )
+
+  let compiled = compile(
+    root_path,
+    resolver,
+    EscapeMangler::default(),
+    CompileOptions::default().with_lower(true),
+  )
+  let compiled_text = compiled.to_string()
+
+  debug_inspect(compiled_text.contains("const SCALE"), content="false")
+  debug_inspect(compiled_text.contains("fn helper(SCALE: f32)"), content="true")
+  debug_inspect(compiled_text.contains("return SCALE;"), content="true")
+}
+
+///|
 test "wesl: grouped imports expand and local aliases resolve correctly" {
   let resolver = VirtualResolver::new()
   let util_path = ModulePath::from_path("/shaders/util")
