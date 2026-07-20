@@ -1990,10 +1990,7 @@ test "wesl: compile result exec rejects incompatible scalar resource buffers" {
 }
 
 ///|
-test "wesl: compile result writes build artifacts" {
-  let out_dir = "_build/compile_result_artifact"
-  wesl_test_ensure_dir("_build")
-  wesl_test_ensure_dir(out_dir)
+test "wesl: compile result returns WGSL text" {
   let resolver = VirtualResolver::new()
   let root = ModulePath::from_path("/artifact")
   resolver.add_module(root, "fn artifact() {}\n")
@@ -2001,20 +1998,7 @@ test "wesl: compile result writes build artifacts" {
     .set_custom_resolver(resolver)
     .set_options(CompileOptions::default().with_strip(false))
     .compile(root)
-  result.write_artifact("artifact_shader", out_dir=Some(out_dir))
-  let artifact = try! @fs.read_file_to_string(out_dir + "/artifact_shader.wgsl")
-  inspect(artifact.contains("fn artifact() {}"), content="true")
-  let invalid = try
-    result.write_artifact("nested/artifact", out_dir=Some(out_dir))
-  catch {
-    err => Err(err)
-  } noraise {
-    value => Ok(value)
-  }
-  match invalid {
-    Err(Artifact(_)) => ()
-    _ => fail("expected invalid artifact names to be rejected")
-  }
+  inspect(result.to_string().contains("fn artifact() {}"), content="true")
 }
 
 ///|
@@ -3171,25 +3155,14 @@ test "wesl: facade can select hash mangler" {
 }
 
 ///|
-test "wesl: facade build_artifact compiles and writes wgsl output" {
-  let base = "_build/facade_build_artifact"
-  let out_dir = base + "/out"
-  wesl_test_ensure_dir("_build")
-  wesl_test_ensure_dir(base)
-  wesl_test_ensure_dir(out_dir)
-  try! @fs.write_string_to_file(
-    base + "/main.wesl",
-    "@fragment\nfn fragment() -> i32 { return 7; }\n",
-  )
-
-  Wesl::new(base).build_artifact(
-    ModulePath::from_path("/main"),
-    "main_shader",
-    out_dir=Some(out_dir),
-  )
-  let artifact = try! @fs.read_file_to_string(out_dir + "/main_shader.wgsl")
-  inspect(artifact.contains("@fragment"), content="true")
-  inspect(artifact.contains("return 7;"), content="true")
+test "wesl: standard facade compiles registered modules" {
+  let root = ModulePath::from_path("/main")
+  let compiled = Wesl::new()
+    .add_module(root, "@fragment\nfn fragment() -> i32 { return 7; }\n")
+    .compile(root)
+    .to_string()
+  inspect(compiled.contains("@fragment"), content="true")
+  inspect(compiled.contains("return 7;"), content="true")
 }
 
 ///|
@@ -3224,7 +3197,7 @@ test "wesl: facade standard resolver can add packages and constants" {
       "shader", "@fragment\nfn fragment() -> f32 {\n  return 1.0;\n}\n",
     ),
   )
-  let compiled_pkg = Wesl::new("shaders")
+  let compiled_pkg = Wesl::new()
     .add_package(CodegenPkg::new("demo_crate", root))
     .use_stripping(false)
     .use_lower(false)
@@ -3232,7 +3205,7 @@ test "wesl: facade standard resolver can add packages and constants" {
 
   debug_inspect(compiled_pkg.to_string().contains("@fragment"), content="true")
 
-  let compiled_constants = Wesl::new("shaders")
+  let compiled_constants = Wesl::new()
     .add_constant("PI", 3.141592653589793)
     .use_stripping(false)
     .use_lower(false)
@@ -3254,7 +3227,6 @@ test "wesl: resolver exposes display name and registered modules" {
     resolver.display_name(root_path),
     content="Some(\"package::shaders::root\")",
   )
-  debug_inspect(resolver.fs_path(root_path), content="None")
   debug_inspect(resolver.modules().length(), content="1")
 }
 
@@ -3302,10 +3274,6 @@ test "wesl: resolver defaults match upstream constructors" {
   }
 
   debug_inspect(VirtualResolver::default().modules().length(), content="0")
-  debug_inspect(
-    FileResolver::default().fs_path(root_path),
-    content="Some(\"package\")",
-  )
   match no_resolver_result {
     Err(ModuleNotFound(_, context)) =>
       debug_inspect(
@@ -3456,69 +3424,13 @@ test "wesl: conditional translation runs after custom module preprocessing" {
 }
 
 ///|
-test "wesl: file resolver maps module path to wesl path" {
-  let resolver = FileResolver::new("shaders")
-  let root_path = ModulePath::from_path("/materials/root")
-
-  debug_inspect(
-    resolver.fs_path(root_path),
-    content="Some(\"shaders/materials/root.wesl\")",
-  )
-  let wgsl_resolver = resolver.set_extension("wgsl")
-  debug_inspect(
-    wgsl_resolver.fs_path(root_path),
-    content="Some(\"shaders/materials/root.wgsl\")",
-  )
-  debug_inspect(
-    FileResolver::default().fs_path(root_path),
-    content="Some(\"materials/root\")",
-  )
-}
-
-///|
-test "wesl: file resolver reads files and falls back from wesl to wgsl" {
-  let resolver = FileResolver::new("testdata/upstream/bevy")
-  let wesl_source = resolver.resolve_source(
-    ModulePath::from_path("/custom_material"),
-  )
-  debug_inspect(wesl_source.contains("make_polka_dots"), content="true")
-
-  let wgsl_source = resolver.resolve_source(
-    ModulePath::from_path("/custom_material_import"),
-  )
-  debug_inspect(wgsl_source.contains("COLOR_MULTIPLIER"), content="true")
-}
-
-///|
-test "wesl: file resolver compiles local file imports" {
-  let resolver = FileResolver::new("testdata/upstream/bevy")
-  let compiled = compile(
-    ModulePath::from_path("/custom_material"),
-    resolver,
-    EscapeMangler::default(),
-    CompileOptions::default().with_keep_root(true),
-  )
-  let compiled_text = compiled.to_string()
-
-  debug_inspect(
-    compiled_text.contains("fn package_util__2make_polka_dots"),
-    content="true",
-  )
-  debug_inspect(
-    compiled_text.contains("return package_util__2make_polka_dots"),
-    content="true",
-  )
-}
-
-///|
 test "wesl: standard resolver exposes constants package" {
-  let resolver = StandardResolver::new("shaders")
+  let resolver = StandardResolver::new()
   resolver.add_constant("PI", 3.141592653589793)
   let constants_path = try! parse_module_path("constants")
 
   let source = resolver.resolve_source(constants_path)
   debug_inspect(source.contains("const PI = 3.141592653589793"), content="true")
-  debug_inspect(resolver.fs_path(constants_path), content="None")
 }
 
 ///|
@@ -3543,41 +3455,22 @@ test "wesl: package resolver reads codegen modules" {
 }
 
 ///|
-fn wesl_test_ensure_dir(path : String) -> Unit {
-  if !@fs.path_exists(path) {
-    try! @fs.create_dir(path)
-  }
-}
-
-///|
-test "wesl: package builder scans filesystem artifacts" {
-  let base = "_build/pkg_builder_fixture"
-  let root_dir = base + "/shaders"
-  wesl_test_ensure_dir("_build")
-  wesl_test_ensure_dir(base)
-  wesl_test_ensure_dir(root_dir)
-  wesl_test_ensure_dir(root_dir + "/nested")
-  try! @fs.write_string_to_file(
-    root_dir + ".wesl",
-    "fn root_value() -> f32 {\n  return 1.0;\n}\n",
+test "wesl: package builder constructs in-memory artifacts" {
+  let root = CodegenModule::new(
+    "shaders", "fn root_value() -> f32 {\n  return 1.0;\n}\n",
   )
-  try! @fs.write_string_to_file(
-    root_dir + "/util.wesl",
-    "fn make_value() -> f32 {\n  return 2.0;\n}\n",
+  root.add_submodule(
+    CodegenModule::new("util", "fn make_value() -> f32 {\n  return 2.0;\n}\n"),
   )
-  try! @fs.write_string_to_file(
-    root_dir + "/nested/math.wgsl",
-    "fn triple(value: f32) -> f32 {\n  return value * 3.0;\n}\n",
+  let nested = CodegenModule::new("nested", "")
+  nested.add_submodule(
+    CodegenModule::new(
+      "math", "fn triple(value: f32) -> f32 {\n  return value * 3.0;\n}\n",
+    ),
   )
-  try! @fs.write_string_to_file(
-    root_dir + "/bad-name.wesl",
-    "fn skipped() -> f32 {\n  return 9.0;\n}\n",
-  )
-
-  let pkg = PkgBuilder::new("demo-crate").scan_root(root_dir).validate()
-  let artifact_path = base + "/demo_artifact.mbt.txt"
-  pkg.build_artifact(artifact_path)
-  let artifact = try! @fs.read_file_to_string(artifact_path)
+  root.add_submodule(nested)
+  let pkg = PkgBuilder::new("demo-crate").build(root).validate()
+  let artifact = pkg.codegen()
   debug_inspect(artifact.contains("CodegenPkg::"), content="true")
   debug_inspect(artifact.contains("demo_crate"), content="true")
   let codegen_pkg = pkg.to_codegen_pkg()
@@ -3596,42 +3489,23 @@ test "wesl: package builder scans filesystem artifacts" {
     resolver.resolve_source(try! parse_module_path("demo_crate::nested::math")),
     content="\"fn triple(value: f32) -> f32 {\\n  return value * 3.0;\\n}\\n\"",
   )
-  let skipped = try
-    resolver.resolve_source(try! parse_module_path("demo_crate::bad-name"))
-  catch {
-    err => Err(err)
-  } noraise {
-    value => Ok(value)
-  }
-  match skipped {
-    Err(ModuleNotFound(_, _)) => ()
-    _ => fail("expected invalid module filename to be skipped")
-  }
 }
 
 ///|
-test "wesl: package builder artifacts compile through standard resolver" {
-  let base = "_build/pkg_builder_compile_fixture"
-  let root_dir = base + "/lib"
-  wesl_test_ensure_dir("_build")
-  wesl_test_ensure_dir(base)
-  wesl_test_ensure_dir(base + "/app")
-  wesl_test_ensure_dir(root_dir)
-  try! @fs.write_string_to_file(root_dir + ".wesl", "")
-  try! @fs.write_string_to_file(
-    root_dir + "/util.wesl",
-    "fn make_value() -> f32 {\n  return 4.0;\n}\n",
+test "wesl: in-memory package artifacts compile through standard resolver" {
+  let pkg_root = CodegenModule::new("lib", "")
+  pkg_root.add_submodule(
+    CodegenModule::new("util", "fn make_value() -> f32 {\n  return 4.0;\n}\n"),
   )
-  try! @fs.write_string_to_file(
-    base + "/app/root.wesl",
-    "import shader_lib::util::make_value;\n@fragment\nfn fragment() -> f32 {\n  return make_value();\n}\n",
-  )
-
-  let pkg = PkgBuilder::new("shader-lib").scan_root(root_dir).validate()
-  let compiled = Wesl::new(base)
-    .add_scanned_package(pkg)
+  let pkg = PkgBuilder::new("shader-lib").build(pkg_root).validate()
+  let app_root = ModulePath::from_path("/app/root")
+  let compiled = Wesl::new()
+    .add_package(pkg.to_codegen_pkg())
+    .add_module(
+      app_root, "import shader_lib::util::make_value;\n@fragment\nfn fragment() -> f32 {\n  return make_value();\n}\n",
+    )
     .use_lower(true)
-    .compile(ModulePath::from_path("/app/root"))
+    .compile(app_root)
   let compiled_text = compiled.to_string()
   let expected = ManglerKind::mangle(
     Escape,
@@ -3647,16 +3521,12 @@ test "wesl: package builder artifacts compile through standard resolver" {
 test "wesl: standard resolver delegates package imports to codegen resolver" {
   let root = CodegenModule::new("demo", "fn root() {}\n")
   root.add_submodule(CodegenModule::new("util", "fn util() {}\n"))
-  let resolver = StandardResolver::new("shaders")
+  let resolver = StandardResolver::new()
   resolver.add_package(CodegenPkg::new("demo_crate", root))
 
   debug_inspect(
     resolver.resolve_source(try! parse_module_path("demo::util")),
     content="\"fn util() {}\\n\"",
-  )
-  debug_inspect(
-    resolver.fs_path(try! parse_module_path("demo::util")),
-    content="None",
   )
 }
 

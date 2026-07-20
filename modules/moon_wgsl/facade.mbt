@@ -32,7 +32,6 @@ pub using @contract {
   type WgslSourceMapEntry,
   type WgslSourceOriginEntry,
   type WgslSourceOriginKind,
-  type WgslSourceScanOptions,
   type WgslSymbolRedirect,
 }
 
@@ -59,8 +58,6 @@ pub using @preprocess {
 pub using @resolver {
   default_shader_rel_path_for_module_path,
   normalize_shader_rel_path,
-  scan_wgsl_source_files,
-  scan_wgsl_source_files_checked,
   type WgslSourceRegistry,
 }
 

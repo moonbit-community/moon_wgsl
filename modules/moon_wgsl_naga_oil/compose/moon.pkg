@@ -14,5 +14,4 @@ import {
   "moonbitlang/core/set",
   "moonbitlang/core/ref",
   "moonbitlang/core/string",
-  "moonbitlang/x/fs",
 }

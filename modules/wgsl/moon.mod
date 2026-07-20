@@ -2,10 +2,6 @@ name = "Milky2018/wgsl"
 
 version = "0.16.1"
 
-import {
-  "moonbitlang/x@0.4.43",
-}
-
 readme = "README.mbt.md"
 
 repository = "https://github.com/moonbit-community/moon_wgsl"

@@ -5,7 +5,6 @@ version = "0.16.1"
 import {
   "Milky2018/wgsl@0.16.1",
   "Milky2018/moon_wgsl_naga@0.16.1",
-  "moonbitlang/x@0.4.43",
 }
 
 readme = "README.mbt.md"

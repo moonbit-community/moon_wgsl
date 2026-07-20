@@ -77,22 +77,41 @@ fn metadata_imports_or_abort(
 }
 
 ///|
-fn upstream_compose_fixture_source(
-  case_name : String,
-  rel_path : String,
-) -> String {
-  let files = @resolver.scan_wgsl_source_files(
-    moon_wgsl_testdata_path("naga_oil_upstream/compose_tests/\{case_name}"),
-    @contract.WgslSourceScanOptions::default(),
-  ) catch {
-    _ => abort("expected upstream compose fixture scan success")
-  }
-  for file in files {
-    if file.rel_path == rel_path {
-      return file.source
-    }
-  }
-  abort("expected upstream compose fixture source \{case_name}/\{rel_path}")
+fn upstream_bevy_path_import_fixture_source() -> String {
+  (
+    #|#import "shaders/skills/shared.wgsl" Vertex, VertexOutput
+    #|
+    #|#if EFFECT_ID == 0
+    #|    #import "shaders/skills/sound.wgsl" frag, vert
+    #|#else if EFFECT_ID == 1
+    #|    #import "shaders/skills/orb.wgsl" frag, vert
+    #|#else if EFFECT_ID == 2
+    #|    #import "shaders/skills/slash.wgsl" frag, vert
+    #|#else if EFFECT_ID == 3
+    #|    #import "shaders/skills/railgun_trail.wgsl" frag, vert
+    #|#else if EFFECT_ID == 4
+    #|    #import "shaders/skills/magic_arrow.wgsl" frag, vert
+    #|#else if EFFECT_ID == 5
+    #|    #import "shaders/skills/hit.wgsl" frag, vert
+    #|#else if EFFECT_ID == 6
+    #|    #import "shaders/skills/lightning_ring.wgsl" frag, vert
+    #|#else if EFFECT_ID == 7
+    #|    #import "shaders/skills/lightning.wgsl" frag, vert
+    #|#endif
+    #|
+    #|#import something_unused
+    #|
+    #|@fragment
+    #|fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    #|    return frag(in);
+    #|}
+    #|
+    #|@vertex
+    #|fn vertex(vertex: Vertex) -> VertexOutput {
+    #|    return vert(vertex);
+    #|}
+    #|
+  )
 }
 
 ///|
@@ -347,7 +366,7 @@ test "naga_oil: metadata parser matches upstream bevy path import usage shape" {
 ///|
 test "naga_oil upstream mirror: metadata parser matches bevy path import fixture" {
   let imports = metadata_imports_or_abort(
-    upstream_compose_fixture_source("bevy_path_imports", "skill.wgsl"),
+    upstream_bevy_path_import_fixture_source(),
   )
   debug_inspect(imports.length(), content="9")
   debug_inspect(

@@ -66,11 +66,11 @@ native `tools/wgpu_validation` subproject, not as a root module dependency.
 Parity is tracked with explicit gates:
 
 1. Local source-level parity tests.
-   `upstream_compose_parity_test.mbt` contains MoonBit ports of upstream
+   `tools/naga_oil_integration/upstream_compose_parity_test.mbt` contains MoonBit ports of upstream
    `naga_oil` compose cases that can be expressed without Naga IR.
 
 2. Real shader-tree regression tests.
-   `bevy_wgsl_parity_test.mbt` registers complete Bevy WGSL fixture files from
+   `tools/naga_oil_integration/bevy_wgsl_parity_test.mbt` registers complete Bevy WGSL fixture files from
    `testdata/bevy_wgsl` and checks that import-only roots tree-shake to empty
    output like upstream `naga_oil`.
 

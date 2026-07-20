@@ -1,0 +1,7 @@
+import {
+  "Milky2018/moon_wesl",
+  "Milky2018/wgsl/lex",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+}

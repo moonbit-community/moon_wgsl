@@ -13,28 +13,12 @@
 // limitations under the License.
 
 ///|
-fn moon_wgsl_workspace_path(rel : String) -> String {
-  let candidates = [
-    rel,
-    "../../\{rel}",
-    "../../../\{rel}",
-    "../../../../\{rel}",
-  ]
-  for candidate in candidates {
-    if moon_wgsl_path_exists(candidate) {
-      return candidate
-    }
+test "naga_oil upstream WGSL fixture mirror is complete" {
+  let files = @wgsl_io.scan_wgsl_source_files(
+    moon_wgsl_testdata_path("naga_oil_upstream/compose_tests"),
+    @wgsl_io.WgslSourceScanOptions::default(),
+  ) catch {
+    _ => abort("expected naga_oil upstream fixture scan success")
   }
-  rel
-}
-
-///|
-fn moon_wgsl_testdata_path(rel : String) -> String {
-  moon_wgsl_workspace_path("testdata/\{rel}")
-}
-
-///|
-fn moon_wgsl_path_exists(path : String) -> Bool {
-  (@fs.is_dir(path) catch { _ => false }) ||
-  (@fs.is_file(path) catch { _ => false })
+  debug_inspect(files.length(), content="75")
 }

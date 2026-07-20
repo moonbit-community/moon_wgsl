@@ -58,9 +58,10 @@ fn upstream_parity_empty_compose_options() -> @contract.WgslComposeOptions {
 fn upstream_parity_composer(case_name : String) -> @compose.Composer {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     moon_wgsl_testdata_path("upstream_compose/\{case_name}"),
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream fixture registration success")
   }
@@ -184,9 +185,10 @@ fn upstream_parity_check_effective_defs_sum_with_false_three(
 fn upstream_mirror_composer(case_name : String) -> @compose.Composer {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     moon_wgsl_testdata_path("naga_oil_upstream/compose_tests/\{case_name}"),
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream mirror fixture registration success")
   }

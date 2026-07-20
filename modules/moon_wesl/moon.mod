@@ -3,7 +3,6 @@ name = "Milky2018/moon_wesl"
 version = "0.2.0"
 
 import {
-  "moonbitlang/x@0.4.43",
   "Milky2018/wgsl@0.16.1",
 }
 

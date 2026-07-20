@@ -993,65 +993,6 @@ test "naga_oil: add_composable_module applies descriptor additional imports" {
 }
 
 ///|
-test "naga_oil: composer can register a WGSL source tree from moonbitlang/x/fs" {
-  clear_composer_test_registry()
-  let composer = @compose.Composer::default()
-  composer.clear_sources()
-  composer.register_source_tree(
-    moon_wgsl_testdata_path("wgsl_scan"),
-    @contract.WgslSourceScanOptions::default(),
-  ) catch {
-    _ => abort("expected WGSL source tree registration success")
-  }
-  let preprocessed = composer.compose_wgsl("effects/main.wgsl", {
-    defines: empty_bool_defines(),
-    value_defines: @profile.bevy_wgsl_value_defines(),
-    redirects: [],
-    additional_imports: [],
-  }) catch {
-    err =>
-      abort("expected source-tree-backed preprocess success: \{err.message()}")
-  }
-  debug_inspect(
-    composer.registered_source("effects/main.wgsl") is Some(_),
-    content="true",
-  )
-  debug_inspect(preprocessed.contains("struct SharedValue"), content="true")
-  debug_inspect(preprocessed.contains("fn build_color"), content="true")
-  debug_inspect(preprocessed.contains("fn shade"), content="true")
-}
-
-///|
-test "naga_oil: checked source-tree registration preserves existing registry conflicts" {
-  clear_composer_test_registry()
-  let composer = @compose.Composer::default()
-  composer.clear_sources()
-  composer.register_source(
-    "shared/common.wgsl",
-    (
-      #|#define_import_path demo::shared
-      #|fn shared_value() -> f32 {
-      #|  return 1f;
-      #|}
-      #|
-    ),
-  )
-  let diagnostics = composer.register_source_tree_checked(
-    moon_wgsl_testdata_path("wgsl_scan_conflict"),
-    @contract.WgslSourceScanOptions::default(),
-  ) catch {
-    _ => abort("expected checked WGSL source tree registration success")
-  }
-  debug_inspect(diagnostics.length(), content="1")
-  debug_inspect(diagnostics[0].severity, content="Error")
-  debug_inspect(diagnostics[0].rel_path, content="Some(\"shared/common.wgsl\")")
-  debug_inspect(
-    composer.registered_source("shared/common.wgsl"),
-    content="Some(\"#define_import_path demo::shared\\nfn shared_value() -> f32 {\\n  return 1f;\\n}\\n\")",
-  )
-}
-
-///|
 test "naga_oil: composer preprocess can apply AST-scoped symbol redirects" {
   register_redirect_test_shaders()
   let preprocessed = composer_test_composer().compose_wgsl(

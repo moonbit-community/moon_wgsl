@@ -53,21 +53,21 @@ pub fn Wesl::new_virtual(resolver : VirtualResolver) -> Wesl[VirtualResolver] {
 }
 
 ///|
-pub fn Wesl::new(base : String) -> Wesl[StandardResolver] {
+pub fn Wesl::new() -> Wesl[StandardResolver] {
   {
     options: CompileOptions::default(),
     use_sourcemap: true,
-    resolver: StandardResolver::new(base),
+    resolver: StandardResolver::new(),
     mangler: ManglerKind::default(),
   }
 }
 
 ///|
-pub fn Wesl::new_experimental(base : String) -> Wesl[StandardResolver] {
+pub fn Wesl::new_experimental() -> Wesl[StandardResolver] {
   {
     options: CompileOptions::default().with_generics(true).with_lower(true),
     use_sourcemap: true,
-    resolver: StandardResolver::new(base),
+    resolver: StandardResolver::new(),
     mangler: ManglerKind::default(),
   }
 }
@@ -203,11 +203,12 @@ pub fn Wesl::add_package(
 }
 
 ///|
-pub fn Wesl::add_scanned_package(
+pub fn Wesl::add_module(
   self : Wesl[StandardResolver],
-  pkg : Pkg,
+  path : ModulePath,
+  source : String,
 ) -> Wesl[StandardResolver] {
-  self.resolver.add_package(pkg.to_codegen_pkg())
+  self.resolver.add_module(path, source)
   self
 }
 
@@ -261,18 +262,6 @@ pub fn[R : Resolver] Wesl::compile(
     self.options,
     self.use_sourcemap,
   )
-}
-
-///|
-pub fn[R : Resolver] Wesl::build_artifact(
-  self : Wesl[R],
-  root : ModulePath,
-  artifact_name : String,
-  out_dir? : String? = None,
-) -> Unit raise WeslCompileError {
-  let compiled = self.compile(root)
-  emit_rerun_if_changed(compiled.modules, self.resolver)
-  compiled.write_artifact(artifact_name, out_dir~)
 }
 
 ///|

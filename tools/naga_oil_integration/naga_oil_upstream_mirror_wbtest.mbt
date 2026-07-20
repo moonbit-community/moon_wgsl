@@ -28,9 +28,9 @@ fn mirror_preprocess_source(source : String) -> String {
 
 ///|
 test "non-conditional naga_oil fixtures mask into official WGSL" {
-  let files = @resolver.scan_wgsl_source_files(
+  let files = @wgsl_io.scan_wgsl_source_files(
     moon_wgsl_testdata_path("naga_oil_upstream/compose_tests"),
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected naga_oil upstream fixture scan success")
   }
@@ -61,9 +61,9 @@ test "non-conditional naga_oil fixtures mask into official WGSL" {
 
 ///|
 test "non-conditional Bevy fixtures mask into official WGSL" {
-  let files = @resolver.scan_wgsl_source_files(
+  let files = @wgsl_io.scan_wgsl_source_files(
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture scan success")
   }

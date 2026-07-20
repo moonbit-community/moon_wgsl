@@ -13,6 +13,11 @@
 // limitations under the License.
 
 ///|
+fn empty_bool_defines() -> Map[String, Bool] {
+  Map([])
+}
+
+///|
 fn bevy_parity_defines(names : Array[String]) -> Map[String, Bool] {
   let defines : Map[String, Bool] = Map([])
   for name in names {
@@ -48,9 +53,10 @@ fn bevy_prepared_catalog_entry_text(
 fn bevy_parity_compose(rel_path : String, defines : Array[String]) -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
@@ -105,9 +111,10 @@ test "naga_oil parity: import-only Bevy mesh root tree-shakes to empty" {
 test "naga_oil parity: Bevy lighting keeps tree-shaken alias const targets live" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
@@ -275,9 +282,10 @@ test "issue 13: nested alias global references use emitted symbol identity" {
 test "naga_oil parity: prepared Bevy catalog resolves alias-qualified bindings" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     moon_wgsl_testdata_path("bevy_wgsl"),
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }

@@ -71,9 +71,10 @@ fn validation_writer_boundary_source() -> String {
 fn validation_upstream_compute_source() -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     "testdata/upstream_compose/compute_test",
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream compute fixture registration success")
   }
@@ -92,9 +93,10 @@ fn validation_upstream_compute_source() -> String {
 fn validation_upstream_diagnostic_filters_source() -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     "testdata/upstream_compose/diagnostic_filters",
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected diagnostic filters fixture registration success")
   }
@@ -159,9 +161,10 @@ fn validation_mgstudio_mesh3d_forward_source() -> String {
 fn validation_bevy_source(entry : String) -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     "testdata/bevy_wgsl",
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected Bevy fixture registration success")
   }
@@ -179,9 +182,10 @@ fn validation_bevy_source(entry : String) -> String {
 fn validation_upstream_raycast_source() -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     "testdata/naga_oil_upstream/compose_tests/raycast",
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream raycast fixture registration success")
   }
@@ -197,9 +201,10 @@ fn validation_upstream_raycast_source() -> String {
 fn validation_upstream_dual_source_blending_source() -> String {
   let composer = @compose.Composer::default()
   composer.clear_sources()
-  composer.register_source_tree(
+  @wgsl_io.register_source_tree(
+    composer,
     "testdata/upstream_compose/dual_source_blending",
-    @contract.WgslSourceScanOptions::default(),
+    @wgsl_io.WgslSourceScanOptions::default(),
   ) catch {
     _ => abort("expected upstream dual-source fixture registration success")
   }

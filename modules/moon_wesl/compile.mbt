@@ -558,11 +558,6 @@ pub impl[R : Resolver] Resolver for SourceMapper[R] with fn display_name(
 }
 
 ///|
-pub impl[R : Resolver] Resolver for SourceMapper[R] with fn fs_path(self, path) {
-  R::fs_path(self.resolver, path)
-}
-
-///|
 pub struct CompileResult {
   syntax : TranslationUnit
   sourcemap : BasicSourceMap?
@@ -582,59 +577,6 @@ pub fn CompileResult::to_string(self : CompileResult) -> String {
 ///|
 pub fn CompileResult::has_sourcemap(self : CompileResult) -> Bool {
   self.sourcemap is Some(_)
-}
-
-///|
-pub fn CompileResult::write_to_file(
-  self : CompileResult,
-  path : String,
-) -> Unit raise WeslCompileError {
-  @fs.write_string_to_file(path, self.to_string()) catch {
-    err =>
-      raise Artifact(
-        "failed to write output shader `\{path}`: \{@debug.to_string(err)}",
-      )
-  }
-}
-
-///|
-fn wesl_artifact_output_path(
-  artifact_name : String,
-  out_dir : String?,
-) -> String raise WeslCompileError {
-  if artifact_name == "" {
-    raise Artifact("artifact name cannot be empty")
-  }
-  for i in 0..<artifact_name.length() {
-    let code = artifact_name.code_unit_at(i).to_int()
-    if code == 47 || code == 92 || code == 46 {
-      raise Artifact(
-        "`artifact_name` cannot contain path separators or file extension",
-      )
-    }
-  }
-  let dirname = match out_dir {
-    Some(value) => value
-    None =>
-      match @env.get_env_var("OUT_DIR") {
-        Some(value) => value
-        None => raise Artifact("OUT_DIR environment variable is not defined")
-      }
-  }
-  if dirname == "" {
-    "\{artifact_name}.wgsl"
-  } else {
-    "\{dirname}/\{artifact_name}.wgsl"
-  }
-}
-
-///|
-pub fn CompileResult::write_artifact(
-  self : CompileResult,
-  artifact_name : String,
-  out_dir? : String? = None,
-) -> Unit raise WeslCompileError {
-  self.write_to_file(wesl_artifact_output_path(artifact_name, out_dir))
 }
 
 ///|

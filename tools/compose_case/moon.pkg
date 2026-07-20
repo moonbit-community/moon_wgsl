@@ -4,6 +4,7 @@ import {
   "Milky2018/moon_wgsl_naga_oil/diagnostics",
   "Milky2018/moon_wgsl_naga_oil/profile",
   "Milky2018/moon_wgsl_naga_oil/resolver",
+  "Milky2018/moon_wgsl_tools/wgsl_io",
   "moonbitlang/core/env",
   "moonbitlang/core/string",
   "moonbitlang/x/fs",

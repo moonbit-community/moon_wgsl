@@ -16,6 +16,7 @@
 fn moon_wgsl_workspace_path(rel : String) -> String {
   let candidates = [
     rel,
+    "../\{rel}",
     "../../\{rel}",
     "../../../\{rel}",
     "../../../../\{rel}",

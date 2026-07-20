@@ -24,31 +24,13 @@ pub fn Composer::register_source_files(
 }
 
 ///|
-fn Composer::register_source_files_checked(
+pub fn Composer::register_source_files_checked(
   self : Composer,
   files : Array[WgslSourceFile],
 ) -> Array[WgslDiagnostic] {
   let diagnostics : Array[WgslDiagnostic] = []
   self.registry.register_source_files_checked(files, diagnostics)
   diagnostics
-}
-
-///|
-pub fn Composer::register_source_tree(
-  self : Composer,
-  root : String,
-  options : WgslSourceScanOptions,
-) -> Unit raise @fs.IOError {
-  self.register_source_files(scan_wgsl_source_files(root, options))
-}
-
-///|
-pub fn Composer::register_source_tree_checked(
-  self : Composer,
-  root : String,
-  options : WgslSourceScanOptions,
-) -> Array[WgslDiagnostic] raise @fs.IOError {
-  self.register_source_files_checked(scan_wgsl_source_files(root, options))
 }
 
 ///|

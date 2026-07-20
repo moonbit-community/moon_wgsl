@@ -243,25 +243,6 @@ test "naga_oil: checked bulk registration blocks normalized rel-path conflicts" 
 }
 
 ///|
-test "naga_oil: scan_wgsl_source_files reads a WGSL tree via moonbitlang/x/fs" {
-  let files = @resolver.scan_wgsl_source_files(
-    moon_wgsl_testdata_path("wgsl_scan"),
-    { recursive: true, extensions: [".wgsl"], exclude_prefixes: ["ignored"] },
-  ) catch {
-    _ => abort("expected WGSL source scan success")
-  }
-  let rel_paths : Array[String] = []
-  for file in files {
-    rel_paths.push(file.rel_path)
-  }
-  rel_paths.sort()
-  debug_inspect(
-    rel_paths.join(","),
-    content="\"effects/main.wgsl,shared/common.wgsl\"",
-  )
-}
-
-///|
 test "naga_oil: source tree registry infers module names from WGSL file paths" {
   let composer = @compose.Composer::default()
   composer.clear_sources()
@@ -295,16 +276,4 @@ test "naga_oil: source tree registry infers module names from WGSL file paths" {
   }
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
   debug_inspect(source.contains("X_naga_oil_mod_X"), content="true")
-}
-
-///|
-test "naga_oil: scan_wgsl_source_files_checked allows duplicate module candidates" {
-  let (files, diagnostics) = @resolver.scan_wgsl_source_files_checked(
-    moon_wgsl_testdata_path("wgsl_scan_dups"),
-    @contract.WgslSourceScanOptions::default(),
-  ) catch {
-    _ => abort("expected checked WGSL source scan success")
-  }
-  debug_inspect(files.length(), content="2")
-  debug_inspect(diagnostics.length(), content="0")
 }

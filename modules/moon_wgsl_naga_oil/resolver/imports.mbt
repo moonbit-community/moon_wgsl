@@ -5,7 +5,6 @@ using @contract {
   type WgslImportTarget,
   type WgslResolvedImportModule,
   type WgslSourceFile,
-  type WgslSourceScanOptions,
 }
 
 ///|

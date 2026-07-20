@@ -56,6 +56,12 @@ python3 tools/check_architecture_metadata.py
 python3 tools/check_docs_freshness.py
 
 section "module boundaries"
+forbid_rg \
+  'moonbitlang/x|moonbitlang/core/(env|process)' \
+  modules \
+  "published modules must stay pure and leave host I/O to workspace/application adapters" \
+  --glob 'moon.mod' --glob 'moon.pkg' --glob '*.mbt' --glob '*.mbti'
+
 required_boundary_files=(
   modules/wgsl/ir/pkg.mbti
   modules/wgsl/parser/pkg.mbti

@@ -49,12 +49,9 @@
       "Milky2018/wgsl/ir",
       "Milky2018/wgsl/lex",
       "Milky2018/wgsl/parser",
-      "moonbitlang/core/debug",
-      "moonbitlang/core/env",
       "moonbitlang/core/hashmap",
       "moonbitlang/core/math",
-      "moonbitlang/core/string",
-      "moonbitlang/x/fs"
+      "moonbitlang/core/string"
     ],
     "modules/moon_wgsl/moon.pkg": [
       "Milky2018/moon_wgsl_naga_oil/compose",
@@ -68,8 +65,7 @@
       "moonbitlang/core/encoding/utf8",
       "moonbitlang/core/ref",
       "moonbitlang/core/set",
-      "moonbitlang/core/string",
-      "moonbitlang/x/fs"
+      "moonbitlang/core/string"
     ],
     "modules/moon_wgsl_naga/moon.pkg": [
       "Milky2018/wgsl/ir",
@@ -93,8 +89,7 @@
       "Milky2018/wgsl/parser",
       "moonbitlang/core/ref",
       "moonbitlang/core/set",
-      "moonbitlang/core/string",
-      "moonbitlang/x/fs"
+      "moonbitlang/core/string"
     ],
     "modules/moon_wgsl_naga_oil/internal/directive/moon.pkg": [
       "Milky2018/moon_wgsl_naga_oil/contract",
@@ -144,8 +139,7 @@
       "Milky2018/moon_wgsl_naga_oil/contract",
       "Milky2018/moon_wgsl_naga_oil/internal/import_syntax",
       "Milky2018/wgsl/lex",
-      "moonbitlang/core/ref",
-      "moonbitlang/x/fs"
+      "moonbitlang/core/ref"
     ],
     "modules/moon_wgsl_naga_oil/internal/source_rewrite/moon.pkg": [
       "Milky2018/wgsl/lex"

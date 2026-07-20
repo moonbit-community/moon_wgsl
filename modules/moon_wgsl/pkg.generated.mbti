@@ -6,7 +6,6 @@ import {
   "Milky2018/moon_wgsl_naga_oil/metadata",
   "Milky2018/moon_wgsl_naga_oil/preprocess",
   "Milky2018/moon_wgsl_naga_oil/resolver",
-  "moonbitlang/x/fs",
 }
 
 // Values
@@ -23,10 +22,6 @@ pub fn default_shader_rel_path_for_module_path(String) -> String
 pub fn get_preprocessor_metadata(String, allow_defines? : Bool, collect_import_uses? : Bool) -> @contract.PreprocessorMetaData raise @metadata.MetadataError
 
 pub fn normalize_shader_rel_path(String) -> String
-
-pub fn scan_wgsl_source_files(String, @contract.WgslSourceScanOptions) -> Array[@contract.WgslSourceFile] raise @fs.IOError
-
-pub fn scan_wgsl_source_files_checked(String, @contract.WgslSourceScanOptions) -> (Array[@contract.WgslSourceFile], Array[@contract.WgslDiagnostic]) raise @fs.IOError
 
 pub fn wgsl_source_define_import_path(String) -> String?
 
@@ -94,8 +89,6 @@ pub using @contract {type WgslSourceOriginEntry}
 pub using @contract {type WgslSourceOriginKind}
 
 pub using @resolver {type WgslSourceRegistry}
-
-pub using @contract {type WgslSourceScanOptions}
 
 pub using @contract {type WgslSymbolRedirect}
 

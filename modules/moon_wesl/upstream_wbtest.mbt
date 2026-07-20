@@ -118,39 +118,6 @@ fn upstream_assert_standalone_compile_result(
 }
 
 ///|
-fn upstream_assert_file_compile_result(
-  case_name : String,
-  path : String,
-) -> String? {
-  let resolver = FileResolver::new("testdata/upstream")
-  let root_path = upstream_fixture_module_path(path)
-  let result = try
-    compile(
-      root_path,
-      resolver,
-      EscapeMangler::default(),
-      CompileOptions::default().with_keep_root(true),
-    )
-  catch {
-    err => Err(err)
-  } noraise {
-    value => Ok(value)
-  }
-  match result {
-    Ok(compiled) =>
-      if compiled.to_string().trim().to_owned() == "" {
-        Some("\{case_name}: expected non-empty compiled output")
-      } else {
-        None
-      }
-    Err(err) =>
-      Some(
-        "\{case_name}: expected file-resolver compile success, got \{err.message()}",
-      )
-  }
-}
-
-///|
 fn upstream_assert_bulk_case(case : UpstreamBulkCase) -> String? {
   if case.name.trim().to_owned() == "" {
     return Some("bulk case metadata: expected non-empty case name")
@@ -529,22 +496,6 @@ test "upstream: bevy standalone fixtures without package imports compile through
         case.path,
         case.source,
       ) {
-      Some(message) => fail(message)
-      None => ()
-    }
-  }
-}
-
-///|
-test "upstream: bevy local file imports compile through file resolver" {
-  for case in upstream_bevy_e2e_cases {
-    if !upstream_array_contains(
-        upstream_bevy_file_resolver_compile_paths,
-        case.path,
-      ) {
-      continue
-    }
-    match upstream_assert_file_compile_result(case.path, case.path) {
       Some(message) => fail(message)
       None => ()
     }

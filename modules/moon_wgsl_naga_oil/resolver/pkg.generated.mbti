@@ -3,7 +3,6 @@ package "Milky2018/moon_wgsl_naga_oil/resolver"
 
 import {
   "Milky2018/moon_wgsl_naga_oil/contract",
-  "moonbitlang/x/fs",
 }
 
 // Values
@@ -16,10 +15,6 @@ pub fn normalize_shader_rel_path(String) -> String
 pub fn resolve_wgsl_import_file_path_from_registry(WgslSourceRegistry, String, String) -> String?
 
 pub fn resolve_wgsl_import_module_in_registry(WgslSourceRegistry, String, Map[String, String]) -> @contract.WgslResolvedImportModule?
-
-pub fn scan_wgsl_source_files(String, @contract.WgslSourceScanOptions) -> Array[@contract.WgslSourceFile] raise @fs.IOError
-
-pub fn scan_wgsl_source_files_checked(String, @contract.WgslSourceScanOptions) -> (Array[@contract.WgslSourceFile], Array[@contract.WgslDiagnostic]) raise @fs.IOError
 
 // Errors
 

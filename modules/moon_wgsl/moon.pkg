@@ -13,7 +13,6 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/set",
   "moonbitlang/core/string",
-  "moonbitlang/x/fs",
 } for "test"
 
 import {
@@ -22,5 +21,4 @@ import {
   "Milky2018/moon_wgsl_naga_oil/profile",
   "Milky2018/moon_wgsl_naga_oil/resolver",
   "Milky2018/wgsl/parser",
-  "moonbitlang/x/fs",
 } for "wbtest"

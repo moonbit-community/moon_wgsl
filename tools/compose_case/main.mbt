@@ -612,7 +612,7 @@ fn compose_case_additional_imports(
 }
 
 ///|
-fn compose_case_scan_options() -> @contract.WgslSourceScanOptions {
+fn compose_case_scan_options() -> @wgsl_io.WgslSourceScanOptions {
   { recursive: true, extensions: [".wgsl", ".glsl"], exclude_prefixes: [] }
 }
 
@@ -1087,7 +1087,7 @@ fn compose_case_register_fixture_sources(
   fixture_root : String,
   args : ComposeCaseArgs,
 ) -> Unit {
-  let files = @resolver.scan_wgsl_source_files(
+  let files = @wgsl_io.scan_wgsl_source_files(
     fixture_root,
     compose_case_scan_options(),
   ) catch {

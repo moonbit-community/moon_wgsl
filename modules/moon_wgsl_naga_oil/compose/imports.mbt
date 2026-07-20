@@ -28,7 +28,6 @@ using @contract {
   type WgslSourceFile,
   type WgslSourceOriginEntry,
   type WgslSourceOriginKind,
-  type WgslSourceScanOptions,
   type WgslSymbolRedirect,
 }
 
@@ -51,7 +50,6 @@ using @resolver {
   type WgslSourceRegistry,
   default_shader_rel_path_for_module_path,
   normalize_shader_rel_path,
-  scan_wgsl_source_files,
 }
 
 ///|

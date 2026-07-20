@@ -34,7 +34,7 @@ Every type formerly exported from `wgsl/common` moved unchanged in meaning to
   `PreprocessorMetaData`
 - official source directives: `EnableDirective`, `RequiresDirective`,
   `DiagnosticDirective`, `WgslDirectives`
-- sources and diagnostics: `WgslSourceFile`, `WgslSourceScanOptions`,
+- sources and diagnostics: `WgslSourceFile`,
   `WgslSourceCatalogEntry`, `WgslSourceOriginEntry`,
   `WgslSourceOriginKind`, `PreparedWgslSource`, `WgslDiagnostic`, and
   `WgslDiagnosticSeverity`
@@ -75,7 +75,7 @@ lower-level stage errors are mapped to `WgslError::WorkflowFailed`.
 | `export_wgsl_with_options(composer, path, compose_options, export_options)` | `composer.export_wgsl(path, compose_options, export_options)`. |
 | `compose_wgsl_runtime_valid` / `prepare_wgsl_source_runtime_valid` | Use normal `compose` / `prepare`; runtime-valid output is the facade contract. |
 | `registered_source`, `contains_module` | No facade query. Keep registration state in the application, or deliberately use the lower-level `compose` package. |
-| `register_source_tree` / `register_source_tree_checked` | Filesystem scanning remains an explicit adapter: call `resolver::scan_wgsl_source_files[_checked]`, then `register_source_files`. |
+| `register_source_tree` / `register_source_tree_checked` | Filesystem scanning is owned by workspace/application adapters. `tools/wgsl_io` scans into `Array[WgslSourceFile]`; published composers accept that array through `register_source_files[_checked]`. |
 | before-IR, writer-parity, or writer-plan trace methods | Import `Milky2018/moon_wgsl_naga_oil/diagnostics` explicitly. These are repository/tooling workflows, not facade methods. |
 
 The facade's complete `Composer` method inventory is `default`,

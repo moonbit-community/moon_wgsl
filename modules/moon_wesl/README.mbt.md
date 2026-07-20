@@ -12,7 +12,7 @@ intentionally small and centered on:
 - `Resolver` for loading source from any backing store
 - `EscapeMangler` for turning module-local names into emitted global symbols
 - `CompileOptions` for import resolution, stripping, lowering, and feature flags
-- `compile(...)` and `Wesl::build_artifact(...)` as the main entry points
+- `compile(...)` and `Wesl::compile(...)` as the main entry points
 
 ## Features
 
@@ -90,10 +90,11 @@ removed. Code that validates standalone WGSL should parse it with
 `compile(...)` users do not need to change calls: validation remains enabled by
 default and now runs through WGSL Core after WESL assembly.
 
-For build-script style workflows, `CompileResult::write_artifact(...)` and
-`Wesl::build_artifact(...)` write `<artifact>.wgsl` into `OUT_DIR` by default,
-matching the upstream `include_wesl!` artifact convention. Tests and MoonBit
-build tools can pass an explicit `out_dir`.
+The published module does not read environment variables, scan directories, or
+write artifacts. Feed source text through a `Resolver`, then pass
+`CompileResult::to_string()` to the filesystem, asset, editor, or build-system
+adapter owned by the application. The repository's workspace-only
+`tools/wesl_io` package is the reference filesystem adapter.
 
 ## Core Concepts
 

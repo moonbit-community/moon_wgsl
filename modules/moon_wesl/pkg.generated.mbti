@@ -15,8 +15,6 @@ pub fn[R : Resolver] compile_sourcemap(ModulePath, R, EscapeMangler, CompileOpti
 
 pub fn[R : Resolver] compile_sourcemap_diagnostic(ModulePath, R, EscapeMangler, CompileOptions) -> CompileResult raise WeslDiagnosticError
 
-pub fn[R : Resolver] emit_rerun_if_changed(Array[ModulePath], R) -> Unit
-
 pub fn eval_const(String, String) -> EvalResult raise WeslCompileError
 
 pub fn eval_str(String) -> EvalResult raise WeslCompileError
@@ -39,18 +37,10 @@ pub(all) suberror ModulePathParseError {
 pub fn ModulePathParseError::message(Self) -> String
 
 pub(all) suberror ResolveError {
-  FileNotFound(String, String)
   ModuleNotFound(ModulePath, String)
   Error(String)
 }
 pub fn ResolveError::message(Self) -> String
-
-pub(all) suberror ScanDirectoryError {
-  RootNotFound(String)
-  ReservedModName(String)
-  Io(String)
-}
-pub fn ScanDirectoryError::message(Self) -> String
 
 pub(all) suberror ValidateError {
   UndefinedSymbol(String)
@@ -67,7 +57,6 @@ pub(all) suberror WeslCompileError {
   Validation(String)
   Validate(ValidateError)
   InvalidExpression(String)
-  Artifact(String)
   DuplicateSymbol(String)
   CircularDecl(String)
   MissingDecl(ModulePath, String)
@@ -217,8 +206,6 @@ pub fn CompileResult::exec(Self, String, Inputs, Array[ResourceBinding], Array[O
 pub fn CompileResult::has_sourcemap(Self) -> Bool
 pub fn CompileResult::to_string(Self) -> String
 pub fn CompileResult::unmangle_text(Self, String) -> String
-pub fn CompileResult::write_artifact(Self, String, out_dir? : String?) -> Unit raise WeslCompileError
-pub fn CompileResult::write_to_file(Self, String) -> Unit raise WeslCompileError
 
 pub struct CondCompPreprocessor {
   features : Features
@@ -352,16 +339,6 @@ pub struct Features {
 }
 pub fn Features::default() -> Self
 pub fn Features::with_feature(Self, String, Feature) -> Self
-
-pub struct FileResolver {
-  base : String
-  extension : String
-}
-pub fn FileResolver::default() -> Self
-pub fn FileResolver::file_path(Self, ModulePath) -> String raise ResolveError
-pub fn FileResolver::new(String) -> Self
-pub fn FileResolver::set_extension(Self, String) -> Self
-pub impl Resolver for FileResolver
 
 pub(all) enum ForInitializer {
   Declaration(StatementDeclaration)
@@ -564,7 +541,6 @@ pub(all) struct Pkg {
   root : CodegenModule
   dependencies : Array[CodegenPkg]
 }
-pub fn Pkg::build_artifact(Self, String) -> Unit raise ScanDirectoryError
 pub fn Pkg::codegen(Self) -> String
 pub fn Pkg::to_codegen_pkg(Self) -> CodegenPkg
 pub fn Pkg::validate(Self) -> Self raise WeslCompileError
@@ -575,8 +551,8 @@ pub struct PkgBuilder {
 }
 pub fn PkgBuilder::add_package(Self, CodegenPkg) -> Self
 pub fn PkgBuilder::add_packages(Self, Array[CodegenPkg]) -> Self
+pub fn PkgBuilder::build(Self, CodegenModule) -> Pkg
 pub fn PkgBuilder::new(String) -> Self
-pub fn PkgBuilder::scan_root(Self, String) -> Pkg raise ScanDirectoryError
 
 pub struct PkgResolver {
   packages : Array[CodegenPkg]
@@ -608,9 +584,7 @@ pub struct Router {
   // private fields
 }
 pub fn Router::default() -> Self
-pub fn Router::mount_fallback_file_resolver(Self, FileResolver) -> Unit
 pub fn Router::mount_fallback_resolver(Self, VirtualResolver) -> Unit
-pub fn Router::mount_file_resolver(Self, ModulePath, FileResolver) -> Unit
 pub fn Router::mount_pkg_resolver(Self, ModulePath, PkgResolver) -> Unit
 pub fn Router::mount_resolver(Self, ModulePath, VirtualResolver) -> Unit
 pub fn Router::mount_standard_resolver(Self, ModulePath, StandardResolver) -> Unit
@@ -647,14 +621,14 @@ pub fn SourceSpan::new(SourcePosition, SourcePosition) -> Self
 
 pub struct StandardResolver {
   pkg : PkgResolver
-  files : FileResolver
+  modules : VirtualResolver
   constants : @hashmap.HashMap[String, Double]
 }
 pub fn StandardResolver::add_constant(Self, String, Double) -> Unit
+pub fn StandardResolver::add_module(Self, ModulePath, String) -> Unit
 pub fn StandardResolver::add_package(Self, CodegenPkg) -> Unit
-pub fn StandardResolver::add_scanned_package(Self, Pkg) -> Unit
 pub fn StandardResolver::generate_constant_module(Self) -> String
-pub fn StandardResolver::new(String) -> Self
+pub fn StandardResolver::new() -> Self
 pub impl Resolver for StandardResolver
 
 pub(all) struct Statement {
@@ -809,17 +783,16 @@ pub struct Wesl[R] {
 }
 pub fn Wesl::add_constant(Self[StandardResolver], String, Double) -> Self[StandardResolver]
 pub fn Wesl::add_constants(Self[StandardResolver], Array[(String, Double)]) -> Self[StandardResolver]
+pub fn Wesl::add_module(Self[StandardResolver], ModulePath, String) -> Self[StandardResolver]
 pub fn Wesl::add_package(Self[StandardResolver], CodegenPkg) -> Self[StandardResolver]
 pub fn Wesl::add_packages(Self[StandardResolver], Array[CodegenPkg]) -> Self[StandardResolver]
-pub fn Wesl::add_scanned_package(Self[StandardResolver], Pkg) -> Self[StandardResolver]
-pub fn[R : Resolver] Wesl::build_artifact(Self[R], ModulePath, String, out_dir? : String?) -> Unit raise WeslCompileError
 pub fn[R : Resolver] Wesl::compile(Self[R], ModulePath) -> CompileResult raise WeslCompileError
 pub fn[R : Resolver] Wesl::compile_diagnostic(Self[R], ModulePath) -> CompileResult raise WeslDiagnosticError
 pub fn[R] Wesl::keep_all_entrypoints(Self[R]) -> Self[R]
 pub fn[R] Wesl::keep_declarations(Self[R], Array[String]) -> Self[R]
-pub fn Wesl::new(String) -> Self[StandardResolver]
+pub fn Wesl::new() -> Self[StandardResolver]
 pub fn Wesl::new_barebones() -> Self[NoResolver]
-pub fn Wesl::new_experimental(String) -> Self[StandardResolver]
+pub fn Wesl::new_experimental() -> Self[StandardResolver]
 pub fn Wesl::new_virtual(VirtualResolver) -> Self[VirtualResolver]
 pub fn[R] Wesl::resolver(Self[R]) -> R
 pub fn[R, CustomResolver] Wesl::set_custom_resolver(Self[R], CustomResolver) -> Self[CustomResolver]
@@ -852,7 +825,6 @@ pub(open) trait Resolver {
   fn resolve_source(Self, ModulePath) -> String raise ResolveError
   fn resolve_module(Self, ModulePath) -> TranslationUnit raise ResolveError = _
   fn display_name(Self, ModulePath) -> String? = _
-  fn fs_path(Self, ModulePath) -> String? = _
 }
 
 pub(open) trait SourceMap {

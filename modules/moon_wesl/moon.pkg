@@ -14,10 +14,7 @@ import {
   "Milky2018/wgsl/ir",
   "Milky2018/wgsl/lex",
   "Milky2018/wgsl/parser",
-  "moonbitlang/core/debug",
   "moonbitlang/core/hashmap",
-  "moonbitlang/core/env",
   "moonbitlang/core/math",
   "moonbitlang/core/string",
-  "moonbitlang/x/fs",
 }

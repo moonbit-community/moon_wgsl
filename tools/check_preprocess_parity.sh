@@ -41,9 +41,9 @@ echo "== moon_wgsl source-level preprocessing parity tests =="
 moon test \
   modules/moon_wgsl/preprocess_test.mbt \
   modules/moon_wgsl/composer_test.mbt \
-  modules/moon_wgsl/upstream_compose_parity_test.mbt \
-  modules/moon_wgsl/bevy_wgsl_parity_test.mbt \
-  modules/moon_wgsl/naga_oil_upstream_mirror_wbtest.mbt
+  tools/naga_oil_integration/upstream_compose_parity_test.mbt \
+  tools/naga_oil_integration/bevy_wgsl_parity_test.mbt \
+  tools/naga_oil_integration/naga_oil_upstream_mirror_wbtest.mbt
 
 echo "== naga_oil oracle: simple compose =="
 oracle \

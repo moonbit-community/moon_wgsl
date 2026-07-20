@@ -1,0 +1,6 @@
+import {
+  "Milky2018/moon_wgsl_naga_oil/contract",
+  "Milky2018/moon_wgsl_naga_oil/compose",
+  "Milky2018/moon_wgsl_naga_oil/resolver",
+  "moonbitlang/x/fs",
+}

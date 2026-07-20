@@ -4,8 +4,12 @@ import {
   "Milky2018/moon_wgsl_naga_oil/export",
   "Milky2018/moon_wgsl_naga_oil/profile",
   "Milky2018/moon_wgsl_tools/wgsl_io",
-  "Milky2018/wgsl/ir",
-  "moonbitlang/core/env",
-}
+  "moonbitlang/x/fs",
+} for "test"
 
-pkgtype(kind: "executable")
+import {
+  "Milky2018/moon_wgsl_naga_oil/preprocess",
+  "Milky2018/moon_wgsl_tools/wgsl_io",
+  "Milky2018/wgsl/parser",
+  "moonbitlang/x/fs",
+} for "wbtest"

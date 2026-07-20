@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_wgsl_tools/wesl_io"
+
+import {
+  "Milky2018/moon_wesl",
+}
+
+// Values
+pub fn scan_package(@moon_wesl.PkgBuilder, String) -> @moon_wesl.Pkg raise WeslIoError
+
+pub fn write_artifact(@moon_wesl.CompileResult, String, out_dir? : String?) -> Unit raise WeslIoError
+
+pub fn write_compile_result(@moon_wesl.CompileResult, String) -> Unit raise WeslIoError
+
+pub fn write_package_artifact(@moon_wesl.Pkg, String) -> Unit raise WeslIoError
+
+// Errors
+pub(all) suberror WeslIoError {
+  InvalidArtifactName(String)
+  MissingOutputDirectory
+  RootNotFound(String)
+  ReservedModuleName(String)
+  Io(String)
+}
+pub fn WeslIoError::message(Self) -> String
+
+// Types and methods
+pub struct FileResolver {
+  base : String
+  extension : String
+}
+pub fn FileResolver::file_path(Self, @moon_wesl.ModulePath) -> String raise @moon_wesl.ResolveError
+pub fn FileResolver::new(String) -> Self
+pub fn FileResolver::set_extension(Self, String) -> Self
+pub impl @moon_wesl.Resolver for FileResolver
+
+// Type aliases
+
+// Traits

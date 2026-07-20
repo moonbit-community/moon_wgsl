@@ -139,15 +139,3 @@ pub fn PreparedWgslSource::diagnostics(
 ) -> Array[WgslDiagnostic] {
   self.diagnostics.copy()
 }
-
-///|
-pub(all) struct WgslSourceScanOptions {
-  recursive : Bool
-  extensions : Array[String]
-  exclude_prefixes : Array[String]
-} derive(Eq, Debug)
-
-///|
-pub fn WgslSourceScanOptions::default() -> WgslSourceScanOptions {
-  { recursive: true, extensions: [".wgsl"], exclude_prefixes: [] }
-}
